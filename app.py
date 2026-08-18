@@ -135,6 +135,20 @@ def append_message(role: str, content: str) -> None:
         save_chat_history(st.session_state.selected_league_id, st.session_state.chat_history)
 
 
+def activate_league(league_id: str) -> None:
+    """Make this league the one shown across the dashboard and debate panel — loads its
+    cached snapshot, chat history, and per-league Draft Sharks data. Shared by the main-panel
+    league switcher and the sidebar's own first-load fallback so both stay in sync."""
+    st.session_state.selected_league_id = league_id
+    st.session_state.chat_history = load_chat_history(league_id)
+    st.session_state.league_snapshot = st.session_state.sleeper_client.load_latest_snapshot(league_id)
+    # Free Agent Finder is tied to one league's actual roster and must never leak between
+    # leagues, so it only ever loads from this league's own subdirectory. Dynasty Rankings is
+    # format-based (not roster-based) so it's read from the shared global pool too — DataMerger
+    # merges both automatically.
+    st.session_state.data_merger = DataMerger(league_dir=league_projections_dir(league_id))
+
+
 def maybe_nudge_stale_free_agents(league_id: str, merger: DataMerger) -> None:
     """Ask (once per data state, not every question) for a fresher Free Agent Finder export.
 
@@ -492,26 +506,14 @@ with st.sidebar:
 
         if league_options:
             option_ids = list(league_options.keys())
-            current = st.session_state.selected_league_id
-            if current not in option_ids:
-                current = option_ids[0]
-            selected = st.selectbox(
-                "📂 Active League",
-                options=option_ids,
-                format_func=lambda lid: league_options[lid],
-                index=option_ids.index(current),
-                help="This is the league the dashboard and debate panel below are showing.",
-            )
-            if selected != st.session_state.selected_league_id:
-                st.session_state.selected_league_id = selected
-                st.session_state.chat_history = load_chat_history(selected)
-                st.session_state.league_snapshot = st.session_state.sleeper_client.load_latest_snapshot(selected)
-                # Free Agent Finder is tied to one league's actual roster and must
-                # never leak between leagues, so it only ever loads from this
-                # league's own subdirectory. Dynasty Rankings is format-based (not
-                # roster-based) so it's read from the shared global pool too —
-                # DataMerger merges both automatically.
-                st.session_state.data_merger = DataMerger(league_dir=league_projections_dir(selected))
+            selected = st.session_state.selected_league_id
+            if selected not in option_ids:
+                # First load this session, or the previously-active league just got archived/
+                # deleted out from under it — fall back to the first visible one. The actual
+                # switcher lives at the top of the main panel now, not here.
+                selected = option_ids[0]
+                activate_league(selected)
+            st.caption(f"📂 Active league: **{league_options[selected]}** — switch it above the dashboard.")
 
             if st.button("🔄 Refresh This League", use_container_width=True):
                 client = st.session_state.sleeper_client
@@ -740,6 +742,31 @@ with st.sidebar:
         )
 
 # ------------------------------------------------------------------ main ----
+
+# The league switcher itself lives here, front and center, rather than buried in the
+# sidebar — this is the one control most likely to get used every single visit.
+if st.session_state.leagues:
+    visible_leagues, archived_leagues = sorted_leagues(st.session_state.user_id, st.session_state.leagues)
+    league_options = {lg["league_id"]: lg["name"] for lg in visible_leagues}
+    if league_options:
+        option_ids = list(league_options.keys())
+        current = st.session_state.selected_league_id
+        if current not in option_ids:
+            current = option_ids[0]
+        picked = st.segmented_control(
+            "📂 Active League",
+            options=option_ids,
+            format_func=lambda lid: league_options[lid],
+            default=current,
+            help="Switch which league the dashboard and debate panel below are showing.",
+        )
+        if picked is None:
+            # segmented_control allows clicking the active pill to deselect it — never
+            # leave nothing active, just fall back to whatever was already selected.
+            picked = current
+        if picked != st.session_state.selected_league_id:
+            activate_league(picked)
+            st.rerun()
 
 snapshot = st.session_state.league_snapshot
 if not snapshot:
