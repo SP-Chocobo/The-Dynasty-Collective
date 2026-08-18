@@ -65,15 +65,16 @@ roster dashboard work with zero keys configured.
    discovered league is appended to the end rather than disrupting your
    saved order.
 2. **Sidebar → Draft Sharks / War Room Data**: **stored per league**, not in
-   one shared pool — Draft Sharks' rankings/values are computed under a
-   specific scoring format, and the Free Agent Finder export is tied to one
-   league's actual roster, so uploading it while a different league is
-   selected would apply the wrong league's data. Select a league first;
-   uploads go to `data/projections/<league_id>/`. If two of your leagues
-   genuinely share the same scoring format, use **Copy this league's Draft
-   Sharks files to another league** (shown once you've uploaded something)
-   rather than re-exporting — but never for the Free Agent Finder export,
-   which is roster-specific and essentially never correct to copy.
+   one shared pool, and there's deliberately no cross-league copying option —
+   even leagues that look similar in the sidebar can differ in ways that
+   shift individual player tiers (a TE premium bonus, a different
+   reception/yardage threshold, IDP weighting), and the Free Agent Finder
+   export is tied to one league's actual roster regardless. Select a league
+   first; uploads go to `data/projections/<league_id>/`. To offset needing a
+   fresh export per league, this exact league's **full, real Sleeper scoring
+   settings** (every non-zero stat-category weight, not just a PPR/superflex
+   label) are always given to the Quant — see "Scoring-aware tier
+   adjustment" below.
    Draft Sharks doesn't offer a clean CSV export — what you get is a tool
    page saved/printed as a PDF. Two tools are supported and auto-detected
    from the PDF's own content, so you don't need to rename anything:
@@ -112,6 +113,18 @@ roster dashboard work with zero keys configured.
    compacted summary — see below) are fed back into every debate's context,
    so a later question can reference earlier trade discussions, consensus
    verdicts, and roster strategy instead of starting fresh each time.
+
+### Scoring-aware tier adjustment
+
+A Draft Sharks tier list is computed under Draft Sharks' own scoring
+assumptions, which will often sit somewhere *between* what two different
+list flavors assume for your actual league — a partial-PPR league between
+a full-PPR and a standard list, a modest TE bonus that only partly closes
+the gap a full TE-premium list would show, and so on. Rather than treating
+a loaded tier/value number as exact, the Quant is given this league's
+complete real scoring settings and instructed to use judgment: nudge a
+player's implied value up or down when the specific weights point that
+way, and say so explicitly rather than silently overriding the number.
 
 ### Chat history compaction
 

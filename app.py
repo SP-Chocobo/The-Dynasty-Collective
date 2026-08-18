@@ -10,7 +10,6 @@ debate studio (Quant/Claude, Beat/Gemini, Contrarian/ChatGPT, Moderator/Claude).
 from __future__ import annotations
 
 import json
-import shutil
 import time
 from datetime import datetime
 from pathlib import Path
@@ -158,6 +157,14 @@ def build_freshness_manifest(snapshot: dict, merger: DataMerger) -> list[tuple[s
 RECENT_TURNS_IN_CONTEXT = 16  # ~3 debate rounds worth of raw messages fed back verbatim
 
 
+def format_scoring_settings(scoring_settings: dict) -> str:
+    """Every non-zero Sleeper scoring category, compact — the exact rules, not a PPR/superflex summary."""
+    if not scoring_settings:
+        return ""
+    pairs = sorted((k, v) for k, v in scoring_settings.items() if v)
+    return ", ".join(f"{k}={v}" for k, v in pairs)
+
+
 def build_context(snapshot: dict, roster_table: list[dict]) -> str:
     league = snapshot["league"]
     fmt = league_format_summary(league)
@@ -166,6 +173,16 @@ def build_context(snapshot: dict, roster_table: list[dict]) -> str:
         f"League: {fmt['name']} ({fmt['season']}) — {fmt['type']}, {fmt['teams']} teams, "
         f"{'Superflex' if fmt['superflex'] else '1QB'}, {fmt['scoring']}, taxi slots: {fmt['taxi_slots']}",
     ]
+
+    scoring_str = format_scoring_settings(league.get("scoring_settings") or {})
+    if scoring_str:
+        lines.append(
+            "\nFULL SCORING SETTINGS for this exact league (Sleeper's own stat-category weights, not a "
+            "PPR/superflex label): " + scoring_str + ". A Draft Sharks tier list assumes ITS OWN scoring "
+            "model, which may not match this league in the details — a different reception value, a TE "
+            "premium bonus, bonus thresholds, IDP weighting, etc. Use this list to judge where a player's "
+            "loaded tier/value might be off for this specific league, not just accept it at face value."
+        )
 
     history = st.session_state.get("chat_history", [])
     summary_msgs = [m for m in history if m.get("role") == "summary"]
@@ -322,28 +339,12 @@ with st.sidebar:
         existing_files = sorted(p.name for p in league_proj_dir.glob("*") if p.suffix in (".csv", ".json", ".pdf")) if league_proj_dir.exists() else []
         if existing_files:
             st.caption("Loaded for this league: " + ", ".join(existing_files))
-
-            other_leagues = [lg for lg in st.session_state.leagues if lg["league_id"] != st.session_state.selected_league_id]
-            if other_leagues:
-                with st.expander("Copy this league's Draft Sharks files to another league"):
-                    st.caption(
-                        "Only do this if the target league genuinely shares the same scoring format "
-                        "(PPR/standard, superflex, taxi, etc.) — Draft Sharks' rankings and values are "
-                        "computed under specific scoring rules, so copying into a differently-scored league "
-                        "will give inaccurate numbers there. The Free Agent Finder export is roster-specific "
-                        "and almost never correct to copy, even between same-format leagues."
-                    )
-                    target_options = {lg["league_id"]: lg["name"] for lg in other_leagues}
-                    targets = st.multiselect(
-                        "Copy to", options=list(target_options.keys()), format_func=lambda lid: target_options[lid],
-                    )
-                    if st.button("Copy Files") and targets:
-                        for target_id in targets:
-                            target_dir = league_projections_dir(target_id)
-                            target_dir.mkdir(parents=True, exist_ok=True)
-                            for f in existing_files:
-                                shutil.copy(league_proj_dir / f, target_dir / f)
-                        st.success(f"Copied {len(existing_files)} file(s) to {len(targets)} league(s).")
+            st.caption(
+                "No cross-league copying — even leagues that look similar can differ in ways that shift "
+                "individual player tiers (a TE premium bonus, a different reception-yardage threshold, IDP "
+                "weighting). Upload for each league directly; this league's exact scoring settings are always "
+                "given to the Quant so it can judge where the loaded tier list might not quite fit."
+            )
 
     st.markdown("---")
     st.markdown("### Status")
