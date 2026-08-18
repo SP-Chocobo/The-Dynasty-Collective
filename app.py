@@ -98,6 +98,41 @@ def save_last_username(username: str) -> None:
     LAST_SESSION_PATH.write_text(json.dumps({"username": username}))
 
 
+ENV_PATH = Path(".env")
+ENV_VAR_FOR_OVERRIDE = {
+    "anthropic_api_key_override": "ANTHROPIC_API_KEY",
+    "gemini_api_key_override": "GEMINI_API_KEY",
+    "openai_api_key_override": "OPENAI_API_KEY",
+}
+
+
+def save_parsed_keys_to_env(overrides: dict[str, str]) -> None:
+    """Persist keys applied from the Connect Your Accounts box into .env, so a local
+    `streamlit run app.py` picks them up automatically next time without re-pasting.
+    Only rewrites the specific KEY= lines involved — every other line is left untouched.
+    This app is meant to run locally (see README), where .env is private to you; it's not
+    used for the (unsupported) case of a shared public deployment.
+    """
+    updates = {ENV_VAR_FOR_OVERRIDE[k]: v for k, v in overrides.items() if k in ENV_VAR_FOR_OVERRIDE}
+    if not updates:
+        return
+    lines = ENV_PATH.read_text().splitlines() if ENV_PATH.exists() else []
+    seen: set[str] = set()
+    new_lines = []
+    for line in lines:
+        stripped = line.strip()
+        key = stripped.split("=", 1)[0].strip() if "=" in stripped and not stripped.startswith("#") else None
+        if key in updates:
+            new_lines.append(f"{key}={updates[key]}")
+            seen.add(key)
+        else:
+            new_lines.append(line)
+    for key, value in updates.items():
+        if key not in seen:
+            new_lines.append(f"{key}={value}")
+    ENV_PATH.write_text("\n".join(new_lines) + "\n")
+
+
 for key, default in {
     "sleeper_client": SleeperClient(),
     "data_merger": DataMerger(),
@@ -111,6 +146,13 @@ for key, default in {
     "fa_staleness_nudged": set(),  # (league_id, freshest_date) already nudged about this session
     "left_league_ids": [],  # tracked leagues no longer returned by Sleeper's last sync, awaiting archive/delete/dismiss
     "manage_leagues_expanded": False,  # keeps the expander open across the reruns its own buttons trigger
+    # API keys applied via the sidebar's "Connect Your Accounts" section. Take effect
+    # immediately for this session and also get written into .env (see
+    # save_parsed_keys_to_env), so they're picked up automatically on the next launch too.
+    # A blank string means "not set here", falling back to whatever .env already had.
+    "anthropic_api_key_override": "",
+    "gemini_api_key_override": "",
+    "openai_api_key_override": "",
 }.items():
     if key not in st.session_state:
         st.session_state[key] = default
@@ -133,6 +175,64 @@ def append_message(role: str, content: str) -> None:
     st.session_state.chat_history.append(msg)
     if st.session_state.selected_league_id:
         save_chat_history(st.session_state.selected_league_id, st.session_state.chat_history)
+
+
+def api_key_for(provider: str) -> Optional[str]:
+    """The session's own pasted/uploaded key for this provider, if any, else None (meaning
+    "fall back to whatever llm_engine already loaded from .env")."""
+    return st.session_state.get(f"{provider}_api_key_override") or None
+
+
+CREDENTIAL_FIELD_ALIASES = {
+    "anthropic_api_key_override": ("ANTHROPIC_API_KEY", "ANTHROPIC", "CLAUDE_API_KEY", "CLAUDE"),
+    "gemini_api_key_override": ("GEMINI_API_KEY", "GEMINI", "GOOGLE_API_KEY", "GOOGLE"),
+    "openai_api_key_override": ("OPENAI_API_KEY", "OPENAI", "CHATGPT_API_KEY", "CHATGPT", "GPT"),
+    "username": ("SLEEPER_USERNAME", "SLEEPER", "USERNAME"),
+}
+
+
+def parse_credentials_blob(text: str) -> dict[str, str]:
+    """Pull API keys and a Sleeper username out of a pasted/uploaded blob — a real .env file
+    (KEY=value lines) works directly since it's the same format .env.example already uses;
+    a looser "label: value" style also works. Falls back to sniffing bare, unlabeled key
+    values by their provider-specific prefix (sk-ant-, AIza..., sk-...) for a blob that's
+    just a few pasted strings with no labels at all. Only returns what it actually found —
+    never guesses or fabricates a field.
+    """
+    found: dict[str, str] = {}
+    unlabeled_tokens: list[str] = []
+
+    for raw_line in text.splitlines():
+        line = raw_line.strip()
+        if not line or line.startswith("#"):
+            continue
+        if "=" in line:
+            label, _, value = line.partition("=")
+        elif ":" in line:
+            label, _, value = line.partition(":")
+        else:
+            unlabeled_tokens.extend(line.split())
+            continue
+        label = label.strip().upper().replace(" ", "_")
+        value = value.strip().strip('"').strip("'")
+        if not value:
+            continue
+        for field, aliases in CREDENTIAL_FIELD_ALIASES.items():
+            if label in aliases and field not in found:
+                found[field] = value
+                break
+        else:
+            unlabeled_tokens.append(value)
+
+    for token in unlabeled_tokens:
+        if token.startswith("sk-ant-") and "anthropic_api_key_override" not in found:
+            found["anthropic_api_key_override"] = token
+        elif token.startswith("AIza") and "gemini_api_key_override" not in found:
+            found["gemini_api_key_override"] = token
+        elif token.startswith("sk-") and "openai_api_key_override" not in found:
+            found["openai_api_key_override"] = token
+
+    return found
 
 
 def activate_league(league_id: str) -> None:
@@ -195,7 +295,7 @@ def compact_league_history(league_id: str, max_age_days: int = 30) -> tuple[bool
     if not old_messages:
         return False, f"Nothing older than {max_age_days} days to compact."
 
-    new_summary = llm_engine.summarize_history(old_messages, prior_summary=prior_summary)
+    new_summary = llm_engine.summarize_history(old_messages, prior_summary=prior_summary, api_key=api_key_for("anthropic"))
     if new_summary.startswith("⚠️"):
         return False, f"Compaction aborted, history untouched: {new_summary}"
 
@@ -461,6 +561,64 @@ def sync_leagues(username: str, *, announce: bool = True) -> bool:
 
 
 with st.sidebar:
+    st.markdown("### 🔑 Connect Your Accounts")
+    st.caption(
+        "Paste your keys in .env format (or upload a .txt/.env/.pdf with them), then click "
+        "Apply. This writes them into your local .env automatically, so it's a one-time step — "
+        "not something typed in every session."
+    )
+    with st.expander(
+        "Paste or upload keys + Sleeper username",
+        expanded=not llm_engine.is_claude_configured(api_key_for("anthropic")),
+    ):
+        creds_text = st.text_area(
+            "Paste keys (one per line)",
+            key="creds_paste_box",
+            placeholder=(
+                "ANTHROPIC_API_KEY=sk-ant-...\n"
+                "GEMINI_API_KEY=...\n"
+                "OPENAI_API_KEY=...\n"
+                "SLEEPER_USERNAME=yourname"
+            ),
+            height=120,
+        )
+        creds_file = st.file_uploader(
+            "...or upload a file with the same content", type=["txt", "env", "pdf"], key="creds_file_upload"
+        )
+        if st.button("Apply", key="apply_credentials", use_container_width=True):
+            blob = creds_text or ""
+            if creds_file is not None:
+                if creds_file.name.lower().endswith(".pdf"):
+                    import pypdf
+
+                    reader = pypdf.PdfReader(creds_file)
+                    blob += "\n" + "\n".join(page.extract_text() or "" for page in reader.pages)
+                else:
+                    blob += "\n" + creds_file.read().decode("utf-8", errors="ignore")
+
+            parsed = parse_credentials_blob(blob)
+            if not parsed:
+                st.warning("Didn't recognize any keys or a username in that — check the format and try again.")
+            else:
+                key_updates = {k: v for k, v in parsed.items() if k != "username"}
+                if key_updates:
+                    for field, value in key_updates.items():
+                        st.session_state[field] = value
+                    save_parsed_keys_to_env(key_updates)
+
+                found = [
+                    label for field, label in (
+                        ("anthropic_api_key_override", "Anthropic"),
+                        ("gemini_api_key_override", "Gemini"),
+                        ("openai_api_key_override", "OpenAI"),
+                    ) if field in parsed
+                ]
+                if "username" in parsed:
+                    found.append("Sleeper username")
+                    sync_leagues(parsed["username"])
+                st.success(f"Applied: {', '.join(found)}.")
+                st.rerun()
+
     st.markdown("### 🏈 Sleeper Sync")
     username_input = st.text_input("Sleeper Username", value=st.session_state.username)
 
@@ -724,21 +882,21 @@ with st.sidebar:
     st.markdown(status_line(proj_label, has_sleeper_proj), unsafe_allow_html=True)
     if snap and not has_sleeper_proj:
         st.caption("Unofficial endpoint returned nothing this sync — Draft Sharks/market data still work fine without it.")
-    st.markdown(status_line("Claude (Quant/Moderator) Connected", llm_engine.is_claude_configured()), unsafe_allow_html=True)
-    st.markdown(status_line("Gemini (Beat Tracker) Connected", llm_engine.is_gemini_configured()), unsafe_allow_html=True)
-    st.markdown(status_line("ChatGPT (Contrarian) Connected", llm_engine.is_openai_configured()), unsafe_allow_html=True)
+    st.markdown(status_line("Claude (Quant/Moderator) Connected", llm_engine.is_claude_configured(api_key_for("anthropic"))), unsafe_allow_html=True)
+    st.markdown(status_line("Gemini (Beat Tracker) Connected", llm_engine.is_gemini_configured(api_key_for("gemini"))), unsafe_allow_html=True)
+    st.markdown(status_line("ChatGPT (Contrarian) Connected", llm_engine.is_openai_configured(api_key_for("openai"))), unsafe_allow_html=True)
 
     missing_keys = [
         var for var, ok in (
-            ("ANTHROPIC_API_KEY", llm_engine.is_claude_configured()),
-            ("GEMINI_API_KEY", llm_engine.is_gemini_configured()),
-            ("OPENAI_API_KEY", llm_engine.is_openai_configured()),
+            ("ANTHROPIC_API_KEY", llm_engine.is_claude_configured(api_key_for("anthropic"))),
+            ("GEMINI_API_KEY", llm_engine.is_gemini_configured(api_key_for("gemini"))),
+            ("OPENAI_API_KEY", llm_engine.is_openai_configured(api_key_for("openai"))),
         ) if not ok
     ]
     if missing_keys:
         st.caption(
-            f"Missing: {', '.join(missing_keys)}. These aren't entered in this UI — copy `.env.example` to "
-            "`.env` in the project folder, fill in the key(s), and restart `streamlit run app.py`."
+            f"Missing: {', '.join(missing_keys)}. Paste them into 🔑 Connect Your Accounts above, or copy "
+            "`.env.example` to `.env` in the project folder, fill in the key(s), and restart `streamlit run app.py`."
         )
 
 # ------------------------------------------------------------------ main ----
@@ -906,15 +1064,22 @@ with col_studio:
 
         with st.spinner("Consulting the front office..."):
             if trigger_mode == "claude":
-                append_message("quant", llm_engine.ask_quant(context, trigger_question))
+                append_message("quant", llm_engine.ask_quant(context, trigger_question, api_key=api_key_for("anthropic")))
             elif trigger_mode == "gemini":
-                append_message("beat", llm_engine.ask_beat(context, trigger_question))
+                append_message("beat", llm_engine.ask_beat(context, trigger_question, api_key=api_key_for("gemini")))
             elif trigger_mode == "gpt":
                 beat_reply = ""
                 quant_reply = ""
-                append_message("contrarian", llm_engine.ask_contrarian(context, trigger_question, quant_reply, beat_reply))
+                append_message("contrarian", llm_engine.ask_contrarian(
+                    context, trigger_question, quant_reply, beat_reply, api_key=api_key_for("openai")
+                ))
             else:
-                result = llm_engine.run_debate(context, trigger_question)
+                result = llm_engine.run_debate(
+                    context, trigger_question,
+                    claude_key=api_key_for("anthropic"),
+                    gemini_key=api_key_for("gemini"),
+                    openai_key=api_key_for("openai"),
+                )
                 append_message("quant", result.quant)
                 append_message("beat", result.beat)
                 append_message("contrarian", result.contrarian)

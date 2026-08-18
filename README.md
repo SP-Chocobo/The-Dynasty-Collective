@@ -49,7 +49,31 @@ streamlit run app.py
 ```
 
 You only need the keys for the models you want to use. Sleeper sync and the
-roster dashboard work with zero keys configured.
+roster dashboard work with zero keys configured. Rather than hand-editing
+`.env`, you can also paste them straight into the app: sidebar → **🔑 Connect
+Your Accounts** takes a pasted `.env`-style blob (or an uploaded
+`.txt`/`.env`/`.pdf`) with any of `ANTHROPIC_API_KEY` / `GEMINI_API_KEY` /
+`OPENAI_API_KEY` / `SLEEPER_USERNAME` on it, applies them immediately, and
+writes them into your local `.env` so it's a one-time step. It also
+recognizes a few common aliases (`CLAUDE`, `GOOGLE`, `CHATGPT`, `GPT`) and
+falls back to sniffing bare key values by their provider prefix (`sk-ant-`,
+`AIza…`, `sk-…`) if you paste something with no labels at all.
+
+**Run this locally — don't deploy it to a public host.** Every persistence
+mechanism in this app (chat history, the decision log, league archive/
+reorder prefs, Draft Sharks uploads, player aliases, format overrides, the
+remembered Sleeper username) is a flat JSON file on local disk, by design —
+see "Design Principles" above. That's correct and private for `streamlit run
+app.py` on your own machine, but breaks on something like Streamlit
+Community Cloud: the filesystem there isn't durable (a redeploy or a
+free-tier sleep/wake cycle can wipe `data/` without warning) and, worse,
+isn't private to you — it's one shared container across every visitor to
+that URL, so their local files (and yours) can collide or leak into each
+other. The Sleeper-session auto-restore (below) is the clearest example —
+whoever loaded the page last is whose session the next visitor would see —
+but the same mismatch applies to every file under `data/`. None of this
+code changes based on where you run it; running it locally is what makes it
+correct.
 
 ## Using it
 

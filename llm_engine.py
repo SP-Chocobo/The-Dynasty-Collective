@@ -191,27 +191,28 @@ def parse_moderator_verdict(text: str) -> dict:
     return verdict
 
 
-def is_claude_configured() -> bool:
-    return bool(ANTHROPIC_API_KEY)
+def is_claude_configured(api_key: Optional[str] = None) -> bool:
+    return bool(api_key or ANTHROPIC_API_KEY)
 
 
-def is_gemini_configured() -> bool:
-    return bool(GEMINI_API_KEY)
+def is_gemini_configured(api_key: Optional[str] = None) -> bool:
+    return bool(api_key or GEMINI_API_KEY)
 
 
-def is_openai_configured() -> bool:
-    return bool(OPENAI_API_KEY)
+def is_openai_configured(api_key: Optional[str] = None) -> bool:
+    return bool(api_key or OPENAI_API_KEY)
 
 
 # -- Claude (Quant + Moderator) ------------------------------------------------
 
-def _ask_claude(system_prompt: str, user_prompt: str) -> str:
-    if not is_claude_configured():
-        return "⚠️ ANTHROPIC_API_KEY not set — add it to your .env file to enable Claude."
+def _ask_claude(system_prompt: str, user_prompt: str, api_key: Optional[str] = None) -> str:
+    key = api_key or ANTHROPIC_API_KEY
+    if not key:
+        return "⚠️ ANTHROPIC_API_KEY not set — add it in the sidebar's Connect Your Accounts section, or in .env."
     try:
         import anthropic
 
-        client = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
+        client = anthropic.Anthropic(api_key=key)
         response = client.messages.create(
             model=CLAUDE_MODEL,
             max_tokens=MAX_TOKENS,
@@ -223,12 +224,14 @@ def _ask_claude(system_prompt: str, user_prompt: str) -> str:
         return f"⚠️ Claude request failed: {exc}"
 
 
-def ask_quant(context: str, question: str) -> str:
+def ask_quant(context: str, question: str, api_key: Optional[str] = None) -> str:
     prompt = f"League/roster context:\n{context}\n\nQuestion: {question}"
-    return _ask_claude(QUANT_SYSTEM_PROMPT, prompt)
+    return _ask_claude(QUANT_SYSTEM_PROMPT, prompt, api_key=api_key)
 
 
-def ask_moderator(context: str, question: str, quant: str, beat: str, contrarian: str) -> str:
+def ask_moderator(
+    context: str, question: str, quant: str, beat: str, contrarian: str, api_key: Optional[str] = None
+) -> str:
     prompt = (
         f"League/roster context:\n{context}\n\n"
         f"Original question: {question}\n\n"
@@ -237,10 +240,12 @@ def ask_moderator(context: str, question: str, quant: str, beat: str, contrarian
         f"--- CONTRARIAN / RISK REPORT ---\n{contrarian}\n\n"
         "Synthesize these into one verdict."
     )
-    return _ask_claude(MODERATOR_SYSTEM_PROMPT, prompt)
+    return _ask_claude(MODERATOR_SYSTEM_PROMPT, prompt, api_key=api_key)
 
 
-def summarize_history(messages: list[dict], prior_summary: Optional[str] = None) -> str:
+def summarize_history(
+    messages: list[dict], prior_summary: Optional[str] = None, api_key: Optional[str] = None
+) -> str:
     """Compact a batch of old chat messages (see DebateResult/chat history shape) into one memory block.
 
     Fails soft like every other ask_* function — callers must check for a
@@ -251,19 +256,20 @@ def summarize_history(messages: list[dict], prior_summary: Optional[str] = None)
         return "⚠️ Nothing to summarize."
     transcript = "\n\n".join(f"[{m.get('role', '?')}] {m.get('content', '')}" for m in messages)
     prompt = transcript if not prior_summary else f"PRIOR MEMORY SUMMARY:\n{prior_summary}\n\nNEW TRANSCRIPT TO MERGE IN:\n{transcript}"
-    return _ask_claude(SUMMARIZER_SYSTEM_PROMPT, prompt)
+    return _ask_claude(SUMMARIZER_SYSTEM_PROMPT, prompt, api_key=api_key)
 
 
 # -- Gemini (Beat / News Tracker, with live search grounding) -----------------
 
-def ask_beat(context: str, question: str) -> str:
-    if not is_gemini_configured():
-        return "⚠️ GEMINI_API_KEY not set — add it to your .env file to enable the Beat Tracker."
+def ask_beat(context: str, question: str, api_key: Optional[str] = None) -> str:
+    key = api_key or GEMINI_API_KEY
+    if not key:
+        return "⚠️ GEMINI_API_KEY not set — add it in the sidebar's Connect Your Accounts section, or in .env."
     try:
         from google import genai
         from google.genai import types
 
-        client = genai.Client(api_key=GEMINI_API_KEY)
+        client = genai.Client(api_key=key)
         prompt = f"League/roster context:\n{context}\n\nQuestion: {question}"
         response = client.models.generate_content(
             model=GEMINI_MODEL,
@@ -281,13 +287,14 @@ def ask_beat(context: str, question: str) -> str:
 
 # -- ChatGPT (Contrarian / Risk Analyst) ---------------------------------------
 
-def ask_contrarian(context: str, question: str, quant: str, beat: str) -> str:
-    if not is_openai_configured():
-        return "⚠️ OPENAI_API_KEY not set — add it to your .env file to enable the Contrarian Analyst."
+def ask_contrarian(context: str, question: str, quant: str, beat: str, api_key: Optional[str] = None) -> str:
+    key = api_key or OPENAI_API_KEY
+    if not key:
+        return "⚠️ OPENAI_API_KEY not set — add it in the sidebar's Connect Your Accounts section, or in .env."
     try:
         from openai import OpenAI
 
-        client = OpenAI(api_key=OPENAI_API_KEY)
+        client = OpenAI(api_key=key)
         prompt = (
             f"League/roster context:\n{context}\n\n"
             f"Original question: {question}\n\n"
@@ -311,13 +318,24 @@ def ask_contrarian(context: str, question: str, quant: str, beat: str) -> str:
 
 # -- Orchestration --------------------------------------------------------------
 
-def run_debate(context: str, question: str) -> DebateResult:
-    """Run the full four-agent debate: Quant -> Beat -> Contrarian -> Moderator."""
+def run_debate(
+    context: str,
+    question: str,
+    *,
+    claude_key: Optional[str] = None,
+    gemini_key: Optional[str] = None,
+    openai_key: Optional[str] = None,
+) -> DebateResult:
+    """Run the full four-agent debate: Quant -> Beat -> Contrarian -> Moderator.
+
+    The *_key overrides let a key entered in the UI for this browser session take
+    priority over whatever's in .env, without ever writing it back to disk.
+    """
     result = DebateResult(question=question)
-    result.quant = ask_quant(context, question)
-    result.beat = ask_beat(context, question)
-    result.contrarian = ask_contrarian(context, question, result.quant, result.beat)
-    result.moderator = ask_moderator(context, question, result.quant, result.beat, result.contrarian)
+    result.quant = ask_quant(context, question, api_key=claude_key)
+    result.beat = ask_beat(context, question, api_key=gemini_key)
+    result.contrarian = ask_contrarian(context, question, result.quant, result.beat, api_key=openai_key)
+    result.moderator = ask_moderator(context, question, result.quant, result.beat, result.contrarian, api_key=claude_key)
     if not result.moderator.startswith("⚠️"):
         result.verdict = parse_moderator_verdict(result.moderator)
     for label, text in (("quant", result.quant), ("beat", result.beat),
