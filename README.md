@@ -48,6 +48,25 @@ cp .env.example .env
 streamlit run app.py
 ```
 
+### Staying up to date
+
+There's no live sync between this repo and your local copy — git doesn't
+work that way, and Streamlit needs the actual files on disk to run. The
+closest thing to it: `update_and_run.ps1` (Windows) / `update_and_run.sh`
+(Mac/Linux) pulls the latest pushed code, installs anything new in
+`requirements.txt`, and launches the app, all in one command:
+
+```powershell
+.\update_and_run.ps1        # Windows
+```
+```bash
+./update_and_run.sh         # Mac/Linux — chmod +x it once first
+```
+
+Run that instead of `streamlit run app.py` directly whenever you want
+whatever's newest. It never touches `data/` or `.env` — those are yours,
+gitignored, and untouched by pulling new code.
+
 You only need the keys for the models you want to use. Sleeper sync and the
 roster dashboard work with zero keys configured. Rather than hand-editing
 `.env`, you can also paste them straight into the app: sidebar → **🔑 Connect
@@ -343,6 +362,7 @@ llm_engine.py               Four-persona prompt routing across Claude / Gemini /
                              plus the structured-verdict parser.
 decision_log.py               Per-league record of every parsed Moderator verdict.
 app.py                         Streamlit dashboard + debate studio.
+update_and_run.ps1/.sh          Pulls latest code + deps, then launches the app.
 data/sleeper_snapshots/  Cached league syncs (gitignored).
 data/projections/_global/   Dynasty Rankings / format-based exports, shared by
                              every league (gitignored).
