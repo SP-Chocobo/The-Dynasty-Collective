@@ -19,7 +19,7 @@ import pandas as pd
 import streamlit as st
 
 import llm_engine
-from attachments import ATTACHMENTS_DIR, list_attachments, save_attachment, set_caption, delete_attachment
+from attachments import ATTACHMENTS_DIR, list_attachments, save_attachment, set_caption, set_scope, delete_attachment
 from data_merger import GLOBAL_PROJECTIONS_DIR, PROJECTIONS_DIR, DataMerger, load_projection_file, save_alias
 from league_prefs import move_league, sorted_leagues, toggle_archive
 from sleeper_client import SleeperClient, compute_points_from_stats, find_roster_for_user, league_format_summary
@@ -297,7 +297,7 @@ def build_context(snapshot: dict, roster_table: list[dict]) -> str:
                     f"{fa.get('ceiling', '-')} | {fa.get('value_3d', '-')}"
                 )
 
-    captioned = [a for a in list_attachments() if a["caption"].strip()]
+    captioned = [a for a in list_attachments(league_id=st.session_state.selected_league_id) if a["caption"].strip()]
     if captioned:
         lines.append(
             "\nREFERENCE MATERIAL the user uploaded (screenshots/articles, captioned by hand — you're only "
@@ -391,6 +391,25 @@ with st.sidebar:
         "that isn't recognized as one of those — a screenshot, an article, an unsupported export — is kept "
         "as reference material instead (see below) rather than being discarded."
     )
+    # Scope has to live outside the form: a form only releases its widgets' values on
+    # submit, so a selector inside one can't reactively reveal the league picker.
+    scope_mode = st.segmented_control(
+        "Note/attachment applies to",
+        options=["Global (all leagues)", "Specific league(s)"],
+        default="Global (all leagues)",
+        key="upload_scope_mode",
+        help="Only matters for the comment/note and for anything that falls through to Reference "
+        "Material — Draft Sharks data itself already routes by its own rules regardless of this.",
+    )
+    scope_league_ids: list[str] = []
+    if scope_mode == "Specific league(s)" and st.session_state.leagues:
+        league_name_map = {lg["league_id"]: lg["name"] for lg in st.session_state.leagues}
+        default_scope = [st.session_state.selected_league_id] if st.session_state.selected_league_id in league_name_map else []
+        scope_league_ids = st.multiselect(
+            "Which league(s)", options=list(league_name_map.keys()), default=default_scope,
+            format_func=lambda lid: league_name_map[lid], key="upload_scope_leagues",
+        )
+
     with st.form("upload_form", clear_on_submit=True):
         uploaded = st.file_uploader(
             "Upload Draft Sharks PDF/CSV/JSON, or any other file as reference material",
@@ -404,13 +423,16 @@ with st.sidebar:
         )
         submitted = st.form_submit_button("Upload")
 
-    if submitted and uploaded is None:
+    if submitted and scope_mode == "Specific league(s)" and not scope_league_ids:
+        st.warning("Select at least one league above, or switch back to Global.")
+    elif submitted and uploaded is None:
         st.warning("Choose a file before clicking Upload.")
     elif submitted and uploaded is not None:
         data = bytes(uploaded.getbuffer())
         note = note.strip()
         suffix = Path(uploaded.name).suffix.lower()
         recognized = False
+        note_scope = scope_league_ids if scope_mode == "Specific league(s)" else None
 
         if suffix in (".pdf", ".csv", ".json"):
             staging_dir = PROJECTIONS_DIR / "_staging"
@@ -441,10 +463,10 @@ with st.sidebar:
                     if note:
                         # The data went into the projections pool, not the attachment store — but the
                         # note is still worth surfacing to the panel, so it gets a small text-only entry.
-                        save_attachment(f"{uploaded.name}.note.txt", note.encode(), caption=note)
+                        save_attachment(f"{uploaded.name}.note.txt", note.encode(), caption=note, league_ids=note_scope)
 
         if not recognized:
-            save_attachment(uploaded.name, data, caption=note)
+            save_attachment(uploaded.name, data, caption=note, league_ids=note_scope)
             st.info(f"Didn't match a known Draft Sharks format — saved '{uploaded.name}' as reference material below for the panel to consider when you ask about it.")
 
     global_files = sorted(p.name for p in GLOBAL_PROJECTIONS_DIR.glob("*") if p.suffix in (".csv", ".json", ".pdf"))
@@ -737,10 +759,11 @@ st.caption(
     "panel actually sees when you ask about it."
 )
 
-attachments = list_attachments()
+attachments = list_attachments()  # unfiltered — this is a management view, show everything regardless of scope
 if not attachments:
     st.caption("Nothing uploaded yet — drop a file above that isn't recognized as Draft Sharks data.")
 else:
+    league_name_map = {lg["league_id"]: lg["name"] for lg in st.session_state.leagues}
     for item in attachments:
         acol1, acol2, acol3 = st.columns([1, 3, 1])
         if item["is_image"]:
@@ -751,9 +774,34 @@ else:
             "Caption", value=item["caption"], key=f"caption_{item['filename']}", label_visibility="collapsed",
             placeholder="What is this? (e.g. 'ESPN: Chase questionable for Sunday')",
         )
+        scope_label = (
+            "🎯 " + ", ".join(league_name_map.get(lid, lid) for lid in item["league_ids"])
+            if item["league_ids"] else "🌐 Global (all leagues)"
+        )
+        acol2.caption(f"Applies to: {scope_label}")
         if new_caption != item["caption"] and acol2.button("Save Caption", key=f"save_caption_{item['filename']}"):
             set_caption(item["filename"], new_caption)
             st.rerun()
         if acol3.button("Delete", key=f"delete_{item['filename']}"):
             delete_attachment(item["filename"])
             st.rerun()
+
+        with st.expander(f"Change scope — {item['filename']}"):
+            edit_mode = st.segmented_control(
+                "Applies to", options=["Global (all leagues)", "Specific league(s)"],
+                default="Specific league(s)" if item["league_ids"] else "Global (all leagues)",
+                key=f"scope_mode_{item['filename']}",
+            )
+            edit_league_ids: list[str] = []
+            if edit_mode == "Specific league(s)" and st.session_state.leagues:
+                edit_league_ids = st.multiselect(
+                    "Which league(s)", options=list(league_name_map.keys()),
+                    default=item["league_ids"] or [], format_func=lambda lid: league_name_map[lid],
+                    key=f"scope_leagues_{item['filename']}",
+                )
+            if st.button("Save Scope", key=f"save_scope_{item['filename']}"):
+                if edit_mode == "Specific league(s)" and not edit_league_ids:
+                    st.warning("Select at least one league, or switch to Global.")
+                else:
+                    set_scope(item["filename"], edit_league_ids if edit_mode == "Specific league(s)" else None)
+                    st.rerun()

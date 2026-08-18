@@ -108,17 +108,28 @@ roster dashboard work with zero keys configured.
    The upload box itself has a **comments/questions/labels** text field
    right alongside the file picker — write a note at the moment you upload
    (e.g. "ignore this ranking, Bijan tweaked his hamstring in preseason")
-   rather than having to track it down afterward. Click **Upload** to submit
-   both together (it's a form, not an instant-on-select uploader, so nothing
-   gets processed until you actually click it). If the file turns out to be
-   recognized Draft Sharks data, the note still reaches the panel as a small
-   reference-material entry alongside it.
+   rather than having to track it down afterward. Above that is a **Global /
+   Specific league(s)** toggle — pick Specific and a league multiselect
+   appears — since a note's scope can't be reliably guessed from its content
+   the way a Draft Sharks PDF's kind can: "Chase is questionable" is true
+   for every league, but "considering trading my 2nd for their WR1" is
+   clearly about one league's roster and would just be noise (or actively
+   misleading) in another league's debate. It defaults to Global; a
+   Specific-scoped note is only ever included in the leagues you picked.
+   Click **Upload** to submit everything together (it's a form, not an
+   instant-on-select uploader, so nothing gets processed until you actually
+   click it). If the file turns out to be recognized Draft Sharks data, the
+   note still reaches the panel as a small reference-material entry with
+   the same scope.
    Below that, a full-width **Reference Material** panel holds anything
    uploaded that *isn't* recognized Draft Sharks data — a screenshot of an
    injury notification, an article, a tweet — instead of the upload just
-   silently discarding it. Every item's caption (not the raw file) is what
-   actually reaches the debate panel, labeled explicitly as an unverified
-   claim to weigh, not fact; edit a caption there any time.
+   silently discarding it. This panel always lists everything regardless of
+   scope (so you can find and manage anything), showing each item's current
+   scope and letting you change it after the fact. Every item's caption
+   (not the raw file) is what actually reaches the debate panel, labeled
+   explicitly as an unverified claim to weigh, not fact; edit a caption
+   there any time too.
 4. **Debate Studio**: type a question and either click a quick-action button
    or prefix your message:
    - `/debate <question>` — full four-agent panel (default if no prefix)
@@ -211,7 +222,8 @@ data_merger.py       Draft Sharks PDF parsers (Dynasty Rankings + Free Agent
                      projection-freshness tracking.
 league_prefs.py       Per-Sleeper-user league archive/reorder preferences.
 attachments.py         Reference material (screenshots/articles) that isn't
-                        structured Draft Sharks data — storage + captions.
+                        structured Draft Sharks data — storage, captions,
+                        and per-item global-vs-league(s) scoping.
 llm_engine.py         Four-persona prompt routing across Claude / Gemini / ChatGPT.
 app.py                 Streamlit dashboard + debate studio.
 data/sleeper_snapshots/  Cached league syncs (gitignored).
