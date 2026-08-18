@@ -268,6 +268,38 @@ def activate_league(league_id: str) -> None:
             pass  # dashboard falls back to its usual "sync a league" empty state
 
 
+SLOT_STYLES = {
+    "Starter": "background-color: rgba(22,163,74,0.18); color: #4ade80;",
+    "TAXI": "background-color: rgba(212,160,23,0.18); color: #facc15;",
+    "IR": "background-color: rgba(185,28,28,0.18); color: #f87171;",
+}
+INJURY_OK_STATUSES = ("Questionable", "Doubtful")
+
+
+def style_roster_table(df: pd.DataFrame) -> "pd.io.formats.style.Styler":
+    """Color-code slot and injury status with the app's own emerald/gold/crimson accents
+    — the same palette already used for badges and status chips everywhere else — so
+    "who's injured, who's actually starting" reads at a glance instead of requiring you
+    to read every cell of a plain table."""
+    def _slot_style(val: str) -> str:
+        return SLOT_STYLES.get(val, "color: #94a3b8;")  # Bench, or anything unrecognized
+
+    def _injury_style(val) -> str:
+        if pd.isna(val) or val in (None, "None", ""):
+            return "color: #64748b;"
+        if val in INJURY_OK_STATUSES:
+            return "background-color: rgba(212,160,23,0.18); color: #facc15;"
+        return "background-color: rgba(185,28,28,0.18); color: #f87171;"  # Out/IR/PUP/etc.
+
+    styler = df.style
+    map_fn = styler.map if hasattr(styler, "map") else styler.applymap  # pandas <2.1 fallback
+    if "slot" in df.columns:
+        styler = map_fn(_slot_style, subset=["slot"])
+    if "injury_status" in df.columns:
+        styler = map_fn(_injury_style, subset=["injury_status"])
+    return styler
+
+
 def maybe_nudge_stale_free_agents(league_id: str, merger: DataMerger) -> None:
     """Ask (once per data state, not every question) for a fresher Free Agent Finder export.
 
@@ -1034,7 +1066,10 @@ with col_roster:
             "projection", "sleeper_proj", "proj_3yr", "trade_value", "pos_rank",
             "fa_ros_proj", "fa_ceiling", "fa_value", "injury_status",
         ] if c in df.columns]
-        st.dataframe(df[display_cols] if not df.empty else df, use_container_width=True, hide_index=True)
+        st.dataframe(
+            style_roster_table(df[display_cols]) if not df.empty else df,
+            use_container_width=True, hide_index=True,
+        )
         if "sleeper_proj" in df.columns:
             nfl_state = snapshot.get("nfl_state") or {}
             st.caption(
@@ -1072,7 +1107,10 @@ with col_roster:
 
 with col_studio:
     st.subheader("Multi-Model Debate Studio")
-    st.caption("Personas: 🟢 Quant (Claude) · 🟡 Beat Tracker (Gemini) · 🟣 Contrarian (ChatGPT) · 🔴 Moderator (Claude)")
+    st.caption(
+        "Personas: 🟢 Quant (Claude) · 🟡 Beat Tracker (Gemini) · "
+        "🟣 Contrarian (ChatGPT) · 🔴 Moderator (Claude)"
+    )
 
     b1, b2, b3, b4 = st.columns(4)
     quick_debate = b1.button("Run Debate", use_container_width=True)
