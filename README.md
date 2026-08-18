@@ -101,6 +101,20 @@ file's save date for CSV/JSON) and only nudge you to refresh once it's **7+
 days old**. Roughly a weekly re-export is plenty; the app won't pester you
 in between.
 
+Every debate also gets an explicit **DATA FRESHNESS** manifest in its
+context — an as-of date and age for Draft Sharks Dynasty Rankings, Draft
+Sharks Free Agent Finder, and the Sleeper league sync, sorted freshest
+first (the Beat Tracker's and Contrarian's own live web search is always
+treated as fresher than any of those, since it runs at the moment of the
+question). When two sources disagree, the panel is instructed to lean
+toward the more recently updated one — decisively for time-sensitive
+claims like injury status or depth chart position, only mildly for stable
+long-term dynasty valuations, since staleness doesn't invalidate a
+season-long projection the way it invalidates "is this guy still the
+starter." The Moderator treats this as its primary tie-breaker and is told
+to say explicitly when it's using it, so a verdict reads as "X is more
+current" rather than an unexplained "X is more correct."
+
 ## Project layout
 
 ```

@@ -11,7 +11,9 @@ from __future__ import annotations
 
 import json
 import time
+from datetime import datetime
 from pathlib import Path
+from typing import Optional
 
 import pandas as pd
 import streamlit as st
@@ -96,6 +98,25 @@ def append_message(role: str, content: str) -> None:
         save_chat_history(st.session_state.selected_league_id, st.session_state.chat_history)
 
 
+def build_freshness_manifest(snapshot: dict, merger: DataMerger) -> list[tuple[str, Optional[str], Optional[int]]]:
+    """(label, as-of date, days old) for every dated source in this context, freshest first."""
+    entries = []
+    if merger.is_loaded:
+        entries.append(("Draft Sharks Dynasty Rankings", merger.freshest_date, merger.staleness_days))
+    if merger.is_free_agents_loaded:
+        entries.append(("Draft Sharks Free Agent Finder", merger.free_agents_freshest_date, merger.free_agents_staleness_days))
+    synced_at = snapshot.get("synced_at")
+    if synced_at:
+        sync_dt = datetime.fromtimestamp(synced_at)
+        entries.append((
+            "Sleeper league sync (rosters + native weekly projections)",
+            sync_dt.date().isoformat(),
+            (datetime.now().date() - sync_dt.date()).days,
+        ))
+    entries.sort(key=lambda e: (e[2] is None, e[2]))
+    return entries
+
+
 def build_context(snapshot: dict, roster_table: list[dict]) -> str:
     league = snapshot["league"]
     fmt = league_format_summary(league)
@@ -104,15 +125,26 @@ def build_context(snapshot: dict, roster_table: list[dict]) -> str:
         f"League: {fmt['name']} ({fmt['season']}) — {fmt['type']}, {fmt['teams']} teams, "
         f"{'Superflex' if fmt['superflex'] else '1QB'}, {fmt['scoring']}, taxi slots: {fmt['taxi_slots']}",
     ]
-    if merger.is_loaded:
+
+    freshness = build_freshness_manifest(snapshot, merger)
+    if freshness:
         lines.append(
-            f"Draft Sharks data as of {merger.freshest_date} "
-            f"({merger.staleness_days} days old{' — STALE, treat with caution' if merger.is_stale else ''})"
+            "\nDATA FRESHNESS (freshest first). The Beat Tracker's and Contrarian's own live web search "
+            "is always fresher than anything below, since it runs at the moment of the question — treat it "
+            "as the top entry implicitly. When sources conflict, lean toward the more recently updated one, "
+            "but weigh what kind of claim it is: a fresher injury/depth-chart/news signal should outweigh a "
+            "staler one fairly decisively, while a fresher season-long dynasty valuation is only a mild edge "
+            "over an older one, since long-term value doesn't go stale as fast as situational facts."
         )
-    nfl_state = snapshot.get("nfl_state") or {}
+        for label, date, age in freshness:
+            age_label = f"{age}d old" if age is not None else "date unknown"
+            stale_flag = " — STALE" if age is not None and age >= 7 else ""
+            lines.append(f"  - {label}: as of {date or 'unknown'} ({age_label}){stale_flag}")
+
     if snapshot.get("projections"):
+        nfl_state = snapshot.get("nfl_state") or {}
         lines.append(
-            f"Sleeper's own native week-{nfl_state.get('week', '?')} stat-category projections are also "
+            f"\nSleeper's own native week-{nfl_state.get('week', '?')} stat-category projections are also "
             "included below as 'sleeper_proj', scored under this league's real scoring_settings. NOTE: this "
             "is a SINGLE-WEEK number, not a season or 3-year total like Draft Sharks' — don't compare them "
             "at face value without accounting for that timeframe difference. Treat it as a second independent "
