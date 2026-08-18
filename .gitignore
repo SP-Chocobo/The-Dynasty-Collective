@@ -13,6 +13,7 @@ data/projections/**/*.pdf
 data/chats/*.json
 data/league_prefs.json
 data/player_aliases.json
+data/league_formats.json
 data/attachments/*
 
 .streamlit/secrets.toml

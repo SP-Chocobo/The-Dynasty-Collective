@@ -21,6 +21,7 @@ import streamlit as st
 import llm_engine
 from attachments import ATTACHMENTS_DIR, list_attachments, save_attachment, set_caption, set_scope, delete_attachment
 from data_merger import GLOBAL_PROJECTIONS_DIR, PROJECTIONS_DIR, DataMerger, load_projection_file, save_alias
+from league_format import FORMAT_GUIDANCE, FORMAT_OPTIONS, STANDARD, get_format_override, set_format_override
 from league_prefs import move_league, sorted_leagues, toggle_archive
 from sleeper_client import SleeperClient, compute_points_from_stats, find_roster_for_user, league_format_summary
 
@@ -201,10 +202,26 @@ def build_context(snapshot: dict, roster_table: list[dict]) -> str:
     league = snapshot["league"]
     fmt = league_format_summary(league)
     merger: DataMerger = st.session_state.data_merger
+    league_id = st.session_state.get("selected_league_id")
+    special_format = get_format_override(league_id) if league_id else None
     lines = [
-        f"League: {fmt['name']} ({fmt['season']}) — {fmt['type']}, {fmt['teams']} teams, "
-        f"{'Superflex' if fmt['superflex'] else '1QB'}, {fmt['scoring']}, taxi slots: {fmt['taxi_slots']}",
+        f"League: {fmt['name']} ({fmt['season']}) — {fmt['type']}"
+        + (f", {special_format}" if special_format else "")
+        + f", {fmt['teams']} teams, {'Superflex' if fmt['superflex'] else '1QB'}, {fmt['scoring']}, "
+        f"taxi slots: {fmt['taxi_slots']}",
     ]
+
+    if special_format and special_format in FORMAT_GUIDANCE:
+        lines.append(f"\n{FORMAT_GUIDANCE[special_format]}")
+
+    if fmt["type"] != "Dynasty":
+        lines.append(
+            f"\nThis is a {fmt['type']} league, not dynasty — Draft Sharks' 3yr/5yr multi-year projections "
+            "and rookie-pick trade value don't apply here; the roster doesn't persist to next season, so "
+            "only this-season production matters. Discount or ignore the long-horizon numbers rather than "
+            "reasoning from them by default; lean on 1yr projection, rest-of-season Free Agent Finder data, "
+            "and current-season VORP instead."
+        )
 
     scoring_str = format_scoring_settings(league.get("scoring_settings") or {})
     if scoring_str:
@@ -360,6 +377,20 @@ with st.sidebar:
                 players_db = client.get_players()
                 st.session_state.league_snapshot = client.sync_league(selected, players_db)
                 st.success("League synced.")
+
+            current_override = get_format_override(selected) or STANDARD
+            format_choice = st.selectbox(
+                "Special format",
+                options=list(FORMAT_OPTIONS),
+                index=list(FORMAT_OPTIONS).index(current_override),
+                help="Dynasty/Keeper/Redraft are detected automatically from Sleeper. Best Ball and "
+                "Chopped aren't reliably auto-detectable, so set this manually if this league is one — "
+                "it changes how the panel reasons (e.g. no trades or floor-first start/sit in Chopped, "
+                "no week-to-week management in Best Ball).",
+            )
+            if format_choice != current_override:
+                set_format_override(selected, format_choice)
+                st.rerun()
         else:
             st.info("All discovered leagues are archived — unarchive one below to select it.")
 

@@ -1,10 +1,12 @@
 # Fantasy Football Multi-LLM Command Center
 
-A local "front office" for dynasty fantasy football: it syncs your Sleeper
-league automatically, merges in your paid Draft Sharks projections from
-files on your own disk, and runs roster questions through a four-model
-debate panel — grounded in Draft Sharks' math, the wider public market, and
-live news — before handing you one clear verdict.
+A local "front office" for fantasy football — dynasty first, but redraft,
+keeper, Best Ball, and Chopped all get genuinely different treatment, not
+just a label swap (see "League format" below). It syncs your Sleeper league
+automatically, merges in your paid Draft Sharks projections from files on
+your own disk, and runs roster questions through a four-model debate
+panel — grounded in Draft Sharks' math, the wider public market, and live
+news — before handing you one clear verdict.
 
 ## The Front Office
 
@@ -156,6 +158,35 @@ complete real scoring settings and instructed to use judgment: nudge a
 player's implied value up or down when the specific weights point that
 way, and say so explicitly rather than silently overriding the number.
 
+### League format — dynasty, redraft, Best Ball, Chopped
+
+Dynasty vs. keeper vs. redraft is detected automatically from Sleeper
+(`settings.type`) and shapes reasoning without you doing anything: in a
+non-dynasty league, the Quant is told explicitly to discount or ignore
+Draft Sharks' 3yr/5yr multi-year projections and rookie-pick trade value,
+since the roster doesn't persist to next season and only this-year
+production matters.
+
+Best Ball and Chopped are a different story — I don't have verified
+knowledge of the exact Sleeper API field either mode uses (Chopped
+especially is newer/niche), and I'd rather not guess a field name and risk
+silent misdetection. So they're a manual **Special format** dropdown next
+to the league selector, off by default:
+- **Best Ball**: no start/sit decisions (your highest-scoring eligible
+  lineup is picked automatically each week) and typically no waivers or
+  trades either. The panel is told to say so plainly if asked a
+  week-to-week question that doesn't apply, and redirect toward what
+  actually is decidable — draft-day roster construction and depth.
+- **Chopped**: no 1v1 matchups — the whole field competes each week and the
+  single lowest scorer is eliminated, their full roster dumped onto
+  waivers at once. Trades are disabled, so the panel never suggests or
+  evaluates one in a Chopped league. Start/sit leans toward floor over
+  ceiling more than usual, since surviving one bad week against the entire
+  field matters more than a big week against one opponent.
+
+Setting this doesn't touch Sleeper — it's local-only and instant, one
+dropdown per league, persisted to `data/league_formats.json`.
+
 ### Chat history compaction
 
 Long-running leagues build up a lot of chat history. **🧹 Compact History**
@@ -221,11 +252,13 @@ data_merger.py       Draft Sharks PDF parsers (Dynasty Rankings + Free Agent
                      name/team/position matching onto Sleeper players, and
                      projection-freshness tracking.
 league_prefs.py       Per-Sleeper-user league archive/reorder preferences.
-attachments.py         Reference material (screenshots/articles) that isn't
-                        structured Draft Sharks data — storage, captions,
-                        and per-item global-vs-league(s) scoping.
-llm_engine.py         Four-persona prompt routing across Claude / Gemini / ChatGPT.
-app.py                 Streamlit dashboard + debate studio.
+league_format.py       Manual Best Ball / Chopped override + the strategic
+                        guidance text injected into context for each.
+attachments.py           Reference material (screenshots/articles) that isn't
+                          structured Draft Sharks data — storage, captions,
+                          and per-item global-vs-league(s) scoping.
+llm_engine.py               Four-persona prompt routing across Claude / Gemini / ChatGPT.
+app.py                         Streamlit dashboard + debate studio.
 data/sleeper_snapshots/  Cached league syncs (gitignored).
 data/projections/_global/   Dynasty Rankings / format-based exports, shared by
                              every league (gitignored).
@@ -234,6 +267,7 @@ data/projections/<league_id>/  Free Agent Finder exports, one folder per league,
 data/attachments/           Reference material + captions.json (gitignored).
 data/chats/                 Per-league persisted debate history (gitignored).
 data/league_prefs.json      Archived/reordered league ids per user (gitignored).
+data/league_formats.json    Manual Best Ball/Chopped overrides (gitignored).
 data/player_aliases.json    Manual name-matching overrides (gitignored).
 ```
 
