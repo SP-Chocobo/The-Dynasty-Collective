@@ -386,6 +386,19 @@ with st.sidebar:
     st.markdown(status_line("Gemini (Beat Tracker) Connected", llm_engine.is_gemini_configured()), unsafe_allow_html=True)
     st.markdown(status_line("ChatGPT (Contrarian) Connected", llm_engine.is_openai_configured()), unsafe_allow_html=True)
 
+    missing_keys = [
+        var for var, ok in (
+            ("ANTHROPIC_API_KEY", llm_engine.is_claude_configured()),
+            ("GEMINI_API_KEY", llm_engine.is_gemini_configured()),
+            ("OPENAI_API_KEY", llm_engine.is_openai_configured()),
+        ) if not ok
+    ]
+    if missing_keys:
+        st.caption(
+            f"Missing: {', '.join(missing_keys)}. These aren't entered in this UI — copy `.env.example` to "
+            "`.env` in the project folder, fill in the key(s), and restart `streamlit run app.py`."
+        )
+
 # ------------------------------------------------------------------ main ----
 
 st.title("Fantasy Football Command Center")
