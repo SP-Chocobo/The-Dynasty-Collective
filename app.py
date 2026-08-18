@@ -19,6 +19,7 @@ from typing import Optional
 import pandas as pd
 import streamlit as st
 
+import decision_log
 import llm_engine
 from attachments import ATTACHMENTS_DIR, list_attachments, save_attachment, set_caption, set_scope, delete_attachment
 from data_merger import GLOBAL_PROJECTIONS_DIR, PROJECTIONS_DIR, DataMerger, load_projection_file, save_alias
@@ -194,6 +195,8 @@ def delete_league_completely(league_id: str) -> list[str]:
     for p in CHATS_DIR.glob(f"{league_id}_history*.json"):
         p.unlink(missing_ok=True)
         removed.append(p.name)
+
+    decision_log.forget_decisions(league_id)
 
     set_format_override(league_id, None)
 
@@ -825,6 +828,9 @@ with col_studio:
                 append_message("beat", result.beat)
                 append_message("contrarian", result.contrarian)
                 append_message("moderator", result.moderator)
+                decision_log.log_decision(
+                    st.session_state.selected_league_id, trigger_question, result.verdict, result.moderator
+                )
 
     st.markdown("---")
     badge_map = {
@@ -857,6 +863,30 @@ with col_studio:
                 st.rerun()
             else:
                 st.warning(message)
+
+    decisions = decision_log.load_decisions(st.session_state.selected_league_id)
+    if decisions:
+        with st.expander(f"📋 Decision Log ({len(decisions)})"):
+            st.caption(
+                "Every Moderator verdict this league has gotten, newest first — "
+                "the record to check back against once picks are made or a trade lands."
+            )
+            log_df = pd.DataFrame(
+                [
+                    {
+                        "Date": d["date"],
+                        "Question": d["question"],
+                        "Call": d.get("recommendation", ""),
+                        "Conviction": d.get("conviction", ""),
+                        "Reason": d.get("reason", ""),
+                        "Risk": d.get("risk", ""),
+                        "Recon": d.get("recon", ""),
+                        "Price Ceiling": d.get("price_ceiling", ""),
+                    }
+                    for d in reversed(decisions)
+                ]
+            )
+            st.dataframe(log_df, use_container_width=True, hide_index=True)
 
 # ------------------------------------------------------------------ free agents --
 

@@ -15,7 +15,7 @@ news — before handing you one clear verdict.
 | **Quant / VORP Specialist** | Claude (Anthropic) | Math only — VORP, positional scarcity, roster construction, trade equity, using your league's real scoring settings, your local Draft Sharks data, and Sleeper's own native weekly stat-category projections. Neither numeric source is the final word. |
 | **Beat / News Tracker** | Gemini (Google, search-grounded) | Cross-references Draft Sharks against public market consensus (KeepTradeCut, FantasyCalc, FantasyPros, ESPN, etc.), plus live news, injuries, and depth charts. |
 | **Contrarian / Risk Analyst** | ChatGPT (OpenAI, web-search-enabled) | Pressure-tests the other two — regression risk, small-sample overreaction, model blind spots, age curves, and Draft-Sharks-vs-market divergence. |
-| **Debate Moderator** | Claude (Anthropic) | Synthesizes all three into one actionable verdict, calling out where Draft Sharks, the market, and the news disagree. |
+| **Debate Moderator** | Claude (Anthropic) | Synthesizes all three into one actionable verdict, calling out where Draft Sharks, the market, and the news disagree, and closes with a structured recommendation (see "Structured verdicts & the decision log" below). |
 
 Draft Sharks is deliberately treated as **one input among several**, not
 ground truth — the Beat Tracker and Contrarian are explicitly instructed to
@@ -256,6 +256,46 @@ to that file's specific as-of date, so it only fires once per that
 freshness state (a fresh session, or the data getting even more stale,
 resets it), not on every message while you're mid-conversation.
 
+### Structured verdicts & the decision log
+
+Every `/debate` answer ends with a structured block instead of one free-text
+verdict line:
+
+```
+RECOMMENDATION: BUY / SELL / HOLD / WAIT
+CONVICTION: Unanimous / Majority / Split / Speculative / Worth investigation
+REASON: <the deciding factor>
+DISSENT: <who dissented and why — only if CONVICTION is Majority>
+RISK: <the biggest risk to this being wrong>
+RECON: <a concrete thing to ask another manager — only if CONVICTION is Worth investigation>
+PRICE CEILING: <the most to give up — only if it's a trade question>
+```
+
+**CONVICTION is deliberately not a confidence percentage** — a self-reported
+number from an LLM is fake precision with nothing calibrating it. Instead it
+reflects something real: whether the Quant, Beat Tracker, and Contrarian
+actually agree.
+
+- **Unanimous** — all three land the same direction.
+- **Majority** — two agree, one dissents; the Moderator says who and why.
+- **Split** — no real consensus among the three.
+- **Speculative** — agreement isn't the issue, the underlying evidence is
+  thin (a rookie with no track record, a projection with no market/news
+  confirmation, stale data).
+- **Worth investigation** — the analysis is sound as far as it goes, but the
+  real answer depends on something only another manager can tell you. The
+  Moderator's `RECON` line spells out exactly what to go ask them — e.g.
+  "Ask Team 4 if Player X is available for picks."
+
+Every parsed verdict is appended to that league's **decision log**
+(`data/decisions/<league_id>.json`) — question, recommendation, conviction,
+reason, dissent, risk, recon, price ceiling, and the full Moderator text.
+Parsing fails soft: if a response doesn't follow the format (or a provider
+call errored), nothing is logged rather than recording a fabricated verdict.
+A **📋 Decision Log** expander under the chat history shows the running
+table for the selected league, newest first — the actual point being able
+to look back later and check whether the front office's calls held up.
+
 ## Project layout
 
 ```
@@ -271,7 +311,9 @@ league_format.py       Manual Best Ball / Chopped override + the strategic
 attachments.py           Reference material (screenshots/articles) that isn't
                           structured Draft Sharks data — storage, captions,
                           and per-item global-vs-league(s) scoping.
-llm_engine.py               Four-persona prompt routing across Claude / Gemini / ChatGPT.
+llm_engine.py               Four-persona prompt routing across Claude / Gemini / ChatGPT,
+                             plus the structured-verdict parser.
+decision_log.py               Per-league record of every parsed Moderator verdict.
 app.py                         Streamlit dashboard + debate studio.
 data/sleeper_snapshots/  Cached league syncs (gitignored).
 data/projections/_global/   Dynasty Rankings / format-based exports, shared by
@@ -280,6 +322,7 @@ data/projections/<league_id>/  Free Agent Finder exports, one folder per league,
                                 never shared (gitignored).
 data/attachments/           Reference material + captions.json (gitignored).
 data/chats/                 Per-league persisted debate history (gitignored).
+data/decisions/              Per-league decision log, one JSON file per league (gitignored).
 data/league_prefs.json      Archived/reordered league ids per user (gitignored).
 data/league_formats.json    Manual Best Ball/Chopped overrides (gitignored).
 data/player_aliases.json    Manual name-matching overrides (gitignored).

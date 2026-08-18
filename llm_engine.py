@@ -121,8 +121,27 @@ reasoning) and say plainly what wasn't available if it's material to your confid
 answer with the same disclaimer. Respect any format-specific rules stated in your context (e.g. no trades
 in a Chopped league, no start/sit decisions in Best Ball) — never let a verdict recommend a move the
 league's actual format doesn't allow, even if one of the reports slipped and suggested it. Give one clear,
-actionable verdict for the user.
-Be decisive. End with a one-line "MODERATOR VERDICT:" summary."""
+actionable verdict for the user, then end your response with this exact structured block — one field per
+line, using these exact labels, each on its own line:
+
+RECOMMENDATION: BUY / SELL / HOLD / WAIT
+CONVICTION: Unanimous / Majority / Split / Speculative / Worth investigation
+REASON: <the single deciding factor, one line>
+DISSENT: <only if CONVICTION is Majority — which analyst (Quant/Beat/Contrarian) dissented and why, one line>
+RISK: <the biggest risk to this being wrong, one line>
+RECON: <only if CONVICTION is Worth investigation — a concrete thing to go ask another manager, phrased as
+something the user can actually say, e.g. "Ask Team 4 if Player X is available for picks">
+PRICE CEILING: <only if this is a trade question — the most the user should give up>
+
+CONVICTION is never a confidence percentage — percentages from an LLM are fake precision. It reflects
+whether the Quant, Beat Tracker, and Contrarian actually agree, or why they can't yet: Unanimous (all
+three land the same direction), Majority (two agree, one dissents — say who and why), Split (no real
+consensus among the three), Speculative (agreement isn't the issue — the underlying evidence is thin,
+e.g. a rookie with no track record, a projection with no market/news confirmation, or stale data), or
+Worth investigation (the analysis is sound as far as it goes, but the real answer depends on something
+only another manager can tell you — say exactly what to ask them in RECON). Omit the DISSENT, RECON, or
+PRICE CEILING lines entirely when they don't apply — never write "N/A".
+Be decisive."""
 
 SUMMARIZER_SYSTEM_PROMPT = """You compact old fantasy football front-office chat history into a compact,
 structured memory block for future debates to reference. From the transcript you're given, extract only what
@@ -145,7 +164,31 @@ class DebateResult:
     beat: str = ""
     contrarian: str = ""
     moderator: str = ""
+    verdict: dict = field(default_factory=dict)
     errors: list[str] = field(default_factory=list)
+
+
+VERDICT_FIELDS = ["RECOMMENDATION", "CONVICTION", "REASON", "DISSENT", "RISK", "RECON", "PRICE CEILING"]
+
+
+def parse_moderator_verdict(text: str) -> dict:
+    """Pull the structured closing block out of the Moderator's free-text response.
+
+    Fails soft: if the model doesn't follow the format (or only follows part
+    of it), whatever fields aren't found are simply absent from the returned
+    dict rather than raising — the full prose is always kept separately.
+    """
+    verdict: dict[str, str] = {}
+    for line in text.splitlines():
+        stripped = line.strip().lstrip("-*# ").rstrip()
+        for field_name in VERDICT_FIELDS:
+            prefix = f"{field_name}:"
+            if stripped.upper().startswith(prefix):
+                value = stripped[len(prefix):].strip()
+                if value:
+                    verdict[field_name.lower().replace(" ", "_")] = value
+                break
+    return verdict
 
 
 def is_claude_configured() -> bool:
@@ -275,6 +318,8 @@ def run_debate(context: str, question: str) -> DebateResult:
     result.beat = ask_beat(context, question)
     result.contrarian = ask_contrarian(context, question, result.quant, result.beat)
     result.moderator = ask_moderator(context, question, result.quant, result.beat, result.contrarian)
+    if not result.moderator.startswith("⚠️"):
+        result.verdict = parse_moderator_verdict(result.moderator)
     for label, text in (("quant", result.quant), ("beat", result.beat),
                          ("contrarian", result.contrarian), ("moderator", result.moderator)):
         if text.startswith("⚠️"):
