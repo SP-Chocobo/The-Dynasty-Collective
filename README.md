@@ -57,6 +57,13 @@ roster dashboard work with zero keys configured.
    any time to re-pull rosters/scoring/taxi/traded picks — a timestamped
    snapshot is cached in `data/sleeper_snapshots/` so the dashboard still has
    data even if Sleeper is briefly unreachable.
+   Use **Manage Leagues** below the dropdown to **Archive** leagues you don't
+   want cluttering the front dashboard (dead leagues, leagues you left) and
+   to reorder the rest with the ▲/▼ buttons — this is saved per Sleeper user
+   in `data/league_prefs.json` and persists across sessions. Archived
+   leagues stay listed there so you can unarchive them later; a newly
+   discovered league is appended to the end rather than disrupting your
+   saved order.
 2. **Sidebar → Draft Sharks / War Room Data**: Draft Sharks doesn't offer a
    clean CSV export — what you get is its rankings page saved/printed as a
    PDF. Upload that PDF directly (CSV/JSON from other vendors also work).
@@ -88,11 +95,13 @@ sleeper_client.py   Sleeper API wrapper: league discovery, rosters, scoring,
 data_merger.py       Draft Sharks PDF rankings parser + CSV/JSON projection
                      parser, name/team/position matching onto Sleeper
                      players, and projection-freshness tracking.
+league_prefs.py       Per-Sleeper-user league archive/reorder preferences.
 llm_engine.py         Four-persona prompt routing across Claude / Gemini / ChatGPT.
 app.py                 Streamlit dashboard + debate studio.
 data/sleeper_snapshots/  Cached league syncs (gitignored).
 data/projections/         Your local paid PDF/CSV/JSON exports (gitignored).
 data/chats/                 Per-league persisted debate history (gitignored).
+data/league_prefs.json      Archived/reordered league ids per user (gitignored).
 ```
 
 ## Notes

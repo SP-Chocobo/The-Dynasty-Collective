@@ -10,5 +10,6 @@ data/projections/*.csv
 data/projections/*.json
 data/projections/*.pdf
 data/chats/*.json
+data/league_prefs.json
 
 .streamlit/secrets.toml

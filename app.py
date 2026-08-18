@@ -18,6 +18,7 @@ import streamlit as st
 
 import llm_engine
 from data_merger import PROJECTIONS_DIR, DataMerger
+from league_prefs import move_league, sorted_leagues, toggle_archive
 from sleeper_client import SleeperClient, find_roster_for_user, league_format_summary
 
 CHATS_DIR = Path("data/chats")
@@ -140,23 +141,50 @@ with st.sidebar:
             else:
                 st.success(f"Found {len(st.session_state.leagues)} league(s).")
 
-    league_options = {lg["league_id"]: lg["name"] for lg in st.session_state.leagues}
-    if league_options:
-        selected = st.selectbox(
-            "League",
-            options=list(league_options.keys()),
-            format_func=lambda lid: league_options[lid],
-        )
-        if selected != st.session_state.selected_league_id:
-            st.session_state.selected_league_id = selected
-            st.session_state.chat_history = load_chat_history(selected)
-            st.session_state.league_snapshot = st.session_state.sleeper_client.load_latest_snapshot(selected)
+    if st.session_state.leagues:
+        visible_leagues, archived_leagues = sorted_leagues(st.session_state.user_id, st.session_state.leagues)
+        league_options = {lg["league_id"]: lg["name"] for lg in visible_leagues}
 
-        if st.button("🔄 Refresh This League", use_container_width=True):
-            client = st.session_state.sleeper_client
-            players_db = client.get_players()
-            st.session_state.league_snapshot = client.sync_league(selected, players_db)
-            st.success("League synced.")
+        if league_options:
+            option_ids = list(league_options.keys())
+            current = st.session_state.selected_league_id
+            if current not in option_ids:
+                current = option_ids[0]
+            selected = st.selectbox(
+                "League",
+                options=option_ids,
+                format_func=lambda lid: league_options[lid],
+                index=option_ids.index(current),
+            )
+            if selected != st.session_state.selected_league_id:
+                st.session_state.selected_league_id = selected
+                st.session_state.chat_history = load_chat_history(selected)
+                st.session_state.league_snapshot = st.session_state.sleeper_client.load_latest_snapshot(selected)
+
+            if st.button("🔄 Refresh This League", use_container_width=True):
+                client = st.session_state.sleeper_client
+                players_db = client.get_players()
+                st.session_state.league_snapshot = client.sync_league(selected, players_db)
+                st.success("League synced.")
+        else:
+            st.info("All discovered leagues are archived — unarchive one below to select it.")
+
+        with st.expander(f"Manage Leagues ({len(st.session_state.leagues)})"):
+            st.caption("Archive leagues you don't want on the front dashboard, or reorder them.")
+            for lg in visible_leagues + archived_leagues:
+                lid = lg["league_id"]
+                is_archived = lid in {a["league_id"] for a in archived_leagues}
+                name_col, arch_col, up_col, down_col = st.columns([5, 2, 1, 1])
+                name_col.write(("🗄️ " if is_archived else "") + lg["name"])
+                if arch_col.button("Unarchive" if is_archived else "Archive", key=f"arch_{lid}"):
+                    toggle_archive(st.session_state.user_id, lid)
+                    st.rerun()
+                if up_col.button("▲", key=f"up_{lid}"):
+                    move_league(st.session_state.user_id, st.session_state.leagues, lid, -1)
+                    st.rerun()
+                if down_col.button("▼", key=f"down_{lid}"):
+                    move_league(st.session_state.user_id, st.session_state.leagues, lid, 1)
+                    st.rerun()
 
     st.markdown("---")
     st.markdown("### 📊 Draft Sharks / War Room Data")
