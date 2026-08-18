@@ -98,14 +98,20 @@ correct.
 
 1. **Sidebar → Sleeper Sync**: enter your Sleeper username, click **Sync
    Leagues**. All leagues you're in for the current season are discovered
-   automatically; pick one from the dropdown. Your username is remembered
-   locally (`data/last_session.json`) and re-synced automatically the next
-   time you open or refresh the page — Streamlit's own `session_state`
-   resets on every browser reload, so without this you'd have to type your
-   username and click Sync Leagues again every single time. Click **Refresh This League**
-   any time to re-pull rosters/scoring/taxi/traded picks — a timestamped
-   snapshot is cached in `data/sleeper_snapshots/` so the dashboard still has
-   data even if Sleeper is briefly unreachable.
+   automatically. Your username is remembered locally
+   (`data/last_session.json`) and re-synced automatically the next time you
+   open or refresh the page — Streamlit's own `session_state` resets on
+   every browser reload, so without this you'd have to type your username
+   and click Sync Leagues again every single time.
+   Pick which league you're viewing from the **📂 Active League** switcher
+   at the top of the main dashboard, not the sidebar — it's the control
+   you'll use most, so it lives front and center. **🔄 Refresh** sits right
+   next to it to re-pull that league's rosters/scoring/taxi/traded picks; a
+   timestamped snapshot is cached in `data/sleeper_snapshots/` so the
+   dashboard still has data even if Sleeper is briefly unreachable, and a
+   league that's never been synced before auto-fetches once the first time
+   you switch to it, rather than showing empty until you separately hit
+   Refresh.
    Since Sleeper's league list is a full replacement each time (not
    incremental), **Sync Leagues** doubles as new-league detection — anything
    you've joined or created since last sync just shows up. It also detects
@@ -375,10 +381,23 @@ data/last_session.json      Last-used Sleeper username, for auto-restore on page
 data/league_prefs.json      Archived/reordered league ids per user (gitignored).
 data/league_formats.json    Manual Best Ball/Chopped overrides (gitignored).
 data/player_aliases.json    Manual name-matching overrides (gitignored).
+.streamlit/config.toml      Dark theme — see "Notes" below for why this file matters.
 ```
 
 ## Notes
 
+- **`.streamlit/config.toml` is what actually makes this a dark app.** The
+  custom CSS injected in `app.py` only recolors the outer shell (`.stApp`,
+  the badges, the debate blocks) — every *native* widget (buttons, the
+  roster dataframe, selectboxes, the segmented control) is themed by
+  Streamlit itself, and without a `[theme]` section they render in
+  Streamlit's default light theme regardless of what the custom CSS does.
+  That mismatch was live in this app for a while — a dark shell around
+  light-themed buttons and a white-canvas roster table — until actually
+  running it in a browser and screenshotting it surfaced it; reading the
+  code alone never would have. If you ever see a widget that looks
+  "wrong" (wrong-colored buttons, a white table), check this file and the
+  actual theme first before reaching for more CSS overrides.
 - **Sleeper's own native projections**: alongside Draft Sharks, every league
   sync also pulls Sleeper's own per-stat-category weekly projection for each
   player (pass yards, receptions, rush TDs, etc.) and scores it under your

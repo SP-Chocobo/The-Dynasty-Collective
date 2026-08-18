@@ -25,7 +25,7 @@ from attachments import ATTACHMENTS_DIR, list_attachments, save_attachment, set_
 from data_merger import GLOBAL_PROJECTIONS_DIR, PROJECTIONS_DIR, DataMerger, load_projection_file, save_alias
 from league_format import FORMAT_GUIDANCE, FORMAT_OPTIONS, STANDARD, get_format_override, set_format_override
 from league_prefs import forget_league, get_prefs, move_league, sorted_leagues, toggle_archive
-from sleeper_client import SleeperClient, compute_points_from_stats, find_roster_for_user, league_format_summary
+from sleeper_client import SleeperAPIError, SleeperClient, compute_points_from_stats, find_roster_for_user, league_format_summary
 
 CHATS_DIR = Path("data/chats")
 CHATS_DIR.mkdir(parents=True, exist_ok=True)
@@ -66,6 +66,11 @@ st.markdown(
     .status-ok { color: #4ade80; }
     .status-bad { color: #64748b; }
     table, .stDataFrame { font-family: 'DejaVu Sans Mono', monospace; }
+
+    /* Sidebar defaults to a width that crowds the Manage Leagues row and the
+       credentials paste box — widen it out of the box instead of making everyone
+       drag it wider by hand every time. Still resizable from here if you want more. */
+    [data-testid="stSidebar"] { min-width: 400px; }
     </style>
     """,
     unsafe_allow_html=True,
@@ -238,7 +243,14 @@ def parse_credentials_blob(text: str) -> dict[str, str]:
 def activate_league(league_id: str) -> None:
     """Make this league the one shown across the dashboard and debate panel — loads its
     cached snapshot, chat history, and per-league Draft Sharks data. Shared by the main-panel
-    league switcher and the sidebar's own first-load fallback so both stay in sync."""
+    league switcher and the sidebar's own first-load fallback so both stay in sync.
+
+    A league that's never been individually synced (just discovered via Sync Leagues, never
+    actually pulled) has no cached snapshot at all — auto-fetch one right here rather than
+    making the user separately go find "Refresh This League" in the sidebar after switching
+    to it. Already-cached leagues are left alone; use the (co-located) Refresh button for
+    those when you actually want fresher data, not on every switch.
+    """
     st.session_state.selected_league_id = league_id
     st.session_state.chat_history = load_chat_history(league_id)
     st.session_state.league_snapshot = st.session_state.sleeper_client.load_latest_snapshot(league_id)
@@ -247,6 +259,13 @@ def activate_league(league_id: str) -> None:
     # format-based (not roster-based) so it's read from the shared global pool too — DataMerger
     # merges both automatically.
     st.session_state.data_merger = DataMerger(league_dir=league_projections_dir(league_id))
+
+    if st.session_state.league_snapshot is None:
+        client: SleeperClient = st.session_state.sleeper_client
+        try:
+            st.session_state.league_snapshot = client.sync_league(league_id, client.get_players())
+        except Exception:  # noqa: BLE001 - never block switching leagues on a sync hiccup
+            pass  # dashboard falls back to its usual "sync a league" empty state
 
 
 def maybe_nudge_stale_free_agents(league_id: str, merger: DataMerger) -> None:
@@ -527,7 +546,15 @@ def sync_leagues(username: str, *, announce: bool = True) -> bool:
     lookup right after a page load isn't necessarily proof the username is wrong.
     """
     client: SleeperClient = st.session_state.sleeper_client
-    user = client.get_user(username)
+    try:
+        user = client.get_user(username)
+    except SleeperAPIError as exc:
+        if announce:
+            st.error(f"Couldn't reach Sleeper: {exc}")
+        else:
+            st.caption("Couldn't restore your last session automatically — click Sync Leagues to retry.")
+        return False
+
     if not user:
         if announce:
             st.error(f"No Sleeper user found for '{username}'")
@@ -546,7 +573,12 @@ def sync_leagues(username: str, *, announce: bool = True) -> bool:
     prior_prefs = get_prefs(user["user_id"])
     previously_tracked = set(prior_prefs.get("order", [])) | set(prior_prefs.get("archived", []))
 
-    st.session_state.leagues = client.get_user_leagues(user["user_id"])
+    try:
+        st.session_state.leagues = client.get_user_leagues(user["user_id"])
+    except SleeperAPIError as exc:
+        if announce:
+            st.error(f"Found your Sleeper account, but couldn't fetch its leagues: {exc}")
+        return False
     fresh_ids = {lg["league_id"] for lg in st.session_state.leagues}
     newly_left = previously_tracked - fresh_ids
     if newly_left:
@@ -673,12 +705,6 @@ with st.sidebar:
                 activate_league(selected)
             st.caption(f"📂 Active league: **{league_options[selected]}** — switch it above the dashboard.")
 
-            if st.button("🔄 Refresh This League", use_container_width=True):
-                client = st.session_state.sleeper_client
-                players_db = client.get_players()
-                st.session_state.league_snapshot = client.sync_league(selected, players_db)
-                st.success("League synced.")
-
             current_override = get_format_override(selected) or STANDARD
             format_choice = st.selectbox(
                 "Special format",
@@ -709,28 +735,34 @@ with st.sidebar:
             for idx, lg in enumerate(ordered):
                 lid = lg["league_id"]
                 is_archived = lid in {a["league_id"] for a in archived_leagues}
-                name_col, arch_col, reorder_col, del_col = st.columns([4, 2, 1.4, 1.5])
-                name_col.write(("🗄️ " if is_archived else "") + lg["name"])
-                if arch_col.button("Unarchive" if is_archived else "Archive", key=f"arch_{lid}"):
+                # Name gets its own full-width line — a name plus four buttons never
+                # fit in one row without wrapping mid-word, so don't compete for space.
+                st.markdown(f"**{'🗄️ ' if is_archived else ''}{lg['name']}**")
+                arch_col, up_col, down_col, del_col = st.columns([2.2, 1, 1, 1])
+                if arch_col.button(
+                    "Unarchive" if is_archived else "Archive", key=f"arch_{lid}", use_container_width=True,
+                ):
                     toggle_archive(st.session_state.user_id, lid)
                     st.session_state.manage_leagues_expanded = True
                     st.rerun()
-                up_col, down_col = reorder_col.columns(2, gap="small")
-                if up_col.button("▲", key=f"up_{lid}", disabled=idx == 0, help="Move up"):
+                if up_col.button("▲", key=f"up_{lid}", disabled=idx == 0, help="Move up", use_container_width=True):
                     move_league(st.session_state.user_id, st.session_state.leagues, lid, -1)
                     st.session_state.manage_leagues_expanded = True
                     st.rerun()
-                if down_col.button("▼", key=f"down_{lid}", disabled=idx == len(ordered) - 1, help="Move down"):
+                if down_col.button(
+                    "▼", key=f"down_{lid}", disabled=idx == len(ordered) - 1, help="Move down",
+                    use_container_width=True,
+                ):
                     move_league(st.session_state.user_id, st.session_state.leagues, lid, 1)
                     st.session_state.manage_leagues_expanded = True
                     st.rerun()
 
                 if st.session_state.get("pending_delete_league_id") == lid:
-                    if del_col.button("Cancel", key=f"cancel_del_{lid}"):
+                    if del_col.button("Cancel", key=f"cancel_del_{lid}", use_container_width=True):
                         st.session_state.pending_delete_league_id = None
                         st.session_state.manage_leagues_expanded = True
                         st.rerun()
-                elif del_col.button("🗑️ Delete", key=f"del_{lid}"):
+                elif del_col.button("🗑️", key=f"del_{lid}", help="Delete permanently", use_container_width=True):
                     st.session_state.pending_delete_league_id = lid
                     st.session_state.manage_leagues_expanded = True
                     st.rerun()
@@ -740,13 +772,13 @@ with st.sidebar:
                         f"Permanently delete all local data for **{lg['name']}**? This can't be undone "
                         "(no in-app undo — only whatever backups your OS/filesystem might keep)."
                     )
-                    confirm_col, _ = st.columns([1, 3])
-                    if confirm_col.button("Confirm Delete", key=f"confirm_del_{lid}"):
+                    if st.button("Confirm Delete", key=f"confirm_del_{lid}", use_container_width=True):
                         removed = delete_league_completely(lid)
                         st.session_state.pending_delete_league_id = None
                         st.session_state.manage_leagues_expanded = True
                         st.success(f"Deleted local data for {lg['name']} ({len(removed)} item(s) removed).")
                         st.rerun()
+                st.markdown("<hr style='margin:6px 0;opacity:0.15'>", unsafe_allow_html=True)
 
     st.markdown("---")
     st.markdown("### 📊 Draft Sharks / War Room Data")
@@ -902,7 +934,9 @@ with st.sidebar:
 # ------------------------------------------------------------------ main ----
 
 # The league switcher itself lives here, front and center, rather than buried in the
-# sidebar — this is the one control most likely to get used every single visit.
+# sidebar — this is the one control most likely to get used every single visit. The
+# Refresh button sits right next to it, not off in the sidebar, since re-pulling data
+# for the league you just switched to is the natural next thing you'd want to do.
 if st.session_state.leagues:
     visible_leagues, archived_leagues = sorted_leagues(st.session_state.user_id, st.session_state.leagues)
     league_options = {lg["league_id"]: lg["name"] for lg in visible_leagues}
@@ -911,13 +945,17 @@ if st.session_state.leagues:
         current = st.session_state.selected_league_id
         if current not in option_ids:
             current = option_ids[0]
-        picked = st.segmented_control(
-            "📂 Active League",
-            options=option_ids,
-            format_func=lambda lid: league_options[lid],
-            default=current,
-            help="Switch which league the dashboard and debate panel below are showing.",
-        )
+
+        st.caption("📂 Active League — switches the dashboard and debate panel below")
+        switch_col, refresh_col = st.columns([5, 1])
+        with switch_col:
+            picked = st.segmented_control(
+                "Active League",
+                options=option_ids,
+                format_func=lambda lid: league_options[lid],
+                default=current,
+                label_visibility="collapsed",
+            )
         if picked is None:
             # segmented_control allows clicking the active pill to deselect it — never
             # leave nothing active, just fall back to whatever was already selected.
@@ -925,6 +963,18 @@ if st.session_state.leagues:
         if picked != st.session_state.selected_league_id:
             activate_league(picked)
             st.rerun()
+        with refresh_col:
+            if st.button(
+                "🔄 Refresh", use_container_width=True,
+                help="Re-pull this league's rosters/scoring/taxi/traded picks from Sleeper.",
+            ):
+                client: SleeperClient = st.session_state.sleeper_client
+                try:
+                    with st.spinner("Syncing..."):
+                        st.session_state.league_snapshot = client.sync_league(picked, client.get_players())
+                    st.success("League synced.")
+                except SleeperAPIError as exc:
+                    st.error(f"Couldn't reach Sleeper: {exc}")
 
 snapshot = st.session_state.league_snapshot
 if not snapshot:
