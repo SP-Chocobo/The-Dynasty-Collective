@@ -8,6 +8,7 @@ venv/
 data/sleeper_snapshots/*.json
 data/projections/*.csv
 data/projections/*.json
+data/projections/*.pdf
 data/chats/*.json
 
 .streamlit/secrets.toml

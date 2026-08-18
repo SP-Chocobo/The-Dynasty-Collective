@@ -98,16 +98,24 @@ def append_message(role: str, content: str) -> None:
 def build_context(snapshot: dict, roster_table: list[dict]) -> str:
     league = snapshot["league"]
     fmt = league_format_summary(league)
+    merger: DataMerger = st.session_state.data_merger
     lines = [
         f"League: {fmt['name']} ({fmt['season']}) — {fmt['type']}, {fmt['teams']} teams, "
         f"{'Superflex' if fmt['superflex'] else '1QB'}, {fmt['scoring']}, taxi slots: {fmt['taxi_slots']}",
-        "Roster (name | pos | team | DS tier | DS VORP | DS projection | DS trade value):",
     ]
+    if merger.is_loaded:
+        lines.append(
+            f"Draft Sharks data as of {merger.freshest_date} "
+            f"({merger.staleness_days} days old{' — STALE, treat with caution' if merger.is_stale else ''})"
+        )
+    lines.append(
+        "Roster (name | pos | team | DS tier | DS VORP | DS 1yr proj | DS 3yr proj | DS 3D/trade value | DS pos rank):"
+    )
     for row in roster_table:
         lines.append(
             f"  {row['name']} | {row['position']} | {row['team']} | "
             f"{row.get('tier', '-')} | {row.get('vorp', '-')} | {row.get('projection', '-')} | "
-            f"{row.get('trade_value', '-')}"
+            f"{row.get('proj_3yr', '-')} | {row.get('trade_value', '-')} | {row.get('pos_rank', '-')}"
         )
     return "\n".join(lines)
 
@@ -152,14 +160,18 @@ with st.sidebar:
 
     st.markdown("---")
     st.markdown("### 📊 Draft Sharks / War Room Data")
-    uploaded = st.file_uploader("Upload projections CSV/JSON", type=["csv", "json"])
+    st.caption(
+        "Draft Sharks has no public export API — save its rankings page as a PDF "
+        "(or drop in a CSV/JSON from another vendor) and upload it here."
+    )
+    uploaded = st.file_uploader("Upload projections PDF/CSV/JSON", type=["pdf", "csv", "json"])
     if uploaded is not None:
         dest = PROJECTIONS_DIR / uploaded.name
         dest.write_bytes(uploaded.getbuffer())
         st.session_state.data_merger.reload()
         st.success(f"Saved {uploaded.name} to {PROJECTIONS_DIR}/")
 
-    existing_files = sorted(p.name for p in PROJECTIONS_DIR.glob("*") if p.suffix in (".csv", ".json"))
+    existing_files = sorted(p.name for p in PROJECTIONS_DIR.glob("*") if p.suffix in (".csv", ".json", ".pdf"))
     if existing_files:
         st.caption("Loaded files: " + ", ".join(existing_files))
 
@@ -170,8 +182,19 @@ with st.sidebar:
         cls = "status-ok" if ok else "status-bad"
         return f'<span class="{cls}">{icon} {label}</span>'
 
+    merger: DataMerger = st.session_state.data_merger
+    if merger.is_loaded:
+        age = merger.staleness_days
+        age_label = f"updated {merger.freshest_date} ({age}d ago)" if age is not None else "updated (unknown date)"
+        ds_cls = "status-bad" if merger.is_stale else "status-ok"
+        ds_icon = "⚠️" if merger.is_stale else "✅"
+        st.markdown(f'<span class="{ds_cls}">{ds_icon} DS Projections Loaded — {age_label}</span>', unsafe_allow_html=True)
+        if merger.is_stale:
+            st.caption(f"Data is {age}+ days old — consider re-exporting from Draft Sharks (weekly is plenty).")
+    else:
+        st.markdown(status_line("DS Projections Loaded", False), unsafe_allow_html=True)
+
     st.markdown(status_line("Sleeper Synced", st.session_state.league_snapshot is not None), unsafe_allow_html=True)
-    st.markdown(status_line("DS Projections Loaded", st.session_state.data_merger.is_loaded), unsafe_allow_html=True)
     st.markdown(status_line("Claude (Quant/Moderator) Connected", llm_engine.is_claude_configured()), unsafe_allow_html=True)
     st.markdown(status_line("Gemini (Beat Tracker) Connected", llm_engine.is_gemini_configured()), unsafe_allow_html=True)
     st.markdown(status_line("ChatGPT (Contrarian) Connected", llm_engine.is_openai_configured()), unsafe_allow_html=True)
@@ -191,6 +214,14 @@ st.caption(
     f"**{fmt['name']}** · {fmt['type']} · {fmt['teams']}-team · "
     f"{'Superflex' if fmt['superflex'] else '1QB'} · {fmt['scoring']} · Taxi: {fmt['taxi_slots']}"
 )
+
+if st.session_state.data_merger.is_stale:
+    days = st.session_state.data_merger.staleness_days
+    st.warning(
+        f"Draft Sharks projections are {days} days old. They don't need refreshing every session — "
+        "roughly once a week keeps the Quant analysis current — but it's been a while.",
+        icon="⚠️",
+    )
 
 roster = find_roster_for_user(snapshot["rosters"], st.session_state.user_id) if st.session_state.user_id else None
 
@@ -215,7 +246,10 @@ with col_roster:
             row["slot"] = "TAXI" if pid in taxi else ("IR" if pid in reserve else ("Starter" if pid in starters else "Bench"))
 
         df = pd.DataFrame(roster_table)
-        display_cols = [c for c in ["name", "position", "team", "slot", "tier", "vorp", "projection", "trade_value", "injury_status"] if c in df.columns]
+        display_cols = [c for c in [
+            "name", "position", "team", "slot", "tier", "vorp",
+            "projection", "proj_3yr", "trade_value", "pos_rank", "injury_status",
+        ] if c in df.columns]
         st.dataframe(df[display_cols] if not df.empty else df, use_container_width=True, hide_index=True)
 
         if merger.is_loaded:
