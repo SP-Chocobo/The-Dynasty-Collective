@@ -54,6 +54,7 @@ st.markdown(
     .badge-moderator { background: rgba(185,28,28,0.18); color: #f87171; border: 1px solid #b91c1c; }
     .badge-user { background: rgba(148,163,184,0.18); color: #cbd5e1; border: 1px solid #64748b; }
     .badge-summary { background: rgba(56,189,248,0.18); color: #7dd3fc; border: 1px solid #0ea5e9; }
+    .badge-notice { background: rgba(245,158,11,0.18); color: #fbbf24; border: 1px solid #f59e0b; }
     .agent-block {
         border-radius: 8px; padding: 10px 14px; margin-bottom: 10px;
         background: #202124; border: 1px solid #2f3033; font-family: monospace;
@@ -83,6 +84,7 @@ for key, default in {
     "selected_league_id": None,
     "league_snapshot": None,
     "chat_history": [],
+    "fa_staleness_nudged": set(),  # (league_id, freshest_date) already nudged about this session
 }.items():
     if key not in st.session_state:
         st.session_state[key] = default
@@ -107,6 +109,31 @@ def append_message(role: str, content: str) -> None:
         save_chat_history(st.session_state.selected_league_id, st.session_state.chat_history)
 
 
+def maybe_nudge_stale_free_agents(league_id: str, merger: DataMerger) -> None:
+    """Ask (once per data state, not every question) for a fresher Free Agent Finder export.
+
+    Waiver/roster value shifts week to week more than dynasty rankings do, so
+    stale Free Agent Finder data is the case most worth a proactive nudge
+    rather than just a quiet caveat in the answer. Deterministic, not left to
+    the LLM to track "did I already mention this" turn to turn — keyed by the
+    file's own freshest_date, so it re-nudges only if that date changes (a
+    newer, still-stale re-upload) or in a fresh session, not every message.
+    """
+    if not (merger.is_free_agents_loaded and merger.free_agents_is_stale):
+        return
+    key = (league_id, merger.free_agents_freshest_date)
+    if key in st.session_state.fa_staleness_nudged:
+        return
+    st.session_state.fa_staleness_nudged.add(key)
+    append_message(
+        "notice",
+        f"Your Free Agent Finder data is {merger.free_agents_staleness_days} days old "
+        f"(as of {merger.free_agents_freshest_date}). Waiver/roster value shifts week to week, so if this "
+        "question is about a current decision, a fresh export would likely be more accurate — upload one "
+        "in the sidebar when you get a chance. Answering with what's loaded for now."
+    )
+
+
 def compact_league_history(league_id: str, max_age_days: int = 30) -> tuple[bool, str]:
     """Distill chat messages older than max_age_days into one memory block, pruning the raw turns.
 
@@ -120,8 +147,10 @@ def compact_league_history(league_id: str, max_age_days: int = 30) -> tuple[bool
     cutoff = time.time() - max_age_days * 86400
 
     prior_summary = next((m["content"] for m in reversed(history) if m.get("role") == "summary"), None)
-    old_messages = [m for m in history if m.get("role") != "summary" and m.get("ts", 0) < cutoff]
-    recent_messages = [m for m in history if m.get("role") != "summary" and m.get("ts", 0) >= cutoff]
+    # "notice" messages (stale-data nudges) are ephemeral UI bookkeeping — never worth summarizing
+    # into permanent memory, and don't need to survive a compaction pass either.
+    old_messages = [m for m in history if m.get("role") not in ("summary", "notice") and m.get("ts", 0) < cutoff]
+    recent_messages = [m for m in history if m.get("role") not in ("summary", "notice") and m.get("ts", 0) >= cutoff]
 
     if not old_messages:
         return False, f"Nothing older than {max_age_days} days to compact."
@@ -189,7 +218,9 @@ def build_context(snapshot: dict, roster_table: list[dict]) -> str:
 
     history = st.session_state.get("chat_history", [])
     summary_msgs = [m for m in history if m.get("role") == "summary"]
-    recent_msgs = [m for m in history if m.get("role") != "summary"][-RECENT_TURNS_IN_CONTEXT:]
+    # "notice" messages (e.g. stale-data nudges) are UI bookkeeping, not part of the analytical
+    # discussion — replaying them back as if they were a prior debate turn would be noise.
+    recent_msgs = [m for m in history if m.get("role") not in ("summary", "notice")][-RECENT_TURNS_IN_CONTEXT:]
     if summary_msgs or recent_msgs:
         lines.append("\nCONVERSATION MEMORY — prior debates in this league (older-to-newer):")
         if summary_msgs:
@@ -197,19 +228,37 @@ def build_context(snapshot: dict, roster_table: list[dict]) -> str:
         for m in recent_msgs:
             lines.append(f"  [{m.get('role', '?')}] {m.get('content', '')}")
 
+    lines.append(
+        "\nDATA AVAILABILITY — work with whatever is actually loaded; none of this is required to answer. "
+        "Missing data is never a reason to refuse or stall — reason from positional scarcity, roster "
+        "construction, market consensus (Beat Tracker's live search), and general dynasty football judgment "
+        "instead, and say plainly in your answer what wasn't available rather than quietly working around it. "
+        "Only call special attention to it if it's genuinely material to the question (e.g. no numeric grounding "
+        "at all for a close trade call) — don't caveat every single response with the same boilerplate."
+    )
+    lines.append(f"  - Draft Sharks Dynasty Rankings: {'loaded' if merger.is_loaded else 'NOT LOADED'}")
+    lines.append(f"  - Draft Sharks Free Agent Finder: {'loaded' if merger.is_free_agents_loaded else 'NOT LOADED'}")
+    lines.append(f"  - Sleeper native weekly projections: {'loaded' if snapshot.get('projections') else 'NOT AVAILABLE this sync'}")
+
     freshness = build_freshness_manifest(snapshot, merger)
     if freshness:
         lines.append(
-            "\nDATA FRESHNESS (freshest first). The Beat Tracker's and Contrarian's own live web search "
-            "is always fresher than anything below, since it runs at the moment of the question — treat it "
-            "as the top entry implicitly. When sources conflict, lean toward the more recently updated one, "
-            "but weigh what kind of claim it is: a fresher injury/depth-chart/news signal should outweigh a "
-            "staler one fairly decisively, while a fresher season-long dynasty valuation is only a mild edge "
-            "over an older one, since long-term value doesn't go stale as fast as situational facts."
+            "\nDATA FRESHNESS (freshest first, loaded sources only). The Beat Tracker's and Contrarian's own "
+            "live web search is always fresher than anything below, since it runs at the moment of the "
+            "question — treat it as the top entry implicitly. When sources conflict, lean toward the more "
+            "recently updated one, but weigh what kind of claim it is: a fresher injury/depth-chart/news "
+            "signal should outweigh a staler one fairly decisively, while a fresher season-long dynasty "
+            "valuation is only a mild edge over an older one, since long-term value doesn't go stale as fast "
+            "as situational facts."
         )
         for label, date, age in freshness:
             age_label = f"{age}d old" if age is not None else "date unknown"
-            stale_flag = " — STALE" if age is not None and age >= 7 else ""
+            if age is not None and age >= 30:
+                stale_flag = " — EGREGIOUSLY OUTDATED: say so plainly in your answer, don't use quietly"
+            elif age is not None and age >= 7:
+                stale_flag = " — STALE"
+            else:
+                stale_flag = ""
             lines.append(f"  - {label}: as of {date or 'unknown'} ({age_label}){stale_flag}")
 
     if snapshot.get("projections"):
@@ -342,12 +391,24 @@ with st.sidebar:
         "that isn't recognized as one of those — a screenshot, an article, an unsupported export — is kept "
         "as reference material instead (see below) rather than being discarded."
     )
-    uploaded = st.file_uploader(
-        "Upload Draft Sharks PDF/CSV/JSON, or any other file as reference material",
-        type=["pdf", "csv", "json", "png", "jpg", "jpeg", "webp", "gif", "txt"],
-    )
-    if uploaded is not None:
+    with st.form("upload_form", clear_on_submit=True):
+        uploaded = st.file_uploader(
+            "Upload Draft Sharks PDF/CSV/JSON, or any other file as reference material",
+            type=["pdf", "csv", "json", "png", "jpg", "jpeg", "webp", "gif", "txt"],
+        )
+        note = st.text_area(
+            "Comments, questions, or labels for this upload (optional)",
+            placeholder="e.g. \"ignore this ranking, Bijan tweaked his hamstring in preseason\" or "
+            "\"is this article's injury report still accurate?\"",
+            height=80,
+        )
+        submitted = st.form_submit_button("Upload")
+
+    if submitted and uploaded is None:
+        st.warning("Choose a file before clicking Upload.")
+    elif submitted and uploaded is not None:
         data = bytes(uploaded.getbuffer())
+        note = note.strip()
         suffix = Path(uploaded.name).suffix.lower()
         recognized = False
 
@@ -377,9 +438,13 @@ with st.sidebar:
                     st.session_state.data_merger.reload()
                     st.success(f"Recognized as Draft Sharks data — saved to {location_label}.")
                     recognized = True
+                    if note:
+                        # The data went into the projections pool, not the attachment store — but the
+                        # note is still worth surfacing to the panel, so it gets a small text-only entry.
+                        save_attachment(f"{uploaded.name}.note.txt", note.encode(), caption=note)
 
         if not recognized:
-            save_attachment(uploaded.name, data)
+            save_attachment(uploaded.name, data, caption=note)
             st.info(f"Didn't match a known Draft Sharks format — saved '{uploaded.name}' as reference material below for the panel to consider when you ask about it.")
 
     global_files = sorted(p.name for p in GLOBAL_PROJECTIONS_DIR.glob("*") if p.suffix in (".csv", ".json", ".pdf"))
@@ -577,6 +642,7 @@ with col_studio:
         st.session_state["_last_submitted"] = question
         context = build_context(snapshot, roster_table if roster else [])
         append_message("user", trigger_question)
+        maybe_nudge_stale_free_agents(st.session_state.selected_league_id, st.session_state.data_merger)
 
         with st.spinner("Consulting the front office..."):
             if trigger_mode == "claude":
@@ -602,6 +668,7 @@ with col_studio:
         "contrarian": ("CONTRARIAN · ChatGPT", "badge-contrarian"),
         "moderator": ("MODERATOR VERDICT · Claude", "badge-moderator"),
         "summary": ("🧠 MEMORY SUMMARY", "badge-summary"),
+        "notice": ("⚠️ NOTICE", "badge-notice"),
     }
     for msg in reversed(st.session_state.chat_history[-40:]):
         label, cls = badge_map.get(msg["role"], (msg["role"], "badge-user"))

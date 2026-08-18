@@ -105,15 +105,20 @@ roster dashboard work with zero keys configured.
    overrides automatic matching for that player from then on. Automatic
    matching mostly works, but an unusual name shape, a mid-season team
    change, or WR/RB dual eligibility can occasionally slip through it.
+   The upload box itself has a **comments/questions/labels** text field
+   right alongside the file picker — write a note at the moment you upload
+   (e.g. "ignore this ranking, Bijan tweaked his hamstring in preseason")
+   rather than having to track it down afterward. Click **Upload** to submit
+   both together (it's a form, not an instant-on-select uploader, so nothing
+   gets processed until you actually click it). If the file turns out to be
+   recognized Draft Sharks data, the note still reaches the panel as a small
+   reference-material entry alongside it.
    Below that, a full-width **Reference Material** panel holds anything
    uploaded that *isn't* recognized Draft Sharks data — a screenshot of an
    injury notification, an article, a tweet — instead of the upload just
-   silently discarding it. Give each one a short caption; the caption text
-   (not the raw file) is what actually reaches the debate panel, labeled
-   explicitly as an unverified claim to weigh, not fact. The same upload box
-   used for Draft Sharks data handles this automatically: anything that
-   doesn't parse as Dynasty Rankings or Free Agent Finder falls through to
-   here rather than erroring out.
+   silently discarding it. Every item's caption (not the raw file) is what
+   actually reaches the debate panel, labeled explicitly as an unverified
+   claim to weigh, not fact; edit a caption there any time.
 4. **Debate Studio**: type a question and either click a quick-action button
    or prefix your message:
    - `/debate <question>` — full four-agent panel (default if no prefix)
@@ -174,7 +179,26 @@ long-term dynasty valuations, since staleness doesn't invalidate a
 season-long projection the way it invalidates "is this guy still the
 starter." The Moderator treats this as its primary tie-breaker and is told
 to say explicitly when it's using it, so a verdict reads as "X is more
-current" rather than an unexplained "X is more correct."
+current" rather than an unexplained "X is more correct." Data missing
+entirely is handled the same way: the panel is told plainly what isn't
+loaded and to answer anyway from positional reasoning, market consensus,
+and general judgment — never to refuse or stall — flagging the gap in its
+answer only when it's actually material to the question, not as boilerplate
+on every response. A source aged 30+ days is called out as **egregiously
+outdated** rather than lumped in with ordinary staleness.
+
+### Proactive nudge for stale waiver data
+
+Free Agent Finder data is the most time-sensitive thing this app loads —
+waiver value shifts week to week, unlike season-long dynasty rankings. So
+rather than leaving that caveat buried in the LLM's prose, the app itself
+checks it deterministically: if the loaded Free Agent Finder data is stale
+when you ask a debate question, a **⚠️ NOTICE** message appears in the
+chat suggesting a fresh export, before the panel answers anyway with
+what's loaded. It won't repeat itself every question — the nudge is keyed
+to that file's specific as-of date, so it only fires once per that
+freshness state (a fresh session, or the data getting even more stale,
+resets it), not on every message while you're mid-conversation.
 
 ## Project layout
 
