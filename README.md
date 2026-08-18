@@ -64,10 +64,19 @@ roster dashboard work with zero keys configured.
    leagues stay listed there so you can unarchive them later; a newly
    discovered league is appended to the end rather than disrupting your
    saved order.
-2. **Sidebar → Draft Sharks / War Room Data**: Draft Sharks doesn't offer a
-   clean CSV export — what you get is a tool page saved/printed as a PDF.
-   Two tools are supported and auto-detected from the PDF's own content, so
-   you don't need to rename anything:
+2. **Sidebar → Draft Sharks / War Room Data**: **stored per league**, not in
+   one shared pool — Draft Sharks' rankings/values are computed under a
+   specific scoring format, and the Free Agent Finder export is tied to one
+   league's actual roster, so uploading it while a different league is
+   selected would apply the wrong league's data. Select a league first;
+   uploads go to `data/projections/<league_id>/`. If two of your leagues
+   genuinely share the same scoring format, use **Copy this league's Draft
+   Sharks files to another league** (shown once you've uploaded something)
+   rather than re-exporting — but never for the Free Agent Finder export,
+   which is roster-specific and essentially never correct to copy.
+   Draft Sharks doesn't offer a clean CSV export — what you get is a tool
+   page saved/printed as a PDF. Two tools are supported and auto-detected
+   from the PDF's own content, so you don't need to rename anything:
    - **Dynasty Rankings** — a season/multi-year overall ranking (1yr proj,
      3yr proj, 3D Value), merged onto your Sleeper roster.
    - **Free Agent Finder** — a rest-of-season, this-league-contextual view
@@ -99,6 +108,24 @@ roster dashboard work with zero keys configured.
    When Free Agent Finder data is loaded, the top 15 available free agents
    (by 3D Value+) are included in the debate context automatically, so
    waiver/pickup questions have real data to reason from.
+   The panel also has real memory now: your last ~16 messages (plus any
+   compacted summary — see below) are fed back into every debate's context,
+   so a later question can reference earlier trade discussions, consensus
+   verdicts, and roster strategy instead of starting fresh each time.
+
+### Chat history compaction
+
+Long-running leagues build up a lot of chat history. **🧹 Compact History**
+(next to Clear Chat History, once there's something to compact) distills
+everything older than a chosen age (30 days by default) into one dense
+memory block — targeted players, trade/waiver consensus reached, long-term
+roster strategy — via a dedicated Claude call, then prunes the raw old
+messages, keeping recent turns untouched. It's safe by construction: the
+file is never overwritten unless the summarization call actually succeeds
+(a failure leaves your history exactly as it was), a timestamped backup of
+the pre-compaction file is written first regardless, and a prior summary is
+merged forward on repeated compactions rather than overwritten, so older
+context doesn't quietly disappear over multiple runs.
 
 ### Data freshness — you don't need to re-sync every session
 
@@ -135,7 +162,8 @@ league_prefs.py       Per-Sleeper-user league archive/reorder preferences.
 llm_engine.py         Four-persona prompt routing across Claude / Gemini / ChatGPT.
 app.py                 Streamlit dashboard + debate studio.
 data/sleeper_snapshots/  Cached league syncs (gitignored).
-data/projections/         Your local paid PDF/CSV/JSON exports (gitignored).
+data/projections/<league_id>/  Your local paid PDF/CSV/JSON exports, one folder
+                         per league — never shared across leagues (gitignored).
 data/chats/                 Per-league persisted debate history (gitignored).
 data/league_prefs.json      Archived/reordered league ids per user (gitignored).
 data/player_aliases.json    Manual name-matching overrides (gitignored).

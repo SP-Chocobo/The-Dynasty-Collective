@@ -6,9 +6,10 @@ venv/
 
 # Local caches / paid data / chat memory — never commit these
 data/sleeper_snapshots/*.json
-data/projections/*.csv
-data/projections/*.json
-data/projections/*.pdf
+# Draft Sharks data lives per-league under data/projections/<league_id>/
+data/projections/**/*.csv
+data/projections/**/*.json
+data/projections/**/*.pdf
 data/chats/*.json
 data/league_prefs.json
 data/player_aliases.json

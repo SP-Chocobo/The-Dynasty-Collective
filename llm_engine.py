@@ -101,6 +101,19 @@ so the user knows it's "X is more current" rather than "X is more correct." Give
 verdict for the user.
 Be decisive. End with a one-line "MODERATOR VERDICT:" summary."""
 
+SUMMARIZER_SYSTEM_PROMPT = """You compact old fantasy football front-office chat history into a compact,
+structured memory block for future debates to reference. From the transcript you're given, extract only what
+would actually matter to a future decision:
+  * Targeted players — who the user has been trying to buy/sell/add/drop, and the outcome if known.
+  * Trade / waiver consensus — verdicts the panel actually reached, not just discussion.
+  * Roster strategy — long-term direction the Moderator or the user has established (e.g. "rebuilding
+    toward 2027", "contending now, prioritize proven veterans over upside").
+Drop everything else — restated projections, routine start/sit calls with no lasting relevance, pleasantries.
+If a prior memory summary is given alongside the new transcript, merge them into one updated block rather
+than discarding the old one — this compacts forward over time, not just the latest window. Output plain
+Markdown with those three headers (only include a header if it has content). Be dense — this is memory, not
+prose."""
+
 
 @dataclass
 class DebateResult:
@@ -159,6 +172,20 @@ def ask_moderator(context: str, question: str, quant: str, beat: str, contrarian
         "Synthesize these into one verdict."
     )
     return _ask_claude(MODERATOR_SYSTEM_PROMPT, prompt)
+
+
+def summarize_history(messages: list[dict], prior_summary: Optional[str] = None) -> str:
+    """Compact a batch of old chat messages (see DebateResult/chat history shape) into one memory block.
+
+    Fails soft like every other ask_* function — callers must check for a
+    leading "⚠️" and, on failure, leave the original messages untouched
+    rather than pruning history that was never successfully summarized.
+    """
+    if not messages:
+        return "⚠️ Nothing to summarize."
+    transcript = "\n\n".join(f"[{m.get('role', '?')}] {m.get('content', '')}" for m in messages)
+    prompt = transcript if not prior_summary else f"PRIOR MEMORY SUMMARY:\n{prior_summary}\n\nNEW TRANSCRIPT TO MERGE IN:\n{transcript}"
+    return _ask_claude(SUMMARIZER_SYSTEM_PROMPT, prompt)
 
 
 # -- Gemini (Beat / News Tracker, with live search grounding) -----------------

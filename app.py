@@ -10,6 +10,7 @@ debate studio (Quant/Claude, Beat/Gemini, Contrarian/ChatGPT, Moderator/Claude).
 from __future__ import annotations
 
 import json
+import shutil
 import time
 from datetime import datetime
 from pathlib import Path
@@ -50,6 +51,7 @@ st.markdown(
     .badge-contrarian { background: rgba(139,92,246,0.18); color: #c4b5fd; border: 1px solid #8b5cf6; }
     .badge-moderator { background: rgba(185,28,28,0.18); color: #f87171; border: 1px solid #b91c1c; }
     .badge-user { background: rgba(148,163,184,0.18); color: #cbd5e1; border: 1px solid #64748b; }
+    .badge-summary { background: rgba(56,189,248,0.18); color: #7dd3fc; border: 1px solid #0ea5e9; }
     .agent-block {
         border-radius: 8px; padding: 10px 14px; margin-bottom: 10px;
         background: #202124; border: 1px solid #2f3033; font-family: monospace;
@@ -64,6 +66,11 @@ st.markdown(
 )
 
 # ------------------------------------------------------------------ state ---
+
+def league_projections_dir(league_id: str) -> Path:
+    """Draft Sharks data is tied to one league's roster/format — never share it across leagues."""
+    return PROJECTIONS_DIR / league_id
+
 
 for key, default in {
     "sleeper_client": SleeperClient(),
@@ -98,6 +105,37 @@ def append_message(role: str, content: str) -> None:
         save_chat_history(st.session_state.selected_league_id, st.session_state.chat_history)
 
 
+def compact_league_history(league_id: str, max_age_days: int = 30) -> tuple[bool, str]:
+    """Distill chat messages older than max_age_days into one memory block, pruning the raw turns.
+
+    Never destructive on failure: the file is only overwritten after
+    summarize_history() actually succeeds. A prior summary block (if any) is
+    merged forward rather than discarded, so repeated compactions accumulate.
+    A timestamped backup of the pre-compaction file is written first, since
+    pruning raw history is otherwise unrecoverable.
+    """
+    history = load_chat_history(league_id)
+    cutoff = time.time() - max_age_days * 86400
+
+    prior_summary = next((m["content"] for m in reversed(history) if m.get("role") == "summary"), None)
+    old_messages = [m for m in history if m.get("role") != "summary" and m.get("ts", 0) < cutoff]
+    recent_messages = [m for m in history if m.get("role") != "summary" and m.get("ts", 0) >= cutoff]
+
+    if not old_messages:
+        return False, f"Nothing older than {max_age_days} days to compact."
+
+    new_summary = llm_engine.summarize_history(old_messages, prior_summary=prior_summary)
+    if new_summary.startswith("⚠️"):
+        return False, f"Compaction aborted, history untouched: {new_summary}"
+
+    backup_path = CHATS_DIR / f"{league_id}_history.pre_compact_{int(time.time())}.json"
+    backup_path.write_text(json.dumps(history, indent=2))
+
+    new_history = [{"role": "summary", "content": new_summary, "ts": time.time()}] + recent_messages
+    save_chat_history(league_id, new_history)
+    return True, f"Compacted {len(old_messages)} messages older than {max_age_days} days into a memory block."
+
+
 def build_freshness_manifest(snapshot: dict, merger: DataMerger) -> list[tuple[str, Optional[str], Optional[int]]]:
     """(label, as-of date, days old) for every dated source in this context, freshest first."""
     entries = []
@@ -117,6 +155,9 @@ def build_freshness_manifest(snapshot: dict, merger: DataMerger) -> list[tuple[s
     return entries
 
 
+RECENT_TURNS_IN_CONTEXT = 16  # ~3 debate rounds worth of raw messages fed back verbatim
+
+
 def build_context(snapshot: dict, roster_table: list[dict]) -> str:
     league = snapshot["league"]
     fmt = league_format_summary(league)
@@ -125,6 +166,16 @@ def build_context(snapshot: dict, roster_table: list[dict]) -> str:
         f"League: {fmt['name']} ({fmt['season']}) — {fmt['type']}, {fmt['teams']} teams, "
         f"{'Superflex' if fmt['superflex'] else '1QB'}, {fmt['scoring']}, taxi slots: {fmt['taxi_slots']}",
     ]
+
+    history = st.session_state.get("chat_history", [])
+    summary_msgs = [m for m in history if m.get("role") == "summary"]
+    recent_msgs = [m for m in history if m.get("role") != "summary"][-RECENT_TURNS_IN_CONTEXT:]
+    if summary_msgs or recent_msgs:
+        lines.append("\nCONVERSATION MEMORY — prior debates in this league (older-to-newer):")
+        if summary_msgs:
+            lines.append(f"  [compacted memory of older history]\n{summary_msgs[-1]['content']}")
+        for m in recent_msgs:
+            lines.append(f"  [{m.get('role', '?')}] {m.get('content', '')}")
 
     freshness = build_freshness_manifest(snapshot, merger)
     if freshness:
@@ -218,6 +269,10 @@ with st.sidebar:
                 st.session_state.selected_league_id = selected
                 st.session_state.chat_history = load_chat_history(selected)
                 st.session_state.league_snapshot = st.session_state.sleeper_client.load_latest_snapshot(selected)
+                # Draft Sharks data (especially Free Agent Finder — it's tied to one
+                # league's actual roster) must not leak between leagues, so each
+                # league gets its own subdirectory rather than one shared pool.
+                st.session_state.data_merger = DataMerger(projections_dir=league_projections_dir(selected))
 
             if st.button("🔄 Refresh This League", use_container_width=True):
                 client = st.session_state.sleeper_client
@@ -246,21 +301,49 @@ with st.sidebar:
 
     st.markdown("---")
     st.markdown("### 📊 Draft Sharks / War Room Data")
-    st.caption(
-        "Draft Sharks has no public export API — save a tool page as a PDF "
-        "(Dynasty Rankings, or the Free Agent Finder for roster+waiver data) "
-        "and upload it here. The kind is auto-detected, no need to rename it."
-    )
-    uploaded = st.file_uploader("Upload projections PDF/CSV/JSON", type=["pdf", "csv", "json"])
-    if uploaded is not None:
-        dest = PROJECTIONS_DIR / uploaded.name
-        dest.write_bytes(uploaded.getbuffer())
-        st.session_state.data_merger.reload()
-        st.success(f"Saved {uploaded.name} to {PROJECTIONS_DIR}/")
+    if not st.session_state.selected_league_id:
+        st.caption("Select a league above first — Draft Sharks data (especially Free Agent Finder) is specific to one league's roster, so it's stored per league, not shared across all of them.")
+    else:
+        st.caption(
+            "Draft Sharks has no public export API — save a tool page as a PDF "
+            "(Dynasty Rankings, or the Free Agent Finder for roster+waiver data) "
+            "and upload it here. The kind is auto-detected, no need to rename it. "
+            "This applies only to the currently selected league."
+        )
+        league_proj_dir = league_projections_dir(st.session_state.selected_league_id)
+        uploaded = st.file_uploader("Upload projections PDF/CSV/JSON", type=["pdf", "csv", "json"])
+        if uploaded is not None:
+            league_proj_dir.mkdir(parents=True, exist_ok=True)
+            dest = league_proj_dir / uploaded.name
+            dest.write_bytes(uploaded.getbuffer())
+            st.session_state.data_merger.reload()
+            st.success(f"Saved {uploaded.name} for this league.")
 
-    existing_files = sorted(p.name for p in PROJECTIONS_DIR.glob("*") if p.suffix in (".csv", ".json", ".pdf"))
-    if existing_files:
-        st.caption("Loaded files: " + ", ".join(existing_files))
+        existing_files = sorted(p.name for p in league_proj_dir.glob("*") if p.suffix in (".csv", ".json", ".pdf")) if league_proj_dir.exists() else []
+        if existing_files:
+            st.caption("Loaded for this league: " + ", ".join(existing_files))
+
+            other_leagues = [lg for lg in st.session_state.leagues if lg["league_id"] != st.session_state.selected_league_id]
+            if other_leagues:
+                with st.expander("Copy this league's Draft Sharks files to another league"):
+                    st.caption(
+                        "Only do this if the target league genuinely shares the same scoring format "
+                        "(PPR/standard, superflex, taxi, etc.) — Draft Sharks' rankings and values are "
+                        "computed under specific scoring rules, so copying into a differently-scored league "
+                        "will give inaccurate numbers there. The Free Agent Finder export is roster-specific "
+                        "and almost never correct to copy, even between same-format leagues."
+                    )
+                    target_options = {lg["league_id"]: lg["name"] for lg in other_leagues}
+                    targets = st.multiselect(
+                        "Copy to", options=list(target_options.keys()), format_func=lambda lid: target_options[lid],
+                    )
+                    if st.button("Copy Files") and targets:
+                        for target_id in targets:
+                            target_dir = league_projections_dir(target_id)
+                            target_dir.mkdir(parents=True, exist_ok=True)
+                            for f in existing_files:
+                                shutil.copy(league_proj_dir / f, target_dir / f)
+                        st.success(f"Copied {len(existing_files)} file(s) to {len(targets)} league(s).")
 
     st.markdown("---")
     st.markdown("### Status")
@@ -459,16 +542,29 @@ with col_studio:
         "beat": ("BEAT TRACKER · Gemini", "badge-beat"),
         "contrarian": ("CONTRARIAN · ChatGPT", "badge-contrarian"),
         "moderator": ("MODERATOR VERDICT · Claude", "badge-moderator"),
+        "summary": ("🧠 MEMORY SUMMARY", "badge-summary"),
     }
     for msg in reversed(st.session_state.chat_history[-40:]):
         label, cls = badge_map.get(msg["role"], (msg["role"], "badge-user"))
         st.markdown(f'<span class="badge {cls}">{label}</span>', unsafe_allow_html=True)
         st.markdown(f'<div class="agent-block">{msg["content"]}</div>', unsafe_allow_html=True)
 
-    if st.session_state.chat_history and st.button("Clear Chat History"):
-        st.session_state.chat_history = []
-        save_chat_history(st.session_state.selected_league_id, [])
-        st.rerun()
+    if st.session_state.chat_history:
+        hcol1, hcol2, hcol3 = st.columns([1, 1, 1])
+        if hcol1.button("Clear Chat History"):
+            st.session_state.chat_history = []
+            save_chat_history(st.session_state.selected_league_id, [])
+            st.rerun()
+        compact_days = hcol2.number_input("Compact older than (days)", min_value=1, value=30, step=1, key="compact_days")
+        if hcol3.button("🧹 Compact History"):
+            with st.spinner(f"Summarizing turns older than {compact_days} days..."):
+                ok, message = compact_league_history(st.session_state.selected_league_id, max_age_days=int(compact_days))
+            if ok:
+                st.session_state.chat_history = load_chat_history(st.session_state.selected_league_id)
+                st.success(message)
+                st.rerun()
+            else:
+                st.warning(message)
 
 # ------------------------------------------------------------------ free agents --
 

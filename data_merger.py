@@ -2,10 +2,18 @@
 Draft Sharks / War Room projection parser and merger.
 
 Reads locally-saved premium exports (Draft Sharks 3D projections, War Room
-tiers, FantasyPros, Dynasty Process, etc.) from data/projections/ and
-fuzzy-matches them onto Sleeper player records by name. Nothing here ever
-calls out to a paid vendor's API — the files stay local, satisfying each
-vendor's terms of service.
+tiers, FantasyPros, Dynasty Process, etc.) and fuzzy-matches them onto
+Sleeper player records by name. Nothing here ever calls out to a paid
+vendor's API — the files stay local, satisfying each vendor's terms of
+service.
+
+DataMerger takes a projections_dir, and app.py points it at
+data/projections/<league_id>/ rather than a single shared folder — Draft
+Sharks' rankings/values are computed under one specific scoring format, and
+the Free Agent Finder export is tied to one league's actual roster, so
+letting this module see every league's files at once would silently apply
+the wrong league's data. Each DataMerger instance only ever sees one
+league's folder.
 
 Draft Sharks doesn't currently offer a clean CSV export of its rankings —
 what you actually get from the site is one of its tool pages printed to
