@@ -7,28 +7,34 @@ Sleeper player records by name. Nothing here ever calls out to a paid
 vendor's API — the files stay local, satisfying each vendor's terms of
 service.
 
-DataMerger takes a projections_dir, and app.py points it at
-data/projections/<league_id>/ rather than a single shared folder — Draft
-Sharks' rankings/values are computed under one specific scoring format, and
-the Free Agent Finder export is tied to one league's actual roster, so
-letting this module see every league's files at once would silently apply
-the wrong league's data. Each DataMerger instance only ever sees one
-league's folder.
+Draft Sharks' tools split cleanly into two categories, and DataMerger
+stores them accordingly:
 
-Draft Sharks doesn't currently offer a clean CSV export of its rankings —
-what you actually get from the site is one of its tool pages printed to
-PDF. Two different tools are supported, auto-detected from the PDF's own
-text (not the filename), and kept as two separate tables since they mean
-different things:
-
-  * The "Dynasty Rankings" tool -> parse_draftsharks_pdf(): a season/multi-
-    year dynasty overall ranking (1yr proj, 3yr proj, 3D Value).
+  * The "Dynasty Rankings" tool -> parse_draftsharks_pdf(): a format-based
+    overall ranking (1yr proj, 3yr proj, 3D Value) — computed from PPR/
+    standard, superflex/1QB, TE-premium assumptions, not from any specific
+    league's roster. The *same* export is correct for every league sharing
+    that format, so it lives in a shared pool (GLOBAL_PROJECTIONS_DIR,
+    data/projections/_global/) rather than being re-uploaded per league.
   * The "Free Agent Finder" tool -> parse_draftsharks_free_agents_pdf(): a
     rest-of-season, this-league-contextual view (3D Proj, 3D ROS, Ceiling,
     3D Value+) that also tags each row Mine/Add/Drop/Lock, i.e. whether
-    Draft Sharks considers the player already on your roster or an
-    available/recommended waiver move. Supports K/DEF and IDP (LB/DL/DB)
-    leagues alongside standard offensive skill positions.
+    Draft Sharks considers the player already on *your* roster in *this*
+    league. This can never be shared — DataMerger only ever loads it from
+    one league's own folder (data/projections/<league_id>/).
+
+Both kinds are auto-detected from a PDF's own text, not its filename or
+where it was dropped, so app.py can route an upload to the right pool
+automatically. (Draft Sharks' League Analyzer — team-vs-team power
+rankings, standings — is also league-specific but has no parser here yet;
+it's detected and rejected with a clear message rather than silently
+mis-parsed by the rankings parser.)
+
+For matching purposes DataMerger.projections is the *merged* view: the
+shared/global rankings pool plus the current league's own rankings files,
+if any (a league-specific ranking file, should the user ever add one,
+takes priority over the global pool for the same player). free_agents
+comes only from the current league's own folder.
 
 Both PDFs share a two-column page layout (a numbers column, then a names
 column) which scrambles naive text-extraction order — both parsers
@@ -49,6 +55,7 @@ from typing import Optional
 import pandas as pd
 
 PROJECTIONS_DIR = Path("data/projections")
+GLOBAL_PROJECTIONS_DIR = PROJECTIONS_DIR / "_global"  # Dynasty Rankings: format-based, shared across leagues
 STALE_AFTER_DAYS = 7  # how old loaded projections can get before the UI nudges you to refresh
 ALIASES_PATH = Path("data/player_aliases.json")  # manual overrides for names that fail to auto-match
 
@@ -121,7 +128,14 @@ def _extract_reviewed_date(full_text: str) -> Optional[str]:
 
 
 def _sniff_pdf_kind(path: Path) -> str:
-    """Which Draft Sharks tool a PDF came from, sniffed from its own text (not the filename)."""
+    """Which Draft Sharks tool a PDF came from, sniffed from its own text (not the filename).
+
+    'rankings' -> format-based, shareable across leagues. 'free_agents' ->
+    this-league-roster-specific. 'league_analyzer' -> also league-specific
+    (team-vs-team power rankings/standings) but has no parser yet, so
+    callers should reject it with a clear message rather than silently
+    feeding it to the rankings parser, which would misread its text.
+    """
     import pypdf
 
     try:
@@ -132,7 +146,17 @@ def _sniff_pdf_kind(path: Path) -> str:
     upper = text.upper()
     if "FREE AGENT FINDER" in upper or "3D ROS" in upper:
         return "free_agents"
+    if "LEAGUE ANALYZER" in upper or "LEAGUE POWER RANKINGS" in upper:
+        return "league_analyzer"
     return "rankings"
+
+
+def detect_upload_kind(path: Path) -> str:
+    """Which pool an uploaded file belongs in: 'rankings' (shared), 'free_agents'
+    (this league only), or 'league_analyzer' (league-specific, unsupported)."""
+    if path.suffix.lower() == ".pdf":
+        return _sniff_pdf_kind(path)
+    return "rankings"  # generic vendor CSV/JSON exports are treated as format-based, like Dynasty Rankings
 
 
 # -- Dynasty Rankings tool -----------------------------------------------------
@@ -290,6 +314,8 @@ def load_projection_file(path: Path) -> tuple[pd.DataFrame, str]:
         source_date = None
     elif suffix == ".pdf":
         kind = _sniff_pdf_kind(path)
+        if kind == "league_analyzer":
+            raise ValueError(f"{path.name} looks like a Draft Sharks League Analyzer export — not supported yet")
         parser = parse_draftsharks_free_agents_pdf if kind == "free_agents" else parse_draftsharks_pdf
         df, source_date = parser(path)
         if df.empty:
@@ -341,6 +367,20 @@ def load_all(projections_dir: Path = PROJECTIONS_DIR) -> tuple[pd.DataFrame, pd.
     return _combine(rankings_frames), _combine(fa_frames)
 
 
+def _merge_rankings(*frames: pd.DataFrame) -> pd.DataFrame:
+    """Combine rankings frames from multiple pools (e.g. global + league-specific).
+
+    Frames passed later win ties for the same player — callers should pass
+    the more-specific/more-authoritative source last (a league's own
+    rankings override should beat the shared global pool for that player).
+    """
+    non_empty = [f for f in frames if not f.empty]
+    if not non_empty:
+        return pd.DataFrame(columns=["name", "norm_name"])
+    combined = pd.concat(non_empty, ignore_index=True, sort=False)
+    return combined.drop_duplicates(subset="norm_name", keep="last")
+
+
 def _compute_freshness(df: pd.DataFrame) -> tuple[Optional[str], Optional[int], bool]:
     if df.empty or "source_date" not in df.columns:
         return None, None, False
@@ -385,17 +425,35 @@ def remove_alias(sleeper_full_name: str) -> None:
 
 
 class DataMerger:
-    """Fuzzy-matches Sleeper player records onto locally loaded Draft Sharks data."""
+    """Fuzzy-matches Sleeper player records onto locally loaded Draft Sharks data.
 
-    def __init__(self, projections_dir: Path = PROJECTIONS_DIR, match_cutoff: float = 0.82):
-        self.projections_dir = Path(projections_dir)
+    Loads from two pools: a shared global pool (format-based Dynasty
+    Rankings, same data correct for any league sharing that format) and, if
+    league_dir is given, that one league's own folder (Free Agent Finder,
+    always league-specific; a league-specific rankings override, if ever
+    added, takes priority over the global pool for the same player).
+    """
+
+    def __init__(self, league_dir: Optional[Path] = None, global_dir: Path = GLOBAL_PROJECTIONS_DIR,
+                 match_cutoff: float = 0.82):
+        self.league_dir = Path(league_dir) if league_dir else None
+        self.global_dir = Path(global_dir)
         self.match_cutoff = match_cutoff
-        self.projections, self.free_agents = load_all(self.projections_dir)
+        self._load()
+
+    def _load(self) -> None:
+        empty = pd.DataFrame(columns=["name", "norm_name"])
+        global_rankings, _ = load_all(self.global_dir)
+        if self.league_dir:
+            league_rankings, league_fa = load_all(self.league_dir)
+        else:
+            league_rankings, league_fa = empty.copy(), empty.copy()
+        self.projections = _merge_rankings(global_rankings, league_rankings)
+        self.free_agents = league_fa
         self.aliases = load_aliases()
 
     def reload(self) -> None:
-        self.projections, self.free_agents = load_all(self.projections_dir)
-        self.aliases = load_aliases()
+        self._load()
 
     @property
     def is_loaded(self) -> bool:

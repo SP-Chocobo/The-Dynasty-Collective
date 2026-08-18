@@ -64,29 +64,34 @@ roster dashboard work with zero keys configured.
    leagues stay listed there so you can unarchive them later; a newly
    discovered league is appended to the end rather than disrupting your
    saved order.
-2. **Sidebar → Draft Sharks / War Room Data**: **stored per league**, not in
-   one shared pool, and there's deliberately no cross-league copying option —
-   even leagues that look similar in the sidebar can differ in ways that
-   shift individual player tiers (a TE premium bonus, a different
-   reception/yardage threshold, IDP weighting), and the Free Agent Finder
-   export is tied to one league's actual roster regardless. Select a league
-   first; uploads go to `data/projections/<league_id>/`. To offset needing a
-   fresh export per league, this exact league's **full, real Sleeper scoring
-   settings** (every non-zero stat-category weight, not just a PPR/superflex
-   label) are always given to the Quant — see "Scoring-aware tier
-   adjustment" below.
-   Draft Sharks doesn't offer a clean CSV export — what you get is a tool
-   page saved/printed as a PDF. Two tools are supported and auto-detected
-   from the PDF's own content, so you don't need to rename anything:
+2. **Sidebar → Draft Sharks / War Room Data**: one upload box, auto-routed
+   by what the file actually is — the kind is sniffed from the PDF's own
+   content, not its filename or which league happens to be selected:
    - **Dynasty Rankings** — a season/multi-year overall ranking (1yr proj,
-     3yr proj, 3D Value), merged onto your Sleeper roster.
+     3yr proj, 3D Value), computed from *format* assumptions (PPR/standard,
+     superflex/1QB, TE premium), not from any specific roster. The same
+     export is correct for every league sharing that format, so it goes
+     into a **shared pool** (`data/projections/_global/`) and is available
+     to every league automatically — no re-uploading per league, no
+     cross-league copying to reason about.
    - **Free Agent Finder** — a rest-of-season, this-league-contextual view
      (3D Proj, 3D ROS, Ceiling, 3D Value+) that also tags each player Mine
      (already on your roster), Add/Drop (Draft Sharks' own suggested waiver
-     move), or blank (an ordinary free agent). Supports K/DEF and IDP
-     (LB/DL/DB) leagues, not just standard offensive skill positions.
-   Upload either (or both) directly; CSV/JSON from other vendors also work
-   via the normal column-alias path.
+     move), or blank (an ordinary free agent). This genuinely can't be
+     shared — it reflects one league's actual roster — so it's stored under
+     `data/projections/<league_id>/` and only ever applies to the league
+     selected when you upload it. Supports K/DEF and IDP (LB/DL/DB)
+     leagues, not just standard offensive skill positions.
+   - **League Analyzer** (team-vs-team power rankings/standings) is also
+     league-specific but isn't parsed yet — uploading one shows a clear
+     error rather than being silently mis-read by the rankings parser.
+   Even a same-format shared ranking won't perfectly match every league's
+   exact rules, so this league's **full, real Sleeper scoring settings**
+   (every non-zero stat-category weight, not just a PPR/superflex label)
+   are always given to the Quant too — see "Scoring-aware tier adjustment"
+   below. CSV/JSON exports from other vendors also work via the normal
+   column-alias path, and are treated as format-based (shared pool) like
+   Dynasty Rankings.
 3. **Main dashboard**: your roster (starters, bench, taxi, IR) with merged
    rank/VORP/projection/3D-value columns (plus rest-of-season/ceiling/value
    from the Free Agent Finder export, when loaded), a staleness banner if
@@ -175,8 +180,10 @@ league_prefs.py       Per-Sleeper-user league archive/reorder preferences.
 llm_engine.py         Four-persona prompt routing across Claude / Gemini / ChatGPT.
 app.py                 Streamlit dashboard + debate studio.
 data/sleeper_snapshots/  Cached league syncs (gitignored).
-data/projections/<league_id>/  Your local paid PDF/CSV/JSON exports, one folder
-                         per league — never shared across leagues (gitignored).
+data/projections/_global/   Dynasty Rankings / format-based exports, shared by
+                             every league (gitignored).
+data/projections/<league_id>/  Free Agent Finder exports, one folder per league,
+                                never shared (gitignored).
 data/chats/                 Per-league persisted debate history (gitignored).
 data/league_prefs.json      Archived/reordered league ids per user (gitignored).
 data/player_aliases.json    Manual name-matching overrides (gitignored).
@@ -221,11 +228,13 @@ data/player_aliases.json    Manual name-matching overrides (gitignored).
   IDP (LB/DL/DB) and K/DEF are supported since some leagues score them, but
   are only lightly tested against one real export — flag it if a position
   or team code doesn't parse right.
-- If your league is dynasty superflex PPR, load the Draft Sharks Dynasty
-  Rankings flavor that matches (dynasty PPR superflex), not a generic one —
-  mixing multiple rankings flavors in `data/projections/` will give
-  inconsistent values for the same players. (This doesn't apply to the Free
-  Agent Finder export, which is already specific to your one league.)
+- Only keep **one** Dynasty Rankings flavor in the shared pool
+  (`data/projections/_global/`) at a time — if your leagues are dynasty
+  superflex PPR, load that flavor, not a generic one. Since the pool is
+  shared across every league, mixing multiple ranking flavors there will
+  give inconsistent values for the same players in whichever league you
+  look at. (This doesn't apply to the Free Agent Finder export, which is
+  already specific to your one league and stored separately.)
 - Default models (`claude-3-5-sonnet-20241022`, `gemini-2.0-flash`, `gpt-4o`)
   are set in `.env.example` and overridable via `ANTHROPIC_MODEL` /
   `GEMINI_MODEL` / `OPENAI_MODEL` — point them at newer model releases as

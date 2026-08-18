@@ -19,13 +19,14 @@ import pandas as pd
 import streamlit as st
 
 import llm_engine
-from data_merger import PROJECTIONS_DIR, DataMerger, save_alias
+from data_merger import GLOBAL_PROJECTIONS_DIR, PROJECTIONS_DIR, DataMerger, detect_upload_kind, save_alias
 from league_prefs import move_league, sorted_leagues, toggle_archive
 from sleeper_client import SleeperClient, compute_points_from_stats, find_roster_for_user, league_format_summary
 
 CHATS_DIR = Path("data/chats")
 CHATS_DIR.mkdir(parents=True, exist_ok=True)
 PROJECTIONS_DIR.mkdir(parents=True, exist_ok=True)
+GLOBAL_PROJECTIONS_DIR.mkdir(parents=True, exist_ok=True)
 
 st.set_page_config(page_title="Fantasy Football Command Center", layout="wide", page_icon="🏈")
 
@@ -286,10 +287,12 @@ with st.sidebar:
                 st.session_state.selected_league_id = selected
                 st.session_state.chat_history = load_chat_history(selected)
                 st.session_state.league_snapshot = st.session_state.sleeper_client.load_latest_snapshot(selected)
-                # Draft Sharks data (especially Free Agent Finder — it's tied to one
-                # league's actual roster) must not leak between leagues, so each
-                # league gets its own subdirectory rather than one shared pool.
-                st.session_state.data_merger = DataMerger(projections_dir=league_projections_dir(selected))
+                # Free Agent Finder is tied to one league's actual roster and must
+                # never leak between leagues, so it only ever loads from this
+                # league's own subdirectory. Dynasty Rankings is format-based (not
+                # roster-based) so it's read from the shared global pool too —
+                # DataMerger merges both automatically.
+                st.session_state.data_merger = DataMerger(league_dir=league_projections_dir(selected))
 
             if st.button("🔄 Refresh This League", use_container_width=True):
                 client = st.session_state.sleeper_client
@@ -318,33 +321,47 @@ with st.sidebar:
 
     st.markdown("---")
     st.markdown("### 📊 Draft Sharks / War Room Data")
-    if not st.session_state.selected_league_id:
-        st.caption("Select a league above first — Draft Sharks data (especially Free Agent Finder) is specific to one league's roster, so it's stored per league, not shared across all of them.")
-    else:
-        st.caption(
-            "Draft Sharks has no public export API — save a tool page as a PDF "
-            "(Dynasty Rankings, or the Free Agent Finder for roster+waiver data) "
-            "and upload it here. The kind is auto-detected, no need to rename it. "
-            "This applies only to the currently selected league."
-        )
-        league_proj_dir = league_projections_dir(st.session_state.selected_league_id)
-        uploaded = st.file_uploader("Upload projections PDF/CSV/JSON", type=["pdf", "csv", "json"])
-        if uploaded is not None:
-            league_proj_dir.mkdir(parents=True, exist_ok=True)
-            dest = league_proj_dir / uploaded.name
-            dest.write_bytes(uploaded.getbuffer())
-            st.session_state.data_merger.reload()
-            st.success(f"Saved {uploaded.name} for this league.")
+    st.caption(
+        "Draft Sharks has no public export API — save a tool page as a PDF and upload it here. The kind "
+        "is auto-detected from its content, not the filename or which league is selected: **Dynasty "
+        "Rankings** is format-based (PPR/standard, superflex/1QB, TE premium), not tied to any roster, so "
+        "it goes into a shared pool used by every league of that format. **Free Agent Finder** is tied to "
+        "one league's actual roster and only ever applies to the league currently selected above."
+    )
+    uploaded = st.file_uploader("Upload projections PDF/CSV/JSON", type=["pdf", "csv", "json"])
+    if uploaded is not None:
+        staging_dir = PROJECTIONS_DIR / "_staging"
+        staging_dir.mkdir(parents=True, exist_ok=True)
+        staging_path = staging_dir / uploaded.name
+        staging_path.write_bytes(uploaded.getbuffer())
+        kind = detect_upload_kind(staging_path)
 
-        existing_files = sorted(p.name for p in league_proj_dir.glob("*") if p.suffix in (".csv", ".json", ".pdf")) if league_proj_dir.exists() else []
-        if existing_files:
-            st.caption("Loaded for this league: " + ", ".join(existing_files))
-            st.caption(
-                "No cross-league copying — even leagues that look similar can differ in ways that shift "
-                "individual player tiers (a TE premium bonus, a different reception-yardage threshold, IDP "
-                "weighting). Upload for each league directly; this league's exact scoring settings are always "
-                "given to the Quant so it can judge where the loaded tier list might not quite fit."
-            )
+        if kind == "league_analyzer":
+            staging_path.unlink(missing_ok=True)
+            st.error(f"{uploaded.name} looks like a Draft Sharks League Analyzer export — that tool isn't parsed yet, so this file wasn't saved.")
+        elif kind == "free_agents" and not st.session_state.selected_league_id:
+            staging_path.unlink(missing_ok=True)
+            st.error("This looks like a Free Agent Finder export, which is tied to one league's roster — select a league above first.")
+        else:
+            if kind == "free_agents":
+                dest_dir = league_projections_dir(st.session_state.selected_league_id)
+                location_label = "this league only (roster-specific)"
+            else:
+                dest_dir = GLOBAL_PROJECTIONS_DIR
+                location_label = "the shared pool (applies to any league using this format)"
+            dest_dir.mkdir(parents=True, exist_ok=True)
+            staging_path.replace(dest_dir / uploaded.name)
+            st.session_state.data_merger.reload()
+            st.success(f"Saved {uploaded.name} to {location_label}.")
+
+    global_files = sorted(p.name for p in GLOBAL_PROJECTIONS_DIR.glob("*") if p.suffix in (".csv", ".json", ".pdf"))
+    if global_files:
+        st.caption("Shared rankings (any league): " + ", ".join(global_files))
+    if st.session_state.selected_league_id:
+        league_proj_dir = league_projections_dir(st.session_state.selected_league_id)
+        league_files = sorted(p.name for p in league_proj_dir.glob("*") if p.suffix in (".csv", ".json", ".pdf")) if league_proj_dir.exists() else []
+        if league_files:
+            st.caption("This league only (roster-specific): " + ", ".join(league_files))
 
     st.markdown("---")
     st.markdown("### Status")
