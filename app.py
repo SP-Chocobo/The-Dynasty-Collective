@@ -9,6 +9,7 @@ debate studio (Quant/Claude, Beat/Gemini, Contrarian/ChatGPT, Moderator/Claude).
 
 from __future__ import annotations
 
+import html
 import json
 import shutil
 import time
@@ -69,8 +70,12 @@ st.markdown(
 
     /* Sidebar defaults to a width that crowds the Manage Leagues row and the
        credentials paste box — widen it out of the box instead of making everyone
-       drag it wider by hand every time. Still resizable from here if you want more. */
-    [data-testid="stSidebar"] { min-width: 400px; }
+       drag it wider by hand every time. Still resizable from here if you want more.
+       Scoped to aria-expanded="true" only: min-width beats max-width per the CSS
+       spec, so an unscoped rule here fights Streamlit's own collapse (which sets
+       max-width: 0 on the same element) and leaves a chunk of dead space and a
+       sliver of visible sidebar even when "collapsed". */
+    [data-testid="stSidebar"][aria-expanded="true"] { min-width: 400px; }
     </style>
     """,
     unsafe_allow_html=True,
@@ -268,37 +273,101 @@ def activate_league(league_id: str) -> None:
             pass  # dashboard falls back to its usual "sync a league" empty state
 
 
-SLOT_STYLES = {
-    "Starter": "background-color: rgba(22,163,74,0.18); color: #4ade80;",
-    "TAXI": "background-color: rgba(212,160,23,0.18); color: #facc15;",
-    "IR": "background-color: rgba(185,28,28,0.18); color: #f87171;",
-}
 SLOT_SORT_ORDER = {"Starter": 0, "Bench": 1, "TAXI": 2, "IR": 3}
 INJURY_OK_STATUSES = ("Questionable", "Doubtful")
 
+# (background, text color) pairs, reusing the same emerald/gold/crimson/violet accents
+# as everything else in the app — badges, the debate personas, the status panel.
+SLOT_PILL_COLORS = {
+    "Starter": ("rgba(22,163,74,0.18)", "#4ade80"),
+    "TAXI": ("rgba(212,160,23,0.18)", "#facc15"),
+    "IR": ("rgba(185,28,28,0.18)", "#f87171"),
+}
+ROSTER_STATUS_PILL_COLORS = {
+    "Add": ("rgba(22,163,74,0.18)", "#4ade80"),
+    "Mine": ("rgba(59,130,246,0.18)", "#93c5fd"),
+    "Lock": ("rgba(212,160,23,0.18)", "#facc15"),
+    "Drop": ("rgba(185,28,28,0.18)", "#f87171"),
+}
+TABLE_COLUMN_LABELS = {
+    "name": "Player", "position": "Pos", "team": "Team", "slot": "Slot",
+    "tier": "Tier", "vorp": "VORP", "projection": "Proj", "sleeper_proj": "Sleeper Proj",
+    "proj_3yr": "3yr Proj", "trade_value": "Trade Val", "pos_rank": "Pos Rank",
+    "fa_ros_proj": "ROS Proj", "fa_ceiling": "Ceiling", "fa_value": "3D Value+",
+    "injury_status": "Status", "roster_status": "Status", "rank": "Rank",
+    "proj_3d": "3D Proj", "ros_3d": "ROS Proj", "ceiling": "Ceiling", "value_3d": "3D Value+",
+}
 
-def style_roster_table(df: pd.DataFrame) -> "pd.io.formats.style.Styler":
-    """Color-code slot and injury status with the app's own emerald/gold/crimson accents
-    — the same palette already used for badges and status chips everywhere else — so
-    "who's injured, who's actually starting" reads at a glance instead of requiring you
-    to read every cell of a plain table."""
-    def _slot_style(val: str) -> str:
-        return SLOT_STYLES.get(val, "color: #94a3b8;")  # Bench, or anything unrecognized
 
-    def _injury_style(val) -> str:
-        if pd.isna(val) or val in (None, "None", ""):
-            return "color: #64748b;"
-        if val in INJURY_OK_STATUSES:
-            return "background-color: rgba(212,160,23,0.18); color: #facc15;"
-        return "background-color: rgba(185,28,28,0.18); color: #f87171;"  # Out/IR/PUP/etc.
+def _injury_pill_color(val: str) -> tuple[str, str]:
+    if val in INJURY_OK_STATUSES:
+        return ("rgba(212,160,23,0.18)", "#facc15")
+    return ("rgba(185,28,28,0.18)", "#f87171")  # Out/IR/PUP/etc.
 
-    styler = df.style
-    map_fn = styler.map if hasattr(styler, "map") else styler.applymap  # pandas <2.1 fallback
-    if "slot" in df.columns:
-        styler = map_fn(_slot_style, subset=["slot"])
-    if "injury_status" in df.columns:
-        styler = map_fn(_injury_style, subset=["injury_status"])
-    return styler
+
+def render_styled_table(df: pd.DataFrame, pill_columns: Optional[dict] = None) -> None:
+    """Render a DataFrame as a custom HTML table instead of the native st.dataframe grid.
+
+    st.dataframe renders through a canvas-based grid component — it's fundamentally a
+    flat spreadsheet look, and page CSS/fonts don't reach into it at all (confirmed by
+    inspecting the live DOM). This trades the native grid's column-sort/cell-selection
+    for full control over typography, spacing, and per-column pill badges, matching the
+    rest of the app's visual language instead of looking like a bare data dump.
+
+    `pill_columns` maps a column name to a `value -> (background, text_color)` function;
+    any other column just renders as text, right-aligned with tabular numerals if numeric.
+    """
+    if df.empty:
+        return
+    pill_columns = pill_columns or {}
+    numeric_cols = {c for c in df.columns if pd.api.types.is_numeric_dtype(df[c])}
+
+    def _cell_html(col: str, val) -> str:
+        if pd.isna(val) or val in (None, ""):
+            return '<span style="color:#4b5563;">—</span>'
+        if col in pill_columns:
+            bg, color = pill_columns[col](val)
+            text = html.escape(str(val))
+            return (
+                f'<span style="display:inline-block;background:{bg};color:{color};'
+                f'padding:2px 10px;border-radius:999px;font-size:0.78rem;font-weight:600;'
+                f'white-space:nowrap;">{text}</span>'
+            )
+        text = html.escape(f"{val:.1f}" if isinstance(val, float) else str(val))
+        if col == "name":
+            return f'<span style="font-weight:600;white-space:nowrap;">{text}</span>'
+        if col in ("position", "team"):
+            return f'<span style="color:#9ca3af;">{text}</span>'
+        if col in numeric_cols:
+            return f'<span style="font-variant-numeric: tabular-nums;">{text}</span>'
+        return text
+
+    headers = "".join(
+        f'<th style="text-align:left;padding:9px 14px;font-size:0.7rem;text-transform:uppercase;'
+        f'letter-spacing:0.07em;color:#8b8f98;font-weight:600;border-bottom:1px solid #2a2b2e;'
+        f'background:#1b1c1f;white-space:nowrap;">'
+        f'{html.escape(TABLE_COLUMN_LABELS.get(c, c.replace("_", " ").title()))}</th>'
+        for c in df.columns
+    )
+    body_rows = "".join(
+        "<tr>" + "".join(
+            f'<td style="padding:9px 14px;border-bottom:1px solid #202124;">{_cell_html(c, row[c])}</td>'
+            for c in df.columns
+        ) + "</tr>"
+        for _, row in df.iterrows()
+    )
+    st.markdown(
+        f"""
+        <div style="overflow-x:auto;overflow-y:auto;max-height:520px;
+                    border:1px solid #2a2b2e;border-radius:10px;">
+          <table style="width:100%;border-collapse:collapse;font-size:0.88rem;">
+            <thead><tr>{headers}</tr></thead>
+            <tbody>{body_rows}</tbody>
+          </table>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
 
 
 def maybe_nudge_stale_free_agents(league_id: str, merger: DataMerger) -> None:
@@ -969,9 +1038,11 @@ with st.sidebar:
 # ------------------------------------------------------------------ main ----
 
 # The league switcher itself lives here, front and center, rather than buried in the
-# sidebar — this is the one control most likely to get used every single visit. The
-# Refresh button sits right next to it, not off in the sidebar, since re-pulling data
-# for the league you just switched to is the natural next thing you'd want to do.
+# sidebar — this is the one control most likely to get used every single visit. A
+# popover instead of always-visible pills: with more than a handful of leagues, a
+# segmented control wraps into a multi-row wall of buttons every visit whether you're
+# switching or not — the popover collapses that down to one button showing the
+# current league, opened only when you actually want to switch.
 if st.session_state.leagues:
     visible_leagues, archived_leagues = sorted_leagues(st.session_state.user_id, st.session_state.leagues)
     league_options = {lg["league_id"]: lg["name"] for lg in visible_leagues}
@@ -981,20 +1052,17 @@ if st.session_state.leagues:
         if current not in option_ids:
             current = option_ids[0]
 
-        st.caption("📂 Active League — switches the dashboard and debate panel below")
         switch_col, refresh_col = st.columns([5, 1])
         with switch_col:
-            picked = st.segmented_control(
-                "Active League",
-                options=option_ids,
-                format_func=lambda lid: league_options[lid],
-                default=current,
-                label_visibility="collapsed",
-            )
-        if picked is None:
-            # segmented_control allows clicking the active pill to deselect it — never
-            # leave nothing active, just fall back to whatever was already selected.
-            picked = current
+            with st.popover(f"📂 {league_options[current]}", use_container_width=True):
+                st.caption("Switch which league the dashboard and debate panel below are showing.")
+                picked = st.radio(
+                    "Switch to",
+                    options=option_ids,
+                    format_func=lambda lid: league_options[lid],
+                    index=option_ids.index(current),
+                    label_visibility="collapsed",
+                )
         if picked != st.session_state.selected_league_id:
             activate_league(picked)
             st.rerun()
@@ -1049,7 +1117,11 @@ with col_roster:
         players_db = st.session_state.sleeper_client.get_players()
         merger: DataMerger = st.session_state.data_merger
         all_ids = roster.get("players") or []
-        starters = set(roster.get("starters") or [])
+        starters_list = roster.get("starters") or []  # order matters: Sleeper returns this
+        # in actual lineup-slot order (QB, RB, RB, WR, ... FLEX, IDP slots, etc.) — keep the
+        # list around for sorting, not just a set, or that order is thrown away.
+        starters = set(starters_list)
+        starters_order = {pid: i for i, pid in enumerate(starters_list)}
         taxi = set(roster.get("taxi") or [])
         reserve = set(roster.get("reserve") or [])
 
@@ -1063,9 +1135,13 @@ with col_roster:
             if stats:
                 row["sleeper_proj"] = compute_points_from_stats(stats, scoring_settings)
 
-        # Starters first (who's actually playing), then bench, then taxi/IR (stashed
-        # away) — a stable sort so players within the same slot keep their original order.
-        roster_table.sort(key=lambda r: SLOT_SORT_ORDER.get(r["slot"], 99))
+        # Starters first (who's actually playing), then bench, then taxi/IR (stashed away).
+        # Within Starters, use Sleeper's own lineup-slot order (QB, RB, RB, WR, ... FLEX,
+        # IDP slots) rather than whatever incidental order build_roster_table produced —
+        # a stable sort, so Bench/TAXI/IR keep their original relative order untouched.
+        roster_table.sort(
+            key=lambda r: (SLOT_SORT_ORDER.get(r["slot"], 99), starters_order.get(r["player_id"], 0))
+        )
 
         df = pd.DataFrame(roster_table)
         display_cols = [c for c in [
@@ -1073,9 +1149,10 @@ with col_roster:
             "projection", "sleeper_proj", "proj_3yr", "trade_value", "pos_rank",
             "fa_ros_proj", "fa_ceiling", "fa_value", "injury_status",
         ] if c in df.columns]
-        st.dataframe(
-            style_roster_table(df[display_cols]) if not df.empty else df,
-            use_container_width=True, hide_index=True,
+        render_styled_table(
+            df[display_cols],
+            pill_columns={"slot": lambda v: SLOT_PILL_COLORS.get(v, ("rgba(148,163,184,0.12)", "#94a3b8")),
+                          "injury_status": _injury_pill_color},
         )
         if "sleeper_proj" in df.columns:
             nfl_state = snapshot.get("nfl_state") or {}
@@ -1270,7 +1347,11 @@ else:
         fa_df = pd.DataFrame(fa_rows)
         fa_df["roster_status"] = fa_df.get("roster_status", pd.Series(dtype=object)).fillna("Available")
         fa_display_cols = [c for c in ["name", "team", "position", "roster_status", "rank", "proj_3d", "ros_3d", "ceiling", "value_3d"] if c in fa_df.columns]
-        fcol2.dataframe(fa_df[fa_display_cols], use_container_width=True, hide_index=True)
+        with fcol2:
+            render_styled_table(
+                fa_df[fa_display_cols],
+                pill_columns={"roster_status": lambda v: ROSTER_STATUS_PILL_COLORS.get(v, ("rgba(148,163,184,0.12)", "#94a3b8"))},
+            )
     else:
         fcol2.caption("No free agents match that filter.")
 
