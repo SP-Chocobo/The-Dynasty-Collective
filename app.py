@@ -78,17 +78,39 @@ def league_projections_dir(league_id: str) -> Path:
     return PROJECTIONS_DIR / league_id
 
 
+LAST_SESSION_PATH = Path("data/last_session.json")
+
+
+def load_last_username() -> str:
+    """Sleeper needs no password, just a username, so remembering the last one used lets a
+    page refresh restore the session automatically instead of losing it — Streamlit's own
+    session_state resets on every browser reload, it isn't persisted to disk on its own."""
+    if LAST_SESSION_PATH.exists():
+        try:
+            return json.loads(LAST_SESSION_PATH.read_text()).get("username", "")
+        except (json.JSONDecodeError, OSError):
+            return ""
+    return ""
+
+
+def save_last_username(username: str) -> None:
+    LAST_SESSION_PATH.parent.mkdir(parents=True, exist_ok=True)
+    LAST_SESSION_PATH.write_text(json.dumps({"username": username}))
+
+
 for key, default in {
     "sleeper_client": SleeperClient(),
     "data_merger": DataMerger(),
     "user_id": None,
-    "username": "",
+    "username": load_last_username(),
+    "auto_sync_attempted": False,  # only try to restore a remembered session once per browser session
     "leagues": [],
     "selected_league_id": None,
     "league_snapshot": None,
     "chat_history": [],
     "fa_staleness_nudged": set(),  # (league_id, freshest_date) already nudged about this session
     "left_league_ids": [],  # tracked leagues no longer returned by Sleeper's last sync, awaiting archive/delete/dismiss
+    "manage_leagues_expanded": False,  # keeps the expander open across the reruns its own buttons trigger
 }.items():
     if key not in st.session_state:
         st.session_state[key] = default
@@ -382,36 +404,63 @@ def build_context(snapshot: dict, roster_table: list[dict]) -> str:
 
 # ------------------------------------------------------------------ sidebar --
 
+def sync_leagues(username: str, *, announce: bool = True) -> bool:
+    """Look up a Sleeper username and (re)populate leagues from it. Returns success.
+
+    `announce=False` is used for the on-refresh auto-restore: it stays quiet on success
+    (no need to tell the user their own remembered session loaded) and on failure shows a
+    soft, retry-oriented note rather than "No Sleeper user found" — a stale/unreachable
+    lookup right after a page load isn't necessarily proof the username is wrong.
+    """
+    client: SleeperClient = st.session_state.sleeper_client
+    user = client.get_user(username)
+    if not user:
+        if announce:
+            st.error(f"No Sleeper user found for '{username}'")
+        else:
+            st.caption("Couldn't restore your last session automatically — click Sync Leagues to retry.")
+        return False
+
+    st.session_state.username = username
+    st.session_state.user_id = user["user_id"]
+    save_last_username(username)
+    # Sleeper's league list is a full replacement, not incremental — anything we
+    # were tracking that's no longer in it means the user left/was removed/the
+    # league was deleted. Diff against what's persisted, not just this session's
+    # in-memory list, so this still catches it on a user's very first sync of a
+    # fresh browser session.
+    prior_prefs = get_prefs(user["user_id"])
+    previously_tracked = set(prior_prefs.get("order", [])) | set(prior_prefs.get("archived", []))
+
+    st.session_state.leagues = client.get_user_leagues(user["user_id"])
+    fresh_ids = {lg["league_id"] for lg in st.session_state.leagues}
+    newly_left = previously_tracked - fresh_ids
+    if newly_left:
+        st.session_state.left_league_ids = sorted(newly_left)
+
+    if announce:
+        if not st.session_state.leagues:
+            st.warning("No leagues found for this user in the current season.")
+        else:
+            st.success(f"Found {len(st.session_state.leagues)} league(s).")
+    return True
+
+
 with st.sidebar:
     st.markdown("### 🏈 Sleeper Sync")
     username_input = st.text_input("Sleeper Username", value=st.session_state.username)
 
     if st.button("Sync Leagues", use_container_width=True):
-        client: SleeperClient = st.session_state.sleeper_client
-        user = client.get_user(username_input)
-        if not user:
-            st.error(f"No Sleeper user found for '{username_input}'")
-        else:
-            st.session_state.username = username_input
-            st.session_state.user_id = user["user_id"]
-            # Sleeper's league list is a full replacement, not incremental — anything we
-            # were tracking that's no longer in it means the user left/was removed/the
-            # league was deleted. Diff against what's persisted, not just this session's
-            # in-memory list, so this still catches it on a user's very first sync of a
-            # fresh browser session.
-            prior_prefs = get_prefs(user["user_id"])
-            previously_tracked = set(prior_prefs.get("order", [])) | set(prior_prefs.get("archived", []))
+        sync_leagues(username_input)
 
-            st.session_state.leagues = client.get_user_leagues(user["user_id"])
-            fresh_ids = {lg["league_id"] for lg in st.session_state.leagues}
-            newly_left = previously_tracked - fresh_ids
-            if newly_left:
-                st.session_state.left_league_ids = sorted(newly_left)
-
-            if not st.session_state.leagues:
-                st.warning("No leagues found for this user in the current season.")
-            else:
-                st.success(f"Found {len(st.session_state.leagues)} league(s).")
+    if (
+        st.session_state.username
+        and st.session_state.user_id is None
+        and not st.session_state.auto_sync_attempted
+    ):
+        st.session_state.auto_sync_attempted = True
+        with st.spinner(f"Restoring session for {st.session_state.username}..."):
+            sync_leagues(st.session_state.username, announce=False)
 
     if st.session_state.get("left_league_ids"):
         st.warning(
@@ -447,10 +496,11 @@ with st.sidebar:
             if current not in option_ids:
                 current = option_ids[0]
             selected = st.selectbox(
-                "League",
+                "📂 Active League",
                 options=option_ids,
                 format_func=lambda lid: league_options[lid],
                 index=option_ids.index(current),
+                help="This is the league the dashboard and debate panel below are showing.",
             )
             if selected != st.session_state.selected_league_id:
                 st.session_state.selected_league_id = selected
@@ -485,34 +535,44 @@ with st.sidebar:
         else:
             st.info("All discovered leagues are archived — unarchive one below to select it.")
 
-        with st.expander(f"Manage Leagues ({len(st.session_state.leagues)})"):
+        with st.expander(
+            f"Manage Leagues ({len(st.session_state.leagues)})",
+            expanded=st.session_state.manage_leagues_expanded,
+        ):
             st.caption(
                 "Archive leagues you don't want on the front dashboard, or reorder them. Delete "
                 "permanently purges all locally cached data for a league (snapshots, its own Draft "
                 "Sharks uploads, chat history) — it doesn't leave the Sleeper league itself, so if "
                 "you're still a member it'll just reappear fresh next time you sync."
             )
-            for lg in visible_leagues + archived_leagues:
+            ordered = visible_leagues + archived_leagues
+            for idx, lg in enumerate(ordered):
                 lid = lg["league_id"]
                 is_archived = lid in {a["league_id"] for a in archived_leagues}
-                name_col, arch_col, up_col, down_col, del_col = st.columns([4, 2, 1, 1, 1.5])
+                name_col, arch_col, reorder_col, del_col = st.columns([4, 2, 1.4, 1.5])
                 name_col.write(("🗄️ " if is_archived else "") + lg["name"])
                 if arch_col.button("Unarchive" if is_archived else "Archive", key=f"arch_{lid}"):
                     toggle_archive(st.session_state.user_id, lid)
+                    st.session_state.manage_leagues_expanded = True
                     st.rerun()
-                if up_col.button("▲", key=f"up_{lid}"):
+                up_col, down_col = reorder_col.columns(2, gap="small")
+                if up_col.button("▲", key=f"up_{lid}", disabled=idx == 0, help="Move up"):
                     move_league(st.session_state.user_id, st.session_state.leagues, lid, -1)
+                    st.session_state.manage_leagues_expanded = True
                     st.rerun()
-                if down_col.button("▼", key=f"down_{lid}"):
+                if down_col.button("▼", key=f"down_{lid}", disabled=idx == len(ordered) - 1, help="Move down"):
                     move_league(st.session_state.user_id, st.session_state.leagues, lid, 1)
+                    st.session_state.manage_leagues_expanded = True
                     st.rerun()
 
                 if st.session_state.get("pending_delete_league_id") == lid:
                     if del_col.button("Cancel", key=f"cancel_del_{lid}"):
                         st.session_state.pending_delete_league_id = None
+                        st.session_state.manage_leagues_expanded = True
                         st.rerun()
                 elif del_col.button("🗑️ Delete", key=f"del_{lid}"):
                     st.session_state.pending_delete_league_id = lid
+                    st.session_state.manage_leagues_expanded = True
                     st.rerun()
 
                 if st.session_state.get("pending_delete_league_id") == lid:
@@ -524,6 +584,7 @@ with st.sidebar:
                     if confirm_col.button("Confirm Delete", key=f"confirm_del_{lid}"):
                         removed = delete_league_completely(lid)
                         st.session_state.pending_delete_league_id = None
+                        st.session_state.manage_leagues_expanded = True
                         st.success(f"Deleted local data for {lg['name']} ({len(removed)} item(s) removed).")
                         st.rerun()
 
@@ -680,17 +741,20 @@ with st.sidebar:
 
 # ------------------------------------------------------------------ main ----
 
-st.title("Fantasy Football Command Center")
-
 snapshot = st.session_state.league_snapshot
 if not snapshot:
+    st.title("Fantasy Football Command Center")
     st.info("Sync a Sleeper username and select a league in the sidebar to get started.")
     st.stop()
 
+# The active league's own name carries the page title once one is loaded — it's the
+# single most important thing to make obvious, since the sidebar list can otherwise
+# make it unclear which league is actually being viewed.
 league = snapshot["league"]
 fmt = league_format_summary(league)
+st.title(f"🏈 {fmt['name']}")
 st.caption(
-    f"**{fmt['name']}** · {fmt['type']} · {fmt['teams']}-team · "
+    f"Fantasy Football Command Center · {fmt['type']} · {fmt['teams']}-team · "
     f"{'Superflex' if fmt['superflex'] else '1QB'} · {fmt['scoring']} · Taxi: {fmt['taxi_slots']}"
 )
 

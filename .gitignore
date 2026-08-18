@@ -12,6 +12,7 @@ data/projections/**/*.json
 data/projections/**/*.pdf
 data/chats/*.json
 data/decisions/*.json
+data/last_session.json
 data/league_prefs.json
 data/player_aliases.json
 data/league_formats.json

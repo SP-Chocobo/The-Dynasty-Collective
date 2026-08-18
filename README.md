@@ -55,7 +55,11 @@ roster dashboard work with zero keys configured.
 
 1. **Sidebar → Sleeper Sync**: enter your Sleeper username, click **Sync
    Leagues**. All leagues you're in for the current season are discovered
-   automatically; pick one from the dropdown. Click **Refresh This League**
+   automatically; pick one from the dropdown. Your username is remembered
+   locally (`data/last_session.json`) and re-synced automatically the next
+   time you open or refresh the page — Streamlit's own `session_state`
+   resets on every browser reload, so without this you'd have to type your
+   username and click Sync Leagues again every single time. Click **Refresh This League**
    any time to re-pull rosters/scoring/taxi/traded picks — a timestamped
    snapshot is cached in `data/sleeper_snapshots/` so the dashboard still has
    data even if Sleeper is briefly unreachable.
@@ -323,6 +327,7 @@ data/projections/<league_id>/  Free Agent Finder exports, one folder per league,
 data/attachments/           Reference material + captions.json (gitignored).
 data/chats/                 Per-league persisted debate history (gitignored).
 data/decisions/              Per-league decision log, one JSON file per league (gitignored).
+data/last_session.json      Last-used Sleeper username, for auto-restore on page refresh (gitignored).
 data/league_prefs.json      Archived/reordered league ids per user (gitignored).
 data/league_formats.json    Manual Best Ball/Chopped overrides (gitignored).
 data/player_aliases.json    Manual name-matching overrides (gitignored).
