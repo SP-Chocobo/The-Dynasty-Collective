@@ -18,6 +18,7 @@ from typing import Any, Optional
 import requests
 
 BASE_URL = "https://api.sleeper.app/v1"
+ROOT_URL = "https://api.sleeper.app"  # projections/stats live outside /v1 — see get_weekly_projections
 DEFAULT_SEASON = "2026"
 PLAYERS_CACHE_MAX_AGE_SECONDS = 24 * 60 * 60  # Sleeper asks that /players/nfl be pulled at most once/day
 REQUEST_TIMEOUT = 15
@@ -35,8 +36,8 @@ class SleeperClient:
 
     # -- low-level ---------------------------------------------------------
 
-    def _get(self, path: str) -> Any:
-        url = f"{BASE_URL}{path}"
+    def _get(self, path: str, base: str = BASE_URL) -> Any:
+        url = f"{base}{path}"
         try:
             resp = self.session.get(url, timeout=REQUEST_TIMEOUT)
         except requests.RequestException as exc:
@@ -91,6 +92,49 @@ class SleeperClient:
             return json.loads(cache_path.read_text())
         return {}
 
+    # -- native weekly stat-category projections (undocumented endpoint) ----
+    #
+    # Sleeper's own apps compute the "proj" points you see in-app by pulling a
+    # per-player, per-stat-category projection (pass_yd, rush_td, rec, ...)
+    # and multiplying it by your league's own scoring_settings — the same
+    # weights get_league() already returns. That projections endpoint is NOT
+    # part of Sleeper's documented v1 API; it's reverse-engineered from what
+    # their own clients call, so it could change or disappear without notice.
+    # Every method here fails soft (returns {} / None) rather than raising,
+    # so a shape change or outage degrades this one feature, not the app.
+
+    def get_nfl_state(self) -> Optional[dict]:
+        """Current NFL season/week, e.g. {'season': '2026', 'week': 3, 'season_type': 'regular'}."""
+        try:
+            return self._get("/state/nfl")
+        except SleeperAPIError:
+            return None
+
+    def get_weekly_projections(self, season: str, week: int, season_type: str = "regular") -> dict[str, dict]:
+        """player_id -> {stat_category: projected_value, ...} for one week."""
+        try:
+            data = self._get(f"/projections/nfl/{season_type}/{season}/{week}", base=ROOT_URL)
+        except SleeperAPIError:
+            return {}
+        if not data:
+            return {}
+
+        result: dict[str, dict] = {}
+        if isinstance(data, dict):
+            for pid, entry in data.items():
+                stats = entry.get("stats", entry) if isinstance(entry, dict) else None
+                if stats:
+                    result[str(pid)] = stats
+        elif isinstance(data, list):
+            for entry in data:
+                if not isinstance(entry, dict):
+                    continue
+                pid = entry.get("player_id")
+                stats = entry.get("stats")
+                if pid and stats:
+                    result[str(pid)] = stats
+        return result
+
     # -- aggregate sync -------------------------------------------------------
 
     def sync_league(self, league_id: str, players_db: Optional[dict[str, dict]] = None) -> dict:
@@ -99,12 +143,24 @@ class SleeperClient:
         if league is None:
             raise SleeperAPIError(f"League {league_id} not found")
 
+        nfl_state = self.get_nfl_state() or {}
+        season = nfl_state.get("season") or league.get("season")
+        week = nfl_state.get("week")
+        projections: dict[str, dict] = {}
+        if season and week:
+            try:
+                projections = self.get_weekly_projections(str(season), int(week))
+            except (TypeError, ValueError):
+                projections = {}
+
         snapshot = {
             "synced_at": time.time(),
             "league": league,
             "rosters": self.get_rosters(league_id),
             "users": self.get_league_users(league_id),
             "traded_picks": self.get_traded_picks(league_id),
+            "nfl_state": nfl_state,
+            "projections": projections,
         }
 
         self._write_snapshot(league_id, snapshot)
@@ -123,6 +179,22 @@ class SleeperClient:
 
 
 # -- helpers for interpreting a synced league --------------------------------
+
+def compute_points_from_stats(stats: dict, scoring_settings: dict) -> float:
+    """Apply a league's own scoring_settings to a raw per-category stat projection.
+
+    This reproduces exactly what Sleeper's own apps do to show a "proj" points
+    column: stats and scoring_settings share Sleeper's stat-category naming
+    (pass_yd, rec, rush_td, ...), so the weighted sum is this league's native,
+    scoring-accurate point projection for the week.
+    """
+    total = 0.0
+    for category, weight in (scoring_settings or {}).items():
+        value = (stats or {}).get(category)
+        if value:
+            total += float(value) * float(weight)
+    return round(total, 2)
+
 
 def find_roster_for_user(rosters: list[dict], user_id: str) -> Optional[dict]:
     for roster in rosters:

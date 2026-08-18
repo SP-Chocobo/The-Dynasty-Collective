@@ -10,7 +10,7 @@ live news — before handing you one clear verdict.
 
 | Persona | Model | Job |
 |---|---|---|
-| **Quant / VORP Specialist** | Claude (Anthropic) | Math only — VORP, positional scarcity, roster construction, trade equity, using your league's real scoring settings and your local Draft Sharks data. One lens, not the final word. |
+| **Quant / VORP Specialist** | Claude (Anthropic) | Math only — VORP, positional scarcity, roster construction, trade equity, using your league's real scoring settings, your local Draft Sharks data, and Sleeper's own native weekly stat-category projections. Neither numeric source is the final word. |
 | **Beat / News Tracker** | Gemini (Google, search-grounded) | Cross-references Draft Sharks against public market consensus (KeepTradeCut, FantasyCalc, FantasyPros, ESPN, etc.), plus live news, injuries, and depth charts. |
 | **Contrarian / Risk Analyst** | ChatGPT (OpenAI, web-search-enabled) | Pressure-tests the other two — regression risk, small-sample overreaction, model blind spots, age curves, and Draft-Sharks-vs-market divergence. |
 | **Debate Moderator** | Claude (Anthropic) | Synthesizes all three into one actionable verdict, calling out where Draft Sharks, the market, and the news disagree. |
@@ -106,6 +106,22 @@ data/league_prefs.json      Archived/reordered league ids per user (gitignored).
 
 ## Notes
 
+- **Sleeper's own native projections**: alongside Draft Sharks, every league
+  sync also pulls Sleeper's own per-stat-category weekly projection for each
+  player (pass yards, receptions, rush TDs, etc.) and scores it under your
+  league's *actual* `scoring_settings` — the same math Sleeper's own apps use
+  to show a "proj" points column. This shows up as `sleeper_proj` in the
+  roster table and in the debate context, as a second, independent
+  quantitative source to weigh against Draft Sharks. **Caveat**: unlike the
+  league/roster/user endpoints this project otherwise uses, that projections
+  endpoint isn't part of Sleeper's *documented* public API — it's
+  reverse-engineered from what Sleeper's own clients call internally, and
+  could change shape or disappear without notice. Every call to it fails
+  soft (the sidebar just shows "Sleeper Native Projections ❌" and everything
+  else keeps working) — if it stops matching reality, tell me what broke and
+  I'll fix the parsing. It's also a **single week's** number, not a season or
+  multi-year total like Draft Sharks' — the Quant prompt is told this
+  explicitly so it doesn't compare the two at face value.
 - **Draft Sharks PDF format**: their rankings page prints as a two-column
   PDF (a numbers column, then a names column) that scrambles naive
   text-extraction order. `data_merger.py` reconstructs each row on a

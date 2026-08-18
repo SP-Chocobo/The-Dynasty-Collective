@@ -19,7 +19,7 @@ import streamlit as st
 import llm_engine
 from data_merger import PROJECTIONS_DIR, DataMerger
 from league_prefs import move_league, sorted_leagues, toggle_archive
-from sleeper_client import SleeperClient, find_roster_for_user, league_format_summary
+from sleeper_client import SleeperClient, compute_points_from_stats, find_roster_for_user, league_format_summary
 
 CHATS_DIR = Path("data/chats")
 CHATS_DIR.mkdir(parents=True, exist_ok=True)
@@ -109,14 +109,25 @@ def build_context(snapshot: dict, roster_table: list[dict]) -> str:
             f"Draft Sharks data as of {merger.freshest_date} "
             f"({merger.staleness_days} days old{' — STALE, treat with caution' if merger.is_stale else ''})"
         )
+    nfl_state = snapshot.get("nfl_state") or {}
+    if snapshot.get("projections"):
+        lines.append(
+            f"Sleeper's own native week-{nfl_state.get('week', '?')} stat-category projections are also "
+            "included below as 'sleeper_proj', scored under this league's real scoring_settings. NOTE: this "
+            "is a SINGLE-WEEK number, not a season or 3-year total like Draft Sharks' — don't compare them "
+            "at face value without accounting for that timeframe difference. Treat it as a second independent "
+            "quantitative source to weigh against Draft Sharks, not a tiebreaker by default."
+        )
     lines.append(
-        "Roster (name | pos | team | DS tier | DS VORP | DS 1yr proj | DS 3yr proj | DS 3D/trade value | DS pos rank):"
+        "Roster (name | pos | team | DS tier | DS VORP | DS 1yr proj | Sleeper native week proj | "
+        "DS 3yr proj | DS 3D/trade value | DS pos rank):"
     )
     for row in roster_table:
         lines.append(
             f"  {row['name']} | {row['position']} | {row['team']} | "
             f"{row.get('tier', '-')} | {row.get('vorp', '-')} | {row.get('projection', '-')} | "
-            f"{row.get('proj_3yr', '-')} | {row.get('trade_value', '-')} | {row.get('pos_rank', '-')}"
+            f"{row.get('sleeper_proj', '-')} | {row.get('proj_3yr', '-')} | "
+            f"{row.get('trade_value', '-')} | {row.get('pos_rank', '-')}"
         )
     return "\n".join(lines)
 
@@ -223,6 +234,13 @@ with st.sidebar:
         st.markdown(status_line("DS Projections Loaded", False), unsafe_allow_html=True)
 
     st.markdown(status_line("Sleeper Synced", st.session_state.league_snapshot is not None), unsafe_allow_html=True)
+    snap = st.session_state.league_snapshot
+    has_sleeper_proj = bool(snap and snap.get("projections"))
+    proj_week = (snap.get("nfl_state") or {}).get("week") if snap else None
+    proj_label = f"Sleeper Native Projections (week {proj_week})" if has_sleeper_proj else "Sleeper Native Projections"
+    st.markdown(status_line(proj_label, has_sleeper_proj), unsafe_allow_html=True)
+    if snap and not has_sleeper_proj:
+        st.caption("Unofficial endpoint returned nothing this sync — Draft Sharks/market data still work fine without it.")
     st.markdown(status_line("Claude (Quant/Moderator) Connected", llm_engine.is_claude_configured()), unsafe_allow_html=True)
     st.markdown(status_line("Gemini (Beat Tracker) Connected", llm_engine.is_gemini_configured()), unsafe_allow_html=True)
     st.markdown(status_line("ChatGPT (Contrarian) Connected", llm_engine.is_openai_configured()), unsafe_allow_html=True)
@@ -269,16 +287,27 @@ with col_roster:
         reserve = set(roster.get("reserve") or [])
 
         roster_table = merger.build_roster_table(all_ids, players_db)
+        sleeper_projections = snapshot.get("projections") or {}
+        scoring_settings = league.get("scoring_settings", {}) or {}
         for row in roster_table:
             pid = row["player_id"]
             row["slot"] = "TAXI" if pid in taxi else ("IR" if pid in reserve else ("Starter" if pid in starters else "Bench"))
+            stats = sleeper_projections.get(pid)
+            if stats:
+                row["sleeper_proj"] = compute_points_from_stats(stats, scoring_settings)
 
         df = pd.DataFrame(roster_table)
         display_cols = [c for c in [
             "name", "position", "team", "slot", "tier", "vorp",
-            "projection", "proj_3yr", "trade_value", "pos_rank", "injury_status",
+            "projection", "sleeper_proj", "proj_3yr", "trade_value", "pos_rank", "injury_status",
         ] if c in df.columns]
         st.dataframe(df[display_cols] if not df.empty else df, use_container_width=True, hide_index=True)
+        if "sleeper_proj" in df.columns:
+            nfl_state = snapshot.get("nfl_state") or {}
+            st.caption(
+                f"'sleeper_proj' = Sleeper's own week-{nfl_state.get('week', '?')} stat projections, "
+                f"scored under this league's actual settings — an unofficial endpoint, cross-check it."
+            )
 
         if merger.is_loaded:
             matched = sum(1 for r in roster_table if r.get("matched"))
