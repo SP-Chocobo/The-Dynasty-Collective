@@ -59,13 +59,27 @@ roster dashboard work with zero keys configured.
    any time to re-pull rosters/scoring/taxi/traded picks — a timestamped
    snapshot is cached in `data/sleeper_snapshots/` so the dashboard still has
    data even if Sleeper is briefly unreachable.
+   Since Sleeper's league list is a full replacement each time (not
+   incremental), **Sync Leagues** doubles as new-league detection — anything
+   you've joined or created since last sync just shows up. It also detects
+   the opposite: if a league you were tracking is no longer returned (you
+   left, were removed, or the league was deleted), a prompt appears letting
+   you **Archive**, **Delete**, or **Keep as-is** for each one, rather than
+   it just silently vanishing from the list with its local data left behind
+   forever. This check is against what's actually persisted, not just the
+   current browser session, so it still works on your very first sync after
+   a restart.
    Use **Manage Leagues** below the dropdown to **Archive** leagues you don't
-   want cluttering the front dashboard (dead leagues, leagues you left) and
-   to reorder the rest with the ▲/▼ buttons — this is saved per Sleeper user
-   in `data/league_prefs.json` and persists across sessions. Archived
-   leagues stay listed there so you can unarchive them later; a newly
-   discovered league is appended to the end rather than disrupting your
-   saved order.
+   want cluttering the front dashboard (still fully cached, just hidden) or
+   **Delete** them permanently (purges the cached snapshot, that league's
+   own Draft Sharks uploads, chat history, and format override — gated
+   behind a confirmation step since it's not reversible). Reorder the rest
+   with the ▲/▼ buttons. All of this is saved per Sleeper user in
+   `data/league_prefs.json` and persists across sessions; a newly discovered
+   league is appended to the end rather than disrupting your saved order.
+   Deleting is local-only — it doesn't leave the Sleeper league itself, so
+   if you're still actually a member it'll simply reappear, unsynced, next
+   time you sync.
 2. **Sidebar → Draft Sharks / War Room Data**: one upload box, auto-routed
    by what the file actually is — the kind is sniffed from the PDF's own
    content, not its filename or which league happens to be selected:

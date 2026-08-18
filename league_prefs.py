@@ -79,3 +79,11 @@ def move_league(user_id: str, leagues: list[dict], league_id: str, direction: in
     prefs = get_prefs(user_id)
     prefs["order"] = order
     _set_prefs(user_id, prefs)
+
+
+def forget_league(user_id: str, league_id: str) -> None:
+    """Drop a league from this user's saved order/archived lists entirely (used by hard delete)."""
+    prefs = get_prefs(user_id)
+    prefs["order"] = [lid for lid in prefs.get("order", []) if lid != league_id]
+    prefs["archived"] = [lid for lid in prefs.get("archived", []) if lid != league_id]
+    _set_prefs(user_id, prefs)

@@ -10,6 +10,7 @@ debate studio (Quant/Claude, Beat/Gemini, Contrarian/ChatGPT, Moderator/Claude).
 from __future__ import annotations
 
 import json
+import shutil
 import time
 from datetime import datetime
 from pathlib import Path
@@ -22,7 +23,7 @@ import llm_engine
 from attachments import ATTACHMENTS_DIR, list_attachments, save_attachment, set_caption, set_scope, delete_attachment
 from data_merger import GLOBAL_PROJECTIONS_DIR, PROJECTIONS_DIR, DataMerger, load_projection_file, save_alias
 from league_format import FORMAT_GUIDANCE, FORMAT_OPTIONS, STANDARD, get_format_override, set_format_override
-from league_prefs import move_league, sorted_leagues, toggle_archive
+from league_prefs import forget_league, get_prefs, move_league, sorted_leagues, toggle_archive
 from sleeper_client import SleeperClient, compute_points_from_stats, find_roster_for_user, league_format_summary
 
 CHATS_DIR = Path("data/chats")
@@ -86,6 +87,7 @@ for key, default in {
     "league_snapshot": None,
     "chat_history": [],
     "fa_staleness_nudged": set(),  # (league_id, freshest_date) already nudged about this session
+    "left_league_ids": [],  # tracked leagues no longer returned by Sleeper's last sync, awaiting archive/delete/dismiss
 }.items():
     if key not in st.session_state:
         st.session_state[key] = default
@@ -166,6 +168,55 @@ def compact_league_history(league_id: str, max_age_days: int = 30) -> tuple[bool
     new_history = [{"role": "summary", "content": new_summary, "ts": time.time()}] + recent_messages
     save_chat_history(league_id, new_history)
     return True, f"Compacted {len(old_messages)} messages older than {max_age_days} days into a memory block."
+
+
+def delete_league_completely(league_id: str) -> list[str]:
+    """Purge every local cache for one league: snapshots, its own Draft Sharks uploads
+    (never the shared global rankings pool), chat history + compaction backups, its
+    format override, and any attachment scoped exclusively to it (one scoped to this
+    league among others just has this league_id dropped from its scope, not deleted).
+
+    This never touches Sleeper itself — it's a local-cache purge only. If the user is
+    still actually a member, the league will simply reappear, unsynced, next time they
+    click Sync Leagues; that's expected, not a bug.
+    """
+    removed: list[str] = []
+
+    for p in st.session_state.sleeper_client.cache_dir.glob(f"{league_id}_*.json"):
+        p.unlink(missing_ok=True)
+        removed.append(p.name)
+
+    league_dir = league_projections_dir(league_id)
+    if league_dir.exists():
+        shutil.rmtree(league_dir)
+        removed.append(f"{league_dir}/")
+
+    for p in CHATS_DIR.glob(f"{league_id}_history*.json"):
+        p.unlink(missing_ok=True)
+        removed.append(p.name)
+
+    set_format_override(league_id, None)
+
+    for item in list_attachments():
+        if not item["league_ids"]:
+            continue
+        if set(item["league_ids"]) == {league_id}:
+            delete_attachment(item["filename"])
+            removed.append(item["filename"])
+        elif league_id in item["league_ids"]:
+            set_scope(item["filename"], [lid for lid in item["league_ids"] if lid != league_id])
+
+    if st.session_state.user_id:
+        forget_league(st.session_state.user_id, league_id)
+
+    st.session_state.leagues = [lg for lg in st.session_state.leagues if lg["league_id"] != league_id]
+    if st.session_state.selected_league_id == league_id:
+        st.session_state.selected_league_id = None
+        st.session_state.league_snapshot = None
+        st.session_state.chat_history = []
+        st.session_state.data_merger = DataMerger()
+
+    return removed
 
 
 def build_freshness_manifest(snapshot: dict, merger: DataMerger) -> list[tuple[str, Optional[str], Optional[int]]]:
@@ -340,11 +391,48 @@ with st.sidebar:
         else:
             st.session_state.username = username_input
             st.session_state.user_id = user["user_id"]
+            # Sleeper's league list is a full replacement, not incremental — anything we
+            # were tracking that's no longer in it means the user left/was removed/the
+            # league was deleted. Diff against what's persisted, not just this session's
+            # in-memory list, so this still catches it on a user's very first sync of a
+            # fresh browser session.
+            prior_prefs = get_prefs(user["user_id"])
+            previously_tracked = set(prior_prefs.get("order", [])) | set(prior_prefs.get("archived", []))
+
             st.session_state.leagues = client.get_user_leagues(user["user_id"])
+            fresh_ids = {lg["league_id"] for lg in st.session_state.leagues}
+            newly_left = previously_tracked - fresh_ids
+            if newly_left:
+                st.session_state.left_league_ids = sorted(newly_left)
+
             if not st.session_state.leagues:
                 st.warning("No leagues found for this user in the current season.")
             else:
                 st.success(f"Found {len(st.session_state.leagues)} league(s).")
+
+    if st.session_state.get("left_league_ids"):
+        st.warning(
+            "No longer showing as a member of these leagues (left, removed, or the league was "
+            "deleted) — their local data is still cached. Archive to just hide them, or delete to "
+            "purge their data (snapshots, Draft Sharks uploads, chat history) permanently."
+        )
+        for lid in list(st.session_state.left_league_ids):
+            cached_snapshot = st.session_state.sleeper_client.load_latest_snapshot(lid)
+            league_name = cached_snapshot["league"]["name"] if cached_snapshot else lid
+            st.caption(league_name)
+            lc1, lc2, lc3 = st.columns(3)
+            if lc1.button("Archive", key=f"leftleague_archive_{lid}"):
+                toggle_archive(st.session_state.user_id, lid)
+                st.session_state.left_league_ids.remove(lid)
+                st.rerun()
+            if lc2.button("Delete", key=f"leftleague_delete_{lid}"):
+                delete_league_completely(lid)
+                st.session_state.left_league_ids.remove(lid)
+                st.success(f"Deleted local data for {league_name}.")
+                st.rerun()
+            if lc3.button("Keep as-is", key=f"leftleague_dismiss_{lid}"):
+                st.session_state.left_league_ids.remove(lid)
+                st.rerun()
 
     if st.session_state.leagues:
         visible_leagues, archived_leagues = sorted_leagues(st.session_state.user_id, st.session_state.leagues)
@@ -395,11 +483,16 @@ with st.sidebar:
             st.info("All discovered leagues are archived — unarchive one below to select it.")
 
         with st.expander(f"Manage Leagues ({len(st.session_state.leagues)})"):
-            st.caption("Archive leagues you don't want on the front dashboard, or reorder them.")
+            st.caption(
+                "Archive leagues you don't want on the front dashboard, or reorder them. Delete "
+                "permanently purges all locally cached data for a league (snapshots, its own Draft "
+                "Sharks uploads, chat history) — it doesn't leave the Sleeper league itself, so if "
+                "you're still a member it'll just reappear fresh next time you sync."
+            )
             for lg in visible_leagues + archived_leagues:
                 lid = lg["league_id"]
                 is_archived = lid in {a["league_id"] for a in archived_leagues}
-                name_col, arch_col, up_col, down_col = st.columns([5, 2, 1, 1])
+                name_col, arch_col, up_col, down_col, del_col = st.columns([4, 2, 1, 1, 1.5])
                 name_col.write(("🗄️ " if is_archived else "") + lg["name"])
                 if arch_col.button("Unarchive" if is_archived else "Archive", key=f"arch_{lid}"):
                     toggle_archive(st.session_state.user_id, lid)
@@ -410,6 +503,26 @@ with st.sidebar:
                 if down_col.button("▼", key=f"down_{lid}"):
                     move_league(st.session_state.user_id, st.session_state.leagues, lid, 1)
                     st.rerun()
+
+                if st.session_state.get("pending_delete_league_id") == lid:
+                    if del_col.button("Cancel", key=f"cancel_del_{lid}"):
+                        st.session_state.pending_delete_league_id = None
+                        st.rerun()
+                elif del_col.button("🗑️ Delete", key=f"del_{lid}"):
+                    st.session_state.pending_delete_league_id = lid
+                    st.rerun()
+
+                if st.session_state.get("pending_delete_league_id") == lid:
+                    st.warning(
+                        f"Permanently delete all local data for **{lg['name']}**? This can't be undone "
+                        "(no in-app undo — only whatever backups your OS/filesystem might keep)."
+                    )
+                    confirm_col, _ = st.columns([1, 3])
+                    if confirm_col.button("Confirm Delete", key=f"confirm_del_{lid}"):
+                        removed = delete_league_completely(lid)
+                        st.session_state.pending_delete_league_id = None
+                        st.success(f"Deleted local data for {lg['name']} ({len(removed)} item(s) removed).")
+                        st.rerun()
 
     st.markdown("---")
     st.markdown("### 📊 Draft Sharks / War Room Data")
