@@ -129,6 +129,21 @@ def build_context(snapshot: dict, roster_table: list[dict]) -> str:
             f"{row.get('sleeper_proj', '-')} | {row.get('proj_3yr', '-')} | "
             f"{row.get('trade_value', '-')} | {row.get('pos_rank', '-')}"
         )
+
+    if merger.is_free_agents_loaded:
+        top_fa = merger.list_free_agents(exclude_mine=True, top_n=15)
+        if top_fa:
+            lines.append(
+                "\nTop available free agents per Draft Sharks' Free Agent Finder "
+                "(name | pos | team | status | 3D Proj | rest-of-season 3D Proj | ceiling | 3D Value+; "
+                "'Add' = Draft Sharks' own suggested waiver pickup, blank = ordinary free agent):"
+            )
+            for fa in top_fa:
+                lines.append(
+                    f"  {fa.get('name', '-')} | {fa.get('position', '-')} | {fa.get('team', '-')} | "
+                    f"{fa.get('roster_status') or '-'} | {fa.get('proj_3d', '-')} | {fa.get('ros_3d', '-')} | "
+                    f"{fa.get('ceiling', '-')} | {fa.get('value_3d', '-')}"
+                )
     return "\n".join(lines)
 
 
@@ -200,8 +215,9 @@ with st.sidebar:
     st.markdown("---")
     st.markdown("### 📊 Draft Sharks / War Room Data")
     st.caption(
-        "Draft Sharks has no public export API — save its rankings page as a PDF "
-        "(or drop in a CSV/JSON from another vendor) and upload it here."
+        "Draft Sharks has no public export API — save a tool page as a PDF "
+        "(Dynasty Rankings, or the Free Agent Finder for roster+waiver data) "
+        "and upload it here. The kind is auto-detected, no need to rename it."
     )
     uploaded = st.file_uploader("Upload projections PDF/CSV/JSON", type=["pdf", "csv", "json"])
     if uploaded is not None:
@@ -232,6 +248,15 @@ with st.sidebar:
             st.caption(f"Data is {age}+ days old — consider re-exporting from Draft Sharks (weekly is plenty).")
     else:
         st.markdown(status_line("DS Projections Loaded", False), unsafe_allow_html=True)
+
+    if merger.is_free_agents_loaded:
+        fa_age = merger.free_agents_staleness_days
+        fa_cls = "status-bad" if merger.free_agents_is_stale else "status-ok"
+        fa_icon = "⚠️" if merger.free_agents_is_stale else "✅"
+        fa_age_label = f"({fa_age}d ago)" if fa_age is not None else ""
+        st.markdown(f'<span class="{fa_cls}">{fa_icon} Free Agent Data Loaded {fa_age_label}</span>', unsafe_allow_html=True)
+    else:
+        st.markdown(status_line("Free Agent Data Loaded", False), unsafe_allow_html=True)
 
     st.markdown(status_line("Sleeper Synced", st.session_state.league_snapshot is not None), unsafe_allow_html=True)
     snap = st.session_state.league_snapshot
@@ -299,7 +324,8 @@ with col_roster:
         df = pd.DataFrame(roster_table)
         display_cols = [c for c in [
             "name", "position", "team", "slot", "tier", "vorp",
-            "projection", "sleeper_proj", "proj_3yr", "trade_value", "pos_rank", "injury_status",
+            "projection", "sleeper_proj", "proj_3yr", "trade_value", "pos_rank",
+            "fa_ros_proj", "fa_ceiling", "fa_value", "injury_status",
         ] if c in df.columns]
         st.dataframe(df[display_cols] if not df.empty else df, use_container_width=True, hide_index=True)
         if "sleeper_proj" in df.columns:
@@ -389,3 +415,38 @@ with col_studio:
         st.session_state.chat_history = []
         save_chat_history(st.session_state.selected_league_id, [])
         st.rerun()
+
+# ------------------------------------------------------------------ free agents --
+
+st.markdown("---")
+st.subheader("Free Agents")
+
+merger = st.session_state.data_merger
+if not merger.is_free_agents_loaded:
+    st.caption(
+        "No Free Agent Finder data loaded — export that page from Draft Sharks as a PDF "
+        "and upload it in the sidebar alongside your rankings (auto-detected, no need to rename it)."
+    )
+else:
+    if merger.free_agents_is_stale:
+        st.warning(
+            f"Free agent data is {merger.free_agents_staleness_days} days old — waiver values shift "
+            "week to week more than dynasty rankings do, so this is worth refreshing more often.",
+            icon="⚠️",
+        )
+    fa_positions = sorted(p for p in merger.free_agents["position"].dropna().unique()) if "position" in merger.free_agents.columns else []
+    fcol1, fcol2 = st.columns([1, 3])
+    fa_position_filter = fcol1.selectbox("Position", options=["All"] + fa_positions)
+    show_mine = fcol1.checkbox("Include my own roster", value=False)
+    fa_rows = merger.list_free_agents(
+        exclude_mine=not show_mine,
+        position=None if fa_position_filter == "All" else fa_position_filter,
+        top_n=25,
+    )
+    if fa_rows:
+        fa_df = pd.DataFrame(fa_rows)
+        fa_df["roster_status"] = fa_df.get("roster_status", pd.Series(dtype=object)).fillna("Available")
+        fa_display_cols = [c for c in ["name", "team", "position", "roster_status", "rank", "proj_3d", "ros_3d", "ceiling", "value_3d"] if c in fa_df.columns]
+        fcol2.dataframe(fa_df[fa_display_cols], use_container_width=True, hide_index=True)
+    else:
+        fcol2.caption("No free agents match that filter.")

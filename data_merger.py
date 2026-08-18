@@ -8,12 +8,25 @@ calls out to a paid vendor's API — the files stay local, satisfying each
 vendor's terms of service.
 
 Draft Sharks doesn't currently offer a clean CSV export of its rankings —
-what you actually get from the site is its rankings page printed to PDF.
-That PDF has a two-column layout (a numbers column, then a names column)
-which scrambles naive text-extraction order, so parse_draftsharks_pdf()
-below reconstructs rows on a *per-page* basis rather than assuming the
-whole document reads top-to-bottom in one pass. CSV/JSON exports from
-other vendors are still supported via the normal column-alias path.
+what you actually get from the site is one of its tool pages printed to
+PDF. Two different tools are supported, auto-detected from the PDF's own
+text (not the filename), and kept as two separate tables since they mean
+different things:
+
+  * The "Dynasty Rankings" tool -> parse_draftsharks_pdf(): a season/multi-
+    year dynasty overall ranking (1yr proj, 3yr proj, 3D Value).
+  * The "Free Agent Finder" tool -> parse_draftsharks_free_agents_pdf(): a
+    rest-of-season, this-league-contextual view (3D Proj, 3D ROS, Ceiling,
+    3D Value+) that also tags each row Mine/Add/Drop/Lock, i.e. whether
+    Draft Sharks considers the player already on your roster or an
+    available/recommended waiver move. Supports K/DEF and IDP (LB/DL/DB)
+    leagues alongside standard offensive skill positions.
+
+Both PDFs share a two-column page layout (a numbers column, then a names
+column) which scrambles naive text-extraction order — both parsers
+reconstruct rows on a *per-page* basis rather than assuming the whole
+document reads top-to-bottom in one pass. CSV/JSON exports from other
+vendors are still supported via the normal column-alias path.
 """
 
 from __future__ import annotations
@@ -70,7 +83,7 @@ def _normalize_columns(df: pd.DataFrame) -> pd.DataFrame:
     return df
 
 
-# -- Draft Sharks PDF rankings parsing ----------------------------------------
+# -- Draft Sharks PDF parsing (shared bits) -----------------------------------
 
 NFL_TEAM_CODES = (
     "ARI", "ATL", "BAL", "BUF", "CAR", "CHI", "CIN", "CLE", "DAL", "DEN", "DET",
@@ -80,8 +93,10 @@ NFL_TEAM_CODES = (
 # Draft Sharks' team codes vs. Sleeper's: JAC->JAX, LVR->LV, UNS (unsigned) -> FA.
 TEAM_ALIASES = {"UNS": "FA", "JAC": "JAX", "LVR": "LV"}
 
-_STAT_LINE_RE = re.compile(r"^(\d+) ([\d,]+) ([\d,]+) (\d+)$")
-_TEAM_POS_RE = re.compile(rf"^({'|'.join(NFL_TEAM_CODES)})(QB|RB|WR|TE)(\d+)$")
+# Offense + kicker/defense + IDP — which of these actually show up depends on
+# the league (standard leagues get K/DEF, IDP leagues also get LB/DL/DB).
+POSITION_CODES = ("QB", "RB", "WR", "TE", "K", "DEF", "LB", "DL", "DB")
+
 _REVIEWED_DATE_RE = re.compile(r"Reviewed By[^|]*\|([A-Za-z]{3,9}\s+\d{1,2},\s+\d{4})")
 
 
@@ -95,8 +110,29 @@ def _extract_reviewed_date(full_text: str) -> Optional[str]:
         return None
 
 
+def _sniff_pdf_kind(path: Path) -> str:
+    """Which Draft Sharks tool a PDF came from, sniffed from its own text (not the filename)."""
+    import pypdf
+
+    try:
+        reader = pypdf.PdfReader(str(path))
+        text = (reader.pages[0].extract_text() or "") if reader.pages else ""
+    except Exception:
+        return "rankings"
+    upper = text.upper()
+    if "FREE AGENT FINDER" in upper or "3D ROS" in upper:
+        return "free_agents"
+    return "rankings"
+
+
+# -- Dynasty Rankings tool -----------------------------------------------------
+
+_RANKINGS_STAT_RE = re.compile(r"^(\d+) ([\d,]+) ([\d,]+) (\d+)$")
+_RANKINGS_TEAM_POS_RE = re.compile(rf"^({'|'.join(NFL_TEAM_CODES)})\s*({'|'.join(POSITION_CODES)})(\d+)$")
+
+
 def parse_draftsharks_pdf(path: Path) -> tuple[pd.DataFrame, Optional[str]]:
-    """Parse a Draft Sharks rankings page saved/printed as PDF.
+    """Parse a Draft Sharks Dynasty Rankings page saved/printed as PDF.
 
     Returns (dataframe, source_date_iso). Each PDF page lists a block of
     "RK 1yr-proj 3yr-proj 3D-value" number rows followed by a block of
@@ -122,7 +158,7 @@ def parse_draftsharks_pdf(path: Path) -> tuple[pd.DataFrame, Optional[str]]:
         i = 0
         while i < len(lines):
             line = lines[i]
-            stat_match = _STAT_LINE_RE.match(line)
+            stat_match = _RANKINGS_STAT_RE.match(line)
             if stat_match:
                 rank, proj_1yr, proj_3yr, value_3d = stat_match.groups()
                 stat_rows.append((int(rank), int(proj_1yr.replace(",", "")),
@@ -130,7 +166,7 @@ def parse_draftsharks_pdf(path: Path) -> tuple[pd.DataFrame, Optional[str]]:
                 i += 1
                 continue
 
-            team_pos_match = _TEAM_POS_RE.match(line)
+            team_pos_match = _RANKINGS_TEAM_POS_RE.match(line)
             if team_pos_match and name_rows and "team" not in name_rows[-1]:
                 team, position, pos_rank = team_pos_match.groups()
                 name_rows[-1].update(
@@ -140,7 +176,7 @@ def parse_draftsharks_pdf(path: Path) -> tuple[pd.DataFrame, Optional[str]]:
                 continue
 
             # A name line is any line immediately followed by a TEAMPOSn line.
-            if i + 1 < len(lines) and _TEAM_POS_RE.match(lines[i + 1]):
+            if i + 1 < len(lines) and _RANKINGS_TEAM_POS_RE.match(lines[i + 1]):
                 name_rows.append({"name": line})
                 i += 1
                 continue
@@ -161,8 +197,79 @@ def parse_draftsharks_pdf(path: Path) -> tuple[pd.DataFrame, Optional[str]]:
     return df, source_date
 
 
-def load_projection_file(path: Path) -> pd.DataFrame:
+# -- Free Agent Finder tool -----------------------------------------------------
+
+# Rows look like "Mine 1 25.2 25.4 29.2 100" or "Add233 2.9 4.5 9.2 5.6" or, for
+# a plain (unowned, unrecommended) free agent, no status word at all: "209 9 11
+# 14.5 7.5". Whether there's a literal space between the status word and the
+# rank number is inconsistent (PDF text-extraction kerning artifact), so it's
+# optional in the regex either way.
+_FA_STAT_RE = re.compile(r"^(Mine|Add|Drop|Lock)?\s*(\d+) ([\d.]+) ([\d.]+) ([\d.]+) ([\d.]+)$")
+_FA_TEAM_POS_RE = re.compile(rf"^({'|'.join(NFL_TEAM_CODES)})\s*({'|'.join(POSITION_CODES)})$")
+
+
+def parse_draftsharks_free_agents_pdf(path: Path) -> tuple[pd.DataFrame, Optional[str]]:
+    """Parse a Draft Sharks Free Agent Finder page saved/printed as PDF.
+
+    Same per-page interleaved-column reconstruction as parse_draftsharks_pdf,
+    but a different table: RK / 3D Proj / 3D ROS / Ceiling / 3D Value+, each
+    row optionally tagged Mine (already on your roster), Add/Drop (a
+    suggested waiver move), or untagged (an ordinary free agent). This export
+    has no reliable absolute date on the page itself (just a relative "Synced
+    X minutes ago"), so the caller falls back to the file's save date.
+    """
+    import pypdf
+
+    reader = pypdf.PdfReader(str(path))
+    records: list[dict] = []
+
+    for page in reader.pages:
+        lines = [l.strip() for l in page.extract_text().split("\n")]
+
+        stat_rows: list[tuple[Optional[str], int, float, float, float, float]] = []
+        name_rows: list[dict] = []
+        i = 0
+        while i < len(lines):
+            line = lines[i]
+            stat_match = _FA_STAT_RE.match(line)
+            if stat_match:
+                status, rank, proj, ros, ceiling, value = stat_match.groups()
+                stat_rows.append((status, int(rank), float(proj), float(ros), float(ceiling), float(value)))
+                i += 1
+                continue
+
+            team_pos_match = _FA_TEAM_POS_RE.match(line)
+            if team_pos_match and name_rows and "team" not in name_rows[-1]:
+                team, position = team_pos_match.groups()
+                name_rows[-1].update(team=TEAM_ALIASES.get(team, team), position=position)
+                i += 1
+                continue
+
+            if i + 1 < len(lines) and _FA_TEAM_POS_RE.match(lines[i + 1]):
+                name_rows.append({"name": line})
+                i += 1
+                continue
+
+            i += 1
+
+        for idx, entry in enumerate(name_rows):
+            if idx < len(stat_rows):
+                status, rank, proj, ros, ceiling, value = stat_rows[idx]
+                entry.update(roster_status=status, rank=rank, proj_3d=proj,
+                             ros_3d=ros, ceiling=ceiling, value_3d=value)
+            records.append(entry)
+
+    df = pd.DataFrame(records)
+    if df.empty:
+        return df, None
+    df["norm_name"] = df["name"].astype(str).map(normalize_name)
+    return df, None
+
+
+def load_projection_file(path: Path) -> tuple[pd.DataFrame, str]:
+    """Returns (dataframe, kind) where kind is 'rankings' or 'free_agents'."""
     suffix = path.suffix.lower()
+    kind = "rankings"
     if suffix == ".csv":
         df = pd.read_csv(path)
         df = _normalize_columns(df)
@@ -172,31 +279,34 @@ def load_projection_file(path: Path) -> pd.DataFrame:
         df = _normalize_columns(df)
         source_date = None
     elif suffix == ".pdf":
-        df, source_date = parse_draftsharks_pdf(path)
+        kind = _sniff_pdf_kind(path)
+        parser = parse_draftsharks_free_agents_pdf if kind == "free_agents" else parse_draftsharks_pdf
+        df, source_date = parser(path)
         if df.empty:
-            raise ValueError(f"No rankings table found in {path.name}")
+            raise ValueError(f"No table found in {path.name}")
     else:
         raise ValueError(f"Unsupported projection file type: {path.suffix}")
 
     df["source_file"] = path.name
     df["source_date"] = source_date or datetime.fromtimestamp(path.stat().st_mtime).date().isoformat()
-    return df
+    return df, kind
 
 
-def load_all_projections(projections_dir: Path = PROJECTIONS_DIR) -> pd.DataFrame:
-    """Concatenate every CSV/JSON/PDF in the projections folder, newest file wins ties."""
+def load_all(projections_dir: Path = PROJECTIONS_DIR) -> tuple[pd.DataFrame, pd.DataFrame]:
+    """Parse every CSV/JSON/PDF once, bucketed into (rankings_df, free_agents_df)."""
     projections_dir = Path(projections_dir)
+    empty = pd.DataFrame(columns=["name", "norm_name"])
     if not projections_dir.exists():
-        return pd.DataFrame(columns=["name", "norm_name"])
+        return empty, empty.copy()
 
     files = sorted(
         [p for p in projections_dir.iterdir() if p.suffix.lower() in (".csv", ".json", ".pdf")],
         key=lambda p: p.stat().st_mtime,
     )
-    frames = []
+    rankings_frames, fa_frames = [], []
     for f in files:
         try:
-            df = load_projection_file(f)
+            df, kind = load_projection_file(f)
         except Exception:
             continue  # skip unparsable/misformatted files rather than crashing the app
 
@@ -209,63 +319,85 @@ def load_all_projections(projections_dir: Path = PROJECTIONS_DIR) -> pd.DataFram
             df = df.sort_values("rank", na_position="last").drop_duplicates(subset="norm_name", keep="first")
         else:
             df = df.drop_duplicates(subset="norm_name", keep="first")
-        frames.append(df)
+        (fa_frames if kind == "free_agents" else rankings_frames).append(df)
 
-    if not frames:
-        return pd.DataFrame(columns=["name", "norm_name"])
+    def _combine(frames: list[pd.DataFrame]) -> pd.DataFrame:
+        if not frames:
+            return empty.copy()
+        combined = pd.concat(frames, ignore_index=True, sort=False)
+        # across files (sorted oldest -> newest above), the newest file's row wins for a given player
+        return combined.drop_duplicates(subset="norm_name", keep="last")
 
-    combined = pd.concat(frames, ignore_index=True, sort=False)
-    # across files (sorted oldest -> newest above), the newest file's row wins for a given player
-    combined = combined.drop_duplicates(subset="norm_name", keep="last")
-    return combined
+    return _combine(rankings_frames), _combine(fa_frames)
+
+
+def _compute_freshness(df: pd.DataFrame) -> tuple[Optional[str], Optional[int], bool]:
+    if df.empty or "source_date" not in df.columns:
+        return None, None, False
+    dates = pd.to_datetime(df["source_date"], errors="coerce").dropna()
+    if dates.empty:
+        return None, None, False
+    freshest = dates.max().date().isoformat()
+    days = (datetime.now().date() - datetime.fromisoformat(freshest).date()).days
+    return freshest, days, days >= STALE_AFTER_DAYS
 
 
 class DataMerger:
-    """Fuzzy-matches Sleeper player records onto locally loaded projection rows."""
+    """Fuzzy-matches Sleeper player records onto locally loaded Draft Sharks data."""
 
     def __init__(self, projections_dir: Path = PROJECTIONS_DIR, match_cutoff: float = 0.82):
         self.projections_dir = Path(projections_dir)
         self.match_cutoff = match_cutoff
-        self.projections = load_all_projections(self.projections_dir)
+        self.projections, self.free_agents = load_all(self.projections_dir)
 
     def reload(self) -> None:
-        self.projections = load_all_projections(self.projections_dir)
+        self.projections, self.free_agents = load_all(self.projections_dir)
 
     @property
     def is_loaded(self) -> bool:
         return not self.projections.empty
 
     @property
+    def is_free_agents_loaded(self) -> bool:
+        return not self.free_agents.empty
+
+    @property
     def freshest_date(self) -> Optional[str]:
-        """Most recent source_date (ISO) across all loaded projection files."""
-        if not self.is_loaded or "source_date" not in self.projections.columns:
-            return None
-        dates = pd.to_datetime(self.projections["source_date"], errors="coerce").dropna()
-        return dates.max().date().isoformat() if not dates.empty else None
+        return _compute_freshness(self.projections)[0]
 
     @property
     def staleness_days(self) -> Optional[int]:
-        freshest = self.freshest_date
-        if not freshest:
-            return None
-        return (datetime.now().date() - datetime.fromisoformat(freshest).date()).days
+        return _compute_freshness(self.projections)[1]
 
     @property
     def is_stale(self) -> bool:
-        days = self.staleness_days
-        return days is not None and days >= STALE_AFTER_DAYS
+        return _compute_freshness(self.projections)[2]
 
-    def _find_match(self, full_name: str, position: Optional[str] = None, team: Optional[str] = None) -> Optional[pd.Series]:
-        """Match a Sleeper player onto a projections row.
+    @property
+    def free_agents_freshest_date(self) -> Optional[str]:
+        return _compute_freshness(self.free_agents)[0]
 
-        Draft Sharks' PDF rankings give first-initial-only names ("J Chase", not
+    @property
+    def free_agents_staleness_days(self) -> Optional[int]:
+        return _compute_freshness(self.free_agents)[1]
+
+    @property
+    def free_agents_is_stale(self) -> bool:
+        return _compute_freshness(self.free_agents)[2]
+
+    def _find_match(self, full_name: str, position: Optional[str] = None,
+                     team: Optional[str] = None, df: Optional[pd.DataFrame] = None) -> Optional[pd.Series]:
+        """Match a Sleeper player onto a row of the given table (default: self.projections).
+
+        Draft Sharks' PDFs give first-initial-only names ("J Chase", not
         "Ja'Marr Chase"), which tanks a naive whole-string fuzzy ratio for anyone
         whose real first name is longer than one letter. So we first try an exact
         (first-initial, last-name) key match — robust to that abbreviation — and
         only fall back to fuzzy whole-string matching for vendors that do export
         full names. Team/position disambiguate when multiple players share a key.
         """
-        if self.projections.empty or not full_name:
+        table = self.projections if df is None else df
+        if table.empty or not full_name:
             return None
         norm_name = normalize_name(full_name)
         tokens = norm_name.split()
@@ -277,7 +409,7 @@ class DataMerger:
             t = row_norm.split()
             return (t[0][0], t[-1]) if t else ("", "")
 
-        key_matches = self.projections[self.projections["norm_name"].map(row_key) == key]
+        key_matches = table[table["norm_name"].map(row_key) == key]
         if not key_matches.empty:
             if len(key_matches) > 1 and team and "team" in key_matches.columns:
                 narrowed = key_matches[key_matches["team"] == team]
@@ -289,32 +421,51 @@ class DataMerger:
                     key_matches = narrowed
             return key_matches.iloc[0]
 
-        choices = self.projections["norm_name"].tolist()
+        choices = table["norm_name"].tolist()
         candidates = difflib.get_close_matches(norm_name, choices, n=3, cutoff=self.match_cutoff)
         if not candidates:
             return None
-        if position and "position" in self.projections.columns:
+        if position and "position" in table.columns:
             for cand in candidates:
-                rows = self.projections[self.projections["norm_name"] == cand]
+                rows = table[table["norm_name"] == cand]
                 pos_match = rows[rows["position"] == position]
                 if not pos_match.empty:
                     return pos_match.iloc[0]
-        return self.projections[self.projections["norm_name"] == candidates[0]].iloc[0]
+        return table[table["norm_name"] == candidates[0]].iloc[0]
 
-    def merge_player(self, player_full_name: str, position: Optional[str] = None, team: Optional[str] = None) -> dict:
-        """Return DS fields (tier/vorp/projection/trade_value/rank/...) for one player, if matched."""
-        match = self._find_match(player_full_name, position=position, team=team)
+    def merge_player(self, player_full_name: str, position: Optional[str] = None,
+                      team: Optional[str] = None, df: Optional[pd.DataFrame] = None) -> dict:
+        """Return matched fields (tier/vorp/projection/trade_value/rank/...) for one player."""
+        match = self._find_match(player_full_name, position=position, team=team, df=df)
         if match is None:
             return {"matched": False}
         row = {"matched": True}
         for field in ("projection", "vorp", "tier", "trade_value", "rank",
-                       "position", "team", "pos_rank", "proj_3yr", "source_file", "source_date"):
+                       "position", "team", "pos_rank", "proj_3yr",
+                       "roster_status", "proj_3d", "ros_3d", "ceiling", "value_3d",
+                       "source_file", "source_date"):
             if field in match.index and pd.notna(match[field]):
                 row[field] = match[field]
         return row
 
+    def list_free_agents(self, exclude_mine: bool = True, position: Optional[str] = None,
+                          top_n: Optional[int] = None) -> list[dict]:
+        """Free Agent Finder rows, sorted by 3D Value+ descending."""
+        df = self.free_agents
+        if df.empty:
+            return []
+        if exclude_mine and "roster_status" in df.columns:
+            df = df[df["roster_status"] != "Mine"]
+        if position and "position" in df.columns:
+            df = df[df["position"] == position]
+        if "value_3d" in df.columns:
+            df = df.sort_values("value_3d", ascending=False, na_position="last")
+        if top_n:
+            df = df.head(top_n)
+        return df.to_dict("records")
+
     def build_roster_table(self, player_ids: list[str], players_db: dict[str, dict]) -> list[dict]:
-        """Build one row per player id, joining Sleeper metadata with DS projections."""
+        """Build one row per player id, joining Sleeper metadata with Draft Sharks data."""
         rows = []
         for pid in player_ids:
             info = players_db.get(pid, {}) or {}
@@ -330,5 +481,16 @@ class DataMerger:
                 "injury_status": info.get("injury_status"),
             }
             row.update(self.merge_player(full_name, position=position, team=team))
+
+            if self.is_free_agents_loaded:
+                fa_info = self.merge_player(full_name, position=position, team=team, df=self.free_agents)
+                if fa_info.get("matched"):
+                    if "ros_3d" in fa_info:
+                        row["fa_ros_proj"] = fa_info["ros_3d"]
+                    if "ceiling" in fa_info:
+                        row["fa_ceiling"] = fa_info["ceiling"]
+                    if "value_3d" in fa_info:
+                        row["fa_value"] = fa_info["value_3d"]
+
             rows.append(row)
         return rows

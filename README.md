@@ -65,19 +65,33 @@ roster dashboard work with zero keys configured.
    discovered league is appended to the end rather than disrupting your
    saved order.
 2. **Sidebar → Draft Sharks / War Room Data**: Draft Sharks doesn't offer a
-   clean CSV export — what you get is its rankings page saved/printed as a
-   PDF. Upload that PDF directly (CSV/JSON from other vendors also work).
-   Player names, teams, and positions are parsed and matched onto your
-   Sleeper roster automatically.
+   clean CSV export — what you get is a tool page saved/printed as a PDF.
+   Two tools are supported and auto-detected from the PDF's own content, so
+   you don't need to rename anything:
+   - **Dynasty Rankings** — a season/multi-year overall ranking (1yr proj,
+     3yr proj, 3D Value), merged onto your Sleeper roster.
+   - **Free Agent Finder** — a rest-of-season, this-league-contextual view
+     (3D Proj, 3D ROS, Ceiling, 3D Value+) that also tags each player Mine
+     (already on your roster), Add/Drop (Draft Sharks' own suggested waiver
+     move), or blank (an ordinary free agent). Supports K/DEF and IDP
+     (LB/DL/DB) leagues, not just standard offensive skill positions.
+   Upload either (or both) directly; CSV/JSON from other vendors also work
+   via the normal column-alias path.
 3. **Main dashboard**: your roster (starters, bench, taxi, IR) with merged
-   rank/VORP/projection/3D-value columns, plus a staleness banner if the
-   loaded projections are getting old (see below).
+   rank/VORP/projection/3D-value columns (plus rest-of-season/ceiling/value
+   from the Free Agent Finder export, when loaded), a staleness banner if
+   the loaded projections are getting old (see below), and a full-width
+   **Free Agents** panel below it — filterable by position, sorted by 3D
+   Value+, with your own roster excluded by default (toggle to include it).
 4. **Debate Studio**: type a question and either click a quick-action button
    or prefix your message:
    - `/debate <question>` — full four-agent panel (default if no prefix)
    - `/claude <question>` — Quant only
    - `/gemini <question>` — Beat Tracker only
    - `/gpt <question>` — Contrarian only
+   When Free Agent Finder data is loaded, the top 15 available free agents
+   (by 3D Value+) are included in the debate context automatically, so
+   waiver/pickup questions have real data to reason from.
 
 ### Data freshness — you don't need to re-sync every session
 
@@ -92,9 +106,10 @@ in between.
 ```
 sleeper_client.py   Sleeper API wrapper: league discovery, rosters, scoring,
                      taxi, traded picks, cached player DB, snapshot caching.
-data_merger.py       Draft Sharks PDF rankings parser + CSV/JSON projection
-                     parser, name/team/position matching onto Sleeper
-                     players, and projection-freshness tracking.
+data_merger.py       Draft Sharks PDF parsers (Dynasty Rankings + Free Agent
+                     Finder, auto-detected) + CSV/JSON projection parser,
+                     name/team/position matching onto Sleeper players, and
+                     projection-freshness tracking.
 league_prefs.py       Per-Sleeper-user league archive/reorder preferences.
 llm_engine.py         Four-persona prompt routing across Claude / Gemini / ChatGPT.
 app.py                 Streamlit dashboard + debate studio.
@@ -131,10 +146,23 @@ data/league_prefs.json      Archived/reordered league ids per user (gitignored).
   whole-string fuzzy matching alone under- and over-matches on that
   abbreviation. If Draft Sharks changes their page layout, this parser may
   need updating — send me a fresh export if matching quality drops.
-- If your league is dynasty superflex PPR, load the Draft Sharks ranking
-  flavor that matches (dynasty PPR superflex), not a generic one — mixing
-  multiple ranking flavors in `data/projections/` will give inconsistent
-  values for the same players.
+- **Draft Sharks Free Agent Finder**: a structurally different export from
+  Dynasty Rankings — different columns (3D Proj / 3D ROS / Ceiling / 3D
+  Value+ instead of 1yr/3yr proj), different "rank" semantics (this-league
+  contextual, not a pure dynasty overall rank), and a `Mine`/`Add`/`Drop`/
+  `Lock` status tag Draft Sharks assigns per player. It's kept as its own
+  table (`DataMerger.free_agents`) rather than merged into the rankings
+  table, so the two don't clobber each other's meaning of "rank" or
+  "value" — both get cross-matched onto your roster independently, and the
+  Free Agents panel/context only ever reads from the free-agent table.
+  IDP (LB/DL/DB) and K/DEF are supported since some leagues score them, but
+  are only lightly tested against one real export — flag it if a position
+  or team code doesn't parse right.
+- If your league is dynasty superflex PPR, load the Draft Sharks Dynasty
+  Rankings flavor that matches (dynasty PPR superflex), not a generic one —
+  mixing multiple rankings flavors in `data/projections/` will give
+  inconsistent values for the same players. (This doesn't apply to the Free
+  Agent Finder export, which is already specific to your one league.)
 - Default models (`claude-3-5-sonnet-20241022`, `gemini-2.0-flash`, `gpt-4o`)
   are set in `.env.example` and overridable via `ANTHROPIC_MODEL` /
   `GEMINI_MODEL` / `OPENAI_MODEL` — point them at newer model releases as
