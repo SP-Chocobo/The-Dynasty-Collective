@@ -1,0 +1,13 @@
+.env
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# Local caches / paid data / chat memory — never commit these
+data/sleeper_snapshots/*.json
+data/projections/*.csv
+data/projections/*.json
+data/chats/*.json
+
+.streamlit/secrets.toml
