@@ -83,6 +83,13 @@ roster dashboard work with zero keys configured.
    the loaded projections are getting old (see below), and a full-width
    **Free Agents** panel below it — filterable by position, sorted by 3D
    Value+, with your own roster excluded by default (toggle to include it).
+   If any roster players didn't auto-match to your loaded Draft Sharks data,
+   an **Unmatched Players** expander shows up under the match-rate line —
+   pick the player, type the exact name Draft Sharks printed for them, and
+   save; that mapping is remembered in `data/player_aliases.json` and
+   overrides automatic matching for that player from then on. Automatic
+   matching mostly works, but an unusual name shape, a mid-season team
+   change, or WR/RB dual eligibility can occasionally slip through it.
 4. **Debate Studio**: type a question and either click a quick-action button
    or prefix your message:
    - `/debate <question>` — full four-agent panel (default if no prefix)
@@ -131,6 +138,7 @@ data/sleeper_snapshots/  Cached league syncs (gitignored).
 data/projections/         Your local paid PDF/CSV/JSON exports (gitignored).
 data/chats/                 Per-league persisted debate history (gitignored).
 data/league_prefs.json      Archived/reordered league ids per user (gitignored).
+data/player_aliases.json    Manual name-matching overrides (gitignored).
 ```
 
 ## Notes

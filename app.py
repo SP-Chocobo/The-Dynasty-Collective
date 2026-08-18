@@ -19,7 +19,7 @@ import pandas as pd
 import streamlit as st
 
 import llm_engine
-from data_merger import PROJECTIONS_DIR, DataMerger
+from data_merger import PROJECTIONS_DIR, DataMerger, save_alias
 from league_prefs import move_league, sorted_leagues, toggle_archive
 from sleeper_client import SleeperClient, compute_points_from_stats, find_roster_for_user, league_format_summary
 
@@ -370,6 +370,28 @@ with col_roster:
         if merger.is_loaded:
             matched = sum(1 for r in roster_table if r.get("matched"))
             st.caption(f"Draft Sharks match rate: {matched}/{len(roster_table)} players")
+
+            unmatched = [r for r in roster_table if not r.get("matched")]
+            if unmatched:
+                with st.expander(f"Unmatched Players ({len(unmatched)}) — fix with a manual alias"):
+                    st.caption(
+                        "These roster players didn't auto-match to your loaded Draft Sharks data. "
+                        "Pick one, type the exact name Draft Sharks printed for them, and save — "
+                        "this overrides automatic matching for that player from now on."
+                    )
+                    unmatched_names = [r["name"] for r in unmatched]
+                    sel_name = st.selectbox("Unmatched player", options=unmatched_names, key="alias_select")
+                    ds_name_input = st.text_input(
+                        "Draft Sharks name (as printed, e.g. 'J Chase')", key="alias_ds_name"
+                    )
+                    if st.button("Save Alias", key="alias_save"):
+                        if ds_name_input.strip():
+                            save_alias(sel_name, ds_name_input.strip())
+                            merger.reload()
+                            st.success(f"Mapped '{sel_name}' → '{ds_name_input.strip()}'.")
+                            st.rerun()
+                        else:
+                            st.error("Enter the name as Draft Sharks printed it first.")
         else:
             st.caption("No Draft Sharks/War Room projections loaded yet — upload a CSV in the sidebar.")
 

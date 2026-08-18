@@ -32,6 +32,7 @@ vendors are still supported via the normal column-alias path.
 from __future__ import annotations
 
 import difflib
+import json
 import re
 from datetime import datetime
 from pathlib import Path
@@ -41,6 +42,7 @@ import pandas as pd
 
 PROJECTIONS_DIR = Path("data/projections")
 STALE_AFTER_DAYS = 7  # how old loaded projections can get before the UI nudges you to refresh
+ALIASES_PATH = Path("data/player_aliases.json")  # manual overrides for names that fail to auto-match
 
 # Header aliases -> canonical column names. Vendor exports are inconsistent
 # about naming, so we normalize whatever shows up in the header row.
@@ -342,6 +344,38 @@ def _compute_freshness(df: pd.DataFrame) -> tuple[Optional[str], Optional[int], 
     return freshest, days, days >= STALE_AFTER_DAYS
 
 
+# -- manual name-matching overrides -------------------------------------------
+#
+# Automatic matching (key + fuzzy) mostly works, but a handful of players will
+# always slip through — an unusual name shape, a mid-season team change that
+# outpaces the loaded file, WR/RB dual eligibility, etc. Rather than requiring
+# a code change, a Sleeper player's full name can be mapped directly to the
+# exact name string Draft Sharks printed for them, bypassing automatic
+# matching for just that player.
+
+def load_aliases() -> dict[str, str]:
+    """{sleeper_full_name: draft_sharks_printed_name} manual overrides."""
+    if ALIASES_PATH.exists():
+        try:
+            return json.loads(ALIASES_PATH.read_text())
+        except (json.JSONDecodeError, OSError):
+            return {}
+    return {}
+
+
+def save_alias(sleeper_full_name: str, draft_sharks_name: str) -> None:
+    aliases = load_aliases()
+    aliases[sleeper_full_name] = draft_sharks_name
+    ALIASES_PATH.parent.mkdir(parents=True, exist_ok=True)
+    ALIASES_PATH.write_text(json.dumps(aliases, indent=2))
+
+
+def remove_alias(sleeper_full_name: str) -> None:
+    aliases = load_aliases()
+    if aliases.pop(sleeper_full_name, None) is not None:
+        ALIASES_PATH.write_text(json.dumps(aliases, indent=2))
+
+
 class DataMerger:
     """Fuzzy-matches Sleeper player records onto locally loaded Draft Sharks data."""
 
@@ -349,9 +383,11 @@ class DataMerger:
         self.projections_dir = Path(projections_dir)
         self.match_cutoff = match_cutoff
         self.projections, self.free_agents = load_all(self.projections_dir)
+        self.aliases = load_aliases()
 
     def reload(self) -> None:
         self.projections, self.free_agents = load_all(self.projections_dir)
+        self.aliases = load_aliases()
 
     @property
     def is_loaded(self) -> bool:
@@ -395,10 +431,27 @@ class DataMerger:
         (first-initial, last-name) key match — robust to that abbreviation — and
         only fall back to fuzzy whole-string matching for vendors that do export
         full names. Team/position disambiguate when multiple players share a key.
+
+        A manual alias (self.aliases, see load_aliases/save_alias) short-circuits
+        all of that with an exact-name lookup, for the handful of players who
+        never match automatically no matter what.
         """
         table = self.projections if df is None else df
         if table.empty or not full_name:
             return None
+
+        alias = self.aliases.get(full_name)
+        if alias:
+            exact = table[table["norm_name"] == normalize_name(alias)]
+            if not exact.empty:
+                if len(exact) > 1 and team and "team" in exact.columns:
+                    narrowed = exact[exact["team"] == team]
+                    if not narrowed.empty:
+                        exact = narrowed
+                return exact.iloc[0]
+            # alias didn't resolve in this particular table (e.g. player isn't in
+            # the free-agent table) — fall through to normal matching below
+
         norm_name = normalize_name(full_name)
         tokens = norm_name.split()
         if not tokens:
