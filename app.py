@@ -60,12 +60,12 @@ st.markdown(
     .badge-notice { background: rgba(245,158,11,0.18); color: #fbbf24; border: 1px solid #f59e0b; }
     .agent-block {
         border-radius: 8px; padding: 10px 14px; margin-bottom: 10px;
-        background: #202124; border: 1px solid #2f3033; font-family: monospace;
+        background: #202124; border: 1px solid #2f3033;
+        font-family: 'JetBrains Mono', 'DejaVu Sans Mono', monospace;
         white-space: pre-wrap;
     }
     .status-ok { color: #4ade80; }
     .status-bad { color: #64748b; }
-    table, .stDataFrame { font-family: 'DejaVu Sans Mono', monospace; }
 
     /* Sidebar defaults to a width that crowds the Manage Leagues row and the
        credentials paste box — widen it out of the box instead of making everyone
@@ -273,6 +273,7 @@ SLOT_STYLES = {
     "TAXI": "background-color: rgba(212,160,23,0.18); color: #facc15;",
     "IR": "background-color: rgba(185,28,28,0.18); color: #f87171;",
 }
+SLOT_SORT_ORDER = {"Starter": 0, "Bench": 1, "TAXI": 2, "IR": 3}
 INJURY_OK_STATUSES = ("Questionable", "Doubtful")
 
 
@@ -633,7 +634,9 @@ with st.sidebar:
     )
     with st.expander(
         "Paste or upload keys + Sleeper username",
-        expanded=not llm_engine.is_claude_configured(api_key_for("anthropic")),
+        expanded=False,  # collapsed by default every visit — the sidebar's own
+        # Status panel already flags missing keys; this shouldn't force itself
+        # open on top of that every single session.
     ):
         creds_text = st.text_area(
             "Paste keys (one per line)",
@@ -1059,6 +1062,10 @@ with col_roster:
             stats = sleeper_projections.get(pid)
             if stats:
                 row["sleeper_proj"] = compute_points_from_stats(stats, scoring_settings)
+
+        # Starters first (who's actually playing), then bench, then taxi/IR (stashed
+        # away) — a stable sort so players within the same slot keep their original order.
+        roster_table.sort(key=lambda r: SLOT_SORT_ORDER.get(r["slot"], 99))
 
         df = pd.DataFrame(roster_table)
         display_cols = [c for c in [

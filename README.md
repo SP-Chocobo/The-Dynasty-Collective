@@ -398,6 +398,16 @@ data/player_aliases.json    Manual name-matching overrides (gitignored).
   code alone never would have. If you ever see a widget that looks
   "wrong" (wrong-colored buttons, a white table), check this file and the
   actual theme first before reaching for more CSS overrides.
+  The same file also carries the rest of the visual identity: `Inter` for
+  body text, `Space Grotesk` for headings, `JetBrains Mono` for the debate
+  transcripts and code, all loaded straight from Google Fonts via
+  Streamlit's native `"name:url"` theme-font syntax — and a distinct,
+  slightly darker `[theme.sidebar]` so the sidebar reads as its own panel
+  instead of a visually-fused continuation of the main page.
+- **Roster table**: sorted Starters → Bench → TAXI → IR (not roster order
+  as Sleeper returns it), and slot/injury status are color-coded with the
+  same emerald/gold/crimson palette as everything else, via a pandas
+  `Styler` passed straight to `st.dataframe`.
 - **Sleeper's own native projections**: alongside Draft Sharks, every league
   sync also pulls Sleeper's own per-stat-category weekly projection for each
   player (pass yards, receptions, rush TDs, etc.) and scores it under your

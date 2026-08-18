@@ -4,6 +4,34 @@ primaryColor = "#16a34a"
 backgroundColor = "#16171a"
 secondaryBackgroundColor = "#202124"
 textColor = "#e5e7eb"
+borderColor = "#33353a"
+baseRadius = "medium"
+buttonRadius = "medium"
+showWidgetBorder = false
+showSidebarBorder = true
+
+# A body/UI face with some warmth (Inter), a heading face with a bit more
+# character for a "command center" feel (Space Grotesk), and a cleaner
+# monospace for the debate transcripts and code than the previous default
+# (JetBrains Mono). Loaded straight from Google Fonts via the "name:url"
+# theme-font syntax Streamlit supports natively.
+font = "Inter:https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap"
+headingFont = "Space Grotesk:https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&display=swap"
+codeFont = "JetBrains Mono:https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&display=swap"
+
+# The roster/free-agent tables were reading as plain, undecorated boxes —
+# give them a real header band and a border that matches the rest of the
+# dark palette instead of Streamlit's default light-theme grid lines.
+dataframeBorderColor = "#33353a"
+dataframeHeaderBackgroundColor = "#26272b"
+
+[theme.sidebar]
+# A touch darker than the main content so the sidebar reads as its own
+# recessed panel rather than an identical, visually fused continuation of
+# the page — the actual fix for "the sidebar's rough on the eyes."
+backgroundColor = "#131417"
+secondaryBackgroundColor = "#1b1c1f"
+borderColor = "#2a2b2e"
 
 [browser]
 gatherUsageStats = false
