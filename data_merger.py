@@ -151,14 +151,6 @@ def _sniff_pdf_kind(path: Path) -> str:
     return "rankings"
 
 
-def detect_upload_kind(path: Path) -> str:
-    """Which pool an uploaded file belongs in: 'rankings' (shared), 'free_agents'
-    (this league only), or 'league_analyzer' (league-specific, unsupported)."""
-    if path.suffix.lower() == ".pdf":
-        return _sniff_pdf_kind(path)
-    return "rankings"  # generic vendor CSV/JSON exports are treated as format-based, like Dynasty Rankings
-
-
 # -- Dynasty Rankings tool -----------------------------------------------------
 
 _RANKINGS_STAT_RE = re.compile(r"^(\d+) ([\d,]+) ([\d,]+) (\d+)$")

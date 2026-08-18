@@ -105,6 +105,15 @@ roster dashboard work with zero keys configured.
    overrides automatic matching for that player from then on. Automatic
    matching mostly works, but an unusual name shape, a mid-season team
    change, or WR/RB dual eligibility can occasionally slip through it.
+   Below that, a full-width **Reference Material** panel holds anything
+   uploaded that *isn't* recognized Draft Sharks data — a screenshot of an
+   injury notification, an article, a tweet — instead of the upload just
+   silently discarding it. Give each one a short caption; the caption text
+   (not the raw file) is what actually reaches the debate panel, labeled
+   explicitly as an unverified claim to weigh, not fact. The same upload box
+   used for Draft Sharks data handles this automatically: anything that
+   doesn't parse as Dynasty Rankings or Free Agent Finder falls through to
+   here rather than erroring out.
 4. **Debate Studio**: type a question and either click a quick-action button
    or prefix your message:
    - `/debate <question>` — full four-agent panel (default if no prefix)
@@ -177,6 +186,8 @@ data_merger.py       Draft Sharks PDF parsers (Dynasty Rankings + Free Agent
                      name/team/position matching onto Sleeper players, and
                      projection-freshness tracking.
 league_prefs.py       Per-Sleeper-user league archive/reorder preferences.
+attachments.py         Reference material (screenshots/articles) that isn't
+                        structured Draft Sharks data — storage + captions.
 llm_engine.py         Four-persona prompt routing across Claude / Gemini / ChatGPT.
 app.py                 Streamlit dashboard + debate studio.
 data/sleeper_snapshots/  Cached league syncs (gitignored).
@@ -184,6 +195,7 @@ data/projections/_global/   Dynasty Rankings / format-based exports, shared by
                              every league (gitignored).
 data/projections/<league_id>/  Free Agent Finder exports, one folder per league,
                                 never shared (gitignored).
+data/attachments/           Reference material + captions.json (gitignored).
 data/chats/                 Per-league persisted debate history (gitignored).
 data/league_prefs.json      Archived/reordered league ids per user (gitignored).
 data/player_aliases.json    Manual name-matching overrides (gitignored).

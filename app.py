@@ -19,7 +19,8 @@ import pandas as pd
 import streamlit as st
 
 import llm_engine
-from data_merger import GLOBAL_PROJECTIONS_DIR, PROJECTIONS_DIR, DataMerger, detect_upload_kind, save_alias
+from attachments import ATTACHMENTS_DIR, list_attachments, save_attachment, set_caption, delete_attachment
+from data_merger import GLOBAL_PROJECTIONS_DIR, PROJECTIONS_DIR, DataMerger, load_projection_file, save_alias
 from league_prefs import move_league, sorted_leagues, toggle_archive
 from sleeper_client import SleeperClient, compute_points_from_stats, find_roster_for_user, league_format_summary
 
@@ -27,6 +28,7 @@ CHATS_DIR = Path("data/chats")
 CHATS_DIR.mkdir(parents=True, exist_ok=True)
 PROJECTIONS_DIR.mkdir(parents=True, exist_ok=True)
 GLOBAL_PROJECTIONS_DIR.mkdir(parents=True, exist_ok=True)
+ATTACHMENTS_DIR.mkdir(parents=True, exist_ok=True)
 
 st.set_page_config(page_title="Fantasy Football Command Center", layout="wide", page_icon="🏈")
 
@@ -245,6 +247,16 @@ def build_context(snapshot: dict, roster_table: list[dict]) -> str:
                     f"{fa.get('roster_status') or '-'} | {fa.get('proj_3d', '-')} | {fa.get('ros_3d', '-')} | "
                     f"{fa.get('ceiling', '-')} | {fa.get('value_3d', '-')}"
                 )
+
+    captioned = [a for a in list_attachments() if a["caption"].strip()]
+    if captioned:
+        lines.append(
+            "\nREFERENCE MATERIAL the user uploaded (screenshots/articles, captioned by hand — you're only "
+            "given the caption text, not the actual file, so treat it as a claim to weigh, not verified fact):"
+        )
+        for a in captioned[:20]:
+            lines.append(f"  - {a['caption']}")
+
     return "\n".join(lines)
 
 
@@ -326,33 +338,49 @@ with st.sidebar:
         "is auto-detected from its content, not the filename or which league is selected: **Dynasty "
         "Rankings** is format-based (PPR/standard, superflex/1QB, TE premium), not tied to any roster, so "
         "it goes into a shared pool used by every league of that format. **Free Agent Finder** is tied to "
-        "one league's actual roster and only ever applies to the league currently selected above."
+        "one league's actual roster and only ever applies to the league currently selected above. Anything "
+        "that isn't recognized as one of those — a screenshot, an article, an unsupported export — is kept "
+        "as reference material instead (see below) rather than being discarded."
     )
-    uploaded = st.file_uploader("Upload projections PDF/CSV/JSON", type=["pdf", "csv", "json"])
+    uploaded = st.file_uploader(
+        "Upload Draft Sharks PDF/CSV/JSON, or any other file as reference material",
+        type=["pdf", "csv", "json", "png", "jpg", "jpeg", "webp", "gif", "txt"],
+    )
     if uploaded is not None:
-        staging_dir = PROJECTIONS_DIR / "_staging"
-        staging_dir.mkdir(parents=True, exist_ok=True)
-        staging_path = staging_dir / uploaded.name
-        staging_path.write_bytes(uploaded.getbuffer())
-        kind = detect_upload_kind(staging_path)
+        data = bytes(uploaded.getbuffer())
+        suffix = Path(uploaded.name).suffix.lower()
+        recognized = False
 
-        if kind == "league_analyzer":
-            staging_path.unlink(missing_ok=True)
-            st.error(f"{uploaded.name} looks like a Draft Sharks League Analyzer export — that tool isn't parsed yet, so this file wasn't saved.")
-        elif kind == "free_agents" and not st.session_state.selected_league_id:
-            staging_path.unlink(missing_ok=True)
-            st.error("This looks like a Free Agent Finder export, which is tied to one league's roster — select a league above first.")
-        else:
-            if kind == "free_agents":
-                dest_dir = league_projections_dir(st.session_state.selected_league_id)
-                location_label = "this league only (roster-specific)"
+        if suffix in (".pdf", ".csv", ".json"):
+            staging_dir = PROJECTIONS_DIR / "_staging"
+            staging_dir.mkdir(parents=True, exist_ok=True)
+            staging_path = staging_dir / uploaded.name
+            staging_path.write_bytes(data)
+            try:
+                _, kind = load_projection_file(staging_path)
+            except Exception:
+                staging_path.unlink(missing_ok=True)  # not parseable — falls through to reference material below
             else:
-                dest_dir = GLOBAL_PROJECTIONS_DIR
-                location_label = "the shared pool (applies to any league using this format)"
-            dest_dir.mkdir(parents=True, exist_ok=True)
-            staging_path.replace(dest_dir / uploaded.name)
-            st.session_state.data_merger.reload()
-            st.success(f"Saved {uploaded.name} to {location_label}.")
+                if kind == "free_agents" and not st.session_state.selected_league_id:
+                    staging_path.unlink(missing_ok=True)
+                    st.error("This looks like a Free Agent Finder export, tied to one league's roster — select a league above first, then re-upload.")
+                    recognized = True  # handled (as a rejection), don't also file it as an attachment
+                else:
+                    if kind == "free_agents":
+                        dest_dir = league_projections_dir(st.session_state.selected_league_id)
+                        location_label = "this league only (roster-specific)"
+                    else:
+                        dest_dir = GLOBAL_PROJECTIONS_DIR
+                        location_label = "the shared pool (applies to any league using this format)"
+                    dest_dir.mkdir(parents=True, exist_ok=True)
+                    staging_path.replace(dest_dir / uploaded.name)
+                    st.session_state.data_merger.reload()
+                    st.success(f"Recognized as Draft Sharks data — saved to {location_label}.")
+                    recognized = True
+
+        if not recognized:
+            save_attachment(uploaded.name, data)
+            st.info(f"Didn't match a known Draft Sharks format — saved '{uploaded.name}' as reference material below for the panel to consider when you ask about it.")
 
     global_files = sorted(p.name for p in GLOBAL_PROJECTIONS_DIR.glob("*") if p.suffix in (".csv", ".json", ".pdf"))
     if global_files:
@@ -631,3 +659,34 @@ else:
         fcol2.dataframe(fa_df[fa_display_cols], use_container_width=True, hide_index=True)
     else:
         fcol2.caption("No free agents match that filter.")
+
+# ------------------------------------------------------------------ reference material --
+
+st.markdown("---")
+st.subheader("Reference Material")
+st.caption(
+    "Screenshots, articles, injury notifications — anything worth having on hand for a debate that isn't "
+    "structured Draft Sharks data. Give each one a short caption; captions (not the raw file) are what the "
+    "panel actually sees when you ask about it."
+)
+
+attachments = list_attachments()
+if not attachments:
+    st.caption("Nothing uploaded yet — drop a file above that isn't recognized as Draft Sharks data.")
+else:
+    for item in attachments:
+        acol1, acol2, acol3 = st.columns([1, 3, 1])
+        if item["is_image"]:
+            acol1.image(str(item["path"]), use_container_width=True)
+        else:
+            acol1.markdown(f"📄 **{item['filename']}**")
+        new_caption = acol2.text_input(
+            "Caption", value=item["caption"], key=f"caption_{item['filename']}", label_visibility="collapsed",
+            placeholder="What is this? (e.g. 'ESPN: Chase questionable for Sunday')",
+        )
+        if new_caption != item["caption"] and acol2.button("Save Caption", key=f"save_caption_{item['filename']}"):
+            set_caption(item["filename"], new_caption)
+            st.rerun()
+        if acol3.button("Delete", key=f"delete_{item['filename']}"):
+            delete_attachment(item["filename"])
+            st.rerun()
