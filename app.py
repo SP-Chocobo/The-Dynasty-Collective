@@ -346,6 +346,7 @@ def activate_league(league_id: str) -> None:
     """
     st.session_state.selected_league_id = league_id
     st.session_state.chat_history = load_chat_history(league_id)
+    st.session_state.chat_scoped_attachments = []
     st.session_state.league_snapshot = st.session_state.sleeper_client.load_latest_snapshot(league_id)
     # Free Agent Finder is tied to one league's actual roster and must never leak between
     # leagues, so it only ever loads from this league's own subdirectory. Dynasty Rankings is
@@ -1902,6 +1903,34 @@ with st.container(key="debate_dock"):
             quick_gemini = st.button("Ask Gemini", use_container_width=True)
             quick_gpt = st.button("Ask ChatGPT", use_container_width=True)
         with input_col:
+            st.session_state.setdefault("chat_scoped_attachments", [])
+            with st.popover("➕ Attach to this chat"):
+                st.caption(
+                    "Ephemeral — only used to answer questions in this chat session, not saved to "
+                    "the Reference Material library below."
+                )
+                chat_file = st.file_uploader(
+                    "Add a file", type=["txt", "csv", "pdf"], key="chat_attach_uploader",
+                    label_visibility="collapsed",
+                )
+                if chat_file is not None and not any(
+                    a["name"] == chat_file.name for a in st.session_state.chat_scoped_attachments
+                ):
+                    if chat_file.name.lower().endswith(".pdf"):
+                        import pypdf
+
+                        reader = pypdf.PdfReader(chat_file)
+                        text = "\n".join(page.extract_text() or "" for page in reader.pages)
+                    else:
+                        text = chat_file.read().decode("utf-8", errors="ignore")
+                    if text.strip():
+                        st.session_state.chat_scoped_attachments.append({"name": chat_file.name, "text": text})
+                        st.rerun()
+                for i, att in enumerate(list(st.session_state.chat_scoped_attachments)):
+                    if st.button(f"✕ {att['name']}", key=f"remove_chat_attach_{i}", use_container_width=True):
+                        st.session_state.chat_scoped_attachments.pop(i)
+                        st.rerun()
+
             # A text_area sized to roughly match the 4-button stack's height, not a
             # single-line text_input — the mismatched heights looked off. Trade-off:
             # text_area submits on Ctrl+Enter or losing focus, not a plain Enter.
@@ -1935,6 +1964,10 @@ with st.container(key="debate_dock"):
         if trigger_mode and trigger_question:
             st.session_state["_last_submitted"] = question
             context = build_context(snapshot, roster_table if roster else [], player_universe, trigger_question)
+            if st.session_state.get("chat_scoped_attachments"):
+                context += "\n\nATTACHED TO THIS CHAT (this session only, not part of the permanent Reference Material library):\n" + "\n\n".join(
+                    f"--- {a['name']} ---\n{a['text'][:4000]}" for a in st.session_state.chat_scoped_attachments
+                )
             append_message("user", trigger_question)
             maybe_nudge_stale_free_agents(st.session_state.selected_league_id, st.session_state.data_merger)
 
