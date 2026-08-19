@@ -7,7 +7,7 @@ Sleeper player records by name. Nothing here ever calls out to a paid
 vendor's API — the files stay local, satisfying each vendor's terms of
 service.
 
-Draft Sharks' tools split cleanly into two categories, and DataMerger
+Draft Sharks' tools split cleanly into three categories, and DataMerger
 stores them accordingly:
 
   * The "Dynasty Rankings" tool -> parse_draftsharks_pdf(): a format-based
@@ -16,6 +16,16 @@ stores them accordingly:
     league's roster. The *same* export is correct for every league sharing
     that format, so it lives in a shared pool (GLOBAL_PROJECTIONS_DIR,
     data/projections/_global/) rather than being re-uploaded per league.
+  * The "Trade Value Chart" tool -> parse_draftsharks_trade_value_chart_pdf():
+    also format-based (same sharing rule as Dynasty Rankings) but a
+    different shape — it prices players, this year's rookie pick slots
+    (1.01-4.12), and generic future picks ("2027 Random Rd 1") all on one
+    comparable 0-100 scale, stored separately as DataMerger.trade_values
+    rather than merged into .projections. A rookie pick slot's own value
+    already reflects that year's class strength -- there's no separate
+    "how good is this rookie class" tool to parse. This is PRICE ONLY: pick
+    *ownership* is Sleeper's traded-picks data to say, never Draft Sharks',
+    whose pick imports can be unreliable.
   * The "Free Agent Finder" tool -> parse_draftsharks_free_agents_pdf(): a
     rest-of-season, this-league-contextual view (3D Proj, 3D ROS, Ceiling,
     3D Value+) that also tags each row Mine/Add/Drop/Lock, i.e. whether
@@ -23,24 +33,28 @@ stores them accordingly:
     league. This can never be shared — DataMerger only ever loads it from
     one league's own folder (data/projections/<league_id>/).
 
-Both kinds are auto-detected from a PDF's own text, not its filename or
+All three are auto-detected from a PDF's own text, not its filename or
 where it was dropped, so app.py can route an upload to the right pool
 automatically. (Draft Sharks' League Analyzer — team-vs-team power
 rankings, standings — is also league-specific but has no parser here yet;
 it's detected and rejected with a clear message rather than silently
-mis-parsed by the rankings parser.)
+mis-parsed by another tool's parser.)
 
 For matching purposes DataMerger.projections is the *merged* view: the
 shared/global rankings pool plus the current league's own rankings files,
 if any (a league-specific ranking file, should the user ever add one,
-takes priority over the global pool for the same player). free_agents
-comes only from the current league's own folder.
+takes priority over the global pool for the same player). trade_values
+merges the same way; free_agents comes only from the current league's own
+folder.
 
-Both PDFs share a two-column page layout (a numbers column, then a names
-column) which scrambles naive text-extraction order — both parsers
-reconstruct rows on a *per-page* basis rather than assuming the whole
-document reads top-to-bottom in one pass. CSV/JSON exports from other
-vendors are still supported via the normal column-alias path.
+The Dynasty Rankings and Free Agent Finder PDFs share a two-column page
+layout (a numbers column, then a names column) which scrambles naive
+text-extraction order — both parsers reconstruct rows on a *per-page*
+basis rather than assuming the whole document reads top-to-bottom in one
+pass. The Trade Value Chart PDF has no such scrambling (one record per
+line), so its parser is a straight line-by-line regex match instead. CSV/
+JSON exports from other vendors are still supported via the normal
+column-alias path.
 """
 
 from __future__ import annotations
@@ -48,6 +62,7 @@ from __future__ import annotations
 import difflib
 import json
 import re
+import unicodedata
 from datetime import datetime
 from pathlib import Path
 from typing import Optional
@@ -78,9 +93,17 @@ NON_ALNUM = re.compile(r"[^a-z0-9 ]+")
 
 
 def normalize_name(name: str) -> str:
-    """Lowercase, strip suffixes/punctuation so 'A.J. Brown Jr.' == 'aj brown'."""
+    """Lowercase, strip suffixes/punctuation so 'A.J. Brown Jr.' == 'aj brown'.
+
+    NFKD first so PDF-extracted ligatures and accents match cleanly -- "Mayﬁeld" (a
+    single ligature glyph, common in Draft Sharks' PDF exports) decomposes to "fi"
+    instead of silently vanishing under NON_ALNUM and producing "mayeld", which would
+    never match Sleeper's "mayfield". Accented names (e.g. "Ju'Wuan James") get the
+    same benefit for free.
+    """
     if not name:
         return ""
+    name = unicodedata.normalize("NFKD", name)
     name = name.lower()
     name = SUFFIXES.sub("", name)
     name = NON_ALNUM.sub("", name)
@@ -130,11 +153,12 @@ def _extract_reviewed_date(full_text: str) -> Optional[str]:
 def _sniff_pdf_kind(path: Path) -> str:
     """Which Draft Sharks tool a PDF came from, sniffed from its own text (not the filename).
 
-    'rankings' -> format-based, shareable across leagues. 'free_agents' ->
-    this-league-roster-specific. 'league_analyzer' -> also league-specific
-    (team-vs-team power rankings/standings) but has no parser yet, so
-    callers should reject it with a clear message rather than silently
-    feeding it to the rankings parser, which would misread its text.
+    'rankings' -> format-based, shareable across leagues. 'trade_value_chart' -> also
+    format-based (a standalone price list, not tied to any league's roster). 'free_agents'
+    -> this-league-roster-specific. 'league_analyzer' -> also league-specific (team-vs-team
+    power rankings/standings) but has no parser yet, so callers should reject it with a
+    clear message rather than silently feeding it to the rankings parser, which would
+    misread its text.
     """
     import pypdf
 
@@ -144,6 +168,8 @@ def _sniff_pdf_kind(path: Path) -> str:
     except Exception:
         return "rankings"
     upper = text.upper()
+    if "TRADE VALUE CHART" in upper:
+        return "trade_value_chart"
     if "FREE AGENT FINDER" in upper or "3D ROS" in upper:
         return "free_agents"
     if "LEAGUE ANALYZER" in upper or "LEAGUE POWER RANKINGS" in upper:
@@ -292,8 +318,90 @@ def parse_draftsharks_free_agents_pdf(path: Path) -> tuple[pd.DataFrame, Optiona
     return df, None
 
 
+# -- Trade Value Chart tool -----------------------------------------------------
+#
+# Unlike Dynasty Rankings/Free Agent Finder, this one prices three different asset
+# kinds on a single comparable scale: named players, exact rookie pick slots for the
+# upcoming rookie draft (1.01-4.12), and generic future picks by round+year ("2027
+# Random Rd 1"). The future-pick labels are the same strings Draft Sharks' League
+# Analyzer roster export uses for picks a team owns -- but ownership is Sleeper's to
+# say, not Draft Sharks' (its pick imports can be wonky); this parser only extracts
+# VALUES, keyed by label, never any claim about who owns a pick. A rookie pick slot's
+# own value already IS this draft class's strength signal -- Draft Sharks prices a
+# strong class's 1.01 higher than a weak class's, same 0-100 scale as a named player
+# -- so there's no separate "class grade" table to look for.
+_TVC_PLAYER_RE = re.compile(r"^(.+?) (\d+)\s*Trend\xa0»\s*$")
+_TVC_ROOKIE_SLOT_RE = re.compile(r"^(\d\.\d{2}) (\d+)$")
+_TVC_FUTURE_PICK_RE = re.compile(r"^(\d{4} Random Rd \d) (\d+)$")
+_TVC_POSITION_HEADERS = {"QUARTERBACK": "QB", "RUNNING BACK": "RB", "WIDE RECEIVER": "WR", "TIGHT END": "TE"}
+# The page's own H1 states which of Draft Sharks' several format toggles (Dynasty/
+# Redraft x PPR/Half-PPR/Non-PPR x TEP) was active for this particular export --
+# e.g. "DYNASTY PPR TRADE VALUE CHART 2026". It does NOT state 1QB vs Superflex,
+# which materially changes QB (and therefore pick) value -- that has to stay an
+# unverified caveat rather than something this parser can check.
+_TVC_TITLE_RE = re.compile(r"^(DYNASTY|REDRAFT)\s+(.+?)\s+TRADE VALUE CHART", re.IGNORECASE)
+
+
+def parse_draftsharks_trade_value_chart_pdf(path: Path) -> tuple[pd.DataFrame, Optional[str]]:
+    """Parse Draft Sharks' standalone Dynasty Trade Value Chart.
+
+    Format-based like Dynasty Rankings (not tied to any league's roster), and unlike
+    the other two PDF tools its rows are already one-per-line -- no interleaved-column
+    reconstruction needed. Returns one row per asset with an `asset_type` column
+    ('player', 'rookie_pick_slot', or 'future_pick') so callers can filter to just the
+    picks, just the players, or both. Every row also carries `source_league_type`/
+    `source_scoring` (e.g. "Dynasty"/"PPR") read off the page's own title, so a caller
+    can flag a mismatch against the league actually being asked about instead of
+    silently treating these numbers as universally correct.
+    """
+    import pypdf
+
+    reader = pypdf.PdfReader(str(path))
+    records: list[dict] = []
+    current_position: Optional[str] = None
+    source_league_type: Optional[str] = None
+    source_scoring: Optional[str] = None
+
+    for page in reader.pages:
+        for raw_line in (page.extract_text() or "").split("\n"):
+            line = raw_line.strip()
+            if source_league_type is None:
+                title_match = _TVC_TITLE_RE.match(line)
+                if title_match:
+                    source_league_type = title_match.group(1).title()
+                    source_scoring = title_match.group(2).strip()
+            if line in _TVC_POSITION_HEADERS:
+                current_position = _TVC_POSITION_HEADERS[line]
+                continue
+            player_match = _TVC_PLAYER_RE.match(line)
+            if player_match and current_position:
+                name, value = player_match.groups()
+                records.append({
+                    "asset_type": "player", "name": name.strip(),
+                    "position": current_position, "value": int(value),
+                })
+                continue
+            slot_match = _TVC_ROOKIE_SLOT_RE.match(line)
+            if slot_match:
+                slot, value = slot_match.groups()
+                records.append({"asset_type": "rookie_pick_slot", "name": slot, "value": int(value)})
+                continue
+            future_match = _TVC_FUTURE_PICK_RE.match(line)
+            if future_match:
+                label, value = future_match.groups()
+                records.append({"asset_type": "future_pick", "name": label, "value": int(value)})
+
+    df = pd.DataFrame(records)
+    if df.empty:
+        return df, None
+    df["norm_name"] = df["name"].astype(str).map(normalize_name)
+    df["source_league_type"] = source_league_type
+    df["source_scoring"] = source_scoring
+    return df, None
+
+
 def load_projection_file(path: Path) -> tuple[pd.DataFrame, str]:
-    """Returns (dataframe, kind) where kind is 'rankings' or 'free_agents'."""
+    """Returns (dataframe, kind) where kind is 'rankings', 'free_agents', or 'trade_value_chart'."""
     suffix = path.suffix.lower()
     kind = "rankings"
     if suffix == ".csv":
@@ -308,7 +416,12 @@ def load_projection_file(path: Path) -> tuple[pd.DataFrame, str]:
         kind = _sniff_pdf_kind(path)
         if kind == "league_analyzer":
             raise ValueError(f"{path.name} looks like a Draft Sharks League Analyzer export — not supported yet")
-        parser = parse_draftsharks_free_agents_pdf if kind == "free_agents" else parse_draftsharks_pdf
+        if kind == "trade_value_chart":
+            parser = parse_draftsharks_trade_value_chart_pdf
+        elif kind == "free_agents":
+            parser = parse_draftsharks_free_agents_pdf
+        else:
+            parser = parse_draftsharks_pdf
         df, source_date = parser(path)
         if df.empty:
             raise ValueError(f"No table found in {path.name}")
@@ -320,18 +433,18 @@ def load_projection_file(path: Path) -> tuple[pd.DataFrame, str]:
     return df, kind
 
 
-def load_all(projections_dir: Path = PROJECTIONS_DIR) -> tuple[pd.DataFrame, pd.DataFrame]:
-    """Parse every CSV/JSON/PDF once, bucketed into (rankings_df, free_agents_df)."""
+def load_all(projections_dir: Path = PROJECTIONS_DIR) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
+    """Parse every CSV/JSON/PDF once, bucketed into (rankings_df, free_agents_df, trade_values_df)."""
     projections_dir = Path(projections_dir)
     empty = pd.DataFrame(columns=["name", "norm_name"])
     if not projections_dir.exists():
-        return empty, empty.copy()
+        return empty, empty.copy(), empty.copy()
 
     files = sorted(
         [p for p in projections_dir.iterdir() if p.suffix.lower() in (".csv", ".json", ".pdf")],
         key=lambda p: p.stat().st_mtime,
     )
-    rankings_frames, fa_frames = [], []
+    rankings_frames, fa_frames, tvc_frames = [], [], []
     for f in files:
         try:
             df, kind = load_projection_file(f)
@@ -347,7 +460,16 @@ def load_all(projections_dir: Path = PROJECTIONS_DIR) -> tuple[pd.DataFrame, pd.
             df = df.sort_values("rank", na_position="last").drop_duplicates(subset="norm_name", keep="first")
         else:
             df = df.drop_duplicates(subset="norm_name", keep="first")
-        (fa_frames if kind == "free_agents" else rankings_frames).append(df)
+        # trade_value_chart rows (asset_type/value, no rank/team/position-rank) have a
+        # different shape than rankings rows -- a separate bucket, not folded into
+        # rankings, so DataMerger.projections never mixes player rankings with rookie
+        # pick slot/future pick rows that would never sensibly match a roster player.
+        if kind == "free_agents":
+            fa_frames.append(df)
+        elif kind == "trade_value_chart":
+            tvc_frames.append(df)
+        else:
+            rankings_frames.append(df)
 
     def _combine(frames: list[pd.DataFrame]) -> pd.DataFrame:
         if not frames:
@@ -356,7 +478,7 @@ def load_all(projections_dir: Path = PROJECTIONS_DIR) -> tuple[pd.DataFrame, pd.
         # across files (sorted oldest -> newest above), the newest file's row wins for a given player
         return combined.drop_duplicates(subset="norm_name", keep="last")
 
-    return _combine(rankings_frames), _combine(fa_frames)
+    return _combine(rankings_frames), _combine(fa_frames), _combine(tvc_frames)
 
 
 def _merge_rankings(*frames: pd.DataFrame) -> pd.DataFrame:
@@ -419,11 +541,11 @@ def remove_alias(sleeper_full_name: str) -> None:
 class DataMerger:
     """Fuzzy-matches Sleeper player records onto locally loaded Draft Sharks data.
 
-    Loads from two pools: a shared global pool (format-based Dynasty
-    Rankings, same data correct for any league sharing that format) and, if
-    league_dir is given, that one league's own folder (Free Agent Finder,
-    always league-specific; a league-specific rankings override, if ever
-    added, takes priority over the global pool for the same player).
+    Loads from two pools: a shared global pool (format-based Dynasty Rankings and
+    the Trade Value Chart -- same data correct for any league sharing that format)
+    and, if league_dir is given, that one league's own folder (Free Agent Finder,
+    always league-specific; a league-specific rankings/trade-value override, if
+    ever added, takes priority over the global pool for the same player/asset).
     """
 
     def __init__(self, league_dir: Optional[Path] = None, global_dir: Path = GLOBAL_PROJECTIONS_DIR,
@@ -435,13 +557,14 @@ class DataMerger:
 
     def _load(self) -> None:
         empty = pd.DataFrame(columns=["name", "norm_name"])
-        global_rankings, _ = load_all(self.global_dir)
+        global_rankings, _, global_tvc = load_all(self.global_dir)
         if self.league_dir:
-            league_rankings, league_fa = load_all(self.league_dir)
+            league_rankings, league_fa, league_tvc = load_all(self.league_dir)
         else:
-            league_rankings, league_fa = empty.copy(), empty.copy()
+            league_rankings, league_fa, league_tvc = empty.copy(), empty.copy(), empty.copy()
         self.projections = _merge_rankings(global_rankings, league_rankings)
         self.free_agents = league_fa
+        self.trade_values = _merge_rankings(global_tvc, league_tvc)
         self.aliases = load_aliases()
 
     def reload(self) -> None:
@@ -454,6 +577,10 @@ class DataMerger:
     @property
     def is_free_agents_loaded(self) -> bool:
         return not self.free_agents.empty
+
+    @property
+    def is_trade_values_loaded(self) -> bool:
+        return not self.trade_values.empty
 
     @property
     def freshest_date(self) -> Optional[str]:
@@ -478,6 +605,27 @@ class DataMerger:
     @property
     def free_agents_is_stale(self) -> bool:
         return _compute_freshness(self.free_agents)[2]
+
+    @property
+    def trade_values_freshest_date(self) -> Optional[str]:
+        return _compute_freshness(self.trade_values)[0]
+
+    @property
+    def trade_values_staleness_days(self) -> Optional[int]:
+        return _compute_freshness(self.trade_values)[1]
+
+    @property
+    def trade_values_is_stale(self) -> bool:
+        return _compute_freshness(self.trade_values)[2]
+
+    def pick_value(self, label: str) -> Optional[int]:
+        """Look up a rookie/future pick's Trade Value Chart price by its exact label
+        (e.g. "1.03", "2027 Random Rd 1") -- price only, never ownership. Which team
+        actually holds a pick is Sleeper's traded-picks data to say, not Draft Sharks'."""
+        if self.trade_values.empty:
+            return None
+        match = self.trade_values[self.trade_values["norm_name"] == normalize_name(label)]
+        return int(match.iloc[0]["value"]) if not match.empty else None
 
     def _find_match(self, full_name: str, position: Optional[str] = None,
                      team: Optional[str] = None, df: Optional[pd.DataFrame] = None) -> Optional[pd.Series]:

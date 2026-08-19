@@ -803,6 +803,8 @@ def build_freshness_manifest(snapshot: dict, merger: DataMerger) -> list[tuple[s
         entries.append(("Draft Sharks Dynasty Rankings", merger.freshest_date, merger.staleness_days))
     if merger.is_free_agents_loaded:
         entries.append(("Draft Sharks Free Agent Finder", merger.free_agents_freshest_date, merger.free_agents_staleness_days))
+    if merger.is_trade_values_loaded:
+        entries.append(("Draft Sharks Trade Value Chart", merger.trade_values_freshest_date, merger.trade_values_staleness_days))
     synced_at = snapshot.get("synced_at")
     if synced_at:
         sync_dt = datetime.fromtimestamp(synced_at)
@@ -928,6 +930,10 @@ def build_context(snapshot: dict, roster_table: list[dict], player_universe: lis
     )
     lines.append(f"  - Draft Sharks Dynasty Rankings: {'loaded' if merger.is_loaded else 'NOT LOADED'}")
     lines.append(f"  - Draft Sharks Free Agent Finder: {'loaded' if merger.is_free_agents_loaded else 'NOT LOADED'}")
+    lines.append(
+        f"  - Draft Sharks Trade Value Chart (rookie pick slot values, future pick values, player values): "
+        f"{'loaded' if merger.is_trade_values_loaded else 'NOT LOADED — if a question needs a specific pick or player price, say so and suggest uploading it (Tools > Trade Value Chart on draftsharks.com)'}"
+    )
     lines.append(f"  - Sleeper native weekly projections: {'loaded' if snapshot.get('projections') else 'NOT AVAILABLE this sync'}")
 
     freshness = build_freshness_manifest(snapshot, merger)
@@ -1037,6 +1043,62 @@ def build_context(snapshot: dict, roster_table: list[dict], player_universe: lis
                     f"  {fa.get('name', '-')} | {fa.get('position', '-')} | {fa.get('team', '-')} | "
                     f"{fa.get('roster_status') or '-'} | {fa.get('proj_3d', '-')} | {fa.get('ros_3d', '-')} | "
                     f"{fa.get('ceiling', '-')} | {fa.get('value_3d', '-')}"
+                )
+
+    if merger.is_trade_values_loaded:
+        tv = merger.trade_values
+        rookie_slots = tv[tv["asset_type"] == "rookie_pick_slot"]
+        future_picks = tv[tv["asset_type"] == "future_pick"]
+        if not rookie_slots.empty or not future_picks.empty:
+            lines.append(
+                "\nPICK VALUES per Draft Sharks' Trade Value Chart — same 0-100 scale as player trade "
+                "value above, so a pick and a player are directly comparable. A rookie pick slot's own "
+                "value already reflects how strong this year's incoming rookie class is judged to be "
+                "(no separate class-grade source exists or is needed). This is PRICE ONLY — which team "
+                "actually owns a given future pick comes from Sleeper's own traded-picks data elsewhere "
+                "in this context, never from Draft Sharks, whose pick-ownership imports can be unreliable."
+            )
+            # The chart's own title states which format toggle was active when it was exported
+            # (e.g. "Dynasty PPR") -- flag it plainly when that doesn't match this league rather
+            # than let a Non-PPR chart's numbers pass as this league's Full-PPR values. It never
+            # states 1QB vs Superflex at all, so that gap always gets called out, unconditionally.
+            source_league_type = tv["source_league_type"].iloc[0] if "source_league_type" in tv.columns else None
+            source_scoring = tv["source_scoring"].iloc[0] if "source_scoring" in tv.columns else None
+            mismatches = []
+            if source_league_type and source_league_type != fmt["type"]:
+                mismatches.append(f"exported for {source_league_type}, this league is {fmt['type']}")
+            if source_scoring:
+                def _canon_scoring(s: str) -> str:
+                    s = s.lower()
+                    if "half" in s:
+                        return "half_ppr"
+                    if "non-ppr" in s or "non ppr" in s or "standard" in s:
+                        return "standard"
+                    if "ppr" in s:
+                        return "full_ppr"
+                    return s.strip()
+                if _canon_scoring(source_scoring) != _canon_scoring(fmt["scoring"]):
+                    mismatches.append(f"exported for {source_scoring} scoring, this league is {fmt['scoring']}")
+            caveat = (
+                f" MISMATCH — {'; '.join(mismatches)}: don't treat these as exact, but they're still useful "
+                "as relative/directional value (who's worth more than whom) even off-format." if mismatches
+                else ""
+            )
+            lines.append(
+                f"  Format: {source_league_type or 'unknown'} {source_scoring or ''}. The file never states "
+                f"1QB vs Superflex (this league is {'Superflex' if fmt['superflex'] else '1QB'}), which "
+                "materially moves QB and pick value, so weigh that unverified gap regardless."
+                + caveat
+            )
+            if not rookie_slots.empty:
+                lines.append(
+                    "  This year's rookie draft slots: "
+                    + ", ".join(f"{r['name']}={r['value']}" for r in rookie_slots.to_dict("records"))
+                )
+            if not future_picks.empty:
+                lines.append(
+                    "  Future picks (generic, by round/year): "
+                    + ", ".join(f"{r['name']}={r['value']}" for r in future_picks.to_dict("records"))
                 )
 
     captioned = [a for a in list_attachments(league_id=st.session_state.selected_league_id) if a["caption"].strip()]
