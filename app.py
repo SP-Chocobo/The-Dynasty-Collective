@@ -26,6 +26,7 @@ from attachments import ATTACHMENTS_DIR, list_attachments, save_attachment, set_
 from data_merger import GLOBAL_PROJECTIONS_DIR, PROJECTIONS_DIR, DataMerger, load_projection_file, save_alias
 from league_format import FORMAT_GUIDANCE, FORMAT_OPTIONS, STANDARD, get_format_override, set_format_override
 from league_prefs import forget_league, get_prefs, move_league, sorted_leagues, toggle_archive
+from player_universe import available_players, build_player_universe, matching_players
 from sleeper_client import SleeperAPIError, SleeperClient, compute_points_from_stats, find_roster_for_user, league_format_summary
 
 CHATS_DIR = Path("data/chats")
@@ -552,7 +553,7 @@ def format_scoring_settings(scoring_settings: dict) -> str:
     return ", ".join(f"{k}={v}" for k, v in pairs)
 
 
-def build_context(snapshot: dict, roster_table: list[dict]) -> str:
+def build_context(snapshot: dict, roster_table: list[dict], player_universe: list[dict], question: str = "") -> str:
     league = snapshot["league"]
     fmt = league_format_summary(league)
     merger: DataMerger = st.session_state.data_merger
@@ -633,9 +634,10 @@ def build_context(snapshot: dict, roster_table: list[dict]) -> str:
             lines.append(f"  - {label}: as of {date or 'unknown'} ({age_label}){stale_flag}")
 
     if snapshot.get("projections"):
-        nfl_state = snapshot.get("nfl_state") or {}
+        projection_request = snapshot.get("projection_request") or snapshot.get("nfl_state") or {}
         lines.append(
-            f"\nSleeper's own native week-{nfl_state.get('week', '?')} stat-category projections are also "
+            f"\nSleeper's own native {projection_request.get('season_type', 'regular')}-season week-"
+            f"{projection_request.get('week', '?')} stat-category projections are also "
             "included below as 'sleeper_proj', scored under this league's real scoring_settings. NOTE: this "
             "is a SINGLE-WEEK number, not a season or 3-year total like Draft Sharks' — don't compare them "
             "at face value without accounting for that timeframe difference. Treat it as a second independent "
@@ -652,6 +654,29 @@ def build_context(snapshot: dict, roster_table: list[dict]) -> str:
             f"{row.get('sleeper_proj', '-')} | {row.get('proj_3yr', '-')} | "
             f"{row.get('trade_value', '-')} | {row.get('pos_rank', '-')}"
         )
+
+    # The canonical Sleeper pool is intentionally separate from the optional
+    # Draft Sharks free-agent export.  Include player(s) named in the question
+    # plus the best currently projected available Sleeper players, so the
+    # panel can reason about a waiver target even with no vendor data loaded.
+    mentioned = matching_players(player_universe, question)
+    available = available_players(player_universe)
+    projected_available = sorted(
+        (row for row in available if row.get("sleeper_proj") is not None),
+        key=lambda row: row["sleeper_proj"], reverse=True,
+    )[:15]
+    canonical_rows = {row["player_id"]: row for row in mentioned + projected_available}
+    if canonical_rows:
+        lines.append(
+            "\nSleeper canonical player pool (identity and league ownership come from Sleeper; "
+            "Draft Sharks fields, if present elsewhere, are optional enrichment; "
+            "name | pos | team | ownership | roster slot | native week projection):"
+        )
+        for row in canonical_rows.values():
+            lines.append(
+                f"  {row['name']} | {row['position']} | {row['team']} | {row['ownership']} | "
+                f"{row.get('roster_slot', '-')} | {row.get('sleeper_proj', 'unavailable')}"
+            )
 
     if merger.is_free_agents_loaded:
         top_fa = merger.list_free_agents(exclude_mine=True, top_n=15)
@@ -1042,8 +1067,10 @@ with st.sidebar:
     st.markdown(status_line("Sleeper Synced", st.session_state.league_snapshot is not None), unsafe_allow_html=True)
     snap = st.session_state.league_snapshot
     has_sleeper_proj = bool(snap and snap.get("projections"))
-    proj_week = (snap.get("nfl_state") or {}).get("week") if snap else None
-    proj_label = f"Sleeper Native Projections (week {proj_week})" if has_sleeper_proj else "Sleeper Native Projections"
+    projection_request = (snap.get("projection_request") or snap.get("nfl_state") or {}) if snap else {}
+    proj_week = projection_request.get("week")
+    proj_type = projection_request.get("season_type", "regular")
+    proj_label = f"Sleeper Native Projections ({proj_type} week {proj_week})" if has_sleeper_proj else "Sleeper Native Projections"
     st.markdown(status_line(proj_label, has_sleeper_proj), unsafe_allow_html=True)
     if snap and not has_sleeper_proj:
         st.caption("Unofficial endpoint returned nothing this sync — Draft Sharks/market data still work fine without it.")
@@ -1146,6 +1173,18 @@ main_view = st.segmented_control(
 )
 st.markdown("---")
 
+# Build this from Sleeper on every render, regardless of whether the user has
+# uploaded Draft Sharks data.  The client serves its daily cached /players/nfl
+# copy here, so this is a local join rather than another network request.
+players_db = st.session_state.sleeper_client.get_players()
+player_universe = build_player_universe(
+    players_db,
+    snapshot.get("rosters") or [],
+    users=snapshot.get("users") or [],
+    projections=snapshot.get("projections") or {},
+    scoring_settings=league.get("scoring_settings") or {},
+)
+
 if main_view == MATCHUP_VIEW:
     roster = find_roster_for_user(snapshot["rosters"], st.session_state.user_id) if st.session_state.user_id else None
 
@@ -1157,7 +1196,6 @@ if main_view == MATCHUP_VIEW:
             st.warning("Couldn't find a roster owned by this user in this league.")
             roster_table = []
         else:
-            players_db = st.session_state.sleeper_client.get_players()
             merger: DataMerger = st.session_state.data_merger
             all_ids = roster.get("players") or []
             starters_list = roster.get("starters") or []  # order matters: Sleeper returns this
@@ -1198,9 +1236,10 @@ if main_view == MATCHUP_VIEW:
                 group_column="slot",
             )
             if "sleeper_proj" in df.columns:
-                nfl_state = snapshot.get("nfl_state") or {}
+                projection_request = snapshot.get("projection_request") or snapshot.get("nfl_state") or {}
                 st.caption(
-                    f"'sleeper_proj' = Sleeper's own week-{nfl_state.get('week', '?')} stat projections, "
+                    f"'sleeper_proj' = Sleeper's own {projection_request.get('season_type', 'regular')} "
+                    f"week-{projection_request.get('week', '?')} stat projections, "
                     f"scored under this league's actual settings — an unofficial endpoint, cross-check it."
                 )
 
@@ -1273,7 +1312,7 @@ if main_view == MATCHUP_VIEW:
 
         if trigger_mode and trigger_question:
             st.session_state["_last_submitted"] = question
-            context = build_context(snapshot, roster_table if roster else [])
+            context = build_context(snapshot, roster_table if roster else [], player_universe, trigger_question)
             append_message("user", trigger_question)
             maybe_nudge_stale_free_agents(st.session_state.selected_league_id, st.session_state.data_merger)
 
@@ -1366,38 +1405,55 @@ else:
     st.subheader("Free Agents")
 
     merger = st.session_state.data_merger
-    if not merger.is_free_agents_loaded:
-        st.caption(
-            "No Free Agent Finder data loaded — export that page from Draft Sharks as a PDF "
-            "and upload it in the sidebar alongside your rankings (auto-detected, no need to rename it)."
+    canonical_fa = available_players(player_universe)
+    st.caption(
+        f"Sleeper canonical pool: {len(canonical_fa)} currently unrostered fantasy players. "
+        "Draft Sharks data below is optional enrichment; it never determines whether a player appears."
+    )
+    if merger.free_agents_is_stale:
+        st.warning(
+            f"Free Agent Finder data is {merger.free_agents_staleness_days} days old — waiver values shift "
+            "week to week more than dynasty rankings do, so this is worth refreshing more often.",
+            icon="⚠️",
         )
+
+    # Attach either Draft Sharks source only when it actually has a matching
+    # row.  The Sleeper record survives unchanged when neither source does.
+    fa_rows = []
+    for sleeper_row in canonical_fa:
+        row = dict(sleeper_row)
+        ranking = merger.merge_player(row["name"], position=row["position"], team=row["team"])
+        if ranking.get("matched"):
+            for field in ("rank", "projection", "vorp", "tier", "trade_value", "proj_3yr", "pos_rank"):
+                if field in ranking:
+                    row[f"ds_{field}"] = ranking[field]
+        finder = merger.merge_player(row["name"], position=row["position"], team=row["team"], df=merger.free_agents)
+        if finder.get("matched"):
+            for field in ("roster_status", "proj_3d", "ros_3d", "ceiling", "value_3d"):
+                if field in finder:
+                    row[f"ds_{field}"] = finder[field]
+        fa_rows.append(row)
+
+    fa_positions = sorted({row["position"] for row in canonical_fa})
+    fcol1, fcol2 = st.columns([1, 3])
+    fa_position_filter = fcol1.selectbox("Position", options=["All"] + fa_positions)
+    fa_search = fcol1.text_input("Find a Sleeper player", placeholder="Search by name")
+    if fa_position_filter != "All":
+        fa_rows = [row for row in fa_rows if row["position"] == fa_position_filter]
+    if fa_search.strip():
+        search_term = fa_search.strip().lower()
+        fa_rows = [row for row in fa_rows if search_term in row["name"].lower()]
+    fa_rows.sort(key=lambda row: (row.get("ds_value_3d") is None, -(row.get("ds_value_3d") or 0), -(row.get("sleeper_proj") or 0), row["name"]))
+    if fa_rows:
+        fa_df = pd.DataFrame(fa_rows[:25])
+        fa_display_cols = [c for c in [
+            "name", "team", "position", "injury_status", "sleeper_proj",
+            "ds_rank", "ds_projection", "ds_trade_value", "ds_proj_3d", "ds_ros_3d", "ds_ceiling", "ds_value_3d",
+        ] if c in fa_df.columns]
+        with fcol2:
+            render_styled_table(fa_df[fa_display_cols], pill_columns={"injury_status": _injury_pill_color})
     else:
-        if merger.free_agents_is_stale:
-            st.warning(
-                f"Free agent data is {merger.free_agents_staleness_days} days old — waiver values shift "
-                "week to week more than dynasty rankings do, so this is worth refreshing more often.",
-                icon="⚠️",
-            )
-        fa_positions = sorted(p for p in merger.free_agents["position"].dropna().unique()) if "position" in merger.free_agents.columns else []
-        fcol1, fcol2 = st.columns([1, 3])
-        fa_position_filter = fcol1.selectbox("Position", options=["All"] + fa_positions)
-        show_mine = fcol1.checkbox("Include my own roster", value=False)
-        fa_rows = merger.list_free_agents(
-            exclude_mine=not show_mine,
-            position=None if fa_position_filter == "All" else fa_position_filter,
-            top_n=25,
-        )
-        if fa_rows:
-            fa_df = pd.DataFrame(fa_rows)
-            fa_df["roster_status"] = fa_df.get("roster_status", pd.Series(dtype=object)).fillna("Available")
-            fa_display_cols = [c for c in ["name", "team", "position", "roster_status", "rank", "proj_3d", "ros_3d", "ceiling", "value_3d"] if c in fa_df.columns]
-            with fcol2:
-                render_styled_table(
-                    fa_df[fa_display_cols],
-                    pill_columns={"roster_status": lambda v: ROSTER_STATUS_PILL_COLORS.get(v, ("rgba(148,163,184,0.12)", "#94a3b8"))},
-                )
-        else:
-            fcol2.caption("No free agents match that filter.")
+        fcol2.caption("No Sleeper free agents match that filter.")
 
     # ------------------------------------------------------------------ reference material --
 

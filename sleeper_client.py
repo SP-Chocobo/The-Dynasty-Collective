@@ -113,7 +113,12 @@ class SleeperClient:
     def get_weekly_projections(self, season: str, week: int, season_type: str = "regular") -> dict[str, dict]:
         """player_id -> {stat_category: projected_value, ...} for one week."""
         try:
-            data = self._get(f"/projections/nfl/{season_type}/{season}/{week}", base=ROOT_URL)
+            # Sleeper's projection API uses season/week as the path and the
+            # game segment as a query parameter.  Putting ``season_type`` in
+            # the path (as its stats endpoint does) silently returned no
+            # records, making otherwise healthy league syncs show no native
+            # projections.
+            data = self._get(f"/projections/nfl/{season}/{week}?season_type={season_type}", base=ROOT_URL)
         except SleeperAPIError:
             return {}
         if not data:
@@ -146,12 +151,41 @@ class SleeperClient:
         nfl_state = self.get_nfl_state() or {}
         season = nfl_state.get("season") or league.get("season")
         week = nfl_state.get("week")
+        # The state endpoint reports the segment currently being played
+        # (including preseason/postseason).  Hard-coding "regular" made a
+        # healthy sync look like it had no projections outside that segment.
+        season_type = nfl_state.get("season_type") or "regular"
         projections: dict[str, dict] = {}
-        if season and week:
-            try:
-                projections = self.get_weekly_projections(str(season), int(week))
-            except (TypeError, ValueError):
-                projections = {}
+        projection_attempts: list[dict] = []
+        projection_request = {"season": season, "week": week, "season_type": season_type}
+        if season and week is not None:
+            # During preseason Sleeper's state reports the preseason game
+            # number.  For a normal fantasy roster screen the useful next
+            # projection is regular-season week 1, so prefer it and retain
+            # the preseason request only as a fallback.
+            candidates = [(str(season_type), int(week))]
+            if season_type == "pre":
+                candidates = [("regular", 1), ("pre", int(week))]
+            seen: set[tuple[str, int]] = set()
+            for candidate_type, candidate_week in candidates:
+                if (candidate_type, candidate_week) in seen:
+                    continue
+                seen.add((candidate_type, candidate_week))
+                try:
+                    candidate = self.get_weekly_projections(str(season), candidate_week, candidate_type)
+                except (TypeError, ValueError):
+                    candidate = {}
+                projection_attempts.append({
+                    "season": season,
+                    "week": candidate_week,
+                    "season_type": candidate_type,
+                    "count": len(candidate),
+                })
+                if candidate:
+                    projections = candidate
+                    projection_request = projection_attempts[-1].copy()
+                    projection_request.pop("count", None)
+                    break
 
         snapshot = {
             "synced_at": time.time(),
@@ -160,6 +194,8 @@ class SleeperClient:
             "users": self.get_league_users(league_id),
             "traded_picks": self.get_traded_picks(league_id),
             "nfl_state": nfl_state,
+            "projection_request": projection_request,
+            "projection_attempts": projection_attempts,
             "projections": projections,
         }
 
