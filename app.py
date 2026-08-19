@@ -1261,219 +1261,91 @@ player_universe = build_player_universe(
     scoring_settings=league.get("scoring_settings") or {},
 )
 
+roster = find_roster_for_user(snapshot["rosters"], st.session_state.user_id) if st.session_state.user_id else None
+merger: DataMerger = st.session_state.data_merger
+roster_table: list[dict] = []
+if roster:
+    all_ids = roster.get("players") or []
+    starters_list = roster.get("starters") or []  # order matters: Sleeper returns this
+    # in actual lineup-slot order (QB, RB, RB, WR, ... FLEX, IDP slots, etc.) — keep the
+    # list around for sorting, not just a set, or that order is thrown away.
+    starters = set(starters_list)
+    starters_order = {pid: i for i, pid in enumerate(starters_list)}
+    taxi = set(roster.get("taxi") or [])
+    reserve = set(roster.get("reserve") or [])
+
+    roster_table = merger.build_roster_table(all_ids, players_db)
+    sleeper_projections = snapshot.get("projections") or {}
+    scoring_settings = league.get("scoring_settings", {}) or {}
+    for row in roster_table:
+        pid = row["player_id"]
+        row["slot"] = "TAXI" if pid in taxi else ("IR" if pid in reserve else ("Starter" if pid in starters else "Bench"))
+        stats = sleeper_projections.get(pid)
+        if stats:
+            row["sleeper_proj"] = compute_points_from_stats(stats, scoring_settings)
+
+    # Starters first (who's actually playing), then bench, then taxi/IR (stashed away).
+    # Within Starters, use Sleeper's own lineup-slot order (QB, RB, RB, WR, ... FLEX,
+    # IDP slots) rather than whatever incidental order build_roster_table produced —
+    # a stable sort, so Bench/TAXI/IR keep their original relative order untouched.
+    roster_table.sort(
+        key=lambda r: (SLOT_SORT_ORDER.get(r["slot"], 99), starters_order.get(r["player_id"], 0))
+    )
+
+# roster_table is built unconditionally above (regardless of which tab is active) —
+# the persistent Debate Studio band below needs it too, not just the Matchup view.
 if main_view == MATCHUP_VIEW:
-    roster = find_roster_for_user(snapshot["rosters"], st.session_state.user_id) if st.session_state.user_id else None
+    st.subheader("Roster Summary")
+    if not roster:
+        st.warning("Couldn't find a roster owned by this user in this league.")
+    else:
+        df = pd.DataFrame(roster_table)
+        display_cols = [c for c in [
+            "name", "position", "team", "slot", "tier", "vorp",
+            "projection", "sleeper_proj", "proj_3yr", "trade_value", "pos_rank",
+            "fa_ros_proj", "fa_ceiling", "fa_value", "injury_status",
+        ] if c in df.columns]
+        render_styled_table(
+            df[display_cols],
+            pill_columns={"injury_status": _injury_pill_color},
+            group_column="slot",
+            column_labels={"sleeper_proj": sleeper_proj_label(snapshot)},
+        )
+        if "sleeper_proj" in df.columns:
+            projection_request = snapshot.get("projection_request") or snapshot.get("nfl_state") or {}
+            st.caption(
+                f"'sleeper_proj' = Sleeper's own {projection_request.get('season_type', 'regular')} "
+                f"week-{projection_request.get('week', '?')} stat projections, "
+                f"scored under this league's actual settings — an unofficial endpoint, cross-check it."
+            )
 
-    col_roster, col_studio = st.columns([1, 1.4])
+        if merger.is_loaded:
+            matched = sum(1 for r in roster_table if r.get("matched"))
+            st.caption(f"Draft Sharks match rate: {matched}/{len(roster_table)} players")
 
-    with col_roster:
-        st.subheader("Roster Summary")
-        if not roster:
-            st.warning("Couldn't find a roster owned by this user in this league.")
-            roster_table = []
+            unmatched = [r for r in roster_table if not r.get("matched")]
+            if unmatched:
+                with st.expander(f"Unmatched Players ({len(unmatched)}) — fix with a manual alias"):
+                    st.caption(
+                        "These roster players didn't auto-match to your loaded Draft Sharks data. "
+                        "Pick one, type the exact name Draft Sharks printed for them, and save — "
+                        "this overrides automatic matching for that player from now on."
+                    )
+                    unmatched_names = [r["name"] for r in unmatched]
+                    sel_name = st.selectbox("Unmatched player", options=unmatched_names, key="alias_select")
+                    ds_name_input = st.text_input(
+                        "Draft Sharks name (as printed, e.g. 'J Chase')", key="alias_ds_name"
+                    )
+                    if st.button("Save Alias", key="alias_save"):
+                        if ds_name_input.strip():
+                            save_alias(sel_name, ds_name_input.strip())
+                            merger.reload()
+                            st.success(f"Mapped '{sel_name}' → '{ds_name_input.strip()}'.")
+                            st.rerun()
+                        else:
+                            st.error("Enter the name as Draft Sharks printed it first.")
         else:
-            merger: DataMerger = st.session_state.data_merger
-            all_ids = roster.get("players") or []
-            starters_list = roster.get("starters") or []  # order matters: Sleeper returns this
-            # in actual lineup-slot order (QB, RB, RB, WR, ... FLEX, IDP slots, etc.) — keep the
-            # list around for sorting, not just a set, or that order is thrown away.
-            starters = set(starters_list)
-            starters_order = {pid: i for i, pid in enumerate(starters_list)}
-            taxi = set(roster.get("taxi") or [])
-            reserve = set(roster.get("reserve") or [])
-
-            roster_table = merger.build_roster_table(all_ids, players_db)
-            sleeper_projections = snapshot.get("projections") or {}
-            scoring_settings = league.get("scoring_settings", {}) or {}
-            for row in roster_table:
-                pid = row["player_id"]
-                row["slot"] = "TAXI" if pid in taxi else ("IR" if pid in reserve else ("Starter" if pid in starters else "Bench"))
-                stats = sleeper_projections.get(pid)
-                if stats:
-                    row["sleeper_proj"] = compute_points_from_stats(stats, scoring_settings)
-
-            # Starters first (who's actually playing), then bench, then taxi/IR (stashed away).
-            # Within Starters, use Sleeper's own lineup-slot order (QB, RB, RB, WR, ... FLEX,
-            # IDP slots) rather than whatever incidental order build_roster_table produced —
-            # a stable sort, so Bench/TAXI/IR keep their original relative order untouched.
-            roster_table.sort(
-                key=lambda r: (SLOT_SORT_ORDER.get(r["slot"], 99), starters_order.get(r["player_id"], 0))
-            )
-
-            df = pd.DataFrame(roster_table)
-            display_cols = [c for c in [
-                "name", "position", "team", "slot", "tier", "vorp",
-                "projection", "sleeper_proj", "proj_3yr", "trade_value", "pos_rank",
-                "fa_ros_proj", "fa_ceiling", "fa_value", "injury_status",
-            ] if c in df.columns]
-            render_styled_table(
-                df[display_cols],
-                pill_columns={"injury_status": _injury_pill_color},
-                group_column="slot",
-                column_labels={"sleeper_proj": sleeper_proj_label(snapshot)},
-            )
-            if "sleeper_proj" in df.columns:
-                projection_request = snapshot.get("projection_request") or snapshot.get("nfl_state") or {}
-                st.caption(
-                    f"'sleeper_proj' = Sleeper's own {projection_request.get('season_type', 'regular')} "
-                    f"week-{projection_request.get('week', '?')} stat projections, "
-                    f"scored under this league's actual settings — an unofficial endpoint, cross-check it."
-                )
-
-            if merger.is_loaded:
-                matched = sum(1 for r in roster_table if r.get("matched"))
-                st.caption(f"Draft Sharks match rate: {matched}/{len(roster_table)} players")
-
-                unmatched = [r for r in roster_table if not r.get("matched")]
-                if unmatched:
-                    with st.expander(f"Unmatched Players ({len(unmatched)}) — fix with a manual alias"):
-                        st.caption(
-                            "These roster players didn't auto-match to your loaded Draft Sharks data. "
-                            "Pick one, type the exact name Draft Sharks printed for them, and save — "
-                            "this overrides automatic matching for that player from now on."
-                        )
-                        unmatched_names = [r["name"] for r in unmatched]
-                        sel_name = st.selectbox("Unmatched player", options=unmatched_names, key="alias_select")
-                        ds_name_input = st.text_input(
-                            "Draft Sharks name (as printed, e.g. 'J Chase')", key="alias_ds_name"
-                        )
-                        if st.button("Save Alias", key="alias_save"):
-                            if ds_name_input.strip():
-                                save_alias(sel_name, ds_name_input.strip())
-                                merger.reload()
-                                st.success(f"Mapped '{sel_name}' → '{ds_name_input.strip()}'.")
-                                st.rerun()
-                            else:
-                                st.error("Enter the name as Draft Sharks printed it first.")
-            else:
-                st.caption("No Draft Sharks/War Room projections loaded yet — upload a CSV in the sidebar.")
-
-    with col_studio:
-        st.subheader("Multi-Model Debate Studio")
-        st.caption(
-            "Personas: 🟢 Quant (Claude) · 🟡 Beat Tracker (Gemini) · "
-            "🟣 Contrarian (ChatGPT) · 🔴 Moderator (Claude)"
-        )
-
-        b1, b2, b3, b4 = st.columns(4)
-        quick_debate = b1.button("Run Debate", use_container_width=True)
-        quick_claude = b2.button("Ask Claude", use_container_width=True)
-        quick_gemini = b3.button("Ask Gemini", use_container_width=True)
-        quick_gpt = b4.button("Ask ChatGPT", use_container_width=True)
-
-        question = st.text_input(
-            "Ask about a start/sit, trade, or waiver decision "
-            "(prefix with /debate, /claude, /gemini, or /gpt to route explicitly)",
-            key="question_input",
-        )
-
-        def resolve_command(text: str) -> tuple[str, str]:
-            for prefix, mode in (("/debate", "debate"), ("/claude", "claude"), ("/gemini", "gemini"), ("/gpt", "gpt")):
-                if text.strip().lower().startswith(prefix):
-                    return mode, text.strip()[len(prefix):].strip()
-            return "debate", text.strip()
-
-        trigger_mode = None
-        trigger_question = None
-        if quick_debate and question:
-            trigger_mode, trigger_question = "debate", question
-        elif quick_claude and question:
-            trigger_mode, trigger_question = "claude", question
-        elif quick_gemini and question:
-            trigger_mode, trigger_question = "gemini", question
-        elif quick_gpt and question:
-            trigger_mode, trigger_question = "gpt", question
-        elif question and st.session_state.get("_last_submitted") != question:
-            mode, cleaned = resolve_command(question)
-            trigger_mode, trigger_question = mode, cleaned
-
-        if trigger_mode and trigger_question:
-            st.session_state["_last_submitted"] = question
-            context = build_context(snapshot, roster_table if roster else [], player_universe, trigger_question)
-            append_message("user", trigger_question)
-            maybe_nudge_stale_free_agents(st.session_state.selected_league_id, st.session_state.data_merger)
-
-            with st.spinner("Consulting the front office..."):
-                if trigger_mode == "claude":
-                    append_message("quant", llm_engine.ask_quant(context, trigger_question, api_key=api_key_for("anthropic")))
-                elif trigger_mode == "gemini":
-                    append_message("beat", llm_engine.ask_beat(context, trigger_question, api_key=api_key_for("gemini")))
-                elif trigger_mode == "gpt":
-                    beat_reply = ""
-                    quant_reply = ""
-                    append_message("contrarian", llm_engine.ask_contrarian(
-                        context, trigger_question, quant_reply, beat_reply, api_key=api_key_for("openai")
-                    ))
-                else:
-                    result = llm_engine.run_debate(
-                        context, trigger_question,
-                        claude_key=api_key_for("anthropic"),
-                        gemini_key=api_key_for("gemini"),
-                        openai_key=api_key_for("openai"),
-                    )
-                    append_message("quant", result.quant)
-                    append_message("beat", result.beat)
-                    append_message("contrarian", result.contrarian)
-                    append_message("moderator", result.moderator)
-                    decision_log.log_decision(
-                        st.session_state.selected_league_id, trigger_question, result.verdict, result.moderator
-                    )
-
-        st.markdown("---")
-        badge_map = {
-            "user": ("You", "badge-user"),
-            "quant": ("QUANT ANALYST · Claude", "badge-quant"),
-            "beat": ("BEAT TRACKER · Gemini", "badge-beat"),
-            "contrarian": ("CONTRARIAN · ChatGPT", "badge-contrarian"),
-            "moderator": ("MODERATOR VERDICT · Claude", "badge-moderator"),
-            "summary": ("🧠 MEMORY SUMMARY", "badge-summary"),
-            "notice": ("⚠️ NOTICE", "badge-notice"),
-        }
-        for msg in reversed(st.session_state.chat_history[-40:]):
-            label, cls = badge_map.get(msg["role"], (msg["role"], "badge-user"))
-            st.markdown(f'<span class="badge {cls}">{label}</span>', unsafe_allow_html=True)
-            st.markdown(f'<div class="agent-block">{msg["content"]}</div>', unsafe_allow_html=True)
-
-        if st.session_state.chat_history:
-            hcol1, hcol2, hcol3 = st.columns([1, 1, 1])
-            if hcol1.button("Clear Chat History"):
-                st.session_state.chat_history = []
-                save_chat_history(st.session_state.selected_league_id, [])
-                st.rerun()
-            compact_days = hcol2.number_input("Compact older than (days)", min_value=1, value=30, step=1, key="compact_days")
-            if hcol3.button("🧹 Compact History"):
-                with st.spinner(f"Summarizing turns older than {compact_days} days..."):
-                    ok, message = compact_league_history(st.session_state.selected_league_id, max_age_days=int(compact_days))
-                if ok:
-                    st.session_state.chat_history = load_chat_history(st.session_state.selected_league_id)
-                    st.success(message)
-                    st.rerun()
-                else:
-                    st.warning(message)
-
-        decisions = decision_log.load_decisions(st.session_state.selected_league_id)
-        if decisions:
-            with st.expander(f"📋 Decision Log ({len(decisions)})"):
-                st.caption(
-                    "Every Moderator verdict this league has gotten, newest first — "
-                    "the record to check back against once picks are made or a trade lands."
-                )
-                log_df = pd.DataFrame(
-                    [
-                        {
-                            "Date": d["date"],
-                            "Question": d["question"],
-                            "Call": d.get("recommendation", ""),
-                            "Conviction": d.get("conviction", ""),
-                            "Reason": d.get("reason", ""),
-                            "Risk": d.get("risk", ""),
-                            "Recon": d.get("recon", ""),
-                            "Price Ceiling": d.get("price_ceiling", ""),
-                        }
-                        for d in reversed(decisions)
-                    ]
-                )
-                st.dataframe(log_df, use_container_width=True, hide_index=True)
+            st.caption("No Draft Sharks/War Room projections loaded yet — upload a CSV in the sidebar.")
 
 else:
     # ------------------------------------------------------------------ free agents --
@@ -1666,3 +1538,136 @@ else:
                     else:
                         set_scope(item["filename"], edit_league_ids if edit_mode == "Specific league(s)" else None)
                         st.rerun()
+
+# ------------------------------------------------------------------ debate studio --
+# Persistent below the tab content, regardless of which one is active — a trade
+# question is just as relevant while looking at free agents as while looking at
+# your own roster, so this shouldn't only exist inside the Matchup tab.
+
+st.markdown("---")
+st.subheader("Multi-Model Debate Studio")
+st.caption(
+    "Personas: 🟢 Quant (Claude) · 🟡 Beat Tracker (Gemini) · "
+    "🟣 Contrarian (ChatGPT) · 🔴 Moderator (Claude)"
+)
+
+btn_col, input_col = st.columns([1, 3])
+with btn_col:
+    quick_debate = st.button("Run Debate", use_container_width=True)
+    quick_claude = st.button("Ask Claude", use_container_width=True)
+    quick_gemini = st.button("Ask Gemini", use_container_width=True)
+    quick_gpt = st.button("Ask ChatGPT", use_container_width=True)
+with input_col:
+    question = st.text_input(
+        "Ask about a start/sit, trade, or waiver decision "
+        "(prefix with /debate, /claude, /gemini, or /gpt to route explicitly)",
+        key="question_input",
+    )
+
+def resolve_command(text: str) -> tuple[str, str]:
+    for prefix, mode in (("/debate", "debate"), ("/claude", "claude"), ("/gemini", "gemini"), ("/gpt", "gpt")):
+        if text.strip().lower().startswith(prefix):
+            return mode, text.strip()[len(prefix):].strip()
+    return "debate", text.strip()
+
+trigger_mode = None
+trigger_question = None
+if quick_debate and question:
+    trigger_mode, trigger_question = "debate", question
+elif quick_claude and question:
+    trigger_mode, trigger_question = "claude", question
+elif quick_gemini and question:
+    trigger_mode, trigger_question = "gemini", question
+elif quick_gpt and question:
+    trigger_mode, trigger_question = "gpt", question
+elif question and st.session_state.get("_last_submitted") != question:
+    mode, cleaned = resolve_command(question)
+    trigger_mode, trigger_question = mode, cleaned
+
+if trigger_mode and trigger_question:
+    st.session_state["_last_submitted"] = question
+    context = build_context(snapshot, roster_table if roster else [], player_universe, trigger_question)
+    append_message("user", trigger_question)
+    maybe_nudge_stale_free_agents(st.session_state.selected_league_id, st.session_state.data_merger)
+
+    with st.spinner("Consulting the front office..."):
+        if trigger_mode == "claude":
+            append_message("quant", llm_engine.ask_quant(context, trigger_question, api_key=api_key_for("anthropic")))
+        elif trigger_mode == "gemini":
+            append_message("beat", llm_engine.ask_beat(context, trigger_question, api_key=api_key_for("gemini")))
+        elif trigger_mode == "gpt":
+            beat_reply = ""
+            quant_reply = ""
+            append_message("contrarian", llm_engine.ask_contrarian(
+                context, trigger_question, quant_reply, beat_reply, api_key=api_key_for("openai")
+            ))
+        else:
+            result = llm_engine.run_debate(
+                context, trigger_question,
+                claude_key=api_key_for("anthropic"),
+                gemini_key=api_key_for("gemini"),
+                openai_key=api_key_for("openai"),
+            )
+            append_message("quant", result.quant)
+            append_message("beat", result.beat)
+            append_message("contrarian", result.contrarian)
+            append_message("moderator", result.moderator)
+            decision_log.log_decision(
+                st.session_state.selected_league_id, trigger_question, result.verdict, result.moderator
+            )
+
+st.markdown("---")
+badge_map = {
+    "user": ("You", "badge-user"),
+    "quant": ("QUANT ANALYST · Claude", "badge-quant"),
+    "beat": ("BEAT TRACKER · Gemini", "badge-beat"),
+    "contrarian": ("CONTRARIAN · ChatGPT", "badge-contrarian"),
+    "moderator": ("MODERATOR VERDICT · Claude", "badge-moderator"),
+    "summary": ("🧠 MEMORY SUMMARY", "badge-summary"),
+    "notice": ("⚠️ NOTICE", "badge-notice"),
+}
+for msg in reversed(st.session_state.chat_history[-40:]):
+    label, cls = badge_map.get(msg["role"], (msg["role"], "badge-user"))
+    st.markdown(f'<span class="badge {cls}">{label}</span>', unsafe_allow_html=True)
+    st.markdown(f'<div class="agent-block">{msg["content"]}</div>', unsafe_allow_html=True)
+
+if st.session_state.chat_history:
+    hcol1, hcol2, hcol3 = st.columns([1, 1, 1])
+    if hcol1.button("Clear Chat History"):
+        st.session_state.chat_history = []
+        save_chat_history(st.session_state.selected_league_id, [])
+        st.rerun()
+    compact_days = hcol2.number_input("Compact older than (days)", min_value=1, value=30, step=1, key="compact_days")
+    if hcol3.button("🧹 Compact History"):
+        with st.spinner(f"Summarizing turns older than {compact_days} days..."):
+            ok, message = compact_league_history(st.session_state.selected_league_id, max_age_days=int(compact_days))
+        if ok:
+            st.session_state.chat_history = load_chat_history(st.session_state.selected_league_id)
+            st.success(message)
+            st.rerun()
+        else:
+            st.warning(message)
+
+decisions = decision_log.load_decisions(st.session_state.selected_league_id)
+if decisions:
+    with st.expander(f"📋 Decision Log ({len(decisions)})"):
+        st.caption(
+            "Every Moderator verdict this league has gotten, newest first — "
+            "the record to check back against once picks are made or a trade lands."
+        )
+        log_df = pd.DataFrame(
+            [
+                {
+                    "Date": d["date"],
+                    "Question": d["question"],
+                    "Call": d.get("recommendation", ""),
+                    "Conviction": d.get("conviction", ""),
+                    "Reason": d.get("reason", ""),
+                    "Risk": d.get("risk", ""),
+                    "Recon": d.get("recon", ""),
+                    "Price Ceiling": d.get("price_ceiling", ""),
+                }
+                for d in reversed(decisions)
+            ]
+        )
+        st.dataframe(log_df, use_container_width=True, hide_index=True)
