@@ -1,18 +1,25 @@
 """
 Multi-LLM routing engine — "The Front Office Framework".
 
-Four specialized personas, each backed by a different model, debate a
-roster question and hand off to a synthesizer:
+Four specialized personas debate a roster question and hand off to a
+synthesizer: Quant / VORP Specialist, Beat / News Tracker, Contrarian /
+Risk Analyst, and a Moderator that synthesizes all three into one verdict.
 
-  * Quant / VORP Specialist      -> Claude (Anthropic)   ANTHROPIC_API_KEY
-  * Beat / News Tracker          -> Gemini (Google)       GEMINI_API_KEY
-  * Contrarian / Risk Analyst    -> ChatGPT (OpenAI)      OPENAI_API_KEY
-  * Debate Moderator             -> Claude (Anthropic)   ANTHROPIC_API_KEY
+Which underlying provider (Claude/Gemini/ChatGPT) actually runs a given
+role is NOT fixed here — it's a task router, not a hardcoded persona list.
+Any provider can technically run any role; `bot_config.py` holds the
+user-configurable role -> provider assignment (with sensible per-role
+defaults reflecting each provider's own strengths), and every ask_* /
+run_debate call here takes that assignment as an explicit argument rather
+than assuming one. This module only knows how to execute a role once told
+which provider to use for it.
 
 The Contrarian exists so the "debate" is a real three-way argument rather
 than two agents feeding a rubber-stamp synthesizer: it is explicitly
 instructed to attack the Quant's model assumptions and the Beat Tracker's
-narrative before the Moderator weighs in.
+narrative before the Moderator weighs in. It needs those two reports to
+have anything to react to — see app.py's quick-ask buttons, which only
+offer Quant and Beat standalone for exactly this reason.
 
 Every ask_* function fails soft: if a key is missing or a call errors, it
 returns a "⚠️" string instead of raising, so one down model doesn't take
@@ -203,6 +210,11 @@ class DebateResult:
     moderator: str = ""
     verdict: dict = field(default_factory=dict)
     errors: list[str] = field(default_factory=list)
+    # Which provider actually answered each role this run -- callers (app.py) need
+    # this to label chat messages correctly even after the user later reassigns a
+    # role to a different provider; a message must show who answered it, not
+    # whatever's currently configured.
+    role_providers: dict = field(default_factory=dict)
 
 
 VERDICT_FIELDS = ["RECOMMENDATION", "CONVICTION", "REASON", "DISSENT", "RISK", "RECON", "PRICE CEILING", "ACTION ITEM"]
@@ -268,9 +280,10 @@ def is_openai_configured(api_key: Optional[str] = None) -> bool:
     return bool(api_key or OPENAI_API_KEY)
 
 
-# -- Claude (Quant + Moderator) ------------------------------------------------
+# -- Per-provider callers -- generic: system prompt in, provider's own quirks
+# (tool access, client setup) handled here, indifferent to which role is calling. ---
 
-def _ask_claude(system_prompt: str, user_prompt: str, api_key: Optional[str] = None) -> str:
+def _call_claude(system_prompt: str, user_prompt: str, api_key: Optional[str] = None) -> str:
     key = api_key or ANTHROPIC_API_KEY
     if not key:
         return "⚠️ ANTHROPIC_API_KEY not set — add it in the sidebar's Connect Your Accounts section, or in .env."
@@ -289,13 +302,92 @@ def _ask_claude(system_prompt: str, user_prompt: str, api_key: Optional[str] = N
         return f"⚠️ Claude request failed: {exc}"
 
 
-def ask_quant(context: str, question: str, api_key: Optional[str] = None) -> str:
+def _call_gemini(system_prompt: str, user_prompt: str, api_key: Optional[str] = None) -> str:
+    key = api_key or GEMINI_API_KEY
+    if not key:
+        return "⚠️ GEMINI_API_KEY not set — add it in the sidebar's Connect Your Accounts section, or in .env."
+    try:
+        from google import genai
+        from google.genai import types
+
+        client = genai.Client(api_key=key)
+        response = client.models.generate_content(
+            model=GEMINI_MODEL,
+            contents=user_prompt,
+            config=types.GenerateContentConfig(
+                system_instruction=system_prompt,
+                tools=[types.Tool(google_search=types.GoogleSearch())],
+                max_output_tokens=MAX_TOKENS,
+            ),
+        )
+        return (response.text or "").strip() or "⚠️ Gemini returned an empty response."
+    except Exception as exc:  # noqa: BLE001
+        return f"⚠️ Gemini request failed: {exc}"
+
+
+def _call_openai(system_prompt: str, user_prompt: str, api_key: Optional[str] = None) -> str:
+    key = api_key or OPENAI_API_KEY
+    if not key:
+        return "⚠️ OPENAI_API_KEY not set — add it in the sidebar's Connect Your Accounts section, or in .env."
+    try:
+        from openai import OpenAI
+
+        client = OpenAI(api_key=key)
+        response = client.responses.create(
+            model=OPENAI_MODEL,
+            input=[
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_prompt},
+            ],
+            tools=[{"type": "web_search"}],
+            max_output_tokens=MAX_TOKENS,
+        )
+        return (getattr(response, "output_text", "") or "").strip()
+    except Exception as exc:  # noqa: BLE001
+        return f"⚠️ ChatGPT request failed: {exc}"
+
+
+# Every provider gets its own best available tool (Gemini/ChatGPT both get live web
+# search, Claude gets none here) regardless of which role it's running -- a role
+# reassigned to a different provider still gets that provider's normal capabilities,
+# it just may gain or lose live search access as a result. bot_config.ROLE_INFO
+# documents that tradeoff for the UI.
+PROVIDER_CALLERS = {"claude": _call_claude, "gemini": _call_gemini, "openai": _call_openai}
+
+ROLE_SYSTEM_PROMPTS = {
+    "quant": QUANT_SYSTEM_PROMPT,
+    "beat": BEAT_SYSTEM_PROMPT,
+    "contrarian": CONTRARIAN_SYSTEM_PROMPT,
+    "moderator": MODERATOR_SYSTEM_PROMPT,
+}
+
+
+def ask_quant(context: str, question: str, *, provider: str = "claude", api_key: Optional[str] = None) -> str:
     prompt = f"League/roster context:\n{context}\n\nQuestion: {question}"
-    return _ask_claude(QUANT_SYSTEM_PROMPT, prompt, api_key=api_key)
+    return PROVIDER_CALLERS[provider](QUANT_SYSTEM_PROMPT, prompt, api_key)
+
+
+def ask_beat(context: str, question: str, *, provider: str = "gemini", api_key: Optional[str] = None) -> str:
+    prompt = f"League/roster context:\n{context}\n\nQuestion: {question}"
+    return PROVIDER_CALLERS[provider](BEAT_SYSTEM_PROMPT, prompt, api_key)
+
+
+def ask_contrarian(
+    context: str, question: str, quant: str, beat: str, *, provider: str = "openai", api_key: Optional[str] = None
+) -> str:
+    prompt = (
+        f"League/roster context:\n{context}\n\n"
+        f"Original question: {question}\n\n"
+        f"--- QUANT / VORP REPORT ---\n{quant}\n\n"
+        f"--- BEAT / NEWS REPORT ---\n{beat}\n\n"
+        "Pressure-test these two reports."
+    )
+    return PROVIDER_CALLERS[provider](CONTRARIAN_SYSTEM_PROMPT, prompt, api_key)
 
 
 def ask_moderator(
-    context: str, question: str, quant: str, beat: str, contrarian: str, api_key: Optional[str] = None
+    context: str, question: str, quant: str, beat: str, contrarian: str,
+    *, provider: str = "claude", api_key: Optional[str] = None,
 ) -> str:
     prompt = (
         f"League/roster context:\n{context}\n\n"
@@ -305,7 +397,7 @@ def ask_moderator(
         f"--- CONTRARIAN / RISK REPORT ---\n{contrarian}\n\n"
         "Synthesize these into one verdict."
     )
-    return _ask_claude(MODERATOR_SYSTEM_PROMPT, prompt, api_key=api_key)
+    return PROVIDER_CALLERS[provider](MODERATOR_SYSTEM_PROMPT, prompt, api_key)
 
 
 def summarize_history(
@@ -316,69 +408,14 @@ def summarize_history(
     Fails soft like every other ask_* function — callers must check for a
     leading "⚠️" and, on failure, leave the original messages untouched
     rather than pruning history that was never successfully summarized.
+    Always runs on Claude — this is app bookkeeping, not a debate persona,
+    so it isn't part of the configurable role -> provider routing.
     """
     if not messages:
         return "⚠️ Nothing to summarize."
     transcript = "\n\n".join(f"[{m.get('role', '?')}] {m.get('content', '')}" for m in messages)
     prompt = transcript if not prior_summary else f"PRIOR MEMORY SUMMARY:\n{prior_summary}\n\nNEW TRANSCRIPT TO MERGE IN:\n{transcript}"
-    return _ask_claude(SUMMARIZER_SYSTEM_PROMPT, prompt, api_key=api_key)
-
-
-# -- Gemini (Beat / News Tracker, with live search grounding) -----------------
-
-def ask_beat(context: str, question: str, api_key: Optional[str] = None) -> str:
-    key = api_key or GEMINI_API_KEY
-    if not key:
-        return "⚠️ GEMINI_API_KEY not set — add it in the sidebar's Connect Your Accounts section, or in .env."
-    try:
-        from google import genai
-        from google.genai import types
-
-        client = genai.Client(api_key=key)
-        prompt = f"League/roster context:\n{context}\n\nQuestion: {question}"
-        response = client.models.generate_content(
-            model=GEMINI_MODEL,
-            contents=prompt,
-            config=types.GenerateContentConfig(
-                system_instruction=BEAT_SYSTEM_PROMPT,
-                tools=[types.Tool(google_search=types.GoogleSearch())],
-                max_output_tokens=MAX_TOKENS,
-            ),
-        )
-        return (response.text or "").strip() or "⚠️ Gemini returned an empty response."
-    except Exception as exc:  # noqa: BLE001
-        return f"⚠️ Gemini request failed: {exc}"
-
-
-# -- ChatGPT (Contrarian / Risk Analyst) ---------------------------------------
-
-def ask_contrarian(context: str, question: str, quant: str, beat: str, api_key: Optional[str] = None) -> str:
-    key = api_key or OPENAI_API_KEY
-    if not key:
-        return "⚠️ OPENAI_API_KEY not set — add it in the sidebar's Connect Your Accounts section, or in .env."
-    try:
-        from openai import OpenAI
-
-        client = OpenAI(api_key=key)
-        prompt = (
-            f"League/roster context:\n{context}\n\n"
-            f"Original question: {question}\n\n"
-            f"--- QUANT / VORP REPORT ---\n{quant}\n\n"
-            f"--- BEAT / NEWS REPORT ---\n{beat}\n\n"
-            "Pressure-test these two reports."
-        )
-        response = client.responses.create(
-            model=OPENAI_MODEL,
-            input=[
-                {"role": "system", "content": CONTRARIAN_SYSTEM_PROMPT},
-                {"role": "user", "content": prompt},
-            ],
-            tools=[{"type": "web_search"}],
-            max_output_tokens=MAX_TOKENS,
-        )
-        return (getattr(response, "output_text", "") or "").strip()
-    except Exception as exc:  # noqa: BLE001
-        return f"⚠️ ChatGPT request failed: {exc}"
+    return _call_claude(SUMMARIZER_SYSTEM_PROMPT, prompt, api_key)
 
 
 # -- Orchestration --------------------------------------------------------------
@@ -387,20 +424,36 @@ def run_debate(
     context: str,
     question: str,
     *,
-    claude_key: Optional[str] = None,
-    gemini_key: Optional[str] = None,
-    openai_key: Optional[str] = None,
+    role_providers: dict,
+    api_keys: dict,
 ) -> DebateResult:
     """Run the full four-agent debate: Quant -> Beat -> Contrarian -> Moderator.
 
-    The *_key overrides let a key entered in the UI for this browser session take
-    priority over whatever's in .env, without ever writing it back to disk.
+    `role_providers` maps each of "quant"/"beat"/"contrarian"/"moderator" to which
+    provider ("claude"/"gemini"/"openai") should run it -- see bot_config.py, which
+    owns the persisted, user-configurable assignment (with sensible defaults). This
+    function just executes whatever it's told; it has no opinion of its own about
+    which provider belongs to which role.
+
+    `api_keys` maps each provider name to that provider's API key (a session
+    override if the user pasted one, else whatever llm_engine already loaded from
+    .env -- see app.py's api_key_for()).
     """
-    result = DebateResult(question=question)
-    result.quant = ask_quant(context, question, api_key=claude_key)
-    result.beat = ask_beat(context, question, api_key=gemini_key)
-    result.contrarian = ask_contrarian(context, question, result.quant, result.beat, api_key=openai_key)
-    result.moderator = ask_moderator(context, question, result.quant, result.beat, result.contrarian, api_key=claude_key)
+    result = DebateResult(question=question, role_providers=dict(role_providers))
+
+    def _key(role: str) -> Optional[str]:
+        return api_keys.get(role_providers[role])
+
+    result.quant = ask_quant(context, question, provider=role_providers["quant"], api_key=_key("quant"))
+    result.beat = ask_beat(context, question, provider=role_providers["beat"], api_key=_key("beat"))
+    result.contrarian = ask_contrarian(
+        context, question, result.quant, result.beat,
+        provider=role_providers["contrarian"], api_key=_key("contrarian"),
+    )
+    result.moderator = ask_moderator(
+        context, question, result.quant, result.beat, result.contrarian,
+        provider=role_providers["moderator"], api_key=_key("moderator"),
+    )
     if not result.moderator.startswith("⚠️"):
         result.verdict = parse_moderator_verdict(result.moderator)
     for label, text in (("quant", result.quant), ("beat", result.beat),

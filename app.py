@@ -21,6 +21,7 @@ from typing import Optional
 import pandas as pd
 import streamlit as st
 
+import bot_config
 import decision_log
 import todo_log
 import llm_engine
@@ -383,8 +384,14 @@ def save_chat_history(league_id: str, history: list[dict]) -> None:
     path.write_text(json.dumps(history, indent=2))
 
 
-def append_message(role: str, content: str) -> None:
+def append_message(role: str, content: str, provider: Optional[str] = None) -> None:
+    # `provider` (which of claude/gemini/openai actually answered) is stamped on the
+    # message itself, not derived from live bot_config at render time -- a role can be
+    # reassigned to a different provider later, and an old message must keep showing
+    # who actually answered it, not whatever's currently configured.
     msg = {"role": role, "content": content, "ts": time.time()}
+    if provider:
+        msg["provider"] = provider
     st.session_state.chat_history.append(msg)
     if st.session_state.selected_league_id:
         save_chat_history(st.session_state.selected_league_id, st.session_state.chat_history)
@@ -1182,6 +1189,47 @@ with st.sidebar:
                 st.session_state.left_league_ids.remove(lid)
                 st.rerun()
 
+    with st.expander("🤖 Configure Bots", expanded=False, key="sb_group_bots"):
+        st.caption(
+            "Which provider actually answers for each role, and what to call it. Any provider can "
+            "technically fill any role — a role is just a system prompt plus which prior reports it "
+            "reacts to — so the defaults below are a starting point tuned to each provider's own "
+            "strengths, not a requirement. Point every role at one key if that's all you have."
+        )
+        _role_providers_cfg = bot_config.load_role_providers()
+        _role_names_cfg = bot_config.load_role_names()
+        _provider_options = list(bot_config.PROVIDERS)
+        for _role in bot_config.ROLES:
+            _info = bot_config.ROLE_INFO[_role]
+            st.markdown(f"**{_info['label']}**")
+            st.caption(_info["description"])
+            _name_input = st.text_input(
+                "Display name", value=_role_names_cfg[_role], key=f"bot_name_input_{_role}",
+                label_visibility="collapsed",
+            )
+            _current_provider = _role_providers_cfg[_role]
+            _provider_choice = st.selectbox(
+                "Provider", options=_provider_options, index=_provider_options.index(_current_provider),
+                format_func=lambda p: bot_config.PROVIDER_LABELS[p], key=f"bot_provider_input_{_role}",
+                label_visibility="collapsed",
+            )
+            _recommended = _info["recommended"]
+            if _provider_choice == _recommended:
+                st.caption(f"✓ {bot_config.PROVIDER_LABELS[_recommended]} — the recommended fit for this role.")
+            else:
+                st.caption(f"Recommended: {bot_config.PROVIDER_LABELS[_recommended]}. {_info['why']}")
+            if st.button("Save", key=f"bot_save_{_role}", use_container_width=True):
+                if _name_input.strip() and _name_input.strip() != _role_names_cfg[_role]:
+                    bot_config.set_role_name(_role, _name_input)
+                if _provider_choice != _current_provider:
+                    bot_config.set_role_provider(_role, _provider_choice)
+                st.rerun()
+            st.markdown("<hr style='margin:6px 0;opacity:0.15'>", unsafe_allow_html=True)
+        if st.button("Reset all to defaults", key="reset_bot_config", use_container_width=True):
+            bot_config.reset_role_providers()
+            bot_config.reset_role_names()
+            st.rerun()
+
     with st.expander("📊 Data Uploads", expanded=False, key="sb_group_uploads"):
         st.caption(
             "Draft Sharks has no public export API — save a tool page as a PDF and upload it here. The kind "
@@ -1422,20 +1470,41 @@ with st.sidebar:
     st.markdown(status_line(proj_label, has_sleeper_proj), unsafe_allow_html=True)
     if snap and not has_sleeper_proj:
         st.caption("Unofficial endpoint returned nothing this sync — Draft Sharks/market data still work fine without it.")
-    st.markdown(status_line("Claude (Quant/Moderator) Connected", llm_engine.is_claude_configured(api_key_for("anthropic"))), unsafe_allow_html=True)
-    st.markdown(status_line("Gemini (Beat Tracker) Connected", llm_engine.is_gemini_configured(api_key_for("gemini"))), unsafe_allow_html=True)
-    st.markdown(status_line("ChatGPT (Contrarian) Connected", llm_engine.is_openai_configured(api_key_for("openai"))), unsafe_allow_html=True)
+    # Which roles say "(Quant/Moderator)" etc. next to a provider's name isn't fixed
+    # anymore -- it depends on the current Configure Bots assignment, not a hardcoded
+    # persona list.
+    _role_providers_for_status = bot_config.load_role_providers()
+    _role_names_for_status = bot_config.load_role_names()
+    _roles_using = {
+        provider: [
+            _role_names_for_status[role] for role in bot_config.ROLES if _role_providers_for_status[role] == provider
+        ]
+        for provider in bot_config.PROVIDERS
+    }
+    st.markdown(
+        status_line(f"Claude ({'/'.join(_roles_using['claude']) or 'unassigned'}) Connected", llm_engine.is_claude_configured(api_key_for("anthropic"))),
+        unsafe_allow_html=True,
+    )
+    st.markdown(
+        status_line(f"Gemini ({'/'.join(_roles_using['gemini']) or 'unassigned'}) Connected", llm_engine.is_gemini_configured(api_key_for("gemini"))),
+        unsafe_allow_html=True,
+    )
+    st.markdown(
+        status_line(f"ChatGPT ({'/'.join(_roles_using['openai']) or 'unassigned'}) Connected", llm_engine.is_openai_configured(api_key_for("openai"))),
+        unsafe_allow_html=True,
+    )
 
     missing_keys = [
-        var for var, ok in (
-            ("ANTHROPIC_API_KEY", llm_engine.is_claude_configured(api_key_for("anthropic"))),
-            ("GEMINI_API_KEY", llm_engine.is_gemini_configured(api_key_for("gemini"))),
-            ("OPENAI_API_KEY", llm_engine.is_openai_configured(api_key_for("openai"))),
-        ) if not ok
+        (var, provider) for var, provider, ok in (
+            ("ANTHROPIC_API_KEY", "claude", llm_engine.is_claude_configured(api_key_for("anthropic"))),
+            ("GEMINI_API_KEY", "gemini", llm_engine.is_gemini_configured(api_key_for("gemini"))),
+            ("OPENAI_API_KEY", "openai", llm_engine.is_openai_configured(api_key_for("openai"))),
+        ) if not ok and _roles_using[provider]
     ]
     if missing_keys:
+        affected = ", ".join(f"{var} (needed for {'/'.join(_roles_using[provider])})" for var, provider in missing_keys)
         st.caption(
-            f"Missing: {', '.join(missing_keys)}. Paste them into 🔑 Connections & Accounts above, or copy "
+            f"Missing: {affected}. Paste them into 🔑 Connections & Accounts above, or copy "
             "`.env.example` to `.env` in the project folder, fill in the key(s), and restart `streamlit run app.py`."
         )
 
@@ -2164,18 +2233,40 @@ with st.container(key="debate_dock"):
             if rec:
                 st.caption(f"Last call: **{rec}** — {last_verdict.get('reason', '')[:120]}")
 
+    role_providers = bot_config.load_role_providers()
+    role_names = bot_config.load_role_names()
+    api_keys = {"claude": api_key_for("anthropic"), "gemini": api_key_for("gemini"), "openai": api_key_for("openai")}
+    PERSONA_DOTS = {"quant": "🟢", "beat": "🟡", "contrarian": "🟣", "moderator": "🔴"}
+
     if dock_level != "collapsed":
-        st.caption(
-            "Personas: 🟢 Quant (Claude) · 🟡 Beat Tracker (Gemini) · "
-            "🟣 Contrarian (ChatGPT) · 🔴 Moderator (Claude)"
-        )
+        def _persona_caption(role: str) -> str:
+            name = role_names[role]
+            # A rename must never obscure which role it is -- "Freddy" alone six
+            # months from now tells nobody he's the Quant.
+            default = bot_config.ROLE_INFO[role]["default_name"]
+            shown_name = f"{name} · {default}" if name != default else name
+            return f"{PERSONA_DOTS[role]} {shown_name} ({bot_config.PROVIDER_LABELS[role_providers[role]]})"
+
+        st.caption("Personas: " + " · ".join(_persona_caption(role) for role in bot_config.ROLES))
 
         btn_col, input_col = st.columns([1, 3])
         with btn_col:
-            quick_debate = st.button("Run Debate", use_container_width=True, type="primary")
-            quick_claude = st.button("Ask Claude", use_container_width=True)
-            quick_gemini = st.button("Ask Gemini", use_container_width=True)
-            quick_gpt = st.button("Ask ChatGPT", use_container_width=True)
+            quick_debate = st.button("Full Debate", use_container_width=True, type="primary")
+            # Contrarian and Moderator both need prior reports to react to -- asking
+            # either alone means asking them to do their job with nothing to work
+            # with, which produced structurally hollow answers. Quant and Beat are
+            # each a legitimate standalone lookup (pure numbers, pure news), so only
+            # those two get a solo quick-ask. Labeled by whoever currently holds the
+            # role, not a fixed persona name -- rename Quant to "Freddy" and this
+            # button says "Ask Freddy".
+            quick_quant = st.button(
+                f"Ask {role_names['quant']}", use_container_width=True,
+                help=f"{bot_config.ROLE_INFO['quant']['label']} — numbers only, no news or risk framing.",
+            )
+            quick_beat = st.button(
+                f"Ask {role_names['beat']}", use_container_width=True,
+                help=f"{bot_config.ROLE_INFO['beat']['label']} — news/injury lookup only, no analysis.",
+            )
         with input_col:
             # A text_area sized to roughly match the 4-button stack's height, not a
             # single-line text_input — the mismatched heights looked off. Trade-off:
@@ -2184,13 +2275,13 @@ with st.container(key="debate_dock"):
             # getting squeezed to nothing.
             question = st.text_area(
                 "Ask about a start/sit, trade, or waiver decision "
-                "(prefix with /debate, /claude, /gemini, or /gpt to route explicitly)",
+                "(prefix with /debate, /quant, or /beat to route explicitly)",
                 key="question_input",
                 height=QUESTION_HEIGHT_BY_LEVEL[dock_level],
             )
 
         def resolve_command(text: str) -> tuple[str, str]:
-            for prefix, mode in (("/debate", "debate"), ("/claude", "claude"), ("/gemini", "gemini"), ("/gpt", "gpt")):
+            for prefix, mode in (("/debate", "debate"), ("/quant", "quant"), ("/beat", "beat")):
                 if text.strip().lower().startswith(prefix):
                     return mode, text.strip()[len(prefix):].strip()
             return "debate", text.strip()
@@ -2199,12 +2290,10 @@ with st.container(key="debate_dock"):
         trigger_question = None
         if quick_debate and question:
             trigger_mode, trigger_question = "debate", question
-        elif quick_claude and question:
-            trigger_mode, trigger_question = "claude", question
-        elif quick_gemini and question:
-            trigger_mode, trigger_question = "gemini", question
-        elif quick_gpt and question:
-            trigger_mode, trigger_question = "gpt", question
+        elif quick_quant and question:
+            trigger_mode, trigger_question = "quant", question
+        elif quick_beat and question:
+            trigger_mode, trigger_question = "beat", question
         elif question and st.session_state.get("_last_submitted") != question:
             mode, cleaned = resolve_command(question)
             trigger_mode, trigger_question = mode, cleaned
@@ -2220,27 +2309,28 @@ with st.container(key="debate_dock"):
             maybe_nudge_stale_free_agents(st.session_state.selected_league_id, st.session_state.data_merger)
 
             with st.spinner("Consulting the front office..."):
-                if trigger_mode == "claude":
-                    append_message("quant", llm_engine.ask_quant(context, trigger_question, api_key=api_key_for("anthropic")))
-                elif trigger_mode == "gemini":
-                    append_message("beat", llm_engine.ask_beat(context, trigger_question, api_key=api_key_for("gemini")))
-                elif trigger_mode == "gpt":
-                    beat_reply = ""
-                    quant_reply = ""
-                    append_message("contrarian", llm_engine.ask_contrarian(
-                        context, trigger_question, quant_reply, beat_reply, api_key=api_key_for("openai")
-                    ))
+                if trigger_mode == "quant":
+                    provider = role_providers["quant"]
+                    append_message(
+                        "quant",
+                        llm_engine.ask_quant(context, trigger_question, provider=provider, api_key=api_keys[provider]),
+                        provider=provider,
+                    )
+                elif trigger_mode == "beat":
+                    provider = role_providers["beat"]
+                    append_message(
+                        "beat",
+                        llm_engine.ask_beat(context, trigger_question, provider=provider, api_key=api_keys[provider]),
+                        provider=provider,
+                    )
                 else:
                     result = llm_engine.run_debate(
-                        context, trigger_question,
-                        claude_key=api_key_for("anthropic"),
-                        gemini_key=api_key_for("gemini"),
-                        openai_key=api_key_for("openai"),
+                        context, trigger_question, role_providers=role_providers, api_keys=api_keys,
                     )
-                    append_message("quant", result.quant)
-                    append_message("beat", result.beat)
-                    append_message("contrarian", result.contrarian)
-                    append_message("moderator", result.moderator)
+                    append_message("quant", result.quant, provider=role_providers["quant"])
+                    append_message("beat", result.beat, provider=role_providers["beat"])
+                    append_message("contrarian", result.contrarian, provider=role_providers["contrarian"])
+                    append_message("moderator", result.moderator, provider=role_providers["moderator"])
                     decision_log.log_decision(
                         st.session_state.selected_league_id, trigger_question, result.verdict, result.moderator
                     )
@@ -2290,12 +2380,26 @@ with st.container(key="debate_dock"):
                 escaped = re.sub(pattern, r"<strong>\1:</strong>", escaped)
             return escaped
 
+        # Base label uses the role's *current* display name (a rename applies to its
+        # whole history, same as a real name change) — the "(Provider)" suffix uses
+        # whatever provider is stamped on THIS message, so a role reassigned to a
+        # different provider later doesn't rewrite who actually answered past messages.
+        # A custom name never REPLACES the role in the badge, only adds to it — "Dave"
+        # renamed as Contrarian six months from now is meaningless on its own; the
+        # role has to stay visible too.
+        _ROLE_BADGE_WORD = {"quant": "QUANT ANALYST", "beat": "BEAT TRACKER", "contrarian": "CONTRARIAN", "moderator": "MODERATOR VERDICT"}
+        def _badge_base(role: str) -> str:
+            word = _ROLE_BADGE_WORD[role]
+            name = role_names[role]
+            return f"{word} · {name}" if name != bot_config.ROLE_INFO[role]["default_name"] else word
+        ROLE_BADGE_BASE = {
+            "quant": (_badge_base("quant"), "badge-quant"),
+            "beat": (_badge_base("beat"), "badge-beat"),
+            "contrarian": (_badge_base("contrarian"), "badge-contrarian"),
+            "moderator": (_badge_base("moderator"), "badge-moderator"),
+        }
         badge_map = {
             "user": ("You", "badge-user"),
-            "quant": ("QUANT ANALYST · Claude", "badge-quant"),
-            "beat": ("BEAT TRACKER · Gemini", "badge-beat"),
-            "contrarian": ("CONTRARIAN · ChatGPT", "badge-contrarian"),
-            "moderator": ("MODERATOR VERDICT · Claude", "badge-moderator"),
             "summary": ("🧠 MEMORY SUMMARY", "badge-summary"),
             "notice": ("⚠️ NOTICE", "badge-notice"),
         }
@@ -2305,7 +2409,12 @@ with st.container(key="debate_dock"):
         # scroll-region primitive, so lean on that instead of another CSS hack.
         with st.container(height=CHAT_HEIGHT_BY_LEVEL[dock_level]):
             for msg in reversed(st.session_state.chat_history[-40:]):
-                label, cls = badge_map.get(msg["role"], (msg["role"], "badge-user"))
+                if msg["role"] in ROLE_BADGE_BASE:
+                    base_label, cls = ROLE_BADGE_BASE[msg["role"]]
+                    provider = msg.get("provider")
+                    label = f"{base_label} · {bot_config.PROVIDER_LABELS[provider]}" if provider else base_label
+                else:
+                    label, cls = badge_map.get(msg["role"], (msg["role"], "badge-user"))
                 st.markdown(f'<span class="badge {cls}">{label}</span>', unsafe_allow_html=True)
                 st.markdown(
                     f'<div class="agent-block">{format_agent_content(msg["role"], msg["content"])}</div>',
