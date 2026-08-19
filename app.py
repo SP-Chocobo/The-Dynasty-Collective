@@ -796,6 +796,36 @@ def delete_league_completely(league_id: str) -> list[str]:
     return removed
 
 
+def roster_owner_names(snapshot: dict) -> dict[int, str]:
+    """roster_id -> display name, for resolving Sleeper's traded-picks data (which speaks in
+    roster_id, not names or user_id directly)."""
+    user_names = {
+        str(u.get("user_id")): u.get("display_name") or (u.get("metadata") or {}).get("team_name")
+        for u in (snapshot.get("users") or [])
+    }
+    return {
+        r.get("roster_id"): user_names.get(str(r.get("owner_id"))) or f"Roster {r.get('roster_id', '?')}"
+        for r in (snapshot.get("rosters") or [])
+    }
+
+
+def build_pick_ledger(snapshot: dict) -> dict[int, dict[str, list[dict]]]:
+    """roster_id -> {"acquired": [...], "given_away": [...]}, built only from Sleeper's own
+    traded_picks (the authoritative source for who owns what -- Draft Sharks' own pick imports
+    can be unreliable, per direct report). Sleeper only lists a pick here once it's actually
+    moved from its original roster; an untouched pick is assumed to still belong to its
+    original roster and isn't worth listing, so this ledger is deliberately just the diffs,
+    not a full inventory of every hypothetical future pick."""
+    ledger: dict[int, dict[str, list[dict]]] = {}
+    for pick in snapshot.get("traded_picks") or []:
+        original, current = pick.get("roster_id"), pick.get("owner_id")
+        if original is None or current is None or original == current:
+            continue
+        ledger.setdefault(current, {"acquired": [], "given_away": []})["acquired"].append(pick)
+        ledger.setdefault(original, {"acquired": [], "given_away": []})["given_away"].append(pick)
+    return ledger
+
+
 def build_freshness_manifest(snapshot: dict, merger: DataMerger) -> list[tuple[str, Optional[str], Optional[int]]]:
     """(label, as-of date, days old) for every dated source in this context, freshest first."""
     entries = []
@@ -1100,6 +1130,30 @@ def build_context(snapshot: dict, roster_table: list[dict], player_universe: lis
                     "  Future picks (generic, by round/year): "
                     + ", ".join(f"{r['name']}={r['value']}" for r in future_picks.to_dict("records"))
                 )
+
+    # Ownership is Sleeper's to say, independent of whether Draft Sharks' price list above is
+    # even loaded -- a pick that's changed hands matters to a trade question either way, priced
+    # or not. Only picks that have actually moved appear (see build_pick_ledger's own docstring).
+    pick_ledger = build_pick_ledger(snapshot)
+    if pick_ledger:
+        owner_names = roster_owner_names(snapshot)
+        lines.append(
+            "\nTRADED PICK OWNERSHIP per Sleeper (authoritative on who holds what -- an untraded "
+            "pick is still just its original roster's normal Nth-round pick and isn't listed here). "
+            "Value in parens, where shown, is Draft Sharks' generic price for that round/year from "
+            "PICK VALUES above, if loaded:"
+        )
+        for roster_id, moves in sorted(pick_ledger.items(), key=lambda kv: owner_names.get(kv[0], "")):
+            acquired = moves["acquired"]
+            if not acquired:
+                continue
+            parts = []
+            for p in acquired:
+                label = f"{p.get('season')} Rd {p.get('round')}"
+                original_owner = owner_names.get(p.get("roster_id"), f"Roster {p.get('roster_id')}")
+                value = merger.pick_value(f"{p.get('season')} Random Rd {p.get('round')}") if merger.is_trade_values_loaded else None
+                parts.append(f"{label} (originally {original_owner}'s{f', valued {value}' if value is not None else ''})")
+            lines.append(f"  {owner_names.get(roster_id, f'Roster {roster_id}')} holds via trade: " + "; ".join(parts))
 
     captioned = [a for a in list_attachments(league_id=st.session_state.selected_league_id) if a["caption"].strip()]
     if captioned:
