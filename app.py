@@ -1203,10 +1203,16 @@ with st.sidebar:
             _info = bot_config.ROLE_INFO[_role]
             st.markdown(f"**{_info['label']}**")
             st.caption(_info["description"])
+            # Visible labels, not collapsed -- a text box next to a dropdown read as
+            # two similar-looking controls with no cue for which does what. "DISPLAY
+            # NAME" vs "MODEL PROVIDER" makes the role/provider split self-explanatory
+            # instead of something you have to already understand the architecture to read.
+            st.caption("DISPLAY NAME")
             _name_input = st.text_input(
                 "Display name", value=_role_names_cfg[_role], key=f"bot_name_input_{_role}",
                 label_visibility="collapsed",
             )
+            st.caption("MODEL PROVIDER")
             _current_provider = _role_providers_cfg[_role]
             _provider_choice = st.selectbox(
                 "Provider", options=_provider_options, index=_provider_options.index(_current_provider),
@@ -1214,10 +1220,11 @@ with st.sidebar:
                 label_visibility="collapsed",
             )
             _recommended = _info["recommended"]
-            if _provider_choice == _recommended:
-                st.caption(f"✓ {bot_config.PROVIDER_LABELS[_recommended]} — the recommended fit for this role.")
-            else:
-                st.caption(f"Recommended: {bot_config.PROVIDER_LABELS[_recommended]}. {_info['why']}")
+            # The "why" always shows now, matched or not -- "recommended fit" alone
+            # was a dead end; the reasoning is what actually helps someone decide
+            # whether to override it, so it shouldn't disappear the moment they agree.
+            _rec_prefix = "✓ Using the recommended provider" if _provider_choice == _recommended else f"Recommended: {bot_config.PROVIDER_LABELS[_recommended]}"
+            st.caption(f"{_rec_prefix} — {_info['why']}")
             if st.button("Save", key=f"bot_save_{_role}", use_container_width=True):
                 if _name_input.strip() and _name_input.strip() != _role_names_cfg[_role]:
                     bot_config.set_role_name(_role, _name_input)
@@ -1225,8 +1232,15 @@ with st.sidebar:
                     bot_config.set_role_provider(_role, _provider_choice)
                 st.rerun()
             st.markdown("<hr style='margin:6px 0;opacity:0.15'>", unsafe_allow_html=True)
-        if st.button("Reset all to defaults", key="reset_bot_config", use_container_width=True):
+        # Two separate resets, not one combined "reset everything" -- provider routing
+        # and display names are independent settings (see load_role_names/
+        # load_role_providers), so someone who just wants the recommended routing back
+        # shouldn't lose a custom name like "Freddy" as a side effect of that.
+        reset_provider_col, reset_name_col = st.columns(2)
+        if reset_provider_col.button("Use recommended providers", key="reset_bot_providers", use_container_width=True):
             bot_config.reset_role_providers()
+            st.rerun()
+        if reset_name_col.button("Reset display names", key="reset_bot_names", use_container_width=True):
             bot_config.reset_role_names()
             st.rerun()
 

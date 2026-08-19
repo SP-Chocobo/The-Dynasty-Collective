@@ -20,13 +20,6 @@ ROLES = ("quant", "beat", "contrarian", "moderator")
 PROVIDERS = ("claude", "gemini", "openai")
 PROVIDER_LABELS = {"claude": "Claude", "gemini": "Gemini", "openai": "ChatGPT"}
 
-DEFAULT_ROLE_PROVIDERS = {
-    "quant": "claude",
-    "beat": "gemini",
-    "contrarian": "openai",
-    "moderator": "claude",
-}
-
 ROLE_INFO = {
     "quant": {
         "label": "Quant / VORP Specialist",
@@ -61,6 +54,11 @@ ROLE_INFO = {
         "why": "Synthesis and judgment is a different task from Quant's number-crunching, even when the same provider ends up running both.",
     },
 }
+
+# Derived from ROLE_INFO, not a separately maintained dict -- a "recommended" value
+# changed in one place without the other would make "Use recommended providers" (the
+# button that resets to this) silently lie about what it just did.
+DEFAULT_ROLE_PROVIDERS = {role: ROLE_INFO[role]["recommended"] for role in ROLES}
 
 
 def _load_raw() -> dict:
