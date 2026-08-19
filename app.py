@@ -356,6 +356,18 @@ TABLE_COLUMN_LABELS = {
 }
 
 
+def sleeper_proj_label(snapshot: dict) -> str:
+    """Column label for Sleeper's native weekly projection, naming the actual week.
+
+    A static "Sleeper Proj" doesn't say what it's projecting or for when — and the
+    week it reflects isn't always "this week" (during preseason it falls back to
+    regular week 1, see sleeper_client.sync_league), so it has to be computed from
+    the snapshot's own resolved projection_request, not hardcoded.
+    """
+    req = snapshot.get("projection_request") or snapshot.get("nfl_state") or {}
+    return f"Wk{req.get('week', '?')} Proj"
+
+
 def _injury_pill_color(val: str) -> tuple[str, str]:
     if val in INJURY_OK_STATUSES:
         return ("rgba(212,160,23,0.18)", "#facc15")
@@ -364,7 +376,7 @@ def _injury_pill_color(val: str) -> tuple[str, str]:
 
 def render_styled_table(
     df: pd.DataFrame, pill_columns: Optional[dict] = None, group_column: Optional[str] = None,
-    render_header: bool = True,
+    render_header: bool = True, column_labels: Optional[dict] = None,
 ) -> None:
     """Render a DataFrame as a custom HTML table instead of the native st.dataframe grid.
 
@@ -376,6 +388,10 @@ def render_styled_table(
 
     `pill_columns` maps a column name to a `value -> (background, text_color)` function;
     any other column just renders as text, right-aligned with tabular numerals if numeric.
+
+    `column_labels` overrides/extends TABLE_COLUMN_LABELS for this call only — for a
+    label that depends on runtime state (e.g. "sleeper_proj" meaning a specific,
+    currently-resolved week, not a fixed name every session).
 
     `render_header=False` skips the built-in `<th>` row entirely — for a caller that
     renders its own clickable sort-header row (real Streamlit buttons, since static
@@ -390,6 +406,7 @@ def render_styled_table(
     if df.empty:
         return
     pill_columns = pill_columns or {}
+    labels = {**TABLE_COLUMN_LABELS, **(column_labels or {})}
     display_cols = [c for c in df.columns if c != group_column] if group_column else list(df.columns)
     numeric_cols = {c for c in display_cols if pd.api.types.is_numeric_dtype(df[c])}
 
@@ -417,7 +434,7 @@ def render_styled_table(
         f'<th style="text-align:left;padding:9px 14px;font-size:0.7rem;text-transform:uppercase;'
         f'letter-spacing:0.07em;color:#8b8f98;font-weight:600;border-bottom:1px solid #2a2b2e;'
         f'background:#1b1c1f;white-space:nowrap;">'
-        f'{html.escape(TABLE_COLUMN_LABELS.get(c, c.replace("_", " ").title()))}</th>'
+        f'{html.escape(labels.get(c, c.replace("_", " ").title()))}</th>'
         for c in display_cols
     ) if render_header else ""
 
@@ -1293,6 +1310,7 @@ if main_view == MATCHUP_VIEW:
                 df[display_cols],
                 pill_columns={"injury_status": _injury_pill_color},
                 group_column="slot",
+                column_labels={"sleeper_proj": sleeper_proj_label(snapshot)},
             )
             if "sleeper_proj" in df.columns:
                 projection_request = snapshot.get("projection_request") or snapshot.get("nfl_state") or {}
@@ -1554,10 +1572,11 @@ else:
 
     with fcol2:
         if fa_rows:
+            fa_column_labels = {"sleeper_proj": sleeper_proj_label(snapshot)}
             with st.container(key="fa_sort_header"):
                 header_cols = st.columns(len(fa_display_cols))
                 for header_col, col in zip(header_cols, fa_display_cols):
-                    label = TABLE_COLUMN_LABELS.get(col, col.replace("_", " ").title())
+                    label = fa_column_labels.get(col) or TABLE_COLUMN_LABELS.get(col, col.replace("_", " ").title())
                     if fa_sort and fa_sort[0] == col:
                         label += " ▲" if fa_sort[1] == "asc" else " ▼"
                     if header_col.button(label, key=f"fa_sort_btn_{col}", use_container_width=True):
@@ -1571,6 +1590,7 @@ else:
             fa_df = pd.DataFrame(fa_rows[:25])
             render_styled_table(
                 fa_df[fa_display_cols], pill_columns={"injury_status": _injury_pill_color}, render_header=False,
+                column_labels=fa_column_labels,
             )
             if "sleeper_proj" in fa_df.columns:
                 proj_req = snapshot.get("projection_request") or snapshot.get("nfl_state") or {}
