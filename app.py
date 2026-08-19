@@ -9,6 +9,7 @@ debate studio (Quant/Claude, Beat/Gemini, Contrarian/ChatGPT, Moderator/Claude).
 
 from __future__ import annotations
 
+import base64
 import html
 import json
 import re
@@ -20,6 +21,7 @@ from typing import Optional
 
 import pandas as pd
 import streamlit as st
+from PIL import Image
 
 import bot_benchmark
 import bot_config
@@ -40,7 +42,30 @@ PROJECTIONS_DIR.mkdir(parents=True, exist_ok=True)
 GLOBAL_PROJECTIONS_DIR.mkdir(parents=True, exist_ok=True)
 ATTACHMENTS_DIR.mkdir(parents=True, exist_ok=True)
 
-st.set_page_config(page_title="Fantasy Football Command Center", layout="wide", page_icon="🏈")
+ASSETS_DIR = Path("assets")
+
+
+@st.cache_resource
+def _page_icon():
+    # Falls back to the plain emoji if the asset's ever missing -- a decorative brand
+    # mark going missing shouldn't be able to take the whole app down with it.
+    path = ASSETS_DIR / "icon_mark.png"
+    try:
+        return Image.open(path)
+    except (FileNotFoundError, OSError):
+        return "🏈"
+
+
+@st.cache_resource
+def _header_banner_data_uri() -> Optional[str]:
+    path = ASSETS_DIR / "header_banner.jpg"
+    try:
+        return "data:image/jpeg;base64," + base64.b64encode(path.read_bytes()).decode("ascii")
+    except (FileNotFoundError, OSError):
+        return None
+
+
+st.set_page_config(page_title="Fantasy Football Command Center", layout="wide", page_icon=_page_icon())
 
 # ------------------------------------------------------------------ styling --
 
@@ -88,6 +113,25 @@ st.markdown(
         font-size: 0.78rem; font-weight: 600; letter-spacing: 0.09em; text-transform: uppercase;
         color: #94a3b8; margin-bottom: 2px;
     }
+
+    /* The header's own background art (see _header_banner_data_uri) -- the source image
+       is near-black on the left fading into a lit football on the right, so the text
+       block (left-aligned, see below) sits on its darkest region already. The linear-
+       gradient layered on top is still needed for the narrower/mid-width case where the
+       art's midtones creep further left than the text can safely sit on. Falls back to
+       the plain flat color already used elsewhere (#202124-ish dark surfaces) with no
+       image layer if the asset failed to load, so a missing file just means "no banner",
+       never a broken header. */
+    .st-key-app_header {
+        border-radius: 10px;
+        padding: 1.1rem 1.4rem 1rem;
+        margin-bottom: 0.5rem;
+        background-color: #0b0d12;
+        background-size: cover;
+        background-position: center;
+        border: 1px solid #23262e;
+    }
+    .st-key-app_header h1 { margin-bottom: 0; }
 
     /* League switcher trigger: it shares a row with the Refresh action button, and
        Streamlit's default centered-label style made it read as just another action
@@ -2076,12 +2120,26 @@ if not snapshot:
 # league that is, rather than the league fully taking over the header.
 league = snapshot["league"]
 fmt = league_format_summary(league)
-st.markdown('<div class="brand-eyebrow">🏈 Fantasy Football Command Center</div>', unsafe_allow_html=True)
-st.title(fmt["name"])
-st.caption(
-    f"{fmt['type']} · {fmt['teams']}-team · "
-    f"{'Superflex' if fmt['superflex'] else '1QB'} · {fmt['scoring']} · Taxi: {fmt['taxi_slots']}"
-)
+_banner_uri = _header_banner_data_uri()
+if _banner_uri:
+    # A second, narrower <style> block layered on top of the base .st-key-app_header
+    # rule above rather than folded into it -- the image is only available once this
+    # data URI is computed, so the two-layer background (gradient + art) has to be
+    # conditional on that, while the flat fallback color from the base rule always
+    # applies underneath it either way.
+    st.markdown(
+        f"<style>.st-key-app_header {{ background-image: "
+        f"linear-gradient(90deg, rgba(11,13,18,0.94) 0%, rgba(11,13,18,0.75) 32%, "
+        f"rgba(11,13,18,0.25) 62%, rgba(11,13,18,0.05) 100%), url('{_banner_uri}'); }}</style>",
+        unsafe_allow_html=True,
+    )
+with st.container(key="app_header"):
+    st.markdown('<div class="brand-eyebrow">🏈 Fantasy Football Command Center</div>', unsafe_allow_html=True)
+    st.title(fmt["name"])
+    st.caption(
+        f"{fmt['type']} · {fmt['teams']}-team · "
+        f"{'Superflex' if fmt['superflex'] else '1QB'} · {fmt['scoring']} · Taxi: {fmt['taxi_slots']}"
+    )
 
 if st.session_state.data_merger.is_stale:
     days = st.session_state.data_merger.staleness_days

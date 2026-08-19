@@ -1,4 +1,5 @@
 streamlit>=1.34  # st.segmented_control (attachment scope picker) needs 1.34+
+Pillow  # already a Streamlit dependency, but app.py imports it directly for page_icon/header art
 requests
 google-genai
 anthropic
