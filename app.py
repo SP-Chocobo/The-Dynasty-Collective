@@ -401,6 +401,49 @@ def append_message(role: str, content: str, provider: Optional[str] = None, mode
         save_chat_history(st.session_state.selected_league_id, st.session_state.chat_history)
 
 
+def process_moderator_output(moderator_text: str, trigger_question: str) -> None:
+    """Shared post-processing for any Moderator response that might carry the structured
+    verdict block -- both a fresh debate and a lighter follow-up (see
+    llm_engine.ask_moderator_followup) can produce one. No-ops cleanly on plain conversational
+    text: parse_moderator_verdict returns {} for that, and every consumer below is already a
+    safe no-op on an empty/falsy input, so a "just talking it through" follow-up doesn't spam
+    the decision log or to-do list with nothing."""
+    verdict = llm_engine.parse_moderator_verdict(moderator_text) if not moderator_text.startswith("⚠️") else {}
+    decision_log.log_decision(st.session_state.selected_league_id, trigger_question, verdict, moderator_text)
+    action_item = verdict.get("action_item")
+    if action_item:
+        todo_log.add_todo(
+            st.session_state.selected_league_id, action_item, source="moderator", question=trigger_question,
+        )
+    directives = llm_engine.parse_todo_directives(moderator_text)
+    for update in directives["updates"]:
+        todo_log.revise_todo(st.session_state.selected_league_id, update["id"], update["text"], update["reason"])
+    for proposal in directives["likely_resolved"]:
+        todo_log.mark_likely_resolved(st.session_state.selected_league_id, proposal["id"], proposal["reason"])
+    # "Referenced" is a lighter signal than an actual UPDATE/LIKELY RESOLVED directive -- just
+    # the Moderator citing an objective by id (e.g. "per #3, ...") while reasoning about
+    # something else. Regex over the active ids rather than another LLM directive, since this
+    # is purely a UI hint, not something that should shape the model's own output format.
+    mentioned_ids = {int(n) for n in re.findall(r"#(\d+)", moderator_text)}
+    for active_item in todo_log.load_todos(st.session_state.selected_league_id, statuses=todo_log.ACTIVE_STATUSES):
+        if active_item["id"] in mentioned_ids:
+            todo_log.mark_referenced(st.session_state.selected_league_id, active_item["id"])
+
+
+def find_last_debate(chat_history: list[dict]) -> Optional[dict[str, str]]:
+    """The most recent Full Debate round's four reports, if any -- lets a follow-up talk to
+    the Moderator with something real to reference instead of answering blind. A Full Debate
+    always appends exactly [quant, beat, contrarian, moderator] back to back (see the trigger
+    block below), so that exact role run is the signature to scan for, most recent first."""
+    for i in range(len(chat_history) - 4, -1, -1):
+        if [chat_history[i + k]["role"] for k in range(4)] == ["quant", "beat", "contrarian", "moderator"]:
+            return {
+                "quant": chat_history[i]["content"], "beat": chat_history[i + 1]["content"],
+                "contrarian": chat_history[i + 2]["content"], "moderator": chat_history[i + 3]["content"],
+            }
+    return None
+
+
 ACTIVITY_LOG_MAX = 50
 
 
@@ -2683,6 +2726,12 @@ with st.container(key="debate_dock"):
     moderator_personality = bot_config.MODERATOR_PERSONALITIES.get(moderator_personality_key)
     api_keys = {"claude": api_key_for("anthropic"), "gemini": api_key_for("gemini"), "openai": api_key_for("openai")}
     PERSONA_DOTS = {"quant": "🟢", "beat": "🟡", "contrarian": "🟣", "moderator": "🔴"}
+    # A plain follow-up defaults to the Moderator alone once a debate has already run in this
+    # chat -- not every next message deserves the whole panel reconvened, same as not every
+    # message in a normal conversation needs a deep dive. /debate still forces a fresh full
+    # re-run explicitly, any time.
+    last_debate = find_last_debate(st.session_state.chat_history)
+    default_trigger_mode = "followup" if last_debate else "debate"
 
     if dock_level != "collapsed":
         def _persona_caption(role: str) -> str:
@@ -2729,8 +2778,13 @@ with st.container(key="debate_dock"):
             # at "partial" so the tier actually fits its ~40vh cap without the transcript
             # getting squeezed to nothing.
             question = st.text_area(
-                "Ask about a start/sit, trade, or waiver decision "
-                "(prefix with /debate, /quant, or /beat to route explicitly)",
+                (
+                    "Continue the conversation with the Moderator, or type /debate for a fresh full panel run "
+                    "(prefix with /quant or /beat to route explicitly)"
+                    if last_debate else
+                    "Ask about a start/sit, trade, or waiver decision "
+                    "(prefix with /debate, /quant, or /beat to route explicitly)"
+                ),
                 key="question_input",
                 height=QUESTION_HEIGHT_BY_LEVEL[dock_level],
             )
@@ -2766,11 +2820,11 @@ with st.container(key="debate_dock"):
                         st.session_state.chat_scoped_attachments.pop(i)
                         st.rerun()
 
-        def resolve_command(text: str) -> tuple[str, str]:
+        def resolve_command(text: str, default_mode: str) -> tuple[str, str]:
             for prefix, mode in (("/debate", "debate"), ("/quant", "quant"), ("/beat", "beat")):
                 if text.strip().lower().startswith(prefix):
                     return mode, text.strip()[len(prefix):].strip()
-            return "debate", text.strip()
+            return default_mode, text.strip()
 
         trigger_mode = None
         trigger_question = None
@@ -2781,7 +2835,7 @@ with st.container(key="debate_dock"):
         elif quick_beat and question:
             trigger_mode, trigger_question = "beat", question
         elif question and st.session_state.get("_last_submitted") != question:
-            mode, cleaned = resolve_command(question)
+            mode, cleaned = resolve_command(question, default_trigger_mode)
             trigger_mode, trigger_question = mode, cleaned
 
         if trigger_mode and trigger_question:
@@ -2815,6 +2869,21 @@ with st.container(key="debate_dock"):
                         ),
                         provider=provider, model=role_models.get("beat") or None,
                     )
+                elif trigger_mode == "followup":
+                    # A plain follow-up after a debate talks to the Moderator alone, using that
+                    # debate's own reports and verdict as established context -- not every next
+                    # message deserves the whole panel reconvened. The Moderator can recommend
+                    # /debate in its own reply when a follow-up genuinely calls for it, but it
+                    # never triggers that itself; only the user typing /debate does.
+                    provider = role_providers["moderator"]
+                    followup_text = llm_engine.ask_moderator_followup(
+                        context, trigger_question,
+                        last_debate["quant"], last_debate["beat"], last_debate["contrarian"], last_debate["moderator"],
+                        provider=provider, api_key=api_keys[provider], model=role_models.get("moderator") or None,
+                        personality=moderator_personality,
+                    )
+                    append_message("moderator", followup_text, provider=provider, model=role_models.get("moderator") or None)
+                    process_moderator_output(followup_text, trigger_question)
                 else:
                     result = llm_engine.run_debate(
                         context, trigger_question, role_providers=role_providers, api_keys=api_keys,
@@ -2824,35 +2893,12 @@ with st.container(key="debate_dock"):
                     append_message("beat", result.beat, provider=role_providers["beat"], model=role_models.get("beat") or None)
                     append_message("contrarian", result.contrarian, provider=role_providers["contrarian"], model=role_models.get("contrarian") or None)
                     append_message("moderator", result.moderator, provider=role_providers["moderator"], model=role_models.get("moderator") or None)
-                    decision_log.log_decision(
-                        st.session_state.selected_league_id, trigger_question, result.verdict, result.moderator
-                    )
-                    action_item = result.verdict.get("action_item")
-                    if action_item:
-                        todo_log.add_todo(
-                            st.session_state.selected_league_id, action_item,
-                            source="moderator", question=trigger_question,
-                        )
-                    directives = llm_engine.parse_todo_directives(result.moderator)
-                    for update in directives["updates"]:
-                        todo_log.revise_todo(
-                            st.session_state.selected_league_id, update["id"], update["text"], update["reason"]
-                        )
-                    for proposal in directives["likely_resolved"]:
-                        todo_log.mark_likely_resolved(
-                            st.session_state.selected_league_id, proposal["id"], proposal["reason"]
-                        )
-                    # "Referenced" is a lighter signal than an actual UPDATE/LIKELY RESOLVED
-                    # directive — just the Moderator citing an objective by id (e.g. "per #3,
-                    # ...") while reasoning about something else. Regex over the active ids
-                    # rather than another LLM directive, since this is purely a UI hint, not
-                    # something that should shape the model's own output format.
-                    mentioned_ids = {int(n) for n in re.findall(r"#(\d+)", result.moderator)}
-                    for active_item in todo_log.load_todos(
-                        st.session_state.selected_league_id, statuses=todo_log.ACTIVE_STATUSES
-                    ):
-                        if active_item["id"] in mentioned_ids:
-                            todo_log.mark_referenced(st.session_state.selected_league_id, active_item["id"])
+                    process_moderator_output(result.moderator, trigger_question)
+            # Without this, the question box's label (now dependent on whether a debate has
+            # happened -- see default_trigger_mode above), the persona captions, and everything
+            # else derived from chat_history keep showing what they were at the START of this
+            # run until some later, unrelated interaction happens to trigger the next one.
+            st.rerun()
 
         VERDICT_FIELD_LABELS = (
             "RECOMMENDATION", "CONVICTION", "REASON", "DISSENT", "RISK", "RECON",

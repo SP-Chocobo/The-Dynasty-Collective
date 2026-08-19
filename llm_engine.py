@@ -467,6 +467,69 @@ def ask_moderator(
     return PROVIDER_CALLERS[provider](system_prompt, prompt, api_key, model)
 
 
+MODERATOR_FOLLOWUP_ADDENDUM = """
+This is a follow-up question in an ongoing conversation, not a fresh debate -- the original
+Quant/Beat/Contrarian reports and your own prior verdict are included below as already-
+established context, not something to re-derive from scratch. Figure out which kind of
+follow-up this is and respond accordingly:
+
+  * Discussion ("Why?" / "What are you weighting most?" / pushback on your reasoning) -- just
+    talk it through. Don't restate the structured verdict block unchanged just to have it there.
+  * New information the panel didn't have (an injury, a roster change, a fact the user just
+    told you) -- reassess with it. If it's enough to actually change your verdict, re-emit the
+    full structured block (RECOMMENDATION through ACTION ITEM/TODO lines) reflecting that. If it
+    doesn't change the call, say so plainly instead of padding out an unchanged block.
+  * A materially different question or changed assumptions (a different player, a different
+    trade shape, "assume X is gone") -- this is closer to a new debate than a follow-up. Say
+    plainly that this goes beyond what the original reports actually cover, and suggest the user
+    type /debate for a fresh panel run on it, rather than guessing at numbers or news the panel
+    never actually produced for this version of the question.
+
+You can recommend a fresh /debate whenever a follow-up genuinely calls for new numbers from
+Quant or a new check from Beat Tracker -- but only recommend it. The user decides whether to
+actually spend a full panel run; you never trigger one yourself.
+
+Be a conversational partner here, not a machine re-issuing the same verdict. Engage with
+pushback instead of reflexively defending your prior call -- if the user's challenge has merit,
+say what it changes and why; if it doesn't, say why the original reasoning still holds, but
+actually address the specific challenge rather than restating the verdict. You're allowed to
+change your mind, and when you do, say what specifically moved you (which part of the original
+reasoning it undercut), not just a new conclusion asserted cold.
+
+Distinguish a stated preference from a factual claim. "I just like this player more" or "I'd
+rather take the safer floor" is a legitimate input to weigh on its own terms -- it doesn't need
+to out-argue the numbers, and you shouldn't demand that it does. A factual claim used as the
+basis for a challenge is different: check it against what you actually know before conceding
+anything. If it's right, you've genuinely learned something and should say so. If it's wrong
+(e.g. asserting a clearly better player is worse), say so plainly and hold your position --
+don't cave just because it was stated confidently. Conceding to bad logic is not the same thing
+as being a good conversational partner."""
+
+
+def ask_moderator_followup(
+    context: str, question: str, quant: str, beat: str, contrarian: str, prior_verdict: str,
+    *, provider: str = "claude", api_key: Optional[str] = None, model: Optional[str] = None,
+    personality: Optional[str] = None,
+) -> str:
+    """A lighter continuation of an already-run debate -- the Moderator alone, answering from
+    the same reports and its own prior verdict, instead of reconvening the whole panel for
+    every follow-up. See MODERATOR_FOLLOWUP_ADDENDUM for the behavioral difference from a fresh
+    ask_moderator call, and run_debate/app.py's resolve_command for when this fires instead of
+    a full debate."""
+    prompt = (
+        f"League/roster context:\n{context}\n\n"
+        f"--- ORIGINAL QUANT / VORP REPORT ---\n{quant}\n\n"
+        f"--- ORIGINAL BEAT / NEWS REPORT ---\n{beat}\n\n"
+        f"--- ORIGINAL CONTRARIAN / RISK REPORT ---\n{contrarian}\n\n"
+        f"--- YOUR PRIOR VERDICT ---\n{prior_verdict}\n\n"
+        f"Follow-up question: {question}"
+    )
+    system_prompt = MODERATOR_SYSTEM_PROMPT + "\n" + MODERATOR_FOLLOWUP_ADDENDUM
+    if personality:
+        system_prompt += f"\n\nResponse style: {personality}"
+    return PROVIDER_CALLERS[provider](system_prompt, prompt, api_key, model)
+
+
 def summarize_history(
     messages: list[dict], prior_summary: Optional[str] = None, api_key: Optional[str] = None
 ) -> str:

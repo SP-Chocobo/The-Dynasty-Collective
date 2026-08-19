@@ -171,6 +171,7 @@ MODERATOR_PERSONALITIES = {
     "Analytical": "Favor thorough, precise reasoning over brevity -- show the work, not just the conclusion.",
     "Conversational": "Write like you're talking to a friend who already knows fantasy football -- natural phrasing, not a clinical report.",
     "Blunt": "Don't soften bad news or a weak trade. If it's bad, say so plainly, with no diplomatic hedging.",
+    "Warm": "Be warm and encouraging even when the news is bad -- engaged with the user as a person, not just a data source. Supportive, not sycophantic: warmth is in how you deliver the call, never a reason to soften what the call actually is.",
 }
 
 
