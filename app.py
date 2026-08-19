@@ -1037,6 +1037,26 @@ def build_context(snapshot: dict, roster_table: list[dict], player_universe: lis
     # full breakdown; everyone else gets a cheap one-line starters summary for ambient
     # awareness of who has what. Ask about a team by name to pull its full roster in.
     own_user_id = st.session_state.get("user_id")
+
+    # League-wide positional depth (every team, including yours) -- computed straight from
+    # Sleeper's own roster data, not parsed off Draft Sharks' League Analyzer positional-rank
+    # table (that PDF's flat text can't be reliably reattributed to the right team). Gives the
+    # Moderator/Contrarian a scarcity signal across the whole league without a separate
+    # question per team.
+    all_rostered = [row for row in player_universe if row.get("ownership") == "ROSTERED"]
+    if all_rostered:
+        depth: dict[str, dict[str, int]] = {}
+        for row in all_rostered:
+            team_label = row.get("owner_name") or f"Roster {row.get('roster_id', '?')}"
+            depth.setdefault(team_label, {}).setdefault(row["position"], 0)
+            depth[team_label][row["position"]] += 1
+        lines.append(
+            "\nLEAGUE-WIDE POSITIONAL DEPTH (rostered player counts per team, all positions "
+            "with at least one rostered player somewhere in the league):"
+        )
+        for team_label, counts in depth.items():
+            lines.append(f"  {team_label}: " + ", ".join(f"{pos} {n}" for pos, n in sorted(counts.items())))
+
     rosters_by_owner: dict[str, list[dict]] = {}
     for row in player_universe:
         if row.get("ownership") != "ROSTERED" or row.get("owner_id") == own_user_id:
@@ -2205,6 +2225,35 @@ else:
 
     st.markdown("---")
     st.subheader("League Rosters")
+
+    # League-wide positional depth -- every team including your own (unlike the per-team
+    # drill-down below, which excludes yours since it has its own tab). Computed straight
+    # from Sleeper's own roster data rather than parsed off Draft Sharks' League Analyzer
+    # positional-rank table: that PDF's flat text loses its row/column structure and can't
+    # be reliably reattributed to the right team, so this is the same underlying fact
+    # (how deep is each team at each position) derived from a source that's actually safe
+    # to parse instead of guessed from one that isn't.
+    all_rostered = [row for row in player_universe if row.get("ownership") == "ROSTERED"]
+    if all_rostered:
+        st.markdown("**League-Wide Positional Depth**")
+        st.caption(
+            "How many rostered players (starters + bench + taxi/IR) each team has at each "
+            "position — a scan for who's thin or stacked somewhere, without asking the bots "
+            "team-by-team. Ask Debate Studio a question naming a position for the reasoning "
+            "behind any of these counts."
+        )
+        _position_order = ["QB", "RB", "WR", "TE", "K", "DEF", "LB", "DL", "DB"]
+        _positions_present = [p for p in _position_order if any(r["position"] == p for r in all_rostered)]
+        _depth: dict[str, dict[str, int]] = {}
+        for row in all_rostered:
+            team_label = row.get("owner_name") or f"Roster {row.get('roster_id', '?')}"
+            _depth.setdefault(team_label, {p: 0 for p in _positions_present})
+            _depth[team_label][row["position"]] += 1
+        depth_df = pd.DataFrame.from_dict(_depth, orient="index")[_positions_present]
+        depth_df.index.name = "team"
+        depth_df = depth_df.sort_index().reset_index()
+        render_styled_table(depth_df)
+
     st.caption(
         "Every other team's roster in this league, straight from Sleeper — for trade scouting. "
         "Not enriched with Draft Sharks data here; just who owns whom."
