@@ -102,6 +102,11 @@ def build_player_universe(
             "status": info.get("status") or "unknown",
             "ownership": "ROSTERED" if pid in ownership else "FREE AGENT",
             "available": pid not in ownership,
+            # Sleeper has no public ADP or season-total-projection endpoint, but
+            # search_rank (lower = more universally relevant/rosterable) is the
+            # closest thing it exposes natively — good enough to order a free
+            # agent list by something better than alphabetical with zero setup.
+            "search_rank": info.get("search_rank"),
             **ownership.get(pid, {}),
         }
         stats = projections.get(pid)

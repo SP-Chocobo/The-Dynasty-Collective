@@ -83,7 +83,11 @@ class SleeperClient:
             if age < PLAYERS_CACHE_MAX_AGE_SECONDS:
                 return json.loads(cache_path.read_text())
 
-        players = self._get("/players/nfl")
+        try:
+            players = self._get("/players/nfl")
+        except SleeperAPIError:
+            players = None
+
         if players:
             cache_path.write_text(json.dumps(players))
             return players

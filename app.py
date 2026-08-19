@@ -307,21 +307,18 @@ def activate_league(league_id: str) -> None:
 SLOT_SORT_ORDER = {"Starter": 0, "Bench": 1, "TAXI": 2, "IR": 3}
 INJURY_OK_STATUSES = ("Questionable", "Doubtful")
 
-# (background, text color) pairs, reusing the same emerald/gold/crimson/violet accents
-# as everything else in the app — badges, the debate personas, the status panel.
-ROSTER_STATUS_PILL_COLORS = {
-    "Add": ("rgba(22,163,74,0.18)", "#4ade80"),
-    "Mine": ("rgba(59,130,246,0.18)", "#93c5fd"),
-    "Lock": ("rgba(212,160,23,0.18)", "#facc15"),
-    "Drop": ("rgba(185,28,28,0.18)", "#f87171"),
-}
 TABLE_COLUMN_LABELS = {
     "name": "Player", "position": "Pos", "team": "Team", "slot": "Slot",
     "tier": "Tier", "vorp": "VORP", "projection": "Proj", "sleeper_proj": "Sleeper Proj",
     "proj_3yr": "3yr Proj", "trade_value": "Trade Val", "pos_rank": "Pos Rank",
     "fa_ros_proj": "ROS Proj", "fa_ceiling": "Ceiling", "fa_value": "3D Value+",
-    "injury_status": "Status", "roster_status": "Status", "rank": "Rank",
-    "proj_3d": "3D Proj", "ros_3d": "ROS Proj", "ceiling": "Ceiling", "value_3d": "3D Value+",
+    "injury_status": "Status", "search_rank": "Sleeper Rank",
+    # The Sleeper-canonical free agent table prefixes every Draft Sharks enrichment
+    # field with ds_ (see the fa_rows build below) so it never collides with the
+    # native Sleeper fields on the same row — these are the display labels for those.
+    "ds_rank": "DS Rank", "ds_projection": "DS Proj", "ds_trade_value": "DS Trade Val",
+    "ds_proj_3d": "DS 3D Proj", "ds_ros_3d": "DS ROS Proj", "ds_ceiling": "DS Ceiling",
+    "ds_value_3d": "DS 3D Value+",
 }
 
 
@@ -1443,11 +1440,21 @@ else:
     if fa_search.strip():
         search_term = fa_search.strip().lower()
         fa_rows = [row for row in fa_rows if search_term in row["name"].lower()]
-    fa_rows.sort(key=lambda row: (row.get("ds_value_3d") is None, -(row.get("ds_value_3d") or 0), -(row.get("sleeper_proj") or 0), row["name"]))
+    # Rank by Draft Sharks' own valuation when it's loaded (the best signal available);
+    # otherwise fall back to Sleeper's search_rank — the closest thing to an ADP-style
+    # relevance order Sleeper exposes natively — then native weekly projection, then
+    # name only as a last-resort deterministic tiebreak. Without this, an unloaded
+    # Draft Sharks pool would sort alphabetically, which buries actually-good pickups.
+    fa_rows.sort(key=lambda row: (
+        row.get("ds_value_3d") is None, -(row.get("ds_value_3d") or 0),
+        row.get("search_rank") if row.get("search_rank") is not None else float("inf"),
+        -(row.get("sleeper_proj") or 0),
+        row["name"],
+    ))
     if fa_rows:
         fa_df = pd.DataFrame(fa_rows[:25])
         fa_display_cols = [c for c in [
-            "name", "team", "position", "injury_status", "sleeper_proj",
+            "name", "team", "position", "injury_status", "sleeper_proj", "search_rank",
             "ds_rank", "ds_projection", "ds_trade_value", "ds_proj_3d", "ds_ros_3d", "ds_ceiling", "ds_value_3d",
         ] if c in fa_df.columns]
         with fcol2:
