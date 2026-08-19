@@ -132,6 +132,12 @@ RISK: <the biggest risk to this being wrong, one line>
 RECON: <only if CONVICTION is Worth investigation — a concrete thing to go ask another manager, phrased as
 something the user can actually say, e.g. "Ask Team 4 if Player X is available for picks">
 PRICE CEILING: <only if this is a trade question — the most the user should give up>
+ACTION ITEM: <only if this verdict implies a concrete, NEW, trackable objective not already listed in your
+context's OPEN TO-DO ITEMS — a specific trade to propose, a waiver claim to submit, a manager to check back
+with, a roster move with a deadline. Phrased as the action itself, e.g. "Offer Team 4 a 2027 3rd for Player X
+before Thursday's waiver run." Skip this line entirely for a verdict that's just information or a single
+immediate start/sit call, or when it would just restate something already open — don't manufacture busywork
+or duplicate an existing objective; only write it for a genuinely new task worth not forgetting>
 
 CONVICTION is never a confidence percentage — percentages from an LLM are fake precision. It reflects
 whether the Quant, Beat Tracker, and Contrarian actually agree, or why they can't yet: Unanimous (all
@@ -139,8 +145,32 @@ three land the same direction), Majority (two agree, one dissents — say who an
 consensus among the three), Speculative (agreement isn't the issue — the underlying evidence is thin,
 e.g. a rookie with no track record, a projection with no market/news confirmation, or stale data), or
 Worth investigation (the analysis is sound as far as it goes, but the real answer depends on something
-only another manager can tell you — say exactly what to ask them in RECON). Omit the DISSENT, RECON, or
-PRICE CEILING lines entirely when they don't apply — never write "N/A".
+only another manager can tell you — say exactly what to ask them in RECON). Omit the DISSENT, RECON,
+PRICE CEILING, or ACTION ITEM lines entirely when they don't apply — never write "N/A".
+
+Your context's OPEN TO-DO ITEMS section (when present) lists this league's active objectives, each with a
+small numeric id. These are standing context for every question, not just ones about them — a rebuild-vs-
+contend objective changes what the right start/sit or waiver call even is. When this question's answer
+changes one of them, add one or more of these lines (each on its own line, after PRICE CEILING/ACTION ITEM,
+still before the block ends) instead of silently ignoring what's already tracked:
+
+TODO UPDATE: <id> | <the revised objective text> | <one line on what new information changed it>
+TODO LIKELY RESOLVED: <id> | <one line on why you believe this is actually done>
+
+Use TODO UPDATE when new information changes what the objective actually is, not to restate it unchanged.
+Use TODO LIKELY RESOLVED only when you have real evidence it's done (a completed trade visible in the
+league's roster data, an explicitly stated fact from the user or Beat Tracker) — this proposes closing it,
+it does not close it; the user confirms or reopens it. Never invent an id — only reference one that's
+actually listed in OPEN TO-DO ITEMS. Include as many TODO UPDATE / TODO LIKELY RESOLVED lines as genuinely
+apply (zero, one, or several) — these are the only repeatable lines in this block; every other field
+appears at most once.
+
+Your context may also include a RELEVANT PAST OBJECTIVES section — resolved or dismissed objectives that
+look related to the current question, each with the reason it was closed. This is strategic memory, not
+just a log: if something has materially changed since it closed (an injury, a depth-chart shift, recent
+play, a roster need) that undercuts the original reason, say so and use ACTION ITEM to propose revisiting
+it. Never assume it's worth reopening just because it's mentioned here, and never treat it as settling the
+current question by itself — it's context for your reasoning, not a substitute for it.
 Be decisive."""
 
 SUMMARIZER_SYSTEM_PROMPT = """You compact old fantasy football front-office chat history into a compact,
@@ -168,7 +198,7 @@ class DebateResult:
     errors: list[str] = field(default_factory=list)
 
 
-VERDICT_FIELDS = ["RECOMMENDATION", "CONVICTION", "REASON", "DISSENT", "RISK", "RECON", "PRICE CEILING"]
+VERDICT_FIELDS = ["RECOMMENDATION", "CONVICTION", "REASON", "DISSENT", "RISK", "RECON", "PRICE CEILING", "ACTION ITEM"]
 
 
 def parse_moderator_verdict(text: str) -> dict:
@@ -189,6 +219,34 @@ def parse_moderator_verdict(text: str) -> dict:
                     verdict[field_name.lower().replace(" ", "_")] = value
                 break
     return verdict
+
+
+def parse_todo_directives(text: str) -> dict:
+    """Pull every TODO UPDATE / TODO LIKELY RESOLVED line out of the Moderator's response.
+
+    Unlike parse_moderator_verdict's fields (each appears at most once), these can repeat —
+    one line per existing to-do item the verdict actually touches — so this collects all of
+    them into lists rather than keeping just the last match. Fails soft on a malformed line
+    (bad id, missing pipe-separated parts): that one line is dropped, not the whole response.
+    """
+    updates: list[dict] = []
+    likely_resolved: list[dict] = []
+    for line in text.splitlines():
+        stripped = line.strip().lstrip("-*# ").rstrip()
+        if stripped.upper().startswith("TODO UPDATE:"):
+            parts = [p.strip() for p in stripped[len("TODO UPDATE:"):].split("|")]
+            if len(parts) >= 2 and parts[0].isdigit() and parts[1]:
+                updates.append({
+                    "id": int(parts[0]), "text": parts[1],
+                    "reason": parts[2] if len(parts) >= 3 else "",
+                })
+        elif stripped.upper().startswith("TODO LIKELY RESOLVED:"):
+            parts = [p.strip() for p in stripped[len("TODO LIKELY RESOLVED:"):].split("|")]
+            if len(parts) >= 1 and parts[0].isdigit():
+                likely_resolved.append({
+                    "id": int(parts[0]), "reason": parts[1] if len(parts) >= 2 else "",
+                })
+    return {"updates": updates, "likely_resolved": likely_resolved}
 
 
 def is_claude_configured(api_key: Optional[str] = None) -> bool:

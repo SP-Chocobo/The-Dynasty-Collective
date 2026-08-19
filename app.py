@@ -21,6 +21,7 @@ import pandas as pd
 import streamlit as st
 
 import decision_log
+import todo_log
 import llm_engine
 from attachments import ATTACHMENTS_DIR, list_attachments, save_attachment, set_caption, set_scope, delete_attachment
 from data_merger import GLOBAL_PROJECTIONS_DIR, PROJECTIONS_DIR, DataMerger, load_projection_file, save_alias
@@ -608,6 +609,7 @@ def delete_league_completely(league_id: str) -> list[str]:
         removed.append(p.name)
 
     decision_log.forget_decisions(league_id)
+    todo_log.forget_todos(league_id)
 
     set_format_override(league_id, None)
 
@@ -709,6 +711,38 @@ def build_context(snapshot: dict, roster_table: list[dict], player_universe: lis
             lines.append(f"  [compacted memory of older history]\n{summary_msgs[-1]['content']}")
         for m in recent_msgs:
             lines.append(f"  [{m.get('role', '?')}] {m.get('content', '')}")
+
+    active_todos = todo_log.load_todos(league_id, statuses=todo_log.ACTIVE_STATUSES) if league_id else []
+    if active_todos:
+        lines.append(
+            "\nOPEN TO-DO ITEMS — this league's active objectives, each with a small numeric id. Don't "
+            "re-suggest one of these as if it were new; check in on it if the question is related, and use "
+            "ACTION ITEM again only for something genuinely new. To revise one when new information changes "
+            "it, or to propose it looks done, use TODO UPDATE: / TODO LIKELY RESOLVED: lines as described "
+            "in your instructions:"
+        )
+        for item in active_todos:
+            if item["status"] == "likely_resolved":
+                proposed = item.get("resolution_reason") or ""
+                lines.append(
+                    f"  - #{item['id']}: {item['text']} (since {item['date']}) — proposed as likely "
+                    f"resolved: {proposed} (awaiting user confirmation)"
+                )
+            else:
+                lines.append(f"  - #{item['id']}: {item['text']} (since {item['date']})")
+
+    relevant_history = todo_log.search_archived(league_id, question, limit=5) if league_id and question else []
+    if relevant_history:
+        lines.append(
+            "\nRELEVANT PAST OBJECTIVES — resolved/dismissed items that look related to this question. This "
+            "is strategic memory: if a similar trade/waiver/roster idea was already explored, use the "
+            "resolution note to understand why it ended the way it did, and weigh whether anything material "
+            "has changed since before treating this as a brand-new investigation:"
+        )
+        for item in relevant_history:
+            outcome = "Completed" if item["status"] == "resolved" else "Dismissed"
+            reason = item.get("resolution_reason") or "(no reason recorded)"
+            lines.append(f"  - {item['text']} — {outcome} {item.get('resolution_date', '')}: {reason}")
 
     lines.append(
         "\nDATA AVAILABILITY — work with whatever is actually loaded; none of this is required to answer. "
@@ -1647,6 +1681,148 @@ else:
             "read — it can see any team's roster, not just the one selected above."
         )
 
+# ------------------------------------------------------------------ decision log / objectives --
+# Reference/historical content, not the live chat interface -- kept in normal page flow (not the
+# fixed-position debate dock below) since deeply nested columns inside that fixed container were
+# confirmed to compute their width against the wrong basis and push buttons off-screen entirely.
+decisions = decision_log.load_decisions(st.session_state.selected_league_id)
+if decisions:
+    with st.expander(f"📋 Decision Log ({len(decisions)})"):
+        st.caption(
+            "Every Moderator verdict this league has gotten, newest first — "
+            "the record to check back against once picks are made or a trade lands."
+        )
+        log_df = pd.DataFrame(
+            [
+                {
+                    "Date": d["date"],
+                    "Question": d["question"],
+                    "Call": d.get("recommendation", ""),
+                    "Conviction": d.get("conviction", ""),
+                    "Reason": d.get("reason", ""),
+                    "Risk": d.get("risk", ""),
+                    "Recon": d.get("recon", ""),
+                    "Price Ceiling": d.get("price_ceiling", ""),
+                }
+                for d in reversed(decisions)
+            ]
+        )
+        st.dataframe(log_df, use_container_width=True, hide_index=True)
+
+todo_league_id = st.session_state.selected_league_id
+active_items = todo_log.load_todos(todo_league_id, statuses=todo_log.ACTIVE_STATUSES)
+with st.expander(f"🎯 Active Objectives ({len(active_items)})", expanded=bool(active_items)):
+    st.caption(
+        "League objectives the bots are tracking (🤖) or you added yourself (✍️) — selectively "
+        "given to the bots as context in future debates, not just a checklist. A 🔎 tag means a "
+        "bot proposed it looks done; confirm it or keep it open. A resolution note you add when "
+        "closing one persists permanently in the Archive below, so the bots can recall *why* it "
+        "ended the way it did if the same idea comes up again."
+    )
+    manual_col, add_col = st.columns([4, 1])
+    manual_text = manual_col.text_input(
+        "Add an objective", key="manual_todo_text", label_visibility="collapsed",
+        placeholder="Add a new objective…",
+    )
+    if add_col.button("Add", key="add_manual_todo", use_container_width=True) and manual_text.strip():
+        todo_log.add_todo(todo_league_id, manual_text, source="manual")
+        st.rerun()
+
+    if not active_items:
+        st.caption("Nothing active right now.")
+    else:
+        for item in active_items:
+            with st.container(border=True):
+                source_tag = "🤖" if item.get("source") == "moderator" else "✍️"
+                header = (
+                    f"{source_tag} **#{item['id']}** {item['text']}  \n"
+                    f"<span style='color:#6b7280;font-size:0.78rem;'>{item['date']}</span>"
+                )
+                st.markdown(header, unsafe_allow_html=True)
+
+                if item.get("revisions"):
+                    with st.popover("📝 Revision history"):
+                        for rev in item["revisions"]:
+                            reason_suffix = f" — {rev['reason']}" if rev.get("reason") else ""
+                            st.caption(f"{rev['date']}: was \"{rev['text']}\"{reason_suffix}")
+
+                for note in item.get("notes", []):
+                    st.caption(f"🗒️ {note['date']}: {note['text']}")
+
+                note_col, note_btn_col = st.columns([4, 1])
+                note_text = note_col.text_input(
+                    "Add note", key=f"todo_note_{item['id']}", label_visibility="collapsed",
+                    placeholder="Add a note while this is still active…",
+                )
+                if note_btn_col.button("Add", key=f"todo_note_add_{item['id']}", use_container_width=True) and note_text.strip():
+                    todo_log.add_note(todo_league_id, item["id"], note_text)
+                    st.rerun()
+
+                if item["status"] == "likely_resolved":
+                    st.markdown(f"🔎 **Proposed as likely resolved:** {item.get('resolution_reason', '')}")
+                    c1, c2 = st.columns(2)
+                    if c1.button("✅ Confirm Done", key=f"todo_confirm_{item['id']}", use_container_width=True):
+                        todo_log.resolve_todo(todo_league_id, item["id"])
+                        st.rerun()
+                    if c2.button("↩️ Keep Open", key=f"todo_reopen_{item['id']}", use_container_width=True):
+                        todo_log.reopen_todo(todo_league_id, item["id"])
+                        st.rerun()
+                else:
+                    resolution_note = st.text_input(
+                        "Resolution note (optional)", key=f"todo_resolve_note_{item['id']}",
+                        placeholder="What happened, so this stays useful as history later…",
+                    )
+                    d1, d2, d3 = st.columns(3)
+                    if d1.button("✓ Mark Done", key=f"todo_done_{item['id']}", use_container_width=True):
+                        todo_log.resolve_todo(todo_league_id, item["id"], resolution_note)
+                        st.rerun()
+                    if d2.button("✕ Dismiss", key=f"todo_dismiss_{item['id']}", use_container_width=True):
+                        todo_log.dismiss_todo(todo_league_id, item["id"], resolution_note or "Dismissed by user")
+                        st.rerun()
+                    if d3.button("🗑️ Delete", key=f"todo_delete_{item['id']}", use_container_width=True):
+                        todo_log.delete_todo(todo_league_id, item["id"])
+                        st.rerun()
+
+archived_items = todo_log.load_todos(todo_league_id, statuses=todo_log.ARCHIVED_STATUSES)
+with st.expander(f"🗄️ Archive ({len(archived_items)})"):
+    st.caption(
+        "Resolved and dismissed objectives — kept as strategic memory, not deleted. The bots "
+        "draw on the resolution note here to avoid re-investigating something that already "
+        "failed, or to recognize when it's worth trying again."
+    )
+    if not archived_items:
+        st.caption("Nothing archived yet.")
+    else:
+        for item in sorted(archived_items, key=lambda e: e.get("ts", 0), reverse=True):
+            outcome = "✅ Completed" if item["status"] == "resolved" else "✕ Dismissed"
+            with st.container(border=True):
+                st.markdown(
+                    f"**#{item['id']}** {item['text']}  \n"
+                    f"<span style='color:#6b7280;font-size:0.78rem;'>{item['date']} → {outcome} "
+                    f"{item.get('resolution_date', '')}</span>",
+                    unsafe_allow_html=True,
+                )
+                if item.get("resolution_reason"):
+                    st.markdown(f"**Resolution note:** {item['resolution_reason']}")
+                for note in item.get("notes", []):
+                    st.caption(f"🗒️ {note['date']}: {note['text']}")
+                if item.get("revisions"):
+                    with st.popover("📝 Revision history"):
+                        for rev in item["revisions"]:
+                            reason_suffix = f" — {rev['reason']}" if rev.get("reason") else ""
+                            st.caption(f"{rev['date']}: was \"{rev['text']}\"{reason_suffix}")
+
+                a1, a2 = st.columns(2)
+                if a1.button("🔄 Revisit as new objective", key=f"todo_revisit_{item['id']}", use_container_width=True):
+                    todo_log.add_todo(
+                        todo_league_id, item["text"], source="manual",
+                        question=f"Revisit of #{item['id']}",
+                    )
+                    st.rerun()
+                if a2.button("🗑️ Delete permanently", key=f"todo_archive_delete_{item['id']}", use_container_width=True):
+                    todo_log.delete_todo(todo_league_id, item["id"])
+                    st.rerun()
+
 # ------------------------------------------------------------------ debate studio --
 # A fixed dock at the bottom of the viewport, not just "below the tab content" —
 # regardless of which tab is active AND regardless of scroll position on that
@@ -1662,12 +1838,28 @@ CHAT_HEIGHT_BY_LEVEL = {"partial": 200, "full": 560}
 
 # The dock is position:fixed (see the <style> block up top), which takes it out of
 # normal page flow — without this, its expanded height would sit on top of whatever
-# content happens to be at the bottom of the page instead of pushing it up. Injected
-# per-render (not in the static stylesheet) since the right amount depends on which
-# of the three tiers (collapsed/partial/full) is currently showing.
-_dock_clearance = {"collapsed": 90, "partial": 420, "full": 780}[dock_level]
+# content happens to be at the bottom of the page instead of pushing it up. A fixed
+# px guess here (previously 420/780) was confirmed too small at the "partial" tier —
+# the dock's real rendered height (~753px on a 1400px-tall viewport) came in well
+# over the 420px reserved. vh-based clearance scales with viewport height instead of
+# guessing a constant, and "full" is set to exceed the dock's own `max-height: 94vh`
+# cap so it can never be under-reserved.
+#
+# padding-bottom alone only guarantees room to scroll past the dock at the very
+# bottom of the page — it doesn't stop the browser's own scroll-into-view (Tab
+# focus, an anchor jump, Playwright's scroll_into_view_if_needed) from landing an
+# element's scroll position right underneath the fixed dock mid-page, since that
+# algorithm has no idea the dock is there covering part of the viewport. Confirmed
+# live: a Decision Log / Objectives control scrolled to did exactly that, genuinely
+# unclickable at the position the browser chose. scroll-padding-bottom on the real
+# scroll container (stMain, not the window — Streamlit scrolls its own <section>)
+# tells that same algorithm to always leave the dock's height clear, so anything
+# scrolled to lands above it instead.
+_dock_clearance = {"collapsed": "14vh", "partial": "60vh", "full": "96vh"}[dock_level]
 st.markdown(
-    f"<style>[data-testid='stMain'] {{ padding-bottom: {_dock_clearance}px; }}</style>",
+    f"<style>[data-testid='stMain'] {{ "
+    f"padding-bottom: {_dock_clearance}; scroll-padding-bottom: {_dock_clearance}; "
+    f"}}</style>",
     unsafe_allow_html=True,
 )
 
@@ -1771,6 +1963,21 @@ with st.container(key="debate_dock"):
                     decision_log.log_decision(
                         st.session_state.selected_league_id, trigger_question, result.verdict, result.moderator
                     )
+                    action_item = result.verdict.get("action_item")
+                    if action_item:
+                        todo_log.add_todo(
+                            st.session_state.selected_league_id, action_item,
+                            source="moderator", question=trigger_question,
+                        )
+                    directives = llm_engine.parse_todo_directives(result.moderator)
+                    for update in directives["updates"]:
+                        todo_log.revise_todo(
+                            st.session_state.selected_league_id, update["id"], update["text"], update["reason"]
+                        )
+                    for proposal in directives["likely_resolved"]:
+                        todo_log.mark_likely_resolved(
+                            st.session_state.selected_league_id, proposal["id"], proposal["reason"]
+                        )
 
         badge_map = {
             "user": ("You", "badge-user"),
@@ -1808,26 +2015,3 @@ with st.container(key="debate_dock"):
                 else:
                     st.warning(message)
 
-        decisions = decision_log.load_decisions(st.session_state.selected_league_id)
-        if decisions:
-            with st.expander(f"📋 Decision Log ({len(decisions)})"):
-                st.caption(
-                    "Every Moderator verdict this league has gotten, newest first — "
-                    "the record to check back against once picks are made or a trade lands."
-                )
-                log_df = pd.DataFrame(
-                    [
-                        {
-                            "Date": d["date"],
-                            "Question": d["question"],
-                            "Call": d.get("recommendation", ""),
-                            "Conviction": d.get("conviction", ""),
-                            "Reason": d.get("reason", ""),
-                            "Risk": d.get("risk", ""),
-                            "Recon": d.get("recon", ""),
-                            "Price Ceiling": d.get("price_ceiling", ""),
-                        }
-                        for d in reversed(decisions)
-                    ]
-                )
-                st.dataframe(log_df, use_container_width=True, hide_index=True)
