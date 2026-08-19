@@ -89,6 +89,23 @@ st.markdown(
         font-weight: 600;
     }
 
+    /* Refresh sits right next to the league switcher, but it's a secondary
+       maintenance action, not a peer to "which league am I even looking at" — same
+       heavy bordered-box treatment as the switcher made them read as two equally
+       important controls. Understating Refresh (transparent, muted, no bold) lets the
+       switcher read as the one thing this row is actually for. */
+    .st-key-league_switcher_row .stButton button {
+        background: transparent;
+        border-color: #2a2b2e !important;
+        color: #9ca3af;
+        font-weight: 500;
+    }
+    .st-key-league_switcher_row .stButton button:hover {
+        color: #e5e7eb;
+        border-color: #3a3c42 !important;
+        background: rgba(255,255,255,0.03);
+    }
+
     /* Sidebar defaults to a width that crowds the Manage Leagues row and the
        credentials paste box — widen it out of the box instead of making everyone
        drag it wider by hand every time. Still resizable from here if you want more.
@@ -109,6 +126,25 @@ st.markdown(
         padding: 10px 18px;
         font-weight: 600;
         border-width: 1.5px !important;
+        transition: transform 0.05s ease, filter 0.05s ease, background 0.15s ease,
+            border-color 0.15s ease, color 0.15s ease;
+    }
+    /* A bigger, bolder button needs an equally clear "yes, that registered" moment —
+       without this the only click feedback was whatever the browser does by default,
+       easy to miss at this size/weight. A quick press-down (not just a hover tint)
+       reads as tactile regardless of what color the button happens to be. */
+    .stButton button:active, .stFormSubmitButton button:active, .stDownloadButton button:active {
+        transform: scale(0.96);
+        filter: brightness(0.9);
+    }
+    /* Popover triggers (league switcher, Attach, revision history) and the segmented-
+       control tabs are buttons under the hood but don't match the selector above --
+       give them the same pressed cue so every clickable control in the app responds
+       the same way. */
+    [data-testid="stPopoverButton"]:active,
+    [data-testid="stButtonGroup"] button:active {
+        transform: scale(0.96);
+        filter: brightness(0.9);
     }
 
     /* The Free Agents table's clickable sort header (real st.button()s, since a
@@ -131,6 +167,16 @@ st.markdown(
     .st-key-fa_sort_header .stButton button:hover {
         color: #e5e7eb;
         border-color: #3a3c42 !important;
+    }
+
+    /* Archive/reorder/delete per league — frequent-but-minor list-management actions,
+       not primary calls to action. At the app's default 44px/bold weight, four of them
+       repeated per league was most of what made "League Controls" feel cluttered. */
+    .st-key-manage_leagues_list .stButton button {
+        min-height: 32px;
+        padding: 4px 10px;
+        font-size: 0.8rem;
+        font-weight: 500;
     }
 
     /* Debate Studio dock: fixed to the bottom of the viewport (not "sticky" — sticky
@@ -162,7 +208,11 @@ st.markdown(
         background: linear-gradient(90deg, #16a34a, #d4a017, #8b5cf6, #b91c1c) top / 100% 2px no-repeat, #16171a;
         border-top: 1px solid #2a2b2e;
         padding: 10px 24px 18px;
-        transition: left 0.2s ease;
+        /* max-height wasn't in here, so switching collapsed/partial/full tiers just
+           snapped the dock to its new size instantly — jarring for what's supposed to
+           read as a bottom sheet sliding open, the same interaction the Sleeper app
+           itself animates. */
+        transition: left 0.2s ease, max-height 0.25s ease;
         box-shadow: 0 -4px 16px rgba(0,0,0,0.45);
         /* The "full" tier's content can exceed a short viewport's height — without a
            cap, a position:fixed/bottom:0 element just grows upward past the top of the
@@ -199,6 +249,36 @@ st.markdown(
     [class*="st-key-del_"] button:hover {
         border-color: #b91c1c !important;
         color: #f87171 !important;
+    }
+
+    /* Every transition/animation added above respects a system-level "please don't
+       move things" preference instead of overriding it -- motion is a nice-to-have
+       polish, not something to force on someone who's told their OS they don't want it. */
+    @media (prefers-reduced-motion: reduce) {
+        *, *::before, *::after {
+            transition-duration: 0.001ms !important;
+            animation-duration: 0.001ms !important;
+        }
+    }
+
+    /* This was only ever tuned against a laptop-width viewport. Confirmed live at
+       phone width (390px): the hero title wrapped to 3 lines at full desktop size,
+       eating most of the screen before any real content. clamp() scales it down
+       smoothly with viewport width instead of a hard breakpoint jump. */
+    [data-testid="stMainBlockContainer"] h1 {
+        font-size: clamp(1.5rem, 4vw + 0.6rem, 2.5rem);
+    }
+
+    /* Confirmed live at tablet width (820px): the sidebar stays persistent (unlike
+       phone width, where Streamlit collapses it), leaving columns narrow enough that
+       button labels wrapped ugly onto 2-3 lines -- "Refresh" as "Re/fre/sh". Tap
+       targets stay at the full 44px min-height (mobile is exactly where that matters
+       most); only the font/padding shrink to fit the label on one line. */
+    @media (max-width: 900px) {
+        .stButton button, .stFormSubmitButton button, .stDownloadButton button {
+            font-size: 0.82rem;
+            padding: 8px 8px;
+        }
     }
     </style>
     """,
@@ -443,6 +523,30 @@ def _injury_pill_color(val: str) -> tuple[str, str]:
     if val in INJURY_OK_STATUSES:
         return ("rgba(212,160,23,0.18)", "#facc15")
     return ("rgba(185,28,28,0.18)", "#f87171")  # Out/IR/PUP/etc.
+
+
+# Position was rendering as plain gray text in every table — every row required reading
+# to find what you were looking for, where a color-coded badge lets it register at a
+# glance instead. Not a copy of Sleeper's own QB/RB/WR color mapping (their choices
+# aren't inherently "correct," just one reference point) — chosen instead to stay clear
+# of hues this app already uses to MEAN something. Gold and crimson are the injury pills
+# (Questionable/Out), and a Questionable TE would otherwise show a gold position pill
+# right next to a gold injury pill in the same row, saying two different things with the
+# same color. Persona colors (green/gold/purple/red) are chat badges, a different
+# context, but avoided anyway for a fully distinct set.
+_POSITION_PILL_COLORS = {
+    "QB": ("rgba(129,140,248,0.18)", "#818cf8"),   # indigo
+    "RB": ("rgba(45,212,191,0.18)", "#2dd4bf"),    # teal
+    "WR": ("rgba(56,189,248,0.18)", "#38bdf8"),    # sky blue
+    "TE": ("rgba(251,146,60,0.18)", "#fb923c"),    # orange
+    "K": ("rgba(148,163,184,0.18)", "#94a3b8"),    # neutral gray
+    "DEF": ("rgba(244,114,182,0.18)", "#f472b6"),  # pink
+    "DST": ("rgba(244,114,182,0.18)", "#f472b6"),
+}
+
+
+def _position_pill_color(val: str) -> tuple[str, str]:
+    return _POSITION_PILL_COLORS.get(val, ("rgba(148,163,184,0.18)", "#94a3b8"))
 
 
 def render_styled_table(
@@ -1207,55 +1311,74 @@ with st.sidebar:
             else:
                 st.info("All discovered leagues are archived — unarchive one below to select it.")
 
-            st.markdown(f"**Manage Leagues ({len(st.session_state.leagues)})**")
-            st.caption(
-                "Archive leagues you don't want on the front dashboard, or reorder them. Delete "
-                "permanently purges all locally cached data for a league (snapshots, its own Draft "
-                "Sharks uploads, chat history) — it doesn't leave the Sleeper league itself, so if "
-                "you're still a member it'll just reappear fresh next time you sync."
+            # This list (name + 4 buttons, repeated per league) was the bulk of what made
+            # "League Controls" feel cluttered — every visit surfaced a full wall of
+            # reorder/archive/delete buttons for a task that's actually rare (most visits
+            # are just checking or switching leagues, handled above and by the main-panel
+            # switcher). Tucking it behind its own toggle, collapsed by default, means
+            # opening League Controls for the common case doesn't dump the whole list.
+            st.session_state.setdefault("show_manage_leagues", False)
+            toggle_label = (
+                f"{'▾' if st.session_state.show_manage_leagues else '▸'} "
+                f"Manage league list ({len(st.session_state.leagues)})"
             )
-            ordered = visible_leagues + archived_leagues
-            for idx, lg in enumerate(ordered):
-                lid = lg["league_id"]
-                is_archived = lid in {a["league_id"] for a in archived_leagues}
-                # Name gets its own full-width line — a name plus four buttons never
-                # fit in one row without wrapping mid-word, so don't compete for space.
-                st.markdown(f"**{'🗄️ ' if is_archived else ''}{lg['name']}**")
-                arch_col, up_col, down_col, del_col = st.columns([2.2, 1, 1, 1])
-                if arch_col.button(
-                    "Unarchive" if is_archived else "Archive", key=f"arch_{lid}", use_container_width=True,
-                ):
-                    toggle_archive(st.session_state.user_id, lid)
-                    st.rerun()
-                if up_col.button("▲", key=f"up_{lid}", disabled=idx == 0, help="Move up", use_container_width=True):
-                    move_league(st.session_state.user_id, st.session_state.leagues, lid, -1)
-                    st.rerun()
-                if down_col.button(
-                    "▼", key=f"down_{lid}", disabled=idx == len(ordered) - 1, help="Move down",
-                    use_container_width=True,
-                ):
-                    move_league(st.session_state.user_id, st.session_state.leagues, lid, 1)
-                    st.rerun()
+            if st.button(toggle_label, key="toggle_manage_leagues", use_container_width=True):
+                st.session_state.show_manage_leagues = not st.session_state.show_manage_leagues
+                st.rerun()
 
-                if st.session_state.get("pending_delete_league_id") == lid:
-                    if del_col.button("Cancel", key=f"cancel_del_{lid}", use_container_width=True):
-                        st.session_state.pending_delete_league_id = None
-                        st.rerun()
-                elif del_col.button("🗑️", key=f"del_{lid}", help="Delete permanently", use_container_width=True):
-                    st.session_state.pending_delete_league_id = lid
-                    st.rerun()
+            if st.session_state.show_manage_leagues:
+                st.caption(
+                    "Archive leagues you don't want on the front dashboard, or reorder them. Delete "
+                    "permanently purges all locally cached data for a league (snapshots, its own Draft "
+                    "Sharks uploads, chat history) — it doesn't leave the Sleeper league itself, so if "
+                    "you're still a member it'll just reappear fresh next time you sync."
+                )
+                # Smaller/lighter than the app's default 44px bold buttons — these four
+                # are frequent-but-minor list-management actions, not primary calls to
+                # action, and at full weight per league they were most of the clutter.
+                with st.container(key="manage_leagues_list"):
+                    ordered = visible_leagues + archived_leagues
+                    for idx, lg in enumerate(ordered):
+                        lid = lg["league_id"]
+                        is_archived = lid in {a["league_id"] for a in archived_leagues}
+                        # Name gets its own full-width line — a name plus four buttons never
+                        # fit in one row without wrapping mid-word, so don't compete for space.
+                        st.markdown(f"**{'🗄️ ' if is_archived else ''}{lg['name']}**")
+                        arch_col, up_col, down_col, del_col = st.columns([2.2, 1, 1, 1])
+                        if arch_col.button(
+                            "Unarchive" if is_archived else "Archive", key=f"arch_{lid}", use_container_width=True,
+                        ):
+                            toggle_archive(st.session_state.user_id, lid)
+                            st.rerun()
+                        if up_col.button("▲", key=f"up_{lid}", disabled=idx == 0, help="Move up", use_container_width=True):
+                            move_league(st.session_state.user_id, st.session_state.leagues, lid, -1)
+                            st.rerun()
+                        if down_col.button(
+                            "▼", key=f"down_{lid}", disabled=idx == len(ordered) - 1, help="Move down",
+                            use_container_width=True,
+                        ):
+                            move_league(st.session_state.user_id, st.session_state.leagues, lid, 1)
+                            st.rerun()
 
-                if st.session_state.get("pending_delete_league_id") == lid:
-                    st.warning(
-                        f"Permanently delete all local data for **{lg['name']}**? This can't be undone "
-                        "(no in-app undo — only whatever backups your OS/filesystem might keep)."
-                    )
-                    if st.button("Confirm Delete", key=f"confirm_del_{lid}", use_container_width=True):
-                        removed = delete_league_completely(lid)
-                        st.session_state.pending_delete_league_id = None
-                        st.success(f"Deleted local data for {lg['name']} ({len(removed)} item(s) removed).")
-                        st.rerun()
-                st.markdown("<hr style='margin:6px 0;opacity:0.15'>", unsafe_allow_html=True)
+                        if st.session_state.get("pending_delete_league_id") == lid:
+                            if del_col.button("Cancel", key=f"cancel_del_{lid}", use_container_width=True):
+                                st.session_state.pending_delete_league_id = None
+                                st.rerun()
+                        elif del_col.button("🗑️", key=f"del_{lid}", help="Delete permanently", use_container_width=True):
+                            st.session_state.pending_delete_league_id = lid
+                            st.rerun()
+
+                        if st.session_state.get("pending_delete_league_id") == lid:
+                            st.warning(
+                                f"Permanently delete all local data for **{lg['name']}**? This can't be undone "
+                                "(no in-app undo — only whatever backups your OS/filesystem might keep)."
+                            )
+                            if st.button("Confirm Delete", key=f"confirm_del_{lid}", use_container_width=True):
+                                removed = delete_league_completely(lid)
+                                st.session_state.pending_delete_league_id = None
+                                st.success(f"Deleted local data for {lg['name']} ({len(removed)} item(s) removed).")
+                                st.rerun()
+                        st.markdown("<hr style='margin:6px 0;opacity:0.15'>", unsafe_allow_html=True)
 
     st.markdown("---")
     st.markdown("### Status")
@@ -1333,32 +1456,40 @@ if st.session_state.leagues:
         if current not in option_ids:
             current = option_ids[0]
 
-        switch_col, refresh_col = st.columns([5, 1])
-        with switch_col:
-            with st.popover(f"📂 {league_options[current]}", use_container_width=True):
-                st.caption("Switch which league the dashboard and debate panel below are showing.")
-                picked = st.radio(
-                    "Switch to",
-                    options=option_ids,
-                    format_func=lambda lid: league_options[lid],
-                    index=option_ids.index(current),
-                    label_visibility="collapsed",
-                )
-        if picked != st.session_state.selected_league_id:
-            activate_league(picked)
-            st.rerun()
-        with refresh_col:
-            if st.button(
-                "🔄 Refresh", use_container_width=True,
-                help="Re-pull this league's rosters/scoring/taxi/traded picks from Sleeper.",
-            ):
-                client: SleeperClient = st.session_state.sleeper_client
-                try:
-                    with st.spinner("Syncing..."):
-                        st.session_state.league_snapshot = client.sync_league(picked, client.get_players())
-                    st.success("League synced.")
-                except SleeperAPIError as exc:
-                    st.error(f"Couldn't reach Sleeper: {exc}")
+        with st.container(key="league_switcher_row"):
+            switch_col, refresh_col = st.columns([5, 1])
+            with switch_col:
+                # No leading icon — a folder glyph read as "open a folder," not "this is
+                # the league you're looking at." The name plus the popover's own chevron
+                # already reads as a picker on its own, the way a real <select> does.
+                with st.popover(league_options[current], use_container_width=True):
+                    st.caption("Switch which league the dashboard and debate panel below are showing.")
+                    picked = st.radio(
+                        "Switch to",
+                        options=option_ids,
+                        format_func=lambda lid: league_options[lid],
+                        index=option_ids.index(current),
+                        label_visibility="collapsed",
+                    )
+            if picked != st.session_state.selected_league_id:
+                activate_league(picked)
+                st.rerun()
+            with refresh_col:
+                # Deliberately understated (see the .st-key-league_switcher_row rule
+                # above) — Refresh is a secondary maintenance action next to the primary
+                # league picker, not a peer to it, and the icon was only repeating what
+                # the word already said.
+                if st.button(
+                    "Refresh", use_container_width=True,
+                    help="Re-pull this league's rosters/scoring/taxi/traded picks from Sleeper.",
+                ):
+                    client: SleeperClient = st.session_state.sleeper_client
+                    try:
+                        with st.spinner("Syncing..."):
+                            st.session_state.league_snapshot = client.sync_league(picked, client.get_players())
+                        st.success("League synced.")
+                    except SleeperAPIError as exc:
+                        st.error(f"Couldn't reach Sleeper: {exc}")
 
 snapshot = st.session_state.league_snapshot
 if not snapshot:
@@ -1458,7 +1589,7 @@ if main_view == MATCHUP_VIEW:
         ] if c in df.columns]
         render_styled_table(
             df[display_cols],
-            pill_columns={"injury_status": _injury_pill_color},
+            pill_columns={"injury_status": _injury_pill_color, "position": _position_pill_color},
             group_column="slot",
             column_labels={"sleeper_proj": sleeper_proj_label(snapshot)},
         )
@@ -1620,7 +1751,9 @@ elif main_view == MAINTENANCE_VIEW:
                         st.rerun()
             fa_df = pd.DataFrame(fa_rows[:25])
             render_styled_table(
-                fa_df[fa_display_cols], pill_columns={"injury_status": _injury_pill_color}, render_header=False,
+                fa_df[fa_display_cols],
+                pill_columns={"injury_status": _injury_pill_color, "position": _position_pill_color},
+                render_header=False,
                 column_labels=fa_column_labels,
             )
             if "sleeper_proj" in fa_df.columns:
@@ -1725,7 +1858,7 @@ else:
         display_cols = [c for c in ["name", "position", "team", "slot", "sleeper_proj", "injury_status"] if c in team_df.columns]
         render_styled_table(
             team_df[display_cols],
-            pill_columns={"injury_status": _injury_pill_color},
+            pill_columns={"injury_status": _injury_pill_color, "position": _position_pill_color},
             group_column="slot",
             column_labels={"sleeper_proj": sleeper_proj_label(snapshot)},
         )
