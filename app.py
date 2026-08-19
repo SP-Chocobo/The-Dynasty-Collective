@@ -153,7 +153,13 @@ st.markdown(
         width: auto !important;
         bottom: 0;
         z-index: 999;
-        background: #16171a;
+        /* A flat 1px border read as just "more page," not a distinct always-on
+           analytical layer over the workspace. Layering a thin accent gradient
+           (blending the four persona colors the chat badges already use) on top of
+           the solid background reads as its own thing without needing a heavier
+           treatment — and unlike a pseudo-element, a background-image layer isn't at
+           risk of being clipped by this element's own overflow-y: auto below. */
+        background: linear-gradient(90deg, #16a34a, #d4a017, #8b5cf6, #b91c1c) top / 100% 2px no-repeat, #16171a;
         border-top: 1px solid #2a2b2e;
         padding: 10px 24px 18px;
         transition: left 0.2s ease;
@@ -175,6 +181,25 @@ st.markdown(
        rendered width, tracking its expanded/collapsed state via :has(). */
     body:has([data-testid="stSidebar"][aria-expanded="true"]) .st-key-debate_dock { left: 400px; }
     body:has([data-testid="stSidebar"][aria-expanded="false"]) .st-key-debate_dock { left: 0; }
+
+
+    /* Delete confirmations are the one genuinely irreversible action in the sidebar —
+       give them a visibly different (red-leaning) treatment instead of the same
+       neutral gray as every other button, so "Confirm Delete" doesn't blend in with
+       "Sync Leagues" a few pixels away. Streamlit has no built-in danger button type,
+       so this targets the key-derived class directly; the key varies per league id,
+       hence the attribute-substring match rather than an exact class name. */
+    [class*="st-key-confirm_del_"] button {
+        border-color: #b91c1c !important;
+        color: #f87171 !important;
+    }
+    [class*="st-key-confirm_del_"] button:hover {
+        background: rgba(185,28,28,0.12) !important;
+    }
+    [class*="st-key-del_"] button:hover {
+        border-color: #b91c1c !important;
+        color: #f87171 !important;
+    }
     </style>
     """,
     unsafe_allow_html=True,
@@ -1235,7 +1260,11 @@ with st.sidebar:
     st.markdown("---")
     st.markdown("### Status")
     def status_line(label: str, ok: bool) -> str:
-        icon = "✅" if ok else "❌"
+        # ❌ is an intrinsically red emoji glyph — CSS `color` can't retint it, so
+        # "not loaded yet" (routine, most of these are optional) always read as a
+        # stack of alarms regardless of the muted .status-bad text color next to it.
+        # A plain circle actually respects the class's color.
+        icon = "✅" if ok else "○"
         cls = "status-ok" if ok else "status-bad"
         return f'<span class="{cls}">{icon} {label}</span>'
 
@@ -2010,7 +2039,7 @@ with st.container(key="debate_dock"):
 
         btn_col, input_col = st.columns([1, 3])
         with btn_col:
-            quick_debate = st.button("Run Debate", use_container_width=True)
+            quick_debate = st.button("Run Debate", use_container_width=True, type="primary")
             quick_claude = st.button("Ask Claude", use_container_width=True)
             quick_gemini = st.button("Ask Gemini", use_container_width=True)
             quick_gpt = st.button("Ask ChatGPT", use_container_width=True)
