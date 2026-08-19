@@ -826,6 +826,33 @@ def build_pick_ledger(snapshot: dict) -> dict[int, dict[str, list[dict]]]:
     return ledger
 
 
+def positional_depth(player_universe: list[dict], merger: DataMerger) -> dict[str, dict[str, dict]]:
+    """team -> position -> {"count": n, "value": sum or None}.
+
+    Count alone treats a pile of backups the same as three stacked stars at the same
+    position -- real depth is about quality, not just bodies. `value` sums each
+    player's Draft Sharks trade_value (Dynasty Rankings) where a match exists, so a
+    QB room with Mahomes/Dak/Lamar reads very differently from three replacement-level
+    arms even though both are "3 QBs." Only computed when merger.is_loaded -- with no
+    Draft Sharks data at all, value stays None for every cell and callers fall back to
+    count alone, per this app's usual "work with whatever is loaded" rule.
+    """
+    depth: dict[str, dict[str, dict]] = {}
+    for row in player_universe:
+        if row.get("ownership") != "ROSTERED":
+            continue
+        team_label = row.get("owner_name") or f"Roster {row.get('roster_id', '?')}"
+        position = row["position"]
+        cell = depth.setdefault(team_label, {}).setdefault(position, {"count": 0, "value": None})
+        cell["count"] += 1
+        if merger.is_loaded:
+            match = merger.merge_player(row["name"], position=position, team=row.get("team"))
+            trade_value = match.get("trade_value")
+            if trade_value is not None:
+                cell["value"] = (cell["value"] or 0) + trade_value
+    return depth
+
+
 def build_freshness_manifest(snapshot: dict, merger: DataMerger) -> list[tuple[str, Optional[str], Optional[int]]]:
     """(label, as-of date, days old) for every dated source in this context, freshest first."""
     entries = []
@@ -1043,19 +1070,24 @@ def build_context(snapshot: dict, roster_table: list[dict], player_universe: lis
     # table (that PDF's flat text can't be reliably reattributed to the right team). Gives the
     # Moderator/Contrarian a scarcity signal across the whole league without a separate
     # question per team.
-    all_rostered = [row for row in player_universe if row.get("ownership") == "ROSTERED"]
-    if all_rostered:
-        depth: dict[str, dict[str, int]] = {}
-        for row in all_rostered:
-            team_label = row.get("owner_name") or f"Roster {row.get('roster_id', '?')}"
-            depth.setdefault(team_label, {}).setdefault(row["position"], 0)
-            depth[team_label][row["position"]] += 1
+    depth = positional_depth(player_universe, merger)
+    if depth:
+        has_values = merger.is_loaded
         lines.append(
-            "\nLEAGUE-WIDE POSITIONAL DEPTH (rostered player counts per team, all positions "
-            "with at least one rostered player somewhere in the league):"
+            "\nLEAGUE-WIDE POSITIONAL DEPTH (per team: rostered player COUNT at each position"
+            + (", with total Draft Sharks trade value in parens where matched -- weigh the value "
+               "figure over the count: three replacement-level backups and three stacked stars both "
+               "read as \"3\" by count alone, but are not remotely the same depth." if has_values else
+               " -- no Draft Sharks data loaded, so this is body count only; two teams with the same "
+               "count here can still differ hugely in actual talent")
+            + "):"
         )
-        for team_label, counts in depth.items():
-            lines.append(f"  {team_label}: " + ", ".join(f"{pos} {n}" for pos, n in sorted(counts.items())))
+        for team_label, positions in depth.items():
+            parts = []
+            for pos, cell in sorted(positions.items()):
+                value_label = f" ({cell['value']:.0f})" if cell["value"] is not None else ""
+                parts.append(f"{pos} {cell['count']}{value_label}")
+            lines.append(f"  {team_label}: " + ", ".join(parts))
 
     rosters_by_owner: dict[str, list[dict]] = {}
     for row in player_universe:
@@ -2233,25 +2265,32 @@ else:
     # be reliably reattributed to the right team, so this is the same underlying fact
     # (how deep is each team at each position) derived from a source that's actually safe
     # to parse instead of guessed from one that isn't.
-    all_rostered = [row for row in player_universe if row.get("ownership") == "ROSTERED"]
-    if all_rostered:
+    _depth = positional_depth(player_universe, st.session_state.data_merger)
+    if _depth:
         st.markdown("**League-Wide Positional Depth**")
+        _has_values = st.session_state.data_merger.is_loaded
         st.caption(
             "How many rostered players (starters + bench + taxi/IR) each team has at each "
             "position — a scan for who's thin or stacked somewhere, without asking the bots "
-            "team-by-team. Ask Debate Studio a question naming a position for the reasoning "
-            "behind any of these counts."
+            + (
+                "team-by-team. Value in parens is that position's total Draft Sharks trade "
+                "value — weigh it over the raw count: a pile of backups and three stacked "
+                "stars can both show \"3.\""
+                if _has_values else
+                "team-by-team. This is body count only (no Draft Sharks data loaded) — two "
+                "teams tied here can still differ hugely in actual talent."
+            )
         )
         _position_order = ["QB", "RB", "WR", "TE", "K", "DEF", "LB", "DL", "DB"]
-        _positions_present = [p for p in _position_order if any(r["position"] == p for r in all_rostered)]
-        _depth: dict[str, dict[str, int]] = {}
-        for row in all_rostered:
-            team_label = row.get("owner_name") or f"Roster {row.get('roster_id', '?')}"
-            _depth.setdefault(team_label, {p: 0 for p in _positions_present})
-            _depth[team_label][row["position"]] += 1
-        depth_df = pd.DataFrame.from_dict(_depth, orient="index")[_positions_present]
-        depth_df.index.name = "team"
-        depth_df = depth_df.sort_index().reset_index()
+        _positions_present = [p for p in _position_order if any(p in positions for positions in _depth.values())]
+        _rows = []
+        for team_label, positions in sorted(_depth.items()):
+            row = {"team": team_label}
+            for pos in _positions_present:
+                cell = positions.get(pos, {"count": 0, "value": None})
+                row[pos] = f"{cell['count']} ({cell['value']:.0f})" if cell["value"] is not None else cell["count"]
+            _rows.append(row)
+        depth_df = pd.DataFrame(_rows)[["team"] + _positions_present]
         render_styled_table(depth_df)
 
     st.caption(
@@ -2484,7 +2523,11 @@ dock_level_idx = DOCK_LEVELS.index(dock_level)
 # the screen — genuinely ~40% of the viewport, not the ~55-60% it drifted to when the
 # clearance below was just a rough guess. "Full" is closer to working *inside* it.
 # Compact/text_area sizing per tier lives right where each is used, further down.
-DOCK_HEIGHT_BY_LEVEL = {"collapsed": "9vh", "partial": "46vh", "full": "94vh"}
+# collapsed uses max(...) rather than a bare vh value -- on a short viewport, 9vh alone
+# could clip below the Expand button's own rendered height (button + container padding),
+# which is exactly how it went missing in the first place. The px floor guarantees the
+# button always fits regardless of viewport height; vh still wins on anything reasonably tall.
+DOCK_HEIGHT_BY_LEVEL = {"collapsed": "max(9vh, 64px)", "partial": "46vh", "full": "94vh"}
 CHAT_HEIGHT_BY_LEVEL = {"partial": 130, "full": 480}
 QUESTION_HEIGHT_BY_LEVEL = {"partial": 90, "full": 200}
 
@@ -2513,40 +2556,21 @@ st.markdown(
 )
 
 with st.container(key="debate_dock"):
-    # A skewed-ratio st.columns([6, 1]) here (title next to the tier buttons) measured
-    # its width against the container's pre-CSS-shift size instead of its actual fixed-
-    # position width, pushing the second column entirely off-screen — confirmed live,
-    # not a guess. Equal-ish column ratios don't hit it, so title/buttons get their own
-    # rows instead of sharing one, sidestepping the bug rather than fighting it further.
-    st.subheader("Multi-Model Debate Studio")
     st.session_state.setdefault("chat_scoped_attachments", [])
     league_id_for_header = st.session_state.get("selected_league_id")
-    active_count = len(todo_log.load_todos(league_id_for_header, statuses=todo_log.ACTIVE_STATUSES)) if league_id_for_header else 0
-    attach_count = len(st.session_state.chat_scoped_attachments)
-    st.caption(
-        f"📂 **{league.get('name', 'Unknown League')}** working context — "
-        f"🎯 {active_count} active objective(s)"
-        + (f" · 📎 {attach_count} file(s) attached to this chat" if attach_count else "")
-    )
 
-    # One tier per press, not a straight open/closed toggle — collapsed shows only
-    # "expand", full shows only "collapse", partial (the middle tier) shows both. Four
-    # equal narrow slots (not stretched to the button count) keep the buttons a
-    # consistent width across all three tiers instead of one button going full-width
-    # whenever it's alone.
-    tier_cols = st.columns(4)
-    tier_col_idx = 0
-    if dock_level != "full":
-        if tier_cols[tier_col_idx].button("▲ Expand", key="dock_expand", use_container_width=True):
+    # Collapsed gets its own compact layout: the box is capped to a sliver (see
+    # DOCK_HEIGHT_BY_LEVEL) with overflow-y: auto, and the title+caption+button stack
+    # below used to add up to more than that sliver's height on most viewports — the
+    # Expand button scrolled out of the visible area inside its own tiny box, exactly
+    # the "covers the expand button" report this fixes. Putting the button first
+    # (nothing above it to push it out of frame) and dropping the title/caption
+    # entirely at this tier — redundant chrome once collapsed — keeps it reachable
+    # regardless of viewport height instead of just shrinking the odds of clipping it.
+    if dock_level == "collapsed":
+        if st.button("▲ Expand", key="dock_expand", use_container_width=True):
             st.session_state.debate_dock_level = DOCK_LEVELS[dock_level_idx + 1]
             st.rerun()
-        tier_col_idx += 1
-    if dock_level != "collapsed":
-        if tier_cols[tier_col_idx].button("▼ Collapse", key="dock_collapse", use_container_width=True):
-            st.session_state.debate_dock_level = DOCK_LEVELS[dock_level_idx - 1]
-            st.rerun()
-
-    if dock_level == "collapsed":
         # Collapsing is for getting the dock out of the way, not for losing track of
         # the last call the bots made — the most recent verdict stays visible as a
         # one-line summary right here instead of disappearing until re-expanded.
@@ -2559,6 +2583,36 @@ with st.container(key="debate_dock"):
             rec = last_verdict.get("recommendation")
             if rec:
                 st.caption(f"Last call: **{rec}** — {last_verdict.get('reason', '')[:120]}")
+    else:
+        # A skewed-ratio st.columns([6, 1]) here (title next to the tier buttons) measured
+        # its width against the container's pre-CSS-shift size instead of its actual fixed-
+        # position width, pushing the second column entirely off-screen — confirmed live,
+        # not a guess. Equal-ish column ratios don't hit it, so title/buttons get their own
+        # rows instead of sharing one, sidestepping the bug rather than fighting it further.
+        st.subheader("Multi-Model Debate Studio")
+        active_count = len(todo_log.load_todos(league_id_for_header, statuses=todo_log.ACTIVE_STATUSES)) if league_id_for_header else 0
+        attach_count = len(st.session_state.chat_scoped_attachments)
+        st.caption(
+            f"📂 **{league.get('name', 'Unknown League')}** working context — "
+            f"🎯 {active_count} active objective(s)"
+            + (f" · 📎 {attach_count} file(s) attached to this chat" if attach_count else "")
+        )
+
+        # One tier per press, not a straight open/closed toggle — collapsed shows only
+        # "expand", full shows only "collapse", partial (the middle tier) shows both. Four
+        # equal narrow slots (not stretched to the button count) keep the buttons a
+        # consistent width across all three tiers instead of one button going full-width
+        # whenever it's alone.
+        tier_cols = st.columns(4)
+        tier_col_idx = 0
+        if dock_level != "full":
+            if tier_cols[tier_col_idx].button("▲ Expand", key="dock_expand", use_container_width=True):
+                st.session_state.debate_dock_level = DOCK_LEVELS[dock_level_idx + 1]
+                st.rerun()
+            tier_col_idx += 1
+        if tier_cols[tier_col_idx].button("▼ Collapse", key="dock_collapse", use_container_width=True):
+            st.session_state.debate_dock_level = DOCK_LEVELS[dock_level_idx - 1]
+            st.rerun()
 
     role_providers = bot_config.load_role_providers()
     role_names = bot_config.load_role_names()
