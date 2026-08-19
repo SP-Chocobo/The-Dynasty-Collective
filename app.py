@@ -24,6 +24,7 @@ import streamlit as st
 import bot_benchmark
 import bot_config
 import decision_log
+import pinned_messages
 import todo_log
 import llm_engine
 from attachments import ATTACHMENTS_DIR, list_attachments, save_attachment, set_caption, set_scope, delete_attachment
@@ -61,6 +62,11 @@ st.markdown(
     .badge-beat { background: rgba(212,160,23,0.18); color: #facc15; border: 1px solid #d4a017; }
     .badge-contrarian { background: rgba(139,92,246,0.18); color: #c4b5fd; border: 1px solid #8b5cf6; }
     .badge-moderator { background: rgba(185,28,28,0.18); color: #f87171; border: 1px solid #b91c1c; }
+    /* A verdict with the full panel behind it (Quant/Beat/Contrarian all weighed in) is a
+       heavier claim than a quick follow-up reply -- same badge-moderator family/color so it's
+       still obviously "the Moderator," just visibly more substantial via a glow, not a
+       different hue that would read as a different persona entirely. */
+    .badge-moderator-verdict { background: rgba(185,28,28,0.18); color: #f87171; border: 1px solid #b91c1c; box-shadow: 0 0 0 1px rgba(248,113,113,0.35), 0 0 8px rgba(185,28,28,0.45); }
     .badge-user { background: rgba(148,163,184,0.18); color: #cbd5e1; border: 1px solid #64748b; }
     .badge-summary { background: rgba(56,189,248,0.18); color: #7dd3fc; border: 1px solid #0ea5e9; }
     .badge-notice { background: rgba(245,158,11,0.18); color: #fbbf24; border: 1px solid #f59e0b; }
@@ -807,9 +813,10 @@ def compact_league_history(league_id: str, max_age_days: int = 30) -> tuple[bool
 
 def delete_league_completely(league_id: str) -> list[str]:
     """Purge every local cache for one league: snapshots, its own Draft Sharks uploads
-    (never the shared global rankings pool), chat history + compaction backups, its
-    format override, and any attachment scoped exclusively to it (one scoped to this
-    league among others just has this league_id dropped from its scope, not deleted).
+    (never the shared global rankings pool), chat history + compaction backups, decisions,
+    objectives, pinned messages, its format override, and any attachment scoped exclusively
+    to it (one scoped to this league among others just has this league_id dropped from its
+    scope, not deleted).
 
     This never touches Sleeper itself — it's a local-cache purge only. If the user is
     still actually a member, the league will simply reappear, unsynced, next time they
@@ -832,6 +839,7 @@ def delete_league_completely(league_id: str) -> list[str]:
 
     decision_log.forget_decisions(league_id)
     todo_log.forget_todos(league_id)
+    pinned_messages.forget_pins(league_id)
 
     set_format_override(league_id, None)
 
@@ -1037,6 +1045,26 @@ def build_context(snapshot: dict, roster_table: list[dict], player_universe: lis
         for d in past_outcomes:
             note = f" — {d['outcome_note']}" if d.get("outcome_note") else ""
             lines.append(f"  - \"{d['question']}\" ({d['date']}): called {d['recommendation']}. Outcome: {d['outcome']}{note}")
+
+    # Retrieved only when this question actually seems to relate to one -- never injected by
+    # default. Pinning something once and having it silently color every future debate forever
+    # would be a real anchoring problem (a stale Quant observation quietly biasing months of
+    # later questions about that player); the user pins to keep something findable, not to
+    # instruct the panel going forward.
+    relevant_pins = (
+        pinned_messages.find_relevant(
+            st.session_state.chat_history, pinned_messages.load_pinned_ts(league_id), question, limit=5,
+        ) if league_id and question else []
+    )
+    if relevant_pins:
+        lines.append(
+            "\nPINNED — the user manually flagged these messages as worth keeping handy, and this "
+            "question seems to relate to at least one. Reference it if it's actually useful, but "
+            "pinning doesn't mean elevated priority — weigh it like anything else here, not as a "
+            "standing instruction or a settled conclusion:"
+        )
+        for pm in relevant_pins:
+            lines.append(f"  - [{pm.get('role', '?')}] {pm.get('content', '')[:400]}")
 
     lines.append(
         "\nDATA AVAILABILITY — work with whatever is actually loaded; none of this is required to answer. "
@@ -2437,6 +2465,30 @@ else:
             "read — it can see any team's roster, not just the one selected above."
         )
 
+# ------------------------------------------------------------------ pinned messages --
+# The Decision Log below is "what the system decided" -- this is "what someone in this
+# conversation thought was worth preserving," the user's own curation rather than the
+# Moderator's. Kept in normal page flow for the same reason as Decision Log (see below).
+pinned_ts_panel = pinned_messages.load_pinned_ts(st.session_state.selected_league_id)
+if pinned_ts_panel:
+    pinned_msgs_panel = [m for m in st.session_state.chat_history if m.get("ts") in pinned_ts_panel]
+    with st.expander(f"📌 Pinned Messages ({len(pinned_msgs_panel)})"):
+        st.caption(
+            "Messages you've flagged as worth keeping handy, newest first. Available for the "
+            "bots to reference if a later question actually relates to one — pinning doesn't "
+            "weight a message more heavily than anything else in context by itself."
+        )
+        _panel_role_names = bot_config.load_role_names()
+        _panel_role_word = {"quant": "Quant", "beat": "Beat Tracker", "contrarian": "Contrarian", "moderator": "Moderator", "user": "You"}
+        for pm in sorted(pinned_msgs_panel, key=lambda m: m.get("ts", 0), reverse=True):
+            who = _panel_role_names.get(pm["role"], _panel_role_word.get(pm["role"], pm["role"]))
+            st.markdown(f"**{who}**")
+            st.caption(pm.get("content", "")[:500])
+            if st.button("Unpin", key=f"unpin_panel_{pm.get('ts')}"):
+                pinned_messages.toggle_pin(st.session_state.selected_league_id, pm["ts"])
+                st.rerun()
+            st.markdown("<hr style='margin:6px 0;opacity:0.15'>", unsafe_allow_html=True)
+
 # ------------------------------------------------------------------ decision log / objectives --
 # Reference/historical content, not the live chat interface -- kept in normal page flow (not the
 # fixed-position debate dock below) since deeply nested columns inside that fixed container were
@@ -2926,7 +2978,11 @@ with st.container(key="debate_dock"):
         # A custom name never REPLACES the role in the badge, only adds to it — "Dave"
         # renamed as Contrarian six months from now is meaningless on its own; the
         # role has to stay visible too.
-        _ROLE_BADGE_WORD = {"quant": "QUANT ANALYST", "beat": "BEAT TRACKER", "contrarian": "CONTRARIAN", "moderator": "MODERATOR VERDICT"}
+        # "MODERATOR VERDICT" is reserved for a message with the full panel behind it (see
+        # is_full_debate below) -- a quick follow-up reply is still the Moderator, but it isn't
+        # a fresh verdict from Quant/Beat/Contrarian all weighing in, and shouldn't visually
+        # claim to be one.
+        _ROLE_BADGE_WORD = {"quant": "QUANT ANALYST", "beat": "BEAT TRACKER", "contrarian": "CONTRARIAN", "moderator": "MODERATOR"}
         def _badge_base(role: str) -> str:
             word = _ROLE_BADGE_WORD[role]
             name = role_names[role]
@@ -2942,9 +2998,13 @@ with st.container(key="debate_dock"):
             "summary": ("🧠 MEMORY SUMMARY", "badge-summary"),
             "notice": ("⚠️ NOTICE", "badge-notice"),
         }
-        def _render_agent_msg(msg: dict) -> None:
+        pinned_ts = pinned_messages.load_pinned_ts(st.session_state.selected_league_id) if st.session_state.selected_league_id else set()
+        def _render_agent_msg(msg: dict, is_full_debate: bool = False) -> None:
             if msg["role"] in ROLE_BADGE_BASE:
                 base_label, cls = ROLE_BADGE_BASE[msg["role"]]
+                if msg["role"] == "moderator" and is_full_debate:
+                    base_label = base_label.replace("MODERATOR", "MODERATOR VERDICT", 1)
+                    cls = "badge-moderator-verdict"
                 # Prefer the actual model string over the provider tier label -- more
                 # informative, and doesn't assume only Claude/Gemini/ChatGPT ever exist.
                 powered_by = msg.get("model") or (bot_config.PROVIDER_LABELS.get(msg.get("provider")) if msg.get("provider") else None)
@@ -2952,6 +3012,21 @@ with st.container(key="debate_dock"):
             else:
                 label, cls = badge_map.get(msg["role"], (msg["role"], "badge-user"))
             st.markdown(f'<span class="badge {cls}">{label}</span>', unsafe_allow_html=True)
+            # A real st.button, not clickable HTML in the badge markup above -- raw HTML has no
+            # bridge back into Python without a custom component. Deliberately not st.columns to
+            # sit it next to the badge: nested columns inside this fixed-position dock container
+            # are confirmed to compute width against the wrong basis and push content off-screen
+            # (see the .st-key-debate_dock CSS notes) -- a small icon-only button on its own line
+            # avoids that entirely instead of fighting it.
+            ts = msg.get("ts")
+            if ts is not None and st.session_state.selected_league_id:
+                is_pinned = ts in pinned_ts
+                if st.button(
+                    "📍 Pinned" if is_pinned else "📌 Pin", key=f"pin_toggle_{ts}",
+                    help="Unpin this message" if is_pinned else "Pin this message to keep it easy to find later",
+                ):
+                    pinned_messages.toggle_pin(st.session_state.selected_league_id, ts)
+                    st.rerun()
             st.markdown(
                 f'<div class="agent-block">{format_agent_content(msg["role"], msg["content"])}</div>',
                 unsafe_allow_html=True,
@@ -2985,7 +3060,7 @@ with st.container(key="debate_dock"):
                 if unit["kind"] == "single":
                     _render_agent_msg(unit["msg"])
                     continue
-                _render_agent_msg(unit["moderator"])
+                _render_agent_msg(unit["moderator"], is_full_debate=True)
                 detail_key = f"show_debate_detail_{unit['moderator']['ts']}"
                 st.session_state.setdefault(detail_key, False)
                 if st.button(
