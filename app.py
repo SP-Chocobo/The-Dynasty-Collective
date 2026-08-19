@@ -94,6 +94,19 @@ st.markdown(
        max-width: 0 on the same element) and leaves a chunk of dead space and a
        sliver of visible sidebar even when "collapsed". */
     [data-testid="stSidebar"][aria-expanded="true"] { min-width: 400px; }
+
+    /* Default Streamlit buttons read as understated on a dark theme — thin,
+       low-contrast border, flat background that barely lifts off the page. Give
+       every button (including icon-only ones like the reorder arrows) a bigger
+       tap target and enough visual weight to look clickable at a glance, closer
+       to how Sleeper's own controls feel. */
+    .stButton button, .stFormSubmitButton button, .stDownloadButton button {
+        min-height: 44px;
+        min-width: 44px;
+        padding: 10px 18px;
+        font-weight: 600;
+        border-width: 1.5px !important;
+    }
     </style>
     """,
     unsafe_allow_html=True,
