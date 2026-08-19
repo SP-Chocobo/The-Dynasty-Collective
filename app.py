@@ -1203,17 +1203,35 @@ with st.sidebar:
                 st.session_state.left_league_ids.remove(lid)
                 st.rerun()
 
-    with st.expander("🤖 Configure Bots", expanded=False, key="sb_group_bots"):
+    with st.expander("🤖 Bot Lab", expanded=False, key="sb_group_bots"):
         st.caption(
             "Which provider actually answers for each role, and what to call it. Any provider can "
             "technically fill any role — a role is just a system prompt plus which prior reports it "
             "reacts to — so the defaults below are a starting point tuned to each provider's own "
-            "strengths, not a requirement. Point every role at one key if that's all you have."
+            "strengths, not a requirement. Point every role at one key if that's all you have. Each "
+            "role also has an optional benchmark: let candidate models actually audition for the job "
+            "instead of picking one by reputation."
         )
         _role_providers_cfg = bot_config.load_role_providers()
         _role_names_cfg = bot_config.load_role_names()
         _role_models_cfg = bot_config.load_role_models()
         _provider_options = list(bot_config.PROVIDERS)
+        # One shared "which providers have a key, what can each call" check/cache for the
+        # whole section -- manual model pickers and every role's benchmark candidate list
+        # all read the same `available_models_{provider}` cache instead of each fetching
+        # (and re-fetching) it independently.
+        _bots_configured = [p for p in bot_config.PROVIDERS if IS_PROVIDER_CONFIGURED[p](api_key_for(PROVIDER_KEY_FIELD[p]))]
+        if not _bots_configured:
+            st.warning("No provider keys configured yet — add at least one in 🔑 Connections & Accounts first.")
+        elif st.button("🔄 Refresh available models for every configured provider", key="botlab_refresh_models", use_container_width=True):
+            for _p in _bots_configured:
+                _ids, _err = llm_engine.LIST_MODELS_BY_PROVIDER[_p](api_key_for(PROVIDER_KEY_FIELD[_p]))
+                if _err:
+                    st.warning(f"Couldn't fetch {bot_config.PROVIDER_LABELS[_p]} models: {_err}")
+                else:
+                    st.session_state[f"available_models_{_p}"] = sorted(_ids)
+            st.rerun()
+
         for _role in bot_config.ROLES:
             _info = bot_config.ROLE_INFO[_role]
             _toggle_key = f"show_bot_config_{_role}"
@@ -1256,14 +1274,11 @@ with st.sidebar:
                 # doesn't need the same model as Quant's number-crunching). Free text by
                 # default (not a locked dropdown -- hardcoding a catalog here is exactly
                 # how the old CLAUDE_MODEL default ended up pointing at a retired
-                # snapshot), but "Check available models" queries the provider's own
-                # Models API with the actual configured key and offers a real picker built
-                # from whatever that key can actually call, cached per provider so
-                # fetching once covers every role sharing it. Blank means "no override,
-                # use this provider's own default."
+                # snapshot); the shared "Refresh available models" button above offers a
+                # real picker built from whatever that key can actually call. Blank means
+                # "no override, use this provider's own default."
                 st.caption(f"MODEL (optional — e.g. {', '.join(bot_config.SUGGESTED_MODELS[_provider_choice])})")
-                _fetched_key = f"available_models_{_provider_choice}"
-                _fetched = st.session_state.get(_fetched_key)
+                _fetched = st.session_state.get(f"available_models_{_provider_choice}")
                 _current_model = _role_models_cfg[_role]
                 if _fetched:
                     _options = ["(provider default)"] + [m for m in _fetched if m]
@@ -1280,14 +1295,6 @@ with st.sidebar:
                         "Model", value=_current_model, key=f"bot_model_input_{_role}",
                         label_visibility="collapsed", placeholder="Leave blank to use the provider's default",
                     )
-                if st.button(f"🔄 Check available {bot_config.PROVIDER_LABELS[_provider_choice]} models", key=f"fetch_models_{_role}", use_container_width=True):
-                    _ids, _err = llm_engine.LIST_MODELS_BY_PROVIDER[_provider_choice](api_key_for(PROVIDER_KEY_FIELD[_provider_choice]))
-                    if _err:
-                        st.warning(f"Couldn't fetch {bot_config.PROVIDER_LABELS[_provider_choice]} models: {_err}")
-                    else:
-                        st.session_state[_fetched_key] = sorted(_ids)
-                        st.success(f"Found {len(_ids)} model(s) this key can call.")
-                    st.rerun()
                 if st.button("Save", key=f"bot_save_{_role}", use_container_width=True):
                     if _name_input.strip() and _name_input.strip() != _role_names_cfg[_role]:
                         bot_config.set_role_name(_role, _name_input)
@@ -1296,6 +1303,91 @@ with st.sidebar:
                     if _model_input.strip() != _role_models_cfg[_role]:
                         bot_config.set_role_model(_role, _model_input)
                     st.rerun()
+
+                # Benchmarking lives inside the same card as the manual controls it can
+                # override, one more toggle-button deep -- Streamlit can't nest a real
+                # st.expander inside this one, and it belongs here rather than as a
+                # separate top-level section since it writes to the exact same two
+                # settings (provider, model) the fields above do.
+                _bench_toggle_key = f"show_bench_{_role}"
+                st.session_state.setdefault(_bench_toggle_key, False)
+                if st.button(
+                    f"{'▾' if st.session_state[_bench_toggle_key] else '▸'} 🧪 Benchmark this role",
+                    key=f"toggle_bench_{_role}", use_container_width=True,
+                ):
+                    st.session_state[_bench_toggle_key] = not st.session_state[_bench_toggle_key]
+                    st.rerun()
+                if st.session_state[_bench_toggle_key]:
+                    st.caption(
+                        "Runs every model you select through the same fixed scenario battery for "
+                        "this role, then a judge call scores each answer blind to which model "
+                        "produced it. Real, billed API calls — nothing runs until you press Run."
+                    )
+                    if not _bots_configured:
+                        st.caption("No provider keys configured yet.")
+                    else:
+                        _bench_candidates: list[tuple[str, str]] = []
+                        for _p in _bots_configured:
+                            _p_fetched = st.session_state.get(f"available_models_{_p}")
+                            if not _p_fetched:
+                                st.caption(f"{bot_config.PROVIDER_LABELS[_p]}: no models fetched yet — use Refresh above.")
+                                continue
+                            st.caption(f"{bot_config.PROVIDER_LABELS[_p]} candidates")
+                            _chosen = st.multiselect(
+                                f"{bot_config.PROVIDER_LABELS[_p]} models", options=_p_fetched, default=_p_fetched,
+                                key=f"bench_models_{_role}_{_p}", label_visibility="collapsed",
+                            )
+                            _bench_candidates.extend((_p, m) for m in _chosen)
+
+                        _judge_options = _bots_configured
+                        _judge_default = _judge_options.index("claude") if "claude" in _judge_options else 0
+                        _judge_provider = st.selectbox(
+                            "Judge (scores every answer, blind to which model produced it)",
+                            options=_judge_options, index=_judge_default,
+                            format_func=lambda p: bot_config.PROVIDER_LABELS[p], key=f"bench_judge_{_role}",
+                        )
+
+                        if st.button(
+                            f"▶ Run Benchmark ({len(_bench_candidates)} model(s) × {len(bot_benchmark.BENCHMARK_BATTERY[_role])} scenarios)",
+                            key=f"bench_run_{_role}", type="primary", use_container_width=True,
+                            disabled=len(_bench_candidates) < 1,
+                        ):
+                            _bench_api_keys = {p: api_key_for(PROVIDER_KEY_FIELD[p]) for p in bot_config.PROVIDERS}
+                            _progress = st.empty()
+                            with st.spinner("Running benchmark — this calls every selected model and then a judge model per answer…"):
+                                _report = bot_benchmark.run_benchmark(
+                                    _role, _bench_candidates, _bench_api_keys,
+                                    judge_provider=_judge_provider, judge_api_key=_bench_api_keys.get(_judge_provider),
+                                    on_progress=lambda msg: _progress.caption(msg),
+                                )
+                            _progress.empty()
+                            bot_benchmark.save_report(_role, _report)
+                            st.success(f"Benchmark complete for {_info['label']}.")
+                            st.rerun()
+
+                    _bench_report = bot_benchmark.load_report(_role)
+                    if _bench_report:
+                        _ran_at = datetime.fromtimestamp(_bench_report["ran_at"]).strftime("%Y-%m-%d %H:%M")
+                        _judge_label = bot_config.PROVIDER_LABELS.get(_bench_report.get("judge_provider"), _bench_report.get("judge_provider", "?"))
+                        st.caption(f"Last run {_ran_at} · judged by {_judge_label}")
+                        _medals = ["🥇", "🥈", "🥉"]
+                        for _idx, _cand in enumerate(_bench_report["candidates"]):
+                            _medal = _medals[_idx] if _idx < len(_medals) else f"{_idx + 1}."
+                            _model_label = _cand["model"] or "(provider default)"
+                            _warn = " ⚠️ one or more calls failed" if _cand["any_failed"] else ""
+                            st.caption(
+                                f"{_medal} {bot_config.PROVIDER_LABELS[_cand['provider']]} · {_model_label} — "
+                                f"**{_cand['score']}**/100, {_cand['avg_latency']}s avg{_warn}"
+                            )
+                            if _idx == 0 and st.button(
+                                f"Apply {_model_label} to {_info['label']}",
+                                key=f"bench_apply_{_role}_{_idx}", use_container_width=True,
+                            ):
+                                bot_config.set_role_provider(_role, _cand["provider"])
+                                bot_config.set_role_model(_role, _cand["model"])
+                                st.success(f"Applied — {_info['label']} now runs on {_model_label}.")
+                                st.rerun()
+
                 st.markdown("<hr style='margin:6px 0;opacity:0.15'>", unsafe_allow_html=True)
         # Three separate resets, not one combined "reset everything" -- provider
         # routing, display names, and model overrides are independent settings, so
@@ -1311,94 +1403,6 @@ with st.sidebar:
         if reset_name_col.button("Reset display names", key="reset_bot_names", use_container_width=True):
             bot_config.reset_role_names()
             st.rerun()
-
-    with st.expander("🧪 Benchmark & Optimize", expanded=False, key="sb_group_benchmark"):
-        st.caption(
-            "Let the actual candidate models audition for a role instead of picking one by "
-            "reputation. Every model you select runs the same fixed battery of scenarios for "
-            "that role; a separate judge call scores each answer against a weighted rubric "
-            "without ever being told which model produced it. This makes real, billed API "
-            "calls and can take a few minutes — nothing runs until you press Run Benchmark."
-        )
-        _bench_role = st.selectbox(
-            "Role to benchmark", options=list(bot_config.ROLES),
-            format_func=lambda r: bot_config.ROLE_INFO[r]["label"], key="bench_role_select",
-        )
-        _bench_configured = [p for p in bot_config.PROVIDERS if IS_PROVIDER_CONFIGURED[p](api_key_for(PROVIDER_KEY_FIELD[p]))]
-        if not _bench_configured:
-            st.warning("No provider keys configured yet — add at least one in 🔑 Connections & Accounts first.")
-        else:
-            if st.button("🔄 Refresh available models for every configured provider", key="bench_refresh_models", use_container_width=True):
-                for _p in _bench_configured:
-                    _ids, _err = llm_engine.LIST_MODELS_BY_PROVIDER[_p](api_key_for(PROVIDER_KEY_FIELD[_p]))
-                    if not _err:
-                        st.session_state[f"available_models_{_p}"] = sorted(_ids)
-                st.rerun()
-
-            _bench_candidates: list[tuple[str, str]] = []
-            for _p in _bench_configured:
-                _fetched = st.session_state.get(f"available_models_{_p}")
-                if not _fetched:
-                    st.caption(f"{bot_config.PROVIDER_LABELS[_p]}: no models fetched yet — use Refresh above.")
-                    continue
-                st.caption(f"{bot_config.PROVIDER_LABELS[_p]} candidates")
-                _chosen = st.multiselect(
-                    f"{bot_config.PROVIDER_LABELS[_p]} models", options=_fetched, default=_fetched,
-                    key=f"bench_models_{_p}", label_visibility="collapsed",
-                )
-                _bench_candidates.extend((_p, m) for m in _chosen)
-
-            _judge_options = _bench_configured
-            _judge_default = 0
-            if "claude" in _judge_options:
-                _judge_default = _judge_options.index("claude")
-            _judge_provider = st.selectbox(
-                "Judge (scores every answer, blind to which model produced it)",
-                options=_judge_options, index=_judge_default,
-                format_func=lambda p: bot_config.PROVIDER_LABELS[p], key="bench_judge_provider",
-            )
-
-            _run_disabled = len(_bench_candidates) < 1
-            if st.button(
-                f"▶ Run Benchmark ({len(_bench_candidates)} model(s) × {len(bot_benchmark.BENCHMARK_BATTERY[_bench_role])} scenarios)",
-                key="bench_run", type="primary", use_container_width=True, disabled=_run_disabled,
-            ):
-                _bench_api_keys = {p: api_key_for(PROVIDER_KEY_FIELD[p]) for p in bot_config.PROVIDERS}
-                _progress = st.empty()
-                with st.spinner("Running benchmark — this calls every selected model and then a judge model per answer…"):
-                    _report = bot_benchmark.run_benchmark(
-                        _bench_role, _bench_candidates, _bench_api_keys,
-                        judge_provider=_judge_provider, judge_api_key=_bench_api_keys.get(_judge_provider),
-                        on_progress=lambda msg: _progress.caption(msg),
-                    )
-                _progress.empty()
-                bot_benchmark.save_report(_bench_role, _report)
-                st.success(f"Benchmark complete for {bot_config.ROLE_INFO[_bench_role]['label']}.")
-                st.rerun()
-
-        _bench_report = bot_benchmark.load_report(_bench_role)
-        if _bench_report:
-            st.markdown(f"**Results — {bot_config.ROLE_INFO[_bench_role]['label']}**")
-            _ran_at = datetime.fromtimestamp(_bench_report["ran_at"]).strftime("%Y-%m-%d %H:%M")
-            _judge_label = bot_config.PROVIDER_LABELS.get(_bench_report.get("judge_provider"), _bench_report.get("judge_provider", "?"))
-            st.caption(f"Ran {_ran_at} · judged by {_judge_label}")
-            _medals = ["🥇", "🥈", "🥉"]
-            for _idx, _cand in enumerate(_bench_report["candidates"]):
-                _medal = _medals[_idx] if _idx < len(_medals) else f"{_idx + 1}."
-                _model_label = _cand["model"] or "(provider default)"
-                _warn = " ⚠️ one or more calls failed" if _cand["any_failed"] else ""
-                st.caption(
-                    f"{_medal} {bot_config.PROVIDER_LABELS[_cand['provider']]} · {_model_label} — "
-                    f"**{_cand['score']}**/100, {_cand['avg_latency']}s avg{_warn}"
-                )
-                if _idx == 0 and st.button(
-                    f"Apply {_model_label} to {bot_config.ROLE_INFO[_bench_report['role']]['label']}",
-                    key=f"bench_apply_{_bench_report['role']}_{_idx}", use_container_width=True,
-                ):
-                    bot_config.set_role_provider(_bench_report["role"], _cand["provider"])
-                    bot_config.set_role_model(_bench_report["role"], _cand["model"])
-                    st.success(f"Applied — {bot_config.ROLE_INFO[_bench_report['role']]['label']} now runs on {_model_label}.")
-                    st.rerun()
 
     with st.expander("📊 Data Uploads", expanded=False, key="sb_group_uploads"):
         st.caption(
