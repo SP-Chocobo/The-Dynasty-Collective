@@ -2336,41 +2336,11 @@ with st.container(key="debate_dock"):
     league_id_for_header = st.session_state.get("selected_league_id")
     active_count = len(todo_log.load_todos(league_id_for_header, statuses=todo_log.ACTIVE_STATUSES)) if league_id_for_header else 0
     attach_count = len(st.session_state.chat_scoped_attachments)
-    header_col, attach_col = st.columns(2)
-    with header_col:
-        st.caption(
-            f"📂 **{league.get('name', 'Unknown League')}** working context — "
-            f"🎯 {active_count} active objective(s)"
-            + (f" · 📎 {attach_count} file(s) attached to this chat" if attach_count else "")
-        )
-    with attach_col:
-        attach_label = f"➕ Attach ({attach_count})" if attach_count else "➕ Attach to this chat"
-        with st.popover(attach_label, use_container_width=True):
-            st.caption(
-                "Ephemeral — only used to answer questions in this chat session, not saved to "
-                "the Reference Material library below."
-            )
-            chat_file = st.file_uploader(
-                "Add a file", type=["txt", "csv", "pdf"], key="chat_attach_uploader",
-                label_visibility="collapsed",
-            )
-            if chat_file is not None and not any(
-                a["name"] == chat_file.name for a in st.session_state.chat_scoped_attachments
-            ):
-                if chat_file.name.lower().endswith(".pdf"):
-                    import pypdf
-
-                    reader = pypdf.PdfReader(chat_file)
-                    text = "\n".join(page.extract_text() or "" for page in reader.pages)
-                else:
-                    text = chat_file.read().decode("utf-8", errors="ignore")
-                if text.strip():
-                    st.session_state.chat_scoped_attachments.append({"name": chat_file.name, "text": text})
-                    st.rerun()
-            for i, att in enumerate(list(st.session_state.chat_scoped_attachments)):
-                if st.button(f"✕ {att['name']}", key=f"remove_chat_attach_{i}", use_container_width=True):
-                    st.session_state.chat_scoped_attachments.pop(i)
-                    st.rerun()
+    st.caption(
+        f"📂 **{league.get('name', 'Unknown League')}** working context — "
+        f"🎯 {active_count} active objective(s)"
+        + (f" · 📎 {attach_count} file(s) attached to this chat" if attach_count else "")
+    )
 
     # One tier per press, not a straight open/closed toggle — collapsed shows only
     # "expand", full shows only "collapse", partial (the middle tier) shows both. Four
@@ -2425,7 +2395,11 @@ with st.container(key="debate_dock"):
 
         st.caption("Personas: " + " · ".join(_persona_caption(role) for role in bot_config.ROLES))
 
-        btn_col, input_col = st.columns([1, 3])
+        # The attach control used to sit up in the header, a full row away from the box
+        # it actually affects — moved here, right against the input it attaches to, so
+        # the relationship reads at a glance instead of having to be inferred. Text box
+        # gives up a little width to it rather than the button floating off on its own.
+        btn_col, input_col, attach_col = st.columns([1, 2.7, 0.3])
         with btn_col:
             quick_debate = st.button("Full Debate", use_container_width=True, type="primary")
             # Contrarian and Moderator both need prior reports to react to -- asking
@@ -2455,6 +2429,37 @@ with st.container(key="debate_dock"):
                 key="question_input",
                 height=QUESTION_HEIGHT_BY_LEVEL[dock_level],
             )
+        with attach_col:
+            # Blank line to drop the button below the text_area's own label, roughly
+            # level with the top of the box itself rather than floating above it.
+            st.markdown("<div style='height:1.9rem'></div>", unsafe_allow_html=True)
+            attach_label = f"📎{attach_count}" if attach_count else "➕"
+            with st.popover(attach_label, use_container_width=True, help="Attach a file to this chat"):
+                st.caption(
+                    "Ephemeral — only used to answer questions in this chat session, not saved to "
+                    "the Reference Material library below."
+                )
+                chat_file = st.file_uploader(
+                    "Add a file", type=["txt", "csv", "pdf"], key="chat_attach_uploader",
+                    label_visibility="collapsed",
+                )
+                if chat_file is not None and not any(
+                    a["name"] == chat_file.name for a in st.session_state.chat_scoped_attachments
+                ):
+                    if chat_file.name.lower().endswith(".pdf"):
+                        import pypdf
+
+                        reader = pypdf.PdfReader(chat_file)
+                        text = "\n".join(page.extract_text() or "" for page in reader.pages)
+                    else:
+                        text = chat_file.read().decode("utf-8", errors="ignore")
+                    if text.strip():
+                        st.session_state.chat_scoped_attachments.append({"name": chat_file.name, "text": text})
+                        st.rerun()
+                for i, att in enumerate(list(st.session_state.chat_scoped_attachments)):
+                    if st.button(f"✕ {att['name']}", key=f"remove_chat_attach_{i}", use_container_width=True):
+                        st.session_state.chat_scoped_attachments.pop(i)
+                        st.rerun()
 
         def resolve_command(text: str) -> tuple[str, str]:
             for prefix, mode in (("/debate", "debate"), ("/quant", "quant"), ("/beat", "beat")):
