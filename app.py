@@ -1109,7 +1109,7 @@ def sync_leagues(username: str, *, announce: bool = True) -> bool:
 
 
 with st.sidebar:
-    with st.expander("🔑 Connections & Accounts", expanded=False, key="sb_group_connections"):
+    with st.expander("🔑 Connections & Models", expanded=False, key="sb_group_connections"):
         st.caption(
             "Paste your keys in .env format (or upload a .txt/.env/.pdf with them), then click "
             "Apply. This writes them into your local .env automatically, so it's a one-time step — "
@@ -1163,6 +1163,31 @@ with st.sidebar:
                 st.success(f"Applied: {', '.join(found)}.")
                 st.rerun()
 
+        st.markdown("**Available Models**")
+        st.caption(
+            "What each configured provider can actually call right now — the canonical list "
+            "that 🤖 Roles & Routing (including its benchmark) reads from. Fetch it once here; "
+            "nothing downstream fetches its own separate copy."
+        )
+        _conn_configured = [p for p in bot_config.PROVIDERS if IS_PROVIDER_CONFIGURED[p](api_key_for(PROVIDER_KEY_FIELD[p]))]
+        if not _conn_configured:
+            st.caption("No provider keys configured yet — paste at least one above.")
+        else:
+            if st.button("🔄 Refresh available models for every configured provider", key="conn_refresh_models", use_container_width=True):
+                for _p in _conn_configured:
+                    _ids, _err = llm_engine.LIST_MODELS_BY_PROVIDER[_p](api_key_for(PROVIDER_KEY_FIELD[_p]))
+                    if _err:
+                        st.warning(f"Couldn't fetch {bot_config.PROVIDER_LABELS[_p]} models: {_err}")
+                    else:
+                        st.session_state[f"available_models_{_p}"] = sorted(_ids)
+                st.rerun()
+            for _p in _conn_configured:
+                _models = st.session_state.get(f"available_models_{_p}")
+                if _models:
+                    st.caption(f"**{bot_config.PROVIDER_LABELS[_p]}** — {len(_models)} model(s): {', '.join(_models)}")
+                else:
+                    st.caption(f"{bot_config.PROVIDER_LABELS[_p]}: not fetched yet.")
+
         st.markdown("**Sleeper Username**")
         username_input = st.text_input(
             "Sleeper Username", value=st.session_state.username, label_visibility="collapsed"
@@ -1203,7 +1228,7 @@ with st.sidebar:
                 st.session_state.left_league_ids.remove(lid)
                 st.rerun()
 
-    with st.expander("🤖 Bot Lab", expanded=False, key="sb_group_bots"):
+    with st.expander("🤖 Roles & Routing", expanded=False, key="sb_group_bots"):
         st.caption(
             "Which provider actually answers for each role, and what to call it. Any provider can "
             "technically fill any role — a role is just a system prompt plus which prior reports it "
@@ -1216,21 +1241,14 @@ with st.sidebar:
         _role_names_cfg = bot_config.load_role_names()
         _role_models_cfg = bot_config.load_role_models()
         _provider_options = list(bot_config.PROVIDERS)
-        # One shared "which providers have a key, what can each call" check/cache for the
-        # whole section -- manual model pickers and every role's benchmark candidate list
-        # all read the same `available_models_{provider}` cache instead of each fetching
-        # (and re-fetching) it independently.
+        # Discovery itself lives in 🔑 Connections & Models now -- this section only reads
+        # the `available_models_{provider}` cache it populates, the same single source both
+        # the manual model picker below and every role's benchmark candidate list draw from.
         _bots_configured = [p for p in bot_config.PROVIDERS if IS_PROVIDER_CONFIGURED[p](api_key_for(PROVIDER_KEY_FIELD[p]))]
         if not _bots_configured:
-            st.warning("No provider keys configured yet — add at least one in 🔑 Connections & Accounts first.")
-        elif st.button("🔄 Refresh available models for every configured provider", key="botlab_refresh_models", use_container_width=True):
-            for _p in _bots_configured:
-                _ids, _err = llm_engine.LIST_MODELS_BY_PROVIDER[_p](api_key_for(PROVIDER_KEY_FIELD[_p]))
-                if _err:
-                    st.warning(f"Couldn't fetch {bot_config.PROVIDER_LABELS[_p]} models: {_err}")
-                else:
-                    st.session_state[f"available_models_{_p}"] = sorted(_ids)
-            st.rerun()
+            st.warning("No provider keys configured yet — add at least one in 🔑 Connections & Models first.")
+        elif not any(st.session_state.get(f"available_models_{p}") for p in _bots_configured):
+            st.caption("No models fetched yet — use 🔑 Connections & Models above to see what each key can call.")
 
         for _role in bot_config.ROLES:
             _info = bot_config.ROLE_INFO[_role]
@@ -1678,7 +1696,7 @@ with st.sidebar:
     if missing_keys:
         affected = ", ".join(f"{var} (needed for {'/'.join(_roles_using[provider])})" for var, provider in missing_keys)
         st.caption(
-            f"Missing: {affected}. Paste them into 🔑 Connections & Accounts above, or copy "
+            f"Missing: {affected}. Paste them into 🔑 Connections & Models above, or copy "
             "`.env.example` to `.env` in the project folder, fill in the key(s), and restart `streamlit run app.py`."
         )
 
