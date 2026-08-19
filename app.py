@@ -788,6 +788,34 @@ def build_context(snapshot: dict, roster_table: list[dict], player_universe: lis
                 f"{row.get('roster_slot', '-')} | {row.get('sleeper_proj', 'unavailable')}"
             )
 
+    # Every other team's roster — for trade scouting. Full detail costs real tokens on a
+    # 10-14 team league, so only the team(s)/player(s) the question actually names get the
+    # full breakdown; everyone else gets a cheap one-line starters summary for ambient
+    # awareness of who has what. Ask about a team by name to pull its full roster in.
+    own_user_id = st.session_state.get("user_id")
+    rosters_by_owner: dict[str, list[dict]] = {}
+    for row in player_universe:
+        if row.get("ownership") != "ROSTERED" or row.get("owner_id") == own_user_id:
+            continue
+        owner_label = row.get("owner_name") or f"Roster {row.get('roster_id', '?')}"
+        rosters_by_owner.setdefault(owner_label, []).append(row)
+    if rosters_by_owner:
+        question_lower = question.lower()
+        lines.append(
+            "\nLEAGUE ROSTERS — every other team in this league, for trade scouting (Sleeper ownership "
+            "data, not Draft-Sharks-enriched). Full roster shown only for a team or player the question "
+            "actually names, to control length — everyone else is just their current starters:"
+        )
+        for owner_label, rows in rosters_by_owner.items():
+            named = owner_label.lower() in question_lower or any(r["name"].lower() in question_lower for r in rows)
+            if named:
+                lines.append(f"  {owner_label} (full roster):")
+                for r in rows:
+                    lines.append(f"    {r['name']} | {r['position']} | {r['team']} | {r.get('roster_slot', '-')}")
+            else:
+                starters = [r["name"] for r in rows if r.get("roster_slot") == "Starter"]
+                lines.append(f"  {owner_label}: {', '.join(starters) or '(no starters set)'}")
+
     if merger.is_free_agents_loaded:
         top_fa = merger.list_free_agents(exclude_mine=True, top_n=15)
         if top_fa:
@@ -1272,14 +1300,16 @@ if st.session_state.data_merger.is_stale:
 
 MATCHUP_VIEW = "🏈 Matchup"
 MAINTENANCE_VIEW = "🔧 Roster Maintenance"
+LEAGUE_VIEW = "👥 League"
 main_view = st.segmented_control(
     "Dashboard view",
-    options=[MATCHUP_VIEW, MAINTENANCE_VIEW],
+    options=[MATCHUP_VIEW, MAINTENANCE_VIEW, LEAGUE_VIEW],
     default=MATCHUP_VIEW,
     key="main_view",
     label_visibility="collapsed",
     help="Matchup: your lineup, projections, and the debate studio for start/sit calls. "
-    "Roster Maintenance: free agents/waivers and reference material for trade and pickup research.",
+    "Roster Maintenance: free agents/waivers and reference material for trade and pickup research. "
+    "League: every other team's roster, for trade scouting.",
 )
 st.markdown("---")
 
@@ -1381,7 +1411,7 @@ if main_view == MATCHUP_VIEW:
         else:
             st.caption("No Draft Sharks/War Room projections loaded yet — upload a CSV in the sidebar.")
 
-else:
+elif main_view == MAINTENANCE_VIEW:
     # ------------------------------------------------------------------ free agents --
 
     st.markdown("---")
@@ -1572,6 +1602,50 @@ else:
                     else:
                         set_scope(item["filename"], edit_league_ids if edit_mode == "Specific league(s)" else None)
                         st.rerun()
+
+else:
+    # ------------------------------------------------------------------ league rosters --
+
+    st.markdown("---")
+    st.subheader("League Rosters")
+    st.caption(
+        "Every other team's roster in this league, straight from Sleeper — for trade scouting. "
+        "Not enriched with Draft Sharks data here; just who owns whom."
+    )
+
+    rosters_by_owner: dict[str, list[dict]] = {}
+    for row in player_universe:
+        if row.get("ownership") != "ROSTERED" or row.get("owner_id") == st.session_state.user_id:
+            continue  # your own roster already has its own tab
+        owner_label = row.get("owner_name") or f"Roster {row.get('roster_id', '?')}"
+        rosters_by_owner.setdefault(owner_label, []).append(row)
+
+    if not rosters_by_owner:
+        st.info("No other rostered teams found in this league's synced data.")
+    else:
+        selected_owner = st.selectbox("Team", options=sorted(rosters_by_owner))
+        team_rows = rosters_by_owner[selected_owner]
+        team_df = pd.DataFrame([
+            {
+                "name": r["name"], "position": r["position"], "team": r["team"],
+                "slot": r.get("roster_slot") or "Bench", "injury_status": r.get("injury_status"),
+                "sleeper_proj": r.get("sleeper_proj"),
+            }
+            for r in team_rows
+        ])
+        team_df["_sort"] = team_df["slot"].map(SLOT_SORT_ORDER).fillna(99)
+        team_df = team_df.sort_values("_sort").drop(columns="_sort")
+        display_cols = [c for c in ["name", "position", "team", "slot", "sleeper_proj", "injury_status"] if c in team_df.columns]
+        render_styled_table(
+            team_df[display_cols],
+            pill_columns={"injury_status": _injury_pill_color},
+            group_column="slot",
+            column_labels={"sleeper_proj": sleeper_proj_label(snapshot)},
+        )
+        st.caption(
+            "Ask the Debate Studio about this team by name (or a specific player on it) for a full trade "
+            "read — it can see any team's roster, not just the one selected above."
+        )
 
 # ------------------------------------------------------------------ debate studio --
 # A fixed dock at the bottom of the viewport, not just "below the tab content" —
