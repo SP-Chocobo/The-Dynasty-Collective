@@ -755,6 +755,19 @@ def build_context(snapshot: dict, roster_table: list[dict], player_universe: lis
             reason = item.get("resolution_reason") or "(no reason recorded)"
             lines.append(f"  - {item['text']} — {outcome} {item.get('resolution_date', '')}: {reason}")
 
+    past_outcomes = (
+        decision_log.search_decisions_with_outcomes(league_id, question, limit=5) if league_id and question else []
+    )
+    if past_outcomes:
+        lines.append(
+            "\nPAST DECISION OUTCOMES — earlier verdicts related to this question, with how they actually "
+            "played out (user-recorded, not a guess). Weigh whether the panel's read has a track record on "
+            "this kind of call before repeating the same reasoning that already worked or already missed:"
+        )
+        for d in past_outcomes:
+            note = f" — {d['outcome_note']}" if d.get("outcome_note") else ""
+            lines.append(f"  - \"{d['question']}\" ({d['date']}): called {d['recommendation']}. Outcome: {d['outcome']}{note}")
+
     lines.append(
         "\nDATA AVAILABILITY — work with whatever is actually loaded; none of this is required to answer. "
         "Missing data is never a reason to refuse or stall — reason from positional scarcity, roster "
@@ -1714,11 +1727,29 @@ if decisions:
                     "Risk": d.get("risk", ""),
                     "Recon": d.get("recon", ""),
                     "Price Ceiling": d.get("price_ceiling", ""),
+                    "Outcome": d.get("outcome") or "—",
                 }
                 for d in reversed(decisions)
             ]
         )
         st.dataframe(log_df, use_container_width=True, hide_index=True)
+
+        st.caption(
+            "Record how a call actually played out — the bots weigh this on related future "
+            "questions instead of re-deriving the same reasoning cold each time."
+        )
+        outcome_options = {
+            f"{d['date']} — {d['question'][:70]}"
+            + (f" [{d['outcome']}]" if d.get("outcome") else ""): d["ts"]
+            for d in reversed(decisions)
+        }
+        picked_label = st.selectbox("Decision", options=list(outcome_options), key="outcome_pick_decision")
+        rate_col, note_col = st.columns(2)
+        rating = rate_col.selectbox("Outcome", options=decision_log.OUTCOME_LABELS, key="outcome_rating")
+        note = note_col.text_input("Note (optional)", key="outcome_note", placeholder="What actually happened…")
+        if st.button("Save outcome", key="save_decision_outcome"):
+            decision_log.set_outcome(st.session_state.selected_league_id, outcome_options[picked_label], rating, note)
+            st.rerun()
 
 todo_league_id = st.session_state.selected_league_id
 active_items = todo_log.load_todos(todo_league_id, statuses=todo_log.ACTIVE_STATUSES)

@@ -165,6 +165,13 @@ actually listed in OPEN TO-DO ITEMS. Include as many TODO UPDATE / TODO LIKELY R
 apply (zero, one, or several) — these are the only repeatable lines in this block; every other field
 appears at most once.
 
+Your context may also include a PAST DECISION OUTCOMES section — earlier verdicts on a
+related question, with how they actually played out (user-recorded, not a model guess). This
+is a track record, not just history: if the panel's reasoning on this kind of call has held up
+before, that's worth leaning on; if it missed, say so and adjust rather than repeating the same
+logic that already didn't work. Don't treat an outcome as dispositive on its own — one data point
+isn't a pattern — but don't ignore it either.
+
 Your context may also include a RELEVANT PAST OBJECTIVES section — resolved or dismissed objectives that
 look related to the current question, each with the reason it was closed. This is strategic memory, not
 just a log: if something has materially changed since it closed (an injury, a depth-chart shift, recent

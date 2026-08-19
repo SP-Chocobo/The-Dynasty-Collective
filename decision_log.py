@@ -9,11 +9,14 @@ Kept dead simple: one JSON list per league, newest entries appended.
 from __future__ import annotations
 
 import json
+import re
 import time
 from datetime import datetime
 from pathlib import Path
+from typing import Optional
 
 DECISIONS_DIR = Path("data/decisions")
+OUTCOME_LABELS = ("Worked", "Didn't Work", "Mixed", "Too Early To Tell")
 
 
 def _path(league_id: str) -> Path:
@@ -50,9 +53,49 @@ def log_decision(league_id: str, question: str, verdict: dict, moderator_text: s
             "recon": verdict.get("recon", ""),
             "price_ceiling": verdict.get("price_ceiling", ""),
             "moderator_text": moderator_text,
+            "outcome": "",
+            "outcome_note": "",
+            "outcome_date": None,
         }
     )
     _path(league_id).write_text(json.dumps(entries, indent=2))
+
+
+def set_outcome(league_id: str, ts: float, outcome: str, note: str = "") -> bool:
+    """Record how a past call actually played out — the missing piece that turns this
+    from a pure audit trail into something the bots can learn from. `ts` identifies the
+    entry (decisions have no separate int id; timestamp is already unique per entry)."""
+    entries = _load(league_id)
+    entry = next((e for e in entries if e.get("ts") == ts), None)
+    if not entry:
+        return False
+    entry["outcome"] = outcome
+    entry["outcome_note"] = note.strip()
+    entry["outcome_date"] = datetime.now().strftime("%Y-%m-%d")
+    _path(league_id).write_text(json.dumps(entries, indent=2))
+    return True
+
+
+def search_decisions_with_outcomes(league_id: str, query: str, limit: int = 5) -> list[dict]:
+    """Keyword-overlap search over decisions that actually have a recorded outcome — an
+    unrated decision has nothing to teach a future one, so it's excluded rather than
+    surfaced as if "no outcome yet" were itself informative."""
+    if not query or not query.strip():
+        return []
+    query_words = {w for w in re.findall(r"[a-zA-Z0-9']+", query.lower()) if len(w) > 2}
+    if not query_words:
+        return []
+    scored = []
+    for entry in _load(league_id):
+        if not entry.get("outcome"):
+            continue
+        haystack = f"{entry.get('question', '')} {entry.get('reason', '')}".lower()
+        entry_words = set(re.findall(r"[a-zA-Z0-9']+", haystack))
+        overlap = len(query_words & entry_words)
+        if overlap:
+            scored.append((overlap, entry))
+    scored.sort(key=lambda pair: pair[0], reverse=True)
+    return [entry for _, entry in scored[:limit]]
 
 
 def load_decisions(league_id: str) -> list[dict]:
