@@ -68,6 +68,24 @@ st.markdown(
     .status-ok { color: #4ade80; }
     .status-bad { color: #64748b; }
 
+    /* League switcher trigger: it shares a row with the Refresh action button, and
+       Streamlit's default centered-label style made it read as just another action
+       rather than a picker. Left-align the label, right-align the chevron (like a
+       real <select>), and give it its own subtle background/border so it visually
+       reads as "pick a league" rather than "do a thing". */
+    [data-testid="stPopoverButton"] {
+        background: #1b1c1f !important;
+        border: 1px solid #2a2b2e !important;
+        border-radius: 8px !important;
+    }
+    [data-testid="stPopoverButton"] > div {
+        justify-content: space-between !important;
+        width: 100%;
+    }
+    [data-testid="stPopoverButton"] p {
+        font-weight: 600;
+    }
+
     /* Sidebar defaults to a width that crowds the Manage Leagues row and the
        credentials paste box — widen it out of the box instead of making everyone
        drag it wider by hand every time. Still resizable from here if you want more.
@@ -155,7 +173,6 @@ for key, default in {
     "chat_history": [],
     "fa_staleness_nudged": set(),  # (league_id, freshest_date) already nudged about this session
     "left_league_ids": [],  # tracked leagues no longer returned by Sleeper's last sync, awaiting archive/delete/dismiss
-    "manage_leagues_expanded": False,  # keeps the expander open across the reruns its own buttons trigger
     # API keys applied via the sidebar's "Connect Your Accounts" section. Take effect
     # immediately for this session and also get written into .env (see
     # save_parsed_keys_to_env), so they're picked up automatically on the next launch too.
@@ -278,11 +295,6 @@ INJURY_OK_STATUSES = ("Questionable", "Doubtful")
 
 # (background, text color) pairs, reusing the same emerald/gold/crimson/violet accents
 # as everything else in the app — badges, the debate personas, the status panel.
-SLOT_PILL_COLORS = {
-    "Starter": ("rgba(22,163,74,0.18)", "#4ade80"),
-    "TAXI": ("rgba(212,160,23,0.18)", "#facc15"),
-    "IR": ("rgba(185,28,28,0.18)", "#f87171"),
-}
 ROSTER_STATUS_PILL_COLORS = {
     "Add": ("rgba(22,163,74,0.18)", "#4ade80"),
     "Mine": ("rgba(59,130,246,0.18)", "#93c5fd"),
@@ -305,7 +317,7 @@ def _injury_pill_color(val: str) -> tuple[str, str]:
     return ("rgba(185,28,28,0.18)", "#f87171")  # Out/IR/PUP/etc.
 
 
-def render_styled_table(df: pd.DataFrame, pill_columns: Optional[dict] = None) -> None:
+def render_styled_table(df: pd.DataFrame, pill_columns: Optional[dict] = None, group_column: Optional[str] = None) -> None:
     """Render a DataFrame as a custom HTML table instead of the native st.dataframe grid.
 
     st.dataframe renders through a canvas-based grid component — it's fundamentally a
@@ -316,11 +328,18 @@ def render_styled_table(df: pd.DataFrame, pill_columns: Optional[dict] = None) -
 
     `pill_columns` maps a column name to a `value -> (background, text_color)` function;
     any other column just renders as text, right-aligned with tabular numerals if numeric.
+
+    `group_column`, if given, must already be sorted (this never reorders rows) — a
+    full-width section header row is inserted every time that column's value changes,
+    and the column itself is dropped from display since the header now conveys it (e.g.
+    grouping the roster by "slot" into Starters/Bench/TAXI/IR sections, Sleeper-style,
+    instead of one flat list with a slot pill on every row).
     """
     if df.empty:
         return
     pill_columns = pill_columns or {}
-    numeric_cols = {c for c in df.columns if pd.api.types.is_numeric_dtype(df[c])}
+    display_cols = [c for c in df.columns if c != group_column] if group_column else list(df.columns)
+    numeric_cols = {c for c in display_cols if pd.api.types.is_numeric_dtype(df[c])}
 
     def _cell_html(col: str, val) -> str:
         if pd.isna(val) or val in (None, ""):
@@ -347,22 +366,33 @@ def render_styled_table(df: pd.DataFrame, pill_columns: Optional[dict] = None) -
         f'letter-spacing:0.07em;color:#8b8f98;font-weight:600;border-bottom:1px solid #2a2b2e;'
         f'background:#1b1c1f;white-space:nowrap;">'
         f'{html.escape(TABLE_COLUMN_LABELS.get(c, c.replace("_", " ").title()))}</th>'
-        for c in df.columns
+        for c in display_cols
     )
-    body_rows = "".join(
-        "<tr>" + "".join(
-            f'<td style="padding:9px 14px;border-bottom:1px solid #202124;">{_cell_html(c, row[c])}</td>'
-            for c in df.columns
-        ) + "</tr>"
-        for _, row in df.iterrows()
-    )
+
+    row_parts = []
+    last_group = object()  # sentinel that can never equal a real group value
+    for _, row in df.iterrows():
+        if group_column:
+            group_val = row[group_column]
+            if group_val != last_group:
+                row_parts.append(
+                    f'<tr><td colspan="{len(display_cols)}" style="padding:10px 14px 5px;'
+                    f'font-size:0.72rem;text-transform:uppercase;letter-spacing:0.08em;'
+                    f'color:#6b7280;font-weight:700;background:#141517;'
+                    f'border-top:1px solid #2a2b2e;">'
+                    f'{html.escape(str(group_val))}</td></tr>'
+                )
+                last_group = group_val
+        cells = "".join(f'<td style="padding:9px 14px;border-bottom:1px solid #202124;">{_cell_html(c, row[c])}</td>' for c in display_cols)
+        row_parts.append(f"<tr>{cells}</tr>")
+
     st.markdown(
         f"""
-        <div style="overflow-x:auto;overflow-y:auto;max-height:520px;
+        <div style="overflow-x:auto;overflow-y:auto;max-height:600px;
                     border:1px solid #2a2b2e;border-radius:10px;">
           <table style="width:100%;border-collapse:collapse;font-size:0.88rem;">
             <thead><tr>{headers}</tr></thead>
-            <tbody>{body_rows}</tbody>
+            <tbody>{''.join(row_parts)}</tbody>
           </table>
         </div>
         """,
@@ -695,18 +725,12 @@ def sync_leagues(username: str, *, announce: bool = True) -> bool:
 
 
 with st.sidebar:
-    st.markdown("### 🔑 Connect Your Accounts")
-    st.caption(
-        "Paste your keys in .env format (or upload a .txt/.env/.pdf with them), then click "
-        "Apply. This writes them into your local .env automatically, so it's a one-time step — "
-        "not something typed in every session."
-    )
-    with st.expander(
-        "Paste or upload keys + Sleeper username",
-        expanded=False,  # collapsed by default every visit — the sidebar's own
-        # Status panel already flags missing keys; this shouldn't force itself
-        # open on top of that every single session.
-    ):
+    with st.expander("🔑 Connections & Accounts", expanded=False, key="sb_group_connections"):
+        st.caption(
+            "Paste your keys in .env format (or upload a .txt/.env/.pdf with them), then click "
+            "Apply. This writes them into your local .env automatically, so it's a one-time step — "
+            "not something typed in every session."
+        )
         creds_text = st.text_area(
             "Paste keys (one per line)",
             key="creds_paste_box",
@@ -755,11 +779,12 @@ with st.sidebar:
                 st.success(f"Applied: {', '.join(found)}.")
                 st.rerun()
 
-    st.markdown("### 🏈 Sleeper Sync")
-    username_input = st.text_input("Sleeper Username", value=st.session_state.username)
-
-    if st.button("Sync Leagues", use_container_width=True):
-        sync_leagues(username_input)
+        st.markdown("**Sleeper Username**")
+        username_input = st.text_input(
+            "Sleeper Username", value=st.session_state.username, label_visibility="collapsed"
+        )
+        if st.button("Sync Leagues", use_container_width=True):
+            sync_leagues(username_input)
 
     if (
         st.session_state.username
@@ -794,41 +819,136 @@ with st.sidebar:
                 st.session_state.left_league_ids.remove(lid)
                 st.rerun()
 
-    if st.session_state.leagues:
-        visible_leagues, archived_leagues = sorted_leagues(st.session_state.user_id, st.session_state.leagues)
-        league_options = {lg["league_id"]: lg["name"] for lg in visible_leagues}
-
-        if league_options:
-            option_ids = list(league_options.keys())
-            selected = st.session_state.selected_league_id
-            if selected not in option_ids:
-                # First load this session, or the previously-active league just got archived/
-                # deleted out from under it — fall back to the first visible one. The actual
-                # switcher lives at the top of the main panel now, not here.
-                selected = option_ids[0]
-                activate_league(selected)
-            st.caption(f"📂 Active league: **{league_options[selected]}** — switch it above the dashboard.")
-
-            current_override = get_format_override(selected) or STANDARD
-            format_choice = st.selectbox(
-                "Special format",
-                options=list(FORMAT_OPTIONS),
-                index=list(FORMAT_OPTIONS).index(current_override),
-                help="Dynasty/Keeper/Redraft are detected automatically from Sleeper. Best Ball and "
-                "Chopped aren't reliably auto-detectable, so set this manually if this league is one — "
-                "it changes how the panel reasons (e.g. no trades or floor-first start/sit in Chopped, "
-                "no week-to-week management in Best Ball).",
+    with st.expander("📊 Data Uploads", expanded=False, key="sb_group_uploads"):
+        st.caption(
+            "Draft Sharks has no public export API — save a tool page as a PDF and upload it here. The kind "
+            "is auto-detected from its content, not the filename or which league is selected: **Dynasty "
+            "Rankings** is format-based (PPR/standard, superflex/1QB, TE premium), not tied to any roster, so "
+            "it goes into a shared pool used by every league of that format. **Free Agent Finder** is tied to "
+            "one league's actual roster and only ever applies to the league currently selected above. Anything "
+            "that isn't recognized as one of those — a screenshot, an article, an unsupported export — is kept "
+            "as reference material instead (see below) rather than being discarded."
+        )
+        # Scope has to live outside the form: a form only releases its widgets' values on
+        # submit, so a selector inside one can't reactively reveal the league picker.
+        scope_mode = st.segmented_control(
+            "Note/attachment applies to",
+            options=["Global (all leagues)", "Specific league(s)"],
+            default="Global (all leagues)",
+            key="upload_scope_mode",
+            help="Only matters for the comment/note and for anything that falls through to Reference "
+            "Material — Draft Sharks data itself already routes by its own rules regardless of this.",
+        )
+        scope_league_ids: list[str] = []
+        if scope_mode == "Specific league(s)" and st.session_state.leagues:
+            league_name_map = {lg["league_id"]: lg["name"] for lg in st.session_state.leagues}
+            default_scope = [st.session_state.selected_league_id] if st.session_state.selected_league_id in league_name_map else []
+            scope_league_ids = st.multiselect(
+                "Which league(s)", options=list(league_name_map.keys()), default=default_scope,
+                format_func=lambda lid: league_name_map[lid], key="upload_scope_leagues",
             )
-            if format_choice != current_override:
-                set_format_override(selected, format_choice)
-                st.rerun()
-        else:
-            st.info("All discovered leagues are archived — unarchive one below to select it.")
 
-        with st.expander(
-            f"Manage Leagues ({len(st.session_state.leagues)})",
-            expanded=st.session_state.manage_leagues_expanded,
-        ):
+        with st.form("upload_form", clear_on_submit=True):
+            uploaded = st.file_uploader(
+                "Upload Draft Sharks PDF/CSV/JSON, or any other file as reference material",
+                type=["pdf", "csv", "json", "png", "jpg", "jpeg", "webp", "gif", "txt"],
+            )
+            note = st.text_area(
+                "Comments, questions, or labels for this upload (optional)",
+                placeholder="e.g. \"ignore this ranking, Bijan tweaked his hamstring in preseason\" or "
+                "\"is this article's injury report still accurate?\"",
+                height=80,
+            )
+            submitted = st.form_submit_button("Upload")
+
+        if submitted and scope_mode == "Specific league(s)" and not scope_league_ids:
+            st.warning("Select at least one league above, or switch back to Global.")
+        elif submitted and uploaded is None:
+            st.warning("Choose a file before clicking Upload.")
+        elif submitted and uploaded is not None:
+            data = bytes(uploaded.getbuffer())
+            note = note.strip()
+            suffix = Path(uploaded.name).suffix.lower()
+            recognized = False
+            note_scope = scope_league_ids if scope_mode == "Specific league(s)" else None
+
+            if suffix in (".pdf", ".csv", ".json"):
+                staging_dir = PROJECTIONS_DIR / "_staging"
+                staging_dir.mkdir(parents=True, exist_ok=True)
+                staging_path = staging_dir / uploaded.name
+                staging_path.write_bytes(data)
+                try:
+                    _, kind = load_projection_file(staging_path)
+                except Exception:
+                    staging_path.unlink(missing_ok=True)  # not parseable — falls through to reference material below
+                else:
+                    if kind == "free_agents" and not st.session_state.selected_league_id:
+                        staging_path.unlink(missing_ok=True)
+                        st.error("This looks like a Free Agent Finder export, tied to one league's roster — select a league above first, then re-upload.")
+                        recognized = True  # handled (as a rejection), don't also file it as an attachment
+                    else:
+                        if kind == "free_agents":
+                            dest_dir = league_projections_dir(st.session_state.selected_league_id)
+                            location_label = "this league only (roster-specific)"
+                        else:
+                            dest_dir = GLOBAL_PROJECTIONS_DIR
+                            location_label = "the shared pool (applies to any league using this format)"
+                        dest_dir.mkdir(parents=True, exist_ok=True)
+                        staging_path.replace(dest_dir / uploaded.name)
+                        st.session_state.data_merger.reload()
+                        st.success(f"Recognized as Draft Sharks data — saved to {location_label}.")
+                        recognized = True
+                        if note:
+                            # The data went into the projections pool, not the attachment store — but the
+                            # note is still worth surfacing to the panel, so it gets a small text-only entry.
+                            save_attachment(f"{uploaded.name}.note.txt", note.encode(), caption=note, league_ids=note_scope)
+
+            if not recognized:
+                save_attachment(uploaded.name, data, caption=note, league_ids=note_scope)
+                st.info(f"Didn't match a known Draft Sharks format — saved '{uploaded.name}' as reference material below for the panel to consider when you ask about it.")
+
+        global_files = sorted(p.name for p in GLOBAL_PROJECTIONS_DIR.glob("*") if p.suffix in (".csv", ".json", ".pdf"))
+        if global_files:
+            st.caption("Shared rankings (any league): " + ", ".join(global_files))
+        if st.session_state.selected_league_id:
+            league_proj_dir = league_projections_dir(st.session_state.selected_league_id)
+            league_files = sorted(p.name for p in league_proj_dir.glob("*") if p.suffix in (".csv", ".json", ".pdf")) if league_proj_dir.exists() else []
+            if league_files:
+                st.caption("This league only (roster-specific): " + ", ".join(league_files))
+
+    if st.session_state.leagues:
+        with st.expander("⚙️ League Controls", expanded=False, key="sb_group_league"):
+            visible_leagues, archived_leagues = sorted_leagues(st.session_state.user_id, st.session_state.leagues)
+            league_options = {lg["league_id"]: lg["name"] for lg in visible_leagues}
+
+            if league_options:
+                option_ids = list(league_options.keys())
+                selected = st.session_state.selected_league_id
+                if selected not in option_ids:
+                    # First load this session, or the previously-active league just got archived/
+                    # deleted out from under it — fall back to the first visible one. The actual
+                    # switcher lives at the top of the main panel now, not here.
+                    selected = option_ids[0]
+                    activate_league(selected)
+                st.caption(f"📂 Active league: **{league_options[selected]}** — switch it above the dashboard.")
+
+                current_override = get_format_override(selected) or STANDARD
+                format_choice = st.selectbox(
+                    "Special format",
+                    options=list(FORMAT_OPTIONS),
+                    index=list(FORMAT_OPTIONS).index(current_override),
+                    help="Dynasty/Keeper/Redraft are detected automatically from Sleeper. Best Ball and "
+                    "Chopped aren't reliably auto-detectable, so set this manually if this league is one — "
+                    "it changes how the panel reasons (e.g. no trades or floor-first start/sit in Chopped, "
+                    "no week-to-week management in Best Ball).",
+                )
+                if format_choice != current_override:
+                    set_format_override(selected, format_choice)
+                    st.rerun()
+            else:
+                st.info("All discovered leagues are archived — unarchive one below to select it.")
+
+            st.markdown(f"**Manage Leagues ({len(st.session_state.leagues)})**")
             st.caption(
                 "Archive leagues you don't want on the front dashboard, or reorder them. Delete "
                 "permanently purges all locally cached data for a league (snapshots, its own Draft "
@@ -847,28 +967,23 @@ with st.sidebar:
                     "Unarchive" if is_archived else "Archive", key=f"arch_{lid}", use_container_width=True,
                 ):
                     toggle_archive(st.session_state.user_id, lid)
-                    st.session_state.manage_leagues_expanded = True
                     st.rerun()
                 if up_col.button("▲", key=f"up_{lid}", disabled=idx == 0, help="Move up", use_container_width=True):
                     move_league(st.session_state.user_id, st.session_state.leagues, lid, -1)
-                    st.session_state.manage_leagues_expanded = True
                     st.rerun()
                 if down_col.button(
                     "▼", key=f"down_{lid}", disabled=idx == len(ordered) - 1, help="Move down",
                     use_container_width=True,
                 ):
                     move_league(st.session_state.user_id, st.session_state.leagues, lid, 1)
-                    st.session_state.manage_leagues_expanded = True
                     st.rerun()
 
                 if st.session_state.get("pending_delete_league_id") == lid:
                     if del_col.button("Cancel", key=f"cancel_del_{lid}", use_container_width=True):
                         st.session_state.pending_delete_league_id = None
-                        st.session_state.manage_leagues_expanded = True
                         st.rerun()
                 elif del_col.button("🗑️", key=f"del_{lid}", help="Delete permanently", use_container_width=True):
                     st.session_state.pending_delete_league_id = lid
-                    st.session_state.manage_leagues_expanded = True
                     st.rerun()
 
                 if st.session_state.get("pending_delete_league_id") == lid:
@@ -879,108 +994,9 @@ with st.sidebar:
                     if st.button("Confirm Delete", key=f"confirm_del_{lid}", use_container_width=True):
                         removed = delete_league_completely(lid)
                         st.session_state.pending_delete_league_id = None
-                        st.session_state.manage_leagues_expanded = True
                         st.success(f"Deleted local data for {lg['name']} ({len(removed)} item(s) removed).")
                         st.rerun()
                 st.markdown("<hr style='margin:6px 0;opacity:0.15'>", unsafe_allow_html=True)
-
-    st.markdown("---")
-    st.markdown("### 📊 Draft Sharks / War Room Data")
-    st.caption(
-        "Draft Sharks has no public export API — save a tool page as a PDF and upload it here. The kind "
-        "is auto-detected from its content, not the filename or which league is selected: **Dynasty "
-        "Rankings** is format-based (PPR/standard, superflex/1QB, TE premium), not tied to any roster, so "
-        "it goes into a shared pool used by every league of that format. **Free Agent Finder** is tied to "
-        "one league's actual roster and only ever applies to the league currently selected above. Anything "
-        "that isn't recognized as one of those — a screenshot, an article, an unsupported export — is kept "
-        "as reference material instead (see below) rather than being discarded."
-    )
-    # Scope has to live outside the form: a form only releases its widgets' values on
-    # submit, so a selector inside one can't reactively reveal the league picker.
-    scope_mode = st.segmented_control(
-        "Note/attachment applies to",
-        options=["Global (all leagues)", "Specific league(s)"],
-        default="Global (all leagues)",
-        key="upload_scope_mode",
-        help="Only matters for the comment/note and for anything that falls through to Reference "
-        "Material — Draft Sharks data itself already routes by its own rules regardless of this.",
-    )
-    scope_league_ids: list[str] = []
-    if scope_mode == "Specific league(s)" and st.session_state.leagues:
-        league_name_map = {lg["league_id"]: lg["name"] for lg in st.session_state.leagues}
-        default_scope = [st.session_state.selected_league_id] if st.session_state.selected_league_id in league_name_map else []
-        scope_league_ids = st.multiselect(
-            "Which league(s)", options=list(league_name_map.keys()), default=default_scope,
-            format_func=lambda lid: league_name_map[lid], key="upload_scope_leagues",
-        )
-
-    with st.form("upload_form", clear_on_submit=True):
-        uploaded = st.file_uploader(
-            "Upload Draft Sharks PDF/CSV/JSON, or any other file as reference material",
-            type=["pdf", "csv", "json", "png", "jpg", "jpeg", "webp", "gif", "txt"],
-        )
-        note = st.text_area(
-            "Comments, questions, or labels for this upload (optional)",
-            placeholder="e.g. \"ignore this ranking, Bijan tweaked his hamstring in preseason\" or "
-            "\"is this article's injury report still accurate?\"",
-            height=80,
-        )
-        submitted = st.form_submit_button("Upload")
-
-    if submitted and scope_mode == "Specific league(s)" and not scope_league_ids:
-        st.warning("Select at least one league above, or switch back to Global.")
-    elif submitted and uploaded is None:
-        st.warning("Choose a file before clicking Upload.")
-    elif submitted and uploaded is not None:
-        data = bytes(uploaded.getbuffer())
-        note = note.strip()
-        suffix = Path(uploaded.name).suffix.lower()
-        recognized = False
-        note_scope = scope_league_ids if scope_mode == "Specific league(s)" else None
-
-        if suffix in (".pdf", ".csv", ".json"):
-            staging_dir = PROJECTIONS_DIR / "_staging"
-            staging_dir.mkdir(parents=True, exist_ok=True)
-            staging_path = staging_dir / uploaded.name
-            staging_path.write_bytes(data)
-            try:
-                _, kind = load_projection_file(staging_path)
-            except Exception:
-                staging_path.unlink(missing_ok=True)  # not parseable — falls through to reference material below
-            else:
-                if kind == "free_agents" and not st.session_state.selected_league_id:
-                    staging_path.unlink(missing_ok=True)
-                    st.error("This looks like a Free Agent Finder export, tied to one league's roster — select a league above first, then re-upload.")
-                    recognized = True  # handled (as a rejection), don't also file it as an attachment
-                else:
-                    if kind == "free_agents":
-                        dest_dir = league_projections_dir(st.session_state.selected_league_id)
-                        location_label = "this league only (roster-specific)"
-                    else:
-                        dest_dir = GLOBAL_PROJECTIONS_DIR
-                        location_label = "the shared pool (applies to any league using this format)"
-                    dest_dir.mkdir(parents=True, exist_ok=True)
-                    staging_path.replace(dest_dir / uploaded.name)
-                    st.session_state.data_merger.reload()
-                    st.success(f"Recognized as Draft Sharks data — saved to {location_label}.")
-                    recognized = True
-                    if note:
-                        # The data went into the projections pool, not the attachment store — but the
-                        # note is still worth surfacing to the panel, so it gets a small text-only entry.
-                        save_attachment(f"{uploaded.name}.note.txt", note.encode(), caption=note, league_ids=note_scope)
-
-        if not recognized:
-            save_attachment(uploaded.name, data, caption=note, league_ids=note_scope)
-            st.info(f"Didn't match a known Draft Sharks format — saved '{uploaded.name}' as reference material below for the panel to consider when you ask about it.")
-
-    global_files = sorted(p.name for p in GLOBAL_PROJECTIONS_DIR.glob("*") if p.suffix in (".csv", ".json", ".pdf"))
-    if global_files:
-        st.caption("Shared rankings (any league): " + ", ".join(global_files))
-    if st.session_state.selected_league_id:
-        league_proj_dir = league_projections_dir(st.session_state.selected_league_id)
-        league_files = sorted(p.name for p in league_proj_dir.glob("*") if p.suffix in (".csv", ".json", ".pdf")) if league_proj_dir.exists() else []
-        if league_files:
-            st.caption("This league only (roster-specific): " + ", ".join(league_files))
 
     st.markdown("---")
     st.markdown("### Status")
@@ -1031,7 +1047,7 @@ with st.sidebar:
     ]
     if missing_keys:
         st.caption(
-            f"Missing: {', '.join(missing_keys)}. Paste them into 🔑 Connect Your Accounts above, or copy "
+            f"Missing: {', '.join(missing_keys)}. Paste them into 🔑 Connections & Accounts above, or copy "
             "`.env.example` to `.env` in the project folder, fill in the key(s), and restart `streamlit run app.py`."
         )
 
@@ -1104,310 +1120,325 @@ if st.session_state.data_merger.is_stale:
         icon="⚠️",
     )
 
-roster = find_roster_for_user(snapshot["rosters"], st.session_state.user_id) if st.session_state.user_id else None
+MATCHUP_VIEW = "🏈 Matchup"
+MAINTENANCE_VIEW = "🔧 Roster Maintenance"
+main_view = st.segmented_control(
+    "Dashboard view",
+    options=[MATCHUP_VIEW, MAINTENANCE_VIEW],
+    default=MATCHUP_VIEW,
+    key="main_view",
+    label_visibility="collapsed",
+    help="Matchup: your lineup, projections, and the debate studio for start/sit calls. "
+    "Roster Maintenance: free agents/waivers and reference material for trade and pickup research.",
+)
+st.markdown("---")
 
-col_roster, col_studio = st.columns([1, 1.4])
+if main_view == MATCHUP_VIEW:
+    roster = find_roster_for_user(snapshot["rosters"], st.session_state.user_id) if st.session_state.user_id else None
 
-with col_roster:
-    st.subheader("Roster Summary")
-    if not roster:
-        st.warning("Couldn't find a roster owned by this user in this league.")
-        roster_table = []
-    else:
-        players_db = st.session_state.sleeper_client.get_players()
-        merger: DataMerger = st.session_state.data_merger
-        all_ids = roster.get("players") or []
-        starters_list = roster.get("starters") or []  # order matters: Sleeper returns this
-        # in actual lineup-slot order (QB, RB, RB, WR, ... FLEX, IDP slots, etc.) — keep the
-        # list around for sorting, not just a set, or that order is thrown away.
-        starters = set(starters_list)
-        starters_order = {pid: i for i, pid in enumerate(starters_list)}
-        taxi = set(roster.get("taxi") or [])
-        reserve = set(roster.get("reserve") or [])
+    col_roster, col_studio = st.columns([1, 1.4])
 
-        roster_table = merger.build_roster_table(all_ids, players_db)
-        sleeper_projections = snapshot.get("projections") or {}
-        scoring_settings = league.get("scoring_settings", {}) or {}
-        for row in roster_table:
-            pid = row["player_id"]
-            row["slot"] = "TAXI" if pid in taxi else ("IR" if pid in reserve else ("Starter" if pid in starters else "Bench"))
-            stats = sleeper_projections.get(pid)
-            if stats:
-                row["sleeper_proj"] = compute_points_from_stats(stats, scoring_settings)
+    with col_roster:
+        st.subheader("Roster Summary")
+        if not roster:
+            st.warning("Couldn't find a roster owned by this user in this league.")
+            roster_table = []
+        else:
+            players_db = st.session_state.sleeper_client.get_players()
+            merger: DataMerger = st.session_state.data_merger
+            all_ids = roster.get("players") or []
+            starters_list = roster.get("starters") or []  # order matters: Sleeper returns this
+            # in actual lineup-slot order (QB, RB, RB, WR, ... FLEX, IDP slots, etc.) — keep the
+            # list around for sorting, not just a set, or that order is thrown away.
+            starters = set(starters_list)
+            starters_order = {pid: i for i, pid in enumerate(starters_list)}
+            taxi = set(roster.get("taxi") or [])
+            reserve = set(roster.get("reserve") or [])
 
-        # Starters first (who's actually playing), then bench, then taxi/IR (stashed away).
-        # Within Starters, use Sleeper's own lineup-slot order (QB, RB, RB, WR, ... FLEX,
-        # IDP slots) rather than whatever incidental order build_roster_table produced —
-        # a stable sort, so Bench/TAXI/IR keep their original relative order untouched.
-        roster_table.sort(
-            key=lambda r: (SLOT_SORT_ORDER.get(r["slot"], 99), starters_order.get(r["player_id"], 0))
-        )
+            roster_table = merger.build_roster_table(all_ids, players_db)
+            sleeper_projections = snapshot.get("projections") or {}
+            scoring_settings = league.get("scoring_settings", {}) or {}
+            for row in roster_table:
+                pid = row["player_id"]
+                row["slot"] = "TAXI" if pid in taxi else ("IR" if pid in reserve else ("Starter" if pid in starters else "Bench"))
+                stats = sleeper_projections.get(pid)
+                if stats:
+                    row["sleeper_proj"] = compute_points_from_stats(stats, scoring_settings)
 
-        df = pd.DataFrame(roster_table)
-        display_cols = [c for c in [
-            "name", "position", "team", "slot", "tier", "vorp",
-            "projection", "sleeper_proj", "proj_3yr", "trade_value", "pos_rank",
-            "fa_ros_proj", "fa_ceiling", "fa_value", "injury_status",
-        ] if c in df.columns]
-        render_styled_table(
-            df[display_cols],
-            pill_columns={"slot": lambda v: SLOT_PILL_COLORS.get(v, ("rgba(148,163,184,0.12)", "#94a3b8")),
-                          "injury_status": _injury_pill_color},
-        )
-        if "sleeper_proj" in df.columns:
-            nfl_state = snapshot.get("nfl_state") or {}
-            st.caption(
-                f"'sleeper_proj' = Sleeper's own week-{nfl_state.get('week', '?')} stat projections, "
-                f"scored under this league's actual settings — an unofficial endpoint, cross-check it."
+            # Starters first (who's actually playing), then bench, then taxi/IR (stashed away).
+            # Within Starters, use Sleeper's own lineup-slot order (QB, RB, RB, WR, ... FLEX,
+            # IDP slots) rather than whatever incidental order build_roster_table produced —
+            # a stable sort, so Bench/TAXI/IR keep their original relative order untouched.
+            roster_table.sort(
+                key=lambda r: (SLOT_SORT_ORDER.get(r["slot"], 99), starters_order.get(r["player_id"], 0))
             )
 
-        if merger.is_loaded:
-            matched = sum(1 for r in roster_table if r.get("matched"))
-            st.caption(f"Draft Sharks match rate: {matched}/{len(roster_table)} players")
+            df = pd.DataFrame(roster_table)
+            display_cols = [c for c in [
+                "name", "position", "team", "slot", "tier", "vorp",
+                "projection", "sleeper_proj", "proj_3yr", "trade_value", "pos_rank",
+                "fa_ros_proj", "fa_ceiling", "fa_value", "injury_status",
+            ] if c in df.columns]
+            render_styled_table(
+                df[display_cols],
+                pill_columns={"injury_status": _injury_pill_color},
+                group_column="slot",
+            )
+            if "sleeper_proj" in df.columns:
+                nfl_state = snapshot.get("nfl_state") or {}
+                st.caption(
+                    f"'sleeper_proj' = Sleeper's own week-{nfl_state.get('week', '?')} stat projections, "
+                    f"scored under this league's actual settings — an unofficial endpoint, cross-check it."
+                )
 
-            unmatched = [r for r in roster_table if not r.get("matched")]
-            if unmatched:
-                with st.expander(f"Unmatched Players ({len(unmatched)}) — fix with a manual alias"):
-                    st.caption(
-                        "These roster players didn't auto-match to your loaded Draft Sharks data. "
-                        "Pick one, type the exact name Draft Sharks printed for them, and save — "
-                        "this overrides automatic matching for that player from now on."
-                    )
-                    unmatched_names = [r["name"] for r in unmatched]
-                    sel_name = st.selectbox("Unmatched player", options=unmatched_names, key="alias_select")
-                    ds_name_input = st.text_input(
-                        "Draft Sharks name (as printed, e.g. 'J Chase')", key="alias_ds_name"
-                    )
-                    if st.button("Save Alias", key="alias_save"):
-                        if ds_name_input.strip():
-                            save_alias(sel_name, ds_name_input.strip())
-                            merger.reload()
-                            st.success(f"Mapped '{sel_name}' → '{ds_name_input.strip()}'.")
-                            st.rerun()
-                        else:
-                            st.error("Enter the name as Draft Sharks printed it first.")
-        else:
-            st.caption("No Draft Sharks/War Room projections loaded yet — upload a CSV in the sidebar.")
+            if merger.is_loaded:
+                matched = sum(1 for r in roster_table if r.get("matched"))
+                st.caption(f"Draft Sharks match rate: {matched}/{len(roster_table)} players")
 
-with col_studio:
-    st.subheader("Multi-Model Debate Studio")
-    st.caption(
-        "Personas: 🟢 Quant (Claude) · 🟡 Beat Tracker (Gemini) · "
-        "🟣 Contrarian (ChatGPT) · 🔴 Moderator (Claude)"
-    )
-
-    b1, b2, b3, b4 = st.columns(4)
-    quick_debate = b1.button("Run Debate", use_container_width=True)
-    quick_claude = b2.button("Ask Claude", use_container_width=True)
-    quick_gemini = b3.button("Ask Gemini", use_container_width=True)
-    quick_gpt = b4.button("Ask ChatGPT", use_container_width=True)
-
-    question = st.text_input(
-        "Ask about a start/sit, trade, or waiver decision "
-        "(prefix with /debate, /claude, /gemini, or /gpt to route explicitly)",
-        key="question_input",
-    )
-
-    def resolve_command(text: str) -> tuple[str, str]:
-        for prefix, mode in (("/debate", "debate"), ("/claude", "claude"), ("/gemini", "gemini"), ("/gpt", "gpt")):
-            if text.strip().lower().startswith(prefix):
-                return mode, text.strip()[len(prefix):].strip()
-        return "debate", text.strip()
-
-    trigger_mode = None
-    trigger_question = None
-    if quick_debate and question:
-        trigger_mode, trigger_question = "debate", question
-    elif quick_claude and question:
-        trigger_mode, trigger_question = "claude", question
-    elif quick_gemini and question:
-        trigger_mode, trigger_question = "gemini", question
-    elif quick_gpt and question:
-        trigger_mode, trigger_question = "gpt", question
-    elif question and st.session_state.get("_last_submitted") != question:
-        mode, cleaned = resolve_command(question)
-        trigger_mode, trigger_question = mode, cleaned
-
-    if trigger_mode and trigger_question:
-        st.session_state["_last_submitted"] = question
-        context = build_context(snapshot, roster_table if roster else [])
-        append_message("user", trigger_question)
-        maybe_nudge_stale_free_agents(st.session_state.selected_league_id, st.session_state.data_merger)
-
-        with st.spinner("Consulting the front office..."):
-            if trigger_mode == "claude":
-                append_message("quant", llm_engine.ask_quant(context, trigger_question, api_key=api_key_for("anthropic")))
-            elif trigger_mode == "gemini":
-                append_message("beat", llm_engine.ask_beat(context, trigger_question, api_key=api_key_for("gemini")))
-            elif trigger_mode == "gpt":
-                beat_reply = ""
-                quant_reply = ""
-                append_message("contrarian", llm_engine.ask_contrarian(
-                    context, trigger_question, quant_reply, beat_reply, api_key=api_key_for("openai")
-                ))
+                unmatched = [r for r in roster_table if not r.get("matched")]
+                if unmatched:
+                    with st.expander(f"Unmatched Players ({len(unmatched)}) — fix with a manual alias"):
+                        st.caption(
+                            "These roster players didn't auto-match to your loaded Draft Sharks data. "
+                            "Pick one, type the exact name Draft Sharks printed for them, and save — "
+                            "this overrides automatic matching for that player from now on."
+                        )
+                        unmatched_names = [r["name"] for r in unmatched]
+                        sel_name = st.selectbox("Unmatched player", options=unmatched_names, key="alias_select")
+                        ds_name_input = st.text_input(
+                            "Draft Sharks name (as printed, e.g. 'J Chase')", key="alias_ds_name"
+                        )
+                        if st.button("Save Alias", key="alias_save"):
+                            if ds_name_input.strip():
+                                save_alias(sel_name, ds_name_input.strip())
+                                merger.reload()
+                                st.success(f"Mapped '{sel_name}' → '{ds_name_input.strip()}'.")
+                                st.rerun()
+                            else:
+                                st.error("Enter the name as Draft Sharks printed it first.")
             else:
-                result = llm_engine.run_debate(
-                    context, trigger_question,
-                    claude_key=api_key_for("anthropic"),
-                    gemini_key=api_key_for("gemini"),
-                    openai_key=api_key_for("openai"),
+                st.caption("No Draft Sharks/War Room projections loaded yet — upload a CSV in the sidebar.")
+
+    with col_studio:
+        st.subheader("Multi-Model Debate Studio")
+        st.caption(
+            "Personas: 🟢 Quant (Claude) · 🟡 Beat Tracker (Gemini) · "
+            "🟣 Contrarian (ChatGPT) · 🔴 Moderator (Claude)"
+        )
+
+        b1, b2, b3, b4 = st.columns(4)
+        quick_debate = b1.button("Run Debate", use_container_width=True)
+        quick_claude = b2.button("Ask Claude", use_container_width=True)
+        quick_gemini = b3.button("Ask Gemini", use_container_width=True)
+        quick_gpt = b4.button("Ask ChatGPT", use_container_width=True)
+
+        question = st.text_input(
+            "Ask about a start/sit, trade, or waiver decision "
+            "(prefix with /debate, /claude, /gemini, or /gpt to route explicitly)",
+            key="question_input",
+        )
+
+        def resolve_command(text: str) -> tuple[str, str]:
+            for prefix, mode in (("/debate", "debate"), ("/claude", "claude"), ("/gemini", "gemini"), ("/gpt", "gpt")):
+                if text.strip().lower().startswith(prefix):
+                    return mode, text.strip()[len(prefix):].strip()
+            return "debate", text.strip()
+
+        trigger_mode = None
+        trigger_question = None
+        if quick_debate and question:
+            trigger_mode, trigger_question = "debate", question
+        elif quick_claude and question:
+            trigger_mode, trigger_question = "claude", question
+        elif quick_gemini and question:
+            trigger_mode, trigger_question = "gemini", question
+        elif quick_gpt and question:
+            trigger_mode, trigger_question = "gpt", question
+        elif question and st.session_state.get("_last_submitted") != question:
+            mode, cleaned = resolve_command(question)
+            trigger_mode, trigger_question = mode, cleaned
+
+        if trigger_mode and trigger_question:
+            st.session_state["_last_submitted"] = question
+            context = build_context(snapshot, roster_table if roster else [])
+            append_message("user", trigger_question)
+            maybe_nudge_stale_free_agents(st.session_state.selected_league_id, st.session_state.data_merger)
+
+            with st.spinner("Consulting the front office..."):
+                if trigger_mode == "claude":
+                    append_message("quant", llm_engine.ask_quant(context, trigger_question, api_key=api_key_for("anthropic")))
+                elif trigger_mode == "gemini":
+                    append_message("beat", llm_engine.ask_beat(context, trigger_question, api_key=api_key_for("gemini")))
+                elif trigger_mode == "gpt":
+                    beat_reply = ""
+                    quant_reply = ""
+                    append_message("contrarian", llm_engine.ask_contrarian(
+                        context, trigger_question, quant_reply, beat_reply, api_key=api_key_for("openai")
+                    ))
+                else:
+                    result = llm_engine.run_debate(
+                        context, trigger_question,
+                        claude_key=api_key_for("anthropic"),
+                        gemini_key=api_key_for("gemini"),
+                        openai_key=api_key_for("openai"),
+                    )
+                    append_message("quant", result.quant)
+                    append_message("beat", result.beat)
+                    append_message("contrarian", result.contrarian)
+                    append_message("moderator", result.moderator)
+                    decision_log.log_decision(
+                        st.session_state.selected_league_id, trigger_question, result.verdict, result.moderator
+                    )
+
+        st.markdown("---")
+        badge_map = {
+            "user": ("You", "badge-user"),
+            "quant": ("QUANT ANALYST · Claude", "badge-quant"),
+            "beat": ("BEAT TRACKER · Gemini", "badge-beat"),
+            "contrarian": ("CONTRARIAN · ChatGPT", "badge-contrarian"),
+            "moderator": ("MODERATOR VERDICT · Claude", "badge-moderator"),
+            "summary": ("🧠 MEMORY SUMMARY", "badge-summary"),
+            "notice": ("⚠️ NOTICE", "badge-notice"),
+        }
+        for msg in reversed(st.session_state.chat_history[-40:]):
+            label, cls = badge_map.get(msg["role"], (msg["role"], "badge-user"))
+            st.markdown(f'<span class="badge {cls}">{label}</span>', unsafe_allow_html=True)
+            st.markdown(f'<div class="agent-block">{msg["content"]}</div>', unsafe_allow_html=True)
+
+        if st.session_state.chat_history:
+            hcol1, hcol2, hcol3 = st.columns([1, 1, 1])
+            if hcol1.button("Clear Chat History"):
+                st.session_state.chat_history = []
+                save_chat_history(st.session_state.selected_league_id, [])
+                st.rerun()
+            compact_days = hcol2.number_input("Compact older than (days)", min_value=1, value=30, step=1, key="compact_days")
+            if hcol3.button("🧹 Compact History"):
+                with st.spinner(f"Summarizing turns older than {compact_days} days..."):
+                    ok, message = compact_league_history(st.session_state.selected_league_id, max_age_days=int(compact_days))
+                if ok:
+                    st.session_state.chat_history = load_chat_history(st.session_state.selected_league_id)
+                    st.success(message)
+                    st.rerun()
+                else:
+                    st.warning(message)
+
+        decisions = decision_log.load_decisions(st.session_state.selected_league_id)
+        if decisions:
+            with st.expander(f"📋 Decision Log ({len(decisions)})"):
+                st.caption(
+                    "Every Moderator verdict this league has gotten, newest first — "
+                    "the record to check back against once picks are made or a trade lands."
                 )
-                append_message("quant", result.quant)
-                append_message("beat", result.beat)
-                append_message("contrarian", result.contrarian)
-                append_message("moderator", result.moderator)
-                decision_log.log_decision(
-                    st.session_state.selected_league_id, trigger_question, result.verdict, result.moderator
+                log_df = pd.DataFrame(
+                    [
+                        {
+                            "Date": d["date"],
+                            "Question": d["question"],
+                            "Call": d.get("recommendation", ""),
+                            "Conviction": d.get("conviction", ""),
+                            "Reason": d.get("reason", ""),
+                            "Risk": d.get("risk", ""),
+                            "Recon": d.get("recon", ""),
+                            "Price Ceiling": d.get("price_ceiling", ""),
+                        }
+                        for d in reversed(decisions)
+                    ]
                 )
+                st.dataframe(log_df, use_container_width=True, hide_index=True)
+
+else:
+    # ------------------------------------------------------------------ free agents --
 
     st.markdown("---")
-    badge_map = {
-        "user": ("You", "badge-user"),
-        "quant": ("QUANT ANALYST · Claude", "badge-quant"),
-        "beat": ("BEAT TRACKER · Gemini", "badge-beat"),
-        "contrarian": ("CONTRARIAN · ChatGPT", "badge-contrarian"),
-        "moderator": ("MODERATOR VERDICT · Claude", "badge-moderator"),
-        "summary": ("🧠 MEMORY SUMMARY", "badge-summary"),
-        "notice": ("⚠️ NOTICE", "badge-notice"),
-    }
-    for msg in reversed(st.session_state.chat_history[-40:]):
-        label, cls = badge_map.get(msg["role"], (msg["role"], "badge-user"))
-        st.markdown(f'<span class="badge {cls}">{label}</span>', unsafe_allow_html=True)
-        st.markdown(f'<div class="agent-block">{msg["content"]}</div>', unsafe_allow_html=True)
+    st.subheader("Free Agents")
 
-    if st.session_state.chat_history:
-        hcol1, hcol2, hcol3 = st.columns([1, 1, 1])
-        if hcol1.button("Clear Chat History"):
-            st.session_state.chat_history = []
-            save_chat_history(st.session_state.selected_league_id, [])
-            st.rerun()
-        compact_days = hcol2.number_input("Compact older than (days)", min_value=1, value=30, step=1, key="compact_days")
-        if hcol3.button("🧹 Compact History"):
-            with st.spinner(f"Summarizing turns older than {compact_days} days..."):
-                ok, message = compact_league_history(st.session_state.selected_league_id, max_age_days=int(compact_days))
-            if ok:
-                st.session_state.chat_history = load_chat_history(st.session_state.selected_league_id)
-                st.success(message)
-                st.rerun()
-            else:
-                st.warning(message)
-
-    decisions = decision_log.load_decisions(st.session_state.selected_league_id)
-    if decisions:
-        with st.expander(f"📋 Decision Log ({len(decisions)})"):
-            st.caption(
-                "Every Moderator verdict this league has gotten, newest first — "
-                "the record to check back against once picks are made or a trade lands."
-            )
-            log_df = pd.DataFrame(
-                [
-                    {
-                        "Date": d["date"],
-                        "Question": d["question"],
-                        "Call": d.get("recommendation", ""),
-                        "Conviction": d.get("conviction", ""),
-                        "Reason": d.get("reason", ""),
-                        "Risk": d.get("risk", ""),
-                        "Recon": d.get("recon", ""),
-                        "Price Ceiling": d.get("price_ceiling", ""),
-                    }
-                    for d in reversed(decisions)
-                ]
-            )
-            st.dataframe(log_df, use_container_width=True, hide_index=True)
-
-# ------------------------------------------------------------------ free agents --
-
-st.markdown("---")
-st.subheader("Free Agents")
-
-merger = st.session_state.data_merger
-if not merger.is_free_agents_loaded:
-    st.caption(
-        "No Free Agent Finder data loaded — export that page from Draft Sharks as a PDF "
-        "and upload it in the sidebar alongside your rankings (auto-detected, no need to rename it)."
-    )
-else:
-    if merger.free_agents_is_stale:
-        st.warning(
-            f"Free agent data is {merger.free_agents_staleness_days} days old — waiver values shift "
-            "week to week more than dynasty rankings do, so this is worth refreshing more often.",
-            icon="⚠️",
+    merger = st.session_state.data_merger
+    if not merger.is_free_agents_loaded:
+        st.caption(
+            "No Free Agent Finder data loaded — export that page from Draft Sharks as a PDF "
+            "and upload it in the sidebar alongside your rankings (auto-detected, no need to rename it)."
         )
-    fa_positions = sorted(p for p in merger.free_agents["position"].dropna().unique()) if "position" in merger.free_agents.columns else []
-    fcol1, fcol2 = st.columns([1, 3])
-    fa_position_filter = fcol1.selectbox("Position", options=["All"] + fa_positions)
-    show_mine = fcol1.checkbox("Include my own roster", value=False)
-    fa_rows = merger.list_free_agents(
-        exclude_mine=not show_mine,
-        position=None if fa_position_filter == "All" else fa_position_filter,
-        top_n=25,
-    )
-    if fa_rows:
-        fa_df = pd.DataFrame(fa_rows)
-        fa_df["roster_status"] = fa_df.get("roster_status", pd.Series(dtype=object)).fillna("Available")
-        fa_display_cols = [c for c in ["name", "team", "position", "roster_status", "rank", "proj_3d", "ros_3d", "ceiling", "value_3d"] if c in fa_df.columns]
-        with fcol2:
-            render_styled_table(
-                fa_df[fa_display_cols],
-                pill_columns={"roster_status": lambda v: ROSTER_STATUS_PILL_COLORS.get(v, ("rgba(148,163,184,0.12)", "#94a3b8"))},
-            )
     else:
-        fcol2.caption("No free agents match that filter.")
-
-# ------------------------------------------------------------------ reference material --
-
-st.markdown("---")
-st.subheader("Reference Material")
-st.caption(
-    "Screenshots, articles, injury notifications — anything worth having on hand for a debate that isn't "
-    "structured Draft Sharks data. Give each one a short caption; captions (not the raw file) are what the "
-    "panel actually sees when you ask about it."
-)
-
-attachments = list_attachments()  # unfiltered — this is a management view, show everything regardless of scope
-if not attachments:
-    st.caption("Nothing uploaded yet — drop a file above that isn't recognized as Draft Sharks data.")
-else:
-    league_name_map = {lg["league_id"]: lg["name"] for lg in st.session_state.leagues}
-    for item in attachments:
-        acol1, acol2, acol3 = st.columns([1, 3, 1])
-        if item["is_image"]:
-            acol1.image(str(item["path"]), use_container_width=True)
-        else:
-            acol1.markdown(f"📄 **{item['filename']}**")
-        new_caption = acol2.text_input(
-            "Caption", value=item["caption"], key=f"caption_{item['filename']}", label_visibility="collapsed",
-            placeholder="What is this? (e.g. 'ESPN: Chase questionable for Sunday')",
-        )
-        scope_label = (
-            "🎯 " + ", ".join(league_name_map.get(lid, lid) for lid in item["league_ids"])
-            if item["league_ids"] else "🌐 Global (all leagues)"
-        )
-        acol2.caption(f"Applies to: {scope_label}")
-        if new_caption != item["caption"] and acol2.button("Save Caption", key=f"save_caption_{item['filename']}"):
-            set_caption(item["filename"], new_caption)
-            st.rerun()
-        if acol3.button("Delete", key=f"delete_{item['filename']}"):
-            delete_attachment(item["filename"])
-            st.rerun()
-
-        with st.expander(f"Change scope — {item['filename']}"):
-            edit_mode = st.segmented_control(
-                "Applies to", options=["Global (all leagues)", "Specific league(s)"],
-                default="Specific league(s)" if item["league_ids"] else "Global (all leagues)",
-                key=f"scope_mode_{item['filename']}",
+        if merger.free_agents_is_stale:
+            st.warning(
+                f"Free agent data is {merger.free_agents_staleness_days} days old — waiver values shift "
+                "week to week more than dynasty rankings do, so this is worth refreshing more often.",
+                icon="⚠️",
             )
-            edit_league_ids: list[str] = []
-            if edit_mode == "Specific league(s)" and st.session_state.leagues:
-                edit_league_ids = st.multiselect(
-                    "Which league(s)", options=list(league_name_map.keys()),
-                    default=item["league_ids"] or [], format_func=lambda lid: league_name_map[lid],
-                    key=f"scope_leagues_{item['filename']}",
+        fa_positions = sorted(p for p in merger.free_agents["position"].dropna().unique()) if "position" in merger.free_agents.columns else []
+        fcol1, fcol2 = st.columns([1, 3])
+        fa_position_filter = fcol1.selectbox("Position", options=["All"] + fa_positions)
+        show_mine = fcol1.checkbox("Include my own roster", value=False)
+        fa_rows = merger.list_free_agents(
+            exclude_mine=not show_mine,
+            position=None if fa_position_filter == "All" else fa_position_filter,
+            top_n=25,
+        )
+        if fa_rows:
+            fa_df = pd.DataFrame(fa_rows)
+            fa_df["roster_status"] = fa_df.get("roster_status", pd.Series(dtype=object)).fillna("Available")
+            fa_display_cols = [c for c in ["name", "team", "position", "roster_status", "rank", "proj_3d", "ros_3d", "ceiling", "value_3d"] if c in fa_df.columns]
+            with fcol2:
+                render_styled_table(
+                    fa_df[fa_display_cols],
+                    pill_columns={"roster_status": lambda v: ROSTER_STATUS_PILL_COLORS.get(v, ("rgba(148,163,184,0.12)", "#94a3b8"))},
                 )
-            if st.button("Save Scope", key=f"save_scope_{item['filename']}"):
-                if edit_mode == "Specific league(s)" and not edit_league_ids:
-                    st.warning("Select at least one league, or switch to Global.")
-                else:
-                    set_scope(item["filename"], edit_league_ids if edit_mode == "Specific league(s)" else None)
-                    st.rerun()
+        else:
+            fcol2.caption("No free agents match that filter.")
+
+    # ------------------------------------------------------------------ reference material --
+
+    st.markdown("---")
+    st.subheader("Reference Material")
+    st.caption(
+        "Screenshots, articles, injury notifications — anything worth having on hand for a debate that isn't "
+        "structured Draft Sharks data. Give each one a short caption; captions (not the raw file) are what the "
+        "panel actually sees when you ask about it."
+    )
+
+    attachments = list_attachments()  # unfiltered — this is a management view, show everything regardless of scope
+    if not attachments:
+        st.caption("Nothing uploaded yet — drop a file above that isn't recognized as Draft Sharks data.")
+    else:
+        league_name_map = {lg["league_id"]: lg["name"] for lg in st.session_state.leagues}
+        for item in attachments:
+            acol1, acol2, acol3 = st.columns([1, 3, 1])
+            if item["is_image"]:
+                acol1.image(str(item["path"]), use_container_width=True)
+            else:
+                acol1.markdown(f"📄 **{item['filename']}**")
+            new_caption = acol2.text_input(
+                "Caption", value=item["caption"], key=f"caption_{item['filename']}", label_visibility="collapsed",
+                placeholder="What is this? (e.g. 'ESPN: Chase questionable for Sunday')",
+            )
+            scope_label = (
+                "🎯 " + ", ".join(league_name_map.get(lid, lid) for lid in item["league_ids"])
+                if item["league_ids"] else "🌐 Global (all leagues)"
+            )
+            acol2.caption(f"Applies to: {scope_label}")
+            if new_caption != item["caption"] and acol2.button("Save Caption", key=f"save_caption_{item['filename']}"):
+                set_caption(item["filename"], new_caption)
+                st.rerun()
+            if acol3.button("Delete", key=f"delete_{item['filename']}"):
+                delete_attachment(item["filename"])
+                st.rerun()
+
+            with st.expander(f"Change scope — {item['filename']}"):
+                edit_mode = st.segmented_control(
+                    "Applies to", options=["Global (all leagues)", "Specific league(s)"],
+                    default="Specific league(s)" if item["league_ids"] else "Global (all leagues)",
+                    key=f"scope_mode_{item['filename']}",
+                )
+                edit_league_ids: list[str] = []
+                if edit_mode == "Specific league(s)" and st.session_state.leagues:
+                    edit_league_ids = st.multiselect(
+                        "Which league(s)", options=list(league_name_map.keys()),
+                        default=item["league_ids"] or [], format_func=lambda lid: league_name_map[lid],
+                        key=f"scope_leagues_{item['filename']}",
+                    )
+                if st.button("Save Scope", key=f"save_scope_{item['filename']}"):
+                    if edit_mode == "Specific league(s)" and not edit_league_ids:
+                        st.warning("Select at least one league, or switch to Global.")
+                    else:
+                        set_scope(item["filename"], edit_league_ids if edit_mode == "Specific league(s)" else None)
+                        st.rerun()
