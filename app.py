@@ -2138,6 +2138,25 @@ with st.container(key="debate_dock"):
                         if active_item["id"] in mentioned_ids:
                             todo_log.mark_referenced(st.session_state.selected_league_id, active_item["id"])
 
+        VERDICT_FIELD_LABELS = (
+            "RECOMMENDATION", "CONVICTION", "REASON", "DISSENT", "RISK", "RECON",
+            "PRICE CEILING", "ACTION ITEM", "TODO UPDATE", "TODO LIKELY RESOLVED",
+        )
+
+        def format_agent_content(role: str, content: str) -> str:
+            """Escape first -- this was going straight into unsafe_allow_html unescaped,
+            so a literal '<', '>', or '&' anywhere in an LLM response (plausible in
+            ordinary analysis prose, e.g. "if X < Y") could silently break the block's
+            rendering. For the Moderator specifically, also bold the structured verdict
+            field labels so the fixed-format block reads as a scannable form instead of
+            an undifferentiated wall of monospace text -- this is the single most-read
+            piece of content in the app."""
+            escaped = html.escape(content)
+            if role == "moderator":
+                pattern = r"(?m)^(" + "|".join(VERDICT_FIELD_LABELS) + r"):"
+                escaped = re.sub(pattern, r"<strong>\1:</strong>", escaped)
+            return escaped
+
         badge_map = {
             "user": ("You", "badge-user"),
             "quant": ("QUANT ANALYST · Claude", "badge-quant"),
@@ -2155,7 +2174,10 @@ with st.container(key="debate_dock"):
             for msg in reversed(st.session_state.chat_history[-40:]):
                 label, cls = badge_map.get(msg["role"], (msg["role"], "badge-user"))
                 st.markdown(f'<span class="badge {cls}">{label}</span>', unsafe_allow_html=True)
-                st.markdown(f'<div class="agent-block">{msg["content"]}</div>', unsafe_allow_html=True)
+                st.markdown(
+                    f'<div class="agent-block">{format_agent_content(msg["role"], msg["content"])}</div>',
+                    unsafe_allow_html=True,
+                )
 
         if st.session_state.chat_history:
             hcol1, hcol2, hcol3 = st.columns([1, 1, 1])
