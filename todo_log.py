@@ -133,6 +133,20 @@ def mark_likely_resolved(league_id: str, todo_id: int, reason: str) -> bool:
     return True
 
 
+def mark_referenced(league_id: str, todo_id: int) -> bool:
+    """Stamp that a debate turn actually engaged with this objective (mentioned it by id
+    in the Moderator's response), not just that it was sitting in context unused. Purely
+    informational — doesn't touch status — lets the UI show a "referenced" signal instead
+    of leaving every active objective looking equally (un)used."""
+    entries = _load(league_id)
+    entry = _find(entries, todo_id)
+    if not entry:
+        return False
+    entry["last_referenced"] = datetime.now().strftime("%Y-%m-%d")
+    _save(league_id, entries)
+    return True
+
+
 def reopen_todo(league_id: str, todo_id: int) -> bool:
     """The user rejects a "Likely Resolved" proposal — back to active, proposal cleared."""
     entries = _load(league_id)

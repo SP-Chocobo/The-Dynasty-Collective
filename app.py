@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import html
 import json
+import re
 import shutil
 import time
 from datetime import datetime
@@ -140,7 +141,16 @@ st.markdown(
     .st-key-debate_dock {
         position: fixed;
         left: 0;
-        right: 0;
+        /* Streamlit's own block-container CSS sets an explicit width on this element
+           with higher specificity than a bare .st-key-* class, which silently wins over
+           `right: 0` and forces the dock to the full viewport width regardless of the
+           sidebar-offset `left` below — confirmed live: with the sidebar expanded
+           (left: 400px) the dock still measured 1600px wide on a 1600px viewport, 400px
+           of it past the right edge, taking every column split beyond roughly the
+           three-quarter mark with it. !important forces the intended auto-computed
+           width (viewport minus left minus right) to actually apply. */
+        right: 0 !important;
+        width: auto !important;
         bottom: 0;
         z-index: 999;
         background: #16171a;
@@ -1735,9 +1745,12 @@ with st.expander(f"🎯 Active Objectives ({len(active_items)})", expanded=bool(
         for item in active_items:
             with st.container(border=True):
                 source_tag = "🤖" if item.get("source") == "moderator" else "✍️"
+                referenced = (
+                    f" · 👁 referenced {item['last_referenced']}" if item.get("last_referenced") else ""
+                )
                 header = (
                     f"{source_tag} **#{item['id']}** {item['text']}  \n"
-                    f"<span style='color:#6b7280;font-size:0.78rem;'>{item['date']}</span>"
+                    f"<span style='color:#6b7280;font-size:0.78rem;'>{item['date']}{referenced}</span>"
                 )
                 st.markdown(header, unsafe_allow_html=True)
 
@@ -1794,7 +1807,20 @@ with st.expander(f"🗄️ Archive ({len(archived_items)})"):
     if not archived_items:
         st.caption("Nothing archived yet.")
     else:
-        for item in sorted(archived_items, key=lambda e: e.get("ts", 0), reverse=True):
+        archive_query = st.text_input(
+            "Search the archive", key="archive_search", placeholder="Filter by player, team, or topic…",
+        )
+        if archive_query.strip():
+            needle = archive_query.strip().lower()
+            visible_archived = [
+                e for e in archived_items
+                if needle in e.get("text", "").lower() or needle in e.get("resolution_reason", "").lower()
+            ]
+            if not visible_archived:
+                st.caption(f"No archived objectives match \"{archive_query.strip()}\".")
+        else:
+            visible_archived = archived_items
+        for item in sorted(visible_archived, key=lambda e: e.get("ts", 0), reverse=True):
             outcome = "✅ Completed" if item["status"] == "resolved" else "✕ Dismissed"
             with st.container(border=True):
                 st.markdown(
@@ -1835,16 +1861,18 @@ if "debate_dock_level" not in st.session_state:
     st.session_state.debate_dock_level = "partial"  # visible but not dominating, by default
 dock_level = st.session_state.debate_dock_level
 dock_level_idx = DOCK_LEVELS.index(dock_level)
-CHAT_HEIGHT_BY_LEVEL = {"partial": 200, "full": 560}
+# "Partial" is meant to feel like working *alongside* the bots, not a popup stealing
+# the screen — genuinely ~40% of the viewport, not the ~55-60% it drifted to when the
+# clearance below was just a rough guess. "Full" is closer to working *inside* it.
+# Compact/text_area sizing per tier lives right where each is used, further down.
+DOCK_HEIGHT_BY_LEVEL = {"collapsed": "9vh", "partial": "46vh", "full": "94vh"}
+CHAT_HEIGHT_BY_LEVEL = {"partial": 130, "full": 480}
+QUESTION_HEIGHT_BY_LEVEL = {"partial": 90, "full": 200}
 
 # The dock is position:fixed (see the <style> block up top), which takes it out of
-# normal page flow — without this, its expanded height would sit on top of whatever
-# content happens to be at the bottom of the page instead of pushing it up. A fixed
-# px guess here (previously 420/780) was confirmed too small at the "partial" tier —
-# the dock's real rendered height (~753px on a 1400px-tall viewport) came in well
-# over the 420px reserved. vh-based clearance scales with viewport height instead of
-# guessing a constant, and "full" is set to exceed the dock's own `max-height: 94vh`
-# cap so it can never be under-reserved.
+# normal page flow. Its height is now authoritatively capped per tier (below), so the
+# same value drives both the cap itself and how much room normal page content needs
+# to leave clear — no more guessing a clearance number independent of actual height.
 #
 # padding-bottom alone only guarantees room to scroll past the dock at the very
 # bottom of the page — it doesn't stop the browser's own scroll-into-view (Tab
@@ -1856,11 +1884,12 @@ CHAT_HEIGHT_BY_LEVEL = {"partial": 200, "full": 560}
 # scroll container (stMain, not the window — Streamlit scrolls its own <section>)
 # tells that same algorithm to always leave the dock's height clear, so anything
 # scrolled to lands above it instead.
-_dock_clearance = {"collapsed": "14vh", "partial": "60vh", "full": "96vh"}[dock_level]
+_dock_h = DOCK_HEIGHT_BY_LEVEL[dock_level]
 st.markdown(
-    f"<style>[data-testid='stMain'] {{ "
-    f"padding-bottom: {_dock_clearance}; scroll-padding-bottom: {_dock_clearance}; "
-    f"}}</style>",
+    f"<style>"
+    f"[data-testid='stMain'] {{ padding-bottom: {_dock_h}; scroll-padding-bottom: {_dock_h}; }}"
+    f".st-key-debate_dock {{ max-height: {_dock_h}; }}"
+    f"</style>",
     unsafe_allow_html=True,
 )
 
@@ -1871,7 +1900,45 @@ with st.container(key="debate_dock"):
     # not a guess. Equal-ish column ratios don't hit it, so title/buttons get their own
     # rows instead of sharing one, sidestepping the bug rather than fighting it further.
     st.subheader("Multi-Model Debate Studio")
-    st.caption(f"📂 {league.get('name', 'Unknown League')}")
+    st.session_state.setdefault("chat_scoped_attachments", [])
+    league_id_for_header = st.session_state.get("selected_league_id")
+    active_count = len(todo_log.load_todos(league_id_for_header, statuses=todo_log.ACTIVE_STATUSES)) if league_id_for_header else 0
+    attach_count = len(st.session_state.chat_scoped_attachments)
+    header_col, attach_col = st.columns(2)
+    with header_col:
+        st.caption(
+            f"📂 **{league.get('name', 'Unknown League')}** working context — "
+            f"🎯 {active_count} active objective(s)"
+            + (f" · 📎 {attach_count} file(s) attached to this chat" if attach_count else "")
+        )
+    with attach_col:
+        attach_label = f"➕ Attach ({attach_count})" if attach_count else "➕ Attach to this chat"
+        with st.popover(attach_label, use_container_width=True):
+            st.caption(
+                "Ephemeral — only used to answer questions in this chat session, not saved to "
+                "the Reference Material library below."
+            )
+            chat_file = st.file_uploader(
+                "Add a file", type=["txt", "csv", "pdf"], key="chat_attach_uploader",
+                label_visibility="collapsed",
+            )
+            if chat_file is not None and not any(
+                a["name"] == chat_file.name for a in st.session_state.chat_scoped_attachments
+            ):
+                if chat_file.name.lower().endswith(".pdf"):
+                    import pypdf
+
+                    reader = pypdf.PdfReader(chat_file)
+                    text = "\n".join(page.extract_text() or "" for page in reader.pages)
+                else:
+                    text = chat_file.read().decode("utf-8", errors="ignore")
+                if text.strip():
+                    st.session_state.chat_scoped_attachments.append({"name": chat_file.name, "text": text})
+                    st.rerun()
+            for i, att in enumerate(list(st.session_state.chat_scoped_attachments)):
+                if st.button(f"✕ {att['name']}", key=f"remove_chat_attach_{i}", use_container_width=True):
+                    st.session_state.chat_scoped_attachments.pop(i)
+                    st.rerun()
 
     # One tier per press, not a straight open/closed toggle — collapsed shows only
     # "expand", full shows only "collapse", partial (the middle tier) shows both. Four
@@ -1890,6 +1957,20 @@ with st.container(key="debate_dock"):
             st.session_state.debate_dock_level = DOCK_LEVELS[dock_level_idx - 1]
             st.rerun()
 
+    if dock_level == "collapsed":
+        # Collapsing is for getting the dock out of the way, not for losing track of
+        # the last call the bots made — the most recent verdict stays visible as a
+        # one-line summary right here instead of disappearing until re-expanded.
+        last_verdict_msg = next(
+            (m for m in reversed(st.session_state.get("chat_history", [])) if m.get("role") == "moderator"),
+            None,
+        )
+        if last_verdict_msg:
+            last_verdict = llm_engine.parse_moderator_verdict(last_verdict_msg.get("content", ""))
+            rec = last_verdict.get("recommendation")
+            if rec:
+                st.caption(f"Last call: **{rec}** — {last_verdict.get('reason', '')[:120]}")
+
     if dock_level != "collapsed":
         st.caption(
             "Personas: 🟢 Quant (Claude) · 🟡 Beat Tracker (Gemini) · "
@@ -1903,42 +1984,16 @@ with st.container(key="debate_dock"):
             quick_gemini = st.button("Ask Gemini", use_container_width=True)
             quick_gpt = st.button("Ask ChatGPT", use_container_width=True)
         with input_col:
-            st.session_state.setdefault("chat_scoped_attachments", [])
-            with st.popover("➕ Attach to this chat"):
-                st.caption(
-                    "Ephemeral — only used to answer questions in this chat session, not saved to "
-                    "the Reference Material library below."
-                )
-                chat_file = st.file_uploader(
-                    "Add a file", type=["txt", "csv", "pdf"], key="chat_attach_uploader",
-                    label_visibility="collapsed",
-                )
-                if chat_file is not None and not any(
-                    a["name"] == chat_file.name for a in st.session_state.chat_scoped_attachments
-                ):
-                    if chat_file.name.lower().endswith(".pdf"):
-                        import pypdf
-
-                        reader = pypdf.PdfReader(chat_file)
-                        text = "\n".join(page.extract_text() or "" for page in reader.pages)
-                    else:
-                        text = chat_file.read().decode("utf-8", errors="ignore")
-                    if text.strip():
-                        st.session_state.chat_scoped_attachments.append({"name": chat_file.name, "text": text})
-                        st.rerun()
-                for i, att in enumerate(list(st.session_state.chat_scoped_attachments)):
-                    if st.button(f"✕ {att['name']}", key=f"remove_chat_attach_{i}", use_container_width=True):
-                        st.session_state.chat_scoped_attachments.pop(i)
-                        st.rerun()
-
             # A text_area sized to roughly match the 4-button stack's height, not a
             # single-line text_input — the mismatched heights looked off. Trade-off:
-            # text_area submits on Ctrl+Enter or losing focus, not a plain Enter.
+            # text_area submits on Ctrl+Enter or losing focus, not a plain Enter. Shorter
+            # at "partial" so the tier actually fits its ~40vh cap without the transcript
+            # getting squeezed to nothing.
             question = st.text_area(
                 "Ask about a start/sit, trade, or waiver decision "
                 "(prefix with /debate, /claude, /gemini, or /gpt to route explicitly)",
                 key="question_input",
-                height=200,
+                height=QUESTION_HEIGHT_BY_LEVEL[dock_level],
             )
 
         def resolve_command(text: str) -> tuple[str, str]:
@@ -2011,6 +2066,17 @@ with st.container(key="debate_dock"):
                         todo_log.mark_likely_resolved(
                             st.session_state.selected_league_id, proposal["id"], proposal["reason"]
                         )
+                    # "Referenced" is a lighter signal than an actual UPDATE/LIKELY RESOLVED
+                    # directive — just the Moderator citing an objective by id (e.g. "per #3,
+                    # ...") while reasoning about something else. Regex over the active ids
+                    # rather than another LLM directive, since this is purely a UI hint, not
+                    # something that should shape the model's own output format.
+                    mentioned_ids = {int(n) for n in re.findall(r"#(\d+)", result.moderator)}
+                    for active_item in todo_log.load_todos(
+                        st.session_state.selected_league_id, statuses=todo_log.ACTIVE_STATUSES
+                    ):
+                        if active_item["id"] in mentioned_ids:
+                            todo_log.mark_referenced(st.session_state.selected_league_id, active_item["id"])
 
         badge_map = {
             "user": ("You", "badge-user"),
