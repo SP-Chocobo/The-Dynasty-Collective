@@ -384,14 +384,16 @@ def save_chat_history(league_id: str, history: list[dict]) -> None:
     path.write_text(json.dumps(history, indent=2))
 
 
-def append_message(role: str, content: str, provider: Optional[str] = None) -> None:
-    # `provider` (which of claude/gemini/openai actually answered) is stamped on the
-    # message itself, not derived from live bot_config at render time -- a role can be
-    # reassigned to a different provider later, and an old message must keep showing
-    # who actually answered it, not whatever's currently configured.
+def append_message(role: str, content: str, provider: Optional[str] = None, model: Optional[str] = None) -> None:
+    # `provider`/`model` (which actually answered) are stamped on the message itself,
+    # not derived from live bot_config at render time -- a role can be reassigned to a
+    # different provider or model later, and an old message must keep showing who/what
+    # actually answered it, not whatever's currently configured.
     msg = {"role": role, "content": content, "ts": time.time()}
     if provider:
         msg["provider"] = provider
+    if model:
+        msg["model"] = model
     st.session_state.chat_history.append(msg)
     if st.session_state.selected_league_id:
         save_chat_history(st.session_state.selected_league_id, st.session_state.chat_history)
@@ -1198,47 +1200,102 @@ with st.sidebar:
         )
         _role_providers_cfg = bot_config.load_role_providers()
         _role_names_cfg = bot_config.load_role_names()
+        _role_models_cfg = bot_config.load_role_models()
         _provider_options = list(bot_config.PROVIDERS)
         for _role in bot_config.ROLES:
             _info = bot_config.ROLE_INFO[_role]
-            st.markdown(f"**{_info['label']}**")
-            st.caption(_info["description"])
-            # Visible labels, not collapsed -- a text box next to a dropdown read as
-            # two similar-looking controls with no cue for which does what. "DISPLAY
-            # NAME" vs "MODEL PROVIDER" makes the role/provider split self-explanatory
-            # instead of something you have to already understand the architecture to read.
-            st.caption("DISPLAY NAME")
-            _name_input = st.text_input(
-                "Display name", value=_role_names_cfg[_role], key=f"bot_name_input_{_role}",
-                label_visibility="collapsed",
-            )
-            st.caption("MODEL PROVIDER")
-            _current_provider = _role_providers_cfg[_role]
-            _provider_choice = st.selectbox(
-                "Provider", options=_provider_options, index=_provider_options.index(_current_provider),
-                format_func=lambda p: bot_config.PROVIDER_LABELS[p], key=f"bot_provider_input_{_role}",
-                label_visibility="collapsed",
-            )
-            _recommended = _info["recommended"]
-            # The "why" always shows now, matched or not -- "recommended fit" alone
-            # was a dead end; the reasoning is what actually helps someone decide
-            # whether to override it, so it shouldn't disappear the moment they agree.
-            _rec_prefix = "✓ Using the recommended provider" if _provider_choice == _recommended else f"Recommended: {bot_config.PROVIDER_LABELS[_recommended]}"
-            st.caption(f"{_rec_prefix} — {_info['why']}")
-            if st.button("Save", key=f"bot_save_{_role}", use_container_width=True):
-                if _name_input.strip() and _name_input.strip() != _role_names_cfg[_role]:
-                    bot_config.set_role_name(_role, _name_input)
-                if _provider_choice != _current_provider:
-                    bot_config.set_role_provider(_role, _provider_choice)
+            _toggle_key = f"show_bot_config_{_role}"
+            st.session_state.setdefault(_toggle_key, False)
+            _summary = f"{'▾' if st.session_state[_toggle_key] else '▸'} {_info['label']}"
+            if st.button(_summary, key=f"toggle_bot_{_role}", use_container_width=True):
+                st.session_state[_toggle_key] = not st.session_state[_toggle_key]
                 st.rerun()
-            st.markdown("<hr style='margin:6px 0;opacity:0.15'>", unsafe_allow_html=True)
-        # Two separate resets, not one combined "reset everything" -- provider routing
-        # and display names are independent settings (see load_role_names/
-        # load_role_providers), so someone who just wants the recommended routing back
-        # shouldn't lose a custom name like "Freddy" as a side effect of that.
-        reset_provider_col, reset_name_col = st.columns(2)
+            # Always visible, even collapsed -- "what's actually running this role" is
+            # the one fact worth surfacing without a click, per Provider • Model.
+            _subtitle_model = _role_models_cfg[_role] or "(provider default)"
+            st.caption(f"{bot_config.PROVIDER_LABELS[_role_providers_cfg[_role]]} • {_subtitle_model}")
+            if st.session_state[_toggle_key]:
+                st.caption("ROLE / DESCRIPTION")
+                st.caption(_info["description"])
+                # Visible labels, not collapsed -- a text box next to a dropdown read as
+                # two similar-looking controls with no cue for which does what. "DISPLAY
+                # NAME" vs "MODEL PROVIDER" makes the role/provider split self-explanatory
+                # instead of something you have to already understand the architecture to read.
+                st.caption("DISPLAY NAME")
+                _name_input = st.text_input(
+                    "Display name", value=_role_names_cfg[_role], key=f"bot_name_input_{_role}",
+                    label_visibility="collapsed",
+                )
+                st.caption("MODEL PROVIDER")
+                _current_provider = _role_providers_cfg[_role]
+                _provider_choice = st.selectbox(
+                    "Provider", options=_provider_options, index=_provider_options.index(_current_provider),
+                    format_func=lambda p: bot_config.PROVIDER_LABELS[p], key=f"bot_provider_input_{_role}",
+                    label_visibility="collapsed",
+                )
+                _recommended = _info["recommended"]
+                # The "why" always shows now, matched or not -- "recommended fit" alone
+                # was a dead end; the reasoning is what actually helps someone decide
+                # whether to override it, so it shouldn't disappear the moment they agree.
+                _rec_prefix = "✓ Using the recommended provider" if _provider_choice == _recommended else f"Recommended: {bot_config.PROVIDER_LABELS[_recommended]}"
+                st.caption(f"{_rec_prefix} — {_info['why']}")
+                # Model is a layer below provider, not a peer to it -- two roles can share
+                # a provider and still want different models (the Moderator's synthesis
+                # doesn't need the same model as Quant's number-crunching). Free text by
+                # default (not a locked dropdown -- hardcoding a catalog here is exactly
+                # how the old CLAUDE_MODEL default ended up pointing at a retired
+                # snapshot), but "Check available models" queries the provider's own
+                # Models API with the actual configured key and offers a real picker built
+                # from whatever that key can actually call, cached per provider so
+                # fetching once covers every role sharing it. Blank means "no override,
+                # use this provider's own default."
+                st.caption(f"MODEL (optional — e.g. {', '.join(bot_config.SUGGESTED_MODELS[_provider_choice])})")
+                _fetched_key = f"available_models_{_provider_choice}"
+                _fetched = st.session_state.get(_fetched_key)
+                _current_model = _role_models_cfg[_role]
+                if _fetched:
+                    _options = ["(provider default)"] + [m for m in _fetched if m]
+                    if _current_model and _current_model not in _options:
+                        _options.append(_current_model)
+                    _default_idx = _options.index(_current_model) if _current_model in _options else 0
+                    _model_choice = st.selectbox(
+                        "Model", options=_options, index=_default_idx, key=f"bot_model_select_{_role}",
+                        label_visibility="collapsed",
+                    )
+                    _model_input = "" if _model_choice == "(provider default)" else _model_choice
+                else:
+                    _model_input = st.text_input(
+                        "Model", value=_current_model, key=f"bot_model_input_{_role}",
+                        label_visibility="collapsed", placeholder="Leave blank to use the provider's default",
+                    )
+                if st.button(f"🔄 Check available {bot_config.PROVIDER_LABELS[_provider_choice]} models", key=f"fetch_models_{_role}", use_container_width=True):
+                    _provider_key_field = {"claude": "anthropic", "gemini": "gemini", "openai": "openai"}[_provider_choice]
+                    _ids, _err = llm_engine.LIST_MODELS_BY_PROVIDER[_provider_choice](api_key_for(_provider_key_field))
+                    if _err:
+                        st.warning(f"Couldn't fetch {bot_config.PROVIDER_LABELS[_provider_choice]} models: {_err}")
+                    else:
+                        st.session_state[_fetched_key] = sorted(_ids)
+                        st.success(f"Found {len(_ids)} model(s) this key can call.")
+                    st.rerun()
+                if st.button("Save", key=f"bot_save_{_role}", use_container_width=True):
+                    if _name_input.strip() and _name_input.strip() != _role_names_cfg[_role]:
+                        bot_config.set_role_name(_role, _name_input)
+                    if _provider_choice != _current_provider:
+                        bot_config.set_role_provider(_role, _provider_choice)
+                    if _model_input.strip() != _role_models_cfg[_role]:
+                        bot_config.set_role_model(_role, _model_input)
+                    st.rerun()
+                st.markdown("<hr style='margin:6px 0;opacity:0.15'>", unsafe_allow_html=True)
+        # Three separate resets, not one combined "reset everything" -- provider
+        # routing, display names, and model overrides are independent settings, so
+        # someone who just wants the recommended routing back shouldn't lose a custom
+        # name like "Freddy" or a deliberately-picked model as a side effect of that.
+        reset_provider_col, reset_name_col, reset_model_col = st.columns(3)
         if reset_provider_col.button("Use recommended providers", key="reset_bot_providers", use_container_width=True):
             bot_config.reset_role_providers()
+            st.rerun()
+        if reset_model_col.button("Clear model overrides", key="reset_bot_models", use_container_width=True):
+            bot_config.reset_role_models()
             st.rerun()
         if reset_name_col.button("Reset display names", key="reset_bot_names", use_container_width=True):
             bot_config.reset_role_names()
@@ -2249,6 +2306,7 @@ with st.container(key="debate_dock"):
 
     role_providers = bot_config.load_role_providers()
     role_names = bot_config.load_role_names()
+    role_models = bot_config.load_role_models()
     api_keys = {"claude": api_key_for("anthropic"), "gemini": api_key_for("gemini"), "openai": api_key_for("openai")}
     PERSONA_DOTS = {"quant": "🟢", "beat": "🟡", "contrarian": "🟣", "moderator": "🔴"}
 
@@ -2259,7 +2317,12 @@ with st.container(key="debate_dock"):
             # months from now tells nobody he's the Quant.
             default = bot_config.ROLE_INFO[role]["default_name"]
             shown_name = f"{name} · {default}" if name != default else name
-            return f"{PERSONA_DOTS[role]} {shown_name} ({bot_config.PROVIDER_LABELS[role_providers[role]]})"
+            # Prefer the actual model string over a generic provider-tier label --
+            # "claude-opus-5" says more than "(Claude)" once a role has a specific
+            # model set, and unlike a provider-name lookup table it stays meaningful
+            # regardless of how many providers this app ends up supporting.
+            powered_by = role_models.get(role) or bot_config.PROVIDER_LABELS[role_providers[role]]
+            return f"{PERSONA_DOTS[role]} {shown_name} ({powered_by})"
 
         st.caption("Personas: " + " · ".join(_persona_caption(role) for role in bot_config.ROLES))
 
@@ -2327,24 +2390,31 @@ with st.container(key="debate_dock"):
                     provider = role_providers["quant"]
                     append_message(
                         "quant",
-                        llm_engine.ask_quant(context, trigger_question, provider=provider, api_key=api_keys[provider]),
-                        provider=provider,
+                        llm_engine.ask_quant(
+                            context, trigger_question, provider=provider, api_key=api_keys[provider],
+                            model=role_models.get("quant") or None,
+                        ),
+                        provider=provider, model=role_models.get("quant") or None,
                     )
                 elif trigger_mode == "beat":
                     provider = role_providers["beat"]
                     append_message(
                         "beat",
-                        llm_engine.ask_beat(context, trigger_question, provider=provider, api_key=api_keys[provider]),
-                        provider=provider,
+                        llm_engine.ask_beat(
+                            context, trigger_question, provider=provider, api_key=api_keys[provider],
+                            model=role_models.get("beat") or None,
+                        ),
+                        provider=provider, model=role_models.get("beat") or None,
                     )
                 else:
                     result = llm_engine.run_debate(
                         context, trigger_question, role_providers=role_providers, api_keys=api_keys,
+                        role_models=role_models,
                     )
-                    append_message("quant", result.quant, provider=role_providers["quant"])
-                    append_message("beat", result.beat, provider=role_providers["beat"])
-                    append_message("contrarian", result.contrarian, provider=role_providers["contrarian"])
-                    append_message("moderator", result.moderator, provider=role_providers["moderator"])
+                    append_message("quant", result.quant, provider=role_providers["quant"], model=role_models.get("quant") or None)
+                    append_message("beat", result.beat, provider=role_providers["beat"], model=role_models.get("beat") or None)
+                    append_message("contrarian", result.contrarian, provider=role_providers["contrarian"], model=role_models.get("contrarian") or None)
+                    append_message("moderator", result.moderator, provider=role_providers["moderator"], model=role_models.get("moderator") or None)
                     decision_log.log_decision(
                         st.session_state.selected_league_id, trigger_question, result.verdict, result.moderator
                     )
@@ -2425,8 +2495,10 @@ with st.container(key="debate_dock"):
             for msg in reversed(st.session_state.chat_history[-40:]):
                 if msg["role"] in ROLE_BADGE_BASE:
                     base_label, cls = ROLE_BADGE_BASE[msg["role"]]
-                    provider = msg.get("provider")
-                    label = f"{base_label} · {bot_config.PROVIDER_LABELS[provider]}" if provider else base_label
+                    # Prefer the actual model string over the provider tier label -- more
+                    # informative, and doesn't assume only Claude/Gemini/ChatGPT ever exist.
+                    powered_by = msg.get("model") or (bot_config.PROVIDER_LABELS.get(msg.get("provider")) if msg.get("provider") else None)
+                    label = f"{base_label} · {powered_by}" if powered_by else base_label
                 else:
                     label, cls = badge_map.get(msg["role"], (msg["role"], "badge-user"))
                 st.markdown(f'<span class="badge {cls}">{label}</span>', unsafe_allow_html=True)

@@ -40,7 +40,7 @@ ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY")
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 
-CLAUDE_MODEL = os.getenv("ANTHROPIC_MODEL", "claude-3-5-sonnet-20241022")
+CLAUDE_MODEL = os.getenv("ANTHROPIC_MODEL", "claude-sonnet-5")  # was a now-retired dated snapshot
 GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-2.0-flash")
 OPENAI_MODEL = os.getenv("OPENAI_MODEL", "gpt-4o")
 
@@ -280,10 +280,65 @@ def is_openai_configured(api_key: Optional[str] = None) -> bool:
     return bool(api_key or OPENAI_API_KEY)
 
 
+# -- Live model discovery -- lets the Configure Bots UI offer "whatever this key can
+# actually call" instead of a hardcoded, inevitably-stale catalog (see bot_config.
+# SUGGESTED_MODELS's own comment on why that list is just suggestions, not an enum).
+# Every list_*_models function fails soft: (list_of_ids, error_or_None), never raises,
+# consistent with every ask_* function in this module.
+
+def list_claude_models(api_key: Optional[str] = None) -> tuple[list[str], Optional[str]]:
+    key = api_key or ANTHROPIC_API_KEY
+    if not key:
+        return [], "ANTHROPIC_API_KEY not set."
+    try:
+        import anthropic
+
+        client = anthropic.Anthropic(api_key=key)
+        return [m.id for m in client.models.list()], None
+    except Exception as exc:  # noqa: BLE001
+        return [], str(exc)
+
+
+def list_gemini_models(api_key: Optional[str] = None) -> tuple[list[str], Optional[str]]:
+    key = api_key or GEMINI_API_KEY
+    if not key:
+        return [], "GEMINI_API_KEY not set."
+    try:
+        from google import genai
+
+        client = genai.Client(api_key=key)
+        # Gemini model names come back "models/gemini-2.0-flash" -- strip the prefix
+        # so the id matches what generate_content(model=...) actually expects.
+        ids = [m.name.removeprefix("models/") for m in client.models.list()]
+        return ids, None
+    except Exception as exc:  # noqa: BLE001
+        return [], str(exc)
+
+
+def list_openai_models(api_key: Optional[str] = None) -> tuple[list[str], Optional[str]]:
+    key = api_key or OPENAI_API_KEY
+    if not key:
+        return [], "OPENAI_API_KEY not set."
+    try:
+        from openai import OpenAI
+
+        client = OpenAI(api_key=key)
+        return [m.id for m in client.models.list()], None
+    except Exception as exc:  # noqa: BLE001
+        return [], str(exc)
+
+
+LIST_MODELS_BY_PROVIDER = {
+    "claude": list_claude_models,
+    "gemini": list_gemini_models,
+    "openai": list_openai_models,
+}
+
+
 # -- Per-provider callers -- generic: system prompt in, provider's own quirks
 # (tool access, client setup) handled here, indifferent to which role is calling. ---
 
-def _call_claude(system_prompt: str, user_prompt: str, api_key: Optional[str] = None) -> str:
+def _call_claude(system_prompt: str, user_prompt: str, api_key: Optional[str] = None, model: Optional[str] = None) -> str:
     key = api_key or ANTHROPIC_API_KEY
     if not key:
         return "⚠️ ANTHROPIC_API_KEY not set — add it in the sidebar's Connect Your Accounts section, or in .env."
@@ -292,7 +347,7 @@ def _call_claude(system_prompt: str, user_prompt: str, api_key: Optional[str] = 
 
         client = anthropic.Anthropic(api_key=key)
         response = client.messages.create(
-            model=CLAUDE_MODEL,
+            model=model or CLAUDE_MODEL,
             max_tokens=MAX_TOKENS,
             system=system_prompt,
             messages=[{"role": "user", "content": user_prompt}],
@@ -302,7 +357,7 @@ def _call_claude(system_prompt: str, user_prompt: str, api_key: Optional[str] = 
         return f"⚠️ Claude request failed: {exc}"
 
 
-def _call_gemini(system_prompt: str, user_prompt: str, api_key: Optional[str] = None) -> str:
+def _call_gemini(system_prompt: str, user_prompt: str, api_key: Optional[str] = None, model: Optional[str] = None) -> str:
     key = api_key or GEMINI_API_KEY
     if not key:
         return "⚠️ GEMINI_API_KEY not set — add it in the sidebar's Connect Your Accounts section, or in .env."
@@ -312,7 +367,7 @@ def _call_gemini(system_prompt: str, user_prompt: str, api_key: Optional[str] = 
 
         client = genai.Client(api_key=key)
         response = client.models.generate_content(
-            model=GEMINI_MODEL,
+            model=model or GEMINI_MODEL,
             contents=user_prompt,
             config=types.GenerateContentConfig(
                 system_instruction=system_prompt,
@@ -325,7 +380,7 @@ def _call_gemini(system_prompt: str, user_prompt: str, api_key: Optional[str] = 
         return f"⚠️ Gemini request failed: {exc}"
 
 
-def _call_openai(system_prompt: str, user_prompt: str, api_key: Optional[str] = None) -> str:
+def _call_openai(system_prompt: str, user_prompt: str, api_key: Optional[str] = None, model: Optional[str] = None) -> str:
     key = api_key or OPENAI_API_KEY
     if not key:
         return "⚠️ OPENAI_API_KEY not set — add it in the sidebar's Connect Your Accounts section, or in .env."
@@ -334,7 +389,7 @@ def _call_openai(system_prompt: str, user_prompt: str, api_key: Optional[str] = 
 
         client = OpenAI(api_key=key)
         response = client.responses.create(
-            model=OPENAI_MODEL,
+            model=model or OPENAI_MODEL,
             input=[
                 {"role": "system", "content": system_prompt},
                 {"role": "user", "content": user_prompt},
@@ -362,18 +417,23 @@ ROLE_SYSTEM_PROMPTS = {
 }
 
 
-def ask_quant(context: str, question: str, *, provider: str = "claude", api_key: Optional[str] = None) -> str:
+def ask_quant(
+    context: str, question: str, *, provider: str = "claude", api_key: Optional[str] = None, model: Optional[str] = None
+) -> str:
     prompt = f"League/roster context:\n{context}\n\nQuestion: {question}"
-    return PROVIDER_CALLERS[provider](QUANT_SYSTEM_PROMPT, prompt, api_key)
+    return PROVIDER_CALLERS[provider](QUANT_SYSTEM_PROMPT, prompt, api_key, model)
 
 
-def ask_beat(context: str, question: str, *, provider: str = "gemini", api_key: Optional[str] = None) -> str:
+def ask_beat(
+    context: str, question: str, *, provider: str = "gemini", api_key: Optional[str] = None, model: Optional[str] = None
+) -> str:
     prompt = f"League/roster context:\n{context}\n\nQuestion: {question}"
-    return PROVIDER_CALLERS[provider](BEAT_SYSTEM_PROMPT, prompt, api_key)
+    return PROVIDER_CALLERS[provider](BEAT_SYSTEM_PROMPT, prompt, api_key, model)
 
 
 def ask_contrarian(
-    context: str, question: str, quant: str, beat: str, *, provider: str = "openai", api_key: Optional[str] = None
+    context: str, question: str, quant: str, beat: str,
+    *, provider: str = "openai", api_key: Optional[str] = None, model: Optional[str] = None,
 ) -> str:
     prompt = (
         f"League/roster context:\n{context}\n\n"
@@ -382,12 +442,12 @@ def ask_contrarian(
         f"--- BEAT / NEWS REPORT ---\n{beat}\n\n"
         "Pressure-test these two reports."
     )
-    return PROVIDER_CALLERS[provider](CONTRARIAN_SYSTEM_PROMPT, prompt, api_key)
+    return PROVIDER_CALLERS[provider](CONTRARIAN_SYSTEM_PROMPT, prompt, api_key, model)
 
 
 def ask_moderator(
     context: str, question: str, quant: str, beat: str, contrarian: str,
-    *, provider: str = "claude", api_key: Optional[str] = None,
+    *, provider: str = "claude", api_key: Optional[str] = None, model: Optional[str] = None,
 ) -> str:
     prompt = (
         f"League/roster context:\n{context}\n\n"
@@ -397,7 +457,7 @@ def ask_moderator(
         f"--- CONTRARIAN / RISK REPORT ---\n{contrarian}\n\n"
         "Synthesize these into one verdict."
     )
-    return PROVIDER_CALLERS[provider](MODERATOR_SYSTEM_PROMPT, prompt, api_key)
+    return PROVIDER_CALLERS[provider](MODERATOR_SYSTEM_PROMPT, prompt, api_key, model)
 
 
 def summarize_history(
@@ -426,6 +486,7 @@ def run_debate(
     *,
     role_providers: dict,
     api_keys: dict,
+    role_models: Optional[dict] = None,
 ) -> DebateResult:
     """Run the full four-agent debate: Quant -> Beat -> Contrarian -> Moderator.
 
@@ -438,21 +499,31 @@ def run_debate(
     `api_keys` maps each provider name to that provider's API key (a session
     override if the user pasted one, else whatever llm_engine already loaded from
     .env -- see app.py's api_key_for()).
+
+    `role_models` optionally maps a role to a specific model string for whichever
+    provider it's assigned to (e.g. Moderator on Claude Opus for the big synthesis,
+    Quant on Claude Sonnet for cheaper stat-crunching -- same provider, different
+    model). A role missing from this dict, or the dict itself missing, falls back to
+    that provider's own default model constant.
     """
+    role_models = role_models or {}
     result = DebateResult(question=question, role_providers=dict(role_providers))
 
     def _key(role: str) -> Optional[str]:
         return api_keys.get(role_providers[role])
 
-    result.quant = ask_quant(context, question, provider=role_providers["quant"], api_key=_key("quant"))
-    result.beat = ask_beat(context, question, provider=role_providers["beat"], api_key=_key("beat"))
+    def _model(role: str) -> Optional[str]:
+        return role_models.get(role) or None
+
+    result.quant = ask_quant(context, question, provider=role_providers["quant"], api_key=_key("quant"), model=_model("quant"))
+    result.beat = ask_beat(context, question, provider=role_providers["beat"], api_key=_key("beat"), model=_model("beat"))
     result.contrarian = ask_contrarian(
         context, question, result.quant, result.beat,
-        provider=role_providers["contrarian"], api_key=_key("contrarian"),
+        provider=role_providers["contrarian"], api_key=_key("contrarian"), model=_model("contrarian"),
     )
     result.moderator = ask_moderator(
         context, question, result.quant, result.beat, result.contrarian,
-        provider=role_providers["moderator"], api_key=_key("moderator"),
+        provider=role_providers["moderator"], api_key=_key("moderator"), model=_model("moderator"),
     )
     if not result.moderator.startswith("⚠️"):
         result.verdict = parse_moderator_verdict(result.moderator)

@@ -60,6 +60,18 @@ ROLE_INFO = {
 # button that resets to this) silently lie about what it just did.
 DEFAULT_ROLE_PROVIDERS = {role: ROLE_INFO[role]["recommended"] for role in ROLES}
 
+# Model choice is a separate layer from provider choice: two roles can share a
+# provider (e.g. both on Claude) and still want different models -- a role that just
+# needs cheap number-crunching doesn't need the same model as one doing the final
+# synthesis. Not an enum: providers ship new models on their own schedule, and the
+# per-role field is free text so a model this app doesn't know about yet still works.
+# These are just autocomplete-style suggestions shown in the UI.
+SUGGESTED_MODELS = {
+    "claude": ["claude-opus-5", "claude-sonnet-5", "claude-haiku-4-5"],
+    "gemini": ["gemini-2.0-flash", "gemini-2.0-pro"],
+    "openai": ["gpt-4o", "gpt-4.5-mini", "o3"],
+}
+
 
 def _load_raw() -> dict:
     if CONFIG_PATH.exists():
@@ -107,9 +119,35 @@ def set_role_name(role: str, name: str) -> bool:
     return True
 
 
+def load_role_models() -> dict[str, str]:
+    """Specific model override per role -- empty string means "no override, use
+    whatever model the assigned provider defaults to" (llm_engine.py's own
+    CLAUDE_MODEL/GEMINI_MODEL/OPENAI_MODEL constants). Unlike names/providers, the
+    default here is genuinely "nothing set," not a value drawn from ROLE_INFO --
+    there's no single "recommended model" the way there's a recommended provider,
+    since the right model depends on cost/quality tradeoffs specific to the user."""
+    saved = _load_raw().get("models", {})
+    return {role: saved.get(role, "") for role in ROLES}
+
+
+def set_role_model(role: str, model: str) -> bool:
+    if role not in ROLES:
+        return False
+    data = _load_raw()
+    data.setdefault("models", {})[role] = model.strip()
+    _save_raw(data)
+    return True
+
+
 def reset_role_providers() -> None:
     data = _load_raw()
     data.pop("providers", None)
+    _save_raw(data)
+
+
+def reset_role_models() -> None:
+    data = _load_raw()
+    data.pop("models", None)
     _save_raw(data)
 
 
