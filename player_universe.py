@@ -16,6 +16,50 @@ from typing import Optional
 FANTASY_POSITIONS = {"QB", "RB", "WR", "TE", "K", "DEF", "LB", "DL", "DB"}
 
 
+FLEX_SLOT_POSITIONS = {
+    "FLEX": {"RB", "WR", "TE"},
+    "SUPER_FLEX": {"QB", "RB", "WR", "TE"},
+    "WRRB_FLEX": {"RB", "WR"},
+    "REC_FLEX": {"WR", "TE"},
+    "IDP_FLEX": {"DL", "LB", "DB"},
+}
+
+
+def league_usable_positions(roster_positions: list[str]) -> set[str]:
+    """Which fantasy position buckets this league's roster slots actually use.
+
+    Sleeper's roster_positions lists literal slot codes (QB, RB, ..., plus flex
+    codes like SUPER_FLEX/IDP_FLEX and non-positional slots like BN/TAXI/IR).
+    Expand flex slots to the positions they can hold, so a league with no K/DEF/
+    IDP slots never suggests free agents in those positions — there's nowhere
+    to start them. Falls back to every known position if roster_positions is
+    empty/missing, so a malformed league never silently hides every free agent.
+    """
+    positions: set[str] = set()
+    for slot in roster_positions or []:
+        if slot in FANTASY_POSITIONS:
+            positions.add(slot)
+        elif slot in FLEX_SLOT_POSITIONS:
+            positions.update(FLEX_SLOT_POSITIONS[slot])
+    return positions or set(FANTASY_POSITIONS)
+
+
+def player_position(info: dict) -> Optional[str]:
+    """The fantasy-relevant position bucket for a player, Sleeper's own way.
+
+    Sleeper's granular ``position`` field can be an IDP sub-position (DE, DT,
+    OLB, ILB, CB, S, FS, SS, ...) that doesn't match any roster slot this app
+    (or most leagues) actually use. ``fantasy_positions`` is Sleeper's own
+    pre-bucketed list for exactly this purpose — e.g. a "FS" cornerback's
+    fantasy_positions is ["DB"] — so prefer it, falling back to the raw
+    position only when fantasy_positions is missing or empty.
+    """
+    for pos in info.get("fantasy_positions") or []:
+        if pos in FANTASY_POSITIONS:
+            return pos
+    return info.get("position")
+
+
 def _score_projection(stats: dict, scoring_settings: dict) -> float:
     """Score native Sleeper stat projections without coupling this data model to HTTP."""
     total = sum(
@@ -84,13 +128,23 @@ def build_player_universe(
     rows: list[dict] = []
     for pid in player_ids:
         info = (players_db or {}).get(pid, {}) or {}
-        position = info.get("position")
+        position = player_position(info)
         is_rostered_or_projected = pid in rostered_ids or pid in projections
         if position not in FANTASY_POSITIONS and not is_rostered_or_projected:
             continue
-        # Do not make "active" a destructive truth source: some Sleeper rows
-        # omit it, and a rostered/projected player always remains visible.
-        if not include_inactive and info.get("active") is False and not is_rostered_or_projected:
+        # Do not make "active" a destructive truth source on its own: some Sleeper
+        # rows omit it even for currently-relevant players, and a rostered/projected
+        # player always remains visible regardless. But active=None combined with no
+        # current NFL team is Sleeper's tell for a long-retired player it never
+        # purges (Sleeper's /players/nfl keeps essentially every player who ever
+        # appeared, going back years) — that combination is what actually needs
+        # filtering. A real, currently-relevant free agent (cut, unsigned, between
+        # teams — Sleeper still marks these active=true even with no team) is a
+        # legitimate roster target and stays visible either way.
+        is_retired_or_stale = info.get("active") is False or (
+            info.get("active") is None and not info.get("team")
+        )
+        if not include_inactive and is_retired_or_stale and not is_rostered_or_projected:
             continue
         row = {
             "player_id": pid,
@@ -120,7 +174,13 @@ def build_player_universe(
 
 
 def available_players(universe: list[dict], position: Optional[str] = None) -> list[dict]:
-    """Return only unrostered Sleeper players, retaining missing enrichment."""
+    """Return only unrostered Sleeper players, retaining missing enrichment.
+
+    Retired players are already excluded upstream in build_player_universe, not
+    here — a real NFL free agent (cut, unsigned, between teams) is still a
+    legitimate roster target and stays in this list regardless of whether they
+    currently have a team.
+    """
     result = [row for row in universe if row.get("available")]
     if position:
         result = [row for row in result if row.get("position") == position]

@@ -26,7 +26,7 @@ from attachments import ATTACHMENTS_DIR, list_attachments, save_attachment, set_
 from data_merger import GLOBAL_PROJECTIONS_DIR, PROJECTIONS_DIR, DataMerger, load_projection_file, save_alias
 from league_format import FORMAT_GUIDANCE, FORMAT_OPTIONS, STANDARD, get_format_override, set_format_override
 from league_prefs import forget_league, get_prefs, move_league, sorted_leagues, toggle_archive
-from player_universe import available_players, build_player_universe, matching_players
+from player_universe import available_players, build_player_universe, league_usable_positions, matching_players
 from sleeper_client import SleeperAPIError, SleeperClient, compute_points_from_stats, find_roster_for_user, league_format_summary
 
 CHATS_DIR = Path("data/chats")
@@ -107,6 +107,28 @@ st.markdown(
         padding: 10px 18px;
         font-weight: 600;
         border-width: 1.5px !important;
+    }
+
+    /* The Free Agents table's clickable sort header (real st.button()s, since a
+       static HTML <th> can't call back into Python) needs to read as a table
+       header row, not a row of big CTA buttons — shrink just this one back down
+       and drop the visual weight the rule above intentionally adds everywhere else. */
+    .st-key-fa_sort_header .stButton button {
+        min-height: 30px;
+        min-width: 0;
+        padding: 4px 10px;
+        font-size: 0.7rem;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+        font-weight: 600;
+        color: #8b8f98;
+        background: #1b1c1f;
+        border: 1px solid #2a2b2e !important;
+        border-radius: 6px;
+    }
+    .st-key-fa_sort_header .stButton button:hover {
+        color: #e5e7eb;
+        border-color: #3a3c42 !important;
     }
     </style>
     """,
@@ -307,6 +329,18 @@ def activate_league(league_id: str) -> None:
 SLOT_SORT_ORDER = {"Starter": 0, "Bench": 1, "TAXI": 2, "IR": 3}
 INJURY_OK_STATUSES = ("Questionable", "Doubtful")
 
+# Free Agents position filter: ordered the way a manager actually scans a roster
+# (offense skill positions first, then the flex-style umbrella options, then
+# kicker/D-ST, then IDP broken out individually with its own umbrella last).
+# `None` means "no positions to intersect" i.e. the unfiltered "All" option.
+FA_POSITION_FILTERS = [
+    ("All", None),
+    ("QB", {"QB"}), ("WR", {"WR"}), ("RB", {"RB"}), ("TE", {"TE"}),
+    ("FLEX", {"WR", "RB", "TE"}), ("SUPERFLEX", {"QB", "WR", "RB", "TE"}),
+    ("K", {"K"}), ("D/ST", {"DEF"}),
+    ("DL", {"DL"}), ("LB", {"LB"}), ("DB", {"DB"}), ("IDP", {"DL", "LB", "DB"}),
+]
+
 TABLE_COLUMN_LABELS = {
     "name": "Player", "position": "Pos", "team": "Team", "slot": "Slot",
     "tier": "Tier", "vorp": "VORP", "projection": "Proj", "sleeper_proj": "Sleeper Proj",
@@ -328,7 +362,10 @@ def _injury_pill_color(val: str) -> tuple[str, str]:
     return ("rgba(185,28,28,0.18)", "#f87171")  # Out/IR/PUP/etc.
 
 
-def render_styled_table(df: pd.DataFrame, pill_columns: Optional[dict] = None, group_column: Optional[str] = None) -> None:
+def render_styled_table(
+    df: pd.DataFrame, pill_columns: Optional[dict] = None, group_column: Optional[str] = None,
+    render_header: bool = True,
+) -> None:
     """Render a DataFrame as a custom HTML table instead of the native st.dataframe grid.
 
     st.dataframe renders through a canvas-based grid component — it's fundamentally a
@@ -339,6 +376,10 @@ def render_styled_table(df: pd.DataFrame, pill_columns: Optional[dict] = None, g
 
     `pill_columns` maps a column name to a `value -> (background, text_color)` function;
     any other column just renders as text, right-aligned with tabular numerals if numeric.
+
+    `render_header=False` skips the built-in `<th>` row entirely — for a caller that
+    renders its own clickable sort-header row (real Streamlit buttons, since static
+    HTML can't call back into Python) directly above this table instead.
 
     `group_column`, if given, must already be sorted (this never reorders rows) — a
     full-width section header row is inserted every time that column's value changes,
@@ -378,7 +419,7 @@ def render_styled_table(df: pd.DataFrame, pill_columns: Optional[dict] = None, g
         f'background:#1b1c1f;white-space:nowrap;">'
         f'{html.escape(TABLE_COLUMN_LABELS.get(c, c.replace("_", " ").title()))}</th>'
         for c in display_cols
-    )
+    ) if render_header else ""
 
     row_parts = []
     last_group = object()  # sentinel that can never equal a real group value
@@ -397,18 +438,39 @@ def render_styled_table(df: pd.DataFrame, pill_columns: Optional[dict] = None, g
         cells = "".join(f'<td style="padding:9px 14px;border-bottom:1px solid #202124;">{_cell_html(c, row[c])}</td>' for c in display_cols)
         row_parts.append(f"<tr>{cells}</tr>")
 
+    # The conditional thead has to stay on the same line as <table ...> — a
+    # standalone blank line here (which is what render_header=False produces,
+    # since the whitespace-only line has no visible content) terminates
+    # CommonMark's raw-HTML-block parsing early, and everything after gets
+    # re-parsed as an indented code block instead of rendered HTML.
+    thead_html = f"<thead><tr>{headers}</tr></thead>" if render_header else ""
     st.markdown(
         f"""
         <div style="overflow-x:auto;overflow-y:auto;max-height:600px;
                     border:1px solid #2a2b2e;border-radius:10px;">
-          <table style="width:100%;border-collapse:collapse;font-size:0.88rem;">
-            <thead><tr>{headers}</tr></thead>
+          <table style="width:100%;border-collapse:collapse;font-size:0.88rem;">{thead_html}
             <tbody>{''.join(row_parts)}</tbody>
           </table>
         </div>
         """,
         unsafe_allow_html=True,
     )
+
+
+def sort_rows_by_column(rows: list[dict], col: str, direction: str) -> list[dict]:
+    """Sort dicts by one column, clicked-header style — missing values always last.
+
+    A row missing this column entirely means "unknown," not "worst value," so it
+    shouldn't get shoved to one end on ascending and the other on descending —
+    it sorts after every row that actually has a value, regardless of direction.
+    """
+    present = [r for r in rows if r.get(col) not in (None, "")]
+    missing = [r for r in rows if r.get(col) in (None, "")]
+    numeric = all(isinstance(r.get(col), (int, float)) for r in present) if present else True
+    key = (lambda r: r[col]) if numeric else (lambda r: str(r[col]).lower())
+    present.sort(key=key, reverse=(direction == "desc"))
+    missing.sort(key=lambda r: r.get("name", "").lower())
+    return present + missing
 
 
 def maybe_nudge_stale_free_agents(league_id: str, merger: DataMerger) -> None:
@@ -1402,9 +1464,28 @@ else:
     st.subheader("Free Agents")
 
     merger = st.session_state.data_merger
-    canonical_fa = available_players(player_universe)
+
+    # A league with no K/DEF/IDP slots has nowhere to start those players — never
+    # suggest them at all, regardless of position filter or search.
+    league_positions = league_usable_positions(league.get("roster_positions") or [])
+    canonical_fa = [row for row in available_players(player_universe) if row["position"] in league_positions]
+
+    fcol1, fcol2 = st.columns([1, 3])
+    fa_search = fcol1.text_input("Find a Sleeper player", placeholder="Search by name")
+    visible_filters = {
+        label: wanted for label, wanted in FA_POSITION_FILTERS
+        if wanted is None or wanted & league_positions
+    }
+    fa_position_filter = fcol1.selectbox("Position", options=list(visible_filters))
+    wanted_positions = visible_filters[fa_position_filter]
+    if wanted_positions:
+        canonical_fa = [row for row in canonical_fa if row["position"] in wanted_positions]
+    if fa_search.strip():
+        search_term = fa_search.strip().lower()
+        canonical_fa = [row for row in canonical_fa if search_term in row["name"].lower()]
+
     st.caption(
-        f"Sleeper canonical pool: {len(canonical_fa)} currently unrostered fantasy players. "
+        f"Sleeper canonical pool: {len(canonical_fa)} matching free agents. "
         "Draft Sharks data below is optional enrichment; it never determines whether a player appears."
     )
     if merger.free_agents_is_stale:
@@ -1431,36 +1512,49 @@ else:
                     row[f"ds_{field}"] = finder[field]
         fa_rows.append(row)
 
-    fa_positions = sorted({row["position"] for row in canonical_fa})
-    fcol1, fcol2 = st.columns([1, 3])
-    fa_position_filter = fcol1.selectbox("Position", options=["All"] + fa_positions)
-    fa_search = fcol1.text_input("Find a Sleeper player", placeholder="Search by name")
-    if fa_position_filter != "All":
-        fa_rows = [row for row in fa_rows if row["position"] == fa_position_filter]
-    if fa_search.strip():
-        search_term = fa_search.strip().lower()
-        fa_rows = [row for row in fa_rows if search_term in row["name"].lower()]
-    # Rank by Draft Sharks' own valuation when it's loaded (the best signal available);
-    # otherwise fall back to Sleeper's search_rank — the closest thing to an ADP-style
-    # relevance order Sleeper exposes natively — then native weekly projection, then
-    # name only as a last-resort deterministic tiebreak. Without this, an unloaded
-    # Draft Sharks pool would sort alphabetically, which buries actually-good pickups.
-    fa_rows.sort(key=lambda row: (
-        row.get("ds_value_3d") is None, -(row.get("ds_value_3d") or 0),
-        row.get("search_rank") if row.get("search_rank") is not None else float("inf"),
-        -(row.get("sleeper_proj") or 0),
-        row["name"],
-    ))
-    if fa_rows:
-        fa_df = pd.DataFrame(fa_rows[:25])
-        fa_display_cols = [c for c in [
-            "name", "team", "position", "injury_status", "sleeper_proj", "search_rank",
-            "ds_rank", "ds_projection", "ds_trade_value", "ds_proj_3d", "ds_ros_3d", "ds_ceiling", "ds_value_3d",
-        ] if c in fa_df.columns]
-        with fcol2:
-            render_styled_table(fa_df[fa_display_cols], pill_columns={"injury_status": _injury_pill_color})
+    fa_display_cols = [c for c in [
+        "name", "team", "position", "injury_status", "sleeper_proj", "search_rank",
+        "ds_rank", "ds_projection", "ds_trade_value", "ds_proj_3d", "ds_ros_3d", "ds_ceiling", "ds_value_3d",
+    ] if any(c in row for row in fa_rows)]
+
+    fa_sort = st.session_state.get("fa_sort")  # (col, "asc"/"desc") once a header's been clicked, else the smart default
+    if fa_sort and fa_sort[0] in fa_display_cols:
+        fa_rows = sort_rows_by_column(fa_rows, *fa_sort)
     else:
-        fcol2.caption("No Sleeper free agents match that filter.")
+        # Rank by Draft Sharks' own valuation when it's loaded (the best signal available);
+        # otherwise fall back to Sleeper's search_rank — the closest thing to an ADP-style
+        # relevance order Sleeper exposes natively — then native weekly projection, then
+        # name only as a last-resort deterministic tiebreak. Without this, an unloaded
+        # Draft Sharks pool would sort alphabetically, which buries actually-good pickups.
+        fa_rows.sort(key=lambda row: (
+            row.get("ds_value_3d") is None, -(row.get("ds_value_3d") or 0),
+            row.get("search_rank") if row.get("search_rank") is not None else float("inf"),
+            -(row.get("sleeper_proj") or 0),
+            row["name"],
+        ))
+
+    with fcol2:
+        if fa_rows:
+            with st.container(key="fa_sort_header"):
+                header_cols = st.columns(len(fa_display_cols))
+                for header_col, col in zip(header_cols, fa_display_cols):
+                    label = TABLE_COLUMN_LABELS.get(col, col.replace("_", " ").title())
+                    if fa_sort and fa_sort[0] == col:
+                        label += " ▲" if fa_sort[1] == "asc" else " ▼"
+                    if header_col.button(label, key=f"fa_sort_btn_{col}", use_container_width=True):
+                        if fa_sort and fa_sort[0] == col:
+                            new_dir = "asc" if fa_sort[1] == "desc" else "desc"
+                        else:
+                            # Rank-like columns read naturally low-to-high; everything else high-to-low.
+                            new_dir = "asc" if col in ("name", "team", "position", "search_rank", "ds_rank") else "desc"
+                        st.session_state.fa_sort = (col, new_dir)
+                        st.rerun()
+            fa_df = pd.DataFrame(fa_rows[:25])
+            render_styled_table(
+                fa_df[fa_display_cols], pill_columns={"injury_status": _injury_pill_color}, render_header=False,
+            )
+        else:
+            st.caption("No Sleeper free agents match that filter.")
 
     # ------------------------------------------------------------------ reference material --
 

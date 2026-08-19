@@ -38,6 +38,20 @@ class PlayerUniverseTests(unittest.TestCase):
         self.assertNotIn("3", normal_ids)
         self.assertIn("3", all_ids)
 
+    def test_retired_players_filtered_but_legitimate_free_agents_kept(self):
+        # Sleeper's /players/nfl never purges anyone who ever appeared, so a long-
+        # retired player often has no "active" flag at all and no team — that
+        # combination is the actual retirement tell. A currently-relevant NFL free
+        # agent (cut, unsigned, between teams) still gets marked active=true by
+        # Sleeper even with no team, and must stay visible as a real roster target.
+        players = dict(self.players)
+        players["4"] = {"full_name": "Long Retired Legend", "position": "QB"}
+        players["5"] = {"full_name": "Notable Unsigned Free Agent", "position": "TE", "active": True}
+        universe = build_player_universe(players, self.rosters)
+        ids = {row["player_id"] for row in universe}
+        self.assertNotIn("4", ids)
+        self.assertIn("5", ids)
+
 
 if __name__ == "__main__":
     unittest.main()
