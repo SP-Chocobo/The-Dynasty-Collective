@@ -1446,6 +1446,7 @@ with st.sidebar:
         _role_providers_cfg = bot_config.load_role_providers()
         _role_names_cfg = bot_config.load_role_names()
         _role_models_cfg = bot_config.load_role_models()
+        _moderator_personality_cfg = bot_config.load_moderator_personality()
         _provider_options = list(bot_config.PROVIDERS)
         # Discovery itself lives in 🔑 Connections & Models now -- this section only reads
         # the `available_models_{provider}` cache it populates, the same single source both
@@ -1519,6 +1520,25 @@ with st.sidebar:
                         "Model", value=_current_model, key=f"bot_model_input_{_role}",
                         label_visibility="collapsed", placeholder="Leave blank to use the provider's default",
                     )
+                # Scoped to the Moderator only -- the debate view now leads with its synthesis
+                # by default, so it's the one voice the user actually reads most of the time.
+                # The other three roles' prompts are deliberately narrow (Quant: "no news, no
+                # opinions, just the math") and a tone knob would fight that narrowness.
+                if _role == "moderator":
+                    st.caption("RESPONSE PERSONALITY")
+                    _personality_options = ["(default tone)"] + list(bot_config.MODERATOR_PERSONALITIES)
+                    _personality_index = (
+                        _personality_options.index(_moderator_personality_cfg)
+                        if _moderator_personality_cfg in _personality_options else 0
+                    )
+                    _personality_choice = st.selectbox(
+                        "Response personality", options=_personality_options, index=_personality_index,
+                        key="bot_personality_input_moderator", label_visibility="collapsed",
+                    )
+                    if _personality_choice != "(default tone)":
+                        st.caption(bot_config.MODERATOR_PERSONALITIES[_personality_choice])
+                else:
+                    _personality_choice = None
                 if st.button("Save", key=f"bot_save_{_role}", use_container_width=True):
                     if _name_input.strip() and _name_input.strip() != _role_names_cfg[_role]:
                         bot_config.set_role_name(_role, _name_input)
@@ -1526,6 +1546,10 @@ with st.sidebar:
                         bot_config.set_role_provider(_role, _provider_choice)
                     if _model_input.strip() != _role_models_cfg[_role]:
                         bot_config.set_role_model(_role, _model_input)
+                    if _role == "moderator":
+                        _new_personality = "" if _personality_choice == "(default tone)" else _personality_choice
+                        if _new_personality != _moderator_personality_cfg:
+                            bot_config.set_moderator_personality(_new_personality)
                     st.rerun()
 
                 # Benchmarking lives inside the same card as the manual controls it can
@@ -2655,6 +2679,8 @@ with st.container(key="debate_dock"):
     role_providers = bot_config.load_role_providers()
     role_names = bot_config.load_role_names()
     role_models = bot_config.load_role_models()
+    moderator_personality_key = bot_config.load_moderator_personality()
+    moderator_personality = bot_config.MODERATOR_PERSONALITIES.get(moderator_personality_key)
     api_keys = {"claude": api_key_for("anthropic"), "gemini": api_key_for("gemini"), "openai": api_key_for("openai")}
     PERSONA_DOTS = {"quant": "🟢", "beat": "🟡", "contrarian": "🟣", "moderator": "🔴"}
 
@@ -2792,7 +2818,7 @@ with st.container(key="debate_dock"):
                 else:
                     result = llm_engine.run_debate(
                         context, trigger_question, role_providers=role_providers, api_keys=api_keys,
-                        role_models=role_models,
+                        role_models=role_models, moderator_personality=moderator_personality,
                     )
                     append_message("quant", result.quant, provider=role_providers["quant"], model=role_models.get("quant") or None)
                     append_message("beat", result.beat, provider=role_providers["beat"], model=role_models.get("beat") or None)
@@ -2870,25 +2896,62 @@ with st.container(key="debate_dock"):
             "summary": ("🧠 MEMORY SUMMARY", "badge-summary"),
             "notice": ("⚠️ NOTICE", "badge-notice"),
         }
+        def _render_agent_msg(msg: dict) -> None:
+            if msg["role"] in ROLE_BADGE_BASE:
+                base_label, cls = ROLE_BADGE_BASE[msg["role"]]
+                # Prefer the actual model string over the provider tier label -- more
+                # informative, and doesn't assume only Claude/Gemini/ChatGPT ever exist.
+                powered_by = msg.get("model") or (bot_config.PROVIDER_LABELS.get(msg.get("provider")) if msg.get("provider") else None)
+                label = f"{base_label} · {powered_by}" if powered_by else base_label
+            else:
+                label, cls = badge_map.get(msg["role"], (msg["role"], "badge-user"))
+            st.markdown(f'<span class="badge {cls}">{label}</span>', unsafe_allow_html=True)
+            st.markdown(
+                f'<div class="agent-block">{format_agent_content(msg["role"], msg["content"])}</div>',
+                unsafe_allow_html=True,
+            )
+
+        # A Full Debate always appends exactly [quant, beat, contrarian, moderator] back to
+        # back (see the trigger block above) -- group that run into one unit so the Moderator's
+        # synthesis reads as the one answer, with the reports that fed it tucked behind a
+        # toggle instead of three more full-size bubbles of equal visual weight. One visible
+        # analyst, inspectable reasoning underneath, not a four-way transcript by default.
+        display_units: list[dict] = []
+        recent = st.session_state.chat_history[-40:]
+        i = 0
+        while i < len(recent):
+            if (
+                i + 3 < len(recent)
+                and [recent[i + k]["role"] for k in range(4)] == ["quant", "beat", "contrarian", "moderator"]
+            ):
+                display_units.append({"kind": "debate", "detail": recent[i:i + 3], "moderator": recent[i + 3]})
+                i += 4
+            else:
+                display_units.append({"kind": "single", "msg": recent[i]})
+                i += 1
+
         # Bounded, independently-scrolling — a fixed dock can't just grow with the
         # transcript or it eats the whole screen. use_container_width on the block
         # below isn't a thing; st.container(height=...) is Streamlit's own native
         # scroll-region primitive, so lean on that instead of another CSS hack.
         with st.container(height=CHAT_HEIGHT_BY_LEVEL[dock_level]):
-            for msg in reversed(st.session_state.chat_history[-40:]):
-                if msg["role"] in ROLE_BADGE_BASE:
-                    base_label, cls = ROLE_BADGE_BASE[msg["role"]]
-                    # Prefer the actual model string over the provider tier label -- more
-                    # informative, and doesn't assume only Claude/Gemini/ChatGPT ever exist.
-                    powered_by = msg.get("model") or (bot_config.PROVIDER_LABELS.get(msg.get("provider")) if msg.get("provider") else None)
-                    label = f"{base_label} · {powered_by}" if powered_by else base_label
-                else:
-                    label, cls = badge_map.get(msg["role"], (msg["role"], "badge-user"))
-                st.markdown(f'<span class="badge {cls}">{label}</span>', unsafe_allow_html=True)
-                st.markdown(
-                    f'<div class="agent-block">{format_agent_content(msg["role"], msg["content"])}</div>',
-                    unsafe_allow_html=True,
-                )
+            for unit in reversed(display_units):
+                if unit["kind"] == "single":
+                    _render_agent_msg(unit["msg"])
+                    continue
+                _render_agent_msg(unit["moderator"])
+                detail_key = f"show_debate_detail_{unit['moderator']['ts']}"
+                st.session_state.setdefault(detail_key, False)
+                if st.button(
+                    f"{'▾' if st.session_state[detail_key] else '▸'} Show the analysis behind this "
+                    "(Quant / Beat Tracker / Contrarian)",
+                    key=f"toggle_{detail_key}", use_container_width=True,
+                ):
+                    st.session_state[detail_key] = not st.session_state[detail_key]
+                    st.rerun()
+                if st.session_state[detail_key]:
+                    for detail_msg in unit["detail"]:
+                        _render_agent_msg(detail_msg)
 
         if st.session_state.chat_history:
             hcol1, hcol2, hcol3 = st.columns([1, 1, 1])

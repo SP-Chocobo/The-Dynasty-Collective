@@ -155,3 +155,38 @@ def reset_role_names() -> None:
     data = _load_raw()
     data.pop("names", None)
     _save_raw(data)
+
+
+# -- Moderator response personality -------------------------------------------
+#
+# Scoped to the Moderator only, not all four roles: since the debate view now leads
+# with the Moderator's synthesis by default (the other three collapse behind a
+# toggle), the Moderator's voice is the one the user actually reads most of the
+# time -- "how should it talk to me" only has one obvious answer to attach to. The
+# other three roles' prompts are deliberately narrow (Quant: "no news, no opinions,
+# just the math") and a tone directive would work against that narrowness rather
+# than add anything.
+MODERATOR_PERSONALITIES = {
+    "Direct": "Be terse and direct. Lead with the verdict, then the minimum reasoning needed to support it -- short sentences, minimal hedging.",
+    "Analytical": "Favor thorough, precise reasoning over brevity -- show the work, not just the conclusion.",
+    "Conversational": "Write like you're talking to a friend who already knows fantasy football -- natural phrasing, not a clinical report.",
+    "Blunt": "Don't soften bad news or a weak trade. If it's bad, say so plainly, with no diplomatic hedging.",
+}
+
+
+def load_moderator_personality() -> str:
+    """Which MODERATOR_PERSONALITIES key is active, or '' for the prompt's own default
+    tone (no directive appended)."""
+    return _load_raw().get("moderator_personality", "")
+
+
+def set_moderator_personality(personality: str) -> bool:
+    if personality and personality not in MODERATOR_PERSONALITIES:
+        return False
+    data = _load_raw()
+    if personality:
+        data["moderator_personality"] = personality
+    else:
+        data.pop("moderator_personality", None)
+    _save_raw(data)
+    return True

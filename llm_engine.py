@@ -448,6 +448,7 @@ def ask_contrarian(
 def ask_moderator(
     context: str, question: str, quant: str, beat: str, contrarian: str,
     *, provider: str = "claude", api_key: Optional[str] = None, model: Optional[str] = None,
+    personality: Optional[str] = None,
 ) -> str:
     prompt = (
         f"League/roster context:\n{context}\n\n"
@@ -457,7 +458,13 @@ def ask_moderator(
         f"--- CONTRARIAN / RISK REPORT ---\n{contrarian}\n\n"
         "Synthesize these into one verdict."
     )
-    return PROVIDER_CALLERS[provider](MODERATOR_SYSTEM_PROMPT, prompt, api_key, model)
+    # A tone directive, never a content one -- it changes how the verdict is written,
+    # never what it concludes or whether the structured field block still appears
+    # exactly as specified above.
+    system_prompt = MODERATOR_SYSTEM_PROMPT
+    if personality:
+        system_prompt += f"\n\nResponse style: {personality}"
+    return PROVIDER_CALLERS[provider](system_prompt, prompt, api_key, model)
 
 
 def summarize_history(
@@ -487,6 +494,7 @@ def run_debate(
     role_providers: dict,
     api_keys: dict,
     role_models: Optional[dict] = None,
+    moderator_personality: Optional[str] = None,
 ) -> DebateResult:
     """Run the full four-agent debate: Quant -> Beat -> Contrarian -> Moderator.
 
@@ -505,6 +513,12 @@ def run_debate(
     Quant on Claude Sonnet for cheaper stat-crunching -- same provider, different
     model). A role missing from this dict, or the dict itself missing, falls back to
     that provider's own default model constant.
+
+    `moderator_personality` is a free-text tone directive (see bot_config.
+    MODERATOR_PERSONALITIES) appended to the Moderator's system prompt -- it changes
+    how the verdict is written, never what it concludes. Scoped to the Moderator only:
+    the other three roles' prompts are deliberately narrow and a tone directive would
+    work against that.
     """
     role_models = role_models or {}
     result = DebateResult(question=question, role_providers=dict(role_providers))
@@ -524,6 +538,7 @@ def run_debate(
     result.moderator = ask_moderator(
         context, question, result.quant, result.beat, result.contrarian,
         provider=role_providers["moderator"], api_key=_key("moderator"), model=_model("moderator"),
+        personality=moderator_personality,
     )
     if not result.moderator.startswith("⚠️"):
         result.verdict = parse_moderator_verdict(result.moderator)
