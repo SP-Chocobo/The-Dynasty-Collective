@@ -79,6 +79,16 @@ st.markdown(
     .status-ok { color: #4ade80; }
     .status-bad { color: #64748b; }
 
+    /* A persistent brand mark for the platform itself -- once a league loads, its own
+       name takes over the big st.title() below (correctly; knowing which league you're
+       looking at matters most), but that shouldn't mean the app's own identity vanishes
+       entirely into a caption line easy to skim past. Small, quiet, and always in the
+       same spot regardless of which league is focused. */
+    .brand-eyebrow {
+        font-size: 0.78rem; font-weight: 600; letter-spacing: 0.09em; text-transform: uppercase;
+        color: #94a3b8; margin-bottom: 2px;
+    }
+
     /* League switcher trigger: it shares a row with the Refresh action button, and
        Streamlit's default centered-label style made it read as just another action
        rather than a picker. Left-align the label, right-align the chevron (like a
@@ -2061,12 +2071,15 @@ if not snapshot:
 
 # The active league's own name carries the page title once one is loaded — it's the
 # single most important thing to make obvious, since the sidebar list can otherwise
-# make it unclear which league is actually being viewed.
+# make it unclear which league is actually being viewed. The brand eyebrow above it
+# keeps the platform's own identity visible in the same spot regardless of which
+# league that is, rather than the league fully taking over the header.
 league = snapshot["league"]
 fmt = league_format_summary(league)
-st.title(f"🏈 {fmt['name']}")
+st.markdown('<div class="brand-eyebrow">🏈 Fantasy Football Command Center</div>', unsafe_allow_html=True)
+st.title(fmt["name"])
 st.caption(
-    f"Fantasy Football Command Center · {fmt['type']} · {fmt['teams']}-team · "
+    f"{fmt['type']} · {fmt['teams']}-team · "
     f"{'Superflex' if fmt['superflex'] else '1QB'} · {fmt['scoring']} · Taxi: {fmt['taxi_slots']}"
 )
 
