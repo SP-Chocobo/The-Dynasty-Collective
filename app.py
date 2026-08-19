@@ -350,7 +350,7 @@ TABLE_COLUMN_LABELS = {
     # The Sleeper-canonical free agent table prefixes every Draft Sharks enrichment
     # field with ds_ (see the fa_rows build below) so it never collides with the
     # native Sleeper fields on the same row — these are the display labels for those.
-    "ds_rank": "DS Rank", "ds_projection": "DS Proj", "ds_trade_value": "DS Trade Val",
+    "ds_rank": "DS Rank", "ds_fa_rank": "FA Rank", "ds_projection": "DS Proj", "ds_trade_value": "DS Trade Val",
     "ds_proj_3d": "DS 3D Proj", "ds_ros_3d": "DS ROS Proj", "ds_ceiling": "DS Ceiling",
     "ds_value_3d": "DS 3D Value+",
 }
@@ -1507,31 +1507,50 @@ else:
                     row[f"ds_{field}"] = ranking[field]
         finder = merger.merge_player(row["name"], position=row["position"], team=row["team"], df=merger.free_agents)
         if finder.get("matched"):
+            # Free Agent Finder's own rank is a distinct column from Dynasty Rankings'
+            # (ds_rank, above) — it's specifically a waiver-relevance rank for this
+            # exact pool, so it wins as the ADP-proxy sort key when both are present.
+            if "rank" in finder:
+                row["ds_fa_rank"] = finder["rank"]
             for field in ("roster_status", "proj_3d", "ros_3d", "ceiling", "value_3d"):
                 if field in finder:
                     row[f"ds_{field}"] = finder[field]
         fa_rows.append(row)
 
+    # search_rank stays out of the visible columns on purpose — it's a search-popularity
+    # signal (see the sort key below), not a fantasy-relevance one, so surfacing it as a
+    # column reads as more authoritative than it actually is. It still drives the silent
+    # last-resort tiebreak in the default sort, just never as something to visibly chase.
     fa_display_cols = [c for c in [
-        "name", "team", "position", "injury_status", "sleeper_proj", "search_rank",
-        "ds_rank", "ds_projection", "ds_trade_value", "ds_proj_3d", "ds_ros_3d", "ds_ceiling", "ds_value_3d",
+        "name", "team", "position", "injury_status",
+        "ds_fa_rank", "ds_rank", "sleeper_proj", "ds_ros_3d", "ds_projection", "ds_proj_3d",
+        "ds_trade_value", "ds_ceiling", "ds_value_3d",
     ] if any(c in row for row in fa_rows)]
 
     fa_sort = st.session_state.get("fa_sort")  # (col, "asc"/"desc") once a header's been clicked, else the smart default
     if fa_sort and fa_sort[0] in fa_display_cols:
         fa_rows = sort_rows_by_column(fa_rows, *fa_sort)
     else:
-        # Rank by Draft Sharks' own valuation when it's loaded (the best signal available);
-        # otherwise fall back to Sleeper's search_rank — the closest thing to an ADP-style
-        # relevance order Sleeper exposes natively — then native weekly projection, then
-        # name only as a last-resort deterministic tiebreak. Without this, an unloaded
-        # Draft Sharks pool would sort alphabetically, which buries actually-good pickups.
-        fa_rows.sort(key=lambda row: (
-            row.get("ds_value_3d") is None, -(row.get("ds_value_3d") or 0),
-            row.get("search_rank") if row.get("search_rank") is not None else float("inf"),
-            -(row.get("sleeper_proj") or 0),
-            row["name"],
-        ))
+        # Neither Sleeper nor Draft Sharks expose real ADP, so this uses the closest
+        # available proxy: Draft Sharks' own rank for this exact free-agent pool
+        # (falling back to its broader Dynasty Rankings rank), then rest-of-season
+        # projected points (falling back to the 1-year dynasty projection) as the
+        # second category. Sleeper's search_rank — a search-popularity signal, not a
+        # fantasy-relevance one (this is why retired stars used to outrank real
+        # sleepers here) — is demoted to a silent last-resort tiebreak, not a driver.
+        # An unloaded Draft Sharks pool falls all the way through to that tiebreak,
+        # which still beats plain alphabetical.
+        def _fa_default_sort_key(row: dict):
+            adp = row.get("ds_fa_rank", row.get("ds_rank"))
+            points = row.get("ds_ros_3d", row.get("ds_projection"))
+            return (
+                adp is None, adp if adp is not None else 0,
+                points is None, -(points if points is not None else 0),
+                row.get("search_rank") if row.get("search_rank") is not None else float("inf"),
+                row["name"],
+            )
+
+        fa_rows.sort(key=_fa_default_sort_key)
 
     with fcol2:
         if fa_rows:
@@ -1546,13 +1565,20 @@ else:
                             new_dir = "asc" if fa_sort[1] == "desc" else "desc"
                         else:
                             # Rank-like columns read naturally low-to-high; everything else high-to-low.
-                            new_dir = "asc" if col in ("name", "team", "position", "search_rank", "ds_rank") else "desc"
+                            new_dir = "asc" if col in ("name", "team", "position", "search_rank", "ds_rank", "ds_fa_rank") else "desc"
                         st.session_state.fa_sort = (col, new_dir)
                         st.rerun()
             fa_df = pd.DataFrame(fa_rows[:25])
             render_styled_table(
                 fa_df[fa_display_cols], pill_columns={"injury_status": _injury_pill_color}, render_header=False,
             )
+            if "sleeper_proj" in fa_df.columns:
+                proj_req = snapshot.get("projection_request") or snapshot.get("nfl_state") or {}
+                st.caption(
+                    f"'Sleeper Proj' = Sleeper's native {proj_req.get('season_type', 'regular')} week-"
+                    f"{proj_req.get('week', '?')} projection (unofficial endpoint). 'DS ROS Proj' = Draft "
+                    "Sharks' rest-of-season number, when that data is loaded."
+                )
         else:
             st.caption("No Sleeper free agents match that filter.")
 
