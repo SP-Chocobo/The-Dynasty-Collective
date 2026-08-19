@@ -361,6 +361,7 @@ for key, default in {
     "chat_history": [],
     "fa_staleness_nudged": set(),  # (league_id, freshest_date) already nudged about this session
     "left_league_ids": [],  # tracked leagues no longer returned by Sleeper's last sync, awaiting archive/delete/dismiss
+    "activity_log": [],  # persistent record of one-shot events (sync, upload, delete, ...) -- see notify()
     # API keys applied via the sidebar's "Connect Your Accounts" section. Take effect
     # immediately for this session and also get written into .env (see
     # save_parsed_keys_to_env), so they're picked up automatically on the next launch too.
@@ -398,6 +399,23 @@ def append_message(role: str, content: str, provider: Optional[str] = None, mode
     st.session_state.chat_history.append(msg)
     if st.session_state.selected_league_id:
         save_chat_history(st.session_state.selected_league_id, st.session_state.chat_history)
+
+
+ACTIVITY_LOG_MAX = 50
+
+
+def notify(level: str, text: str) -> None:
+    """Show the normal one-shot st.success/warning/error/info toast AND persist it to the
+    sidebar's Activity Log, since the toast itself vanishes on the very next rerun -- anyone
+    who glanced away for a second (or triggered another action right after) otherwise has no
+    way to see what an upload, sync, or delete actually did. Only call this for a genuine
+    one-shot event (something just happened), never for a persistent conditional warning that
+    would re-render -- and re-log -- on every single rerun while some ongoing state is true.
+    """
+    getattr(st, level)(text)
+    st.session_state.setdefault("activity_log", [])
+    st.session_state.activity_log.insert(0, {"ts": time.time(), "level": level, "text": text})
+    del st.session_state.activity_log[ACTIVITY_LOG_MAX:]
 
 
 def api_key_for(provider: str) -> Optional[str]:
@@ -1234,14 +1252,14 @@ def sync_leagues(username: str, *, announce: bool = True) -> bool:
         user = client.get_user(username)
     except SleeperAPIError as exc:
         if announce:
-            st.error(f"Couldn't reach Sleeper: {exc}")
+            notify("error", f"Couldn't reach Sleeper: {exc}")
         else:
             st.caption("Couldn't restore your last session automatically — click Sync Leagues to retry.")
         return False
 
     if not user:
         if announce:
-            st.error(f"No Sleeper user found for '{username}'")
+            notify("error", f"No Sleeper user found for '{username}'")
         else:
             st.caption("Couldn't restore your last session automatically — click Sync Leagues to retry.")
         return False
@@ -1261,7 +1279,7 @@ def sync_leagues(username: str, *, announce: bool = True) -> bool:
         st.session_state.leagues = client.get_user_leagues(user["user_id"])
     except SleeperAPIError as exc:
         if announce:
-            st.error(f"Found your Sleeper account, but couldn't fetch its leagues: {exc}")
+            notify("error", f"Found your Sleeper account, but couldn't fetch its leagues: {exc}")
         return False
     fresh_ids = {lg["league_id"] for lg in st.session_state.leagues}
     newly_left = previously_tracked - fresh_ids
@@ -1270,13 +1288,33 @@ def sync_leagues(username: str, *, announce: bool = True) -> bool:
 
     if announce:
         if not st.session_state.leagues:
-            st.warning("No leagues found for this user in the current season.")
+            notify("warning", "No leagues found for this user in the current season.")
         else:
-            st.success(f"Found {len(st.session_state.leagues)} league(s).")
+            notify("success", f"Found {len(st.session_state.leagues)} league(s).")
     return True
 
 
 with st.sidebar:
+    # First thing in the sidebar, not buried behind config sections -- the whole point is
+    # that a sync/upload/delete result should be checkable after the one-shot toast that
+    # announced it has already scrolled away on a later rerun.
+    with st.expander(f"🔔 Activity Log ({len(st.session_state.activity_log)})", expanded=False, key="sb_group_activity"):
+        st.caption(
+            "Every sync, upload, save, and delete this session, newest first — stays here "
+            "after the toast that announced it is gone."
+        )
+        if not st.session_state.activity_log:
+            st.caption("Nothing yet.")
+        else:
+            _activity_icon = {"success": "✅", "warning": "⚠️", "error": "🛑", "info": "ℹ️"}
+            with st.container(height=min(320, 44 * len(st.session_state.activity_log) + 8)):
+                for entry in st.session_state.activity_log:
+                    _at = datetime.fromtimestamp(entry["ts"]).strftime("%H:%M:%S")
+                    st.caption(f"{_activity_icon.get(entry['level'], '•')} {_at} — {entry['text']}")
+            if st.button("Clear log", key="clear_activity_log", use_container_width=True):
+                st.session_state.activity_log = []
+                st.rerun()
+
     with st.expander("🔑 Connections & Models", expanded=False, key="sb_group_connections"):
         st.caption(
             "Paste your keys in .env format (or upload a .txt/.env/.pdf with them), then click "
@@ -1310,7 +1348,7 @@ with st.sidebar:
 
             parsed = parse_credentials_blob(blob)
             if not parsed:
-                st.warning("Didn't recognize any keys or a username in that — check the format and try again.")
+                notify("warning", "Didn't recognize any keys or a username in that — check the format and try again.")
             else:
                 key_updates = {k: v for k, v in parsed.items() if k != "username"}
                 if key_updates:
@@ -1328,7 +1366,7 @@ with st.sidebar:
                 if "username" in parsed:
                     found.append("Sleeper username")
                     sync_leagues(parsed["username"])
-                st.success(f"Applied: {', '.join(found)}.")
+                notify("success", f"Applied: {', '.join(found)}.")
                 st.rerun()
 
         st.markdown("**Available Models**")
@@ -1345,7 +1383,7 @@ with st.sidebar:
                 for _p in _conn_configured:
                     _ids, _err = llm_engine.LIST_MODELS_BY_PROVIDER[_p](api_key_for(PROVIDER_KEY_FIELD[_p]))
                     if _err:
-                        st.warning(f"Couldn't fetch {bot_config.PROVIDER_LABELS[_p]} models: {_err}")
+                        notify("warning", f"Couldn't fetch {bot_config.PROVIDER_LABELS[_p]} models: {_err}")
                     else:
                         st.session_state[f"available_models_{_p}"] = sorted(_ids)
                 st.rerun()
@@ -1390,7 +1428,7 @@ with st.sidebar:
             if lc2.button("Delete", key=f"leftleague_delete_{lid}"):
                 delete_league_completely(lid)
                 st.session_state.left_league_ids.remove(lid)
-                st.success(f"Deleted local data for {league_name}.")
+                notify("success", f"Deleted local data for {league_name}.")
                 st.rerun()
             if lc3.button("Keep as-is", key=f"leftleague_dismiss_{lid}"):
                 st.session_state.left_league_ids.remove(lid)
@@ -1548,7 +1586,7 @@ with st.sidebar:
                                 )
                             _progress.empty()
                             bot_benchmark.save_report(_role, _report)
-                            st.success(f"Benchmark complete for {_info['label']}.")
+                            notify("success", f"Benchmark complete for {_info['label']}.")
                             st.rerun()
 
                     _bench_report = bot_benchmark.load_report(_role)
@@ -1571,7 +1609,7 @@ with st.sidebar:
                             ):
                                 bot_config.set_role_provider(_role, _cand["provider"])
                                 bot_config.set_role_model(_role, _cand["model"])
-                                st.success(f"Applied — {_info['label']} now runs on {_model_label}.")
+                                notify("success", f"Applied — {_info['label']} now runs on {_model_label}.")
                                 st.rerun()
 
                 st.markdown("<hr style='margin:6px 0;opacity:0.15'>", unsafe_allow_html=True)
@@ -1633,9 +1671,9 @@ with st.sidebar:
             submitted = st.form_submit_button("Upload")
 
         if submitted and scope_mode == "Specific league(s)" and not scope_league_ids:
-            st.warning("Select at least one league above, or switch back to Global.")
+            notify("warning", "Select at least one league above, or switch back to Global.")
         elif submitted and uploaded is None:
-            st.warning("Choose a file before clicking Upload.")
+            notify("warning", "Choose a file before clicking Upload.")
         elif submitted and uploaded is not None:
             data = bytes(uploaded.getbuffer())
             note = note.strip()
@@ -1655,7 +1693,7 @@ with st.sidebar:
                 else:
                     if kind == "free_agents" and not st.session_state.selected_league_id:
                         staging_path.unlink(missing_ok=True)
-                        st.error("This looks like a Free Agent Finder export, tied to one league's roster — select a league above first, then re-upload.")
+                        notify("error", "This looks like a Free Agent Finder export, tied to one league's roster — select a league above first, then re-upload.")
                         recognized = True  # handled (as a rejection), don't also file it as an attachment
                     else:
                         if kind == "free_agents":
@@ -1667,7 +1705,7 @@ with st.sidebar:
                         dest_dir.mkdir(parents=True, exist_ok=True)
                         staging_path.replace(dest_dir / uploaded.name)
                         st.session_state.data_merger.reload()
-                        st.success(f"Recognized as Draft Sharks data — saved to {location_label}.")
+                        notify("success", f"Recognized as Draft Sharks data — saved to {location_label}.")
                         recognized = True
                         if note:
                             # The data went into the projections pool, not the attachment store — but the
@@ -1676,7 +1714,7 @@ with st.sidebar:
 
             if not recognized:
                 save_attachment(uploaded.name, data, caption=note, league_ids=note_scope)
-                st.info(f"Didn't match a known Draft Sharks format — saved '{uploaded.name}' as reference material below for the panel to consider when you ask about it.")
+                notify("info", f"Didn't match a known Draft Sharks format — saved '{uploaded.name}' as reference material below for the panel to consider when you ask about it.")
 
         global_files = sorted(p.name for p in GLOBAL_PROJECTIONS_DIR.glob("*") if p.suffix in (".csv", ".json", ".pdf"))
         if global_files:
@@ -1784,7 +1822,7 @@ with st.sidebar:
                             if st.button("Confirm Delete", key=f"confirm_del_{lid}", use_container_width=True):
                                 removed = delete_league_completely(lid)
                                 st.session_state.pending_delete_league_id = None
-                                st.success(f"Deleted local data for {lg['name']} ({len(removed)} item(s) removed).")
+                                notify("success", f"Deleted local data for {lg['name']} ({len(removed)} item(s) removed).")
                                 st.rerun()
                         st.markdown("<hr style='margin:6px 0;opacity:0.15'>", unsafe_allow_html=True)
 
@@ -1916,9 +1954,9 @@ if st.session_state.leagues:
                     try:
                         with st.spinner("Syncing..."):
                             st.session_state.league_snapshot = client.sync_league(picked, client.get_players())
-                        st.success("League synced.")
+                        notify("success", "League synced.")
                     except SleeperAPIError as exc:
-                        st.error(f"Couldn't reach Sleeper: {exc}")
+                        notify("error", f"Couldn't reach Sleeper: {exc}")
 
 snapshot = st.session_state.league_snapshot
 if not snapshot:
@@ -2051,10 +2089,10 @@ if main_view == MATCHUP_VIEW:
                         if ds_name_input.strip():
                             save_alias(sel_name, ds_name_input.strip())
                             merger.reload()
-                            st.success(f"Mapped '{sel_name}' → '{ds_name_input.strip()}'.")
+                            notify("success", f"Mapped '{sel_name}' → '{ds_name_input.strip()}'.")
                             st.rerun()
                         else:
-                            st.error("Enter the name as Draft Sharks printed it first.")
+                            notify("error", "Enter the name as Draft Sharks printed it first.")
         else:
             st.caption("No Draft Sharks/War Room projections loaded yet — upload a CSV in the sidebar.")
 
@@ -2247,7 +2285,7 @@ elif main_view == MAINTENANCE_VIEW:
                     )
                 if st.button("Save Scope", key=f"save_scope_{item['filename']}"):
                     if edit_mode == "Specific league(s)" and not edit_league_ids:
-                        st.warning("Select at least one league, or switch to Global.")
+                        notify("warning", "Select at least one league, or switch to Global.")
                     else:
                         set_scope(item["filename"], edit_league_ids if edit_mode == "Specific league(s)" else None)
                         st.rerun()
@@ -2527,7 +2565,7 @@ dock_level_idx = DOCK_LEVELS.index(dock_level)
 # could clip below the Expand button's own rendered height (button + container padding),
 # which is exactly how it went missing in the first place. The px floor guarantees the
 # button always fits regardless of viewport height; vh still wins on anything reasonably tall.
-DOCK_HEIGHT_BY_LEVEL = {"collapsed": "max(9vh, 64px)", "partial": "46vh", "full": "94vh"}
+DOCK_HEIGHT_BY_LEVEL = {"collapsed": "max(9vh, 64px)", "partial": "40vh", "full": "94vh"}
 CHAT_HEIGHT_BY_LEVEL = {"partial": 130, "full": 480}
 QUESTION_HEIGHT_BY_LEVEL = {"partial": 90, "full": 200}
 
@@ -2864,8 +2902,8 @@ with st.container(key="debate_dock"):
                     ok, message = compact_league_history(st.session_state.selected_league_id, max_age_days=int(compact_days))
                 if ok:
                     st.session_state.chat_history = load_chat_history(st.session_state.selected_league_id)
-                    st.success(message)
+                    notify("success", message)
                     st.rerun()
                 else:
-                    st.warning(message)
+                    notify("warning", message)
 
