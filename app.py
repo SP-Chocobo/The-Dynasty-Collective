@@ -1545,7 +1545,15 @@ else:
         "ds_trade_value", "ds_ceiling", "ds_value_3d",
     ] if any(c in row for row in fa_rows)]
 
-    fa_sort = st.session_state.get("fa_sort")  # (col, "asc"/"desc") once a header's been clicked, else the smart default
+    if "fa_sort" not in st.session_state:
+        # Highlight the current week's native Sleeper projection by default — it's
+        # the one signal here guaranteed to exist without any Draft Sharks upload,
+        # and (usefully) a genuinely retired/off-roster player almost never has a
+        # real native projection at all (nothing to project), so this also pushes
+        # them toward the bottom on its own even when the retirement heuristic in
+        # player_universe.py doesn't catch a specific stale row.
+        st.session_state.fa_sort = ("sleeper_proj", "desc") if "sleeper_proj" in fa_display_cols else None
+    fa_sort = st.session_state.fa_sort  # (col, "asc"/"desc") — a header click overrides this default
     if fa_sort and fa_sort[0] in fa_display_cols:
         fa_rows = sort_rows_by_column(fa_rows, *fa_sort)
     else:
