@@ -130,6 +130,40 @@ st.markdown(
         color: #e5e7eb;
         border-color: #3a3c42 !important;
     }
+
+    /* Debate Studio dock: fixed to the bottom of the viewport (not "sticky" — sticky
+       only engages once its own container scrolls into range, which for the last
+       block on the page means "not until you've scrolled everything else past it".
+       Fixed pins it regardless of scroll position on either tab's content, which is
+       the actual ask. */
+    .st-key-debate_dock {
+        position: fixed;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        z-index: 999;
+        background: #16171a;
+        border-top: 1px solid #2a2b2e;
+        padding: 10px 24px 18px;
+        transition: left 0.2s ease;
+        box-shadow: 0 -4px 16px rgba(0,0,0,0.45);
+        /* The "full" tier's content can exceed a short viewport's height — without a
+           cap, a position:fixed/bottom:0 element just grows upward past the top of the
+           screen (unlike normal flow, nothing pushes back), taking the collapse button
+           with it and leaving no way to reach it. Confirmed live: it became unclickable,
+           hidden above y=0, under the browser-chrome toolbar. Capping height and letting
+           the dock scroll internally keeps every control reachable regardless of tier
+           or viewport size. */
+        max-height: 94vh;
+        overflow-y: auto;
+    }
+    /* position:fixed ignores the sidebar entirely (it's relative to the viewport, not
+       the document flow) — left:0 above would span full width including underneath
+       the sidebar, which then paints over the dock's left edge and hides whatever
+       text happens to land there. Only start the dock after the sidebar's actual
+       rendered width, tracking its expanded/collapsed state via :has(). */
+    body:has([data-testid="stSidebar"][aria-expanded="true"]) .st-key-debate_dock { left: 400px; }
+    body:has([data-testid="stSidebar"][aria-expanded="false"]) .st-key-debate_dock { left: 0; }
     </style>
     """,
     unsafe_allow_html=True,
@@ -1540,134 +1574,186 @@ else:
                         st.rerun()
 
 # ------------------------------------------------------------------ debate studio --
-# Persistent below the tab content, regardless of which one is active — a trade
-# question is just as relevant while looking at free agents as while looking at
-# your own roster, so this shouldn't only exist inside the Matchup tab.
+# A fixed dock at the bottom of the viewport, not just "below the tab content" —
+# regardless of which tab is active AND regardless of scroll position on that
+# tab's own content, so a question can be asked without hunting for the panel
+# first. Collapsible down to a slim bar for when it's not in use.
 
-st.markdown("---")
-st.subheader("Multi-Model Debate Studio")
-st.caption(
-    "Personas: 🟢 Quant (Claude) · 🟡 Beat Tracker (Gemini) · "
-    "🟣 Contrarian (ChatGPT) · 🔴 Moderator (Claude)"
+DOCK_LEVELS = ["collapsed", "partial", "full"]
+if "debate_dock_level" not in st.session_state:
+    st.session_state.debate_dock_level = "partial"  # visible but not dominating, by default
+dock_level = st.session_state.debate_dock_level
+dock_level_idx = DOCK_LEVELS.index(dock_level)
+CHAT_HEIGHT_BY_LEVEL = {"partial": 200, "full": 560}
+
+# The dock is position:fixed (see the <style> block up top), which takes it out of
+# normal page flow — without this, its expanded height would sit on top of whatever
+# content happens to be at the bottom of the page instead of pushing it up. Injected
+# per-render (not in the static stylesheet) since the right amount depends on which
+# of the three tiers (collapsed/partial/full) is currently showing.
+_dock_clearance = {"collapsed": 90, "partial": 420, "full": 780}[dock_level]
+st.markdown(
+    f"<style>[data-testid='stMain'] {{ padding-bottom: {_dock_clearance}px; }}</style>",
+    unsafe_allow_html=True,
 )
 
-btn_col, input_col = st.columns([1, 3])
-with btn_col:
-    quick_debate = st.button("Run Debate", use_container_width=True)
-    quick_claude = st.button("Ask Claude", use_container_width=True)
-    quick_gemini = st.button("Ask Gemini", use_container_width=True)
-    quick_gpt = st.button("Ask ChatGPT", use_container_width=True)
-with input_col:
-    question = st.text_input(
-        "Ask about a start/sit, trade, or waiver decision "
-        "(prefix with /debate, /claude, /gemini, or /gpt to route explicitly)",
-        key="question_input",
-    )
+with st.container(key="debate_dock"):
+    # A skewed-ratio st.columns([6, 1]) here (title next to the tier buttons) measured
+    # its width against the container's pre-CSS-shift size instead of its actual fixed-
+    # position width, pushing the second column entirely off-screen — confirmed live,
+    # not a guess. Equal-ish column ratios don't hit it, so title/buttons get their own
+    # rows instead of sharing one, sidestepping the bug rather than fighting it further.
+    st.subheader("Multi-Model Debate Studio")
+    st.caption(f"📂 {league.get('name', 'Unknown League')}")
 
-def resolve_command(text: str) -> tuple[str, str]:
-    for prefix, mode in (("/debate", "debate"), ("/claude", "claude"), ("/gemini", "gemini"), ("/gpt", "gpt")):
-        if text.strip().lower().startswith(prefix):
-            return mode, text.strip()[len(prefix):].strip()
-    return "debate", text.strip()
-
-trigger_mode = None
-trigger_question = None
-if quick_debate and question:
-    trigger_mode, trigger_question = "debate", question
-elif quick_claude and question:
-    trigger_mode, trigger_question = "claude", question
-elif quick_gemini and question:
-    trigger_mode, trigger_question = "gemini", question
-elif quick_gpt and question:
-    trigger_mode, trigger_question = "gpt", question
-elif question and st.session_state.get("_last_submitted") != question:
-    mode, cleaned = resolve_command(question)
-    trigger_mode, trigger_question = mode, cleaned
-
-if trigger_mode and trigger_question:
-    st.session_state["_last_submitted"] = question
-    context = build_context(snapshot, roster_table if roster else [], player_universe, trigger_question)
-    append_message("user", trigger_question)
-    maybe_nudge_stale_free_agents(st.session_state.selected_league_id, st.session_state.data_merger)
-
-    with st.spinner("Consulting the front office..."):
-        if trigger_mode == "claude":
-            append_message("quant", llm_engine.ask_quant(context, trigger_question, api_key=api_key_for("anthropic")))
-        elif trigger_mode == "gemini":
-            append_message("beat", llm_engine.ask_beat(context, trigger_question, api_key=api_key_for("gemini")))
-        elif trigger_mode == "gpt":
-            beat_reply = ""
-            quant_reply = ""
-            append_message("contrarian", llm_engine.ask_contrarian(
-                context, trigger_question, quant_reply, beat_reply, api_key=api_key_for("openai")
-            ))
-        else:
-            result = llm_engine.run_debate(
-                context, trigger_question,
-                claude_key=api_key_for("anthropic"),
-                gemini_key=api_key_for("gemini"),
-                openai_key=api_key_for("openai"),
-            )
-            append_message("quant", result.quant)
-            append_message("beat", result.beat)
-            append_message("contrarian", result.contrarian)
-            append_message("moderator", result.moderator)
-            decision_log.log_decision(
-                st.session_state.selected_league_id, trigger_question, result.verdict, result.moderator
-            )
-
-st.markdown("---")
-badge_map = {
-    "user": ("You", "badge-user"),
-    "quant": ("QUANT ANALYST · Claude", "badge-quant"),
-    "beat": ("BEAT TRACKER · Gemini", "badge-beat"),
-    "contrarian": ("CONTRARIAN · ChatGPT", "badge-contrarian"),
-    "moderator": ("MODERATOR VERDICT · Claude", "badge-moderator"),
-    "summary": ("🧠 MEMORY SUMMARY", "badge-summary"),
-    "notice": ("⚠️ NOTICE", "badge-notice"),
-}
-for msg in reversed(st.session_state.chat_history[-40:]):
-    label, cls = badge_map.get(msg["role"], (msg["role"], "badge-user"))
-    st.markdown(f'<span class="badge {cls}">{label}</span>', unsafe_allow_html=True)
-    st.markdown(f'<div class="agent-block">{msg["content"]}</div>', unsafe_allow_html=True)
-
-if st.session_state.chat_history:
-    hcol1, hcol2, hcol3 = st.columns([1, 1, 1])
-    if hcol1.button("Clear Chat History"):
-        st.session_state.chat_history = []
-        save_chat_history(st.session_state.selected_league_id, [])
-        st.rerun()
-    compact_days = hcol2.number_input("Compact older than (days)", min_value=1, value=30, step=1, key="compact_days")
-    if hcol3.button("🧹 Compact History"):
-        with st.spinner(f"Summarizing turns older than {compact_days} days..."):
-            ok, message = compact_league_history(st.session_state.selected_league_id, max_age_days=int(compact_days))
-        if ok:
-            st.session_state.chat_history = load_chat_history(st.session_state.selected_league_id)
-            st.success(message)
+    # One tier per press, not a straight open/closed toggle — collapsed shows only
+    # "expand", full shows only "collapse", partial (the middle tier) shows both. Four
+    # equal narrow slots (not stretched to the button count) keep the buttons a
+    # consistent width across all three tiers instead of one button going full-width
+    # whenever it's alone.
+    tier_cols = st.columns(4)
+    tier_col_idx = 0
+    if dock_level != "full":
+        if tier_cols[tier_col_idx].button("▲ Expand", key="dock_expand", use_container_width=True):
+            st.session_state.debate_dock_level = DOCK_LEVELS[dock_level_idx + 1]
             st.rerun()
-        else:
-            st.warning(message)
+        tier_col_idx += 1
+    if dock_level != "collapsed":
+        if tier_cols[tier_col_idx].button("▼ Collapse", key="dock_collapse", use_container_width=True):
+            st.session_state.debate_dock_level = DOCK_LEVELS[dock_level_idx - 1]
+            st.rerun()
 
-decisions = decision_log.load_decisions(st.session_state.selected_league_id)
-if decisions:
-    with st.expander(f"📋 Decision Log ({len(decisions)})"):
+    if dock_level != "collapsed":
         st.caption(
-            "Every Moderator verdict this league has gotten, newest first — "
-            "the record to check back against once picks are made or a trade lands."
+            "Personas: 🟢 Quant (Claude) · 🟡 Beat Tracker (Gemini) · "
+            "🟣 Contrarian (ChatGPT) · 🔴 Moderator (Claude)"
         )
-        log_df = pd.DataFrame(
-            [
-                {
-                    "Date": d["date"],
-                    "Question": d["question"],
-                    "Call": d.get("recommendation", ""),
-                    "Conviction": d.get("conviction", ""),
-                    "Reason": d.get("reason", ""),
-                    "Risk": d.get("risk", ""),
-                    "Recon": d.get("recon", ""),
-                    "Price Ceiling": d.get("price_ceiling", ""),
-                }
-                for d in reversed(decisions)
-            ]
-        )
-        st.dataframe(log_df, use_container_width=True, hide_index=True)
+
+        btn_col, input_col = st.columns([1, 3])
+        with btn_col:
+            quick_debate = st.button("Run Debate", use_container_width=True)
+            quick_claude = st.button("Ask Claude", use_container_width=True)
+            quick_gemini = st.button("Ask Gemini", use_container_width=True)
+            quick_gpt = st.button("Ask ChatGPT", use_container_width=True)
+        with input_col:
+            # A text_area sized to roughly match the 4-button stack's height, not a
+            # single-line text_input — the mismatched heights looked off. Trade-off:
+            # text_area submits on Ctrl+Enter or losing focus, not a plain Enter.
+            question = st.text_area(
+                "Ask about a start/sit, trade, or waiver decision "
+                "(prefix with /debate, /claude, /gemini, or /gpt to route explicitly)",
+                key="question_input",
+                height=200,
+            )
+
+        def resolve_command(text: str) -> tuple[str, str]:
+            for prefix, mode in (("/debate", "debate"), ("/claude", "claude"), ("/gemini", "gemini"), ("/gpt", "gpt")):
+                if text.strip().lower().startswith(prefix):
+                    return mode, text.strip()[len(prefix):].strip()
+            return "debate", text.strip()
+
+        trigger_mode = None
+        trigger_question = None
+        if quick_debate and question:
+            trigger_mode, trigger_question = "debate", question
+        elif quick_claude and question:
+            trigger_mode, trigger_question = "claude", question
+        elif quick_gemini and question:
+            trigger_mode, trigger_question = "gemini", question
+        elif quick_gpt and question:
+            trigger_mode, trigger_question = "gpt", question
+        elif question and st.session_state.get("_last_submitted") != question:
+            mode, cleaned = resolve_command(question)
+            trigger_mode, trigger_question = mode, cleaned
+
+        if trigger_mode and trigger_question:
+            st.session_state["_last_submitted"] = question
+            context = build_context(snapshot, roster_table if roster else [], player_universe, trigger_question)
+            append_message("user", trigger_question)
+            maybe_nudge_stale_free_agents(st.session_state.selected_league_id, st.session_state.data_merger)
+
+            with st.spinner("Consulting the front office..."):
+                if trigger_mode == "claude":
+                    append_message("quant", llm_engine.ask_quant(context, trigger_question, api_key=api_key_for("anthropic")))
+                elif trigger_mode == "gemini":
+                    append_message("beat", llm_engine.ask_beat(context, trigger_question, api_key=api_key_for("gemini")))
+                elif trigger_mode == "gpt":
+                    beat_reply = ""
+                    quant_reply = ""
+                    append_message("contrarian", llm_engine.ask_contrarian(
+                        context, trigger_question, quant_reply, beat_reply, api_key=api_key_for("openai")
+                    ))
+                else:
+                    result = llm_engine.run_debate(
+                        context, trigger_question,
+                        claude_key=api_key_for("anthropic"),
+                        gemini_key=api_key_for("gemini"),
+                        openai_key=api_key_for("openai"),
+                    )
+                    append_message("quant", result.quant)
+                    append_message("beat", result.beat)
+                    append_message("contrarian", result.contrarian)
+                    append_message("moderator", result.moderator)
+                    decision_log.log_decision(
+                        st.session_state.selected_league_id, trigger_question, result.verdict, result.moderator
+                    )
+
+        badge_map = {
+            "user": ("You", "badge-user"),
+            "quant": ("QUANT ANALYST · Claude", "badge-quant"),
+            "beat": ("BEAT TRACKER · Gemini", "badge-beat"),
+            "contrarian": ("CONTRARIAN · ChatGPT", "badge-contrarian"),
+            "moderator": ("MODERATOR VERDICT · Claude", "badge-moderator"),
+            "summary": ("🧠 MEMORY SUMMARY", "badge-summary"),
+            "notice": ("⚠️ NOTICE", "badge-notice"),
+        }
+        # Bounded, independently-scrolling — a fixed dock can't just grow with the
+        # transcript or it eats the whole screen. use_container_width on the block
+        # below isn't a thing; st.container(height=...) is Streamlit's own native
+        # scroll-region primitive, so lean on that instead of another CSS hack.
+        with st.container(height=CHAT_HEIGHT_BY_LEVEL[dock_level]):
+            for msg in reversed(st.session_state.chat_history[-40:]):
+                label, cls = badge_map.get(msg["role"], (msg["role"], "badge-user"))
+                st.markdown(f'<span class="badge {cls}">{label}</span>', unsafe_allow_html=True)
+                st.markdown(f'<div class="agent-block">{msg["content"]}</div>', unsafe_allow_html=True)
+
+        if st.session_state.chat_history:
+            hcol1, hcol2, hcol3 = st.columns([1, 1, 1])
+            if hcol1.button("Clear Chat History"):
+                st.session_state.chat_history = []
+                save_chat_history(st.session_state.selected_league_id, [])
+                st.rerun()
+            compact_days = hcol2.number_input("Compact older than (days)", min_value=1, value=30, step=1, key="compact_days")
+            if hcol3.button("🧹 Compact History"):
+                with st.spinner(f"Summarizing turns older than {compact_days} days..."):
+                    ok, message = compact_league_history(st.session_state.selected_league_id, max_age_days=int(compact_days))
+                if ok:
+                    st.session_state.chat_history = load_chat_history(st.session_state.selected_league_id)
+                    st.success(message)
+                    st.rerun()
+                else:
+                    st.warning(message)
+
+        decisions = decision_log.load_decisions(st.session_state.selected_league_id)
+        if decisions:
+            with st.expander(f"📋 Decision Log ({len(decisions)})"):
+                st.caption(
+                    "Every Moderator verdict this league has gotten, newest first — "
+                    "the record to check back against once picks are made or a trade lands."
+                )
+                log_df = pd.DataFrame(
+                    [
+                        {
+                            "Date": d["date"],
+                            "Question": d["question"],
+                            "Call": d.get("recommendation", ""),
+                            "Conviction": d.get("conviction", ""),
+                            "Reason": d.get("reason", ""),
+                            "Risk": d.get("risk", ""),
+                            "Recon": d.get("recon", ""),
+                            "Price Ceiling": d.get("price_ceiling", ""),
+                        }
+                        for d in reversed(decisions)
+                    ]
+                )
+                st.dataframe(log_df, use_container_width=True, hide_index=True)
