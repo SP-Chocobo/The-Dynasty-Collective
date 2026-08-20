@@ -230,6 +230,22 @@ st.markdown(
         transform: scale(0.96);
         filter: brightness(0.9);
     }
+    /* Popover triggers never got the 44px touch-target sizing above -- they're a different
+       component (stPopoverButton, not .stButton), so the app-wide rule never reached them even
+       though the league switcher is a popover trigger sitting right next to a plain st.button
+       (Refresh) that already got it. */
+    [data-testid="stPopoverButton"] {
+        min-height: 44px;
+    }
+    /* Same gap for the main Matchup/Roster Maintenance/League page nav specifically -- it's a
+       segmented_control, rendered through stButtonGroup rather than .stButton, so it's stayed
+       at Streamlit's smaller default this whole time despite being the single most-tapped
+       control in the app. Scoped to this one control (not every segmented_control) since the
+       others are occasional secondary settings, not primary navigation. */
+    .st-key-main_view [data-testid="stButtonGroup"] button {
+        min-height: 44px;
+        font-weight: 600;
+    }
 
     /* The Free Agents table's clickable sort header (real st.button()s, since a
        static HTML <th> can't call back into Python) needs to read as a table
@@ -1220,11 +1236,15 @@ def build_context(
         "Only call special attention to it if it's genuinely material to the question (e.g. no numeric grounding "
         "at all for a close trade call) — don't caveat every single response with the same boilerplate."
     )
-    lines.append(f"  - Draft Sharks Dynasty Rankings: {'loaded' if merger.is_loaded else 'NOT LOADED'}")
+    # Dynasty Rankings and the Trade Value Chart both ship as a committed baseline (see
+    # DataMerger/GLOBAL_PROJECTIONS_DIR) -- is_loaded/is_trade_values_loaded are unconditionally
+    # true now regardless of any live upload, so those two never actually read NOT LOADED here
+    # anymore. Free Agent Finder has no baseline (it's tied to one league's live roster), so
+    # that one's still a real either/or.
+    lines.append("  - Draft Sharks Dynasty Rankings: loaded")
     lines.append(f"  - Draft Sharks Free Agent Finder: {'loaded' if merger.is_free_agents_loaded else 'NOT LOADED'}")
     lines.append(
-        f"  - Draft Sharks Trade Value Chart (rookie pick slot values, future pick values, player values): "
-        f"{'loaded' if merger.is_trade_values_loaded else 'NOT LOADED — if a question needs a specific pick or player price, say so and suggest uploading it (Tools > Trade Value Chart on draftsharks.com)'}"
+        "  - Draft Sharks Trade Value Chart (rookie pick slot values, future pick values, player values): loaded"
     )
     lines.append(f"  - Sleeper native weekly projections: {'loaded' if snapshot.get('projections') else 'NOT AVAILABLE this sync'}")
 
@@ -1337,15 +1357,14 @@ def build_context(
     # question per team.
     depth = positional_depth(player_universe, merger)
     if depth:
-        has_values = merger.is_loaded
+        # merger.is_loaded is unconditionally true now (the committed baseline covers Dynasty
+        # Rankings regardless of any live upload -- see DataMerger/GLOBAL_PROJECTIONS_DIR), so
+        # this no longer needs a body-count-only fallback branch for the case where it isn't.
         lines.append(
-            "\nLEAGUE-WIDE POSITIONAL DEPTH (per team: rostered player COUNT at each position"
-            + (", with total Draft Sharks trade value in parens where matched -- weigh the value "
-               "figure over the count: three replacement-level backups and three stacked stars both "
-               "read as \"3\" by count alone, but are not remotely the same depth." if has_values else
-               " -- no Draft Sharks data loaded, so this is body count only; two teams with the same "
-               "count here can still differ hugely in actual talent")
-            + "):"
+            "\nLEAGUE-WIDE POSITIONAL DEPTH (per team: rostered player COUNT at each position, with "
+            "total Draft Sharks trade value in parens where matched -- weigh the value figure over "
+            "the count: three replacement-level backups and three stacked stars both read as \"3\" "
+            "by count alone, but are not remotely the same depth):"
         )
         for team_label, positions in depth.items():
             parts = []
@@ -2948,16 +2967,16 @@ elif main_view == MAINTENANCE_VIEW:
     sources_used = {r["source"] for r in trade_send_rows + trade_receive_rows if r["source"]}
 
     if not sources_used and not (trade_send_rows or trade_receive_rows):
-        st.caption(
-            "No Draft Sharks data loaded, so there's nothing to price either side against yet — "
-            "upload Dynasty Rankings or a Trade Value Chart under Data Uploads. The buttons below "
-            "still work without it; the panel can reason about a trade from market judgment alone."
-        )
+        # Draft Sharks data itself is never actually missing (the committed baseline covers
+        # Dynasty Rankings and the Trade Value Chart regardless of any live upload) -- an empty
+        # state here just means nothing's typed in either box yet.
+        st.caption("Type a player or pick on either side above to see it priced.")
     elif trade_send_rows or trade_receive_rows:
         if not sources_used:
             st.caption(
-                "No Draft Sharks data loaded yet, so nothing below is priced — upload Dynasty "
-                "Rankings or a Trade Value Chart under Data Uploads to get numbers."
+                "Nothing below matched loaded data, so it's unpriced — check for a typo, or it's "
+                "a player/pick not in what's loaded. The buttons below still work without a price; "
+                "the panel can reason about a trade from market judgment alone."
             )
         elif len(sources_used) > 1:
             st.caption(
@@ -3241,18 +3260,15 @@ else:
     _depth = positional_depth(player_universe, st.session_state.data_merger)
     if _depth:
         st.markdown("**League-Wide Positional Depth**")
-        _has_values = st.session_state.data_merger.is_loaded
+        # data_merger.is_loaded is unconditionally true now (the committed baseline covers
+        # Dynasty Rankings regardless of any live upload), so this no longer needs a
+        # body-count-only fallback caption for the case where it isn't.
         st.caption(
             "How many rostered players (starters + bench + taxi/IR) each team has at each "
             "position — a scan for who's thin or stacked somewhere, without asking the bots "
-            + (
-                "team-by-team. Value in parens is that position's total Draft Sharks trade "
-                "value — weigh it over the raw count: a pile of backups and three stacked "
-                "stars can both show \"3.\""
-                if _has_values else
-                "team-by-team. This is body count only (no Draft Sharks data loaded) — two "
-                "teams tied here can still differ hugely in actual talent."
-            )
+            "team-by-team. Value in parens is that position's total Draft Sharks trade "
+            "value — weigh it over the raw count: a pile of backups and three stacked "
+            "stars can both show \"3.\""
         )
         _position_order = ["QB", "RB", "WR", "TE", "K", "DEF", "LB", "DL", "DB"]
         _positions_present = [p for p in _position_order if any(p in positions for positions in _depth.values())]
