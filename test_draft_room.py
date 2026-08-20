@@ -8,6 +8,7 @@ CompositeScoreOnRealBaselineTests, since these bugs only ever showed up against 
 a small synthetic fixture didn't have enough depth to reproduce either one.
 """
 
+import time
 import unittest
 
 import pandas as pd
@@ -421,6 +422,104 @@ class InvariantTests(unittest.TestCase):
             self.assertAlmostEqual(
                 row["final_score"], row["bpa"] + dr.UPSIDE_GROWTH_WEIGHT * row["growth_signal"], delta=0.1,
             )
+
+
+class EligibilityBonusWiringTests(unittest.TestCase):
+    """End-to-end coverage for lineup_optimizer.py's wiring into team_acquisition_value --
+    not just the standalone module (see test_lineup_optimizer.py's own suite), but through
+    the real compute_draft_board pipeline: a real roster's actual drafted players, a real
+    league's actual roster_positions, and a real Draft-Sharks-matched candidate."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.merger, cls.players_db = _build_pool_players_db(("WR", "DB"))
+
+    def test_multi_eligible_candidate_gets_a_positive_bonus_when_it_unlocks_an_open_idp_flex(self):
+        league = {
+            "roster_positions": ["WR", "WR", "FLEX", "IDP_FLEX", "BN", "BN"],
+            "total_rosters": 12, "settings": {"type": 2},
+        }
+        wr_ids = [pid for pid, info in self.players_db.items() if info["position"] == "WR"]
+        # Fill WR, WR, FLEX with three ordinary single-position WRs -- no open WR/FLEX room left.
+        roster_wrs = wr_ids[:3]
+        picks = [{"roster_id": "1", "player_id": pid, "round": 1} for pid in roster_wrs]
+
+        # A Travis-Hunter-shaped candidate: a real WR the app already has a Draft Sharks match
+        # for, flagged (via a players_db copy, same isolation convention as
+        # test_injury_never_increases_universal_value above) as also DB-eligible.
+        candidate_id = wr_ids[3]
+        control_id = wr_ids[4]  # an ordinary single-position WR, otherwise treated identically
+        players_db = dict(self.players_db)
+        players_db[candidate_id] = dict(players_db[candidate_id], fantasy_positions=["WR", "DB"])
+
+        board = dr.compute_draft_board(
+            self.merger, players_db, picks, my_roster_id="1", league=league, mode="balanced",
+        )
+        by_id = {r["player_id"]: r for r in board}
+        self.assertGreater(
+            by_id[candidate_id]["eligibility_bonus"], 0.0,
+            "WR/DB eligibility should unlock the open IDP_FLEX slot a WR-only player of similar value could not reach",
+        )
+        self.assertEqual(by_id[control_id]["eligibility_bonus"], 0.0)
+        # The wiring invariant itself: final_score must equal the documented three-term sum,
+        # not a silently-dropped term.
+        row = by_id[candidate_id]
+        self.assertAlmostEqual(
+            row["final_score"], row["universal_value"] + row["need_bonus"] + row["eligibility_bonus"], places=2,
+        )
+
+    def test_full_board_stays_fast_even_when_most_candidates_are_multi_eligible(self):
+        # eligibility_bonus solves a real assignment problem per candidate row -- this guards
+        # against the exact class of regression draft_strategy.py's own perf bug was (see that
+        # module's docstring): a stress scenario where roughly a third of a ~175-player pool
+        # is multi-eligible (skips eligibility_bonus's single-position fast path) against a
+        # roster that already has 15 drafted players to optimize against.
+        merger, players_db = self.merger, {}
+        proj = merger.projections
+        pid = 0
+        for pos in ("QB", "RB", "WR", "TE"):
+            sub = proj[proj["position"] == pos].sort_values("trade_value", ascending=False).head(80)
+            for _, row in sub.iterrows():
+                pid += 1
+                parts = row["norm_name"].split()
+                fantasy_positions = ["RB", "WR", "TE"] if pos in ("RB", "WR", "TE") and pid % 3 == 0 else [pos]
+                players_db[str(pid)] = {
+                    "first_name": parts[0].upper(), "last_name": " ".join(parts[1:]).title(),
+                    "position": pos, "fantasy_positions": fantasy_positions, "team": row.get("team"),
+                }
+        league = {
+            "roster_positions": ["QB", "RB", "RB", "WR", "WR", "WR", "TE", "FLEX", "FLEX", "BN", "BN", "BN", "BN", "BN"],
+            "total_rosters": 12, "settings": {"type": 2}, "scoring_settings": {},
+        }
+        board_ids = list(players_db.keys())
+        picks = [{"roster_id": "1", "player_id": pid, "round": 1} for pid in board_ids[:15]]
+        t0 = time.time()
+        dr.compute_draft_board(merger, players_db, picks, my_roster_id="1", league=league, mode="balanced")
+        elapsed = time.time() - t0
+        self.assertLess(elapsed, 15.0, f"compute_draft_board took {elapsed:.1f}s with heavy multi-eligibility -- eligibility_bonus regression")
+
+    def test_eligibility_bonus_never_exceeds_the_candidates_own_trade_value(self):
+        # Self-limiting by construction (see eligibility_bonus's own docstring) -- no
+        # NEED_BONUS_MAX-style cap exists because the marginal contribution of a single
+        # player can never exceed his own value. Assert that invariant directly against the
+        # same open-IDP_FLEX scenario, where the bonus is at its largest plausible size.
+        league = {
+            "roster_positions": ["WR", "WR", "FLEX", "IDP_FLEX", "BN", "BN"],
+            "total_rosters": 12, "settings": {"type": 2},
+        }
+        wr_ids = [pid for pid, info in self.players_db.items() if info["position"] == "WR"]
+        roster_wrs = wr_ids[:3]
+        picks = [{"roster_id": "1", "player_id": pid, "round": 1} for pid in roster_wrs]
+        candidate_id = wr_ids[3]
+        players_db = dict(self.players_db)
+        players_db[candidate_id] = dict(players_db[candidate_id], fantasy_positions=["WR", "DB"])
+
+        board = dr.compute_draft_board(
+            self.merger, players_db, picks, my_roster_id="1", league=league, mode="balanced",
+        )
+        row = next(r for r in board if r["player_id"] == candidate_id)
+        match = self.merger.merge_player(row["name"], position="WR", team=row["team"])
+        self.assertLessEqual(row["eligibility_bonus"], match["trade_value"] + 1e-6)
 
 
 if __name__ == "__main__":

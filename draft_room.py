@@ -26,7 +26,7 @@ watching the draft) with "how good is this player FOR THIS ROSTER" (inherently t
 specific). Kept as two explicit numbers:
 
     universal_value = BPA + time_horizon_adj + risk_adj
-    team_acquisition_value = universal_value + need_bonus
+    team_acquisition_value = universal_value + need_bonus + eligibility_bonus
 
 BPA is Value Over Replacement in raw projected POINTS (never Draft Sharks' trade_value/
 composite scale directly -- see build_available_pool's docstring on why IDP's real points
@@ -92,6 +92,22 @@ flipping a large universal-value gap (see NEED_BONUS_MAX and test_draft_room.py'
 tests) -- that invariant was true and enforced in the first pass too; only the per-position
 distribution of the bonus itself needed fixing.
 
+eligibility_bonus is the other team-specific term, added alongside need_bonus rather than
+replacing it -- they answer different questions. need_bonus asks "does this roster lack this
+POSITION"; eligibility_bonus asks "does this specific player's multi-position eligibility
+(WR/DB, TE/FLEX, whatever this league's own roster_positions and Sleeper's fantasy_positions
+actually allow) unlock a genuinely better starting lineup than a single-position player of
+identical value could." Computed via lineup_optimizer.py's exact assignment-problem solver
+(scipy's linear_sum_assignment, not a greedy heuristic -- see that module's own docstring for
+why greedy is a real trap here) against THIS roster's actual drafted players, comparing the
+best lineup with the candidate's full eligible-position set against the best lineup with only
+his single primary position. A single-position player's bonus is exactly 0 by construction
+(both calls solve an identical problem), so this never touches a player the rest of this
+module already scores correctly. Unlike need_bonus it is NOT capped -- it's a real marginal-
+value number, self-limiting because a candidate can never contribute more than his own value
+(the best case is unlocking a genuinely empty slot outright), not a heuristic nudge that needs
+an artificial ceiling.
+
 confidence is a SEPARATE number from value entirely, and now built from bpa_source directly
 (cheap -- no extra per-player lookup) rather than composite-score cross-source agreement,
 since removing market_adj also removed the only reason this module called
@@ -123,8 +139,9 @@ from typing import Optional
 
 import pandas as pd
 
+import lineup_optimizer as lo
 from data_merger import DataMerger, name_key, normalize_name
-from player_universe import FLEX_SLOT_POSITIONS, FANTASY_POSITIONS, league_usable_positions, player_name, player_position, score_projection
+from player_universe import FLEX_SLOT_POSITIONS, FANTASY_POSITIONS, league_usable_positions, player_eligible_positions, player_name, player_position, score_projection
 
 # Sleeper's projection endpoint is per-week, not season-long (see sleeper_client.py's
 # get_weekly_projections) -- for positions Draft Sharks doesn't project at all (currently
@@ -392,6 +409,35 @@ def _team_starters_filled(picks: list[dict], players_db: dict[str, dict], roster
     return filled
 
 
+def _team_roster_players(
+    picks: list[dict], players_db: dict[str, dict], roster_id, merger: DataMerger,
+) -> list[dict]:
+    """This roster's own drafted players as lineup_optimizer rows ({"id","value","eligible"})
+    -- what eligibility_bonus needs to solve "best lineup with/without this candidate" for a
+    REAL roster, not a hypothetical one. Value here is Draft Sharks' own trade_value (already
+    a 0-100, scarcity-adjusted scale -- see data_merger.py's merge_player docstring), not bpa/
+    VOR: bpa only exists for the currently AVAILABLE pool this call is scoring, and a roster's
+    already-drafted players aren't in it. trade_value is real source data this module already
+    trusts elsewhere (the IDP fallback VOR path), not a new number invented for this purpose --
+    and using it for both the roster and the pool candidate (see compute_draft_board) keeps
+    the assignment problem's units consistent on both sides."""
+    players = []
+    for pick in picks:
+        if str(pick.get("roster_id")) != str(roster_id):
+            continue
+        player_id = str(pick.get("player_id"))
+        info = players_db.get(player_id)
+        if not info:
+            continue
+        name = player_name(info, player_id)
+        match = merger.merge_player(name, position=player_position(info), team=info.get("team"))
+        value = match.get("trade_value")
+        if value is None:
+            continue
+        players.append({"id": player_id, "value": float(value), "eligible": player_eligible_positions(info)})
+    return players
+
+
 def _confidence(bpa_source: str) -> float:
     """0-100: how much to trust this player's value, separate from the value itself -- a
     direct encoding of which anchor actually produced bpa (see CONFIDENCE_BY_SOURCE and the
@@ -445,10 +491,10 @@ def compute_draft_board(
 ) -> list[dict]:
     """The live recommendation board: every undrafted, Draft-Sharks-valued player, ranked
     best pick first, with every scoring layer broken out separately -- universal_value
-    (what any manager at this draft would compute), need_bonus (the only team-specific
-    term), the final team_acquisition_value used to rank, and confidence (never folded into
-    either value). See module docstring for why value is split into two numbers instead of
-    one. mode: "auto" switches to upside scoring once the current round reaches
+    (what any manager at this draft would compute), need_bonus and eligibility_bonus (the two
+    team-specific terms), the final team_acquisition_value used to rank, and confidence (never
+    folded into either value). See module docstring for why value is split into two numbers
+    instead of one. mode: "auto" switches to upside scoring once the current round reaches
     upside_round, "balanced" or "upside" force one or the other regardless of round (the
     toggle this was built for -- see app.py's Draft Room view). pool_scope: "all" (default),
     "rookies_only" (the annual rookie draft), or "veterans_only" -- see
@@ -544,6 +590,7 @@ def compute_draft_board(
     my_filled = _team_starters_filled(picks, players_db, my_roster_id)
     slot_counts = starter_slot_counts(roster_positions)
     dedicated_counts = dedicated_slot_counts(roster_positions)
+    my_roster_players = _team_roster_players(picks, players_db, my_roster_id, merger)
 
     def score_row(row: pd.Series) -> pd.Series:
         position = row["position"]
@@ -575,13 +622,26 @@ def compute_draft_board(
             NEED_BONUS_MAX,
         ), 2)
 
-        team_acquisition_value = round(universal_value + need_bonus, 2)
+        # The second (and only other) team-specific term -- what a real multi-position
+        # optimal lineup, computed against THIS roster's actual players, says his flexibility
+        # is worth beyond his raw value. Self-limiting rather than capped like need_bonus (see
+        # eligibility_bonus's own docstring): it can never exceed his own trade_value, since
+        # the best he can ever do is fill a genuinely open slot outright.
+        eb = lo.eligibility_bonus(
+            my_roster_players, candidate_id=row["player_id"], candidate_value=row["trade_value"],
+            candidate_full_eligible=player_eligible_positions(players_db.get(str(row["player_id"])) or {}),
+            candidate_primary_position=position, roster_positions=roster_positions,
+        )
+        eligibility_bonus_value = eb["eligibility_bonus"]
+
+        team_acquisition_value = round(universal_value + need_bonus + eligibility_bonus_value, 2)
 
         return pd.Series({
             "time_horizon_adj": round(time_horizon_adj, 2),
             "risk_adj": risk_adj,
             "universal_value": universal_value,
             "need_bonus": need_bonus,
+            "eligibility_bonus": eligibility_bonus_value,
             "final_score": team_acquisition_value,
         })
 
@@ -592,5 +652,5 @@ def compute_draft_board(
     return results[[
         "player_id", "name", "position", "team", "injury_status", "bpa", "bpa_source",
         "time_horizon_adj", "risk_adj", "universal_value",
-        "need_bonus", "confidence", "final_score", "mode",
+        "need_bonus", "eligibility_bonus", "confidence", "final_score", "mode",
     ]].to_dict("records")

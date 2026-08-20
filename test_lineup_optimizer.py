@@ -127,6 +127,19 @@ class EligibilityBonusTests(unittest.TestCase):
         self.assertEqual(result["marginal_value_primary_position_only"], 0.0, "WR-only, he shouldn't crack an already-full WR/FLEX room")
         self.assertEqual(result["marginal_value_full_eligibility"], 70.0, "DB eligibility should let him fill the open IDP_FLEX slot")
 
+    def test_fast_path_for_single_position_players_still_reports_a_real_marginal_value(self):
+        # candidate_full_eligible == {primary position} takes the short-circuit branch inside
+        # eligibility_bonus (skips solving the assignment problem twice for an already-known
+        # zero bonus) -- this must still report the real marginal value, not a stubbed 0.
+        roster = [_player("qb1", 80, {"QB"})]
+        result = lo.eligibility_bonus(
+            roster, candidate_id="qb2", candidate_value=95, candidate_full_eligible={"QB"},
+            candidate_primary_position="QB", roster_positions=["QB", "BN"],
+        )
+        self.assertEqual(result["eligibility_bonus"], 0.0)
+        self.assertEqual(result["marginal_value_full_eligibility"], 15.0)
+        self.assertEqual(result["marginal_value_primary_position_only"], 15.0)
+
     def test_bonus_is_zero_when_the_flexible_slot_is_already_taken(self):
         # Same player, but the IDP_FLEX slot is already filled by someone else on the roster
         # -- his DB eligibility shouldn't manufacture value that isn't actually there.

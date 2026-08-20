@@ -135,11 +135,29 @@ def eligibility_bonus(
     Genuinely roster-dependent, not universal -- the same player's eligibility bonus differs
     by team, since it depends on what's already rostered and which slots are actually tight.
     That's why this lives alongside need_bonus in draft_room.py's team_acquisition_value, not
-    folded into universal_value (see draft_room.py's own module docstring on that split)."""
+    folded into universal_value (see draft_room.py's own module docstring on that split).
+
+    Naturally bounded, unlike need_bonus: a candidate's marginal contribution can never
+    exceed his own value (the best he can ever do is fill a genuinely empty slot outright),
+    so no artificial cap is applied here the way NEED_BONUS_MAX exists for a heuristic
+    overlay -- this is a real, self-limiting economic quantity, not a nudge."""
+    primary_only = {candidate_primary_position} if candidate_primary_position else set()
+    if candidate_full_eligible <= primary_only:
+        # Nothing beyond his one primary bucket -- the bonus is exactly 0 by construction
+        # regardless of what the assignment problem says, so skip solving it twice (this is
+        # the common case -- most players are single-position -- and draft_room.py calls this
+        # once per candidate across a full live-draft board, so the redundant second solve
+        # isn't free at that scale).
+        only_result = marginal_lineup_value(roster_players, {"id": candidate_id, "value": candidate_value, "eligible": primary_only}, roster_positions)
+        return {
+            "eligibility_bonus": 0.0,
+            "marginal_value_full_eligibility": only_result["marginal_value"],
+            "marginal_value_primary_position_only": only_result["marginal_value"],
+        }
+
     full_candidate = {"id": candidate_id, "value": candidate_value, "eligible": candidate_full_eligible}
     full_result = marginal_lineup_value(roster_players, full_candidate, roster_positions)
 
-    primary_only = {candidate_primary_position} if candidate_primary_position else set()
     primary_candidate = {"id": candidate_id, "value": candidate_value, "eligible": primary_only}
     primary_result = marginal_lineup_value(roster_players, primary_candidate, roster_positions)
 
