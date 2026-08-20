@@ -1831,39 +1831,123 @@ with st.sidebar:
             note_scope = scope_league_ids if scope_mode == "Specific league(s)" else None
 
             if suffix in (".pdf", ".csv", ".json"):
+                import pypdf
+
                 staging_dir = PROJECTIONS_DIR / "_staging"
                 staging_dir.mkdir(parents=True, exist_ok=True)
                 staging_path = staging_dir / uploaded.name
                 staging_path.write_bytes(data)
+                parse_error = None
                 try:
                     _, kind = load_projection_file(staging_path)
-                except Exception:
-                    staging_path.unlink(missing_ok=True)  # not parseable — falls through to reference material below
+                except Exception as exc:
+                    kind, parse_error = None, str(exc)
+
+                # A PDF that parses cleanly as "rankings" (the default/catch-all bucket -- see
+                # _sniff_pdf_kind) might still not actually BE Dynasty Rankings; that bucket has
+                # no positive-match check of its own, just elimination of the other three known
+                # tools. Draft Sharks' own PDFs plainly self-label DYNASTY vs REDRAFT in their
+                # title text (confirmed against a real "Redraft > IDP" export that parsed
+                # without error yet silently mislabeled two columns) -- catching that here is
+                # cheap (local text, no API call) and catches exactly the case a keyword-based
+                # sniff can't: a real table, just the wrong dynasty-vs-redraft product.
+                suspicious_excerpt = None
+                if kind == "rankings" and suffix == ".pdf":
+                    try:
+                        first_page = pypdf.PdfReader(str(staging_path)).pages[0].extract_text() or ""
+                    except Exception:
+                        first_page = ""
+                    upper = first_page.upper()
+                    if "REDRAFT" in upper and "DYNASTY" not in upper:
+                        suspicious_excerpt = first_page[:1500]
+
+                if kind == "free_agents" and not st.session_state.selected_league_id:
+                    staging_path.unlink(missing_ok=True)
+                    notify("error", "This looks like a Free Agent Finder export, tied to one league's roster — select a league above first, then re-upload.")
+                    recognized = True  # handled (as a rejection), don't also file it as an attachment
+                elif parse_error or suspicious_excerpt:
+                    # Weird import -- don't silently guess either way (accept as Dynasty
+                    # Rankings, or discard to reference material). Hold it and let the user
+                    # decide, optionally after asking the Moderator what it actually looks like.
+                    if not suspicious_excerpt:
+                        try:
+                            suspicious_excerpt = (pypdf.PdfReader(str(staging_path)).pages[0].extract_text() or "")[:1500] if suffix == ".pdf" else data[:1500].decode("utf-8", errors="ignore")
+                        except Exception:
+                            suspicious_excerpt = ""
+                    st.session_state.pending_upload = {
+                        "staging_path": str(staging_path), "name": uploaded.name, "kind": kind,
+                        "parse_error": parse_error, "excerpt": suspicious_excerpt, "data": data,
+                        "note": note, "note_scope": note_scope, "moderator_opinion": None,
+                    }
+                    recognized = True  # held for a decision below, not silently filed either way
                 else:
-                    if kind == "free_agents" and not st.session_state.selected_league_id:
-                        staging_path.unlink(missing_ok=True)
-                        notify("error", "This looks like a Free Agent Finder export, tied to one league's roster — select a league above first, then re-upload.")
-                        recognized = True  # handled (as a rejection), don't also file it as an attachment
+                    if kind == "free_agents":
+                        dest_dir = league_projections_dir(st.session_state.selected_league_id)
+                        location_label = "this league only (roster-specific)"
                     else:
-                        if kind == "free_agents":
-                            dest_dir = league_projections_dir(st.session_state.selected_league_id)
-                            location_label = "this league only (roster-specific)"
-                        else:
-                            dest_dir = GLOBAL_PROJECTIONS_DIR
-                            location_label = "the shared pool (applies to any league using this format)"
-                        dest_dir.mkdir(parents=True, exist_ok=True)
-                        staging_path.replace(dest_dir / uploaded.name)
-                        st.session_state.data_merger.reload()
-                        notify("success", f"Recognized as Draft Sharks data — saved to {location_label}.")
-                        recognized = True
-                        if note:
-                            # The data went into the projections pool, not the attachment store — but the
-                            # note is still worth surfacing to the panel, so it gets a small text-only entry.
-                            save_attachment(f"{uploaded.name}.note.txt", note.encode(), caption=note, league_ids=note_scope)
+                        dest_dir = GLOBAL_PROJECTIONS_DIR
+                        location_label = "the shared pool (applies to any league using this format)"
+                    dest_dir.mkdir(parents=True, exist_ok=True)
+                    staging_path.replace(dest_dir / uploaded.name)
+                    st.session_state.data_merger.reload()
+                    notify("success", f"Recognized as Draft Sharks data — saved to {location_label}.")
+                    recognized = True
+                    if note:
+                        # The data went into the projections pool, not the attachment store — but the
+                        # note is still worth surfacing to the panel, so it gets a small text-only entry.
+                        save_attachment(f"{uploaded.name}.note.txt", note.encode(), caption=note, league_ids=note_scope)
 
             if not recognized:
                 save_attachment(uploaded.name, data, caption=note, league_ids=note_scope)
                 notify("info", f"Didn't match a known Draft Sharks format — saved '{uploaded.name}' as reference material below for the panel to consider when you ask about it.")
+
+        pending = st.session_state.get("pending_upload")
+        if pending:
+            st.warning(
+                f"⚠️ \"{pending['name']}\" doesn't clearly match a known Draft Sharks export — "
+                + (f"{pending['parse_error']}." if pending["parse_error"] else
+                   "it parsed as table data, but its own text says \"Redraft\" rather than \"Dynasty\", "
+                   "which would give the wrong signal if silently merged into dynasty rankings.")
+                + " Decide below, or ask the Moderator what it actually looks like first."
+            )
+            if pending["moderator_opinion"]:
+                st.info(f"**Moderator:** {pending['moderator_opinion']}")
+            # "Import anyway" only makes sense when the file actually parsed as a real table
+            # (kind == "rankings") and just looked suspicious -- a genuine parse failure has
+            # nothing valid to import, so that option is just noise for that case.
+            pu_cols = st.columns(3 if pending["kind"] == "rankings" else 2)
+            with pu_cols[0]:
+                if st.button("🤔 Ask the Moderator", key="pending_upload_ask", use_container_width=True):
+                    _pu_provider = bot_config.load_role_providers()["moderator"]
+                    _pu_model = bot_config.load_role_models().get("moderator") or None
+                    _pu_key = api_key_for(PROVIDER_KEY_FIELD[_pu_provider])
+                    if not IS_PROVIDER_CONFIGURED[_pu_provider](_pu_key):
+                        notify("error", f"No API key configured for {bot_config.PROVIDER_LABELS[_pu_provider]} (the Moderator's current provider) — add one under Connections & Models.")
+                    else:
+                        with st.spinner("Asking the Moderator..."):
+                            pending["moderator_opinion"] = llm_engine.classify_unknown_upload(
+                                pending["name"], pending["excerpt"], provider=_pu_provider, api_key=_pu_key, model=_pu_model,
+                            )
+                        st.rerun()
+            if pending["kind"] == "rankings":
+                with pu_cols[1]:
+                    if st.button("Import as Dynasty Rankings anyway", key="pending_upload_import", use_container_width=True):
+                        dest_dir = GLOBAL_PROJECTIONS_DIR
+                        dest_dir.mkdir(parents=True, exist_ok=True)
+                        Path(pending["staging_path"]).replace(dest_dir / pending["name"])
+                        st.session_state.data_merger.reload()
+                        if pending["note"]:
+                            save_attachment(f"{pending['name']}.note.txt", pending["note"].encode(), caption=pending["note"], league_ids=pending["note_scope"])
+                        notify("success", f"Saved \"{pending['name']}\" to the shared Dynasty Rankings pool.")
+                        st.session_state.pending_upload = None
+                        st.rerun()
+            with pu_cols[-1]:
+                if st.button("Save as reference material instead", key="pending_upload_reference", use_container_width=True):
+                    Path(pending["staging_path"]).unlink(missing_ok=True)
+                    save_attachment(pending["name"], pending["data"], caption=pending["note"], league_ids=pending["note_scope"])
+                    notify("info", f"Saved \"{pending['name']}\" as reference material for the panel to consider when asked about it.")
+                    st.session_state.pending_upload = None
+                    st.rerun()
 
         global_files = sorted(p.name for p in GLOBAL_PROJECTIONS_DIR.glob("*") if p.suffix in (".csv", ".json", ".pdf"))
         if global_files:

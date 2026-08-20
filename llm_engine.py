@@ -530,6 +530,27 @@ def ask_moderator_followup(
     return PROVIDER_CALLERS[provider](system_prompt, prompt, api_key, model)
 
 
+UPLOAD_CLASSIFY_SYSTEM_PROMPT = """You're the Moderator for a fantasy football dynasty roster app, occasionally \
+asked to make sense of a file someone just tried to upload that the app's own parser didn't confidently recognize \
+as one of its three known Draft Sharks exports (Dynasty Rankings, Trade Value Chart, Free Agent Finder). This is \
+NOT a roster debate -- just a quick read on what the document actually is. In 2-4 sentences: say what it looks like \
+(a specific vendor/product if you can tell, otherwise just its general shape), and flag plainly if it looks like the \
+wrong thing to silently treat as season-long DYNASTY player rankings -- e.g. a single-season/redraft-only \
+valuation, a different sport or game entirely, or something with no player-value data in it at all. If it's hard to \
+tell from the excerpt, say that plainly instead of guessing with false confidence."""
+
+
+def classify_unknown_upload(
+    filename: str, text_excerpt: str, *, provider: str = "claude", api_key: Optional[str] = None, model: Optional[str] = None,
+) -> str:
+    """One-off, narrow-purpose call -- not a debate persona invocation, just this app's existing
+    Moderator (whichever provider currently holds that role) taking a quick look at an upload
+    the parser's own keyword-based sniffing couldn't confidently place. See app.py's upload
+    handler for when this fires: only on request, never automatically on every ambiguous file."""
+    prompt = f"Filename: {filename}\n\nExtracted text (first portion, may be truncated):\n{text_excerpt}"
+    return PROVIDER_CALLERS[provider](UPLOAD_CLASSIFY_SYSTEM_PROMPT, prompt, api_key, model)
+
+
 def summarize_history(
     messages: list[dict], prior_summary: Optional[str] = None, api_key: Optional[str] = None
 ) -> str:
