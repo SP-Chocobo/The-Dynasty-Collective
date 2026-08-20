@@ -372,15 +372,24 @@ None of these are blended into Draft Sharks' own numbers — every source
 rides alongside it as its own labeled opinion (`DataMerger.
 external_player_values`), each on its own incompatible scale. On top of
 that, `DataMerger.composite_player_score` computes this app's **own**
-single 0-100 blended score per player: each source is converted to a
-percentile against its *own* pool first (the only sound way to combine
-scales this different), then weighted — Draft Sharks a bit higher, KTC a
-bit lower (a crowd-vote average), a source's weight halving every 60 days
-as it ages (`COMPOSITE_RECENCY_HALFLIFE_DAYS`) so a fresh source
-outweighs a stale one automatically. Redraft-scope files (FantasyPros'
-best-ball/IDP lists, ESPN) never feed it — only genuine dynasty sources
-do. No coverage anywhere returns `None` (shown as **Incomplete Player
-Profile**), never a fabricated number.
+single 0-100 blended score per player: every *external* source is
+converted to a percentile against its *own* pool first (the only sound
+way to combine scales this different — ~0-10000, rank-out-of-552,
+~0-9999, a bare rank number), then weighted — KTC a bit lower (a
+crowd-vote average), a source's weight halving every 60 days as it ages
+(`COMPOSITE_RECENCY_HALFLIFE_DAYS`) so a fresh source outweighs a stale
+one automatically. Draft Sharks itself is the one exception: its
+trade_value is already a 0-100 scale *and* already scarcity-adjusted by
+position (elite offense reaches 100, elite IDP tops out around 35-45 by
+Draft Sharks' own judgment), so it's weighted a bit higher and used
+directly rather than re-normalized — re-deriving a percentile from it
+would rank it against a pool so bottom-loaded with bench/depth players at
+every position that almost any real starter clears the 80th percentile
+regardless of how good they actually are, erasing the very scarcity
+signal that made Draft Sharks worth weighting highest in the first place.
+Redraft-scope files (FantasyPros' best-ball/IDP lists, ESPN) never feed
+it — only genuine dynasty sources do. No coverage anywhere returns `None`
+(shown as **Incomplete Player Profile**), never a fabricated number.
 
 ### Panel-vetted research becomes durable, not just one answer
 

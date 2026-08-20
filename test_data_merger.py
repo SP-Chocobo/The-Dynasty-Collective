@@ -241,7 +241,7 @@ class CompositePoolSizeDampeningTests(unittest.TestCase):
         self.bot_research.add_finding("Maxx Crosby", "ESPN", "ranked #1 DL", rank=1)
         with_one_finding = dm.DataMerger().composite_player_score("Maxx Crosby", position="DL")
         # A single, thin-pool finding should nudge the score, not swing it -- well under half
-        # of the ~21-point gap between draftsharks' own percentile (~78.5) and a naive 100th
+        # of the gap between draftsharks' own trade_value-as-score reading and a naive 100th
         # percentile reading of the untrusted single-row pool.
         self.assertLess(with_one_finding["score"] - baseline_only["score"], 3.0)
 
@@ -354,6 +354,32 @@ class CompositeScoreOnRealBaselineTests(unittest.TestCase):
             self.assertIsNotNone(result, name)
             self.assertGreaterEqual(result["score"], 0)
             self.assertLessEqual(result["score"], 100)
+
+    def test_draft_sharks_own_scarcity_gap_between_offense_and_idp_survives_the_composite(self):
+        # The bug this test exists to prevent regressing: computing a percentile of
+        # trade_value against the WHOLE pool (offense and IDP mixed, heavily bottom-loaded
+        # with bench/depth players) made a clear NFL QB1 (Joe Burrow) and a solid-but-
+        # unspectacular LB (Zack Baun) come out at nearly identical composite scores (83.3 vs
+        # 81.1), even though Draft Sharks' own raw trade_value already says they aren't close
+        # (32 vs 28 on a scale where elite offense reaches 100 and elite IDP tops out ~35-45).
+        # Using trade_value directly (already 0-100, already scarcity-adjusted) instead of
+        # re-deriving a percentile from it should keep them clearly separated.
+        burrow = self.merger.composite_player_score("Joe Burrow", position="QB")
+        baun = self.merger.composite_player_score("Zack Baun", position="LB")
+        self.assertIsNotNone(burrow)
+        self.assertIsNotNone(baun)
+        self.assertGreater(burrow["score"] - baun["score"], 20)
+
+    def test_single_source_idp_composite_equals_its_own_trade_value(self):
+        # With only Draft Sharks contributing (no dynasty-scope IDP externals exist), the
+        # composite should read as exactly what Draft Sharks itself said -- not a percentile
+        # transform of it -- since trade_value is already on the composite's own 0-100 scale.
+        crosby = self.merger.merge_player("Maxx Crosby", position="DL")
+        composite = self.merger.composite_player_score("Maxx Crosby", position="DL")
+        self.assertIsNotNone(composite)
+        self.assertEqual(len(composite["components"]), 1)
+        self.assertEqual(composite["components"][0]["source"], "draftsharks")
+        self.assertAlmostEqual(composite["score"], crosby["trade_value"], places=4)
 
     def test_composite_components_only_drawn_from_dynasty_sources(self):
         # FantasyPros' best_ball_rankings.csv and idp_redraft_rankings.csv, and ESPN's

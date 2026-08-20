@@ -1107,7 +1107,24 @@ class DataMerger:
         the *whole* pool it's ranked within, and recomputing that per player would be wasteful
         for what's the same number every time until the next reload()."""
         if "trade_value" in self.projections.columns:
-            self.projections["_pct"] = self.projections["trade_value"].rank(pct=True) * 100
+            # Draft Sharks' trade_value is already a 0-100 scale, and -- unlike every external
+            # source here -- already scarcity-adjusted by position: elite offense reaches 100
+            # while even elite IDP tops out around 35-45 by Draft Sharks' own judgment. A
+            # percentile-of-trade_value transform used to run here, ranking each row against
+            # the WHOLE pool (offense and IDP mixed) -- but that pool is heavily bottom-loaded
+            # with bench/depth players at every position, so almost anyone with a real starting
+            # role clears the 80th percentile regardless of how good they actually are.
+            # Confirmed live: Joe Burrow (trade_value 32, a clear QB1) and Zack Baun (trade_value
+            # 28, a solid but unspectacular LB) came out at 83.3 and 81.1 respectively -- nearly
+            # identical, even though Draft Sharks' own raw scale already says they aren't
+            # remotely comparable assets. Segmenting the percentile by position (the fix that
+            # correctly solved this same class of problem for bot_research's position-relative
+            # rank claims) would make this WORSE here, not better: it would rank Baun against
+            # only the shallow, low-ceiling IDP pool, pushing his percentile even higher. Using
+            # trade_value directly (already on the composite's own 0-100 scale, no transform
+            # needed) is what actually preserves Draft Sharks' own real scarcity signal instead
+            # of erasing it with a distribution-shape artifact.
+            self.projections["_pct"] = self.projections["trade_value"].clip(0, 100)
             self.projections["_pool_n"] = int(self.projections["trade_value"].notna().sum())
 
         if self.external_values.empty:
@@ -1359,10 +1376,16 @@ class DataMerger:
     def composite_player_score(self, player_full_name: str, position: Optional[str] = None,
                                 team: Optional[str] = None) -> Optional[dict]:
         """This app's own single blended read on a player (see the COMPOSITE_* constants'
-        docstring for the weighting rationale) -- a weighted average of each source's
-        percentile standing within its OWN pool, never a raw-number average across sources
-        that use completely different scales. Returns None when not one source has an
-        opinion, rather than fabricating a score from nothing.
+        docstring for the weighting rationale) -- a weighted average across sources, never a
+        raw-number average of scales that don't mean the same thing. Every EXTERNAL source
+        (DynastyProcess, FantasyPros, KeepTradeCut, bot_research) gets converted to a percentile
+        within its OWN pool first, the only sound way to combine scales this incompatible
+        (~0-10000, rank-out-of-552, ~0-9999, a bare rank number). Draft Sharks itself is the one
+        exception: its trade_value is already a 0-100 scale AND already scarcity-adjusted by
+        position (see _compute_percentiles' own comment on why re-deriving a percentile from it
+        actually erases that signal instead of preserving it), so it's used directly rather than
+        re-normalized. Returns None when not one source has an opinion, rather than fabricating
+        a score from nothing.
 
         This is always an ADDITIONAL field, never a replacement: it does not feed the trade
         calculator's pricing math (that stays Draft-Sharks-scaled, exactly as tested), and
