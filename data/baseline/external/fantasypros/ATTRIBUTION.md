@@ -10,8 +10,8 @@ and each file's own extra columns), never the vendor's own PDF or page layout/br
 committed with clear attribution -- not a re-verified ToS conclusion, just consistent treatment
 of the same situation.
 
-Two files, two different products, kept in two different CSVs and never merged with each other
-or with dynastyprocess's data:
+Three files, three different products, kept in three separate CSVs and never merged with each
+other or with dynastyprocess's/keeptradecut's/espn's data:
 
 - dynasty_ppr_rankings.csv -- "Dynasty Fantasy Football Rankings (Keepers)," a 12-team PPR
   dynasty ECR: rank/tier plus the expert panel's best/worst/avg/std_dev spread behind each
@@ -21,6 +21,13 @@ or with dynastyprocess's data:
   dynasty file for the same reason the app already treats Redraft-vs-Dynasty as a real failure
   mode elsewhere (see app.py's upload handler) -- a single-season list has no business being
   read as a dynasty valuation.
+- idp_redraft_rankings.csv -- "Individual Defensive Player Fantasy Football Rankings, IDP
+  Cheat Sheets, Draft Rankings" -- also SEASON-LONG (its own header says "SOS SEASON ECR," no
+  dynasty framing anywhere), same firm separation as best_ball_rankings.csv. Draft Sharks is
+  this app's only DYNASTY IDP source; this rides alongside it purely as a second, redraft-scope
+  opinion for the bots to weigh, not a dynasty valuation. Position codes here are more granular
+  than Draft Sharks' three broad IDP buckets (DE/DT split out from DL, S/CB split out from DB)
+  -- kept as-is rather than collapsed, since the extra detail is real information.
 
 Neither file carries a Draft-Sharks-scale trade_value or a DynastyProcess-scale value_1qb --
 FantasyPros' own numbers are rank/tier/ECR-shaped, not a comparable point value, so this source

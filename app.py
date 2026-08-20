@@ -1008,6 +1008,13 @@ def format_scoring_settings(scoring_settings: dict) -> str:
     return ", ".join(f"{k}={v}" for k, v in pairs)
 
 
+# Shown wherever DataMerger.composite_player_score() returns None -- every loaded source
+# (Draft Sharks baseline included) was checked and none of them had a usable number for this
+# player, so this is a deliberate, honest state, not a blank/missing field to explain away.
+# Never a placeholder score -- see composite_player_score's own docstring on not fabricating one.
+INCOMPLETE_PLAYER_PROFILE = "Incomplete Player Profile"
+
+
 def describe_external_value(ext: dict) -> str:
     """One compact 'source/list detail' string for a single DataMerger.external_player_values()
     row. Different sources shape their numbers differently (DynastyProcess: a 1QB/2QB point
@@ -1203,7 +1210,9 @@ def build_context(snapshot: dict, roster_table: list[dict], player_universe: lis
     for row in roster_table:
         other = "; ".join(describe_external_value(ext) for ext in row.get("external_values") or [])
         composite = row.get("composite")
-        composite_str = f"{composite['score']:.0f}/100 ({composite['recency_grade']})" if composite else "-"
+        composite_str = (
+            f"{composite['score']:.0f}/100 ({composite['recency_grade']})" if composite else INCOMPLETE_PLAYER_PROFILE
+        )
         lines.append(
             f"  {row['name']} | {row['position']} | {row['team']} | "
             f"{row.get('tier', '-')} | {row.get('vorp', '-')} | {row.get('projection', '-')} | "
@@ -2844,7 +2853,7 @@ elif main_view == MAINTENANCE_VIEW:
             # row). Never blended into row["value"] above -- side note, not part of the price.
             composite = row.get("composite")
             if not composite:
-                return ""
+                return f"  ·  {INCOMPLETE_PLAYER_PROFILE}"
             return f"  ·  Composite {composite['score']:.0f}/100 ({composite['recency_grade']})"
 
         def _render_trade_side(rows: list[dict]) -> None:
@@ -2998,6 +3007,10 @@ elif main_view == MAINTENANCE_VIEW:
                     f"data (avg {composite['avg_age_days']}d old), from "
                     f"{len(composite['components'])} source(s)]"
                 )
+            elif r["value"] is not None or r.get("external"):
+                # Only worth stating explicitly when *something* else resolved for this line --
+                # a totally blank line (no value, no external hits) already says enough on its own.
+                base += f" [composite: {INCOMPLETE_PLAYER_PROFILE}]"
             return base
         return "\n".join(_line(r) for r in rows)
 

@@ -218,9 +218,12 @@ NFL_TEAM_CODES = (
 TEAM_ALIASES = {"UNS": "FA", "JAC": "JAX", "LVR": "LV"}
 
 # Offense + kicker/defense + IDP — which of these actually show up depends on
-# the league (standard leagues get K/DEF, IDP leagues also get LB/DL/DB).
+# the league (standard leagues get K/DEF, IDP leagues also get LB/DL/DB). Draft Sharks only
+# ever uses the three broad codes; other vendors (FantasyPros' IDP export, e.g.) split them
+# more finely (DE/DT for DL, S/CB for DB) -- both schemes are real IDP positions, so both need
+# to register as "idp" in _position_group below, not just the three Draft Sharks happens to use.
 POSITION_CODES = ("QB", "RB", "WR", "TE", "K", "DEF", "LB", "DL", "DB")
-IDP_POSITIONS = {"LB", "DL", "DB"}
+IDP_POSITIONS = {"LB", "DL", "DB", "DE", "DT", "S", "CB", "EDGE", "SS", "FS"}
 
 
 def _position_group(position) -> str:
@@ -512,6 +515,10 @@ _FP_DYNASTY_ROW_RE = re.compile(
     r"^(\d+) (.+) \(([A-Z]{2,3})\) ([A-Z]+)(\d+) (\d+|NA|-) (\d+|NA) (\d+|NA) ([\d.]+|NA) ([\d.]+|NA)$"
 )
 _FP_SEASONAL_ROW_RE = re.compile(r"^(\d+) (.+) \(([A-Z]{2,3})\) ([A-Z]+)(\d+) (\d+|-)$")
+# FantasyPros' IDP export has an extra SOS (strength-of-schedule) column after bye week --
+# always "-" in practice (confirmed against a real 204-row export, 0 non-dash values), but the
+# row shape still has to consume it to match at all.
+_FP_IDP_ROW_RE = re.compile(r"^(\d+) (.+) \(([A-Z]{2,3})\) ([A-Z]+)(\d+) (\d+|-) (-|[\d.]+)$")
 
 
 def _fp_num(raw: str) -> Optional[float]:
@@ -581,6 +588,103 @@ def parse_fantasypros_bestball_pdf(path: Path) -> tuple[pd.DataFrame, Optional[s
                 "team": TEAM_ALIASES.get(team, team), "position": position, "pos_rank": int(pos_rank),
                 "bye_week": _fp_num(bye), "tier": tier,
             })
+
+    df = pd.DataFrame(records)
+    if df.empty:
+        return df, None
+    df["norm_name"] = df["name"].astype(str).map(normalize_name)
+    return df, None
+
+
+def parse_fantasypros_idp_pdf(path: Path) -> tuple[pd.DataFrame, Optional[str]]:
+    """Parse a FantasyPros IDP (Individual Defensive Player) Rankings export -- a SEASON-LONG
+    draft-prep list ("SOS SEASON ECR" in its own header, no dynasty-relevant spread columns),
+    not dynasty, same posture as parse_fantasypros_bestball_pdf and for the same reason: never
+    silently read a redraft list as a long-term value opinion. Position codes here are more
+    granular than Draft Sharks' three broad IDP buckets (DE/DT instead of one DL, S/CB instead
+    of one DB) -- kept as-is rather than collapsed, since the extra detail is real information,
+    not noise; see IDP_POSITIONS for why _position_group needs to recognize them too."""
+    import pypdf
+
+    reader = pypdf.PdfReader(str(path))
+    records: list[dict] = []
+    tier = None
+    for page in reader.pages:
+        for raw_line in (page.extract_text() or "").split("\n"):
+            line = raw_line.strip()
+            tier_match = _FP_TIER_RE.match(line)
+            if tier_match:
+                tier = int(tier_match.group(1))
+                continue
+            row_match = _FP_IDP_ROW_RE.match(line)
+            if not row_match:
+                continue
+            rank, name, team, position, pos_rank, bye, _sos = row_match.groups()
+            records.append({
+                "rank": int(rank), "name": name.strip(),
+                "team": TEAM_ALIASES.get(team, team), "position": position, "pos_rank": int(pos_rank),
+                "bye_week": _fp_num(bye), "tier": tier,
+            })
+
+    df = pd.DataFrame(records)
+    if df.empty:
+        return df, None
+    df["norm_name"] = df["name"].astype(str).map(normalize_name)
+    return df, None
+
+
+# -- ESPN IDP (Individual Defensive Player) Rankings ----------------------------
+#
+# ESPN's page is a scraped article, not a clean export -- huge blocks of unrelated nav/ad/
+# related-article text get interleaved between table rows in pypdf's flat text extraction, and
+# the table itself re-prints its own header every ~4 rows (looks like the live page paginates
+# in small chunks). Position section headers ("2026 Linebacker Rankings") are unreliable as
+# anchors -- confirmed on a real export: they show up mid-clutter *after* their table's last
+# row, not before its first, and the DL section's own header is missing/never appears at all.
+# What IS reliable: the DL/LB/DB sections appear in that fixed order (matches the page's own
+# "Top 40 DLs, LBs and DBs" nav text), and each new section's own row-1 resets the rank counter
+# back to 1 -- so position is assigned by counting resets, never by matching caption text.
+_ESPN_IDP_TEAM_CODES = (
+    "ARI", "ATL", "BAL", "BUF", "CAR", "CHI", "CIN", "CLE", "DAL", "DEN", "DET",
+    "GB", "HOU", "IND", "JAX", "KC", "LAC", "LAR", "LV", "MIA", "MIN", "NE",
+    "NO", "NYG", "NYJ", "PHI", "PIT", "SEA", "SF", "TB", "TEN", "WSH",
+)
+_ESPN_IDP_TEAM_ALT = "|".join(sorted(_ESPN_IDP_TEAM_CODES, key=len, reverse=True))
+# Team and the injury-status flag (Q/O/etc) are usually glued with no space ("LARQ") but not
+# always (confirmed: 2 of 120 real rows print "PHI O" with a space) -- \s? tolerates both.
+_ESPN_IDP_ROW_RE = re.compile(
+    rf"^(\d+)\.\xa0(.+?), ({_ESPN_IDP_TEAM_ALT})\s?([A-Z]?) (NR|\d+) (NR|\d+) (NR|\d+) ([\d.]+|NR)$"
+)
+_ESPN_IDP_POSITIONS = ("DL", "LB", "DB")
+
+
+def parse_espn_idp_pdf(path: Path) -> tuple[pd.DataFrame, Optional[str]]:
+    """Parse ESPN's Individual Defensive Player draft rankings (3 analysts' individual ranks
+    plus their average) saved/printed as PDF -- see the module comment above for why position
+    is assigned by counting rank-resets rather than trusting the page's own section captions.
+    A season-long draft-prep list, not dynasty (no dynasty framing anywhere on the page)."""
+    import pypdf
+
+    reader = pypdf.PdfReader(str(path))
+    full_text = "\n".join(p.extract_text() or "" for p in reader.pages)
+
+    records: list[dict] = []
+    section_idx = -1
+    for line in full_text.split("\n"):
+        line = line.strip()
+        row_match = _ESPN_IDP_ROW_RE.match(line)
+        if not row_match:
+            continue
+        rank, name, team, status_flag, a1, a2, a3, avg = row_match.groups()
+        rank = int(rank)
+        if rank == 1:
+            section_idx += 1
+        position = _ESPN_IDP_POSITIONS[section_idx] if 0 <= section_idx < len(_ESPN_IDP_POSITIONS) else None
+        records.append({
+            "rank": rank, "name": name.strip(), "team": team, "position": position,
+            "injury_flag": status_flag or None,
+            "analyst_avg": None if avg == "NR" else float(avg),
+        })
 
     df = pd.DataFrame(records)
     if df.empty:
