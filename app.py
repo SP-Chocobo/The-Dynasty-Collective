@@ -2888,9 +2888,15 @@ elif main_view == MAINTENANCE_VIEW:
             if tvc_player.get("matched") and _tvc_player_keys is not None:
                 candidates = int((_tvc_player_keys == _match_key(line)).sum())
                 if candidates > 1:
+                    # external/composite above were resolved from the same unresolvable free
+                    # text as `value` -- whichever candidate merge_player/composite_player_score
+                    # silently picked is exactly as uncertain as the price the UI already hides
+                    # here (confirmed: an ambiguous line still had a specific player's real
+                    # composite score reach the panel's context, undermining the point of
+                    # flagging it as ambiguous at all). Drop both, same as value.
                     rows.append({
                         "label": line, "value": None, "position": None, "source": None,
-                        "ambiguous": True, "external": external, "composite": composite,
+                        "ambiguous": True, "external": [], "composite": None,
                     })
                     continue
             # The Trade Value Chart's own column is "value", not "trade_value" -- it's the one
@@ -2921,9 +2927,11 @@ elif main_view == MAINTENANCE_VIEW:
                     (merger.projections["norm_name"].map(_match_key) == _match_key(line)).sum()
                 ) if not merger.projections.empty else 1
                 if candidates > 1:
+                    # Same reasoning as the Trade Value Chart branch above -- don't leak a
+                    # specific, unresolvable candidate's external/composite data either.
                     rows.append({
                         "label": line, "value": None, "position": None, "source": None,
-                        "ambiguous": True, "external": external, "composite": composite,
+                        "ambiguous": True, "external": [], "composite": None,
                     })
                     continue
                 rows.append({
@@ -3131,6 +3139,11 @@ elif main_view == MAINTENANCE_VIEW:
 
     def _describe_trade_side(rows: list[dict]) -> str:
         def _line(r: dict) -> str:
+            if r.get("ambiguous"):
+                # Distinct from a plain unmatched line -- the panel should know THIS one
+                # matched multiple players/picks (so external/composite were deliberately
+                # withheld, not just absent) rather than reading it as "not found at all."
+                return f"  - {r['label']} (ambiguous -- matches multiple players/picks, unpriced)"
             base = (
                 f"  - {r['label']} (value: {r['value']:.0f}{', ' + r['source'] if r['source'] else ''})"
                 if r["value"] is not None else f"  - {r['label']}"
