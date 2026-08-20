@@ -10,6 +10,8 @@ a small synthetic fixture didn't have enough depth to reproduce either one.
 
 import unittest
 
+import pandas as pd
+
 import data_merger as dm
 import draft_room as dr
 
@@ -55,6 +57,84 @@ class StarterSlotCountsTests(unittest.TestCase):
         one_qb = dr.starter_slot_counts(["QB", "RB", "WR", "BN"])
         superflex = dr.starter_slot_counts(["QB", "RB", "WR", "SUPER_FLEX", "BN"])
         self.assertGreater(superflex["QB"], one_qb["QB"])
+
+
+class ReplacementLevelMonotonicityTests(unittest.TestCase):
+    """replacement_levels is the actual mechanism behind "a deep position gets a smaller
+    scarcity bonus" -- the exact property the whole IDP-depth discussion needed proven, not
+    just asserted. Pure, DataMerger-free synthetic DataFrames so each property is isolated
+    from real-data noise: change exactly one thing, hold everything else constant."""
+
+    def _pool(self, values: list[float], position: str = "RB") -> pd.DataFrame:
+        return pd.DataFrame({"position": [position] * len(values), "value": values})
+
+    def test_a_deeper_pool_of_good_players_raises_replacement_level(self):
+        # Same replacement RANK (say, 24th), but the players sitting near that rank are
+        # genuinely better in the deep pool -- so replacement level itself should rise.
+        thin = self._pool([100 - i * 4 for i in range(30)])  # steep drop-off
+        deep = self._pool([100 - i * 1 for i in range(30)])  # shallow drop-off, same length
+        thin_level = dr.replacement_levels(thin, "value", ["RB"] * 2, num_teams=12)["RB"]
+        deep_level = dr.replacement_levels(deep, "value", ["RB"] * 2, num_teams=12)["RB"]
+        self.assertGreater(deep_level, thin_level)
+
+    def test_a_stronger_replacement_level_shrinks_a_top_players_vor(self):
+        # Same top-of-position value in both pools; only the depth behind them differs.
+        # The top player's VOR (value - replacement) must be smaller against the deeper,
+        # stronger replacement pool -- this is the actual "IDP is deep, so elite IDP's
+        # scarcity premium should be smaller than an equally-thin offense position's" check.
+        thin = self._pool([99] + [100 - i * 4 for i in range(1, 30)])
+        deep = self._pool([99] + [100 - i * 1 for i in range(1, 30)])
+        thin_level = dr.replacement_levels(thin, "value", ["RB"] * 2, num_teams=12)["RB"]
+        deep_level = dr.replacement_levels(deep, "value", ["RB"] * 2, num_teams=12)["RB"]
+        self.assertLess(99 - deep_level, 99 - thin_level)
+
+    def test_more_starting_slots_at_a_position_raises_the_replacement_rank(self):
+        # More usable slots at a position pushes the replacement rank deeper into the pool
+        # (a worse player becomes "replacement"), which is what actually drives a heavier-IDP
+        # league's real scarcity premium -- see test_draft_room's
+        # test_heavier_idp_league_ranks_the_same_players_earlier for the full-pipeline version.
+        pool = self._pool([100 - i for i in range(40)])
+        light = dr.replacement_levels(pool, "value", ["RB"], num_teams=12)["RB"]
+        heavy = dr.replacement_levels(pool, "value", ["RB"] * 3, num_teams=12)["RB"]
+        self.assertLessEqual(heavy, light)
+
+
+class DataIntegrityTests(unittest.TestCase):
+    """Sanity checks on the pool draft_room.py actually scores, decoupled from the scoring
+    math itself -- a scoring-behavior test failing because the underlying data was thin or
+    malformed is a different bug than the formula being wrong, and conflating the two is
+    exactly what burned time earlier while building this (a suspicious IDP result that
+    turned out to be a real, separate data gap -- see RealBaselineIDPBugRegressionTests)."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.merger, cls.players_db = _build_pool_players_db()
+        cls.pool = dr.build_available_pool(
+            cls.merger, cls.players_db, set(), {"QB", "RB", "WR", "TE", "DL", "LB", "DB"},
+        )
+
+    def test_every_usable_position_has_enough_players_for_a_real_replacement_curve(self):
+        counts = self.pool["position"].value_counts()
+        for position in ("QB", "RB", "WR", "TE", "DL", "LB", "DB"):
+            self.assertGreater(counts.get(position, 0), 20, f"{position} pool too thin to trust a replacement rank")
+
+    def test_no_player_is_missing_a_position(self):
+        self.assertTrue(self.pool["position"].notna().all())
+        self.assertFalse((self.pool["position"] == "").any())
+
+    def test_trade_value_is_numeric_and_non_negative(self):
+        self.assertTrue(pd.api.types.is_numeric_dtype(self.pool["trade_value"]))
+        self.assertTrue((self.pool["trade_value"].dropna() >= 0).all())
+
+    def test_idp_positions_are_the_ones_actually_missing_projection_data(self):
+        # Documents the real, current data gap this module works around (see
+        # build_available_pool's docstring) as a live check -- if Draft Sharks' baseline
+        # ever starts projecting IDP, this test should start failing, which is the signal
+        # to remove the within-position-percentile fallback and simplify back to pure VOR.
+        for position in ("DL", "LB", "DB"):
+            self.assertFalse(self.pool.loc[self.pool["position"] == position, "projection"].notna().any())
+        for position in ("RB", "WR"):
+            self.assertTrue(self.pool.loc[self.pool["position"] == position, "projection"].notna().any())
 
 
 class RealBaselineIDPBugRegressionTests(unittest.TestCase):
@@ -167,6 +247,29 @@ class InvariantTests(unittest.TestCase):
         )
         remaining_wr = [r for r in board2 if r["position"] == "WR"]
         self.assertTrue(all(r["need_bonus"] == 0 for r in remaining_wr))
+
+    def test_need_bonus_is_the_only_thing_that_differs_between_two_teams_at_the_same_draft_state(self):
+        # universal_value has to be genuinely team-agnostic -- what ANY manager watching this
+        # exact draft state would compute. Same picks list (so the same remaining pool, same
+        # replacement levels) evaluated for two different rosters must produce identical
+        # universal_value per player; only need_bonus (and therefore final_score) may differ.
+        # Comparing the same team before/after ITS OWN picks doesn't isolate this, since
+        # drafting also shrinks the shared pool for everyone -- this holds the pool fixed and
+        # varies only which roster is asking.
+        board = dr.compute_draft_board(
+            self.merger, self.players_db, [], my_roster_id="99", league=LIGHT_IDP_LEAGUE, mode="balanced",
+        )
+        picks = [{"roster_id": "1", "player_id": r["player_id"], "round": 1} for r in board[:3]]
+
+        team_a = {r["player_id"]: r for r in dr.compute_draft_board(
+            self.merger, self.players_db, picks, my_roster_id="97", league=LIGHT_IDP_LEAGUE, mode="balanced",
+        )}
+        team_b = {r["player_id"]: r for r in dr.compute_draft_board(
+            self.merger, self.players_db, picks, my_roster_id="98", league=LIGHT_IDP_LEAGUE, mode="balanced",
+        )}
+        for player_id, row_a in list(team_a.items())[:30]:
+            row_b = team_b[player_id]
+            self.assertEqual(row_a["universal_value"], row_b["universal_value"], player_id)
 
     def test_dynasty_time_horizon_adjustment_is_neutral_outside_dynasty_leagues(self):
         redraft_league = dict(LIGHT_IDP_LEAGUE, settings={"type": 0})
