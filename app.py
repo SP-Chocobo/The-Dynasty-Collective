@@ -1838,8 +1838,9 @@ with st.sidebar:
                 staging_path = staging_dir / uploaded.name
                 staging_path.write_bytes(data)
                 parse_error = None
+                parsed_df = None
                 try:
-                    _, kind = load_projection_file(staging_path)
+                    parsed_df, kind = load_projection_file(staging_path)
                 except Exception as exc:
                     kind, parse_error = None, str(exc)
 
@@ -1852,6 +1853,7 @@ with st.sidebar:
                 # cheap (local text, no API call) and catches exactly the case a keyword-based
                 # sniff can't: a real table, just the wrong dynasty-vs-redraft product.
                 suspicious_excerpt = None
+                example_row = None
                 if kind == "rankings" and suffix == ".pdf":
                     try:
                         first_page = pypdf.PdfReader(str(staging_path)).pages[0].extract_text() or ""
@@ -1860,6 +1862,18 @@ with st.sidebar:
                     upper = first_page.upper()
                     if "REDRAFT" in upper and "DYNASTY" not in upper:
                         suspicious_excerpt = first_page[:1500]
+                        # A concrete row from the parser's OWN output, not anything the Moderator
+                        # is asked to restate from memory -- the numbers stay exactly what the
+                        # deterministic parser already extracted; only their labeling is ever in
+                        # question, so this is what actually gets shown/confirmed, not an LLM's
+                        # potentially-misremembered echo of them.
+                        if parsed_df is not None and not parsed_df.empty:
+                            _ex = parsed_df.iloc[0]
+                            example_row = (
+                                f"{_ex.get('name', '?')} ({_ex.get('team', '?')} {_ex.get('position', '?')}): "
+                                f"parsed as rank={_ex.get('rank')}, \"1yr projection\"={_ex.get('projection')}, "
+                                f"\"3yr projection\"={_ex.get('proj_3yr')}, trade_value={_ex.get('trade_value')}"
+                            )
 
                 if kind == "free_agents" and not st.session_state.selected_league_id:
                     staging_path.unlink(missing_ok=True)
@@ -1878,6 +1892,7 @@ with st.sidebar:
                         "staging_path": str(staging_path), "name": uploaded.name, "kind": kind,
                         "parse_error": parse_error, "excerpt": suspicious_excerpt, "data": data,
                         "note": note, "note_scope": note_scope, "moderator_opinion": None,
+                        "example_row": example_row,
                     }
                     recognized = True  # held for a decision below, not silently filed either way
                 else:
@@ -1910,11 +1925,35 @@ with st.sidebar:
                    "which would give the wrong signal if silently merged into dynasty rankings.")
                 + " Decide below, or ask the Moderator what it actually looks like first."
             )
+            if pending.get("example_row"):
+                # Deterministic -- the parser's own actual output, not anything the Moderator is
+                # trusted to restate. Shown up front, no API call needed to see it.
+                st.caption(f"Example of how it's currently being parsed: {pending['example_row']}")
             if pending["moderator_opinion"]:
-                st.info(f"**Moderator:** {pending['moderator_opinion']}")
+                # The trailing ALIGNMENT line is a machine-readable suffix for
+                # parse_alignment_verdict, not part of what a human should read as prose --
+                # stripped here for display only; the stored/parsed text is untouched.
+                _opinion_lines = pending["moderator_opinion"].strip().splitlines()
+                if _opinion_lines and _opinion_lines[-1].strip().upper() in ("ALIGNMENT: CORRECT", "ALIGNMENT: WRONG"):
+                    _opinion_lines = _opinion_lines[:-1]
+                st.info(f"**Moderator:** {chr(10).join(_opinion_lines).strip()}")
+                if pending.get("alignment") is True:
+                    st.caption("✅ The Moderator thinks this labeling looks right for this document.")
+                elif pending.get("alignment") is False:
+                    st.caption("❌ The Moderator thinks this labeling is wrong for this document.")
             # "Import anyway" only makes sense when the file actually parsed as a real table
             # (kind == "rankings") and just looked suspicious -- a genuine parse failure has
             # nothing valid to import, so that option is just noise for that case.
+            #
+            # Button wording stays fixed and neutral regardless of what the Moderator said --
+            # NOT relabeled to echo its verdict ("Yes, that's right"). A parser that silently
+            # mislabels a column and a Moderator opinion that gets rubber-stamped without real
+            # scrutiny fail the same way: nothing catches the error. The point of holding this
+            # for a human decision is a genuinely independent judgment call, weighed against the
+            # deterministic example row above -- not a second automated opinion the first one's
+            # own suggested button text talks the user into agreeing with.
+            import_label = "Import as Dynasty Rankings anyway"
+            reference_label = "Save as reference material instead"
             pu_cols = st.columns(3 if pending["kind"] == "rankings" else 2)
             with pu_cols[0]:
                 if st.button("🤔 Ask the Moderator", key="pending_upload_ask", use_container_width=True):
@@ -1925,13 +1964,16 @@ with st.sidebar:
                         notify("error", f"No API key configured for {bot_config.PROVIDER_LABELS[_pu_provider]} (the Moderator's current provider) — add one under Connections & Models.")
                     else:
                         with st.spinner("Asking the Moderator..."):
-                            pending["moderator_opinion"] = llm_engine.classify_unknown_upload(
-                                pending["name"], pending["excerpt"], provider=_pu_provider, api_key=_pu_key, model=_pu_model,
+                            opinion = llm_engine.classify_unknown_upload(
+                                pending["name"], pending["excerpt"], example_row=pending.get("example_row"),
+                                provider=_pu_provider, api_key=_pu_key, model=_pu_model,
                             )
+                        pending["moderator_opinion"] = opinion
+                        pending["alignment"] = llm_engine.parse_alignment_verdict(opinion)
                         st.rerun()
             if pending["kind"] == "rankings":
                 with pu_cols[1]:
-                    if st.button("Import as Dynasty Rankings anyway", key="pending_upload_import", use_container_width=True):
+                    if st.button(import_label, key="pending_upload_import", use_container_width=True):
                         dest_dir = GLOBAL_PROJECTIONS_DIR
                         dest_dir.mkdir(parents=True, exist_ok=True)
                         Path(pending["staging_path"]).replace(dest_dir / pending["name"])
@@ -1942,7 +1984,7 @@ with st.sidebar:
                         st.session_state.pending_upload = None
                         st.rerun()
             with pu_cols[-1]:
-                if st.button("Save as reference material instead", key="pending_upload_reference", use_container_width=True):
+                if st.button(reference_label, key="pending_upload_reference", use_container_width=True):
                     Path(pending["staging_path"]).unlink(missing_ok=True)
                     save_attachment(pending["name"], pending["data"], caption=pending["note"], league_ids=pending["note_scope"])
                     notify("info", f"Saved \"{pending['name']}\" as reference material for the panel to consider when asked about it.")

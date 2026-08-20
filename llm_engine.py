@@ -537,18 +537,47 @@ NOT a roster debate -- just a quick read on what the document actually is. In 2-
 (a specific vendor/product if you can tell, otherwise just its general shape), and flag plainly if it looks like the \
 wrong thing to silently treat as season-long DYNASTY player rankings -- e.g. a single-season/redraft-only \
 valuation, a different sport or game entirely, or something with no player-value data in it at all. If it's hard to \
-tell from the excerpt, say that plainly instead of guessing with false confidence."""
+tell from the excerpt, say that plainly instead of guessing with false confidence.
+
+You may also be given one concrete example row the app's own parser already extracted, labeled with what each \
+field is *currently assumed* to mean. Never invent or restate numbers of your own -- those stay exactly what the \
+parser produced; your only job on that part is judging whether the LABELS are right for what this document's own \
+column headers actually say. If you were given an example row, end your response with a final line reading \
+exactly "ALIGNMENT: CORRECT" if that field-by-field labeling looks right for this document, or exactly \
+"ALIGNMENT: WRONG" if it doesn't -- that exact line, nothing after it, so the app can parse your verdict \
+programmatically. Omit that line entirely if you weren't given an example row to judge."""
 
 
 def classify_unknown_upload(
-    filename: str, text_excerpt: str, *, provider: str = "claude", api_key: Optional[str] = None, model: Optional[str] = None,
+    filename: str, text_excerpt: str, *, example_row: Optional[str] = None,
+    provider: str = "claude", api_key: Optional[str] = None, model: Optional[str] = None,
 ) -> str:
     """One-off, narrow-purpose call -- not a debate persona invocation, just this app's existing
     Moderator (whichever provider currently holds that role) taking a quick look at an upload
     the parser's own keyword-based sniffing couldn't confidently place. See app.py's upload
-    handler for when this fires: only on request, never automatically on every ambiguous file."""
+    handler for when this fires: only on request, never automatically on every ambiguous file.
+
+    example_row, when given, is a single already-parsed row rendered by app.py itself (never by
+    this call) -- the numbers are never something the model is trusted to reproduce from memory,
+    only to judge whether the field labels attached to them are right for this document."""
     prompt = f"Filename: {filename}\n\nExtracted text (first portion, may be truncated):\n{text_excerpt}"
+    if example_row:
+        prompt += f"\n\nOne example row our parser already extracted, as currently labeled:\n{example_row}"
     return PROVIDER_CALLERS[provider](UPLOAD_CLASSIFY_SYSTEM_PROMPT, prompt, api_key, model)
+
+
+def parse_alignment_verdict(text: str) -> Optional[bool]:
+    """True/False/None (couldn't tell) from a classify_unknown_upload response's trailing
+    ALIGNMENT line. Tolerant of surrounding whitespace/case since it's free-form model output,
+    not a strict protocol -- but only ever trusts an explicit, exact-enough signal, never guesses
+    at intent from the surrounding prose."""
+    for line in reversed(text.strip().splitlines()):
+        stripped = line.strip().upper()
+        if stripped == "ALIGNMENT: CORRECT":
+            return True
+        if stripped == "ALIGNMENT: WRONG":
+            return False
+    return None
 
 
 def summarize_history(
