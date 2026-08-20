@@ -1167,16 +1167,34 @@ def build_context(snapshot: dict, roster_table: list[dict], player_universe: lis
             "at face value without accounting for that timeframe difference. Treat it as a second independent "
             "quantitative source to weigh against Draft Sharks, not a tiebreaker by default."
         )
+    # "DS" = Draft Sharks throughout. A trailing "other sources" column, where present, is
+    # never Draft Sharks and never blended into the DS figures beside it -- same posture as
+    # Sleeper's own native projection above (a second independent read to weigh, not a
+    # tiebreaker by default) -- so Draft Sharks isn't the only word on a player's value here.
     lines.append(
         "Roster (name | pos | team | DS tier | DS VORP | DS 1yr proj | Sleeper native week proj | "
-        "DS 3yr proj | DS 3D/trade value | DS pos rank):"
+        "DS 3yr proj | DS 3D/trade value | DS pos rank | other sources):"
     )
     for row in roster_table:
+        other = "; ".join(
+            f"{ext.get('source_name', '?')} 1QB={ext.get('value_1qb', '-')}/2QB={ext.get('value_2qb', '-')}"
+            for ext in row.get("external_values") or []
+        )
         lines.append(
             f"  {row['name']} | {row['position']} | {row['team']} | "
             f"{row.get('tier', '-')} | {row.get('vorp', '-')} | {row.get('projection', '-')} | "
             f"{row.get('sleeper_proj', '-')} | {row.get('proj_3yr', '-')} | "
-            f"{row.get('trade_value', '-')} | {row.get('pos_rank', '-')}"
+            f"{row.get('trade_value', '-')} | {row.get('pos_rank', '-')} | {other or '-'}"
+        )
+    if merger.is_external_values_loaded:
+        lines.append(
+            "  'other sources' values are on their own scale, not Draft Sharks' 0-100 -- e.g. "
+            "DynastyProcess (1QB/2QB) runs roughly 0-10000, derived from FantasyPros' expert "
+            "consensus rankings via a documented formula, independent of Draft Sharks' own "
+            "proprietary methodology. Compare RELATIVE standing within one source's own column, "
+            "never a DynastyProcess number against a Draft Sharks number directly -- and note "
+            "where the two sources disagree on which of two players is worth more, since that's "
+            "more informative than either number alone."
         )
 
     # The canonical Sleeper pool is intentionally separate from the optional
@@ -2652,14 +2670,19 @@ elif main_view == MAINTENANCE_VIEW:
     _CONSIDERATION_RE = re.compile(r"\$\d|faab|waiver|priority", re.IGNORECASE)
 
     def _price_trade_side(text: str) -> list[dict]:
-        """One resolved row per non-empty line: {label, value, position, source}. Tries the
-        Trade Value Chart first — players and picks priced on one comparable 0-100 scale, the
+        """One resolved row per non-empty line: {label, value, position, source, external}. Tries
+        the Trade Value Chart first — players and picks priced on one comparable 0-100 scale, the
         closest this app has to an actual trade-pricing tool — then falls back to whatever a
         player's own Dynasty Rankings trade_value says (a different, rougher scale: format-
         based overall rank, not built for pricing a trade) rather than leaving a line unpriced
         just because the one dedicated tool for this isn't loaded. Picks only ever price off
         the Trade Value Chart -- Dynasty Rankings has no pick data at all. Never dropped even
-        when nothing matches -- an unpriced line still belongs in what gets sent to the panel."""
+        when nothing matches -- an unpriced line still belongs in what gets sent to the panel.
+
+        external carries any secondary-source opinions (see DataMerger.external_player_values)
+        on the same named player, purely as a side-by-side annotation -- it never feeds `value`
+        or the anvil math below, which stays Draft-Sharks-scaled throughout, so a second source
+        with a wildly different scale can't silently skew a number this app treats as pricing."""
         rows = []
         for raw_line in text.splitlines():
             line = raw_line.strip()
@@ -2668,13 +2691,14 @@ elif main_view == MAINTENANCE_VIEW:
             if _CONSIDERATION_RE.search(line):
                 rows.append({"label": line, "value": None, "position": None, "source": None, "consideration": True})
                 continue
+            external = merger.external_player_values(line) if merger.is_external_values_loaded else []
             tvc_player = merger.merge_player(line, df=_tvc_players) if merger.is_trade_values_loaded else {}
             if tvc_player.get("matched") and _tvc_player_keys is not None:
                 candidates = int((_tvc_player_keys == _match_key(line)).sum())
                 if candidates > 1:
                     rows.append({
                         "label": line, "value": None, "position": None, "source": None,
-                        "ambiguous": True,
+                        "ambiguous": True, "external": external,
                     })
                     continue
             # The Trade Value Chart's own column is "value", not "trade_value" -- it's the one
@@ -2684,11 +2708,15 @@ elif main_view == MAINTENANCE_VIEW:
                 rows.append({
                     "label": line, "value": float(tvc_price),
                     "position": tvc_player.get("position"), "source": "Trade Value Chart",
+                    "external": external,
                 })
                 continue
             pick_val = merger.pick_value(line) if merger.is_trade_values_loaded else None
             if pick_val is not None:
-                rows.append({"label": line, "value": float(pick_val), "position": None, "source": "Trade Value Chart"})
+                rows.append({
+                    "label": line, "value": float(pick_val), "position": None,
+                    "source": "Trade Value Chart", "external": external,
+                })
                 continue
             rankings_player = merger.merge_player(line)
             if rankings_player.get("matched") and rankings_player.get("trade_value") is not None:
@@ -2701,14 +2729,18 @@ elif main_view == MAINTENANCE_VIEW:
                     (merger.projections["norm_name"].map(_match_key) == _match_key(line)).sum()
                 ) if not merger.projections.empty else 1
                 if candidates > 1:
-                    rows.append({"label": line, "value": None, "position": None, "source": None, "ambiguous": True})
+                    rows.append({
+                        "label": line, "value": None, "position": None, "source": None,
+                        "ambiguous": True, "external": external,
+                    })
                     continue
                 rows.append({
                     "label": line, "value": float(rankings_player["trade_value"]),
                     "position": rankings_player.get("position"), "source": "Dynasty Rankings",
+                    "external": external,
                 })
                 continue
-            rows.append({"label": line, "value": None, "position": None, "source": None})
+            rows.append({"label": line, "value": None, "position": None, "source": None, "external": external})
         return rows
 
     def _depth_label(team_label: Optional[str], position: str, override_cell: Optional[dict] = None) -> Optional[str]:
@@ -2761,6 +2793,15 @@ elif main_view == MAINTENANCE_VIEW:
                 "much to invent one) — included below and sent to the panel, just not in the totals."
             )
 
+        def _external_suffix(row: dict) -> str:
+            # Its own scale, never blended into row["value"] above -- see external_player_values'
+            # docstring -- so this only ever rides along as a side note, not part of the price.
+            parts = [
+                f"{ext.get('source_name', '?')} 1QB={ext.get('value_1qb', '-')}/2QB={ext.get('value_2qb', '-')}"
+                for ext in row.get("external") or []
+            ]
+            return f"  ·  {'; '.join(parts)}" if parts else ""
+
         def _render_trade_side(rows: list[dict]) -> None:
             for row in rows:
                 if row.get("consideration"):
@@ -2768,10 +2809,10 @@ elif main_view == MAINTENANCE_VIEW:
                 elif row.get("ambiguous"):
                     st.caption(f"❓ \"{row['label']}\" — matches more than one player; add a position or full name")
                 elif row["value"] is None:
-                    st.caption(f"⚠️ \"{row['label']}\" — not found in loaded Draft Sharks data")
+                    st.caption(f"⚠️ \"{row['label']}\" — not found in loaded Draft Sharks data{_external_suffix(row)}")
                 else:
                     tag = " (DR)" if row["source"] == "Dynasty Rankings" else ""
-                    st.caption(f"{row['label']} — {row['value']:.0f}{tag}")
+                    st.caption(f"{row['label']} — {row['value']:.0f}{tag}{_external_suffix(row)}")
 
         rrcol1, rrcol2 = st.columns(2)
         with rrcol1:
@@ -2893,11 +2934,19 @@ elif main_view == MAINTENANCE_VIEW:
                     st.caption(line)
 
     def _describe_trade_side(rows: list[dict]) -> str:
-        return "\n".join(
-            f"  - {r['label']} (value: {r['value']:.0f}{', ' + r['source'] if r['source'] else ''})"
-            if r["value"] is not None else f"  - {r['label']}"
-            for r in rows
-        )
+        def _line(r: dict) -> str:
+            base = (
+                f"  - {r['label']} (value: {r['value']:.0f}{', ' + r['source'] if r['source'] else ''})"
+                if r["value"] is not None else f"  - {r['label']}"
+            )
+            # Own scale, not Draft Sharks' -- see external_player_values' docstring -- so this
+            # is a side note for the panel to weigh, never something to add to the value above.
+            extra = "; ".join(
+                f"{ext.get('source_name', '?')} 1QB={ext.get('value_1qb', '-')}/2QB={ext.get('value_2qb', '-')}"
+                for ext in r.get("external") or []
+            )
+            return f"{base} [other sources (own scale): {extra}]" if extra else base
+        return "\n".join(_line(r) for r in rows)
 
     _trade_ready = bool(trade_send_text.strip() and trade_receive_text.strip())
     trade_question = (

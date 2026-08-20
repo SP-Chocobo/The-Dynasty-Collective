@@ -78,6 +78,12 @@ GLOBAL_PROJECTIONS_DIR = PROJECTIONS_DIR / "_global"  # Dynasty Rankings: format
 # or a league's own folder supersedes it per-player, same "newest wins" rule load_all()
 # already applies within a single pool.
 BASELINE_DIR = Path("data/baseline")
+# Secondary valuation sources, kept deliberately separate from Draft Sharks' data rather than
+# blended into it -- Draft Sharks shouldn't be the only source of value opinions this app can
+# draw on. Each immediate subdirectory is one source (e.g. "dynastyprocess"), and every row
+# from every source survives together (no cross-source dedup -- the whole point is comparing
+# opinions, not picking a winner). See DataMerger.external_player_values().
+EXTERNAL_VALUES_DIR = BASELINE_DIR / "external"
 STALE_AFTER_DAYS = 7  # how old loaded projections can get before the UI nudges you to refresh
 ALIASES_PATH = Path("data/player_aliases.json")  # manual overrides for names that fail to auto-match
 
@@ -569,6 +575,39 @@ def _compute_freshness(df: pd.DataFrame) -> tuple[Optional[str], Optional[int], 
     return freshest, days, days >= STALE_AFTER_DAYS
 
 
+def load_external_values(base_dir: Path = EXTERNAL_VALUES_DIR) -> pd.DataFrame:
+    """Load every secondary valuation source under base_dir (one immediate subdirectory per
+    source, e.g. data/baseline/external/dynastyprocess/) into a single frame tagged by which
+    source each row came from. Unlike load_all's Draft Sharks pools, rows are never deduped
+    across (or within) sources here -- the whole point of a secondary source is to show a
+    second opinion alongside Draft Sharks', not to silently pick one number, so every source
+    that has an opinion on a player survives. Column shape is whatever that source's own CSV
+    has (see each source's ATTRIBUTION.md); only name -> norm_name is assumed universal.
+    """
+    base_dir = Path(base_dir)
+    empty = pd.DataFrame(columns=["name", "norm_name", "source_name"])
+    if not base_dir.exists():
+        return empty
+
+    frames = []
+    for source_dir in sorted(p for p in base_dir.iterdir() if p.is_dir()):
+        for f in sorted(source_dir.glob("*.csv")):
+            try:
+                df = pd.read_csv(f)
+            except Exception:
+                continue  # skip unparsable files rather than crashing the app
+            if "name" not in df.columns:
+                continue
+            df["norm_name"] = df["name"].astype(str).map(normalize_name)
+            df["source_name"] = source_dir.name
+            df["source_file"] = f.name
+            frames.append(df)
+
+    if not frames:
+        return empty
+    return pd.concat(frames, ignore_index=True, sort=False)
+
+
 # -- manual name-matching overrides -------------------------------------------
 #
 # Automatic matching (key + fuzzy) mostly works, but a handful of players will
@@ -612,10 +651,12 @@ class DataMerger:
     """
 
     def __init__(self, league_dir: Optional[Path] = None, global_dir: Path = GLOBAL_PROJECTIONS_DIR,
-                 baseline_dir: Path = BASELINE_DIR, match_cutoff: float = 0.82):
+                 baseline_dir: Path = BASELINE_DIR, external_dir: Path = EXTERNAL_VALUES_DIR,
+                 match_cutoff: float = 0.82):
         self.league_dir = Path(league_dir) if league_dir else None
         self.global_dir = Path(global_dir)
         self.baseline_dir = Path(baseline_dir)
+        self.external_dir = Path(external_dir)
         self.match_cutoff = match_cutoff
         self._load()
 
@@ -631,6 +672,7 @@ class DataMerger:
         self.projections = _merge_rankings(baseline_rankings, global_rankings, league_rankings)
         self.free_agents = league_fa
         self.trade_values = _merge_rankings(baseline_tvc, global_tvc, league_tvc)
+        self.external_values = load_external_values(self.external_dir)
         self.aliases = load_aliases()
 
     def reload(self) -> None:
@@ -779,6 +821,32 @@ class DataMerger:
                 row[field] = match[field]
         return row
 
+    @property
+    def is_external_values_loaded(self) -> bool:
+        return not self.external_values.empty
+
+    def external_player_values(self, player_full_name: str, position: Optional[str] = None,
+                                team: Optional[str] = None) -> list[dict]:
+        """One dict per secondary valuation source that has an opinion on this player (see
+        load_external_values) -- each carrying whatever fields that source's own CSV provides,
+        tagged with which source it's from. Unlike merge_player, there's no fixed field
+        whitelist here: a source's columns aren't predictable in advance the way Draft Sharks'
+        few known export shapes are, so every non-null field on the matched row rides along.
+        Deliberately returns every matching source rather than one "winning" value -- Draft
+        Sharks isn't meant to be the only word on a player's worth, so neither is any other
+        single source."""
+        if self.external_values.empty or "source_name" not in self.external_values.columns:
+            return []
+        results = []
+        for source in sorted(self.external_values["source_name"].unique()):
+            sub = self.external_values[self.external_values["source_name"] == source]
+            match = self._find_match(player_full_name, position=position, team=team, df=sub)
+            if match is None:
+                continue
+            row = {k: v for k, v in match.items() if pd.notna(v) and k != "norm_name"}
+            results.append(row)
+        return results
+
     def list_free_agents(self, exclude_mine: bool = True, position: Optional[str] = None,
                           top_n: Optional[int] = None) -> list[dict]:
         """Free Agent Finder rows, sorted by 3D Value+ descending."""
@@ -822,6 +890,9 @@ class DataMerger:
                         row["fa_ceiling"] = fa_info["ceiling"]
                     if "value_3d" in fa_info:
                         row["fa_value"] = fa_info["value_3d"]
+
+            if self.is_external_values_loaded:
+                row["external_values"] = self.external_player_values(full_name, position=position, team=team)
 
             rows.append(row)
         return rows
