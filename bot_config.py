@@ -35,8 +35,9 @@ ROLE_INFO = {
         "recommended": "gemini",
         "why": (
             "Native Google Search grounding -- real live results, not just what the model happened to learn "
-            "in training. ChatGPT gets its own web search tool if reassigned here too; Claude has no live "
-            "search wired into this app, so it would answer from training data alone."
+            "in training. ChatGPT and Claude both get their own web search tool if reassigned here too, so "
+            "live search isn't a reason to prefer one provider over another for this role anymore -- pick "
+            "whichever's answers you find most useful."
         ),
     },
     "contrarian": {

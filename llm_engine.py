@@ -464,6 +464,14 @@ def _call_claude(system_prompt: str, user_prompt: str, api_key: Optional[str] = 
             max_tokens=MAX_TOKENS,
             system=system_prompt,
             messages=[{"role": "user", "content": user_prompt}],
+            # Runs server-side (Anthropic executes the search/fetch, not this app) -- gives
+            # Claude the same live-search access Gemini/ChatGPT already had here, so the Beat
+            # Tracker and Contrarian's system prompts (which unconditionally claim "live web
+            # search") stop being false whenever a role happens to be assigned to Claude. Only
+            # the response's own text blocks get joined below, same extraction as before --
+            # web_search_tool_result/server_tool_use blocks have no .text attribute and are
+            # skipped the same way any other non-text block already was.
+            tools=[{"type": "web_search_20260209", "name": "web_search"}],
         )
         return "".join(block.text for block in response.content if hasattr(block, "text")).strip()
     except Exception as exc:  # noqa: BLE001 - surface any provider error to the UI, don't crash the app
@@ -515,11 +523,12 @@ def _call_openai(system_prompt: str, user_prompt: str, api_key: Optional[str] = 
         return f"⚠️ ChatGPT request failed: {exc}"
 
 
-# Every provider gets its own best available tool (Gemini/ChatGPT both get live web
-# search, Claude gets none here) regardless of which role it's running -- a role
-# reassigned to a different provider still gets that provider's normal capabilities,
-# it just may gain or lose live search access as a result. bot_config.ROLE_INFO
-# documents that tradeoff for the UI.
+# All three providers get their own native live web search here (Gemini's Google Search
+# grounding, ChatGPT's web_search tool, Claude's web_search_20260209) regardless of which role
+# is calling -- a role reassigned to a different provider keeps live search access either way,
+# so which provider ends up on the Beat Tracker/Contrarian role is purely a "whose answers do
+# you like" choice now, not a capability tradeoff. See bot_config.ROLE_INFO for the UI's own
+# framing of that choice.
 PROVIDER_CALLERS = {"claude": _call_claude, "gemini": _call_gemini, "openai": _call_openai}
 
 ROLE_SYSTEM_PROMPTS = {
