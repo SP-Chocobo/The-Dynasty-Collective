@@ -1,19 +1,32 @@
 """
-Durable log of panel-vetted findings from the debate bots' own live web search -- see
-llm_engine.MODERATOR_SYSTEM_PROMPT's SOURCE FINDING instructions for exactly when the
-Moderator is allowed to write one (a specific, named-source claim about a player's value/
-ranking/status that the whole panel, Contrarian very much included, did not successfully
-dispute). Global and git-tracked, unlike decision_log/todo_log's per-league, gitignored
-JSON -- a finding about a real player's value isn't scoped to one league, and the entire
-point is for it to persist across sessions the same durable way the rest of data/baseline/
-does: feeding future debates as reference context, and -- when it carries a real rank
-number, not just a qualitative claim -- DataMerger's own composite score, not just the one
-answer it came from.
+Durable logs of panel-vetted output from the debate bots' own live web search (or the user's
+own captioned reference material -- either can originate one) -- see
+llm_engine.MODERATOR_SYSTEM_PROMPT's SOURCE FINDING / SOURCE COMPARISON instructions for
+exactly when the Moderator is allowed to write one: a specific, named-source claim that the
+whole panel, Contrarian very much included, did not successfully dispute. Both are global and
+git-tracked, unlike decision_log/todo_log's per-league, gitignored JSON -- neither is scoped to
+one league, and the entire point is for them to persist across sessions the same durable way
+the rest of data/baseline/ does.
 
-Append-only: a later finding about the same player/source doesn't overwrite or delete an
-earlier one here, it just outranks it at READ time (see DataMerger's newest-wins handling,
-the same pattern every other baseline source already uses) -- the full log stays a real
-record of what the panel has found over time, not just today's latest opinion.
+Two separate stores, deliberately not one shape stretched to cover both:
+
+  * findings (FINDINGS_PATH) -- a claim about ONE player. When it carries a real rank number
+    the source itself stated (never inferred), it also feeds DataMerger's composite score at a
+    low weight, not just future debates' reference context; a qualitative claim never does.
+  * comparisons (COMPARISONS_PATH) -- a RELATIVE claim between two players ("ESPN has Crosby
+    ahead of Hutchinson"), which has no absolute number to feed a composite with at all. Kept
+    as its own structured research layer -- composite_impact is always "none" today, an
+    explicit stored fact rather than a silent omission. The reasoning for staying out of the
+    composite for now: a handful of debate-surfaced comparisons is nowhere near KTC's millions
+    of votes, and running an Elo/Bradley-Terry-style model on that thin a sample would produce
+    noise dressed up as precision. If comparisons accumulate real volume and connectivity over
+    time, a genuinely separate relative-valuation model built from them is a real future option
+    -- deliberately not attempted here.
+
+Both are append-only: a later entry about the same player(s)/source doesn't overwrite or
+delete an earlier one, it just outranks it at READ time where that matters (see DataMerger's
+newest-wins handling for findings) -- the full log stays a real record of what the panel has
+found over time, not just today's latest opinion.
 """
 
 from __future__ import annotations
@@ -25,33 +38,38 @@ from pathlib import Path
 from typing import Optional
 
 FINDINGS_PATH = Path("data/baseline/bot_research.json")
+COMPARISONS_PATH = Path("data/baseline/bot_comparisons.json")
 
 
-def load_findings() -> list[dict]:
-    if FINDINGS_PATH.exists():
+def _load(path: Path) -> list[dict]:
+    if path.exists():
         try:
-            return json.loads(FINDINGS_PATH.read_text())
+            return json.loads(path.read_text())
         except (json.JSONDecodeError, OSError):
             return []
     return []
 
 
-def _save(entries: list[dict]) -> None:
-    FINDINGS_PATH.parent.mkdir(parents=True, exist_ok=True)
-    FINDINGS_PATH.write_text(json.dumps(entries, indent=2))
+def _save(path: Path, entries: list[dict]) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(entries, indent=2))
 
 
 def _next_id(entries: list[dict]) -> int:
     return (max((e.get("id", 0) for e in entries), default=0)) + 1
 
 
+def load_findings() -> list[dict]:
+    return _load(FINDINGS_PATH)
+
+
 def add_finding(
     player_name: str, source: str, claim: str, *, rank: Optional[int] = None,
     conviction: str = "", question: str = "", league_id: Optional[str] = None,
 ) -> Optional[int]:
-    """Persist one panel-vetted finding. Returns its id, or None if there's nothing real to
-    record (blank player/source/claim) -- a no-op, not an error, since the Moderator's SOURCE
-    FINDING line is optional and legitimately absent from most verdicts."""
+    """Persist one panel-vetted single-player finding. Returns its id, or None if there's
+    nothing real to record (blank player/source/claim) -- a no-op, not an error, since the
+    Moderator's SOURCE FINDING line is optional and legitimately absent from most verdicts."""
     if not player_name.strip() or not source.strip() or not claim.strip():
         return None
     entries = load_findings()
@@ -64,11 +82,14 @@ def add_finding(
         "source": source.strip(),
         "claim": claim.strip(),
         "rank": rank,
+        # Explicit and visible rather than something a reader has to infer from whether
+        # `rank` happens to be null -- mirrors comparisons' own composite_impact field below.
+        "composite_impact": "low-weight input" if rank is not None else "none",
         "conviction": conviction,
         "question": question,
         "league_id": league_id,
     })
-    _save(entries)
+    _save(FINDINGS_PATH, entries)
     return new_id
 
 
@@ -77,3 +98,45 @@ def findings_for_context(limit: int = 30) -> list[dict]:
     section in app.py, same cap-a-long-history posture as captioned reference material there
     already has, so accumulated findings don't balloon every context payload indefinitely."""
     return sorted(load_findings(), key=lambda e: e.get("ts", 0), reverse=True)[:limit]
+
+
+def load_comparisons() -> list[dict]:
+    return _load(COMPARISONS_PATH)
+
+
+def add_comparison(
+    subject: str, compared_to: str, direction: str, source: str, *, context: str = "",
+    evidence: str = "", question: str = "", league_id: Optional[str] = None,
+) -> Optional[int]:
+    """Persist one panel-vetted relative claim between two players. direction is one of
+    ">" (subject better), "<" (subject worse), "~" (roughly equal), matching
+    llm_engine.parse_source_comparisons' own vocabulary. Returns the new entry's id, or None
+    if there's nothing real to record (blank subject/compared_to/source, or an unrecognized
+    direction) -- a no-op, not an error, since most verdicts legitimately have zero of these."""
+    if not subject.strip() or not compared_to.strip() or not source.strip() or direction not in (">", "<", "~"):
+        return None
+    entries = load_comparisons()
+    new_id = _next_id(entries)
+    entries.append({
+        "id": new_id,
+        "ts": time.time(),
+        "date": datetime.now().strftime("%Y-%m-%d"),
+        "subject": subject.strip(),
+        "compared_to": compared_to.strip(),
+        "direction": direction,
+        "source": source.strip(),
+        "context": context.strip(),
+        "evidence": evidence.strip(),
+        "evidence_type": "qualitative comparative",
+        "validated": True,  # only ever created after clearing the Moderator's panel-scrutiny gate
+        "composite_impact": "none",  # see this module's own docstring for why, and when that could change
+        "question": question,
+        "league_id": league_id,
+    })
+    _save(COMPARISONS_PATH, entries)
+    return new_id
+
+
+def comparisons_for_context(limit: int = 30) -> list[dict]:
+    """Most recent comparisons first, capped -- same posture as findings_for_context."""
+    return sorted(load_comparisons(), key=lambda e: e.get("ts", 0), reverse=True)[:limit]

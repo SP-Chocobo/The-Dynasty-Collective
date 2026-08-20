@@ -491,6 +491,15 @@ def process_moderator_output(moderator_text: str, trigger_question: str) -> None
             conviction=verdict.get("conviction", ""), question=trigger_question,
             league_id=st.session_state.selected_league_id,
         )
+    # Same trust posture as SOURCE FINDING above -- a relative claim between two players, kept
+    # in its own structured store (never the composite's inputs) since it carries no absolute
+    # number. See bot_research.py's own docstring on why and when that could eventually change.
+    for comparison in llm_engine.parse_source_comparisons(moderator_text):
+        bot_research.add_comparison(
+            comparison["subject"], comparison["compared_to"], comparison["direction"], comparison["source"],
+            context=comparison["context"], evidence=comparison["evidence"], question=trigger_question,
+            league_id=st.session_state.selected_league_id,
+        )
     # "Referenced" is a lighter signal than an actual UPDATE/LIKELY RESOLVED directive -- just
     # the Moderator citing an objective by id (e.g. "per #3, ...") while reasoning about
     # something else. Regex over the active ids rather than another LLM directive, since this
@@ -1453,6 +1462,23 @@ def build_context(snapshot: dict, roster_table: list[dict], player_universe: lis
         for f in findings:
             rank_part = f" (rank {f['rank']})" if f.get("rank") is not None else ""
             lines.append(f"  - [{f['date']}] {f['player_name']} — {f['source']}{rank_part}: {f['claim']}")
+
+    comparisons = bot_research.comparisons_for_context()
+    if comparisons:
+        lines.append(
+            "\nPANEL-VETTED PLAYER COMPARISONS from past debates (see MODERATOR_SYSTEM_PROMPT's SOURCE "
+            "COMPARISON rule). A relative claim only — which of two players a source rates higher, never by "
+            "how much or where either lands on any scale — so these carry NO composite weight at all and "
+            "never will unless enough of them accumulate to support a real relative-valuation model later "
+            "(not attempted yet). Useful as a cross-check on ordering against the numeric composite above, "
+            "not a competing number:"
+        )
+        for c in comparisons:
+            verb = {">": "rated ahead of", "<": "rated behind", "~": "rated about even with"}[c["direction"]]
+            ctx = f" [{c['context']}]" if c.get("context") else ""
+            lines.append(
+                f"  - [{c['date']}] {c['subject']} {verb} {c['compared_to']}{ctx}, per {c['source']}: {c['evidence']}"
+            )
 
     return "\n".join(lines)
 

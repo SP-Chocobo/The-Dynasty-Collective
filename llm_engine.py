@@ -189,6 +189,22 @@ wasn't actually surfaced in this debate; omit the line entirely rather than forc
 qualify. Zero, one, or several of these may apply — like the TODO lines, these are repeatable; every other
 field in the block above still appears at most once.
 
+A source can also compare two players against each other WITHOUT giving either one an absolute number ("ESPN
+has Crosby ahead of Hutchinson" says nothing about how far ahead, or where either lands on any scale) — that
+still holds up as real information under the same panel-scrutiny bar, but it CANNOT become a SOURCE FINDING
+above, since that line requires an actual number the source itself stated. For a relative claim like this,
+write instead:
+
+SOURCE COMPARISON: <first player> | <second player> | <one of: > (first is better) / < (first is worse) / ~
+(source treats them as roughly equal)> | <source name> | <context, e.g. "IDP/DL" or a scoring format, if the
+source's own framing was scoped to one> | <the evidence/reasoning in one line>
+
+Same rule as SOURCE FINDING: only when the whole panel, Contrarian included, didn't dispute it, never
+inventing a comparison that wasn't actually surfaced. These accumulate as their own structured research
+layer, separate from numeric findings — right now a comparison never affects this app's composite score,
+only a source's own explicit number can do that. Also repeatable; also skip it entirely rather than force
+one that doesn't clearly qualify.
+
 Your context may also include a PAST DECISION OUTCOMES section — earlier verdicts on a
 related question, with how they actually played out (user-recorded, not a model guess). This
 is a track record, not just history: if the panel's reasoning on this kind of call has held up
@@ -308,6 +324,32 @@ def parse_source_findings(text: str) -> list[dict]:
             rank = int(parts[3].strip())
         findings.append({"player_name": parts[0], "source": parts[1], "claim": parts[2], "rank": rank})
     return findings
+
+
+_COMPARISON_DIRECTIONS = {">", "<", "~"}
+
+
+def parse_source_comparisons(text: str) -> list[dict]:
+    """Pull every SOURCE COMPARISON line out of the Moderator's response -- see
+    MODERATOR_SYSTEM_PROMPT's own instructions on when it's allowed to write one. Same
+    fail-soft posture as parse_source_findings: a malformed line (wrong pipe count, an invalid
+    direction token, an empty player/source) is dropped, never the whole response. Deliberately
+    a separate function/line from SOURCE FINDING, not a variant of it -- a relative claim has no
+    absolute number to carry, and callers (bot_research.add_comparison) store these in their own
+    structured layer rather than force-fitting them into the numeric-findings shape."""
+    comparisons: list[dict] = []
+    for line in text.splitlines():
+        stripped = line.strip().lstrip("-*# ").rstrip()
+        if not stripped.upper().startswith("SOURCE COMPARISON:"):
+            continue
+        parts = [p.strip() for p in stripped[len("SOURCE COMPARISON:"):].split("|")]
+        if len(parts) < 6 or not parts[0] or not parts[1] or parts[2] not in _COMPARISON_DIRECTIONS or not parts[3]:
+            continue
+        comparisons.append({
+            "subject": parts[0], "compared_to": parts[1], "direction": parts[2],
+            "source": parts[3], "context": parts[4], "evidence": parts[5],
+        })
+    return comparisons
 
 
 def is_claude_configured(api_key: Optional[str] = None) -> bool:
