@@ -3325,6 +3325,44 @@ if decisions:
             decision_log.set_outcome(st.session_state.selected_league_id, outcome_options[picked_label], rating, note)
             st.rerun()
 
+bot_findings = bot_research.load_findings()
+bot_comparisons = bot_research.load_comparisons()
+if bot_findings or bot_comparisons:
+    with st.expander(f"🔬 Bot Research ({len(bot_findings)} findings, {len(bot_comparisons)} comparisons)"):
+        st.caption(
+            "Everything the panel has vetted across every league, newest first — see "
+            "MODERATOR_SYSTEM_PROMPT's SOURCE FINDING/SOURCE COMPARISON rules for how an item "
+            "gets in here (survives scrutiny from the whole panel, Contrarian included). "
+            "Findings with a rank already feed the composite score at a low weight; "
+            "comparisons never do — see the README for why."
+        )
+        if bot_findings:
+            st.markdown("**Findings**")
+            findings_df = pd.DataFrame(
+                [
+                    {
+                        "Date": f["date"], "Player": f["player_name"], "Source": f["source"],
+                        "Claim": f["claim"], "Rank": f.get("rank") if f.get("rank") is not None else "—",
+                        "Composite impact": f.get("composite_impact", ""),
+                    }
+                    for f in reversed(bot_findings)
+                ]
+            )
+            st.dataframe(findings_df, use_container_width=True, hide_index=True)
+        if bot_comparisons:
+            st.markdown("**Comparisons**")
+            comparisons_df = pd.DataFrame(
+                [
+                    {
+                        "Date": c["date"],
+                        "Comparison": f"{c['subject']} {c['direction']} {c['compared_to']}",
+                        "Source": c["source"], "Context": c.get("context") or "—", "Evidence": c.get("evidence", ""),
+                    }
+                    for c in reversed(bot_comparisons)
+                ]
+            )
+            st.dataframe(comparisons_df, use_container_width=True, hide_index=True)
+
 todo_league_id = st.session_state.selected_league_id
 active_items = todo_log.load_todos(todo_league_id, statuses=todo_log.ACTIVE_STATUSES)
 with st.expander(f"🎯 Active Objectives ({len(active_items)})", expanded=bool(active_items)):
