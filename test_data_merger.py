@@ -157,16 +157,16 @@ class RecencyWeightTests(unittest.TestCase):
 
 class RecencyGradeTests(unittest.TestCase):
     def test_grade_boundaries(self):
-        self.assertEqual(dm._recency_grade(0), "Fresh")
-        self.assertEqual(dm._recency_grade(7), "Fresh")
-        self.assertEqual(dm._recency_grade(8), "Recent")
-        self.assertEqual(dm._recency_grade(30), "Recent")
-        self.assertEqual(dm._recency_grade(31), "Aging")
-        self.assertEqual(dm._recency_grade(90), "Aging")
-        self.assertEqual(dm._recency_grade(91), "Stale")
+        self.assertEqual(dm.recency_grade(0), "Fresh")
+        self.assertEqual(dm.recency_grade(7), "Fresh")
+        self.assertEqual(dm.recency_grade(8), "Recent")
+        self.assertEqual(dm.recency_grade(30), "Recent")
+        self.assertEqual(dm.recency_grade(31), "Aging")
+        self.assertEqual(dm.recency_grade(90), "Aging")
+        self.assertEqual(dm.recency_grade(91), "Stale")
 
     def test_missing_age_is_unknown(self):
-        self.assertEqual(dm._recency_grade(None), "Unknown")
+        self.assertEqual(dm.recency_grade(None), "Unknown")
 
 
 class CompositePoolSizeDampeningTests(unittest.TestCase):

@@ -139,6 +139,15 @@ RISK: <the biggest risk to this being wrong, one line>
 RECON: <only if CONVICTION is Worth investigation — a concrete thing to go ask another manager, phrased as
 something the user can actually say, e.g. "Ask Team 4 if Player X is available for picks">
 PRICE CEILING: <only if this is a trade question — the most the user should give up>
+ALTERNATIVE: <only when genuinely useful — typically a trade question where RECOMMENDATION is SELL or
+WAIT, or a Split/Speculative call where a clearly better direction exists. This is NOT a mechanical
+add-on to every non-BUY verdict — most of the time the honest answer is that nothing here rises to a
+real alternative, and the line should just be omitted. Unlike the terse lines above, when you do write
+this one, actually explain your thinking — a sentence or two on WHY that alternative is worth pursuing
+instead, grounded in what's actually in context (positional depth, a specific comparable player/pick
+already surfaced, the trade partner's own stated needs), all as one paragraph on this single line (no
+line breaks within it) — never just a bare name with no reasoning attached. Skip it entirely rather than
+naming a target the context doesn't actually support; an absent line beats a manufactured one>
 ACTION ITEM: <only if this verdict implies a concrete, NEW, trackable objective not already listed in your
 context's OPEN TO-DO ITEMS — a specific trade to propose, a waiver claim to submit, a manager to check back
 with, a roster move with a deadline. Phrased as the action itself, e.g. "Offer Team 4 a 2027 3rd for Player X
@@ -153,7 +162,7 @@ consensus among the three), Speculative (agreement isn't the issue — the under
 e.g. a rookie with no track record, a projection with no market/news confirmation, or stale data), or
 Worth investigation (the analysis is sound as far as it goes, but the real answer depends on something
 only another manager can tell you — say exactly what to ask them in RECON). Omit the DISSENT, RECON,
-PRICE CEILING, or ACTION ITEM lines entirely when they don't apply — never write "N/A".
+PRICE CEILING, ALTERNATIVE, or ACTION ITEM lines entirely when they don't apply — never write "N/A".
 
 Your context's OPEN TO-DO ITEMS section (when present) lists this league's active objectives, each with a
 small numeric id. These are standing context for every question, not just ones about them — a rebuild-vs-
@@ -250,7 +259,10 @@ class DebateResult:
     role_providers: dict = field(default_factory=dict)
 
 
-VERDICT_FIELDS = ["RECOMMENDATION", "CONVICTION", "REASON", "DISSENT", "RISK", "RECON", "PRICE CEILING", "ACTION ITEM"]
+VERDICT_FIELDS = [
+    "RECOMMENDATION", "CONVICTION", "REASON", "DISSENT", "RISK", "RECON", "PRICE CEILING",
+    "ALTERNATIVE", "ACTION ITEM",
+]
 
 
 def parse_moderator_verdict(text: str) -> dict:

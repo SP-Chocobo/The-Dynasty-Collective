@@ -22,6 +22,23 @@ class ParseModeratorVerdictTests(unittest.TestCase):
     def test_fails_soft_on_plain_prose(self):
         self.assertEqual(llm_engine.parse_moderator_verdict("Just talking it through, no verdict here."), {})
 
+    def test_parses_optional_alternative_line(self):
+        text = (
+            "RECOMMENDATION: SELL\n"
+            "CONVICTION: Majority\n"
+            "REASON: Price is too rich for the return\n"
+            "RISK: You strike out and lose leverage\n"
+            "ALTERNATIVE: Target Player Y from Team 4 instead -- their WR room is deep enough "
+            "that a similar offer likely lands cheaper.\n"
+        )
+        verdict = llm_engine.parse_moderator_verdict(text)
+        self.assertEqual(verdict["recommendation"], "SELL")
+        self.assertIn("Target Player Y", verdict["alternative"])
+
+    def test_alternative_absent_when_not_written(self):
+        text = "RECOMMENDATION: BUY\nCONVICTION: Unanimous\nREASON: Clear value gap\nRISK: None material\n"
+        self.assertNotIn("alternative", llm_engine.parse_moderator_verdict(text))
+
     def test_ignores_bullet_and_markdown_prefixes(self):
         verdict = llm_engine.parse_moderator_verdict("- RECOMMENDATION: HOLD\n* CONVICTION: Split\n# REASON: mixed signals")
         self.assertEqual(verdict["recommendation"], "HOLD")

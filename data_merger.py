@@ -162,7 +162,10 @@ def _recency_weight(source_date: Optional[str]) -> float:
     return 0.5 ** (max(age_days, 0) / COMPOSITE_RECENCY_HALFLIFE_DAYS)
 
 
-def _recency_grade(avg_age_days: Optional[float]) -> str:
+def recency_grade(avg_age_days: Optional[float]) -> str:
+    # Not module-private -- app.py's sidebar reuses this same Fresh/Recent/Aging/Stale scale
+    # for a site-wide freshness grade across every loaded source, not just a composite score's
+    # own per-player average age.
     if avg_age_days is None:
         return "Unknown"
     for grade, max_days in COMPOSITE_RECENCY_GRADES:
@@ -1399,7 +1402,7 @@ class DataMerger:
 
         return {
             "score": round(score, 1),
-            "recency_grade": _recency_grade(avg_age),
+            "recency_grade": recency_grade(avg_age),
             "avg_age_days": round(avg_age, 1) if avg_age is not None else None,
             "components": components,
         }

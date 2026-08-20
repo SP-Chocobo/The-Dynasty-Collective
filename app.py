@@ -31,7 +31,10 @@ import pinned_messages
 import todo_log
 import llm_engine
 from attachments import ATTACHMENTS_DIR, list_attachments, save_attachment, set_caption, set_scope, delete_attachment
-from data_merger import GLOBAL_PROJECTIONS_DIR, PROJECTIONS_DIR, DataMerger, load_projection_file, normalize_name, save_alias
+from data_merger import (
+    GLOBAL_PROJECTIONS_DIR, PROJECTIONS_DIR, DataMerger, load_projection_file, normalize_name,
+    recency_grade, save_alias,
+)
 from league_format import FORMAT_GUIDANCE, FORMAT_OPTIONS, STANDARD, get_format_override, set_format_override
 from league_prefs import forget_league, get_prefs, move_league, sorted_leagues, toggle_archive
 from player_universe import available_players, build_player_universe, league_usable_positions, matching_players
@@ -1086,7 +1089,10 @@ def describe_external_value(ext: dict) -> str:
     return f"{label} {detail}"
 
 
-def build_context(snapshot: dict, roster_table: list[dict], player_universe: list[dict], question: str = "") -> str:
+def build_context(
+    snapshot: dict, roster_table: list[dict], player_universe: list[dict], question: str = "",
+    conversation_window: Optional[list[dict]] = None,
+) -> str:
     league = snapshot["league"]
     fmt = league_format_summary(league)
     merger: DataMerger = st.session_state.data_merger
@@ -1125,7 +1131,15 @@ def build_context(snapshot: dict, roster_table: list[dict], player_universe: lis
     summary_msgs = [m for m in history if m.get("role") == "summary"]
     # "notice" messages (e.g. stale-data nudges) are UI bookkeeping, not part of the analytical
     # discussion — replaying them back as if they were a prior debate turn would be noise.
-    recent_msgs = [m for m in history if m.get("role") not in ("summary", "notice")][-RECENT_TURNS_IN_CONTEXT:]
+    if conversation_window is not None:
+        # A caller centering context on one specific past message (the 🎯 "Add as objective"
+        # action) needs messages surrounding THAT message -- both what led into it and what
+        # came after -- not necessarily the tail end of the whole conversation, which wouldn't
+        # even include anything after an older message at all. See that handler below for how
+        # this window gets built.
+        recent_msgs = [m for m in conversation_window if m.get("role") not in ("summary", "notice")]
+    else:
+        recent_msgs = [m for m in history if m.get("role") not in ("summary", "notice")][-RECENT_TURNS_IN_CONTEXT:]
     if summary_msgs or recent_msgs:
         lines.append("\nCONVERSATION MEMORY — prior debates in this league (older-to-newer):")
         if summary_msgs:
@@ -2307,6 +2321,21 @@ with st.sidebar:
         return f'<span class="{cls}">{icon} {label}</span>'
 
     merger: DataMerger = st.session_state.data_merger
+
+    # One glanceable overall read before the per-source breakdown below -- baseline data (or
+    # whatever's live) keeps driving every answer regardless of this grade, so it's informational
+    # only, not a gate. Reuses build_freshness_manifest, already computed for the Moderator's own
+    # DATA FRESHNESS context, rather than a second staleness calculation living only in the UI.
+    _freshness_entries = build_freshness_manifest(st.session_state.league_snapshot or {}, merger)
+    if _freshness_entries:
+        _worst_age = max((age for _, _, age in _freshness_entries if age is not None), default=None)
+        _grade = recency_grade(_worst_age)
+        _grade_ok = _grade in ("Fresh", "Recent")
+        _grade_icon = "✅" if _grade_ok else ("⚠️" if _grade in ("Aging", "Stale") else "○")
+        _grade_cls = "status-ok" if _grade_ok else "status-bad"
+        st.markdown(f'<span class="{_grade_cls}">{_grade_icon} Data Freshness: {_grade}</span>', unsafe_allow_html=True)
+        st.caption("Oldest of everything loaded below sets this grade — update on your own schedule, nothing here blocks the app.")
+
     if merger.is_loaded:
         age = merger.staleness_days
         age_label = f"updated {merger.freshest_date} ({age}d ago)" if age is not None else "updated (unknown date)"
@@ -2485,14 +2514,6 @@ with st.container(key="app_header"):
     st.caption(
         f"{fmt['type']} · {fmt['teams']}-team · "
         f"{'Superflex' if fmt['superflex'] else '1QB'} · {fmt['scoring']} · Taxi: {fmt['taxi_slots']}"
-    )
-
-if st.session_state.data_merger.is_stale:
-    days = st.session_state.data_merger.staleness_days
-    st.warning(
-        f"Draft Sharks projections are {days} days old. They don't need refreshing every session — "
-        "roughly once a week keeps the Quant analysis current — but it's been a while.",
-        icon="⚠️",
     )
 
 MATCHUP_VIEW = "🏈 Matchup"
@@ -3330,6 +3351,7 @@ if decisions:
                     "Risk": d.get("risk", ""),
                     "Recon": d.get("recon", ""),
                     "Price Ceiling": d.get("price_ceiling", ""),
+                    "Alternative": d.get("alternative", ""),
                     "Outcome": d.get("outcome") or "—",
                 }
                 for d in reversed(decisions)
@@ -3817,7 +3839,7 @@ with st.container(key="debate_dock"):
 
         VERDICT_FIELD_LABELS = (
             "RECOMMENDATION", "CONVICTION", "REASON", "DISSENT", "RISK", "RECON",
-            "PRICE CEILING", "ACTION ITEM", "TODO UPDATE", "TODO LIKELY RESOLVED",
+            "PRICE CEILING", "ALTERNATIVE", "ACTION ITEM", "TODO UPDATE", "TODO LIKELY RESOLVED",
         )
 
         def format_agent_content(role: str, content: str) -> tuple[str, str]:
@@ -3919,8 +3941,20 @@ with st.container(key="debate_dock"):
                         notify("warning", f"{bot_config.PROVIDER_LABELS[obj_provider]} isn't configured -- add an API key to use this.")
                     else:
                         with st.spinner("Condensing into an objective..."):
+                            # Centered on the clicked message itself, both backward AND forward
+                            # -- build_context's default window is just the tail end of the
+                            # whole conversation, which wouldn't reliably surround an older
+                            # message (and would miss what was said right after it entirely).
+                            full_history = st.session_state.chat_history
+                            try:
+                                msg_idx = next(i for i, m in enumerate(full_history) if m.get("ts") == ts)
+                            except StopIteration:
+                                msg_idx = len(full_history) - 1
+                            half_window = RECENT_TURNS_IN_CONTEXT // 2
+                            window = full_history[max(0, msg_idx - half_window): msg_idx + half_window + 1]
                             condense_context = build_context(
                                 snapshot, roster_table if roster else [], player_universe, msg["content"],
+                                conversation_window=window,
                             )
                             condensed = llm_engine.ask_condense_to_objective(
                                 condense_context, msg["content"], provider=obj_provider,
