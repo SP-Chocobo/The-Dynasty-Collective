@@ -44,7 +44,17 @@ CLAUDE_MODEL = os.getenv("ANTHROPIC_MODEL", "claude-sonnet-5")  # was a now-reti
 GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-2.0-flash")
 OPENAI_MODEL = os.getenv("OPENAI_MODEL", "gpt-4o")
 
-MAX_TOKENS = 1024
+# The Moderator's own system prompt is ~2,554 tokens of instructions demanding prose reasoning
+# PLUS a 9-field structured block PLUS however many repeatable TODO UPDATE/TODO LIKELY
+# RESOLVED/SOURCE FINDING/SOURCE COMPARISON lines a given verdict calls for -- and that block
+# sits at the END of the response, exactly what a tight token budget truncates first. Confirmed
+# the old 1024 was genuinely tight for a real multi-line verdict (reasoning + block + a couple
+# TODO/SOURCE lines routinely runs past it), which would silently break the TODO tracker, the
+# decision log, and the bot_research feed by cutting the response off before those lines were
+# even written. Applies to every role via the shared PROVIDER_CALLERS, not just the Moderator --
+# Quant/Beat/Contrarian get the same headroom rather than a role-specific budget, since a
+# thorough Quant breakdown or a Contrarian pressure-test can run long too.
+MAX_TOKENS = 4096
 
 QUANT_SYSTEM_PROMPT = """You are the Quant / VORP Specialist for a fantasy football front office. Your
 context states this league's actual format (dynasty/keeper/redraft, and any special mode like Best Ball
