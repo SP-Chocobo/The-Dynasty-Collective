@@ -30,7 +30,7 @@ import pinned_messages
 import todo_log
 import llm_engine
 from attachments import ATTACHMENTS_DIR, list_attachments, save_attachment, set_caption, set_scope, delete_attachment
-from data_merger import GLOBAL_PROJECTIONS_DIR, PROJECTIONS_DIR, DataMerger, load_projection_file, save_alias
+from data_merger import GLOBAL_PROJECTIONS_DIR, PROJECTIONS_DIR, DataMerger, load_projection_file, normalize_name, save_alias
 from league_format import FORMAT_GUIDANCE, FORMAT_OPTIONS, STANDARD, get_format_override, set_format_override
 from league_prefs import forget_league, get_prefs, move_league, sorted_leagues, toggle_archive
 from player_universe import available_players, build_player_universe, league_usable_positions, matching_players
@@ -2398,6 +2398,316 @@ elif main_view == MAINTENANCE_VIEW:
                 )
         else:
             st.caption("No Sleeper free agents match that filter.")
+
+    # ------------------------------------------------------------------ trade calculator --
+    # Dashboard data -> rough trade math -> AI debate, not a standalone valuation tool bolted
+    # on next to the panel. Everything below runs on data already loaded here (Trade Value
+    # Chart or, failing that, Dynasty Rankings' own trade_value column; positional depth) and
+    # needs no API key at all -- the LLMs only enter once the anvil buttons ask for
+    # interpretation: does an apparent value gap actually matter given roster construction,
+    # is there news the raw numbers can't see, etc.
+
+    st.markdown("---")
+    st.subheader("Trade Calculator")
+    st.caption(
+        "One player or pick per line, either side. Runs entirely on data already loaded here — "
+        "no API key needed for the numbers below. Dynasty trades aren't algebra, so treat this as "
+        "a rough read, not a verdict: what it can't see (roster fit, a coach's usage pattern, next "
+        "week's injury news) is exactly what the panel is for."
+    )
+
+    owner_labels = roster_owner_names(snapshot)
+    my_team_label = owner_labels.get(roster["roster_id"]) if roster else None
+    depth = positional_depth(player_universe, merger)
+    other_team_labels = sorted({v for k, v in owner_labels.items() if v != my_team_label})
+    trade_partner = st.selectbox(
+        "Trading with (optional)", options=["Not specified"] + other_team_labels, key="trade_calc_partner",
+        help="Adds their positional need to the context below — purely optional, the calculator "
+        "still works without it.",
+    ) if other_team_labels else "Not specified"
+
+    tccol1, tccol2 = st.columns(2)
+    trade_send_text = tccol1.text_area(
+        "You send", key="trade_calc_send", height=110,
+        placeholder="One player or pick per line, e.g.\nJa'Marr Chase\n2027 Random Rd 1",
+    )
+    trade_receive_text = tccol2.text_area(
+        "You receive", key="trade_calc_receive", height=110, placeholder="One player or pick per line",
+    )
+
+    # merge_player's fuzzy matcher keys on (first-initial, last-token) -- built for player
+    # names, where that's a reasonable identity shortcut. Pick labels break that assumption:
+    # "2027 Random Rd 1" and "2028 Random Rd 1" both reduce to the same ("2", "1") key, so
+    # matching a pick label against the *unfiltered* Trade Value Chart (players and picks
+    # together) can silently return a different year's pick at the same slot. Restricting the
+    # player match to just the player rows keeps pick labels out of that matcher entirely --
+    # pick_value() below does its own exact-normalized-name lookup instead, immune to this.
+    _tvc_players = (
+        merger.trade_values[merger.trade_values["asset_type"] == "player"]
+        if merger.is_trade_values_loaded and "asset_type" in merger.trade_values.columns
+        else merger.trade_values
+    )
+
+    def _match_key(name: str) -> tuple[str, str]:
+        tokens = normalize_name(name).split()
+        return (tokens[0][0], tokens[-1]) if tokens else ("", "")
+
+    # merge_player's own key-match silently picks the first candidate when several players
+    # share a (first-initial, last-name) key and no position/team was given to disambiguate
+    # (confirmed live: a same-keyed "Jaylen Allen" resolved to "Josh Allen"'s value instead of
+    # its own) -- fine for callers that always have a position in hand (the free-agent/roster
+    # tables), but the trade calculator's free-text input never does. Recomputing the same key
+    # here to count real candidates catches that specific gap without touching merge_player's
+    # own contract, which plenty of other call sites already depend on staying as-is.
+    _tvc_player_keys = _tvc_players["norm_name"].map(lambda n: _match_key(n)) if not _tvc_players.empty else None
+
+    # FAAB dollars and waiver-priority swaps are common lopsided-piece-count sweeteners in a
+    # real trade, but Draft Sharks has no market value for either -- a league's FAAB budget can
+    # be $100 or $1000, so there's no defensible universal "$1 FAAB = X trade value" conversion
+    # to invent (same "shouldn't pretend to be precise" reasoning as everywhere else here).
+    # Flagged as its own category rather than falling through to "not found in loaded Draft
+    # Sharks data", which reads as a typo/error when it's actually just a real asset type this
+    # pricing tool was never going to cover.
+    _CONSIDERATION_RE = re.compile(r"\$\d|faab|waiver|priority", re.IGNORECASE)
+
+    def _price_trade_side(text: str) -> list[dict]:
+        """One resolved row per non-empty line: {label, value, position, source}. Tries the
+        Trade Value Chart first — players and picks priced on one comparable 0-100 scale, the
+        closest this app has to an actual trade-pricing tool — then falls back to whatever a
+        player's own Dynasty Rankings trade_value says (a different, rougher scale: format-
+        based overall rank, not built for pricing a trade) rather than leaving a line unpriced
+        just because the one dedicated tool for this isn't loaded. Picks only ever price off
+        the Trade Value Chart -- Dynasty Rankings has no pick data at all. Never dropped even
+        when nothing matches -- an unpriced line still belongs in what gets sent to the panel."""
+        rows = []
+        for raw_line in text.splitlines():
+            line = raw_line.strip()
+            if not line:
+                continue
+            if _CONSIDERATION_RE.search(line):
+                rows.append({"label": line, "value": None, "position": None, "source": None, "consideration": True})
+                continue
+            tvc_player = merger.merge_player(line, df=_tvc_players) if merger.is_trade_values_loaded else {}
+            if tvc_player.get("matched") and _tvc_player_keys is not None:
+                candidates = int((_tvc_player_keys == _match_key(line)).sum())
+                if candidates > 1:
+                    rows.append({
+                        "label": line, "value": None, "position": None, "source": None,
+                        "ambiguous": True,
+                    })
+                    continue
+            # The Trade Value Chart's own column is "value", not "trade_value" -- it's the one
+            # table that skips the CSV/JSON header-alias renaming (see merge_player's own note).
+            tvc_price = tvc_player.get("trade_value", tvc_player.get("value"))
+            if tvc_player.get("matched") and tvc_price is not None:
+                rows.append({
+                    "label": line, "value": float(tvc_price),
+                    "position": tvc_player.get("position"), "source": "Trade Value Chart",
+                })
+                continue
+            pick_val = merger.pick_value(line) if merger.is_trade_values_loaded else None
+            if pick_val is not None:
+                rows.append({"label": line, "value": float(pick_val), "position": None, "source": "Trade Value Chart"})
+                continue
+            rankings_player = merger.merge_player(line)
+            if rankings_player.get("matched") and rankings_player.get("trade_value") is not None:
+                # Same free-text-without-a-position-hint exposure as the Trade Value Chart
+                # path above, against the (larger) Dynasty Rankings pool this time.
+                # Series == tuple broadcasts elementwise as intended; Series.eq(tuple) does not
+                # -- pandas treats a tuple RHS as array-like for .eq() and raises on the length
+                # mismatch instead of comparing each element against it. Confirmed the hard way.
+                candidates = int(
+                    (merger.projections["norm_name"].map(_match_key) == _match_key(line)).sum()
+                ) if not merger.projections.empty else 1
+                if candidates > 1:
+                    rows.append({"label": line, "value": None, "position": None, "source": None, "ambiguous": True})
+                    continue
+                rows.append({
+                    "label": line, "value": float(rankings_player["trade_value"]),
+                    "position": rankings_player.get("position"), "source": "Dynasty Rankings",
+                })
+                continue
+            rows.append({"label": line, "value": None, "position": None, "source": None})
+        return rows
+
+    def _depth_label(team_label: Optional[str], position: str) -> Optional[str]:
+        """Strong/Average/Weak/None for one team's depth at one position, relative to the rest
+        of the league at that position -- an absolute cutoff means nothing (a 2-team best-ball
+        league and a 14-team dynasty league have very different "normal" depth), but "better or
+        worse than everyone else in this exact league at this exact position" always does."""
+        if not team_label:
+            return None
+        cells = [teams[position] for teams in depth.values() if position in teams]
+        if not cells:
+            return None
+        cell = depth.get(team_label, {}).get(position, {"count": 0, "value": None})
+        if cell["count"] == 0:
+            return "None — no rostered players here"
+        use_value = cell["value"] is not None and all(c["value"] is not None for c in cells)
+        avg = (sum(c["value"] for c in cells) if use_value else sum(c["count"] for c in cells)) / len(cells)
+        if not avg:
+            return None
+        ratio = (cell["value"] if use_value else cell["count"]) / avg
+        return "Strong" if ratio >= 1.3 else "Weak" if ratio <= 0.7 else "Average"
+
+    trade_send_rows = _price_trade_side(trade_send_text)
+    trade_receive_rows = _price_trade_side(trade_receive_text)
+    sources_used = {r["source"] for r in trade_send_rows + trade_receive_rows if r["source"]}
+
+    if not sources_used and not (trade_send_rows or trade_receive_rows):
+        st.caption(
+            "No Draft Sharks data loaded, so there's nothing to price either side against yet — "
+            "upload Dynasty Rankings or a Trade Value Chart under Data Uploads. The buttons below "
+            "still work without it; the panel can reason about a trade from market judgment alone."
+        )
+    elif trade_send_rows or trade_receive_rows:
+        if not sources_used:
+            st.caption(
+                "No Draft Sharks data loaded yet, so nothing below is priced — upload Dynasty "
+                "Rankings or a Trade Value Chart under Data Uploads to get numbers."
+            )
+        elif len(sources_used) > 1:
+            st.caption(
+                "⚠️ Mixing value scales (Trade Value Chart + Dynasty Rankings, per-line below) — "
+                "the totals are directionally useful, not precise."
+            )
+        if any(r.get("consideration") for r in trade_send_rows + trade_receive_rows):
+            st.caption(
+                "💰 FAAB/waiver considerations don't have a market value (league budgets vary too "
+                "much to invent one) — included below and sent to the panel, just not in the totals."
+            )
+
+        def _render_trade_side(rows: list[dict]) -> None:
+            for row in rows:
+                if row.get("consideration"):
+                    st.caption(f"💰 {row['label']} — not priced")
+                elif row.get("ambiguous"):
+                    st.caption(f"❓ \"{row['label']}\" — matches more than one player; add a position or full name")
+                elif row["value"] is None:
+                    st.caption(f"⚠️ \"{row['label']}\" — not found in loaded Draft Sharks data")
+                else:
+                    tag = " (DR)" if row["source"] == "Dynasty Rankings" else ""
+                    st.caption(f"{row['label']} — {row['value']:.0f}{tag}")
+
+        rrcol1, rrcol2 = st.columns(2)
+        with rrcol1:
+            _render_trade_side(trade_send_rows)
+        with rrcol2:
+            _render_trade_side(trade_receive_rows)
+
+        trade_send_total = sum(r["value"] for r in trade_send_rows if r["value"] is not None)
+        trade_receive_total = sum(r["value"] for r in trade_receive_rows if r["value"] is not None)
+        larger_total = max(trade_send_total, trade_receive_total)
+        delta = trade_receive_total - trade_send_total
+        delta_pct = (abs(delta) / larger_total * 100) if larger_total else 0.0
+        favorable = delta > 0
+
+        mcol1, mcol2, mcol3 = st.columns(3)
+        mcol1.metric("You send", f"{trade_send_total:.0f}")
+        mcol2.metric("You receive", f"{trade_receive_total:.0f}")
+        mcol3.metric("Balance", f"{'+' if delta >= 0 else ''}{delta_pct if delta >= 0 else -delta_pct:.0f}%")
+
+        # Four tiers, not two -- validated against a broad calibration pass (durable dynasty
+        # principles plus a couple of current, WebSearch-confirmed consensus anchors: 1.01 ~=
+        # a top-tier young RB, the 1.02-1.05 superflex range being one interchangeable tier)
+        # rather than tuned to match any one external site's own cutoffs.
+        raw_verdict = None
+        if larger_total:
+            if delta_pct < 5:
+                raw_verdict = "Balanced"
+                raw_line = f"🟢 Essentially even — within {delta_pct:.0f}% either way."
+            else:
+                raw_verdict = "favorable" if favorable else "unfavorable"
+                who = "receiving" if favorable else "sending"
+                if delta_pct < 10:
+                    raw_line = f"🟡 Slight edge, {raw_verdict} — you'd be {who} {delta_pct:.0f}% more value."
+                elif delta_pct < 20:
+                    raw_line = f"🟠 Meaningful edge, {raw_verdict} — you'd be {who} {delta_pct:.0f}% more value."
+                else:
+                    emoji = "🟢" if favorable else "🔴"
+                    raw_line = f"{emoji} Materially {raw_verdict} — you'd be {who} {delta_pct:.0f}% more value."
+            st.markdown(f"**Rough verdict (raw value):** {raw_line}")
+
+        # Positions actually changing hands -- picks carry no position, so only priced player
+        # rows can ever touch this.
+        sent_positions = [r["position"] for r in trade_send_rows if r["position"]]
+        received_positions = [r["position"] for r in trade_receive_rows if r["position"]]
+        touched_positions = sorted(set(sent_positions) | set(received_positions))
+
+        if touched_positions and my_team_label:
+            st.markdown("**Context**")
+            receiving_into_need, sending_from_strength = False, False
+            for pos in touched_positions:
+                mine = _depth_label(my_team_label, pos)
+                line = f"Your {pos} depth: {mine or 'unknown'}"
+                if trade_partner != "Not specified":
+                    theirs = _depth_label(trade_partner, pos)
+                    if theirs:
+                        line += f" · {trade_partner}'s {pos} depth: {theirs}"
+                before = depth.get(my_team_label, {}).get(pos, {"count": 0})["count"]
+                after = before - sent_positions.count(pos) + received_positions.count(pos)
+                if after != before:
+                    line += f" · post-trade: {before} → {after}" + (" (zero left)" if after == 0 else "")
+                st.caption(line)
+                if pos in received_positions and mine in ("Weak", "None — no rostered players here"):
+                    receiving_into_need = True
+                if pos in sent_positions and mine == "Strong":
+                    sending_from_strength = True
+
+            if raw_verdict == "unfavorable" and (receiving_into_need or sending_from_strength):
+                st.caption(
+                    "🟢 Roster construction may offset the raw gap above — "
+                    + ("you'd be filling a thin spot" if receiving_into_need else "")
+                    + (" and " if receiving_into_need and sending_from_strength else "")
+                    + ("giving up depth you have to spare" if sending_from_strength else "")
+                    + "."
+                )
+            elif raw_verdict == "favorable" and (
+                any(p in sent_positions and _depth_label(my_team_label, p) in ("Weak", "None — no rostered players here") for p in touched_positions)
+                or any(p in received_positions and _depth_label(my_team_label, p) == "Strong" for p in touched_positions)
+            ):
+                st.caption(
+                    "🟡 Worth a second look — the raw numbers favor you, but roster construction "
+                    "cuts the other way (thinning a spot that's already weak, or stacking one "
+                    "that's already strong)."
+                )
+
+    def _describe_trade_side(rows: list[dict]) -> str:
+        return "\n".join(
+            f"  - {r['label']} (value: {r['value']:.0f}{', ' + r['source'] if r['source'] else ''})"
+            if r["value"] is not None else f"  - {r['label']}"
+            for r in rows
+        )
+
+    _trade_ready = bool(trade_send_text.strip() and trade_receive_text.strip())
+    trade_question = (
+        "Evaluate this trade for me:\nYou send:\n" + _describe_trade_side(trade_send_rows) +
+        "\nYou receive:\n" + _describe_trade_side(trade_receive_rows)
+    )
+    if trade_partner != "Not specified":
+        trade_question += f"\nTrading with: {trade_partner}"
+
+    bcol1, bcol2 = st.columns(2)
+    with bcol1:
+        ask_moderator = st.button(
+            "⚖️ Moderator Review", use_container_width=True, disabled=not _trade_ready,
+            help="Given the calculated balance and all available roster/context data, is this "
+            "actually a good trade? A fresh full debate if there's no prior conversation in this "
+            "chat to react to, otherwise a lightweight follow-up off it.",
+        )
+    with bcol2:
+        ask_full_squad = st.button(
+            "🔥 Full Squad Debate", type="primary", use_container_width=True, disabled=not _trade_ready,
+            help="Forces a fresh full panel run (Quant → Beat Tracker → Contrarian → Moderator) on "
+            "this exact trade, regardless of any prior conversation in this chat.",
+        )
+    if ask_moderator:
+        st.session_state["question_input"] = (
+            trade_question + "\n\nGiven the calculated balance and all available roster/context "
+            "data above, is this actually a good trade?"
+        )
+    elif ask_full_squad:
+        st.session_state["question_input"] = "/debate " + trade_question
 
     # ------------------------------------------------------------------ reference material --
 

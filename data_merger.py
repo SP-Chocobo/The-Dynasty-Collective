@@ -702,6 +702,12 @@ class DataMerger:
         for field in ("projection", "vorp", "tier", "trade_value", "rank",
                        "position", "team", "pos_rank", "proj_3yr",
                        "roster_status", "proj_3d", "ros_3d", "ceiling", "value_3d",
+                       # "value" is the Trade Value Chart's own column name (see
+                       # parse_draftsharks_trade_value_chart_pdf) -- that table never goes
+                       # through _normalize_columns' header-alias renaming the way CSV/JSON
+                       # uploads do, so it's the one table where this whitelist needs both
+                       # names to actually surface a price.
+                       "value",
                        "source_file", "source_date"):
             if field in match.index and pd.notna(match[field]):
                 row[field] = match[field]
