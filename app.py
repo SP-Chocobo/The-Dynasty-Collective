@@ -1871,10 +1871,10 @@ with st.sidebar:
                 # snapshot); the shared "Refresh available models" button above offers a
                 # real picker built from whatever that key can actually call. Blank means
                 # "no override, use this provider's own default."
-                st.caption(f"MODEL (optional — e.g. {', '.join(bot_config.SUGGESTED_MODELS[_provider_choice])})")
                 _fetched = st.session_state.get(f"available_models_{_provider_choice}")
                 _current_model = _role_models_cfg[_role]
                 if _fetched:
+                    st.caption("MODEL (optional)")
                     _options = ["(provider default)"] + [m for m in _fetched if m]
                     if _current_model and _current_model not in _options:
                         _options.append(_current_model)
@@ -1885,6 +1885,14 @@ with st.sidebar:
                     )
                     _model_input = "" if _model_choice == "(provider default)" else _model_choice
                 else:
+                    # SUGGESTED_MODELS is just an illustrative hint (Claude's own entries are
+                    # kept current; Gemini/OpenAI's are whatever this app shipped with, since
+                    # there's no live-verified way to know their current lineup without an API
+                    # call) -- shown only here, before that call has actually happened for this
+                    # provider. Once "Refresh available models" above has run, the real fetched
+                    # list becomes the selectbox itself, so repeating a possibly-stale example
+                    # alongside accurate live data would be redundant at best, wrong at worst.
+                    st.caption(f"MODEL (optional — e.g. {', '.join(bot_config.SUGGESTED_MODELS[_provider_choice])})")
                     _model_input = st.text_input(
                         "Model", value=_current_model, key=f"bot_model_input_{_role}",
                         label_visibility="collapsed", placeholder="Leave blank to use the provider's default",

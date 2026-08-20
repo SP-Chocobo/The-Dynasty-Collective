@@ -41,6 +41,13 @@ GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 
 CLAUDE_MODEL = os.getenv("ANTHROPIC_MODEL", "claude-sonnet-5")  # was a now-retired dated snapshot
+# These two are best-effort, not verified current the way CLAUDE_MODEL above is (that one's
+# checked against Anthropic's own live model list; there's no equivalent live check here for
+# Gemini/OpenAI) -- if either provider has moved on by the time you're reading this, these are
+# only ever a silent fallback anyway: a role's own model override (bot_config's per-role
+# setting, or SUGGESTED_MODELS/the live "Refresh available models" fetch in the UI) takes
+# priority whenever one's actually configured. Worth checking against each provider's current
+# docs before assuming these still resolve to a live model.
 GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-2.0-flash")
 OPENAI_MODEL = os.getenv("OPENAI_MODEL", "gpt-4o")
 
