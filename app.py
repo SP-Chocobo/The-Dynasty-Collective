@@ -3429,14 +3429,70 @@ with st.expander(f"🎯 Active Objectives ({len(active_items)})", expanded=bool(
         "ended the way it did if the same idea comes up again."
     )
     if _force_expand_todos:
-        st.caption("🎯 Suggested from that message below — edit it or just hit Add.")
-    manual_col, add_col = st.columns([4, 1])
+        st.caption("🎯 Seeded from that message below — edit it, hit Add, or ask the Moderator to expand it using context.")
+    manual_col, expand_col, add_col = st.columns([3.2, 1, 1])
     manual_text = manual_col.text_input(
         "Add an objective", key="manual_todo_text", label_visibility="collapsed",
         placeholder="Add a new objective…",
     )
+    # Only lit up right after a "🎯 Add as objective" click on a message seeded this box (see
+    # _render_agent_msg) -- this button re-reads THAT message, not whatever's currently typed
+    # above, and asks the Moderator to condense it using the surrounding conversation and this
+    # league's existing objectives, same as the old per-message smart-condense button did. Kept
+    # opt-in rather than automatic: most seeded text is already close enough to an objective
+    # that a bot call would buy nothing.
+    _seed_ts = st.session_state.get("_objective_seed_ts")
+    if expand_col.button(
+        "🤖 Ask Moderator", key="expand_objective_with_context", use_container_width=True,
+        disabled=_seed_ts is None,
+        help=(
+            "Only available right after 🎯 Add as objective seeds this box from a message."
+            if _seed_ts is None else
+            "Ask the Moderator to rewrite the text above as a properly scoped objective, using "
+            "the surrounding conversation and this league's existing objectives."
+        ),
+    ):
+        seed_msg = next((m for m in st.session_state.chat_history if m.get("ts") == _seed_ts), None)
+        if seed_msg is None:
+            notify("warning", "That message isn't in this chat anymore -- edit the text above yourself instead.")
+        else:
+            obj_provider = bot_config.load_role_providers()["moderator"]
+            obj_key = api_key_for(PROVIDER_KEY_FIELD[obj_provider])
+            if not IS_PROVIDER_CONFIGURED[obj_provider](obj_key):
+                notify("warning", f"{bot_config.PROVIDER_LABELS[obj_provider]} isn't configured -- add an API key to use this.")
+            else:
+                with st.spinner("Condensing into an objective..."):
+                    # Centered on the seed message itself, both backward AND forward -- see
+                    # build_context's conversation_window param.
+                    full_history = st.session_state.chat_history
+                    try:
+                        msg_idx = next(i for i, m in enumerate(full_history) if m.get("ts") == _seed_ts)
+                    except StopIteration:
+                        msg_idx = len(full_history) - 1
+                    half_window = RECENT_TURNS_IN_CONTEXT // 2
+                    window = full_history[max(0, msg_idx - half_window): msg_idx + half_window + 1]
+                    condense_context = build_context(
+                        snapshot, roster_table if roster else [], player_universe, seed_msg["content"],
+                        conversation_window=window,
+                    )
+                    condensed = llm_engine.ask_condense_to_objective(
+                        condense_context, seed_msg["content"], provider=obj_provider,
+                        api_key=obj_key, model=bot_config.load_role_models().get("moderator") or None,
+                    )
+                result = llm_engine.parse_condensed_objective(condensed)
+                if result.get("objective"):
+                    st.session_state["manual_todo_text"] = result["objective"]
+                    st.session_state["_force_expand_todos"] = True
+                    st.rerun()
+                elif result.get("not_new_id") is not None:
+                    notify("info", f"Already tracked as objective #{result['not_new_id']}: {result.get('reason', '')}")
+                elif result.get("no_objective_reason"):
+                    notify("info", f"Nothing actionable there: {result['no_objective_reason']}")
+                else:
+                    notify("warning", "Couldn't turn that into an objective -- edit the text above yourself instead.")
     if add_col.button("Add", key="add_manual_todo", use_container_width=True) and manual_text.strip():
         todo_log.add_todo(todo_league_id, manual_text, source="manual")
+        st.session_state.pop("_objective_seed_ts", None)
         st.rerun()
 
     if not active_items:
@@ -3925,67 +3981,25 @@ with st.container(key="debate_dock"):
                     st.rerun()
                 # Bot messages only -- ACTION ITEM today only ever comes out of a Moderator
                 # verdict, so a good Quant/Beat callout has no path to becoming a tracked
-                # objective except retyping it yourself. This lets any bot message become one,
-                # condensed by the Moderator's own provider using the surrounding conversation
-                # (build_context already carries CONVERSATION MEMORY and OPEN TO-DO ITEMS, so
-                # this naturally dedupes against what's already tracked -- see
-                # ask_condense_to_objective's docstring) rather than just this one message in
-                # isolation.
+                # objective except retyping it yourself. One button here, free: just this
+                # message's own text (whitespace-collapsed, truncated at 200 chars on a word
+                # boundary) dropped straight into the objective box below. It also seeds
+                # _objective_seed_ts so that box's own "🤖 Ask Moderator" button (see the
+                # Active Objectives expander) can, on request, replace this with a version
+                # condensed from the surrounding conversation -- most messages are already
+                # phrased close enough to an objective that a bot call buys nothing, so that
+                # stays opt-in rather than firing here on every click.
                 if msg["role"] in ROLE_BADGE_BASE and st.button(
                     "🎯 Add as objective", key=f"objective_from_msg_{ts}",
-                    help="Ask the bot to turn this message into a tracked objective.",
-                ):
-                    obj_provider = role_providers["moderator"]
-                    obj_key = api_keys[obj_provider]
-                    if not IS_PROVIDER_CONFIGURED[obj_provider](obj_key):
-                        notify("warning", f"{bot_config.PROVIDER_LABELS[obj_provider]} isn't configured -- add an API key to use this.")
-                    else:
-                        with st.spinner("Condensing into an objective..."):
-                            # Centered on the clicked message itself, both backward AND forward
-                            # -- build_context's default window is just the tail end of the
-                            # whole conversation, which wouldn't reliably surround an older
-                            # message (and would miss what was said right after it entirely).
-                            full_history = st.session_state.chat_history
-                            try:
-                                msg_idx = next(i for i, m in enumerate(full_history) if m.get("ts") == ts)
-                            except StopIteration:
-                                msg_idx = len(full_history) - 1
-                            half_window = RECENT_TURNS_IN_CONTEXT // 2
-                            window = full_history[max(0, msg_idx - half_window): msg_idx + half_window + 1]
-                            condense_context = build_context(
-                                snapshot, roster_table if roster else [], player_universe, msg["content"],
-                                conversation_window=window,
-                            )
-                            condensed = llm_engine.ask_condense_to_objective(
-                                condense_context, msg["content"], provider=obj_provider,
-                                api_key=obj_key, model=role_models.get("moderator") or None,
-                            )
-                        result = llm_engine.parse_condensed_objective(condensed)
-                        if result.get("objective"):
-                            st.session_state["manual_todo_text"] = result["objective"]
-                            st.session_state["_force_expand_todos"] = True
-                            st.rerun()
-                        elif result.get("not_new_id") is not None:
-                            notify("info", f"Already tracked as objective #{result['not_new_id']}: {result.get('reason', '')}")
-                        elif result.get("no_objective_reason"):
-                            notify("info", f"Nothing actionable there: {result['no_objective_reason']}")
-                        else:
-                            notify("warning", "Couldn't turn that into an objective -- try again, or add it manually below.")
-                # The cheap counterpart to 🎯 above -- no bot call, no context building, just
-                # the message's own text dropped straight into the objective box for you to
-                # edit. Worth having alongside the smart version: most messages are already
-                # phrased close enough to an objective ("we should probably grab a backup QB")
-                # that condensing them costs a call for no real gain -- this is for those,
-                # 🎯 stays for a long, meandering answer actually worth distilling.
-                if msg["role"] in ROLE_BADGE_BASE and st.button(
-                    "✍️ Quick add", key=f"quick_objective_from_msg_{ts}",
-                    help="Drop this message's own text into the objective box, unedited -- no bot call.",
+                    help="Drop this message's own text into the objective box below -- no bot call. "
+                    "That box has its own button to ask the Moderator to expand it using context, if you want that instead.",
                 ):
                     quick_text = " ".join(msg["content"].split())
                     if len(quick_text) > 200:
                         quick_text = quick_text[:200].rsplit(" ", 1)[0] + "…"
                     st.session_state["manual_todo_text"] = quick_text
                     st.session_state["_force_expand_todos"] = True
+                    st.session_state["_objective_seed_ts"] = ts
                     st.rerun()
             prose_html, verdict_html = format_agent_content(msg["role"], msg["content"])
             inner = f'<div class="agent-prose">{prose_html}</div>' if prose_html else ""
