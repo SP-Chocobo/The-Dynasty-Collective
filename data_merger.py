@@ -209,6 +209,25 @@ def normalize_name(name: str) -> str:
     return re.sub(r"\s+", " ", name).strip()
 
 
+def name_key(norm_name: str) -> tuple[str, str]:
+    """(first-initial, full remaining name) -- the shared fuzzy-match key for bridging Draft
+    Sharks' first-initial-only PDF names ("J Chase") against vendors that export full names
+    ("Ja'Marr Chase"). Keys on everything AFTER the first token, not just the last token: a
+    multi-word last name breaks a last-token-only key, since two different people can share a
+    last TOKEN while having different full last names -- confirmed live, "A.J. Brown"
+    ("aj brown") and "Amon-Ra St. Brown" ("amonra st brown") both end in "brown" and collided
+    under a (first-initial, last-token) key, silently pricing one player as the other. Used
+    identically everywhere this app needs to bridge that abbreviation (_find_match's own
+    matching, _compute_percentiles' bot_research position lookup, app.py's trade-calculator
+    ambiguity check) rather than three separate, driftable copies of the same logic."""
+    tokens = norm_name.split() if isinstance(norm_name, str) else []
+    if not tokens:
+        return ("", "")
+    if len(tokens) == 1:
+        return (tokens[0][0], tokens[0])
+    return (tokens[0][0], " ".join(tokens[1:]))
+
+
 def _normalize_columns(df: pd.DataFrame, default_kind: str = "rankings") -> pd.DataFrame:
     rename = {}
     for col in df.columns:
@@ -1098,18 +1117,14 @@ class DataMerger:
 
         # Draft Sharks' own norm_name is first-initial-only ("m crosby", not "maxx crosby" --
         # see _find_match's docstring), so a plain norm_name-to-norm_name join against it would
-        # silently miss almost everyone. Key on (first-initial, last-name), the same key
-        # _find_match uses to bridge that abbreviation, rather than exact-string equality.
-        def _name_key(norm_name: str) -> tuple[str, str]:
-            t = norm_name.split() if isinstance(norm_name, str) else []
-            return (t[0][0], t[-1]) if t else ("", "")
-
+        # silently miss almost everyone. Key on name_key(), the same shared key _find_match
+        # uses to bridge that abbreviation, rather than exact-string equality.
         position_by_key: dict[tuple[str, str], str] = {}
         if "position" in self.projections.columns:
             for norm, pos in zip(self.projections["norm_name"], self.projections["position"]):
                 if pd.isna(pos):
                     continue
-                position_by_key.setdefault(_name_key(norm), pos)
+                position_by_key.setdefault(name_key(norm), pos)
         for (source, source_file), (field, higher_is_better) in _EXTERNAL_PERCENTILE_RULES.items():
             mask = (
                 (self.external_values["source_name"] == source)
@@ -1135,7 +1150,7 @@ class DataMerger:
             # covers both), same distinction _position_group draws for the dedup collision fix.
             if source == "bot_research" and position_by_key:
                 row_groups = self.external_values["norm_name"].map(
-                    lambda n: _position_group(position_by_key.get(_name_key(n)))
+                    lambda n: _position_group(position_by_key.get(name_key(n)))
                 )
                 for group_value in row_groups[mask].unique():
                     group_mask = mask & (row_groups == group_value)
@@ -1243,13 +1258,31 @@ class DataMerger:
         tokens = norm_name.split()
         if not tokens:
             return None
-        key = (tokens[0][0], tokens[-1])
 
-        def row_key(row_norm: str) -> tuple[str, str]:
-            t = row_norm.split()
-            return (t[0][0], t[-1]) if t else ("", "")
+        # Try an exact normalized-name match before the fuzzy key below. Vendors that export
+        # full names (unlike Draft Sharks' own first-initial-only PDFs) can be matched exactly
+        # -- which matters because the (first-initial, LAST TOKEN) key can't safely distinguish
+        # two different people whose last token happens to collide: "A.J. Brown" normalizes to
+        # "aj brown" and "Amon-Ra St. Brown" to "amonra st brown", both keying to ('a','brown').
+        # Confirmed live: the Trade Value Chart holds an exact "aj brown" row (tv=37) that the
+        # key match below discarded in favor of "amonra st brown" (tv=83) for BOTH players --
+        # a real player getting silently priced as a different one. An exact match against
+        # Draft Sharks' own abbreviated table just won't hit (its rows never spell out a full
+        # first name), so this falls through to the existing key logic there unaffected.
+        exact_matches = table[table["norm_name"] == norm_name]
+        if not exact_matches.empty:
+            if len(exact_matches) > 1 and team and "team" in exact_matches.columns:
+                narrowed = exact_matches[exact_matches["team"] == team]
+                if not narrowed.empty:
+                    exact_matches = narrowed
+            if len(exact_matches) > 1 and position and "position" in exact_matches.columns:
+                narrowed = exact_matches[exact_matches["position"] == position]
+                if not narrowed.empty:
+                    exact_matches = narrowed
+            return exact_matches.iloc[0]
 
-        key_matches = table[table["norm_name"].map(row_key) == key]
+        key = name_key(norm_name)
+        key_matches = table[table["norm_name"].map(name_key) == key]
         if not key_matches.empty:
             if len(key_matches) > 1 and team and "team" in key_matches.columns:
                 narrowed = key_matches[key_matches["team"] == team]

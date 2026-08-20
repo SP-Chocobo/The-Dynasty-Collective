@@ -20,6 +20,58 @@ class NormalizeNameTests(unittest.TestCase):
         self.assertIn("fi", dm.normalize_name("Mayﬁeld"))
 
 
+class NameKeyTests(unittest.TestCase):
+    """The exact bug this class exists to prevent regressing: a (first-initial, LAST TOKEN)
+    key can't distinguish two different people whose last token happens to collide -- "A.J.
+    Brown" ("aj brown") and "Amon-Ra St. Brown" ("amonra st brown") both end in "brown".
+    Confirmed live: the Trade Value Chart's exact "aj brown" row (tv=37) was discarded in
+    favor of "amonra st brown" (tv=83) for BOTH players. name_key() fixes this by keying on
+    everything after the first token, not just the last one."""
+
+    def test_multi_word_last_names_no_longer_collide_with_a_shared_final_token(self):
+        self.assertNotEqual(
+            dm.name_key(dm.normalize_name("A.J. Brown")),
+            dm.name_key(dm.normalize_name("Amon-Ra St. Brown")),
+        )
+
+    def test_same_person_different_full_name_forms_still_match(self):
+        self.assertEqual(
+            dm.name_key(dm.normalize_name("Amon-Ra St. Brown")),
+            dm.name_key(dm.normalize_name("A St Brown")),  # Draft Sharks' own abbreviated form
+        )
+
+    def test_genuine_same_key_collision_still_recognized(self):
+        # Two real people who really do share a (first-initial, last-name) key -- this isn't
+        # a false collision, so name_key must still treat them as one key (position/team
+        # disambiguation downstream is what actually tells them apart).
+        self.assertEqual(dm.name_key("josh allen"), dm.name_key("jaylen allen"))
+
+    def test_single_token_name_does_not_crash(self):
+        self.assertEqual(dm.name_key("madonna"), ("m", "madonna"))
+
+    def test_empty_or_non_string_is_neutral(self):
+        self.assertEqual(dm.name_key(""), ("", ""))
+        self.assertEqual(dm.name_key(None), ("", ""))
+
+
+class FindMatchExactNameTests(unittest.TestCase):
+    """Integration coverage against the real committed baseline for the same bug --
+    NameKeyTests covers the key function in isolation, this confirms _find_match's exact-match
+    fast path actually resolves the two real, differently-priced players correctly end to end."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.merger = dm.DataMerger()
+
+    def test_aj_brown_and_amonra_st_brown_resolve_to_different_trade_value_chart_prices(self):
+        tvc_players = self.merger.trade_values[self.merger.trade_values["asset_type"] == "player"]
+        aj = self.merger.merge_player("A.J. Brown", df=tvc_players)
+        amonra = self.merger.merge_player("Amon-Ra St. Brown", df=tvc_players)
+        self.assertTrue(aj.get("matched"))
+        self.assertTrue(amonra.get("matched"))
+        self.assertNotEqual(aj.get("value"), amonra.get("value"))
+
+
 class PositionGroupTests(unittest.TestCase):
     """_position_group is the fix for the real "Josh Allen the Bills QB vs. Josh Allen a DL"
     collision this baseline effort surfaced -- these tests exist to make sure that class of

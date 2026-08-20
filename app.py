@@ -32,8 +32,8 @@ import todo_log
 import llm_engine
 from attachments import ATTACHMENTS_DIR, list_attachments, save_attachment, set_caption, set_scope, delete_attachment
 from data_merger import (
-    GLOBAL_PROJECTIONS_DIR, PROJECTIONS_DIR, DataMerger, load_projection_file, normalize_name,
-    recency_grade, save_alias,
+    GLOBAL_PROJECTIONS_DIR, PROJECTIONS_DIR, DataMerger, load_projection_file, name_key,
+    normalize_name, recency_grade, save_alias,
 )
 from league_format import FORMAT_GUIDANCE, FORMAT_OPTIONS, STANDARD, get_format_override, set_format_override
 from league_prefs import forget_league, get_prefs, move_league, sorted_leagues, toggle_archive
@@ -2835,16 +2835,15 @@ elif main_view == MAINTENANCE_VIEW:
     )
 
     def _match_key(name: str) -> tuple[str, str]:
-        tokens = normalize_name(name).split()
-        return (tokens[0][0], tokens[-1]) if tokens else ("", "")
+        return name_key(normalize_name(name))
 
     # merge_player's own key-match silently picks the first candidate when several players
-    # share a (first-initial, last-name) key and no position/team was given to disambiguate
-    # (confirmed live: a same-keyed "Jaylen Allen" resolved to "Josh Allen"'s value instead of
-    # its own) -- fine for callers that always have a position in hand (the free-agent/roster
-    # tables), but the trade calculator's free-text input never does. Recomputing the same key
-    # here to count real candidates catches that specific gap without touching merge_player's
-    # own contract, which plenty of other call sites already depend on staying as-is.
+    # share a name_key and no position/team was given to disambiguate (confirmed live: a
+    # same-keyed "Jaylen Allen" resolved to "Josh Allen"'s value instead of its own) -- fine
+    # for callers that always have a position in hand (the free-agent/roster tables), but the
+    # trade calculator's free-text input never does. Recomputing the same key here to count
+    # real candidates catches that specific gap without touching merge_player's own contract,
+    # which plenty of other call sites already depend on staying as-is.
     _tvc_player_keys = _tvc_players["norm_name"].map(lambda n: _match_key(n)) if not _tvc_players.empty else None
 
     # FAAB dollars and waiver-priority swaps are common lopsided-piece-count sweeteners in a
