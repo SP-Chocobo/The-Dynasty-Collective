@@ -447,9 +447,18 @@ def save_parsed_keys_to_env(overrides: dict[str, str]) -> None:
     ENV_PATH.write_text("\n".join(new_lines) + "\n")
 
 
+# SleeperClient()/DataMerger() are real work (DataMerger() alone measured ~115ms -- it loads
+# and merges every baseline/external CSV) -- a dict literal's values are all evaluated eagerly
+# before the loop below even checks whether the key is already set, so this used to construct
+# fresh instances of both on literally every single rerun (every button click, every widget
+# interaction) and immediately throw them away when the key already existed. Constructed
+# directly, guarded individually, before the cheap-default loop.
+if "sleeper_client" not in st.session_state:
+    st.session_state.sleeper_client = SleeperClient()
+if "data_merger" not in st.session_state:
+    st.session_state.data_merger = DataMerger()
+
 for key, default in {
-    "sleeper_client": SleeperClient(),
-    "data_merger": DataMerger(),
     "user_id": None,
     "username": load_last_username(),
     "auto_sync_attempted": False,  # only try to restore a remembered session once per browser session
@@ -2886,7 +2895,15 @@ elif main_view == MAINTENANCE_VIEW:
     # trade calculator's free-text input never does. Recomputing the same key here to count
     # real candidates catches that specific gap without touching merge_player's own contract,
     # which plenty of other call sites already depend on staying as-is.
-    _tvc_player_keys = _tvc_players["norm_name"].map(lambda n: _match_key(n)) if not _tvc_players.empty else None
+    # DataMerger._load() already precomputes this exact column on trade_values (and it
+    # survives the asset_type=="player" filter above) -- reuse it instead of remapping every
+    # row again here, same fix as _find_match's own internal lookup.
+    if _tvc_players.empty:
+        _tvc_player_keys = None
+    elif "_name_key" in _tvc_players.columns:
+        _tvc_player_keys = _tvc_players["_name_key"]
+    else:
+        _tvc_player_keys = _tvc_players["norm_name"].map(_match_key)
 
     # FAAB dollars and waiver-priority swaps are common lopsided-piece-count sweeteners in a
     # real trade, but Draft Sharks has no market value for either -- a league's FAAB budget can
@@ -2965,8 +2982,14 @@ elif main_view == MAINTENANCE_VIEW:
                 # Series == tuple broadcasts elementwise as intended; Series.eq(tuple) does not
                 # -- pandas treats a tuple RHS as array-like for .eq() and raises on the length
                 # mismatch instead of comparing each element against it. Confirmed the hard way.
+                # DataMerger._load() already precomputes this column -- reuse it rather than
+                # remapping every row of the whole rankings pool again on every trade line.
+                _proj_keys = (
+                    merger.projections["_name_key"] if "_name_key" in merger.projections.columns
+                    else merger.projections["norm_name"].map(_match_key)
+                )
                 candidates = int(
-                    (merger.projections["norm_name"].map(_match_key) == _match_key(line)).sum()
+                    (_proj_keys == _match_key(line)).sum()
                 ) if not merger.projections.empty else 1
                 if candidates > 1:
                     # Same reasoning as the Trade Value Chart branch above -- don't leak a

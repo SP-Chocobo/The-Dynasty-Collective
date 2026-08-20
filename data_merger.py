@@ -1089,12 +1089,21 @@ class DataMerger:
         self.projections = _merge_rankings(baseline_rankings, global_rankings, league_rankings)
         self.free_agents = league_fa
         self.trade_values = _merge_rankings(baseline_tvc, global_tvc, league_tvc)
+        # Precomputed once per _load()/reload(), not per lookup -- _find_match's fuzzy key
+        # match used to recompute name_key() over every row of whichever table it was searching
+        # on EVERY call (measured: ~11ms per composite_player_score call, ~330ms for a 30-player
+        # roster table, every single rerun). A column survives normal pandas filtering (e.g.
+        # app.py's own `trade_values[trade_values["asset_type"] == "player"]`), so any view
+        # derived from one of these three tables still carries it.
         external_values = load_external_values(self.external_dir)
         bot_research_rows = load_bot_research_as_external()
         self.external_values = (
             pd.concat([external_values, bot_research_rows], ignore_index=True, sort=False)
             if not bot_research_rows.empty else external_values
         )
+        for _df in (self.projections, self.free_agents, self.trade_values, self.external_values):
+            if not _df.empty and "norm_name" in _df.columns:
+                _df["_name_key"] = _df["norm_name"].map(name_key)
         self._compute_percentiles()
         self.aliases = load_aliases()
 
@@ -1299,7 +1308,11 @@ class DataMerger:
             return exact_matches.iloc[0]
 
         key = name_key(norm_name)
-        key_matches = table[table["norm_name"].map(name_key) == key]
+        # Use the precomputed column when this table has one (every table _load() builds
+        # does) -- falls back to computing it on the fly for an ad hoc table (e.g. a
+        # one-off external-source subset) that never went through _load().
+        row_keys = table["_name_key"] if "_name_key" in table.columns else table["norm_name"].map(name_key)
+        key_matches = table[row_keys == key]
         if not key_matches.empty:
             if len(key_matches) > 1 and team and "team" in key_matches.columns:
                 narrowed = key_matches[key_matches["team"] == team]
