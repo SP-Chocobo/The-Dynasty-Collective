@@ -196,8 +196,17 @@ st.markdown(
        Scoped to aria-expanded="true" only: min-width beats max-width per the CSS
        spec, so an unscoped rule here fights Streamlit's own collapse (which sets
        max-width: 0 on the same element) and leaves a chunk of dead space and a
-       sliver of visible sidebar even when "collapsed". */
-    [data-testid="stSidebar"][aria-expanded="true"] { min-width: 400px; }
+       sliver of visible sidebar even when "collapsed".
+       Also scoped to a wide-enough viewport: at 700px this leaves 300px for actual
+       content, still workable; on a real phone (~390px) this forced the sidebar WIDER
+       than the entire screen -- confirmed live, an open sidebar's own content became
+       unreachable, and (see .st-key-debate_dock below) the fixed dock's hardcoded
+       "shift right by 400px when the sidebar's open" offset put it entirely off-screen
+       too (x=400 on a 390px viewport). Below the breakpoint, Streamlit's own native
+       responsive sidebar width (which adapts to the viewport) takes over instead. */
+    @media (min-width: 700px) {
+        [data-testid="stSidebar"][aria-expanded="true"] { min-width: 400px; }
+    }
 
     /* Default Streamlit buttons read as understated on a dark theme — thin,
        low-contrast border, flat background that barely lifts off the page. Give
@@ -328,9 +337,21 @@ st.markdown(
        the document flow) — left:0 above would span full width including underneath
        the sidebar, which then paints over the dock's left edge and hides whatever
        text happens to land there. Only start the dock after the sidebar's actual
-       rendered width, tracking its expanded/collapsed state via :has(). */
-    body:has([data-testid="stSidebar"][aria-expanded="true"]) .st-key-debate_dock { left: 400px; }
+       rendered width, tracking its expanded/collapsed state via :has().
+       Matches the sidebar's own min-width breakpoint above: below 700px the sidebar
+       is back to Streamlit's native (narrower, viewport-responsive) width, so a fixed
+       400px offset would push the dock off-screen on a real phone -- confirmed live,
+       x=400 on a 390px viewport, completely unreachable. Below the breakpoint the dock
+       just stays flush left regardless of sidebar state; a brief visual overlap with an
+       open sidebar on a narrow phone is a real tradeoff, but strictly better than the
+       dock being categorically unusable. */
+    @media (min-width: 700px) {
+        body:has([data-testid="stSidebar"][aria-expanded="true"]) .st-key-debate_dock { left: 400px; }
+    }
     body:has([data-testid="stSidebar"][aria-expanded="false"]) .st-key-debate_dock { left: 0; }
+    @media (max-width: 699.98px) {
+        .st-key-debate_dock { left: 0 !important; }
+    }
 
 
     /* Delete confirmations are the one genuinely irreversible action in the sidebar —
