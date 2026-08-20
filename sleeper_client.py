@@ -81,7 +81,11 @@ class SleeperClient:
         if not force_refresh and cache_path.exists():
             age = time.time() - cache_path.stat().st_mtime
             if age < PLAYERS_CACHE_MAX_AGE_SECONDS:
-                return json.loads(cache_path.read_text())
+                cached = self._read_players_cache(cache_path)
+                if cached is not None:
+                    return cached
+                # Corrupt but not yet stale -- fall through to a live re-fetch below rather
+                # than raising, same fail-soft posture as every other method here.
 
         try:
             players = self._get("/players/nfl")
@@ -93,8 +97,20 @@ class SleeperClient:
             return players
 
         if cache_path.exists():
-            return json.loads(cache_path.read_text())
+            cached = self._read_players_cache(cache_path)
+            if cached is not None:
+                return cached
         return {}
+
+    @staticmethod
+    def _read_players_cache(cache_path: Path) -> Optional[dict[str, dict]]:
+        """None (never raises) on a corrupt cache file -- this is a ~10MB re-fetchable cache,
+        not durable data, so an interrupted write just means "treat it as a cache miss," not
+        an app-crashing exception every future page load until someone manually deletes it."""
+        try:
+            return json.loads(cache_path.read_text())
+        except (json.JSONDecodeError, OSError):
+            return None
 
     # -- native weekly stat-category projections (undocumented endpoint) ----
     #
@@ -215,7 +231,13 @@ class SleeperClient:
         path = self.cache_dir / f"{league_id}_latest.json"
         if not path.exists():
             return None
-        return json.loads(path.read_text())
+        try:
+            return json.loads(path.read_text())
+        except (json.JSONDecodeError, OSError):
+            # Re-syncable (sync_league() rebuilds this from Sleeper's live API), so a corrupt
+            # cache is just a cache miss, not an app-crashing exception -- same posture as
+            # "no snapshot cached yet" a few lines up.
+            return None
 
 
 # -- helpers for interpreting a synced league --------------------------------

@@ -474,9 +474,24 @@ for key, default in {
 
 def load_chat_history(league_id: str) -> list[dict]:
     path = CHATS_DIR / f"{league_id}_history.json"
-    if path.exists():
+    if not path.exists():
+        return []
+    try:
         return json.loads(path.read_text())
-    return []
+    except (json.JSONDecodeError, OSError):
+        # Written on every single message (see append_message/save_chat_history below), so
+        # this is the single most write-frequent file in the app -- an interrupted write
+        # (browser closed mid-save, disk full) leaving invalid JSON here used to crash the
+        # whole app on next load, with no way back in short of manually deleting the file.
+        # Back the corrupt file up (never overwrite silently) before treating history as
+        # empty, so a whole league's chat/decision/objective trail isn't just gone -- the
+        # very next save would otherwise overwrite it with a fresh empty history.
+        backup = path.with_name(f"{path.stem}_corrupt_{int(time.time())}{path.suffix}")
+        try:
+            path.rename(backup)
+        except OSError:
+            pass
+        return []
 
 
 def save_chat_history(league_id: str, history: list[dict]) -> None:
