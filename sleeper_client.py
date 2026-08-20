@@ -88,6 +88,19 @@ class SleeperClient:
     def get_drafts(self, league_id: str) -> list[dict]:
         return self._get(f"/league/{league_id}/drafts") or []
 
+    def get_draft(self, draft_id: str) -> Optional[dict]:
+        """One draft's own metadata -- type (snake/linear/auction), status, settings (rounds,
+        roster/starter slot counts), draft_order. Distinct from get_drafts (a league's list of
+        drafts) and get_draft_picks (that draft's picks so far) -- see draft_room.py, the only
+        current caller, for how the three combine into a live draft-pick recommendation."""
+        return self._get(f"/draft/{draft_id}")
+
+    def get_draft_picks(self, draft_id: str) -> list[dict]:
+        """Every pick made in this draft so far, in draft order -- Sleeper has no push/websocket
+        feed for third parties, so a live view re-polls this on demand (a Refresh action, not a
+        background timer) same as every other "live-ish" read this client already does."""
+        return self._get(f"/draft/{draft_id}/picks") or []
+
     # -- player database (large, cached daily) ------------------------------
 
     def get_players(self, force_refresh: bool = False) -> dict[str, dict]:
