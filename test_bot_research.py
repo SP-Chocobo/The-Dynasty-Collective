@@ -66,6 +66,22 @@ class BotResearchTests(unittest.TestCase):
         bot_research.add_finding("Maxx Crosby", "ESPN", "new claim", rank=1)
         self.assertEqual(len(bot_research.load_findings()), 2)
 
+    def test_exact_same_day_duplicate_is_a_noop_not_a_second_row(self):
+        # The bug this exists to prevent: process_moderator_output runs on every Moderator
+        # reply, including a follow-up reacting to the same debate -- a re-run /debate or a
+        # follow-up restating its own finding would otherwise append an identical row each
+        # time, inflating this finding's weight in the composite's percentile pool.
+        first_id = bot_research.add_finding("Maxx Crosby", "ESPN", "ranked #1 DL", rank=1)
+        second_id = bot_research.add_finding("Maxx Crosby", "ESPN", "ranked #1 DL", rank=1)
+        self.assertEqual(first_id, second_id)
+        self.assertEqual(len(bot_research.load_findings()), 1)
+
+    def test_a_genuinely_different_finding_for_the_same_player_still_gets_its_own_row(self):
+        bot_research.add_finding("Maxx Crosby", "ESPN", "ranked #1 DL", rank=1)
+        bot_research.add_finding("Maxx Crosby", "FantasyPros", "ranked #1 DL", rank=1)
+        bot_research.add_finding("Maxx Crosby", "ESPN", "ranked #2 DL", rank=2)
+        self.assertEqual(len(bot_research.load_findings()), 3)
+
     # -- comparisons -------------------------------------------------------------------------
 
     def test_load_comparisons_on_missing_file_is_empty_list(self):
@@ -88,6 +104,12 @@ class BotResearchTests(unittest.TestCase):
         self.assertEqual(entry["evidence"], "ranked ahead in every analyst ballot")
         self.assertEqual(entry["composite_impact"], "none")
         self.assertTrue(entry["validated"])
+
+    def test_exact_same_day_duplicate_comparison_is_a_noop(self):
+        first_id = bot_research.add_comparison("Maxx Crosby", "Aidan Hutchinson", ">", "ESPN")
+        second_id = bot_research.add_comparison("Maxx Crosby", "Aidan Hutchinson", ">", "ESPN")
+        self.assertEqual(first_id, second_id)
+        self.assertEqual(len(bot_research.load_comparisons()), 1)
 
     def test_add_comparison_rejects_invalid_direction(self):
         self.assertIsNone(bot_research.add_comparison("A", "B", "?", "ESPN"))

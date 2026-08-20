@@ -69,18 +69,37 @@ def add_finding(
 ) -> Optional[int]:
     """Persist one panel-vetted single-player finding. Returns its id, or None if there's
     nothing real to record (blank player/source/claim) -- a no-op, not an error, since the
-    Moderator's SOURCE FINDING line is optional and legitimately absent from most verdicts."""
-    if not player_name.strip() or not source.strip() or not claim.strip():
+    Moderator's SOURCE FINDING line is optional and legitimately absent from most verdicts.
+
+    Also a no-op (returns the existing id) for an exact duplicate of a finding already logged
+    TODAY -- process_moderator_output runs on every Moderator reply, including a follow-up
+    reacting to the same debate, so a re-run /debate or a follow-up that restates its own
+    verdict's finding (MODERATOR_FOLLOWUP_ADDENDUM tells it not to, but doesn't guarantee it
+    never will) would otherwise append an identical row every time, inflating this finding's
+    weight in whatever percentile pool it feeds. Scoped to same-day only, not forever: a
+    genuine re-confirmation of a still-true finding days or weeks later is real information --
+    see this module's own docstring on why a later entry "outranks" an earlier one at read time
+    -- and should still get its own fresh-dated entry so its recency weight actually renews."""
+    player_name, source, claim = player_name.strip(), source.strip(), claim.strip()
+    if not player_name or not source or not claim:
         return None
     entries = load_findings()
+    today = datetime.now().strftime("%Y-%m-%d")
+    for entry in entries:
+        if (
+            entry.get("date") == today and entry.get("player_name") == player_name
+            and entry.get("source") == source and entry.get("claim") == claim
+            and entry.get("rank") == rank
+        ):
+            return entry.get("id")
     new_id = _next_id(entries)
     entries.append({
         "id": new_id,
         "ts": time.time(),
-        "date": datetime.now().strftime("%Y-%m-%d"),
-        "player_name": player_name.strip(),
-        "source": source.strip(),
-        "claim": claim.strip(),
+        "date": today,
+        "player_name": player_name,
+        "source": source,
+        "claim": claim,
         "rank": rank,
         # Explicit and visible rather than something a reader has to infer from whether
         # `rank` happens to be null -- mirrors comparisons' own composite_impact field below.
@@ -112,19 +131,34 @@ def add_comparison(
     ">" (subject better), "<" (subject worse), "~" (roughly equal), matching
     llm_engine.parse_source_comparisons' own vocabulary. Returns the new entry's id, or None
     if there's nothing real to record (blank subject/compared_to/source, or an unrecognized
-    direction) -- a no-op, not an error, since most verdicts legitimately have zero of these."""
-    if not subject.strip() or not compared_to.strip() or not source.strip() or direction not in (">", "<", "~"):
+    direction) -- a no-op, not an error, since most verdicts legitimately have zero of these.
+
+    Same same-day dedup as add_finding, for the same reason (process_moderator_output runs on
+    every Moderator reply, including a follow-up reacting to the same debate) -- this never
+    feeds the composite either way (composite_impact is always "none"), but an identical row
+    appended every time a debate's re-run or followed up on is still just clutter in the Bot
+    Research log for no new information."""
+    subject, compared_to, source = subject.strip(), compared_to.strip(), source.strip()
+    if not subject or not compared_to or not source or direction not in (">", "<", "~"):
         return None
     entries = load_comparisons()
+    today = datetime.now().strftime("%Y-%m-%d")
+    for entry in entries:
+        if (
+            entry.get("date") == today and entry.get("subject") == subject
+            and entry.get("compared_to") == compared_to and entry.get("direction") == direction
+            and entry.get("source") == source
+        ):
+            return entry.get("id")
     new_id = _next_id(entries)
     entries.append({
         "id": new_id,
         "ts": time.time(),
-        "date": datetime.now().strftime("%Y-%m-%d"),
-        "subject": subject.strip(),
-        "compared_to": compared_to.strip(),
+        "date": today,
+        "subject": subject,
+        "compared_to": compared_to,
         "direction": direction,
-        "source": source.strip(),
+        "source": source,
         "context": context.strip(),
         "evidence": evidence.strip(),
         "evidence_type": "qualitative comparative",
