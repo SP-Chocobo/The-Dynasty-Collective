@@ -150,12 +150,21 @@ class RealBaselineIDPBugRegressionTests(unittest.TestCase):
         # naive points-VOR fallback collapsed every IDP player to the exact same score
         # (confirmed live: Myles Garrett, Maxx Crosby, and eight other real names all landed
         # on bpa=53.1). A real fallback must actually differentiate real players.
+        #
+        # LIGHT_IDP_LEAGUE has exactly one IDP_FLEX slot -- real league-wide demand for IDP is
+        # tiny (~4 total slots split three ways), so most of the pool genuinely sits AT OR
+        # BELOW replacement level once VOR is computed honestly, and correctly clips to the
+        # same ~0 score rather than being artificially spread out (see
+        # test_heavier_idp_league_ranks_the_same_players_earlier below for the same pool
+        # showing rich differentiation once real demand actually exists). The bar here is
+        # "not literally the original identical-score bug", not "broadly differentiated
+        # regardless of real demand" -- a low, deliberately un-generous threshold.
         board = dr.compute_draft_board(
             self.merger, self.players_db, [], my_roster_id="99", league=LIGHT_IDP_LEAGUE, mode="balanced",
         )
         idp_scores = {r["name"]: r["bpa"] for r in board if r["position"] in ("DL", "LB", "DB")}
         self.assertGreater(len(idp_scores), 20, "expected real IDP depth in the baseline")
-        self.assertGreater(len(set(idp_scores.values())), 10, "IDP players collapsed to too few distinct scores")
+        self.assertGreater(len(set(idp_scores.values())), 4, "IDP players collapsed to too few distinct scores")
 
     def test_elite_idp_outranks_a_replacement_level_idp_at_the_same_position(self):
         board = dr.compute_draft_board(
@@ -197,6 +206,28 @@ class RealBaselineIDPBugRegressionTests(unittest.TestCase):
         heavy_rank = next(i for i, r in enumerate(heavy_board) if r["position"] in ("DL", "LB", "DB"))
         self.assertLess(heavy_rank, light_rank)
 
+    def test_three_idp_positions_top_player_do_not_all_tie_at_the_maximum_score(self):
+        # The exact artifact an independent audit caught in the first working version: each
+        # position's WITHIN-POSITION-percentile fallback pinned its own top player to bpa=100
+        # regardless of real demand, so DL/LB/DB's three best remaining players all tied at
+        # the identical maximum score and landed in the top 25 of the WHOLE light-IDP-league
+        # board -- a pure normalization artifact, not real relative value. Fixed by folding
+        # the trade_value fallback into the same shared linear VOR scale as the points-
+        # anchored group, so a locally-renormalized small subgroup can't out-score real data.
+        board = dr.compute_draft_board(
+            self.merger, self.players_db, [], my_roster_id="99", league=LIGHT_IDP_LEAGUE, mode="balanced",
+        )
+        top_by_position = {}
+        for pos in ("DL", "LB", "DB"):
+            rows = [r for r in board if r["position"] == pos]
+            if rows:
+                top_by_position[pos] = max(r["bpa"] for r in rows)
+        self.assertGreaterEqual(len(top_by_position), 2, "need at least two IDP positions represented")
+        self.assertFalse(
+            all(v == 100.0 for v in top_by_position.values()),
+            f"every IDP position's top player pinned to the maximum score again: {top_by_position}",
+        )
+
 
 class InvariantTests(unittest.TestCase):
     """The hard invariants named in draft_room.py's own module docstring, enforced as real
@@ -218,6 +249,77 @@ class InvariantTests(unittest.TestCase):
             top["universal_value"] + 0 - (bottom["universal_value"] + dr.NEED_BONUS_MAX),
             0,
         )
+
+    def test_bpa_magnitude_tracks_the_real_vor_gap_not_a_percentile_rank(self):
+        # An independent audit caught this directly: percentile-ranking VOR (rather than
+        # scaling it linearly) threw away the actual SIZE of the gap between players -- a
+        # real 60-point VOR gap between the #1 and #8 remaining players compressed to a
+        # 2.8-point bpa gap, small enough that the additive adjustment terms below it (which
+        # can swing several times that) ended up deciding the board instead of the anchor.
+        # bpa must scale with the real gap: a much bigger VOR gap must produce a much bigger
+        # bpa gap, not a roughly-equal one.
+        board = dr.compute_draft_board(
+            self.merger, self.players_db, [], my_roster_id="99", league=LIGHT_IDP_LEAGUE, mode="balanced",
+        )
+        top8 = board[:8]
+        big_gap = top8[0]["bpa"] - top8[3]["bpa"]  # #1 vs #4: real tier gap expected
+        small_gap = top8[3]["bpa"] - top8[7]["bpa"]  # #4 vs #8: shallower part of the pool
+        self.assertGreater(top8[0]["bpa"] - top8[-1]["bpa"], 10.0, "fixture's spread too flat to exercise this")
+        # Not a strict inequality in every possible fixture shape, but percentile-ranking
+        # would make these two gaps nearly identical (rank-based spacing is ~uniform) --
+        # linear VOR scaling should not.
+        self.assertNotAlmostEqual(big_gap, small_gap, delta=0.5)
+
+    def test_replacement_level_reflects_remaining_demand_not_static_league_demand(self):
+        # An independent audit caught this directly: with a STATIC target rank (num_teams x
+        # starters, held constant regardless of how many were already drafted), draining a
+        # position past its real demand made replacement level collapse toward the bottom of
+        # an ever-thinning pool -- which made every remaining player at that position look
+        # artificially scarce right when nobody actually needed one anymore (confirmed live:
+        # a 12-team 1-WR-slot-equivalent league ranked a deep, already-oversupplied position's
+        # 19th-drafted player as a top-10 overall pick). Once real demand is exhausted, VOR
+        # for the position must NOT climb back up -- it must stay flat/near its floor.
+        board0 = dr.compute_draft_board(
+            self.merger, self.players_db, [], my_roster_id="99", league=LIGHT_IDP_LEAGUE, mode="balanced",
+        )
+        rb_sorted = [r for r in board0 if r["position"] == "RB"]
+        # Draft away far more RBs than this league's real starting demand for RB.
+        rb_demand = round(LIGHT_IDP_LEAGUE["total_rosters"] * dr.starter_slot_counts(LIGHT_IDP_LEAGUE["roster_positions"])["RB"])
+        overdrafted = rb_sorted[: rb_demand + 15]
+        picks = [{"roster_id": str(i % 12 + 1), "player_id": r["player_id"], "round": 1} for i, r in enumerate(overdrafted)]
+        board1 = dr.compute_draft_board(
+            self.merger, self.players_db, picks, my_roster_id="99", league=LIGHT_IDP_LEAGUE, mode="balanced",
+        )
+        best_remaining_rb = next(r for r in board1 if r["position"] == "RB")
+        best_remaining_rank = board1.index(best_remaining_rb)
+        # The original bug put an overdrafted position's best remainder near the TOP of the
+        # whole board (single digits) -- it must instead stay buried, reflecting that real
+        # demand for this position is already exhausted.
+        self.assertGreater(best_remaining_rank, 20, "an overdrafted position's leftover climbed toward the top of the board")
+
+    def test_need_bonus_favors_an_unfilled_dedicated_slot_over_already_satisfied_flex_demand(self):
+        # An independent audit caught this directly: a flat per-slot rate scaled with how
+        # many TOTAL roster slots a position has, so a team with ZERO players at a position
+        # scored a smaller bonus than a team that already had its dedicated slots filled and
+        # merely wanted one more for bench/flex depth -- confirmed live (a real league shape:
+        # a team with zero QBs scored +3.0, a team wanting a fourth WR scored +9.0, backwards
+        # from real draft urgency). An unfilled MANDATORY slot must outweigh already-satisfied
+        # flex-only demand. Self-contained within this fixture's own RB/WR positions: fill
+        # RB's dedicated slots exactly (no excess), leave WR's dedicated slots completely
+        # empty, and confirm WR's need_bonus (an unfilled mandatory slot) beats what an
+        # already-satisfied-plus-one RB would score.
+        board = dr.compute_draft_board(
+            self.merger, self.players_db, [], my_roster_id="1", league=LIGHT_IDP_LEAGUE, mode="balanced",
+        )
+        rb_dedicated = dr.dedicated_slot_counts(LIGHT_IDP_LEAGUE["roster_positions"])["RB"]
+        rb_picks = [r["player_id"] for r in board if r["position"] == "RB"][:rb_dedicated + 1]  # one past dedicated
+        picks = [{"roster_id": "1", "player_id": pid, "round": 1} for pid in rb_picks]
+        board_after = dr.compute_draft_board(
+            self.merger, self.players_db, picks, my_roster_id="1", league=LIGHT_IDP_LEAGUE, mode="balanced",
+        )
+        excess_rb_need_bonus = next(r["need_bonus"] for r in board_after if r["position"] == "RB")
+        empty_wr_need_bonus = next(r["need_bonus"] for r in board_after if r["position"] == "WR")
+        self.assertGreater(empty_wr_need_bonus, excess_rb_need_bonus)
 
     def test_injury_never_increases_universal_value(self):
         healthy = dict(self.players_db)
