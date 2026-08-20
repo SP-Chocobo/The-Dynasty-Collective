@@ -1008,6 +1008,26 @@ def format_scoring_settings(scoring_settings: dict) -> str:
     return ", ".join(f"{k}={v}" for k, v in pairs)
 
 
+def describe_external_value(ext: dict) -> str:
+    """One compact 'source/list detail' string for a single DataMerger.external_player_values()
+    row. Different sources shape their numbers differently (DynastyProcess: a point value on
+    its own ~0-10000 scale; FantasyPros: rank/tier off an expert panel), so this picks whichever
+    fields that row actually has rather than assuming one shape -- new sources with yet another
+    shape still degrade to *something* readable instead of a blank/wrong field lookup."""
+    label = ext.get("source_name", "?")
+    source_file = ext.get("source_file")
+    if source_file:
+        label += f"/{Path(source_file).stem}"
+    if "value_1qb" in ext or "value_2qb" in ext:
+        detail = f"1QB={ext.get('value_1qb', '-')}/2QB={ext.get('value_2qb', '-')}"
+    elif "rank" in ext:
+        tier = f" tier{ext['tier']:.0f}" if ext.get("tier") is not None else ""
+        detail = f"rank={ext['rank']:.0f}{tier}"
+    else:
+        detail = "(no comparable number)"
+    return f"{label} {detail}"
+
+
 def build_context(snapshot: dict, roster_table: list[dict], player_universe: list[dict], question: str = "") -> str:
     league = snapshot["league"]
     fmt = league_format_summary(league)
@@ -1176,10 +1196,7 @@ def build_context(snapshot: dict, roster_table: list[dict], player_universe: lis
         "DS 3yr proj | DS 3D/trade value | DS pos rank | other sources):"
     )
     for row in roster_table:
-        other = "; ".join(
-            f"{ext.get('source_name', '?')} 1QB={ext.get('value_1qb', '-')}/2QB={ext.get('value_2qb', '-')}"
-            for ext in row.get("external_values") or []
-        )
+        other = "; ".join(describe_external_value(ext) for ext in row.get("external_values") or [])
         lines.append(
             f"  {row['name']} | {row['position']} | {row['team']} | "
             f"{row.get('tier', '-')} | {row.get('vorp', '-')} | {row.get('projection', '-')} | "
@@ -1188,13 +1205,16 @@ def build_context(snapshot: dict, roster_table: list[dict], player_universe: lis
         )
     if merger.is_external_values_loaded:
         lines.append(
-            "  'other sources' values are on their own scale, not Draft Sharks' 0-100 -- e.g. "
-            "DynastyProcess (1QB/2QB) runs roughly 0-10000, derived from FantasyPros' expert "
-            "consensus rankings via a documented formula, independent of Draft Sharks' own "
-            "proprietary methodology. Compare RELATIVE standing within one source's own column, "
-            "never a DynastyProcess number against a Draft Sharks number directly -- and note "
-            "where the two sources disagree on which of two players is worth more, since that's "
-            "more informative than either number alone."
+            "  'other sources' are each on their OWN scale, none of them Draft Sharks' 0-100 and "
+            "none directly comparable to each other either: DynastyProcess (1QB/2QB) runs "
+            "roughly 0-10000, a documented formula off FantasyPros' expert consensus rankings; "
+            "FantasyPros itself (rank/tier) is that same panel's raw overall rank and tier, not "
+            "a point value at all -- and its dynasty_ppr_rankings list is dynasty, its "
+            "best_ball_rankings list is a SEASON-LONG/redraft read, not a dynasty valuation, so "
+            "never treat that one as a long-term value opinion. Compare RELATIVE standing within "
+            "one source's own column, never one source's number against another's directly -- "
+            "and note where sources disagree on which of two players is worth more, since that's "
+            "more informative than any single number alone."
         )
 
     # The canonical Sleeper pool is intentionally separate from the optional
@@ -2796,10 +2816,7 @@ elif main_view == MAINTENANCE_VIEW:
         def _external_suffix(row: dict) -> str:
             # Its own scale, never blended into row["value"] above -- see external_player_values'
             # docstring -- so this only ever rides along as a side note, not part of the price.
-            parts = [
-                f"{ext.get('source_name', '?')} 1QB={ext.get('value_1qb', '-')}/2QB={ext.get('value_2qb', '-')}"
-                for ext in row.get("external") or []
-            ]
+            parts = [describe_external_value(ext) for ext in row.get("external") or []]
             return f"  ·  {'; '.join(parts)}" if parts else ""
 
         def _render_trade_side(rows: list[dict]) -> None:
@@ -2941,10 +2958,7 @@ elif main_view == MAINTENANCE_VIEW:
             )
             # Own scale, not Draft Sharks' -- see external_player_values' docstring -- so this
             # is a side note for the panel to weigh, never something to add to the value above.
-            extra = "; ".join(
-                f"{ext.get('source_name', '?')} 1QB={ext.get('value_1qb', '-')}/2QB={ext.get('value_2qb', '-')}"
-                for ext in r.get("external") or []
-            )
+            extra = "; ".join(describe_external_value(ext) for ext in r.get("external") or [])
             return f"{base} [other sources (own scale): {extra}]" if extra else base
         return "\n".join(_line(r) for r in rows)
 

@@ -431,6 +431,99 @@ def parse_draftsharks_trade_value_chart_pdf(path: Path) -> tuple[pd.DataFrame, O
     return df, None
 
 
+# -- FantasyPros Expert Consensus Rankings (ECR) exports -----------------------
+#
+# Unlike Draft Sharks' PDFs, these are already one-clean-record-per-line -- no
+# interleaved-column reconstruction needed. Two shapes seen so far, told apart by their
+# header row: a Dynasty export adds AGE/BEST/WORST/AVG/STD.DEV (the spread of individual
+# experts' ranks behind the consensus number); a seasonal export (Best Ball, Redraft, ...)
+# instead has just BYE WEEK. Both interleave "Tier N" section lines between rows, captured
+# here as each row's own tier rather than discarded. FantasyPros' rank/tier/ECR numbers
+# aren't on Draft Sharks' 0-100 trade_value scale, so these are kept as their own
+# non-blended source (see DataMerger.external_player_values) rather than merged into
+# projections/trade_value.
+_FP_TIER_RE = re.compile(r"^Tier (\d+)\s*$")
+_FP_DYNASTY_ROW_RE = re.compile(
+    r"^(\d+) (.+) \(([A-Z]{2,3})\) ([A-Z]+)(\d+) (\d+|NA|-) (\d+|NA) (\d+|NA) ([\d.]+|NA) ([\d.]+|NA)$"
+)
+_FP_SEASONAL_ROW_RE = re.compile(r"^(\d+) (.+) \(([A-Z]{2,3})\) ([A-Z]+)(\d+) (\d+|-)$")
+
+
+def _fp_num(raw: str) -> Optional[float]:
+    return None if raw in ("NA", "-") else float(raw)
+
+
+def parse_fantasypros_dynasty_pdf(path: Path) -> tuple[pd.DataFrame, Optional[str]]:
+    """Parse a FantasyPros Dynasty (Keeper) Rankings export -- ECR plus each expert panel's
+    spread (best/worst/std.dev) behind that consensus number. No per-row date on the page
+    itself (see values-players.csv precedent elsewhere in this file); caller falls back to
+    the PDF's own save/creation date, same as Draft Sharks exports with no printed date."""
+    import pypdf
+
+    reader = pypdf.PdfReader(str(path))
+    records: list[dict] = []
+    tier = None
+    for page in reader.pages:
+        for raw_line in (page.extract_text() or "").split("\n"):
+            line = raw_line.strip()
+            tier_match = _FP_TIER_RE.match(line)
+            if tier_match:
+                tier = int(tier_match.group(1))
+                continue
+            row_match = _FP_DYNASTY_ROW_RE.match(line)
+            if not row_match:
+                continue
+            rank, name, team, position, pos_rank, age, best, worst, avg, stddev = row_match.groups()
+            records.append({
+                "rank": int(rank), "name": name.strip(),
+                "team": TEAM_ALIASES.get(team, team), "position": position, "pos_rank": int(pos_rank),
+                "age": _fp_num(age), "best": _fp_num(best), "worst": _fp_num(worst),
+                "avg": _fp_num(avg), "std_dev": _fp_num(stddev), "tier": tier,
+            })
+
+    df = pd.DataFrame(records)
+    if df.empty:
+        return df, None
+    df["norm_name"] = df["name"].astype(str).map(normalize_name)
+    return df, None
+
+
+def parse_fantasypros_bestball_pdf(path: Path) -> tuple[pd.DataFrame, Optional[str]]:
+    """Parse a FantasyPros seasonal (Best Ball/Redraft-shaped) Rankings export -- rank/tier/bye
+    only, no dynasty-relevant spread columns. Deliberately a different parser (and a different
+    external-source subfolder, never dynasty rankings) from parse_fantasypros_dynasty_pdf --
+    this app already treats "single-season export mislabeled as dynasty" as a real, previously-
+    hit failure mode (see app.py's upload handler's Redraft/Dynasty check), so a seasonal
+    FantasyPros list gets the same firm separation rather than a shared, ambiguous parser."""
+    import pypdf
+
+    reader = pypdf.PdfReader(str(path))
+    records: list[dict] = []
+    tier = None
+    for page in reader.pages:
+        for raw_line in (page.extract_text() or "").split("\n"):
+            line = raw_line.strip()
+            tier_match = _FP_TIER_RE.match(line)
+            if tier_match:
+                tier = int(tier_match.group(1))
+                continue
+            row_match = _FP_SEASONAL_ROW_RE.match(line)
+            if not row_match:
+                continue
+            rank, name, team, position, pos_rank, bye = row_match.groups()
+            records.append({
+                "rank": int(rank), "name": name.strip(),
+                "team": TEAM_ALIASES.get(team, team), "position": position, "pos_rank": int(pos_rank),
+                "bye_week": _fp_num(bye), "tier": tier,
+            })
+
+    df = pd.DataFrame(records)
+    if df.empty:
+        return df, None
+    df["norm_name"] = df["name"].astype(str).map(normalize_name)
+    return df, None
+
+
 def load_projection_file(path: Path, default_kind: str = "rankings") -> tuple[pd.DataFrame, str]:
     """Returns (dataframe, kind) where kind is 'rankings', 'free_agents', or 'trade_value_chart'.
 
@@ -827,19 +920,22 @@ class DataMerger:
 
     def external_player_values(self, player_full_name: str, position: Optional[str] = None,
                                 team: Optional[str] = None) -> list[dict]:
-        """One dict per secondary valuation source that has an opinion on this player (see
-        load_external_values) -- each carrying whatever fields that source's own CSV provides,
-        tagged with which source it's from. Unlike merge_player, there's no fixed field
-        whitelist here: a source's columns aren't predictable in advance the way Draft Sharks'
-        few known export shapes are, so every non-null field on the matched row rides along.
-        Deliberately returns every matching source rather than one "winning" value -- Draft
-        Sharks isn't meant to be the only word on a player's worth, so neither is any other
-        single source."""
+        """One dict per (source, file) that has an opinion on this player (see
+        load_external_values) -- each carrying whatever fields that file's own CSV provides,
+        tagged with which source/file it's from. Grouped by file, not just source: one source
+        directory can hold multiple distinct lists (e.g. fantasypros/ has a dynasty PPR list
+        and a separate, season-long best-ball list) that can both cover the same player with
+        different numbers -- collapsing to one row per source would silently drop one of them.
+        Unlike merge_player, there's no fixed field whitelist here: a source's columns aren't
+        predictable in advance the way Draft Sharks' few known export shapes are, so every
+        non-null field on the matched row rides along. Deliberately returns every matching
+        (source, file) rather than one "winning" value -- Draft Sharks isn't meant to be the
+        only word on a player's worth, so neither is any other single source."""
         if self.external_values.empty or "source_name" not in self.external_values.columns:
             return []
         results = []
-        for source in sorted(self.external_values["source_name"].unique()):
-            sub = self.external_values[self.external_values["source_name"] == source]
+        group_cols = ["source_name", "source_file"] if "source_file" in self.external_values.columns else ["source_name"]
+        for _, sub in self.external_values.groupby(group_cols, sort=True):
             match = self._find_match(player_full_name, position=position, team=team, df=sub)
             if match is None:
                 continue
