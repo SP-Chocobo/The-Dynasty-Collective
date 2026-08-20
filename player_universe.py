@@ -60,7 +60,10 @@ def player_position(info: dict) -> Optional[str]:
     return info.get("position")
 
 
-def _score_projection(stats: dict, scoring_settings: dict) -> float:
+def score_projection(stats: dict, scoring_settings: dict) -> float:
+    # Not module-private -- draft_room.py reuses this to score Sleeper's native weekly
+    # projections under a league's real scoring rules for positions Draft Sharks doesn't
+    # project at all (currently IDP), same as this module already does for roster display.
     """Score native Sleeper stat projections without coupling this data model to HTTP."""
     total = sum(
         float(value) * float(scoring_settings.get(category, 0))
@@ -165,7 +168,7 @@ def build_player_universe(
         }
         stats = projections.get(pid)
         if stats:
-            row["sleeper_proj"] = _score_projection(stats, scoring_settings or {})
+            row["sleeper_proj"] = score_projection(stats, scoring_settings or {})
         rows.append(row)
 
     # Player names make the canonical pool searchable even when position/team

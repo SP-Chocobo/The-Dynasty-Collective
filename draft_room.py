@@ -79,7 +79,18 @@ from typing import Optional
 import pandas as pd
 
 from data_merger import DataMerger
-from player_universe import FLEX_SLOT_POSITIONS, FANTASY_POSITIONS, league_usable_positions, player_name, player_position
+from player_universe import FLEX_SLOT_POSITIONS, FANTASY_POSITIONS, league_usable_positions, player_name, player_position, score_projection
+
+# Sleeper's projection endpoint is per-week, not season-long (see sleeper_client.py's
+# get_weekly_projections) -- for positions Draft Sharks doesn't project at all (currently
+# every IDP position, see build_available_pool's docstring), a single week's total is
+# extrapolated to a rough season-equivalent by this factor purely so it lands on the same
+# ORDER OF MAGNITUDE as Draft Sharks' real season projections for offense, which is what
+# makes a shared cross-positional VOR percentile meaningful at all. This is a labeled
+# approximation, not a real season projection (no bye week, no matchup variance, no
+# injury-game-missed adjustment) -- it exists to fix "no real points data at all", not to
+# be mistaken for Draft Sharks' own season, methodology.
+SLEEPER_WEEKLY_TO_SEASON_FACTOR = 17
 
 # Round at which the engine switches from the balanced formula to upside-only scoring,
 # absent an explicit override -- matches the "War Room" idea this was modeled on. A deep
@@ -145,12 +156,25 @@ def build_available_pool(
     players_db: dict[str, dict],
     drafted_player_ids: set[str],
     usable_positions: set[str],
+    sleeper_projections: Optional[dict[str, dict]] = None,
+    scoring_settings: Optional[dict] = None,
 ) -> pd.DataFrame:
     """One row per undrafted, fantasy-relevant player Draft Sharks actually has a value
     for -- joined from Sleeper's player_id-keyed database (drafts speak player_id, Draft
     Sharks speaks name) the same way player_universe.py already bridges the two elsewhere
     in this app. A player with no Draft Sharks match is dropped, not scored at 0 -- there's
     no honest BPA to rank them by, same "don't fabricate a number" rule as everywhere else.
+
+    sleeper_projections (player_id -> raw stat category -> projected value, from
+    SleeperClient.get_weekly_projections) and scoring_settings (this league's real
+    Sleeper scoring rules), when both given, are scored into sleeper_points via
+    player_universe.score_projection -- NEVER a pre-computed point total handed over by an
+    external site. That distinction matters here specifically: this app can then answer
+    "this DB is projected for 7 sacks, and this league gives 8 points per sack" instead of
+    blindly trusting someone else's number, which is what actually lets an unusual scoring
+    rule (a big sack bonus, IDP tackle premiums, whatever this league's own settings say)
+    change which players matter -- see compute_draft_board's docstring for where this feeds
+    the VOR anchor for positions Draft Sharks doesn't project at all (currently IDP).
     """
     rows = []
     for player_id, info in players_db.items():
@@ -166,6 +190,17 @@ def build_available_pool(
         if not match.get("matched") or match.get("trade_value") is None:
             continue
         composite = merger.composite_player_score(name, position=position, team=info.get("team"))
+        sleeper_points = None
+        if sleeper_projections is not None and scoring_settings is not None:
+            raw_stats = sleeper_projections.get(player_id)
+            if raw_stats:
+                scored = score_projection(raw_stats, scoring_settings)
+                # A true zero here is indistinguishable from an empty/stale stat line --
+                # IDP projections specifically have a known history of gaps (flagged
+                # directly, unverified from this environment -- no live Sleeper access to
+                # confirm current data quality). Treat it as "no real projection" rather
+                # than "this player projects for zero," same as a missing entry entirely.
+                sleeper_points = scored if scored != 0 else None
         rows.append({
             "player_id": player_id,
             "name": name,
@@ -175,13 +210,15 @@ def build_available_pool(
             "trade_value": match.get("trade_value"),
             "projection": match.get("projection"),
             "proj_3yr": match.get("proj_3yr"),
+            "sleeper_points": sleeper_points,
             "composite_score": composite.get("score") if composite else None,
             "composite_components": composite.get("components") if composite else None,
         })
     if not rows:
         return pd.DataFrame(columns=[
             "player_id", "name", "position", "team", "injury_status", "trade_value",
-            "projection", "proj_3yr", "composite_score", "composite_components", "bpa",
+            "projection", "proj_3yr", "sleeper_points", "composite_score",
+            "composite_components", "bpa",
         ])
     pool = pd.DataFrame(rows)
     return pool
@@ -274,6 +311,7 @@ def compute_draft_board(
     *,
     mode: str = "auto",
     upside_round: int = UPSIDE_MODE_DEFAULT_ROUND,
+    sleeper_projections: Optional[dict[str, dict]] = None,
 ) -> list[dict]:
     """The live recommendation board: every undrafted, Draft-Sharks-valued player, ranked
     best pick first, with every scoring layer broken out separately -- universal_value
@@ -288,7 +326,11 @@ def compute_draft_board(
     is_dynasty = (league.get("settings") or {}).get("type") == 2
 
     drafted_ids = {str(p.get("player_id")) for p in picks if p.get("player_id")}
-    pool = build_available_pool(merger, players_db, drafted_ids, usable_positions)
+    scoring_settings = league.get("scoring_settings")
+    pool = build_available_pool(
+        merger, players_db, drafted_ids, usable_positions,
+        sleeper_projections=sleeper_projections, scoring_settings=scoring_settings,
+    )
     if pool.empty:
         return []
 
@@ -311,30 +353,46 @@ def compute_draft_board(
     # 0/91 LB, 0/153 DB) while offense is well-covered. Filling that with a pool-wide
     # fallback constant made every player at an unprojected position numerically identical --
     # caught live (a real bug, not graceful degradation): Myles Garrett, Maxx Crosby, and
-    # every other IDP name in a test all landed on the exact same score. For a position with
-    # no projection data at all, fall back to trade_value's WITHIN-POSITION percentile
-    # instead -- real, differentiating data (an elite DL and a replacement-level one do have
-    # different trade_values), just not the points-VOR scale offense gets. Flagged via
-    # bpa_source rather than silently presented as equivalent -- closing this gap for real
-    # means wiring in Sleeper's own native weekly projections (which do cover IDP, scored
-    # under this league's actual scoring_settings) as a second points source, not built yet.
-    positions_with_projection = set(pool.loc[pool["projection"].notna(), "position"].unique())
-    has_proj = pool["position"].isin(positions_with_projection)
+    # every other IDP name in a test all landed on the exact same score.
+    #
+    # Two real points sources, tried in order, both scored under THIS league's actual
+    # scoring_settings rather than trusting either vendor's own pre-computed point total:
+    #   1. Draft Sharks' own season projection (offense; already the app's trusted number).
+    #   2. Sleeper's native weekly projection (covers IDP too), extrapolated to a rough
+    #      season-equivalent -- see SLEEPER_WEEKLY_TO_SEASON_FACTOR's own docstring for why
+    #      this is a labeled approximation, not treated as equal in precision to #1.
+    # Only when NEITHER source has anything for a position does this fall back to
+    # trade_value's WITHIN-POSITION percentile -- real, differentiating data, just not on
+    # the points-VOR scale. Flagged via bpa_source, never silently presented as equivalent.
+    pool["_points"] = pool["projection"].astype(float)
+    pool["bpa_source"] = "points_vor_draftsharks"
+    no_ds_proj = pool["_points"].isna()
+    has_sleeper = pool["sleeper_points"].notna()
+    use_sleeper = no_ds_proj & has_sleeper
+    # Guarded rather than assigning unconditionally: when sleeper_points is entirely absent
+    # (no live sync passed one in -- the common case outside an actual draft), use_sleeper is
+    # all-False and the right-hand side collapses to an empty object-dtype Series, which
+    # pandas refuses to assign into an existing float64 column even though there's nothing to
+    # assign -- a real pandas gotcha, not a meaningful "no rows" case worth its own branch.
+    if use_sleeper.any():
+        pool.loc[use_sleeper, "_points"] = pool.loc[use_sleeper, "sleeper_points"] * SLEEPER_WEEKLY_TO_SEASON_FACTOR
+        pool.loc[use_sleeper, "bpa_source"] = "points_vor_sleeper_extrapolated"
+
+    has_proj = pool["_points"].notna()
+    pool.loc[~has_proj, "bpa_source"] = "position_relative_trade_value"
 
     pool["bpa"] = 0.0
-    pool["bpa_source"] = "position_relative_trade_value"
     pool["_season_proj_pct"] = 50.0
     pool["_proj3yr_pct"] = 50.0
 
     if has_proj.any():
         proj_pool = pool[has_proj].copy()
-        proj_pool["_projection_filled"] = proj_pool["projection"].fillna(proj_pool["projection"].min())
+        proj_pool["_projection_filled"] = proj_pool["_points"]
         point_replacement = replacement_levels(proj_pool, "_projection_filled", roster_positions, num_teams)
         proj_pool["_vor_points"] = proj_pool.apply(
             lambda r: r["_projection_filled"] - point_replacement.get(r["position"], r["_projection_filled"]), axis=1,
         )
         pool.loc[has_proj, "bpa"] = _percentile_map(proj_pool["_vor_points"]).values
-        pool.loc[has_proj, "bpa_source"] = "points_vor"
         pool.loc[has_proj, "_season_proj_pct"] = _percentile_map(proj_pool["_projection_filled"]).values
         pool.loc[has_proj, "_proj3yr_pct"] = _percentile_map(
             proj_pool["proj_3yr"].fillna(proj_pool["proj_3yr"].min() if proj_pool["proj_3yr"].notna().any() else 0)
@@ -354,7 +412,7 @@ def compute_draft_board(
         scored["mode"] = "upside"
         results = scored.sort_values("final_score", ascending=False)
         return results[[
-            "player_id", "name", "position", "team", "injury_status", "bpa",
+            "player_id", "name", "position", "team", "injury_status", "bpa", "bpa_source",
             "growth_signal", "confidence", "final_score", "mode",
         ]].to_dict("records")
 
@@ -398,7 +456,7 @@ def compute_draft_board(
     scored["mode"] = "balanced"
     results = scored.sort_values("final_score", ascending=False)
     return results[[
-        "player_id", "name", "position", "team", "injury_status", "bpa",
+        "player_id", "name", "position", "team", "injury_status", "bpa", "bpa_source",
         "market_adj", "time_horizon_adj", "risk_adj", "universal_value",
         "need_bonus", "confidence", "final_score", "mode",
     ]].to_dict("records")
