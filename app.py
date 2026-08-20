@@ -3607,6 +3607,10 @@ with st.expander(f"🎯 Active Objectives ({len(active_items)})", expanded=bool(
     if add_col.button("Add", key="add_manual_todo", use_container_width=True) and manual_text.strip():
         todo_log.add_todo(todo_league_id, manual_text, source="manual")
         st.session_state.pop("_objective_seed_ts", None)
+        # Without this the text stays in the box after a successful add -- confirmed live, a
+        # second click (habit, or just not noticing it worked) would silently create a
+        # duplicate objective from the same leftover text.
+        st.session_state["manual_todo_text"] = ""
         st.rerun()
 
     if not active_items:
@@ -3640,6 +3644,9 @@ with st.expander(f"🎯 Active Objectives ({len(active_items)})", expanded=bool(
                 )
                 if note_btn_col.button("Add", key=f"todo_note_add_{item['id']}", use_container_width=True) and note_text.strip():
                     todo_log.add_note(todo_league_id, item["id"], note_text)
+                    # Same fix as the objective box above -- leftover text after a successful
+                    # add invites an accidental duplicate note on the next click.
+                    st.session_state[f"todo_note_{item['id']}"] = ""
                     st.rerun()
 
                 if item["status"] == "likely_resolved":
