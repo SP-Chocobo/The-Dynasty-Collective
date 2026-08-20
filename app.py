@@ -2309,6 +2309,21 @@ with st.sidebar:
     else:
         st.markdown(status_line("Free Agent Data Loaded", False), unsafe_allow_html=True)
 
+    # Draft Sharks status above covers only that one vendor -- the composite score draws on up
+    # to 4 more (see COMPOSITE_SOURCE_WEIGHTS), so this line is the only place their load state
+    # is visible at all rather than something a user has to trust is working silently.
+    SOURCE_DISPLAY_NAMES = {
+        "dynastyprocess": "DynastyProcess", "fantasypros": "FantasyPros",
+        "keeptradecut": "KeepTradeCut", "espn": "ESPN", "bot_research": "Bot Research",
+    }
+    if merger.is_external_values_loaded:
+        sources_present = sorted(merger.external_values["source_name"].dropna().unique())
+        names = [SOURCE_DISPLAY_NAMES.get(s, s.title()) for s in sources_present]
+        st.markdown(status_line(f"Composite Sources Loaded ({len(names)})", True), unsafe_allow_html=True)
+        st.caption(", ".join(names))
+    else:
+        st.markdown(status_line("Composite Sources Loaded", False), unsafe_allow_html=True)
+
     st.markdown(status_line("Sleeper Synced", st.session_state.league_snapshot is not None), unsafe_allow_html=True)
     snap = st.session_state.league_snapshot
     has_sleeper_proj = bool(snap and snap.get("projections"))
