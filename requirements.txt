@@ -7,3 +7,6 @@ openai
 python-dotenv
 pandas
 pypdf
+scipy  # linear_sum_assignment -- exact max-value bipartite matching for lineup_optimizer.py's
+       # roster-to-slot assignment; a hand-rolled greedy heuristic can silently mis-assign a
+       # multi-eligible player, and that's exactly the number this app's draft engine leans on
