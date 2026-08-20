@@ -568,12 +568,22 @@ def find_last_debate(chat_history: list[dict]) -> Optional[dict[str, str]]:
     """The most recent Full Debate round's four reports, if any -- lets a follow-up talk to
     the Moderator with something real to reference instead of answering blind. A Full Debate
     always appends exactly [quant, beat, contrarian, moderator] back to back (see the trigger
-    block below), so that exact role run is the signature to scan for, most recent first."""
+    block below), so that exact role run is the signature to scan for, most recent first.
+
+    A round where any of the four calls actually failed (a missing/invalid API key, a provider
+    outage -- see llm_engine's fail-soft "⚠️ ..." convention) is skipped entirely rather than
+    handed to a follow-up as real context: the Moderator's own verdict is only as good as the
+    reports underneath it, and an error string standing in for a "report" isn't something a
+    follow-up should be built on. Falls through to an earlier valid round if one exists, or
+    None (a fresh full debate) if every round on record was broken."""
     for i in range(len(chat_history) - 4, -1, -1):
         if [chat_history[i + k]["role"] for k in range(4)] == ["quant", "beat", "contrarian", "moderator"]:
+            contents = [chat_history[i + k]["content"] for k in range(4)]
+            if any(c.startswith("⚠️") for c in contents):
+                continue
             return {
-                "quant": chat_history[i]["content"], "beat": chat_history[i + 1]["content"],
-                "contrarian": chat_history[i + 2]["content"], "moderator": chat_history[i + 3]["content"],
+                "quant": contents[0], "beat": contents[1],
+                "contrarian": contents[2], "moderator": contents[3],
             }
     return None
 
@@ -3932,6 +3942,12 @@ with st.container(key="debate_dock"):
                     append_message("contrarian", result.contrarian, provider=role_providers["contrarian"], model=role_models.get("contrarian") or None)
                     append_message("moderator", result.moderator, provider=role_providers["moderator"], model=role_models.get("moderator") or None)
                     process_moderator_output(result.moderator, trigger_question)
+                    # run_debate already collects which role(s) failed (a missing/invalid API
+                    # key, a provider outage) -- this was computed and silently thrown away
+                    # before, so a failed call just looked like a "⚠️ ..." chat message with no
+                    # toast, no activity-log entry, and no visible sign anything went wrong.
+                    if result.errors:
+                        notify("warning", "Debate finished with issues: " + "; ".join(result.errors))
             # Without this, the question box's label (now dependent on whether a debate has
             # happened -- see default_trigger_mode above), the persona captions, and everything
             # else derived from chat_history keep showing what they were at the START of this
