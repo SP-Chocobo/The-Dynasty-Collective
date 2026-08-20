@@ -71,6 +71,13 @@ import pandas as pd
 
 PROJECTIONS_DIR = Path("data/projections")
 GLOBAL_PROJECTIONS_DIR = PROJECTIONS_DIR / "_global"  # Dynasty Rankings: format-based, shared across leagues
+# Facts-only (name/team/position/rank/trade_value) CSVs extracted from format-based Draft
+# Sharks exports, committed to the repo as a starting baseline so the app isn't empty on a
+# fresh clone. Never the vendor's own PDFs/prose -- just the numbers our schema already
+# stores -- and always the lowest-priority source: any live upload to GLOBAL_PROJECTIONS_DIR
+# or a league's own folder supersedes it per-player, same "newest wins" rule load_all()
+# already applies within a single pool.
+BASELINE_DIR = Path("data/baseline")
 STALE_AFTER_DAYS = 7  # how old loaded projections can get before the UI nudges you to refresh
 ALIASES_PATH = Path("data/player_aliases.json")  # manual overrides for names that fail to auto-match
 
@@ -110,10 +117,16 @@ def normalize_name(name: str) -> str:
     return re.sub(r"\s+", " ", name).strip()
 
 
-def _normalize_columns(df: pd.DataFrame) -> pd.DataFrame:
+def _normalize_columns(df: pd.DataFrame, default_kind: str = "rankings") -> pd.DataFrame:
     rename = {}
     for col in df.columns:
         key = str(col).strip().lower().replace(" ", "_")
+        # Trade Value Chart rows use "value" as their own canonical column (see pick_value()
+        # and _price_trade_side()'s comments in app.py) -- never rename it to "trade_value"
+        # like a rankings file's would be, or a reloaded baseline/trade_value CSV would break
+        # pick_value()'s direct ["value"] lookup.
+        if default_kind == "trade_value_chart" and key == "value":
+            continue
         if key in COLUMN_ALIASES:
             rename[col] = COLUMN_ALIASES[key]
     df = df.rename(columns=rename)
@@ -136,6 +149,18 @@ TEAM_ALIASES = {"UNS": "FA", "JAC": "JAX", "LVR": "LV"}
 # Offense + kicker/defense + IDP — which of these actually show up depends on
 # the league (standard leagues get K/DEF, IDP leagues also get LB/DL/DB).
 POSITION_CODES = ("QB", "RB", "WR", "TE", "K", "DEF", "LB", "DL", "DB")
+IDP_POSITIONS = {"LB", "DL", "DB"}
+
+
+def _position_group(position) -> str:
+    """Broad offense/IDP bucket so a same-named offensive and IDP player (a real
+    example that surfaced merging baseline data: "Josh Allen" the Bills QB vs.
+    "Josh Allen" a DL) never silently collide as the same dedup key in
+    _dedup_by_name_and_position below."""
+    if not isinstance(position, str) or not position:
+        return ""
+    return "idp" if position.upper() in IDP_POSITIONS else "offense"
+
 
 _REVIEWED_DATE_RE = re.compile(r"Reviewed By[^|]*\|([A-Za-z]{3,9}\s+\d{1,2},\s+\d{4})")
 
@@ -400,17 +425,25 @@ def parse_draftsharks_trade_value_chart_pdf(path: Path) -> tuple[pd.DataFrame, O
     return df, None
 
 
-def load_projection_file(path: Path) -> tuple[pd.DataFrame, str]:
-    """Returns (dataframe, kind) where kind is 'rankings', 'free_agents', or 'trade_value_chart'."""
+def load_projection_file(path: Path, default_kind: str = "rankings") -> tuple[pd.DataFrame, str]:
+    """Returns (dataframe, kind) where kind is 'rankings', 'free_agents', or 'trade_value_chart'.
+
+    default_kind only applies to CSV/JSON, which (unlike PDFs) carry no text to sniff a kind
+    from -- callers that keep trade-value-chart facts in their own CSV pool (see DataMerger's
+    baseline_dir) pass default_kind="trade_value_chart" so those rows land in the right bucket.
+    """
     suffix = path.suffix.lower()
-    kind = "rankings"
+    kind = default_kind
     if suffix == ".csv":
         df = pd.read_csv(path)
-        df = _normalize_columns(df)
-        source_date = None
+        df = _normalize_columns(df, default_kind=default_kind)
+        # A CSV that already states its own source_date (e.g. a baseline snapshot extracted
+        # on a specific day) keeps that date rather than being stamped with today's read-time
+        # mtime, which on a fresh clone is just the checkout time, not when the data is from.
+        source_date = df["source_date"].iloc[0] if "source_date" in df.columns and not df.empty else None
     elif suffix == ".json":
         df = pd.read_json(path)
-        df = _normalize_columns(df)
+        df = _normalize_columns(df, default_kind=default_kind)
         source_date = None
     elif suffix == ".pdf":
         kind = _sniff_pdf_kind(path)
@@ -433,8 +466,13 @@ def load_projection_file(path: Path) -> tuple[pd.DataFrame, str]:
     return df, kind
 
 
-def load_all(projections_dir: Path = PROJECTIONS_DIR) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
-    """Parse every CSV/JSON/PDF once, bucketed into (rankings_df, free_agents_df, trade_values_df)."""
+def load_all(
+    projections_dir: Path = PROJECTIONS_DIR, default_kind: str = "rankings"
+) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
+    """Parse every CSV/JSON/PDF once, bucketed into (rankings_df, free_agents_df, trade_values_df).
+
+    default_kind is forwarded to load_projection_file for CSV/JSON files -- see its docstring.
+    """
     projections_dir = Path(projections_dir)
     empty = pd.DataFrame(columns=["name", "norm_name"])
     if not projections_dir.exists():
@@ -447,7 +485,7 @@ def load_all(projections_dir: Path = PROJECTIONS_DIR) -> tuple[pd.DataFrame, pd.
     rankings_frames, fa_frames, tvc_frames = [], [], []
     for f in files:
         try:
-            df, kind = load_projection_file(f)
+            df, kind = load_projection_file(f, default_kind=default_kind)
         except Exception:
             continue  # skip unparsable/misformatted files rather than crashing the app
 
@@ -471,28 +509,53 @@ def load_all(projections_dir: Path = PROJECTIONS_DIR) -> tuple[pd.DataFrame, pd.
         else:
             rankings_frames.append(df)
 
-    def _combine(frames: list[pd.DataFrame]) -> pd.DataFrame:
-        if not frames:
-            return empty.copy()
-        combined = pd.concat(frames, ignore_index=True, sort=False)
-        # across files (sorted oldest -> newest above), the newest file's row wins for a given player
-        return combined.drop_duplicates(subset="norm_name", keep="last")
+    return (
+        _dedup_by_name_and_position(rankings_frames, empty),
+        _dedup_by_name_and_position(fa_frames, empty),
+        _dedup_by_name_and_position(tvc_frames, empty),
+    )
 
-    return _combine(rankings_frames), _combine(fa_frames), _combine(tvc_frames)
+
+def _dedup_by_name_and_position(frames: list[pd.DataFrame], empty: pd.DataFrame) -> pd.DataFrame:
+    """Concat frames and drop to one row per player, the last frame's row winning ties --
+    callers should order frames oldest/least-authoritative first, so a more specific or more
+    recent source (a league's own file, a fresher upload) overrides an older/broader one for
+    the same player. Keyed on (name, offense/IDP) rather than name alone, since two different
+    real people can share a name across an offense file and an IDP file (a real example that
+    surfaced merging baseline data: "Josh Allen" the Bills QB vs. "Josh Allen" a DL) --
+    _position_group keeps those from silently shadowing each other while still letting a
+    genuine same-player re-upload collapse onto its newest row as before.
+
+    Deliberately NOT keyed on team too, despite that also disambiguating some same-name
+    collisions (two real same-named same-position players, e.g. two different NFL WRs both
+    named Mike Williams -- rarer, but real): unlike position, team legitimately changes for
+    the *same* real person (a trade), so partitioning on it would make an older baseline row
+    and a newer post-trade upload look like two different people and both survive as
+    "duplicates" -- exactly the false-ambiguous outcome the newest-wins collapse exists to
+    avoid, and the opposite of the "readjust as newer info comes in" baseline behavior. Team
+    still rides along as a data field on the surviving row either way.
+    """
+    if not frames:
+        return empty.copy()
+    combined = pd.concat(frames, ignore_index=True, sort=False)
+    if "position" in combined.columns:
+        dedup_key = combined["norm_name"] + "|" + combined["position"].map(_position_group)
+    else:
+        dedup_key = combined["norm_name"]
+    return combined.assign(_dedup_key=dedup_key).drop_duplicates(
+        subset="_dedup_key", keep="last"
+    ).drop(columns="_dedup_key")
 
 
 def _merge_rankings(*frames: pd.DataFrame) -> pd.DataFrame:
-    """Combine rankings frames from multiple pools (e.g. global + league-specific).
+    """Combine rankings frames from multiple pools (e.g. baseline + global + league-specific).
 
     Frames passed later win ties for the same player — callers should pass
     the more-specific/more-authoritative source last (a league's own
     rankings override should beat the shared global pool for that player).
     """
     non_empty = [f for f in frames if not f.empty]
-    if not non_empty:
-        return pd.DataFrame(columns=["name", "norm_name"])
-    combined = pd.concat(non_empty, ignore_index=True, sort=False)
-    return combined.drop_duplicates(subset="norm_name", keep="last")
+    return _dedup_by_name_and_position(non_empty, pd.DataFrame(columns=["name", "norm_name"]))
 
 
 def _compute_freshness(df: pd.DataFrame) -> tuple[Optional[str], Optional[int], bool]:
@@ -549,22 +612,25 @@ class DataMerger:
     """
 
     def __init__(self, league_dir: Optional[Path] = None, global_dir: Path = GLOBAL_PROJECTIONS_DIR,
-                 match_cutoff: float = 0.82):
+                 baseline_dir: Path = BASELINE_DIR, match_cutoff: float = 0.82):
         self.league_dir = Path(league_dir) if league_dir else None
         self.global_dir = Path(global_dir)
+        self.baseline_dir = Path(baseline_dir)
         self.match_cutoff = match_cutoff
         self._load()
 
     def _load(self) -> None:
         empty = pd.DataFrame(columns=["name", "norm_name"])
+        baseline_rankings, _, _ = load_all(self.baseline_dir / "rankings")
+        _, _, baseline_tvc = load_all(self.baseline_dir / "trade_value", default_kind="trade_value_chart")
         global_rankings, _, global_tvc = load_all(self.global_dir)
         if self.league_dir:
             league_rankings, league_fa, league_tvc = load_all(self.league_dir)
         else:
             league_rankings, league_fa, league_tvc = empty.copy(), empty.copy(), empty.copy()
-        self.projections = _merge_rankings(global_rankings, league_rankings)
+        self.projections = _merge_rankings(baseline_rankings, global_rankings, league_rankings)
         self.free_agents = league_fa
-        self.trade_values = _merge_rankings(global_tvc, league_tvc)
+        self.trade_values = _merge_rankings(baseline_tvc, global_tvc, league_tvc)
         self.aliases = load_aliases()
 
     def reload(self) -> None:
