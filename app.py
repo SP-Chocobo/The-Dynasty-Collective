@@ -32,8 +32,8 @@ import todo_log
 import llm_engine
 from attachments import ATTACHMENTS_DIR, list_attachments, save_attachment, set_caption, set_scope, delete_attachment
 from data_merger import (
-    GLOBAL_PROJECTIONS_DIR, PROJECTIONS_DIR, DataMerger, load_projection_file, name_key,
-    normalize_name, recency_grade, save_alias,
+    EXTERNAL_VALUES_DIR, GLOBAL_PROJECTIONS_DIR, PROJECTIONS_DIR, DataMerger, external_upload_targets,
+    load_projection_file, name_key, normalize_name, recency_grade, save_alias,
 )
 from league_format import FORMAT_GUIDANCE, FORMAT_OPTIONS, STANDARD, get_format_override, set_format_override
 from league_prefs import forget_league, get_prefs, move_league, sorted_leagues, toggle_archive
@@ -2298,6 +2298,48 @@ with st.sidebar:
             league_files = sorted(p.name for p in league_proj_dir.glob("*") if p.suffix in (".csv", ".json", ".pdf")) if league_proj_dir.exists() else []
             if league_files:
                 st.caption("This league only (roster-specific): " + ", ".join(league_files))
+
+    # DynastyProcess/FantasyPros/KeepTradeCut only ever ship as the committed baseline export --
+    # unlike Draft Sharks' own data above, this app had no path at all for a user to refresh
+    # them short of a code change. external_upload_targets() names the exact filename each
+    # source's composite rule expects (see _EXTERNAL_PERCENTILE_RULES) -- overwriting that
+    # exact file keeps it reading as one continuous source rather than an untracked second
+    # copy that would double-count it. ESPN isn't offered here: its baseline export is
+    # redraft-scope and deliberately excluded from the composite already (same reasoning as
+    # FantasyPros' best_ball_rankings.csv), so there's nothing for an upload to feed.
+    _EXT_SOURCE_LABELS = {"dynastyprocess": "DynastyProcess", "fantasypros": "FantasyPros", "keeptradecut": "KeepTradeCut"}
+    with st.expander("🔄 External Valuation Sources", expanded=False, key="sb_group_external"):
+        st.caption(
+            "DynastyProcess, FantasyPros, and KeepTradeCut all ship a committed baseline export "
+            "that only ever updates via a code change today. Refresh one here with a fresher CSV "
+            "from that same source, in the same column shape as the baseline file — it replaces "
+            "that source's data outright rather than adding a second copy alongside it."
+        )
+        _ext_targets = external_upload_targets()
+        _ext_source = st.selectbox(
+            "Source", options=list(_ext_targets.keys()),
+            format_func=lambda s: _EXT_SOURCE_LABELS.get(s, s.title()), key="ext_source_pick",
+        )
+        _ext_filename = _ext_targets[_ext_source]
+        _ext_file = st.file_uploader(
+            f"{_EXT_SOURCE_LABELS.get(_ext_source, _ext_source)} CSV", type=["csv"], key="ext_source_upload",
+            help=f"Must have the same columns as the baseline export (saved as {_ext_filename}) -- "
+            "at minimum a 'name' column, since that's all load_external_values assumes universally.",
+        )
+        if _ext_file is not None and st.button("Update this source", key="ext_source_apply"):
+            try:
+                _ext_df = pd.read_csv(_ext_file)
+            except Exception as exc:
+                notify("error", f"Couldn't read that as a CSV: {exc}")
+            else:
+                if "name" not in _ext_df.columns:
+                    notify("error", f"That file has no 'name' column — doesn't look like a {_EXT_SOURCE_LABELS.get(_ext_source, _ext_source)} export.")
+                else:
+                    dest_dir = EXTERNAL_VALUES_DIR / _ext_source
+                    dest_dir.mkdir(parents=True, exist_ok=True)
+                    (dest_dir / _ext_filename).write_bytes(_ext_file.getvalue())
+                    st.session_state.data_merger.reload()
+                    notify("success", f"Updated {_EXT_SOURCE_LABELS.get(_ext_source, _ext_source)}'s data — the composite score will use it from here on.")
 
     if st.session_state.leagues:
         with st.expander("⚙️ League Controls", expanded=False, key="sb_group_league"):

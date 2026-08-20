@@ -149,6 +149,19 @@ _EXTERNAL_PERCENTILE_RULES: dict[tuple[str, str], tuple[str, bool]] = {
 }
 
 
+def external_upload_targets() -> dict[str, str]:
+    """{source_name: expected_filename} for every external source the composite actually
+    reads from a file (see _EXTERNAL_PERCENTILE_RULES) -- derived from that single source of
+    truth rather than a second, driftable copy, so app.py's "refresh an external source"
+    upload UI can overwrite the EXACT tracked filename for a source. That matters: a fresh
+    upload saved under any other filename would sit alongside the old baseline file as an
+    untracked, separately-percentiled (source, file) pair (load_external_values never dedupes
+    within a source), silently double-counting that source's opinion in the composite instead
+    of just refreshing it. bot_research is excluded -- it's not a file upload; see
+    bot_research.py's add_finding/add_comparison for how it gets new data instead."""
+    return {source: filename for (source, filename) in _EXTERNAL_PERCENTILE_RULES if source != "bot_research"}
+
+
 def _recency_weight(source_date: Optional[str]) -> float:
     """1.0 for a source dated today, halving every COMPOSITE_RECENCY_HALFLIFE_DAYS. An
     unparsable/missing date gets a fixed middling weight (neither trusted as fresh nor

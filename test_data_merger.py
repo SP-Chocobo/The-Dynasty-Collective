@@ -72,6 +72,22 @@ class FindMatchExactNameTests(unittest.TestCase):
         self.assertNotEqual(aj.get("value"), amonra.get("value"))
 
 
+class ExternalUploadTargetsTests(unittest.TestCase):
+    """external_upload_targets() drives app.py's "refresh an external source" upload UI -- it
+    has to name the EXACT filename each source's composite rule expects (_EXTERNAL_PERCENTILE_
+    RULES), or an upload would land as an untracked second file and double-count that source."""
+
+    def test_matches_the_percentile_rules_file_for_file_backed_sources(self):
+        targets = dm.external_upload_targets()
+        for (source, filename), _ in dm._EXTERNAL_PERCENTILE_RULES.items():
+            if source == "bot_research":
+                continue
+            self.assertEqual(targets.get(source), filename, source)
+
+    def test_bot_research_is_excluded_since_its_not_a_file_upload(self):
+        self.assertNotIn("bot_research", dm.external_upload_targets())
+
+
 class DetectRankingsFormatTests(unittest.TestCase):
     """Filename -> (scoring/superflex/te_premium) tagging, verified against the real baseline
     filenames it has to get right (see _detect_rankings_format's own docstring for the
