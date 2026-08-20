@@ -306,6 +306,12 @@ def league_format_summary(league: dict) -> dict:
     is_ppr = scoring_settings.get("rec", 0) >= 1
     is_half_ppr = scoring_settings.get("rec", 0) == 0.5
     ppr_label = "Full PPR" if is_ppr else ("Half PPR" if is_half_ppr else "Standard")
+    # Sleeper's own key for a per-reception bonus specific to TEs -- a league scoring TE
+    # receptions any higher than its general "rec" setting is exactly what "TE premium" means
+    # (Draft Sharks' own TE-premium exports are built around this same idea -- see
+    # data_merger._detect_rankings_format's docstring for how that maps onto which Dynasty
+    # Rankings file this app prefers for a league configured this way).
+    is_te_premium = scoring_settings.get("bonus_rec_te", 0) > 0
 
     return {
         "name": league.get("name", "Unnamed League"),
@@ -314,6 +320,7 @@ def league_format_summary(league: dict) -> dict:
         "teams": settings.get("num_teams", len(league.get("roster_positions", []) and [])) or league.get("total_rosters"),
         "superflex": is_superflex,
         "scoring": ppr_label,
+        "te_premium": is_te_premium,
         "taxi_slots": settings.get("taxi_slots", 0),
         "roster_positions": roster_positions,
     }

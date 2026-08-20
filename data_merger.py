@@ -847,12 +847,73 @@ def load_projection_file(path: Path, default_kind: str = "rankings") -> tuple[pd
     return df, kind
 
 
+def _detect_rankings_format(filename: str) -> dict:
+    """Best-effort (scoring/superflex/te_premium) tags for a Dynasty Rankings export, from its
+    filename. Draft Sharks ships this "same tool, different format assumptions" export as
+    several distinct files (see data/baseline/rankings/) that all cover the SAME players with
+    DIFFERENT values -- confirmed empirically (compared one player's trade_value AND its own
+    projection column across every baseline file): Brock Bowers' trade_value ranged 36-96 (a
+    ~2.7x swing) purely depending on which format file happened to win an arbitrary dedup
+    tiebreak, regardless of any real league's actual settings. TE-premium exports don't repeat
+    "ppr" in their own filename despite being built on a PPR base (their PROJECTION column
+    matches PPR's scale plus the TE bonus, not standard's lower scale) -- that's why te_premium
+    alone implies ppr scoring below, rather than defaulting to standard when "ppr" is absent."""
+    name = filename.lower()
+    te_premium = "te_premium" in name or "te-premium" in name
+    superflex = "superflex" in name or "super_flex" in name
+    if te_premium:
+        scoring = "ppr"
+    elif "half_ppr" in name or "halfppr" in name or "half-ppr" in name:
+        scoring = "half_ppr"
+    elif "ppr" in name:
+        scoring = "ppr"
+    else:
+        scoring = "standard"
+    return {"scoring": scoring, "superflex": superflex, "te_premium": te_premium}
+
+
+def _rankings_format_match_score(tags: dict, league_format: dict) -> float:
+    """How well one rankings file's own format assumptions match a league's actual format --
+    higher is better. Used to prefer the best-fitting file when the same player appears in
+    more than one (see load_all's format_hint and DataMerger.set_league_format). Weighted by
+    how much each axis actually swings a player's value: superflex most (it can roughly double
+    a startable QB's price), TE premium next (a real but position-scoped swing), scoring last
+    (PPR vs standard moves everyone a little, never as dramatically as the other two)."""
+    if not league_format:
+        return 0.0
+    score = 0.0
+    if tags.get("superflex") == bool(league_format.get("superflex")):
+        score += 3.0
+    if tags.get("te_premium") == bool(league_format.get("te_premium")):
+        score += 2.0
+    wants_scoring = league_format.get("scoring") or "ppr"
+    file_scoring = tags.get("scoring", "standard")
+    if file_scoring == wants_scoring:
+        score += 1.0
+    elif wants_scoring == "half_ppr" and file_scoring == "ppr":
+        # No half-PPR-specific export exists in the baseline today -- PPR is the closer
+        # approximation of the two available, not a real match, so it still scores lower
+        # than an exact hit above.
+        score += 0.5
+    return score
+
+
 def load_all(
-    projections_dir: Path = PROJECTIONS_DIR, default_kind: str = "rankings"
+    projections_dir: Path = PROJECTIONS_DIR, default_kind: str = "rankings",
+    format_hint: Optional[dict] = None,
 ) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
     """Parse every CSV/JSON/PDF once, bucketed into (rankings_df, free_agents_df, trade_values_df).
 
     default_kind is forwarded to load_projection_file for CSV/JSON files -- see its docstring.
+
+    format_hint (a league's {"scoring", "superflex", "te_premium"}), when given, reorders the
+    RANKINGS frames (never free agents or trade values -- neither has multiple format variants
+    today) from worst- to best-matching before the dedup below, so the best-fitting file wins
+    the same-player tiebreak instead of whichever file happened to sort last by mtime. See
+    _detect_rankings_format/_rankings_format_match_score for how that match is scored. Offense
+    and IDP rows never contend for the same tiebreak (Draft Sharks' offense and IDP exports
+    cover disjoint position sets entirely), so this reordering is safe to apply as one global
+    sort rather than needing a separate pass per position group.
     """
     projections_dir = Path(projections_dir)
     empty = pd.DataFrame(columns=["name", "norm_name"])
@@ -864,6 +925,7 @@ def load_all(
         key=lambda p: p.stat().st_mtime,
     )
     rankings_frames, fa_frames, tvc_frames = [], [], []
+    rankings_scores: list[float] = []
     for f in files:
         try:
             df, kind = load_projection_file(f, default_kind=default_kind)
@@ -889,6 +951,14 @@ def load_all(
             tvc_frames.append(df)
         else:
             rankings_frames.append(df)
+            rankings_scores.append(_rankings_format_match_score(_detect_rankings_format(f.name), format_hint))
+
+    if format_hint and len(rankings_frames) > 1:
+        # Stable sort: among files tied on match score (e.g. two that both mismatch, or
+        # multiple with no scoring opinion at all), the original mtime order still decides --
+        # this only re-prioritizes real format matches, it doesn't invent a new tiebreak for
+        # files a hint can't distinguish between.
+        rankings_frames = [df for _, df in sorted(zip(rankings_scores, rankings_frames), key=lambda pair: pair[0])]
 
     return (
         _dedup_by_name_and_position(rankings_frames, empty),
@@ -1069,21 +1139,27 @@ class DataMerger:
 
     def __init__(self, league_dir: Optional[Path] = None, global_dir: Path = GLOBAL_PROJECTIONS_DIR,
                  baseline_dir: Path = BASELINE_DIR, external_dir: Path = EXTERNAL_VALUES_DIR,
-                 match_cutoff: float = 0.82):
+                 match_cutoff: float = 0.82, league_format: Optional[dict] = None):
         self.league_dir = Path(league_dir) if league_dir else None
         self.global_dir = Path(global_dir)
         self.baseline_dir = Path(baseline_dir)
         self.external_dir = Path(external_dir)
         self.match_cutoff = match_cutoff
+        # {"scoring", "superflex", "te_premium"} -- which of the several format-specific
+        # Dynasty Rankings exports to prefer when the same player appears in more than one
+        # (see load_all's format_hint). None means no opinion: whichever file sorts last by
+        # mtime keeps winning, same as before this existed. Set via set_league_format once the
+        # active league's real format is known, not required at construction time.
+        self.league_format = league_format
         self._load()
 
     def _load(self) -> None:
         empty = pd.DataFrame(columns=["name", "norm_name"])
-        baseline_rankings, _, _ = load_all(self.baseline_dir / "rankings")
+        baseline_rankings, _, _ = load_all(self.baseline_dir / "rankings", format_hint=self.league_format)
         _, _, baseline_tvc = load_all(self.baseline_dir / "trade_value", default_kind="trade_value_chart")
-        global_rankings, _, global_tvc = load_all(self.global_dir)
+        global_rankings, _, global_tvc = load_all(self.global_dir, format_hint=self.league_format)
         if self.league_dir:
-            league_rankings, league_fa, league_tvc = load_all(self.league_dir)
+            league_rankings, league_fa, league_tvc = load_all(self.league_dir, format_hint=self.league_format)
         else:
             league_rankings, league_fa, league_tvc = empty.copy(), empty.copy(), empty.copy()
         self.projections = _merge_rankings(baseline_rankings, global_rankings, league_rankings)
@@ -1191,6 +1267,18 @@ class DataMerger:
 
     def reload(self) -> None:
         self._load()
+
+    def set_league_format(self, league_format: Optional[dict]) -> None:
+        """Update which format (scoring/superflex/te_premium) to prefer when a player appears
+        in more than one baseline/global Dynasty Rankings export, and reload if it actually
+        changed. Meant to be called every rerun with the currently active league's real format
+        (app.py does this right after resolving league_format_summary) -- cheap no-op via the
+        equality check below when nothing's changed, so this is safe to call unconditionally
+        rather than needing the caller to track whether a reload is actually warranted."""
+        if league_format == self.league_format:
+            return
+        self.league_format = league_format
+        self.reload()
 
     @property
     def is_loaded(self) -> bool:

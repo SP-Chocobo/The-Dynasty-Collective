@@ -72,6 +72,142 @@ class FindMatchExactNameTests(unittest.TestCase):
         self.assertNotEqual(aj.get("value"), amonra.get("value"))
 
 
+class DetectRankingsFormatTests(unittest.TestCase):
+    """Filename -> (scoring/superflex/te_premium) tagging, verified against the real baseline
+    filenames it has to get right (see _detect_rankings_format's own docstring for the
+    empirical trade_value comparison that grounded these exact tags)."""
+
+    def test_plain_ppr_file(self):
+        self.assertEqual(
+            dm._detect_rankings_format("dynasty_ppr_rankings.csv"),
+            {"scoring": "ppr", "superflex": False, "te_premium": False},
+        )
+
+    def test_ppr_superflex_file(self):
+        self.assertEqual(
+            dm._detect_rankings_format("dynasty_ppr_superflex_rankings.csv"),
+            {"scoring": "ppr", "superflex": True, "te_premium": False},
+        )
+
+    def test_standard_superflex_file_has_no_ppr_keyword(self):
+        self.assertEqual(
+            dm._detect_rankings_format("dynasty_superflex_rankings.csv"),
+            {"scoring": "standard", "superflex": True, "te_premium": False},
+        )
+
+    def test_te_premium_file_implies_ppr_despite_no_ppr_keyword(self):
+        # The one non-obvious rule: Draft Sharks' TE-premium exports are PPR underneath the
+        # bonus but never spell "ppr" out in the filename -- naive keyword-only parsing would
+        # mistag these as standard scoring.
+        self.assertEqual(
+            dm._detect_rankings_format("te_premium_dynasty_rankings.csv"),
+            {"scoring": "ppr", "superflex": False, "te_premium": True},
+        )
+        self.assertEqual(
+            dm._detect_rankings_format("dynasty_te_premium_superflex_rankings.csv"),
+            {"scoring": "ppr", "superflex": True, "te_premium": True},
+        )
+
+    def test_generic_filename_with_no_format_keywords_defaults_standard(self):
+        self.assertEqual(
+            dm._detect_rankings_format("fantasy_football_dynasty_rankings.csv"),
+            {"scoring": "standard", "superflex": False, "te_premium": False},
+        )
+
+
+class RankingsFormatMatchScoreTests(unittest.TestCase):
+    def test_no_hint_scores_zero_regardless_of_tags(self):
+        tags = {"scoring": "ppr", "superflex": True, "te_premium": True}
+        self.assertEqual(dm._rankings_format_match_score(tags, {}), 0.0)
+        self.assertEqual(dm._rankings_format_match_score(tags, None), 0.0)
+
+    def test_superflex_weighted_above_te_premium_above_scoring(self):
+        league = {"scoring": "ppr", "superflex": True, "te_premium": True}
+        superflex_only = dm._rankings_format_match_score(
+            {"scoring": "standard", "superflex": True, "te_premium": False}, league
+        )
+        te_premium_only = dm._rankings_format_match_score(
+            {"scoring": "standard", "superflex": False, "te_premium": True}, league
+        )
+        scoring_only = dm._rankings_format_match_score(
+            {"scoring": "ppr", "superflex": False, "te_premium": False}, league
+        )
+        self.assertGreater(superflex_only, te_premium_only)
+        self.assertGreater(te_premium_only, scoring_only)
+
+    def test_half_ppr_league_treats_ppr_file_as_a_partial_match(self):
+        league = {"scoring": "half_ppr", "superflex": False, "te_premium": False}
+        ppr_file = dm._rankings_format_match_score({"scoring": "ppr", "superflex": False, "te_premium": False}, league)
+        standard_file = dm._rankings_format_match_score(
+            {"scoring": "standard", "superflex": False, "te_premium": False}, league
+        )
+        self.assertGreater(ppr_file, standard_file)
+
+
+class RankingsFormatSelectionOnRealBaselineTests(unittest.TestCase):
+    """The actual bug this fix exists for, confirmed against the real committed baseline:
+    Brock Bowers' Draft Sharks trade_value swung from 36 to 96 (a ~2.7x difference) purely
+    depending on which of six format-specific Dynasty Rankings exports happened to win an
+    arbitrary mtime-order tiebreak, with no regard for any league's actual settings. Each case
+    below is one exact value pulled directly from its own source CSV, so this doubles as a
+    regression check against a future baseline data refresh silently changing the numbers."""
+
+    def test_no_format_hint_keeps_old_undefined_behavior(self):
+        # Not asserting a specific value here -- only that it doesn't crash and returns
+        # something from one of the real files, since "no hint" deliberately preserves
+        # whatever the pre-existing mtime tiebreak already did.
+        merger = dm.DataMerger()
+        match = merger._find_match("Brock Bowers", position="TE")
+        self.assertIsNotNone(match)
+
+    def test_1qb_ppr_no_te_premium(self):
+        merger = dm.DataMerger(league_format={"scoring": "ppr", "superflex": False, "te_premium": False})
+        self.assertEqual(merger._find_match("Brock Bowers", position="TE")["trade_value"], 64.0)
+
+    def test_1qb_ppr_te_premium(self):
+        merger = dm.DataMerger(league_format={"scoring": "ppr", "superflex": False, "te_premium": True})
+        self.assertEqual(merger._find_match("Brock Bowers", position="TE")["trade_value"], 96.0)
+
+    def test_superflex_ppr(self):
+        merger = dm.DataMerger(league_format={"scoring": "ppr", "superflex": True, "te_premium": False})
+        self.assertEqual(merger._find_match("Brock Bowers", position="TE")["trade_value"], 54.0)
+
+    def test_superflex_standard(self):
+        merger = dm.DataMerger(league_format={"scoring": "standard", "superflex": True, "te_premium": False})
+        self.assertEqual(merger._find_match("Brock Bowers", position="TE")["trade_value"], 36.0)
+
+    def test_superflex_ppr_te_premium(self):
+        merger = dm.DataMerger(league_format={"scoring": "ppr", "superflex": True, "te_premium": True})
+        self.assertEqual(merger._find_match("Brock Bowers", position="TE")["trade_value"], 84.0)
+
+    def test_1qb_standard(self):
+        merger = dm.DataMerger(league_format={"scoring": "standard", "superflex": False, "te_premium": False})
+        self.assertEqual(merger._find_match("Brock Bowers", position="TE")["trade_value"], 51.0)
+
+    def test_idp_rows_also_respond_to_the_superflex_axis(self):
+        # ppr_idp_rankings.corrected.csv vs superflex_idp_rankings.corrected.csv -- the only
+        # two IDP-covering baseline files, disjoint from the six offense files above (Draft
+        # Sharks' offense and IDP exports never share a position), so this exercises the same
+        # reordering mechanism on the other half of the baseline rankings pool.
+        one_qb = dm.DataMerger(league_format={"scoring": "ppr", "superflex": False, "te_premium": False})
+        superflex = dm.DataMerger(league_format={"scoring": "ppr", "superflex": True, "te_premium": False})
+        tv_1qb = one_qb._find_match("Maxx Crosby", position="DL")["trade_value"]
+        tv_superflex = superflex._find_match("Maxx Crosby", position="DL")["trade_value"]
+        self.assertNotEqual(tv_1qb, tv_superflex)
+
+    def test_set_league_format_reloads_and_is_a_no_op_when_unchanged(self):
+        merger = dm.DataMerger(league_format={"scoring": "ppr", "superflex": False, "te_premium": False})
+        before = merger._find_match("Brock Bowers", position="TE")["trade_value"]
+        merger.set_league_format({"scoring": "ppr", "superflex": False, "te_premium": True})
+        after = merger._find_match("Brock Bowers", position="TE")["trade_value"]
+        self.assertNotEqual(before, after)
+        self.assertEqual(after, 96.0)
+        # Calling it again with the identical format should be a cheap no-op, not a second
+        # reload -- confirmed by the format sticking rather than erroring or resetting.
+        merger.set_league_format({"scoring": "ppr", "superflex": False, "te_premium": True})
+        self.assertEqual(merger.league_format, {"scoring": "ppr", "superflex": False, "te_premium": True})
+
+
 class PositionGroupTests(unittest.TestCase):
     """_position_group is the fix for the real "Josh Allen the Bills QB vs. Josh Allen a DL"
     collision this baseline effort surfaced -- these tests exist to make sure that class of

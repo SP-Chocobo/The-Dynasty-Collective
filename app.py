@@ -2590,6 +2590,15 @@ if not snapshot:
 # league that is, rather than the league fully taking over the header.
 league = snapshot["league"]
 fmt = league_format_summary(league)
+# Several Draft Sharks Dynasty Rankings exports cover the SAME players under different format
+# assumptions (PPR/standard, superflex/1QB, TE premium) -- without this, DataMerger has no way
+# to know which one applies to THIS league, and silently let whichever file sorted last by
+# mtime win for everyone (confirmed: one real player's trade_value swung ~2.7x purely on that
+# accident). Cheap no-op when nothing's changed since the last rerun -- see set_league_format.
+_scoring_key = {"Full PPR": "ppr", "Half PPR": "half_ppr", "Standard": "standard"}.get(fmt["scoring"], "ppr")
+st.session_state.data_merger.set_league_format(
+    {"scoring": _scoring_key, "superflex": fmt["superflex"], "te_premium": fmt["te_premium"]}
+)
 _banner_uri = _header_banner_data_uri()
 if _banner_uri:
     # A second, narrower <style> block layered on top of the base .st-key-app_header
