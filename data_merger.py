@@ -106,6 +106,11 @@ COMPOSITE_SOURCE_WEIGHTS: dict[str, float] = {
     "dynastyprocess": 1.0,
     "fantasypros": 1.0,
     "keeptradecut": 0.7,
+    # A panel-vetted live-search/reference-material finding (see bot_research.py) still an
+    # LLM's own read, never a deterministic parser's -- weighted below even KeepTradeCut's
+    # crowd-vote average to reflect that extra layer of uncertainty, despite having already
+    # cleared a real bar (survived scrutiny from the whole panel, Contrarian included).
+    "bot_research": 0.5,
 }
 # Every COMPOSITE_RECENCY_HALFLIFE_DAYS a source's weight halves -- a source dated today counts
 # fully, one dated 60 days ago counts half as much, 120 days ago a quarter, and so on. Applies
@@ -128,6 +133,10 @@ _EXTERNAL_PERCENTILE_RULES: dict[tuple[str, str], tuple[str, bool]] = {
     ("dynastyprocess", "players.csv"): ("value_1qb", True),
     ("fantasypros", "dynasty_ppr_rankings.csv"): ("rank", False),
     ("keeptradecut", "dynasty_superflex_halfppr.csv"): ("value", True),
+    # One fixed (source, file) pair covers every bot_research.json finding regardless of which
+    # real-world source it actually cites (ESPN, FantasyPros, ...) -- see
+    # load_bot_research_as_external's own docstring for why.
+    ("bot_research", "findings"): ("rank", False),
 }
 
 
@@ -943,6 +952,48 @@ def load_external_values(base_dir: Path = EXTERNAL_VALUES_DIR) -> pd.DataFrame:
     return pd.concat(frames, ignore_index=True, sort=False)
 
 
+def load_bot_research_as_external() -> pd.DataFrame:
+    """Panel-vetted findings from bot_research.py (only the ones that carry a real rank
+    number -- a qualitative claim has nothing to percentile-rank) reshaped into the same
+    (name/norm_name/source_name/source_file) shape load_external_values' other sources
+    produce, so they ride the exact same percentile/composite pipeline as every structured
+    export -- weighted low (see COMPOSITE_SOURCE_WEIGHTS["bot_research"]) since this is an
+    LLM's own read of a live search or a user's captioned reference item, not a deterministic
+    parser's. Grouped under one synthetic (source_name="bot_research", source_file="findings")
+    pair regardless of which real-world source each finding actually cites (ESPN, FantasyPros,
+    whatever the panel turned up) -- the cited source rides along as its own "cited_source"
+    field for display, but a fixed pair keeps the composite's percentile rules static rather
+    than growing a new rule per citation.
+
+    Only the newest finding per (player, cited source) is kept -- bot_research.json itself
+    never deletes anything (a real record of everything the panel has ever found), but an
+    outdated finding on the same player/source shouldn't keep pulling composite weight once a
+    fresher one supersedes it, same "newest wins" rule every other baseline source follows.
+    """
+    import bot_research
+
+    findings = [f for f in bot_research.load_findings() if f.get("rank") is not None]
+    empty = pd.DataFrame(columns=["name", "norm_name", "source_name", "source_file"])
+    if not findings:
+        return empty
+
+    latest: dict[tuple[str, str], dict] = {}
+    for f in sorted(findings, key=lambda e: e.get("ts", 0)):
+        key = (normalize_name(f.get("player_name", "")), f.get("source", ""))
+        latest[key] = f
+
+    rows = [
+        {
+            "name": f["player_name"], "norm_name": normalize_name(f["player_name"]),
+            "source_name": "bot_research", "source_file": "findings",
+            "cited_source": f.get("source"), "claim": f.get("claim"),
+            "rank": f["rank"], "source_date": f.get("date"),
+        }
+        for f in latest.values()
+    ]
+    return pd.DataFrame(rows) if rows else empty
+
+
 # -- manual name-matching overrides -------------------------------------------
 #
 # Automatic matching (key + fuzzy) mostly works, but a handful of players will
@@ -1007,7 +1058,12 @@ class DataMerger:
         self.projections = _merge_rankings(baseline_rankings, global_rankings, league_rankings)
         self.free_agents = league_fa
         self.trade_values = _merge_rankings(baseline_tvc, global_tvc, league_tvc)
-        self.external_values = load_external_values(self.external_dir)
+        external_values = load_external_values(self.external_dir)
+        bot_research_rows = load_bot_research_as_external()
+        self.external_values = (
+            pd.concat([external_values, bot_research_rows], ignore_index=True, sort=False)
+            if not bot_research_rows.empty else external_values
+        )
         self._compute_percentiles()
         self.aliases = load_aliases()
 

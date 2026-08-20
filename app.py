@@ -25,6 +25,7 @@ from PIL import Image
 
 import bot_benchmark
 import bot_config
+import bot_research
 import decision_log
 import pinned_messages
 import todo_log
@@ -480,6 +481,16 @@ def process_moderator_output(moderator_text: str, trigger_question: str) -> None
         todo_log.revise_todo(st.session_state.selected_league_id, update["id"], update["text"], update["reason"])
     for proposal in directives["likely_resolved"]:
         todo_log.mark_likely_resolved(st.session_state.selected_league_id, proposal["id"], proposal["reason"])
+    # See MODERATOR_SYSTEM_PROMPT's own SOURCE FINDING instructions: only written when the
+    # whole panel (Contrarian included) didn't dispute it, so persisting every parsed line here
+    # is trusting the Moderator's own gate, not re-verifying it a second time in code -- the
+    # actual trust bar is upstream, in the debate itself.
+    for finding in llm_engine.parse_source_findings(moderator_text):
+        bot_research.add_finding(
+            finding["player_name"], finding["source"], finding["claim"], rank=finding["rank"],
+            conviction=verdict.get("conviction", ""), question=trigger_question,
+            league_id=st.session_state.selected_league_id,
+        )
     # "Referenced" is a lighter signal than an actual UPDATE/LIKELY RESOLVED directive -- just
     # the Moderator citing an objective by id (e.g. "per #3, ...") while reasoning about
     # something else. Regex over the active ids rather than another LLM directive, since this
@@ -1023,6 +1034,14 @@ def describe_external_value(ext: dict) -> str:
     this picks whichever fields that row actually has rather than assuming one shape -- new
     sources with yet another shape still degrade to *something* readable instead of a blank
     or wrong field lookup."""
+    if ext.get("source_name") == "bot_research":
+        # A panel-vetted live-search/reference-material finding (see bot_research.py), not a
+        # static export -- label by the source it actually cites (e.g. "ESPN"), not the
+        # generic bucket name, and carry the claim itself since that's the point of this one.
+        cited = ext.get("cited_source") or "?"
+        rank_part = f" (rank={ext['rank']:.0f})" if ext.get("rank") is not None else ""
+        claim = ext.get("claim")
+        return f"{cited} via panel research{rank_part}: {claim}" if claim else f"{cited} via panel research{rank_part}"
     label = ext.get("source_name", "?")
     source_file = ext.get("source_file")
     if source_file:
@@ -1420,6 +1439,20 @@ def build_context(snapshot: dict, roster_table: list[dict], player_universe: lis
         )
         for a in captioned[:20]:
             lines.append(f"  - {a['caption']}")
+
+    findings = bot_research.findings_for_context()
+    if findings:
+        lines.append(
+            "\nPANEL-VETTED FINDINGS from past debates (see MODERATOR_SYSTEM_PROMPT's SOURCE FINDING rule — "
+            "each already survived scrutiny from the whole panel, Contrarian included, when it was first "
+            "surfaced, whether that was a bot's live search or the user's own reference material). The ones "
+            "with a rank number already feed the composite score above at a low weight (this is still an "
+            "LLM's own read, not a deterministic parser's) — don't double-count them by also treating this "
+            "prose as independent corroboration. Newer findings on the same player supersede older ones:"
+        )
+        for f in findings:
+            rank_part = f" (rank {f['rank']})" if f.get("rank") is not None else ""
+            lines.append(f"  - [{f['date']}] {f['player_name']} — {f['source']}{rank_part}: {f['claim']}")
 
     return "\n".join(lines)
 

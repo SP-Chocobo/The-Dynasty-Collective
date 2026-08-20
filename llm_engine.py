@@ -168,9 +168,26 @@ Use TODO UPDATE when new information changes what the objective actually is, not
 Use TODO LIKELY RESOLVED only when you have real evidence it's done (a completed trade visible in the
 league's roster data, an explicitly stated fact from the user or Beat Tracker) — this proposes closing it,
 it does not close it; the user confirms or reopens it. Never invent an id — only reference one that's
-actually listed in OPEN TO-DO ITEMS. Include as many TODO UPDATE / TODO LIKELY RESOLVED lines as genuinely
-apply (zero, one, or several) — these are the only repeatable lines in this block; every other field
-appears at most once.
+actually listed in OPEN TO-DO ITEMS.
+
+The Beat Tracker and Contrarian both have live web search, and your context may also include REFERENCE
+MATERIAL the user captioned by hand — either can be the origin of a specific, checkable claim from a named
+real source about a named player's current market value, ranking, or status (not news/injury, which belongs
+in your prose, not here). Whichever way it entered the debate, when the rest of the panel — Contrarian very
+much included — did NOT dispute it, add one line per such finding (after PRICE CEILING/ACTION ITEM/TODO
+lines, before the block ends):
+
+SOURCE FINDING: <player's full name> | <source name, e.g. ESPN> | <the claim, one line> | <a bare rank or
+tier number ONLY if the claim IS literally that specific number, e.g. the source's own "#3 DL" — leave this
+last field blank for anything qualitative (a trend, an opinion, a narrative read)>
+
+This is how a genuinely new, panel-tested finding becomes durable — it can end up feeding this app's own
+composite valuation score, not just this one answer, so only write this line when the finding actually held
+up under scrutiny from the whole panel. If the Contrarian challenged it and nothing rebutted that challenge,
+don't write the line at all — an unresolved dispute is not a finding. Never invent a source or a number that
+wasn't actually surfaced in this debate; omit the line entirely rather than force one that doesn't clearly
+qualify. Zero, one, or several of these may apply — like the TODO lines, these are repeatable; every other
+field in the block above still appears at most once.
 
 Your context may also include a PAST DECISION OUTCOMES section — earlier verdicts on a
 related question, with how they actually played out (user-recorded, not a model guess). This
@@ -266,6 +283,31 @@ def parse_todo_directives(text: str) -> dict:
                     "id": int(parts[0]), "reason": parts[1] if len(parts) >= 2 else "",
                 })
     return {"updates": updates, "likely_resolved": likely_resolved}
+
+
+def parse_source_findings(text: str) -> list[dict]:
+    """Pull every SOURCE FINDING line out of the Moderator's response -- see
+    MODERATOR_SYSTEM_PROMPT's own instructions on when it's allowed to write one (a specific,
+    named-source claim the whole panel, Contrarian included, didn't successfully dispute).
+    Repeatable like the TODO lines, for the same reason: a debate can surface more than one.
+    Fails soft on a malformed line (wrong pipe count, empty player/source/claim) -- that one
+    line is dropped, never the whole response. The bare rank field is optional and only kept
+    when it parses as a plain integer; anything else (blank, "N/A", prose) is treated as "no
+    number," never guessed at.
+    """
+    findings: list[dict] = []
+    for line in text.splitlines():
+        stripped = line.strip().lstrip("-*# ").rstrip()
+        if not stripped.upper().startswith("SOURCE FINDING:"):
+            continue
+        parts = [p.strip() for p in stripped[len("SOURCE FINDING:"):].split("|")]
+        if len(parts) < 3 or not parts[0] or not parts[1] or not parts[2]:
+            continue
+        rank = None
+        if len(parts) >= 4 and parts[3].strip().isdigit():
+            rank = int(parts[3].strip())
+        findings.append({"player_name": parts[0], "source": parts[1], "claim": parts[2], "rank": rank})
+    return findings
 
 
 def is_claude_configured(api_key: Optional[str] = None) -> bool:
