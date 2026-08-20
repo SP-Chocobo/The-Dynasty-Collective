@@ -87,6 +87,71 @@ EXTERNAL_VALUES_DIR = BASELINE_DIR / "external"
 STALE_AFTER_DAYS = 7  # how old loaded projections can get before the UI nudges you to refresh
 ALIASES_PATH = Path("data/player_aliases.json")  # manual overrides for names that fail to auto-match
 
+# -- composite score -------------------------------------------------------------------------
+#
+# This app's own single blended read on a player, per the user's explicit request: weigh
+# Draft Sharks a bit higher (its own model, closest thing here to a curated grade), weigh
+# KeepTradeCut a bit lower (a crowd-vote average, "more easily influenced by the masses" per
+# that request), leave DynastyProcess/FantasyPros neutral, and have a fresher-dated source
+# count for more than a stale one. This NEVER replaces the raw per-source numbers anywhere --
+# every bot-facing context still gets every source's own value exactly as before (see
+# build_context/_price_trade_side in app.py) -- it's an additional, clearly-labeled field,
+# not a substitute for seeing where sources actually agree or disagree.
+#
+# Relative weight per source before recency decay -- deliberately named/adjustable constants,
+# not a formula derived from anything external, since "a bit higher"/"a bit less" is a
+# judgment call the user made, not a fact to calculate.
+COMPOSITE_SOURCE_WEIGHTS: dict[str, float] = {
+    "draftsharks": 1.3,
+    "dynastyprocess": 1.0,
+    "fantasypros": 1.0,
+    "keeptradecut": 0.7,
+}
+# Every COMPOSITE_RECENCY_HALFLIFE_DAYS a source's weight halves -- a source dated today counts
+# fully, one dated 60 days ago counts half as much, 120 days ago a quarter, and so on. Applies
+# equally to Draft Sharks and every external source, so "newer sourced items add weight" holds
+# regardless of which source got refreshed most recently.
+COMPOSITE_RECENCY_HALFLIFE_DAYS = 60
+# {"Fresh"/"Recent"/"Aging"/"Stale": max avg age in days for that grade} -- an at-a-glance read
+# on how current the sources feeding one player's composite actually are, separate from the
+# recency weighting above (that decays the score's math; this just reports the input freshness).
+COMPOSITE_RECENCY_GRADES: list[tuple[str, float]] = [("Fresh", 7), ("Recent", 30), ("Aging", 90)]
+
+# Which raw field to rank on, and whether a HIGHER value is better, for computing each
+# secondary source's own percentile against its own player pool -- these are the exact columns
+# those sources' baseline CSVs carry today (see each source's ATTRIBUTION.md under
+# data/baseline/external/), not a generic convention every future source will automatically
+# satisfy, so a new source needs its own entry here rather than being silently mis-percentiled.
+# FantasyPros' best_ball_rankings.csv and DynastyProcess's picks.csv are deliberately absent --
+# a season-long list and a picks-only list have no business feeding a PLAYER dynasty composite.
+_EXTERNAL_PERCENTILE_RULES: dict[tuple[str, str], tuple[str, bool]] = {
+    ("dynastyprocess", "players.csv"): ("value_1qb", True),
+    ("fantasypros", "dynasty_ppr_rankings.csv"): ("rank", False),
+    ("keeptradecut", "dynasty_superflex_halfppr.csv"): ("value", True),
+}
+
+
+def _recency_weight(source_date: Optional[str]) -> float:
+    """1.0 for a source dated today, halving every COMPOSITE_RECENCY_HALFLIFE_DAYS. An
+    unparsable/missing date gets a fixed middling weight (neither trusted as fresh nor
+    discarded as worthless) rather than crashing or silently dropping that source."""
+    if not source_date:
+        return 0.5
+    try:
+        age_days = (datetime.now().date() - datetime.fromisoformat(str(source_date)).date()).days
+    except ValueError:
+        return 0.5
+    return 0.5 ** (max(age_days, 0) / COMPOSITE_RECENCY_HALFLIFE_DAYS)
+
+
+def _recency_grade(avg_age_days: Optional[float]) -> str:
+    if avg_age_days is None:
+        return "Unknown"
+    for grade, max_days in COMPOSITE_RECENCY_GRADES:
+        if avg_age_days <= max_days:
+            return grade
+    return "Stale"
+
 # Header aliases -> canonical column names. Vendor exports are inconsistent
 # about naming, so we normalize whatever shows up in the header row.
 COLUMN_ALIASES = {
@@ -839,7 +904,38 @@ class DataMerger:
         self.free_agents = league_fa
         self.trade_values = _merge_rankings(baseline_tvc, global_tvc, league_tvc)
         self.external_values = load_external_values(self.external_dir)
+        self._compute_percentiles()
         self.aliases = load_aliases()
+
+    def _compute_percentiles(self) -> None:
+        """Populate a "_pct" column (0-100, higher always better) on projections and on each
+        (source, file) pair external_player_values/composite_player_score know how to read --
+        see _EXTERNAL_PERCENTILE_RULES. Computed once per _load() rather than per lookup since
+        a percentile is only meaningful against the *whole* pool it's ranked within, and
+        recomputing that per player would be wasteful for what's the same number every time
+        until the next reload()."""
+        if "trade_value" in self.projections.columns:
+            self.projections["_pct"] = self.projections["trade_value"].rank(pct=True) * 100
+
+        if self.external_values.empty:
+            return
+        self.external_values["_pct"] = float("nan")
+        for (source, source_file), (field, higher_is_better) in _EXTERNAL_PERCENTILE_RULES.items():
+            mask = (
+                (self.external_values["source_name"] == source)
+                & (self.external_values["source_file"] == source_file)
+            )
+            if field not in self.external_values.columns:
+                continue
+            # KTC's one CSV holds both players and picks on the same list -- a player's
+            # percentile should be computed against other PLAYERS only, not diluted by picks.
+            # Sources with no asset_type column at all (everything except KTC) get NaN here,
+            # which fillna("player") treats as "doesn't apply, don't filter" rather than
+            # excluding every row from a source that was never picks/players split to begin with.
+            if "asset_type" in self.external_values.columns:
+                mask = mask & (self.external_values["asset_type"].fillna("player") == "player")
+            pct = self.external_values.loc[mask, field].rank(pct=True, ascending=higher_is_better) * 100
+            self.external_values.loc[mask, "_pct"] = pct
 
     def reload(self) -> None:
         self._load()
@@ -1016,6 +1112,74 @@ class DataMerger:
             results.append(row)
         return results
 
+    def composite_player_score(self, player_full_name: str, position: Optional[str] = None,
+                                team: Optional[str] = None) -> Optional[dict]:
+        """This app's own single blended read on a player (see the COMPOSITE_* constants'
+        docstring for the weighting rationale) -- a weighted average of each source's
+        percentile standing within its OWN pool, never a raw-number average across sources
+        that use completely different scales. Returns None when not one source has an
+        opinion, rather than fabricating a score from nothing.
+
+        This is always an ADDITIONAL field, never a replacement: it does not feed the trade
+        calculator's pricing math (that stays Draft-Sharks-scaled, exactly as tested), and
+        every bot-facing context keeps showing every source's own raw number regardless of
+        whether this ran -- see merge_player/external_player_values, still called
+        independently everywhere they already were."""
+        components: list[dict] = []
+
+        if "_pct" in self.projections.columns:
+            ds_match = self._find_match(player_full_name, position=position, team=team, df=self.projections)
+            if ds_match is not None and pd.notna(ds_match.get("_pct")):
+                source_date = ds_match.get("source_date")
+                components.append({
+                    "source": "draftsharks", "raw": ds_match.get("trade_value"),
+                    "percentile": float(ds_match["_pct"]), "source_date": source_date,
+                    "weight": COMPOSITE_SOURCE_WEIGHTS["draftsharks"] * _recency_weight(source_date),
+                })
+
+        if not self.external_values.empty:
+            for (source, source_file), (field, _) in _EXTERNAL_PERCENTILE_RULES.items():
+                sub = self.external_values[
+                    (self.external_values["source_name"] == source)
+                    & (self.external_values["source_file"] == source_file)
+                ]
+                if sub.empty:
+                    continue
+                match = self._find_match(player_full_name, position=position, team=team, df=sub)
+                if match is None or pd.isna(match.get("_pct")):
+                    continue
+                source_date = match.get("source_date")
+                components.append({
+                    "source": source, "raw": match.get(field),
+                    "percentile": float(match["_pct"]), "source_date": source_date,
+                    "weight": COMPOSITE_SOURCE_WEIGHTS.get(source, 1.0) * _recency_weight(source_date),
+                })
+
+        if not components:
+            return None
+
+        total_weight = sum(c["weight"] for c in components)
+        if total_weight <= 0:
+            return None
+        score = sum(c["percentile"] * c["weight"] for c in components) / total_weight
+
+        ages = []
+        for c in components:
+            if not c.get("source_date"):
+                continue
+            try:
+                ages.append((datetime.now().date() - datetime.fromisoformat(str(c["source_date"])).date()).days)
+            except ValueError:
+                continue
+        avg_age = sum(ages) / len(ages) if ages else None
+
+        return {
+            "score": round(score, 1),
+            "recency_grade": _recency_grade(avg_age),
+            "avg_age_days": round(avg_age, 1) if avg_age is not None else None,
+            "components": components,
+        }
+
     def list_free_agents(self, exclude_mine: bool = True, position: Optional[str] = None,
                           top_n: Optional[int] = None) -> list[dict]:
         """Free Agent Finder rows, sorted by 3D Value+ descending."""
@@ -1062,6 +1226,10 @@ class DataMerger:
 
             if self.is_external_values_loaded:
                 row["external_values"] = self.external_player_values(full_name, position=position, team=team)
+
+            composite = self.composite_player_score(full_name, position=position, team=team)
+            if composite is not None:
+                row["composite"] = composite
 
             rows.append(row)
         return rows

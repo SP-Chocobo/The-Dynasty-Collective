@@ -1198,15 +1198,25 @@ def build_context(snapshot: dict, roster_table: list[dict], player_universe: lis
     # tiebreaker by default) -- so Draft Sharks isn't the only word on a player's value here.
     lines.append(
         "Roster (name | pos | team | DS tier | DS VORP | DS 1yr proj | Sleeper native week proj | "
-        "DS 3yr proj | DS 3D/trade value | DS pos rank | other sources):"
+        "DS 3yr proj | DS 3D/trade value | DS pos rank | composite score | other sources):"
     )
     for row in roster_table:
         other = "; ".join(describe_external_value(ext) for ext in row.get("external_values") or [])
+        composite = row.get("composite")
+        composite_str = f"{composite['score']:.0f}/100 ({composite['recency_grade']})" if composite else "-"
         lines.append(
             f"  {row['name']} | {row['position']} | {row['team']} | "
             f"{row.get('tier', '-')} | {row.get('vorp', '-')} | {row.get('projection', '-')} | "
             f"{row.get('sleeper_proj', '-')} | {row.get('proj_3yr', '-')} | "
-            f"{row.get('trade_value', '-')} | {row.get('pos_rank', '-')} | {other or '-'}"
+            f"{row.get('trade_value', '-')} | {row.get('pos_rank', '-')} | {composite_str} | {other or '-'}"
+        )
+    if any(row.get("composite") for row in roster_table):
+        lines.append(
+            "  'composite score' is this app's own single blended read across every loaded "
+            "source (see COMPOSITE_SOURCE_WEIGHTS in data_merger.py: Draft Sharks weighted a "
+            "bit higher, KeepTradeCut a bit lower as a crowd-vote average, fresher-dated "
+            "sources counting for more) -- a starting-point number for convenience, never a "
+            "substitute for weighing the actual per-source disagreement in 'other sources' below."
         )
     if merger.is_external_values_loaded:
         lines.append(
@@ -2707,7 +2717,12 @@ elif main_view == MAINTENANCE_VIEW:
         external carries any secondary-source opinions (see DataMerger.external_player_values)
         on the same named player, purely as a side-by-side annotation -- it never feeds `value`
         or the anvil math below, which stays Draft-Sharks-scaled throughout, so a second source
-        with a wildly different scale can't silently skew a number this app treats as pricing."""
+        with a wildly different scale can't silently skew a number this app treats as pricing.
+
+        composite is this app's own single blended read (DataMerger.composite_player_score) --
+        shown in the calculator UI as one clean number rather than every source at once (that
+        full breakdown is what `external` is for, and what still reaches the panel/bots via
+        _describe_trade_side below); also never feeds `value`, same reasoning as external."""
         rows = []
         for raw_line in text.splitlines():
             line = raw_line.strip()
@@ -2717,13 +2732,14 @@ elif main_view == MAINTENANCE_VIEW:
                 rows.append({"label": line, "value": None, "position": None, "source": None, "consideration": True})
                 continue
             external = merger.external_player_values(line) if merger.is_external_values_loaded else []
+            composite = merger.composite_player_score(line)
             tvc_player = merger.merge_player(line, df=_tvc_players) if merger.is_trade_values_loaded else {}
             if tvc_player.get("matched") and _tvc_player_keys is not None:
                 candidates = int((_tvc_player_keys == _match_key(line)).sum())
                 if candidates > 1:
                     rows.append({
                         "label": line, "value": None, "position": None, "source": None,
-                        "ambiguous": True, "external": external,
+                        "ambiguous": True, "external": external, "composite": composite,
                     })
                     continue
             # The Trade Value Chart's own column is "value", not "trade_value" -- it's the one
@@ -2733,14 +2749,14 @@ elif main_view == MAINTENANCE_VIEW:
                 rows.append({
                     "label": line, "value": float(tvc_price),
                     "position": tvc_player.get("position"), "source": "Trade Value Chart",
-                    "external": external,
+                    "external": external, "composite": composite,
                 })
                 continue
             pick_val = merger.pick_value(line) if merger.is_trade_values_loaded else None
             if pick_val is not None:
                 rows.append({
                     "label": line, "value": float(pick_val), "position": None,
-                    "source": "Trade Value Chart", "external": external,
+                    "source": "Trade Value Chart", "external": external, "composite": composite,
                 })
                 continue
             rankings_player = merger.merge_player(line)
@@ -2756,16 +2772,19 @@ elif main_view == MAINTENANCE_VIEW:
                 if candidates > 1:
                     rows.append({
                         "label": line, "value": None, "position": None, "source": None,
-                        "ambiguous": True, "external": external,
+                        "ambiguous": True, "external": external, "composite": composite,
                     })
                     continue
                 rows.append({
                     "label": line, "value": float(rankings_player["trade_value"]),
                     "position": rankings_player.get("position"), "source": "Dynasty Rankings",
-                    "external": external,
+                    "external": external, "composite": composite,
                 })
                 continue
-            rows.append({"label": line, "value": None, "position": None, "source": None, "external": external})
+            rows.append({
+                "label": line, "value": None, "position": None, "source": None,
+                "external": external, "composite": composite,
+            })
         return rows
 
     def _depth_label(team_label: Optional[str], position: str, override_cell: Optional[dict] = None) -> Optional[str]:
@@ -2818,11 +2837,15 @@ elif main_view == MAINTENANCE_VIEW:
                 "much to invent one) — included below and sent to the panel, just not in the totals."
             )
 
-        def _external_suffix(row: dict) -> str:
-            # Its own scale, never blended into row["value"] above -- see external_player_values'
-            # docstring -- so this only ever rides along as a side note, not part of the price.
-            parts = [describe_external_value(ext) for ext in row.get("external") or []]
-            return f"  ·  {'; '.join(parts)}" if parts else ""
+        def _composite_suffix(row: dict) -> str:
+            # This app's own single blended read (DataMerger.composite_player_score) -- shown
+            # here as one clean number, not every source stacked up (that full breakdown still
+            # reaches the panel/bots via _describe_trade_side below, per "external" on this same
+            # row). Never blended into row["value"] above -- side note, not part of the price.
+            composite = row.get("composite")
+            if not composite:
+                return ""
+            return f"  ·  Composite {composite['score']:.0f}/100 ({composite['recency_grade']})"
 
         def _render_trade_side(rows: list[dict]) -> None:
             for row in rows:
@@ -2831,10 +2854,10 @@ elif main_view == MAINTENANCE_VIEW:
                 elif row.get("ambiguous"):
                     st.caption(f"❓ \"{row['label']}\" — matches more than one player; add a position or full name")
                 elif row["value"] is None:
-                    st.caption(f"⚠️ \"{row['label']}\" — not found in loaded Draft Sharks data{_external_suffix(row)}")
+                    st.caption(f"⚠️ \"{row['label']}\" — not found in loaded Draft Sharks data{_composite_suffix(row)}")
                 else:
                     tag = " (DR)" if row["source"] == "Dynasty Rankings" else ""
-                    st.caption(f"{row['label']} — {row['value']:.0f}{tag}{_external_suffix(row)}")
+                    st.caption(f"{row['label']} — {row['value']:.0f}{tag}{_composite_suffix(row)}")
 
         rrcol1, rrcol2 = st.columns(2)
         with rrcol1:
@@ -2964,7 +2987,18 @@ elif main_view == MAINTENANCE_VIEW:
             # Own scale, not Draft Sharks' -- see external_player_values' docstring -- so this
             # is a side note for the panel to weigh, never something to add to the value above.
             extra = "; ".join(describe_external_value(ext) for ext in r.get("external") or [])
-            return f"{base} [other sources (own scale): {extra}]" if extra else base
+            if extra:
+                base += f" [other sources (own scale): {extra}]"
+            # The composite is one more data point for the panel, same as every raw source
+            # above it -- never a substitute for them. See composite_player_score's docstring.
+            composite = r.get("composite")
+            if composite:
+                base += (
+                    f" [composite: {composite['score']:.0f}/100, {composite['recency_grade']} "
+                    f"data (avg {composite['avg_age_days']}d old), from "
+                    f"{len(composite['components'])} source(s)]"
+                )
+            return base
         return "\n".join(_line(r) for r in rows)
 
     _trade_ready = bool(trade_send_text.strip() and trade_receive_text.strip())
