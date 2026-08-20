@@ -2465,9 +2465,13 @@ with st.sidebar:
         "dynastyprocess": "DynastyProcess", "fantasypros": "FantasyPros",
         "keeptradecut": "KeepTradeCut", "espn": "ESPN", "bot_research": "Bot Research",
     }
-    if merger.is_external_values_loaded:
-        sources_present = sorted(merger.external_values["source_name"].dropna().unique())
-        names = [SOURCE_DISPLAY_NAMES.get(s, s.title()) for s in sources_present]
+    # composite_capable_source_names() (not just every source_name present in
+    # external_values) -- confirmed live, ESPN's only baseline file is redraft-scope and
+    # structurally excluded from the composite entirely, yet this line used to count it as
+    # one of the "N composite sources loaded" just because its rows existed at all.
+    composite_sources = merger.composite_capable_source_names() if merger.is_external_values_loaded else []
+    if composite_sources:
+        names = [SOURCE_DISPLAY_NAMES.get(s, s.title()) for s in composite_sources]
         st.markdown(status_line(f"Composite Sources Loaded ({len(names)})", True), unsafe_allow_html=True)
         st.caption(", ".join(names))
     else:

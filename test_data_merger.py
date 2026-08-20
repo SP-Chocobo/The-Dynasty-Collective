@@ -381,6 +381,18 @@ class CompositeScoreOnRealBaselineTests(unittest.TestCase):
         self.assertEqual(composite["components"][0]["source"], "draftsharks")
         self.assertAlmostEqual(composite["score"], crosby["trade_value"], places=4)
 
+    def test_composite_capable_source_names_excludes_redraft_only_espn(self):
+        # ESPN's only baseline file is redraft-scope and structurally excluded from the
+        # composite entirely -- confirmed live, the sidebar's "Composite Sources Loaded" used
+        # to count it anyway just because its rows existed in external_values at all.
+        names = self.merger.composite_capable_source_names()
+        self.assertNotIn("espn", names)
+        # FantasyPros' dynasty file DOES feed the composite (only its best-ball/IDP-redraft
+        # files are excluded), so the source name itself should still show as capable.
+        self.assertIn("fantasypros", names)
+        self.assertIn("dynastyprocess", names)
+        self.assertIn("keeptradecut", names)
+
     def test_composite_components_only_drawn_from_dynasty_sources(self):
         # FantasyPros' best_ball_rankings.csv and idp_redraft_rankings.csv, and ESPN's
         # idp_redraft_rankings.csv, are redraft-scope and must never appear as a composite

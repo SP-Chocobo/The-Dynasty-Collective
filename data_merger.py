@@ -1361,6 +1361,24 @@ class DataMerger:
     def is_external_values_loaded(self) -> bool:
         return not self.external_values.empty
 
+    def composite_capable_source_names(self) -> list[str]:
+        """Distinct source_name values currently loaded that can ACTUALLY feed
+        composite_player_score -- i.e. have at least one (source_name, source_file) pair in
+        _EXTERNAL_PERCENTILE_RULES -- not just every source_name present in external_values.
+        Exists because "is this source loaded at all" and "can this source's data ever reach
+        the composite" are different questions: ESPN's only baseline file is redraft-scope and
+        structurally excluded from the composite entirely (same for FantasyPros' best-ball/
+        IDP-redraft files, which sit alongside its dynasty file under the same source_name),
+        so a caller (the sidebar's "Composite Sources Loaded" status) that just counted every
+        distinct source_name present would overstate what's actually contributing."""
+        if self.external_values.empty:
+            return []
+        capable_source_names = {source for source, _file in _EXTERNAL_PERCENTILE_RULES}
+        return sorted(
+            n for n in self.external_values["source_name"].dropna().unique()
+            if n in capable_source_names
+        )
+
     def external_player_values(self, player_full_name: str, position: Optional[str] = None,
                                 team: Optional[str] = None) -> list[dict]:
         """One dict per (source, file) that has an opinion on this player (see
