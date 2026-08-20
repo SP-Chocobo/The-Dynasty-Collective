@@ -19,6 +19,9 @@ import requests
 
 BASE_URL = "https://api.sleeper.app/v1"
 ROOT_URL = "https://api.sleeper.app"  # projections/stats live outside /v1 — see get_weekly_projections
+# Last-resort fallback only -- get_user_leagues derives the real season from Sleeper's own
+# live /state/nfl on every call now, so this only matters if that endpoint itself is
+# unreachable. Not something that needs bumping every year on its own.
 DEFAULT_SEASON = "2026"
 PLAYERS_CACHE_MAX_AGE_SECONDS = 24 * 60 * 60  # Sleeper asks that /players/nfl be pulled at most once/day
 REQUEST_TIMEOUT = 15
@@ -55,7 +58,17 @@ class SleeperClient:
     def get_user(self, username: str) -> Optional[dict]:
         return self._get(f"/user/{username}")
 
-    def get_user_leagues(self, user_id: str, season: str = DEFAULT_SEASON, sport: str = "nfl") -> list[dict]:
+    def get_user_leagues(self, user_id: str, season: Optional[str] = None, sport: str = "nfl") -> list[dict]:
+        # A hardcoded default season here would silently go stale every year -- confirmed:
+        # DEFAULT_SEASON used to be a bare "2026" constant, so on the season rollover a caller
+        # that didn't pass one explicitly (app.py's own sync never has) would keep querying the
+        # wrong year and just see "no leagues found" with no indication why. Derive it from
+        # Sleeper's own live /state/nfl instead when the caller doesn't pass one, falling back
+        # to DEFAULT_SEASON only if that call itself fails (offline, API outage) -- same
+        # fail-soft posture get_nfl_state already has.
+        if season is None:
+            state = self.get_nfl_state()
+            season = (state or {}).get("season") or DEFAULT_SEASON
         leagues = self._get(f"/user/{user_id}/leagues/{sport}/{season}")
         return leagues or []
 
