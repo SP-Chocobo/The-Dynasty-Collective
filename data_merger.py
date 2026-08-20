@@ -653,8 +653,18 @@ def parse_fantasypros_idp_pdf(path: Path) -> tuple[pd.DataFrame, Optional[str]]:
     """Parse a FantasyPros IDP (Individual Defensive Player) Rankings export -- a SEASON-LONG
     draft-prep list ("SOS SEASON ECR" in its own header, no dynasty-relevant spread columns),
     not dynasty, same posture as parse_fantasypros_bestball_pdf and for the same reason: never
-    silently read a redraft list as a long-term value opinion. Position codes here are more
-    granular than Draft Sharks' three broad IDP buckets (DE/DT instead of one DL, S/CB instead
+    silently read a redraft list as a long-term value opinion.
+
+    Data-preparation tooling, not part of the live app's own data flow: this produced the
+    committed data/baseline/external/fantasypros/idp_redraft_rankings.csv baseline from a raw
+    PDF export once, and the app only ever reads that already-converted CSV afterward (via the
+    generic load_external_values(), which needs no PDF parsing) -- and since it's redraft-scope,
+    _EXTERNAL_PERCENTILE_RULES deliberately never feeds it to the composite either way, same as
+    FantasyPros' best_ball_rankings.csv. Kept here to regenerate that CSV from a fresher PDF
+    export if FantasyPros' own IDP tool output ever changes shape, not dead by accident.
+
+    Position codes here are more granular than Draft Sharks' three broad IDP buckets (DE/DT
+    instead of one DL, S/CB instead
     of one DB) -- kept as-is rather than collapsed, since the extra detail is real information,
     not noise; see IDP_POSITIONS for why _position_group needs to recognize them too."""
     import pypdf
@@ -715,7 +725,15 @@ def parse_espn_idp_pdf(path: Path) -> tuple[pd.DataFrame, Optional[str]]:
     """Parse ESPN's Individual Defensive Player draft rankings (3 analysts' individual ranks
     plus their average) saved/printed as PDF -- see the module comment above for why position
     is assigned by counting rank-resets rather than trusting the page's own section captions.
-    A season-long draft-prep list, not dynasty (no dynasty framing anywhere on the page)."""
+    A season-long draft-prep list, not dynasty (no dynasty framing anywhere on the page).
+
+    Data-preparation tooling, not part of the live app's own data flow, same as
+    parse_fantasypros_idp_pdf right above (see its own docstring for the full reasoning): this
+    produced the committed data/baseline/external/espn/idp_redraft_rankings.csv baseline once,
+    and there's no live upload path for ESPN at all -- that source isn't in the composite's
+    _EXTERNAL_PERCENTILE_RULES (redraft-scope, deliberately excluded) or app.py's "refresh an
+    external source" upload UI, so nothing in the running app currently calls this. Kept to
+    regenerate the baseline CSV from a fresher PDF if ESPN's own export ever changes shape."""
     import pypdf
 
     reader = pypdf.PdfReader(str(path))

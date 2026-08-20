@@ -33,7 +33,7 @@ import llm_engine
 from attachments import ATTACHMENTS_DIR, list_attachments, save_attachment, set_caption, set_scope, delete_attachment
 from data_merger import (
     EXTERNAL_VALUES_DIR, GLOBAL_PROJECTIONS_DIR, PROJECTIONS_DIR, DataMerger, external_upload_targets,
-    load_projection_file, name_key, normalize_name, recency_grade, save_alias,
+    load_projection_file, name_key, normalize_name, recency_grade, remove_alias, save_alias,
 )
 from league_format import FORMAT_GUIDANCE, FORMAT_OPTIONS, STANDARD, get_format_override, set_format_override
 from league_prefs import forget_league, get_prefs, move_league, sorted_leagues, toggle_archive
@@ -2772,8 +2772,22 @@ if main_view == MATCHUP_VIEW:
                             st.rerun()
                         else:
                             notify("error", "Enter the name as Draft Sharks printed it first.")
-        else:
-            st.caption("No Draft Sharks/War Room projections loaded yet — upload a CSV in the sidebar.")
+
+            # save_alias had no counterpart in the UI at all -- once set, an alias was
+            # permanent short of manually editing data/player_aliases.json by hand, with no way
+            # to even see what was currently mapped. remove_alias already existed in
+            # data_merger.py for exactly this but was never wired to anything.
+            if merger.aliases:
+                with st.expander(f"Manual Aliases ({len(merger.aliases)})"):
+                    st.caption("Overrides automatic matching for these players. Remove one to go back to auto-matching.")
+                    for sleeper_name, ds_name in sorted(merger.aliases.items()):
+                        alias_col, remove_col = st.columns([4, 1])
+                        alias_col.markdown(f"**{sleeper_name}** → {ds_name}")
+                        if remove_col.button("Remove", key=f"remove_alias_{sleeper_name}", use_container_width=True):
+                            remove_alias(sleeper_name)
+                            merger.reload()
+                            notify("success", f"Removed the alias for '{sleeper_name}'.")
+                            st.rerun()
 
 elif main_view == MAINTENANCE_VIEW:
     # ------------------------------------------------------------------ free agents --

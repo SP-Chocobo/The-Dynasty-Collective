@@ -72,6 +72,42 @@ class FindMatchExactNameTests(unittest.TestCase):
         self.assertNotEqual(aj.get("value"), amonra.get("value"))
 
 
+class AliasSaveLoadRemoveTests(unittest.TestCase):
+    """save_alias had no UI counterpart for remove_alias at all -- once set, an alias could
+    only be undone by hand-editing data/player_aliases.json. These cover the round-trip the
+    UI now exercises (see app.py's Manual Aliases expander)."""
+
+    def setUp(self):
+        self._tmpdir = tempfile.mkdtemp()
+        self._orig_aliases_path = dm.ALIASES_PATH
+        dm.ALIASES_PATH = Path(self._tmpdir) / "player_aliases.json"
+        self.addCleanup(lambda: shutil.rmtree(self._tmpdir, ignore_errors=True))
+        self.addCleanup(setattr, dm, "ALIASES_PATH", self._orig_aliases_path)
+
+    def test_save_then_load_round_trips(self):
+        dm.save_alias("Some Sleeper Name", "S Name")
+        self.assertEqual(dm.load_aliases(), {"Some Sleeper Name": "S Name"})
+
+    def test_remove_deletes_just_that_entry(self):
+        dm.save_alias("Player A", "P A")
+        dm.save_alias("Player B", "P B")
+        dm.remove_alias("Player A")
+        self.assertEqual(dm.load_aliases(), {"Player B": "P B"})
+
+    def test_remove_nonexistent_alias_is_a_safe_no_op(self):
+        dm.save_alias("Player A", "P A")
+        dm.remove_alias("Never Saved")
+        self.assertEqual(dm.load_aliases(), {"Player A": "P A"})
+
+    def test_dataMerger_picks_up_a_removed_alias_on_reload(self):
+        dm.save_alias("Player A", "P A")
+        merger = dm.DataMerger()
+        self.assertIn("Player A", merger.aliases)
+        dm.remove_alias("Player A")
+        merger.reload()
+        self.assertNotIn("Player A", merger.aliases)
+
+
 class ExternalUploadTargetsTests(unittest.TestCase):
     """external_upload_targets() drives app.py's "refresh an external source" upload UI -- it
     has to name the EXACT filename each source's composite rule expects (_EXTERNAL_PERCENTILE_
