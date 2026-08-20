@@ -27,10 +27,14 @@ restate it.
 - **Zero manual credential exposure for league data.** Sleeper's read API
   (`https://api.sleeper.app/v1/`) needs no API key — just your username.
 - **Local data sovereignty.** Draft Sharks exports never leave your machine
-  or hit a vendor API — you export/save them yourself and upload them here,
-  keeping you compliant with Draft Sharks' terms of service. (Market
-  consensus sites like KTC/FantasyCalc/FantasyPros are looked up live by the
-  Beat Tracker via ordinary web search, since that data is public.)
+  or hit a vendor API — you export/save them yourself and upload them here.
+  DynastyProcess/FantasyPros/KeepTradeCut/ESPN work the same way: only
+  facts-only extractions (name/team/position/rank/value — never the
+  vendor's own PDF, page layout, or branding) ever get committed, per the
+  same reasoning applied consistently across every source rather than
+  re-litigated per vendor — see "The baseline pool & the composite score"
+  below. (Live web search by the Beat Tracker/Contrarian mid-debate is
+  separate from this and untouched by it.)
 - **Persisted league threads.** Every league gets its own chat memory at
   `data/chats/<league_id>_history.json`, independent of every other league.
 
@@ -349,15 +353,75 @@ A **📋 Decision Log** expander under the chat history shows the running
 table for the selected league, newest first — the actual point being able
 to look back later and check whether the front office's calls held up.
 
+### The baseline pool & the composite score
+
+Draft Sharks (uploaded by you, per "Local data sovereignty" above) isn't
+the only *structured* valuation source anymore — `data/baseline/` also
+ships four more, extracted as facts-only CSVs (never the vendor's own
+PDF/branding) and **committed to git**, so a fresh clone isn't empty on
+first launch the way `data/projections/` is:
+
+| Source | Shape | Scope |
+|---|---|---|
+| **DynastyProcess** (`external/dynastyprocess/`) | 1QB/2QB point value, ~0-10000 scale, derived from FantasyPros' ECR via a documented formula | Dynasty |
+| **FantasyPros** (`external/fantasypros/`) | Rank/tier off an expert panel — dynasty, best-ball, *and* IDP lists, each kept in its own file | Dynasty (one file) + redraft (two files) |
+| **KeepTradeCut** (`external/keeptradecut/`) | Crowdsourced 0-9999 value, players and picks on one scale | Dynasty |
+| **ESPN** (`external/espn/`) | Three analysts' individual + averaged IDP ranks | Redraft |
+
+None of these are blended into Draft Sharks' own numbers — every source
+rides alongside it as its own labeled opinion (`DataMerger.
+external_player_values`), each on its own incompatible scale. On top of
+that, `DataMerger.composite_player_score` computes this app's **own**
+single 0-100 blended score per player: each source is converted to a
+percentile against its *own* pool first (the only sound way to combine
+scales this different), then weighted — Draft Sharks a bit higher, KTC a
+bit lower (a crowd-vote average), a source's weight halving every 60 days
+as it ages (`COMPOSITE_RECENCY_HALFLIFE_DAYS`) so a fresh source
+outweighs a stale one automatically. Redraft-scope files (FantasyPros'
+best-ball/IDP lists, ESPN) never feed it — only genuine dynasty sources
+do. No coverage anywhere returns `None` (shown as **Incomplete Player
+Profile**), never a fabricated number.
+
+### Panel-vetted research becomes durable, not just one answer
+
+The Beat Tracker and Contrarian both have live web search on every call
+(and your own captioned reference material counts too) — when either
+surfaces a specific, named-source claim about a player that the rest of
+the panel, Contrarian very much included, doesn't dispute, the Moderator
+can write it into two more repeatable lines in its structured block:
+
+```
+SOURCE FINDING: <player> | <source> | <the claim> | <a bare rank, ONLY if the source stated one>
+SOURCE COMPARISON: <player A> | <player B> | > / < / ~ | <source> | <context> | <evidence>
+```
+
+Both persist to `data/baseline/` (`bot_research.json` / `bot_comparisons.json`,
+global and git-tracked, append-only) via `bot_research.py`, and both are
+fed back into every future debate as dated context. Only findings that
+carry a real stated rank feed the composite score, at a low weight (below
+even KTC's); a qualitative finding, and *every* comparison (a relative
+claim has no absolute number to give it), stay reference-only forever —
+`composite_impact` is stored explicitly on each entry rather than left for
+a reader to infer. The reasoning: a handful of debate-surfaced comparisons
+is nowhere near KeepTradeCut's millions of votes, so there's no real
+signal yet to build an Elo-style relative model from — that stays a
+possible future step once (if) real volume accumulates, not something
+attempted today.
+
 ## Project layout
 
 ```
 sleeper_client.py   Sleeper API wrapper: league discovery, rosters, scoring,
                      taxi, traded picks, cached player DB, snapshot caching.
 data_merger.py       Draft Sharks PDF parsers (Dynasty Rankings + Free Agent
-                     Finder, auto-detected) + CSV/JSON projection parser,
-                     name/team/position matching onto Sleeper players, and
-                     projection-freshness tracking.
+                     Finder + Trade Value Chart, auto-detected) + FantasyPros/
+                     KeepTradeCut/ESPN parsers + CSV/JSON projection parser,
+                     name/team/position matching onto Sleeper players,
+                     projection-freshness tracking, and the composite score
+                     (DataMerger.composite_player_score).
+bot_research.py       Panel-vetted findings/comparisons from live bot research
+                       or the user's own reference material — see "Panel-vetted
+                       research becomes durable" above.
 league_prefs.py       Per-Sleeper-user league archive/reorder preferences.
 league_format.py       Manual Best Ball / Chopped override + the strategic
                         guidance text injected into context for each.
@@ -365,13 +429,26 @@ attachments.py           Reference material (screenshots/articles) that isn't
                           structured Draft Sharks data — storage, captions,
                           and per-item global-vs-league(s) scoping.
 llm_engine.py               Four-persona prompt routing across Claude / Gemini / ChatGPT,
-                             plus the structured-verdict parser.
+                             plus the structured-verdict/TODO/SOURCE FINDING/
+                             SOURCE COMPARISON parsers.
 decision_log.py               Per-league record of every parsed Moderator verdict.
 app.py                         Streamlit dashboard + debate studio.
 update_and_run.ps1/.sh          Pulls latest code + deps, then launches the app.
+test_*.py                       unittest coverage — no pytest dependency.
+data/baseline/               Facts-only starting data, COMMITTED to git (not
+                              gitignored) so a fresh clone isn't empty — see
+                              "The baseline pool & the composite score" above.
+data/baseline/rankings/, trade_value/   Draft Sharks baseline, by format.
+data/baseline/external/<source>/        DynastyProcess/FantasyPros/KeepTradeCut/
+                                         ESPN baseline CSVs + each source's own
+                                         ATTRIBUTION.md.
+data/baseline/bot_research.json          Panel-vetted single-player findings.
+data/baseline/bot_comparisons.json       Panel-vetted player-vs-player comparisons.
 data/sleeper_snapshots/  Cached league syncs (gitignored).
-data/projections/_global/   Dynasty Rankings / format-based exports, shared by
-                             every league (gitignored).
+data/projections/_global/   Live-uploaded Dynasty Rankings / Trade Value Chart
+                             exports, shared by every league (gitignored) --
+                             supersedes data/baseline/ per-player, never
+                             replaces it.
 data/projections/<league_id>/  Free Agent Finder exports, one folder per league,
                                 never shared (gitignored).
 data/attachments/           Reference material + captions.json (gitignored).
