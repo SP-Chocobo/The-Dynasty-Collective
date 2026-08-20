@@ -99,8 +99,26 @@ st.markdown(
     .agent-block {
         border-radius: 8px; padding: 10px 14px; margin-bottom: 10px;
         background: #202124; border: 1px solid #2f3033;
+    }
+    /* Reasoning prose reads as an actual chat reply -- proportional font, not the
+       monospace/pre-wrap treatment every message used to get regardless of whether it was
+       free-flowing analysis or a fixed-format block. pre-line (not pre-wrap) still respects
+       the LLM's own paragraph breaks without the typewriter look. */
+    .agent-prose {
+        white-space: pre-line;
+        line-height: 1.55;
+    }
+    /* The structured verdict recap (RECOMMENDATION through any trailing SOURCE FINDING/
+       COMPARISON lines) keeps the old monospace/pre-wrap "form" treatment, but now only for
+       that fixed-format tail -- set apart from the conversational prose above it by a
+       divider, instead of the two reading as one undifferentiated wall of typewriter text. */
+    .agent-verdict {
         font-family: 'JetBrains Mono', 'DejaVu Sans Mono', monospace;
         white-space: pre-wrap;
+        font-size: 0.9rem;
+        margin-top: 10px;
+        padding-top: 10px;
+        border-top: 1px dashed #3a3c42;
     }
     .status-ok { color: #4ade80; }
     .status-bad { color: #64748b; }
@@ -3796,19 +3814,30 @@ with st.container(key="debate_dock"):
             "PRICE CEILING", "ACTION ITEM", "TODO UPDATE", "TODO LIKELY RESOLVED",
         )
 
-        def format_agent_content(role: str, content: str) -> str:
+        def format_agent_content(role: str, content: str) -> tuple[str, str]:
             """Escape first -- this was going straight into unsafe_allow_html unescaped,
             so a literal '<', '>', or '&' anywhere in an LLM response (plausible in
             ordinary analysis prose, e.g. "if X < Y") could silently break the block's
-            rendering. For the Moderator specifically, also bold the structured verdict
-            field labels so the fixed-format block reads as a scannable form instead of
-            an undifferentiated wall of monospace text -- this is the single most-read
-            piece of content in the app."""
-            escaped = html.escape(content)
-            if role == "moderator":
-                pattern = r"(?m)^(" + "|".join(VERDICT_FIELD_LABELS) + r"):"
-                escaped = re.sub(pattern, r"<strong>\1:</strong>", escaped)
-            return escaped
+            rendering. Returns (prose_html, verdict_html): for a Moderator message that
+            re-emitted the structured block, everything before the first RECOMMENDATION:
+            line (always the block's first field -- see MODERATOR_SYSTEM_PROMPT) is prose,
+            everything from there on is the verdict recap, with its field labels bolded so
+            it still reads as a scannable form. A conversational follow-up that skipped the
+            block (see MODERATOR_FOLLOWUP_ADDENDUM) has no such line, so it's all prose --
+            same as every non-Moderator role, which never carries this block at all. Keeping
+            the two halves separate is what lets _render_agent_msg show reasoning as an
+            actual chat reply and the verdict as a distinct recap card below it, instead of
+            one undifferentiated monospace wall."""
+            if role != "moderator":
+                return html.escape(content).strip(), ""
+            match = re.search(r"(?m)^RECOMMENDATION:", content)
+            if not match:
+                return html.escape(content).strip(), ""
+            prose = html.escape(content[:match.start()].strip())
+            verdict = html.escape(content[match.start():].strip())
+            pattern = r"(?m)^(" + "|".join(VERDICT_FIELD_LABELS) + r"):"
+            verdict = re.sub(pattern, r"<strong>\1:</strong>", verdict)
+            return prose, verdict
 
         # Base label uses the role's *current* display name (a rename applies to its
         # whole history, same as a real name change) — the "(Provider)" suffix uses
@@ -3866,10 +3895,11 @@ with st.container(key="debate_dock"):
                 ):
                     pinned_messages.toggle_pin(st.session_state.selected_league_id, ts)
                     st.rerun()
-            st.markdown(
-                f'<div class="agent-block">{format_agent_content(msg["role"], msg["content"])}</div>',
-                unsafe_allow_html=True,
-            )
+            prose_html, verdict_html = format_agent_content(msg["role"], msg["content"])
+            inner = f'<div class="agent-prose">{prose_html}</div>' if prose_html else ""
+            if verdict_html:
+                inner += f'<div class="agent-verdict">{verdict_html}</div>'
+            st.markdown(f'<div class="agent-block">{inner}</div>', unsafe_allow_html=True)
 
         # A Full Debate always appends exactly [quant, beat, contrarian, moderator] back to
         # back (see the trigger block above) -- group that run into one unit so the Moderator's
