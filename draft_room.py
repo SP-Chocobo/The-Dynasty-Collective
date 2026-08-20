@@ -123,7 +123,7 @@ from typing import Optional
 
 import pandas as pd
 
-from data_merger import DataMerger
+from data_merger import DataMerger, name_key, normalize_name
 from player_universe import FLEX_SLOT_POSITIONS, FANTASY_POSITIONS, league_usable_positions, player_name, player_position, score_projection
 
 # Sleeper's projection endpoint is per-week, not season-long (see sleeper_client.py's
@@ -233,6 +233,22 @@ def _drafted_counts_by_position(picks: list[dict], players_db: dict[str, dict]) 
     return counts
 
 
+def _rookie_lookup(merger: DataMerger) -> dict[tuple[str, str], bool]:
+    """name_key -> is this player flagged a rookie, straight from KeepTradeCut's own export
+    (its rankings visually tag current-class rookies, which its parser already captures --
+    see parse_keeptradecut_pdf's "rookie" column). This is real, already-collected source
+    data, not a guess: it's what lets pool_scope filter to "rookies only" or "veterans only"
+    by DETECTING who's actually a rookie this season, rather than a manual per-player list
+    that goes stale the moment a new class debuts."""
+    ev = merger.external_values
+    if ev.empty or "rookie" not in ev.columns:
+        return {}
+    ktc = ev[(ev["source_name"] == "keeptradecut") & ev["rookie"].notna()]
+    if ktc.empty:
+        return {}
+    return dict(zip(ktc["_name_key"], ktc["rookie"]))
+
+
 def build_available_pool(
     merger: DataMerger,
     players_db: dict[str, dict],
@@ -240,6 +256,7 @@ def build_available_pool(
     usable_positions: set[str],
     sleeper_projections: Optional[dict[str, dict]] = None,
     scoring_settings: Optional[dict] = None,
+    pool_scope: str = "all",
 ) -> pd.DataFrame:
     """One row per undrafted, fantasy-relevant player Draft Sharks actually has a value
     for -- joined from Sleeper's player_id-keyed database (drafts speak player_id, Draft
@@ -258,11 +275,22 @@ def build_available_pool(
     change which players matter -- see compute_draft_board's docstring for where this feeds
     the VOR anchor for positions Draft Sharks doesn't project at all (currently IDP).
 
+    pool_scope: "all" (default -- a startup/veteran draft, where a rookie who's already on
+    an NFL roster is just as legitimately draftable as anyone else), "rookies_only" (this
+    season's annual rookie draft), or "veterans_only" (a redraft/keeper league that excludes
+    rookies entirely). Which players actually count as rookies comes from KeepTradeCut's own
+    export (see _rookie_lookup) -- real source data, not a maintained list that goes stale
+    every draft class. A player KTC doesn't cover at all is treated as "not a rookie" for
+    veterans_only/all (the common case; excluding them by default would silently shrink the
+    veteran pool for no real reason) and excluded from rookies_only (no positive evidence
+    they belong there).
+
     No composite/cross-source lookup happens here -- an earlier version called
     composite_player_score per player to feed a market-corroboration adjustment that turned
     out to be both wrong (see module docstring) and, by a wide margin, this module's most
     expensive operation. Only merge_player's own (cheap) lookup remains.
     """
+    rookie_by_key = _rookie_lookup(merger) if pool_scope in ("rookies_only", "veterans_only") else {}
     rows = []
     for player_id, info in players_db.items():
         if player_id in drafted_player_ids:
@@ -273,6 +301,12 @@ def build_available_pool(
         if info.get("status") in ("Inactive", "Retired"):
             continue
         name = player_name(info, player_id)
+        if pool_scope != "all":
+            is_rookie = rookie_by_key.get(name_key(normalize_name(name)), False)
+            if pool_scope == "rookies_only" and not is_rookie:
+                continue
+            if pool_scope == "veterans_only" and is_rookie:
+                continue
         match = merger.merge_player(name, position=position, team=info.get("team"))
         if not match.get("matched") or match.get("trade_value") is None:
             continue
@@ -407,6 +441,7 @@ def compute_draft_board(
     mode: str = "auto",
     upside_round: int = UPSIDE_MODE_DEFAULT_ROUND,
     sleeper_projections: Optional[dict[str, dict]] = None,
+    pool_scope: str = "all",
 ) -> list[dict]:
     """The live recommendation board: every undrafted, Draft-Sharks-valued player, ranked
     best pick first, with every scoring layer broken out separately -- universal_value
@@ -415,7 +450,10 @@ def compute_draft_board(
     either value). See module docstring for why value is split into two numbers instead of
     one. mode: "auto" switches to upside scoring once the current round reaches
     upside_round, "balanced" or "upside" force one or the other regardless of round (the
-    toggle this was built for -- see app.py's Draft Room view)."""
+    toggle this was built for -- see app.py's Draft Room view). pool_scope: "all" (default),
+    "rookies_only" (the annual rookie draft), or "veterans_only" -- see
+    build_available_pool's docstring; who counts as a rookie is detected from KeepTradeCut's
+    own source data, not a maintained list."""
     roster_positions = league.get("roster_positions") or []
     usable_positions = league_usable_positions(roster_positions)
     is_dynasty = (league.get("settings") or {}).get("type") == 2
@@ -425,6 +463,7 @@ def compute_draft_board(
     pool = build_available_pool(
         merger, players_db, drafted_ids, usable_positions,
         sleeper_projections=sleeper_projections, scoring_settings=scoring_settings,
+        pool_scope=pool_scope,
     )
     if pool.empty:
         return []

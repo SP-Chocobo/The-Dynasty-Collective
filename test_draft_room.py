@@ -99,6 +99,32 @@ class ReplacementLevelMonotonicityTests(unittest.TestCase):
         self.assertLessEqual(heavy, light)
 
 
+class PoolScopeTests(unittest.TestCase):
+    """pool_scope's rookie detection is real source data (KeepTradeCut's own export already
+    flags current-class rookies -- see _rookie_lookup), not a maintained list, so these run
+    against the real committed baseline rather than a synthetic fixture."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.merger, cls.players_db = _build_pool_players_db(("RB", "WR", "QB", "TE"))
+
+    def test_rookies_only_and_veterans_only_partition_the_all_scope_pool(self):
+        usable = {"QB", "RB", "WR", "TE"}
+        all_pool = dr.build_available_pool(self.merger, self.players_db, set(), usable, pool_scope="all")
+        rookies = dr.build_available_pool(self.merger, self.players_db, set(), usable, pool_scope="rookies_only")
+        vets = dr.build_available_pool(self.merger, self.players_db, set(), usable, pool_scope="veterans_only")
+        self.assertGreater(len(rookies), 0, "expected real rookies in the baseline")
+        self.assertEqual(len(rookies) + len(vets), len(all_pool))
+        self.assertEqual(set(rookies["player_id"]) & set(vets["player_id"]), set())
+
+    def test_rookies_only_pool_is_usable_by_compute_draft_board(self):
+        board = dr.compute_draft_board(
+            self.merger, self.players_db, [], my_roster_id="99", league=LIGHT_IDP_LEAGUE,
+            mode="balanced", pool_scope="rookies_only",
+        )
+        self.assertGreater(len(board), 5, "expected a real rookie draft board")
+
+
 class DataIntegrityTests(unittest.TestCase):
     """Sanity checks on the pool draft_room.py actually scores, decoupled from the scoring
     math itself -- a scoring-behavior test failing because the underlying data was thin or
