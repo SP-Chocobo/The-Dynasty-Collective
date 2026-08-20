@@ -1879,22 +1879,76 @@ with st.sidebar:
                     staging_path.unlink(missing_ok=True)
                     notify("error", "This looks like a Free Agent Finder export, tied to one league's roster — select a league above first, then re-upload.")
                     recognized = True  # handled (as a rejection), don't also file it as an attachment
-                elif parse_error or suspicious_excerpt:
-                    # Weird import -- don't silently guess either way (accept as Dynasty
-                    # Rankings, or discard to reference material). Hold it and let the user
-                    # decide, optionally after asking the Moderator what it actually looks like.
-                    if not suspicious_excerpt:
-                        try:
-                            suspicious_excerpt = (pypdf.PdfReader(str(staging_path)).pages[0].extract_text() or "")[:1500] if suffix == ".pdf" else data[:1500].decode("utf-8", errors="ignore")
-                        except Exception:
-                            suspicious_excerpt = ""
-                    st.session_state.pending_upload = {
-                        "staging_path": str(staging_path), "name": uploaded.name, "kind": kind,
-                        "parse_error": parse_error, "excerpt": suspicious_excerpt, "data": data,
-                        "note": note, "note_scope": note_scope, "moderator_opinion": None,
-                        "example_row": example_row,
-                    }
-                    recognized = True  # held for a decision below, not silently filed either way
+                elif suspicious_excerpt:
+                    # The parser flagged real, recoverable data as ambiguous -- try to self-heal
+                    # via the Moderator automatically, before ever bothering the user with it.
+                    # Optically, whether the fix came from the parser alone or with the
+                    # Moderator's help doesn't matter -- only that the right data lands and the
+                    # user isn't interrupted for something the app could sort out on its own.
+                    _mod_provider = bot_config.load_role_providers()["moderator"]
+                    _mod_key = api_key_for(PROVIDER_KEY_FIELD[_mod_provider])
+                    auto_opinion, auto_alignment = None, None
+                    if IS_PROVIDER_CONFIGURED[_mod_provider](_mod_key):
+                        with st.spinner("Parser flagged this file as ambiguous — checking with the Moderator..."):
+                            auto_opinion = llm_engine.classify_unknown_upload(
+                                uploaded.name, suspicious_excerpt, example_row=example_row, provider=_mod_provider,
+                                api_key=_mod_key, model=bot_config.load_role_models().get("moderator") or None,
+                            )
+                        auto_alignment = llm_engine.parse_alignment_verdict(auto_opinion)
+
+                    if auto_alignment is True:
+                        # False alarm -- the parser's own mapping actually held up. Proceed
+                        # exactly like any other recognized upload; the question's resolved.
+                        dest_dir = GLOBAL_PROJECTIONS_DIR
+                        dest_dir.mkdir(parents=True, exist_ok=True)
+                        staging_path.replace(dest_dir / uploaded.name)
+                        st.session_state.data_merger.reload()
+                        notify("success", "Recognized as Draft Sharks data — the Moderator double-checked an ambiguous label and it held up.")
+                        recognized = True
+                        if note:
+                            save_attachment(f"{uploaded.name}.note.txt", note.encode(), caption=note, league_ids=note_scope)
+                    elif auto_alignment is False:
+                        # Confirmed mislabeled. Drop only the specific fields whose meaning is in
+                        # question (never invent a replacement value for them) and keep what's
+                        # still valid -- identity fields and trade_value, which for a Trade Value
+                        # Chart / Dynasty Rankings PDF sits in the same column position either
+                        # way. Written out as a CSV, not the raw PDF, so a future reload parses
+                        # the already-corrected data directly instead of re-deriving the same
+                        # wrong labels from the PDF's raw text every time.
+                        corrected_cols = [c for c in ("name", "team", "position", "rank", "trade_value") if c in parsed_df.columns]
+                        corrected_name = Path(uploaded.name).stem + ".corrected.csv"
+                        dest_dir = GLOBAL_PROJECTIONS_DIR
+                        dest_dir.mkdir(parents=True, exist_ok=True)
+                        parsed_df[corrected_cols].to_csv(dest_dir / corrected_name, index=False)
+                        staging_path.unlink(missing_ok=True)
+                        st.session_state.data_merger.reload()
+                        notify(
+                            "success",
+                            "Recognized as Draft Sharks data, with the Moderator's help — this file's own "
+                            "projection columns didn't mean what our schema expected (it looks like a "
+                            "single-season export, not a dynasty one), so those were left out rather than "
+                            "shown under the wrong label. Its trade value still applies.",
+                        )
+                        recognized = True
+                        if note:
+                            save_attachment(f"{uploaded.name}.note.txt", note.encode(), caption=note, league_ids=note_scope)
+                    else:
+                        # Couldn't self-heal -- no key configured to even ask, or the Moderator
+                        # itself wasn't confident. This is the one case that actually needs a
+                        # human decision, not a second automated guess dressed up as one.
+                        st.session_state.pending_upload = {
+                            "staging_path": str(staging_path), "name": uploaded.name, "kind": kind,
+                            "parse_error": None, "excerpt": suspicious_excerpt, "data": data,
+                            "note": note, "note_scope": note_scope,
+                            "moderator_opinion": auto_opinion, "alignment": auto_alignment,
+                            "example_row": example_row,
+                        }
+                        recognized = True  # held for a decision below, not silently filed either way
+                elif parse_error:
+                    # Nothing usable parsed at all -- no data to align, so there's nothing for
+                    # the Moderator to fix here. Falls through to reference material below,
+                    # same as it always has.
+                    staging_path.unlink(missing_ok=True)
                 else:
                     if kind == "free_agents":
                         dest_dir = league_projections_dir(st.session_state.selected_league_id)
@@ -1918,12 +1972,17 @@ with st.sidebar:
 
         pending = st.session_state.get("pending_upload")
         if pending:
+            # This is only ever reached once self-healing has already been tried and failed (see
+            # above) -- either no Moderator key was configured to even attempt it, or the
+            # Moderator itself wasn't confident either way. Either way, this genuinely needs a
+            # human call, not another automated guess.
             st.warning(
-                f"⚠️ \"{pending['name']}\" doesn't clearly match a known Draft Sharks export — "
-                + (f"{pending['parse_error']}." if pending["parse_error"] else
-                   "it parsed as table data, but its own text says \"Redraft\" rather than \"Dynasty\", "
-                   "which would give the wrong signal if silently merged into dynasty rankings.")
-                + " Decide below, or ask the Moderator what it actually looks like first."
+                f"⚠️ \"{pending['name']}\" parsed as table data, but its own text says \"Redraft\" "
+                "rather than \"Dynasty\", which would give the wrong signal if silently merged "
+                "into dynasty rankings — and "
+                + ("the Moderator wasn't confident either way." if pending["moderator_opinion"]
+                   else "no Moderator API key is configured to check it automatically.")
+                + " Decide below."
             )
             if pending.get("example_row"):
                 # Deterministic -- the parser's own actual output, not anything the Moderator is
@@ -1941,10 +2000,6 @@ with st.sidebar:
                     st.caption("✅ The Moderator thinks this labeling looks right for this document.")
                 elif pending.get("alignment") is False:
                     st.caption("❌ The Moderator thinks this labeling is wrong for this document.")
-            # "Import anyway" only makes sense when the file actually parsed as a real table
-            # (kind == "rankings") and just looked suspicious -- a genuine parse failure has
-            # nothing valid to import, so that option is just noise for that case.
-            #
             # Button wording stays fixed and neutral regardless of what the Moderator said --
             # NOT relabeled to echo its verdict ("Yes, that's right"). A parser that silently
             # mislabels a column and a Moderator opinion that gets rubber-stamped without real
@@ -1954,9 +2009,10 @@ with st.sidebar:
             # own suggested button text talks the user into agreeing with.
             import_label = "Import as Dynasty Rankings anyway"
             reference_label = "Save as reference material instead"
-            pu_cols = st.columns(3 if pending["kind"] == "rankings" else 2)
+            ask_label = "🤔 Ask the Moderator again" if pending["moderator_opinion"] else "🤔 Ask the Moderator"
+            pu_cols = st.columns(3)
             with pu_cols[0]:
-                if st.button("🤔 Ask the Moderator", key="pending_upload_ask", use_container_width=True):
+                if st.button(ask_label, key="pending_upload_ask", use_container_width=True):
                     _pu_provider = bot_config.load_role_providers()["moderator"]
                     _pu_model = bot_config.load_role_models().get("moderator") or None
                     _pu_key = api_key_for(PROVIDER_KEY_FIELD[_pu_provider])
@@ -1971,18 +2027,17 @@ with st.sidebar:
                         pending["moderator_opinion"] = opinion
                         pending["alignment"] = llm_engine.parse_alignment_verdict(opinion)
                         st.rerun()
-            if pending["kind"] == "rankings":
-                with pu_cols[1]:
-                    if st.button(import_label, key="pending_upload_import", use_container_width=True):
-                        dest_dir = GLOBAL_PROJECTIONS_DIR
-                        dest_dir.mkdir(parents=True, exist_ok=True)
-                        Path(pending["staging_path"]).replace(dest_dir / pending["name"])
-                        st.session_state.data_merger.reload()
-                        if pending["note"]:
-                            save_attachment(f"{pending['name']}.note.txt", pending["note"].encode(), caption=pending["note"], league_ids=pending["note_scope"])
-                        notify("success", f"Saved \"{pending['name']}\" to the shared Dynasty Rankings pool.")
-                        st.session_state.pending_upload = None
-                        st.rerun()
+            with pu_cols[1]:
+                if st.button(import_label, key="pending_upload_import", use_container_width=True):
+                    dest_dir = GLOBAL_PROJECTIONS_DIR
+                    dest_dir.mkdir(parents=True, exist_ok=True)
+                    Path(pending["staging_path"]).replace(dest_dir / pending["name"])
+                    st.session_state.data_merger.reload()
+                    if pending["note"]:
+                        save_attachment(f"{pending['name']}.note.txt", pending["note"].encode(), caption=pending["note"], league_ids=pending["note_scope"])
+                    notify("success", f"Saved \"{pending['name']}\" to the shared Dynasty Rankings pool.")
+                    st.session_state.pending_upload = None
+                    st.rerun()
             with pu_cols[-1]:
                 if st.button(reference_label, key="pending_upload_reference", use_container_width=True):
                     Path(pending["staging_path"]).unlink(missing_ok=True)
