@@ -650,6 +650,65 @@ def classify_unknown_upload(
     return PROVIDER_CALLERS[provider](UPLOAD_CLASSIFY_SYSTEM_PROMPT, prompt, api_key, model)
 
 
+CONDENSE_TO_OBJECTIVE_SYSTEM_PROMPT = """You turn ONE existing chat message from a fantasy football dynasty \
+front office into a single tracked objective, in the exact phrasing style this app's own Moderator uses for an \
+ACTION ITEM: the action itself, concrete and specific -- e.g. "Offer Team 4 a 2027 3rd for Player X before \
+Thursday's waiver run" -- never a summary of what the message said, and never vague ("consider a trade").
+
+Your context includes CONVERSATION MEMORY (the surrounding discussion, not just this one message in isolation) \
+and, when this league has any, OPEN TO-DO ITEMS with their ids -- use both. A message rarely stands alone: what \
+made it actionable is often the question that prompted it or an earlier point in the same exchange, not just its \
+own sentence. Weigh that surrounding context the same way the Moderator's own ACTION ITEM instructions do.
+
+Respond with exactly one line, one of these three forms, nothing else:
+
+OBJECTIVE: <the objective text>
+NOT NEW: <id> | <one line on why this is materially the same as that existing open item>
+NO OBJECTIVE: <one line on why this message doesn't reduce to anything actionable>
+
+Use NOT NEW when the source message's point is materially the same as something already in OPEN TO-DO ITEMS --
+never manufacture a duplicate. Use NO OBJECTIVE when the message is pure information, a raw number, or a "no \
+strong opinion" answer with nothing to actually go do. Never invent specifics -- a team name, a deadline, a \
+price -- that weren't actually in the source message or the surrounding conversation; if the message itself was \
+vague, the objective you write should stay just as concrete as what it actually said, not padded out further."""
+
+
+def ask_condense_to_objective(
+    context: str, source_message: str, *, provider: str = "claude",
+    api_key: Optional[str] = None, model: Optional[str] = None,
+) -> str:
+    """Turn one existing chat message into a single trackable objective line, for the app's
+    per-message "Add as objective" action (the target-emoji button next to the pin button on
+    every chat message, not just Moderator ones -- a good Quant/Beat callout has no other path
+    to becoming a to-do today, since ACTION ITEM only ever comes from a Moderator verdict).
+
+    Reuses build_context exactly as every other single-shot ask_* helper here does, rather than
+    a special-purpose context builder -- that already carries CONVERSATION MEMORY and OPEN TO-DO
+    ITEMS, so surrounding context and dedup-against-existing-objectives both come for free."""
+    prompt = f"League/roster context:\n{context}\n\nSource message to turn into an objective:\n{source_message}"
+    return PROVIDER_CALLERS[provider](CONDENSE_TO_OBJECTIVE_SYSTEM_PROMPT, prompt, api_key, model)
+
+
+def parse_condensed_objective(text: str) -> dict:
+    """Pull the single OBJECTIVE: / NOT NEW: / NO OBJECTIVE: line out of an
+    ask_condense_to_objective response. Fails soft: an unrecognized or missing line returns
+    {} rather than raising, same posture as every other parse_* here -- the app treats that
+    as "couldn't produce one" and tells the user so instead of silently adding garbage."""
+    for line in text.splitlines():
+        stripped = line.strip().lstrip("-*# ").rstrip()
+        if stripped.upper().startswith("OBJECTIVE:"):
+            objective = stripped[len("OBJECTIVE:"):].strip()
+            if objective:
+                return {"objective": objective}
+        elif stripped.upper().startswith("NOT NEW:"):
+            parts = [p.strip() for p in stripped[len("NOT NEW:"):].split("|")]
+            if parts and parts[0].isdigit():
+                return {"not_new_id": int(parts[0]), "reason": parts[1] if len(parts) >= 2 else ""}
+        elif stripped.upper().startswith("NO OBJECTIVE:"):
+            return {"no_objective_reason": stripped[len("NO OBJECTIVE:"):].strip()}
+    return {}
+
+
 def parse_alignment_verdict(text: str) -> Optional[bool]:
     """True/False/None (couldn't tell) from a classify_unknown_upload response's trailing
     ALIGNMENT line. Tolerant of surrounding whitespace/case since it's free-form model output,

@@ -3394,7 +3394,11 @@ if bot_findings or bot_comparisons:
 
 todo_league_id = st.session_state.selected_league_id
 active_items = todo_log.load_todos(todo_league_id, statuses=todo_log.ACTIVE_STATUSES)
-with st.expander(f"🎯 Active Objectives ({len(active_items)})", expanded=bool(active_items)):
+# Popped (read once, then cleared) rather than a persistent flag -- it should force this open
+# for the one rerun right after a "🎯 Add as objective" click lands a suggestion in the text
+# box below, not forever after.
+_force_expand_todos = st.session_state.pop("_force_expand_todos", False)
+with st.expander(f"🎯 Active Objectives ({len(active_items)})", expanded=bool(active_items) or _force_expand_todos):
     st.caption(
         "League objectives the bots are tracking (🤖) or you added yourself (✍️) — selectively "
         "given to the bots as context in future debates, not just a checklist. A 🔎 tag means a "
@@ -3402,6 +3406,8 @@ with st.expander(f"🎯 Active Objectives ({len(active_items)})", expanded=bool(
         "closing one persists permanently in the Archive below, so the bots can recall *why* it "
         "ended the way it did if the same idea comes up again."
     )
+    if _force_expand_todos:
+        st.caption("🎯 Suggested from that message below — edit it or just hit Add.")
     manual_col, add_col = st.columns([4, 1])
     manual_text = manual_col.text_input(
         "Add an objective", key="manual_todo_text", label_visibility="collapsed",
@@ -3895,6 +3901,42 @@ with st.container(key="debate_dock"):
                 ):
                     pinned_messages.toggle_pin(st.session_state.selected_league_id, ts)
                     st.rerun()
+                # Bot messages only -- ACTION ITEM today only ever comes out of a Moderator
+                # verdict, so a good Quant/Beat callout has no path to becoming a tracked
+                # objective except retyping it yourself. This lets any bot message become one,
+                # condensed by the Moderator's own provider using the surrounding conversation
+                # (build_context already carries CONVERSATION MEMORY and OPEN TO-DO ITEMS, so
+                # this naturally dedupes against what's already tracked -- see
+                # ask_condense_to_objective's docstring) rather than just this one message in
+                # isolation.
+                if msg["role"] in ROLE_BADGE_BASE and st.button(
+                    "🎯 Add as objective", key=f"objective_from_msg_{ts}",
+                    help="Ask the bot to turn this message into a tracked objective.",
+                ):
+                    obj_provider = role_providers["moderator"]
+                    obj_key = api_keys[obj_provider]
+                    if not IS_PROVIDER_CONFIGURED[obj_provider](obj_key):
+                        notify("warning", f"{bot_config.PROVIDER_LABELS[obj_provider]} isn't configured -- add an API key to use this.")
+                    else:
+                        with st.spinner("Condensing into an objective..."):
+                            condense_context = build_context(
+                                snapshot, roster_table if roster else [], player_universe, msg["content"],
+                            )
+                            condensed = llm_engine.ask_condense_to_objective(
+                                condense_context, msg["content"], provider=obj_provider,
+                                api_key=obj_key, model=role_models.get("moderator") or None,
+                            )
+                        result = llm_engine.parse_condensed_objective(condensed)
+                        if result.get("objective"):
+                            st.session_state["manual_todo_text"] = result["objective"]
+                            st.session_state["_force_expand_todos"] = True
+                            st.rerun()
+                        elif result.get("not_new_id") is not None:
+                            notify("info", f"Already tracked as objective #{result['not_new_id']}: {result.get('reason', '')}")
+                        elif result.get("no_objective_reason"):
+                            notify("info", f"Nothing actionable there: {result['no_objective_reason']}")
+                        else:
+                            notify("warning", "Couldn't turn that into an objective -- try again, or add it manually below.")
             prose_html, verdict_html = format_agent_content(msg["role"], msg["content"])
             inner = f'<div class="agent-prose">{prose_html}</div>' if prose_html else ""
             if verdict_html:

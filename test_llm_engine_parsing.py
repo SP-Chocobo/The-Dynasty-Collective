@@ -115,5 +115,30 @@ class ParseSourceComparisonsTests(unittest.TestCase):
         self.assertEqual(llm_engine.parse_source_comparisons("Nothing relative here."), [])
 
 
+class ParseCondensedObjectiveTests(unittest.TestCase):
+    def test_parses_objective_line(self):
+        result = llm_engine.parse_condensed_objective(
+            "OBJECTIVE: Offer Team 4 a 2027 3rd for Player X before Thursday's waiver run."
+        )
+        self.assertEqual(result, {"objective": "Offer Team 4 a 2027 3rd for Player X before Thursday's waiver run."})
+
+    def test_parses_not_new_line_with_id_and_reason(self):
+        result = llm_engine.parse_condensed_objective("NOT NEW: 3 | Same ask as the existing waiver objective")
+        self.assertEqual(result, {"not_new_id": 3, "reason": "Same ask as the existing waiver objective"})
+
+    def test_parses_no_objective_line(self):
+        result = llm_engine.parse_condensed_objective("NO OBJECTIVE: Just a raw projection number, nothing to act on")
+        self.assertEqual(result, {"no_objective_reason": "Just a raw projection number, nothing to act on"})
+
+    def test_blank_objective_text_is_dropped(self):
+        self.assertEqual(llm_engine.parse_condensed_objective("OBJECTIVE:   "), {})
+
+    def test_not_new_without_digit_id_is_dropped(self):
+        self.assertEqual(llm_engine.parse_condensed_objective("NOT NEW: unknown | some reason"), {})
+
+    def test_unrecognized_text_fails_soft_to_empty_dict(self):
+        self.assertEqual(llm_engine.parse_condensed_objective("Just some prose, no recognized line at all."), {})
+
+
 if __name__ == "__main__":
     unittest.main()
