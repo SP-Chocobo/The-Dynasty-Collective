@@ -2530,17 +2530,20 @@ elif main_view == MAINTENANCE_VIEW:
             rows.append({"label": line, "value": None, "position": None, "source": None})
         return rows
 
-    def _depth_label(team_label: Optional[str], position: str) -> Optional[str]:
+    def _depth_label(team_label: Optional[str], position: str, override_cell: Optional[dict] = None) -> Optional[str]:
         """Strong/Average/Weak/None for one team's depth at one position, relative to the rest
         of the league at that position -- an absolute cutoff means nothing (a 2-team best-ball
         league and a 14-team dynasty league have very different "normal" depth), but "better or
-        worse than everyone else in this exact league at this exact position" always does."""
+        worse than everyone else in this exact league at this exact position" always does.
+        override_cell lets a caller ask "what would this label be AFTER the trade" by passing a
+        simulated {count, value} instead of the team's actual current one -- same peer
+        comparison, just a hypothetical instead of the real cell."""
         if not team_label:
             return None
         cells = [teams[position] for teams in depth.values() if position in teams]
         if not cells:
             return None
-        cell = depth.get(team_label, {}).get(position, {"count": 0, "value": None})
+        cell = override_cell if override_cell is not None else depth.get(team_label, {}).get(position, {"count": 0, "value": None})
         if cell["count"] == 0:
             return "None — no rostered players here"
         use_value = cell["value"] is not None and all(c["value"] is not None for c in cells)
@@ -2607,11 +2610,19 @@ elif main_view == MAINTENANCE_VIEW:
         mcol2.metric("You receive", f"{trade_receive_total:.0f}")
         mcol3.metric("Balance", f"{'+' if delta >= 0 else ''}{delta_pct if delta >= 0 else -delta_pct:.0f}%")
 
-        # Four tiers, not two -- validated against a broad calibration pass (durable dynasty
-        # principles plus a couple of current, WebSearch-confirmed consensus anchors: 1.01 ~=
-        # a top-tier young RB, the 1.02-1.05 superflex range being one interchangeable tier)
+        # Two independent reads, not one number with a caveat bolted on. A real Draft Sharks
+        # trade evaluation (checked directly against this app's own vendor, not a competitor)
+        # scores each side against ITS OWN roster -- both sides of a real trade can legitimately
+        # come back positive at once, because "I gave up more raw value" and "this trade fits my
+        # roster" are different questions with different answers. Raw value below stays simple,
+        # zero-sum arithmetic (it has to be -- a value pool can't hand both sides a surplus at
+        # once); roster fit is the second, independently-computed read, not a footnote on the
+        # first. Four tiers on the raw side, not two -- validated against a broad calibration
+        # pass (durable dynasty principles plus WebSearch-confirmed 2026 consensus anchors: 1.01
+        # ~= a top-tier young RB, the 1.02-1.05 superflex range being one interchangeable tier)
         # rather than tuned to match any one external site's own cutoffs.
         raw_verdict = None
+        raw_line = None
         if larger_total:
             if delta_pct < 5:
                 raw_verdict = "Balanced"
@@ -2626,7 +2637,6 @@ elif main_view == MAINTENANCE_VIEW:
                 else:
                     emoji = "🟢" if favorable else "🔴"
                     raw_line = f"{emoji} Materially {raw_verdict} — you'd be {who} {delta_pct:.0f}% more value."
-            st.markdown(f"**Rough verdict (raw value):** {raw_line}")
 
         # Positions actually changing hands -- picks carry no position, so only priced player
         # rows can ever touch this.
@@ -2634,43 +2644,72 @@ elif main_view == MAINTENANCE_VIEW:
         received_positions = [r["position"] for r in trade_receive_rows if r["position"]]
         touched_positions = sorted(set(sent_positions) | set(received_positions))
 
+        fit_verdict, fit_line = None, None
+        _DEPTH_RANK = {"None — no rostered players here": 0, "Weak": 1, "Average": 2, "Strong": 3}
+        position_detail: list[str] = []
         if touched_positions and my_team_label:
-            st.markdown("**Context**")
-            receiving_into_need, sending_from_strength = False, False
+            fit_score = 0
+            improved, worsened = [], []
             for pos in touched_positions:
-                mine = _depth_label(my_team_label, pos)
-                line = f"Your {pos} depth: {mine or 'unknown'}"
+                before_cell = depth.get(my_team_label, {}).get(pos, {"count": 0, "value": None})
+                value_sent_here = sum(r["value"] for r in trade_send_rows if r.get("position") == pos and r["value"] is not None)
+                value_received_here = sum(r["value"] for r in trade_receive_rows if r.get("position") == pos and r["value"] is not None)
+                after_count = before_cell["count"] - sent_positions.count(pos) + received_positions.count(pos)
+                # before_cell["value"] is None whenever the team owns zero players here (nothing
+                # to sum) -- that's "no players", not "no price data", so treat it as 0 rather
+                # than letting a None short-circuit the whole after-value to None even when a
+                # priced asset is moving in. A trade-calculator row only ever carries a position
+                # once merge_player/pick_value already priced it, so value_sent_here/
+                # value_received_here are never contaminated by an unpriced line here.
+                after_value = (before_cell["value"] or 0) - value_sent_here + value_received_here
+                before_label = _depth_label(my_team_label, pos)
+                after_label = _depth_label(my_team_label, pos, override_cell={"count": after_count, "value": after_value})
+                before_rank = _DEPTH_RANK.get(before_label, 2)
+                after_rank = _DEPTH_RANK.get(after_label, 2)
+                fit_score += after_rank - before_rank
+                if after_rank > before_rank:
+                    improved.append(pos)
+                elif after_rank < before_rank:
+                    worsened.append(pos)
+
+                line = f"Your {pos} depth: {before_label or 'unknown'}"
+                if after_count != before_cell["count"]:
+                    line += f" → {after_label or 'unknown'} post-trade ({before_cell['count']} → {after_count}" + (", zero left)" if after_count == 0 else ")")
                 if trade_partner != "Not specified":
                     theirs = _depth_label(trade_partner, pos)
                     if theirs:
                         line += f" · {trade_partner}'s {pos} depth: {theirs}"
-                before = depth.get(my_team_label, {}).get(pos, {"count": 0})["count"]
-                after = before - sent_positions.count(pos) + received_positions.count(pos)
-                if after != before:
-                    line += f" · post-trade: {before} → {after}" + (" (zero left)" if after == 0 else "")
-                st.caption(line)
-                if pos in received_positions and mine in ("Weak", "None — no rostered players here"):
-                    receiving_into_need = True
-                if pos in sent_positions and mine == "Strong":
-                    sending_from_strength = True
+                position_detail.append(line)
 
-            if raw_verdict == "unfavorable" and (receiving_into_need or sending_from_strength):
+            if fit_score > 0:
+                fit_verdict = "favorable"
+                fit_line = f"🟢 Favorable — improves your depth at {', '.join(improved)}."
+            elif fit_score < 0:
+                fit_verdict = "unfavorable"
+                fit_line = f"🔴 Unfavorable — thins your depth at {', '.join(worsened)}."
+            else:
+                fit_verdict = "neutral"
+                fit_line = "⚪ Roughly neutral — no meaningful shift in positional depth either way."
+
+        if raw_line or fit_line:
+            vcol1, vcol2 = st.columns(2)
+            with vcol1:
+                st.markdown("**Raw value**")
+                st.caption(raw_line or "No priced assets to compare.")
+            with vcol2:
+                st.markdown("**Roster fit**")
+                st.caption(fit_line or "No player positions involved, or no team on file to check depth against.")
+            if raw_verdict in ("favorable", "unfavorable") and fit_verdict in ("favorable", "unfavorable") and raw_verdict != fit_verdict:
                 st.caption(
-                    "🟢 Roster construction may offset the raw gap above — "
-                    + ("you'd be filling a thin spot" if receiving_into_need else "")
-                    + (" and " if receiving_into_need and sending_from_strength else "")
-                    + ("giving up depth you have to spare" if sending_from_strength else "")
-                    + "."
+                    "↔️ These two disagree — the raw numbers and your roster fit point opposite "
+                    "ways. Worth digging into which one actually matters more for this decision "
+                    "before trusting either alone."
                 )
-            elif raw_verdict == "favorable" and (
-                any(p in sent_positions and _depth_label(my_team_label, p) in ("Weak", "None — no rostered players here") for p in touched_positions)
-                or any(p in received_positions and _depth_label(my_team_label, p) == "Strong" for p in touched_positions)
-            ):
-                st.caption(
-                    "🟡 Worth a second look — the raw numbers favor you, but roster construction "
-                    "cuts the other way (thinning a spot that's already weak, or stacking one "
-                    "that's already strong)."
-                )
+
+        if position_detail:
+            with st.expander("Positional depth detail"):
+                for line in position_detail:
+                    st.caption(line)
 
     def _describe_trade_side(rows: list[dict]) -> str:
         return "\n".join(
