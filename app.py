@@ -3971,6 +3971,22 @@ with st.container(key="debate_dock"):
                             notify("info", f"Nothing actionable there: {result['no_objective_reason']}")
                         else:
                             notify("warning", "Couldn't turn that into an objective -- try again, or add it manually below.")
+                # The cheap counterpart to 🎯 above -- no bot call, no context building, just
+                # the message's own text dropped straight into the objective box for you to
+                # edit. Worth having alongside the smart version: most messages are already
+                # phrased close enough to an objective ("we should probably grab a backup QB")
+                # that condensing them costs a call for no real gain -- this is for those,
+                # 🎯 stays for a long, meandering answer actually worth distilling.
+                if msg["role"] in ROLE_BADGE_BASE and st.button(
+                    "✍️ Quick add", key=f"quick_objective_from_msg_{ts}",
+                    help="Drop this message's own text into the objective box, unedited -- no bot call.",
+                ):
+                    quick_text = " ".join(msg["content"].split())
+                    if len(quick_text) > 200:
+                        quick_text = quick_text[:200].rsplit(" ", 1)[0] + "…"
+                    st.session_state["manual_todo_text"] = quick_text
+                    st.session_state["_force_expand_todos"] = True
+                    st.rerun()
             prose_html, verdict_html = format_agent_content(msg["role"], msg["content"])
             inner = f'<div class="agent-prose">{prose_html}</div>' if prose_html else ""
             if verdict_html:
