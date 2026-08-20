@@ -524,6 +524,79 @@ def parse_fantasypros_bestball_pdf(path: Path) -> tuple[pd.DataFrame, Optional[s
     return df, None
 
 
+# -- KeepTradeCut Dynasty Rankings ----------------------------------------------
+#
+# KTC's page prints one asset per line, but its VALUE and RANK columns render back-to-back
+# with no separating whitespace in pypdf's flat text extraction (e.g. "9998" + "1" -> "99981"
+# for the #1 overall asset valued 9998) -- a different, glued-digits flavor of the column-
+# ordering problems Draft Sharks' and FantasyPros' PDFs each have their own version of. Rank
+# is reconstructible without guessing, though: the list is strictly sequential (each row is
+# exactly one more than the last), so the true split is whichever one makes the trailing
+# digits equal the rank this row has to be -- confirmed exactly (0 ambiguous rows, every rank
+# 1-250 accounted for) against 5 real 50-row exports of this list.
+_KTC_ROW_RE = re.compile(r"^(.+?) ([A-Z]{1,3}\d+|PICK) (T\d+) (\d+)( R)? (-?\d+)$")
+_KTC_POS_RE = re.compile(r"^([A-Z]{1,3})(\d+)$")
+_KTC_RANGE_RE = re.compile(r"\b(\d+)\s*-\s*(\d+)\b")
+_KTC_FORMAT_RE = re.compile(r"^(.+?) Values updated", re.MULTILINE)
+
+
+def parse_keeptradecut_pdf(path: Path, start_rank: Optional[int] = None) -> tuple[pd.DataFrame, Optional[str]]:
+    """Parse a KeepTradeCut Dynasty Rankings page saved/printed as PDF. KTC's own list is
+    crowdsourced (26M+ data points per its own header line) and, unlike Draft Sharks' or
+    FantasyPros' exports, prices players and picks together on one list and one 0-9999ish
+    scale (asset_type distinguishes them, same shape as Draft Sharks' Trade Value Chart).
+
+    start_rank is the rank of this PDF's first row -- required to seed the digit-splitting
+    described above. If not given, it's read off the page's own "X - Y" pagination footer
+    (e.g. "51 - 100" for the second 50-row chunk of a longer list); pass it explicitly only
+    if a future export ever omits that footer. No per-row or page date is printed (just a
+    relative "updated N minutes ago"), so source_date falls back to the file's own date same
+    as every other vendor export with nothing more precise printed on the page.
+    """
+    import pypdf
+
+    reader = pypdf.PdfReader(str(path))
+    full_text = "\n".join(p.extract_text() or "" for p in reader.pages)
+
+    if start_rank is None:
+        range_match = _KTC_RANGE_RE.search(full_text)
+        start_rank = int(range_match.group(1)) if range_match else 1
+
+    format_match = _KTC_FORMAT_RE.search(full_text)
+    source_format = format_match.group(1).strip() if format_match else None
+
+    records: list[dict] = []
+    expected_rank = start_rank
+    for line in full_text.split("\n"):
+        line = line.strip()
+        row_match = _KTC_ROW_RE.match(line)
+        if not row_match:
+            continue
+        name, pos_raw, tier, blob, rookie_flag, trend = row_match.groups()
+        rank_str = str(expected_rank)
+        if not blob.endswith(rank_str) or blob == rank_str:
+            continue  # doesn't fit the expected next rank -- not a real row (e.g. sidebar noise)
+        value = int(blob[: -len(rank_str)])
+        if pos_raw == "PICK":
+            asset_type, position, pos_rank = "pick", None, None
+        else:
+            pos_match = _KTC_POS_RE.match(pos_raw)
+            asset_type = "player"
+            position, pos_rank = pos_match.group(1), int(pos_match.group(2))
+        records.append({
+            "rank": expected_rank, "name": name.strip(), "asset_type": asset_type,
+            "position": position, "pos_rank": pos_rank, "tier": int(tier[1:]), "value": value,
+            "rookie": bool(rookie_flag), "trend_30d": int(trend), "source_format": source_format,
+        })
+        expected_rank += 1
+
+    df = pd.DataFrame(records)
+    if df.empty:
+        return df, None
+    df["norm_name"] = df["name"].astype(str).map(normalize_name)
+    return df, None
+
+
 def load_projection_file(path: Path, default_kind: str = "rankings") -> tuple[pd.DataFrame, str]:
     """Returns (dataframe, kind) where kind is 'rankings', 'free_agents', or 'trade_value_chart'.
 

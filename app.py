@@ -1010,18 +1010,23 @@ def format_scoring_settings(scoring_settings: dict) -> str:
 
 def describe_external_value(ext: dict) -> str:
     """One compact 'source/list detail' string for a single DataMerger.external_player_values()
-    row. Different sources shape their numbers differently (DynastyProcess: a point value on
-    its own ~0-10000 scale; FantasyPros: rank/tier off an expert panel), so this picks whichever
-    fields that row actually has rather than assuming one shape -- new sources with yet another
-    shape still degrade to *something* readable instead of a blank/wrong field lookup."""
+    row. Different sources shape their numbers differently (DynastyProcess: a 1QB/2QB point
+    value on its own ~0-10000 scale; KeepTradeCut: a single crowdsourced 0-9999ish value plus
+    rank/tier; FantasyPros: rank/tier only, off an expert panel, no point value at all), so
+    this picks whichever fields that row actually has rather than assuming one shape -- new
+    sources with yet another shape still degrade to *something* readable instead of a blank
+    or wrong field lookup."""
     label = ext.get("source_name", "?")
     source_file = ext.get("source_file")
     if source_file:
         label += f"/{Path(source_file).stem}"
+    tier = f" tier{ext['tier']:.0f}" if ext.get("tier") is not None else ""
+    rank = f" rank={ext['rank']:.0f}" if ext.get("rank") is not None else ""
     if "value_1qb" in ext or "value_2qb" in ext:
         detail = f"1QB={ext.get('value_1qb', '-')}/2QB={ext.get('value_2qb', '-')}"
+    elif "value" in ext:
+        detail = f"value={ext['value']:.0f}{rank}{tier}"
     elif "rank" in ext:
-        tier = f" tier{ext['tier']:.0f}" if ext.get("tier") is not None else ""
         detail = f"rank={ext['rank']:.0f}{tier}"
     else:
         detail = "(no comparable number)"

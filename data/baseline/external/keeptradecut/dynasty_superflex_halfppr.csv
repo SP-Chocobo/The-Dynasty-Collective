@@ -1,0 +1,251 @@
+rank,name,asset_type,position,pos_rank,tier,value,rookie,trend_30d,source_format,source_date
+1,Jahmyr Gibbs,player,RB,1.0,1,9998,False,2,Superflex / .5 PPR,2026-08-20
+2,Bijan Robinson,player,RB,2.0,1,9995,False,0,Superflex / .5 PPR,2026-08-20
+3,Josh Allen,player,QB,1.0,1,9980,False,0,Superflex / .5 PPR,2026-08-20
+4,Ja'Marr Chase,player,WR,1.0,1,9956,False,3,Superflex / .5 PPR,2026-08-20
+5,Jaxon Smith-Njigba,player,WR,2.0,2,9192,False,0,Superflex / .5 PPR,2026-08-20
+6,Drake Maye,player,QB,2.0,2,8965,False,0,Superflex / .5 PPR,2026-08-20
+7,Puka Nacua,player,WR,3.0,2,8766,False,0,Superflex / .5 PPR,2026-08-20
+8,Brock Bowers,player,TE,1.0,3,8328,False,0,Superflex / .5 PPR,2026-08-20
+9,Amon-Ra St. Brown,player,WR,4.0,3,8105,False,0,Superflex / .5 PPR,2026-08-20
+10,Caleb Williams,player,QB,3.0,4,7815,False,0,Superflex / .5 PPR,2026-08-20
+11,Lamar Jackson,player,QB,4.0,4,7648,False,0,Superflex / .5 PPR,2026-08-20
+12,Ashton Jeanty,player,RB,3.0,4,7552,False,1,Superflex / .5 PPR,2026-08-20
+13,Justin Jefferson,player,WR,5.0,4,7461,False,1,Superflex / .5 PPR,2026-08-20
+14,Jeremiyah Love,player,RB,4.0,4,7457,True,1,Superflex / .5 PPR,2026-08-20
+15,Malik Nabers,player,WR,6.0,4,7396,False,3,Superflex / .5 PPR,2026-08-20
+16,Joe Burrow,player,QB,5.0,4,7374,False,1,Superflex / .5 PPR,2026-08-20
+17,Jayden Daniels,player,QB,6.0,4,7368,False,4,Superflex / .5 PPR,2026-08-20
+18,Trey McBride,player,TE,2.0,4,7345,False,2,Superflex / .5 PPR,2026-08-20
+19,CeeDee Lamb,player,WR,7.0,5,7213,False,0,Superflex / .5 PPR,2026-08-20
+20,De'Von Achane,player,RB,5.0,6,6954,False,4,Superflex / .5 PPR,2026-08-20
+21,Omarion Hampton,player,RB,6.0,6,6941,False,2,Superflex / .5 PPR,2026-08-20
+22,2027 Early 1st,pick,,,6,6938,False,2,Superflex / .5 PPR,2026-08-20
+23,Justin Herbert,player,QB,7.0,6,6902,False,1,Superflex / .5 PPR,2026-08-20
+24,Drake London,player,WR,8.0,6,6887,False,3,Superflex / .5 PPR,2026-08-20
+25,James Cook,player,RB,7.0,7,6369,False,6,Superflex / .5 PPR,2026-08-20
+26,Jonathan Taylor,player,RB,8.0,7,6303,False,9,Superflex / .5 PPR,2026-08-20
+27,Tetairoa McMillan,player,WR,9.0,7,6277,False,1,Superflex / .5 PPR,2026-08-20
+28,Emeka Egbuka,player,WR,10.0,7,6241,False,2,Superflex / .5 PPR,2026-08-20
+29,Colston Loveland,player,TE,3.0,7,6238,False,0,Superflex / .5 PPR,2026-08-20
+30,Patrick Mahomes,player,QB,8.0,7,6230,False,5,Superflex / .5 PPR,2026-08-20
+31,Trevor Lawrence,player,QB,9.0,7,6200,False,3,Superflex / .5 PPR,2026-08-20
+32,George Pickens,player,WR,11.0,7,6196,False,0,Superflex / .5 PPR,2026-08-20
+33,Tyler Warren,player,TE,4.0,8,6046,False,4,Superflex / .5 PPR,2026-08-20
+34,Jalen Hurts,player,QB,10.0,8,6020,False,1,Superflex / .5 PPR,2026-08-20
+35,Bo Nix,player,QB,11.0,8,5979,False,1,Superflex / .5 PPR,2026-08-20
+36,Jaxson Dart,player,QB,12.0,8,5958,False,9,Superflex / .5 PPR,2026-08-20
+37,Carnell Tate,player,WR,12.0,8,5918,True,1,Superflex / .5 PPR,2026-08-20
+38,Nico Collins,player,WR,13.0,9,5655,False,3,Superflex / .5 PPR,2026-08-20
+39,Chris Olave,player,WR,14.0,9,5646,False,8,Superflex / .5 PPR,2026-08-20
+40,Brock Purdy,player,QB,13.0,9,5637,False,2,Superflex / .5 PPR,2026-08-20
+41,Chase Brown,player,RB,9.0,9,5633,False,15,Superflex / .5 PPR,2026-08-20
+42,Kenneth Walker III,player,RB,10.0,9,5614,False,0,Superflex / .5 PPR,2026-08-20
+43,Ladd McConkey,player,WR,15.0,9,5596,False,2,Superflex / .5 PPR,2026-08-20
+44,Garrett Wilson,player,WR,16.0,9,5586,False,5,Superflex / .5 PPR,2026-08-20
+45,2026 Early 1st,pick,,,9,5504,False,2,Superflex / .5 PPR,2026-08-20
+46,Zay Flowers,player,WR,17.0,9,5477,False,16,Superflex / .5 PPR,2026-08-20
+47,Luther Burden,player,WR,18.0,9,5475,False,1,Superflex / .5 PPR,2026-08-20
+48,2027 Mid 1st,pick,,,9,5474,False,8,Superflex / .5 PPR,2026-08-20
+49,DeVonta Smith,player,WR,19.0,9,5446,False,1,Superflex / .5 PPR,2026-08-20
+50,Fernando Mendoza,player,QB,14.0,9,5437,True,2,Superflex / .5 PPR,2026-08-20
+51,Jordan Love,player,QB,15.0,10,5412,False,7,Superflex / .5 PPR,2026-08-20
+52,Quinshon Judkins,player,RB,11.0,11,5325,False,6,Superflex / .5 PPR,2026-08-20
+53,Breece Hall,player,RB,12.0,11,5291,False,2,Superflex / .5 PPR,2026-08-20
+54,Christian McCaffrey,player,RB,13.0,11,5265,False,4,Superflex / .5 PPR,2026-08-20
+55,Rome Odunze,player,WR,20.0,11,5237,False,1,Superflex / .5 PPR,2026-08-20
+56,Saquon Barkley,player,RB,14.0,11,5231,False,3,Superflex / .5 PPR,2026-08-20
+57,A.J. Brown,player,WR,21.0,11,5163,False,3,Superflex / .5 PPR,2026-08-20
+58,2028 Early 1st,pick,,,11,5162,False,1,Superflex / .5 PPR,2026-08-20
+59,Jordyn Tyson,player,WR,22.0,11,5127,True,4,Superflex / .5 PPR,2026-08-20
+60,TreVeyon Henderson,player,RB,15.0,11,5088,False,8,Superflex / .5 PPR,2026-08-20
+61,Kyren Williams,player,RB,16.0,11,5021,False,2,Superflex / .5 PPR,2026-08-20
+62,Dak Prescott,player,QB,16.0,11,5016,False,1,Superflex / .5 PPR,2026-08-20
+63,Tee Higgins,player,WR,23.0,11,5009,False,4,Superflex / .5 PPR,2026-08-20
+64,Tucker Kraft,player,TE,5.0,11,4988,False,1,Superflex / .5 PPR,2026-08-20
+65,2027 Late 1st,pick,,,11,4964,False,4,Superflex / .5 PPR,2026-08-20
+66,Rashee Rice,player,WR,24.0,11,4942,False,5,Superflex / .5 PPR,2026-08-20
+67,Makai Lemon,player,WR,25.0,11,4942,True,1,Superflex / .5 PPR,2026-08-20
+68,Cam Ward,player,QB,17.0,11,4927,False,15,Superflex / .5 PPR,2026-08-20
+69,Jaylen Waddle,player,WR,26.0,11,4926,False,5,Superflex / .5 PPR,2026-08-20
+70,Jadarian Price,player,RB,17.0,11,4912,True,5,Superflex / .5 PPR,2026-08-20
+71,Harold Fannin,player,TE,6.0,11,4845,False,2,Superflex / .5 PPR,2026-08-20
+72,Tyler Shough,player,QB,18.0,11,4830,False,0,Superflex / .5 PPR,2026-08-20
+73,Marvin Harrison Jr.,player,WR,27.0,11,4788,False,5,Superflex / .5 PPR,2026-08-20
+74,Cam Skattebo,player,RB,18.0,11,4744,False,0,Superflex / .5 PPR,2026-08-20
+75,Jameson Williams,player,WR,28.0,11,4729,False,3,Superflex / .5 PPR,2026-08-20
+76,Javonte Williams,player,RB,19.0,11,4714,False,8,Superflex / .5 PPR,2026-08-20
+77,2026 Mid 1st,pick,,,11,4699,False,4,Superflex / .5 PPR,2026-08-20
+78,Bucky Irving,player,RB,20.0,11,4689,False,2,Superflex / .5 PPR,2026-08-20
+79,Brian Thomas Jr.,player,WR,29.0,11,4680,False,9,Superflex / .5 PPR,2026-08-20
+80,Jared Goff,player,QB,19.0,11,4675,False,4,Superflex / .5 PPR,2026-08-20
+81,Baker Mayfield,player,QB,20.0,11,4641,False,2,Superflex / .5 PPR,2026-08-20
+82,2028 Mid 1st,pick,,,11,4626,False,0,Superflex / .5 PPR,2026-08-20
+83,Sam LaPorta,player,TE,7.0,11,4562,False,3,Superflex / .5 PPR,2026-08-20
+84,KC Concepcion,player,WR,30.0,11,4562,True,4,Superflex / .5 PPR,2026-08-20
+85,C.J. Stroud,player,QB,21.0,11,4535,False,8,Superflex / .5 PPR,2026-08-20
+86,Kyle Pitts,player,TE,8.0,12,4447,False,1,Superflex / .5 PPR,2026-08-20
+87,Parker Washington,player,WR,31.0,13,4336,False,17,Superflex / .5 PPR,2026-08-20
+88,Sam Darnold,player,QB,22.0,13,4285,False,6,Superflex / .5 PPR,2026-08-20
+89,Bhayshul Tuten,player,RB,21.0,13,4279,False,0,Superflex / .5 PPR,2026-08-20
+90,Travis Etienne,player,RB,22.0,13,4251,False,3,Superflex / .5 PPR,2026-08-20
+91,Derrick Henry,player,RB,23.0,13,4196,False,0,Superflex / .5 PPR,2026-08-20
+92,2028 Late 1st,pick,,,13,4135,False,0,Superflex / .5 PPR,2026-08-20
+93,Josh Jacobs,player,RB,24.0,14,4032,False,3,Superflex / .5 PPR,2026-08-20
+94,2026 Late 1st,pick,,,15,3953,False,4,Superflex / .5 PPR,2026-08-20
+95,Kyler Murray,player,QB,23.0,15,3923,False,1,Superflex / .5 PPR,2026-08-20
+96,Kenyon Sadiq,player,TE,9.0,15,3918,True,1,Superflex / .5 PPR,2026-08-20
+97,D'Andre Swift,player,RB,25.0,15,3871,False,8,Superflex / .5 PPR,2026-08-20
+98,Christian Watson,player,WR,32.0,15,3858,False,2,Superflex / .5 PPR,2026-08-20
+99,Jordan Addison,player,WR,33.0,15,3822,False,3,Superflex / .5 PPR,2026-08-20
+100,Bryce Young,player,QB,24.0,15,3812,False,7,Superflex / .5 PPR,2026-08-20
+101,Matthew Stafford,player,QB,25.0,15,3790,False,1,Superflex / .5 PPR,2026-08-20
+102,Malik Willis,player,QB,26.0,15,3753,False,2,Superflex / .5 PPR,2026-08-20
+103,Denzel Boston,player,WR,34.0,15,3752,True,18,Superflex / .5 PPR,2026-08-20
+104,2027 Early 2nd,pick,,,15,3725,False,5,Superflex / .5 PPR,2026-08-20
+105,D.J. Moore,player,WR,35.0,15,3706,False,8,Superflex / .5 PPR,2026-08-20
+106,De'Zhaun Stribling,player,WR,36.0,15,3680,True,60,Superflex / .5 PPR,2026-08-20
+107,Alec Pierce,player,WR,37.0,15,3676,False,11,Superflex / .5 PPR,2026-08-20
+108,Daniel Jones,player,QB,27.0,15,3672,False,5,Superflex / .5 PPR,2026-08-20
+109,Michael Wilson,player,WR,38.0,15,3644,False,2,Superflex / .5 PPR,2026-08-20
+110,Matthew Golden,player,WR,39.0,15,3627,False,1,Superflex / .5 PPR,2026-08-20
+111,Ty Simpson,player,QB,28.0,15,3626,True,0,Superflex / .5 PPR,2026-08-20
+112,Jonathon Brooks,player,RB,26.0,16,3523,False,11,Superflex / .5 PPR,2026-08-20
+113,Terry McLaurin,player,WR,40.0,16,3503,False,3,Superflex / .5 PPR,2026-08-20
+114,Josh Downs,player,WR,41.0,16,3488,False,7,Superflex / .5 PPR,2026-08-20
+115,Davante Adams,player,WR,42.0,16,3472,False,1,Superflex / .5 PPR,2026-08-20
+116,David Montgomery,player,RB,27.0,16,3451,False,2,Superflex / .5 PPR,2026-08-20
+117,DK Metcalf,player,WR,43.0,16,3416,False,10,Superflex / .5 PPR,2026-08-20
+118,Omar Cooper Jr.,player,WR,44.0,16,3412,True,12,Superflex / .5 PPR,2026-08-20
+119,Quentin Johnston,player,WR,45.0,16,3398,False,12,Superflex / .5 PPR,2026-08-20
+120,Kyle Monangai,player,RB,28.0,16,3397,False,3,Superflex / .5 PPR,2026-08-20
+121,Blake Corum,player,RB,29.0,16,3396,False,9,Superflex / .5 PPR,2026-08-20
+122,2027 Mid 2nd,pick,,,16,3396,False,3,Superflex / .5 PPR,2026-08-20
+123,Isaiah Likely,player,TE,10.0,16,3390,False,1,Superflex / .5 PPR,2026-08-20
+124,2026 Early 2nd,pick,,,16,3372,False,13,Superflex / .5 PPR,2026-08-20
+125,Wan'Dale Robinson,player,WR,46.0,16,3361,False,0,Superflex / .5 PPR,2026-08-20
+126,Jayden Reed,player,WR,47.0,16,3349,False,5,Superflex / .5 PPR,2026-08-20
+127,RJ Harvey,player,RB,30.0,16,3321,False,1,Superflex / .5 PPR,2026-08-20
+128,George Kittle,player,TE,11.0,16,3308,False,0,Superflex / .5 PPR,2026-08-20
+129,Mike Evans,player,WR,48.0,16,3305,False,4,Superflex / .5 PPR,2026-08-20
+130,Jaylen Warren,player,RB,31.0,16,3298,False,6,Superflex / .5 PPR,2026-08-20
+131,Eli Stowers,player,TE,12.0,16,3295,True,11,Superflex / .5 PPR,2026-08-20
+132,Zach Charbonnet,player,RB,32.0,16,3288,False,3,Superflex / .5 PPR,2026-08-20
+133,Dalton Kincaid,player,TE,13.0,16,3279,False,7,Superflex / .5 PPR,2026-08-20
+134,Travis Hunter,player,WR,49.0,16,3279,False,0,Superflex / .5 PPR,2026-08-20
+135,Jalen Coker,player,WR,50.0,16,3271,False,9,Superflex / .5 PPR,2026-08-20
+136,Michael Pittman,player,WR,51.0,16,3265,False,12,Superflex / .5 PPR,2026-08-20
+137,Xavier Worthy,player,WR,52.0,16,3216,False,5,Superflex / .5 PPR,2026-08-20
+138,Jonah Coleman,player,RB,33.0,16,3209,True,3,Superflex / .5 PPR,2026-08-20
+139,2028 Early 2nd,pick,,,16,3207,False,3,Superflex / .5 PPR,2026-08-20
+140,Rhamondre Stevenson,player,RB,34.0,16,3204,False,12,Superflex / .5 PPR,2026-08-20
+141,Oronde Gadsden,player,TE,14.0,16,3166,False,27,Superflex / .5 PPR,2026-08-20
+142,Rico Dowdle,player,RB,35.0,16,3147,False,3,Superflex / .5 PPR,2026-08-20
+143,2027 Late 2nd,pick,,,16,3147,False,0,Superflex / .5 PPR,2026-08-20
+144,Jacory Croskey-Merritt,player,RB,36.0,16,3135,False,14,Superflex / .5 PPR,2026-08-20
+145,Romeo Doubs,player,WR,53.0,16,3130,False,1,Superflex / .5 PPR,2026-08-20
+146,Jayden Higgins,player,WR,54.0,16,3103,False,17,Superflex / .5 PPR,2026-08-20
+147,2026 Mid 2nd,pick,,,16,3101,False,2,Superflex / .5 PPR,2026-08-20
+148,Jake Ferguson,player,TE,15.0,16,3097,False,9,Superflex / .5 PPR,2026-08-20
+149,Courtland Sutton,player,WR,55.0,16,3078,False,1,Superflex / .5 PPR,2026-08-20
+150,2028 Mid 2nd,pick,,,17,3021,False,7,Superflex / .5 PPR,2026-08-20
+151,Ja'Kobi Lane,player,WR,56.0,17,3015,True,72,Superflex / .5 PPR,2026-08-20
+152,Chris Godwin,player,WR,57.0,17,2988,False,1,Superflex / .5 PPR,2026-08-20
+153,Brenton Strange,player,TE,16.0,17,2987,False,3,Superflex / .5 PPR,2026-08-20
+154,Chuba Hubbard,player,RB,37.0,17,2985,False,16,Superflex / .5 PPR,2026-08-20
+155,J.K. Dobbins,player,RB,38.0,17,2984,False,1,Superflex / .5 PPR,2026-08-20
+156,Antonio Williams,player,WR,58.0,17,2975,True,9,Superflex / .5 PPR,2026-08-20
+157,Chris Bell,player,WR,59.0,17,2938,True,2,Superflex / .5 PPR,2026-08-20
+158,Carson Beck,player,QB,29.0,17,2936,True,48,Superflex / .5 PPR,2026-08-20
+159,Nicholas Singleton,player,RB,39.0,17,2935,True,10,Superflex / .5 PPR,2026-08-20
+160,2026 Late 2nd,pick,,,17,2923,False,8,Superflex / .5 PPR,2026-08-20
+161,Kenneth Gainwell,player,RB,40.0,17,2912,False,2,Superflex / .5 PPR,2026-08-20
+162,Jordan Mason,player,RB,41.0,17,2897,False,23,Superflex / .5 PPR,2026-08-20
+163,Jalen McMillan,player,WR,60.0,17,2894,False,12,Superflex / .5 PPR,2026-08-20
+164,Germie Bernard,player,WR,61.0,17,2891,True,4,Superflex / .5 PPR,2026-08-20
+165,Terrance Ferguson,player,TE,17.0,18,2834,False,7,Superflex / .5 PPR,2026-08-20
+166,Khalil Shakir,player,WR,62.0,18,2830,False,3,Superflex / .5 PPR,2026-08-20
+167,2028 Late 2nd,pick,,,18,2815,False,6,Superflex / .5 PPR,2026-08-20
+168,Zachariah Branch,player,WR,63.0,18,2810,True,6,Superflex / .5 PPR,2026-08-20
+169,Jakobi Meyers,player,WR,64.0,18,2785,False,16,Superflex / .5 PPR,2026-08-20
+170,Rashid Shaheed,player,WR,65.0,18,2780,False,1,Superflex / .5 PPR,2026-08-20
+171,Rachaad White,player,RB,42.0,18,2779,False,9,Superflex / .5 PPR,2026-08-20
+172,Tyler Allgeier,player,RB,43.0,18,2760,False,14,Superflex / .5 PPR,2026-08-20
+173,Cyrus Allen,player,WR,66.0,18,2760,True,246,Superflex / .5 PPR,2026-08-20
+174,Tony Pollard,player,RB,44.0,18,2758,False,10,Superflex / .5 PPR,2026-08-20
+175,Stefon Diggs,player,WR,67.0,18,2739,False,82,Superflex / .5 PPR,2026-08-20
+176,Malachi Fields,player,WR,68.0,18,2732,True,14,Superflex / .5 PPR,2026-08-20
+177,Chigoziem Okonkwo,player,TE,18.0,18,2725,False,10,Superflex / .5 PPR,2026-08-20
+178,Tank Dell,player,WR,69.0,18,2715,False,42,Superflex / .5 PPR,2026-08-20
+179,Braelon Allen,player,RB,45.0,18,2698,False,3,Superflex / .5 PPR,2026-08-20
+180,Tre Harris,player,WR,70.0,18,2681,False,2,Superflex / .5 PPR,2026-08-20
+181,Woody Marks,player,RB,46.0,18,2678,False,12,Superflex / .5 PPR,2026-08-20
+182,AJ Barner,player,TE,19.0,18,2675,False,12,Superflex / .5 PPR,2026-08-20
+183,Dylan Sampson,player,RB,47.0,18,2674,False,8,Superflex / .5 PPR,2026-08-20
+184,Chris Rodriguez,player,RB,48.0,18,2662,False,5,Superflex / .5 PPR,2026-08-20
+185,Caleb Douglas,player,WR,71.0,18,2661,True,114,Superflex / .5 PPR,2026-08-20
+186,Keaton Mitchell,player,RB,49.0,18,2658,False,12,Superflex / .5 PPR,2026-08-20
+187,Mark Andrews,player,TE,20.0,18,2648,False,10,Superflex / .5 PPR,2026-08-20
+188,Ted Hurst,player,WR,72.0,18,2647,True,9,Superflex / .5 PPR,2026-08-20
+189,Pat Bryant,player,WR,73.0,18,2646,False,29,Superflex / .5 PPR,2026-08-20
+190,Michael Penix Jr.,player,QB,30.0,18,2645,False,29,Superflex / .5 PPR,2026-08-20
+191,Malik Washington,player,WR,74.0,18,2645,False,13,Superflex / .5 PPR,2026-08-20
+192,Elijah Sarratt,player,WR,75.0,18,2638,True,8,Superflex / .5 PPR,2026-08-20
+193,Ricky Pearsall,player,WR,76.0,18,2606,False,78,Superflex / .5 PPR,2026-08-20
+194,Adonai Mitchell,player,WR,77.0,18,2606,False,8,Superflex / .5 PPR,2026-08-20
+195,Jaylin Noel,player,WR,78.0,18,2597,False,12,Superflex / .5 PPR,2026-08-20
+196,Isaac TeSlaa,player,WR,79.0,18,2596,False,31,Superflex / .5 PPR,2026-08-20
+197,Tank Bigsby,player,RB,50.0,18,2587,False,8,Superflex / .5 PPR,2026-08-20
+198,Mike Washington Jr.,player,RB,51.0,18,2578,True,36,Superflex / .5 PPR,2026-08-20
+199,Kayshon Boutte,player,WR,80.0,18,2577,False,12,Superflex / .5 PPR,2026-08-20
+200,Dontayvion Wicks,player,WR,81.0,18,2577,False,22,Superflex / .5 PPR,2026-08-20
+201,2027 Early 3rd,pick,,,18,2553,False,9,Superflex / .5 PPR,2026-08-20
+202,Dallas Goedert,player,TE,21.0,18,2542,False,8,Superflex / .5 PPR,2026-08-20
+203,Emmett Johnson,player,RB,52.0,18,2534,True,1,Superflex / .5 PPR,2026-08-20
+204,Travis Kelce,player,TE,22.0,18,2532,False,3,Superflex / .5 PPR,2026-08-20
+205,Tory Horton,player,WR,82.0,18,2523,False,10,Superflex / .5 PPR,2026-08-20
+206,Drew Allar,player,QB,31.0,18,2518,True,75,Superflex / .5 PPR,2026-08-20
+207,Tre Tucker,player,WR,83.0,18,2509,False,1,Superflex / .5 PPR,2026-08-20
+208,Kaytron Allen,player,RB,53.0,18,2509,True,1,Superflex / .5 PPR,2026-08-20
+209,Shedeur Sanders,player,QB,32.0,18,2508,False,29,Superflex / .5 PPR,2026-08-20
+210,Jalen Nailor,player,WR,84.0,18,2507,False,8,Superflex / .5 PPR,2026-08-20
+211,Gunnar Helm,player,TE,23.0,18,2501,False,30,Superflex / .5 PPR,2026-08-20
+212,T.J. Hockenson,player,TE,24.0,18,2479,False,33,Superflex / .5 PPR,2026-08-20
+213,Tyrone Tracy,player,RB,54.0,18,2479,False,22,Superflex / .5 PPR,2026-08-20
+214,Tyjae Spears,player,RB,55.0,18,2474,False,15,Superflex / .5 PPR,2026-08-20
+215,Mac Jones,player,QB,33.0,18,2462,False,27,Superflex / .5 PPR,2026-08-20
+216,Jacoby Brissett,player,QB,34.0,18,2461,False,17,Superflex / .5 PPR,2026-08-20
+217,Troy Franklin,player,WR,85.0,18,2458,False,11,Superflex / .5 PPR,2026-08-20
+218,Tua Tagovailoa,player,QB,35.0,18,2450,False,42,Superflex / .5 PPR,2026-08-20
+219,2027 Mid 3rd,pick,,,18,2450,False,9,Superflex / .5 PPR,2026-08-20
+220,2026 Early 3rd,pick,,,18,2438,False,9,Superflex / .5 PPR,2026-08-20
+221,Eli Raridon,player,TE,25.0,18,2412,True,46,Superflex / .5 PPR,2026-08-20
+222,Deebo Samuel,player,WR,86.0,18,2401,False,70,Superflex / .5 PPR,2026-08-20
+223,Juwan Johnson,player,TE,26.0,18,2393,False,9,Superflex / .5 PPR,2026-08-20
+224,Hunter Henry,player,TE,27.0,18,2367,False,5,Superflex / .5 PPR,2026-08-20
+225,Jerry Jeudy,player,WR,87.0,18,2351,False,10,Superflex / .5 PPR,2026-08-20
+226,Elic Ayomanor,player,WR,88.0,18,2350,False,13,Superflex / .5 PPR,2026-08-20
+227,Elijah Arroyo,player,TE,28.0,18,2348,False,13,Superflex / .5 PPR,2026-08-20
+228,MarShawn Lloyd,player,RB,56.0,18,2334,False,26,Superflex / .5 PPR,2026-08-20
+229,Demond Claiborne,player,RB,57.0,18,2334,True,30,Superflex / .5 PPR,2026-08-20
+230,Chris Brazzell II,player,WR,89.0,18,2313,True,18,Superflex / .5 PPR,2026-08-20
+231,Kaelon Black,player,RB,58.0,18,2310,True,29,Superflex / .5 PPR,2026-08-20
+232,Jaydon Blue,player,RB,59.0,18,2309,False,21,Superflex / .5 PPR,2026-08-20
+233,Aaron Jones,player,RB,60.0,18,2296,False,1,Superflex / .5 PPR,2026-08-20
+234,Jack Bech,player,WR,90.0,18,2292,False,19,Superflex / .5 PPR,2026-08-20
+235,Brian Robinson,player,RB,61.0,18,2279,False,4,Superflex / .5 PPR,2026-08-20
+236,Keon Coleman,player,WR,91.0,18,2267,False,15,Superflex / .5 PPR,2026-08-20
+237,Mason Taylor,player,TE,29.0,18,2266,False,13,Superflex / .5 PPR,2026-08-20
+238,Jauan Jennings,player,WR,92.0,18,2255,False,19,Superflex / .5 PPR,2026-08-20
+239,Ollie Gordon,player,RB,62.0,18,2254,False,11,Superflex / .5 PPR,2026-08-20
+240,2027 Late 3rd,pick,,,18,2242,False,1,Superflex / .5 PPR,2026-08-20
+241,J.J. McCarthy,player,QB,36.0,18,2238,False,45,Superflex / .5 PPR,2026-08-20
+242,Max Klare,player,TE,30.0,18,2221,True,16,Superflex / .5 PPR,2026-08-20
+243,2026 Mid 3rd,pick,,,18,2215,False,6,Superflex / .5 PPR,2026-08-20
+244,Skyler Bell,player,WR,93.0,18,2214,True,27,Superflex / .5 PPR,2026-08-20
+245,Cade Otton,player,TE,31.0,18,2195,False,9,Superflex / .5 PPR,2026-08-20
+246,2028 Early 3rd,pick,,,18,2193,False,7,Superflex / .5 PPR,2026-08-20
+247,Greg Dulcich,player,TE,32.0,18,2187,False,1,Superflex / .5 PPR,2026-08-20
+248,Kimani Vidal,player,RB,63.0,18,2181,False,2,Superflex / .5 PPR,2026-08-20
+249,Pat Freiermuth,player,TE,33.0,18,2170,False,11,Superflex / .5 PPR,2026-08-20
+250,Michael Mayer,player,TE,34.0,18,2169,False,5,Superflex / .5 PPR,2026-08-20
