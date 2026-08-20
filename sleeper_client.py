@@ -25,6 +25,7 @@ ROOT_URL = "https://api.sleeper.app"  # projections/stats live outside /v1 — s
 DEFAULT_SEASON = "2026"
 PLAYERS_CACHE_MAX_AGE_SECONDS = 24 * 60 * 60  # Sleeper asks that /players/nfl be pulled at most once/day
 REQUEST_TIMEOUT = 15
+SNAPSHOT_HISTORY_KEEP = 10  # timestamped snapshots kept per league beyond the always-current _latest.json
 
 
 class SleeperAPIError(RuntimeError):
@@ -239,6 +240,23 @@ class SleeperClient:
         ts = int(snapshot.get("synced_at", time.time()))
         (self.cache_dir / f"{league_id}_{ts}.json").write_text(json.dumps(snapshot, indent=2))
         (self.cache_dir / f"{league_id}_latest.json").write_text(json.dumps(snapshot, indent=2))
+        self._prune_old_snapshots(league_id)
+
+    def _prune_old_snapshots(self, league_id: str, keep: int = SNAPSHOT_HISTORY_KEEP) -> None:
+        """Nothing in this app actually reads a timestamped {league_id}_{ts}.json back
+        (load_latest_snapshot only ever reads the _latest.json alongside it) -- every real
+        sync still wrote and kept one forever, so a league synced daily for a season
+        accumulates hundreds of files nothing ever opens again. Keep a bounded recent history
+        (newest-timestamp-first) rather than either deleting the ability to look back entirely
+        or leaving it truly unbounded."""
+        pattern = f"{league_id}_*.json"
+        latest_name = f"{league_id}_latest.json"
+        timestamped = sorted(
+            (p for p in self.cache_dir.glob(pattern) if p.name != latest_name),
+            key=lambda p: p.stat().st_mtime, reverse=True,
+        )
+        for p in timestamped[keep:]:
+            p.unlink(missing_ok=True)
 
     def load_latest_snapshot(self, league_id: str) -> Optional[dict]:
         path = self.cache_dir / f"{league_id}_latest.json"
