@@ -212,13 +212,26 @@ def pick_analysis(
     pool_scope: str = "all",
 ) -> list[dict]:
     """The actual "should I take him now" answer for a shortlist of candidates (typically the
-    top few from draft_room.compute_draft_board) -- universal value plus the three strategic
-    numbers from this module's docstring: survival_probability, opportunity_cost (expected
-    value lost if he doesn't survive to the user's next pick), and denial_value (the best
-    value an intervening opponent would get from him, weighted by how likely they actually
-    were to take him -- what THIS pick prevents someone else from getting). Sorted by
+    top few from draft_room.compute_draft_board) -- team_acquisition_value plus the three
+    strategic numbers from this module's docstring: survival_probability, opportunity_cost
+    (expected value lost if he doesn't survive to the user's next pick), and denial_value (the
+    best value an intervening opponent would get from him, weighted by how likely they
+    actually were to take him -- what THIS pick prevents someone else from getting). Sorted by
     opportunity_cost descending: the highest number is the one where waiting costs the most,
     which is the actual "why take him now" case, not just "who's ranked highest."
+
+    Deliberately anchored on team_acquisition_value (my_row["final_score"]), not universal_
+    value: "what do I lose by waiting" is inherently a team-specific question (my roster's own
+    fit matters, same reason denial_value below is likewise weighed against each OPPONENT's own
+    team_acquisition_value, not a team-agnostic number) -- see draft_room.py's module docstring
+    for why the two are kept as separate numbers in the first place. Earlier versions of this
+    dict actually labeled this field "universal_value" while holding this exact team-specific
+    number -- a real naming bug, not a semantic one (the math itself was always right), but one
+    that would have propagated straight into pick_synthesis.py's audit-trail snapshot and
+    misrepresented team_acquisition_value as universal_value in the very place the user most
+    needs the two kept honestly distinct. Fixed by naming the field for what it actually is;
+    callers wanting the true team-agnostic universal_value should read it directly off
+    draft_room.compute_draft_board's own board rows instead (see pick_synthesis.build_snapshot).
 
     Every opponent board needed is computed exactly once (see _build_opponent_boards) and
     shared across every candidate here, not recomputed per candidate -- see module docstring's
@@ -240,8 +253,8 @@ def pick_analysis(
         survival = estimate_survival(
             picks, players_db, pick_order, current_index, my_roster_id, player_id, opponent_boards,
         )
-        universal_value = my_row["final_score"]
-        opportunity_cost = round(universal_value * (1 - survival["survival_probability"]), 2)
+        team_acquisition_value = my_row["final_score"]
+        opportunity_cost = round(team_acquisition_value * (1 - survival["survival_probability"]), 2)
 
         denial_value = 0.0
         denial_team = None
@@ -259,7 +272,7 @@ def pick_analysis(
             "player_id": player_id,
             "name": my_row.get("name"),
             "position": my_row.get("position"),
-            "universal_value": universal_value,
+            "team_acquisition_value": team_acquisition_value,
             "survival_probability": survival["survival_probability"],
             "intervening_picks": survival["intervening_picks"],
             "opportunity_cost": opportunity_cost,

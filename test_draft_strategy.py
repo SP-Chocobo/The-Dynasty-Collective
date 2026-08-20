@@ -182,7 +182,7 @@ class SurvivalAndPickAnalysisTests(unittest.TestCase):
         elapsed = time.time() - t0
         self.assertLess(elapsed, 15.0, f"pick_analysis took {elapsed:.1f}s at the worst-case gap -- regression toward the old per-candidate, per-pick-position recomputation")
 
-    def test_denial_value_never_exceeds_the_denying_teams_own_universal_value(self):
+    def test_denial_value_never_exceeds_the_denying_teams_own_acquisition_value(self):
         board = dr.compute_draft_board(self.merger, self.players_db, [], my_roster_id="1", league=LEAGUE, mode="balanced")
         top3 = [r["player_id"] for r in board[:3]]
         analysis = ds.pick_analysis(
@@ -191,7 +191,7 @@ class SurvivalAndPickAnalysisTests(unittest.TestCase):
         )
         for row in analysis:
             if row["denial_team"] is not None:
-                self.assertLessEqual(row["denial_value"], row["universal_value"] + 1e-6)
+                self.assertLessEqual(row["denial_value"], row["team_acquisition_value"] + 1e-6)
 
 
 if __name__ == "__main__":
