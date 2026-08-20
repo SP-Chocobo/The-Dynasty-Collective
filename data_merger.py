@@ -121,6 +121,15 @@ COMPOSITE_RECENCY_HALFLIFE_DAYS = 60
 # on how current the sources feeding one player's composite actually are, separate from the
 # recency weighting above (that decays the score's math; this just reports the input freshness).
 COMPOSITE_RECENCY_GRADES: list[tuple[str, float]] = [("Fresh", 7), ("Recent", 30), ("Aging", 90)]
+# A percentile is only as meaningful as the pool it's ranked against -- confirmed the hard way:
+# with a single bot_research finding on the books, EVERY finding read as the 100th percentile
+# regardless of its actual rank (1 or 15, didn't matter -- a pool of one always ranks its only
+# member first). Below this pool size, a source's weight scales down proportionally
+# (pool_size / this), so a source still building up its sample size can't swing the composite
+# as if its percentile were fully earned. Every structured source (Draft Sharks, DynastyProcess,
+# FantasyPros, KTC) already has hundreds of rows and is never affected by this in practice --
+# it only really bites bot_research early on, before enough findings have accumulated.
+COMPOSITE_MIN_TRUSTED_POOL_SIZE = 20
 
 # Which raw field to rank on, and whether a HIGHER value is better, for computing each
 # secondary source's own percentile against its own player pool -- these are the exact columns
@@ -1068,18 +1077,36 @@ class DataMerger:
         self.aliases = load_aliases()
 
     def _compute_percentiles(self) -> None:
-        """Populate a "_pct" column (0-100, higher always better) on projections and on each
-        (source, file) pair external_player_values/composite_player_score know how to read --
-        see _EXTERNAL_PERCENTILE_RULES. Computed once per _load() rather than per lookup since
-        a percentile is only meaningful against the *whole* pool it's ranked within, and
-        recomputing that per player would be wasteful for what's the same number every time
-        until the next reload()."""
+        """Populate "_pct" (0-100, higher always better) and "_pool_n" (how many rows that
+        percentile was actually computed against -- see composite_player_score's pool-size
+        dampening) on projections and on each (source, file) pair external_player_values/
+        composite_player_score know how to read -- see _EXTERNAL_PERCENTILE_RULES. Computed
+        once per _load() rather than per lookup since a percentile is only meaningful against
+        the *whole* pool it's ranked within, and recomputing that per player would be wasteful
+        for what's the same number every time until the next reload()."""
         if "trade_value" in self.projections.columns:
             self.projections["_pct"] = self.projections["trade_value"].rank(pct=True) * 100
+            self.projections["_pool_n"] = int(self.projections["trade_value"].notna().sum())
 
         if self.external_values.empty:
             return
         self.external_values["_pct"] = float("nan")
+        self.external_values["_pool_n"] = float("nan")
+
+        # Draft Sharks' own norm_name is first-initial-only ("m crosby", not "maxx crosby" --
+        # see _find_match's docstring), so a plain norm_name-to-norm_name join against it would
+        # silently miss almost everyone. Key on (first-initial, last-name), the same key
+        # _find_match uses to bridge that abbreviation, rather than exact-string equality.
+        def _name_key(norm_name: str) -> tuple[str, str]:
+            t = norm_name.split() if isinstance(norm_name, str) else []
+            return (t[0][0], t[-1]) if t else ("", "")
+
+        position_by_key: dict[tuple[str, str], str] = {}
+        if "position" in self.projections.columns:
+            for norm, pos in zip(self.projections["norm_name"], self.projections["position"]):
+                if pd.isna(pos):
+                    continue
+                position_by_key.setdefault(_name_key(norm), pos)
         for (source, source_file), (field, higher_is_better) in _EXTERNAL_PERCENTILE_RULES.items():
             mask = (
                 (self.external_values["source_name"] == source)
@@ -1094,8 +1121,29 @@ class DataMerger:
             # excluding every row from a source that was never picks/players split to begin with.
             if "asset_type" in self.external_values.columns:
                 mask = mask & (self.external_values["asset_type"].fillna("player") == "player")
+
+            # bot_research findings carry whatever rank number the source itself used, which is
+            # very often POSITION-RELATIVE ("#1 DL", "#1 RB") rather than a cross-position
+            # overall rank -- confirmed the hard way: a same-valued "#1" claim for an IDP player
+            # and an offense player landed on the identical percentile when pooled together,
+            # even though a #1 RB is worth far more than a #1 DL in real dynasty terms (the
+            # same scarcity gap Draft Sharks' own trade_value already reflects structurally).
+            # Segment by offense/IDP group, looked up from the broader Draft Sharks pool (which
+            # covers both), same distinction _position_group draws for the dedup collision fix.
+            if source == "bot_research" and position_by_key:
+                row_groups = self.external_values["norm_name"].map(
+                    lambda n: _position_group(position_by_key.get(_name_key(n)))
+                )
+                for group_value in row_groups[mask].unique():
+                    group_mask = mask & (row_groups == group_value)
+                    pct = self.external_values.loc[group_mask, field].rank(pct=True, ascending=higher_is_better) * 100
+                    self.external_values.loc[group_mask, "_pct"] = pct
+                    self.external_values.loc[group_mask, "_pool_n"] = int(group_mask.sum())
+                continue
+
             pct = self.external_values.loc[mask, field].rank(pct=True, ascending=higher_is_better) * 100
             self.external_values.loc[mask, "_pct"] = pct
+            self.external_values.loc[mask, "_pool_n"] = int(mask.sum())
 
     def reload(self) -> None:
         self._load()
@@ -1287,14 +1335,23 @@ class DataMerger:
         independently everywhere they already were."""
         components: list[dict] = []
 
+        def _pool_factor(pool_size: int) -> float:
+            # A percentile earned against a handful of rows doesn't mean what it would against
+            # hundreds -- see COMPOSITE_MIN_TRUSTED_POOL_SIZE's own docstring for the concrete
+            # bug this exists to prevent (a 1-row pool always reads its only member as the
+            # 100th percentile, regardless of how good the underlying claim actually is).
+            return min(1.0, pool_size / COMPOSITE_MIN_TRUSTED_POOL_SIZE)
+
         if "_pct" in self.projections.columns:
             ds_match = self._find_match(player_full_name, position=position, team=team, df=self.projections)
             if ds_match is not None and pd.notna(ds_match.get("_pct")):
                 source_date = ds_match.get("source_date")
+                pool_size = int(ds_match.get("_pool_n") or 0)
                 components.append({
                     "source": "draftsharks", "raw": ds_match.get("trade_value"),
                     "percentile": float(ds_match["_pct"]), "source_date": source_date,
-                    "weight": COMPOSITE_SOURCE_WEIGHTS["draftsharks"] * _recency_weight(source_date),
+                    "pool_size": pool_size,
+                    "weight": COMPOSITE_SOURCE_WEIGHTS["draftsharks"] * _recency_weight(source_date) * _pool_factor(pool_size),
                 })
 
         if not self.external_values.empty:
@@ -1309,10 +1366,17 @@ class DataMerger:
                 if match is None or pd.isna(match.get("_pct")):
                     continue
                 source_date = match.get("source_date")
+                # Read the pool size _compute_percentiles already recorded for this exact row
+                # rather than recounting sub here -- bot_research segments its pool by offense/
+                # IDP position group (see _compute_percentiles), so a flat count over all of sub
+                # would overstate how many rows this player's own percentile was actually earned
+                # against.
+                pool_size = int(match.get("_pool_n") or 0)
                 components.append({
                     "source": source, "raw": match.get(field),
                     "percentile": float(match["_pct"]), "source_date": source_date,
-                    "weight": COMPOSITE_SOURCE_WEIGHTS.get(source, 1.0) * _recency_weight(source_date),
+                    "weight": COMPOSITE_SOURCE_WEIGHTS.get(source, 1.0) * _recency_weight(source_date) * _pool_factor(pool_size),
+                    "pool_size": pool_size,
                 })
 
         if not components:

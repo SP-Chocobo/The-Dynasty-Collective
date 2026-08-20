@@ -2294,9 +2294,20 @@ with st.sidebar:
         age_label = f"updated {merger.freshest_date} ({age}d ago)" if age is not None else "updated (unknown date)"
         ds_cls = "status-bad" if merger.is_stale else "status-ok"
         ds_icon = "⚠️" if merger.is_stale else "✅"
-        st.markdown(f'<span class="{ds_cls}">{ds_icon} DS Projections Loaded — {age_label}</span>', unsafe_allow_html=True)
+        # The committed baseline (data/baseline/rankings/) means this is ALWAYS true now, even
+        # with zero live uploads -- a checkmark that's permanently green regardless of anything
+        # the user does carries no real signal. Checking GLOBAL_PROJECTIONS_DIR directly (rather
+        # than adding a new DataMerger flag for a purely cosmetic distinction) says which state
+        # this actually is: your own fresher upload, or still running on baseline alone.
+        has_live_upload = GLOBAL_PROJECTIONS_DIR.exists() and any(
+            p.suffix.lower() in (".csv", ".json", ".pdf") for p in GLOBAL_PROJECTIONS_DIR.iterdir()
+        )
+        source_note = "" if has_live_upload else " (baseline)"
+        st.markdown(f'<span class="{ds_cls}">{ds_icon} DS Projections Loaded{source_note} — {age_label}</span>', unsafe_allow_html=True)
         if merger.is_stale:
             st.caption(f"Data is {age}+ days old — consider re-exporting from Draft Sharks (weekly is plenty).")
+        elif not has_live_upload:
+            st.caption("Running on the committed baseline — upload your own export anytime for fresher or format-specific numbers.")
     else:
         st.markdown(status_line("DS Projections Loaded", False), unsafe_allow_html=True)
 
