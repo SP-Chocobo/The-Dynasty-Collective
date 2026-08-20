@@ -28,6 +28,7 @@ out the whole debate studio.
 
 from __future__ import annotations
 
+import concurrent.futures
 import os
 from dataclasses import dataclass, field
 from typing import Optional
@@ -823,8 +824,21 @@ def run_debate(
     def _model(role: str) -> Optional[str]:
         return role_models.get(role) or None
 
-    result.quant = ask_quant(context, question, provider=role_providers["quant"], api_key=_key("quant"), model=_model("quant"))
-    result.beat = ask_beat(context, question, provider=role_providers["beat"], api_key=_key("beat"), model=_model("beat"))
+    # Quant and Beat don't read each other's output -- only Contrarian and Moderator have a
+    # real dependency on prior reports (see the module docstring) -- so there's no reason to
+    # pay for their two network round-trips back to back. Each ask_* already fails soft (a
+    # "⚠️" string, never a raised exception -- see the module docstring), so a future's
+    # .result() below can't itself raise from a normal provider error; it would only propagate
+    # something genuinely unexpected, exactly as it would have surfaced running sequentially.
+    with concurrent.futures.ThreadPoolExecutor(max_workers=2) as _executor:
+        _quant_future = _executor.submit(
+            ask_quant, context, question, provider=role_providers["quant"], api_key=_key("quant"), model=_model("quant"),
+        )
+        _beat_future = _executor.submit(
+            ask_beat, context, question, provider=role_providers["beat"], api_key=_key("beat"), model=_model("beat"),
+        )
+        result.quant = _quant_future.result()
+        result.beat = _beat_future.result()
     result.contrarian = ask_contrarian(
         context, question, result.quant, result.beat,
         provider=role_providers["contrarian"], api_key=_key("contrarian"), model=_model("contrarian"),
