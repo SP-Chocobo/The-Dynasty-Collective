@@ -541,7 +541,24 @@ def process_moderator_output(moderator_text: str, trigger_question: str) -> None
     # the Moderator citing an objective by id (e.g. "per #3, ...") while reasoning about
     # something else. Regex over the active ids rather than another LLM directive, since this
     # is purely a UI hint, not something that should shape the model's own output format.
-    mentioned_ids = {int(n) for n in re.findall(r"#(\d+)", moderator_text)}
+    #
+    # A bare #(\d+) scan also matches a source's own rank citation ("ranked #1 DL", "#3 WR",
+    # "#1 overall RB") -- confirmed live, that pattern is everywhere in SOURCE FINDING lines
+    # and ordinary prose discussing where a source ranks a player -- which would mark an
+    # unrelated objective "referenced" just because its id happened to equal someone's rank
+    # number. SOURCE FINDING/SOURCE COMPARISON lines are skipped entirely (their whole point is
+    # a source's own rank), and both rank-citation shapes ("ranked #N" and "#N <position>",
+    # optionally with "at/in/overall" between them) are stripped from every other line before
+    # scanning, so only an actual bare "#N" reference is left to match.
+    _rank_mention_re = re.compile(
+        r"(?i)\brank(?:ed)?\s+#\d+\b|#\d+\s+(?:at\s+|in\s+|overall\s+)?"
+        r"(?:QB|RB|WR|TE|K|DEF|LB|DL|DB)\b"
+    )
+    mentioned_ids: set[int] = set()
+    for line in moderator_text.splitlines():
+        if line.strip().upper().startswith(("SOURCE FINDING:", "SOURCE COMPARISON:")):
+            continue
+        mentioned_ids.update(int(n) for n in re.findall(r"#(\d+)", _rank_mention_re.sub("", line)))
     for active_item in todo_log.load_todos(st.session_state.selected_league_id, statuses=todo_log.ACTIVE_STATUSES):
         if active_item["id"] in mentioned_ids:
             todo_log.mark_referenced(st.session_state.selected_league_id, active_item["id"])
