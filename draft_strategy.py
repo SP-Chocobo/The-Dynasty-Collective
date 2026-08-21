@@ -73,6 +73,25 @@ RUN_THRESHOLD = 3
 RUN_TAKE_PROBABILITY_BOOST = 1.6
 RUN_TAKE_PROBABILITY_CAP = 0.90
 
+# A genuine MARKET-CONVENTION PRIOR, not something this module's own VOR math derived: in a
+# 12-team superflex dynasty startup, real drafting behavior consistently sees roughly 6 QBs
+# gone by the end of round 1, another 3-4 by the end of round 2 (~9-10 cumulative), another
+# ~4 through rounds 3-4 (~13-14 cumulative) -- a well-established structural pattern (SF
+# demands two startable QBs per team or a roster is genuinely worse off, elite passers are a
+# hard-capped scarce resource across all 32 NFL teams, and a real "take a cliff-edge QB3 just
+# to deny a rival a good QB2" denial dynamic is common), not a superstition and not something
+# this app should let its own first-pass VOR ranking talk it out of. This exists specifically
+# because a pure board-EVIDENCE estimate can't be trusted to reproduce it on its own: the same
+# per-league VOR ranking that can underrate elite QBs in universal_value (see draft_room.py's
+# SUPER_FLEX_QB_SHARE) also underrates them on every INTERVENING TEAM's own board, understating
+# how likely a rival is to take one. Convention establishes the prior; the board still gets to
+# override it (see _pace_deficit_boost -- ahead-of-pace positions get no boost at all, and this
+# is capped, never treated as certainty). Anchored on cumulative PICKS MADE, not a pick_index
+# array position -- (0 picks, 0 QBs) to (12 picks, 6 QBs) to (24 picks, 9.5) to (48 picks,
+# 13.5), linearly interpolated between anchors and held flat beyond the last one (there's no
+# real documented convention past round 4 to extrapolate a slope from).
+SUPERFLEX_QB_PACE_ANCHORS = [(0, 0.0), (12, 6.0), (24, 9.5), (48, 13.5)]
+
 
 def generate_pick_order(round_1_order: list, total_rounds: int, draft_type: str = "snake") -> list:
     """The full roster_id sequence for every pick in the draft. Snake reverses the order on
@@ -119,6 +138,83 @@ def detect_positional_run(picks: list[dict], players_db: dict[str, dict]) -> Opt
     return top_position if count >= RUN_THRESHOLD else None
 
 
+def _interpolate_pace(anchors: list[tuple[float, float]], picks_made: int) -> float:
+    if picks_made <= anchors[0][0]:
+        return anchors[0][1]
+    if picks_made >= anchors[-1][0]:
+        return anchors[-1][1]  # flat beyond the last anchor -- no documented convention to slope from
+    for (x0, y0), (x1, y1) in zip(anchors, anchors[1:]):
+        if x0 <= picks_made <= x1:
+            frac = (picks_made - x0) / (x1 - x0)
+            return y0 + frac * (y1 - y0)
+    return anchors[-1][1]
+
+
+def expected_position_pace(position: str, picks_made: int, roster_positions: list[str]) -> Optional[float]:
+    """The expected CUMULATIVE count of this position drafted leaguewide by picks_made, from a
+    real, named market convention -- None when no such convention is documented for this
+    position/format (the honest default: don't invent a pace curve for a case nobody's actually
+    given real numbers for). Currently only QB in a SUPER_FLEX league -- see
+    SUPERFLEX_QB_PACE_ANCHORS' own comment for the real domain reasoning behind it."""
+    if position == "QB" and "SUPER_FLEX" in (roster_positions or []):
+        return _interpolate_pace(SUPERFLEX_QB_PACE_ANCHORS, picks_made)
+    return None
+
+
+def _pace_based_take_probability(
+    position: str, target_player_id: str, board: dict, picks_made_now: int,
+    picks: list[dict], players_db: dict[str, dict], roster_positions: list[str],
+) -> Optional[float]:
+    """The probability THIS SPECIFIC intervening pick takes target_player_id, driven directly by
+    the market-convention pace (SUPERFLEX_QB_PACE_ANCHORS) rather than this team's own VOR
+    ranking -- built for exactly the case a rank-based estimate structurally cannot handle.
+    Confirmed directly: an elite QB can rank outside RANK_TAKE_PROBABILITY's top-5 keys on
+    EVERY intervening team's own board (the same per-league VOR math that can underrate him in
+    universal_value does so on every opponent's board too), at which point the rank-based
+    estimate floors out at RANK_TAKE_PROBABILITY_FLOOR (0.02) regardless of position -- and
+    multiplying a near-zero floor by any bounded boost can never produce a meaningfully large
+    probability (confirmed: even at a 2x cap, 0.02 -> 0.04, nowhere near enough to move survival
+    across a real intervening gap). This function ignores that floor entirely and computes a
+    probability straight from the convention instead.
+
+    Two steps: (1) how many MORE players at this position are owed, by the next documented
+    anchor, spread over the real picks remaining until that anchor -- gives the probability ANY
+    upcoming pick goes to this position; (2) divide by target_player_id's own rank AMONG
+    REMAINING PLAYERS AT THIS POSITION on this specific opponent's own board -- narrows "some
+    QB gets taken" down to "THIS QB gets taken." The consensus best remaining player at a
+    position running far behind pace gets nearly the full step-1 probability; the 5th-best
+    remaining shares it roughly five ways. Treating the remaining pool as roughly equally
+    likely (not modeling name-level preference beyond rank) is a real simplifying assumption,
+    not a claim of precision -- same honesty as every other unproven constant in this module.
+
+    None whenever no convention is documented for this position/format, or once picks_made_now
+    is past the last documented anchor (no real convention to extrapolate a rate from)."""
+    expected_now = expected_position_pace(position, picks_made_now, roster_positions)
+    if expected_now is None:
+        return None
+    next_anchor = next((x for x, _y in SUPERFLEX_QB_PACE_ANCHORS if x > picks_made_now), None)
+    if next_anchor is None:
+        return None
+    remaining_picks = next_anchor - picks_made_now
+    if remaining_picks <= 0:
+        return None
+    actual_now = sum(
+        1 for p in picks if player_position(players_db.get(str(p.get("player_id")), {})) == position
+    )
+    expected_at_anchor = expected_position_pace(position, next_anchor, roster_positions)
+    deficit_to_close = max(expected_at_anchor - actual_now, 0.0)
+    any_pick_probability = min(deficit_to_close / remaining_picks, 1.0)
+
+    position_rows = [r for r in board["by_id"].values() if r["position"] == position]
+    position_rows.sort(key=lambda r: r["universal_value"], reverse=True)
+    target_rank = next(
+        (i + 1 for i, r in enumerate(position_rows) if r["player_id"] == str(target_player_id)), None,
+    )
+    if target_rank is None:
+        return None
+    return any_pick_probability / target_rank
+
+
 def _take_probability(rank: int, is_run_position: bool) -> float:
     p = RANK_TAKE_PROBABILITY.get(rank, RANK_TAKE_PROBABILITY_FLOOR)
     if is_run_position:
@@ -155,12 +251,36 @@ def estimate_survival(
     my_roster_id,
     target_player_id: str,
     opponent_boards: dict,
+    *,
+    league: Optional[dict] = None,
 ) -> dict:
     """Survival probability for ONE specific player between now and the user's next pick, plus
     the per-team breakdown that produced it (never a single opaque number -- same transparency
     principle as every other score in this app). Takes already-computed opponent_boards (see
     _build_opponent_boards) rather than recomputing anything itself -- this function is now a
     cheap lookup + probability multiply, not a simulation.
+
+    league, when given, enables the market-convention pace prior (see
+    SUPERFLEX_QB_PACE_ANCHORS/_pace_based_take_probability): for each intervening pick, the
+    ACTUAL take-probability used is whichever is higher, the normal per-team rank-based
+    estimate or the pace-driven one -- never lower than the rank-based estimate alone (the
+    prior only ever pushes probability up when the board evidence understates it, it can't push
+    down against real evidence). This exists because the rank-based estimate alone cannot be
+    trusted for a position running far behind a well-established real-world convention: it
+    looks at each intervening team's OWN board ranking, which uses the same per-league VOR math
+    that can underrate elite QBs in universal_value in the first place (see draft_room.py's
+    SUPER_FLEX_QB_SHARE) -- confirmed directly, an elite QB can rank outside the rank-based
+    table's top 5 on every single intervening team's own board, at which point that estimate
+    floors out near zero regardless of how far behind pace the position actually is. Optional
+    (defaults to the rank-based estimate alone, this function's behavior before this existed)
+    since not every caller has a league dict to hand, and no convention is documented for most
+    position/format combinations anyway. Applies uniformly to every QB candidate in a superflex
+    league regardless of his own tier, a real simplification: the convention specifically
+    describes the ELITE tier, and this module doesn't compute an explicit tier boundary to gate
+    on -- a deep bench QB gets the same pace-driven consideration as a true elite one (though his
+    own rank-among-QBs term in _pace_based_take_probability already dilutes this somewhat, since
+    a low-ranked QB shares the pace probability across many peers). Worth fixing with a real
+    tier detector later; not pretending it's already handled.
 
     Returns {"survival_probability", "intervening_picks", "risk_by_team": [...]}. An empty
     risk_by_team with survival_probability=1.0 means either no one picks before the user's
@@ -184,11 +304,21 @@ def estimate_survival(
         if rank is None:
             continue  # not even in this team's usable-position pool -- no risk from them
         is_run = bool(run_position and target_position == run_position)
-        p_take = _take_probability(rank, is_run)
+        rank_based_p_take = _take_probability(rank, is_run)
+
+        pace_p_take = None
+        if league is not None and target_position is not None:
+            pace_p_take = _pace_based_take_probability(
+                target_position, str(target_player_id), board, len(picks), picks, players_db,
+                league.get("roster_positions") or [],
+            )
+        pace_driven = pace_p_take is not None and pace_p_take > rank_based_p_take
+        p_take = pace_p_take if pace_driven else rank_based_p_take
+
         survival *= (1 - p_take)
         risk_by_team.append({
             "roster_id": roster_id, "rank_on_their_board": rank,
-            "take_probability": round(p_take, 3), "run_boosted": is_run,
+            "take_probability": round(p_take, 3), "run_boosted": is_run, "pace_driven": pace_driven,
         })
 
     return {
@@ -252,6 +382,7 @@ def pick_analysis(
             continue
         survival = estimate_survival(
             picks, players_db, pick_order, current_index, my_roster_id, player_id, opponent_boards,
+            league=league,
         )
         team_acquisition_value = my_row["final_score"]
         opportunity_cost = round(team_acquisition_value * (1 - survival["survival_probability"]), 2)

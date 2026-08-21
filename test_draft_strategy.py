@@ -194,5 +194,145 @@ class SurvivalAndPickAnalysisTests(unittest.TestCase):
                 self.assertLessEqual(row["denial_value"], row["team_acquisition_value"] + 1e-6)
 
 
+SUPERFLEX_LEAGUE = {
+    "roster_positions": ["QB", "RB", "RB", "WR", "WR", "TE", "FLEX", "FLEX", "SUPER_FLEX", "BN", "BN", "BN", "BN"],
+    "total_rosters": 12, "settings": {"type": 2}, "scoring_settings": {},
+}
+
+
+class ExpectedPositionPaceTests(unittest.TestCase):
+    def test_none_for_a_position_with_no_documented_convention(self):
+        self.assertIsNone(ds.expected_position_pace("RB", 12, SUPERFLEX_LEAGUE["roster_positions"]))
+        self.assertIsNone(ds.expected_position_pace("WR", 12, SUPERFLEX_LEAGUE["roster_positions"]))
+
+    def test_none_for_qb_without_super_flex_in_the_roster(self):
+        self.assertIsNone(ds.expected_position_pace("QB", 12, LEAGUE["roster_positions"]))
+
+    def test_matches_the_documented_anchor_points_exactly(self):
+        rp = SUPERFLEX_LEAGUE["roster_positions"]
+        self.assertEqual(ds.expected_position_pace("QB", 0, rp), 0.0)
+        self.assertEqual(ds.expected_position_pace("QB", 12, rp), 6.0)
+        self.assertEqual(ds.expected_position_pace("QB", 24, rp), 9.5)
+        self.assertEqual(ds.expected_position_pace("QB", 48, rp), 13.5)
+
+    def test_interpolates_linearly_between_anchors(self):
+        rp = SUPERFLEX_LEAGUE["roster_positions"]
+        self.assertAlmostEqual(ds.expected_position_pace("QB", 6, rp), 3.0)  # halfway to the round-1 anchor
+
+    def test_holds_flat_beyond_the_last_documented_anchor(self):
+        rp = SUPERFLEX_LEAGUE["roster_positions"]
+        self.assertEqual(ds.expected_position_pace("QB", 100, rp), 13.5)
+
+
+def _synthetic_board(rows):
+    return {"by_id": {r["player_id"]: r for r in rows}}
+
+
+class PaceBasedTakeProbabilityTests(unittest.TestCase):
+    def test_none_when_no_convention_applies(self):
+        board = _synthetic_board([{"player_id": "1", "position": "RB", "universal_value": 90.0}])
+        self.assertIsNone(ds._pace_based_take_probability(
+            "RB", "1", board, 5, [], {}, SUPERFLEX_LEAGUE["roster_positions"],
+        ))
+
+    def test_none_once_past_the_last_documented_anchor(self):
+        board = _synthetic_board([{"player_id": "1", "position": "QB", "universal_value": 90.0}])
+        self.assertIsNone(ds._pace_based_take_probability(
+            "QB", "1", board, 48, [], {}, SUPERFLEX_LEAGUE["roster_positions"],
+        ))
+
+    def test_the_consensus_best_remaining_qb_gets_nearly_the_full_deficit_probability(self):
+        # 5 picks made, 0 QBs drafted -- a real deficit against the round-1 anchor (expected
+        # ~2.5 by now). This QB is the only one left, so the whole "some QB gets taken" share
+        # of probability goes to him alone (rank-among-QBs divisor of 1).
+        board = _synthetic_board([{"player_id": "qb1", "position": "QB", "universal_value": 90.0}])
+        p = ds._pace_based_take_probability("QB", "qb1", board, 5, [], {}, SUPERFLEX_LEAGUE["roster_positions"])
+        self.assertIsNotNone(p)
+        self.assertGreater(p, 0.5, "a severe pace deficit with only one remaining QB should produce a large probability")
+
+    def test_a_lower_ranked_qb_shares_the_probability_with_his_peers(self):
+        board = _synthetic_board([
+            {"player_id": "qb1", "position": "QB", "universal_value": 90.0},
+            {"player_id": "qb2", "position": "QB", "universal_value": 80.0},
+            {"player_id": "qb3", "position": "QB", "universal_value": 70.0},
+        ])
+        p1 = ds._pace_based_take_probability("QB", "qb1", board, 5, [], {}, SUPERFLEX_LEAGUE["roster_positions"])
+        p3 = ds._pace_based_take_probability("QB", "qb3", board, 5, [], {}, SUPERFLEX_LEAGUE["roster_positions"])
+        self.assertGreater(p1, p3, "the top-ranked remaining QB should get a bigger share than the 3rd-ranked one")
+        self.assertAlmostEqual(p3, p1 / 3, places=6)
+
+    def test_deficit_shrinks_as_actual_drafting_catches_up_to_the_convention(self):
+        board = _synthetic_board([{"player_id": "qb1", "position": "QB", "universal_value": 90.0}])
+        no_qbs_drafted = ds._pace_based_take_probability("QB", "qb1", board, 5, [], {}, SUPERFLEX_LEAGUE["roster_positions"])
+        already_on_pace = ds._pace_based_take_probability(
+            "QB", "qb1", board, 5,
+            [{"player_id": "x1", "round": 1}, {"player_id": "x2", "round": 1}],
+            {"x1": {"position": "QB", "fantasy_positions": ["QB"]}, "x2": {"position": "QB", "fantasy_positions": ["QB"]}},
+            SUPERFLEX_LEAGUE["roster_positions"],
+        )
+        self.assertLess(already_on_pace, no_qbs_drafted)
+
+    def test_none_when_the_target_is_not_on_the_given_board_at_all(self):
+        board = _synthetic_board([{"player_id": "other", "position": "QB", "universal_value": 90.0}])
+        self.assertIsNone(ds._pace_based_take_probability(
+            "QB", "not-there", board, 5, [], {}, SUPERFLEX_LEAGUE["roster_positions"],
+        ))
+
+
+class EstimateSurvivalPaceIntegrationTests(unittest.TestCase):
+    """The real case that motivated this mechanism: a rank-based estimate structurally can't
+    move for a player who ranks outside the top-5 keys on every intervening team's own board
+    (it floors near zero regardless of position), which is exactly what happens to an elite QB
+    in a superflex league before the market convention is applied as a prior."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.merger, cls.players_db = _build_players_db(("QB", "RB", "WR", "TE"))
+
+    def test_pace_prior_can_push_survival_down_when_the_rank_based_estimate_understates_it(self):
+        board = dr.compute_draft_board(
+            self.merger, self.players_db, [], my_roster_id="1", league=SUPERFLEX_LEAGUE, mode="balanced",
+        )
+        best_qb_id = next(r["player_id"] for r in board if r["position"] == "QB")
+        # A round-1-shaped scenario with zero QBs drafted through 5 picks -- a real deficit
+        # against the documented round-1 pace (~2.5 expected by now).
+        picks = [{"roster_id": str(i), "player_id": r["player_id"], "round": 1}
+                 for i, r in enumerate([r for r in board if r["position"] != "QB"][:5], start=1)]
+        pick_order = ds.generate_pick_order([str(i) for i in range(1, 13)], total_rounds=4)
+        intervening = ds.intervening_roster_ids(pick_order, 5, ds.find_next_pick_index(pick_order, "6", 5))
+        boards = ds._build_opponent_boards(self.merger, self.players_db, picks, SUPERFLEX_LEAGUE, intervening)
+
+        without_prior = ds.estimate_survival(
+            picks, self.players_db, pick_order, 5, "6", best_qb_id, boards, league=None,
+        )
+        with_prior = ds.estimate_survival(
+            picks, self.players_db, pick_order, 5, "6", best_qb_id, boards, league=SUPERFLEX_LEAGUE,
+        )
+        self.assertLessEqual(with_prior["survival_probability"], without_prior["survival_probability"])
+        self.assertTrue(any(r["pace_driven"] for r in with_prior["risk_by_team"]))
+
+    def test_pace_prior_never_makes_survival_worse_than_the_rank_based_estimate_when_its_the_weaker_signal(self):
+        # A player who's already the clear #1 on every intervening team's own board has a real
+        # rank-based take_probability (0.55) that should beat whatever the pace prior alone
+        # would produce here -- the max-combinator must keep using the stronger, real signal.
+        board = dr.compute_draft_board(
+            self.merger, self.players_db, [], my_roster_id="1", league=SUPERFLEX_LEAGUE, mode="balanced",
+        )
+        top_overall_id = board[0]["player_id"]
+        picks: list[dict] = []
+        pick_order = ds.generate_pick_order([str(i) for i in range(1, 13)], total_rounds=4)
+        intervening = ds.intervening_roster_ids(pick_order, 0, ds.find_next_pick_index(pick_order, "1", 0))
+        boards = ds._build_opponent_boards(self.merger, self.players_db, picks, SUPERFLEX_LEAGUE, intervening)
+        result = ds.estimate_survival(
+            picks, self.players_db, pick_order, 0, "1", top_overall_id, boards, league=SUPERFLEX_LEAGUE,
+        )
+        # Whatever this comes out to, it must be no more forgiving than a plain rank-based read
+        # would have been for the actual #1 overall player across a long gap.
+        without_prior = ds.estimate_survival(
+            picks, self.players_db, pick_order, 0, "1", top_overall_id, boards, league=None,
+        )
+        self.assertLessEqual(result["survival_probability"], without_prior["survival_probability"] + 1e-9)
+
+
 if __name__ == "__main__":
     unittest.main()
