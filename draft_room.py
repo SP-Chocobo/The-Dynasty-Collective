@@ -160,6 +160,25 @@ SLEEPER_WEEKLY_TO_SEASON_FACTOR = 17
 # respecting positional scarcity that barely matters by then.
 UPSIDE_MODE_DEFAULT_ROUND = 15
 
+# In real competitive superflex play, the SUPER_FLEX slot is filled by a second (or third) QB
+# the vast majority of the time -- there isn't enough non-QB flex-caliber value to make
+# starting an extra RB/WR/TE correct over a bench-caliber QB once a team already has one
+# starter, which is exactly why "superflex" functions as a real QB-scarcity format at all.
+# Splitting it EVENLY across QB/RB/WR/TE (this module's original, generic flex-slot logic --
+# still correct for every OTHER flex type, where RB/WR/TE genuinely do compete roughly evenly
+# for the slot) badly understated real superflex QB demand: confirmed directly, even the
+# #1-projected QB by raw season points ranked outside the top 30 overall on a real superflex
+# board before this constant existed, nowhere close to the real market's well-known "4-6 QBs
+# typically go in round 1 of a 12-team superflex startup" behavior. Not empirically
+# backtested to an exact percentage -- a principled, bounded starting point, same honesty this
+# module applies to every other unproven constant. Even with this fix, pure points-based VOR
+# still likely underrates elite QBs somewhat relative to real superflex market pricing: the
+# market's real premium partly reflects a hard structural scarcity (only ~32 real starting-
+# caliber NFL QBs exist leaguewide, a ceiling RB/WR/TE don't share) that a single season's
+# point projection doesn't fully capture on its own -- worth knowing as a real limitation,
+# not silently pretending this fix closes the whole gap.
+SUPER_FLEX_QB_SHARE = 0.85
+
 # time_horizon_adj and risk_adj are both small, bounded, additive nudges on the same linear
 # 0-100 BPA scale -- deliberately incapable of overriding a real VOR gap on their own (see
 # module docstring's ARCHITECTURE section and test_draft_room.py's invariant tests).
@@ -200,14 +219,27 @@ def starter_slot_counts(roster_positions: list[str]) -> dict[str, float]:
     ignoring flex capacity entirely -- a league heavy on flex slots genuinely has more
     starting demand at those positions than its named slots alone would suggest. This is
     also what makes replacement level genuinely league-specific rather than a generic
-    positional constant: a superflex league's SUPER_FLEX slots inflate QB's own count
-    automatically, a 2-TE league's second TE slot inflates TE's, etc. -- no separate
-    per-format branching needed, it falls out of actually reading this league's own
-    roster_positions."""
+    positional constant: a 2-TE league's second TE slot inflates TE's count automatically,
+    etc. -- no separate per-format branching needed for most flex types, it falls out of
+    actually reading this league's own roster_positions.
+
+    SUPER_FLEX is the one deliberate exception to "split evenly across every eligible
+    position": see SUPER_FLEX_QB_SHARE's own comment for why an even split badly understates
+    real superflex QB scarcity. Every other flex type (FLEX, WRRB_FLEX, REC_FLEX, IDP_FLEX)
+    keeps the even split -- those genuinely do get filled by whichever eligible position is
+    best roughly interchangeably in real drafting behavior, unlike SUPER_FLEX's real-world QB
+    dominance."""
     counts: dict[str, float] = {p: 0.0 for p in FANTASY_POSITIONS}
     for slot in roster_positions or []:
         if slot in FANTASY_POSITIONS:
             counts[slot] += 1.0
+        elif slot == "SUPER_FLEX" and "QB" in FLEX_SLOT_POSITIONS[slot]:
+            eligible = FLEX_SLOT_POSITIONS[slot]
+            non_qb = [pos for pos in eligible if pos != "QB"]
+            counts["QB"] += SUPER_FLEX_QB_SHARE
+            remaining_share = (1.0 - SUPER_FLEX_QB_SHARE) / len(non_qb) if non_qb else 0.0
+            for pos in non_qb:
+                counts[pos] += remaining_share
         elif slot in FLEX_SLOT_POSITIONS:
             eligible = FLEX_SLOT_POSITIONS[slot]
             for pos in eligible:

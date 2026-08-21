@@ -59,6 +59,29 @@ class StarterSlotCountsTests(unittest.TestCase):
         superflex = dr.starter_slot_counts(["QB", "RB", "WR", "SUPER_FLEX", "BN"])
         self.assertGreater(superflex["QB"], one_qb["QB"])
 
+    def test_super_flex_slot_is_heavily_qb_weighted_not_split_evenly(self):
+        # The real bug this constant fixes: splitting SUPER_FLEX evenly across QB/RB/WR/TE
+        # (this module's original, generic flex-slot logic) badly understated real superflex
+        # QB demand -- confirmed directly, the #1-projected QB by raw season points ranked
+        # outside the top 30 overall on a real superflex board before this existed. A real
+        # competitive superflex league fills that slot with a QB the vast majority of the
+        # time, not a roughly-even split the way an ordinary RB/WR/TE FLEX slot behaves.
+        counts = dr.starter_slot_counts(["QB", "SUPER_FLEX", "BN"])
+        self.assertAlmostEqual(counts["QB"], 1.0 + dr.SUPER_FLEX_QB_SHARE)
+        remaining_share = (1.0 - dr.SUPER_FLEX_QB_SHARE) / 3
+        self.assertAlmostEqual(counts["RB"], remaining_share)
+        self.assertAlmostEqual(counts["WR"], remaining_share)
+        self.assertAlmostEqual(counts["TE"], remaining_share)
+
+    def test_an_ordinary_flex_slot_still_splits_evenly_unlike_super_flex(self):
+        # SUPER_FLEX is the one deliberate exception -- every other flex type must still
+        # split evenly, since RB/WR/TE genuinely do compete roughly interchangeably for an
+        # ordinary FLEX slot in real drafting behavior.
+        counts = dr.starter_slot_counts(["RB", "WR", "TE", "FLEX", "BN"])
+        self.assertAlmostEqual(counts["RB"], 1 + 1 / 3)
+        self.assertAlmostEqual(counts["WR"], 1 + 1 / 3)
+        self.assertAlmostEqual(counts["TE"], 1 + 1 / 3)
+
 
 class ReplacementLevelMonotonicityTests(unittest.TestCase):
     """replacement_levels is the actual mechanism behind "a deep position gets a smaller
