@@ -11,6 +11,7 @@ import unittest
 import dataclasses
 
 import data_merger as dm
+import draft_room as dr
 import draft_strategy as ds
 import pick_synthesis as ps
 
@@ -82,6 +83,28 @@ class NarrowCandidatesTests(unittest.TestCase):
     def test_a_user_selected_player_not_on_the_board_at_all_is_silently_skipped(self):
         narrowed = ps.narrow_candidates(self._board(), top_n=3, user_selected_player_id="does-not-exist")
         self.assertEqual([r["player_id"] for r in narrowed], ["0", "1", "2"])
+
+    def test_a_scarce_positions_best_player_is_included_even_outside_the_top_n(self):
+        # The real fix: a thin position's single best remaining player used to be silently
+        # EXCLUDED from the whole downstream strategic analysis whenever nobody at that
+        # position cracked the raw top_n by value -- not just ranked low, literally never
+        # handed to survival/denial/necessity at all. Best QB here (value 40) ranks outside
+        # a top_n=3 WR/RB-dominated slice; he must still show up.
+        board = [
+            {"player_id": "rb1", "final_score": 100, "position": "RB"},
+            {"player_id": "wr1", "final_score": 95, "position": "WR"},
+            {"player_id": "rb2", "final_score": 90, "position": "RB"},
+            {"player_id": "wr2", "final_score": 80, "position": "WR"},
+            {"player_id": "qb1", "final_score": 40, "position": "QB"},
+            {"player_id": "qb2", "final_score": 30, "position": "QB"},
+        ]
+        narrowed = ps.narrow_candidates(board, top_n=3)
+        ids = [r["player_id"] for r in narrowed]
+        self.assertIn("qb1", ids)
+        self.assertNotIn("qb2", ids, "only the BEST remaining player at a position gets this guarantee, not the whole position")
+        # Full list stays ranked by value even after the addition.
+        values = [r["final_score"] for r in narrowed]
+        self.assertEqual(values, sorted(values, reverse=True))
 
 
 def _raw_candidate(team_acquisition_value, survival_probability=1.0, positional_cliff=None,
@@ -181,13 +204,36 @@ class BuildSnapshotTests(unittest.TestCase):
         cls.pick_order = ds.generate_pick_order([str(i) for i in range(1, 13)], total_rounds=4)
 
     def test_snapshot_is_narrowed_and_ranked_by_team_acquisition_value(self):
+        # At least top_n (can run longer -- narrow_candidates also guarantees the single best
+        # remaining player at every position gets a look, even one that didn't crack the raw
+        # top_n on value alone -- see narrow_candidates' own docstring for why).
         snap = ps.build_snapshot(
             self.merger, self.players_db, [], self.pick_order, current_index=0, my_roster_id="1",
             league=LEAGUE, pick_label="1.01", top_n=5,
         )
-        self.assertEqual(len(snap.candidates), 5)
+        self.assertGreaterEqual(len(snap.candidates), 5)
         values = [c.team_acquisition_value for c in snap.candidates]
         self.assertEqual(values, sorted(values, reverse=True), "candidates must be ranked by team_acquisition_value")
+
+    def test_the_best_remaining_player_at_every_position_is_always_included(self):
+        # The real fix this closes: a scarce position's best remaining player used to be
+        # silently EXCLUDED from the whole survival/denial/necessity analysis whenever he
+        # didn't crack the raw top_n by value alone -- not undervalued, literally invisible to
+        # the strategic layer. A tiny top_n here (1) makes this unambiguous: the board's #1
+        # overall player is RB/WR (this fixture's real baseline), so QB and TE would never
+        # appear at all without the fix.
+        board = dr.compute_draft_board(
+            self.merger, self.players_db, [], my_roster_id="1", league=LEAGUE, mode="balanced",
+        )
+        best_qb_id = next(r["player_id"] for r in board if r["position"] == "QB")
+        best_te_id = next(r["player_id"] for r in board if r["position"] == "TE")
+        snap = ps.build_snapshot(
+            self.merger, self.players_db, [], self.pick_order, current_index=0, my_roster_id="1",
+            league=LEAGUE, pick_label="1.01", top_n=1,
+        )
+        candidate_ids = {c.player_id for c in snap.candidates}
+        self.assertIn(best_qb_id, candidate_ids)
+        self.assertIn(best_te_id, candidate_ids)
 
     def test_every_candidate_carries_the_full_real_decomposition(self):
         snap = ps.build_snapshot(

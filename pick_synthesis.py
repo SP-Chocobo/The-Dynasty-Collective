@@ -257,18 +257,51 @@ def narrow_candidates(
     board: list[dict], top_n: int = DEFAULT_NARROW_COUNT, user_selected_player_id: Optional[str] = None,
 ) -> list[dict]:
     """The top top_n rows by team_acquisition_value (final_score, draft_room's own ranking),
-    plus the user's own explicitly-flagged player if there is one and it isn't already in that
-    top slice -- so a live debate is never blind to a player the user is specifically
-    considering (a dynasty stash, a personal favorite, a punt pick) just because the
-    deterministic board doesn't currently rank him near the top."""
+    PLUS the single best remaining player at every position this board actually covers, plus
+    the user's own explicitly-flagged player if there is one -- none of these three are
+    optional, and the second one specifically closes a real blind spot, not a cosmetic
+    addition.
+
+    universal_value/team_acquisition_value answer "how good is this player," a rational,
+    single-team VOR question -- they were never meant to reproduce real-world ADP, which
+    reflects a competitive, MULTI-TEAM equilibrium (scarcity anxiety, denial-driven runs on a
+    thin position, "I'll take a cliff-edge QB3 purely to deny a rival a good QB2") that a
+    smooth VOR curve doesn't and structurally can't fully capture on its own. That equilibrium
+    behavior is exactly what draft_strategy.pick_analysis's survival_probability/denial_value
+    and this module's own pick_necessity ARE built to reason about -- but only for whichever
+    candidates actually make it into this list. Before this fix, a position with real scarcity
+    pressure (superflex's QB demand is the concrete case that surfaced this) could have its
+    single best remaining player rank outside the raw top_n on value alone, and he would then
+    NEVER be handed to the strategic layer at all -- not undervalued, literally invisible to
+    it, so a real "grab him now before he's gone" case could never even be considered, let
+    alone recommended. Always including the best-at-position player means the strategic layer
+    gets a fair look at him regardless of where a pure VOR ranking places him; if he genuinely
+    isn't urgent, pick_necessity says so honestly (a LOW/CLOSE-CALL score, not exclusion from
+    the conversation entirely).
+
+    The user_selected_player_id addition still exists on top of this for the same reason it
+    always did: a live debate is never blind to a player the user is specifically considering
+    (a dynasty stash, a personal favorite, a punt pick) just because the deterministic board
+    doesn't currently rank him near the top OR at the top of his own position."""
     ranked = sorted(board, key=lambda r: r["final_score"], reverse=True)
     candidates = list(ranked[:top_n])
-    if user_selected_player_id is not None:
-        already_in = any(str(r["player_id"]) == str(user_selected_player_id) for r in candidates)
-        if not already_in:
-            extra = _find_row(board, user_selected_player_id)
-            if extra is not None:
-                candidates.append(extra)
+    included_ids = {r["player_id"] for r in candidates}
+
+    for position in {r["position"] for r in board}:
+        best_at_position = next((r for r in ranked if r["position"] == position), None)
+        if best_at_position is not None and best_at_position["player_id"] not in included_ids:
+            candidates.append(best_at_position)
+            included_ids.add(best_at_position["player_id"])
+
+    if user_selected_player_id is not None and str(user_selected_player_id) not in included_ids:
+        extra = _find_row(board, user_selected_player_id)
+        if extra is not None:
+            candidates.append(extra)
+
+    # Re-sorted after every addition above -- rank order has to stay meaningful (rank_delta
+    # in diff_snapshots depends on it) even once best-at-position/user-flagged rows get
+    # appended out of value order.
+    candidates.sort(key=lambda r: r["final_score"], reverse=True)
     return candidates
 
 
