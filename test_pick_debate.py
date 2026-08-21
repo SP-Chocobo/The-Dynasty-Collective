@@ -13,7 +13,8 @@ from pick_synthesis import CandidateSnapshot, PickSnapshot
 
 
 def _candidate(player_id, name, position="QB", universal_value=90.0, team_acquisition_value=100.0,
-                survival_probability=0.5, positional_cliff=None, position_run_detected=False):
+                survival_probability=0.5, positional_cliff=None, position_run_detected=False,
+                pick_necessity=75.0, necessity_label="PREFERRED"):
     return CandidateSnapshot(
         player_id=player_id, name=name, position=position, team="SF",
         bpa=universal_value, bpa_source="points_vor_draftsharks", confidence=80.0,
@@ -25,6 +26,7 @@ def _candidate(player_id, name, position="QB", universal_value=90.0, team_acquis
         denial_value=30.0, denial_team="4",
         positional_cliff=positional_cliff,
         position_run_detected=position_run_detected,
+        pick_necessity=pick_necessity, necessity_label=necessity_label,
     )
 
 

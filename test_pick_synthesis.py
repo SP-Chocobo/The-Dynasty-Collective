@@ -84,6 +84,84 @@ class NarrowCandidatesTests(unittest.TestCase):
         self.assertEqual([r["player_id"] for r in narrowed], ["0", "1", "2"])
 
 
+def _raw_candidate(team_acquisition_value, survival_probability=1.0, positional_cliff=None,
+                    position_run_detected=False, denial_value=0.0, need_bonus=0.0, eligibility_bonus=0.0):
+    return {
+        "team_acquisition_value": team_acquisition_value, "survival_probability": survival_probability,
+        "positional_cliff": positional_cliff, "position_run_detected": position_run_detected,
+        "denial_value": denial_value, "need_bonus": need_bonus, "eligibility_bonus": eligibility_bonus,
+    }
+
+
+class ComputePickNecessityTests(unittest.TestCase):
+    def test_pick_necessity_is_never_just_universal_value_in_disguise(self):
+        # The exact case the user built this feature to distinguish: a WORSE player (lower
+        # team_acquisition_value) with severe scarcity pressure must be able to outscore a
+        # BETTER player sitting in an uncontested, deep position.
+        worse_player_facing_a_cliff = _raw_candidate(
+            90.0, survival_probability=0.1, positional_cliff={"tier": "HIGH", "gap": 10, "typical_gap": 2},
+            position_run_detected=True, denial_value=80.0,
+        )
+        better_player_no_pressure_at_all = _raw_candidate(97.0, survival_probability=1.0)
+        results = ps.compute_pick_necessity([worse_player_facing_a_cliff, better_player_no_pressure_at_all], round_num=3)
+        self.assertGreater(results[0][0], results[1][0])
+
+    def test_a_tightly_bunched_field_stays_near_the_close_call_baseline(self):
+        # "Multiple valid directions are 50s" -- three candidates with near-identical
+        # team_acquisition_value and no scarcity pressure at all should all land close to the
+        # NECESSITY_BASELINE, not a manufactured spread.
+        candidates = [_raw_candidate(100.0), _raw_candidate(99.5), _raw_candidate(99.0)]
+        results = ps.compute_pick_necessity(candidates, round_num=3)
+        for score, label in results:
+            self.assertLess(abs(score - ps.NECESSITY_BASELINE), 15.0)
+            self.assertIn(label, ("CLOSE CALL", "LOW URGENCY", "PREFERRED"))
+
+    def test_a_real_standout_with_full_scarcity_pressure_reaches_must_take(self):
+        standout = _raw_candidate(
+            120.0, survival_probability=0.02, positional_cliff={"tier": "HIGH", "gap": 20, "typical_gap": 2},
+            position_run_detected=True, denial_value=115.0, need_bonus=10.0, eligibility_bonus=5.0,
+        )
+        distant_second = _raw_candidate(60.0)
+        results = ps.compute_pick_necessity([standout, distant_second], round_num=3)
+        self.assertGreaterEqual(results[0][0], 90.0)
+        self.assertEqual(results[0][1], ps._necessity_label(results[0][0]))
+
+    def test_the_sole_candidate_in_a_snapshot_gets_full_standout_credit(self):
+        only_option = _raw_candidate(50.0)
+        results = ps.compute_pick_necessity([only_option], round_num=3)
+        self.assertGreaterEqual(results[0][0], ps.NECESSITY_BASELINE + ps.NECESSITY_STANDOUT_WEIGHT - 1e-6)
+
+    def test_late_round_necessity_is_rescaled_into_a_low_band_not_a_flat_identical_number(self):
+        # A late-round standout and a late-round toss-up must NOT collapse to one identical
+        # value -- that's exactly the IDP-percentile-collapse failure mode this app's own
+        # history already flagged as a real bug, not a stylistic nitpick.
+        standout = _raw_candidate(120.0, survival_probability=0.05, positional_cliff={"tier": "HIGH", "gap": 20, "typical_gap": 2})
+        toss_up = _raw_candidate(100.0)
+        late_round = ps.LATE_ROUND_THRESHOLD
+        results = ps.compute_pick_necessity([standout, toss_up], round_num=late_round)
+        self.assertLessEqual(results[0][0], ps.LATE_ROUND_NECESSITY_CAP + 1e-6)
+        self.assertLessEqual(results[1][0], ps.LATE_ROUND_NECESSITY_CAP + 1e-6)
+        self.assertGreater(results[0][0], results[1][0], "a real late-round standout must still outscore a late-round toss-up")
+
+    def test_necessity_label_thresholds_are_applied_correctly(self):
+        self.assertEqual(ps._necessity_label(99.0), "MUST TAKE")
+        self.assertEqual(ps._necessity_label(90.0), "STRONG ACTION")
+        self.assertEqual(ps._necessity_label(70.0), "PREFERRED")
+        self.assertEqual(ps._necessity_label(55.0), "CLOSE CALL")
+        self.assertEqual(ps._necessity_label(35.0), "LOW URGENCY")
+        self.assertEqual(ps._necessity_label(10.0), "DOESN'T MATTER MUCH")
+
+    def test_necessity_never_leaves_the_0_to_100_range(self):
+        extreme = _raw_candidate(
+            1000.0, survival_probability=0.0, positional_cliff={"tier": "HIGH", "gap": 999, "typical_gap": 1},
+            position_run_detected=True, denial_value=1000.0, need_bonus=50.0, eligibility_bonus=50.0,
+        )
+        results = ps.compute_pick_necessity([extreme, _raw_candidate(1.0)], round_num=3)
+        for score, _label in results:
+            self.assertGreaterEqual(score, 0.0)
+            self.assertLessEqual(score, 100.0)
+
+
 class BuildSnapshotTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
@@ -122,6 +200,9 @@ class BuildSnapshotTests(unittest.TestCase):
             self.assertIsNotNone(c.survival_probability)
             self.assertIsNotNone(c.opportunity_cost)
             self.assertIsNotNone(c.expected_value_of_waiting)
+            self.assertGreaterEqual(c.pick_necessity, 0.0)
+            self.assertLessEqual(c.pick_necessity, 100.0)
+            self.assertEqual(c.necessity_label, ps._necessity_label(c.pick_necessity))
             # team_acquisition_value must equal the documented sum -- the same invariant
             # test_draft_room.py enforces end-to-end, re-checked here since this module is
             # the one actually handing these numbers to the LLM debate layer.

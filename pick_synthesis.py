@@ -6,7 +6,7 @@ module asks an LLM anything; it exists specifically so the debate layer downstre
 to compute or guess a single number -- see pick_debate.py's own module docstring for why that
 boundary is a hard architectural requirement, not a style preference.
 
-Three real signals this module adds that didn't exist anywhere in the engine before:
+Four real signals this module adds that didn't exist anywhere in the engine before:
 
   * positional_cliff -- whether a real, computable bpa gap sits between this player and the
     next-best REMAINING player at his position, big enough that waiting risks a genuine tier
@@ -25,6 +25,54 @@ Three real signals this module adds that didn't exist anywhere in the engine bef
     "running" (draft_strategy.detect_positional_run's own real, observable signal from recent
     picks), computed once per snapshot and attached per candidate rather than left for the LLM
     debate layer to notice or re-derive on its own.
+
+  * pick_necessity / necessity_label -- NOT another player-value score (universal_value and
+    team_acquisition_value already answer "how good is he"). This answers a genuinely different
+    question: "how badly do I need to make THIS selection right now, given what happens if I
+    wait." 100 does not mean "best player" -- it means "there is effectively no reasonable
+    alternative to taking him now." A worse player facing a real cliff and heavy competing
+    demand can and should outscore a better player sitting in a deep, uncontested position.
+
+    Built additively from real signals already in this snapshot, never a new invented number:
+      - standout margin: how far this candidate's team_acquisition_value leads or trails the
+        best OTHER narrowed candidate, normalized against a fixed ABSOLUTE reference gap (see
+        NECESSITY_STANDOUT_REFERENCE_GAP), not the observed field's own min/max range -- a real
+        standout pushes this up; a tightly bunched field of several legitimate directions keeps
+        every candidate near the neutral baseline. The sole candidate in a single-candidate
+        snapshot gets full credit here (there is, literally, no alternative to compare against).
+      - survival_probability: (1 - survival) scaled up -- the core "what do you lose by
+        waiting" signal.
+      - positional_cliff: HIGH/MEDIUM add real points; LOW adds none.
+      - position_run_detected: a real, observed signal, not a guess.
+      - denial_value, normalized against this candidate's own team_acquisition_value: how much
+        a specific rival stands to gain from him -- a distinct signal from survival_probability
+        (a low-competition "run" can still survive rarely, and a specific rival can covet a
+        player even when overall survival isn't terrible).
+      - need_bonus + eligibility_bonus (this roster's own fit) -- applied directly, the same
+        additive-nudge treatment draft_room.py already gives these two terms.
+      - round: late-round picks (round >= draft_room's own UPSIDE_MODE_DEFAULT_ROUND) get the
+        WHOLE score rescaled proportionally into a low band (see LATE_ROUND_NECESSITY_CAP), not
+        forced to one identical flat number -- deliberately NOT the same shape as the
+        market_adj/IDP-percentile bug draft_room.py's own docstring documents (several unrelated
+        players landing on an identical normalized score purely as a normalization artifact, not
+        because they were actually equal). A late-round pick still keeps whatever real relative
+        signal it has, just compressed toward "this barely matters" -- a materially more honest
+        claim than "these are all identical," and it lets the engine genuinely say "take
+        whichever of these you prefer" without pretending a profound decision exists where one
+        doesn't.
+
+    Two signals from the original ten-factor list are deliberately NOT separate additive terms,
+    each for a specific, real reason rather than an oversight:
+      - next-pick distance (intervening_picks) is already fully absorbed into
+        survival_probability itself (survival_probability IS the calibrated function of
+        intervening_picks and every opponent's own board) -- adding it again as its own term
+        would double-count the identical underlying signal.
+      - opportunity_cost is mathematically team_acquisition_value * (1 - survival_probability):
+        normalizing it back out reduces to survival_probability alone, and using it
+        UNnormalized would leak the candidate's own value magnitude into a score this module
+        deliberately keeps value-orthogonal (a expensive player and a cheap one facing the
+        identical survival risk should score the identical necessity contribution from that
+        risk, not a bigger one for the pricier player).
 
 narrow_candidates does the field-narrowing a live debate actually needs: never hand an LLM the
 full 100+ player board -- only the top few genuinely live candidates (plus anything the user
@@ -68,6 +116,93 @@ CLIFF_MEDIUM_RATIO = 1.5
 # A position needs at least this many players still on the board for "typical gap" to mean
 # anything -- below it, there's no real distribution to compare against.
 CLIFF_MIN_POOL_SIZE = 3
+
+# Pick necessity -- see the module docstring's full account of why each weight exists and why
+# two of the originally-considered ten factors were deliberately folded rather than added as
+# their own terms. All principled starting points, not empirically backtested -- same honesty
+# this app applies to every other unproven constant.
+NECESSITY_BASELINE = 50.0            # "close call" / multiple legitimate paths -- the floor
+NECESSITY_STANDOUT_WEIGHT = 30.0     # normalized margin over the best OTHER narrowed candidate
+# A team_acquisition_value gap of roughly this size counts as a genuine standout -- an ABSOLUTE
+# reference (same idea as draft_room._scale_vor_to_bpa anchoring to a real gap size), not a
+# relative one against the observed field's own min/max range. A relative anchor is a real trap
+# here: in a small or tightly-bunched field, even a modest gap IS the field's entire range, which
+# would stretch it to fill the whole +/-30 swing regardless of how big the gap actually is in real
+# points -- confirmed directly: a 3-candidate field spanning only 1.0 point (100/99.5/99) drove the
+# leader's standout component to the full 15.0 (half the weight) under a relative anchor, when a
+# genuinely tiny 0.5-point edge should barely move the needle at all.
+NECESSITY_STANDOUT_REFERENCE_GAP = 15.0
+NECESSITY_SURVIVAL_WEIGHT = 20.0     # (1 - survival_probability) scaled up
+NECESSITY_CLIFF_POINTS = {"HIGH": 12.0, "MEDIUM": 6.0, "LOW": 0.0}
+NECESSITY_RUN_BONUS = 6.0
+NECESSITY_DENIAL_WEIGHT = 10.0       # denial_value normalized against this candidate's own value
+NECESSITY_ROSTER_FIT_WEIGHT = 0.8    # applied directly to (need_bonus + eligibility_bonus)
+
+LATE_ROUND_THRESHOLD = dr.UPSIDE_MODE_DEFAULT_ROUND  # same round draft_room switches to upside mode
+LATE_ROUND_NECESSITY_CAP = 30.0
+
+# Checked top-down; the first threshold this score meets or exceeds wins.
+NECESSITY_LABEL_THRESHOLDS = [
+    (98.0, "MUST TAKE"),
+    (85.0, "STRONG ACTION"),
+    (65.0, "PREFERRED"),
+    (50.0, "CLOSE CALL"),
+    (30.0, "LOW URGENCY"),
+    (0.0, "DOESN'T MATTER MUCH"),
+]
+
+
+def _necessity_label(score: float) -> str:
+    for threshold, label in NECESSITY_LABEL_THRESHOLDS:
+        if score >= threshold:
+            return label
+    return NECESSITY_LABEL_THRESHOLDS[-1][1]
+
+
+def compute_pick_necessity(raw_candidates: list[dict], round_num: int) -> list[tuple[float, str]]:
+    """(pick_necessity, necessity_label) per candidate, in the same order as raw_candidates --
+    see the module docstring for the full reasoning behind every term. Each entry in
+    raw_candidates needs: team_acquisition_value, need_bonus, eligibility_bonus,
+    survival_probability (or None), positional_cliff (dict or None), position_run_detected,
+    denial_value (or None/0)."""
+    values = [c["team_acquisition_value"] for c in raw_candidates]
+
+    results = []
+    for i, c in enumerate(raw_candidates):
+        others = [v for j, v in enumerate(values) if j != i]
+        if not others:
+            standout_component = NECESSITY_STANDOUT_WEIGHT  # no alternative exists at all
+        else:
+            margin = c["team_acquisition_value"] - max(others)
+            normalized_margin = margin / NECESSITY_STANDOUT_REFERENCE_GAP
+            standout_component = max(-1.0, min(1.0, normalized_margin)) * NECESSITY_STANDOUT_WEIGHT
+
+        survival = c.get("survival_probability")
+        survival_component = (1 - survival) * NECESSITY_SURVIVAL_WEIGHT if survival is not None else 0.0
+
+        cliff = c.get("positional_cliff")
+        cliff_component = NECESSITY_CLIFF_POINTS.get(cliff["tier"], 0.0) if cliff else 0.0
+
+        run_component = NECESSITY_RUN_BONUS if c.get("position_run_detected") else 0.0
+
+        denial_value = c.get("denial_value") or 0.0
+        own_value = c["team_acquisition_value"]
+        denial_component = (min(denial_value / own_value, 1.0) * NECESSITY_DENIAL_WEIGHT) if denial_value and own_value > 0 else 0.0
+
+        roster_fit_component = (c.get("need_bonus", 0.0) + c.get("eligibility_bonus", 0.0)) * NECESSITY_ROSTER_FIT_WEIGHT
+
+        raw_score = (
+            NECESSITY_BASELINE + standout_component + survival_component
+            + cliff_component + run_component + denial_component + roster_fit_component
+        )
+        raw_score = max(0.0, min(100.0, raw_score))
+
+        if round_num >= LATE_ROUND_THRESHOLD:
+            score = round(raw_score * (LATE_ROUND_NECESSITY_CAP / 100.0), 1)
+        else:
+            score = round(raw_score, 1)
+        results.append((score, _necessity_label(score)))
+    return results
 
 
 def _find_row(board: list[dict], player_id) -> Optional[dict]:
@@ -161,6 +296,8 @@ class CandidateSnapshot:
     denial_team: Optional[str]
     positional_cliff: Optional[dict]
     position_run_detected: bool
+    pick_necessity: float
+    necessity_label: str
 
 
 @dataclass(frozen=True)
@@ -215,28 +352,39 @@ def build_snapshot(
         )
         analysis_by_id = {str(a["player_id"]): a for a in analysis}
 
-    candidates = []
+    # First pass: gather every real per-candidate number EXCEPT pick_necessity, which needs the
+    # whole narrowed set as context (a standout only means something relative to the field) --
+    # see compute_pick_necessity's own docstring.
+    raw_candidates = []
     for row in narrowed:
         pid = str(row["player_id"])
         a = analysis_by_id.get(pid, {})
         survival = a.get("survival_probability")
         universal_value = row["universal_value"]
-        candidates.append(CandidateSnapshot(
-            player_id=pid, name=row["name"], position=row["position"], team=row.get("team"),
-            bpa=row["bpa"], bpa_source=row["bpa_source"], confidence=row["confidence"],
-            universal_value=universal_value, need_bonus=row.get("need_bonus", 0.0),
-            eligibility_bonus=row.get("eligibility_bonus", 0.0), team_acquisition_value=row["final_score"],
-            survival_probability=survival, intervening_picks=a.get("intervening_picks"),
-            opportunity_cost=a.get("opportunity_cost"),
-            expected_value_of_waiting=expected_value_of_waiting(universal_value, survival),
-            denial_value=a.get("denial_value"), denial_team=a.get("denial_team"),
-            positional_cliff=detect_positional_cliff(board, pid),
-            position_run_detected=(run_position is not None and row["position"] == run_position),
-        ))
+        raw_candidates.append({
+            "player_id": pid, "name": row["name"], "position": row["position"], "team": row.get("team"),
+            "bpa": row["bpa"], "bpa_source": row["bpa_source"], "confidence": row["confidence"],
+            "universal_value": universal_value, "need_bonus": row.get("need_bonus", 0.0),
+            "eligibility_bonus": row.get("eligibility_bonus", 0.0), "team_acquisition_value": row["final_score"],
+            "survival_probability": survival, "intervening_picks": a.get("intervening_picks"),
+            "opportunity_cost": a.get("opportunity_cost"),
+            "expected_value_of_waiting": expected_value_of_waiting(universal_value, survival),
+            "denial_value": a.get("denial_value"), "denial_team": a.get("denial_team"),
+            "positional_cliff": detect_positional_cliff(board, pid),
+            "position_run_detected": (run_position is not None and row["position"] == run_position),
+        })
+
+    round_num = (max((p.get("round") or 1) for p in picks) if picks else 1)
+    necessity_by_candidate = compute_pick_necessity(raw_candidates, round_num)
+
+    candidates = [
+        CandidateSnapshot(**c, pick_necessity=necessity, necessity_label=label)
+        for c, (necessity, label) in zip(raw_candidates, necessity_by_candidate)
+    ]
 
     return PickSnapshot(
         pick_label=pick_label,
-        round=(max((p.get("round") or 1) for p in picks) if picks else 1),
+        round=round_num,
         my_roster_id=str(my_roster_id),
         candidates=tuple(candidates),
         user_selected_player_id=(str(user_selected_player_id) if user_selected_player_id is not None else None),
@@ -246,6 +394,7 @@ def build_snapshot(
 _DIFF_FIELDS = (
     "universal_value", "need_bonus", "eligibility_bonus", "team_acquisition_value",
     "survival_probability", "opportunity_cost", "expected_value_of_waiting", "denial_value",
+    "pick_necessity",
 )
 
 

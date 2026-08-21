@@ -124,8 +124,12 @@ correct action THIS PICK. You are given a frozen snapshot of real, already-compu
 and lineup-eligibility bonuses), survival_probability (the odds this player is still available at the user's next
 pick), opportunity_cost (expected value lost if he doesn't survive), expected_value_of_waiting (the flip side --
 what you'd expect to keep if you pass and gamble), denial_value (what the likeliest intervening opponent would
-gain from him), and positional_cliff (whether a real, computed gap sits between this player and the next-best
-remaining player at his position).
+gain from him), positional_cliff (whether a real, computed gap sits between this player and the next-best
+remaining player at his position), and pick_necessity (0-100, NOT another value score -- it answers "how badly do
+I need to make this selection right now," and 100 means "no reasonable alternative exists," not "best player").
+A candidate can have a lower universal_value than another candidate and still be the correct pick if his
+pick_necessity is much higher -- that gap IS the interesting case, and your job is to explain it when it appears,
+not paper over it.
 
 These numbers are the ONLY numbers that exist. Never invent, estimate, or silently recompute a value, a
 probability, or a projection of your own -- reason only about what the GIVEN numbers mean and how they should be
@@ -201,6 +205,7 @@ def _format_candidate(candidate: CandidateSnapshot, user_selected_player_id: Opt
     flag = " (USER-FLAGGED)" if user_selected_player_id == candidate.player_id else ""
     lines = [
         f"CANDIDATE: {candidate.name} ({candidate.position}{', ' + candidate.team if candidate.team else ''}){flag}",
+        f"  Pick necessity: {candidate.pick_necessity}/100 -- {candidate.necessity_label} (NOT a value score -- see below for value)",
         f"  Universal value: {candidate.universal_value} (source: {candidate.bpa_source}, confidence: {candidate.confidence})",
         f"  Team acquisition value: {candidate.team_acquisition_value} (need_bonus: {candidate.need_bonus:+}, eligibility_bonus: {candidate.eligibility_bonus:+})",
     ]
