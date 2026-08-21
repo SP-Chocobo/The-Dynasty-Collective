@@ -27,6 +27,9 @@ import bot_benchmark
 import bot_config
 import bot_research
 import decision_log
+import draft_strategy
+import pick_debate
+import pick_synthesis
 import pinned_messages
 import todo_log
 import llm_engine
@@ -39,6 +42,29 @@ from league_format import FORMAT_GUIDANCE, FORMAT_OPTIONS, STANDARD, get_format_
 from league_prefs import forget_league, get_prefs, move_league, sorted_leagues, toggle_archive
 from player_universe import available_players, build_player_universe, league_usable_positions, matching_players
 from sleeper_client import SleeperAPIError, SleeperClient, compute_points_from_stats, find_roster_for_user, league_format_summary
+
+# Friendly display labels for pick_synthesis.diff_snapshots' real field names -- presentation
+# only, a straight lookup over an already-computed dict key, never a re-derivation of the
+# number itself. See the Draft Room view's "What changed?" drawer.
+_DRAFT_ROOM_DIFF_LABELS = {
+    "universal_value": "Universal value", "need_bonus": "Roster need",
+    "eligibility_bonus": "Lineup flexibility", "team_acquisition_value": "Acquisition value",
+    "survival_probability": "Survival probability", "opportunity_cost": "Opportunity cost",
+    "expected_value_of_waiting": "Value of waiting", "denial_value": "Denial value",
+    "pick_necessity": "Pick necessity",
+}
+
+# Pure display lookups over pick_synthesis's already-computed necessity_label -- never a new
+# tier boundary decided here (those live in pick_synthesis.NECESSITY_LABEL_THRESHOLDS).
+_NECESSITY_COLOR_EMOJI = {
+    "MUST TAKE": "🟣", "STRONG ACTION": "🔵", "PREFERRED": "🟢",
+    "CLOSE CALL": "🟡", "LOW URGENCY": "🔴", "DOESN'T MATTER MUCH": "🔴",
+}
+_NECESSITY_BADGE_CLASS = {
+    "MUST TAKE": "badge-necessity-must-take", "STRONG ACTION": "badge-necessity-strong",
+    "PREFERRED": "badge-necessity-preferred", "CLOSE CALL": "badge-necessity-close-call",
+    "LOW URGENCY": "badge-necessity-low", "DOESN'T MATTER MUCH": "badge-necessity-low",
+}
 
 CHATS_DIR = Path("data/chats")
 CHATS_DIR.mkdir(parents=True, exist_ok=True)
@@ -99,6 +125,15 @@ st.markdown(
     .badge-user { background: rgba(148,163,184,0.18); color: #cbd5e1; border: 1px solid #64748b; }
     .badge-summary { background: rgba(56,189,248,0.18); color: #7dd3fc; border: 1px solid #0ea5e9; }
     .badge-notice { background: rgba(245,158,11,0.18); color: #fbbf24; border: 1px solid #f59e0b; }
+    /* Pick Necessity's own color ramp (Draft Room view) -- distinct classes from the debate
+       personas above even though the colors are reused from that same palette, so a necessity
+       tier is never visually confusable with a Quant/Beat/Contrarian/Moderator badge. Low to
+       high necessity: red -> gold -> green -> blue -> purple. */
+    .badge-necessity-must-take { background: rgba(139,92,246,0.18); color: #c4b5fd; border: 1px solid #8b5cf6; box-shadow: 0 0 0 1px rgba(196,181,253,0.35), 0 0 8px rgba(139,92,246,0.45); }
+    .badge-necessity-strong { background: rgba(56,189,248,0.18); color: #7dd3fc; border: 1px solid #0ea5e9; }
+    .badge-necessity-preferred { background: rgba(22,163,74,0.18); color: #4ade80; border: 1px solid #16a34a; }
+    .badge-necessity-close-call { background: rgba(212,160,23,0.18); color: #facc15; border: 1px solid #d4a017; }
+    .badge-necessity-low { background: rgba(185,28,28,0.18); color: #f87171; border: 1px solid #b91c1c; }
     .agent-block {
         border-radius: 8px; padding: 10px 14px; margin-bottom: 10px;
         background: #202124; border: 1px solid #2f3033;
@@ -2672,15 +2707,17 @@ with st.container(key="app_header"):
 
 MATCHUP_VIEW = "🏈 Matchup"
 MAINTENANCE_VIEW = "🔧 Roster Maintenance"
+DRAFT_VIEW = "📋 Draft Room"
 LEAGUE_VIEW = "👥 League"
 main_view = st.segmented_control(
     "Dashboard view",
-    options=[MATCHUP_VIEW, MAINTENANCE_VIEW, LEAGUE_VIEW],
+    options=[MATCHUP_VIEW, MAINTENANCE_VIEW, DRAFT_VIEW, LEAGUE_VIEW],
     default=MATCHUP_VIEW,
     key="main_view",
     label_visibility="collapsed",
     help="Matchup: your lineup, projections, and the debate studio for start/sit calls. "
     "Roster Maintenance: free agents/waivers and reference material for trade and pickup research. "
+    "Draft Room: live startup/rookie draft pick recommendations. "
     "League: every other team's roster, for trade scouting.",
 )
 st.markdown("---")
@@ -3418,6 +3455,276 @@ elif main_view == MAINTENANCE_VIEW:
                     else:
                         set_scope(item["filename"], edit_league_ids if edit_mode == "Specific league(s)" else None)
                         st.rerun()
+
+elif main_view == DRAFT_VIEW:
+    # ------------------------------------------------------------------ draft room --
+    # This view is deliberately a CONSOLE, not a chat -- the deterministic engine
+    # (draft_room.py/draft_strategy.py/pick_synthesis.py) is the source of truth and this
+    # block only ever renders numbers it already computed. The one exception worth naming
+    # explicitly: percentage/string formatting of an already-computed number (e.g.
+    # round(survival_probability * 100)) is presentation, not calculation -- the same
+    # transformation pick_debate.py's own evidence formatting already applies. This view
+    # never re-ranks, re-scores, or recomputes anything a backend module didn't already hand
+    # it, including the positional filter below (a pure display filter over an already-built
+    # snapshot's candidates -- it never changes what pick_synthesis narrowed to or what
+    # pick_debate actually reasons over).
+    st.subheader("Draft Room")
+    st.session_state.setdefault("draft_room_picks_by_draft", {})
+    st.session_state.setdefault("draft_room_last_snapshot", None)
+    st.session_state.setdefault("draft_room_debate_result", None)
+    st.session_state.setdefault("draft_room_pool_scope", "all")
+
+    if not roster:
+        st.info("No roster found for your account in this league yet -- sync your username in the sidebar.")
+    else:
+        draft_client: SleeperClient = st.session_state.sleeper_client
+        my_roster_id = str(roster.get("roster_id"))
+
+        try:
+            drafts = draft_client.get_drafts(st.session_state.selected_league_id)
+        except SleeperAPIError as exc:
+            drafts = []
+            notify("error", f"Couldn't reach Sleeper for draft data: {exc}")
+
+        if not drafts:
+            st.info("No draft found for this league on Sleeper yet.")
+        else:
+            draft_options = {d["draft_id"]: d for d in drafts}
+            ordered_draft_ids = sorted(
+                draft_options, key=lambda did: draft_options[did].get("start_time") or 0, reverse=True,
+            )
+
+            def _draft_label(did: str) -> str:
+                d = draft_options[did]
+                return f"{d.get('season', '?')} · {d.get('type', 'draft')} · {d.get('status', '?')}"
+
+            draft_id = st.selectbox(
+                "Draft", options=ordered_draft_ids, format_func=_draft_label, key="draft_room_draft_picker",
+            )
+            active_draft = draft_options[draft_id]
+            draft_type = active_draft.get("type")
+
+            if draft_type not in ("snake", "linear"):
+                st.warning(
+                    f"Draft Room currently supports snake/linear pick-order drafts only -- this "
+                    f"draft is type '{draft_type}' (e.g. auction), where a fixed pick order doesn't apply."
+                )
+            else:
+                total_rounds = (active_draft.get("settings") or {}).get("rounds")
+                draft_order_map = active_draft.get("draft_order") or {}
+                if not total_rounds or not draft_order_map:
+                    st.info("This draft's pick order/round count isn't set on Sleeper's side yet.")
+                else:
+                    uid_to_roster_id = {
+                        str(r.get("owner_id")): str(r.get("roster_id")) for r in (snapshot.get("rosters") or [])
+                    }
+                    slot_order = sorted(draft_order_map.items(), key=lambda kv: kv[1])
+                    round_1_order = [uid_to_roster_id.get(str(uid)) for uid, _slot in slot_order]
+                    if any(rid is None for rid in round_1_order):
+                        st.caption("⚠️ Couldn't map every drafter to a roster in this league -- pick-order analysis may be incomplete.")
+                        round_1_order = [rid for rid in round_1_order if rid is not None]
+
+                    top_row_col1, top_row_col2 = st.columns([1, 2])
+                    with top_row_col1:
+                        if st.button("🔄 Refresh Picks", key="draft_room_refresh_btn", use_container_width=True):
+                            try:
+                                fetched_picks = draft_client.get_draft_picks(draft_id)
+                                st.session_state.draft_room_picks_by_draft[draft_id] = fetched_picks
+                                notify("success", f"Pulled {len(fetched_picks)} pick(s) from Sleeper.")
+                            except SleeperAPIError as exc:
+                                notify("error", f"Couldn't reach Sleeper: {exc}")
+                    with top_row_col2:
+                        pool_scope_label = st.radio(
+                            "Player pool", options=["All players", "Rookies only", "Veterans only"],
+                            index=["all", "rookies_only", "veterans_only"].index(st.session_state.draft_room_pool_scope),
+                            horizontal=True, key="draft_room_pool_scope_radio",
+                            help="Rookies only / Veterans only is detected from KeepTradeCut's own source data, not a maintained list.",
+                        )
+                        st.session_state.draft_room_pool_scope = {
+                            "All players": "all", "Rookies only": "rookies_only", "Veterans only": "veterans_only",
+                        }[pool_scope_label]
+
+                    draft_picks = st.session_state.draft_room_picks_by_draft.get(draft_id, [])
+                    pick_order = draft_strategy.generate_pick_order(round_1_order, total_rounds=total_rounds, draft_type=draft_type)
+                    num_teams = len(round_1_order)
+                    current_index = len(draft_picks)
+
+                    st.caption(
+                        f"{len(draft_picks)} pick(s) made · {num_teams} teams · {total_rounds} rounds. "
+                        "Pick order assumes no picks have been traded within this draft -- a traded future "
+                        "pick may show the original owner's needs instead of the new owner's."
+                    )
+
+                    if current_index >= len(pick_order):
+                        st.success("Draft complete.")
+                    else:
+                        target_index = draft_strategy.find_next_pick_index(pick_order, my_roster_id, current_index - 1)
+                        if target_index is None:
+                            st.info("You have no more picks remaining in this draft.")
+                        else:
+                            target_round = target_index // num_teams + 1
+                            target_slot = target_index % num_teams + 1
+                            pick_label = f"{target_round}.{target_slot:02d}"
+                            is_live = target_index == current_index
+                            owner_names_by_id = {str(k): v for k, v in roster_owner_names(snapshot).items()}
+
+                            league_for_engine = {
+                                "roster_positions": league.get("roster_positions"),
+                                "scoring_settings": league.get("scoring_settings"),
+                                "total_rosters": league.get("total_rosters"),
+                                "settings": league.get("settings"),
+                            }
+
+                            flag_query = st.text_input(
+                                "Also consider a specific player (optional)", key="draft_room_flag_query",
+                            )
+                            flagged_player_id = None
+                            if flag_query:
+                                flag_matches = [m for m in matching_players(player_universe, flag_query) if m.get("available")]
+                                if flag_matches:
+                                    flag_labels = {m["player_id"]: f"{m['name']} ({m['position']}, {m['team']})" for m in flag_matches[:8]}
+                                    flagged_player_id = st.selectbox(
+                                        "Which one?", options=list(flag_labels.keys()),
+                                        format_func=lambda pid: flag_labels[pid], key="draft_room_flag_select",
+                                    )
+                                else:
+                                    st.caption("No available player matched that.")
+
+                            try:
+                                snap = pick_synthesis.build_snapshot(
+                                    merger, players_db, draft_picks, pick_order, target_index, my_roster_id,
+                                    league_for_engine, pick_label=pick_label,
+                                    pool_scope=st.session_state.draft_room_pool_scope,
+                                    user_selected_player_id=flagged_player_id,
+                                )
+                            except Exception as exc:  # noqa: BLE001 -- surface, never crash the whole dashboard
+                                snap = None
+                                notify("error", f"Couldn't build the draft board: {exc}")
+
+                            if snap is not None and not snap.candidates:
+                                st.info("No candidates available in the current player pool/scope.")
+                            elif snap is not None:
+                                header = f"ON THE CLOCK — {pick_label}" if is_live else f"YOUR NEXT PICK — {pick_label}"
+                                st.markdown(f"### {header}")
+                                if not is_live:
+                                    on_clock_id = str(pick_order[current_index])
+                                    on_clock_name = owner_names_by_id.get(on_clock_id, f"Roster {on_clock_id}")
+                                    st.caption(f"Not your turn yet -- {on_clock_name} is on the clock.")
+
+                                positions_present = sorted({c.position for c in snap.candidates})
+                                position_filter = st.multiselect(
+                                    "Filter by position (display only -- never changes what's analyzed)",
+                                    options=positions_present, default=positions_present,
+                                    key="draft_room_position_filter",
+                                )
+                                filtered = [c for c in snap.candidates if c.position in position_filter] if position_filter else list(snap.candidates)
+
+                                table_rows = [{
+                                    "Name": c.name, "Pos": c.position,
+                                    "Necessity": f"{_NECESSITY_COLOR_EMOJI.get(c.necessity_label, '')} {c.pick_necessity:.0f} — {c.necessity_label}",
+                                    "Universal": c.universal_value, "Acquisition": c.team_acquisition_value,
+                                    "Survival": f"{round(c.survival_probability * 100)}%" if c.survival_probability is not None else "—",
+                                    "Cliff": c.positional_cliff["tier"] if c.positional_cliff else "—",
+                                    "Run": "🏃" if c.position_run_detected else "",
+                                } for c in filtered]
+                                st.dataframe(pd.DataFrame(table_rows), hide_index=True, use_container_width=True)
+
+                                debate_btn_col, _ = st.columns([1, 3])
+                                with debate_btn_col:
+                                    run_debate_clicked = st.button(
+                                        "🎙️ Debate This Pick", key="draft_room_debate_btn",
+                                        type="primary", use_container_width=True,
+                                    )
+                                if run_debate_clicked:
+                                    debate_api_keys = {
+                                        "claude": api_key_for("anthropic"), "gemini": api_key_for("gemini"),
+                                        "openai": api_key_for("openai"),
+                                    }
+                                    with st.spinner("Strategist, Skeptic, and Caller are debating..."):
+                                        debate_result = pick_debate.debate_pick(
+                                            snap, previous_snapshot=st.session_state.draft_room_last_snapshot,
+                                            api_keys=debate_api_keys,
+                                        )
+                                    st.session_state.draft_room_last_snapshot = snap
+                                    st.session_state.draft_room_debate_result = debate_result
+                                    if debate_result.errors:
+                                        notify("warning", "Debate finished with issues: " + "; ".join(debate_result.errors))
+
+                                debate_result = st.session_state.draft_room_debate_result
+                                if debate_result is not None and debate_result.pick_label == pick_label:
+                                    st.markdown("---")
+                                    rec = debate_result.recommended
+                                    if rec is None:
+                                        st.warning("The panel's recommendation didn't cleanly match a candidate -- see the raw reports below.")
+                                    else:
+                                        st.markdown(f"## Recommendation: {rec.name}")
+                                        conf_caption = f"Confidence: {debate_result.confidence}" if debate_result.confidence else ""
+                                        st.caption(conf_caption)
+                                        if debate_result.why:
+                                            st.markdown(f"**Why now?** {debate_result.why}")
+
+                                        necessity_class = _NECESSITY_BADGE_CLASS.get(rec.necessity_label, "badge-necessity-close-call")
+                                        necessity_emoji = _NECESSITY_COLOR_EMOJI.get(rec.necessity_label, "")
+                                        st.markdown(
+                                            f'<span class="badge {necessity_class}">{necessity_emoji} PICK NECESSITY: '
+                                            f'{rec.pick_necessity:.0f}/100 — {rec.necessity_label}</span>',
+                                            unsafe_allow_html=True,
+                                        )
+
+                                        metric_row1 = st.columns(5)
+                                        metric_row1[0].metric("Universal Value", f"{rec.universal_value:.0f}")
+                                        metric_row1[1].metric("Your Acquisition Value", f"{rec.team_acquisition_value:.0f}")
+                                        metric_row1[2].metric(
+                                            "Survival to Next Pick",
+                                            f"{round(rec.survival_probability * 100)}%" if rec.survival_probability is not None else "—",
+                                        )
+                                        metric_row1[3].metric("Positional Cliff", rec.positional_cliff["tier"] if rec.positional_cliff else "—")
+                                        metric_row1[4].metric(f"{rec.position} Run", "DETECTED" if rec.position_run_detected else "—")
+
+                                        metric_row2 = st.columns(3)
+                                        metric_row2[0].metric("Opportunity Cost of Waiting", rec.opportunity_cost if rec.opportunity_cost is not None else "—")
+                                        metric_row2[1].metric("Expected Value If You Wait", rec.expected_value_of_waiting if rec.expected_value_of_waiting is not None else "—")
+                                        metric_row2[2].metric("Denial Value", rec.denial_value if rec.denial_value else "—")
+
+                                        alt = debate_result.best_alternative
+                                        if alt is not None:
+                                            st.markdown(f"**Best alternative:** {alt.name} — {alt.team_acquisition_value:.0f} acquisition value")
+                                            alt_survival = f"{round(alt.survival_probability * 100)}%" if alt.survival_probability is not None else "—"
+                                            st.caption(f"Survival: {alt_survival}")
+
+                                    if debate_result.disagreements:
+                                        for d in debate_result.disagreements:
+                                            st.warning(f"⚠️ Panel flagged a possible issue with an input: **{d['term']}** — {d['reason']}")
+
+                                    with st.expander("🗣️ Debate"):
+                                        st.markdown("**Strategist** — why the numbers favor the pick")
+                                        st.markdown(f'<div class="agent-block agent-prose">{html.escape(debate_result.strategist_report)}</div>', unsafe_allow_html=True)
+                                        st.markdown("**Skeptic** — what could make waiting correct")
+                                        st.markdown(f'<div class="agent-block agent-prose">{html.escape(debate_result.skeptic_report)}</div>', unsafe_allow_html=True)
+                                        st.markdown("**Caller** — final synthesis")
+                                        st.markdown(f'<div class="agent-block agent-prose">{html.escape(debate_result.why or debate_result.caller_report)}</div>', unsafe_allow_html=True)
+                                        if debate_result.key_factor:
+                                            st.caption(f"Key factor: {debate_result.key_factor}")
+                                        st.markdown("**Dissent** — the strongest argument against the recommendation")
+                                        st.markdown(
+                                            f'<div class="agent-block agent-prose">{html.escape(debate_result.dissent) if debate_result.dissent else "None raised."}</div>',
+                                            unsafe_allow_html=True,
+                                        )
+
+                                    if debate_result.diff:
+                                        with st.expander("📊 What changed since your last debate?"):
+                                            for d in debate_result.diff:
+                                                if d.get("entered") is True:
+                                                    st.markdown(f"🆕 **{d['name']}** entered the candidate pool at rank {d['rank']}")
+                                                elif d.get("entered") is False:
+                                                    st.markdown(f"❌ **{d['name']}** is no longer a live candidate (was rank {d['rank']})")
+                                                elif d.get("deltas"):
+                                                    delta_str = ", ".join(f"{_DRAFT_ROOM_DIFF_LABELS.get(k, k)}: {v:+}" for k, v in d["deltas"].items())
+                                                    st.markdown(f"**{d['name']}**: rank moved {d['rank_delta']:+d} ({delta_str})")
+                                elif debate_result is not None:
+                                    st.caption("A prior debate result is available for a different pick -- click Debate This Pick to refresh for this one.")
+
+    st.markdown("---")
 
 else:
     # ------------------------------------------------------------------ league rosters --
