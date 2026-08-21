@@ -1441,7 +1441,24 @@ class DataMerger:
                 narrowed = key_matches[key_matches["position"] == position]
                 if not narrowed.empty:
                     key_matches = narrowed
-            return key_matches.iloc[0]
+            candidate = key_matches.iloc[0]
+            # (first-initial, rest-of-name) is a lossy hash -- two real people can share
+            # BOTH their first initial and their entire remaining name, which the team/
+            # position narrowing above can't fix when Draft Sharks' own first-initial-only
+            # export never gave a second row to narrow against in the first place.
+            # Confirmed live: the committed baseline has exactly one "B Robinson" row
+            # (Bijan Robinson, team=ATL, trade_value=99) -- querying this same table for
+            # the real, different Brian Robinson (team=WAS) still returned Bijan's row
+            # unmodified with nothing to narrow against, silently pricing a bench RB as a
+            # top-5 dynasty asset. A team that's known on both sides and disagrees is real
+            # evidence this is a different person, not the same player traded since --
+            # reject outright (no match, not a guess) rather than hand back someone else's
+            # value. Scoped to this key-based path only: an EXACT full-name match (above)
+            # is not a lossy hash, so a team mismatch there is far more likely just stale
+            # roster data than a misidentified player, and shouldn't be thrown out.
+            if team and "team" in table.columns and pd.notna(candidate.get("team")) and candidate["team"] != team:
+                return None
+            return candidate
 
         choices = table["norm_name"].tolist()
         candidates = difflib.get_close_matches(norm_name, choices, n=3, cutoff=self.match_cutoff)

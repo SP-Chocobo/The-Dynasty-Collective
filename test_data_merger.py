@@ -72,6 +72,36 @@ class FindMatchExactNameTests(unittest.TestCase):
         self.assertNotEqual(aj.get("value"), amonra.get("value"))
 
 
+class FindMatchKeySingleRowWrongTeamTests(unittest.TestCase):
+    """A real bug caught live, not synthetic: Draft Sharks' own first-initial-only export has
+    exactly ONE "B Robinson" row (Bijan Robinson, team=ATL) -- there is no second row for the
+    real, different Brian Robinson (team=WAS) to narrow against, so the len(key_matches) > 1
+    guard never even ran, and a query for Brian Robinson returned Bijan's row completely
+    unmodified. Confirmed in a live draft board: Brian Robinson showed Bijan's exact
+    universal_value/acquisition_value, silently pricing a bench RB as a top-5 dynasty asset.
+    A team that's known on both sides and disagrees is real evidence of a different person --
+    even for a lone candidate -- and must reject the match outright rather than guess."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.merger = dm.DataMerger()
+
+    def test_the_real_bijan_robinson_still_matches_his_own_row(self):
+        match = self.merger.merge_player("Bijan Robinson", position="RB", team="ATL")
+        self.assertTrue(match.get("matched"))
+        self.assertEqual(match.get("team"), "ATL")
+
+    def test_a_different_real_person_sharing_the_key_does_not_steal_his_value(self):
+        match = self.merger.merge_player("Brian Robinson", position="RB", team="WAS")
+        self.assertFalse(match.get("matched"))
+
+    def test_omitting_team_still_returns_the_only_candidate_on_file(self):
+        # No team given means nothing to contradict -- this stays a real, if unconfirmed, match
+        # rather than being rejected for no reason.
+        match = self.merger.merge_player("Brian Robinson", position="RB")
+        self.assertTrue(match.get("matched"))
+
+
 class AliasSaveLoadRemoveTests(unittest.TestCase):
     """save_alias had no UI counterpart for remove_alias at all -- once set, an alias could
     only be undone by hand-editing data/player_aliases.json. These cover the round-trip the

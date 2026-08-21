@@ -707,3 +707,73 @@ def compute_draft_board(
         "time_horizon_adj", "risk_adj", "universal_value",
         "need_bonus", "eligibility_bonus", "confidence", "final_score", "mode", "projected_points",
     ]], "projected_points")
+
+
+# -- in-app Mock Draft sandbox (see app.py's Draft Room view) -------------------------------
+#
+# A practice draft entirely independent of any real Sleeper league/draft -- useful for
+# rehearsing strategy under a chosen format before a real draft happens, or one that hasn't
+# even been created on Sleeper's side yet. Reuses compute_draft_board/build_snapshot/
+# debate_pick completely unchanged: a mock is just a synthetic league dict plus a plain
+# picks list built up locally instead of pulled from Sleeper's API, and every deterministic
+# module downstream never needed a real Sleeper league to begin with -- it always spoke in
+# roster_positions/scoring_settings/picks, never in Sleeper-specific IDs or endpoints.
+
+MOCK_SCORING_REC_VALUES = {"standard": 0.0, "half_ppr": 0.5, "ppr": 1.0}
+# A common real-league TE-premium convention (extra points per TE reception on top of the
+# base "rec" value above) -- a principled starting point, not empirically backtested, same
+# honesty as every other unproven constant in this module.
+MOCK_TE_PREMIUM_BONUS = 0.5
+MOCK_BENCH_SLOTS = 6
+
+
+def build_mock_league(*, teams: int, superflex: bool, scoring: str, te_premium: bool, dynasty: bool) -> dict:
+    """A synthetic Sleeper-shaped league dict for the Mock Draft sandbox -- the exact same
+    roster_positions/scoring_settings/settings shape compute_draft_board already expects from
+    a real league, so nothing downstream (including narrow_candidates, pick_analysis, or
+    debate_pick) needs a special case for "this isn't a real Sleeper league." scoring is one
+    of MOCK_SCORING_REC_VALUES's keys ("standard"/"half_ppr"/"ppr"); an unrecognized value
+    falls back to full PPR rather than silently scoring as standard."""
+    starters = ["QB", "RB", "RB", "WR", "WR", "TE", "FLEX", "FLEX"]
+    if superflex:
+        starters.append("SUPER_FLEX")
+    roster_positions = starters + ["BN"] * MOCK_BENCH_SLOTS
+    scoring_settings = {"rec": MOCK_SCORING_REC_VALUES.get(scoring, 1.0)}
+    if te_premium:
+        scoring_settings["bonus_rec_te"] = MOCK_TE_PREMIUM_BONUS
+    return {
+        "roster_positions": roster_positions,
+        "scoring_settings": scoring_settings,
+        "total_rosters": teams,
+        "settings": {"type": 2 if dynasty else 0},
+    }
+
+
+def simulate_opponent_picks(
+    picks: list[dict], pick_order: list, my_roster_id, num_teams: int,
+    merger: DataMerger, players_db: dict[str, dict], league: dict, *, pool_scope: str = "all",
+) -> list[dict]:
+    """Auto-draft every pick between the current spot and the user's next turn (or the end of
+    the draft) -- each one takes that roster's own top team_acquisition_value board pick, the
+    same deterministic engine the user's own recommendation is built from, just pointed at
+    whichever other roster is on the clock. Never mutates picks -- returns a new, extended
+    list -- so the Mock Draft UI has a plain function to replay against after a Reset rather
+    than something with hidden state of its own. Stops early (rather than raising) if the
+    available pool ever comes up empty -- a very short mock with more rounds than rosterable
+    players is a real, if unlikely, config a user could set up."""
+    picks = list(picks)
+    while True:
+        idx = len(picks)
+        if idx >= len(pick_order):
+            break
+        on_clock = str(pick_order[idx])
+        if on_clock == str(my_roster_id):
+            break
+        board = compute_draft_board(merger, players_db, picks, on_clock, league, pool_scope=pool_scope)
+        if not board:
+            break
+        picks.append({
+            "pick_no": idx + 1, "round": idx // num_teams + 1, "roster_id": on_clock,
+            "player_id": board[0]["player_id"],
+        })
+    return picks

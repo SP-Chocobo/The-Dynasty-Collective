@@ -27,6 +27,7 @@ import bot_benchmark
 import bot_config
 import bot_research
 import decision_log
+import draft_room
 import draft_strategy
 import pick_debate
 import pick_synthesis
@@ -40,7 +41,7 @@ from data_merger import (
 )
 from league_format import FORMAT_GUIDANCE, FORMAT_OPTIONS, STANDARD, get_format_override, set_format_override
 from league_prefs import forget_league, get_prefs, move_league, sorted_leagues, toggle_archive
-from player_universe import available_players, build_player_universe, league_usable_positions, matching_players
+from player_universe import available_players, build_player_universe, league_usable_positions, matching_players, player_name
 from sleeper_client import SleeperAPIError, SleeperClient, compute_points_from_stats, find_roster_for_user, league_format_summary
 
 # Friendly display labels for pick_synthesis.diff_snapshots' real field names -- presentation
@@ -3528,8 +3529,285 @@ elif main_view == DRAFT_VIEW:
     st.session_state.setdefault("draft_room_last_snapshot", None)
     st.session_state.setdefault("draft_room_debate_result", None)
     st.session_state.setdefault("draft_room_pool_scope", "all")
+    st.session_state.setdefault("mock_draft", None)
+    st.session_state.setdefault("mock_draft_pool_scope", "all")
+    st.session_state.setdefault("mock_draft_debate_result", None)
+    st.session_state.setdefault("mock_draft_last_snapshot", None)
 
-    if not roster:
+    draft_room_mode = st.radio(
+        "Draft Room mode", options=["Live Draft (Sleeper)", "🧪 Mock Draft"],
+        horizontal=True, key="draft_room_mode_radio", label_visibility="collapsed",
+    )
+
+    if draft_room_mode == "🧪 Mock Draft":
+        # -------------------------------------------------------------- mock draft --
+        # A practice draft entirely independent of any real Sleeper league/draft -- for
+        # rehearsing strategy under a chosen format, or one that hasn't even been created
+        # on Sleeper's side yet. Reuses the exact same engine calls as the live flow below
+        # (compute_draft_board/build_snapshot/debate_pick) unchanged -- see
+        # draft_room.build_mock_league's docstring for why a synthetic league dict slots in
+        # with zero special-casing anywhere downstream.
+        md = st.session_state.mock_draft
+        if md is None:
+            st.caption(
+                "Set the format below and start a sandbox draft -- every other roster is "
+                "auto-drafted by this same engine (each one's own best team_acquisition_value "
+                "pick), so you only ever make your own picks."
+            )
+            _fmt_scoring_index = {"Standard": 0, "Half PPR": 1, "Full PPR": 2}.get(fmt["scoring"], 2)
+            with st.form("mock_draft_settings_form"):
+                st.markdown("**Mock Draft Settings**")
+                s1, s2, s3 = st.columns(3)
+                # Explicit keys throughout -- cfg_slot's max_value depends on cfg_teams's own
+                # live value, and an auto-generated widget key (the default when key= is
+                # omitted) is derived partly from a widget's own constructor args, so it can
+                # shift out from under a pending value the moment a DEPENDENT widget's value
+                # changes in the same render. Confirmed live: changing Teams from 12 to 4 in
+                # the same submission silently dropped a staged "Your draft slot" edit back to
+                # its default. An explicit, teams-independent key removes that fragility.
+                cfg_teams = s1.number_input("Teams", min_value=4, max_value=16, value=12, step=1, key="mock_cfg_teams")
+                cfg_slot = s2.number_input(
+                    "Your draft slot", min_value=1, max_value=int(cfg_teams), value=1, step=1, key="mock_cfg_slot",
+                )
+                cfg_rounds = s3.number_input("Rounds", min_value=1, max_value=30, value=15, step=1, key="mock_cfg_rounds")
+                s4, s5 = st.columns(2)
+                cfg_scoring_label = s4.radio(
+                    "Scoring", ["Standard", "Half PPR", "Full PPR"], index=_fmt_scoring_index, horizontal=True,
+                    key="mock_cfg_scoring",
+                )
+                cfg_draft_type_label = s5.radio(
+                    "Draft type", ["Snake", "Linear"], index=0, horizontal=True, key="mock_cfg_draft_type",
+                )
+                s6, s7, s8 = st.columns(3)
+                cfg_superflex = s6.checkbox("Superflex", value=fmt["superflex"], key="mock_cfg_superflex")
+                cfg_te_premium = s7.checkbox("TE Premium", value=fmt["te_premium"], key="mock_cfg_te_premium")
+                cfg_dynasty = s8.checkbox(
+                    "Dynasty rules (long-horizon adj.)", value=fmt["type"] == "Dynasty", key="mock_cfg_dynasty",
+                )
+                start_clicked = st.form_submit_button(
+                    "🏁 Start Mock Draft", type="primary", use_container_width=True,
+                )
+            if start_clicked:
+                cfg_scoring_key = {"Standard": "standard", "Half PPR": "half_ppr", "Full PPR": "ppr"}[cfg_scoring_label]
+                mock_league = draft_room.build_mock_league(
+                    teams=int(cfg_teams), superflex=cfg_superflex, scoring=cfg_scoring_key,
+                    te_premium=cfg_te_premium, dynasty=cfg_dynasty,
+                )
+                round_1_order = [str(i) for i in range(1, int(cfg_teams) + 1)]
+                st.session_state.mock_draft = {
+                    "settings": {
+                        "teams": int(cfg_teams), "my_slot": int(cfg_slot), "superflex": cfg_superflex,
+                        "scoring_key": cfg_scoring_key, "scoring_label": cfg_scoring_label,
+                        "te_premium": cfg_te_premium, "dynasty": cfg_dynasty, "rounds": int(cfg_rounds),
+                        "draft_type": cfg_draft_type_label.lower(),
+                    },
+                    "league": mock_league,
+                    "my_roster_id": str(int(cfg_slot)),
+                    "pick_order": draft_strategy.generate_pick_order(
+                        round_1_order, total_rounds=int(cfg_rounds), draft_type=cfg_draft_type_label.lower(),
+                    ),
+                    "picks": [],
+                    "owner_names": {
+                        str(i): ("You" if i == int(cfg_slot) else f"Team {i}") for i in range(1, int(cfg_teams) + 1)
+                    },
+                }
+                st.rerun()
+        else:
+            settings = md["settings"]
+            st.caption(
+                f"{settings['teams']}-team · slot {settings['my_slot']} · "
+                f"{'Superflex' if settings['superflex'] else '1QB'} · {settings['scoring_label']} · "
+                f"{'TE Premium · ' if settings['te_premium'] else ''}{settings['rounds']} rounds · "
+                f"{'Dynasty' if settings['dynasty'] else 'Redraft'} rules · {settings['draft_type'].title()}"
+            )
+            reset_col, scope_col = st.columns([1, 2])
+            with reset_col:
+                if st.button("🔄 Reset Mock Draft", key="mock_draft_reset_btn", use_container_width=True):
+                    st.session_state.mock_draft = None
+                    st.session_state.mock_draft_debate_result = None
+                    st.session_state.mock_draft_last_snapshot = None
+                    st.rerun()
+            with scope_col:
+                mock_pool_scope_label = st.radio(
+                    "Player pool", options=["All players", "Rookies only", "Veterans only"],
+                    index=["all", "rookies_only", "veterans_only"].index(st.session_state.mock_draft_pool_scope),
+                    horizontal=True, key="mock_draft_pool_scope_radio",
+                )
+                st.session_state.mock_draft_pool_scope = {
+                    "All players": "all", "Rookies only": "rookies_only", "Veterans only": "veterans_only",
+                }[mock_pool_scope_label]
+
+            # The mock's chosen format can differ from whatever real league is active
+            # elsewhere in the app -- re-point the shared DataMerger at it for this
+            # render only; the real league's own format gets reasserted at the top of
+            # every rerun (see set_league_format's call site above), so nothing else
+            # this session reads ever sees the mock's format leak into it.
+            st.session_state.data_merger.set_league_format({
+                "scoring": settings["scoring_key"], "superflex": settings["superflex"],
+                "te_premium": settings["te_premium"],
+            })
+
+            if len(md["picks"]) < len(md["pick_order"]):
+                with st.spinner("Simulating opponent picks..."):
+                    md["picks"] = draft_room.simulate_opponent_picks(
+                        md["picks"], md["pick_order"], md["my_roster_id"], settings["teams"],
+                        merger, players_db, md["league"], pool_scope=st.session_state.mock_draft_pool_scope,
+                    )
+
+            if md["picks"]:
+                with st.expander(f"📋 Picks so far ({len(md['picks'])})"):
+                    pick_rows = [{
+                        "Pick": f"{p['round']}.{(i % settings['teams']) + 1:02d}",
+                        "Team": md["owner_names"].get(str(p["roster_id"]), str(p["roster_id"])),
+                        "Player": player_name(players_db.get(str(p["player_id"])) or {}, str(p["player_id"])),
+                    } for i, p in enumerate(md["picks"])]
+                    st.dataframe(pd.DataFrame(pick_rows), hide_index=True, use_container_width=True)
+
+            current_index = len(md["picks"])
+            if current_index >= len(md["pick_order"]):
+                st.success("Mock draft complete.")
+            else:
+                mock_target_round = current_index // settings["teams"] + 1
+                mock_target_slot = current_index % settings["teams"] + 1
+                mock_pick_label = f"{mock_target_round}.{mock_target_slot:02d}"
+
+                try:
+                    mock_snap = pick_synthesis.build_snapshot(
+                        merger, players_db, md["picks"], md["pick_order"], current_index, md["my_roster_id"],
+                        md["league"], pick_label=mock_pick_label, pool_scope=st.session_state.mock_draft_pool_scope,
+                    )
+                except Exception as exc:  # noqa: BLE001 -- surface, never crash the whole dashboard
+                    mock_snap = None
+                    notify("error", f"Couldn't build the mock draft board: {exc}")
+
+                if mock_snap is not None and not mock_snap.candidates:
+                    st.info("No candidates available in the current player pool/scope.")
+                elif mock_snap is not None:
+                    st.markdown(f"### ON THE CLOCK — {mock_pick_label} (You)")
+                    mock_positions_present = sorted({c.position for c in mock_snap.candidates})
+                    mock_position_filter = st.multiselect(
+                        "Filter by position (display only -- never changes what's analyzed)",
+                        options=mock_positions_present, default=mock_positions_present,
+                        key="mock_draft_position_filter",
+                    )
+                    mock_filtered = (
+                        [c for c in mock_snap.candidates if c.position in mock_position_filter]
+                        if mock_position_filter else list(mock_snap.candidates)
+                    )
+                    mock_table_rows = [{
+                        "Name": c.name, "Pos": c.position,
+                        "Necessity": f"{_NECESSITY_COLOR_EMOJI.get(c.necessity_label, '')} {c.pick_necessity:.0f} — {c.necessity_label}",
+                        "Proj Pts": f"{c.projected_points:.0f}" if c.projected_points is not None else "—",
+                        "Universal": c.universal_value, "Acquisition": c.team_acquisition_value,
+                        "Survival": f"{round(c.survival_probability * 100)}%" if c.survival_probability is not None else "—",
+                        "Cliff": c.positional_cliff["tier"] if c.positional_cliff else "—",
+                        "Run": "🏃" if c.position_run_detected else "",
+                        "Market": f"{c.reach_label.title()} (KTC #{c.consensus_rank})" if c.reach_label else "—",
+                    } for c in mock_filtered]
+                    st.dataframe(pd.DataFrame(mock_table_rows), hide_index=True, use_container_width=True)
+
+                    mock_debate_col, _ = st.columns([1, 3])
+                    with mock_debate_col:
+                        mock_debate_clicked = st.button(
+                            "🎙️ Debate This Pick", key="mock_draft_debate_btn", type="primary", use_container_width=True,
+                        )
+                    if mock_debate_clicked:
+                        mock_debate_api_keys = {
+                            "claude": api_key_for("anthropic"), "gemini": api_key_for("gemini"),
+                            "openai": api_key_for("openai"),
+                        }
+                        with st.spinner("Strategist, Skeptic, and Caller are debating..."):
+                            mock_debate_result = pick_debate.debate_pick(
+                                mock_snap, previous_snapshot=st.session_state.mock_draft_last_snapshot,
+                                api_keys=mock_debate_api_keys,
+                            )
+                        st.session_state.mock_draft_last_snapshot = mock_snap
+                        st.session_state.mock_draft_debate_result = mock_debate_result
+                        if mock_debate_result.errors:
+                            notify("warning", "Debate finished with issues: " + "; ".join(mock_debate_result.errors))
+
+                    mock_debate_result = st.session_state.mock_draft_debate_result
+                    mock_current_debate = (
+                        mock_debate_result
+                        if (mock_debate_result is not None and mock_debate_result.pick_label == mock_pick_label)
+                        else None
+                    )
+                    if mock_current_debate is not None:
+                        st.markdown("---")
+                        mock_rec = mock_current_debate.recommended
+                        if mock_rec is None:
+                            st.warning("The panel's recommendation didn't cleanly match a candidate -- see the raw reports below.")
+                        else:
+                            st.markdown(f"## Recommendation: {mock_rec.name}")
+                            if mock_current_debate.confidence:
+                                st.caption(f"Confidence: {mock_current_debate.confidence}")
+                            if mock_current_debate.why:
+                                st.markdown(f"**Why now?** {mock_current_debate.why}")
+
+                            mock_necessity_class = _NECESSITY_BADGE_CLASS.get(mock_rec.necessity_label, "badge-necessity-close-call")
+                            mock_necessity_emoji = _NECESSITY_COLOR_EMOJI.get(mock_rec.necessity_label, "")
+                            mock_badge_col, mock_market_col = st.columns([1, 2])
+                            with mock_badge_col:
+                                st.markdown(
+                                    f'<span class="badge {mock_necessity_class}">{mock_necessity_emoji} PICK NECESSITY: '
+                                    f'{mock_rec.pick_necessity:.0f}/100 — {mock_rec.necessity_label}</span>',
+                                    unsafe_allow_html=True,
+                                )
+                            if mock_rec.reach_label is not None:
+                                with mock_market_col:
+                                    st.caption(
+                                        f"Market consensus (KeepTradeCut, trade-value not literal ADP): "
+                                        f"rank {mock_rec.consensus_rank}, tier {mock_rec.consensus_tier} — **{mock_rec.reach_label}**"
+                                    )
+
+                            mock_metric_row1 = st.columns(6)
+                            mock_metric_row1[0].metric("Universal Value", f"{mock_rec.universal_value:.0f}")
+                            mock_metric_row1[1].metric(
+                                "Projected Points", f"{mock_rec.projected_points:.0f}" if mock_rec.projected_points is not None else "—",
+                            )
+                            mock_metric_row1[2].metric("Your Acquisition Value", f"{mock_rec.team_acquisition_value:.0f}")
+                            mock_metric_row1[3].metric(
+                                "Survival to Next Pick",
+                                f"{round(mock_rec.survival_probability * 100)}%" if mock_rec.survival_probability is not None else "—",
+                            )
+                            mock_metric_row1[4].metric("Positional Cliff", mock_rec.positional_cliff["tier"] if mock_rec.positional_cliff else "—")
+                            mock_metric_row1[5].metric(f"{mock_rec.position} Run", "DETECTED" if mock_rec.position_run_detected else "—")
+
+                            mock_metric_row2 = st.columns(3)
+                            mock_metric_row2[0].metric("Opportunity Cost of Waiting", mock_rec.opportunity_cost if mock_rec.opportunity_cost is not None else "—")
+                            mock_metric_row2[1].metric("Expected Value If You Wait", mock_rec.expected_value_of_waiting if mock_rec.expected_value_of_waiting is not None else "—")
+                            mock_metric_row2[2].metric("Denial Value", mock_rec.denial_value if mock_rec.denial_value else "—")
+
+                            mock_alt = mock_current_debate.best_alternative
+                            if mock_alt is not None:
+                                st.markdown(f"**Best alternative:** {mock_alt.name} — {mock_alt.team_acquisition_value:.0f} acquisition value")
+
+                        if mock_current_debate.disagreements:
+                            for d in mock_current_debate.disagreements:
+                                st.warning(f"⚠️ Panel flagged a possible issue with an input: **{d['term']}** — {d['reason']}")
+
+                    st.markdown("#### Make Your Pick")
+                    mock_draft_options = {c.player_id: f"{c.name} ({c.position})" for c in mock_filtered}
+                    mock_default_pid = None
+                    if mock_current_debate is not None and mock_current_debate.recommended is not None:
+                        mock_default_pid = mock_current_debate.recommended.player_id
+                    if mock_default_pid not in mock_draft_options:
+                        mock_default_pid = next(iter(mock_draft_options), None)
+                    mock_option_ids = list(mock_draft_options.keys())
+                    mock_chosen_pid = st.selectbox(
+                        "Player to draft", options=mock_option_ids, format_func=lambda pid: mock_draft_options[pid],
+                        index=mock_option_ids.index(mock_default_pid) if mock_default_pid in mock_option_ids else 0,
+                        key="mock_draft_pick_select",
+                    )
+                    if st.button("✅ Draft This Player", key="mock_draft_confirm_btn", type="primary"):
+                        md["picks"].append({
+                            "pick_no": current_index + 1, "round": mock_target_round,
+                            "roster_id": md["my_roster_id"], "player_id": mock_chosen_pid,
+                        })
+                        st.session_state.mock_draft_debate_result = None
+                        st.session_state.mock_draft_last_snapshot = None
+                        st.rerun()
+    elif not roster:
         st.info("No roster found for your account in this league yet -- sync your username in the sidebar.")
     else:
         draft_client: SleeperClient = st.session_state.sleeper_client

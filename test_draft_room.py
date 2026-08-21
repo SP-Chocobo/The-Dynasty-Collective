@@ -591,5 +591,90 @@ class ProjectedPointsTests(unittest.TestCase):
             self.assertIsNone(row["projected_points"])
 
 
+class BuildMockLeagueTests(unittest.TestCase):
+    def test_superflex_adds_a_super_flex_starter_slot(self):
+        league = dr.build_mock_league(teams=12, superflex=True, scoring="ppr", te_premium=False, dynasty=True)
+        self.assertIn("SUPER_FLEX", league["roster_positions"])
+
+    def test_non_superflex_has_no_super_flex_slot(self):
+        league = dr.build_mock_league(teams=12, superflex=False, scoring="ppr", te_premium=False, dynasty=True)
+        self.assertNotIn("SUPER_FLEX", league["roster_positions"])
+
+    def test_scoring_maps_to_the_rec_scoring_setting(self):
+        for scoring, expected in dr.MOCK_SCORING_REC_VALUES.items():
+            league = dr.build_mock_league(teams=12, superflex=False, scoring=scoring, te_premium=False, dynasty=False)
+            self.assertEqual(league["scoring_settings"]["rec"], expected)
+
+    def test_te_premium_adds_a_bonus_rec_te_only_when_requested(self):
+        with_bonus = dr.build_mock_league(teams=12, superflex=False, scoring="ppr", te_premium=True, dynasty=False)
+        without_bonus = dr.build_mock_league(teams=12, superflex=False, scoring="ppr", te_premium=False, dynasty=False)
+        self.assertIn("bonus_rec_te", with_bonus["scoring_settings"])
+        self.assertNotIn("bonus_rec_te", without_bonus["scoring_settings"])
+
+    def test_dynasty_flag_maps_to_settings_type_2(self):
+        dynasty_league = dr.build_mock_league(teams=12, superflex=False, scoring="ppr", te_premium=False, dynasty=True)
+        redraft_league = dr.build_mock_league(teams=12, superflex=False, scoring="ppr", te_premium=False, dynasty=False)
+        self.assertEqual(dynasty_league["settings"]["type"], 2)
+        self.assertNotEqual(redraft_league["settings"]["type"], 2)
+
+    def test_total_rosters_matches_teams(self):
+        league = dr.build_mock_league(teams=10, superflex=False, scoring="ppr", te_premium=False, dynasty=False)
+        self.assertEqual(league["total_rosters"], 10)
+
+
+class SimulateOpponentPicksTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.merger, cls.players_db = _build_pool_players_db(("QB", "RB", "WR", "TE"))
+        cls.league = dr.build_mock_league(teams=4, superflex=False, scoring="ppr", te_premium=False, dynasty=True)
+
+    def test_stops_exactly_when_the_users_roster_is_on_the_clock(self):
+        pick_order = ["1", "2", "3", "4"]
+        picks = dr.simulate_opponent_picks(
+            [], pick_order, my_roster_id="3", num_teams=4,
+            merger=self.merger, players_db=self.players_db, league=self.league,
+        )
+        self.assertEqual(len(picks), 2)
+        self.assertEqual([p["roster_id"] for p in picks], ["1", "2"])
+
+    def test_does_nothing_when_the_user_is_already_on_the_clock(self):
+        pick_order = ["1", "2", "3", "4"]
+        picks = dr.simulate_opponent_picks(
+            [], pick_order, my_roster_id="1", num_teams=4,
+            merger=self.merger, players_db=self.players_db, league=self.league,
+        )
+        self.assertEqual(picks, [])
+
+    def test_picks_are_all_distinct_players(self):
+        # my_roster_id "99" never comes up, so this runs the full 3 rounds x 4 teams --
+        # every one of build_available_pool's undrafted-only filtering has to actually work
+        # across repeated calls, or the same top-ranked player would get "drafted" twice.
+        pick_order = ["1", "2", "3", "4"] * 3
+        picks = dr.simulate_opponent_picks(
+            [], pick_order, my_roster_id="99", num_teams=4,
+            merger=self.merger, players_db=self.players_db, league=self.league,
+        )
+        self.assertEqual(len(picks), 12)
+        drafted_ids = [p["player_id"] for p in picks]
+        self.assertEqual(len(drafted_ids), len(set(drafted_ids)))
+
+    def test_does_not_mutate_the_input_picks_list(self):
+        pick_order = ["1", "2", "3", "4"]
+        original: list[dict] = []
+        dr.simulate_opponent_picks(
+            original, pick_order, my_roster_id="3", num_teams=4,
+            merger=self.merger, players_db=self.players_db, league=self.league,
+        )
+        self.assertEqual(original, [])
+
+    def test_stops_at_the_end_of_the_draft_if_the_user_has_no_more_picks(self):
+        pick_order = ["2", "3", "4", "1"]  # user (roster 1) only picks last
+        picks = dr.simulate_opponent_picks(
+            [], pick_order, my_roster_id="99", num_teams=4,  # not even in this draft
+            merger=self.merger, players_db=self.players_db, league=self.league,
+        )
+        self.assertEqual(len(picks), 4)
+
+
 if __name__ == "__main__":
     unittest.main()
