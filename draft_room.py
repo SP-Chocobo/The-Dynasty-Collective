@@ -407,6 +407,17 @@ def replacement_levels(
     module's own unit tests) that only care about the pool-shape math in isolation, not a
     live draft's remaining-demand state.
 
+    An extra flat per-team "bench QB demand" term for superflex leagues was tried and reverted
+    here (see git history) -- real Draft Sharks QB projections have a genuine CLIFF around
+    rank ~27-30 (a low-end starter still projects ~250 points; the next real backup falls to
+    ~30-100), not a smooth gradient, so any fixed extra-demand constant either landed short of
+    real market behavior or overshot straight past that cliff into "replacement = a
+    non-fantasy-relevant scrub," making an elite QB's VOR swing wildly for a tiny, arbitrary
+    change in the constant (confirmed: 0.3 vs 0.4 extra demand moved Josh Allen from 7th to
+    4th overall). That's exactly the kind of fragile, magic-number-hunting this app's own
+    constants are supposed to avoid, so this stayed on the starter-slot-only demand model
+    (SUPER_FLEX_QB_SHARE) instead of shipping something this sensitive.
+
     Recomputed fresh every time this module is asked for a board, never cached across
     picks."""
     slot_counts = starter_slot_counts(roster_positions)

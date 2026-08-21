@@ -34,12 +34,17 @@ Five real signals this module adds that didn't exist anywhere in the engine befo
     demand can and should outscore a better player sitting in a deep, uncontested position.
 
     Built additively from real signals already in this snapshot, never a new invented number:
-      - standout margin: how far this candidate's team_acquisition_value leads or trails the
-        best OTHER narrowed candidate, normalized against a fixed ABSOLUTE reference gap (see
+      - standout margin: how far this candidate's team_acquisition_value LEADS the best OTHER
+        narrowed candidate, normalized against a fixed ABSOLUTE reference gap (see
         NECESSITY_STANDOUT_REFERENCE_GAP), not the observed field's own min/max range -- a real
         standout pushes this up; a tightly bunched field of several legitimate directions keeps
-        every candidate near the neutral baseline. The sole candidate in a single-candidate
-        snapshot gets full credit here (there is, literally, no alternative to compare against).
+        every candidate near the neutral baseline. Floored at 0, not a symmetric penalty, when
+        this candidate trails instead: "not the single best option right now" is neutral, not
+        itself a reason to call a pick low-urgency -- the other signals below do that work.
+        Without the floor, any two non-leaders more than one reference gap behind the leader
+        collapsed to the identical maximum penalty regardless of how far behind each actually
+        was. The sole candidate in a single-candidate snapshot gets full credit here (there is,
+        literally, no alternative to compare against).
       - survival_probability: (1 - survival) scaled up -- the core "what do you lose by
         waiting" signal.
       - positional_cliff: HIGH/MEDIUM add real points; LOW adds none.
@@ -198,7 +203,17 @@ def compute_pick_necessity(raw_candidates: list[dict], round_num: int) -> list[t
         else:
             margin = c["team_acquisition_value"] - max(others)
             normalized_margin = margin / NECESSITY_STANDOUT_REFERENCE_GAP
-            standout_component = max(-1.0, min(1.0, normalized_margin)) * NECESSITY_STANDOUT_WEIGHT
+            # Floored at 0, not -1: "not the single best option on the board right now" is
+            # neutral, not itself evidence of low urgency -- the other real signals below
+            # (survival, cliff, run, denial, roster fit) are what should differentiate among
+            # non-leaders. Confirmed live: a -1 floor let ANY two candidates more than one
+            # reference gap behind the leader collapse to the identical -30 penalty regardless
+            # of how far behind each actually was -- a real Superflex QB1 sitting ~40
+            # acquisition points behind the board's best RB, and a clearly-worse TE sitting
+            # ~60 points behind it, landed within a few necessity points of each other despite
+            # being genuinely different picks. Uncapped on the positive side still: a true
+            # standout is real signal and keeps rewarding proportionally up to the +1 cap.
+            standout_component = max(0.0, min(1.0, normalized_margin)) * NECESSITY_STANDOUT_WEIGHT
 
         survival = c.get("survival_probability")
         survival_component = (1 - survival) * NECESSITY_SURVIVAL_WEIGHT if survival is not None else 0.0

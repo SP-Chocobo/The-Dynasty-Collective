@@ -179,6 +179,32 @@ class ComputePickNecessityTests(unittest.TestCase):
         self.assertEqual(ps._necessity_label(35.0), "LOW URGENCY")
         self.assertEqual(ps._necessity_label(10.0), "DOESN'T MATTER MUCH")
 
+    def test_trailing_the_leader_is_neutral_not_an_active_penalty(self):
+        # The real bug this floor fixes, confirmed live: a genuinely strong QB1 sitting ~40
+        # acquisition points behind the board's best RB, and a clearly weaker TE sitting ~60
+        # points behind that same RB, both saturated to the identical -30 standout penalty --
+        # collapsing two very different situations into nearly the same necessity score,
+        # despite one of them still being a live, defensible pick. A candidate trailing the
+        # leader must score no WORSE on this term than one exactly tied with the leader (0
+        # contribution either way) -- trailing must never actively drag necessity down.
+        # Differentiating "40 back" from "60 back" is intentionally NOT this term's job
+        # anymore -- that's left to the other real signals (survival, cliff, run, denial,
+        # roster fit), so with none of those set here the two trailing candidates come out
+        # equal to each other, and equal to a candidate tied with the leader.
+        leader = _raw_candidate(109.0)
+        moderately_behind = _raw_candidate(69.63)   # ~39 back -- still a real, live option
+        far_behind = _raw_candidate(50.41)          # ~59 back -- clearly a lesser pick
+        tied_with_leader = _raw_candidate(109.0)
+        results = ps.compute_pick_necessity(
+            [leader, moderately_behind, far_behind, tied_with_leader], round_num=3,
+        )
+        moderately_score = results[1][0]
+        far_score = results[2][0]
+        tied_score = results[3][0]
+        self.assertGreaterEqual(moderately_score, tied_score - 1e-6)
+        self.assertGreaterEqual(far_score, tied_score - 1e-6)
+        self.assertAlmostEqual(moderately_score, far_score, places=6)
+
     def test_necessity_never_leaves_the_0_to_100_range(self):
         extreme = _raw_candidate(
             1000.0, survival_probability=0.0, positional_cliff={"tier": "HIGH", "gap": 999, "typical_gap": 1},
