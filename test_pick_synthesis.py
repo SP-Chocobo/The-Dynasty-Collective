@@ -15,6 +15,11 @@ import draft_room as dr
 import draft_strategy as ds
 import pick_synthesis as ps
 
+SUPERFLEX_LEAGUE = {
+    "roster_positions": ["QB", "RB", "RB", "WR", "WR", "TE", "FLEX", "FLEX", "SUPER_FLEX", "BN", "BN", "BN", "BN"],
+    "total_rosters": 12, "settings": {"type": 2}, "scoring_settings": {},
+}
+
 LEAGUE = {
     "roster_positions": ["QB", "RB", "RB", "WR", "WR", "WR", "TE", "FLEX", "BN", "BN", "BN", "BN"],
     "total_rosters": 12, "settings": {"type": 2}, "scoring_settings": {},
@@ -255,6 +260,23 @@ class BuildSnapshotTests(unittest.TestCase):
             self.assertAlmostEqual(
                 c.team_acquisition_value, c.universal_value + c.need_bonus + c.eligibility_bonus, places=2,
             )
+            # projected_points is a real number here, never a fabricated one, since these are
+            # all real Draft-Sharks-projected top players -- never a stray NaN leaking through
+            # from the underlying pandas row (see build_snapshot's own NaN-normalization).
+            self.assertIsNotNone(c.projected_points)
+            self.assertGreater(c.projected_points, 0.0)
+
+    def test_projected_points_matches_the_boards_own_raw_projection(self):
+        board = dr.compute_draft_board(
+            self.merger, self.players_db, [], my_roster_id="1", league=LEAGUE, mode="balanced",
+        )
+        snap = ps.build_snapshot(
+            self.merger, self.players_db, [], self.pick_order, current_index=0, my_roster_id="1",
+            league=LEAGUE, pick_label="1.01", top_n=3,
+        )
+        board_by_id = {r["player_id"]: r for r in board}
+        for c in snap.candidates:
+            self.assertAlmostEqual(c.projected_points, board_by_id[c.player_id]["projected_points"], places=2)
 
     def test_snapshot_is_genuinely_frozen(self):
         snap = ps.build_snapshot(
@@ -347,6 +369,128 @@ class DiffSnapshotsTests(unittest.TestCase):
             self.assertIsNone(d.get("entered"))
             self.assertEqual(d["rank_delta"], 0)
             self.assertEqual(d["deltas"], {})
+
+
+class ConsensusLookupTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.merger = dm.DataMerger()
+
+    def test_empty_when_not_superflex(self):
+        # This app's committed baseline only carries KTC's superflex-format export -- using it
+        # for a 1QB league would silently misrepresent that league's real market consensus.
+        self.assertEqual(ps._consensus_lookup(self.merger, is_superflex=False), {})
+
+    def test_real_data_present_for_superflex(self):
+        lookup = ps._consensus_lookup(self.merger, is_superflex=True)
+        self.assertGreater(len(lookup), 100, "expected KTC's real committed superflex export to be substantial")
+        gibbs = lookup.get(("j", "gibbs"))
+        self.assertIsNotNone(gibbs)
+        self.assertEqual(gibbs["rank"], 1.0)
+        self.assertEqual(gibbs["tier"], 1.0)
+
+    def test_draft_pick_rows_are_excluded_not_just_ignored(self):
+        # KTC's own export also lists draft picks ("2026 Early 1st" etc, position=NaN) --
+        # these must never leak into a real-player lookup.
+        lookup = ps._consensus_lookup(self.merger, is_superflex=True)
+        self.assertNotIn(("2", "early 1st"), lookup)
+
+    def test_a_name_key_collision_keeps_the_better_ranked_real_player(self):
+        # A known, accepted limitation of the first-initial+last-name scheme -- Bijan Robinson
+        # and Brian Robinson genuinely collide on (b, robinson). The far more prominent player
+        # (much better rank) must be the one this lookup actually keeps.
+        lookup = ps._consensus_lookup(self.merger, is_superflex=True)
+        entry = lookup.get(("b", "robinson"))
+        self.assertIsNotNone(entry)
+        self.assertLess(entry["rank"], 50, "expected Bijan Robinson's much better rank to win the collision")
+
+
+class ConsensusReachTests(unittest.TestCase):
+    def test_none_when_no_consensus_data_is_loaded(self):
+        self.assertIsNone(ps.consensus_reach("Anyone", 10, {}))
+
+    def test_none_when_the_player_is_not_in_the_loaded_consensus_data(self):
+        by_key = {("a", "known"): {"rank": 5, "tier": 1, "value": 9000}}
+        self.assertIsNone(ps.consensus_reach("Unknown Player", 10, by_key))
+
+    def test_within_consensus_band_when_tiers_match(self):
+        by_key = {
+            ("a", "player"): {"rank": 30, "tier": 3, "value": 5000},
+            ("b", "here"): {"rank": 28, "tier": 3, "value": 5100},
+        }
+        result = ps.consensus_reach("A Player", 28, by_key)
+        self.assertEqual(result["reach_label"], "WITHIN CONSENSUS BAND")
+        self.assertEqual(result["tier_gap"], 0)
+
+    def test_a_better_tier_than_normal_here_is_also_within_band_never_a_reach(self):
+        # Taking a player from a BETTER tier than what's normally happening at this pick isn't
+        # a reach at all -- great value, not a violation of consensus.
+        by_key = {
+            ("a", "elite"): {"rank": 5, "tier": 1, "value": 9500},
+            ("b", "here"): {"rank": 28, "tier": 3, "value": 5100},
+        }
+        result = ps.consensus_reach("A Elite", 28, by_key)
+        self.assertEqual(result["tier_gap"], 0)
+        self.assertEqual(result["reach_label"], "WITHIN CONSENSUS BAND")
+
+    def test_one_tier_worse_than_normal_here_is_a_modest_reach(self):
+        by_key = {
+            ("a", "player"): {"rank": 60, "tier": 4, "value": 3000},
+            ("b", "here"): {"rank": 28, "tier": 3, "value": 5100},
+        }
+        result = ps.consensus_reach("A Player", 28, by_key)
+        self.assertEqual(result["tier_gap"], 1)
+        self.assertEqual(result["reach_label"], "MODEST REACH")
+
+    def test_a_big_tier_gap_is_a_significant_reach(self):
+        by_key = {
+            ("a", "player"): {"rank": 200, "tier": 9, "value": 500},
+            ("b", "here"): {"rank": 28, "tier": 3, "value": 5100},
+        }
+        result = ps.consensus_reach("A Player", 28, by_key)
+        self.assertEqual(result["tier_gap"], 6)
+        self.assertEqual(result["reach_label"], "SIGNIFICANT REACH")
+
+
+class ConsensusReachEndToEndTests(unittest.TestCase):
+    """Real KTC data, real board -- confirms the wiring, not just the isolated functions."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.merger = dm.DataMerger()
+        proj = cls.merger.projections
+        cls.players_db = {}
+        pid = 0
+        for pos in ("QB", "RB", "WR", "TE"):
+            sub = proj[proj["position"] == pos].sort_values("trade_value", ascending=False).head(60)
+            for _, row in sub.iterrows():
+                pid += 1
+                parts = row["norm_name"].split()
+                cls.players_db[str(pid)] = {
+                    "first_name": parts[0].upper(), "last_name": " ".join(parts[1:]).title(),
+                    "position": pos, "fantasy_positions": [pos], "team": row.get("team"),
+                }
+        cls.pick_order = ds.generate_pick_order([str(i) for i in range(1, 13)], total_rounds=4)
+
+    def test_a_1qb_league_never_gets_consensus_data(self):
+        snap = ps.build_snapshot(
+            self.merger, self.players_db, [], self.pick_order, current_index=0, my_roster_id="1",
+            league=LEAGUE, pick_label="1.01", top_n=5,
+        )
+        for c in snap.candidates:
+            self.assertIsNone(c.consensus_rank)
+            self.assertIsNone(c.reach_label)
+
+    def test_a_superflex_league_gets_real_consensus_data_for_a_known_player(self):
+        snap = ps.build_snapshot(
+            self.merger, self.players_db, [], self.pick_order, current_index=0, my_roster_id="1",
+            league=SUPERFLEX_LEAGUE, pick_label="1.01", top_n=5,
+        )
+        gibbs = next((c for c in snap.candidates if "Gibbs" in c.name), None)
+        self.assertIsNotNone(gibbs, "expected Gibbs to be a top-5 candidate at 1.01")
+        self.assertEqual(gibbs.consensus_rank, 1)
+        self.assertEqual(gibbs.consensus_tier, 1)
+        self.assertIn(gibbs.reach_label, ("WITHIN CONSENSUS BAND",))
 
 
 if __name__ == "__main__":

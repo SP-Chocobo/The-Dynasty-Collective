@@ -3622,10 +3622,12 @@ elif main_view == DRAFT_VIEW:
                                 table_rows = [{
                                     "Name": c.name, "Pos": c.position,
                                     "Necessity": f"{_NECESSITY_COLOR_EMOJI.get(c.necessity_label, '')} {c.pick_necessity:.0f} — {c.necessity_label}",
+                                    "Proj Pts": f"{c.projected_points:.0f}" if c.projected_points is not None else "—",
                                     "Universal": c.universal_value, "Acquisition": c.team_acquisition_value,
                                     "Survival": f"{round(c.survival_probability * 100)}%" if c.survival_probability is not None else "—",
                                     "Cliff": c.positional_cliff["tier"] if c.positional_cliff else "—",
                                     "Run": "🏃" if c.position_run_detected else "",
+                                    "Market": f"{c.reach_label.title()} (KTC #{c.consensus_rank})" if c.reach_label else "—",
                                 } for c in filtered]
                                 st.dataframe(pd.DataFrame(table_rows), hide_index=True, use_container_width=True)
 
@@ -3665,21 +3667,32 @@ elif main_view == DRAFT_VIEW:
 
                                         necessity_class = _NECESSITY_BADGE_CLASS.get(rec.necessity_label, "badge-necessity-close-call")
                                         necessity_emoji = _NECESSITY_COLOR_EMOJI.get(rec.necessity_label, "")
-                                        st.markdown(
-                                            f'<span class="badge {necessity_class}">{necessity_emoji} PICK NECESSITY: '
-                                            f'{rec.pick_necessity:.0f}/100 — {rec.necessity_label}</span>',
-                                            unsafe_allow_html=True,
-                                        )
+                                        badge_col, market_col = st.columns([1, 2])
+                                        with badge_col:
+                                            st.markdown(
+                                                f'<span class="badge {necessity_class}">{necessity_emoji} PICK NECESSITY: '
+                                                f'{rec.pick_necessity:.0f}/100 — {rec.necessity_label}</span>',
+                                                unsafe_allow_html=True,
+                                            )
+                                        if rec.reach_label is not None:
+                                            with market_col:
+                                                st.caption(
+                                                    f"Market consensus (KeepTradeCut, trade-value not literal ADP): "
+                                                    f"rank {rec.consensus_rank}, tier {rec.consensus_tier} — **{rec.reach_label}**"
+                                                )
 
-                                        metric_row1 = st.columns(5)
+                                        metric_row1 = st.columns(6)
                                         metric_row1[0].metric("Universal Value", f"{rec.universal_value:.0f}")
-                                        metric_row1[1].metric("Your Acquisition Value", f"{rec.team_acquisition_value:.0f}")
-                                        metric_row1[2].metric(
+                                        metric_row1[1].metric(
+                                            "Projected Points", f"{rec.projected_points:.0f}" if rec.projected_points is not None else "—",
+                                        )
+                                        metric_row1[2].metric("Your Acquisition Value", f"{rec.team_acquisition_value:.0f}")
+                                        metric_row1[3].metric(
                                             "Survival to Next Pick",
                                             f"{round(rec.survival_probability * 100)}%" if rec.survival_probability is not None else "—",
                                         )
-                                        metric_row1[3].metric("Positional Cliff", rec.positional_cliff["tier"] if rec.positional_cliff else "—")
-                                        metric_row1[4].metric(f"{rec.position} Run", "DETECTED" if rec.position_run_detected else "—")
+                                        metric_row1[4].metric("Positional Cliff", rec.positional_cliff["tier"] if rec.positional_cliff else "—")
+                                        metric_row1[5].metric(f"{rec.position} Run", "DETECTED" if rec.position_run_detected else "—")
 
                                         metric_row2 = st.columns(3)
                                         metric_row2[0].metric("Opportunity Cost of Waiting", rec.opportunity_cost if rec.opportunity_cost is not None else "—")

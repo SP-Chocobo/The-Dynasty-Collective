@@ -545,5 +545,51 @@ class EligibilityBonusWiringTests(unittest.TestCase):
         self.assertLessEqual(row["eligibility_bonus"], match["trade_value"] + 1e-6)
 
 
+class ProjectedPointsTests(unittest.TestCase):
+    """projected_points -- the raw season point projection universal_value's own VOR anchor is
+    built from, exposed directly and independently of the scarcity-adjusted score (see
+    compute_draft_board's own docstring: "who's simply projected to score the most" is a real,
+    separate question a manager may want to weigh on its own terms)."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.merger, cls.players_db = _build_pool_players_db(("RB", "WR"))
+
+    def test_balanced_mode_exposes_the_real_projection_offense_has(self):
+        board = dr.compute_draft_board(
+            self.merger, self.players_db, [], my_roster_id="99", league=LIGHT_IDP_LEAGUE, mode="balanced",
+        )
+        for row in board[:10]:
+            self.assertIsNotNone(row["projected_points"])
+            self.assertGreater(row["projected_points"], 0.0)
+
+    def test_upside_mode_also_exposes_projected_points(self):
+        board = dr.compute_draft_board(
+            self.merger, self.players_db, [], my_roster_id="99", league=LIGHT_IDP_LEAGUE, mode="upside",
+        )
+        for row in board[:10]:
+            self.assertIsNotNone(row["projected_points"])
+            self.assertGreater(row["projected_points"], 0.0)
+
+    def test_matches_the_real_draft_sharks_projection_for_a_points_anchored_player(self):
+        board = dr.compute_draft_board(
+            self.merger, self.players_db, [], my_roster_id="99", league=LIGHT_IDP_LEAGUE, mode="balanced",
+        )
+        points_anchored = next(r for r in board if r["bpa_source"] == "points_vor_draftsharks")
+        match = self.merger.merge_player(points_anchored["name"], position=points_anchored["position"], team=points_anchored["team"])
+        self.assertAlmostEqual(points_anchored["projected_points"], match["projection"], places=2)
+
+    def test_none_when_no_real_points_source_exists(self):
+        # An IDP-only pool with no real Draft Sharks projection data falls back to trade_value
+        # VOR (see build_available_pool's docstring) -- projected_points must stay None there,
+        # never a fabricated number standing in for a real projection that doesn't exist.
+        idp_merger, idp_players_db = _build_pool_players_db(("DL", "LB", "DB"))
+        board = dr.compute_draft_board(
+            idp_merger, idp_players_db, [], my_roster_id="99", league=LIGHT_IDP_LEAGUE, mode="balanced",
+        )
+        for row in board[:10]:
+            self.assertIsNone(row["projected_points"])
+
+
 if __name__ == "__main__":
     unittest.main()

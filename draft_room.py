@@ -509,6 +509,19 @@ def _scale_vor_to_bpa(vor: pd.Series) -> pd.Series:
     return (vor / reference * 100).clip(lower=0, upper=100)
 
 
+def _records_with_normalized_nan(df: pd.DataFrame, column: str) -> list[dict]:
+    """.to_dict("records") with one column's NaN normalized to real None -- pandas leaves a
+    missing float as NaN (a non-None float, `nan is not None`), not the "missing" convention
+    every consumer of this board (pick_synthesis.py, the Draft Room UI) actually expects.
+    Fixed here, once, at the source, rather than every downstream caller re-guarding against
+    NaN on its own."""
+    records = df.to_dict("records")
+    for record in records:
+        if pd.isna(record.get(column)):
+            record[column] = None
+    return records
+
+
 def compute_draft_board(
     merger: DataMerger,
     players_db: dict[str, dict],
@@ -526,7 +539,13 @@ def compute_draft_board(
     (what any manager at this draft would compute), need_bonus and eligibility_bonus (the two
     team-specific terms), the final team_acquisition_value used to rank, and confidence (never
     folded into either value). See module docstring for why value is split into two numbers
-    instead of one. mode: "auto" switches to upside scoring once the current round reaches
+    instead of one. projected_points is the raw season point projection universal_value's own
+    VOR anchor is built from (see ARCHITECTURE section) -- exposed directly, independent of the
+    scarcity-adjusted score, since "who's simply projected to score the most" is a real,
+    separate question a manager may want to weigh on its own terms, not something that should
+    only ever be visible after replacement-level math has already been applied to it. None
+    when no real points source exists for that player (the trade_value-fallback case) -- never
+    fabricated. mode: "auto" switches to upside scoring once the current round reaches
     upside_round, "balanced" or "upside" force one or the other regardless of round (the
     toggle this was built for -- see app.py's Draft Room view). pool_scope: "all" (default),
     "rookies_only" (the annual rookie draft), or "veterans_only" -- see
@@ -613,11 +632,12 @@ def compute_draft_board(
     if use_upside:
         scored = pool.join(pd.DataFrame(list(pool.apply(upside_score, axis=1))))
         scored["mode"] = "upside"
+        scored["projected_points"] = scored["_points"]
         results = scored.sort_values("final_score", ascending=False)
-        return results[[
+        return _records_with_normalized_nan(results[[
             "player_id", "name", "position", "team", "injury_status", "bpa", "bpa_source",
-            "growth_signal", "confidence", "final_score", "mode",
-        ]].to_dict("records")
+            "growth_signal", "confidence", "final_score", "mode", "projected_points",
+        ]], "projected_points")
 
     my_filled = _team_starters_filled(picks, players_db, my_roster_id)
     slot_counts = starter_slot_counts(roster_positions)
@@ -680,9 +700,10 @@ def compute_draft_board(
     scored = pool.join(pool.apply(score_row, axis=1))
     scored["confidence"] = pool["bpa_source"].map(_confidence)
     scored["mode"] = "balanced"
+    scored["projected_points"] = pool["_points"]
     results = scored.sort_values("final_score", ascending=False)
-    return results[[
+    return _records_with_normalized_nan(results[[
         "player_id", "name", "position", "team", "injury_status", "bpa", "bpa_source",
         "time_horizon_adj", "risk_adj", "universal_value",
-        "need_bonus", "eligibility_bonus", "confidence", "final_score", "mode",
-    ]].to_dict("records")
+        "need_bonus", "eligibility_bonus", "confidence", "final_score", "mode", "projected_points",
+    ]], "projected_points")
