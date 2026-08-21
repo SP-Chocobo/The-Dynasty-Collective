@@ -933,7 +933,16 @@ def render_styled_table(
                     f'{html.escape(str(group_val))}</td></tr>'
                 )
                 last_group = group_val
-        cells = "".join(f'<td style="padding:9px 14px;border-bottom:1px solid #202124;">{_cell_html(c, row[c])}</td>' for c in display_cols)
+        # table-layout:fixed (render_header=False, see below) gives every column an equal,
+        # often narrow share of the width -- without truncation a long value just overflows
+        # its cell and visually overlaps its neighbor instead of respecting that width, so
+        # clip it with an ellipsis there. Auto layout (render_header=True) sizes each column
+        # to its content already, so nothing to truncate in that case.
+        cell_overflow_style = "overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" if not render_header else ""
+        cells = "".join(
+            f'<td style="padding:9px 14px;border-bottom:1px solid #202124;{cell_overflow_style}">{_cell_html(c, row[c])}</td>'
+            for c in display_cols
+        )
         row_parts.append(f"<tr>{cells}</tr>")
 
     # The conditional thead has to stay on the same line as <table ...> — a
@@ -942,11 +951,25 @@ def render_styled_table(
     # CommonMark's raw-HTML-block parsing early, and everything after gets
     # re-parsed as an indented code block instead of rendered HTML.
     thead_html = f"<thead><tr>{headers}</tr></thead>" if render_header else ""
+    # render_header=False means the caller already laid down its own header row as real
+    # st.columns(len(display_cols)) buttons directly above this table (the Free Agents
+    # sort row is the one caller that does this) -- st.columns splits that row into
+    # exactly equal widths. Left on the default 'auto' table-layout, this table's own
+    # <td> widths are sized by cell content instead, and the two independently-computed
+    # column grids drift apart (confirmed: a wide "name" column here vs. a padding-only
+    # header button pushed everything after it out of alignment). table-layout:fixed
+    # forces this table's columns equal too, matching the header row above it exactly.
+    # Skipped when this table renders its own <th> row (render_header=True) -- there,
+    # header and body share one table already, so they can never misalign, and forcing
+    # equal widths would just squeeze a genuinely wide column like "name" for no reason.
+    table_style = "width:100%;border-collapse:collapse;font-size:0.88rem;"
+    if not render_header:
+        table_style += "table-layout:fixed;"
     st.markdown(
         f"""
         <div style="overflow-x:auto;overflow-y:auto;max-height:600px;
                     border:1px solid #2a2b2e;border-radius:10px;">
-          <table style="width:100%;border-collapse:collapse;font-size:0.88rem;">{thead_html}
+          <table style="{table_style}">{thead_html}
             <tbody>{''.join(row_parts)}</tbody>
           </table>
         </div>
@@ -1804,6 +1827,38 @@ with st.sidebar:
         )
         if st.button("Sync Leagues", use_container_width=True):
             sync_leagues(username_input)
+
+        st.markdown("**Add a League by ID**")
+        st.caption(
+            "Sync Leagues only lists what Sleeper's own `/user/.../leagues` endpoint returns for "
+            "this account -- a league where you're rostered but haven't formally accepted the "
+            "invite in the Sleeper app yet (common for a freshly-created, still-pre-draft league) "
+            "can be a real member without showing up there. Paste the league ID directly (the "
+            "number in its Sleeper URL, after /leagues/) to add it regardless."
+        )
+        manual_league_id = st.text_input(
+            "League ID", key="manual_league_id_input", label_visibility="collapsed",
+            placeholder="e.g. 1191596293294161920",
+        )
+        if st.button("Add League", key="add_league_by_id", use_container_width=True):
+            manual_league_id = manual_league_id.strip()
+            if not manual_league_id:
+                notify("warning", "Paste a league ID first.")
+            else:
+                client: SleeperClient = st.session_state.sleeper_client
+                try:
+                    found_league = client.get_league(manual_league_id)
+                except SleeperAPIError as exc:
+                    notify("error", f"Couldn't reach Sleeper: {exc}")
+                    found_league = None
+                if found_league is None:
+                    notify("error", f"No league found for ID '{manual_league_id}'.")
+                else:
+                    if not any(lg["league_id"] == manual_league_id for lg in st.session_state.leagues):
+                        st.session_state.leagues.append(found_league)
+                    activate_league(manual_league_id)
+                    notify("success", f"Added {found_league.get('name', manual_league_id)}.")
+                    st.rerun()
 
     if (
         st.session_state.username
