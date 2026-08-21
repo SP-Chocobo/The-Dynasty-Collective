@@ -91,6 +91,11 @@ RUN_TAKE_PROBABILITY_CAP = 0.90
 # 13.5), linearly interpolated between anchors and held flat beyond the last one (there's no
 # real documented convention past round 4 to extrapolate a slope from).
 SUPERFLEX_QB_PACE_ANCHORS = [(0, 0.0), (12, 6.0), (24, 9.5), (48, 13.5)]
+# How many upcoming picks a CURRENT pace deficit gets spread across -- roughly half a round in
+# a 12-team league. A bounded, principled starting point (not empirically backtested, same
+# honesty as every other unproven constant here): the deficit right now is real; how quickly the
+# market corrects it is the part nobody's handed this app real numbers for.
+PACE_CATCH_UP_WINDOW = 6.0
 
 
 def generate_pick_order(round_1_order: list, total_rounds: int, draft_type: str = "snake") -> list:
@@ -177,33 +182,39 @@ def _pace_based_take_probability(
     across a real intervening gap). This function ignores that floor entirely and computes a
     probability straight from the convention instead.
 
-    Two steps: (1) how many MORE players at this position are owed, by the next documented
-    anchor, spread over the real picks remaining until that anchor -- gives the probability ANY
-    upcoming pick goes to this position; (2) divide by target_player_id's own rank AMONG
-    REMAINING PLAYERS AT THIS POSITION on this specific opponent's own board -- narrows "some
-    QB gets taken" down to "THIS QB gets taken." The consensus best remaining player at a
-    position running far behind pace gets nearly the full step-1 probability; the 5th-best
-    remaining shares it roughly five ways. Treating the remaining pool as roughly equally
-    likely (not modeling name-level preference beyond rank) is a real simplifying assumption,
-    not a claim of precision -- same honesty as every other unproven constant in this module.
+    Two steps: (1) how far behind the documented convention this position is RIGHT NOW
+    (expected_position_pace's own cumulative curve, minus how many have actually been drafted),
+    spread over a fixed near-term catch-up window (PACE_CATCH_UP_WINDOW) -- gives the
+    probability ANY upcoming pick goes to this position; (2) divide by target_player_id's own
+    rank AMONG REMAINING PLAYERS AT THIS POSITION on this specific opponent's own board --
+    narrows "some QB gets taken" down to "THIS QB gets taken." The consensus best remaining
+    player at a position running far behind pace gets nearly the full step-1 probability; the
+    5th-best remaining shares it roughly five ways. Treating the remaining pool as roughly
+    equally likely (not modeling name-level preference beyond rank) is a real simplifying
+    assumption, not a claim of precision -- same honesty as every other unproven constant here.
+
+    Deliberately NOT "spread the deficit over the picks remaining until the next documented
+    anchor" -- an earlier version of this function did exactly that, and it produced a real,
+    confirmed bug: probability climbed smoothly toward 1.0 approaching an anchor, then DROPPED
+    right as picks_made_now crossed into the next anchor's window, because the deficit
+    recomputed against a suddenly wider remaining-picks denominator. A real hazard shouldn't
+    reset downward the moment a deadline passes without being met -- if anything the reverse.
+    Spreading against a small FIXED window instead keeps this continuous: expected_position_pace
+    itself is a continuous (if kinked) curve, so the deficit against it never jumps, and neither
+    does this.
 
     None whenever no convention is documented for this position/format, or once picks_made_now
     is past the last documented anchor (no real convention to extrapolate a rate from)."""
     expected_now = expected_position_pace(position, picks_made_now, roster_positions)
     if expected_now is None:
         return None
-    next_anchor = next((x for x, _y in SUPERFLEX_QB_PACE_ANCHORS if x > picks_made_now), None)
-    if next_anchor is None:
-        return None
-    remaining_picks = next_anchor - picks_made_now
-    if remaining_picks <= 0:
+    if picks_made_now >= SUPERFLEX_QB_PACE_ANCHORS[-1][0]:
         return None
     actual_now = sum(
         1 for p in picks if player_position(players_db.get(str(p.get("player_id")), {})) == position
     )
-    expected_at_anchor = expected_position_pace(position, next_anchor, roster_positions)
-    deficit_to_close = max(expected_at_anchor - actual_now, 0.0)
-    any_pick_probability = min(deficit_to_close / remaining_picks, 1.0)
+    deficit_now = max(expected_now - actual_now, 0.0)
+    any_pick_probability = min(deficit_now / PACE_CATCH_UP_WINDOW, 1.0)
 
     position_rows = [r for r in board["by_id"].values() if r["position"] == position]
     position_rows.sort(key=lambda r: r["universal_value"], reverse=True)
@@ -296,7 +307,7 @@ def estimate_survival(
 
     survival = 1.0
     risk_by_team: list[dict] = []
-    for roster_id in intervening:
+    for i, roster_id in enumerate(intervening):
         board = opponent_boards.get(str(roster_id))
         if not board:
             continue
@@ -306,10 +317,21 @@ def estimate_survival(
         is_run = bool(run_position and target_position == run_position)
         rank_based_p_take = _take_probability(rank, is_run)
 
+        # i (this pick's position within THIS survival computation, not the real, current pick
+        # count alone) is what makes hazard rise the deeper we go without a resolution: the
+        # documented anchor deadline is the same real point in the draft regardless of how many
+        # of these hypothetical intervening picks have already passed, so each one that doesn't
+        # take him concentrates the SAME remaining deficit over fewer remaining picks --
+        # mechanically the "he's survived further than expected, so the next pick is even more
+        # likely to be the one" run-momentum effect, not a separately invented boost. actual_now
+        # (how many of this position are REALLY drafted) still comes only from the real `picks`
+        # list -- this module doesn't simulate what the OTHER intervening teams hypothetically
+        # did before this one, same performance/precision tradeoff already documented for
+        # _build_opponent_boards.
         pace_p_take = None
         if league is not None and target_position is not None:
             pace_p_take = _pace_based_take_probability(
-                target_position, str(target_player_id), board, len(picks), picks, players_db,
+                target_position, str(target_player_id), board, len(picks) + i, picks, players_db,
                 league.get("roster_positions") or [],
             )
         pace_driven = pace_p_take is not None and pace_p_take > rank_based_p_take

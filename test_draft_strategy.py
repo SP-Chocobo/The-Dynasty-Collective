@@ -241,14 +241,25 @@ class PaceBasedTakeProbabilityTests(unittest.TestCase):
             "QB", "1", board, 48, [], {}, SUPERFLEX_LEAGUE["roster_positions"],
         ))
 
-    def test_the_consensus_best_remaining_qb_gets_nearly_the_full_deficit_probability(self):
-        # 5 picks made, 0 QBs drafted -- a real deficit against the round-1 anchor (expected
-        # ~2.5 by now). This QB is the only one left, so the whole "some QB gets taken" share
-        # of probability goes to him alone (rank-among-QBs divisor of 1).
+    def test_the_consensus_best_remaining_qb_gets_the_full_any_pick_share(self):
+        # 5 picks made, 0 QBs drafted -- a real deficit against the round-1 pace (expected ~2.5
+        # by now: interpolate(5) on SUPERFLEX_QB_PACE_ANCHORS). This QB is the only one left, so
+        # the whole "some QB gets taken" share of probability goes to him alone (rank-among-QBs
+        # divisor of 1) -- deficit(2.5) / PACE_CATCH_UP_WINDOW(6) = 0.41666...
         board = _synthetic_board([{"player_id": "qb1", "position": "QB", "universal_value": 90.0}])
         p = ds._pace_based_take_probability("QB", "qb1", board, 5, [], {}, SUPERFLEX_LEAGUE["roster_positions"])
-        self.assertIsNotNone(p)
-        self.assertGreater(p, 0.5, "a severe pace deficit with only one remaining QB should produce a large probability")
+        self.assertAlmostEqual(p, 2.5 / ds.PACE_CATCH_UP_WINDOW, places=6)
+
+    def test_probability_rises_continuously_with_no_discontinuity_across_an_anchor_boundary(self):
+        # The real sawtooth bug this module's own history now documents: an earlier version
+        # spread the deficit over "picks remaining until the NEXT anchor," which reset downward
+        # the instant picks_made_now crossed an anchor boundary (12, 24, ...) -- a real hazard
+        # should never drop back down just because a deadline passed unmet. Assert the
+        # continuous version directly, one pick before and one pick after the round-1 anchor.
+        board = _synthetic_board([{"player_id": "qb1", "position": "QB", "universal_value": 90.0}])
+        just_before = ds._pace_based_take_probability("QB", "qb1", board, 11, [], {}, SUPERFLEX_LEAGUE["roster_positions"])
+        just_after = ds._pace_based_take_probability("QB", "qb1", board, 13, [], {}, SUPERFLEX_LEAGUE["roster_positions"])
+        self.assertGreaterEqual(just_after, just_before, "hazard must not drop after crossing an anchor boundary with the deficit still unmet")
 
     def test_a_lower_ranked_qb_shares_the_probability_with_his_peers(self):
         board = _synthetic_board([
@@ -310,6 +321,28 @@ class EstimateSurvivalPaceIntegrationTests(unittest.TestCase):
         )
         self.assertLessEqual(with_prior["survival_probability"], without_prior["survival_probability"])
         self.assertTrue(any(r["pace_driven"] for r in with_prior["risk_by_team"]))
+
+    def test_hazard_rises_across_successive_intervening_picks_within_one_computation(self):
+        # The run-momentum fix: within a SINGLE estimate_survival call, the pace-based
+        # take-probability for a later intervening pick must be >= an earlier one's, since the
+        # same documented deficit gets concentrated over fewer remaining picks as the anchor
+        # deadline approaches -- "he's survived further than expected" mechanically raises the
+        # hazard for the next pick, not a separately invented boost.
+        board = dr.compute_draft_board(
+            self.merger, self.players_db, [], my_roster_id="1", league=SUPERFLEX_LEAGUE, mode="balanced",
+        )
+        best_qb_id = next(r["player_id"] for r in board if r["position"] == "QB")
+        picks = [{"roster_id": str(i), "player_id": r["player_id"], "round": 1}
+                 for i, r in enumerate([r for r in board if r["position"] != "QB"][:3], start=1)]
+        pick_order = ds.generate_pick_order([str(i) for i in range(1, 13)], total_rounds=4)
+        # A long gap (picking 1st overall) so several intervening picks land in ONE computation.
+        intervening = ds.intervening_roster_ids(pick_order, 0, ds.find_next_pick_index(pick_order, "1", 0))
+        boards = ds._build_opponent_boards(self.merger, self.players_db, picks, SUPERFLEX_LEAGUE, intervening)
+        result = ds.estimate_survival(picks, self.players_db, pick_order, 0, "1", best_qb_id, boards, league=SUPERFLEX_LEAGUE)
+        pace_driven_probs = [r["take_probability"] for r in result["risk_by_team"] if r["pace_driven"]]
+        self.assertGreaterEqual(len(pace_driven_probs), 2, "fixture didn't produce enough pace-driven picks to exercise this")
+        self.assertEqual(pace_driven_probs, sorted(pace_driven_probs), "hazard must not decrease across successive intervening picks")
+        self.assertLess(pace_driven_probs[0], pace_driven_probs[-1], "hazard must actually rise, not just stay flat")
 
     def test_pace_prior_never_makes_survival_worse_than_the_rank_based_estimate_when_its_the_weaker_signal(self):
         # A player who's already the clear #1 on every intervening team's own board has a real
