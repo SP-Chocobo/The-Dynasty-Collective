@@ -270,6 +270,31 @@ class ComputePickNecessityTests(unittest.TestCase):
             self.assertLessEqual(score, 100.0)
 
 
+class NearTieFlagsTests(unittest.TestCase):
+    """NEAR_TIE_BAND is data-derived (see its own comment: median adjacent tav gap 1.23,
+    p75 2.26 on a real fresh superflex board) -- what these tests lock down is the SEMANTICS:
+    band membership is measured against the leader, the leader belongs to his own tie group,
+    and a leader nobody is close to is not 'in a tie' with anyone."""
+
+    def test_candidates_within_the_band_of_the_leader_form_a_tie_group(self):
+        flags = ps.near_tie_flags([100.0, 99.2, 98.1, 95.0])
+        self.assertEqual(flags, [True, True, True, False])
+
+    def test_a_clear_leader_alone_is_not_flagged_as_tied_with_himself(self):
+        flags = ps.near_tie_flags([100.0, 95.0, 90.0])
+        self.assertEqual(flags, [False, False, False])
+
+    def test_band_is_measured_against_the_leader_not_chained_adjacency(self):
+        # 100 / 98.5 / 97.0: each ADJACENT gap is 1.5 (inside the band), but 97.0 sits 3.0
+        # behind the leader -- a chain of small steps must not stretch the tie group.
+        flags = ps.near_tie_flags([100.0, 98.5, 97.0])
+        self.assertEqual(flags, [True, True, False])
+
+    def test_empty_and_singleton_inputs(self):
+        self.assertEqual(ps.near_tie_flags([]), [])
+        self.assertEqual(ps.near_tie_flags([50.0]), [False])
+
+
 class BuildSnapshotTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):

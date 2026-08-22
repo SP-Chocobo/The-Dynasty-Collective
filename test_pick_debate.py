@@ -14,7 +14,7 @@ from pick_synthesis import CandidateSnapshot, PickSnapshot
 
 def _candidate(player_id, name, position="QB", universal_value=90.0, team_acquisition_value=100.0,
                 survival_probability=0.5, positional_cliff=None, position_run_detected=False,
-                pick_necessity=75.0, necessity_label="PREFERRED",
+                pick_necessity=75.0, necessity_label="PREFERRED", near_tie_with_leader=False,
                 consensus_rank=None, consensus_tier=None, reach_label=None, projected_points=None):
     return CandidateSnapshot(
         player_id=player_id, name=name, position=position, team="SF",
@@ -24,10 +24,11 @@ def _candidate(player_id, name, position="QB", universal_value=90.0, team_acquis
         survival_probability=survival_probability, intervening_picks=2,
         opportunity_cost=round(universal_value * (1 - survival_probability), 2),
         expected_value_of_waiting=round(universal_value * survival_probability, 2),
-        denial_value=30.0, denial_team="4",
+        denial_value=30.0, denial_team="4", rival_premium=6.0,
         positional_cliff=positional_cliff,
         position_run_detected=position_run_detected,
         pick_necessity=pick_necessity, necessity_label=necessity_label,
+        near_tie_with_leader=near_tie_with_leader,
         consensus_rank=consensus_rank, consensus_tier=consensus_tier, reach_label=reach_label,
         projected_points=projected_points,
     )

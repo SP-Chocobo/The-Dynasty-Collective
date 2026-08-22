@@ -226,6 +226,12 @@ def _format_candidate(candidate: CandidateSnapshot, user_selected_player_id: Opt
         + (f" -- {candidate.projected_points} projected season points" if candidate.projected_points is not None else ""),
         f"  Team acquisition value: {candidate.team_acquisition_value} (need_bonus: {candidate.need_bonus:+}, eligibility_bonus: {candidate.eligibility_bonus:+})",
     ]
+    if candidate.near_tie_with_leader:
+        lines.append(
+            "  NEAR-TIE: within the measured noise band of the top candidate -- the value "
+            "ordering inside this group is NOT a real preference signal; the user's own "
+            "player preference is a fully legitimate tiebreaker here."
+        )
     if candidate.survival_probability is not None:
         lines.append(
             f"  Survival probability to your next pick: {_format_probability(candidate.survival_probability)} "

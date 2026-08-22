@@ -176,6 +176,19 @@ NECESSITY_ROSTER_FIT_WEIGHT = 0.8    # applied directly to (need_bonus + eligibi
 LATE_ROUND_THRESHOLD = dr.UPSIDE_MODE_DEFAULT_ROUND  # same round draft_room switches to upside mode
 LATE_ROUND_NECESSITY_CAP = 30.0
 
+# A team_acquisition_value gap at or below this is field noise, not ordering signal --
+# DATA-DERIVED, not an invented percentage: on a real fresh 12-team superflex dynasty board,
+# adjacent tav gaps in the top 40 ran median 1.23 / p75 2.26 / p90 3.53, so 2.0 sits right at
+# the "most adjacent pairs are inside it" line (72% measured). Candidates this close to the
+# LEADER form a tie group where the deterministic ordering must not be presented as a real
+# preference -- this is exactly where the user's own player preference legitimately decides,
+# and the debate layer needs the boundary handed to it as a computed number (an LLM inventing
+# its own "feels close" threshold is precisely what this module's frozen-snapshot architecture
+# exists to prevent). Distinct from NECESSITY_STANDOUT_REFERENCE_GAP (15.0), which measures a
+# CUMULATIVE lead over the whole field -- that reference sits above the largest adjacent gap
+# ever observed (10.6) on purpose, since full standout credit should demand something rare.
+NEAR_TIE_BAND = 2.0
+
 # Checked top-down; the first threshold this score meets or exceeds wins.
 NECESSITY_LABEL_THRESHOLDS = [
     (98.0, "MUST TAKE"),
@@ -322,6 +335,21 @@ def consensus_reach(
     }
 
 
+def near_tie_flags(team_acquisition_values: list[float]) -> list[bool]:
+    """Which candidates sit inside NEAR_TIE_BAND of the leader's team_acquisition_value --
+    True for every member of the tie group INCLUDING the leader, but only when the group has
+    at least two members: a leader nobody is close to isn't 'in a tie' with anyone, and
+    flagging him alone would hand the debate layer a false 'these are tied' claim. Same order
+    as the input."""
+    if not team_acquisition_values:
+        return []
+    leader = max(team_acquisition_values)
+    in_band = [leader - v <= NEAR_TIE_BAND for v in team_acquisition_values]
+    if sum(in_band) < 2:
+        return [False] * len(team_acquisition_values)
+    return in_band
+
+
 def _find_row(board: list[dict], player_id) -> Optional[dict]:
     target = str(player_id)
     return next((r for r in board if str(r["player_id"]) == target), None)
@@ -460,6 +488,7 @@ class CandidateSnapshot:
     position_run_detected: bool
     pick_necessity: float
     necessity_label: str
+    near_tie_with_leader: bool
     consensus_rank: Optional[int]
     consensus_tier: Optional[int]
     reach_label: Optional[str]
@@ -554,10 +583,11 @@ def build_snapshot(
 
     round_num = (max((p.get("round") or 1) for p in picks) if picks else 1)
     necessity_by_candidate = compute_pick_necessity(raw_candidates, round_num)
+    tie_flags = near_tie_flags([c["team_acquisition_value"] for c in raw_candidates])
 
     candidates = [
-        CandidateSnapshot(**c, pick_necessity=necessity, necessity_label=label)
-        for c, (necessity, label) in zip(raw_candidates, necessity_by_candidate)
+        CandidateSnapshot(**c, pick_necessity=necessity, necessity_label=label, near_tie_with_leader=tie)
+        for c, (necessity, label), tie in zip(raw_candidates, necessity_by_candidate, tie_flags)
     ]
 
     return PickSnapshot(
