@@ -25,16 +25,47 @@ from PIL import Image
 
 import bot_benchmark
 import bot_config
+import bot_research
 import decision_log
+import draft_room
+import draft_strategy
+import pick_debate
+import pick_synthesis
 import pinned_messages
 import todo_log
 import llm_engine
 from attachments import ATTACHMENTS_DIR, list_attachments, save_attachment, set_caption, set_scope, delete_attachment
-from data_merger import GLOBAL_PROJECTIONS_DIR, PROJECTIONS_DIR, DataMerger, load_projection_file, normalize_name, save_alias
+from data_merger import (
+    EXTERNAL_VALUES_DIR, GLOBAL_PROJECTIONS_DIR, PROJECTIONS_DIR, DataMerger, external_upload_targets,
+    load_projection_file, name_key, normalize_name, recency_grade, remove_alias, save_alias,
+)
 from league_format import FORMAT_GUIDANCE, FORMAT_OPTIONS, STANDARD, get_format_override, set_format_override
 from league_prefs import forget_league, get_prefs, move_league, sorted_leagues, toggle_archive
-from player_universe import available_players, build_player_universe, league_usable_positions, matching_players
+from player_universe import available_players, build_player_universe, league_usable_positions, matching_players, player_name
 from sleeper_client import SleeperAPIError, SleeperClient, compute_points_from_stats, find_roster_for_user, league_format_summary
+
+# Friendly display labels for pick_synthesis.diff_snapshots' real field names -- presentation
+# only, a straight lookup over an already-computed dict key, never a re-derivation of the
+# number itself. See the Draft Room view's "What changed?" drawer.
+_DRAFT_ROOM_DIFF_LABELS = {
+    "universal_value": "Universal value", "need_bonus": "Roster need",
+    "eligibility_bonus": "Lineup flexibility", "team_acquisition_value": "Acquisition value",
+    "survival_probability": "Survival probability", "opportunity_cost": "Opportunity cost",
+    "expected_value_of_waiting": "Value of waiting", "denial_value": "Denial value",
+    "pick_necessity": "Pick necessity",
+}
+
+# Pure display lookups over pick_synthesis's already-computed necessity_label -- never a new
+# tier boundary decided here (those live in pick_synthesis.NECESSITY_LABEL_THRESHOLDS).
+_NECESSITY_COLOR_EMOJI = {
+    "MUST TAKE": "🟣", "STRONG ACTION": "🔵", "PREFERRED": "🟢",
+    "CLOSE CALL": "🟡", "LOW URGENCY": "🔴", "DOESN'T MATTER MUCH": "🔴",
+}
+_NECESSITY_BADGE_CLASS = {
+    "MUST TAKE": "badge-necessity-must-take", "STRONG ACTION": "badge-necessity-strong",
+    "PREFERRED": "badge-necessity-preferred", "CLOSE CALL": "badge-necessity-close-call",
+    "LOW URGENCY": "badge-necessity-low", "DOESN'T MATTER MUCH": "badge-necessity-low",
+}
 
 CHATS_DIR = Path("data/chats")
 CHATS_DIR.mkdir(parents=True, exist_ok=True)
@@ -95,11 +126,38 @@ st.markdown(
     .badge-user { background: rgba(148,163,184,0.18); color: #cbd5e1; border: 1px solid #64748b; }
     .badge-summary { background: rgba(56,189,248,0.18); color: #7dd3fc; border: 1px solid #0ea5e9; }
     .badge-notice { background: rgba(245,158,11,0.18); color: #fbbf24; border: 1px solid #f59e0b; }
+    /* Pick Necessity's own color ramp (Draft Room view) -- distinct classes from the debate
+       personas above even though the colors are reused from that same palette, so a necessity
+       tier is never visually confusable with a Quant/Beat/Contrarian/Moderator badge. Low to
+       high necessity: red -> gold -> green -> blue -> purple. */
+    .badge-necessity-must-take { background: rgba(139,92,246,0.18); color: #c4b5fd; border: 1px solid #8b5cf6; box-shadow: 0 0 0 1px rgba(196,181,253,0.35), 0 0 8px rgba(139,92,246,0.45); }
+    .badge-necessity-strong { background: rgba(56,189,248,0.18); color: #7dd3fc; border: 1px solid #0ea5e9; }
+    .badge-necessity-preferred { background: rgba(22,163,74,0.18); color: #4ade80; border: 1px solid #16a34a; }
+    .badge-necessity-close-call { background: rgba(212,160,23,0.18); color: #facc15; border: 1px solid #d4a017; }
+    .badge-necessity-low { background: rgba(185,28,28,0.18); color: #f87171; border: 1px solid #b91c1c; }
     .agent-block {
         border-radius: 8px; padding: 10px 14px; margin-bottom: 10px;
         background: #202124; border: 1px solid #2f3033;
+    }
+    /* Reasoning prose reads as an actual chat reply -- proportional font, not the
+       monospace/pre-wrap treatment every message used to get regardless of whether it was
+       free-flowing analysis or a fixed-format block. pre-line (not pre-wrap) still respects
+       the LLM's own paragraph breaks without the typewriter look. */
+    .agent-prose {
+        white-space: pre-line;
+        line-height: 1.55;
+    }
+    /* The structured verdict recap (RECOMMENDATION through any trailing SOURCE FINDING/
+       COMPARISON lines) keeps the old monospace/pre-wrap "form" treatment, but now only for
+       that fixed-format tail -- set apart from the conversational prose above it by a
+       divider, instead of the two reading as one undifferentiated wall of typewriter text. */
+    .agent-verdict {
         font-family: 'JetBrains Mono', 'DejaVu Sans Mono', monospace;
         white-space: pre-wrap;
+        font-size: 0.9rem;
+        margin-top: 10px;
+        padding-top: 10px;
+        border-top: 1px dashed #3a3c42;
     }
     .status-ok { color: #4ade80; }
     .status-bad { color: #64748b; }
@@ -174,8 +232,17 @@ st.markdown(
        Scoped to aria-expanded="true" only: min-width beats max-width per the CSS
        spec, so an unscoped rule here fights Streamlit's own collapse (which sets
        max-width: 0 on the same element) and leaves a chunk of dead space and a
-       sliver of visible sidebar even when "collapsed". */
-    [data-testid="stSidebar"][aria-expanded="true"] { min-width: 400px; }
+       sliver of visible sidebar even when "collapsed".
+       Also scoped to a wide-enough viewport: at 700px this leaves 300px for actual
+       content, still workable; on a real phone (~390px) this forced the sidebar WIDER
+       than the entire screen -- confirmed live, an open sidebar's own content became
+       unreachable, and (see .st-key-debate_dock below) the fixed dock's hardcoded
+       "shift right by 400px when the sidebar's open" offset put it entirely off-screen
+       too (x=400 on a 390px viewport). Below the breakpoint, Streamlit's own native
+       responsive sidebar width (which adapts to the viewport) takes over instead. */
+    @media (min-width: 700px) {
+        [data-testid="stSidebar"][aria-expanded="true"] { min-width: 400px; }
+    }
 
     /* Default Streamlit buttons read as understated on a dark theme — thin,
        low-contrast border, flat background that barely lifts off the page. Give
@@ -207,6 +274,22 @@ st.markdown(
     [data-testid="stButtonGroup"] button:active {
         transform: scale(0.96);
         filter: brightness(0.9);
+    }
+    /* Popover triggers never got the 44px touch-target sizing above -- they're a different
+       component (stPopoverButton, not .stButton), so the app-wide rule never reached them even
+       though the league switcher is a popover trigger sitting right next to a plain st.button
+       (Refresh) that already got it. */
+    [data-testid="stPopoverButton"] {
+        min-height: 44px;
+    }
+    /* Same gap for the main Matchup/Roster Maintenance/League page nav specifically -- it's a
+       segmented_control, rendered through stButtonGroup rather than .stButton, so it's stayed
+       at Streamlit's smaller default this whole time despite being the single most-tapped
+       control in the app. Scoped to this one control (not every segmented_control) since the
+       others are occasional secondary settings, not primary navigation. */
+    .st-key-main_view [data-testid="stButtonGroup"] button {
+        min-height: 44px;
+        font-weight: 600;
     }
 
     /* The Free Agents table's clickable sort header (real st.button()s, since a
@@ -290,9 +373,21 @@ st.markdown(
        the document flow) — left:0 above would span full width including underneath
        the sidebar, which then paints over the dock's left edge and hides whatever
        text happens to land there. Only start the dock after the sidebar's actual
-       rendered width, tracking its expanded/collapsed state via :has(). */
-    body:has([data-testid="stSidebar"][aria-expanded="true"]) .st-key-debate_dock { left: 400px; }
+       rendered width, tracking its expanded/collapsed state via :has().
+       Matches the sidebar's own min-width breakpoint above: below 700px the sidebar
+       is back to Streamlit's native (narrower, viewport-responsive) width, so a fixed
+       400px offset would push the dock off-screen on a real phone -- confirmed live,
+       x=400 on a 390px viewport, completely unreachable. Below the breakpoint the dock
+       just stays flush left regardless of sidebar state; a brief visual overlap with an
+       open sidebar on a narrow phone is a real tradeoff, but strictly better than the
+       dock being categorically unusable. */
+    @media (min-width: 700px) {
+        body:has([data-testid="stSidebar"][aria-expanded="true"]) .st-key-debate_dock { left: 400px; }
+    }
     body:has([data-testid="stSidebar"][aria-expanded="false"]) .st-key-debate_dock { left: 0; }
+    @media (max-width: 699.98px) {
+        .st-key-debate_dock { left: 0 !important; }
+    }
 
 
     /* Delete confirmations are the one genuinely irreversible action in the sidebar —
@@ -409,9 +504,18 @@ def save_parsed_keys_to_env(overrides: dict[str, str]) -> None:
     ENV_PATH.write_text("\n".join(new_lines) + "\n")
 
 
+# SleeperClient()/DataMerger() are real work (DataMerger() alone measured ~115ms -- it loads
+# and merges every baseline/external CSV) -- a dict literal's values are all evaluated eagerly
+# before the loop below even checks whether the key is already set, so this used to construct
+# fresh instances of both on literally every single rerun (every button click, every widget
+# interaction) and immediately throw them away when the key already existed. Constructed
+# directly, guarded individually, before the cheap-default loop.
+if "sleeper_client" not in st.session_state:
+    st.session_state.sleeper_client = SleeperClient()
+if "data_merger" not in st.session_state:
+    st.session_state.data_merger = DataMerger()
+
 for key, default in {
-    "sleeper_client": SleeperClient(),
-    "data_merger": DataMerger(),
     "user_id": None,
     "username": load_last_username(),
     "auto_sync_attempted": False,  # only try to restore a remembered session once per browser session
@@ -436,9 +540,24 @@ for key, default in {
 
 def load_chat_history(league_id: str) -> list[dict]:
     path = CHATS_DIR / f"{league_id}_history.json"
-    if path.exists():
+    if not path.exists():
+        return []
+    try:
         return json.loads(path.read_text())
-    return []
+    except (json.JSONDecodeError, OSError):
+        # Written on every single message (see append_message/save_chat_history below), so
+        # this is the single most write-frequent file in the app -- an interrupted write
+        # (browser closed mid-save, disk full) leaving invalid JSON here used to crash the
+        # whole app on next load, with no way back in short of manually deleting the file.
+        # Back the corrupt file up (never overwrite silently) before treating history as
+        # empty, so a whole league's chat/decision/objective trail isn't just gone -- the
+        # very next save would otherwise overwrite it with a fresh empty history.
+        backup = path.with_name(f"{path.stem}_corrupt_{int(time.time())}{path.suffix}")
+        try:
+            path.rename(backup)
+        except OSError:
+            pass
+        return []
 
 
 def save_chat_history(league_id: str, history: list[dict]) -> None:
@@ -480,11 +599,47 @@ def process_moderator_output(moderator_text: str, trigger_question: str) -> None
         todo_log.revise_todo(st.session_state.selected_league_id, update["id"], update["text"], update["reason"])
     for proposal in directives["likely_resolved"]:
         todo_log.mark_likely_resolved(st.session_state.selected_league_id, proposal["id"], proposal["reason"])
+    # See MODERATOR_SYSTEM_PROMPT's own SOURCE FINDING instructions: only written when the
+    # whole panel (Contrarian included) didn't dispute it, so persisting every parsed line here
+    # is trusting the Moderator's own gate, not re-verifying it a second time in code -- the
+    # actual trust bar is upstream, in the debate itself.
+    for finding in llm_engine.parse_source_findings(moderator_text):
+        bot_research.add_finding(
+            finding["player_name"], finding["source"], finding["claim"], rank=finding["rank"],
+            conviction=verdict.get("conviction", ""), question=trigger_question,
+            league_id=st.session_state.selected_league_id,
+        )
+    # Same trust posture as SOURCE FINDING above -- a relative claim between two players, kept
+    # in its own structured store (never the composite's inputs) since it carries no absolute
+    # number. See bot_research.py's own docstring on why and when that could eventually change.
+    for comparison in llm_engine.parse_source_comparisons(moderator_text):
+        bot_research.add_comparison(
+            comparison["subject"], comparison["compared_to"], comparison["direction"], comparison["source"],
+            context=comparison["context"], evidence=comparison["evidence"], question=trigger_question,
+            league_id=st.session_state.selected_league_id,
+        )
     # "Referenced" is a lighter signal than an actual UPDATE/LIKELY RESOLVED directive -- just
     # the Moderator citing an objective by id (e.g. "per #3, ...") while reasoning about
     # something else. Regex over the active ids rather than another LLM directive, since this
     # is purely a UI hint, not something that should shape the model's own output format.
-    mentioned_ids = {int(n) for n in re.findall(r"#(\d+)", moderator_text)}
+    #
+    # A bare #(\d+) scan also matches a source's own rank citation ("ranked #1 DL", "#3 WR",
+    # "#1 overall RB") -- confirmed live, that pattern is everywhere in SOURCE FINDING lines
+    # and ordinary prose discussing where a source ranks a player -- which would mark an
+    # unrelated objective "referenced" just because its id happened to equal someone's rank
+    # number. SOURCE FINDING/SOURCE COMPARISON lines are skipped entirely (their whole point is
+    # a source's own rank), and both rank-citation shapes ("ranked #N" and "#N <position>",
+    # optionally with "at/in/overall" between them) are stripped from every other line before
+    # scanning, so only an actual bare "#N" reference is left to match.
+    _rank_mention_re = re.compile(
+        r"(?i)\brank(?:ed)?\s+#\d+\b|#\d+\s+(?:at\s+|in\s+|overall\s+)?"
+        r"(?:QB|RB|WR|TE|K|DEF|LB|DL|DB)\b"
+    )
+    mentioned_ids: set[int] = set()
+    for line in moderator_text.splitlines():
+        if line.strip().upper().startswith(("SOURCE FINDING:", "SOURCE COMPARISON:")):
+            continue
+        mentioned_ids.update(int(n) for n in re.findall(r"#(\d+)", _rank_mention_re.sub("", line)))
     for active_item in todo_log.load_todos(st.session_state.selected_league_id, statuses=todo_log.ACTIVE_STATUSES):
         if active_item["id"] in mentioned_ids:
             todo_log.mark_referenced(st.session_state.selected_league_id, active_item["id"])
@@ -494,12 +649,22 @@ def find_last_debate(chat_history: list[dict]) -> Optional[dict[str, str]]:
     """The most recent Full Debate round's four reports, if any -- lets a follow-up talk to
     the Moderator with something real to reference instead of answering blind. A Full Debate
     always appends exactly [quant, beat, contrarian, moderator] back to back (see the trigger
-    block below), so that exact role run is the signature to scan for, most recent first."""
+    block below), so that exact role run is the signature to scan for, most recent first.
+
+    A round where any of the four calls actually failed (a missing/invalid API key, a provider
+    outage -- see llm_engine's fail-soft "⚠️ ..." convention) is skipped entirely rather than
+    handed to a follow-up as real context: the Moderator's own verdict is only as good as the
+    reports underneath it, and an error string standing in for a "report" isn't something a
+    follow-up should be built on. Falls through to an earlier valid round if one exists, or
+    None (a fresh full debate) if every round on record was broken."""
     for i in range(len(chat_history) - 4, -1, -1):
         if [chat_history[i + k]["role"] for k in range(4)] == ["quant", "beat", "contrarian", "moderator"]:
+            contents = [chat_history[i + k]["content"] for k in range(4)]
+            if any(c.startswith("⚠️") for c in contents):
+                continue
             return {
-                "quant": chat_history[i]["content"], "beat": chat_history[i + 1]["content"],
-                "contrarian": chat_history[i + 2]["content"], "moderator": chat_history[i + 3]["content"],
+                "quant": contents[0], "beat": contents[1],
+                "contrarian": contents[2], "moderator": contents[3],
             }
     return None
 
@@ -769,7 +934,16 @@ def render_styled_table(
                     f'{html.escape(str(group_val))}</td></tr>'
                 )
                 last_group = group_val
-        cells = "".join(f'<td style="padding:9px 14px;border-bottom:1px solid #202124;">{_cell_html(c, row[c])}</td>' for c in display_cols)
+        # table-layout:fixed (render_header=False, see below) gives every column an equal,
+        # often narrow share of the width -- without truncation a long value just overflows
+        # its cell and visually overlaps its neighbor instead of respecting that width, so
+        # clip it with an ellipsis there. Auto layout (render_header=True) sizes each column
+        # to its content already, so nothing to truncate in that case.
+        cell_overflow_style = "overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" if not render_header else ""
+        cells = "".join(
+            f'<td style="padding:9px 14px;border-bottom:1px solid #202124;{cell_overflow_style}">{_cell_html(c, row[c])}</td>'
+            for c in display_cols
+        )
         row_parts.append(f"<tr>{cells}</tr>")
 
     # The conditional thead has to stay on the same line as <table ...> — a
@@ -778,11 +952,25 @@ def render_styled_table(
     # CommonMark's raw-HTML-block parsing early, and everything after gets
     # re-parsed as an indented code block instead of rendered HTML.
     thead_html = f"<thead><tr>{headers}</tr></thead>" if render_header else ""
+    # render_header=False means the caller already laid down its own header row as real
+    # st.columns(len(display_cols)) buttons directly above this table (the Free Agents
+    # sort row is the one caller that does this) -- st.columns splits that row into
+    # exactly equal widths. Left on the default 'auto' table-layout, this table's own
+    # <td> widths are sized by cell content instead, and the two independently-computed
+    # column grids drift apart (confirmed: a wide "name" column here vs. a padding-only
+    # header button pushed everything after it out of alignment). table-layout:fixed
+    # forces this table's columns equal too, matching the header row above it exactly.
+    # Skipped when this table renders its own <th> row (render_header=True) -- there,
+    # header and body share one table already, so they can never misalign, and forcing
+    # equal widths would just squeeze a genuinely wide column like "name" for no reason.
+    table_style = "width:100%;border-collapse:collapse;font-size:0.88rem;"
+    if not render_header:
+        table_style += "table-layout:fixed;"
     st.markdown(
         f"""
         <div style="overflow-x:auto;overflow-y:auto;max-height:600px;
                     border:1px solid #2a2b2e;border-radius:10px;">
-          <table style="width:100%;border-collapse:collapse;font-size:0.88rem;">{thead_html}
+          <table style="{table_style}">{thead_html}
             <tbody>{''.join(row_parts)}</tbody>
           </table>
         </div>
@@ -1008,7 +1196,50 @@ def format_scoring_settings(scoring_settings: dict) -> str:
     return ", ".join(f"{k}={v}" for k, v in pairs)
 
 
-def build_context(snapshot: dict, roster_table: list[dict], player_universe: list[dict], question: str = "") -> str:
+# Shown wherever DataMerger.composite_player_score() returns None -- every loaded source
+# (Draft Sharks baseline included) was checked and none of them had a usable number for this
+# player, so this is a deliberate, honest state, not a blank/missing field to explain away.
+# Never a placeholder score -- see composite_player_score's own docstring on not fabricating one.
+INCOMPLETE_PLAYER_PROFILE = "Incomplete Player Profile"
+
+
+def describe_external_value(ext: dict) -> str:
+    """One compact 'source/list detail' string for a single DataMerger.external_player_values()
+    row. Different sources shape their numbers differently (DynastyProcess: a 1QB/2QB point
+    value on its own ~0-10000 scale; KeepTradeCut: a single crowdsourced 0-9999ish value plus
+    rank/tier; FantasyPros: rank/tier only, off an expert panel, no point value at all), so
+    this picks whichever fields that row actually has rather than assuming one shape -- new
+    sources with yet another shape still degrade to *something* readable instead of a blank
+    or wrong field lookup."""
+    if ext.get("source_name") == "bot_research":
+        # A panel-vetted live-search/reference-material finding (see bot_research.py), not a
+        # static export -- label by the source it actually cites (e.g. "ESPN"), not the
+        # generic bucket name, and carry the claim itself since that's the point of this one.
+        cited = ext.get("cited_source") or "?"
+        rank_part = f" (rank={ext['rank']:.0f})" if ext.get("rank") is not None else ""
+        claim = ext.get("claim")
+        return f"{cited} via panel research{rank_part}: {claim}" if claim else f"{cited} via panel research{rank_part}"
+    label = ext.get("source_name", "?")
+    source_file = ext.get("source_file")
+    if source_file:
+        label += f"/{Path(source_file).stem}"
+    tier = f" tier{ext['tier']:.0f}" if ext.get("tier") is not None else ""
+    rank = f" rank={ext['rank']:.0f}" if ext.get("rank") is not None else ""
+    if "value_1qb" in ext or "value_2qb" in ext:
+        detail = f"1QB={ext.get('value_1qb', '-')}/2QB={ext.get('value_2qb', '-')}"
+    elif "value" in ext:
+        detail = f"value={ext['value']:.0f}{rank}{tier}"
+    elif "rank" in ext:
+        detail = f"rank={ext['rank']:.0f}{tier}"
+    else:
+        detail = "(no comparable number)"
+    return f"{label} {detail}"
+
+
+def build_context(
+    snapshot: dict, roster_table: list[dict], player_universe: list[dict], question: str = "",
+    conversation_window: Optional[list[dict]] = None,
+) -> str:
     league = snapshot["league"]
     fmt = league_format_summary(league)
     merger: DataMerger = st.session_state.data_merger
@@ -1047,7 +1278,15 @@ def build_context(snapshot: dict, roster_table: list[dict], player_universe: lis
     summary_msgs = [m for m in history if m.get("role") == "summary"]
     # "notice" messages (e.g. stale-data nudges) are UI bookkeeping, not part of the analytical
     # discussion — replaying them back as if they were a prior debate turn would be noise.
-    recent_msgs = [m for m in history if m.get("role") not in ("summary", "notice")][-RECENT_TURNS_IN_CONTEXT:]
+    if conversation_window is not None:
+        # A caller centering context on one specific past message (the 🎯 "Add as objective"
+        # action) needs messages surrounding THAT message -- both what led into it and what
+        # came after -- not necessarily the tail end of the whole conversation, which wouldn't
+        # even include anything after an older message at all. See that handler below for how
+        # this window gets built.
+        recent_msgs = [m for m in conversation_window if m.get("role") not in ("summary", "notice")]
+    else:
+        recent_msgs = [m for m in history if m.get("role") not in ("summary", "notice")][-RECENT_TURNS_IN_CONTEXT:]
     if summary_msgs or recent_msgs:
         lines.append("\nCONVERSATION MEMORY — prior debates in this league (older-to-newer):")
         if summary_msgs:
@@ -1128,11 +1367,15 @@ def build_context(snapshot: dict, roster_table: list[dict], player_universe: lis
         "Only call special attention to it if it's genuinely material to the question (e.g. no numeric grounding "
         "at all for a close trade call) — don't caveat every single response with the same boilerplate."
     )
-    lines.append(f"  - Draft Sharks Dynasty Rankings: {'loaded' if merger.is_loaded else 'NOT LOADED'}")
+    # Dynasty Rankings and the Trade Value Chart both ship as a committed baseline (see
+    # DataMerger/GLOBAL_PROJECTIONS_DIR) -- is_loaded/is_trade_values_loaded are unconditionally
+    # true now regardless of any live upload, so those two never actually read NOT LOADED here
+    # anymore. Free Agent Finder has no baseline (it's tied to one league's live roster), so
+    # that one's still a real either/or.
+    lines.append("  - Draft Sharks Dynasty Rankings: loaded")
     lines.append(f"  - Draft Sharks Free Agent Finder: {'loaded' if merger.is_free_agents_loaded else 'NOT LOADED'}")
     lines.append(
-        f"  - Draft Sharks Trade Value Chart (rookie pick slot values, future pick values, player values): "
-        f"{'loaded' if merger.is_trade_values_loaded else 'NOT LOADED — if a question needs a specific pick or player price, say so and suggest uploading it (Tools > Trade Value Chart on draftsharks.com)'}"
+        "  - Draft Sharks Trade Value Chart (rookie pick slot values, future pick values, player values): loaded"
     )
     lines.append(f"  - Sleeper native weekly projections: {'loaded' if snapshot.get('projections') else 'NOT AVAILABLE this sync'}")
 
@@ -1167,16 +1410,46 @@ def build_context(snapshot: dict, roster_table: list[dict], player_universe: lis
             "at face value without accounting for that timeframe difference. Treat it as a second independent "
             "quantitative source to weigh against Draft Sharks, not a tiebreaker by default."
         )
+    # "DS" = Draft Sharks throughout. A trailing "other sources" column, where present, is
+    # never Draft Sharks and never blended into the DS figures beside it -- same posture as
+    # Sleeper's own native projection above (a second independent read to weigh, not a
+    # tiebreaker by default) -- so Draft Sharks isn't the only word on a player's value here.
     lines.append(
         "Roster (name | pos | team | DS tier | DS VORP | DS 1yr proj | Sleeper native week proj | "
-        "DS 3yr proj | DS 3D/trade value | DS pos rank):"
+        "DS 3yr proj | DS 3D/trade value | DS pos rank | composite score | other sources):"
     )
     for row in roster_table:
+        other = "; ".join(describe_external_value(ext) for ext in row.get("external_values") or [])
+        composite = row.get("composite")
+        composite_str = (
+            f"{composite['score']:.0f}/100 ({composite['recency_grade']})" if composite else INCOMPLETE_PLAYER_PROFILE
+        )
         lines.append(
             f"  {row['name']} | {row['position']} | {row['team']} | "
             f"{row.get('tier', '-')} | {row.get('vorp', '-')} | {row.get('projection', '-')} | "
             f"{row.get('sleeper_proj', '-')} | {row.get('proj_3yr', '-')} | "
-            f"{row.get('trade_value', '-')} | {row.get('pos_rank', '-')}"
+            f"{row.get('trade_value', '-')} | {row.get('pos_rank', '-')} | {composite_str} | {other or '-'}"
+        )
+    if any(row.get("composite") for row in roster_table):
+        lines.append(
+            "  'composite score' is this app's own single blended read across every loaded "
+            "source (see COMPOSITE_SOURCE_WEIGHTS in data_merger.py: Draft Sharks weighted a "
+            "bit higher, KeepTradeCut a bit lower as a crowd-vote average, fresher-dated "
+            "sources counting for more) -- a starting-point number for convenience, never a "
+            "substitute for weighing the actual per-source disagreement in 'other sources' below."
+        )
+    if merger.is_external_values_loaded:
+        lines.append(
+            "  'other sources' are each on their OWN scale, none of them Draft Sharks' 0-100 and "
+            "none directly comparable to each other either: DynastyProcess (1QB/2QB) runs "
+            "roughly 0-10000, a documented formula off FantasyPros' expert consensus rankings; "
+            "FantasyPros itself (rank/tier) is that same panel's raw overall rank and tier, not "
+            "a point value at all -- and its dynasty_ppr_rankings list is dynasty, its "
+            "best_ball_rankings list is a SEASON-LONG/redraft read, not a dynasty valuation, so "
+            "never treat that one as a long-term value opinion. Compare RELATIVE standing within "
+            "one source's own column, never one source's number against another's directly -- "
+            "and note where sources disagree on which of two players is worth more, since that's "
+            "more informative than any single number alone."
         )
 
     # The canonical Sleeper pool is intentionally separate from the optional
@@ -1215,15 +1488,14 @@ def build_context(snapshot: dict, roster_table: list[dict], player_universe: lis
     # question per team.
     depth = positional_depth(player_universe, merger)
     if depth:
-        has_values = merger.is_loaded
+        # merger.is_loaded is unconditionally true now (the committed baseline covers Dynasty
+        # Rankings regardless of any live upload -- see DataMerger/GLOBAL_PROJECTIONS_DIR), so
+        # this no longer needs a body-count-only fallback branch for the case where it isn't.
         lines.append(
-            "\nLEAGUE-WIDE POSITIONAL DEPTH (per team: rostered player COUNT at each position"
-            + (", with total Draft Sharks trade value in parens where matched -- weigh the value "
-               "figure over the count: three replacement-level backups and three stacked stars both "
-               "read as \"3\" by count alone, but are not remotely the same depth." if has_values else
-               " -- no Draft Sharks data loaded, so this is body count only; two teams with the same "
-               "count here can still differ hugely in actual talent")
-            + "):"
+            "\nLEAGUE-WIDE POSITIONAL DEPTH (per team: rostered player COUNT at each position, with "
+            "total Draft Sharks trade value in parens where matched -- weigh the value figure over "
+            "the count: three replacement-level backups and three stacked stars both read as \"3\" "
+            "by count alone, but are not remotely the same depth):"
         )
         for team_label, positions in depth.items():
             parts = []
@@ -1358,6 +1630,37 @@ def build_context(snapshot: dict, roster_table: list[dict], player_universe: lis
         )
         for a in captioned[:20]:
             lines.append(f"  - {a['caption']}")
+
+    findings = bot_research.findings_for_context()
+    if findings:
+        lines.append(
+            "\nPANEL-VETTED FINDINGS from past debates (see MODERATOR_SYSTEM_PROMPT's SOURCE FINDING rule — "
+            "each already survived scrutiny from the whole panel, Contrarian included, when it was first "
+            "surfaced, whether that was a bot's live search or the user's own reference material). The ones "
+            "with a rank number already feed the composite score above at a low weight (this is still an "
+            "LLM's own read, not a deterministic parser's) — don't double-count them by also treating this "
+            "prose as independent corroboration. Newer findings on the same player supersede older ones:"
+        )
+        for f in findings:
+            rank_part = f" (rank {f['rank']})" if f.get("rank") is not None else ""
+            lines.append(f"  - [{f['date']}] {f['player_name']} — {f['source']}{rank_part}: {f['claim']}")
+
+    comparisons = bot_research.comparisons_for_context()
+    if comparisons:
+        lines.append(
+            "\nPANEL-VETTED PLAYER COMPARISONS from past debates (see MODERATOR_SYSTEM_PROMPT's SOURCE "
+            "COMPARISON rule). A relative claim only — which of two players a source rates higher, never by "
+            "how much or where either lands on any scale — so these carry NO composite weight at all and "
+            "never will unless enough of them accumulate to support a real relative-valuation model later "
+            "(not attempted yet). Useful as a cross-check on ordering against the numeric composite above, "
+            "not a competing number:"
+        )
+        for c in comparisons:
+            verb = {">": "rated ahead of", "<": "rated behind", "~": "rated about even with"}[c["direction"]]
+            ctx = f" [{c['context']}]" if c.get("context") else ""
+            lines.append(
+                f"  - [{c['date']}] {c['subject']} {verb} {c['compared_to']}{ctx}, per {c['source']}: {c['evidence']}"
+            )
 
     return "\n".join(lines)
 
@@ -1526,6 +1829,38 @@ with st.sidebar:
         if st.button("Sync Leagues", use_container_width=True):
             sync_leagues(username_input)
 
+        st.markdown("**Add a League by ID**")
+        st.caption(
+            "Sync Leagues only lists what Sleeper's own `/user/.../leagues` endpoint returns for "
+            "this account -- a league where you're rostered but haven't formally accepted the "
+            "invite in the Sleeper app yet (common for a freshly-created, still-pre-draft league) "
+            "can be a real member without showing up there. Paste the league ID directly (the "
+            "number in its Sleeper URL, after /leagues/) to add it regardless."
+        )
+        manual_league_id = st.text_input(
+            "League ID", key="manual_league_id_input", label_visibility="collapsed",
+            placeholder="e.g. 1191596293294161920",
+        )
+        if st.button("Add League", key="add_league_by_id", use_container_width=True):
+            manual_league_id = manual_league_id.strip()
+            if not manual_league_id:
+                notify("warning", "Paste a league ID first.")
+            else:
+                client: SleeperClient = st.session_state.sleeper_client
+                try:
+                    found_league = client.get_league(manual_league_id)
+                except SleeperAPIError as exc:
+                    notify("error", f"Couldn't reach Sleeper: {exc}")
+                    found_league = None
+                if found_league is None:
+                    notify("error", f"No league found for ID '{manual_league_id}'.")
+                else:
+                    if not any(lg["league_id"] == manual_league_id for lg in st.session_state.leagues):
+                        st.session_state.leagues.append(found_league)
+                    activate_league(manual_league_id)
+                    notify("success", f"Added {found_league.get('name', manual_league_id)}.")
+                    st.rerun()
+
     if (
         st.session_state.username
         and st.session_state.user_id is None
@@ -1627,10 +1962,10 @@ with st.sidebar:
                 # snapshot); the shared "Refresh available models" button above offers a
                 # real picker built from whatever that key can actually call. Blank means
                 # "no override, use this provider's own default."
-                st.caption(f"MODEL (optional — e.g. {', '.join(bot_config.SUGGESTED_MODELS[_provider_choice])})")
                 _fetched = st.session_state.get(f"available_models_{_provider_choice}")
                 _current_model = _role_models_cfg[_role]
                 if _fetched:
+                    st.caption("MODEL (optional)")
                     _options = ["(provider default)"] + [m for m in _fetched if m]
                     if _current_model and _current_model not in _options:
                         _options.append(_current_model)
@@ -1641,6 +1976,14 @@ with st.sidebar:
                     )
                     _model_input = "" if _model_choice == "(provider default)" else _model_choice
                 else:
+                    # SUGGESTED_MODELS is just an illustrative hint (Claude's own entries are
+                    # kept current; Gemini/OpenAI's are whatever this app shipped with, since
+                    # there's no live-verified way to know their current lineup without an API
+                    # call) -- shown only here, before that call has actually happened for this
+                    # provider. Once "Refresh available models" above has run, the real fetched
+                    # list becomes the selectbox itself, so repeating a possibly-stale example
+                    # alongside accurate live data would be redundant at best, wrong at worst.
+                    st.caption(f"MODEL (optional — e.g. {', '.join(bot_config.SUGGESTED_MODELS[_provider_choice])})")
                     _model_input = st.text_input(
                         "Model", value=_current_model, key=f"bot_model_input_{_role}",
                         label_visibility="collapsed", placeholder="Leave blank to use the provider's default",
@@ -2055,6 +2398,48 @@ with st.sidebar:
             if league_files:
                 st.caption("This league only (roster-specific): " + ", ".join(league_files))
 
+    # DynastyProcess/FantasyPros/KeepTradeCut only ever ship as the committed baseline export --
+    # unlike Draft Sharks' own data above, this app had no path at all for a user to refresh
+    # them short of a code change. external_upload_targets() names the exact filename each
+    # source's composite rule expects (see _EXTERNAL_PERCENTILE_RULES) -- overwriting that
+    # exact file keeps it reading as one continuous source rather than an untracked second
+    # copy that would double-count it. ESPN isn't offered here: its baseline export is
+    # redraft-scope and deliberately excluded from the composite already (same reasoning as
+    # FantasyPros' best_ball_rankings.csv), so there's nothing for an upload to feed.
+    _EXT_SOURCE_LABELS = {"dynastyprocess": "DynastyProcess", "fantasypros": "FantasyPros", "keeptradecut": "KeepTradeCut"}
+    with st.expander("🔄 External Valuation Sources", expanded=False, key="sb_group_external"):
+        st.caption(
+            "DynastyProcess, FantasyPros, and KeepTradeCut all ship a committed baseline export "
+            "that only ever updates via a code change today. Refresh one here with a fresher CSV "
+            "from that same source, in the same column shape as the baseline file — it replaces "
+            "that source's data outright rather than adding a second copy alongside it."
+        )
+        _ext_targets = external_upload_targets()
+        _ext_source = st.selectbox(
+            "Source", options=list(_ext_targets.keys()),
+            format_func=lambda s: _EXT_SOURCE_LABELS.get(s, s.title()), key="ext_source_pick",
+        )
+        _ext_filename = _ext_targets[_ext_source]
+        _ext_file = st.file_uploader(
+            f"{_EXT_SOURCE_LABELS.get(_ext_source, _ext_source)} CSV", type=["csv"], key="ext_source_upload",
+            help=f"Must have the same columns as the baseline export (saved as {_ext_filename}) -- "
+            "at minimum a 'name' column, since that's all load_external_values assumes universally.",
+        )
+        if _ext_file is not None and st.button("Update this source", key="ext_source_apply"):
+            try:
+                _ext_df = pd.read_csv(_ext_file)
+            except Exception as exc:
+                notify("error", f"Couldn't read that as a CSV: {exc}")
+            else:
+                if "name" not in _ext_df.columns:
+                    notify("error", f"That file has no 'name' column — doesn't look like a {_EXT_SOURCE_LABELS.get(_ext_source, _ext_source)} export.")
+                else:
+                    dest_dir = EXTERNAL_VALUES_DIR / _ext_source
+                    dest_dir.mkdir(parents=True, exist_ok=True)
+                    (dest_dir / _ext_filename).write_bytes(_ext_file.getvalue())
+                    st.session_state.data_merger.reload()
+                    notify("success", f"Updated {_EXT_SOURCE_LABELS.get(_ext_source, _ext_source)}'s data — the composite score will use it from here on.")
+
     if st.session_state.leagues:
         with st.expander("⚙️ League Controls", expanded=False, key="sb_group_league"):
             visible_leagues, archived_leagues = sorted_leagues(st.session_state.user_id, st.session_state.leagues)
@@ -2168,14 +2553,40 @@ with st.sidebar:
         return f'<span class="{cls}">{icon} {label}</span>'
 
     merger: DataMerger = st.session_state.data_merger
+
+    # One glanceable overall read before the per-source breakdown below -- baseline data (or
+    # whatever's live) keeps driving every answer regardless of this grade, so it's informational
+    # only, not a gate. Reuses build_freshness_manifest, already computed for the Moderator's own
+    # DATA FRESHNESS context, rather than a second staleness calculation living only in the UI.
+    _freshness_entries = build_freshness_manifest(st.session_state.league_snapshot or {}, merger)
+    if _freshness_entries:
+        _worst_age = max((age for _, _, age in _freshness_entries if age is not None), default=None)
+        _grade = recency_grade(_worst_age)
+        _grade_ok = _grade in ("Fresh", "Recent")
+        _grade_icon = "✅" if _grade_ok else ("⚠️" if _grade in ("Aging", "Stale") else "○")
+        _grade_cls = "status-ok" if _grade_ok else "status-bad"
+        st.markdown(f'<span class="{_grade_cls}">{_grade_icon} Data Freshness: {_grade}</span>', unsafe_allow_html=True)
+        st.caption("Oldest of everything loaded below sets this grade — update on your own schedule, nothing here blocks the app.")
+
     if merger.is_loaded:
         age = merger.staleness_days
         age_label = f"updated {merger.freshest_date} ({age}d ago)" if age is not None else "updated (unknown date)"
         ds_cls = "status-bad" if merger.is_stale else "status-ok"
         ds_icon = "⚠️" if merger.is_stale else "✅"
-        st.markdown(f'<span class="{ds_cls}">{ds_icon} DS Projections Loaded — {age_label}</span>', unsafe_allow_html=True)
+        # The committed baseline (data/baseline/rankings/) means this is ALWAYS true now, even
+        # with zero live uploads -- a checkmark that's permanently green regardless of anything
+        # the user does carries no real signal. Checking GLOBAL_PROJECTIONS_DIR directly (rather
+        # than adding a new DataMerger flag for a purely cosmetic distinction) says which state
+        # this actually is: your own fresher upload, or still running on baseline alone.
+        has_live_upload = GLOBAL_PROJECTIONS_DIR.exists() and any(
+            p.suffix.lower() in (".csv", ".json", ".pdf") for p in GLOBAL_PROJECTIONS_DIR.iterdir()
+        )
+        source_note = "" if has_live_upload else " (baseline)"
+        st.markdown(f'<span class="{ds_cls}">{ds_icon} DS Projections Loaded{source_note} — {age_label}</span>', unsafe_allow_html=True)
         if merger.is_stale:
             st.caption(f"Data is {age}+ days old — consider re-exporting from Draft Sharks (weekly is plenty).")
+        elif not has_live_upload:
+            st.caption("Running on the committed baseline — upload your own export anytime for fresher or format-specific numbers.")
     else:
         st.markdown(status_line("DS Projections Loaded", False), unsafe_allow_html=True)
 
@@ -2187,6 +2598,25 @@ with st.sidebar:
         st.markdown(f'<span class="{fa_cls}">{fa_icon} Free Agent Data Loaded {fa_age_label}</span>', unsafe_allow_html=True)
     else:
         st.markdown(status_line("Free Agent Data Loaded", False), unsafe_allow_html=True)
+
+    # Draft Sharks status above covers only that one vendor -- the composite score draws on up
+    # to 4 more (see COMPOSITE_SOURCE_WEIGHTS), so this line is the only place their load state
+    # is visible at all rather than something a user has to trust is working silently.
+    SOURCE_DISPLAY_NAMES = {
+        "dynastyprocess": "DynastyProcess", "fantasypros": "FantasyPros",
+        "keeptradecut": "KeepTradeCut", "espn": "ESPN", "bot_research": "Bot Research",
+    }
+    # composite_capable_source_names() (not just every source_name present in
+    # external_values) -- confirmed live, ESPN's only baseline file is redraft-scope and
+    # structurally excluded from the composite entirely, yet this line used to count it as
+    # one of the "N composite sources loaded" just because its rows existed at all.
+    composite_sources = merger.composite_capable_source_names() if merger.is_external_values_loaded else []
+    if composite_sources:
+        names = [SOURCE_DISPLAY_NAMES.get(s, s.title()) for s in composite_sources]
+        st.markdown(status_line(f"Composite Sources Loaded ({len(names)})", True), unsafe_allow_html=True)
+        st.caption(", ".join(names))
+    else:
+        st.markdown(status_line("Composite Sources Loaded", False), unsafe_allow_html=True)
 
     st.markdown(status_line("Sleeper Synced", st.session_state.league_snapshot is not None), unsafe_allow_html=True)
     snap = st.session_state.league_snapshot
@@ -2301,6 +2731,15 @@ if not snapshot:
 # league that is, rather than the league fully taking over the header.
 league = snapshot["league"]
 fmt = league_format_summary(league)
+# Several Draft Sharks Dynasty Rankings exports cover the SAME players under different format
+# assumptions (PPR/standard, superflex/1QB, TE premium) -- without this, DataMerger has no way
+# to know which one applies to THIS league, and silently let whichever file sorted last by
+# mtime win for everyone (confirmed: one real player's trade_value swung ~2.7x purely on that
+# accident). Cheap no-op when nothing's changed since the last rerun -- see set_league_format.
+_scoring_key = {"Full PPR": "ppr", "Half PPR": "half_ppr", "Standard": "standard"}.get(fmt["scoring"], "ppr")
+st.session_state.data_merger.set_league_format(
+    {"scoring": _scoring_key, "superflex": fmt["superflex"], "te_premium": fmt["te_premium"]}
+)
 _banner_uri = _header_banner_data_uri()
 if _banner_uri:
     # A second, narrower <style> block layered on top of the base .st-key-app_header
@@ -2322,25 +2761,19 @@ with st.container(key="app_header"):
         f"{'Superflex' if fmt['superflex'] else '1QB'} · {fmt['scoring']} · Taxi: {fmt['taxi_slots']}"
     )
 
-if st.session_state.data_merger.is_stale:
-    days = st.session_state.data_merger.staleness_days
-    st.warning(
-        f"Draft Sharks projections are {days} days old. They don't need refreshing every session — "
-        "roughly once a week keeps the Quant analysis current — but it's been a while.",
-        icon="⚠️",
-    )
-
 MATCHUP_VIEW = "🏈 Matchup"
 MAINTENANCE_VIEW = "🔧 Roster Maintenance"
+DRAFT_VIEW = "📋 Draft Room"
 LEAGUE_VIEW = "👥 League"
 main_view = st.segmented_control(
     "Dashboard view",
-    options=[MATCHUP_VIEW, MAINTENANCE_VIEW, LEAGUE_VIEW],
+    options=[MATCHUP_VIEW, MAINTENANCE_VIEW, DRAFT_VIEW, LEAGUE_VIEW],
     default=MATCHUP_VIEW,
     key="main_view",
     label_visibility="collapsed",
     help="Matchup: your lineup, projections, and the debate studio for start/sit calls. "
     "Roster Maintenance: free agents/waivers and reference material for trade and pickup research. "
+    "Draft Room: live startup/rookie draft pick recommendations. "
     "League: every other team's roster, for trade scouting.",
 )
 st.markdown("---")
@@ -2440,8 +2873,22 @@ if main_view == MATCHUP_VIEW:
                             st.rerun()
                         else:
                             notify("error", "Enter the name as Draft Sharks printed it first.")
-        else:
-            st.caption("No Draft Sharks/War Room projections loaded yet — upload a CSV in the sidebar.")
+
+            # save_alias had no counterpart in the UI at all -- once set, an alias was
+            # permanent short of manually editing data/player_aliases.json by hand, with no way
+            # to even see what was currently mapped. remove_alias already existed in
+            # data_merger.py for exactly this but was never wired to anything.
+            if merger.aliases:
+                with st.expander(f"Manual Aliases ({len(merger.aliases)})"):
+                    st.caption("Overrides automatic matching for these players. Remove one to go back to auto-matching.")
+                    for sleeper_name, ds_name in sorted(merger.aliases.items()):
+                        alias_col, remove_col = st.columns([4, 1])
+                        alias_col.markdown(f"**{sleeper_name}** → {ds_name}")
+                        if remove_col.button("Remove", key=f"remove_alias_{sleeper_name}", use_container_width=True):
+                            remove_alias(sleeper_name)
+                            merger.reload()
+                            notify("success", f"Removed the alias for '{sleeper_name}'.")
+                            st.rerun()
 
 elif main_view == MAINTENANCE_VIEW:
     # ------------------------------------------------------------------ free agents --
@@ -2630,17 +3077,24 @@ elif main_view == MAINTENANCE_VIEW:
     )
 
     def _match_key(name: str) -> tuple[str, str]:
-        tokens = normalize_name(name).split()
-        return (tokens[0][0], tokens[-1]) if tokens else ("", "")
+        return name_key(normalize_name(name))
 
     # merge_player's own key-match silently picks the first candidate when several players
-    # share a (first-initial, last-name) key and no position/team was given to disambiguate
-    # (confirmed live: a same-keyed "Jaylen Allen" resolved to "Josh Allen"'s value instead of
-    # its own) -- fine for callers that always have a position in hand (the free-agent/roster
-    # tables), but the trade calculator's free-text input never does. Recomputing the same key
-    # here to count real candidates catches that specific gap without touching merge_player's
-    # own contract, which plenty of other call sites already depend on staying as-is.
-    _tvc_player_keys = _tvc_players["norm_name"].map(lambda n: _match_key(n)) if not _tvc_players.empty else None
+    # share a name_key and no position/team was given to disambiguate (confirmed live: a
+    # same-keyed "Jaylen Allen" resolved to "Josh Allen"'s value instead of its own) -- fine
+    # for callers that always have a position in hand (the free-agent/roster tables), but the
+    # trade calculator's free-text input never does. Recomputing the same key here to count
+    # real candidates catches that specific gap without touching merge_player's own contract,
+    # which plenty of other call sites already depend on staying as-is.
+    # DataMerger._load() already precomputes this exact column on trade_values (and it
+    # survives the asset_type=="player" filter above) -- reuse it instead of remapping every
+    # row again here, same fix as _find_match's own internal lookup.
+    if _tvc_players.empty:
+        _tvc_player_keys = None
+    elif "_name_key" in _tvc_players.columns:
+        _tvc_player_keys = _tvc_players["_name_key"]
+    else:
+        _tvc_player_keys = _tvc_players["norm_name"].map(_match_key)
 
     # FAAB dollars and waiver-priority swaps are common lopsided-piece-count sweeteners in a
     # real trade, but Draft Sharks has no market value for either -- a league's FAAB budget can
@@ -2652,14 +3106,24 @@ elif main_view == MAINTENANCE_VIEW:
     _CONSIDERATION_RE = re.compile(r"\$\d|faab|waiver|priority", re.IGNORECASE)
 
     def _price_trade_side(text: str) -> list[dict]:
-        """One resolved row per non-empty line: {label, value, position, source}. Tries the
-        Trade Value Chart first — players and picks priced on one comparable 0-100 scale, the
+        """One resolved row per non-empty line: {label, value, position, source, external}. Tries
+        the Trade Value Chart first — players and picks priced on one comparable 0-100 scale, the
         closest this app has to an actual trade-pricing tool — then falls back to whatever a
         player's own Dynasty Rankings trade_value says (a different, rougher scale: format-
         based overall rank, not built for pricing a trade) rather than leaving a line unpriced
         just because the one dedicated tool for this isn't loaded. Picks only ever price off
         the Trade Value Chart -- Dynasty Rankings has no pick data at all. Never dropped even
-        when nothing matches -- an unpriced line still belongs in what gets sent to the panel."""
+        when nothing matches -- an unpriced line still belongs in what gets sent to the panel.
+
+        external carries any secondary-source opinions (see DataMerger.external_player_values)
+        on the same named player, purely as a side-by-side annotation -- it never feeds `value`
+        or the anvil math below, which stays Draft-Sharks-scaled throughout, so a second source
+        with a wildly different scale can't silently skew a number this app treats as pricing.
+
+        composite is this app's own single blended read (DataMerger.composite_player_score) --
+        shown in the calculator UI as one clean number rather than every source at once (that
+        full breakdown is what `external` is for, and what still reaches the panel/bots via
+        _describe_trade_side below); also never feeds `value`, same reasoning as external."""
         rows = []
         for raw_line in text.splitlines():
             line = raw_line.strip()
@@ -2668,13 +3132,21 @@ elif main_view == MAINTENANCE_VIEW:
             if _CONSIDERATION_RE.search(line):
                 rows.append({"label": line, "value": None, "position": None, "source": None, "consideration": True})
                 continue
+            external = merger.external_player_values(line) if merger.is_external_values_loaded else []
+            composite = merger.composite_player_score(line)
             tvc_player = merger.merge_player(line, df=_tvc_players) if merger.is_trade_values_loaded else {}
             if tvc_player.get("matched") and _tvc_player_keys is not None:
                 candidates = int((_tvc_player_keys == _match_key(line)).sum())
                 if candidates > 1:
+                    # external/composite above were resolved from the same unresolvable free
+                    # text as `value` -- whichever candidate merge_player/composite_player_score
+                    # silently picked is exactly as uncertain as the price the UI already hides
+                    # here (confirmed: an ambiguous line still had a specific player's real
+                    # composite score reach the panel's context, undermining the point of
+                    # flagging it as ambiguous at all). Drop both, same as value.
                     rows.append({
                         "label": line, "value": None, "position": None, "source": None,
-                        "ambiguous": True,
+                        "ambiguous": True, "external": [], "composite": None,
                     })
                     continue
             # The Trade Value Chart's own column is "value", not "trade_value" -- it's the one
@@ -2684,11 +3156,15 @@ elif main_view == MAINTENANCE_VIEW:
                 rows.append({
                     "label": line, "value": float(tvc_price),
                     "position": tvc_player.get("position"), "source": "Trade Value Chart",
+                    "external": external, "composite": composite,
                 })
                 continue
             pick_val = merger.pick_value(line) if merger.is_trade_values_loaded else None
             if pick_val is not None:
-                rows.append({"label": line, "value": float(pick_val), "position": None, "source": "Trade Value Chart"})
+                rows.append({
+                    "label": line, "value": float(pick_val), "position": None,
+                    "source": "Trade Value Chart", "external": external, "composite": composite,
+                })
                 continue
             rankings_player = merger.merge_player(line)
             if rankings_player.get("matched") and rankings_player.get("trade_value") is not None:
@@ -2697,18 +3173,33 @@ elif main_view == MAINTENANCE_VIEW:
                 # Series == tuple broadcasts elementwise as intended; Series.eq(tuple) does not
                 # -- pandas treats a tuple RHS as array-like for .eq() and raises on the length
                 # mismatch instead of comparing each element against it. Confirmed the hard way.
+                # DataMerger._load() already precomputes this column -- reuse it rather than
+                # remapping every row of the whole rankings pool again on every trade line.
+                _proj_keys = (
+                    merger.projections["_name_key"] if "_name_key" in merger.projections.columns
+                    else merger.projections["norm_name"].map(_match_key)
+                )
                 candidates = int(
-                    (merger.projections["norm_name"].map(_match_key) == _match_key(line)).sum()
+                    (_proj_keys == _match_key(line)).sum()
                 ) if not merger.projections.empty else 1
                 if candidates > 1:
-                    rows.append({"label": line, "value": None, "position": None, "source": None, "ambiguous": True})
+                    # Same reasoning as the Trade Value Chart branch above -- don't leak a
+                    # specific, unresolvable candidate's external/composite data either.
+                    rows.append({
+                        "label": line, "value": None, "position": None, "source": None,
+                        "ambiguous": True, "external": [], "composite": None,
+                    })
                     continue
                 rows.append({
                     "label": line, "value": float(rankings_player["trade_value"]),
                     "position": rankings_player.get("position"), "source": "Dynasty Rankings",
+                    "external": external, "composite": composite,
                 })
                 continue
-            rows.append({"label": line, "value": None, "position": None, "source": None})
+            rows.append({
+                "label": line, "value": None, "position": None, "source": None,
+                "external": external, "composite": composite,
+            })
         return rows
 
     def _depth_label(team_label: Optional[str], position: str, override_cell: Optional[dict] = None) -> Optional[str]:
@@ -2739,16 +3230,16 @@ elif main_view == MAINTENANCE_VIEW:
     sources_used = {r["source"] for r in trade_send_rows + trade_receive_rows if r["source"]}
 
     if not sources_used and not (trade_send_rows or trade_receive_rows):
-        st.caption(
-            "No Draft Sharks data loaded, so there's nothing to price either side against yet — "
-            "upload Dynasty Rankings or a Trade Value Chart under Data Uploads. The buttons below "
-            "still work without it; the panel can reason about a trade from market judgment alone."
-        )
+        # Draft Sharks data itself is never actually missing (the committed baseline covers
+        # Dynasty Rankings and the Trade Value Chart regardless of any live upload) -- an empty
+        # state here just means nothing's typed in either box yet.
+        st.caption("Type a player or pick on either side above to see it priced.")
     elif trade_send_rows or trade_receive_rows:
         if not sources_used:
             st.caption(
-                "No Draft Sharks data loaded yet, so nothing below is priced — upload Dynasty "
-                "Rankings or a Trade Value Chart under Data Uploads to get numbers."
+                "Nothing below matched loaded data, so it's unpriced — check for a typo, or it's "
+                "a player/pick not in what's loaded. The buttons below still work without a price; "
+                "the panel can reason about a trade from market judgment alone."
             )
         elif len(sources_used) > 1:
             st.caption(
@@ -2761,6 +3252,16 @@ elif main_view == MAINTENANCE_VIEW:
                 "much to invent one) — included below and sent to the panel, just not in the totals."
             )
 
+        def _composite_suffix(row: dict) -> str:
+            # This app's own single blended read (DataMerger.composite_player_score) -- shown
+            # here as one clean number, not every source stacked up (that full breakdown still
+            # reaches the panel/bots via _describe_trade_side below, per "external" on this same
+            # row). Never blended into row["value"] above -- side note, not part of the price.
+            composite = row.get("composite")
+            if not composite:
+                return f"  ·  {INCOMPLETE_PLAYER_PROFILE}"
+            return f"  ·  Composite {composite['score']:.0f}/100 ({composite['recency_grade']})"
+
         def _render_trade_side(rows: list[dict]) -> None:
             for row in rows:
                 if row.get("consideration"):
@@ -2768,10 +3269,10 @@ elif main_view == MAINTENANCE_VIEW:
                 elif row.get("ambiguous"):
                     st.caption(f"❓ \"{row['label']}\" — matches more than one player; add a position or full name")
                 elif row["value"] is None:
-                    st.caption(f"⚠️ \"{row['label']}\" — not found in loaded Draft Sharks data")
+                    st.caption(f"⚠️ \"{row['label']}\" — not found in loaded Draft Sharks data{_composite_suffix(row)}")
                 else:
                     tag = " (DR)" if row["source"] == "Dynasty Rankings" else ""
-                    st.caption(f"{row['label']} — {row['value']:.0f}{tag}")
+                    st.caption(f"{row['label']} — {row['value']:.0f}{tag}{_composite_suffix(row)}")
 
         rrcol1, rrcol2 = st.columns(2)
         with rrcol1:
@@ -2893,11 +3394,36 @@ elif main_view == MAINTENANCE_VIEW:
                     st.caption(line)
 
     def _describe_trade_side(rows: list[dict]) -> str:
-        return "\n".join(
-            f"  - {r['label']} (value: {r['value']:.0f}{', ' + r['source'] if r['source'] else ''})"
-            if r["value"] is not None else f"  - {r['label']}"
-            for r in rows
-        )
+        def _line(r: dict) -> str:
+            if r.get("ambiguous"):
+                # Distinct from a plain unmatched line -- the panel should know THIS one
+                # matched multiple players/picks (so external/composite were deliberately
+                # withheld, not just absent) rather than reading it as "not found at all."
+                return f"  - {r['label']} (ambiguous -- matches multiple players/picks, unpriced)"
+            base = (
+                f"  - {r['label']} (value: {r['value']:.0f}{', ' + r['source'] if r['source'] else ''})"
+                if r["value"] is not None else f"  - {r['label']}"
+            )
+            # Own scale, not Draft Sharks' -- see external_player_values' docstring -- so this
+            # is a side note for the panel to weigh, never something to add to the value above.
+            extra = "; ".join(describe_external_value(ext) for ext in r.get("external") or [])
+            if extra:
+                base += f" [other sources (own scale): {extra}]"
+            # The composite is one more data point for the panel, same as every raw source
+            # above it -- never a substitute for them. See composite_player_score's docstring.
+            composite = r.get("composite")
+            if composite:
+                base += (
+                    f" [composite: {composite['score']:.0f}/100, {composite['recency_grade']} "
+                    f"data (avg {composite['avg_age_days']}d old), from "
+                    f"{len(composite['components'])} source(s)]"
+                )
+            elif r["value"] is not None or r.get("external"):
+                # Only worth stating explicitly when *something* else resolved for this line --
+                # a totally blank line (no value, no external hits) already says enough on its own.
+                base += f" [composite: {INCOMPLETE_PLAYER_PROFILE}]"
+            return base
+        return "\n".join(_line(r) for r in rows)
 
     _trade_ready = bool(trade_send_text.strip() and trade_receive_text.strip())
     trade_question = (
@@ -2986,6 +3512,577 @@ elif main_view == MAINTENANCE_VIEW:
                         set_scope(item["filename"], edit_league_ids if edit_mode == "Specific league(s)" else None)
                         st.rerun()
 
+elif main_view == DRAFT_VIEW:
+    # ------------------------------------------------------------------ draft room --
+    # This view is deliberately a CONSOLE, not a chat -- the deterministic engine
+    # (draft_room.py/draft_strategy.py/pick_synthesis.py) is the source of truth and this
+    # block only ever renders numbers it already computed. The one exception worth naming
+    # explicitly: percentage/string formatting of an already-computed number (e.g.
+    # round(survival_probability * 100)) is presentation, not calculation -- the same
+    # transformation pick_debate.py's own evidence formatting already applies. This view
+    # never re-ranks, re-scores, or recomputes anything a backend module didn't already hand
+    # it, including the positional filter below (a pure display filter over an already-built
+    # snapshot's candidates -- it never changes what pick_synthesis narrowed to or what
+    # pick_debate actually reasons over).
+    st.subheader("Draft Room")
+    st.session_state.setdefault("draft_room_picks_by_draft", {})
+    st.session_state.setdefault("draft_room_last_snapshot", None)
+    st.session_state.setdefault("draft_room_debate_result", None)
+    st.session_state.setdefault("draft_room_pool_scope", "all")
+    st.session_state.setdefault("mock_draft", None)
+    st.session_state.setdefault("mock_draft_pool_scope", "all")
+    st.session_state.setdefault("mock_draft_debate_result", None)
+    st.session_state.setdefault("mock_draft_last_snapshot", None)
+
+    draft_room_mode = st.radio(
+        "Draft Room mode", options=["Live Draft (Sleeper)", "🧪 Mock Draft"],
+        horizontal=True, key="draft_room_mode_radio", label_visibility="collapsed",
+    )
+
+    if draft_room_mode == "🧪 Mock Draft":
+        # -------------------------------------------------------------- mock draft --
+        # A practice draft entirely independent of any real Sleeper league/draft -- for
+        # rehearsing strategy under a chosen format, or one that hasn't even been created
+        # on Sleeper's side yet. Reuses the exact same engine calls as the live flow below
+        # (compute_draft_board/build_snapshot/debate_pick) unchanged -- see
+        # draft_room.build_mock_league's docstring for why a synthetic league dict slots in
+        # with zero special-casing anywhere downstream.
+        md = st.session_state.mock_draft
+        if md is None:
+            st.caption(
+                "Set the format below and start a sandbox draft -- every other roster is "
+                "auto-drafted by this same engine (each one's own best team_acquisition_value "
+                "pick), so you only ever make your own picks."
+            )
+            _fmt_scoring_index = {"Standard": 0, "Half PPR": 1, "Full PPR": 2}.get(fmt["scoring"], 2)
+            with st.form("mock_draft_settings_form"):
+                st.markdown("**Mock Draft Settings**")
+                s1, s2, s3 = st.columns(3)
+                # Explicit keys throughout -- cfg_slot's max_value depends on cfg_teams's own
+                # live value, and an auto-generated widget key (the default when key= is
+                # omitted) is derived partly from a widget's own constructor args, so it can
+                # shift out from under a pending value the moment a DEPENDENT widget's value
+                # changes in the same render. Confirmed live: changing Teams from 12 to 4 in
+                # the same submission silently dropped a staged "Your draft slot" edit back to
+                # its default. An explicit, teams-independent key removes that fragility.
+                cfg_teams = s1.number_input("Teams", min_value=4, max_value=16, value=12, step=1, key="mock_cfg_teams")
+                cfg_slot = s2.number_input(
+                    "Your draft slot", min_value=1, max_value=int(cfg_teams), value=1, step=1, key="mock_cfg_slot",
+                )
+                cfg_rounds = s3.number_input("Rounds", min_value=1, max_value=30, value=15, step=1, key="mock_cfg_rounds")
+                s4, s5 = st.columns(2)
+                cfg_scoring_label = s4.radio(
+                    "Scoring", ["Standard", "Half PPR", "Full PPR"], index=_fmt_scoring_index, horizontal=True,
+                    key="mock_cfg_scoring",
+                )
+                cfg_draft_type_label = s5.radio(
+                    "Draft type", ["Snake", "Snake (3RR)", "Linear"], index=0, horizontal=True,
+                    key="mock_cfg_draft_type",
+                    help="3RR = 3rd Round Reversal: round 3 repeats round 2's reversed order, then normal alternation resumes.",
+                )
+                s6, s7, s8 = st.columns(3)
+                cfg_superflex = s6.checkbox("Superflex", value=fmt["superflex"], key="mock_cfg_superflex")
+                cfg_te_premium = s7.checkbox("TE Premium", value=fmt["te_premium"], key="mock_cfg_te_premium")
+                cfg_dynasty = s8.checkbox(
+                    "Dynasty rules (long-horizon adj.)", value=fmt["type"] == "Dynasty", key="mock_cfg_dynasty",
+                )
+                start_clicked = st.form_submit_button(
+                    "🏁 Start Mock Draft", type="primary", use_container_width=True,
+                )
+            if start_clicked:
+                cfg_scoring_key = {"Standard": "standard", "Half PPR": "half_ppr", "Full PPR": "ppr"}[cfg_scoring_label]
+                cfg_draft_type_key = {"Snake": "snake", "Snake (3RR)": "3rr", "Linear": "linear"}[cfg_draft_type_label]
+                mock_league = draft_room.build_mock_league(
+                    teams=int(cfg_teams), superflex=cfg_superflex, scoring=cfg_scoring_key,
+                    te_premium=cfg_te_premium, dynasty=cfg_dynasty,
+                )
+                round_1_order = [str(i) for i in range(1, int(cfg_teams) + 1)]
+                st.session_state.mock_draft = {
+                    "settings": {
+                        "teams": int(cfg_teams), "my_slot": int(cfg_slot), "superflex": cfg_superflex,
+                        "scoring_key": cfg_scoring_key, "scoring_label": cfg_scoring_label,
+                        "te_premium": cfg_te_premium, "dynasty": cfg_dynasty, "rounds": int(cfg_rounds),
+                        "draft_type": cfg_draft_type_key,
+                    },
+                    "league": mock_league,
+                    "my_roster_id": str(int(cfg_slot)),
+                    "pick_order": draft_strategy.generate_pick_order(
+                        round_1_order, total_rounds=int(cfg_rounds), draft_type=cfg_draft_type_key,
+                    ),
+                    "picks": [],
+                    "owner_names": {
+                        str(i): ("You" if i == int(cfg_slot) else f"Team {i}") for i in range(1, int(cfg_teams) + 1)
+                    },
+                }
+                st.rerun()
+        else:
+            settings = md["settings"]
+            st.caption(
+                f"{settings['teams']}-team · slot {settings['my_slot']} · "
+                f"{'Superflex' if settings['superflex'] else '1QB'} · {settings['scoring_label']} · "
+                f"{'TE Premium · ' if settings['te_premium'] else ''}{settings['rounds']} rounds · "
+                f"{'Dynasty' if settings['dynasty'] else 'Redraft'} rules · "
+                f"{ {'snake': 'Snake', '3rr': 'Snake (3RR)', 'linear': 'Linear'}.get(settings['draft_type'], settings['draft_type'].title()) }"
+            )
+            reset_col, scope_col = st.columns([1, 2])
+            with reset_col:
+                if st.button("🔄 Reset Mock Draft", key="mock_draft_reset_btn", use_container_width=True):
+                    st.session_state.mock_draft = None
+                    st.session_state.mock_draft_debate_result = None
+                    st.session_state.mock_draft_last_snapshot = None
+                    st.rerun()
+            with scope_col:
+                mock_pool_scope_label = st.radio(
+                    "Player pool", options=["All players", "Rookies only", "Veterans only"],
+                    index=["all", "rookies_only", "veterans_only"].index(st.session_state.mock_draft_pool_scope),
+                    horizontal=True, key="mock_draft_pool_scope_radio",
+                )
+                st.session_state.mock_draft_pool_scope = {
+                    "All players": "all", "Rookies only": "rookies_only", "Veterans only": "veterans_only",
+                }[mock_pool_scope_label]
+
+            # The mock's chosen format can differ from whatever real league is active
+            # elsewhere in the app -- re-point the shared DataMerger at it for this
+            # render only; the real league's own format gets reasserted at the top of
+            # every rerun (see set_league_format's call site above), so nothing else
+            # this session reads ever sees the mock's format leak into it.
+            st.session_state.data_merger.set_league_format({
+                "scoring": settings["scoring_key"], "superflex": settings["superflex"],
+                "te_premium": settings["te_premium"],
+            })
+
+            if len(md["picks"]) < len(md["pick_order"]):
+                with st.spinner("Simulating opponent picks..."):
+                    md["picks"] = draft_room.simulate_opponent_picks(
+                        md["picks"], md["pick_order"], md["my_roster_id"], settings["teams"],
+                        merger, players_db, md["league"], pool_scope=st.session_state.mock_draft_pool_scope,
+                    )
+
+            if md["picks"]:
+                with st.expander(f"📋 Picks so far ({len(md['picks'])})"):
+                    pick_rows = [{
+                        "Pick": f"{p['round']}.{(i % settings['teams']) + 1:02d}",
+                        "Team": md["owner_names"].get(str(p["roster_id"]), str(p["roster_id"])),
+                        "Player": player_name(players_db.get(str(p["player_id"])) or {}, str(p["player_id"])),
+                    } for i, p in enumerate(md["picks"])]
+                    st.dataframe(pd.DataFrame(pick_rows), hide_index=True, use_container_width=True)
+
+            current_index = len(md["picks"])
+            if current_index >= len(md["pick_order"]):
+                st.success("Mock draft complete.")
+            else:
+                mock_target_round = current_index // settings["teams"] + 1
+                mock_target_slot = current_index % settings["teams"] + 1
+                mock_pick_label = f"{mock_target_round}.{mock_target_slot:02d}"
+
+                try:
+                    mock_snap = pick_synthesis.build_snapshot(
+                        merger, players_db, md["picks"], md["pick_order"], current_index, md["my_roster_id"],
+                        md["league"], pick_label=mock_pick_label, pool_scope=st.session_state.mock_draft_pool_scope,
+                    )
+                except Exception as exc:  # noqa: BLE001 -- surface, never crash the whole dashboard
+                    mock_snap = None
+                    notify("error", f"Couldn't build the mock draft board: {exc}")
+
+                if mock_snap is not None and not mock_snap.candidates:
+                    st.info("No candidates available in the current player pool/scope.")
+                elif mock_snap is not None:
+                    st.markdown(f"### ON THE CLOCK — {mock_pick_label} (You)")
+                    mock_positions_present = sorted({c.position for c in mock_snap.candidates})
+                    mock_position_filter = st.multiselect(
+                        "Filter by position (display only -- never changes what's analyzed)",
+                        options=mock_positions_present, default=mock_positions_present,
+                        key="mock_draft_position_filter",
+                    )
+                    mock_filtered = (
+                        [c for c in mock_snap.candidates if c.position in mock_position_filter]
+                        if mock_position_filter else list(mock_snap.candidates)
+                    )
+                    mock_table_rows = [{
+                        "Name": c.name, "Pos": c.position,
+                        "Necessity": f"{_NECESSITY_COLOR_EMOJI.get(c.necessity_label, '')} {c.pick_necessity:.0f} — {c.necessity_label}",
+                        "Proj Pts": f"{c.projected_points:.0f}" if c.projected_points is not None else "—",
+                        "Universal": c.universal_value, "Acquisition": c.team_acquisition_value,
+                        "Survival": f"{round(c.survival_probability * 100)}%" if c.survival_probability is not None else "—",
+                        "Cliff": c.positional_cliff["tier"] if c.positional_cliff else "—",
+                        "Run": "🏃" if c.position_run_detected else "",
+                        "Market": f"{c.reach_label.title()} (KTC #{c.consensus_rank})" if c.reach_label else "—",
+                    } for c in mock_filtered]
+                    st.dataframe(pd.DataFrame(mock_table_rows), hide_index=True, use_container_width=True)
+
+                    mock_debate_col, _ = st.columns([1, 3])
+                    with mock_debate_col:
+                        mock_debate_clicked = st.button(
+                            "🎙️ Debate This Pick", key="mock_draft_debate_btn", type="primary", use_container_width=True,
+                        )
+                    if mock_debate_clicked:
+                        mock_debate_api_keys = {
+                            "claude": api_key_for("anthropic"), "gemini": api_key_for("gemini"),
+                            "openai": api_key_for("openai"),
+                        }
+                        with st.spinner("Strategist, Skeptic, and Caller are debating..."):
+                            mock_debate_result = pick_debate.debate_pick(
+                                mock_snap, previous_snapshot=st.session_state.mock_draft_last_snapshot,
+                                api_keys=mock_debate_api_keys,
+                            )
+                        st.session_state.mock_draft_last_snapshot = mock_snap
+                        st.session_state.mock_draft_debate_result = mock_debate_result
+                        if mock_debate_result.errors:
+                            notify("warning", "Debate finished with issues: " + "; ".join(mock_debate_result.errors))
+
+                    mock_debate_result = st.session_state.mock_draft_debate_result
+                    mock_current_debate = (
+                        mock_debate_result
+                        if (mock_debate_result is not None and mock_debate_result.pick_label == mock_pick_label)
+                        else None
+                    )
+                    if mock_current_debate is not None:
+                        st.markdown("---")
+                        mock_rec = mock_current_debate.recommended
+                        if mock_rec is None:
+                            st.warning("The panel's recommendation didn't cleanly match a candidate -- see the raw reports below.")
+                        else:
+                            st.markdown(f"## Recommendation: {mock_rec.name}")
+                            if mock_current_debate.confidence:
+                                st.caption(f"Confidence: {mock_current_debate.confidence}")
+                            if mock_current_debate.why:
+                                st.markdown(f"**Why now?** {mock_current_debate.why}")
+
+                            mock_necessity_class = _NECESSITY_BADGE_CLASS.get(mock_rec.necessity_label, "badge-necessity-close-call")
+                            mock_necessity_emoji = _NECESSITY_COLOR_EMOJI.get(mock_rec.necessity_label, "")
+                            mock_badge_col, mock_market_col = st.columns([1, 2])
+                            with mock_badge_col:
+                                st.markdown(
+                                    f'<span class="badge {mock_necessity_class}">{mock_necessity_emoji} PICK NECESSITY: '
+                                    f'{mock_rec.pick_necessity:.0f}/100 — {mock_rec.necessity_label}</span>',
+                                    unsafe_allow_html=True,
+                                )
+                            if mock_rec.reach_label is not None:
+                                with mock_market_col:
+                                    st.caption(
+                                        f"Market consensus (KeepTradeCut, trade-value not literal ADP): "
+                                        f"rank {mock_rec.consensus_rank}, tier {mock_rec.consensus_tier} — **{mock_rec.reach_label}**"
+                                    )
+
+                            mock_metric_row1 = st.columns(6)
+                            mock_metric_row1[0].metric("Universal Value", f"{mock_rec.universal_value:.0f}")
+                            mock_metric_row1[1].metric(
+                                "Projected Points", f"{mock_rec.projected_points:.0f}" if mock_rec.projected_points is not None else "—",
+                            )
+                            mock_metric_row1[2].metric("Your Acquisition Value", f"{mock_rec.team_acquisition_value:.0f}")
+                            mock_metric_row1[3].metric(
+                                "Survival to Next Pick",
+                                f"{round(mock_rec.survival_probability * 100)}%" if mock_rec.survival_probability is not None else "—",
+                            )
+                            mock_metric_row1[4].metric("Positional Cliff", mock_rec.positional_cliff["tier"] if mock_rec.positional_cliff else "—")
+                            mock_metric_row1[5].metric(f"{mock_rec.position} Run", "DETECTED" if mock_rec.position_run_detected else "—")
+
+                            mock_metric_row2 = st.columns(3)
+                            mock_metric_row2[0].metric("Opportunity Cost of Waiting", mock_rec.opportunity_cost if mock_rec.opportunity_cost is not None else "—")
+                            mock_metric_row2[1].metric("Expected Value If You Wait", mock_rec.expected_value_of_waiting if mock_rec.expected_value_of_waiting is not None else "—")
+                            mock_metric_row2[2].metric("Denial Value", mock_rec.denial_value if mock_rec.denial_value else "—")
+
+                            mock_alt = mock_current_debate.best_alternative
+                            if mock_alt is not None:
+                                st.markdown(f"**Best alternative:** {mock_alt.name} — {mock_alt.team_acquisition_value:.0f} acquisition value")
+
+                        if mock_current_debate.disagreements:
+                            for d in mock_current_debate.disagreements:
+                                st.warning(f"⚠️ Panel flagged a possible issue with an input: **{d['term']}** — {d['reason']}")
+
+                    st.markdown("#### Make Your Pick")
+                    mock_draft_options = {c.player_id: f"{c.name} ({c.position})" for c in mock_filtered}
+                    mock_default_pid = None
+                    if mock_current_debate is not None and mock_current_debate.recommended is not None:
+                        mock_default_pid = mock_current_debate.recommended.player_id
+                    if mock_default_pid not in mock_draft_options:
+                        mock_default_pid = next(iter(mock_draft_options), None)
+                    mock_option_ids = list(mock_draft_options.keys())
+                    mock_chosen_pid = st.selectbox(
+                        "Player to draft", options=mock_option_ids, format_func=lambda pid: mock_draft_options[pid],
+                        index=mock_option_ids.index(mock_default_pid) if mock_default_pid in mock_option_ids else 0,
+                        key="mock_draft_pick_select",
+                    )
+                    if st.button("✅ Draft This Player", key="mock_draft_confirm_btn", type="primary"):
+                        md["picks"].append({
+                            "pick_no": current_index + 1, "round": mock_target_round,
+                            "roster_id": md["my_roster_id"], "player_id": mock_chosen_pid,
+                        })
+                        st.session_state.mock_draft_debate_result = None
+                        st.session_state.mock_draft_last_snapshot = None
+                        st.rerun()
+    elif not roster:
+        st.info("No roster found for your account in this league yet -- sync your username in the sidebar.")
+    else:
+        draft_client: SleeperClient = st.session_state.sleeper_client
+        my_roster_id = str(roster.get("roster_id"))
+
+        try:
+            drafts = draft_client.get_drafts(st.session_state.selected_league_id)
+        except SleeperAPIError as exc:
+            drafts = []
+            notify("error", f"Couldn't reach Sleeper for draft data: {exc}")
+
+        if not drafts:
+            st.info("No draft found for this league on Sleeper yet.")
+        else:
+            draft_options = {d["draft_id"]: d for d in drafts}
+            ordered_draft_ids = sorted(
+                draft_options, key=lambda did: draft_options[did].get("start_time") or 0, reverse=True,
+            )
+
+            def _draft_label(did: str) -> str:
+                d = draft_options[did]
+                return f"{d.get('season', '?')} · {d.get('type', 'draft')} · {d.get('status', '?')}"
+
+            draft_id = st.selectbox(
+                "Draft", options=ordered_draft_ids, format_func=_draft_label, key="draft_room_draft_picker",
+            )
+            active_draft = draft_options[draft_id]
+            draft_type = active_draft.get("type")
+            # Sleeper marks 3rd Round Reversal on the draft's own settings, not the type
+            # string -- a "snake" draft with reversal_round == 3 is really a 3RR draft, and
+            # treating it as plain snake poisons every pick-order-derived signal (survival,
+            # opportunity cost, denial, necessity) worst in rounds 2-4. See
+            # draft_strategy.generate_pick_order's own docstring.
+            if draft_type == "snake" and (active_draft.get("settings") or {}).get("reversal_round") == 3:
+                draft_type = "3rr"
+
+            if draft_type not in ("snake", "linear", "3rr"):
+                st.warning(
+                    f"Draft Room currently supports snake/linear pick-order drafts only -- this "
+                    f"draft is type '{draft_type}' (e.g. auction), where a fixed pick order doesn't apply."
+                )
+            else:
+                total_rounds = (active_draft.get("settings") or {}).get("rounds")
+                draft_order_map = active_draft.get("draft_order") or {}
+                if not total_rounds or not draft_order_map:
+                    st.info("This draft's pick order/round count isn't set on Sleeper's side yet.")
+                else:
+                    uid_to_roster_id = {
+                        str(r.get("owner_id")): str(r.get("roster_id")) for r in (snapshot.get("rosters") or [])
+                    }
+                    slot_order = sorted(draft_order_map.items(), key=lambda kv: kv[1])
+                    round_1_order = [uid_to_roster_id.get(str(uid)) for uid, _slot in slot_order]
+                    if any(rid is None for rid in round_1_order):
+                        st.caption("⚠️ Couldn't map every drafter to a roster in this league -- pick-order analysis may be incomplete.")
+                        round_1_order = [rid for rid in round_1_order if rid is not None]
+
+                    top_row_col1, top_row_col2 = st.columns([1, 2])
+                    with top_row_col1:
+                        if st.button("🔄 Refresh Picks", key="draft_room_refresh_btn", use_container_width=True):
+                            try:
+                                fetched_picks = draft_client.get_draft_picks(draft_id)
+                                st.session_state.draft_room_picks_by_draft[draft_id] = fetched_picks
+                                notify("success", f"Pulled {len(fetched_picks)} pick(s) from Sleeper.")
+                            except SleeperAPIError as exc:
+                                notify("error", f"Couldn't reach Sleeper: {exc}")
+                    with top_row_col2:
+                        pool_scope_label = st.radio(
+                            "Player pool", options=["All players", "Rookies only", "Veterans only"],
+                            index=["all", "rookies_only", "veterans_only"].index(st.session_state.draft_room_pool_scope),
+                            horizontal=True, key="draft_room_pool_scope_radio",
+                            help="Rookies only / Veterans only is detected from KeepTradeCut's own source data, not a maintained list.",
+                        )
+                        st.session_state.draft_room_pool_scope = {
+                            "All players": "all", "Rookies only": "rookies_only", "Veterans only": "veterans_only",
+                        }[pool_scope_label]
+
+                    draft_picks = st.session_state.draft_room_picks_by_draft.get(draft_id, [])
+                    pick_order = draft_strategy.generate_pick_order(round_1_order, total_rounds=total_rounds, draft_type=draft_type)
+                    num_teams = len(round_1_order)
+                    current_index = len(draft_picks)
+
+                    st.caption(
+                        f"{len(draft_picks)} pick(s) made · {num_teams} teams · {total_rounds} rounds. "
+                        "Pick order assumes no picks have been traded within this draft -- a traded future "
+                        "pick may show the original owner's needs instead of the new owner's."
+                    )
+
+                    if current_index >= len(pick_order):
+                        st.success("Draft complete.")
+                    else:
+                        target_index = draft_strategy.find_next_pick_index(pick_order, my_roster_id, current_index - 1)
+                        if target_index is None:
+                            st.info("You have no more picks remaining in this draft.")
+                        else:
+                            target_round = target_index // num_teams + 1
+                            target_slot = target_index % num_teams + 1
+                            pick_label = f"{target_round}.{target_slot:02d}"
+                            is_live = target_index == current_index
+                            owner_names_by_id = {str(k): v for k, v in roster_owner_names(snapshot).items()}
+
+                            league_for_engine = {
+                                "roster_positions": league.get("roster_positions"),
+                                "scoring_settings": league.get("scoring_settings"),
+                                "total_rosters": league.get("total_rosters"),
+                                "settings": league.get("settings"),
+                            }
+
+                            flag_query = st.text_input(
+                                "Also consider a specific player (optional)", key="draft_room_flag_query",
+                            )
+                            flagged_player_id = None
+                            if flag_query:
+                                flag_matches = [m for m in matching_players(player_universe, flag_query) if m.get("available")]
+                                if flag_matches:
+                                    flag_labels = {m["player_id"]: f"{m['name']} ({m['position']}, {m['team']})" for m in flag_matches[:8]}
+                                    flagged_player_id = st.selectbox(
+                                        "Which one?", options=list(flag_labels.keys()),
+                                        format_func=lambda pid: flag_labels[pid], key="draft_room_flag_select",
+                                    )
+                                else:
+                                    st.caption("No available player matched that.")
+
+                            try:
+                                snap = pick_synthesis.build_snapshot(
+                                    merger, players_db, draft_picks, pick_order, target_index, my_roster_id,
+                                    league_for_engine, pick_label=pick_label,
+                                    pool_scope=st.session_state.draft_room_pool_scope,
+                                    user_selected_player_id=flagged_player_id,
+                                )
+                            except Exception as exc:  # noqa: BLE001 -- surface, never crash the whole dashboard
+                                snap = None
+                                notify("error", f"Couldn't build the draft board: {exc}")
+
+                            if snap is not None and not snap.candidates:
+                                st.info("No candidates available in the current player pool/scope.")
+                            elif snap is not None:
+                                header = f"ON THE CLOCK — {pick_label}" if is_live else f"YOUR NEXT PICK — {pick_label}"
+                                st.markdown(f"### {header}")
+                                if not is_live:
+                                    on_clock_id = str(pick_order[current_index])
+                                    on_clock_name = owner_names_by_id.get(on_clock_id, f"Roster {on_clock_id}")
+                                    st.caption(f"Not your turn yet -- {on_clock_name} is on the clock.")
+
+                                positions_present = sorted({c.position for c in snap.candidates})
+                                position_filter = st.multiselect(
+                                    "Filter by position (display only -- never changes what's analyzed)",
+                                    options=positions_present, default=positions_present,
+                                    key="draft_room_position_filter",
+                                )
+                                filtered = [c for c in snap.candidates if c.position in position_filter] if position_filter else list(snap.candidates)
+
+                                table_rows = [{
+                                    "Name": c.name, "Pos": c.position,
+                                    "Necessity": f"{_NECESSITY_COLOR_EMOJI.get(c.necessity_label, '')} {c.pick_necessity:.0f} — {c.necessity_label}",
+                                    "Proj Pts": f"{c.projected_points:.0f}" if c.projected_points is not None else "—",
+                                    "Universal": c.universal_value, "Acquisition": c.team_acquisition_value,
+                                    "Survival": f"{round(c.survival_probability * 100)}%" if c.survival_probability is not None else "—",
+                                    "Cliff": c.positional_cliff["tier"] if c.positional_cliff else "—",
+                                    "Run": "🏃" if c.position_run_detected else "",
+                                    "Market": f"{c.reach_label.title()} (KTC #{c.consensus_rank})" if c.reach_label else "—",
+                                } for c in filtered]
+                                st.dataframe(pd.DataFrame(table_rows), hide_index=True, use_container_width=True)
+
+                                debate_btn_col, _ = st.columns([1, 3])
+                                with debate_btn_col:
+                                    run_debate_clicked = st.button(
+                                        "🎙️ Debate This Pick", key="draft_room_debate_btn",
+                                        type="primary", use_container_width=True,
+                                    )
+                                if run_debate_clicked:
+                                    debate_api_keys = {
+                                        "claude": api_key_for("anthropic"), "gemini": api_key_for("gemini"),
+                                        "openai": api_key_for("openai"),
+                                    }
+                                    with st.spinner("Strategist, Skeptic, and Caller are debating..."):
+                                        debate_result = pick_debate.debate_pick(
+                                            snap, previous_snapshot=st.session_state.draft_room_last_snapshot,
+                                            api_keys=debate_api_keys,
+                                        )
+                                    st.session_state.draft_room_last_snapshot = snap
+                                    st.session_state.draft_room_debate_result = debate_result
+                                    if debate_result.errors:
+                                        notify("warning", "Debate finished with issues: " + "; ".join(debate_result.errors))
+
+                                debate_result = st.session_state.draft_room_debate_result
+                                if debate_result is not None and debate_result.pick_label == pick_label:
+                                    st.markdown("---")
+                                    rec = debate_result.recommended
+                                    if rec is None:
+                                        st.warning("The panel's recommendation didn't cleanly match a candidate -- see the raw reports below.")
+                                    else:
+                                        st.markdown(f"## Recommendation: {rec.name}")
+                                        conf_caption = f"Confidence: {debate_result.confidence}" if debate_result.confidence else ""
+                                        st.caption(conf_caption)
+                                        if debate_result.why:
+                                            st.markdown(f"**Why now?** {debate_result.why}")
+
+                                        necessity_class = _NECESSITY_BADGE_CLASS.get(rec.necessity_label, "badge-necessity-close-call")
+                                        necessity_emoji = _NECESSITY_COLOR_EMOJI.get(rec.necessity_label, "")
+                                        badge_col, market_col = st.columns([1, 2])
+                                        with badge_col:
+                                            st.markdown(
+                                                f'<span class="badge {necessity_class}">{necessity_emoji} PICK NECESSITY: '
+                                                f'{rec.pick_necessity:.0f}/100 — {rec.necessity_label}</span>',
+                                                unsafe_allow_html=True,
+                                            )
+                                        if rec.reach_label is not None:
+                                            with market_col:
+                                                st.caption(
+                                                    f"Market consensus (KeepTradeCut, trade-value not literal ADP): "
+                                                    f"rank {rec.consensus_rank}, tier {rec.consensus_tier} — **{rec.reach_label}**"
+                                                )
+
+                                        metric_row1 = st.columns(6)
+                                        metric_row1[0].metric("Universal Value", f"{rec.universal_value:.0f}")
+                                        metric_row1[1].metric(
+                                            "Projected Points", f"{rec.projected_points:.0f}" if rec.projected_points is not None else "—",
+                                        )
+                                        metric_row1[2].metric("Your Acquisition Value", f"{rec.team_acquisition_value:.0f}")
+                                        metric_row1[3].metric(
+                                            "Survival to Next Pick",
+                                            f"{round(rec.survival_probability * 100)}%" if rec.survival_probability is not None else "—",
+                                        )
+                                        metric_row1[4].metric("Positional Cliff", rec.positional_cliff["tier"] if rec.positional_cliff else "—")
+                                        metric_row1[5].metric(f"{rec.position} Run", "DETECTED" if rec.position_run_detected else "—")
+
+                                        metric_row2 = st.columns(3)
+                                        metric_row2[0].metric("Opportunity Cost of Waiting", rec.opportunity_cost if rec.opportunity_cost is not None else "—")
+                                        metric_row2[1].metric("Expected Value If You Wait", rec.expected_value_of_waiting if rec.expected_value_of_waiting is not None else "—")
+                                        metric_row2[2].metric("Denial Value", rec.denial_value if rec.denial_value else "—")
+
+                                        alt = debate_result.best_alternative
+                                        if alt is not None:
+                                            st.markdown(f"**Best alternative:** {alt.name} — {alt.team_acquisition_value:.0f} acquisition value")
+                                            alt_survival = f"{round(alt.survival_probability * 100)}%" if alt.survival_probability is not None else "—"
+                                            st.caption(f"Survival: {alt_survival}")
+
+                                    if debate_result.disagreements:
+                                        for d in debate_result.disagreements:
+                                            st.warning(f"⚠️ Panel flagged a possible issue with an input: **{d['term']}** — {d['reason']}")
+
+                                    with st.expander("🗣️ Debate"):
+                                        st.markdown("**Strategist** — why the numbers favor the pick")
+                                        st.markdown(f'<div class="agent-block agent-prose">{html.escape(debate_result.strategist_report)}</div>', unsafe_allow_html=True)
+                                        st.markdown("**Skeptic** — what could make waiting correct")
+                                        st.markdown(f'<div class="agent-block agent-prose">{html.escape(debate_result.skeptic_report)}</div>', unsafe_allow_html=True)
+                                        st.markdown("**Caller** — final synthesis")
+                                        st.markdown(f'<div class="agent-block agent-prose">{html.escape(debate_result.why or debate_result.caller_report)}</div>', unsafe_allow_html=True)
+                                        if debate_result.key_factor:
+                                            st.caption(f"Key factor: {debate_result.key_factor}")
+                                        st.markdown("**Dissent** — the strongest argument against the recommendation")
+                                        st.markdown(
+                                            f'<div class="agent-block agent-prose">{html.escape(debate_result.dissent) if debate_result.dissent else "None raised."}</div>',
+                                            unsafe_allow_html=True,
+                                        )
+
+                                    if debate_result.diff:
+                                        with st.expander("📊 What changed since your last debate?"):
+                                            for d in debate_result.diff:
+                                                if d.get("entered") is True:
+                                                    st.markdown(f"🆕 **{d['name']}** entered the candidate pool at rank {d['rank']}")
+                                                elif d.get("entered") is False:
+                                                    st.markdown(f"❌ **{d['name']}** is no longer a live candidate (was rank {d['rank']})")
+                                                elif d.get("deltas"):
+                                                    delta_str = ", ".join(f"{_DRAFT_ROOM_DIFF_LABELS.get(k, k)}: {v:+}" for k, v in d["deltas"].items())
+                                                    st.markdown(f"**{d['name']}**: rank moved {d['rank_delta']:+d} ({delta_str})")
+                                elif debate_result is not None:
+                                    st.caption("A prior debate result is available for a different pick -- click Debate This Pick to refresh for this one.")
+
+    st.markdown("---")
+
 else:
     # ------------------------------------------------------------------ league rosters --
 
@@ -3002,18 +4099,15 @@ else:
     _depth = positional_depth(player_universe, st.session_state.data_merger)
     if _depth:
         st.markdown("**League-Wide Positional Depth**")
-        _has_values = st.session_state.data_merger.is_loaded
+        # data_merger.is_loaded is unconditionally true now (the committed baseline covers
+        # Dynasty Rankings regardless of any live upload), so this no longer needs a
+        # body-count-only fallback caption for the case where it isn't.
         st.caption(
             "How many rostered players (starters + bench + taxi/IR) each team has at each "
             "position — a scan for who's thin or stacked somewhere, without asking the bots "
-            + (
-                "team-by-team. Value in parens is that position's total Draft Sharks trade "
-                "value — weigh it over the raw count: a pile of backups and three stacked "
-                "stars can both show \"3.\""
-                if _has_values else
-                "team-by-team. This is body count only (no Draft Sharks data loaded) — two "
-                "teams tied here can still differ hugely in actual talent."
-            )
+            "team-by-team. Value in parens is that position's total Draft Sharks trade "
+            "value — weigh it over the raw count: a pile of backups and three stacked "
+            "stars can both show \"3.\""
         )
         _position_order = ["QB", "RB", "WR", "TE", "K", "DEF", "LB", "DL", "DB"]
         _positions_present = [p for p in _position_order if any(p in positions for positions in _depth.values())]
@@ -3112,6 +4206,7 @@ if decisions:
                     "Risk": d.get("risk", ""),
                     "Recon": d.get("recon", ""),
                     "Price Ceiling": d.get("price_ceiling", ""),
+                    "Alternative": d.get("alternative", ""),
                     "Outcome": d.get("outcome") or "—",
                 }
                 for d in reversed(decisions)
@@ -3136,9 +4231,51 @@ if decisions:
             decision_log.set_outcome(st.session_state.selected_league_id, outcome_options[picked_label], rating, note)
             st.rerun()
 
+bot_findings = bot_research.load_findings()
+bot_comparisons = bot_research.load_comparisons()
+if bot_findings or bot_comparisons:
+    with st.expander(f"🔬 Bot Research ({len(bot_findings)} findings, {len(bot_comparisons)} comparisons)"):
+        st.caption(
+            "Everything the panel has vetted across every league, newest first — see "
+            "MODERATOR_SYSTEM_PROMPT's SOURCE FINDING/SOURCE COMPARISON rules for how an item "
+            "gets in here (survives scrutiny from the whole panel, Contrarian included). "
+            "Findings with a rank already feed the composite score at a low weight; "
+            "comparisons never do — see the README for why."
+        )
+        if bot_findings:
+            st.markdown("**Findings**")
+            findings_df = pd.DataFrame(
+                [
+                    {
+                        "Date": f["date"], "Player": f["player_name"], "Source": f["source"],
+                        "Claim": f["claim"], "Rank": f.get("rank") if f.get("rank") is not None else "—",
+                        "Composite impact": f.get("composite_impact", ""),
+                    }
+                    for f in reversed(bot_findings)
+                ]
+            )
+            st.dataframe(findings_df, use_container_width=True, hide_index=True)
+        if bot_comparisons:
+            st.markdown("**Comparisons**")
+            comparisons_df = pd.DataFrame(
+                [
+                    {
+                        "Date": c["date"],
+                        "Comparison": f"{c['subject']} {c['direction']} {c['compared_to']}",
+                        "Source": c["source"], "Context": c.get("context") or "—", "Evidence": c.get("evidence", ""),
+                    }
+                    for c in reversed(bot_comparisons)
+                ]
+            )
+            st.dataframe(comparisons_df, use_container_width=True, hide_index=True)
+
 todo_league_id = st.session_state.selected_league_id
 active_items = todo_log.load_todos(todo_league_id, statuses=todo_log.ACTIVE_STATUSES)
-with st.expander(f"🎯 Active Objectives ({len(active_items)})", expanded=bool(active_items)):
+# Popped (read once, then cleared) rather than a persistent flag -- it should force this open
+# for the one rerun right after a "🎯 Add as objective" click lands a suggestion in the text
+# box below, not forever after.
+_force_expand_todos = st.session_state.pop("_force_expand_todos", False)
+with st.expander(f"🎯 Active Objectives ({len(active_items)})", expanded=bool(active_items) or _force_expand_todos):
     st.caption(
         "League objectives the bots are tracking (🤖) or you added yourself (✍️) — selectively "
         "given to the bots as context in future debates, not just a checklist. A 🔎 tag means a "
@@ -3146,13 +4283,75 @@ with st.expander(f"🎯 Active Objectives ({len(active_items)})", expanded=bool(
         "closing one persists permanently in the Archive below, so the bots can recall *why* it "
         "ended the way it did if the same idea comes up again."
     )
-    manual_col, add_col = st.columns([4, 1])
+    if _force_expand_todos:
+        st.caption("🎯 Seeded from that message below — edit it, hit Add, or ask the Moderator to expand it using context.")
+    manual_col, expand_col, add_col = st.columns([3.2, 1, 1])
     manual_text = manual_col.text_input(
         "Add an objective", key="manual_todo_text", label_visibility="collapsed",
         placeholder="Add a new objective…",
     )
+    # Only lit up right after a "🎯 Add as objective" click on a message seeded this box (see
+    # _render_agent_msg) -- this button re-reads THAT message, not whatever's currently typed
+    # above, and asks the Moderator to condense it using the surrounding conversation and this
+    # league's existing objectives, same as the old per-message smart-condense button did. Kept
+    # opt-in rather than automatic: most seeded text is already close enough to an objective
+    # that a bot call would buy nothing.
+    _seed_ts = st.session_state.get("_objective_seed_ts")
+    if expand_col.button(
+        "🤖 Ask Moderator", key="expand_objective_with_context", use_container_width=True,
+        disabled=_seed_ts is None,
+        help=(
+            "Only available right after 🎯 Add as objective seeds this box from a message."
+            if _seed_ts is None else
+            "Ask the Moderator to rewrite the text above as a properly scoped objective, using "
+            "the surrounding conversation and this league's existing objectives."
+        ),
+    ):
+        seed_msg = next((m for m in st.session_state.chat_history if m.get("ts") == _seed_ts), None)
+        if seed_msg is None:
+            notify("warning", "That message isn't in this chat anymore -- edit the text above yourself instead.")
+        else:
+            obj_provider = bot_config.load_role_providers()["moderator"]
+            obj_key = api_key_for(PROVIDER_KEY_FIELD[obj_provider])
+            if not IS_PROVIDER_CONFIGURED[obj_provider](obj_key):
+                notify("warning", f"{bot_config.PROVIDER_LABELS[obj_provider]} isn't configured -- add an API key to use this.")
+            else:
+                with st.spinner("Condensing into an objective..."):
+                    # Centered on the seed message itself, both backward AND forward -- see
+                    # build_context's conversation_window param.
+                    full_history = st.session_state.chat_history
+                    try:
+                        msg_idx = next(i for i, m in enumerate(full_history) if m.get("ts") == _seed_ts)
+                    except StopIteration:
+                        msg_idx = len(full_history) - 1
+                    half_window = RECENT_TURNS_IN_CONTEXT // 2
+                    window = full_history[max(0, msg_idx - half_window): msg_idx + half_window + 1]
+                    condense_context = build_context(
+                        snapshot, roster_table if roster else [], player_universe, seed_msg["content"],
+                        conversation_window=window,
+                    )
+                    condensed = llm_engine.ask_condense_to_objective(
+                        condense_context, seed_msg["content"], provider=obj_provider,
+                        api_key=obj_key, model=bot_config.load_role_models().get("moderator") or None,
+                    )
+                result = llm_engine.parse_condensed_objective(condensed)
+                if result.get("objective"):
+                    st.session_state["manual_todo_text"] = result["objective"]
+                    st.session_state["_force_expand_todos"] = True
+                    st.rerun()
+                elif result.get("not_new_id") is not None:
+                    notify("info", f"Already tracked as objective #{result['not_new_id']}: {result.get('reason', '')}")
+                elif result.get("no_objective_reason"):
+                    notify("info", f"Nothing actionable there: {result['no_objective_reason']}")
+                else:
+                    notify("warning", "Couldn't turn that into an objective -- edit the text above yourself instead.")
     if add_col.button("Add", key="add_manual_todo", use_container_width=True) and manual_text.strip():
         todo_log.add_todo(todo_league_id, manual_text, source="manual")
+        st.session_state.pop("_objective_seed_ts", None)
+        # Without this the text stays in the box after a successful add -- confirmed live, a
+        # second click (habit, or just not noticing it worked) would silently create a
+        # duplicate objective from the same leftover text.
+        st.session_state["manual_todo_text"] = ""
         st.rerun()
 
     if not active_items:
@@ -3186,6 +4385,9 @@ with st.expander(f"🎯 Active Objectives ({len(active_items)})", expanded=bool(
                 )
                 if note_btn_col.button("Add", key=f"todo_note_add_{item['id']}", use_container_width=True) and note_text.strip():
                     todo_log.add_note(todo_league_id, item["id"], note_text)
+                    # Same fix as the objective box above -- leftover text after a successful
+                    # add invites an accidental duplicate note on the next click.
+                    st.session_state[f"todo_note_{item['id']}"] = ""
                     st.rerun()
 
                 if item["status"] == "likely_resolved":
@@ -3547,6 +4749,12 @@ with st.container(key="debate_dock"):
                     append_message("contrarian", result.contrarian, provider=role_providers["contrarian"], model=role_models.get("contrarian") or None)
                     append_message("moderator", result.moderator, provider=role_providers["moderator"], model=role_models.get("moderator") or None)
                     process_moderator_output(result.moderator, trigger_question)
+                    # run_debate already collects which role(s) failed (a missing/invalid API
+                    # key, a provider outage) -- this was computed and silently thrown away
+                    # before, so a failed call just looked like a "⚠️ ..." chat message with no
+                    # toast, no activity-log entry, and no visible sign anything went wrong.
+                    if result.errors:
+                        notify("warning", "Debate finished with issues: " + "; ".join(result.errors))
             # Without this, the question box's label (now dependent on whether a debate has
             # happened -- see default_trigger_mode above), the persona captions, and everything
             # else derived from chat_history keep showing what they were at the START of this
@@ -3555,22 +4763,33 @@ with st.container(key="debate_dock"):
 
         VERDICT_FIELD_LABELS = (
             "RECOMMENDATION", "CONVICTION", "REASON", "DISSENT", "RISK", "RECON",
-            "PRICE CEILING", "ACTION ITEM", "TODO UPDATE", "TODO LIKELY RESOLVED",
+            "PRICE CEILING", "ALTERNATIVE", "ACTION ITEM", "TODO UPDATE", "TODO LIKELY RESOLVED",
         )
 
-        def format_agent_content(role: str, content: str) -> str:
+        def format_agent_content(role: str, content: str) -> tuple[str, str]:
             """Escape first -- this was going straight into unsafe_allow_html unescaped,
             so a literal '<', '>', or '&' anywhere in an LLM response (plausible in
             ordinary analysis prose, e.g. "if X < Y") could silently break the block's
-            rendering. For the Moderator specifically, also bold the structured verdict
-            field labels so the fixed-format block reads as a scannable form instead of
-            an undifferentiated wall of monospace text -- this is the single most-read
-            piece of content in the app."""
-            escaped = html.escape(content)
-            if role == "moderator":
-                pattern = r"(?m)^(" + "|".join(VERDICT_FIELD_LABELS) + r"):"
-                escaped = re.sub(pattern, r"<strong>\1:</strong>", escaped)
-            return escaped
+            rendering. Returns (prose_html, verdict_html): for a Moderator message that
+            re-emitted the structured block, everything before the first RECOMMENDATION:
+            line (always the block's first field -- see MODERATOR_SYSTEM_PROMPT) is prose,
+            everything from there on is the verdict recap, with its field labels bolded so
+            it still reads as a scannable form. A conversational follow-up that skipped the
+            block (see MODERATOR_FOLLOWUP_ADDENDUM) has no such line, so it's all prose --
+            same as every non-Moderator role, which never carries this block at all. Keeping
+            the two halves separate is what lets _render_agent_msg show reasoning as an
+            actual chat reply and the verdict as a distinct recap card below it, instead of
+            one undifferentiated monospace wall."""
+            if role != "moderator":
+                return html.escape(content).strip(), ""
+            match = re.search(r"(?m)^RECOMMENDATION:", content)
+            if not match:
+                return html.escape(content).strip(), ""
+            prose = html.escape(content[:match.start()].strip())
+            verdict = html.escape(content[match.start():].strip())
+            pattern = r"(?m)^(" + "|".join(VERDICT_FIELD_LABELS) + r"):"
+            verdict = re.sub(pattern, r"<strong>\1:</strong>", verdict)
+            return prose, verdict
 
         # Base label uses the role's *current* display name (a rename applies to its
         # whole history, same as a real name change) — the "(Provider)" suffix uses
@@ -3628,10 +4847,33 @@ with st.container(key="debate_dock"):
                 ):
                     pinned_messages.toggle_pin(st.session_state.selected_league_id, ts)
                     st.rerun()
-            st.markdown(
-                f'<div class="agent-block">{format_agent_content(msg["role"], msg["content"])}</div>',
-                unsafe_allow_html=True,
-            )
+                # Bot messages only -- ACTION ITEM today only ever comes out of a Moderator
+                # verdict, so a good Quant/Beat callout has no path to becoming a tracked
+                # objective except retyping it yourself. One button here, free: just this
+                # message's own text (whitespace-collapsed, truncated at 200 chars on a word
+                # boundary) dropped straight into the objective box below. It also seeds
+                # _objective_seed_ts so that box's own "🤖 Ask Moderator" button (see the
+                # Active Objectives expander) can, on request, replace this with a version
+                # condensed from the surrounding conversation -- most messages are already
+                # phrased close enough to an objective that a bot call buys nothing, so that
+                # stays opt-in rather than firing here on every click.
+                if msg["role"] in ROLE_BADGE_BASE and st.button(
+                    "🎯 Add as objective", key=f"objective_from_msg_{ts}",
+                    help="Drop this message's own text into the objective box below -- no bot call. "
+                    "That box has its own button to ask the Moderator to expand it using context, if you want that instead.",
+                ):
+                    quick_text = " ".join(msg["content"].split())
+                    if len(quick_text) > 200:
+                        quick_text = quick_text[:200].rsplit(" ", 1)[0] + "…"
+                    st.session_state["manual_todo_text"] = quick_text
+                    st.session_state["_force_expand_todos"] = True
+                    st.session_state["_objective_seed_ts"] = ts
+                    st.rerun()
+            prose_html, verdict_html = format_agent_content(msg["role"], msg["content"])
+            inner = f'<div class="agent-prose">{prose_html}</div>' if prose_html else ""
+            if verdict_html:
+                inner += f'<div class="agent-verdict">{verdict_html}</div>'
+            st.markdown(f'<div class="agent-block">{inner}</div>', unsafe_allow_html=True)
 
         # A Full Debate always appends exactly [quant, beat, contrarian, moderator] back to
         # back (see the trigger block above) -- group that run into one unit so the Moderator's

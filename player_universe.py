@@ -60,7 +60,25 @@ def player_position(info: dict) -> Optional[str]:
     return info.get("position")
 
 
-def _score_projection(stats: dict, scoring_settings: dict) -> float:
+def player_eligible_positions(info: dict) -> set[str]:
+    """The FULL set of fantasy-relevant positions this player can be started at, not just the
+    single bucket player_position() picks -- needed anywhere a player's multi-position
+    eligibility itself is the point (lineup_optimizer.py's assignment problem), rather than
+    everywhere else in this app, which only ever needs one primary bucket for matching/
+    grouping purposes. Falls back to {player_position(info)} when fantasy_positions is
+    missing/empty, so a record with no real eligibility data still gets its one known
+    position rather than an empty, unassignable set."""
+    eligible = {pos for pos in (info.get("fantasy_positions") or []) if pos in FANTASY_POSITIONS}
+    if eligible:
+        return eligible
+    primary = player_position(info)
+    return {primary} if primary else set()
+
+
+def score_projection(stats: dict, scoring_settings: dict) -> float:
+    # Not module-private -- draft_room.py reuses this to score Sleeper's native weekly
+    # projections under a league's real scoring rules for positions Draft Sharks doesn't
+    # project at all (currently IDP), same as this module already does for roster display.
     """Score native Sleeper stat projections without coupling this data model to HTTP."""
     total = sum(
         float(value) * float(scoring_settings.get(category, 0))
@@ -165,7 +183,7 @@ def build_player_universe(
         }
         stats = projections.get(pid)
         if stats:
-            row["sleeper_proj"] = _score_projection(stats, scoring_settings or {})
+            row["sleeper_proj"] = score_projection(stats, scoring_settings or {})
         rows.append(row)
 
     # Player names make the canonical pool searchable even when position/team

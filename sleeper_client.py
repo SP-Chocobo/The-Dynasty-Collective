@@ -19,9 +19,13 @@ import requests
 
 BASE_URL = "https://api.sleeper.app/v1"
 ROOT_URL = "https://api.sleeper.app"  # projections/stats live outside /v1 — see get_weekly_projections
+# Last-resort fallback only -- get_user_leagues derives the real season from Sleeper's own
+# live /state/nfl on every call now, so this only matters if that endpoint itself is
+# unreachable. Not something that needs bumping every year on its own.
 DEFAULT_SEASON = "2026"
 PLAYERS_CACHE_MAX_AGE_SECONDS = 24 * 60 * 60  # Sleeper asks that /players/nfl be pulled at most once/day
 REQUEST_TIMEOUT = 15
+SNAPSHOT_HISTORY_KEEP = 10  # timestamped snapshots kept per league beyond the always-current _latest.json
 
 
 class SleeperAPIError(RuntimeError):
@@ -55,7 +59,17 @@ class SleeperClient:
     def get_user(self, username: str) -> Optional[dict]:
         return self._get(f"/user/{username}")
 
-    def get_user_leagues(self, user_id: str, season: str = DEFAULT_SEASON, sport: str = "nfl") -> list[dict]:
+    def get_user_leagues(self, user_id: str, season: Optional[str] = None, sport: str = "nfl") -> list[dict]:
+        # A hardcoded default season here would silently go stale every year -- confirmed:
+        # DEFAULT_SEASON used to be a bare "2026" constant, so on the season rollover a caller
+        # that didn't pass one explicitly (app.py's own sync never has) would keep querying the
+        # wrong year and just see "no leagues found" with no indication why. Derive it from
+        # Sleeper's own live /state/nfl instead when the caller doesn't pass one, falling back
+        # to DEFAULT_SEASON only if that call itself fails (offline, API outage) -- same
+        # fail-soft posture get_nfl_state already has.
+        if season is None:
+            state = self.get_nfl_state()
+            season = (state or {}).get("season") or DEFAULT_SEASON
         leagues = self._get(f"/user/{user_id}/leagues/{sport}/{season}")
         return leagues or []
 
@@ -74,6 +88,19 @@ class SleeperClient:
     def get_drafts(self, league_id: str) -> list[dict]:
         return self._get(f"/league/{league_id}/drafts") or []
 
+    def get_draft(self, draft_id: str) -> Optional[dict]:
+        """One draft's own metadata -- type (snake/linear/auction), status, settings (rounds,
+        roster/starter slot counts), draft_order. Distinct from get_drafts (a league's list of
+        drafts) and get_draft_picks (that draft's picks so far) -- see draft_room.py, the only
+        current caller, for how the three combine into a live draft-pick recommendation."""
+        return self._get(f"/draft/{draft_id}")
+
+    def get_draft_picks(self, draft_id: str) -> list[dict]:
+        """Every pick made in this draft so far, in draft order -- Sleeper has no push/websocket
+        feed for third parties, so a live view re-polls this on demand (a Refresh action, not a
+        background timer) same as every other "live-ish" read this client already does."""
+        return self._get(f"/draft/{draft_id}/picks") or []
+
     # -- player database (large, cached daily) ------------------------------
 
     def get_players(self, force_refresh: bool = False) -> dict[str, dict]:
@@ -81,7 +108,11 @@ class SleeperClient:
         if not force_refresh and cache_path.exists():
             age = time.time() - cache_path.stat().st_mtime
             if age < PLAYERS_CACHE_MAX_AGE_SECONDS:
-                return json.loads(cache_path.read_text())
+                cached = self._read_players_cache(cache_path)
+                if cached is not None:
+                    return cached
+                # Corrupt but not yet stale -- fall through to a live re-fetch below rather
+                # than raising, same fail-soft posture as every other method here.
 
         try:
             players = self._get("/players/nfl")
@@ -93,8 +124,20 @@ class SleeperClient:
             return players
 
         if cache_path.exists():
-            return json.loads(cache_path.read_text())
+            cached = self._read_players_cache(cache_path)
+            if cached is not None:
+                return cached
         return {}
+
+    @staticmethod
+    def _read_players_cache(cache_path: Path) -> Optional[dict[str, dict]]:
+        """None (never raises) on a corrupt cache file -- this is a ~10MB re-fetchable cache,
+        not durable data, so an interrupted write just means "treat it as a cache miss," not
+        an app-crashing exception every future page load until someone manually deletes it."""
+        try:
+            return json.loads(cache_path.read_text())
+        except (json.JSONDecodeError, OSError):
+            return None
 
     # -- native weekly stat-category projections (undocumented endpoint) ----
     #
@@ -210,12 +253,35 @@ class SleeperClient:
         ts = int(snapshot.get("synced_at", time.time()))
         (self.cache_dir / f"{league_id}_{ts}.json").write_text(json.dumps(snapshot, indent=2))
         (self.cache_dir / f"{league_id}_latest.json").write_text(json.dumps(snapshot, indent=2))
+        self._prune_old_snapshots(league_id)
+
+    def _prune_old_snapshots(self, league_id: str, keep: int = SNAPSHOT_HISTORY_KEEP) -> None:
+        """Nothing in this app actually reads a timestamped {league_id}_{ts}.json back
+        (load_latest_snapshot only ever reads the _latest.json alongside it) -- every real
+        sync still wrote and kept one forever, so a league synced daily for a season
+        accumulates hundreds of files nothing ever opens again. Keep a bounded recent history
+        (newest-timestamp-first) rather than either deleting the ability to look back entirely
+        or leaving it truly unbounded."""
+        pattern = f"{league_id}_*.json"
+        latest_name = f"{league_id}_latest.json"
+        timestamped = sorted(
+            (p for p in self.cache_dir.glob(pattern) if p.name != latest_name),
+            key=lambda p: p.stat().st_mtime, reverse=True,
+        )
+        for p in timestamped[keep:]:
+            p.unlink(missing_ok=True)
 
     def load_latest_snapshot(self, league_id: str) -> Optional[dict]:
         path = self.cache_dir / f"{league_id}_latest.json"
         if not path.exists():
             return None
-        return json.loads(path.read_text())
+        try:
+            return json.loads(path.read_text())
+        except (json.JSONDecodeError, OSError):
+            # Re-syncable (sync_league() rebuilds this from Sleeper's live API), so a corrupt
+            # cache is just a cache miss, not an app-crashing exception -- same posture as
+            # "no snapshot cached yet" a few lines up.
+            return None
 
 
 # -- helpers for interpreting a synced league --------------------------------
@@ -253,6 +319,12 @@ def league_format_summary(league: dict) -> dict:
     is_ppr = scoring_settings.get("rec", 0) >= 1
     is_half_ppr = scoring_settings.get("rec", 0) == 0.5
     ppr_label = "Full PPR" if is_ppr else ("Half PPR" if is_half_ppr else "Standard")
+    # Sleeper's own key for a per-reception bonus specific to TEs -- a league scoring TE
+    # receptions any higher than its general "rec" setting is exactly what "TE premium" means
+    # (Draft Sharks' own TE-premium exports are built around this same idea -- see
+    # data_merger._detect_rankings_format's docstring for how that maps onto which Dynasty
+    # Rankings file this app prefers for a league configured this way).
+    is_te_premium = scoring_settings.get("bonus_rec_te", 0) > 0
 
     return {
         "name": league.get("name", "Unnamed League"),
@@ -261,6 +333,7 @@ def league_format_summary(league: dict) -> dict:
         "teams": settings.get("num_teams", len(league.get("roster_positions", []) and [])) or league.get("total_rosters"),
         "superflex": is_superflex,
         "scoring": ppr_label,
+        "te_premium": is_te_premium,
         "taxi_slots": settings.get("taxi_slots", 0),
         "roster_positions": roster_positions,
     }

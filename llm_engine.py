@@ -28,6 +28,7 @@ out the whole debate studio.
 
 from __future__ import annotations
 
+import concurrent.futures
 import os
 from dataclasses import dataclass, field
 from typing import Optional
@@ -41,10 +42,27 @@ GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 
 CLAUDE_MODEL = os.getenv("ANTHROPIC_MODEL", "claude-sonnet-5")  # was a now-retired dated snapshot
+# These two are best-effort, not verified current the way CLAUDE_MODEL above is (that one's
+# checked against Anthropic's own live model list; there's no equivalent live check here for
+# Gemini/OpenAI) -- if either provider has moved on by the time you're reading this, these are
+# only ever a silent fallback anyway: a role's own model override (bot_config's per-role
+# setting, or SUGGESTED_MODELS/the live "Refresh available models" fetch in the UI) takes
+# priority whenever one's actually configured. Worth checking against each provider's current
+# docs before assuming these still resolve to a live model.
 GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-2.0-flash")
 OPENAI_MODEL = os.getenv("OPENAI_MODEL", "gpt-4o")
 
-MAX_TOKENS = 1024
+# The Moderator's own system prompt is ~2,554 tokens of instructions demanding prose reasoning
+# PLUS a 9-field structured block PLUS however many repeatable TODO UPDATE/TODO LIKELY
+# RESOLVED/SOURCE FINDING/SOURCE COMPARISON lines a given verdict calls for -- and that block
+# sits at the END of the response, exactly what a tight token budget truncates first. Confirmed
+# the old 1024 was genuinely tight for a real multi-line verdict (reasoning + block + a couple
+# TODO/SOURCE lines routinely runs past it), which would silently break the TODO tracker, the
+# decision log, and the bot_research feed by cutting the response off before those lines were
+# even written. Applies to every role via the shared PROVIDER_CALLERS, not just the Moderator --
+# Quant/Beat/Contrarian get the same headroom rather than a role-specific budget, since a
+# thorough Quant breakdown or a Contrarian pressure-test can run long too.
+MAX_TOKENS = 4096
 
 QUANT_SYSTEM_PROMPT = """You are the Quant / VORP Specialist for a fantasy football front office. Your
 context states this league's actual format (dynasty/keeper/redraft, and any special mode like Best Ball
@@ -139,6 +157,15 @@ RISK: <the biggest risk to this being wrong, one line>
 RECON: <only if CONVICTION is Worth investigation — a concrete thing to go ask another manager, phrased as
 something the user can actually say, e.g. "Ask Team 4 if Player X is available for picks">
 PRICE CEILING: <only if this is a trade question — the most the user should give up>
+ALTERNATIVE: <only when genuinely useful — typically a trade question where RECOMMENDATION is SELL or
+WAIT, or a Split/Speculative call where a clearly better direction exists. This is NOT a mechanical
+add-on to every non-BUY verdict — most of the time the honest answer is that nothing here rises to a
+real alternative, and the line should just be omitted. Unlike the terse lines above, when you do write
+this one, actually explain your thinking — a sentence or two on WHY that alternative is worth pursuing
+instead, grounded in what's actually in context (positional depth, a specific comparable player/pick
+already surfaced, the trade partner's own stated needs), all as one paragraph on this single line (no
+line breaks within it) — never just a bare name with no reasoning attached. Skip it entirely rather than
+naming a target the context doesn't actually support; an absent line beats a manufactured one>
 ACTION ITEM: <only if this verdict implies a concrete, NEW, trackable objective not already listed in your
 context's OPEN TO-DO ITEMS — a specific trade to propose, a waiver claim to submit, a manager to check back
 with, a roster move with a deadline. Phrased as the action itself, e.g. "Offer Team 4 a 2027 3rd for Player X
@@ -153,7 +180,7 @@ consensus among the three), Speculative (agreement isn't the issue — the under
 e.g. a rookie with no track record, a projection with no market/news confirmation, or stale data), or
 Worth investigation (the analysis is sound as far as it goes, but the real answer depends on something
 only another manager can tell you — say exactly what to ask them in RECON). Omit the DISSENT, RECON,
-PRICE CEILING, or ACTION ITEM lines entirely when they don't apply — never write "N/A".
+PRICE CEILING, ALTERNATIVE, or ACTION ITEM lines entirely when they don't apply — never write "N/A".
 
 Your context's OPEN TO-DO ITEMS section (when present) lists this league's active objectives, each with a
 small numeric id. These are standing context for every question, not just ones about them — a rebuild-vs-
@@ -168,9 +195,42 @@ Use TODO UPDATE when new information changes what the objective actually is, not
 Use TODO LIKELY RESOLVED only when you have real evidence it's done (a completed trade visible in the
 league's roster data, an explicitly stated fact from the user or Beat Tracker) — this proposes closing it,
 it does not close it; the user confirms or reopens it. Never invent an id — only reference one that's
-actually listed in OPEN TO-DO ITEMS. Include as many TODO UPDATE / TODO LIKELY RESOLVED lines as genuinely
-apply (zero, one, or several) — these are the only repeatable lines in this block; every other field
-appears at most once.
+actually listed in OPEN TO-DO ITEMS.
+
+The Beat Tracker and Contrarian both have live web search, and your context may also include REFERENCE
+MATERIAL the user captioned by hand — either can be the origin of a specific, checkable claim from a named
+real source about a named player's current market value, ranking, or status (not news/injury, which belongs
+in your prose, not here). Whichever way it entered the debate, when the rest of the panel — Contrarian very
+much included — did NOT dispute it, add one line per such finding (after PRICE CEILING/ACTION ITEM/TODO
+lines, before the block ends):
+
+SOURCE FINDING: <player's full name> | <source name, e.g. ESPN> | <the claim, one line> | <a bare rank or
+tier number ONLY if the claim IS literally that specific number, e.g. the source's own "#3 DL" — leave this
+last field blank for anything qualitative (a trend, an opinion, a narrative read)>
+
+This is how a genuinely new, panel-tested finding becomes durable — it can end up feeding this app's own
+composite valuation score, not just this one answer, so only write this line when the finding actually held
+up under scrutiny from the whole panel. If the Contrarian challenged it and nothing rebutted that challenge,
+don't write the line at all — an unresolved dispute is not a finding. Never invent a source or a number that
+wasn't actually surfaced in this debate; omit the line entirely rather than force one that doesn't clearly
+qualify. Zero, one, or several of these may apply — like the TODO lines, these are repeatable; every other
+field in the block above still appears at most once.
+
+A source can also compare two players against each other WITHOUT giving either one an absolute number ("ESPN
+has Crosby ahead of Hutchinson" says nothing about how far ahead, or where either lands on any scale) — that
+still holds up as real information under the same panel-scrutiny bar, but it CANNOT become a SOURCE FINDING
+above, since that line requires an actual number the source itself stated. For a relative claim like this,
+write instead:
+
+SOURCE COMPARISON: <first player> | <second player> | <one of: > (first is better) / < (first is worse) / ~
+(source treats them as roughly equal)> | <source name> | <context, e.g. "IDP/DL" or a scoring format, if the
+source's own framing was scoped to one> | <the evidence/reasoning in one line>
+
+Same rule as SOURCE FINDING: only when the whole panel, Contrarian included, didn't dispute it, never
+inventing a comparison that wasn't actually surfaced. These accumulate as their own structured research
+layer, separate from numeric findings — right now a comparison never affects this app's composite score,
+only a source's own explicit number can do that. Also repeatable; also skip it entirely rather than force
+one that doesn't clearly qualify.
 
 Your context may also include a PAST DECISION OUTCOMES section — earlier verdicts on a
 related question, with how they actually played out (user-recorded, not a model guess). This
@@ -217,7 +277,10 @@ class DebateResult:
     role_providers: dict = field(default_factory=dict)
 
 
-VERDICT_FIELDS = ["RECOMMENDATION", "CONVICTION", "REASON", "DISSENT", "RISK", "RECON", "PRICE CEILING", "ACTION ITEM"]
+VERDICT_FIELDS = [
+    "RECOMMENDATION", "CONVICTION", "REASON", "DISSENT", "RISK", "RECON", "PRICE CEILING",
+    "ALTERNATIVE", "ACTION ITEM",
+]
 
 
 def parse_moderator_verdict(text: str) -> dict:
@@ -266,6 +329,57 @@ def parse_todo_directives(text: str) -> dict:
                     "id": int(parts[0]), "reason": parts[1] if len(parts) >= 2 else "",
                 })
     return {"updates": updates, "likely_resolved": likely_resolved}
+
+
+def parse_source_findings(text: str) -> list[dict]:
+    """Pull every SOURCE FINDING line out of the Moderator's response -- see
+    MODERATOR_SYSTEM_PROMPT's own instructions on when it's allowed to write one (a specific,
+    named-source claim the whole panel, Contrarian included, didn't successfully dispute).
+    Repeatable like the TODO lines, for the same reason: a debate can surface more than one.
+    Fails soft on a malformed line (wrong pipe count, empty player/source/claim) -- that one
+    line is dropped, never the whole response. The bare rank field is optional and only kept
+    when it parses as a plain integer; anything else (blank, "N/A", prose) is treated as "no
+    number," never guessed at.
+    """
+    findings: list[dict] = []
+    for line in text.splitlines():
+        stripped = line.strip().lstrip("-*# ").rstrip()
+        if not stripped.upper().startswith("SOURCE FINDING:"):
+            continue
+        parts = [p.strip() for p in stripped[len("SOURCE FINDING:"):].split("|")]
+        if len(parts) < 3 or not parts[0] or not parts[1] or not parts[2]:
+            continue
+        rank = None
+        if len(parts) >= 4 and parts[3].strip().isdigit():
+            rank = int(parts[3].strip())
+        findings.append({"player_name": parts[0], "source": parts[1], "claim": parts[2], "rank": rank})
+    return findings
+
+
+_COMPARISON_DIRECTIONS = {">", "<", "~"}
+
+
+def parse_source_comparisons(text: str) -> list[dict]:
+    """Pull every SOURCE COMPARISON line out of the Moderator's response -- see
+    MODERATOR_SYSTEM_PROMPT's own instructions on when it's allowed to write one. Same
+    fail-soft posture as parse_source_findings: a malformed line (wrong pipe count, an invalid
+    direction token, an empty player/source) is dropped, never the whole response. Deliberately
+    a separate function/line from SOURCE FINDING, not a variant of it -- a relative claim has no
+    absolute number to carry, and callers (bot_research.add_comparison) store these in their own
+    structured layer rather than force-fitting them into the numeric-findings shape."""
+    comparisons: list[dict] = []
+    for line in text.splitlines():
+        stripped = line.strip().lstrip("-*# ").rstrip()
+        if not stripped.upper().startswith("SOURCE COMPARISON:"):
+            continue
+        parts = [p.strip() for p in stripped[len("SOURCE COMPARISON:"):].split("|")]
+        if len(parts) < 6 or not parts[0] or not parts[1] or parts[2] not in _COMPARISON_DIRECTIONS or not parts[3]:
+            continue
+        comparisons.append({
+            "subject": parts[0], "compared_to": parts[1], "direction": parts[2],
+            "source": parts[3], "context": parts[4], "evidence": parts[5],
+        })
+    return comparisons
 
 
 def is_claude_configured(api_key: Optional[str] = None) -> bool:
@@ -351,6 +465,14 @@ def _call_claude(system_prompt: str, user_prompt: str, api_key: Optional[str] = 
             max_tokens=MAX_TOKENS,
             system=system_prompt,
             messages=[{"role": "user", "content": user_prompt}],
+            # Runs server-side (Anthropic executes the search/fetch, not this app) -- gives
+            # Claude the same live-search access Gemini/ChatGPT already had here, so the Beat
+            # Tracker and Contrarian's system prompts (which unconditionally claim "live web
+            # search") stop being false whenever a role happens to be assigned to Claude. Only
+            # the response's own text blocks get joined below, same extraction as before --
+            # web_search_tool_result/server_tool_use blocks have no .text attribute and are
+            # skipped the same way any other non-text block already was.
+            tools=[{"type": "web_search_20260209", "name": "web_search"}],
         )
         return "".join(block.text for block in response.content if hasattr(block, "text")).strip()
     except Exception as exc:  # noqa: BLE001 - surface any provider error to the UI, don't crash the app
@@ -402,11 +524,12 @@ def _call_openai(system_prompt: str, user_prompt: str, api_key: Optional[str] = 
         return f"⚠️ ChatGPT request failed: {exc}"
 
 
-# Every provider gets its own best available tool (Gemini/ChatGPT both get live web
-# search, Claude gets none here) regardless of which role it's running -- a role
-# reassigned to a different provider still gets that provider's normal capabilities,
-# it just may gain or lose live search access as a result. bot_config.ROLE_INFO
-# documents that tradeoff for the UI.
+# All three providers get their own native live web search here (Gemini's Google Search
+# grounding, ChatGPT's web_search tool, Claude's web_search_20260209) regardless of which role
+# is calling -- a role reassigned to a different provider keeps live search access either way,
+# so which provider ends up on the Beat Tracker/Contrarian role is purely a "whose answers do
+# you like" choice now, not a capability tradeoff. See bot_config.ROLE_INFO for the UI's own
+# framing of that choice.
 PROVIDER_CALLERS = {"claude": _call_claude, "gemini": _call_gemini, "openai": _call_openai}
 
 ROLE_SYSTEM_PROMPTS = {
@@ -566,6 +689,65 @@ def classify_unknown_upload(
     return PROVIDER_CALLERS[provider](UPLOAD_CLASSIFY_SYSTEM_PROMPT, prompt, api_key, model)
 
 
+CONDENSE_TO_OBJECTIVE_SYSTEM_PROMPT = """You turn ONE existing chat message from a fantasy football dynasty \
+front office into a single tracked objective, in the exact phrasing style this app's own Moderator uses for an \
+ACTION ITEM: the action itself, concrete and specific -- e.g. "Offer Team 4 a 2027 3rd for Player X before \
+Thursday's waiver run" -- never a summary of what the message said, and never vague ("consider a trade").
+
+Your context includes CONVERSATION MEMORY (the surrounding discussion, not just this one message in isolation) \
+and, when this league has any, OPEN TO-DO ITEMS with their ids -- use both. A message rarely stands alone: what \
+made it actionable is often the question that prompted it or an earlier point in the same exchange, not just its \
+own sentence. Weigh that surrounding context the same way the Moderator's own ACTION ITEM instructions do.
+
+Respond with exactly one line, one of these three forms, nothing else:
+
+OBJECTIVE: <the objective text>
+NOT NEW: <id> | <one line on why this is materially the same as that existing open item>
+NO OBJECTIVE: <one line on why this message doesn't reduce to anything actionable>
+
+Use NOT NEW when the source message's point is materially the same as something already in OPEN TO-DO ITEMS --
+never manufacture a duplicate. Use NO OBJECTIVE when the message is pure information, a raw number, or a "no \
+strong opinion" answer with nothing to actually go do. Never invent specifics -- a team name, a deadline, a \
+price -- that weren't actually in the source message or the surrounding conversation; if the message itself was \
+vague, the objective you write should stay just as concrete as what it actually said, not padded out further."""
+
+
+def ask_condense_to_objective(
+    context: str, source_message: str, *, provider: str = "claude",
+    api_key: Optional[str] = None, model: Optional[str] = None,
+) -> str:
+    """Turn one existing chat message into a single trackable objective line, for the app's
+    per-message "Add as objective" action (the target-emoji button next to the pin button on
+    every chat message, not just Moderator ones -- a good Quant/Beat callout has no other path
+    to becoming a to-do today, since ACTION ITEM only ever comes from a Moderator verdict).
+
+    Reuses build_context exactly as every other single-shot ask_* helper here does, rather than
+    a special-purpose context builder -- that already carries CONVERSATION MEMORY and OPEN TO-DO
+    ITEMS, so surrounding context and dedup-against-existing-objectives both come for free."""
+    prompt = f"League/roster context:\n{context}\n\nSource message to turn into an objective:\n{source_message}"
+    return PROVIDER_CALLERS[provider](CONDENSE_TO_OBJECTIVE_SYSTEM_PROMPT, prompt, api_key, model)
+
+
+def parse_condensed_objective(text: str) -> dict:
+    """Pull the single OBJECTIVE: / NOT NEW: / NO OBJECTIVE: line out of an
+    ask_condense_to_objective response. Fails soft: an unrecognized or missing line returns
+    {} rather than raising, same posture as every other parse_* here -- the app treats that
+    as "couldn't produce one" and tells the user so instead of silently adding garbage."""
+    for line in text.splitlines():
+        stripped = line.strip().lstrip("-*# ").rstrip()
+        if stripped.upper().startswith("OBJECTIVE:"):
+            objective = stripped[len("OBJECTIVE:"):].strip()
+            if objective:
+                return {"objective": objective}
+        elif stripped.upper().startswith("NOT NEW:"):
+            parts = [p.strip() for p in stripped[len("NOT NEW:"):].split("|")]
+            if parts and parts[0].isdigit():
+                return {"not_new_id": int(parts[0]), "reason": parts[1] if len(parts) >= 2 else ""}
+        elif stripped.upper().startswith("NO OBJECTIVE:"):
+            return {"no_objective_reason": stripped[len("NO OBJECTIVE:"):].strip()}
+    return {}
+
+
 def parse_alignment_verdict(text: str) -> Optional[bool]:
     """True/False/None (couldn't tell) from a classify_unknown_upload response's trailing
     ALIGNMENT line. Tolerant of surrounding whitespace/case since it's free-form model output,
@@ -642,8 +824,21 @@ def run_debate(
     def _model(role: str) -> Optional[str]:
         return role_models.get(role) or None
 
-    result.quant = ask_quant(context, question, provider=role_providers["quant"], api_key=_key("quant"), model=_model("quant"))
-    result.beat = ask_beat(context, question, provider=role_providers["beat"], api_key=_key("beat"), model=_model("beat"))
+    # Quant and Beat don't read each other's output -- only Contrarian and Moderator have a
+    # real dependency on prior reports (see the module docstring) -- so there's no reason to
+    # pay for their two network round-trips back to back. Each ask_* already fails soft (a
+    # "⚠️" string, never a raised exception -- see the module docstring), so a future's
+    # .result() below can't itself raise from a normal provider error; it would only propagate
+    # something genuinely unexpected, exactly as it would have surfaced running sequentially.
+    with concurrent.futures.ThreadPoolExecutor(max_workers=2) as _executor:
+        _quant_future = _executor.submit(
+            ask_quant, context, question, provider=role_providers["quant"], api_key=_key("quant"), model=_model("quant"),
+        )
+        _beat_future = _executor.submit(
+            ask_beat, context, question, provider=role_providers["beat"], api_key=_key("beat"), model=_model("beat"),
+        )
+        result.quant = _quant_future.result()
+        result.beat = _beat_future.result()
     result.contrarian = ask_contrarian(
         context, question, result.quant, result.beat,
         provider=role_providers["contrarian"], api_key=_key("contrarian"), model=_model("contrarian"),

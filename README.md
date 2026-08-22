@@ -20,17 +20,25 @@ news — before handing you one clear verdict.
 Draft Sharks is deliberately treated as **one input among several**, not
 ground truth — the Beat Tracker and Contrarian are explicitly instructed to
 weigh it against the broader market and against live news rather than just
-restate it.
+restate it. Every role is fully reassignable to any of the three providers
+(sidebar → 🤖 Roles & Routing) — the table above is just the recommended
+default, not a hard requirement; all three providers now have their own
+native live web search, so which one ends up on Beat/Contrarian is a
+"whose answers do you like" choice, not a capability tradeoff.
 
 ## Design Principles
 
 - **Zero manual credential exposure for league data.** Sleeper's read API
   (`https://api.sleeper.app/v1/`) needs no API key — just your username.
 - **Local data sovereignty.** Draft Sharks exports never leave your machine
-  or hit a vendor API — you export/save them yourself and upload them here,
-  keeping you compliant with Draft Sharks' terms of service. (Market
-  consensus sites like KTC/FantasyCalc/FantasyPros are looked up live by the
-  Beat Tracker via ordinary web search, since that data is public.)
+  or hit a vendor API — you export/save them yourself and upload them here.
+  DynastyProcess/FantasyPros/KeepTradeCut/ESPN work the same way: only
+  facts-only extractions (name/team/position/rank/value — never the
+  vendor's own PDF, page layout, or branding) ever get committed, per the
+  same reasoning applied consistently across every source rather than
+  re-litigated per vendor — see "The baseline pool & the composite score"
+  below. (Live web search by the Beat Tracker/Contrarian mid-debate is
+  separate from this and untouched by it.)
 - **Persisted league threads.** Every league gets its own chat memory at
   `data/chats/<league_id>_history.json`, independent of every other league.
 
@@ -82,8 +90,8 @@ falls back to sniffing bare key values by their provider prefix (`sk-ant-`,
 mechanism in this app (chat history, the decision log, league archive/
 reorder prefs, Draft Sharks uploads, player aliases, format overrides, the
 remembered Sleeper username) is a flat JSON file on local disk, by design —
-see "Design Principles" above. That's correct and private for `streamlit run
-app.py` on your own machine, but breaks on something like Streamlit
+see "Design Principles" above. That's correct and private for
+`streamlit run app.py` on your own machine, but breaks on something like Streamlit
 Community Cloud: the filesystem there isn't durable (a redeploy or a
 free-tier sleep/wake cycle can wipe `data/` without warning) and, worse,
 isn't private to you — it's one shared container across every visitor to
@@ -163,8 +171,7 @@ correct.
    Dynasty Rankings.
 3. **Main dashboard**: your roster (starters, bench, taxi, IR) with merged
    rank/VORP/projection/3D-value columns (plus rest-of-season/ceiling/value
-   from the Free Agent Finder export, when loaded), a staleness banner if
-   the loaded projections are getting old (see below), and a full-width
+   from the Free Agent Finder export, when loaded), and a full-width
    **Free Agents** panel below it — filterable by position, sorted by 3D
    Value+, with your own roster excluded by default (toggle to include it).
    If any roster players didn't auto-match to your loaded Draft Sharks data,
@@ -173,7 +180,9 @@ correct.
    save; that mapping is remembered in `data/player_aliases.json` and
    overrides automatic matching for that player from then on. Automatic
    matching mostly works, but an unusual name shape, a mid-season team
-   change, or WR/RB dual eligibility can occasionally slip through it.
+   change, or WR/RB dual eligibility can occasionally slip through it. A
+   **Manual Aliases** expander right below it lists every alias currently
+   set with a Remove button next to each, to go back to auto-matching.
    The upload box itself has a **comments/questions/labels** text field
    right alongside the file picker — write a note at the moment you upload
    (e.g. "ignore this ranking, Bijan tweaked his hamstring in preseason")
@@ -274,7 +283,12 @@ Draft Sharks updates aren't needed every time you open the app — the
 sidebar and dashboard track the date embedded in the loaded PDF (or the
 file's save date for CSV/JSON) and only nudge you to refresh once it's **7+
 days old**. Roughly a weekly re-export is plenty; the app won't pester you
-in between.
+in between. The sidebar's **Status** section shows one glanceable overall
+**Data Freshness** grade (Fresh/Recent/Aging/Stale, the same scale the
+composite score uses) above the per-source breakdown, driven by the oldest
+of everything currently loaded — purely informational, never a gate, since
+the committed baseline keeps every answer working regardless of how old
+anything is.
 
 Every debate also gets an explicit **DATA FRESHNESS** manifest in its
 context — an as-of date and age for Draft Sharks Dynasty Rankings, Draft
@@ -322,6 +336,10 @@ DISSENT: <who dissented and why — only if CONVICTION is Majority>
 RISK: <the biggest risk to this being wrong>
 RECON: <a concrete thing to ask another manager — only if CONVICTION is Worth investigation>
 PRICE CEILING: <the most to give up — only if it's a trade question>
+ALTERNATIVE: <a genuinely better different move — only when one actually exists, typically a
+              SELL/WAIT trade call or an unsettled Split/Speculative one. Not mechanical: most
+              non-BUY verdicts still omit this line, and unlike everything above it, when it IS
+              written it gets a sentence or two of real reasoning, not just a bare name>
 ```
 
 **CONVICTION is deliberately not a confidence percentage** — a self-reported
@@ -349,15 +367,154 @@ A **📋 Decision Log** expander under the chat history shows the running
 table for the selected league, newest first — the actual point being able
 to look back later and check whether the front office's calls held up.
 
+### Persistent objectives
+
+A one-off verdict is easy to lose track of. A Moderator verdict whose
+`ACTION ITEM` line implies a genuinely new, trackable objective
+(`data/todos/<league_id>.json`) — "offer Team 4 a 2027 3rd for Player X
+before Thursday's waiver run," not a restated call — gets logged automatically,
+and every future question in that league gets the list of currently open
+ones as standing context, not just questions that happen to mention them:
+a rebuild-vs-contend objective shapes even an unrelated start/sit call. The
+Moderator can also propose one looks done (`TODO LIKELY RESOLVED`) or
+revise it when new information changes what it actually is
+(`TODO UPDATE`) — either way you confirm or reject the proposal, it never
+closes or rewrites one on its own. The **🎯 Active Objectives** expander lists
+everything currently open (🤖 for panel-sourced, ✍️ for ones you added by
+hand), lets you add one manually, and resolve/dismiss/delete with an
+optional note that becomes permanent strategic memory in the **Archive**
+below it — a later related question can then weigh whether something
+similar already worked or already missed, not just re-derive the same
+reasoning cold.
+
+Any bot message in the Debate Studio can also become an objective directly
+— a **🎯 Add as objective** button next to the pin button drops that
+message's own text straight into the Active Objectives box (free, no model
+call), and a **🤖 Ask Moderator** button in that box can replace it with a
+version condensed from the surrounding conversation and the league's
+existing objectives, for a long or meandering answer actually worth
+distilling down to the real ask buried in it.
+
+### The baseline pool & the composite score
+
+Draft Sharks (uploaded by you, per "Local data sovereignty" above) isn't
+the only *structured* valuation source anymore — `data/baseline/` also
+ships four more, extracted as facts-only CSVs (never the vendor's own
+PDF/branding) and **committed to git**, so a fresh clone isn't empty on
+first launch the way `data/projections/` is. Three of the four (everything
+but ESPN, which is redraft-scope — see below) can be refreshed without a
+code change too: sidebar → **🔄 External Valuation Sources** takes a
+fresher CSV in the same shape and overwrites that source's file exactly,
+so the composite keeps reading it as one continuous source rather than
+quietly double-counting an untracked second copy alongside the old one.
+
+| Source | Shape | Scope |
+|---|---|---|
+| **DynastyProcess** (`external/dynastyprocess/`) | 1QB/2QB point value, ~0-10000 scale, derived from FantasyPros' ECR via a documented formula | Dynasty |
+| **FantasyPros** (`external/fantasypros/`) | Rank/tier off an expert panel — dynasty, best-ball, *and* IDP lists, each kept in its own file | Dynasty (one file) + redraft (two files) |
+| **KeepTradeCut** (`external/keeptradecut/`) | Crowdsourced 0-9999 value, players and picks on one scale | Dynasty |
+| **ESPN** (`external/espn/`) | Three analysts' individual + averaged IDP ranks | Redraft |
+
+None of these are blended into Draft Sharks' own numbers — every source
+rides alongside it as its own labeled opinion
+(`DataMerger.external_player_values`), each on its own incompatible scale. On top of
+that, `DataMerger.composite_player_score` computes this app's **own**
+single 0-100 blended score per player: every *external* source is
+converted to a percentile against its *own* pool first (the only sound
+way to combine scales this different — ~0-10000, rank-out-of-552,
+~0-9999, a bare rank number), then weighted — KTC a bit lower (a
+crowd-vote average), a source's weight halving every 60 days as it ages
+(`COMPOSITE_RECENCY_HALFLIFE_DAYS`) so a fresh source outweighs a stale
+one automatically. Draft Sharks itself is the one exception: its
+trade_value is already a 0-100 scale *and* already scarcity-adjusted by
+position (elite offense reaches 100, elite IDP tops out around 35-45 by
+Draft Sharks' own judgment), so it's weighted a bit higher and used
+directly rather than re-normalized — re-deriving a percentile from it
+would rank it against a pool so bottom-loaded with bench/depth players at
+every position that almost any real starter clears the 80th percentile
+regardless of how good they actually are, erasing the very scarcity
+signal that made Draft Sharks worth weighting highest in the first place.
+Redraft-scope files (FantasyPros' best-ball/IDP lists, ESPN) never feed
+it — only genuine dynasty sources do. No coverage anywhere returns `None`
+(shown as **Incomplete Player Profile**), never a fabricated number.
+
+A percentile is only as meaningful as the pool it's computed against.
+Below `COMPOSITE_MIN_TRUSTED_POOL_SIZE` (20) rows, a source's weight scales
+down proportionally to how thin its pool actually is — confirmed the hard
+way early on: with a single bot-research finding on the books, it read as
+the 100th percentile regardless of whether the underlying claim was rank 1
+or rank 15, since a pool of one always ranks its only member first. Every
+structured source (Draft Sharks, DynastyProcess, FantasyPros, KTC) already
+clears that threshold by hundreds of rows and is never affected in
+practice — it only bites bot-research findings early on, before enough
+have accumulated. Those findings are also segmented into offense/IDP pools
+before being percentiled, not pooled together: a source's own claim is very
+often position-relative ("#1 DL", "#1 RB"), and a #1 DL claim and a #1 RB
+claim pooled together would land on the same percentile despite representing
+very different real dynasty value tiers — the same scarcity gap Draft
+Sharks' own trade_value already reflects structurally (see above).
+
+Draft Sharks' own Dynasty Rankings data feeding this score is itself
+picked per-league by format automatically now (see the Notes section
+below), rather than an arbitrary file-order accident, so the same player's
+trade_value here reflects your actual league's real settings, not
+whichever export happened to load last.
+
+### Panel-vetted research becomes durable, not just one answer
+
+The Beat Tracker and Contrarian both have live web search on every call
+(and your own captioned reference material counts too) — when either
+surfaces a specific, named-source claim about a player that the rest of
+the panel, Contrarian very much included, doesn't dispute, the Moderator
+can write it into two more repeatable lines in its structured block:
+
+```
+SOURCE FINDING: <player> | <source> | <the claim> | <a bare rank, ONLY if the source stated one>
+SOURCE COMPARISON: <player A> | <player B> | > / < / ~ | <source> | <context> | <evidence>
+```
+
+Both persist to `data/baseline/` (`bot_research.json` / `bot_comparisons.json`,
+global and git-tracked, append-only) via `bot_research.py`, and both are
+fed back into every future debate as dated context. Only findings that
+carry a real stated rank feed the composite score, at a low weight (below
+even KTC's); a qualitative finding, and *every* comparison (a relative
+claim has no absolute number to give it), stay reference-only forever —
+`composite_impact` is stored explicitly on each entry rather than left for
+a reader to infer. The reasoning: a handful of debate-surfaced comparisons
+is nowhere near KeepTradeCut's millions of votes, so there's no real
+signal yet to build an Elo-style relative model from — that stays a
+possible future step once (if) real volume accumulates, not something
+attempted today.
+
 ## Project layout
 
 ```
 sleeper_client.py   Sleeper API wrapper: league discovery, rosters, scoring,
                      taxi, traded picks, cached player DB, snapshot caching.
 data_merger.py       Draft Sharks PDF parsers (Dynasty Rankings + Free Agent
-                     Finder, auto-detected) + CSV/JSON projection parser,
-                     name/team/position matching onto Sleeper players, and
-                     projection-freshness tracking.
+                     Finder + Trade Value Chart, auto-detected) + FantasyPros/
+                     KeepTradeCut/ESPN parsers + CSV/JSON projection parser,
+                     name/team/position matching onto Sleeper players,
+                     projection-freshness tracking, and the composite score
+                     (DataMerger.composite_player_score).
+bot_research.py       Panel-vetted findings/comparisons from live bot research
+                       or the user's own reference material — see "Panel-vetted
+                       research becomes durable" above.
+bot_config.py          Which provider/model/personality runs each of the four
+                        personas, user-configurable with sensible defaults.
+bot_benchmark.py       Side-by-side model comparison for a given role/question,
+                        judged by a separate model call.
+todo_log.py             Persistent per-league objectives the panel reads as
+                         standing context on every question, can propose as
+                         likely resolved or revise as new information comes in,
+                         and the user can add manually or resolve/dismiss --
+                         see "Persistent objectives" below.
+pinned_messages.py      Manually pinned chat messages, retrieved automatically
+                         when a later question looks related.
+player_universe.py      Builds the full roster/free-agent player list a given
+                         debate question can reason about, merging Sleeper's
+                         roster data with whatever Draft Sharks/external data
+                         is loaded.
 league_prefs.py       Per-Sleeper-user league archive/reorder preferences.
 league_format.py       Manual Best Ball / Chopped override + the strategic
                         guidance text injected into context for each.
@@ -365,18 +522,36 @@ attachments.py           Reference material (screenshots/articles) that isn't
                           structured Draft Sharks data — storage, captions,
                           and per-item global-vs-league(s) scoping.
 llm_engine.py               Four-persona prompt routing across Claude / Gemini / ChatGPT,
-                             plus the structured-verdict parser.
+                             plus the structured-verdict/TODO/SOURCE FINDING/
+                             SOURCE COMPARISON parsers.
 decision_log.py               Per-league record of every parsed Moderator verdict.
 app.py                         Streamlit dashboard + debate studio.
 update_and_run.ps1/.sh          Pulls latest code + deps, then launches the app.
+test_*.py                       unittest coverage — no pytest dependency.
+data/baseline/               Facts-only starting data, COMMITTED to git (not
+                              gitignored) so a fresh clone isn't empty — see
+                              "The baseline pool & the composite score" above.
+data/baseline/rankings/, trade_value/   Draft Sharks baseline, by format.
+data/baseline/external/<source>/        DynastyProcess/FantasyPros/KeepTradeCut/
+                                         ESPN baseline CSVs + each source's own
+                                         ATTRIBUTION.md.
+data/baseline/bot_research.json          Panel-vetted single-player findings.
+data/baseline/bot_comparisons.json       Panel-vetted player-vs-player comparisons.
 data/sleeper_snapshots/  Cached league syncs (gitignored).
-data/projections/_global/   Dynasty Rankings / format-based exports, shared by
-                             every league (gitignored).
+data/projections/_global/   Live-uploaded Dynasty Rankings / Trade Value Chart
+                             exports, shared by every league (gitignored) --
+                             supersedes data/baseline/ per-player, never
+                             replaces it.
 data/projections/<league_id>/  Free Agent Finder exports, one folder per league,
                                 never shared (gitignored).
 data/attachments/           Reference material + captions.json (gitignored).
 data/chats/                 Per-league persisted debate history (gitignored).
 data/decisions/              Per-league decision log, one JSON file per league (gitignored).
+data/todos/                  Per-league persistent objectives, one JSON file per
+                              league (gitignored) -- see "Persistent objectives" above.
+data/pins/                   Per-league pinned message timestamps (gitignored).
+data/bot_config.json        Which provider/model/personality runs each persona (gitignored).
+data/benchmark_results.json Saved model-comparison benchmark runs (gitignored).
 data/last_session.json      Last-used Sleeper username, for auto-restore on page refresh (gitignored).
 data/league_prefs.json      Archived/reordered league ids per user (gitignored).
 data/league_formats.json    Manual Best Ball/Chopped overrides (gitignored).
@@ -445,16 +620,27 @@ data/player_aliases.json    Manual name-matching overrides (gitignored).
   IDP (LB/DL/DB) and K/DEF are supported since some leagues score them, but
   are only lightly tested against one real export — flag it if a position
   or team code doesn't parse right.
-- Only keep **one** Dynasty Rankings flavor in the shared pool
-  (`data/projections/_global/`) at a time — if your leagues are dynasty
-  superflex PPR, load that flavor, not a generic one. Since the pool is
-  shared across every league, mixing multiple ranking flavors there will
-  give inconsistent values for the same players in whichever league you
-  look at. (This doesn't apply to the Free Agent Finder export, which is
-  already specific to your one league and stored separately.)
-- Default models (`claude-3-5-sonnet-20241022`, `gemini-2.0-flash`, `gpt-4o`)
-  are set in `.env.example` and overridable via `ANTHROPIC_MODEL` /
-  `GEMINI_MODEL` / `OPENAI_MODEL` — point them at newer model releases as
-  they become available.
+- Draft Sharks ships Dynasty Rankings as several distinct format-specific
+  exports (PPR/standard × superflex/1QB × TE premium, plus separate PPR/
+  superflex flavors for IDP), and the **committed baseline covers all of
+  them** (`data/baseline/rankings/`) — you don't need to pick just one for
+  the shared pool anymore. `DataMerger` reads each active league's real
+  Sleeper scoring settings (superflex, PPR/half-PPR/standard, TE premium)
+  and automatically prefers whichever file's own assumptions actually match
+  that league whenever the same player appears in more than one, weighted
+  by how much each axis actually swings a player's value (superflex
+  heaviest, then TE premium, then scoring) — see `_detect_rankings_format`/
+  `_rankings_format_match_score` in `data_merger.py`. A live upload to the
+  shared pool (`data/projections/_global/`) still works the same way and is
+  still preferred over baseline per-player; loading more than one flavor
+  there just isn't a footgun anymore. (Free Agent Finder is unaffected —
+  it's already specific to your one league and stored separately.)
+- Default models (`claude-sonnet-5`, `gemini-2.0-flash`, `gpt-4o`) are set
+  in `.env.example` and overridable via `ANTHROPIC_MODEL` / `GEMINI_MODEL`
+  / `OPENAI_MODEL` — point them at newer model releases as they become
+  available. The Claude default is checked against Anthropic's own current
+  model list; Gemini/OpenAI's aren't verified the same way here, so it's
+  worth checking each provider's own docs if either seems to be erroring on
+  a model-not-found.
 - Sleeper's `/players/nfl` endpoint is large and rate-limit sensitive, so it's
   cached locally for 24 hours before being re-pulled.

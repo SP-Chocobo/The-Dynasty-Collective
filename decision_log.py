@@ -52,6 +52,7 @@ def log_decision(league_id: str, question: str, verdict: dict, moderator_text: s
             "risk": verdict.get("risk", ""),
             "recon": verdict.get("recon", ""),
             "price_ceiling": verdict.get("price_ceiling", ""),
+            "alternative": verdict.get("alternative", ""),
             "moderator_text": moderator_text,
             "outcome": "",
             "outcome_note": "",
