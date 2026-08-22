@@ -244,6 +244,12 @@ def _format_candidate(candidate: CandidateSnapshot, user_selected_player_id: Opt
     if candidate.positional_cliff:
         cliff = candidate.positional_cliff
         lines.append(f"  Positional cliff: {cliff['tier']} (gap to next at position: {cliff['gap']}, typical gap: {cliff['typical_gap']})")
+    if candidate.positional_forfeit is not None and candidate.positional_forfeit > 0:
+        lines.append(
+            f"  Cost of delaying {candidate.position} entirely: best remaining {candidate.position} at your next "
+            f"pick expected ~{candidate.positional_forfeit} universal-value points worse than now "
+            f"(~{candidate.position_expected_taken} {candidate.position} pick(s) expected before then)"
+        )
     if candidate.position_run_detected:
         lines.append(f"  {candidate.position} run currently detected among recent picks")
     if candidate.reach_label is not None:

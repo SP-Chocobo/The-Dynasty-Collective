@@ -484,6 +484,8 @@ class CandidateSnapshot:
     denial_value: Optional[float]
     denial_team: Optional[str]
     rival_premium: Optional[float]
+    positional_forfeit: Optional[float]
+    position_expected_taken: Optional[float]
     positional_cliff: Optional[dict]
     position_run_detected: bool
     pick_necessity: float
@@ -573,6 +575,8 @@ def build_snapshot(
             "expected_value_of_waiting": expected_value_of_waiting(universal_value, survival),
             "denial_value": a.get("denial_value"), "denial_team": a.get("denial_team"),
             "rival_premium": a.get("rival_premium"),
+            "positional_forfeit": a.get("positional_forfeit"),
+            "position_expected_taken": a.get("position_expected_taken"),
             "positional_cliff": detect_positional_cliff(board, pid),
             "position_run_detected": (run_position is not None and row["position"] == run_position),
             "consensus_rank": reach["consensus_rank"] if reach else None,
@@ -602,7 +606,7 @@ def build_snapshot(
 _DIFF_FIELDS = (
     "universal_value", "need_bonus", "eligibility_bonus", "team_acquisition_value",
     "survival_probability", "opportunity_cost", "expected_value_of_waiting", "denial_value",
-    "rival_premium", "pick_necessity",
+    "rival_premium", "positional_forfeit", "pick_necessity",
 )
 
 

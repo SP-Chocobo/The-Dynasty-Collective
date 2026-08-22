@@ -240,6 +240,76 @@ def _pace_based_take_probability(
     return any_pick_probability / target_rank
 
 
+# positional_forfeits: how many of an opponent's top-N board ranks are consulted when
+# estimating "will this opponent's next pick go to position P" -- matches
+# RANK_TAKE_PROBABILITY's own depth (ranks past it carry only the floor probability, which
+# would add noise, not signal, to a position-level estimate).
+FORFEIT_OPPONENT_BOARD_DEPTH = 5
+
+
+def positional_forfeits(
+    position_curves: dict[str, list[float]], opponent_boards: dict, intervening: list,
+) -> dict[str, dict]:
+    """Per position: the expected POSITION-LEVEL cost of delaying that position entirely
+    until the user's next pick -- {"expected_taken", "forfeit", "best_now"} -- the one
+    question survival (per-player), positional_cliff (adjacent-gap-only), and
+    opportunity_cost (per-player) each individually cannot answer: "if I take the other
+    position now and come back to this one next turn, how much worse is the best player
+    I'll realistically find there?" That two-position swap is a real, recurring decision
+    (measured directly in the committed baseline: RB projections decay 2-3x faster than WR
+    in every rank window past 12, so delaying RB genuinely costs more than delaying WR --
+    the market's mid-round behavior across the collected real boards agrees), and it's a
+    DIFFERENT number from any single player's survival.
+
+    Two steps per position P, both from data this module already computes:
+      1. expected_taken: for each intervening pick, the probability it goes to position P at
+         all -- the sum of RANK_TAKE_PROBABILITY over the P-players in that opponent's own
+         top FORFEIT_OPPONENT_BOARD_DEPTH board ranks (their board, their needs -- same
+         principle as estimate_survival), capped at RUN_TAKE_PROBABILITY_CAP per pick;
+         summed across every intervening pick.
+      2. forfeit: walk position P's own remaining curve (universal_value, deliberately
+         team-agnostic -- this measures the POSITION's market decay, not the user's fit)
+         down by round(expected_taken) players: best-now minus expected-best-at-next-turn.
+
+    SURFACED SIGNAL ONLY -- deliberately NOT an input to pick_necessity: expected_taken is
+    built from the same per-opponent take tendencies that drive survival_probability, and
+    summing it into necessity would recreate exactly the double-count class the rival_premium
+    split just removed (see pick_analysis's own comment there). The debate layer gets it as
+    labeled evidence; nothing deterministic re-ranks on it.
+
+    Empty dict when there are no intervening picks (back-to-back turn, or no next pick at
+    all) -- a forfeit of 0 everywhere is real information the caller can state, but per-pick
+    probabilities against zero picks are not."""
+    if not intervening:
+        return {}
+    results: dict[str, dict] = {}
+    for position, curve in position_curves.items():
+        if not curve:
+            continue
+        expected_taken = 0.0
+        for roster_id in intervening:
+            board = opponent_boards.get(str(roster_id))
+            if not board:
+                continue
+            rank_by_id = board["rank_by_id"]
+            by_id = board["by_id"]
+            p_position = 0.0
+            for player_id, rank in rank_by_id.items():
+                if rank > FORFEIT_OPPONENT_BOARD_DEPTH:
+                    continue
+                row = by_id.get(player_id)
+                if row is not None and row.get("position") == position:
+                    p_position += RANK_TAKE_PROBABILITY.get(rank, 0.0)
+            expected_taken += min(p_position, RUN_TAKE_PROBABILITY_CAP)
+        drop = min(round(expected_taken), len(curve) - 1)
+        results[position] = {
+            "expected_taken": round(expected_taken, 2),
+            "forfeit": round(curve[0] - curve[drop], 2),
+            "best_now": round(curve[0], 2),
+        }
+    return results
+
+
 def _take_probability(rank: int, is_run_position: bool) -> float:
     p = RANK_TAKE_PROBABILITY.get(rank, RANK_TAKE_PROBABILITY_FLOOR)
     if is_run_position:
@@ -411,6 +481,18 @@ def pick_analysis(
         merger, players_db, picks, league, intervening, mode=mode, pool_scope=pool_scope,
     )
 
+    # Position-level cost of delaying each position entirely (see positional_forfeits' own
+    # docstring) -- built from the SAME opponent boards computed above, no extra board work.
+    # universal_value is absent from upside-mode rows, hence the guard; curves are the user's
+    # own board's remaining players per position, team-agnostic values.
+    position_curves: dict[str, list[float]] = {}
+    for row in my_board.values():
+        if "universal_value" in row and row.get("position"):
+            position_curves.setdefault(row["position"], []).append(row["universal_value"])
+    for curve in position_curves.values():
+        curve.sort(reverse=True)
+    forfeits = positional_forfeits(position_curves, opponent_boards, intervening)
+
     results = []
     for player_id in candidate_player_ids:
         my_row = my_board.get(str(player_id))
@@ -460,6 +542,8 @@ def pick_analysis(
             "denial_value": round(denial_value, 2),
             "denial_team": denial_team,
             "rival_premium": round(rival_premium, 2),
+            "positional_forfeit": (forfeits.get(my_row.get("position")) or {}).get("forfeit"),
+            "position_expected_taken": (forfeits.get(my_row.get("position")) or {}).get("expected_taken"),
         })
     results.sort(key=lambda r: r["opportunity_cost"], reverse=True)
     return results

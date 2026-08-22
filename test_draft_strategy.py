@@ -236,6 +236,33 @@ class SurvivalAndPickAnalysisTests(unittest.TestCase):
         elapsed = time.time() - t0
         self.assertLess(elapsed, 15.0, f"pick_analysis took {elapsed:.1f}s at the worst-case gap -- regression toward the old per-candidate, per-pick-position recomputation")
 
+    def test_denial_is_derived_only_from_opponent_boards_and_their_take_probabilities(self):
+        # The independence invariant, enforced rather than just currently true: denial_value
+        # must be exactly max over intervening opponents of (THEIR board's final_score for the
+        # candidate x their take-probability) -- the user's own board/roster appears nowhere.
+        # If a future edit wires the user's own values into denial, this recomputation stops
+        # matching and fails loudly.
+        board = dr.compute_draft_board(self.merger, self.players_db, [], my_roster_id="1", league=LEAGUE, mode="balanced")
+        candidate = board[0]["player_id"]
+        analysis = ds.pick_analysis(
+            self.merger, self.players_db, [], self.pick_order, current_index=0, my_roster_id="1",
+            league=LEAGUE, candidate_player_ids=[candidate],
+        )
+        reported = analysis[0]["denial_value"]
+
+        my_next = ds.find_next_pick_index(self.pick_order, "1", after_index=0)
+        intervening = ds.intervening_roster_ids(self.pick_order, 0, my_next)
+        opponent_boards = ds._build_opponent_boards(self.merger, self.players_db, [], LEAGUE, intervening)
+        survival = ds.estimate_survival(
+            [], self.players_db, self.pick_order, 0, "1", candidate, opponent_boards, league=LEAGUE,
+        )
+        expected = 0.0
+        for risk in survival["risk_by_team"]:
+            opp_row = opponent_boards[str(risk["roster_id"])]["by_id"].get(str(candidate))
+            if opp_row is not None:
+                expected = max(expected, opp_row["final_score"] * risk["take_probability"])
+        self.assertAlmostEqual(reported, round(expected, 2), places=2)
+
     def test_denial_value_never_exceeds_the_denying_teams_own_acquisition_value(self):
         board = dr.compute_draft_board(self.merger, self.players_db, [], my_roster_id="1", league=LEAGUE, mode="balanced")
         top3 = [r["player_id"] for r in board[:3]]
@@ -246,6 +273,57 @@ class SurvivalAndPickAnalysisTests(unittest.TestCase):
         for row in analysis:
             if row["denial_team"] is not None:
                 self.assertLessEqual(row["denial_value"], row["team_acquisition_value"] + 1e-6)
+
+
+class PositionalForfeitsTests(unittest.TestCase):
+    """positional_forfeits is a SURFACED signal (never an input to necessity -- see its own
+    docstring on the double-count that rule prevents), so what gets tested is the math and
+    its two load-bearing properties: a steeper position curve costs more to delay, and more
+    opponent appetite for a position raises its expected_taken."""
+
+    def _opp_board(self, rows):
+        # rows: list of (player_id, position, universal_value) already in rank order
+        return {
+            "by_id": {pid: {"player_id": pid, "position": pos, "universal_value": uv,
+                            "final_score": uv} for pid, pos, uv in rows},
+            "rank_by_id": {pid: i + 1 for i, (pid, _pos, _uv) in enumerate(rows)},
+        }
+
+    def test_steeper_curve_costs_more_to_delay_given_equal_opponent_appetite(self):
+        curves = {
+            "RB": [100.0, 80.0, 60.0, 40.0],   # steep: ~20/rank
+            "WR": [100.0, 97.0, 94.0, 91.0],   # flat: 3/rank
+        }
+        # Two opponents with MIRRORED boards (rank weights are not symmetric within one
+        # board, so true equal appetite needs the mirror): summed take tendency toward RB
+        # and WR comes out identical across the pair.
+        board_rb_first = self._opp_board([("r1", "RB", 100), ("w1", "WR", 100), ("r2", "RB", 80), ("w2", "WR", 97)])
+        board_wr_first = self._opp_board([("w1", "WR", 100), ("r1", "RB", 100), ("w2", "WR", 97), ("r2", "RB", 80)])
+        result = ds.positional_forfeits(curves, {"2": board_rb_first, "3": board_wr_first}, ["2", "3"])
+        self.assertGreater(result["RB"]["forfeit"], result["WR"]["forfeit"])
+        self.assertAlmostEqual(result["RB"]["expected_taken"], result["WR"]["expected_taken"])
+
+    def test_more_opponent_appetite_raises_expected_taken(self):
+        curves = {"RB": [100.0, 90.0, 80.0], "WR": [100.0, 90.0, 80.0]}
+        # Opponent's top ranks are ALL RB -- heavy RB appetite, zero WR appetite.
+        board = self._opp_board([("r1", "RB", 100), ("r2", "RB", 95), ("r3", "RB", 90)])
+        result = ds.positional_forfeits(curves, {"2": board}, ["2"])
+        self.assertGreater(result["RB"]["expected_taken"], 0.5)
+        self.assertEqual(result["WR"]["expected_taken"], 0.0)
+        self.assertEqual(result["WR"]["forfeit"], 0.0)
+
+    def test_no_intervening_picks_means_no_forfeit_signal_at_all(self):
+        curves = {"RB": [100.0, 50.0]}
+        self.assertEqual(ds.positional_forfeits(curves, {}, []), {})
+
+    def test_expected_taken_walk_is_clamped_to_the_curves_own_length(self):
+        # Ten RB-hungry opponents against a 2-player RB curve: the walk can't fall off the
+        # end -- forfeit maxes out at best-minus-worst, never an index error.
+        curves = {"RB": [100.0, 40.0]}
+        board = self._opp_board([("r1", "RB", 100), ("r2", "RB", 95)])
+        boards = {str(i): board for i in range(2, 12)}
+        result = ds.positional_forfeits(curves, boards, [str(i) for i in range(2, 12)])
+        self.assertEqual(result["RB"]["forfeit"], 60.0)
 
 
 SUPERFLEX_LEAGUE = {
