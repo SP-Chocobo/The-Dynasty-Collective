@@ -179,6 +179,21 @@ UPSIDE_MODE_DEFAULT_ROUND = 15
 # not silently pretending this fix closes the whole gap.
 SUPER_FLEX_QB_SHARE = 0.85
 
+# Cliff-anchored superflex QB replacement (see qb_startable_floor and replacement_levels):
+# "startable QB" is defined as projecting at least this FRACTION of the ANCHOR_RANK-th best
+# QB's projection in the committed baseline. Chosen by STABILITY BASIN, not by tuning to any
+# player's landing spot: real Draft Sharks QB projections are nearly flat from ~QB6 to ~QB24
+# and then collapse (QB28 projects ~198, QB29 ~127, QB31 ~56 in the current baseline), so any
+# fraction from 0.45 to 0.60 of QB12 lands inside that cliff and identifies the identical
+# startable-tier boundary -- measured directly against the committed data, a 48-point-wide
+# band of threshold values all producing the same replacement rank. Contrast the flat
+# extra-bench-demand constant tried and reverted earlier (see replacement_levels' docstring):
+# its plausible parameter range swung QB1's VOR from 132 to 351 because a demand COUNT can
+# land on either side of the cliff, which is exactly the fragile magic-number-hunting this
+# app's constants are supposed to avoid.
+QB_STARTABLE_ANCHOR_RANK = 12
+QB_STARTABLE_FLOOR_FRACTION = 0.5
+
 # time_horizon_adj and risk_adj are both small, bounded, additive nudges on the same linear
 # 0-100 BPA scale -- deliberately incapable of overriding a real VOR gap on their own (see
 # module docstring's ARCHITECTURE section and test_draft_room.py's invariant tests).
@@ -389,9 +404,29 @@ def build_available_pool(
     return pd.DataFrame(rows)
 
 
+def qb_startable_floor(merger: DataMerger) -> Optional[float]:
+    """The absolute points threshold below which a QB no longer counts as startable --
+    QB_STARTABLE_FLOOR_FRACTION x the QB_STARTABLE_ANCHOR_RANK-th best QB projection in the
+    committed baseline (the FULL baseline, deliberately not the remaining draft pool: an
+    anchor that drifted as elites were drafted would eventually slide the threshold below the
+    cliff and start counting true backups as startable, the exact wrong direction). None when
+    the baseline doesn't carry enough projected QBs to anchor against -- the honest "don't
+    fabricate a threshold" default, which makes replacement_levels fall back to the
+    starter-slot demand model unchanged."""
+    proj = merger.projections
+    if proj.empty:
+        return None
+    qb = proj[(proj["position"] == "QB") & proj["projection"].notna()]["projection"].astype(float)
+    if len(qb) < QB_STARTABLE_ANCHOR_RANK:
+        return None
+    anchor = float(qb.nlargest(QB_STARTABLE_ANCHOR_RANK).iloc[-1])
+    return QB_STARTABLE_FLOOR_FRACTION * anchor
+
+
 def replacement_levels(
     pool: pd.DataFrame, value_col: str, roster_positions: list[str], num_teams: int,
     drafted_counts: Optional[dict[str, int]] = None,
+    startable_floors: Optional[dict[str, float]] = None,
 ) -> dict[str, float]:
     """Per position, this pool's value_col at the player currently sitting at "replacement
     rank" within the REMAINING pool -- not the original full-field rank. The rank target is
@@ -415,8 +450,22 @@ def replacement_levels(
     non-fantasy-relevant scrub," making an elite QB's VOR swing wildly for a tiny, arbitrary
     change in the constant (confirmed: 0.3 vs 0.4 extra demand moved Josh Allen from 7th to
     4th overall). That's exactly the kind of fragile, magic-number-hunting this app's own
-    constants are supposed to avoid, so this stayed on the starter-slot-only demand model
-    (SUPER_FLEX_QB_SHARE) instead of shipping something this sensitive.
+    constants are supposed to avoid.
+
+    startable_floors is the successor that DID survive that scrutiny: for a position it
+    covers (currently only QB in a superflex league -- see qb_startable_floor and
+    compute_draft_board's wiring), the replacement rank is the count of REMAINING players at
+    that position projecting at or above an absolute startability threshold, instead of a
+    demand headcount. Keying off the projection curve's own discontinuity is what makes it
+    stable where the flat constant wasn't: measured directly against the committed baseline,
+    every threshold across a 48-point-wide band identifies the identical boundary (see
+    QB_STARTABLE_FLOOR_FRACTION's comment), because the count model's failure mode -- landing
+    a rank on the far side of the cliff -- can't happen when the cliff itself defines the
+    boundary. The dynamics stay correct for free: drafted startable QBs leave the remaining
+    pool, the above-floor count shrinks, replacement rises, and VOR compresses toward 0 once
+    the startable tier is exhausted -- the same collapse behavior the remaining-demand model
+    has. Positions without a floor (everything else, and every position in a 1QB league)
+    keep the remaining-demand model unchanged.
 
     Recomputed fresh every time this module is asked for a board, never cached across
     picks."""
@@ -427,8 +476,12 @@ def replacement_levels(
         at_pos = pool[pool["position"] == position].sort_values(value_col, ascending=False)
         if at_pos.empty:
             continue
-        remaining_demand = max(num_teams * slot_counts.get(position, 0) - drafted.get(position, 0), 0)
-        rank = max(1, round(remaining_demand))
+        floor = (startable_floors or {}).get(position)
+        if floor is not None:
+            rank = max(int((at_pos[value_col] >= floor).sum()), 1)
+        else:
+            remaining_demand = max(num_teams * slot_counts.get(position, 0) - drafted.get(position, 0), 0)
+            rank = max(1, round(remaining_demand))
         idx = min(rank - 1, len(at_pos) - 1)
         levels[position] = float(at_pos.iloc[idx][value_col])
     return levels
@@ -615,9 +668,21 @@ def compute_draft_board(
     pool["_season_proj_pct"] = 50.0
     pool["_proj3yr_pct"] = 50.0
 
+    # Cliff-anchored QB replacement, superflex only (see qb_startable_floor/replacement_levels)
+    # -- applied only to the points-anchored path: the startability threshold is in projected
+    # points, so it means nothing against the trade_value fallback's different units.
+    startable_floors = None
+    if "SUPER_FLEX" in roster_positions:
+        qb_floor = qb_startable_floor(merger)
+        if qb_floor is not None:
+            startable_floors = {"QB": qb_floor}
+
     if has_proj.any():
         proj_pool = pool[has_proj].copy()
-        point_replacement = replacement_levels(proj_pool, "_points", roster_positions, num_teams, drafted_counts)
+        point_replacement = replacement_levels(
+            proj_pool, "_points", roster_positions, num_teams, drafted_counts,
+            startable_floors=startable_floors,
+        )
         pool.loc[has_proj, "_vor"] = proj_pool.apply(
             lambda r: r["_points"] - point_replacement.get(r["position"], r["_points"]), axis=1,
         ).values

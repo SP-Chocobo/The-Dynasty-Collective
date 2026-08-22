@@ -123,6 +123,90 @@ class ReplacementLevelMonotonicityTests(unittest.TestCase):
         self.assertLessEqual(heavy, light)
 
 
+class CliffAnchoredQBReplacementTests(unittest.TestCase):
+    """The startable-floor replacement model for superflex QB (see qb_startable_floor and
+    replacement_levels' startable_floors) -- chosen over the reverted flat bench-demand
+    constant specifically for its stability, so stability is what gets tested: on a cliff-
+    shaped pool the boundary must be invariant to threshold wiggle, the dynamics must
+    collapse correctly as the startable tier drains, and everything without a floor must be
+    bit-identical to the demand model."""
+
+    # A synthetic curve with the real baseline's structure: a flat startable tier, a sharp
+    # cliff, then scrubs -- 24 QBs from 340 down to 248 (4/rank), then 200, 130, 60, 30.
+    CLIFF_CURVE = [340 - i * 4 for i in range(24)] + [200.0, 130.0, 60.0, 30.0]
+
+    def _pool(self, values):
+        return pd.DataFrame({"position": ["QB"] * len(values), "value": values})
+
+    def test_floor_based_rank_counts_remaining_startables_not_demand(self):
+        pool = self._pool(self.CLIFF_CURVE)
+        # floor at 150: 25 QBs at/above it (24 flat-tier + the 200) -- replacement is the
+        # 25th, the last startable, NOT the demand model's 12 x slot-share rank.
+        level = dr.replacement_levels(
+            pool, "value", ["QB", "SUPER_FLEX"], num_teams=12, startable_floors={"QB": 150.0},
+        )["QB"]
+        self.assertEqual(level, 200.0)
+
+    def test_boundary_is_invariant_across_the_cliffs_whole_threshold_band(self):
+        # The entire point of anchoring to the cliff: any threshold inside the gap between
+        # the last startable (200) and the first backup (130) identifies the same boundary.
+        pool = self._pool(self.CLIFF_CURVE)
+        levels = {
+            dr.replacement_levels(pool, "value", ["QB", "SUPER_FLEX"], num_teams=12,
+                                  startable_floors={"QB": t})["QB"]
+            for t in (135.0, 150.0, 165.0, 180.0, 195.0)
+        }
+        self.assertEqual(levels, {200.0})
+
+    def test_replacement_rises_as_startables_drain_and_collapses_at_exhaustion(self):
+        # Dynamic behavior for free: drafted startables leave the pool, the above-floor
+        # count shrinks, replacement rises toward the top -- and once nothing above the
+        # floor remains, rank floors at 1 (replacement = best remaining, VOR ~ 0), the same
+        # exhaustion collapse the remaining-demand model has.
+        floor = {"QB": 150.0}
+        drained = self._pool(self.CLIFF_CURVE[20:])   # 4 startables + 200 remain above floor
+        level_drained = dr.replacement_levels(drained, "value", ["QB", "SUPER_FLEX"],
+                                              num_teams=12, startable_floors=floor)["QB"]
+        self.assertEqual(level_drained, 200.0)  # still the last one above the floor
+        exhausted = self._pool([130.0, 60.0, 30.0])   # nothing startable left at all
+        level_exhausted = dr.replacement_levels(exhausted, "value", ["QB", "SUPER_FLEX"],
+                                                num_teams=12, startable_floors=floor)["QB"]
+        self.assertEqual(level_exhausted, 130.0)  # rank 1: best remaining, VOR -> 0
+
+    def test_positions_without_a_floor_are_identical_to_the_demand_model(self):
+        pool = pd.DataFrame({
+            "position": ["QB"] * 28 + ["RB"] * 30,
+            "value": self.CLIFF_CURVE + [300 - i * 5 for i in range(30)],
+        })
+        roster = ["QB", "RB", "RB", "SUPER_FLEX"]
+        with_floors = dr.replacement_levels(pool, "value", roster, num_teams=12,
+                                            startable_floors={"QB": 150.0})
+        without = dr.replacement_levels(pool, "value", roster, num_teams=12)
+        self.assertEqual(with_floors["RB"], without["RB"])
+        self.assertNotEqual(with_floors["QB"], without["QB"])
+
+    def test_real_baseline_threshold_band_still_holds(self):
+        # The cheap validation the mechanism's own spec calls for: if a future season's
+        # projection curve loses its sharp cliff, the 0.45-0.60 threshold band stops agreeing
+        # on one boundary and this fails LOUDLY instead of the mechanism silently turning
+        # fragile. Uses the real committed baseline, same as the stability probe that chose
+        # the constant in the first place.
+        merger = dm.DataMerger()
+        proj = merger.projections
+        qb = proj[(proj["position"] == "QB") & proj["projection"].notna()]["projection"].astype(float)
+        if len(qb) < dr.QB_STARTABLE_ANCHOR_RANK:
+            self.skipTest("baseline carries too few projected QBs to anchor")
+        anchor = float(qb.nlargest(dr.QB_STARTABLE_ANCHOR_RANK).iloc[-1])
+        counts = {frac: int((qb >= frac * anchor).sum()) for frac in (0.45, 0.5, 0.55, 0.6)}
+        self.assertEqual(len(set(counts.values())), 1,
+                         f"threshold band no longer stable on this baseline: {counts}")
+
+    def test_no_floor_when_baseline_has_too_few_qbs(self):
+        class _FakeMerger:
+            projections = pd.DataFrame({"position": ["QB"] * 5, "projection": [300.0] * 5})
+        self.assertIsNone(dr.qb_startable_floor(_FakeMerger()))
+
+
 class PoolScopeTests(unittest.TestCase):
     """pool_scope's rookie detection is real source data (KeepTradeCut's own export already
     flags current-class rookies -- see _rookie_lookup), not a maintained list, so these run
