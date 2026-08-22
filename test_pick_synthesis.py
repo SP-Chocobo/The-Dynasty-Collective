@@ -57,6 +57,38 @@ class DetectPositionalCliffTests(unittest.TestCase):
         board = [_row("1", "WR", 90.0), _row("2", "WR", 80.0), _row("3", "WR", 70.0)]
         self.assertIsNone(ps.detect_positional_cliff(board, "999"))
 
+    def test_a_structural_cliffs_own_giant_gaps_cannot_inflate_the_typical_yardstick(self):
+        # The contamination case measured on the real baseline: a position with a genuine
+        # structural cliff carries that cliff's own giant gaps in its gap list, which pulled
+        # the plain median up until the cliff's leading edge read LOW against a yardstick the
+        # cliff itself had inflated. Trimming the largest ~10% first restores the yardstick.
+        # 14 players: a tier of small 2-point gaps, a 6-point leading edge at "6", then a
+        # scrub tail whose giant 30/25/20-point drops are the contamination.
+        board = (
+            [_row(str(i), "QB", 100.0 - i * 2) for i in range(7)]        # 100..88, 2-pt gaps
+            + [_row("7", "QB", 80.0)]                                     # 6-pt leading edge
+            + [_row("8", "QB", 78.0), _row("9", "QB", 76.0)]
+            + [_row("10", "QB", 46.0), _row("11", "QB", 21.0),            # the cliff's own
+               _row("12", "QB", 1.0), _row("13", "QB", 0.5)]              # giant gaps
+        )
+        result = ps.detect_positional_cliff(board, "6")  # the 88.0 player, 6-pt gap to 80.0
+        # Plain median over the 12 other positive gaps is 2.0 -- but WITH the 30/25/20 tail
+        # included the upper half shifts and a trimmed median must still call 6.0 vs 2.0 a
+        # real (3x) HIGH cliff rather than letting the tail's giants make it look ordinary.
+        self.assertEqual(result["tier"], "HIGH")
+        self.assertAlmostEqual(result["typical_gap"], 2.0)
+
+    def test_small_pools_keep_the_plain_median_unchanged(self):
+        # Below the trim threshold there's no meaningful "largest 10%" to drop -- behavior
+        # must be byte-identical to the untrimmed detector for small pools.
+        board = [
+            _row("1", "WR", 95.0), _row("2", "WR", 60.0),
+            _row("3", "WR", 57.0), _row("4", "WR", 54.0), _row("5", "WR", 51.0),
+        ]
+        result = ps.detect_positional_cliff(board, "1")
+        self.assertEqual(result["tier"], "HIGH")
+        self.assertAlmostEqual(result["typical_gap"], 3.0)
+
 
 class ExpectedValueOfWaitingTests(unittest.TestCase):
     def test_none_when_survival_is_unknown(self):

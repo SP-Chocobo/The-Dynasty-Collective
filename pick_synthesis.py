@@ -353,6 +353,17 @@ def detect_positional_cliff(board: list[dict], player_id) -> Optional[dict]:
     if not other_gaps:
         return {"tier": "HIGH" if this_gap > 0 else "LOW", "gap": round(this_gap, 2), "typical_gap": 0.0}
 
+    # TRIMMED median: drop the largest ~10% of gaps first (only when the pool carries enough
+    # gaps for a trim to mean anything). A position with a genuine structural cliff has that
+    # cliff's own giant gaps sitting in this list, inflating the "typical" yardstick the
+    # cliff's edges are then measured against -- confirmed directly on the real committed
+    # baseline: QB's median adjacent gap was pulled up by the cliff zone's own 71/51/30-point
+    # drops, so the last-startable-tier boundary gaps read LOW (ratio ~1.2x) in front of a
+    # collapse. The cliff must not get to contaminate the yardstick that detects it.
+    if len(other_gaps) >= 10:
+        trim = max(1, round(len(other_gaps) * 0.1))
+        other_gaps = other_gaps[:len(other_gaps) - trim]
+
     typical_gap = other_gaps[len(other_gaps) // 2]  # median
     ratio = this_gap / typical_gap if typical_gap > 0 else float("inf") if this_gap > 0 else 0.0
     tier = "HIGH" if ratio >= CLIFF_HIGH_RATIO else "MEDIUM" if ratio >= CLIFF_MEDIUM_RATIO else "LOW"
