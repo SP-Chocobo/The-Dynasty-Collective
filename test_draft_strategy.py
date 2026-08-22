@@ -59,6 +59,60 @@ class GeneratePickOrderTests(unittest.TestCase):
         order = ds.generate_pick_order([str(i) for i in range(1, 13)], total_rounds=2)
         self.assertEqual(order[11], order[12])
 
+    def test_3rr_round_pattern_is_forward_reverse_reverse_then_alternating(self):
+        # F, R, R, F, R, F -- round 3 repeats round 2's reversed order, then normal
+        # alternation resumes from round 4. See generate_pick_order's own docstring.
+        order = ds.generate_pick_order(["1", "2", "3"], total_rounds=6, draft_type="3rr")
+        rounds = [order[i * 3:(i + 1) * 3] for i in range(6)]
+        self.assertEqual(rounds[0], ["1", "2", "3"])   # R1 forward
+        self.assertEqual(rounds[1], ["3", "2", "1"])   # R2 reversed
+        self.assertEqual(rounds[2], ["3", "2", "1"])   # R3 reversed AGAIN (the reversal)
+        self.assertEqual(rounds[3], ["1", "2", "3"])   # R4 forward
+        self.assertEqual(rounds[4], ["3", "2", "1"])   # R5 reversed
+        self.assertEqual(rounds[5], ["1", "2", "3"])   # R6 forward
+
+    def test_3rr_every_roster_appears_exactly_once_per_round(self):
+        teams = [str(i) for i in range(1, 13)]
+        order = ds.generate_pick_order(teams, total_rounds=5, draft_type="3rr")
+        for round_num in range(5):
+            round_slice = order[round_num * 12:(round_num + 1) * 12]
+            self.assertEqual(sorted(round_slice), sorted(teams))
+
+    def test_3rr_breaks_the_turn_slots_round_2_to_3_double_pick(self):
+        # The single largest structural error treating a 3RR draft as snake would make:
+        # roster 1 picks last in round 2 and, under snake, FIRST in round 3 (0 intervening
+        # picks) -- under 3RR round 3 repeats round 2's order, so roster 1 picks LAST again
+        # and waits through all 11 other teams. Survival for that wait is a completely
+        # different question than "he's yours, nobody picks between."
+        teams = [str(i) for i in range(1, 13)]
+        snake = ds.generate_pick_order(teams, total_rounds=3)
+        rr3 = ds.generate_pick_order(teams, total_rounds=3, draft_type="3rr")
+
+        # roster "1" picks at index 23 (last of R2) in both orders
+        self.assertEqual(snake[23], "1")
+        self.assertEqual(rr3[23], "1")
+
+        snake_next = ds.find_next_pick_index(snake, "1", after_index=23)
+        rr3_next = ds.find_next_pick_index(rr3, "1", after_index=23)
+        snake_wait = ds.intervening_roster_ids(snake, current_index=23, my_next_index=snake_next)
+        rr3_wait = ds.intervening_roster_ids(rr3, current_index=23, my_next_index=rr3_next)
+        self.assertEqual(len(snake_wait), 0)
+        self.assertEqual(len(rr3_wait), 11)
+
+    def test_3rr_matches_snake_through_round_2_then_flips_parity_for_good(self):
+        # The reversal isn't a one-round anomaly: repeating round 2's order in round 3 flips
+        # the alternation's parity permanently -- every round from 3 on runs OPPOSITE to what
+        # plain snake would do in that same round (3RR's F,R,R,F,R,F vs snake's F,R,F,R,F,R).
+        teams = [str(i) for i in range(1, 13)]
+        snake = ds.generate_pick_order(teams, total_rounds=6)
+        rr3 = ds.generate_pick_order(teams, total_rounds=6, draft_type="3rr")
+        for round_num in range(6):
+            lo, hi = round_num * 12, (round_num + 1) * 12
+            if round_num < 2:
+                self.assertEqual(snake[lo:hi], rr3[lo:hi])
+            else:
+                self.assertEqual(list(reversed(snake[lo:hi])), rr3[lo:hi])
+
 
 class FindNextPickAndInterveningTests(unittest.TestCase):
     def setUp(self):

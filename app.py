@@ -3576,7 +3576,9 @@ elif main_view == DRAFT_VIEW:
                     key="mock_cfg_scoring",
                 )
                 cfg_draft_type_label = s5.radio(
-                    "Draft type", ["Snake", "Linear"], index=0, horizontal=True, key="mock_cfg_draft_type",
+                    "Draft type", ["Snake", "Snake (3RR)", "Linear"], index=0, horizontal=True,
+                    key="mock_cfg_draft_type",
+                    help="3RR = 3rd Round Reversal: round 3 repeats round 2's reversed order, then normal alternation resumes.",
                 )
                 s6, s7, s8 = st.columns(3)
                 cfg_superflex = s6.checkbox("Superflex", value=fmt["superflex"], key="mock_cfg_superflex")
@@ -3589,6 +3591,7 @@ elif main_view == DRAFT_VIEW:
                 )
             if start_clicked:
                 cfg_scoring_key = {"Standard": "standard", "Half PPR": "half_ppr", "Full PPR": "ppr"}[cfg_scoring_label]
+                cfg_draft_type_key = {"Snake": "snake", "Snake (3RR)": "3rr", "Linear": "linear"}[cfg_draft_type_label]
                 mock_league = draft_room.build_mock_league(
                     teams=int(cfg_teams), superflex=cfg_superflex, scoring=cfg_scoring_key,
                     te_premium=cfg_te_premium, dynasty=cfg_dynasty,
@@ -3599,12 +3602,12 @@ elif main_view == DRAFT_VIEW:
                         "teams": int(cfg_teams), "my_slot": int(cfg_slot), "superflex": cfg_superflex,
                         "scoring_key": cfg_scoring_key, "scoring_label": cfg_scoring_label,
                         "te_premium": cfg_te_premium, "dynasty": cfg_dynasty, "rounds": int(cfg_rounds),
-                        "draft_type": cfg_draft_type_label.lower(),
+                        "draft_type": cfg_draft_type_key,
                     },
                     "league": mock_league,
                     "my_roster_id": str(int(cfg_slot)),
                     "pick_order": draft_strategy.generate_pick_order(
-                        round_1_order, total_rounds=int(cfg_rounds), draft_type=cfg_draft_type_label.lower(),
+                        round_1_order, total_rounds=int(cfg_rounds), draft_type=cfg_draft_type_key,
                     ),
                     "picks": [],
                     "owner_names": {
@@ -3618,7 +3621,8 @@ elif main_view == DRAFT_VIEW:
                 f"{settings['teams']}-team · slot {settings['my_slot']} · "
                 f"{'Superflex' if settings['superflex'] else '1QB'} · {settings['scoring_label']} · "
                 f"{'TE Premium · ' if settings['te_premium'] else ''}{settings['rounds']} rounds · "
-                f"{'Dynasty' if settings['dynasty'] else 'Redraft'} rules · {settings['draft_type'].title()}"
+                f"{'Dynasty' if settings['dynasty'] else 'Redraft'} rules · "
+                f"{ {'snake': 'Snake', '3rr': 'Snake (3RR)', 'linear': 'Linear'}.get(settings['draft_type'], settings['draft_type'].title()) }"
             )
             reset_col, scope_col = st.columns([1, 2])
             with reset_col:
@@ -3836,8 +3840,15 @@ elif main_view == DRAFT_VIEW:
             )
             active_draft = draft_options[draft_id]
             draft_type = active_draft.get("type")
+            # Sleeper marks 3rd Round Reversal on the draft's own settings, not the type
+            # string -- a "snake" draft with reversal_round == 3 is really a 3RR draft, and
+            # treating it as plain snake poisons every pick-order-derived signal (survival,
+            # opportunity cost, denial, necessity) worst in rounds 2-4. See
+            # draft_strategy.generate_pick_order's own docstring.
+            if draft_type == "snake" and (active_draft.get("settings") or {}).get("reversal_round") == 3:
+                draft_type = "3rr"
 
-            if draft_type not in ("snake", "linear"):
+            if draft_type not in ("snake", "linear", "3rr"):
                 st.warning(
                     f"Draft Room currently supports snake/linear pick-order drafts only -- this "
                     f"draft is type '{draft_type}' (e.g. auction), where a fixed pick order doesn't apply."

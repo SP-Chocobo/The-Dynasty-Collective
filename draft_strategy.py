@@ -101,10 +101,24 @@ PACE_CATCH_UP_WINDOW = 6.0
 def generate_pick_order(round_1_order: list, total_rounds: int, draft_type: str = "snake") -> list:
     """The full roster_id sequence for every pick in the draft. Snake reverses the order on
     even rounds (standard fantasy draft convention); "linear" (auction-style leagues sometimes
-    draft this way for supplemental rounds) repeats the same order every round."""
+    draft this way for supplemental rounds) repeats the same order every round.
+
+    "3rr" is snake with 3rd Round Reversal, a real, live format feature (Sleeper exposes it as
+    settings.reversal_round == 3 on the draft object): round 3 REPEATS round 2's reversed
+    order instead of snaking back, compensating the back half of round 1 for never getting a
+    turn-adjacent double pick, then normal alternation resumes from round 4. Rounds run
+    F, R, R, F, R, F, R... -- reverse when round == 2, or round >= 3 and odd. This is a
+    structural correctness issue, not a preference: pick order feeds intervening_roster_ids,
+    which feeds survival/opportunity-cost/denial/necessity, and treating a 3RR draft as plain
+    snake mis-sizes the round-2-to-3 waits worst of all -- a turn-slot team's wait there is 0
+    intervening picks under snake but a full 11 (12-team) under 3RR, the single largest
+    possible error in the whole survival model."""
     order: list = []
     for round_num in range(1, total_rounds + 1):
-        reverse = draft_type == "snake" and round_num % 2 == 0
+        if draft_type == "3rr":
+            reverse = round_num == 2 or (round_num >= 3 and round_num % 2 == 1)
+        else:
+            reverse = draft_type == "snake" and round_num % 2 == 0
         order.extend(reversed(round_1_order) if reverse else round_1_order)
     return order
 
