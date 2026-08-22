@@ -49,10 +49,17 @@ Five real signals this module adds that didn't exist anywhere in the engine befo
         waiting" signal.
       - positional_cliff: HIGH/MEDIUM add real points; LOW adds none.
       - position_run_detected: a real, observed signal, not a guess.
-      - denial_value, normalized against this candidate's own team_acquisition_value: how much
-        a specific rival stands to gain from him -- a distinct signal from survival_probability
-        (a low-competition "run" can still survive rarely, and a specific rival can covet a
-        player even when overall survival isn't terrible).
+      - rival_premium (NOT denial_value): how much more the best-positioned intervening rival's
+        own roster makes this player worth to them than his team-agnostic universal_value --
+        their need/eligibility premium, normalized against draft_room's own NEED_BONUS_MAX
+        scale. Deliberately the p_take-FREE half of the denial signal: denial_value is
+        (opponent value x take-probability), and that same take-probability already compounds
+        into survival_probability above, so using denial_value here counted the identical
+        underlying probability twice -- measured at r = +0.82 between the survival and denial
+        components across simulated draft states before this was split. Probability enters
+        necessity exactly once (survival); rival-gain magnitude exactly once (this term). The
+        snapshot's denial_value field itself is unchanged -- as an expected-value number for
+        the debate layer it is correctly defined as is.
       - need_bonus + eligibility_bonus (this roster's own fit) -- applied directly, the same
         additive-nudge treatment draft_room.py already gives these two terms.
       - round: late-round picks (round >= draft_room's own UPSIDE_MODE_DEFAULT_ROUND) get the
@@ -163,7 +170,7 @@ NECESSITY_STANDOUT_REFERENCE_GAP = 15.0
 NECESSITY_SURVIVAL_WEIGHT = 20.0     # (1 - survival_probability) scaled up
 NECESSITY_CLIFF_POINTS = {"HIGH": 12.0, "MEDIUM": 6.0, "LOW": 0.0}
 NECESSITY_RUN_BONUS = 6.0
-NECESSITY_DENIAL_WEIGHT = 10.0       # denial_value normalized against this candidate's own value
+NECESSITY_DENIAL_WEIGHT = 10.0       # rival_premium normalized against draft_room.NEED_BONUS_MAX
 NECESSITY_ROSTER_FIT_WEIGHT = 0.8    # applied directly to (need_bonus + eligibility_bonus)
 
 LATE_ROUND_THRESHOLD = dr.UPSIDE_MODE_DEFAULT_ROUND  # same round draft_room switches to upside mode
@@ -192,7 +199,7 @@ def compute_pick_necessity(raw_candidates: list[dict], round_num: int) -> list[t
     see the module docstring for the full reasoning behind every term. Each entry in
     raw_candidates needs: team_acquisition_value, need_bonus, eligibility_bonus,
     survival_probability (or None), positional_cliff (dict or None), position_run_detected,
-    denial_value (or None/0)."""
+    rival_premium (or None/0)."""
     values = [c["team_acquisition_value"] for c in raw_candidates]
 
     results = []
@@ -223,9 +230,10 @@ def compute_pick_necessity(raw_candidates: list[dict], round_num: int) -> list[t
 
         run_component = NECESSITY_RUN_BONUS if c.get("position_run_detected") else 0.0
 
-        denial_value = c.get("denial_value") or 0.0
-        own_value = c["team_acquisition_value"]
-        denial_component = (min(denial_value / own_value, 1.0) * NECESSITY_DENIAL_WEIGHT) if denial_value and own_value > 0 else 0.0
+        # p_take-free by design -- see the module docstring's rival_premium bullet for why
+        # the p_take-weighted denial_value double-counted survival's own probability here.
+        rival_premium = c.get("rival_premium") or 0.0
+        denial_component = (min(rival_premium / dr.NEED_BONUS_MAX, 1.0) * NECESSITY_DENIAL_WEIGHT) if rival_premium > 0 else 0.0
 
         roster_fit_component = (c.get("need_bonus", 0.0) + c.get("eligibility_bonus", 0.0)) * NECESSITY_ROSTER_FIT_WEIGHT
 
@@ -436,6 +444,7 @@ class CandidateSnapshot:
     expected_value_of_waiting: Optional[float]
     denial_value: Optional[float]
     denial_team: Optional[str]
+    rival_premium: Optional[float]
     positional_cliff: Optional[dict]
     position_run_detected: bool
     pick_necessity: float
@@ -523,6 +532,7 @@ def build_snapshot(
             "opportunity_cost": a.get("opportunity_cost"),
             "expected_value_of_waiting": expected_value_of_waiting(universal_value, survival),
             "denial_value": a.get("denial_value"), "denial_team": a.get("denial_team"),
+            "rival_premium": a.get("rival_premium"),
             "positional_cliff": detect_positional_cliff(board, pid),
             "position_run_detected": (run_position is not None and row["position"] == run_position),
             "consensus_rank": reach["consensus_rank"] if reach else None,
@@ -551,7 +561,7 @@ def build_snapshot(
 _DIFF_FIELDS = (
     "universal_value", "need_bonus", "eligibility_bonus", "team_acquisition_value",
     "survival_probability", "opportunity_cost", "expected_value_of_waiting", "denial_value",
-    "pick_necessity",
+    "rival_premium", "pick_necessity",
 )
 
 

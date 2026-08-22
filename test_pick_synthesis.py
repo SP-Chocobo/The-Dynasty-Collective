@@ -113,11 +113,11 @@ class NarrowCandidatesTests(unittest.TestCase):
 
 
 def _raw_candidate(team_acquisition_value, survival_probability=1.0, positional_cliff=None,
-                    position_run_detected=False, denial_value=0.0, need_bonus=0.0, eligibility_bonus=0.0):
+                    position_run_detected=False, rival_premium=0.0, need_bonus=0.0, eligibility_bonus=0.0):
     return {
         "team_acquisition_value": team_acquisition_value, "survival_probability": survival_probability,
         "positional_cliff": positional_cliff, "position_run_detected": position_run_detected,
-        "denial_value": denial_value, "need_bonus": need_bonus, "eligibility_bonus": eligibility_bonus,
+        "rival_premium": rival_premium, "need_bonus": need_bonus, "eligibility_bonus": eligibility_bonus,
     }
 
 
@@ -128,7 +128,7 @@ class ComputePickNecessityTests(unittest.TestCase):
         # BETTER player sitting in an uncontested, deep position.
         worse_player_facing_a_cliff = _raw_candidate(
             90.0, survival_probability=0.1, positional_cliff={"tier": "HIGH", "gap": 10, "typical_gap": 2},
-            position_run_detected=True, denial_value=80.0,
+            position_run_detected=True, rival_premium=8.0,
         )
         better_player_no_pressure_at_all = _raw_candidate(97.0, survival_probability=1.0)
         results = ps.compute_pick_necessity([worse_player_facing_a_cliff, better_player_no_pressure_at_all], round_num=3)
@@ -147,7 +147,7 @@ class ComputePickNecessityTests(unittest.TestCase):
     def test_a_real_standout_with_full_scarcity_pressure_reaches_must_take(self):
         standout = _raw_candidate(
             120.0, survival_probability=0.02, positional_cliff={"tier": "HIGH", "gap": 20, "typical_gap": 2},
-            position_run_detected=True, denial_value=115.0, need_bonus=10.0, eligibility_bonus=5.0,
+            position_run_detected=True, rival_premium=12.0, need_bonus=10.0, eligibility_bonus=5.0,
         )
         distant_second = _raw_candidate(60.0)
         results = ps.compute_pick_necessity([standout, distant_second], round_num=3)
@@ -205,10 +205,32 @@ class ComputePickNecessityTests(unittest.TestCase):
         self.assertGreaterEqual(far_score, tied_score - 1e-6)
         self.assertAlmostEqual(moderately_score, far_score, places=6)
 
+    def test_denial_component_is_take_probability_free(self):
+        # The double-count this fixed, measured at r = +0.82 between the survival and denial
+        # components before the split: denial_value carried the same p_take that already
+        # compounds into survival_probability. The necessity denial term now reads ONLY the
+        # p_take-free rival_premium -- so two candidates with the identical premium but very
+        # different survival must differ by exactly their survival components and nothing
+        # else, and the premium itself caps at draft_room's own NEED_BONUS_MAX scale.
+        import draft_room as dr
+        same_premium_safe = _raw_candidate(100.0, survival_probability=1.0, rival_premium=6.0)
+        same_premium_risky = _raw_candidate(100.0, survival_probability=0.5, rival_premium=6.0)
+        results = ps.compute_pick_necessity([same_premium_safe, same_premium_risky], round_num=3)
+        survival_delta = 0.5 * ps.NECESSITY_SURVIVAL_WEIGHT
+        self.assertAlmostEqual(results[1][0] - results[0][0], survival_delta, places=6)
+
+        # Premium scales the component linearly up to the NEED_BONUS_MAX cap, then saturates.
+        half = _raw_candidate(100.0, rival_premium=dr.NEED_BONUS_MAX / 2)
+        full = _raw_candidate(100.0, rival_premium=dr.NEED_BONUS_MAX)
+        beyond = _raw_candidate(100.0, rival_premium=dr.NEED_BONUS_MAX * 10)
+        r = ps.compute_pick_necessity([half, full, beyond], round_num=3)
+        self.assertAlmostEqual(r[1][0] - r[0][0], ps.NECESSITY_DENIAL_WEIGHT / 2, places=6)
+        self.assertAlmostEqual(r[2][0], r[1][0], places=6)
+
     def test_necessity_never_leaves_the_0_to_100_range(self):
         extreme = _raw_candidate(
             1000.0, survival_probability=0.0, positional_cliff={"tier": "HIGH", "gap": 999, "typical_gap": 1},
-            position_run_detected=True, denial_value=1000.0, need_bonus=50.0, eligibility_bonus=50.0,
+            position_run_detected=True, rival_premium=1000.0, need_bonus=50.0, eligibility_bonus=50.0,
         )
         results = ps.compute_pick_necessity([extreme, _raw_candidate(1.0)], round_num=3)
         for score, _label in results:

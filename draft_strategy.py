@@ -425,6 +425,7 @@ def pick_analysis(
 
         denial_value = 0.0
         denial_team = None
+        rival_premium = 0.0
         for risk in survival["risk_by_team"]:
             opp_board = opponent_boards.get(str(risk["roster_id"]), {})
             opp_row = opp_board.get("by_id", {}).get(str(player_id))
@@ -434,6 +435,19 @@ def pick_analysis(
             if weighted > denial_value:
                 denial_value = weighted
                 denial_team = risk["roster_id"]
+            # rival_premium: how much MORE this player is worth to the best-positioned
+            # intervening rival than his team-agnostic universal_value -- their own
+            # need/eligibility premium, with NO take-probability in it. This exists as a
+            # separate number specifically for pick_necessity's denial term: denial_value
+            # above is (opponent value x p_take), and that same p_take already compounds
+            # into survival_probability, so a necessity score using both counted the
+            # identical underlying take-probability twice -- measured directly at r = +0.82
+            # between the two components across simulated draft states, against this app's
+            # own "don't double-count correlated scarcity signals" rule. Splitting the
+            # magnitude (here) from the probability (survival) keeps each counted once.
+            # universal_value is absent from upside-mode board rows, hence the guard.
+            if "universal_value" in opp_row:
+                rival_premium = max(rival_premium, opp_row["final_score"] - opp_row["universal_value"])
 
         results.append({
             "player_id": player_id,
@@ -445,6 +459,7 @@ def pick_analysis(
             "opportunity_cost": opportunity_cost,
             "denial_value": round(denial_value, 2),
             "denial_team": denial_team,
+            "rival_premium": round(rival_premium, 2),
         })
     results.sort(key=lambda r: r["opportunity_cost"], reverse=True)
     return results
