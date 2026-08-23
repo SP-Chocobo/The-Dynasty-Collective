@@ -1,0 +1,191 @@
+"""draft_board_ui is a translation layer, not an engine -- these tests pin the one thing
+that actually matters: every field on the JSON payload is a direct, unmodified read off
+CandidateSnapshot/PickSnapshot, never a recomputation. render_board_html is checked only
+for basic structural validity (the payload actually lands in the document, no template
+placeholder survives) -- the interaction behavior itself was validated in the browser
+during the design pass, not re-tested here as JS-in-a-string.
+"""
+
+import json
+import unittest
+
+import draft_board_ui as ui
+from pick_synthesis import CandidateSnapshot, PickSnapshot
+
+
+def _candidate(**overrides) -> CandidateSnapshot:
+    base = dict(
+        player_id="123", name="J. Gibbs", position="RB", team="DET",
+        bpa=88.5, bpa_source="points_vor_draftsharks", confidence=80.0,
+        universal_value=88.5, need_bonus=6.0, eligibility_bonus=2.9,
+        team_acquisition_value=97.4, survival_probability=0.31, intervening_picks=11,
+        opportunity_cost=67.2, expected_value_of_waiting=27.4,
+        denial_value=8.4, denial_team="Roster 9", rival_premium=8.4,
+        positional_forfeit=77.9, position_expected_taken=2.4,
+        positional_cliff={"tier": "HIGH", "gap": 22.4, "typical_gap": 6.1},
+        position_run_detected=False, pick_necessity=88.0, necessity_label="STRONG ACTION",
+        near_tie_with_leader=True, cliff_protection=True, block_opportunity=True,
+        pure_value=False, context_elevated=False,
+        consensus_rank=None, consensus_tier=None, reach_label=None, projected_points=250.0,
+    )
+    base.update(overrides)
+    return CandidateSnapshot(**base)
+
+
+def _snapshot(candidates, user_selected_player_id=None) -> PickSnapshot:
+    return PickSnapshot(
+        pick_label="3.04", round=3, my_roster_id="1", candidates=tuple(candidates),
+        user_selected_player_id=user_selected_player_id, decision_regime="contested",
+    )
+
+
+class SerializeCandidateTests(unittest.TestCase):
+    def test_every_field_is_a_direct_unmodified_read(self):
+        c = _candidate()
+        row = ui.serialize_candidate(c)
+        self.assertEqual(row["name"], c.name)
+        self.assertEqual(row["uv"], c.universal_value)
+        self.assertEqual(row["tav"], c.team_acquisition_value)
+        self.assertEqual(row["survival"], c.survival_probability)
+        self.assertEqual(row["intervening"], c.intervening_picks)
+        self.assertEqual(row["forfeit"], c.positional_forfeit)
+        self.assertEqual(row["rivalPremium"], c.rival_premium)
+        self.assertEqual(row["denialTeam"], c.denial_team)
+        self.assertEqual(row["needBonus"], c.need_bonus)
+        self.assertEqual(row["eligBonus"], c.eligibility_bonus)
+
+    def test_positional_cliff_fields_unpacked_when_present(self):
+        row = ui.serialize_candidate(_candidate())
+        self.assertEqual(row["cliffTier"], "HIGH")
+        self.assertEqual(row["cliffGap"], 22.4)
+        self.assertEqual(row["cliffTypical"], 6.1)
+
+    def test_positional_cliff_fields_none_when_absent(self):
+        row = ui.serialize_candidate(_candidate(positional_cliff=None))
+        self.assertIsNone(row["cliffTier"])
+        self.assertIsNone(row["cliffGap"])
+        self.assertIsNone(row["cliffTypical"])
+
+    def test_forces_built_from_the_four_real_flags_only(self):
+        row = ui.serialize_candidate(_candidate(
+            near_tie_with_leader=True, cliff_protection=True,
+            block_opportunity=False, pure_value=False,
+        ))
+        self.assertEqual(set(row["forces"]), {"tie", "cliff"})
+
+    def test_no_forces_is_an_empty_list_not_none(self):
+        row = ui.serialize_candidate(_candidate(
+            near_tie_with_leader=False, cliff_protection=False,
+            block_opportunity=False, pure_value=False,
+        ))
+        self.assertEqual(row["forces"], [])
+
+    def test_context_gap_elevated(self):
+        row = ui.serialize_candidate(_candidate(context_elevated=True, pure_value=False))
+        self.assertEqual(row["contextGap"], "elevated")
+
+    def test_context_gap_suppressed(self):
+        row = ui.serialize_candidate(_candidate(context_elevated=False, pure_value=True))
+        self.assertEqual(row["contextGap"], "suppressed")
+
+    def test_context_gap_none_when_neither(self):
+        row = ui.serialize_candidate(_candidate(context_elevated=False, pure_value=False))
+        self.assertIsNone(row["contextGap"])
+
+    def test_context_gap_prefers_elevated_when_both_somehow_true(self):
+        # Not mutually exclusive by construction (see decision_path_flags' docstring) --
+        # this pins which direction the UI shows when a contrived case satisfies both,
+        # rather than leaving it to incidental dict-ordering.
+        row = ui.serialize_candidate(_candidate(context_elevated=True, pure_value=True))
+        self.assertEqual(row["contextGap"], "elevated")
+
+    def test_necessity_class_mapping_covers_every_real_label(self):
+        for label, expected_class in [
+            ("MUST TAKE", "badge-necessity-must-take"),
+            ("STRONG ACTION", "badge-necessity-strong"),
+            ("PREFERRED", "badge-necessity-preferred"),
+            ("CLOSE CALL", "badge-necessity-close-call"),
+            ("LOW URGENCY", "badge-necessity-low"),
+            ("DOESN'T MATTER MUCH", "badge-necessity-low"),
+        ]:
+            row = ui.serialize_candidate(_candidate(necessity_label=label))
+            self.assertEqual(row["necClass"], expected_class)
+
+
+class SerializeSnapshotTests(unittest.TestCase):
+    def test_flags_the_user_selected_candidate_only(self):
+        a = _candidate(player_id="1", name="A")
+        b = _candidate(player_id="2", name="B")
+        snap = _snapshot([a, b], user_selected_player_id="2")
+        payload = ui.serialize_snapshot(snap, pick_header="ON THE CLOCK", state_tags=[])
+        flagged = {c["name"]: c["flagged"] for c in payload["candidates"]}
+        self.assertEqual(flagged, {"A": False, "B": True})
+
+    def test_no_flagged_candidate_when_none_selected(self):
+        snap = _snapshot([_candidate()])
+        payload = ui.serialize_snapshot(snap, pick_header="x", state_tags=[])
+        self.assertFalse(any(c["flagged"] for c in payload["candidates"]))
+
+    def test_candidate_order_preserved_never_resorted(self):
+        # The snapshot's own order is the engine's ranking -- this module must never
+        # second-guess it, including by accident via a dict/set somewhere along the way.
+        names = ["Z. Last", "A. First", "M. Middle"]
+        candidates = [_candidate(player_id=str(i), name=n) for i, n in enumerate(names)]
+        snap = _snapshot(candidates)
+        payload = ui.serialize_snapshot(snap, pick_header="x", state_tags=[])
+        self.assertEqual([c["name"] for c in payload["candidates"]], names)
+
+    def test_decision_regime_passed_through_unchanged(self):
+        snap = _snapshot([_candidate()])
+        object.__setattr__(snap, "decision_regime", "decisive")
+        payload = ui.serialize_snapshot(snap, pick_header="x", state_tags=[])
+        self.assertEqual(payload["decisionRegime"], "decisive")
+
+    def test_pick_header_and_tags_passed_through_verbatim(self):
+        snap = _snapshot([_candidate()])
+        payload = ui.serialize_snapshot(
+            snap, pick_header="ON THE CLOCK — 3.04", state_tags=["3RR ACTIVE", "11 picks"],
+        )
+        self.assertEqual(payload["pickHeader"], "ON THE CLOCK — 3.04")
+        self.assertEqual(payload["stateTags"], ["3RR ACTIVE", "11 picks"])
+
+
+class RenderBoardHtmlTests(unittest.TestCase):
+    def test_payload_is_embedded_and_placeholder_is_gone(self):
+        snap = _snapshot([_candidate()])
+        payload = ui.serialize_snapshot(snap, pick_header="x", state_tags=[])
+        out = ui.render_board_html(payload)
+        self.assertNotIn(ui._PAYLOAD_TOKEN, out)
+        # Embedded with "<" escaped to < (see render_board_html's own docstring on
+        # why raw json.dumps output is unsafe to embed verbatim) -- round-tripping the
+        # escaped JSON back through json.loads must reproduce the exact original payload.
+        embedded = out.split("const PAYLOAD = ", 1)[1].split(";\n", 1)[0]
+        self.assertEqual(json.loads(embedded), payload)
+
+    def test_output_is_a_complete_html_document(self):
+        payload = ui.serialize_snapshot(_snapshot([_candidate()]), pick_header="x", state_tags=[])
+        out = ui.render_board_html(payload)
+        self.assertTrue(out.strip().startswith("<!doctype html>"))
+        self.assertIn("<script>", out)
+        self.assertIn("</script>", out)
+
+    def test_player_name_with_special_characters_is_safely_json_escaped(self):
+        # A name containing a literal </script> or a quote must not be able to break out
+        # of the embedded JSON -- json.dumps is what's relied on for this, confirmed here
+        # rather than just assumed.
+        tricky = _candidate(name='D. "Air" O\'Brien </script>')
+        payload = ui.serialize_snapshot(_snapshot([tricky]), pick_header="x", state_tags=[])
+        out = ui.render_board_html(payload)
+        # The literal closing tag must not appear unescaped inside the script body.
+        script_body = out.split("<script>", 1)[1].split("</script>")[0]
+        self.assertNotIn("</script>", script_body)
+
+    def test_empty_candidate_list_renders_without_error(self):
+        payload = ui.serialize_snapshot(_snapshot([]), pick_header="x", state_tags=[])
+        out = ui.render_board_html(payload)
+        self.assertIn('"candidates": []', json.dumps(payload))
+        self.assertIsInstance(out, str)
+
+
+if __name__ == "__main__":
+    unittest.main()

@@ -10,6 +10,7 @@ debate studio (Quant/Claude, Beat/Gemini, Contrarian/ChatGPT, Moderator/Claude).
 from __future__ import annotations
 
 import base64
+import dataclasses
 import html
 import json
 import re
@@ -23,10 +24,13 @@ import pandas as pd
 import streamlit as st
 from PIL import Image
 
+import streamlit.components.v1 as components
+
 import bot_benchmark
 import bot_config
 import bot_research
 import decision_log
+import draft_board_ui
 import draft_room
 import draft_strategy
 import pick_debate
@@ -3934,22 +3938,43 @@ elif main_view == DRAFT_VIEW:
                                 else:
                                     st.caption("No available player matched that.")
 
-                            try:
-                                snap = pick_synthesis.build_snapshot(
-                                    merger, players_db, draft_picks, pick_order, target_index, my_roster_id,
-                                    league_for_engine, pick_label=pick_label,
-                                    pool_scope=st.session_state.draft_room_pool_scope,
-                                    user_selected_player_id=flagged_player_id,
-                                )
-                            except Exception as exc:  # noqa: BLE001 -- surface, never crash the whole dashboard
-                                snap = None
-                                notify("error", f"Couldn't build the draft board: {exc}")
+                            # build_snapshot is the single most expensive call in this view (a full
+                            # board computation plus one opponent board per intervening roster) --
+                            # unconditionally recomputing it on EVERY script rerun meant an
+                            # unrelated action anywhere else on the page (the debate dock's own
+                            # Expand/Collapse buttons, which call a bare st.rerun() purely to change
+                            # a CSS height) paid that same cost for no reason. Cached in session
+                            # state against exactly the inputs that can actually change the result --
+                            # not a blanket st.cache_data, since draft_picks/merger/players_db aren't
+                            # cheaply hashable and don't need to be; a plain equality check on a
+                            # small key tuple is enough. picks length + the merger's own freshest
+                            # source date are the same two staleness signals snapshot_is_current
+                            # already uses elsewhere in this module -- reused here, not reinvented.
+                            snapshot_cache_key = (
+                                draft_id, target_index, str(my_roster_id),
+                                st.session_state.draft_room_pool_scope,
+                                str(flagged_player_id) if flagged_player_id is not None else None,
+                                len(draft_picks), merger.freshest_date,
+                            )
+                            cached = st.session_state.get("draft_room_snapshot_cache")
+                            if cached is not None and cached[0] == snapshot_cache_key:
+                                snap = cached[1]
+                            else:
+                                try:
+                                    snap = pick_synthesis.build_snapshot(
+                                        merger, players_db, draft_picks, pick_order, target_index, my_roster_id,
+                                        league_for_engine, pick_label=pick_label,
+                                        pool_scope=st.session_state.draft_room_pool_scope,
+                                        user_selected_player_id=flagged_player_id,
+                                    )
+                                    st.session_state.draft_room_snapshot_cache = (snapshot_cache_key, snap)
+                                except Exception as exc:  # noqa: BLE001 -- surface, never crash the whole dashboard
+                                    snap = None
+                                    notify("error", f"Couldn't build the draft board: {exc}")
 
                             if snap is not None and not snap.candidates:
                                 st.info("No candidates available in the current player pool/scope.")
                             elif snap is not None:
-                                header = f"ON THE CLOCK — {pick_label}" if is_live else f"YOUR NEXT PICK — {pick_label}"
-                                st.markdown(f"### {header}")
                                 if not is_live:
                                     on_clock_id = str(pick_order[current_index])
                                     on_clock_name = owner_names_by_id.get(on_clock_id, f"Roster {on_clock_id}")
@@ -3962,18 +3987,37 @@ elif main_view == DRAFT_VIEW:
                                     key="draft_room_position_filter",
                                 )
                                 filtered = [c for c in snap.candidates if c.position in position_filter] if position_filter else list(snap.candidates)
+                                display_snap = dataclasses.replace(snap, candidates=tuple(filtered))
 
-                                table_rows = [{
-                                    "Name": c.name, "Pos": c.position,
-                                    "Necessity": f"{_NECESSITY_COLOR_EMOJI.get(c.necessity_label, '')} {c.pick_necessity:.0f} — {c.necessity_label}",
-                                    "Proj Pts": f"{c.projected_points:.0f}" if c.projected_points is not None else "—",
-                                    "Universal": c.universal_value, "Acquisition": c.team_acquisition_value,
-                                    "Survival": f"{round(c.survival_probability * 100)}%" if c.survival_probability is not None else "—",
-                                    "Cliff": c.positional_cliff["tier"] if c.positional_cliff else "—",
-                                    "Run": "🏃" if c.position_run_detected else "",
-                                    "Market": f"{c.reach_label.title()} (KTC #{c.consensus_rank})" if c.reach_label else "—",
-                                } for c in filtered]
-                                st.dataframe(pd.DataFrame(table_rows), hide_index=True, use_container_width=True)
+                                board_header = f"ON THE CLOCK — {pick_label}" if is_live else f"YOUR NEXT PICK — {pick_label}"
+                                is_superflex_fmt = "SUPER_FLEX" in (league_for_engine.get("roster_positions") or [])
+                                is_dynasty_fmt = (league_for_engine.get("settings") or {}).get("type") == 2
+                                board_tags = []
+                                if draft_type == "3rr":
+                                    board_tags.append("3RR ACTIVE")
+                                first_intervening = next(
+                                    (c.intervening_picks for c in filtered if c.intervening_picks is not None), None,
+                                )
+                                if first_intervening is not None:
+                                    board_tags.append(f"{first_intervening} pick(s) to your next selection")
+                                board_tags.append(
+                                    f"{num_teams}-team · {'Superflex' if is_superflex_fmt else '1QB'} · "
+                                    f"{'Dynasty' if is_dynasty_fmt else 'Redraft'}"
+                                )
+                                board_payload = draft_board_ui.serialize_snapshot(
+                                    display_snap, pick_header=board_header, state_tags=board_tags,
+                                )
+                                # A generous, content-driven height -- the iframe has no way to
+                                # tell Streamlit how tall its own content grew (unlike a normal
+                                # DOM element, it can't just push the page down), so this has to
+                                # be sized up front. ~150px per row covers one expanded card
+                                # comfortably; internal scrolling (baked into the component's own
+                                # page, not this call) covers the rest for a long candidate list.
+                                board_height = min(180 + 92 * max(len(filtered), 1), 1400)
+                                components.html(
+                                    draft_board_ui.render_board_html(board_payload),
+                                    height=board_height, scrolling=True,
+                                )
 
                                 debate_btn_col, _ = st.columns([1, 3])
                                 with debate_btn_col:
