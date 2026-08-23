@@ -4,7 +4,8 @@ Fantasy Football Multi-LLM Command Center — Streamlit UI.
 Sleeper Meets Claude: a dark, minimalist dashboard (Claude) accented with
 functional sports-data color coding (Sleeper) — emerald for value surplus,
 gold for taxi/bench alerts, crimson for injury flags — plus a four-persona
-debate studio (Quant/Claude, Beat/Gemini, Contrarian/ChatGPT, Moderator/Claude).
+four-role debate studio (Quant, Beat, Contrarian, Moderator) — each role's LLM
+provider is independently configurable, not fixed to a given brand.
 """
 
 from __future__ import annotations
@@ -2572,103 +2573,111 @@ with st.sidebar:
         st.markdown(f'<span class="{_grade_cls}">{_grade_icon} Data Freshness: {_grade}</span>', unsafe_allow_html=True)
         st.caption("Oldest of everything loaded below sets this grade — update on your own schedule, nothing here blocks the app.")
 
-    if merger.is_loaded:
-        age = merger.staleness_days
-        age_label = f"updated {merger.freshest_date} ({age}d ago)" if age is not None else "updated (unknown date)"
-        ds_cls = "status-bad" if merger.is_stale else "status-ok"
-        ds_icon = "⚠️" if merger.is_stale else "✅"
-        # The committed baseline (data/baseline/rankings/) means this is ALWAYS true now, even
-        # with zero live uploads -- a checkmark that's permanently green regardless of anything
-        # the user does carries no real signal. Checking GLOBAL_PROJECTIONS_DIR directly (rather
-        # than adding a new DataMerger flag for a purely cosmetic distinction) says which state
-        # this actually is: your own fresher upload, or still running on baseline alone.
-        has_live_upload = GLOBAL_PROJECTIONS_DIR.exists() and any(
-            p.suffix.lower() in (".csv", ".json", ".pdf") for p in GLOBAL_PROJECTIONS_DIR.iterdir()
-        )
-        source_note = "" if has_live_upload else " (baseline)"
-        st.markdown(f'<span class="{ds_cls}">{ds_icon} DS Projections Loaded{source_note} — {age_label}</span>', unsafe_allow_html=True)
-        if merger.is_stale:
-            st.caption(f"Data is {age}+ days old — consider re-exporting from Draft Sharks (weekly is plenty).")
-        elif not has_live_upload:
-            st.caption("Running on the committed baseline — upload your own export anytime for fresher or format-specific numbers.")
-    else:
-        st.markdown(status_line("DS Projections Loaded", False), unsafe_allow_html=True)
-
+    # Free agent pool staleness is its own glanceable line, separate from the overall grade
+    # above -- it's the one staleness read that's specifically about who's actually available
+    # on waivers right now, not the rankings data behind player values.
     if merger.is_free_agents_loaded:
         fa_age = merger.free_agents_staleness_days
-        fa_cls = "status-bad" if merger.free_agents_is_stale else "status-ok"
-        fa_icon = "⚠️" if merger.free_agents_is_stale else "✅"
+        fa_ok = not merger.free_agents_is_stale
         fa_age_label = f"({fa_age}d ago)" if fa_age is not None else ""
-        st.markdown(f'<span class="{fa_cls}">{fa_icon} Free Agent Data Loaded {fa_age_label}</span>', unsafe_allow_html=True)
+        st.markdown(status_line(f"Free Agent Pool {fa_age_label}", fa_ok), unsafe_allow_html=True)
     else:
-        st.markdown(status_line("Free Agent Data Loaded", False), unsafe_allow_html=True)
+        st.markdown(status_line("Free Agent Pool", False), unsafe_allow_html=True)
 
-    # Draft Sharks status above covers only that one vendor -- the composite score draws on up
-    # to 4 more (see COMPOSITE_SOURCE_WEIGHTS), so this line is the only place their load state
-    # is visible at all rather than something a user has to trust is working silently.
-    SOURCE_DISPLAY_NAMES = {
-        "dynastyprocess": "DynastyProcess", "fantasypros": "FantasyPros",
-        "keeptradecut": "KeepTradeCut", "espn": "ESPN", "bot_research": "Bot Research",
-    }
-    # composite_capable_source_names() (not just every source_name present in
-    # external_values) -- confirmed live, ESPN's only baseline file is redraft-scope and
-    # structurally excluded from the composite entirely, yet this line used to count it as
-    # one of the "N composite sources loaded" just because its rows existed at all.
-    composite_sources = merger.composite_capable_source_names() if merger.is_external_values_loaded else []
-    if composite_sources:
-        names = [SOURCE_DISPLAY_NAMES.get(s, s.title()) for s in composite_sources]
-        st.markdown(status_line(f"Composite Sources Loaded ({len(names)})", True), unsafe_allow_html=True)
-        st.caption(", ".join(names))
-    else:
-        st.markdown(status_line("Composite Sources Loaded", False), unsafe_allow_html=True)
+    with st.expander("Data Sources & Connections", expanded=False):
+        if merger.is_loaded:
+            age = merger.staleness_days
+            age_label = f"updated {merger.freshest_date} ({age}d ago)" if age is not None else "updated (unknown date)"
+            ds_cls = "status-bad" if merger.is_stale else "status-ok"
+            ds_icon = "⚠️" if merger.is_stale else "✅"
+            # The committed baseline (data/baseline/rankings/) means this is ALWAYS true now, even
+            # with zero live uploads -- a checkmark that's permanently green regardless of anything
+            # the user does carries no real signal. Checking GLOBAL_PROJECTIONS_DIR directly (rather
+            # than adding a new DataMerger flag for a purely cosmetic distinction) says which state
+            # this actually is: your own fresher upload, or still running on baseline alone.
+            has_live_upload = GLOBAL_PROJECTIONS_DIR.exists() and any(
+                p.suffix.lower() in (".csv", ".json", ".pdf") for p in GLOBAL_PROJECTIONS_DIR.iterdir()
+            )
+            source_note = "" if has_live_upload else " (baseline)"
+            st.markdown(f'<span class="{ds_cls}">{ds_icon} DS Projections Loaded{source_note} — {age_label}</span>', unsafe_allow_html=True)
+            if merger.is_stale:
+                st.caption(f"Data is {age}+ days old — consider re-exporting from Draft Sharks (weekly is plenty).")
+            elif not has_live_upload:
+                st.caption("Running on the committed baseline — upload your own export anytime for fresher or format-specific numbers.")
+        else:
+            st.markdown(status_line("DS Projections Loaded", False), unsafe_allow_html=True)
 
-    st.markdown(status_line("Sleeper Synced", st.session_state.league_snapshot is not None), unsafe_allow_html=True)
-    snap = st.session_state.league_snapshot
-    has_sleeper_proj = bool(snap and snap.get("projections"))
-    projection_request = (snap.get("projection_request") or snap.get("nfl_state") or {}) if snap else {}
-    proj_week = projection_request.get("week")
-    proj_type = projection_request.get("season_type", "regular")
-    proj_label = f"Sleeper Native Projections ({proj_type} week {proj_week})" if has_sleeper_proj else "Sleeper Native Projections"
-    st.markdown(status_line(proj_label, has_sleeper_proj), unsafe_allow_html=True)
-    if snap and not has_sleeper_proj:
-        st.caption("Unofficial endpoint returned nothing this sync — Draft Sharks/market data still work fine without it.")
-    # Which roles say "(Quant/Moderator)" etc. next to a provider's name isn't fixed
-    # anymore -- it depends on the current Configure Bots assignment, not a hardcoded
-    # persona list.
-    _role_providers_for_status = bot_config.load_role_providers()
-    _role_names_for_status = bot_config.load_role_names()
-    _roles_using = {
-        provider: [
-            _role_names_for_status[role] for role in bot_config.ROLES if _role_providers_for_status[role] == provider
+        if merger.is_free_agents_loaded:
+            fa_age = merger.free_agents_staleness_days
+            fa_cls = "status-bad" if merger.free_agents_is_stale else "status-ok"
+            fa_icon = "⚠️" if merger.free_agents_is_stale else "✅"
+            fa_age_label = f"({fa_age}d ago)" if fa_age is not None else ""
+            st.markdown(f'<span class="{fa_cls}">{fa_icon} Free Agent Data Loaded {fa_age_label}</span>', unsafe_allow_html=True)
+        else:
+            st.markdown(status_line("Free Agent Data Loaded", False), unsafe_allow_html=True)
+
+        # Draft Sharks status above covers only that one vendor -- the composite score draws on up
+        # to 4 more (see COMPOSITE_SOURCE_WEIGHTS), so this line is the only place their load state
+        # is visible at all rather than something a user has to trust is working silently.
+        SOURCE_DISPLAY_NAMES = {
+            "dynastyprocess": "DynastyProcess", "fantasypros": "FantasyPros",
+            "keeptradecut": "KeepTradeCut", "espn": "ESPN", "bot_research": "Bot Research",
+        }
+        # composite_capable_source_names() (not just every source_name present in
+        # external_values) -- confirmed live, ESPN's only baseline file is redraft-scope and
+        # structurally excluded from the composite entirely, yet this line used to count it as
+        # one of the "N composite sources loaded" just because its rows existed at all.
+        composite_sources = merger.composite_capable_source_names() if merger.is_external_values_loaded else []
+        if composite_sources:
+            names = [SOURCE_DISPLAY_NAMES.get(s, s.title()) for s in composite_sources]
+            st.markdown(status_line(f"Composite Sources Loaded ({len(names)})", True), unsafe_allow_html=True)
+            st.caption(", ".join(names))
+        else:
+            st.markdown(status_line("Composite Sources Loaded", False), unsafe_allow_html=True)
+
+        st.markdown(status_line("Sleeper Synced", st.session_state.league_snapshot is not None), unsafe_allow_html=True)
+        snap = st.session_state.league_snapshot
+        has_sleeper_proj = bool(snap and snap.get("projections"))
+        projection_request = (snap.get("projection_request") or snap.get("nfl_state") or {}) if snap else {}
+        proj_week = projection_request.get("week")
+        proj_type = projection_request.get("season_type", "regular")
+        proj_label = f"Sleeper Native Projections ({proj_type} week {proj_week})" if has_sleeper_proj else "Sleeper Native Projections"
+        st.markdown(status_line(proj_label, has_sleeper_proj), unsafe_allow_html=True)
+        if snap and not has_sleeper_proj:
+            st.caption("Unofficial endpoint returned nothing this sync — Draft Sharks/market data still work fine without it.")
+
+        st.markdown("---")
+        # Role is the primary read here, not the provider -- which model backs which role is a
+        # Configure Bots assignment that can change at any time, so leading with "Claude Connected"
+        # would describe today's wiring as if it were permanent. The provider only shows up as a
+        # secondary "via <name>" caption, for whoever's troubleshooting a missing key.
+        _role_providers_for_status = bot_config.load_role_providers()
+        _role_names_for_status = bot_config.load_role_names()
+        _roles_using = {
+            provider: [
+                _role_names_for_status[role] for role in bot_config.ROLES if _role_providers_for_status[role] == provider
+            ]
+            for provider in bot_config.PROVIDERS
+        }
+        for _role in bot_config.ROLES:
+            _provider = _role_providers_for_status[_role]
+            _ok = IS_PROVIDER_CONFIGURED[_provider](api_key_for(PROVIDER_KEY_FIELD[_provider]))
+            st.markdown(status_line(f"{_role_names_for_status[_role]} Connected", _ok), unsafe_allow_html=True)
+            st.caption(f"via {bot_config.PROVIDER_LABELS[_provider]}")
+
+        missing_keys = [
+            (var, provider) for var, provider, ok in (
+                ("ANTHROPIC_API_KEY", "claude", llm_engine.is_claude_configured(api_key_for("anthropic"))),
+                ("GEMINI_API_KEY", "gemini", llm_engine.is_gemini_configured(api_key_for("gemini"))),
+                ("OPENAI_API_KEY", "openai", llm_engine.is_openai_configured(api_key_for("openai"))),
+            ) if not ok and _roles_using[provider]
         ]
-        for provider in bot_config.PROVIDERS
-    }
-    st.markdown(
-        status_line(f"Claude ({'/'.join(_roles_using['claude']) or 'unassigned'}) Connected", llm_engine.is_claude_configured(api_key_for("anthropic"))),
-        unsafe_allow_html=True,
-    )
-    st.markdown(
-        status_line(f"Gemini ({'/'.join(_roles_using['gemini']) or 'unassigned'}) Connected", llm_engine.is_gemini_configured(api_key_for("gemini"))),
-        unsafe_allow_html=True,
-    )
-    st.markdown(
-        status_line(f"ChatGPT ({'/'.join(_roles_using['openai']) or 'unassigned'}) Connected", llm_engine.is_openai_configured(api_key_for("openai"))),
-        unsafe_allow_html=True,
-    )
-
-    missing_keys = [
-        (var, provider) for var, provider, ok in (
-            ("ANTHROPIC_API_KEY", "claude", llm_engine.is_claude_configured(api_key_for("anthropic"))),
-            ("GEMINI_API_KEY", "gemini", llm_engine.is_gemini_configured(api_key_for("gemini"))),
-            ("OPENAI_API_KEY", "openai", llm_engine.is_openai_configured(api_key_for("openai"))),
-        ) if not ok and _roles_using[provider]
-    ]
-    if missing_keys:
-        affected = ", ".join(f"{var} (needed for {'/'.join(_roles_using[provider])})" for var, provider in missing_keys)
-        st.caption(
-            f"Missing: {affected}. Paste them into 🔑 Connections & Models above, or copy "
-            "`.env.example` to `.env` in the project folder, fill in the key(s), and restart `streamlit run app.py`."
-        )
+        if missing_keys:
+            affected = ", ".join(f"{var} (needed for {'/'.join(_roles_using[provider])})" for var, provider in missing_keys)
+            st.caption(
+                f"Missing: {affected}. Paste them into 🔑 Connections & Models above, or copy "
+                "`.env.example` to `.env` in the project folder, fill in the key(s), and restart `streamlit run app.py`."
+            )
 
 # ------------------------------------------------------------------ main ----
 
