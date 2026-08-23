@@ -30,7 +30,7 @@ def _candidate(player_id, name, position="QB", universal_value=90.0, team_acquis
         position_run_detected=position_run_detected,
         pick_necessity=pick_necessity, necessity_label=necessity_label,
         near_tie_with_leader=near_tie_with_leader,
-        cliff_protection=False, block_opportunity=False, pure_value=False,
+        cliff_protection=False, block_opportunity=False, pure_value=False, context_elevated=False,
         consensus_rank=consensus_rank, consensus_tier=consensus_tier, reach_label=reach_label,
         projected_points=projected_points,
     )

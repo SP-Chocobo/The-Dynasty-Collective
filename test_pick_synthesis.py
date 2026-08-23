@@ -355,6 +355,80 @@ class DecisionPathFlagsTests(unittest.TestCase):
     def test_empty_input(self):
         self.assertEqual(ps.decision_path_flags([]), [])
 
+    def test_context_elevated_at_the_need_bonus_max_boundary(self):
+        import draft_room as dr
+        below = self._cand(70.0, 70.0 + dr.NEED_BONUS_MAX - 0.1)
+        at = self._cand(70.0, 70.0 + dr.NEED_BONUS_MAX)
+        flags = ps.decision_path_flags([below, at])
+        self.assertFalse(flags[0]["context_elevated"])
+        self.assertTrue(flags[1]["context_elevated"])
+
+    def test_context_elevated_and_pure_value_are_independent_directions(self):
+        # The two Context Gap directions are not mutually exclusive by construction (a
+        # contrived case could technically satisfy both), but they answer different
+        # questions and should each be computed on their own terms -- a candidate who is
+        # both the field's best raw talent AND carries a huge roster-fit bonus gets both
+        # flags rather than one silently overriding the other.
+        import draft_room as dr
+        leader = self._cand(80.0, 300.0)  # tav kept comfortably above "both"'s own
+        both = self._cand(200.0, 200.0 + dr.NEED_BONUS_MAX)  # best uv AND huge fit bonus, still not the leader
+        flags = ps.decision_path_flags([leader, both])
+        self.assertTrue(flags[1]["pure_value"])
+        self.assertTrue(flags[1]["context_elevated"])
+
+
+class DecisionRegimeTests(unittest.TestCase):
+    """decision_regime reads only margin-to-second and the leader's own survival -- these
+    tests pin that it takes no round/pick input at all, and that BOTH bars (not either
+    alone) are required for "decisive"."""
+
+    def _cand(self, tav, survival=0.5):
+        return {"team_acquisition_value": tav, "survival_probability": survival}
+
+    def test_decisive_requires_both_a_real_margin_and_low_survival(self):
+        leader = self._cand(100.0, survival=0.05)
+        second = self._cand(100.0 - ps.NECESSITY_STANDOUT_REFERENCE_GAP, survival=0.5)
+        self.assertEqual(ps.decision_regime([leader, second]), "decisive")
+
+    def test_big_margin_alone_is_not_enough_if_survival_is_high(self):
+        # A commanding lead that's still likely to survive isn't genuinely urgent --
+        # there's no real risk of losing him, so conviction-first framing would overstate
+        # the stakes even though the ranking gap is real.
+        leader = self._cand(100.0, survival=0.6)
+        second = self._cand(100.0 - ps.NECESSITY_STANDOUT_REFERENCE_GAP - 5, survival=0.5)
+        self.assertEqual(ps.decision_regime([leader, second]), "contested")
+
+    def test_low_survival_alone_is_not_enough_if_the_margin_is_thin(self):
+        # Real risk of losing him, but he's barely ahead of the alternative -- that's a
+        # genuine tiebreaker (near-tie territory), not a clear standout.
+        leader = self._cand(100.0, survival=0.05)
+        second = self._cand(99.0, survival=0.5)
+        self.assertEqual(ps.decision_regime([leader, second]), "contested")
+
+    def test_never_reads_round_or_pick_number(self):
+        # No such parameter exists on the function at all -- calling it identically for a
+        # "round 1" and "round 8" candidate set produces the identical verdict, proven by
+        # there being no round/pick argument to vary in the first place.
+        import inspect
+        params = list(inspect.signature(ps.decision_regime).parameters)
+        self.assertEqual(params, ["candidates"])
+
+    def test_fewer_than_two_candidates_is_never_decisive(self):
+        # No second place to measure a margin against -- "decisive" is a claim this
+        # function can't support without a real comparison, so it isn't assumed by default.
+        self.assertEqual(ps.decision_regime([]), "contested")
+        self.assertEqual(ps.decision_regime([self._cand(100.0, survival=0.01)]), "contested")
+
+    def test_missing_survival_on_the_leader_is_never_decisive(self):
+        leader = self._cand(100.0, survival=None)
+        second = self._cand(100.0 - ps.NECESSITY_STANDOUT_REFERENCE_GAP - 5)
+        self.assertEqual(ps.decision_regime([leader, second]), "contested")
+
+    def test_does_its_own_ranking_regardless_of_input_order(self):
+        leader = self._cand(100.0, survival=0.05)
+        second = self._cand(100.0 - ps.NECESSITY_STANDOUT_REFERENCE_GAP, survival=0.5)
+        self.assertEqual(ps.decision_regime([second, leader]), "decisive")
+
 
 class SnapshotIsCurrentTests(unittest.TestCase):
     """The input-state stamp: identity checks only, nothing recomputed, unstamped means

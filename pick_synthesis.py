@@ -196,6 +196,16 @@ LATE_ROUND_NECESSITY_CAP = 30.0
 # ever observed (10.6) on purpose, since full standout credit should demand something rare.
 NEAR_TIE_BAND = 2.0
 
+# The survival half of "this is basically decided" (see decision_regime): a principled
+# starting point, not empirically backtested -- same honesty this app applies to every other
+# unproven constant (CLIFF_HIGH_RATIO, NECESSITY_STANDOUT_REFERENCE_GAP itself, and others,
+# were all introduced exactly this way and only later validated or revised against real data).
+# Paired with NECESSITY_STANDOUT_REFERENCE_GAP as the margin half: a leader only reads as a
+# clear, conviction-first standout when he is BOTH far ahead of the field AND unlikely to be
+# there next turn regardless -- either alone (a big lead with real survival risk, or a
+# marginal lead that's still probably safe) stays in the ordinary tiebreaker-prose regime.
+DECISIVE_SURVIVAL_THRESHOLD = 0.15
+
 # Checked top-down; the first threshold this score meets or exceeds wins.
 NECESSITY_LABEL_THRESHOLDS = [
     (98.0, "MUST TAKE"),
@@ -369,6 +379,16 @@ def decision_path_flags(candidates: list[dict]) -> list[dict]:
         exceeding NEAR_TIE_BAND (beyond measured ordering noise, same band, same scale):
         the board's best raw asset is being outranked by contextual terms -- real, worth
         surfacing explicitly so context never silently buries a materially better player.
+      context_elevated -- this candidate's own (team_acquisition_value - universal_value)
+        meets or exceeds NEED_BONUS_MAX: the maximum a single roster slot can ever contribute
+        to acquisition value. Unlike pure_value (a cross-candidate comparison -- TAV can never
+        fall below UV for any one candidate, since need_bonus/eligibility_bonus are both
+        non-negative by construction, so "his own TAV dipping under his own UV" is structurally
+        impossible), this is a real per-candidate quantity: a large, meaningful share of his
+        rank here is roster fit, not raw talent. The two are the Context Gap signal's two
+        directions -- pure_value is "buried despite excellent talent," context_elevated is
+        "ranked highly substantially because of fit" -- and a UI is expected to surface them as
+        one indicator with two readings, never as competing scores.
 
     Classification over existing numbers, never new scoring: nothing here feeds necessity,
     ranking, or any value -- same rule as near_tie_flags below. Expects each candidate dict
@@ -391,7 +411,42 @@ def decision_path_flags(candidates: list[dict]) -> list[dict]:
                 and c["universal_value"] == best_uv
                 and c["universal_value"] - leader_uv > NEAR_TIE_BAND
             ),
+            "context_elevated": (c["team_acquisition_value"] - c["universal_value"]) >= dr.NEED_BONUS_MAX,
         })
+    return flags
+
+
+def decision_regime(candidates: list[dict]) -> str:
+    """"decisive" or "contested" -- which register a decision surface's explanatory prose
+    should use for the CURRENT leader, never a per-candidate flag (only the leader can be
+    "the elite asset"; nobody else's situation determines whether this pick is genuinely
+    close). Reads only margin-to-second-place and the leader's own survival_probability --
+    deliberately NOT round number or pick label. A leader clearing both bars gets read as
+    conviction-first regardless of whether that happens in round 1 or round 8; a bunched
+    field in round 1 stays "contested." The two thresholds are independent, real signals:
+    margin alone (a big lead that still might not survive) or survival alone (safe, but
+    only marginally ahead of the next-best option) each leave real ambiguity a "just take
+    him" framing would misrepresent -- only both together mean there is no actual decision
+    left to explain, just a fact to state.
+
+    "contested" (not "messy" or "close") on purpose: plenty of contested picks aren't
+    messy at all (a real cliff, a real denial case) -- what makes the enumerated,
+    tiebreaker-style prose the right register there isn't disorder, it's that a genuine
+    ranking case still has to be made, unlike a decisive pick where making the case would
+    be manufacturing a decision that doesn't exist. Returns "contested" for an empty or
+    single-candidate list -- a lone or empty field has no SECOND place to measure a margin
+    against, so "decisive" (a claim this module can actually support) is never assumed by
+    default. Expects each candidate dict to carry team_acquisition_value and
+    survival_probability, sorted or not -- this function does its own ranking."""
+    if len(candidates) < 2:
+        return "contested"
+    ranked = sorted(candidates, key=lambda c: c["team_acquisition_value"], reverse=True)
+    leader, second = ranked[0], ranked[1]
+    margin = leader["team_acquisition_value"] - second["team_acquisition_value"]
+    survival = leader.get("survival_probability")
+    if margin >= NECESSITY_STANDOUT_REFERENCE_GAP and survival is not None and survival <= DECISIVE_SURVIVAL_THRESHOLD:
+        return "decisive"
+    return "contested"
     return flags
 
 
@@ -554,6 +609,7 @@ class CandidateSnapshot:
     cliff_protection: bool
     block_opportunity: bool
     pure_value: bool
+    context_elevated: bool
     consensus_rank: Optional[int]
     consensus_tier: Optional[int]
     reach_label: Optional[str]
@@ -584,6 +640,7 @@ class PickSnapshot:
     user_selected_player_id: Optional[str] = None
     picks_consumed: Optional[int] = None
     data_freshest_date: Optional[str] = None
+    decision_regime: str = "contested"
 
 
 def build_snapshot(
@@ -681,6 +738,7 @@ def build_snapshot(
         user_selected_player_id=(str(user_selected_player_id) if user_selected_player_id is not None else None),
         picks_consumed=len(picks),
         data_freshest_date=merger.freshest_date,
+        decision_regime=decision_regime(raw_candidates),
     )
 
 
