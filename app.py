@@ -38,6 +38,7 @@ import draft_strategy
 import pick_debate
 import pick_synthesis
 import pinned_messages
+import screen_context
 import todo_log
 import llm_engine
 import trade_ledger_ui
@@ -3322,6 +3323,10 @@ elif main_view == MAINTENANCE_VIEW:
     trade_send_rows = _price_trade_side(trade_send_text)
     trade_receive_rows = _price_trade_side(trade_receive_text)
     sources_used = {r["source"] for r in trade_send_rows + trade_receive_rows if r["source"]}
+    # Defaults for the "nothing typed yet" branch below, which never touches these -- the
+    # ScreenContext build after this whole if/elif needs them defined in every path, not
+    # just the branch that actually has rows to verdict on.
+    raw_line = fit_line = overall = None
 
     if not sources_used and not (trade_send_rows or trade_receive_rows):
         # Draft Sharks data itself is never actually missing (the committed baseline covers
@@ -3520,12 +3525,20 @@ elif main_view == MAINTENANCE_VIEW:
         return "\n".join(_line(r) for r in rows)
 
     _trade_ready = bool(trade_send_text.strip() and trade_receive_text.strip())
-    trade_question = (
-        "Evaluate this trade for me:\nYou send:\n" + _describe_trade_side(trade_send_rows) +
-        "\nYou receive:\n" + _describe_trade_side(trade_receive_rows)
-    )
-    if trade_partner != "Not specified":
-        trade_question += f"\nTrading with: {trade_partner}"
+    # Built via the shared ScreenContext contract (see screen_context.py and the design-
+    # language reference's "Contextual Debate" section) rather than a hand-concatenated
+    # string, so the panel is handed the exact same Raw Value/Roster Fit/Overall reads the
+    # UI just displayed above -- not just the raw priced lines with the verdicts re-derived
+    # blind. raw_line/fit_line/overall are None whenever nothing above them fired (e.g.
+    # nothing priced, or no touched positions); build_trade_context already treats that as
+    # "no priced assets to compare yet" rather than requiring a caller-side guard here.
+    trade_question = screen_context.build_trade_context(
+        trade_partner=trade_partner,
+        send_description=_describe_trade_side(trade_send_rows),
+        receive_description=_describe_trade_side(trade_receive_rows),
+        entities=[r["label"] for r in trade_send_rows + trade_receive_rows],
+        raw_line=raw_line, fit_line=fit_line, overall=overall,
+    ).to_prompt_seed()
 
     bcol1, bcol2 = st.columns(2)
     with bcol1:
@@ -3544,10 +3557,10 @@ elif main_view == MAINTENANCE_VIEW:
             "in this chat.",
         )
     if ask_moderator:
-        st.session_state["question_input"] = (
-            trade_question + "\n\nGiven the calculated balance and all available roster/context "
-            "data above, is this actually a good trade?"
-        )
+        # The Raw Value/Roster Fit/Overall reads are already IN trade_question (see
+        # build_trade_context above) -- no need to ask the panel to re-derive them, just to
+        # react to them.
+        st.session_state["question_input"] = trade_question + "\n\nGiven everything above, is this actually a good trade?"
     elif ask_full_squad:
         st.session_state["question_input"] = "/debate " + trade_question
 
