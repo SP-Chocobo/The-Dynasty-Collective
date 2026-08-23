@@ -31,6 +31,7 @@ import bot_benchmark
 import bot_config
 import bot_research
 import decision_log
+import design_system
 import draft_board_ui
 import draft_room
 import draft_strategy
@@ -105,41 +106,16 @@ st.set_page_config(page_title="Fantasy Football Command Center", layout="wide", 
 
 # ------------------------------------------------------------------ styling --
 
-st.markdown(
-    """
+_GLOBAL_CSS = """
     <style>
-    :root {
-        --emerald: #16a34a;
-        --gold: #d4a017;
-        --crimson: #b91c1c;
-        --charcoal: #1e1e1e;
-    }
+    __DESIGN_SYSTEM_ROOT_TOKENS__
     .stApp { background-color: #16171a; }
-    .badge {
-        display: inline-block; padding: 2px 10px; border-radius: 12px;
-        font-size: 0.75rem; font-weight: 600; margin-bottom: 6px; letter-spacing: 0.02em;
-    }
-    .badge-quant { background: rgba(22,163,74,0.18); color: #4ade80; border: 1px solid #16a34a; }
-    .badge-beat { background: rgba(212,160,23,0.18); color: #facc15; border: 1px solid #d4a017; }
-    .badge-contrarian { background: rgba(139,92,246,0.18); color: #c4b5fd; border: 1px solid #8b5cf6; }
-    .badge-moderator { background: rgba(185,28,28,0.18); color: #f87171; border: 1px solid #b91c1c; }
-    /* A verdict with the full panel behind it (Quant/Beat/Contrarian all weighed in) is a
-       heavier claim than a quick follow-up reply -- same badge-moderator family/color so it's
-       still obviously "the Moderator," just visibly more substantial via a glow, not a
-       different hue that would read as a different persona entirely. */
-    .badge-moderator-verdict { background: rgba(185,28,28,0.18); color: #f87171; border: 1px solid #b91c1c; box-shadow: 0 0 0 1px rgba(248,113,113,0.35), 0 0 8px rgba(185,28,28,0.45); }
-    .badge-user { background: rgba(148,163,184,0.18); color: #cbd5e1; border: 1px solid #64748b; }
-    .badge-summary { background: rgba(56,189,248,0.18); color: #7dd3fc; border: 1px solid #0ea5e9; }
-    .badge-notice { background: rgba(245,158,11,0.18); color: #fbbf24; border: 1px solid #f59e0b; }
+    __DESIGN_SYSTEM_BADGE_ROLE__
     /* Pick Necessity's own color ramp (Draft Room view) -- distinct classes from the debate
        personas above even though the colors are reused from that same palette, so a necessity
        tier is never visually confusable with a Quant/Beat/Contrarian/Moderator badge. Low to
        high necessity: red -> gold -> green -> blue -> purple. */
-    .badge-necessity-must-take { background: rgba(139,92,246,0.18); color: #c4b5fd; border: 1px solid #8b5cf6; box-shadow: 0 0 0 1px rgba(196,181,253,0.35), 0 0 8px rgba(139,92,246,0.45); }
-    .badge-necessity-strong { background: rgba(56,189,248,0.18); color: #7dd3fc; border: 1px solid #0ea5e9; }
-    .badge-necessity-preferred { background: rgba(22,163,74,0.18); color: #4ade80; border: 1px solid #16a34a; }
-    .badge-necessity-close-call { background: rgba(212,160,23,0.18); color: #facc15; border: 1px solid #d4a017; }
-    .badge-necessity-low { background: rgba(185,28,28,0.18); color: #f87171; border: 1px solid #b91c1c; }
+    __DESIGN_SYSTEM_BADGE_NECESSITY__
     .agent-block {
         border-radius: 8px; padding: 10px 14px; margin-bottom: 10px;
         background: #202124; border: 1px solid #2f3033;
@@ -443,7 +419,13 @@ st.markdown(
         }
     }
     </style>
-    """,
+    """
+
+st.markdown(
+    _GLOBAL_CSS
+    .replace("__DESIGN_SYSTEM_ROOT_TOKENS__", design_system.root_css_block())
+    .replace("__DESIGN_SYSTEM_BADGE_ROLE__", design_system.BADGE_ROLE_CSS)
+    .replace("__DESIGN_SYSTEM_BADGE_NECESSITY__", design_system.BADGE_NECESSITY_CSS),
     unsafe_allow_html=True,
 )
 

@@ -16,9 +16,10 @@ This module does two things and nothing else:
     engine's own output -- this only reshapes field NAMES for the JS side, never their
     VALUES.
   render_board_html -- the payload -> a complete, self-contained HTML document (CSS + JS
-    inlined, no external requests) using the exact class names and hex values already
-    shipped in app.py's own <style> block (badge-necessity-*), so the embedded iframe reads
-    as the same product, not a bolted-on component with its own palette.
+    inlined, no external requests) built on design_system's shared tokens and badge-
+    necessity-* CSS (the same source app.py's own <style> block reads from), so the
+    embedded iframe reads as the same product, not a bolted-on component with its own
+    palette that could quietly drift from app.py's.
 
 Known, deliberate scope limit: the design pass's "Simulate: top pick taken" FLIP transition
 demonstrated board-level continuity across a real draft-state change, but that demo ran
@@ -35,12 +36,12 @@ from __future__ import annotations
 import json
 from typing import Optional
 
+import design_system
 from pick_synthesis import CandidateSnapshot, PickSnapshot
 
-# Exact reuse of app.py's own badge-necessity-* classes and their real, already-shipped
-# hex colors (see app.py's <style> block) -- duplicated here rather than imported because
-# the embed is a genuinely separate HTML document (an iframe has no access to the parent
-# page's stylesheet), not because this module disagrees with app.py's naming.
+# The class NAMES the necessity badges use in the embedded HTML below -- the CSS itself
+# comes from design_system.BADGE_NECESSITY_CSS, the same source app.py's own <style> block
+# reads from, so the two can't quietly diverge the way two hardcoded copies could.
 _NECESSITY_CLASS = {
     "MUST TAKE": "badge-necessity-must-take",
     "STRONG ACTION": "badge-necessity-strong",
@@ -138,24 +139,13 @@ def serialize_snapshot(
 # ---------------------------------------------------------------------------------------
 
 _PAYLOAD_TOKEN = "__DRAFT_BOARD_PAYLOAD_JSON__"
+_ROOT_TOKENS_TOKEN = "__DESIGN_SYSTEM_ROOT_TOKENS__"
+_BADGE_NECESSITY_TOKEN = "__DESIGN_SYSTEM_BADGE_NECESSITY__"
 
-_TEMPLATE = r"""<!doctype html>
+_TEMPLATE_SOURCE = r"""<!doctype html>
 <html><head><meta charset="utf-8">
 <style>
-:root {
-  --bg: #16171a; --surface: #202124; --surface-2: #1b1c1f;
-  --line: #2a2b2e; --line-2: #3a3c42;
-  --ink: #e5e7eb; --muted: #9ca3af; --dim: #6b7076;
-  --emerald: #16a34a; --emerald-b: #4ade80;
-  --gold: #d4a017; --gold-b: #facc15;
-  --violet: #8b5cf6; --violet-b: #c4b5fd;
-  --crimson: #b91c1c; --crimson-b: #f87171;
-  --sky: #0ea5e9; --sky-b: #7dd3fc;
-  --cliff: #0d9488; --cliff-b: #2dd4bf;
-  --block: #c2410c; --block-b: #fb923c;
-  --pure: #cbd5e1;
-  --tie: #64748b; --tie-b: #94a3b8;
-}
+__DESIGN_SYSTEM_ROOT_TOKENS__
 * { box-sizing: border-box; }
 html, body { margin: 0; padding: 0; }
 body {
@@ -176,11 +166,7 @@ body {
 .tag { font-family: "JetBrains Mono", monospace; padding: .2rem .55rem; border-radius: 4px; background: var(--surface-2); border: 1px solid var(--line-2); color: var(--muted); letter-spacing: .03em; }
 .tag.hot { color: var(--crimson-b); border-color: var(--crimson); background: rgba(185,28,28,.14); }
 
-.badge-necessity-must-take { background: rgba(139,92,246,0.18); color: #c4b5fd; border: 1px solid #8b5cf6; box-shadow: 0 0 0 1px rgba(196,181,253,0.35), 0 0 8px rgba(139,92,246,0.45); }
-.badge-necessity-strong { background: rgba(56,189,248,0.18); color: #7dd3fc; border: 1px solid #0ea5e9; }
-.badge-necessity-preferred { background: rgba(22,163,74,0.18); color: #4ade80; border: 1px solid #16a34a; }
-.badge-necessity-close-call { background: rgba(212,160,23,0.18); color: #facc15; border: 1px solid #d4a017; }
-.badge-necessity-low { background: rgba(185,28,28,0.18); color: #f87171; border: 1px solid #b91c1c; }
+__DESIGN_SYSTEM_BADGE_NECESSITY__
 .necessity-pill { font-family: "JetBrains Mono", monospace; font-size: .68rem; font-weight: 700; padding: .18rem .5rem; border-radius: 4px; letter-spacing: .03em; white-space: nowrap; }
 
 .board { display: flex; flex-direction: column; gap: .4rem; }
@@ -247,9 +233,7 @@ body {
 
 .empty-state { color: var(--muted); font-size: .88rem; padding: 1rem; text-align: center; }
 
-@media (prefers-reduced-motion: reduce) {
-  *, *::before, *::after { transition-duration: .001ms !important; animation-duration: .001ms !important; }
-}
+__DESIGN_SYSTEM_REDUCED_MOTION__
 </style></head>
 <body>
   <div class="state-bar" id="state-bar"></div>
@@ -455,6 +439,16 @@ render();
 </script>
 </body></html>
 """
+
+# Substituted once at import time, not per-render -- these three blocks are static (design
+# tokens, not per-request data), so there's no reason to redo the string work on every call
+# the way render_board_html's own payload substitution has to.
+_TEMPLATE = (
+    _TEMPLATE_SOURCE
+    .replace(_ROOT_TOKENS_TOKEN, design_system.root_css_block())
+    .replace(_BADGE_NECESSITY_TOKEN, design_system.BADGE_NECESSITY_CSS)
+    .replace("__DESIGN_SYSTEM_REDUCED_MOTION__", design_system.REDUCED_MOTION_CSS)
+)
 
 
 def render_board_html(payload: dict) -> str:
