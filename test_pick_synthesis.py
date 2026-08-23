@@ -295,6 +295,104 @@ class NearTieFlagsTests(unittest.TestCase):
         self.assertEqual(ps.near_tie_flags([50.0]), [False])
 
 
+class DecisionPathFlagsTests(unittest.TestCase):
+    """decision_path_flags reuses EXISTING engine constants as its boundaries -- these tests
+    pin that reuse (each boundary is asserted against the constant itself, not a copied
+    literal) and the rule that the flags classify without ever changing a score."""
+
+    def _cand(self, uv, tav, forfeit=None, premium=0.0):
+        return {"universal_value": uv, "team_acquisition_value": tav,
+                "positional_forfeit": forfeit, "rival_premium": premium}
+
+    def test_cliff_protection_at_the_standout_gap_boundary(self):
+        below = self._cand(90, 95, forfeit=ps.NECESSITY_STANDOUT_REFERENCE_GAP - 0.1)
+        at = self._cand(80, 85, forfeit=ps.NECESSITY_STANDOUT_REFERENCE_GAP)
+        missing = self._cand(70, 75, forfeit=None)
+        flags = ps.decision_path_flags([below, at, missing])
+        self.assertFalse(flags[0]["cliff_protection"])
+        self.assertTrue(flags[1]["cliff_protection"])
+        self.assertFalse(flags[2]["cliff_protection"])
+
+    def test_block_opportunity_at_the_two_dedicated_slots_premium_boundary(self):
+        # 2x, not 1x, deliberately: one slot's worth of rival need fired for 73% of
+        # candidates across the M13 backtest states (mid-draft, someone nearly always has a
+        # single-slot need for any good player) -- an always-on flag carries no information.
+        # Two slots' worth flags the genuinely gaping-hole rival, ~top-28% of cases.
+        import draft_room as dr
+        boundary = 2 * dr.NEED_BONUS_PER_DEDICATED_SLOT
+        one_slot_routine_need = self._cand(90, 95, premium=dr.NEED_BONUS_PER_DEDICATED_SLOT)
+        below = self._cand(85, 90, premium=boundary - 0.1)
+        at = self._cand(80, 85, premium=boundary)
+        flags = ps.decision_path_flags([one_slot_routine_need, below, at])
+        self.assertFalse(flags[0]["block_opportunity"])
+        self.assertFalse(flags[1]["block_opportunity"])
+        self.assertTrue(flags[2]["block_opportunity"])
+
+    def test_pure_value_flags_the_buried_best_asset_only_beyond_the_noise_band(self):
+        # Contextual leader (tav 100) holds uv 80; the uv-best candidate (uv 90) is ranked
+        # below him -- flagged, because 90 - 80 = 10 > NEAR_TIE_BAND.
+        leader = self._cand(80.0, 100.0)
+        buried_best = self._cand(90.0, 92.0)
+        flags = ps.decision_path_flags([leader, buried_best])
+        self.assertFalse(flags[0]["pure_value"])
+        self.assertTrue(flags[1]["pure_value"])
+
+        # Same shape but the uv edge sits INSIDE the noise band -- no flag: a within-noise
+        # uv lead is not a "materially better player."
+        leader2 = self._cand(80.0, 100.0)
+        barely_better = self._cand(80.0 + ps.NEAR_TIE_BAND, 92.0)
+        flags2 = ps.decision_path_flags([leader2, barely_better])
+        self.assertFalse(flags2[1]["pure_value"])
+
+    def test_pure_value_never_flags_the_leader_himself(self):
+        # When the tav leader IS the uv leader, there's no buried asset to surface.
+        aligned_leader = self._cand(95.0, 100.0)
+        second = self._cand(70.0, 90.0)
+        flags = ps.decision_path_flags([aligned_leader, second])
+        self.assertFalse(flags[0]["pure_value"])
+        self.assertFalse(flags[1]["pure_value"])
+
+    def test_empty_input(self):
+        self.assertEqual(ps.decision_path_flags([]), [])
+
+
+class SnapshotIsCurrentTests(unittest.TestCase):
+    """The input-state stamp: identity checks only, nothing recomputed, unstamped means
+    not-certifiable (never silently current)."""
+
+    class _FakeMerger:
+        def __init__(self, freshest_date):
+            self.freshest_date = freshest_date
+
+    def _snapshot(self, picks_consumed, data_freshest_date):
+        return ps.PickSnapshot(pick_label="3.07", round=3, my_roster_id="1", candidates=(),
+                               picks_consumed=picks_consumed, data_freshest_date=data_freshest_date)
+
+    def test_current_when_stamp_matches_live_state(self):
+        snap = self._snapshot(24, "2026-08-18")
+        ok, reason = ps.snapshot_is_current(snap, [{}] * 24, self._FakeMerger("2026-08-18"))
+        self.assertTrue(ok)
+        self.assertIsNone(reason)
+
+    def test_stale_when_new_picks_landed(self):
+        snap = self._snapshot(24, "2026-08-18")
+        ok, reason = ps.snapshot_is_current(snap, [{}] * 27, self._FakeMerger("2026-08-18"))
+        self.assertFalse(ok)
+        self.assertIn("3 new pick(s)", reason)
+
+    def test_stale_when_underlying_data_changed(self):
+        snap = self._snapshot(24, "2026-08-18")
+        ok, reason = ps.snapshot_is_current(snap, [{}] * 24, self._FakeMerger("2026-08-21"))
+        self.assertFalse(ok)
+        self.assertIn("data changed", reason)
+
+    def test_unstamped_snapshot_is_not_certifiable(self):
+        snap = self._snapshot(None, None)
+        ok, reason = ps.snapshot_is_current(snap, [], self._FakeMerger(None))
+        self.assertFalse(ok)
+        self.assertIn("no input-state stamp", reason)
+
+
 class BuildSnapshotTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):

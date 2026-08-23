@@ -59,7 +59,14 @@ Five real signals this module adds that didn't exist anywhere in the engine befo
         components across simulated draft states before this was split. Probability enters
         necessity exactly once (survival); rival-gain magnitude exactly once (this term). The
         snapshot's denial_value field itself is unchanged -- as an expected-value number for
-        the debate layer it is correctly defined as is.
+        the debate layer it is correctly defined as is. A moderate RESIDUAL correlation
+        between the survival and rival-premium components (~0.6 measured across controlled
+        backtest states) is an ACCEPTED property, not an oversight: the two formulas share no
+        term, but both respond to the same real market fact (a genuinely in-demand player has
+        lower survival AND higher rival value) through independent pathways -- shared cause,
+        not shared measurement. Orthogonalizing further would mean residualizing one real
+        signal against the other, making both less interpretable to remove a correlation that
+        reflects reality.
       - need_bonus + eligibility_bonus (this roster's own fit) -- applied directly, the same
         additive-nudge treatment draft_room.py already gives these two terms.
       - round: late-round picks (round >= draft_room's own UPSIDE_MODE_DEFAULT_ROUND) get the
@@ -335,6 +342,59 @@ def consensus_reach(
     }
 
 
+def decision_path_flags(candidates: list[dict]) -> list[dict]:
+    """Per candidate, the three deterministic decision-path booleans a downstream decision
+    surface needs but must never invent thresholds for itself (the exact precedent
+    NEAR_TIE_BAND set: an LLM or UI inventing its own "feels material" boundary is what the
+    frozen-snapshot architecture exists to prevent). Every boundary here REUSES an existing,
+    already-justified engine constant -- no new number was introduced for presentation's sake:
+
+      cliff_protection -- positional_forfeit >= NECESSITY_STANDOUT_REFERENCE_GAP: delaying
+        this candidate's position until the next pick forfeits at least a standout-sized
+        value gap, the same absolute gap this module already treats as "a genuine standout"
+        when it separates candidates.
+      block_opportunity -- rival_premium >= 2 x NEED_BONUS_PER_DEDICATED_SLOT: at least one
+        intervening rival values him at a MULTIPLE-unfilled-dedicated-starters premium over
+        his universal value -- a rival with a genuinely gaping hole (the real observed case:
+        a superflex rival with no QB1 at all), not routine need. One slot's worth (4.0) was
+        measured first and rejected as a boundary: 73% of candidates across the M13 backtest
+        states cleared it -- mid-draft, SOMEONE nearly always has a single-slot need for any
+        good player, so the flag carried no information. NEED_BONUS_MAX (12.0) never fired
+        at all (premiums top out near 8.7 in practice). Two slots' worth (8.0) fires for the
+        top ~28% -- an actual opportunity signal. Distinct from denial_value (an expected-
+        value number, take-probability included) and from take probability itself; this
+        flags rival NEED, deliberately.
+      pure_value -- this candidate holds the narrowed field's best universal_value while NOT
+        being its team_acquisition_value leader, by a UV margin over the leader's UV
+        exceeding NEAR_TIE_BAND (beyond measured ordering noise, same band, same scale):
+        the board's best raw asset is being outranked by contextual terms -- real, worth
+        surfacing explicitly so context never silently buries a materially better player.
+
+    Classification over existing numbers, never new scoring: nothing here feeds necessity,
+    ranking, or any value -- same rule as near_tie_flags below. Expects each candidate dict
+    to carry universal_value, team_acquisition_value, positional_forfeit, rival_premium."""
+    if not candidates:
+        return []
+    tav_leader_idx = max(range(len(candidates)), key=lambda i: candidates[i]["team_acquisition_value"])
+    leader_uv = candidates[tav_leader_idx]["universal_value"]
+    best_uv = max(c["universal_value"] for c in candidates)
+
+    flags = []
+    for i, c in enumerate(candidates):
+        forfeit = c.get("positional_forfeit")
+        premium = c.get("rival_premium") or 0.0
+        flags.append({
+            "cliff_protection": forfeit is not None and forfeit >= NECESSITY_STANDOUT_REFERENCE_GAP,
+            "block_opportunity": premium >= 2 * dr.NEED_BONUS_PER_DEDICATED_SLOT,
+            "pure_value": (
+                i != tav_leader_idx
+                and c["universal_value"] == best_uv
+                and c["universal_value"] - leader_uv > NEAR_TIE_BAND
+            ),
+        })
+    return flags
+
+
 def near_tie_flags(team_acquisition_values: list[float]) -> list[bool]:
     """Which candidates sit inside NEAR_TIE_BAND of the leader's team_acquisition_value --
     True for every member of the tie group INCLUDING the leader, but only when the group has
@@ -491,6 +551,9 @@ class CandidateSnapshot:
     pick_necessity: float
     necessity_label: str
     near_tie_with_leader: bool
+    cliff_protection: bool
+    block_opportunity: bool
+    pure_value: bool
     consensus_rank: Optional[int]
     consensus_tier: Optional[int]
     reach_label: Optional[str]
@@ -502,12 +565,25 @@ class PickSnapshot:
     """The full frozen state a single "Debate My Pick" run reasons over. candidates is a tuple,
     not a list -- genuine immutability, not just a convention, since this snapshot is meant to
     be handed to an LLM debate and then diffed against later, and a caller quietly mutating it
-    mid-debate would silently break both."""
+    mid-debate would silently break both.
+
+    picks_consumed / data_freshest_date are the snapshot's INPUT-STATE STAMP: which world this
+    frozen state was computed from -- how many picks had been made, and the freshest source
+    date of the data behind it. A frozen snapshot is only as valid as the inputs it froze; the
+    stamp is what lets any later consumer (a debate still running, a UI panel held open, a
+    stored decision log) cheaply ask "is this still the current state?" via snapshot_is_current
+    instead of either trusting staleness blindly or rebuilding defensively on every
+    interaction. Deliberately minimal: an identity check, not a change-magnitude model -- no
+    invalidation daemon, no delta calculus, nothing recomputed. None on both means the
+    snapshot predates stamping (or was hand-built); snapshot_is_current treats that as
+    not-certifiable rather than silently current."""
     pick_label: str
     round: int
     my_roster_id: str
     candidates: tuple
     user_selected_player_id: Optional[str] = None
+    picks_consumed: Optional[int] = None
+    data_freshest_date: Optional[str] = None
 
 
 def build_snapshot(
@@ -588,10 +664,13 @@ def build_snapshot(
     round_num = (max((p.get("round") or 1) for p in picks) if picks else 1)
     necessity_by_candidate = compute_pick_necessity(raw_candidates, round_num)
     tie_flags = near_tie_flags([c["team_acquisition_value"] for c in raw_candidates])
+    path_flags = decision_path_flags(raw_candidates)
 
     candidates = [
-        CandidateSnapshot(**c, pick_necessity=necessity, necessity_label=label, near_tie_with_leader=tie)
-        for c, (necessity, label), tie in zip(raw_candidates, necessity_by_candidate, tie_flags)
+        CandidateSnapshot(**c, pick_necessity=necessity, necessity_label=label,
+                          near_tie_with_leader=tie, **paths)
+        for c, (necessity, label), tie, paths in zip(
+            raw_candidates, necessity_by_candidate, tie_flags, path_flags)
     ]
 
     return PickSnapshot(
@@ -600,7 +679,30 @@ def build_snapshot(
         my_roster_id=str(my_roster_id),
         candidates=tuple(candidates),
         user_selected_player_id=(str(user_selected_player_id) if user_selected_player_id is not None else None),
+        picks_consumed=len(picks),
+        data_freshest_date=merger.freshest_date,
     )
+
+
+def snapshot_is_current(snapshot: PickSnapshot, picks: list[dict], merger: DataMerger) -> tuple[bool, Optional[str]]:
+    """(is_current, reason) -- whether this frozen snapshot still describes the live state its
+    consumer is about to act on, checked purely by INPUT IDENTITY (the stamp build_snapshot
+    wrote), never by recomputing anything. False comes with a plain reason string a UI or
+    debate layer can show verbatim. An unstamped snapshot (both stamp fields None -- hand-built,
+    or predating stamping) is reported not-current rather than silently trusted: "unknown
+    provenance" and "known current" are different claims, same don't-fabricate posture as
+    everywhere else in this app."""
+    if snapshot.picks_consumed is None and snapshot.data_freshest_date is None:
+        return False, "snapshot carries no input-state stamp (built before stamping, or hand-assembled)"
+    if snapshot.picks_consumed is not None and len(picks) != snapshot.picks_consumed:
+        delta = len(picks) - snapshot.picks_consumed
+        return False, (
+            f"{delta} new pick(s) made since this snapshot was built" if delta > 0
+            else "the picks list has fewer picks than this snapshot was built from"
+        )
+    if merger.freshest_date != snapshot.data_freshest_date:
+        return False, "the underlying player data changed since this snapshot was built"
+    return True, None
 
 
 _DIFF_FIELDS = (
