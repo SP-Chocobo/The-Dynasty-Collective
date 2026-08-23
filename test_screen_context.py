@@ -4,7 +4,39 @@ evidence a surface handed over."""
 
 import unittest
 
-from screen_context import ScreenContext, build_trade_context
+from pick_synthesis import CandidateSnapshot, PickSnapshot
+from screen_context import (
+    DRAFT_ROOM_PICK_DEBATE_HELP, UNIVERSAL_DEBATE_HELP,
+    ScreenContext, build_draft_room_context, build_trade_context,
+)
+
+
+def _candidate(**overrides) -> CandidateSnapshot:
+    base = dict(
+        player_id="123", name="J. Gibbs", position="RB", team="DET",
+        bpa=88.5, bpa_source="points_vor_draftsharks", confidence=80.0,
+        universal_value=88.5, need_bonus=6.0, eligibility_bonus=2.9,
+        team_acquisition_value=97.4, survival_probability=0.31, intervening_picks=11,
+        opportunity_cost=67.2, expected_value_of_waiting=27.4,
+        denial_value=8.4, denial_team="Roster 9", rival_premium=8.4,
+        positional_forfeit=77.9, position_expected_taken=2.4,
+        positional_cliff={"tier": "HIGH", "gap": 22.4, "typical_gap": 6.1},
+        position_run_detected=False, pick_necessity=88.0, necessity_label="STRONG ACTION",
+        near_tie_with_leader=True, cliff_protection=True, block_opportunity=True,
+        pure_value=False, context_elevated=False,
+        consensus_rank=None, consensus_tier=None, reach_label=None, projected_points=250.0,
+    )
+    base.update(overrides)
+    return CandidateSnapshot(**base)
+
+
+def _snapshot(candidates, **overrides) -> PickSnapshot:
+    base = dict(
+        pick_label="3.04", round=3, my_roster_id="1", candidates=tuple(candidates),
+        decision_regime="contested",
+    )
+    base.update(overrides)
+    return PickSnapshot(**base)
 
 
 class ScreenContextToPromptSeedTests(unittest.TestCase):
@@ -119,6 +151,91 @@ class BuildTradeContextTests(unittest.TestCase):
         self.assertIn("Materially favorable", seed)
         self.assertIn("Depends on your objective", seed)
         self.assertIn("Involved: Ja'Marr Chase, Bijan Robinson, Puka Nacua", seed)
+
+
+class BuildDraftRoomContextTests(unittest.TestCase):
+    def test_surface_is_always_draft_room(self):
+        ctx = build_draft_room_context(_snapshot([_candidate()]))
+        self.assertEqual(ctx.surface, "Draft Room")
+
+    def test_looking_at_names_the_pick_label(self):
+        ctx = build_draft_room_context(_snapshot([_candidate()], pick_label="1.07"))
+        self.assertIn("1.07", ctx.looking_at)
+
+    def test_decision_names_the_regime(self):
+        ctx = build_draft_room_context(_snapshot([_candidate()], decision_regime="decisive"))
+        self.assertIn("decisive", ctx.decision)
+
+    def test_evidence_reflects_real_candidate_fields_unmodified(self):
+        c = _candidate(name="Ja'Marr Chase", position="WR", team_acquisition_value=97.4, necessity_label="MUST TAKE")
+        ctx = build_draft_room_context(_snapshot([c]))
+        self.assertIn("Ja'Marr Chase (WR)", ctx.evidence)
+        self.assertIn("MUST TAKE", ctx.evidence)
+        self.assertIn("97", ctx.evidence)
+
+    def test_survival_probability_rendered_as_a_percent(self):
+        c = _candidate(survival_probability=0.31)
+        ctx = build_draft_room_context(_snapshot([c]))
+        self.assertIn("31%", ctx.evidence)
+
+    def test_missing_survival_probability_reads_as_unknown_not_a_crash(self):
+        c = _candidate(survival_probability=None)
+        ctx = build_draft_room_context(_snapshot([c]))
+        self.assertIn("unknown", ctx.evidence)
+
+    def test_empty_candidates_reads_as_none_available_not_blank(self):
+        ctx = build_draft_room_context(_snapshot([]))
+        self.assertIn("No candidates available", ctx.evidence)
+
+    def test_candidate_list_is_capped_with_a_remainder_note(self):
+        candidates = [_candidate(player_id=str(i), name=f"Player {i}") for i in range(12)]
+        ctx = build_draft_room_context(_snapshot(candidates))
+        self.assertIn("4 more candidate(s)", ctx.evidence)
+        self.assertEqual(len(ctx.entities), 8)
+
+    def test_never_re_sorts_the_engines_own_candidate_order(self):
+        # The snapshot's own order is the engine's ranking -- this module must never
+        # second-guess it, including by accident via a set/dict somewhere along the way.
+        names = ["Z. Last", "A. First", "M. Middle"]
+        candidates = [_candidate(player_id=str(i), name=n) for i, n in enumerate(names)]
+        ctx = build_draft_room_context(_snapshot(candidates))
+        self.assertEqual(ctx.entities, tuple(names))
+
+    def test_to_prompt_seed_reads_naturally(self):
+        c = _candidate(name="Ja'Marr Chase", position="WR", necessity_label="MUST TAKE", team_acquisition_value=97.4)
+        ctx = build_draft_room_context(_snapshot([c], pick_label="1.07", decision_regime="decisive"))
+        seed = ctx.to_prompt_seed()
+        self.assertIn("Current context: Draft Room", seed)
+        self.assertIn("1.07", seed)
+        self.assertIn("decisive", seed)
+        self.assertIn("Ja'Marr Chase", seed)
+
+
+class DebateHelpTextDistinctnessTests(unittest.TestCase):
+    """The two Debate-labeled controls that can share a screen (Draft Room's own "Debate This
+    Pick" and the universal 💬 Debate chip) must never read as the same action -- pinned here
+    so an edit that lets them converge (e.g. copy-pasting one help string into the other) is
+    a failing test, not a silent regression."""
+
+    def test_help_text_strings_are_different(self):
+        self.assertNotEqual(UNIVERSAL_DEBATE_HELP, DRAFT_ROOM_PICK_DEBATE_HELP)
+
+    def test_universal_help_promises_no_auto_submit(self):
+        self.assertIn("Nothing is submitted automatically", UNIVERSAL_DEBATE_HELP)
+
+    def test_pick_specific_help_names_its_own_dedicated_system(self):
+        self.assertIn("Strategist", DRAFT_ROOM_PICK_DEBATE_HELP)
+        self.assertIn("frozen snapshot", DRAFT_ROOM_PICK_DEBATE_HELP)
+
+    def test_universal_help_never_claims_pick_specific_machinery(self):
+        for banned in ("Strategist", "Skeptic", "Caller", "frozen snapshot"):
+            self.assertNotIn(banned, UNIVERSAL_DEBATE_HELP)
+
+    def test_pick_specific_help_never_repeats_the_universal_doorways_own_guarantee(self):
+        # It's fine (expected, even) for this text to NAME "Debate Studio" as a contrast --
+        # what it must never do is borrow the universal chip's own "nothing submitted
+        # automatically" promise, since Debate This Pick runs immediately on click.
+        self.assertNotIn("Nothing is submitted automatically", DRAFT_ROOM_PICK_DEBATE_HELP)
 
 
 if __name__ == "__main__":

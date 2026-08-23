@@ -209,6 +209,29 @@ _GLOBAL_CSS = """
         background: rgba(255,255,255,0.03);
     }
 
+    /* The universal "Debate" doorway (render_debate_chip) -- reuses the exact understated
+       treatment above rather than inventing a second "quiet secondary action" style, since
+       the point here is the same: this control must never read as a peer to a surface's own
+       primary/specialized actions (Moderator Review, Full Squad Debate, Debate This Pick).
+       [class*="st-key-debate_chip_"] (not an exact match) is deliberate -- render_debate_chip
+       is called from multiple surfaces with a different container key each time
+       (debate_chip_trade_calculator, debate_chip_draft_room, ...), and this one rule has to
+       cover all of them without a new CSS block per call site. The left border stands in for
+       a literal divider between it and whatever primary actions sit in the same row. */
+    [class*="st-key-debate_chip_"] .stButton button {
+        background: transparent;
+        border-color: #2a2b2e !important;
+        border-left: 1px solid #3a3c42 !important;
+        border-radius: 0 8px 8px 0 !important;
+        color: #9ca3af;
+        font-weight: 500;
+    }
+    [class*="st-key-debate_chip_"] .stButton button:hover {
+        color: #7dd3fc;
+        border-color: #0ea5e9 !important;
+        background: rgba(14,165,233,0.06);
+    }
+
     /* Sidebar defaults to a width that crowds the Manage Leagues row and the
        credentials paste box — widen it out of the box instead of making everyone
        drag it wider by hand every time. Still resizable from here if you want more.
@@ -1107,6 +1130,27 @@ def roster_owner_names(snapshot: dict) -> dict[int, str]:
         r.get("roster_id"): user_names.get(str(r.get("owner_id"))) or f"Roster {r.get('roster_id', '?')}"
         for r in (snapshot.get("rosters") or [])
     }
+
+
+def render_debate_chip(context: "screen_context.ScreenContext", key: str) -> None:
+    """The universal, quiet "💬 Debate" doorway (see the design-language reference's
+    Contextual Debate section) -- attaches `context` as the dock's current ScreenContext and
+    reveals the dock (collapsed -> partial) if it's currently collapsed. Deliberately does
+    NOT write question_input and does NOT run a debate itself: opening and asking are two
+    separate actions on purpose, so a user can see what the panel already knows before
+    deciding whether to ask it anything. Visually a quiet utility control (see the
+    [class*="st-key-debate_chip_"] CSS rule), never a peer to whatever specialized
+    escalation buttons (Moderator Review, Full Squad Debate, Debate This Pick) a surface
+    already has -- `key` just needs to be unique per call site (one per surface)."""
+    with st.container(key=f"debate_chip_{key}"):
+        if st.button(
+            "💬 Debate", key=f"debate_chip_btn_{key}",
+            help=screen_context.UNIVERSAL_DEBATE_HELP,
+        ):
+            st.session_state.debate_attached_context = context
+            if st.session_state.get("debate_dock_level", "partial") == "collapsed":
+                st.session_state.debate_dock_level = "partial"
+            st.rerun()
 
 
 def build_pick_ledger(snapshot: dict) -> dict[int, dict[str, list[dict]]]:
@@ -3532,15 +3576,16 @@ elif main_view == MAINTENANCE_VIEW:
     # blind. raw_line/fit_line/overall are None whenever nothing above them fired (e.g.
     # nothing priced, or no touched positions); build_trade_context already treats that as
     # "no priced assets to compare yet" rather than requiring a caller-side guard here.
-    trade_question = screen_context.build_trade_context(
+    trade_context = screen_context.build_trade_context(
         trade_partner=trade_partner,
         send_description=_describe_trade_side(trade_send_rows),
         receive_description=_describe_trade_side(trade_receive_rows),
         entities=[r["label"] for r in trade_send_rows + trade_receive_rows],
         raw_line=raw_line, fit_line=fit_line, overall=overall,
-    ).to_prompt_seed()
+    )
+    trade_question = trade_context.to_prompt_seed()
 
-    bcol1, bcol2 = st.columns(2)
+    bcol1, bcol2, bcol3 = st.columns([1, 1, 0.6])
     with bcol1:
         ask_moderator = st.button(
             "⚖️ Moderator Review", use_container_width=True, disabled=not _trade_ready,
@@ -3556,6 +3601,8 @@ elif main_view == MAINTENANCE_VIEW:
             "Contrarian → Moderator) on this exact trade, regardless of any prior conversation "
             "in this chat.",
         )
+    with bcol3:
+        render_debate_chip(trade_context, key="trade_calculator")
     if ask_moderator:
         # The Raw Value/Roster Fit/Overall reads are already IN trade_question (see
         # build_trade_context above) -- no need to ask the panel to re-derive them, just to
@@ -4124,12 +4171,15 @@ elif main_view == DRAFT_VIEW:
                                     height=board_height, scrolling=True,
                                 )
 
-                                debate_btn_col, _ = st.columns([1, 3])
+                                debate_btn_col, chip_col, _ = st.columns([1, 0.6, 2.4])
                                 with debate_btn_col:
                                     run_debate_clicked = st.button(
                                         "🎙️ Debate This Pick", key="draft_room_debate_btn",
                                         type="primary", use_container_width=True,
+                                        help=screen_context.DRAFT_ROOM_PICK_DEBATE_HELP,
                                     )
+                                with chip_col:
+                                    render_debate_chip(screen_context.build_draft_room_context(snap), key="draft_room")
                                 if run_debate_clicked:
                                     debate_api_keys = {
                                         "claude": api_key_for("anthropic"), "gemini": api_key_for("gemini"),
@@ -4722,6 +4772,21 @@ with st.container(key="debate_dock"):
         if tier_cols[tier_col_idx].button("▼ Collapse", key="dock_collapse", use_container_width=True):
             st.session_state.debate_dock_level = DOCK_LEVELS[dock_level_idx - 1]
             st.rerun()
+
+    # Whatever a 💬 Debate chip (render_debate_chip) last attached -- the natural-language
+    # "Considering" handoff, not a raw dump of the ScreenContext object. This is meant to read
+    # as "Debate already understands what I was looking at," never as "here is the packet of
+    # data that got passed" -- looking_at alone covers that read for most people; decision/
+    # evidence/entities stay one click away in the expander for whoever wants the receipts.
+    # Persists until a chip is clicked again (from this or another surface); nothing here
+    # clears it automatically, since there's no signal yet for "the user is done with this."
+    attached_context = st.session_state.get("debate_attached_context")
+    if dock_level != "collapsed" and attached_context is not None:
+        st.markdown(f"💬 **Considering:** {attached_context.looking_at}")
+        with st.expander("Full evidence", expanded=False):
+            st.text(f"{attached_context.decision}\n\n{attached_context.evidence}")
+            if attached_context.entities:
+                st.caption("Involved: " + ", ".join(attached_context.entities))
 
     role_providers = bot_config.load_role_providers()
     role_names = bot_config.load_role_names()

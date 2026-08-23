@@ -24,6 +24,25 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Optional, Sequence
 
+from pick_synthesis import PickSnapshot
+
+# The two Debate-labeled controls that can appear on the same screen (Draft Room) must never
+# read as the same action -- one is a general-purpose doorway into the shared panel, the
+# other is Draft Room's own dedicated, deliberately separate deliberation system. Named
+# constants here (rather than strings inlined at each call site in app.py) are what make that
+# distinction a testable property instead of a hope: see test_screen_context.py's
+# DebateHelpTextDistinctnessTests.
+UNIVERSAL_DEBATE_HELP = (
+    "Open the Debate Studio with the current screen's evidence and context. "
+    "Nothing is submitted automatically."
+)
+
+DRAFT_ROOM_PICK_DEBATE_HELP = (
+    "Run the pick-specific Draft Room deliberation (Strategist, Skeptic, Caller) using the "
+    "current frozen snapshot -- a different, dedicated system from the general Debate Studio, "
+    "built specifically to reason over this exact board with no live search involved."
+)
+
 
 @dataclass(frozen=True)
 class ScreenContext:
@@ -75,4 +94,32 @@ def build_trade_context(
     return ScreenContext(
         surface="Trade Calculator", looking_at=looking_at, decision=decision,
         evidence=evidence, entities=tuple(entities),
+    )
+
+
+# Enough to be useful evidence for a follow-up question, not a dump of the entire available
+# pool -- a wide-open "All players" scope early in a draft can have dozens of candidates, and
+# the panel only needs the ones actually near the top of this pick's own ranking.
+_MAX_CANDIDATES_IN_CONTEXT = 8
+
+
+def build_draft_room_context(snap: PickSnapshot) -> ScreenContext:
+    """Draft Room's ScreenContext -- built entirely from an already-computed PickSnapshot,
+    the same translation-layer discipline as draft_board_ui.py's serialize_snapshot. Every
+    field below is a direct read off snap/snap.candidates in the engine's own ranked order;
+    nothing here re-ranks, re-scores, or recomputes a single value."""
+    looking_at = f"On the clock for pick {snap.pick_label}."
+    decision = f"Decision regime: {snap.decision_regime}."
+    shown = snap.candidates[:_MAX_CANDIDATES_IN_CONTEXT]
+    lines = []
+    for c in shown:
+        survival = f"{round(c.survival_probability * 100)}%" if c.survival_probability is not None else "unknown"
+        lines.append(f"{c.name} ({c.position}) — {c.necessity_label}, TAV {c.team_acquisition_value:.0f}, survival {survival}")
+    remaining = len(snap.candidates) - len(shown)
+    if remaining > 0:
+        lines.append(f"...and {remaining} more candidate(s) in the current pool/scope.")
+    evidence = "\n".join(lines) if lines else "No candidates available in the current pool/scope."
+    return ScreenContext(
+        surface="Draft Room", looking_at=looking_at, decision=decision,
+        evidence=evidence, entities=tuple(c.name for c in shown),
     )
