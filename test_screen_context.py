@@ -7,7 +7,7 @@ import unittest
 from pick_synthesis import CandidateSnapshot, PickSnapshot
 from screen_context import (
     DRAFT_ROOM_PICK_DEBATE_HELP, UNIVERSAL_DEBATE_HELP,
-    ScreenContext, build_draft_room_context, build_trade_context,
+    ScreenContext, build_draft_room_context, build_league_context, build_trade_context,
 )
 
 
@@ -209,6 +209,68 @@ class BuildDraftRoomContextTests(unittest.TestCase):
         self.assertIn("1.07", seed)
         self.assertIn("decisive", seed)
         self.assertIn("Ja'Marr Chase", seed)
+
+
+class BuildLeagueContextTests(unittest.TestCase):
+    def _row(self, **overrides) -> dict:
+        base = dict(
+            name="Justin Jefferson", position="WR", team="MIN", slot="Starter",
+            injury_status=None, sleeper_proj=18.4,
+        )
+        base.update(overrides)
+        return base
+
+    def test_surface_is_always_league(self):
+        ctx = build_league_context("Team Rocket", [self._row()])
+        self.assertEqual(ctx.surface, "League")
+
+    def test_looking_at_names_the_team(self):
+        ctx = build_league_context("Team Rocket", [self._row()])
+        self.assertIn("Team Rocket", ctx.looking_at)
+
+    def test_decision_counts_rostered_and_starting_players(self):
+        rows = [self._row(name="A", slot="Starter"), self._row(name="B", slot="Bench")]
+        ctx = build_league_context("X", rows)
+        self.assertIn("2 rostered player(s)", ctx.decision)
+        self.assertIn("1 in starting slots", ctx.decision)
+
+    def test_evidence_reflects_real_row_fields_unmodified(self):
+        row = self._row(name="Justin Jefferson", position="WR", team="MIN", sleeper_proj=18.4)
+        ctx = build_league_context("X", [row])
+        self.assertIn("Justin Jefferson (WR, MIN)", ctx.evidence)
+        self.assertIn("18.4", ctx.evidence)
+
+    def test_injury_status_included_when_present(self):
+        row = self._row(injury_status="Questionable")
+        ctx = build_league_context("X", [row])
+        self.assertIn("Questionable", ctx.evidence)
+
+    def test_no_injury_status_omits_it_cleanly(self):
+        row = self._row(injury_status=None)
+        ctx = build_league_context("X", [row])
+        self.assertNotIn("None", ctx.evidence)
+
+    def test_missing_slot_defaults_to_bench_in_evidence(self):
+        row = self._row(slot=None)
+        ctx = build_league_context("X", [row])
+        self.assertIn("Bench", ctx.evidence)
+
+    def test_empty_roster_reads_as_none_found_not_blank(self):
+        ctx = build_league_context("X", [])
+        self.assertIn("No rostered players found", ctx.evidence)
+
+    def test_never_computes_a_strength_score(self):
+        # The whole point of this builder: it's a roster listing, never a verdict. No field
+        # should contain anything that reads as a computed strength/power number.
+        ctx = build_league_context("X", [self._row(), self._row(name="B", slot="Bench")])
+        for banned in ("strength", "power score", "rating", "grade"):
+            self.assertNotIn(banned, ctx.evidence.lower())
+            self.assertNotIn(banned, ctx.decision.lower())
+
+    def test_entities_preserve_row_order(self):
+        rows = [self._row(name="Z"), self._row(name="A"), self._row(name="M")]
+        ctx = build_league_context("X", rows)
+        self.assertEqual(ctx.entities, ("Z", "A", "M"))
 
 
 class DebateHelpTextDistinctnessTests(unittest.TestCase):

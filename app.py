@@ -2812,6 +2812,12 @@ main_view = st.segmented_control(
     default=MATCHUP_VIEW,
     key="main_view",
     label_visibility="collapsed",
+    # Primary navigation, not a filter -- clicking the already-active pill must not be able to
+    # deselect it into None. Without this, main_view could go None (confirmed: segmented_control
+    # allows a single-select to be toggled off), and the four view branches below being a plain
+    # if/elif/elif/elif chain (rather than the implicit-else catch-all it used to be) means a
+    # None main_view would now render nothing at all instead of silently falling into League.
+    required=True,
     help="Matchup: your lineup, projections, and the debate studio for start/sit calls. "
     "Roster Maintenance: free agents/waivers and reference material for trade and pickup research. "
     "Draft Room: live startup/rookie draft pick recommendations. "
@@ -4403,7 +4409,7 @@ elif main_view == DRAFT_VIEW:
 
     st.markdown("---")
 
-else:
+elif main_view == LEAGUE_VIEW:
     # ------------------------------------------------------------------ league rosters --
 
     st.markdown("---")
@@ -4458,14 +4464,18 @@ else:
     else:
         selected_owner = st.selectbox("Team", options=sorted(rosters_by_owner))
         team_rows = rosters_by_owner[selected_owner]
-        team_df = pd.DataFrame([
+        # One shared row shape, reused for both the displayed table and the ScreenContext
+        # handed to the Debate chip below -- so what the panel is told about this roster can
+        # never quietly drift from what the table actually shows.
+        context_rows = [
             {
                 "name": r["name"], "position": r["position"], "team": r["team"],
                 "slot": r.get("roster_slot") or "Bench", "injury_status": r.get("injury_status"),
                 "sleeper_proj": r.get("sleeper_proj"),
             }
             for r in team_rows
-        ])
+        ]
+        team_df = pd.DataFrame(context_rows)
         team_df["_sort"] = team_df["slot"].map(SLOT_SORT_ORDER).fillna(99)
         team_df = team_df.sort_values("_sort").drop(columns="_sort")
         display_cols = [c for c in ["name", "position", "team", "slot", "sleeper_proj", "injury_status"] if c in team_df.columns]
@@ -4475,6 +4485,9 @@ else:
             group_column="slot",
             column_labels={"sleeper_proj": sleeper_proj_label(snapshot)},
         )
+        league_chip_col, _ = st.columns([0.6, 2.4])
+        with league_chip_col:
+            render_debate_chip(screen_context.build_league_context(selected_owner, context_rows), key="league")
         st.caption(
             "Ask the Debate Studio about this team by name (or a specific player on it) for a full trade "
             "read — it can see any team's roster, not just the one selected above."

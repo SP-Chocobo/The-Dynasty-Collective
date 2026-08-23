@@ -123,3 +123,26 @@ def build_draft_room_context(snap: PickSnapshot) -> ScreenContext:
         surface="Draft Room", looking_at=looking_at, decision=decision,
         evidence=evidence, entities=tuple(c.name for c in shown),
     )
+
+
+def build_league_context(team_label: str, team_rows: Sequence[dict]) -> ScreenContext:
+    """Another team's roster, browsed from the League view -- built entirely from the same
+    per-player rows (name/position/team/slot/sleeper_proj/injury_status) that view already
+    renders into its table. Deliberately just a roster listing, never a strength score: this
+    stays an entry point a user can ask about, not a conclusion this module hands down (see
+    the design-language reference's League "hard contract" -- strength is an entry point,
+    never a conclusion, and nothing here invents a League Strength Score of its own)."""
+    looking_at = f"Looking at {team_label}'s roster."
+    starters = [r for r in team_rows if (r.get("slot") or "Bench") not in ("Bench", "TAXI", "IR")]
+    decision = f"{len(team_rows)} rostered player(s), {len(starters)} in starting slots."
+    lines = []
+    for r in team_rows:
+        team_bit = f", {r['team']}" if r.get("team") else ""
+        proj_bit = f", proj {r['sleeper_proj']:.1f}" if r.get("sleeper_proj") is not None else ""
+        injury_bit = f", {r['injury_status']}" if r.get("injury_status") else ""
+        lines.append(f"{r['name']} ({r['position']}{team_bit}) — {r.get('slot') or 'Bench'}{proj_bit}{injury_bit}")
+    evidence = "\n".join(lines) if lines else "No rostered players found."
+    return ScreenContext(
+        surface="League", looking_at=looking_at, decision=decision,
+        evidence=evidence, entities=tuple(r["name"] for r in team_rows),
+    )
