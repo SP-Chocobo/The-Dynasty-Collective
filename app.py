@@ -40,6 +40,7 @@ import pick_synthesis
 import pinned_messages
 import todo_log
 import llm_engine
+import trade_ledger_ui
 from attachments import ATTACHMENTS_DIR, list_attachments, save_attachment, set_caption, set_scope, delete_attachment
 from data_merger import (
     EXTERNAL_VALUES_DIR, GLOBAL_PROJECTIONS_DIR, PROJECTIONS_DIR, DataMerger, external_upload_targets,
@@ -3031,11 +3032,22 @@ elif main_view == MAINTENANCE_VIEW:
     # is there news the raw numbers can't see, etc.
 
     st.markdown("---")
-    st.subheader("Trade Calculator")
+    hcol1, hcol2 = st.columns([3, 1])
+    hcol1.subheader("Trade Calculator")
+    # Trade Value Chart first, Dynasty Rankings as the fallback -- same source-preference
+    # order _price_trade_side below actually prices with, so this pill can never claim
+    # "current" off a source the calculator isn't really using for a given asset.
+    _tl_is_stale = merger.trade_values_is_stale if merger.is_trade_values_loaded else merger.is_stale
+    _tl_age = merger.trade_values_staleness_days if merger.is_trade_values_loaded else merger.staleness_days
+    hcol2.markdown(
+        f'<div style="text-align:right;padding-top:.4rem">{trade_ledger_ui.freshness_pill(_tl_is_stale, _tl_age)}</div>',
+        unsafe_allow_html=True,
+    )
+    st.markdown(trade_ledger_ui.TRADE_LEDGER_CSS, unsafe_allow_html=True)
     st.caption(
-        "One player or pick per line, either side. Runs entirely on data already loaded here — "
-        "no API key needed for the numbers below. Dynasty trades aren't algebra, so treat this as "
-        "a rough read, not a verdict: what it can't see (roster fit, a coach's usage pattern, next "
+        "Browse both rosters below to build a trade, or just type freely — either way prices "
+        "off data already loaded here. Dynasty trades aren't algebra, so treat this as a rough "
+        "read, not a verdict: what it can't see (roster fit, a coach's usage pattern, next "
         "week's injury news) is exactly what the panel is for."
     )
 
@@ -3045,18 +3057,9 @@ elif main_view == MAINTENANCE_VIEW:
     other_team_labels = sorted({v for k, v in owner_labels.items() if v != my_team_label})
     trade_partner = st.selectbox(
         "Trading with (optional)", options=["Not specified"] + other_team_labels, key="trade_calc_partner",
-        help="Adds their positional need to the context below — purely optional, the calculator "
-        "still works without it.",
+        help="Adds their positional need to the context below, and lets you browse their roster "
+        "below — purely optional, the calculator still works without it.",
     ) if other_team_labels else "Not specified"
-
-    tccol1, tccol2 = st.columns(2)
-    trade_send_text = tccol1.text_area(
-        "You send", key="trade_calc_send", height=110,
-        placeholder="One player or pick per line, e.g.\nJa'Marr Chase\n2027 Random Rd 1",
-    )
-    trade_receive_text = tccol2.text_area(
-        "You receive", key="trade_calc_receive", height=110, placeholder="One player or pick per line",
-    )
 
     # merge_player's fuzzy matcher keys on (first-initial, last-token) -- built for player
     # names, where that's a reasonable identity shortcut. Pick labels break that assumption:
@@ -3196,6 +3199,102 @@ elif main_view == MAINTENANCE_VIEW:
                 "external": external, "composite": composite,
             })
         return rows
+
+    # ---------------------------------------------------------- roster browse & select --
+    # Click a roster row to add/remove it from the free-text box below -- the box (and
+    # _price_trade_side above) stays the single source of truth for what's actually in the
+    # trade; this is purely a "type this for me" convenience layered on top. Nothing here
+    # re-implements pricing or matching: every asset's value comes from one call into
+    # _price_trade_side itself, the exact same path a hand-typed line goes through.
+    pick_ledger = build_pick_ledger(snapshot)
+
+    def _roster_assets(team_label: Optional[str], roster_id: Optional[int]) -> list[dict]:
+        if not team_label:
+            return []
+        assets: list[dict] = []
+        for p in player_universe:
+            if p.get("owner_name") != team_label or p.get("ownership") != "ROSTERED":
+                continue
+            priced = _price_trade_side(p["name"])[0]
+            assets.append({
+                "id": p["player_id"], "line": p["name"], "name": p["name"],
+                "pos": p["position"], "team": p.get("team"), "value": priced["value"], "is_pick": False,
+            })
+        # Only picks this roster has ACQUIRED via trade are enumerable -- an untouched pick is
+        # still just "their normal Nth-round pick" (see build_pick_ledger's own docstring),
+        # with no modeled inventory of how many future rounds/years to list. Those stay
+        # reachable through the free-text box below (e.g. "2027 Random Rd 1"), same as today.
+        if roster_id is not None:
+            for pick in pick_ledger.get(roster_id, {}).get("acquired", []):
+                line = f"{pick.get('season')} Random Rd {pick.get('round')}"
+                value = merger.pick_value(line) if merger.is_trade_values_loaded else None
+                original = owner_labels.get(pick.get("roster_id"), f"Roster {pick.get('roster_id')}")
+                assets.append({
+                    "id": f"pick_{pick.get('season')}_{pick.get('round')}_{pick.get('roster_id')}",
+                    "line": line, "name": f"{pick.get('season')} Rd {pick.get('round')} (via {original})",
+                    "pos": "PICK", "team": None, "value": value, "is_pick": True,
+                })
+        assets.sort(key=lambda a: (a["value"] is None, -(a["value"] or 0)))
+        return assets
+
+    def _render_roster_panel(title: str, assets: list[dict], side: str, state_key: str) -> None:
+        st.markdown(f"**{title}**")
+        if not assets:
+            st.caption("Nothing rostered here yet.")
+            return
+        filter_options = ["ALL"] + sorted({a["pos"] for a in assets})
+        chosen = st.segmented_control(
+            f"Filter — {title}", options=filter_options, default="ALL",
+            key=f"tl_filter_{side}", label_visibility="collapsed",
+        ) or "ALL"
+        visible = assets if chosen == "ALL" else [a for a in assets if a["pos"] == chosen]
+        current_lines = [ln.strip() for ln in st.session_state.get(state_key, "").splitlines() if ln.strip()]
+        with st.container(height=280):
+            for a in visible:
+                is_added = a["line"] in current_lines
+                bcol, ncol, vcol = st.columns([0.14, 0.58, 0.28])
+                if bcol.button(
+                    "✕" if is_added else "+", key=f"tl_btn_{side}_{a['id']}",
+                    help="Remove from the trade" if is_added else "Add to the trade",
+                ):
+                    if is_added:
+                        current_lines.remove(a["line"])
+                    else:
+                        current_lines.append(a["line"])
+                    st.session_state[state_key] = "\n".join(current_lines)
+                    st.rerun()
+                label_html = trade_ledger_ui.asset_label_html(a["name"], a["pos"], a.get("team"), a["is_pick"])
+                if is_added:
+                    label_html = trade_ledger_ui.selected_tag_html(side) + label_html
+                ncol.markdown(label_html, unsafe_allow_html=True)
+                vcol.markdown(trade_ledger_ui.value_html(a["value"]), unsafe_allow_html=True)
+
+    rp1, rp2 = st.columns(2)
+    with rp1:
+        _render_roster_panel(
+            "Your Roster", _roster_assets(my_team_label, roster["roster_id"] if roster else None),
+            "send", "trade_calc_send",
+        )
+    with rp2:
+        if trade_partner != "Not specified":
+            partner_roster_id = next((k for k, v in owner_labels.items() if v == trade_partner), None)
+            _render_roster_panel(
+                f"{trade_partner}'s Roster", _roster_assets(trade_partner, partner_roster_id),
+                "receive", "trade_calc_receive",
+            )
+        else:
+            st.markdown("**Their Roster**")
+            st.caption("Pick a trading partner above to browse their roster.")
+    st.caption("Click a row above to add or remove it below, or just type freely — both stay in sync.")
+
+    tccol1, tccol2 = st.columns(2)
+    trade_send_text = tccol1.text_area(
+        "You send", key="trade_calc_send", height=110,
+        placeholder="One player or pick per line, e.g.\nJa'Marr Chase\n2027 Random Rd 1",
+    )
+    trade_receive_text = tccol2.text_area(
+        "You receive", key="trade_calc_receive", height=110, placeholder="One player or pick per line",
+    )
 
     def _depth_label(team_label: Optional[str], position: str, override_cell: Optional[dict] = None) -> Optional[str]:
         """Strong/Average/Weak/None for one team's depth at one position, relative to the rest
@@ -3376,12 +3475,12 @@ elif main_view == MAINTENANCE_VIEW:
             with vcol2:
                 st.markdown("**Roster fit**")
                 st.caption(fit_line or "No player positions involved, or no team on file to check depth against.")
-            if raw_verdict in ("favorable", "unfavorable") and fit_verdict in ("favorable", "unfavorable") and raw_verdict != fit_verdict:
-                st.caption(
-                    "↔️ These two disagree — the raw numbers and your roster fit point opposite "
-                    "ways. Worth digging into which one actually matters more for this decision "
-                    "before trusting either alone."
-                )
+            # Neither verdict is subordinate to the other -- this describes the RELATIONSHIP
+            # between the two already-decided reads above, it never re-derives or averages
+            # them into a single "real" answer. See trade_ledger_ui.overall_synthesis.
+            overall = trade_ledger_ui.overall_synthesis(raw_verdict, fit_verdict)
+            if overall:
+                st.caption(f"**Overall:** {overall}")
 
         if position_detail:
             with st.expander("Positional depth detail"):
@@ -3432,15 +3531,17 @@ elif main_view == MAINTENANCE_VIEW:
     with bcol1:
         ask_moderator = st.button(
             "⚖️ Moderator Review", use_container_width=True, disabled=not _trade_ready,
-            help="Given the calculated balance and all available roster/context data, is this "
-            "actually a good trade? A fresh full debate if there's no prior conversation in this "
-            "chat to react to, otherwise a lightweight follow-up off it.",
+            help="Fast interpretation of the deterministic evidence above — given the calculated "
+            "balance and all available roster/context data, is this actually a good trade? A fresh "
+            "full debate if there's no prior conversation in this chat to react to, otherwise a "
+            "lightweight follow-up off it.",
         )
     with bcol2:
         ask_full_squad = st.button(
             "🔥 Full Squad Debate", type="primary", use_container_width=True, disabled=not _trade_ready,
-            help="Forces a fresh full panel run (Quant → Beat Tracker → Contrarian → Moderator) on "
-            "this exact trade, regardless of any prior conversation in this chat.",
+            help="Deeper escalation — forces a fresh full panel run (Quant → Beat Tracker → "
+            "Contrarian → Moderator) on this exact trade, regardless of any prior conversation "
+            "in this chat.",
         )
     if ask_moderator:
         st.session_state["question_input"] = (
