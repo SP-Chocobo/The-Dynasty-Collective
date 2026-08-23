@@ -312,6 +312,55 @@ class PositionGroupTests(unittest.TestCase):
         self.assertEqual(dm._position_group(""), "")
 
 
+class LoadAllDeterminismTests(unittest.TestCase):
+    """load_all's file ordering decides same-player dedup tiebreaks ("newest wins"), and a
+    fresh git checkout writes every committed file with near-identical mtimes -- under
+    mtime-only sorting those ties resolved by filesystem iteration order, which is not
+    deterministic across checkouts (confirmed live during the M13 backtest: byte-identical
+    data, different row order, a real 13-point value swing on one player's tie-break). These
+    tests pin the two halves of the fix: identical mtimes resolve canonically by filename
+    regardless of creation order, and a genuinely newer file still wins regardless of name."""
+
+    CSV_A = "name,team,position,rank,projection,proj_3yr,trade_value,source_date\nT Player,KC,RB,1.0,300.0,900.0,90.0,2026-08-01\n"
+    CSV_B = "name,team,position,rank,projection,proj_3yr,trade_value,source_date\nT Player,KC,RB,1.0,250.0,800.0,70.0,2026-08-01\n"
+
+    def _load_dir(self, write_order):
+        import os
+        tmpdir = tempfile.mkdtemp()
+        self.addCleanup(lambda: shutil.rmtree(tmpdir, ignore_errors=True))
+        for fname, content in write_order:
+            (Path(tmpdir) / fname).write_text(content)
+        # Force IDENTICAL mtimes -- the fresh-checkout condition the fix is for.
+        for fname, _ in write_order:
+            os.utime(Path(tmpdir) / fname, (1_700_000_000, 1_700_000_000))
+        rankings, _, _ = dm.load_all(Path(tmpdir))
+        return rankings
+
+    def test_identical_mtimes_resolve_by_filename_not_creation_order(self):
+        order_one = self._load_dir([("a_first.csv", self.CSV_A), ("b_second.csv", self.CSV_B)])
+        order_two = self._load_dir([("b_second.csv", self.CSV_B), ("a_first.csv", self.CSV_A)])
+        row_one = order_one[order_one["name"] == "T Player"].iloc[0]
+        row_two = order_two[order_two["name"] == "T Player"].iloc[0]
+        # Same winner both times (filename-canonical: b_second sorts last, so its row wins
+        # the keep-last dedup), independent of which file was physically written first.
+        self.assertEqual(row_one["trade_value"], row_two["trade_value"])
+        self.assertEqual(row_one["trade_value"], 70.0)
+
+    def test_a_genuinely_newer_file_still_wins_regardless_of_name(self):
+        import os
+        tmpdir = tempfile.mkdtemp()
+        self.addCleanup(lambda: shutil.rmtree(tmpdir, ignore_errors=True))
+        (Path(tmpdir) / "z_old_upload.csv").write_text(self.CSV_B)
+        (Path(tmpdir) / "a_new_upload.csv").write_text(self.CSV_A)
+        os.utime(Path(tmpdir) / "z_old_upload.csv", (1_700_000_000, 1_700_000_000))
+        os.utime(Path(tmpdir) / "a_new_upload.csv", (1_700_009_999, 1_700_009_999))
+        rankings, _, _ = dm.load_all(Path(tmpdir))
+        row = rankings[rankings["name"] == "T Player"].iloc[0]
+        # "a_" sorts FIRST by name, but it's newer -- mtime stays the primary key, so the
+        # newer upload's value (90.0) wins. The filename tiebreak never overrides recency.
+        self.assertEqual(row["trade_value"], 90.0)
+
+
 class DedupByNameAndPositionTests(unittest.TestCase):
     def _empty(self):
         return pd.DataFrame(columns=["name", "norm_name"])

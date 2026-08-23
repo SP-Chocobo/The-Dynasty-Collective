@@ -951,9 +951,17 @@ def load_all(
     if not projections_dir.exists():
         return empty, empty.copy(), empty.copy()
 
+    # (mtime, name), not mtime alone: mtime stays the primary key so a genuinely newer upload
+    # still wins the same-player dedup tiebreak below ("newest wins" is real product behavior,
+    # not an accident) -- but a fresh git checkout writes every committed file with
+    # near-identical mtimes in arbitrary filesystem order, and under mtime-only sorting those
+    # ties resolved by iterdir() order, which is filesystem-dependent. Confirmed live during
+    # the M13 backtest: two checkouts of byte-identical data produced different row orders,
+    # which flipped merge_player tie-breaks (a real 13-point value swing on one player) with
+    # zero code difference. Filename breaks mtime ties canonically instead.
     files = sorted(
         [p for p in projections_dir.iterdir() if p.suffix.lower() in (".csv", ".json", ".pdf")],
-        key=lambda p: p.stat().st_mtime,
+        key=lambda p: (p.stat().st_mtime, p.name),
     )
     rankings_frames, fa_frames, tvc_frames = [], [], []
     rankings_scores: list[float] = []
