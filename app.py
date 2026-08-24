@@ -301,6 +301,81 @@ _GLOBAL_CSS = """
         min-height: 44px;
         font-weight: 600;
     }
+    /* Draft Room UI-authority pass: the position filter used to be a raw st.multiselect --
+       a text input + dropdown + removable "x" chips, the single most "generic utility
+       control" element on the board's own page (see draft_board_ui.py for the standard
+       everything else on this screen is held to). Replaced with st.pills (same multi-select
+       semantics, same "display only" behavior, same options/default) styled to read as a
+       compact filter bar in the board's own idiom: small mono-caps buttons, not big rounded
+       chips. Unselected buttons stay deliberately quiet (muted border/text, no fill) so the
+       row doesn't compete with the board below it -- only the selected state gets real
+       color, and that color is --sky (the same "this is engaged" signal the embedded
+       board already uses for its own expanded-row state), never --emerald, which the
+       necessity pills on the very same screen already use to mean "this candidate is a good
+       value." One UI-state color, one analytical-signal color -- the two must never share a
+       hue on a screen where both appear at once. The Player Pool control (previously a
+       native st.radio) gets the same treatment via st.segmented_control, for the identical
+       reason: an exclusive single choice among a few named options is exactly what
+       segmented_control is for, and every other exclusive-choice control in this app
+       already uses it (main nav above, Draft Room mode below). */
+    .st-key-draft_room_position_filter [data-testid="stButtonGroup"],
+    .st-key-mock_draft_position_filter [data-testid="stButtonGroup"],
+    .st-key-draft_room_pool_scope_control [data-testid="stButtonGroup"],
+    .st-key-mock_draft_pool_scope_control [data-testid="stButtonGroup"] {
+        gap: 6px;
+        row-gap: 6px;
+    }
+    .st-key-draft_room_position_filter button[data-variant="pills"],
+    .st-key-mock_draft_position_filter button[data-variant="pills"],
+    .st-key-draft_room_pool_scope_control button[data-variant="segmented_control"],
+    .st-key-mock_draft_pool_scope_control button[data-variant="segmented_control"] {
+        min-height: 30px;
+        min-width: 0;
+        padding: 4px 12px;
+        font-family: 'JetBrains Mono', 'DejaVu Sans Mono', monospace;
+        font-size: 0.72rem;
+        font-weight: 600;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+        background: #1b1c1f;
+        border: 1px solid #2a2b2e !important;
+        color: #6b7076;
+        transition: border-color 0.15s ease, color 0.15s ease, background 0.15s ease;
+    }
+    .st-key-draft_room_position_filter button[data-variant="pills"] { border-radius: 6px; }
+    .st-key-draft_room_position_filter button[data-variant="pills"]:hover,
+    .st-key-mock_draft_position_filter button[data-variant="pills"]:hover,
+    .st-key-draft_room_pool_scope_control button[data-variant="segmented_control"]:hover,
+    .st-key-mock_draft_pool_scope_control button[data-variant="segmented_control"]:hover {
+        border-color: #3a3c42 !important;
+        color: #9ca3af;
+    }
+    .st-key-draft_room_position_filter button[data-variant="pills"][data-selected="true"],
+    .st-key-mock_draft_position_filter button[data-variant="pills"][data-selected="true"],
+    .st-key-draft_room_pool_scope_control button[data-variant="segmented_control"][data-selected="true"],
+    .st-key-mock_draft_pool_scope_control button[data-variant="segmented_control"][data-selected="true"] {
+        background: rgba(14,165,233,0.10);
+        border-color: #0ea5e9 !important;
+        color: #7dd3fc;
+    }
+    /* The "flag a player to compare" input was previously a full-width, always-visible
+       text box sitting inline above the filter row -- equal visual weight to the primary
+       filter/board despite being a rare, optional action. Tucked into a popover (the same
+       "secondary action behind a small trigger" language the league switcher already
+       established) so the default view is just the toolbar + board. */
+    .st-key-draft_room_flag_popover button {
+        min-height: 36px;
+        padding: 6px 14px;
+        font-size: 0.82rem;
+        font-weight: 500;
+        color: #9ca3af;
+        background: transparent;
+        border-color: #2a2b2e !important;
+    }
+    .st-key-draft_room_flag_popover button:hover {
+        color: #e5e7eb;
+        border-color: #3a3c42 !important;
+    }
 
     /* The Free Agents table's clickable sort header (real st.button()s, since a
        static HTML <th> can't call back into Python) needs to read as a table
@@ -3956,10 +4031,11 @@ elif main_view == DRAFT_VIEW:
                     st.session_state.mock_draft_last_snapshot = None
                     st.rerun()
             with scope_col:
-                mock_pool_scope_label = st.radio(
+                _mock_scope_by_key = {"all": "All players", "rookies_only": "Rookies only", "veterans_only": "Veterans only"}
+                mock_pool_scope_label = st.segmented_control(
                     "Player pool", options=["All players", "Rookies only", "Veterans only"],
-                    index=["all", "rookies_only", "veterans_only"].index(st.session_state.mock_draft_pool_scope),
-                    horizontal=True, key="mock_draft_pool_scope_radio",
+                    default=_mock_scope_by_key[st.session_state.mock_draft_pool_scope],
+                    required=True, key="mock_draft_pool_scope_control",
                 )
                 st.session_state.mock_draft_pool_scope = {
                     "All players": "all", "Rookies only": "rookies_only", "Veterans only": "veterans_only",
@@ -4117,11 +4193,11 @@ elif main_view == DRAFT_VIEW:
                         st.info("No candidates available in the current player pool/scope.")
                     elif mock_snap is not None:
                         mock_positions_present = sorted({c.position for c in mock_snap.candidates})
-                        mock_position_filter = st.multiselect(
-                            "Filter by position (display only -- never changes what's analyzed)",
-                            options=mock_positions_present, default=mock_positions_present,
-                            key="mock_draft_position_filter",
-                        )
+                        mock_position_filter = st.pills(
+                            "Position", options=mock_positions_present, selection_mode="multi",
+                            default=mock_positions_present, key="mock_draft_position_filter",
+                            help="Display only -- never changes what's analyzed, ranked, or scored.",
+                        ) or []
                         mock_filtered = (
                             [c for c in mock_snap.candidates if c.position in mock_position_filter]
                             if mock_position_filter else list(mock_snap.candidates)
@@ -4312,10 +4388,11 @@ elif main_view == DRAFT_VIEW:
                             except SleeperAPIError as exc:
                                 notify("error", f"Couldn't reach Sleeper: {exc}")
                     with top_row_col2:
-                        pool_scope_label = st.radio(
+                        _scope_by_key = {"all": "All players", "rookies_only": "Rookies only", "veterans_only": "Veterans only"}
+                        pool_scope_label = st.segmented_control(
                             "Player pool", options=["All players", "Rookies only", "Veterans only"],
-                            index=["all", "rookies_only", "veterans_only"].index(st.session_state.draft_room_pool_scope),
-                            horizontal=True, key="draft_room_pool_scope_radio",
+                            default=_scope_by_key[st.session_state.draft_room_pool_scope],
+                            required=True, key="draft_room_pool_scope_control",
                             help="Rookies only / Veterans only is detected from KeepTradeCut's own source data, not a maintained list.",
                         )
                         st.session_state.draft_room_pool_scope = {
@@ -4353,20 +4430,31 @@ elif main_view == DRAFT_VIEW:
                                 "settings": league.get("settings"),
                             }
 
-                            flag_query = st.text_input(
-                                "Also consider a specific player (optional)", key="draft_room_flag_query",
-                            )
+                            # One toolbar row for both meta-controls below -- the flag popover fills
+                            # in immediately (it doesn't depend on the board), the position pills
+                            # fill their column in further down, once positions_present exists. A
+                            # DeltaGenerator column handle stays writable no matter when in the
+                            # script it's used, so this doesn't require computing both up front.
+                            flag_col, filter_col = st.columns([1, 3])
                             flagged_player_id = None
-                            if flag_query:
-                                flag_matches = [m for m in matching_players(player_universe, flag_query) if m.get("available")]
-                                if flag_matches:
-                                    flag_labels = {m["player_id"]: f"{m['name']} ({m['position']}, {m['team']})" for m in flag_matches[:8]}
-                                    flagged_player_id = st.selectbox(
-                                        "Which one?", options=list(flag_labels.keys()),
-                                        format_func=lambda pid: flag_labels[pid], key="draft_room_flag_select",
+                            with flag_col:
+                                with st.popover(
+                                    "🏷️ Flag a player", key="draft_room_flag_popover", use_container_width=True,
+                                    help="Add a specific player to the board below as a labeled comparison point -- never changes the ranking or analysis.",
+                                ):
+                                    flag_query = st.text_input(
+                                        "Player name (optional)", key="draft_room_flag_query",
                                     )
-                                else:
-                                    st.caption("No available player matched that.")
+                                    if flag_query:
+                                        flag_matches = [m for m in matching_players(player_universe, flag_query) if m.get("available")]
+                                        if flag_matches:
+                                            flag_labels = {m["player_id"]: f"{m['name']} ({m['position']}, {m['team']})" for m in flag_matches[:8]}
+                                            flagged_player_id = st.selectbox(
+                                                "Which one?", options=list(flag_labels.keys()),
+                                                format_func=lambda pid: flag_labels[pid], key="draft_room_flag_select",
+                                            )
+                                        else:
+                                            st.caption("No available player matched that.")
 
                             # build_snapshot is the single most expensive call in this view (a full
                             # board computation plus one opponent board per intervening roster) --
@@ -4411,11 +4499,12 @@ elif main_view == DRAFT_VIEW:
                                     st.caption(f"Not your turn yet -- {on_clock_name} is on the clock.")
 
                                 positions_present = sorted({c.position for c in snap.candidates})
-                                position_filter = st.multiselect(
-                                    "Filter by position (display only -- never changes what's analyzed)",
-                                    options=positions_present, default=positions_present,
-                                    key="draft_room_position_filter",
-                                )
+                                with filter_col:
+                                    position_filter = st.pills(
+                                        "Position", options=positions_present, selection_mode="multi",
+                                        default=positions_present, key="draft_room_position_filter",
+                                        help="Display only -- never changes what's analyzed, ranked, or scored.",
+                                    ) or []
                                 filtered = [c for c in snap.candidates if c.position in position_filter] if position_filter else list(snap.candidates)
                                 display_snap = dataclasses.replace(snap, candidates=tuple(filtered))
 
