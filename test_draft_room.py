@@ -384,6 +384,137 @@ class DemandPicksSplitTests(unittest.TestCase):
         self.assertEqual(need_a, need_b)
 
 
+class RookieDraftRosterContextTieredGateTests(unittest.TestCase):
+    """Permanent regression battery for the behavioral contract validated in
+    run_rookie_roster_context_experiment.py (real data, both directions confirmed): roster
+    context may reorder comparable candidates; it must never manufacture superiority over a
+    meaningful tier gap. Kept as a standing test, not a one-off script result, because this is
+    exactly the kind of behavioral invariant that matters more than an isolated unit check --
+    it's a contract about what the ENGINE BELIEVES, not just what one function returns.
+
+    Runs against the real committed baseline (rookies_only pool, demand_picks=[] via the split
+    fixed alongside this test -- see DemandPicksSplitTests), same convention as every other
+    real-data test in this file. A real rookie class shifting between data refreshes could
+    change WHICH specific player is the standout; every assertion below is written against
+    whatever the real board's own top-2 gap currently is, never a hardcoded name."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.merger, cls.players_db = _build_pool_players_db(("QB", "RB", "WR", "TE"))
+        cls.league = {
+            "roster_positions": ["QB", "RB", "RB", "WR", "WR", "TE", "FLEX", "FLEX", "BN", "BN", "BN", "BN"],
+            "total_rosters": 12, "settings": {"type": 2},
+        }
+        cls.veteran_ids: dict[str, list[str]] = {}
+        vet_board = dr.compute_draft_board(
+            cls.merger, cls.players_db, [], my_roster_id="00", league=cls.league, mode="balanced",
+            pool_scope="veterans_only",
+        )
+        for row in vet_board:
+            cls.veteran_ids.setdefault(row["position"], []).append(row["player_id"])
+
+    def _roster_history(self, roster_id: str, mix: dict) -> list[dict]:
+        picks, pick_no = [], 1
+        for pos, n in mix.items():
+            for pid in self.veteran_ids.get(pos, [])[:n]:
+                picks.append({"pick_no": pick_no, "round": 1, "roster_id": roster_id, "player_id": pid})
+                pick_no += 1
+        return picks
+
+    def _rookie_board(self, history: list[dict]) -> list[dict]:
+        board = dr.compute_draft_board(
+            self.merger, self.players_db, history, my_roster_id="test", league=self.league, mode="balanced",
+            pool_scope="rookies_only", demand_picks=[],
+        )
+        return sorted(board, key=lambda r: -r["final_score"])
+
+    def _baseline_board(self) -> list[dict]:
+        return sorted(
+            dr.compute_draft_board(
+                self.merger, self.players_db, [], my_roster_id="test", league=self.league, mode="balanced",
+                pool_scope="rookies_only", demand_picks=[],
+            ),
+            key=lambda r: -r["universal_value"],
+        )
+
+    def _max_need_bonus_for(self, position: str) -> float:
+        """The REAL, position-specific ceiling on need_bonus -- read directly off a real board
+        rather than assumed from the flat NEED_BONUS_MAX constant, which only single-dedicated-
+        slot positions with real flex share can ever fully reach (QB/TE in this league's own
+        roster_positions cap well below it; only RB/WR's extra dedicated slot + flex share gets
+        close). Every rookie in this fixture's players_db is single-position, so eligibility_
+        bonus is always 0 -- need_bonus is the entire possible context swing here."""
+        starved_mix = {"QB": 1, "RB": 1, "WR": 1, "TE": 1}
+        starved_mix[position] = 0
+        board = self._rookie_board(self._roster_history("test", starved_mix))
+        candidates_at_pos = [r for r in board if r["position"] == position]
+        self.assertTrue(candidates_at_pos, f"no real rookie at {position} to measure its own need_bonus ceiling")
+        return max(r["need_bonus"] for r in candidates_at_pos)
+
+    def test_a_real_standout_survives_maximal_roster_need_at_the_number_two_players_position(self):
+        baseline = self._baseline_board()
+        self.assertGreaterEqual(len(baseline), 2, "rookie pool too thin to exercise this fixture")
+        leader, second = baseline[0], baseline[1]
+        gap = leader["universal_value"] - second["universal_value"]
+        # eligibility_bonus is 0 for every candidate here (single-position rookies), so
+        # need_bonus is the entire possible context swing -- this position's own real ceiling,
+        # not the flat NEED_BONUS_MAX constant (which only some positions can ever fully reach).
+        max_possible_context_swing = self._max_need_bonus_for(second["position"])
+        self.assertGreater(
+            gap, max_possible_context_swing,
+            "fixture's own real tier gap is too small to exercise the standout-protection contract "
+            "this run -- not a failure, but this test needs a real class where one exists",
+        )
+
+        # A roster maximally starved for the #2 player's OWN position -- the most favorable
+        # possible context for flipping the standout, and it still must not.
+        board = self._rookie_board(self._roster_history("test", {**{p: 1 for p in ("QB", "RB", "WR", "TE")}, second["position"]: 0}))
+        self.assertEqual(
+            board[0]["player_id"], leader["player_id"],
+            "roster need for the #2 player's own position flipped a real tier-gap standout -- "
+            "context manufactured superiority over a meaningful gap, the exact failure mode this "
+            "contract exists to catch",
+        )
+
+    def test_roster_context_can_break_a_real_near_tie(self):
+        # The other half of the contract: context must not be inert either. Find a real
+        # cross-position near-tie pair in the top of the board -- gap no larger than the
+        # trailing candidate's OWN real need_bonus ceiling (see _max_need_bonus_for; a flat
+        # NEED_BONUS_MAX threshold over-qualifies single-dedicated-slot positions that can
+        # never actually close a gap that large) -- and confirm starving the trailer's own
+        # position moves it ahead of the (still-close) leader.
+        baseline = self._baseline_board()[:12]
+        ceiling_cache: dict[str, float] = {}
+
+        def ceiling(pos: str) -> float:
+            if pos not in ceiling_cache:
+                ceiling_cache[pos] = self._max_need_bonus_for(pos)
+            return ceiling_cache[pos]
+
+        near_tie_pair = None
+        for i, leader in enumerate(baseline):
+            for trailer in baseline[i + 1:]:
+                if trailer["position"] == leader["position"]:
+                    continue  # same position: need_bonus can't differentiate them
+                gap = leader["universal_value"] - trailer["universal_value"]
+                if 0 < gap <= ceiling(trailer["position"]):
+                    near_tie_pair = (leader, trailer)
+                    break
+            if near_tie_pair:
+                break
+        if near_tie_pair is None:
+            self.skipTest("no real cross-position near-tie in the current baseline's top 12 to exercise this contract")
+        leader, trailer = near_tie_pair
+
+        board = self._rookie_board(self._roster_history("test", {**{p: 1 for p in ("QB", "RB", "WR", "TE")}, trailer["position"]: 0}))
+        board_by_id = {r["player_id"]: r for r in board}
+        self.assertGreaterEqual(
+            board_by_id[trailer["player_id"]]["final_score"], board_by_id[leader["player_id"]]["final_score"],
+            "starving the trailing near-tied candidate's own position should let roster need "
+            "close a real but modest gap -- context should not be inert between comparable options",
+        )
+
+
 class DataIntegrityTests(unittest.TestCase):
     """Sanity checks on the pool draft_room.py actually scores, decoupled from the scoring
     math itself -- a scoring-behavior test failing because the underlying data was thin or
