@@ -210,7 +210,19 @@ TIME_HORIZON_CLAMP = (-10.0, 10.0)  # season-proj percentile)
 # Additive and one-directional: an injury can only ever subtract from universal_value, never
 # add (a hard invariant -- see test_draft_room.py), so a thin-data variance side-effect can
 # never turn a health flag into a value boost.
-RISK_ADJ = {"IR": -18.0, "O": -10.0, "D": -5.0, "Q": -1.5}
+#
+# Full-word keys, matching Sleeper's own real injury_status vocabulary and every other
+# injury_status literal already in this codebase (app.py's INJURY_OK_STATUSES, every test
+# fixture in test_lineup_readiness.py/test_screen_context.py). Previously kept single-letter
+# codes ("O"/"D"/"Q") for everything but "IR" -- since player_universe.py and this module's
+# own players_db construction both pass injury_status straight through from Sleeper's raw
+# payload with zero transformation, those abbreviated keys never matched a real value, so
+# Out/Doubtful/Questionable players silently got NO discount at all (confirmed directly: a
+# real player set to injury_status="Out" lost exactly 0.0 universal_value pre-fix). "IR" was
+# the one status this went unnoticed for, since it's already an abbreviation in Sleeper's own
+# real vocabulary too -- see test_risk_adj_vocabulary_mismatch... in test_draft_room.py for
+# the full evidence trail.
+RISK_ADJ = {"IR": -18.0, "Out": -10.0, "Doubtful": -5.0, "Questionable": -1.5}
 
 # The ONLY team-specific term. Added on top of universal_value, never multiplied into it.
 # Split by urgency, not a flat per-slot rate -- see module docstring's need_bonus section for

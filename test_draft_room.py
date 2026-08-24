@@ -832,6 +832,42 @@ class InvariantTests(unittest.TestCase):
         if injured_id in by_id_injured:
             self.assertLessEqual(by_id_injured[injured_id], by_id_healthy.get(injured_id, float("inf")))
 
+    def test_risk_adj_uses_sleepers_real_full_word_injury_vocabulary(self):
+        # Regression for a real bug found and fixed this session: RISK_ADJ used to key on
+        # single-letter codes ("O"/"D"/"Q") for everything except "IR". Every OTHER
+        # injury_status literal anywhere else in this exact codebase (test_lineup_readiness.py,
+        # test_screen_context.py, app.py's own INJURY_OK_STATUSES) uses the full word instead,
+        # and since player_universe.py/draft_room.py's own players_db construction both pass
+        # injury_status straight through from Sleeper's raw payload with zero transformation,
+        # the abbreviated keys never matched a real value -- confirmed directly: a real player
+        # set to injury_status="Out" lost exactly 0.0 universal_value pre-fix, not the -10.0
+        # RISK_ADJ documented as the intended penalty. Only "IR" worked, since it's already an
+        # abbreviation in Sleeper's own real vocabulary too -- exactly the one status the
+        # pre-existing injury test (immediately above) happened to cover, so nothing caught this.
+        self.assertEqual(dr.RISK_ADJ.get("Out"), -10.0)
+        self.assertEqual(dr.RISK_ADJ.get("Doubtful"), -5.0)
+        self.assertEqual(dr.RISK_ADJ.get("Questionable"), -1.5)
+        self.assertEqual(dr.RISK_ADJ.get("IR"), -18.0)
+
+        healthy = dict(self.players_db)
+        pid = next(iter(healthy))
+        out_status = dict(healthy)
+        out_status[pid] = dict(out_status[pid], injury_status="Out")
+
+        board_healthy = dr.compute_draft_board(
+            self.merger, healthy, [], my_roster_id="99", league=LIGHT_IDP_LEAGUE, mode="balanced",
+        )
+        board_out = dr.compute_draft_board(
+            self.merger, out_status, [], my_roster_id="99", league=LIGHT_IDP_LEAGUE, mode="balanced",
+        )
+        uv_healthy = next((r["universal_value"] for r in board_healthy if r["player_id"] == pid), None)
+        uv_out = next((r["universal_value"] for r in board_out if r["player_id"] == pid), None)
+        if uv_healthy is not None and uv_out is not None:
+            self.assertAlmostEqual(
+                uv_healthy - uv_out, 10.0,
+                msg="a player marked 'Out' should lose exactly the -10.0 RISK_ADJ discount",
+            )
+
     def test_need_bonus_is_zero_once_a_position_is_fully_satisfied(self):
         board = dr.compute_draft_board(
             self.merger, self.players_db, [], my_roster_id="99", league=LIGHT_IDP_LEAGUE, mode="balanced",
