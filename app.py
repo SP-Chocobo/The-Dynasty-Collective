@@ -3035,6 +3035,46 @@ if main_view == MATCHUP_VIEW:
                             st.rerun()
 
 elif main_view == MAINTENANCE_VIEW:
+    # ------------------------------------------------------------------ attention ledger --
+    # The settled Maintenance concept: N-C is the baseline (one lightweight strip, the existing
+    # Free Agents / Trade Calculator / Reference Material sections completely unchanged
+    # beneath it) -- deliberately not a restructure, since these three workflows share no
+    # underlying data the way League's two lenses do. Every chip below is a direct read of a
+    # fact some other part of this app already computes; this must never grow into a second
+    # opinion/ranking engine (the concept doc's own guardrail on "top FA by need" -- resolved
+    # here by reusing Matchup's exact "Thin at X" phrasing off the shared depth_ratings
+    # judgment, rather than ranking free agents at all).
+    _attn_chips: list[tuple[str, str]] = []
+    if merger.is_free_agents_loaded and merger.free_agents_is_stale:
+        _attn_chips.append(("warn", f"⚠️ FA data {merger.free_agents_staleness_days}d old"))
+    _attn_uncaptioned = sum(1 for a in list_attachments() if not a["caption"].strip())
+    if _attn_uncaptioned:
+        _attn_chips.append(("info", f"📎 {_attn_uncaptioned} uncaptioned attachment(s)"))
+    _attn_depth = positional_depth(player_universe, merger)
+    _attn_my_team = roster_owner_names(snapshot).get(roster["roster_id"]) if roster else None
+    if _attn_my_team and _attn_my_team in _attn_depth:
+        _attn_thin = [
+            pos for pos in sorted(_attn_depth[_attn_my_team])
+            if depth_ratings.depth_label(
+                _attn_depth[_attn_my_team].get(pos, {"count": 0, "value": None}),
+                [teams[pos] for teams in _attn_depth.values() if pos in teams],
+            ) in ("Weak", "None — no rostered players here")
+        ]
+        if _attn_thin:
+            _attn_chips.append(("warn", f"Thin at {', '.join(_attn_thin)}"))
+
+    if _attn_chips:
+        _attn_tone_color = {"warn": "var(--gold-b)", "info": "var(--sky-b)"}
+        _attn_chip_html = "".join(
+            f'<span style="display:inline-flex;align-items:center;gap:.35rem;'
+            f"font-family:'JetBrains Mono',monospace;font-size:.78rem;border-radius:5px;"
+            f'padding:.3rem .6rem;margin:0 .5rem .5rem 0;color:{_attn_tone_color[tone]};'
+            f'border:1px solid {_attn_tone_color[tone]};background:rgba(255,255,255,.03);">{text}</span>'
+            for tone, text in _attn_chips
+        )
+        st.markdown(f"<div>{_attn_chip_html}</div>", unsafe_allow_html=True)
+        st.caption("A quick read before you dig in below — everything here traces to a fact the sections beneath it already compute.")
+
     # ------------------------------------------------------------------ free agents --
 
     st.markdown("---")
