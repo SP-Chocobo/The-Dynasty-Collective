@@ -72,8 +72,7 @@ DEVIATION_UNSUPPORTED_CEILING = 2
 BPA_VISIBLE_RATE_FLOOR = 0.95
 
 
-def _build_pool_players_db() -> tuple[dm.DataMerger, dict[str, dict]]:
-    merger = dm.DataMerger()
+def _build_pool_players_db(merger: dm.DataMerger) -> dict[str, dict]:
     proj = merger.projections
     players_db: dict[str, dict] = {}
     pid = 0
@@ -86,7 +85,7 @@ def _build_pool_players_db() -> tuple[dm.DataMerger, dict[str, dict]]:
                 "first_name": parts[0].upper(), "last_name": " ".join(parts[1:]).title(),
                 "position": pos, "fantasy_positions": [pos], "team": row.get("team"),
             }
-    return merger, players_db
+    return players_db
 
 
 def classify_out_of_sample_result(
@@ -108,9 +107,6 @@ def classify_out_of_sample_result(
 
 
 def main() -> None:
-    merger, players_db = _build_pool_players_db()
-    print(f"Loaded {len(players_db)} real baseline players across {POSITIONS}.")
-
     forward_slots = [str(i) for i in range(1, NUM_TEAMS + 1)]
     pick_order = ds.generate_pick_order(forward_slots, total_rounds=NUM_ROUNDS, draft_type="3rr")
 
@@ -120,6 +116,16 @@ def main() -> None:
     for trial in TRIALS:
         label = trial["label"]
         baseline = BASELINES[trial["baseline_key"]]
+        # Fresh, format-hinted DataMerger per trial -- standard_1qb_3rr and superflex_3rr need
+        # DIFFERENT hints, so one merger was never going to be correct for both even before
+        # this had a hint at all. See run_draft_validation.py's own module docstring for the
+        # bug this mirrors: without a hint, a player in more than one format-specific Dynasty
+        # Rankings export resolves by raw file mtime, not by this trial's own real format.
+        merger = dm.DataMerger(league_format={
+            "scoring": "ppr", "superflex": trial["superflex"], "te_premium": False,
+        })
+        players_db = _build_pool_players_db(merger)
+        print(f"Loaded {len(players_db)} real baseline players across {POSITIONS} for '{label}'.")
         league = dr.build_mock_league(
             teams=NUM_TEAMS, superflex=trial["superflex"], scoring="ppr", te_premium=False, dynasty=True,
         )

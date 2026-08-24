@@ -4,6 +4,14 @@ JSON for the Phase 2 baseline divergence report. Measurement only -- computes no
 whether any node's choice was "right," and does not touch pick_synthesis/draft_room.
 
 Requires data/draft_simulation_trials/*.json to already exist (run_draft_validation.py).
+
+A fresh, format-hinted DataMerger is built per trial label (matching that label's own real
+league), not one merger shared across every label regardless of format -- see
+run_draft_validation.py's own module docstring for the bug this mirrors and fixes: without a
+league_format hint, a player appearing in more than one format-specific Dynasty Rankings export
+(PPR/TE-premium/superflex) resolves to "whichever file sorts last by mtime," not to this
+trial's own actual format, which would recompute a wrong BPA/opponent-board row for that player
+on exactly the trials (superflex here) where the hint actually matters.
 """
 
 from __future__ import annotations
@@ -29,8 +37,7 @@ TRIAL_LEAGUE_CONFIG = {
 }
 
 
-def _build_pool_players_db() -> tuple[dm.DataMerger, dict[str, dict]]:
-    merger = dm.DataMerger()
+def _build_pool_players_db(merger: dm.DataMerger) -> dict[str, dict]:
     proj = merger.projections
     players_db: dict[str, dict] = {}
     pid = 0
@@ -43,7 +50,7 @@ def _build_pool_players_db() -> tuple[dm.DataMerger, dict[str, dict]]:
                 "first_name": parts[0].upper(), "last_name": " ".join(parts[1:]).title(),
                 "position": pos, "fantasy_positions": [pos], "team": row.get("team"),
             }
-    return merger, players_db
+    return players_db
 
 
 def _load_trajectory(label: str) -> DraftTrajectory:
@@ -53,13 +60,16 @@ def _load_trajectory(label: str) -> DraftTrajectory:
 
 
 def main() -> None:
-    merger, players_db = _build_pool_players_db()
     summary: dict = {}
 
     for label, league_cfg in TRIAL_LEAGUE_CONFIG.items():
         print(f"Loading trajectory '{label}'...")
         trajectory = _load_trajectory(label)
         league = dr.build_mock_league(**league_cfg)
+        merger = dm.DataMerger(league_format={
+            "scoring": league_cfg["scoring"], "superflex": league_cfg["superflex"], "te_premium": league_cfg["te_premium"],
+        })
+        players_db = _build_pool_players_db(merger)
 
         print(f"  running counterfactual comparison over {len(trajectory.picks)} picks...")
         comparisons = compare_trajectory(merger, players_db, league, trajectory)

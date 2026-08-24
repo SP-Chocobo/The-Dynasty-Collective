@@ -46,8 +46,7 @@ TRIAL_LEAGUE_CONFIG = {
 CREDIBLE_PATH_THRESHOLD = 0.10
 
 
-def _build_pool_players_db() -> tuple[dm.DataMerger, dict[str, dict]]:
-    merger = dm.DataMerger()
+def _build_pool_players_db(merger: dm.DataMerger) -> dict[str, dict]:
     proj = merger.projections
     players_db: dict[str, dict] = {}
     pid = 0
@@ -60,17 +59,20 @@ def _build_pool_players_db() -> tuple[dm.DataMerger, dict[str, dict]]:
                 "first_name": parts[0].upper(), "last_name": " ".join(parts[1:]).title(),
                 "position": pos, "fantasy_positions": [pos], "team": row.get("team"),
             }
-    return merger, players_db
+    return players_db
 
 
 def main() -> None:
-    merger, players_db = _build_pool_players_db()
     forward_slots = [str(i) for i in range(1, NUM_TEAMS + 1)]
     pick_order = ds.generate_pick_order(forward_slots, total_rounds=NUM_ROUNDS)
 
     summary: dict = {}
     for label, league_cfg in TRIAL_LEAGUE_CONFIG.items():
         league = dr.build_mock_league(**league_cfg)
+        merger = dm.DataMerger(league_format={
+            "scoring": league_cfg["scoring"], "superflex": league_cfg["superflex"], "te_premium": league_cfg["te_premium"],
+        })
+        players_db = _build_pool_players_db(merger)
         data = json.loads((TRIALS_DIR / f"{label}.json").read_text())
 
         picks_so_far: list[dict] = []

@@ -25,6 +25,7 @@ import dataclasses
 import json
 from pathlib import Path
 
+import data_merger as dm
 import draft_room as dr
 from draft_counterfactual import compare_trajectory
 from option_set_analysis import analyze_option_sets
@@ -36,7 +37,6 @@ LABELS = ("standard_1qb", "superflex")
 
 
 def main() -> None:
-    merger, players_db = _build_pool_players_db()
     summary: dict = {}
 
     for label in LABELS:
@@ -44,6 +44,13 @@ def main() -> None:
         print(f"Loading trajectory '{label}'...")
         trajectory = _load_trajectory(label)
         league = dr.build_mock_league(**league_cfg)
+        # Fresh, format-hinted DataMerger per trial -- see run_counterfactual_analysis.py's own
+        # module docstring for the bug this avoids (a shared, hint-less merger let a player's
+        # value resolve to whichever format-specific ranking file sorted last by mtime).
+        merger = dm.DataMerger(league_format={
+            "scoring": league_cfg["scoring"], "superflex": league_cfg["superflex"], "te_premium": league_cfg["te_premium"],
+        })
+        players_db = _build_pool_players_db(merger)
 
         comparisons = compare_trajectory(merger, players_db, league, trajectory)
         records = analyze_option_sets(comparisons, trajectory)
