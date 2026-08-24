@@ -109,10 +109,29 @@ why greedy is a real trap here) against THIS roster's actual drafted players, co
 best lineup with the candidate's full eligible-position set against the best lineup with only
 his single primary position. A single-position player's bonus is exactly 0 by construction
 (both calls solve an identical problem), so this never touches a player the rest of this
-module already scores correctly. Unlike need_bonus it is NOT capped -- it's a real marginal-
-value number, self-limiting because a candidate can never contribute more than his own value
-(the best case is unlocking a genuinely empty slot outright), not a heuristic nudge that needs
-an artificial ceiling.
+module already scores correctly.
+
+CORRECTION (a real third-pass bug, caught by an adversarial audit distinct from the first two
+above -- see git history and TRADE_VALUE_SCALE_MAX/ELIGIBILITY_BONUS_MAX's own comment for the
+full evidence trail): this section used to say eligibility_bonus was deliberately left
+uncapped because it's a self-limiting real economic quantity. That reasoning had a real hole
+in it -- "self-limiting" only means bounded by the candidate's own trade_value, a DIFFERENT
+0-100 scale than the bpa-anchored universal_value/need_bonus sum it gets added into, and the
+two scales are not interchangeable on real data (mean divergence 11.7, max 63.0). Left
+unconverted, this was the one contextual term with no bpa-scale bound at all, and it could
+override a real universal_value gap outright -- confirmed on the committed baseline, an 82.00
+bonus (6.8x NEED_BONUS_MAX) flipping a 30+ point gap, reproduced in both a standard 1QB league
+and an IDP league. It IS now rescaled into universal_value's own bpa scale and capped at
+ELIGIBILITY_BONUS_MAX, same reasoning and same bound as need_bonus: both terms answer "how
+good is this player FOR THIS ROSTER," and that class of question is deliberately capped so it
+can inform a close call without ever overriding a real talent gap (see
+EligibilityBonusWiringTests in test_draft_room.py, specifically
+test_eligibility_bonus_cannot_flip_a_large_universal_value_gap, the missing mirror this bug
+exposed of test_need_bonus_cannot_flip_a_large_universal_value_gap). The entire prior test
+corpus was structurally blind to this: every fixture anywhere in this project built
+single-position fantasy_positions, for which eligibility_bonus is exactly 0.0 by construction
+-- a lesson worth remembering the next time a path looks covered because a large test suite
+passes.
 
 confidence is a SEPARATE number from value entirely, and now built from bpa_source directly
 (cheap -- no extra per-player lookup) rather than composite-score cross-source agreement,

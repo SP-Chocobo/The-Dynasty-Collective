@@ -1,11 +1,16 @@
 """
 Covers the hard invariants draft_room.py's own math must never violate (per its module
-docstring), plus regression coverage for the two real bugs caught building it: raw
+docstring), plus regression coverage for the real bugs caught building and auditing it: raw
 trade_value used as a cross-positional anchor (silently buried elite IDP below replacement-
-level offense), and a missing-projection position collapsing every player to an identical
-score. Uses the real committed baseline, same as test_data_merger.py's
-CompositeScoreOnRealBaselineTests, since these bugs only ever showed up against real data --
-a small synthetic fixture didn't have enough depth to reproduce either one.
+level offense), a missing-projection position collapsing every player to an identical score,
+and eligibility_bonus being added into team_acquisition_value in the wrong units (see
+EligibilityBonusWiringTests -- a real adversarial-audit finding, reproduced on real data
+across two league formats, that the entire prior test corpus was structurally blind to
+because every fixture here and elsewhere built single-position fantasy_positions). Uses the
+real committed baseline, same as test_data_merger.py's CompositeScoreOnRealBaselineTests,
+since these bugs only ever showed up against real data -- a small synthetic fixture didn't
+have enough depth (or, for the third bug, enough real multi-position eligibility) to
+reproduce any of them.
 """
 
 import time
@@ -630,6 +635,44 @@ class DataIntegrityTests(unittest.TestCase):
             self.assertFalse(self.pool.loc[self.pool["position"] == position, "projection"].notna().any())
         for position in ("RB", "WR"):
             self.assertTrue(self.pool.loc[self.pool["position"] == position, "projection"].notna().any())
+
+
+class HalfPprIsAKnownDataLimitationTests(unittest.TestCase):
+    """Couples app.py's Half-PPR disclosure caption to the fact it actually describes. The
+    committed baseline has no dedicated Half-PPR rankings export (see
+    data_merger.RankingsFormatSelectionOnRealBaselineTests and
+    _rankings_format_match_score's own docstring) -- Full PPR is the closest available file
+    and wins the match, so a half_ppr and a ppr league produce byte-identical boards today.
+    That is a documented, disclosed data-availability limitation (app.py shows an info caption
+    whenever fmt["scoring"] == "Half PPR"), not a silent bug. If a real Half-PPR export is ever
+    added, THIS test should start failing -- that is the signal to also update app.py's
+    disclosure text and the Mock Draft scoring radio's help tooltip, not just this assertion."""
+
+    def test_half_ppr_and_full_ppr_boards_are_byte_identical_on_the_real_baseline(self):
+        merger_ppr = dm.DataMerger(league_format={"scoring": "ppr", "superflex": False, "te_premium": False})
+        merger_half = dm.DataMerger(league_format={"scoring": "half_ppr", "superflex": False, "te_premium": False})
+        players_db = {}
+        pid = 0
+        for pos in ("QB", "RB", "WR", "TE"):
+            sub = merger_ppr.projections[merger_ppr.projections["position"] == pos].sort_values(
+                "trade_value", ascending=False,
+            )
+            for _, row in sub.iterrows():
+                pid += 1
+                parts = row["norm_name"].split()
+                players_db[str(pid)] = {
+                    "first_name": parts[0].upper(), "last_name": " ".join(parts[1:]).title(),
+                    "position": pos, "fantasy_positions": [pos], "team": row.get("team"),
+                }
+        league = {
+            "roster_positions": ["QB", "RB", "RB", "WR", "WR", "TE", "FLEX", "BN", "BN", "BN"],
+            "total_rosters": 12, "settings": {"type": 2},
+        }
+        board_ppr = dr.compute_draft_board(merger_ppr, players_db, [], my_roster_id="99", league=league, mode="balanced")
+        board_half = dr.compute_draft_board(merger_half, players_db, [], my_roster_id="99", league=league, mode="balanced")
+        by_id_ppr = {r["player_id"]: r["universal_value"] for r in board_ppr}
+        by_id_half = {r["player_id"]: r["universal_value"] for r in board_half}
+        self.assertEqual(by_id_ppr, by_id_half)
 
 
 class RealBaselineIDPBugRegressionTests(unittest.TestCase):

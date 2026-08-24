@@ -73,7 +73,15 @@ so far in the current draft.
   `universal_value` (team-agnostic: BPA + time-horizon + risk adjustments)
   and **Team Acquisition Value (TAV)**, CDME's principal quantitative
   output — `universal_value + need_bonus + eligibility_bonus`, this
-  roster's own fit layered on top of the team-agnostic number.
+  roster's own fit layered on top of the team-agnostic number. All three
+  terms are unit-matched to the same bpa-anchored scale and individually
+  bounded (`need_bonus` capped at `NEED_BONUS_MAX`; `eligibility_bonus` —
+  the value a candidate's multi-position flexibility unlocks, computed by
+  `lineup_optimizer.py`'s real assignment-problem solver — is rescaled from
+  its native Draft-Sharks-`trade_value` currency into that same bpa scale
+  and capped at `ELIGIBILITY_BONUS_MAX`) specifically so neither roster-fit
+  term can override a genuine talent gap on its own; see "Known Limitations
+  & Audit History" below for the real defect this bound was added to close.
 - `pick_synthesis.py` adds the contextual signals that don't answer "how
   good is this player" but "how badly do I need to make THIS selection
   right now": positional cliff, survival probability, denial/rival
@@ -174,6 +182,24 @@ option-set completeness — against real simulated drafts. That harness
 reads CDME's outputs; it is not part of CDME itself, and never modifies
 production decision logic on its own authority (see each module's own
 docstring for its own explicit, pre-declared thresholds).
+
+**What this harness has, and has not, established.** Multi-chair
+("12-chair") simulations run every seat through the same production
+`build_snapshot` machinery — never a simulation-specific valuation
+shortcut — and have confirmed each chair's roster/pick state stays
+correctly isolated (no cross-chair contamination) and that contextual terms
+(need, eligibility, cliff, denial) stay bounded relative to real
+`universal_value` gaps rather than overriding them. That is a real,
+demonstrated finding. It is **not** evidence that CDME's picks are
+"better" than BPA or market ADP in any outcome sense — no real-season
+result data feeds this harness — and a divergence from BPA/ADP in a
+simulated trajectory is not treated as inherently correct just because the
+context engine produced it; sometimes BPA or ADP is the right call, and the
+harness's own option-set/divergence measurements are read that way, not as
+a scorecard CDME is trying to win. Nor does path-dependent divergence
+across simulated drafts constitute proof that a Markov/state-sufficiency
+assumption holds — it demonstrates the mechanism is contextually
+responsive, not that its state representation is complete or optimal.
 
 **Looking further ahead:** see `ROADMAP.md` for the longer-term vision of a
 centrally maintained, canonical knowledge substrate feeding CDME and every
@@ -748,6 +774,95 @@ data/player_aliases.json    Manual name-matching overrides (gitignored).
 .streamlit/config.toml      Dark theme — see "Notes" below for why this file matters.
 ```
 
+## Known Limitations & Audit History
+
+This project has gone through a structured internal audit cycle (an initial
+build-and-validate pass, followed by a dedicated adversarial review pass
+against the actual production code paths rather than prior conclusions)
+before being frozen as a candidate baseline for independent review. This
+section records what that process actually found — both the defect it
+caught and fixed, and the real, deliberately unresolved limitations it
+chose to document rather than change — so the distinction between
+"measured and fixed," "measured and intentionally left alone," and
+"known gap" stays visible rather than getting lost once the code settles.
+
+**The eligibility-bonus unit defect (fixed).** `eligibility_bonus` — the
+value a candidate's multi-position flexibility unlocks — is computed by
+`lineup_optimizer.py` as a real assignment-problem answer, correctly
+returned in whatever currency its caller supplies (Draft Sharks
+`trade_value`, a 0–100 scale). It was being added directly into
+`team_acquisition_value`, a sum whose other two terms live on a different,
+non-interchangeable 0–100 scale (bpa-anchored `universal_value` and
+`need_bonus`, which is capped at `NEED_BONUS_MAX` for exactly this reason).
+Measured on the committed baseline, the two scales diverge by a mean of
+11.7 points and up to 63.0 — and because `eligibility_bonus` was the one
+contextual term with no equivalent cap, it could, on real data, produce a
+bonus of 82.00 (6.8x `NEED_BONUS_MAX`) that overrode a 30+ point real
+`universal_value` gap outright, reproduced in both a standard 1QB league
+(WR/TE dual eligibility) and an IDP league (WR/DB). **This is fixed**: the
+term is now rescaled into `universal_value`'s own bpa scale at the point of
+consumption (`draft_room.py`, `TRADE_VALUE_SCALE_MAX`/
+`ELIGIBILITY_BONUS_MAX`) and bounded equal to `NEED_BONUS_MAX`, on the
+reasoning that both terms answer the same question — "how good is this
+player for THIS roster" — and the architecture already fixes the bound for
+that class. `lineup_optimizer.py` itself was intentionally left untouched
+and stays general-purpose (its other consumer, `roster_diagnostics.py`,
+genuinely wants raw `trade_value` units).
+
+**The methodology lesson this defect exposed.** A large, passing test suite
+can still fail to exercise an entire production dimension if its fixtures
+don't reflect real data shapes. Every harness and test file in this project
+built `players_db` with single-position `fantasy_positions`, for which
+`eligibility_bonus` is exactly `0.0` by construction — so the defect above
+was live in production (the real app uses Sleeper's own genuinely
+multi-position `fantasy_positions`) while measuring as `0.0` across the
+entire prior validation corpus, including every multi-chair simulation.
+Permanent regression coverage now exists in `test_draft_room.py`'s
+`EligibilityBonusWiringTests` — including a test that reproduces the exact
+original defect scenario and was verified to actually fail under the
+pre-fix math, not just pass by construction — but the general lesson is
+preserved here as methodology: a fixture that's cheaper to build than real
+data can silently make an entire code path untestable without ever
+producing a failing test.
+
+**Known, deliberately unresolved limitations:**
+
+- **Half PPR has no dedicated rankings source.** The committed Draft Sharks
+  baseline covers Standard, Full PPR, and their superflex/TE-premium
+  variants, but no Half-PPR-specific export — `_rankings_format_match_score`
+  in `data_merger.py` already documents this and picks Full PPR as the
+  closest available approximation rather than leaving a Half-PPR league
+  unscored. Measured directly: a Half-PPR and Full-PPR board are
+  byte-identical today (`HalfPprIsAKnownDataLimitationTests` in
+  `test_draft_room.py` pins this down as a regression-coupled fact, not
+  just a note — if a real Half-PPR source is ever added, that test starts
+  failing and is the signal to update this section too). The app now
+  discloses this directly wherever Half PPR is shown or selectable, rather
+  than silently returning Full-PPR numbers under a different label.
+- **Dynasty injury discount is trajectory-aware, and that interaction is
+  measured but not proven optimal.** In dynasty leagues, `risk_adj` (the
+  injury-status discount) is scaled down for a player whose
+  `time_horizon_adj` is genuinely positive — a health flag matters less
+  against a long-horizon value case than against one built on already-
+  realized production — floored so an injury never becomes irrelevant even
+  for the strongest forward trajectory. This was promoted to production
+  after real-data stress testing found it reorders only close, contextual
+  comparisons and never overrides a large (25+ point) `universal_value`
+  gap. What it has **not** been validated against is real dynasty outcome
+  data — the interaction is a principled, bounded, documented calibration
+  choice, not an empirically backtested one, the same honesty this project
+  applies to its other unproven weighting constants.
+- **KeepTradeCut consensus data has no freshness tracking.** Draft Sharks'
+  own exports (Dynasty Rankings, Free Agent Finder) get the
+  Fresh/Recent/Aging/Stale treatment described above; KTC-derived
+  `consensus_rank`/`consensus_tier`/`reach_label` data, which can reach the
+  optional LLM debate layer via `PickSnapshot`, currently does not. It
+  never reaches CDME's own deterministic valuation or `pick_necessity`
+  math — confirmed directly, `compute_draft_board` and
+  `compute_pick_necessity` have no executable reference to any consensus
+  field — so a stale KTC export cannot silently change a deterministic
+  recommendation, only the market-consensus color an LLM debate sees.
+
 ## Notes
 
 - **`.streamlit/config.toml` is what actually makes this a dark app.** The
@@ -819,7 +934,10 @@ data/player_aliases.json    Manual name-matching overrides (gitignored).
   that league whenever the same player appears in more than one, weighted
   by how much each axis actually swings a player's value (superflex
   heaviest, then TE premium, then scoring) — see `_detect_rankings_format`/
-  `_rankings_format_match_score` in `data_merger.py`. A live upload to the
+  `_rankings_format_match_score` in `data_merger.py`. **No dedicated
+  Half-PPR export exists in that set today** — a Half-PPR league falls back
+  to the closest available Full-PPR file, disclosed directly in the app;
+  see "Known Limitations & Audit History" above. A live upload to the
   shared pool (`data/projections/_global/`) still works the same way and is
   still preferred over baseline per-player; loading more than one flavor
   there just isn't a footgun anymore. (Free Agent Finder is unaffected —

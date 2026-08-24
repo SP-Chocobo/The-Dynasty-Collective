@@ -2805,6 +2805,21 @@ with st.container(key="app_header"):
         f"{fmt['type']} · {fmt['teams']}-team · "
         f"{'Superflex' if fmt['superflex'] else '1QB'} · {fmt['scoring']} · Taxi: {fmt['taxi_slots']}"
     )
+    if fmt["scoring"] == "Half PPR":
+        # Real, disclosed data limitation (not a bug): the committed Draft Sharks baseline has
+        # no dedicated Half-PPR rankings export -- only Standard, Full PPR, and their
+        # superflex/TE-premium variants exist (see data/baseline/rankings/). set_league_format
+        # above already picks the closest available file rather than leaving the league
+        # unscored, and _rankings_format_match_score's own docstring has always documented that
+        # choice -- this is just making it visible here too, not changing what the engine does.
+        # Confirmed directly: a Half-PPR and a Full-PPR board are byte-identical today (same
+        # file wins the match every time), so a Half-PPR league is quietly getting Full-PPR
+        # valuations rather than something built for its own scoring.
+        st.caption(
+            "ℹ️ No dedicated Half PPR rankings source exists yet — using Full PPR as the "
+            "closest available approximation. Values may run slightly high for this league's "
+            "actual scoring."
+        )
 
 MATCHUP_VIEW = "🏈 Matchup"
 MAINTENANCE_VIEW = "🔧 Roster Maintenance"
@@ -3880,6 +3895,9 @@ elif main_view == DRAFT_VIEW:
                 cfg_scoring_label = s4.radio(
                     "Scoring", ["Standard", "Half PPR", "Full PPR"], index=_fmt_scoring_index, horizontal=True,
                     key="mock_cfg_scoring",
+                    help="Half PPR has no dedicated rankings source yet — the engine uses Full "
+                    "PPR as the closest available approximation, so Half PPR and Full PPR "
+                    "boards come out identical today.",
                 )
                 cfg_draft_type_label = s5.radio(
                     "Draft type", ["Snake", "Snake (3RR)", "Linear"], index=0, horizontal=True,

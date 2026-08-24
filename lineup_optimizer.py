@@ -137,10 +137,18 @@ def eligibility_bonus(
     That's why this lives alongside need_bonus in draft_room.py's team_acquisition_value, not
     folded into universal_value (see draft_room.py's own module docstring on that split).
 
-    Naturally bounded, unlike need_bonus: a candidate's marginal contribution can never
+    Naturally bounded IN ITS OWN CURRENCY: a candidate's marginal contribution can never
     exceed his own value (the best he can ever do is fill a genuinely empty slot outright),
     so no artificial cap is applied here the way NEED_BONUS_MAX exists for a heuristic
-    overlay -- this is a real, self-limiting economic quantity, not a nudge."""
+    overlay -- this is a real, self-limiting economic quantity, not a nudge. This function
+    deliberately stays general-purpose and returns that value in whatever currency its caller
+    supplied (draft_room.py passes trade_value; see _team_roster_players' own docstring for
+    why). draft_room.py's own consumer rescales this raw number into universal_value's bpa
+    scale and applies a SEPARATE bound (ELIGIBILITY_BONUS_MAX) before it ever reaches
+    team_acquisition_value -- a real bug was found and fixed there (see draft_room.py's module
+    docstring, "CORRECTION") after this function's own currency-neutral self-limit turned out
+    not to be a bpa-scale bound at all. Nothing here needed to change to fix that; the fix
+    belongs entirely at the point where the two different scales actually meet."""
     primary_only = {candidate_primary_position} if candidate_primary_position else set()
     if candidate_full_eligible <= primary_only:
         # Nothing beyond his one primary bucket -- the bonus is exactly 0 by construction
