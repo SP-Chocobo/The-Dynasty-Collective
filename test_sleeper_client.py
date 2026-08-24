@@ -1,4 +1,6 @@
+import tempfile
 import unittest
+from unittest import mock
 
 import sleeper_client as sc
 
@@ -42,6 +44,58 @@ class FindRosterForUserTests(unittest.TestCase):
 
     def test_empty_roster_list_returns_none(self):
         self.assertIsNone(sc.find_roster_for_user([], "111"))
+
+
+class GetMatchupsTests(unittest.TestCase):
+    """Unlike the rest of this client's thin HTTP wrappers (none of which are unit-tested --
+    see get_rosters/get_traded_picks/etc.), this one gets its own test: it's a brand new,
+    previously-unused endpoint, and an off-by-one in the URL path would otherwise be a
+    completely silent failure (fails soft to [], same as a genuinely empty week)."""
+
+    def _client(self) -> sc.SleeperClient:
+        return sc.SleeperClient(cache_dir=tempfile.mkdtemp())
+
+    def test_calls_the_documented_matchups_path(self):
+        client = self._client()
+        with mock.patch.object(client, "_get", return_value=[{"roster_id": 1}]) as mock_get:
+            result = client.get_matchups("123456", 4)
+        mock_get.assert_called_once_with("/league/123456/matchups/4")
+        self.assertEqual(result, [{"roster_id": 1}])
+
+    def test_none_response_is_a_safe_empty_list(self):
+        client = self._client()
+        with mock.patch.object(client, "_get", return_value=None):
+            self.assertEqual(client.get_matchups("123456", 4), [])
+
+
+class FindOpponentRosterIdTests(unittest.TestCase):
+    def test_finds_the_paired_roster_on_either_side(self):
+        matchups = [
+            {"roster_id": 1, "matchup_id": 5}, {"roster_id": 2, "matchup_id": 5},
+            {"roster_id": 3, "matchup_id": 6}, {"roster_id": 4, "matchup_id": 6},
+        ]
+        self.assertEqual(sc.find_opponent_roster_id(matchups, 1), 2)
+        self.assertEqual(sc.find_opponent_roster_id(matchups, 4), 3)
+
+    def test_null_matchup_id_reads_as_no_opponent(self):
+        # Sleeper's own representation of "no matchup yet" (a bye, or preseason).
+        matchups = [{"roster_id": 1, "matchup_id": None}, {"roster_id": 2, "matchup_id": None}]
+        self.assertIsNone(sc.find_opponent_roster_id(matchups, 1))
+
+    def test_roster_not_present_reads_as_no_opponent(self):
+        matchups = [{"roster_id": 2, "matchup_id": 5}]
+        self.assertIsNone(sc.find_opponent_roster_id(matchups, 1))
+
+    def test_empty_matchups_reads_as_no_opponent(self):
+        self.assertIsNone(sc.find_opponent_roster_id([], 1))
+
+    def test_more_than_one_other_roster_sharing_a_matchup_id_is_left_unresolved(self):
+        # A malformed/unusual payload -- never guess which of several is "the" opponent.
+        matchups = [
+            {"roster_id": 1, "matchup_id": 5}, {"roster_id": 2, "matchup_id": 5},
+            {"roster_id": 3, "matchup_id": 5},
+        ]
+        self.assertIsNone(sc.find_opponent_roster_id(matchups, 1))
 
 
 class LeagueFormatSummaryTests(unittest.TestCase):

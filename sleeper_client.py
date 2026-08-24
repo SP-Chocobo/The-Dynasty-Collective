@@ -101,6 +101,16 @@ class SleeperClient:
         background timer) same as every other "live-ish" read this client already does."""
         return self._get(f"/draft/{draft_id}/picks") or []
 
+    def get_matchups(self, league_id: str, week: int) -> list[dict]:
+        """One entry per roster for this week -- {roster_id, matchup_id, points, starters,
+        starters_points, players, custom_points, ...}. Two entries sharing the same non-null
+        matchup_id are playing each other that week; a roster with no matchup yet (a bye, or a
+        week before Sleeper has generated a schedule -- preseason, most commonly) carries
+        matchup_id: null. Unlike get_weekly_projections, this is one of Sleeper's own
+        documented, stable v1 endpoints, not a reverse-engineered one -- still returns [] on
+        any failure or empty response, matching every other list-returning method here."""
+        return self._get(f"/league/{league_id}/matchups/{week}") or []
+
     # -- player database (large, cached daily) ------------------------------
 
     def get_players(self, force_refresh: bool = False) -> dict[str, dict]:
@@ -234,6 +244,14 @@ class SleeperClient:
                     projection_request.pop("count", None)
                     break
 
+        # Tied to the exact week projections above resolved to (not the raw nfl_state week
+        # directly) -- during preseason that's the regular-season-1 fallback, and matchups
+        # don't exist for a preseason week anyway (no schedule generated yet), so this keeps
+        # "which week is this snapshot about" a single decision instead of two that could
+        # silently disagree.
+        matchup_week = projection_request.get("week")
+        matchups = self.get_matchups(league_id, int(matchup_week)) if matchup_week is not None else []
+
         snapshot = {
             "synced_at": time.time(),
             "league": league,
@@ -244,6 +262,7 @@ class SleeperClient:
             "projection_request": projection_request,
             "projection_attempts": projection_attempts,
             "projections": projections,
+            "matchups": matchups,
         }
 
         self._write_snapshot(league_id, snapshot)
@@ -307,6 +326,22 @@ def find_roster_for_user(rosters: list[dict], user_id: str) -> Optional[dict]:
         if roster.get("owner_id") == user_id:
             return roster
     return None
+
+
+def find_opponent_roster_id(matchups: list[dict], my_roster_id: int) -> Optional[int]:
+    """Given one week's raw get_matchups() list, the roster_id playing my_roster_id this week,
+    or None if unresolved -- a bye week, an unpaired roster, or an empty/not-yet-generated
+    schedule (preseason most commonly). Never guesses: if more than one other roster somehow
+    shares my_roster_id's matchup_id (a malformed or unusual payload), this returns None rather
+    than picking one, the same fail-soft-not-fabricate posture as the rest of this client."""
+    my_entry = next((m for m in matchups if m.get("roster_id") == my_roster_id), None)
+    if my_entry is None or my_entry.get("matchup_id") is None:
+        return None
+    opponents = [
+        m.get("roster_id") for m in matchups
+        if m.get("roster_id") != my_roster_id and m.get("matchup_id") == my_entry["matchup_id"]
+    ]
+    return opponents[0] if len(opponents) == 1 else None
 
 
 def league_format_summary(league: dict) -> dict:
