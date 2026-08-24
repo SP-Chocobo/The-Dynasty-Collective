@@ -620,6 +620,7 @@ def compute_draft_board(
     upside_round: int = UPSIDE_MODE_DEFAULT_ROUND,
     sleeper_projections: Optional[dict[str, dict]] = None,
     pool_scope: str = "all",
+    demand_picks: Optional[list[dict]] = None,
 ) -> list[dict]:
     """The live recommendation board: every undrafted, Draft-Sharks-valued player, ranked
     best pick first, with every scoring layer broken out separately -- universal_value
@@ -637,6 +638,27 @@ def compute_draft_board(
     toggle this was built for -- see app.py's Draft Room view). pool_scope: "all" (default),
     "rookies_only" (the annual rookie draft), or "veterans_only" -- see
     build_available_pool's docstring; who counts as a rookie is detected from KeepTradeCut's
+
+    demand_picks: an OPTIONAL separate pick history for replacement_levels' remaining-demand
+    accounting (drafted_counts) and upside-mode round detection -- everything else (pool
+    filtering via `picks`, and need_bonus/eligibility_bonus via my_filled/my_roster_players,
+    both still read from `picks`) is unaffected. None (the default) reuses `picks` for this
+    too, identical to every caller's behavior before this parameter existed.
+
+    Exists specifically for a rookie draft run against a team's REAL pre-existing roster: pass
+    the team's full history (veteran roster + rookie picks so far) as `picks`, so need_bonus/
+    eligibility_bonus see the team's actual roster construction, but pass demand_picks scoped
+    to ONLY the current rookie draft's own picks. Without this split, seeding `picks` with a
+    real prior-season startup draft's full history collapses replacement_levels' remaining-
+    demand model for whichever positions that EARLIER, separate draft phase happened to
+    exhaust (WR/RB in a normal startup) while leaving a lightly-drafted position (QB in a 1QB
+    league) with artificially high headroom -- confirmed directly: a backup-tier rookie QB
+    outranked a legitimate rookie WR, and a real day-one rookie RB scored a negative
+    universal_value, purely from this history-scope confusion, not from anything about the
+    players themselves. replacement_levels' own remaining-demand math is correct FOR ONE
+    CONTINUOUS DRAFT (see its own docstring); it was never built or validated for two separate
+    draft phases sharing one drafted_counts tally, which is exactly the shape a real annual
+    rookie draft run against a real veteran roster has.
     own source data, not a maintained list."""
     roster_positions = league.get("roster_positions") or []
     usable_positions = league_usable_positions(roster_positions)
@@ -653,9 +675,10 @@ def compute_draft_board(
         return []
 
     num_teams = league.get("total_rosters") or len({p.get("roster_id") for p in picks}) or 1
-    current_round = (max((p.get("round") or 1) for p in picks) if picks else 1)
+    demand_source = picks if demand_picks is None else demand_picks
+    current_round = (max((p.get("round") or 1) for p in demand_source) if demand_source else 1)
     use_upside = mode == "upside" or (mode == "auto" and current_round >= upside_round)
-    drafted_counts = _drafted_counts_by_position(picks, players_db)
+    drafted_counts = _drafted_counts_by_position(demand_source, players_db)
 
     # bpa anchor -- see module docstring's ARCHITECTURE section in full for why this is VOR
     # in raw projected POINTS (never Draft Sharks' trade_value/composite scale directly),

@@ -233,6 +233,157 @@ class PoolScopeTests(unittest.TestCase):
         self.assertGreater(len(board), 5, "expected a real rookie draft board")
 
 
+class DemandPicksSplitTests(unittest.TestCase):
+    """compute_draft_board's demand_picks parameter: real regression coverage for the rookie-
+    draft-against-a-real-roster bug found this pass -- seeding `picks` with a real prior-
+    season startup draft's full history (so need_bonus/eligibility_bonus see a team's actual
+    roster) also fed that same history into replacement_levels' remaining-demand accounting,
+    collapsing whichever position the EARLIER, separate draft phase happened to exhaust (WR/RB
+    in a normal startup) while leaving a lightly-drafted position (QB in a 1QB league)
+    artificially wide open. Confirmed directly against real baseline data: a backup-tier rookie
+    QB outranked a legitimate rookie WR purely from this history-scope confusion.
+
+    demand_picks lets a caller supply a SEPARATE, correctly-scoped pick history for
+    replacement_levels/round detection, independent of `picks` (which still drives pool
+    filtering and need_bonus/eligibility_bonus, unchanged)."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.merger, cls.players_db = _build_pool_players_db(("QB", "RB", "WR"))
+        cls.league = {
+            "roster_positions": ["QB", "RB", "RB", "WR", "WR", "FLEX", "FLEX", "BN", "BN", "BN"],
+            "total_rosters": 12, "settings": {"type": 2},
+        }
+
+    def _fresh_top_players(self, n=10):
+        """The top N players by universal_value on a genuinely untouched board -- the ground
+        truth every other board in this class gets compared against."""
+        board = dr.compute_draft_board(
+            self.merger, self.players_db, [], my_roster_id="99", league=self.league, mode="balanced",
+        )
+        return board[:n]
+
+    def _lower_tier_history(self, exclude_ids: set) -> list[dict]:
+        """A real, large prior-phase pick history built ENTIRELY from lower-tier real players
+        (never touching `exclude_ids`, the top players this class actually measures) --
+        heavily WR/RB, almost no QB, mirroring a real 1QB startup draft's own position mix, so
+        the top-of-board players stay available and comparable across every board built here."""
+        board = dr.compute_draft_board(
+            self.merger, self.players_db, [], my_roster_id="99", league=self.league, mode="balanced",
+        )
+        lower_tier = [r for r in board if r["player_id"] not in exclude_ids][20:]
+        picks = []
+        pick_no = 1
+        wr_rb = [r for r in lower_tier if r["position"] in ("WR", "RB")][:80]
+        qb = [r for r in lower_tier if r["position"] == "QB"][:1]
+        for row in wr_rb + qb:
+            roster_id = str((pick_no - 1) % 12 + 1)
+            picks.append({"pick_no": pick_no, "round": 1, "roster_id": roster_id, "player_id": row["player_id"]})
+            pick_no += 1
+        return picks
+
+    def test_demand_picks_none_matches_omitting_the_parameter_entirely(self):
+        with_none = dr.compute_draft_board(
+            self.merger, self.players_db, [], my_roster_id="99", league=self.league, mode="balanced", demand_picks=None,
+        )
+        without_param = dr.compute_draft_board(
+            self.merger, self.players_db, [], my_roster_id="99", league=self.league, mode="balanced",
+        )
+        self.assertEqual(with_none, without_param)
+
+    def test_demand_picks_wiring_reaches_replacement_levels_with_the_right_scope(self):
+        # bpa/universal_value are POOL-RELATIVE (_scale_vor_to_bpa scales against whichever
+        # player holds the single largest _vor in the CURRENT pool) -- comparing a fixed
+        # player's bpa across two scenarios is the wrong level to test the demand_picks wiring
+        # at, since the reference itself can shift under an unrelated player even when that
+        # player's own standing is unaffected (confirmed while writing this test: the #1
+        # overall real player's bpa moved simply because a DIFFERENT player's _vor grew past
+        # his once demand was correctly un-collapsed, not because his own value changed).
+        # replacement_levels' own OUTPUT (the actual dict this bug lives in) is the direct,
+        # unambiguous claim: a position whose real demand is already exceeded in `picks`
+        # collapses to "replacement = the single best remaining player" (a HIGH value, per its
+        # own docstring) when that history feeds drafted_counts directly (old behavior) --
+        # demand_picks=[] must keep that position's replacement level at its normal, DEEPER
+        # (lower-value) rank instead, since nothing has actually been drafted in the current
+        # phase.
+        fresh_top = self._fresh_top_players(n=10)
+        top_ids = {r["player_id"] for r in fresh_top}
+        history = self._lower_tier_history(exclude_ids=top_ids)
+        self.assertGreater(len(history), 50, "fixture's own real pool too thin to build a real prior-phase history")
+        qb_drafted = sum(1 for p in history if self.players_db[p["player_id"]]["position"] == "QB")
+        wr_rb_drafted = sum(1 for p in history if self.players_db[p["player_id"]]["position"] in ("WR", "RB"))
+        self.assertLessEqual(qb_drafted, 1, "fixture must leave QB demand essentially untouched")
+        self.assertGreater(wr_rb_drafted, 60, "fixture must genuinely exceed real WR/RB league-wide demand")
+
+        pool = dr.build_available_pool(
+            self.merger, self.players_db, set(), {"QB", "RB", "WR"},
+        )
+        proj_pool = pool[pool["projection"].notna()].copy()
+        proj_pool["_points"] = proj_pool["projection"].astype(float)
+        roster_positions = self.league["roster_positions"]
+        num_teams = self.league["total_rosters"]
+
+        old_drafted_counts = dr._drafted_counts_by_position(history, self.players_db)
+        levels_old = dr.replacement_levels(proj_pool, "_points", roster_positions, num_teams, drafted_counts=old_drafted_counts)
+        levels_split = dr.replacement_levels(proj_pool, "_points", roster_positions, num_teams, drafted_counts={})
+
+        # The real bug, at its actual source: WR/RB's already-exceeded demand collapses
+        # replacement level UP (toward the best remaining player's own high value) in the old,
+        # unsplit accounting -- demand_picks=[] (drafted_counts={}) keeps it at its normal,
+        # deeper, lower-value rank.
+        self.assertGreater(levels_old["WR"], levels_split["WR"])
+        self.assertGreater(levels_old["RB"], levels_split["RB"])
+        # QB demand is essentially untouched either way, so its replacement level shouldn't
+        # swing much between the two.
+        self.assertAlmostEqual(levels_old["QB"], levels_split["QB"], delta=max(levels_split["QB"] * 0.1, 5.0))
+
+    def test_compute_draft_board_actually_passes_demand_picks_to_drafted_counts(self):
+        # The direct wiring proof -- decoupled from _scale_vor_to_bpa's pool-relative scaling
+        # entirely (see the test above for why that scaling makes per-player bpa the wrong
+        # level to assert this at): spy on the real _drafted_counts_by_position call
+        # compute_draft_board makes internally, and confirm it actually receives demand_picks
+        # (not `picks`) when given one.
+        import unittest.mock as mock
+
+        my_picks = [{"pick_no": 1, "round": 1, "roster_id": "1", "player_id": "1"}]
+        demand_picks = [{"pick_no": 1, "round": 1, "roster_id": "1", "player_id": "2"}]
+
+        real_fn = dr._drafted_counts_by_position
+        with mock.patch.object(dr, "_drafted_counts_by_position", side_effect=real_fn) as spy:
+            dr.compute_draft_board(
+                self.merger, self.players_db, my_picks, my_roster_id="99", league=self.league,
+                mode="balanced", demand_picks=demand_picks,
+            )
+        spy.assert_called_once_with(demand_picks, self.players_db)
+
+        with mock.patch.object(dr, "_drafted_counts_by_position", side_effect=real_fn) as spy2:
+            dr.compute_draft_board(
+                self.merger, self.players_db, my_picks, my_roster_id="99", league=self.league, mode="balanced",
+            )
+        spy2.assert_called_once_with(my_picks, self.players_db)
+
+    def test_demand_picks_does_not_affect_need_bonus_or_pool_filtering(self):
+        # need_bonus/eligibility_bonus and drafted_ids pool exclusion must still read the FULL
+        # `picks` regardless of demand_picks -- only replacement_levels/round detection change.
+        my_picks = [
+            {"pick_no": 1, "round": 1, "roster_id": "99", "player_id": "1"},
+            {"pick_no": 2, "round": 1, "roster_id": "99", "player_id": "2"},
+        ]
+        with_demand_split = dr.compute_draft_board(
+            self.merger, self.players_db, my_picks, my_roster_id="99", league=self.league, mode="balanced",
+            demand_picks=[],
+        )
+        without_split = dr.compute_draft_board(
+            self.merger, self.players_db, my_picks, my_roster_id="99", league=self.league, mode="balanced",
+        )
+        # Same players excluded from the pool either way.
+        self.assertEqual({r["player_id"] for r in with_demand_split}, {r["player_id"] for r in without_split})
+        # need_bonus is identical for every remaining player -- demand_picks never touches it.
+        need_a = {r["player_id"]: r["need_bonus"] for r in with_demand_split}
+        need_b = {r["player_id"]: r["need_bonus"] for r in without_split}
+        self.assertEqual(need_a, need_b)
+
+
 class DataIntegrityTests(unittest.TestCase):
     """Sanity checks on the pool draft_room.py actually scores, decoupled from the scoring
     math itself -- a scoring-behavior test failing because the underlying data was thin or
