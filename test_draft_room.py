@@ -863,33 +863,37 @@ class InvariantTests(unittest.TestCase):
         uv_healthy = next((r["universal_value"] for r in board_healthy if r["player_id"] == pid), None)
         uv_out = next((r["universal_value"] for r in board_out if r["player_id"] == pid), None)
         if uv_healthy is not None and uv_out is not None:
+            # LIGHT_IDP_LEAGUE is dynasty (settings.type == 2), so this board-level check now
+            # reflects DYNASTY_RISK_ADJ_SCALE (calibration experiment "A", added after this
+            # test) on top of RISK_ADJ's own -10.0 vocabulary value -- the vocabulary itself
+            # (asserted directly above, unscaled) is still exactly -10.0; a REDRAFT league
+            # would still lose the full, unscaled discount here (see
+            # DynastyRiskAdjSofteningTests.test_redraft_league_is_byte_identical_to_before_this_change).
             self.assertAlmostEqual(
-                uv_healthy - uv_out, 10.0,
-                msg="a player marked 'Out' should lose exactly the -10.0 RISK_ADJ discount",
+                uv_healthy - uv_out, 10.0 * dr.DYNASTY_RISK_ADJ_SCALE,
+                msg="a player marked 'Out' should lose the -10.0 RISK_ADJ discount, scaled by "
+                "DYNASTY_RISK_ADJ_SCALE in this dynasty-league fixture",
             )
 
-    def test_risk_adj_is_the_only_unclamped_term_and_can_push_universal_value_negative(self):
-        # FLAGGED FINDING, not an asserted-correct invariant -- pins down a real calibration gap
-        # surfaced directly by the RISK_ADJ vocabulary fix above, per the user's own explicit
-        # direction to separate "is the data recognized" (fixed) from "is the magnitude
-        # dynasty-appropriate" (an open, deliberately unresolved question -- do not read this
-        # test passing as endorsing the current numbers).
+    def test_dynasty_risk_adj_softening_fixes_the_thin_bpa_sign_flip_this_test_used_to_flag(self):
+        # HISTORY, kept for attribution: this test originally FLAGGED a real calibration gap
+        # (see git history / the original docstring below this line) -- RISK_ADJ was applied
+        # unconditionally, the same in dynasty as in redraft, and risk_adj was the only
+        # unclamped term in universal_value = bpa + time_horizon_adj + risk_adj (bpa clamped
+        # [0,100], time_horizon_adj clamped [-10,10]). On the committed baseline, a real player
+        # (R Pearsall: bpa=0.0, time_horizon_adj=+10.0 -- his ENTIRE value case is forward
+        # trajectory) went from universal_value=10.0 to -8.0 under a bare IR flag -- negative,
+        # from a current-week status alone, on exactly the player type whose value is supposed
+        # to be long-horizon.
         #
-        # universal_value = bpa + time_horizon_adj + risk_adj. bpa is clamped [0, 100];
-        # time_horizon_adj is clamped [-10.0, 10.0] (TIME_HORIZON_CLAMP); risk_adj is the ONLY
-        # unclamped term in the whole sum -- nothing floors universal_value at 0 either. This
-        # matters specifically for dynasty: a young, thin-current-production player's entire
-        # universal_value can be almost ENTIRELY time_horizon_adj (a real player confirmed
-        # against the committed baseline: bpa=0.0, time_horizon_adj=+10.0, i.e. his whole value
-        # case IS his forward trajectory) -- for that exact player, RISK_ADJ's flat -18.0 IR
-        # penalty pushes universal_value to -8.0, NEGATIVE, from a current-week status flag
-        # alone, on the one class of player whose value proposition is explicitly long-horizon
-        # rather than current-week. Contrast a real aging, declining-trajectory veteran (high
-        # bpa=50.0, time_horizon_adj=-8.4) hit by the identical IR penalty: 41.6 -> 23.6, barely
-        # denting a still-clearly-valuable asset. risk_adj does not read time_horizon_adj, age,
-        # or bpa at all -- it is a pure function of injury_status, so the SAME flat discount
-        # currently lands hardest (proportionally, and here literally past zero) on exactly the
-        # player type dynasty theory says should be discounted least by a current-week flag.
+        # Calibration experiment "A" (draft_room.DYNASTY_RISK_ADJ_SCALE) directly addresses
+        # this: RISK_ADJ's four magnitudes are UNCHANGED (still -18/-10/-5/-1.5 -- the
+        # vocabulary), but they're now scaled down in dynasty mode only, same is_dynasty gate
+        # time_horizon_adj already uses. This test now CONFIRMS the fix on the exact case that
+        # used to fail: the same player, same IR flag, now lands at risk_adj=-9.0,
+        # universal_value=+1.0 -- no longer negative. Deliberately NOT testing experiment "D"
+        # (scaling risk_adj by the player's OWN time_horizon_adj) here -- that's a separate,
+        # not-yet-authorized change; this test's job is to prove "A" alone, in isolation.
         young_rising = next(
             r for r in dr.compute_draft_board(
                 self.merger, self.players_db, [], my_roster_id="99", league=LIGHT_IDP_LEAGUE, mode="balanced",
@@ -903,12 +907,14 @@ class InvariantTests(unittest.TestCase):
         )
         row_ir = next((r for r in board_ir if r["player_id"] == young_rising["player_id"]), None)
         if row_ir is not None and young_rising["bpa"] < abs(dr.RISK_ADJ["IR"]) - dr.TIME_HORIZON_CLAMP[1]:
-            self.assertLess(
+            self.assertGreaterEqual(
                 row_ir["universal_value"], 0.0,
-                "expected a real thin-bpa, max-positive-trajectory player's universal_value to go "
-                "negative under IR -- if this stops happening, the calibration gap this test "
-                "documents may have been addressed; reconsider whether this test still applies",
+                "the dynasty risk_adj softening (experiment A) should keep a thin-bpa, "
+                "max-positive-trajectory player's universal_value from crossing zero on an IR "
+                "flag alone -- if this regresses, either DYNASTY_RISK_ADJ_SCALE changed or the "
+                "is_dynasty gate stopped applying",
             )
+            self.assertAlmostEqual(row_ir["risk_adj"], dr.RISK_ADJ["IR"] * dr.DYNASTY_RISK_ADJ_SCALE)
 
     def test_need_bonus_is_zero_once_a_position_is_fully_satisfied(self):
         board = dr.compute_draft_board(
@@ -967,6 +973,76 @@ class InvariantTests(unittest.TestCase):
             self.assertAlmostEqual(
                 row["final_score"], row["bpa"] + dr.UPSIDE_GROWTH_WEIGHT * row["growth_signal"], delta=0.1,
             )
+
+
+class DynastyRiskAdjSofteningTests(unittest.TestCase):
+    """Calibration experiment "A", authorized explicitly and narrowly: soften RISK_ADJ
+    uniformly in dynasty mode, do not touch the four underlying magnitudes, do not interact it
+    with time_horizon_adj or age (that's experiment "D", a separate, not-yet-authorized change
+    kept out of this one so the two stay independently attributable). See
+    draft_room.DYNASTY_RISK_ADJ_SCALE's own comment for the full rationale."""
+
+    REDRAFT_LEAGUE = {
+        "roster_positions": ["QB", "RB", "RB", "WR", "WR", "TE", "FLEX", "FLEX", "BN", "BN"],
+        "total_rosters": 12, "settings": {"type": 1},  # NOT dynasty
+    }
+    DYNASTY_LEAGUE = LIGHT_IDP_LEAGUE  # settings.type == 2
+
+    @classmethod
+    def setUpClass(cls):
+        cls.merger, cls.players_db = _build_pool_players_db(("RB", "WR"))
+
+    def _risk_adj_for_status(self, league: dict, status: str) -> float:
+        pdb = dict(self.players_db)
+        pid = next(iter(pdb))
+        pdb[pid] = dict(pdb[pid], injury_status=status)
+        board = dr.compute_draft_board(self.merger, pdb, [], my_roster_id="99", league=league, mode="balanced")
+        row = next(r for r in board if r["player_id"] == pid)
+        return row["risk_adj"]
+
+    def test_the_four_magnitudes_are_unchanged_by_this_experiment(self):
+        # The vocabulary itself was explicitly NOT touched -- only whether/how it's applied.
+        self.assertEqual(dr.RISK_ADJ, {"IR": -18.0, "Out": -10.0, "Doubtful": -5.0, "Questionable": -1.5})
+
+    def test_redraft_league_is_byte_identical_to_before_this_change(self):
+        # A non-dynasty league must see EXACTLY the old flat discount -- this experiment is
+        # explicitly dynasty-scoped, per the user's own instruction.
+        for status, expected in dr.RISK_ADJ.items():
+            with self.subTest(status=status):
+                self.assertEqual(self._risk_adj_for_status(self.REDRAFT_LEAGUE, status), expected)
+
+    def test_dynasty_league_scales_every_status_by_the_same_factor(self):
+        for status, base in dr.RISK_ADJ.items():
+            with self.subTest(status=status):
+                self.assertAlmostEqual(
+                    self._risk_adj_for_status(self.DYNASTY_LEAGUE, status),
+                    base * dr.DYNASTY_RISK_ADJ_SCALE,
+                )
+
+    def test_healthy_players_are_unaffected_in_either_league_type(self):
+        # No injury_status at all -- RISK_ADJ.get(...) falls through to its 0.0 default in both
+        # branches, so is_dynasty must not introduce any discount out of nothing.
+        self.assertEqual(self._risk_adj_for_status(self.REDRAFT_LEAGUE, None), 0.0)
+        self.assertEqual(self._risk_adj_for_status(self.DYNASTY_LEAGUE, None), 0.0)
+
+    def test_injury_still_never_increases_universal_value_under_softening(self):
+        # The pre-existing hard invariant (module docstring) must survive scaling: a smaller
+        # discount is still a discount, never a boost, in either league type.
+        for league in (self.REDRAFT_LEAGUE, self.DYNASTY_LEAGUE):
+            with self.subTest(league_type=league["settings"]["type"]):
+                pdb = dict(self.players_db)
+                pid = next(iter(pdb))
+                healthy_board = dr.compute_draft_board(
+                    self.merger, pdb, [], my_roster_id="99", league=league, mode="balanced",
+                )
+                healthy_uv = next(r["universal_value"] for r in healthy_board if r["player_id"] == pid)
+                pdb_hurt = dict(pdb)
+                pdb_hurt[pid] = dict(pdb_hurt[pid], injury_status="Questionable")
+                hurt_board = dr.compute_draft_board(
+                    self.merger, pdb_hurt, [], my_roster_id="99", league=league, mode="balanced",
+                )
+                hurt_uv = next(r["universal_value"] for r in hurt_board if r["player_id"] == pid)
+                self.assertLessEqual(hurt_uv, healthy_uv)
 
 
 class EligibilityBonusWiringTests(unittest.TestCase):

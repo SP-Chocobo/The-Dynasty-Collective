@@ -224,6 +224,23 @@ TIME_HORIZON_CLAMP = (-10.0, 10.0)  # season-proj percentile)
 # the full evidence trail.
 RISK_ADJ = {"IR": -18.0, "Out": -10.0, "Doubtful": -5.0, "Questionable": -1.5}
 
+# Calibration experiment "A" (see test_draft_room.py's DynastyRiskAdjSofteningTests and the
+# real-data measurement in run_risk_adj_softening_measurement.py for the evidence this
+# responds to): RISK_ADJ's four magnitudes above were never redesigned or re-tuned here --
+# they're the existing, named vocabulary, unchanged. What was wrong was applying them
+# UNCONDITIONALLY, the same way a redraft league would, even in dynasty mode -- where
+# time_horizon_adj (a few lines up) already gets its own is_dynasty gate for exactly the same
+# reason: a current-week health flag should matter less against a 3-year value horizon than it
+# does against a single season. Confirmed by measurement: a thin-bpa, strongly-forward-trending
+# real player's universal_value could cross zero purely from an injury_status flag, since
+# risk_adj is the one additive term with no clamp at all (bpa is [0,100], time_horizon_adj is
+# [-10,10]). This is a uniform SCALE on the same four numbers, not a new per-status model, and
+# not an interaction with time_horizon_adj or age -- that's calibration experiment "D",
+# deliberately NOT done here so this one change's effect stays attributable on its own. Applies
+# only when is_dynasty; a non-dynasty (redraft/keeper) league is untouched -- byte-identical to
+# before this constant existed.
+DYNASTY_RISK_ADJ_SCALE = 0.5
+
 # The ONLY team-specific term. Added on top of universal_value, never multiplied into it.
 # Split by urgency, not a flat per-slot rate -- see module docstring's need_bonus section for
 # the real bug this replaced. A dedicated (named, non-flex) unfilled starting slot is weighted
@@ -798,6 +815,8 @@ def compute_draft_board(
             time_horizon_adj = min(max((row["_proj3yr_pct"] - row["_season_proj_pct"]) * TIME_HORIZON_SLOPE, TIME_HORIZON_CLAMP[0]), TIME_HORIZON_CLAMP[1])
 
         risk_adj = RISK_ADJ.get(row.get("injury_status"), 0.0)
+        if is_dynasty:
+            risk_adj *= DYNASTY_RISK_ADJ_SCALE
 
         universal_value = round(bpa + time_horizon_adj + risk_adj, 2)
 
