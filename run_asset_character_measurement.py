@@ -69,8 +69,15 @@ def _percentile_map(values: pd.Series) -> pd.Series:
     return (ranks * 100).round(2)
 
 
-def main() -> None:
-    merger = dm.DataMerger()
+def build_dataset(merger: dm.DataMerger) -> pd.DataFrame:
+    """One row per real offense player with a real Draft Sharks projection: _season_proj_pct,
+    _proj3yr_pct, _time_horizon_delta (all recomputed here, mirroring draft_room.py's own
+    internal math -- see this module's docstring for why they're recomputed rather than
+    exposed from compute_draft_board), age, std_dev/best/worst/avg (FantasyPros Dynasty PPR,
+    when matched), _age_pct_within_position, _is_rookie (KeepTradeCut, via draft_room.
+    _rookie_lookup -- the same real signal production already uses for pool_scope filtering).
+    Extracted from main() so run_asset_character_orthogonality_check.py can reuse the exact
+    same dataset-construction logic rather than a second, driftable copy."""
     proj = merger.projections
     fp = merger.external_values
     fp_dyn = fp[(fp["source_name"] == "fantasypros") & (fp["source_file"].str.contains("dynasty", na=False))].copy()
@@ -116,6 +123,14 @@ def main() -> None:
         rows.append(merged)
 
     all_players = pd.concat(rows, ignore_index=True)
+    rookie_by_key = dr._rookie_lookup(merger)
+    all_players["_is_rookie"] = all_players["_key"].map(lambda k: rookie_by_key.get(k, False))
+    return all_players
+
+
+def main() -> None:
+    merger = dm.DataMerger()
+    all_players = build_dataset(merger)
     has_age = all_players["age"].notna()
     has_spread = all_players["std_dev"].notna()
 
@@ -152,12 +167,11 @@ def main() -> None:
 
     # Rookie flag: KeepTradeCut's real "rookie" column, already used in production to power
     # pool_scope="rookies_only"/"veterans_only" (draft_room._rookie_lookup) -- not a new
-    # signal, an already-shipped one this measurement reuses rather than reinventing. Per the
-    # user's explicit steer, this is kept as its OWN distinct flag, never folded into
-    # "speculative": a rookie's uncertainty is structural (no NFL production history to
-    # measure at all), not the same claim as an established player's thin/declining production.
-    rookie_by_key = dr._rookie_lookup(merger)
-    all_players["_is_rookie"] = all_players["_key"].map(lambda k: rookie_by_key.get(k, False))
+    # signal, an already-shipped one this measurement reuses rather than reinventing (computed
+    # in build_dataset). Per the user's explicit steer, this is kept as its OWN distinct flag,
+    # never folded into "speculative": a rookie's uncertainty is structural (no NFL production
+    # history to measure at all), not the same claim as an established player's thin/declining
+    # production.
     report["rookie_flag_source"] = "KeepTradeCut export, already used by production pool_scope filtering -- real, not new"
     report["rookie_count_by_position"] = {
         pos: int(all_players[(all_players["position"] == pos) & all_players["_is_rookie"]].shape[0])
