@@ -25,6 +25,9 @@ import draft_room as dr
 
 OUT_PATH = Path("data/draft_simulation_trials") / "risk_adj_softening_measurement.json"
 OFFENSE_POSITIONS = ("QB", "RB", "WR", "TE")
+# Experiment A's own scale, hardcoded here since D superseded it in draft_room.py -- this
+# script is a historical measurement of A specifically, kept runnable rather than rewritten.
+EXPERIMENT_A_SCALE = 0.5
 DYNASTY_LEAGUE = {
     "roster_positions": ["QB", "RB", "RB", "WR", "WR", "TE", "FLEX", "FLEX", "BN", "BN", "BN", "BN"],
     "total_rosters": 12, "settings": {"type": 2},
@@ -60,14 +63,14 @@ def main() -> None:
 
     report: dict = {
         "n_players": len(healthy_board),
-        "dynasty_risk_adj_scale": dr.DYNASTY_RISK_ADJ_SCALE,
+        "dynasty_risk_adj_scale": EXPERIMENT_A_SCALE,
         "by_status": {},
     }
 
     negative_examples: dict[str, list[dict]] = {}
     for status in STATUSES:
         base_penalty = dr.RISK_ADJ[status]
-        softened_penalty = base_penalty * dr.DYNASTY_RISK_ADJ_SCALE
+        softened_penalty = base_penalty * EXPERIMENT_A_SCALE
         crossed_zero_before = 0
         crossed_zero_after = 0
         examples = []

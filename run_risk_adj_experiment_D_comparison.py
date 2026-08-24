@@ -43,6 +43,9 @@ DYNASTY_LEAGUE = {
 }
 STATUSES = ("Questionable", "Doubtful", "Out", "IR")
 D_MIN_SCALE = 0.3
+# Experiment A's own scale, hardcoded here since D superseded it in draft_room.py -- this
+# script's whole point is comparing against A's historical behavior, not re-deriving it.
+EXPERIMENT_A_SCALE = 0.5
 
 
 def _build_players_db(merger: dm.DataMerger) -> dict[str, dict]:
@@ -79,7 +82,7 @@ def main() -> None:
     report: dict = {
         "n_players": len(healthy_board),
         "d_min_scale": D_MIN_SCALE,
-        "dynasty_risk_adj_scale_A": dr.DYNASTY_RISK_ADJ_SCALE,
+        "dynasty_risk_adj_scale_A": EXPERIMENT_A_SCALE,
         "independence_precondition_confirmed": (
             "time_horizon_adj is computed purely from proj_3yr/_points percentiles, before "
             "injury_status is read at all for risk_adj -- verified by direct code inspection, "
@@ -90,7 +93,7 @@ def main() -> None:
 
     for status in STATUSES:
         flat_penalty = dr.RISK_ADJ[status]
-        a_penalty = flat_penalty * dr.DYNASTY_RISK_ADJ_SCALE
+        a_penalty = flat_penalty * EXPERIMENT_A_SCALE
         crossed = {"flat": 0, "A": 0, "D": 0}
         for pid, row in healthy_board.items():
             uv = row["universal_value"]
@@ -118,7 +121,7 @@ def main() -> None:
             if abs(a["time_horizon_adj"] - b["time_horizon_adj"]) < TH_GAP_MIN:
                 continue
             forward, declining = (a, b) if a["time_horizon_adj"] > b["time_horizon_adj"] else (b, a)
-            flat_p, a_p = dr.RISK_ADJ["IR"], dr.RISK_ADJ["IR"] * dr.DYNASTY_RISK_ADJ_SCALE
+            flat_p, a_p = dr.RISK_ADJ["IR"], dr.RISK_ADJ["IR"] * EXPERIMENT_A_SCALE
             forward_d = dr.RISK_ADJ["IR"] * _d_scale(forward["time_horizon_adj"])
             declining_d = dr.RISK_ADJ["IR"] * _d_scale(declining["time_horizon_adj"])
             matched_pairs.append({

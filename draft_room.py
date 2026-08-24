@@ -224,22 +224,32 @@ TIME_HORIZON_CLAMP = (-10.0, 10.0)  # season-proj percentile)
 # the full evidence trail.
 RISK_ADJ = {"IR": -18.0, "Out": -10.0, "Doubtful": -5.0, "Questionable": -1.5}
 
-# Calibration experiment "A" (see test_draft_room.py's DynastyRiskAdjSofteningTests and the
-# real-data measurement in run_risk_adj_softening_measurement.py for the evidence this
-# responds to): RISK_ADJ's four magnitudes above were never redesigned or re-tuned here --
-# they're the existing, named vocabulary, unchanged. What was wrong was applying them
-# UNCONDITIONALLY, the same way a redraft league would, even in dynasty mode -- where
-# time_horizon_adj (a few lines up) already gets its own is_dynasty gate for exactly the same
-# reason: a current-week health flag should matter less against a 3-year value horizon than it
-# does against a single season. Confirmed by measurement: a thin-bpa, strongly-forward-trending
-# real player's universal_value could cross zero purely from an injury_status flag, since
-# risk_adj is the one additive term with no clamp at all (bpa is [0,100], time_horizon_adj is
-# [-10,10]). This is a uniform SCALE on the same four numbers, not a new per-status model, and
-# not an interaction with time_horizon_adj or age -- that's calibration experiment "D",
-# deliberately NOT done here so this one change's effect stays attributable on its own. Applies
-# only when is_dynasty; a non-dynasty (redraft/keeper) league is untouched -- byte-identical to
-# before this constant existed.
-DYNASTY_RISK_ADJ_SCALE = 0.5
+# Dynasty risk_adj calibration, history preserved for attribution (see
+# test_draft_room.py's DynastyRiskAdjSofteningTests/RiskAdjTrajectoryScalingTests and
+# run_risk_adj_softening_measurement.py / run_risk_adj_experiment_D_comparison.py /
+# run_risk_adj_D_pathology_stress_test.py for the full evidence trail):
+#
+# Experiment "A" (uniform 0.5x dynasty scaling) shipped first as the safe, minimal fix for a
+# real bug: RISK_ADJ was applied UNCONDITIONALLY, the same in dynasty as in redraft, even
+# though time_horizon_adj (a few lines up) already gets its own is_dynasty gate for exactly the
+# reason that a current-week health flag should matter less against a 3-year horizon. A fixed
+# the flagship pathology (a thin-bpa, max-positive-trajectory real player crossing zero purely
+# from an injury flag) but, being a uniform scale, could not express the actual claim in
+# question: that an injury should matter less for a player whose value is genuinely
+# forward-looking than for one whose value is already realized in current production.
+#
+# Experiment "D" (below) replaces A as the production model: the SAME four RISK_ADJ magnitudes,
+# still unchanged, but now scaled by each player's OWN time_horizon_adj rather than by a flat
+# dynasty-wide constant. Verified independent of the injury signal by direct inspection before
+# use (time_horizon_adj is computed purely from proj_3yr/_points percentiles, entirely before
+# injury_status is read anywhere) -- no double-counting loop. Stress-tested on the full real
+# offense pool before promotion: zero D-only ordering reversals at any healthy-value-gap size
+# (D never flips an order flat/A wouldn't already flip), and D never flips a pair with a 25+
+# point healthy-value gap at all -- it only ever reorders genuinely close, contextual decisions,
+# never overrides a real value gap. Median realized scale across the real pool is 0.994 (most
+# players get no relief at all, since most trajectories aren't positive); even at the floor, a
+# real, non-trivial penalty always remains (never "injury doesn't matter").
+DYNASTY_RISK_ADJ_MIN_SCALE = 0.3  # floor: even max-positive trajectory keeps 30% of the flat penalty
 
 # The ONLY team-specific term. Added on top of universal_value, never multiplied into it.
 # Split by urgency, not a flat per-slot rate -- see module docstring's need_bonus section for
@@ -816,7 +826,17 @@ def compute_draft_board(
 
         risk_adj = RISK_ADJ.get(row.get("injury_status"), 0.0)
         if is_dynasty:
-            risk_adj *= DYNASTY_RISK_ADJ_SCALE
+            # Trajectory-aware scaling (experiment "D" -- see this constant's own docstring
+            # above for the full evidence trail): a flat-or-declining trajectory
+            # (time_horizon_adj <= 0) keeps the FULL flat penalty -- his value case is already
+            # current-production-driven, so a health flag should hit at full strength, same as
+            # it always has. Only a genuinely positive trajectory earns relief, scaled linearly
+            # up to the floor at the +10 clamp -- never full forgiveness.
+            if time_horizon_adj <= 0:
+                d_scale = 1.0
+            else:
+                d_scale = 1.0 - (1.0 - DYNASTY_RISK_ADJ_MIN_SCALE) * (time_horizon_adj / TIME_HORIZON_CLAMP[1])
+            risk_adj *= d_scale
 
         universal_value = round(bpa + time_horizon_adj + risk_adj, 2)
 
