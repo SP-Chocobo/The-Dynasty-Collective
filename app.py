@@ -36,6 +36,7 @@ import design_system
 import draft_board_ui
 import draft_room
 import draft_strategy
+import league_standings
 import pick_debate
 import pick_synthesis
 import pinned_messages
@@ -2807,6 +2808,14 @@ MATCHUP_VIEW = "🏈 Matchup"
 MAINTENANCE_VIEW = "🔧 Roster Maintenance"
 DRAFT_VIEW = "📋 Draft Room"
 LEAGUE_VIEW = "👥 League"
+# A cross-surface crosslink (e.g. League's "Open in Trade Calculator", F6) can't set
+# st.session_state.main_view directly from inside another view's branch -- that branch runs
+# AFTER this segmented_control has already been instantiated this run, and Streamlit forbids
+# writing a widget's key post-instantiation. So a crosslink stashes the destination here instead
+# (a plain, non-widget key) and reruns; this is the one place that consumes it, before the
+# widget below is created, which is exactly when setting it is safe.
+if st.session_state.get("pending_main_view"):
+    st.session_state.main_view = st.session_state.pop("pending_main_view")
 main_view = st.segmented_control(
     "Dashboard view",
     options=[MATCHUP_VIEW, MAINTENANCE_VIEW, DRAFT_VIEW, LEAGUE_VIEW],
@@ -4401,88 +4410,238 @@ elif main_view == DRAFT_VIEW:
     st.markdown("---")
 
 elif main_view == LEAGUE_VIEW:
-    # ------------------------------------------------------------------ league rosters --
+    # ------------------------------------------------------------------ league --
+    # Standings Ladder + Depth Map are ONE decision surface with two lenses (Fable's League
+    # design review, F1-F6), not two dashboards. The anti-two-dashboard contract this section
+    # must keep satisfying: (1) asymmetry -- Standings is the governing home view, Depth Map is
+    # entered/exited as a secondary lens, never a co-equal tab; (2) shared drill-down
+    # destination -- selecting a team from EITHER lens resolves into the exact same roster
+    # decomposition panel below; (3) state continuity -- the selected team survives switching
+    # lenses. Neither lens computes a team-strength score; strength stays an entry point.
 
     st.markdown("---")
-    st.subheader("League Rosters")
+    st.subheader("League")
 
-    # League-wide positional depth -- every team including your own (unlike the per-team
-    # drill-down below, which excludes yours since it has its own tab). Computed straight
-    # from Sleeper's own roster data rather than parsed off Draft Sharks' League Analyzer
-    # positional-rank table: that PDF's flat text loses its row/column structure and can't
-    # be reliably reattributed to the right team, so this is the same underlying fact
-    # (how deep is each team at each position) derived from a source that's actually safe
-    # to parse instead of guessed from one that isn't.
-    _depth = positional_depth(player_universe, st.session_state.data_merger)
-    if _depth:
-        st.markdown("**League-Wide Positional Depth**")
-        # data_merger.is_loaded is unconditionally true now (the committed baseline covers
-        # Dynasty Rankings regardless of any live upload), so this no longer needs a
-        # body-count-only fallback caption for the case where it isn't.
+    merger = st.session_state.data_merger
+    owner_labels = roster_owner_names(snapshot)
+    my_team_label = owner_labels.get(roster["roster_id"]) if roster else None
+    all_team_labels = sorted(set(owner_labels.values()))
+
+    # Real record only -- league_standings.team_standings reads Sleeper's own settings.wins/
+    # losses/ties/fpts fields directly, never a computed rating (see that module's own docstring).
+    standings = league_standings.team_standings(snapshot.get("rosters") or [], owner_labels)
+    games_played_total = sum(row["wins"] + row["losses"] + row["ties"] for row in standings)
+    season_started = games_played_total > 0
+    if not season_started:
+        # 0-0 across the board makes "sorted by wins" a meaningless stable-sort tiebreak --
+        # alphabetical is at least honestly arbitrary instead of quietly implying a real order.
+        standings = sorted(standings, key=lambda row: row["team"])
+
+    depth = positional_depth(player_universe, merger)
+
+    LADDER_LENS, DEPTH_LENS = "🏆 Standings", "📊 Depth Map"
+    # Home lens follows one real fact (has the league played any games) rather than becoming a
+    # third mode -- F1. setdefault only takes effect the first time this key is ever set; a
+    # user's own later lens choice is never overridden back.
+    st.session_state.setdefault("league_lens", LADDER_LENS if season_started else DEPTH_LENS)
+    st.session_state.setdefault("league_selected_team", my_team_label or (all_team_labels[0] if all_team_labels else None))
+    st.session_state.setdefault("league_selected_position", None)
+
+    lens = st.segmented_control(
+        "League lens", options=[LADDER_LENS, DEPTH_LENS], key="league_lens", label_visibility="collapsed",
+        help="Standings: the league's actual won-lost record -- the home view once games have "
+        "been played. Depth Map: a secondary lens for scanning positional depth across every "
+        "team. Selecting a team in either one carries over to the other, and both open the same "
+        "team breakdown below. Neither is a computed team-strength score.",
+    )
+    if not season_started:
+        st.caption(
+            "No games played yet this season (0-0 across the board), so Standings isn't "
+            "meaningful yet — Depth Map leads for now. Standings is still one tap away, and "
+            "it's listing teams alphabetically rather than implying a fake early order."
+        )
+
+    if lens == LADDER_LENS:
+        standings_df = pd.DataFrame([
+            {"Team": row["team"], "W": row["wins"], "L": row["losses"], "T": row["ties"], "PF": row["points_for"]}
+            for row in standings
+        ])
+        ladder_event = st.dataframe(
+            standings_df, hide_index=True, use_container_width=True,
+            on_select="rerun", selection_mode="single-row", key="league_ladder_grid",
+        )
+        selected_rows = ladder_event.selection.rows if ladder_event and ladder_event.selection else []
+        if selected_rows:
+            clicked_team = standings_df.iloc[selected_rows[0]]["Team"]
+            if clicked_team != st.session_state.league_selected_team:
+                st.session_state.league_selected_team = clicked_team
+                st.rerun()
+    else:
+        _position_order = ["QB", "RB", "WR", "TE", "K", "DEF", "LB", "DL", "DB"]
+        positions_present = [p for p in _position_order if any(p in positions for positions in depth.values())]
         st.caption(
             "How many rostered players (starters + bench + taxi/IR) each team has at each "
-            "position — a scan for who's thin or stacked somewhere, without asking the bots "
-            "team-by-team. Value in parens is that position's total Draft Sharks trade "
-            "value — weigh it over the raw count: a pile of backups and three stacked "
-            "stars can both show \"3.\""
+            "position, colored by how that team compares to the rest of the league at that "
+            "position — the same Strong/Average/Weak judgment the Trade Calculator uses, not a "
+            "separate opinion. Value in parens (where shown) is that position's total Draft "
+            "Sharks trade value. Click a cell to load that team below."
         )
-        _position_order = ["QB", "RB", "WR", "TE", "K", "DEF", "LB", "DL", "DB"]
-        _positions_present = [p for p in _position_order if any(p in positions for positions in _depth.values())]
-        _rows = []
-        for team_label, positions in sorted(_depth.items()):
+        depth_rows = []
+        for team_label in all_team_labels:
             row = {"team": team_label}
-            for pos in _positions_present:
-                cell = positions.get(pos, {"count": 0, "value": None})
+            for pos in positions_present:
+                cell = depth.get(team_label, {}).get(pos, {"count": 0, "value": None})
                 row[pos] = f"{cell['count']} ({cell['value']:.0f})" if cell["value"] is not None else cell["count"]
-            _rows.append(row)
-        depth_df = pd.DataFrame(_rows)[["team"] + _positions_present]
-        render_styled_table(depth_df)
+            depth_rows.append(row)
+        depth_map_df = pd.DataFrame(depth_rows)[["team"] + positions_present] if depth_rows and positions_present else pd.DataFrame()
 
-    st.caption(
-        "Every other team's roster in this league, straight from Sleeper — for trade scouting. "
-        "Not enriched with Draft Sharks data here; just who owns whom."
-    )
+        if depth_map_df.empty:
+            st.info("No rostered players found in this league's synced data.")
+        else:
+            def _style_depth_column(col: pd.Series) -> list[str]:
+                position = col.name
+                peer_cells = [teams[position] for teams in depth.values() if position in teams]
+                styles = []
+                for team_label in depth_map_df["team"]:
+                    cell = depth.get(team_label, {}).get(position, {"count": 0, "value": None})
+                    label = depth_ratings.depth_label(cell, peer_cells)
+                    if label == "Strong":
+                        styles.append("background-color: rgba(22,163,74,0.28); color: #4ade80;")
+                    elif label == "Weak":
+                        styles.append("background-color: rgba(185,28,28,0.24); color: #f87171;")
+                    else:
+                        styles.append("")
+                return styles
 
-    rosters_by_owner: dict[str, list[dict]] = {}
-    for row in player_universe:
-        if row.get("ownership") != "ROSTERED" or row.get("owner_id") == st.session_state.user_id:
-            continue  # your own roster already has its own tab
-        owner_label = row.get("owner_name") or f"Roster {row.get('roster_id', '?')}"
-        rosters_by_owner.setdefault(owner_label, []).append(row)
+            styled_depth_df = depth_map_df.style.apply(_style_depth_column, subset=positions_present, axis=0)
+            depth_event = st.dataframe(
+                styled_depth_df, hide_index=True, use_container_width=True,
+                on_select="rerun", selection_mode="single-cell", key="league_depth_map_grid",
+            )
+            cells = depth_event.selection.cells if depth_event and depth_event.selection else []
+            if cells:
+                row_idx, col_name = cells[0]
+                clicked_team = depth_map_df.iloc[row_idx]["team"]
+                clicked_position = col_name if col_name != "team" else None
+                changed = clicked_team != st.session_state.league_selected_team or (
+                    clicked_position and clicked_position != st.session_state.league_selected_position
+                )
+                if changed:
+                    st.session_state.league_selected_team = clicked_team
+                    if clicked_position:
+                        st.session_state.league_selected_position = clicked_position
+                    st.rerun()
 
-    if not rosters_by_owner:
-        st.info("No other rostered teams found in this league's synced data.")
+    st.markdown("---")
+
+    if not all_team_labels:
+        st.info("No teams found in this league's synced data.")
     else:
-        selected_owner = st.selectbox("Team", options=sorted(rosters_by_owner))
-        team_rows = rosters_by_owner[selected_owner]
-        # One shared row shape, reused for both the displayed table and the ScreenContext
-        # handed to the Debate chip below -- so what the panel is told about this roster can
-        # never quietly drift from what the table actually shows.
-        context_rows = [
-            {
-                "name": r["name"], "position": r["position"], "team": r["team"],
-                "slot": r.get("roster_slot") or "Bench", "injury_status": r.get("injury_status"),
-                "sleeper_proj": r.get("sleeper_proj"),
-            }
-            for r in team_rows
+        if st.session_state.league_selected_team not in all_team_labels:
+            st.session_state.league_selected_team = all_team_labels[0]
+        team_label = st.selectbox(
+            "Team", options=all_team_labels,
+            index=all_team_labels.index(st.session_state.league_selected_team),
+            key="league_team_picker",
+            help="Pick a team here, or click a row/cell in either lens above — both stay in sync.",
+        )
+        if team_label != st.session_state.league_selected_team:
+            st.session_state.league_selected_team = team_label
+
+        # Record-vs-asset-base divergence (F2): a rank comparison between two facts that
+        # already exist (win-rank from Standings, positional-depth-value-rank) -- never blended
+        # into a new composite score, and only shown once the record itself is meaningful.
+        if season_started:
+            win_rank_order = [row["team"] for row in standings]
+
+            def _team_total_value(label: str) -> Optional[float]:
+                values = [c["value"] for c in depth.get(label, {}).values() if c["value"] is not None]
+                return sum(values) if values else None
+
+            value_rank_order = sorted(
+                all_team_labels,
+                key=lambda t: _team_total_value(t) if _team_total_value(t) is not None else -1,
+                reverse=True,
+            )
+            if team_label in win_rank_order and _team_total_value(team_label) is not None:
+                win_rank = win_rank_order.index(team_label) + 1
+                value_rank = value_rank_order.index(team_label) + 1
+                n_teams = len(all_team_labels)
+                threshold = max(1, n_teams // 3)
+                if abs(win_rank - value_rank) > threshold:
+                    if win_rank > value_rank:
+                        st.caption(
+                            f"⚠️ {team_label}'s record (rank {win_rank} of {n_teams}) trails its "
+                            f"asset base (rank {value_rank} of {n_teams} by positional depth/"
+                            "value) — a team that looks better on the roster than in the standings."
+                        )
+                    else:
+                        st.caption(
+                            f"⚠️ {team_label}'s record (rank {win_rank} of {n_teams}) is ahead of "
+                            f"its asset base (rank {value_rank} of {n_teams} by positional depth/"
+                            "value) — winning despite a thinner roster, worth watching for regression."
+                        )
+
+        # Draft-capital decomposition (F4) -- Sleeper-authoritative traded-pick ownership,
+        # priced where Draft Sharks values are loaded. Untouched original picks have no ledger
+        # entry by design (see build_pick_ledger's own docstring) -- not invented inventory.
+        pick_ledger = build_pick_ledger(snapshot)
+        team_roster_id = next((rid for rid, label in owner_labels.items() if label == team_label), None)
+        acquired = pick_ledger.get(team_roster_id, {}).get("acquired", [])
+        if acquired:
+            parts = []
+            for p in acquired:
+                pick_label = f"{p.get('season')} Rd {p.get('round')}"
+                original_owner = owner_labels.get(p.get("roster_id"), f"Roster {p.get('roster_id')}")
+                value = merger.pick_value(f"{p.get('season')} Random Rd {p.get('round')}") if merger.is_trade_values_loaded else None
+                parts.append(f"{pick_label} (from {original_owner}{f', valued {value}' if value is not None else ''})")
+            st.caption("**Picks acquired via trade:** " + "; ".join(parts))
+        else:
+            st.caption("**Picks acquired via trade:** none.")
+
+        # Shared drill-down destination (F6): the exact same roster rows either lens resolves
+        # to, kept as pointers rather than player-detail cards -- name/position/team/slot/proj/
+        # injury, the same shape screen_context.build_league_context already sends to Debate.
+        team_rows = [
+            r for r in player_universe
+            if r.get("ownership") == "ROSTERED" and (r.get("owner_name") or f"Roster {r.get('roster_id', '?')}") == team_label
         ]
-        team_df = pd.DataFrame(context_rows)
-        team_df["_sort"] = team_df["slot"].map(SLOT_SORT_ORDER).fillna(99)
-        team_df = team_df.sort_values("_sort").drop(columns="_sort")
-        display_cols = [c for c in ["name", "position", "team", "slot", "sleeper_proj", "injury_status"] if c in team_df.columns]
-        render_styled_table(
-            team_df[display_cols],
-            pill_columns={"injury_status": _injury_pill_color, "position": _position_pill_color},
-            group_column="slot",
-            column_labels={"sleeper_proj": sleeper_proj_label(snapshot)},
-        )
-        league_chip_col, _ = st.columns([0.6, 2.4])
-        with league_chip_col:
-            render_debate_chip(screen_context.build_league_context(selected_owner, context_rows), key="league")
-        st.caption(
-            "Ask the Debate Studio about this team by name (or a specific player on it) for a full trade "
-            "read — it can see any team's roster, not just the one selected above."
-        )
+        if not team_rows:
+            st.info(f"No rostered players found for {team_label}.")
+        else:
+            context_rows = [
+                {
+                    "name": r["name"], "position": r["position"], "team": r["team"],
+                    "slot": r.get("roster_slot") or "Bench", "injury_status": r.get("injury_status"),
+                    "sleeper_proj": r.get("sleeper_proj"),
+                }
+                for r in team_rows
+            ]
+            team_df = pd.DataFrame(context_rows)
+            team_df["_sort"] = team_df["slot"].map(SLOT_SORT_ORDER).fillna(99)
+            team_df = team_df.sort_values("_sort").drop(columns="_sort")
+            display_cols = [c for c in ["name", "position", "team", "slot", "sleeper_proj", "injury_status"] if c in team_df.columns]
+            render_styled_table(
+                team_df[display_cols],
+                pill_columns={"injury_status": _injury_pill_color, "position": _position_pill_color},
+                group_column="slot",
+                column_labels={"sleeper_proj": sleeper_proj_label(snapshot)},
+            )
+            league_chip_col, league_link_col, _ = st.columns([0.6, 1.0, 1.6])
+            with league_chip_col:
+                render_debate_chip(screen_context.build_league_context(team_label, context_rows), key="league")
+            with league_link_col:
+                # Exactly one contextual crosslink per decomposition (F6) -- reuses the Trade
+                # Calculator's own partner selection, never a second handoff mechanism. Only
+                # offered for teams other than the user's own -- you can't trade with yourself.
+                if team_label != my_team_label and st.button("↔ Open in Trade Calculator", key="league_crosslink_trade"):
+                    st.session_state.trade_calc_partner = team_label
+                    st.session_state.pending_main_view = MAINTENANCE_VIEW
+                    st.rerun()
+            st.caption(
+                "Ask the Debate Studio about this team by name (or a specific player on it) for a full trade "
+                "read — it can see any team's roster, not just the one selected above."
+            )
 
 # ------------------------------------------------------------------ pinned messages --
 # The Decision Log below is "what the system decided" -- this is "what someone in this
