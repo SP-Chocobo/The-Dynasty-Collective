@@ -309,7 +309,15 @@ def _rookie_lookup(merger: DataMerger) -> dict[tuple[str, str], bool]:
     see parse_keeptradecut_pdf's "rookie" column). This is real, already-collected source
     data, not a guess: it's what lets pool_scope filter to "rookies only" or "veterans only"
     by DETECTING who's actually a rookie this season, rather than a manual per-player list
-    that goes stale the moment a new class debuts."""
+    that goes stale the moment a new class debuts.
+
+    CDME's ingestion trust boundary, made explicit: merger.external_values also carries
+    bot_research.json's own LLM-originated findings (source_name == "bot_research", see
+    data_merger.load_bot_research_as_external), sharing this same DataFrame. The
+    source_name == "keeptradecut" filter below is what keeps that data out of CDME's own
+    computation -- proven, not just asserted, by test_cdme_ingestion_boundary.py's adversarial
+    injection tests. Loosening this filter (or reading any other column off an unfiltered
+    `ev`) would reopen that boundary."""
     ev = merger.external_values
     if ev.empty or "rookie" not in ev.columns:
         return {}

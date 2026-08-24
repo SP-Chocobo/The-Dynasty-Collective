@@ -309,7 +309,14 @@ def _consensus_lookup(merger: DataMerger, is_superflex: bool) -> dict[tuple[str,
 
     Empty entirely (not partial/mismatched data) unless is_superflex is True: this app's
     committed baseline only carries KTC's superflex-format export, and using superflex-inflated
-    QB consensus for a 1QB league would silently misrepresent that league's real market."""
+    QB consensus for a 1QB league would silently misrepresent that league's real market.
+
+    CDME's ingestion trust boundary, made explicit: merger.external_values also carries
+    bot_research.json's own LLM-originated findings (source_name == "bot_research", see
+    data_merger.load_bot_research_as_external), sharing this same DataFrame. The
+    source_name == "keeptradecut" filter below is what keeps that data out of consensus_reach
+    -- proven, not just asserted, by test_cdme_ingestion_boundary.py's adversarial injection
+    tests. Loosening this filter would reopen that boundary."""
     if not is_superflex:
         return {}
     ev = merger.external_values
