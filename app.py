@@ -2897,6 +2897,9 @@ if main_view == MATCHUP_VIEW:
             group_column="slot",
             column_labels={"sleeper_proj": sleeper_proj_label(snapshot)},
         )
+        matchup_chip_col, _ = st.columns([0.6, 2.4])
+        with matchup_chip_col:
+            render_debate_chip(screen_context.build_matchup_context(roster_table), key="matchup")
         if "sleeper_proj" in df.columns:
             projection_request = snapshot.get("projection_request") or snapshot.get("nfl_state") or {}
             st.caption(
@@ -3080,6 +3083,12 @@ elif main_view == MAINTENANCE_VIEW:
                     f"'Sleeper Proj' = Sleeper's native {proj_req.get('season_type', 'regular')} week-"
                     f"{proj_req.get('week', '?')} projection (unofficial endpoint). 'DS ROS Proj' = Draft "
                     "Sharks' rest-of-season number, when that data is loaded."
+                )
+            fa_chip_col, _ = st.columns([0.6, 2.4])
+            with fa_chip_col:
+                render_debate_chip(
+                    screen_context.build_free_agents_context(fa_rows, fa_position_filter, fa_search),
+                    key="free_agents",
                 )
         else:
             st.caption("No Sleeper free agents match that filter.")

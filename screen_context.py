@@ -125,6 +125,77 @@ def build_draft_room_context(snap: PickSnapshot) -> ScreenContext:
     )
 
 
+def build_matchup_context(roster_table: Sequence[dict]) -> ScreenContext:
+    """Matchup's Roster Summary table -- built from the exact roster_table rows that view
+    already renders (slot/tier/vorp/projection/injury, in the same Starter-then-Bench-then-
+    TAXI/IR order app.py sorts them into). Deliberately just a roster listing with whatever
+    per-player numbers are already computed; never a start/sit recommendation of its own --
+    that's lineup_optimizer's separate, distinct concern, not duplicated here."""
+    looking_at = "Looking at your roster."
+    starters = [r for r in roster_table if r.get("slot") == "Starter"]
+    decision = f"{len(roster_table)} rostered player(s), {len(starters)} in starting slots."
+    lines = []
+    for r in roster_table:
+        bits = []
+        if r.get("tier") is not None:
+            bits.append(f"tier {r['tier']}")
+        if r.get("vorp") is not None:
+            bits.append(f"VORP {r['vorp']:.1f}")
+        proj = r.get("sleeper_proj", r.get("projection"))
+        if proj is not None:
+            bits.append(f"proj {proj:.1f}")
+        if r.get("injury_status"):
+            bits.append(r["injury_status"])
+        team_bit = f", {r['team']}" if r.get("team") else ""
+        tail = " — " + ", ".join(bits) if bits else ""
+        lines.append(f"{r['name']} ({r['position']}{team_bit}) — {r.get('slot') or 'Bench'}{tail}")
+    evidence = "\n".join(lines) if lines else "No rostered players found."
+    return ScreenContext(
+        surface="Matchup", looking_at=looking_at, decision=decision,
+        evidence=evidence, entities=tuple(r["name"] for r in roster_table),
+    )
+
+
+def build_free_agents_context(rows: Sequence[dict], position_filter: Optional[str], search_term: Optional[str]) -> ScreenContext:
+    """Maintenance's Free Agents table -- built from the exact post-filter, post-sort rows
+    that table already renders, in the same order, never a separate re-query of the player
+    pool. Capped to the top _MAX_CANDIDATES_IN_CONTEXT like Draft Room's candidate list --
+    a wide-open filter can run to hundreds of rows, and the panel only needs the ones actually
+    at the top of the current sort."""
+    filters = []
+    if position_filter and position_filter not in ("All", "All Positions"):
+        filters.append(f"position: {position_filter}")
+    if search_term and search_term.strip():
+        filters.append(f"search: '{search_term.strip()}'")
+    looking_at = "Browsing free agents" + (f" ({', '.join(filters)})" if filters else "") + "."
+    shown = rows[:_MAX_CANDIDATES_IN_CONTEXT]
+    lines = []
+    for r in shown:
+        bits = []
+        if r.get("ds_fa_rank") is not None:
+            bits.append(f"FA rank {r['ds_fa_rank']}")
+        elif r.get("ds_rank") is not None:
+            bits.append(f"DS rank {r['ds_rank']}")
+        if r.get("sleeper_proj") is not None:
+            bits.append(f"proj {r['sleeper_proj']:.1f}")
+        if r.get("ds_trade_value") is not None:
+            bits.append(f"value {r['ds_trade_value']:.0f}")
+        if r.get("injury_status"):
+            bits.append(r["injury_status"])
+        team_bit = f", {r['team']}" if r.get("team") else ""
+        tail = " — " + ", ".join(bits) if bits else ""
+        lines.append(f"{r['name']} ({r['position']}{team_bit}){tail}")
+    remaining = len(rows) - len(shown)
+    if remaining > 0:
+        lines.append(f"...and {remaining} more in the current filter.")
+    evidence = "\n".join(lines) if lines else "No free agents match the current filter."
+    decision = f"{len(rows)} free agent(s) match the current filter/search."
+    return ScreenContext(
+        surface="Free Agents", looking_at=looking_at, decision=decision,
+        evidence=evidence, entities=tuple(r["name"] for r in shown),
+    )
+
+
 def build_league_context(team_label: str, team_rows: Sequence[dict]) -> ScreenContext:
     """Another team's roster, browsed from the League view -- built entirely from the same
     per-player rows (name/position/team/slot/sleeper_proj/injury_status) that view already

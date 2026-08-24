@@ -37,6 +37,19 @@ class DebateChipWiringTests(unittest.TestCase):
             _APP_SOURCE,
         )
 
+    def test_matchup_chip_is_wired_via_the_shared_builder(self):
+        self.assertIn(
+            'render_debate_chip(screen_context.build_matchup_context(roster_table), key="matchup")',
+            _APP_SOURCE,
+        )
+
+    def test_free_agents_chip_is_wired_via_the_shared_builder(self):
+        self.assertIn(
+            "screen_context.build_free_agents_context(fa_rows, fa_position_filter, fa_search)",
+            _APP_SOURCE,
+        )
+        self.assertIn('key="free_agents"', _APP_SOURCE)
+
     def test_two_debate_controls_reference_the_distinct_named_help_constants(self):
         self.assertIn("help=screen_context.UNIVERSAL_DEBATE_HELP", _APP_SOURCE)
         self.assertIn("help=screen_context.DRAFT_ROOM_PICK_DEBATE_HELP", _APP_SOURCE)

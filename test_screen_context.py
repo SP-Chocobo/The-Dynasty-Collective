@@ -7,7 +7,8 @@ import unittest
 from pick_synthesis import CandidateSnapshot, PickSnapshot
 from screen_context import (
     DRAFT_ROOM_PICK_DEBATE_HELP, UNIVERSAL_DEBATE_HELP,
-    ScreenContext, build_draft_room_context, build_league_context, build_trade_context,
+    ScreenContext, build_draft_room_context, build_free_agents_context, build_league_context,
+    build_matchup_context, build_trade_context,
 )
 
 
@@ -271,6 +272,118 @@ class BuildLeagueContextTests(unittest.TestCase):
         rows = [self._row(name="Z"), self._row(name="A"), self._row(name="M")]
         ctx = build_league_context("X", rows)
         self.assertEqual(ctx.entities, ("Z", "A", "M"))
+
+
+class BuildMatchupContextTests(unittest.TestCase):
+    def _row(self, **overrides) -> dict:
+        base = dict(
+            name="Justin Jefferson", position="WR", team="MIN", slot="Starter",
+            injury_status=None, sleeper_proj=18.4, tier=1, vorp=42.0,
+        )
+        base.update(overrides)
+        return base
+
+    def test_surface_is_always_matchup(self):
+        ctx = build_matchup_context([self._row()])
+        self.assertEqual(ctx.surface, "Matchup")
+
+    def test_decision_counts_rostered_and_starting_players(self):
+        rows = [self._row(name="A", slot="Starter"), self._row(name="B", slot="Bench")]
+        ctx = build_matchup_context(rows)
+        self.assertIn("2 rostered player(s)", ctx.decision)
+        self.assertIn("1 in starting slots", ctx.decision)
+
+    def test_evidence_reflects_tier_vorp_and_projection_unmodified(self):
+        row = self._row(tier=2, vorp=15.5, sleeper_proj=12.3)
+        ctx = build_matchup_context([row])
+        self.assertIn("tier 2", ctx.evidence)
+        self.assertIn("VORP 15.5", ctx.evidence)
+        self.assertIn("proj 12.3", ctx.evidence)
+
+    def test_falls_back_to_projection_field_when_sleeper_proj_absent(self):
+        row = self._row(sleeper_proj=None, projection=9.9)
+        del row["sleeper_proj"]
+        ctx = build_matchup_context([row])
+        self.assertIn("proj 9.9", ctx.evidence)
+
+    def test_missing_slot_defaults_to_bench_in_evidence(self):
+        ctx = build_matchup_context([self._row(slot=None)])
+        self.assertIn("Bench", ctx.evidence)
+
+    def test_empty_roster_reads_as_none_found_not_blank(self):
+        ctx = build_matchup_context([])
+        self.assertIn("No rostered players found", ctx.evidence)
+
+    def test_never_recommends_a_start_sit_decision(self):
+        # This builder lists the roster -- it must never itself pick who to start.
+        ctx = build_matchup_context([self._row(), self._row(name="B", slot="Bench")])
+        for banned in ("start ", "sit ", "recommend"):
+            self.assertNotIn(banned, ctx.evidence.lower())
+
+    def test_entities_preserve_roster_table_order(self):
+        rows = [self._row(name="Z"), self._row(name="A"), self._row(name="M")]
+        ctx = build_matchup_context(rows)
+        self.assertEqual(ctx.entities, ("Z", "A", "M"))
+
+
+class BuildFreeAgentsContextTests(unittest.TestCase):
+    def _row(self, **overrides) -> dict:
+        base = dict(name="Jaylen Warren", position="RB", team="PIT", injury_status=None, sleeper_proj=9.1)
+        base.update(overrides)
+        return base
+
+    def test_surface_is_always_free_agents(self):
+        ctx = build_free_agents_context([self._row()], None, None)
+        self.assertEqual(ctx.surface, "Free Agents")
+
+    def test_position_filter_named_in_looking_at_when_set(self):
+        ctx = build_free_agents_context([self._row()], "RB", None)
+        self.assertIn("position: RB", ctx.looking_at)
+
+    def test_all_positions_filter_omitted_from_looking_at(self):
+        ctx = build_free_agents_context([self._row()], "All Positions", None)
+        self.assertNotIn("position:", ctx.looking_at)
+
+    def test_search_term_named_in_looking_at_when_set(self):
+        ctx = build_free_agents_context([self._row()], None, "warren")
+        self.assertIn("search: 'warren'", ctx.looking_at)
+
+    def test_blank_search_term_omitted_from_looking_at(self):
+        ctx = build_free_agents_context([self._row()], None, "   ")
+        self.assertNotIn("search:", ctx.looking_at)
+
+    def test_decision_counts_total_matching_rows(self):
+        rows = [self._row(name=f"Player {i}") for i in range(5)]
+        ctx = build_free_agents_context(rows, None, None)
+        self.assertIn("5 free agent(s)", ctx.decision)
+
+    def test_evidence_reflects_real_row_fields_unmodified(self):
+        row = self._row(name="Jaylen Warren", ds_fa_rank=4, sleeper_proj=9.1)
+        ctx = build_free_agents_context([row], None, None)
+        self.assertIn("Jaylen Warren (RB, PIT)", ctx.evidence)
+        self.assertIn("FA rank 4", ctx.evidence)
+        self.assertIn("proj 9.1", ctx.evidence)
+
+    def test_ds_rank_used_only_when_fa_rank_absent(self):
+        row = self._row(ds_rank=120)
+        ctx = build_free_agents_context([row], None, None)
+        self.assertIn("DS rank 120", ctx.evidence)
+
+    def test_empty_rows_reads_as_none_match_not_blank(self):
+        ctx = build_free_agents_context([], None, None)
+        self.assertIn("No free agents match", ctx.evidence)
+
+    def test_rows_beyond_the_cap_are_summarized_with_a_remainder_note(self):
+        rows = [self._row(name=f"Player {i}") for i in range(12)]
+        ctx = build_free_agents_context(rows, None, None)
+        self.assertIn("4 more in the current filter", ctx.evidence)
+        self.assertEqual(len(ctx.entities), 8)
+
+    def test_never_re_sorts_the_callers_own_row_order(self):
+        names = ["Z. Last", "A. First", "M. Middle"]
+        rows = [self._row(name=n) for n in names]
+        ctx = build_free_agents_context(rows, None, None)
+        self.assertEqual(ctx.entities, tuple(names))
 
 
 class DebateHelpTextDistinctnessTests(unittest.TestCase):
