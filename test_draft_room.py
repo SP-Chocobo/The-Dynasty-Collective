@@ -15,6 +15,7 @@ import pandas as pd
 
 import data_merger as dm
 import draft_room as dr
+import lineup_optimizer as lo
 
 
 def _build_pool_players_db(positions=("QB", "RB", "WR", "TE", "DL", "LB", "DB")):
@@ -1171,10 +1172,12 @@ class EligibilityBonusWiringTests(unittest.TestCase):
         self.assertLess(elapsed, 15.0, f"compute_draft_board took {elapsed:.1f}s with heavy multi-eligibility -- eligibility_bonus regression")
 
     def test_eligibility_bonus_never_exceeds_the_candidates_own_trade_value(self):
-        # Self-limiting by construction (see eligibility_bonus's own docstring) -- no
-        # NEED_BONUS_MAX-style cap exists because the marginal contribution of a single
-        # player can never exceed his own value. Assert that invariant directly against the
-        # same open-IDP_FLEX scenario, where the bonus is at its largest plausible size.
+        # Kept as a weaker outer bound. It is no longer the BINDING constraint: the board's
+        # eligibility_bonus is now rescaled from trade_value units into the bpa-scale sum it
+        # is added to (see draft_room.TRADE_VALUE_SCALE_MAX/ELIGIBILITY_BONUS_MAX), so the
+        # real bound is ELIGIBILITY_BONUS_MAX -- asserted directly in
+        # test_eligibility_bonus_is_bounded_by_its_own_max below. This assertion still holds
+        # because the rescale only ever shrinks the raw value.
         league = {
             "roster_positions": ["WR", "WR", "FLEX", "IDP_FLEX", "BN", "BN"],
             "total_rosters": 12, "settings": {"type": 2},
@@ -1192,6 +1195,130 @@ class EligibilityBonusWiringTests(unittest.TestCase):
         row = next(r for r in board if r["player_id"] == candidate_id)
         match = self.merger.merge_player(row["name"], position="WR", team=row["team"])
         self.assertLessEqual(row["eligibility_bonus"], match["trade_value"] + 1e-6)
+
+    # ---------------------------------------------------------------------------------
+    # The three tests below close a real, demonstrated production defect found by an
+    # adversarial audit pass. eligibility_bonus was denominated in Draft Sharks trade_value
+    # units but added directly into team_acquisition_value, whose other two terms
+    # (universal_value, need_bonus) both live on the bpa scale. Those two 0-100 scales are
+    # NOT interchangeable on real data (mean |bpa - trade_value| = 11.7, max 63.0,
+    # correlation 0.829), and unlike need_bonus this term had no cap -- so it was the one
+    # contextual term that could override a genuine value gap outright.
+    #
+    # Reproduced on the committed baseline in BOTH a standard 1QB league (WR/TE dual
+    # eligibility) and an IDP league (WR/DB): an 82.00 bonus, 6.8x NEED_BONUS_MAX, flipping a
+    # 35-point universal_value gap and lifting a #10 board player to #1. The same empty roster
+    # slot was priced 19-248x differently depending on which term happened to price it.
+    #
+    # The entire pre-existing validation corpus was blind to this: every harness and every
+    # other test file builds players_db with single-position fantasy_positions, for which
+    # eligibility_bonus is exactly 0.0 by construction.
+    # ---------------------------------------------------------------------------------
+
+    def _saturated_idp_flex_scenario(self):
+        """A real roster whose WR/FLEX slots are all occupied by players MORE valuable than
+        the candidate, leaving only an IDP_FLEX the candidate can reach solely via secondary
+        eligibility. This is the scenario where the term is at its genuine maximum -- if it is
+        bounded here, it is bounded everywhere."""
+        league = {
+            "roster_positions": ["WR", "WR", "FLEX", "IDP_FLEX", "BN", "BN"],
+            "total_rosters": 12, "settings": {"type": 2},
+        }
+        wr_ids = [pid for pid, info in self.players_db.items() if info["position"] == "WR"]
+        picks = [{"roster_id": "1", "player_id": pid, "round": 1} for pid in wr_ids[:3]]
+        candidate_id = wr_ids[3]
+        players_db = dict(self.players_db)
+        players_db[candidate_id] = dict(players_db[candidate_id], fantasy_positions=["WR", "DB"])
+        return league, players_db, picks, candidate_id
+
+    def test_eligibility_bonus_is_bounded_by_its_own_max(self):
+        league, players_db, picks, candidate_id = self._saturated_idp_flex_scenario()
+        board = dr.compute_draft_board(
+            self.merger, players_db, picks, my_roster_id="1", league=league, mode="balanced",
+        )
+        for row in board:
+            self.assertLessEqual(
+                row["eligibility_bonus"], dr.ELIGIBILITY_BONUS_MAX + 1e-9,
+                f"{row['name']} exceeded ELIGIBILITY_BONUS_MAX -- the units rescale regressed",
+            )
+        self.assertGreater(
+            next(r for r in board if r["player_id"] == candidate_id)["eligibility_bonus"], 0.0,
+            "the rescale must shrink the term, not zero it out -- real flexibility still counts",
+        )
+
+    def test_eligibility_bonus_is_expressed_in_bpa_units_not_trade_value_units(self):
+        """The units contract itself: the board's bonus must be the raw trade_value-denominated
+        assignment-problem answer rescaled by ELIGIBILITY_BONUS_MAX/TRADE_VALUE_SCALE_MAX. Pinned
+        against a direct lineup_optimizer call so the two can never silently drift apart."""
+        league, players_db, picks, candidate_id = self._saturated_idp_flex_scenario()
+        board = dr.compute_draft_board(
+            self.merger, players_db, picks, my_roster_id="1", league=league, mode="balanced",
+        )
+        row = next(r for r in board if r["player_id"] == candidate_id)
+        raw = lo.eligibility_bonus(
+            dr._team_roster_players(picks, players_db, "1", self.merger),
+            candidate_id=candidate_id,
+            candidate_value=float(self.merger.merge_player(row["name"], position="WR", team=row["team"])["trade_value"]),
+            candidate_full_eligible={"WR", "DB"}, candidate_primary_position="WR",
+            roster_positions=league["roster_positions"],
+        )["eligibility_bonus"]
+        self.assertGreater(raw, dr.ELIGIBILITY_BONUS_MAX, "fixture too weak to prove the rescale actually bites")
+        self.assertAlmostEqual(
+            row["eligibility_bonus"],
+            round(raw * (dr.ELIGIBILITY_BONUS_MAX / dr.TRADE_VALUE_SCALE_MAX), 2), places=2,
+        )
+
+    def test_eligibility_bonus_cannot_flip_a_large_universal_value_gap(self):
+        """The missing mirror of test_need_bonus_cannot_flip_a_large_universal_value_gap. Both
+        terms answer "how good is this player FOR THIS ROSTER"; the architecture bounds that
+        class so it can inform a close call but never override a real value gap. Only
+        need_bonus had that invariant enforced -- this is the sibling that did not.
+
+        This is the EXACT scenario that reproduced the original defect: a full real pool, a
+        real 12-slot IDP league, and a mid-board WR made WR/DB-eligible against a roster whose
+        WR/FLEX slots are already filled by strictly better players. Pre-fix this awarded an
+        82.00 bonus and took the candidate from board rank #10 to #1 over a 32-point gap."""
+        merger, players_db = _build_pool_players_db()  # full pool -- needs real value spread
+        league = LIGHT_IDP_LEAGUE
+        base = dr.compute_draft_board(merger, players_db, [], my_roster_id="99", league=league, mode="balanced")
+        by_uv = sorted(base, key=lambda r: -r["universal_value"])
+
+        def trade_value_of(row):
+            return merger.merge_player(row["name"], position=row["position"], team=row.get("team")).get("trade_value")
+
+        wrs = [r for r in by_uv if r["position"] == "WR"]
+        best_wr = wrs[0]
+        cand_row = next(
+            (r for r in wrs
+             if best_wr["universal_value"] - r["universal_value"] > 25.0 and (trade_value_of(r) or 0) > 0),
+            None,
+        )
+        self.assertIsNotNone(cand_row, "real baseline should contain a WR well behind the best WR")
+        cand_tv = trade_value_of(cand_row)
+        # Saturate every WR/FLEX-reachable slot with players strictly MORE valuable than the
+        # candidate, so his WR-ness genuinely buys nothing and only the IDP_FLEX is open.
+        fillers = [r for r in by_uv
+                   if r["position"] in ("RB", "WR")
+                   and r["player_id"] not in (best_wr["player_id"], cand_row["player_id"])
+                   and (trade_value_of(r) or 0) > cand_tv][:6]
+        picks = [{"pick_no": i + 1, "round": 1, "roster_id": "99", "player_id": r["player_id"]}
+                 for i, r in enumerate(fillers)]
+        db = dict(players_db)
+        db[cand_row["player_id"]] = dict(db[cand_row["player_id"]], fantasy_positions=["WR", "DB"])
+
+        board = {r["player_id"]: r for r in dr.compute_draft_board(
+            merger, db, picks, my_roster_id="99", league=league, mode="balanced")}
+        cand, leader = board[cand_row["player_id"]], board[best_wr["player_id"]]
+        gap = leader["universal_value"] - cand["universal_value"]
+        self.assertGreater(gap, dr.NEED_BONUS_MAX + dr.ELIGIBILITY_BONUS_MAX,
+                           "fixture must present a gap larger than the combined context bound to be meaningful")
+        self.assertGreater(cand["eligibility_bonus"], 0.0,
+                           "fixture must actually trigger the eligibility term to be meaningful")
+        self.assertGreater(
+            leader["final_score"], cand["final_score"],
+            f"context ({cand['need_bonus']:.2f} need + {cand['eligibility_bonus']:.2f} elig) overrode a "
+            f"{gap:.2f}-point universal_value gap -- the bound regressed",
+        )
 
 
 class ProjectedPointsTests(unittest.TestCase):

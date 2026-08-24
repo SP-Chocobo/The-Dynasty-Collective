@@ -261,6 +261,40 @@ NEED_BONUS_PER_DEDICATED_SLOT = 4.0
 NEED_BONUS_PER_FLEX_SHARE = 1.0
 NEED_BONUS_MAX = 12.0
 
+# UNIT CONVERSION for the other team-specific term. lineup_optimizer.eligibility_bonus solves a
+# real assignment problem and correctly returns its answer in whatever currency its caller fed
+# it -- here that is Draft Sharks' trade_value (see _team_roster_players' docstring on why a
+# roster's already-drafted players can only be priced that way). But team_acquisition_value is
+# a bpa-scale sum: universal_value is bpa-anchored and need_bonus is a bpa-scale nudge capped
+# at NEED_BONUS_MAX. Adding a trade_value-denominated number straight into that sum mixed two
+# scales that are NOT interchangeable -- measured on the committed baseline, mean
+# |bpa - trade_value| = 11.7 with a max divergence of 63.0 and a correlation of only 0.829
+# (M Nabers: bpa 18.0 vs trade_value 81.0; C McCaffrey: bpa 85.6 vs trade_value 47.0). The
+# mean units error alone was about the size of the entire NEED_BONUS_MAX cap.
+#
+# Left unconverted this was the one uncapped contextual term, and it could override real value
+# gaps outright: reproduced on real data in BOTH a standard 1QB league (WR/TE dual eligibility,
+# a common real Sleeper listing) and an IDP league (WR/DB, the Travis-Hunter case this module
+# was built for) -- an 82.00 bonus, 6.8x NEED_BONUS_MAX, flipping a 35-point universal_value
+# gap and lifting a #10 board player to #1. Worse, the SAME roster hole was priced ~19-248x
+# differently depending on which term happened to price it (a genuine TE filling an empty TE
+# slot earned need_bonus 4.33; a dual-eligible WR filling that identical slot earned 82.00).
+#
+# The conversion is a pure linear rescale by a documented ratio, applied here at the point of
+# consumption rather than inside lineup_optimizer (which stays honest in its caller's currency,
+# and whose other consumer, roster_diagnostics.py, genuinely wants trade_value units). It is
+# dimensionally correct at EVERY magnitude, not just at the tail a clamp would catch, and it
+# preserves the term's full within-term ordering. It needs no per-player division (so the 14
+# real players with trade_value == 0.0 are not a hazard) and is bounded by construction:
+# eligibility_bonus <= candidate trade_value <= TRADE_VALUE_SCALE_MAX, so the converted value
+# can never exceed ELIGIBILITY_BONUS_MAX. Bound set equal to NEED_BONUS_MAX deliberately --
+# both terms answer "how good is this player FOR THIS ROSTER", and the architecture already
+# fixes the bound for that class; a different number would be inventing a magnitude the
+# evidence does not support. The explicit min() below is a defensive guard against anomalous
+# source data above the documented scale, not the mechanism that does the bounding.
+TRADE_VALUE_SCALE_MAX = 100.0  # Draft Sharks' documented trade_value range (verified: real max is exactly 100.0)
+ELIGIBILITY_BONUS_MAX = NEED_BONUS_MAX
+
 UPSIDE_GROWTH_WEIGHT = 0.5
 
 # confidence is now a direct, cheap encoding of which anchor a row actually used -- see
@@ -868,7 +902,14 @@ def compute_draft_board(
             candidate_full_eligible=player_eligible_positions(players_db.get(str(row["player_id"])) or {}),
             candidate_primary_position=position, roster_positions=roster_positions,
         )
-        eligibility_bonus_value = eb["eligibility_bonus"]
+        # Converted from trade_value units into this sum's own bpa scale -- see
+        # TRADE_VALUE_SCALE_MAX/ELIGIBILITY_BONUS_MAX above for the units defect this fixes and
+        # the real-data evidence behind it. min() is a defensive guard for out-of-scale source
+        # data, not the bounding mechanism (the rescale is already bounded by construction).
+        eligibility_bonus_value = min(
+            round(eb["eligibility_bonus"] * (ELIGIBILITY_BONUS_MAX / TRADE_VALUE_SCALE_MAX), 2),
+            ELIGIBILITY_BONUS_MAX,
+        )
 
         team_acquisition_value = round(universal_value + need_bonus + eligibility_bonus_value, 2)
 
