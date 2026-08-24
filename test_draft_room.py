@@ -868,6 +868,48 @@ class InvariantTests(unittest.TestCase):
                 msg="a player marked 'Out' should lose exactly the -10.0 RISK_ADJ discount",
             )
 
+    def test_risk_adj_is_the_only_unclamped_term_and_can_push_universal_value_negative(self):
+        # FLAGGED FINDING, not an asserted-correct invariant -- pins down a real calibration gap
+        # surfaced directly by the RISK_ADJ vocabulary fix above, per the user's own explicit
+        # direction to separate "is the data recognized" (fixed) from "is the magnitude
+        # dynasty-appropriate" (an open, deliberately unresolved question -- do not read this
+        # test passing as endorsing the current numbers).
+        #
+        # universal_value = bpa + time_horizon_adj + risk_adj. bpa is clamped [0, 100];
+        # time_horizon_adj is clamped [-10.0, 10.0] (TIME_HORIZON_CLAMP); risk_adj is the ONLY
+        # unclamped term in the whole sum -- nothing floors universal_value at 0 either. This
+        # matters specifically for dynasty: a young, thin-current-production player's entire
+        # universal_value can be almost ENTIRELY time_horizon_adj (a real player confirmed
+        # against the committed baseline: bpa=0.0, time_horizon_adj=+10.0, i.e. his whole value
+        # case IS his forward trajectory) -- for that exact player, RISK_ADJ's flat -18.0 IR
+        # penalty pushes universal_value to -8.0, NEGATIVE, from a current-week status flag
+        # alone, on the one class of player whose value proposition is explicitly long-horizon
+        # rather than current-week. Contrast a real aging, declining-trajectory veteran (high
+        # bpa=50.0, time_horizon_adj=-8.4) hit by the identical IR penalty: 41.6 -> 23.6, barely
+        # denting a still-clearly-valuable asset. risk_adj does not read time_horizon_adj, age,
+        # or bpa at all -- it is a pure function of injury_status, so the SAME flat discount
+        # currently lands hardest (proportionally, and here literally past zero) on exactly the
+        # player type dynasty theory says should be discounted least by a current-week flag.
+        young_rising = next(
+            r for r in dr.compute_draft_board(
+                self.merger, self.players_db, [], my_roster_id="99", league=LIGHT_IDP_LEAGUE, mode="balanced",
+            )
+            if r.get("time_horizon_adj") == dr.TIME_HORIZON_CLAMP[1]  # at the positive clamp
+        )
+        pdb_ir = dict(self.players_db)
+        pdb_ir[young_rising["player_id"]] = dict(pdb_ir[young_rising["player_id"]], injury_status="IR")
+        board_ir = dr.compute_draft_board(
+            self.merger, pdb_ir, [], my_roster_id="99", league=LIGHT_IDP_LEAGUE, mode="balanced",
+        )
+        row_ir = next((r for r in board_ir if r["player_id"] == young_rising["player_id"]), None)
+        if row_ir is not None and young_rising["bpa"] < abs(dr.RISK_ADJ["IR"]) - dr.TIME_HORIZON_CLAMP[1]:
+            self.assertLess(
+                row_ir["universal_value"], 0.0,
+                "expected a real thin-bpa, max-positive-trajectory player's universal_value to go "
+                "negative under IR -- if this stops happening, the calibration gap this test "
+                "documents may have been addressed; reconsider whether this test still applies",
+            )
+
     def test_need_bonus_is_zero_once_a_position_is_fully_satisfied(self):
         board = dr.compute_draft_board(
             self.merger, self.players_db, [], my_roster_id="99", league=LIGHT_IDP_LEAGUE, mode="balanced",
