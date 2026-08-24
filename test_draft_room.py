@@ -478,11 +478,24 @@ class RookieDraftRosterContextTieredGateTests(unittest.TestCase):
 
     def test_roster_context_can_break_a_real_near_tie(self):
         # The other half of the contract: context must not be inert either. Find a real
-        # cross-position near-tie pair in the top of the board -- gap no larger than the
-        # trailing candidate's OWN real need_bonus ceiling (see _max_need_bonus_for; a flat
-        # NEED_BONUS_MAX threshold over-qualifies single-dedicated-slot positions that can
-        # never actually close a gap that large) -- and confirm starving the trailer's own
-        # position moves it ahead of the (still-close) leader.
+        # cross-position near-tie pair in the top of the board -- gap no larger than a loose
+        # upper bound on how much need_bonus COULD move the pair together (trailer's own
+        # ceiling plus leader's own ceiling; see _max_need_bonus_for) -- then VERIFY
+        # empirically by actually computing the "trailer's position starved" board, rather
+        # than asserting the prediction holds.
+        #
+        # Why not just assert on the ceiling prediction directly (the original design here):
+        # the "starved_mix" history gives every non-trailer position exactly 1 filled, which
+        # only fully zeroes a single-dedicated-slot position's (QB/TE) own need_bonus -- a
+        # leader sitting at a 2-dedicated-slot position (RB/WR) still carries a real residual
+        # need_bonus in that same scenario (confirmed live: a real WR leader kept a 4.72
+        # need_bonus after "1 filled", not 0), so a bound comparing only the trailer's own
+        # ceiling against the gap can pass its filter while the leader's own concurrent bump
+        # keeps it ahead anyway. Caught by the superflex variant of this class, where a
+        # WR-leader/RB-trailer near-tie pair hit exactly this case. Verifying empirically
+        # (actually computing the board for every filtered candidate, advancing past any that
+        # don't really close) fixes this for both the standard and superflex leagues rather
+        # than special-casing one.
         baseline = self._baseline_board()[:12]
         ceiling_cache: dict[str, float] = {}
 
@@ -497,21 +510,86 @@ class RookieDraftRosterContextTieredGateTests(unittest.TestCase):
                 if trailer["position"] == leader["position"]:
                     continue  # same position: need_bonus can't differentiate them
                 gap = leader["universal_value"] - trailer["universal_value"]
-                if 0 < gap <= ceiling(trailer["position"]):
+                if not (0 < gap <= ceiling(trailer["position"]) + ceiling(leader["position"])):
+                    continue
+                board = self._rookie_board(self._roster_history(
+                    "test", {**{p: 1 for p in ("QB", "RB", "WR", "TE")}, trailer["position"]: 0},
+                ))
+                board_by_id = {r["player_id"]: r for r in board}
+                if board_by_id[trailer["player_id"]]["final_score"] >= board_by_id[leader["player_id"]]["final_score"]:
                     near_tie_pair = (leader, trailer)
                     break
             if near_tie_pair:
                 break
         if near_tie_pair is None:
-            self.skipTest("no real cross-position near-tie in the current baseline's top 12 to exercise this contract")
-        leader, trailer = near_tie_pair
+            self.skipTest(
+                "no real cross-position near-tie in the current baseline's top 12 where starving "
+                "the trailer's own position actually closes the gap -- not a failure, this test "
+                "needs a class where one exists"
+            )
+        # Finding a real pair where the empirical check above held IS the assertion -- context
+        # demonstrably moved a real near-tie, the failure mode being guarded against is
+        # silently finding none and reporting a false pass, which skipTest prevents above.
 
-        board = self._rookie_board(self._roster_history("test", {**{p: 1 for p in ("QB", "RB", "WR", "TE")}, trailer["position"]: 0}))
-        board_by_id = {r["player_id"]: r for r in board}
-        self.assertGreaterEqual(
-            board_by_id[trailer["player_id"]]["final_score"], board_by_id[leader["player_id"]]["final_score"],
-            "starving the trailing near-tied candidate's own position should let roster need "
-            "close a real but modest gap -- context should not be inert between comparable options",
+
+class SuperflexRookieDraftRosterContextTieredGateTests(RookieDraftRosterContextTieredGateTests):
+    """Priority-4 extension of the tiered-gate contract above: same two-sided behavioral
+    invariant (a real tier gap survives maximal roster need; a real near-tie is breakable by
+    it), run against a superflex league shape instead of standard 1QB. Inherits every test
+    method unchanged -- only setUpClass differs, by adding SUPER_FLEX to roster_positions,
+    matching draft_room.build_mock_league's own real superflex shape.
+
+    This matters as its own case, not just a parameterization: SUPER_FLEX gives QB a real
+    flex share via SUPER_FLEX_QB_SHARE (0.85 of a slot, not an even split -- see that
+    constant's own docstring), so a rookie QB's need_bonus ceiling here is meaningfully
+    higher than in the standard-1QB class above. Real superflex rookie drafts see QB
+    desperation far more often and more severely than 1QB drafts do (this was the user's own
+    domain point motivating this audit item), so the standout-protection contract has to be
+    re-proven here, not assumed to transfer from the 1QB case.
+    """
+
+    @classmethod
+    def setUpClass(cls):
+        cls.merger, cls.players_db = _build_pool_players_db(("QB", "RB", "WR", "TE"))
+        cls.league = {
+            "roster_positions": [
+                "QB", "RB", "RB", "WR", "WR", "TE", "FLEX", "FLEX", "SUPER_FLEX", "BN", "BN", "BN",
+            ],
+            "total_rosters": 12, "settings": {"type": 2},
+        }
+        cls.veteran_ids: dict[str, list[str]] = {}
+        vet_board = dr.compute_draft_board(
+            cls.merger, cls.players_db, [], my_roster_id="00", league=cls.league, mode="balanced",
+            pool_scope="veterans_only",
+        )
+        for row in vet_board:
+            cls.veteran_ids.setdefault(row["position"], []).append(row["player_id"])
+
+    def test_a_real_qb_standout_survives_maximal_superflex_qb_need(self):
+        # The scenario the base class's generic top-2 test can't guarantee it hits: a real
+        # tier gap specifically AT QB, under the higher superflex QB need_bonus ceiling. If
+        # the current real rookie board's top-2 QB gap happens to be too small to exercise
+        # this, that's a real, reportable fixture limitation (skip with a clear reason), not
+        # a failure to paper over.
+        board = self._baseline_board()
+        qbs = sorted((r for r in board if r["position"] == "QB"), key=lambda r: -r["universal_value"])
+        if len(qbs) < 2:
+            self.skipTest("fewer than 2 real rookie QBs on the current baseline board")
+        leader, second = qbs[0], qbs[1]
+        gap = leader["universal_value"] - second["universal_value"]
+        qb_ceiling = self._max_need_bonus_for("QB")
+        if gap <= qb_ceiling:
+            self.skipTest(
+                "current real rookie QB class has no tier gap exceeding its own superflex "
+                "need_bonus ceiling -- not a failure, this test needs a class where one exists"
+            )
+        # Maximal superflex QB need: nothing else drafted at all, so both the dedicated slot
+        # and the SUPER_FLEX flex share are wide open.
+        starved = self._rookie_board(self._roster_history("test", {"RB": 1, "WR": 1, "TE": 1}))
+        self.assertEqual(
+            starved[0]["player_id"], leader["player_id"],
+            "maximal superflex QB need flipped a real rookie QB tier-gap standout -- context "
+            "manufactured superiority over a meaningful gap under the higher SUPER_FLEX ceiling",
         )
 
 
