@@ -732,6 +732,50 @@ class ConsensusLookupTests(unittest.TestCase):
         self.assertLess(entry["rank"], 50, "expected Bijan Robinson's much better rank to win the collision")
 
 
+class ConsensusReachFreshnessBlindSpotTests(unittest.TestCase):
+    """FLAGGED FINDING from the priority-7 information-freshness audit, not an asserted-correct
+    invariant -- pins down a real gap so it doesn't get lost, exactly like the risk_adj
+    calibration finding earlier in this same audit.
+
+    DataMerger tracks staleness for exactly three sources (is_stale/staleness_days/
+    freshest_date, and their free_agents_*/trade_values_* siblings) -- all three are Draft
+    Sharks exports, and all three are cosmetic: confirmed by inspection that draft_room.py and
+    pick_synthesis.py never read any of them for anything except pick_synthesis.py's own
+    snapshot-identity check (build_snapshot/snapshot_is_current), which detects "did the data
+    change since this snapshot was frozen," not "is this data too old to trust." Nothing in
+    this app changes VALUATION behavior based on staleness, for any source.
+
+    consensus_reach's reach_label/consensus_tier/consensus_rank are different in kind: they are
+    real decision-support fields that reach CandidateSnapshot directly (every real "Debate My
+    Pick" run sees them), sourced entirely from KeepTradeCut's external_values rows -- which
+    have NO freshness tracking anywhere, not even the cosmetic kind Draft Sharks gets. The one
+    freshness-aware code path that DOES touch external_values (composite_player_score's
+    _recency_weight, a continuous per-row decay) is a completely separate call path that
+    consensus_reach never touches. So a stale KTC export could silently feed a real per-pick
+    "REACH"/"WITHIN CONSENSUS BAND" label with zero signal anywhere -- no is_stale flag, no UI
+    pill, no debate-context mention -- that anything is out of date."""
+
+    def test_data_merger_has_no_freshness_property_for_external_values(self):
+        merger = dm.DataMerger()
+        # The three real freshness properties this app has -- none of them are keyed to
+        # external_values (KTC/FantasyPros/DynastyProcess/bot_research all live there).
+        tracked_sources = (merger.projections, merger.free_agents, merger.trade_values)
+        self.assertTrue(all(src is not merger.external_values for src in tracked_sources))
+        self.assertFalse(hasattr(merger, "external_values_is_stale"))
+        self.assertFalse(hasattr(merger, "external_values_staleness_days"))
+
+    def test_consensus_reach_result_carries_no_date_or_freshness_field(self):
+        by_key = {
+            ("a", "player"): {"rank": 30, "tier": 3, "value": 5000},
+            ("b", "here"): {"rank": 28, "tier": 3, "value": 5100},
+        }
+        result = ps.consensus_reach("A Player", 28, by_key)
+        self.assertIsNotNone(result)
+        self.assertNotIn("source_date", result)
+        self.assertNotIn("is_stale", result)
+        self.assertNotIn("staleness_days", result)
+
+
 class ConsensusReachTests(unittest.TestCase):
     def test_none_when_no_consensus_data_is_loaded(self):
         self.assertIsNone(ps.consensus_reach("Anyone", 10, {}))
