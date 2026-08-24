@@ -300,9 +300,13 @@ class DecisionPathFlagsTests(unittest.TestCase):
     pin that reuse (each boundary is asserted against the constant itself, not a copied
     literal) and the rule that the flags classify without ever changing a score."""
 
-    def _cand(self, uv, tav, forfeit=None, premium=0.0):
+    def _cand(self, uv, tav, forfeit=None, premium=0.0, take_prob=1.0):
+        # take_prob defaults to 1.0 (fully credible) so every PRE-EXISTING test in this class
+        # -- none of which cares about the credible-path gate -- keeps exercising exactly the
+        # boundary it was written to test, undisturbed by that gate's addition.
         return {"universal_value": uv, "team_acquisition_value": tav,
-                "positional_forfeit": forfeit, "rival_premium": premium}
+                "positional_forfeit": forfeit, "rival_premium": premium,
+                "rival_premium_take_probability": take_prob}
 
     def test_cliff_protection_at_the_standout_gap_boundary(self):
         below = self._cand(90, 95, forfeit=ps.NECESSITY_STANDOUT_REFERENCE_GAP - 0.1)
@@ -327,6 +331,52 @@ class DecisionPathFlagsTests(unittest.TestCase):
         self.assertFalse(flags[0]["block_opportunity"])
         self.assertFalse(flags[1]["block_opportunity"])
         self.assertTrue(flags[2]["block_opportunity"])
+
+    def test_block_opportunity_requires_a_credible_rival_path_not_premium_magnitude_alone(self):
+        # The REFINE production change: a premium big enough to clear the 2x-dedicated-slot
+        # boundary is necessary but no longer sufficient -- the specific rival driving that
+        # premium must ALSO have a credible real chance of taking the player
+        # (take_probability >= CREDIBLE_RIVAL_PATH_THRESHOLD), per the denial-semantics audit
+        # finding that ~1 in 5 premium-qualifying flags had no such rival path (both real
+        # trial formats).
+        import draft_room as dr
+        boundary = 2 * dr.NEED_BONUS_PER_DEDICATED_SLOT
+        no_path = self._cand(80, 85, premium=boundary + 5.0, take_prob=0.02)
+        missing_take_prob = self._cand(80, 85, premium=boundary + 5.0, take_prob=None)
+        at_threshold = self._cand(80, 85, premium=boundary + 5.0, take_prob=ps.CREDIBLE_RIVAL_PATH_THRESHOLD)
+        just_below_threshold = self._cand(80, 85, premium=boundary + 5.0, take_prob=ps.CREDIBLE_RIVAL_PATH_THRESHOLD - 0.001)
+        flags = ps.decision_path_flags([no_path, missing_take_prob, at_threshold, just_below_threshold])
+        self.assertFalse(flags[0]["block_opportunity"], "high premium alone must not fire DENIAL without a credible rival path")
+        self.assertFalse(flags[1]["block_opportunity"], "a missing take_probability must not default to credible")
+        self.assertTrue(flags[2]["block_opportunity"], "the credible-path threshold itself is inclusive (>=)")
+        self.assertFalse(flags[3]["block_opportunity"])
+
+    def test_credible_gate_does_not_touch_rival_premiums_own_value(self):
+        # The user's explicit constraint: the continuous rival_premium contribution (and the
+        # necessity denial_component built from it) is untouched by this gate -- only the
+        # human-facing block_opportunity boolean is filtered. decision_path_flags is read-only
+        # over its input; the credible-path gate must not, and structurally cannot, mutate the
+        # candidate's own rival_premium.
+        import draft_room as dr
+        boundary = 2 * dr.NEED_BONUS_PER_DEDICATED_SLOT
+        credible = self._cand(80, 85, premium=boundary + 5.0, take_prob=1.0)
+        not_credible = self._cand(80, 85, premium=boundary + 5.0, take_prob=0.0)
+        ps.decision_path_flags([credible, not_credible])
+        self.assertEqual(credible["rival_premium"], boundary + 5.0)
+        self.assertEqual(not_credible["rival_premium"], boundary + 5.0)
+
+        others = [70.0]
+        necessity_credible = ps.compute_pick_necessity(
+            [dict(credible, player_id="a", team_acquisition_value=85.0, need_bonus=0.0, eligibility_bonus=0.0,
+                  survival_probability=0.5, positional_cliff=None, position_run_detected=False)], round_num=3,
+        )
+        necessity_not_credible = ps.compute_pick_necessity(
+            [dict(not_credible, player_id="a", team_acquisition_value=85.0, need_bonus=0.0, eligibility_bonus=0.0,
+                  survival_probability=0.5, positional_cliff=None, position_run_detected=False)], round_num=3,
+        )
+        self.assertEqual(necessity_credible, necessity_not_credible,
+                          "pick_necessity's denial_component must be identical regardless of credible-path status -- "
+                          "only rival_premium (unchanged here) feeds it, never rival_premium_take_probability")
 
     def test_pure_value_flags_the_buried_best_asset_only_beyond_the_noise_band(self):
         # Contextual leader (tav 100) holds uv 80; the uv-best candidate (uv 90) is ranked

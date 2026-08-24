@@ -187,6 +187,18 @@ NECESSITY_RUN_BONUS = 6.0
 NECESSITY_DENIAL_WEIGHT = 10.0       # rival_premium normalized against draft_room.NEED_BONUS_MAX
 NECESSITY_ROSTER_FIT_WEIGHT = 0.8    # applied directly to (need_bonus + eligibility_bonus)
 
+# Credible-rival-path floor for the human-facing block_opportunity ("denies a rival") flag --
+# the premium-driving rival's own real take_probability must clear this before the label
+# fires. Same pre-declared bar (roughly rank-4-or-better under draft_strategy's own
+# RANK_TAKE_PROBABILITY) used and validated in the denial-semantics audit / leave-one-force-
+# out ablation experiment: filtering block_opportunity on this exact condition removed most
+# of the flag's measured false-positive churn (candidates with no real rival path) while
+# preserving the argmax flips that survive scrutiny, especially in superflex. Deliberately
+# scoped to this ONE flag -- rival_premium's own continuous contribution to pick_necessity
+# (NECESSITY_DENIAL_WEIGHT above) is untouched by this threshold; only the label a UI is
+# allowed to display "DENIAL" for is gated.
+CREDIBLE_RIVAL_PATH_THRESHOLD = 0.10
+
 LATE_ROUND_THRESHOLD = dr.UPSIDE_MODE_DEFAULT_ROUND  # same round draft_room switches to upside mode
 LATE_ROUND_NECESSITY_CAP = 30.0
 
@@ -377,17 +389,28 @@ def decision_path_flags(candidates: list[dict]) -> list[dict]:
         this candidate's position until the next pick forfeits at least a standout-sized
         value gap, the same absolute gap this module already treats as "a genuine standout"
         when it separates candidates.
-      block_opportunity -- rival_premium >= 2 x NEED_BONUS_PER_DEDICATED_SLOT: at least one
-        intervening rival values him at a MULTIPLE-unfilled-dedicated-starters premium over
-        his universal value -- a rival with a genuinely gaping hole (the real observed case:
-        a superflex rival with no QB1 at all), not routine need. One slot's worth (4.0) was
-        measured first and rejected as a boundary: 73% of candidates across the M13 backtest
-        states cleared it -- mid-draft, SOMEONE nearly always has a single-slot need for any
-        good player, so the flag carried no information. NEED_BONUS_MAX (12.0) never fired
-        at all (premiums top out near 8.7 in practice). Two slots' worth (8.0) fires for the
-        top ~28% -- an actual opportunity signal. Distinct from denial_value (an expected-
-        value number, take-probability included) and from take probability itself; this
-        flags rival NEED, deliberately.
+      block_opportunity -- rival_premium >= 2 x NEED_BONUS_PER_DEDICATED_SLOT AND that same
+        premium-driving rival's own take_probability clears CREDIBLE_RIVAL_PATH_THRESHOLD:
+        at least one intervening rival values him at a MULTIPLE-unfilled-dedicated-starters
+        premium over his universal value -- a rival with a genuinely gaping hole (the real
+        observed case: a superflex rival with no QB1 at all), not routine need -- AND that
+        specific rival has a credible real chance of actually taking him if we pass. One
+        slot's worth (4.0) was measured first and rejected as a boundary: 73% of candidates
+        across the M13 backtest states cleared it -- mid-draft, SOMEONE nearly always has a
+        single-slot need for any good player, so the flag carried no information.
+        NEED_BONUS_MAX (12.0) never fired at all (premiums top out near 8.7 in practice). Two
+        slots' worth (8.0) fires for the top ~28% -- an actual opportunity signal. The
+        credible-path condition was added second, after a real audit found premium magnitude
+        ALONE still let block_opportunity fire on candidates whose premium-driving rival had
+        no real path to the player (~1 in 5 flags, both trial formats) -- exactly the
+        "labeled DENIAL when it was just a good pick" failure mode this flag exists to avoid.
+        Filtering on the credible-path condition removed most of that churn while preserving
+        the necessity-argmax flips that survive scrutiny (see run_denial_ablation_experiment.
+        py's FILTERED condition, the exact boundary applied here). Distinct from denial_value
+        (an expected-value number, take-probability included) and from rival_premium alone
+        (which still flows into pick_necessity's continuous denial_component untouched by
+        this threshold -- only this human-facing label is gated); this flags rival NEED with
+        a credible PATH, deliberately, not need alone.
       pure_value -- this candidate holds the narrowed field's best universal_value while NOT
         being its team_acquisition_value leader, by a UV margin over the leader's UV
         exceeding NEAR_TIE_BAND (beyond measured ordering noise, same band, same scale):
@@ -406,7 +429,8 @@ def decision_path_flags(candidates: list[dict]) -> list[dict]:
 
     Classification over existing numbers, never new scoring: nothing here feeds necessity,
     ranking, or any value -- same rule as near_tie_flags below. Expects each candidate dict
-    to carry universal_value, team_acquisition_value, positional_forfeit, rival_premium."""
+    to carry universal_value, team_acquisition_value, positional_forfeit, rival_premium,
+    rival_premium_take_probability."""
     if not candidates:
         return []
     tav_leader_idx = max(range(len(candidates)), key=lambda i: candidates[i]["team_acquisition_value"])
@@ -417,9 +441,11 @@ def decision_path_flags(candidates: list[dict]) -> list[dict]:
     for i, c in enumerate(candidates):
         forfeit = c.get("positional_forfeit")
         premium = c.get("rival_premium") or 0.0
+        take_prob = c.get("rival_premium_take_probability")
+        credible_rival_path = take_prob is not None and take_prob >= CREDIBLE_RIVAL_PATH_THRESHOLD
         flags.append({
             "cliff_protection": forfeit is not None and forfeit >= NECESSITY_STANDOUT_REFERENCE_GAP,
-            "block_opportunity": premium >= 2 * dr.NEED_BONUS_PER_DEDICATED_SLOT,
+            "block_opportunity": premium >= 2 * dr.NEED_BONUS_PER_DEDICATED_SLOT and credible_rival_path,
             "pure_value": (
                 i != tav_leader_idx
                 and c["universal_value"] == best_uv
@@ -628,6 +654,10 @@ class CandidateSnapshot:
     consensus_tier: Optional[int]
     reach_label: Optional[str]
     projected_points: Optional[float]
+    # The premium-driving rival's own real take_probability -- see CREDIBLE_RIVAL_PATH_
+    # THRESHOLD and decision_path_flags' block_opportunity, the one consumer. Defaulted so
+    # existing hand-built CandidateSnapshot fixtures that predate this field still construct.
+    rival_premium_take_probability: Optional[float] = None
 
 
 @dataclass(frozen=True)
@@ -722,6 +752,7 @@ def build_snapshot(
             "expected_value_of_waiting": expected_value_of_waiting(universal_value, survival),
             "denial_value": a.get("denial_value"), "denial_team": a.get("denial_team"),
             "rival_premium": a.get("rival_premium"),
+            "rival_premium_take_probability": a.get("rival_premium_take_probability"),
             "positional_forfeit": a.get("positional_forfeit"),
             "position_expected_taken": a.get("position_expected_taken"),
             "positional_cliff": detect_positional_cliff(board, pid),

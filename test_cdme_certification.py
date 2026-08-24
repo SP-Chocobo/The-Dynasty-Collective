@@ -273,5 +273,79 @@ class DeterminismTests(unittest.TestCase):
         self.assertEqual(snap_a, snap_b)
 
 
+class DenialCredibleGateProductionInvariantTests(unittest.TestCase):
+    """Regression coverage for the REFINE production change (denial-semantics audit +
+    leave-one-force-out ablation experiment, greenlit and authorized): block_opportunity /
+    the human-facing DENIAL flag now additionally requires the premium-driving rival's own
+    take_probability to clear CREDIBLE_RIVAL_PATH_THRESHOLD. Per the authorization: this must
+    change ONLY that one boolean -- rival_premium itself, TAV, candidate ordering, and
+    necessity arithmetic must stay byte-identical regardless of credible-path status. Uses a
+    real board (real DataMerger/players_db) with draft_strategy.pick_analysis's OWN real
+    output patched only on the one field under test (rival_premium_take_probability), forced
+    onto a real candidate whose real rival_premium already clears the block_opportunity
+    magnitude boundary -- proving the wiring on real data, not a hand-built fixture."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.merger = dm.DataMerger()
+        cls.players_db = _build_pool_players_db(cls.merger)
+        cls.pick_order = [str(i) for i in range(1, 13)]
+
+    def test_credible_gate_leaves_tav_universal_value_and_candidate_order_untouched(self):
+        import unittest.mock as mock
+
+        board = dr.compute_draft_board(
+            self.merger, self.players_db, [], my_roster_id="1", league=STANDARD_LEAGUE, mode="balanced",
+        )
+        forced_id = str(board[0]["player_id"])
+        real_pick_analysis = ps.ds.pick_analysis
+
+        def _stub_factory(take_prob):
+            def _stub(*args, **kwargs):
+                rows = real_pick_analysis(*args, **kwargs)
+                for row in rows:
+                    if str(row["player_id"]) == forced_id:
+                        # Forced well above the 2x-dedicated-slot magnitude boundary --
+                        # isolates the credible-path gate as the ONLY thing toggling between
+                        # the two calls below; the real premium magnitude this candidate
+                        # actually earned is irrelevant to what this test is proving.
+                        row["rival_premium"] = 100.0
+                        row["rival_premium_take_probability"] = take_prob
+                return rows
+            return _stub
+
+        with mock.patch.object(ps.ds, "pick_analysis", side_effect=_stub_factory(0.9)):
+            snap_credible = ps.build_snapshot(
+                self.merger, self.players_db, [], self.pick_order, 0, "1", STANDARD_LEAGUE, pick_label="1.01", top_n=8,
+            )
+        with mock.patch.object(ps.ds, "pick_analysis", side_effect=_stub_factory(0.0)):
+            snap_not_credible = ps.build_snapshot(
+                self.merger, self.players_db, [], self.pick_order, 0, "1", STANDARD_LEAGUE, pick_label="1.01", top_n=8,
+            )
+
+        order_credible = [c.player_id for c in snap_credible.candidates]
+        order_not_credible = [c.player_id for c in snap_not_credible.candidates]
+        self.assertEqual(order_credible, order_not_credible, "candidate order (TAV-derived) must not depend on credible-path status")
+
+        by_id_credible = {c.player_id: c for c in snap_credible.candidates}
+        by_id_not_credible = {c.player_id: c for c in snap_not_credible.candidates}
+        for pid, c1 in by_id_credible.items():
+            c2 = by_id_not_credible[pid]
+            self.assertEqual(c1.team_acquisition_value, c2.team_acquisition_value, pid)
+            self.assertEqual(c1.universal_value, c2.universal_value, pid)
+            self.assertEqual(c1.need_bonus, c2.need_bonus, pid)
+            self.assertEqual(c1.eligibility_bonus, c2.eligibility_bonus, pid)
+            self.assertEqual(c1.rival_premium, c2.rival_premium, pid)
+            self.assertEqual(c1.pick_necessity, c2.pick_necessity,
+                              f"{pid}: necessity arithmetic must not read rival_premium_take_probability")
+
+        top_credible = by_id_credible[forced_id]
+        top_not_credible = by_id_not_credible[forced_id]
+        self.assertEqual(top_credible.rival_premium, 100.0)
+        self.assertEqual(top_not_credible.rival_premium, 100.0)
+        self.assertTrue(top_credible.block_opportunity, "credible rival path -> DENIAL allowed")
+        self.assertFalse(top_not_credible.block_opportunity, "no credible rival path -> DENIAL suppressed")
+
+
 if __name__ == "__main__":
     unittest.main()

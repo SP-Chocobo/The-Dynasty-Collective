@@ -38,6 +38,7 @@ from typing import Optional
 
 import draft_room as dr
 import draft_strategy as ds
+import pick_synthesis as ps
 from data_merger import DataMerger
 
 
@@ -93,12 +94,19 @@ def audit_candidates(
                 rival_premium = premium
                 premium_team = roster_id
 
+        premium_team_take_probability = take_prob_by_team.get(premium_team) if premium_team else None
+        credible_rival_path = (
+            premium_team_take_probability is not None
+            and premium_team_take_probability >= ps.CREDIBLE_RIVAL_PATH_THRESHOLD
+        )
         results.append(DenialAudit(
             player_id=str(pid),
             rival_premium=round(rival_premium, 2),
-            block_opportunity=rival_premium >= 2 * dr.NEED_BONUS_PER_DEDICATED_SLOT,
+            # Post-REFINE: matches pick_synthesis.decision_path_flags' real block_opportunity
+            # exactly -- premium magnitude AND the credible-path gate, not magnitude alone.
+            block_opportunity=(rival_premium >= 2 * dr.NEED_BONUS_PER_DEDICATED_SLOT) and credible_rival_path,
             premium_team=premium_team,
-            premium_team_take_probability=take_prob_by_team.get(premium_team) if premium_team else None,
+            premium_team_take_probability=premium_team_take_probability,
             survival_probability=survival["survival_probability"],
             need_bonus=my_row.get("need_bonus", 0.0),
             eligibility_bonus=my_row.get("eligibility_bonus", 0.0),

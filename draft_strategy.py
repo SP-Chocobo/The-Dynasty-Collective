@@ -508,6 +508,7 @@ def pick_analysis(
         denial_value = 0.0
         denial_team = None
         rival_premium = 0.0
+        rival_premium_take_probability = None
         for risk in survival["risk_by_team"]:
             opp_board = opponent_boards.get(str(risk["roster_id"]), {})
             opp_row = opp_board.get("by_id", {}).get(str(player_id))
@@ -529,7 +530,16 @@ def pick_analysis(
             # magnitude (here) from the probability (survival) keeps each counted once.
             # universal_value is absent from upside-mode board rows, hence the guard.
             if "universal_value" in opp_row:
-                rival_premium = max(rival_premium, opp_row["final_score"] - opp_row["universal_value"])
+                premium = opp_row["final_score"] - opp_row["universal_value"]
+                if premium > rival_premium:
+                    rival_premium = premium
+                    # THIS specific rival's own real take_probability -- kept alongside the
+                    # premium (not folded into it) so a downstream human-facing "denies a
+                    # rival" label can require a credible path (this rival actually being
+                    # positioned to take him), separately from premium magnitude. See
+                    # pick_synthesis.decision_path_flags' block_opportunity, the one
+                    # consumer of this field.
+                    rival_premium_take_probability = risk["take_probability"]
 
         results.append({
             "player_id": player_id,
@@ -542,6 +552,7 @@ def pick_analysis(
             "denial_value": round(denial_value, 2),
             "denial_team": denial_team,
             "rival_premium": round(rival_premium, 2),
+            "rival_premium_take_probability": rival_premium_take_probability,
             "positional_forfeit": (forfeits.get(my_row.get("position")) or {}).get("forfeit"),
             "position_expected_taken": (forfeits.get(my_row.get("position")) or {}).get("expected_taken"),
         })

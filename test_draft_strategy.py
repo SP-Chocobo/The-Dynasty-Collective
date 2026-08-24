@@ -263,6 +263,43 @@ class SurvivalAndPickAnalysisTests(unittest.TestCase):
                 expected = max(expected, opp_row["final_score"] * risk["take_probability"])
         self.assertAlmostEqual(reported, round(expected, 2), places=2)
 
+    def test_rival_premium_take_probability_is_the_premium_driving_rivals_own_take_probability(self):
+        # rival_premium is a max over intervening opponents; rival_premium_take_probability
+        # must be THAT SAME opponent's own take_probability from risk_by_team, not some other
+        # opponent's, and not survival_probability (a pooled, all-opponents number) reused by
+        # mistake -- the exact bug this field exists to make impossible for a downstream
+        # credible-path gate (pick_synthesis.CREDIBLE_RIVAL_PATH_THRESHOLD) to fall into.
+        board = dr.compute_draft_board(self.merger, self.players_db, [], my_roster_id="1", league=LEAGUE, mode="balanced")
+        candidate = board[0]["player_id"]
+        analysis = ds.pick_analysis(
+            self.merger, self.players_db, [], self.pick_order, current_index=0, my_roster_id="1",
+            league=LEAGUE, candidate_player_ids=[candidate],
+        )
+        row = analysis[0]
+
+        my_next = ds.find_next_pick_index(self.pick_order, "1", after_index=0)
+        intervening = ds.intervening_roster_ids(self.pick_order, 0, my_next)
+        opponent_boards = ds._build_opponent_boards(self.merger, self.players_db, [], LEAGUE, intervening)
+        survival = ds.estimate_survival(
+            [], self.players_db, self.pick_order, 0, "1", candidate, opponent_boards, league=LEAGUE,
+        )
+        expected_premium = 0.0
+        expected_take_prob = None
+        for risk in survival["risk_by_team"]:
+            opp_row = opponent_boards[str(risk["roster_id"])]["by_id"].get(str(candidate))
+            if opp_row is None or "universal_value" not in opp_row:
+                continue
+            premium = opp_row["final_score"] - opp_row["universal_value"]
+            if premium > expected_premium:
+                expected_premium = premium
+                expected_take_prob = risk["take_probability"]
+
+        self.assertAlmostEqual(row["rival_premium"], round(expected_premium, 2), places=2)
+        if expected_take_prob is None:
+            self.assertIsNone(row["rival_premium_take_probability"])
+        else:
+            self.assertEqual(row["rival_premium_take_probability"], expected_take_prob)
+
     def test_denial_value_never_exceeds_the_denying_teams_own_acquisition_value(self):
         board = dr.compute_draft_board(self.merger, self.players_db, [], my_roster_id="1", league=LEAGUE, mode="balanced")
         top3 = [r["player_id"] for r in board[:3]]

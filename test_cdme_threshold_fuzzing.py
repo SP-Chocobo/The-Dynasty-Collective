@@ -162,9 +162,14 @@ class BlockOpportunityBoundaryTests(unittest.TestCase):
     2 * NEED_BONUS_PER_DEDICATED_SLOT -- checked directly against that exact multiple."""
 
     def _raw(self, premium: float) -> list[dict]:
+        # rival_premium_take_probability fixed at 1.0 (fully credible) -- this class isolates
+        # the PREMIUM MAGNITUDE boundary alone; the separate credible-path gate has its own
+        # dedicated boundary tests in test_pick_synthesis.py's DecisionPathFlagsTests.
         return [
-            {"universal_value": 100.0, "team_acquisition_value": 100.0, "positional_forfeit": None, "rival_premium": premium},
-            {"universal_value": 90.0, "team_acquisition_value": 90.0, "positional_forfeit": None, "rival_premium": 0.0},
+            {"universal_value": 100.0, "team_acquisition_value": 100.0, "positional_forfeit": None,
+             "rival_premium": premium, "rival_premium_take_probability": 1.0},
+            {"universal_value": 90.0, "team_acquisition_value": 90.0, "positional_forfeit": None,
+             "rival_premium": 0.0, "rival_premium_take_probability": 1.0},
         ]
 
     def test_premium_exactly_at_two_slots_fires(self):
