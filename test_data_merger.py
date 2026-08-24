@@ -669,5 +669,56 @@ class CompositeScoreOnRealBaselineTests(unittest.TestCase):
         self.assertTrue(sources.issubset({"draftsharks", "dynastyprocess", "fantasypros", "keeptradecut", "bot_research"}))
 
 
+class FantasyProsAgeFieldAvailabilityTests(unittest.TestCase):
+    """Measurement-only regression from the dynasty-horizon/aging-signal audit (priority 5 of
+    the current audit roadmap): confirms exactly what real age data this app already has
+    access to today, and exactly how far it currently reaches -- without adding any new
+    valuation signal (per the standing "don't add an age bonus just because we found the
+    data -- establish the missing-information case first" instruction).
+
+    Real, verified facts this pins down:
+      - FantasyPros' committed Dynasty PPR Rankings CSV (data/baseline/external/fantasypros/
+        dynasty_ppr_rankings.csv) has a real, populated "age" column -- confirmed directly off
+        the committed file's own header and first data rows.
+      - DataMerger.external_player_values() has no fixed field whitelist (see its own
+        docstring: "every non-null field on the matched row rides along") -- age reaches this
+        far, in the raw dict, for any offense player FantasyPros' dynasty list covers.
+      - It goes no further: composite_player_score only ever reads FantasyPros' "rank" field
+        for this file (see _EXTERNAL_PERCENTILE_RULES), and app.py's own
+        describe_external_value only ever renders value_1qb/value_2qb/value/rank/tier -- age
+        is silently dropped there, never reaching the LLM panel's rendered text either.
+      - FantasyPros' IDP export (parse_fantasypros_idp_pdf) has NO age column at all -- a
+        genuinely different, season-long/redraft-shaped export with no dynasty spread columns.
+        Combined with the already-known gap that Draft Sharks has no real proj_3yr for IDP
+        (see run_scoring_propagation_sweep.py's Experiment C), this confirms IDP dynasty
+        valuation has zero forward-looking age-adjacent signal from any currently-ingested
+        source -- a genuine data gap, not just an unused field, unlike offense.
+    """
+
+    @classmethod
+    def setUpClass(cls):
+        cls.merger = dm.DataMerger()
+
+    def test_fantasypros_dynasty_csv_has_a_real_populated_age_column(self):
+        path = Path("data/baseline/external/fantasypros/dynasty_ppr_rankings.csv")
+        df = pd.read_csv(path)
+        self.assertIn("age", df.columns)
+        self.assertGreater(df["age"].notna().sum(), 50, "expected age populated for most real rows")
+
+    def test_age_rides_along_in_external_player_values_for_a_real_offense_player(self):
+        matches = self.merger.external_player_values("Ja'Marr Chase", position="WR")
+        fp_rows = [m for m in matches if m.get("source_name") == "fantasypros" and "dynasty" in (m.get("source_file") or "")]
+        self.assertTrue(fp_rows, "expected a FantasyPros dynasty match for a real, well-covered player")
+        self.assertIn("age", fp_rows[0])
+        self.assertIsInstance(fp_rows[0]["age"], float)
+
+    def test_fantasypros_idp_export_has_no_age_column(self):
+        path = Path("data/baseline/external/fantasypros/idp_redraft_rankings.csv")
+        if not path.exists():
+            self.skipTest("no committed FantasyPros IDP baseline to check")
+        df = pd.read_csv(path)
+        self.assertNotIn("age", df.columns)
+
+
 if __name__ == "__main__":
     unittest.main()
