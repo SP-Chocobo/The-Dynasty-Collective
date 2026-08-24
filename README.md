@@ -175,6 +175,11 @@ reads CDME's outputs; it is not part of CDME itself, and never modifies
 production decision logic on its own authority (see each module's own
 docstring for its own explicit, pre-declared thresholds).
 
+**Looking further ahead:** see `ROADMAP.md` for the longer-term vision of a
+centrally maintained, canonical knowledge substrate feeding CDME and every
+surface above — a vision document, not a description of anything built
+today.
+
 ## Setup
 
 ```bash
