@@ -31,6 +31,7 @@ import bot_benchmark
 import bot_config
 import bot_research
 import decision_log
+import depth_ratings
 import design_system
 import draft_board_ui
 import draft_room
@@ -3349,26 +3350,16 @@ elif main_view == MAINTENANCE_VIEW:
 
     def _depth_label(team_label: Optional[str], position: str, override_cell: Optional[dict] = None) -> Optional[str]:
         """Strong/Average/Weak/None for one team's depth at one position, relative to the rest
-        of the league at that position -- an absolute cutoff means nothing (a 2-team best-ball
-        league and a 14-team dynasty league have very different "normal" depth), but "better or
-        worse than everyone else in this exact league at this exact position" always does.
-        override_cell lets a caller ask "what would this label be AFTER the trade" by passing a
-        simulated {count, value} instead of the team's actual current one -- same peer
-        comparison, just a hypothetical instead of the real cell."""
+        of the league at that position. override_cell lets a caller ask "what would this label
+        be AFTER the trade" by passing a simulated {count, value} instead of the team's actual
+        current one -- same peer comparison, just a hypothetical instead of the real cell.
+        The judgment itself lives in depth_ratings.depth_label (shared with the League Depth
+        Map, per Fable's F3 finding) so this stays a thin lookup, not a second opinion."""
         if not team_label:
             return None
         cells = [teams[position] for teams in depth.values() if position in teams]
-        if not cells:
-            return None
         cell = override_cell if override_cell is not None else depth.get(team_label, {}).get(position, {"count": 0, "value": None})
-        if cell["count"] == 0:
-            return "None — no rostered players here"
-        use_value = cell["value"] is not None and all(c["value"] is not None for c in cells)
-        avg = (sum(c["value"] for c in cells) if use_value else sum(c["count"] for c in cells)) / len(cells)
-        if not avg:
-            return None
-        ratio = (cell["value"] if use_value else cell["count"]) / avg
-        return "Strong" if ratio >= 1.3 else "Weak" if ratio <= 0.7 else "Average"
+        return depth_ratings.depth_label(cell, cells)
 
     trade_send_rows = _price_trade_side(trade_send_text)
     trade_receive_rows = _price_trade_side(trade_receive_text)
