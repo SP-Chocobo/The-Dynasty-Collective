@@ -23,7 +23,9 @@ offer Quant and Beat standalone for exactly this reason.
 
 Every ask_* function fails soft: if a key is missing or a call errors, it
 returns a "⚠️" string instead of raising, so one down model doesn't take
-out the whole debate studio.
+out the whole Prytaneum (see README.md's "The Prytaneum" section -- this
+module is that capability's execution layer; the four roles above are its
+four roles, unchanged by that naming).
 """
 
 from __future__ import annotations

@@ -43,7 +43,7 @@ class LeagueContextWiringTests(unittest.TestCase):
         start = _APP_SOURCE.index("elif main_view == LEAGUE_VIEW:")
         # The view block runs to end-of-file in practice (it's the last main_view branch),
         # but bound it at the debate-studio section marker to stay well inside the view.
-        end = _APP_SOURCE.index("# ------------------------------------------------------------------ debate studio --", start)
+        end = _APP_SOURCE.index("# ------------------------------------------------------------------ the prytaneum --", start)
         return _APP_SOURCE[start:end]
 
     def test_debate_chip_is_wired_via_the_shared_builder(self):
@@ -73,7 +73,7 @@ class AntiTwoDashboardContractTests(unittest.TestCase):
 
     def _league_block(self) -> str:
         start = _APP_SOURCE.index("elif main_view == LEAGUE_VIEW:")
-        end = _APP_SOURCE.index("# ------------------------------------------------------------------ debate studio --", start)
+        end = _APP_SOURCE.index("# ------------------------------------------------------------------ the prytaneum --", start)
         return _APP_SOURCE[start:end]
 
     def test_asymmetry_home_lens_follows_a_real_fact_not_a_third_mode(self):

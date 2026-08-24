@@ -1,9 +1,10 @@
-"""ScreenContext -- the one shared contract every surface uses to hand the Debate Slab
-(see the design-language reference's "Contextual Debate" section) what it needs, without the
-Slab ever inferring anything by inspecting rendered UI. "Context is handed over, never
-inferred": a surface builds one of these from values it already computed, and the Slab (or,
-today, the existing question_input seeding a surface's own escalation buttons write to) reads
-it as plain data.
+"""ScreenContext -- the one shared contract every surface uses to hand The Prytaneum (the
+Dynasty Collective's multi-intelligence deliberation capability -- see the design-language
+reference's "Contextual Debate" section and README.md's own Prytaneum section) what it needs,
+without the Prytaneum ever inferring anything by inspecting rendered UI. "Context is handed
+over, never inferred": a surface builds one of these from values it already computed, and the
+Prytaneum (or, today, the existing question_input seeding a surface's own escalation buttons
+write to) reads it as plain data.
 
 Every ScreenContext answers the same five questions, always in this order:
   1. What am I looking at?
@@ -27,19 +28,20 @@ from typing import Optional, Sequence
 from pick_synthesis import PickSnapshot
 
 # The two Debate-labeled controls that can appear on the same screen (Draft Room) must never
-# read as the same action -- one is a general-purpose doorway into the shared panel, the
-# other is Draft Room's own dedicated, deliberately separate deliberation system. Named
+# read as the same action -- one is a general-purpose doorway into the shared Prytaneum, the
+# other is Draft Room's own dedicated, deliberately separate deliberation system (its own
+# three roles -- Strategist/Skeptic/Caller -- are not part of the Prytaneum's four). Named
 # constants here (rather than strings inlined at each call site in app.py) are what make that
 # distinction a testable property instead of a hope: see test_screen_context.py's
 # DebateHelpTextDistinctnessTests.
 UNIVERSAL_DEBATE_HELP = (
-    "Open the Debate Studio with the current screen's evidence and context. "
+    "Open The Prytaneum with the current screen's evidence and context. "
     "Nothing is submitted automatically."
 )
 
 DRAFT_ROOM_PICK_DEBATE_HELP = (
     "Run the pick-specific Draft Room deliberation (Strategist, Skeptic, Caller) using the "
-    "current frozen snapshot -- a different, dedicated system from the general Debate Studio, "
+    "current frozen snapshot -- a different, dedicated system from The Prytaneum, "
     "built specifically to reason over this exact board with no live search involved."
 )
 

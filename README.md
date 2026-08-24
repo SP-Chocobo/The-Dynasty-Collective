@@ -4,9 +4,10 @@ A local "front office" for fantasy football — dynasty first, but redraft,
 keeper, Best Ball, and Chopped all get genuinely different treatment, not
 just a label swap (see "League format" below). It syncs your Sleeper league
 automatically, merges in your paid Draft Sharks projections from files on
-your own disk, and runs roster questions through a four-model debate
-panel — grounded in Draft Sharks' math, the wider public market, and live
-news — before handing you one clear verdict.
+your own disk, and runs roster questions through **The Prytaneum** — the
+four-model deliberation chamber described below — grounded in Draft Sharks'
+math, the wider public market, and live news — before handing you one clear
+verdict.
 
 ## The Front Office
 
@@ -123,6 +124,46 @@ CDME (draft_room.py + pick_synthesis.py)
     → presentation (draft_board_ui.py / app.py — translates, never re-derives)
     → optional debate escalation (pick_debate.py — interprets, never replaces)
 ```
+
+## The Prytaneum — Multi-Intelligence Deliberation
+
+**The Prytaneum** is the Dynasty Collective's multi-intelligence deliberation
+capability. It receives deterministic evidence and decision context from CDME
+(and from any surface's own already-computed reads) and provides structured
+interpretation through four roles — **Quant** (quantitative/valuation
+analysis), **Beat** (substantive/contextual read), **Contrarian** (adversarial
+challenge), and **Moderator** (adjudication and final synthesis) — see "The
+Front Office" above for what each role actually does and which model powers
+it by default. It is an escalation layer for questions where deterministic
+analysis benefits from interpretation, disagreement, or synthesis. It does
+**not** replace CDME as the authoritative deterministic decision engine, does
+not independently re-price players, and never becomes the authoritative
+scoring layer.
+
+The three-tier relationship, stated plainly:
+
+```
+CDME computes.
+The Prytaneum deliberates.
+The user decides.
+```
+
+Or as the full chain: `CDME → decision state / evidence → The Prytaneum →
+user judgment`. Every specialized decision surface (Draft Room, Trade
+Calculator, League, Matchup, Maintenance) can **escalate** into The
+Prytaneum — a small, persistent 💬 Debate control, present on every surface,
+hands over that surface's own already-computed `ScreenContext` (see
+`screen_context.py`) rather than making the roles re-derive or guess at
+what's on screen. See "Structured verdicts & the decision log" and "Debate
+Studio" -- now formally The Prytaneum -- below for the full user-facing
+behavior.
+
+Draft Room additionally has its **own**, separate, dedicated deliberation
+system ("Debate My Pick": Strategist, Skeptic, Caller — see `pick_debate.py`)
+that reasons over one frozen `PickSnapshot` with no live search. This is
+deliberately **not** part of The Prytaneum — different roles, different
+scope, built specifically for one board state — and is not being renamed by
+this terminology pass.
 
 This project also maintains a separate, offline **engine-validation harness**
 (`draft_simulation.py`, `draft_counterfactual.py`, `roster_diagnostics.py`,
@@ -297,22 +338,23 @@ correct.
    silently discarding it. This panel always lists everything regardless of
    scope (so you can find and manage anything), showing each item's current
    scope and letting you change it after the fact. Every item's caption
-   (not the raw file) is what actually reaches the debate panel, labeled
+   (not the raw file) is what actually reaches The Prytaneum, labeled
    explicitly as an unverified claim to weigh, not fact; edit a caption
    there any time too.
-4. **Debate Studio**: type a question and either click a quick-action button
-   or prefix your message:
-   - `/debate <question>` — full four-agent panel (default if no prefix)
+4. **The Prytaneum** (formerly labeled "Debate Studio"): type a question and
+   either click a quick-action button or prefix your message:
+   - `/debate <question>` — full four-role deliberation (default if no prefix)
    - `/claude <question>` — Quant only
    - `/gemini <question>` — Beat Tracker only
    - `/gpt <question>` — Contrarian only
    When Free Agent Finder data is loaded, the top 15 available free agents
-   (by 3D Value+) are included in the debate context automatically, so
-   waiver/pickup questions have real data to reason from.
-   The panel also has real memory now: your last ~16 messages (plus any
-   compacted summary — see below) are fed back into every debate's context,
-   so a later question can reference earlier trade discussions, consensus
-   verdicts, and roster strategy instead of starting fresh each time.
+   (by 3D Value+) are included in the context automatically, so waiver/pickup
+   questions have real data to reason from.
+   The Prytaneum also has real memory now: your last ~16 messages (plus any
+   compacted summary — see below) are fed back into every deliberation's
+   context, so a later question can reference earlier trade discussions,
+   consensus verdicts, and roster strategy instead of starting fresh each
+   time.
 
 ### Scoring-aware tier adjustment
 
@@ -479,7 +521,7 @@ below it — a later related question can then weigh whether something
 similar already worked or already missed, not just re-derive the same
 reasoning cold.
 
-Any bot message in the Debate Studio can also become an objective directly
+Any bot message in The Prytaneum can also become an objective directly
 — a **🎯 Add as objective** button next to the pin button drops that
 message's own text straight into the Active Objectives box (free, no model
 call), and a **🤖 Ask Moderator** button in that box can replace it with a
@@ -667,7 +709,7 @@ run_out_of_sample_validation.py          Drivers for the above -- not part of th
                                           the fast test suite; run by hand, write to
                                           data/draft_simulation_trials/ (gitignored).
 
-app.py                         Streamlit dashboard + debate studio.
+app.py                         Streamlit dashboard + The Prytaneum.
 update_and_run.ps1/.sh          Pulls latest code + deps, then launches the app.
 test_*.py                       unittest coverage — no pytest dependency.
 data/baseline/               Facts-only starting data, COMMITTED to git (not
@@ -705,7 +747,7 @@ data/player_aliases.json    Manual name-matching overrides (gitignored).
 
 - **`.streamlit/config.toml` is what actually makes this a dark app.** The
   custom CSS injected in `app.py` only recolors the outer shell (`.stApp`,
-  the badges, the debate blocks) — every *native* widget (buttons, the
+  the badges, The Prytaneum's own message blocks) — every *native* widget (buttons, the
   roster dataframe, selectboxes, the segmented control) is themed by
   Streamlit itself, and without a `[theme]` section they render in
   Streamlit's default light theme regardless of what the custom CSS does.
@@ -716,8 +758,8 @@ data/player_aliases.json    Manual name-matching overrides (gitignored).
   "wrong" (wrong-colored buttons, a white table), check this file and the
   actual theme first before reaching for more CSS overrides.
   The same file also carries the rest of the visual identity: `Inter` for
-  body text, `Space Grotesk` for headings, `JetBrains Mono` for the debate
-  transcripts and code, all loaded straight from Google Fonts via
+  body text, `Space Grotesk` for headings, `JetBrains Mono` for The
+  Prytaneum's transcripts and code, all loaded straight from Google Fonts via
   Streamlit's native `"name:url"` theme-font syntax — and a distinct,
   slightly darker `[theme.sidebar]` so the sidebar reads as its own panel
   instead of a visually-fused continuation of the main page.

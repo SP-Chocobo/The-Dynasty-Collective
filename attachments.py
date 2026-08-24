@@ -1,6 +1,6 @@
 """
 Reference material — screenshots of notifications, articles, injury news,
-or anything else worth having on hand to prompt the debate panel, but that
+or anything else worth having on hand to prompt The Prytaneum, but that
 isn't structured player-projection data. Nothing here is parsed or
 auto-matched to player records; a user-written caption is the only text
 that reaches the LLM context (see app.build_context()'s REFERENCE MATERIAL

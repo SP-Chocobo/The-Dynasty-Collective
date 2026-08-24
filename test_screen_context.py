@@ -443,7 +443,7 @@ class DebateHelpTextDistinctnessTests(unittest.TestCase):
             self.assertNotIn(banned, UNIVERSAL_DEBATE_HELP)
 
     def test_pick_specific_help_never_repeats_the_universal_doorways_own_guarantee(self):
-        # It's fine (expected, even) for this text to NAME "Debate Studio" as a contrast --
+        # It's fine (expected, even) for this text to NAME "The Prytaneum" as a contrast --
         # what it must never do is borrow the universal chip's own "nothing submitted
         # automatically" promise, since Debate This Pick runs immediately on click.
         self.assertNotIn("Nothing is submitted automatically", DRAFT_ROOM_PICK_DEBATE_HELP)

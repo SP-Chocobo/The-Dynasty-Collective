@@ -3,9 +3,9 @@ Fantasy Football Multi-LLM Command Center — Streamlit UI.
 
 Sleeper Meets Claude: a dark, minimalist dashboard (Claude) accented with
 functional sports-data color coding (Sleeper) — emerald for value surplus,
-gold for taxi/bench alerts, crimson for injury flags — plus a four-persona
-four-role debate studio (Quant, Beat, Contrarian, Moderator) — each role's LLM
-provider is independently configurable, not fixed to a given brand.
+gold for taxi/bench alerts, crimson for injury flags — plus The Prytaneum, a
+four-persona deliberation chamber (Quant, Beat, Contrarian, Moderator) — each
+role's LLM provider is independently configurable, not fixed to a given brand.
 """
 
 from __future__ import annotations
@@ -216,7 +216,7 @@ _GLOBAL_CSS = """
     /* The universal "Debate" doorway (render_debate_chip) -- reuses the exact understated
        treatment above rather than inventing a second "quiet secondary action" style, since
        the point here is the same: this control must never read as a peer to a surface's own
-       primary/specialized actions (Moderator Review, Full Squad Debate, Debate This Pick).
+       primary/specialized actions (Moderator Review, Full Prytaneum, Debate This Pick).
        [class*="st-key-debate_chip_"] (not an exact match) is deliberate -- render_debate_chip
        is called from multiple surfaces with a different container key each time
        (debate_chip_trade_calculator, debate_chip_draft_room, ...), and this one rule has to
@@ -334,7 +334,7 @@ _GLOBAL_CSS = """
         font-weight: 500;
     }
 
-    /* Debate Studio dock: fixed to the bottom of the viewport (not "sticky" — sticky
+    /* The Prytaneum's dock: fixed to the bottom of the viewport (not "sticky" — sticky
        only engages once its own container scrolls into range, which for the last
        block on the page means "not until you've scrolled everything else past it".
        Fixed pins it regardless of scroll position on either tab's content, which is
@@ -662,9 +662,9 @@ def process_moderator_output(moderator_text: str, trigger_question: str) -> None
 
 
 def find_last_debate(chat_history: list[dict]) -> Optional[dict[str, str]]:
-    """The most recent Full Debate round's four reports, if any -- lets a follow-up talk to
-    the Moderator with something real to reference instead of answering blind. A Full Debate
-    always appends exactly [quant, beat, contrarian, moderator] back to back (see the trigger
+    """The most recent Full Prytaneum round's four reports, if any -- lets a follow-up talk to
+    the Moderator with something real to reference instead of answering blind. A Full Prytaneum
+    run always appends exactly [quant, beat, contrarian, moderator] back to back (see the trigger
     block below), so that exact role run is the signature to scan for, most recent first.
 
     A round where any of the four calls actually failed (a missing/invalid API key, a provider
@@ -772,7 +772,7 @@ def parse_credentials_blob(text: str) -> dict[str, str]:
 
 
 def activate_league(league_id: str) -> None:
-    """Make this league the one shown across the dashboard and debate panel — loads its
+    """Make this league the one shown across the dashboard and The Prytaneum — loads its
     cached snapshot, chat history, and per-league Draft Sharks data. Shared by the main-panel
     league switcher and the sidebar's own first-load fallback so both stay in sync.
 
@@ -1144,7 +1144,7 @@ def render_debate_chip(context: "screen_context.ScreenContext", key: str) -> Non
     separate actions on purpose, so a user can see what the panel already knows before
     deciding whether to ask it anything. Visually a quiet utility control (see the
     [class*="st-key-debate_chip_"] CSS rule), never a peer to whatever specialized
-    escalation buttons (Moderator Review, Full Squad Debate, Debate This Pick) a surface
+    escalation buttons (Moderator Review, Full Prytaneum, Debate This Pick) a surface
     already has -- `key` just needs to be unique per call site (one per surface)."""
     with st.container(key=f"debate_chip_{key}"):
         if st.button(
@@ -2735,7 +2735,7 @@ if st.session_state.leagues:
                 # the league you're looking at." The name plus the popover's own chevron
                 # already reads as a picker on its own, the way a real <select> does.
                 with st.popover(league_options[current], use_container_width=True):
-                    st.caption("Switch which league the dashboard and debate panel below are showing.")
+                    st.caption("Switch which league the dashboard and The Prytaneum below are showing.")
                     picked = st.radio(
                         "Switch to",
                         options=option_ids,
@@ -2830,7 +2830,7 @@ main_view = st.segmented_control(
     # if/elif/elif/elif chain (rather than the implicit-else catch-all it used to be) means a
     # None main_view would now render nothing at all instead of silently falling into League.
     required=True,
-    help="Matchup: your lineup, projections, and the debate studio for start/sit calls. "
+    help="Matchup: your lineup, projections, and The Prytaneum for start/sit calls. "
     "Roster Maintenance: free agents/waivers and reference material for trade and pickup research. "
     "Draft Room: live startup/rookie draft pick recommendations. "
     "League: every other team's roster, for trade scouting.",
@@ -2881,7 +2881,7 @@ if roster:
     )
 
 # roster_table is built unconditionally above (regardless of which tab is active) —
-# the persistent Debate Studio band below needs it too, not just the Matchup view.
+# the persistent Prytaneum band below needs it too, not just the Matchup view.
 if main_view == MATCHUP_VIEW:
     # Readiness strip (front door, "is there a problem?") over a position-grouped roster
     # (body, "where, and what's there?") -- the settled Matchup concept merge. This is
@@ -3730,13 +3730,13 @@ elif main_view == MAINTENANCE_VIEW:
             "⚖️ Moderator Review", use_container_width=True, disabled=not _trade_ready,
             help="Fast interpretation of the deterministic evidence above — given the calculated "
             "balance and all available roster/context data, is this actually a good trade? A fresh "
-            "full debate if there's no prior conversation in this chat to react to, otherwise a "
-            "lightweight follow-up off it.",
+            "Full Prytaneum run if there's no prior conversation in this chat to react to, otherwise "
+            "a lightweight follow-up off it.",
         )
     with bcol2:
         ask_full_squad = st.button(
-            "🔥 Full Squad Debate", type="primary", use_container_width=True, disabled=not _trade_ready,
-            help="Deeper escalation — forces a fresh full panel run (Quant → Beat Tracker → "
+            "🔥 Full Prytaneum", type="primary", use_container_width=True, disabled=not _trade_ready,
+            help="Deeper escalation — forces a fresh full deliberation (Quant → Beat Tracker → "
             "Contrarian → Moderator) on this exact trade, regardless of any prior conversation "
             "in this chat.",
         )
@@ -4353,7 +4353,7 @@ elif main_view == DRAFT_VIEW:
                             # build_snapshot is the single most expensive call in this view (a full
                             # board computation plus one opponent board per intervening roster) --
                             # unconditionally recomputing it on EVERY script rerun meant an
-                            # unrelated action anywhere else on the page (the debate dock's own
+                            # unrelated action anywhere else on the page (the Prytaneum dock's own
                             # Expand/Collapse buttons, which call a bare st.rerun() purely to change
                             # a CSS height) paid that same cost for no reason. Cached in session
                             # state against exactly the inputs that can actually change the result --
@@ -4772,7 +4772,7 @@ elif main_view == LEAGUE_VIEW:
                     st.session_state.pending_main_view = MAINTENANCE_VIEW
                     st.rerun()
             st.caption(
-                "Ask the Debate Studio about this team by name (or a specific player on it) for a full trade "
+                "Ask The Prytaneum about this team by name (or a specific player on it) for a full trade "
                 "read — it can see any team's roster, not just the one selected above."
             )
 
@@ -4802,7 +4802,7 @@ if pinned_ts_panel:
 
 # ------------------------------------------------------------------ decision log / objectives --
 # Reference/historical content, not the live chat interface -- kept in normal page flow (not the
-# fixed-position debate dock below) since deeply nested columns inside that fixed container were
+# fixed-position Prytaneum dock below) since deeply nested columns inside that fixed container were
 # confirmed to compute their width against the wrong basis and push buttons off-screen entirely.
 decisions = decision_log.load_decisions(st.session_state.selected_league_id)
 if decisions:
@@ -5084,7 +5084,7 @@ with st.expander(f"🗄️ Archive ({len(archived_items)})"):
                     todo_log.delete_todo(todo_league_id, item["id"])
                     st.rerun()
 
-# ------------------------------------------------------------------ debate studio --
+# ------------------------------------------------------------------ the prytaneum --
 # A fixed dock at the bottom of the viewport, not just "below the tab content" —
 # regardless of which tab is active AND regardless of scroll position on that
 # tab's own content, so a question can be asked without hunting for the panel
@@ -5165,7 +5165,7 @@ with st.container(key="debate_dock"):
         # position width, pushing the second column entirely off-screen — confirmed live,
         # not a guess. Equal-ish column ratios don't hit it, so title/buttons get their own
         # rows instead of sharing one, sidestepping the bug rather than fighting it further.
-        st.subheader("Multi-Model Debate Studio")
+        st.subheader("The Prytaneum")
         active_count = len(todo_log.load_todos(league_id_for_header, statuses=todo_log.ACTIVE_STATUSES)) if league_id_for_header else 0
         attach_count = len(st.session_state.chat_scoped_attachments)
         st.caption(
@@ -5241,7 +5241,7 @@ with st.container(key="debate_dock"):
         # gives up a little width to it rather than the button floating off on its own.
         btn_col, input_col, attach_col = st.columns([1, 2.7, 0.3])
         with btn_col:
-            quick_debate = st.button("Full Debate", use_container_width=True, type="primary")
+            quick_debate = st.button("Full Prytaneum", use_container_width=True, type="primary")
             # Contrarian and Moderator both need prior reports to react to -- asking
             # either alone means asking them to do their job with nothing to work
             # with, which produced structurally hollow answers. Quant and Beat are
@@ -5506,8 +5506,8 @@ with st.container(key="debate_dock"):
                 inner += f'<div class="agent-verdict">{verdict_html}</div>'
             st.markdown(f'<div class="agent-block">{inner}</div>', unsafe_allow_html=True)
 
-        # A Full Debate always appends exactly [quant, beat, contrarian, moderator] back to
-        # back (see the trigger block above) -- group that run into one unit so the Moderator's
+        # A Full Prytaneum run always appends exactly [quant, beat, contrarian, moderator] back
+        # to back (see the trigger block above) -- group that run into one unit so the Moderator's
         # synthesis reads as the one answer, with the reports that fed it tucked behind a
         # toggle instead of three more full-size bubbles of equal visual weight. One visible
         # analyst, inspectable reasoning underneath, not a four-way transcript by default.
