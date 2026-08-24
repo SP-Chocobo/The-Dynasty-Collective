@@ -187,22 +187,14 @@ class DeterminismTests(unittest.TestCase):
         )
         self.assertEqual(board_a, board_b)
 
-    def test_compute_draft_board_content_is_invariant_to_players_db_key_insertion_order(self):
-        # FINDING (verified, not a computation bug -- see this test's own docstring below):
-        # reversing players_db's key order does NOT change any player's own computed values
-        # (confirmed: zero rows differ in content, same player_id set both ways), but CAN
-        # change RANK ORDER among players who land on the exact same rounded final_score --
-        # draft_room.py's three sort_values("final_score", ...) calls never pass
-        # kind="stable", and pandas' default (quicksort) is not stable, so ties are broken by
-        # whatever row order the pool DataFrame happens to be in, which traces back to
-        # players_db's own iteration order. Confirmed on the real committed baseline: 57 rows
-        # share 27 distinct tied final_score values (concentrated in the deep bench, where
-        # per-round TAV spread is already known to compress to ~2 points -- see "Measuring the
-        # Baseline"'s own out-of-sample section), and reversing players_db's key order
-        # reordered exactly those 37 rank positions -- zero elsewhere. This is a real, bounded,
-        # low-severity rank-order non-determinism among EXACT ties only; CDME's own math is
-        # unaffected either way. Not silently patched here per this file's own meta-rule
-        # (classify a surprising result before touching production code) -- reported instead.
+    def test_compute_draft_board_is_fully_invariant_to_players_db_key_insertion_order(self):
+        # RESOLVED FINDING (was a real, bounded rank-order instability -- see git history for
+        # the full characterization; fixed by adding player_id as an explicit, input-order-
+        # independent secondary sort key alongside kind="stable" on all three of
+        # draft_room.py's sort_values calls). Reversing players_db's key order used to reorder
+        # rank position among the ~57 rows sharing exactly-tied final_score values (37 of
+        # ~500 rows on the real baseline); confirmed now fully resolved -- full list equality,
+        # not just content equality.
         reordered = dict(reversed(list(self.players_db.items())))
         board_a = dr.compute_draft_board(
             self.merger, self.players_db, [], my_roster_id="1", league=STANDARD_LEAGUE, mode="balanced",
@@ -210,36 +202,48 @@ class DeterminismTests(unittest.TestCase):
         board_b = dr.compute_draft_board(
             self.merger, reordered, [], my_roster_id="1", league=STANDARD_LEAGUE, mode="balanced",
         )
-        a_by_id = {r["player_id"]: r for r in board_a}
-        b_by_id = {r["player_id"]: r for r in board_b}
-        self.assertEqual(set(a_by_id), set(b_by_id))
-        for pid, row_a in a_by_id.items():
-            self.assertEqual(row_a, b_by_id[pid], f"{row_a['name']}'s own computed values changed -- this would be a real bug")
+        self.assertEqual(board_a, board_b)
 
-    def test_rank_order_instability_is_confined_to_exact_final_score_ties(self):
-        # The other half of the finding above: prove the reordering is EXPLAINED BY ties, not
-        # some broader instability -- every rank position where order differs must be one
-        # where at least two players share the same final_score.
-        reordered = dict(reversed(list(self.players_db.items())))
+    def test_compute_draft_board_is_fully_invariant_to_a_random_players_db_key_shuffle(self):
+        # A reversed order alone could in principle miss an ordering-sensitive bug a genuine
+        # shuffle would catch -- both are tested, not just the one that happened to surface
+        # the original finding.
+        import random
+        keys = list(self.players_db.keys())
+        random.Random(99).shuffle(keys)
+        shuffled = {k: self.players_db[k] for k in keys}
         board_a = dr.compute_draft_board(
             self.merger, self.players_db, [], my_roster_id="1", league=STANDARD_LEAGUE, mode="balanced",
         )
         board_b = dr.compute_draft_board(
-            self.merger, reordered, [], my_roster_id="1", league=STANDARD_LEAGUE, mode="balanced",
+            self.merger, shuffled, [], my_roster_id="1", league=STANDARD_LEAGUE, mode="balanced",
         )
-        score_counts: dict[float, int] = {}
-        for row in board_a:
-            score_counts[row["final_score"]] = score_counts.get(row["final_score"], 0) + 1
-        differing_positions = 0
-        for row_a, row_b in zip(board_a, board_b):
-            if row_a["player_id"] != row_b["player_id"]:
-                differing_positions += 1
-                self.assertGreater(
-                    score_counts[row_a["final_score"]], 1,
-                    f"rank order differed at a position with a UNIQUE final_score ({row_a['final_score']}) "
-                    "-- this would mean the instability is NOT confined to ties, a more serious finding.",
-                )
-        self.assertGreater(differing_positions, 0, "fixture's own baseline happened to have zero ties this run")
+        self.assertEqual(board_a, board_b)
+
+    def test_the_final_narrowed_candidate_set_is_invariant_to_players_db_key_order_not_just_the_full_board(self):
+        # A subtler check than the two above: an exact tie sitting right at narrow_candidates'
+        # own top_n cutoff could in principle put a DIFFERENT player into the human-facing
+        # hand under different input order, even once the full sorted board itself is proven
+        # order-invariant -- truncation is a separate operation from sorting, and needs its
+        # own proof, not an inference from the full-board result. Goes all the way through
+        # build_snapshot (narrow_candidates + the full contextual layer), not just the board.
+        import random
+        keys = list(self.players_db.keys())
+        random.Random(11).shuffle(keys)
+        shuffled = {k: self.players_db[k] for k in keys}
+        pick_order = [str(i) for i in range(1, 13)]
+        snap_a = ps.build_snapshot(
+            self.merger, self.players_db, [], pick_order, 0, "1", STANDARD_LEAGUE, pick_label="1.01",
+        )
+        snap_b = ps.build_snapshot(
+            self.merger, shuffled, [], pick_order, 0, "1", STANDARD_LEAGUE, pick_label="1.01",
+        )
+        self.assertEqual(
+            [c.player_id for c in snap_a.candidates], [c.player_id for c in snap_b.candidates],
+            "the exact set AND order of players in the human-facing hand changed under a "
+            "different players_db key order -- narrowing/truncation itself would need its own fix",
+        )
+        self.assertEqual(snap_a, snap_b)
 
     def test_compute_draft_board_is_invariant_to_the_order_picks_are_listed_in(self):
         board0 = dr.compute_draft_board(

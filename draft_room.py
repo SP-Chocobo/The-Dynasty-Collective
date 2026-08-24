@@ -486,8 +486,17 @@ def replacement_levels(
     slot_counts = starter_slot_counts(roster_positions)
     drafted = drafted_counts or {}
     levels: dict[str, float] = {}
+    # player_id tiebreaker + kind="stable" -- see compute_draft_board's own sort_values calls
+    # for the full reasoning (input-order-independent tiebreaking among exact ties). Only
+    # added when the column is actually present: this function is also called directly, in
+    # tests, against minimal hand-built pools that carry only "position" and value_col --
+    # narrower than the real pool compute_draft_board itself always passes.
+    sort_cols = [value_col, "player_id"] if "player_id" in pool.columns else [value_col]
+    sort_ascending = [False, True] if len(sort_cols) == 2 else [False]
     for position in FANTASY_POSITIONS:
-        at_pos = pool[pool["position"] == position].sort_values(value_col, ascending=False)
+        at_pos = pool[pool["position"] == position].sort_values(
+            sort_cols, ascending=sort_ascending, kind="stable",
+        )
         if at_pos.empty:
             continue
         floor = (startable_floors or {}).get(position)
@@ -723,7 +732,18 @@ def compute_draft_board(
         scored = pool.join(pd.DataFrame(list(pool.apply(upside_score, axis=1))))
         scored["mode"] = "upside"
         scored["projected_points"] = scored["_points"]
-        results = scored.sort_values("final_score", ascending=False)
+        # kind="stable" + player_id as an explicit tiebreaker: without both, two players
+        # landing on the exact same rounded final_score could rank in either relative order
+        # depending on players_db's own dict iteration order (pool's own row order traces
+        # straight back to that, via build_available_pool's `for player_id, info in
+        # players_db.items()`) -- confirmed directly: reversing players_db's key order
+        # reordered 37 of ~500 real-baseline rows, all of them exact final_score ties, before
+        # this fix. player_id makes the tiebreak itself deterministic and independent of input
+        # order; kind="stable" alone (pandas' default is unstable quicksort) only fixes
+        # repeat-call determinism on a FIXED input order, not this. Never changes any
+        # player's own computed values -- only which of several exactly-tied players a human
+        # sees listed first.
+        results = scored.sort_values(["final_score", "player_id"], ascending=[False, True], kind="stable")
         return _records_with_normalized_nan(results[[
             "player_id", "name", "position", "team", "injury_status", "bpa", "bpa_source",
             "growth_signal", "confidence", "final_score", "mode", "projected_points",
@@ -791,7 +811,9 @@ def compute_draft_board(
     scored["confidence"] = pool["bpa_source"].map(_confidence)
     scored["mode"] = "balanced"
     scored["projected_points"] = pool["_points"]
-    results = scored.sort_values("final_score", ascending=False)
+    # player_id tiebreaker + kind="stable" -- see the identical sort in the upside-mode branch
+    # above for the full reasoning (input-order-independent tiebreaking among exact ties).
+    results = scored.sort_values(["final_score", "player_id"], ascending=[False, True], kind="stable")
     return _records_with_normalized_nan(results[[
         "player_id", "name", "position", "team", "injury_status", "bpa", "bpa_source",
         "time_horizon_adj", "risk_adj", "universal_value",
