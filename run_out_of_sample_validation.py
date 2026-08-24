@@ -48,9 +48,13 @@ POSITIONS = ("QB", "RB", "WR", "TE")
 # option_set_summary.json, both already committed) -- the reference each out-of-sample trial is
 # compared against. Copied as literal values, not re-read from those files, so this script's
 # pass/fail logic can never silently drift if someone regenerates the baseline files later.
+# Refreshed after the DataMerger league_format harness fix (see run_draft_validation.py's own
+# module docstring) -- baseline-12chair-v1 was regenerated under the corrected harness, and
+# these numbers now match its real counterfactual_summary.json exactly (121->123 equals_bpa for
+# standard_1qb, 112->110 equals_bpa and 2->1 deviation_unsupported for superflex).
 BASELINES = {
-    "standard_1qb": {"equals_bpa_rate": 121 / 144, "deviation_unsupported": 0, "bpa_visible_rate": 1.0},
-    "superflex": {"equals_bpa_rate": 112 / 144, "deviation_unsupported": 2, "bpa_visible_rate": 1.0},
+    "standard_1qb": {"equals_bpa_rate": 123 / 144, "deviation_unsupported": 0, "bpa_visible_rate": 1.0},
+    "superflex": {"equals_bpa_rate": 110 / 144, "deviation_unsupported": 1, "bpa_visible_rate": 1.0},
 }
 
 # One trial per league format, same 3RR pick order applied to each -- isolates the pick-order
