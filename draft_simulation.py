@@ -1,4 +1,9 @@
-"""Multi-chair draft simulation -- an engine-validation harness, not a product feature.
+"""Multi-chair draft simulation -- a CDME (Contextual Decision Matrix Engine) validation
+harness, not a product feature. See README.md's "The Draft Engine" section for CDME's own
+canonical definition; this module and the rest of the run_*_validation.py / draft_counterfactual.py
+/ roster_diagnostics.py / option_set_analysis.py harness all read CDME's outputs to measure its
+behavior -- none of them are part of CDME itself, and none modify its production decision logic
+on their own authority.
 
 Every chair uses the exact production decision path a real Draft Room pick already goes
 through: pick_synthesis.build_snapshot, the same call live Draft Room makes for a human's own

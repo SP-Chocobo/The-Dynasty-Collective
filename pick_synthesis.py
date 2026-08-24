@@ -6,6 +6,13 @@ module asks an LLM anything; it exists specifically so the debate layer downstre
 to compute or guess a single number -- see pick_debate.py's own module docstring for why that
 boundary is a hard architectural requirement, not a style preference.
 
+Together with draft_room.py, this module is the Contextual Decision Matrix Engine (CDME) --
+see README.md's "The Draft Engine" section for the canonical definition. This is CDME's
+contextual layer (necessity, positional cliff, survival/denial, decision_regime,
+narrow_candidates); PickSnapshot below is CDME's frozen decision artifact, and its
+candidates carry CDME's Decision Forces (near-tie, cliff protection, block opportunity,
+pure value) as interpretable flags.
+
 Five real signals this module adds that didn't exist anywhere in the engine before:
 
   * positional_cliff -- whether a real, computable bpa gap sits between this player and the

@@ -8,6 +8,10 @@ never trigger a Streamlit rerun -- those are pure client-side presentation state
 Python already computed once; nothing here should cost a full app.py re-execution just to
 expand a row or move a keyboard focus ring.
 
+This module is the Draft Room's own presentation layer over CDME (the Contextual Decision
+Matrix Engine -- see README.md's "The Draft Engine" section): it translates an already-frozen
+PickSnapshot into HTML, never a second ranking authority.
+
 This module does two things and nothing else:
   serialize_snapshot -- PickSnapshot -> a plain, JSON-able dict. Every field is read
     directly off CandidateSnapshot; nothing here computes, re-derives, or classifies a new

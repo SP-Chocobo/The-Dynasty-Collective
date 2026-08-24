@@ -4,6 +4,12 @@ in-progress Sleeper draft, modeled on (not a clone of) Draft Sharks' War Room "3
 concept: a dynamic form of Value-Based Drafting that recalculates as the draft happens,
 not a static pre-draft ranking.
 
+This module and pick_synthesis.py together are the Contextual Decision Matrix Engine
+(CDME) -- see README.md's "The Draft Engine" section for the canonical definition and
+full architectural picture (CDME -> PickSnapshot -> presentation / debate escalation).
+This module owns CDME's base valuation layer (universal_value, Team Acquisition Value);
+pick_synthesis.py owns the contextual layer built on top of it.
+
 Deliberately has no LLM in its critical path -- a live draft has a pick clock (often
 30s-2min), and a multi-role debate with live web search is nowhere near fast enough to be
 the primary recommendation there. Everything here is pandas/dict math over data this app

@@ -42,6 +42,98 @@ native live web search, so which one ends up on Beat/Contrarian is a
 - **Persisted league threads.** Every league gets its own chat memory at
   `data/chats/<league_id>_history.json`, independent of every other league.
 
+## The Draft Engine — Contextual Decision Matrix Engine (CDME)
+
+**Contextual Decision Matrix Engine (CDME)** is this project's canonical name
+for its core deterministic decision-synthesis system — the machinery behind
+Draft Room, the Mock Draft prototype, and every multi-chair draft simulation
+in `draft_simulation.py`. It evaluates available candidates against universal
+value and the contextual dimensions relevant to the current decision
+state — roster construction, positional need, scarcity/cliff risk, survival,
+denial/block opportunity, eligibility/flexibility, and defined tiebreak
+conditions — to produce team-specific acquisition value and decision-state
+outputs.
+
+CDME is **not** a single ranking formula, an LLM, or an autonomous drafter.
+It is the deterministic synthesis layer that converts several interacting
+signals into one frozen decision state that downstream interfaces and
+optional AI debate can interpret. It has no LLM anywhere in its own critical
+path — see `draft_room.py`'s own module docstring for why that's a hard
+requirement, not a style preference, given a live draft's pick clock.
+
+**What it consumes:** the live board (Sleeper roster/pick state plus
+Draft Sharks/Sleeper-native projections already loaded elsewhere in this
+app), the league's own scoring/roster settings, and the picks already made
+so far in the current draft.
+
+**What it produces, in two layers:**
+
+- `draft_room.py` computes the base valuation math per candidate —
+  `universal_value` (team-agnostic: BPA + time-horizon + risk adjustments)
+  and **Team Acquisition Value (TAV)**, CDME's principal quantitative
+  output — `universal_value + need_bonus + eligibility_bonus`, this
+  roster's own fit layered on top of the team-agnostic number.
+- `pick_synthesis.py` adds the contextual signals that don't answer "how
+  good is this player" but "how badly do I need to make THIS selection
+  right now": positional cliff, survival probability, denial/rival
+  premium, positional-run detection, market-consensus reach, and
+  **pick necessity** (`pick_necessity` / `necessity_label`) — built
+  additively from those already-computed signals, never a new invented
+  number.
+
+**PickSnapshot** (`pick_synthesis.PickSnapshot`) is CDME's principal decision
+artifact: a frozen representation of the board, the narrowed candidate set,
+every contextual signal above, the **decision regime** (how decisive vs.
+contested the evidence is), and an input-state stamp — the one object every
+downstream consumer (UI panel, stored decision log, LLM debate) reasons over
+instead of recomputing or guessing any of it.
+
+**Candidate narrowing** (`pick_synthesis.narrow_candidates`) is what turns
+the full scored board into the human-facing **candidate set** ("the hand"):
+the top players by TAV, plus the single best remaining player at every
+position the board covers (closing a real blind spot a pure VOR cutoff would
+otherwise create — see that function's own docstring), plus any player the
+user has explicitly flagged. This is the option set a human actually
+chooses from, and the one this project's own adversarial validation work
+(`option_set_analysis.py`) exists specifically to measure the completeness
+of.
+
+**Decision Forces** are the small, interpretable flags a candidate can carry
+inside its own PickSnapshot entry — near-tie, cliff protection, block
+opportunity, pure value — surfaced directly rather than left for a reader
+(human or LLM) to infer from raw numbers.
+
+**Where the UI fits:** `draft_board_ui.py` and `app.py` are a **translation
+layer** over CDME's outputs. They render PickSnapshot's already-decided
+ranking, badges, and forces — they must never independently re-rank
+candidates, invent a competing value, or re-derive CDME's math themselves.
+
+**Where AI debate fits:** `pick_debate.py`'s multi-persona "Debate My Pick"
+is optional **interpretive escalation** over a frozen PickSnapshot — it may
+interpret, contextualize, or challenge the evidence CDME already computed,
+but it is never a replacement for CDME as the deterministic decision
+authority, and it is never given the chance to compute or guess a number
+CDME didn't already provide.
+
+**Architectural relationship, summarized:**
+
+```
+CDME (draft_room.py + pick_synthesis.py)
+  → PickSnapshot (frozen decision state: candidates, TAV, Decision Forces, Decision Regime)
+    → presentation (draft_board_ui.py / app.py — translates, never re-derives)
+    → optional debate escalation (pick_debate.py — interprets, never replaces)
+```
+
+This project also maintains a separate, offline **engine-validation harness**
+(`draft_simulation.py`, `draft_counterfactual.py`, `roster_diagnostics.py`,
+`option_set_analysis.py`, and the `run_*_validation.py` drivers) that
+measures CDME's own behavior — divergence from best-player-available and
+market consensus, weak-roster tracing, decomposable roster diagnostics, and
+option-set completeness — against real simulated drafts. That harness
+reads CDME's outputs; it is not part of CDME itself, and never modifies
+production decision logic on its own authority (see each module's own
+docstring for its own explicit, pre-declared thresholds).
+
 ## Setup
 
 ```bash
@@ -525,6 +617,56 @@ llm_engine.py               Four-persona prompt routing across Claude / Gemini /
                              plus the structured-verdict/TODO/SOURCE FINDING/
                              SOURCE COMPARISON parsers.
 decision_log.py               Per-league record of every parsed Moderator verdict.
+
+  -- Contextual Decision Matrix Engine (CDME) -- see "The Draft Engine" above --
+draft_room.py                    CDME's base valuation math: universal_value, Team
+                                  Acquisition Value (TAV), the scored board.
+pick_synthesis.py                 CDME's contextual layer: necessity, positional cliff,
+                                   survival/denial, decision_regime, narrow_candidates,
+                                   and PickSnapshot -- CDME's frozen decision artifact.
+draft_strategy.py                  Survival probability / opportunity-cost / denial-value
+                                    analysis and positional-run detection, consumed by
+                                    pick_synthesis.py.
+draft_board_ui.py                    Pure formatting/serialization for the Draft Room's
+                                      rendered board -- a translation layer over CDME's
+                                      already-decided candidates, never a second ranking.
+pick_debate.py                        "Debate My Pick" -- optional LLM interpretive
+                                       escalation over a frozen PickSnapshot, never a
+                                       replacement for CDME.
+screen_context.py                      The shared ScreenContext contract every surface's
+                                        Debate chip builds from (Draft Room, Trade
+                                        Calculator, Matchup, Free Agents, League).
+design_system.py                        Shared color/type/motion tokens + CSS reused by
+                                         every surface's HTML/native styling.
+trade_ledger_ui.py                       Pure formatting helpers for the Trade Calculator's
+                                          roster-aware production UI.
+depth_ratings.py                         Shared Strong/Average/Weak/None depth judgment
+                                          used by Trade Calculator, League's Depth Map, and
+                                          Matchup's readiness strip.
+lineup_optimizer.py                      Exact-assignment (Hungarian) optimal starting
+                                          lineup solver.
+lineup_readiness.py                      Matchup's readiness-strip decomposition.
+league_standings.py                      Real Sleeper win-loss records.
+rookie_draft.py                          Rookie-draft-specific pick/value handling.
+draft_simulation.py                      Deterministic multi-chair draft simulation
+                                          harness -- runs CDME against itself across every
+                                          seat, never a second draft engine.
+draft_counterfactual.py                  Engine validation: recomputes the full board at
+                                          each real pick to compare CDME's choice against
+                                          pure BPA and market ADP. Measurement only.
+roster_diagnostics.py                    Engine validation: decomposable per-team roster
+                                          diagnostics off a completed simulated draft --
+                                          deliberately no single aggregate power score.
+option_set_analysis.py                   Engine validation: whether CDME's own narrowed
+                                          candidate set ever excludes the true best
+                                          available player.
+run_draft_validation.py,
+run_counterfactual_analysis.py,
+run_option_set_analysis.py,
+run_out_of_sample_validation.py          Drivers for the above -- not part of the app or
+                                          the fast test suite; run by hand, write to
+                                          data/draft_simulation_trials/ (gitignored).
+
 app.py                         Streamlit dashboard + debate studio.
 update_and_run.ps1/.sh          Pulls latest code + deps, then launches the app.
 test_*.py                       unittest coverage — no pytest dependency.

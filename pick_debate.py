@@ -5,6 +5,11 @@ engine: every number an LLM sees here was already computed by draft_room.py/draf
 pick_synthesis.py, and the models' entire job is arguing about what those numbers MEAN, never
 producing new ones of their own.
 
+In CDME's own terms (see README.md's "The Draft Engine" section): this is the optional
+interpretive-debate escalation over a frozen PickSnapshot, never a replacement for CDME (the
+Contextual Decision Matrix Engine, draft_room.py + pick_synthesis.py) as the deterministic
+decision authority.
+
 HARD ARCHITECTURAL REQUIREMENT: an LLM in this module is never allowed to invent or recompute
 a player value, a survival probability, an opportunity cost, or any other number pick_synthesis
 already produced. It may disagree with an input ("I think this survival estimate undersells a
