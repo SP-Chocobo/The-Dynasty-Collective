@@ -37,6 +37,8 @@ import draft_board_ui
 import draft_room
 import draft_strategy
 import league_standings
+import lineup_optimizer
+import lineup_readiness
 import pick_debate
 import pick_synthesis
 import pinned_messages
@@ -2881,26 +2883,108 @@ if roster:
 # roster_table is built unconditionally above (regardless of which tab is active) —
 # the persistent Debate Studio band below needs it too, not just the Matchup view.
 if main_view == MATCHUP_VIEW:
-    st.subheader("Roster Summary")
+    # Readiness strip (front door, "is there a problem?") over a position-grouped roster
+    # (body, "where, and what's there?") -- the settled Matchup concept merge. This is
+    # deliberately NOT a start/sit recommendation: lineup_readiness only ever states facts
+    # already computed elsewhere (filled slots, starter injury flags, this team's own
+    # depth_ratings judgment) -- see that module's own docstring for why the harder
+    # "what should I actually do" question stays a separate, parked concept.
+    st.subheader("Lineup Readiness")
     if not roster:
         st.warning("Couldn't find a roster owned by this user in this league.")
     else:
-        df = pd.DataFrame(roster_table)
-        display_cols = [c for c in [
-            "name", "position", "team", "slot", "tier", "vorp",
-            "projection", "sleeper_proj", "proj_3yr", "trade_value", "pos_rank",
-            "fa_ros_proj", "fa_ceiling", "fa_value", "injury_status",
-        ] if c in df.columns]
-        render_styled_table(
-            df[display_cols],
-            pill_columns={"injury_status": _injury_pill_color, "position": _position_pill_color},
-            group_column="slot",
-            column_labels={"sleeper_proj": sleeper_proj_label(snapshot)},
+        depth = positional_depth(player_universe, merger)
+        owner_labels = roster_owner_names(snapshot)
+        my_team_label = owner_labels.get(roster["roster_id"])
+        total_starting_slots = len(lineup_optimizer.slots_from_roster_positions(league.get("roster_positions") or []))
+        readiness = lineup_readiness.compute_readiness(roster_table, depth, my_team_label, total_starting_slots)
+
+        def _readiness_chip(label: str, tone: str) -> str:
+            color = {"ok": "var(--emerald-b)", "warn": "var(--gold-b)", "bad": "var(--crimson-b)"}[tone]
+            icon = {"ok": "✅", "warn": "⚠️", "bad": "⚠️"}[tone]
+            return (
+                f'<span style="display:inline-flex;align-items:center;gap:.35rem;'
+                f"font-family:'JetBrains Mono',monospace;font-size:.78rem;border-radius:5px;"
+                f'padding:.3rem .6rem;margin:0 .5rem .5rem 0;color:{color};'
+                f'border:1px solid {color};background:rgba(255,255,255,.03);">{icon} {label}</span>'
+            )
+
+        slots_ok = readiness["filled_starting_slots"] >= readiness["total_starting_slots"]
+        chips = [_readiness_chip(
+            f"{readiness['filled_starting_slots']}/{readiness['total_starting_slots']} starting slots filled",
+            "ok" if slots_ok else "bad",
+        )]
+        if readiness["starter_injury_flags"]:
+            names = ", ".join(f["name"] for f in readiness["starter_injury_flags"][:3])
+            extra = len(readiness["starter_injury_flags"]) - 3
+            label = f"{len(readiness['starter_injury_flags'])} starter(s) flagged: {names}"
+            if extra > 0:
+                label += f" +{extra} more"
+            chips.append(_readiness_chip(label, "warn"))
+        if readiness["thin_positions"]:
+            pos_list = ", ".join(p["position"] for p in readiness["thin_positions"])
+            chips.append(_readiness_chip(f"Thin at {pos_list}", "warn"))
+        st.markdown(f'<div>{"".join(chips)}</div>', unsafe_allow_html=True)
+
+        st.markdown(trade_ledger_ui.TRADE_LEDGER_CSS, unsafe_allow_html=True)
+        st.markdown(trade_ledger_ui.freshness_pill(merger.is_stale, merger.staleness_days), unsafe_allow_html=True)
+        st.caption(
+            "Tier, VORP, and the thin-position read above come from your loaded Draft Sharks "
+            "data — check the freshness pill if something here looks off."
         )
+
+        st.markdown("---")
+        st.markdown("**Your Roster**")
+        _position_order = ["QB", "RB", "WR", "TE", "K", "DEF", "LB", "DL", "DB"]
+        positions_present = [p for p in _position_order if any(r["position"] == p for r in roster_table)]
+        for r in roster_table:
+            if r["position"] not in positions_present:
+                positions_present.append(r["position"])
+
+        flagged_positions = {p["position"] for p in readiness["thin_positions"]} | {
+            f["position"] for f in readiness["starter_injury_flags"]
+        }
+        default_position = next((p for p in positions_present if p in flagged_positions), positions_present[0] if positions_present else None)
+        st.session_state.setdefault("matchup_expanded_position", default_position)
+
+        any_sleeper_proj = False
+        for position in positions_present:
+            group_rows = [r for r in roster_table if r["position"] == position]
+            n_starters = sum(1 for r in group_rows if r["slot"] == "Starter")
+            n_bench = len(group_rows) - n_starters
+            is_open = st.session_state.matchup_expanded_position == position
+            flag_marker = " ⚠️" if position in flagged_positions else ""
+            arrow = "▾" if is_open else "▸"
+            if st.button(
+                f"{arrow} {position} ({n_starters} starting, {n_bench} bench){flag_marker}",
+                key=f"matchup_group_btn_{position}", use_container_width=True,
+            ):
+                st.session_state.matchup_expanded_position = None if is_open else position
+                st.rerun()
+            if is_open:
+                group_df = pd.DataFrame(group_rows)
+                display_cols = [c for c in [
+                    "name", "position", "team", "slot", "tier", "vorp",
+                    "projection", "sleeper_proj", "proj_3yr", "trade_value", "pos_rank",
+                    "fa_ros_proj", "fa_ceiling", "fa_value", "injury_status",
+                ] if c in group_df.columns]
+                render_styled_table(
+                    group_df[display_cols],
+                    pill_columns={"injury_status": _injury_pill_color, "position": _position_pill_color},
+                    group_column="slot",
+                    column_labels={"sleeper_proj": sleeper_proj_label(snapshot)},
+                )
+                any_sleeper_proj = any_sleeper_proj or "sleeper_proj" in group_df.columns
+
         matchup_chip_col, _ = st.columns([0.6, 2.4])
         with matchup_chip_col:
-            render_debate_chip(screen_context.build_matchup_context(roster_table), key="matchup")
-        if "sleeper_proj" in df.columns:
+            render_debate_chip(
+                screen_context.build_matchup_context(
+                    roster_table, focus_position=st.session_state.matchup_expanded_position,
+                ),
+                key="matchup",
+            )
+        if any_sleeper_proj:
             projection_request = snapshot.get("projection_request") or snapshot.get("nfl_state") or {}
             st.caption(
                 f"'sleeper_proj' = Sleeper's own {projection_request.get('season_type', 'regular')} "

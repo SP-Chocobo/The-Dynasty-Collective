@@ -125,17 +125,44 @@ def build_draft_room_context(snap: PickSnapshot) -> ScreenContext:
     )
 
 
-def build_matchup_context(roster_table: Sequence[dict]) -> ScreenContext:
+def build_matchup_context(roster_table: Sequence[dict], focus_position: Optional[str] = None) -> ScreenContext:
     """Matchup's Roster Summary table -- built from the exact roster_table rows that view
     already renders (slot/tier/vorp/projection/injury, in the same Starter-then-Bench-then-
     TAXI/IR order app.py sorts them into). Deliberately just a roster listing with whatever
     per-player numbers are already computed; never a start/sit recommendation of its own --
-    that's lineup_optimizer's separate, distinct concern, not duplicated here."""
+    that's the separate, parked Lineup Recommendation concept, not duplicated here.
+
+    focus_position implements the Debate Scope committed-object contract: when the grouped
+    roster view has one position group explicitly expanded (a persistent UI state app.py
+    tracks in st.session_state, never a hover or keyboard-traversal state), that group IS the
+    committed object and this narrows to it -- lineage named in looking_at, per the contract's
+    nesting rule. None means no group is expanded, so the whole roster is the object, exactly
+    as before this parameter existed. A focus_position with zero matching rows still returns
+    that (empty) group as the object, per the contract's "empty is still the object" rule --
+    it never silently falls back to the whole roster."""
+    if focus_position is not None:
+        group_rows = [r for r in roster_table if r.get("position") == focus_position]
+        looking_at = f"Looking at your {focus_position} group (within your roster)."
+        starters = [r for r in group_rows if r.get("slot") == "Starter"]
+        decision = f"{len(group_rows)} rostered player(s) at {focus_position}, {len(starters)} in starting slots."
+        return ScreenContext(
+            surface="Matchup", looking_at=looking_at, decision=decision,
+            evidence=_matchup_evidence_lines(group_rows) or f"No rostered players in your {focus_position} group.",
+            entities=tuple(r["name"] for r in group_rows),
+        )
     looking_at = "Looking at your roster."
     starters = [r for r in roster_table if r.get("slot") == "Starter"]
     decision = f"{len(roster_table)} rostered player(s), {len(starters)} in starting slots."
+    evidence = _matchup_evidence_lines(roster_table) or "No rostered players found."
+    return ScreenContext(
+        surface="Matchup", looking_at=looking_at, decision=decision,
+        evidence=evidence, entities=tuple(r["name"] for r in roster_table),
+    )
+
+
+def _matchup_evidence_lines(rows: Sequence[dict]) -> str:
     lines = []
-    for r in roster_table:
+    for r in rows:
         bits = []
         if r.get("tier") is not None:
             bits.append(f"tier {r['tier']}")
@@ -149,11 +176,7 @@ def build_matchup_context(roster_table: Sequence[dict]) -> ScreenContext:
         team_bit = f", {r['team']}" if r.get("team") else ""
         tail = " — " + ", ".join(bits) if bits else ""
         lines.append(f"{r['name']} ({r['position']}{team_bit}) — {r.get('slot') or 'Bench'}{tail}")
-    evidence = "\n".join(lines) if lines else "No rostered players found."
-    return ScreenContext(
-        surface="Matchup", looking_at=looking_at, decision=decision,
-        evidence=evidence, entities=tuple(r["name"] for r in roster_table),
-    )
+    return "\n".join(lines)
 
 
 def build_free_agents_context(rows: Sequence[dict], position_filter: Optional[str], search_term: Optional[str]) -> ScreenContext:

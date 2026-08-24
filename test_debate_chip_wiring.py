@@ -38,10 +38,9 @@ class DebateChipWiringTests(unittest.TestCase):
         )
 
     def test_matchup_chip_is_wired_via_the_shared_builder(self):
-        self.assertIn(
-            'render_debate_chip(screen_context.build_matchup_context(roster_table), key="matchup")',
-            _APP_SOURCE,
-        )
+        self.assertIn("screen_context.build_matchup_context(", _APP_SOURCE)
+        self.assertIn("roster_table, focus_position=st.session_state.matchup_expanded_position", _APP_SOURCE)
+        self.assertIn('key="matchup",', _APP_SOURCE)
 
     def test_free_agents_chip_is_wired_via_the_shared_builder(self):
         self.assertIn(

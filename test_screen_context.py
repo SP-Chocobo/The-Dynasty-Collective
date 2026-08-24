@@ -325,6 +325,42 @@ class BuildMatchupContextTests(unittest.TestCase):
         ctx = build_matchup_context(rows)
         self.assertEqual(ctx.entities, ("Z", "A", "M"))
 
+    def test_no_focus_position_is_the_default_and_unchanged(self):
+        rows = [self._row(name="A", position="WR"), self._row(name="B", position="TE")]
+        ctx = build_matchup_context(rows)
+        self.assertEqual(ctx.entities, ("A", "B"))
+        self.assertEqual(ctx.looking_at, "Looking at your roster.")
+
+    def test_focus_position_narrows_to_that_group_only(self):
+        rows = [self._row(name="A", position="WR"), self._row(name="B", position="TE")]
+        ctx = build_matchup_context(rows, focus_position="TE")
+        self.assertEqual(ctx.entities, ("B",))
+        self.assertNotIn("A", ctx.evidence)
+
+    def test_focus_position_names_its_lineage_in_looking_at(self):
+        ctx = build_matchup_context([self._row(position="TE")], focus_position="TE")
+        self.assertIn("TE", ctx.looking_at)
+        self.assertIn("within your roster", ctx.looking_at)
+
+    def test_focus_position_decision_counts_only_that_group(self):
+        rows = [
+            self._row(name="A", position="TE", slot="Starter"),
+            self._row(name="B", position="TE", slot="Bench"),
+            self._row(name="C", position="WR", slot="Starter"),
+        ]
+        ctx = build_matchup_context(rows, focus_position="TE")
+        self.assertIn("2 rostered player(s) at TE", ctx.decision)
+        self.assertIn("1 in starting slots", ctx.decision)
+
+    def test_empty_focus_group_is_handed_over_as_itself_not_the_whole_roster(self):
+        # Committed-object contract, "empty is still the object": zero players at the focused
+        # position must never fall back to seeding the whole roster instead.
+        rows = [self._row(name="A", position="WR")]
+        ctx = build_matchup_context(rows, focus_position="TE")
+        self.assertEqual(ctx.entities, ())
+        self.assertIn("No rostered players in your TE group", ctx.evidence)
+        self.assertNotIn("A", ctx.evidence)
+
 
 class BuildFreeAgentsContextTests(unittest.TestCase):
     def _row(self, **overrides) -> dict:
