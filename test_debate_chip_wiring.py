@@ -49,6 +49,30 @@ class DebateChipWiringTests(unittest.TestCase):
         )
         self.assertIn('key="free_agents"', _APP_SOURCE)
 
+    def test_league_chip_is_wired_via_the_shared_builder(self):
+        # Coverage for this call site otherwise lives only in test_league_view_wiring.py --
+        # asserted here too so this file's own claim of being "the one place to check all
+        # Debate wiring" (see module docstring) stays true for a reader who only opens this
+        # file.
+        self.assertIn(
+            'render_debate_chip(screen_context.build_league_context(team_label, context_rows), key="league")',
+            _APP_SOURCE,
+        )
+
+    def test_mock_draft_edit_chip_is_wired_via_the_shared_builder(self):
+        # The re-drafting flow's own chip -- adjacent to the exact "board rebuilt, chip still
+        # holds a stale context" bug class Draft Room's own chip was already fixed for once.
+        self.assertIn(
+            'render_debate_chip(screen_context.build_draft_room_context(edit_snap), key="mock_draft_edit")',
+            _APP_SOURCE,
+        )
+
+    def test_mock_draft_on_the_clock_chip_is_wired_via_the_shared_builder(self):
+        self.assertIn(
+            'render_debate_chip(screen_context.build_draft_room_context(mock_snap), key="mock_draft")',
+            _APP_SOURCE,
+        )
+
     def test_two_debate_controls_reference_the_distinct_named_help_constants(self):
         self.assertIn("help=screen_context.UNIVERSAL_DEBATE_HELP", _APP_SOURCE)
         self.assertIn("help=screen_context.DRAFT_ROOM_PICK_DEBATE_HELP", _APP_SOURCE)

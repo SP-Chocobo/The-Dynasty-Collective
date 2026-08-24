@@ -4639,9 +4639,9 @@ elif main_view == LEAGUE_VIEW:
                     cell = depth.get(team_label, {}).get(position, {"count": 0, "value": None})
                     label = depth_ratings.depth_label(cell, peer_cells)
                     if label == "Strong":
-                        styles.append("background-color: rgba(22,163,74,0.28); color: #4ade80;")
+                        styles.append(f"background-color: {design_system.token_rgba('emerald', 0.18)}; color: #4ade80;")
                     elif label == "Weak":
-                        styles.append("background-color: rgba(185,28,28,0.24); color: #f87171;")
+                        styles.append(f"background-color: {design_system.token_rgba('crimson', 0.18)}; color: #f87171;")
                     else:
                         styles.append("")
                 return styles

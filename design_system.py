@@ -60,6 +60,20 @@ FOCUS_VISIBLE_CSS = (
 )
 
 
+def token_rgba(token_name: str, alpha: float) -> str:
+    """A TOKENS hex value as an alpha-blended `rgba(r,g,b,a)` string -- for the specific,
+    recurring case of an inline `style="background-color: ..."` attribute (pandas Styler
+    output, e.g.) where a CSS custom property can't be relied on to resolve, the same reason
+    TRADE_LEDGER_CSS's own background rules spell out a literal rgb triplet next to a
+    var(--token) border rather than using the token for both. This is that literal triplet's
+    one source of truth instead of a second hand-copied hex value drifting from TOKENS over
+    time -- the exact drift found between the Depth Map's own hand-rolled 0.28/0.24 alphas and
+    every other badge surface's shared 0.18 convention (BADGE_ROLE_CSS, BADGE_NECESSITY_CSS)."""
+    hex_value = TOKENS[token_name].lstrip("#")
+    r, g, b = (int(hex_value[i:i + 2], 16) for i in (0, 2, 4))
+    return f"rgba({r},{g},{b},{alpha})"
+
+
 def root_css_block() -> str:
     """Every TOKENS entry rendered as one `:root { --k: v; ... }` block -- the only place
     that ever spells out these hex values. Every consumer (app.py's native <style>

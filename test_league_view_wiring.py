@@ -108,6 +108,17 @@ class AntiTwoDashboardContractTests(unittest.TestCase):
         self.assertEqual(block.count("render_debate_chip(screen_context.build_league_context"), 1)
         self.assertEqual(block.count('st.button("↔ Open in Trade Calculator"'), 1)
 
+    def test_depth_map_strong_weak_coloring_uses_the_shared_token_system(self):
+        # Was hand-rolled literal rgba(22,163,74,0.28)/(185,28,28,0.24) -- a real, if small,
+        # alpha drift from every other badge surface's shared 0.18 convention
+        # (BADGE_ROLE_CSS/BADGE_NECESSITY_CSS). Pinned here so this one cell-styling call site
+        # can't silently drift back to a hand-copied hex value.
+        block = self._league_block()
+        self.assertIn("design_system.token_rgba('emerald', 0.18)", block)
+        self.assertIn("design_system.token_rgba('crimson', 0.18)", block)
+        self.assertNotIn("rgba(22,163,74,0.28)", block)
+        self.assertNotIn("rgba(185,28,28,0.24)", block)
+
     def test_depth_map_reuses_the_shared_depth_ratings_module(self):
         block = self._league_block()
         # F3: the Depth Map's cell coloring must consume the exact same judgment the Trade
