@@ -1,0 +1,110 @@
+{
+  "_README": [
+    "Provenance for the league-scored baseline projection CSVs in this directory.",
+    "",
+    "WHY THIS FILE EXISTS: a Sleeper projection is only meaningful alongside the scoring",
+    "settings that produced it. The same defense is a 111-point season under the settings",
+    "below and a 276-point season under CBS's assumptions -- and it is the SPREAD, not the",
+    "level, that VOR reads as positional separation. Committing the points without the rules",
+    "that generated them would leave the numbers unfalsifiable.",
+    "",
+    "THIS IS DOCUMENTATION, NOT A SCORING INPUT. Nothing reads this file at runtime. The",
+    "stat-category keys below are inferred from Sleeper's public vocabulary to make a future",
+    "live comparison easier, but they have NOT been verified against a real get_league()",
+    "payload from this environment (api.sleeper.app is not reachable here). Verify them",
+    "against a live payload before wiring this into any scoring path -- a wrong key scores",
+    "silently as zero, which is exactly the class of error the rest of this pipeline refuses",
+    "to make.",
+    "",
+    "KNOWN GAP: the two CSVs come from two DIFFERENT leagues (see below). Both are redraft,",
+    "and their K and DEF point ranges are closely comparable (K 116-22, DEF 111-81), but",
+    "'comparable range' is not 'same rulebook'. Regenerating both positions from ONE league",
+    "via sleeper_client.build_baseline_projection_rows is the fix once a live connection is",
+    "available."
+  ],
+
+  "sleeper_kicker_projections.csv": {
+    "league": "fumbling bumbling s... (redraft)",
+    "captured": "2026-08-25",
+    "capture_method": "transcribed from Sleeper app screenshots (SEASON PROJ), not an API pull",
+    "positions": ["K"],
+    "rows": 37,
+    "measured_vor_first_vs_twelfth": 11,
+    "scoring_settings_observed": {
+      "_scope": "KICKING tab only; this league's TEAM DEFENSE settings were not captured",
+      "xpm": {"label": "PAT Made", "value": 1},
+      "xpmiss": {"label": "PAT Missed", "value": -1},
+      "fgmiss": {"label": "FG Missed", "value": -1},
+      "fgm_0_19": {"label": "FG Made (0-19 yards)", "value": 3},
+      "fgm_20_29": {"label": "FG Made (20-29 yards)", "value": 3},
+      "fgm_30_39": {"label": "FG Made (30-39 yards)", "value": 3},
+      "fgm_40_49": {"label": "FG Made (40-49 yards)", "value": 4},
+      "fgm_50p": {"label": "FG Made (50+ yards)", "value": 5}
+    }
+  },
+
+  "sleeper_dst_projections.csv": {
+    "league": "Conlan Tire Redraft, 2... (redraft)",
+    "captured": "2026-08-25",
+    "capture_method": "transcribed from Sleeper app screenshots (SEASON PROJ), not an API pull",
+    "positions": ["DEF"],
+    "rows": 32,
+    "measured_vor_first_vs_twelfth": 13,
+    "scoring_settings_observed": {
+      "_scope": "TEAM DEFENSE tab only; this league's KICKING settings were not captured",
+
+      "int": {"label": "Interceptions", "value": 2},
+      "int_ret_yd": {"label": "INT Return Yards", "value": 0},
+      "fum_rec": {"label": "Fumble Recovery", "value": 2},
+      "fum_ret_yd": {"label": "Fumble Return Yards", "value": 0},
+      "ff": {"label": "Forced Fumble", "value": 1},
+      "safe": {"label": "Safety", "value": 2},
+      "blk_kick": {"label": "Blocked Kick", "value": 2},
+      "blk_kick_ret_yd": {"label": "Blocked Kick Return Yards", "value": 0},
+
+      "def_td": {"label": "Defense TD", "value": 6},
+      "def_2pt_ret": {"label": "2-Pt Conversion Returns", "value": 0},
+
+      "tkl": {"label": "Tackle", "value": 0},
+      "tkl_solo": {"label": "Solo Tackle", "value": 0},
+      "tkl_ast": {"label": "Assisted Tackle", "value": 0},
+      "tkl_loss": {"label": "Tackle For Loss", "value": 0},
+      "sack": {"label": "Sacks", "value": 1},
+      "sack_yd": {"label": "Sack Yards", "value": 0},
+      "qb_hit": {"label": "Hit on QB", "value": 0},
+      "pass_def": {"label": "Pass Defended", "value": 0},
+
+      "pts_allow": {"label": "Points Per Point Allowed", "value": 0},
+      "pts_allow_0": {"label": "Points Allowed 0", "value": 5},
+      "pts_allow_1_6": {"label": "Points Allowed 1-6", "value": 4},
+      "pts_allow_7_13": {"label": "Points Allowed 7-13", "value": 3},
+      "pts_allow_14_20": {"label": "Points Allowed 14-20", "value": 1},
+      "pts_allow_21_27": {"label": "Points Allowed 21-27", "value": 0},
+      "pts_allow_28_34": {"label": "Points Allowed 28-34", "value": -1},
+      "pts_allow_35p": {"label": "Points Allowed 35+", "value": -4},
+
+      "yds_allow": {"label": "Points Per Yard Allowed", "value": 0},
+      "yds_allow_0_100": {"label": "Less Than 100 Total Yards Allowed", "value": 5},
+      "yds_allow_100_199": {"label": "100-199 Total Yards Allowed", "value": 3},
+      "yds_allow_200_299": {"label": "200-299 Total Yards Allowed", "value": 2},
+      "yds_allow_300_349": {"label": "300-349 Total Yards Allowed", "value": 0},
+      "yds_allow_350_399": {"label": "350-399 Total Yards Allowed", "value": -1},
+      "yds_allow_400_449": {"label": "400-449 Total Yards Allowed", "value": -3},
+      "yds_allow_450_499": {"label": "450-499 Total Yards Allowed", "value": -5},
+      "yds_allow_500_549": {"label": "500-549 Total Yards Allowed", "value": -6},
+      "yds_allow_550p": {"label": "550+ Total Yards Allowed", "value": -7},
+
+      "def_3_and_out": {"label": "3 and Out", "value": 0},
+      "def_4_and_stop": {"label": "4th Down Stop", "value": 0},
+      "forced_punt": {"label": "Forced Punt", "value": 0},
+
+      "st_td": {"label": "Special teams td", "value": 6},
+      "st_ff": {"label": "Special Teams Forced Fumble", "value": 1},
+      "st_fum_rec": {"label": "Special Teams Fumble Recovery", "value": 1},
+      "st_tkl_solo": {"label": "Special Teams Solo Tackle", "value": 0},
+      "pr_yd": {"label": "Punt Return Yards", "value": 0},
+      "kr_yd": {"label": "Kick Return Yards", "value": 0},
+      "misfg_ret_yd": {"label": "Missed FG Return Yards", "value": 0}
+    }
+  }
+}
