@@ -709,11 +709,21 @@ def positional_bench_appetite(
     backup is worth a pick. So appetite tracks how much value is LOST across the tier past
     starter demand -- (1 - retention) -- not how much is retained.
 
-    Measured on real data this puts RB roughly 6x DEF without a single positional constant,
-    which matches how drafts actually run. That agreement is a sanity check on the shape, not
-    a calibration: this is a PRIOR, and expected_positional_consumption below hands control to
-    observed picks as soon as there are any.
+    KNOWN WRONG AT THE TAIL, deliberately left in place. Checked against a real completed
+    12-team superflex dynasty startup: ~52 QBs actually went; this says 80.6. It reads a cliff
+    as depth-hunger, so superflex QB -- demand 22, QB44 holding 8.5% of QB22 -- scores the
+    highest appetite of any position despite having maybe 35 draftable players.
 
+    A replacement was tried and REVERTED: appetite as the share of a position's own total value
+    sitting past starter demand. It fixed QB almost exactly (52.3 vs 52) and broke K and DEF,
+    which it drove from ~15 and ~14 consumed to ~25 each, because a FLAT position necessarily
+    holds a large share of its value past starter demand. Fitting one position's number while
+    inverting two others is overfitting, and the existing tests caught it. Whatever replaces
+    this has to satisfy both ends -- cliff positions and flat ones -- and that needs more than
+    one draft to derive honestly.
+
+    This is a PRIOR either way: expected_positional_consumption hands control to observed picks
+    as soon as the draft produces any, which is what limits the damage in a live draft.
     A position whose loaded pool can't reach 2x starter demand has no decay to read. It does
     NOT get 0.0 -- that would assert "this position is never benched", which is a claim, not
     an absence, and it hands that position's bench picks to whichever positions happened to
@@ -762,9 +772,24 @@ def expected_positional_consumption(
     still to come, and added to what has already gone, so the estimate can never fall below
     what the draft has already done -- and no ADP source is needed to get there.
     """
-    drafted = drafted_counts or {}
     slot_counts = starter_slot_counts(roster_positions)
     total_picks = num_teams * draftable_slots_per_team(roster_positions)
+
+    # A pick at a position this league cannot start is not a roster selection, so it must not
+    # teach the observed-share model anything. Real and confirmed on a real board: a dynasty
+    # startup whose interface can't draft future rookie picks sees managers take KICKERS as
+    # stand-ins for them -- ~36 of ~360 picks in one measured draft, in a league rostering no
+    # kicker at all. A placeholder is structurally IDENTICAL to a genuine pick (same position
+    # field, same slot), so nothing downstream can tell them apart; left in, they would have
+    # taught the model that this room spends a tenth of its draft on kickers.
+    #
+    # Position-agnostic and derived, not a rule about kickers: zero starter demand is exactly
+    # the condition under which a pick cannot be for the lineup. It also correctly leaves a
+    # league that DOES roster kickers completely untouched.
+    drafted = {
+        position: count for position, count in (drafted_counts or {}).items()
+        if slot_counts.get(position, 0.0) > 0
+    }
 
     starter_demand = {p: num_teams * slot_counts.get(p, 0.0) for p in FANTASY_POSITIONS}
     bench_picks = max(total_picks - sum(starter_demand.values()), 0.0)

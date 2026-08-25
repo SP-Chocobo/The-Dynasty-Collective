@@ -189,3 +189,76 @@ class RenderBoardHtmlTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class BoardViewOptionsTests(unittest.TestCase):
+    """The Draft Room's board-view selector.
+
+    These moved out of app.py to exist at all: app.py is a Streamlit script that cannot be
+    imported bare, so nothing here had ever been covered -- which is exactly how K and DEF
+    reached the scored pool while remaining unselectable on the board.
+    """
+
+    OFFENSE = ["QB", "RB", "RB", "WR", "WR", "TE", "FLEX", "BN"]
+    EVERYTHING = ["QB", "RB", "RB", "WR", "WR", "TE", "FLEX", "SUPER_FLEX",
+                  "K", "DEF", "DL", "LB", "DB", "IDP_FLEX", "BN"]
+
+    def test_kickers_and_defenses_are_selectable(self):
+        # The regression: they enter the pool, get scored, get a horizon floor and a waiting
+        # cost -- and were absent from _POSITION_VIEW_ORDER, so no view could ever show them.
+        options = ui.position_view_options({"QB", "RB", "WR", "TE", "K", "DEF"}, self.EVERYTHING)
+        self.assertIn("K", options)
+        self.assertIn("DEF", options)
+
+    def test_every_scoreable_position_can_be_viewed(self):
+        # Guards the class of bug rather than the instance: any position the engine ranks must
+        # be reachable in the selector when a league rosters it and candidates exist.
+        present = {"QB", "RB", "WR", "TE", "K", "DEF", "DL", "LB", "DB"}
+        options = set(ui.position_view_options(present, self.EVERYTHING))
+        self.assertTrue(present <= options, f"unreachable positions: {present - options}")
+
+    def test_a_league_without_a_position_is_not_offered_it(self):
+        options = ui.position_view_options({"QB", "RB", "WR", "TE"}, self.OFFENSE)
+        for absent in ("K", "DEF", "DL", "LB", "DB", "SUPER_FLEX", "IDP_FLEX"):
+            self.assertNotIn(absent, options)
+
+    def test_a_flex_slot_needs_both_the_slot_and_an_eligible_candidate(self):
+        # Rosters IDP_FLEX but no IDP candidates remain -> an empty view is not offered.
+        options = ui.position_view_options({"QB", "RB", "WR", "TE"}, self.EVERYTHING)
+        self.assertNotIn("IDP_FLEX", options)
+        self.assertIn("FLEX", options)
+
+    def test_all_is_always_first(self):
+        for present, roster in [({"QB"}, self.OFFENSE), (set(), self.EVERYTHING),
+                                ({"QB", "RB", "WR", "TE", "K", "DEF"}, self.EVERYTHING)]:
+            self.assertEqual(ui.position_view_options(present, roster)[0], "ALL")
+
+    def test_options_follow_the_canonical_order(self):
+        options = ui.position_view_options({"DEF", "QB", "K", "WR", "RB", "TE"}, self.EVERYTHING)
+        self.assertEqual(options, ["ALL", "QB", "RB", "WR", "TE", "FLEX", "SUPER_FLEX", "K", "DEF"])
+
+
+class BoardViewChunkingTests(unittest.TestCase):
+    """Wrapping the option row, so adding K/DEF doesn't squeeze the labels unreadable."""
+
+    def test_a_full_league_wraps_instead_of_squeezing(self):
+        options = ui.position_view_options(
+            {"QB", "RB", "WR", "TE", "K", "DEF", "DL", "LB", "DB"},
+            BoardViewOptionsTests.EVERYTHING)
+        self.assertEqual(len(options), 13)
+        rows = ui.chunk_view_options(options)
+        self.assertGreater(len(rows), 1)
+        for row in rows:
+            self.assertLessEqual(len(row), ui.VIEW_OPTIONS_PER_ROW)
+
+    def test_chunking_preserves_order_and_loses_nothing(self):
+        options = ["ALL", "QB", "RB", "WR", "TE", "FLEX", "SUPER_FLEX", "K", "DEF"]
+        flat = [o for row in ui.chunk_view_options(options) for o in row]
+        self.assertEqual(flat, options)
+
+    def test_a_small_league_still_renders_one_row(self):
+        self.assertEqual(len(ui.chunk_view_options(["ALL", "QB", "RB", "WR", "TE"])), 1)
+
+    def test_empty_yields_one_empty_row_not_zero_rows(self):
+        # So a caller can iterate rows unconditionally.
+        self.assertEqual(ui.chunk_view_options([]), [[]])

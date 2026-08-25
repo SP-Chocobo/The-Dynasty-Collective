@@ -42,7 +42,8 @@ from typing import Optional
 
 import design_system
 from draft_room import SLEEPER_WEEKLY_TO_SEASON_FACTOR
-from pick_synthesis import CandidateSnapshot, PickSnapshot
+from player_universe import FLEX_SLOT_POSITIONS
+from pick_synthesis import DEFAULT_NARROW_COUNT, CandidateSnapshot, PickSnapshot
 
 # The class NAMES the necessity badges use in the embedded HTML below -- the CSS itself
 # comes from design_system.BADGE_NECESSITY_CSS, the same source app.py's own <style> block
@@ -191,6 +192,103 @@ def serialize_candidate(c: CandidateSnapshot) -> dict:
         "waitNote": _waiting_note(c),
         "flagged": False,  # set by serialize_snapshot against user_selected_player_id
     }
+
+
+# Canonical display order for the Draft Room's single-select board-view control -- offense
+# skill positions, then the flex slots that combine them, then K/DEF, then IDP, then
+# IDP_FLEX. Purely a
+# presentation ordering; FLEX_SLOT_POSITIONS (imported from player_universe.py, never
+# duplicated) is the one and only source of which real positions each flex-type slot
+# actually covers -- this file invents no eligibility rule of its own.
+_POSITION_VIEW_ORDER = ["QB", "RB", "WR", "TE", "FLEX", "SUPER_FLEX", "K", "DEF",
+                        "DL", "LB", "DB", "IDP_FLEX"]
+
+
+def position_view_options(positions_present: set[str], roster_positions: list[str]) -> list[str]:
+    """"ALL" plus every real primary position actually present among today's candidates,
+    plus any flex-type slot this SPECIFIC league's roster_positions actually contains AND
+    whose real eligible-position set (FLEX_SLOT_POSITIONS) overlaps a position that's
+    actually present -- so a non-superflex, non-IDP league never offers a SUPER_FLEX or
+    IDP_FLEX view it has nowhere to start, and a league that does have the slot but happens
+    to have zero eligible candidates left doesn't get an empty, useless view option either."""
+    roster_slots = set(roster_positions or [])
+    options = []
+    for opt in _POSITION_VIEW_ORDER:
+        if opt in FLEX_SLOT_POSITIONS:
+            if opt in roster_slots and FLEX_SLOT_POSITIONS[opt] & positions_present:
+                options.append(opt)
+        elif opt in positions_present:
+            options.append(opt)
+    return ["ALL"] + options
+
+
+def filter_candidates_by_view(candidates: tuple, view: str) -> list:
+    """view is one value from position_view_options -- "ALL", a single real position, or a
+    flex-slot name. Never touches ranking/scoring, only which already-computed candidates are
+    shown; a flex-slot view reuses that slot's own real eligible-position set
+    (FLEX_SLOT_POSITIONS), the same semantics draft_room.py's own need_bonus math already
+    keys off of, never a display-only reinterpretation of what "FLEX" means.
+
+    `candidates` is now deeper than a single top-line overview -- pick_synthesis.build_snapshot
+    gives every position real replacement-rank depth (see POSITION_VIEW_DEPTH_CAP) so a
+    position view actually has something to show, not just whichever one player at that
+    position happened to crack the original small overall shortlist. ALL is one particular
+    LENS over that same, now-larger candidate universe, not "show every row in it": it
+    reconstructs the original curated overview (top overall by value, plus each position's own
+    single best) precisely so the default view's size/shape is unchanged -- the depth lives in
+    the position views, not in ALL. Every row, in every view, is the exact same
+    CandidateSnapshot object either way; nothing about a player's own bpa/universal_value/
+    team_acquisition_value/pick_necessity ever depends on which view is currently selected."""
+    if view == "ALL":
+        # `candidates` is already sorted by team_acquisition_value descending (build_snapshot's
+        # own final sort), so the first DEFAULT_NARROW_COUNT rows are the same top-overall
+        # slice narrow_candidates always surfaced, and the first candidate encountered per
+        # position while scanning in that same order is that position's own single best.
+        overview = list(candidates[:DEFAULT_NARROW_COUNT])
+        included_ids = {c.player_id for c in overview}
+        seen_positions = set()
+        for c in candidates:
+            if c.position in seen_positions:
+                continue
+            seen_positions.add(c.position)
+            if c.player_id not in included_ids:
+                overview.append(c)
+                included_ids.add(c.player_id)
+        overview.sort(key=lambda c: c.team_acquisition_value, reverse=True)
+        return overview
+    if view in FLEX_SLOT_POSITIONS:
+        eligible = FLEX_SLOT_POSITIONS[view]
+        return [c for c in candidates if c.position in eligible]
+    return [c for c in candidates if c.position == view]
+
+
+_POSITION_VIEW_LABELS = {"SUPER_FLEX": "SUPER FLEX", "IDP_FLEX": "IDP FLEX"}
+
+
+def position_view_label(view: str) -> str:
+    """Display text for one view value -- Sleeper's own slot spelling (SUPER_FLEX,
+    IDP_FLEX) isn't meant for on-screen display, so this is presentation-only renaming,
+    never a second copy of what the slot actually means."""
+    return _POSITION_VIEW_LABELS.get(view, view)
+
+
+# One equal-width column per option is fine at six options and breaks at thirteen: a league
+# rostering every position (offense + K + DEF + IDP + both flex types) offers ALL plus twelve,
+# and SUPER FLEX needs about 85px of label against the ~80px a thirteen-way split leaves it.
+# Wrapping into rows keeps every button wide enough to render its own name at any count,
+# rather than capping the option list and hiding views a league genuinely has.
+VIEW_OPTIONS_PER_ROW = 7
+
+
+def chunk_view_options(options: list[str], per_row: int = VIEW_OPTIONS_PER_ROW) -> list[list[str]]:
+    """Split the board-view options into rows of at most per_row, preserving order.
+
+    Returns [[]] for an empty list rather than [], so a caller can iterate rows unconditionally
+    without a separate empty check.
+    """
+    if not options:
+        return [[]]
+    return [options[i:i + per_row] for i in range(0, len(options), per_row)]
 
 
 def serialize_snapshot(

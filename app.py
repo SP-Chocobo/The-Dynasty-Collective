@@ -1374,82 +1374,6 @@ def render_debate_chip(context: "screen_context.ScreenContext", key: str) -> Non
             st.rerun()
 
 
-# Canonical display order for the Draft Room's single-select board-view control -- offense
-# skill positions, then the flex slots that combine them, then IDP, then IDP_FLEX. Purely a
-# presentation ordering; FLEX_SLOT_POSITIONS (imported from player_universe.py, never
-# duplicated) is the one and only source of which real positions each flex-type slot
-# actually covers -- this file invents no eligibility rule of its own.
-_POSITION_VIEW_ORDER = ["QB", "RB", "WR", "TE", "FLEX", "SUPER_FLEX", "DL", "LB", "DB", "IDP_FLEX"]
-
-
-def position_view_options(positions_present: set[str], roster_positions: list[str]) -> list[str]:
-    """"ALL" plus every real primary position actually present among today's candidates,
-    plus any flex-type slot this SPECIFIC league's roster_positions actually contains AND
-    whose real eligible-position set (FLEX_SLOT_POSITIONS) overlaps a position that's
-    actually present -- so a non-superflex, non-IDP league never offers a SUPER_FLEX or
-    IDP_FLEX view it has nowhere to start, and a league that does have the slot but happens
-    to have zero eligible candidates left doesn't get an empty, useless view option either."""
-    roster_slots = set(roster_positions or [])
-    options = []
-    for opt in _POSITION_VIEW_ORDER:
-        if opt in FLEX_SLOT_POSITIONS:
-            if opt in roster_slots and FLEX_SLOT_POSITIONS[opt] & positions_present:
-                options.append(opt)
-        elif opt in positions_present:
-            options.append(opt)
-    return ["ALL"] + options
-
-
-def filter_candidates_by_view(candidates: tuple, view: str) -> list:
-    """view is one value from position_view_options -- "ALL", a single real position, or a
-    flex-slot name. Never touches ranking/scoring, only which already-computed candidates are
-    shown; a flex-slot view reuses that slot's own real eligible-position set
-    (FLEX_SLOT_POSITIONS), the same semantics draft_room.py's own need_bonus math already
-    keys off of, never a display-only reinterpretation of what "FLEX" means.
-
-    `candidates` is now deeper than a single top-line overview -- pick_synthesis.build_snapshot
-    gives every position real replacement-rank depth (see POSITION_VIEW_DEPTH_CAP) so a
-    position view actually has something to show, not just whichever one player at that
-    position happened to crack the original small overall shortlist. ALL is one particular
-    LENS over that same, now-larger candidate universe, not "show every row in it": it
-    reconstructs the original curated overview (top overall by value, plus each position's own
-    single best) precisely so the default view's size/shape is unchanged -- the depth lives in
-    the position views, not in ALL. Every row, in every view, is the exact same
-    CandidateSnapshot object either way; nothing about a player's own bpa/universal_value/
-    team_acquisition_value/pick_necessity ever depends on which view is currently selected."""
-    if view == "ALL":
-        # `candidates` is already sorted by team_acquisition_value descending (build_snapshot's
-        # own final sort), so the first DEFAULT_NARROW_COUNT rows are the same top-overall
-        # slice narrow_candidates always surfaced, and the first candidate encountered per
-        # position while scanning in that same order is that position's own single best.
-        overview = list(candidates[:pick_synthesis.DEFAULT_NARROW_COUNT])
-        included_ids = {c.player_id for c in overview}
-        seen_positions = set()
-        for c in candidates:
-            if c.position in seen_positions:
-                continue
-            seen_positions.add(c.position)
-            if c.player_id not in included_ids:
-                overview.append(c)
-                included_ids.add(c.player_id)
-        overview.sort(key=lambda c: c.team_acquisition_value, reverse=True)
-        return overview
-    if view in FLEX_SLOT_POSITIONS:
-        eligible = FLEX_SLOT_POSITIONS[view]
-        return [c for c in candidates if c.position in eligible]
-    return [c for c in candidates if c.position == view]
-
-
-_POSITION_VIEW_LABELS = {"SUPER_FLEX": "SUPER FLEX", "IDP_FLEX": "IDP FLEX"}
-
-
-def position_view_label(view: str) -> str:
-    """Display text for one view value -- Sleeper's own slot spelling (SUPER_FLEX,
-    IDP_FLEX) isn't meant for on-screen display, so this is presentation-only renaming,
-    never a second copy of what the slot actually means."""
-    return _POSITION_VIEW_LABELS.get(view, view)
-
-
 def build_pick_ledger(snapshot: dict) -> dict[int, dict[str, list[dict]]]:
     """roster_id -> {"acquired": [...], "given_away": [...]}, built only from Sleeper's own
     traded_picks (the authoritative source for who owns what -- Draft Sharks' own pick imports
@@ -4431,7 +4355,7 @@ elif main_view == DRAFT_VIEW:
                         # surface, so the control has to feel identical switching between them.
                         # Exactly ONE view active at a time (a real position, a real flex-slot
                         # view, or ALL) -- never an arbitrary hand-picked set.
-                        mock_view_options = position_view_options(
+                        mock_view_options = draft_board_ui.position_view_options(
                             set(mock_positions_present), md["league"].get("roster_positions") or [],
                         )
                         mock_current_view = st.session_state.get("mock_draft_position_view", "ALL")
@@ -4450,7 +4374,7 @@ elif main_view == DRAFT_VIEW:
                                 )
                             with mock_value_col:
                                 if st.button(
-                                    position_view_label(mock_current_view),
+                                    draft_board_ui.position_view_label(mock_current_view),
                                     key="mock_draft_view_toggle",
                                     help="Board view -- display only, never changes what's analyzed, ranked, or scored.",
                                 ):
@@ -4461,19 +4385,23 @@ elif main_view == DRAFT_VIEW:
 
                         if st.session_state.get("mock_draft_position_view_open", False):
                             with st.container(key="mock_draft_view_menu"):
-                                mock_opt_cols = st.columns(len(mock_view_options))
-                                for opt, mock_opt_col in zip(mock_view_options, mock_opt_cols):
-                                    opt_key = (
-                                        f"mock_draft_view_opt_active_{opt}" if opt == mock_current_view
-                                        else f"mock_draft_view_opt_{opt}"
-                                    )
-                                    with mock_opt_col:
-                                        if st.button(position_view_label(opt), key=opt_key):
-                                            st.session_state.mock_draft_position_view = opt
-                                            st.session_state.mock_draft_position_view_open = False
-                                            st.rerun()
+                                # Rows of at most VIEW_OPTIONS_PER_ROW -- a league rostering every
+                                # position offers 13 views, and a 13-way equal split leaves
+                                # SUPER FLEX too narrow to render its own label.
+                                for mock_opt_row in draft_board_ui.chunk_view_options(mock_view_options):
+                                    mock_opt_cols = st.columns(draft_board_ui.VIEW_OPTIONS_PER_ROW)
+                                    for opt, mock_opt_col in zip(mock_opt_row, mock_opt_cols):
+                                        opt_key = (
+                                            f"mock_draft_view_opt_active_{opt}" if opt == mock_current_view
+                                            else f"mock_draft_view_opt_{opt}"
+                                        )
+                                        with mock_opt_col:
+                                            if st.button(draft_board_ui.position_view_label(opt), key=opt_key):
+                                                st.session_state.mock_draft_position_view = opt
+                                                st.session_state.mock_draft_position_view_open = False
+                                                st.rerun()
 
-                        mock_filtered = filter_candidates_by_view(mock_snap.candidates, mock_current_view)
+                        mock_filtered = draft_board_ui.filter_candidates_by_view(mock_snap.candidates, mock_current_view)
                         # The same production board component Live Draft Room renders
                         # (draft_board_ui + components.html) -- proving the redesigned board
                         # survives real, repeated, stateful interaction was the whole point of
@@ -4776,7 +4704,7 @@ elif main_view == DRAFT_VIEW:
                                 # title row, directly above the board itself, not grouped with
                                 # Player Pool -- this is a property of the board ("what view am
                                 # I looking at"), not a page-level filter.
-                                view_options = position_view_options(
+                                view_options = draft_board_ui.position_view_options(
                                     set(positions_present), league_for_engine.get("roster_positions") or [],
                                 )
                                 current_view = st.session_state.get("draft_room_position_view", "ALL")
@@ -4795,7 +4723,7 @@ elif main_view == DRAFT_VIEW:
                                         )
                                     with value_col:
                                         if st.button(
-                                            position_view_label(current_view),
+                                            draft_board_ui.position_view_label(current_view),
                                             key="draft_room_view_toggle",
                                             help="Board view -- display only, never changes what's analyzed, ranked, or scored.",
                                         ):
@@ -4806,19 +4734,22 @@ elif main_view == DRAFT_VIEW:
 
                                 if st.session_state.get("draft_room_position_view_open", False):
                                     with st.container(key="draft_room_view_menu"):
-                                        opt_cols = st.columns(len(view_options))
-                                        for opt, opt_col in zip(view_options, opt_cols):
-                                            opt_key = (
-                                                f"draft_room_view_opt_active_{opt}" if opt == current_view
-                                                else f"draft_room_view_opt_{opt}"
-                                            )
-                                            with opt_col:
-                                                if st.button(position_view_label(opt), key=opt_key):
-                                                    st.session_state.draft_room_position_view = opt
-                                                    st.session_state.draft_room_position_view_open = False
-                                                    st.rerun()
+                                        # See the mock path above: fixed-width rows, not one
+                                        # equal split across however many views a league has.
+                                        for opt_row in draft_board_ui.chunk_view_options(view_options):
+                                            opt_cols = st.columns(draft_board_ui.VIEW_OPTIONS_PER_ROW)
+                                            for opt, opt_col in zip(opt_row, opt_cols):
+                                                opt_key = (
+                                                    f"draft_room_view_opt_active_{opt}" if opt == current_view
+                                                    else f"draft_room_view_opt_{opt}"
+                                                )
+                                                with opt_col:
+                                                    if st.button(draft_board_ui.position_view_label(opt), key=opt_key):
+                                                        st.session_state.draft_room_position_view = opt
+                                                        st.session_state.draft_room_position_view_open = False
+                                                        st.rerun()
 
-                                filtered = filter_candidates_by_view(snap.candidates, current_view)
+                                filtered = draft_board_ui.filter_candidates_by_view(snap.candidates, current_view)
                                 display_snap = dataclasses.replace(snap, candidates=tuple(filtered))
 
                                 board_header = f"ON THE CLOCK — {pick_label}" if is_live else f"YOUR NEXT PICK — {pick_label}"
