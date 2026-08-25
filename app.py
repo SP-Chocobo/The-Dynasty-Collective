@@ -364,9 +364,24 @@ _GLOBAL_CSS = """
         border-radius: 6px;
         transition: border-color 0.15s ease, color 0.15s ease, background 0.15s ease;
     }
-    .st-key-draft_room_refresh_btn button:hover {
-        border-color: #3a3c42 !important;
-        color: #9ca3af;
+    /* Quiet at rest, same sky-blue language ALL PLAYERS' selected state uses on hover/focus
+       (a shared visual family), but never a PERSISTENT blue outline -- Refresh is a
+       one-shot action, not a selected state, and an always-on blue border would incorrectly
+       imply it's "currently active" the way a segmented-control selection is. A stronger,
+       briefly-held blue on :active gives real press feedback (the app-wide button
+       :active scale/brightness rule only reaches stButtonGroup/popover triggers, not a bare
+       .stButton like this one, so it needs its own). */
+    .st-key-draft_room_refresh_btn button:hover,
+    .st-key-draft_room_refresh_btn button:focus-visible {
+        background: rgba(14,165,233,0.10);
+        border-color: #0ea5e9 !important;
+        color: #7dd3fc;
+    }
+    .st-key-draft_room_refresh_btn button:active {
+        background: rgba(14,165,233,0.24);
+        border-color: #0ea5e9 !important;
+        color: #bae6fd;
+        transform: scale(0.96);
     }
     /* Position filter, round 3: the multi-select itself was rejected -- a user can only ever
        be looking at one meaningful board view at a time (a real position, a real flex-slot
