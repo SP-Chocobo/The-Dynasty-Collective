@@ -53,7 +53,7 @@ from data_merger import (
 )
 from league_format import FORMAT_GUIDANCE, FORMAT_OPTIONS, STANDARD, get_format_override, set_format_override
 from league_prefs import forget_league, get_prefs, move_league, sorted_leagues, toggle_archive
-from player_universe import available_players, build_player_universe, league_usable_positions, matching_players, player_name, player_position
+from player_universe import FLEX_SLOT_POSITIONS, available_players, build_player_universe, league_usable_positions, matching_players, player_name, player_position
 from sleeper_client import SleeperAPIError, SleeperClient, compute_points_from_stats, find_roster_for_user, league_format_summary
 
 # Friendly display labels for pick_synthesis.diff_snapshots' real field names -- presentation
@@ -343,49 +343,6 @@ _GLOBAL_CSS = """
         border-color: #0ea5e9 !important;
         color: #7dd3fc;
     }
-    /* The position filter (Live Draft AND Mock Draft -- one Draft Room surface, two modes,
-       one control language), second design round (see REVIEW_LOG.md): even recolored, seven
-       always-visible boxed buttons still read as seven independent UI objects competing with
-       the board -- rejected, along with a "quiet text rail" variant that fixed the box
-       chrome but still put all seven words on the screen at once by default. Landed on a
-       COLLAPSED control instead: the trigger (rendered by the st.popover calls at these two
-       keys, styled below) shows only the CURRENT state as one short string -- "All
-       positions" or "RB · TE · WR" -- and expands into the actual multi-select surface only
-       on click. That inner surface reuses the quiet text-rail styling here (no box/border
-       per option, color+underline only) since inside an already-opened, already-small
-       popover a compact word list is exactly right -- it's only the
-       seven-boxes-on-the-main-screen-at-all-times that was the problem. */
-    .st-key-draft_room_position_filter [data-testid="stButtonGroup"],
-    .st-key-mock_draft_position_filter [data-testid="stButtonGroup"] {
-        gap: 14px;
-        row-gap: 6px;
-    }
-    .st-key-draft_room_position_filter button[data-variant="pills"],
-    .st-key-mock_draft_position_filter button[data-variant="pills"] {
-        min-height: 0;
-        min-width: 0;
-        padding: 2px 0;
-        font-family: 'JetBrains Mono', 'DejaVu Sans Mono', monospace;
-        font-size: 0.78rem;
-        font-weight: 500;
-        letter-spacing: 0.02em;
-        background: transparent;
-        border: none !important;
-        border-bottom: 2px solid transparent;
-        border-radius: 0;
-        color: #6b7076;
-        transition: color 0.15s ease, border-color 0.15s ease;
-    }
-    .st-key-draft_room_position_filter button[data-variant="pills"]:hover,
-    .st-key-mock_draft_position_filter button[data-variant="pills"]:hover {
-        color: #9ca3af;
-    }
-    .st-key-draft_room_position_filter button[data-variant="pills"][data-selected="true"],
-    .st-key-mock_draft_position_filter button[data-variant="pills"][data-selected="true"] {
-        color: #7dd3fc;
-        border-bottom-color: #0ea5e9;
-        font-weight: 700;
-    }
     /* The "flag a player to compare" input was previously a full-width, always-visible
        text box sitting inline above the filter row -- equal visual weight to the primary
        filter/board despite being a rare, optional action. Tucked into a popover (the same
@@ -404,30 +361,96 @@ _GLOBAL_CSS = """
         color: #e5e7eb;
         border-color: #3a3c42 !important;
     }
-    /* Position filter, round 2 (both Live Draft and Mock Draft): rejected all three "row
-       of independent objects" treatments from round 1 (colored pills, then a muted text
-       rail -- see REVIEW_LOG.md for the full comparison of three collapsed/rail/bare-text
-       concepts). Landed on a COLLAPSED control: the trigger's own label IS the current
-       selection ("All positions" / "RB · TE · WR"), so the filter is legible without
-       opening it, and it occupies a single, small, quiet element instead of seven. Bordered
-       to match the "Flag a player" control next to it on Live Draft -- the two are visually
-       the same family of small toolbar control, not one button next to one bare caption. */
-    .st-key-draft_room_position_popover button,
-    .st-key-mock_draft_position_popover button {
-        min-height: 34px;
-        padding: 5px 12px;
+    /* Position filter, round 3: the multi-select itself was rejected -- a user can only ever
+       be looking at one meaningful board view at a time (a real position, a real flex-slot
+       view, or everything), never an arbitrary hand-picked SET of positions. Concept 1/3:
+       the view control is the board's own title row ("CANDIDATES" ... current value),
+       directly above the board, not grouped with Player Pool/Flag Player. No border, no
+       chevron, no pill shape anywhere -- the current value's own typography (bold, brighter
+       than the muted label beside it) is the only affordance that it's interactive. */
+    .drv-board-title {
         font-family: 'JetBrains Mono', 'DejaVu Sans Mono', monospace;
-        font-size: 0.76rem;
+        font-size: 0.72rem;
         font-weight: 600;
-        color: #9ca3af;
-        background: #1b1c1f;
-        border: 1px solid #2a2b2e !important;
-        border-radius: 6px;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: #6b7076;
+        padding-top: 8px;
     }
-    .st-key-draft_room_position_popover button:hover,
-    .st-key-mock_draft_position_popover button:hover {
+    .st-key-draft_room_board_title_row,
+    .st-key-mock_draft_board_title_row {
+        margin-bottom: 2px;
+    }
+    .st-key-draft_room_view_toggle button,
+    .st-key-mock_draft_view_toggle button {
+        min-height: 0;
+        padding: 4px 0;
+        background: transparent !important;
+        border: none !important;
+        font-family: 'JetBrains Mono', 'DejaVu Sans Mono', monospace;
+        font-size: 0.92rem;
+        font-weight: 700;
+        letter-spacing: 0.02em;
         color: #e5e7eb;
-        border-color: #3a3c42 !important;
+        text-align: right;
+        justify-content: flex-end;
+        border-bottom: 2px solid transparent;
+        border-radius: 0;
+        transition: border-color 0.15s ease, color 0.15s ease;
+    }
+    .st-key-draft_room_view_toggle button:hover,
+    .st-key-mock_draft_view_toggle button:hover {
+        border-bottom-color: #0ea5e9;
+        color: #7dd3fc;
+    }
+    /* The expanded option list: one elegant surface unfolding in place (real document flow,
+       pushing the board down -- never a floating overlay), not ten separate button-looking
+       objects. A single hairline top border is the only structure; every option is bare text
+       at a generous touch-target height, current option picked out by weight/color only
+       (never a background fill, which would read as a badge/status chip). */
+    .st-key-draft_room_view_menu,
+    .st-key-mock_draft_view_menu {
+        border-top: 1px solid #2a2b2e;
+        margin-top: 4px;
+        padding-top: 2px;
+        margin-bottom: 10px;
+    }
+    .st-key-draft_room_view_menu .stButton,
+    .st-key-mock_draft_view_menu .stButton {
+        width: 100% !important;
+    }
+    .st-key-draft_room_view_menu .stButton button,
+    .st-key-mock_draft_view_menu .stButton button {
+        width: 100% !important;
+        display: flex !important;
+        min-height: 40px;
+        padding: 8px 4px;
+        background: transparent !important;
+        border: none !important;
+        font-family: 'JetBrains Mono', 'DejaVu Sans Mono', monospace;
+        font-size: 0.82rem;
+        font-weight: 500;
+        letter-spacing: 0.02em;
+        color: #8b8f98;
+        text-align: left;
+        justify-content: flex-start !important;
+        border-radius: 4px;
+        transition: color 0.15s ease, background 0.15s ease;
+    }
+    .st-key-draft_room_view_menu .stButton button > div,
+    .st-key-mock_draft_view_menu .stButton button > div {
+        justify-content: flex-start !important;
+        width: 100%;
+    }
+    .st-key-draft_room_view_menu .stButton button:hover,
+    .st-key-mock_draft_view_menu .stButton button:hover {
+        color: #e5e7eb;
+        background: rgba(255,255,255,0.03) !important;
+    }
+    .st-key-draft_room_view_menu [class*="st-key-draft_room_view_opt_active_"] button,
+    .st-key-mock_draft_view_menu [class*="st-key-mock_draft_view_opt_active_"] button {
+        color: #7dd3fc;
+        font-weight: 700;
     }
 
     /* The Free Agents table's clickable sort header (real st.button()s, since a
@@ -1283,6 +1306,56 @@ def render_debate_chip(context: "screen_context.ScreenContext", key: str) -> Non
             if st.session_state.get("debate_dock_level", "partial") == "collapsed":
                 st.session_state.debate_dock_level = "partial"
             st.rerun()
+
+
+# Canonical display order for the Draft Room's single-select board-view control -- offense
+# skill positions, then the flex slots that combine them, then IDP, then IDP_FLEX. Purely a
+# presentation ordering; FLEX_SLOT_POSITIONS (imported from player_universe.py, never
+# duplicated) is the one and only source of which real positions each flex-type slot
+# actually covers -- this file invents no eligibility rule of its own.
+_POSITION_VIEW_ORDER = ["QB", "RB", "WR", "TE", "FLEX", "SUPER_FLEX", "DL", "LB", "DB", "IDP_FLEX"]
+
+
+def position_view_options(positions_present: set[str], roster_positions: list[str]) -> list[str]:
+    """"ALL" plus every real primary position actually present among today's candidates,
+    plus any flex-type slot this SPECIFIC league's roster_positions actually contains AND
+    whose real eligible-position set (FLEX_SLOT_POSITIONS) overlaps a position that's
+    actually present -- so a non-superflex, non-IDP league never offers a SUPER_FLEX or
+    IDP_FLEX view it has nowhere to start, and a league that does have the slot but happens
+    to have zero eligible candidates left doesn't get an empty, useless view option either."""
+    roster_slots = set(roster_positions or [])
+    options = []
+    for opt in _POSITION_VIEW_ORDER:
+        if opt in FLEX_SLOT_POSITIONS:
+            if opt in roster_slots and FLEX_SLOT_POSITIONS[opt] & positions_present:
+                options.append(opt)
+        elif opt in positions_present:
+            options.append(opt)
+    return ["ALL"] + options
+
+
+def filter_candidates_by_view(candidates: tuple, view: str) -> list:
+    """view is one value from position_view_options -- "ALL", a single real position, or a
+    flex-slot name. Never touches ranking/scoring, only which already-computed candidates are
+    shown; a flex-slot view reuses that slot's own real eligible-position set
+    (FLEX_SLOT_POSITIONS), the same semantics draft_room.py's own need_bonus math already
+    keys off of, never a display-only reinterpretation of what "FLEX" means."""
+    if view == "ALL":
+        return list(candidates)
+    if view in FLEX_SLOT_POSITIONS:
+        eligible = FLEX_SLOT_POSITIONS[view]
+        return [c for c in candidates if c.position in eligible]
+    return [c for c in candidates if c.position == view]
+
+
+_POSITION_VIEW_LABELS = {"SUPER_FLEX": "SUPER FLEX", "IDP_FLEX": "IDP FLEX"}
+
+
+def position_view_label(view: str) -> str:
+    """Display text for one view value -- Sleeper's own slot spelling (SUPER_FLEX,
+    IDP_FLEX) isn't meant for on-screen display, so this is presentation-only renaming,
+    never a second copy of what the slot actually means."""
+    return _POSITION_VIEW_LABELS.get(view, view)
 
 
 def build_pick_ledger(snapshot: dict) -> dict[int, dict[str, list[dict]]]:
@@ -4246,36 +4319,52 @@ elif main_view == DRAFT_VIEW:
                         st.info("No candidates available in the current player pool/scope.")
                     elif mock_snap is not None:
                         mock_positions_present = sorted({c.position for c in mock_snap.candidates})
-                        # Same collapsed-control treatment as Live Draft's own position filter
-                        # (see REVIEW_LOG.md) -- Mock Draft and Live Draft are two modes of the
-                        # same Draft Room surface, so the filter control has to feel identical
-                        # switching between them, not read as two different products.
-                        _mock_current_selection = st.session_state.get(
-                            "mock_draft_position_filter", mock_positions_present
+                        # Same board-view control as Live Draft (see REVIEW_LOG.md, round 3) --
+                        # Mock Draft and Live Draft are two modes of the same Draft Room
+                        # surface, so the control has to feel identical switching between them.
+                        # Exactly ONE view active at a time (a real position, a real flex-slot
+                        # view, or ALL) -- never an arbitrary hand-picked set.
+                        mock_view_options = position_view_options(
+                            set(mock_positions_present), md["league"].get("roster_positions") or [],
                         )
-                        if set(_mock_current_selection) == set(mock_positions_present):
-                            _mock_summary = "All positions"
-                        elif _mock_current_selection:
-                            _mock_summary = " · ".join(
-                                p for p in mock_positions_present if p in _mock_current_selection
-                            )
-                        else:
-                            _mock_summary = "None"
-                        mock_filter_col, _mock_spacer_col = st.columns([1.2, 4.8])
-                        with mock_filter_col:
-                            with st.popover(
-                                _mock_summary, key="mock_draft_position_popover", use_container_width=True,
-                                help="Position filter -- display only, never changes what's analyzed, ranked, or scored.",
-                            ):
-                                mock_position_filter = st.pills(
-                                    "Position", options=mock_positions_present, selection_mode="multi",
-                                    default=mock_positions_present, key="mock_draft_position_filter",
-                                    label_visibility="collapsed",
-                                ) or []
-                        mock_filtered = (
-                            [c for c in mock_snap.candidates if c.position in mock_position_filter]
-                            if mock_position_filter else list(mock_snap.candidates)
-                        )
+                        mock_current_view = st.session_state.get("mock_draft_position_view", "ALL")
+                        if mock_current_view not in mock_view_options:
+                            mock_current_view = "ALL"
+                            st.session_state.mock_draft_position_view = "ALL"
+
+                        with st.container(key="mock_draft_board_title_row"):
+                            mock_title_col, mock_value_col = st.columns([3, 1])
+                            with mock_title_col:
+                                st.markdown(
+                                    '<div class="drv-board-title">CANDIDATES</div>',
+                                    unsafe_allow_html=True,
+                                )
+                            with mock_value_col:
+                                if st.button(
+                                    position_view_label(mock_current_view),
+                                    key="mock_draft_view_toggle", use_container_width=True,
+                                    help="Board view -- display only, never changes what's analyzed, ranked, or scored.",
+                                ):
+                                    st.session_state.mock_draft_position_view_open = not st.session_state.get(
+                                        "mock_draft_position_view_open", False
+                                    )
+                                    st.rerun()
+
+                        if st.session_state.get("mock_draft_position_view_open", False):
+                            with st.container(key="mock_draft_view_menu"):
+                                for opt in mock_view_options:
+                                    opt_key = (
+                                        f"mock_draft_view_opt_active_{opt}" if opt == mock_current_view
+                                        else f"mock_draft_view_opt_{opt}"
+                                    )
+                                    if st.button(
+                                        position_view_label(opt), key=opt_key, use_container_width=True,
+                                    ):
+                                        st.session_state.mock_draft_position_view = opt
+                                        st.session_state.mock_draft_position_view_open = False
+                                        st.rerun()
+
+                        mock_filtered = filter_candidates_by_view(mock_snap.candidates, mock_current_view)
                         # The same production board component Live Draft Room renders
                         # (draft_board_ui + components.html) -- proving the redesigned board
                         # survives real, repeated, stateful interaction was the whole point of
@@ -4509,10 +4598,11 @@ elif main_view == DRAFT_VIEW:
                             # fills its column in further down, once positions_present exists. A
                             # DeltaGenerator column handle stays writable no matter when in the
                             # script it's used, so this doesn't require computing both up front.
-                            # Both are collapsed popover triggers now, not full-width controls, so
-                            # they only need enough column width to hold their own short label --
-                            # the trailing spacer keeps them from stretching across the whole row.
-                            flag_col, filter_col, _spacer_col = st.columns([1, 1.2, 2.8])
+                            # The position/board-view control used to live in the second column
+                            # here -- moved to sit directly on the candidate board itself (see
+                            # REVIEW_LOG.md, round 3): it's a property of the board, not a
+                            # page-level filter, so it no longer shares a row with Flag Player.
+                            flag_col, _spacer_col = st.columns([1, 3.8])
                             flagged_player_id = None
                             with flag_col:
                                 with st.popover(
@@ -4576,35 +4666,55 @@ elif main_view == DRAFT_VIEW:
                                     st.caption(f"Not your turn yet -- {on_clock_name} is on the clock.")
 
                                 positions_present = sorted({c.position for c in snap.candidates})
-                                with filter_col:
-                                    # Collapsed filter control (see REVIEW_LOG.md for the two
-                                    # rejected "row of always-visible controls" alternatives).
-                                    # Quiet at rest -- the trigger's own label already states
-                                    # the current selection in plain text ("All positions" /
-                                    # "RB · WR · TE"), so the filter is legible without opening
-                                    # it -- and only becomes an actual selection surface once
-                                    # clicked, exactly like the Flag-a-player popover next to it.
-                                    _current_selection = st.session_state.get(
-                                        "draft_room_position_filter", positions_present
-                                    )
-                                    if set(_current_selection) == set(positions_present):
-                                        _summary = "All positions"
-                                    elif _current_selection:
-                                        _summary = " · ".join(
-                                            p for p in positions_present if p in _current_selection
+                                # Board-view control, round 3 (see REVIEW_LOG.md): the position
+                                # filter is no longer a multi-select at all -- exactly ONE board
+                                # view is active at a time (a single real position, a real
+                                # flex-slot view like FLEX/IDP_FLEX using that slot's own actual
+                                # eligible-position set, or ALL). Placed as the board's own
+                                # title row, directly above the board itself, not grouped with
+                                # Player Pool/Flag Player -- this is a property of the board
+                                # ("what view am I looking at"), not a page-level filter.
+                                view_options = position_view_options(
+                                    set(positions_present), league_for_engine.get("roster_positions") or [],
+                                )
+                                current_view = st.session_state.get("draft_room_position_view", "ALL")
+                                if current_view not in view_options:
+                                    current_view = "ALL"
+                                    st.session_state.draft_room_position_view = "ALL"
+
+                                with st.container(key="draft_room_board_title_row"):
+                                    title_col, value_col = st.columns([3, 1])
+                                    with title_col:
+                                        st.markdown(
+                                            '<div class="drv-board-title">CANDIDATES</div>',
+                                            unsafe_allow_html=True,
                                         )
-                                    else:
-                                        _summary = "None"
-                                    with st.popover(
-                                        _summary, key="draft_room_position_popover", use_container_width=True,
-                                        help="Position filter -- display only, never changes what's analyzed, ranked, or scored.",
-                                    ):
-                                        position_filter = st.pills(
-                                            "Position", options=positions_present, selection_mode="multi",
-                                            default=positions_present, key="draft_room_position_filter",
-                                            label_visibility="collapsed",
-                                        ) or []
-                                filtered = [c for c in snap.candidates if c.position in position_filter] if position_filter else list(snap.candidates)
+                                    with value_col:
+                                        if st.button(
+                                            position_view_label(current_view),
+                                            key="draft_room_view_toggle", use_container_width=True,
+                                            help="Board view -- display only, never changes what's analyzed, ranked, or scored.",
+                                        ):
+                                            st.session_state.draft_room_position_view_open = not st.session_state.get(
+                                                "draft_room_position_view_open", False
+                                            )
+                                            st.rerun()
+
+                                if st.session_state.get("draft_room_position_view_open", False):
+                                    with st.container(key="draft_room_view_menu"):
+                                        for opt in view_options:
+                                            opt_key = (
+                                                f"draft_room_view_opt_active_{opt}" if opt == current_view
+                                                else f"draft_room_view_opt_{opt}"
+                                            )
+                                            if st.button(
+                                                position_view_label(opt), key=opt_key, use_container_width=True,
+                                            ):
+                                                st.session_state.draft_room_position_view = opt
+                                                st.session_state.draft_room_position_view_open = False
+                                                st.rerun()
+
+                                filtered = filter_candidates_by_view(snap.candidates, current_view)
                                 display_snap = dataclasses.replace(snap, candidates=tuple(filtered))
 
                                 board_header = f"ON THE CLOCK — {pick_label}" if is_live else f"YOUR NEXT PICK — {pick_label}"
