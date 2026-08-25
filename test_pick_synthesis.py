@@ -143,6 +143,71 @@ class NarrowCandidatesTests(unittest.TestCase):
         values = [r["final_score"] for r in narrowed]
         self.assertEqual(values, sorted(values, reverse=True))
 
+    def _multi_position_board(self):
+        board = []
+        for pos, count in (("RB", 8), ("WR", 8), ("QB", 4), ("TE", 3)):
+            for i in range(count):
+                board.append({"player_id": f"{pos}{i}", "final_score": 100 - i, "position": pos})
+        return board
+
+    def test_position_depth_none_preserves_the_original_single_best_per_position_behavior(self):
+        # The whole existing test corpus (and every caller that predates this parameter) relies
+        # on this default staying exactly what it always was.
+        narrowed = ps.narrow_candidates(self._multi_position_board(), top_n=1, position_depth=None)
+        ids = {r["player_id"] for r in narrowed}
+        self.assertEqual(ids, {"RB0", "WR0", "QB0", "TE0"})
+
+    def test_position_depth_surfaces_real_depth_at_the_requested_position(self):
+        narrowed = ps.narrow_candidates(
+            self._multi_position_board(), top_n=1, position_depth={"WR": 5, "RB": 1, "QB": 1, "TE": 1},
+        )
+        wr_ids = {r["player_id"] for r in narrowed if r["position"] == "WR"}
+        self.assertEqual(wr_ids, {"WR0", "WR1", "WR2", "WR3", "WR4"})
+        # A position with depth 1 stays at exactly its single best, same as the old default.
+        self.assertEqual({r["player_id"] for r in narrowed if r["position"] == "QB"}, {"QB0"})
+
+    def test_position_depth_larger_than_the_available_pool_just_takes_everything_there(self):
+        narrowed = ps.narrow_candidates(
+            self._multi_position_board(), top_n=1, position_depth={"TE": 50, "RB": 1, "WR": 1, "QB": 1},
+        )
+        te_ids = {r["player_id"] for r in narrowed if r["position"] == "TE"}
+        self.assertEqual(te_ids, {"TE0", "TE1", "TE2"})
+
+    def test_position_depth_does_not_duplicate_rows_already_in_the_top_n_slice(self):
+        # top_n=3 already covers RB0/WR0/RB1 (values 100/100... use distinct scores for clarity)
+        board = [
+            {"player_id": "rb1", "final_score": 100, "position": "RB"},
+            {"player_id": "rb2", "final_score": 99, "position": "RB"},
+            {"player_id": "wr1", "final_score": 98, "position": "WR"},
+        ]
+        narrowed = ps.narrow_candidates(board, top_n=3, position_depth={"RB": 2, "WR": 1})
+        ids = [r["player_id"] for r in narrowed]
+        self.assertEqual(sorted(ids), ["rb1", "rb2", "wr1"], "no duplicate rows from the position_depth pass")
+
+    def test_result_stays_ranked_by_final_score_with_position_depth_applied(self):
+        narrowed = ps.narrow_candidates(
+            self._multi_position_board(), top_n=1, position_depth={"WR": 6, "RB": 4, "QB": 2, "TE": 1},
+        )
+        values = [r["final_score"] for r in narrowed]
+        self.assertEqual(values, sorted(values, reverse=True))
+
+
+class PositionViewDepthTests(unittest.TestCase):
+    """Position View Depth = min(league replacement demand for the position,
+    POSITION_VIEW_DEPTH_CAP) -- the exact boundary behavior requested: a thin position's real
+    demand passes through untouched, a deep one is capped at the ceiling, never expanded past
+    its own real demand."""
+
+    def test_replacement_below_the_cap_shows_the_full_replacement_count(self):
+        self.assertEqual(ps.position_view_depth(6), 6)
+
+    def test_replacement_exactly_at_the_cap_shows_exactly_the_cap(self):
+        self.assertEqual(ps.position_view_depth(ps.POSITION_VIEW_DEPTH_CAP), ps.POSITION_VIEW_DEPTH_CAP)
+
+    def test_replacement_well_above_the_cap_is_truncated_to_the_cap(self):
+        self.assertEqual(ps.position_view_depth(20), ps.POSITION_VIEW_DEPTH_CAP)
+        self.assertEqual(ps.position_view_depth(33), ps.POSITION_VIEW_DEPTH_CAP)
+
 
 def _raw_candidate(team_acquisition_value, survival_probability=1.0, positional_cliff=None,
                     position_run_detected=False, rival_premium=0.0, need_bonus=0.0, eligibility_bonus=0.0):
@@ -566,6 +631,31 @@ class BuildSnapshotTests(unittest.TestCase):
         candidate_ids = {c.player_id for c in snap.candidates}
         self.assertIn(best_qb_id, candidate_ids)
         self.assertIn(best_te_id, candidate_ids)
+
+    def test_a_deep_position_gets_real_replacement_depth_capped_at_the_display_ceiling(self):
+        # End-to-end version of PositionViewDepthTests: LEAGUE has real WR demand (WR x3 +
+        # FLEX, 12 teams) against a 40-deep real-baseline WR pool -- comfortably above
+        # POSITION_VIEW_DEPTH_CAP, so this position's snapshot depth must land exactly at the
+        # cap, not at the old single-best-only behavior and not uncapped either.
+        snap = ps.build_snapshot(
+            self.merger, self.players_db, [], self.pick_order, current_index=0, my_roster_id="1",
+            league=LEAGUE, pick_label="1.01", top_n=1,
+        )
+        wr_count = sum(1 for c in snap.candidates if c.position == "WR")
+        self.assertEqual(wr_count, ps.POSITION_VIEW_DEPTH_CAP)
+
+    def test_position_depth_shrinks_as_that_position_gets_drafted_out(self):
+        # Draft progression: with 30 real WRs already off the board, LEAGUE's own remaining WR
+        # demand drops below the display cap -- the snapshot's WR depth must follow it down,
+        # not stay pinned at the cap.
+        wr_ids = [pid for pid, info in self.players_db.items() if info["position"] == "WR"][:30]
+        picks = [{"player_id": pid, "roster_id": "2", "round": 1} for pid in wr_ids]
+        snap = ps.build_snapshot(
+            self.merger, self.players_db, picks, self.pick_order, current_index=len(picks), my_roster_id="1",
+            league=LEAGUE, pick_label="3.01", top_n=1,
+        )
+        wr_count = sum(1 for c in snap.candidates if c.position == "WR")
+        self.assertLess(wr_count, ps.POSITION_VIEW_DEPTH_CAP)
 
     def test_every_candidate_carries_the_full_real_decomposition(self):
         snap = ps.build_snapshot(

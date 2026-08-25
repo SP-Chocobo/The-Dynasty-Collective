@@ -129,6 +129,73 @@ class ReplacementLevelMonotonicityTests(unittest.TestCase):
         self.assertLessEqual(heavy, light)
 
 
+class ReplacementRanksTests(unittest.TestCase):
+    """replacement_ranks (and its _remaining_demand_rank helper, shared with
+    replacement_levels' own non-floor branch) is the real per-league depth signal
+    pick_synthesis.narrow_candidates uses for position-view depth -- see
+    pick_synthesis.POSITION_VIEW_DEPTH_CAP. Exercises the exact boundary cases the position-
+    view-depth feature was designed against: remaining demand at, below, and well above the
+    display cap, plus draft progression (demand shrinking as a position gets drafted out)."""
+
+    def test_matches_replacement_levels_own_rank_via_the_value_at_that_rank(self):
+        # Cross-check against the existing, separately-tested replacement_levels: the VALUE
+        # it reports for a position must be the pool's value at exactly the rank
+        # replacement_ranks reports for that same position (same formula, two return shapes).
+        pool = pd.DataFrame({"position": ["RB"] * 30, "value": [100 - i for i in range(30)]})
+        rank = dr.replacement_ranks(["RB"] * 2, num_teams=12)["RB"]
+        level = dr.replacement_levels(pool, "value", ["RB"] * 2, num_teams=12)["RB"]
+        expected_idx = min(rank - 1, len(pool) - 1)
+        self.assertEqual(level, float(pool.sort_values("value", ascending=False).iloc[expected_idx]["value"]))
+
+    def test_boundary_remaining_demand_at_and_below_the_display_cap(self):
+        # 6 teams x one named RB slot = 6 remaining demand -- below POSITION_VIEW_DEPTH_CAP
+        # (12); replacement_ranks itself is never capped (that's
+        # pick_synthesis.position_view_depth's job) -- it always reports the real, uncapped
+        # league demand.
+        ranks = dr.replacement_ranks(["RB"], num_teams=6)
+        self.assertEqual(ranks["RB"], 6)
+
+    def test_boundary_remaining_demand_exactly_at_the_display_cap(self):
+        ranks = dr.replacement_ranks(["RB"], num_teams=12)  # 12 teams x one RB slot = 12
+        self.assertEqual(ranks["RB"], 12)
+
+    def test_boundary_remaining_demand_well_above_the_display_cap(self):
+        # A real superflex/2WR league shape: WR gets ~2.7 slot share/team -> ~33 at 12 teams,
+        # well past where any display cap would bind -- replacement_ranks itself still reports
+        # the true, uncapped number.
+        roster_positions = ["QB", "RB", "RB", "WR", "WR", "TE", "FLEX", "FLEX", "SUPER_FLEX"]
+        ranks = dr.replacement_ranks(roster_positions, num_teams=12)
+        self.assertGreater(ranks["WR"], 30)
+
+    def test_remaining_demand_shrinks_as_the_position_gets_drafted(self):
+        # Draft progression: the same league's WR rank must fall as WRs actually get drafted,
+        # and must never go negative (floors at 1 -- "replacement = the best player still on
+        # the board" once demand is exhausted).
+        roster_positions = ["QB", "RB", "RB", "WR", "WR", "TE", "FLEX", "FLEX"]
+        none_drafted = dr.replacement_ranks(roster_positions, num_teams=12)["WR"]
+        some_drafted = dr.replacement_ranks(roster_positions, num_teams=12, drafted_counts={"WR": 10})["WR"]
+        nearly_all_drafted = dr.replacement_ranks(roster_positions, num_teams=12, drafted_counts={"WR": 500})["WR"]
+        self.assertLess(some_drafted, none_drafted)
+        self.assertEqual(nearly_all_drafted, 1)
+
+    def test_a_position_with_zero_slot_share_still_returns_the_floor_of_one(self):
+        ranks = dr.replacement_ranks(["QB", "RB", "WR", "TE"], num_teams=12)
+        self.assertEqual(ranks["DL"], 1)
+
+
+class DraftedCountsByPositionPublicWrapperTests(unittest.TestCase):
+    def test_matches_the_internal_helper_exactly(self):
+        picks = [{"player_id": "1", "roster_id": "1"}, {"player_id": "2", "roster_id": "2"}]
+        players_db = {
+            "1": {"position": "WR", "fantasy_positions": ["WR"]},
+            "2": {"position": "RB", "fantasy_positions": ["RB"]},
+        }
+        self.assertEqual(
+            dr.drafted_counts_by_position(picks, players_db),
+            dr._drafted_counts_by_position(picks, players_db),
+        )
+
+
 class CliffAnchoredQBReplacementTests(unittest.TestCase):
     """The startable-floor replacement model for superflex QB (see qb_startable_floor and
     replacement_levels' startable_floors) -- chosen over the reverted flat bench-demand

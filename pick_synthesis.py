@@ -153,6 +153,26 @@ from data_merger import DataMerger, name_key, normalize_name
 
 DEFAULT_NARROW_COUNT = 5
 
+# Position-view depth ceiling (see narrow_candidates' own docstring): the board's real,
+# league-aware replacement rank per position (draft_room.replacement_ranks) is the right
+# SOURCE for how much positional depth exists, but replacement rank alone can run to 30+ at
+# a deep position in a real league -- far more than anyone wants displayed, and far more than
+# draft_strategy.pick_analysis's per-candidate cost can absorb every rerun. This is a UI/
+# compute ceiling on top of that real signal, not a valuation constant -- it never changes
+# what a position's actual replacement demand is, only how much of it gets surfaced and fully
+# analyzed at once. A thin position (real demand below this) is never artificially truncated;
+# only a genuinely deep one gets capped.
+POSITION_VIEW_DEPTH_CAP = 12
+
+
+def position_view_depth(replacement_rank: int) -> int:
+    """Position View Depth = min(this league's real replacement-rank demand for the position,
+    POSITION_VIEW_DEPTH_CAP). A thin position (replacement_rank at or below the cap) is never
+    truncated below its own real demand; a deep one is capped, not expanded, at the ceiling.
+    Named and isolated specifically so the cap is one obvious, tunable constant rather than a
+    number buried inside build_snapshot's own wiring."""
+    return min(replacement_rank, POSITION_VIEW_DEPTH_CAP)
+
 # How much bigger this player's own gap to the next-best remaining player at his position has
 # to be than that position's own TYPICAL adjacent gap (median, robust to one already-huge
 # outlier skewing a mean) before it counts as a real cliff -- HIGH/MEDIUM/LOW, never a bare
@@ -566,12 +586,12 @@ def expected_value_of_waiting(universal_value: float, survival_probability: Opti
 
 def narrow_candidates(
     board: list[dict], top_n: int = DEFAULT_NARROW_COUNT, user_selected_player_id: Optional[str] = None,
+    position_depth: Optional[dict[str, int]] = None,
 ) -> list[dict]:
     """The top top_n rows by team_acquisition_value (final_score, draft_room's own ranking),
-    PLUS the single best remaining player at every position this board actually covers, plus
-    the user's own explicitly-flagged player if there is one -- none of these three are
-    optional, and the second one specifically closes a real blind spot, not a cosmetic
-    addition.
+    PLUS the best remaining players at every position this board actually covers, plus the
+    user's own explicitly-flagged player if there is one -- none of these three are optional,
+    and the second one specifically closes a real blind spot, not a cosmetic addition.
 
     universal_value/team_acquisition_value answer "how good is this player," a rational,
     single-team VOR question -- they were never meant to reproduce real-world ADP, which
@@ -585,10 +605,24 @@ def narrow_candidates(
     single best remaining player rank outside the raw top_n on value alone, and he would then
     NEVER be handed to the strategic layer at all -- not undervalued, literally invisible to
     it, so a real "grab him now before he's gone" case could never even be considered, let
-    alone recommended. Always including the best-at-position player means the strategic layer
-    gets a fair look at him regardless of where a pure VOR ranking places him; if he genuinely
-    isn't urgent, pick_necessity says so honestly (a LOW/CLOSE-CALL score, not exclusion from
-    the conversation entirely).
+    alone recommended. Always including at least the best-at-position player means the
+    strategic layer gets a fair look at him regardless of where a pure VOR ranking places him;
+    if he genuinely isn't urgent, pick_necessity says so honestly (a LOW/CLOSE-CALL score, not
+    exclusion from the conversation entirely).
+
+    position_depth: optional {position: how many of that position's best remaining players to
+    include}, keyed by the SAME "position" strings this board itself uses. None (the default)
+    preserves this function's original behavior exactly -- exactly one (the single best) per
+    position, nothing more. Passing a real per-league depth map (see
+    draft_room.replacement_ranks, capped by app.py's own POSITION_VIEW_DEPTH_CAP before it
+    ever reaches here) is what turns a UI position VIEW from "whichever of the top_n happened
+    to be a WR" into an actually-useful WR board -- a position with real replacement demand
+    gets real depth, a thin one still gets just its one best player, and every player included
+    this way still goes through the exact same downstream necessity/survival/denial analysis
+    as the original top_n slice, not a lesser "board-only" pass. This never changes any
+    player's own bpa/universal_value/final_score -- those are already fixed on `board` before
+    this function ever runs; it only changes which rows get selected for the heavier
+    contextual analysis build_snapshot layers on afterward.
 
     The user_selected_player_id addition still exists on top of this for the same reason it
     always did: a live debate is never blind to a player the user is specifically considering
@@ -598,11 +632,16 @@ def narrow_candidates(
     candidates = list(ranked[:top_n])
     included_ids = {r["player_id"] for r in candidates}
 
-    for position in {r["position"] for r in board}:
-        best_at_position = next((r for r in ranked if r["position"] == position), None)
-        if best_at_position is not None and best_at_position["player_id"] not in included_ids:
-            candidates.append(best_at_position)
-            included_ids.add(best_at_position["player_id"])
+    by_position: dict[str, list[dict]] = {}
+    for row in ranked:
+        by_position.setdefault(row["position"], []).append(row)
+
+    for position, rows_at_position in by_position.items():
+        depth = 1 if position_depth is None else max(1, position_depth.get(position, 1))
+        for row in rows_at_position[:depth]:
+            if row["player_id"] not in included_ids:
+                candidates.append(row)
+                included_ids.add(row["player_id"])
 
     if user_selected_player_id is not None and str(user_selected_player_id) not in included_ids:
         extra = _find_row(board, user_selected_player_id)
@@ -711,7 +750,18 @@ def build_snapshot(
     board = dr.compute_draft_board(
         merger, players_db, picks, my_roster_id=my_roster_id, league=league, mode=mode, pool_scope=pool_scope,
     )
-    narrowed = narrow_candidates(board, top_n=top_n, user_selected_player_id=user_selected_player_id)
+    # Real per-league positional depth for narrow_candidates' position_depth -- the same
+    # remaining-demand rank replacement_levels itself uses for VOR (num_teams matches
+    # compute_draft_board's own derivation above), capped at POSITION_VIEW_DEPTH_CAP so a deep
+    # position (WR/RB can run 30+ replacement rank in a real league) never balloons the
+    # candidate set past what's actually useful to display or affordable to fully analyze.
+    num_teams = league.get("total_rosters") or len({p.get("roster_id") for p in picks}) or 1
+    drafted_counts = dr.drafted_counts_by_position(picks, players_db)
+    replacement_ranks = dr.replacement_ranks(league.get("roster_positions") or [], num_teams, drafted_counts)
+    position_depth = {pos: position_view_depth(rank) for pos, rank in replacement_ranks.items()}
+    narrowed = narrow_candidates(
+        board, top_n=top_n, user_selected_player_id=user_selected_player_id, position_depth=position_depth,
+    )
     candidate_ids = [row["player_id"] for row in narrowed]
     # A real, observable signal straight from the picks already made (see
     # draft_strategy.detect_positional_run's own docstring) -- computed once and shared across

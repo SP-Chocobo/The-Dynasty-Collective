@@ -1383,9 +1383,35 @@ def filter_candidates_by_view(candidates: tuple, view: str) -> list:
     flex-slot name. Never touches ranking/scoring, only which already-computed candidates are
     shown; a flex-slot view reuses that slot's own real eligible-position set
     (FLEX_SLOT_POSITIONS), the same semantics draft_room.py's own need_bonus math already
-    keys off of, never a display-only reinterpretation of what "FLEX" means."""
+    keys off of, never a display-only reinterpretation of what "FLEX" means.
+
+    `candidates` is now deeper than a single top-line overview -- pick_synthesis.build_snapshot
+    gives every position real replacement-rank depth (see POSITION_VIEW_DEPTH_CAP) so a
+    position view actually has something to show, not just whichever one player at that
+    position happened to crack the original small overall shortlist. ALL is one particular
+    LENS over that same, now-larger candidate universe, not "show every row in it": it
+    reconstructs the original curated overview (top overall by value, plus each position's own
+    single best) precisely so the default view's size/shape is unchanged -- the depth lives in
+    the position views, not in ALL. Every row, in every view, is the exact same
+    CandidateSnapshot object either way; nothing about a player's own bpa/universal_value/
+    team_acquisition_value/pick_necessity ever depends on which view is currently selected."""
     if view == "ALL":
-        return list(candidates)
+        # `candidates` is already sorted by team_acquisition_value descending (build_snapshot's
+        # own final sort), so the first DEFAULT_NARROW_COUNT rows are the same top-overall
+        # slice narrow_candidates always surfaced, and the first candidate encountered per
+        # position while scanning in that same order is that position's own single best.
+        overview = list(candidates[:pick_synthesis.DEFAULT_NARROW_COUNT])
+        included_ids = {c.player_id for c in overview}
+        seen_positions = set()
+        for c in candidates:
+            if c.position in seen_positions:
+                continue
+            seen_positions.add(c.position)
+            if c.player_id not in included_ids:
+                overview.append(c)
+                included_ids.add(c.player_id)
+        overview.sort(key=lambda c: c.team_acquisition_value, reverse=True)
+        return overview
     if view in FLEX_SLOT_POSITIONS:
         eligible = FLEX_SLOT_POSITIONS[view]
         return [c for c in candidates if c.position in eligible]

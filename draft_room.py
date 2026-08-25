@@ -595,11 +595,54 @@ def replacement_levels(
         if floor is not None:
             rank = max(int((at_pos[value_col] >= floor).sum()), 1)
         else:
-            remaining_demand = max(num_teams * slot_counts.get(position, 0) - drafted.get(position, 0), 0)
-            rank = max(1, round(remaining_demand))
+            rank = _remaining_demand_rank(position, slot_counts, num_teams, drafted)
         idx = min(rank - 1, len(at_pos) - 1)
         levels[position] = float(at_pos.iloc[idx][value_col])
     return levels
+
+
+def _remaining_demand_rank(
+    position: str, slot_counts: dict[str, float], num_teams: int, drafted: dict[str, int],
+) -> int:
+    """The plain (non-startable-floor) half of replacement_levels' own rank math, factored out
+    so replacement_ranks() below can reuse the exact same remaining-demand formula without
+    duplicating it -- this league's per-team starter-slot share for `position`, times
+    num_teams, minus however many have already been drafted league-wide."""
+    remaining_demand = max(num_teams * slot_counts.get(position, 0) - drafted.get(position, 0), 0)
+    return max(1, round(remaining_demand))
+
+
+def replacement_ranks(
+    roster_positions: list[str], num_teams: int, drafted_counts: Optional[dict[str, int]] = None,
+) -> dict[str, int]:
+    """Per position, the same remaining-demand RANK replacement_levels resolves internally --
+    exposed directly as an integer (not a value threshold against a scored pool), for callers
+    that need "how many players deep at this position still carry real starter-relevant
+    demand" without needing a scored pool at all. Used by pick_synthesis.narrow_candidates to
+    give a position-filtered board view genuine positional depth instead of just its single
+    best player (see that function's own docstring) -- the depth itself is real and
+    league-aware (a thin position stays thin, a deep one stays deep, and it shrinks correctly
+    as that position gets drafted out), it's simply the DISPLAY-facing sibling of the same
+    number replacement_levels already uses for VOR.
+
+    Deliberately does not include the QB startable-floor refinement (see qb_startable_floor/
+    replacement_levels) -- that one only ever nudges VOR's own replacement anchor by a few
+    ranks and needs an actual points-scored pool to evaluate against a threshold; the plain
+    remaining-demand rank alone is already the same real, tested, per-league signal this
+    module relies on everywhere else it doesn't apply."""
+    slot_counts = starter_slot_counts(roster_positions)
+    drafted = drafted_counts or {}
+    return {
+        position: _remaining_demand_rank(position, slot_counts, num_teams, drafted)
+        for position in FANTASY_POSITIONS
+    }
+
+
+def drafted_counts_by_position(picks: list[dict], players_db: dict[str, dict]) -> dict[str, int]:
+    """Public wrapper over _drafted_counts_by_position for callers outside this module (e.g.
+    pick_synthesis.narrow_candidates, via replacement_ranks above) that need the same real
+    per-position already-drafted counts replacement_levels itself uses."""
+    return _drafted_counts_by_position(picks, players_db)
 
 
 def _team_starters_filled(picks: list[dict], players_db: dict[str, dict], roster_id) -> dict[str, int]:
