@@ -4123,10 +4123,25 @@ elif main_view == DRAFT_VIEW:
     st.session_state.setdefault("mock_draft_last_snapshot", None)
     st.session_state.setdefault("mock_draft_editing_index", None)
 
-    draft_room_mode = st.radio(
-        "Draft Room mode", options=["Live Draft (Sleeper)", "🧪 Mock Draft"],
-        horizontal=True, key="draft_room_mode_radio", label_visibility="collapsed",
-    )
+    # One header row for "what am I looking at" (Live/Mock) and "which draft" together --
+    # the draft selector used to sit in its own full-width row much further down (only
+    # reachable once roster/drafts data was already fetched), reading as an unexplained,
+    # disconnected structural break between the mode toggle and the Refresh/Player Pool
+    # controls below it (see REVIEW_LOG.md). mode_col is filled immediately below;
+    # draft_picker_col stays an open placeholder -- a DeltaGenerator column handle stays
+    # writable no matter when later in the script it's used -- and gets filled once the
+    # Live Draft branch further down actually has drafts to offer, so both still render in
+    # this same visual row.
+    # Grouped tightly on the left (small gap between the two), trailing empty space absorbing
+    # the rest of the row -- not edge-justified/spread across the full row width, which just
+    # opens a dead gap in the middle at real screen widths. Same "group tight, let whitespace
+    # trail" language the position-view tag and Refresh/Player Pool row already use.
+    mode_col, draft_picker_col, _header_spacer_col = st.columns([3, 2, 5])
+    with mode_col:
+        draft_room_mode = st.radio(
+            "Draft Room mode", options=["Live Draft (Sleeper)", "🧪 Mock Draft"],
+            horizontal=True, key="draft_room_mode_radio", label_visibility="collapsed",
+        )
 
     if draft_room_mode == "🧪 Mock Draft":
         # -------------------------------------------------------------- mock draft --
@@ -4587,9 +4602,11 @@ elif main_view == DRAFT_VIEW:
                 d = draft_options[did]
                 return f"{d.get('season', '?')} · {d.get('type', 'draft')} · {d.get('status', '?')}"
 
-            draft_id = st.selectbox(
-                "Draft", options=ordered_draft_ids, format_func=_draft_label, key="draft_room_draft_picker",
-            )
+            with draft_picker_col:
+                draft_id = st.selectbox(
+                    "Draft", options=ordered_draft_ids, format_func=_draft_label,
+                    key="draft_room_draft_picker", label_visibility="collapsed",
+                )
             active_draft = draft_options[draft_id]
             draft_type = active_draft.get("type")
             # Sleeper marks 3rd Round Reversal on the draft's own settings, not the type
@@ -4620,7 +4637,7 @@ elif main_view == DRAFT_VIEW:
                         st.caption("⚠️ Couldn't map every drafter to a roster in this league -- pick-order analysis may be incomplete.")
                         round_1_order = [rid for rid in round_1_order if rid is not None]
 
-                    top_row_col1, top_row_col2 = st.columns([1, 2])
+                    top_row_col1, top_row_col2 = st.columns([1, 2], vertical_alignment="center")
                     with top_row_col1:
                         if st.button("↻ Refresh Picks", key="draft_room_refresh_btn"):
                             try:
@@ -4630,13 +4647,23 @@ elif main_view == DRAFT_VIEW:
                             except SleeperAPIError as exc:
                                 notify("error", f"Couldn't reach Sleeper: {exc}")
                     with top_row_col2:
-                        _scope_by_key = {"all": "All players", "rookies_only": "Rookies only", "veterans_only": "Veterans only"}
-                        pool_scope_label = st.segmented_control(
-                            "Player pool", options=["All players", "Rookies only", "Veterans only"],
-                            default=_scope_by_key[st.session_state.draft_room_pool_scope],
-                            required=True, key="draft_room_pool_scope_control",
-                            help="Rookies only / Veterans only is detected from KeepTradeCut's own source data, not a maintained list.",
-                        )
+                        # Player Pool's own label used to render ABOVE the segmented control
+                        # (Streamlit's default), pushing the actual pills well below where
+                        # Refresh Picks sits -- the two never shared a real baseline even
+                        # though their own heights matched. Collapsed and replaced with an
+                        # inline label sat next to the control instead, on the same row.
+                        pool_label_col, pool_control_col = st.columns([1, 3], vertical_alignment="center")
+                        with pool_label_col:
+                            st.markdown('<div class="drv-board-title">PLAYER POOL</div>', unsafe_allow_html=True)
+                        with pool_control_col:
+                            _scope_by_key = {"all": "All players", "rookies_only": "Rookies only", "veterans_only": "Veterans only"}
+                            pool_scope_label = st.segmented_control(
+                                "Player pool", options=["All players", "Rookies only", "Veterans only"],
+                                default=_scope_by_key[st.session_state.draft_room_pool_scope],
+                                required=True, key="draft_room_pool_scope_control",
+                                label_visibility="collapsed",
+                                help="Rookies only / Veterans only is detected from KeepTradeCut's own source data, not a maintained list.",
+                            )
                         st.session_state.draft_room_pool_scope = {
                             "All players": "all", "Rookies only": "rookies_only", "Veterans only": "veterans_only",
                         }[pool_scope_label]
