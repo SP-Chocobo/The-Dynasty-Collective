@@ -115,13 +115,18 @@ def serialize_candidate(c: CandidateSnapshot) -> dict:
 
 
 def serialize_snapshot(
-    snap: PickSnapshot, *, pick_header: str, state_tags: list[str],
+    snap: PickSnapshot, *, pick_header: str, state_tags: list[str | dict],
 ) -> dict:
     """The full board payload: every candidate (in the snapshot's own order -- callers
     must not re-sort; ranking is the engine's, not this module's) plus the header/tag
     strings app.py already builds from real draft-state values (pick label, 3RR status,
     intervening-picks-to-next-turn, league format). decision_regime rides along
-    unchanged from the snapshot -- this module never recomputes it."""
+    unchanged from the snapshot -- this module never recomputes it.
+
+    Each entry in state_tags is either a plain string (rendered as-is) or
+    {"label": str, "title": str} -- title becomes a native HTML tooltip on that one tag,
+    for a secondary explanation that shouldn't have to sit inline as permanent prose
+    elsewhere on the page."""
     candidates = [serialize_candidate(c) for c in snap.candidates]
     if snap.user_selected_player_id is not None:
         for cand in candidates:
@@ -256,8 +261,16 @@ const NEC_TEXT = {
 
 document.getElementById("state-bar").innerHTML = `
   <div class="clock">${PAYLOAD.pickHeader}</div>
-  <div class="state-tags">${(PAYLOAD.stateTags || []).map(t =>
-    `<span class="tag${/3RR/.test(t) ? ' hot' : ''}">${t}</span>`).join("")}</div>`;
+  <div class="state-tags">${(PAYLOAD.stateTags || []).map(t => {
+    // A tag is either a plain string (unchanged) or {label, title} -- title becomes a
+    // native HTML title attribute (a real, if plain, browser tooltip on hover), for a
+    // secondary explanation that shouldn't sit inline as permanent prose (see app.py's own
+    // Draft Room caption, moved into a "?" tag this way instead of running on every render).
+    const label = typeof t === "string" ? t : t.label;
+    const tooltip = typeof t === "string" ? "" : (t.title || "");
+    const titleAttr = tooltip ? ` title="${tooltip.replace(/"/g, "&quot;")}"` : "";
+    return `<span class="tag${/3RR/.test(label) ? ' hot' : ''}"${titleAttr}>${label}</span>`;
+  }).join("")}</div>`;
 
 function tickRow(c) {
   return ["tie", "cliff", "block", "pure"].map(f =>

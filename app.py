@@ -4637,7 +4637,11 @@ elif main_view == DRAFT_VIEW:
                         st.caption("⚠️ Couldn't map every drafter to a roster in this league -- pick-order analysis may be incomplete.")
                         round_1_order = [rid for rid in round_1_order if rid is not None]
 
-                    top_row_col1, top_row_col2 = st.columns([1, 2], vertical_alignment="center")
+                    # Grouped tightly (Refresh, then Player Pool right after it), trailing empty
+                    # space absorbing the rest of the row -- same "group tight, let whitespace
+                    # trail" language the header row above already uses, rather than Player Pool
+                    # starting wherever its wide column happened to begin.
+                    top_row_col1, top_row_col2, _top_row_spacer_col = st.columns([1.5, 3.5, 5], vertical_alignment="center")
                     with top_row_col1:
                         if st.button("↻ Refresh Picks", key="draft_room_refresh_btn"):
                             try:
@@ -4647,23 +4651,18 @@ elif main_view == DRAFT_VIEW:
                             except SleeperAPIError as exc:
                                 notify("error", f"Couldn't reach Sleeper: {exc}")
                     with top_row_col2:
-                        # Player Pool's own label used to render ABOVE the segmented control
-                        # (Streamlit's default), pushing the actual pills well below where
-                        # Refresh Picks sits -- the two never shared a real baseline even
-                        # though their own heights matched. Collapsed and replaced with an
-                        # inline label sat next to the control instead, on the same row.
-                        pool_label_col, pool_control_col = st.columns([1, 3], vertical_alignment="center")
-                        with pool_label_col:
-                            st.markdown('<div class="drv-board-title">PLAYER POOL</div>', unsafe_allow_html=True)
-                        with pool_control_col:
-                            _scope_by_key = {"all": "All players", "rookies_only": "Rookies only", "veterans_only": "Veterans only"}
-                            pool_scope_label = st.segmented_control(
-                                "Player pool", options=["All players", "Rookies only", "Veterans only"],
-                                default=_scope_by_key[st.session_state.draft_room_pool_scope],
-                                required=True, key="draft_room_pool_scope_control",
-                                label_visibility="collapsed",
-                                help="Rookies only / Veterans only is detected from KeepTradeCut's own source data, not a maintained list.",
-                            )
+                        # A separate "PLAYER POOL" label read as redundant -- the three options
+                        # themselves (ALL PLAYERS / ROOKIES ONLY / VETERANS ONLY) already say
+                        # what this control is without a caption naming it. Label collapsed
+                        # entirely rather than replaced with an inline one.
+                        _scope_by_key = {"all": "All players", "rookies_only": "Rookies only", "veterans_only": "Veterans only"}
+                        pool_scope_label = st.segmented_control(
+                            "Player pool", options=["All players", "Rookies only", "Veterans only"],
+                            default=_scope_by_key[st.session_state.draft_room_pool_scope],
+                            required=True, key="draft_room_pool_scope_control",
+                            label_visibility="collapsed",
+                            help="Rookies only / Veterans only is detected from KeepTradeCut's own source data, not a maintained list.",
+                        )
                         st.session_state.draft_room_pool_scope = {
                             "All players": "all", "Rookies only": "rookies_only", "Veterans only": "veterans_only",
                         }[pool_scope_label]
@@ -4673,10 +4672,17 @@ elif main_view == DRAFT_VIEW:
                     num_teams = len(round_1_order)
                     current_index = len(draft_picks)
 
-                    st.caption(
+                    # This used to run on as a permanent inline caption between the toolbar and
+                    # the board -- administrative prose about the draft's own state that
+                    # interrupted the flow from controls straight to the candidates. Moved onto
+                    # a "?" tag directly on the board's own state-tags row instead (see
+                    # board_tags below), next to the "N pick(s) to your next selection" tag it's
+                    # actually a caveat about -- available on hover, not permanently occupying
+                    # the page.
+                    draft_state_caveat = (
                         f"{len(draft_picks)} pick(s) made · {num_teams} teams · {total_rounds} rounds. "
-                        "Pick order assumes no picks have been traded within this draft -- a traded future "
-                        "pick may show the original owner's needs instead of the new owner's."
+                        "Pick order assumes no picks have been traded within this draft -- a traded "
+                        "future pick may show the original owner's needs instead of the new owner's."
                     )
 
                     if current_index >= len(pick_order):
@@ -4811,6 +4817,7 @@ elif main_view == DRAFT_VIEW:
                                 )
                                 if first_intervening is not None:
                                     board_tags.append(f"{first_intervening} pick(s) to your next selection")
+                                    board_tags.append({"label": "?", "title": draft_state_caveat})
                                 board_tags.append(
                                     f"{num_teams}-team · {'Superflex' if is_superflex_fmt else '1QB'} · "
                                     f"{'Dynasty' if is_dynasty_fmt else 'Redraft'}"
