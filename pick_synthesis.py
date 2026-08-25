@@ -186,6 +186,7 @@ CLIFF_MEDIUM_RATIO = 1.5
 # anything -- below it, there's no real distribution to compare against.
 CLIFF_MIN_POOL_SIZE = 3
 
+
 # Pick necessity -- see the module docstring's full account of why each weight exists and why
 # two of the originally-considered ten factors were deliberately folded rather than added as
 # their own terms. All principled starting points, not empirically backtested -- same honesty
@@ -234,6 +235,33 @@ LATE_ROUND_NECESSITY_CAP = 30.0
 # CUMULATIVE lead over the whole field -- that reference sits above the largest adjacent gap
 # ever observed (10.6) on purpose, since full standout credit should demand something rare.
 NEAR_TIE_BAND = 2.0
+
+# A cliff is a RATIO ("this drop is unusually large for this position"), which silently
+# assumes the position has enough dispersion for a ratio to mean anything. On a genuinely
+# FLAT position it doesn't: as typical_gap collapses toward 0, an arbitrarily tiny drop
+# divides out to an enormous ratio -- at exactly 0 the original code returned float("inf"),
+# so EVERY positive gap became a HIGH cliff. Measured on the real Draft Sharks kicker
+# projections (34 season points of spread across the whole ranked list, with several EXACT
+# ties), that produced HIGH cliffs worth +12 necessity on gaps of ~7 season points -- 0.4
+# points a WEEK, between two functionally interchangeable streamers -- on a player whose
+# entire bpa was 19.7, so the phantom cliff was worth more than half his total board value.
+# The ratio was never wrong; it was being asked a question it cannot answer without real
+# dispersion to measure against.
+#
+# The tier is therefore gated on ABSOLUTE materiality as well as ratio: below this, an
+# adjacent drop is not a cliff no matter how it compares to its neighbours. Deliberately
+# derived from NEAR_TIE_BAND rather than independently invented -- that constant is already
+# this module's own data-derived answer to "below this, an ordering difference is field
+# noise rather than signal," which is exactly the judgement needed here. Kept under its own
+# name because the two express genuinely different concepts (one bounds a tie GROUP measured
+# against the leader, one bounds a single ADJACENT drop) and could legitimately diverge
+# later -- same concept-representation discipline applied everywhere else in this engine.
+#
+# Validated against the three cases that actually matter: a genuine 35-point structural
+# cliff still reports HIGH (35.0 >> 2.0); a spurious 0.1-point kicker cliff is suppressed;
+# and -- the case a naive "flat position => never a cliff" guard would have silently broken
+# -- a flat position carrying one real standout still reports HIGH (45.0 >> 2.0).
+CLIFF_MIN_MATERIAL_GAP = NEAR_TIE_BAND
 
 # The survival half of "this is basically decided" (see decision_regime): a principled
 # starting point, not empirically backtested -- same honesty this app applies to every other
@@ -554,7 +582,12 @@ def detect_positional_cliff(board: list[dict], player_id) -> Optional[dict]:
     this_gap = gaps[idx]
     other_gaps = sorted(g for i, g in enumerate(gaps) if i != idx and g > 0)
     if not other_gaps:
-        return {"tier": "HIGH" if this_gap > 0 else "LOW", "gap": round(this_gap, 2), "typical_gap": 0.0}
+        # Every OTHER adjacent gap at this position is zero -- a perfectly tied field, where
+        # there is no dispersion whatsoever to compare against. Same materiality gate as the
+        # ratio path below: a real standout sitting above a tied block is still a genuine
+        # cliff, but a hairline separation inside one is not.
+        tier = "HIGH" if this_gap >= CLIFF_MIN_MATERIAL_GAP else "LOW"
+        return {"tier": tier, "gap": round(this_gap, 2), "typical_gap": 0.0}
 
     # TRIMMED median: drop the largest ~10% of gaps first (only when the pool carries enough
     # gaps for a trim to mean anything). A position with a genuine structural cliff has that
@@ -569,7 +602,14 @@ def detect_positional_cliff(board: list[dict], player_id) -> Optional[dict]:
 
     typical_gap = other_gaps[len(other_gaps) // 2]  # median
     ratio = this_gap / typical_gap if typical_gap > 0 else float("inf") if this_gap > 0 else 0.0
-    tier = "HIGH" if ratio >= CLIFF_HIGH_RATIO else "MEDIUM" if ratio >= CLIFF_MEDIUM_RATIO else "LOW"
+    # Absolute-materiality gate, applied BEFORE the ratio decides a tier -- see
+    # CLIFF_MIN_MATERIAL_GAP for the measured failure this closes. A drop smaller than the
+    # band this app already calls ordering noise cannot be a tier break, however unusual it
+    # looks against an essentially flat position's own neighbours.
+    if this_gap < CLIFF_MIN_MATERIAL_GAP:
+        tier = "LOW"
+    else:
+        tier = "HIGH" if ratio >= CLIFF_HIGH_RATIO else "MEDIUM" if ratio >= CLIFF_MEDIUM_RATIO else "LOW"
     return {"tier": tier, "gap": round(this_gap, 2), "typical_gap": round(typical_gap, 2)}
 
 

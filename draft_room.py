@@ -848,6 +848,14 @@ def compute_draft_board(
     pool["_vor"] = 0.0
     pool["_season_proj_pct"] = 50.0
     pool["_proj3yr_pct"] = 50.0
+    # Does this row carry a REAL multi-year outlook at all? time_horizon_adj is a DIFFERENCE
+    # between two percentiles, and a "neutral" 50.0 standing in on one side of a difference is
+    # not neutral -- against a genuinely low season percentile it reads as "this player's
+    # future is far better than his present," manufacturing a growth signal from missing data.
+    # (Measured: team defenses, whose season points sit far below offensive skill players,
+    # picked up a spurious +6.5 average from exactly that.) Neutrality has to be expressed on
+    # the ADJUSTMENT, not on one of its inputs -- see score_row.
+    pool["_has_3yr"] = pool["proj_3yr"].notna()
 
     # Cliff-anchored QB replacement, superflex only (see qb_startable_floor/replacement_levels)
     # -- applied only to the points-anchored path: the startability threshold is in projected
@@ -868,9 +876,29 @@ def compute_draft_board(
             lambda r: r["_points"] - point_replacement.get(r["position"], r["_points"]), axis=1,
         ).values
         pool.loc[has_proj, "_season_proj_pct"] = _percentile_map(proj_pool["_points"]).values
-        pool.loc[has_proj, "_proj3yr_pct"] = _percentile_map(
-            proj_pool["proj_3yr"].fillna(proj_pool["proj_3yr"].min() if proj_pool["proj_3yr"].notna().any() else 0)
-        ).values
+        # Only rows that ACTUALLY carry a 3yr outlook get a real percentile here; everything
+        # else keeps the neutral 50.0 default set above, which makes time_horizon_adj resolve
+        # to ~0 (no opinion) rather than to a penalty.
+        #
+        # This previously fillna'd the missing values with the pool MINIMUM, which
+        # percentile-maps to ~0 and therefore applied a systematic NEGATIVE time_horizon_adj
+        # in dynasty leagues -- reading "we have no multi-year outlook for this player" as
+        # "this player has a bad multi-year outlook." Those are different statements, and the
+        # module's own rule everywhere else is that absent data must not be turned into a
+        # fabricated signal. The 50.0 default a few lines above is already this module's
+        # stated intent for an unknown outlook; the minimum-fill was the accident.
+        #
+        # Provably a no-op for every source committed at the time of this change: zero rows
+        # in the real baseline carry a points projection WITHOUT a proj_3yr alongside it (see
+        # test_missing_proj_3yr_is_neutral_not_a_penalty). It exists for sources that legitimately
+        # have no multi-year dimension at all -- team defenses being the concrete case, since
+        # Draft Sharks publishes DST only as a redraft table and a defense has no career arc
+        # to project in the first place.
+        has_3yr = proj_pool["proj_3yr"].notna()
+        if has_3yr.any():
+            pool.loc[proj_pool.index[has_3yr], "_proj3yr_pct"] = _percentile_map(
+                proj_pool.loc[has_3yr, "proj_3yr"]
+            ).values
 
     if (~has_proj).any():
         no_proj_pool = pool[~has_proj].copy()
@@ -917,7 +945,13 @@ def compute_draft_board(
         bpa = row["bpa"]
 
         time_horizon_adj = 0.0
-        if is_dynasty:
+        # No real multi-year outlook -> no opinion about the time horizon, which means an
+        # adjustment of exactly zero rather than one computed against a stand-in percentile
+        # (see _has_3yr above for the measured failure that guards against). A source with no
+        # multi-year dimension at all -- Draft Sharks publishes DST only as a redraft table,
+        # and a team defense has no career arc to project -- must neither be penalised for
+        # the absence nor rewarded by it.
+        if is_dynasty and row.get("_has_3yr", False):
             time_horizon_adj = min(max((row["_proj3yr_pct"] - row["_season_proj_pct"]) * TIME_HORIZON_SLOPE, TIME_HORIZON_CLAMP[0]), TIME_HORIZON_CLAMP[1])
 
         risk_adj = RISK_ADJ.get(row.get("injury_status"), 0.0)

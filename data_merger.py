@@ -331,7 +331,19 @@ def _sniff_pdf_kind(path: Path) -> str:
 
 # -- Dynasty Rankings tool -----------------------------------------------------
 
+# Draft Sharks publishes these rankings pages in two different table layouts, and the
+# numbers alone don't distinguish them -- both are "rank plus three figures":
+#
+#   dynasty tables : RK | 1yr Proj | 3yr Proj | 3D Value    ->  "1 177 406 18"
+#   redraft DST    : RK | ADP      | DS Proj  | 3D Value    ->  "1 22.11 125 9"
+#
+# ADP is a decimal round.pick figure, which is what makes the two separable at all, but
+# keying off "is the second number a float" would be inference. The layout is read from the
+# page HEADER instead, which states it outright. Nothing here is position-specific: it is a
+# fact about the source's table formats, and any future DS page in either layout parses.
 _RANKINGS_STAT_RE = re.compile(r"^(\d+) ([\d,]+) ([\d,]+) (\d+)$")
+_RANKINGS_ADP_STAT_RE = re.compile(r"^(\d+) (\d+\.\d+) ([\d,]+) (\d+)$")
+_RANKINGS_ADP_HEADER_RE = re.compile(r"\bRK\b.*\bADP\b")
 _RANKINGS_TEAM_POS_RE = re.compile(rf"^({'|'.join(NFL_TEAM_CODES)})\s*({'|'.join(POSITION_CODES)})(\d+)$")
 
 
@@ -357,16 +369,31 @@ def parse_draftsharks_pdf(path: Path) -> tuple[pd.DataFrame, Optional[str]]:
         full_text_parts.append(text)
         lines = [l.strip() for l in text.split("\n")]
 
-        stat_rows: list[tuple[int, int, int, int]] = []
+        # Which of the two DS table layouts is this page? Read from its own header rather
+        # than inferred from the numbers -- see _RANKINGS_ADP_STAT_RE.
+        adp_layout = any(_RANKINGS_ADP_HEADER_RE.search(l) for l in lines)
+        stat_re = _RANKINGS_ADP_STAT_RE if adp_layout else _RANKINGS_STAT_RE
+
+        # (rank, season projection, 3yr projection or None, 3D value). The ADP layout has no
+        # multi-year column at all, so proj_3yr stays None there rather than being filled
+        # with a stand-in -- a defense has no career arc to project, and inventing one would
+        # feed a fabricated number straight into dynasty scoring. compute_draft_board treats
+        # a missing proj_3yr as "no opinion" (neutral), not as a bad outlook.
+        stat_rows: list[tuple[int, int, Optional[int], int]] = []
         name_rows: list[dict] = []
         i = 0
         while i < len(lines):
             line = lines[i]
-            stat_match = _RANKINGS_STAT_RE.match(line)
+            stat_match = stat_re.match(line)
             if stat_match:
-                rank, proj_1yr, proj_3yr, value_3d = stat_match.groups()
-                stat_rows.append((int(rank), int(proj_1yr.replace(",", "")),
-                                   int(proj_3yr.replace(",", "")), int(value_3d)))
+                if adp_layout:
+                    rank, _adp, projection, value_3d = stat_match.groups()
+                    proj_3yr_value = None
+                else:
+                    rank, projection, proj_3yr, value_3d = stat_match.groups()
+                    proj_3yr_value = int(proj_3yr.replace(",", ""))
+                stat_rows.append((int(rank), int(projection.replace(",", "")),
+                                   proj_3yr_value, int(value_3d)))
                 i += 1
                 continue
 

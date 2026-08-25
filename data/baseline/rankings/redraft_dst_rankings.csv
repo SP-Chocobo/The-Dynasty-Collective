@@ -1,0 +1,14 @@
+name,team,position,rank,projection,proj_3yr,trade_value,source_date
+H Texans,HOU,DEF,1.0,125.0,,9.0,2026-08-25
+D Broncos,DEN,DEF,2.0,122.0,,7.0,2026-08-25
+S Seahawks,SEA,DEF,3.0,120.0,,6.0,2026-08-25
+G Packers,GB,DEF,4.0,114.0,,5.0,2026-08-25
+B Ravens,BAL,DEF,5.0,114.0,,4.0,2026-08-25
+P Steelers,PIT,DEF,6.0,112.0,,4.0,2026-08-25
+M Vikings,MIN,DEF,7.0,111.0,,4.0,2026-08-25
+N Patriots,NE,DEF,8.0,114.0,,3.0,2026-08-25
+P Eagles,PHI,DEF,9.0,106.0,,2.0,2026-08-25
+L Rams,LAR,DEF,10.0,107.0,,1.0,2026-08-25
+N Giants,NYG,DEF,11.0,107.0,,0.0,2026-08-25
+D Lions,DET,DEF,12.0,106.0,,0.0,2026-08-25
+L Chargers,LAC,DEF,13.0,106.0,,0.0,2026-08-25
