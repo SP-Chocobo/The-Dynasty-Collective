@@ -747,6 +747,11 @@ class CandidateSnapshot:
     # whose data is thinnest. Consumers must render absence as absence.
     waiting_cost: Optional[float] = None
     horizon_floor: Optional[float] = None
+    # How far that floor moves across a realistic miss in positional consumption. A point
+    # estimate is only as good as the curve it sits on: +/-6 ranks moves DEF by 12 points and
+    # QB by 63, because QB falls off a cliff just past its horizon. Consumers must not state
+    # a waiting cost more confidently than this allows.
+    horizon_sensitivity: Optional[float] = None
 
 
 @dataclass(frozen=True)
@@ -865,6 +870,7 @@ def build_snapshot(
             # recomputed per candidate here (see _attach_waiting_cost).
             "waiting_cost": row.get("waiting_cost"),
             "horizon_floor": row.get("horizon_floor"),
+            "horizon_sensitivity": row.get("horizon_sensitivity"),
         })
 
     round_num = (max((p.get("round") or 1) for p in picks) if picks else 1)

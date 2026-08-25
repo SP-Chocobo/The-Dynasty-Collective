@@ -107,6 +107,48 @@ def _waiting_note(c: CandidateSnapshot) -> Optional[dict]:
     if c.waiting_cost is None or c.horizon_floor is None:
         return None
     per_week = c.waiting_cost / SLEEPER_WEEKLY_TO_SEASON_FACTOR
+    basis = (
+        f"{c.name} projects {c.projected_points:.0f} against {c.horizon_floor:.0f} for the "
+        f"best {c.position} expected to still be undrafted when the draft ends."
+    )
+
+    # Below the player you get for free later. Not "cheap to wait" -- strictly better to.
+    if c.waiting_cost <= 0:
+        return {
+            "tone": "cheap",
+            "label": "free",
+            "title": (
+                f"Waiting is better than free here. The best {c.position} expected to go "
+                f"undrafted projects {c.horizon_floor:.0f}, ahead of {c.name}'s "
+                f"{c.projected_points:.0f} -- this pick buys nothing you won't have anyway."
+            ),
+        }
+
+    # The floor is a point estimate on a curve, and positions do not share a curve. What makes
+    # that dangerous is not a large error bar in absolute terms -- it is an error bar big
+    # enough to FLIP THE ANSWER. QB sits a few ranks above a cliff: estimate 2.59/wk, but a
+    # normal swing in how hard a room drafts QB moves the floor 3.71/wk, so "you can wait"
+    # and "you cannot" are both live. DEF swings 0.71/wk against a 0.65/wk estimate -- a
+    # bigger ratio, and yet completely settled, because even the worst case stays cheap.
+    #
+    # So this compares the swing against the decision boundary, never against the estimate's
+    # own magnitude. Doing the latter flags every candidate sitting near his position's floor,
+    # which is precisely the interchangeable case the whole mechanism is most confident about.
+    if c.horizon_sensitivity is not None:
+        swing = c.horizon_sensitivity / SLEEPER_WEEKLY_TO_SEASON_FACTOR
+        if per_week <= WAITING_STEEP_PER_WEEK < per_week + swing:
+            return {
+                "tone": "unsettled",
+                "label": "~?/wk",
+                "title": (
+                    f"Cost of waiting is unresolved at {c.position}. Best estimate "
+                    f"{per_week:.2f} pts/week, but {c.position} falls off a cliff just past "
+                    f"this point: a normal swing in how hard the room drafts {c.position} "
+                    f"moves the floor by up to {swing:.2f} pts/week, which is the difference "
+                    f"between comfortably waiting and not being able to. {basis}"
+                ),
+            }
+
     if per_week <= WAITING_CHEAP_PER_WEEK:
         tone, verdict = "cheap", "Waiting is cheap"
     elif per_week >= WAITING_STEEP_PER_WEEK:
@@ -116,11 +158,7 @@ def _waiting_note(c: CandidateSnapshot) -> Optional[dict]:
     return {
         "tone": tone,
         "label": f"{per_week:.2f}/wk",
-        "title": (
-            f"{verdict}. Deferring {c.position} costs {per_week:.2f} pts/week: "
-            f"{c.name} projects {c.projected_points:.0f} against {c.horizon_floor:.0f} for the "
-            f"best {c.position} expected to still be undrafted when the draft ends."
-        ),
+        "title": f"{verdict}. Deferring {c.position} costs {per_week:.2f} pts/week: {basis}",
     }
 
 
@@ -247,6 +285,7 @@ __DESIGN_SYSTEM_BADGE_NECESSITY__
 }
 .wait-note.wait-cheap { color: var(--tie-b); border: 1px solid color-mix(in srgb, var(--tie-b) 32%, transparent); }
 .wait-note.wait-moderate { opacity: .55; border: 1px solid transparent; }
+.wait-note.wait-unsettled { opacity: .45; border: 1px dashed currentColor; }
 .wait-note.wait-steep { color: var(--pure); border: 1px solid color-mix(in srgb, var(--pure) 32%, transparent); }
 .context-gap { font-size: .72rem; opacity: .62; cursor: help; }
 .context-gap.ctx-up { color: var(--tie-b); }

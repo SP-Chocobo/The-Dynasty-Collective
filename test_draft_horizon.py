@@ -165,6 +165,64 @@ class ShallowPoolHonestyTests(unittest.TestCase):
                            "an unmeasurable position must inherit the mean rate, not zero")
 
 
+class CliffSensitivityTests(unittest.TestCase):
+    """A floor is a point estimate on a curve, and positions do not share a curve.
+
+    The estimate is only worth as much as the curve under it: a floor sitting on a plateau
+    survives a normal miss in positional consumption, one sitting above a cliff does not.
+    Measured on the real board, +/-6 ranks moves DEF by 12 points and QB by 63, because QB
+    falls away hard a few ranks past its horizon.
+    """
+
+    def test_a_cliff_under_the_horizon_reports_a_wider_error_bar_than_a_plateau(self):
+        pool = _pool({"RB": STEEP, "K": FLAT})
+        h = dr.horizon_replacement(pool, "_v", SYNTH_ROSTER, 12)
+        self.assertGreater(h["RB"]["sensitivity"], h["K"]["sensitivity"] * 5)
+
+    def test_sensitivity_is_absent_exactly_where_the_floor_is(self):
+        shallow = _pool({"RB": STEEP[:10]})
+        h = dr.horizon_replacement(shallow, "_v", SYNTH_ROSTER, 12)["RB"]
+        self.assertIsNone(h["value"])
+        self.assertIsNone(h["sensitivity"], "no floor means no error bar to quote either")
+
+    def test_a_flat_position_is_never_reported_as_unresolved(self):
+        # The trap this rule has to avoid: judging the swing against the estimate's own
+        # magnitude flags every candidate sitting near his position's floor -- which is the
+        # interchangeable case the mechanism is MOST confident about. The swing only matters
+        # if it could move the verdict across the "you cannot wait" boundary.
+        import draft_board_ui as ui
+        merger = dm.DataMerger()
+        board = dr.compute_draft_board(
+            merger, _players_db(merger), [], my_roster_id="1", league=KDST_LEAGUE, mode="balanced")
+        for row in board:
+            if row["position"] not in ("K", "DEF") or row["waiting_cost"] is None:
+                continue
+            note = ui._waiting_note(_snapshot_stub(row))
+            self.assertNotEqual(note["tone"], "unsettled",
+                                f"{row['name']} ({row['position']}) is flat and settled")
+
+    def test_a_player_below_his_own_positions_floor_is_told_waiting_is_better(self):
+        import draft_board_ui as ui
+        merger = dm.DataMerger()
+        board = dr.compute_draft_board(
+            merger, _players_db(merger), [], my_roster_id="1", league=KDST_LEAGUE, mode="balanced")
+        below = [r for r in board if r["waiting_cost"] is not None and r["waiting_cost"] < 0]
+        self.assertTrue(below, "no below-floor players to check")
+        note = ui._waiting_note(_snapshot_stub(below[0]))
+        self.assertEqual(note["label"], "free")
+        self.assertIn("buys nothing", note["title"])
+
+
+def _snapshot_stub(row):
+    """The four fields _waiting_note actually reads, off a real board row."""
+    from types import SimpleNamespace
+    return SimpleNamespace(
+        name=row["name"], position=row["position"], projected_points=row["projected_points"],
+        waiting_cost=row["waiting_cost"], horizon_floor=row["horizon_floor"],
+        horizon_sensitivity=row["horizon_sensitivity"],
+    )
+
+
 class RealBaselineTests(unittest.TestCase):
     """Against the committed baseline and the real board."""
 

@@ -683,6 +683,12 @@ def drafted_counts_by_position(picks: list[dict], players_db: dict[str, dict]) -
 # the split above falls out of each position's own value decay, which is the point.
 
 HORIZON_UNDRAFTED_SLOTS = ("IR",)  # slots a draft doesn't fill, so they aren't draft demand
+# Ranks either side of the horizon to read the floor's error bar across. Sized to the scale
+# of miss a real draft produces: a positional run moves consumption by roughly this much, so
+# it asks "if this room drafts this position a little harder or softer than expected, how far
+# does the floor actually move?" -- which is a question with a very different answer on a
+# cliff than on a plateau.
+HORIZON_SENSITIVITY_WINDOW = 6
 
 
 def draftable_slots_per_team(roster_positions: list[str]) -> int:
@@ -806,6 +812,20 @@ def horizon_replacement(
     truncated source's last row got treated as though it were a real replacement level, and
     a floor read off the bottom of a short list would rebuild that same defect one layer up.
     Callers must treat value=None as "no opinion", never as zero.
+
+    `sensitivity` is the error bar the floor is worth stating with: how far the floor moves
+    across +/-HORIZON_SENSITIVITY_WINDOW ranks around it. A point estimate is only as good as
+    the curve it sits on, and positions do not share a curve -- measured on real data, +/-6
+    ranks moves DEF by 12 points and QB by 63, because QB falls off a cliff a few ranks past
+    its horizon while DEF is flat all the way down. Consumption is exactly the quantity a
+    positional run shifts by that much, so a floor sitting on a cliff edge is a far weaker
+    claim than one sitting on a plateau, even though both are single numbers. Callers that
+    render a floor should say so when sensitivity is large next to the quantity being claimed
+    (see draft_board_ui._waiting_note).
+
+    The flat positions this whole mechanism was built for are the ones it estimates best,
+    which is not a coincidence: flatness is simultaneously what makes waiting cheap and what
+    makes the cost of waiting precisely measurable.
     """
     consumption = expected_positional_consumption(
         pool, value_col, roster_positions, num_teams, drafted_counts,
@@ -820,11 +840,18 @@ def horizon_replacement(
         still_to_go = max(consumption.get(position, 0.0) - drafted.get(position, 0), 0.0)
         rank = int(round(still_to_go)) + 1
         certain = 1 <= rank <= len(values)
+        sensitivity = None
+        if certain and values:
+            window = HORIZON_SENSITIVITY_WINDOW
+            high = values[max(rank - window, 1) - 1]
+            low = values[min(rank + window, len(values)) - 1]
+            sensitivity = round(high - low, 2)
         out[position] = {
             "rank": rank,
             "value": values[rank - 1] if certain else None,
             "pool_depth": len(values),
             "certain": certain,
+            "sensitivity": sensitivity,
         }
     return out
 
@@ -952,6 +979,9 @@ def _attach_waiting_cost(
     horizon = horizon_replacement(pool, "_points", roster_positions, num_teams, drafted_counts)
     floors = {position: data["value"] for position, data in horizon.items()}
     scored["horizon_floor"] = scored["position"].map(floors)
+    scored["horizon_sensitivity"] = scored["position"].map(
+        {position: data["sensitivity"] for position, data in horizon.items()}
+    )
     scored["waiting_cost"] = (
         scored["projected_points"].astype(float) - scored["horizon_floor"].astype(float)
     ).round(2)
@@ -1147,8 +1177,8 @@ def compute_draft_board(
         return _records_with_normalized_nan(results[[
             "player_id", "name", "position", "team", "injury_status", "bpa", "bpa_source",
             "growth_signal", "confidence", "final_score", "mode", "projected_points",
-            "horizon_floor", "waiting_cost",
-        ]], "projected_points", "horizon_floor", "waiting_cost")
+            "horizon_floor", "horizon_sensitivity", "waiting_cost",
+        ]], "projected_points", "horizon_floor", "horizon_sensitivity", "waiting_cost")
 
     my_filled = _team_starters_filled(picks, players_db, my_roster_id)
     slot_counts = starter_slot_counts(roster_positions)
@@ -1259,8 +1289,8 @@ def compute_draft_board(
         "player_id", "name", "position", "team", "injury_status", "bpa", "bpa_source",
         "time_horizon_adj", "risk_adj", "universal_value",
         "need_bonus", "eligibility_bonus", "confidence", "final_score", "mode", "projected_points",
-        "horizon_floor", "waiting_cost",
-    ]], "projected_points", "horizon_floor", "waiting_cost")
+        "horizon_floor", "horizon_sensitivity", "waiting_cost",
+    ]], "projected_points", "horizon_floor", "horizon_sensitivity", "waiting_cost")
 
 
 # -- in-app Mock Draft sandbox (see app.py's Draft Room view) -------------------------------
