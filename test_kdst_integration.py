@@ -157,6 +157,79 @@ class PoolAdmissionTests(unittest.TestCase):
                 f"{pos} should be points-anchored, got {sources}",
             )
 
+    def test_a_real_projection_admits_a_player_with_no_vendor_trade_value(self):
+        # The rule that used to require trade_value outright. It was equivalent to "has a
+        # real number" until league-scored points began arriving from a source that
+        # publishes no trade values at all.
+        pool = self._pool(KDST_LEAGUE)
+        no_tv = pool[pool["trade_value"].isna()]
+        self.assertGreater(len(no_tv), 0, "nobody is riding the projection-only path")
+        self.assertTrue(no_tv["projection"].notna().all(),
+                        "a projection-only admission must still carry a real projection")
+
+    def test_widening_the_gate_adds_nobody_at_an_offensive_position(self):
+        # The blast-radius guarantee that made this change safe to make at all: every
+        # offensive player the ranking sources project also carries a trade value, so the
+        # old and new rules are still exactly equivalent there. If this ever fails, the
+        # change has started moving players it was measured not to touch.
+        pool = self._pool(KDST_LEAGUE)
+        for pos in ("QB", "RB", "WR", "TE"):
+            rows = pool[pool["position"] == pos]
+            self.assertTrue(rows["trade_value"].notna().all(),
+                            f"{pos} gained a projection-only admission; blast radius has widened")
+
+    def test_position_depth_backfills_instead_of_running_dry(self):
+        # The failure this replaced: the admitted players were a permanent allowlist, so
+        # drafting them emptied the position to zero while real projected players sat
+        # unused. A 12-team league where managers take a second defense for bye/matchup
+        # coverage needs the position to outlast 12 picks, not exactly reach it.
+        from player_universe import league_usable_positions
+        usable = league_usable_positions(KDST_LEAGUE["roster_positions"])
+        pool = dr.build_available_pool(self.merger, self.db, set(), usable)
+        teams = KDST_LEAGUE["total_rosters"]
+        for pos in ("K", "DEF"):
+            ids = list(pool[pool["position"] == pos]["player_id"])
+            self.assertGreater(len(ids), teams,
+                               f"{pos} supply must outlast one per team")
+            after = dr.build_available_pool(self.merger, self.db, set(ids[:teams]), usable)
+            self.assertGreater(
+                (after["position"] == pos).sum(), 0,
+                f"{pos} ran dry after {teams} were drafted -- no backfill from the baseline",
+            )
+
+
+class ProjectionOnlyAdmissionScoringTests(unittest.TestCase):
+    """Scoring a player who has points but no trade value at all."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.merger = dm.DataMerger()
+        cls.db = _players_db(cls.merger)
+        cls.board = dr.compute_draft_board(
+            cls.merger, cls.db, [], my_roster_id="1", league=KDST_LEAGUE, mode="balanced",
+        )
+
+    def test_the_board_builds_at_all(self):
+        # Regression: eligibility_bonus is denominated in trade_value units, and passing a
+        # missing one straight through reached the lineup optimizer's Hungarian cost matrix
+        # and raised "matrix contains invalid numeric entries" outright.
+        self.assertTrue(self.board)
+
+    def test_a_missing_trade_value_declines_the_flexibility_premium_rather_than_inventing_one(self):
+        # Same rule as a missing 3yr outlook: exactly 0.0, not a stand-in number, and not a
+        # penalty either. K/DEF are single-slot positions with no flexibility to price anyway.
+        from player_universe import league_usable_positions
+        pool = dr.build_available_pool(
+            self.merger, self.db, set(), league_usable_positions(KDST_LEAGUE["roster_positions"]))
+        no_tv = set(pool[pool["trade_value"].isna()]["player_id"].astype(str))
+        self.assertTrue(no_tv, "no projection-only players to check")
+        checked = [r for r in self.board if str(r["player_id"]) in no_tv]
+        self.assertTrue(checked)
+        for row in checked:
+            self.assertEqual(row["eligibility_bonus"], 0.0)
+            self.assertEqual(row["final_score"],
+                             round(row["universal_value"] + row["need_bonus"], 2))
+
 
 class ValuationBurialTests(unittest.TestCase):
     """Priority: K/DST must be buried by real replacement math, with no positional rule."""

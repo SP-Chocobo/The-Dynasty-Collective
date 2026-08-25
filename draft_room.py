@@ -428,11 +428,33 @@ def build_available_pool(
     scoring_settings: Optional[dict] = None,
     pool_scope: str = "all",
 ) -> pd.DataFrame:
-    """One row per undrafted, fantasy-relevant player Draft Sharks actually has a value
-    for -- joined from Sleeper's player_id-keyed database (drafts speak player_id, Draft
-    Sharks speaks name) the same way player_universe.py already bridges the two elsewhere
-    in this app. A player with no Draft Sharks match is dropped, not scored at 0 -- there's
-    no honest BPA to rank them by, same "don't fabricate a number" rule as everywhere else.
+    """One row per undrafted, fantasy-relevant player this app has a real number for --
+    joined from Sleeper's player_id-keyed database (drafts speak player_id, the ranking
+    sources speak name) the same way player_universe.py already bridges the two elsewhere
+    in this app. A player with no usable number at all is dropped, not scored at 0 --
+    there's no honest BPA to rank them by, same "don't fabricate a number" rule as
+    everywhere else.
+
+    "A real number" means a season points projection OR a trade value. It used to mean a
+    trade value alone, which was equivalent right up until points started arriving from a
+    source that publishes no trade values (league-scored Sleeper projections -- see
+    sleeper_client.build_baseline_projection_rows). After that the old rule silently
+    conflated two different situations: "nothing is known about this player" and "we have
+    real league-scored points, but one vendor's trade-value chart stopped early."
+
+    Measured before the change, the second case was doing real damage at K/DEF:
+      - Supply capped at 13 of 37 kickers and 13 of 32 defenses, with NO backfill: those
+        13 were a permanent allowlist, so drafting them emptied the position to zero
+        while real, projected players sat unused. A 12-team league where two managers
+        take a second defense for bye/matchup coverage exhausts the position outright.
+      - The admitted 13 were not the TOP 13 -- they were a vendor subset scattered
+        through the field (Sleeper's K4 and DEF8 were both excluded while lower-projected
+        players were admitted), so replacement level was computed on a distorted set and
+        overstated the best K/DEF's VOR by ~45%.
+    Widening the rule adds ZERO players at QB/RB/WR/TE (measured): Draft Sharks publishes
+    a trade value for every offensive player it projects, so the two conditions are still
+    equivalent there. The whole effect is confined to positions where points now arrive
+    independently of a trade-value chart.
 
     sleeper_projections (player_id -> raw stat category -> projected value, from
     SleeperClient.get_weekly_projections) and scoring_settings (this league's real Sleeper
@@ -478,7 +500,9 @@ def build_available_pool(
             if pool_scope == "veterans_only" and is_rookie:
                 continue
         match = merger.merge_player(name, position=position, team=info.get("team"))
-        if not match.get("matched") or match.get("trade_value") is None:
+        if not match.get("matched"):
+            continue
+        if match.get("trade_value") is None and match.get("projection") is None:
             continue
         sleeper_points = None
         if sleeper_projections is not None and scoring_settings is not None:
@@ -993,19 +1017,33 @@ def compute_draft_board(
         # is worth beyond his raw value. Self-limiting rather than capped like need_bonus (see
         # eligibility_bonus's own docstring): it can never exceed his own trade_value, since
         # the best he can ever do is fill a genuinely open slot outright.
-        eb = lo.eligibility_bonus(
-            my_roster_players, candidate_id=row["player_id"], candidate_value=row["trade_value"],
-            candidate_full_eligible=player_eligible_positions(players_db.get(str(row["player_id"])) or {}),
-            candidate_primary_position=position, roster_positions=roster_positions,
-        )
-        # Converted from trade_value units into this sum's own bpa scale -- see
-        # TRADE_VALUE_SCALE_MAX/ELIGIBILITY_BONUS_MAX above for the units defect this fixes and
-        # the real-data evidence behind it. min() is a defensive guard for out-of-scale source
-        # data, not the bounding mechanism (the rescale is already bounded by construction).
-        eligibility_bonus_value = min(
-            round(eb["eligibility_bonus"] * (ELIGIBILITY_BONUS_MAX / TRADE_VALUE_SCALE_MAX), 2),
-            ELIGIBILITY_BONUS_MAX,
-        )
+        #
+        # A player admitted on a points projection alone carries no trade_value, and this
+        # term is denominated in trade_value units -- so there is nothing to measure and the
+        # honest answer is exactly 0.0, the same "missing information is not information"
+        # rule time_horizon_adj follows for a missing 3yr outlook. Guarded here, where the
+        # meaning of the absence is known, rather than inside the optimizer: passing the NaN
+        # through reaches a Hungarian-algorithm cost matrix and raises outright ("matrix
+        # contains invalid numeric entries"), and a value substituted down there would be a
+        # fabricated flexibility premium rather than a declined one.
+        candidate_value = row["trade_value"]
+        if candidate_value is None or pd.isna(candidate_value):
+            eligibility_bonus_value = 0.0
+        else:
+            eb = lo.eligibility_bonus(
+                my_roster_players, candidate_id=row["player_id"], candidate_value=candidate_value,
+                candidate_full_eligible=player_eligible_positions(players_db.get(str(row["player_id"])) or {}),
+                candidate_primary_position=position, roster_positions=roster_positions,
+            )
+            # Converted from trade_value units into this sum's own bpa scale -- see
+            # TRADE_VALUE_SCALE_MAX/ELIGIBILITY_BONUS_MAX above for the units defect this fixes
+            # and the real-data evidence behind it. min() is a defensive guard for out-of-scale
+            # source data, not the bounding mechanism (the rescale is already bounded by
+            # construction).
+            eligibility_bonus_value = min(
+                round(eb["eligibility_bonus"] * (ELIGIBILITY_BONUS_MAX / TRADE_VALUE_SCALE_MAX), 2),
+                ELIGIBILITY_BONUS_MAX,
+            )
 
         team_acquisition_value = round(universal_value + need_bonus + eligibility_bonus_value, 2)
 
