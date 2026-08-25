@@ -375,8 +375,8 @@ _GLOBAL_CSS = """
         letter-spacing: 0.08em;
         text-transform: uppercase;
         color: #6b7076;
-        padding-top: 10px;
         white-space: nowrap;
+        line-height: 1.5;
     }
     .drv-board-title .dot {
         color: #3a3c42;
@@ -387,38 +387,76 @@ _GLOBAL_CSS = """
     .st-key-mock_draft_board_title_row {
         margin-bottom: 2px;
     }
-    /* Round 3 refinement: the current-view control is now a small bordered tag -- the same
-       visual language as the board's own "12-team - Superflex - Dynasty" / "N pick(s) to
-       your next selection" state tags (see draft_board_ui.py's .tag class) -- sitting
-       immediately after "CANDIDATES -", not a bold plain-text value far off at the row's
-       right edge. Still no chevron. */
+    .st-key-draft_room_board_title_row [data-testid="stColumn"],
+    .st-key-mock_draft_board_title_row [data-testid="stColumn"] {
+        margin-top: 0 !important;
+    }
+    /* This row is only ever two short words ("CANDIDATES" + the current view) -- it should
+       never need Streamlit's default narrow-viewport behavior of stacking st.columns into a
+       vertical list, which otherwise breaks the "one phrase" reading entirely below ~640px. */
+    .st-key-draft_room_board_title_row [data-testid="stHorizontalBlock"],
+    .st-key-mock_draft_board_title_row [data-testid="stHorizontalBlock"] {
+        flex-wrap: nowrap !important;
+    }
+    .st-key-draft_room_board_title_row [data-testid="stColumn"]:nth-child(1),
+    .st-key-mock_draft_board_title_row [data-testid="stColumn"]:nth-child(1),
+    .st-key-draft_room_board_title_row [data-testid="stColumn"]:nth-child(2),
+    .st-key-mock_draft_board_title_row [data-testid="stColumn"]:nth-child(2) {
+        width: auto !important;
+        min-width: 0 !important;
+        flex: 0 0 auto !important;
+    }
     .st-key-draft_room_view_toggle,
     .st-key-mock_draft_view_toggle {
-        margin-top: 6px;
+        margin: 0 !important;
     }
+    /* Round 3 refinement, take 2: a bordered tag box (matching draft_board_ui.py's .tag
+       language) read as its own separate pill sitting apart from "CANDIDATES" instead of
+       one continuous phrase with it -- explicit, but disjointed. Dropped the box entirely:
+       the current value is now bare bold text picking up the same bright ink as the
+       "CANDIDATES" label is muted, directly abutting the bullet with no gap of its own, so
+       "CANDIDATES • ALL" reads as a single unit and only the brightness/weight signals
+       "this part is interactive." No border, no background, no chevron. */
     .st-key-draft_room_view_toggle button,
     .st-key-mock_draft_view_toggle button {
-        min-height: 0;
+        min-height: 0 !important;
         width: auto !important;
         display: inline-flex !important;
-        padding: 3px 10px;
-        background: #1b1c1f;
-        border: 1px solid #3a3c42 !important;
-        border-radius: 4px;
+        align-items: baseline !important;
+        padding: 0 !important;
+        margin: 0 !important;
+        background: transparent !important;
+        border: none !important;
         font-family: 'JetBrains Mono', 'DejaVu Sans Mono', monospace;
-        font-size: 0.74rem;
-        font-weight: 600;
+        font-size: 0.72rem;
+        font-weight: 700;
         letter-spacing: 0.03em;
-        color: #9ca3af;
+        line-height: 1.5;
+        color: #e5e7eb;
         text-align: left;
         justify-content: flex-start !important;
-        transition: color 0.15s ease, border-color 0.15s ease, background 0.15s ease;
+        border-bottom: 2px solid transparent;
+        border-radius: 0;
+        transition: color 0.15s ease, border-color 0.15s ease;
     }
     .st-key-draft_room_view_toggle button:hover,
     .st-key-mock_draft_view_toggle button:hover {
-        color: #e5e7eb;
-        border-color: #4a4d54 !important;
-        background: #202124;
+        color: #7dd3fc;
+        border-bottom-color: #0ea5e9;
+    }
+    /* The button's own visible text sits inside Streamlit's stMarkdownContainer -> <p>,
+       which carries its own hardcoded 14px/21px line box that does NOT inherit the
+       font-size/line-height set on the <button> above -- left alone, that mismatched taller
+       line box is exactly what put "ALL" a few px below the "CANDIDATES" baseline despite
+       both elements sharing the same top edge. Match it explicitly so the two truly share
+       one line. */
+    .st-key-draft_room_view_toggle button p,
+    .st-key-mock_draft_view_toggle button p {
+        font-size: 0.72rem !important;
+        line-height: 1.5 !important;
+        font-weight: 700 !important;
+        letter-spacing: 0.03em !important;
+        margin: 0 !important;
     }
     /* Concept 3, refined: the expanded surface is a single horizontal row of bare-text
        options (never boxed pills, never a vertical list stacking the whole page down) that
@@ -4339,7 +4377,9 @@ elif main_view == DRAFT_VIEW:
                             st.session_state.mock_draft_position_view = "ALL"
 
                         with st.container(key="mock_draft_board_title_row"):
-                            mock_title_col, mock_value_col, _mock_spacer_col = st.columns([1.4, 1, 7.6])
+                            mock_title_col, mock_value_col, _mock_spacer_col = st.columns(
+                                [0.85, 1.2, 7.95], gap="xxsmall", vertical_alignment="top",
+                            )
                             with mock_title_col:
                                 st.markdown(
                                     '<div class="drv-board-title">CANDIDATES<span class="dot">•</span></div>',
@@ -4689,7 +4729,9 @@ elif main_view == DRAFT_VIEW:
                                     st.session_state.draft_room_position_view = "ALL"
 
                                 with st.container(key="draft_room_board_title_row"):
-                                    title_col, value_col, _spacer_col = st.columns([1.4, 1, 7.6])
+                                    title_col, value_col, _spacer_col = st.columns(
+                                        [0.85, 1.2, 7.95], gap="xxsmall", vertical_alignment="top",
+                                    )
                                     with title_col:
                                         st.markdown(
                                             '<div class="drv-board-title">CANDIDATES<span class="dot">•</span></div>',
