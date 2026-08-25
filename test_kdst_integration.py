@@ -78,10 +78,15 @@ class SourceIngestionTests(unittest.TestCase):
         self.assertGreater((self.proj["position"] == "K").sum(), 0, "no kickers in the baseline")
         self.assertGreater((self.proj["position"] == "DEF").sum(), 0, "no defenses in the baseline")
 
-    def test_kickers_carry_a_real_points_projection_and_a_multi_year_outlook(self):
+    def test_kickers_carry_a_real_points_projection_but_no_fabricated_multi_year_outlook(self):
+        # Kicker points now come from the league's own scoring_settings rather than a vendor
+        # export (sleeper_kicker_projections.csv, regenerable via
+        # sleeper_client.build_baseline_projection_rows). Sleeper publishes no multi-year
+        # outlook, so -- exactly as with DST below -- that absence has to survive ingestion
+        # as an absence rather than as a stand-in number.
         k = self.proj[self.proj["position"] == "K"]
         self.assertTrue(k["projection"].notna().all(), "kickers must carry a real season projection")
-        self.assertTrue(k["proj_3yr"].notna().all(), "the DS dynasty kicker table does carry 3yr")
+        self.assertTrue(k["proj_3yr"].isna().all(), "a 3yr outlook must NOT be invented for kickers")
 
     def test_defenses_carry_a_real_points_projection_but_no_fabricated_multi_year_outlook(self):
         # Draft Sharks publishes DST only as a REDRAFT table -- there is no 3yr column to
@@ -226,11 +231,10 @@ class InterchangeabilityTests(unittest.TestCase):
         # ordering here must not be presented as a real preference," and it fires for
         # streamers without anyone teaching it what a streamer is.
         #
-        # Deliberately NOT asserted at the top of the field: on the real Draft Sharks numbers
-        # the leading kicker genuinely separates (adjacent tav gaps of 5.6/4.4/3.3 before the
-        # field collapses to 0.06/0.47/0.08 from roughly K5 down), which is the engine
-        # correctly reporting that "minimal separation" is not the same as "no separation."
         # What must be true is that each position CONTAINS a real interchangeable block.
+        # (Kickers now satisfy this across the WHOLE field rather than only from K5 down --
+        # see test_the_kicker_field_is_a_near_tie_under_league_scored_points for why that
+        # changed when their points stopped coming from a vendor's scoring assumptions.)
         for pos in ("K", "DEF"):
             tavs = [r["final_score"] for r in self.board if r["position"] == pos]
             self.assertTrue(
@@ -238,12 +242,24 @@ class InterchangeabilityTests(unittest.TestCase):
                 f"{pos} should contain a window of mutually interchangeable candidates",
             )
 
-    def test_the_leading_kicker_is_not_flattened_into_the_field(self):
-        # The other half of the same point, and the thing a K/DST-specific "these are all the
-        # same" hack would destroy: a genuinely better kicker must still read as better.
+    def test_the_kicker_field_is_a_near_tie_under_league_scored_points(self):
+        # This assertion used to run the other way, and the reason it flipped is a data
+        # change, not a scoring change: kicker points now come from the league's own
+        # scoring_settings (sleeper_kicker_projections.csv) instead of a vendor export.
+        #
+        # Measured on the same 12 kickers, the K1-vs-K12 gap is 11 points league-scored,
+        # against 33 in Draft Sharks' export and 31 in CBS's. A vendor export doesn't just
+        # shift the level (VOR absorbs that) -- it inflates the SPREAD, which is precisely
+        # what VOR reads as separation. On the vendor numbers the top kicker looked like a
+        # genuinely separated leader (adjacent gaps 5.6/4.4/3.3); league-scored, every
+        # adjacent gap in the field falls inside NEAR_TIE_BAND. Three points of season-long
+        # separation between two kickers IS a tie, and the engine now says so on its own.
+        #
+        # The discriminating power of the flag is guarded by the RB contrast below: this is
+        # the flag reporting a real property of the data, not a flag that fires on anything.
         tavs = [r["final_score"] for r in self.board if r["position"] == "K"]
-        self.assertFalse(ps.near_tie_flags(tavs)[1],
-                         "a real gap at the top of the kicker field must survive as a real gap")
+        self.assertTrue(ps.near_tie_flags(tavs)[1],
+                        "league-scored kickers separate by less than NEAR_TIE_BAND")
 
     def test_top_skill_players_are_not_a_near_tie_group(self):
         # The contrast case: if everything flagged near-tie the flag would mean nothing.
@@ -303,20 +319,29 @@ class MissingMultiYearOutlookTests(unittest.TestCase):
         for a in adjs:
             self.assertEqual(a, 0.0, "a missing 3yr outlook must produce no adjustment at all")
 
-    def test_kickers_do_get_a_real_time_horizon_opinion(self):
-        # The contrast: the DS dynasty kicker table DOES carry a 3yr column, so kickers must
-        # still be scored on it. The guard is about absent data, not about the position.
-        adjs = [r.get("time_horizon_adj", 0.0) for r in self.board if r["position"] == "K"]
-        self.assertTrue(any(a != 0.0 for a in adjs),
-                        "kickers carry a real 3yr outlook and should be adjusted on it")
+    def test_positions_carrying_a_real_3yr_outlook_do_get_a_time_horizon_opinion(self):
+        # The contrast that keeps the guard honest: it must suppress the adjustment for
+        # ABSENT data, not for particular positions. The offensive skill positions still
+        # carry a real 3yr column and must still be scored on it.
+        #
+        # (Kickers were this contrast case until their points moved off the Draft Sharks
+        # dynasty table, which carried a 3yr column, onto league-scored Sleeper projections,
+        # which carry none. They are now covered by the DEF case above instead.)
+        for pos in ("RB", "WR", "TE"):
+            adjs = [r.get("time_horizon_adj", 0.0) for r in self.board if r["position"] == pos]
+            self.assertTrue(adjs, f"no {pos} on the board")
+            self.assertTrue(any(a != 0.0 for a in adjs),
+                            f"{pos} carries a real 3yr outlook and should be adjusted on it")
 
-    def test_the_change_is_a_no_op_for_every_player_carrying_a_full_projection(self):
-        # Every row in the committed baseline that has a season projection also has a 3yr
-        # projection, so this guard cannot have moved any pre-existing valuation.
+    def test_only_sources_without_a_3yr_column_are_missing_one(self):
+        # Points-but-no-3yr is confined to exactly the two positions whose committed source
+        # publishes no multi-year outlook at all (DST's redraft-only table, and kickers'
+        # league-scored Sleeper projections). Any other position appearing here would mean
+        # a 3yr column went missing somewhere it actually exists.
         proj = self.merger.projections
         both_missing = proj[proj["projection"].notna() & proj["proj_3yr"].isna()]
         self.assertTrue(
-            set(both_missing["position"]) <= {"DEF"},
+            set(both_missing["position"]) <= {"DEF", "K"},
             f"unexpected positions with points but no 3yr: {set(both_missing['position'])}",
         )
 

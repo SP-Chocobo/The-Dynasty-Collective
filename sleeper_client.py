@@ -10,6 +10,7 @@ offline or rate-limited.
 
 from __future__ import annotations
 
+import csv
 import json
 import time
 from pathlib import Path
@@ -319,6 +320,135 @@ def compute_points_from_stats(stats: dict, scoring_settings: dict) -> float:
         if value:
             total += float(value) * float(weight)
     return round(total, 2)
+
+
+# -- regenerating a committed baseline rankings CSV from a live sync ----------
+#
+# data/baseline/rankings/*.csv is the offline pool DataMerger reads when there's no
+# live connection. Most of those files come from a vendor PDF, which means they carry
+# that vendor's OWN scoring assumptions baked into their point totals. These two
+# helpers exist to write one from Sleeper instead, so a position's points come from
+# THIS league's scoring_settings rather than a vendor's guess at them.
+#
+# That distinction is measurable, not cosmetic. Scored under one real league's kicking
+# settings, the K1-vs-K12 gap is 11 points; the same 12 kickers carry a 33-point gap in
+# Draft Sharks' export and 31 in CBS's. A vendor export doesn't just shift the level
+# (which VOR would absorb) -- it changes the SPREAD, which is exactly what VOR reads as
+# positional separation. Whichever vendor supplies a position's points is therefore
+# deciding how sharply that position separates, which is a scoring-settings question
+# that only the league itself can answer.
+#
+# Deliberately position-agnostic: `positions` is just a filter over whatever the caller
+# asks for, and nothing here knows or cares which positions are "streamers." A position
+# gets league-scored points because the caller asked for it, never because of what it is.
+
+def _normalize_for_trade_value(name: str) -> str:
+    """Lowercased, punctuation-free name key for matching a carried-forward trade value.
+
+    Deliberately local and minimal rather than importing data_merger's normalize_name:
+    this only has to match two spellings of the same committed baseline row ("B Aubrey"),
+    and importing the merger here would invert the dependency direction between the API
+    client and the thing that reads its output.
+    """
+    return "".join(ch for ch in name.lower() if ch.isalnum() or ch.isspace()).strip()
+
+
+def build_baseline_projection_rows(
+    projections: dict[str, dict],
+    players_db: dict[str, dict],
+    scoring_settings: dict,
+    season_factor: int,
+    positions: Optional[list[str]] = None,
+    source_date: Optional[str] = None,
+    trade_values: Optional[dict[str, float]] = None,
+) -> list[dict]:
+    """Score a week of Sleeper projections into baseline-rankings CSV rows.
+
+    projections/players_db/scoring_settings come straight off SleeperClient
+    (get_weekly_projections, get_players, and the league's own scoring_settings).
+
+    season_factor is injected rather than imported so this module stays free of a
+    dependency on draft_room -- callers pass draft_room.SLEEPER_WEEKLY_TO_SEASON_FACTOR,
+    keeping one definition of "how a weekly projection becomes a season-equivalent"
+    rather than a second copy drifting here.
+
+    proj_3yr is left empty because Sleeper supplies no multi-year outlook, and an empty
+    proj_3yr is genuinely neutral downstream -- score_row only applies time_horizon_adj
+    to rows carrying a real multi-year outlook, so a blank column contributes exactly
+    0.0 rather than a manufactured growth signal.
+
+    trade_values (normalized name -> value) exists because Sleeper supplies no trade value
+    either, and build_available_pool currently DROPS any player whose merged row has
+    trade_value None -- so a refresh that wrote points alone would silently empty the
+    refreshed position off the draft board. Callers pass the values already sitting in the
+    committed pool (DataMerger.projections/trade_values) to carry that real data forward.
+    Anything absent stays absent: a missing trade value is left None so the pool's own
+    admission rule still decides, rather than being invented here to force a row in.
+
+    Rows scoring <= 0 are dropped: under any real scoring settings that means the
+    player has no projection at all (retired, unsigned, season-ending IR), not that
+    they project to be bad, and carrying them would drag a position's replacement
+    rank down onto players who will never be drafted.
+    """
+    wanted = {p.upper() for p in positions} if positions else None
+    scored: list[tuple[float, dict]] = []
+    for pid, stats in (projections or {}).items():
+        meta = (players_db or {}).get(str(pid))
+        if not meta:
+            continue
+        position = (meta.get("position") or "").upper()
+        if wanted is not None and position not in wanted:
+            continue
+        points = compute_points_from_stats(stats, scoring_settings) * float(season_factor)
+        if points <= 0:
+            continue
+        first = (meta.get("first_name") or "").strip()
+        last = (meta.get("last_name") or "").strip()
+        # "B Aubrey", matching the initial+surname convention every other committed
+        # baseline CSV uses, so norm_name matching collapses onto the same key.
+        name = f"{first[:1]} {last}".strip() if last else (meta.get("full_name") or "").strip()
+        if not name:
+            continue
+        carried = (trade_values or {}).get(_normalize_for_trade_value(name))
+        scored.append((points, {
+            "name": name,
+            "team": (meta.get("team") or "").strip(),
+            "position": position,
+            "projection": round(points, 1),
+            "proj_3yr": "",
+            "trade_value": "" if carried is None else carried,
+            "source_date": source_date or time.strftime("%Y-%m-%d"),
+        }))
+
+    scored.sort(key=lambda pair: -pair[0])
+    rows = []
+    for index, (_points, row) in enumerate(scored, start=1):
+        rows.append({**row, "rank": float(index)})
+    return rows
+
+
+BASELINE_RANKINGS_COLUMNS = [
+    "name", "team", "position", "rank", "projection", "proj_3yr", "trade_value", "source_date",
+]
+
+
+def write_baseline_projection_csv(rows: list[dict], path: Path) -> Path:
+    """Write build_baseline_projection_rows output to a baseline rankings CSV.
+
+    Refuses to write an empty file: an unreachable API and a genuinely empty
+    projection set are indistinguishable here, and silently truncating a committed
+    baseline to a header row would delete a working offline pool on a bad network day.
+    """
+    if not rows:
+        raise ValueError(f"refusing to write an empty baseline CSV to {path}")
+    path = Path(path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with path.open("w", newline="") as handle:
+        writer = csv.DictWriter(handle, fieldnames=BASELINE_RANKINGS_COLUMNS)
+        writer.writeheader()
+        for row in rows:
+            writer.writerow({column: row.get(column, "") for column in BASELINE_RANKINGS_COLUMNS})
+    return path
 
 
 def find_roster_for_user(rosters: list[dict], user_id: str) -> Optional[dict]:
