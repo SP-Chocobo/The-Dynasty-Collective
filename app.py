@@ -301,32 +301,21 @@ _GLOBAL_CSS = """
         min-height: 44px;
         font-weight: 600;
     }
-    /* Draft Room UI-authority pass: the position filter used to be a raw st.multiselect --
-       a text input + dropdown + removable "x" chips, the single most "generic utility
-       control" element on the board's own page (see draft_board_ui.py for the standard
-       everything else on this screen is held to). Replaced with st.pills (same multi-select
-       semantics, same "display only" behavior, same options/default) styled to read as a
-       compact filter bar in the board's own idiom: small mono-caps buttons, not big rounded
-       chips. Unselected buttons stay deliberately quiet (muted border/text, no fill) so the
-       row doesn't compete with the board below it -- only the selected state gets real
-       color, and that color is --sky (the same "this is engaged" signal the embedded
-       board already uses for its own expanded-row state), never --emerald, which the
-       necessity pills on the very same screen already use to mean "this candidate is a good
-       value." One UI-state color, one analytical-signal color -- the two must never share a
-       hue on a screen where both appear at once. The Player Pool control (previously a
-       native st.radio) gets the same treatment via st.segmented_control, for the identical
-       reason: an exclusive single choice among a few named options is exactly what
-       segmented_control is for, and every other exclusive-choice control in this app
-       already uses it (main nav above, Draft Room mode below). */
-    .st-key-draft_room_position_filter [data-testid="stButtonGroup"],
-    .st-key-mock_draft_position_filter [data-testid="stButtonGroup"],
+    /* Draft Room UI-authority pass. Both Player Pool controls (Live + Mock) use
+       st.segmented_control (same single-select semantics as the old st.radio, same
+       options/default) styled as a compact filter bar in the board's own idiom: small
+       mono-caps buttons, quiet until selected. Selected state uses --sky (the same "this
+       control is engaged" signal the embedded board already uses for its own expanded-row
+       state), deliberately never --emerald, which the necessity pills on the very same
+       screen already use to mean "this candidate is a good value" -- one UI-state color,
+       one analytical-signal color, never sharing a hue on a screen where both appear.
+       segmented_control specifically because it's already this app's idiom for "exactly one
+       of a few named exclusive choices" (main nav, Draft Room mode toggle). */
     .st-key-draft_room_pool_scope_control [data-testid="stButtonGroup"],
     .st-key-mock_draft_pool_scope_control [data-testid="stButtonGroup"] {
         gap: 6px;
         row-gap: 6px;
     }
-    .st-key-draft_room_position_filter button[data-variant="pills"],
-    .st-key-mock_draft_position_filter button[data-variant="pills"],
     .st-key-draft_room_pool_scope_control button[data-variant="segmented_control"],
     .st-key-mock_draft_pool_scope_control button[data-variant="segmented_control"] {
         min-height: 30px;
@@ -340,23 +329,62 @@ _GLOBAL_CSS = """
         background: #1b1c1f;
         border: 1px solid #2a2b2e !important;
         color: #6b7076;
+        border-radius: 6px;
         transition: border-color 0.15s ease, color 0.15s ease, background 0.15s ease;
     }
-    .st-key-draft_room_position_filter button[data-variant="pills"] { border-radius: 6px; }
-    .st-key-draft_room_position_filter button[data-variant="pills"]:hover,
-    .st-key-mock_draft_position_filter button[data-variant="pills"]:hover,
     .st-key-draft_room_pool_scope_control button[data-variant="segmented_control"]:hover,
     .st-key-mock_draft_pool_scope_control button[data-variant="segmented_control"]:hover {
         border-color: #3a3c42 !important;
         color: #9ca3af;
     }
-    .st-key-draft_room_position_filter button[data-variant="pills"][data-selected="true"],
-    .st-key-mock_draft_position_filter button[data-variant="pills"][data-selected="true"],
     .st-key-draft_room_pool_scope_control button[data-variant="segmented_control"][data-selected="true"],
     .st-key-mock_draft_pool_scope_control button[data-variant="segmented_control"][data-selected="true"] {
         background: rgba(14,165,233,0.10);
         border-color: #0ea5e9 !important;
         color: #7dd3fc;
+    }
+    /* The position filter (Live Draft AND Mock Draft -- one Draft Room surface, two modes,
+       one control language), second design round (see REVIEW_LOG.md): even recolored, seven
+       always-visible boxed buttons still read as seven independent UI objects competing with
+       the board -- rejected, along with a "quiet text rail" variant that fixed the box
+       chrome but still put all seven words on the screen at once by default. Landed on a
+       COLLAPSED control instead: the trigger (rendered by the st.popover calls at these two
+       keys, styled below) shows only the CURRENT state as one short string -- "All
+       positions" or "RB · TE · WR" -- and expands into the actual multi-select surface only
+       on click. That inner surface reuses the quiet text-rail styling here (no box/border
+       per option, color+underline only) since inside an already-opened, already-small
+       popover a compact word list is exactly right -- it's only the
+       seven-boxes-on-the-main-screen-at-all-times that was the problem. */
+    .st-key-draft_room_position_filter [data-testid="stButtonGroup"],
+    .st-key-mock_draft_position_filter [data-testid="stButtonGroup"] {
+        gap: 14px;
+        row-gap: 6px;
+    }
+    .st-key-draft_room_position_filter button[data-variant="pills"],
+    .st-key-mock_draft_position_filter button[data-variant="pills"] {
+        min-height: 0;
+        min-width: 0;
+        padding: 2px 0;
+        font-family: 'JetBrains Mono', 'DejaVu Sans Mono', monospace;
+        font-size: 0.78rem;
+        font-weight: 500;
+        letter-spacing: 0.02em;
+        background: transparent;
+        border: none !important;
+        border-bottom: 2px solid transparent;
+        border-radius: 0;
+        color: #6b7076;
+        transition: color 0.15s ease, border-color 0.15s ease;
+    }
+    .st-key-draft_room_position_filter button[data-variant="pills"]:hover,
+    .st-key-mock_draft_position_filter button[data-variant="pills"]:hover {
+        color: #9ca3af;
+    }
+    .st-key-draft_room_position_filter button[data-variant="pills"][data-selected="true"],
+    .st-key-mock_draft_position_filter button[data-variant="pills"][data-selected="true"] {
+        color: #7dd3fc;
+        border-bottom-color: #0ea5e9;
+        font-weight: 700;
     }
     /* The "flag a player to compare" input was previously a full-width, always-visible
        text box sitting inline above the filter row -- equal visual weight to the primary
@@ -373,6 +401,31 @@ _GLOBAL_CSS = """
         border-color: #2a2b2e !important;
     }
     .st-key-draft_room_flag_popover button:hover {
+        color: #e5e7eb;
+        border-color: #3a3c42 !important;
+    }
+    /* Position filter, round 2 (both Live Draft and Mock Draft): rejected all three "row
+       of independent objects" treatments from round 1 (colored pills, then a muted text
+       rail -- see REVIEW_LOG.md for the full comparison of three collapsed/rail/bare-text
+       concepts). Landed on a COLLAPSED control: the trigger's own label IS the current
+       selection ("All positions" / "RB · TE · WR"), so the filter is legible without
+       opening it, and it occupies a single, small, quiet element instead of seven. Bordered
+       to match the "Flag a player" control next to it on Live Draft -- the two are visually
+       the same family of small toolbar control, not one button next to one bare caption. */
+    .st-key-draft_room_position_popover button,
+    .st-key-mock_draft_position_popover button {
+        min-height: 34px;
+        padding: 5px 12px;
+        font-family: 'JetBrains Mono', 'DejaVu Sans Mono', monospace;
+        font-size: 0.76rem;
+        font-weight: 600;
+        color: #9ca3af;
+        background: #1b1c1f;
+        border: 1px solid #2a2b2e !important;
+        border-radius: 6px;
+    }
+    .st-key-draft_room_position_popover button:hover,
+    .st-key-mock_draft_position_popover button:hover {
         color: #e5e7eb;
         border-color: #3a3c42 !important;
     }
@@ -4193,11 +4246,32 @@ elif main_view == DRAFT_VIEW:
                         st.info("No candidates available in the current player pool/scope.")
                     elif mock_snap is not None:
                         mock_positions_present = sorted({c.position for c in mock_snap.candidates})
-                        mock_position_filter = st.pills(
-                            "Position", options=mock_positions_present, selection_mode="multi",
-                            default=mock_positions_present, key="mock_draft_position_filter",
-                            help="Display only -- never changes what's analyzed, ranked, or scored.",
-                        ) or []
+                        # Same collapsed-control treatment as Live Draft's own position filter
+                        # (see REVIEW_LOG.md) -- Mock Draft and Live Draft are two modes of the
+                        # same Draft Room surface, so the filter control has to feel identical
+                        # switching between them, not read as two different products.
+                        _mock_current_selection = st.session_state.get(
+                            "mock_draft_position_filter", mock_positions_present
+                        )
+                        if set(_mock_current_selection) == set(mock_positions_present):
+                            _mock_summary = "All positions"
+                        elif _mock_current_selection:
+                            _mock_summary = " · ".join(
+                                p for p in mock_positions_present if p in _mock_current_selection
+                            )
+                        else:
+                            _mock_summary = "None"
+                        mock_filter_col, _mock_spacer_col = st.columns([1.2, 4.8])
+                        with mock_filter_col:
+                            with st.popover(
+                                _mock_summary, key="mock_draft_position_popover", use_container_width=True,
+                                help="Position filter -- display only, never changes what's analyzed, ranked, or scored.",
+                            ):
+                                mock_position_filter = st.pills(
+                                    "Position", options=mock_positions_present, selection_mode="multi",
+                                    default=mock_positions_present, key="mock_draft_position_filter",
+                                    label_visibility="collapsed",
+                                ) or []
                         mock_filtered = (
                             [c for c in mock_snap.candidates if c.position in mock_position_filter]
                             if mock_position_filter else list(mock_snap.candidates)
@@ -4431,11 +4505,14 @@ elif main_view == DRAFT_VIEW:
                             }
 
                             # One toolbar row for both meta-controls below -- the flag popover fills
-                            # in immediately (it doesn't depend on the board), the position pills
-                            # fill their column in further down, once positions_present exists. A
+                            # in immediately (it doesn't depend on the board), the position filter
+                            # fills its column in further down, once positions_present exists. A
                             # DeltaGenerator column handle stays writable no matter when in the
                             # script it's used, so this doesn't require computing both up front.
-                            flag_col, filter_col = st.columns([1, 3])
+                            # Both are collapsed popover triggers now, not full-width controls, so
+                            # they only need enough column width to hold their own short label --
+                            # the trailing spacer keeps them from stretching across the whole row.
+                            flag_col, filter_col, _spacer_col = st.columns([1, 1.2, 2.8])
                             flagged_player_id = None
                             with flag_col:
                                 with st.popover(
@@ -4500,11 +4577,33 @@ elif main_view == DRAFT_VIEW:
 
                                 positions_present = sorted({c.position for c in snap.candidates})
                                 with filter_col:
-                                    position_filter = st.pills(
-                                        "Position", options=positions_present, selection_mode="multi",
-                                        default=positions_present, key="draft_room_position_filter",
-                                        help="Display only -- never changes what's analyzed, ranked, or scored.",
-                                    ) or []
+                                    # Collapsed filter control (see REVIEW_LOG.md for the two
+                                    # rejected "row of always-visible controls" alternatives).
+                                    # Quiet at rest -- the trigger's own label already states
+                                    # the current selection in plain text ("All positions" /
+                                    # "RB · WR · TE"), so the filter is legible without opening
+                                    # it -- and only becomes an actual selection surface once
+                                    # clicked, exactly like the Flag-a-player popover next to it.
+                                    _current_selection = st.session_state.get(
+                                        "draft_room_position_filter", positions_present
+                                    )
+                                    if set(_current_selection) == set(positions_present):
+                                        _summary = "All positions"
+                                    elif _current_selection:
+                                        _summary = " · ".join(
+                                            p for p in positions_present if p in _current_selection
+                                        )
+                                    else:
+                                        _summary = "None"
+                                    with st.popover(
+                                        _summary, key="draft_room_position_popover", use_container_width=True,
+                                        help="Position filter -- display only, never changes what's analyzed, ranked, or scored.",
+                                    ):
+                                        position_filter = st.pills(
+                                            "Position", options=positions_present, selection_mode="multi",
+                                            default=positions_present, key="draft_room_position_filter",
+                                            label_visibility="collapsed",
+                                        ) or []
                                 filtered = [c for c in snap.candidates if c.position in position_filter] if position_filter else list(snap.candidates)
                                 display_snap = dataclasses.replace(snap, candidates=tuple(filtered))
 
