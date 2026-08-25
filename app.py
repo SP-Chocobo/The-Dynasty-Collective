@@ -343,31 +343,38 @@ _GLOBAL_CSS = """
         border-color: #0ea5e9 !important;
         color: #7dd3fc;
     }
-    /* The "flag a player to compare" input was previously a full-width, always-visible
-       text box sitting inline above the filter row -- equal visual weight to the primary
-       filter/board despite being a rare, optional action. Tucked into a popover (the same
-       "secondary action behind a small trigger" language the league switcher already
-       established) so the default view is just the toolbar + board. */
-    .st-key-draft_room_flag_popover button {
-        min-height: 36px;
-        padding: 6px 14px;
-        font-size: 0.82rem;
-        font-weight: 500;
-        color: #9ca3af;
-        background: transparent;
-        border-color: #2a2b2e !important;
+    /* Refresh Picks previously had no styling of its own -- a bare st.button, so it fell back
+       to the app-wide default (full container width, generic large touch-target box), making
+       it read as the loudest thing in the toolbar despite being a secondary, occasional sync
+       action next to the quiet Player Pool segmented control. Restyled as a sibling of that
+       same control (identical height/font/border/radius language) rather than a big CTA box,
+       and no longer stretched to its column's full width. */
+    .st-key-draft_room_refresh_btn button {
+        width: auto !important;
+        min-height: 30px;
+        padding: 4px 12px;
+        font-family: 'JetBrains Mono', 'DejaVu Sans Mono', monospace;
+        font-size: 0.72rem;
+        font-weight: 600;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+        background: #1b1c1f;
+        border: 1px solid #2a2b2e !important;
+        color: #6b7076;
+        border-radius: 6px;
+        transition: border-color 0.15s ease, color 0.15s ease, background 0.15s ease;
     }
-    .st-key-draft_room_flag_popover button:hover {
-        color: #e5e7eb;
+    .st-key-draft_room_refresh_btn button:hover {
         border-color: #3a3c42 !important;
+        color: #9ca3af;
     }
     /* Position filter, round 3: the multi-select itself was rejected -- a user can only ever
        be looking at one meaningful board view at a time (a real position, a real flex-slot
        view, or everything), never an arbitrary hand-picked SET of positions. Concept 1/3:
        the view control is the board's own title row ("CANDIDATES" ... current value),
-       directly above the board, not grouped with Player Pool/Flag Player. No border, no
-       chevron, no pill shape anywhere -- the current value's own typography (bold, brighter
-       than the muted label beside it) is the only affordance that it's interactive. */
+       directly above the board, not grouped with Player Pool. No border, no chevron, no
+       pill shape anywhere -- the current value's own typography (bold, brighter than the
+       muted label beside it) is the only affordance that it's interactive. */
     .drv-board-title {
         font-family: 'JetBrains Mono', 'DejaVu Sans Mono', monospace;
         font-size: 0.72rem;
@@ -4615,7 +4622,7 @@ elif main_view == DRAFT_VIEW:
 
                     top_row_col1, top_row_col2 = st.columns([1, 2])
                     with top_row_col1:
-                        if st.button("🔄 Refresh Picks", key="draft_room_refresh_btn", use_container_width=True):
+                        if st.button("↻ Refresh Picks", key="draft_room_refresh_btn"):
                             try:
                                 fetched_picks = draft_client.get_draft_picks(draft_id)
                                 st.session_state.draft_room_picks_by_draft[draft_id] = fetched_picks
@@ -4665,35 +4672,12 @@ elif main_view == DRAFT_VIEW:
                                 "settings": league.get("settings"),
                             }
 
-                            # One toolbar row for both meta-controls below -- the flag popover fills
-                            # in immediately (it doesn't depend on the board), the position filter
-                            # fills its column in further down, once positions_present exists. A
-                            # DeltaGenerator column handle stays writable no matter when in the
-                            # script it's used, so this doesn't require computing both up front.
-                            # The position/board-view control used to live in the second column
-                            # here -- moved to sit directly on the candidate board itself (see
-                            # REVIEW_LOG.md, round 3): it's a property of the board, not a
-                            # page-level filter, so it no longer shares a row with Flag Player.
-                            flag_col, _spacer_col = st.columns([1, 3.8])
-                            flagged_player_id = None
-                            with flag_col:
-                                with st.popover(
-                                    "🏷️ Flag a player", key="draft_room_flag_popover", use_container_width=True,
-                                    help="Add a specific player to the board below as a labeled comparison point -- never changes the ranking or analysis.",
-                                ):
-                                    flag_query = st.text_input(
-                                        "Player name (optional)", key="draft_room_flag_query",
-                                    )
-                                    if flag_query:
-                                        flag_matches = [m for m in matching_players(player_universe, flag_query) if m.get("available")]
-                                        if flag_matches:
-                                            flag_labels = {m["player_id"]: f"{m['name']} ({m['position']}, {m['team']})" for m in flag_matches[:8]}
-                                            flagged_player_id = st.selectbox(
-                                                "Which one?", options=list(flag_labels.keys()),
-                                                format_func=lambda pid: flag_labels[pid], key="draft_room_flag_select",
-                                            )
-                                        else:
-                                            st.caption("No available player matched that.")
+                            # Flag a Player was removed (see REVIEW_LOG.md) -- Sleeper already has
+                            # its own player-watchlist feature, and this control's real function
+                            # (forcing one specific player into the fully-analyzed candidate set via
+                            # user_selected_player_id, even if the board wouldn't otherwise surface
+                            # him) had no UI trigger left to reach it once removed, so build_snapshot
+                            # below is now always called with the default (None).
 
                             # build_snapshot is the single most expensive call in this view (a full
                             # board computation plus one opponent board per intervening roster) --
@@ -4710,7 +4694,6 @@ elif main_view == DRAFT_VIEW:
                             snapshot_cache_key = (
                                 draft_id, target_index, str(my_roster_id),
                                 st.session_state.draft_room_pool_scope,
-                                str(flagged_player_id) if flagged_player_id is not None else None,
                                 len(draft_picks), merger.freshest_date,
                             )
                             cached = st.session_state.get("draft_room_snapshot_cache")
@@ -4722,7 +4705,6 @@ elif main_view == DRAFT_VIEW:
                                         merger, players_db, draft_picks, pick_order, target_index, my_roster_id,
                                         league_for_engine, pick_label=pick_label,
                                         pool_scope=st.session_state.draft_room_pool_scope,
-                                        user_selected_player_id=flagged_player_id,
                                     )
                                     st.session_state.draft_room_snapshot_cache = (snapshot_cache_key, snap)
                                 except Exception as exc:  # noqa: BLE001 -- surface, never crash the whole dashboard
@@ -4744,8 +4726,8 @@ elif main_view == DRAFT_VIEW:
                                 # flex-slot view like FLEX/IDP_FLEX using that slot's own actual
                                 # eligible-position set, or ALL). Placed as the board's own
                                 # title row, directly above the board itself, not grouped with
-                                # Player Pool/Flag Player -- this is a property of the board
-                                # ("what view am I looking at"), not a page-level filter.
+                                # Player Pool -- this is a property of the board ("what view am
+                                # I looking at"), not a page-level filter.
                                 view_options = position_view_options(
                                     set(positions_present), league_for_engine.get("roster_positions") or [],
                                 )
