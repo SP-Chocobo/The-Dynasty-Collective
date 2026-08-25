@@ -375,77 +375,83 @@ _GLOBAL_CSS = """
         letter-spacing: 0.08em;
         text-transform: uppercase;
         color: #6b7076;
-        padding-top: 8px;
+        padding-top: 10px;
+        white-space: nowrap;
+    }
+    .drv-board-title .dot {
+        color: #3a3c42;
+        padding: 0 0.4em;
+        font-weight: 400;
     }
     .st-key-draft_room_board_title_row,
     .st-key-mock_draft_board_title_row {
         margin-bottom: 2px;
     }
+    /* Round 3 refinement: the current-view control is now a small bordered tag -- the same
+       visual language as the board's own "12-team - Superflex - Dynasty" / "N pick(s) to
+       your next selection" state tags (see draft_board_ui.py's .tag class) -- sitting
+       immediately after "CANDIDATES -", not a bold plain-text value far off at the row's
+       right edge. Still no chevron. */
+    .st-key-draft_room_view_toggle,
+    .st-key-mock_draft_view_toggle {
+        margin-top: 6px;
+    }
     .st-key-draft_room_view_toggle button,
     .st-key-mock_draft_view_toggle button {
         min-height: 0;
-        padding: 4px 0;
-        background: transparent !important;
-        border: none !important;
+        width: auto !important;
+        display: inline-flex !important;
+        padding: 3px 10px;
+        background: #1b1c1f;
+        border: 1px solid #3a3c42 !important;
+        border-radius: 4px;
         font-family: 'JetBrains Mono', 'DejaVu Sans Mono', monospace;
-        font-size: 0.92rem;
-        font-weight: 700;
-        letter-spacing: 0.02em;
-        color: #e5e7eb;
-        text-align: right;
-        justify-content: flex-end;
-        border-bottom: 2px solid transparent;
-        border-radius: 0;
-        transition: border-color 0.15s ease, color 0.15s ease;
+        font-size: 0.74rem;
+        font-weight: 600;
+        letter-spacing: 0.03em;
+        color: #9ca3af;
+        text-align: left;
+        justify-content: flex-start !important;
+        transition: color 0.15s ease, border-color 0.15s ease, background 0.15s ease;
     }
     .st-key-draft_room_view_toggle button:hover,
     .st-key-mock_draft_view_toggle button:hover {
-        border-bottom-color: #0ea5e9;
-        color: #7dd3fc;
+        color: #e5e7eb;
+        border-color: #4a4d54 !important;
+        background: #202124;
     }
-    /* The expanded option list: one elegant surface unfolding in place (real document flow,
-       pushing the board down -- never a floating overlay), not ten separate button-looking
-       objects. A single hairline top border is the only structure; every option is bare text
-       at a generous touch-target height, current option picked out by weight/color only
-       (never a background fill, which would read as a badge/status chip). */
+    /* Concept 3, refined: the expanded surface is a single horizontal row of bare-text
+       options (never boxed pills, never a vertical list stacking the whole page down) that
+       unfolds directly beneath the title row in normal document flow, and collapses back to
+       just the tag the instant an option is picked -- so the at-rest state is always only
+       "CANDIDATES - ALL", never a lingering open panel. */
     .st-key-draft_room_view_menu,
     .st-key-mock_draft_view_menu {
         border-top: 1px solid #2a2b2e;
-        margin-top: 4px;
-        padding-top: 2px;
+        margin-top: 8px;
+        padding-top: 10px;
         margin-bottom: 10px;
     }
-    .st-key-draft_room_view_menu .stButton,
-    .st-key-mock_draft_view_menu .stButton {
-        width: 100% !important;
-    }
-    .st-key-draft_room_view_menu .stButton button,
-    .st-key-mock_draft_view_menu .stButton button {
-        width: 100% !important;
-        display: flex !important;
-        min-height: 40px;
-        padding: 8px 4px;
+    .st-key-draft_room_view_menu button,
+    .st-key-mock_draft_view_menu button {
+        width: auto !important;
+        min-height: 0;
+        padding: 4px 2px;
         background: transparent !important;
         border: none !important;
         font-family: 'JetBrains Mono', 'DejaVu Sans Mono', monospace;
-        font-size: 0.82rem;
+        font-size: 0.8rem;
         font-weight: 500;
-        letter-spacing: 0.02em;
+        letter-spacing: 0.03em;
         color: #8b8f98;
         text-align: left;
         justify-content: flex-start !important;
-        border-radius: 4px;
-        transition: color 0.15s ease, background 0.15s ease;
+        border-radius: 0;
+        transition: color 0.15s ease;
     }
-    .st-key-draft_room_view_menu .stButton button > div,
-    .st-key-mock_draft_view_menu .stButton button > div {
-        justify-content: flex-start !important;
-        width: 100%;
-    }
-    .st-key-draft_room_view_menu .stButton button:hover,
-    .st-key-mock_draft_view_menu .stButton button:hover {
+    .st-key-draft_room_view_menu button:hover,
+    .st-key-mock_draft_view_menu button:hover {
         color: #e5e7eb;
-        background: rgba(255,255,255,0.03) !important;
     }
     .st-key-draft_room_view_menu [class*="st-key-draft_room_view_opt_active_"] button,
     .st-key-mock_draft_view_menu [class*="st-key-mock_draft_view_opt_active_"] button {
@@ -4333,16 +4339,16 @@ elif main_view == DRAFT_VIEW:
                             st.session_state.mock_draft_position_view = "ALL"
 
                         with st.container(key="mock_draft_board_title_row"):
-                            mock_title_col, mock_value_col = st.columns([3, 1])
+                            mock_title_col, mock_value_col, _mock_spacer_col = st.columns([1.4, 1, 7.6])
                             with mock_title_col:
                                 st.markdown(
-                                    '<div class="drv-board-title">CANDIDATES</div>',
+                                    '<div class="drv-board-title">CANDIDATES<span class="dot">•</span></div>',
                                     unsafe_allow_html=True,
                                 )
                             with mock_value_col:
                                 if st.button(
                                     position_view_label(mock_current_view),
-                                    key="mock_draft_view_toggle", use_container_width=True,
+                                    key="mock_draft_view_toggle",
                                     help="Board view -- display only, never changes what's analyzed, ranked, or scored.",
                                 ):
                                     st.session_state.mock_draft_position_view_open = not st.session_state.get(
@@ -4352,17 +4358,17 @@ elif main_view == DRAFT_VIEW:
 
                         if st.session_state.get("mock_draft_position_view_open", False):
                             with st.container(key="mock_draft_view_menu"):
-                                for opt in mock_view_options:
+                                mock_opt_cols = st.columns(len(mock_view_options))
+                                for opt, mock_opt_col in zip(mock_view_options, mock_opt_cols):
                                     opt_key = (
                                         f"mock_draft_view_opt_active_{opt}" if opt == mock_current_view
                                         else f"mock_draft_view_opt_{opt}"
                                     )
-                                    if st.button(
-                                        position_view_label(opt), key=opt_key, use_container_width=True,
-                                    ):
-                                        st.session_state.mock_draft_position_view = opt
-                                        st.session_state.mock_draft_position_view_open = False
-                                        st.rerun()
+                                    with mock_opt_col:
+                                        if st.button(position_view_label(opt), key=opt_key):
+                                            st.session_state.mock_draft_position_view = opt
+                                            st.session_state.mock_draft_position_view_open = False
+                                            st.rerun()
 
                         mock_filtered = filter_candidates_by_view(mock_snap.candidates, mock_current_view)
                         # The same production board component Live Draft Room renders
@@ -4683,16 +4689,16 @@ elif main_view == DRAFT_VIEW:
                                     st.session_state.draft_room_position_view = "ALL"
 
                                 with st.container(key="draft_room_board_title_row"):
-                                    title_col, value_col = st.columns([3, 1])
+                                    title_col, value_col, _spacer_col = st.columns([1.4, 1, 7.6])
                                     with title_col:
                                         st.markdown(
-                                            '<div class="drv-board-title">CANDIDATES</div>',
+                                            '<div class="drv-board-title">CANDIDATES<span class="dot">•</span></div>',
                                             unsafe_allow_html=True,
                                         )
                                     with value_col:
                                         if st.button(
                                             position_view_label(current_view),
-                                            key="draft_room_view_toggle", use_container_width=True,
+                                            key="draft_room_view_toggle",
                                             help="Board view -- display only, never changes what's analyzed, ranked, or scored.",
                                         ):
                                             st.session_state.draft_room_position_view_open = not st.session_state.get(
@@ -4702,17 +4708,17 @@ elif main_view == DRAFT_VIEW:
 
                                 if st.session_state.get("draft_room_position_view_open", False):
                                     with st.container(key="draft_room_view_menu"):
-                                        for opt in view_options:
+                                        opt_cols = st.columns(len(view_options))
+                                        for opt, opt_col in zip(view_options, opt_cols):
                                             opt_key = (
                                                 f"draft_room_view_opt_active_{opt}" if opt == current_view
                                                 else f"draft_room_view_opt_{opt}"
                                             )
-                                            if st.button(
-                                                position_view_label(opt), key=opt_key, use_container_width=True,
-                                            ):
-                                                st.session_state.draft_room_position_view = opt
-                                                st.session_state.draft_room_position_view_open = False
-                                                st.rerun()
+                                            with opt_col:
+                                                if st.button(position_view_label(opt), key=opt_key):
+                                                    st.session_state.draft_room_position_view = opt
+                                                    st.session_state.draft_room_position_view_open = False
+                                                    st.rerun()
 
                                 filtered = filter_candidates_by_view(snap.candidates, current_view)
                                 display_snap = dataclasses.replace(snap, candidates=tuple(filtered))
