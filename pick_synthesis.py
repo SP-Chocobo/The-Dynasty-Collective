@@ -737,6 +737,16 @@ class CandidateSnapshot:
     # THRESHOLD and decision_path_flags' block_opportunity, the one consumer. Defaulted so
     # existing hand-built CandidateSnapshot fixtures that predate this field still construct.
     rival_premium_take_probability: Optional[float] = None
+    # What deferring this position actually costs: this player's projected points minus the
+    # points of the best player at his position expected to be STILL UNDRAFTED when the draft
+    # ends (draft_room.horizon_replacement). OBSERVABLE ONLY -- read by nothing that scores,
+    # so team_acquisition_value above is byte-identical with or without it.
+    #
+    # None, never 0.0, when the loaded pool ends before the horizon: an unknown waiting cost
+    # is not a free one, and zero would read as "wait, it's fine" at exactly the positions
+    # whose data is thinnest. Consumers must render absence as absence.
+    waiting_cost: Optional[float] = None
+    horizon_floor: Optional[float] = None
 
 
 @dataclass(frozen=True)
@@ -851,6 +861,10 @@ def build_snapshot(
             "consensus_tier": reach["consensus_tier"] if reach else None,
             "reach_label": reach["reach_label"] if reach else None,
             "projected_points": row.get("projected_points"),
+            # Straight off the board row -- computed once per board in draft_room, not
+            # recomputed per candidate here (see _attach_waiting_cost).
+            "waiting_cost": row.get("waiting_cost"),
+            "horizon_floor": row.get("horizon_floor"),
         })
 
     round_num = (max((p.get("round") or 1) for p in picks) if picks else 1)

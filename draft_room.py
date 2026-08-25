@@ -669,6 +669,166 @@ def drafted_counts_by_position(picks: list[dict], players_db: dict[str, dict]) -
     return _drafted_counts_by_position(picks, players_db)
 
 
+# -- draft-horizon consumption: what will still be here when the draft ENDS ---------------
+#
+# replacement_levels answers "what is this position worth over the guy at starter-demand rank
+# RIGHT NOW". That prices replacement at draft day. It is the right question for a position
+# you can only acquire by drafting, and the wrong one for a position whose replacement is
+# still sitting there when the draft ends -- and the difference is measurable rather than
+# rhetorical. Scored under one real league's settings, the best player still undrafted when
+# the draft ends delivers 98% of a starting defense and 96% of a starting kicker, against 36%
+# of a starting running back. Waiting costs 0.12 pts/week at DEF and 7.53 at RB.
+#
+# Nothing below knows what a kicker is. Every position goes through the identical arithmetic;
+# the split above falls out of each position's own value decay, which is the point.
+
+HORIZON_UNDRAFTED_SLOTS = ("IR",)  # slots a draft doesn't fill, so they aren't draft demand
+
+
+def draftable_slots_per_team(roster_positions: list[str]) -> int:
+    """How many roster slots a draft actually fills per team. TAXI counts (rookie picks land
+    there); IR does not (nobody drafts onto injured reserve)."""
+    return sum(1 for slot in roster_positions or [] if slot not in HORIZON_UNDRAFTED_SLOTS)
+
+
+def positional_bench_appetite(
+    pool: pd.DataFrame, value_col: str, roster_positions: list[str], num_teams: int,
+) -> dict[str, float]:
+    """Relative appetite for drafting DEPTH at each position, derived from that position's own
+    value decay rather than from any belief about the position.
+
+    The reasoning: a team benches a player because the drop from their starter to the next one
+    available is worth owning. Where a position holds its value just past starter demand, its
+    backup is nearly free later and stocking one buys little; where it falls away sharply, the
+    backup is worth a pick. So appetite tracks how much value is LOST across the tier past
+    starter demand -- (1 - retention) -- not how much is retained.
+
+    Measured on real data this puts RB roughly 6x DEF without a single positional constant,
+    which matches how drafts actually run. That agreement is a sanity check on the shape, not
+    a calibration: this is a PRIOR, and expected_positional_consumption below hands control to
+    observed picks as soon as there are any.
+
+    A position whose loaded pool can't reach 2x starter demand has no decay to read. It does
+    NOT get 0.0 -- that would assert "this position is never benched", which is a claim, not
+    an absence, and it hands that position's bench picks to whichever positions happened to
+    load deeper (measured: a 40-deep RB pool zeroed RB and drove TE's consumption to 66 of
+    180 picks). Nor does it get a number read off the bottom of the short list, which is the
+    original K/DST defect. It gets the mean rate of the positions that COULD be measured --
+    "no evidence this one decays differently from average" -- the same missing-information
+    rule time_horizon_adj follows for an absent multi-year outlook.
+    """
+    slot_counts = starter_slot_counts(roster_positions)
+    demands, rates = {}, {}
+    for position in FANTASY_POSITIONS:
+        demand = round(num_teams * slot_counts.get(position, 0))
+        demands[position] = demand
+        if demand < 1:
+            continue
+        values = sorted(
+            pool.loc[pool["position"] == position, value_col].dropna().astype(float),
+            reverse=True,
+        )
+        if len(values) < 2 * demand or values[demand - 1] <= 0:
+            continue  # unmeasurable here; filled in from the mean rate below
+        rates[position] = max(0.0, 1.0 - values[2 * demand - 1] / values[demand - 1])
+
+    mean_rate = sum(rates.values()) / len(rates) if rates else 0.0
+    return {
+        position: demands[position] * rates.get(position, mean_rate) if demands[position] >= 1 else 0.0
+        for position in FANTASY_POSITIONS
+    }
+
+
+def expected_positional_consumption(
+    pool: pd.DataFrame, value_col: str, roster_positions: list[str], num_teams: int,
+    drafted_counts: Optional[dict[str, int]] = None,
+) -> dict[str, float]:
+    """Expected TOTAL players taken at each position across the whole draft.
+
+    Starts from what the league's own roster_positions require -- every team must fill its
+    starting slots, so num_teams x starter share is demand that is going to happen -- and
+    splits the remaining (bench) picks by positional_bench_appetite above.
+
+    Then it self-calibrates. The draft itself is the best available evidence about how this
+    particular room drafts, so the share of the REMAINING picks going to each position is
+    blended from prior toward observed in proportion to how much of the draft has happened:
+    pure prior at pick 1, almost entirely observed by the end. Expressed as a share of picks
+    still to come, and added to what has already gone, so the estimate can never fall below
+    what the draft has already done -- and no ADP source is needed to get there.
+    """
+    drafted = drafted_counts or {}
+    slot_counts = starter_slot_counts(roster_positions)
+    total_picks = num_teams * draftable_slots_per_team(roster_positions)
+
+    starter_demand = {p: num_teams * slot_counts.get(p, 0.0) for p in FANTASY_POSITIONS}
+    bench_picks = max(total_picks - sum(starter_demand.values()), 0.0)
+    appetite = positional_bench_appetite(pool, value_col, roster_positions, num_teams)
+    appetite_total = sum(appetite.values())
+
+    prior = {
+        p: starter_demand[p] + (bench_picks * appetite[p] / appetite_total if appetite_total else 0.0)
+        for p in FANTASY_POSITIONS
+    }
+    prior_total = sum(prior.values())
+    prior_share = {p: (prior[p] / prior_total if prior_total else 0.0) for p in FANTASY_POSITIONS}
+
+    picks_made = sum(drafted.values())
+    remaining_picks = max(total_picks - picks_made, 0)
+    if picks_made <= 0:
+        blended_share = prior_share
+    else:
+        # Weight toward observation as the draft reveals more of itself.
+        w = min(picks_made / total_picks, 1.0) if total_picks else 0.0
+        observed_share = {p: drafted.get(p, 0) / picks_made for p in FANTASY_POSITIONS}
+        blended_share = {
+            p: (1.0 - w) * prior_share[p] + w * observed_share[p] for p in FANTASY_POSITIONS
+        }
+
+    return {
+        p: drafted.get(p, 0) + remaining_picks * blended_share.get(p, 0.0)
+        for p in FANTASY_POSITIONS
+    }
+
+
+def horizon_replacement(
+    pool: pd.DataFrame, value_col: str, roster_positions: list[str], num_teams: int,
+    drafted_counts: Optional[dict[str, int]] = None,
+) -> dict[str, dict]:
+    """Per position, the best player expected to be STILL UNDRAFTED when the draft ends.
+
+    {position: {"rank", "value", "pool_depth", "certain"}} against the CURRENT (undrafted)
+    pool: if this position is expected to lose `n` more players, the best one left is the
+    (n+1)th best still on the board.
+
+    `value` is None and `certain` is False when the horizon rank falls past the end of the
+    loaded pool. That case is reported as unknown rather than answered with the worst player
+    we happen to have loaded -- the whole reason K/DST were mispriced for so long is that a
+    truncated source's last row got treated as though it were a real replacement level, and
+    a floor read off the bottom of a short list would rebuild that same defect one layer up.
+    Callers must treat value=None as "no opinion", never as zero.
+    """
+    consumption = expected_positional_consumption(
+        pool, value_col, roster_positions, num_teams, drafted_counts,
+    )
+    drafted = drafted_counts or {}
+    out: dict[str, dict] = {}
+    for position in FANTASY_POSITIONS:
+        values = sorted(
+            pool.loc[pool["position"] == position, value_col].dropna().astype(float),
+            reverse=True,
+        )
+        still_to_go = max(consumption.get(position, 0.0) - drafted.get(position, 0), 0.0)
+        rank = int(round(still_to_go)) + 1
+        certain = 1 <= rank <= len(values)
+        out[position] = {
+            "rank": rank,
+            "value": values[rank - 1] if certain else None,
+            "pool_depth": len(values),
+            "certain": certain,
+        }
+    return out
+
+
 def _team_starters_filled(picks: list[dict], players_db: dict[str, dict], roster_id) -> dict[str, int]:
     """How many of THIS roster's picks so far landed at each fantasy position -- the raw
     count, not weighed against slot capacity yet (need_bonus does that separately).
@@ -755,17 +915,46 @@ def _scale_vor_to_bpa(vor: pd.Series) -> pd.Series:
     return (vor / reference * 100).clip(lower=0, upper=100)
 
 
-def _records_with_normalized_nan(df: pd.DataFrame, column: str) -> list[dict]:
-    """.to_dict("records") with one column's NaN normalized to real None -- pandas leaves a
-    missing float as NaN (a non-None float, `nan is not None`), not the "missing" convention
-    every consumer of this board (pick_synthesis.py, the Draft Room UI) actually expects.
-    Fixed here, once, at the source, rather than every downstream caller re-guarding against
-    NaN on its own."""
+def _records_with_normalized_nan(df: pd.DataFrame, *columns: str) -> list[dict]:
+    """.to_dict("records") with the named columns' NaN normalized to real None -- pandas
+    leaves a missing float as NaN (a non-None float, `nan is not None`), not the "missing"
+    convention every consumer of this board (pick_synthesis.py, the Draft Room UI) actually
+    expects. Fixed here, once, at the source, rather than every downstream caller re-guarding
+    against NaN on its own."""
     records = df.to_dict("records")
     for record in records:
-        if pd.isna(record.get(column)):
-            record[column] = None
+        for column in columns:
+            if pd.isna(record.get(column)):
+                record[column] = None
     return records
+
+
+def _attach_waiting_cost(
+    scored: pd.DataFrame, pool: pd.DataFrame, roster_positions: list[str], num_teams: int,
+    drafted_counts: Optional[dict[str, int]],
+) -> None:
+    """Attach horizon_floor and waiting_cost to a scored board, in place.
+
+    waiting_cost = this player's own projected points MINUS the points of the best player at
+    his position expected to still be undrafted when the draft ends (see horizon_replacement).
+    It answers "what does deferring this position actually cost me", in season points, on the
+    same footing for every position.
+
+    OBSERVABLE ONLY. Nothing here feeds universal_value, team_acquisition_value, bpa, or
+    necessity -- team_acquisition_value is computed and rounded before this runs and is
+    byte-identical with these columns present or absent. That separation is deliberate: the
+    raw quantity gets to be measured and argued with before it is allowed to move a decision.
+
+    None (not zero) when horizon_replacement has no confident floor for that position. A
+    position whose loaded pool ends before the horizon has an UNKNOWN waiting cost, and zero
+    would read as "waiting is free" -- the most dangerous possible wrong answer here.
+    """
+    horizon = horizon_replacement(pool, "_points", roster_positions, num_teams, drafted_counts)
+    floors = {position: data["value"] for position, data in horizon.items()}
+    scored["horizon_floor"] = scored["position"].map(floors)
+    scored["waiting_cost"] = (
+        scored["projected_points"].astype(float) - scored["horizon_floor"].astype(float)
+    ).round(2)
 
 
 def compute_draft_board(
@@ -942,6 +1131,7 @@ def compute_draft_board(
         scored = pool.join(pd.DataFrame(list(pool.apply(upside_score, axis=1))))
         scored["mode"] = "upside"
         scored["projected_points"] = scored["_points"]
+        _attach_waiting_cost(scored, pool, roster_positions, num_teams, drafted_counts)
         # kind="stable" + player_id as an explicit tiebreaker: without both, two players
         # landing on the exact same rounded final_score could rank in either relative order
         # depending on players_db's own dict iteration order (pool's own row order traces
@@ -957,7 +1147,8 @@ def compute_draft_board(
         return _records_with_normalized_nan(results[[
             "player_id", "name", "position", "team", "injury_status", "bpa", "bpa_source",
             "growth_signal", "confidence", "final_score", "mode", "projected_points",
-        ]], "projected_points")
+            "horizon_floor", "waiting_cost",
+        ]], "projected_points", "horizon_floor", "waiting_cost")
 
     my_filled = _team_starters_filled(picks, players_db, my_roster_id)
     slot_counts = starter_slot_counts(roster_positions)
@@ -1060,6 +1251,7 @@ def compute_draft_board(
     scored["confidence"] = pool["bpa_source"].map(_confidence)
     scored["mode"] = "balanced"
     scored["projected_points"] = pool["_points"]
+    _attach_waiting_cost(scored, pool, roster_positions, num_teams, drafted_counts)
     # player_id tiebreaker + kind="stable" -- see the identical sort in the upside-mode branch
     # above for the full reasoning (input-order-independent tiebreaking among exact ties).
     results = scored.sort_values(["final_score", "player_id"], ascending=[False, True], kind="stable")
@@ -1067,7 +1259,8 @@ def compute_draft_board(
         "player_id", "name", "position", "team", "injury_status", "bpa", "bpa_source",
         "time_horizon_adj", "risk_adj", "universal_value",
         "need_bonus", "eligibility_bonus", "confidence", "final_score", "mode", "projected_points",
-    ]], "projected_points")
+        "horizon_floor", "waiting_cost",
+    ]], "projected_points", "horizon_floor", "waiting_cost")
 
 
 # -- in-app Mock Draft sandbox (see app.py's Draft Room view) -------------------------------

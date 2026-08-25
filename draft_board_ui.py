@@ -41,6 +41,7 @@ import json
 from typing import Optional
 
 import design_system
+from draft_room import SLEEPER_WEEKLY_TO_SEASON_FACTOR
 from pick_synthesis import CandidateSnapshot, PickSnapshot
 
 # The class NAMES the necessity badges use in the embedded HTML below -- the CSS itself
@@ -84,6 +85,45 @@ def _context_gap(c: CandidateSnapshot) -> Optional[str]:
     return None
 
 
+WAITING_CHEAP_PER_WEEK = 0.5   # below this, deferring the position is not a real cost
+WAITING_STEEP_PER_WEEK = 3.0   # above this, deferring gives up real weekly production
+
+
+def _waiting_note(c: CandidateSnapshot) -> Optional[dict]:
+    """The sentence a suppressed-by-replaceability number owes the reader, or None.
+
+    A number the board has quietly marked cheap-to-defer looks like a bug unless it says why,
+    so this renders the actual arithmetic rather than a verdict: what the best player at this
+    position expected to survive the draft is worth, and what taking this one now buys per
+    week instead.
+
+    Deliberately NOT folded into the existing context-gap glyph. That one already means
+    something specific and different -- "his raw talent exceeds the board leader's, he trails
+    only on acquisition rank" -- and a glyph that means two unrelated things means neither.
+
+    None when waiting_cost is None: the pool ran out before the horizon, so there is no
+    honest claim to make. Absent, not reassuring.
+    """
+    if c.waiting_cost is None or c.horizon_floor is None:
+        return None
+    per_week = c.waiting_cost / SLEEPER_WEEKLY_TO_SEASON_FACTOR
+    if per_week <= WAITING_CHEAP_PER_WEEK:
+        tone, verdict = "cheap", "Waiting is cheap"
+    elif per_week >= WAITING_STEEP_PER_WEEK:
+        tone, verdict = "steep", "Waiting is expensive"
+    else:
+        tone, verdict = "moderate", "Waiting costs a little"
+    return {
+        "tone": tone,
+        "label": f"{per_week:.2f}/wk",
+        "title": (
+            f"{verdict}. Deferring {c.position} costs {per_week:.2f} pts/week: "
+            f"{c.name} projects {c.projected_points:.0f} against {c.horizon_floor:.0f} for the "
+            f"best {c.position} expected to still be undrafted when the draft ends."
+        ),
+    }
+
+
 def serialize_candidate(c: CandidateSnapshot) -> dict:
     """One CandidateSnapshot -> the plain dict the board's JS expects. Field-for-field off
     the real snapshot; the only computed value here is _forces/_context_gap, both pure
@@ -110,6 +150,7 @@ def serialize_candidate(c: CandidateSnapshot) -> dict:
         "eligBonus": c.eligibility_bonus,
         "forces": _forces(c),
         "contextGap": _context_gap(c),
+        "waitNote": _waiting_note(c),
         "flagged": False,  # set by serialize_snapshot against user_selected_player_id
     }
 
@@ -200,6 +241,13 @@ __DESIGN_SYSTEM_BADGE_NECESSITY__
 .chevron { color: var(--dim); font-size: .7rem; transition: transform .15s ease; }
 .row.expanded .chevron { transform: rotate(180deg); }
 
+.wait-note {
+  font-size: .66rem; font-variant-numeric: tabular-nums; cursor: help;
+  padding: .05rem .3rem; border-radius: 3px; letter-spacing: .01em; opacity: .78;
+}
+.wait-note.wait-cheap { color: var(--tie-b); border: 1px solid color-mix(in srgb, var(--tie-b) 32%, transparent); }
+.wait-note.wait-moderate { opacity: .55; border: 1px solid transparent; }
+.wait-note.wait-steep { color: var(--pure); border: 1px solid color-mix(in srgb, var(--pure) 32%, transparent); }
 .context-gap { font-size: .72rem; opacity: .62; cursor: help; }
 .context-gap.ctx-up { color: var(--tie-b); }
 .context-gap.ctx-down { color: var(--pure); }
@@ -289,6 +337,15 @@ function contextGapGlyph(c) {
     return `<span class="context-gap ctx-down" title="Context Gap: his raw talent exceeds the board leader's own value by ${gap} -- he trails only on acquisition rank.">▽</span>`;
   }
   return "";
+}
+
+// The cost of deferring this position, stated as the arithmetic behind it rather than as a
+// verdict. Absent (not reassuring) when the pool ran out before the draft horizon, since
+// there is no honest claim to make there -- see _waiting_note.
+function waitGlyph(c) {
+  if (!c.waitNote) return "";
+  const n = c.waitNote;
+  return `<span class="wait-note wait-${n.tone}" title="${n.title.replace(/"/g, "&quot;")}">${n.label}</span>`;
 }
 
 function connectionSentence(c) {
@@ -384,6 +441,7 @@ function render() {
         </div>
         <div class="row-metrics">
           <div class="ticks">${tickRow(c)}</div>
+          ${waitGlyph(c)}
           ${contextGapGlyph(c)}
           <span class="necessity-pill ${c.necClass}">${c.necessity}</span>
           <span class="tav mono">${c.tav}</span>
