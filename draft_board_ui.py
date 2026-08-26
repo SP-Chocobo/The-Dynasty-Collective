@@ -262,7 +262,28 @@ def filter_candidates_by_view(candidates: tuple, view: str) -> list:
     return [c for c in candidates if c.position == view]
 
 
-_POSITION_VIEW_LABELS = {"SUPER_FLEX": "SUPER FLEX", "IDP_FLEX": "IDP FLEX"}
+# Flex slots are labelled by what they actually accept, in the standard W/R/T notation, so
+# the control explains itself: FLEX and SUPER_FLEX read as WRT and QWRT rather than as two
+# words a reader has to already know the difference between. Letters run Q, W, R, T -- the
+# conventional order, not alphabetical.
+#
+# This is presentation-only naming of a set FLEX_SLOT_POSITIONS already defines; it invents no
+# eligibility rule. Every flex type the engine supports is named here on purpose, because the
+# fallback is the raw slot key: before this, WRRB_FLEX and REC_FLEX rendered as "WRRB_FLEX"
+# (9 characters) and "REC_FLEX" (8), which would blow out the single-row layout worse than
+# "SUPER FLEX" ever did. A test asserts every entry in FLEX_SLOT_POSITIONS has a label.
+#
+# The two-position slots are slashed rather than run together: WRRB_FLEX as "WR" would be
+# indistinguishable from the plain WR position view sitting next to it in the same row.
+# IDP_FLEX keeps a word because its three letters (D, L, B) compose into nothing readable, and
+# because "IDP" is already the established term for exactly that set.
+_POSITION_VIEW_LABELS = {
+    "FLEX": "WRT",
+    "SUPER_FLEX": "QWRT",
+    "WRRB_FLEX": "W/R",
+    "REC_FLEX": "W/T",
+    "IDP_FLEX": "IDP",
+}
 
 
 def position_view_label(view: str) -> str:
@@ -272,23 +293,27 @@ def position_view_label(view: str) -> str:
     return _POSITION_VIEW_LABELS.get(view, view)
 
 
-# One equal-width column per option is fine at six options and breaks at thirteen: a league
-# rostering every position (offense + K + DEF + IDP + both flex types) offers ALL plus twelve,
-# and SUPER FLEX needs about 85px of label against the ~80px a thirteen-way split leaves it.
-# Wrapping into rows keeps every button wide enough to render its own name at any count,
-# rather than capping the option list and hiding views a league genuinely has.
-VIEW_OPTIONS_PER_ROW = 7
+# Equal-width columns are the wrong shape for this control: of the thirteen views a fully
+# rostered league can offer, eleven are four characters or fewer (ALL, QB, K, DEF, DL...) and
+# exactly two are verbose -- SUPER FLEX at ten characters and IDP FLEX at eight. An equal
+# split hands "K" the same width as "SUPER FLEX", so the widest label sets the column and the
+# row runs out of space long before it needs to.
+#
+# Weighting each column by its own label keeps every view on ONE row at any count, which is
+# what the reveal was designed around -- it opens in place of the current-view tag, and a
+# second row turns a discreet inline control into a block. Wrapping and paging were both
+# considered and rejected: paging nests a second progressive disclosure inside a control that
+# is already behind one, so reaching DEF could cost two clicks and a guess.
+VIEW_OPTION_MIN_UNITS = 3   # floor, so a one-character label still gets a tappable button
 
 
-def chunk_view_options(options: list[str], per_row: int = VIEW_OPTIONS_PER_ROW) -> list[list[str]]:
-    """Split the board-view options into rows of at most per_row, preserving order.
+def view_option_widths(options: list[str]) -> list[float]:
+    """Relative column widths for the board-view options, proportional to label length.
 
-    Returns [[]] for an empty list rather than [], so a caller can iterate rows unconditionally
-    without a separate empty check.
+    Passed straight to st.columns, which accepts a weight list. Floored at
+    VIEW_OPTION_MIN_UNITS so "K" stays clickable rather than collapsing to its text width.
     """
-    if not options:
-        return [[]]
-    return [options[i:i + per_row] for i in range(0, len(options), per_row)]
+    return [float(max(VIEW_OPTION_MIN_UNITS, len(position_view_label(o)))) for o in options]
 
 
 def serialize_snapshot(

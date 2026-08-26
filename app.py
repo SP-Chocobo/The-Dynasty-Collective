@@ -4385,21 +4385,21 @@ elif main_view == DRAFT_VIEW:
 
                         if st.session_state.get("mock_draft_position_view_open", False):
                             with st.container(key="mock_draft_view_menu"):
-                                # Rows of at most VIEW_OPTIONS_PER_ROW -- a league rostering every
-                                # position offers 13 views, and a 13-way equal split leaves
-                                # SUPER FLEX too narrow to render its own label.
-                                for mock_opt_row in draft_board_ui.chunk_view_options(mock_view_options):
-                                    mock_opt_cols = st.columns(draft_board_ui.VIEW_OPTIONS_PER_ROW)
-                                    for opt, mock_opt_col in zip(mock_opt_row, mock_opt_cols):
-                                        opt_key = (
-                                            f"mock_draft_view_opt_active_{opt}" if opt == mock_current_view
-                                            else f"mock_draft_view_opt_{opt}"
-                                        )
-                                        with mock_opt_col:
-                                            if st.button(draft_board_ui.position_view_label(opt), key=opt_key):
-                                                st.session_state.mock_draft_position_view = opt
-                                                st.session_state.mock_draft_position_view_open = False
-                                                st.rerun()
+                                # ONE row at any option count -- columns weighted by label, so
+                                # SUPER FLEX gets the width it needs without "K" claiming the
+                                # same. The reveal opens in place of the current-view tag; a
+                                # second row would turn a discreet inline control into a block.
+                                mock_opt_cols = st.columns(draft_board_ui.view_option_widths(mock_view_options))
+                                for opt, mock_opt_col in zip(mock_view_options, mock_opt_cols):
+                                    opt_key = (
+                                        f"mock_draft_view_opt_active_{opt}" if opt == mock_current_view
+                                        else f"mock_draft_view_opt_{opt}"
+                                    )
+                                    with mock_opt_col:
+                                        if st.button(draft_board_ui.position_view_label(opt), key=opt_key):
+                                            st.session_state.mock_draft_position_view = opt
+                                            st.session_state.mock_draft_position_view_open = False
+                                            st.rerun()
 
                         mock_filtered = draft_board_ui.filter_candidates_by_view(mock_snap.candidates, mock_current_view)
                         # The same production board component Live Draft Room renders
@@ -4734,20 +4734,19 @@ elif main_view == DRAFT_VIEW:
 
                                 if st.session_state.get("draft_room_position_view_open", False):
                                     with st.container(key="draft_room_view_menu"):
-                                        # See the mock path above: fixed-width rows, not one
-                                        # equal split across however many views a league has.
-                                        for opt_row in draft_board_ui.chunk_view_options(view_options):
-                                            opt_cols = st.columns(draft_board_ui.VIEW_OPTIONS_PER_ROW)
-                                            for opt, opt_col in zip(opt_row, opt_cols):
-                                                opt_key = (
-                                                    f"draft_room_view_opt_active_{opt}" if opt == current_view
-                                                    else f"draft_room_view_opt_{opt}"
-                                                )
-                                                with opt_col:
-                                                    if st.button(draft_board_ui.position_view_label(opt), key=opt_key):
-                                                        st.session_state.draft_room_position_view = opt
-                                                        st.session_state.draft_room_position_view_open = False
-                                                        st.rerun()
+                                        # See the mock path above: one row, columns weighted by
+                                        # label width rather than split equally.
+                                        opt_cols = st.columns(draft_board_ui.view_option_widths(view_options))
+                                        for opt, opt_col in zip(view_options, opt_cols):
+                                            opt_key = (
+                                                f"draft_room_view_opt_active_{opt}" if opt == current_view
+                                                else f"draft_room_view_opt_{opt}"
+                                            )
+                                            with opt_col:
+                                                if st.button(draft_board_ui.position_view_label(opt), key=opt_key):
+                                                    st.session_state.draft_room_position_view = opt
+                                                    st.session_state.draft_room_position_view_open = False
+                                                    st.rerun()
 
                                 filtered = draft_board_ui.filter_candidates_by_view(snap.candidates, current_view)
                                 display_snap = dataclasses.replace(snap, candidates=tuple(filtered))

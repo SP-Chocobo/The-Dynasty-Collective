@@ -238,27 +238,64 @@ class BoardViewOptionsTests(unittest.TestCase):
         self.assertEqual(options, ["ALL", "QB", "RB", "WR", "TE", "FLEX", "SUPER_FLEX", "K", "DEF"])
 
 
-class BoardViewChunkingTests(unittest.TestCase):
-    """Wrapping the option row, so adding K/DEF doesn't squeeze the labels unreadable."""
+class BoardViewWidthTests(unittest.TestCase):
+    """One row at any option count, by weighting columns to their labels.
 
-    def test_a_full_league_wraps_instead_of_squeezing(self):
-        options = ui.position_view_options(
-            {"QB", "RB", "WR", "TE", "K", "DEF", "DL", "LB", "DB"},
-            BoardViewOptionsTests.EVERYTHING)
-        self.assertEqual(len(options), 13)
-        rows = ui.chunk_view_options(options)
-        self.assertGreater(len(rows), 1)
-        for row in rows:
-            self.assertLessEqual(len(row), ui.VIEW_OPTIONS_PER_ROW)
+    The control opens in place of the current-view tag, so it has to stay a single line. Of
+    the thirteen views a fully rostered league offers, eleven are <=4 characters and two are
+    verbose; an equal split lets the widest label set every column and runs the row out of
+    space. Wrapping was tried and rejected as visually a block rather than an inline reveal.
+    """
 
-    def test_chunking_preserves_order_and_loses_nothing(self):
-        options = ["ALL", "QB", "RB", "WR", "TE", "FLEX", "SUPER_FLEX", "K", "DEF"]
-        flat = [o for row in ui.chunk_view_options(options) for o in row]
-        self.assertEqual(flat, options)
+    FULL = ["ALL", "QB", "RB", "WR", "TE", "FLEX", "SUPER_FLEX",
+            "K", "DEF", "DL", "LB", "DB", "IDP_FLEX"]
 
-    def test_a_small_league_still_renders_one_row(self):
-        self.assertEqual(len(ui.chunk_view_options(["ALL", "QB", "RB", "WR", "TE"])), 1)
+    def test_one_width_per_option_in_order(self):
+        self.assertEqual(len(ui.view_option_widths(self.FULL)), len(self.FULL))
 
-    def test_empty_yields_one_empty_row_not_zero_rows(self):
-        # So a caller can iterate rows unconditionally.
-        self.assertEqual(ui.chunk_view_options([]), [[]])
+    def test_every_flex_slot_has_a_label(self):
+        # The fallback is the raw slot key, and two of them are 8-9 characters: WRRB_FLEX and
+        # REC_FLEX shipped with no label at all and would have blown out the row worse than
+        # SUPER FLEX did. A new flex type must not be able to reach the UI unnamed.
+        from player_universe import FLEX_SLOT_POSITIONS
+        for slot in FLEX_SLOT_POSITIONS:
+            label = ui.position_view_label(slot)
+            self.assertNotEqual(label, slot, f"{slot} falls through to its raw key")
+            self.assertLessEqual(len(label), 4, f"{slot} label {label!r} is too wide for one row")
+
+    def test_a_flex_label_never_collides_with_a_position_label(self):
+        # WRRB_FLEX rendered as "WR" would be indistinguishable from the WR position view
+        # sitting beside it in the same row.
+        from player_universe import FLEX_SLOT_POSITIONS
+        positions = {"ALL", "QB", "RB", "WR", "TE", "K", "DEF", "DL", "LB", "DB"}
+        for slot in FLEX_SLOT_POSITIONS:
+            self.assertNotIn(ui.position_view_label(slot), positions)
+
+    def test_flex_labels_name_the_positions_they_accept(self):
+        # Self-documenting: the label is the eligible set, so WRT and QWRT read as a pair.
+        self.assertEqual(ui.position_view_label("FLEX"), "WRT")
+        self.assertEqual(ui.position_view_label("SUPER_FLEX"), "QWRT")
+
+    def test_super_flex_is_not_abbreviated_to_a_team_code(self):
+        # This board renders team codes beside positions ("QB - SF"), so a two-letter SF
+        # filter would read as San Francisco in exactly the context where it must not.
+        self.assertNotEqual(ui.position_view_label("SUPER_FLEX"), "SF")
+
+    def test_the_shortest_label_still_gets_a_tappable_floor(self):
+        # "K" is one character; without the floor its column collapses to the text width.
+        w = dict(zip(self.FULL, ui.view_option_widths(self.FULL)))
+        self.assertGreaterEqual(w["K"], ui.VIEW_OPTION_MIN_UNITS)
+
+    def test_every_option_fits_its_own_label_at_the_worst_case_count(self):
+        # 13 options in a ~900px row. Roughly 9px per character at this control's font size,
+        # plus button padding -- so the check is that no column is squeezed under its content.
+        widths = ui.view_option_widths(self.FULL)
+        px = [900 * x / sum(widths) for x in widths]
+        for opt, got in zip(self.FULL, px):
+            needed = 9 * len(ui.position_view_label(opt)) + 24
+            self.assertGreater(got, needed,
+                               f"{ui.position_view_label(opt)} would truncate at {got:.0f}px")
+
+    def test_a_small_league_is_unaffected(self):
+        widths = ui.view_option_widths(["ALL", "QB", "RB", "WR", "TE"])
+        self.assertEqual(len(set(widths)), 1, "equal-length labels should get equal columns")
