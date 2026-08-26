@@ -997,7 +997,7 @@ def load_all(
     format_hint (a league's {"scoring", "superflex", "te_premium"}), when given, reorders the
     RANKINGS frames (never free agents or trade values -- neither has multiple format variants
     today) from worst- to best-matching before the dedup below, so the best-fitting file wins
-    the same-player tiebreak instead of whichever file happened to sort last by mtime. See
+    the same-player tiebreak instead of whichever file happened to sort last. See
     _detect_rankings_format/_rankings_format_match_score for how that match is scored. Offense
     and IDP rows never contend for the same tiebreak (Draft Sharks' offense and IDP exports
     cover disjoint position sets entirely), so this reordering is safe to apply as one global
@@ -1008,20 +1008,16 @@ def load_all(
     if not projections_dir.exists():
         return empty, empty.copy(), empty.copy()
 
-    # (mtime, name), not mtime alone: mtime stays the primary key so a genuinely newer upload
-    # still wins the same-player dedup tiebreak below ("newest wins" is real product behavior,
-    # not an accident) -- but a fresh git checkout writes every committed file with
-    # near-identical mtimes in arbitrary filesystem order, and under mtime-only sorting those
-    # ties resolved by iterdir() order, which is filesystem-dependent. Confirmed live during
-    # the M13 backtest: two checkouts of byte-identical data produced different row orders,
-    # which flipped merge_player tie-breaks (a real 13-point value swing on one player) with
-    # zero code difference. Filename breaks mtime ties canonically instead.
+    # Load order here doesn't matter -- sorted by name only so this loop itself is
+    # deterministic and doesn't depend on iterdir()'s filesystem order. What decides the
+    # dedup tiebreak is assigned AFTER loading, below.
     files = sorted(
         [p for p in projections_dir.iterdir() if p.suffix.lower() in (".csv", ".json", ".pdf")],
-        key=lambda p: (p.stat().st_mtime, p.name),
+        key=lambda p: p.name,
     )
-    rankings_frames, fa_frames, tvc_frames = [], [], []
-    rankings_scores: list[float] = []
+    rankings_entries: list[tuple[str, str, "pd.DataFrame", float]] = []
+    fa_entries: list[tuple[str, str, "pd.DataFrame"]] = []
+    tvc_entries: list[tuple[str, str, "pd.DataFrame"]] = []
     for f in files:
         try:
             df, kind = load_projection_file(f, default_kind=default_kind)
@@ -1037,23 +1033,53 @@ def load_all(
             df = df.sort_values("rank", na_position="last").drop_duplicates(subset="norm_name", keep="first")
         else:
             df = df.drop_duplicates(subset="norm_name", keep="first")
-        # trade_value_chart rows (asset_type/value, no rank/team/position-rank) have a
-        # different shape than rankings rows -- a separate bucket, not folded into
-        # rankings, so DataMerger.projections never mixes player rankings with rookie
-        # pick slot/future pick rows that would never sensibly match a roster player.
+
+        # The dedup tiebreak below is decided by (source_date, filename), NOT filesystem
+        # mtime as this used to read. Every loaded file already carries a source_date -- real,
+        # if the file declares one, or an mtime-derived fallback otherwise (see
+        # load_projection_file) -- and that value is part of the file's own committed content,
+        # not the filesystem's, so it survives a fresh checkout unchanged where mtime does not.
+        #
+        # mtime broke this twice, confirmed on real data both times. (1) The M13 backtest:
+        # two checkouts of byte-identical baseline data produced different row orders under
+        # mtime sorting, which flipped a real 13-point value swing on one player with zero
+        # code difference. (2) The pre-freeze audit: simulating a reversed-order checkout
+        # (plausible mtime assignment, nothing exotic) turned a single-source kicker pool into
+        # an unintended MIXTURE of two differently-scored sources -- vendor Draft Sharks rows
+        # sitting beside league-scored Sleeper rows in the same position, invisible in output.
+        #
+        # Filename remains the tiebreak for files sharing a date (four K/DST files in the
+        # committed baseline all declare 2026-08-25) -- that has NOT become a semantic
+        # precedence rule, it is still an arbitrary string comparison. What changed is that it
+        # is now the ONLY thing left to depend on for that tie, and a filename is fixed and
+        # checkout-order-independent where an mtime is not: the exact same tie resolves the
+        # exact same way on every clone, forever, instead of accidentally doing so today.
+        source_date = str(df["source_date"].iloc[0]) if "source_date" in df.columns and not df.empty else ""
         if kind == "free_agents":
-            fa_frames.append(df)
+            fa_entries.append((source_date, f.name, df))
         elif kind == "trade_value_chart":
-            tvc_frames.append(df)
+            tvc_entries.append((source_date, f.name, df))
         else:
-            rankings_frames.append(df)
-            rankings_scores.append(_rankings_format_match_score(_detect_rankings_format(f.name), format_hint))
+            score = _rankings_format_match_score(_detect_rankings_format(f.name), format_hint)
+            rankings_entries.append((source_date, f.name, df, score))
+
+    # trade_value_chart rows (asset_type/value, no rank/team/position-rank) have a
+    # different shape than rankings rows -- a separate bucket, not folded into
+    # rankings, so DataMerger.projections never mixes player rankings with rookie
+    # pick slot/future pick rows that would never sensibly match a roster player.
+    fa_entries.sort(key=lambda e: (e[0], e[1]))
+    tvc_entries.sort(key=lambda e: (e[0], e[1]))
+    rankings_entries.sort(key=lambda e: (e[0], e[1]))
+    fa_frames = [df for _, _, df in fa_entries]
+    tvc_frames = [df for _, _, df in tvc_entries]
+    rankings_frames = [df for _, _, df, _ in rankings_entries]
+    rankings_scores = [score for _, _, _, score in rankings_entries]
 
     if format_hint and len(rankings_frames) > 1:
         # Stable sort: among files tied on match score (e.g. two that both mismatch, or
-        # multiple with no scoring opinion at all), the original mtime order still decides --
-        # this only re-prioritizes real format matches, it doesn't invent a new tiebreak for
-        # files a hint can't distinguish between.
+        # multiple with no scoring opinion at all), the (source_date, filename) order above
+        # still decides -- this only re-prioritizes real format matches, it doesn't invent a
+        # new tiebreak for files a hint can't distinguish between.
         rankings_frames = [df for _, df in sorted(zip(rankings_scores, rankings_frames), key=lambda pair: pair[0])]
 
     return (

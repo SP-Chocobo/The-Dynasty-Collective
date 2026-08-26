@@ -399,16 +399,26 @@ class SameNameDifferentFamilyTests(unittest.TestCase):
 
 
 class LoadAllDeterminismTests(unittest.TestCase):
-    """load_all's file ordering decides same-player dedup tiebreaks ("newest wins"), and a
-    fresh git checkout writes every committed file with near-identical mtimes -- under
-    mtime-only sorting those ties resolved by filesystem iteration order, which is not
-    deterministic across checkouts (confirmed live during the M13 backtest: byte-identical
-    data, different row order, a real 13-point value swing on one player's tie-break). These
-    tests pin the two halves of the fix: identical mtimes resolve canonically by filename
-    regardless of creation order, and a genuinely newer file still wins regardless of name."""
+    """load_all's file ordering decides same-player dedup tiebreaks ("newest wins"). The
+    original version of this fix (M13/A0) kept mtime as the primary key on the theory that a
+    genuinely newer upload should still win regardless of filename -- and that held right up
+    until the pre-freeze audit reproduced a second, worse failure mode from the same root
+    cause: mtime is not part of a file's committed content, so a fresh git checkout can assign
+    it in effectively arbitrary order, and a plausible reversed-order checkout turned a
+    single-source kicker pool into an unintended MIXTURE of two differently-scored sources
+    (vendor Draft Sharks rows beside league-scored Sleeper rows), invisible in the output.
+
+    The fix now reads recency from the file's OWN DECLARED source_date -- part of its
+    committed content, so it survives a checkout unchanged -- with filename only breaking
+    ties between files that declare the identical date. These tests pin both halves: files
+    sharing a date resolve canonically by filename regardless of mtime or write order, and a
+    file whose CONTENT declares a genuinely later date still wins regardless of mtime or name.
+    """
 
     CSV_A = "name,team,position,rank,projection,proj_3yr,trade_value,source_date\nT Player,KC,RB,1.0,300.0,900.0,90.0,2026-08-01\n"
     CSV_B = "name,team,position,rank,projection,proj_3yr,trade_value,source_date\nT Player,KC,RB,1.0,250.0,800.0,70.0,2026-08-01\n"
+    CSV_NEWER_DATE = "name,team,position,rank,projection,proj_3yr,trade_value,source_date\nT Player,KC,RB,1.0,300.0,900.0,90.0,2026-08-25\n"
+    CSV_OLDER_DATE = "name,team,position,rank,projection,proj_3yr,trade_value,source_date\nT Player,KC,RB,1.0,250.0,800.0,70.0,2026-08-01\n"
 
     def _load_dir(self, write_order):
         import os
@@ -432,19 +442,52 @@ class LoadAllDeterminismTests(unittest.TestCase):
         self.assertEqual(row_one["trade_value"], row_two["trade_value"])
         self.assertEqual(row_one["trade_value"], 70.0)
 
-    def test_a_genuinely_newer_file_still_wins_regardless_of_name(self):
+    def test_a_genuinely_newer_file_still_wins_regardless_of_name_or_mtime(self):
+        # Deliberately adversarial on BOTH axes that must NOT decide this: the newer-dated
+        # file ("a_new_upload.csv", source_date 2026-08-25) sorts FIRST alphabetically and
+        # gets the OLDER filesystem mtime; the older-dated file ("z_old_upload.csv",
+        # source_date 2026-08-01) sorts LAST alphabetically and gets the NEWER filesystem
+        # mtime. A filename-only fallback would pick z_old_upload (70.0, wrong). An
+        # mtime-only fallback -- the exact thing this fix removes -- would also pick
+        # z_old_upload (70.0, wrong). Only reading the file's own declared source_date
+        # produces the right answer (90.0).
         import os
         tmpdir = tempfile.mkdtemp()
         self.addCleanup(lambda: shutil.rmtree(tmpdir, ignore_errors=True))
-        (Path(tmpdir) / "z_old_upload.csv").write_text(self.CSV_B)
-        (Path(tmpdir) / "a_new_upload.csv").write_text(self.CSV_A)
-        os.utime(Path(tmpdir) / "z_old_upload.csv", (1_700_000_000, 1_700_000_000))
-        os.utime(Path(tmpdir) / "a_new_upload.csv", (1_700_009_999, 1_700_009_999))
+        (Path(tmpdir) / "z_old_upload.csv").write_text(self.CSV_OLDER_DATE)
+        (Path(tmpdir) / "a_new_upload.csv").write_text(self.CSV_NEWER_DATE)
+        os.utime(Path(tmpdir) / "z_old_upload.csv", (1_700_009_999, 1_700_009_999))
+        os.utime(Path(tmpdir) / "a_new_upload.csv", (1_700_000_000, 1_700_000_000))
         rankings, _, _ = dm.load_all(Path(tmpdir))
         row = rankings[rankings["name"] == "T Player"].iloc[0]
-        # "a_" sorts FIRST by name, but it's newer -- mtime stays the primary key, so the
-        # newer upload's value (90.0) wins. The filename tiebreak never overrides recency.
         self.assertEqual(row["trade_value"], 90.0)
+
+    def test_reversed_checkout_order_no_longer_flips_the_real_kdst_pool(self):
+        # The exact reproduction from the pre-freeze audit: a plausible reversed-order
+        # checkout assigns mtimes in reverse alphabetical order across the real baseline's
+        # rankings directory. Before this fix, that turned the kicker pool into a mixture of
+        # two differently-scored sources (13 vendor Draft Sharks rows regained alongside the
+        # 37 league-scored Sleeper rows) with zero code difference -- purely from mtime.
+        import os, shutil as sh
+        real_dir = Path(__file__).parent / "data" / "baseline" / "rankings"
+        if not real_dir.exists():
+            self.skipTest("real baseline rankings directory not present")
+        tmpdir = tempfile.mkdtemp()
+        self.addCleanup(lambda: sh.rmtree(tmpdir, ignore_errors=True))
+        dst = Path(tmpdir) / "rankings"
+        sh.copytree(real_dir, dst)
+        names = sorted(p.name for p in dst.iterdir())
+        base = 1_700_000_000
+        for i, name in enumerate(names):
+            t = base - i  # reverse alphabetical order gets the LARGEST mtime
+            os.utime(dst / name, (t, t))
+        rankings, _, _ = dm.load_all(dst)
+        k = rankings[rankings["position"].astype(str).str.upper() == "K"]
+        sources = {os.path.basename(str(s)) for s in k["source_file"].unique()}
+        self.assertEqual(
+            sources, {"sleeper_kicker_projections.csv"},
+            f"reversed-order checkout produced a mixed-source kicker pool: {sources}",
+        )
 
 
 class DedupByNameAndPositionTests(unittest.TestCase):
