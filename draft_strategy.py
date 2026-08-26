@@ -483,11 +483,19 @@ def pick_analysis(
 
     # Position-level cost of delaying each position entirely (see positional_forfeits' own
     # docstring) -- built from the SAME opponent boards computed above, no extra board work.
-    # universal_value is absent from upside-mode rows, hence the guard; curves are the user's
-    # own board's remaining players per position, team-agnostic values.
+    # Curves are the user's own board's remaining players per position, team-agnostic values.
+    #
+    # Skipped entirely in upside mode. This used to read `if "universal_value" in row`, which
+    # had that effect only because upside boards did not carry the column at all; now that
+    # compute_draft_board emits it in both modes, the identical line would have silently
+    # SWITCHED forfeits ON in upside mode. That is a valuation decision, not a shape fix --
+    # an upside curve is a coherent team-agnostic curve, and computing forfeits off it is
+    # arguably more correct than the zero it yields today -- but it changes a live decision
+    # signal, so the existing behavior is preserved here explicitly and left open rather than
+    # changed as a side effect of a crash fix.
     position_curves: dict[str, list[float]] = {}
-    for row in my_board.values():
-        if "universal_value" in row and row.get("position"):
+    for row in ([] if mode == "upside" else my_board.values()):
+        if row.get("position"):
             position_curves.setdefault(row["position"], []).append(row["universal_value"])
     for curve in position_curves.values():
         curve.sort(reverse=True)
@@ -528,18 +536,22 @@ def pick_analysis(
             # between the two components across simulated draft states, against this app's
             # own "don't double-count correlated scarcity signals" rule. Splitting the
             # magnitude (here) from the probability (survival) keeps each counted once.
-            # universal_value is absent from upside-mode board rows, hence the guard.
-            if "universal_value" in opp_row:
-                premium = opp_row["final_score"] - opp_row["universal_value"]
-                if premium > rival_premium:
-                    rival_premium = premium
-                    # THIS specific rival's own real take_probability -- kept alongside the
-                    # premium (not folded into it) so a downstream human-facing "denies a
-                    # rival" label can require a credible path (this rival actually being
-                    # positioned to take him), separately from premium magnitude. See
-                    # pick_synthesis.decision_path_flags' block_opportunity, the one
-                    # consumer of this field.
-                    rival_premium_take_probability = risk["take_probability"]
+            #
+            # No mode guard: upside boards now carry universal_value too, and there it equals
+            # final_score exactly (upside_score reads nothing off the roster), so this
+            # subtraction is 0.0 for every player -- the true answer in that mode, not a
+            # missing one. rival_premium stays 0.0 either way, so dropping the old
+            # `if "universal_value" in opp_row` guard changes no behavior.
+            premium = opp_row["final_score"] - opp_row["universal_value"]
+            if premium > rival_premium:
+                rival_premium = premium
+                # THIS specific rival's own real take_probability -- kept alongside the
+                # premium (not folded into it) so a downstream human-facing "denies a rival"
+                # label can require a credible path (this rival actually being positioned to
+                # take him), separately from premium magnitude. See
+                # pick_synthesis.decision_path_flags' block_opportunity, the one consumer of
+                # this field.
+                rival_premium_take_probability = risk["take_probability"]
 
         results.append({
             "player_id": player_id,

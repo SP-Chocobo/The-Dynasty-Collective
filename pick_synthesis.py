@@ -845,6 +845,11 @@ def build_snapshot(
         pid = str(row["player_id"])
         a = analysis_by_id.get(pid, {})
         survival = a.get("survival_probability")
+        # Read strictly, no default: compute_draft_board owns the board's shape and now emits
+        # universal_value in BOTH modes (see its upside branch for what the column means
+        # there). A default here would only re-create the situation that broke this line --
+        # every consumer quietly deciding for itself what an absent column meant -- and would
+        # swallow a genuinely new third shape instead of failing where it was introduced.
         universal_value = row["universal_value"]
         reach = consensus_reach(row["name"], current_overall_pick, consensus_by_key)
         raw_candidates.append({

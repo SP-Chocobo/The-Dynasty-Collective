@@ -735,6 +735,170 @@ class BuildSnapshotTests(unittest.TestCase):
         self.assertIn(far_pick, {c.player_id for c in snap.candidates})
         self.assertEqual(snap.user_selected_player_id, far_pick)
 
+    def test_upside_mode_snapshots_build_at_all(self):
+        # Regression: upside-mode boards used to omit universal_value entirely (upside_score
+        # returns only final_score/growth_signal/confidence), and build_snapshot read that
+        # key unconditionally -- so ANY snapshot in upside mode raised KeyError. It went
+        # unnoticed because every app.py call site takes build_snapshot's own "balanced"
+        # default, and the one caller that passes mode="auto" (draft_simulation) only trips
+        # it past UPSIDE_MODE_DEFAULT_ROUND, deeper than any test drove a simulation.
+        snap = ps.build_snapshot(
+            self.merger, self.players_db, [], self.pick_order, current_index=0, my_roster_id="1",
+            league=LEAGUE, pick_label="1.01", top_n=5, mode="upside",
+        )
+        self.assertTrue(snap.candidates)
+
+    def test_upside_mode_preserves_the_value_layer_identity(self):
+        # team_acquisition_value == universal_value + need_bonus + eligibility_bonus is the
+        # contract every consumer of a candidate reads. Upside mode has no separated need or
+        # eligibility term at all, so the identity must hold with both at 0.0 -- which is
+        # only true if universal_value falls back to the team-agnostic final_score, not to
+        # some other number. This is what stops the KeyError fix from quietly turning into a
+        # value fabrication.
+        snap = ps.build_snapshot(
+            self.merger, self.players_db, [], self.pick_order, current_index=0, my_roster_id="1",
+            league=LEAGUE, pick_label="1.01", top_n=5, mode="upside",
+        )
+        for c in snap.candidates:
+            self.assertEqual(c.need_bonus, 0.0, c.name)
+            self.assertEqual(c.eligibility_bonus, 0.0, c.name)
+            self.assertAlmostEqual(
+                c.team_acquisition_value,
+                c.universal_value + c.need_bonus + c.eligibility_bonus,
+                places=6, msg=c.name,
+            )
+
+    def test_a_draft_deep_enough_to_flip_auto_mode_into_upside_completes(self):
+        # The actual uncovered path: auto mode reads the current round off the PICKS ALREADY
+        # MADE (compute_draft_board's own `current_round`), not off current_index, and flips
+        # to upside scoring at UPSIDE_MODE_DEFAULT_ROUND. So reaching it needs a real draft
+        # state that deep -- which no existing test had, since the only mode="auto" callers
+        # are simulations and the rookie-draft validator never runs past round 4.
+        #
+        # 8 teams, not 12: this fixture's pool is 40 players x 4 positions, and 14 completed
+        # rounds of 12 would drain it past what a round-15 board could still be built from.
+        # The picks themselves are laid out in a fixed pool order rather than engine-chosen
+        # -- what is under test is the board's SHAPE at depth, not the quality of the picks
+        # that got there, and an engine-chosen 14-round trajectory costs minutes to build.
+        teams = 8
+        league = dict(LEAGUE, total_rosters=teams)
+        # compute_draft_board derives the round as the MAX round among picks already made,
+        # so the flip lands once a round-UPSIDE_MODE_DEFAULT_ROUND pick is on the board, not
+        # when the next pick would open that round. This test takes that behavior as given
+        # and drives past it -- it is not the place to relitigate the boundary.
+        rounds_done = dr.UPSIDE_MODE_DEFAULT_ROUND
+        drafted = list(self.players_db)[:teams * rounds_done]
+        picks = [
+            {"pick_no": i + 1, "round": i // teams + 1,
+             "roster_id": str(i % teams + 1), "player_id": pid}
+            for i, pid in enumerate(drafted)
+        ]
+        deep_order = ds.generate_pick_order(
+            [str(i) for i in range(1, teams + 1)], total_rounds=dr.UPSIDE_MODE_DEFAULT_ROUND + 1,
+        )
+        snap = ps.build_snapshot(
+            self.merger, self.players_db, picks, deep_order, current_index=len(picks),
+            my_roster_id="1", league=league, pick_label=f"{dr.UPSIDE_MODE_DEFAULT_ROUND + 1}.01",
+            top_n=3, mode="auto",
+        )
+        # Guard against the vacuous version of this test: nothing above forces upside
+        # scoring, so if the round derivation ever stops flipping at this depth this test
+        # would silently become a plain balanced-mode snapshot and prove nothing. Asserted on
+        # the board's own mode field, NOT on the absence of universal_value -- that was the
+        # original probe here and it broke the moment both modes started emitting the column,
+        # which is exactly the coupling this whole fix removes.
+        board = dr.compute_draft_board(
+            self.merger, self.players_db, picks, my_roster_id="1", league=league, mode="auto",
+        )
+        self.assertEqual(board[0]["mode"], "upside", "board never entered upside mode")
+        self.assertTrue(snap.candidates)
+
+
+class UpsideSuperflexSurvivalTests(unittest.TestCase):
+    """The SECOND crash on the same board-shape contract, found by scoping the first one
+    rather than by a symptom. draft_strategy._pace_based_take_probability ranks a position's
+    remaining players on an opponent's board by universal_value -- unguarded -- but only runs
+    for superflex QB before the last documented pace anchor (48 picks). Upside mode normally
+    arrives at round >= 15, long past that, so auto-mode drafts never reached it; forcing
+    upside early in a superflex league does, and did raise KeyError."""
+
+    @classmethod
+    def setUpClass(cls):
+        BuildSnapshotTests.setUpClass()
+        cls.merger = BuildSnapshotTests.merger
+        cls.players_db = BuildSnapshotTests.players_db
+
+    def test_forced_upside_in_a_superflex_league_before_the_last_pace_anchor(self):
+        superflex = dict(LEAGUE, roster_positions=[
+            "QB", "RB", "RB", "WR", "WR", "WR", "TE", "FLEX", "SUPER_FLEX", "BN", "BN", "BN",
+        ])
+        order = ds.generate_pick_order([str(i) for i in range(1, 13)], total_rounds=4)
+        picks = [
+            {"pick_no": i + 1, "round": 1, "roster_id": str(i + 1), "player_id": pid}
+            for i, pid in enumerate(list(self.players_db)[:12])
+        ]
+        snap = ps.build_snapshot(
+            self.merger, self.players_db, picks, order, current_index=12, my_roster_id="1",
+            league=superflex, pick_label="2.01", top_n=5, mode="upside",
+        )
+        self.assertTrue(snap.candidates)
+
+
+class BoardShapeContractTests(unittest.TestCase):
+    """compute_draft_board returns two differently-shaped rows depending on mode, and for a
+    long time nothing declared that. Five production sites indexed row["universal_value"]
+    unguarded (draft_strategy x3, draft_counterfactual.bpa_row, pick_synthesis.build_snapshot)
+    and roster_diagnostics passes the column NAME into replacement_levels -- so an absent
+    column is a crash in every one of them, not a degraded reading. These tests pin the part
+    of the shape that is shared, so a future third mode has to make the same promise."""
+
+    @classmethod
+    def setUpClass(cls):
+        BuildSnapshotTests.setUpClass()
+        cls.merger = BuildSnapshotTests.merger
+        cls.players_db = BuildSnapshotTests.players_db
+
+    def _board(self, mode):
+        return dr.compute_draft_board(
+            self.merger, self.players_db, [], my_roster_id="1", league=LEAGUE, mode=mode,
+        )
+
+    def test_both_modes_carry_every_field_a_consumer_indexes_unguarded(self):
+        required = {"player_id", "name", "position", "bpa", "universal_value", "final_score", "mode"}
+        for mode in ("balanced", "upside"):
+            board = self._board(mode)
+            self.assertTrue(board, mode)
+            for row in board[:25]:
+                self.assertTrue(required <= set(row), f"{mode}: missing {required - set(row)}")
+
+    def test_upside_universal_value_is_the_team_agnostic_score_itself(self):
+        # Not an approximation and not a copy of the balanced number: upside_score reads
+        # nothing off the roster, so its final_score IS the team-agnostic value.
+        for row in self._board("upside")[:25]:
+            self.assertEqual(row["universal_value"], row["final_score"], row["name"])
+
+    def test_the_two_modes_are_not_claiming_to_be_the_same_valuation(self):
+        # Guards the comment on the upside branch: universal_value fills the same ROLE in
+        # both modes but is a different number, and must never be compared across them. If
+        # this ever starts passing trivially (every player identical), the two modes have
+        # collapsed into one and upside scoring has stopped doing anything.
+        balanced = {r["player_id"]: r["universal_value"] for r in self._board("balanced")}
+        upside = {r["player_id"]: r["universal_value"] for r in self._board("upside")}
+        shared = set(balanced) & set(upside)
+        self.assertTrue(shared)
+        self.assertTrue(
+            any(balanced[pid] != upside[pid] for pid in shared),
+            "upside and balanced produced identical universal_value for every player",
+        )
+
+    def test_upside_boards_do_not_fabricate_a_decomposition_they_never_computed(self):
+        # The deliberate other half of the fix: universal_value is emitted because consumers
+        # need the role filled; time_horizon_adj/risk_adj are NOT, because upside_score never
+        # computes them and a 0.0 would read as "measured, and it was zero."
+        for row in self._board("upside")[:25]:
+            self.assertNotIn("time_horizon_adj", row)
+            self.assertNotIn("risk_adj", row)
+
 
 class DiffSnapshotsTests(unittest.TestCase):
     @classmethod

@@ -1219,6 +1219,28 @@ def compute_draft_board(
         scored = pool.join(pd.DataFrame(list(pool.apply(upside_score, axis=1))))
         scored["mode"] = "upside"
         scored["projected_points"] = scored["_points"]
+        # universal_value is a ROLE, not a formula: "the team-agnostic value of this player,"
+        # which is what every consumer outside this module reads it for (draft_strategy ranks
+        # an opponent's remaining pool by it, draft_counterfactual takes its argmax as BPA,
+        # roster_diagnostics passes the NAME of this column into replacement_levels,
+        # pick_synthesis separates it from team_acquisition_value to detect context
+        # elevation). In balanced mode that role is filled by bpa + time_horizon_adj +
+        # risk_adj. In upside mode it is filled by final_score directly: upside_score reads
+        # nothing off the roster -- it returns only {final_score, growth_signal, confidence}
+        # from the row's own bpa and growth -- so there is no need_bonus or eligibility_bonus
+        # separated out of it to subtract back off, and the layer identity
+        # team_acquisition_value == universal_value + need_bonus + eligibility_bonus holds
+        # with both bonuses at 0.0. It is deliberately NOT the same NUMBER as a balanced
+        # board's universal_value for the same player, and must never be compared across
+        # modes -- see this module's docstring on upside mode being a different valuation.
+        #
+        # Emitted here rather than defaulted at each read site because the two branches used
+        # to return two different row schemas with nothing declaring that: five production
+        # sites indexed row["universal_value"] unguarded, two guarded it inline with the same
+        # reasoning duplicated, and the rest crashed. One owner of the shape is the fix; the
+        # per-position decomposition terms (time_horizon_adj, risk_adj) stay absent because
+        # upside_score genuinely never computes them and emitting 0.0 would fabricate them.
+        scored["universal_value"] = scored["final_score"]
         _attach_waiting_cost(scored, pool, roster_positions, num_teams, drafted_counts)
         # kind="stable" + player_id as an explicit tiebreaker: without both, two players
         # landing on the exact same rounded final_score could rank in either relative order
@@ -1234,8 +1256,8 @@ def compute_draft_board(
         results = scored.sort_values(["final_score", "player_id"], ascending=[False, True], kind="stable")
         return _records_with_normalized_nan(results[[
             "player_id", "name", "position", "team", "injury_status", "bpa", "bpa_source",
-            "growth_signal", "confidence", "final_score", "mode", "projected_points",
-            "horizon_floor", "horizon_sensitivity", "waiting_cost",
+            "growth_signal", "universal_value", "confidence", "final_score", "mode",
+            "projected_points", "horizon_floor", "horizon_sensitivity", "waiting_cost",
         ]], "projected_points", "horizon_floor", "horizon_sensitivity", "waiting_cost")
 
     my_filled = _team_starters_filled(picks, players_db, my_roster_id)
