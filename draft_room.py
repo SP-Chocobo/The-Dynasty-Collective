@@ -938,13 +938,39 @@ def _team_roster_players(
             # The real repair is slot OCCUPANCY independent of value, which belongs in
             # lineup_optimizer, not here.
             #
-            # Impact today is nil and measured as such: projection-only admissions are
-            # currently K and DEF only, both single-position, so there is no multi-position
-            # flexibility to misprice (all cases return eligibility_bonus 0.0). It becomes
-            # real the moment a DUAL-ELIGIBLE player is admitted this way -- which is exactly
-            # the pending IDP case, where DL/LB dual listings are common and IDP is the
-            # position set that has points but no trade values. Pinned by
-            # ProjectionOnlyRosterVisibilityTests so it cannot go live unnoticed.
+            # Impact OFFLINE is nil, and the reason is narrow: the only projection-only
+            # admissions in the committed baseline are K and DEF, which Sleeper lists as
+            # single-position, so there is no multi-position flexibility to misprice.
+            #
+            # That is not reassurance about production. Multi-position eligibility lives in
+            # Sleeper's players_db, not in any committed file -- Travis Hunter is carried here
+            # as WR and is really WR/DB -- so no offline check can establish the blind spot is
+            # dormant. And IDP is not a corner case: of 415 IDP rows in the baseline, 339
+            # (82%) carry no trade value, and IDP has zero offline season projections. Connect
+            # a live Sleeper feed and most of an IDP pool is admitted on points alone, with
+            # DL/LB dual listings common throughout -- so the flexibility eligibility_bonus
+            # exists to price is exactly what this drop removes, at scale, on day one.
+            #
+            # What is and is not at stake here, because dual eligibility means two different
+            # things depending on the pair:
+            #   WR/DB (Hunter): genuinely different rubrics, so Sleeper's projection already
+            #     encompasses BOTH capacities -- receiving production padded by defensive
+            #     production. That combined total is the honest number for "what does he score
+            #     if I start him", so VOR against a single-position replacement is correct,
+            #     not double-counted. It only becomes notable when the padding outstrips his
+            #     neighbours, which is exactly what the cliff and near-tie machinery is for.
+            #   DL/LB: graded on the SAME rubric -- tackles, sacks, TFL -- so there is no
+            #     padding and nothing additive. The dual listing carries no production
+            #     difference whatsoever; it is purely a lineup-eligibility fact.
+            #
+            # Which is what makes the drop above worse than it first looks for IDP. If DL/LB
+            # dual eligibility contributes nothing to production, then flexibility is the ONLY
+            # thing it contributes -- and flexibility is precisely what gets discarded here.
+            # For those players the drop removes 100% of what being dual-listed means.
+            #
+            # ProjectionOnlyRosterVisibilityTests pins the behaviour rather than asserting it
+            # is harmless; an earlier version of that test claimed harmlessness by reading a
+            # single-position test fixture back to itself.
             continue
         players.append({"id": player_id, "value": float(value), "eligible": player_eligible_positions(info)})
     return players

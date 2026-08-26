@@ -60,6 +60,11 @@ def _players_db(merger: dm.DataMerger, include_kdst: bool = True) -> dict[str, d
             parts = row["norm_name"].split()
             db[str(pid)] = {
                 "first_name": parts[0].upper(), "last_name": " ".join(parts[1:]).title(),
+                # NOTE: eligibility is FLATTENED here -- one position per player. The
+                # committed baseline carries a single `position` per row, and real
+                # multi-position listings (Travis Hunter is WR/DB) only exist in Sleeper's
+                # own players_db. Never write a test that infers "no dual-eligible players
+                # exist" from this fixture; it would be reading its own construction back.
                 "position": pos, "fantasy_positions": [pos], "team": row.get("team"),
             }
     return db
@@ -571,14 +576,46 @@ class ProjectionOnlyRosterVisibilityTests(unittest.TestCase):
         self.assertEqual(len(dr._team_roster_players(picks, self.db, "1", self.merger)), 0,
                          "eligibility_bonus cannot price him, so he is dropped")
 
-    def test_this_is_currently_harmless_because_such_players_are_single_position(self):
-        # The whole reason the disagreement above costs nothing today. If a projection-only
-        # admission ever becomes multi-position eligible (IDP is the pending case), the
-        # dropped player starts mispricing a real flexibility premium and this fails.
+    def test_a_dual_eligible_projection_only_player_is_dropped_from_the_roster(self):
+        """The defect made concrete, rather than a claim that it cannot happen.
+
+        An earlier version of this test asserted every projection-only row was
+        single-position and therefore harmless. That was VACUOUS: _players_db above sets
+        fantasy_positions to [pos] for everyone, so the assertion tested the fixture, not the
+        engine. Real Sleeper eligibility is multi-position for real players -- Travis Hunter is
+        listed WR but is WR/DB, and he is named in lineup_optimizer's own module docstring and
+        in draft_room's ELIGIBILITY_BONUS_MAX comment as the case that machinery was built for.
+
+        So this pins the actual behaviour instead: give a projection-only player real dual
+        eligibility and show he is still dropped, because _team_roster_players keys on
+        trade_value and not on eligibility. His flexibility -- the whole thing
+        eligibility_bonus exists to price -- is invisible to the optimizer.
+        """
         from player_universe import player_eligible_positions
-        for _, row in self._projection_only_rows().iterrows():
-            eligible = player_eligible_positions(self.db.get(str(row["player_id"])) or {})
-            self.assertEqual(
-                len(eligible), 1,
-                f"{row['name']} is projection-only AND multi-eligible {eligible} -- the "
-                f"_team_roster_players blind spot is now live; see its comment.")
+        row = self._projection_only_rows().iloc[0]
+        player_id = str(row["player_id"])
+        db = dict(self.db)
+        info = dict(db[player_id])
+        info["fantasy_positions"] = [info["position"], "WR"]   # a real Hunter-shaped listing
+        db[player_id] = info
+
+        self.assertEqual(len(player_eligible_positions(info)), 2, "fixture must be dual-eligible")
+        picks = [{"player_id": player_id, "round": 14, "roster_id": "1"}]
+        self.assertEqual(
+            len(dr._team_roster_players(picks, db, "1", self.merger)), 0,
+            "a projection-only player is dropped no matter how eligible he is")
+
+    def test_offline_eligibility_cannot_prove_the_blind_spot_is_dormant(self):
+        """Why there is no "it's currently harmless" assertion here any more.
+
+        Multi-position eligibility lives in Sleeper's players_db, which this environment has
+        no access to; the committed baseline carries a single `position` per row. Any offline
+        test claiming projection-only players are single-position would be reading its own
+        fixture back to itself. The honest statement is that the blind spot's live impact is
+        UNKNOWN offline and must be checked against a real players_db.
+        """
+        from player_universe import player_eligible_positions
+        flattened = {len(player_eligible_positions(v)) for v in self.db.values()}
+        self.assertEqual(flattened, {1},
+                         "fixture is single-position by construction -- so it can never "
+                         "demonstrate the absence of dual-eligible projection-only players")
