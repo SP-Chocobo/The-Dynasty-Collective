@@ -982,7 +982,26 @@ def upside_score(row: pd.Series) -> dict:
     growth = 0.0
     season_pct = row.get("_season_proj_pct")
     proj3yr_pct = row.get("_proj3yr_pct")
-    if season_pct is not None and proj3yr_pct is not None:
+    # _has_3yr, exactly as time_horizon_adj gates on it -- the two are the only readers of
+    # this percentile pair and they must agree on what an absent 3yr outlook means. Without
+    # it, a row with real points and no proj_3yr keeps the neutral 50.0 default on the 3yr
+    # side while the season side is a real (and, for such a row, usually LOW) percentile, so
+    # this subtraction returns 50 - season_pct: a growth signal manufactured entirely out of
+    # the missing half, and one that is LARGEST for the worst-projected player.
+    #
+    # Measured on a real 20-round board before this guard: mean growth 24.22 for K and 20.11
+    # for DEF -- neither of which has a 3yr outlook from any committed source -- against
+    # 0.57-1.63 for every position that carries both numbers. Because bpa collapses to 0.00
+    # board-wide once positional demand is exhausted (every position, not just offense),
+    # growth becomes the SOLE ranking term at that point, and the artifact took over the
+    # board outright: rounds 16 and 17 of a 12x20 draft went 100% K/DEF, and the 22-point
+    # kicker sitting last in the remaining pool ranked first overall.
+    #
+    # time_horizon_adj already had this guard (see its own comment for the +6.5 average it
+    # was measured to remove). This function reads the same two columns and did not, which
+    # is the entire defect -- the trigger arrived when K and DST moved onto league-scored
+    # Sleeper projections, which publish points but no multi-year outlook.
+    if row.get("_has_3yr", False) and season_pct is not None and proj3yr_pct is not None:
         growth = max(0.0, proj3yr_pct - season_pct)
     value = round(bpa + UPSIDE_GROWTH_WEIGHT * growth, 2)
     return {"final_score": value, "growth_signal": round(growth, 1), "confidence": _confidence(row.get("bpa_source"))}

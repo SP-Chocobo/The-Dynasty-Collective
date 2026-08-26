@@ -387,6 +387,9 @@ class MissingMultiYearOutlookTests(unittest.TestCase):
         cls.board = dr.compute_draft_board(
             cls.merger, cls.db, [], my_roster_id="1", league=KDST_LEAGUE, mode="balanced",
         )
+        cls.upside_board = dr.compute_draft_board(
+            cls.merger, cls.db, [], my_roster_id="1", league=KDST_LEAGUE, mode="upside",
+        )
 
     def test_defenses_get_exactly_no_time_horizon_opinion(self):
         # Not a penalty (the original min-fill) and not a bonus (what a "neutral 50th
@@ -410,6 +413,87 @@ class MissingMultiYearOutlookTests(unittest.TestCase):
             self.assertTrue(adjs, f"no {pos} on the board")
             self.assertTrue(any(a != 0.0 for a in adjs),
                             f"{pos} carries a real 3yr outlook and should be adjusted on it")
+
+    def test_upside_growth_is_exactly_zero_without_a_3yr_outlook(self):
+        # The exact mirror of test_defenses_get_exactly_no_time_horizon_opinion, for the OTHER
+        # consumer of the same percentile pair. upside_score read _season_proj_pct and
+        # _proj3yr_pct without checking _has_3yr, so a row with real points and no 3yr outlook
+        # produced growth = 50 - season_pct: a signal made entirely of the missing half.
+        for pos in ("K", "DEF"):
+            growths = [r.get("growth_signal", 0.0) for r in self.upside_board if r["position"] == pos]
+            self.assertTrue(growths, f"no {pos} on the upside board")
+            for g in growths:
+                self.assertEqual(g, 0.0, f"{pos}: a missing 3yr outlook must produce no growth at all")
+
+    def test_positions_carrying_a_real_3yr_outlook_still_get_a_growth_signal(self):
+        # Same contrast as the time_horizon version: the guard must suppress the signal for
+        # ABSENT data, not for particular positions. QB/WR/TE all carry real 3yr outlooks that
+        # exceed their season percentile for at least some players, and must still score on it.
+        # RB is deliberately NOT in this list -- see the next test for why its zero is a
+        # different kind of zero.
+        for pos in ("QB", "WR", "TE"):
+            growths = [r.get("growth_signal", 0.0) for r in self.upside_board if r["position"] == pos]
+            self.assertTrue(growths, f"no {pos} on the upside board")
+            self.assertTrue(any(g > 0.0 for g in growths),
+                            f"{pos} carries a real 3yr outlook and should still be scored on it")
+
+    def test_a_measured_zero_and_an_absent_data_zero_are_different_things(self):
+        # The distinction this whole class exists to protect, and the one the bug erased.
+        # Every RB on a full-pool board scores growth 0.0 -- not because the data is missing
+        # but because it is present and says so: an RB's 3yr outlook sits BELOW his season
+        # percentile across the board, which is the aging cliff showing up exactly where it
+        # should, then clipped at 0 because upside mode does not carry negative growth.
+        # K and DEF also score 0.0, from having no 3yr outlook at all.
+        #
+        # Identical output, opposite meaning, and only _has_3yr tells them apart. A future
+        # change that "fixes" one of these zeroes by relaxing the guard would silently
+        # resurrect the artifact, so both are pinned here together with the flag that
+        # separates them.
+        rb = [r for r in self.upside_board if r["position"] == "RB"]
+        kdef = [r for r in self.upside_board if r["position"] in ("K", "DEF")]
+        self.assertTrue(rb and kdef)
+        self.assertTrue(all(r.get("growth_signal", 0.0) == 0.0 for r in rb),
+                        "an RB with a positive 3yr trajectory would invalidate this test's premise")
+        self.assertTrue(all(r.get("growth_signal", 0.0) == 0.0 for r in kdef))
+        # The measured group has the data; the absent group does not.
+        proj = self.merger.projections
+        rb_rows = proj[proj["position"] == "RB"]
+        kdef_rows = proj[proj["position"].isin(["K", "DEF"])]
+        self.assertTrue(rb_rows["proj_3yr"].notna().any(), "RB must actually carry 3yr data")
+        self.assertFalse(kdef_rows["proj_3yr"].notna().any(), "K/DEF must actually lack it")
+
+    def test_the_artifact_grew_as_the_player_got_worse(self):
+        # Why this one mattered so much more than its size suggests. The fabricated signal was
+        # 50 MINUS the season percentile, so it was LARGEST for the lowest-projected player --
+        # the ranking it produced was inversely correlated with value, not merely noisy. On a
+        # real 20-round board the 22-point kicker, last in the remaining pool, scored 48.10 and
+        # ranked first overall. Pinning the direction, not the magnitude: among rows with no
+        # 3yr outlook, a WORSE projection must never yield a HIGHER growth signal.
+        rows = [r for r in self.upside_board
+                if r["position"] in ("K", "DEF") and r.get("projected_points") is not None]
+        self.assertGreater(len(rows), 10, "not enough points-but-no-3yr rows to test the direction")
+        rows.sort(key=lambda r: r["projected_points"])
+        worst, best = rows[0], rows[-1]
+        self.assertLess(worst["projected_points"], best["projected_points"])
+        self.assertLessEqual(
+            worst.get("growth_signal", 0.0), best.get("growth_signal", 0.0),
+            f"{worst['name']} projects {worst['projected_points']} vs {best['name']}'s "
+            f"{best['projected_points']} but scored higher on growth",
+        )
+
+    def test_both_readers_of_the_percentile_pair_agree_on_what_absent_means(self):
+        # The defect in one sentence: two functions read the same two columns, one checked
+        # _has_3yr and the other did not. Any future third reader has to pass this too.
+        by_id = {r["player_id"]: r for r in self.board}
+        checked = 0
+        for up in self.upside_board:
+            bal = by_id.get(up["player_id"])
+            if bal is None or up["position"] not in ("K", "DEF"):
+                continue
+            checked += 1
+            self.assertEqual(bal.get("time_horizon_adj", 0.0), 0.0, up["name"])
+            self.assertEqual(up.get("growth_signal", 0.0), 0.0, up["name"])
+        self.assertGreater(checked, 10, "no shared rows compared")
 
     def test_only_sources_without_a_3yr_column_are_missing_one(self):
         # Points-but-no-3yr is confined to exactly the two positions whose committed source
