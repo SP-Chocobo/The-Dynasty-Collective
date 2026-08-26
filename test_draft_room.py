@@ -1562,5 +1562,77 @@ class SimulateOpponentPicksTests(unittest.TestCase):
         self.assertEqual(len(picks), 4)
 
 
+class CalibrationConstantsDoNotDriftSilentlyTests(unittest.TestCase):
+    """Mutation testing found these three constants could be changed to a materially
+    different value with the entire 963-test suite still green. That is not an argument for
+    any particular value -- it is that nothing recorded what the current one BUYS, so a
+    later edit could not tell a deliberate retune from an accident. Each test below pins a
+    consequence, not the number.
+    """
+
+    def test_two_empty_dedicated_slots_is_not_yet_maximum_urgency(self):
+        # need_bonus = min(PER_DEDICATED_SLOT * empty + PER_FLEX_SHARE * flex, MAX). With
+        # PER_DEDICATED_SLOT at 4.0 against a MAX of 12.0, the cap is reached only by a
+        # position group that is genuinely THREE deep and completely empty; two empty slots
+        # still leaves headroom, so "very urgent" and "maximally urgent" stay distinguishable.
+        # Doubling PER_DEDICATED_SLOT silently collapses that: two empty slots saturate the
+        # cap and every deeper shortage becomes indistinguishable from it.
+        #
+        # No FLEX slot here on purpose, so flex_share is 0 and the dedicated term is the only
+        # thing under test.
+        league = {
+            "roster_positions": ["QB", "RB", "RB", "WR", "TE", "BN", "BN", "BN"],
+            "total_rosters": 12, "settings": {"type": 2}, "scoring_settings": {},
+        }
+        merger, db = _build_pool_players_db(("QB", "RB", "WR", "TE"))
+        board = dr.compute_draft_board(
+            merger, db, [], my_roster_id="1", league=league, mode="balanced",
+        )
+        rbs = [r for r in board if r["position"] == "RB"]
+        self.assertTrue(rbs, "no RB on the board")
+        need = rbs[0]["need_bonus"]
+        self.assertGreater(need, 0.0, "two empty dedicated RB slots must create real demand")
+        self.assertLess(
+            need, dr.NEED_BONUS_MAX,
+            "two empty dedicated slots reached the need_bonus cap -- nothing distinguishes "
+            "them from a three-deep empty position group any more",
+        )
+
+    def test_auto_mode_switches_to_upside_exactly_at_the_documented_round(self):
+        # The boundary itself is a calibration decision (see UPSIDE_MODE_DEFAULT_ROUND's own
+        # comment). What must not happen is it moving without anyone noticing: this is the
+        # round where the board's whole scoring formula changes, and a draft that crosses it
+        # earlier than intended silently switches every remaining pick to upside-only scoring.
+        # The literal is deliberate -- change it here, on purpose, or not at all.
+        self.assertEqual(dr.UPSIDE_MODE_DEFAULT_ROUND, 15)
+        merger, db = _build_pool_players_db(("QB", "RB", "WR", "TE"))
+        league = {
+            "roster_positions": ["QB", "RB", "RB", "WR", "WR", "TE", "FLEX"] + ["BN"] * 13,
+            "total_rosters": 8, "settings": {"type": 2}, "scoring_settings": {},
+        }
+
+        def board_mode(round_no):
+            picks = [
+                {"pick_no": i + 1, "round": i // 8 + 1, "roster_id": str(i % 8 + 1), "player_id": pid}
+                for i, pid in enumerate(list(db)[:8 * round_no])
+            ]
+            rows = dr.compute_draft_board(
+                merger, db, picks, my_roster_id="1", league=league, mode="auto",
+            )
+            return rows[0]["mode"] if rows else None
+
+        self.assertEqual(board_mode(dr.UPSIDE_MODE_DEFAULT_ROUND - 1), "balanced")
+        self.assertEqual(board_mode(dr.UPSIDE_MODE_DEFAULT_ROUND), "upside")
+
+    def test_the_weekly_to_season_factor_is_the_length_of_an_nfl_season(self):
+        # Not a tuning knob: every NFL team plays exactly 17 games, and this constant exists
+        # to turn Sleeper's WEEKLY projection into a season-equivalent so it shares a scale
+        # with Draft Sharks' season numbers. Any other value silently rescales every
+        # Sleeper-sourced projection -- which today means the entire K and DST pool -- against
+        # an offensive pool that was never rescaled, reintroducing exactly the cross-source
+        # unit mismatch this conversion exists to remove.
+        self.assertEqual(dr.SLEEPER_WEEKLY_TO_SEASON_FACTOR, 17)
+
+
 if __name__ == "__main__":
     unittest.main()
