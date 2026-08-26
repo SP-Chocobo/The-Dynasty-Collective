@@ -508,6 +508,86 @@ class MissingMultiYearOutlookTests(unittest.TestCase):
         )
 
 
+class TheBaselineIsScoringInertTests(unittest.TestCase):
+    """A known, structural data limitation, pinned here so it cannot drift into an unnoticed
+    assumption -- same role HalfPprIsAKnownDataLimitationTests plays for rankings-file
+    selection, applied to the POINTS dimension.
+
+    Every projection in the committed baseline is already scored by whoever produced it, and
+    nothing re-scores it against the league actually being drafted:
+
+      * offence carries Draft Sharks' own season points, computed by Draft Sharks' methodology
+      * K and DST carry season points scored by two SPECIFIC Sleeper leagues (and not even the
+        same league as each other -- see data/baseline/sleeper_projection_provenance.json)
+
+    So a cross-positional VOR comparison crosses a scoring boundary by construction. That was
+    a deliberate trade: league-scored K/DST fixed the WITHIN-position scale (the K1-vs-K12 gap
+    is 11 points league-scored against 31-33 from vendor tables, see
+    test_the_kicker_field_is_a_near_tie_under_league_scored_points), which is what the draft
+    decision actually turns on. It did not, and could not, fix the BETWEEN-position basis.
+
+    The runtime re-scoring path (scoring_settings -> compute_points_from_stats) exists, but it
+    only ever applies to a LIVE Sleeper projection feed, never to these committed rows.
+
+    If a future change makes the baseline responsive to league scoring, these tests should
+    start failing -- that is the signal to revisit the cross-positional claim, not just to
+    update the assertions.
+    """
+
+    @classmethod
+    def setUpClass(cls):
+        cls.merger = dm.DataMerger()
+        cls.db = _players_db(cls.merger)
+
+    def _points(self, scoring):
+        league = dict(KDST_LEAGUE, scoring_settings=scoring)
+        board = dr.compute_draft_board(
+            self.merger, self.db, [], my_roster_id="1", league=league, mode="balanced",
+        )
+        return {r["name"]: r["projected_points"] for r in board}
+
+    def test_no_league_scoring_setting_moves_any_players_points(self):
+        # Deliberately extreme and mutually contradictory settings. If any of them moved a
+        # single player, the baseline would be partially responsive to league scoring, which
+        # is a different and more dangerous state than being uniformly inert: some positions
+        # re-scored and others not is precisely the cross-scale contamination this engine
+        # works hardest to avoid.
+        base = self._points({})
+        for label, scoring in (
+            ("zero PPR", {"rec": 0.0, "rec_yd": 0.1, "rec_td": 6.0}),
+            ("TE premium", {"rec": 1.0, "bonus_rec_te": 1.5}),
+            ("generous kicking", {"fgm": 5.0, "fgm_40_49": 6.0, "fgm_50p": 8.0, "xpm": 2.0}),
+            ("punitive kicking", {"fgm": 1.0, "fgm_40_49": 1.0, "fgm_50p": 1.0, "xpm": 0.0}),
+            ("inflated DST", {"def_st_td": 12.0, "sack": 4.0, "int": 6.0, "pts_allow_0": 20.0}),
+        ):
+            with self.subTest(scoring=label):
+                self.assertEqual(
+                    self._points(scoring), base,
+                    f"{label} changed a projection -- the baseline is no longer uniformly inert",
+                )
+
+    def test_the_kdst_seeds_carry_no_raw_stats_and_so_cannot_be_rescored(self):
+        # The structural reason the test above holds, and the reason it cannot simply be
+        # "fixed" by wiring scoring through: these rows were transcribed from Sleeper's
+        # SEASON PROJ display as final points. No field goals, no sacks, no yardage -- there
+        # is nothing left to apply a different league's multipliers to. Adapting them to
+        # another league's scoring requires re-capturing the source, not a code change.
+        proj = self.merger.projections
+        seeded = proj[proj["position"].isin(["K", "DEF"])]
+        self.assertTrue(len(seeded) > 40, "expected the seeded K/DST pool")
+        STAT_CATEGORIES = {
+            "fgm", "xpm", "fgm_0_19", "fgm_20_29", "fgm_30_39", "fgm_40_49", "fgm_50p",
+            "sack", "int", "fum_rec", "def_st_td", "safe", "blk_kick",
+            "pts_allow", "pts_allow_0", "yds_allow",
+        }
+        present = STAT_CATEGORIES & set(proj.columns)
+        self.assertEqual(
+            present, set(),
+            f"raw stat categories appeared in the baseline ({sorted(present)}) -- the seeds may "
+            "now be re-scorable, so the inertness above is no longer a structural fact",
+        )
+
+
 class DemandIsNotUrgencyTests(unittest.TestCase):
     """The invariant this whole pass is really about.
 
