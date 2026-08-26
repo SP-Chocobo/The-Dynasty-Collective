@@ -923,54 +923,39 @@ def _team_roster_players(
         match = merger.merge_player(name, position=player_position(info), team=info.get("team"))
         value = match.get("trade_value")
         if value is None:
-            # KNOWN LIMITATION, not an oversight. Since build_available_pool started admitting
-            # players on a points projection alone, a roster can contain someone this function
-            # cannot price -- and dropping him means eligibility_bonus solves its assignment
-            # problem against a roster that looks one player emptier than it is. The other
-            # team-specific term does NOT share the blind spot: _team_starters_filled counts
-            # picks straight off players_db, so need_bonus sees the slot correctly filled.
+            # He is on the roster and he occupies a slot; we simply cannot PRICE him. Those
+            # are different facts, and dropping him conflates them -- the lineup CONSTRAINT
+            # goes out with the missing value, so eligibility_bonus solves against a roster
+            # one player emptier than it really is.
             #
-            # Substituting a value is the wrong repair. This function is denominated in
-            # trade_value and his projection is in points; mixing those two scales is the
-            # precise defect ELIGIBILITY_BONUS_MAX was introduced to stop (measured: mean
-            # |bpa - trade_value| = 11.7, max divergence 63.0). A zero would not help either,
-            # since an occupied slot valued at zero optimises identically to an empty one.
-            # The real repair is slot OCCUPANCY independent of value, which belongs in
-            # lineup_optimizer, not here.
+            # ATTEMPTED AND REVERTED: admitting him at value 0.0. It reads like the right
+            # separation -- no value claimed, slot still held -- and it does not work.
+            # optimize_lineup maximises total value, so a zero-value player is always the
+            # first benched and never holds a slot against contention, which is the only
+            # regime where occupancy matters. Measured: a dual DL/LB candidate's
+            # eligibility_bonus was 25.0 with him dropped and 25.0 with him at 0.0, and the
+            # roster-only lineup value was 58.0 either way. Behaviourally identical to
+            # dropping him, so it would have bought nothing but false confidence.
             #
-            # Impact OFFLINE is nil, and the reason is narrow: the only projection-only
-            # admissions in the committed baseline are K and DEF, which Sleeper lists as
-            # single-position, so there is no multi-position flexibility to misprice.
+            # Converting his projection into trade_value units is the other tempting repair
+            # and is worse: that is precisely the scale contamination ELIGIBILITY_BONUS_MAX
+            # exists to prevent (mean |bpa - trade_value| = 11.7, max divergence 63.0).
             #
-            # That is not reassurance about production. Multi-position eligibility lives in
-            # Sleeper's players_db, not in any committed file -- Travis Hunter is carried here
-            # as WR and is really WR/DB -- so no offline check can establish the blind spot is
-            # dormant. And IDP is not a corner case: of 415 IDP rows in the baseline, 339
-            # (82%) carry no trade value, and IDP has zero offline season projections. Connect
-            # a live Sleeper feed and most of an IDP pool is admitted on points alone, with
-            # DL/LB dual listings common throughout -- so the flexibility eligibility_bonus
-            # exists to price is exactly what this drop removes, at scale, on day one.
+            # A real repair has to model occupancy INDEPENDENTLY of value, which means
+            # lineup_optimizer, not here. Two viable shapes, neither chosen yet:
+            #   (a) pre-occupied slots -- remove the slot he holds from the assignment rather
+            #       than adding him as a player. Expresses the constraint exactly and invents
+            #       no value, but needs a rule for which slot a dual-eligible player holds.
+            #   (b) decline to answer -- when the roster contains a player who cannot be
+            #       priced, eligibility_bonus has no honest marginal to report, so return no
+            #       opinion instead of a confidently wrong number. Matches the
+            #       missing-information rule this engine follows everywhere else.
             #
-            # What is and is not at stake here, because dual eligibility means two different
-            # things depending on the pair:
-            #   WR/DB (Hunter): genuinely different rubrics, so Sleeper's projection already
-            #     encompasses BOTH capacities -- receiving production padded by defensive
-            #     production. That combined total is the honest number for "what does he score
-            #     if I start him", so VOR against a single-position replacement is correct,
-            #     not double-counted. It only becomes notable when the padding outstrips his
-            #     neighbours, which is exactly what the cliff and near-tie machinery is for.
-            #   DL/LB: graded on the SAME rubric -- tackles, sacks, TFL -- so there is no
-            #     padding and nothing additive. The dual listing carries no production
-            #     difference whatsoever; it is purely a lineup-eligibility fact.
-            #
-            # Which is what makes the drop above worse than it first looks for IDP. If DL/LB
-            # dual eligibility contributes nothing to production, then flexibility is the ONLY
-            # thing it contributes -- and flexibility is precisely what gets discarded here.
-            # For those players the drop removes 100% of what being dual-listed means.
-            #
-            # ProjectionOnlyRosterVisibilityTests pins the behaviour rather than asserting it
-            # is harmless; an earlier version of that test claimed harmlessness by reading a
-            # single-position test fixture back to itself.
+            # Exposure if left as-is: 339 of 415 IDP rows in the baseline carry no trade
+            # value, and IDP has no offline projections at all, so a live Sleeper feed sends
+            # most of an IDP pool down this path. DL/LB dual listings are graded on the same
+            # rubric, so flexibility is the ONLY thing that dual listing conveys -- and it is
+            # exactly what gets discarded. Pinned by ProjectionOnlyRosterVisibilityTests.
             continue
         players.append({"id": player_id, "value": float(value), "eligible": player_eligible_positions(info)})
     return players
