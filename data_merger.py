@@ -279,14 +279,44 @@ POSITION_CODES = ("QB", "RB", "WR", "TE", "K", "DEF", "LB", "DL", "DB")
 IDP_POSITIONS = {"LB", "DL", "DB", "DE", "DT", "S", "CB", "EDGE", "SS", "FS"}
 
 
+# Position families a single real person can never span at once. Each is its own IDENTITY
+# namespace for dedup -- two rows in different families with the same normalized name are two
+# different people, never a re-upload of one.
+#
+# The offensive skill positions deliberately share ONE namespace rather than getting four:
+# a genuine same-player re-upload really can list him RB in one file and WR in another
+# (real reclassification), and those rows must still collapse onto the newest. Nobody is
+# reclassified from tight end to kicker, and a team defense is not a person at all, so those
+# get namespaces of their own.
+_KICKER_POSITIONS = {"K", "PK"}
+_TEAM_DEFENSE_POSITIONS = {"DEF", "DST", "D/ST"}
+
+
 def _position_group(position) -> str:
-    """Broad offense/IDP bucket so a same-named offensive and IDP player (a real
-    example that surfaced merging baseline data: "Josh Allen" the Bills QB vs.
-    "Josh Allen" a DL) never silently collide as the same dedup key in
-    _dedup_by_name_and_position below."""
+    """Identity namespace for the dedup key, so two same-named players from different
+    position families never silently shadow each other in _dedup_by_name_and_position below.
+
+    The original bucket was offense-vs-IDP, added for a real collision found merging baseline
+    data ("Josh Allen" the Bills QB vs. "Josh Allen" a DL). It left K and DST inside the
+    offense bucket, which was harmless only while the kicker pool was 13 vendor rows. Seeding
+    K and DST from league-scored Sleeper projections took that pool to 37 kickers and 32
+    defenses and made the gap reachable: J Sanders (TE, CAR) and J Sanders (K, NYJ) are two
+    different people, collided on "j sanders|offense", and the tight end was dropped from the
+    merged projections entirely -- not mispriced, absent, and therefore undraftable.
+
+    Same fix shape as the original, applied to the families it missed. Note this is an
+    IDENTITY rule, not a scoring one: it decides who is the same person, and nothing here
+    touches how any position is valued."""
     if not isinstance(position, str) or not position:
         return ""
-    return "idp" if position.upper() in IDP_POSITIONS else "offense"
+    upper = position.upper()
+    if upper in IDP_POSITIONS:
+        return "idp"
+    if upper in _KICKER_POSITIONS:
+        return "k"
+    if upper in _TEAM_DEFENSE_POSITIONS:
+        return "def"
+    return "offense"
 
 
 _REVIEWED_DATE_RE = re.compile(r"Reviewed By[^|]*\|([A-Za-z]{3,9}\s+\d{1,2},\s+\d{4})")

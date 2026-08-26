@@ -295,9 +295,39 @@ class PositionGroupTests(unittest.TestCase):
     collision this baseline effort surfaced -- these tests exist to make sure that class of
     bug can't silently come back."""
 
-    def test_broad_offense_positions(self):
-        for pos in ("QB", "RB", "WR", "TE", "K", "DEF"):
+    def test_the_offensive_skill_positions_share_one_namespace(self):
+        # Deliberately ONE group, not four: a genuine same-player re-upload can list him RB in
+        # one file and WR in another, and those rows must still collapse onto the newest.
+        for pos in ("QB", "RB", "WR", "TE"):
             self.assertEqual(dm._position_group(pos), "offense", pos)
+
+    def test_kickers_and_team_defenses_are_not_offensive_skill_players(self):
+        # This assertion previously read ("QB","RB","WR","TE","K","DEF") -> "offense", and
+        # that is precisely what the bug was: it pinned K and DST inside the offensive skill
+        # namespace, so a kicker and a skill player sharing a normalized name became one
+        # dedup key and one of the two real people was dropped. Reproduced on committed
+        # baseline data -- J Sanders (TE, CAR) and J Sanders (K, NYJ) collided on
+        # "j sanders|offense" and the tight end disappeared from merged projections.
+        #
+        # Harmless while the kicker pool was 13 vendor rows; reachable once K and DST moved
+        # to league-scored Sleeper projections at 37 and 32 rows.
+        self.assertEqual(dm._position_group("K"), "k")
+        for pos in ("DEF", "DST", "D/ST"):
+            self.assertEqual(dm._position_group(pos), "def", pos)
+
+    def test_every_family_that_cannot_be_the_same_person_is_a_separate_namespace(self):
+        # The general rule, so a position added later starts out separated rather than
+        # silently sharing an identity namespace with a family it can never belong to.
+        groups = {
+            "offensive skill": {dm._position_group(p) for p in ("QB", "RB", "WR", "TE")},
+            "kicker": {dm._position_group("K")},
+            "team defense": {dm._position_group(p) for p in ("DEF", "DST")},
+            "idp": {dm._position_group(p) for p in ("LB", "DL", "DB", "EDGE")},
+        }
+        for label, values in groups.items():
+            self.assertEqual(len(values), 1, f"{label} must be internally consistent: {values}")
+        flat = [next(iter(v)) for v in groups.values()]
+        self.assertEqual(len(set(flat)), len(flat), f"two families share a namespace: {flat}")
 
     def test_broad_and_granular_idp_positions_all_classify_as_idp(self):
         # LB/DL/DB are Draft Sharks' three broad buckets; DE/DT/S/CB are FantasyPros' more
@@ -310,6 +340,62 @@ class PositionGroupTests(unittest.TestCase):
         self.assertEqual(dm._position_group(None), "")
         self.assertEqual(dm._position_group(float("nan")), "")
         self.assertEqual(dm._position_group(""), "")
+
+
+class SameNameDifferentFamilyTests(unittest.TestCase):
+    """The end-to-end version of the _position_group fix, at the level a user would notice:
+    a real player must not vanish from the merged pool because someone in another position
+    family happens to normalize to the same name."""
+
+    KICKER = ("name,team,position,rank,projection,proj_3yr,trade_value,source_date\n"
+              "J Sanders,NYJ,K,1.0,91.0,,,2026-08-25\n")
+    TIGHT_END = ("name,team,position,rank,projection,proj_3yr,trade_value,source_date\n"
+                 "J Sanders,CAR,TE,40.0,120.0,300.0,15.0,2026-08-18\n")
+
+    def _load(self, files):
+        import os
+        tmpdir = tempfile.mkdtemp()
+        self.addCleanup(lambda: shutil.rmtree(tmpdir, ignore_errors=True))
+        for i, (fname, content) in enumerate(files):
+            (Path(tmpdir) / fname).write_text(content)
+            os.utime(Path(tmpdir) / fname, (1_700_000_000 + i, 1_700_000_000 + i))
+        rankings, _, _ = dm.load_all(Path(tmpdir))
+        return rankings
+
+    def test_a_kicker_does_not_delete_a_same_named_tight_end(self):
+        # Kicker file written second, so it is unambiguously "newer" and wins any tiebreak it
+        # is allowed to enter. It must not be allowed to enter this one: these are two people.
+        rankings = self._load([("offense.csv", self.TIGHT_END), ("kickers.csv", self.KICKER)])
+        rows = rankings[rankings["norm_name"] == "j sanders"]
+        self.assertEqual(len(rows), 2, "one of two different real players was dropped")
+        self.assertEqual(set(rows["position"].str.upper()), {"K", "TE"})
+        te = rows[rows["position"].str.upper() == "TE"].iloc[0]
+        self.assertEqual(te["team"], "CAR")
+        self.assertEqual(float(te["projection"]), 120.0)
+
+    def test_the_same_player_re_uploaded_still_collapses_to_the_newest_row(self):
+        # The other half -- the fix must not turn every duplicate into two survivors. Same
+        # person, same family, newer file wins, exactly as before.
+        older = ("name,team,position,rank,projection,proj_3yr,trade_value,source_date\n"
+                 "J Sanders,CAR,TE,40.0,120.0,300.0,15.0,2026-08-18\n")
+        newer = ("name,team,position,rank,projection,proj_3yr,trade_value,source_date\n"
+                 "J Sanders,CAR,TE,22.0,168.0,410.0,31.0,2026-08-25\n")
+        rankings = self._load([("a_old.csv", older), ("b_new.csv", newer)])
+        rows = rankings[rankings["norm_name"] == "j sanders"]
+        self.assertEqual(len(rows), 1, "a genuine re-upload must still collapse")
+        self.assertEqual(float(rows.iloc[0]["projection"]), 168.0)
+
+    def test_a_reclassified_player_still_collapses_across_offensive_skill_positions(self):
+        # RB in one source, WR in another, same real person -- the reason the four offensive
+        # skill positions deliberately share one namespace.
+        as_rb = ("name,team,position,rank,projection,proj_3yr,trade_value,source_date\n"
+                 "D Hybrid,SF,RB,30.0,150.0,400.0,20.0,2026-08-18\n")
+        as_wr = ("name,team,position,rank,projection,proj_3yr,trade_value,source_date\n"
+                 "D Hybrid,SF,WR,25.0,175.0,430.0,26.0,2026-08-25\n")
+        rankings = self._load([("a_old.csv", as_rb), ("b_new.csv", as_wr)])
+        rows = rankings[rankings["norm_name"] == "d hybrid"]
+        self.assertEqual(len(rows), 1, "a reclassified player must not become two people")
+        self.assertEqual(rows.iloc[0]["position"].upper(), "WR")
 
 
 class LoadAllDeterminismTests(unittest.TestCase):
