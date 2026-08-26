@@ -1,0 +1,317 @@
+{
+ "league": "Greatest Show on Paper 2",
+ "captured": "2026-08-25",
+ "capture_method": "transcribed from Sleeper Scoring Settings screenshots",
+ "tabs_captured": [
+  "PASSING",
+  "RUSHING",
+  "RECEIVING",
+  "KICKING",
+  "TEAM DEFENSE",
+  "MISC"
+ ],
+ "tabs_outstanding": [
+  "IDP (tab existence unconfirmed)"
+ ],
+ "roster_positions": [
+  "QB",
+  "RB",
+  "RB",
+  "WR",
+  "WR",
+  "TE",
+  "FLEX",
+  "FLEX",
+  "FLEX",
+  "SUPER_FLEX",
+  "BN",
+  "BN",
+  "BN",
+  "BN",
+  "BN",
+  "BN",
+  "BN",
+  "BN",
+  "BN",
+  "BN",
+  "BN",
+  "BN",
+  "BN",
+  "BN",
+  "IR",
+  "IR",
+  "IR",
+  "IR",
+  "TAXI",
+  "TAXI",
+  "TAXI",
+  "TAXI",
+  "TAXI"
+ ],
+ "total_rosters": 12,
+ "league_type": "dynasty (inferred from 5 TAXI slots; NOT explicitly confirmed)",
+ "headline_format": {
+  "ppr": "FULL (rec = 1)",
+  "te_premium": "YES (bonus_rec_te = 0.75, so TE reception = 1.75)",
+  "passing_td": "5 (not the more common 4)",
+  "fg_distance_bands": "split at 50-59 and 60+ (finer than the other captured league's flat 50+)",
+  "superflex": "YES -- 1 SUPER_FLEX slot",
+  "flex": "3 x FLEX (WR/RB/TE)"
+ },
+ "scoring_settings_observed": {
+  "pass_yd": {
+   "label": "Passing Yards (1 per 25, +0.04/yd)",
+   "value": 0.04
+  },
+  "pass_td": {
+   "label": "Passing TD",
+   "value": 5
+  },
+  "pass_2pt": {
+   "label": "2-Pt Conversion (passing)",
+   "value": 2
+  },
+  "pass_int": {
+   "label": "Pass Intercepted",
+   "value": -1
+  },
+  "rush_yd": {
+   "label": "Rushing Yards (1 per 10, +0.1/yd)",
+   "value": 0.1
+  },
+  "rush_td": {
+   "label": "Rushing TD",
+   "value": 6
+  },
+  "rush_2pt": {
+   "label": "2-Pt Conversion (rushing)",
+   "value": 2
+  },
+  "rec": {
+   "label": "Reception",
+   "value": 1
+  },
+  "rec_yd": {
+   "label": "Receiving Yards (1 per 10, +0.1/yd)",
+   "value": 0.1
+  },
+  "rec_td": {
+   "label": "Receiving TD",
+   "value": 6
+  },
+  "rec_2pt": {
+   "label": "2-Pt Conversion (receiving)",
+   "value": 2
+  },
+  "bonus_rec_te": {
+   "label": "Reception Bonus - TE",
+   "value": 0.75
+  },
+  "xpm": {
+   "label": "PAT Made",
+   "value": 1
+  },
+  "xpmiss": {
+   "label": "PAT Missed",
+   "value": -1
+  },
+  "fgmiss": {
+   "label": "FG Missed",
+   "value": -1
+  },
+  "fgm_0_19": {
+   "label": "FG Made (0-19)",
+   "value": 3
+  },
+  "fgm_20_29": {
+   "label": "FG Made (20-29)",
+   "value": 3
+  },
+  "fgm_30_39": {
+   "label": "FG Made (30-39)",
+   "value": 3
+  },
+  "fgm_40_49": {
+   "label": "FG Made (40-49)",
+   "value": 4
+  },
+  "fgm_50_59": {
+   "label": "FG Made (50-59)",
+   "value": 5
+  },
+  "fgm_60p": {
+   "label": "FG Made (60+)",
+   "value": 6
+  },
+  "int": {
+   "label": "Interceptions",
+   "value": 2
+  },
+  "fum_rec": {
+   "label": "Fumble Recovery",
+   "value": 2
+  },
+  "ff": {
+   "label": "Forced Fumble",
+   "value": 1
+  },
+  "safe": {
+   "label": "Safety",
+   "value": 2
+  },
+  "blk_kick": {
+   "label": "Blocked Kick",
+   "value": 2
+  },
+  "def_td": {
+   "label": "Defense TD",
+   "value": 6
+  },
+  "sack": {
+   "label": "Sacks",
+   "value": 1
+  },
+  "pts_allow_0": {
+   "label": "Points Allowed 0",
+   "value": 10
+  },
+  "pts_allow_1_6": {
+   "label": "Points Allowed 1-6",
+   "value": 7
+  },
+  "pts_allow_7_13": {
+   "label": "Points Allowed 7-13",
+   "value": 4
+  },
+  "pts_allow_14_20": {
+   "label": "Points Allowed 14-20",
+   "value": 1
+  },
+  "pts_allow_28_34": {
+   "label": "Points Allowed 28-34",
+   "value": -1
+  },
+  "pts_allow_35p": {
+   "label": "Points Allowed 35+",
+   "value": -4
+  },
+  "st_td": {
+   "label": "Special teams td",
+   "value": 6
+  },
+  "st_ff": {
+   "label": "Special Teams Forced Fumble",
+   "value": 1
+  },
+  "st_fum_rec": {
+   "label": "Special Teams Fumble Recovery",
+   "value": 1
+  },
+  "st_td_player": {
+   "label": "Special teams player td",
+   "value": 6
+  },
+  "st_ff_player": {
+   "label": "Special Teams Player Forced Fumble",
+   "value": 1
+  },
+  "st_fum_rec_player": {
+   "label": "Special Teams Player Fumble Recovery",
+   "value": 1
+  },
+  "fum_lost": {
+   "label": "Fumble Lost",
+   "value": -2
+  },
+  "fum_rec_td": {
+   "label": "Fumble Recovery TD",
+   "value": 6
+  }
+ },
+ "notes_for_later": [
+  "Points Allowed 21-27 not shown on the captured screen; assumed 0 but UNVERIFIED.",
+  "No yardage-allowed bands appeared in TEAM DEFENSE here, unlike the Conlan Tire league which had a full yds_allow ladder. Could be off-screen or genuinely absent -- UNVERIFIED.",
+  "DEF scoring is materially MORE generous than the Conlan Tire league (PA0 10 vs 5, PA1-6 7 vs 4, PA7-13 4 vs 3), which will widen this league's DST spread relative to the committed sleeper_dst_projections.csv. Those DST/K CSVs came from two OTHER leagues and do not describe this one.",
+  "Stat-category keys are inferred from Sleeper's public vocabulary and are UNVERIFIED against a live get_league() payload.",
+  "TE premium + full PPR + 5-pt passing TD is a materially different shape from the KDST_LEAGUE fixture every measurement this session used.",
+  "MISC tab distinguishes PLAYER special-teams scoring from the TEAM DEFENSE special-teams entries; both exist and are separate keys. Player-side key names especially uncertain.",
+  "USER CAVEAT, recorded deliberately: league settings vary enormously. This league is a DATA POINT for testing, NOT a benchmark for 'what dynasty looks like'. Do not calibrate any engine constant to it.",
+  "No K/DEF/IDP slots. The committed sleeper_kicker_projections.csv and sleeper_dst_projections.csv are irrelevant to THIS league, and league_usable_positions should exclude K/DEF here -- already covered by test_a_league_without_those_slots_admits_neither. Also means this league cannot validate any of the K/DST work.",
+  "Row 82 of the RB capture (A Ekeler) was ingested in the earlier batch with proj 33.1 and no stat line; rows 103 (K Juszczyk) and 114 (H Luepke) have column-shifted stat lines in the screenshots and carry proj only."
+ ],
+ "draft_math": {
+  "draftable_slots_per_team": 29,
+  "total_picks_if_startup": 348,
+  "starter_slot_counts": {
+   "QB": 1.85,
+   "RB": 3.05,
+   "WR": 3.05,
+   "TE": 2.05
+  },
+  "league_starters": {
+   "QB": 22.2,
+   "RB": 36.6,
+   "WR": 36.6,
+   "TE": 24.6
+  },
+  "WARNING": "348 picks assumes a STARTUP draft consuming all 29 non-IR slots. For an annual rookie draft in an established league this is badly wrong and the horizon would be meaningless. Draft kind is still unconfirmed."
+ },
+ "verification": {
+  "method": "re-scored the transcribed stat lines through the recorded scoring_settings and compared against Sleeper's own PROJ column",
+  "median_residual": {
+   "QB": -3.96,
+   "RB": -2.0,
+   "WR": 1.0,
+   "TE": 0.0
+  },
+  "max_abs_residual": {
+   "QB": 7.98,
+   "RB": 8.0,
+   "WR": 18.1,
+   "TE": 11.95
+  },
+  "te_premium_confirmed": "B Bowers actual 330.0; with bonus_rec_te=0.75 -> 328.2; without -> 251.7",
+  "conclusion": "Scoring transcription and inferred stat-category keys both validated for the offensive categories. Residuals are consistent with fumbles-lost (-2, no stat column captured) plus rounding in the displayed stat columns. The PROJ column can be used directly as league-scored season points; no re-scoring needed."
+ },
+ "kdst_idp": "NONE -- confirmed. No K, DEF or IDP slots. Kickers on the draft board are PLACEHOLDERS.",
+ "draft_board_observations": {
+  "source": "completed startup draft board, 3 screenshots, 12 teams x ~30 rounds",
+  "dst": "No DST picks spotted anywhere on the board. IDP likewise absent. Those two look genuinely unused.",
+  "qb_count_approx": "~52 QBs drafted (22 + ~16 + ~14 across the three screenshots). APPROXIMATE -- hand-counted off dense screenshots, +/- several.",
+  "model_predicted_qb": 80.6,
+  "verdict": "Model overestimates QB consumption by roughly 55%. Direction of the positional_bench_appetite diagnosis is CONFIRMED; magnitude is less extreme than feared.",
+  "kicker_picks_are_placeholders": "RESOLVED by the user: kickers on this board are stand-ins for future ROOKIE PICKS, a standard dynasty-startup workaround for interfaces that can't draft future picks. They are NOT kicker selections and must be discarded as players. This confirms the original 'no K/DEF/IDP slots' reading -- the board contradicted it only superficially.",
+  "data_quality_trap": "A placeholder pick is structurally IDENTICAL to a real one: same position field, same pick slot. Nothing in a draft feed distinguishes them. Naive ingestion of this board would conclude the room drafted ~36 kickers and calibrate positional consumption on it. Any future backtest that reads real draft boards needs a guard.",
+  "proposed_guard": "Position-agnostic and already derivable from data the engine holds: a pick at a position the league has ZERO starter demand for cannot be a real roster selection, so exclude it from expected_positional_consumption's observed-share counts. Uses starter_slot_counts, names no position, and would have discarded all ~36 automatically.",
+  "qb_verdict_unaffected": "~52 actual vs 80.6 predicted is a QB-to-QB comparison, untouched by the placeholder issue. Placeholders only shrink the denominator: ~324 real player picks rather than ~360. Feeding the model the smaller number lowers its QB estimate to roughly 75 -- still far above 52, so the positional_bench_appetite bug stands confirmed."
+ },
+ "rookie_draft": {
+  "rounds": 4,
+  "picks": 48,
+  "actual_consumption": {
+   "RB": 11,
+   "QB": 7,
+   "WR": 22,
+   "TE": 8
+  },
+  "picks_traded_before_use": "42/48",
+  "KEY_FINDING": "Rookie-draft consumption tracks ROOKIE CLASS SUPPLY, not roster demand. WR took 22 of 48 picks (46%) while this league starts only 2 WR + flex. No starter_slot_counts-derived model can reproduce that, so fixing the TAXI-has-no-demand bug would NOT be enough -- a rookie draft needs a different consumption model entirely, driven by which rookies exist, not by what rosters need.",
+  "SECOND_FINDING": "42 of 48 picks were traded before use. Draft-order/roster-id assumptions from a startup do not carry over."
+ },
+ "rookie_consensus_validation": {
+  "hypothesis": "User: rookie positioning is so heavily and uniformly researched that rookie consensus is a far better benchmark than veteran ADP.",
+  "source_used": "KeepTradeCut's own rookie flag + rank, ALREADY in data/baseline/external. 64 flagged rookies. No external ADP fetch needed.",
+  "order_test": {
+   "matched": "45/48 picks",
+   "spearman_rho": 0.908,
+   "context": "Higher than every vendor-vs-vendor agreement measured this session (CBS/FP DST 0.885, DS/FP kickers 0.727, CBS/DS DST 0.587)."
+  },
+  "composition_test": {
+   "max_delta_pct_points": 2.1,
+   "detail": "WR pool 45.3% vs drafted 45.8%; RB 23.4/22.9; TE 18.8/16.7; QB 12.5/14.6",
+   "CAVEAT": "Largely ENTAILED by the order result, not independent evidence: a room taking 45 of the top 64 in near-consensus order will reproduce the pool's composition almost by construction. The order correlation is the real finding."
+  },
+  "implication": "The rookie-draft consumption model I said was missing is buildable from data already held. Rookie drafts should key consumption to the rookie POOL (composition + consensus order), not to starter_slot_counts. This is a genuinely different code path from the veteran/startup case, which is what the evidence supports.",
+  "LIMITS": "ONE draft, ONE rookie class, ONE league. rho 0.908 could be a strong-consensus class (2026 WR-heavy) rather than a general law. Needs replication across leagues and ideally a second class before any constant is calibrated to it."
+ }
+}
