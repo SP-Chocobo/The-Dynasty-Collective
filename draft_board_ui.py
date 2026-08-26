@@ -262,35 +262,47 @@ def filter_candidates_by_view(candidates: tuple, view: str) -> list:
     return [c for c in candidates if c.position == view]
 
 
-# Flex slots are labelled by what they actually accept, in the standard W/R/T notation, so
-# the control explains itself: FLEX and SUPER_FLEX read as WRT and QWRT rather than as two
-# words a reader has to already know the difference between. Letters run Q, W, R, T -- the
-# conventional order, not alphabetical.
+# Flex slots are labelled by what they actually ACCEPT, so the control explains itself
+# instead of asking a reader to already know how FLEX and SUPER_FLEX differ. Derived from
+# FLEX_SLOT_POSITIONS, never a second hand-maintained list -- a flex type added there gets a
+# correct label here for free, which is the whole point: the fallback is the raw slot key, and
+# WRRB_FLEX and REC_FLEX shipped with none, rendering as "WRRB_FLEX" (9 characters) and
+# "REC_FLEX" (8) and blowing out the single-row layout worse than "SUPER FLEX" ever did.
 #
-# This is presentation-only naming of a set FLEX_SLOT_POSITIONS already defines; it invents no
-# eligibility rule. Every flex type the engine supports is named here on purpose, because the
-# fallback is the raw slot key: before this, WRRB_FLEX and REC_FLEX rendered as "WRRB_FLEX"
-# (9 characters) and "REC_FLEX" (8), which would blow out the single-row layout worse than
-# "SUPER FLEX" ever did. A test asserts every entry in FLEX_SLOT_POSITIONS has a label.
+# Two shapes, one convention:
+#   three or more positions -> initials run together, QWRT / WRT
+#   exactly two             -> full position codes, slashed: WR/RB, QB/WR, RB/TE
+# A two-slot flex has to stay slashed and full-length: WRRB_FLEX rendered as "WR" would be
+# indistinguishable from the plain WR position view sitting beside it in the same row.
 #
-# The two-position slots are slashed rather than run together: WRRB_FLEX as "WR" would be
-# indistinguishable from the plain WR position view sitting next to it in the same row.
-# IDP_FLEX keeps a word because its three letters (D, L, B) compose into nothing readable, and
-# because "IDP" is already the established term for exactly that set.
-_POSITION_VIEW_LABELS = {
-    "FLEX": "WRT",
-    "SUPER_FLEX": "QWRT",
-    "WRRB_FLEX": "W/R",
-    "REC_FLEX": "W/T",
-    "IDP_FLEX": "IDP",
-}
+# Letters and codes both run in FLEX_LABEL_ORDER -- the conventional QB, WR, RB, TE reading
+# order, not alphabetical -- so QWRT and WR/RB come out consistent with each other.
+FLEX_LABEL_ORDER = ("QB", "WR", "RB", "TE")
+
+# IDP_FLEX is named, not derived: D, L and B compose into nothing readable, and "IDP" is
+# already the established term for exactly that set.
+_POSITION_VIEW_LABELS = {"IDP_FLEX": "IDP"}
+
+
+def _flex_label(slot: str) -> Optional[str]:
+    """A flex slot's label from its own eligible set, or None if it isn't derivable."""
+    eligible = FLEX_SLOT_POSITIONS.get(slot)
+    if not eligible or not set(eligible) <= set(FLEX_LABEL_ORDER):
+        return None
+    ordered = [p for p in FLEX_LABEL_ORDER if p in eligible]
+    if len(ordered) == 2:
+        return "/".join(ordered)
+    return "".join(p[0] for p in ordered)
 
 
 def position_view_label(view: str) -> str:
     """Display text for one view value -- Sleeper's own slot spelling (SUPER_FLEX,
     IDP_FLEX) isn't meant for on-screen display, so this is presentation-only renaming,
-    never a second copy of what the slot actually means."""
-    return _POSITION_VIEW_LABELS.get(view, view)
+    never a second copy of what the slot actually means -- a flex label is DERIVED from the
+    eligible set FLEX_SLOT_POSITIONS already defines (see _flex_label)."""
+    if view in _POSITION_VIEW_LABELS:
+        return _POSITION_VIEW_LABELS[view]
+    return _flex_label(view) or view
 
 
 # Equal-width columns are the wrong shape for this control: of the thirteen views a fully

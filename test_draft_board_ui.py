@@ -261,7 +261,7 @@ class BoardViewWidthTests(unittest.TestCase):
         for slot in FLEX_SLOT_POSITIONS:
             label = ui.position_view_label(slot)
             self.assertNotEqual(label, slot, f"{slot} falls through to its raw key")
-            self.assertLessEqual(len(label), 4, f"{slot} label {label!r} is too wide for one row")
+            self.assertLessEqual(len(label), 5, f"{slot} label {label!r} is too wide for one row")
 
     def test_a_flex_label_never_collides_with_a_position_label(self):
         # WRRB_FLEX rendered as "WR" would be indistinguishable from the WR position view
@@ -275,6 +275,27 @@ class BoardViewWidthTests(unittest.TestCase):
         # Self-documenting: the label is the eligible set, so WRT and QWRT read as a pair.
         self.assertEqual(ui.position_view_label("FLEX"), "WRT")
         self.assertEqual(ui.position_view_label("SUPER_FLEX"), "QWRT")
+
+    def test_a_two_position_flex_uses_full_slashed_codes(self):
+        # "WR" would collide with the plain WR view; "W/R" is terser but reads as initials in
+        # a row where every other entry is a real position code.
+        self.assertEqual(ui.position_view_label("WRRB_FLEX"), "WR/RB")
+        self.assertEqual(ui.position_view_label("REC_FLEX"), "WR/TE")
+
+    def test_a_new_flex_type_is_labelled_without_touching_this_module(self):
+        # The point of deriving: FLEX_SLOT_POSITIONS is the one list, and a slot added there
+        # must not need a second edit here to avoid rendering as its raw key.
+        from player_universe import FLEX_SLOT_POSITIONS
+        FLEX_SLOT_POSITIONS["QBTE_FLEX"] = {"QB", "TE"}
+        try:
+            self.assertEqual(ui.position_view_label("QBTE_FLEX"), "QB/TE")
+        finally:
+            del FLEX_SLOT_POSITIONS["QBTE_FLEX"]
+
+    def test_label_order_is_conventional_not_alphabetical(self):
+        # QB, WR, RB, TE -- so QWRT and WR/RB come out consistent with one another.
+        self.assertEqual(ui.position_view_label("WRRB_FLEX"), "WR/RB")   # not "RB/WR"
+        self.assertEqual(ui.position_view_label("SUPER_FLEX"), "QWRT")   # not "QRTW"
 
     def test_super_flex_is_not_abbreviated_to_a_team_code(self):
         # This board renders team codes beside positions ("QB - SF"), so a two-letter SF
