@@ -508,6 +508,76 @@ class MissingMultiYearOutlookTests(unittest.TestCase):
         )
 
 
+class SeededProjectionProvenanceTests(unittest.TestCase):
+    """K and DST points are transcribed from two specific Sleeper leagues' own displays --
+    not Draft Sharks' season-long modeling. bpa_source used to default to
+    "points_vor_draftsharks" for any row carrying a "projection" regardless of which file it
+    actually came from, so every K and DEF row claimed a vendor and a trust level (confidence
+    80.0, documented as "Draft Sharks' own trusted season number") that was simply false.
+    Confirmed by cross-referencing every board row's bpa_source against its real source_file:
+    69 of 328 rows on a real balanced board (all 37 K + all 32 DEF) were mislabeled.
+    """
+
+    @classmethod
+    def setUpClass(cls):
+        cls.merger = dm.DataMerger()
+        cls.db = _players_db(cls.merger)
+        cls.board = dr.compute_draft_board(
+            cls.merger, cls.db, [], my_roster_id="1", league=KDST_LEAGUE, mode="balanced",
+        )
+
+    def test_seeded_kdst_rows_are_not_labeled_as_draftsharks(self):
+        for r in self.board:
+            if r["position"] in ("K", "DEF"):
+                self.assertEqual(
+                    r["bpa_source"], "points_vor_sleeper_seeded",
+                    f"{r['name']} ({r['position']}) still claims Draft Sharks provenance",
+                )
+
+    def test_offense_is_unaffected(self):
+        # The fix touches ONLY rows sourced from the two seeded files -- every offensive
+        # position must still claim genuine Draft Sharks provenance, unchanged.
+        for r in self.board:
+            if r["position"] not in ("K", "DEF"):
+                self.assertEqual(r["bpa_source"], "points_vor_draftsharks", r["name"])
+
+    def test_seeded_confidence_sits_strictly_between_the_two_it_borders(self):
+        # Not equal to either neighbor -- a real season projection, but tied to an unrelated
+        # league's scoring and unable to adapt to the league actually being drafted, which is
+        # a genuinely different trust claim than either Draft Sharks' own dedicated modeling
+        # or the live sleeper_extrapolated path's this-league-tailored numbers.
+        seeded_confidences = {r["confidence"] for r in self.board if r["position"] in ("K", "DEF")}
+        self.assertEqual(seeded_confidences, {50.0})
+        self.assertLess(50.0, dr.CONFIDENCE_BY_SOURCE["points_vor_sleeper_extrapolated"])
+        self.assertGreater(50.0, dr.CONFIDENCE_BY_SOURCE["position_relative_trade_value_vor"])
+
+    def test_confidence_is_provably_decoupled_from_every_players_value(self):
+        # Not just checking that both fields exist -- actually proving the decoupling.
+        # Mutate the seeded confidence value to something wildly different and confirm
+        # bpa/universal_value/final_score for every K/DEF player are byte-identical, while
+        # confidence itself visibly changes. If confidence ever leaks into the score, this
+        # is the test that would catch it, not just a hope resting on the docstring.
+        before = {
+            r["player_id"]: (r["bpa"], r["universal_value"], r["final_score"])
+            for r in self.board if r["position"] in ("K", "DEF")
+        }
+        original = dr.CONFIDENCE_BY_SOURCE["points_vor_sleeper_seeded"]
+        dr.CONFIDENCE_BY_SOURCE["points_vor_sleeper_seeded"] = 99.0
+        try:
+            mutated_board = dr.compute_draft_board(
+                self.merger, self.db, [], my_roster_id="1", league=KDST_LEAGUE, mode="balanced",
+            )
+        finally:
+            dr.CONFIDENCE_BY_SOURCE["points_vor_sleeper_seeded"] = original
+        after = {
+            r["player_id"]: (r["bpa"], r["universal_value"], r["final_score"])
+            for r in mutated_board if r["position"] in ("K", "DEF")
+        }
+        confidences = {r["confidence"] for r in mutated_board if r["position"] in ("K", "DEF")}
+        self.assertEqual(confidences, {99.0}, "the mutation did not actually reach confidence")
+        self.assertEqual(before, after, "confidence leaked into bpa/universal_value/final_score")
+
+
 class TheBaselineIsScoringInertTests(unittest.TestCase):
     """A known, structural data limitation, pinned here so it cannot drift into an unnoticed
     assumption -- same role HalfPprIsAKnownDataLimitationTests plays for rankings-file

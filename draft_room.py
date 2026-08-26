@@ -321,8 +321,27 @@ UPSIDE_GROWTH_WEIGHT = 0.5
 CONFIDENCE_BY_SOURCE = {
     "points_vor_draftsharks": 80.0,
     "points_vor_sleeper_extrapolated": 60.0,
+    "points_vor_sleeper_seeded": 50.0,
     "position_relative_trade_value_vor": 35.0,
 }
+
+# The committed baseline CSVs whose points are a season total TRANSCRIBED from a specific
+# league's own Sleeper display (see sleeper_client.build_baseline_projection_rows and
+# data/baseline/sleeper_projection_provenance.json) -- not Draft Sharks' season-long
+# modeling, and not this module's own points_vor_sleeper_extrapolated path either (that one
+# only ever fires for a LIVE Sleeper feed scored against THIS league's real settings; see
+# TheBaselineIsScoringInertTests for the confirmed fact that nothing here re-scores these
+# rows for any league). Every row carrying a "projection" used to be labeled
+# points_vor_draftsharks unconditionally, which was simply false for these two files' 69
+# rows (37 K + 32 DEF on the committed baseline) -- confirmed by cross-referencing every
+# board row's bpa_source against the source_file it actually came from.
+#
+# Given CONFIDENCE_BY_SOURCE's own stated confidence tier: below Draft Sharks (80.0, a
+# dedicated cross-league projection methodology) and below sleeper_extrapolated (60.0, which
+# at least scores against the ACTUAL league being drafted) -- these are real season
+# projections, but fixed to whichever unrelated league's scoring happened to produce them,
+# and cannot adapt to the league actually being drafted the way either of those two can.
+KDST_SEEDED_SOURCE_FILES = {"sleeper_kicker_projections.csv", "sleeper_dst_projections.csv"}
 
 
 def starter_slot_counts(roster_positions: list[str]) -> dict[str, float]:
@@ -525,11 +544,16 @@ def build_available_pool(
             "projection": match.get("projection"),
             "proj_3yr": match.get("proj_3yr"),
             "sleeper_points": sleeper_points,
+            # Which committed file this row's projection actually came from -- not used for
+            # anything about the player's VALUE, only so compute_draft_board can label bpa_source
+            # honestly instead of assuming every non-live-sync "projection" came from Draft
+            # Sharks (see KDST_SEEDED_SOURCE_FILES).
+            "source_file": match.get("source_file"),
         })
     if not rows:
         return pd.DataFrame(columns=[
             "player_id", "name", "position", "team", "injury_status", "trade_value",
-            "projection", "proj_3yr", "sleeper_points", "bpa",
+            "projection", "proj_3yr", "sleeper_points", "source_file", "bpa",
         ])
     return pd.DataFrame(rows)
 
@@ -1151,6 +1175,11 @@ def compute_draft_board(
     # separate per-position range was the other half of the original IDP bug).
     pool["_points"] = pool["projection"].astype(float)
     pool["bpa_source"] = "points_vor_draftsharks"
+    # Correct the default for rows whose "projection" didn't come from Draft Sharks at all --
+    # see KDST_SEEDED_SOURCE_FILES for why this exists and what it does and doesn't affect
+    # (a label and a confidence NUMBER, never bpa/universal_value/final_score).
+    if "source_file" in pool.columns:
+        pool.loc[pool["source_file"].isin(KDST_SEEDED_SOURCE_FILES), "bpa_source"] = "points_vor_sleeper_seeded"
     no_ds_proj = pool["_points"].isna()
     has_sleeper = pool["sleeper_points"].notna()
     use_sleeper = no_ds_proj & has_sleeper
