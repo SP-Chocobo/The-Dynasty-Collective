@@ -20,7 +20,9 @@ import pandas as pd
 
 import data_merger as dm
 import draft_room as dr
+import draft_strategy as ds
 import lineup_optimizer as lo
+import pick_synthesis as ps
 
 
 def _build_pool_players_db(positions=("QB", "RB", "WR", "TE", "DL", "LB", "DB")):
@@ -1623,6 +1625,39 @@ class CalibrationConstantsDoNotDriftSilentlyTests(unittest.TestCase):
 
         self.assertEqual(board_mode(dr.UPSIDE_MODE_DEFAULT_ROUND - 1), "balanced")
         self.assertEqual(board_mode(dr.UPSIDE_MODE_DEFAULT_ROUND), "upside")
+
+    def test_the_superflex_slot_goes_to_a_qb_the_large_majority_of_the_time(self):
+        # SUPER_FLEX_QB_SHARE splits the SUPER_FLEX slot's demand between QB and the other
+        # flex-eligible positions. Halving it survived the suite, and it is exactly the
+        # number M1's cliff-anchored QB replacement rests on: QB starter demand in a
+        # superflex league sets where replacement lands, which sets every QB's VOR.
+        # The claim being pinned is the one the constant's own comment makes -- the slot is
+        # filled by a QB the LARGE majority of the time, not close to a coin flip.
+        counts = dr.starter_slot_counts(["QB", "RB", "RB", "WR", "WR", "TE", "SUPER_FLEX"])
+        qb_share_of_the_superflex_slot = counts["QB"] - 1.0
+        self.assertGreater(
+            qb_share_of_the_superflex_slot, 0.75,
+            "the SUPER_FLEX slot stopped being a predominantly-QB slot",
+        )
+        # ...and the remainder really does go to the other eligible positions, rather than
+        # being dropped on the floor.
+        non_qb = sum(counts.get(p, 0.0) for p in ("RB", "WR", "TE"))
+        self.assertAlmostEqual(non_qb, 5.0 + (1.0 - qb_share_of_the_superflex_slot), places=6)
+
+    def test_the_narrowed_field_is_wide_enough_to_measure_a_standout_against(self):
+        # DEFAULT_NARROW_COUNT feeds pick_necessity's standout component, which is a margin
+        # over the best OTHER candidate. Shrinking it to 2 survived the suite, but it makes
+        # "stands out from the field" a comparison against a single alternative, which is a
+        # different and much weaker claim than the one necessity reports.
+        self.assertGreaterEqual(ps.DEFAULT_NARROW_COUNT, 5)
+
+    def test_the_horizon_error_bar_spans_a_plausible_positional_run(self):
+        # horizon_sensitivity is the floor's error bar: how far it moves across
+        # +/-HORIZON_SENSITIVITY_WINDOW ranks. Its own docstring names the mechanism that
+        # moves it -- "consumption is exactly the quantity a positional run shifts by that
+        # much" -- so the window has to be at least as wide as a run this engine will
+        # actually detect, or the error bar cannot represent the event it exists to model.
+        self.assertGreaterEqual(dr.HORIZON_SENSITIVITY_WINDOW, ds.RUN_LOOKBACK)
 
     def test_the_weekly_to_season_factor_is_the_length_of_an_nfl_season(self):
         # Not a tuning knob: every NFL team plays exactly 17 games, and this constant exists

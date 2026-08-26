@@ -335,6 +335,72 @@ class ComputePickNecessityTests(unittest.TestCase):
             self.assertLessEqual(score, 100.0)
 
 
+class NecessityComponentIsolationTests(unittest.TestCase):
+    """Mutation testing zeroed NECESSITY_SURVIVAL_WEIGHT and NECESSITY_ROSTER_FIT_WEIGHT --
+    deleting two of pick_necessity's terms outright -- and all 963 tests still passed. The
+    existing tests all stack several pressures at once and assert the total, so any single
+    term can vanish while the totals still order correctly.
+
+    These isolate one term at a time: two candidates identical in every other respect,
+    including team_acquisition_value (which holds the standout component equal for both), so
+    the only thing that can separate the scores is the term under test.
+    """
+
+    def test_survival_pressure_alone_changes_the_score(self):
+        # "Likely to be gone by your next pick" is one of the two things necessity exists to
+        # say. Equal players, one at real risk.
+        at_risk = _raw_candidate(100.0, survival_probability=0.1)
+        safe = _raw_candidate(100.0, survival_probability=0.95)
+        (risk_score, _), (safe_score, _) = ps.compute_pick_necessity([at_risk, safe], round_num=3)
+        self.assertGreater(
+            risk_score, safe_score,
+            "survival probability had no effect on necessity -- the term is not reaching the score",
+        )
+
+    def test_roster_fit_alone_changes_the_score(self):
+        # The other one: an identical player who actually fills a hole on THIS roster is a
+        # more necessary pick than one who does not. need_bonus and eligibility_bonus are the
+        # only team-specific inputs necessity gets.
+        fits = _raw_candidate(100.0, need_bonus=10.0)
+        does_not_fit = _raw_candidate(100.0, need_bonus=0.0)
+        (fit_score, _), (nofit_score, _) = ps.compute_pick_necessity([fits, does_not_fit], round_num=3)
+        self.assertGreater(
+            fit_score, nofit_score,
+            "need_bonus had no effect on necessity -- the roster-fit term is not reaching the score",
+        )
+
+    def test_eligibility_flexibility_alone_changes_the_score(self):
+        # eligibility_bonus enters through the same term, and is the half that carries a
+        # multi-position player's lineup flexibility. Pinned separately so zeroing either
+        # input is caught, not just the shared weight.
+        flexible = _raw_candidate(100.0, eligibility_bonus=8.0)
+        rigid = _raw_candidate(100.0, eligibility_bonus=0.0)
+        (flex_score, _), (rigid_score, _) = ps.compute_pick_necessity([flexible, rigid], round_num=3)
+        self.assertGreater(flex_score, rigid_score)
+
+    def test_every_pressure_term_is_individually_reachable(self):
+        # The general form of the two tests above, so a future term added to the sum starts
+        # out covered instead of silently inert. Each entry varies exactly one input away
+        # from a completely neutral candidate.
+        neutral = dict(_raw_candidate(100.0))
+        variants = {
+            "survival": dict(neutral, survival_probability=0.05),
+            "cliff": dict(neutral, positional_cliff={"tier": "HIGH", "gap": 20, "typical_gap": 2}),
+            "run": dict(neutral, position_run_detected=True),
+            "denial": dict(neutral, rival_premium=12.0),
+            "need_bonus": dict(neutral, need_bonus=10.0),
+            "eligibility_bonus": dict(neutral, eligibility_bonus=10.0),
+        }
+        base = ps.compute_pick_necessity([dict(neutral), dict(neutral)], round_num=3)[0][0]
+        for name, variant in variants.items():
+            with self.subTest(term=name):
+                score = ps.compute_pick_necessity([variant, dict(neutral)], round_num=3)[0][0]
+                self.assertGreater(
+                    score, base,
+                    f"the {name} term does not move pick_necessity at all",
+                )
+
+
 class NearTieFlagsTests(unittest.TestCase):
     """NEAR_TIE_BAND is data-derived (see its own comment: median adjacent tav gap 1.23,
     p75 2.26 on a real fresh superflex board) -- what these tests lock down is the SEMANTICS:

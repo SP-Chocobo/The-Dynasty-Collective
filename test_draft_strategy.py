@@ -536,5 +536,41 @@ class EstimateSurvivalPaceIntegrationTests(unittest.TestCase):
         self.assertLessEqual(result["survival_probability"], without_prior["survival_probability"] + 1e-9)
 
 
+class TakeProbabilityTableStructureTests(unittest.TestCase):
+    """Mutation testing raised RANK_TAKE_PROBABILITY_FLOOR from 0.02 to 0.50 -- a 25x change
+    to how likely an unranked player is to be taken, compounded across every intervening
+    pick -- with the whole suite still green. Nothing pinned the table's SHAPE, only its
+    use."""
+
+    def test_the_table_falls_off_monotonically_by_rank(self):
+        ranks = sorted(ds.RANK_TAKE_PROBABILITY)
+        values = [ds.RANK_TAKE_PROBABILITY[r] for r in ranks]
+        self.assertEqual(ranks, list(range(1, len(ranks) + 1)), "ranks must be 1..N with no gaps")
+        for earlier, later in zip(values, values[1:]):
+            self.assertGreater(earlier, later, "a worse board rank must not be likelier to be taken")
+
+    def test_an_untabulated_rank_is_less_likely_than_the_worst_tabulated_one(self):
+        # The floor covers everyone past the table -- players no opponent has near the top of
+        # their board. It has to sit clearly BELOW the last tabulated entry, or "nobody rates
+        # this player" starts reading as "somebody is about to take him," and survival
+        # probability collapses across a full round of intervening picks.
+        worst_tabulated = ds.RANK_TAKE_PROBABILITY[max(ds.RANK_TAKE_PROBABILITY)]
+        self.assertLess(ds.RANK_TAKE_PROBABILITY_FLOOR, worst_tabulated / 2.0)
+
+    def test_survival_stays_meaningful_across_a_full_round_of_unranked_picks(self):
+        # The consequence that actually matters, stated as compounding: a player outside
+        # every opponent's top ranks must still be more likely than not to survive a full
+        # 11-pick round. At the real floor that is ~0.80; at 0.50 it is ~0.0005.
+        survives_one = 1.0 - ds.RANK_TAKE_PROBABILITY_FLOOR
+        self.assertGreater(survives_one ** 11, 0.5)
+
+    def test_forfeit_board_depth_matches_the_take_probability_table(self):
+        # FORFEIT_OPPONENT_BOARD_DEPTH's own comment states this: it consults exactly as many
+        # of an opponent's board ranks as the take-probability table actually distinguishes,
+        # because ranks past it carry only the flat floor and would add noise, not signal.
+        # The two drifting apart is silent -- both remain plausible numbers on their own.
+        self.assertEqual(ds.FORFEIT_OPPONENT_BOARD_DEPTH, max(ds.RANK_TAKE_PROBABILITY))
+
+
 if __name__ == "__main__":
     unittest.main()
