@@ -923,6 +923,28 @@ def _team_roster_players(
         match = merger.merge_player(name, position=player_position(info), team=info.get("team"))
         value = match.get("trade_value")
         if value is None:
+            # KNOWN LIMITATION, not an oversight. Since build_available_pool started admitting
+            # players on a points projection alone, a roster can contain someone this function
+            # cannot price -- and dropping him means eligibility_bonus solves its assignment
+            # problem against a roster that looks one player emptier than it is. The other
+            # team-specific term does NOT share the blind spot: _team_starters_filled counts
+            # picks straight off players_db, so need_bonus sees the slot correctly filled.
+            #
+            # Substituting a value is the wrong repair. This function is denominated in
+            # trade_value and his projection is in points; mixing those two scales is the
+            # precise defect ELIGIBILITY_BONUS_MAX was introduced to stop (measured: mean
+            # |bpa - trade_value| = 11.7, max divergence 63.0). A zero would not help either,
+            # since an occupied slot valued at zero optimises identically to an empty one.
+            # The real repair is slot OCCUPANCY independent of value, which belongs in
+            # lineup_optimizer, not here.
+            #
+            # Impact today is nil and measured as such: projection-only admissions are
+            # currently K and DEF only, both single-position, so there is no multi-position
+            # flexibility to misprice (all cases return eligibility_bonus 0.0). It becomes
+            # real the moment a DUAL-ELIGIBLE player is admitted this way -- which is exactly
+            # the pending IDP case, where DL/LB dual listings are common and IDP is the
+            # position set that has points but no trade values. Pinned by
+            # ProjectionOnlyRosterVisibilityTests so it cannot go live unnoticed.
             continue
         players.append({"id": player_id, "value": float(value), "eligible": player_eligible_positions(info)})
     return players

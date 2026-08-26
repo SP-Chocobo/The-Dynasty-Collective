@@ -98,6 +98,14 @@ def _waiting_note(c: CandidateSnapshot) -> Optional[dict]:
     position expected to survive the draft is worth, and what taking this one now buys per
     week instead.
 
+    Wording is kept clear of "cost of waiting" on purpose. The debate layer already uses that
+    phrase for a DIFFERENT horizon in DIFFERENT units -- opportunity_cost and
+    positional_forfeit both answer "what does deferring cost me by my NEXT PICK", in
+    universal-value points. This one answers "what does deferring cost me for the whole
+    draft", in season points per week. Two honest numbers that would read as contradictory if
+    both were labelled the same thing, so this surface says replaceability and states its own
+    horizon ("when the draft ends") in every sentence it emits.
+
     Deliberately NOT folded into the existing context-gap glyph. That one already means
     something specific and different -- "his raw talent exceeds the board leader's, he trails
     only on acquisition rank" -- and a glyph that means two unrelated things means neither.
@@ -140,9 +148,9 @@ def _waiting_note(c: CandidateSnapshot) -> Optional[dict]:
         if per_week <= WAITING_STEEP_PER_WEEK < per_week + swing:
             return {
                 "tone": "unsettled",
-                "label": "~?/wk",
+                "label": "~?/wk",  # deliberately not "cost of waiting" -- see the horizon note above
                 "title": (
-                    f"Cost of waiting is unresolved at {c.position}. Best estimate "
+                    f"Replaceability at {c.position} is unresolved. Best estimate "
                     f"{per_week:.2f} pts/week, but {c.position} falls off a cliff just past "
                     f"this point: a normal swing in how hard the room drafts {c.position} "
                     f"moves the floor by up to {swing:.2f} pts/week, which is the difference "

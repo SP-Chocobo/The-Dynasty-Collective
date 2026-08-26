@@ -538,3 +538,47 @@ class NoPositionalSpecialCasingTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class ProjectionOnlyRosterVisibilityTests(unittest.TestCase):
+    """A drafted player with no vendor trade value is invisible to the lineup optimizer.
+
+    build_available_pool admits on "a projection OR a trade value", but _team_roster_players
+    can only price in trade_value units, so it drops what it cannot price. The two
+    team-specific terms therefore disagree about whether a roster slot is filled.
+
+    These tests pin the CURRENT behaviour and the reason it is currently harmless, so the day
+    it stops being harmless is a test failure rather than a silent mispricing. See
+    _team_roster_players' own comment for why substituting a value is the wrong repair.
+    """
+
+    @classmethod
+    def setUpClass(cls):
+        cls.merger = dm.DataMerger()
+        cls.db = _players_db(cls.merger)
+        from player_universe import league_usable_positions
+        cls.pool = dr.build_available_pool(
+            cls.merger, cls.db, set(), league_usable_positions(KDST_LEAGUE["roster_positions"]))
+
+    def _projection_only_rows(self):
+        return self.pool[self.pool["trade_value"].isna()]
+
+    def test_the_two_team_specific_terms_disagree_about_a_filled_slot(self):
+        row = self._projection_only_rows().iloc[0]
+        picks = [{"player_id": row["player_id"], "round": 14, "roster_id": "1"}]
+        self.assertEqual(dr._team_starters_filled(picks, self.db, "1").get(row["position"]), 1,
+                         "need_bonus must see the slot filled")
+        self.assertEqual(len(dr._team_roster_players(picks, self.db, "1", self.merger)), 0,
+                         "eligibility_bonus cannot price him, so he is dropped")
+
+    def test_this_is_currently_harmless_because_such_players_are_single_position(self):
+        # The whole reason the disagreement above costs nothing today. If a projection-only
+        # admission ever becomes multi-position eligible (IDP is the pending case), the
+        # dropped player starts mispricing a real flexibility premium and this fails.
+        from player_universe import player_eligible_positions
+        for _, row in self._projection_only_rows().iterrows():
+            eligible = player_eligible_positions(self.db.get(str(row["player_id"])) or {})
+            self.assertEqual(
+                len(eligible), 1,
+                f"{row['name']} is projection-only AND multi-eligible {eligible} -- the "
+                f"_team_roster_players blind spot is now live; see its comment.")
