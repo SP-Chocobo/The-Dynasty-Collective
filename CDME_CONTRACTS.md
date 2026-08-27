@@ -1562,3 +1562,170 @@ tiebreak and survived only on Python's sort being stable.
 
 **Not attempted, deliberately:** no coefficient was tuned, no fallback value invented, and no
 behaviour preserved by retaining a quantity whose meaning this audit established is wrong.
+
+---
+
+# Appendix — #61: what the board does when value is undefined
+
+Investigation only. **No implementation.** Every consumer traced through the production path and
+measured on the real 12x20 board.
+
+## The finding that makes a coherent policy possible
+
+CDME's central commitment is `team_acquisition_value = universal_value + need_bonus +
+eligibility_bonus` — team-agnostic value plus roster-specific context. Measured across the whole
+draft:
+
+| round | rows | `universal_value` live | `need_bonus` live | `eligibility_bonus` live | identity holds | max error |
+|---|---|---|---|---|---|---|
+| 8 | 232 | 232 | 232 | 232 | yes | 0.0000 |
+| 11 | 196 | 117 | 196 | 196 | yes | 0.0000 |
+| 13 | 172 | 27 | 172 | 172 | yes | 0.0000 |
+| 16 | 136 | **0** | **136** | **136** | yes | 0.0000 |
+| 19 | 100 | **0** | **100** | **100** | yes | 0.0000 |
+
+**The contextual layer is fully anchor-independent.** At rounds 16 and 19, where *no* player has
+a value, *every* player still has a complete, exact roster-fit reading.
+
+So an unpriced board is not an information-free board. It is a board where **"how good is this
+player" is unknown and "how much does this team need him" is fully known** — a different,
+well-defined epistemic state, and one CDME's own split already anticipates.
+
+## Two structural facts the policy rests on
+
+**Pricing is homogeneous within a position.** Measured at every round: `mixed-within-a-position:
+none`. Because `replacement_levels` omits a whole position's key, every player there gets NaN
+VOR together. So every per-position quantity is cleanly all-or-nothing.
+
+**The partial regime is the dominant one, not an edge case:**
+
+| rounds | priced positions | unpriced |
+|---|---|---|
+| 8–9 | QB RB WR TE K DEF | — |
+| 10 | RB WR TE K DEF | QB |
+| 11–12 | RB TE K DEF | QB WR |
+| 13–15 | **TE only** | QB RB WR K DEF |
+| 16–19 | — | all six |
+
+Six of the twelve late rounds are *mixed*. A board-level all-or-nothing rule would be wrong for
+most of the span where it matters.
+
+## The classification
+
+| # | site | needs anchor | partial pricing | `None` propagates | valid alternative | class |
+|---|---|---|---|---|---|---|
+| 1 | forfeit curve `ds:496–501` | within a position | **yes, per position** | yes | no | context — its docstring already says *surfaced signal only* |
+| 2 | `opportunity_cost = tav × (1−survival)` `ds:514` | yes | per candidate | yes | no | **decision policy** — `pick_analysis`'s own sort key |
+| 3 | `denial_value = opp tav × p_take` `ds:525` | yes | per candidate | yes | no | context |
+| 4 | `rival_premium = opp tav − opp uv` `ds:545` | **no** | n/a | **must not** | **yes — it *is* `need_bonus + eligibility_bonus`** | context |
+| 5 | necessity standout margin `ps:336` | that term only | 4 of 5 terms anchor-free | term-wise | partial only | **decision policy** |
+| 6 | `decision_path_flags` `ps:512–530` | 2 of 4 flags | yes | per flag | `context_elevated` = need+elig ✓ | context — *"never new scoring"* |
+| 7 | `decision_regime` / `near_tie_flags` `ps:559–575` | yes | no | yes | **`decision_regime`: yes** | context |
+| + | `detect_positional_cliff` | yes (`bpa`) | yes, per position | yes | no | context |
+| + | `expected_value_of_waiting` `ps:644` | yes | per candidate | **already correct** | no | context |
+| + | `estimate_survival` `ds:341` | **no — rank-based** | n/a | **does not, and that is the hazard** | n/a | **silent** |
+
+### Two quantities are already anchor-free and are only written as if they weren't
+
+`rival_premium` and `context_elevated` are both spelled `tav − uv`. Since
+`tav ≡ uv + need_bonus + eligibility_bonus` — verified exact, max error 0.0000 — both are
+identically `need_bonus + eligibility_bonus`, which is defined with no anchor at all. Rewriting
+them in that form is **not a fallback**; it is the correct expression of the same quantity, and
+the subtraction was an implementation detail that accidentally coupled them to valuation.
+
+### `decision_regime` has a mathematically correct answer for the unknown case
+
+It returns `"decisive"` only when margin **and** survival both clear their bars. An unknown
+margin cannot clear a bar, so `"contested"` is correct — not a fallback. The function already
+returns `"contested"` for the degenerate `len < 2` case by the identical argument.
+
+### The dangerous consumer is the one that never crashed
+
+`estimate_survival` is **purely rank-based** — `rank_by_id` is board position, `i + 1` — and
+never reads a value. So it keeps answering on an unpriced board. Measured:
+
+```
+rd 13: leader priced=True   survival_probability=0.202  ranks on rival boards [1, 1]
+rd 17: leader priced=False  survival_probability=0.202  ranks on rival boards [1, 1]
+```
+
+**The same confident number, from an ordering that for unpriced rows is the `player_id`
+tiebreak.** The crashing half of the stack is the safe half. This half fabricates.
+
+## Proposed policy for #61 — the two-register board
+
+**A board has two registers, decided per position, and it always says which one it is in.**
+
+**Register 1 — priced.** The position has remaining starter demand. Everything behaves as today.
+
+**Register 2 — unpriced.** It does not. The engine reports **need, not value**, and labels it.
+
+Seven rules:
+
+1. **Absence propagates by quantity, not by board.** A quantity needing an anchor returns `None`
+   for the row or position lacking one. Never 0. Never the whole board.
+2. **Scope is the position, not the board.** Justified by measurement, not convenience: pricing
+   is homogeneous within a position, and the mixed regime spans six of twelve late rounds.
+3. **Re-derive the two anchor-free quantities** (`rival_premium`, `context_elevated`) as
+   `need_bonus + eligibility_bonus`. They then never go absent.
+4. **`decision_regime` → `"contested"` on an unknown margin.** Correct by its own logic.
+5. **`near_tie_flags` must be able to say *unknown*.** Its docstring refuses to hand the debate
+   layer a false *"these are tied"*; returning `False` for unknown values is a false *"these are
+   NOT tied"* by the identical argument. Return type widens to `Optional[bool]`.
+6. **The rank-consuming half must stop answering.** `survival_probability` over an unpriced
+   opponent board is `None`. This is the most important rule here and it makes the stack **less**
+   functional, not more — it removes a number that currently looks real and is not.
+7. **`pick_necessity` is not emitted in the unpriced register.** Under rule 6 only three of its
+   inputs survive there (denial premium, roster fit, positional run). A score computed from
+   three of five terms, on a scale still weighted for five, is *a quantity whose meaning changed
+   while its name did not* — the exact defect class this whole audit chased. **A different
+   question gets a different name**, so the debate layer surfaces the surviving signals as what
+   they are rather than as a diminished urgency score.
+
+## Invariants this would establish
+
+1. No anchor-dependent quantity ever returns `0.0` in place of an absent anchor.
+2. `None` in an anchor-dependent field implies the row's position is unpriced, and conversely.
+3. Every per-position quantity is computed for priced positions in the same call that declines
+   for unpriced ones — a mixed board is never all-or-nothing.
+4. `rival_premium == need_bonus + eligibility_bonus` on every row, priced or not.
+5. `context_elevated` is computable on every row, priced or not.
+6. `survival_probability` is `None` whenever the target is unpriced on every opponent board.
+7. `opportunity_cost` is `None` exactly when `tav` or `survival_probability` is.
+8. `decision_regime` never returns `"decisive"` from an unknown margin.
+9. `near_tie_flags` returns `None`, not `False`, for an unknown comparison.
+10. `pick_necessity` is `None` in the unpriced register, never a partial score.
+11. The candidate set is non-empty and position-diverse in every register.
+12. No consumer reads a rank derived from unpriced rows as evidence of anything.
+
+## Consequences — stated, not softened
+
+**The candidate set survives; the ranking does not.** Measured through `narrow_candidates`:
+
+| round | candidates | priced | composition |
+|---|---|---|---|
+| 9 | 21 | 21 | all positions |
+| 11 | 14 | 12 | TE TE K K DEF DEF DEF RB RB TE K DEF · QB\* WR\* |
+| 13 | 10 | 5 | TE TE TE TE TE · RB\* QB\* WR\* K\* DEF\* |
+| 17 | 8 | 0 | RB\* QB\* QB\* WR\* WR\* TE\* K\* DEF\* |
+
+The board never blanks. It goes **unranked**. `position_view_depth(None) = 1` keeps one
+representative per position, so every position always holds a seat.
+
+**Rounds 16–20 lose valuation, survival, and necessity.** What remains is a need-ranked list
+with an explicit label. That is less than the engine appears to offer today, and more than it
+actually knows today.
+
+**At round 13 the top five are all TE**, because TE is the only position still carrying starter
+demand. That is a real emphasis change, driven by the demand domain rather than by this policy —
+but it is where a reader will first notice it.
+
+**`draft_simulation` cannot pick in the unpriced register.** It takes `candidates[0]`, and with
+no value and no necessity there is no defensible ordering. **A simulator selection rule for the
+unpriced register is a decision this policy names and does not make.**
+
+**One implicit policy claim already shipped and should be made explicit.** `_board_order` sorts
+unpriced rows last, so in the mixed regime a priced K outranks the best remaining WR — measured
+at round 11, where the top five are TE/K/DEF. Under a starter-demand reading that is right: the
+K fills a starting slot and the WR does not. Under a talent reading it is obviously wrong. That
+claim entered as a side effect of a mechanical sort fix and deserves an explicit decision.
