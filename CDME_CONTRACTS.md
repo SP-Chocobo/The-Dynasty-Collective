@@ -2158,3 +2158,108 @@ production_basis   ∈ {"points", "trade_value", None}
     weight, including as a tiebreak.
 23. Every surface rendering a register-2 ordering states that it is a production ordering and
     not a CDME valuation.
+
+---
+
+# Appendix — register-2 ordering, corrected
+
+**This corrects the immediately preceding appendix.** Its Spearman figures were an artifact and
+its Q5 conclusion was wrong. Investigation only; no implementation.
+
+## The measurement error
+
+The previous appendix reported `rho(production, TAV)` of `0.30 / −0.08 / 0.01` and concluded the
+two keys were *"near-independent"*, using that as the evidence for strict register separation.
+
+**That was wrong.** `bpa` is `clip(lower=0, upper=100)`, so late boards carry large blocks of
+rows tied at exactly `0.0`, and the untied Spearman formula used is invalid under heavy ties. It
+produced numbers near zero, and negative ones, from tie blocks rather than from disagreement.
+
+Two tie-safe tests replace it: a direct inversion count, and pairwise agreement measured **only
+on pairs `bpa` materially separates**.
+
+## Q1 — can production order players within a position?
+
+**Yes, exactly, and by construction.** Within a position, VOR is `points − a per-position
+constant`, then a shared positive linear scale — so `bpa` is a monotone transform of points.
+
+| test | result |
+|---|---|
+| `bpa` inversions in points-descending order (RB 45, WR 78, K 28 rows) | **0, 0, 0** |
+| within-position pairwise agreement, rd 4 | **100.0%** (2320 pairs) |
+| within-position pairwise agreement, rd 8 | **100.0%** (948 pairs) |
+
+## Q2/Q3 — cross-position comparison, and what makes it comparable
+
+Agreement with CDME's own cross-positional ordering, on pairs `bpa` separates by ≥ 5:
+
+| round | pairs | raw points | production margin |
+|---|---|---|---|
+| 2 | 4363 | 81.6% | **100.0%** |
+| 4 | 3202 | 69.0% | **100.0%** |
+| 6 | 3534 | 74.5% | **95.1%** |
+| 8 | 2463 | 77.7% | **94.1%** |
+| 11 | 682 | 75.8% | **99.1%** |
+
+Raw points is wrong about one cross-position pair in four. The **production margin reproduces
+CDME's cross-positional ordering at 94–100%.**
+
+**What makes it comparable is exactly what makes VOR comparable: a per-position zero set at
+league starter depth.** It is not a new normalization — it is CDME's own one, evaluated against
+the fixed pre-draft field instead of the live remaining pool.
+
+## Q5 — does it duplicate what CDME already has?
+
+**Yes — and that is the argument FOR strict separation, not against the measure.**
+
+`production_margin` is CDME's own VOR numerator with the only anchor still defined. Per the
+earlier inertness finding, the live anchor *equals* the pre-draft anchor while remaining demand
+holds — which is why agreement is 100% at rounds 2, 4 and 11. It falls to 94–95% at rounds 6–8
+precisely where the live anchor has moved, i.e. **exactly where CDME knows something the
+production margin does not.**
+
+So the rule is not "these are different signals, keep them apart." It is:
+
+> Where CDME has an anchor, its version is strictly better informed and the production margin
+> must not be computed at all. Where CDME has no anchor, the production margin is the same
+> quantity with the only reference that still exists — carrying no scarcity, horizon, risk or
+> roster information, and never to be scaled, combined, or presented as `bpa`.
+
+The previous appendix's separation conclusion stands. Its stated reason does not.
+
+## Q4 — stability, and how fragile it is
+
+Stable **only if the reference is computed from the full pre-draft field**. Measured, the same
+formula against the *remaining* pool drifts hard:
+
+| reference | rd 0 | rd 8 | rd 13 | rd 19 |
+|---|---|---|---|---|
+| QB | 324 | 275 | 264 | **204** |
+| RB | 178 | 78 | 66 | **88** |
+| TE | 187 | 82 | 60 | **54** |
+
+A 120-point drift at QB and 133 at TE. The pre-draft reference is fixed by construction, but
+that is a **contract requirement about which pool is used**, not a property that defends itself —
+so it needs an invariant rather than a comment.
+
+## Q6 — coexistence without implying comparable scales
+
+The two registers' keys are the same quantity at different anchors, which makes them *more*
+confusable, not less. Separation therefore has to be enforced structurally: different field
+name, different unit (points, never a 0–100 scale), never present on the same row, never in one
+sorted list, and labelled at every surface.
+
+## Corrected invariants
+
+Invariants 16–23 stand. Two are added and one is restated:
+
+24. `production_margin`'s reference is computed from the **full pre-draft field** — never from
+    the remaining pool. A test recomputes it at several draft states and requires identical
+    per-position levels.
+25. `production_margin` is never computed for a row that has a `team_acquisition_value`. Not
+    computed-and-ignored: **not computed**, because where CDME has an anchor its answer is
+    strictly better informed.
+26. *(restates 17)* It never enters `bpa`, `universal_value`, `team_acquisition_value`,
+    `pick_necessity`, or any ordering containing a priced row — enforced because the two are the
+    same quantity at different anchors and are therefore easy to confuse, not because they are
+    unrelated.
