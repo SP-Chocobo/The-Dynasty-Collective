@@ -4383,3 +4383,218 @@ They are independent, and this investigation kept them so:
     from a filename.
 88. A field that is absent for a whole position because of a merge rule is a declared fact about
     that position, not a silent zero in a downstream adjustment.
+
+---
+
+# Appendix — the dynasty horizon contract
+
+Answers #81. Establishes what `proj_3yr` and the horizon layer are supposed to be, what actually
+reaches them, what depends on them, and what the minimum trustworthy input is. **No repair.**
+
+## The two "horizons" are different quantities with the same word
+
+| name | question | horizon | unit | category |
+|---|---|---|---|---|
+| **production horizon** — `proj_3yr`, `time_horizon_adj` | how much will he produce over the coming years? | multi-season | projected points → percentile → bpa-scale nudge | **player property** |
+| **substitution horizon** — `horizon_replacement`, `horizon_floor`, `waiting_cost` | what is still available when the draft ends? | end of this draft | real points | **context** |
+
+They share a word and nothing else. Recording it here because the collision is live in the
+codebase and either name read for the other is a category error under the doctrine.
+
+## The intended contract, as the code itself states it
+
+Three deliberate design statements, all already written and all correct:
+
+1. **Absence must not become a signal.** `_proj3yr_pct` defaults to a neutral `50.0`, but *"a
+   'neutral' 50.0 standing in on one side of a difference is not neutral — against a genuinely
+   low season percentile it reads as 'this player's future is far better than his present,'
+   manufacturing a growth signal from missing data."* Neutrality is therefore expressed on the
+   **adjustment**, via `_has_3yr`, not on an input.
+2. **Some positions legitimately have no horizon dimension.** *"Draft Sharks publishes DST only as
+   a redraft table, and a team defense has no career arc to project in the first place"* — so a
+   defense *"must neither be penalised for the absence nor rewarded by it."* The parser makes the
+   same statement independently: *"inventing one would feed a fabricated number straight into
+   dynasty scoring."*
+3. **The guard is load-bearing.** Measured before it existed: mean `growth` of **24.22 for K and
+   20.11 for DEF** against **0.57–1.63** for positions carrying both numbers — and because `bpa`
+   collapses board-wide once demand is exhausted, `growth` becomes the sole ranking term, so
+   *"rounds 16 and 17 of a 12x20 draft went 100% K/DEF, and the 22-point kicker sitting last in
+   the remaining pool ranked first overall."*
+
+**That is the origin of this entire audit.** The guard was the right fix for the symptom. What
+follows is what the guard was compensating for.
+
+## One claim in that comment is now false
+
+The code asserts, as justification: *"Provably a no-op for every source committed at the time of
+this change: zero rows in the real baseline carry a points projection WITHOUT a `proj_3yr`
+alongside it."*
+
+That was true when written. **It is false now: 37 kickers and 32 defenses carry a points
+projection with no `proj_3yr`.** The invariant was invalidated later, by a data change, and
+nothing detected it. A dated correctness claim in a comment is not a test.
+
+## What actually reaches the horizon layer
+
+Counted as **unique players**, not row-instances (a first pass compared source rows to canonical
+players, which counts dedup as loss):
+
+```
+ pos  players  w/3yr@src  canon  canon w/3yr  lost   diagnosis
+  QB       41         40     40           38     1   partial reconciliation loss
+  RB       81         74     79           72     0   intact
+  WR      110        105    109          104     1   partial reconciliation loss
+  TE       52         48     52           45     3   partial reconciliation loss
+   K       37         13     37            0    13   TOTAL RECONCILIATION LOSS
+ DEF       32          0     32            0     0   SOURCE GAP
+  LB       93          0     91            0     0   SOURCE GAP
+  DL      172          0    171            0     0   SOURCE GAP
+  DB      156          0    153            0     0   SOURCE GAP
+```
+
+**The question in #81 has a three-way answer, not one answer.**
+
+- **QB/RB/WR/TE — intact.** Between 0 and 3 players lost each. #80 barely touches offense.
+- **K — #80, but only for part of it.** All 13 kickers that carry `proj_3yr` at source lose it to
+  row-replacement, so the reconciliation defect fully explains the canonical zero. **But only 13
+  of 37 kickers have horizon data in any committed file.** A perfect field-merge would take K from
+  0% to **35%**, not to the 87–95% offense enjoys. **#80 is necessary and not sufficient for K:
+  there is also a real source-coverage gap of 24 players.**
+- **DEF and IDP — not #80 at all.** Zero values exist in any source; for IDP the column is absent
+  entirely. Reconciliation has nothing to lose. **And for DEF this is the documented intended
+  behaviour**, not a defect: the engine is supposed to have no horizon opinion about a team
+  defense.
+
+## Everything downstream of the horizon fields
+
+| consumer | reads | effect |
+|---|---|---|
+| `pool["_has_3yr"]` | `proj_3yr` notna | the gate both consumers use |
+| `pool["_proj3yr_pct"]` | `proj_3yr` | pool-wide percentile |
+| `time_horizon_adj` | `_proj3yr_pct − _season_proj_pct`, dynasty only | `± TIME_HORIZON_CLAMP` on the bpa scale → **`universal_value`** → all 79 of its sites |
+| `risk_adj` dynasty scaling | `time_horizon_adj` | a positive trajectory buys up to 70% relief on an injury penalty |
+| `upside_score` → `growth` | `_proj3yr_pct − _season_proj_pct`, floored at 0 | → **`final_score` directly** in upside mode, and **the sole ranking term** once `bpa` collapses |
+| `merge_player` whitelist / roster tables / UI | `proj_3yr` | display |
+
+Module counts: `draft_room` 22 sites, `data_merger` 7, `app` 5, `sleeper_client` 4. Two scoring
+consumers, one third-order dependent, one display path.
+
+## Is `time_horizon_adj` a player trajectory or a positional scale artifact?
+
+Restoring K's `proj_3yr` in memory and recomputing under the current basis:
+
+```
+ pos    n  mean tha   median 3yr/season ratio   ratio rank
+  QB   36      1.30                      2.90            3
+  RB   72     -3.65                      2.44            5
+  WR  102      0.21                      2.99            2
+  TE   45     -1.04                      2.81            4
+   K   13     -3.29                      3.19            1
+```
+
+Variance decomposition over 268 rows: **position explains 29%, within-position 71%.** So the
+quantity does carry real player-level signal — a first reading that called it primarily a
+positional offset was too strong.
+
+But the position-level component is not small against a `±10` clamp, and **it does not track
+trajectory**: if it did, mean `tha` would follow the median 3yr/season ratio. **Pearson r = +0.26**
+across positions — essentially uncorrelated. Kickers have the **highest** median ratio of any
+position (3.19) and receive the second most **negative** mean adjustment (−3.29). Every one of the
+13 restored kickers lands negative, from −0.35 to −5.73.
+
+The cause is that `_percentile_map` ranks **the whole pool**. A pool-wide percentile encodes how a
+position's scale sits against every other position, so the difference of two of them conflates
+*"his future is better than his present"* with *"his position's multi-year scale sits differently
+against the pool than its season scale does."* Under the doctrine that is a **context variable
+wearing a player property's name.**
+
+## The naive repair would create a new defect
+
+`proj_3yr` for kickers lives in `dynasty_kicker_rankings.csv`. The season projection that **wins**
+the merge comes from `sleeper_kicker_projections.csv`. They are not the same quantity — one is a
+vendor dynasty-table projection, the other is scored from Sleeper stats under this league's own
+rules. A field-level merge would pair them:
+
+```
+kicker            vendor season  vendor 3yr  in-file ratio  merged season  merged ratio  distortion
+B Aubrey                    177         406           2.29            116          3.50       1.53x
+C Dicker                    170         336           1.98            106          3.17       1.60x
+J Elliott                   143         340           2.38             90          3.78       1.59x
+...                                                                         median      1.43x
+```
+
+**A field merge alone would inflate every kicker's apparent trajectory by a median 1.43×** — an
+internally inconsistent record produced *by the repair*, not by the defect. This is the canonical
+ingestion invariant's third clause failing in the opposite direction from #80.
+
+**Repair boundary R6 is therefore insufficient as stated.** Merging fields instead of rows is
+necessary and, on its own, unsafe: a horizon field must travel with the season field it was
+computed against, or carry its own basis label so the ratio is never taken across bases.
+
+## The canonical horizon contract
+
+**Definition.** `proj_3yr` is a **player property**: projected production over the multi-season
+horizon, on the same measurement basis as that row's season projection.
+
+**Domain.** Defined only where a source publishes a multi-year figure on a basis matching the
+row's season figure. Positions with no multi-year dimension are **outside the domain**, not
+missing within it.
+
+**Three states, not two.** The schema currently has `value` and `null`, and `null` carries two
+irreconcilable meanings:
+
+| state | meaning | correct treatment |
+|---|---|---|
+| **present** | a real multi-year figure on a matching basis | compute the adjustment |
+| **not applicable** | this position has no career arc (DEF today; IDP as sourced) | **declared**; no adjustment, and never counted as a gap |
+| **unknown** | the player has one and we do not have it (24 kickers; 5 offensive players) | no adjustment, **and reported as missing coverage** |
+
+Today `_has_3yr` collapses *not applicable* and *unknown* into one `False`. Both correctly get a
+zero adjustment, so no current output is wrong — but the engine cannot say whether a position is
+structurally horizon-free or merely unmeasured, which is exactly the distinction needed to decide
+whether restoring data is even possible.
+
+**Exhaustion / absence.** Absence never becomes a signal. The `_has_3yr` gate is correct and must
+survive any repair.
+
+**Authorized consumers.** `time_horizon_adj`, `upside_score`'s `growth`, and — transitively —
+`risk_adj`'s dynasty scaling. No other quantity reads it.
+
+**Interaction.** It is added, via `time_horizon_adj`, to `bpa` — a quantity whose magnitude
+collapses across a draft (#76). The horizon term is stable while what it modifies is not, which is
+why the nudge reaches 100% of `universal_value` by round 15.
+
+## The minimum trustworthy input for the dynasty horizon layer
+
+Four conditions. The first is data; the other three are semantic and no amount of data satisfies
+them.
+
+1. **A multi-year figure for the player** — currently absent for 24 of 37 kickers, all of DEF, and
+   all of IDP.
+2. **On the same measurement basis as that row's season figure** — otherwise the ratio is taken
+   across two scales, at a measured 1.43× distortion for kickers.
+3. **A percentile basis that isolates trajectory from positional scale** — otherwise 29% of the
+   signal is a scale artifact that points the wrong way for the position with the strongest actual
+   trajectory.
+4. **An explicit "no horizon dimension" declaration**, distinct from "unknown" — so DEF's zero is
+   readable as intended and K's zero is readable as a gap.
+
+**Conditions 2 and 3 are prerequisites for condition 1 to be worth satisfying.** Restoring the
+data without them would give kickers a systematically negative dynasty adjustment built on a
+1.43×-inflated ratio — worse than the current neutral zero.
+
+## Invariants
+
+89. `proj_3yr` and the substitution-horizon fields are different quantities. Neither name is ever
+    read for the other.
+90. A horizon figure is only combined with a season figure computed on the same measurement
+    basis. A ratio or difference across bases is not defined.
+91. "Not applicable" and "unknown" are distinct states of a horizon field. A position with no
+    multi-year dimension declares that fact; it does not report a gap.
+92. A percentile feeding a trajectory comparison is computed over a population in which the
+    comparison is meaningful. A pool-wide percentile across positions with different scales is
+    not that population.
+93. A correctness claim asserted in a comment ("provably a no-op for every committed source") is
+    expressed as a test or it is not relied upon.
+94. Horizon coverage is reported per position as a first-class fact, so a position at zero is
+    visibly either out of domain or unmeasured.
