@@ -1985,3 +1985,176 @@ fixing the arithmetic.
 
 **Nothing is implemented.** No fallback, no coefficient, no cross-register ordering, until each
 dependency above carries an explicit semantic justification and the policy is signed off.
+
+---
+
+# Appendix — ordering within the unpriced register
+
+Investigation only. **No implementation.**
+
+> **Unknown CDME value does not mean unknown player quality.**
+
+The unpriced register must not be a flat "unknown" bucket. The question is what may order it
+without becoming a TAV substitute.
+
+## Q1 — normalization
+
+**League format: already applied, and it must stay.** `_points` is scored under the league's own
+`scoring_settings` before anything else touches it.
+
+**Within position: yes — but not by within-position normalization.**
+
+Raw points is unusable. Measured, the top twelve of the unpriced register at round 17 ordered by
+raw points:
+
+```
+QB QB QB QB QB QB QB QB QB QB QB QB
+```
+
+Raw points is a **positional ranking wearing a quality ranking's clothes** — it answers which
+position scores most, not which player is better.
+
+But the obvious repair is worse. Normalizing *within* a position — by rank, or as a share of
+that position's own best remaining — **creates the boundary failure it was meant to fix**: the
+best QB and the best TE both normalize to the top of their own list and become
+indistinguishable. Percentile-ranking is separately ruled out by this module's own history
+(*"percentile-ranking the VOR anchor was a real bug"*).
+
+**The correct normalization is a common cross-positional reference: each position's own
+PRE-DRAFT replacement level** — the D-th best player in the full field, D = this league's
+starting slots at that position. Fixed by `roster_positions` alone. Measured:
+
+```
+DEF 98   K 105   QB 324   RB 178   TE 187   WR 210
+```
+
+Same rule for every position; the position enters only as the identity of its own denominator.
+
+### Why this is not smuggling valuation back in
+
+CDME's anchor is replacement against **remaining demand** — a live claim about scarcity *now*.
+This reference is the **pre-draft field at league starting slots** — a fixed structural constant
+that never moves during the draft. It makes no claim about scarcity, survival, or roster fit. It
+answers only *"is this player starter-quality for this league's shape?"*, which is a production
+question. Because it is fixed, it cannot be mistaken for a live valuation.
+
+## The boundary case, resolved by the general rule
+
+| player | pos | pts | pre-draft replacement | production margin |
+|---|---|---|---|---|
+| C Williams | QB | 324.0 | 324 | **0.0** |
+| D Njoku | TE | 52.0 | 187 | **−135.0** |
+
+Caleb ranks 135 points clear of Njoku, and nothing about him was hard-coded — it falls out of
+*points minus that position's pre-draft replacement level*. Under the same rule the top twelve
+of the unpriced register becomes:
+
+```
+WR TE DEF DEF QB RB WR TE K DEF DEF RB      (DEF 4, WR 2, TE 2, RB 2, QB 1, K 1)
+```
+
+Genuinely mixed, with no per-position tuning.
+
+## Q2 — bounded, without becoming an implicit TAV
+
+**Yes — and the honest form is deliberately UNBOUNDED, and denominated in points.**
+
+Bounding it to 0–100 would give it `bpa`'s exact shape and invite the substitution this is meant
+to prevent. Ordering needs a total order, not a scale; bounds only matter for a quantity that
+gets *combined* with others, and this one never may be. **Separation is enforced by unit and
+name, not by range** — points is a unit CDME never uses for a score.
+
+Evidence it is not a TAV proxy, measured inside the priced register where both exist:
+
+| round | n | Spearman ρ vs TAV | rows displaced >10% of the board |
+|---|---|---|---|
+| 4 | 283 | 0.30 | 186 (66%) |
+| 8 | 236 | **−0.08** | 190 (81%) |
+| 11 | 139 | **0.01** | 106 (76%) |
+
+**The two keys are near-independent.** They carry different information, and neither can stand
+in for the other.
+
+## Q3 — should the ordering differ between positions?
+
+**No.** One rule, one formula, every position — the mixed top twelve above is produced without a
+single per-position parameter. Any per-position variation would be exactly the positional
+special-casing this engine forbids.
+
+## Q4 — how need and eligibility interact
+
+**They do not enter the ordering at all.** Measured in the unpriced register:
+
+| round | production-key spread | max `need + eligibility` available | exact production ties |
+|---|---|---|---|
+| 13 | 257.0 pts | **0.00** | 18 |
+| 15 | 230.0 pts | **0.00** | 17 |
+| 17 | 233.0 pts | **0.00** | 20 |
+
+There is nothing there to order with. Across all twelve rosters the maximum ever observed is
+`0.33`, against a 230–257 point spread — roughly **0.14%**. Need and eligibility are real, exact,
+and worth **displaying** beside a register-2 row; they are not an ordering signal, and using them
+as one would blur a production ordering into a roster ordering for no measurable gain.
+
+## Q5 — must the registers stay strictly separated?
+
+**Yes, and now on evidence rather than principle.** The ρ ≈ 0 result above means using the
+production key across the priced register would **discard the scarcity, horizon, risk and roster
+information CDME actually computed**, and using TAV in register 2 is impossible by definition.
+Each register keeps its own key; they are never merged, and no row is ever ordered against a row
+in the other register.
+
+## Q6 — when production itself is unavailable
+
+Measured on the full IDP-inclusive pool (404 rows):
+
+| | rows |
+|---|---|
+| no points projection | 76 |
+| no points **and** no trade_value | **0** |
+| no points but has trade_value | 76 |
+
+So production is never fully absent in the committed baseline. The **same rule** applies against
+the **trade_value** pre-draft level — a level `replacement_levels` already computes and
+`compute_draft_board` already derives for exactly those rows.
+
+**But points-derived and trade_value-derived margins are different units and must not be
+interleaved either.** That is the same error one layer down. So register 2 orders **within a
+measurement basis**, and each row carries which basis produced its margin.
+
+A row carrying neither points nor trade_value has **no ordering position at all** — it is
+surfaced as unordered, never appended silently to the end of a list where position implies rank.
+
+## Proposed contract
+
+```
+production_margin  = projected_points − pre_draft_replacement[position]      (points basis)
+                   = trade_value      − pre_draft_replacement_tv[position]   (trade_value basis)
+                   = None                                                    (neither available)
+
+production_basis   ∈ {"points", "trade_value", None}
+```
+
+- Computed only for register-2 rows. Never written to `bpa`, `universal_value`,
+  `team_acquisition_value`, or any field a valuation consumer reads.
+- Unbounded, in its source unit, never rescaled to 0–100.
+- Labelled at every surface as a **secondary presentation ordering, not a CDME valuation**.
+- The pre-draft reference is computed once from `roster_positions` and the full field, and does
+  not move as the draft progresses.
+
+## Invariants
+
+16. `production_margin` is defined only where `team_acquisition_value` is absent, and never
+    coexists with it on the same row.
+17. It never enters `bpa`, `universal_value`, `team_acquisition_value`, `pick_necessity`, or any
+    ordering that also contains a priced row.
+18. It is never rescaled, clipped, or bounded to a 0–100 range.
+19. Its reference is the pre-draft field and is invariant to draft progress: recomputing it at
+    any round yields the same per-position levels.
+20. Rows on different `production_basis` values are never ordered against each other.
+21. A row with no available production carries `production_margin = None` and is surfaced as
+    unordered — never placed at the end of an ordered list.
+22. `need_bonus` and `eligibility_bonus` never appear in the register-2 ordering key, at any
+    weight, including as a tiebreak.
+23. Every surface rendering a register-2 ordering states that it is a production ordering and
+    not a CDME valuation.
