@@ -3395,3 +3395,306 @@ to 0. It is holding neither 2 nor 3 while protecting a property nothing reads.
 58. `bpa` is the only channel carrying scarcity to the decision layer. Any change to the scarcity
     representation is a change to every consumer downstream of it, whether or not that consumer
     mentions scarcity.
+
+---
+
+# Appendix — what BPA is, once the bundle is opened
+
+Answers #76. The previous appendix separated `production_margin`, `scarcity_movement`, VOR and
+`bpa` and stated what each may carry. This one tests `bpa` against the properties the downstream
+system actually requires, audits it along the full semantic chain rather than at its formula, and
+uses credible external rankings as a **diagnostic** — never as an input. **No normalization is
+designed, no reference chosen, no coefficient tuned.**
+
+## The full-chain audit
+
+The doctrine addendum requires evaluating a quantity along
+`definition → domain → state transitions → upstream assumptions → downstream consumers →
+interactions`. Applied to `bpa`:
+
+| link | finding |
+|---|---|
+| **definition** | `clip(vor / max(vor) × 100, 0, 100)`. Self-contained, deterministic, correct as written. Nothing in the formula is wrong. |
+| **domain** | defined only where the position's live level exists (remaining demand ≥ 1) **and** `max(vor) > 0`. **Two independent domain conditions; only the first is documented anywhere.** The second fires at round 15 on the audit board. |
+| **state transitions** | two, both undeclared: the anchor moves every pick (`scarcity_movement`, #75) and the **reference** moves every pick. Measured below: the reference carries **94.5%** of all `bpa` movement. |
+| **upstream assumptions** | `_vor` is built from a **single-season** points projection — in dynasty leagues as well as redraft. The multi-year outlook never reaches `bpa`; it enters one layer later as `time_horizon_adj`. **`bpa` silently assumes the production horizon is one season.** |
+| **downstream consumers** | nine; all but two receive every piece of scarcity information only through here (#75). Five read *magnitude* against absolute constants that assume a stable unit. |
+| **interactions** | `universal_value = bpa + time_horizon_adj + risk_adj` adds two **stable-magnitude** quantities to one **collapsing-magnitude** quantity. Measured below. |
+
+The last row is the new finding, and it is the doctrine's own thesis in miniature: every one of
+those three terms is locally correct, and their sum stops meaning what it says.
+
+## The horizon is priced on a ruler that shrinks under it
+
+`TIME_HORIZON_SLOPE = 0.20` on a percentile difference, clamped to `±10.0` **bpa points**;
+`RISK_ADJ` is `−1.5 … −18.0` on the same scale. Both are documented as *"small, bounded, additive
+nudges … deliberately incapable of overriding a real VOR gap on their own."* Measured over the
+priced rows of the audit board:
+
+```
+ rd  priced  mean|bpa|  mean|thadj|  nudge share of |uv|   ±10 clamp buys (real pts)
+  1     316       8.53         2.15                0.201                        9.70
+  4     280       6.60         2.28                0.257                        2.70
+  8     232       4.66         2.57                0.355                        1.60
+ 12     112       2.23         1.88                0.458                        0.20
+ 13      27       3.70         1.60                0.302                        0.10
+ 15      23       0.00         1.38                1.000                   no scale
+```
+
+Two independent failures, visible together:
+
+1. **The premise inverts.** `mean|bpa|` falls `8.53 → 0.00` while `mean|time_horizon_adj|` holds
+   near 1.4–2.6, because it is computed from projection percentiles and is anchor-independent.
+   The nudge carries **20% of `universal_value`'s magnitude at round 1, 46% at round 12, and
+   100% at round 15** — where every `bpa` is `0.0` and `universal_value` *is* the nudge. Neither
+   constant changed. The quantity they were sized against collapsed underneath them.
+2. **The dynasty signal is denominated in the drifting unit.** The full `±10` clamp — the entire
+   multi-year consideration the engine has — purchases **9.70 real points at round 1 and 0.10 at
+   round 13**, and nothing at all at round 15.
+
+(`mean|risk_adj|` is `0.00` throughout this fixture: no injury flags in the pool. With real
+injury data the nudge share is strictly higher than measured here.)
+
+So on the horizon principle, the current state is: **`bpa` is redraft-shaped in both league
+types**, and the dynasty horizon is a bounded additive nudge on a scale that loses 97× of its
+purchasing power over a draft. That arrangement cannot express a dynasty production horizon; it
+can only tilt a season number.
+
+## Longitudinal: 94.5% of `bpa` movement is the ruler, not the player
+
+For players whose projection never changes, `Δbpa` decomposes exactly:
+
+```
+own effect       = 100 × (vor₂ − vor₁) / ref₁          his value against the anchor moved
+reference effect = 100 × vor₂ × (1/ref₂ − 1/ref₁)      the ruler moved under him
+own + reference  = Δbpa                                exactly
+```
+
+```
+    transition    ref₁    ref₂  players  mean|Δbpa|  mean|own|  mean|ref|  ref share
+    rd1 → rd2    97.0    72.0      304        21.6        0.0       21.6      1.000
+    rd2 → rd4    72.0    27.0      280       141.4        0.7      141.8      0.995
+    rd6 → rd8    17.0    16.0      232        22.0       23.5       23.7      0.503
+   rd10 → rd11   13.0     9.0      117       204.2       29.7      174.6      0.855
+   rd11 → rd12    9.0     2.0      112      2166.3       25.0     2142.0      0.988
+
+ pooled: reference effect 94.5% of all bpa movement, own effect 5.5%
+```
+
+`rd1 → rd2` is the cleanest case: mean `|Δbpa|` of **21.6 points with exactly 0.0 attributable to
+any player's own change.** The whole movement is the reference.
+
+Concretely, on players whose projections are constant all draft (clipped, as shipped):
+
+```
+   player   pts   rd1   rd2   rd4   rd6    rd8   rd10   rd11   rd12
+ I Likely   186   0.0   0.0   0.0   0.0   50.0   61.5   88.9    0.0
+M Andrews   187   0.0   0.0   3.7   5.9   56.2   69.2  100.0   50.0
+```
+
+**Isaiah Likely climbs from 0.0 to 88.9 and falls back to 0.0 without one thing about him
+changing.** Answering the question the mandate poses: this movement is **not economically
+intended.** The economically real market movement is the *anchor* moving, and #75 measured that
+at a 0–16 point per-position residual which cannot reorder within a position at all. The
+reference is a property of **one other player** — whoever currently tops the pool, and who is
+himself about to be drafted. Every other player's unit is set by that single row.
+
+## Does anything require the 0–100 bound? No.
+
+Searched every consumer of `bpa`, `universal_value`, `team_acquisition_value` and `final_score`:
+
+| site | what it looked like | what it is |
+|---|---|---|
+| `pick_synthesis.py:369` `min(100.0, raw_score)` | a bpa bound | **`pick_necessity`**, a different 0–100 quantity assembled from weights that sum to ≤ 100 by construction. Reads a bpa *gap*, never a bpa *level*. |
+| `pick_debate.py:229` `{pick_necessity}/100` | a bpa bound | same quantity, printed. |
+| `data_merger.py:1334` `trade_value.clip(0,100)` | a bpa bound | the composite input scale, **upstream** of `bpa`. |
+| `app.py` composite `/100` | a bpa bound | the source-composite score, unrelated. |
+| UI bar widths | a bpa bound | none is scaled by a valuation; `width:100%` is CSS layout. |
+
+**Zero consumers require `bpa ≤ 100`. Five require a stable unit and do not have one.** Bounded
+output is the property the current design protects hardest and the only one nothing reads. If a
+bounded presentation is wanted, it is a rendering concern and can be applied at the surface
+without the underlying quantity losing information.
+
+Two constants deserve separating here, because they behave differently under any rescale:
+
+- `denial_component = min(rival_premium / NEED_BONUS_MAX, 1.0)` — a **ratio** of two bpa-scale
+  quantities. Scale-invariant; survives renormalization untouched. (Its denominator is
+  `NEED_BONUS_MAX` alone while `rival_premium` can reach `NEED_BONUS_MAX + ELIGIBILITY_BONUS_MAX`
+  — a separate, pre-existing 2× mismatch, recorded and not fixed here.)
+- `standout_component = clip(margin / NECESSITY_STANDOUT_REFERENCE_GAP, 0, 1)` — an **absolute**
+  bpa gap against a fixed `15.0`. Drifts with the unit, 14.55 real points down to 0.15.
+
+## External rankings, used as a diagnostic
+
+Role, per the mandate: *external ranking → surprising CDME ordering → investigate → justified
+difference or identified defect.* No ordinal is converted to a value; ordinals are used only to
+ask whether two sources order the same **pair** the same way. CDME is never asked to reproduce
+them.
+
+**Independence check first.** On the audit board every priced row is sourced
+`points_vor_draftsharks` (259) or `points_vor_sleeper_seeded` (69); **no row uses the
+`position_relative_trade_value_vor` fallback.** FantasyPros, KeepTradeCut and DynastyProcess are
+therefore genuinely independent of what `bpa` is built from here. **This is conditional, not
+general:** those three sources sit inside `COMPOSITE_SOURCE_WEIGHTS`, so on any board where the
+trade_value fallback fires, the diagnostic is circular for those rows and must be declared
+invalid for them rather than read as agreement.
+
+**Pairwise ordinal agreement**, restricted to pairs `bpa` materially separates (gap >
+`NEAR_TIE_BAND`) and both players externally ranked:
+
+```
+  rd   source                within-position        cross-position
+   0   FantasyPros            89.9%  ( 4465)         76.3%  (15872)
+   0   KeepTradeCut           88.0%  ( 4307)         80.2%  (10797)
+   0   DynastyProcess         89.5%  ( 4294)         84.4%  (10728)
+   4   FantasyPros            86.6%  ( 1922)         59.5%  ( 9263)
+   8   FantasyPros            86.9%  (  826)         73.9%  ( 3069)
+   8   DynastyProcess         79.3%  (  799)         76.7%  ( 2171)
+```
+
+**Within-position ordering is corroborated at 79–90% by all three sources at every round.** That
+is expected and reassuring: `scarcity_movement` is a per-position constant and cannot reorder
+within a position (#75), so within-position order is essentially production order — and
+production order agrees with independent expert opinion.
+
+**Cross-position ordering — the job `bpa` exists to do — is 5 to 27 points worse, and dips to
+59.5% at round 4**, the state where the clipped population peaks at 80% of the board.
+
+### Splitting the disagreements by mechanism
+
+A first pass classified these by "the externally-preferred player has more projected points,"
+which **mislabels anchor-driven reversals as clip damage** — a legitimate positional-baseline
+reversal is exactly what `bpa` is for. Re-split on the actual mechanism:
+
+| | condition | reading |
+|---|---|---|
+| **clipped** | the loser's **unclipped** VOR < 0 | CDME measured a difference and printed `0.0`. **Defect.** |
+| **anchor** | both have positive VOR; the baseline reversed the points order | `bpa` doing its declared job. **Legitimate** — the source weighs scarcity differently. |
+| **horizon** | loser priced positive, ranked better externally on fewer CDME points | the source prices a future a season number cannot carry. **Legitimate.** |
+
+```
+ rd          source  disagree  clipped  anchor  horizon
+  0     FantasyPros      3769    74.8%   15.9%     9.3%
+  0    KeepTradeCut      2140    57.9%   28.1%    14.0%
+  0  DynastyProcess      1673    55.2%   25.6%    19.1%
+  4     FantasyPros      3751    86.8%   11.5%     1.7%
+  8     FantasyPros       801    89.1%    8.5%     2.4%
+  8  DynastyProcess       506    85.0%   10.3%     4.7%
+```
+
+Three independent sources, three methodologies, the same shape: **the dominant reason CDME
+disagrees with credible external opinion cross-positionally is the clip — not a scarcity
+philosophy and not a horizon difference.** The clip share *rises* through the draft (55–75% →
+85–89%) as the clipped population grows.
+
+Worked examples, round 4, FantasyPros:
+
+```
+[clipped] Judkins (RB, 202 pts, vor +26, bpa 96.3) > Tyson    (WR, 145 pts, vor −65, bpa  0.0)   #53 vs #40
+[ anchor] Judkins (RB, 202 pts, vor +26, bpa 96.3) > Waddle   (WR, 235 pts, vor +25, bpa 92.6)   #53 vs #45
+[horizon] Warren  (RB, 202 pts, vor +26, bpa 96.3) > Kincaid  (TE, 189 pts, vor  +3, bpa 11.1)  #111 vs #89
+```
+
+The anchor row is the important one to *not* fix: Judkins beats Waddle on one VOR point despite
+33 fewer projected points, because RB's baseline is lower. FantasyPros disagrees. **That is a
+defensible divergence CDME can explain from its own inputs, and it must survive any repair.**
+
+### The boundary case, against independent opinion — round 15
+
+| player | pos | pts | bpa | tav | FantasyPros | KeepTradeCut | DynastyProcess |
+|---|---|---|---|---|---|---|---|
+| C Williams | QB | 324.0 | `None` | `None` | **#47** | **#10** | **#46** |
+| D Njoku | TE | 52.0 | 0.0 | **1.16** | #197 | #252 | #208 |
+| M Andrews | TE | 187.0 | 0.0 | −3.61 | #130 | #187 | #135 |
+
+Three independent sources place Williams **150 to 242 places above** Njoku. The board puts Njoku
+first because he carries a number and Williams carries `None`.
+
+This is not a divergence CDME can justify. **CDME is not making a claim here at all** — the
+ordering is a side effect of `na_position='last'`. And every dimension that *can* speak agrees
+with the external sources: post-draft substitution cost is **−15 for Njoku and +28 for Williams**,
+i.e. *waiting on Njoku is better than free*. The engine computes that and then ranks him first.
+
+The converse the mandate asks for is equally required: **a strong TE must be able to win this
+comparison on the record.** Andrews at 187 points has a post-draft substitution cost of **+120**
+against Williams' +28 — a real, large, defensible case for the tight end, expressed in a
+dimension that is answerable at that round. What is not acceptable is a tight end winning because
+"numeric TAV outranks undefined TAV."
+
+## Which dimensions are answerable, by regime
+
+| regime | A — production/value | B — in-draft loss | C — post-draft substitution | D — roster context |
+|---|---|---|---|---|
+| rounds 1–5 | all six positions | all six | partial (TE absent early) | **all rows** |
+| rounds 7–9 | all six | all six | all six | **all rows** |
+| round 11 | RB TE K DEF | RB TE K DEF | all six | **all rows** |
+| rounds 13–15 | TE only | TE only | all six | **all rows** |
+| rounds 17–19 | none | none | all six | **all rows** |
+
+B's window *is* A's — it is built from `universal_value` curves. **A and C are never both absent,
+and D is never absent at all** (the contextual layer is fully anchor-independent, verified exact:
+`tav ≡ uv + need_bonus + eligibility_bonus`, max error `0.0000`).
+
+What each may legitimately contribute:
+
+- **A — production/value magnitude.** How much a player produces over the appropriate positional
+  baseline, on the league's production horizon. It may not carry scarcity movement, roster fit,
+  or a claim about who else will pick.
+- **B — in-draft loss.** What may be lost before the next pick. Probability × magnitude, horizon
+  = my next pick. It may not stand in for A when A is absent — B is *built from* A.
+- **C — post-draft substitution cost.** What remains available after the draft. Horizon = end of
+  draft. It is most reliable exactly where A is weakest, and its negative values are first-class.
+- **D — need / eligibility / fit.** Roster-specific context. Measured ceiling in the unpriced
+  register is `0.33` against a 230–257 point production spread — **real, exact, and not an
+  ordering signal on its own.**
+
+No weighting is proposed. The precondition the evidence establishes is that **the engine must be
+able to state which dimensions are answerable before any of them is weighed**, and no dimension
+may be substituted for another when its own inputs are missing.
+
+## Is `bpa` one quantity or several?
+
+The measured semantics say **several**. `bpa` today answers at least four questions, and
+`universal_value` folds in two more:
+
+| bundled concept | evidence it is separable |
+|---|---|
+| production surplus over a positional baseline | the intended core; corroborated within-position at 79–90% by three independent sources |
+| scarcity movement | a per-position constant that cannot reorder within a position; two components cancelling to a 0–16 residual (#75) |
+| a normalization reference | `max(vor)` — a property of one other player; **94.5% of all `bpa` movement** |
+| a floor decision | the clip; merges three semantic states and drives **55–89%** of external cross-position disagreement |
+| production horizon | `time_horizon_adj`, `±10` bpa; **100% of `universal_value` by round 15** |
+| current-status risk | `risk_adj`, same scale, same drift |
+
+These are six questions in one number, and each has been measured to move independently of the
+others. The one thing the evidence says to **keep together** is production surplus and
+cross-position comparability: that pairing is `bpa`'s stated purpose, and it is the part
+independent expert opinion corroborates. Splitting *that* would be splitting for cleanliness.
+
+Everything else in the list is a separate quantity wearing `bpa`'s name.
+
+## Invariants
+
+59. `bpa` carries production surplus over a positional baseline, on the league's production
+    horizon, expressed so that positions are comparable. It carries nothing else.
+60. The production horizon is a property of the league, not of the draft state. In a dynasty
+    league the horizon reaches `bpa` itself, not a bounded additive nudge applied afterwards.
+61. No quantity whose magnitude is stable is added to a quantity whose magnitude collapses,
+    unless the ratio between them is itself declared and checked.
+62. The draft state contextualizes a valuation; it never redefines the valuation's unit. A
+    player's score does not move because a different player was drafted, unless that movement is
+    attributable, declared, and economically intended.
+63. The normalization reference is never a property of a single other row.
+64. A below-baseline measurement is preserved as a signed measurement. Genuine zero, clipped
+    negative, degenerate anchor and undefined valuation are four distinct states and are never
+    represented by one value.
+65. Bounded presentation is a rendering decision. No information is destroyed in an underlying
+    quantity to obtain a bounded range.
+66. External rankings are diagnostics, never inputs. A divergence is investigated and resolved as
+    either justified or a defect; it is never closed by moving CDME toward the ranking.
+67. An external source is a valid diagnostic for a row only where it is not already inside that
+    row's own valuation path. Where the trade_value composite priced the row, the diagnostic is
+    declared invalid for it rather than read as agreement.
+68. Every decision states which of A, B, C, D are answerable in the current regime before any is
+    weighed, and no dimension substitutes for another whose inputs are absent.
