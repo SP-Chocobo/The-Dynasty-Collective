@@ -884,3 +884,235 @@ position has depth 1.
    secondary basis with the regime shown? Today it silently ranks on `time_horizon_adj`.
 3. **Whether `horizon_replacement` becomes VOR's anchor outside the starter-demand domain**,
    and if so whether it may act while `certain=False`.
+
+---
+
+# Appendix — can consumption ever reach zero?
+
+Investigation only. **No implementation.** Task #59. Measured across **six completed simulation
+boards** (`12x20 final-audit`, `balanced-forced`, `postfix-auto`, `K-DST`, `12x14 K-DST`,
+`12x20 IDP`) using production functions. The windowed variants are a replica of
+`expected_positional_consumption` whose fidelity is asserted against the production function at
+`window=None` before any variant runs, so a window can only differ from production by the window.
+
+## Q1 — What is it trying to represent economically?
+
+Its docstring says *"expected TOTAL players taken at each position across the whole draft."* Its
+only consumer is `horizon_replacement`, which converts it to a **rank**:
+`still_to_go = consumption − drafted`, `rank = still_to_go + 1`, indexed into the remaining pool.
+So a ±4-player error is a ±4-rank displacement of the anchor — and the module's own
+`HORIZON_SENSITIVITY_WINDOW` measurement says ±6 ranks moves the floor by 12 points at DEF and
+63 at QB.
+
+The intended object is **residual demand**: a stock that gets consumed and can run out. The
+implemented object is a **share of the remaining picks**: a flow proportion that conserves the
+total and cannot run out. Every share-based estimator in the measurements below returns
+`sumErr ≈ 0.0` at every checkpoint on every board — the total is always exactly right and the
+split is always wrong. **The economic concept and the implementation are different kinds of
+quantity.** That is the whole of #59.
+
+## Q2 — Why lifetime observed share cannot reach zero
+
+```
+consumption[p] = drafted[p] + remaining_picks × blended_share[p]
+blended_share[p] = (1−w)·prior_share[p] + w·observed_share[p]
+```
+
+`prior_share[p] > 0` for any position with a starter slot; `observed_share[p] = drafted[p]/picks_made > 0`
+for any position ever drafted. So `blended_share[p]` is **strictly positive**, and
+
+```
+still_to_go = consumption − drafted = remaining_picks × blended_share[p] > 0
+```
+
+for every position anyone could care about, until `remaining_picks` itself hits zero. The only
+reachable zero is a position with no starter slot that has never been drafted — the one case
+where the answer does not matter. Measured: at pick 192 of the final-audit board, K and DEF are
+**fully consumed** and the model asserts 3.7 and 4.1 more.
+
+## Q3 — Does a recency window solve the semantic problem?
+
+**No. It is worse than neutral, on three measured grounds.**
+
+**(i) It does not improve accuracy.** Mean absolute error against actual final consumption,
+across 23 board-rounds spanning all six boards:
+
+| estimator | window=60 | window=48 | window=36 | **current** | window=24 | capacity | window=12 |
+|---|---|---|---|---|---|---|---|
+| MAE | 10.18 | 10.25 | 10.34 | **10.40** | 10.54 | 10.72 | 11.64 |
+
+The whole spread is 1.5 MAE on a base of ~10, and the best-performing window is the one closest
+to lifetime. **Choosing a window here is choosing noise.**
+
+**(ii) It still cannot reach zero.** Same algebra — a windowed `observed_share` is still ≥ 0 and
+the prior term keeps the blend strictly positive.
+
+**(iii) It destroys an invariant the current model satisfies.** Controlled test: two 96-pick
+sequences with **identical per-team rosters, identical league tallies, and the identical set of
+players removed**, differing only in *when* the kickers were taken (all in round 1 vs all in
+round 8). True remaining demand is 0 in both.
+
+| estimator | K taken late | K taken early | swing |
+|---|---|---|---|
+| current | 17.6 | 17.6 | **0.0** |
+| window=36 | 29.6 | 10.4 | 19.2 |
+| window=24 | 39.2 | 10.4 | 28.8 |
+| window=12 | **68.0** | 10.4 | **57.6** |
+| capacity | 9.2 | 9.2 | **0.0** |
+
+Remaining demand cannot depend on the order in which past picks arrived. The current model is
+correctly order-invariant; **a window removes that property.** It makes the number behave
+differently without making it mean anything different.
+
+## Q4 — Windows against the boards
+
+Representative, `12x20 IDP` at round 16 (actual final: K 35, WR 67, RB 31, DEF 32, TE 20):
+
+| estimator | K | WR | RB | DEF | TE | MAE |
+|---|---|---|---|---|---|---|
+| current | 30.8 | 58.3 | 37.9 | 23.6 | 21.5 | 4.7 |
+| window=12 | 45.0 | 48.9 | 31.9 | 39.0 | 18.1 | 4.5 |
+| window=24 | 49.8 | 50.5 | 31.9 | 32.6 | 18.1 | 4.1 |
+| window=48 | 37.8 | 61.7 | 33.5 | 26.2 | 18.9 | **2.7** |
+| capacity | 28.0 | 54.1 | 39.1 | 23.0 | 23.7 | 6.4 |
+
+No window dominates across boards or rounds; the ranking reshuffles at every checkpoint. There is
+no window that is *right*, only windows that happen to fit one board-round.
+
+## Q5 — Pathological cases
+
+Predicted **remaining** consumption; true value in the header.
+
+| case | truth | current | win12 | win24 | win36 | capacity |
+|---|---|---|---|---|---|---|
+| (a) heavy early, then ignored 48 picks — RB | 4.0 | 46.8 | 30.0 | 30.0 | 30.0 | 31.0 |
+| (b) untouched 84 picks, then a full-round burst — K | 0 | 17.6 | **68.0** | 39.2 | 29.6 | **9.2** |
+| (c) never drafted once in 96 picks — DEF | 12 | 5.8 | 5.8 | 5.8 | 5.8 | **13.9** |
+| (d) exactly one per team, genuinely exhausted — K | 0 | 17.6 | 10.4 | 10.4 | 10.4 | 9.2 |
+
+- **(b) is the window's worst case.** A short window sitting on top of a positional run
+  extrapolates that run forever: `window=12` forecasts **68 more kickers when the true answer is
+  zero**. The shorter the window, the more catastrophic.
+- **(c) is the window's blind spot by definition.** Zero picks is zero picks in every window, so
+  every windowed variant returns *exactly* the current answer. A window cannot help a position
+  that has not been drafted — which is precisely the position whose demand is entirely unmet.
+- **(d) confirms Q2**: nothing reaches zero.
+
+## Q6 — Satisfied demand vs. a temporary deviation
+
+**It cannot distinguish them, and the sign is inverted.** Two 96-pick sequences, neither with a
+kicker in the last 48 picks. A: all twelve teams already hold a kicker (true remaining 0).
+B: no team holds one (true remaining 12).
+
+| estimator | A (satisfied) | B (untouched) | gap | verdict |
+|---|---|---|---|---|
+| current | 17.6 | 7.1 | **−10.5** | cannot distinguish — inverted |
+| window=12 / 24 / 36 | 10.4 | 7.1 | **−3.3** | cannot distinguish — inverted |
+| capacity | 9.2 | 15.5 | **+6.3** | distinguishes |
+
+The share model predicts **more** kickers for the league that already has them and **fewer** for
+the league that has none. The reason is semantic, not statistical: **an observed-share model
+reads a pick as evidence of appetite, when a pick is consumption of demand.** Those have opposite
+signs. Recency reweights that evidence; it does not change what the evidence is taken to mean.
+
+And the confound is unidentifiable *in principle* from the pick stream alone — "no recent picks
+at p" is produced equally by "demand satisfied" and "the room deviated." The only thing that
+separates them is **roster state**, which no share-based estimator ever looks at.
+
+## Q7 — A bounded quantity that actually reaches zero
+
+**Yes — for the half that matters, with no window, no prior, and no external data.**
+
+```
+remaining_starter_demand[p] = Σ over teams of max(slots[p] − filled_team[p], 0)
+```
+
+Measured properties: bounded in `[0, num_teams × slots[p]]`; reaches **exactly 0.0** when every
+team has filled its slots at `p`; **order-invariant** (swing 0.0 in the controlled test); the
+**only** estimator that distinguishes satisfied from untouched; and derivable entirely from
+`roster_positions` plus observed picks.
+
+The engine already computes something with this name — `num_teams × slot_counts[p] − drafted[p]` —
+but **aggregated**, and the aggregate is not the sum of the per-team demands, because
+`max(·, 0)` does not distribute over a sum. **One team hoarding at a position cancels another
+team's unmet need at the same position.** Measured on the real boards:
+
+| | aggregate | per-team | shift |
+|---|---|---|---|
+| mean first round declared exhausted (32 board-positions) | rd 10.8 | rd 12.7 | **+2.0 rounds** |
+| final-audit TE | rd 10 | rd 16 | +6 |
+| final-audit RB | rd 9 | rd 13 | +4 |
+| 12x20 K-DST TE, 12x14 K-DST TE, IDP RB, IDP TE | rd 10–12 | **never** | — |
+
+Four board-positions are declared exhausted 8–10 rounds before the end by the aggregate while
+**never actually satisfying their starter demand at all**.
+
+The bench half stays a prior — but it too is bounded:
+`remaining_bench_capacity = Σ_t max(roster_slots − picks_t − starter_need_t, 0)` reaches zero
+exactly when rosters fill. Only the **split of that capacity across positions** is irreducibly a
+claim about behaviour.
+
+**So the answer is: stop asking this function to be one number.** It currently fuses an
+exactly-derivable bounded stock with an irreducible behavioural prior, and the fused number
+inherits the worst property of each — neither exact, nor honest about its uncertainty.
+
+## Two further defects found on the way
+
+**A. `positional_bench_appetite` returns 0.0 for every position once nothing is measurable.**
+When no position passes its measurability test, `rates` is empty, `mean_rate` falls back to
+`0.0`, and every position gets `demand × 0.0 = 0.0`. Downstream,
+`expected_positional_consumption` then drops the **entire bench term** from its prior
+(`bench_picks * appetite[p] / appetite_total if appetite_total else 0.0`).
+
+| board | first round with no measurable position |
+|---|---|
+| 12x20 K-DST | **rd 16** |
+| 12x20 balanced-forced | **rd 18** |
+| 12x20 IDP | **rd 18** |
+
+On `final-audit` it never fully collapses, but **from round 12 only K is measurable**, so every
+other position's bench appetite becomes the kicker's decay rate for the rest of the draft.
+
+The function's own docstring says an unmeasurable position must inherit the mean of the
+measurable ones, because a zero *"would assert 'this position is never benched', which is a
+claim, not an absence."* The guard handles the per-position case and misses the all-positions
+case — producing exactly the outcome it was written to prevent. Same defect class as everything
+else in this audit: **a missing-information path that returns a confident zero instead of
+declining.**
+
+**B. Latent: `remaining_picks` is overstated in a league that drafts a zero-demand position.**
+`picks_made` is summed from the tally *after* the zero-starter-demand filter, while `total_picks`
+counts every slot. Those picks happened; excluding them from `picks_made` asserts they did not.
+The docstring's own motivating scenario — 36 kicker placeholders in a league rostering no kicker —
+would leave the model believing there are 36 more picks to allocate than exist, for the whole
+draft, and would also hold `w = picks_made / total_picks` low so it stays on the prior longer.
+Does not fire on any of the six measured boards; stated because the trigger condition is exactly
+the scenario the surrounding comment was written for.
+
+## Verdict on the abstraction
+
+**Observed share is the wrong abstraction, and no window rescues it.** It answers "what does this
+room like?" when the question is "what does this room still need?" Those are different questions
+with opposite signs, and the measurements above show the estimator answering the first one while
+being read as though it answered the second.
+
+The window was worth testing and it failed on its own terms: it does not improve accuracy, it
+cannot reach zero, it is blind to the never-drafted case, it amplifies positional runs, and it
+sacrifices order-invariance to buy none of that back.
+
+## The smallest set of design decisions before implementation
+
+1. **Does remaining starter demand become per-team?** A pure correctness fix requiring no prior —
+   but it moves the anchor's domain boundary ~2 rounds later and leaves four measured
+   board-positions never exhausting, so it is a semantic change, not a bug fix.
+2. **Does `expected_positional_consumption` split into three named quantities** —
+   `remaining_starter_demand` (exact, bounded, reaches zero), `remaining_bench_capacity` (exact,
+   bounded, reaches zero), `bench_split` (the only prior) — or stay one fused number?
+3. **What does the bench split do with no evidence?** Today it silently becomes 0.0 and the bench
+   term vanishes. Decline and return no opinion (matching `horizon_replacement`), or hold the last
+   measurable rate?
+4. **Does the successor anchor need the bench half at all?** If the late-draft anchor is permitted
+   to answer *no opinion* — as the exhaustion contract already proposes — the bench prior never
+   touches valuation, and **task #49's external-data dependency leaves the critical path
+   entirely.** If a live late-round board is required instead, the bench prior is load-bearing and
+   #49 returns to it. **This decision determines whether #49 blocks Phase 3.**
