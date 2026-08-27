@@ -2345,3 +2345,133 @@ Separation costs a single merged ordinal — not information.
 27. Both registers are **displayed together and ordered separately**. Every row carries its
     `production_margin` and its register; no surface may present a single ordinal spanning both,
     and no surface may omit an unpriced row's margin on the grounds that it has no valuation.
+
+---
+
+# Appendix — the two costs of waiting
+
+Investigation only. **No implementation.**
+
+## Does the architecture already distinguish them?
+
+**Yes — all five questions already have distinct quantities.** The defect is naming and wiring,
+not concept.
+
+| question | quantity | horizon |
+|---|---|---|
+| How good is this player? | `universal_value`; `production_margin` in register 2 | none — static |
+| How important is solving this need? | `need_bonus` + `eligibility_bonus` | none — roster state |
+| What alternatives remain **in** the draft? | `survival_probability`, `opportunity_cost` (player); `positional_forfeit`, `positional_cliff` (position) | **my next pick** |
+| What alternatives exist **after** the draft? | `horizon_floor`, `waiting_cost` | **end of draft** |
+| What do I lose by waiting? | *(no single quantity — and there should not be one)* | — |
+
+`draft_board_ui` already documents the distinction and refuses to reuse the phrase:
+*"opportunity_cost and positional_forfeit both answer 'what does deferring cost me by my NEXT
+PICK', in universal-value points. This one answers... in season points per week."* The precedent
+exists; it is just not carried into the field names.
+
+## `waiting_cost` answers the second question, not the first
+
+`horizon_replacement` returns *the best player expected to be still undrafted when the draft
+ends* — which **is the top of the post-draft free-agent pool**. So
+
+```
+waiting_cost = my projected points − the best free agent at my position after the draft
+```
+
+That is **post-draft substitution cost**, in full. It contains no in-draft loss at all: it never
+asks whether anyone takes him before my next pick. The in-draft question is answered by three
+*other* quantities, none of which share its units or its horizon.
+
+## They are not two views of one number — measured
+
+Best TE on the board, across the draft:
+
+| round | best TE | in-draft gap (to TE+6) | post-draft cost |
+|---|---|---|---|
+| 1 | C Loveland 284 | 63 | `None` |
+| 3 | S LaPorta 231 | 34 | `None` |
+| 7 | B Strange 191 | 14 | **171** |
+| 9 | M Andrews 187 | 27 | 133 |
+| 13 | M Andrews 187 | 32 | 123 |
+| 17 | M Andrews 187 | 34 | **34** |
+
+The in-draft gap stays in a 14–63 band the whole way while the post-draft cost falls **171 → 34**.
+They are not proportional and they diverge by roughly **5×** on the same position.
+
+## The boundary case resolves — and the engine already computes it
+
+Round 15:
+
+| player | pts | next best at position | in-draft gap | horizon floor | post-draft cost |
+|---|---|---|---|---|---|
+| D Njoku (TE) | 52 | 36 | 16 | **67** | **−15** |
+| C Williams (QB) | 324 | 319 | 5 | 296 | +28 |
+
+**Njoku's post-draft cost is negative.** The best TE expected to go *undrafted* projects 67 —
+better than Njoku's 52. Passing him costs nothing; a better TE is free afterwards.
+`draft_board_ui._waiting_note` already has the branch for it: *"Waiting is better than free here
+… this pick buys nothing you won't have anyway."*
+
+So the TE case the two-cost model predicts is exactly what the engine measures: **need is real
+(the TE slot is unfilled), and both waiting costs say don't** — 16 points of in-draft slide, and
+a *better* free agent afterwards.
+
+**And the engine ranks him first anyway.** At round 15 Njoku is the board's top pick, because TE
+is the only position still carrying starter demand. `waiting_cost` is `OBSERVABLE ONLY` and feeds
+nothing — so the engine computes *"waiting is better than free"* and then does the opposite. That
+is task #57, now with a concrete cost attached, and it is precisely the `need → take the
+position` rule the two-cost model exists to prevent.
+
+## Their availability windows are complementary — the strongest reason never to fuse them
+
+| rounds | post-draft cost | in-draft curve |
+|---|---|---|
+| 1–5 | partial (TE, RB missing) | **complete** |
+| 7–9 | **complete** | **complete** |
+| 11–15 | **complete** | degrading — RB,TE,K,DEF → TE only |
+| 17–19 | **complete** | **gone** |
+
+The in-draft question depends on the **live valuation anchor**, which exhausts. The post-draft
+question depends on **pool depth past the horizon rank**, which improves as the pool drains. So
+each is at its weakest where the other is at its strongest, and rounds 7–9 are the only window
+where both answer for every position.
+
+Two consequences:
+
+1. **A single fused "cost of waiting" would silently change meaning as one input dropped out** —
+   the same semantic-drift defect this whole audit has chased, rebuilt one layer up.
+2. **The unpriced register is where the post-draft cost is at its most reliable.** Register 2 is
+   not information-poor about waiting; it holds the *better* of the two waiting signals.
+
+## What must be kept separate, and why
+
+| | in-draft loss | post-draft substitution cost |
+|---|---|---|
+| question | will someone take him before my next pick? | how hard is this need to solve afterwards? |
+| horizon | my next pick | the end of the draft |
+| units | universal-value points / probability | season points |
+| depends on | live valuation anchor, opponent boards | pool depth past the horizon rank |
+| available | early, dies late | patchy early, complete late |
+| exists as | `survival_probability`, `opportunity_cost`, `positional_forfeit`, `positional_cliff` | `horizon_floor`, `waiting_cost` |
+
+They are related — both bear on the same decision — and that is not a reason to combine them.
+Different horizons, different units, different failure modes, complementary availability.
+
+## Proposed naming and invariants
+
+The concept needs three names where there is currently one overloaded one:
+
+- **in-draft loss** — keep the existing four quantities, and name the family.
+- **post-draft substitution cost** — `waiting_cost` renamed for what it measures. The UI already
+  says *"replaceability"* and states its horizon in every sentence; the field name should agree.
+- **cost of waiting** — retired as a field name. It is the *question*, answered by two numbers.
+
+28. No quantity combines an in-draft horizon with a post-draft horizon.
+29. Every waiting-related quantity states its horizon at every surface that renders it.
+30. A quantity whose inputs are unavailable is `None` — never substituted by the other horizon's
+    answer, which is the specific fusion their complementary windows would otherwise invite.
+31. A negative post-draft substitution cost is a first-class result meaning *waiting is better
+    than free*, never clipped to zero.
+32. Positional need alone never orders the board. Where a position carries unfilled starter
+    demand **and** both waiting costs are low, the engine must be able to say so.
