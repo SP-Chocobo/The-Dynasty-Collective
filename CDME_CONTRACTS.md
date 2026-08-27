@@ -1880,3 +1880,108 @@ Both policies make the engine **do less**. The auto-drafter stops rather than fi
 with arbitrary players; the board declines to rank talent against slot relevance rather than
 silently preferring a 52-point tight end to a 324-point quarterback. Neither adds a fallback,
 and neither invents a number.
+
+---
+
+# CDME policy — the two-register board (corrected, for sign-off)
+
+Supersedes the two-register description in the earlier #61 appendices. **No implementation.**
+
+## The central invariant
+
+> **A missing valuation is an absence of knowledge, not a zero valuation and not permission to
+> invent a replacement ranking.**
+
+Everything below is a consequence of that sentence.
+
+## Q1 — auto-selection
+
+**Both auto-selection paths are decision policy, not infrastructure.**
+
+- `draft_simulation.simulate_full_draft` → `snap.candidates[0]`
+- `draft_room.simulate_opponent_picks` → `board[0]` — **live**, via `app.py`'s Mock Draft, and
+  it bypasses `narrow_candidates` entirely
+
+**Rule.** Auto-selection is valid **only when at least one candidate has a defined
+`team_acquisition_value`.** Where the candidate pool contains no priced candidate, the engine
+**declines to select**. It must not derive an ordering from `player_id`, from NaN placement in a
+sort, from `projected_points`, from `need_bonus`/`eligibility_bonus`, or from any other
+incidental ordering.
+
+Measured, today it does exactly that: from round 17 of a 12x20 draft the live Mock Draft
+auto-drafts by `player_id` order — taking a 96-point running back while a 324-point quarterback
+sits available. Declining is not a degradation of that behaviour; it is the removal of a
+fabricated one.
+
+## Q2 — the two registers
+
+**Register 1 — Priced.** Candidates with a valid CDME/TAV valuation. Ordered by the established
+`team_acquisition_value` contract, unchanged.
+
+**Register 2 — Unpriced.** Candidates whose production/projection data exists but whose CDME
+valuation is undefined.
+
+Three rules bind register 2:
+
+1. **It is not a "need-ranked" register.** Measured: in the unpriced register `need_bonus` is
+   `0.33` or `0` and `eligibility_bonus` is `0` in every observed case, so a need ordering there
+   is almost entirely ties. Need and eligibility **may still be displayed as valid contextual
+   information** — they are real, exact, and anchor-independent — but they **must not be used to
+   manufacture a cross-register ranking**.
+2. **`projected_points` is never compared against `team_acquisition_value`.** They are different
+   quantities with different meanings and different units.
+3. If `projected_points` orders candidates **within** register 2, that is labelled explicitly as
+   a **secondary presentation ordering, not a CDME valuation**.
+
+The relative placement of the two registers is a **presentation decision**, stated as such. It
+is not a valuation claim and must never be produced by a sort key that compares a `final_score`
+against a `projected_points`.
+
+## Re-check of the downstream decision path
+
+The earlier trace found the sites that do **arithmetic** on a value. Re-running the sweep against
+the corrected policy surfaces a **second and larger class: rank and ordinal propagation.** A rank
+is a value comparison already collapsed into an integer — it launders exactly the cross-register
+comparison rule 2 forbids, and none of these sites were caught by looking for arithmetic.
+
+| # | site | class | why it needs a justification |
+|---|---|---|---|
+| 11 | `_build_opponent_boards` — `rank_by_id = i + 1` | **cross-register rank** | one ordinal spanning both registers, feeding two consumers |
+| 12 | `positional_forfeits` — `expected_taken` | consumes #11 | counts P-players in an opponent's top 5 ranks; not covered by the survival declination |
+| 13 | `narrow_candidates` — `ranked[:top_n]` | **cross-register selection** | "the top five" is chosen across registers |
+| 14 | `diff_snapshots` — `rank_delta` | **cross-register delta** | a player moving priced→unpriced reads as a value move, not a register change |
+| 15 | `draft_board_ui` — `<span class="rank">${i+1}</span>` | **cross-register ordinal, rendered** | the user sees one rank number spanning both registers |
+| 16 | `draft_board_ui._overview_for_view` — `overview.sort(key=tav)` | **second ranking authority** | crashes on all-`None`; its own docstring says this module is *"never a second ranking authority"* |
+| 17 | `draft_board_ui` — Context Gap glyph + focus sentence | cross-candidate `uv` compare | renders `null` into user-facing prose |
+| 18 | `screen_context.py:119` — `TAV {tav:.0f}` | **format spec on `None`** | `TypeError` — a crash site the earlier trace missed entirely |
+| 19 | `pick_debate` prompt — `Universal value: {uv}` | **leak into the LLM prompt** | prints `Universal value: None` as a stated fact, with no rule telling the model what that means |
+| 20 | `pick_debate:342` — highest TAV other than the recommendation | max over `None` | |
+| 21 | `draft_counterfactual:94` — `max(board, key=universal_value)` | argmax over `None` | the harness's whole premise is *"pure BPA argmax"*, which is undefined here |
+
+Confirmed directly: `f"{None:.0f}"` and `f"{None:+}"` both raise `TypeError`; `f"{None}"` prints
+the string `"None"`; sorting an all-`None` list raises. So #16, #18, #20 and #21 are **crashes**,
+while #19 is **silent** — the most dangerous of the group, because a fabricated fact reaches the
+debate layer as text rather than failing.
+
+### What this changes about the shape of the work
+
+The seven original consumers were all inside `draft_strategy` and `pick_synthesis`. These eleven
+span the **UI, the screen-reader context, the LLM debate prompt, and the counterfactual
+harness** — four surfaces the valuation policy had not been checked against at all. Any
+implementation must treat rank propagation as a first-class case rather than a consequence of
+fixing the arithmetic.
+
+### Additional invariants this re-check establishes
+
+10. No ordinal, rank, or rank delta is ever computed across the two registers.
+11. Any rendered rank states which register it is an ordinal within.
+12. No formatted output applies a numeric format spec to a possibly-absent valuation.
+13. No absent valuation is rendered into prose or into an LLM prompt as a value —
+    absence is stated as absence or the field is omitted.
+14. `draft_board_ui` remains a translation layer and performs no sort that could reorder
+    the engine's own ranking.
+15. `draft_counterfactual`'s BPA argmax is defined only over register 1, and says so when
+    register 1 is empty.
+
+**Nothing is implemented.** No fallback, no coefficient, no cross-register ordering, until each
+dependency above carries an explicit semantic justification and the policy is signed off.
