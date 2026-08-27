@@ -1116,3 +1116,289 @@ sacrifices order-invariance to buy none of that back.
    touches valuation, and **task #49's external-data dependency leaves the critical path
    entirely.** If a live late-round board is required instead, the bench prior is load-bearing and
    #49 returns to it. **This decision determines whether #49 blocks Phase 3.**
+
+---
+
+# Appendix — dependency map and the minimal decomposition
+
+Investigation only. **No implementation, pending sign-off.** Traces every producer and consumer
+of `expected_positional_consumption`, `positional_bench_appetite`, `horizon_replacement`,
+`waiting_cost`, and `replacement_levels` across the production surface (`draft_room.py`,
+`pick_synthesis.py`, `draft_board_ui.py`, `roster_diagnostics.py`, `app.py`,
+`draft_strategy.py`).
+
+## The dependency chain
+
+```
+roster_positions ─┬─> starter_slot_counts ─┬─> _remaining_demand_rank ─┬─> replacement_levels ─> _vor ─> _scale_vor_to_bpa ─> bpa
+                  │                        │        [CLAMP >= 1]       │                                       │
+                  │                        │                           └─> replacement_ranks                   └─> universal_value ─> TAV
+                  │                        │                                    └─> position_view_depth ─> narrow_candidates
+                  │                        ├─> positional_bench_appetite ──┐
+                  │                        └─> expected_positional_consumption ─> horizon_replacement ─> _attach_waiting_cost
+                  └─> draftable_slots_per_team ──────^                                                        │
+                                                                          {horizon_floor, horizon_sensitivity, waiting_cost}
+picks ─┬─> _drafted_counts_by_position  (LEAGUE-WIDE — feeds everything above)      └─> CandidateSnapshot ─> draft_board_ui._waiting_note
+       └─> _team_starters_filled        (PER-TEAM — exists, feeds need_bonus only)
+
+qb_startable_floor ─> startable_floors ─> replacement_levels   [SECOND CLAMP >= 1]
+
+roster_diagnostics ─> compute_draft_board ─> scored_pool ─> replacement_levels("universal_value") ─> replacement_level_surplus
+```
+
+**The single most important structural fact:** `positional_bench_appetite` has exactly one
+consumer (`expected_positional_consumption`), which has exactly one consumer
+(`horizon_replacement`), which has exactly one consumer (`_attach_waiting_cost`), which is
+documented and verified observable-only — *"team_acquisition_value is computed and rounded
+before this runs and is byte-identical with these columns present or absent."*
+
+**The inferred branch is already fully isolated from valuation.** The decomposition does not need
+to create that separation. It needs to avoid breaking it.
+
+## Semantic classification
+
+| Quantity | Semantic type | Honest today? |
+|---|---|---|
+| `starter_slot_counts` | exact / bounded observable | yes |
+| `draftable_slots_per_team` | exact / bounded observable | yes |
+| `drafted_counts_by_position` | exact observable, **aggregated** | yes as a count; **no** as a demand input |
+| `_team_starters_filled` | exact / bounded, **per-team** | yes — already correct, isolated to `need_bonus` |
+| `_remaining_demand_rank` | claims exact; **is clamped** | **no** — 0 and 1 conflated |
+| `qb_startable_floor` | exact-ish, honest `None` | yes — but its *count* is clamped |
+| `replacement_levels` | **valuation anchor** | **no** — inherits both clamps |
+| `replacement_ranks` | contextual / display | **no** — inherits the clamp |
+| `positional_bench_appetite` | **inferred behavioural** | **no** — returns `0.0` for "unknown" |
+| `expected_positional_consumption` | **fused** exact + inferred | **no** — the fusion *is* the defect |
+| `horizon_replacement` | optional / unknown-aware | **yes** — the model the rest should follow |
+| `horizon_floor` / `waiting_cost` / `horizon_sensitivity` | contextual / debate | yes — `None` discipline correct |
+| `replacement_level_surplus` | contextual / diagnostic | **becomes undefined** under decomposition |
+
+## The six questions
+
+### 1. Can per-team starter demand replace the current component without silently changing meaning?
+
+**Not silently — and one of the two affected consumers is the valuation anchor.**
+
+- `replacement_ranks → position_view_depth`: **safe.** Depth grows and persists later; the
+  existing `POSITION_VIEW_DEPTH_CAP` already bounds it. No valuation impact.
+- `replacement_levels → _vor → bpa → universal_value → TAV`: **not silent.** Measured, the
+  exhaustion boundary moves **+2.0 rounds on average**, TE moves +6 on the final-audit board,
+  and four board-positions never exhaust at all. Every affected player's `bpa` changes. That is
+  the intent — but it must be declared, not slipped in.
+
+**Migration hazard — `demand_picks`.** That parameter exists *because* the aggregate collapses
+when seeded with a prior draft's history (its docstring records a backup-tier rookie QB
+outranking a legitimate rookie WR). Per-team demand computed against each team's *true* roster
+is correct in that scenario by construction — but `demand_picks` supplies a **scoped** history,
+not a per-team one. Fed a rookie-only history, per-team demand sees twelve empty rosters and
+claims **full starter demand at every position** — strictly worse than today. This must be
+proven out, not assumed away.
+
+### 2. Can `None` propagate safely where the old model emitted a number?
+
+Three sites, three different answers.
+
+- **`horizon_floor` / `waiting_cost` / `_waiting_note`: yes, already correct.** `.map()` on a
+  missing key yields NaN, `_records_with_normalized_nan` converts NaN to `None`,
+  `CandidateSnapshot` types them `Optional[float]`, `_waiting_note` returns `None`. Built for
+  absence.
+- **`compute_draft_board`'s VOR: NO — absence is already swallowed.**
+  `point_replacement.get(r["position"], r["_points"])` defaults to *the player's own points*,
+  giving VOR = 0.0. Omitting the key produces **exactly the dead-zone number the contract exists
+  to eliminate**, with no signal. Same at `tv_replacement.get(..., r["trade_value"])`.
+  **The "omit the key" proposal from the exhaustion appendix is necessary but not sufficient.**
+- **`replacement_ranks → position_view_depth`: hard crash.** `min(None, 12)` raises `TypeError`.
+  Loud rather than silent, but `Optional[int]` cannot ship without changing that signature.
+
+### 3. Can the successor anchor operate entirely from exact starter demand?
+
+**Yes, and it already nearly does.** `replacement_levels` reads only `starter_slot_counts`,
+`drafted_counts`, and the pool — it never touches `positional_bench_appetite` or
+`expected_positional_consumption`. **The valuation anchor has zero dependency on the inferred
+branch today**, and the decomposition preserves that rather than establishing it.
+
+Outside its domain, the previous appendix established that no "best available" anchor produces
+VOR — *including a perfectly estimated one*. The successor anchor does not want the bench half;
+it wants permission to decline.
+
+### 4. Can bench appetite be demoted to contextual without a silent substitution?
+
+**Yes — it is already contextual.** One consumer, three hops, all observable-only.
+
+The one substitution risk is *inside* the branch:
+`still_to_go = max(consumption.get(position, 0.0) − drafted, 0.0)` → `rank = 1` →
+**anchor = best available, marked `certain=True`.** A missing consumption key does not propagate
+as unknown; it propagates as *"this position is finished, and here is a confident floor."* That
+must become `certain=False, value=None`.
+
+### 5. Do `waiting_cost` and `horizon_replacement` retain a dependency on the fused semantics?
+
+**Yes — and it is the only one left.** `horizon_replacement`'s rank is
+`expected_positional_consumption − drafted`, the fused number. Under the decomposition it must
+consume the halves separately: the exact half says how many are *certain* to go, the inferred
+half how many *might*. **When the inferred half is `None`, the horizon rank is a lower bound,
+not a point estimate**, and `certain` must say so. `horizon_sensitivity` already exists to
+qualify a floor sitting on a cliff; an absent bench estimate is the same class of statement and
+belongs on the same channel.
+
+### 6. Do #62 and #63 fall out naturally?
+
+- **#62 (appetite all-zero): falls out completely.** Under decision 3, "no measurable position"
+  returns `None`, not `0.0`, and the `if appetite_total else 0.0` branch that silently drops the
+  bench term disappears because the bench term is `Optional` by construction. No separate
+  treatment.
+- **#63 (`remaining_picks` overstated): does NOT fall out of a minimal split.** It lives in
+  pick-accounting, not demand-modelling. It *does* fall out if the bench half is rebuilt on
+  **per-team remaining capacity** (`draftable_slots_per_team − picks_team`), which counts every
+  pick a team made regardless of position. **Conditional on decision 2's fuller form.**
+
+## Consumers that become undefined
+
+**1. `roster_diagnostics.replacement_level_surplus` — the headline conflict.**
+
+```python
+sum(p["uv"] - repl_levels.get(p["position"], 0.0) for p in players)
+```
+
+It defaults a missing replacement level to **`0.0`**, and it runs against the **fully-drafted**
+state — past exhaustion for essentially every position. Under the contract every key is omitted,
+so:
+
+> `replacement_level_surplus == sum(uv) == accumulated_value`
+
+Two fields on `TeamDiagnostics`, numerically identical, one silently no longer measuring what its
+name says. **This is a migration problem, not something to design around.**
+
+The resolution is available and is not a workaround: the inertness finding (#60) established
+that the anchor **never moves from the static pre-draft level** anyway. So this metric has always
+been *"value above the `D`-th best player in the pre-draft field"* — it can keep exactly that
+meaning by naming the pre-draft anchor explicitly. That is not preserving a wrong behaviour; it
+is naming what the number actually was.
+
+**2. `pick_synthesis.position_view_depth` — hard break.** `min(None, 12)` raises. Needs an
+explicit "no starter demand → depth 1" rule. Depth 1 is *semantically correct* here (a position
+with no starter demand should surface its single best player, not a deep board) — but it must be
+written down, not inherited from a clamp that means something else.
+
+**3. `compute_draft_board`'s two `.get(pos, own_value)` calls** — silent substitution, above.
+
+**4. `horizon_replacement`'s `consumption.get(position, 0.0)`** — silent substitution, above.
+
+## Newly discovered conflicts
+
+**A. A second, independent 0-vs-1 clamp.** In the `startable_floors` branch:
+`rank = max(int((at_pos[value_col] >= floor).sum()), 1)`. When **no** remaining QB clears the
+startable floor, this says rank 1 = best available — precisely the defect being fixed, and
+**not touched by fixing `_remaining_demand_rank`.** Superflex QB carries its own copy.
+
+**B. The `.get(..., default)` layer is the real barrier.** Three of the four absence sites
+convert a missing key into a number before any consumer can notice. **Changing the producer is
+not enough; the consumers are where the meaning is lost.**
+
+**C. `demand_picks` may invert under per-team demand** — see Q1.
+
+**D. `roster_diagnostics` runs the anchor at the maximally-exhausted state**, so it is the one
+consumer living entirely outside the proposed domain.
+
+## Proposed minimal architecture
+
+Five named quantities replacing two fused ones, all in `draft_room.py`.
+
+**Exact / bounded observable**
+
+```
+remaining_starter_demand(roster_positions, num_teams, picks, players_db) -> dict[pos, float]
+    = Σ over teams of max(starter_slot_counts[pos] − team_filled[pos], 0)
+    Bounded [0, num_teams × slots]. Reaches exactly 0. Order-invariant. No prior.
+    Needs a new producer: team_filled_by_position(picks, players_db) — generalises the
+    existing _team_starters_filled from one roster to all of them.
+
+remaining_draft_capacity(roster_positions, num_teams, picks) -> float
+    = Σ over teams of max(draftable_slots_per_team − picks_team, 0)
+    Bounded. Reaches exactly 0. Subsumes #63 by construction.
+```
+
+**Inferred behavioural — `Optional`, never fabricated**
+
+```
+estimated_bench_demand(pool, value_col, roster_positions, num_teams, picks)
+    -> dict[pos, Optional[float]]
+    None when no position is measurable (#62 resolved). Never reaches valuation.
+```
+
+**Valuation anchor — exact inputs only, with a declared domain**
+
+```
+replacement_levels(...) -> dict[pos, float]      # key OMITTED outside the domain
+    Domain: remaining_starter_demand[pos] >= 1, or startable-floor count >= 1.
+    Reads ONLY exact quantities. Never reads estimated_bench_demand.
+```
+
+**Contextual / debate — unknown-aware**
+
+```
+horizon_replacement(...) -> dict[pos, {rank, value, pool_depth, certain, sensitivity}]
+    certain=False, value=None when the bench half is None OR the rank runs past the pool.
+```
+
+**Three consumer changes that are part of this change, not follow-ups**
+
+1. `compute_draft_board`: `_vor` becomes genuinely optional (NaN where the anchor is absent),
+   replacing `.get(pos, own_value)`.
+2. `position_view_depth`: explicit no-starter-demand rule.
+3. `roster_diagnostics.replacement_level_surplus`: declare the pre-draft anchor, or remove.
+
+**Plus:** close the second clamp in the `startable_floors` branch.
+
+## Invariants and tests required before implementation
+
+**Exactness and boundedness**
+
+1. `remaining_starter_demand[p] >= 0` for every position, pick prefix, and board. (The aggregate
+   reaches −71.)
+2. `remaining_starter_demand[p] == 0` **exactly** when every team has `filled[p] >= slots[p]` —
+   asserted in both directions.
+3. **Order-invariance**: any reordering of a pick prefix that leaves per-team rosters identical
+   produces identical output. This is the invariant the recency window destroyed; pin it.
+4. `remaining_starter_demand[p] <= num_teams × slots[p]`, monotone non-increasing over prefixes.
+5. `remaining_draft_capacity` falls by exactly 1 per pick and reaches 0 at the final pick.
+
+**Semantic separation**
+
+6. `replacement_levels` output is **byte-identical** whether `estimated_bench_demand` returns
+   real numbers or all-`None`. Proves the anchor never reads the inferred branch.
+7. `team_acquisition_value` is byte-identical with the horizon/waiting columns present or
+   absent. True today; the decomposition touches that branch, so pin it as a regression.
+8. Mutating `positional_bench_appetite`'s return to arbitrary values leaves every player's
+   `bpa`, `universal_value`, and `team_acquisition_value` unchanged.
+
+**Absence discipline**
+
+9. Where `remaining_starter_demand[p] < 1`, `replacement_levels` omits `p` **and** every player
+   at `p` gets `_vor` NaN — asserted at the column, not just the dict.
+10. `bpa` for a player with NaN VOR is `None`/NaN, **not `0.0`**. The anti-regression against the
+    current dead zone.
+11. `estimated_bench_demand` returns `None`, not `0.0`, when no position is measurable —
+    reproducible directly at round 16 of the 12x20 K-DST board.
+12. `horizon_replacement` returns `certain=False, value=None` when its consumption input is
+    absent, and **never** `rank=1, certain=True`.
+13. `waiting_cost` is `None` exactly when `horizon_floor` is `None` — extend the existing
+    assertion to the new `None` source.
+
+**Anti-conflation — the defect class this whole audit is about**
+
+14. A position at `remaining_starter_demand == 0` and one at `== 1` produce **different**
+    replacement levels. Pins the 0-vs-1 collapse directly.
+15. The same assertion on the `startable_floors` path: zero remaining QBs above the floor must
+    not equal one remaining QB above the floor.
+16. The satisfied-vs-untouched pair from #59: league A (every team holds one) and league B (none
+    do), with identical recent pick history, yield `remaining_starter_demand` of `0` and
+    `num_teams`. Pins the sign every share model got backwards.
+
+**Migration guards**
+
+17. `replacement_level_surplus != accumulated_value` on a fully-drafted board. Fails today under
+    a naive decomposition — which is the point of having it.
+18. `position_view_depth` handles the no-starter-demand case without raising.
+19. The `demand_picks` rookie-draft scenario: per-team demand fed a rookie-only history must not
+    claim full starter demand at every position.
