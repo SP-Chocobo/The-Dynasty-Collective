@@ -2475,3 +2475,126 @@ The concept needs three names where there is currently one overloaded one:
     than free*, never clipped to zero.
 32. Positional need alone never orders the board. Where a position carries unfilled starter
     demand **and** both waiting costs are low, the engine must be able to say so.
+
+---
+
+# Appendix — how positional need actually modifies selection
+
+Investigation only. **No implementation.**
+
+## The premise inverts: need contributes 0.00 to the Njoku/Caleb outcome
+
+Round 15, roster 11, traced term by term:
+
+```
+1. remaining starter demand:  QB = 0.00   TE = 1.33
+   -> TE >= 1, so TE is PRICED.  QB < 1, so QB is UNPRICED.
+
+2. D Njoku    TE   bpa =  0.0   uv = 1.16   need = 0.0   elig = 0.0   tav = 1.16   waiting = -15.0
+   C Williams QB   bpa = None   uv = None   need = 0.0   elig = 0.0   tav = None   waiting = +28.0
+
+3. Njoku board rank 1.        Caleb board rank 123.
+
+4. _board_order = (tav is None, -tav, player_id): every priced row precedes every unpriced row.
+```
+
+**Njoku's `need_bonus` is `0.00`.** Across all twelve rosters at round 15 it is `0.0` for eight
+and `0.33` for four, and the board's top row is D Njoku for **every one of them**. Need is not
+the mechanism.
+
+**And `bpa = 0.0`.** Njoku's entire `tav` of 1.16 is `time_horizon_adj + risk_adj` — a bounded
+dynasty nudge. The board's number-one pick at round 15 is a player the valuation layer has
+already scored at **exactly zero value above replacement**.
+
+## Is need's effect proportional to the value gap, or absolute?
+
+**Absolute, and measurably weak.**
+
+```
+need_bonus = min(4.0 * dedicated_needed + 1.0 * min(flex_remaining, 1), 12.0)
+```
+
+It reads **only roster state**. No term involves the candidate's value, the gap to the
+alternatives, the in-draft loss, or the post-draft substitution cost. It cannot be proportional
+to a gap it never sees.
+
+Measured across 72 roster-rounds:
+
+| | |
+|---|---|
+| top pick changed by need + eligibility | **3 of 72 (4%)** |
+| largest `uv` gap ever overturned | **4.23** |
+| the one case | rd 2, roster 2: D London (WR, need 8.33) over B Hall (RB) across a 4.23 gap |
+| theoretical ceiling | 24.0 of `bpa`'s 100-point range |
+
+So the failure mode is **not** *need → take the position*. `need_bonus` is close to inert: it
+flips one roster-round in twenty-five, and only across gaps of a few points.
+
+## Can need distinguish the two TE cases? No — and something else already does
+
+| | S LaPorta, rd 3 | D Njoku, rd 15 |
+|---|---|---|
+| projected points | 231 | 52 |
+| **`bpa`** | **95.65** | **0.00** |
+| `universal_value` | 93.35 | 1.16 |
+| `need_bonus` | 4.33 | 0.00 |
+| in-draft gap to next TE | **1** | **16** |
+| post-draft cost | **`None`** | **−15** |
+
+Three results worth stating plainly:
+
+1. **`need_bonus` is *higher* in the LaPorta case (4.33 vs 0.00)** — but incidentally, from roster
+   state, not because it knows anything about LaPorta. It carries zero information about quality
+   or replaceability, so it cannot make this distinction in either direction.
+2. **The in-draft signal points the wrong way.** LaPorta's gap to the next TE is **1 point**; Njoku's
+   is 16. On the in-draft axis LaPorta is the *more* replaceable of the two.
+3. **The post-draft signal is unavailable in the LaPorta case** (`None` at round 3, the horizon
+   running past the loaded pool).
+
+**What actually separates them is `bpa`: 95.65 versus 0.00.** The valuation layer already makes
+the distinction, cleanly, and gets round 3 right for the right reason. LaPorta is worth taking
+because he is *worth* 95.65 — his 4.33 of need is immaterial to that.
+
+## Where the conclusion is lost
+
+Not in the need term. At round 15 the engine holds two correct conclusions simultaneously:
+
+- **`bpa = 0.0`** — Njoku adds nothing above replacement.
+- **`waiting_cost = −15`** — a better TE is free after the draft.
+
+Then it ranks him **first**, because `1.16 > None`.
+
+The ordering treats **having a number as strictly better than not having one, regardless of what
+the number says.** A `bpa` of `0.0` means *at replacement, no value added*. Caleb's production
+margin is `0.0` too — *at his position's pre-draft baseline*. Those two are arguably equivalent
+claims, and the ordering separates them by **122 places**.
+
+So the loss is at the **valuation → ordering** boundary, and it is a second instance of this
+audit's own defect class: **a zero being read as a value rather than as what it says.**
+
+## What the selection layer would need to make the economically correct distinction
+
+Stated as required information, not as a design:
+
+1. **The magnitude of a priced value, not merely its presence.** `bpa = 0.0` outranking a
+   demonstrably productive unpriced player by 122 places is the register boundary behaving as an
+   unbounded positional override — far stronger than anything `need_bonus` can do at 4%.
+2. **Both waiting costs, consumed rather than observed.** The engine computes *"waiting is better
+   than free"* and discards it. Consuming it requires them in commensurate form, which their
+   different units and complementary availability windows currently prevent.
+3. **Need expressed relative to the gap it is asked to overturn** — but the measurement says this
+   is *not* where the current failure is. Need is too weak to be the problem, and making it
+   proportional would not change the Njoku/Caleb outcome by a single place, because it is `0.00`
+   there.
+
+## What the current equations permit the engine to conclude
+
+**Permitted, and already true:** that LaPorta is worth 95.65 and Njoku 0.00; that a better TE is
+free after the draft; that Caleb produces at his position's baseline while Njoku sits 135 points
+below his.
+
+**Not permitted:** any comparison between a priced zero and an unpriced player, because the two
+live in different registers and the only relation defined between them is *priced first*.
+
+That is the boundary. The distinction the two cases require is **already computed** — and lost
+one layer later.
