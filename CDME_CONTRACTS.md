@@ -3797,7 +3797,7 @@ valuation. Nothing was repaired; nothing upstream was changed.
 so **the identity layer is on the valuation path**, not only on the display path. It resolves
 Sleeper **full** names onto Draft Sharks **first-initial-only** canonical rows (`A Hutchinson`,
 `J Daniels`), which means the exact-match path structurally cannot fire in that direction and
-everything falls to the lossy `(first-initial, last-token)` key or the fuzzy fallback.
+everything falls to the `(first-initial, full-remaining-name)` key or the fuzzy fallback.
 
 Canonical identity is `(norm_name, position_group)`, not `norm_name` — `J Sanders` is correctly
 two people (Ja'Tavion, TE / Jason, K). Counted on the correct key, over 967 externally-sourced
@@ -3869,8 +3869,10 @@ caught; the fuzzy-path cases cannot be caught by any team data, because nothing 
 
 `build_available_pool` emits one pool row per **Sleeper player_id** and never dedupes on the
 canonical row it matched. So N players resolving to one canonical row produce **N pool rows
-carrying identical projections**. Measured on the probe set: **19 double-claimed canonical rows,
-producing phantom priced rows at `WR 5, RB 5, QB 2, TE 1`.**
+carrying identical projections**. Measured on the probe set, keyed correctly on `(norm_name, position_group)`: **11
+double-claimed canonical rows, 7 of them by genuinely different people, 6 of which carry a
+projection — phantom priced rows at `WR 3, RB 2, QB 1`.** (An earlier count of 13 keyed on
+`norm_name` alone and swept in benign suffix/ligature spellings of one person.)
 
 A phantom row is a duplicate of a real player's points at that position. It therefore
 **inflates that position's supply and pushes its replacement rank down into a denser part of the
@@ -4036,3 +4038,348 @@ kicker's entire dynasty-horizon signal.
     have an opinion, the precedence rule is semantic and stated — never a filename comparison.
 79. An epistemic type (magnitude / ordinal / structural / model-derived) travels with the value
     through every reconciliation that consumes it.
+
+---
+
+# Appendix — the upstream boundary, completed
+
+Finishes the map. Three demonstrated failure classes traced to full blast radius, the canonical
+ingestion invariant stated, and the repair boundaries identified. **No upstream repair, no
+downstream implementation, no normalization or coefficient work.**
+
+## Corrections to the previous appendix
+
+Three, all narrowing claims rather than widening them:
+
+1. **`name_key` is `(first-initial, full remaining name)`, not `(first-initial, last-token)`.**
+   The last-token form was the *old* key and was changed precisely because `A.J. Brown`
+   (`aj brown`) and `Amon-Ra St. Brown` (`amonra st brown`) collided under it. The current key is
+   materially less lossy than described.
+2. **Phantom pool rows are 6, not 13.** The earlier count keyed on `norm_name` alone and swept in
+   benign suffix/ligature spellings of one person. On the correct key `(norm_name,
+   position_group)`: 11 double-claimed rows, 7 by genuinely different people, 6 carrying a
+   projection.
+3. **The positional-baseline impact is smaller than a first injection suggested.** That run
+   duplicated top-of-curve players; the honest figures, using the actually-duplicated rows, are
+   below.
+
+## Class 1 — identity resolution, completed
+
+### The three paths and their guards
+
+| path | how it matches | guard on a wrong person | used when |
+|---|---|---|---|
+| **alias** | exact normalized name from `aliases.json` | manual, by definition correct | a hand-curated player |
+| **exact** | `norm_name` equality | narrows on team, then position, when several rows tie | vendors exporting full names |
+| **key** | `(first-initial, full remaining name)` | narrows on team, then position — **and rejects outright on a known team mismatch** (the documented Bijan/Brian Robinson fix) | bridging Draft Sharks' abbreviated names |
+| **fuzzy** | `difflib.get_close_matches`, cutoff `0.82` | **best-effort position preference only; returns `candidates[0]` regardless, with no team check at all** | everything else |
+
+### Why the fuzzy path can accept a cross-player match
+
+Not an oversight in the matching itself — the rejection rule exists and works. It was added *to
+the key path*, in a comment explaining exactly this hazard, and **the same reasoning was never
+carried to the fallback below it**. The fuzzy branch tries to prefer a position-matching
+candidate; when none of its three candidates matches, it returns the first anyway. Nothing on
+that branch reads `team`.
+
+Abbreviated canonical names make it fire more, not less: `'cj daniels'` against `'j daniels'` is
+a short-string comparison with heavy overlap and clears `0.82` easily.
+
+### The full at-risk surface, independent of any probe set
+
+Computed over the canonical table against itself:
+
+```
+canonical rows                                                   764
+name_key groups holding >1 canonical row                          19
+  ... spanning >1 position family (position narrowing fixes)      19
+  ... same family (position CANNOT disambiguate)                   0
+rows with >=1 OTHER canonical row inside the 0.82 cutoff          258   (34%)
+  ... with at least one neighbour in a different position family  182
+```
+
+Two things follow. **The key path's known ambiguity is fully repairable by position** — every one
+of its 19 groups spans a position family, and `build_available_pool` does pass position. That
+matches the measurement: zero "different person" matches came from the key path. **The fuzzy
+path's neighbourhood is a third of the table**, and 182 rows have a cross-family neighbour
+sitting inside the cutoff. Example: `C Dike` (WR) neighbours `c dicker` — a kicker.
+
+### Every canonical identity with multiple real-person claims
+
+```
+'J Daniels'    (QB/WAS, proj 334, tv 40)  <- Jayden Daniels   + CJ Daniels
+'J Jefferson'  (WR/MIN, proj 292, tv 82)  <- Justin Jefferson + Van Jefferson
+'B Robinson'   (RB/ATL, proj 346, tv 99)  <- Bijan Robinson   + Brian Robinson Jr.
+'A Brown'      (WR/NE,  proj 272, tv 37)  <- A.J. Brown       + Noah Brown
+'J Brooks'     (RB/CAR, proj 176, tv 20)  <- Jonathon Brooks  + Tahj Brooks
+'A Mitchell'   (WR/NYJ, proj 141, tv  4)  <- Adonai Mitchell  + James Mitchell
+'A Hutchinson' (DL/DET, proj   —, tv 22)  <- Aidan Hutchinson + Xavier Hutchinson
+```
+
+### Which downstream records and positional baselines they can alter
+
+`build_available_pool` emits one row per Sleeper `player_id` and never dedupes on the canonical
+row it matched, so each of the six projection-carrying collisions becomes a **duplicate priced
+pool row**: `WR 3, RB 2, QB 1`. They land high in their own curves — the colliding names are
+famous ones — at the 40th to 97th percentile of their position.
+
+Injecting exactly those rows, and bracketing against a top-of-curve upper bound and a
+median-placed lower bound:
+
+```
+ pos   clean level    measured    upper bound   lower bound        top VOR, measured
+  QB        324.0   325.0 (+1)    325.0 (+1)    325.0 (+1)      55.0 -> 54.0   (-2%)
+  RB        178.0   182.0 (+4)    182.0 (+4)    178.0 (+0)     181.0 -> 177.0  (-2%)
+  WR        210.0   218.0 (+8)    219.0 (+9)    210.0 (+0)     147.0 -> 139.0  (-5%)
+  TE        187.0   187.0 (+0)    187.0 (+0)    187.0 (+0)     122.0 -> 122.0   (0%)
+```
+
+**+1 to +8 real points of baseline error, cutting top-of-position VOR by 2–5%.** Real and
+directional, not catastrophic. The lower bound is exactly zero, which is the point: the size of
+the error depends entirely on where in the curve the duplicate lands, and it is unbounded in
+principle. A single duplicate of the best player at a thin position would move the anchor much
+further than any of these did.
+
+The mechanism matters more than the magnitude: **an identity error at one row produces an error
+in a positional baseline — a league-level quantity that every player at that position is measured
+against.** It does not stay local.
+
+### Are ambiguous matches surfaced?
+
+**No, at the producer.** `merge_player` returns `{"matched": bool, ...}` — no ambiguity flag, no
+candidate count, no path label. Across **28 non-test call sites**, a silent first-candidate pick
+is indistinguishable from an unambiguous exact hit.
+
+**Yes, at exactly one consumer.** `app.py`'s trade calculator recomputes `name_key` itself to
+count real candidates and marks a query `ambiguous` when several exist. Its own comment states
+the producer's behaviour plainly: *"merge_player's own key-match silently picks the first
+candidate when several players share a name_key and no position/team was given to disambiguate
+(confirmed live: a same-keyed 'Jaylen Allen' resolved to 'Josh Allen's value instead of its
+own)"* — and scopes the fix deliberately, *"without touching merge_player's own contract, which
+plenty of other call sites already depend on staying as-is."*
+
+Two things about that guard are now measurable:
+
+- Its stated safety premise — *"fine for callers that always have a position in hand (the
+  free-agent/roster tables)"* — **holds for the key path and fails for the fuzzy path.** Supplying
+  position moved position mismatches from 89 to 88.
+- Its comment describes the key as `(first-initial, last-token)`, which has not been true since
+  the key changed. The one place documenting the workaround documents the old mechanism.
+
+## Class 2 — parser integrity, completed
+
+Every supported parser, by how it builds a record:
+
+| parser | join strategy | row integrity | provenance kept | failure mode |
+|---|---|---|---|---|
+| `parse_draftsharks_pdf` | **two blocks, positional index** | **conditional** | file + reviewed date | **silent mis-assignment** |
+| `parse_draftsharks_free_agents_pdf` | **two blocks, positional index** | **conditional** | file only (no date) | **silent mis-assignment** |
+| `parse_draftsharks_trade_value_chart_pdf` | one line → one record | holds by construction | file, date, scoring, league type | unmatched line skipped |
+| `parse_fantasypros_dynasty_pdf` | one line → one record | holds by construction | file, date, tier | unmatched line skipped |
+| `parse_fantasypros_bestball_pdf` | one line → one record | holds by construction | file, date, tier | unmatched line skipped |
+| `parse_fantasypros_idp_pdf` | one line → one record | holds by construction | file, date, tier | unmatched line skipped |
+| `parse_espn_idp_pdf` | one line → one record | holds by construction | file, date | unmatched line skipped |
+| `parse_keeptradecut_pdf` | one line → one record, **plus a rank-continuity check** | **holds and is verified** | file, date, source format | truncates; empty table raises |
+| CSV / JSON (`load_projection_file`) | the file's own rows | holds by construction | file, date | raises with no name column |
+
+**Six of the eight PDF parsers, and the CSV/JSON path, satisfy the invariant by construction** —
+every field in a record comes from one source line, so a shifted or missing line drops a row, it
+does not corrupt one. The two Draft Sharks two-block parsers do not.
+
+### The one parser that verifies itself
+
+`parse_keeptradecut_pdf` carries `expected_rank`, requires each row's value blob to end with the
+expected rank string, and skips anything that does not fit. A missed row therefore desynchronises
+the counter and every later line stops matching — the table **truncates** rather than
+mis-assigning. And when `start_rank` cannot be seeded from the page's own range text it defaults
+to 1, so a page not starting at rank 1 matches nothing, yields an empty frame, and
+`load_projection_file` raises `No table found`. **It fails loudly and safely.** That is the shape
+the other two need, and it already exists in this codebase.
+
+### The two that do not
+
+Both build `stat_rows` and `name_rows` independently and join with
+`for idx, entry in enumerate(name_rows): stat_rows[idx]` — no shared key, no length assertion, no
+rank-continuity check. Demonstrated against the real function:
+
+| case | detectable? | outcome |
+|---|---|---|
+| both blocks complete and ordered | — | correct |
+| more names than stats | yes | extras get null numerics — the one case documented |
+| **one player's `TEAM/POS` line absent** | **no** | every later row on the page inherits the previous player's stats; the dropped player vanishes; the surplus stat row is discarded. Output is superficially perfect. |
+| stray stat-shaped line interleaved | yes | one row gets an out-of-range rank (`2026`); later rows shift |
+
+`_sniff_pdf_kind` picks the parser from the PDF's own text and **falls through to
+`parse_draftsharks_pdf` for anything unrecognised** — a mis-sniff runs the wrong parser silently.
+
+Scanning the committed baseline for the detectable signature: **0 duplicate ranks and 0
+out-of-order ranks in every file.** The undetectable failure leaves no trace, so the CSVs cannot
+be cleared of it from their own contents.
+
+## Class 3 — canonical schema and provenance, completed
+
+### Which source produced each field
+
+```
+       field   non-null   contributing files (top 4)
+  projection        328   te_premium_dynasty(231), sleeper_kicker(37), sleeper_dst(32), ff_dynasty(17)
+    proj_3yr        259   te_premium_dynasty(231), ff_dynasty(17), dyn_te_prem_sf(10), dyn_sf(1)
+ trade_value        361   te_premium_dynasty(231), superflex_idp(76), ff_dynasty(17), sleeper_dst(13)
+        rank        404   te_premium_dynasty(231), superflex_idp(76), sleeper_kicker(37), sleeper_dst(32)
+        team        760   superflex_idp(415), te_premium_dynasty(242), sleeper_kicker(33), sleeper_dst(32)
+    position        764   superflex_idp(415), te_premium_dynasty(242), sleeper_kicker(37), sleeper_dst(32)
+```
+
+This map is derivable only because every field on a row comes from **the same winning row**.
+There is no per-field provenance: `source_file` describes the row, not the field.
+
+### The mechanism: reconciliation is row replacement, not field merge
+
+```python
+combined.assign(_dedup_key=...).drop_duplicates(subset="_dedup_key", keep="last")
+```
+
+The winning **row** replaces the loser wholesale. There is no per-field precedence anywhere. Two
+consequences, both measured across the baseline files:
+
+```
+players appearing in more than one baseline file                      706
+fields SILENTLY DROPPED (winner null, a loser had a value)
+    proj_3yr 22 · trade_value 10 · rank 10 · projection 9             51
+fields IN CONFLICT (two files disagree, one wins, nothing recorded)
+    rank 309 · trade_value 304 · projection 244 · proj_3yr 227      1084
+```
+
+**1084 field-level disagreements are resolved every load, and not one of them is recorded.** The
+merge "succeeded" in all 1084 cases.
+
+### The kicker conflict, fully explained
+
+Both halves of the question have concrete answers.
+
+**Why filename ordering decides.** `load_all` sorts source entries by `(source_date, filename)`.
+All four committed K/DST files declare the same `source_date` (`2026-08-25`), so the filename is
+the only remaining tiebreak — and `load_all`'s own comment says so: it *"has NOT become a
+semantic precedence rule, it is still an arbitrary string comparison."* That comment is accurate,
+and it documents a gap rather than a design. The determinism defect it was written for was fixed;
+the semantic gap it names was not.
+
+**Why the loser's extra data disappears.** Because the merge replaces rows, not fields.
+`sleeper_kicker_projections.csv` sorts after `dynasty_kicker_rankings.csv`, so its row wins
+entire — including its *absent* `proj_3yr`.
+
+The consequence is positional, not per-player:
+
+```
+ pos   rows   has proj_3yr   share   has projection
+  QB     40             38     95%              38
+  RB     79             72     91%              72
+  WR    109            104     95%             104
+  TE     52             45     87%              45
+   K     37              0      0%              37
+ DEF     32              0      0%              32
+  LB     91              0      0%               0     (source never had it)
+  DL    171              0      0%               0     (source never had it)
+  DB    153              0      0%               0     (source never had it)
+```
+
+`time_horizon_adj` — the engine's only dynasty-horizon signal — is gated on `proj_3yr`. **Every
+kicker and every defense therefore receives `time_horizon_adj = 0.0` by construction in a dynasty
+league, while 87–95% of offensive players receive a real one.** Aubrey lost a 406, Boswell 312,
+Dicker 336, Little 285, McLaughlin 348.
+
+No positional rule anywhere in `draft_room` produces that. It is a **systematic positional bias
+created entirely at the reconciliation layer** — the K/DST defect class again, one layer further
+upstream than the audit that first found it. (For IDP the zero is not a loss: those sources never
+carried the column.)
+
+### What can silently become a plausible value
+
+| input condition | current outcome | exposed? |
+|---|---|---|
+| two sources disagree on a field | one wins by row order | **no** — 1084 cases per load |
+| winner lacks a field the loser had | field becomes null | **no** — 51 cases |
+| a printed `0` projection | stored as `0.0`, priced at the clip floor | **no** — indistinguishable from a coerced zero |
+| a missing projection | row dropped from the pool | yes, by absence |
+| a stale row | kept; only whole-table freshness is graded | partially |
+| an ambiguous name match | first candidate returned | **no**, except in the trade calculator |
+| a mis-sniffed PDF | parsed by the Draft Sharks parser | **no** |
+| a CSV with no name column | `ValueError` | **yes** |
+| a KTC page that cannot seed its rank | empty frame → `ValueError` | **yes** |
+
+## The canonical ingestion invariant
+
+> **One canonical player record must represent one real player, one intended season/context, and
+> an internally consistent set of fields with traceable provenance.**
+
+Reconciliation "succeeding" must mean the record is semantically coherent — not that the merge
+completed. Against that standard, each clause and what currently violates it:
+
+| clause | status | violated by |
+|---|---|---|
+| **one real player** | **not guaranteed** | the fuzzy path's unguarded return; 7 identities with two real claimants |
+| **one intended season / context** | **not representable** | no `season` and no `scoring_format` column; format inferred from a filename |
+| **internally consistent fields** | **not guaranteed** | row replacement mixes a winner's fields with a loser's absences; 1084 unrecorded conflicts |
+| **traceable provenance** | **partial** | `source_file` + `source_date` only; no vendor, ingest method, confidence, or transformation history, and provenance is per-row, not per-field |
+
+**Heterogeneous sources being combined is the intended architecture and is not the problem.** The
+problem is that the system cannot currently say *what* it combined or *why* — so a merge that
+mixes a league-scored Sleeper projection with a vendor dynasty row is indistinguishable, in the
+output, from one that did not.
+
+## Repair boundaries
+
+Which layer owns which fix. Named, not designed, and not implemented.
+
+| # | boundary | owner | scope |
+|---|---|---|---|
+| R1 | the fuzzy fallback must reject rather than guess | `_find_match` | apply the key path's existing rejection rule to the fallback; return `None` rather than `candidates[0]` |
+| R2 | ambiguity must be a return value, not a caller's re-derivation | `merge_player` | carry the path and the candidate count; the trade calculator's local guard then becomes a read, not a re-implementation |
+| R3 | pool construction must be injective | `build_available_pool` | one canonical row may back at most one pool row |
+| R4 | two-block parsers must verify their own alignment | the two Draft Sharks PDF parsers | the rank-continuity check `parse_keeptradecut_pdf` already implements |
+| R5 | an unrecognised PDF must not fall through to a parser | `_sniff_pdf_kind` | refuse rather than default |
+| R6 | reconciliation must merge fields, not replace rows, under a stated precedence | `_dedup_by_name_and_position` / `load_all` | and record every conflict it resolves |
+| R7 | the canonical schema must carry season, scoring format, vendor, ingest method, and per-field provenance | the schema itself | plus a representation that separates a genuine zero from an unknown |
+
+R1–R3 are the identity boundary, R4–R5 the parse boundary, R6–R7 the schema boundary. **R6 and R7
+are prerequisites for the downstream BPA work**, because the horizon term BPA is supposed to carry
+does not currently exist for two positions — and that is an upstream fact, not a normalization
+choice.
+
+## Upstream and downstream, connected without conflation
+
+> **Upstream integrity determines whether the player-level evidence entering valuation can be
+> trusted. Downstream architecture determines whether trusted evidence is transformed and consumed
+> correctly. Both boundaries must hold.**
+
+They are independent, and this investigation kept them so:
+
+- **The downstream findings #60–#76 were reproduced against correctly resolved identities** —
+  349/349 exact, zero collisions, zero position mismatches — so none of the defects above explains
+  them away, and none of them may be used to rewrite those findings.
+- **The upstream defects are not downstream symptoms.** A crossed wire, a shifted parse row, and a
+  row-replacement field loss are all upstream of every quantity BPA is built from.
+- **They meet at exactly one place, and it is worth naming**: an upstream identity error alters a
+  *positional replacement level*, which today is inseparable from *production* inside BPA. So an
+  upstream error currently arrives downstream **disguised as a change in player value** — which is
+  precisely the confusion the BPA contract exists to prevent. Fixing either boundary alone leaves
+  that disguise in place.
+
+## Invariants
+
+80. A resolution path without a rejection rule never returns a match for a valuation-bearing
+    field. Guessing and declining are different outcomes and only one is acceptable.
+81. Ambiguity is a property of the resolution and is returned with it. A consumer never
+    re-derives it, and never has to.
+82. A parser that joins fields from more than one source line verifies the join against a key or
+    a sequence invariant it can check, and fails loudly when it cannot.
+83. An unrecognised input format is refused. No parser is a default.
+84. Reconciliation merges fields under a stated semantic precedence and records every conflict it
+    resolves. A merge that silently discards a value has not succeeded.
+85. Precedence between two sources is never decided by a filename.
+86. Every canonical field carries the source, ingest method, and transformation that produced
+    *that field* — not only the row.
+87. The canonical record states the season and scoring format it represents. Neither is inferred
+    from a filename.
+88. A field that is absent for a whole position because of a merge rule is a declared fact about
+    that position, not a silent zero in a downstream adjustment.
