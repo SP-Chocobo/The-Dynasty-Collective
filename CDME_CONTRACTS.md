@@ -3148,3 +3148,250 @@ becoming interchangeable.
     the whole board.
 52. `production_margin` and VOR are both retained where both are defined; the scarcity term
     between them is named rather than implied.
+
+---
+
+# Appendix — four quantities, four contracts
+
+Answers #75. The previous appendix established that `bpa` preserves within-state gap *ratios*
+while failing to preserve a stable *unit*, and concluded that "preserves relative gaps" is not a
+contract unless the reference itself has a declared stability property. Before any replacement
+scale can be proposed, the quantities underneath it have to be separated and each given its own
+contract. This appendix does that and stops there. **No reference is chosen, no coefficient is
+chosen, no normalization is designed.**
+
+## The decomposition
+
+```
+VOR = production_margin + scarcity_movement
+
+production_margin  = projected_points        − pre_draft_level[position]
+scarcity_movement  = pre_draft_level[position] − live_level[position]
+```
+
+The identity is exact by construction — the `pre_draft_level` term cancels. What the identity
+buys is that the two addends have **different stability properties**, and VOR exposes neither.
+`production_margin` has a stable unit *and* a stable zero. `scarcity_movement` has a stable unit
+and a zero that means "the market has not moved". Their sum has a stable unit and no stable zero
+at all, and a consumer holding only the sum cannot tell which addend moved.
+
+## Is the `scarcity_movement` scalar a faithful representation? No.
+
+It is the arithmetic residual of two large, always-opposite-signed effects. Decomposing the live
+level against the pre-draft field separates them:
+
+- **demand movement** — the anchor slides *up* the original board because fewer starters are
+  still needed: `level_at(rank_t, pre_draft_field) − level_at(D₀, pre_draft_field)`. Always ≥ 0.
+- **supply movement** — the anchor slides *down* because the players at that rank have been
+  taken: `level_at(rank_t, live_pool) − level_at(rank_t, pre_draft_field)`. Always ≤ 0.
+
+Their sum is exactly `−scarcity_movement`. Measured across the 12×20 audit board:
+
+```
+ rd  pos   D  rank_t  preDraft  live  scarcityMove  demandMove  supplyMove
+  2   TE  16      12       187   187            +0         +10         -10
+  2   RB  28      15       178   178            +0         +62         -62
+  5   RB  28       7       178   171            +7         +92         -99
+  8   RB  28       6       178   162           +16        +115        -131
+ 11   RB  28       2       178   176            +2        +168        -170
+ 13   TE  16       2       187   186            +1        +119        -120
+ 15   TE  16       1       187   187            +0        +122        -122
+```
+
+Every sampled state has the two components opposite in sign, reaching ±170 real points, while the
+scalar they produce stays inside 0–16. **The scalar is a near-cancellation of two market facts,
+and it reports neither.**
+
+Sweeping every (round, position) with a defined live level, distinct market states collide onto
+the same scalar in 5 buckets:
+
+| `scarcity_movement` | distinct states | demand-movement spread | example collision |
+|---|---|---|---|
+| `+0` | 33 | 147 | rd 1 QB (nothing drafted, `+0/−0`) vs rd 15 TE (`+122/−122`) |
+| `+2` | 12 | 161 | rd 9 K (`+7/−9`) vs rd 11 RB (`+168/−170`) |
+| `+9` | 6 | 28 | rd 7 WR (`+69/−78`) vs rd 11 TE (`+97/−106`) |
+| `+13` | 4 | 23 | rd 6 RB (`+92/−105`) vs rd 10 RB (`+115/−128`) |
+
+The `+0` row is the decisive one. **Zero scarcity movement is produced both by "the draft has not
+started" and by "demand has fallen from 16 to 1 and the pool has drained 122 points."** No
+consumer reading the scalar can distinguish an untouched market from a fully consumed one.
+
+Verdict: `scarcity_movement = pre_draft_level − live_level` is **adequate as an accounting
+identity** — it closes the decomposition exactly — and **inadequate as a representation** of the
+information the moving anchor is carrying. Anything that needs to reason about scarcity needs the
+two components; the difference is where the information goes to die.
+
+## The structural fact the decomposition exposes
+
+`scarcity_movement` is a **per-position, per-state constant**. Every player at a position receives
+exactly the same value. Therefore adding it to `production_margin` **cannot change within-position
+ordering at all** — its entire causal power is to shift positions relative to each other.
+
+This is #60's inertness finding restated at the contract level, and it explains it: the anchor's
+only lever is cross-position re-ranking, and the two components cancel to a 0–16 point residual
+against production margins spanning hundreds. The anchor is not weakly wired. It is doing the only
+thing it can do, with a number that has already cancelled itself out.
+
+## Who receives scarcity information, and how
+
+Direct readers of demand or replacement outside `draft_room.py` — **exactly two**:
+
+| Site | What it reads | What it receives |
+|---|---|---|
+| `pick_synthesis.py:842` → `position_view_depth` | `replacement_ranks` — an integer count | demand movement only. Never a level, never supply movement. Controls how many candidates per position enter the debate; touches no score. |
+| `roster_diagnostics.py:119` | `replacement_levels` **with no demand argument** | the *pre-draft* anchor. Deliberately reads `production_margin`'s baseline and receives **no** scarcity information at all. |
+
+**No consumer outside `draft_room.py` reads the live replacement level.** Every other consumer
+receives the entire scarcity term only through `bpa`, and through the
+`universal_value → team_acquisition_value → final_score` chain built on it:
+
+- `draft_strategy.py` — `opportunity_cost = team_acquisition_value × (1 − survival_probability)`;
+  `positional_forfeit` walks per-position `universal_value` curves; denial
+  `premium = final_score − universal_value`.
+- `pick_synthesis.py` — `expected_value_of_waiting = survival_probability × universal_value`;
+  necessity's standout margin over `team_acquisition_value`; cliff detection on within-position
+  `bpa` gaps; `NEAR_TIE_BAND`.
+- `pick_debate.py` — the LLM prompt receives `universal_value` and `team_acquisition_value` as
+  bare numbers **with no anchor attached**; `_runner_up` is `max(team_acquisition_value)`.
+- `draft_simulation.py` — `candidates[0]`, i.e. top `team_acquisition_value`.
+- `draft_board_ui.py` / `app.py` — display.
+- `lineup_optimizer.py` — emits a raw eligibility number that `draft_room` rescales onto the
+  `bpa` scale.
+
+Consequence: the scarcity term is squeezed through a single normalization before anyone but two
+observers sees it, and that normalization is exactly the step that destroys its unit.
+
+## What the absolute constants purchase, state by state
+
+Every additive or threshold constant in the contextual layer is denominated in `bpa` points.
+Because the reference is `max(VOR)` over the live pool, the real-point value of one `bpa` point is
+`reference/100`, and it moves:
+
+```
+ rd  reference (maxVOR)  NEAR_TIE_BAND=2.0  STANDOUT_GAP=15.0  NEED_BONUS_MAX=12.0
+  1                97.0               1.94              14.55                11.64
+  2                72.0               1.44              10.80                 8.64
+  6                17.0               0.34               2.55                 2.04
+ 10                13.0               0.26               1.95                 1.56
+ 13                 1.0               0.02               0.15                 0.12
+ 15   no positive ref                   --                 --                   --
+```
+
+`NEAR_TIE_BAND` buys 1.94 real points at round 1 and 0.02 at round 13 — a 97× drift in the
+definition of "these two players are tied". By round 15 the reference is non-positive, every
+`bpa` is 0.0, and all three constants purchase nothing whatsoever.
+
+**A constant is scale-bound only if it is absolute.** The cliff detector splits on exactly this
+line, inside one function:
+
+- `CLIFF_HIGH_RATIO = 2.5`, `CLIFF_MEDIUM_RATIO = 1.5` compare gap against gap. The reference
+  cancels; these are **invariant** under any positive rescale.
+- `CLIFF_MIN_MATERIAL_GAP = NEAR_TIE_BAND = 2.0` is the absolute gate that decides which gaps are
+  admitted to that ratio test. It **does not cancel.**
+
+So under renormalization the cliff *tiers* stay stable while *which gaps qualify as cliffs at all*
+moves. That is a subtler failure than a shifted threshold: the classification is stable, the
+population being classified is not.
+
+## What `bpa` actually needs to preserve
+
+Taking the mandate's four candidates and testing each against the consumer map above:
+
+| Candidate property | Required? | By whom, and why |
+|---|---|---|
+| **Stable cross-player comparison within a state** | **Yes — load-bearing** | Every selection site is an argmax or a sort: `candidates[0]`, `_board_order`, `_runner_up`, necessity's standout margin. If this fails, the engine picks the wrong player. |
+| **Shared cross-position comparability** | **Yes** | The board is one list across positions; `_board_order` sorts a QB against a TE. A per-position scale would make the primary artifact unorderable. |
+| **Meaningful gap magnitude (stable unit)** | **Yes, for a subset** | `NEAR_TIE_BAND`, `NECESSITY_STANDOUT_REFERENCE_GAP`, `CLIFF_MIN_MATERIAL_GAP`, `NEED_BONUS_*`, `ELIGIBILITY_BONUS_MAX`. These read magnitude, not order, and are the consumers currently broken. |
+| **Bounded output (0–100)** | **No — required by nothing measured** | No consumer asserts `bpa ≤ 100`. The additive constants are *sized* as though the scale were 0–100, but that is a design convention, not a consumed invariant. |
+| **Cross-state comparison** | Not today | Nothing attempts it — but only because nothing attempts it. `pick_debate`'s prompt hands an LLM bare numbers with no anchor, which is cross-state comparison waiting to happen. |
+
+## The trilemma, and which horn nothing is holding
+
+A normalization can hold any two of these three, never all three:
+
+1. **Bounded output** — `bpa ∈ [0, 100]` for every board state.
+2. **Stable unit** — one `bpa` point is a fixed number of real points, in every board state.
+3. **No clipping** — no input is compressed or truncated to fit.
+
+- Bounded + no clipping ⇒ the reference must track the state's own range ⇒ **the unit moves.**
+  This is today's design, and the 97× drift is the bill for it.
+- Bounded + stable ⇒ the reference must be a state-invariant bound on the input domain, and
+  anything exceeding it **must clip** — information lost at the top rather than in the unit.
+- Stable + no clipping ⇒ **output is unbounded.**
+
+The table above says nothing consumes property 1. **The horn to release is bounded output**, which
+is the one the current design protects hardest. Stating this is not choosing a replacement: it
+rules out one family and leaves the rest open. The reference, the unit, and every coefficient
+remain unchosen and are not proposed here.
+
+Note also that today's design pays the clipping cost *anyway*, at the bottom: negative VOR clips
+to 0. It is holding neither 2 nor 3 while protecting a property nothing reads.
+
+## The four contracts
+
+### `production_margin` — the stable observational quantity
+
+- **Unit** real fantasy points. **Zero** the league's structural baseline starter at that
+  position, fixed before the draft and never moving.
+- **May carry** how much production a player delivers above or below that baseline. Comparable
+  across players, across positions, and across draft states.
+- **May not carry** anything about what has been drafted. It is deliberately blind to the market,
+  and that blindness is precisely what makes it stable.
+- **Domain** wherever `projected_points` exists and the position has pre-draft starter demand ≥ 1.
+  Independent of live demand — so it survives into the unpriced register, where VOR does not.
+- **Sign is meaningful.** Negative means genuinely below the structural baseline. Never clipped.
+
+### `scarcity_movement` — the market quantity, currently unnamed and unfaithful
+
+- **Unit** real fantasy points. **Zero** "the market has not moved."
+- **May carry** market consumption at one position.
+- **May not carry** anything player-specific. It is a per-position, per-state constant; every
+  player at the position gets the same value.
+- **Currently inadequate as stated.** As a scalar it is a residual of demand movement and supply
+  movement, which are always opposite in sign and up to ±170 points, and distinct market states
+  collide onto the same number — including "nothing drafted" and "fully consumed" both reading
+  `+0`. It closes the identity and represents nothing.
+- **What is required of it** is that the two components be carried separately, or that any
+  consumer reasoning about scarcity read the components rather than the residual. Neither is
+  designed here.
+
+### `VOR` — the anchor-dependent economic quantity
+
+- **Unit** real fantasy points, stable. **Zero** the live marginal starter — moves every pick.
+- **May carry** value against the live marginal starter.
+- **May not carry** any cross-state claim unless its anchor travels with it.
+- **Domain** narrower than `production_margin`'s: only where the live level is defined (remaining
+  demand ≥ 1). That gap between the two domains *is* the unpriced register.
+- **Sign is meaningful.** Never silently clipped — clipping is where the three routes to zero
+  collapse into one indistinguishable value.
+- **Structural defect of the type itself:** it is the sum of two quantities with different
+  stability properties and it exposes neither. A consumer holding only VOR cannot tell whether a
+  change came from the player or from the market.
+
+### `bpa` — the ordering surface
+
+- **May carry** relative separation among available players, on one shared cross-position bar,
+  **within a single board state and above the clip floor.**
+- **May not carry** absolute production, a stable unit (today), cross-state comparison, or any
+  statement about players at or below the floor.
+- **Required to preserve** within-state cross-player order, cross-position comparability, and a
+  stable unit for the magnitude-reading consumers. **Not** required to be bounded.
+- **Is the sole channel** through which every consumer but two receives any scarcity information
+  at all.
+
+## Invariants
+
+53. `production_margin`, `scarcity_movement`, and VOR are three quantities with three different
+    stability properties. Any of them may be displayed; none is a substitute for another.
+54. A scalar difference of two levels is not a representation of the market unless the components
+    that produced it are recoverable or separately carried.
+55. `scarcity_movement` cannot reorder players within a position. Any claim that the anchor
+    changes intra-positional ordering is false by construction.
+56. A constant expressed as a ratio of two `bpa` gaps is invariant under renormalization; a
+    constant expressed as an absolute `bpa` quantity is not. Mixing the two inside one decision
+    (as `detect_positional_cliff` does) makes half of it move and half of it hold.
+57. Bounded output, a stable unit, and no clipping cannot all hold. The property to release is the
+    one no consumer reads.
+58. `bpa` is the only channel carrying scarcity to the decision layer. Any change to the scarcity
+    representation is a change to every consumer downstream of it, whether or not that consumer
+    mentions scarcity.
