@@ -49,7 +49,7 @@ import trade_ledger_ui
 from attachments import ATTACHMENTS_DIR, list_attachments, save_attachment, set_caption, set_scope, delete_attachment
 from data_merger import (
     EXTERNAL_VALUES_DIR, GLOBAL_PROJECTIONS_DIR, PROJECTIONS_DIR, DataMerger, external_upload_targets,
-    load_projection_file, name_key, normalize_name, recency_grade, remove_alias, save_alias,
+    load_projection_file, recency_grade, remove_alias, save_alias,
 )
 from league_format import FORMAT_GUIDANCE, FORMAT_OPTIONS, STANDARD, get_format_override, set_format_override
 from league_prefs import forget_league, get_prefs, move_league, sorted_leagues, toggle_archive
@@ -3500,25 +3500,13 @@ elif main_view == MAINTENANCE_VIEW:
         else merger.trade_values
     )
 
-    def _match_key(name: str) -> tuple[str, str]:
-        return name_key(normalize_name(name))
-
-    # merge_player's own key-match silently picks the first candidate when several players
-    # share a name_key and no position/team was given to disambiguate (confirmed live: a
-    # same-keyed "Jaylen Allen" resolved to "Josh Allen"'s value instead of its own) -- fine
-    # for callers that always have a position in hand (the free-agent/roster tables), but the
-    # trade calculator's free-text input never does. Recomputing the same key here to count
-    # real candidates catches that specific gap without touching merge_player's own contract,
-    # which plenty of other call sites already depend on staying as-is.
-    # DataMerger._load() already precomputes this exact column on trade_values (and it
-    # survives the asset_type=="player" filter above) -- reuse it instead of remapping every
-    # row again here, same fix as _find_match's own internal lookup.
-    if _tvc_players.empty:
-        _tvc_player_keys = None
-    elif "_name_key" in _tvc_players.columns:
-        _tvc_player_keys = _tvc_players["_name_key"]
-    else:
-        _tvc_player_keys = _tvc_players["norm_name"].map(_match_key)
+    # Ambiguity used to be recomputed here: merge_player silently picked the first candidate
+    # when several players shared a name_key and no position/team was given to disambiguate
+    # (confirmed live -- a same-keyed "Jaylen Allen" resolved to "Josh Allen"'s value instead
+    # of its own), and it returned nothing a caller could read, so this one caller counted
+    # candidates itself. It reports match_verified now, so the count is gone and both branches
+    # below read the resolution instead. Ambiguity is a property of the resolution, and a
+    # consumer that has to re-derive it is a consumer that can forget to.
 
     # FAAB dollars and waiver-priority swaps are common lopsided-piece-count sweeteners in a
     # real trade, but Draft Sharks has no market value for either -- a league's FAAB budget can
@@ -3559,20 +3547,25 @@ elif main_view == MAINTENANCE_VIEW:
             external = merger.external_player_values(line) if merger.is_external_values_loaded else []
             composite = merger.composite_player_score(line)
             tvc_player = merger.merge_player(line, df=_tvc_players) if merger.is_trade_values_loaded else {}
-            if tvc_player.get("matched") and _tvc_player_keys is not None:
-                candidates = int((_tvc_player_keys == _match_key(line)).sum())
-                if candidates > 1:
-                    # external/composite above were resolved from the same unresolvable free
-                    # text as `value` -- whichever candidate merge_player/composite_player_score
-                    # silently picked is exactly as uncertain as the price the UI already hides
-                    # here (confirmed: an ambiguous line still had a specific player's real
-                    # composite score reach the panel's context, undermining the point of
-                    # flagging it as ambiguous at all). Drop both, same as value.
-                    rows.append({
-                        "label": line, "value": None, "position": None, "source": None,
-                        "ambiguous": True, "external": [], "composite": None,
-                    })
-                    continue
+            if tvc_player.get("matched") and not tvc_player.get("match_verified", True):
+                # external/composite above were resolved from the same unresolvable free
+                # text as `value` -- whichever candidate merge_player/composite_player_score
+                # silently picked is exactly as uncertain as the price the UI already hides
+                # here (confirmed: an ambiguous line still had a specific player's real
+                # composite score reach the panel's context, undermining the point of
+                # flagging it as ambiguous at all). Drop both, same as value.
+                #
+                # This used to recompute name_key over the whole table to count candidates
+                # itself, because merge_player returned no ambiguity at all. It does now, and
+                # the returned flag is the better signal: it reflects the path the resolution
+                # actually took, so an exact single-row hit is no longer flagged just because
+                # some other row shares its key, and a fuzzy hit with several survivors IS
+                # flagged where a key count saw nothing.
+                rows.append({
+                    "label": line, "value": None, "position": None, "source": None,
+                    "ambiguous": True, "external": [], "composite": None,
+                })
+                continue
             # The Trade Value Chart's own column is "value", not "trade_value" -- it's the one
             # table that skips the CSV/JSON header-alias renaming (see merge_player's own note).
             tvc_price = tvc_player.get("trade_value", tvc_player.get("value"))
@@ -3593,20 +3586,9 @@ elif main_view == MAINTENANCE_VIEW:
             rankings_player = merger.merge_player(line)
             if rankings_player.get("matched") and rankings_player.get("trade_value") is not None:
                 # Same free-text-without-a-position-hint exposure as the Trade Value Chart
-                # path above, against the (larger) Dynasty Rankings pool this time.
-                # Series == tuple broadcasts elementwise as intended; Series.eq(tuple) does not
-                # -- pandas treats a tuple RHS as array-like for .eq() and raises on the length
-                # mismatch instead of comparing each element against it. Confirmed the hard way.
-                # DataMerger._load() already precomputes this column -- reuse it rather than
-                # remapping every row of the whole rankings pool again on every trade line.
-                _proj_keys = (
-                    merger.projections["_name_key"] if "_name_key" in merger.projections.columns
-                    else merger.projections["norm_name"].map(_match_key)
-                )
-                candidates = int(
-                    (_proj_keys == _match_key(line)).sum()
-                ) if not merger.projections.empty else 1
-                if candidates > 1:
+                # path above, against the (larger) Dynasty Rankings pool this time -- read
+                # off the resolution rather than recounted here, same as the branch above.
+                if not rankings_player.get("match_verified", True):
                     # Same reasoning as the Trade Value Chart branch above -- don't leak a
                     # specific, unresolvable candidate's external/composite data either.
                     rows.append({

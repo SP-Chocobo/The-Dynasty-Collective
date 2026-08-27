@@ -292,6 +292,40 @@ _KICKER_POSITIONS = {"K", "PK"}
 _TEAM_DEFENSE_POSITIONS = {"DEF", "DST", "D/ST"}
 
 
+# Vendor synonyms for the SAME on-field role. Draft Sharks exports the three broad IDP codes
+# (LB/DL/DB) where FantasyPros and ESPN split them finer (S/CB for DB, DE/DT/EDGE for DL), and
+# Sleeper writes DST where Draft Sharks writes DEF -- none of which is a different player.
+#
+# Deliberately NOT _position_group. That one is the dedup IDENTITY namespace and is coarse on
+# purpose: every offensive skill position shares it, so a genuine RB->WR reclassification still
+# collapses onto one row. This is the COMPARISON key a resolution uses to ask "is the row I
+# matched even the same kind of player as the query", where QB/RB/WR/TE must stay four
+# different answers. Using either one for the other's job is a real defect in both directions.
+_POSITION_SYNONYMS = {
+    "DST": "DEF", "D/ST": "DEF", "PK": "K",
+    "S": "DB", "SS": "DB", "FS": "DB", "CB": "DB",
+    "DE": "DL", "DT": "DL", "EDGE": "DL", "NT": "DL",
+    "OLB": "LB", "ILB": "LB", "MLB": "LB",
+}
+
+
+def position_family(position) -> Optional[str]:
+    """The role a position names, with vendor synonyms collapsed -- or None when the position
+    is unknown. None means "no opinion", never "no match": an absent position is not evidence
+    that two rows describe different people."""
+    if position is None:
+        return None
+    try:
+        if pd.isna(position):
+            return None
+    except (TypeError, ValueError):
+        pass
+    text = str(position).strip().upper()
+    if not text:
+        return None
+    return _POSITION_SYNONYMS.get(text, text)
+
+
 def _position_group(position) -> str:
     """Identity namespace for the dedup key, so two same-named players from different
     position families never silently shadow each other in _dedup_by_name_and_position below.
@@ -1459,9 +1493,57 @@ class DataMerger:
         match = self.trade_values[self.trade_values["norm_name"] == normalize_name(label)]
         return int(match.iloc[0]["value"]) if not match.empty else None
 
+    @staticmethod
+    def _contradicted(row: pd.Series, position: Optional[str], team: Optional[str]) -> bool:
+        """Does anything KNOWN on both sides say this row is a different person?
+
+        Unknown on either side is not evidence of a mismatch -- an absent position or team must
+        not manufacture a contradiction any more than it may manufacture a match. Only a
+        disagreement between two values that both exist rejects.
+        """
+        if team and "team" in row.index and pd.notna(row.get("team")) and str(row["team"]) != str(team):
+            return True
+        if position and "position" in row.index and pd.notna(row.get("position")):
+            queried, matched = position_family(position), position_family(row["position"])
+            if queried and matched and queried != matched:
+                return True
+        return False
+
+    @staticmethod
+    def _different_identity_namespace(row: pd.Series, position: Optional[str]) -> bool:
+        """Do these two rows sit in different dedup identity namespaces?
+
+        _dedup_by_name_and_position already treats rows in different _position_group buckets as
+        two different PEOPLE -- that is what stops "Josh Allen" the QB and "Josh Allen" the DL
+        from collapsing onto one record. A resolution that crosses that boundary therefore
+        contradicts the merger's own identity model, whatever path it took to get there.
+
+        Deliberately the coarse group, not position_family: a real edge rusher is exported as
+        LB by one vendor and DL by another, and both are `idp`, so this leaves those 20 real
+        matches alone while rejecting a WR resolving onto a DB.
+        """
+        if not position or "position" not in row.index or pd.isna(row.get("position")):
+            return False
+        return _position_group(position) != _position_group(row["position"])
+
     def _find_match(self, full_name: str, position: Optional[str] = None,
                      team: Optional[str] = None, df: Optional[pd.DataFrame] = None) -> Optional[pd.Series]:
-        """Match a Sleeper player onto a row of the given table (default: self.projections).
+        """The matched row alone, for the callers that only want that. See _resolve."""
+        return self._resolve(full_name, position=position, team=team, df=df)[0]
+
+    def _resolve(self, full_name: str, position: Optional[str] = None,
+                  team: Optional[str] = None, df: Optional[pd.DataFrame] = None
+                  ) -> tuple[Optional[pd.Series], Optional[str], int, bool]:
+        """(row, path, candidate_count, verified) -- the match AND how confident the match is.
+
+        Ambiguity is a property of the resolution, so it is returned with it. It used to be
+        neither returned nor recorded, which made a silent first-candidate pick indistinguishable
+        from an unambiguous exact hit at every call site; app.py's trade calculator had to
+        recompute name_key itself to close that gap for one caller. `verified` is True only when
+        exactly one row survived, so a caller can tell "this is the player" from "this is the
+        first of several that fit".
+
+        Match a Sleeper player onto a row of the given table (default: self.projections).
 
         Draft Sharks' PDFs give first-initial-only names ("J Chase", not
         "Ja'Marr Chase"), which tanks a naive whole-string fuzzy ratio for anyone
@@ -1476,7 +1558,7 @@ class DataMerger:
         """
         table = self.projections if df is None else df
         if table.empty or not full_name:
-            return None
+            return None, None, 0, False
 
         alias = self.aliases.get(full_name)
         if alias:
@@ -1486,14 +1568,14 @@ class DataMerger:
                     narrowed = exact[exact["team"] == team]
                     if not narrowed.empty:
                         exact = narrowed
-                return exact.iloc[0]
+                return exact.iloc[0], "alias", len(exact), True
             # alias didn't resolve in this particular table (e.g. player isn't in
             # the free-agent table) — fall through to normal matching below
 
         norm_name = normalize_name(full_name)
         tokens = norm_name.split()
         if not tokens:
-            return None
+            return None, None, 0, False
 
         # Try an exact normalized-name match before the fuzzy key below. Vendors that export
         # full names (unlike Draft Sharks' own first-initial-only PDFs) can be matched exactly
@@ -1515,7 +1597,7 @@ class DataMerger:
                 narrowed = exact_matches[exact_matches["position"] == position]
                 if not narrowed.empty:
                     exact_matches = narrowed
-            return exact_matches.iloc[0]
+            return exact_matches.iloc[0], "exact", len(exact_matches), len(exact_matches) == 1
 
         key = name_key(norm_name)
         # Use the precomputed column when this table has one (every table _load() builds
@@ -1548,28 +1630,69 @@ class DataMerger:
             # is not a lossy hash, so a team mismatch there is far more likely just stale
             # roster data than a misidentified player, and shouldn't be thrown out.
             if team and "team" in table.columns and pd.notna(candidate.get("team")) and candidate["team"] != team:
-                return None
-            return candidate
+                return None, None, len(key_matches), False
+            # Same rejection, on the other axis the merger already treats as identity: a
+            # same-team, same-key pair can still be two different people if they sit in
+            # different dedup namespaces (confirmed live -- a WR resolving onto a DB who
+            # happened to share a club and a first initial, which the team check above cannot
+            # see). Only the coarse group, so the LB/DL vocabulary split between vendors stays
+            # a match.
+            if self._different_identity_namespace(candidate, position):
+                return None, None, len(key_matches), False
+            return candidate, "key", len(key_matches), len(key_matches) == 1
 
+        # The fallback of last resort, and the only path with no key holding it together --
+        # so it is the one that must be able to decline. It used to prefer a position-matching
+        # candidate and then return candidates[0] regardless, checking team nowhere at all: the
+        # rejection rule added to the key path above (see the Bijan/Brian Robinson comment) was
+        # never carried down here. Measured on the real committed baseline before this changed,
+        # EVERY fuzzy match that resolved against a team-bearing query was a different real
+        # person -- 9 of 9 -- each one handing that person's projection, trade value and 3-year
+        # outlook to someone else. Guessing and declining are different outcomes, and only one
+        # of them is acceptable for a field that becomes a valuation input.
         choices = table["norm_name"].tolist()
         candidates = difflib.get_close_matches(norm_name, choices, n=3, cutoff=self.match_cutoff)
         if not candidates:
-            return None
-        if position and "position" in table.columns:
-            for cand in candidates:
-                rows = table[table["norm_name"] == cand]
-                pos_match = rows[rows["position"] == position]
-                if not pos_match.empty:
-                    return pos_match.iloc[0]
-        return table[table["norm_name"] == candidates[0]].iloc[0]
+            return None, None, 0, False
+        survivors = []
+        for cand in candidates:
+            for _, row in table[table["norm_name"] == cand].iterrows():
+                if not self._contradicted(row, position, team):
+                    survivors.append(row)
+        if not survivors:
+            return None, None, len(candidates), False
+        return survivors[0], "fuzzy", len(survivors), len(survivors) == 1
 
     def merge_player(self, player_full_name: str, position: Optional[str] = None,
                       team: Optional[str] = None, df: Optional[pd.DataFrame] = None) -> dict:
-        """Return matched fields (tier/vorp/projection/trade_value/rank/...) for one player."""
-        match = self._find_match(player_full_name, position=position, team=team, df=df)
+        """Return matched fields (tier/vorp/projection/trade_value/rank/...) for one player,
+        plus how the match was reached.
+
+        match_path       -- "alias" / "exact" / "key" / "fuzzy", or None on a miss
+        match_candidates -- how many rows survived as plausible; 0 on a miss
+        match_verified   -- True only when exactly one row fit, so a caller can tell "this is
+                            the player" from "this is the first of several that fit"
+
+        Those three exist because ambiguity is a property of the resolution and belongs to the
+        producer. Without them a silent first-candidate pick was indistinguishable from an
+        unambiguous exact hit at every call site, and the one consumer that needed the
+        distinction (app.py's trade calculator, free-text input with no position to narrow on)
+        had to recompute name_key itself to recover it."""
+        match, path, candidates, verified = self._resolve(
+            player_full_name, position=position, team=team, df=df)
         if match is None:
-            return {"matched": False}
-        row = {"matched": True}
+            return {"matched": False, "match_path": None,
+                    "match_candidates": candidates, "match_verified": False}
+        # The identity of the row that was matched, not of the query -- so a caller can tell
+        # whether two different players resolved onto the SAME canonical record. Deliberately
+        # (norm_name, position_group): the dedup identity namespace, which is what makes two
+        # rows one record in the first place. Namespaced with the other match_ fields so it
+        # never collides with a caller's own "name"/"position" keys (build_roster_table
+        # row.update()s this straight onto a Sleeper-derived row).
+        row = {"matched": True, "match_path": path,
+               "match_candidates": candidates, "match_verified": verified,
+               "match_canonical_key": (str(match.get("norm_name")),
+                                       _position_group(match.get("position")))}
         for field in ("projection", "vorp", "tier", "trade_value", "rank",
                        "position", "team", "pos_rank", "proj_3yr",
                        "roster_status", "proj_3d", "ros_3d", "ceiling", "value_3d",

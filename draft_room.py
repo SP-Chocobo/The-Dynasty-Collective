@@ -642,13 +642,45 @@ def build_available_pool(
             # honestly instead of assuming every non-live-sync "projection" came from Draft
             # Sharks (see KDST_SEEDED_SOURCE_FILES).
             "source_file": match.get("source_file"),
+            # Which canonical row this player's numbers came from. Not a value, not displayed --
+            # it exists so the pool can assert it never prices two different players off one
+            # row (see the injectivity pass below), and so a caller can trace a pool row back
+            # to the record it was joined from.
+            "_canonical_key": match.get("match_canonical_key"),
+            "_match_path": match.get("match_path"),
+            "_match_verified": match.get("match_verified"),
         })
     if not rows:
         return pd.DataFrame(columns=[
             "player_id", "name", "position", "team", "injury_status", "trade_value",
             "projection", "proj_3yr", "sleeper_points", "source_file", "bpa",
+            "_canonical_key", "_match_path", "_match_verified",
         ])
-    return pd.DataFrame(rows)
+    return _drop_contested_identities(pd.DataFrame(rows))
+
+
+def _drop_contested_identities(pool: pd.DataFrame) -> pd.DataFrame:
+    """Two different Sleeper players resolving onto ONE canonical record is a contested
+    identity, and at least one of them is a misidentification. Nothing here can tell which, so
+    neither is priced -- declining is the only honest outcome, and it is the same rule this
+    module already applies everywhere else absence turns up.
+
+    Dropping BOTH costs the real player his row, which is a genuine loss and is the point: a
+    phantom duplicate is not a local error. It is a second copy of a real player's points at
+    his position, so it moves that position's replacement RANK -- a league-level quantity every
+    player at that position is measured against. Measured before the identity guard landed:
+    +1 to +8 real points of baseline error, cutting top-of-position VOR by 2-5%, and unbounded
+    in principle depending on where in the curve the duplicate falls. Silently pricing two
+    players off one row trades a visible missing row for an invisible wrong anchor.
+    """
+    if pool.empty or "_canonical_key" not in pool.columns:
+        return pool
+    keyed = pool["_canonical_key"].map(lambda k: k if isinstance(k, tuple) else None)
+    counts = keyed.value_counts()
+    contested = {k for k, n in counts.items() if n > 1}
+    if not contested:
+        return pool
+    return pool[~keyed.isin(contested)].reset_index(drop=True)
 
 
 def qb_startable_floor(merger: DataMerger) -> Optional[float]:
