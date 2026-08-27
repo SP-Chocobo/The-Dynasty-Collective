@@ -2871,3 +2871,139 @@ boundary zero with the clipped negative — the state that accounts for 95% of t
     `bpa` of 100 awarded on a 1-point VOR is a scale failure, not a valuation.
 43. Where A does not discriminate, the decision surface states which of B and C is carrying the
     decision.
+
+---
+
+# Appendix — the three mechanisms, and the normalization reference
+
+Investigation only. **No implementation, no tuning, no threshold chosen.**
+
+**Correction accepted:** the dominant zero route is the clipped negative, not degenerate rank-1
+VOR. The measurements below are organised around that.
+
+## Information destroyed at normalization — and it starts early
+
+| round | rows with VOR | **distinct VOR** | **distinct `bpa`** | VOR range | negative range | reference (max) |
+|---|---|---|---|---|---|---|
+| 4 | 280 | **141** | **20** | 351.0 | 323.0 | 27.00 |
+| 8 | 232 | 129 | 13 | 325.0 | 308.0 | 16.00 |
+| 11 | 117 | 70 | 4 | 167.0 | 157.0 | 9.00 |
+| 13 | 27 | 25 | **2** | 167.0 | 158.0 | 1.00 |
+| 15 | 23 | 22 | **1** | 167.0 | 166.0 | 0.00 |
+
+**This is not a late-round problem.** At **round 4** — every position priced, the engine at its
+healthiest — 141 distinguishable states become 20. Roughly 121 distinct *negative* VOR values,
+spanning 323 points, collapse to the single value `0.0`.
+
+## The three mechanisms
+
+### 1. Genuine VOR at the replacement boundary
+- **Before normalization:** VOR = 0 at rank D ≥ 2 — a real position in a real distribution:
+  *he is the marginal starter, and D−1 better options exist.*
+- **Destroyed:** nothing by the clip itself. What is destroyed is its **distinguishability** — it
+  emerges from `_scale_vor_to_bpa` as the same `0.0` as mechanisms 2 and 3.
+- **Downstream:** nothing can ask "is he at replacement," because three states share the value.
+- **Population:** 5–9 rows at every round measured — small, stable, and the only zero that is a
+  measurement.
+
+### 2. Negative VOR erased by the clip — the dominant mechanism
+- **Before:** the full below-replacement distribution. 323 points of range at round 4, 166 at
+  round 15, across 121+ distinct values.
+- **Destroyed:** all of it, at every round. 200+ rows early, 22 late, all mapped to one value.
+- **Downstream that depends on it, measured:**
+
+  | consumer | round 4 | round 15 |
+  |---|---|---|
+  | `detect_positional_cliff` tiers over the top 60 | LOW 43, MEDIUM 12, HIGH 5 | LOW 22, **no answer 38** |
+
+  MEDIUM disappears entirely after round 4. By round 15 the cliff detector cannot answer for 38
+  of 60 rows, because it reads **`bpa` gaps** and the gaps are all zero. That signal feeds
+  `cliff_protection` and necessity's cliff term. Also dependent: `narrow_candidates` ordering,
+  necessity's standout margin, `near_tie_flags`, `decision_regime`, `positional_forfeits`
+  curves, and `draft_counterfactual`'s argmax.
+
+### 3. Degenerate / no meaningful reference
+- **Before:** nothing. At rank 1 the anchor is a player, not a replacement, so the quantity was
+  never information.
+- **Destroyed:** n/a — but it is **indistinguishable from a real zero**, which is the harm.
+- **Population:** 1 row at round 15, 0 at rounds 6–13.
+
+## The normalization reference
+
+`_scale_vor_to_bpa` anchors on `vor.max()` — the top of the distribution, not its spread.
+
+| round | reference (max) | full VOR range | **reference / range** |
+|---|---|---|---|
+| 4 | 27.00 | 351.0 | 0.077 |
+| 8 | 16.00 | 325.0 | 0.049 |
+| 13 | **1.00** | 167.0 | **0.006** |
+| 15 | **0.00** | 167.0 | **0.000** |
+
+**The scale divides by a quantity between 0.6% and 7.7% of the information present.** At round 13
+`bpa = 100` is awarded for sitting **one point** above replacement while 167 points of range exist
+below.
+
+And the discriminating population decays smoothly:
+
+| round | 2 | 4 | 6 | 8 | 10 | 11 | 12 | 13 | 14 | 15 |
+|---|---|---|---|---|---|---|---|---|---|---|
+| **above replacement** | 77 | 55 | 38 | 23 | 11 | 8 | 3 | **1** | **1** | **0** |
+| at 0 | 9 | 9 | 9 | 8 | 6 | 5 | 5 | 1 | 1 | 1 |
+| below | 218 | 216 | 209 | 201 | 172 | 104 | 104 | 25 | 24 | 22 |
+
+At rounds 13–14 **one** player is above replacement, max VOR `1.0`, second-highest `0.0` — the
+entire 0–100 scale spanned by one player one point clear of the next.
+
+### What a minimum-spread threshold would have to be — characterised, not chosen
+
+| family | form | what it needs | what it inherits |
+|---|---|---|---|
+| **absolute** | reference must exceed **N points** | a constant in league-scored points | points scale with `scoring_settings`, so N is format-dependent and must be re-derived per format — the magic-constant pattern this engine's own history rejects |
+| **relative** | reference ≥ **X%** of `max − min` | one dimensionless constant | `min` is the worst *loaded* player, a truncation artifact of the pool — the same defect as reading a replacement level off the bottom of a short list |
+| **domain-dependent** | the scale exists only while **≥ K players sit above replacement** | an integer K | keys on the quantity the register split already uses; needs no points constant; K = 1 is degenerate by construction (that player defines the scale himself), so the smallest non-degenerate value is 2 |
+
+The measurement favours the third family as the only one requiring no invented number in points —
+but **K is still a choice and is not made here.**
+
+## Is preserving negative VOR sufficient? No — measured longitudinally
+
+Fixed players, whose projections never change, tracked across rounds. `VOR` is unclipped;
+`mgn` is `production_margin` against the fixed pre-draft field.
+
+| player | pos | pts | rd 11 | rd 13 | rd 15 | rd 17 |
+|---|---|---|---|---|---|---|
+| M Andrews | TE | 187 | VOR **+9** · mgn +0 | VOR **+1** · mgn +0 | VOR **+0** · mgn +0 | VOR — · mgn +0 |
+| I Likely | TE | 186 | VOR **+8** · mgn −1 | VOR **+0** · mgn −1 | VOR **−1** · mgn −1 | VOR — · mgn −1 |
+| C Williams | QB | 324 | VOR — · mgn +0 | VOR — · mgn +0 | VOR — · mgn +0 | VOR — · mgn +0 |
+| D Njoku | TE | 52 | VOR **−126** · mgn −135 | VOR **−134** · mgn −135 | VOR **−135** · mgn −135 | gone |
+
+**Un-clipping restores differentiation but not stability.** Every tracked player's unclipped VOR
+drifts by ~9 points across the draft while his production never changes — because the anchor
+moves, not because he does. `production_margin` is **exactly constant** for all four at every
+round.
+
+Two consequences:
+
+1. **Preserving negatives is necessary but not sufficient.** It restores 121+ distinguishable
+   states at round 4 and 22 at round 15 — real, decision-relevant information. It does not make
+   the quantity comparable across rounds, because its zero point moves.
+2. **The anchor must still be declared undefined once its economic domain is exhausted.**
+   Un-clipping cannot rescue a quantity that has no anchor at all: past demand < 1 there is
+   nothing to preserve, and Andrews' and Likely's VOR simply stop existing at round 17.
+
+**Corroboration:** Njoku's VOR converges toward his margin (−126 → −134 → −135) as the live
+anchor converges on the pre-draft level — the inertness finding, visible longitudinally in a
+single player.
+
+## Invariants
+
+44. Below-replacement magnitude is preserved through the valuation layer. Whether it reaches a
+    presentation scale is a separate, later decision.
+45. A quantity whose zero point moves with draft state is never compared across draft states
+    without that movement being declared.
+46. The normalization reference is validated against the spread it is meant to represent, and a
+    scale is not produced when the reference does not span it.
+47. Un-clipping is never treated as a substitute for the anchor's domain: the two failures are
+    independent and both must be addressed.
+48. Every consumer of `bpa` gaps declares what it does when the gaps are uniformly zero, rather
+    than returning a tier or a "no answer" that reads as a property of the players.
