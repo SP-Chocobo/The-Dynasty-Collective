@@ -2263,3 +2263,85 @@ Invariants 16–23 stand. Two are added and one is restated:
     `pick_necessity`, or any ordering containing a priced row — enforced because the two are the
     same quantity at different anchors and are therefore easy to confuse, not because they are
     unrelated.
+
+---
+
+# Appendix — what the engine may conclude from 324 vs 52
+
+Investigation only. Answers the intent question directly and **corrects invariant 25**.
+
+## Does the engine have enough evidence to preserve cross-position ordering?
+
+**Yes.** Measured on pairs `bpa` materially separates, the production margin reproduces CDME's
+own cross-positional ordering at **94–100%**, against **69–82%** for raw points. The evidence is
+sufficient, and raw points is not the thing that carries it.
+
+**The strongest defensible signal** is `projected_points − pre_draft_replacement[position]`.
+What makes it cross-positionally valid is the same thing that makes VOR valid: a per-position
+zero set at league starter depth. It is not a new normalization — it is CDME's own, evaluated
+against the fixed pre-draft field rather than the live pool.
+
+**Its proper scope** is ordering **within register 2 only**, and display everywhere.
+
+## The boundary pair, fully decomposed
+
+| player | pos | pts | position baseline | margin | register | TAV |
+|---|---|---|---|---|---|---|
+| C Williams | QB | 324.0 | 324 | **+0.0** | **2 — unpriced** | `None` |
+| D Njoku | TE | 52.0 | 187 | **−135.0** | **1 — priced** | 1.16 |
+
+The pair is split across registers, and the *worse* producer is the priced one.
+
+### What the engine MAY conclude
+
+- **They are not equivalent, and by how much.** Caleb produces at exactly his position's
+  league-starter baseline; Njoku produces 135 points below his. That comparison is sourced,
+  scored under this league's own settings, and cross-positionally meaningful.
+- **A production ordering between them**, stated as production.
+- **That Njoku's TAV of 1.16 is not a claim that he is worth more than Caleb.** It is an answer
+  to a question — *what is a TE worth given remaining TE starter demand* — that currently has no
+  counterpart for QB.
+
+### What it MAY NOT conclude
+
+- **That Caleb is the better pick.** That needs scarcity, survival, horizon and roster fit —
+  none of which exist for him right now.
+- **That 135 points is a value gap.** It is a production gap in points. The conversion to value
+  is precisely the layer that is unavailable.
+- **That a margin of `0.0` means zero value.** It means *at the baseline* — a reference point,
+  not a zero. Reading it as zero would be this audit's own recurring defect, one layer over.
+- **That the ordering authorizes a selection.** Auto-selection still requires a priced candidate.
+
+## Correction to invariant 25
+
+The previous appendix said `production_margin` is *"never computed for a row that has a
+`team_acquisition_value`."* **That is wrong, and this case is why:** Njoku is priced. Withholding
+his margin makes the 324-vs-52 comparison impossible to state at all — the opposite of the
+intent.
+
+The substitution risk is about the **ordering key**, not the **display**, and the 94–100%
+agreement means showing the margin on a priced row is a consistent weaker view of the same
+ordering, not a misleading one.
+
+> **25 (corrected).** `production_margin` is computed for **every** row as displayed context. It
+> is used as an **ordering key only within register 2**. It never enters `bpa`,
+> `universal_value`, `team_acquisition_value`, `pick_necessity`, or any sort that spans both
+> registers.
+
+## What separation actually costs — measured
+
+| round | best priced margin | best unpriced margin | unpriced beating the best priced |
+|---|---|---|---|
+| 11 | 0.0 | 0.0 | **0 of 79** |
+| 13 | 0.0 | 0.0 | **0 of 145** |
+| 15 | 0.0 | 0.0 | **0 of 125** |
+
+**Register separation withholds no production advantage.** The two registers' production ceilings
+are identical at every round measured, and no unpriced player out-produces the best priced one.
+Separation costs a single merged ordinal — not information.
+
+## Invariant
+
+27. Both registers are **displayed together and ordered separately**. Every row carries its
+    `production_margin` and its register; no surface may present a single ordinal spanning both,
+    and no surface may omit an unpriced row's margin on the grounds that it has no valuation.
