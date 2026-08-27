@@ -18,8 +18,13 @@ Each contract below answers the same eight questions. A quantity without answers
 is not ready to be consumed by anything.
 
 > **Status: DRAFT — awaiting sign-off.** No Phase 2 code is written against these until the
-> project owner approves them. See "Open decisions" at the end; two of them block work that
-> is already scheduled.
+> project owner approves them.
+>
+> **Revision 2** tightened the admission rule after measurement: completeness alone proved
+> insufficient (see "The admission invariant"), a scope correction was found (necessity does
+> not reorder candidates — Phase 2 changes labels, not picks), and one claim in revision 1 was
+> refuted by measurement and is corrected in place (survival stays live late; necessity does
+> not run out of signal).
 
 ---
 
@@ -123,6 +128,14 @@ is already pinned by test for that quantity.
 `team_acquisition_value` is computed and rounded *before* `_attach_waiting_cost` runs and is
 byte-identical with these columns present or absent.
 
+**What admitting it to `pick_necessity` would and would not do** — `pick_necessity` does **not
+reorder candidates**. Verified: nothing in the codebase sorts or selects by it;
+`candidates[0]` is the top `team_acquisition_value`, and necessity is zipped in afterwards as
+a per-candidate label consumed by display and the debate layer. Admitting `waiting_cost` to
+necessity therefore makes the **urgency label** honest; it does **not** change which player
+the engine recommends. Any change to *which player is picked* requires touching the valuation
+layer, which this contract forbids for this quantity in its current form.
+
 **Must NEVER influence** — `bpa`, `universal_value`, `team_acquisition_value`, or any
 replacement-level computation. If it is ever admitted to the contextual layer (Phase 2), it
 must arrive **normalized and bounded**, on the same terms as every other necessity term, and
@@ -224,62 +237,336 @@ Any term added to this sum — `waiting_cost` included — must satisfy all of t
 
 ---
 
-## Open decisions — these block scheduled work
+## The admission invariant for `waiting_cost`
 
-### A. `waiting_cost` is missing for entire positions, systematically  🚫 **blocks Phase 2**
+Completeness alone is **necessary but not sufficient**. A decision in which every candidate
+carries a number, but those numbers come from incompatible scales, produces *complete data +
+a correctly functioning calculation + semantically wrong urgency* — every null check passes
+and the answer is still wrong. That is the worst failure class this engine can have, and it is
+exactly what the TE curve would deliver today.
 
-Measured on real narrowed candidate sets:
+The invariant therefore has two clauses, and both must hold.
 
-| Round | QB | RB | WR | TE | K | DEF |
-|---|---|---|---|---|---|---|
-| 1 | 12 / 0 | **0 / 12** | 12 / 0 | **0 / 12** | 12 / 0 | 12 / 0 |
-| 2 | 12 / 0 | **0 / 12** | 12 / 0 | **0 / 12** | 12 / 0 | 12 / 0 |
-| 6 | 7 / 0 | **0 / 3** | 4 / 0 | **0 / 4** | 11 / 0 | 8 / 0 |
+**Clause 1 — per-position basis coherence.** `waiting_cost` is a *difference*:
+`projected_points − horizon_floor`. A difference is only meaningful when both endpoints are
+measured on the same scale. A position is **basis-coherent** when every row spanning rank 1
+through that position's horizon rank derives from a single points-affecting scoring basis.
 
-*(has `waiting_cost` / missing it)*
+> A position that is not basis-coherent is not eligible to contribute waiting-cost pressure,
+> regardless of whether its numbers are present.
 
-**100% of RB and 100% of TE candidates have no `waiting_cost` in early rounds.** Not sporadic —
-total, and by position.
+This is deliberately general and names no position. It is the same rule the growth artifact
+taught, applied to subtraction instead of comparison: **both endpoints of a difference must be
+real measurements on one scale.**
 
-Root cause is known and already documented: `expected_positional_consumption` predicts 83.8 RBs
-from a 72-deep pool and 50.3 TEs from a 45-deep pool. Both exceed their pools, so
-`horizon_replacement` correctly reports "unknown." That defect was previously assessed as
-*contained*, because its only consumer reported the unknown honestly.
+Measured today, superflex + TE-premium, one board:
 
-**Wiring `waiting_cost` into `pick_necessity` un-contains it.** Four positions would receive a
-real urgency signal and two would receive none — and the two are RB and TE, which dominate
-early-round drafting. This violates admission criterion 4 above, and it is the same
-missing-data-becomes-a-systematic-signal shape as the growth artifact.
+| Position | Top-of-curve basis | Horizon rank | Floor basis | Coherent |
+|---|---|---|---|---|
+| WR | te_premium_superflex | 50 | te_premium_superflex | ✅ |
+| K | sleeper_kicker | 17 | sleeper_kicker | ✅ |
+| DEF | sleeper_dst | 15 | sleeper_dst | ✅ |
+| TE | te_premium_superflex | 45 | **dynasty_superflex** | ❌ |
+| QB | te_premium_superflex | 43 | *no confident floor* | n/a |
+| RB | te_premium_superflex | 75 | *no confident floor* | n/a |
 
-From roughly round 8 onward every candidate has a `waiting_cost` (RB/TE floors become
-computable once enough of them are drafted), which is also precisely the regime where
-`team_acquisition_value` has collapsed toward 0 and necessity has least to work with.
+TE is the only position that fails, and it fails **structurally**, not marginally: its floor is
+drawn from a file that scores tight ends without the premium, understating them by a measured
+median **1.98×**.
 
-**Options:**
-- **A1 — Gate the term on completeness.** Admit `waiting_cost` to necessity only when *every*
-  narrowed candidate has one; otherwise the term is absent for everyone. Self-activating around
-  round 8; automatically inert while the data is asymmetric; and it activates *earlier*, not
-  differently, if the consumption prior is later fixed. No positional bias at any point.
-- **A2 — Fix the consumption prior first.** Correct, but blocked on real external draft data
-  (self-play calibration would be circular) — the same prerequisite as Phase 3.
-- **A3 — Admit it with a stated per-position asymmetry.** Not recommended; it is the failure
-  mode this document exists to prevent.
-- **A4 — Leave observable-only.** Defer Phase 2 entirely.
+Note also that the floor-less positions here are **QB and RB** — where the K/DST league shape
+gave **RB and TE**. The missing set is **league-shape-dependent**, so this cannot be reasoned
+about as a fixed positional quirk, and any gate must be evaluated per board, not assumed.
 
-**Recommendation: A1.** It is the only option that both delivers the signal where it is most
-needed and cannot introduce positional bias, and it degrades gracefully in both directions.
+**Clause 2 — decision-level completeness.** Per-position eligibility alone would still produce
+the asymmetry it exists to prevent (eligible positions get pressure, ineligible ones get
+silence). So the gate is evaluated over the whole decision:
 
-### B. TE horizon floors are contaminated where they are most used
+> `waiting_cost` may contribute to `pick_necessity` only when, for the **complete narrowed
+> candidate set of a single decision**, every candidate has a non-`None` `waiting_cost` **and**
+> belongs to a basis-coherent position. If any candidate fails either test, the waiting-cost
+> contribution is **exactly 0.0 for every candidate in that decision** — not for some of them.
 
-Independent of A. TE's horizon rank lands at 39–51 — inside the scoring-basis discontinuity —
-so TE `waiting_cost` is understated roughly 2×. Even under A1, TE would carry a systematically
-wrong urgency value once the term activates. Resolving this is task #46's decision; it should
-be settled before or alongside Phase 2, not after.
+Partial availability produces no contribution for anyone. There is no partial-credit mode.
 
-### C. Late-draft regime
+---
 
-From round ~11 `team_acquisition_value` collapses to a near-constant 0, so any term still
-varying becomes the entire decision. Under A1, `waiting_cost` activates at round ~8 — meaning
-it would become the dominant late-draft differentiator almost immediately. That may be exactly
-right, since it is a real signal replacing a dead one. It is stated here because it is a
-consequence worth choosing deliberately rather than discovering afterward.
+## Signal magnitude vs decision authority
+
+These are different things and the contract must bound the second, not the first.
+
+- **Signal magnitude** — how large the raw quantity is. `waiting_cost`: −299 to +294 season
+  points, unbounded by construction.
+- **Decision authority** — how much the term can actually move the outcome, which is its
+  **spread relative to the other terms that are live in the same regime**.
+
+The critical consequence: **authority is not controlled by choosing a small weight.** A term
+with a tiny weight has *total* authority in any regime where every other term has collapsed to
+zero spread. Bounding authority requires knowing which terms are live when.
+
+Measured spread (max − min across candidates) by round, on a real 12×20 draft:
+
+| Round | standout | survival | cliff | run | denial | fit | live terms |
+|---|---|---|---|---|---|---|---|
+| 1 | 13.74 | 12.82 | 12.00 | 0.00 | 3.61 | 3.46 | 5 |
+| 6 | **0.00** | 16.00 | 12.00 | 0.00 | 3.61 | 3.46 | 4 |
+| 10 | 0.24 | 15.90 | **0.00** | 0.00 | 3.61 | 3.46 | 4 |
+| 16 | 0.84 | 16.02 | 0.00 | 6.00 | 0.00 | 0.00 | 3 |
+| 18 | 0.18 | 16.02 | 0.00 | 0.00 | 0.00 | 0.00 | 2 |
+| 20 | 0.00 | **0.00** | 0.00 | 6.00 | 0.00 | 0.00 | **1** |
+
+**This corrects an earlier claim in this document's first draft.** It is *not* true that
+necessity "has least to work with" late. `standout` dies at round 6 (the VOR saturation) and
+`cliff` at round 10, but **`survival` stays strongly live at ~16 spread all the way to round
+18**. A new term would be entering a contested field, not a vacuum — except at round 20, where
+only `run` survives and any admitted term would dominate outright.
+
+**Authority bound.** `NECESSITY_WAITING_WEIGHT` must not exceed `NECESSITY_SURVIVAL_WEIGHT`
+(20.0), so the term can at most tie the strongest live pressure and never exceed it in any
+regime where survival is live. Its dominance at round 20 is accepted and stated rather than
+engineered away — at the final pick there is genuinely nothing else to differentiate on.
+
+---
+
+## Scope correction — what Phase 2 can and cannot do
+
+**`pick_necessity` does not reorder candidates.** Verified directly: nothing sorts or selects
+by it, `candidates[0]` is the top `team_acquisition_value`, and necessity is zipped in
+afterwards as a per-candidate label consumed by display and the debate layer.
+
+Therefore admitting `waiting_cost` to necessity:
+
+- ✅ makes the **urgency label** honest — the board can say "this costs 0.47 pts/week to defer"
+- ❌ does **not** change which player is recommended
+- ❌ does **not** address the original K/DST timing complaint
+
+That complaint requires the **valuation** layer, which every contract here forbids for this
+quantity in its present form. This correction matters because Phase 2 was described earlier in
+planning as directly attacking the timing problem; it does not, and the two should not be
+conflated when deciding whether Phase 2 is worth doing.
+
+Phase 2 is still worth considering on its own merits — an honest urgency label feeding the
+debate layer is real user-facing value — but it must be chosen for that reason, not for a
+timing fix it cannot deliver.
+
+---
+
+## Proposed Phase 2 interface — for sign-off, not yet implemented
+
+```text
+ELIGIBILITY  (per position P, evaluated per board)
+    floor_known(P)     = horizon_replacement[P].certain
+    basis_coherent(P)  = all rows of P from rank 1 .. horizon_rank(P)
+                         share one points-affecting scoring basis
+    eligible(P)        = floor_known(P) AND basis_coherent(P)
+
+GATE  (per decision, over the complete narrowed candidate set C)
+    admitted = for every c in C:  eligible(position(c)) AND c.waiting_cost is not None
+    if not admitted:  waiting_component = 0.0  for EVERY c in C
+
+CONTRIBUTION  (only when admitted)
+    normalized        = clamp(c.waiting_cost / WAITING_PRESSURE_REFERENCE, LO, +1.0)
+    waiting_component = normalized * NECESSITY_WAITING_WEIGHT
+
+CONSTANTS
+    WAITING_PRESSURE_REFERENCE = WAITING_STEEP_PER_WEEK * SLEEPER_WEEKLY_TO_SEASON_FACTOR
+                               = 3.0 * 17 = 51.0 season points
+    NECESSITY_WAITING_WEIGHT  <= NECESSITY_SURVIVAL_WEIGHT (20.0)     [authority bound]
+    LO                         = 0.0  or  -1.0                        [OPEN — see below]
+```
+
+**Why 51.0 and not an invented number.** It is not new. `WAITING_STEEP_PER_WEEK` (3.0 pts/week)
+is the already-declared, already-documented boundary at which the UI tells the user "waiting is
+expensive." Converting it to season points via the existing factor means the necessity term
+saturates *exactly* where the interface already says the cost became real — and the two cannot
+drift apart, because they are the same constant. Measured against real candidates in the
+regime where the term would be active: median |waiting_cost| is 16.5, and 28% of candidates
+reach full weight. Sensitive enough to register, not so sensitive that everything saturates.
+
+**The one genuinely open sub-decision: `LO`.**
+
+- `LO = 0.0` — negative `waiting_cost` contributes nothing. Preserves the existing property
+  that *every* necessity term is ≥ 0 and the score never falls below `NECESSITY_BASELINE`.
+  Follows the `standout` precedent, which is explicitly floored at 0 on the reasoning that
+  "not the best option" is neutral rather than evidence of low urgency.
+- `LO = −1.0` — "waiting is strictly better than taking him" actively *reduces* urgency.
+  Uses information that roughly half the board carries, and is the more honest reading of a
+  quantity whose sign is explicitly meaningful. But it introduces the **first negative term in
+  the sum**, a change in kind that deserves its own decision rather than arriving as a
+  side effect of admitting the quantity.
+
+**Recommendation:** `LO = 0.0` for the first implementation. It admits the quantity without
+simultaneously changing necessity's shape, and `LO = −1.0` remains available as a separate,
+individually testable follow-up once the term's behavior has been observed in real drafts.
+
+---
+
+## Remaining open decisions
+
+### B — TE basis incoherence  🚫 **prerequisite to Phase 2**
+
+Under the invariant above TE is simply ineligible today, which is the correct and safe outcome
+— but under Clause 2 an ineligible TE makes the **entire decision** ineligible in every round
+where a TE is narrowed, which is most of them. So the term would be near-permanently inert
+until TE's basis coherence is resolved (task #46's decision: restrict, flag, rescale, or
+accept). **This is a general architectural rule, not a TE-specific patch** — any position
+failing coherence for any reason is handled identically.
+
+### C — Late-draft authority
+
+Settled in principle by the authority bound above, with one accepted exception: at round 20
+`waiting_cost` would be the only live differentiator. Accepted deliberately, stated here rather
+than discovered later.
+
+### D — Is Phase 2 worth doing at all?
+
+Given the scope correction, this is now a genuine question rather than a formality. Phase 2
+buys an honest urgency label and a better debate layer; it does not buy a timing fix. If the
+priority is the timing complaint, Phase 3 is the only path, and it is blocked on real draft
+data.
+
+---
+
+# Appendix — the decision-path investigation
+
+Commissioned as a specific question: *is `pick_necessity` architecturally intended to
+participate in candidate selection, or is it correctly an interpretive label?* Answered below
+from repository evidence and measured runtime behaviour. Where the architecture does not
+establish an answer, it is marked **unknown** rather than inferred.
+
+### 1. What determines the final candidate ordering?
+
+**`team_acquisition_value`, descending.** Traced end to end:
+`compute_draft_board` sorts by `["final_score", "player_id"]` (stable) →
+`narrow_candidates` re-sorts by `final_score` alone at line 694 →
+`raw_candidates` preserves that order → `candidates` zips necessity in **without re-sorting**
+→ `draft_simulation` takes `candidates[0]`.
+
+Determinism survives the second sort only because Python's sort is stable and the incoming
+order already carried the `player_id` tiebreak. That is a real, undocumented dependency: the
+`narrow_candidates` sort would become non-deterministic on exact ties if its input were ever
+reordered upstream.
+
+### 2. Is `pick_necessity` intended to influence that ordering?
+
+**No — on the documented architecture.** Evidence:
+
+- README calls TAV *"CDME's principal quantitative output"*, and the UI a *"translation
+  layer"* rendering *"already-decided ranking"* that *"must never independently re-rank"*.
+- `pick_synthesis.py`'s module docstring frames the module as *"Deterministic synthesis layer
+  for 'Debate My Pick'"* — it exists to feed the debate layer.
+- Necessity is explicitly *"NOT another player-value score"* and *"deliberately kept
+  value-orthogonal"*.
+- `decision_regime` does its **own** ranking by TAV and is explicitly about *"which register a
+  decision surface's explanatory prose should use"* — presentation, not selection.
+- No ROADMAP entry describes a selection or decision score.
+
+Confirmed by consumption census: `pick_necessity` appears in display and debate paths only;
+`necessity_label` has **zero** engine consumption.
+
+**Therefore: making necessity selection-driving is an architectural EXTENSION, not repair of
+an oversight.** That does not make it wrong — a *Decision* engine that measures decision
+pressure and never lets it reach the decision is arguably incomplete — but it must be chosen
+as an extension, with the constraints below.
+
+### 3. What does `NEAR_TIE_BAND` authorize or trigger?
+
+**Nothing. It is label-only.** Every consumer is presentational: a UI badge
+(`draft_board_ui.py:63`), a line in the debate prompt (`pick_debate.py:234`), and
+classification in `draft_counterfactual`. It authorizes no branch, gates no logic, and
+triggers no alternative path. There is **no existing bridge that is merely mis-wired** — there
+is no bridge.
+
+It is also **defective in the transition regime** — see the appendix defect below.
+
+### 4. Are the necessity components independent, or partially redundant?
+
+**Mostly independent, with one undocumented redundancy.** From the project's own stored
+dependency audit (`dependency_audit_summary.json`, n≈950 candidates per league type):
+
+| pair | 1QB | superflex |
+|---|---|---|
+| `denial` ↔ `roster_fit` | **0.690** | **0.657** |
+| `survival` ↔ `denial` | 0.448 | 0.462 |
+| `cliff` ↔ `roster_fit` | 0.417 | 0.214 |
+| `cliff` ↔ `denial` | 0.412 | 0.236 |
+| everything else | ≤ 0.24 | ≤ 0.24 |
+
+`survival ↔ denial` is documented and accepted in the module docstring (shared cause, not
+shared measurement). **`denial ↔ roster_fit` at r ≈ 0.66–0.69 is the highest pair and is
+undocumented.** Mechanically unsurprising — `denial` is a *rival's* need+eligibility premium
+and `roster_fit` is *mine*; same formula shape, both driven by league-wide positional demand.
+Tolerable while necessity is a label. **Would become a genuine double-count if necessity ever
+drives selection.**
+
+### 5. Is `waiting_cost` orthogonal where TAV saturates?
+
+**Yes — and only there.** Measured ρ(`waiting_cost`, TAV) by round:
+
+| rd | 1 | 2 | 4 | 6 | 8 | 10 | 12 | 14 |
+|---|---|---|---|---|---|---|---|---|
+| ρ | 0.665 | 0.849 | 0.844 | 0.670 | 0.401 | −0.283 | 0.017 | −0.370 |
+
+It **largely restates TAV early** and becomes **genuinely independent late** — precisely as
+TAV's spread collapses. `waiting_cost` is not a co-input to TAV; it is a **successor** to it.
+
+### 6. Anything computed but never consumed?
+
+Yes, one that matters: **`waiting_cost`, `horizon_floor` and `horizon_sensitivity` never reach
+the debate layer** — zero occurrences in `pick_debate.py`. The debate layer receives 18
+candidate fields, including both *overlapping* cost-of-waiting concepts (`opportunity_cost`,
+`positional_forfeit`), but not the one that actually answers the question. Given the README's
+rule that the debate layer may never compute a number CDME did not provide, this is a gap, not
+a choice.
+
+`rival_premium_take_probability` is engine-internal only (feeds `block_opportunity`) — correct
+and by design.
+
+### 7. Anything crossing a semantic or scale boundary before consumption?
+
+Three, all measured: the TE within-position basis incoherence (§ admission invariant), the
+cross-positional scoring basis inherited from the baseline (§1), and `NEAR_TIE_BAND` below.
+
+---
+
+## Appendix defect — `NEAR_TIE_BAND` is absolute against a collapsing scale
+
+`NEAR_TIE_BAND = 2.0` is an absolute TAV threshold, documented as derived from a **fresh**
+board (adjacent gaps median 1.23 / p75 2.26). Applied unchanged to every round:
+
+| round | TAV spread | band as % of field | flagged near-tie |
+|---|---|---|---|
+| 1 | 102.23 | 2.0% | 0 / 72 |
+| 8 | 104.00 | 1.9% | 2 / 13 |
+| 12 | 2.99 | **66.9%** | 7 / 9 |
+| 16 | 1.67 | **119.8%** | 8 / 8 |
+| 18 | 0.09 | **2222.2%** | 10 / 10 |
+
+Not uniformly wrong: at round 18 (spread 0.09) flagging everything as tied is arguably
+*correct*. The genuine defect zone is the **transition, roughly rounds 10–16**, where the band
+exceeds most of the field spread while the field still has real relative structure — at round
+12 a gap of 1.88, **63% of the entire field range**, is labelled "field noise, not ordering
+signal."
+
+This is live user-facing behaviour (a Decision Force badge and a debate-prompt line), and it
+is the same absolute-constant-meets-collapsed-scale class as every other defect this audit
+found. **It must not be fixed by tuning 2.0** — the issue is absolute vs relative, and any fix
+interacts with the selection-bridge question.
+
+## What a selection bridge would have to satisfy
+
+If the extension in §2 is chosen, three measured constraints bind it:
+
+1. **Current necessity is the wrong input.** ρ(necessity, TAV) = 0.315–0.879; its `standout`
+   term *is* a TAV margin and its `roster_fit` term *is* `need_bonus + eligibility_bonus`,
+   both already inside TAV. Reordering by it would re-amplify TAV and double-count roster fit.
+2. **`NEAR_TIE_BAND` is not a safe gate.** A complete-group `waiting_cost` tiebreak over
+   near-tie groups would change the pick in **29 of 43** such decisions (67%) — that is a
+   re-ranking, not a tiebreak.
+3. **The signal is regime-dependent**, so any bridge is a *handoff*, not a constant blend.
+
+**The idea is nonetheless empirically motivated.** At 7.05 the mechanism does exactly what is
+wanted, with no positional rule anywhere: `DEF G Packers` (TAV 104.00, waiting 12) vs
+`QB J Hurts` (TAV 104.00, waiting 70) — identical acquisition value, and the tiebreak
+correctly prefers the quarterback. *"This value isn't going anywhere"* expressed as a
+**decision**, not as a valuation adjustment.
