@@ -631,3 +631,256 @@ the Sanders collision (an identity namespace that outgrew its data domain), and
    selection-bridge case has to be re-evaluated after this is resolved, not before.
 
 **No fix proposed.** Any repair touches the master VOR/BPA equation.
+
+---
+
+# Appendix — replacement at demand exhaustion
+
+Investigation only. **No implementation.** Traces `_remaining_demand_rank → replacement_levels
+→ VOR → _scale_vor_to_bpa` and proposes a contract for the boundary. Every number below is
+measured with production functions against the completed 12×20 audit board; no math is
+reimplemented and nothing is tuned.
+
+## The seven questions
+
+### Q1 — Where exactly does the conflation happen?
+
+`draft_room.py:659–660`, in `_remaining_demand_rank`:
+
+```python
+remaining_demand = max(num_teams * slot_counts.get(position, 0) - drafted.get(position, 0), 0)
+return max(1, round(remaining_demand))
+```
+
+Two clamps in two lines. The first floors a negative surplus at `0`; the second converts that
+`0` into `1`. So `remaining_demand = 1` ("one league-wide starter slot is still unfilled") and
+`remaining_demand = 0` or `−49` ("no starter slot creates demand here any more") all return
+rank `1`. This is a **`None`-encoded-as-a-value collapse** — the same class as the growth
+artifact's neutral `50.0` default standing on one side of a subtraction.
+
+### Q2 — What did VOR originally mean, and is the "dynamic" claim real?
+
+`replacement_levels`' docstring claims the remaining-demand subtraction is what makes the
+anchor *"genuinely dynamic."* **Measured: it is algebraically inert.**
+
+Replacement level, recomputed at every 12th pick across the whole board, against the *static*
+level computed with `drafted={}`:
+
+| pick | 0 | 12 | 24 | … | 144 | 156 | … | 216 |
+|---|---|---|---|---|---|---|---|---|
+| QB | 324.0 = | 324.0 = | 324.0 = | = | 324.0 = | 324.0 = | = | 324.0 = |
+| RB | 178.0 = | 178.0 = | 178.0 = | = | 178.0 = | 178.0 = | = | 178.0 = |
+| WR | 210.0 = | 210.0 = | 210.0 = | = | 210.0 = | 210.0 = | = | 210.0 = |
+| TE | 187.0 = | 187.0 = | 187.0 = | = | 187.0 = | 187.0 = | = | 187.0 = |
+| K  | 105.0 = | 105.0 = | 105.0 = | = | 105.0 = | 103.0 **X** | X | 103.0 **X** |
+| DEF| 98.0 = | 98.0 = | 98.0 = | = | 98.0 = | 98.0 = | = | 98.0 = |
+
+19 of 19 sample points identical for five of six positions across all 240 picks. K moved
+exactly once, by 2 points.
+
+The identity: with `D` = static demand and `d` already drafted **from above the anchor**, the
+rank is `r = D − d`, and the `r`-th best of the *remaining* pool is the `(d + r)`-th best of
+the *original* pool — which is the `D`-th best, always. **The subtraction and the pool drain
+cancel exactly.** The mechanism only ever moves the number when picks come from *below* the
+anchor (K's single 2-point step) or when the clamp fires.
+
+So VOR's original meaning is the classic static one: *points above the `D`-th best player in
+the pre-draft field*, `D = num_teams × starter_slot_counts[p]`. The "dynamic" language
+describes a no-op.
+
+### Q3 — Where does the rank become a value?
+
+`draft_room.py:647–648`:
+
+```python
+idx = min(rank - 1, len(at_pos) - 1)
+levels[position] = float(at_pos.iloc[idx][value_col])
+```
+
+`at_pos` is the **currently available** pool, sorted descending. So `rank = 1` resolves to *the
+best player still on the board*. The demand being ranked against is measured league-wide
+(every starter slot, including filled ones); the pool it is ranked into contains only
+undrafted players. **The two are on different bases.** The `− drafted` subtraction is what
+reconciles them, and it is valid only while the result is `≥ 1`.
+
+### Q4 — Is the collapse documented as intended?
+
+Yes, twice, which is why it survived this long.
+
+- `replacement_levels`' own docstring: *"drain a position past its real demand and the target
+  collapses to 1 (replacement = the best player still on the board), correctly driving everyone
+  left there toward ~0 VOR."*
+- `upside_score`'s guard comment at `draft_room.py:1018` states it as a settled fact:
+  *"Because bpa collapses to 0.00 board-wide once positional demand is exhausted (every
+  position, not just offense), growth becomes the SOLE ranking term at that point."*
+
+The second is the more serious finding: **the collapse was observed, measured, and worked
+around at a neighbouring term, but never traced to its owner.** A guard was added to
+`upside_score`'s *other* input instead of the dead one being questioned.
+
+### Q5 — What should replacement mean, economically, once no starter slot creates demand?
+
+Replacement level prices *the alternative you are guaranteed to be able to obtain*. Starter
+slots are one source of that guarantee, not the only one; when they are exhausted, demand
+passes to bench capacity and then to the waiver wire. Demand exhaustion does not mean
+replacement ceases to exist — it means **the starter-slot model has stopped being the right
+instrument for measuring it.**
+
+The current answer inverts the economics. At exhaustion the anchor becomes *the best remaining
+player at the position*, which asserts that the scarcest thing left there is freely available.
+That is precisely backwards, and it is why every player lands below replacement by
+construction.
+
+The correct successor question is already named and already implemented in this module:
+`horizon_replacement` — *the best player expected to still be undrafted when the draft ends*.
+Its basis is the whole draft rather than this instant, so it does not degenerate the way a
+"right now" anchor does.
+
+**One case must be preserved, not repaired.** When a position will genuinely lose no further
+players, the best available player *is* what waiting gets you, and VOR ≈ 0 there is **correct**.
+A contract that manufactured spread in that case would be worse than the current collapse:
+confidently wrong instead of visibly dead. This is the floor any repair has to respect, and it
+is the reason "restore differentiation" is the wrong objective.
+
+### Q6 — Can that meaning be represented without an absolute positional-consumption prior?
+
+**Partly — and the measurement says the naive version fails.**
+
+Hypothetical, measured but not implemented: hand off to `horizon_replacement`'s anchor *only*
+for positions whose remaining starter demand has hit zero, leaving every other position
+untouched.
+
+| pick | exhausted | max pool VOR now | max pool VOR w/ handoff | top-8 now | top-8 w/ handoff |
+|---|---|---|---|---|---|
+| 96 | — | 1.0 | 1.0 | WTQKDWTR | WTQKDWTR |
+| 108 | QB,RB,WR | 0.0 | 126.0 | WTRQKKDD | QRRQRRQR |
+| 132 | QB,RB,WR,TE | 0.0 | 123.0 | WTRQKKDD | TTTTTRRT |
+| 144 | +DEF | 0.0 | 121.0 | WTRQKDDW | **TTTTTTTT** |
+| 168 | all six | 0.0 | 71.0 | WTRQKDDW | **RRRRRRRT** |
+| 216 | all six | 0.0 | 47.0 | WTRQKDDW | QQRRRRWW |
+
+The scale revives — **without touching `_scale_vor_to_bpa` at all**, which confirms the BPA
+collapse is a downstream consequence rather than an independent defect. But the board goes
+**degenerate at exactly the failure mode the earlier reverted attempt produced**: all-TE at
+pick 144, all-RB at 168.
+
+The cause is one layer further up. `horizon_replacement`'s rank is
+`expected_positional_consumption − drafted`, and that estimator is wrong by large,
+position-specific margins **on the very board it is watching**:
+
+| at pick 192 (48 picks left) | QB | RB | WR | TE | K | DEF |
+|---|---|---|---|---|---|---|
+| predicted still to go | 5.3 | 12.1 | 16.1 | 6.8 | **3.7** | **4.1** |
+| actually still to go | 10 | 2 | 31 | 5 | **0** | **0** |
+
+K and DEF were *fully consumed* at pick 192; the model asserts 3.7 and 4.1 more. RB: 12.1
+predicted against 2 actual. WR is under-predicted by 15 from pick 0 through pick 192 and never
+converges. The totals conserve to 240 — the error is entirely in the allocation.
+
+This is not a bad prior. It is **structural**:
+
+```python
+observed_share = {p: drafted.get(p, 0) / picks_made for p in FANTASY_POSITIONS}
+blended_share  = (1 - w) * prior_share + w * observed_share
+```
+
+`observed_share` is strictly positive for any position that has *ever* been drafted, and it is
+multiplied by the remaining picks. So even at `w = 1.0` (pure observation, end of draft) the
+model **cannot express "this position is finished."** It has no notion of saturation.
+
+That defect is fixable with **no external data**: measure observed share over a *recency
+window* rather than the whole draft, so a position that has stopped going reads as finished.
+It is position-agnostic, derived from the draft itself, and needs nothing this module does not
+already have. The window length is a design choice, which makes it **your call, not mine**.
+
+### Q7 — If not, what external data is required?
+
+For the *split* of bench picks across positions: real completed startup boards in this format.
+`positional_bench_appetite`'s docstring already states the bar — one board fixed QB (52.3 vs
+52 actual) and broke K and DEF (~15 and ~14 actual, driven to ~25 each), so *"whatever replaces
+this has to satisfy both ends, and that needs more than one draft to derive honestly."* That is
+task #49 and it stands.
+
+But the **regime that matters most does not need the split to be right.** A position at zero
+further consumption is identifiable from the draft's own recent history. So the external-data
+dependency is narrower than assumed: it gates *calibrated late-round pricing*, not
+*correctness at the exhaustion boundary*.
+
+## The deepest point
+
+**No "best available" anchor can produce VOR at exhaustion — including a correct one.** If
+`expected_positional_consumption` were perfect, a truly finished position would return
+`still_to_go = 0` → horizon rank 1 → anchor = best available → VOR = 0. Identical collapse.
+
+The collapse is inherent to the question, not to the estimator. Which means the repair is not
+a better anchor. It is **admitting that VOR has a domain of validity and declining outside it.**
+
+## Proposed contract — replacement at demand exhaustion
+
+**Domain.** `replacement_levels[p]` is defined only while position `p` has at least one
+unfilled league-wide starter slot. Inside that domain it means: *the value of the `D`-th best
+player in the pre-draft field*, `D = round(num_teams × starter_slot_counts[p])` — the player a
+team is guaranteed to be able to start without spending a premium pick.
+
+**Exhaustion is a state, not a value.** When
+`num_teams × starter_slot_counts[p] − drafted[p] < 1`, starter-demand replacement is
+**undefined** and must be reported as undefined. Not rank 1. Not `0.0`. Not the best available
+player. Both current encodings assert something false: rank 1 claims a slot still needs
+filling, and the value it resolves to claims the scarcest remaining player is freely available.
+
+**VOR inherits the domain.** Where replacement is undefined, VOR is undefined for every player
+at that position, and `bpa` — a normalization of VOR — inherits it.
+
+**Outside the domain the engine declines and says so.** It must not clamp, must not substitute
+a different anchor under the same name, and must not let a downstream term silently become the
+whole decision. `universal_value` must not be permitted to reduce to
+`time_horizon_adj + risk_adj` without the board declaring that it has.
+
+**The floor is preserved.** A position that will lose no further players has VOR ≈ 0 correctly.
+The contract must never manufacture spread there.
+
+## Smallest owner-layer change
+
+Two edits in `draft_room.py` — the layer that owns the definition. Neither touches the VOR
+formula, the scarcity curve, positional weighting, `_scale_vor_to_bpa`, or `clip(lower=0)`.
+
+1. **`_remaining_demand_rank` → `Optional[int]`.** Return `None` when remaining demand `< 1`;
+   delete the `max(1, …)` clamp. Two call sites: `replacement_levels`, `replacement_ranks`.
+2. **`replacement_levels` omits the key on `None`** rather than emitting a value. Every
+   consumer must treat a missing key as *no opinion*, never as zero — the same discipline
+   `horizon_replacement` already enforces with `value=None, certain=False`.
+
+**Why removing `clip(lower=0)` cannot substitute for this**, mechanically: with the pool max
+VOR at exactly `0.0`, `_scale_vor_to_bpa` returns all zeros from its `reference <= 0` early
+return — **before the clip is ever reached**. Deleting the clip changes nothing in the dead
+regime. The instinct to reject that path was correct.
+
+**And note why max pool VOR sits at exactly `0.0` rather than going negative:** the anchor is
+the `D`-th best *original* player, and in this board he is *never drafted*. From pick 108
+onward he simply **is** the best player remaining at his position. Max pool VOR reaches `0.0`
+at pick 108 — **round 10, with 55% of the draft still to come** — and stays there.
+
+## What this change buys, stated honestly
+
+It converts a silent wrong number into an explicit absence. It does **not** restore late-round
+differentiation, and it is not meant to: rounds 10–20 would report *no VOR available* instead
+of reporting `0.00`. Strictly more honest, strictly less useful, until a successor anchor
+exists. Every downstream consumer then has to declare what it does with the absence, and each
+of those declarations is a policy decision.
+
+**Unblocked by it:** `replacement_ranks` stops telling `narrow_candidates` that an exhausted
+position has depth 1.
+
+**Not unblocked by it:** a live late-round board. That needs the successor anchor, which needs
+`expected_positional_consumption` to be able to say *finished*.
+
+## Decisions for the owner — not taken here
+
+1. **Saturation in `expected_positional_consumption`.** Recency-windowed observed share (no
+   external data, window length is a design choice) versus calibrating
+   `positional_bench_appetite` against real boards (task #49, needs more than one). The first
+   would partially unblock Phase 3 ahead of the data.
+2. **What the board does when `bpa` is undefined.** Decline to rank? Rank on a declared
+   secondary basis with the regime shown? Today it silently ranks on `time_horizon_adj`.
+3. **Whether `horizon_replacement` becomes VOR's anchor outside the starter-demand domain**,
+   and if so whether it may act while `certain=False`.
