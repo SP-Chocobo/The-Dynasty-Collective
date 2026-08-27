@@ -2598,3 +2598,135 @@ live in different registers and the only relation defined between them is *price
 
 That is the boundary. The distinction the two cases require is **already computed** — and lost
 one layer later.
+
+---
+
+# Appendix — the selection boundary, mapped
+
+Investigation only. **No implementation, no weighting designed.**
+
+## Where magnitude becomes availability, and availability becomes ordering
+
+**Introduced — correctly.** `_scale_vor_to_bpa` produces the two states on *adjacent branches of
+the same line*: `vor.where(vor.isna(), 0.0)` returns `0.0` for a real non-positive VOR and `NaN`
+for an absent one. **The distinction is sound at birth.**
+
+**Propagated — correctly.** `universal_value = bpa + time_horizon_adj + risk_adj`. Magnitude-zero
+survives as a small number (possibly negative); absent survives as `NaN`. Still distinct.
+
+**Destroyed — at three ordering sites.**
+
+| site | mechanism |
+|---|---|
+| `draft_room.py:1448` and `:1560` | `sort_values([...], ascending=[False, True])` — pandas' **default `na_position='last'`**. Verified: `[5.0, nan, 0.0, 90.0]` sorts to `[90.0, 5.0, 0.0, nan]`. **Availability becomes the primary key, and nothing in the call says so.** |
+| `pick_synthesis._board_order` | `(score is None, -score, player_id)` — the boolean first element **dominates magnitude lexicographically** |
+| `draft_board_ui.py:265` | `overview.sort(key=tav)` — a second ranking authority; crashes on all-`None` |
+
+## The collapse, measured — round 15
+
+| group | count | board ranks |
+|---|---|---|
+| priced rows with `bpa` **exactly 0.0** | 23 | **1 – 23** |
+| unpriced rows with production margin **0.0** | 5 | **29 – 128** |
+
+**Both groups assert the same thing** — *at the baseline, nothing added*. They are separated by
+up to 127 places, decided entirely by availability.
+
+And sharper still:
+
+| group | count | board ranks |
+|---|---|---|
+| priced rows with `universal_value` **< 0** | 15 | **9 – 23** |
+| unpriced rows | 125 | **24 – 148** |
+
+**Every demonstrated negative outranks every absent one.** The worst priced row is M Andrews at
+`uv = −3.61` — a tight end projecting **187 points** whose post-draft cost is **+120**.
+
+## New finding — the domain is open and the answer is degenerate
+
+At round 15, TE remaining starter demand is **1.33**, so the replacement rank is **1**, so
+replacement is *the best remaining TE* — Andrews himself. **His VOR is zero by construction.**
+
+> Any demand in **[1, 2)** yields rank 1, so that position's best player always scores exactly 0.
+
+This is why 23 of the 27 priced rows at round 15 carry `bpa = 0.0`: the priced register's top is
+a block of structural zeros. **The register split does not by itself resolve the saturation
+finding** — it moves the boundary, and a new degenerate band appears just inside it.
+
+## The three-dimension availability surface
+
+| rounds | A — value | B — in-draft loss | C — post-draft cost |
+|---|---|---|---|
+| 1 | all six | all six | QB WR K DEF |
+| 3 – 5 | all six | all six | all but TE |
+| **7 – 9** | **all six** | **all six** | **all six** |
+| 11 | RB TE K DEF | RB TE K DEF | all six |
+| 13 – 15 | **TE only** | **TE only** | all six |
+| 17 – 19 | **none** | **none** | all six |
+
+B is built from `universal_value` curves, so its availability *is* A's. **Rounds 7–9 are the only
+window in which all three dimensions answer for every position.**
+
+## What each dimension can legitimately say
+
+| | claim | valid when | degenerate when | absent when |
+|---|---|---|---|---|
+| **A — value** | how much this player adds over the marginal starter, at current remaining demand | demand ≥ 1 | demand ∈ [1, 2) → best player scores 0 | demand < 1 |
+| **B — in-draft loss** | whether he survives to my next turn, and how far the position falls by then | the live anchor exists | — | the live anchor is gone |
+| **C — post-draft cost** | how much better he is than the free agent after the draft | horizon rank inside the loaded pool | — | horizon runs past the pool |
+
+**When one is unavailable the others do not cover for it in kind** — they answer different
+questions. Their *windows*, however, are complementary, so at every round at least one is
+answerable, and A and C are never both absent.
+
+## Boundary conditions
+
+**Tight end across the draft — all three dimensions:**
+
+| rd | best TE | `uv` | `bpa` | B: gap to next | C: post-draft |
+|---|---|---|---|---|---|
+| 1 | C Loveland | 100.2 | 100.0 | 17 | `None` |
+| 3 | S LaPorta | 93.35 | 95.7 | **1** | `None` |
+| 9 | M Andrews | 64.84 | 69.2 | 1 | 133 |
+| 15 | M Andrews | **−3.61** | **0.0** | 1 | **120** |
+| 17 | M Andrews | `None` | `None` | 1 | 34 |
+
+**Case 1 — Caleb vs the 52-point TE (round 15).** A is absent for Caleb and degenerate (`0.0`)
+for Njoku. B is ~1 point — TE is in-draft replaceable. C is **−15** for Njoku and **+28** for
+Caleb. **C is the only dimension that separates them, and it says pass on Njoku.**
+
+**Case 2 — a genuinely strong TE (rounds 7–9).** A is real (29.4 / 69.2), C is large (171 / 133),
+B is small (2 / 1). **A and C agree that he is worth taking; B is the lone dissent, saying he
+will probably survive one more turn.**
+
+The two cases differ in **which dimensions agree**, not in the magnitude of any single one — and
+the dimension that resolves Case 1 (**C**) is the one that is `None` in the LaPorta-shaped early
+version of Case 2.
+
+## The decision surface the evidence supports
+
+- **No single dimension is right at every round.** At round 15 Andrews' A says 0, his B says 1
+  point, his C says 120 — and all three are true statements about different questions.
+- **A dimension being degenerate is not the same as it being absent**, and neither is the same as
+  it being small. The current ordering distinguishes none of these three.
+- **The only complete regime is rounds 7–9.** Any weighting that assumes all three inputs would
+  be undefined for most of the draft.
+- **The decision surface is therefore a sequence of regimes, not one function.** What can be
+  concluded changes with which dimensions are answerable, and the engine must be able to say
+  which regime it is in before it can be asked to weigh anything.
+
+**No weighting is proposed.** The surface above is what the available evidence supports; choosing
+how to traverse it is the next decision, and it is not taken here.
+
+## Invariants
+
+33. Valuation **magnitude** and valuation **availability** are distinct facts, and no ordering
+    may collapse one into the other.
+34. No sort relies on an implicit null-placement default; null handling is written explicitly at
+    every ordering site or the site does not order.
+35. A demonstrated negative valuation is never ranked above an absent one on the grounds that it
+    is a number.
+36. A position whose remaining demand lies in [1, 2) is flagged as degenerate — its best player's
+    zero is structural, not a measurement.
+37. Every decision surface states which of the three dimensions are answerable before any of them
+    is weighed.

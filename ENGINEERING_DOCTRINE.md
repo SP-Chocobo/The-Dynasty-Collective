@@ -1,0 +1,140 @@
+# Engineering Doctrine — semantic integrity
+
+Standing doctrine for this repository. It governs how audits are conducted and how changes are
+justified. It was written after an audit that found a class of defect the previous audit could
+not have found, and it exists so that class is looked for deliberately rather than stumbled into.
+
+---
+
+## The central principle
+
+> **A variable's definition is not airtight merely because the definition is self-contained. Its
+> meaning can be poisoned at the boundary where another component changes the conditions under
+> which that definition is consumed.**
+
+And the stronger lesson the audit actually demonstrated:
+
+> **The most dangerous defects may be neither bad formulas nor bad local assumptions. They can be
+> correct formulas operating on correctly typed, correctly shaped data whose semantic meaning has
+> silently changed upstream.**
+
+Self-contained definitions and locally correct formulas are **not** protection against semantic
+drift. A quantity can stay numerically valid, keep its type and shape, and pass every test it
+owns, while becoming semantically invalid because an upstream quantity, state, domain, or
+assumption changed underneath it.
+
+---
+
+## The proof case: K/DST
+
+The K/DST investigation is the discovery mechanism for this class, and it is recorded here
+because *how* it was found matters as much as *what* was found.
+
+The symptom was mundane and easy to dismiss: kickers and defenses were being drafted earlier
+than a human would take them. It looked like a tuning complaint. Following it instead of
+explaining it away forced the investigation to cross variable boundaries, and every real defect
+found afterwards was of the same class:
+
+| what was found | what was locally correct about it |
+|---|---|
+| Remaining demand computed league-wide instead of per team | The subtraction was arithmetically right; `max(·,0)` simply does not distribute over a sum |
+| `replacement_levels`' "dynamic" anchor is algebraically inert | Both halves of the cancellation were correct; the docstring described a mechanism that never moved the number |
+| The `>= 1` rank clamp | A clamp is a legitimate guard — against a rank of 0, not against a demand of 0 |
+| `positional_bench_appetite` returning `0.0` for every position | The mean-rate fallback was correct per position and undefined for the empty case |
+| Observed share as a model of remaining demand | The shares are conserved exactly; a share is simply not a stock |
+| `_scale_vor_to_bpa` returning `0.0` for absent VOR | Clipping a negative to zero is defensible; clipping an *absence* to zero is not |
+
+**Not one of these is a bad formula.** Every one is a correct operation on correctly typed,
+correctly shaped data whose meaning had changed somewhere upstream. Every one passed its own
+tests. Several were *documented as intended behaviour* in the very docstrings that defined them.
+
+**The previous audit did not surface any of them.** That audit verified components. These defects
+do not live in components — they live at the boundaries between them, in the conditions under
+which a component's output is consumed. Component-level correctness does not establish
+system-level semantic integrity, and this repository now treats that as demonstrated rather than
+arguable.
+
+---
+
+## Required audit chain
+
+Every audit, and every implementation that touches a load-bearing quantity, must walk the full
+chain. Stopping at the first link is what the previous audit did.
+
+```
+definition → domain of validity → state transitions → upstream assumptions
+           → downstream consumers → interaction with other quantities
+```
+
+1. **Definition** — what does this quantity claim to mean, in words, in its own units?
+2. **Domain of validity** — under what conditions is that claim true? What makes it false?
+3. **State transitions** — what happens at the edges of that domain, and is the transition
+   continuous, discontinuous, or silent?
+4. **Upstream assumptions** — what must be true of its inputs for the claim to hold, and who
+   can change that without touching this code?
+5. **Downstream consumers** — who reads it, what do they assume it means, and does any of them
+   apply an operation that does not preserve that meaning?
+6. **Interaction with other quantities** — can another variable change how this one is
+   interpreted, without either variable changing?
+
+Link 6 is the one that finds this defect class. Links 1–3 are what a careful author already does.
+
+---
+
+## Required contracts
+
+A load-bearing quantity is not accepted into the engine without written answers to all seven.
+"Load-bearing" means: it influences a decision, a ranking, a displayed claim, or another
+quantity that does.
+
+1. **What the variable means** — one sentence, in its own units, that a reader could check.
+2. **The domain in which that meaning is valid** — stated as a condition, not as prose.
+3. **How exhaustion is represented** — what the quantity does when its domain is used up, and
+   why that representation is not confusable with a normal value.
+4. **How absence / unknown is represented** — and the explicit statement that this is *not* the
+   same as zero, one, or the nearest legal value.
+5. **Which consumers are authorized to use it** — by name. A consumer not on the list reading it
+   is a defect, not a convenience.
+6. **Whether downstream operations preserve its semantics** — checked per consumer, including
+   sorts, clips, defaults, rescales, and string formatting.
+7. **Whether another variable can silently change its interpretation** — named, or explicitly
+   asserted to be none.
+
+---
+
+## Standing rules
+
+These follow from the principle and are not negotiable per change.
+
+- **Absence is not a value.** Never substitute `0`, `1`, an empty collection, or the nearest
+  legal value for a quantity that is unknown. If execution cannot continue without one, the
+  correct outcome is to decline, not to invent.
+- **A clamp is a claim.** `max(x, 1)`, `clip(lower=0)`, `.get(key, default)` and
+  `na_position='last'` each assert something about the domain. Every one must be justified
+  against the domain, in a comment, or removed.
+- **A default in a consumer is a contract change.** `.get(key, default)` converts a producer's
+  absence into a consumer's number, and it does so where the producer cannot see it. These are
+  the hardest sites to find and the most likely to be silently wrong.
+- **Rank is a laundered comparison.** An ordinal is a value comparison already collapsed into an
+  integer. Any rule that forbids comparing two quantities also forbids ranking them together.
+- **Fused quantities inherit the worst property of each part.** A number combining an exact
+  observable with an inferred estimate is neither exact nor honest about its uncertainty. Keep
+  epistemic types separate and named.
+- **Different horizons are different quantities.** Two numbers that bear on the same decision are
+  not the same number. Availability windows that differ are proof they are not.
+- **A test that cannot fail proves nothing.** Assert on behaviour that changes when the code is
+  wrong, and prefer a mutation to a re-derivation.
+- **A docstring can encode a defect.** Several of the findings above were described as correct in
+  the docstrings that defined them. Documentation is evidence of intent, never of correctness.
+
+---
+
+## When a symptom looks like a tuning complaint
+
+The K/DST symptom was, on its face, a request to move a number. It was not. This doctrine
+requires that a behavioural complaint be traced to an owning layer before any coefficient is
+touched — and that "the output looks wrong" be treated as a claim about *meaning* until the
+trace proves it is a claim about *magnitude*.
+
+Tuning a coefficient to remove a symptom whose cause is semantic does not fix the defect. It
+hides the evidence that would have found it.

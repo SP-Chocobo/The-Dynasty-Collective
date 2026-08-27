@@ -27,6 +27,13 @@ default, not a hard requirement; all three providers now have their own
 native live web search, so which one ends up on Beat/Contrarian is a
 "whose answers do you like" choice, not a capability tradeoff.
 
+## Engineering Doctrine
+
+Semantic integrity, the required audit chain, and the contracts a load-bearing quantity must
+carry before it enters the engine: see [ENGINEERING_DOCTRINE.md](ENGINEERING_DOCTRINE.md). It
+exists because a component-level audit passed a system whose quantities had drifted apart at the
+boundaries, and the K/DST investigation is recorded there as the discovery mechanism.
+
 ## Design Principles
 
 - **Zero manual credential exposure for league data.** Sleeper's read API
