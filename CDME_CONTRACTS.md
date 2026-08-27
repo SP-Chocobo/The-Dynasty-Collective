@@ -570,3 +570,64 @@ wanted, with no positional rule anywhere: `DEF G Packers` (TAV 104.00, waiting 1
 `QB J Hurts` (TAV 104.00, waiting 70) — identical acquisition value, and the tiebreak
 correctly prefers the quarterback. *"This value isn't going anywhere"* expressed as a
 **decision**, not as a valuation adjustment.
+
+---
+
+# Appendix — where TAV saturation actually comes from
+
+Commissioned as a surgical follow-up: *is TAV saturation a truth (the remaining assets really
+are equivalent) or an artifact (the machinery destroys differentiation that still exists)?*
+Everything in the previous appendix is downstream of this distinction.
+
+**Verdict: artifact.** Normalization artifact, enabled by a replacement-definition artifact.
+Upstream equivalence and legitimate saturation are both ruled out by measurement.
+
+### Layer decomposition, candidate-set spreads
+
+| rd | n | proj | replacement | **VOR** | %VOR>0 | maxRemVOR | **bpa** | uv | tav |
+|---|---|---|---|---|---|---|---|---|---|
+| 8 | 13 | 325.0 | 226.0 | 292.0 | 46% | 1.0 | 100.00 | 100.00 | 104.00 |
+| 10 | 9 | 83.0 | 226.0 | **197.0** | 0% | 0.0 | **0.00** | 6.57 | 7.05 |
+| 12 | 9 | 162.0 | 226.0 | **151.0** | 0% | 0.0 | **0.00** | 2.99 | 2.99 |
+| 18 | 10 | 198.0 | 226.0 | **80.0** | 0% | 0.0 | **0.00** | 0.09 | 0.09 |
+
+Projections and VOR retain **80–197 points of spread through round 18**. `bpa` is exactly
+`0.00`. The information is alive at the input to normalization and dead at its output.
+
+### The first collapsing layer
+
+**`_scale_vor_to_bpa`.** Round-12 candidate VORs: `−41, −100, −116, −135, −96, −151, −126, 0,
+−7`. A player at −41 is genuinely far closer to his position's best-remaining than one at
+−151. All map to `0.00`.
+
+### The enabling cause, one layer up
+
+At round 12 `replacement_ranks` returns **1 for every position** — demand fully exhausted. So
+"replacement" silently stops meaning *the freely-available alternative* and starts meaning
+*the single best player still on the board*. Every player is then below replacement **by
+construction**, `max pool VOR = 0.0`, and the whole field lands in the range where BPA is
+*defined* flat — by `clip(lower=0)` and by the `reference <= 0` early return.
+
+### The defect class: semantic drift
+
+`_scale_vor_to_bpa`'s documented rule — *"a player below replacement level clips to 0, not a
+negative score: they'd make a roster worse than not drafting anyone there"* — is **correct
+under the original meaning of replacement and meaningless under the exhausted-demand
+meaning.** The rule never learned that its input changed definition.
+
+Same class as the growth artifact (a neutral default standing on one side of a difference),
+the Sanders collision (an identity namespace that outgrew its data domain), and
+`NEAR_TIE_BAND` (an absolute constant meeting a collapsed scale).
+
+### Consequences — two prior findings are reclassified as symptoms
+
+1. With `bpa` dead, `universal_value` at round 12 is decided **entirely by
+   `time_horizon_adj`** (2.99 / 2.63 / 2.84 / 1.33 / 1.41) — a small bounded dynasty nudge,
+   designed to sit *on top of* a value anchor, now serving as the whole decision. Structurally
+   identical to the round-5 defense pick and to the growth artifact.
+2. `NEAR_TIE_BAND`'s late explosion is a **symptom** of TAV spread collapsing, not an
+   independent defect. And `waiting_cost`'s measured late orthogonality to TAV may be
+   substantially an artifact of **late TAV being noise rather than signal** — which means the
+   selection-bridge case has to be re-evaluated after this is resolved, not before.
+
+**No fix proposed.** Any repair touches the master VOR/BPA equation.
