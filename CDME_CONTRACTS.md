@@ -3007,3 +3007,144 @@ single player.
     independent and both must be addressed.
 48. Every consumer of `bpa` gaps declares what it does when the gaps are uniformly zero, rather
     than returning a tier or a "no answer" that reads as a property of the players.
+
+---
+
+# Appendix — what `bpa` is for, and where the normalization stops serving it
+
+Investigation only. **No threshold chosen, no scale redesigned, nothing implemented.**
+
+## The stated purpose, from the module's own docstring
+
+> *"BPA is Value Over Replacement in raw projected POINTS … scaled **LINEARLY** against the single
+> largest VOR gap in the whole remaining pool — **NOT percentile-ranked**. Percentile-ranking VOR
+> was the first pass's mistake: it **threw away the actual size of the gap between players**, which
+> is the entire reason VOR is the right anchor over a bounded score in the first place. … Linear
+> scaling against the pool's own largest gap **keeps a blowout blowout and a toss-up a toss-up**."*
+
+And a second purpose, stated separately:
+
+> *"folded into the **SAME shared linear scale** … not given its own separate 0-100 range … a
+> position with almost no real roster demand correctly can't compete … it has to actually clear
+> the same bar."*
+
+So `bpa` is **not** absolute production above a baseline, and **not** a bounded rank. Its contract
+is:
+
+1. **Preserve the relative size of gaps between players.**
+2. **Put every position on one shared bar** so a thin position's best player cannot win on
+   renormalization alone.
+
+## Is the 0–100 max-normalization compatible with purpose 1?
+
+**Within one board state, above zero — yes, exactly.** `bpa = vor / ref × 100` is a positive
+linear map, so ratios of gaps are preserved perfectly.
+
+**Within one board state, at or below zero — no.** Every gap is erased by the clip. And that is
+most of the board:
+
+| round | rows | above 0 — ratios kept | at/below 0 — gaps erased |
+|---|---|---|---|
+| 4 | 280 | 55 (**20%**) | 225 (**80%**) |
+| 8 | 232 | 23 (10%) | 209 (90%) |
+| 11 | 117 | 8 (7%) | 109 (93%) |
+| 13 | 27 | 1 (**4%**) | 26 (**96%**) |
+
+**The purpose is honoured for a fifth of the board at its best, and a twenty-fifth at round 13.**
+
+**Across board states — no, and this is the sharper failure.** The reference is recomputed every
+pick, so the unit is redefined every pick:
+
+| round | reference | 1 bpa point = real points | a **5-point real gap** reads as | `NEED_BONUS_MAX` buys |
+|---|---|---|---|---|
+| 2 | 72.00 | 0.7200 | **6.9 bpa** | 8.64 real pts |
+| 4 | 27.00 | 0.2700 | 18.5 bpa | 3.24 real pts |
+| 8 | 16.00 | 0.1600 | 31.2 bpa | 1.92 real pts |
+| 11 | 9.00 | 0.0900 | 55.6 bpa | 1.08 real pts |
+| 12 | 2.00 | 0.0200 | 250.0 bpa | 0.24 real pts |
+| 13 | 1.00 | 0.0100 | **500.0 bpa** | 0.12 real pts |
+
+**The same five-point real gap reads as 6.9 bpa at round 2 and 500 bpa at round 13 — a 72×
+swing — and from round 12 it exceeds the 0–100 ceiling entirely, so the scale cannot represent
+it at all.**
+
+### The exact inversion
+
+The max-reference was introduced to stop percentile-ranking from **turning a blowout into a
+toss-up**. Measured, it **turns a toss-up into a blowout** — same failure, opposite direction,
+introduced by the fix for the first one. It stayed invisible because the test that justified it
+("does it preserve gap size?") passes *within a single board state*, which is the only frame the
+first defect was ever examined in.
+
+### The additive layer inherits the drift
+
+`NEED_BONUS_MAX` is a fixed `12`. In real points it purchases **8.64 → 3.24 → 1.92 → 1.08 → 0.24
+→ 0.12** — a **72× drift in what a constant means**, caused entirely by an upstream quantity, with
+nothing in `need_bonus` changing. The same applies to `ELIGIBILITY_BONUS_MAX` and `NEAR_TIE_BAND`.
+
+## Is it compatible with purpose 2?
+
+**Yes — but max is not what delivers it.** Purpose 2 is served by the reference being *shared*,
+not by it being the *maximum*. Any single shared reference puts every position on one bar.
+
+**So the two purposes are not in conflict.** Purpose 2 requires a **shared** reference; purpose 1
+requires a **stable** one. `vor.max()` is shared but not stable, which is why it satisfies exactly
+one of the two.
+
+## The failure boundary
+
+Two boundaries, and they are independent:
+
+| boundary | condition | effect | when it fires |
+|---|---|---|---|
+| **the floor** | VOR ≤ 0 | all gaps erased | **from round 2** — 80% of the pool by round 4 |
+| **the unit** | reference changes | the same real gap changes meaning | **every pick** |
+
+Neither is the exhaustion boundary. Both begin operating while the engine is at its healthiest,
+which is why neither was visible from the late-round symptom that started this audit.
+
+## `production_margin` and VOR, side by side — and why neither substitutes
+
+| quantity | unit stable? | zero stable? | what it answers |
+|---|---|---|---|
+| `production_margin` | **yes** — real points | **yes** — the fixed pre-draft field | production against a fixed league-structural baseline |
+| `VOR` | **yes** — real points | **no** — the anchor moves | value against the live marginal starter |
+| `bpa` | **no** — the unit is `ref/100` | **no** | relative separation, this board state only |
+
+The two are related by an exact identity:
+
+```
+VOR = production_margin + (pre_draft_level − live_level)
+```
+
+**The difference between them is itself the quantity of interest** — how far the market has moved
+the anchor away from the league's structural baseline. Collapsing to either one destroys that
+term: keeping only `production_margin` discards all scarcity information; keeping only VOR leaves
+a number whose zero drifts under a player who has not changed.
+
+Measured longitudinally, that identity is visible in a single player: Njoku's VOR converges
+`−126 → −134 → −135` onto his constant margin of `−135` as the live anchor converges on the
+pre-draft level. **The convergence is the scarcity term going to zero**, not the two quantities
+becoming interchangeable.
+
+## Contract, as it must be stated before any repair
+
+- **`bpa` preserves relative separation among available players, on one shared cross-position
+  bar.** It is not absolute production and not a rank.
+- That contract holds **only above the floor and only within one board state.** Outside either,
+  `bpa` is not a weaker version of itself — it is answering a different question.
+- **A shared reference is required by purpose 2. A stable reference is required by purpose 1.**
+  Any repair must supply both; `vor.max()` supplies only the first.
+- **`production_margin` and VOR are not alternatives.** Their difference is the scarcity term, and
+  the engine currently has no name for it.
+
+## Invariants
+
+49. `bpa` is compared only within the board state that produced it, unless its reference is
+    recorded alongside it.
+50. Any additive constant on the `bpa` scale states the real-point quantity it is intended to
+    purchase, and that quantity is checked against the live reference.
+51. The region in which `bpa` preserves gap ratios is reported with the board, not assumed to be
+    the whole board.
+52. `production_margin` and VOR are both retained where both are defined; the scarcity term
+    between them is named rather than implied.
