@@ -1729,3 +1729,154 @@ unpriced rows last, so in the mixed regime a priced K outranks the best remainin
 at round 11, where the top five are TE/K/DEF. Under a starter-demand reading that is right: the
 K fills a starting slot and the WR does not. Under a talent reading it is obviously wrong. That
 claim entered as a side effect of a mechanical sort fix and deserves an explicit decision.
+
+---
+
+# Appendix — #61's two remaining questions
+
+Investigation only. **No implementation.**
+
+## Q1 — `candidates[0]` is an implicit valuation policy, and it lives in two places
+
+`draft_simulation`'s own module docstring settles the first half:
+
+> *"This module never invents a simulation-specific valuation or selection rule -- the chosen
+> player at every pick is `snap.candidates[0]`, the identical **'top team_acquisition_value
+> board pick'** contract `draft_room.simulate_opponent_picks` already uses for auto-drafted
+> teams."*
+
+So it is **not infrastructure**. It is the engine's own recommendation, defined as
+`argmax team_acquisition_value`, deliberately deferring to the valuation layer. (It also
+ignores `pick_necessity` entirely — consistent with the separate finding that necessity
+reorders nothing.)
+
+**The second site was missed by the earlier trace and matters more.**
+`draft_room.simulate_opponent_picks` is called from `app.py:4213` — the **live Mock Draft**, not
+a harness — and it takes `board[0]["player_id"]` **raw**, never passing through
+`narrow_candidates`. Nothing on that path can decline.
+
+Measured, it does not crash. `compute_draft_board` sorts with pandas, which places NaN last
+silently, so the auto-drafter keeps picking:
+
+| round | `board[0]` | pts | best projected on the board |
+|---|---|---|---|
+| 13 | M Andrews (TE) | 187.0 | C Williams (QB) 324.0 |
+| 15 | **D Njoku (TE)** | **52.0** | C Williams (QB) 324.0 |
+| 17 | S Tucker (RB) — `final_score = None` | 96.0 | C Williams (QB) 324.0 |
+| 19 | C Sutton (WR) — `final_score = None` | 199.0 | C Williams (QB) 324.0 |
+
+From round 17 the live Mock Draft auto-drafts **by `player_id` order**. That is a fourth silent
+fabrication site, in production rather than in a harness.
+
+**Can an unpriced candidate ever legitimately be auto-selected?** Only under a rule that does
+not claim to be the engine's valuation. Three exist:
+
+| rule | available | honest? |
+|---|---|---|
+| by `projected_points` | yes — real sourced data, already on the row | yes, **if labelled as not the engine's pick** |
+| by `need_bonus + eligibility_bonus` | yes | **no** — measured degenerate (below) |
+| decline | yes | yes |
+
+### Proposed policy — auto-selection requires a priced candidate
+
+Auto-selection is the engine asserting a recommendation. Where `team_acquisition_value` is
+undefined for every candidate, **the engine has no recommendation**, and picking anyway
+substitutes a rule the engine does not have. So the auto-drafter **declines**, and each caller
+handles the declination on its own terms:
+
+- **`draft_simulation`** stops the trajectory and records why. A validation harness that keeps
+  drafting past the point the engine can value anything is measuring its own tiebreak.
+- **`simulate_opponent_picks`** stops early. This is not a new behaviour — the function already
+  documents *"stops early (rather than raising) if the available pool ever comes up empty."* An
+  **unvaluable** pool is the same class of stop as an **empty** one.
+
+## Q2 — what "unpriced sorts last" actually means
+
+Two separate questions, and they have opposite answers.
+
+### With respect to need: almost provably safe
+
+`need_bonus` has two terms — `NEED_BONUS_PER_DEDICATED_SLOT × dedicated_needed` (4.0 per slot)
+and `NEED_BONUS_PER_FLEX_SHARE × min(flex_remaining, 1)` (1.0 per share).
+
+**The dedicated term cannot survive into the unpriced register.** `starter_slot_counts[p] ≥
+dedicated_slot_counts[p]` always, since flex only adds. If a team has an unfilled dedicated slot
+then `filled ≤ dedicated − 1`, so its demand contribution
+`max(starter − filled, 0) ≥ starter − dedicated + 1 ≥ 1`, so league demand ≥ 1 and the position
+is priced. **Unfilled dedicated need therefore implies priced.**
+
+Measured across all twelve teams and rounds 13–19: **248 unpriced rows carry `need_bonus > 0`,
+and 0 of them carry dedicated need.** Every one is the flex residual, and every one is exactly
+**0.33** — against `NEED_BONUS_MAX = 12.0`, i.e. **2.75% of the need scale**. `eligibility_bonus`
+was **0 in every single case**.
+
+So "unpriced last" never buries a player a team must start. It buries, at most, a third of a
+flex share.
+
+**Correction to the #61 policy as first proposed.** It described register 2 as reporting *"need,
+not value"* and the board becoming a *"need-ranked list."* The measurement says that is wrong:
+in the unpriced register the need signal is degenerate — `0.33` or `0`, and eligibility always
+`0` — so a need ranking there is almost entirely ties, collapsing to the `player_id` tiebreak.
+Register 2 cannot be need-ranked.
+
+### With respect to talent: not safe
+
+| round | board's top priced pick | pts | best unpriced | pts | gap |
+|---|---|---|---|---|---|
+| 10 | T Pollard (RB) | 178.0 | C Williams (QB) | 324.0 | **+146** |
+| 12 | C McLaughlin (K) | 105.0 | C Williams (QB) | 324.0 | **+219** |
+| 15 | D Njoku (TE) | 52.0 | C Williams (QB) | 324.0 | **+272** |
+
+Worked case, round 15, roster 11: the board ranks **D Njoku (TE, 52 pts, need 0.0) above
+T Pollard (RB, 178 pts, need 0.33)**. Six consecutive rounds carry a gap of this shape.
+
+### The reason neither ordering is correct
+
+A priced row's `final_score` and an unpriced row's `projected_points` are **different quantities
+in different units answering different questions**. Sorting them into one list does not compare
+them — it *invents* a comparison. "Unpriced last" is one invention; "by points throughout" is
+another.
+
+### Proposed policy — the board does not produce one list
+
+1. The board is **partitioned by register**, never interleaved.
+2. **Priced rows** are ordered by `team_acquisition_value`, exactly as today.
+3. **Unpriced rows** are ordered by `projected_points` — real sourced data already on the row,
+   and already documented in `compute_draft_board` as answering a legitimately separate
+   question (*"who's simply projected to score the most"*). It is a **declared secondary
+   ordering for a labelled register**, not a fabricated value: no row receives a `bpa`,
+   `universal_value` or `team_acquisition_value` it did not earn.
+4. The **relative order of the two partitions is a presentation decision**, stated explicitly
+   rather than falling out of a sort key. It is not a valuation claim and must not be written as
+   one.
+5. Register 2's content is **"real production, unpriced by the engine"** — replacing the
+   "need-ranked" description, which the measurement disproved.
+
+## Invariants
+
+**Auto-selection**
+
+1. No auto-selection ever returns a row whose `team_acquisition_value` is `None`.
+2. `simulate_opponent_picks` stops rather than picking when no candidate is priced, by the same
+   rule it already stops on an empty pool.
+3. A stopped trajectory records the reason and the round it stopped at.
+4. No auto-selector reads `projected_points`, `need_bonus` or `player_id` as a selection key.
+
+**Board order**
+
+5. Priced and unpriced rows are never interleaved: every priced row precedes every unpriced row,
+   or the partitions are surfaced separately — but the order is never decided by comparing a
+   `final_score` against a `projected_points`.
+6. Within the priced partition the key is `team_acquisition_value`; within the unpriced
+   partition it is `projected_points`; neither key is ever applied across the boundary.
+7. Ordering never assigns a value to a row that has none.
+8. A row's partition membership is derivable from its own fields and is exposed to consumers,
+   so no consumer has to infer the register from a missing number.
+9. `player_id` remains the final tiebreak within each partition, so ordering stays deterministic.
+
+## Consequence
+
+Both policies make the engine **do less**. The auto-drafter stops rather than filling rosters
+with arbitrary players; the board declines to rank talent against slot relevance rather than
+silently preferring a 52-point tight end to a 324-point quarterback. Neither adds a fallback,
+and neither invents a number.
