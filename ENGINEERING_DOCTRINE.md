@@ -56,6 +56,47 @@ arguable.
 
 ---
 
+## The second principle: player properties and decision context must remain distinct
+
+> **Player properties and decision context must remain distinct.**
+
+A **player-level quantity** describes something about the player's modeled profile — projected
+production over a defined horizon, age, injury status as a fact about him. A **contextual
+quantity** describes the state in which that player is being evaluated: roster need, positional
+scarcity, draft state, waiting cost, eligibility, risk/status as it bears on *this* acquisition,
+league format, acquisition timing.
+
+Context may change the decision value of acquiring a player **without changing the player's
+underlying player-level signal.** Therefore:
+
+> *"What is this player?"* and *"What is this player worth to this team at this moment?"* are
+> separate questions, and a single number cannot answer both.
+
+**Every derived quantity declares its category:**
+
+| category | describes | changes when |
+|---|---|---|
+| **player property** | the player's modeled profile | the projection, the player, or the horizon definition changes |
+| **league / format property** | the rules of this league | the league settings change |
+| **current-state / context variable** | the situation this evaluation happens in | picks are made, rosters fill, the pool drains |
+| **decision output** | what to do, here, now | any of the above changes |
+
+**Crossing those categories requires an explicit reconciliation step** — a named quantity, with
+its own contract, that states what was combined and under which rule. A contextual signal must
+not become a player property merely because it is convenient to attach it to a player record.
+
+**Scope is part of meaning. A quantity does not become a player property merely because it is
+stored on a player's row.** A row is a join, not a claim about ownership: the same row can carry
+a projection (player property), a replacement level (league property), a scarcity term (context)
+and a recommendation (decision output), and each keeps its own category and its own lifetime.
+
+Applied to this engine's own split: **BPA answers what the player's underlying production/value
+signal is. The selection layer answers what that player is worth acquiring here, now, under the
+current context.** The moment BPA carries scarcity, waiting cost, or roster fit, it has stopped
+answering its own question and no consumer can tell which question it answered.
+
+---
+
 ## Required audit chain
 
 Every audit, and every implementation that touches a load-bearing quantity, must walk the full
@@ -99,6 +140,9 @@ quantity that does.
    sorts, clips, defaults, rescales, and string formatting.
 7. **Whether another variable can silently change its interpretation** — named, or explicitly
    asserted to be none.
+8. **Which category it belongs to** — player property, league/format property, current-state /
+   context variable, or decision output — and, where it combines categories, the named
+   reconciliation step that licenses the combination.
 
 ---
 
@@ -124,6 +168,8 @@ These follow from the principle and are not negotiable per change.
   not the same number. Availability windows that differ are proof they are not.
 - **A test that cannot fail proves nothing.** Assert on behaviour that changes when the code is
   wrong, and prefer a mutation to a re-derivation.
+- **A row is a join, not an ownership claim.** Storing a contextual quantity on a player's row
+  does not make it a property of that player. Scope travels with meaning, not with storage.
 - **A docstring can encode a defect.** Several of the findings above were described as correct in
   the docstrings that defined them. Documentation is evidence of intent, never of correctness.
 
