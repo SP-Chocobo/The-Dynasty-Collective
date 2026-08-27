@@ -2730,3 +2730,144 @@ how to traverse it is the next decision, and it is not taken here.
     zero is structural, not a measurement.
 37. Every decision surface states which of the three dimensions are answerable before any of them
     is weighed.
+
+---
+
+# Appendix — absence, degeneracy, and the three routes to zero
+
+Investigation only. **No implementation, no weighting, no saturation repair.** This closes the
+#61 investigation.
+
+## `bpa = 0.0` is three different claims, not one
+
+| route | condition | what it asserts | moves with the player? |
+|---|---|---|---|
+| **at the boundary** | VOR = 0, rank D ≥ 2 | *he **is** the marginal starter; D−1 better options exist* | yes — a position in a distribution |
+| **below replacement** | VOR < 0, then `clip(lower=0)` | *this far below the marginal starter* | yes — **and the clip destroys it** |
+| **degenerate** | VOR = 0, rank 1 (demand ∈ [1,2)) | nothing — replacement **is** him | **no — invariant to his quality** |
+
+Measured, every `bpa == 0.0` row decomposed by route:
+
+| round | zeros | at boundary | degenerate | **clipped negative** | positions at demand ∈ [1,2) |
+|---|---|---|---|---|---|
+| 6 | 218 | 9 | 0 | **209** | — |
+| 9 | 205 | 7 | 0 | **198** | — |
+| 11 | 109 | 5 | 0 | **104** | — |
+| 13 | 26 | 1 | 0 | **25** | — |
+| 15 | 23 | 0 | **1** | **22** | TE |
+
+**The clip dominates.** 95%+ of all zeros are real, measured, *negative* VOR flattened by
+`clip(lower=0)` — not degeneracy and not the boundary. The degenerate case is **one row**.
+This corrects the emphasis of the previous appendix, which treated degeneracy as the main event.
+
+## The Andrews transition — the proof that the degenerate zero is an artifact
+
+Same player. Same projection. Three rounds.
+
+| round | TE demand | rank | replacement | his pts | his VOR | **his `bpa`** | pool max VOR | C: post-draft |
+|---|---|---|---|---|---|---|---|---|
+| 13 | 2.33 | 2 | 186 | 187 | 1.0 | **100.0** | 1.0 | 123 |
+| 14 | 2.00 | 2 | 186 | 187 | 1.0 | **100.0** | 1.0 | 120 |
+| 15 | 1.33 | **1** | 187 | 187 | 0.0 | **0.0** | 0.0 | 120 |
+| 16 | 0.67 | — | — | 187 | — | **`None`** | — | 47 |
+
+**`100.0 → 0.0 → None`, with nothing about him changing.** The only thing that moved is
+league-wide TE demand crossing 2.0 and then 1.0.
+
+**Two compounding failures produce that swing:**
+1. **Rank collapse** takes his VOR from `1.0` to `0.0` — a one-point change in the honest
+   quantity, caused by *other teams' rosters*, not by him.
+2. **The scale reference** turns that one point into a hundred: pool max VOR is `1.0` at rounds
+   13–14, so `bpa = 100` is being awarded on the basis of **a single point of real spread**.
+
+**Diagnostic for the degenerate state:** a measurement invariant to the thing it claims to
+measure is not measuring it. At rank 1, Andrews at 187 scores 0 — and a hypothetical TE at 500
+would also score 0. The boundary zero and the clipped negative both move with the player; the
+degenerate zero does not.
+
+**Verdict: the degenerate zero is a semantic failure, not a legitimate economic conclusion.**
+The boundary zero *is* legitimate — it states a real position in a real distribution.
+
+## What B and C say in each of A's states — round 15
+
+| A state | rows | exemplar | pts | `bpa` | B: gap to next | C: post-draft |
+|---|---|---|---|---|---|---|
+| above replacement | **0** | — | | | | |
+| at the boundary | **0** | — | | | | |
+| degenerate zero | **1** | M Andrews | 187 | 0.0 | 1 | **120** |
+| below replacement, clipped | **22** | I Likely | 186 | 0.0 | 8 | **119** |
+| undefined | **125** | C Williams | 324 | `None` | 5 | **28** |
+
+**At round 15 not one player on the entire board has positive VOR.** The priced register holds
+one degenerate zero and 22 clipped negatives; the split is between 23 rows that say nothing and
+125 rows that say nothing.
+
+And note Andrews (187, degenerate) against Likely (186, clipped negative): **one point of
+projection apart, semantically different states, identical scores, and C within one point of each
+other.** The two states differ in *meaning* while carrying *identical decision information* —
+because at this round **C carries the decision and A carries nothing in either state.**
+
+## The two named cases, explained
+
+**M Andrews (187 pts, degenerate zero).** A is uninformative *by construction* — his zero is a
+tautology. B says 1 point: the next TE is a point behind, so nothing is lost this turn. **C says
+120: he is worth 120 points more than the TE who will be free after the draft.** The coherent
+conclusion is *he is genuinely valuable and only C can say so* — and C is stable at 123/120/120
+across the transition where A swings 100 → 0 → None. **C is the only dimension that behaves
+continuously here.**
+
+**D Njoku (52 pts).** His zero is a **clipped negative**, not degeneracy: VOR = 52 − 187 = −135.
+A did measure him — as 135 points below the marginal starter — and the clip erased it. B says 16.
+**C says −15: a better TE is free after the draft.** Every dimension that can speak says pass;
+the only reason he ranks first is that his flattened zero sits in the priced register.
+
+**So Andrews and Njoku are not the same case at all.** One is a valuable player A cannot price;
+the other is a poor player A priced correctly and then flattened.
+
+## Should a zero-by-construction be treated differently from a boundary zero?
+
+**Semantically, yes — they are different claims.** But the measurement says the operative
+distinction is not *degenerate vs boundary*. It is:
+
+> **Does A discriminate at all here?**
+
+- A position where **no remaining player has positive VOR** gives A no discriminating power,
+  whichever route each row's zero took. That single test catches degeneracy *and* the
+  everything-is-clipped case.
+- A **row** whose zero is a flattened negative has a real measurement that was destroyed. That is
+  a row-level fact, and by count it is the dominant one.
+
+Two separate problems, and only one of them is about degeneracy.
+
+## Should the register architecture distinguish three states?
+
+**Yes — but three is still too coarse.** A has **five** semantic states and the current
+architecture represents **two**:
+
+| A state | claim | current representation |
+|---|---|---|
+| above replacement | adds this much over the marginal starter | positive `bpa` ✓ |
+| at the boundary | he **is** the marginal starter | **`0.0`** |
+| below replacement | this far below the marginal starter | **`0.0`** ← destroyed |
+| degenerate | nothing; replacement is him | **`0.0`** ← meaningless |
+| undefined | no anchor exists | `None` ✓ |
+
+**Three semantically distinct states collapse into the single value `0.0`**, and the register
+split as currently proposed separates only the fifth. *Priced and meaningful → priced but
+degenerate → unpriced* is a real improvement over *numeric → None*, and it still merges the
+boundary zero with the clipped negative — the state that accounts for 95% of the zeros.
+
+## Invariants
+
+38. `bpa = 0.0` is never emitted for more than one semantic state; a row's zero carries which of
+    the three routes produced it.
+39. A below-replacement measurement is preserved as a measurement. Whether it reaches a 0–100
+    scale is a separate decision; flattening it at the point of measurement is not.
+40. A position where no remaining player has positive VOR is flagged as non-discriminating,
+    independently of which zero-route its rows took.
+41. A player's own valuation never changes solely because another team's roster changed, without
+    the change being attributable and declared.
+42. No 0–100 scale is set by a reference smaller than a declared minimum meaningful spread — a
+    `bpa` of 100 awarded on a 1-point VOR is a scale failure, not a valuation.
+43. Where A does not discriminate, the decision surface states which of B and C is carrying the
+    decision.
