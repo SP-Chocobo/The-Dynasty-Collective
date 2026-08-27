@@ -274,9 +274,11 @@ class ValuationBurialTests(unittest.TestCase):
         self.assertEqual(ranks["DEF"], 12)
 
     def test_positional_demand_collapses_as_the_position_is_drafted_out(self):
-        drafted = {"K": 9}
+        db = {f"K{i}": {"position": "K", "fantasy_positions": ["K"]} for i in range(1, 20)}
+        picks = [{"player_id": f"K{i + 1}", "roster_id": str(i + 1), "round": 1, "pick_no": i + 1}
+                 for i in range(9)]   # nine of the twelve teams have taken their kicker
         self.assertLess(
-            dr.replacement_ranks(KDST_LEAGUE["roster_positions"], 12, drafted)["K"],
+            dr.replacement_ranks(KDST_LEAGUE["roster_positions"], 12, picks, db)["K"],
             dr.replacement_ranks(KDST_LEAGUE["roster_positions"], 12)["K"],
         )
 

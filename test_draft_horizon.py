@@ -34,6 +34,27 @@ def _pool(spec: dict[str, list[float]]) -> pd.DataFrame:
 # bench count is kept small deliberately: a 12-bench roster would funnel 144 picks into two
 # positions and exhaust them, which tests the fixture rather than the code.
 SYNTH_ROSTER = ["RB", "RB", "K", "BN", "BN", "BN"]
+SYNTH_TEAMS = 12
+
+# Remaining demand is now a PER-TEAM quantity, so these fixtures have to say which roster
+# took what rather than only how many went league-wide -- the distinction the whole
+# decomposition exists to preserve (see draft_room.remaining_starter_demand). Picks are
+# spread round-robin, which is the realistic reading of "N of these have gone" and the one
+# the league-wide subtraction used to assume implicitly.
+_SYNTH_DB = {
+    f"{pos}{i}": {"position": pos, "fantasy_positions": [pos]}
+    for pos in ("RB", "K") for i in range(1, 200)
+}
+
+
+def _picks(counts=None):
+    out = []
+    for position, n in (counts or {}).items():
+        for i in range(int(n)):
+            out.append({"player_id": f"{position}{i + 1}",
+                        "roster_id": str(len(out) % SYNTH_TEAMS + 1),
+                        "round": len(out) // SYNTH_TEAMS + 1, "pick_no": len(out) + 1})
+    return out
 # Same depth on both, so swapping the labels is a clean experiment.
 STEEP = [300 - 2.7 * i for i in range(100)]   # 300 down to ~33
 FLAT = [110 - 0.15 * i for i in range(100)]   # 110 down to ~95
@@ -46,7 +67,7 @@ class ShapeDrivenBehaviourTests(unittest.TestCase):
         self.pool = _pool({"RB": STEEP, "K": FLAT})
 
     def _horizon(self, drafted=None):
-        return dr.horizon_replacement(self.pool, "_v", SYNTH_ROSTER, 12, drafted)
+        return dr.horizon_replacement(self.pool, "_v", SYNTH_ROSTER, 12, _picks(drafted), _SYNTH_DB)
 
     def test_a_flat_position_is_cheap_to_wait_on_and_a_steep_one_is_not(self):
         h = self._horizon()
@@ -67,7 +88,8 @@ class ShapeDrivenBehaviourTests(unittest.TestCase):
 
     def test_nothing_here_reads_the_position_name(self):
         # Swap the two curves between the position labels and the answers swap with them.
-        swapped = dr.horizon_replacement(_pool({"RB": FLAT, "K": STEEP}), "_v", SYNTH_ROSTER, 12)
+        swapped = dr.horizon_replacement(
+            _pool({"RB": FLAT, "K": STEEP}), "_v", SYNTH_ROSTER, 12, [], _SYNTH_DB)
         normal = self._horizon()
         self.assertGreater(swapped["K"]["value"], normal["K"]["value"] * 1.5,
                            "a steep curve labelled K must behave like a steep curve")
@@ -75,41 +97,72 @@ class ShapeDrivenBehaviourTests(unittest.TestCase):
                         "a flat curve labelled RB must behave like a flat curve")
 
 
-class SelfCalibrationTests(unittest.TestCase):
-    """The draft is the evidence: consumption starts from roster-slot priors and moves toward
-    what this room is actually doing, with no ADP import."""
+class RemainingDemandTests(unittest.TestCase):
+    """What replaced SelfCalibration.
+
+    The class that stood here tested expected_positional_consumption's observed-share blend:
+    a room's LIFETIME share of picks at a position, applied to the picks still to come. That
+    mechanism was removed rather than repaired, and two of its tests were assertions of the
+    defect rather than of a property worth keeping:
+
+      * "consumption totals the number of picks the draft actually has" -- the conservation
+        property of a share. Measured across six completed boards, the total was always
+        exactly right and the split always wrong, which is the signature of the wrong kind of
+        quantity: a share divides, where demand is consumed and runs out.
+      * "observed picks move the estimate -- a room hammering RBs should be expected to keep
+        hammering RBs" -- reads a pick as EVIDENCE OF APPETITE when a pick is CONSUMPTION OF
+        DEMAND. Those have opposite signs, and the inversion was measurable: for two leagues
+        with no kicker taken in the last 48 picks, the old model predicted MORE kickers still
+        to come for the league that already had twelve than for the one that had none.
+
+    What is tested here instead is the pair that replaced it: an exact, bounded starter
+    demand that can reach zero, and an inferred bench demand that is allowed to be unknown."""
 
     def setUp(self):
         self.pool = _pool({"RB": STEEP, "K": FLAT})
 
-    def _consumption(self, drafted=None):
-        return dr.expected_positional_consumption(self.pool, "_v", SYNTH_ROSTER, 12, drafted)
-
-    def test_consumption_totals_the_number_of_picks_the_draft_actually_has(self):
-        self.assertAlmostEqual(sum(self._consumption().values()), 12 * len(SYNTH_ROSTER), places=6)
+    def _starter(self, drafted=None):
+        return dr.remaining_starter_demand(SYNTH_ROSTER, SYNTH_TEAMS, _picks(drafted), _SYNTH_DB)
 
     def test_required_starters_are_demand_that_will_happen(self):
-        # Every team must fill its starting slots, so the prior can never fall under them.
-        prior = self._consumption()
-        self.assertGreaterEqual(prior["RB"], 24)
-        self.assertGreaterEqual(prior["K"], 12)
+        # Every team must fill its starting slots, so untouched demand is exactly that.
+        demand = self._starter()
+        self.assertEqual(demand["RB"], 24.0)
+        self.assertEqual(demand["K"], 12.0)
 
-    def test_observed_picks_move_the_estimate(self):
-        # A room hammering RBs should be expected to keep hammering RBs.
-        base = self._consumption()
-        after = self._consumption({"RB": 40, "K": 0})
-        self.assertGreater(after["RB"], base["RB"])
+    def test_drafting_a_position_consumes_its_demand_rather_than_predicting_more_of_it(self):
+        base = self._starter()
+        after = self._starter({"RB": 12})   # one per team
+        self.assertLess(after["RB"], base["RB"])
+        self.assertEqual(after["RB"], 12.0)
 
-    def test_the_estimate_never_falls_below_what_the_draft_has_already_done(self):
-        after = self._consumption({"RB": 55, "K": 2})
-        self.assertGreaterEqual(after["RB"], 55)
+    def test_demand_reaches_exactly_zero_and_stops_there(self):
+        self.assertEqual(self._starter({"RB": 24})["RB"], 0.0)
+        self.assertEqual(self._starter({"RB": 60})["RB"], 0.0)
+
+    def test_the_two_halves_are_reported_separately_not_fused(self):
+        # The exact half is a number even when the inferred half has no evidence to offer.
+        thin = _pool({"RB": STEEP[:3], "K": FLAT[:3]})
+        starter = dr.remaining_starter_demand(SYNTH_ROSTER, SYNTH_TEAMS, [], _SYNTH_DB)
+        bench = dr.estimated_bench_demand(thin, "_v", SYNTH_ROSTER, SYNTH_TEAMS, [], _SYNTH_DB)
+        self.assertEqual(starter["RB"], 24.0)
+        self.assertIsNone(bench["RB"])
+
+    def test_total_capacity_is_bounded_by_the_draft_not_by_a_share(self):
+        total = SYNTH_TEAMS * dr.draftable_slots_per_team(SYNTH_ROSTER)
+        self.assertEqual(dr.remaining_draft_capacity(SYNTH_ROSTER, SYNTH_TEAMS, []), float(total))
+        self.assertEqual(
+            dr.remaining_draft_capacity(SYNTH_ROSTER, SYNTH_TEAMS, _picks({"RB": 12})),
+            float(total - 12),
+        )
 
     def test_a_position_nobody_touches_gets_a_better_expected_floor(self):
         # "If nobody touches K, it barely moves" -- and in fact improves, because the picks
         # are going elsewhere, so a better kicker survives to the end.
-        before = dr.horizon_replacement(self.pool, "_v", SYNTH_ROSTER, 12)["K"]["value"]
+        before = dr.horizon_replacement(self.pool, "_v", SYNTH_ROSTER, 12, [], _SYNTH_DB)["K"]["value"]
         drained = self.pool[~((self.pool["position"] == "RB") & (self.pool["_v"] > STEEP[29]))]
-        after = dr.horizon_replacement(drained, "_v", SYNTH_ROSTER, 12, {"RB": 30})["K"]["value"]
+        after = dr.horizon_replacement(
+            drained, "_v", SYNTH_ROSTER, 12, _picks({"RB": 30}), _SYNTH_DB)["K"]["value"]
         self.assertGreaterEqual(after, before)
 
 
@@ -129,7 +182,7 @@ class SelfLimitingConsumptionTests(unittest.TestCase):
         survivors = sorted(pool.loc[pool["position"] == position, "_v"], reverse=True)[taken:]
         drained = pool[(pool["position"] != position) | (pool["_v"].isin(survivors))]
         floor = dr.horizon_replacement(
-            drained, "_v", SYNTH_ROSTER, 12, {position: taken})[position]["value"]
+            drained, "_v", SYNTH_ROSTER, 12, _picks({position: taken}), _SYNTH_DB)[position]["value"]
         return (survivors[0] - floor) if floor is not None else None
 
     def test_draining_a_flat_position_barely_moves_its_waiting_cost(self):
@@ -151,7 +204,7 @@ class ShallowPoolHonestyTests(unittest.TestCase):
 
     def test_a_horizon_past_the_end_of_the_pool_is_unknown_not_the_worst_loaded_player(self):
         shallow = _pool({"RB": STEEP[:10]})   # 10 RBs against 24+ of starter demand alone
-        h = dr.horizon_replacement(shallow, "_v", SYNTH_ROSTER, 12)["RB"]
+        h = dr.horizon_replacement(shallow, "_v", SYNTH_ROSTER, 12, [], _SYNTH_DB)["RB"]
         self.assertFalse(h["certain"])
         self.assertIsNone(h["value"], "a short list must not answer with its own last row")
         self.assertEqual(h["pool_depth"], 10)
@@ -176,12 +229,12 @@ class CliffSensitivityTests(unittest.TestCase):
 
     def test_a_cliff_under_the_horizon_reports_a_wider_error_bar_than_a_plateau(self):
         pool = _pool({"RB": STEEP, "K": FLAT})
-        h = dr.horizon_replacement(pool, "_v", SYNTH_ROSTER, 12)
+        h = dr.horizon_replacement(pool, "_v", SYNTH_ROSTER, 12, [], _SYNTH_DB)
         self.assertGreater(h["RB"]["sensitivity"], h["K"]["sensitivity"] * 5)
 
     def test_sensitivity_is_absent_exactly_where_the_floor_is(self):
         shallow = _pool({"RB": STEEP[:10]})
-        h = dr.horizon_replacement(shallow, "_v", SYNTH_ROSTER, 12)["RB"]
+        h = dr.horizon_replacement(shallow, "_v", SYNTH_ROSTER, 12, [], _SYNTH_DB)["RB"]
         self.assertIsNone(h["value"])
         self.assertIsNone(h["sensitivity"], "no floor means no error bar to quote either")
 
@@ -283,7 +336,8 @@ class RealBaselineTests(unittest.TestCase):
 
     def test_the_horizon_helpers_carry_no_positional_special_cases(self):
         import inspect
-        for fn in (dr.horizon_replacement, dr.expected_positional_consumption,
+        for fn in (dr.horizon_replacement, dr.estimated_bench_demand,
+                   dr.remaining_starter_demand, dr.remaining_draft_capacity,
                    dr.positional_bench_appetite, dr._attach_waiting_cost):
             src = inspect.getsource(fn)
             for literal in ('"K"', "'K'", '"DEF"', "'DEF'", '"DST"', "'DST'"):

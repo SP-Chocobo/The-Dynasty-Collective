@@ -45,6 +45,25 @@ def _build_pool_players_db(positions=("QB", "RB", "WR", "TE", "DL", "LB", "DB"))
     return merger, players_db
 
 
+_SYNTH_DB = {
+    f"{pos}{i}": {"position": pos, "fantasy_positions": [pos]}
+    for pos in ("QB", "RB", "WR", "TE", "K", "DEF") for i in range(1, 600)
+}
+
+
+def _synthetic_picks(counts, num_teams=12):
+    """Remaining demand is per-team now, so a fixture has to say WHICH roster took what, not
+    only how many went league-wide. Round-robin is the realistic reading of "N of these have
+    gone" and the one the old league-wide subtraction assumed without saying so."""
+    out = []
+    for position, n in counts.items():
+        for i in range(int(n)):
+            out.append({"player_id": f"{position}{i + 1}",
+                        "roster_id": str(len(out) % num_teams + 1),
+                        "round": len(out) // num_teams + 1, "pick_no": len(out) + 1})
+    return out
+
+
 LIGHT_IDP_LEAGUE = {
     "roster_positions": ["QB", "RB", "RB", "WR", "WR", "TE", "FLEX", "FLEX", "IDP_FLEX", "BN", "BN", "BN"],
     "total_rosters": 12, "settings": {"type": 2},
@@ -171,18 +190,23 @@ class ReplacementRanksTests(unittest.TestCase):
 
     def test_remaining_demand_shrinks_as_the_position_gets_drafted(self):
         # Draft progression: the same league's WR rank must fall as WRs actually get drafted,
-        # and must never go negative (floors at 1 -- "replacement = the best player still on
-        # the board" once demand is exhausted).
+        # and once every team's WR slots are full it reports ABSENCE -- not the old floor of
+        # 1, which said "one slot still needs filling" about a position where none does.
         roster_positions = ["QB", "RB", "RB", "WR", "WR", "TE", "FLEX", "FLEX"]
         none_drafted = dr.replacement_ranks(roster_positions, num_teams=12)["WR"]
-        some_drafted = dr.replacement_ranks(roster_positions, num_teams=12, drafted_counts={"WR": 10})["WR"]
-        nearly_all_drafted = dr.replacement_ranks(roster_positions, num_teams=12, drafted_counts={"WR": 500})["WR"]
-        self.assertLess(some_drafted, none_drafted)
-        self.assertEqual(nearly_all_drafted, 1)
+        some = dr.replacement_ranks(
+            roster_positions, num_teams=12, picks=_synthetic_picks({"WR": 10}), players_db=_SYNTH_DB)["WR"]
+        exhausted = dr.replacement_ranks(
+            roster_positions, num_teams=12, picks=_synthetic_picks({"WR": 500}), players_db=_SYNTH_DB)["WR"]
+        self.assertLess(some, none_drafted)
+        self.assertIsNone(exhausted)
 
-    def test_a_position_with_zero_slot_share_still_returns_the_floor_of_one(self):
+    def test_a_position_this_league_cannot_start_has_no_rank_rather_than_one(self):
+        # Zero starting slots is zero starter demand. Reporting rank 1 there claimed a
+        # replacement player exists for a position the league never starts -- the same
+        # 0-becomes-1 conflation, arriving from the roster settings instead of the draft.
         ranks = dr.replacement_ranks(["QB", "RB", "WR", "TE"], num_teams=12)
-        self.assertEqual(ranks["DL"], 1)
+        self.assertIsNone(ranks["DL"])
 
 
 class DraftedCountsByPositionPublicWrapperTests(unittest.TestCase):
@@ -236,8 +260,8 @@ class CliffAnchoredQBReplacementTests(unittest.TestCase):
     def test_replacement_rises_as_startables_drain_and_collapses_at_exhaustion(self):
         # Dynamic behavior for free: drafted startables leave the pool, the above-floor
         # count shrinks, replacement rises toward the top -- and once nothing above the
-        # floor remains, rank floors at 1 (replacement = best remaining, VOR ~ 0), the same
-        # exhaustion collapse the remaining-demand model has.
+        # floor remains there is no startable replacement to report at all, the same domain
+        # boundary the remaining-demand branch declines on.
         floor = {"QB": 150.0}
         drained = self._pool(self.CLIFF_CURVE[20:])   # 4 startables + 200 remain above floor
         level_drained = dr.replacement_levels(drained, "value", ["QB", "SUPER_FLEX"],
@@ -245,8 +269,10 @@ class CliffAnchoredQBReplacementTests(unittest.TestCase):
         self.assertEqual(level_drained, 200.0)  # still the last one above the floor
         exhausted = self._pool([130.0, 60.0, 30.0])   # nothing startable left at all
         level_exhausted = dr.replacement_levels(exhausted, "value", ["QB", "SUPER_FLEX"],
-                                                num_teams=12, startable_floors=floor)["QB"]
-        self.assertEqual(level_exhausted, 130.0)  # rank 1: best remaining, VOR -> 0
+                                                num_teams=12, startable_floors=floor)
+        # No startable player left is not "the best leftover is the replacement". This was the
+        # second, independent copy of the >= 1 clamp; it now declines like the demand branch.
+        self.assertNotIn("QB", level_exhausted)
 
     def test_positions_without_a_floor_are_identical_to_the_demand_model(self):
         pool = pd.DataFrame({
@@ -398,19 +424,28 @@ class DemandPicksSplitTests(unittest.TestCase):
         roster_positions = self.league["roster_positions"]
         num_teams = self.league["total_rosters"]
 
-        old_drafted_counts = dr._drafted_counts_by_position(history, self.players_db)
-        levels_old = dr.replacement_levels(proj_pool, "_points", roster_positions, num_teams, drafted_counts=old_drafted_counts)
-        levels_split = dr.replacement_levels(proj_pool, "_points", roster_positions, num_teams, drafted_counts={})
+        unsplit_demand = dr.remaining_starter_demand(roster_positions, num_teams, history, self.players_db)
+        levels_unsplit = dr.replacement_levels(proj_pool, "_points", roster_positions, num_teams, unsplit_demand)
+        levels_split = dr.replacement_levels(proj_pool, "_points", roster_positions, num_teams)
 
-        # The real bug, at its actual source: WR/RB's already-exceeded demand collapses
-        # replacement level UP (toward the best remaining player's own high value) in the old,
-        # unsplit accounting -- demand_picks=[] (drafted_counts={}) keeps it at its normal,
-        # deeper, lower-value rank.
-        self.assertGreater(levels_old["WR"], levels_split["WR"])
-        self.assertGreater(levels_old["RB"], levels_split["RB"])
-        # QB demand is essentially untouched either way, so its replacement level shouldn't
-        # swing much between the two.
-        self.assertAlmostEqual(levels_old["QB"], levels_split["QB"], delta=max(levels_split["QB"] * 0.1, 5.0))
+        # Same bug, now visible in its honest form. Fed the prior phase's history, every team's
+        # WR/RB starting slots read as already filled -- which is TRUE of those rosters -- so
+        # the starter-demand model correctly declines to price WR/RB at all rather than
+        # collapsing their replacement level up toward the best remaining player, which is what
+        # the >= 1 clamp used to do. demand_picks=[] asks the same question of a fresh league
+        # and gets a real, deeper, lower-value rank back.
+        # WR is the position that history genuinely exhausts (67 of its 81 picks): every
+        # team's WR slots read as filled, so WR is declined rather than priced off a collapsed
+        # rank-1 anchor. RB is only lightly touched by the same history, so it stays priced --
+        # at a shallower, higher-value rank, which is the honest consequence of some of its
+        # demand having been met, not a collapse.
+        self.assertNotIn("WR", levels_unsplit)
+        self.assertIn("WR", levels_split)
+        self.assertGreater(levels_unsplit["RB"], levels_split["RB"])
+        # QB demand is essentially untouched by that history either way, so QB stays priced
+        # and its level shouldn't swing much between the two.
+        self.assertAlmostEqual(levels_unsplit["QB"], levels_split["QB"],
+                               delta=max(levels_split["QB"] * 0.1, 5.0))
 
     def test_compute_draft_board_actually_passes_demand_picks_to_drafted_counts(self):
         # The direct wiring proof -- decoupled from _scale_vor_to_bpa's pool-relative scaling

@@ -1402,3 +1402,163 @@ horizon_replacement(...) -> dict[pos, {rank, value, pool_depth, certain, sensiti
 18. `position_view_depth` handles the no-starter-demand case without raising.
 19. The `demand_picks` rookie-draft scenario: per-team demand fed a rookie-only history must not
     claim full starter demand at every position.
+
+---
+
+# Appendix — the decomposition, implemented
+
+Implemented under sign-off. **Stopped short of one thing**, recorded at the end.
+
+## What changed
+
+Five named quantities in `draft_room.py` replace two fused ones.
+
+| | kind | reaches zero | may be unknown |
+|---|---|---|---|
+| `remaining_starter_demand` | exact, per-team, bounded, order-invariant | yes, exactly | no |
+| `remaining_draft_capacity` | exact, bounded | yes, exactly | no |
+| `estimated_bench_demand` | inferred behavioural | yes | **yes — `None`** |
+| `replacement_levels` | valuation anchor, exact inputs only | key omitted outside its domain | n/a |
+| `horizon_replacement` | contextual | n/a | yes — `certain=False, value=None` |
+
+`expected_positional_consumption` is **removed**, not repaired: it fused an exactly-derivable
+stock with a behavioural prior into one number that was neither exact nor honest about its
+uncertainty. `team_filled_by_position` is the one new producer; `_team_starters_filled` now
+delegates to it, so "what has this team taken" has a single definition.
+
+**Both `>= 1` clamps are closed.** The demand branch returns `None` below one whole unfilled
+slot; the `startable_floors` branch declines when no remaining player clears the threshold.
+
+**Every `.get(..., default)` absence site is resolved.** `_vor` is NaN where the anchor is
+absent instead of the player's own value minus itself; `_scale_vor_to_bpa` keeps NaN as NaN
+including on the all-non-positive early return; `bpa`, `universal_value` and `final_score` are
+normalised to `None` in the emitted records; `position_view_depth` has an explicit
+no-starter-demand rule; `roster_diagnostics` uses the pre-draft anchor and **excludes and
+counts** unpriced players rather than defaulting them to `0.0`.
+
+## Measured: old engine vs new, same 240 picks
+
+Replaying the identical board through both engines isolates the valuation change from any
+change in what the engine would pick.
+
+**Demand and anchor.** Round 8, RB: old remaining demand `1.0` → rank 1 → level `178.0`; new
+`6.3` → rank 6 → level `162.0`. The old model had already cancelled eleven teams' unmet RB
+need against a few teams' surplus. Round 10, QB: old `−7.0` → rank 1 → level `324.0`; new
+`0.0` → **declined**. Round 20, WR: old `−71.0` → still reporting a level.
+
+**Live valuation window.**
+
+| | `bpa` spread by round | dies at |
+|---|---|---|
+| old | 100.0 through rd 8, then **0.00 for rounds 9–20** | round 9 |
+| new | 100.0 through rd 14, 23 rows at rd 15, 0 rows from rd 16 | round 16 |
+
+Positions decline progressively as they genuinely exhaust — QB at round 10, WR at 11,
+RB/K/DEF at 13, TE at 16 — instead of the whole board going flat at once. **The honest window
+is longer than the old dishonest one**: correcting the per-team accounting keeps real
+differentiation alive for roughly six more rounds, and what follows is reported as absence
+rather than as `0.00`.
+
+**A pick change worth naming.** Round 6 top five by `final_score`:
+
+- old: `DEF WR K WR K`
+- new: `WR WR RB RB RB`
+
+Economically: the aggregate had already declared RB/WR/TE demand nearly satisfied at round 6
+(one team's surplus cancelling another's need), which collapsed their replacement levels
+upward and crushed offensive VOR. K and DEF, whose demand the aggregate happened to measure
+correctly, were left standing. Fixing the accounting restores the offensive spread and K/DEF
+fall back behind it **without any positional rule** — the same defect the K/DST-too-early
+complaint was pointing at, arriving from the demand layer rather than from anything about
+kickers.
+
+## Finding: fractional flex shares interact with the domain rule
+
+`starter_slot_counts` spreads a FLEX slot fractionally (1/3 each to RB/WR/TE). A single team's
+unfilled FLEX therefore contributes only ~0.33 of demand at any one position, so **flex-only
+demand never opens the domain by itself** — it takes three such teams to reach one whole slot.
+This is a pre-existing property of the fractional model, invisible while every rank was floored
+at 1, and now load-bearing. It is why RB sits at `0.7` and TE at `0.3` late on the audit board
+and both decline. Correct under the approved contract ("at least one whole starting slot"), and
+recorded because it makes the unpriced regime start earlier than a whole-slot reading would.
+
+## #68 resolved: `demand_picks` is a demand-universe override
+
+Traced rather than assumed. Its only production caller passes `demand_picks=[]`, and `picks`
+there carries **one** roster. So the two parameters were never the same universe: `picks` is
+"my roster and what is gone from the pool", `demand_picks` is "what the league has consumed".
+
+Per-team demand makes a stronger claim than the league-wide subtraction did, so the parameter's
+domain is now stated and checked: a history carrying **more distinct rosters than the league has
+teams** did not come from this league and is refused. An empty history is well defined and
+unchanged — no picks means every team still needs its starters, which is what both models say.
+
+The earlier hazard note said feeding it a rookie-only history would be "strictly worse than
+today." **That was wrong and is corrected here:** the aggregate is equally blind to the veteran
+rosters, and per-team is strictly better in that regime because it cannot go negative. What
+actually changed is sharper and better: fed a real prior-phase history, the model finds every
+team's WR slots filled and **declines to price WR** rather than collapsing its anchor to the
+best remaining player. `demand_picks=[]` asks the same question of a fresh league and gets a
+real, deeper rank — the same thing `remaining_demand=None` now means for `roster_diagnostics`.
+
+## Tests
+
+1021 green (from 989). 31 new invariants in `test_demand_decomposition.py`, written before the
+implementation, covering exactness and boundedness, order-invariance, the zero-vs-one
+distinction on both branches, absence discipline through `_scale_vor_to_bpa` and
+`position_view_depth`, mutation proof that bench appetite cannot reach the anchor, and the
+roster-universe refusal.
+
+Test migrations were required where existing tests **encoded the defect as intent**, and are
+called out rather than quietly rewritten:
+
+- `test_a_position_with_zero_slot_share_still_returns_the_floor_of_one` asserted rank 1 for a
+  position the league cannot start.
+- `test_replacement_rises_as_startables_drain_and_collapses_at_exhaustion` asserted the
+  best-remaining collapse on the startable-floor branch.
+- `SelfCalibrationTests` tested the removed observed-share blend. Two of its cases were
+  assertions of the defect: the share's conservation property, and *"a room hammering RBs
+  should be expected to keep hammering RBs"* — which reads a pick as evidence of appetite when
+  a pick is consumption of demand.
+
+## STOPPED: the decision layer has no defined behaviour on an unpriced board
+
+The valuation layer is complete and correct. The layer below it is not, and fixing it is not
+mine to decide.
+
+Walking the real board forward, `pick_synthesis.build_snapshot` **fails from round 11** —
+earlier than the board's own round-16 blackout, because `draft_strategy.positional_forfeits`
+builds a value curve across the *whole* board, so a single unpriced position poisons it:
+
+```
+rd 10: OK     top=T Pollard  RB  uv=90.0  tav=90.33
+rd 11: FAILS  TypeError at draft_strategy.py:501  (curve.sort(reverse=True))
+```
+
+**The decision stack requires a fully priced board, not a mostly-priced one.** The inventory of
+sites that do arithmetic on a board value, each of which needs a *semantic* answer rather than a
+guard:
+
+| site | quantity | question it cannot currently answer |
+|---|---|---|
+| `draft_strategy.py:501` | positional forfeit curve | what curve does an unpriced position have? |
+| `draft_strategy.py:514` | `opportunity_cost = tav × (1 − survival)` | cost of losing a player you cannot price? |
+| `draft_strategy.py:525` | `final_score × take_probability` | denial weight without a value? |
+| `draft_strategy.py:545` | `premium = final_score − universal_value` | context premium over an absent base? |
+| `pick_synthesis.py:336` | necessity standout margin | lead over an unpriced field? |
+| `pick_synthesis.py:512–530` | decision-path flags, `context_elevated` | |
+| `pick_synthesis.py:559–569` | decision regime, near-tie | |
+
+Every one of those is **task #61 — what the board does when `bpa` is undefined** — which was
+reserved as an open decision. Answering seven of them to keep the stack running would be
+deciding #61 by implementation, so the stack is left as it is and the failure is left loud.
+
+One thing was changed here, because the contract compels it and it decides nothing:
+`pick_synthesis.narrow_candidates` now orders rows with an explicit key — **an unpriced row
+never outranks a priced one**, ties break on `player_id`. It substitutes no number for an
+absent score and takes no position on what the board should do once nothing can be priced. It
+also closes the separately-noted determinism gap where that sort dropped the `player_id`
+tiebreak and survived only on Python's sort being stable.
+
+**Not attempted, deliberately:** no coefficient was tuned, no fallback value invented, and no
+behaviour preserved by retaining a quantity whose meaning this audit established is wrong.

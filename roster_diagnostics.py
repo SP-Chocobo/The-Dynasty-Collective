@@ -59,6 +59,10 @@ class TeamDiagnostics:
     starting_lineup_value: float
     bench_surplus_value: float
     replacement_level_surplus: float
+    # How many of this roster's players that surplus could NOT be computed for -- their
+    # position carries no replacement level in the scored pool. Reported rather than folded
+    # into the number above; see the surplus computation for why.
+    replacement_level_unpriced: int
     positional_counts: dict
     thin_positions: tuple
     structural_holes: tuple
@@ -104,8 +108,15 @@ def compute_team_diagnostics(
         league=league, mode=mode, pool_scope=pool_scope,
     )
     scored_pool = pd.DataFrame(scored_board)
+    # PRE-DRAFT anchor, deliberately: this harness runs against a FULLY DRAFTED board, where
+    # every position's remaining starter demand is zero and a live replacement level is
+    # therefore undefined (see draft_room.replacement_levels' domain). Passing no demand asks
+    # for the pre-draft level -- the value of the Nth-best player in the field, N = league-wide
+    # starting slots -- which is what "value above replacement across a roster" has always
+    # meant here, and, per the same audit, what the live anchor was numerically equal to
+    # anyway for as long as it was defined.
     repl_levels = (
-        dr.replacement_levels(scored_pool, "universal_value", roster_positions, num_teams, drafted_counts=dict(drafted_counts))
+        dr.replacement_levels(scored_pool, "universal_value", roster_positions, num_teams)
         if not scored_pool.empty else {}
     )
 
@@ -139,14 +150,22 @@ def compute_team_diagnostics(
                 thin_positions.append(pos)
 
         structural_holes = tuple(sorted(usable_positions - set(positional_counts)))
+        # No default. A position with no replacement level has no surplus to report, and
+        # defaulting it to 0.0 silently turned this into a plain sum of universal_value --
+        # numerically identical to accumulated_value above, under a name that claims to mean
+        # something else. Unpriced players are excluded and COUNTED, so the number states its
+        # own coverage instead of quietly absorbing the gap.
+        priced = [p for p in players if p["position"] in repl_levels]
         replacement_level_surplus = round(
-            sum(p["uv"] - repl_levels.get(p["position"], 0.0) for p in players), 2,
+            sum(p["uv"] - repl_levels[p["position"]] for p in priced), 2,
         )
+        replacement_level_unpriced = len(players) - len(priced)
 
         results[rid] = TeamDiagnostics(
             roster_id=rid, accumulated_value=accumulated_value,
             starting_lineup_value=starting_lineup_value, bench_surplus_value=bench_surplus_value,
             replacement_level_surplus=replacement_level_surplus,
+            replacement_level_unpriced=replacement_level_unpriced,
             positional_counts=positional_counts, thin_positions=tuple(sorted(thin_positions)),
             structural_holes=structural_holes,
         )

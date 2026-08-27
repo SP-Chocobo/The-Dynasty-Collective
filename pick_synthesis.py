@@ -165,12 +165,40 @@ DEFAULT_NARROW_COUNT = 5
 POSITION_VIEW_DEPTH_CAP = 12
 
 
-def position_view_depth(replacement_rank: int) -> int:
+def _board_order(row: dict) -> tuple:
+    """Sort key for a board row: highest final_score first, UNPRICED rows last, player_id as
+    the tiebreak.
+
+    Two things this deliberately does not do. It does not substitute a number for an absent
+    score -- a row whose position has no replacement level has no team_acquisition_value, and
+    treating that as 0.0 would rank it exactly where "worth nothing" ranks, which is a claim.
+    And it does not decide what the board SHOULD do once nothing on it can be priced; that is
+    an open product decision, and all this settles is that an unpriced row never outranks a
+    priced one and that the resulting order is deterministic.
+
+    The player_id tiebreak also closes a real determinism gap: sorting on final_score alone
+    left rows with equal scores in whatever order the board happened to arrive in, and
+    survived only on Python's sort being stable -- while draft_room's own board sort has
+    carried an explicit player_id tiebreak for exactly this reason since the players_db
+    iteration-order bug."""
+    score = row.get("final_score")
+    return (score is None, -score if score is not None else 0.0, str(row.get("player_id")))
+
+
+def position_view_depth(replacement_rank: Optional[int]) -> int:
     """Position View Depth = min(this league's real replacement-rank demand for the position,
     POSITION_VIEW_DEPTH_CAP). A thin position (replacement_rank at or below the cap) is never
     truncated below its own real demand; a deep one is capped, not expanded, at the ceiling.
     Named and isolated specifically so the cap is one obvious, tunable constant rather than a
-    number buried inside build_snapshot's own wiring."""
+    number buried inside build_snapshot's own wiring.
+
+    A position with no remaining starter demand (draft_room.replacement_ranks returns None,
+    not a rank) shows its single best player. That is a DISPLAY decision made here, on purpose:
+    once no starting slot is unfilled there is no starter-relevant depth to surface, and one
+    row is the honest amount. It deliberately does not read as "demand is 1" -- the engine no
+    longer has a rank to give, and this layer chooses what to show without inventing one."""
+    if replacement_rank is None:
+        return 1
     return min(replacement_rank, POSITION_VIEW_DEPTH_CAP)
 
 # How much bigger this player's own gap to the next-best remaining player at his position has
@@ -668,7 +696,7 @@ def narrow_candidates(
     always did: a live debate is never blind to a player the user is specifically considering
     (a dynasty stash, a personal favorite, a punt pick) just because the deterministic board
     doesn't currently rank him near the top OR at the top of his own position."""
-    ranked = sorted(board, key=lambda r: r["final_score"], reverse=True)
+    ranked = sorted(board, key=_board_order)
     candidates = list(ranked[:top_n])
     included_ids = {r["player_id"] for r in candidates}
 
@@ -691,7 +719,7 @@ def narrow_candidates(
     # Re-sorted after every addition above -- rank order has to stay meaningful (rank_delta
     # in diff_snapshots depends on it) even once best-at-position/user-flagged rows get
     # appended out of value order.
-    candidates.sort(key=lambda r: r["final_score"], reverse=True)
+    candidates.sort(key=_board_order)
     return candidates
 
 
@@ -811,8 +839,8 @@ def build_snapshot(
     # position (WR/RB can run 30+ replacement rank in a real league) never balloons the
     # candidate set past what's actually useful to display or affordable to fully analyze.
     num_teams = league.get("total_rosters") or len({p.get("roster_id") for p in picks}) or 1
-    drafted_counts = dr.drafted_counts_by_position(picks, players_db)
-    replacement_ranks = dr.replacement_ranks(league.get("roster_positions") or [], num_teams, drafted_counts)
+    replacement_ranks = dr.replacement_ranks(
+        league.get("roster_positions") or [], num_teams, picks, players_db)
     position_depth = {pos: position_view_depth(rank) for pos, rank in replacement_ranks.items()}
     narrowed = narrow_candidates(
         board, top_n=top_n, user_selected_player_id=user_selected_player_id, position_depth=position_depth,
