@@ -1097,6 +1097,7 @@ def _rankings_format_match_score(tags: dict, league_format: dict) -> float:
 def load_all(
     projections_dir: Path = PROJECTIONS_DIR, default_kind: str = "rankings",
     format_hint: Optional[dict] = None,
+    conflicts: Optional[list] = None,
 ) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
     """Parse every CSV/JSON/PDF once, bucketed into (rankings_df, free_agents_df, trade_values_df).
 
@@ -1183,6 +1184,13 @@ def load_all(
     rankings_frames = [df for _, _, df, _ in rankings_entries]
     rankings_scores = [score for _, _, _, score in rankings_entries]
 
+    # Carry the format-match score ON THE ROWS. It used to be expressed only by re-ordering
+    # whole frames and letting keep="last" pick the winner, which a field-level merge cannot
+    # see -- the score is a real semantic precedence rule and has to travel with the data.
+    for frame, score in zip(rankings_frames, rankings_scores):
+        if not frame.empty:
+            frame["_format_match_score"] = score
+
     if format_hint and len(rankings_frames) > 1:
         # Stable sort: among files tied on match score (e.g. two that both mismatch, or
         # multiple with no scoring opinion at all), the (source_date, filename) order above
@@ -1190,11 +1198,290 @@ def load_all(
         # new tiebreak for files a hint can't distinguish between.
         rankings_frames = [df for _, df in sorted(zip(rankings_scores, rankings_frames), key=lambda pair: pair[0])]
 
+    # Rankings go through the field-level reconciliation; this is where the duplicates
+    # actually meet, so it is where the conflicts are. Free agents and the trade-value chart
+    # have a different schema and no horizon dimension, and keep the plain row dedup.
     return (
-        _dedup_by_name_and_position(rankings_frames, empty),
+        _reconcile_rows(rankings_frames, conflicts=conflicts),
         _dedup_by_name_and_position(fa_frames, empty),
         _dedup_by_name_and_position(tvc_frames, empty),
     )
+
+
+# -- measurement basis ----------------------------------------------------------
+#
+# A basis says what SCALE a number is on -- who computed it, under whose scoring. Two figures
+# on different bases are not comparable, and combining them is not a merge, it is a category
+# error wearing a number.
+#
+# This registry is PROVENANCE-BACKED, not filename-guessed: data/baseline/
+# sleeper_projection_provenance.json documents these two CSVs as "transcribed from Sleeper app
+# screenshots (SEASON PROJ), not an API pull", captured from two DIFFERENT leagues, neither of
+# them the one being drafted. That file also states the reason this distinction matters: "the
+# same defense is a 111-point season under the settings below and a 276-point season under
+# CBS's assumptions -- and it is the SPREAD, not the level, that VOR reads as positional
+# separation."
+_TRANSCRIBED_SOURCE_FILES = {
+    "sleeper_kicker_projections.csv",
+    "sleeper_dst_projections.csv",
+}
+
+# How much a basis is trusted, matching the ordering draft_room.CONFIDENCE_BY_SOURCE already
+# states for the same sources: a dedicated cross-league projection methodology above a season
+# total transcribed from some other league's display.
+BASIS_CONFIDENCE = {
+    "draftsharks_vendor": 80.0,
+    "sleeper_transcribed": 50.0,
+}
+
+# Positions with no multi-year dimension AT ALL, as a declared fact about the domain rather
+# than an inference from missing data. Draft Sharks publishes DST only as a redraft table and
+# a team defense has no career arc to project -- so its absent proj_3yr is "not applicable",
+# not "unknown". A kicker has a career arc, so his absence is "unknown". Collapsing those two
+# is what made it impossible to say whether restoring data was even possible.
+NO_HORIZON_DIMENSION_POSITIONS = {"DEF", "DST", "D/ST"}
+
+
+def measurement_basis(source_file) -> Optional[str]:
+    """Which measurement basis a source file's numbers are on, or None if unknown."""
+    if source_file is None:
+        return None
+    try:
+        if pd.isna(source_file):
+            return None
+    except (TypeError, ValueError):
+        pass
+    name = str(source_file).strip()
+    if not name:
+        return None
+    if name in _TRANSCRIBED_SOURCE_FILES:
+        return "sleeper_transcribed"
+    return "draftsharks_vendor"
+
+
+def _basis_for_position(rows: pd.DataFrame) -> Optional[str]:
+    """The single basis a position is priced on: COVERAGE first, stated confidence second.
+
+    Coverage wins deliberately. Taking the higher-confidence basis at K would cut the pool from
+    37 kickers to the vendor table's 13 -- re-breaking the supply defect measured to overstate
+    the best K/DEF's VOR by ~45%, because replacement level would be computed off a scattered
+    vendor subset. A missing horizon nudge is the smaller loss of the two, and unlike a
+    distorted anchor it is recorded rather than silent.
+    """
+    if rows.empty or "measurement_basis" not in rows.columns:
+        return None
+    ranked = []
+    for basis, sub in rows.groupby("measurement_basis"):
+        ranked.append((len(set(sub["norm_name"])), BASIS_CONFIDENCE.get(basis, 0.0), basis))
+    if not ranked:
+        return None
+    ranked.sort(reverse=True)
+    return ranked[0][2]
+
+
+def _precedence_sort_key(row) -> tuple:
+    """Stated precedence, most significant first:
+
+      1. basis confidence  -- a vendor methodology over a transcribed screenshot
+      2. format match      -- how well the file's own format assumptions fit THIS league
+                              (_rankings_format_match_score; higher is better). This was
+                              previously expressed by re-ordering whole frames and relying on
+                              keep="last", which a field-level merge cannot see, so it is
+                              carried on the row instead.
+      3. recency           -- a newer source_date
+    Filename is applied separately, by a stable pre-sort (see _order_by_precedence), because
+    it must keep the LAST name winning -- the direction the old keep="last" dedup had. Both
+    directions are equally arbitrary, and changing which arbitrary answer is given would move
+    real numbers for no reason.
+    """
+    confidence = BASIS_CONFIDENCE.get(row.get("measurement_basis"), 0.0)
+    try:
+        format_score = float(row.get("_format_match_score") or 0.0)
+    except (TypeError, ValueError):
+        format_score = 0.0
+    date = str(row.get("source_date") or "")
+    return (-confidence, -format_score, _negated_date(date))
+
+
+def _order_by_precedence(group: list) -> list:
+    """Best candidate first.
+
+    Two passes, relying on sort stability: filename DESCENDING first, then the semantic keys.
+    The descending filename preserves the direction the previous `keep="last"` dedup had, so
+    files that nothing semantic separates resolve to the same winner they always did -- the
+    point of the filename tiebreak is determinism across checkouts, and flipping which
+    arbitrary answer it gives would move real numbers for no reason.
+    """
+    by_name = sorted(group, key=lambda row: str(row.get("source_file") or ""), reverse=True)
+    return sorted(by_name, key=_precedence_sort_key)
+
+
+def _negated_date(date: str) -> str:
+    """Sort newer-first as a string key, without parsing: complement each digit of an ISO date."""
+    if not date:
+        return "~"  # sorts after any digit-complement, so undated rows lose to dated ones
+    return "".join(str(9 - int(ch)) if ch.isdigit() else ch for ch in date)
+
+
+_CONFLICT_NOTES = {
+    "measurement_basis": "a higher-confidence measurement basis wins",
+    "format_match": "the file whose format assumptions fit this league wins",
+    "source_date": "the newer source_date wins",
+    "filename": ("decided by an ARBITRARY filename comparison -- nothing semantic separated "
+                 "these sources"),
+}
+
+
+def _conflict_reason(winner, loser) -> str:
+    """Which precedence rule actually decided this discard. Naming it is the point: a conflict
+    resolved by a filename is not the same event as one resolved by recency, and only one of
+    the two is a rule."""
+    if BASIS_CONFIDENCE.get(winner.get("measurement_basis"), 0.0) != \
+            BASIS_CONFIDENCE.get(loser.get("measurement_basis"), 0.0):
+        return "measurement_basis"
+    if (winner.get("_format_match_score") or 0.0) != (loser.get("_format_match_score") or 0.0):
+        return "format_match"
+    if str(winner.get("source_date")) != str(loser.get("source_date")):
+        return "source_date"
+    return "filename"
+
+
+_RECONCILED_IDENTITY_COLUMNS = {"norm_name", "_name_key", "_dedup_key"}
+# The fields worth recording a disagreement about -- the numbers that become a valuation.
+_CONFLICT_TRACKED_FIELDS = {"projection", "proj_3yr", "trade_value", "rank"}
+
+
+def _reconcile_rows(frames: list[pd.DataFrame], conflicts: Optional[list] = None) -> pd.DataFrame:
+    """Merge FIELDS under a stated precedence, not rows under a filename.
+
+    This replaced `drop_duplicates(subset=..., keep="last")`, under which the winning ROW
+    replaced the loser wholesale. Measured on the committed baseline, that discarded 51 fields
+    where the winner was null and a loser had a value, and resolved 1084 field-level conflicts
+    per load with no record of any of them. A merge that silently drops a value has not
+    succeeded.
+
+    Two rules, in order:
+
+    1. ONE BASIS PER POSITION (see _basis_for_position). A field-level merge across bases would
+       give K a pool of 13 players averaging 153 points beside 24 averaging 88 -- a 1.43x step
+       inside one position, landing straight on the anchor VOR measures spread against.
+    2. FIELD-LEVEL MERGE within that basis, first non-null in precedence order, with every
+       disagreement recorded.
+
+    Rule 1 is why this does not restore K's proj_3yr. The figure exists, on a basis that does
+    not price the position, and pairing them was measured to inflate every kicker's apparent
+    trajectory by a median 1.43x. The absence is now stated (see proj_3yr_state) rather than an
+    accident of alphabetical order.
+    """
+    if conflicts is None:
+        conflicts = []
+    non_empty = [f for f in frames if f is not None and not f.empty]
+    if not non_empty:
+        return pd.DataFrame(columns=["name", "norm_name"])
+    combined = pd.concat(non_empty, ignore_index=True, sort=False)
+    if "source_file" in combined.columns:
+        combined["measurement_basis"] = combined["source_file"].map(measurement_basis)
+    else:
+        combined["measurement_basis"] = None
+
+    # 1. one basis per position
+    if "position" in combined.columns:
+        keep = []
+        for position, rows in combined.groupby(combined["position"].astype(str)):
+            chosen = _basis_for_position(rows)
+            if chosen is None:
+                keep.append(rows)
+                continue
+            kept = rows[rows["measurement_basis"] == chosen]
+            dropped = rows[rows["measurement_basis"] != chosen]
+            for basis, sub in dropped.groupby("measurement_basis"):
+                conflicts.append({
+                    "player": f"<all {position}>", "field": "measurement_basis",
+                    "chosen_source": chosen, "chosen_value": chosen,
+                    "discarded_source": basis, "discarded_value": f"{len(sub)} rows",
+                    "reason": "single_basis_per_position",
+                    "note": (f"{position} is priced on {chosen}; {basis} rows excluded so one "
+                             "position is never measured on two scales"),
+                })
+            keep.append(kept)
+        combined = pd.concat(keep, ignore_index=True, sort=False) if keep else combined
+
+    # 2. field-level merge within the chosen basis
+    if "position" in combined.columns:
+        combined["_dedup_key"] = combined["norm_name"] + "|" + combined["position"].map(_position_group)
+    else:
+        combined["_dedup_key"] = combined["norm_name"]
+    value_columns = [c for c in combined.columns if c not in _RECONCILED_IDENTITY_COLUMNS]
+    # Plain dicts, not iterrows(): this walks every candidate of every field of every player,
+    # and pandas row access dominated the load time by an order of magnitude.
+    records = combined.to_dict("records")
+    grouped: dict = {}
+    for record in records:
+        grouped.setdefault(record["_dedup_key"], []).append(record)
+
+    merged_rows = []
+    for _key, group in grouped.items():
+        ordered = _order_by_precedence(group)
+        winner = ordered[0]
+        row = {"norm_name": winner["norm_name"]}
+        for column in value_columns:
+            chosen_value, chosen_source = None, None
+            for candidate in ordered:
+                value = candidate.get(column)
+                if value is None or (isinstance(value, float) and value != value):
+                    continue
+                if chosen_value is None:
+                    chosen_value, chosen_source = value, candidate.get("source_file")
+                    continue
+                if column in _CONFLICT_TRACKED_FIELDS and value != chosen_value:
+                    reason = _conflict_reason(winner, candidate)
+                    conflicts.append({
+                        "player": str(winner.get("name")), "field": column,
+                        "chosen_source": chosen_source, "chosen_value": chosen_value,
+                        "discarded_source": candidate.get("source_file"), "discarded_value": value,
+                        "reason": reason,
+                        "note": _CONFLICT_NOTES[reason],
+                    })
+            row[column] = chosen_value
+            if column in ("projection", "proj_3yr"):
+                row[f"{column}_source"] = chosen_source
+        merged_rows.append(row)
+    result = pd.DataFrame(merged_rows)
+    return _assign_horizon_state(result)
+
+
+def _assign_horizon_state(df: pd.DataFrame) -> pd.DataFrame:
+    """known / unknown / not_applicable, with a reason on every non-known row.
+
+    Three states because the old two could not distinguish "this position has no career arc"
+    from "this player has one and we do not have it" -- and that is exactly the distinction
+    that decides whether restoring the data is even possible.
+    """
+    if df.empty:
+        for column in ("proj_3yr_state", "proj_3yr_reason"):
+            df[column] = pd.Series(dtype="object")
+        return df
+    states, reasons = [], []
+    for row in df.to_dict("records"):
+        position = str(row.get("position") or "").upper()
+        value = row.get("proj_3yr")
+        has_value = value is not None and not (isinstance(value, float) and value != value)
+        if has_value:
+            states.append("known")
+            reasons.append("")
+        elif position in NO_HORIZON_DIMENSION_POSITIONS:
+            states.append("not_applicable")
+            reasons.append("a team defense has no career arc to project; no source publishes one")
+        else:
+            basis = measurement_basis(row.get("projection_source") or row.get("source_file"))
+            reasons.append(
+                f"no multi-year figure on the {basis} basis that prices this position"
+                if basis else "no multi-year figure from any source carrying this player"
+            )
+            states.append("unknown")
+    df["proj_3yr_state"] = states
+    df["proj_3yr_reason"] = reasons
+    return df
 
 
 def _dedup_by_name_and_position(frames: list[pd.DataFrame], empty: pd.DataFrame) -> pd.DataFrame:
@@ -1228,15 +1515,18 @@ def _dedup_by_name_and_position(frames: list[pd.DataFrame], empty: pd.DataFrame)
     ).drop(columns="_dedup_key")
 
 
-def _merge_rankings(*frames: pd.DataFrame) -> pd.DataFrame:
-    """Combine rankings frames from multiple pools (e.g. baseline + global + league-specific).
+def _merge_rankings(*frames: pd.DataFrame, conflicts: Optional[list] = None) -> pd.DataFrame:
+    """Combine rankings frames from multiple pools (baseline + global + league-specific).
 
-    Frames passed later win ties for the same player — callers should pass
-    the more-specific/more-authoritative source last (a league's own
-    rankings override should beat the shared global pool for that player).
+    Order no longer decides anything on its own: precedence is basis confidence, then recency,
+    then a filename comparison only where nothing semantic separates two sources -- and that
+    last case is recorded as arbitrary rather than left to look like a rule. See _reconcile_rows
+    for why this is a field-level merge and why one position is only ever priced on one basis.
+
+    Only the rankings pool goes through this. Free agents and the trade-value chart have a
+    different schema and no horizon dimension, so they keep the plain row dedup.
     """
-    non_empty = [f for f in frames if not f.empty]
-    return _dedup_by_name_and_position(non_empty, pd.DataFrame(columns=["name", "norm_name"]))
+    return _reconcile_rows(list(frames), conflicts=conflicts)
 
 
 def _compute_freshness(df: pd.DataFrame) -> tuple[Optional[str], Optional[int], bool]:
@@ -1385,16 +1675,34 @@ class DataMerger:
 
     def _load(self) -> None:
         empty = pd.DataFrame(columns=["name", "norm_name"])
-        baseline_rankings, _, _ = load_all(self.baseline_dir / "rankings", format_hint=self.league_format)
+        # Every field-level disagreement this load resolved, and how. A merge that silently
+        # discards a value has not succeeded -- 1084 of these were being resolved per load with
+        # no record of any of them.
+        self.reconciliation_conflicts: list[dict] = []
+        conflicts = self.reconciliation_conflicts
+        baseline_rankings, _, _ = load_all(self.baseline_dir / "rankings",
+                                            format_hint=self.league_format, conflicts=conflicts)
         _, _, baseline_tvc = load_all(self.baseline_dir / "trade_value", default_kind="trade_value_chart")
-        global_rankings, _, global_tvc = load_all(self.global_dir, format_hint=self.league_format)
+        global_rankings, _, global_tvc = load_all(self.global_dir,
+                                                   format_hint=self.league_format, conflicts=conflicts)
         if self.league_dir:
-            league_rankings, league_fa, league_tvc = load_all(self.league_dir, format_hint=self.league_format)
+            league_rankings, league_fa, league_tvc = load_all(self.league_dir,
+                                                               format_hint=self.league_format,
+                                                               conflicts=conflicts)
         else:
             league_rankings, league_fa, league_tvc = empty.copy(), empty.copy(), empty.copy()
-        self.projections = _merge_rankings(baseline_rankings, global_rankings, league_rankings)
+        self.projections = _merge_rankings(
+            baseline_rankings, global_rankings, league_rankings, conflicts=conflicts,
+        )
         self.free_agents = league_fa
-        self.trade_values = _merge_rankings(baseline_tvc, global_tvc, league_tvc)
+        # NOT _merge_rankings: the trade-value chart has a different schema (asset_type/value,
+        # and rows for rookie pick slots and future picks that have no position at all) and no
+        # horizon dimension. Routing it through the rankings reconciliation dropped every
+        # non-player asset and stamped a proj_3yr_state onto a table that has no proj_3yr.
+        self.trade_values = _dedup_by_name_and_position(
+            [f for f in (baseline_tvc, global_tvc, league_tvc) if not f.empty],
+            pd.DataFrame(columns=["name", "norm_name"]),
+        )
         # Precomputed once per _load()/reload(), not per lookup -- _find_match's fuzzy key
         # match used to recompute name_key() over every row of whichever table it was searching
         # on EVERY call (measured: ~11ms per composite_player_score call, ~330ms for a 30-player
