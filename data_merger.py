@@ -366,7 +366,35 @@ def _extract_reviewed_date(full_text: str) -> Optional[str]:
         return None
 
 
-def _sniff_pdf_kind(path: Path) -> str:
+def _sniff_pdf_kind_from_text(text: str) -> Optional[str]:
+    """Which Draft Sharks tool this page text came from, or None when nothing recognises it.
+
+    None is the important return. This used to fall through to "rankings" for anything it did
+    not recognise -- including an unreadable file -- so a mis-sniff silently handed the wrong
+    document to parse_draftsharks_pdf, which would then read whatever regex-shaped lines it
+    happened to contain. No parser is a default.
+
+    Rankings is identified POSITIVELY, by the structure of its own table (a stat row in either
+    published layout, plus a TEAM/POSITION/rank line), rather than by being the last option
+    left. That is a stronger test than the old fallthrough, not a weaker one.
+    """
+    upper = (text or "").upper()
+    if "TRADE VALUE CHART" in upper:
+        return "trade_value_chart"
+    if "FREE AGENT FINDER" in upper or "3D ROS" in upper:
+        return "free_agents"
+    if "LEAGUE ANALYZER" in upper or "LEAGUE POWER RANKINGS" in upper:
+        return "league_analyzer"
+    lines = [line.strip() for line in (text or "").split("\n")]
+    has_stat = any(_RANKINGS_STAT_RE.match(line) or _RANKINGS_ADP_STAT_RE.match(line)
+                   for line in lines)
+    has_team_pos = any(_RANKINGS_TEAM_POS_RE.match(line) for line in lines)
+    if has_stat and has_team_pos:
+        return "rankings"
+    return None
+
+
+def _sniff_pdf_kind(path: Path) -> Optional[str]:
     """Which Draft Sharks tool a PDF came from, sniffed from its own text (not the filename).
 
     'rankings' -> format-based, shareable across leagues. 'trade_value_chart' -> also
@@ -382,15 +410,9 @@ def _sniff_pdf_kind(path: Path) -> str:
         reader = pypdf.PdfReader(str(path))
         text = (reader.pages[0].extract_text() or "") if reader.pages else ""
     except Exception:
-        return "rankings"
-    upper = text.upper()
-    if "TRADE VALUE CHART" in upper:
-        return "trade_value_chart"
-    if "FREE AGENT FINDER" in upper or "3D ROS" in upper:
-        return "free_agents"
-    if "LEAGUE ANALYZER" in upper or "LEAGUE POWER RANKINGS" in upper:
-        return "league_analyzer"
-    return "rankings"
+        # An unreadable file is an unknown file. It used to become "rankings".
+        return None
+    return _sniff_pdf_kind_from_text(text)
 
 
 # -- Dynasty Rankings tool -----------------------------------------------------
@@ -411,6 +433,48 @@ _RANKINGS_ADP_HEADER_RE = re.compile(r"\bRK\b.*\bADP\b")
 _RANKINGS_TEAM_POS_RE = re.compile(rf"^({'|'.join(NFL_TEAM_CODES)})\s*({'|'.join(POSITION_CODES)})(\d+)$")
 
 
+def _verify_block_alignment(source: str, page_number: int, stat_rows: list, name_rows: list,
+                            rank_index: int) -> None:
+    """Both Draft Sharks PDF tools publish a page as two independent blocks -- the stats and
+    the names -- and both parsers join them by POSITIONAL INDEX. That join asserts an ordering
+    invariant about the source document, and until this existed nothing checked it.
+
+    Two checks, and deliberately only two:
+
+    * more stat rows than name rows means a NAME line went undetected, so every later stat on
+      the page belongs to the player above it. This is the dangerous direction: it leaves a
+      superficially perfect record -- valid name, team, position, contiguous rank, plausible
+      numbers -- with nothing anywhere marking it. The reverse (more names than stats) is the
+      one shortfall the parser documents, "just missed the cut" names with no stat row, and
+      stays a legitimate parse with null numerics.
+    * ranks must strictly increase down the page. A stray line matching the stat shape (a
+      footer, a page number block) lands in the middle of the block and breaks it.
+
+    Strictly increasing, NOT contiguous: real exports skip ranks -- the committed
+    te_premium_dynasty_rankings.csv carries 7 gaps over 250 rows -- so requiring contiguity
+    would reject good documents. Checking the weaker property that actually holds is the
+    difference between a check and a guess.
+
+    Raising is the point. parse_keeptradecut_pdf already refuses to emit a row it cannot place
+    (its expected_rank check truncates rather than mis-assigns), and this gives the other two
+    the same ability to know they are lost.
+    """
+    if len(stat_rows) > len(name_rows):
+        raise ValueError(
+            f"{source}: page {page_number} does not align -- {len(stat_rows)} stat rows against "
+            f"{len(name_rows)} names, so a name line went undetected and every stat after it "
+            "would be attributed to the wrong player. Refusing to emit the page."
+        )
+    ranks = [row[rank_index] for row in stat_rows]
+    for earlier, later in zip(ranks, ranks[1:]):
+        if later <= earlier:
+            raise ValueError(
+                f"{source}: page {page_number} does not align -- rank {later} follows {earlier}, "
+                "so the stat block contains a line that is not a player row. Refusing to emit "
+                "the page."
+            )
+
+
 def parse_draftsharks_pdf(path: Path) -> tuple[pd.DataFrame, Optional[str]]:
     """Parse a Draft Sharks Dynasty Rankings page saved/printed as PDF.
 
@@ -428,7 +492,7 @@ def parse_draftsharks_pdf(path: Path) -> tuple[pd.DataFrame, Optional[str]]:
     full_text_parts: list[str] = []
     records: list[dict] = []
 
-    for page in reader.pages:
+    for page_number, page in enumerate(reader.pages, start=1):
         text = page.extract_text()
         full_text_parts.append(text)
         lines = [l.strip() for l in text.split("\n")]
@@ -478,6 +542,8 @@ def parse_draftsharks_pdf(path: Path) -> tuple[pd.DataFrame, Optional[str]]:
 
             i += 1
 
+        _verify_block_alignment(getattr(path, "name", str(path)), page_number,
+                                 stat_rows, name_rows, rank_index=0)
         for idx, entry in enumerate(name_rows):
             if idx < len(stat_rows):
                 rank, proj_1yr, proj_3yr, value_3d = stat_rows[idx]
@@ -518,7 +584,7 @@ def parse_draftsharks_free_agents_pdf(path: Path) -> tuple[pd.DataFrame, Optiona
     reader = pypdf.PdfReader(str(path))
     records: list[dict] = []
 
-    for page in reader.pages:
+    for page_number, page in enumerate(reader.pages, start=1):
         lines = [l.strip() for l in page.extract_text().split("\n")]
 
         stat_rows: list[tuple[Optional[str], int, float, float, float, float]] = []
@@ -547,6 +613,8 @@ def parse_draftsharks_free_agents_pdf(path: Path) -> tuple[pd.DataFrame, Optiona
 
             i += 1
 
+        _verify_block_alignment(getattr(path, "name", str(path)), page_number,
+                                 stat_rows, name_rows, rank_index=1)
         for idx, entry in enumerate(name_rows):
             if idx < len(stat_rows):
                 status, rank, proj, ros, ceiling, value = stat_rows[idx]
@@ -950,6 +1018,12 @@ def load_projection_file(path: Path, default_kind: str = "rankings") -> tuple[pd
         source_date = None
     elif suffix == ".pdf":
         kind = _sniff_pdf_kind(path)
+        if kind is None:
+            raise ValueError(
+                f"{path.name} does not match any supported export format — refusing to guess. "
+                "A PDF that no sniffer recognises used to be handed to the Dynasty Rankings "
+                "parser by default, which would read whatever regex-shaped lines it contained."
+            )
         if kind == "league_analyzer":
             raise ValueError(f"{path.name} looks like a Draft Sharks League Analyzer export — not supported yet")
         if kind == "trade_value_chart":
