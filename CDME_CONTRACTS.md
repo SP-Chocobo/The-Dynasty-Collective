@@ -5467,3 +5467,109 @@ separate claims and a wrong claim is worth keeping visible:
 121. A constant's documented basis is a measurement, and a measurement can go stale. When the
      unit beneath it changes, the basis is re-measured and any divergence is recorded, not
      silently inherited.
+
+---
+
+# Appendix — B: the roster-state layer already exists
+
+The hypothesis was that roster-state information might be a **missing contextual layer** in the
+decision path, with a state machine like *under-covered → covered → depth +1 → depth +2 →
+saturated*. The instruction attached to it was to find out what the architecture already
+represents before adding anything, and not to duplicate a concept merely because it is not
+obvious from the final ranking.
+
+**It already exists, it reaches the decision layer, and it is doing the job.** This appendix is
+the evidence for declining to build a second one.
+
+## Inventory: where each hypothesised concept already lives
+
+| concept | represented in | reaches the draft decision layer? |
+|---|---|---|
+| starting-slot coverage at the position | `remaining_starter_demand` (league-wide), `need_bonus` (per-roster), `lineup_readiness` (per-team) | **yes**, via `need_bonus` and `replacement_levels` |
+| practical simultaneous-start capacity | `lineup_optimizer.slots_from_roster_positions` / `optimize_lineup` | **yes**, as the reachable-slot count `need_bonus` is keyed to; `optimize_lineup` itself only offline |
+| positional roster depth (peer-relative) | `depth_ratings.depth_label` — Strong/Average/Weak/None vs the league | **no** — Trade Calculator, League Depth Map, Matchup only |
+| how far above coverage the roster is | `need_bonus` decay; `bench_surplus_value` | **partly** — see the saturation gap below |
+| remaining bench capacity | `remaining_draft_capacity`, `estimated_bench_demand`, `positional_bench_appetite` | **yes**, through remaining demand |
+| remaining draft rounds / picks | `remaining_draft_capacity`, `LATE_ROUND_THRESHOLD`, necessity's `round_num` | **yes** |
+| handcuff relationships | **nowhere — zero occurrences in the codebase** | no |
+| upside | `growth_signal`, `upside_score`, `time_horizon_adj` | **yes** |
+| positional flexibility | `eligibility_bonus`, `lineup_optimizer` | **yes** |
+| overall roster imbalance | `roster_diagnostics.structural_holes` / `thin_positions` | **no** — post-draft harness only |
+
+## `need_bonus` IS the ladder, and it is monotone
+
+Measured on real boards, need_bonus by how many of a position the roster already holds:
+
+| position | reachable slots | 0 | 1 | 2 | 3 | 4 | 5 |
+|---|---|---|---|---|---|---|---|
+| QB | 1 | 4.00 | 0.00 | 0.00 | 0.00 | | |
+| RB | 3 | **8.33** | 4.33 | 0.33 | **0.00** | 0.00 | 0.00 |
+| WR | 3 | **8.33** | 4.33 | 0.33 | **0.00** | 0.00 | 0.00 |
+| TE | 2 | 4.33 | 0.33 | 0.00 | 0.00 | 0.00 | |
+
+**Zero monotonicity violations across 288 same-slot-count position pairs.** The step sizes come
+from the league's own `roster_positions` — a position reaching three slots starts higher than
+one reaching two — not from a table of invented per-position numbers.
+
+That is the hypothesised state machine, already implemented as a continuous decay: *under-covered
+→ partially covered → covered → silent*.
+
+## And it is already deciding real ties
+
+Across 84 real board-state/roster pairs:
+
+* **76%** have the leader inside a tie group of 2+ — so a tiebreak layer would engage in three
+  of every four picks. "It's only a tiebreak" is not a safety argument here.
+* In tie groups where roster coverage differed, `need_bonus` favoured the **least-covered**
+  candidate in **19 of 19** — no counterexamples.
+* It **changed the winner** versus pure `universal_value` in **6 of 52** tie groups, and **fell
+  short** of doing so in 10 of 52. Neither inert nor dominant.
+
+The worked case that looks most like the motivating example, and what actually happened:
+
+| roster 10, round 4 | coverage | universal_value | need_bonus | TAV |
+|---|---|---|---|---|
+| D Montgomery, RB | 3 / 3 — saturated | 29.00 | **0.00** | 29.00 |
+| D Adams, WR | 0 / 3 — structural hole | 19.05 | **8.33** | 27.38 |
+
+Roster fit moved the empty-position candidate up by 8.33 points and narrowed a 9.95-point
+valuation gap to 1.62. The context layer is not missing or silent — it argued hard and lost to a
+real ten-point difference in player value, which is the intended precedence.
+
+## The three genuine gaps
+
+1. **"Covered" and "saturated" are the same state.** A roster with three WRs and one with seven
+   both earn `need_bonus = 0.00`. Expressing the difference through this term would require a
+   **negative** contribution — charging a player for his position's depth, i.e. putting roster
+   state inside player value, which the doctrine forbids. If the distinction is wanted it
+   belongs in a tiebreak or presentation signal, never in `team_acquisition_value`. Pinned by
+   test so the choice is made deliberately rather than discovered.
+2. **Handcuff relationships have no representation at all** — the only hypothesised concept with
+   zero footprint anywhere in the codebase. It is also the only one that would need genuinely
+   new data (which back-up belongs to which starter), not just wiring.
+3. **Peer-relative positional depth is stranded.** `depth_ratings.depth_label` reaches three
+   surfaces and not the draft. It answers a *different* question from coverage — "am I thin
+   compared to the rest of the league" versus "can I field a lineup" — so its absence from the
+   draft path is arguably correct scoping rather than an oversight. Recorded so the choice is
+   explicit.
+
+## What is NOT recommended, and why
+
+No new contextual layer, no roster-depth points added to player value, and no
+"WRs get −X after six". The measured behaviour is a working, monotone, league-derived ladder
+that already reaches the decision layer and already decides ties at a sane rate. The open
+question it leaves is **step size** — whether 4.0 per dedicated slot gives roster fit the right
+authority, given it fell short in 10 of 52 ties — and that is a calibration decision with a
+quantified basis, not a missing feature.
+
+## Invariants
+
+122. Roster state may raise a candidate and may never lower him. `need_bonus` is non-negative at
+     every coverage level; charging a player for his position's depth would put decision context
+     inside player value.
+123. Coverage and need move in opposite directions, always. Holding more of a position never
+     buys more contextual credit for it.
+124. The ladder's step sizes derive from the league's own `roster_positions`. A position that can
+     fill more starting slots starts higher; no per-position constants are introduced.
+125. Before a contextual signal is added, the existing representation of that concept is located
+     and measured. A signal that is invisible in the final ranking is not thereby absent.
