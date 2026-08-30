@@ -5121,10 +5121,44 @@ on a different measurement basis than the engine's own projected points, so adop
 the back third of the board is ordered by a different question than the front two-thirds. That
 is a real semantic break, and it should be chosen knowingly rather than absorbed.
 
-**What is needed:** one decision — bench-depth ordering uses `trade_value` (accepting the basis
-change, ideally labelled in the UI), or the engine declines to order and says so, or a
-bench-specific value is defined. Note that the crash class this appendix's neighbour documents
-is fixed either way: nothing raises on these rows any more.
+### B2. It is not only about bench ordering — whole positions vanish from the board
+
+Re-measuring #72 after D1 and D3 turned up the sharper version of this decision. At round 16 of
+a real 12-team startup the remaining starter demand is:
+
+```
+DEF 1.0   QB 2.0   RB 3.0   TE 4.667   WR 0.667
+```
+
+WR sits at two-thirds of a flex slot — genuinely below one whole slot, so this is the domain
+rule working exactly as designed, **not** the float defect D3 repaired. The consequence:
+
+| the engine's top-ranked players | | | the best players it will not rank at all | | |
+|---|---|---|---|---|---|
+| A Barner | TE | **153 pts** | D Samuel | WR | **174 pts** |
+| G Helm | TE | 150 | M Lemon | WR | 169 |
+| T Ferguson | TE | 140 | A Pierce | WR | 166 |
+| M Mayer | TE | 112 | M Golden | WR | 164 |
+| E Stowers | TE | 82 | R Shaheed | WR | 159 |
+
+**The board's number-one recommendation projects 153 points while an unranked WR projects 174**,
+and seven more unranked WRs match or beat the top-ranked TE. Both would occupy the same bench
+slot. Under strict VOR semantics this is correct — with two-thirds of a WR starter slot left
+league-wide, a WR's surplus over a *starter* replacement is undefined — but as a recommendation
+it is a strong claim made silently.
+
+This also settles #72 in its repaired form: **the register boundary is a positional override of
+a kind `need_bonus` never achieves.** Measured across rounds 0–18, need_bonus changes the top-12
+positional composition at only two rounds, and by one player each time. The register removes an
+entire position — the deepest one on the board — for the last five rounds, totally and without
+saying so.
+
+**What is needed:** one decision, now with two parts. (a) Bench-depth ordering uses `trade_value`
+(accepting the basis change, ideally labelled), or the engine declines to order and says so, or a
+bench-specific value is defined. (b) Whether a position dropping out of the starter-demand domain
+should remove it from the board's ranking entirely, as it does today, or whether the board should
+surface those rows explicitly as "no starter demand — bench value only". Note that the crash class
+this appendix's neighbour documents is fixed either way: nothing raises on these rows any more.
 
 ---
 
