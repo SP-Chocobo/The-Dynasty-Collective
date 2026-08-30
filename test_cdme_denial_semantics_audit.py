@@ -38,7 +38,20 @@ class FidelityTests(unittest.TestCase):
     def setUpClass(cls):
         cls.merger = dm.DataMerger()
         cls.players_db = _build_pool_players_db(cls.merger)
-        cls.pick_order = [str(i) for i in range(1, 13)]
+        # A REAL multi-round order, and this is not cosmetic. It used to be a single round --
+        # `[str(i) for i in range(1, 13)]` -- with roster "1" picking first, so
+        # find_next_pick_index returned None, intervening_roster_ids returned [], and every
+        # candidate came back with rival_premium 0.0, premium_team None,
+        # premium_team_take_probability None and survival_probability 1.0. This whole class
+        # exists to prove that cdme_denial_semantics_audit reproduces pick_analysis's numbers
+        # exactly, and it was proving that 0.0 equals 0.0 and None equals None on every row.
+        # Found by an assertion-reachability trace over the suite: the three assertions inside
+        # `if a.premium_team is not None:` had never executed once.
+        #
+        # Three rounds of snake gives roster "1" 22 intervening picks before its next turn, and
+        # the same candidates then carry real values (measured: rival_premium 8.72,
+        # premium_team "2", take probability 0.55, survival 0.0).
+        cls.pick_order = ds.generate_pick_order([str(i) for i in range(1, 13)], 3, "snake")
 
     def test_rival_premium_matches_pick_analysis_exactly(self):
         board = dr.compute_draft_board(
@@ -83,11 +96,15 @@ class FidelityTests(unittest.TestCase):
         audits = audit_candidates(
             self.merger, self.players_db, [], self.pick_order, 0, "1", SUPERFLEX_LEAGUE, candidate_ids,
         )
-        for a in audits:
-            if a.premium_team is not None:
-                self.assertIsNotNone(a.premium_team_take_probability)
-                self.assertGreaterEqual(a.premium_team_take_probability, 0.0)
-                self.assertLessEqual(a.premium_team_take_probability, 1.0)
+        with_premium = [a for a in audits if a.premium_team is not None]
+        self.assertTrue(with_premium,
+                        "no candidate carries a premium team -- this fixture is not reaching "
+                        "the state the test is about, and every assertion below would be "
+                        "skipped silently")
+        for a in with_premium:
+            self.assertIsNotNone(a.premium_team_take_probability)
+            self.assertGreaterEqual(a.premium_team_take_probability, 0.0)
+            self.assertLessEqual(a.premium_team_take_probability, 1.0)
 
 
 if __name__ == "__main__":

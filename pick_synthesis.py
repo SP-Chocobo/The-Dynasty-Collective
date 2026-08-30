@@ -329,11 +329,22 @@ def compute_pick_necessity(raw_candidates: list[dict], round_num: int) -> list[t
 
     results = []
     for i, c in enumerate(raw_candidates):
-        others = [v for j, v in enumerate(values) if j != i]
-        if not others:
+        # The standout term asks how far ahead of the REST OF THE FIELD this candidate is.
+        # Rows the board could not price are not part of that field and must not enter max():
+        # they have no value to be ahead of or behind. A candidate who is himself unpriced has
+        # no margin to compute, so his standout term is the neutral 0.0 -- and that is this
+        # function's own existing rule, not a number substituted for absence. It already
+        # assigns exactly 0.0 for an absent survival, an absent cliff and an absent rival
+        # premium, and the comment below argues the standout floor is neutral rather than a
+        # penalty. His survival, cliff and run components stay real evidence.
+        others = [v for j, v in enumerate(values) if j != i and v is not None]
+        mine = c["team_acquisition_value"]
+        if mine is None:
+            standout_component = 0.0
+        elif not others:
             standout_component = NECESSITY_STANDOUT_WEIGHT  # no alternative exists at all
         else:
-            margin = c["team_acquisition_value"] - max(others)
+            margin = mine - max(others)
             normalized_margin = margin / NECESSITY_STANDOUT_REFERENCE_GAP
             # Floored at 0, not -1: "not the single best option on the board right now" is
             # neutral, not itself evidence of low urgency -- the other real signals below
@@ -509,9 +520,20 @@ def decision_path_flags(candidates: list[dict]) -> list[dict]:
     rival_premium_take_probability."""
     if not candidates:
         return []
-    tav_leader_idx = max(range(len(candidates)), key=lambda i: candidates[i]["team_acquisition_value"])
-    leader_uv = candidates[tav_leader_idx]["universal_value"]
-    best_uv = max(c["universal_value"] for c in candidates)
+    # Both cross-candidate comparisons below are over VALUES, so rows the board could not price
+    # are excluded from them: an unpriced row cannot be the acquisition leader and cannot hold
+    # the field's best universal_value, because it holds no value at all. With no priced
+    # candidate there is no leader and no best to compare against, and every flag is a claim
+    # this function then cannot support -- all four go False rather than being invented.
+    priced = [i for i, c in enumerate(candidates)
+              if c.get("team_acquisition_value") is not None
+              and c.get("universal_value") is not None]
+    if priced:
+        tav_leader_idx = max(priced, key=lambda i: candidates[i]["team_acquisition_value"])
+        leader_uv = candidates[tav_leader_idx]["universal_value"]
+        best_uv = max(candidates[i]["universal_value"] for i in priced)
+    else:
+        tav_leader_idx, leader_uv, best_uv = None, None, None
 
     flags = []
     for i, c in enumerate(candidates):
@@ -519,15 +541,22 @@ def decision_path_flags(candidates: list[dict]) -> list[dict]:
         premium = c.get("rival_premium") or 0.0
         take_prob = c.get("rival_premium_take_probability")
         credible_rival_path = take_prob is not None and take_prob >= CREDIBLE_RIVAL_PATH_THRESHOLD
+        measurable = i in priced
         flags.append({
+            # cliff_protection and block_opportunity read forfeit and rival_premium, which carry
+            # their own absence handling and are not this row's own value -- unchanged.
             "cliff_protection": forfeit is not None and forfeit >= NECESSITY_STANDOUT_REFERENCE_GAP,
             "block_opportunity": premium >= 2 * dr.NEED_BONUS_PER_DEDICATED_SLOT and credible_rival_path,
             "pure_value": (
-                i != tav_leader_idx
+                measurable
+                and i != tav_leader_idx
                 and c["universal_value"] == best_uv
                 and c["universal_value"] - leader_uv > NEAR_TIE_BAND
             ),
-            "context_elevated": (c["team_acquisition_value"] - c["universal_value"]) >= dr.NEED_BONUS_MAX,
+            "context_elevated": (
+                measurable
+                and (c["team_acquisition_value"] - c["universal_value"]) >= dr.NEED_BONUS_MAX
+            ),
         })
     return flags
 
@@ -554,9 +583,15 @@ def decision_regime(candidates: list[dict]) -> str:
     against, so "decisive" (a claim this module can actually support) is never assumed by
     default. Expects each candidate dict to carry team_acquisition_value and
     survival_probability, sorted or not -- this function does its own ranking."""
-    if len(candidates) < 2:
+    # Unpriced candidates are excluded from the ranking rather than ordered into it: the regime
+    # is decided by a MARGIN between the best and second-best measurable option, and a row with
+    # no team_acquisition_value is neither. Once they are out, the function's own existing rule
+    # for a field with fewer than two members applies unchanged -- a field with nothing to
+    # measure a second place against is "contested", never "decisive".
+    priced = [c for c in candidates if c.get("team_acquisition_value") is not None]
+    if len(candidates) < 2 or len(priced) < 2:
         return "contested"
-    ranked = sorted(candidates, key=lambda c: c["team_acquisition_value"], reverse=True)
+    ranked = sorted(priced, key=lambda c: c["team_acquisition_value"], reverse=True)
     leader, second = ranked[0], ranked[1]
     margin = leader["team_acquisition_value"] - second["team_acquisition_value"]
     survival = leader.get("survival_probability")
@@ -571,11 +606,20 @@ def near_tie_flags(team_acquisition_values: list[float]) -> list[bool]:
     True for every member of the tie group INCLUDING the leader, but only when the group has
     at least two members: a leader nobody is close to isn't 'in a tie' with anyone, and
     flagging him alone would hand the debate layer a false 'these are tied' claim. Same order
-    as the input."""
+    as the input.
+
+    An UNPRICED entry (None) is never flagged and never becomes the leader. A row the board
+    could not price has no measured separation from anything, so it is not "close to" the
+    leader -- and letting it into max() either raised on the comparison or, worse, would have
+    made every real row look far behind a leader that was not a value at all.
+    """
     if not team_acquisition_values:
         return []
-    leader = max(team_acquisition_values)
-    in_band = [leader - v <= NEAR_TIE_BAND for v in team_acquisition_values]
+    priced = [v for v in team_acquisition_values if v is not None]
+    if not priced:
+        return [False] * len(team_acquisition_values)
+    leader = max(priced)
+    in_band = [v is not None and leader - v <= NEAR_TIE_BAND for v in team_acquisition_values]
     if sum(in_band) < 2:
         return [False] * len(team_acquisition_values)
     return in_band
@@ -597,8 +641,15 @@ def detect_positional_cliff(board: list[dict], player_id) -> Optional[dict]:
     row = _find_row(board, player_id)
     if row is None:
         return None
+    # A cliff is a drop measured in bpa against that position's own gap distribution, so rows
+    # the board could not price are not in the distribution -- and if the target himself has no
+    # bpa there is no drop of his to measure. Excluding them is the same rule the curve and the
+    # near-tie band follow; sorting them in was a TypeError, not a mis-ranking.
+    if row.get("bpa") is None:
+        return None
     same_position = sorted(
-        (r for r in board if r["position"] == row["position"]), key=lambda r: r["bpa"], reverse=True,
+        (r for r in board if r["position"] == row["position"] and r.get("bpa") is not None),
+        key=lambda r: r["bpa"], reverse=True,
     )
     if len(same_position) < CLIFF_MIN_POOL_SIZE:
         return None
@@ -647,7 +698,7 @@ def expected_value_of_waiting(universal_value: float, survival_probability: Opti
     surviving to your next pick. None when survival_probability itself isn't known (no
     intervening-pick context available), same "don't fabricate a number" posture as everywhere
     else in this app rather than silently assuming certainty."""
-    if survival_probability is None:
+    if universal_value is None or survival_probability is None:
         return None
     return round(universal_value * survival_probability, 2)
 

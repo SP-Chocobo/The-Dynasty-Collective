@@ -4913,3 +4913,183 @@ None of those follows from evidence in this repository. Recorded, not guessed.
      boundary is a defect wherever the quantity is not itself an integer.
 106. One position falling out of the valuation domain may not silently remove the whole board's
      ability to price. Coverage collapse is reported, not inferred from an empty result.
+
+---
+
+# Appendix — absence had to survive the consumers, and did not
+
+## The crash
+
+`compute_draft_board` normalizes an unpriced row's `bpa`, `universal_value` and `final_score`
+to `None` (`_records_with_normalized_nan`). That is the right contract, chosen deliberately: a
+row whose position has no replacement level has no value, and writing `0.0` there would rank it
+exactly where *"worth nothing"* ranks, which is a claim rather than an absence.
+
+**The contract stopped at the board.** Every consumer downstream then did arithmetic or ordering
+on the field directly. Measured on a real 12-team dynasty startup — unpriced rows first appear at
+round 15, and from that round on `pick_synthesis.build_snapshot`, the call the Draft Room makes
+to build the Prytaneum's pick debate, raised:
+
+```
+TypeError: '<' not supported between instances of 'NoneType' and 'NoneType'
+  pick_synthesis.build_snapshot -> draft_strategy.pick_analysis line 558
+  curve.sort(reverse=True)
+```
+
+Not a wrong number — a hard crash at the application's own entry point, for the last quarter of
+every 20-round draft. `position_curves` was built from **every** row on the board, so the crash
+did not even require an unpriced *candidate*; one unpriced row anywhere was enough.
+
+## Consumer survey, at real board states
+
+| consumer | rd 8 | rd 13 | rd 14 | rd 16 | rd 18 |
+|---|---|---|---|---|---|
+| `pick_analysis` | ok | ok | ok | **TypeError** | **TypeError** |
+| `decision_regime` | ok | ok | ok | **TypeError** | **TypeError** |
+| `near_tie_flags` | ok | ok | ok | **TypeError** | **TypeError** |
+| `expected_value_of_waiting` | ok | ok | ok | **TypeError** | **TypeError** |
+| `build_snapshot` | ok | ok | ok | **TypeError** | **TypeError** |
+| `narrow_candidates` | ok | ok | ok | ok | ok |
+| `simulate_opponent_picks` | ok | ok | ok | ok | ok |
+
+Unpriced rows at round 16: **63 of 141**.
+
+## The rule, which is not invented here
+
+All three halves already had precedent in this codebase before the repair:
+
+1. **Exclude.** A row with no value is left out of a computation defined over values — a curve,
+   a maximum, a margin, a gap distribution. Being excluded is not the same as scoring low.
+2. **Propagate.** A quantity derived from an absent input is itself absent.
+   `expected_value_of_waiting` already returned `None` for an absent survival; the repair applies
+   the same rule to its other operand.
+3. **Order last.** An ordering places absent rows last, deterministically, and never compares
+   them as numbers — exactly what `pick_synthesis._board_order` already did for the board itself.
+
+## Eleven sites repaired
+
+`draft_strategy`: `_position_curves` (extracted, excludes unpriced, drops empty positions),
+`_opportunity_cost` (absent when either operand is), the denial/rival-premium loop (skips an
+opponent whose own board cannot price him), `_opportunity_cost_order` (absent last, `player_id`
+tiebreak).
+`pick_synthesis`: `near_tie_flags`, `decision_regime`, `compute_pick_necessity`,
+`decision_path_flags`, `expected_value_of_waiting`, `detect_positional_cliff`.
+`pick_debate._best_alternative`, `draft_board_ui` ALL-view ordering.
+
+`decision_path_flags` was **found by the new tests, not by the survey** — it is reached only
+through `build_snapshot`, which the survey could not call until its own signature error was
+fixed. Worth recording: the consumer survey was necessary and not sufficient.
+
+## The one place a neutral number is used
+
+`compute_pick_necessity`'s standout component, for a candidate who is himself unpriced, is
+`0.0`. That is not a number substituted for absence: the function already assigns exactly `0.0`
+for an absent survival, an absent cliff and an absent rival premium, and its own docstring argues
+the standout floor is neutral — *"not the single best option on the board right now is neutral,
+not itself evidence of low urgency."* His survival, cliff and run components remain real
+evidence. What was fixed alongside it is the opposite error: a **sole** unpriced candidate used
+to collect the full `NECESSITY_STANDOUT_WEIGHT` under the *"no alternative exists at all"*
+branch — treating "nothing measurable" as "he is irreplaceable."
+
+## Invariants
+
+107. A field that can be absent is absent for every consumer, not just its producer. A contract
+     that holds only at the layer that writes it is not a contract.
+108. A quantity derived from an absent input is absent. It is never zero, and never a partial
+     sum presented as a whole one.
+109. A row with no value is excluded from computations over values. Exclusion is not a low score.
+110. Every ordering over a possibly-absent field places absence last by an explicit key, never by
+     comparing it. The result does not depend on input order.
+111. A consumer survey is necessary and not sufficient: the entry point must be exercised, since
+     a consumer reachable only through it will not appear in a survey of its parts.
+
+---
+
+# Appendix — the two open decisions, quantified
+
+Neither of these is settled here. Both are product judgments; what follows is the evidence a
+decision needs, measured on the repaired engine against a real 12-team dynasty startup.
+
+## Decision A (#56) — the absolute constants now have fixed meanings for the first time
+
+`bpa` is real projected points at every board state, so `NEAR_TIE_BAND`,
+`NECESSITY_STANDOUT_REFERENCE_GAP` and `NEED_BONUS_MAX` mean the same thing in round 1 and
+round 16. They did not before: the band was worth 1.94 real points at round 1 and 0.02 by round
+13. Three separate questions fall out, and they do **not** have the same answer.
+
+### A1. `NEAR_TIE_BAND = 2.0` — discriminating per position, meaningless board-wide
+
+Adjacent-gap medians in each position's top 12, opening board:
+
+| position | n | median adjacent gap | max | pairs within 2.0 |
+|---|---|---|---|---|
+| QB | 12 | 2.36 | 38.95 | 5 / 11 |
+| RB | 12 | 5.97 | 28.60 | 3 / 11 |
+| WR | 12 | 8.49 | 22.92 | 3 / 11 |
+| TE | 12 | 5.74 | 30.39 | 1 / 11 |
+| **K** | 12 | **1.00** | 3.00 | **10 / 11** |
+| **DEF** | 12 | **1.00** | 4.00 | **10 / 11** |
+
+At the position level the band does exactly what it is for: 1–5 of 11 skill-position pairs are
+ties, against 10 of 11 at K and DEF. **That is a working discriminator and an argument for
+leaving 2.0 alone.**
+
+Board-wide it is the opposite: the median adjacent gap across all priced rows is 0.34–1.33, so
+**80–88% of every adjacent pair on the board falls inside the band** at every round sampled.
+Any use of this constant across positions rather than within one calls almost everything a tie.
+
+### A2. `NECESSITY_STANDOUT_REFERENCE_GAP = 15.0` — the "decisive" regime is unreachable
+
+Measured leader-vs-second margin on the narrowed candidate list, and the regime that follows:
+
+| round | 0 | 2 | 4 | 6 | 8 | 10 | 12 | 14 | 16 |
+|---|---|---|---|---|---|---|---|---|---|
+| margin | 12.69 | 0.14 | 3.07 | 0.00 | 0.00 | 2.39 | 0.01 | 0.35 | 2.88 |
+| regime | contested | contested | contested | contested | contested | contested | contested | contested | contested |
+
+**`decision_regime` returned "contested" at all nine sampled states. "decisive" was never
+produced.** The same constant also gates `decision_path_flags`' `cliff_protection`.
+
+This is stated carefully, because it would be easy to overclaim. Reconstructing the pre-repair
+unit from the same boards, the old margins were 6.87 / 0.76 / **18.71** / 0.00 / 0.00 / 13.47 /
+0.01 — "decisive" was reachable, but at 1 of 7 rounds and **erratically**, because the ruler
+itself was moving underneath the threshold. The honest summary is not "the repair broke this":
+it is that **15.0 was never calibrated against a stable unit, and the repair is what makes the
+question answerable.** On the fixed unit the margins are consistent real-point gaps and do not
+reach it.
+
+### A3. `NEED_BONUS_MAX = 12.0` — context can reorder almost any adjacent pair
+
+97–98% of adjacent priced pairs sit within 12.0 of each other at every round through 14
+(90.9% at round 16). A maximal need bonus is therefore sufficient to reorder nearly any
+neighbouring pair on the board. That is not automatically wrong — neighbours are *supposed* to
+be close — but it is the number to look at when asking how much authority roster fit holds.
+
+**What is needed:** a decision on each of A1/A2/A3 separately. They are one constant family with
+three different verdicts available, and no evidence in this repository picks the numbers.
+
+## Decision B (#45/#69) — ordering when no starter demand exists anywhere
+
+Auto-drafting a full 12×20 mock: **rounds 14–20 price nothing at all — 84 picks, 35% of the
+draft.** Every starting slot in the league is genuinely filled by then, so the board correctly
+reports absence rather than inventing a replacement level.
+
+What each candidate basis actually selects, first 12 rows off that board:
+
+| basis | top-12 positions |
+|---|---|
+| `player_id` tiebreak — **today** | RB 10, QB 2 |
+| `projected_points` | **QB 12** |
+| `trade_value` | WR 9, QB 3 |
+
+`projected_points` is disqualified by measurement, not by argument: it is not comparable across
+positions, and ordering on it hands **every one of the first twelve bench picks to a
+quarterback.** `trade_value` produces a plausible spread — but it is a dynasty *market* quantity
+on a different measurement basis than the engine's own projected points, so adopting it means
+the back third of the board is ordered by a different question than the front two-thirds. That
+is a real semantic break, and it should be chosen knowingly rather than absorbed.
+
+**What is needed:** one decision — bench-depth ordering uses `trade_value` (accepting the basis
+change, ideally labelled in the UI), or the engine declines to order and says so, or a
+bench-specific value is defined. Note that the crash class this appendix's neighbour documents
+is fixed either way: nothing raises on these rows any more.

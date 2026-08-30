@@ -57,6 +57,17 @@ class _BoardFixture(unittest.TestCase):
                 }
         cls.board = dr.compute_draft_board(
             cls.merger, cls.players_db, [], my_roster_id="1", league=DYNASTY, mode="balanced")
+        # A SECOND board, drained far enough that whole positions stop being measurable. The
+        # opening board prices every row, so any test whose subject is absence cannot observe
+        # it there -- an assertion-reachability trace over the whole suite found exactly that:
+        # five assertions in this file guarded by `if unpriced` had never executed once.
+        taken = 16 * NUM_TEAMS
+        cls.late_picks = [{"player_id": r["player_id"], "roster_id": str((i % NUM_TEAMS) + 1),
+                           "round": (i // NUM_TEAMS) + 1, "pick_no": i + 1}
+                          for i, r in enumerate(cls.board[:taken])]
+        cls.late_board = dr.compute_draft_board(
+            cls.merger, cls.players_db, cls.late_picks, my_roster_id="1", league=DYNASTY,
+            mode="balanced")
 
 
 class BpaIsAPlayerPropertyTests(_BoardFixture):
@@ -64,27 +75,33 @@ class BpaIsAPlayerPropertyTests(_BoardFixture):
     with who is picking -- that is decision context, and the whole point of the split."""
 
     def test_bpa_is_identical_for_every_team_at_the_same_board_state(self):
-        other = dr.compute_draft_board(self.merger, self.players_db, [], my_roster_id="7",
-                                       league=DYNASTY, mode="balanced")
-        mine = {r["player_id"]: r.get("bpa") for r in self.board}
-        theirs = {r["player_id"]: r.get("bpa") for r in other}
-        self.assertEqual(set(mine), set(theirs))
-        for pid, value in mine.items():
-            if _is_absent(value):
-                self.assertTrue(_is_absent(theirs[pid]), pid)
-            else:
-                self.assertEqual(value, theirs[pid], pid)
+        # Run over BOTH board states. On the opening board every row is priced, so the absent
+        # branch below never executed -- "a player property does not depend on who is asking"
+        # has to hold for the absence too, and that half was untested until the reachability
+        # trace found it.
+        for picks, mine_board in ((), self.board), (self.late_picks, self.late_board):
+            other = dr.compute_draft_board(self.merger, self.players_db, list(picks),
+                                           my_roster_id="7", league=DYNASTY, mode="balanced")
+            mine = {r["player_id"]: r.get("bpa") for r in mine_board}
+            theirs = {r["player_id"]: r.get("bpa") for r in other}
+            self.assertEqual(set(mine), set(theirs))
+            for pid, value in mine.items():
+                if _is_absent(value):
+                    self.assertTrue(_is_absent(theirs[pid]), pid)
+                else:
+                    self.assertEqual(value, theirs[pid], pid)
 
     def test_universal_value_is_also_team_agnostic(self):
-        other = dr.compute_draft_board(self.merger, self.players_db, [], my_roster_id="7",
-                                       league=DYNASTY, mode="balanced")
-        mine = {r["player_id"]: r.get("universal_value") for r in self.board}
-        for row in other:
-            value, expected = row.get("universal_value"), mine[row["player_id"]]
-            if _is_absent(expected):
-                self.assertTrue(_is_absent(value), row["player_id"])
-            else:
-                self.assertEqual(value, expected, row["player_id"])
+        for picks, mine_board in ((), self.board), (self.late_picks, self.late_board):
+            other = dr.compute_draft_board(self.merger, self.players_db, list(picks),
+                                           my_roster_id="7", league=DYNASTY, mode="balanced")
+            mine = {r["player_id"]: r.get("universal_value") for r in mine_board}
+            for row in other:
+                value, expected = row.get("universal_value"), mine[row["player_id"]]
+                if _is_absent(expected):
+                    self.assertTrue(_is_absent(value), row["player_id"])
+                else:
+                    self.assertEqual(value, expected, row["player_id"])
 
     def test_need_and_eligibility_are_context_and_do_vary_by_team(self):
         # The converse of the two above: if these did NOT move with the roster, the split would
@@ -145,19 +162,42 @@ class ValueIdentityTests(_BoardFixture):
 
 class AbsenceIsNotAValueTests(_BoardFixture):
     """A missing valuation is an absence of knowledge, not a zero. This is the invariant the
-    unpriced-register work established, and every downstream change has to keep it."""
+    unpriced-register work established, and every downstream change has to keep it.
+
+    Asserted against the LATE board, and that is the whole point of this class having one. The
+    opening board prices all 333 of its rows, so the original version of these tests filtered
+    for unpriced rows on it, found none, and iterated over an empty list -- three assertions
+    that had never executed once in the suite's history, passing while their subject went
+    unobserved. Both tests now assert their own reachability first."""
+
+    def test_the_late_board_actually_contains_absence(self):
+        unpriced = [r for r in self.late_board if _is_absent(r.get("bpa"))]
+        self.assertTrue(unpriced,
+                        "the fixture no longer reaches a board that carries absence -- every "
+                        "assertion in this class would pass without observing anything")
 
     def test_an_unpriced_row_carries_absence_not_zero(self):
-        unpriced = [r for r in self.board if _is_absent(r.get("bpa"))]
+        unpriced = [r for r in self.late_board if _is_absent(r.get("bpa"))]
+        self.assertTrue(unpriced)
         for row in unpriced:
             self.assertTrue(_is_absent(row.get("universal_value")), row["name"])
             self.assertTrue(_is_absent(row.get("final_score")), row["name"])
 
     def test_a_priced_zero_and_an_unpriced_row_are_distinguishable(self):
-        priced_zero = [r for r in self.board if r.get("bpa") == 0.0]
-        unpriced = [r for r in self.board if _is_absent(r.get("bpa"))]
-        if priced_zero and unpriced:
-            self.assertNotEqual(priced_zero[0].get("bpa"), unpriced[0].get("bpa"))
+        priced_zero = [r for r in self.late_board if r.get("bpa") == 0.0]
+        unpriced = [r for r in self.late_board if _is_absent(r.get("bpa"))]
+        self.assertTrue(unpriced, "no unpriced row to distinguish a priced zero from")
+        self.assertTrue(priced_zero,
+                        "no priced zero on the late board -- the pair this test exists to "
+                        "separate is not present, so it would prove nothing")
+        self.assertEqual(priced_zero[0].get("bpa"), 0.0)
+        self.assertTrue(_is_absent(unpriced[0].get("bpa")))
+        self.assertNotEqual(priced_zero[0].get("bpa"), unpriced[0].get("bpa"))
+
+    def test_the_opening_board_prices_everything_which_is_why_the_late_one_exists(self):
+        # Pins the reason the second fixture board is here, so a future change that starts
+        # leaving opening-board rows unpriced is noticed rather than silently absorbed.
+        self.assertFalse([r for r in self.board if _is_absent(r.get("bpa"))])
 
 
 class HorizonIsGatedOnRealDataTests(_BoardFixture):

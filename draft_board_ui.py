@@ -262,7 +262,14 @@ def filter_candidates_by_view(candidates: tuple, view: str) -> list:
             if c.player_id not in included_ids:
                 overview.append(c)
                 included_ids.add(c.player_id)
-        overview.sort(key=lambda c: c.team_acquisition_value, reverse=True)
+        # Absence is ordered, never compared as a number -- the same key shape
+        # pick_synthesis._board_order uses. An unpriced candidate reaches this list by design
+        # (build_snapshot always includes each position's best remaining player, priced or
+        # not), and sorting him against a float raised TypeError rather than mis-ranking him.
+        overview.sort(key=lambda c: (c.team_acquisition_value is None,
+                                     -c.team_acquisition_value
+                                     if c.team_acquisition_value is not None else 0.0,
+                                     str(c.player_id)))
         return overview
     if view in FLEX_SLOT_POSITIONS:
         eligible = FLEX_SLOT_POSITIONS[view]

@@ -1012,6 +1012,13 @@ class DiffSnapshotsTests(unittest.TestCase):
             league=LEAGUE, pick_label="1.01", top_n=5,
         )
         diffs = ps.diff_snapshots(snap, snap)
+        # The real assertion, and it has to be stated directly. This used to be a `for d in
+        # diffs:` loop over the three checks below -- but diff_snapshots returns an EMPTY list
+        # for identical inputs, so the loop body never ran and the test asserted nothing at all
+        # beyond "no exception was raised". Found by an assertion-reachability trace over the
+        # whole suite. The loop is kept underneath as a belt-and-braces check in case the
+        # function ever starts emitting no-op rows instead of omitting them.
+        self.assertEqual(diffs, [], "identical snapshots must produce no diff rows at all")
         for d in diffs:
             self.assertIsNone(d.get("entered"))
             self.assertEqual(d["rank_delta"], 0)

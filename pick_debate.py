@@ -343,8 +343,15 @@ def _best_alternative(snapshot: PickSnapshot, recommended: Optional[CandidateSna
     deterministically here, never left for the LLM to name in its own prose (a model could
     misstate which alternative is actually best, or its survival number). None if there's no
     other real candidate to point to (a single-candidate snapshot) or nothing was recommended
-    at all."""
-    others = [c for c in snapshot.candidates if recommended is None or c.player_id != recommended.player_id]
+    at all.
+
+    Candidates the board could not price are excluded: "the best alternative" is a claim about
+    value, and a row with no team_acquisition_value cannot support it. None when every other
+    candidate is unpriced -- naming one anyway would tell the debate layer that a player the
+    engine has no opinion about is the runner-up."""
+    others = [c for c in snapshot.candidates
+              if (recommended is None or c.player_id != recommended.player_id)
+              and c.team_acquisition_value is not None]
     if not others:
         return None
     return max(others, key=lambda c: c.team_acquisition_value)

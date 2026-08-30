@@ -491,6 +491,55 @@ def estimate_survival(
     }
 
 
+def _position_curves(my_board: dict) -> dict[str, list[float]]:
+    """Each position's remaining team-agnostic value curve, highest first.
+
+    UNPRICED ROWS ARE EXCLUDED, and that is the whole point of factoring this out. A curve is a
+    list of values; a row the board could not price has no value, and appending None then
+    sorting is not a wrong number, it is a TypeError. Measured on a real 12-team dynasty
+    startup: unpriced rows appear at round 15, and from that round on this sort raised
+
+        TypeError: '<' not supported between instances of 'NoneType' and 'NoneType'
+
+    all the way up through pick_analysis into pick_synthesis.build_snapshot -- the call the
+    Draft Room makes to build the Prytaneum's pick debate -- the last quarter of every
+    20-round draft.
+
+    A position with nothing priced left gets no key at all rather than an empty list, which is
+    the same absence-not-zero rule the board itself follows: positional_forfeits already skips
+    a position it has no curve for."""
+    curves: dict[str, list[float]] = {}
+    for row in my_board.values():
+        position = row.get("position")
+        value = row.get("universal_value")
+        if not position or value is None:
+            continue
+        curves.setdefault(position, []).append(value)
+    for curve in curves.values():
+        curve.sort(reverse=True)
+    return {position: curve for position, curve in curves.items() if curve}
+
+
+def _opportunity_cost(team_acquisition_value: Optional[float],
+                      survival_probability: Optional[float]) -> Optional[float]:
+    """value x (1 - survival): what waiting costs if he does not last until the next pick.
+
+    None when either operand is absent. With no acquisition value there is no loss to state,
+    and 0.0 would claim there is none -- the same rule expected_value_of_waiting already
+    applies to its own absent survival."""
+    if team_acquisition_value is None or survival_probability is None:
+        return None
+    return round(team_acquisition_value * (1 - survival_probability), 2)
+
+
+def _opportunity_cost_order(row: dict) -> tuple:
+    """Sort key: highest opportunity_cost first, rows with no cost last, player_id as the
+    tiebreak. Mirrors pick_synthesis._board_order exactly -- absence is ordered, never compared
+    as a number, and the result does not depend on the order the rows arrived in."""
+    cost = row.get("opportunity_cost")
+    return (cost is None, -cost if cost is not None else 0.0, str(row.get("player_id")))
+
+
 def pick_analysis(
     merger: DataMerger,
     players_db: dict[str, dict],
@@ -550,12 +599,7 @@ def pick_analysis(
     # arguably more correct than the zero it yields today -- but it changes a live decision
     # signal, so the existing behavior is preserved here explicitly and left open rather than
     # changed as a side effect of a crash fix.
-    position_curves: dict[str, list[float]] = {}
-    for row in ([] if mode == "upside" else my_board.values()):
-        if row.get("position"):
-            position_curves.setdefault(row["position"], []).append(row["universal_value"])
-    for curve in position_curves.values():
-        curve.sort(reverse=True)
+    position_curves = {} if mode == "upside" else _position_curves(my_board)
     forfeits = positional_forfeits(position_curves, opponent_boards, intervening)
 
     results = []
@@ -568,7 +612,8 @@ def pick_analysis(
             league=league,
         )
         team_acquisition_value = my_row["final_score"]
-        opportunity_cost = round(team_acquisition_value * (1 - survival["survival_probability"]), 2)
+        opportunity_cost = _opportunity_cost(team_acquisition_value,
+                                             survival["survival_probability"])
 
         denial_value = 0.0
         denial_team = None
@@ -578,6 +623,12 @@ def pick_analysis(
             opp_board = opponent_boards.get(str(risk["roster_id"]), {})
             opp_row = opp_board.get("by_id", {}).get(str(player_id))
             if opp_row is None:
+                continue
+            # An opponent whose own board cannot price him gains no measurable value from
+            # taking him, and there is no premium of his over a universal_value that does not
+            # exist either. Skipping is the same exclusion rule the curve above follows; it is
+            # not a claim that the player is worthless to them.
+            if opp_row.get("final_score") is None or opp_row.get("universal_value") is None:
                 continue
             weighted = opp_row["final_score"] * risk["take_probability"]
             if weighted > denial_value:
@@ -625,5 +676,5 @@ def pick_analysis(
             "positional_forfeit": (forfeits.get(my_row.get("position")) or {}).get("forfeit"),
             "position_expected_taken": (forfeits.get(my_row.get("position")) or {}).get("expected_taken"),
         })
-    results.sort(key=lambda r: r["opportunity_cost"], reverse=True)
+    results.sort(key=_opportunity_cost_order)
     return results

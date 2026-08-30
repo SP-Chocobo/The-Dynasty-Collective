@@ -69,19 +69,36 @@ class FuzzyPathRejectsADifferentPersonTests(unittest.TestCase):
     ]
 
     def test_none_of_them_resolves_to_the_other_persons_row(self):
+        """The contract: if one of these names resolves at all, it must not resolve to the
+        other person. The MEASURED state is stronger -- after the R1 repair all nine are
+        declined outright -- and both are asserted, because an assertion-reachability trace
+        over the whole suite found the conditional body below had never executed once. A
+        conditional assertion whose condition is always false is not a passing test."""
+        resolved = []
         for name, position, team, stolen_from in self.CROSS_PERSON:
             with self.subTest(name):
                 row = self.merger._find_match(name, position=position, team=team)
                 if row is not None:
+                    resolved.append(name)
                     self.assertNotEqual(str(row["name"]), stolen_from)
+        self.assertEqual(resolved, [],
+                         "these nine were all declined when the rejection rule landed; one "
+                         "resolving again is a real change in matching behaviour, even if it "
+                         "resolved to the right person")
 
     def test_and_therefore_none_of_them_inherits_a_projection(self):
+        """Same pair of claims, one layer up: the contract is that a match must at least share
+        a position family, and the measured state is that none of them matches at all."""
+        matched = []
         for name, position, team, _ in self.CROSS_PERSON:
             with self.subTest(name):
                 match = self.merger.merge_player(name, position=position, team=team)
                 if match.get("matched"):
+                    matched.append(name)
                     self.assertEqual(dm.position_family(match.get("position")),
                                      dm.position_family(position))
+        self.assertEqual(matched, [],
+                         "one of the nine measured cross-person cases matched again")
 
 
 class FuzzyPathRejectionRuleTests(unittest.TestCase):
