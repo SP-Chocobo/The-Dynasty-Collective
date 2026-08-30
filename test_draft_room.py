@@ -696,11 +696,33 @@ class SuperflexRookieDraftRosterContextTieredGateTests(RookieDraftRosterContextT
         # Maximal superflex QB need: nothing else drafted at all, so both the dedicated slot
         # and the SUPER_FLEX flex share are wide open.
         starved = self._rookie_board(self._roster_history("test", {"RB": 1, "WR": 1, "TE": 1}))
+
+        # The claim is about the QB ORDERING, not about the whole board's #1 -- and that
+        # distinction is the whole point. `gap` above is a WITHIN-QB gap (leader vs. second
+        # QB); it licenses a claim about how the QBs sit relative to each other under maximal
+        # QB need, and nothing whatsoever about whether a QB outranks the best rookie RB. The
+        # previous version asserted `starved[0]` was the QB leader, which quietly conflated the
+        # two registers. It survived only because the old [0,100] bpa clip flattened this
+        # rookie QB class onto a single value, so the within-QB gap never cleared the skip
+        # gate above and the assertion never ran. With bpa as real vor the class separates
+        # honestly -- and the top rookie RB sits 256 points above HIS replacement while the
+        # best rookie QB sits exactly AT his, so the RB leading the board is the engine working,
+        # not context manufacturing anything. Need is near-identical for both (4.72 vs 4.85).
+        starved_qbs = [r for r in starved if r["position"] == "QB"]
+        self.assertTrue(starved_qbs, "the starved board lost every rookie QB")
         self.assertEqual(
-            starved[0]["player_id"], leader["player_id"],
-            "maximal superflex QB need flipped a real rookie QB tier-gap standout -- context "
-            "manufactured superiority over a meaningful gap under the higher SUPER_FLEX ceiling",
+            starved_qbs[0]["player_id"], leader["player_id"],
+            "maximal superflex QB need flipped a real rookie QB tier-gap standout among the QBs "
+            "-- context manufactured superiority over a meaningful gap under the higher "
+            "SUPER_FLEX ceiling",
         )
+        # And the standout must not be quietly demoted on the full board either: with a real
+        # tier gap at his own position, maximal need for that position may not push a lesser
+        # QB above him anywhere in the ordering.
+        starved_ids = [r["player_id"] for r in starved]
+        self.assertLess(starved_ids.index(leader["player_id"]),
+                        starved_ids.index(second["player_id"]),
+                        "the second QB overtook the tier-gap standout on the full board")
 
 
 class DataIntegrityTests(unittest.TestCase):
@@ -1060,16 +1082,41 @@ class InvariantTests(unittest.TestCase):
             self.merger, pdb_ir, [], my_roster_id="99", league=LIGHT_IDP_LEAGUE, mode="balanced",
         )
         row_ir = next((r for r in board_ir if r["player_id"] == young_rising["player_id"]), None)
-        if row_ir is not None and young_rising["bpa"] < abs(dr.RISK_ADJ["IR"]) * dr.DYNASTY_RISK_ADJ_MIN_SCALE - dr.TIME_HORIZON_CLAMP[1]:
-            self.assertGreaterEqual(
-                row_ir["universal_value"], 0.0,
-                "trajectory-aware risk_adj (experiment D) should keep a thin-bpa, "
-                "max-positive-trajectory player's universal_value from crossing zero on an IR "
-                "flag alone -- if this regresses, either the D formula or its constants changed",
+        self.assertIsNotNone(row_ir, "the flagged player must still be on the board")
+
+        # THE FORMULA, asserted unconditionally. At the exact positive clamp this player's own
+        # d_scale IS DYNASTY_RISK_ADJ_MIN_SCALE (the floor), and the flag must move his
+        # universal_value by exactly that scaled penalty and by nothing else -- risk_adj is the
+        # only term an injury status is allowed to touch.
+        self.assertAlmostEqual(row_ir["risk_adj"], dr.RISK_ADJ["IR"] * dr.DYNASTY_RISK_ADJ_MIN_SCALE)
+        self.assertAlmostEqual(row_ir["universal_value"],
+                               young_rising["universal_value"] + row_ir["risk_adj"], places=2)
+
+        # THE SIGN CLAUSE, and why it is now guarded by a skip rather than by a silent `if`.
+        # The original gate read `bpa < abs(RISK_ADJ["IR"]) * MIN_SCALE - TIME_HORIZON_CLAMP[1]`
+        # -- that is bpa < -4.6, which the old [0,100] clip made unreachable, so this block
+        # never ran and the test passed by never testing anything. "Thin bpa" means SMALL, so
+        # it is stated as |bpa| now that bpa is vor in real points and carries a real sign. It
+        # is also compared against the HEALTHY row rather than against zero: a player already
+        # below replacement while healthy is negative for reasons that have nothing to do with
+        # an injury flag, and asserting "universal_value >= 0" there would be asserting his
+        # position's scarcity, not experiment D. If the real pool contains no such player this
+        # run, that is a reportable fixture limitation, not a pass.
+        thin_bound = abs(dr.RISK_ADJ["IR"]) * dr.DYNASTY_RISK_ADJ_MIN_SCALE
+        if abs(young_rising["bpa"]) > thin_bound or young_rising["universal_value"] < 0.0:
+            self.skipTest(
+                "no max-positive-trajectory player in the current real pool is also thin-bpa "
+                f"and non-negative while healthy (best available: bpa={young_rising['bpa']:.1f} "
+                f"against a thin bound of {thin_bound:.1f}, healthy universal_value="
+                f"{young_rising['universal_value']:.1f}) -- the sign clause has no subject to "
+                "observe, which is a fixture limitation and must not read as a pass"
             )
-            # At the exact positive clamp, this player's own d_scale IS DYNASTY_RISK_ADJ_MIN_SCALE
-            # (the floor) -- confirms the formula, not just the end result.
-            self.assertAlmostEqual(row_ir["risk_adj"], dr.RISK_ADJ["IR"] * dr.DYNASTY_RISK_ADJ_MIN_SCALE)
+        self.assertGreaterEqual(
+            row_ir["universal_value"], 0.0,
+            "trajectory-aware risk_adj (experiment D) should keep a thin-bpa, "
+            "max-positive-trajectory player's universal_value from crossing zero on an IR "
+            "flag alone -- if this regresses, either the D formula or its constants changed",
+        )
 
     def test_need_bonus_is_zero_once_a_position_is_fully_satisfied(self):
         board = dr.compute_draft_board(
@@ -1435,19 +1482,35 @@ class EligibilityBonusWiringTests(unittest.TestCase):
 
         wrs = [r for r in by_uv if r["position"] == "WR"]
         best_wr = wrs[0]
-        cand_row = next(
-            (r for r in wrs
-             if best_wr["universal_value"] - r["universal_value"] > 25.0 and (trade_value_of(r) or 0) > 0),
-            None,
-        )
+
+        # The candidate is chosen by the properties this fixture actually REQUIRES, not by a
+        # magic universal_value threshold. The previous version searched for the first WR more
+        # than 25.0 behind the best WR -- a number written when bpa was rescaled onto 0-100, so
+        # 25.0 meant "a quarter of the whole board" and landed deep in the WR field. bpa is now
+        # vor in real projected points, where 25.0 is roughly the WR3-to-WR4 step, so the same
+        # search returned WR #3 -- too good for six strictly-better RB/WR fillers to exist, the
+        # WR/FLEX slots never saturated, and the eligibility term never fired. The two things
+        # the scenario needs are stated directly instead: a gap larger than the combined
+        # context bound, and enough strictly-better RB/WR to actually fill every WR/FLEX-
+        # reachable slot.
+        def fillers_for(row):
+            tv = trade_value_of(row)
+            if not tv:
+                return []
+            return [r for r in by_uv
+                    if r["position"] in ("RB", "WR")
+                    and r["player_id"] not in (best_wr["player_id"], row["player_id"])
+                    and (trade_value_of(r) or 0) > tv][:6]
+
+        cand_row, fillers = None, []
+        for row in wrs[1:]:
+            if best_wr["universal_value"] - row["universal_value"] <= dr.NEED_BONUS_MAX + dr.ELIGIBILITY_BONUS_MAX:
+                continue
+            candidate_fillers = fillers_for(row)
+            if len(candidate_fillers) == 6:
+                cand_row, fillers = row, candidate_fillers
+                break
         self.assertIsNotNone(cand_row, "real baseline should contain a WR well behind the best WR")
-        cand_tv = trade_value_of(cand_row)
-        # Saturate every WR/FLEX-reachable slot with players strictly MORE valuable than the
-        # candidate, so his WR-ness genuinely buys nothing and only the IDP_FLEX is open.
-        fillers = [r for r in by_uv
-                   if r["position"] in ("RB", "WR")
-                   and r["player_id"] not in (best_wr["player_id"], cand_row["player_id"])
-                   and (trade_value_of(r) or 0) > cand_tv][:6]
         picks = [{"pick_no": i + 1, "round": 1, "roster_id": "99", "player_id": r["player_id"]}
                  for i, r in enumerate(fillers)]
         db = dict(players_db)

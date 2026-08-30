@@ -216,38 +216,98 @@ class SelectionLayerContractTests(_BoardFixture):
 # when the repair lands the runner reports an unexpected success and the marker must be
 # removed deliberately.
 
-class KnownGapBpaUnitStability(_BoardFixture):
-    """#75/#76. bpa's reference is max(VOR) over the live pool, so its unit moves as the pool
-    drains: measured, the reference carries 94.6% of all bpa movement, and a player whose
-    projection never changes reads 0.0 -> 88.9 -> 0.0. A player property may not move because
-    a different player was drafted."""
+class BpaUnitStabilityTests(_BoardFixture):
+    """#75/#76, repaired. bpa's reference used to be max(VOR) over the live pool, so the unit
+    itself rescaled as the pool drained: measured, that reference carried 94.6% of all bpa
+    movement, and a player whose projection never changed read 0.0 -> 88.9 -> 0.0.
 
-    @unittest.expectedFailure
-    def test_a_players_bpa_does_not_move_when_other_players_are_drafted(self):
-        # Deliberately NOT the top row. The pool's best player IS the reference, so his bpa is
-        # 100.0 by construction and cannot move -- picking him would make this pass while
-        # proving nothing. A mid-pool player is where the moving ruler shows up.
-        priced = [r for r in self.board if not _is_absent(r.get("bpa")) and r["bpa"] > 0]
-        target = priced[len(priced) // 2]
-        drafted = [{"player_id": r["player_id"], "roster_id": "2", "round": 1, "pick_no": i + 1}
-                   for i, r in enumerate(self.board[:24]) if r["player_id"] != target["player_id"]]
+    The contract this class pins is UNIT stability, not VALUE stability. bpa is VOR, and
+    VOR = production_margin + scarcity_movement -- a player's bpa is SUPPOSED to move when his
+    position's replacement level moves, because that is the scarcity term doing its declared
+    job. What may never move is the ruler. So the invariant is stated as a difference between
+    two players at the same position: they share a replacement level, it cancels exactly, and
+    the gap between them must therefore be their gap in real projected points at every board
+    state. Any drift in that difference is a rescale.
+
+    (The complementary per-player form -- that a single player's whole bpa movement is
+    accounted for by his anchor's movement, to the cent -- lives in test_bpa_unit.py.)"""
+
+    def _same_position_pair(self, board):
+        by_position = {}
+        for row in board:
+            if _is_absent(row.get("bpa")) or _is_absent(row.get("projected_points")):
+                continue
+            by_position.setdefault(row["position"], []).append(row)
+        for rows in by_position.values():
+            if len(rows) >= 2:
+                spread = sorted(rows, key=lambda r: r["projected_points"])
+                return spread[0], spread[-1]
+        self.fail("no position carries two priced rows")
+
+    def test_the_gap_between_two_players_is_their_gap_in_real_points(self):
+        low, high = self._same_position_pair(self.board)
+        self.assertAlmostEqual(high["bpa"] - low["bpa"],
+                               high["projected_points"] - low["projected_points"], places=6)
+
+    def test_that_gap_is_unchanged_after_the_pool_drains(self):
+        low, high = self._same_position_pair(self.board)
+        keep = {low["player_id"], high["player_id"]}
+        drafted = [{"player_id": r["player_id"], "roster_id": str((i % 12) + 1),
+                    "round": (i // 12) + 1, "pick_no": i + 1}
+                   for i, r in enumerate(r for r in self.board[:60]
+                                         if r["player_id"] not in keep)]
         later = dr.compute_draft_board(self.merger, self.players_db, drafted, my_roster_id="1",
                                        league=DYNASTY, mode="balanced")
-        moved = next(r for r in later if r["player_id"] == target["player_id"])
-        self.assertAlmostEqual(moved["bpa"], target["bpa"], places=1)
+        moved = {r["player_id"]: r for r in later}
+        after = moved[high["player_id"]]["bpa"] - moved[low["player_id"]]["bpa"]
+        self.assertAlmostEqual(after, high["bpa"] - low["bpa"], places=6,
+                               msg="the unit rescaled as the pool drained")
 
 
-class KnownGapClippedNegativeIsDestroyed(_BoardFixture):
-    """#73/#74. A below-replacement measurement is flattened to 0.0 by the clip, so a genuine
-    boundary zero, a clipped negative and a degenerate anchor are one indistinguishable value.
-    Measured: 95%+ of all zeros are clipped negatives."""
+class BelowReplacementKeepsItsSignTests(_BoardFixture):
+    """#73/#74, repaired. bpa used to be clipped at zero, so a genuine boundary zero, a real
+    below-replacement measurement and a degenerate anchor arrived as one indistinguishable
+    0.0 -- and 95%+ of all zeros were clipped negatives. A clip is not a measurement; it is
+    the deletion of one.
 
-    @unittest.expectedFailure
+    Three things are asserted, because the repair has to deliver all three: the sign survives,
+    below-replacement rows stay orderable against each other, and 0.0 is returned to meaning
+    exactly one thing -- this player IS the replacement level."""
+
+    def _replacement_levels(self, picks):
+        drafted = {p["player_id"] for p in picks}
+        pool = dr.build_available_pool(self.merger, self.players_db, drafted,
+                                       {"QB", "RB", "WR", "TE", "K", "DEF", "FLEX"})
+        pool["_points"] = pool["projection"].astype(float)
+        pool = pool[pool["_points"].notna()].copy()
+        demand = dr.remaining_starter_demand(ROSTER, NUM_TEAMS, picks, self.players_db) \
+            if picks else None
+        return dr.replacement_levels(pool, "_points", ROSTER, NUM_TEAMS, remaining_demand=demand)
+
     def test_a_below_replacement_player_keeps_a_signed_measurement(self):
+        levels = self._replacement_levels([])
+        below = [r for r in self.board
+                 if not _is_absent(r.get("bpa")) and not _is_absent(r.get("projected_points"))
+                 and r["position"] in levels
+                 and r["projected_points"] < levels[r["position"]] - 1e-9]
+        self.assertTrue(below, "the board carries no below-replacement rows to check")
+        for row in below:
+            self.assertLess(row["bpa"], 0.0,
+                            f"{row['name']} is below replacement but reads {row['bpa']}")
+
+    def test_below_replacement_rows_stay_orderable_against_each_other(self):
+        negatives = [r["bpa"] for r in self.board
+                     if not _is_absent(r.get("bpa")) and r["bpa"] < 0]
+        self.assertGreater(len(set(negatives)), 1,
+                           "every below-replacement row collapsed onto one value")
+
+    def test_zero_means_exactly_at_replacement_and_nothing_else(self):
+        levels = self._replacement_levels([])
         zeros = [r for r in self.board if r.get("bpa") == 0.0]
-        self.assertTrue(zeros)
-        self.assertTrue(any(r.get("bpa", 0.0) < 0 for r in zeros),
-                        "no clipped negative retains its sign")
+        for row in zeros:
+            self.assertIn(row["position"], levels, row["name"])
+            self.assertAlmostEqual(row["projected_points"], levels[row["position"]], places=6,
+                                   msg=f"{row['name']} reads 0.0 without being at replacement")
 
 
 class KnownGapSurvivalAnswersOnAnUnpricedBoard(_BoardFixture):

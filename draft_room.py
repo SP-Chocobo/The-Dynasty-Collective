@@ -1191,22 +1191,35 @@ def upside_score(row: pd.Series) -> dict:
 
 
 def _scale_vor_to_bpa(vor: pd.Series) -> pd.Series:
-    """Linear scaling against the single largest VOR gap in the pool -- the fix for
-    percentile-ranking the anchor (see module docstring's ARCHITECTURE section). A player
-    below replacement level (negative VOR) clips to 0, not a negative score: they'd make a
-    roster worse than not drafting anyone there, which the rest of this module's additive,
-    0-100-scale adjustments aren't built to represent as a further negative swing.
+    """bpa IS vor: real projected points above this position's replacement level. No
+    reference, no rescale, no clip.
 
-    A player with NO VOR AT ALL (NaN -- his position has no starter-demand replacement level,
-    see replacement_levels' domain) keeps NaN here. That is a different statement from "his
-    VOR is at or below replacement", and collapsing the two is what let an absent anchor read
-    as a confident zero. The early return below used to hand 0.0 to every row including those,
-    which is the one path where absence was destroyed rather than merely clipped."""
-    measurable = vor.dropna()
-    reference = measurable.max() if not measurable.empty else None
-    if reference is None or pd.isna(reference) or reference <= 0:
-        return vor.where(vor.isna(), 0.0)
-    return (vor / reference * 100).clip(lower=0, upper=100)
+    It used to be `clip(vor / max(vor) * 100, 0, 100)`, and both halves of that were defects.
+
+    THE UNIT MOVED. The reference was the largest VOR in the LIVE pool, so it shrank as the
+    pool drained -- 97 -> 72 -> 27 -> 16 -> 1 -> 0 across a real 12x20 draft. Decomposing
+    every player's bpa change into "his own value moved" and "the ruler moved under him", the
+    ruler carried 94.6% of ALL bpa movement. Isaiah Likely, 186 projected points in every
+    single round, read 0.0 -> 50.0 -> 61.5 -> 88.9 -> 0.0. bpa is a player property, and a
+    player property may not move because a DIFFERENT player was drafted.
+
+    THE MEASUREMENT WAS DESTROYED. Clipping at 0 flattened every below-replacement player into
+    the same value as a genuine boundary zero and a degenerate anchor: 141 distinguishable
+    states became 20 at round 4, and 95%+ of all zeros board-wide were real, measured negative
+    VOR. A signed measurement is evidence; a floor is an assertion that the evidence does not
+    exist.
+
+    Why removing the scale rather than choosing a better reference: any max is a property of
+    ONE row (the invariant that forbids it), and measured across every consumer, none requires
+    bpa <= 100 while five read magnitude and need a stable unit. A bounded range is a
+    presentation concern, so the underlying quantity keeps its own unit -- real points, which
+    is what production margin and VOR already speak and what makes the number checkable
+    against a projection by hand.
+
+    NaN still passes through untouched. "His position has no replacement level" (see
+    replacement_levels' domain) is a different statement from "he is below it", and collapsing
+    the two is what let an absent anchor read as a confident zero."""
+    return vor.astype(float)
 
 
 def _records_with_normalized_nan(df: pd.DataFrame, *columns: str) -> list[dict]:

@@ -4598,3 +4598,121 @@ data without them would give kickers a systematically negative dynasty adjustmen
     expressed as a test or it is not relied upon.
 94. Horizon coverage is reported per position as a first-class fact, so a position at zero is
     visibly either out of domain or unmeasured.
+
+---
+
+# Appendix — the BPA unit, repaired
+
+The downstream repair phase opened here because every other downstream quantity is denominated
+in this one. `universal_value = bpa + time_horizon_adj + risk_adj`;
+`team_acquisition_value = universal_value + need_bonus + eligibility_bonus`. If `bpa` has no
+fixed unit, none of the additive constants in those two lines has a fixed meaning either.
+
+## What the code did
+
+```python
+reference = vor[vor > 0].max()
+bpa = (vor / reference * 100).clip(0, 100)
+```
+
+Two separate defects, sharing one line.
+
+**The reference was a property of one other row.** `max(VOR)` is whoever happens to be the best
+remaining player. He leaves the pool when someone drafts him, and every other player's `bpa`
+rescales. Measured across a real 12×20 board, the reference moved 97.0 → 72.0 → 27.0 → 17.0 →
+16.0 → 13.0 → 9.0 → 2.0, and a decomposition of every player whose own projection never changed
+attributed **94.6% of all `bpa` movement to the reference and 5.4% to the player**. Isaiah
+Likely, one fixed projection of 186 points, read 0.0 → 0.0 → 0.0 → 0.0 → 50.0 → 61.5 → 88.9 →
+0.0 across rounds 1–12. Nothing about him changed.
+
+**The clip destroyed the below-replacement measurement.** `clip(0, 100)` mapped every negative
+VOR onto the same 0.0. Measured, 95%+ of all zeros on a mid-draft board were clipped negatives,
+sharing a value with the genuine boundary case (a player who *is* the replacement level) and
+with the degenerate anchor case. At round 4 the priced field carried 141 distinguishable states;
+by round 12 it carried 20.
+
+## Why the fix removes a coefficient rather than choosing a better one
+
+Four invariants already established in this document jointly determine the answer, so no new
+number had to be invented:
+
+* **62** — draft state contextualizes `bpa`; it never redefines its unit.
+* **63** — the reference is never a property of a single other row.
+* **64** — a below-baseline measurement is preserved as a signed quantity.
+* **65** — bounded presentation is a rendering decision, not a property of the measurement.
+
+Invariant 63 rules out *every* candidate reference of the form `max(...)`, `top-N mean`, or
+`percentile`, because each is still a property of whichever rows are in the pool. Invariant 65
+removes the only motivation for having a reference at all. #76's consumer survey settled the
+rest: **zero consumers require `bpa ≤ 100`; five require a stable unit.** One answer survives.
+
+```python
+def _scale_vor_to_bpa(vor: pd.Series) -> pd.Series:
+    return vor.astype(float)
+```
+
+`bpa` **is** VOR: real projected points above this position's replacement level. Absence stays
+absent — a row with no anchor returns `NaN`, never `0.0`.
+
+## What the repair does and does not change
+
+`VOR = production_margin + scarcity_movement` remains exact, and **`scarcity_movement` is
+supposed to move.** A player's `bpa` still changes when his position's replacement level falls,
+because that is the scarcity term reporting real information about the draft. What may never
+move is the ruler. The two forms of that contract are pinned separately:
+
+* per-player — a player's entire `bpa` change is accounted for by his anchor's change, to the
+  cent (`test_bpa_unit.py`);
+* per-pair — two players at the same position share an anchor, so it cancels, and the gap
+  between them is their gap in real projected points at **every** board state
+  (`test_downstream_contracts.py`).
+
+Measured on the repaired round-0 board: 333 priced rows, 185 distinct values, spanning −324.0 to
++181.0, with exactly 9 rows at 0.0 — and every one of those 9 verified to be a player sitting
+exactly at his position's replacement level. Zero has been returned to meaning one thing.
+
+## The consequence this exposes, which is not fixed here
+
+Every absolute constant that reads a `bpa` difference was calibrated against the old rescaled
+unit. `NEAR_TIE_BAND = 2.0` was worth **1.94 real points at round 1 and 0.02 by round 13** — a
+97× drift. It is now worth exactly 2.0 real points at every board state, which is a strict gain
+in well-definedness and *not* a claim that 2.0 is the right number.
+
+The kicker fixture is where this surfaced first: the measured K1-to-K2 step is 3.0 real points
+against a 2.0 band, while every other adjacent gap in the field sits at or under it. That is a
+genuine disagreement between a constant and the evidence, and it is **finding #56**, not
+something the BPA repair may settle. No constant was retuned in this change. Every one of
+`NEED_BONUS_MAX`, `ELIGIBILITY_BONUS_MAX`, `NEAR_TIE_BAND`, `NECESSITY_STANDOUT_REFERENCE_GAP`,
+`TIME_HORIZON_SLOPE`, `TIME_HORIZON_CLAMP` and `RISK_ADJ` is numerically unchanged.
+
+## What the five suite failures turned out to be
+
+The full-suite gate failed five tests. Every one was a **test defect**, and four of the five were
+tests that had been passing *vacuously* behind the clip:
+
+1. `assertEqual(bpa.iloc[0], 100.0)` inside a test about absence — pinning the rescale as a side
+   effect. Now asserts pass-through of both measured rows.
+2. An eligibility fixture selecting its candidate by a magic `25.0` gap written in the old unit;
+   in real points that lands at WR #3, too good for the fixture's own saturation step to work.
+   Now selects by the property the scenario requires.
+3. A risk_adj gate reading `bpa < -4.6`, unreachable under a `[0,100]` clip — the guarded block
+   had never executed. Now states "thin" as `|bpa|`, asserts the formula unconditionally, and
+   **skips loudly** when the real pool contains no subject, rather than passing silently.
+4. A superflex QB test computing a *within-QB* gap and asserting a *whole-board* ordering — two
+   registers, conflated. It survived only because the clip flattened the rookie QB class so the
+   gate never opened. The best rookie RB sits 256 points above his replacement and the best
+   rookie QB sits exactly *at* his, so the RB leading that board is the engine working.
+5. The kicker near-tie test above.
+
+## Invariants
+
+95. `bpa` is VOR in real projected points. It is not rescaled, not referenced against another
+    row, and not clipped.
+96. Two players at the same position differ in `bpa` by exactly their difference in projected
+    points, at every board state.
+97. A `bpa` of exactly `0.0` means the player is at his position's replacement level. It is not
+    a floor, a default, or a stand-in for absence.
+98. A constant expressed as an absolute difference in `bpa` has a fixed meaning in real points.
+    Where the right number is unknown, that is recorded as an open decision, not absorbed by a
+    rescale.
+99. A test that cannot reach its subject reports that fact. Silence is not a pass.

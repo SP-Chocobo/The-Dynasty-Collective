@@ -316,17 +316,27 @@ class AbsenceSurvivesTheConsumersTests(unittest.TestCase):
     into a number before any consumer could notice it."""
 
     def test_a_player_with_no_anchor_gets_no_vor_rather_than_zero(self):
+        # The subject is the absent row. The measured rows are asserted too, and asserted as
+        # PASS-THROUGH: this line used to read `assertEqual(bpa.iloc[0], 100.0)`, which was not
+        # a claim about absence at all -- it was pinning the old max-of-pool rescale, where the
+        # best row mapped to 100 by construction. That rescale is gone (bpa IS vor, in real
+        # projected points), so the honest assertion is that every measured vor arrives
+        # unchanged and only the absent one stays absent.
         vor = pd.Series([10.0, float("nan"), 5.0])
         bpa = dr._scale_vor_to_bpa(vor)
         self.assertTrue(math.isnan(bpa.iloc[1]))
-        self.assertEqual(bpa.iloc[0], 100.0)
+        self.assertEqual(bpa.iloc[0], 10.0)
+        self.assertEqual(bpa.iloc[2], 5.0)
 
     def test_absence_survives_even_when_every_measurable_vor_is_at_or_below_zero(self):
         # The early-return path previously handed back 0.0 for EVERY row, absent ones included.
+        # The below-replacement row is asserted signed for the same reason as above: a clip at
+        # zero would make -3.0 and 0.0 the same value, which is the deletion of a measurement.
         vor = pd.Series([0.0, float("nan"), -3.0])
         bpa = dr._scale_vor_to_bpa(vor)
         self.assertTrue(math.isnan(bpa.iloc[1]))
         self.assertEqual(bpa.iloc[0], 0.0)
+        self.assertEqual(bpa.iloc[2], -3.0)
 
     def test_position_view_depth_handles_absent_demand_without_raising(self):
         self.assertEqual(ps.position_view_depth(None), 1)
