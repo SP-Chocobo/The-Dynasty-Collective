@@ -5349,3 +5349,121 @@ re-litigated.
      invisible to a green suite and to a careful reviewer alike.
 117. A fixture is required to reach the state its tests describe, and that reachability is
      asserted in the test file — not left to be true by luck of the board state or pick order.
+
+---
+
+# Appendix — the constants contract (A / #56)
+
+`bpa` now has a stable real-point unit, so for the first time these constants mean the same
+thing in round 1 and round 16. That made it possible to ask what they are each *for*. The answer
+is not one contract with four numbers.
+
+## Three constants, nine roles, six quantities
+
+| constant | role | quantity it is compared against |
+|---|---|---|
+| `NEAR_TIE_BAND` 2.0 | threshold | TAV adjacent gap (`near_tie_flags`) |
+| | threshold | UV difference to the leader (`pure_value`) |
+| | threshold (aliased as `CLIFF_MIN_MATERIAL_GAP`) | bpa gap **within one position** |
+| `NEED_BONUS_MAX` 12.0 | **cap** | `need_bonus` itself |
+| | **divisor** | `rival_premium` (necessity's denial term) |
+| | threshold | `TAV − UV` (`context_elevated`) |
+| `NECESSITY_STANDOUT_REFERENCE_GAP` 15.0 | **divisor** | leader-vs-field TAV margin (necessity's standout term) |
+| | threshold | leader−second TAV margin (`decision_regime`) |
+| | threshold | `positional_forfeit` (`cliff_protection`) |
+
+Measured distributions, on the repaired unit across eight real board states:
+
+| quantity | n | p50 | p90 | p99 | max | rule fires |
+|---|---|---|---|---|---|---|
+| TAV adjacent gap | 2061 | 0.54 | 2.88 | 21.67 | 56.85 | 15.7% |
+| UV adjacent gap | 2061 | 0.54 | 2.88 | 20.54 | 56.85 | 16.1% |
+| bpa gap within a position | 2020 | **2.00** | 10.00 | 34.00 | 71.00 | 58.5% |
+| `TAV − UV` | 2070 | 4.00 | 8.33 | 8.33 | **8.33** | **0.0%** |
+| leader−second TAV margin | 9 | 0.35 | 4.99 | 11.92 | **12.69** | **0.0%** |
+| `positional_forfeit` | 72 | **54.81** | 121.89 | 154.94 | 154.94 | **73.6%** |
+| `rival_premium` | 72 | 4.33 | 8.33 | 8.33 | 8.33 | 0.0% |
+
+**The same literal 15.0 gates two quantities whose medians differ by 150×** — one it can never
+reach, one it clears three times out of four.
+
+## The root pattern: a bound is not a threshold
+
+Two of the three constants were chosen *correctly*, for a role that is the opposite of a
+threshold:
+
+* `NECESSITY_STANDOUT_REFERENCE_GAP` is a **normalizer's reference**. Its own comment states it
+  was deliberately placed *"above the largest adjacent gap ever observed (10.6) … since full
+  standout credit should demand something rare."* Being hard to reach is the **point**.
+* `NEED_BONUS_MAX` is a **cap**: exactly `3 × NEED_BONUS_PER_DEDICATED_SLOT`, the most a roster
+  slot can ever contribute. A cap is an upper bound by construction.
+
+Both were then reused as **firing thresholds**, where unreachability is fatal rather than
+intended. This is a category error, not a badly chosen number:
+
+> **A bound says "never more than this". A threshold says "meaningful above this."
+> A value chosen as one is not automatically valid as the other.**
+
+`cliff_protection` is the mirror image: a threshold sitting far *below* its quantity's median,
+so the flag is on for three of every four candidates and carries almost no information.
+
+## What was repaired, and what was not
+
+**Repaired — `decision_regime`'s margin condition.** Its margin half is not a separate concept:
+`near_tie_flags` marks the leader exactly when a second candidate sits within `NEAR_TIE_BAND`,
+so *"the leader is clear of the field"* and *"the leader is not in a tie group"* are the same
+predicate. Measured across 24 real board-state/roster pairs, the two agreed on **every one**.
+`decision_regime` now asks `near_tie_flags` rather than re-deriving a margin against a constant
+borrowed from a different concept. This introduces no new number — it points an existing rule at
+the concept the module already names, and removes a duplicate definition that could drift.
+
+Effect: `decisive` went from **0 of 24** real board states to **8 of 24**. One of the function's
+two states now exists. Because `near_tie_with_leader` is already shown in the UI and handed to
+the debate layer, the regime and the badge can also no longer disagree.
+
+**Checked and left alone — `CLIFF_MIN_MATERIAL_GAP`.** It is `= NEAR_TIE_BAND`, and gates a
+different population (within-position bpa gaps, p50 2.00 against the board-wide 0.54). That
+looks like the same coupling defect and is not: the existing comment already says it is *"kept
+under its own name because the two express genuinely different concepts … and could legitimately
+diverge later."* The concept split is already made explicitly. No change.
+
+**Not repaired — two thresholds that are still bounds.** Choosing what *should* fire them is a
+product decision and nothing in this repository determines it. Both are now pinned by tests that
+assert the measured state, so the numbers here cannot silently rot:
+
+1. `context_elevated` (`TAV − UV >= NEED_BONUS_MAX`). Unreachable. Max observed `TAV − UV` is
+   **8.33** on the standard board and **8.67** across **1020 rows** of a real IDP league with
+   genuine multi-eligibility; a deliberately constructed triple-eligible candidate on a
+   saturated roster reached only **3.55**. `NEED_BONUS_MAX` is three dedicated slots' worth and
+   this roster shape has at most two.
+2. `cliff_protection` (`positional_forfeit >= NECESSITY_STANDOUT_REFERENCE_GAP`). Fires 73.6% of
+   the time against a quantity whose median is 3.6× the threshold.
+
+## Two corrections to the constants' own documented basis
+
+Recorded rather than quietly fixed, per the standing rule that severity and frequency are
+separate claims and a wrong claim is worth keeping visible:
+
+1. `NEAR_TIE_BAND`'s comment states its basis as *"top-40 adjacent tav gaps … median 1.23 / p75
+   2.26 / p90 3.53 … 72% measured"* inside the band. Re-measured on the repaired unit, on the
+   superflex shape the comment names: **median 1.69, p75 3.05, p90 5.42, and 51% inside** (49%
+   on the standard shape). The band is still a working discriminator — arguably a better one at
+   ~50% than at 72% — but the stated justification no longer describes the data.
+2. `NECESSITY_STANDOUT_REFERENCE_GAP`'s comment justifies 15.0 as sitting *"above the largest
+   adjacent gap ever observed (10.6)"*. That reasons about the wrong quantity: the standout term
+   divides a **leader-vs-field margin**, not an arbitrary adjacent gap. The largest adjacent gap
+   now observed is **18.32** — above 15.0 — while the largest leader−second margin is **12.69**.
+   The number still sits above the quantity it actually divides; the reasoning given for it did
+   not describe that quantity even when it was written.
+
+## Invariants
+
+118. A constant is declared for one role — bound, divisor, or threshold — and reused in another
+     role only after the reuse is measured against that role's own quantity.
+119. Every firing threshold is reachable in both directions on real data. A rule that can never
+     fire, or that always fires, is asserted as such deliberately or it is a defect.
+120. Two rules that are provably the same predicate are expressed once. Where one already has a
+     name in the module, the other adopts it rather than restating it against a second constant.
+121. A constant's documented basis is a measurement, and a measurement can go stale. When the
+     unit beneath it changes, the basis is re-measured and any divergence is recorded, not
+     silently inherited.

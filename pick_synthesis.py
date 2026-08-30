@@ -565,14 +565,20 @@ def decision_regime(candidates: list[dict]) -> str:
     """"decisive" or "contested" -- which register a decision surface's explanatory prose
     should use for the CURRENT leader, never a per-candidate flag (only the leader can be
     "the elite asset"; nobody else's situation determines whether this pick is genuinely
-    close). Reads only margin-to-second-place and the leader's own survival_probability --
-    deliberately NOT round number or pick label. A leader clearing both bars gets read as
-    conviction-first regardless of whether that happens in round 1 or round 8; a bunched
-    field in round 1 stays "contested." The two thresholds are independent, real signals:
-    margin alone (a big lead that still might not survive) or survival alone (safe, but
-    only marginally ahead of the next-best option) each leave real ambiguity a "just take
-    him" framing would misrepresent -- only both together mean there is no actual decision
-    left to explain, just a fact to state.
+    close). Reads only whether the leader is clear of the field and the leader's own
+    survival_probability -- deliberately NOT round number or pick label. A leader clearing
+    both bars gets read as conviction-first regardless of whether that happens in round 1 or
+    round 8; a bunched field in round 1 stays "contested." The two conditions are independent,
+    real signals: being clear of the field alone (a real lead that still might not survive) or
+    survival alone (safe, but inside the tie band with the next-best option) each leave real
+    ambiguity a "just take him" framing would misrepresent -- only both together mean there is
+    no actual decision left to explain, just a fact to state.
+
+    "Clear of the field" is NOT a second definition of closeness: it is exactly the leader's
+    own near_tie_flags result, which is the module's one data-derived answer to "below this, an
+    ordering difference is field noise rather than signal", and is already the flag the UI
+    shows and the debate layer receives. See the implementation for the category error this
+    replaced.
 
     "contested" (not "messy" or "close") on purpose: plenty of contested picks aren't
     messy at all (a real cliff, a real denial case) -- what makes the enumerated,
@@ -581,8 +587,9 @@ def decision_regime(candidates: list[dict]) -> str:
     be manufacturing a decision that doesn't exist. Returns "contested" for an empty or
     single-candidate list -- a lone or empty field has no SECOND place to measure a margin
     against, so "decisive" (a claim this module can actually support) is never assumed by
-    default. Expects each candidate dict to carry team_acquisition_value and
-    survival_probability, sorted or not -- this function does its own ranking."""
+    default, and unpriced candidates are excluded before any of this. Expects each candidate
+    dict to carry team_acquisition_value and survival_probability, sorted or not -- this
+    function does its own ranking."""
     # Unpriced candidates are excluded from the ranking rather than ordered into it: the regime
     # is decided by a MARGIN between the best and second-best measurable option, and a row with
     # no team_acquisition_value is neither. Once they are out, the function's own existing rule
@@ -592,10 +599,30 @@ def decision_regime(candidates: list[dict]) -> str:
     if len(candidates) < 2 or len(priced) < 2:
         return "contested"
     ranked = sorted(priced, key=lambda c: c["team_acquisition_value"], reverse=True)
-    leader, second = ranked[0], ranked[1]
-    margin = leader["team_acquisition_value"] - second["team_acquisition_value"]
-    survival = leader.get("survival_probability")
-    if margin >= NECESSITY_STANDOUT_REFERENCE_GAP and survival is not None and survival <= DECISIVE_SURVIVAL_THRESHOLD:
+
+    # THE MARGIN HALF IS near_tie_flags' OWN QUESTION, so it is asked of near_tie_flags rather
+    # than re-derived here. "Is the leader clear of the field?" and "is the leader in a tie
+    # group?" are the same predicate: near_tie_flags marks the leader exactly when a second
+    # candidate sits within NEAR_TIE_BAND of him. Measured across 24 real board-state/roster
+    # pairs, the two agreed on every single one.
+    #
+    # It used to read `margin >= NECESSITY_STANDOUT_REFERENCE_GAP`, and that was a category
+    # error rather than a bad number. That constant is a NORMALIZER'S REFERENCE, and its own
+    # comment says it was deliberately placed "above the largest adjacent gap ever observed ...
+    # since full standout credit should demand something rare" -- being unreachable is the
+    # POINT of a normalizer reference, and is fatal for a firing threshold. Measured on the
+    # repaired real-points unit: the leader-second margin has a median of 0.35 and a maximum of
+    # 12.69 against a threshold of 15.0, so "decisive" was produced at 0 of 24 real board
+    # states. One of this function's two states did not exist.
+    #
+    # Expressing it once, in the module's own ordering-noise concept, is also what stops the
+    # two drifting apart -- and the leader's tie flag is already shown in the UI and handed to
+    # the debate layer, so the regime and the badge can no longer disagree.
+    leader_in_tie_group = near_tie_flags(
+        [c["team_acquisition_value"] for c in ranked])[0]
+    survival = ranked[0].get("survival_probability")
+    if (not leader_in_tie_group
+            and survival is not None and survival <= DECISIVE_SURVIVAL_THRESHOLD):
         return "decisive"
     return "contested"
     return flags

@@ -60,10 +60,20 @@ class NecessityLabelBoundaryTests(unittest.TestCase):
 
 
 class DecisionRegimeBoundaryTests(unittest.TestCase):
-    """decision_regime is an AND-gate over two independent thresholds (margin >=
-    NECESSITY_STANDOUT_REFERENCE_GAP, survival <= DECISIVE_SURVIVAL_THRESHOLD) -- both must
-    hold for "decisive"; either alone must still read "contested", per the function's own
-    docstring."""
+    """decision_regime is an AND-gate over two independent conditions -- the leader is clear of
+    the tie band (NEAR_TIE_BAND, via near_tie_flags) AND survival <= DECISIVE_SURVIVAL_THRESHOLD
+    -- both must hold for "decisive"; either alone must still read "contested", per the
+    function's own docstring.
+
+    The margin half used to be `margin >= NECESSITY_STANDOUT_REFERENCE_GAP`. That is a
+    normalizer's reference, deliberately placed above the observed maximum, so as a firing
+    threshold it never fired: measured, "decisive" was produced at 0 of 24 real board states.
+    These boundary tests moved with it. The AND-gate shape they exist to pin is unchanged.
+
+    Note the boundary DIRECTION differs between the two conditions, and that is deliberate:
+    near_tie_flags is inclusive at the band (a pair exactly NEAR_TIE_BAND apart IS a tie), so
+    a margin of exactly the band reads "contested", whereas survival exactly at the threshold
+    clears it."""
 
     def _candidates(self, margin: float, survival: float) -> list[dict]:
         return [
@@ -71,33 +81,39 @@ class DecisionRegimeBoundaryTests(unittest.TestCase):
             {"team_acquisition_value": 100.0, "survival_probability": 0.5},
         ]
 
-    def test_both_thresholds_cleared_exactly_is_decisive(self):
+    def test_both_conditions_cleared_is_decisive(self):
         regime = ps.decision_regime(self._candidates(
-            ps.NECESSITY_STANDOUT_REFERENCE_GAP, ps.DECISIVE_SURVIVAL_THRESHOLD,
+            ps.NEAR_TIE_BAND + EPS, ps.DECISIVE_SURVIVAL_THRESHOLD,
         ))
         self.assertEqual(regime, "decisive")
 
+    def test_a_margin_exactly_at_the_band_is_a_tie_and_stays_contested(self):
+        regime = ps.decision_regime(self._candidates(
+            ps.NEAR_TIE_BAND, ps.DECISIVE_SURVIVAL_THRESHOLD,
+        ))
+        self.assertEqual(regime, "contested")
+
     def test_margin_just_short_stays_contested_even_with_survival_cleared(self):
         regime = ps.decision_regime(self._candidates(
-            ps.NECESSITY_STANDOUT_REFERENCE_GAP - EPS, ps.DECISIVE_SURVIVAL_THRESHOLD,
+            ps.NEAR_TIE_BAND - EPS, ps.DECISIVE_SURVIVAL_THRESHOLD,
         ))
         self.assertEqual(regime, "contested")
 
     def test_survival_just_over_stays_contested_even_with_margin_cleared(self):
         regime = ps.decision_regime(self._candidates(
-            ps.NECESSITY_STANDOUT_REFERENCE_GAP, ps.DECISIVE_SURVIVAL_THRESHOLD + EPS,
+            ps.NEAR_TIE_BAND + EPS, ps.DECISIVE_SURVIVAL_THRESHOLD + EPS,
         ))
         self.assertEqual(regime, "contested")
 
-    def test_both_thresholds_just_short_stays_contested(self):
+    def test_both_conditions_just_short_stays_contested(self):
         regime = ps.decision_regime(self._candidates(
-            ps.NECESSITY_STANDOUT_REFERENCE_GAP - EPS, ps.DECISIVE_SURVIVAL_THRESHOLD + EPS,
+            ps.NEAR_TIE_BAND - EPS, ps.DECISIVE_SURVIVAL_THRESHOLD + EPS,
         ))
         self.assertEqual(regime, "contested")
 
-    def test_both_thresholds_cleared_with_room_to_spare_is_decisive(self):
+    def test_both_conditions_cleared_with_room_to_spare_is_decisive(self):
         regime = ps.decision_regime(self._candidates(
-            ps.NECESSITY_STANDOUT_REFERENCE_GAP + 10.0, ps.DECISIVE_SURVIVAL_THRESHOLD - 0.10,
+            ps.NEAR_TIE_BAND + 10.0, ps.DECISIVE_SURVIVAL_THRESHOLD - 0.10,
         ))
         self.assertEqual(regime, "decisive")
 
