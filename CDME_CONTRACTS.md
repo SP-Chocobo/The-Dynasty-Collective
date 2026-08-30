@@ -4716,3 +4716,117 @@ tests that had been passing *vacuously* behind the clip:
     Where the right number is unknown, that is recorded as an open decision, not absorbed by a
     rescale.
 99. A test that cannot reach its subject reports that fact. Silence is not a pass.
+
+---
+
+# Appendix — the survival layer's ordinal register
+
+## The two registers that share one integer
+
+`_build_opponent_boards` numbered every row on an opponent's board `1..n` and handed that
+mapping to two consumers. Both read the integer through `RANK_TAKE_PROBABILITY`, a table whose
+keys mean *"the consensus best player available"*, *"the second best"*, and so on:
+
+* `estimate_survival` — `_take_probability(rank, is_run)` per intervening pick;
+* `expected_positional_forfeit` — sums the same table over every row inside
+  `FORFEIT_OPPONENT_BOARD_DEPTH`.
+
+For a **priced** row that reading is correct: the ordinal came from `team_acquisition_value`.
+For an **unpriced** row — one whose position has no replacement level left to measure against,
+so the board carries absence — the ordinal came from the deterministic tiebreak that keeps the
+board stable. It is not a valuation, and it may not be read as one.
+
+## Measurement
+
+Round 16 of a real 12×20 board carries 63 unpriced rows of 141. Three unpriced targets — a WR at
+board ordinal **79**, a WR at **110**, and the very last row on the board, a K at **141 of 141** —
+all returned the identical survival probability of **0.641**. All three fell past the table's
+five keys onto `RANK_TAKE_PROBABILITY_FLOOR`.
+
+The number was not wrong. The claim to have measured it was: the ordinal contributed nothing,
+and nothing in the output said so.
+
+## The defect is live, not latent
+
+`pick_synthesis.narrow_candidates` adds the best remaining player at **every position the board
+covers**, unconditionally and by design — that addition exists to stop a scarce position's best
+player from being invisible to the strategic layer. So a position with no priced rows left hands
+an unpriced candidate straight to `pick_analysis` → `estimate_survival`. Measured: at round 16 at
+least one position is entirely unpriced.
+
+The stronger hazard — an unpriced row reaching the top five, where the tiebreak would be read as
+`0.55` — was checked across rounds 10–23 and is **not reachable**: at least 30 rows stay priced
+at every round. It was reachable before the BPA repair, when the clip left far fewer rows priced.
+
+## What the repair does
+
+`rank_by_id` is built over priced rows only, and the board declares `unpriced_ids` separately.
+`estimate_survival` then distinguishes three cases that had been two:
+
+1. **No entry at all** — not in this team's usable-position pool. They cannot take him; no risk.
+   Unchanged.
+2. **On their board, unpriced** — they *can* take him, but there is no valuation, so there is no
+   ordinal to read and no evidence of elevated risk. He gets the floor, and the row is labelled
+   `evidenced: False` with `rank_on_their_board: None`.
+3. **Priced** — unchanged.
+
+The same change fixes the forfeit consumer without touching it: unpriced rows can no longer
+occupy the top-`FORFEIT_OPPONENT_BOARD_DEPTH` window at all.
+
+**No number moves.** The floor is exactly what these rows already received, by a tiebreak ordinal
+missing the table. What changes is that the result now follows from a stated rule and carries a
+label, so no consumer can present it as a measurement.
+
+## What is deliberately left open
+
+Whether an unpriced-but-draftable player should instead count as **zero** risk is a product
+decision. There is no evidence in this repository to settle it, and choosing an answer would be
+inventing behaviour. It is recorded, not guessed.
+
+## Invariants
+
+100. An ordinal is only read through a table of valuations if it *is* a valuation ordinal. A
+     list that mixes priced and unpriced rows does not produce one.
+101. A board declares which of its rows it could price. A consumer that cannot value a player
+     says so rather than reading an ordinal that means something else.
+102. A probability derived without evidence is labelled as such at the point it is produced, not
+     left for a presentation layer to infer.
+103. "Not in the pool", "in the pool but unvalued", and "valued" are three distinct states. No
+     two of them share a code path.
+
+## The third site: the pace prior's denominator
+
+`_pace_based_take_probability` narrows *"some QB gets taken"* down to *"THIS QB gets taken"* by
+dividing the position's pace deficit by the target's rank among remaining players at his
+position — computed by sorting `board["by_id"]` on `universal_value`.
+
+An unpriced row's `universal_value` is `NaN`, and every comparison against `NaN` is `False`, so
+`list.sort` silently produces a **non-total** order the moment one is present. The result is not
+a rank at all: which row lands where depends on the order the rows arrived in.
+
+Demonstrated on a constructed board — three priced QBs among eight unpriced ones — the best QB's
+returned probability moved from **1.0 to 0.111**, a 9× swing, purely from reversing the dict's
+insertion order.
+
+**Reachability, measured rather than assumed.** The prior returns `None` past 48 picks (the
+first four rounds), and the real board's first unpriced row appears in round 15. The two windows
+do not overlap, so on today's data this is latent, not live. That is precisely why the test
+fixture is **constructed**: a test that can only observe its subject on data that does not exist
+would report a pass while proving nothing. The denominator now counts priced peers only, and an
+unpriced target gets the function's own `None` — the caller's documented "fall back to the
+rank-based estimate" path, not a new behaviour.
+
+## A note on the marker that was hiding a broken test
+
+`KnownGapSurvivalAnswersOnAnUnpricedBoard` had carried `@unittest.expectedFailure` since the
+contract phase. Its body called `_build_opponent_boards` with an argument the signature does not
+take and passed a list of tuples where a flat list of roster_ids belongs; it raised `TypeError`
+on every run. A suite reports that as the expected failure it was told to expect — so the marker
+read as *"this contract is not met yet"* for a test that had never once reached its subject.
+
+An `expectedFailure` asserts that a *specific* thing fails. It cannot distinguish that from the
+test being broken. Where a known gap is marked, the marked test must be shown to fail **for its
+stated reason** before the marker is trusted.
+
+104. An `expectedFailure` is only trusted once the marked test has been observed failing for the
+     reason it names. A marker over a test that errors is a marker over nothing.

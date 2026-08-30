@@ -310,39 +310,71 @@ class BelowReplacementKeepsItsSignTests(_BoardFixture):
                                    msg=f"{row['name']} reads 0.0 without being at replacement")
 
 
-class KnownGapSurvivalAnswersOnAnUnpricedBoard(_BoardFixture):
-    """#61. estimate_survival is purely rank-based and never reads a value, so it keeps
-    returning a confident probability for a player whose ordering on every opponent board is
-    the player_id tiebreak. Confirmed live before the repair phase: an unpriced leader at
-    round 17 carried the identical 0.202 an unpriced leader at round 13 did.
+class SurvivalOnAnUnpricedBoardTests(_BoardFixture):
+    """#61, repaired -- and a note on why this class no longer carries an expectedFailure.
 
-    Asserted against draft_strategy, not the board record -- survival is computed a layer up
-    and compute_draft_board does not carry it. An earlier version of this test looked for the
-    field on the board, found nothing, and skipped: a test that cannot observe its subject
-    proves nothing about it."""
+    The marker was hiding a broken test. Its body called
+    `_build_opponent_boards(merger, players_db, picks, drafted, DYNASTY, "1")` against a
+    signature that takes no `drafted` argument, and passed a list of tuples where a flat list
+    of roster_ids belongs. It raised a TypeError on every run. A suite reports that as the
+    expected failure it was told to expect, so the marker read as "the contract is not met yet"
+    for a test that had never once reached its subject -- the same failure mode the class
+    docstring above it warned about.
+
+    The register defect it was written for IS fixed: rank_by_id is now built over priced rows
+    only, and an unpriced target's risk rows carry `evidenced: False` and no ordinal. That
+    contract is owned by test_survival_evidence.py, at depth, against both real and constructed
+    boards. What is asserted here is only the part this file is about -- that the strategic
+    layer's answer for an unvaluable player is distinguishable from a measured one.
+
+    THE OPEN DECISION, recorded rather than guessed: whether an unpriced-but-draftable player
+    should count as floor risk (today's behaviour, and what production already produced before
+    the repair) or as zero risk is a product question. Nothing in this repository settles it,
+    so nothing here asserts an answer."""
 
     def _late_round_state(self):
-        board = self.board
-        picks = [{"player_id": r["player_id"], "roster_id": str((i % 12) + 1),
-                  "round": (i // 12) + 1, "pick_no": i + 1}
-                 for i, r in enumerate(board[:12 * 16])]
-        return picks
+        return [{"player_id": r["player_id"], "roster_id": str((i % 12) + 1),
+                 "round": (i // 12) + 1, "pick_no": i + 1}
+                for i, r in enumerate(self.board[:12 * 16])]
 
-    @unittest.expectedFailure
-    def test_survival_declines_when_the_target_is_unpriced_on_every_opponent_board(self):
+    def test_an_unpriced_targets_survival_is_labelled_rather_than_presented_as_measured(self):
         picks = self._late_round_state()
-        drafted = {p["player_id"] for p in picks}
         late = dr.compute_draft_board(self.merger, self.players_db, picks, my_roster_id="1",
                                       league=DYNASTY, mode="balanced")
         unpriced = [r for r in late if _is_absent(r.get("final_score"))]
         self.assertTrue(unpriced, "late-round board should contain unpriced rows")
-        pick_order = [(str((i % 12) + 1), (i // 12) + 1) for i in range(len(picks) + 24)]
+
+        roster_ids = [str(i) for i in range(1, 13)]
+        pick_order = ds.generate_pick_order(roster_ids, 21, "snake")
+        current_index = next(i for i in range(len(picks), len(pick_order))
+                             if pick_order[i] == "1")
         opponent_boards = ds._build_opponent_boards(
-            self.merger, self.players_db, picks, drafted, DYNASTY, "1")
+            self.merger, self.players_db, picks, DYNASTY, roster_ids, mode="balanced")
         result = ds.estimate_survival(
-            picks, self.players_db, pick_order, len(picks), "1",
+            picks, self.players_db, pick_order, current_index, "1",
             unpriced[0]["player_id"], opponent_boards, league=DYNASTY)
-        self.assertIsNone(result.get("survival_probability"))
+
+        self.assertTrue(result["risk_by_team"], "the fixture produced no intervening picks")
+        self.assertEqual(result["unevidenced_picks"], len(result["risk_by_team"]))
+        self.assertTrue(all(r["evidenced"] is False for r in result["risk_by_team"]))
+
+    def test_a_priced_targets_survival_is_still_reported_as_measured(self):
+        picks = self._late_round_state()
+        late = dr.compute_draft_board(self.merger, self.players_db, picks, my_roster_id="1",
+                                      league=DYNASTY, mode="balanced")
+        priced = [r for r in late if not _is_absent(r.get("final_score"))]
+        self.assertTrue(priced)
+
+        roster_ids = [str(i) for i in range(1, 13)]
+        pick_order = ds.generate_pick_order(roster_ids, 21, "snake")
+        current_index = next(i for i in range(len(picks), len(pick_order))
+                             if pick_order[i] == "1")
+        opponent_boards = ds._build_opponent_boards(
+            self.merger, self.players_db, picks, DYNASTY, roster_ids, mode="balanced")
+        result = ds.estimate_survival(
+            picks, self.players_db, pick_order, current_index, "1",
+            priced[0]["player_id"], opponent_boards, league=DYNASTY)
+        self.assertEqual(result["unevidenced_picks"], 0)
 
 
 if __name__ == "__main__":
