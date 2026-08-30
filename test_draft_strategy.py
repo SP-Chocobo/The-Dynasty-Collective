@@ -295,10 +295,15 @@ class SurvivalAndPickAnalysisTests(unittest.TestCase):
                 expected_take_prob = risk["take_probability"]
 
         self.assertAlmostEqual(row["rival_premium"], round(expected_premium, 2), places=2)
-        if expected_take_prob is None:
-            self.assertIsNone(row["rival_premium_take_probability"])
-        else:
-            self.assertEqual(row["rival_premium_take_probability"], expected_take_prob)
+        # This fixture always produces a premium-bearing opponent, so the None branch below is
+        # unreachable HERE and is asserted to be, rather than sitting as a dead conditional an
+        # assertion-reachability trace flags every run. The None case is real and is covered
+        # where it actually occurs -- an unpriced candidate no opponent can price, in
+        # test_absence_survives_consumers.LateBoardIntegrationTests.
+        self.assertIsNotNone(expected_take_prob,
+                             "fixture no longer produces a premium-bearing opponent; the "
+                             "branch this test exercises has moved")
+        self.assertEqual(row["rival_premium_take_probability"], expected_take_prob)
 
     def test_denial_value_never_exceeds_the_denying_teams_own_acquisition_value(self):
         board = dr.compute_draft_board(self.merger, self.players_db, [], my_roster_id="1", league=LEAGUE, mode="balanced")

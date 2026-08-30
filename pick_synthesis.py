@@ -645,6 +645,13 @@ def detect_positional_cliff(board: list[dict], player_id) -> Optional[dict]:
     # the board could not price are not in the distribution -- and if the target himself has no
     # bpa there is no drop of his to measure. Excluding them is the same rule the curve and the
     # near-tie band follow; sorting them in was a TypeError, not a mis-ranking.
+    #
+    # The early return is REDUNDANT GIVEN THE FILTER BELOW, and that is recorded rather than
+    # left for someone to rediscover: an unpriced target is excluded from same_position, so
+    # `idx` comes back None and the function returns None by that route anyway. Verified across
+    # 112 unpriced rows on real rounds 16 and 18 -- none would reach the body without it. It is
+    # kept because it states the intent at the top where a reader looks for it, but the FILTER
+    # is what actually enforces the rule, so removing the filter is not made safe by this line.
     if row.get("bpa") is None:
         return None
     same_position = sorted(

@@ -4868,9 +4868,18 @@ rd  TE demand (repr)             <1?  rank
  ...
 ```
 
-TE genuinely had one unfilled starting slot league-wide for ten straight rounds. By then every
-other position's demand is genuinely 0, so a single position falling out of the domain took the
-entire board's valuation with it.
+TE genuinely had one unfilled starting slot league-wide, and by round 11 every other position's
+demand is genuinely 0 — so a single position falling out of the domain took the entire board's
+valuation with it, and it stayed out for every round after.
+
+**A correction to how that was first written.** The pre-repair trace above shows the state at
+rounds 11 through 20 and was described as "ten straight rounds", which reads as ten independent
+triggers. It is one trigger with a persistent consequence: once TE fell out at round 11 nothing
+on the board could be priced, so the auto-draft's own picks stopped being value-driven and the
+demand simply never recovered. Re-running the same auto-draft **after** the repair reproduces
+the state exactly **once**, at round 11 — because TE is priced from there on, the draft makes
+different picks, and TE's demand then falls below one slot legitimately. Both traces are correct
+about their own draft; they are not the same draft.
 
 ## The tolerance is derived, not tuned
 
@@ -4881,6 +4890,29 @@ few dozen such terms is on the order of `1e-15`. `DEMAND_WHOLE_SLOT_TOLERANCE = 
 six orders of magnitude below the smallest real distinction and six above the largest plausible
 error: **every value in that gap gives identical answers**, which is what makes it a derivation
 rather than a constant to tune.
+
+## How general is the trigger? Measured, and narrower than first assumed
+
+Three sweeps, in increasing fidelity:
+
+1. **Synthetic round-robin picks**, 24 configurations (6 roster shapes × 8/10/12/14 teams),
+   4536 demand readings. 100 readings sat just under a whole number — and **all 100 round to 2
+   or more**, so none of them would ever have reached the `< 1` gate. **Zero dangerous
+   readings.** Draining every position evenly never lands a demand on exactly one slot.
+2. **Real board, best-first pick order**, 5 roster shapes × 10/12 teams. **Zero** dangerous
+   readings — including in the exact shape where the defect was originally measured.
+3. **Real auto-draft** (`simulate_opponent_picks`, every pick off that roster's own board),
+   4 roster shapes at 12 teams. **One** dangerous reading: `1QB 1flex`, TE, round 11. The other
+   three shapes — `1QB 2flex`, `superflex`, `te premium` — produced none.
+
+So the trigger is **not** universal across league shapes, and it is not reproducible from pick
+composition alone: it needs a real value-driven draft, in a roster shape whose flex-share
+arithmetic happens to land a position on exactly one whole slot. The standard 12-team,
+single-flex dynasty startup — the app's own default mock — is one such shape.
+
+That narrows the *frequency* claim and not the *severity* one: where it fires it removes every
+price on the board for the rest of the draft. The repair is unconditional and costs nothing in
+the shapes where the state never arises.
 
 ## What was deliberately not touched
 
@@ -5093,3 +5125,193 @@ is a real semantic break, and it should be chosen knowingly rather than absorbed
 change, ideally labelled in the UI), or the engine declines to order and says so, or a
 bench-specific value is defined. Note that the crash class this appendix's neighbour documents
 is fixed either way: nothing raises on these rows any more.
+
+---
+
+# Appendix — the adjacent sweep: what was checked and found sound
+
+Four defects came out of the downstream phase (D1–D4). This records the sweep around them, so
+"nothing else found" is a result rather than an absence of looking. Every line below is a check
+that was run, with what it returned.
+
+## Order dependence — clean, proved not assumed
+
+The repository has a documented history here (the `players_db` iteration-order bug, which
+reordered 37 of ~500 rows). Re-swept: the full board signature — `bpa`, `universal_value`,
+`final_score`, `need_bonus`, `eligibility_bonus`, `time_horizon_adj` for every row — was
+recomputed against **three shuffled `players_db` orderings and a shuffled picks list**, at rounds
+0, 4, 10, 16 and 19, and compared element by element. Identical at every state. `build_snapshot`
+candidates and their `pick_necessity` match too. **No order dependence remains.**
+
+## Empty-sequence and division crashes — clean
+
+Every `max()`/`min()` over a possibly-empty sequence in the valuation and strategy modules is
+guarded (`if demand_source else 1`, `if picks else 1`, `elif not others`, `if not priced`).
+Every division by a variable is guarded (`values[demand - 1] <= 0: continue`, `if total <= 0`,
+`if typical_gap > 0`, `if not rates`). Checked, nothing open.
+
+## The float-boundary class — one instance, and it is D3
+
+`positional_bench_appetite`'s `demand < 1` looked like a second instance of D3 and is not:
+its `demand = round(num_teams * slot_counts.get(position, 0))` is an **integer** before the
+comparison, so no accumulated fraction reaches it. `len(values) < 2 * demand` is integer too.
+`_remaining_demand_rank` was the only site where a flex-share-accumulated float met a whole-number
+boundary, and `replacement_ranks` inherits the repair because it reuses that helper rather than
+restating the rule.
+
+## `waiting_cost` is now commensurable with `bpa` — a consequence worth naming
+
+`waiting_cost = projected_points - horizon_floor` was always in real season points and was never
+rescaled. Before D1 that put it on a **different unit** from `bpa` (0–100), which means the
+staged work to wire it into the decision layer (#48/#57/#71) had a unit obstacle nobody had
+named. After D1 both are real projected points. That work is now expressible; it was not before.
+
+## `upside_score`'s growth term — checked, and sound
+
+`upside_score` is `bpa + UPSIDE_GROWTH_WEIGHT * growth`, where `growth` is a **percentile**
+difference and `bpa` is now real points. That is the same additive-unit shape as
+`universal_value`, so it was measured rather than assumed:
+
+| round | mean \|bpa\| | mean growth term | growth share | rows reordered vs. pure-`bpa` order | max move |
+|---|---|---|---|---|---|
+| 0 | 65.34 | 1.68 | 2.5% | 133 | 17 |
+| 8 | 63.53 | 2.78 | 4.2% | 141 | 24 |
+| 14 | 73.43 | 3.72 | 4.8% | 106 | 17 |
+| 16 | 67.04 | 4.02 | 5.7% | 30 | 8 |
+| 17 | 68.32 | 4.18 | 5.8% | 26 | 6 |
+
+The growth term's share of *magnitude* is small, but it still does real ordering work at every
+round, and the top 12 differs from a pure-`bpa` ordering at all of them — because the median
+adjacent gap (0.34–1.33 points) is smaller than the growth term itself. A small share of a score
+is not the same as a small influence on its order. **`UPSIDE_GROWTH_WEIGHT` is not on the
+open-decisions list.**
+
+## D1 independently killed a previously-documented pathology
+
+`upside_score`'s own comment records a measured failure: *"because bpa collapses to 0.00
+board-wide once positional demand is exhausted, growth becomes the SOLE ranking term at that
+point, and the artifact took over the board outright: rounds 16 and 17 of a 12x20 draft went
+100% K/DEF, and the 22-point kicker sitting last in the remaining pool ranked first overall."*
+
+That collapse was the clip. Measured now, the upside board's top 12 at rounds 16 and 17 is
+`{TE 6, RB 3, QB 3}` and `{TE 6, QB 2, RB 4}` — **zero K, zero DEF** — and mean |bpa| is 67–68
+rather than 0. The guard added at the time remains and is still right; the underlying mechanism
+it was compensating for is gone. This was not a target of D1 and is an independent confirmation
+of it.
+
+## Invariants
+
+112. A term added to a score is checked against that score's unit, not against its own history.
+     "Small share of magnitude" and "small influence on order" are different claims and are
+     measured separately.
+113. Where a sweep finds nothing, the sweep itself is recorded. An unwritten check cannot be
+     distinguished later from one that was never run.
+
+---
+
+# Appendix — mutation-testing the repairs themselves
+
+Four defects were fixed and roughly 60 tests were added to guard them. A test that passes proves
+nothing about whether it would fail if the fix were undone, and this audit has already found
+several tests in this repository that passed while never observing their subject. So the
+repairs were mutation-tested: each fix was deliberately reverted in the source, the tests meant
+to guard it were run, and a mutation that **survived** would mean those tests do not actually
+observe the behaviour.
+
+Harness in `scratchpad/mutate.py` — patch, run, restore in a `finally`, and verify at the end
+that every source file is byte-identical to where it started (it was).
+
+| mutation | result |
+|---|---|
+| D1 re-introduce the 0–100 clip | killed |
+| D1 re-introduce a max-of-pool rescale | killed |
+| D2 rank unpriced rows again | killed |
+| D2 drop the unevidenced label | killed |
+| D2 let the pace prior rank unpriced peers | killed |
+| D3 remove the boundary tolerance | killed |
+| D3 widen the tolerance to swallow a real 0.67 | killed |
+| D4 put unpriced rows back on the value curve | killed |
+| D4 make `opportunity_cost` zero instead of absent | killed |
+| D4 order absence first instead of last | killed |
+| D4 let absence into the near-tie band | killed |
+| D4 let an unpriced sole candidate claim the standout weight | killed |
+| D4 count unpriced rows in `decision_regime`'s field | killed |
+| D4 give an unpriced target a cliff reading | **survived** |
+
+**13 of 14 killed.** The survivor was then adjudicated rather than assumed to be a test gap,
+because a surviving mutant has two possible meanings and only one of them is a problem.
+
+`detect_positional_cliff`'s `if row.get("bpa") is None: return None` is **provably redundant**
+given the filter beneath it: an unpriced target is excluded from `same_position`, so `idx` comes
+back `None` and the function returns `None` by that route regardless. Verified by running both
+variants over every row of real boards at rounds 0, 16 and 18 — of **112 unpriced rows, zero**
+would reach the function body without the early return. That is an *equivalent mutant*, not an
+unobserved behaviour, and no test could distinguish the two because there is nothing to
+distinguish.
+
+The guard is kept, and the redundancy is now recorded in the code itself — otherwise a later
+reader could remove the filter believing the guard covers it, which is the one way this pairing
+could actually break.
+
+## Invariants
+
+114. A fix is guarded by a test that has been observed to fail when the fix is reverted. Passing
+     is not evidence of guarding.
+115. A surviving mutant is adjudicated before it is treated as a gap: an equivalent mutant means
+     redundant code, and the redundancy is recorded where the code is, not only in the audit.
+
+---
+
+# Appendix — how the vacuity audit was run, so it can be run again
+
+Three of this phase's findings were tests that passed without ever observing their subject. That
+is not a class you find by reading; it needs a tool. This records the tool, because the finding
+is only durable if the check is repeatable.
+
+`scratchpad/vacuity.py` installs a `sys.settrace` line tracer **scoped to the test files
+themselves** (the global tracer returns `None` for every frame outside them, so production code
+runs untraced and the overhead stays tolerable), runs the whole suite through
+`unittest.TextTestRunner`, and then diffs the set of executed lines against every line
+containing `self.assert…`, `self.fail(`, `self.skipTest(` or `assertRaises`. Anything in the
+second set and not the first is an assertion that never ran.
+
+**First run: 1127 tests, 27 assertion lines never executed.** Eleven were `skipTest` calls that
+correctly never fired — a guard that never triggers is good news, and the tool reports it so the
+distinction is made deliberately rather than by eye. The rest were real, and are fixed:
+
+| file | what was wrong |
+|---|---|
+| `test_downstream_contracts` | `AbsenceIsNotAValueTests` filtered for unpriced rows on the **opening** board, which prices all 333. Three assertions had never run once. |
+| `test_cdme_denial_semantics_audit` | `pick_order` was a single round with the user picking first, so `intervening` was `[]` and every audited field was `0.0` / `None` / `1.0`. A whole fidelity class comparing nothing to nothing. |
+| `test_pick_synthesis` | `for d in diffs:` over a list that is empty by construction — asserted nothing but "no exception". |
+| `test_identity_boundary` | Both assertions sat under conditions that are always false now that all nine cross-person cases are declined. |
+| `test_draft_strategy` | The `rival_premium_take_probability is None` branch was never taken. |
+
+One performance test (`test_full_board_stays_fast_…`) can fail **under the tracer** and pass
+without it, which is expected: `settrace` inflates wall-clock. Its result is ignored in this
+harness rather than being read as a regression.
+
+## Second run, after the fixes: 1158 tests, 19 never-executed lines — and all 19 accounted for
+
+The point of re-running is that a residual count is only meaningful if every entry in it is
+explained. It is:
+
+| category | n | why it is correct |
+|---|---|---|
+| `skipTest` calls that never fire | 10 | the fixture always had its subject; a guard that never triggers is the good outcome |
+| `self.fail(...)` guards | 2 | they exist to fire only on a defect (`test_downstream_contracts` 285, `test_parser_integrity` 131) |
+| conditional assertions kept beside a stronger sibling | 5 | `test_identity_boundary` asserts both the contract ("if it resolves, not to the other person") and the measured state ("nothing resolves"); `test_pick_synthesis` keeps the per-row loop beneath an explicit `assertEqual(diffs, [])` |
+| assertion behind a `skipTest` that does fire | 1 | `test_draft_room` 1114 — the fixture limitation is reported, which is the whole point |
+| genuinely dead | **0** | the last one (`test_draft_strategy` 299) now asserts that its own branch is unreachable in that fixture, and points at where the case is really covered |
+
+**Zero unexplained never-executed assertions remain.** The number will not go to zero and should
+not: `skipTest` and `self.fail` lines are supposed to sit unexecuted. What matters is that each
+one has a reason recorded, so a future run can be diffed against this table rather than
+re-litigated.
+
+## Invariants
+
+116. Test vacuity is checked with a tool, not by reading. An assertion that never executes is
+     invisible to a green suite and to a careful reviewer alike.
+117. A fixture is required to reach the state its tests describe, and that reachability is
+     asserted in the test file — not left to be true by luck of the board state or pick order.
