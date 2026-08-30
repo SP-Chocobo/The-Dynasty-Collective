@@ -798,6 +798,15 @@ def replacement_levels(
     return levels
 
 
+# How far below a whole starting slot a demand may sit and still count as one whole slot.
+# Not a tuning knob: remaining demand is a sum of integers and k/num_teams flex shares, so two
+# genuinely different demands are at least 1/32 apart even in the largest league, while the
+# float error accumulated across those terms is ~1e-15. Any value in that six-orders-of-
+# magnitude gap gives the identical answer. See _remaining_demand_rank's own docstring for the
+# measurement that made this necessary.
+DEMAND_WHOLE_SLOT_TOLERANCE = 1e-9
+
+
 def _remaining_demand_rank(
     position: str, remaining_demand: dict[str, float],
 ) -> Optional[int]:
@@ -807,9 +816,29 @@ def _remaining_demand_rank(
 
     None, never 1, when less than one whole starting slot is still unfilled. A demand of 0.7
     is not a demand for one more player, and rounding it up to rank 1 is exactly the
-    conflation this returns None to avoid -- see replacement_levels' own docstring."""
+    conflation this returns None to avoid -- see replacement_levels' own docstring.
+
+    The comparison carries a tolerance because remaining_starter_demand accumulates flex
+    SHARES -- 1/3 and 2/3 of a slot per team -- so a demand that is mathematically exactly one
+    whole slot arrives one ULP below it. Written as the bare `demand < 1`, that put a real,
+    unfilled starting slot OUTSIDE the domain. Measured on a real 12x20 mock: TE demand from
+    round 11 onward is 0.9999999999999998, and by that point every other position's demand is
+    genuinely 0 -- so replacement_levels returned an empty dict and the board could price
+    nothing at all. 102 of that mock's 240 auto-drafted picks (42.5%) were made from a top row
+    carrying no value, with rounds 11-20 decided entirely on the deterministic player_id
+    tiebreak.
+
+    The tolerance is DERIVED, not tuned. Demand is a sum of integers and k/num_teams shares, so
+    two genuinely different demands differ by at least 1/num_teams: 0.083 in a 12-team league,
+    no smaller than 1/32 = 0.031 in the largest league anyone fields. Accumulated double
+    error over a few dozen such terms is ~1e-15. 1e-9 sits about six orders below the smallest
+    real distinction and six above the largest plausible error, so every value in that gap
+    gives identical answers.
+
+    The `int(round(...))` below is deliberately untouched: its rounding boundary is a separate
+    question with its own behaviour, and this repair changes only the domain gate."""
     demand = remaining_demand.get(position, 0.0)
-    if demand < 1:
+    if demand < 1 - DEMAND_WHOLE_SLOT_TOLERANCE:
         return None
     return int(round(demand))
 

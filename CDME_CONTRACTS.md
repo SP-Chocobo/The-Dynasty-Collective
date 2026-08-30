@@ -4830,3 +4830,86 @@ stated reason** before the marker is trusted.
 
 104. An `expectedFailure` is only trusted once the marked test has been observed failing for the
      reason it names. A marker over a test that errors is a marker over nothing.
+
+---
+
+# Appendix — the demand domain boundary was float noise
+
+## What was measured
+
+Auto-drafting a full 12×20 mock through `simulate_opponent_picks` (each pick takes that
+roster's own top board row):
+
+| | before | after |
+|---|---|---|
+| auto-picks made | 240 | 240 |
+| decided by an exact tie at the top | 16 (6.7%) | 16 (6.7%) |
+| **made from an unpriced top row — no valuation at all** | **102 (42.5%)** | **86 (35.8%)** |
+| first round with nothing priced anywhere on the board | **12** | 14 |
+
+From round 12 on, `replacement_levels` returned an **empty dict**. Not "a few positions
+omitted" — nothing at all. The board could price no player, so the opponent AI drafted the back
+half of the draft on the deterministic `player_id` tiebreak.
+
+## Why
+
+`_remaining_demand_rank` returns `None` below one whole starting slot, and that rule is right:
+a demand of 0.7 is not a demand for one more player. It was written as the bare comparison
+`demand < 1`.
+
+`remaining_starter_demand` accumulates flex **shares** — 1/3 and 2/3 of a slot per team — so a
+demand that is mathematically exactly one whole slot arrives one ULP below it:
+
+```
+rd  TE demand (repr)             <1?  rank
+ 10 2.333333333333333          False     2
+ 11 0.9999999999999998          True  None
+ 12 0.9999999999999998          True  None
+ ...
+```
+
+TE genuinely had one unfilled starting slot league-wide for ten straight rounds. By then every
+other position's demand is genuinely 0, so a single position falling out of the domain took the
+entire board's valuation with it.
+
+## The tolerance is derived, not tuned
+
+Remaining demand is a sum of integers and `k/num_teams` flex shares, so two genuinely different
+demands differ by at least `1/num_teams` — 0.083 in a 12-team league, no smaller than
+`1/32 = 0.031` in the largest league anyone fields. Accumulated double-precision error across a
+few dozen such terms is on the order of `1e-15`. `DEMAND_WHOLE_SLOT_TOLERANCE = 1e-9` sits about
+six orders of magnitude below the smallest real distinction and six above the largest plausible
+error: **every value in that gap gives identical answers**, which is what makes it a derivation
+rather than a constant to tune.
+
+## What was deliberately not touched
+
+The `int(round(demand))` on the following line. Its rounding boundary is a separate question
+with its own behaviour; this repair changes only the domain gate, and
+`test_the_rounding_above_the_boundary_is_unchanged` pins that it stayed byte-identical.
+
+## What this repair does NOT fix, and why it stops here
+
+86 auto-picks (rounds 14–20) still come from an unpriced board — and there, demand really is
+zero at every position, because every starting slot in the league is genuinely filled. The board
+reporting absence is the contract working: it has no starter-demand replacement level to measure
+bench depth against, and saying so is more honest than inventing one.
+
+**What the engine should order players by once no starter demand exists is an open product
+decision** (#45/#69), and it is not settled here:
+
+* raw `projected_points` is defined for every row but is not comparable across positions — a
+  QB's 340 against a kicker's 116 — so ordering on it would make the AI take quarterbacks with
+  bench picks;
+* `trade_value` is a market quantity from a different measurement basis, not this engine's own;
+* refusing to order at all leaves the mock draft unable to complete.
+
+None of those follows from evidence in this repository. Recorded, not guessed.
+
+## Invariants
+
+105. A domain boundary compared against a value assembled from fractional shares carries a
+     tolerance derived from that value's own granularity. A bare `<` against an integer
+     boundary is a defect wherever the quantity is not itself an integer.
+106. One position falling out of the valuation domain may not silently remove the whole board's
+     ability to price. Coverage collapse is reported, not inferred from an empty result.

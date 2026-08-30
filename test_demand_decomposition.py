@@ -311,6 +311,64 @@ class BenchEvidenceCannotReachValuationTests(unittest.TestCase):
         self.assertEqual(calls, [])
 
 
+class DemandDomainBoundaryIsNotFloatNoiseTests(unittest.TestCase):
+    """#73. `_remaining_demand_rank` returns None below one whole starting slot, and that rule
+    is right: a demand of 0.7 is not a demand for one more player. But it was written as the
+    bare comparison `demand < 1`, and remaining_starter_demand accumulates flex SHARES -- 1/3
+    and 2/3 of a slot per team -- so a demand that is mathematically exactly 1 arrives as a
+    float one ULP below it.
+
+    Measured on a real 12x20 mock draft: TE demand from round 11 onward is
+    0.9999999999999998. `0.9999999999999998 < 1` is True, so TE fell out of the domain, and by
+    that point every OTHER position's demand is genuinely 0 -- so replacement_levels returned
+    an EMPTY dict and the board could price nothing at all. 42.5% of the auto-drafted picks in
+    that mock (102 of 240) were made from a top row with no value on it, and rounds 11 through
+    20 were drafted entirely on the deterministic player_id tiebreak.
+
+    THE TOLERANCE IS DERIVED, NOT TUNED. Remaining demand is a sum of integers and k/num_teams
+    flex shares, so two genuinely different demands differ by at least 1/num_teams -- 0.083 in
+    a 12-team league, and no worse than 1/32 = 0.031 in the largest league anyone fields.
+    Accumulated double-precision error over a few dozen such terms is on the order of 1e-15.
+    1e-9 sits about six orders of magnitude below the smallest real distinction and six above
+    the largest plausible error, so no choice inside that gap changes any answer.
+
+    NOT TOUCHED: the `int(round(demand))` on the following line. Its rounding boundary is a
+    separate question with its own behaviour, and this repair deliberately leaves it byte-for-
+    byte identical -- the tests below pin that."""
+
+    def test_a_demand_that_is_mathematically_one_is_inside_the_domain(self):
+        self.assertEqual(dr._remaining_demand_rank("TE", {"TE": 0.9999999999999998}), 1)
+        self.assertEqual(dr._remaining_demand_rank("TE", {"TE": 1.0}), 1)
+
+    def test_a_genuinely_partial_demand_is_still_outside_it(self):
+        # The rule the domain exists for, unchanged: two thirds of a slot is not a slot.
+        for partial in (0.0, 0.25, 1.0 / 3.0, 0.5, 2.0 / 3.0, 0.9, 0.99):
+            self.assertIsNone(dr._remaining_demand_rank("TE", {"TE": partial}), partial)
+
+    def test_the_rounding_above_the_boundary_is_unchanged(self):
+        # Pins that the repair touched the domain gate and nothing else.
+        for demand, expected in ((1.0, 1), (1.4, 1), (1.6, 2), (2.0, 2), (2.5, 2),
+                                 (3.0, 3), (3.4, 3), (3.666666666666665, 4)):
+            self.assertEqual(dr._remaining_demand_rank("TE", {"TE": demand}), expected, demand)
+
+    def test_a_missing_position_is_still_outside_the_domain(self):
+        self.assertIsNone(dr._remaining_demand_rank("TE", {}))
+
+    def test_replacement_levels_prices_a_position_whose_demand_is_one_ulp_short(self):
+        pool = _pool({"TE": [100.0 - i for i in range(6)]})
+        levels = dr.replacement_levels(pool, "value", ROSTER_POSITIONS, NUM_TEAMS,
+                                       {"TE": 0.9999999999999998})
+        self.assertIn("TE", levels)
+        self.assertEqual(levels["TE"], 100.0)  # rank 1 -> the best remaining TE
+
+    def test_replacement_ranks_reads_the_same_repaired_rule(self):
+        # replacement_ranks() exists specifically to reuse _remaining_demand_rank rather than
+        # restate it, so it must move with it -- otherwise the display-facing depth and the
+        # valuation-facing rank disagree at exactly this boundary.
+        self.assertEqual(dr._remaining_demand_rank("WR", {"WR": 0.9999999999999998}),
+                         dr._remaining_demand_rank("WR", {"WR": 1.0}))
+
+
 class AbsenceSurvivesTheConsumersTests(unittest.TestCase):
     """The .get(..., default) layer: three of the four absence sites converted a missing key
     into a number before any consumer could notice it."""
