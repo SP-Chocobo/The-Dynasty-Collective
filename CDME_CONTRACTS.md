@@ -7684,3 +7684,86 @@ class of self-blinding this programme has now caught four times.
 193. An unbudgeted overflow becomes a chair's report. Where a failed call returns a string rather
      than raising, that string is passed on as though it were analysis -- acceptable only while
      it is also collected and surfaced as an error, which is the property to keep.
+
+---
+
+# Appendix — §10: auditability, provenance, causal reconstruction
+
+Structured findings live in `ARCHITECTURE_AUDIT.md` (Pass 7). This entry records the
+measurements, the repairs, the correction, and the invariants.
+
+A recommendation here is **recoverable as prose and not reproducible as an artifact**. Everything
+the model said is kept; nothing the engine computed is.
+
+## What was measured
+
+| measurement | result |
+|---|---|
+| record classes §10 names, actually persisted | **6 of 16** |
+| never recorded | deterministic calculations, the CDME snapshot, the context given to each seat, conflicts-as-conflicts, trade/waiver/lineup evaluations |
+| operational activity log | `st.session_state.activity_log` -- **ephemeral**, capped, dies with the session |
+| causal chain, one Prytaneum verdict | **4 of 10 links intact**, 3 partial, 3 broken -- and the three broken ones are frozen state, inputs, and deterministic calculations |
+| causal chain, one Draft Room pick | **1 of 10 intact**, 4 partial, 5 broken |
+| `pick_debate` writers to disk | **zero** -- no `write_text`, no `json.dump`, no `open(` |
+| cost / usage / token / retry accounting | **none**, verified word-bounded after a naive scan gave four false positives |
+| distinguishing a failed call from a discarded one | failed yes (`⚠️` + `result.errors`); generated-then-discarded leaves no trace |
+
+**The inversion worth naming.** The Draft Room has the strongest canonical state in the system --
+a frozen, immutable, id-less `PickSnapshot`, a closed decision boundary, an enforced ingestion
+whitelist -- and the weakest audit trail: all of it is discarded when the session ends. The
+Prytaneum has no canonical object and keeps its prose forever. Structurally the same shape as
+§7.10's provenance inversion: the input questioned least is documented last.
+
+## Repairs applied at the §10 boundary
+
+Both apply a rule the codebase already stated and then used in exactly one place --
+`app.append_message`: *"provider/model (which actually answered) are stamped on the message
+itself, not derived from live bot_config at render time."*
+
+**R9.** `llm_engine.DebateResult` and `pick_debate.PickDebateResult` now record `role_models`
+alongside `role_providers`. Both already received the models as arguments and discarded them.
+This is not tidiness: a role can be re-pointed at a different model of the SAME provider -- the
+case `run_debate`'s own docstring names -- and a provider-only record cannot distinguish those at
+all. Pinned by a test running all four chairs on one provider with two different models.
+
+**R10.** `log_decision` gained optional `provider`/`model`, and both `process_moderator_output`
+call sites pass them; the values were already in scope. Absent means "not recorded", never "the
+default model", so pre-existing rows stay valid and honest.
+
+Non-vacuity: five probes planted in real code and reverted, all failing -- dropping role_models
+from each result, defaulting an unset model to CLAUDE_MODEL instead of leaving it absent, letting
+a call site fall back to the blank stamp, and adding a writer to pick_debate.
+
+Not applied, each needing a new store with retention and scope decisions: persisting the
+PickDebateResult, the snapshot, the assembled context, or the activity log; and cost accounting,
+which needs a decision about what to meter.
+
+## A correction, and the sixth substring artifact
+
+The first cost scan reported `usage`, `output_tokens`, `cost` and `price` as present. All four
+were prose -- "current usage" in a chair prompt, "opportunity cost", "price ceiling" -- and most
+instructively `output_tokens` matched `max_output_tokens=MAX_TOKENS`, which is §9's OUTPUT CAP,
+the opposite of usage accounting. The same class then recurred inside a test I wrote and had to
+be fixed with a word-bounded regex. A second faulty assertion in the same file counted
+`process_moderator_output(` and matched its own `def` line.
+
+Sixth occurrence of this class in the programme, after D's `candidate.bpa`/`bpa_source`, Pass 2's
+`team_label`/`surface`, Pass 3's `"role" in source`, and Pass 6's loop-dict keyed by target
+variable. The recurrence rate is itself the finding: it is why every scan here now carries a
+planted-probe check before its result is believed.
+
+## Invariants
+
+194. What answered is part of the answer. A result that records a provider but not a model cannot
+     distinguish two chairs sharing a provider, and re-deriving either from live configuration
+     re-labels history every time the configuration changes.
+195. Absent must mean absent. A provenance field defaulted to the current configuration is worse
+     than an empty one, because it converts "we did not record this" into a confident false claim.
+196. The strength of a causal object and the strength of its audit trail are independent, and
+     tend to be inversely related. The most carefully frozen state in a system is the state
+     nobody thought to write down, precisely because it felt safe.
+197. A chain is only as reconstructible as its weakest link, and prose is not a link. Retaining
+     every word a model said while retaining nothing it was looking at yields a record that can
+     restate a decision and never explain it.
+198. An unmeasured quantity answers "no" to every question that depends on it. Cost was absent in
+     routing (§5.8), in budgeting (§9.5) and in attribution (§10.4) -- one gap presenting as three.

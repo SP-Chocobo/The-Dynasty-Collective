@@ -374,6 +374,11 @@ class PickDebateResult:
     caller_report: str = ""
     errors: list = field(default_factory=list)
     role_providers: dict = field(default_factory=dict)
+    # Which model answered each chair, not just which provider. Mirrors
+    # llm_engine.DebateResult.role_models and app.append_message's own rule: what actually
+    # answered must be recorded on the result, never re-derived from live configuration.
+    # Empty when a chair ran on its provider's default rather than an explicit override.
+    role_models: dict = field(default_factory=dict)
 
 
 def debate_pick(
@@ -446,5 +451,5 @@ def debate_pick(
         disagreements=verdict.get("disagreements", []),
         diff=diffs,
         strategist_report=strategist_report, skeptic_report=skeptic_report, caller_report=caller_report,
-        errors=errors, role_providers=dict(role_providers),
+        errors=errors, role_providers=dict(role_providers), role_models=dict(role_models),
     )

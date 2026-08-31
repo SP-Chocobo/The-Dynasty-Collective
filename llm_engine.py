@@ -277,6 +277,12 @@ class DebateResult:
     # role to a different provider; a message must show who answered it, not
     # whatever's currently configured.
     role_providers: dict = field(default_factory=dict)
+    # The other half of that same identity. A provider name alone does not say which
+    # model answered, and a role can be re-pointed at a different model of the SAME
+    # provider (the Moderator on Opus for synthesis, the Quant on Sonnet for cheaper
+    # stat-crunching -- see run_debate's own docstring), which a provider-only record
+    # cannot distinguish at all. Recorded for the same reason and by the same rule.
+    role_models: dict = field(default_factory=dict)
 
 
 VERDICT_FIELDS = [
@@ -818,7 +824,9 @@ def run_debate(
     work against that.
     """
     role_models = role_models or {}
-    result = DebateResult(question=question, role_providers=dict(role_providers))
+    result = DebateResult(
+        question=question, role_providers=dict(role_providers), role_models=dict(role_models),
+    )
 
     def _key(role: str) -> Optional[str]:
         return api_keys.get(role_providers[role])

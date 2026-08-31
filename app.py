@@ -813,7 +813,9 @@ def append_message(role: str, content: str, provider: Optional[str] = None, mode
         save_chat_history(st.session_state.selected_league_id, st.session_state.chat_history)
 
 
-def process_moderator_output(moderator_text: str, trigger_question: str) -> None:
+def process_moderator_output(
+    moderator_text: str, trigger_question: str, provider: str = "", model: str = "",
+) -> None:
     """Shared post-processing for any Moderator response that might carry the structured
     verdict block -- both a fresh debate and a lighter follow-up (see
     llm_engine.ask_moderator_followup) can produce one. No-ops cleanly on plain conversational
@@ -821,7 +823,10 @@ def process_moderator_output(moderator_text: str, trigger_question: str) -> None
     safe no-op on an empty/falsy input, so a "just talking it through" follow-up doesn't spam
     the decision log or to-do list with nothing."""
     verdict = llm_engine.parse_moderator_verdict(moderator_text) if not moderator_text.startswith("⚠️") else {}
-    decision_log.log_decision(st.session_state.selected_league_id, trigger_question, verdict, moderator_text)
+    decision_log.log_decision(
+        st.session_state.selected_league_id, trigger_question, verdict, moderator_text,
+        provider=provider, model=model,
+    )
     action_item = verdict.get("action_item")
     if action_item:
         todo_log.add_todo(
@@ -5710,7 +5715,10 @@ with st.container(key="debate_dock"):
                         personality=moderator_personality,
                     )
                     append_message("moderator", followup_text, provider=provider, model=role_models.get("moderator") or None)
-                    process_moderator_output(followup_text, trigger_question)
+                    process_moderator_output(
+                        followup_text, trigger_question,
+                        provider=provider, model=role_models.get("moderator") or "",
+                    )
                 else:
                     result = llm_engine.run_debate(
                         context, trigger_question, role_providers=role_providers, api_keys=api_keys,
@@ -5720,7 +5728,11 @@ with st.container(key="debate_dock"):
                     append_message("beat", result.beat, provider=role_providers["beat"], model=role_models.get("beat") or None)
                     append_message("contrarian", result.contrarian, provider=role_providers["contrarian"], model=role_models.get("contrarian") or None)
                     append_message("moderator", result.moderator, provider=role_providers["moderator"], model=role_models.get("moderator") or None)
-                    process_moderator_output(result.moderator, trigger_question)
+                    process_moderator_output(
+                        result.moderator, trigger_question,
+                        provider=role_providers["moderator"],
+                        model=role_models.get("moderator") or "",
+                    )
                     # run_debate already collects which role(s) failed (a missing/invalid API
                     # key, a provider outage) -- this was computed and silently thrown away
                     # before, so a failed call just looked like a "⚠️ ..." chat message with no

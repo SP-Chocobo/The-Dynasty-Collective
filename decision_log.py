@@ -33,9 +33,20 @@ def _load(league_id: str) -> list[dict]:
     return []
 
 
-def log_decision(league_id: str, question: str, verdict: dict, moderator_text: str) -> None:
+def log_decision(
+    league_id: str, question: str, verdict: dict, moderator_text: str,
+    provider: str = "", model: str = "",
+) -> None:
     """Append one decision. No-op if there's no league selected or no verdict to record
-    (e.g. the Moderator errored, or didn't follow the structured format at all)."""
+    (e.g. the Moderator errored, or didn't follow the structured format at all).
+
+    provider/model record what actually produced this verdict, by the same rule
+    app.append_message already applies to every chat message: a role can be reassigned to a
+    different provider or model later, and an old record must keep showing who answered it
+    rather than whatever is currently configured. Both default to empty so a caller that
+    does not know (and every row written before this existed) stays valid -- absent means
+    "not recorded", never "the default model".
+    """
     if not league_id or not verdict:
         return
     DECISIONS_DIR.mkdir(parents=True, exist_ok=True)
@@ -54,6 +65,8 @@ def log_decision(league_id: str, question: str, verdict: dict, moderator_text: s
             "price_ceiling": verdict.get("price_ceiling", ""),
             "alternative": verdict.get("alternative", ""),
             "moderator_text": moderator_text,
+            "provider": provider,
+            "model": model,
             "outcome": "",
             "outcome_note": "",
             "outcome_date": None,

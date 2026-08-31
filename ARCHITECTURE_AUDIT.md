@@ -2071,3 +2071,209 @@ choice, and it is with you as #99.
 2. **9.5 — an input budget and a per-model context policy.** The honest prerequisite for §5.5's
    context-capacity disqualification and for routing a small-window model at all.
 3. **9.1a — a cap on attachment count.** Only worth it alongside 9.5; alone it solves nothing.
+
+---
+
+## Pass 7 — §10
+
+**Scope:** Build Guide v2 §10 (auditability, provenance, causal reconstruction), whose mandate is
+that *"a material recommendation should be reproducible as a causal artifact, not merely
+recoverable as a piece of prose."*
+
+**Baseline:** `cbb4a5a` on `ui-authority-pass`; `main` frozen at `9fb5102`. Two repairs at this
+boundary (10.6). #91–94, #96–99 remain queued; #99 stays prioritized ahead of #94.
+
+**Headline: today a recommendation is recoverable as prose and not reproducible as an artifact —
+and the surface with the strongest canonical state has the weakest audit trail.**
+
+### 10.1 The record inventory
+
+**STATUS: PARTIAL — 6 of 16 record classes persisted, and the gaps are the causal ones**
+
+| record class | where | lifetime | facing |
+|---|---|---|---|
+| AI invocations / outputs | `data/chats/<league>_history.json` | persistent | user |
+| adjudications (verdicts) | `data/decisions/<league>.json` | persistent | user |
+| external research / sources | `data/baseline/bot_research.json` | persistent, global | user (empty today) |
+| inputs / settings | `bot_config.json`, `league_prefs`, `league_formats` | persistent, **current values only** | user |
+| benchmark runs | `data/benchmark_results.json` | persistent, **now versioned + historied** (§5 R3/R4) | user |
+| canonical-data provenance | `ATTRIBUTION.md` ×4, `sleeper_projection_provenance.json` | persistent | internal |
+| **deterministic calculations** (board, TAV, VORP, composite) | **nowhere** | — | recomputed every rerun |
+| **CDME snapshot / version** | **nowhere** | — | frozen in memory, no id (§3.9) |
+| **context passed to each seat** | **nowhere** | — | built, sent, garbage-collected (§3.6) |
+| **conflicts** | **nowhere** | — | never stored *as* a disagreement (§6.6b) |
+| trade / waiver / lineup evaluations | **nowhere** | — | priced live, discarded |
+| player/card selections | `st.session_state` | ephemeral | — |
+| operational activity log | `st.session_state.activity_log` | **ephemeral, capped** | user, this session only |
+| model / provider / version | on each chat message | persistent | **Prytaneum only until 10.6** |
+| draft picks | Sleeper | external | — |
+
+§10 asks to distinguish operational logs from user-facing decision history. **Both exist** —
+`notify()` maintains an Activity Log and `decision_log` a decision history — but only the
+decision history survives a restart; the operational log is `st.session_state` and dies with the
+session.
+
+### 10.2 The causal chain — a Prytaneum verdict
+
+**STATUS: PARTIAL — 4 of 10 links intact, 3 partial, 3 broken**
+
+| link | state | why |
+|---|---|---|
+| user action | ✅ | the question is on the decision row and in chat history |
+| **frozen CDME state** | ❌ | no snapshot is taken for a Prytaneum question at all |
+| **inputs** | ❌ | `build_context`'s output is never stored (§3.6) |
+| **deterministic calculations** | ❌ | roster/composite/depth recomputed per rerun, never recorded |
+| recommendation | ✅ | on the decision row |
+| external research | ◐ | only what the Moderator chose to emit |
+| evidence | ◐ | a source Beat found and the Moderator omitted is lost (§7.7) |
+| chair outputs | ✅ | each chair's prose is a chat message, stamped with provider and model |
+| Moderator response | ✅ | `moderator_text` stored in full |
+| conflict / adjudication | ◐ | `DISSENT` is one prose line; no structured conflict record |
+
+**Where provenance breaks, precisely:** at the three links between the question and the answer.
+Everything the *model* said is retained; nothing the *engine* computed is. A dispute about a
+recommendation can be answered with "here is what the panel wrote" and not with "here is what it
+was looking at."
+
+### 10.3 The causal chain — a Draft Room pick
+
+**STATUS: MISSING — 1 of 10 links intact, 4 partial, 5 broken**
+
+| link | state | why |
+|---|---|---|
+| user action | ❌ | "Debate This Pick" is not logged anywhere |
+| frozen CDME state | ◐ | the `PickSnapshot` **is** canonical and frozen — and has no id and is never persisted |
+| inputs | ◐ | `format_snapshot_for_llm` is deterministic *from the snapshot*, so recomputable only if the snapshot survived |
+| deterministic calculations | ◐ | same |
+| **recommendation** | ❌ | `PickDebateResult` lives in `st.session_state`; measured — `pick_debate` contains no `write_text`, no `json.dump`, no `open(` |
+| external research | ✅ | none by design; `pick_debate` has no live search |
+| evidence | ◐ | the snapshot *is* the evidence, and it is not retained |
+| chair outputs | ❌ | Strategist/Skeptic/Caller reports are session-only |
+| Caller's verdict | ❌ | session-only |
+| conflict / adjudication | ❌ | `disagreements[]` session-only |
+
+**This is the section's sharpest finding, and it is an inversion.** The Draft Room is where this
+programme has spent most of its effort: a frozen, immutable, canonical `PickSnapshot`, a closed
+decision boundary, an enforced ingestion whitelist, structural non-recomputation. All of that
+produces the *best* causal object in the system — and it is thrown away when the Streamlit
+session ends, while the Prytaneum, which has no canonical object at all, keeps its prose forever.
+
+**Structurally the same inversion §7.10 found in provenance coverage:** the input questioned
+least is documented last. Recorded as a pattern, not a coincidence.
+
+### 10.4 Reproducibility and cost attribution
+
+**STATUS: MISSING**
+- *"Can every AI conclusion be reconstructed from exact snapshot + evidence + model/version +
+  prompt/context?"* — **no.** Model/version yes (and now everywhere, 10.6); snapshot, evidence
+  and context, no.
+- *"Can every AI expenditure be attributed to user, operation, chair, model, provider, retry and
+  tool call?"* — **no.** Verified precisely, after a naive substring scan produced four false
+  positives (10.5): no `input_tokens`, no usage object, no cost, no price, no retry counter
+  anywhere in `llm_engine`, `pick_debate`, `bot_benchmark` or `decision_log`. Chair, model and
+  provider are attributable; the expenditure is not, because it is never measured.
+- *"Can marginal cost of Insight versus Debate be determined?"* — **no**, and it is now three
+  sections deep: §5.8 found cost absent from routing, §9.5 found no token accounting, §10 finds
+  none recorded either. The same missing quantity answers a question in each.
+- *"Can a successful chair response be distinguished from one generated but never acknowledged?"*
+  — **partially.** A failed call is distinguishable (`⚠️` prefix, `result.errors`). A response
+  that was generated, billed, and then discarded — a browser closed mid-`run_benchmark`, a
+  Streamlit rerun between the call and the append — leaves no trace at all, because nothing is
+  written until the operation completes.
+
+### 10.5 A correction — and the sixth substring artifact
+
+The first cost scan reported `usage`, `output_tokens`, `cost` and `price` as **present**. All
+four were prose: "current usage" in a chair prompt, "opportunity cost" in `pick_debate`,
+"price ceiling"/"priced" in a docstring — and, most instructively, `output_tokens` matched
+`max_output_tokens=MAX_TOKENS`, which is §9's *output cap*, the opposite of usage accounting.
+Re-run word-bounded and comment-stripped, all four are genuinely absent.
+
+The same class then recurred inside a test I wrote: `assertNotIn("output_tokens=", source)`
+failed against `max_output_tokens=`. Fixed with a word-bounded regex that also excludes the cap
+assignment, with the reason recorded in the test.
+
+**Sixth occurrence in this programme** (after D's `candidate.bpa`/`bpa_source`, Pass 2's
+`team_label`/`surface`, Pass 3's `"role" in source`, and Pass 6's loop-dict keyed by target).
+A second faulty assertion in the same file counted `process_moderator_output(` and matched its
+own `def` line. Both were caught before shipping; the rate at which this class recurs is itself
+the finding, and it is why every scan in this programme now gets a planted-probe check.
+
+### 10.6 Repairs applied at this section boundary
+
+Two, both applying a rule the codebase had already stated and then applied in only one place.
+`app.append_message`'s own comment: *"provider/model (which actually answered) are stamped on the
+message itself, not derived from live bot_config at render time — a role can be reassigned to a
+different provider or model later, and an old message must keep showing who/what actually
+answered it."* That rule was live for chat messages and absent from every other result.
+
+**R9 — every debate result now records the model, not just the provider.**
+`llm_engine.DebateResult` carried `role_providers` with a comment explaining precisely why; it
+did not carry `role_models`, although `run_debate` already takes them. `pick_debate.PickDebateResult`
+carried neither model nor any persistence. Both now record `role_models`. This matters beyond
+tidiness: a role can be re-pointed at a *different model of the same provider* — the Moderator on
+Opus for synthesis, the Quant on Sonnet for cheaper stat-crunching, which `run_debate`'s own
+docstring names as a supported case — and a provider-only record cannot distinguish those at all.
+Pinned by a test that runs all four chairs on one provider with two different models.
+
+**R10 — a decision row records what produced the verdict.** `log_decision` gained optional
+`provider` / `model`, and both `process_moderator_output` call sites pass them; the values were
+already in scope at each. Absent means "not recorded", never "the default model", so rows written
+before this remain valid and honest — pinned by a test.
+
+*Non-vacuity — five probes planted in real code and reverted, all failing:* dropping
+`role_models` from each result, defaulting an unset model to `CLAUDE_MODEL` rather than leaving
+it absent, letting a call site fall back to the blank stamp, and adding a writer to `pick_debate`
+(which correctly failed the "never reaches disk" characterization).
+
+**Deliberately not applied.** Persisting `PickDebateResult`, the snapshot, or the assembled
+context each means a new store with retention, scope and size decisions — architectural, and
+already surfaced as #92. Persisting the activity log is the same. Cost accounting requires
+deciding what to meter and where to put it.
+
+### 10.7 Effect on open decisions
+
+No open decision's premises changed. #99 remains ahead of #94, and §10 adds a supporting reason
+rather than a new consideration: the Draft Room's chairs also emit a machine-parsed block
+(`parse_caller_verdict`), also at the end of their response, under the **same** `MAX_TOKENS` cap
+— so #99's truncation detector covers seven chairs, not four. That strengthens #99's priority; it
+does not change what #94 is choosing between.
+
+---
+
+## Pass 7 summary
+
+| item | status | boundary kind |
+|---|---|---|
+| 10.1 record inventory (6 of 16 classes persisted) | PARTIAL | — |
+| 10.2 causal chain, Prytaneum (4/10 intact) | PARTIAL | characterized |
+| **10.3 causal chain, Draft Room (1/10 intact)** | **MISSING** | characterized |
+| 10.4 reproducibility from snapshot + evidence + context | MISSING | absent |
+| 10.4a cost / token / retry attribution | MISSING | now pinned absent |
+| 10.4b generated-but-unacknowledged responses | PARTIAL | — |
+| **10.6 R9 — results record model, not just provider** | **REPAIRED** | enforced |
+| **10.6 R10 — decision rows record what answered** | **REPAIRED** | enforced |
+| 10.5 sixth substring artifact | correction | — |
+
+### Does anything clear the bar for a production change?
+
+**Two did, and both were applied** — R9 and R10, because each applies a rule this codebase had
+already written down and then used in exactly one place. Neither adds a store, changes a
+computed value, or needs a decision: they record something the caller already knew and was
+discarding.
+
+What did **not** clear the bar is the section's real finding — that the Draft Room's causal chain
+is 1 of 10 links. Closing it means persisting a snapshot, a result, and their relationship, which
+is a new store with retention and scope decisions attached. That is #92's territory and it stays
+there.
+
+### Follow-ups from this pass, ranked by evidence then severity
+
+1. **10.3 + #92 together — persist the Draft Room's causal object.** The system's best causal
+   artifact already exists in memory; the gap is entirely that nothing writes it down. A snapshot
+   identifier (#92) and a persisted `PickDebateResult` are the same piece of work.
+2. **10.4a — meter what a call costs.** One quantity answers §5.8's routing question, §9.5's
+   budget question and §10's attribution question. Cheapest place to start is recording the
+   provider's own usage object, which every SDK already returns.
+3. **10.1 — persist the operational activity log.** Small, and it is the difference between an
+   operational record and a toast.
