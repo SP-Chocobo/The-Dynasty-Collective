@@ -358,6 +358,121 @@ class PositionalForfeitsTests(unittest.TestCase):
         curves = {"RB": [100.0, 50.0]}
         self.assertEqual(ds.positional_forfeits(curves, {}, []), {})
 
+    def test_within_one_pick_summation_order_cannot_reach_the_decision(self):
+        """The site backlog B flagged: `for player_id, rank in rank_by_id.items()` accumulating
+        into a float. rank_by_id is built as {pid: i+1 for i, r in enumerate(priced)}, so it
+        ALWAYS iterates in ascending rank -- there is exactly one realizable order. This proves
+        the stronger property anyway: even handed a permuted dict, the rounded outputs are
+        identical, because no subset of ranks 1..DEPTH has an order-dependent round().
+
+        Ranks (1, 2, 4) are used deliberately: their sum is one of the twelve that IS
+        order-dependent in raw float (0.97 vs 0.9700000000000001). The assertion is that the
+        difference cannot survive to the output."""
+        import itertools
+        ranks_with_target = (1, 2, 4)
+        rows = []
+        for r in range(1, ds.FORFEIT_OPPONENT_BOARD_DEPTH + 1):
+            rows.append((f"p{r}", "QB" if r in ranks_with_target else "RB", 100.0 - r))
+        raw_sums = set()
+        for perm in itertools.permutations(ranks_with_target):
+            acc = 0.0
+            for r in perm:
+                acc += ds.RANK_TAKE_PROBABILITY[r]
+            raw_sums.add(acc)
+        self.assertGreater(len(raw_sums), 1,
+                           "fixture no longer exercises an order-dependent sum -- pick another "
+                           "rank subset or this test proves nothing")
+
+        curves = {"QB": [80.0, 70.0, 60.0, 55.0], "RB": [50.0, 40.0]}
+        results = set()
+        for perm in itertools.permutations(range(len(rows))):
+            permuted = [rows[i] for i in perm]
+            ranks = {pid: i + 1 for i, (pid, _p, _v) in enumerate(rows)}
+            board = {
+                "by_id": {pid: {"player_id": pid, "position": pos, "universal_value": uv,
+                                "final_score": uv} for pid, pos, uv in permuted},
+                "rank_by_id": {pid: ranks[pid] for pid, _p, _v in permuted},
+                "unpriced_ids": set(),
+            }
+            out = ds.positional_forfeits(curves, {"2": board}, ["2"])
+            results.add(tuple(sorted((p, d["expected_taken"], d["forfeit"])
+                                     for p, d in out.items())))
+        self.assertEqual(len(results), 1,
+                         "permuting rank_by_id's insertion order changed the forfeit output")
+
+    def test_KNOWN_SENSITIVITY_the_round_boundary_is_decided_by_float_noise(self):
+        """CHARACTERIZATION, not approval. `drop = min(round(expected_taken), ...)` is a hard
+        boundary at x.5, and expected_taken reaches it exactly. Across intervening picks the
+        accumulation IS order-sensitive (unlike within one pick, above), so the same three
+        opponent boards in a different order land on either side of the boundary -- while
+        expected_taken, rounded to 2dp for display, reports 1.5 either way.
+
+        MEASURED IMPACT ON REAL DATA: zero. Over 627 forfeit computations on real 12x20 board
+        states, 2 (0.3%) land exactly on a boundary, and at both the curve is flat enough there
+        that a one-step change in `drop` leaves `forfeit` and cliff_protection unchanged. The
+        mechanism is real and latent, not a live defect.
+
+        This test pins the mechanism so a future change to the rounding rule, the curve shapes,
+        or the take-probability table is a deliberate, visible decision rather than a silent
+        one. If it fails, read the appendix note before 'fixing' it -- the correct contract
+        (half-up, floor, or fractional interpolation of the curve) is an open product question,
+        not an obvious repair."""
+        table = ds.RANK_TAKE_PROBABILITY
+
+        def board_with_qb_at(target_ranks):
+            rows = []
+            for r in range(1, ds.FORFEIT_OPPONENT_BOARD_DEPTH + 1):
+                pos = "QB" if r in target_ranks else "RB"
+                rows.append({"player_id": f"p{r}", "position": pos,
+                             "final_score": 100.0 - r, "universal_value": 100.0 - r})
+            return {"by_id": {r["player_id"]: r for r in rows},
+                    "rank_by_id": {r["player_id"]: i + 1 for i, r in enumerate(rows)},
+                    "unpriced_ids": set()}
+
+        want = {"A": (3, 5), "B": (2, 3, 4), "C": (2, 3, 4, 5)}   # 0.24, 0.60, 0.66 -> 1.5
+        self.assertAlmostEqual(sum(sum(table[r] for r in v) for v in want.values()), 1.5,
+                               places=9, msg="fixture no longer sums to the round() boundary")
+        boards = {k: board_with_qb_at(v) for k, v in want.items()}
+        # A curve with a real step between index 1 and 2, straddling the cliff_protection
+        # threshold this value feeds (pick_synthesis.NECESSITY_STANDOUT_REFERENCE_GAP).
+        curves = {"QB": [80.0, 70.0, 60.0, 55.0]}
+        forfeits = set()
+        reported = set()
+        for order in (["A", "B", "C"], ["C", "B", "A"]):
+            d = ds.positional_forfeits(curves, boards, order)["QB"]
+            forfeits.add(d["forfeit"])
+            reported.add(d["expected_taken"])
+        self.assertEqual(reported, {1.5},
+                         "expected_taken should report the same 1.5 in both orders -- that is "
+                         "what makes this invisible downstream")
+        self.assertEqual(forfeits, {10.0, 20.0},
+                         "the boundary sensitivity has changed; if the rounding rule was fixed "
+                         "deliberately, delete this test and update the appendix note")
+
+    def test_the_forfeit_depth_and_the_take_probability_table_stay_coupled(self):
+        """positional_forfeits reads RANK_TAKE_PROBABILITY.get(rank, 0.0) while
+        _take_probability reads RANK_TAKE_PROBABILITY.get(rank, RANK_TAKE_PROBABILITY_FLOOR).
+        The two defaults differ, and that is correct -- the forfeit sum deliberately excludes
+        ranks past its depth ('ranks past it carry only the floor probability, which would add
+        noise, not signal, to a position-level estimate'), so 0.0 is the intended value there.
+
+        The 0.0 is only unreachable while FORFEIT_OPPONENT_BOARD_DEPTH stays inside the table.
+        Nothing enforced that coupling; this does. Raise the depth without extending the table
+        and ranks past it would pass the filter and contribute a silent 0.0 -- an absent value
+        spelled as a number, which is the one thing this codebase's absence contract forbids."""
+        self.assertLessEqual(
+            ds.FORFEIT_OPPONENT_BOARD_DEPTH, max(ds.RANK_TAKE_PROBABILITY),
+            "FORFEIT_OPPONENT_BOARD_DEPTH now reaches past RANK_TAKE_PROBABILITY's keys; ranks "
+            "beyond the table would silently contribute 0.0 to expected_taken while "
+            "_take_probability gives them RANK_TAKE_PROBABILITY_FLOOR",
+        )
+        # And the ranks that can actually reach the lookup are all real keys, so the default
+        # never fires today. Ranks are assigned as i+1 over priced rows, hence >= 1.
+        reachable = range(1, ds.FORFEIT_OPPONENT_BOARD_DEPTH + 1)
+        missing = [r for r in reachable if r not in ds.RANK_TAKE_PROBABILITY]
+        self.assertEqual(missing, [],
+                         f"ranks {missing} can reach the forfeit sum with no table entry")
+
     def test_expected_taken_walk_is_clamped_to_the_curves_own_length(self):
         # Ten RB-hungry opponents against a 2-player RB curve: the walk can't fall off the
         # end -- forfeit maxes out at best-minus-worst, never an index error.

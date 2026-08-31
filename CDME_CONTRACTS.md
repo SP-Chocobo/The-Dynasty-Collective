@@ -6620,3 +6620,185 @@ Documentation and tests only; **no production behaviour is modified**.
 147. Reachability is established over the regimes production can actually enter. A test suite
      that only exercises unreachable regimes validates the function without validating the
      feature.
+
+---
+
+# Appendix — backlog B: unpriced survival, insertion order, pace probability
+
+**Verdict: ALREADY FIXED**, for everything B named — independently re-verified rather than taken
+on trust — **plus one adjacent latent mechanism, DEFERRED.** No production behaviour changed.
+Three tests added; `draft_strategy.py` is untouched.
+
+## What B was, reconstructed from the record
+
+B traces to the D2 repair (`cfe2a66`, appendix *"the survival layer's ordinal register"*), which
+found `_build_opponent_boards` numbering every row `1..n` and handing that integer to two
+consumers that read it through `RANK_TAKE_PROBABILITY` — a table whose keys mean *"the consensus
+best available"*. For unpriced rows the integer came from a stability tiebreak, not a valuation.
+A third site, `_pace_based_take_probability`, sorted on `universal_value` with `NaN` present,
+producing a **non-total order**: the best QB's probability moved **1.0 → 0.111** purely by
+reversing the dict's insertion order.
+
+## Part 1 — the named items: all closed, re-verified independently
+
+Controlled fixtures, constructed so each property is observable (real boards do not reach several
+of these states):
+
+| # | test | result |
+|---|---|---|
+| T1 | `rank_by_id` with unpriced rows **interleaved** among priced ones | ranks stay contiguous `1,2,3` over priced rows only; `unpriced_ids = {u1, u2}`; **both** absence spellings (`None` and `NaN`) caught |
+| T2 | add 3 unpriced rows to a board, re-measure a **priced** target | survival `0.462 → 0.462`, rank `2 → 2` — **no probability-mass contamination** |
+| T3 | unpriced target | survival exactly `(1 − FLOOR)² = 0.96`; `evidenced: False`; `rank_on_their_board: None`; `unevidenced_picks: 2` |
+| T4 | target not in the pool at all | survival `1.0`, empty `risk_by_team` — **distinct** from T3's `0.96` |
+
+T1's result is the strongest of these: the ordinal stays a valuation rank **even if the board's
+own "unpriced sorts last" invariant were violated upstream**, because `rank_by_id` filters before
+it enumerates. The construction is robust, not merely correct-by-coincidence.
+
+**Pace probability, traced source to consumer.** `expected_now` comes from the convention curve;
+`actual_now` counts drafted players at the position from `players_db` — deliberately *all* of
+them, priced or not, because that quantity is "how many have gone", not a valuation. Only the
+**denominator** touches the board, and it now counts priced peers only; an unpriced target gets
+the function's own `None`, which is the caller's documented fall-back path. Unpriced players are
+therefore **intentionally excluded**, never implicitly zero and never accidentally omitted. The
+existing suite covers this on a constructed board (`PacePriorDenominatorTests`), including
+insertion-order invariance — the 9× swing is closed and pinned.
+
+## Part 2 — `draft_strategy.py:310`, the site B flagged: clean
+
+The concern was `for player_id, rank in rank_by_id.items()` accumulating into a float. Two
+findings, and the site itself is exonerated:
+
+**The iteration order is not a free variable.** `rank_by_id = {r["player_id"]: i + 1 for i, r in
+enumerate(priced)}` inserts keys in board order with values `1, 2, 3, …`, so `.items()` yields
+ranks in **strictly ascending order, always**. For a given subset of ranks there is exactly one
+realizable summation order.
+
+**And even if a caller handed it a permuted dict, nothing would move.** Exhaustively, over every
+subset of ranks `1..DEPTH` and every permutation of each:
+
+* 12 of 31 subsets have an order-dependent raw sum — largest spread **2.22 × 10⁻¹⁶**;
+* **0 of 31** have an order-dependent `round()`;
+* 720 permutations of a constructed board's insertion order → **1 distinct result**.
+
+So within one pick, float noise provably cannot reach the decision.
+
+## Part 3 — the adjacent mechanism: `round(expected_taken)` is a knife-edge
+
+Across picks the accumulation *is* order-sensitive, and the boundary is real. Constructed
+adversarially — three opponent boards contributing `0.24 + 0.60 + 0.66`:
+
+```
+intervening order (A,B,C): raw sum 1.5                 expected_taken=1.5  forfeit=20.0  cliff_protection=True
+intervening order (C,B,A): raw sum 1.4999999999999998  expected_taken=1.5  forfeit=10.0  cliff_protection=False
+```
+
+`round(1.5) = 2` but `round(1.5 − 1ulp) = 1`, so `drop` moves one step, `forfeit` doubles, and
+**`cliff_protection` flips** — a decision-path flag read by `pick_synthesis.decision_path_flags`
+(`forfeit >= NECESSITY_STANDOUT_REFERENCE_GAP`) and surfaced to the debate layer and the UI.
+Worse, `expected_taken` reports **1.5 in both cases**, because it is rounded to 2 dp for display:
+the surfaced explanation cannot distinguish the two outcomes.
+
+`round()` is also banker's, which for a "how many will be taken" quantity is arbitrary:
+`round(0.5)=0`, `round(1.5)=2`, `round(2.5)=2`.
+
+### But the measured impact on real data is zero
+
+Swept over **627** forfeit computations on real 12×20 board states, rounds 3–18, all twelve
+rosters:
+
+| | |
+|---|---|
+| land **exactly** on a `round()` boundary | **2 (0.3%)** |
+| of those, where ±1 ulp changes `drop` | 2 |
+| of those, where `forfeit` changes | **0** |
+| of those, where `cliff_protection` flips | **0** |
+
+| rd | roster | pos | expected_taken | round() | −1ulp | +1ulp | f(round) | f(+1ulp) | flag flips |
+|---|---|---|---|---|---|---|---|---|---|
+| 9 | 11 | WR | 1.5 | 2 | 1 | 2 | 5.04 | 5.04 | no |
+| 12 | 4 | TE | 10.500000000000002 | 11 | 10 | 11 | 83.04 | 83.04 | no |
+
+At both real boundary states the curve is flat enough around that index that a one-step change in
+`drop` leaves the forfeit — and the flag — untouched. **The mechanism is real and demonstrable;
+it is not currently a live defect.**
+
+### Why this is DEFERRED and not fixed
+
+The correct contract is **not clear**, and inventing one would change live behaviour:
+
+* half-up, floor, or fractional interpolation of the curve are three different product answers;
+* whichever is chosen moves 0.3% of forfeit computations by a whole curve step;
+* choosing a rounding rule or an epsilon here is exactly the constant-tuning this phase excludes.
+
+Pinned by a characterization test instead, so a future change to the rounding rule, the curve
+shapes, or the take-probability table is deliberate and visible.
+
+## Part 4 — `RANK_TAKE_PROBABILITY.get(rank, 0.0)` vs `RANK_TAKE_PROBABILITY_FLOOR`
+
+**Unreachable, and the two differing defaults are both correct.** Ranks are assigned `i + 1` over
+priced rows, so `rank ≥ 1`; the loop skips `rank > FORFEIT_OPPONENT_BOARD_DEPTH = 5`; every value
+in `[1, 5]` is a table key. The `0.0` never fires.
+
+It is also the *right* default there. `positional_forfeits` cuts at that depth precisely because
+*"ranks past it carry only the floor probability, which would add noise, not signal, to a
+position-level estimate"* — so `0.0` and `_take_probability`'s `FLOOR` are two functions
+legitimately wanting different things, not a discrepancy to harmonize.
+
+**What was missing is enforcement.** The module documents the coupling
+(`FORFEIT_OPPONENT_BOARD_DEPTH` *"matches RANK_TAKE_PROBABILITY's own depth"*) and nothing
+asserted it. Raise the depth to 8 without extending the table and ranks 6–8 would pass the filter
+and contribute a silent `0.0` — an absent value spelled as a number, the one thing this
+codebase's absence contract forbids. Now guarded by test.
+
+## A correction to this investigation's own first measurement
+
+My first real-board probe reported *"min distance to boundary 0.0000, and 8.2% of computations
+one step from crossing 15.0"*. It re-derived `drop` from `positional_forfeits`' **returned**
+`expected_taken`, which is already `round(…, 2)`, rather than from the raw accumulation
+production actually rounds. At the round-12 TE state that gave `round(10.5) = 10` where production
+computes `round(10.500000000000002) = 11`. The 627-computation sweep above reads the unrounded
+value and supersedes it. The 8.2% figure described curve steepness near the operating point, not
+boundary incidence, and should not be cited as the latter.
+
+## Classification
+
+| item | class |
+|---|---|
+| `unpriced_ids`, `evidenced`, `unevidenced_picks` | **already fixed** — re-verified independently |
+| unpriced influence on survival, rank, probability mass, ordering | **already fixed** — no contamination measurable |
+| pace / take-probability for unpriced players | **already fixed** — intentionally excluded, `None` not zero |
+| insertion order at `draft_strategy.py:310`, within a pick | **not an issue** — one realizable order, and order-immune anyway |
+| `round(expected_taken)` boundary across picks | **latent** — demonstrable, 0 of 627 real impact, **deferred** |
+| `RANK_TAKE_PROBABILITY.get(rank, 0.0)` | **latent/unreachable** — correct default, coupling now enforced |
+| my "8.2% one step from crossing" figure | **measurement artifact** — withdrawn above |
+
+## Tests added, and why none is vacuous
+
+Three, in `test_draft_strategy.PositionalForfeitsTests`. Each was verified to **fail** when the
+property it pins is broken:
+
+| test | probe that breaks it | result |
+|---|---|---|
+| `test_within_one_pick_summation_order_cannot_reach_the_decision` | swap in a table where a single-pick sum *does* flip `round()` — the probe searched and found `(0.05, 0.17, 0.28)`, which sums to 0.5 order-dependently | **FAILED** |
+| `test_KNOWN_SENSITIVITY_the_round_boundary_is_decided_by_float_noise` | change the table so the fixture no longer lands on 1.5 | **FAILED** |
+| `test_the_forfeit_depth_and_the_take_probability_table_stay_coupled` | raise `FORFEIT_OPPONENT_BOARD_DEPTH` to 8 | **FAILED** |
+
+The first probe is itself a finding: a table exists — `(0.05, 0.17, 0.28)` — under which the
+single-pick sum flips `round()`. **Today's immunity is a property of the current constants, not a
+structural guarantee**, and `RANK_TAKE_PROBABILITY` is documented as a never-backtested starting
+point. The test now stands between a future retune and a silent order dependence.
+
+## Invariants
+
+148. A quantity that is rounded for display and rounded again for a decision must not be read
+     back from the display value. The two roundings answer different questions and the displayed
+     one has already lost the information the decision depends on.
+149. Where a hard boundary (`round`, a threshold, an index) sits on a value that a float
+     accumulation can reach exactly, the boundary's behaviour is stated or measured — not left
+     to the last bit. Measuring it is enough when the measured impact is zero; a rule is required
+     before it is not.
+150. Two constants that must move together are asserted to move together. A comment describing a
+     coupling documents an intention; only a test enforces one.
+151. Immunity that follows from the current values of a tunable table is recorded as contingent,
+     and pinned, rather than reported as a structural property.
