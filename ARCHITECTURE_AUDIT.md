@@ -2627,3 +2627,192 @@ recorded.
    implemented next door in `attachments`; blocked only on the default.
 2. **12.6 → #102** — the shared-file stores' real hosting exposure is concurrency, not scope.
    Recorded on #102 so the hosting precondition list stays accurate.
+
+---
+
+## Pass 10 — §14
+
+**Scope:** Build Guide v2 §14 (failure modes, partial completion, fallbacks).
+
+**Baseline:** `ed32551` on `ui-authority-pass`; `main` frozen at `9fb5102`. One repair at this
+boundary (14.7). #91–94, #96–103 remain queued; #99 stays ahead of #94; #100 and #103 untouched.
+
+**Headline: fail-soft is this app's strongest reliability property and it was undefended — and
+underneath it, a failed chair's error string was being handed to the next chair as that chair's
+evidence.**
+
+### 14.1 Every call fails soft
+
+**STATUS: EXISTS — structural, now enforced**
+**EVIDENCE:** all six provider callers (three in `llm_engine`, three in `pick_debate`) return a
+`"⚠️ …"` string and never raise — verified for both the missing-key path and the
+`except Exception as exc` path in each. So one dead provider cannot take out the panel:
+`run_debate` continues, the surviving chairs still answer, `result.errors` collects every failure,
+and `app.py` raises *"Debate finished with issues: …"*. A failed Moderator never reaches the
+verdict parser (`if not moderator_text.startswith("⚠️") else {}`).
+
+**Deterministic output is untouched by any AI failure.** `debate_pick`'s first parameter is an
+already-built snapshot, and the module contains no call to `compute_draft_board` or
+`build_snapshot` — it structurally cannot influence the board it reasons over. §14's *"can it
+degrade gracefully while preserving deterministic CDME output?"* is answered by the import graph,
+not by a handler.
+
+### 14.2 The failure taxonomy is coarse
+
+**STATUS: PARTIAL**
+**EVIDENCE:** nine distinguishable causes collapse into six signals, with one signal carrying
+four of them:
+
+| cause | signal |
+|---|---|
+| provider unavailable / network dead | `⚠️ <provider> request failed: {exc}` |
+| authentication failed (bad key) | *same* |
+| quota exhausted / 429 rate limit | *same* |
+| context exceeds the model limit | *same* |
+| no key configured at all | `⚠️ <PROVIDER>_API_KEY not set — …` |
+| empty response (Gemini only) | `⚠️ Gemini returned an empty response.` |
+| **output truncated at `MAX_TOKENS`** | **no signal at all** (§9.6 / #99) |
+| model produced invalid output | no signal — parses to `{}` (§5.6 / #94) |
+| evidence unavailable (no data loaded) | prose in DATA AVAILABILITY — correctly *not* a failure |
+
+No `status_code`, `RateLimitError`, `AuthenticationError` or `429` handling exists in either
+module. So §14's *"does the system distinguish 'provider unavailable' from 'model produced
+invalid output' from 'evidence unavailable'?"* → **the third, yes and deliberately; the first two,
+no.** A user seeing *"request failed"* cannot tell a wrong key from an exhausted quota without
+reading the exception text.
+**Verdict: DOCUMENT.** Classifying provider exceptions means committing to each SDK's error
+taxonomy across three providers, which is real work with a maintenance burden, not a mechanical
+fix — and it is the same surface as #100's metering, which would consume the same response object.
+
+### 14.3 Retries, resume, and duplicate prevention
+
+**STATUS: MISSING**
+**EVIDENCE:** no `retry`, `backoff`, `max_retries`, `resume` or `idempot` anywhere in
+`llm_engine` or `pick_debate`. So §14's *"are retries bounded?"* is satisfied trivially — bounded
+at zero — and *"can an operation resume without duplicating calls or cost?"* is **no**: a
+Moderator that fails after three successful chairs cannot be resumed, and re-running re-pays for
+all four. Duplicate prevention is `_last_submitted`, keyed on the **question text** rather than an
+operation id, so it deduplicates a repeated question and not a repeated operation.
+*"What if a chair succeeds but the connection dies before orchestration receives the response?"* →
+the SDK raises, the caller returns `⚠️`, and the call is billed with nothing recorded. Detecting
+that requires the usage object nothing reads (#100).
+
+### 14.4 Complete failure state is not recorded
+
+**STATUS: MISSING**
+**EVIDENCE:** `log_decision` returns early on a falsy verdict, and a totally failed debate parses
+to `{}` — so **a failed operation writes nothing to the decision log**. Demonstrated: logging a
+`⚠️` verdict leaves the store empty, while a real verdict writes one row. The only record is
+`notify()` → `st.session_state.activity_log`, which §10.1 established is ephemeral.
+So the durable record contains every successful decision and no failed one — which makes the
+decision log a record of what worked rather than of what was attempted.
+**DEPENDENCIES:** #92 / §10.1. Recording failures is a new record type with retention questions;
+not repaired here.
+
+### 14.5 A failed chair was handed on as evidence — REPAIRED
+
+**STATUS: VIOLATED → REPAIRED (R12)**
+
+**EVIDENCE, measured before the repair.** With the Quant and Beat both failing, the Contrarian's
+prompt contained:
+
+```
+--- QUANT / VORP REPORT ---
+⚠️ Claude request failed: Connection reset by peer
+
+--- BEAT / NEWS REPORT ---
+⚠️ Claude request failed: Connection reset by peer
+```
+
+…followed by *"Pressure-test these two reports."* No label anywhere marked either as a failure —
+checked for "unavailable", "failed to run", "missing", "could not": **none present**. The
+Contrarian, whose entire job is finding what the other chairs missed, was being asked to
+pressure-test a connection error as though it were the Quant's analysis.
+
+That answers two of §14's questions at once, both badly: *"do downstream chairs know which
+upstream evidence is missing?"* → **no**; *"is missing research ever treated as negative
+evidence?"* → **it was structurally invited to be.**
+
+**Why this was repaired rather than surfaced.** It is not a new policy choice; it is this
+codebase's own rule, applied at the one place it was broken. *A missing thing is represented as
+missing, never as a value* — an unpriced row carries `None` rather than `0.0`; an unstamped
+snapshot is *"not certifiable"* rather than current (§11.1); an unrecorded model is `""` rather
+than the default (§10 R10); `panel_undisputed` replaced a `validated` the writer could not
+establish (§6 R1). A failure occupying the report slot breaks that rule in the one place a model
+reads it. The information needed was already present at the moment the prompt is built — the same
+`startswith("⚠️")` test that populates `result.errors`.
+
+### 14.6 What R12 does, and what it deliberately does not
+
+Failed upstream reports are replaced, **in the model-facing handoff only**, by:
+
+> *(unavailable — this chair's call did not complete, so no analysis was produced. Treat this as
+> MISSING information, never as a finding that there is nothing to report.)*
+
+Three properties, each pinned by test:
+- **The second sentence is load-bearing.** A bare "unavailable" invites exactly the negative-
+  evidence reading §14 warns about, from the chair most likely to make it.
+- **The raw exception is not forwarded.** *"Connection reset by peer"* is not analysis, and
+  passing provider A's internal error text into provider B's prompt is a cross-provider
+  disclosure with no upside — the residual §7.8 named, here removed at its one live instance.
+- **The failure still reaches the user intact.** `result.errors` and `DebateResult.quant` keep the
+  real string; only the model-facing copy changes. Real reports pass through untouched.
+
+Applied to all four downstream handoffs: Contrarian and Moderator in `llm_engine`, Skeptic and
+Caller in `pick_debate`.
+
+**Not applied — abort versus degrade.** §14 asks *"if an upstream chair is corrupted and fallback
+also fails, what deterministic rule governs abort versus degraded operation?"* There is no such
+rule: the debate always degrades and never aborts. Whether a Moderator should synthesize from
+three unavailable reports at all is a product decision with real cost on both sides — aborting
+discards the chairs that did succeed; degrading spends a Moderator call on nothing. Surfaced
+(#104), not chosen. R12 makes either choice implementable and makes the current one honest.
+
+### 14.7 Effect on an open decision — #99 sharpens
+
+**Surfaced, not resolved.** R12 labels every failure that announces itself. Truncation is the one
+that does not: a response cut off at `MAX_TOKENS` does **not** start with `⚠️`, so
+`_report_for_handoff` passes it through as a complete report, and a downstream chair receives a
+half-finished analysis presented as a finished one.
+
+So after R12, §14's taxonomy has a sharper shape: **every failure class is now correctly labelled
+at the handoff except the one with no signal at all.** That does not change what #99 is choosing
+between — discard, annotate, or warn — but it adds a consequence that was not on the table: the
+detector would also let `_report_for_handoff` mark a truncated upstream report, which is a
+correctness fix for the *downstream chair*, not only a display question for the user. Recorded on
+#99.
+
+---
+
+## Pass 10 summary
+
+| item | status | boundary kind |
+|---|---|---|
+| 14.1 every call fails soft | EXISTS | structural, now enforced |
+| 14.1a deterministic output survives AI failure | EXISTS | structural (import graph) |
+| 14.2 failure taxonomy (9 causes → 6 signals) | PARTIAL | characterized |
+| 14.3 retries / resume / duplicate prevention | MISSING | characterized |
+| 14.4 complete failure state recorded | MISSING | characterized (→ #92) |
+| **14.5 failed chair handed on as evidence** | **VIOLATED → REPAIRED (R12)** | **enforced** |
+| 14.6a abort versus degrade rule | MISSING | → #104 |
+| 14.7 truncation is the unlabelled failure class | — | sharpens #99 |
+
+### Does anything clear the bar for a production change?
+
+**One did and was applied.** R12 is this codebase's own absence rule enforced at the one place it
+was broken, with the classifying information already computed at that point. It changes no
+policy: the debate still degrades rather than aborting, the user still sees the real error, and
+only the text a downstream model reads is corrected.
+
+Everything else in §14 is either a genuine design commitment (a provider error taxonomy, retries,
+a resume path, an abort rule) or already owned by an open item (#92 for failure records, #99 for
+truncation, #100 for the usage object that would detect a billed-but-lost call).
+
+### Follow-ups from this pass
+
+1. **#104 — a deterministic abort-versus-degrade rule.** R12 makes either implementable; the
+   choice is a product one.
+2. **14.2 + #100 together — classify provider errors while reading the response object.** Both
+   consume the same thing, and doing them separately means touching the callers twice.
+3. **14.4 → #92 — record failed operations.** The decision log currently records what worked, not
+   what was attempted.

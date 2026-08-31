@@ -7921,3 +7921,76 @@ and removing `league_format`'s league key.
      argument silently converts it into a shared index.
 208. Deliberate sharing disclosed to the user is a different thing from leakage, and the audit
      record should say which it is. What is missing here is not a boundary but a per-item choice.
+
+---
+
+# Appendix — §14: failure modes, partial completion, fallbacks
+
+Structured findings live in `ARCHITECTURE_AUDIT.md` (Pass 10). This entry records the
+measurements, the repair, and the invariants.
+
+**Fail-soft is this app's strongest reliability property and it was undefended -- and underneath
+it, a failed chair's error string was being handed to the next chair as that chair's evidence.**
+
+## What was measured
+
+| measurement | result |
+|---|---|
+| provider callers that return `⚠️` rather than raising | **6 of 6** (3 in llm_engine, 3 in pick_debate), for both the missing-key path and `except Exception` |
+| a fully failed debate | 4 errors collected, surfaced as "Debate finished with issues", verdict parses to `{}` |
+| `pick_debate`'s access to the engine | **none** -- no `compute_draft_board`, no `build_snapshot`; its first parameter is an already-built snapshot |
+| distinguishable causes vs distinct signals | **9 causes -> 6 signals**, one signal carrying four (provider down / bad key / quota-429 / context overflow) |
+| provider-error classification (`status_code`, `RateLimitError`, `429`) | **absent from both modules** |
+| retry / backoff / max_retries / resume / idempotency | **absent** -- retries bounded at zero, no resume path |
+| duplicate prevention | `_last_submitted`, keyed on the QUESTION text, not an operation id |
+| a totally failed debate in the decision log | **nothing written** -- `log_decision` returns early on a falsy verdict; only the ephemeral activity log records it |
+| **the Contrarian's prompt with both upstream chairs failed (before R12)** | `--- QUANT / VORP REPORT ---\n⚠️ Claude request failed: Connection reset by peer`, then *"Pressure-test these two reports."* -- **no label marking either as a failure** |
+
+## The repair (R12)
+
+A failed upstream report is replaced, in the model-facing handoff only, by an explicit
+unavailability marker. Applied to all four downstream handoffs: Contrarian and Moderator in
+`llm_engine`, Skeptic and Caller in `pick_debate`.
+
+Repaired rather than surfaced because it is not a new policy -- it is this codebase's own rule
+applied where it was broken. *A missing thing is represented as missing, never as a value*: an
+unpriced row carries None rather than 0.0; an unstamped snapshot is "not certifiable" rather than
+current; an unrecorded model is "" rather than the default; `panel_undisputed` replaced a
+`validated` the writer could not establish. A failure occupying the report slot breaks that rule
+at the one place a model reads it, and the classifying test (`startswith("⚠️")`) was already being
+computed at that exact point to populate `result.errors`.
+
+Three properties, each pinned: the marker's second sentence says absence is not evidence of
+absence (a bare "unavailable" invites exactly the negative-evidence reading from the chair most
+likely to make it); the raw provider exception is NOT forwarded into another provider's prompt
+(removing §7.8's named residual at its one live instance); and the real error still reaches the
+user via `result.errors` untouched.
+
+Not applied: an abort-versus-degrade rule. The debate always degrades and never aborts, and
+whether a Moderator should synthesize from three unavailable reports is a product decision with
+real cost either way. Surfaced as #104. R12 makes either choice implementable and makes the
+current one honest.
+
+Non-vacuity: six probes planted in real code and reverted, all failing -- handing the failed
+report on raw, over-applying the rewrite to real reports, stripping the marker's second sentence,
+making a caller raise instead of failing soft, introducing retries, and writing a decision row for
+a total failure.
+
+## Invariants
+
+209. Failing soft is only half a contract. Returning a sentinel instead of raising keeps the
+     system alive; what that sentinel is allowed to be mistaken for decides whether it stays
+     honest, and a sentinel placed in an evidence slot is read as evidence.
+210. A failure signal must not be reused as content. The same string can be a correct error for
+     the user and a corrupt input for a model, and the boundary between those two audiences is
+     where it has to be translated.
+211. Absence of evidence must say so out loud where a reasoner will read it. Telling a chair a
+     report is "unavailable" without telling it that means MISSING invites the chair to conclude
+     there was nothing to find.
+212. One provider's internal error text has no business in another provider's prompt. It carries
+     no analytic value and an unbounded amount of incidental detail.
+213. A taxonomy collapses at whatever granularity nobody had to act on. Four causes needing four
+     different user responses arrive here as one string, because no code path ever branched on
+     which one it was.
+214. A log of decisions that records only successes is a record of what worked, not of what was
+     attempted -- and the difference is invisible precisely when it matters most.

@@ -59,6 +59,7 @@ from typing import Optional
 from llm_engine import (
     ANTHROPIC_API_KEY, GEMINI_API_KEY, OPENAI_API_KEY,
     CLAUDE_MODEL, GEMINI_MODEL, OPENAI_MODEL, MAX_TOKENS,
+    UNAVAILABLE_REPORT, _report_for_handoff,
 )
 from pick_synthesis import CandidateSnapshot, PickSnapshot, diff_snapshots
 
@@ -431,11 +432,15 @@ def debate_pick(
         return PROVIDER_CALLERS[provider](system_prompt, user_prompt, api_keys.get(provider), role_models.get(role))
 
     strategist_report = _call("strategist", STRATEGIST_SYSTEM_PROMPT, evidence)
-    skeptic_prompt = f"{evidence}\n\n--- STRATEGIST'S CASE ---\n{strategist_report}"
+    # A failed chair's error string must not occupy the next chair's evidence slot -- see
+    # llm_engine.UNAVAILABLE_REPORT for the full reasoning. The frozen snapshot itself is
+    # unaffected, so a chair whose predecessor failed still has every real number to work from.
+    skeptic_prompt = f"{evidence}\n\n--- STRATEGIST'S CASE ---\n{_report_for_handoff(strategist_report)}"
     skeptic_report = _call("skeptic", SKEPTIC_SYSTEM_PROMPT, skeptic_prompt)
     caller_prompt = (
-        f"{evidence}\n\n--- STRATEGIST'S CASE ---\n{strategist_report}\n\n"
-        f"--- SKEPTIC'S CHALLENGE ---\n{skeptic_report}\n\nSynthesize these into one final recommendation."
+        f"{evidence}\n\n--- STRATEGIST'S CASE ---\n{_report_for_handoff(strategist_report)}\n\n"
+        f"--- SKEPTIC'S CHALLENGE ---\n{_report_for_handoff(skeptic_report)}\n\n"
+        "Synthesize these into one final recommendation."
     )
     caller_report = _call("caller", CALLER_SYSTEM_PROMPT, caller_prompt)
 

@@ -562,6 +562,38 @@ def ask_beat(
     return PROVIDER_CALLERS[provider](BEAT_SYSTEM_PROMPT, prompt, api_key, model)
 
 
+# What a downstream chair is shown in place of an upstream chair's report when that chair's
+# call never completed. It used to be handed the raw "⚠️ <provider> request failed: <exc>"
+# string under the upstream chair's own section heading -- so the Contrarian was asked to
+# pressure-test a connection error as though it were the Quant's analysis.
+#
+# This app's own rule, applied everywhere else, is that a missing thing is represented as
+# missing and never as a value: an unpriced row carries None rather than 0.0, an unstamped
+# snapshot is "not certifiable" rather than current, an unrecorded model is "" rather than the
+# default. A failed chair's error text occupying the report slot breaks that rule at the one
+# place a model reads it.
+#
+# The second sentence is load-bearing and not padding: absent evidence must not be read as
+# evidence of absence, which is exactly the failure mode a bare "unavailable" invites from a
+# chair whose whole job is finding what the others missed.
+#
+# The raw exception is NOT forwarded, deliberately. It says nothing useful to another chair
+# ("Connection reset by peer" is not analysis), and forwarding one provider's internal error
+# text into another provider's prompt is a cross-provider disclosure with no upside -- see
+# ARCHITECTURE_AUDIT.md 7.8's residual on SDK exception contents. It still reaches the user
+# and the activity log intact via DebateResult.errors; only the model-facing copy is replaced.
+UNAVAILABLE_REPORT = (
+    "(unavailable — this chair's call did not complete, so no analysis was produced. "
+    "Treat this as MISSING information, never as a finding that there is nothing to report.)"
+)
+
+
+def _report_for_handoff(report: str) -> str:
+    """One upstream chair's output as the next chair should see it. Failed calls are the
+    only thing rewritten; every real report passes through untouched."""
+    return UNAVAILABLE_REPORT if report.startswith("⚠️") else report
+
+
 def ask_contrarian(
     context: str, question: str, quant: str, beat: str,
     *, provider: str = "openai", api_key: Optional[str] = None, model: Optional[str] = None,
@@ -569,8 +601,8 @@ def ask_contrarian(
     prompt = (
         f"League/roster context:\n{context}\n\n"
         f"Original question: {question}\n\n"
-        f"--- QUANT / VORP REPORT ---\n{quant}\n\n"
-        f"--- BEAT / NEWS REPORT ---\n{beat}\n\n"
+        f"--- QUANT / VORP REPORT ---\n{_report_for_handoff(quant)}\n\n"
+        f"--- BEAT / NEWS REPORT ---\n{_report_for_handoff(beat)}\n\n"
         "Pressure-test these two reports."
     )
     return PROVIDER_CALLERS[provider](CONTRARIAN_SYSTEM_PROMPT, prompt, api_key, model)
@@ -584,9 +616,9 @@ def ask_moderator(
     prompt = (
         f"League/roster context:\n{context}\n\n"
         f"Original question: {question}\n\n"
-        f"--- QUANT / VORP REPORT ---\n{quant}\n\n"
-        f"--- BEAT / NEWS REPORT ---\n{beat}\n\n"
-        f"--- CONTRARIAN / RISK REPORT ---\n{contrarian}\n\n"
+        f"--- QUANT / VORP REPORT ---\n{_report_for_handoff(quant)}\n\n"
+        f"--- BEAT / NEWS REPORT ---\n{_report_for_handoff(beat)}\n\n"
+        f"--- CONTRARIAN / RISK REPORT ---\n{_report_for_handoff(contrarian)}\n\n"
         "Synthesize these into one verdict."
     )
     # A tone directive, never a content one -- it changes how the verdict is written,
