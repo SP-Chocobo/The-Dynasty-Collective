@@ -221,6 +221,12 @@ is entirely **prospective**: hosting this as-is would make every §12 question l
 two stores would be immediately wrong — `league_prefs.py` and `league_format.py` use a
 module-level global `PATH` rather than the per-league scoping `decision_log`, `pinned_messages`,
 `todo_log` and `attachments` all use.
+
+> **Corrected by §12 — see 12.6.** The last sentence is wrong. Both stores use one shared file
+> and are nonetheless **correctly scoped by key inside it**: `league_format` by `league_id`
+> (deliberately — a league's format is a property of the league, not of a user), `league_prefs`
+> by `user_id`. I read the path constant and not the accessor signatures. Their real hosting
+> exposure is concurrent writes to one shared file (#102), not miskeying.
 **DEPENDENCIES:** any hosted deployment. Recorded so the gap is a known precondition rather than a
 discovery made after launch.
 
@@ -2454,3 +2460,170 @@ model this app has never had (#102).
    bounded to multi-tab or multi-device use.
 3. **11.6 / #92 — persist and identify the snapshot.** Smaller than recorded: the provenance
    stamp exists, so this is persistence plus a unique id, not a new mechanism.
+
+---
+
+## Pass 9 — §12
+
+**Scope:** Build Guide v2 §12 (multi-tenant isolation, cache leakage, context pollution).
+
+**Baseline:** `bf8d98b` on `ui-authority-pass`; `main` frozen at `9fb5102`. **No production file
+was modified** — §12 found nothing that both clears the bar and is free of a policy decision.
+#91–94, #96–102 remain queued; #99 stays ahead of #94; #100 untouched.
+
+**Headline: §12 resolves better than the storage layout suggests, and the reason is reach.**
+The one globally-shared, league-derived store withholds its private field from both the prompt
+and the UI; the one real scope mechanism is *actually wired into the prompt*; and the only two
+cross-session caches hold static images.
+
+### 12.1 Scope key of every store
+
+**STATUS: EXISTS — every store is scoped to the right thing**
+
+| store | location | scoped by |
+|---|---|---|
+| chats, decisions, todos, pins | `data/<kind>/<league_id>…` | **league, by path** |
+| `league_format` | `data/league_formats.json` | **league, by key inside** |
+| `league_prefs` | `data/league_prefs.json` | **user, by key inside** |
+| attachments | `data/attachments/` | **per-item scope list** (12.2) |
+| `bot_research`, `bot_comparisons` | `data/baseline/` | **global** (12.3) |
+| `bot_config`, `benchmark_results` | `data/` | global — app settings, not league data |
+| `player_aliases` | `data/player_aliases.json` | global — player identity is a global fact |
+
+A league-id in the *path* is the strongest scoping available here: one league's file cannot be
+read without naming that league. Verified by exercising `league_format` — an override set for
+`LEAGUE_A` returns `None` from `LEAGUE_B`.
+
+### 12.2 The attachment scope mechanism is real, and it is wired
+
+**STATUS: EXISTS — structural, and not stranded**
+**LOCATION:** `attachments.set_scope:75`, `list_attachments:84`; consumed at `app.py:1884`.
+**EVIDENCE:** attachments carry a per-item `league_ids` list — `None` means global, a list scopes
+to those leagues — and `list_attachments(league_id=…)` returns *"global items plus anything
+scoped to include it."* Exercised: from league A, `{global.txt, a_only.txt}`; `b_only.txt` is
+excluded; unfiltered still returns all three.
+
+**The part that matters is the call site.** `build_context`'s reference-material section calls
+`list_attachments(league_id=st.session_state.selected_league_id)`. The three unfiltered call sites
+are management and counting views — one carries an explicit comment saying so. So unlike §11's
+`snapshot_is_current`, **this protection is not stranded**: the filter runs on the path that
+reaches a model. Now pinned, including that `build_context` contains no unfiltered call.
+
+### 12.3 The one global league-derived store — measured by reach
+
+**STATUS: EXISTS, with the private field withheld — narrower than the schema suggests**
+
+`bot_research` is global by design and records `league_id` on every entry. What matters is what
+actually travels. Measured field-by-field against `build_context`'s real render lines:
+
+| | reaches another league's prompt | stored but withheld |
+|---|---|---|
+| finding | `date`, `player_name`, `source`, `rank`, `claim` | **`question`**, **`league_id`**, `conviction`, `id`, `ts`, `composite_impact` |
+| comparison | `date`, `subject`, `direction`, `compared_to`, `context`, `source`, `evidence` | **`question`**, **`league_id`**, `panel_undisputed`, `id`, `ts`, `evidence_type` |
+
+**`question` is the private field** — the user's own free text, e.g. *"Should I sell my WR1 given
+my 2-6 record?"* — and it reaches neither another league's prompt nor the Bot Research panel,
+which renders only Date / Player / Source / Claim / Rank / Composite impact.
+
+So §12's *"can shared research contain hidden private context inherited from the operation that
+discovered it?"* → **in the stored object yes, in anything replayed no.** And the sharing is
+**disclosed in the UI in words**: *"Everything the panel has vetted across every league."*
+
+**Residual, named and undemonstrable:** `claim` and `evidence` are free text authored by the
+Moderator and could themselves embed league context. The store is empty (§6 reach: 0 findings
+ever), so this cannot be measured, and the schema cannot prevent it.
+
+### 12.4 Caches
+
+**STATUS: EXISTS — the only cross-session caches hold static images**
+**EVIDENCE:** exactly two `@st.cache_resource` functions exist, `_page_icon` and
+`_header_banner_data_uri`. Both take **no arguments** — so neither can be keyed by league or user
+— and both read only from `ASSETS_DIR`. Neither touches `session_state`, a roster, a league, or a
+`user_id`. A no-argument cross-session cache is safe *only* if its contents are tenant-free, which
+is exactly the condition here, so that condition is what the test pins.
+Everything else is `st.session_state`, which Streamlit scopes per session, or the snapshot cache
+keyed on `(draft_id, target_index, roster_id, pool_scope, len(picks), freshest_date)` — league-
+specific by construction (§11.2).
+No embeddings, no vector index, no shared summary object exists anywhere; `compact_league_history`
+summaries are per-league by path.
+
+### 12.5 Research cannot be scoped to its league — KNOWN GAP
+
+**STATUS: PARTIAL (latent)**
+**EVIDENCE:** `findings_for_context` and `comparisons_for_context` take **only `limit`** — no
+league parameter, so neither can filter. `league_id` is written on every entry and read by
+nothing.
+§12 asks *"can private evidence be promoted to a global object without an explicit policy
+decision?"* The promotion **is** a policy — the Moderator's SOURCE FINDING gate (§6.2) — and it is
+disclosed. What is missing is a **per-item** choice: no way to scope a finding to its originating
+league even though the field is recorded.
+**The precedent exists in the same codebase.** `attachments` already implements exactly this
+pattern — a scope list, `None` for global, a filtered read wired into `build_context`. Applying it
+to research is a small change with a real policy question in front of it: today's default is
+share-everything, disclosed; changing it changes what the panel remembers across leagues.
+**Verdict: DOCUMENT, surfaced (#103).** Not chosen.
+
+### 12.6 A correction to §13.5 — the fourth time a finding was one read short
+
+§13.5 recorded that under hosting *"two stores would be immediately wrong — `league_prefs.py` and
+`league_format.py` use a module-level global `PATH` rather than the per-league scoping … all use."*
+
+**That is wrong.** Both use one shared file *and are correctly scoped by key inside it*:
+`league_format.get_format_override(league_id)` / `set_format_override(league_id, …)`, with a
+docstring stating the intent — *"Keyed by league_id (a property of the league itself), not by
+Sleeper user"* — and `league_prefs.get_prefs(user_id)`, which is the right key for "which leagues
+has this user archived and in what order". I conflated *global file* with *global scope*, having
+read the path constant and not the accessor signatures.
+
+Their real hosting exposure is **concurrent writes to one shared file**, which is #102's
+territory, not miskeying. §13.5's status (NOT APPLICABLE as deployed, hard blocker for hosting)
+is unaffected; only its named example was wrong.
+
+Fourth occurrence of this pattern, after §6.4a, §9.8 and §11.6. The §11 rule — *before reporting
+an absence, read the docstring of the thing you claim lacks it* — would have caught this one too,
+and did not get applied because §13.5 predates it. Every remaining section now gets that check.
+
+### 12.7 Repairs applied at this section boundary
+
+**None.** §12's protections are real and were undefended; the repair was to enforce them.
+`test_tenant_scope_boundary` (13 tests) pins: the four conversation stores keep a league id in
+their path; `league_format`/`league_prefs` keep their keys; a format override is not visible from
+another league; `build_context` filters attachments by the selected league and contains no
+unfiltered call; the filter actually filters; a finding's `question` and `league_id` reach neither
+prompt nor UI; the cross-league sharing stays disclosed; and both cross-session caches keep taking
+no arguments and touching nothing tenant-specific.
+
+*Non-vacuity — six probes planted in real code and reverted, all failing:* removing the league
+filter from `build_context`, removing the filter's body, rendering a finding's `question` into the
+prompt, giving a cross-session cache an argument, giving `findings_for_context` a scope parameter
+(the known gap, correctly demanding inversion), and removing `league_format`'s league key.
+
+---
+
+## Pass 9 summary
+
+| item | status | boundary kind |
+|---|---|---|
+| 12.1 every store scoped to the right thing | EXISTS | now enforced |
+| 12.2 attachment scope wired into the prompt | EXISTS | now enforced |
+| 12.3 private `question` withheld from prompt and UI | EXISTS | now enforced |
+| 12.3a `claim`/`evidence` free text could embed context | DOCUMENT (undemonstrable, store empty) | — |
+| 12.4 cross-session caches hold static assets only | EXISTS | now enforced |
+| **12.5 no per-item league scope for research** | **PARTIAL (latent)** | characterized → #103 |
+| 12.6 correction to §13.5's named example | correction | — |
+| cross-*user* isolation | NOT APPLICABLE (no tenancy — §13.5) | — |
+
+### Does anything clear the bar for a production change?
+
+**No, and this is the second section where the honest answer is that the protections were already
+right.** The only gap — no per-item league scope for research — has a policy question in front of
+it: today's default is share-everything-across-leagues, deliberately and visibly. Changing it
+changes what the panel remembers, and the field needed to implement either answer is already
+recorded.
+
+### Follow-ups from this pass
+
+1. **12.5 / #103 — a scope decision for research findings.** Small, with the pattern already
+   implemented next door in `attachments`; blocked only on the default.
+2. **12.6 → #102** — the shared-file stores' real hosting exposure is concurrency, not scope.
+   Recorded on #102 so the hosting precondition list stays accurate.

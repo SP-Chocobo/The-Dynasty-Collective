@@ -7844,3 +7844,80 @@ This shrinks #92 rather than growing it: the gap is not "invent a provenance mec
 203. Serialization by the runtime is not isolation by design. Single-threaded execution hides a
      concurrency model's absence exactly until a second tab exists, at which point load-mutate-
      write silently loses whichever update lost the race.
+
+---
+
+# Appendix — §12: multi-tenant isolation, cache leakage, context pollution
+
+Structured findings live in `ARCHITECTURE_AUDIT.md` (Pass 9). This entry records the
+measurements, the correction, and the invariants. **No production file was modified.**
+
+Cross-*user* isolation is NOT APPLICABLE as deployed (§13.5: no login, no tenancy). Cross-*league*
+isolation is live today, and **resolves better than the storage layout suggests** -- because what
+matters is reach, not schema.
+
+## What was measured
+
+| measurement | result |
+|---|---|
+| chats / decisions / todos / pins | league-scoped **by path** -- a league's file cannot be read without naming it |
+| `league_format` / `league_prefs` | one shared file each, correctly scoped **by key inside** (league / user); an override set for LEAGUE_A returns None from LEAGUE_B |
+| attachments | per-item `league_ids` scope list; `list_attachments(league_id=...)` returns global items plus those scoped to include it -- exercised: from A, `{global, a_only}`, `b_only` excluded, unfiltered sees all three |
+| **where that filter is called** | `app.py:1884`, inside `build_context` -- the path that reaches a model. The three unfiltered calls are management/counting views |
+| finding fields reaching another league's prompt | `date`, `player_name`, `source`, `rank`, `claim` |
+| finding fields stored but **withheld** | **`question`**, **`league_id`**, `conviction`, `id`, `ts`, `composite_impact` |
+| comparison fields withheld | **`question`**, **`league_id`**, `panel_undisputed`, `id`, `ts`, `evidence_type` |
+| Bot Research UI columns | Date / Player / Source / Claim / Rank / Composite impact -- no `question`, no `league_id` |
+| cross-session caches | exactly two `@st.cache_resource`, both **no-argument**, both reading only `ASSETS_DIR`; neither touches session_state, a roster, a league or a user_id |
+| embeddings / vector index / shared summary object | **none exist**; `compact_league_history` summaries are per-league by path |
+| `findings_for_context` / `comparisons_for_context` params | `['limit']` -- neither can filter by league |
+| `league_id` readers in `bot_research` | **none** -- written on every entry, read by nothing |
+
+The private field is `question` -- the user's own free text -- and it reaches neither another
+league's prompt nor the UI. The cross-league sharing that does happen is disclosed in the panel's
+own caption: *"Everything the panel has vetted across every league."*
+
+Residual, named and undemonstrable: `claim` and `evidence` are free text authored by the Moderator
+and could themselves embed league context. The store is empty (§6 reach: 0 findings ever), so this
+cannot be measured, and no schema can prevent it.
+
+## A correction to §13.5 -- the fourth time a finding was one read short
+
+§13.5 recorded that under hosting "two stores would be immediately wrong -- `league_prefs.py` and
+`league_format.py` use a module-level global PATH rather than the per-league scoping ... all use."
+Wrong. Both use one shared file AND are correctly scoped by key inside it -- `league_format` by
+`league_id` (with a docstring stating the intent: "a property of the league itself, not by Sleeper
+user"), `league_prefs` by `user_id`. I conflated *global file* with *global scope*, having read
+the path constant and not the accessor signatures. Their real hosting exposure is concurrent
+writes to one shared file (#102), not miskeying. §13.5's overall status is unaffected; only its
+named example was wrong.
+
+Fourth occurrence, after §6.4a, §9.8 and §11.6. The §11 rule -- *before reporting an absence, read
+the docstring of the thing you claim lacks it* -- would have caught this one, and did not get
+applied because §13.5 predates it.
+
+## Tests added
+
+`test_tenant_scope_boundary.py` -- 13 tests, enforcement of protections that were real and
+undefended, plus one characterization (research has no per-item league scope).
+
+Non-vacuity: six probes planted in real code and reverted, all failing -- removing the league
+filter from build_context, gutting the filter's body, rendering a finding's `question` into the
+prompt, giving a cross-session cache an argument, giving `findings_for_context` a scope parameter,
+and removing `league_format`'s league key.
+
+## Invariants
+
+204. A store's scope is where its key lives, not where its file lives. One shared file keyed by
+     tenant is correctly scoped; a per-tenant file read without naming the tenant is not.
+205. A protection is only as good as its call site. Two mechanisms of equal quality differ
+     entirely by whether the path that reaches a model actually invokes them -- `attachments`
+     does, `snapshot_is_current` does not.
+206. Judge a leak by what travels, not by what is stored. A record may hold private context and
+     still be safe to share if the renderer withholds it -- and the renderer, not the schema, is
+     then the boundary that must be tested.
+207. A no-argument cross-session cache cannot be keyed by tenant, so it is safe only while its
+     contents are tenant-free. That is a property to assert, not to assume, because adding one
+     argument silently converts it into a shared index.
+208. Deliberate sharing disclosed to the user is a different thing from leakage, and the audit
+     record should say which it is. What is missing here is not a boundary but a per-item choice.
