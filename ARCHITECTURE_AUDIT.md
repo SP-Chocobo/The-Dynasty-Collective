@@ -1205,3 +1205,281 @@ would mean designing against assumed inputs, which this programme has already de
    gain in the pass; production Quant's core stated job is currently untested.
 4. **5.13 — chain-level evaluation.** The deepest gap, and correctly blocked behind #93.
 5. **5.4 — a Draft Room battery.** Blocked behind #88's fixture; named so it is not forgotten.
+
+---
+
+## Pass 4 — §6
+
+**Scope:** Build Guide v2 §6 (external research, evidence, canonical ingestion).
+
+**Baseline:** `f20da9d` on `ui-authority-pass`; `main` frozen at `9fb5102`. No production file
+was modified. #91–96 remain queued/deferred and were not advanced.
+
+**Reach, established first, because it bounds every severity below.** The two research stores —
+`data/baseline/bot_research.json` and `bot_comparisons.json` — **do not exist**, are not in
+`git ls-files`, and are not gitignored. `load_bot_research_as_external()` returns 0 rows. Nothing
+has ever been ingested through this pathway in this repository. Every finding in this pass is
+therefore **latent**: the machinery is built, considered, and unexercised.
+
+### 6.1 Is ephemeral research distinguished from canonical ingestion?
+
+**STATUS: EXISTS — and the boundary is layered, not binary, which is the right shape**
+
+**LOCATION:** `bot_research.py`; `data_merger.load_bot_research_as_external:1576`,
+`_EXTERNAL_PERCENTILE_RULES:141`, `COMPOSITE_SOURCE_WEIGHTS:104`; `app.process_moderator_output:816`.
+
+**EVIDENCE — four tiers, each with a different admission rule:**
+
+| tier | what reaches it | admission rule |
+|---|---|---|
+| debate prose | news, injuries, narrative | *"not news/injury, which belongs in your prose, not here"* — an explicit ephemeral carve-out in the Moderator's own instructions |
+| research log | any panel-vetted named-source claim | the Moderator emits a `SOURCE FINDING` / `SOURCE COMPARISON` line |
+| composite score | **only** findings carrying a number the source itself stated | `rank is not None`, plus a percentile rule keyed `("bot_research", "findings")` |
+| CDME valuation | **nothing** | `source_name == "keeptradecut"` whitelist at `draft_room:518` / `pick_synthesis:413`, enforced by `test_cdme_ingestion_boundary.py` |
+
+Comparisons are a deliberately separate store that never reaches the composite at all —
+`composite_impact` is the literal string `"none"`, *"an explicit stored fact rather than a silent
+omission"*, with the reasoning recorded: a handful of debate-surfaced comparisons is nowhere near
+KTC's vote volume, and a Bradley-Terry model on that sample *"would produce noise dressed up as
+precision."* That is the guide's question answered before it was asked.
+**BOUNDARY:** research → canonical. **Structural at the CDME edge, enforced at the composite edge**
+(new tests this pass), **instructional at the log edge** (6.2).
+
+### 6.2 How materiality is determined
+
+**STATUS: PARTIAL — well defined, entirely instructional**
+**EVIDENCE:** `MODERATOR_SYSTEM_PROMPT:202-218` states three filters and one exclusion, all in
+prose: the claim must be *"specific, checkable … from a named real source about a named player's
+current market value, ranking, or status"*; news and injury are excluded by name; the panel —
+*"Contrarian very much included"* — must not have disputed it; and *"if the Contrarian challenged
+it and nothing rebutted that challenge, don't write the line at all — an unresolved dispute is not
+a finding."*
+Nothing re-adjudicates. `app.py:836` says so plainly: *"persisting every parsed line here is
+trusting the Moderator's own gate, not re-verifying it a second time in code — the actual trust
+bar is upstream, in the debate itself."* §6 asks whether discoveries *"enter a server-side
+validation queue that independently re-adjudicates facts before canonical inclusion"* — **no.
+There is no queue and no second adjudication.** The gate is one paragraph addressed to a model
+whose output is then parsed line-by-line.
+**RISK:** bounded by 6.4's dampeners rather than by the gate.
+
+### 6.3 What stops a low-confidence finding becoming a durable fact — quantified
+
+**STATUS: EXISTS — three dampeners, and their strength is measurable**
+
+Weight = `COMPOSITE_SOURCE_WEIGHTS[source] × recency × min(1, pool/20)`, and the composite is
+`Σ(percentile × weight) / Σweight`, so what matters is *share*. Measured against the real
+committed tables (only `(source, file)` pairs carrying a percentile rule contribute):
+
+| contributing source | as-of | rows | w_src | recency | effective |
+|---|---|---|---|---|---|
+| draftsharks / projections | 2026-08-25 | 764 | 1.30 | 0.933 | **1.213** |
+| fantasypros / dynasty_ppr_rankings.csv | 2026-08-20 | 552 | 1.00 | 0.881 | 0.881 |
+| dynastyprocess / players.csv | 2026-08-14 | 698 | 1.00 | 0.822 | 0.822 |
+| keeptradecut / dynasty_superflex_halfppr.csv | 2026-08-20 | 499 | 0.70 | 0.881 | 0.616 |
+| *(loaded but excluded — no percentile rule)* | | | | | `espn/idp_redraft_rankings.csv`, `fantasypros/best_ball_rankings.csv`, `fantasypros/idp_redraft_rankings.csv`, `dynastyprocess/picks.csv` |
+
+Total contributing weight **3.532**. A finding written today:
+
+| finding pool | effective weight | share of the blend |
+|---|---|---|
+| N = 1 | 0.025 | **0.7%** |
+| N = 10 | 0.250 | 6.6% |
+| N ≥ 20 | 0.500 | **12.4%** |
+
+**The number that does not depend on today's snapshot.** A finding is always dated the day it is
+written, so its recency weight is permanently 1.0; a committed vendor file ages. Days of vendor
+staleness before a fresh panel finding outweighs it (`halflife × log₂(w_src / 0.5)`):
+
+| source | days |
+|---|---|
+| keeptradecut | **29.1** |
+| dynastyprocess, fantasypros | 60.0 |
+| draftsharks | 82.7 |
+
+So the ordering guarantee "a parsed vendor always outranks an LLM's read" holds **only at equal
+freshness**. On a baseline left un-refreshed for a month, a panel finding outweighs KeepTradeCut.
+That is arguably correct behaviour — a fresh read *should* beat a stale file, and it is the same
+rule every source obeys — but it is a consequence of the weighting rather than a stated intent,
+and it is worth naming.
+**Verdict: DOCUMENT.** The dampeners work, and the crossover is now recorded rather than implicit.
+Enforced this pass: research carries the lowest source weight of any source, the pool floor is
+pinned, and an undated source gets 0.5 rather than full trust.
+
+### 6.4 The research frame is not name-injective — KNOWN GAP
+
+**STATUS: PARTIAL (latent) — characterized, not repaired**
+
+**EVIDENCE.** `load_bot_research_as_external` keys `latest` by **(normalized name, cited source)**,
+so two findings about one player citing two different sources survive as two rows sharing a
+normalized name. Measured with a temporary store holding contradictory findings (ESPN `rank 3`,
+FantasyPros `rank 41` for the same player):
+
+```
+rows produced                 : 2
+norm_name unique              : False
+percentiles assigned          : [100.0, 50.0]
+_resolve(...)                 : candidates=2, verified=False
+_find_match(...) resolves to  : rank 3.0 / ESPN
+composite components          : 1   (raw=3.0, pct=100.0, weight=0.0494)
+```
+
+The columns the frame emits are `name, norm_name, source_name, source_file, cited_source, claim,
+rank, source_date` — **no team, no position.** Passing `position=` and `team=` changes nothing;
+all four call shapes resolve to the same arbitrary row. `_compute_percentiles` *does* segment the
+research pool by offence/IDP group, but looks that group up externally and never stores it, so it
+is available for pooling and not for disambiguation.
+
+Note precisely what is and is not broken: `_resolve` **correctly reports `verified=False`** — the
+identity boundary R1–R3 and #89 built is intact and reporting honestly. `composite_player_score`
+reaches it through `_find_match`, which is `_resolve(...)[0]`: the row, with the flag discarded.
+The newer finding also loses to the older one, because "newest wins" holds *within* a
+(player, cited source) key and not across cited sources — which a reader of the docstring's
+unqualified *"newest wins"* would not expect.
+
+**Severity, bounded honestly:** store empty (0 findings ever); requires two findings on one player
+citing different sources; the losing component is worth at most 12.4% of one player's composite,
+and the composite *"does not feed the trade calculator's pricing math"* and never reaches CDME.
+**Verdict: DOCUMENT**, pinned by characterization tests that must be inverted when repaired.
+
+### 6.4a A correction — the general version of this finding is wrong
+
+I first framed this as *"`composite_player_score` discards the ambiguity flag, so 19 of 19
+colliding names in the committed `projections` table price off an arbitrary row."* The
+measurement was right and the conclusion was wrong, because both production call sites already
+guard it:
+
+- `data_merger.py:2284` (the roster/board path feeding `build_context`) passes `position=` and
+  `team=`, which disambiguates the vendor tables — the frames that *have* those columns.
+- `app.py:3548` (Trade Calculator free text) does not, but the block immediately after it drops
+  `external` and `composite` outright when `merge_player` reports `match_verified == False`, with
+  a comment recording the exact reasoning: *"an ambiguous line still had a specific player's real
+  composite score reach the panel's context, undermining the point of flagging it as ambiguous at
+  all."*
+
+And of the 19 colliding names, only **4** differ materially on the composite-relevant field —
+all four cross-position collisions the roster path resolves by position (`J Jefferson` LB/CLE
+trade_value 0.0 vs WR/MIN 82.0; `J Bates` 5 vs 14; `J Brooks` 20 vs 27; `B Young` 13 vs 18).
+The surviving finding is narrower and real: **the `bot_research` frame specifically cannot be
+disambiguated by either guard**, because it carries no team or position and the Trade Calculator's
+guard reads a different table. Recorded because the broad version was a plausible, tidy finding
+that two call-site reads disproved.
+
+### 6.5 Lifecycle, evidence snapshot, and the `validated` flag
+
+**STATUS: MISSING**
+**EVIDENCE:** §6 asks for `discovered → corroborated → disputed → adjudicated →
+canonical/rejected/expired`. A stored finding's fields are `id, ts, date, player_name, source,
+claim, rank, composite_impact, conviction, question, league_id`. `composite_impact` is a
+**routing label** (`"low-weight input"` / `"none"`), not a lifecycle state. There is no status,
+no corroboration count, no dispute state, no retraction, and no expiry — grep across the tree
+finds no such mechanism anywhere.
+**Evidence snapshot: absent.** No `url`, no `retrieved_at`, no quoted excerpt. The preserved
+evidence is a source *name* and the Moderator's own one-line paraphrase. §6's *"what happens when
+a source changes or disappears after a review event is created?"* → the claim persists,
+unfalsifiable and uncheckable, and continues to carry composite weight.
+
+**The `validated` flag, and why it is DOCUMENT rather than a defect.** Every comparison is written
+with `"validated": True`, hard-coded, commented *"only ever created after clearing the Moderator's
+panel-scrutiny gate."* The writing path cannot establish that — the gate is a model choosing to
+emit a line. The **shape** is identical to §13.3's alias `verified=True`: a certainty claim the
+code cannot verify. The **difference**, and the whole reason this is not a repair, is that
+**nothing in production reads it** — `grep` finds one write and one test assertion, and no
+consumer. §13.3's flag was consumed and changed a price; this one is inert.
+Pinned both ways: a test asserts the flag is written unconditionally, and a second fails if
+anything ever starts reading it — at which point it has to become honest before it can be trusted.
+
+### 6.6 Deduplication, reuse, and contradiction handling
+
+**STATUS: PARTIAL**
+- **Dedup: exists, narrowly.** `add_finding` and `add_comparison` both no-op on an exact
+  same-day duplicate `(date, player, source, claim, rank)`, deliberately scoped to one day so a
+  genuine re-confirmation weeks later still renews its own recency weight. Cross-day
+  near-duplicates and paraphrase variants are not detected. §6's *"the same underlying fact
+  discovered by multiple runs deduplicated into one review event"* → there is no *review event*
+  concept at all, so dedup is row-level rather than fact-level.
+- **Reuse: EXISTS.** `findings_for_context(limit=30)` and `comparisons_for_context(limit=30)`
+  feed every subsequent `build_context`, so a finding is paid for once and reused thereafter —
+  a direct affirmative answer to §6's cost question.
+- **Contradiction vs interpretation: PARTIAL.** The numeric/qualitative split is real (a rank is
+  stored *"ONLY if the claim IS literally that specific number"*), and comparisons carry a genuine
+  third state `~` for *"the source treats them as roughly equal"* rather than forcing a
+  direction. But there is no representation for *two findings that disagree*: within one cited
+  source the newer silently supersedes, and across cited sources one silently wins (6.4). A
+  disagreement is never stored as a disagreement.
+
+### 6.7 Communicating staleness, and separating established from new
+
+**STATUS: EXISTS — the best-handled part of §6**
+**EVIDENCE:** `build_freshness_manifest` gives every dated source an as-of date and an age, sorted
+freshest-first, with STALE (≥7d) and EGREGIOUSLY OUTDATED (≥30d) flags and an instruction to *"say
+so plainly in your answer, don't use quietly."* Every chair prompt is told to weigh freshness by
+claim type — decisively for injury/depth-chart signals, mildly for long-horizon valuations.
+Past findings are re-presented to the panel under their own heading, dated, with an explicit
+**double-counting warning**: *"The ones with a rank number already feed the composite score above
+at a low weight … don't double-count them by also treating this prose as independent
+corroboration."* Comparisons get their own heading stating they carry **no** composite weight and
+are *"useful as a cross-check on ordering … not a competing number."*
+That is §6's *"can Moderator explicitly separate established CDME context from credible new
+evidence"* answered affirmatively, and it is answered more carefully than the question asks.
+
+### 6.8 Cross-user sharing
+
+**STATUS: NOT APPLICABLE as deployed**
+**EVIDENCE:** single-user desktop Streamlit with no auth and no tenancy (§13.5). Both stores are
+global rather than per-league, and `league_id` is recorded on every entry but never filtered on at
+read time — so a finding surfaced in one league is reused in all of them. That is a *within-user*
+cross-league reuse decision, not a cross-user one. §6's sharing and privacy questions become live
+only under 13.5's hosting preconditions, and are queued there rather than answered here.
+
+---
+
+## Pass 4 summary
+
+| item | status | boundary kind |
+|---|---|---|
+| 6.0 reach — anything ever ingested | **none — 0 findings, stores absent** | — |
+| 6.1 ephemeral vs canonical, four tiers | EXISTS | structural + enforced (new) |
+| 6.2 materiality determination | PARTIAL | **instructional** |
+| 6.2a independent re-adjudication queue | MISSING | absent |
+| 6.3 dampeners on low-confidence findings | EXISTS (quantified) | enforced (new) |
+| **6.4 research frame not name-injective** | **PARTIAL (latent)** | characterized |
+| 6.4a correction — the general version is wrong | — | — |
+| 6.5 lifecycle / evidence snapshot | MISSING | absent |
+| 6.5a `validated` written unconditionally, read by nothing | DOCUMENT | characterized |
+| 6.6 dedup (same-day, row-level) | PARTIAL | enforced |
+| 6.6a reuse across future operations | EXISTS | structural |
+| 6.6b contradiction vs interpretation | PARTIAL | — |
+| 6.7 staleness + established-vs-new separation | EXISTS | instructional, well-specified |
+| 6.8 cross-user sharing | NOT APPLICABLE (queued behind 13.5) | — |
+
+### Does anything clear the bar for a production change?
+
+**No — and this is the first pass where nothing does.** 6.4 is a genuine latent defect with a
+proven mechanism, but three things keep it below the bar: the store has never held a row, it
+requires two findings on one player citing different sources, and the worst case is one arbitrary
+component worth ≤12.4% of one player's composite, on a score that reaches neither the trade
+calculator's pricing math nor CDME. Repairing it now would mean designing an admission and
+conflict-representation scheme against zero observed data — the same error this programme
+declined in #88 and #85.
+
+The right response was to **pin the guarantees and characterize the gaps**, which this pass did
+without touching production: the dampeners, the qualitative/numeric split, comparisons' exclusion,
+and same-day dedup are now enforced, and the non-injective frame, the missing lifecycle, and the
+inert `validated` flag are characterized with tests that must be inverted rather than deleted
+when repaired.
+
+### Follow-ups from this pass, ranked by evidence then severity
+
+1. **6.4 + 6.5 together — a finding's identity and its lifecycle.** The frame needs a key that
+   can represent "two sources disagree about this player" rather than dropping one, and a finding
+   needs somewhere to record corroboration, dispute, and retraction. Same design; doing either
+   alone would need redoing. **Prerequisite: real findings.** Not worth designing against an empty
+   store.
+2. **6.5 — evidence snapshot (URL + retrieved-at + excerpt).** Cheap, additive, and independently
+   useful: it makes a stored claim checkable later, which is what §6 is actually protecting.
+   The only item here that could sensibly be done before any data exists.
+3. **6.2a — an independent re-adjudication step.** The largest conceptual gap, and the one that
+   most depends on scale: with one user and a low weight, the Moderator's own gate is a
+   defensible trust bar. It stops being one under 13.5's hosting model.
+4. **6.3 — decide whether the fresh-finding-beats-stale-vendor crossover is intended.** Now
+   measured (29–83 days); it needs a stated intent, not a change.

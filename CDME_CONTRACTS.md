@@ -7359,3 +7359,103 @@ the report (**FAIL**), and — confirming the characterization behaves as design
 172. Equalizing a capability across chairs normalizes comparison and forfeits measurement of
      that capability. Both are real; which one is wanted is a decision, and it should be
      recorded as one rather than inherited from a convenience.
+
+---
+
+# Appendix — §6: external research, evidence, canonical ingestion
+
+Structured findings live in `ARCHITECTURE_AUDIT.md` (Pass 4). This entry records the
+measurements, the corrections, and the invariants.
+
+**Reach first, because it bounds every severity.** `data/baseline/bot_research.json` and
+`bot_comparisons.json` do not exist, are not tracked, and are not gitignored;
+`load_bot_research_as_external()` returns 0 rows. Nothing has ever been ingested this way here.
+Every §6 finding is latent.
+
+## What was measured
+
+| measurement | result |
+|---|---|
+| admission tiers, research → CDME | 4 (prose / log / composite / CDME), each with its own rule |
+| what reaches the composite | only findings whose `rank is not None` |
+| comparisons' composite impact | the literal string `"none"`; no percentile rule exists for them |
+| total contributing source weight today | **3.532** across draftsharks 1.213, fantasypros 0.881, dynastyprocess 0.822, keeptradecut 0.616 |
+| loaded but excluded (no percentile rule) | `espn/idp_redraft_rankings.csv`, `fantasypros/best_ball_rankings.csv`, `fantasypros/idp_redraft_rankings.csv`, `dynastyprocess/picks.csv` |
+| a finding written today, pool N=1 | weight 0.025 → **0.7%** of the blend |
+| a finding written today, pool N≥20 | weight 0.500 → **12.4%** of the blend |
+| vendor staleness before a fresh finding outweighs it | keeptradecut **29.1d**, dynastyprocess/fantasypros 60.0d, draftsharks 82.7d |
+| research frame columns | `name, norm_name, source_name, source_file, cited_source, claim, rank, source_date` — **no team, no position** |
+| two findings on one player, two cited sources | 2 rows, `norm_name` not unique, `_resolve` → `candidates=2, verified=False`, `_find_match` → the older ESPN row; the other dropped with no conflict recorded |
+| disambiguation by `position=` / `team=` inside that frame | **impossible** — all four call shapes resolve identically |
+| lifecycle state on a finding | none — `composite_impact` is a routing label, not a state |
+| evidence snapshot fields (url / retrieved_at / excerpt) | **absent**; the evidence is a source name plus the Moderator's paraphrase |
+| `validated` on a comparison | hard-coded `True` on every write; **one write, one test read, no production consumer** |
+
+## Corrections
+
+**A finding of mine that was wrong in its general form, caught by two call-site reads.** I
+measured that `composite_player_score` resolves every source through `_find_match` — which is
+`_resolve(...)[0]`, the row with `verified` discarded — and that 19 of 19 colliding names in the
+committed `projections` table still produce a composite. Both measurements are correct; the
+conclusion drawn from them was not. Production guards it at both call sites: `data_merger:2284`
+passes `position=` and `team=`, and `app.py:3548`'s next block drops `external` and `composite`
+outright when `merge_player` reports `match_verified == False`, for exactly this reason. Only
+**4** of the 19 differ materially on the composite-relevant field, and all four are
+cross-position collisions the roster path resolves by position. The surviving finding is narrower
+and real: the `bot_research` frame specifically cannot be disambiguated by either guard, because
+it carries no team or position and the Trade Calculator's guard reads a different table.
+
+**A `validated` flag that looks like §13.3 and is not.** `add_comparison` writes
+`"validated": True` unconditionally, asserting a panel-scrutiny gate the code cannot verify —
+structurally the same shape as the alias `verified=True` that #89 repaired. It is DOCUMENT rather
+than a defect for one reason only: §13.3's flag was consumed and changed a price, and this one has
+no production consumer at all. Recorded because "same shape as a known defect" is exactly the
+inference that needs a reach check before it becomes a finding.
+
+**A weighting table I had to redo.** The first composite-share measurement counted one row per
+`source_name`, which wrongly included ESPN (loaded, but with no percentile rule it never becomes
+a component) and collapsed multiple files per source. Corrected to `(source_name, source_file)`
+pairs present in `_EXTERNAL_PERCENTILE_RULES`; the total moved 4.412 → 3.532 and the fresh-finding
+share 10.2% → 12.4%.
+
+## Tests added
+
+`test_research_ingestion_boundary.py` — 19 tests, two postures, every on-disk test redirected to a
+temp store so none can leave a research file in `data/baseline/`.
+
+**Enforcement:** research carries the lowest source weight of any source; the pool-size floor
+dampens a small pool proportionally; an undated source gets 0.5, never full trust; a qualitative
+finding never reaches the composite while a numeric one does; comparisons have no percentile rule
+and are excluded from the upload-refresh targets; newest-wins holds within a cited source;
+same-day duplicates dedup on write; a blank finding is a no-op.
+
+**Characterization (KNOWN GAPS — invert when repaired, do not delete):** the frame is not
+name-injective and carries nothing to disambiguate with; `composite_player_score` reads the row
+without the flag while `_resolve` still reports the collision correctly; a finding carries no
+lifecycle state and no evidence snapshot; `validated` is written unconditionally, and a companion
+test fails the moment anything starts reading it.
+
+Non-vacuity, five probes planted in real production code and reverted: raising the research weight
+above KeepTradeCut (**FAIL**), admitting rank-less findings (**FAIL**), giving comparisons a
+percentile rule (**FAIL**), adding a `position` column to the frame (**FAIL** — the known gap
+closed, demanding inversion), and adding a function that reads `validated` (**FAIL**).
+
+## Invariants
+
+173. Ingestion is a ladder, not a gate. A claim may be good enough to reuse as context, not good
+     enough to weight a score, and never good enough to enter the deterministic engine — and each
+     rung needs its own admission rule, stated where the rung is.
+174. A dampener is only a guarantee at the freshness it was reasoned about. A weight that decays
+     with age and a source that is always dated today will cross, and the crossing point is a
+     property of the constants that should be measured and stated rather than discovered later.
+175. A store keyed by (subject, source) is not keyed by subject. Where two sources can speak about
+     one subject, the frame is not name-injective, and a consumer that resolves by name alone
+     silently picks one and discards a disagreement that was the most informative thing present.
+176. A disagreement must be representable as a disagreement. Superseding, dropping, or averaging
+     conflicting claims all destroy the signal that they conflicted, which is what a review
+     process would have needed.
+177. A claim without a retrievable source is unfalsifiable. Storing a source's name and a
+     paraphrase preserves the assertion and discards the ability to ever check it.
+178. A field asserting verification is a defect only where something consumes it. The same
+     unconditional `True` is inert in one place and a wrong price in another, so reach decides
+     the verdict — and an inert one still needs a test that fires the day it gains a consumer.
