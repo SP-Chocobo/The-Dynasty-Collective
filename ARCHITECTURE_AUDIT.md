@@ -79,73 +79,93 @@ automatically, since the escape is applied to the serialized whole.
 
 ### 13.3 Can a client-facing surface mutate canonical valuation state?
 
-**STATUS: VIOLATED — one client-reachable write path, and it breaks its own function's contract**
+**STATUS: REPAIRED** (was VIOLATED at pass 1). Repair mandated and applied after the finding
+crossed the evidence threshold; see "Repair record" below.
 **LOCATION:** `app.py:3246` `save_alias(...)` → `data_merger.save_alias:1636` →
-`data/player_aliases.json` → consumed by `DataMerger._resolve:1945`.
-**EVIDENCE:** an audit of every disk write shows `data_merger` writes exactly one file, the alias
-map; every other canonical valuation input is read-only at runtime, loaded from committed CSVs.
-`save_alias` performs **no validation** of the target — it stores arbitrary free text from
-`st.text_input`, gated only by a non-empty `.strip()` at the call site.
+`data/player_aliases.json` → consumed by `DataMerger._resolve`.
+**EVIDENCE (the original violation):** an audit of every disk write shows `data_merger` writes
+exactly one file, the alias map; every other canonical valuation input is read-only at runtime.
+`save_alias` performs **no validation** of the target — arbitrary free text from `st.text_input`,
+gated only by a non-empty `.strip()`.
 
-`_resolve`'s own docstring states the contract: *"`verified` is True only when exactly one row
+`_resolve`'s docstring states the contract: *"`verified` is True only when exactly one row
 survived, so a caller can tell 'this is the player' from 'this is the first of several that
-fit'."* The R1–R3 identity repair (#77/#82) made the automatic paths honour it. **The manual
-alias branch was not repaired with them** — it returns `exact.iloc[0], "alias", len(exact), True`,
-with `True` hard-coded irrespective of how many rows survived.
+fit'."* Every path in the function computes it that way — `exact` → `len(exact_matches) == 1`,
+`key` → `len(key_matches) == 1`, `fuzzy` → `len(survivors) == 1`. **The alias branch returned a
+hard-coded `True`**, missed by the R1–R3 repair (#77/#82). Since the alias map is the one
+client-writable input to identity resolution, the single client-reachable path was also the one
+overstating its own certainty.
 
-Probed directly on an in-memory table holding two rows that share a normalized name:
+Probed on an in-memory table holding two rows sharing a normalized name:
 
-| case | row bound | candidates | verified | contract |
+| case | row bound | candidates | verified (before) | contract |
 |---|---|---:|---|---|
 | alias target does not exist | `None` | 0 | `False` | held — **falls through safely** |
-| alias target is ambiguous, no team | `J Chase` (CIN, tv 100.0) | 2 | **`True`** | **VIOLATED** |
-| ambiguous, team matches neither row | `J Chase` (CIN, tv 100.0) | 2 | **`True`** | **VIOLATED** |
+| ambiguous, no team | `J Chase` (CIN, tv 100.0) | 2 | **`True`** | **VIOLATED** |
+| ambiguous, team matches neither | `J Chase` (CIN, tv 100.0) | 2 | **`True`** | **VIOLATED** |
 | *control:* same name, automatic path | `J Chase` | 2 | `False` | held |
 
-The control is what makes this a defect rather than a design choice: **the repaired path returns
-`verified=False` on identical data; the alias path returns `True`.**
+The control is what made it a defect rather than a design choice. The feared case was **not** the
+defect: a typo'd alias falls through to normal matching rather than rebinding a player.
 
-The reassuring half is worth stating too — a **typo does not silently rebind a player**. A
-non-existent target empties the filter and falls through to normal matching, so the feared
-"mis-typed alias binds you to someone else" case is *not* the defect. The real defect is narrower
-and sharper: an **ambiguous** alias binds to an arbitrary row (`iloc[0]`) and is reported as
-verified.
-
-**REACH — measured on the committed vendor tables, not assumed:**
+**REACH — measured on committed vendor data:**
 
 | table | rows | colliding normalized names | rows affected |
 |---|---:|---:|---:|
 | `projections` (primary valuation table) | 764 | **19** | **38 (5.0%)** |
 | `trade_values` | 215 | 0 | 0 |
-| `external_values` | 2600 | 698 | 2206 (84.8%) — expected by design, multiple vendor rows per player |
+| `external_values` | 2600 | 698 | 2206 (84.8%) — expected, multiple vendor rows per player |
 
-Real collisions in the primary table include `j bates` (ATL/DET, **trade_value 5 vs 14**),
-`j love` (SEA/ARI — Jordan vs Julian Love), `g smith` (LAC/NYJ), `c ward` (IND/TEN). Draft Sharks'
-first-initial export format makes such collisions structural, not incidental.
+Real collisions include `j bates` (ATL/DET, **trade_value 5 vs 14**), `j love` (SEA/ARI — Jordan
+vs Julian), `g smith` (LAC/NYJ), `c ward` (IND/TEN). Draft Sharks' first-initial export format
+makes these structural. **Residual bound, stated honestly:** the defect additionally required
+team disambiguation to fail; that joint rate is **unmeasured**, so 5.0% is an upper bound on the
+collision surface, not realized exposure.
 
-**Residual bound, stated honestly:** the defect additionally requires that team disambiguation
-fails — no team supplied, or a team matching none of the colliding rows. On the ordinary roster
-path Sleeper supplies a real team, which usually disambiguates. **The joint rate is not
-measured**, so 5.0% is an upper bound on the collision surface, not the realized exposure.
-**BOUNDARY:** browser input → canonical identity resolution → deterministic valuation.
-**Unenforced** — the enforced identity boundary has an unenforced side door.
-**RISK:** a downstream consumer that trusts `match_verified` (the flag R2 added precisely so
-callers could distinguish certainty from a first-of-several pick) is told an arbitrary choice is
-certain. Consequence is a wrong `trade_value`/`projection` → `bpa` → `universal_value` → TAV.
-**REPAIR IS KNOWN AND ONE LINE**, and deliberately **not applied in this pass** — the task is an
-inventory and explicitly forbids production changes absent a repair mandate. Demonstrated: changing
-`True` to `len(exact) == 1` makes both characterization tests below fail, i.e. the tests already
-specify the fix.
-**DEPENDENCIES:** `_find_match`/`_resolve`, R1–R3 (#77/#82), the absence contract, every consumer
-of `match_verified`.
+### 13.3 Repair record
 
-### 13.3a Contract pinned in this pass
+**THE CHANGE — one line, mirroring the three sibling paths, no new rule:**
 
-**STATUS: EXISTS (new)** — `test_identity_boundary.ManualAliasBranchContractTests` (5 tests):
-the safe fall-through, the two DEFECT characterizations, the automatic-path control, and a
-reach guard asserting the collision surface still exists in committed data.
-**Non-vacuity demonstrated:** applying the one-line repair failed exactly the two DEFECT tests
-and left the other three green. Probe reverted.
+```python
+-  return exact.iloc[0], "alias", len(exact), True
++  return exact.iloc[0], "alias", len(exact), len(exact) == 1
+```
+
+**WHAT PRODUCTION BEHAVIOUR CHANGES — measured in-process against the real committed data by
+forcing the old value back and diffing, not inferred from the call graph:**
+
+| surface | before | after |
+|---|---|---|
+| `merge_player`'s reported flag, aliased ambiguous player | `match_verified: True` | `match_verified: False` |
+| **Draft board** (`compute_draft_board`) | 229 rows | **229 rows, 0 differing public fields** |
+| Trade Calculator (`app.py:3550`, `:3591`) | priced off an arbitrary `iloc[0]` row as certain | reports ambiguous, refuses a price — same as the automatic paths |
+
+The board is **identical** because `_match_verified` is carried onto the pool row and read by
+nothing there; `_drop_contested_identities` keys on `_canonical_key`, not on the flag. So the
+blast radius is exactly one surface and exactly one flag.
+
+**WHAT THE REPAIR DOES NOT PROTECT AGAINST — stated so it is not mistaken for more than it is:**
+* It does **not** validate the alias target. `save_alias` still accepts arbitrary text; an alias
+  onto a name that exists but is the *wrong* player still binds to that player and is correctly
+  reported as verified, because it genuinely resolves to one row. Only *ambiguity* is now
+  reported honestly.
+* It does **not** add position narrowing to the alias branch, which the `exact` and `key` paths
+  do have. Deliberate — that would change *which row is selected*, a behaviour change beyond the
+  certainty claim and outside the repair mandate. The effect of omitting it is conservative:
+  some cases report unverified that position-narrowing could legitimately have verified. Recorded
+  as an observation, not a defect.
+* It does **not** change anything for a consumer that ignores `match_verified`.
+
+**NO OTHER PRODUCTION BEHAVIOUR WAS ALTERED.** The diff is one return statement plus its comment;
+no refactor, no constant touched, no other path in `_resolve` modified.
+
+**ACCEPTANCE:** `test_identity_boundary.ManualAliasBranchContractTests`, 8 tests — safe
+fall-through, unambiguous-still-verified (guards over-correction), ambiguous-not-verified,
+team-matches-nothing, team-does-disambiguate, alias-agrees-with-automatic-path, a general
+contract test asserting **no** `_resolve` path hard-codes `verified=True`, and the committed-data
+reach guard. **Non-vacuity: reverting the one line fails 4 of the 8**, and the 4 that still pass
+are exactly those the repair should not affect.
+**DEPENDENCIES:** `_resolve`, R1–R3 (#77/#82), every consumer of `match_verified`.
 
 ### 13.4 Can an AI seat mutate, recompute, or override deterministic values?
 
@@ -332,8 +352,8 @@ reaching identity resolution and therefore valuation.
 |---|---|---|
 | 13.1 browser payload | EXISTS | structural |
 | 13.2 script-injection escape | EXISTS | enforced |
-| **13.3 alias write → canonical valuation** | **VIOLATED** | **unenforced** |
-| 13.3a alias contract pinned | EXISTS (new) | enforced |
+| **13.3 alias write → canonical valuation** | **REPAIRED** (was VIOLATED) | **enforced** |
+| 13.3a alias repair regression | EXISTS | enforced |
 | 13.4 AI cannot mutate/recompute | EXISTS | structural + enforced |
 | 13.4a AI-authority contract pinned | EXISTS (new) | enforced |
 | 13.5 auth / tenancy | NOT APPLICABLE (blocker for hosting) | absent |
@@ -347,16 +367,21 @@ reaching identity resolution and therefore valuation.
 
 ### Does anything clear the bar for a production change?
 
-**One item does, and it was still not changed in this pass.** 13.3 is a *proven* contract
-violation with a *measured* collision surface and a *known one-line repair* — it meets the
-evidentiary bar this program sets. It does not meet the *mandate* bar: this task is an inventory
-and explicitly forbids production changes absent a repair instruction. The finding is therefore
-recorded, pinned by tests that already specify the fix, and queued.
+**One item did, and it has now been repaired under an explicit mandate: 13.3.** It was a proven
+contract violation with a measured collision surface and a one-line repair that mirrors the
+function's three sibling paths. Its blast radius was measured rather than asserted: the draft
+board is byte-identical, and exactly one surface (the Trade Calculator's ambiguity gate) changes.
 
-Everything else is either already protected (13.1, 13.2, 13.4, 13.6, 8.2, 8.4), correctly scoped
-as not-applicable (13.5), a product/legal judgement rather than an engineering defect (8.1), a
-convention that has not yet been broken (8.3), or an unmeasured reach question that has not
-earned a severity (8.5).
+**That distinction is the point, and is meant to persist through the rest of the programme:**
+13.3 was never an exploratory observation. It crossed the evidence threshold — proven violation,
+control showing the sibling path behaves correctly on identical data, reach measured on committed
+data, repair specified by tests before it was written — and was therefore treated as a repair,
+not as another queued hypothesis. Nothing else in this pass has crossed that line.
+
+Everything else remains either already protected (13.1, 13.2, 13.4, 13.6, 8.2, 8.4), correctly
+scoped as not-applicable (13.5), a product/legal judgement rather than an engineering defect
+(8.1), a convention not yet broken (8.3), or an unmeasured reach question that has not earned a
+severity (8.5).
 
 ### Follow-ups, ranked by evidence then severity
 

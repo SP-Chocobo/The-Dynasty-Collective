@@ -249,20 +249,19 @@ class PoolInjectivityTests(unittest.TestCase):
 
 
 class ManualAliasBranchContractTests(unittest.TestCase):
-    """CHARACTERIZATION of a confirmed contract violation, not approval of it.
-    Recorded by the architecture audit, ARCHITECTURE_AUDIT.md section 13.3.
+    """REGRESSION for the §13.3 repair (ARCHITECTURE_AUDIT.md 13.3), not characterization.
 
-    _resolve's own docstring states: "`verified` is True only when exactly one row survived, so
-    a caller can tell 'this is the player' from 'this is the first of several that fit'." The
-    R1-R3 repair made the automatic paths honour that. The MANUAL ALIAS branch was not repaired
-    alongside them -- it returns `..., len(exact), True`, with True hard-coded regardless of how
-    many rows survived.
+    _resolve's contract: "`verified` is True only when exactly one row survived, so a caller can
+    tell 'this is the player' from 'this is the first of several that fit'." Every path in that
+    function computes it as `len(<survivors>) == 1` -- exact, key and fuzzy all did; the manual
+    ALIAS branch returned a hard-coded True and was missed by the R1-R3 repair (#77/#82). Since
+    the alias map is written from an unvalidated UI text input (app.py's "Save Alias"), that made
+    the one client-reachable path into canonical identity resolution the one that overstated its
+    own certainty.
 
-    The alias map is written from a UI text input (app.py's "Save Alias") with no validation of
-    the target, so this is the one client-reachable path into canonical identity resolution.
-
-    These tests are the evidence, executable. If one FAILS, the branch has been repaired --
-    delete the failing test and update ARCHITECTURE_AUDIT.md 13.3 in the same change."""
+    The repair changes the certainty claim only. The row returned is unchanged in every case,
+    exactly as the automatic paths already behave when ambiguous -- no heuristic rebinding, no
+    silent choice among candidates, no new rule."""
 
     def _merger(self):
         merger = dm.DataMerger.__new__(dm.DataMerger)   # no disk load
@@ -278,7 +277,8 @@ class ManualAliasBranchContractTests(unittest.TestCase):
         return merger
 
     def test_a_nonexistent_alias_target_falls_through_rather_than_binding_wrongly(self):
-        """The reassuring half, and worth pinning: a typo does NOT silently rebind a player."""
+        """Unchanged by the repair, and pinned because it is the reassuring half: a typo does
+        NOT silently rebind a player to someone else's numbers."""
         merger = self._merger()
         merger.aliases = {"Some Player": "Nobody At All"}
         row, path, candidates, verified = merger._resolve("Some Player", position="WR", team="CIN")
@@ -287,40 +287,69 @@ class ManualAliasBranchContractTests(unittest.TestCase):
         self.assertEqual(candidates, 0)
         self.assertFalse(verified)
 
-    def test_DEFECT_an_ambiguous_alias_is_reported_as_verified(self):
+    def test_an_unambiguous_alias_is_still_verified(self):
+        """The repair must not over-correct: a alias resolving to exactly one row is a real,
+        certain match and must keep saying so."""
+        merger = self._merger()
+        merger.aliases = {"Puka": "P Nacua"}
+        row, path, candidates, verified = merger._resolve("Puka")
+        self.assertEqual(path, "alias")
+        self.assertEqual(candidates, 1)
+        self.assertTrue(verified)
+        self.assertEqual(row["trade_value"], 94.0)
+
+    def test_an_ambiguous_alias_is_no_longer_reported_as_verified(self):
         merger = self._merger()
         merger.aliases = {"Ambiguous Guy": "J Chase"}
         row, path, candidates, verified = merger._resolve("Ambiguous Guy")
         self.assertEqual(path, "alias")
         self.assertEqual(candidates, 2, "fixture must present a genuine collision")
-        self.assertTrue(
-            verified,
-            "the alias branch now reports an ambiguous match as unverified -- the contract "
-            "violation recorded in ARCHITECTURE_AUDIT.md 13.3 has been repaired; delete this "
-            "test and update that section",
-        )
-        # And the arbitrary winner carries a materially different valuation.
-        self.assertEqual(row["trade_value"], 100.0)
+        self.assertFalse(verified,
+                         "an alias onto a colliding name is a first-of-several pick and must "
+                         "not claim certainty -- see ARCHITECTURE_AUDIT.md 13.3")
+        self.assertIsNotNone(row, "the row is still returned, exactly as the automatic paths do")
 
-    def test_DEFECT_a_team_that_matches_nothing_does_not_prevent_the_verified_claim(self):
+    def test_a_team_that_matches_nothing_still_yields_an_unverified_result(self):
         merger = self._merger()
         merger.aliases = {"Ambiguous Guy": "J Chase"}
         row, path, candidates, verified = merger._resolve("Ambiguous Guy", team="DEN")
         self.assertEqual(candidates, 2)
-        self.assertTrue(verified, "see the note on the test above")
+        self.assertFalse(verified)
 
-    def test_the_automatic_path_gets_this_right_on_identical_data(self):
-        """The control that makes the two tests above a DEFECT rather than a design choice:
-        the repaired path, on the same ambiguous name, reports verified=False."""
+    def test_a_team_that_does_disambiguate_verifies_and_picks_the_right_row(self):
+        """The narrowing that already existed must keep working, and now correctly reports
+        certainty once it has reduced the set to one."""
         merger = self._merger()
-        row, path, candidates, verified = merger._resolve("J Chase")
-        self.assertEqual(candidates, 2)
-        self.assertFalse(verified,
-                         "the automatic path must still honour the contract the alias branch "
-                         "breaks -- if this fails, the regression is on the repaired side")
+        merger.aliases = {"Ambiguous Guy": "J Chase"}
+        row, path, candidates, verified = merger._resolve("Ambiguous Guy", team="NYJ")
+        self.assertEqual(candidates, 1)
+        self.assertTrue(verified)
+        self.assertEqual(row["team"], "NYJ")
+        self.assertEqual(row["trade_value"], 12.0)
+
+    def test_the_alias_path_now_agrees_with_the_automatic_path_on_identical_data(self):
+        """The control that defined the defect, inverted into the acceptance criterion: both
+        paths must now report the same certainty for the same ambiguous name."""
+        merger = self._merger()
+        _, _, auto_candidates, auto_verified = merger._resolve("J Chase")
+        merger.aliases = {"Ambiguous Guy": "J Chase"}
+        _, _, alias_candidates, alias_verified = merger._resolve("Ambiguous Guy")
+        self.assertEqual(auto_candidates, alias_candidates)
+        self.assertEqual(auto_verified, alias_verified)
+        self.assertFalse(alias_verified)
+
+    def test_every_resolve_path_computes_verified_the_same_way(self):
+        """The general contract, so a future path added to _resolve cannot reintroduce this
+        class of defect: no return in the function may hard-code the verified flag True."""
+        import inspect, re
+        source = inspect.getsource(dm.DataMerger._resolve)
+        hardcoded = re.findall(r"return [^\n]*,\s*True\s*$", source, flags=re.MULTILINE)
+        self.assertEqual(hardcoded, [],
+                         "a _resolve path returns verified=True unconditionally; every path "
+                         "must compute it from how many rows actually survived")
 
     def test_the_collision_surface_is_real_in_the_committed_data(self):
-        """Reach, so this is not filed as a purely theoretical inconsistency."""
+        """Reach, so the repair is not filed as a purely theoretical correction."""
         merger = dm.DataMerger()
         counts = merger.projections["norm_name"].dropna().value_counts()
         colliding = counts[counts > 1]

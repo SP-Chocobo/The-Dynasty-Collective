@@ -1950,7 +1950,15 @@ class DataMerger:
                     narrowed = exact[exact["team"] == team]
                     if not narrowed.empty:
                         exact = narrowed
-                return exact.iloc[0], "alias", len(exact), True
+                # verified mirrors every other path in this function -- exactly one
+                # surviving row, never a first-of-several pick reported as certain. The
+                # alias branch returned a hard-coded True until the architecture audit
+                # (ARCHITECTURE_AUDIT.md 13.3) measured it against this function's own
+                # stated contract: R1-R3 repaired the automatic paths and left this one
+                # behind, so a manual alias onto a colliding name reported an arbitrary
+                # iloc[0] pick as verified. The row still returns (same as the automatic
+                # paths do when ambiguous); only the certainty claim is corrected.
+                return exact.iloc[0], "alias", len(exact), len(exact) == 1
             # alias didn't resolve in this particular table (e.g. player isn't in
             # the free-agent table) — fall through to normal matching below
 
