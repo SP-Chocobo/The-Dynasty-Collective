@@ -1366,6 +1366,9 @@ that two call-site reads disproved.
 
 ### 6.5 Lifecycle, evidence snapshot, and the `validated` flag
 
+> **Repaired at this section's boundary** — see 6.9. The flag is now `panel_undisputed`. The
+> paragraphs below record the state at audit time.
+
 **STATUS: MISSING**
 **EVIDENCE:** §6 asks for `discovered → corroborated → disputed → adjudicated →
 canonical/rejected/expired`. A stored finding's fields are `id, ts, date, player_name, source,
@@ -1467,6 +1470,40 @@ without touching production: the dampeners, the qualitative/numeric split, compa
 and same-day dedup are now enforced, and the non-injective frame, the missing lifecycle, and the
 inert `validated` flag are characterized with tests that must be inverted rather than deleted
 when repaired.
+
+### 6.9 Repairs applied at this section boundary
+
+Under the standing rule that a section's safe, mechanical findings are implemented before the
+next section begins, two were applied. Neither changes any computed value; both correct a
+statement the code was making.
+
+**R1 — `add_comparison` no longer claims a verification it cannot perform.**
+`"validated": True` was hard-coded on every write, attributed by comment to the Moderator's
+panel-scrutiny gate. That gate is a model choosing to emit a line; this code neither observes the
+debate nor re-adjudicates the claim, so the field asserted something its writing path cannot
+establish — the same shape #89 repaired in the alias branch, under a rule that applies directly:
+*a stored field may not claim a certainty its writer cannot verify.* Renamed to
+**`panel_undisputed`**, which is exactly what is known, with the reasoning recorded in place. The
+information is unchanged; only the claim is corrected. Applied rather than surfaced because it is
+the established #89 rule with no new decision in it, and because the store is empty and the field
+has no production consumer, so the blast radius is the field name itself.
+*Verification:* reverting the rename fails 2 tests; adding a function that reads the new flag
+fails the guard that keeps it a provenance record rather than an input.
+
+**R2 — `load_bot_research_as_external`'s docstring no longer says "newest wins" unqualified.**
+The rule is per **(player, cited source)** key, not per player, and that difference is the whole
+of 6.4: two sources speaking about one player are two keys, both rows survive, and the *older*
+one wins the composite component. The docstring now states that, names the non-injectivity,
+records that `_resolve` reports the collision correctly while `_find_match` drops the flag, and
+points at both the characterization test and 6.4. Documentation only.
+
+**Deliberately not applied, and why.** 6.4's actual repair (representing a disagreement instead of
+silently picking one), 6.5's evidence snapshot (needs the Moderator's contract to emit a URL — a
+chair-contract change), 6.2a's re-adjudication queue, and 6.3's crossover intent each require a
+new product, architectural, or policy decision, so they are surfaced rather than chosen.
+
+*Post-repair state:* composite for a known player unchanged at 99.9; 764 projection rows; research
+frame still 0 rows.
 
 ### Follow-ups from this pass, ranked by evidence then severity
 

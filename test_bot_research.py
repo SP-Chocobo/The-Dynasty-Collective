@@ -103,7 +103,10 @@ class BotResearchTests(unittest.TestCase):
         # not just the constant evidence_type label.
         self.assertEqual(entry["evidence"], "ranked ahead in every analyst ballot")
         self.assertEqual(entry["composite_impact"], "none")
-        self.assertTrue(entry["validated"])
+        # Renamed from "validated" (see add_comparison): the record states what the
+        # Moderator asserted, not a verification this code performed.
+        self.assertTrue(entry["panel_undisputed"])
+        self.assertNotIn("validated", entry)
 
     def test_exact_same_day_duplicate_comparison_is_a_noop(self):
         first_id = bot_research.add_comparison("Maxx Crosby", "Aidan Hutchinson", ">", "ESPN")

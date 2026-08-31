@@ -7440,6 +7440,25 @@ above KeepTradeCut (**FAIL**), admitting rank-less findings (**FAIL**), giving c
 percentile rule (**FAIL**), adding a `position` column to the frame (**FAIL** — the known gap
 closed, demanding inversion), and adding a function that reads `validated` (**FAIL**).
 
+## Repairs applied at the §6 boundary
+
+Two, both correcting a statement rather than a computation.
+
+**R1.** `add_comparison` wrote `"validated": True` on every entry. The writing path cannot
+establish that -- the "panel-scrutiny gate" is the Moderator choosing to emit a line, and nothing
+here re-adjudicates it. Renamed to `panel_undisputed`, which is what is actually known. This is
+#89's rule applied where it next appears, not a new decision. Verified: reverting the rename
+fails 2 tests; adding a reader of the new flag fails the guard that keeps it a provenance record.
+
+**R2.** `load_bot_research_as_external`'s docstring said "newest wins" without qualification. The
+rule is per (player, cited source) key; across cited sources both rows survive and the OLDER one
+wins the composite component. Docstring corrected and pointed at the characterization test.
+Documentation only.
+
+Not applied, because each needs a decision rather than a fix: representing a disagreement (6.4),
+an evidence snapshot requiring the Moderator's contract to emit a URL (6.5), an independent
+re-adjudication queue (6.2a), and a stated intent for the freshness crossover (6.3).
+
 ## Invariants
 
 173. Ingestion is a ladder, not a gate. A claim may be good enough to reuse as context, not good

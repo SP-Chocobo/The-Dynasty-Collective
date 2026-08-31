@@ -162,7 +162,15 @@ def add_comparison(
         "context": context.strip(),
         "evidence": evidence.strip(),
         "evidence_type": "qualitative comparative",
-        "validated": True,  # only ever created after clearing the Moderator's panel-scrutiny gate
+        # Records WHAT IS KNOWN: the Moderator asserted, by emitting the SOURCE COMPARISON
+        # line, that the panel did not dispute this. It is not a verification -- nothing here
+        # re-adjudicates the claim, and this code cannot observe the debate that produced it.
+        # It was written as "validated": True, which asserted exactly that. Renamed under the
+        # rule #89 established for the alias branch (ARCHITECTURE_AUDIT.md 13.3): a stored
+        # field may not claim a certainty its writing path cannot establish. Nothing reads it
+        # today; test_research_ingestion_boundary fails the moment anything starts to, so it
+        # has to be honest before it can be trusted.
+        "panel_undisputed": True,
         "composite_impact": "none",  # see this module's own docstring for why, and when that could change
         "question": question,
         "league_id": league_id,

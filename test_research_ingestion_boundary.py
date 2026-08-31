@@ -234,31 +234,34 @@ class NoLifecycleAndNoValidationQueueTests(unittest.TestCase):
         self.assertIn("claim", entry)
         self.assertIn("source", entry)
 
-    def test_a_comparison_is_stored_as_validated_unconditionally(self):
-        """The flag is hard-coded True on every write -- the 'panel-scrutiny gate' it refers to
-        is the Moderator choosing to emit the line, which this code cannot verify. Recorded
-        because the shape matches §13.3's repaired alias flag; the difference, and the reason
-        this is DOCUMENT rather than a defect, is that nothing in production reads it."""
+    def test_a_comparison_records_what_the_moderator_asserted_not_a_verification(self):
+        """REPAIRED (was characterization). The field was `"validated": True`, hard-coded on
+        every write -- a claim the writing path cannot establish, since the "panel-scrutiny
+        gate" it referred to is the Moderator choosing to emit a line. Renamed to
+        `panel_undisputed` under the rule #89 established for the alias branch: a stored field
+        may not claim a certainty its writer cannot verify. The information is unchanged; only
+        the claim is corrected."""
         with _TempResearchStore():
             bot_research.add_comparison("Player A", "Player B", ">", "ESPN")
             entry = bot_research.load_comparisons()[0]
-        self.assertTrue(entry["validated"])
+        self.assertTrue(entry["panel_undisputed"])
+        self.assertNotIn(
+            "validated", entry,
+            "The old field asserted a verification nothing performs -- it must not come back.",
+        )
 
-    def test_nothing_in_production_reads_that_validated_flag(self):
-        """If this starts failing, the flag has gained a consumer and stops being cosmetic --
-        at which point it needs to become honest before it is trusted."""
+    def test_nothing_in_production_reads_that_provenance_flag(self):
+        """It stays a provenance record, never an input. If this starts failing the flag has
+        gained a consumer, and a consumer needs a real adjudication behind it (§6.2a) rather
+        than the Moderator's own say-so."""
         import inspect
         for module in (data_merger, bot_research):
-            source = inspect.getsource(module)
-            readers = [
-                line for line in source.splitlines()
-                if "validated" in line and "=" not in line.split("validated")[0][-3:]
-                and not line.strip().startswith("#")
-            ]
-            for line in readers:
+            for line in inspect.getsource(module).splitlines():
+                if "panel_undisputed" not in line or line.strip().startswith("#"):
+                    continue
                 self.assertIn(
-                    '"validated": True', line,
-                    f"{module.__name__} appears to READ the validated flag: {line.strip()!r}",
+                    '"panel_undisputed": True', line,
+                    f"{module.__name__} appears to READ the flag: {line.strip()!r}",
                 )
 
 

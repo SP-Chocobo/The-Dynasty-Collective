@@ -1590,6 +1590,19 @@ def load_bot_research_as_external() -> pd.DataFrame:
     never deletes anything (a real record of everything the panel has ever found), but an
     outdated finding on the same player/source shouldn't keep pulling composite weight once a
     fresher one supersedes it, same "newest wins" rule every other baseline source follows.
+
+    That rule is per KEY, not per player, and the distinction matters: two findings about ONE
+    player citing DIFFERENT sources are different keys, so both survive here as two rows
+    sharing a normalized name. This frame is therefore not name-injective the way R1-R3 made
+    the vendor pools, and it carries no team or position for a caller to disambiguate with --
+    so composite_player_score's _find_match resolves such a pair to whichever row comes first
+    (oldest, since `latest` is built in ts order), and the disagreement is neither averaged nor
+    recorded. _resolve does report it correctly as candidates=2, verified=False; _find_match is
+    _resolve(...)[0] and drops that flag. Characterized in
+    test_research_ingestion_boundary.ResearchFrameIsNotNameInjectiveTests and in
+    ARCHITECTURE_AUDIT.md 6.4 -- left as-is deliberately, because representing a disagreement
+    (rather than silently picking one) is a design decision that should not be made against an
+    empty store.
     """
     import bot_research
 
