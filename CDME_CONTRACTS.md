@@ -7601,3 +7601,86 @@ rewrite a user's objectives and inject numbers. Disqualifying block-less models 
      primary source before the secondary ones.
 188. An undemonstrated leak is not a defect. Name it, pin what is demonstrated, and repair it when
      something else legitimately touches that path.
+
+---
+
+# Appendix — §9: context compaction, handoffs, model-specific budgets
+
+Structured findings live in `ARCHITECTURE_AUDIT.md` (Pass 6). This entry records the
+measurements, the correction, and the invariants.
+
+The section's mandate -- context limits may reduce supporting information but may not silently
+omit mandatory deterministic state -- **holds, by proportion rather than by design.** There is no
+input-token accounting anywhere. What protects mandatory state is that mandatory state is small.
+
+## What was measured
+
+Upper bound per Prytaneum invocation, derived from the caps rather than sampled:
+
+| term | tokens | share |
+|---|---|---|
+| conversation memory (16 raw turns x MAX_TOKENS of replayed model prose) | **65,536** | **84%** |
+| compacted memory block | 4,096 | |
+| static instruction prose | ~2,800 | |
+| panel findings + comparisons (30 + 30) | ~2,550 | |
+| **every deterministic section combined** | **8,365** | 11% |
+| chat attachments | 4,000 chars each, **count uncapped** | unbounded |
+
+| measurement | result |
+|---|---|
+| input-token accounting anywhere | **none** -- no count_tokens / tiktoken / context_window / token_budget |
+| `MAX_TOKENS = 4096` | **output** cap, identical for all 7 chairs and all 3 providers |
+| compaction mechanisms | **1 model call** (history summarization) + **10 deterministic slices** |
+| mandatory sections (roster, league depth, freshness, active objectives) | iterated whole -- verified by AST that each iterates a Name, never a Subscript |
+| compaction destructiveness | **non-destructive** -- timestamped `pre_compact_` backup written BEFORE the overwrite; aborts entirely if the summarizer returns ⚠️ |
+| per-model context policy | **none** -- every chair gets the same string whatever window its model has |
+| deterministic retention priority | **none** -- fixed section order, nothing dropped when oversized |
+| when context does not fit | provider errors -> `⚠️` string -> becomes that chair's REPORT, passed to Contrarian and Moderator; collected in `result.errors` and surfaced, so loud rather than silent |
+| `stop_reason` / `finish_reason` / `incomplete_details` | **absent from `llm_engine` and `pick_debate`** |
+| a verdict truncated mid-`RECOMMEN` vs one that never had a block | **identical** `parse_moderator_verdict` output: `{}` |
+
+## A correction
+
+`compact_league_history`'s docstring says "pruning the raw turns", and from that I formed the view
+that compaction destroys the original history and was preparing to report it as this section's
+defect. It does not: the complete pre-compaction file is written to a timestamped backup *before*
+anything is overwritten, and the operation aborts if the summarizer fails. Two lines further into
+the function disproved it. Second time in this programme the most tempting finding was one read
+from being wrong -- the first was §6.4a's composite-ambiguity claim.
+
+## Tests added
+
+`test_context_budget_boundary.py` -- 16 tests. **Enforcement:** mandatory sections are iterated
+whole (AST, not string matching); every supporting cap stays <= 30; the compaction backup is
+written before the overwrite and the operation aborts on summarizer failure; the summarizer fails
+soft so that abort can fire; `build_context` calls no model to shape itself; history summarization
+is not routed through configurable roles; the output cap is shared by all providers and is not
+back at the known-tight 1024. **Characterization:** no input-token accounting, no stop-reason
+inspection, a truncated verdict indistinguishable from an unformatted one, no per-model policy.
+
+Non-vacuity: five probes planted in real code and reverted, all failing -- capping the roster,
+writing the backup after the overwrite, dropping MAX_TOKENS to 1024, adding a stop_reason check,
+and making build_context call a model.
+
+Two of my own assertions were wrong before they shipped and were fixed rather than kept: one was
+a tautology (`assertEqual(source.count(x), source.count(x))`), and one keyed a dict of loops by
+target variable, which silently dropped every loop binding a repeated name like `row` -- the same
+class of self-blinding this programme has now caught four times.
+
+## Invariants
+
+189. A budget guarantee that holds by proportion is still a guarantee, and still needs a test.
+     Mandatory state survives here because it is small, not because anything protects it -- so
+     the thing to pin is that no supporting section grows into the space the mandatory one needs.
+190. Compaction is safe when it is reversible and refuses to proceed on failure. A summarizer
+     that fails soft plus a backup written before the overwrite turn a lossy operation into a
+     recoverable one, which is what makes delegating it to a model acceptable at all.
+191. Where a system feeds its own prose back to itself, that prose is the budget. Deterministic
+     state was 11% of the worst case here; the dominant term was this system's own output, and
+     any budget policy that ignores it is measuring the wrong thing.
+192. A cap with no detector converts an error into an absence. Truncation at an output limit and
+     a model declining to follow a format are the same downstream event, and no consumer can tell
+     them apart until something inspects the provider's stop reason.
+193. An unbudgeted overflow becomes a chair's report. Where a failed call returns a string rather
+     than raising, that string is passed on as though it were analysis -- acceptable only while
+     it is also collected and surfaced as an error, which is the property to keep.

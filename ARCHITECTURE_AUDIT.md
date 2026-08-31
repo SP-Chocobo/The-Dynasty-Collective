@@ -1850,3 +1850,224 @@ both are now with you.
    should exist; its content is a statement only the owner can make.
 4. **7.8 residual — redact credential-shaped strings from provider error text.** Cheap, but
    currently defending an undemonstrated leak; worth doing when something else touches that path.
+
+---
+
+## Pass 6 — §9
+
+**Scope:** Build Guide v2 §9 (context compaction, handoffs, model-specific budgets), whose
+mandate is that *"context limits may reduce supporting information, but may not silently alter,
+omit, or distort mandatory deterministic state or authoritative evidence required for the chair's
+task."*
+
+**Baseline:** `ccd50a2` on `ui-authority-pass`; `main` frozen at `9fb5102`. §8 was not re-audited
+— nothing here changed a §8 premise. #91–94, #96–98 remain queued and were not advanced.
+
+**Headline: the mandate holds, and it holds by proportion rather than by design.** There is no
+input-token accounting anywhere in the tree. What protects mandatory state is that mandatory
+state is *small* — the entire deterministic portion of a chair's context is roughly **8.4k
+tokens**, while the worst case is dominated by replayed model prose.
+
+### 9.1 The full context at invocation, and what it is made of
+
+**STATUS: EXISTS (measurable), with one term dominating**
+
+Upper bound per Prytaneum invocation, derived from the caps themselves rather than sampled:
+
+| term | bound | tokens | kind |
+|---|---|---|---|
+| conversation memory — raw prior turns | 16 × `MAX_TOKENS` | **65,536** | **prose (model output, replayed verbatim)** |
+| compacted memory block | 1 × `MAX_TOKENS` | 4,096 | prose (model-summarized) |
+| static instruction prose | — | ~2,800 | instructions |
+| panel findings + comparisons | 30 + 30 lines | ~2,550 | prior model output as evidence |
+| your roster | uncapped, league-bounded | ~900 | **structured, mandatory** |
+| league-wide positional depth | uncapped, league-bounded | ~840 | **structured, mandatory** |
+| canonical Sleeper pool | 15 rows | ~375 | structured |
+| pinned messages | 5 × 400 chars | ~500 | user/model prose |
+| archived objectives + past outcomes | 5 + 5 | ~400 | user prose |
+| chat attachments | 4,000 chars each, **count uncapped** | unbounded | **untrusted file text** |
+| **total excluding attachments** | | **~78,000** | |
+
+**Conversation memory alone is 84% of that bound.** Every deterministic section combined is
+**8,365 tokens** — comfortably inside any model in use.
+§9's *"structured data versus prose versus tool results versus source evidence"* answers cleanly:
+the context is overwhelmingly **prose**, and specifically **this system's own prior output fed
+back to itself**. Tool results never appear as a separate category at all — provider-side search
+results are folded into a chair's prose before the app ever sees them (§7.2).
+
+### 9.2 Where compaction occurs
+
+**STATUS: EXISTS — one summarizer, ten deterministic caps**
+
+| mechanism | unit | kind |
+|---|---|---|
+| `llm_engine.MAX_TOKENS = 4096` | **output** tokens, every chair, every provider | hard cap |
+| `RECENT_TURNS_IN_CONTEXT = 16` | raw turns replayed | slice |
+| `compact_league_history` | messages older than 30 days → one block | **model call** |
+| attachment text `[:4000]` | chars per file | slice |
+| reference material `captioned[:20]` | captions | slice |
+| `findings_for_context` / `comparisons_for_context` | 30 each | slice |
+| pinned messages: 5, truncated `[:400]` | chars | slice |
+| archived objectives / past outcomes | 5 each | slice |
+| `projected_available[:15]` | pool rows | slice |
+| `_MAX_CANDIDATES_IN_CONTEXT = 8`, `DEFAULT_NARROW_COUNT = 5` | rows | slice |
+
+**Everything except history summarization is a deterministic slice**, so §9's *"is compaction
+deterministic and reproducible?"* is **yes everywhere but one place** — and that one place is a
+model call, so it is neither. Pinned: a test now fails if `build_context` ever calls a model to
+shape its own context.
+
+### 9.3 Mandatory versus compactable
+
+**STATUS: EXISTS — and the split is the right one**
+**EVIDENCE:** verified by AST that each of these is iterated over a plain name, never a
+subscript: `roster_table`, `depth.items()`, `freshness`, `active_todos`. Plus
+`format_scoring_settings` emits the league's real per-category weights in full.
+So the things a chair cannot do its job without — the roster, the scoring rules, how stale each
+source is, what the user is already trying to do — are **never** truncated. Everything capped is
+supporting information: how many candidates to show, how many past findings to recall, how much
+of a pinned message to quote.
+**BOUNDARY:** budget → mandatory state. **Now enforced** (9.7 R8), where before it was an
+emergent property of nobody having added a cap.
+
+### 9.4 Compaction is non-destructive
+
+**STATUS: EXISTS — and this corrects a hypothesis of mine, see 9.8**
+**EVIDENCE:** `compact_league_history` writes
+`{league_id}_history.pre_compact_{timestamp}.json` containing the **full pre-compaction
+history**, and does so *before* `save_chat_history` overwrites anything. It aborts entirely —
+*"Compaction aborted, history untouched"* — if the summarizer returns a `⚠️`, which it does
+rather than raising. A prior summary is merged forward rather than discarded.
+So §9's *"is the original uncompacted context preserved for audit/replay?"* is **yes**, which is
+notable because §3.6 found no such preservation for the per-invocation context. History is
+preserved; the assembled context is not. Ordering and abort are now pinned by test.
+
+### 9.5 Budgets, windows, and what happens when it does not fit
+
+**STATUS: MISSING**
+**EVIDENCE:** no `count_tokens`, `tiktoken`, `context_window`, `token_budget` or
+`max_input_tokens` anywhere in `llm_engine`, `pick_debate`, `bot_benchmark` or `screen_context`.
+`MAX_TOKENS` is an **output** cap only, identical for all seven chairs and all three providers —
+so output-token reservation exists in the sense that output is bounded, but nothing reserves it
+*against* an input budget, because there is no input budget.
+
+Consequently:
+- **Per-model context policy:** none. Every chair receives the same string whatever window its
+  model has. §9's *"does each model receive the same canonical package with infrastructure
+  compaction, or a model-specific context policy?"* — **neither**.
+- **Deterministic retention priority:** none. Sections are emitted in a fixed order, but nothing
+  drops one when the whole is too large.
+- **When required context cannot fit:** the provider errors, the caller returns a `⚠️` string,
+  and that string becomes **that chair's report** — passed on to the Contrarian and Moderator as
+  their input. It is collected in `result.errors` and raised as a UI warning, so this is loud
+  rather than silent, but there is no graceful degradation and no retry at a smaller size.
+- **Automatic disqualification of a smaller-window model:** not possible — and §5.5 already
+  established the battery never exercises context capacity, so the benchmark could not detect
+  the problem either.
+
+### 9.6 Output truncation is undetected — KNOWN GAP
+
+**STATUS: PARTIAL — the hazard is understood, mitigated by headroom, and has no detector**
+
+**EVIDENCE.** `MAX_TOKENS`' own comment is unusually candid, and it is the strongest evidence in
+this section: the Moderator's block *"sits at the END of the response, exactly what a tight token
+budget truncates first. Confirmed the old 1024 was genuinely tight for a real multi-line verdict
+… which would silently break the TODO tracker, the decision log, and the bot_research feed by
+cutting the response off before those lines were even written."*
+
+The fix applied then was **4× headroom**. It was not a detector, and none exists: `stop_reason`,
+`finish_reason` and `incomplete_details` appear nowhere in `llm_engine` or `pick_debate`. Every
+provider caller joins the text blocks it received and returns them, so a response cut off at the
+cap is byte-indistinguishable from a complete one.
+
+**Demonstrated through the real parser:** a verdict truncated mid-`RECOMMEN` and a verdict that
+never had a block produce **identical** `parse_moderator_verdict` output — `{}`. So §9's *"can
+required information ever be silently dropped?"* is **yes, at the output end**, and the four
+consumers §5.6 traced go quiet in exactly the same way for two entirely different reasons.
+
+**Verdict: DOCUMENT, surfaced (#99).** Detection is a few lines per provider. What to *do* with
+a truncated response is not: discard it as a failure, annotate it, or warn beside it are three
+different behaviours, and the annotation option writes into text that is persisted and replayed
+into later contexts. That is a policy choice, so it goes to the owner.
+
+### 9.7 Repairs applied at this section boundary
+
+**R8 — the budget guarantees that were emergent are now enforced.** `test_context_budget_boundary`
+(16 tests) pins: the roster, league depth, freshness manifest and active objectives are iterated
+whole and never sliced (checked by AST, not string matching); every supporting cap stays ≤ 30;
+compaction writes its backup *before* overwriting and aborts on summarizer failure; the summarizer
+fails soft so that abort can fire; `build_context` calls no model to shape itself; history
+summarization is not routed through configurable roles; and the output cap is shared by all three
+providers and is not back at the known-tight 1024.
+
+The known gaps are pinned as characterization: no input-token accounting, no stop-reason
+inspection, a truncated verdict indistinguishable from an unformatted one, and no per-model
+context policy.
+
+*Non-vacuity — five probes planted in real code and reverted, all failing:* capping the roster,
+writing the compaction backup after the overwrite, dropping `MAX_TOKENS` back to 1024, adding a
+`stop_reason` check, and making `build_context` call a model.
+
+**Deliberately not applied:** truncation detection (9.6, a policy choice, #99); an input budget
+or per-model policy (9.5, architectural); a cap on attachment *count* (9.1 — each file is
+individually capped and the count is visible in the UI as `📎N`, so it is user-driven and not
+silent).
+
+### 9.8 A correction to a hypothesis of mine
+
+Reading `compact_league_history`'s signature and its *"pruning the raw turns"* docstring, I formed
+the view that compaction destroys the original history and was preparing to report it as the
+section's defect. It does not: a timestamped backup of the complete pre-compaction file is written
+first, and the whole operation aborts if the summarizer fails. Two lines further into the function
+disproved it. Recorded because it is the second time this programme's most tempting finding was
+one read away from being wrong (the first being §6.4a's composite-ambiguity claim).
+
+### 9.9 Effect on open decisions
+
+**#94's evidence improves, and its premises shift again — surfaced, not resolved.**
+
+§5 established that a Moderator failing its machine contract silently disables four consumers.
+§7 established that the same block is the *entire* channel through which model output acquires
+authority. §9 now adds a third fact: **a contract failure has two indistinguishable causes.**
+One is a model that will not follow the format. The other is *this app's own output cap* cutting
+the block off — a documented, previously-observed failure at the old 1024 budget.
+
+That matters for #94 directly. Option (a) — disqualify a candidate on contract failure — would
+currently punish a model for a truncation the app caused, and would do so most often for exactly
+the models that reason at length. Detecting truncation (#99) would separate the two causes and
+make (a) a much more defensible option than it is today.
+
+**Recommendation, not a decision: #99 before #94.** The truncation detector is the cheaper item
+and it materially improves the evidence for the policy choice. Both remain yours.
+
+---
+
+## Pass 6 summary
+
+| item | status | boundary kind |
+|---|---|---|
+| 9.1 full context at invocation (84% replayed prose) | EXISTS (measured) | — |
+| 9.2 where compaction occurs (1 model call, 10 slices) | EXISTS | now enforced |
+| 9.3 mandatory state never compacted | EXISTS | **emergent → enforced (R8)** |
+| 9.4 originals preserved through compaction | EXISTS | **emergent → enforced (R8)** |
+| 9.5 input budgets / per-model policy / retention priority | MISSING | absent |
+| **9.6 output truncation undetected** | **PARTIAL** | characterized (#99) |
+| 9.1a attachment count uncapped | DOCUMENT (user-driven, visible) | — |
+| 9.5a handoff = canonical + evidence + prior output | PARTIAL — Draft Room 2 of 3, Prytaneum 1 of 3 | → #93 |
+
+### Does anything clear the bar for a production change?
+
+**No.** §9 is the second section running where the protections are real and simply undefended —
+mandatory state is never truncated, compaction is reversible, and every cap but one is
+deterministic. The repair was to make those enforced, which R8 did without touching production.
+
+The one genuine gap, undetected output truncation, is a small change wrapped around a real policy
+choice, and it is with you as #99.
+
+### Follow-ups from this pass, ranked by evidence then severity
+
+1. **9.6 / #99 — detect provider truncation.** Cheap, and it is the prerequisite that makes #94
+   answerable rather than a guess.
+2. **9.5 — an input budget and a per-model context policy.** The honest prerequisite for §5.5's
+   context-capacity disqualification and for routing a small-window model at all.
+3. **9.1a — a cap on attachment count.** Only worth it alongside 9.5; alone it solves nothing.
