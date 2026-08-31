@@ -7167,3 +7167,97 @@ shape carrying real variation is **admitted**. The validator has no generation m
 162. Where the data required to answer a question cannot be obtained, the question stays open
      and the blocker is named. Synthesising the input is not a substitute for acquiring it,
      most of all when the synthesis would have to assume the very distribution being measured.
+
+---
+
+# Appendix — §3 + §4: canonical state, decision-context handoff, chair contracts
+
+Structured findings live in `ARCHITECTURE_AUDIT.md` (Pass 2). This entry records only the
+measurements, the corrections, and the invariants they establish.
+
+## What was measured, and how
+
+Chair inputs were measured rather than read: `llm_engine.PROVIDER_CALLERS` was stubbed and the
+real `ask_*` functions called, recording the exact `(system_prompt, user_prompt)` each chair
+received.
+
+| measurement | result |
+|---|---|
+| Quant's user prompt vs Beat's, identical input | **byte-identical** |
+| chairs receiving the base context block verbatim | 4 of 4 (and 3 of 3 in `pick_debate`) |
+| distinct system prompts | 4 of 4 |
+| what a downstream chair receives beyond the shared base | prior chairs' **prose only** |
+
+Handoff reach, on a real board (12-team superflex, committed vendor data, rounds 1/4/8):
+
+| measurement | result |
+|---|---|
+| `render_debate_chip` call sites | 7 |
+| reads of `debate_attached_context` in the tree | 2 — one write, one **render** |
+| production callers of `ScreenContext.to_prompt_seed` | **1** (Trade Calculator) |
+| engine fields from `build_draft_room_context` present in `build_context` | **0 of 16** |
+| `build_context` parameters | `snapshot, roster_table, player_universe, question, conversation_window` — no draft argument |
+| fields: `CandidateSnapshot` → iframe payload → chip line | **37 → 22 → 5** (chip capped at 8 rows) |
+| TAV fidelity: engine → `pick_debate` → chip | `84.44` → `84.44` → `84` |
+| adjacent engine-ordered pairs collapsing to one displayed integer, within the 8 rendered rows | 1/7 (rd 1), 4/7 (rd 4), 2/5 (rd 8) — **all within `NEAR_TIE_BAND = 2.0`** |
+| `PickSnapshot` identifier field | **none** — no id, hash, or computed-at timestamp |
+| context string persisted on any invocation | **none** |
+
+## Two corrections to this pass's own method
+
+**The constants scan was vacuous on its first run and reported a false clean.** It walked only
+`ast.Assign`, so `COMPOSITE_SOURCE_WEIGHTS` — an `ast.AnnAssign` — was invisible, and the scan
+returned 0 hits in `build_context` where there is 1. A constants scan blind to annotated
+constants would have shipped as proof of a property it could not observe. Both forms are handled
+now, and `test_annotated_constants_are_discovered` pins the specific case.
+
+**Two "PRESENT" results in the reach scan were substring artifacts.** `team_label` and `surface`
+matched inside `build_context` — the first in an unrelated positional-depth loop, the second
+inside the word "surfaced" in prose. Both were checked by hand and discarded. The same artifact
+class that voided the D measurement (`"candidate.bpa"` matching `bpa_source`), caught earlier
+this time because it was looked for.
+
+## A correction to the scope of a Pass 1 conclusion
+
+§13.4 concluded that an AI seat cannot mutate, recompute, or override deterministic values. That
+holds **for the CDME valuation path**, and this pass located the mechanism: `draft_room:518` and
+`pick_synthesis:413` filter `merger.external_values` to `source_name == "keeptradecut"`, keeping
+`bot_research.json`'s LLM-originated rows out of the engine — enforced by
+`test_cdme_ingestion_boundary.py`.
+
+There is nonetheless **one designed path** by which model output becomes a number in a
+deterministic calculation: ranked `bot_research` findings load as a synthetic external source and
+enter `composite_player_score` at weight **0.5**, the lowest of any source. The composite surfaces
+in the Trade Calculator and in `build_context`. This is deliberate, weighted, deduped, gated on
+the Moderator's non-dispute rule, disclosed to the chairs, and excluded from CDME. It is not a
+defect — but "the AI cannot affect any deterministic number" is a stronger claim than the
+architecture makes, and the record should carry the accurate one.
+
+## Tests added
+
+`test_prompt_constant_boundary.py` — 10 tests. Discovers 56 engine constants across six modules
+by AST and scans them against all 16 provider-reachable prompt strings plus `build_context` and
+`screen_context` literals. Non-vacuity demonstrated by planting, in real production text and
+reverting: a constant name in `QUANT_SYSTEM_PROMPT` (**FAIL**), a `RANK_TAKE_PROBABILITY` value in
+`build_context` (**FAIL**), and the composite weights beside their one allowed name (**FAIL**).
+The suite also fails if constant discovery collapses, if the prompt surface shrinks below 16
+producers, or if any of the seven chairs stops being scanned.
+
+## Invariants
+
+163. A canonical context object that is built and displayed but not passed is not a handoff. The
+     test of a decision-context contract is what the consumer receives, never what the builder
+     assembled — and a surface that tells the user its context was handed over has made a claim
+     the wiring must satisfy.
+164. Chair separation carried only by a system prompt is instructional. Where every chair
+     receives byte-identical input, the division of labour is a request to the model, not a
+     property of the architecture, and it degrades silently under model substitution.
+165. A chair handover that passes prose passes a summary, not evidence. A replacement model
+     inherits its predecessor's conclusions and cannot audit them; a per-chair evidence record is
+     what makes chairs interchangeable rather than merely re-assignable.
+166. An invocation that does not record its input cannot be replayed, and a frozen object without
+     an identifier cannot be referenced after the process that made it. Immutability and
+     addressability are separate properties, and provenance needs both.
+167. A boundary is enforced only by a check that has been shown to fail. A scan whose discovery
+     step is incomplete — an AST walk missing an assignment form, a surface enumeration missing a
+     producer — reports the absence of what it cannot see, and reads as proof.

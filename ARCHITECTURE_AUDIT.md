@@ -360,7 +360,7 @@ reaching identity resolution and therefore valuation.
 | 13.6 credentials | EXISTS (scoped, assumption declared) | structural |
 | 8.1 browser reconstruction | PARTIAL | structural |
 | 8.2 provider exposure | EXISTS | structural |
-| **8.3 methodology in prompts** | **PARTIAL** | **instructional only** |
+| **8.3 methodology in prompts** | **PARTIAL** → **EXISTS** (Pass 2, 4.6) | **instructional only** → **enforced** |
 | 8.4 constants in shipped code | EXISTS | structural |
 | 8.5 repeated-query inference | UNKNOWN | — |
 | 8.6 external content → deterministic | PARTIAL (closed except 13.3) | — |
@@ -396,3 +396,463 @@ severity (8.5).
 4. **8.5 repeated-query inference** — only worth measuring after a decision on whether the
    equation's *shape* is material IP (#54). Measuring first would be effort spent ahead of the
    question it serves.
+
+---
+
+## Pass 2 — §3 + §4
+
+**Scope:** Build Guide v2 §3 (canonical state, decision context, product-surface handoff) and §4
+(chair contracts, authority, model interchangeability), with **#90** (prompt-constant
+enforcement, deferred out of §8.3) folded into §4 where it belongs — a prompt *is* a chair
+contract, so "what a chair may not disclose" is a clause of that contract, not a security
+afterthought.
+
+**Baseline:** `755ff68` on `ui-authority-pass`; `main` frozen at `9fb5102`. No production file
+was modified in this pass.
+
+**Standing caution honoured:** D and E established that the `PickSnapshot` boundary is closed.
+That finding is about *one* boundary — the Draft Room engine into the Draft Room debate. It was
+not treated as evidence that the handoff architecture as a whole is sound, and §3 below finds
+that it is not uniformly sound.
+
+### 3.1 The canonical representation, per surface
+
+**STATUS: EXISTS — and there are two of them, which is the finding**
+
+| surface | canonical object | crosses to a model as |
+|---|---|---|
+| Draft Room / Mock Draft | `PickSnapshot` (frozen, 8 fields, 37 per candidate) | `pick_debate.format_snapshot_for_llm` — **full fidelity** |
+| Trade Calculator | `ScreenContext` via `build_trade_context` | `to_prompt_seed()` → `question_input` → **reaches the Prytaneum** |
+| Matchup, Free Agents, League, Draft Room chip, Mock Draft chips | `ScreenContext` | **nothing — display only** |
+| The Prytaneum, on every invocation | *none* — `app.build_context()` re-derives a ~250-line string from `snapshot` / `roster_table` / `player_universe` | the string itself |
+
+**LOCATION:** `screen_context.py`; `pick_synthesis.build_snapshot:897`;
+`pick_debate.format_snapshot_for_llm:268`; `app.build_context:1493`; `app.render_debate_chip:1356`.
+**EVIDENCE:** measured, not read off the source — `chair_inputs.py` stubbed
+`llm_engine.PROVIDER_CALLERS` and recorded the exact `(system, user)` pair each chair received.
+**BOUNDARY:** surface → AI seat. **Structural** where it exists.
+**DEPENDENCIES:** 3.3, 3.4.
+
+### 3.2 Does an AI seat ever reconstruct information from rendered UI?
+
+**STATUS: EXISTS — no, and structurally so**
+**EVIDENCE:** no HTML/DOM parser of this app's own output exists anywhere in the tree (the one
+`scrape` reference is an inbound ESPN *article* parser in `data_merger:860`, not a read of our
+own UI). `draft_board_ui.render_board_html` is one-way: server → iframe, single JSON token, with
+no read-back path (§13.1). Every AI input is assembled from Python values the caller already had.
+**BOUNDARY:** rendered surface → AI seat. **Structural** (the mechanism does not exist).
+**RISK:** low. This is the §3 question the architecture answers best.
+
+### 3.3 The ScreenContext reach gap — a canonical context that is built, displayed, and dropped
+
+**STATUS: VIOLATED against the dock's own stated contract — display-layer, not engine-layer**
+
+**LOCATION:** `app.py:1356` (`render_debate_chip`), `app.py:5527-5539` (the "Considering" block),
+`app.py:5661` (`context = build_context(...)`), `screen_context.to_prompt_seed:58`.
+
+**EVIDENCE.** Seven `render_debate_chip` call sites build a `ScreenContext` through the shared
+builders. The chip writes it to `st.session_state.debate_attached_context`. Exactly two reads of
+that key exist in the whole tree: the write at `:1371` and a **render** at `:5533`. When the user
+then asks a question, `run_debate` / `ask_quant` / `ask_beat` / `ask_moderator_followup` are all
+called with `build_context(snapshot, roster_table, player_universe, trigger_question)` — the
+attached context is not a parameter of any of them.
+
+`to_prompt_seed()`, the method whose docstring calls it *"the exact text block a Debate control
+seeds its conversation with"*, has **one** production caller: `app.py:3939`, the Trade Calculator.
+
+Measured reach for the Draft Room chip specifically — does anything it shows survive into what
+the panel is actually given? Sixteen engine field names checked against the full source of
+`build_context`:
+
+| field | present in `build_context` |
+|---|---|
+| `pick_label`, `decision_regime`, `necessity_label`, `team_acquisition_value`, `survival_probability`, `pick_necessity`, `universal_value`, `need_bonus`, `eligibility_bonus`, `opportunity_cost`, `denial_value`, `positional_forfeit`, `consensus_rank`, `reach_label`, `candidates`, `PickSnapshot` | **0 of 16** |
+
+`build_context`'s parameters are `(snapshot, roster_table, player_universe, question,
+conversation_window)`. It has no draft argument and no notion of a pick. The scope state the
+other builders carry — `focus_position`, `matchup_expanded_position`, `fa_position_filter`,
+`fa_search` — is likewise absent. (Two tokens, `team_label` and `surface`, matched as substring
+artifacts of unrelated code and prose; both were checked by hand and discarded.)
+
+So a user on the clock in the Draft Room who clicks 💬 Debate and asks a question is told
+*"💬 **Considering:** On the clock for pick 4.03."* while the four chairs receive no pick, no
+board, no candidate, and no engine number at all.
+
+**Why this is a violation rather than a design choice.** `screen_context.py`'s own module
+docstring is accurate and honest: it says the Prytaneum reads a ScreenContext as plain data *"(or,
+today, the existing question_input seeding a surface's own escalation buttons write to)"* — an
+explicit acknowledgement that only the question_input path is wired. `render_debate_chip`'s
+docstring is also accurate: opening and asking are deliberately two separate actions. The
+violation is neither of those. It is `app.py:5527`, which states the intended reading of the
+"Considering" line: *"This is meant to read as 'Debate already understands what I was looking
+at.'"* The panel does not understand it, and cannot — the object never leaves the render path.
+Measured against the app's own stated contract, exactly as 13.3 was, that claim is false for six
+of the seven chips.
+
+**BOUNDARY:** canonical context → AI seat. **Instructional at best** — nothing enforces the
+handoff, and `test_debate_chip_wiring.py` (which exists precisely to protect this contract)
+asserts only that each site *builds* via the shared builder and does *not* write `question_input`.
+No test asserts the attached context reaches a model, because it does not.
+
+**RISK: moderate, and it is a user-trust risk rather than a correctness one.** No wrong number is
+produced; a well-grounded panel answer is simply not given the grounding the screen says it has.
+The failure mode is a confidently generic answer that the user reads as context-aware.
+
+**DEPENDENCIES:** 3.1; `build_context`'s parameter list; §4's chair input contract.
+
+### 3.3a Proposed repair and measured blast radius — NOT APPLIED
+
+Per the mandate, this is reported rather than performed.
+
+*Repair (smallest form).* At the single trigger site (`app.py:5659-5661`), prepend the attached
+context to the string already being built:
+
+```python
+context = build_context(snapshot, roster_table if roster else [], player_universe, trigger_question)
+attached = st.session_state.get("debate_attached_context")
+if attached is not None:
+    context = attached.to_prompt_seed() + "\n\n" + context
+```
+
+*Blast radius, measured.* One call site; one added string concatenation; no engine module
+touched; no valuation path reachable from it (the ingestion boundary at `draft_room:518` /
+`pick_synthesis:413` whitelists `source_name == "keeptradecut"` and is enforced by
+`test_cdme_ingestion_boundary.py`, so nothing added to a prompt can re-enter CDME). Context
+growth is bounded by construction: `_MAX_CANDIDATES_IN_CONTEXT = 8` caps the two capped builders,
+and the largest ScreenContext evidence block measured on a real board was **456 characters**
+against a `build_context` body of tens of thousands — under 2%.
+
+*Two open questions the repair does not settle, and why it should not be applied blind.*
+1. **Staleness.** Nothing clears `debate_attached_context`; `app.py:5530` says so explicitly
+   (*"there's no signal yet for 'the user is done with this'"*). Today that only makes a stale
+   line render. Wiring it to the model makes a stale line **argue**. A lifetime rule is a
+   prerequisite, not a follow-up.
+2. **Which handoff wins.** The Trade Calculator would then carry its context twice — once
+   through `question_input`, once through the attachment — because its chip and its escalation
+   buttons write the same object by two routes.
+
+*Verdict:* **DEFER to a scoped repair mandate.** The evidence is complete and the contract
+violation is proven; the repair is blocked on a lifetime decision that is the owner's to make,
+not on more measurement.
+
+### 3.4 One snapshot, three consumer projections — measured
+
+**STATUS: EXISTS (asymmetric by design), with one honest qualification**
+
+**EVIDENCE** (real committed vendor data, 12-team superflex, snapshots at rounds 1/4/8):
+
+| consumer | fields per candidate | rows | fidelity |
+|---|---|---|---|
+| engine object (`CandidateSnapshot`) | **37** | all | — |
+| `pick_debate.format_snapshot_for_llm` | ~20 rendered | all (72/65/40) | **unrounded** — engine TAV `84.44` arrives as `84.44` |
+| `draft_board_ui.serialize_candidate` | **22** | all | mixed |
+| `screen_context.build_draft_room_context` | **5** | top **8** | TAV `:.0f`, survival to whole % |
+
+This is B2 (decision object → per-consumer projection, lossy and asymmetric), already established
+— what is new is the *span*: 37 → 22 → 5, and one of those three consumers is a model.
+
+**Rounding, measured honestly.** Across the whole candidate list the `:.0f` TAV collapses 21–24
+values per round into shared display integers. But the chip renders only 8 rows, so the number
+that matters is confined to those: **1 of 7** adjacent engine-ordered pairs at round 1, **4 of 7**
+at round 4, **2 of 5** at round 8, become the same displayed integer (e.g. `79.07/78.61 → 79`).
+
+**The qualification that keeps this from being a defect:** every collapsed pair measured is
+within `NEAR_TIE_BAND = 2.0`. By the engine's own semantics those *are* near-ties, so the display
+is not asserting a falsehood — it is declining to draw a distinction the engine itself labels as
+not meaningful. **Verdict: DOCUMENT.** No production change.
+
+### 3.5 What is intentionally withheld from each chair
+
+**STATUS: MISSING — nothing is withheld from anyone**
+
+**EVIDENCE (measured).** `ask_quant` and `ask_beat` produced **byte-identical user prompts** on
+identical input (`quant user_prompt == beat user_prompt: True`); every chair's prompt contains the
+base context block verbatim. Downstream chairs receive the same block plus prior chairs' prose.
+`pick_debate` is the same shape: one `evidence` string built once and handed to all three chairs.
+
+There is therefore no per-chair projection of the decision context anywhere in either system.
+The Quant is handed the whole news-and-freshness apparatus it is told not to use; the Beat is
+handed every projection and VORP figure it is told not to compute with.
+
+**BOUNDARY:** context → chair. **Absent.** The separation of chairs is carried entirely by the
+system prompt — see 4.3.
+**RISK:** low today, structural over time. **Verdict: DOCUMENT**, and it is the honest answer to
+the guide's question rather than a defect: role-appropriate projection is a design the app has
+not adopted, not one it has adopted and broken.
+
+### 3.6 Can an invocation record exactly which context it was supplied?
+
+**STATUS: MISSING**
+**LOCATION:** `app.append_message:801`; `decision_log.log_decision:36`;
+`pick_debate.PickDebateResult:360`.
+**EVIDENCE:** `append_message` persists `{role, content, ts, provider, model}`. `log_decision`
+persists question, the eight parsed verdict fields, and the Moderator's prose. Neither stores the
+`context` string, a hash of it, or any reference to it — the string is built at `app.py:5661`,
+passed, and garbage-collected. `PickDebateResult` carries `role_providers` but **not**
+`role_models` and **not** the snapshot it ran on.
+**BOUNDARY:** invocation → audit record. **Absent.**
+**RISK:** moderate for a hosted product, low for single-user desktop use. Causal reconstruction
+(§10) rests on this and cannot be answered affirmatively until it exists.
+
+### 3.7 Replay
+
+**STATUS: MISSING**
+**EVIDENCE:** replay requires 3.6. Inputs are not recorded, so an operation cannot be re-run
+against its own inputs; and there is no flag anywhere distinguishing a replayed run from a fresh
+one, because there is no replay path to flag. `st.session_state.draft_room_last_snapshot` keeps
+exactly one prior snapshot, for diffing the next pick, and is overwritten each time.
+**DEPENDENCIES:** 3.6, 3.9.
+
+### 3.8 Temporal consistency within one deliberation
+
+**STATUS: EXISTS**
+**EVIDENCE:** `context` is built once per trigger and the same object is passed to all four
+chairs; `run_debate` parallelises Quant and Beat but over that one string. `pick_debate` freezes
+harder still — a frozen `PickSnapshot` computed once and handed to all three chairs, with
+`diff_snapshots` giving the debate an explicit record of what moved since the previous pick. If
+the underlying data changes mid-debate, no chair sees the change.
+"What does *current* mean" is also answered per category rather than globally:
+`build_freshness_manifest` emits `(label, as-of date, days old)` for every dated source, sorted
+freshest-first, with STALE (≥7d) and EGREGIOUSLY OUTDATED (≥30d) flags. That is a real answer to a
+question most systems cannot answer at all.
+**BOUNDARY:** time → deliberation. **Structural** (single-build, pass-by-reference).
+
+### 3.9 An immutable context that can be *referenced* rather than copied
+
+**STATUS: PARTIAL**
+**EVIDENCE:** `PickSnapshot` is frozen and immutable — half the property. The other half is
+missing: its fields are `pick_label, round, my_roster_id, candidates, user_selected_player_id,
+picks_consumed, data_freshest_date, decision_regime` — **no id, no hash, no computed-at
+timestamp**. Consumers therefore hold the object itself, not a reference to it, and nothing
+outside the live session can name the snapshot a given verdict was produced against.
+`data_freshest_date` is a partial temporal anchor and is the nearest thing to provenance the
+object carries. **Verdict: DOCUMENT.** A snapshot identifier is cheap and would unlock 3.6, 3.7
+and §10 together — but it is only worth adding *with* the record that would consume it, not
+speculatively ahead of one.
+
+---
+
+### 4.1 Is the architecture built on stable chair contracts?
+
+**STATUS: EXISTS — and there are two chair systems, deliberately**
+
+| | The Prytaneum | Draft Room debate |
+|---|---|---|
+| chairs | Quant, Beat, Contrarian, Moderator | Strategist, Skeptic, Caller |
+| prompts | `llm_engine.*_SYSTEM_PROMPT` via `ROLE_SYSTEM_PROMPTS` | `pick_debate.*_SYSTEM_PROMPT` |
+| input | `build_context` string + question (+ prior prose) | `format_snapshot_for_llm` + prior prose |
+| provider/model routing | per role, user-configurable, persisted (`bot_config`) | fixed `DEFAULT_ROLE_PROVIDERS` |
+| live search | yes (Beat, Contrarian) | **no, by design** |
+
+**EVIDENCE:** neither is one continuous conversation. Each chair is a separate call with its own
+system prompt and an explicitly-constructed user prompt; nothing carries a chat thread between
+chairs. The separation of the two systems is deliberate and named in code
+(`screen_context.DRAFT_ROOM_PICK_DEBATE_HELP`, and `debate_pick`'s docstring: *"an orchestration
+layer, exposing its own defaults, not a slot in the existing four-role trade-debate roster"*),
+and the distinctness of the two Debate-labelled controls on the Draft Room screen is enforced by
+`test_screen_context.DebateHelpTextDistinctnessTests`.
+**BOUNDARY:** chair → chair. **Structural.**
+
+### 4.2 What prevents Beat from becoming an accidental Quant?
+
+**STATUS: PARTIAL — instructional only, and it is the *only* mechanism**
+
+**EVIDENCE:** the prohibition exists and is explicit in both directions —
+`QUANT_SYSTEM_PROMPT`: *"Do not speculate about injuries, depth charts, or locker-room narrative
+… that is other analysts' jobs."* `BEAT_SYSTEM_PROMPT`: *"Do not run Draft Sharks' VORP math
+yourself — that is the Quant's job."* And per 3.5, both chairs are handed byte-identical context,
+so each has in hand everything it is told not to use. Nothing detects a chair that ignores its
+prohibition; no output is checked against its chair's remit.
+**BOUNDARY:** chair remit. **Instructional.** This is the cleanest example in the programme of
+the distinction the vocabulary exists to draw: the boundary is real, stated, and load-bearing —
+and rests entirely on model compliance.
+**RISK:** low today, and it rises with model substitution rather than with time. A model swapped
+into the Beat chair that is stronger at arithmetic than at search will drift toward Quant work,
+and nothing in the architecture will notice.
+**Verdict: DOCUMENT.** Enforcing role separation means either projecting the context per chair
+(3.5) or classifying chair output, and neither has an evidence base yet. Named here so a future
+model-substitution pass (§5) starts from a known-unenforced boundary rather than assuming one.
+
+### 4.3 Are chair outputs structured?
+
+**STATUS: PARTIAL — 2 of 7 chairs have a canonical intermediate representation**
+
+| chair | structured output | parser |
+|---|---|---|
+| Moderator | yes — 11 labelled fields | `parse_moderator_verdict` + `VERDICT_FIELDS` |
+| Caller | yes — recommendation/confidence/why/dissent/key factor | `parse_caller_verdict` |
+| Quant, Beat, Contrarian, Strategist, Skeptic | **no — free prose only** | — |
+
+**EVIDENCE:** the five prose chairs' output is consumed only as a string, pasted into the next
+chair's user prompt. The two structured chairs are both *synthesizers*, and both are parsed
+defensively — `parse_caller_verdict` extracts strings with no numeric coercion, and the
+recommendation is resolved by name lookup against the snapshot's real candidates (§13.4).
+**BOUNDARY:** chair output → downstream. **Structural where it exists** (the parsers cannot
+fabricate a row), **absent** for the five prose chairs.
+**RISK:** this is the load-bearing constraint on model interchangeability — see 4.4.
+
+### 4.4 Model interchangeability, and what a replacement model actually inherits
+
+**STATUS: PARTIAL**
+
+*What holds.* Chair **inputs** are defined entirely independently of the occupant: every `ask_*`
+takes `(context, question, [prior reports])` and receives `provider` / `api_key` / `model` as
+parameters. `run_debate` states it has *"no opinion of its own about which provider belongs to
+which role."* A model can be swapped per chair from the UI without touching a prompt, and the
+`moderator_personality` directive is scoped to tone and to the Moderator alone. Provider and model
+are stamped on each persisted message at the time it was written, so an old message keeps showing
+what actually answered it.
+
+*What does not hold.* **A replacement model in a downstream chair inherits its predecessor's
+prose, not its evidence.** The guide's own test case — *"if Beat Model A found 14 sources and
+Model B takes over, can B see the actual evidence package?"* — resolves to **no**: Contrarian and
+Moderator receive `result.beat` as an opaque string. There is no per-chair evidence record: no
+list of sources consulted, none of accepted-vs-rejected claims, no confidence attached to
+anything except the Moderator's own single `CONVICTION` line.
+
+*The partial exception, and its shape.* `bot_research.py` is a real structured evidence store —
+`{id, player_name, source, claim, rank, conviction, question, league_id, date}`, deduped
+same-day, read back into later contexts. But it is populated by `parse_source_findings` from the
+**Moderator's** output, gated on the Moderator's own judgement that the panel did not dispute the
+claim. The evidence package is therefore reconstructed from the synthesizer's prose, one chair
+removed from the chair that found it, and only for the fraction the synthesizer chose to emit.
+**Verdict: DOCUMENT.** Real, and the largest genuine gap in §4 — but a per-chair evidence schema
+is a design commitment, not a repair, and belongs to §5's model-substitution work.
+
+### 4.5 Chair contract versioning
+
+**STATUS: MISSING**
+**EVIDENCE:** no `CONTRACT_VERSION`, `PROMPT_VERSION`, or equivalent exists anywhere in the tree.
+Prompts are edited in place. Consequently: a benchmark cannot be tied to a contract version, a
+model change cannot be scoped to "which downstream benchmarks must be re-run," and two runs weeks
+apart are indistinguishable in the record even if the chair's instructions changed between them.
+**RISK:** low while one person owns every prompt; a precondition for §5's "unknown-model
+evaluation" to mean anything.
+**Verdict: DOCUMENT** — a named precondition, not a defect.
+
+### 4.6 #90 — what a chair may not disclose, now ENFORCED
+
+**STATUS: REPAIRED at the boundary level — instructional → enforced. No production change.**
+
+**LOCATION:** `test_prompt_constant_boundary.py` (new, 10 tests).
+
+**EVIDENCE — the measurement first.** 56 engine constant names / 101 numeric literals were
+discovered by AST across six engine modules, and scanned against all 16 prompt strings a provider
+can receive plus the string literals of `app.build_context` and `screen_context`:
+
+| scan | result |
+|---|---|
+| engine constant **name** in any of the 16 system/personality prompts | **0** — §8.3's finding holds, and now extends to the Prytaneum's four chairs, not just `pick_debate`'s three |
+| engine constant **name** in `build_context` prose | **1** — `COMPOSITE_SOURCE_WEIGHTS`, together with `data_merger.py` |
+| distinctive coefficient **values** anywhere in the prompt surface | **0** |
+
+**A correction to this pass's own method, recorded.** The first run of that scan reported **0**
+hits in `build_context` and was wrong. It walked only `ast.Assign`, and `COMPOSITE_SOURCE_WEIGHTS`
+is an `ast.AnnAssign` (`COMPOSITE_SOURCE_WEIGHTS: dict[str, float] = {...}`). A constants scan
+blind to annotated constants would have shipped as proof of a property it could not see. The
+shipped test handles both forms and pins the specific case by name
+(`test_annotated_constants_are_discovered`).
+
+**On the one hit.** `build_context` tells each chair that the composite figure it is handed is a
+*weighted* blend and in which direction — Draft Sharks up, KeepTradeCut down, fresher counts more
+— so the chair weighs the per-source disagreement beside it instead of treating the blend as
+settled. It discloses the weight set's existence and direction, never a weight: 1.3 / 1.0 / 0.7 /
+0.5 do not appear, and this is a vendor-blending parameter in `data_merger`, not a term in the
+CDME equation. Recorded as `DISCLOSED_BY_DESIGN` with that reasoning, and fenced: a separate test
+fails if the values ever join the name.
+
+**Non-vacuity — three probes, each planted in real production text and reverted:**
+
+| probe | result |
+|---|---|
+| `NEED_BONUS_MAX` planted in `QUANT_SYSTEM_PROMPT` | **FAIL** — caught in both `QUANT_SYSTEM_PROMPT` and `ROLE_SYSTEM_PROMPTS['quant']` |
+| `0.55` (a `RANK_TAKE_PROBABILITY` value) planted in `build_context` prose | **FAIL** |
+| the composite weights `1.3` / `0.7` planted beside their allowed name | **FAIL** |
+
+The suite also guards its own reach: it fails if constant discovery collapses, if the prompt
+surface shrinks below 16 producers, or if any of the seven chairs' prompts stops being scanned —
+because a scan that has quietly stopped looking is indistinguishable from a clean result.
+
+**BOUNDARY:** methodology → provider. **Enforced.** §8.3's status moves PARTIAL → EXISTS.
+**RISK:** the value scan is deliberately incomplete and says so: a bare `12` or `0.5` cannot be
+distinguished from ordinary prose, so only literals with two or more decimals are scanned. The
+**name** scan is what holds the boundary; the value scan is a second net with stated holes.
+
+### 4.7 Correction to Pass 1 — the scope of 13.4's "structurally prevented"
+
+13.4 concluded that an AI seat cannot mutate, recompute, or override deterministic values, on
+three mechanisms. That conclusion **stands as stated, for the CDME valuation path**, and this
+pass found the mechanism that makes it true: `draft_room._rookie_lookup:518` and
+`pick_synthesis:413` both filter `merger.external_values` to `source_name == "keeptradecut"`,
+which is what keeps `bot_research.json`'s LLM-originated rows out of the engine — documented in
+both docstrings and enforced by `test_cdme_ingestion_boundary.py`'s adversarial injection tests.
+
+**But 13.4 as written could be read more broadly than the evidence supports, so:** there *is* one
+designed path by which model output becomes a number in a deterministic calculation.
+`bot_research` findings that carry a rank are loaded as a synthetic external source
+(`data_merger.load_bot_research_as_external:1576`) and enter `composite_player_score` at
+`COMPOSITE_SOURCE_WEIGHTS["bot_research"] = 0.5` — the lowest weight of any source, below
+KeepTradeCut's crowd average, explicitly *"to reflect that extra layer of uncertainty."* The
+composite surfaces in the Trade Calculator (`app.py:3548`) and in `build_context`'s roster table.
+
+This is deliberate, weighted, deduped, gated on the Moderator's non-dispute rule, disclosed to the
+chairs in `build_context` itself, and structurally excluded from CDME. It is not a defect.
+Recording it because "the AI cannot affect any deterministic number" is a stronger claim than the
+architecture makes, and the audit record should carry the accurate one.
+
+---
+
+## Pass 2 summary
+
+| item | status | boundary kind |
+|---|---|---|
+| 3.1 canonical representation per surface | EXISTS (two systems) | structural |
+| 3.2 no reconstruction from rendered UI | EXISTS | structural |
+| **3.3 ScreenContext reaches the model** | **VIOLATED** (display-layer) | **instructional** |
+| 3.3a repair specified, blast radius measured | DEFERRED to a scoped mandate | — |
+| 3.4 one snapshot, three projections | EXISTS (asymmetric by design) | structural |
+| 3.5 per-chair withholding | MISSING (nothing withheld) | absent |
+| 3.6 invocation records its context | MISSING | absent |
+| 3.7 replay | MISSING | absent |
+| 3.8 temporal freeze within a run | EXISTS | structural |
+| 3.9 immutable context, referenceable | PARTIAL (frozen, unidentified) | structural |
+| 4.1 stable chair contracts | EXISTS | structural |
+| 4.2 chair remit separation | PARTIAL | **instructional only** |
+| 4.3 structured chair outputs | PARTIAL (2 of 7) | structural where present |
+| 4.4 model interchangeability | PARTIAL (inputs yes, evidence no) | structural / absent |
+| 4.5 chair contract versioning | MISSING | absent |
+| **4.6 no engine constant in a prompt (#90)** | **EXISTS (new)** | **enforced** |
+| 4.7 correction to 13.4's scope | — | — |
+
+### Does anything clear the bar for a production change?
+
+**One item clears the evidence bar and is being reported rather than applied: 3.3.** It is a
+proven violation of the app's own stated contract, measured the same way 13.3 was — 0 of 16
+engine fields reach the panel, one production caller of `to_prompt_seed`, two reads of the
+session key of which one is a render. The repair is four lines at one call site with a measured
+sub-2% context cost and no reachable path into the valuation engine.
+
+It is nonetheless **not** in the same class as 13.3, and the distinction is worth keeping sharp.
+13.3 was a wrong answer: an arbitrary row reported as verified, changing a price. 3.3 produces no
+wrong number — it withholds grounding the screen says was handed over. And unlike 13.3, whose fix
+was fully determined by three sibling code paths, 3.3's fix depends on a decision nobody has made
+yet: how long an attached context should live. **DEFER, pending a scoped repair mandate.**
+
+Everything else is EXISTS (3.1, 3.2, 3.4, 3.8, 4.1, 4.6), a design the app has not adopted rather
+than one it has broken (3.5, 4.3, 4.4), or a named precondition for later sections (3.6, 3.7,
+3.9, 4.5).
+
+### Follow-ups from this pass, ranked by evidence then severity
+
+1. **3.3 — scoped repair mandate for the ScreenContext handoff.** Evidence complete; blocked only
+   on the attachment-lifetime decision. Highest-value item in the pass.
+2. **3.9 + 3.6 together — a snapshot identifier and a recorded context reference.** One small
+   addition unlocks §3's replay questions and §10's causal reconstruction at once. Worth doing
+   *with* the record that consumes it, never speculatively.
+3. **4.4 — a per-chair evidence schema.** The largest genuine architectural gap found, and the
+   right owner is §5 (model selection and substitution), where its value is actually realised.
+4. **4.2 / 3.5 — per-chair context projection.** Would convert chair-remit separation from
+   instructional to structural. No evidence base yet that drift actually occurs; measure before
+   building.
+5. **4.5 — chair contract versioning.** Cheap, and a precondition for §5's benchmarking to be
+   meaningful. Not worth doing before §5 is scoped.
