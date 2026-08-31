@@ -6961,3 +6961,132 @@ Four errors found in my own work, all corrected above rather than quietly droppe
      state before its result is reported. Where the two count differently, the result is void.
 156. Missing *explanation* and missing *decision input* are different findings. The first is
      documented; only the second can justify changing what the engine computes.
+
+---
+
+# Appendix — E: ablation over the decision, not over a label
+
+**Verdict: ALREADY REPRESENTED — the architecture survives ablation.** No production change.
+One contract test added (4 tests), plus this appendix. No defect found; the ablations confirm
+what the contracts claim, and they upgrade three of those claims from asserted to demonstrated.
+
+## What E is actually testing, and what already existed
+
+`cdme_force_ablation.py` already ablates — but it ablates `compute_pick_necessity`'s six terms
+and measures which `necessity_label` bucket a candidate lands in. **`pick_necessity` does not
+participate in ranking**: `narrow_candidates` orders by `_board_order → final_score`, and nothing
+re-ranks on necessity (that is open item #55, still open). So the existing battery measures
+whether a **label** moves, which is precisely what E's mandate says not to settle for.
+
+E therefore ablates the thing that decides: the **ordered candidate list** and every **TAV**.
+Ablation is applied through the real pipeline at its seams (monkeypatched in the harness, no
+production edit) and — for the scoring terms — at the **board** level, so candidate *selection*
+responds too; a post-hoc re-rank of an already-selected set would understate the effect.
+
+## Part 1 — the contextual layer is provably non-scoring
+
+Each contextual signal suppressed at its own seam, then all of them together, across 12 real
+decision states (rounds 4/9/14 × 4 rosters):
+
+| ablation | order changed | TAV changed | leader changed |
+|---|---:|---:|---:|
+| survival + opportunity cost + denial + rival premium | 0/12 | 0/12 | **0/12** |
+| positional forfeit | 0/12 | 0/12 | **0/12** |
+| positional cliff | 0/12 | 0/12 | **0/12** |
+| positional run | 0/12 | 0/12 | **0/12** |
+| `pick_necessity` flattened | 0/12 | 0/12 | **0/12** |
+| decision-path flags cleared | 0/12 | 0/12 | **0/12** |
+| near-tie flags cleared | 0/12 | 0/12 | **0/12** |
+| **all of the above at once** | **0/12** | **0/12** | **0/12** |
+| *positive control:* `bpa` zeroed | **12/12** | — | — |
+
+The control is the point. A null result from an insensitive harness is worthless; this harness
+moves every state when a scoring term is removed, and no state when a contextual one is. **The
+separation between the valuation layer and the debate layer is now demonstrated by ablation
+rather than asserted by docstring.**
+
+## Part 2 — what actually decides
+
+`TAV = universal_value + need_bonus + eligibility_bonus`, and
+`universal_value = bpa + time_horizon_adj + risk_adj`. Ablated at board level:
+
+| component removed | leader changed | top-3 set changed | leader changed, near-tie states |
+|---|---:|---:|---:|
+| **`bpa`** | **12/12 (100%)** | 12/12 | **8/8** |
+| `time_horizon_adj` + `risk_adj` | **6/12 (50%)** | 8/12 | 4/8 |
+| `need_bonus` | **4/12 (33%)** | 5/12 | 2/8 |
+| both roster terms | 4/12 | 5/12 | 2/8 |
+| `eligibility_bonus` | 0/12 — **withdrawn, see self-review** | — | — |
+
+Worked reversals: at round 4 rosters 3 and 4, removing `need_bonus` flips G Kittle → D
+Montgomery; removing the dynasty adjustment flips J Johnson → R Dowdle at round 9.
+
+Three things follow. **`bpa` is dominant** — consistent with the earlier finding that the ruler
+carries 94.5% of BPA's movement (#76). **The dynasty horizon layer is not decorative**: removing
+it changes the recommendation in half of all states and half of the close ones. **`need_bonus`
+earns its place**: a third of leaders, without ever dominating a real value gap — the same
+picture H1 measured from the other direction.
+
+## Self-review of this investigation's own measurements
+
+**One result withdrawn, for a reason worth recording.** `eligibility_bonus` measured `0/12` on
+every axis — order, TAV, leader. Reported as-is that would read "inert". It is not:
+
+1. First check — my synthetic `players_db` sets `fantasy_positions=[position]` for every player,
+   and `eligibility_bonus` is **0.0 by construction** for a single-position player. Fixture
+   artifact, same class as D's injury-status artifact.
+2. Second check, rebuilt with **48 multi-eligible players** — still `0/333` rows. Which looked
+   like a real finding, and was also wrong: I measured on the **opening board**, where every
+   lineup slot is empty. That is **H2's degenerate regime** — the full-eligibility and
+   primary-only solves are the identical problem, so their difference is exactly zero.
+3. Third check, at populated rounds, is the honest one:
+
+| round | rows with `eligibility_bonus ≠ 0` | largest |
+|---|---|---|
+| 0 | 0 / 333 | — (degenerate by construction) |
+| 4 | **7 / 285** | J Ferguson (TE) **+2.76** |
+| 8 | **13 / 237** | J Croskey-Merritt (RB) +2.04 |
+| 14 | 1 / 165 | J Tyson (WR) +1.20 |
+
+So it fires on roughly **2.5–5.5%** of rows, at magnitudes **at or below `NEAR_TIE_BAND = 2.0`**
+for all but the largest — far under its own `ELIGIBILITY_BONUS_MAX = 12.0` cap, which is a bound
+and not a threshold (#56). Its decision reach is **small but non-zero**; its production frequency
+depends on how many real Sleeper rows carry multiple `fantasy_positions`, which this environment
+holds no cache to measure — the same honest limit as #85's `traded_picks` and D's injury reach.
+
+Two artifacts in a row on the same term is itself the lesson: **a zero from an ablation is only
+evidence if the fixture can exercise the term, and being able to exercise it means avoiding both
+an impoverished input and a degenerate regime.**
+
+## Negative findings
+
+* No leakage. Every contextual signal is inert on the ranking, individually and jointly.
+* No defect in `cdme_force_ablation.py` — it is accurate about what it computes. What is
+  recorded here is the limit of what it can conclude: it measures a label, not a decision.
+* H3 / role data stays **parked as data-blocked**, not rejected, and was not touched.
+* D's closed `PickSnapshot` boundary held throughout; E produced no dependency contradicting it.
+
+## Tests added
+
+`ContextualSignalsCannotReachTheRankingTests` (4 tests) pins the mechanism rather than re-running
+the pipeline — the full ablation is minutes of compute and belongs in the record, not the suite.
+It asserts `_board_order` is invariant to 24 contextual fields at once (priced and unpriced rows),
+that it still responds to the two things it may read, and that `narrow_candidates` returns a
+deliberately mis-ordered board in `final_score` order even when the weakest row carries every
+contextual signal at maximum.
+
+**Non-vacuity, demonstrated:** injecting a one-line leak into `_board_order` — adding
+`pick_necessity` to the sort key — failed 2 of the 4 tests
+(`(False, -42.0, 'p1') != (False, -142.0, 'p1')`, and `'weak' != 'best'`). Probe reverted.
+
+## Invariants
+
+157. The recommendation is the head of a list ordered by `final_score` and `player_id`. A signal
+     that is not one of those two cannot change the recommendation, and any claim that it does
+     is a claim that the sort key changed.
+158. An ablation reporting no change is evidence only alongside a positive control that does
+     change. Without one, an insensitive harness and a genuine null are indistinguishable.
+159. An ablation of a term is evidence only if the fixture can exercise that term — which
+     requires both an input rich enough to trigger it and a state outside its degenerate regime.
+160. Ablating a quantity that no consumer ranks on measures the quantity's own label, not the
+     decision. The distinction is recorded whenever an ablation battery is cited.

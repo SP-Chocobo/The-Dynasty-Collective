@@ -1264,5 +1264,79 @@ class DecisionBoundaryIsClosedTests(unittest.TestCase):
                           f"longer a snapshot consumer, or this scan is reading the wrong file")
 
 
+class ContextualSignalsCannotReachTheRankingTests(unittest.TestCase):
+    """E's central contract, pinned at the mechanism rather than by re-running the pipeline.
+
+    The recommendation is the head of the candidate list. narrow_candidates sorts by
+    _board_order, and _board_order reads exactly two things: final_score (= TAV) and
+    player_id. Every contextual signal -- survival, opportunity cost, denial, rival premium,
+    positional forfeit, positional cliff, positional run, pick_necessity, the decision-path
+    flags, the near-tie flag -- is computed AFTER that ordering and is carried alongside it,
+    never into it.
+
+    A full-pipeline ablation confirmed this end to end (each contextual signal suppressed at
+    its seam, then all of them at once: 0 of 12 real decision states changed order, TAV or
+    leader, while a positive control that zeroed bpa moved 12 of 12). That battery is too slow
+    for the suite; this pins the same property at the one function that enforces it, so a
+    future edit that lets a contextual field into the sort key fails here."""
+
+    CONTEXTUAL = {
+        "survival_probability": 0.01, "opportunity_cost": 99.0, "denial_value": 99.0,
+        "denial_team": "9", "rival_premium": 99.0, "rival_premium_take_probability": 0.99,
+        "positional_forfeit": 99.0, "position_expected_taken": 9.0,
+        "positional_cliff": {"tier": "SEVERE", "gap": 99.0, "typical_gap": 1.0},
+        "position_run_detected": True, "pick_necessity": 100.0, "necessity_label": "CRITICAL",
+        "near_tie_with_leader": True, "cliff_protection": True, "block_opportunity": True,
+        "pure_value": True, "context_elevated": True, "waiting_cost": 99.0,
+        "horizon_floor": 99.0, "horizon_sensitivity": 99.0, "consensus_rank": 1,
+        "consensus_tier": 1, "reach_label": "REACH", "projected_points": 999.0,
+    }
+
+    def test_the_sort_key_ignores_every_contextual_signal(self):
+        quiet = {"player_id": "p1", "final_score": 42.0}
+        loud = dict(quiet, **self.CONTEXTUAL)
+        self.assertEqual(
+            ps._board_order(quiet), ps._board_order(loud),
+            "a contextual signal reached the board sort key; the ranking is supposed to be "
+            "team_acquisition_value and player_id only",
+        )
+
+    def test_the_same_holds_for_an_unpriced_row(self):
+        # The unpriced register sorts last on `final_score is None`; contextual fields must not
+        # rescue or further demote it either.
+        quiet = {"player_id": "p1", "final_score": None}
+        loud = dict(quiet, **self.CONTEXTUAL)
+        self.assertEqual(ps._board_order(quiet), ps._board_order(loud))
+        self.assertGreater(ps._board_order(quiet), ps._board_order({"player_id": "p1",
+                                                                   "final_score": 0.0}),
+                           "an unpriced row must still sort after a priced one")
+
+    def test_the_key_does_respond_to_the_two_things_it_is_allowed_to_read(self):
+        """Non-vacuity guard: if _board_order stopped distinguishing anything, the two tests
+        above would pass while proving nothing."""
+        a = ps._board_order({"player_id": "p1", "final_score": 42.0})
+        b = ps._board_order({"player_id": "p1", "final_score": 41.0})
+        c = ps._board_order({"player_id": "p2", "final_score": 42.0})
+        self.assertLess(a, b, "a higher final_score must sort earlier")
+        self.assertLess(a, c, "player_id must break an exact tie deterministically")
+
+    def test_narrow_candidates_orders_by_that_key_and_nothing_else(self):
+        """The link that makes the above matter: the candidate list the snapshot freezes is
+        ordered by _board_order. A board deliberately supplied in the WRONG order, with the
+        contextual fields set to favour the weakest row, must come back in final_score order."""
+        board = [
+            {"player_id": "weak", "name": "Weak", "position": "RB", "final_score": 1.0,
+             "universal_value": 1.0, "bpa": 1.0, **self.CONTEXTUAL},
+            {"player_id": "mid", "name": "Mid", "position": "WR", "final_score": 50.0,
+             "universal_value": 50.0, "bpa": 50.0},
+            {"player_id": "best", "name": "Best", "position": "TE", "final_score": 99.0,
+             "universal_value": 99.0, "bpa": 99.0},
+        ]
+        got = [row["player_id"] for row in ps.narrow_candidates(board, top_n=3)]
+        self.assertEqual(got[0], "best",
+                         "the maximally contextual row outranked a row worth 99x more")
+        self.assertEqual(got, ["best", "mid", "weak"])
+
+
 if __name__ == "__main__":
     unittest.main()
