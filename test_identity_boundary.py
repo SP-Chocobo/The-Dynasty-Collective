@@ -248,6 +248,89 @@ class PoolInjectivityTests(unittest.TestCase):
                          "a canonical row backs more than one pool row")
 
 
+class ManualAliasBranchContractTests(unittest.TestCase):
+    """CHARACTERIZATION of a confirmed contract violation, not approval of it.
+    Recorded by the architecture audit, ARCHITECTURE_AUDIT.md section 13.3.
+
+    _resolve's own docstring states: "`verified` is True only when exactly one row survived, so
+    a caller can tell 'this is the player' from 'this is the first of several that fit'." The
+    R1-R3 repair made the automatic paths honour that. The MANUAL ALIAS branch was not repaired
+    alongside them -- it returns `..., len(exact), True`, with True hard-coded regardless of how
+    many rows survived.
+
+    The alias map is written from a UI text input (app.py's "Save Alias") with no validation of
+    the target, so this is the one client-reachable path into canonical identity resolution.
+
+    These tests are the evidence, executable. If one FAILS, the branch has been repaired --
+    delete the failing test and update ARCHITECTURE_AUDIT.md 13.3 in the same change."""
+
+    def _merger(self):
+        merger = dm.DataMerger.__new__(dm.DataMerger)   # no disk load
+        merger.match_cutoff = 0.88
+        frame = pd.DataFrame([
+            {"name": "J Chase", "team": "CIN", "position": "WR", "trade_value": 100.0},
+            {"name": "J Chase", "team": "NYJ", "position": "WR", "trade_value": 12.0},
+            {"name": "P Nacua", "team": "LAR", "position": "WR", "trade_value": 94.0},
+        ])
+        frame["norm_name"] = frame["name"].map(dm.normalize_name)
+        merger.projections = frame
+        merger.aliases = {}
+        return merger
+
+    def test_a_nonexistent_alias_target_falls_through_rather_than_binding_wrongly(self):
+        """The reassuring half, and worth pinning: a typo does NOT silently rebind a player."""
+        merger = self._merger()
+        merger.aliases = {"Some Player": "Nobody At All"}
+        row, path, candidates, verified = merger._resolve("Some Player", position="WR", team="CIN")
+        self.assertIsNone(row)
+        self.assertIsNone(path)
+        self.assertEqual(candidates, 0)
+        self.assertFalse(verified)
+
+    def test_DEFECT_an_ambiguous_alias_is_reported_as_verified(self):
+        merger = self._merger()
+        merger.aliases = {"Ambiguous Guy": "J Chase"}
+        row, path, candidates, verified = merger._resolve("Ambiguous Guy")
+        self.assertEqual(path, "alias")
+        self.assertEqual(candidates, 2, "fixture must present a genuine collision")
+        self.assertTrue(
+            verified,
+            "the alias branch now reports an ambiguous match as unverified -- the contract "
+            "violation recorded in ARCHITECTURE_AUDIT.md 13.3 has been repaired; delete this "
+            "test and update that section",
+        )
+        # And the arbitrary winner carries a materially different valuation.
+        self.assertEqual(row["trade_value"], 100.0)
+
+    def test_DEFECT_a_team_that_matches_nothing_does_not_prevent_the_verified_claim(self):
+        merger = self._merger()
+        merger.aliases = {"Ambiguous Guy": "J Chase"}
+        row, path, candidates, verified = merger._resolve("Ambiguous Guy", team="DEN")
+        self.assertEqual(candidates, 2)
+        self.assertTrue(verified, "see the note on the test above")
+
+    def test_the_automatic_path_gets_this_right_on_identical_data(self):
+        """The control that makes the two tests above a DEFECT rather than a design choice:
+        the repaired path, on the same ambiguous name, reports verified=False."""
+        merger = self._merger()
+        row, path, candidates, verified = merger._resolve("J Chase")
+        self.assertEqual(candidates, 2)
+        self.assertFalse(verified,
+                         "the automatic path must still honour the contract the alias branch "
+                         "breaks -- if this fails, the regression is on the repaired side")
+
+    def test_the_collision_surface_is_real_in_the_committed_data(self):
+        """Reach, so this is not filed as a purely theoretical inconsistency."""
+        merger = dm.DataMerger()
+        counts = merger.projections["norm_name"].dropna().value_counts()
+        colliding = counts[counts > 1]
+        self.assertGreater(
+            len(colliding), 0,
+            "no colliding normalized names remain in the projections table -- the alias "
+            "ambiguity would be unreachable; re-measure ARCHITECTURE_AUDIT.md 13.3's reach",
+        )
+
+
 if __name__ == "__main__":
     unittest.main()
 

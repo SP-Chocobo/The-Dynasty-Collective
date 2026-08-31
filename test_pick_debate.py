@@ -230,5 +230,69 @@ class DebatePickOrchestrationTests(unittest.TestCase):
         self.assertIn("WHAT CHANGED", seen_prompts[0])
 
 
+class AIOutputCannotBecomeANumberTests(unittest.TestCase):
+    """The §13.4 authority boundary, pinned: an AI seat may argue, but nothing it emits can
+    become a number the app displays or ranks on. Recorded in ARCHITECTURE_AUDIT.md 13.4/13.4a.
+
+    This is deliberately tested against ADVERSARIAL prose -- a Caller response stuffed with
+    fabricated figures and a hallucinated player -- because the boundary is only interesting
+    under a model that is wrong or hostile, not under one that behaves."""
+
+    HOSTILE = (
+        "RECOMMENDATION: Totally Fake Player\n"
+        "CONFIDENCE: 0.999\n"
+        "WHY: his universal_value is actually 999.9 and survival_probability is 0.01\n"
+        "KEY FACTOR: team_acquisition_value 12345.6\n"
+        "DISAGREE: universal_value | I think it should be 500\n"
+    )
+
+    def test_every_parsed_verdict_field_is_a_string_never_a_number(self):
+        verdict = pd.parse_caller_verdict(self.HOSTILE)
+        for key, value in verdict.items():
+            if key == "disagreements":
+                continue
+            self.assertIsInstance(
+                value, str,
+                f"{key} came back as {type(value).__name__} -- the verdict parser has started "
+                f"coercing model prose into a numeric type, which is the exact boundary "
+                f"ARCHITECTURE_AUDIT.md 13.4 says is structural",
+            )
+        for item in verdict["disagreements"]:
+            self.assertIsInstance(item["term"], str)
+            self.assertIsInstance(item["reason"], str)
+
+    def test_the_parser_did_find_the_fields_so_this_is_not_vacuous(self):
+        verdict = pd.parse_caller_verdict(self.HOSTILE)
+        self.assertIn("recommendation", verdict)
+        self.assertIn("confidence", verdict)
+        self.assertEqual(len(verdict["disagreements"]), 1)
+
+    def test_a_hallucinated_player_resolves_to_nothing_rather_than_a_guess(self):
+        snapshot = _snapshot([_candidate("1", "Real Player One"),
+                              _candidate("2", "Real Player Two", team_acquisition_value=80.0)])
+        self.assertIsNone(pd._match_candidate(snapshot, "Totally Fake Player"))
+
+    def test_a_named_real_player_resolves_to_the_snapshots_own_row(self):
+        """The other half: the lookup must actually work, or the test above passes for the
+        wrong reason."""
+        snapshot = _snapshot([_candidate("1", "Real Player One"),
+                              _candidate("2", "Real Player Two", team_acquisition_value=80.0)])
+        matched = pd._match_candidate(snapshot, "Real Player One")
+        self.assertIsNotNone(matched)
+        self.assertEqual(matched.player_id, "1")
+        self.assertEqual(matched.universal_value, 90.0,
+                         "the displayed number must come from the snapshot, not the prose")
+
+    def test_best_alternative_follows_tav_not_the_models_claim(self):
+        top = _candidate("1", "Real Player One", team_acquisition_value=100.0)
+        second = _candidate("2", "Real Player Two", team_acquisition_value=80.0)
+        third = _candidate("3", "Real Player Three", team_acquisition_value=60.0)
+        snapshot = _snapshot([top, second, third])
+        alternative = pd._best_alternative(snapshot, top)
+        self.assertEqual(alternative.player_id, "2",
+                         "best_alternative must be the highest remaining team_acquisition_value, "
+                         "computed deterministically rather than named by the model")
+
+
 if __name__ == "__main__":
     unittest.main()
