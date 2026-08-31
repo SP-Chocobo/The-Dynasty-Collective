@@ -5521,7 +5521,10 @@ Across 84 real board-state/roster pairs:
 * **76%** have the leader inside a tie group of 2+ — so a tiebreak layer would engage in three
   of every four picks. "It's only a tiebreak" is not a safety argument here.
 * In tie groups where roster coverage differed, `need_bonus` favoured the **least-covered**
-  candidate in **19 of 19** — no counterexamples.
+  candidate in **19 of 19** — no counterexamples. **Challenged and re-verified**: the strict
+  recount (no-information groups separated out, agreement required to be strict) returns 19 of
+  19 with zero no-information groups. The claim stands; the self-review that questioned it did
+  not. See *"Correction to a correction: the '19 of 19' tie-group tally stands"*.
 * It **changed the winner** versus pure `universal_value` in **6 of 52** tie groups, and **fell
   short** of doing so in 10 of 52. Neither inert nor dominant.
 
@@ -5610,6 +5613,12 @@ because TE-at-1-of-2 genuinely is a small distinction. No recalibration is indic
 
 **Conclusion: represented but stranded, with measured independent decision value.**
 
+> **Superseded in part.** The contract work that followed (see *"Appendix — H2 settled"*)
+> confirms *represented but stranded* and **withdraws *with measured independent decision
+> value***. That phrase rested on a comparator run without a per-candidate gate. Under the
+> correct gate the measured decision value is **zero**. Read this section for the inventory and
+> the two false starts; read the settled appendix for the conclusion.
+
 `lineup_optimizer.marginal_lineup_value` is *"best lineup with him minus best lineup without
 him"* — precisely "incremental roster utility". It is **already computed for every candidate on
 every board**, inside `eligibility_bonus`, and returned as
@@ -5667,6 +5676,11 @@ defect was found there). So the open questions are, in order:
 the same treatment `waiting_cost` already has (computed, exposed, deliberately not consumed) —
 under a name that states its basis. That changes no decision today and makes the signal
 inspectable before it is trusted.
+
+> **Answered.** Both questions above are answered in *"Appendix — H2 settled"*: (1) no, and
+> (2) the basis question turns out not to be the binding constraint — the signal fails on
+> decision value before the currency question is reached. It stays an observable, and stays
+> unwired.
 
 ## H3 — handcuff / contingent-role classification
 
@@ -5749,3 +5763,291 @@ rare rather than systemic.
 129. A "computed and never read" audit accounts for every consumer channel the code actually
      uses, including embedded non-Python and same-file reads. A finding from such a sweep is
      confirmed against the real call path before it is reported as stranded.
+
+---
+
+# Appendix — H2 settled: the contract for `marginal_lineup_value`
+
+**Conclusion: category 2 — represented, stranded, and *correctly* stranded.**
+
+Nothing is wired. `lineup_optimizer.py` is untouched. The deliverable of this pass is the
+contract itself, pinned by `test_lineup_marginal_contract.py` (7 tests), so the conclusion can be
+re-checked rather than re-derived, and so a future change to the optimizer cannot silently
+invalidate it.
+
+The six clauses asked for — what it measures, in what unit, when informative, when degenerate,
+how it relates to `need_bonus`, what it may influence — are below in that order.
+
+## 1. What it measures
+
+The best startable lineup **with** this candidate minus the best startable lineup **without**
+him: his incremental contribution to the nine players who actually score. Not his value — *the
+part of his value the lineup can currently use.*
+
+It is an exact solve, not an estimate: `optimize_lineup` runs
+`scipy.optimize.linear_sum_assignment` over a (player × slot) cost matrix, so the two lineups
+being differenced are both genuinely optimal. The quantity is therefore well-defined for any
+roster, including ones where a flex slot makes the greedy answer wrong.
+
+## 2. What unit it is denominated in
+
+**Whatever currency the caller supplies** — the function's own docstring says so, and it is true
+by construction. `draft_room` supplies `trade_value` (see `_team_roster_players`), so the number
+reaching `eligibility_bonus` today is denominated in Draft Sharks' dynasty market scale, **not**
+the board's projected points.
+
+Two facts about that choice, both measured:
+
+**(a) The market basis has strictly worse coverage than the points basis.** A rostered player the
+basis cannot price is *dropped* — and a dropped player takes his lineup **constraint** with him,
+so the solve runs against a roster emptier than it really is:
+
+| round | on the roster | priced by `trade_value` | priced by `projection` | dropped (tv) | dropped (proj) |
+|---|---|---|---|---|---|
+| 4 | 4 | 4 | 4 | 0 | 0 |
+| 8 | 8 | 8 | 8 | 0 | 0 |
+| 12 | 12 | 12 | 12 | 0 | 0 |
+| 16 | 16 | **14** | 16 | **2** | 0 |
+| 20 | 20 | **18** | 20 | **2** | 0 |
+
+And per `_team_roster_players`' own comment, **339 of 415 IDP baseline rows carry no trade value
+at all** — in an IDP league the market basis would drop most of the roster.
+
+**(b) Currency-agnostic is not the same as basis-invariant.** Scaling every input by *k* scales
+the answer by exactly *k* (pinned by test). Substituting a *different valuation* is not a
+rescale — it reorders players, and therefore changes which player the optimizer benches. Measured
+on the same four candidates against the same roster shape in both bases (columns are how many
+players the roster already holds at the candidate's own position, every other position filled to
+its reachable slot count):
+
+| candidate | basis | own | 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 |
+|---|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| J Gibbs (elite RB) | `trade_value` | 95 | 95 | 95 | 95 | **48** | **20** | **14** | 14 | 14 |
+| J Gibbs (elite RB) | `projection` | 359 | 359 | 359 | 359 | **43** | 43 | 43 | 43 | 43 |
+| D Henry (mid RB) | `trade_value` | 26 | 26 | 26 | 0 | 0 | 0 | 0 | 0 | 0 |
+| D Henry (mid RB) | `projection` | 262 | 262 | 262 | 0 | 0 | 0 | 0 | 0 | 0 |
+| P Nacua (elite WR) | `trade_value` | 94 | 94 | 94 | 94 | **11** | 5 | 5 | 5 | 5 |
+| P Nacua (elite WR) | `projection` | 357 | 357 | 357 | 357 | **41** | 41 | 41 | 41 | 41 |
+| C Olave (mid WR) | `trade_value` | 52 | 52 | 52 | **0** | 0 | 0 | 0 | 0 | 0 |
+| C Olave (mid WR) | `projection` | 256 | 256 | 256 | **256** | **0** | 0 | 0 | 0 | 0 |
+
+The two bases agree on everything qualitative — monotone non-increasing in every row, and elite
+(a positive plateau) separating from mid (exactly 0) at every depth past the step. They differ in
+two measurable ways:
+
+* **Where the step lands.** Three of the four candidates step at the same depth in both bases.
+  **C Olave does not**: under `trade_value` he stops contributing at two rostered WRs, under
+  `projection` at three. He loses the contested FLEX slot to the third WR in one basis and wins
+  it in the other. That is a different *answer*, not a different unit.
+* **Resolution past the step.** The market basis keeps distinguishing depths 3/4/5 (48 → 20 →
+  14) where the points basis flattens immediately (43 → 43 → 43). Projected points are compressed
+  at the top of a position (359 vs 262 = 1.4×) where dynasty market value is not (95 vs 26 =
+  3.7×), so the starter being displaced is nearly as good as the candidate in points and much
+  cheaper in market value.
+
+So a projected-points variant is **constructible today** — no change to `lineup_optimizer` is
+needed, only a different field at the call site — and it would have better coverage. That does
+not make it the right thing to consume, for the reason in clause 5.
+
+## 3. When it is informative, and when it is necessarily degenerate
+
+Two regimes, distinguishable **exactly** — no heuristic, no round threshold — from what
+`optimize_lineup` already returns:
+
+| regime | test | his marginal is | informative? |
+|---|---|---|---|
+| **fills an empty slot** | assignment count **rises** when he is added | his own full value | **no** |
+| **displaces a starter** | assignment count **unchanged** | value minus the starter he benches | **yes** |
+
+The degenerate regime is not a rounding artifact; it is the definition. If a slot is empty, the
+best lineup with him is the best lineup without him **plus all of him**. Ordering candidates by
+that number is ordering them by raw projected points — not comparable across positions, which is
+the exact thing VOR exists to correct.
+
+Measured share of candidates sitting in the degenerate regime, by round:
+
+| round | 4 | 8 | 10 | 14 | 16+ |
+|---|---|---|---|---|---|
+| degenerate | **92%** | 42% | 22% | 15% | **0%** |
+
+**Roster size is not a valid gate.** A roster of 14 was measured using only 8 of its 9 starting
+slots — position mix, not headcount, decides whether a slot is still open. The condition is
+per-candidate and must be evaluated per-candidate.
+
+## 4. How it relates to `need_bonus`
+
+**Complementary in time, not duplicative** — and the complementarity is exact, not coincidental.
+
+`need_bonus` is keyed to **unfilled reachable slots**. It reaches 0.00 the moment a position is
+covered. That is precisely the moment this signal stops being degenerate. Before coverage:
+`need_bonus` speaks, marginal is degenerate. After coverage: `need_bonus` is silent, marginal is
+informative. They hand off at the same boundary because they are keyed to the same fact.
+
+Where `need_bonus` is silent, marginal separates candidates it cannot: on a roster holding four
+RBs, J Gibbs scores **20.0** (he would displace a starter) while D Henry and J Brooks score
+**0.0** (they would not), and `need_bonus` scores all three at exactly **0.00**. That separation
+is real, and it is the "covered vs saturated" distinction the hypothesis asked about — including
+the exemption that matters, that an elite asset at a saturated position still outranks a depth
+piece there.
+
+## 5. What decisions it may influence: **none, on this evidence**
+
+The architectural question was whether it could be a **comparator** rather than a coefficient:
+
+* a *coefficient* is `TAV += k * marginal` — it changes the value, requires a constant *k*, and
+  mixes units;
+* a *comparator* orders candidates **inside** a near-tie group — it introduces no constant, adds
+  nothing to any value, and only orders a set the engine has **already declared equivalent**
+  (`|ΔTAV| ≤ NEAR_TIE_BAND`).
+
+The comparator is the safe shape, so that is what was measured — in the board's **native**
+projected-points basis, on real board states, rounds 10–18, all three gates computed in **one
+pass** so the numbers are directly comparable:
+
+| gate | groups evaluable | would change the recommendation | agrees |
+|---|---:|---:|---:|
+| (1) none | 25 | 2 — **8%** | 23 |
+| (2) roster size ≥ slot count | 25 | 2 — **8%** | 23 |
+| (3) **per-candidate displacement** (correct) | **14** | **0 — 0%** | 14 |
+
+Three things in that table matter more than the headline zero.
+
+**Gate (2) is inert.** It returns the identical 25 groups and the identical 2 changes as no gate
+at all — by round 10 every roster already holds at least the 9 players the lineup needs, so a
+headcount test excludes nothing. A gate that never fires is not a conservative version of the
+right gate; it is no gate wearing the right gate's name.
+
+**Both ungated "changes" are the artifact, visibly:**
+
+```
+ rd ros  current leader   pos   marg  regime      comparator pick   pos    marg  regime
+ 10  10  J Dart           QB     0.0  displaces   M Pittman Jr.     WR    202.0  FILLS
+ 12   7  D Schultz        TE     0.0  displaces   J Dobbins         RB    171.0  FILLS
+```
+
+In both, the comparator's pick wins on a marginal of 202.0 and 171.0 — **raw projected season
+points**, because his slot was empty — against a leader whose 0.0 is a genuine increment. That is
+not a close call the comparator resolved; it is two different quantities being sorted in one
+column.
+
+**Every apparent change came from the degenerate regime, and none survived the gate.** In the
+regime where the signal is informative it never disagrees with `team_acquisition_value`; in the
+regime where it disagrees it is not informative.
+
+That is a stronger result than "the effect is small". It says a correctly gated version of this
+signal has **nothing to add to the ranking** on the evidence available. Wiring it would import a
+second measurement basis into the decision path in exchange for a measured zero.
+
+> **A number from my own earlier notes is withdrawn here.** An intermediate run recorded "38%
+> ungated"; the single-pass reproduction above returns 8%, and 38% is not reproducible from any
+> script in the record. The gated result (0%) reproduced identically across both runs, so the
+> conclusion is unaffected — but the ungated figure published here is the one that came out of a
+> run that also produced the other two, and the earlier one should not be cited.
+
+It therefore stays exactly where it is: computed, returned, and read by nobody — the same status
+`waiting_cost` holds, and for a better-established reason.
+
+**And "it's only a tiebreak" was never the safety argument.** 76% of real board states have the
+leader inside a tie group of 2+, so a tiebreak layer engages in three of every four picks. A
+tiebreak here is a decision layer.
+
+## 6. Do `eligibility_bonus` and `marginal_lineup_value` together already express
+"covered vs saturated"?
+
+**Yes — and that is the answer to the `roster_surplus_penalty` question.**
+
+`marginal_lineup_value` expresses saturation *directly and correctly*: it goes to zero for a
+player the lineup cannot use, stays positive for one it can, and never charges anybody for his
+position's depth. It is the better abstraction, exactly as suspected — a real economic quantity
+solved from the league's own `roster_positions`, not a decay curve with an invented shape.
+`eligibility_bonus` is the same primitive differenced twice, isolating what multi-position
+eligibility alone unlocks.
+
+So: **no `roster_surplus_penalty`, no position-count decay, no per-position table.** The concept
+is already represented, by better machinery than any of those would be.
+
+But the answer carries the clause 5 limitation with it. The pair expresses covered-vs-saturated
+**only in the displacement regime** — and that is precisely the regime in which it agrees with
+the ranking the engine already produces. The abstraction is right; there is no decision waiting
+for it.
+
+## Correction to a correction: the "19 of 19" tie-group tally stands
+
+This entry records a self-review that was **itself wrong**, because the wrong version was already
+circulating in this session's working notes and a record that quietly drops it would be worse
+than one that shows the round trip.
+
+**The committed claim** (`fc1c92a`, repeated in `863df6b`): *"In tie groups where roster coverage
+differed, `need_bonus` favoured the least-covered candidate in 19 of 19 — no counterexamples."*
+
+**The self-review that flagged it.** Re-reading my own classifier, its tally rule is lenient — it
+scores a group as agreement whenever the least-covered and most-needed candidate are tied on
+*either* quantity:
+
+```python
+if cov[least] == cov[most_need] or tied[least].need_bonus == tied[most_need].need_bonus:
+    agree += 1
+```
+
+A group where `need_bonus` is identical across every tied candidate says nothing at all, and that
+branch would count it as a confirmation. I concluded the tally was inflated and needed
+restating.
+
+**Re-measurement, and what it actually showed.** Running the strict recount — no-information
+groups separated out, agreement required to be strict — under two different definitions of
+"least covered":
+
+| yardstick for "least covered" | groups | favours least-covered | favours better-covered | no information |
+|---|---|---:|---:|---:|
+| coverage **fraction** (`held / reachable`) | 23 | 15 | **2** | **6** |
+| **unfilled slots** (`reachable − held`) — the engine's own, and the one the original script used | **19** | **19** | **0** | **0** |
+
+**The committed claim is exactly right.** 19 groups, 19 strict agreements, no counterexamples, and
+— the part that matters — **zero no-information groups**, so the lenient branch never decided an
+outcome. The defect in the classifier is real but **latent, not live**: verified by counting, not
+assumed.
+
+**My self-review was the error.** It substituted coverage *fraction* for unfilled slots while
+claiming to recount the same measurement. That single substitution changed the sample (23 groups
+instead of 19), manufactured six no-information groups, and produced two "disagreements" — both
+of them the same shape:
+
+```
+  B Tuten      RB   held 1/3   fraction 0.33   UNFILLED 2   need 4.33
+  D Prescott   QB   held 0/1   fraction 0.00   UNFILLED 1   need 4.00
+```
+
+By fraction the QB is less covered (0.00 < 0.33). By unfilled slots the RB has more to fill
+(2 > 1). **`need_bonus` is keyed to unfilled reachable slots**, so it prefers the RB — correctly,
+by its own contract. The disagreement was in my ruler, not in the engine.
+
+**What this leaves behind that is worth keeping:** coverage-as-fraction and
+coverage-as-unfilled-slots are genuinely different orderings, and they disagree on real board
+states — a one-slot position at zero looks maximally uncovered by fraction and only moderately
+uncovered by slot count. Any future measurement of "coverage" has to use the yardstick the
+quantity under test is actually keyed to, or it will manufacture disagreements out of its own
+units. That is the same class of error as every unit defect already catalogued here, committed
+this time by the audit rather than by the engine.
+
+## Invariants
+
+130. A signal is gated by the condition that makes it meaningful, evaluated where that condition
+     actually varies. `marginal_lineup_value` is meaningful only when the candidate displaces a
+     starter; that is a per-candidate fact, and a roster-level proxy for it (headcount, round
+     number) measures something else.
+131. A gate is validated by showing what it excludes. A gate that admits the same population as
+     no gate at all is inert — and naming it after the right condition hides that it is.
+132. Currency-agnostic is not basis-invariant. Scaling every input by a constant is safe;
+     substituting a different valuation is a different problem instance, because it can reorder
+     the players and change which one the optimizer benches.
+133. A tiebreak is a decision layer wherever ties are common. Its safety is argued from a measured
+     engagement rate, never from the word "tiebreak".
+134. A signal is wired when it is measured to change a decision for a reason the contract
+     endorses. Being real, already computed, and interpretable is not sufficient — those three
+     describe a good observable.
+135. A quantity's behaviour is measured with the yardstick that quantity is keyed to. Coverage as
+     a fraction and coverage as unfilled slots are different orderings, and they disagree on real
+     board states.
+136. A published number is one a script in the record reproduces. Where a remembered figure and a
+     reproduced figure disagree, the reproduced one is published and the other is withdrawn by
+     name rather than quietly dropped.
