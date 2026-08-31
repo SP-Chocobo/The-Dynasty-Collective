@@ -6335,3 +6335,288 @@ the record before a freeze.
 142. When a refactor removes a quantity's consumers, the producer is removed with them. A
      producer outliving its role is where semantic drift starts, and it is invisible to every
      consumer-side audit.
+
+---
+
+# Appendix — future-pick valuation (task #85), investigated
+
+**Verdict: REJECT.** Nothing is wired. `rookie_draft.py` keeps its logic unchanged; only its
+module docstring gains an audit note, and three characterization tests make the findings
+executable. Production behaviour is byte-identical.
+
+The hypothesis was that `rookie_draft.estimate_future_pick_value` — complete, tested, called by
+nothing — is a stranded signal worth connecting, because the Trade Calculator prices every future
+pick at one flat number. The investigation says the flat number is **already the better answer**,
+and that the primitive is measurably wrong in two independent ways.
+
+## 0. A correction to this audit's own framing of #85
+
+The finding as I logged it read: *"Draft Sharks prices 12/12 round-1 slots from 83 down to 19 —
+a 64-point spread — and the flat price is 29."* **That compares two different assets.**
+
+* `rookie_pick_slot` rows (`1.01` … `4.12`) price the **current** year's draft, where the slot is
+  known. They are priced **exactly**, and the existing flat-lookup path already returns them
+  exactly. Nothing is lost there and no estimate is needed.
+* `future_pick` rows (`"2027 Random Rd 1"`) price a draft whose slot **nobody knows yet**. That
+  is the only place a flat number is used, and the only place this primitive could apply.
+
+The 64-point spread was never being discarded. It belongs to an asset class the engine already
+prices correctly. The real question is much narrower, and the rest of this appendix asks it.
+
+## 1. Representation — where owner survives, and where it dies
+
+| layer | carries | owner present? |
+|---|---|---|
+| Sleeper ingest (`get_traded_picks`) | `season`, `round`, `roster_id` (original owner), `owner_id` (holder) | **yes** |
+| Vendor ingest (`parse_draftsharks_trade_value_chart_pdf`) | `asset_type`, `name`, `value` | **no — by the vendor's own design.** `"2027 Random Rd 1"` is ownerless because the slot is unknowable |
+| Roster/trade state (`build_pick_ledger`) | the raw Sleeper dicts, as `roster_id → {acquired, given_away}` | **yes** |
+| Trade Calculator, browse panel (`_roster_assets`) | builds a display row from the ledger | **yes** — and it computes a value here |
+| Trade Calculator, **pricing** (`_price_trade_side`) | a **string**: `"2027 Random Rd 1"` | **no** |
+| Draft decision layer (`draft_room`, `draft_strategy`, `pick_synthesis`, `pick_debate`, `screen_context`, `lineup_optimizer`) | — | **picks do not exist here at all** |
+| `CandidateSnapshot` | `player_id`, `position`, `projected_points`, … | a candidate is a player; a pick is never a candidate |
+
+Two structural facts fall out.
+
+**The CDME decision layer has no future-pick surface whatsoever.** A grep for pick assets across
+all six decision modules returns nothing. So the primitive cannot influence a draft
+recommendation even in principle; the only decision surface in the product that prices picks is
+the Trade Calculator.
+
+**Owner is destroyed one call before the price is computed, by the widget itself.** Clicking an
+asset in the browse panel appends `a["line"]` — the bare string — to a `st.text_area` the user
+also types into freely, and `_price_trade_side` re-prices from that text. The text buffer is not
+an incidental serialization; it is the two-way-bound source of truth, and the panel's own comment
+says so: *"the box … stays the single source of truth for what's actually in the trade … Nothing
+here re-implements pricing."* The value shown beside a pick in the browse panel is display only.
+
+## 2. Call graph — the whole module is orphaned
+
+Not "one function disconnected from one surface":
+
+```
+grep -rn "import rookie_draft|from rookie_draft" --include=*.py .
+  → test_rookie_draft.py:11        (and nothing else)
+```
+
+`rookie_draft` is imported by its own test file and by nothing else — not `app.py`, not any
+engine module, not even `run_rookie_draft_analysis.py` or `run_rookie_draft_validation.py`, which
+despite their names drive `draft_room` with a rookies-only pool scope. There is no partial
+wiring anywhere to complete.
+
+Every current consumer of future-pick valuation is `merger.pick_value(...)`, at four sites:
+`app.py:1875` (LLM context text), `app.py:3579` (`_price_trade_side` — **the only decision
+path**), `app.py:3638` (browse-panel display), `app.py:5062` (League page caption).
+
+## 3. Reachability — measured, not inferred from magnitude
+
+The vendor publishes a flat future-pick row for **exactly two distances**:
+
+| season | seasons_until_draft | Rd 1 | Rd 2 | Rd 3 | Rd 4 |
+|---|---:|---:|---:|---:|---:|
+| 2026 (current) | 0 | — | — | — | — (priced by exact slot instead) |
+| **2027** | **1** | **29** | 14 | 10 | 6 |
+| **2028** | **2** | **27** | 13 | 9 | 6 |
+| 2029 | 3 | — | — | — | — |
+
+So of `FUTURE_YEAR_RECORD_DISCOUNT = {0: 1.0, 1: 0.6, 2: 0.3}`, **the 1.0 entry is structurally
+unreachable** — and it is the entry that produced the headline `+54.0` in the original finding.
+Only weights 0.6 and 0.3 can ever apply.
+
+**The existing test suite exercises only the unreachable distances.** Every
+`estimate_future_pick_value` test runs at `seasons_until_draft=0` or `3`. The suite's headline
+assertion — a 1-11 team's next first must price more than 15.0 above an 11-1 team's — behaves
+like this across all four distances:
+
+| seasons out | vendor flat | 1-11 | 11-1 | spread | assertion | reachable? |
+|---:|---:|---:|---:|---:|---|---|
+| 0 | — | 43.6 | 19.9 | 23.7 | PASS | no |
+| **1** | **29** | 37.8 | 23.6 | **14.2** | **FAIL** | **yes** |
+| **2** | **27** | 32.0 | 24.9 | **7.1** | **FAIL** | **yes** |
+| 3 | — | 43.6 | 19.9 | 23.7 | PASS | no |
+
+**The module's central claim fails its own materiality bar at both distances production can
+reach.** The tests are sound unit tests of the function as written; they simply exercise a regime
+the product cannot enter.
+
+## 4. Basis
+
+**Coverage.** Complete: 12 of 12 slots priced in each of rounds 1–4, plus flat rows at distances
+1 and 2. Coverage is not the problem.
+
+**Semantics — and this is where it breaks.** The flat price is **not a placeholder**. It is
+already a well-calibrated central estimate of the slot distribution:
+
+| round | slot mean | mean excl. 1.01 | slot median | flat 2027 | flat 2028 |
+|---:|---:|---:|---:|---:|---:|
+| 1 | 32.3 | 27.7 | **29.5** | **29** | 27 |
+| 2 | 13.8 | 13.5 | 13.5 | **14** | 13 |
+| 3 | 6.3 | 6.1 | 6.0 | 10 | 9 |
+| 4 | 3.0 | 2.9 | 3.0 | 6 | 6 |
+
+Round 1's flat 29 sits between the distribution's median (29.5) and its mean-excluding-the-
+lottery (27.7) — the raw mean of 32.3 is dragged up by a 1-in-12 outcome, and the vendor has
+priced below it deliberately. Round 2's 14 against a mean of 13.8 is near-exact. **Beating this
+number requires knowing which slot, not knowing the average.**
+
+And the whole prize is one slot:
+
+```
+1.01=83  1.02=40  1.03=36  1.04=33  1.05=30  1.06=30  1.07=29  1.08=25  1.09=22  1.10=21  1.11=20  1.12=19
+```
+
+1.01 → 1.02 drops **43** points; the entire rest of the round, 1.02 → 1.12, spans **21**.
+**67% of round 1's whole spread sits in the single 1.01 slot.**
+
+**The register defect.** A draft slot is **ordinal** — reverse order of finish among *this
+league's own twelve teams*, with exactly one 1.01 however the records fall.
+`estimate_pick_slot` derives it **cardinally**, from one team's win percentage in isolation:
+
+```python
+return 1 + win_pct * (num_teams - 1)
+```
+
+No reference to the other eleven rosters. This is the defect class already catalogued here as
+**#70, cross-register rank and ordinal propagation**. Measured over 400 simulated 12-team,
+14-game seasons (win totals fixed at 84 by construction — a schedule identity, not a model
+assumption):
+
+| | |
+|---|---|
+| mean absolute slot error | **1.89 of 12 — 17% of the whole range** |
+| median | 1.71 |
+| 90th percentile | 3.14 |
+| mean error on the league's **actual worst team** | **3.05 slots** |
+| leagues where it placed the worst team within half a slot of 1.01 | **0 of 400** |
+
+It never finds the slot that carries two-thirds of the value. A worked league makes the mechanism
+obvious — the worst team finished 5-9, which is unremarkable, and the estimator prices its 1.01
+near slot 4.9:
+
+| record | true slot | estimated | error |
+|---|---:|---:|---:|
+| 5-9 | **1** | 4.93 | 3.93 |
+| 5-9 | 2 | 4.93 | 2.93 |
+| 7-7 | 5 | 6.50 | 1.50 |
+| 10-4 | 11 | 8.86 | 2.14 |
+| 10-4 | **12** | 8.86 | 3.14 |
+
+The estimator's outputs span 4.9–8.9 where the truth spans 1–12: in a normal league it is
+**compressed toward the middle by construction**, and therefore returns approximately the flat
+price it was meant to improve on.
+
+**The sample-size defect.** Apart from the zero-games case, `estimate_pick_slot` ignores how many
+games produced the percentage:
+
+| games played | record | est. slot | 2027 value | delta vs flat |
+|---:|---|---:|---:|---:|
+| 0 | 0-0 | 6.50 | 29.3 | +0.3 |
+| **1** | **0-1** | **1.00** | **61.4** | **+32.4** |
+| 2 | 0-2 | 1.00 | 61.4 | +32.4 |
+| 6 | 1-5 | 2.83 | 33.6 | +4.6 |
+| 14 | 3-11 | 3.36 | 32.6 | +3.6 |
+| **14** | **0-14** | **1.00** | **61.4** | **+32.4** |
+
+**0-1 after one week and 0-14 after a full season return the identical number**, while a plainly
+bad 1-5 team gets a *smaller* adjustment than the 0-1 team. The valuation is at its most extreme
+on its thinnest evidence.
+
+**Availability.** Everything a corrected version would need is already in the snapshot:
+`snapshot["rosters"]` → `league_standings.team_standings` returns wins/losses/ties for **all**
+rosters (the population the register defect needs); `snapshot["nfl_state"]` carries `season` and
+`week` (the sample-size and within-season-timing terms). **This is not a data gap** — unlike H3.
+It is a primitive that under-specifies its own inputs.
+
+**Invariants.** `FUTURE_YEAR_RECORD_DISCOUNT` is keyed to whole seasons, while the information
+about next year's draft accumulates weekly: a 2027 pick is discounted to 0.6 in week 1 (when the
+record says nothing) and to 0.6 again in week 17 (when it says almost everything).
+
+## 5. Independent decision value — real, and pointing the wrong way
+
+The one decision surface is the Trade Calculator's verdict, `app.py`'s own four tiers on
+`delta_pct = |receive − send| / max(send, receive)`: **<5% Balanced · 5–10% Slight · 10–20%
+Meaningful · ≥20% Material**. Pick values are additive contributors to those sums, so a changed
+pick price genuinely can change a verdict.
+
+Measured **conditionally** — assuming the architecture change of §6 had already been made — over
+real priced player assets (157 of them), trades of the form *send player A, receive player B plus
+one 2027 first*, sweeping the pick owner's record:
+
+| record regime | seasons out | pairs | verdict-tier changes |
+|---|---:|---:|---:|
+| full season (14 games) | 1 | 5175 | 550 — **10.6%** |
+| full season (14 games) | 2 | 5175 | 370 — 7.1% |
+| **early season (1–3 games)** | 1 | 2070 | 378 — **18.3%** |
+
+**This is not H2's zero.** The signal does move decisions. But it moves them **more often on one
+to three games of evidence (18.3%) than on a full season (10.6%)** — because 0-1 and 0-14 produce
+the identical extreme, and 3-0 and 14-0 do too. And within the full-season regime the changes
+concentrate at the extremes (0-14: 69, 14-0: 57, 13-1: 56) where, per §4, the estimator is
+betting on a 1.01 it demonstrably cannot identify.
+
+That is the decisive result. A signal whose influence *rises* as its evidence *falls* is not a
+weak signal; it is a miscalibrated one.
+
+## 6. Architectural cost, if one wanted it anyway
+
+Three independent changes, none small:
+
+1. **An owner-carrying asset representation.** Today a trade side is a user-editable newline
+   text buffer, and that is deliberate — one pricing path for typed and clicked assets alike.
+   Carrying an owner means either a structured asset list running parallel to the text (two
+   sources of truth, precisely what the current design refuses) or an owner-bearing string
+   grammar a human must type correctly and a parser must disambiguate against display names.
+2. **A future-pick inventory model.** `build_pick_ledger` lists only picks that have *already
+   been traded*, by explicit design: *"an untouched pick is assumed to still belong to its
+   original roster and isn't worth listing… not a full inventory of every hypothetical future
+   pick."* Pricing "your own 2027 first" dynamically requires inventing that inventory.
+3. **Rewriting the primitive.** The register defect needs the full standings population; the
+   sample-size defect needs games played; the timing defect needs the week. The inputs exist,
+   but the signature, the mapping, and every constant would change — and re-deriving those
+   constants is a calibration exercise, not a wiring one.
+
+That is the price. What it buys, in a normally-distributed league, is a pick price that moves by
+a few points around a flat number that already equals the distribution's centre.
+
+## 7. Verdict
+
+**REJECT.**
+
+Not "defer for want of data" — the data is present. Not "too small to matter" — 10.6% of verdict
+tiers is not small. The rejection is that **the primitive is measurably less accurate than the
+baseline it would replace**: the flat price is the slot distribution's centre, and the estimator
+neither identifies the slot that carries the value (0 of 400) nor distinguishes one game of
+evidence from fourteen.
+
+What this does **not** claim: that future-pick pricing is a closed question forever. A
+league-relative, rank-based, week-aware estimator is a coherent thing to want. It is a different
+function from this one, it still faces the §6 architectural cost independently, and neither is in
+scope now. The finding is recorded so that work would start from measurement rather than from the
+assumption that the flat number was lazy.
+
+## What changed in the repository
+
+Documentation and tests only; **no production behaviour is modified**.
+
+* `rookie_draft.py` — an audit note in the module docstring, so nobody wires it believing it is
+  ready. The module previously described itself as the fix for a bug it does not, at reachable
+  distances, fix.
+* `test_rookie_draft.py` — three characterization tests pinning the sample-size defect, the
+  register defect, and the reachability result. Each is labelled as documenting a **defect**, not
+  approving one, and instructs whoever fixes it to delete the test and update the module note.
+  All three were verified to fail when the behaviour they pin is changed.
+
+## Invariants
+
+143. Two assets priced by different mechanisms are not compared as though one mechanism were
+     failing. An exactly-priced current-year slot and a flat future pick answer different
+     questions, and the spread of the first is not evidence of loss in the second.
+144. A vendor's flat number is checked against the distribution it summarizes before being called
+     a placeholder. Here it is the median.
+145. A quantity that is ordinal within a population is computed with the population. Deriving it
+     from one member's cardinal statistic in isolation is the same defect wherever it appears.
+146. An estimator is measured for whether its confidence tracks its evidence. One that produces
+     its most extreme output on its thinnest input is miscalibrated, and the size of its effect
+     on decisions is an argument against it, not for it.
+147. Reachability is established over the regimes production can actually enter. A test suite
+     that only exercises unreachable regimes validates the function without validating the
+     feature.
