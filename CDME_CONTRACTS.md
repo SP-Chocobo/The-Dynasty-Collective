@@ -7261,3 +7261,101 @@ producers, or if any of the seven chairs stops being scanned.
 167. A boundary is enforced only by a check that has been shown to fail. A scan whose discovery
      step is incomplete — an AST walk missing an assignment form, a surface enumeration missing a
      producer — reports the absence of what it cannot see, and reads as proof.
+
+---
+
+# Appendix — §5: model selection, optimization, unknown-model evaluation
+
+Structured findings live in `ARCHITECTURE_AUDIT.md` (Pass 3). This entry records the
+measurements, the corrections, and the invariants.
+
+`bot_benchmark.py` is a real methodology, not a stub: fixed per-chair battery, per-chair weighted
+rubric, blind judge, persisted report. Everything below is about its *envelope*.
+
+## What was measured
+
+No provider was called. Every figure comes from the real production parsers, a stubbed provider
+caller, or source inspection.
+
+| measurement | result |
+|---|---|
+| chairs with a battery | **4 of 7** (Prytaneum four; Draft Room's strategist/skeptic/caller have none) |
+| system prompt the battery runs under | `llm_engine.ROLE_SYSTEM_PROMPTS[role]` — the production object, not a copy |
+| benchmark user-prompt size | quant 244–531 · beat 331–428 · contrarian 249–271 · moderator 628–973 chars |
+| production comparable | `pick_debate` evidence block **29,828–52,766** chars on real boards |
+| benchmark user-prompt shape | the bare scenario string; production always wraps as `"League/roster context:\n…\n\nQuestion: …"` |
+| judge prompt contents | task + response + rubric; none of `gemini`, `openai`, `anthropic`, `claude-opus`, `gpt-4o` |
+| moderator rubric dimensions | `synthesis`, `disagreement_handling`, `clarity`, `actionability` — no accuracy, no format |
+| moderator battery prompts asking for the structured block | **0 of 3** |
+| production parsers referenced anywhere in `bot_benchmark` | **0 of 4** |
+| report keys | `{role, ran_at, judge_provider, judge_model, candidates}` — no version, no cost |
+| `save_report` | `all_reports[role] = report` — overwrite, no history |
+| ranking key | `score` only; latency recorded, never scored |
+| provider fallback on failure | none |
+
+A fluent, on-topic Moderator answer omitting the structured block, run through the real
+production parsers: `parse_moderator_verdict → {}`, `parse_todo_directives → {"updates": [],
+"likely_resolved": []}`, `parse_source_findings → []`, `parse_source_comparisons → []`. The same
+answer *with* the block parses (`recommendation: HOLD`, `conviction: Majority`), so the gap is in
+the benchmark and not in a dead parser. Downstream: `log_decision` returns early on
+`if not league_id or not verdict`, `add_todo` is never called, `bot_research` gains nothing, and
+`format_agent_content` renders the reply as prose with no verdict card — none of it raising,
+because `result.errors` only collects `⚠️`-prefixed responses.
+
+## Corrections
+
+**A hypothesis of mine that was wrong, recorded before it became a finding.** From the
+self-contained battery scenarios I concluded the benchmark ran with tools disabled while
+production Beat had live search, and was about to report that mismatch. False:
+`PROVIDER_CALLERS` grants web search to all three providers unconditionally and the benchmark
+uses those same callers. The real finding is the opposite shape — the grant is uniform across
+*chairs*, including the Quant, whose prompt forbids fetching. A tidy wrong answer was one file
+read away from being published.
+
+**A third substring artifact.** Testing whether the tool grant was role-conditional, a naive
+`"role" in source` returned `True`, matching `messages=[{"role": "user", …}]` and a comment.
+Verified properly: no caller takes a role parameter and the grant is a literal in the request.
+Same class as D's `candidate.bpa` / `bpa_source` and Pass 2's `team_label` / `surface`.
+
+**Two scratch-probe slips, caught before they reached a conclusion.** A line-filter meant to
+print `log_decision`'s guard returned `[]` (the guard spans two lines), and a "does the report
+record a battery version" check was a docstring substring match that returned `True` when no
+such field exists. Both were re-verified by hand; neither reached the record as a finding.
+
+## Tests added
+
+`test_benchmark_contract_coverage.py` — 19 tests, in two deliberately separate postures.
+
+**Enforcement.** `JudgeBlindnessTests` makes the module's own stated key safeguard a property
+rather than a convention: the judge prompt carries task, response and rubric and no candidate
+identity, and `_judge_response`'s parameter list is pinned so a future argument carrying
+identity fails. `BenchmarkCoverageTests` pins chair coverage, that the battery runs under the
+production prompt object, the report's exact key set, and the overwrite-not-append behavior.
+
+**Characterization.** `ModeratorContractIsNotBenchmarkedTests` records a KNOWN GAP — today's
+behavior, deliberately asserted, to be **inverted rather than deleted** when repaired, the same
+posture as the round-boundary characterization in `test_draft_strategy.py`.
+
+Non-vacuity, four probes planted in real production code and reverted: a candidate identifier in
+the judge prompt (**FAIL**), a fifth Prytaneum chair with no battery (**FAIL**), a `cost` key on
+the report (**FAIL**), and — confirming the characterization behaves as designed — adding a
+`format` dimension to the moderator rubric (**FAIL**, demanding inversion).
+
+## Invariants
+
+168. A benchmark measures a chair only to the extent its inputs match that chair's real
+     operating envelope. An identical system prompt establishes the contract; a toy user
+     message two orders of magnitude smaller than production establishes nothing about
+     capacity, and a model cannot be disqualified on a dimension the battery never exercises.
+169. Where a chair's output is consumed by machine, the machine contract is part of the job and
+     must be checked deterministically, by the production parser, not scored by a judge. A
+     selection methodology that ranks only prose can recommend a model that silently breaks
+     every downstream consumer.
+170. A stored evaluation is comparable only against inputs and grading criteria that are
+     recorded with it. Results held against code that moves underneath them cannot be replayed,
+     and a score history over unversioned batteries is more misleading than no history at all.
+171. Chair-level scores do not compose. A model chosen for its own output can degrade the chair
+     that consumes it, and only a chain-level evaluation can see that.
+172. Equalizing a capability across chairs normalizes comparison and forfeits measurement of
+     that capability. Both are real; which one is wanted is a decision, and it should be
+     recorded as one rather than inherited from a convenience.

@@ -856,3 +856,352 @@ than one it has broken (3.5, 4.3, 4.4), or a named precondition for later sectio
    building.
 5. **4.5 — chair contract versioning.** Cheap, and a precondition for §5's benchmarking to be
    meaningful. Not worth doing before §5 is scoped.
+
+---
+
+## Pass 3 — §5
+
+**Scope:** Build Guide v2 §5 (model selection, optimization, unknown-model evaluation), whose
+mandate is that *"model optimization must be role-specific, empirical, repeatable, versioned,
+and downstream-aware. 'Best model' is not a universal property; it is a property of a chair
+contract under a defined operating envelope."*
+
+**Baseline:** `84cf154` on `ui-authority-pass`; `main` frozen at `9fb5102`. No production file
+was modified. #91–93 remain queued and were not advanced; §4.5 (contract versioning) and §4.4
+(per-chair evidence) recur here as §5 questions and are cross-referenced to #93 rather than
+built.
+
+**The headline: §5 is the best-served section audited so far.** `bot_benchmark.py` is a real,
+working, role-specific, empirical methodology — not a stub and not a plan. The findings below
+are about its *envelope*, not its absence.
+
+### 5.1 Does a model-selection methodology exist for each chair?
+
+**STATUS: EXISTS**
+**LOCATION:** `bot_benchmark.py` — `BENCHMARK_BATTERY:37`, `RUBRIC:196`, `_judge_response:231`,
+`run_benchmark:262`; UI at `app.py:2277-2360`.
+**EVIDENCE:** three fixed scenarios per chair, a four-dimension weighted rubric per chair
+(weights sum to 100, verified by existing tests), each answer scored by a separate judge call,
+weighted average per model, results sorted best-to-worst and persisted. Rubrics are deliberately
+**not** shared across chairs — the module's own reasoning is that *"'accuracy' means something
+different for a Quant's math than for a Beat Tracker's news reporting."* That is exactly the
+guide's "property of a chair contract, not a universal property" framing, implemented.
+**BOUNDARY:** reputation → measurement. **Structural** (the battery is the only input to the
+ranking).
+
+### 5.2 Testing a never-before-evaluated model without human intervention
+
+**STATUS: EXISTS for testing; human-in-the-loop for selection, by design**
+**EVIDENCE:** candidates are `(provider, model)` pairs drawn from a live model-list fetch
+(`llm_engine.LIST_MODELS_BY_PROVIDER`), so a model released yesterday can be benchmarked today
+with no code change and no per-model configuration. The battery, rubric, and judge are all
+model-agnostic.
+Applying the result is **not** automatic: `app.py:2354` offers an explicit *"Apply … to …"*
+button, and only for the rank-1 candidate. `bot_benchmark` never writes to `bot_config` — the
+module docstring states this as a deliberate separation.
+**RISK:** low. Autonomous *evaluation* with human *selection* is a defensible reading of the
+guide; noted rather than faulted.
+
+### 5.3 Blind judging — the one safeguard that matters, now enforced
+
+**STATUS: EXISTS → ENFORCED (new this pass, test only)**
+**EVIDENCE:** `_judge_response` receives `(role, question_prompt, response_text,
+judge_provider, judge_api_key, judge_model)` — the candidate's provider and model are not
+parameters, so they cannot be leaked. Measured by stubbing the provider caller and capturing the
+exact judge prompt: it contains the task, the response, and the rubric, and none of `gemini`,
+`openai`, `anthropic`, `claude-opus`, `gpt-4o`.
+**Now pinned** by `test_benchmark_contract_coverage.JudgeBlindnessTests`, including a signature
+guard so a future parameter carrying candidate identity is a test failure. Non-vacuity: planting
+`"MODEL UNDER TEST: gpt-4o"` into the judge prompt **fails** the blindness test; a companion test
+asserts the prompt does carry task, response and rubric, so blindness cannot pass by emptiness.
+**Residual, stated:** the *response text itself* can still identify its author (a model that
+writes "as an AI developed by …"). Nothing scrubs that, and nothing could reliably.
+**BOUNDARY:** candidate identity → judge. **Enforced.**
+
+### 5.4 Chair coverage
+
+**STATUS: PARTIAL — 4 of 7 chairs**
+**EVIDENCE:** `BENCHMARK_BATTERY` covers exactly the four Prytaneum chairs. The Draft Room's
+`strategist` / `skeptic` / `caller` have **no battery, no rubric, and no routing UI** — their
+providers come from `pick_debate.DEFAULT_ROLE_PROVIDERS`, and `debate_pick` is never passed
+`role_models` from `app.py:4783`. This is documented as deliberate (*"an orchestration layer,
+exposing its own defaults, not a slot in the existing four-role trade-debate roster"*), and it is
+consistent — but it means the three chairs that reason directly over the CDME snapshot are the
+three with no model-selection methodology at all.
+**Pinned** by `test_the_draft_room_chairs_have_no_battery_and_that_set_is_pinned`, so adding a
+fourth Draft Room chair, or moving one under `bot_config`, becomes visible.
+**Verdict: DOCUMENT.** Building a Draft Room battery is real work with a real prerequisite —
+it would need snapshot fixtures, which is #88's blocked capture.
+
+### 5.5 The operating envelope — benchmark vs production
+
+**STATUS: PARTIAL — the chair contract is exact; the context schema is not**
+
+**EVIDENCE.** `run_benchmark` uses `llm_engine.ROLE_SYSTEM_PROMPTS[role]` — the *production*
+system prompt object, not a copy. That is the strongest possible answer to "does the benchmark
+evaluate behavior under the exact chair contract," and it is now pinned by test.
+
+The user half does not match, in two ways:
+
+| | benchmark | production |
+|---|---|---|
+| shape | the bare scenario string | `f"League/roster context:\n{context}\n\nQuestion: {question}"` |
+| size | quant 244–531 · beat 331–428 · contrarian 249–271 · moderator 628–973 chars | `build_context` (roster table, league-wide depth, freshness manifest, conversation memory, to-dos) — the comparable `pick_debate` evidence block measured **29,828–52,766** chars on real boards |
+
+So every model is graded on a message shape it will never receive, at roughly **two orders of
+magnitude** less context than production. Two §5 questions fall out of this directly:
+*"How are scores made comparable when models have different context capacity?"* — the question
+never arises, because no scenario approaches any model's capacity. And *"can a model be
+disqualified from a chair because it cannot reliably accommodate that chair's required
+context?"* — **no**, structurally: the battery never exercises the context that would disqualify
+it.
+**RISK:** moderate. A model whose quality degrades over long context ranks identically to one
+that does not.
+**DEPENDENCIES:** a realistic-envelope battery needs a fixture (#88, blocked). Named, not built.
+
+### 5.6 The Moderator's machine-parsed contract is not benchmarked — the finding
+
+**STATUS: VIOLATED against the guide's own mandate ("under the exact chair contract")**
+
+**LOCATION:** `bot_benchmark.RUBRIC["moderator"]:216`; `BENCHMARK_BATTERY["moderator"]:134`;
+`llm_engine.MODERATOR_SYSTEM_PROMPT:151-186`; `app.process_moderator_output:816`.
+
+**EVIDENCE.** The Moderator is the only Prytaneum chair whose output is consumed **by machine**
+rather than only read. Its system prompt — the exact one the benchmark runs models under —
+requires the response to *"end with this exact structured block — one field per line, using
+these exact labels"*, and four production consumers depend on it. Measured:
+
+| check | result |
+|---|---|
+| block demanded by the system prompt the benchmark uses | **yes** |
+| any moderator battery prompt asking for it | **no** |
+| any moderator rubric dimension mentioning format / structure / block / field / label / parse | **no** |
+| any moderator rubric dimension about accuracy or factual grounding | **no** — dimensions are `synthesis`, `disagreement_handling`, `clarity`, `actionability` (quant and beat both *do* have `accuracy`) |
+| `bot_benchmark` referencing any production parser | **no** — none of the four appears anywhere in the module |
+
+A fluent, on-topic Moderator answer that simply omits the block was run through the real
+production parsers:
+
+```
+parse_moderator_verdict   -> {}
+parse_todo_directives     -> {"updates": [], "likely_resolved": []}
+parse_source_findings     -> []
+parse_source_comparisons  -> []
+```
+
+and the same answer *with* a block parses correctly (`recommendation: HOLD`,
+`conviction: Majority`) — so the gap is in the benchmark, not in a dead parser.
+
+**What that costs in production, traced.** `log_decision` returns early on `if not league_id or
+not verdict` → no decision row. No `ACTION ITEM` → `todo_log.add_todo` never called. No
+`SOURCE FINDING` → `bot_research` gains nothing, and its `COMPOSITE_SOURCE_WEIGHTS` entry stays
+unfed. `format_agent_content` finds no `^RECOMMENDATION:` → the whole reply renders as prose and
+the verdict recap card never appears. None of these raises: `result.errors` only collects
+responses prefixed `⚠️`, so a well-formed, block-less answer is not an error. **Four systems
+degrade silently.**
+
+**Why this is a violation and not a preference.** The benchmark's entire purpose is to decide
+which model holds a chair, and the UI puts an *Apply* button under the winner. A model can
+therefore top this rubric on all four dimensions and still fail the chair's non-negotiable
+machine contract — and the methodology that recommended it would never have looked.
+
+**BOUNDARY:** chair contract → benchmark. **Instructional** — the prompt asks for the block;
+nothing in the selection path checks it.
+
+### 5.6a Proposed repair and blast radius — NOT APPLIED
+
+*Repair.* A **deterministic** pre-judge gate, not a rubric dimension — the check needs no model
+and no judgement:
+
+```python
+if role == "moderator" and not llm_engine.parse_moderator_verdict(response):
+    contract_failed = True     # recorded per question, and surfaced like any_failed
+```
+
+Better than adding a rubric line, because it uses the production parser itself rather than
+asking a judge to eyeball formatting, and because it can gate rather than merely penalise.
+
+*Blast radius.* `bot_benchmark.py` only: one added check in `run_benchmark`, one extra key per
+question, one caption in `app.py`. No engine module, no debate path, no valuation reachable.
+Existing tests in `test_bot_benchmark.py` construct reports directly and would need the new key.
+
+*Why it is being reported, not applied.* It changes which model a run recommends, which is a
+behavior change in a selection tool, and it raises one design question the mandate reserves for
+you: whether a contract failure should **zero** the candidate (disqualification) or merely flag
+it (`any_failed`-style). Those give different winners. **DEFER, pending a scoped mandate.**
+
+### 5.7 Per-chair evaluation dimensions against §5's own list
+
+**STATUS: PARTIAL.** §5 names the dimensions each chair should be evaluated on. Mapping the
+battery and rubric onto that list — this is my reading of scenario intent against §5's wording,
+not a measurement, and is offered as such:
+
+| chair | §5's dimensions | covered | not covered |
+|---|---|---|---|
+| Beat | discovery, source filtering, freshness, relevance, contradiction detection, actionable extraction | 4 | **discovery, freshness** — every scenario is self-contained, so no lookup is required and no dated source appears |
+| Quant | numerical retrieval, projection/ranking verification, arithmetic fidelity, source quality, conflicting numbers | 1 (arithmetic fidelity, via `accuracy`) | **retrieval, verification, source quality, conflicting numbers** — every figure is handed to the model in the prompt, and no scenario presents two sources that disagree |
+| Contrarian | meaningful challenge, falsification, evidence quality, resistance to consensus pressure, rejecting insufficient evidence | 2 | **consensus pressure** (all three scenarios present one colleague's claim, never a unanimous panel), **evidence quality**, **rejecting insufficient evidence** |
+| Moderator | adjudication, uncertainty handling, role discipline, synthesis, factual grounding, stand-alone answer | 3 | **role discipline** (5.6), **factual grounding** (no accuracy dimension exists) |
+
+The Quant row is the one worth pausing on: production Quant's stated core job is to *"weigh two
+independent quantitative sources against each other"* and *"note where they agree or diverge"* —
+and no battery scenario gives it two sources. **Verdict: DOCUMENT.** Extending the battery is
+cheap and low-risk, but it is battery design work, not a defect repair, and it should be done
+once rather than piecemeal.
+
+### 5.8 Score normalization across models
+
+**STATUS: PARTIAL — one axis is normalized well, four are not measured**
+**EVIDENCE:** output style is normalized by construction (identical inputs, one rubric, blind
+judge). Latency is recorded per question and averaged, but **never enters the ranking** —
+`results.sort(key=lambda r: r["score"])`. Cost is **absent entirely**: no token count, no price
+field anywhere in the module or the report (grep across the tree returns no pricing model).
+Context capacity is untested (5.5). Tool capability is deliberately equalized (5.9).
+So §5's *"can routing deterministically combine capability, reliability, context capacity,
+latency, tool performance, and cost?"* → **capability yes, reliability partly (`any_failed`),
+the rest no.** *"How do pricing changes affect routing?"* → they cannot; price is not an input.
+
+### 5.9 Reasoning ability vs tool-use ability
+
+**STATUS: MISSING — and this corrects a hypothesis of mine, see 5.12**
+**EVIDENCE:** all three provider callers grant live web search **unconditionally** —
+`web_search_20260209` (Claude), Google Search grounding (Gemini), `web_search` (OpenAI) — with no
+role parameter to branch on. `run_benchmark` calls those same callers, so the battery runs
+*with* tools. The grant is uniform: the Quant holds live search while its prompt says *"do not
+go fetch outside market consensus yourself — that is other analysts' jobs,"* and the Beat holds
+it while its prompt says *"Use live search whenever it would sharpen the answer."*
+Consequently the evaluation cannot separate the two abilities: every chair has the same grant,
+no scenario requires a lookup, and no scenario forbids one. A Beat model that never searches and
+a Quant model that always does are both scored purely on prose.
+**BOUNDARY:** tool grant → chair. **Absent** (uniform), with the prohibition **instructional** —
+the §4.2 finding one level deeper, at capability rather than prose.
+**Note in fairness:** the uniformity is deliberate and documented, and it is a *good* answer to
+§5's normalization question — *"which provider ends up on the Beat Tracker/Contrarian role is
+purely a 'whose answers do you like' choice now, not a capability tradeoff."* It normalizes
+capability at the cost of being unable to measure it.
+
+### 5.10 Detecting degradation of an existing model
+
+**STATUS: MISSING**
+**EVIDENCE:** `save_report` does `all_reports[role] = report` — one report per role, overwritten
+on every run. There is no history, so there is no time series, so a model that has got *worse*
+cannot be distinguished from one that was always this good. §5 asks for exactly this
+("not just superiority of a new model"), and the answer is no.
+**Pinned** by `test_saving_a_report_replaces_rather_than_appends`.
+**Verdict: DOCUMENT.** Append-with-history is a small change, but it is only worth making
+together with 5.11's versioning — a time series of scores against silently-changing batteries
+and prompts would be a *misleading* trend, which is worse than none.
+
+### 5.11 Versioning and replay of benchmark results
+
+**STATUS: MISSING**
+**EVIDENCE:** the report's keys are exactly `{role, ran_at, judge_provider, judge_model,
+candidates}` — measured by running a real report through a stubbed caller. It records **no**
+battery version, rubric version, chair-contract version, or copy of the system prompt used;
+`run_benchmark` reads `llm_engine.ROLE_SYSTEM_PROMPTS[role]` live. Edit a chair prompt or a
+rubric weight and every stored report silently becomes incomparable, with nothing in the record
+saying so. §5's *"can benchmark results be replayed from fixed inputs, evidence, tool results,
+and grading criteria?"* → **no**: the inputs and grading criteria live in code that moves under
+the results. Live web search compounds it — two runs of the same battery are not the same
+experiment.
+This is §4.5 (no `CONTRACT_VERSION` anywhere in the tree) arriving where it actually bites.
+Cross-referenced to **#93**, which stays queued.
+**Pinned** by `test_the_report_shape_is_pinned_so_absent_fields_stay_visible`, which fails if a
+version or cost field is added — so the absence is now a stated fact rather than an assumption.
+
+### 5.12 Model pinning, fallback, and a correction to my own hypothesis
+
+**STATUS: PARTIAL**
+**EVIDENCE:** what actually answered is recorded — `append_message` stamps `provider` and
+`model` on every persisted message, deliberately, so a later reassignment does not rewrite
+history. But the *defaults* are aliases, not pins: `CLAUDE_MODEL = os.getenv("ANTHROPIC_MODEL",
+"claude-sonnet-5")`, whose own comment reads *"was a now-retired dated snapshot."* An alias can
+change what runs with no diff. And `PickDebateResult` records `role_providers` but **not**
+`role_models` (§4), so the Draft Room's three chairs record no model at all.
+**Fallback hierarchy: absent.** A failed provider returns a `⚠️` string that is surfaced and
+logged; there is no deterministic fall-through to a second provider, in either debate system.
+
+**Correction — a hypothesis of mine that was wrong.** Reading the self-contained battery
+scenarios, I formed the view that the benchmark ran with tools disabled while production Beat
+had live search, and was about to report that mismatch. It is false: `PROVIDER_CALLERS` grants
+search to all three providers unconditionally and the benchmark uses those same callers, so
+tools are enabled in both. The real finding is the opposite shape — the grant is uniform across
+*chairs*, including one told not to fetch (5.9). Recorded because the wrong version was a
+plausible, tidy finding, and the difference was one file read.
+
+**A third substring artifact, recorded.** Checking whether the tool grant was role-conditional,
+a naive `"role" in source` returned `True` — matching `messages=[{"role": "user", …}]` and a
+comment. Verified properly (no role parameter exists on any caller; the grant is a literal in
+the request). Same artifact class as D's `candidate.bpa`/`bpa_source` and Pass 2's
+`team_label`/`surface`. Three passes, three occurrences: the lesson is holding.
+
+### 5.13 Downstream-awareness — the chain is never run
+
+**STATUS: MISSING**
+**EVIDENCE:** the battery scores each chair **in isolation** against fixed inputs. The
+Contrarian's scenarios present a single hand-written colleague's claim; the Moderator's present
+three hand-written analyst reports labelled QUANT / BEAT / CONTRARIAN. Those synthetic reports
+are what make results comparable and stable rerun-to-rerun — the module says so — and they are
+exactly what makes the evaluation downstream-blind. No test anywhere takes model A's *actual*
+Beat output into model B's Contrarian.
+§5's *"does an optimizer risk selecting a model that scores highly in isolation but degrades
+downstream chairs when its output is consumed by another role?"* → **yes, structurally.** A Beat
+model that writes beautiful discursive prose may score well and still give the Contrarian a
+worse handle than a terser one would. Nothing measures that, and 4.4's absent per-chair evidence
+schema is why nothing easily could.
+**Verdict: DOCUMENT**, and it is the section's deepest gap. The guide's mandate names
+downstream-awareness explicitly, and it is the one word of the five the implementation does not
+answer at all. Prerequisite is #93's evidence schema, which stays queued.
+
+---
+
+## Pass 3 summary
+
+| item | status | boundary kind |
+|---|---|---|
+| 5.1 role-specific empirical methodology exists | EXISTS | structural |
+| 5.2 unknown-model evaluation without intervention | EXISTS (selection stays human, by design) | structural |
+| **5.3 blind judging** | **EXISTS → ENFORCED (new)** | **enforced** |
+| 5.4 chair coverage | PARTIAL — 4 of 7 | pinned |
+| 5.5 operating envelope (contract exact, context schema not) | PARTIAL | structural / absent |
+| **5.6 Moderator's machine contract not benchmarked** | **VIOLATED** | **instructional** |
+| 5.6a repair specified, blast radius measured | DEFERRED to a scoped mandate | — |
+| 5.7 per-chair dimension coverage | PARTIAL (Quant 1 of 5) | — |
+| 5.8 score normalization (latency unscored, cost absent) | PARTIAL | absent |
+| 5.9 reasoning vs tool-use separation | MISSING (uniform grant) | instructional |
+| 5.10 degradation detection | MISSING (report overwritten) | pinned |
+| 5.11 versioning / replay of results | MISSING | absent |
+| 5.12 pinning and fallback | PARTIAL (recorded, not pinned; no fallback) | structural / absent |
+| 5.13 downstream-awareness / full chain | MISSING | absent |
+
+Against the mandate's five words: **role-specific ✓, empirical ✓, repeatable ✗** (5.11),
+**versioned ✗** (5.11), **downstream-aware ✗** (5.13).
+
+### Does anything clear the bar for a production change?
+
+**One item: 5.6.** It is a proven mismatch between a chair's non-negotiable machine contract and
+the methodology that selects who holds that chair, verified end-to-end through the real
+production parsers, with the downstream cost traced to four named consumers. The repair is
+deterministic, uses the production parser rather than a judge's opinion, and touches one module.
+
+It is **deferred** rather than applied because it changes which model a run recommends — a
+behavior change in a selection tool — and because gate-versus-flag is a design decision that
+produces different winners and is yours to make. This is the same posture as §3.3: evidence
+complete, blocked on a decision rather than on measurement.
+
+Nothing else clears the bar. 5.10 and 5.11 are genuinely small changes that should be made
+*together* or not at all, since a score history against silently-changing batteries would be
+actively misleading. 5.4, 5.5 and 5.13 all have the same prerequisite — a realistic fixture
+(#88, externally blocked) or an evidence schema (#93, queued) — and building any of them now
+would mean designing against assumed inputs, which this programme has already declined to do.
+
+### Follow-ups from this pass, ranked by evidence then severity
+
+1. **5.6 — scoped repair mandate for the Moderator contract gate.** Evidence complete; one
+   design decision (gate vs flag) outstanding.
+2. **5.10 + 5.11 together — report history plus battery/rubric/prompt versioning.** Small,
+   mutually dependent, and the pair converts "repeatable" and "versioned" from ✗ to ✓.
+3. **5.7 — extend the Quant battery to include conflicting sources.** The cheapest real coverage
+   gain in the pass; production Quant's core stated job is currently untested.
+4. **5.13 — chain-level evaluation.** The deepest gap, and correctly blocked behind #93.
+5. **5.4 — a Draft Room battery.** Blocked behind #88's fixture; named so it is not forgotten.
