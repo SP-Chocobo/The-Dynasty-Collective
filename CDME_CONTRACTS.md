@@ -6802,3 +6802,162 @@ point. The test now stands between a future retune and a silent order dependence
      coupling documents an intention; only a test enforces one.
 151. Immunity that follows from the current values of a tunable table is recorded as contingent,
      and pinned, rather than reported as a structural property.
+
+---
+
+# Appendix — D: the decision-boundary information audit
+
+**Verdict: ALREADY REPRESENTED.** No production change. One architectural contract test added,
+plus documentation. The engine consumes what its own contracts say it should; what is missing at
+the boundary is *explanation*, not *decision input*, and no candidate cleared the bar of a
+measurable decision consequence.
+
+## The decision boundary, exactly
+
+`pick_synthesis.build_snapshot(...) → PickSnapshot`. It is **singular and closed**:
+
+| consumer | signature | can it reach the engine? |
+|---|---|---|
+| `pick_debate.debate_pick` | `(snapshot, *, previous_snapshot, role_providers, api_keys, role_models)` | no — imports only `llm_engine` and `pick_synthesis` types |
+| `draft_board_ui.serialize_snapshot` | `(snap, *, pick_header, state_tags)` | no — `design_system`, `player_universe.FLEX_SLOT_POSITIONS`, and **one constant** from `draft_room` |
+| `screen_context.build_draft_room_context` | `(snap)` | no — imports only `pick_synthesis.PickSnapshot` |
+| `decision_log.log_decision` | `(league_id, question, verdict, moderator_text)` | no |
+
+No consumer imports `data_merger`, `draft_strategy`, `lineup_optimizer`, `rookie_draft`,
+`depth_ratings`, `lineup_readiness`, `roster_diagnostics` or `sleeper_client`. That closure is
+what makes "which fields cross" a well-posed question, and it is what makes the debate's own
+instruction to the models — *"the candidates below are the ONLY real numbers available"* —
+structural rather than aspirational. **Now pinned by test.**
+
+There is a **second** boundary worth naming, because it loses far more than the first:
+`PickSnapshot → each consumer's own projection of it`.
+
+## Boundary 1: engine → decision object. Near-lossless.
+
+Of 19 board-row fields, **4 do not cross**, and of 13 `pick_analysis` fields, **0 do not cross**:
+
+| field | class |
+|---|---|
+| `mode` | constant metadata — **redundant (6)** |
+| `injury_status` | **discarded (3)** — see below |
+| `risk_adj` | **discarded (3)** — the injury term |
+| `time_horizon_adj` | **discarded (3)** — the dynasty-age term |
+
+`universal_value = bpa + time_horizon_adj + risk_adj`, and the snapshot carries both
+`universal_value` and `bpa`, so the **sum** of the two adjustments is recoverable inside the
+object. Only the **split** is lost: an age penalty and an injury penalty are indistinguishable.
+
+## Boundary 2: decision object → consumers. The two see different things.
+
+Read off both formatters by AST, not by matching values in output text (see the self-review):
+
+| | fields |
+|---|---|
+| **reach neither** | `bpa`, `rival_premium_take_probability` |
+| **UI only** | `rival_premium`, `cliff_protection`, `block_opportunity`, `pure_value`, `context_elevated`, `waiting_cost`, `horizon_floor`, `horizon_sensitivity` |
+| **debate only** | `bpa_source`, `confidence`, `opportunity_cost`, `expected_value_of_waiting`, `denial_value`, `position_expected_taken`, `position_run_detected`, `pick_necessity`, `consensus_rank`, `consensus_tier`, `reach_label` |
+
+The four **decision-path flags** — the fields literally named for the decision path — reach the
+human on the board UI (as `_forces` ticks and the `_context_gap` glyph) and **never reach the LLM
+debate that produces the recommendation**. That asymmetry is a real architectural fact and is
+recorded here; it is not called a defect, because the flags are derived from numbers the debate
+already sees, and re-stating a derived boolean to a reasoner that has the inputs is a
+presentation choice, not an information gap.
+
+## The strongest candidate: injury status
+
+**What it is.** Sleeper's `injury_status`, read straight off the players_db onto every board row,
+driving `RISK_ADJ = {IR: −18.0, Out: −10.0, Doubtful: −5.0, Questionable: −1.5}` (dynasty-scaled).
+
+**Where it exists / where it is lost.** On the board row at the decision point; neither the status
+nor `risk_adj` crosses boundary 1, and neither consumer mentions injury anywhere.
+
+**Controlled experiment** — same board, same candidate set, only `injury_status` varied on the
+leader (D Goedert, TE):
+
+| injury_status | universal_value | TAV | rank | moved | any consumer states the reason |
+|---|---:|---:|---:|---|---|
+| None | 14.75 | 19.08 | 1 | — | NO |
+| Questionable | 13.25 | 17.58 | 1 | no | NO |
+| Doubtful | 9.75 | 14.08 | **5** | yes | NO |
+| Out | 4.75 | 9.08 | **21** | yes | NO |
+| IR | −3.25 | 1.08 | **43** | yes | NO |
+
+**Independent decision value: none.** This is the crux. The engine's *ordering is already
+correct* — it moves an IR player from first to forty-third. Nothing about adding the label
+changes which candidate the engine ranks highest, and `_best_alternative` in the debate is
+computed deterministically from TAV, not from prose. What is missing is the **explanation**: a
+reasoner told "do not recompute" sees a 4.75 where a 14.75 belongs and cannot recover why.
+
+**Should production change: no.** Under this audit's own standard, an explanation gap with no
+measurable decision consequence is documented, not built. Recorded as **category 3 — available
+upstream, discarded at the boundary, engine-correct, presentation-incomplete.**
+
+## Negative findings — investigated, and they do not justify a change
+
+* **Role / usage / handcuff data.** Re-confirmed at source: the canonical projections table has
+  **19 columns**, none of them snaps, touches, targets, carries, depth-chart order, games
+  started, or player-to-player linkage. **Category 4 — unavailable.** Unchanged from H3; nothing
+  to manufacture.
+* **`pick_analysis` output.** Zero fields lost. The strategy layer's entire product crosses.
+* **Future picks.** Picks are not candidates; the six decision modules contain zero pick-asset
+  references. Already settled at #85 and not reopened.
+* **Lineup marginal.** Settled at H2 and not reopened; D found no dependency requiring it.
+* **`horizon_floor` / `horizon_sensitivity`.** Cross boundary 1, reach the UI through
+  `_waiting_note`. **Not stranded.**
+* **`bpa`.** Reaches neither consumer, but `universal_value` (which contains it), `bpa_source`
+  and `confidence` all reach the debate. **Category 6 — redundant** for the consumer's purpose.
+* **Consensus / market data.** `consensus_rank`, `consensus_tier`, `reach_label` cross and reach
+  the debate — but only in a **superflex** league, since `_consensus_lookup` is gated there. In
+  this fixture's non-superflex league they are `None` throughout. Correct by contract
+  (**category 5**), and worth knowing when reading any measurement that shows them empty.
+
+## A correction to open item #57
+
+The backlog records *"`waiting_cost` never reaches the debate layer (computed, displayed, not
+consumed)."* Measured: `waiting_cost` **crosses boundary 1 and reaches the UI**, where
+`draft_board_ui._waiting_note` renders it as the replaceability sentence. The accurate statement
+is narrower: it does not reach the **LLM debate prompt**. The item is not wrong about the debate;
+it is wrong if read as "reaches nothing".
+
+## Self-review of this investigation's own measurements
+
+Four errors found in my own work, all corrected above rather than quietly dropped:
+
+1. **Fixture artifact.** A first probe reported `injury_status` as **0/237 populated** and
+   `risk_adj` as uniformly `0.0`. That was **my synthetic `players_db`**, which never set the
+   field — not a production fact. Production reads it straight from Sleeper. Re-run with the
+   field populated, and it is the strongest candidate in the audit.
+2. **Value-matching artifact.** My first boundary-2 pass detected "does this field reach the
+   consumer" by searching for the field's *value* in the output text. It produced false
+   negatives (`pick_necessity` prints as `X/100`, `positional_cliff` as a dict, `near_tie` as
+   prose) and false positives (a coincidentally matching number). Replaced with an AST read of
+   the two formatters, which is what the table above reports.
+3. **Substring artifact.** `"candidate.bpa" in pick_debate.py` returned true by matching
+   `candidate.bpa_source`; `"injury" in draft_board_ui.py` matched an unrelated docstring. Both
+   re-checked by attribute-level AST and corrected.
+4. **A voided measurement.** I measured whether `depth_ratings.depth_label` carries information
+   `need_bonus` does not, and got "85% independent". **That result is withdrawn.** The output is
+   internally contradictory: it pairs `need_bonus = 4.33` (which implies one player already held
+   at a three-slot position) with `depth_label = "None — no rostered players here"` (which
+   implies zero). My roster reconstruction counts by a player's single `position` while the
+   engine's need computation counts by reachable slots, so the two sides were counting different
+   things. `depth_label`'s independence from `need_bonus` is therefore **not established either
+   way** — it needs a measurement that reads the engine's own positional counting rather than
+   rebuilding it. Recorded as open, not as a finding.
+
+## Invariants
+
+152. The decision boundary is closed: `PickSnapshot` is the only object crossing from the engine
+     to anything that decides, and no consumer may import a module that could re-derive a value
+     the snapshot already fixed.
+153. A field's presence in the frozen object is not the same as its arrival at a consumer. Each
+     consumer projects the object, and the projections differ; "reaches the decision" is asked
+     per consumer.
+154. Whether a field reaches a consumer is read from the consumer's own code, never inferred by
+     looking for its value in rendered output. Formatted values and prose defeat the inference in
+     both directions.
+155. A measurement built on a reconstruction of engine state is checked against the engine's own
+     state before its result is reported. Where the two count differently, the result is void.
+156. Missing *explanation* and missing *decision input* are different findings. The first is
+     documented; only the second can justify changing what the engine computes.

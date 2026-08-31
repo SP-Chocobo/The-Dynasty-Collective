@@ -1191,5 +1191,78 @@ class ConsensusReachEndToEndTests(unittest.TestCase):
         self.assertIn(gibbs.reach_label, ("WITHIN CONSENSUS BAND",))
 
 
+class DecisionBoundaryIsClosedTests(unittest.TestCase):
+    """The architectural contract the whole decision layer rests on: PickSnapshot is the ONLY
+    thing that crosses from the engine to anything that decides. Every consumer --
+    pick_debate (the LLM debate that produces the recommendation), draft_board_ui (what the
+    human sees), screen_context (what the assistant panel sees) -- takes the frozen object and
+    cannot reach back for the merger, the players_db, or the board.
+
+    That is what makes "which fields cross the boundary" a well-posed question at all. If a
+    consumer could re-derive a value, the snapshot would stop being authoritative and the
+    debate's own instruction to the models -- "the candidates below are the ONLY real numbers
+    available, do not invent, estimate, or recompute" -- would be unenforceable rather than
+    structural.
+
+    draft_board_ui's single constant import from draft_room is allowed BY NAME below. It is a
+    unit conversion factor, not a way to price anybody, and naming it here means a future
+    import of the board builder itself fails this test instead of slipping in beside it."""
+
+    CONSUMERS = ("pick_debate.py", "draft_board_ui.py", "screen_context.py")
+    FORBIDDEN = {"data_merger", "draft_strategy", "lineup_optimizer", "rookie_draft",
+                 "depth_ratings", "lineup_readiness", "roster_diagnostics", "sleeper_client"}
+    # module -> the names it may import from draft_room, and nothing else.
+    DRAFT_ROOM_ALLOWANCE = {"draft_board_ui.py": {"SLEEPER_WEEKLY_TO_SEASON_FACTOR"}}
+
+    def _imports(self, filename):
+        import ast, os
+        path = os.path.join(os.path.dirname(os.path.abspath(__file__)), filename)
+        with open(path, encoding="utf-8") as handle:
+            tree = ast.parse(handle.read())
+        plain, froms = set(), {}
+        for node in ast.walk(tree):
+            if isinstance(node, ast.Import):
+                for alias in node.names:
+                    plain.add(alias.name.split(".")[0])
+            elif isinstance(node, ast.ImportFrom) and node.module:
+                mod = node.module.split(".")[0]
+                froms.setdefault(mod, set()).update(a.name for a in node.names)
+        return plain, froms
+
+    def test_the_snapshot_consumers_import_no_valuation_module(self):
+        for filename in self.CONSUMERS:
+            plain, froms = self._imports(filename)
+            reached = (plain | set(froms)) & self.FORBIDDEN
+            self.assertEqual(
+                reached, set(),
+                f"{filename} imports {sorted(reached)} -- a snapshot consumer that can reach a "
+                f"valuation module can recompute what the frozen snapshot already decided",
+            )
+
+    def test_only_the_named_constant_crosses_from_draft_room(self):
+        for filename in self.CONSUMERS:
+            plain, froms = self._imports(filename)
+            allowed = self.DRAFT_ROOM_ALLOWANCE.get(filename, set())
+            self.assertNotIn(
+                "draft_room", plain,
+                f"{filename} imports draft_room as a module, which gives it compute_draft_board",
+            )
+            got = froms.get("draft_room", set())
+            self.assertTrue(
+                got <= allowed,
+                f"{filename} imports {sorted(got - allowed)} from draft_room; only {sorted(allowed)} "
+                f"is allowed, and only because it is a unit constant rather than a way to price "
+                f"a player",
+            )
+
+    def test_the_scan_actually_found_imports_so_it_cannot_pass_vacuously(self):
+        for filename in self.CONSUMERS:
+            plain, froms = self._imports(filename)
+            self.assertTrue(plain or froms, f"{filename}: parsed no imports at all")
+            self.assertIn("pick_synthesis", froms,
+                          f"{filename} does not import from pick_synthesis -- either it is no "
+                          f"longer a snapshot consumer, or this scan is reading the wrong file")
+
+
 if __name__ == "__main__":
     unittest.main()
