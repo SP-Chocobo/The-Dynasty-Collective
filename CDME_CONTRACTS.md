@@ -7341,6 +7341,29 @@ the judge prompt (**FAIL**), a fifth Prytaneum chair with no battery (**FAIL**),
 the report (**FAIL**), and — confirming the characterization behaves as designed — adding a
 `format` dimension to the moderator rubric (**FAIL**, demanding inversion).
 
+## Repairs applied retroactively at the §6 boundary
+
+Two §5 items qualified as safe and mechanical once the standing rule changed to implement before
+advancing; the rest are decisions and were left.
+
+**R3 + R4, done together.** A report now carries `battery_fingerprint`, `rubric_fingerprint` and
+`chair_prompt_fingerprint` (12-char content hashes computed at run time, not hand-maintained
+version numbers), and `save_report` keeps `HISTORY_LIMIT = 20` runs per role instead of
+overwriting. `load_report` still returns the newest, so no reader changed. `comparable_history`
+returns only runs sharing the newest one's three fingerprints. Together these convert "repeatable"
+and "versioned" from absent to present; separately, history alone would have been a trend across
+different experiments, which is worse than no trend.
+
+**R5, half of §5.6.** `run_benchmark` records `contract_ok` per question using the real
+production `parse_moderator_verdict`, and `any_contract_failure` per candidate, surfaced in the
+benchmark UI. `None` where a chair has no machine contract, and `None` on a failed call so one
+problem is not counted twice. The score is untouched, and a test pins that identical rubric scores
+rank identically regardless. Gate-versus-flag stays open: it changes which model wins.
+
+Non-vacuity: four probes planted in real code and reverted -- making `contract_ok` feed the score,
+reverting history to overwrite, freezing the battery fingerprint, and returning `False` rather
+than `None` for a chair with no machine contract. All four failed.
+
 ## Invariants
 
 168. A benchmark measures a chair only to the extent its inputs match that chair's real
@@ -7478,3 +7501,16 @@ re-adjudication queue (6.2a), and a stated intent for the freshness crossover (6
 178. A field asserting verification is a defect only where something consumes it. The same
      unconditional `True` is inert in one place and a wrong price in another, so reach decides
      the verdict — and an inert one still needs a test that fires the day it gains a consumer.
+
+179. Record what a measurement was taken under, by content rather than by a version number
+     somebody has to remember. A hash cannot drift out of sync with the thing it names; a
+     version can, and silently.
+180. A history of scores is only honest across runs whose inputs and grading criteria match.
+     Retaining runs without retaining what they ran under produces a trend line over different
+     experiments, which misleads more confidently than having no history at all.
+181. Measuring a contract and scoring it are separable, and separating them is often the honest
+     move. Recording a failure makes it visible to whoever decides; deciding what it costs is a
+     different act, and one that changes outcomes.
+182. Absent is not failed. A chair with no machine contract must record "nothing to satisfy",
+     never "did not satisfy" -- and a call that errored already has its own signal, so counting
+     it a second time as a contract failure overstates one problem as two.

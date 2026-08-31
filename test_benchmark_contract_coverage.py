@@ -133,9 +133,9 @@ class BenchmarkCoverageTests(unittest.TestCase):
         self.assertIn("llm_engine.ROLE_SYSTEM_PROMPTS[role]", source)
 
     def test_the_report_shape_is_pinned_so_absent_fields_stay_visible(self):
-        """The report records what ran and how it scored -- not the battery version, the chair
-        prompt it ran against, or any cost. Pinned so that adding one of those is deliberate,
-        and so their absence is stated rather than assumed."""
+        """The report records what ran, how it scored, and -- since the §5 repair -- the
+        battery/rubric/chair-prompt fingerprints it was conducted under. Cost is still absent.
+        Pinned so that adding a field is deliberate and its absence is stated, not assumed."""
         captured = {}
 
         def _stub(system_prompt, user_prompt, api_key=None, model=None):
@@ -150,16 +150,22 @@ class BenchmarkCoverageTests(unittest.TestCase):
         finally:
             llm_engine.PROVIDER_CALLERS.update(original)
         captured = set(report)
-        self.assertEqual(captured, {"role", "ran_at", "judge_provider", "judge_model", "candidates"})
-        for absent in ("battery_version", "rubric_version", "contract_version", "cost", "chair_prompt"):
+        self.assertEqual(captured, {
+            "role", "ran_at", "judge_provider", "judge_model", "candidates",
+            "battery_fingerprint", "rubric_fingerprint", "chair_prompt_fingerprint",
+        })
+        for absent in ("cost", "tokens", "price"):
             self.assertNotIn(absent, captured)
 
-    def test_saving_a_report_replaces_rather_than_appends(self):
-        """Pins why degradation of an existing model cannot be detected: there is one report
-        per role, never a series. Characterization of a known limitation, not a preference."""
+    def test_saving_a_report_keeps_a_capped_history(self):
+        """REPAIRED (was characterization of 'one report per role, never a series'). Degradation
+        of an existing model was undetectable because nothing retained a prior run. History
+        alone would have been worse than none -- a trend across silently-changing batteries --
+        so the fingerprints below are what make it honest."""
+        self.assertGreater(bot_benchmark.HISTORY_LIMIT, 1)
         source = inspect.getsource(bot_benchmark.save_report)
-        self.assertIn("all_reports[role] = report", source)
-        self.assertNotIn("append", source)
+        self.assertIn("history.insert(0, report)", source)
+        self.assertIn("HISTORY_LIMIT", source)
 
 
 class ModeratorContractIsNotBenchmarkedTests(unittest.TestCase):
@@ -196,11 +202,20 @@ class ModeratorContractIsNotBenchmarkedTests(unittest.TestCase):
         for question in bot_benchmark.BENCHMARK_BATTERY["moderator"]:
             self.assertNotIn("RECOMMENDATION", question["prompt"])
 
-    def test_the_benchmark_never_runs_the_production_parser_over_a_response(self):
+    def test_the_benchmark_now_runs_the_production_parser_but_does_not_score_it(self):
+        """PARTIALLY REPAIRED. The observability half is done: run_benchmark records
+        `contract_ok` per question and `any_contract_failure` per candidate, using the real
+        production parser. The scoring half is deliberately NOT done -- gating versus flagging
+        gives different winners, which is a selection decision, not a fix. This test pins both
+        halves: the parser is consulted, and the score is still the rubric average alone."""
         source = inspect.getsource(bot_benchmark)
-        for parser in ("parse_moderator_verdict", "parse_todo_directives",
-                       "parse_source_findings", "parse_source_comparisons"):
-            self.assertNotIn(parser, source)
+        self.assertIn("parse_moderator_verdict", source)
+        run_source = inspect.getsource(bot_benchmark.run_benchmark)
+        self.assertIn('"contract_ok"', run_source)
+        # The weighted score is computed from rubric scores only; contract_ok is recorded after.
+        self.assertIn('weighted = sum(scores.get(k, 0) * w for k, w, _ in rubric) / weight_total',
+                      run_source)
+        self.assertNotIn("contract", run_source.split("weighted =")[0].split("scores, notes")[-1])
 
     def test_a_fluent_block_less_answer_yields_nothing_for_four_consumers(self):
         """What the winner of that rubric can still do in production."""
@@ -260,6 +275,194 @@ class ToolGrantIsUniformAcrossChairsTests(unittest.TestCase):
                 any(text.strip().startswith(opener) for opener in
                     ("Given this report", "A team signs", "You see two posts")),
                 f"{question['label']} may no longer be self-contained -- re-check the coverage claim.",
+            )
+
+
+class _TempResultsStore:
+    """Redirect bot_benchmark's on-disk report store at a temp file for one test."""
+
+    def __enter__(self):
+        import tempfile
+        self._dir = tempfile.TemporaryDirectory()
+        self._saved = bot_benchmark.RESULTS_PATH
+        from pathlib import Path
+        bot_benchmark.RESULTS_PATH = Path(self._dir.name) / "benchmark_results.json"
+        return self
+
+    def __exit__(self, *exc):
+        bot_benchmark.RESULTS_PATH = self._saved
+        self._dir.cleanup()
+        return False
+
+
+def _stub_caller(response: str):
+    """A provider caller that answers with `response`, and judges everything at 50."""
+    judged = {"n": 0}
+
+    def _call(system_prompt, user_prompt, api_key=None, model=None):
+        # The judge call is the one whose prompt carries the rubric labels.
+        if "Score this response on each dimension" in user_prompt:
+            judged["n"] += 1
+            return ("SYNTHESIS: 50\nDISAGREEMENT_HANDLING: 50\nCLARITY: 50\n"
+                    "ACTIONABILITY: 50\nNOTES: fine")
+        return response
+
+    return _call
+
+
+def _run(role: str, response: str) -> dict:
+    original = dict(llm_engine.PROVIDER_CALLERS)
+    llm_engine.PROVIDER_CALLERS["claude"] = _stub_caller(response)
+    try:
+        return bot_benchmark.run_benchmark(
+            role, [("claude", "some-model")], {"claude": "key"}, judge_provider="claude",
+        )
+    finally:
+        llm_engine.PROVIDER_CALLERS.update(original)
+
+
+class MachineContractIsRecordedButNotScoredTests(unittest.TestCase):
+    """§5.6 repair, observability half. Recorded so a human selecting a model can see it;
+    NOT scored, because gating versus flagging changes which model wins."""
+
+    def test_a_block_less_moderator_answer_is_flagged(self):
+        report = _run("moderator", ARTICULATE_BUT_UNPARSEABLE)
+        candidate = report["candidates"][0]
+        self.assertTrue(candidate["any_contract_failure"])
+        self.assertTrue(all(q["contract_ok"] is False for q in candidate["per_question"]))
+
+    def test_an_answer_carrying_the_block_is_not_flagged(self):
+        """Non-vacuity: the check distinguishes, rather than failing everything."""
+        report = _run("moderator", SAME_ANSWER_WITH_BLOCK)
+        candidate = report["candidates"][0]
+        self.assertFalse(candidate["any_contract_failure"])
+        self.assertTrue(all(q["contract_ok"] is True for q in candidate["per_question"]))
+
+    def test_a_chair_with_no_machine_contract_records_none_not_false(self):
+        """None means 'nothing to satisfy'. Recording False would invent a failure for a chair
+        whose output is only ever read."""
+        report = _run("quant", "A perfectly ordinary numeric analysis.")
+        candidate = report["candidates"][0]
+        self.assertFalse(candidate["any_contract_failure"])
+        self.assertTrue(all(q["contract_ok"] is None for q in candidate["per_question"]))
+
+    def test_the_contract_result_does_not_move_the_score(self):
+        """The whole point of the deferral: identical rubric scores must produce identical
+        ranking scores whether or not the block was emitted."""
+        failing = _run("moderator", ARTICULATE_BUT_UNPARSEABLE)["candidates"][0]
+        passing = _run("moderator", SAME_ANSWER_WITH_BLOCK)["candidates"][0]
+        self.assertEqual(failing["score"], passing["score"])
+        self.assertEqual(failing["score"], 50.0)
+
+    def test_a_failed_call_records_none_rather_than_a_contract_failure(self):
+        """A provider error already has its own signal (`failed`/`any_failed`); reporting it a
+        second time as a contract failure would double-count one problem."""
+        report = _run("moderator", "⚠️ Claude request failed: boom")
+        candidate = report["candidates"][0]
+        self.assertTrue(candidate["any_failed"])
+        self.assertFalse(candidate["any_contract_failure"])
+        self.assertTrue(all(q["contract_ok"] is None for q in candidate["per_question"]))
+
+
+class ReportProvenanceAndHistoryTests(unittest.TestCase):
+    """§5.10 + §5.11 repair, done together because either alone is misleading."""
+
+    def test_a_report_records_the_battery_rubric_and_chair_prompt_it_ran_under(self):
+        report = _run("moderator", SAME_ANSWER_WITH_BLOCK)
+        for key in ("battery_fingerprint", "rubric_fingerprint", "chair_prompt_fingerprint"):
+            self.assertTrue(report[key], f"{key} is empty.")
+            self.assertEqual(len(report[key]), 12)
+
+    def test_the_fingerprints_actually_track_their_inputs(self):
+        """Non-vacuity: a fingerprint that never changes records nothing."""
+        before = _run("moderator", SAME_ANSWER_WITH_BLOCK)
+        saved_battery = bot_benchmark.BENCHMARK_BATTERY["moderator"]
+        saved_rubric = bot_benchmark.RUBRIC["moderator"]
+        try:
+            bot_benchmark.BENCHMARK_BATTERY["moderator"] = [
+                dict(saved_battery[0], prompt=saved_battery[0]["prompt"] + " Also consider age.")
+            ]
+            after_battery = _run("moderator", SAME_ANSWER_WITH_BLOCK)
+            self.assertNotEqual(before["battery_fingerprint"], after_battery["battery_fingerprint"])
+            self.assertEqual(before["rubric_fingerprint"], after_battery["rubric_fingerprint"])
+
+            bot_benchmark.RUBRIC["moderator"] = [(k, w, d + ".") for k, w, d in saved_rubric]
+            after_rubric = _run("moderator", SAME_ANSWER_WITH_BLOCK)
+            self.assertNotEqual(before["rubric_fingerprint"], after_rubric["rubric_fingerprint"])
+        finally:
+            bot_benchmark.BENCHMARK_BATTERY["moderator"] = saved_battery
+            bot_benchmark.RUBRIC["moderator"] = saved_rubric
+
+    def test_history_accumulates_newest_first_and_load_report_still_returns_the_newest(self):
+        with _TempResultsStore():
+            first = _run("moderator", SAME_ANSWER_WITH_BLOCK)
+            first["ran_at"] = 1000.0
+            bot_benchmark.save_report("moderator", first)
+            second = _run("moderator", SAME_ANSWER_WITH_BLOCK)
+            second["ran_at"] = 2000.0
+            bot_benchmark.save_report("moderator", second)
+
+            history = bot_benchmark.load_history("moderator")
+            self.assertEqual([h["ran_at"] for h in history], [2000.0, 1000.0])
+            self.assertEqual(bot_benchmark.load_report("moderator")["ran_at"], 2000.0)
+
+    def test_history_is_capped(self):
+        with _TempResultsStore():
+            report = _run("moderator", SAME_ANSWER_WITH_BLOCK)
+            for i in range(bot_benchmark.HISTORY_LIMIT + 5):
+                bot_benchmark.save_report("moderator", dict(report, ran_at=float(i)))
+            self.assertEqual(len(bot_benchmark.load_history("moderator")), bot_benchmark.HISTORY_LIMIT)
+
+    def test_a_role_does_not_clobber_another_roles_history(self):
+        with _TempResultsStore():
+            bot_benchmark.save_report("moderator", _run("moderator", SAME_ANSWER_WITH_BLOCK))
+            bot_benchmark.save_report("quant", _run("quant", "numbers"))
+            self.assertEqual(len(bot_benchmark.load_history("moderator")), 1)
+            self.assertEqual(len(bot_benchmark.load_history("quant")), 1)
+
+    def test_comparable_history_excludes_runs_under_a_different_battery(self):
+        """This is what makes 'has this model degraded?' answerable rather than a trend line
+        across three different experiments."""
+        with _TempResultsStore():
+            older = _run("moderator", SAME_ANSWER_WITH_BLOCK)
+            older["ran_at"] = 1000.0
+            older["battery_fingerprint"] = "deadbeefcafe"      # a run under an older battery
+            bot_benchmark.save_report("moderator", older)
+            newer = _run("moderator", SAME_ANSWER_WITH_BLOCK)
+            newer["ran_at"] = 2000.0
+            bot_benchmark.save_report("moderator", newer)
+
+            self.assertEqual(len(bot_benchmark.load_history("moderator")), 2)
+            comparable = bot_benchmark.comparable_history("moderator")
+            self.assertEqual([h["ran_at"] for h in comparable], [2000.0])
+
+    def test_comparable_history_keeps_runs_under_the_same_inputs(self):
+        """Non-vacuity for the test above: it filters on fingerprints, it does not just return
+        the newest entry."""
+        with _TempResultsStore():
+            report = _run("moderator", SAME_ANSWER_WITH_BLOCK)
+            for ts in (1000.0, 2000.0, 3000.0):
+                bot_benchmark.save_report("moderator", dict(report, ran_at=ts))
+            self.assertEqual(
+                [h["ran_at"] for h in bot_benchmark.comparable_history("moderator")],
+                [3000.0, 2000.0, 1000.0],
+            )
+
+    def test_a_pre_history_store_does_not_lose_its_single_stored_report(self):
+        """The store on disk before this change held one report per role and no history. The
+        first save after the change must adopt it rather than drop it."""
+        with _TempResultsStore():
+            import json
+            legacy = _run("moderator", SAME_ANSWER_WITH_BLOCK)
+            legacy["ran_at"] = 500.0
+            bot_benchmark.RESULTS_PATH.parent.mkdir(parents=True, exist_ok=True)
+            bot_benchmark.RESULTS_PATH.write_text(json.dumps({"moderator": legacy}))
+
+            fresh = _run("moderator", SAME_ANSWER_WITH_BLOCK)
+            fresh["ran_at"] = 600.0
+            bot_benchmark.save_report("moderator", fresh)
+            self.assertEqual(
+                [h["ran_at"] for h in bot_benchmark.load_history("moderator")], [600.0, 500.0],
             )
 
 

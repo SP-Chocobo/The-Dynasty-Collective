@@ -1010,6 +1010,10 @@ nothing in the selection path checks it.
 
 ### 5.6a Proposed repair and blast radius — NOT APPLIED
 
+> **Partially repaired retroactively** — see 5.14. The observability half is done: the
+> production parser now runs and the result is recorded and surfaced. The *scoring* half
+> stays deferred, because gate-versus-flag changes which model wins.
+
 *Repair.* A **deterministic** pre-judge gate, not a rubric dimension — the check needs no model
 and no judgement:
 
@@ -1082,6 +1086,9 @@ capability at the cost of being unable to measure it.
 
 ### 5.10 Detecting degradation of an existing model
 
+> **Repaired retroactively** — see 5.14. Reports now keep a capped history, together with
+> the fingerprints that make a trend across them honest.
+
 **STATUS: MISSING**
 **EVIDENCE:** `save_report` does `all_reports[role] = report` — one report per role, overwritten
 on every run. There is no history, so there is no time series, so a model that has got *worse*
@@ -1093,6 +1100,9 @@ together with 5.11's versioning — a time series of scores against silently-cha
 and prompts would be a *misleading* trend, which is worse than none.
 
 ### 5.11 Versioning and replay of benchmark results
+
+> **Repaired retroactively** — see 5.14. A report now records the battery, rubric and
+> chair-prompt it ran under.
 
 **STATUS: MISSING**
 **EVIDENCE:** the report's keys are exactly `{role, ran_at, judge_provider, judge_model,
@@ -1164,18 +1174,19 @@ answer at all. Prerequisite is #93's evidence schema, which stays queued.
 | **5.3 blind judging** | **EXISTS → ENFORCED (new)** | **enforced** |
 | 5.4 chair coverage | PARTIAL — 4 of 7 | pinned |
 | 5.5 operating envelope (contract exact, context schema not) | PARTIAL | structural / absent |
-| **5.6 Moderator's machine contract not benchmarked** | **VIOLATED** | **instructional** |
-| 5.6a repair specified, blast radius measured | DEFERRED to a scoped mandate | — |
+| **5.6 Moderator's machine contract not benchmarked** | **VIOLATED → PARTIAL** (measured, not scored — 5.14 R5) | **instructional → enforced (observation only)** |
+| 5.6a scoring half (gate vs flag) | still DEFERRED — a selection decision (#94) | — |
 | 5.7 per-chair dimension coverage | PARTIAL (Quant 1 of 5) | — |
 | 5.8 score normalization (latency unscored, cost absent) | PARTIAL | absent |
 | 5.9 reasoning vs tool-use separation | MISSING (uniform grant) | instructional |
-| 5.10 degradation detection | MISSING (report overwritten) | pinned |
-| 5.11 versioning / replay of results | MISSING | absent |
+| 5.10 degradation detection | **MISSING → EXISTS** (capped history — 5.14 R4) | enforced |
+| 5.11 versioning / replay of results | **MISSING → EXISTS** (three run fingerprints — 5.14 R3) | enforced |
 | 5.12 pinning and fallback | PARTIAL (recorded, not pinned; no fallback) | structural / absent |
 | 5.13 downstream-awareness / full chain | MISSING | absent |
 
-Against the mandate's five words: **role-specific ✓, empirical ✓, repeatable ✗** (5.11),
-**versioned ✗** (5.11), **downstream-aware ✗** (5.13).
+Against the mandate's five words, **as repaired**: **role-specific ✓, empirical ✓, repeatable ✓**
+(5.14 R3+R4), **versioned ✓** (5.14 R3), **downstream-aware ✗** (5.13, blocked on #93). At audit
+time three of the five were absent; the two that were fixable without a decision have been fixed.
 
 ### Does anything clear the bar for a production change?
 
@@ -1195,12 +1206,53 @@ actively misleading. 5.4, 5.5 and 5.13 all have the same prerequisite — a real
 (#88, externally blocked) or an evidence schema (#93, queued) — and building any of them now
 would mean designing against assumed inputs, which this programme has already declined to do.
 
+### 5.14 Repairs applied retroactively at the §6 boundary
+
+When the standing rule changed to "implement a section's safe, mechanical findings before
+advancing," the already-audited sections were re-triaged against it. Two §5 items qualified;
+the rest were left, and why is stated below.
+
+**R3 — a benchmark report now records what it was conducted under (§5.11).** Each report carries
+`battery_fingerprint`, `rubric_fingerprint` and `chair_prompt_fingerprint` — 12-char content
+hashes computed at run time. Deliberately hashes rather than hand-maintained version numbers: a
+number has to be remembered and drifts out of sync with the thing it names, while a content hash
+cannot disagree with the battery, rubric or prompt it was computed from. This is the difference
+between a stored score and a comparable one.
+
+**R4 — `save_report` keeps a capped history instead of overwriting (§5.10).** `HISTORY_LIMIT = 20`
+runs per role, newest first, adopting a pre-history store's single report rather than dropping it.
+`load_report` still returns the newest, so every existing reader is untouched. `load_history` and
+`comparable_history` are new accessors; the latter returns only runs sharing the newest run's
+three fingerprints, which is what turns "has this model degraded?" from a trend line across three
+different experiments into a real question. **R3 and R4 were done together deliberately** — the
+audit's own conclusion was that history over silently-changing batteries is *worse* than none.
+
+**R5 — the Moderator's machine contract is now measured, and still not scored (§5.6, half).**
+`run_benchmark` records `contract_ok` per question via `MACHINE_CONTRACT_PARSERS` — the real
+production `parse_moderator_verdict`, not a judge's opinion of formatting — plus
+`any_contract_failure` per candidate, surfaced in the benchmark UI beside the existing
+`any_failed` warning. `None` where a chair has no machine contract, and `None` on a failed call
+so a provider error is not double-counted as a contract failure.
+**The score is untouched**, and a test pins that a block-less answer and a block-carrying answer
+with identical rubric scores rank identically. Gate-versus-flag remains #94's open decision.
+
+**Left alone, and why.** #91 (§3.3) is blocked on the attachment-lifetime rule; #92 (§3.6/3.9)
+would add a snapshot identifier ahead of the record that consumes it, contradicting this
+programme's own standing rule; #93's per-chair evidence schema is architectural; #96's battery
+extension is authoring evaluation content, which is a judgement about what a chair should be good
+at. Each is a decision, not a fix.
+
+*Verification:* four non-vacuity probes, each planted in real code and reverted — making
+`contract_ok` feed the score, reverting history to overwrite, freezing the battery fingerprint,
+and returning `False` instead of `None` for a chair with no machine contract. All four failed the
+suite.
+
 ### Follow-ups from this pass, ranked by evidence then severity
 
-1. **5.6 — scoped repair mandate for the Moderator contract gate.** Evidence complete; one
-   design decision (gate vs flag) outstanding.
-2. **5.10 + 5.11 together — report history plus battery/rubric/prompt versioning.** Small,
-   mutually dependent, and the pair converts "repeatable" and "versioned" from ✗ to ✓.
+1. **5.6 — the scoring half only.** The measurement is now in place (5.14 R5); what remains is
+   the one decision: does a contract failure zero the candidate or merely flag it? Different
+   winners. (#94)
+2. ~~5.10 + 5.11~~ — **done** (5.14 R3+R4).
 3. **5.7 — extend the Quant battery to include conflicting sources.** The cheapest real coverage
    gain in the pass; production Quant's core stated job is currently untested.
 4. **5.13 — chain-level evaluation.** The deepest gap, and correctly blocked behind #93.

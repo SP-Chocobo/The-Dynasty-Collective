@@ -19,6 +19,7 @@ bot_config.py itself -- applying a benchmark's recommendation is a UI action
 
 from __future__ import annotations
 
+import hashlib
 import json
 import re
 import time
@@ -28,6 +29,42 @@ from typing import Callable, Optional
 import llm_engine
 
 RESULTS_PATH = Path("data/benchmark_results.json")
+
+# How many past runs to keep per role. A report is a few KB of prose per candidate, so an
+# unbounded log would grow without limit for a store nobody prunes -- same capped-history
+# posture as bot_research.findings_for_context and app.RECENT_TURNS_IN_CONTEXT. The newest run
+# is always index 0.
+HISTORY_LIMIT = 20
+
+# role -> the production parser its output must satisfy, for the chairs whose answers are
+# consumed by machine rather than only read. The Moderator's system prompt requires a
+# structured block that four consumers depend on (decision_log, todo_log, bot_research, and
+# app.py's verdict card); a model can score well on every rubric dimension and still fail it,
+# because no dimension looks. This does NOT feed the score -- see run_benchmark, and
+# ARCHITECTURE_AUDIT.md 5.6a on why gating versus flagging is a decision that changes which
+# model wins and is deliberately not made here.
+MACHINE_CONTRACT_PARSERS = {"moderator": llm_engine.parse_moderator_verdict}
+
+
+def _contract_ok(role: str, response: str) -> Optional[bool]:
+    """True/False for a chair whose output is machine-parsed, None for one whose output is
+    only read. None is 'no contract to satisfy', never 'passed by default'."""
+    parser = MACHINE_CONTRACT_PARSERS.get(role)
+    if parser is None:
+        return None
+    return bool(parser(response))
+
+
+def _fingerprint(*parts: str) -> str:
+    """A short content hash of exactly what a run was conducted under. Deliberately a hash
+    rather than a hand-maintained version number: a number has to be remembered and drifts out
+    of sync with the thing it names, whereas this cannot disagree with the battery, rubric, or
+    chair prompt it was computed from."""
+    digest = hashlib.sha256()
+    for part in parts:
+        digest.update(part.encode("utf-8"))
+        digest.update(b"\x00")
+    return digest.hexdigest()[:12]
 
 # Fixed, self-contained scenarios -- no live league data required, so every
 # candidate model is judged against literally the same inputs. Three per
@@ -304,6 +341,10 @@ def run_benchmark(
                 "label": q["label"], "response": response, "scores": scores,
                 "weighted": round(weighted, 1), "notes": notes,
                 "latency": round(latency, 2), "failed": failed,
+                # Recorded, never scored. A candidate that answers well and does not emit the
+                # structured block its chair requires still ranks on its rubric average here --
+                # this only makes that visible to whoever presses Apply.
+                "contract_ok": None if failed else _contract_ok(role, response),
             })
         avg_score = round(sum(q["weighted"] for q in per_question) / len(per_question), 1) if per_question else 0.0
         avg_latency = round(sum(q["latency"] for q in per_question) / len(per_question), 2) if per_question else 0.0
@@ -311,10 +352,23 @@ def run_benchmark(
             "provider": provider, "model": model or "",
             "score": avg_score, "avg_latency": avg_latency,
             "any_failed": any(q["failed"] for q in per_question),
+            "any_contract_failure": any(q["contract_ok"] is False for q in per_question),
             "per_question": per_question,
         })
     results.sort(key=lambda r: r["score"], reverse=True)
-    return {"role": role, "ran_at": time.time(), "judge_provider": judge_provider, "judge_model": judge_model or "", "candidates": results}
+    return {
+        "role": role, "ran_at": time.time(),
+        "judge_provider": judge_provider, "judge_model": judge_model or "",
+        # What this run was actually conducted under. Without these, a stored report is a score
+        # against inputs and grading criteria that can move underneath it -- two runs weeks
+        # apart were previously indistinguishable in the record even if the battery, the rubric
+        # or the chair's own prompt had been edited between them. Comparing reports across
+        # differing fingerprints compares different experiments.
+        "battery_fingerprint": _fingerprint(*(q["label"] + q["prompt"] for q in battery)),
+        "rubric_fingerprint": _fingerprint(*(f"{k}:{w}:{d}" for k, w, d in rubric)),
+        "chair_prompt_fingerprint": _fingerprint(system_prompt),
+        "candidates": results,
+    }
 
 
 def _load_all() -> dict:
@@ -327,11 +381,56 @@ def _load_all() -> dict:
 
 
 def save_report(role: str, report: dict) -> None:
+    """Prepend to this role's run history, newest first, capped at HISTORY_LIMIT.
+
+    This used to overwrite: one report per role, no series -- so a model that had got WORSE was
+    indistinguishable from one that was always this good, which is the degradation case a
+    model optimizer is supposed to catch. History alone would not have been enough, and would
+    have been worse than none: a trend across silently-changing batteries is a misleading
+    trend. That is why the report now carries the battery/rubric/chair-prompt fingerprints it
+    ran under, and why load_history is the accessor that exposes them together.
+
+    The newest report also stays at the role's own key, so every existing reader keeps working
+    unchanged.
+    """
     RESULTS_PATH.parent.mkdir(parents=True, exist_ok=True)
     all_reports = _load_all()
+    previous = all_reports.get(role)
+    history = list(all_reports.get(_history_key(role)) or [])
+    if previous and (not history or history[0] is not previous):
+        # Adopt a pre-history store's single stored report as the first history entry rather
+        # than losing it the first time this runs after the change.
+        if not any(h.get("ran_at") == previous.get("ran_at") for h in history):
+            history.insert(0, previous)
+    history.insert(0, report)
     all_reports[role] = report
+    all_reports[_history_key(role)] = history[:HISTORY_LIMIT]
     RESULTS_PATH.write_text(json.dumps(all_reports, indent=2))
 
 
+def _history_key(role: str) -> str:
+    return f"{role}__history"
+
+
 def load_report(role: str) -> Optional[dict]:
+    """The most recent run for this role. Unchanged by the move to a history."""
     return _load_all().get(role)
+
+
+def load_history(role: str) -> list[dict]:
+    """Every retained run for this role, newest first. Comparing two entries is only
+    meaningful when their battery/rubric/chair_prompt fingerprints match -- see
+    comparable_history."""
+    return list(_load_all().get(_history_key(role)) or [])
+
+
+def comparable_history(role: str) -> list[dict]:
+    """The runs that can honestly be compared with the newest one: those conducted under the
+    same battery, rubric and chair prompt. This is what makes 'has this model degraded?' a
+    real question rather than a trend line across three different experiments."""
+    history = load_history(role)
+    if not history:
+        return []
+    newest = history[0]
+    keys = ("battery_fingerprint", "rubric_fingerprint", "chair_prompt_fingerprint")
+    return [h for h in history if all(h.get(k) == newest.get(k) for k in keys)]

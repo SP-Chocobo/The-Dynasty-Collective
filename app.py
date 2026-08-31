@@ -2345,6 +2345,14 @@ with st.sidebar:
                             _medal = _medals[_idx] if _idx < len(_medals) else f"{_idx + 1}."
                             _model_label = _cand["model"] or "(provider default)"
                             _warn = " ⚠️ one or more calls failed" if _cand["any_failed"] else ""
+                            # Recorded by run_benchmark but deliberately NOT scored (see
+                            # bot_benchmark.MACHINE_CONTRACT_PARSERS): a candidate can win this
+                            # rubric and still fail the structured block four production
+                            # consumers depend on. Surfaced here so it is visible to whoever
+                            # presses Apply, rather than discovered later as four systems
+                            # quietly doing nothing.
+                            if _cand.get("any_contract_failure"):
+                                _warn += " ⚠️ did not emit the required structured verdict block"
                             st.caption(
                                 f"{_medal} {bot_config.PROVIDER_LABELS[_cand['provider']]} · {_model_label} — "
                                 f"**{_cand['score']}**/100, {_cand['avg_latency']}s avg{_warn}"
