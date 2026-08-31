@@ -7514,3 +7514,90 @@ re-adjudication queue (6.2a), and a stated intent for the freshness crossover (6
 182. Absent is not failed. A chair with no machine contract must record "nothing to satisfy",
      never "did not satisfy" -- and a call that errored already has its own signal, so counting
      it a second time as a contract failure overstates one problem as two.
+
+---
+
+# Appendix — §7: source legality, credibility, provenance, prompt-injection
+
+Structured findings live in `ARCHITECTURE_AUDIT.md` (Pass 5). This entry records the
+measurements, the repairs, and the invariants.
+
+The section's overall shape is the opposite of the previous ones: the protections here are
+**better than the code claims for itself**, and were undefended by any test. The repair was to
+make them enforced rather than incidental.
+
+## What was measured
+
+| measurement | result |
+|---|---|
+| literal outbound hosts in every production module | **`api.sleeper.app`, and nothing else** — no URL fetcher exists; all live research runs provider-side |
+| committed baseline CSVs | 20; **9 carry a provenance record, 11 do not** |
+| unattributed | all 10 Draft Sharks `rankings/*.csv` and the trade-value chart — i.e. the *primary* valuation input, while the four secondary sources are documented |
+| composite source allowlist | bound **once** at module level (AST), zero subscript assignments, zero `update`/`setdefault`/`pop`/`clear` |
+| every finding's filed source pair | one synthetic `("bot_research", "findings")`, whatever it cites |
+| a hostile cited source (`an anonymous forum post`, a paywalled URL) | **accepted verbatim**; no `SOURCE_ALLOWLIST` / `PERMITTED_SOURCES` / `SOURCE_POLICY` exists |
+| numeric surface of all directives | **two integers** — a to-do id and a rank, both `.isdigit()` gated |
+| `TODO UPDATE: ../../etc \| x \| y` | parses to nothing |
+| a directive naming an unknown or archived objective | no-op, returns `False` |
+| a rewritten objective | prior text preserved in `revisions` |
+| `TODO LIKELY RESOLVED` | sets `likely_resolved`, which is an **ACTIVE** status — only a person resolves |
+| sentinel API key through all four chairs | in **neither** system nor user prompt; travels as its own argument; absent from a serialized benchmark report; `api_key` appears in none of the four persisting modules |
+| `build_context` | one flat string from 54 `lines.append(...)`; **no** `<untrusted>`, `<data>`, fence or delimiter of any kind |
+| the phrase "prompt injection" anywhere in the tree | **absent** — the five "injection" matches are script-injection in the iframe and context-injection of pinned messages |
+
+## Repairs applied at the §7 boundary
+
+Both convert an existing, correct policy from convention into enforcement. No behaviour changed.
+
+**R6 — the written source policy is now required.** Every file-backed source in
+`_EXTERNAL_PERCENTILE_RULES` must carry an `ATTRIBUTION.md` that names its source and states an
+access/licensing posture. The four that exist are substantive records — DynastyProcess as GPL-3.0
+open data from an unauthenticated endpoint, KTC and FantasyPros as behind normal site access with
+a single stated facts-only-extraction policy, KTC's own API recorded as blocked and not
+circumvented, ESPN held to the same posture for consistency. Adding a source without that record
+now fails.
+
+**R7 — the properties that actually bound retrieved content are pinned.** Credentials never reach
+a prompt or a report; verdict fields are all `str`; the numeric surface is two gated integers; a
+non-numeric id is dropped rather than coerced; an unknown id is a no-op; a rewrite preserves prior
+text; a resolution stays pending for a person; no second outbound host exists.
+
+Non-vacuity: five probes planted in real code and reverted, all failing -- a composite source
+added without an ATTRIBUTION.md, a runtime mutator of the allowlist, a key inlined into the
+Quant's prompt, a rewrite that stops preserving prior text, and a second outbound host.
+
+Not applied, each a decision: a cited-source allowlist; fencing untrusted content (a delimiter the
+chair prompts do not explain is decoration, so it is a joint change to `build_context` and seven
+chair contracts); and writing provenance for the Draft Sharks exports, which asserts terms for a
+paid subscription export that only the owner can state.
+
+## A cross-section effect on an open decision
+
+§7 changes the premises of the parked #94 (what a Moderator contract failure should cost). §5
+framed it as a quality question. §7 establishes that the structured block is the **entire channel
+through which model output acquires authority** -- rewriting an objective, proposing a resolution,
+writing a rank into the composite, creating a to-do all run through it. So a Moderator that fails
+its machine contract is inert on every authority path, and a compliant one is the one that can
+rewrite a user's objectives and inject numbers. Disqualifying block-less models therefore selects
+*for* models that exercise more authority. Surfaced, not resolved.
+
+## Invariants
+
+183. Delegating retrieval is an architectural boundary, not an omission. A system with no fetcher
+     of its own cannot bypass a paywall, a login, or a robots directive, and that is a stronger
+     guarantee than any policy it could write about its own crawling.
+184. Naming a source and permitting a source are different acts. A chair may recommend; only code
+     decides admissibility -- and a free-text citation that cannot create a percentile rule is
+     contained even while it is unvalidated.
+185. Where untrusted content and instructions share one channel, the boundary is whatever the
+     parsers allow, not whatever the prompt asks for. Bound the numeric surface, gate the types,
+     and the worst an injected directive can do is bounded with them.
+186. A directive that proposes is safe in a way a directive that decides is not. Preserving what a
+     record said before, and leaving a status pending for a person, turn an injected instruction
+     into a recoverable suggestion -- protections worth naming as such even when they were built
+     for usability.
+187. Provenance coverage tends to be inversely proportional to how much a source matters. The
+     input that is questioned least is the one documented last, and an audit should check the
+     primary source before the secondary ones.
+188. An undemonstrated leak is not a defect. Name it, pin what is demonstrated, and repair it when
+     something else legitimately touches that path.

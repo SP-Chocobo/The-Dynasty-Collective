@@ -1572,3 +1572,281 @@ frame still 0 rows.
    defensible trust bar. It stops being one under 13.5's hosting model.
 4. **6.3 — decide whether the fresh-finding-beats-stale-vendor crossover is intended.** Now
    measured (29–83 days); it needs a stated intent, not a change.
+
+---
+
+## Pass 5 — §7
+
+**Scope:** Build Guide v2 §7 (source legality, credibility, provenance, prompt-injection
+boundary), whose mandate is that *"research may inform adjudication; research does not acquire
+authority merely by being retrieved."*
+
+**Baseline:** `4aab2cd` on `ui-authority-pass`; `main` frozen at `9fb5102`. Repairs applied at
+this section's boundary are in 7.9. #91–94, #96, #97 remain queued and were not advanced.
+
+### 7.1 Source legality and the product source policy
+
+**STATUS: EXISTS — better than expected, and the mechanism is unusual enough to name**
+
+**LOCATION:** `data/baseline/external/{dynastyprocess,espn,fantasypros,keeptradecut}/ATTRIBUTION.md`.
+
+**EVIDENCE:** each of the four external sources carries a written record of what was taken, how,
+when, and under what access posture — and they are not boilerplate. DynastyProcess is recorded as
+GPL-3.0 open data pulled from a *"public, unauthenticated, no-login endpoint the repository itself
+describes as 'open-data'"*, and is committed as-is **because** of that. FantasyPros and
+KeepTradeCut are recorded as sitting *"behind normal site access rather than an open-data
+license"*, with a single stated policy applied to both: *"facts-only extraction (rank/name/asset
+type/position/tier/value/trend), never the site's own page/branding, attributed here rather than
+re-litigating the question each time a new vendor comes up."* KTC's own API is recorded as
+**blocked and not circumvented** (`CONNECT tunnel failed, 403`). ESPN is recorded as public
+content with the same facts-only posture applied *"for consistency"* even where not required.
+
+That is a real product source policy: stated once, applied per source, with the reasoning kept.
+**BOUNDARY:** source → ingestion. **Was instructional (four files and nothing requiring them);
+now enforced** — see 7.9 R6.
+
+### 7.2 The app has no fetcher of its own
+
+**STATUS: EXISTS — structural, and it decides several §7 questions at once**
+**EVIDENCE:** the only literal outbound host anywhere in the production modules is
+**`api.sleeper.app`**. There is no `requests`/`httpx`/`urllib` call to any other host, and no URL
+fetcher at all. Every piece of live research runs **provider-side** — Anthropic's
+`web_search_20260209`, Gemini's Google Search grounding, OpenAI's `web_search` — executed on the
+provider's infrastructure, not this app's.
+So §7's questions about robots directives, paywalls and authentication boundaries have a
+structural answer rather than a policy one: **this app cannot bypass them, because it never
+retrieves anything itself.** Those obligations sit with the provider whose tool runs the search.
+**Now pinned** by a test that fails when a new outbound host appears.
+
+### 7.3 Source admissibility is enforced independently of model preference
+
+**STATUS: EXISTS — structural**
+**EVIDENCE:** which sources may influence a number is decided by `_EXTERNAL_PERCENTILE_RULES`, a
+module-level constant bound exactly once and mutated nowhere (verified by AST: one binding at
+column 0, zero subscript assignments, zero `update`/`setdefault`/`pop`/`clear` calls). No model
+output can add an entry. And every `bot_research` finding, however it is attributed, is filed
+under **one synthetic `("bot_research", "findings")` pair** regardless of the source it cites — so
+an unvalidated citation can never create a percentile rule of its own.
+This is a clean separation of the two things §7 asks to be separated: a chair may *recommend* a
+source; only code decides whether it is *permissible*.
+
+### 7.4 But a cited source name is unvalidated free text — KNOWN GAP
+
+**STATUS: PARTIAL (latent)**
+**EVIDENCE:** `parse_source_findings` accepts whatever the Moderator writes in the source field.
+Measured against the real parser with deliberately impermissible citations:
+
+```
+SOURCE FINDING: Some Player | totally-not-a-real-site.example/paywalled | ... | 1
+  -> accepted: source='totally-not-a-real-site.example/paywalled', rank=1
+SOURCE COMPARISON: ... | an anonymous forum post | ...
+  -> accepted: source='an anonymous forum post'
+```
+
+No `SOURCE_ALLOWLIST`, `PERMITTED_SOURCES` or `SOURCE_POLICY` exists in either `llm_engine` or
+`data_merger`. So §7's *"can a model introduce an impermissible source merely because it appears
+authoritative?"* splits cleanly: **into the composite allowlist, no** (7.3); **into the durable
+research record, yes** — attributed to any source at all, including a paywalled one the written
+policy would not permit, or one that does not exist.
+**Reach, unchanged from §6:** the store is empty; a fabricated rank would enter the composite at
+`0.5 × recency × pool_factor`, ≤12.4% of one player's blend, and reaches neither trade pricing nor
+CDME.
+**Verdict: DOCUMENT.** Deciding *which* sources a citation may name is a product source policy
+decision — exactly the thing 7.1's ATTRIBUTION files settle for file sources, and exactly the
+thing nobody has settled for model-surfaced ones. Surfaced (#98), not chosen.
+
+### 7.5 The prompt-injection boundary — what a retrieved instruction can actually do
+
+**STATUS: PARTIAL — bounded by real code-level limits, none of them designed for this threat**
+
+**The chain.** Untrusted content (a web result, an uploaded attachment, a stored finding, a prior
+turn) enters the model's context → the model emits a directive line → a regex parser acts on it.
+Nothing prevents the middle step; the boundary is entirely in what the parsers *allow*. Measured
+against deliberately hostile Moderator text:
+
+| directive | what it can actually do | reversible | needs a person |
+|---|---|---|---|
+| `RECOMMENDATION` / `CONVICTION` / … | writes a decision-log row — **strings only**, every field verified `str` | — | no |
+| `ACTION ITEM` | creates a new objective | user dismisses | no |
+| `TODO UPDATE: <id> \| <text>` | **rewrites an existing objective's text** | **yes — prior text kept in `revisions`** | no |
+| `TODO LIKELY RESOLVED: <id>` | sets a **pending** state | — | **yes — `likely_resolved` is an ACTIVE status; only a person resolves** |
+| `SOURCE FINDING: … \| <rank>` | **writes an integer into the composite** at weight 0.5 | append-only, newest-wins | no |
+| `SOURCE COMPARISON: …` | writes a record, **no composite impact** | append-only | no |
+
+**The numeric surface is two integers wide** — a to-do id and a rank — and both are `.isdigit()`
+gated, so `TODO UPDATE: ../../etc | x | y` parses to nothing. An id naming an objective that does
+not exist, or one already archived, is a no-op. Nothing a directive carries can become a
+coefficient, a schema, or a deterministic parameter.
+
+**The two genuinely load-bearing protections are that a directive proposes rather than decides:**
+a rewritten objective keeps what it said before, and a resolution is a request a person confirms.
+Both were designed as UX courtesies rather than as injection defences, and both are now pinned by
+test, because they are in fact the strongest boundary in this section.
+
+**What is absent:** the phrase "prompt injection" appears nowhere in the tree — the five matches
+for "injection" are all about *script* injection in the iframe payload and *context* injection of
+pinned messages. The threat model is not addressed anywhere in the app's own reasoning.
+**BOUNDARY:** retrieved content → orchestration authority. **Structural where it exists**
+(type discipline, `.isdigit()` gating, no-op on unknown ids, revision history, pending states),
+**instructional where it does not** (the Moderator's prompt says *"Never invent a source or a
+number that wasn't actually surfaced in this debate"*).
+
+### 7.6 Evidence is not structurally distinct from instructions — KNOWN GAP
+
+**STATUS: MISSING**
+**EVIDENCE:** `build_context` assembles **one flat string** from 54 `lines.append(...)` calls and
+returns `"\n".join(lines)`. There is no `<untrusted>` fence, no delimiter, no marker of any kind.
+Into that same channel go, adjacent to the app's own directives:
+
+| untrusted content | how it arrives |
+|---|---|
+| chat attachments | raw file text, truncated at 4000 chars, unescaped and unfenced |
+| reference-material captions | user free text |
+| panel-vetted findings and comparisons | prior model output, re-presented as fact |
+| conversation memory | prior model prose replayed verbatim |
+| past decision outcomes | user-written notes |
+
+§7 asks *"are evidence packages structurally distinct from instructions?"* — **no.** A model has
+nothing but content to distinguish "the app is telling me this" from "an uploaded file is saying
+this."
+**Verdict: DOCUMENT, surfaced (#98).** The repair is not a fence alone: a delimiter the chair
+prompts do not explain is decoration. It is a joint change to `build_context` *and* all seven
+chair contracts, which is architectural, and it is the same shape as #93's evidence-package work.
+
+### 7.7 Citations through the chair handoff
+
+**STATUS: PARTIAL — and worse than §4.4's general finding**
+**EVIDENCE:** §4.4 established that a downstream chair receives its predecessor's prose, not an
+evidence package. §7's version is sharper: the **only structured citation record in the system is
+created by the Moderator**, downstream of the chair that actually found the source. A citation the
+Beat surfaced and the Moderator did not repeat in a `SOURCE FINDING` line **is not retained
+anywhere** — it exists only inside Beat's prose in `chat_history`, unattributed and unqueryable.
+Provenance is therefore reconstructed by the synthesizer rather than carried by the discoverer.
+**DEPENDENCIES:** #93. Same repair, same prerequisite.
+
+### 7.8 Credentials are not input
+
+**STATUS: EXISTS — measured and now enforced**
+**EVIDENCE:** a sentinel key was passed through all four production `ask_*` functions with the
+provider caller stubbed and the exact prompts captured. The key appears in **neither** the system
+prompt nor the user prompt of any chair, and travels only as its own argument. It does not appear
+anywhere in a serialized benchmark report. And structurally, none of `bot_research`,
+`decision_log`, `todo_log` or `pinned_messages` mentions `api_key` at all — the stores cannot
+write what they are never handed.
+**Residual, named and not repaired:** the provider callers return `f"⚠️ … failed: {exc}"`, and
+that string is persisted to `chat_history` and replayed into the next `build_context` — so it does
+reach providers on a later turn. If an SDK ever put credential material in `str(exc)` it would
+land in a store and in a prompt. **Not demonstrated**, and under this programme's own standard an
+undemonstrated leak does not clear the bar for a production change. Recorded, not fixed.
+
+### 7.9 Repairs applied at this section boundary
+
+Two, both converting an existing and correct policy from convention into enforcement. No
+behaviour changed.
+
+**R6 — the source policy is now required, not merely observed.**
+`test_research_authority_boundary` asserts that every file-backed source in
+`_EXTERNAL_PERCENTILE_RULES` has an `ATTRIBUTION.md`, that the file is substantial and names its
+source, and that it states an access/licensing posture (license / open-data / login / paywall /
+subscription / public / terms). Adding a source to the composite without that record is now a
+test failure. It also pins by AST that the allowlist is bound exactly once at module level and
+never mutated, and that every finding files under the one synthetic source pair.
+
+**R7 — the properties that actually bound retrieved content are now pinned.**
+Credentials never reach a prompt or a report; verdict fields are all `str`; the numeric surface is
+exactly two `.isdigit()`-gated integers; a non-numeric id is dropped rather than coerced; an
+unknown id is a no-op; a rewritten objective keeps its prior text; `likely_resolved` stays an
+ACTIVE status awaiting a person; and no second outbound host exists.
+
+*Non-vacuity — five probes planted in real code and reverted, all failing:* a composite source
+added without an ATTRIBUTION.md, a function that mutates the allowlist at runtime, a key inlined
+into the Quant's prompt, a rewrite that stops preserving prior text, and a second outbound host.
+
+**Deliberately not applied.** A cited-source allowlist (7.4) is a product source policy decision.
+Fencing untrusted content (7.6) is a joint change to `build_context` and seven chair contracts.
+Writing ATTRIBUTION records for the 11 unattributed baseline CSVs (7.10) asserts a licensing
+posture for the user's own paid vendor exports, which is not mine to assert. All surfaced (#98).
+
+### 7.10 Provenance coverage across the committed baseline
+
+**STATUS: PARTIAL — and inverted from what one would expect**
+**EVIDENCE:** 20 committed baseline CSVs; **9 carry a provenance record, 11 do not.**
+
+| covered | by |
+|---|---|
+| the four external sources' files | per-source `ATTRIBUTION.md` |
+| `sleeper_kicker_projections.csv`, `sleeper_dst_projections.csv` | `sleeper_projection_provenance.json`, which states its own reason: *"committing the points without the rules that generated them would leave the numbers unfalsifiable"* |
+
+| uncovered |
+|---|
+| all 10 `data/baseline/rankings/*.csv` Draft Sharks exports |
+| `data/baseline/trade_value/dynasty_ppr_trade_value_chart.csv` |
+
+The inversion is the finding: the **secondary** sources are documented; the **primary** valuation
+input — the highest-weighted source in the composite (1.3) and the one feeding CDME's `bpa` — is
+not. Its provenance exists only as prose in `README.md` and, secondhand, in DynastyProcess's
+ATTRIBUTION (*"unlike Draft Sharks' subscription exports"*).
+**Verdict: DOCUMENT, surfaced.** The gap is real and the record should exist; writing it means
+asserting the terms under which a paid subscription export is retained and redistributed, which
+is a decision for the owner.
+
+### 7.11 Cross-section finding — this changes #94's premises
+
+**§7 supplies information §5 did not have, and it bears directly on the parked decision.**
+
+#94 asks what a Moderator contract failure should cost: disqualify the candidate, zero the
+question, or flag only. §5 framed that purely as a quality question — a model that does not emit
+the structured block leaves four consumers doing nothing.
+
+§7 shows the same block is **the entire channel through which model output acquires authority.**
+Every path in 7.5's table runs through it: rewriting an objective, proposing a resolution,
+writing a rank into the composite, creating a to-do. A Moderator that fails its machine contract
+is therefore *inert on every authority path* — the least dangerous Moderator available. A
+contract-**compliant** one is the one that can rewrite a user's objectives and inject numbers.
+
+That does not settle #94, and I am not settling it. It adds a consideration that was not on the
+table: **option (a), disqualify, selects for models that exercise more authority**, which is a
+different trade-off from the "quality only" framing #94 was parked under. Whichever way it goes,
+the reasoning should now account for it. Recorded on #94.
+
+---
+
+## Pass 5 summary
+
+| item | status | boundary kind |
+|---|---|---|
+| 7.1 written per-source policy | EXISTS | **convention → enforced (R6)** |
+| 7.2 no fetcher of its own | EXISTS | structural, now pinned |
+| 7.3 admissibility is a code allowlist | EXISTS | structural, now pinned |
+| **7.4 cited source name unvalidated** | **PARTIAL (latent)** | absent |
+| 7.5 injection boundary / directive authority | PARTIAL | structural where present, now pinned |
+| **7.6 evidence vs instructions** | **MISSING** | absent |
+| 7.7 citations through the handoff | PARTIAL | absent (→ #93) |
+| 7.8 credentials are not input | EXISTS | structural, now pinned |
+| 7.10 baseline provenance coverage (9 of 20) | PARTIAL | — |
+| 7.11 cross-section effect on #94 | — | — |
+
+### Does anything clear the bar for a production change?
+
+**No new defect did.** §7's genuine finding is the opposite of the previous sections': the
+protections here are *better than the code claims for itself*. The app has no fetcher, the
+composite allowlist is a true constant, a directive's numeric surface is two gated integers wide,
+a rewrite is recoverable, a resolution needs a person, and credentials never touch a prompt —
+and none of that was written down as an injection boundary or defended by a test. The right
+repair was to make those properties enforced rather than incidental, which R6 and R7 did without
+changing behaviour.
+
+The two real gaps — an unvalidated citation and an unfenced context — are both decisions, and
+both are now with you.
+
+### Follow-ups from this pass, ranked by evidence then severity
+
+1. **7.4 — a source policy for model-surfaced citations.** The file-source policy already exists
+   and is written down; extending it to citations is the smaller half of a job already begun.
+2. **7.6 + 7.7 + #93 together — fenced, attributed evidence packages.** One design serves all
+   three: if evidence is structurally separate, it can carry its own provenance, and a downstream
+   chair inherits sources rather than prose.
+3. **7.10 — provenance for the Draft Sharks rankings and the trade-value chart.** The record
+   should exist; its content is a statement only the owner can make.
+4. **7.8 residual — redact credential-shaped strings from provider error text.** Cheap, but
+   currently defending an undemonstrated leak; worth doing when something else touches that path.
