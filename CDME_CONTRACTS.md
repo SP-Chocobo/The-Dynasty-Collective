@@ -7767,3 +7767,80 @@ planted-probe check before its result is believed.
      restate a decision and never explain it.
 198. An unmeasured quantity answers "no" to every question that depends on it. Cost was absent in
      routing (§5.8), in budgeting (§9.5) and in attribution (§10.4) -- one gap presenting as three.
+
+---
+
+# Appendix — §11: temporal consistency, concurrency, stale results
+
+Structured findings live in `ARCHITECTURE_AUDIT.md` (Pass 8). This entry records the
+measurements, the repair, the correction, and the invariants.
+
+**The section's finding: this app can tell whether a frozen snapshot is still current --
+precisely, with a reason string -- and nothing in production asks it.**
+
+## What was measured
+
+| measurement | result |
+|---|---|
+| `PickSnapshot` input-state stamp | `picks_consumed` + `data_freshest_date`, documented as the stamp that lets "a debate still running, a UI panel held open, a stored decision log" ask if state is current |
+| `snapshot_is_current` behaviour | unchanged -> `(True, None)`; +3 picks -> `(False, "3 new pick(s)...")`; changed data date -> `(False, "the underlying player data changed...")`; unstamped -> `(False, "no input-state stamp")` |
+| production callers of `snapshot_is_current` | **zero** -- every reference outside its own module and tests is a comment |
+| what both Draft Room result guards compare | `pick_label` only (live at app.py:4805, mock at :4441) |
+| two boards at one pick_label | 3 candidates / `picks_consumed=24` vs 1 candidate / `picks_consumed=27` -- the guard treats them as the same |
+| the snapshot CACHE key | `(..., len(draft_picks), merger.freshest_date)` -- with a comment naming these as "the same two staleness signals snapshot_is_current already uses" |
+| `diff_snapshots` on that pair | 2 departures + 1 rank move, fully structured -- and used only to inform the NEXT debate |
+| cross-session write safety | no lock, no atomic replace, no read-modify-write guard anywhere |
+| lost update, real store code | tab A writes, tab B reads, tab A writes again, tab B saves -> **tab A's second objective is gone** |
+
+The sharpest form: when the board changes, the app **detects it on exactly the right signals and
+rebuilds the snapshot**, then displays a recommendation computed against the previous snapshot
+beside the new board, with no indication anything moved.
+
+## Repair applied at the §11 boundary
+
+**R11.** `PickDebateResult` now records `snapshot_picks_consumed` and
+`snapshot_data_freshest_date`, taken straight off the snapshot -- §10's R9/R10 rule again: what a
+result was produced from is part of the result. Before this a consumer holding only a result
+structurally could not put it to `snapshot_is_current`; a test now demonstrates the round trip.
+
+Not applied: acting on the stamp. Hiding a stale result discards an answer the user waited
+30-120s and real API spend for, possibly with seconds on a pick clock; annotating writes into
+displayed output; warning leaves the stale recommendation up. Same discard/annotate/warn
+trichotomy as #99, at a more time-pressured moment. Also not applied: atomic writes -- a torn
+write is undemonstrated, and §7.8 established this programme does not make production changes for
+undemonstrated failures. The lost update IS demonstrated, but its fix is a concurrency model.
+
+## A correction to §3.9 -- the third time a finding was one read short
+
+§3.9 concluded `PickSnapshot` has "no id, no hash, no computed-at timestamp" and that "consumers
+hold the object itself, not a reference to it." The first clause is true of a UNIQUE IDENTIFIER.
+The framing was wrong: the snapshot carries a documented input-state stamp and a purpose-built
+certifier consumes it. Provenance was present; I recorded it as absent because I read the field
+list and not the docstring twelve lines above it.
+
+Third occurrence, after §6.4a (composite ambiguity, disproved by two call-site reads) and §9.8
+(compaction is destructive, disproved two lines further into the function). All three were the
+most tempting finding available; all three were disproved by reading further in the same file.
+Stated as a rule: **before reporting an absence, read the docstring of the thing you claim lacks
+it.**
+
+This shrinks #92 rather than growing it: the gap is not "invent a provenance mechanism" but
+"persist and uniquely identify the one that exists."
+
+## Invariants
+
+199. A staleness key must be a property of the state, not of the request. A pick label identifies
+     which decision is being made, never which world it is being made in -- and the two diverge
+     for as long as the user is on the clock.
+200. Detecting a change and acting on it are separate wirings, and a system can do the first
+     perfectly while doing nothing with it. Here the same two signals correctly rebuilt the board
+     and never re-examined the recommendation displayed beside it.
+201. A capability with no caller is not a guarantee. `snapshot_is_current` is implemented,
+     documented, tested and stranded -- the same shape as marginal_lineup_value, and a reminder
+     that "the mechanism exists" answers a different question from "the mechanism runs".
+202. Recording what a result was computed from is the prerequisite for every staleness policy,
+     and is itself policy-free. Whether to hide, annotate, or warn is a separate decision that
+     cannot even be posed until the stamp travels with the result.
+203. Serialization by the runtime is not isolation by design. Single-threaded execution hides a
+     concurrency model's absence exactly until a second tab exists, at which point load-mutate-
+     write silently loses whichever update lost the race.

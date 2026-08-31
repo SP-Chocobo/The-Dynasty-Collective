@@ -379,6 +379,16 @@ class PickDebateResult:
     # answered must be recorded on the result, never re-derived from live configuration.
     # Empty when a chair ran on its provider's default rather than an explicit override.
     role_models: dict = field(default_factory=dict)
+    # The INPUT-STATE STAMP of the snapshot this debate reasoned over -- see PickSnapshot's own
+    # docstring, which names "a debate still running" as the first consumer this stamp exists
+    # for. pick_label alone cannot answer "is this still the current state": the user stays on
+    # the clock at one label while other rosters keep picking, so two materially different
+    # boards share a label routinely. Carrying the stamp is what lets any consumer put this
+    # result to pick_synthesis.snapshot_is_current. Recording only -- what a consumer should DO
+    # with a stale result (hide it, annotate it, warn beside it) is a product decision and is
+    # deliberately not made here; see ARCHITECTURE_AUDIT.md 11.3a.
+    snapshot_picks_consumed: Optional[int] = None
+    snapshot_data_freshest_date: Optional[str] = None
 
 
 def debate_pick(
@@ -452,4 +462,6 @@ def debate_pick(
         diff=diffs,
         strategist_report=strategist_report, skeptic_report=skeptic_report, caller_report=caller_report,
         errors=errors, role_providers=dict(role_providers), role_models=dict(role_models),
+        snapshot_picks_consumed=snapshot.picks_consumed,
+        snapshot_data_freshest_date=snapshot.data_freshest_date,
     )

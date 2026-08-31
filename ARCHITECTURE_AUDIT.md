@@ -619,6 +619,12 @@ question most systems cannot answer at all.
 
 ### 3.9 An immutable context that can be *referenced* rather than copied
 
+> **Partially corrected by §11 — see 11.6.** This entry's conclusion was too strong.
+> `PickSnapshot` *does* carry an explicit input-state stamp (`picks_consumed` +
+> `data_freshest_date`), documented as such, with a `snapshot_is_current` certifier built on it.
+> What is genuinely missing is a *unique identifier* and persistence, not provenance. Read the
+> paragraphs below with that correction applied.
+
 **STATUS: PARTIAL**
 **EVIDENCE:** `PickSnapshot` is frozen and immutable — half the property. The other half is
 missing: its fields are `pick_label, round, my_roster_id, candidates, user_selected_player_id,
@@ -2277,3 +2283,174 @@ there.
    provider's own usage object, which every SDK already returns.
 3. **10.1 — persist the operational activity log.** Small, and it is the difference between an
    operational record and a toast.
+
+---
+
+## Pass 8 — §11
+
+**Scope:** Build Guide v2 §11 (temporal consistency, concurrency, stale results).
+
+**Baseline:** `edb9af2` on `ui-authority-pass`; `main` frozen at `9fb5102`. One repair at this
+boundary (11.5). #91–94, #96–100 remain queued; #99 stays ahead of #94; #100 untouched.
+
+**Headline: this app can tell whether a frozen snapshot is still current — precisely, with a
+reason string — and nothing in production asks it.**
+
+### 11.1 The mechanism already exists
+
+**STATUS: EXISTS, and it is better than §3.9 credited**
+
+**LOCATION:** `pick_synthesis.PickSnapshot:870-894` (the stamp), `snapshot_is_current:1018`.
+
+**EVIDENCE:** `PickSnapshot` carries `picks_consumed` and `data_freshest_date` as an explicit
+**INPUT-STATE STAMP**, and its own docstring names the consumers it exists for: *"which world
+this frozen state was computed from … the stamp is what lets any later consumer (**a debate still
+running**, a UI panel held open, a stored decision log) cheaply ask 'is this still the current
+state?' via `snapshot_is_current`."* The certifier returns `(is_current, reason)`, checked
+*"purely by INPUT IDENTITY … never by recomputing anything"*, and treats an unstamped snapshot as
+**not certifiable** rather than silently current — *"'unknown provenance' and 'known current' are
+different claims."*
+
+Verified at all four boundaries: unchanged world → `(True, None)`; three new picks → `(False,
+"3 new pick(s) made since this snapshot was built")`; changed data date → `(False, "the
+underlying player data changed…")`; unstamped → `(False, "snapshot carries no input-state
+stamp…")`. It is already covered by four tests in `test_pick_synthesis`.
+
+### 11.2 And it has no production caller — KNOWN GAP
+
+**STATUS: VIOLATED against the mechanism's own stated purpose**
+
+**EVIDENCE.** Every reference to `snapshot_is_current` outside its own module and its tests is a
+**comment**. Measured across every non-test module: **zero callers.**
+
+Meanwhile both Draft Room result guards compare `pick_label`:
+
+```
+app.py:4805   if debate_result is not None and debate_result.pick_label == pick_label:
+app.py:4441   if (mock_debate_result is not None and mock_debate_result.pick_label == mock_pick_label)
+```
+
+`pick_label` cannot answer §11's question. A user stays on the clock at one label while other
+rosters keep picking, so two materially different boards share a label routinely — measured: a
+3-candidate board at `3.05` / `picks_consumed=24` and a 1-candidate board at `3.05` /
+`picks_consumed=27` compare **equal** under the guard.
+
+**The sharpest form of the gap.** The snapshot cache key at `app.py:4666` is
+`(…, len(draft_picks), merger.freshest_date)` — with a comment saying these are *"the same two
+staleness signals `snapshot_is_current` already uses elsewhere in this module — reused here, not
+reinvented."* So when the board changes, the app **detects it on exactly the right signals and
+rebuilds the snapshot** — and then displays a recommendation computed against the *previous*
+snapshot beside the *new* board, with no indication that anything moved.
+
+That is §11's central question answered in the worst way: the result is still presented, and its
+snapshot identity is not shown.
+
+### 11.3 The delta is fully describable, by machinery pointed the other way
+
+**STATUS: EXISTS (stranded)**
+**EVIDENCE:** `diff_snapshots` produces the structured per-candidate delta — entered, departed,
+rank movement, and per-component changes across eleven fields. On the measured pair it correctly
+reports two departures and a rank move. It is folded into the **next** debate's evidence via
+`debate_pick(previous_snapshot=…)` and is never used to invalidate or annotate the result already
+on screen. So the capability to answer *"can the UI detect and communicate that context changed
+since analysis began?"* exists in full, and is aimed at a different question.
+
+### 11.3a Repair applied, and the half deliberately not applied
+
+**R11 — a debate result now records the input-state stamp it reasoned over.**
+`PickDebateResult` gained `snapshot_picks_consumed` and `snapshot_data_freshest_date`, taken
+straight off the snapshot. Same rule as §10's R9/R10: what a result was produced from is part of
+the result. Before this, a consumer holding only a result **structurally could not** put it to
+`snapshot_is_current` — the stamp was not on it. Now it can, which a test demonstrates by
+round-tripping the recorded stamp back through the certifier.
+
+**What was not applied, and why.** Using the stamp to *act* — hide the stale result, annotate it,
+or warn beside it — is a product decision with real user cost, not a mechanical fix. Hiding
+discards an answer the user waited 30–120 seconds and real API spend for, possibly with seconds
+left on a pick clock; annotating writes into displayed output; warning leaves a stale
+recommendation on screen. This is the **same discard/annotate/warn trichotomy as #99**, at a more
+time-pressured moment. Surfaced as #101.
+
+### 11.4 Concurrency
+
+**STATUS: PARTIAL — serialized by the runtime, unprotected at the store**
+
+- **Within one session:** Streamlit executes one script run at a time and `debate_pick` /
+  `run_debate` block inside `st.spinner`, so two AI operations cannot interleave. `run_debate`'s
+  internal `ThreadPoolExecutor` parallelises Quant and Beat only, over one immutable context
+  string. §11's *"can a chair accidentally mix temporal snapshots?"* → **no** (§3.8, and
+  `PickSnapshot`'s tuple-not-list immutability is deliberate for exactly this).
+- **Across sessions: a lost update, demonstrated.** Every per-league store does load → mutate →
+  `write_text`, with no lock, no atomic replace, and no read-modify-write protection anywhere in
+  the tree. Run against the real `todo_log` functions: tab A writes an objective, tab B reads,
+  tab A writes a second, tab B saves its stale view — and **tab A's second objective is gone**.
+  §11's *"can an older operation overwrite or contaminate a newer one?"* → **yes**.
+- **Torn writes:** `write_text` is not atomic and `_load` swallows `JSONDecodeError` by returning
+  `[]`, so a partially-written file silently reads as an empty store. **Recorded, not repaired** —
+  a torn write is undemonstrated here, and §7.8 already established this programme does not make
+  production changes for undemonstrated failures. The lost update *is* demonstrated, but its fix
+  (locking, merge-on-write, or single-writer) is a design decision, not a mechanical one.
+
+### 11.5 The remaining §11 questions
+
+| question | answer |
+|---|---|
+| Are operations isolated, deduplicated, queued, or concurrent? | **Serialized** within a session by the runtime, not by design; deduplicated for the Prytaneum by `_last_submitted`; unprotected across sessions |
+| Does every AI response know the operation snapshot it was generated against? | **Now yes for the Draft Room** (R11). The Prytaneum takes no snapshot at all (§10.2) |
+| Can an operation be rejected automatically if its source snapshot is no longer current? | The certifier exists; nothing calls it (11.2) |
+| Can replay be distinguished from fresh execution? | **No** — there is no replay path to distinguish (§3.7) |
+| Clock skew | Not applicable as deployed: every timestamp is local `time.time()`, and the only external clock is Sleeper's `synced_at`, which is displayed rather than compared |
+
+### 11.6 A correction to §3.9 — the third time a finding was one read short
+
+§3.9 concluded that `PickSnapshot` has *"no id, no hash, no computed-at timestamp"* and that
+*"consumers hold the object itself, not a reference to it."* The first clause is true of a
+**unique identifier**. The framing around it was wrong: the snapshot carries a documented
+input-state stamp, and a purpose-built certifier consumes it. Provenance was present; I recorded
+it as absent because I read the field list and not the docstring twelve lines above it.
+
+**This changes #92's premises, and shrinks it.** The gap is not "invent a provenance mechanism";
+it is "persist and uniquely identify the one that exists." §10's framing of #92 — that the Draft
+Room's causal object is strong and simply never written down — survives and is if anything
+reinforced: the object is *even better* than recorded, and still discarded.
+
+Third occurrence of this pattern (after §6.4a's composite-ambiguity claim and §9.8's
+compaction-is-destructive claim). All three were the most tempting finding available, all three
+were disproved by reading further in the same file. The pattern is now explicit enough to state
+as a rule: **before reporting an absence, read the docstring of the thing you claim lacks it.**
+
+---
+
+## Pass 8 summary
+
+| item | status | boundary kind |
+|---|---|---|
+| 11.1 input-state stamp + certifier exist | EXISTS | structural, tested |
+| **11.2 certifier has no production caller** | **VIOLATED** | characterized |
+| 11.3 `diff_snapshots` exists, aimed elsewhere | EXISTS (stranded) | characterized |
+| **11.3a R11 — result records its input-state stamp** | **REPAIRED** | enforced |
+| 11.3b acting on the stamp (hide/annotate/warn) | DEFERRED → #101 | — |
+| 11.4a within-session isolation | EXISTS | structural (runtime) |
+| **11.4b cross-session lost update** | **VIOLATED (demonstrated)** | characterized |
+| 11.4c torn writes | DOCUMENT (undemonstrated, §7.8 precedent) | characterized |
+| 11.5 replay distinguishable | MISSING | → #92 |
+| 11.6 correction to §3.9 | correction | — |
+
+### Does anything clear the bar for a production change?
+
+**One did and was applied** — R11, because it is §10's R9/R10 rule again with no new decision in
+it, and because without it no consumer can even ask the staleness question.
+
+The two real gaps are both decisions. Consulting the certifier is a user-cost trade-off at the
+most time-pressured moment in the product (#101). Fixing the lost update needs a concurrency
+model this app has never had (#102).
+
+### Follow-ups from this pass, ranked by evidence then severity
+
+1. **11.2 / #101 — consult the certifier.** Everything needed now exists: the stamp, the
+   certifier, the reason string, and (after R11) the stamp on the result. Only the policy is
+   missing, and it is the same trichotomy as #99 — worth settling both together.
+2. **11.4b / #102 — a concurrency model for the per-league stores.** Demonstrated data loss,
+   bounded to multi-tab or multi-device use.
+3. **11.6 / #92 — persist and identify the snapshot.** Smaller than recorded: the provenance
+   stamp exists, so this is persistence plus a unique id, not a new mechanism.
