@@ -876,9 +876,20 @@ def replacement_ranks(
 
 
 def drafted_counts_by_position(picks: list[dict], players_db: dict[str, dict]) -> dict[str, int]:
-    """Public wrapper over _drafted_counts_by_position for callers outside this module (e.g.
-    pick_synthesis.narrow_candidates, via replacement_ranks above) that need the same real
-    per-position already-drafted counts replacement_levels itself uses."""
+    """Public wrapper over _drafted_counts_by_position, for callers outside this module that
+    want a plain league-wide per-position census of what has already been drafted.
+
+    CORRECTION (two claims, both false, both from the same drift): this docstring previously
+    said the counts were "the same … counts replacement_levels itself uses", and named
+    pick_synthesis.narrow_candidates, "via replacement_ranks above", as the caller. Neither
+    holds. Commit 05a4abb removed the drafted_counts parameter from replacement_levels
+    entirely -- it prices replacement off remaining_starter_demand, not off a census -- and
+    replacement_ranks reaches its numbers the same way, not through this wrapper. Nothing
+    outside this module calls this function at all. The wrapper is
+    kept (it is the intended public spelling of a private helper, and a test pins it to that
+    helper exactly), but it is currently unconsumed, and this docstring now says so instead of
+    asserting a consumer relationship the call graph does not contain -- the same honesty
+    data_merger.parse_espn_idp_pdf already applies to itself."""
     return _drafted_counts_by_position(picks, players_db)
 
 
@@ -1365,7 +1376,15 @@ def compute_draft_board(
     demand_source = picks if demand_picks is None else demand_picks
     current_round = (max((p.get("round") or 1) for p in demand_source) if demand_source else 1)
     use_upside = mode == "upside" or (mode == "auto" and current_round >= upside_round)
-    drafted_counts = _drafted_counts_by_position(demand_source, players_db)
+    # NOTE: a `drafted_counts = _drafted_counts_by_position(demand_source, players_db)` line
+    # sat here until an audit sweep for computed-and-discarded locals found it. Commit 05a4abb
+    # ("Decompose remaining demand into its exact and inferred halves") removed the
+    # drafted_counts parameter from replacement_levels, horizon_replacement and
+    # _attach_waiting_cost -- every consumer -- and left the producer standing. The census was
+    # recomputed on every board build and read by nothing. Removed; the demand model below is
+    # the live path, and the test that used to prove demand_picks reaches the accounting now
+    # proves it against that path instead of against the dead one.
+    #
     # The EXACT half, computed once per board and shared by both replacement anchors below.
     # Per-team, bounded, order-invariant, and able to reach exactly zero -- see
     # remaining_starter_demand. Nothing inferred is mixed in here.

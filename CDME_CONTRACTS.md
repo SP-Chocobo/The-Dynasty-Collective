@@ -6051,3 +6051,287 @@ this time by the audit rather than by the engine.
 136. A published number is one a script in the record reproduces. Where a remembered figure and a
      reproduced figure disagree, the reproduced one is published and the other is withdrawn by
      name rather than quietly dropped.
+
+---
+
+# Appendix — sweep 2: stranded at function granularity, and one live lead
+
+Sweep 1 asked which *dict keys* a producer builds and nobody reads. Sweep 2 asks the same
+question one level up: which **top-level functions and classes** in the engine modules have no
+live product consumer. Same corrected methodology — a name counts as consumed if it is
+referenced anywhere at all, including inside the producing module and inside embedded non-Python
+text — with consumers bucketed rather than reduced to a yes/no, so the verdict is auditable:
+
+`APP` (app.py or another engine module) · `SELF` (the producing module) · `TEST` · `HARNESS`
+(`run_*`, `bot_*`, `*_audit`, ablation/benchmark scripts) · `STRING` (only inside quoted text).
+
+**Result: 20 engine modules, and exactly 6 top-level names with neither an `APP` nor a `SELF`
+consumer.** Six out of hundreds is the same shape as sweep 1's finding — stranding here is rare,
+not systemic.
+
+| module | name | consumers | verdict |
+|---|---|---|---|
+| `data_merger.py` | `parse_espn_idp_pdf` | STRING only | **deliberate, and says so.** Its own docstring: *"there's no live upload path for ESPN at all… nothing in the running app currently calls this. Kept to regenerate the baseline CSV."* This is the honest form. |
+| `roster_diagnostics.py` | `compute_team_diagnostics` | HARNESS, TEST | offline harness entry point. Already recorded as post-draft-only scoping. |
+| `draft_simulation.py` | `run_trials` | HARNESS, TEST | offline harness entry point. |
+| `option_set_analysis.py` | `analyze_option_sets` | HARNESS, TEST | offline experiment entry point (its whole module is one). |
+| `draft_room.py` | `drafted_counts_by_position` | STRING, TEST | **a false consumer claim — repaired below.** |
+| `rookie_draft.py` | `estimate_future_pick_value` | TEST ×8 | **the live lead — investigated below.** |
+
+## The repair: a docstring that named a caller which does not exist
+
+`draft_room.drafted_counts_by_position` is a thin public wrapper over the private
+`_drafted_counts_by_position`. Its docstring justified its existence by naming a consumer:
+*"for callers outside this module (e.g. `pick_synthesis.narrow_candidates`, via
+`replacement_ranks` above)."*
+
+**That path does not exist.** `replacement_ranks` reaches the same counts through
+`remaining_starter_demand`, not through this wrapper, and nothing outside `draft_room` calls the
+wrapper at all. The function is correct; the sentence about who calls it was false, and a future
+reader would have believed those counts flow to `pick_synthesis` when they do not.
+
+The wrapper is kept — it is the intended public spelling of a private helper, and a test pins the
+two to each other exactly — and the docstring now states that it is currently unconsumed, the
+same honesty `parse_espn_idp_pdf` already applies to itself. **Documentation defect, not a code
+defect**, and repaired as one.
+
+## The live lead: every future pick is priced as though nobody owns it
+
+`rookie_draft.estimate_future_pick_value` prices *a specific team's* future pick from that team's
+current record instead of one flat number every future pick of that round and year receives. It
+is fully implemented, covered by 8 test references, and **called by no production code**. Its own
+module docstring states the gap it was written to close:
+
+> *a FUTURE pick … currently prices at one flat, generic number regardless of whose pick it
+> actually is — a last-place team's next 1st and a championship team's next 1st get the identical
+> value.*
+
+That is still exactly what the product does, at four sites in `app.py` (1875, 3579, 3637, 5062),
+all of the form `merger.pick_value(f"{season} Random Rd {round}")`.
+
+### Magnitude — measured, and large in round 1 only
+
+Draft Sharks' per-slot chart is fully loaded: **12 of 12 slots priced in each of rounds 1–4.**
+
+| round | 1st slot | last slot | spread |
+|---|---:|---:|---:|
+| 1 | **83** | **19** | **64** |
+| 2 | 18 | 11 | 7 |
+| 3 | 9 | 5 | 4 |
+| 4 | 4 | 2 | 2 |
+
+The flat generic price the product uses for a 2027 first is **29**. So the engine holds a 64-point
+spread on a 0–100 scale — wider than most players' entire trade value — and prices every team's
+future first at the single number 29. Round 2 and beyond, the spread is 7 or less: **this is a
+first-round phenomenon almost entirely**, which is itself the scoping fact.
+
+Blended estimate versus the flat 29, by record and by how far out the draft is:
+
+| record | est. slot | 0 yrs out | 1 yr | 2 yrs | 3 yrs |
+|---|---:|---:|---:|---:|---:|
+| 0–14 | 1.00 | **+54.0** | **+32.4** | +16.2 | +8.1 |
+| 3–11 | 3.36 | +5.9 | +3.6 | +1.8 | +0.9 |
+| 7–7 | 6.50 | +0.5 | +0.3 | +0.1 | +0.1 |
+| 11–3 | 9.64 | −7.6 | −4.6 | −2.3 | −1.1 |
+| 14–0 | 12.00 | **−10.0** | **−6.0** | −3.0 | −1.5 |
+
+At one season out — the ordinary dynasty case — the two ends of the standings differ by **38
+points around a flat price of 29**.
+
+### The degeneracy check, applied before proposing anything
+
+H2's lesson was to find the degenerate regime *first*. Dynasty trades cluster in the offseason,
+when no games have been played:
+
+```
+0-0-0  ->  estimated_slot 6.50 (league-average middle)  ->  value 29.3   vs  flat 29
+```
+
+**It degrades to the status quo exactly when it has no information.** That is the opposite of
+`marginal_lineup_value`, whose degenerate regime produced a confident *wrong* ordering. This
+signal's failure mode is to agree with what the product already does.
+
+### Why it is not merely "uncalled" — the representation cannot carry the answer
+
+The reason this is not a one-line wiring job is architectural, and it is deliberate.
+
+`_roster_assets` **does** know whose pick it is: the ledger entry carries `roster_id` (the
+original owner), and `snapshot["rosters"]`, `owner_labels` and `league_standings.team_standings`
+are all in scope at that exact call site. Every input `estimate_future_pick_value` needs is
+available there.
+
+But that value is only displayed. The Trade Calculator's actual pricing runs through
+`_price_trade_side(line)`, and `line` is a **string** — `"2027 Random Rd 1"`. The panel's own
+comment states the invariant: *"the box (and `_price_trade_side` above) stays the single source
+of truth for what's actually in the trade… Nothing here re-implements pricing."* Owner identity is
+therefore discarded one step **before** pricing, by design.
+
+So the finding is not "a function isn't called". It is: **the trade's asset representation is a
+list of text lines, and a line cannot say whose pick it is.** Consuming this signal means changing
+what a trade asset *is*, not adding a call — and the string-keyed design is a documented
+invariant with a real purpose (one pricing path, hand-typed and clicked assets treated
+identically), not an oversight.
+
+### What is NOT established: reach
+
+Magnitude is not reach, and the two must not be conflated:
+
+* The free-text path has **no owner at all**, and the flat number is **correct** there — a user
+  who types `"2027 Random Rd 1"` has not said whose pick they mean.
+* Only the enumerated-ledger path knows an owner, and `build_pick_ledger` deliberately lists
+  **only picks that have already been traded** — an untouched pick has no entry, by design.
+* So even a complete wiring reaches only picks that have already changed hands *and* appear in
+  the roster browse panel. **How many that is in a real league is unmeasured**, because this
+  repository holds no Sleeper snapshot containing `traded_picks` (the one real league capture is
+  a manual capture with no roster or standings block).
+
+**Verdict: category 2 — represented but stranded, magnitude quantified, reach unmeasured, and
+structurally out of reach of the current asset representation.** Nothing is implemented. The
+prerequisite for deciding is a real league snapshot carrying `traded_picks` and
+`roster.settings.wins/losses` — the same shape of prerequisite H3 established, and it lands on
+the existing open item for acquiring real league data rather than creating a new one.
+
+## Sweeps 3 and 4: the two remaining blind spots, closed
+
+Sweep 1's recorded blind spots were embedded JavaScript and same-file consumption. Both were
+fixed in method. Two *structural* blind spots remained — kinds of write the AST pass could not
+see at all — and both are now swept rather than left standing as caveats.
+
+**Sweep 3 — keys written by subscript assignment.** Sweep 1 read string keys out of dict
+*literals*. A producer that builds its record with `row["x"] = …`, `.update({…})` or
+`.setdefault("x", …)` was invisible to it, and `compute_draft_board` is exactly that shape — so
+the board's own rows may never have been swept. Collecting every constant string key written by
+those three forms across the engine modules, and cross-referencing readers with the corrected
+methodology:
+
+> **40 keys scanned. 0 with no live product reader.**
+
+A clean negative. The blind spot was real and its contents are empty, which is a different and
+better outcome than leaving it listed as unknown.
+
+**Sweep 4 — dataclass attributes.** The decision layer's own records are dataclasses, and an
+attribute is read as `.name`, which neither earlier sweep could match. Across 23 annotated fields
+in the non-test modules, exactly one has no production reader:
+
+| field | verdict |
+|---|---|
+| `pick_debate.PickDebateResult.recommended_player_id` | **not a finding — a redundant second spelling.** It is set as `recommended.player_id if recommended else None`, and `app.py:4489` reads exactly `mock_current_debate.recommended.player_id` off the sibling field. The information reaches production; only this accessor does not. Recorded so a rerun does not re-raise it. |
+
+Nothing is lost, and nothing is changed. Both sweeps are recorded as run so that the phrase
+"computed and never read" now covers dict literals, subscript writes, dataclass attributes,
+embedded JavaScript and same-file reads — the five channels this codebase actually uses.
+
+## Sweeps 5 and 6: work discarded before it ever reaches a consumer
+
+Sweeps 1–4 all asked the same question from the consumer's side: who *reads* this. Two shapes of
+loss are invisible from there, because the value never becomes a consumable in the first place.
+
+**Sweep 5 — a value computed into a local and never read.** Per function, every plain-name
+assignment target never loaded again in that same function, excluding conventional throwaways and
+bare-constant right-hand sides. Across every non-test module: **exactly one hit — and it is in
+`compute_draft_board`.**
+
+```python
+drafted_counts = _drafted_counts_by_position(demand_source, players_db)   # read by nothing
+```
+
+Traced: commit `05a4abb` (*"Decompose remaining demand into its exact and inferred halves"*)
+removed the `drafted_counts` parameter from `replacement_levels`, `horizon_replacement` and
+`_attach_waiting_cost` — **every consumer** — and left the producer standing as an unchanged
+context line in the diff. **This is the semantic-drift pattern in its purest form:** a quantity's
+role was deleted and a producer that served the old role did not notice.
+
+**It is not a performance finding, and is not reported as one.** Measured: 0.015 ms at round 5,
+0.037 ms at round 10, 0.057 ms at round 20, per board build. Irrelevant. The finding is what the
+residue did to the *test suite*:
+
+> `test_compute_draft_board_actually_passes_demand_picks_to_drafted_counts` spied on the census
+> call and asserted it received `demand_picks` rather than `picks`. It passed. **It was proving
+> that the right picks reached a computation whose result was thrown away.**
+
+That is false assurance about the live demand path, which is the thing the test's own comment
+says it exists to protect ("the direct wiring proof"). The repair keeps the intent and moves the
+proof:
+
+* the dead producer is removed, with a comment recording what happened and when;
+* the test is **re-pointed at `remaining_starter_demand`**, which is where `demand_source` is
+  actually consumed now, renamed to match, and strengthened — it now asserts over **every** call
+  the board makes to the demand model rather than a single one, so an added second call site
+  cannot quietly slip `picks` through, and it carries an explicit non-empty guard so it fails
+  rather than passing vacuously if the board ever stops consulting the demand model at all;
+* a second test pins the removal, so a computed-and-discarded census cannot reappear silently.
+
+Both were verified to fail when they should: re-wiring the demand call to `picks` and
+reintroducing the census produced two failures, then the probe was reverted.
+
+The same trace also invalidated the *other* half of `drafted_counts_by_position`'s docstring —
+that the counts are *"the same … counts `replacement_levels` itself uses."* `replacement_levels`
+stopped taking drafted counts in that same commit; it prices replacement off
+`remaining_starter_demand`. Both false claims came from one drift and are corrected together.
+
+**Sweep 6 — a parameter accepted and never read.** Information handed *across* an interface and
+dropped: invisible to every consumer-side sweep, because from the caller's side it very much is
+consumed. Across every non-test module, **one hit**:
+
+| site | finding |
+|---|---|
+| `sleeper_client.sync_league(league_id, players_db=None)` | `players_db` is never read — **and never was, in any version of the file.** Not a removed consumer; a parameter that has never done anything. Both callers (`app.py:1015`, `app.py:2978`) pass `client.get_players()` into it, doing real work to supply it. |
+
+**Not repaired beyond the docstring, deliberately.** `client.get_players()` also warms the ~10MB
+players cache, so dropping the parameter means deciding what happens to that side effect at two
+Streamlit call sites — a UI decision, in ingestion code, during a valuation audit, with a cost
+this environment cannot measure (no cached `players_nfl.json` is present). The signature now
+carries an explicit note that the argument is ignored, so nobody reads it and concludes the
+snapshot is players_db-aware. The removal is left as an owner's call, stated rather than skipped.
+
+**Where the sweep now stands.** "Computed and never read" has been asked at six granularities —
+dict literals, subscript writes, dataclass attributes, top-level functions, function-local values,
+and function parameters — across five consumer channels including embedded JavaScript and
+same-file reads. Total genuine findings: **one stranded signal correctly stranded (H2), one
+stranded signal with an unmeasured reach (future picks), one residue of a completed refactor, two
+false docstring claims, and one vestigial parameter.** Nothing systemic.
+
+## Sweep 7: information destroyed by an exception handler — clean
+
+The most literal reading of "where does the system silently lose information": an `except` block
+that neither re-raises, nor records anything, nor produces a value encoding the failure. Every
+handler in every non-test module whose body is a bare `pass`/`continue`/`break`/single `return`,
+bucketed by how blind the catch is and whether it carries an explanation.
+
+**36 such handlers. 13 catch broadly (`Exception`). Zero catch broadly without an explanation.**
+
+And the 13 broad ones are not silent at all — the classifier flagged them only because their body
+is one statement. Every one converts the exception into a *value* the caller receives:
+`return ([], str(exc))` in `llm_engine`, `return f"⚠️ Claude request failed…"` in `pick_debate`.
+The failure is carried, not dropped. The rest are narrow catches
+(`FileNotFoundError`, `json.JSONDecodeError`, `ValueError`) returning the documented fail-soft
+default.
+
+Three `pass`-bodied handlers were read individually because a `pass` cannot encode anything:
+
+| site | verdict |
+|---|---|
+| `data_merger.position_family:321` · `measurement_basis:1252` | correct. `pd.isna()` raises on array-like input; the fall-through reaches the `str(...)` path, which is the right answer for a non-scalar. |
+| `app.py:791` | correct, and the surrounding comment is the reason: a corrupt history file is renamed to a backup before the load returns empty, and a failed *backup* must not break the load. |
+
+**No findings.** Recorded because a clean negative on this particular question is worth having on
+the record before a freeze.
+
+## Invariants
+
+137. A docstring that names a consumer is a claim about the call graph, and is checked against it.
+     A function's stated reason for existing may not assert a caller that does not exist.
+138. An unconsumed function is classified by *why*: deliberate tooling that says so, an offline
+     harness entry point, or a stranded signal. The three are recorded differently and only the
+     third is a finding.
+139. Magnitude and reach are separate claims and are reported separately. A large per-case
+     difference over an unmeasured population does not establish decision value, and neither
+     number substitutes for the other.
+140. A recorded blind spot is closed by sweeping it, not by repeating the caveat. A clean
+     negative from a blind spot is a result and is written down as one.
+141. A test proves a consequence, not a call. Spying on a function whose result is discarded
+     asserts wiring into nothing, and passes forever while the path it claims to protect goes
+     unguarded.
+142. When a refactor removes a quantity's consumers, the producer is removed with them. A
+     producer outliving its role is where semantic drift starts, and it is invisible to every
+     consumer-side audit.

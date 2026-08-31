@@ -201,7 +201,17 @@ class SleeperClient:
     # -- aggregate sync -------------------------------------------------------
 
     def sync_league(self, league_id: str, players_db: Optional[dict[str, dict]] = None) -> dict:
-        """Pull everything for one league and cache a timestamped snapshot."""
+        """Pull everything for one league and cache a timestamped snapshot.
+
+        players_db IS IGNORED, and has been in every version of this file -- an audit sweep for
+        parameters accepted and never read found it, and its history shows it was never wired,
+        not that a consumer was removed. It stays in the signature rather than being dropped
+        unilaterally: the two callers (app.py) pass client.get_players() into it, and that call
+        also warms the ~10MB players cache, so removing the parameter means deciding what
+        happens to that side effect at each call site. That is a UI-side call for the owner, not
+        something to change inside a valuation audit. Recorded here so nobody reads the
+        signature and concludes the returned snapshot is players_db-aware. It is not: nothing
+        below touches this argument."""
         league = self.get_league(league_id)
         if league is None:
             raise SleeperAPIError(f"League {league_id} not found")

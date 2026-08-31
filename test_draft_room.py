@@ -221,6 +221,32 @@ class DraftedCountsByPositionPublicWrapperTests(unittest.TestCase):
             dr._drafted_counts_by_position(picks, players_db),
         )
 
+    def test_its_docstring_no_longer_claims_a_caller_that_does_not_exist(self):
+        """The docstring used to justify this wrapper by naming pick_synthesis.narrow_candidates
+        as its caller, "via replacement_ranks". That path does not exist -- replacement_ranks
+        reaches the same counts through remaining_starter_demand. This pins the corrected claim:
+        no production module outside draft_room references the wrapper. It fails the day someone
+        wires it, which is the day the docstring has to be updated again."""
+        import os, re
+        here = os.path.dirname(os.path.abspath(__file__))
+        production = [
+            f for f in sorted(os.listdir(here))
+            if f.endswith(".py") and not f.startswith(("test_", "run_", "compare_", "bot_"))
+            and f != "draft_room.py"
+        ]
+        self.assertGreater(len(production), 10,
+                           "the scan found almost no production modules -- it would pass "
+                           "vacuously, so the guard fails instead")
+        pattern = re.compile(r"\bdrafted_counts_by_position\b")
+        offenders = []
+        for name in production:
+            with open(os.path.join(here, name), encoding="utf-8", errors="replace") as handle:
+                if pattern.search(handle.read()):
+                    offenders.append(name)
+        self.assertEqual(offenders, [],
+                         "drafted_counts_by_position now has a production consumer; its "
+                         "docstring says it has none and must be corrected")
+
 
 class CliffAnchoredQBReplacementTests(unittest.TestCase):
     """The startable-floor replacement model for superflex QB (see qb_startable_floor and
@@ -447,30 +473,63 @@ class DemandPicksSplitTests(unittest.TestCase):
         self.assertAlmostEqual(levels_unsplit["QB"], levels_split["QB"],
                                delta=max(levels_split["QB"] * 0.1, 5.0))
 
-    def test_compute_draft_board_actually_passes_demand_picks_to_drafted_counts(self):
+    def test_compute_draft_board_actually_passes_demand_picks_to_the_demand_model(self):
         # The direct wiring proof -- decoupled from _scale_vor_to_bpa's pool-relative scaling
         # entirely (see the test above for why that scaling makes per-player bpa the wrong
-        # level to assert this at): spy on the real _drafted_counts_by_position call
-        # compute_draft_board makes internally, and confirm it actually receives demand_picks
-        # (not `picks`) when given one.
+        # level to assert this at): spy on the demand call compute_draft_board makes
+        # internally, and confirm it actually receives demand_picks (not `picks`) when given
+        # one.
+        #
+        # RE-POINTED. This used to spy on _drafted_counts_by_position, and it passed -- but
+        # commit 05a4abb had removed that census from every consumer, so the test was proving
+        # that the right picks reached a computation whose result was then discarded. The
+        # intent it protects is real and unchanged; remaining_starter_demand is where
+        # demand_source is actually consumed now, so that is where the proof belongs. Asserted
+        # over EVERY call rather than a single one, so an added second demand call site cannot
+        # quietly slip `picks` through.
         import unittest.mock as mock
 
         my_picks = [{"pick_no": 1, "round": 1, "roster_id": "1", "player_id": "1"}]
         demand_picks = [{"pick_no": 1, "round": 1, "roster_id": "1", "player_id": "2"}]
 
-        real_fn = dr._drafted_counts_by_position
-        with mock.patch.object(dr, "_drafted_counts_by_position", side_effect=real_fn) as spy:
+        def picks_arguments(spy):
+            # remaining_starter_demand(roster_positions, num_teams, picks, players_db)
+            seen = [call.args[2] if len(call.args) > 2 else call.kwargs.get("picks")
+                    for call in spy.call_args_list]
+            self.assertTrue(seen, "compute_draft_board never consulted the demand model at all "
+                                  "-- this test would pass vacuously, so it fails instead")
+            return seen
+
+        real_fn = dr.remaining_starter_demand
+        with mock.patch.object(dr, "remaining_starter_demand", side_effect=real_fn) as spy:
             dr.compute_draft_board(
                 self.merger, self.players_db, my_picks, my_roster_id="99", league=self.league,
                 mode="balanced", demand_picks=demand_picks,
             )
-        spy.assert_called_once_with(demand_picks, self.players_db)
+        for seen in picks_arguments(spy):
+            self.assertIs(seen, demand_picks,
+                          "the demand model was fed `picks` when demand_picks was supplied")
 
-        with mock.patch.object(dr, "_drafted_counts_by_position", side_effect=real_fn) as spy2:
+        with mock.patch.object(dr, "remaining_starter_demand", side_effect=real_fn) as spy2:
             dr.compute_draft_board(
                 self.merger, self.players_db, my_picks, my_roster_id="99", league=self.league, mode="balanced",
             )
-        spy2.assert_called_once_with(my_picks, self.players_db)
+        for seen in picks_arguments(spy2):
+            self.assertIs(seen, my_picks,
+                          "with no demand_picks, the demand model must see `picks` itself")
+
+    def test_the_discarded_drafted_counts_census_stays_gone(self):
+        """Commit 05a4abb removed the census from every consumer and left the producer in
+        compute_draft_board. It was recomputed on every board build and read by nothing. This
+        pins the removal, so a future edit cannot silently reintroduce a computed-and-discarded
+        census under the same name."""
+        import inspect, re
+        source = inspect.getsource(dr.compute_draft_board)
+        assignments = re.findall(r"^\s*(\w+)\s*=\s*_drafted_counts_by_position\(", source,
+                                 flags=re.MULTILINE)
+        self.assertEqual(assignments, [],
+                         "compute_draft_board computes a drafted-counts census again; if it is "
+                         "genuinely consumed now, update this test, and if it is not, remove it")
 
     def test_demand_picks_does_not_affect_need_bonus_or_pool_filtering(self):
         # need_bonus/eligibility_bonus and drafted_ids pool exclusion must still read the FULL
