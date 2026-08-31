@@ -2816,3 +2816,173 @@ truncation, #100 for the usage object that would detect a billed-but-lost call).
    consume the same thing, and doing them separately means touching the callers twice.
 3. **14.4 → #92 — record failed operations.** The decision log currently records what worked, not
    what was attempted.
+
+---
+
+## Pass 11 — §15
+
+**Scope:** Build Guide v2 §15 (economic and resource exhaustion).
+
+**Baseline:** `c55fdf0` on `ui-authority-pass`; `main` frozen at `9fb5102`. **No production file
+was modified** — §15's gaps are all limit-setting decisions, and its strengths were undefended
+rather than broken. #91–94, #96–104 remain queued; #99 stays ahead of #94.
+
+**Headline: every AI operation has a deterministic, small, closed-form call envelope — and it is
+deterministic by accident of construction rather than by a limiter, which is exactly why it
+needed pinning.**
+
+### 15.1 The envelope, counted
+
+**STATUS: EXISTS — now enforced**
+Counted by stubbing the real provider callers, not read off the source:
+
+| operation | provider calls | why that number |
+|---|---|---|
+| `run_debate` (full Prytaneum) | **4** | one per chair in `ROLE_SYSTEM_PROMPTS` |
+| `ask_moderator_followup` | **1** | the Moderator alone |
+| `debate_pick` (Draft Room) | **3** | one per chair in `DEFAULT_ROLE_PROVIDERS` |
+| `run_benchmark` | **candidates × scenarios × 2** | one model call *plus one judge call* per scenario |
+
+Verified at 1, 2 and 3 candidates for the benchmark. The ×2 is the half most easily forgotten
+when reasoning about what a run costs: the judge is a billed call too.
+
+### 15.2 Nothing amplifies it
+
+**STATUS: EXISTS — three independent reasons, all now pinned**
+- **No retries.** `retry`, `backoff`, `max_retries`, `tenacity` appear nowhere. §15's *"can
+  retries exceed a hard operation envelope?"* is satisfied trivially — bounded at zero.
+- **No loop around a provider call** in `llm_engine` or `pick_debate`. `bot_benchmark` does loop,
+  and its bounds are the two finite lists it iterates (`candidates`, `battery`).
+- **No recursion.** `process_moderator_output` is the single place a model's output is acted on,
+  and — walked by AST with the docstring removed — it reaches **only** `parse_*` members. Parsing
+  a verdict cannot spend money. Reinforced by the call-site census: every provider-spending entry
+  point in `app.py` sits behind a button or a submitted question, never behind another model's
+  output.
+
+The Moderator's prompt says it *"can recommend /debate in its own reply … but it never triggers
+that itself; only the user typing /debate does."* §15 is where that instructional boundary turns
+out to be **structural as well** — there is no code path from a parsed verdict to a call.
+
+### 15.3 The one unbounded term — provider-side tool calls
+
+**STATUS: MISSING — and this is the section's genuinely new finding**
+**EVIDENCE:** every chair call attaches a server-side web-search tool —
+`web_search_20260209` (Claude), `types.Tool(google_search=…)` (Gemini), `{"type": "web_search"}`
+(OpenAI) — with **no `max_uses`, no `max_tool_calls`, no `tool_choice`, no search cap of any
+kind.** How many searches the provider executes *inside one chair call* is the provider's
+decision, is billed, and is invisible here because no usage object is read (#100).
+
+So the envelope splits: **the chair-call count is deterministic; the tool-call count inside each
+one is not.** A "4-call debate" is four *app* calls and an unknown number of *billed provider
+operations*. §15's *"is there a deterministic maximum call/cost envelope for each operation
+type?"* is therefore **yes at the layer this app controls, no at the layer it pays for.**
+**Verdict: DOCUMENT.** Capping tool use changes what Beat and Contrarian can actually find —
+a capability/cost trade-off, not a mechanical fix. Surfaced (#105).
+
+### 15.4 No budget primitives exist
+
+**STATUS: MISSING**
+**EVIDENCE:** no `budget`, `quota`, `cooldown`, `debounce`, `throttle`, `rate_limit`, spend cap
+or cost ceiling anywhere — verified word-bounded with comments excluded, after a naive scan
+reported three false positives (15.8).
+Consequently: no hard server-side resource budget of any kind; no concurrency limiter beyond
+`max_workers=2` *within* one debate; nothing stops a runaway or repeated operation; and §15's
+*"can the system stop safely when budget is exhausted while preserving state and auditability?"*
+has no mechanism to answer — quota exhaustion arrives as a `⚠️` and the operation degrades
+(§14.2), which is safe but is not budget-aware.
+
+### 15.5 The largest single-action spend, and its default
+
+**STATUS: PARTIAL — maximal by default, but disclosed**
+**EVIDENCE:** the benchmark's candidate multiselect is `options=_p_fetched, default=_p_fetched`
+— **every model fetched for every configured provider, pre-selected.** At three scenarios and two
+calls each:
+
+| candidates | billed calls from one button press |
+|---|---|
+| 1 | 6 |
+| 5 | 30 |
+| 10 | 60 |
+| 30 | 180 |
+
+**The mitigation that does exist, and is now pinned:** the caption says *"Real, billed API calls —
+nothing runs until you press Run"*, the button label carries the live count
+(`{len(_bench_candidates)} model(s) × {…} scenarios`), and the button is disabled at zero
+candidates. So the cost is disclosed at the moment of action — it is simply defaulted to maximum.
+**Verdict: DOCUMENT.** Changing a default is a product decision. Surfaced (#105).
+
+### 15.6 What §15 asks that this app already does well
+
+- **Reusable research materially reduces repeated cost** — `findings_for_context` /
+  `comparisons_for_context` replay past panel-vetted findings into every later context, so a
+  finding is paid for once (§6.6a). This is a genuine affirmative answer.
+- **Concurrent aggregate spike** — bounded within a debate at two workers; across sessions
+  unbounded, but that is #102's multi-writer surface rather than a distinct cost mechanism.
+- **Cost-aware routing among qualified models** → **no** (§5.8: price is not an input to
+  routing). **Pricing-change detection** → **no** — nothing records or compares provider prices.
+  **Per-expenditure attribution** → **no** (#100).
+
+### 15.7 Effect on an open decision — #100 sharpens
+
+**Surfaced, not resolved.** #100 already recorded that one missing quantity answers "no" in three
+sections. §15 adds a fourth consequence and a sharper reason: the tool-call term (15.3) is not
+merely unmetered, it is **unmeasurable by any other means**. Chair calls can be counted from the
+outside — this pass just did it — but searches executed inside a provider's own call can only be
+seen in the usage object that nothing reads. So metering is not just the cheapest way to answer
+§15's cost questions; for the one genuinely unbounded term it is the *only* way. That strengthens
+#100's priority without changing what it is choosing between.
+
+### 15.8 A correction — the seventh substring artifact, caught twice in one probe
+
+My §15 probe reported two things that were false, both caught before they became findings:
+
+1. **"Model output triggers another model call."** A naive `llm_engine\.(\w+)` regex over
+   `process_moderator_output` returned `ask_moderator_followup` — which appears **only in that
+   function's docstring**, explaining which callers can produce a verdict block. There is no
+   recursion. Re-checked by AST with the docstring dropped. The test I shipped uses the AST walk
+   and records why in a comment.
+2. **"Budget/ceiling/spend primitives exist."** All three were prose: *"a live draft's per-pick
+   LLM budget"* in a docstring, `PRICE CEILING` as a verdict field and `Ceiling` as a Draft Sharks
+   column, and *"actually spend a full panel run"* inside a prompt.
+
+Seventh occurrence of this class (after D's `candidate.bpa`, Pass 2's `team_label`/`surface`,
+Pass 3's `"role" in source`, Pass 6's loop-dict, Pass 10's `max_output_tokens`, and this pass's
+two). Both were caught by the standing rule that no scan result is believed before a probe or a
+second reading — which is now the only reason the count is seven rather than a list of published
+errors.
+
+---
+
+## Pass 11 summary
+
+| item | status | boundary kind |
+|---|---|---|
+| 15.1 deterministic per-operation call envelope | EXISTS | now enforced |
+| 15.2 no retries / loops / recursion amplifying it | EXISTS | structural, now enforced |
+| **15.3 provider-side tool calls uncapped** | **MISSING** | characterized → #105 |
+| 15.4 budgets / quotas / cooldowns / throttles | MISSING | characterized |
+| 15.5 benchmark defaults to every fetched model | PARTIAL (disclosed) | characterized → #105 |
+| 15.5a benchmark cost disclosed before running | EXISTS | now enforced |
+| 15.6 reusable research reduces repeated cost | EXISTS | → §6.6a |
+| 15.6a cost-aware routing / pricing detection / attribution | MISSING | → #100 |
+| 15.7 tool-call term is unmeasurable without metering | — | sharpens #100 |
+| 15.8 seventh substring artifact, twice | correction | — |
+
+### Does anything clear the bar for a production change?
+
+**No.** Every §15 gap is a limit-setting decision — how many searches a chair may run, what a
+benchmark should pre-select, whether a budget ceiling exists and what happens at it. Each trades
+capability or cost against safety, and none is resolvable under an already-established rule.
+
+What §15 did produce is worth stating plainly: the cost guarantee this app actually has is real
+and was entirely undefended. A single added retry, a chair reacting to another chair, or a
+dropped judge call would each change the bill without changing any number a test looked at.
+Eleven tests now make those visible.
+
+### Follow-ups from this pass
+
+1. **#105 — the resource-limit family.** Tool-call cap, benchmark default, budget ceiling,
+   per-snapshot cooldown. One decision surface, four knobs.
+2. **#100 — meter the usage object.** Now the only way to see the one unbounded term.
+3. **Pricing-change detection.** Named, unranked: nothing records a provider's price, so nothing
+   can notice one changing. Downstream of #100 having anything to compare against.

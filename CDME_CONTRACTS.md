@@ -7994,3 +7994,87 @@ a total failure.
      which one it was.
 214. A log of decisions that records only successes is a record of what worked, not of what was
      attempted -- and the difference is invisible precisely when it matters most.
+
+---
+
+# Appendix — §15: economic and resource exhaustion
+
+Structured findings live in `ARCHITECTURE_AUDIT.md` (Pass 11). This entry records the
+measurements, the corrections, and the invariants. **No production file was modified.**
+
+**Every AI operation has a deterministic, small, closed-form call envelope -- and it is
+deterministic by accident of construction rather than by a limiter, which is exactly why it
+needed pinning.**
+
+## What was measured
+
+Counted by stubbing the real provider callers, not read off the source:
+
+| operation | provider calls |
+|---|---|
+| `run_debate` (full Prytaneum) | **4** -- one per chair in ROLE_SYSTEM_PROMPTS |
+| `ask_moderator_followup` | **1** |
+| `debate_pick` (Draft Room) | **3** -- one per chair in DEFAULT_ROLE_PROVIDERS |
+| `run_benchmark` | **candidates x scenarios x 2** -- verified at 1, 2 and 3 candidates; the judge is a billed call too |
+
+| measurement | result |
+|---|---|
+| retries / backoff / max_retries / tenacity | **absent** -- bounded at zero |
+| loop around a provider call | **none** in llm_engine or pick_debate; bot_benchmark's two loops are over finite lists |
+| recursion: does parsing a verdict spend money? | **no** -- `process_moderator_output` reaches only `parse_*` members (AST walk, docstring dropped) |
+| provider-spending entry points in app.py | all behind a button or a submitted question, never behind model output |
+| **tool calls inside one chair call** | **uncapped** -- no max_uses, max_tool_calls, tool_choice or search cap on any of the three providers' web-search grants |
+| budget / quota / cooldown / debounce / throttle / rate_limit / spend cap | **none anywhere** |
+| benchmark candidate multiselect | `options=_p_fetched, default=_p_fetched` -- every fetched model of every configured provider, pre-selected |
+| one button press at 30 candidates | **180 billed calls** |
+| cost disclosure before running | present: "Real, billed API calls -- nothing runs until you press Run", live count in the button label, disabled at zero |
+| parallelism | `max_workers=2`, within one debate only |
+
+**The genuinely new finding is that the envelope splits.** The chair-call count is deterministic;
+the tool-call count inside each one is not. A "4-call debate" is four APP calls and an unknown
+number of billed PROVIDER operations. §15's deterministic-envelope question is therefore yes at
+the layer this app controls and no at the layer it pays for.
+
+## Corrections -- the seventh substring artifact, caught twice in one probe
+
+**"Model output triggers another model call."** A naive regex over `process_moderator_output`
+returned `ask_moderator_followup`, which appears ONLY in that function's docstring explaining
+which callers can produce a verdict block. There is no recursion. Re-checked by AST with the
+docstring dropped; the shipped test uses the AST walk and records why.
+
+**"Budget/ceiling/spend primitives exist."** All three were prose: "a live draft's per-pick LLM
+budget" in a docstring, PRICE CEILING as a verdict field and Ceiling as a Draft Sharks column,
+and "actually spend a full panel run" inside a prompt.
+
+Seventh occurrence of this class, after D's `candidate.bpa`, Pass 2's `team_label`/`surface`,
+Pass 3's `"role" in source`, Pass 6's loop-dict keyed by target, Pass 10's `max_output_tokens`,
+and this pass's two. The count is seven rather than a list of published errors only because no
+scan result here is believed before a probe or a second reading.
+
+## Tests added
+
+`test_cost_envelope_boundary.py` -- 13 tests. Enforcement: the four counted envelopes; no retry
+or backoff; no loop around a provider call; parsing output reaches only parsers; the spending
+call-site census; bounded parallelism; and the benchmark's cost disclosure. Characterization: no
+budget primitives, uncapped tool calls, and the default-to-every-model multiselect.
+
+Non-vacuity: six probes planted in real code and reverted, all failing -- an extra Contrarian
+call, the word "retry" appearing, a real recursion path from `process_moderator_output`, dropping
+the judge call, capping tool use, and removing the cost disclosure.
+
+## Invariants
+
+215. A cost guarantee that emerges from the absence of loops is still a guarantee, and is the
+     easiest kind to lose. Nothing in a retry, a reacting chair, or a second judge call announces
+     itself as a cost change, so the envelope has to be counted rather than assumed.
+216. Count an envelope, do not read one. The number of calls an operation makes is a property of
+     execution; reading the source finds the calls somebody wrote, not the ones a loop produces.
+217. An envelope is only deterministic at the layer that controls it. Where a provider decides
+     how many tool calls to run inside one request, the caller's call count is exact and its bill
+     is not.
+218. Defaulting a billed action to its maximum is a product choice, and disclosure is what makes
+     it defensible rather than reckless. Both halves are worth pinning -- the default so it is
+     deliberate, the disclosure so it cannot quietly vanish.
+219. An instructional boundary is worth re-checking structurally at the layer where it costs
+     money. "The Moderator never triggers a debate itself" is a prompt sentence; that no code
+     path leads from a parsed verdict to a provider call is the thing that makes it true.
