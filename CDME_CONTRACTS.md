@@ -7090,3 +7090,80 @@ contextual signal at maximum.
      requires both an input rich enough to trigger it and a state outside its degenerate regime.
 160. Ablating a quantity that no consumer ranks on measures the quantity's own label, not the
      decision. The distinction is recorded whenever an ablation battery is cited.
+
+---
+
+# Appendix — the research fixture: contract written, capture BLOCKED
+
+**Status: blocked on an external dependency this session cannot satisfy.** No fixture was
+captured, and none was manufactured. What this pass delivers is the fixture *contract* and a
+validator that enforces it, so a capture made elsewhere is immediately usable — and so an
+inadmissible one is rejected before it produces a number.
+
+## Why a real capture was the right next task
+
+Four investigations in a row terminated at the same step — magnitude measured, reach
+unmeasurable:
+
+| investigation | measured | blocked on |
+|---|---|---|
+| #85 future-pick valuation | 64-point round-1 slot spread; flat price is the distribution's median | `traded_picks` |
+| D injury status | rank 1 → 43 across the RISK_ADJ range | real `players_nfl.injury_status` |
+| E `eligibility_bonus` | fires on 2.5–5.5% of rows, max +2.76 | real `fantasy_positions` multiplicity |
+| #87 peer-relative depth | measurement voided | real rosters + engine slot semantics |
+
+Reach is exactly what separates DOCUMENT from WIRE under this program's standard, so the
+binding constraint stopped being analysis and became fixtures.
+
+## The block, characterized precisely
+
+`api.sleeper.app:443` is denied by **organization egress policy** — the gateway answers **403
+to CONNECT**, recorded in the proxy's own `recentRelayFailures`. This is not a TLS or trust
+problem and not transient: general egress from this session works (`pypi.org` 200,
+`raw.githubusercontent.com` 301). The proxy README is explicit that policy denials are to be
+reported, not retried.
+
+No prior capture exists to fall back on. `data/sleeper_snapshots/` has carried only a
+`.gitkeep` since the initial commit, and no JSON containing `traded_picks` appears anywhere in
+any branch's history.
+
+**Nothing was fabricated to fill the gap, and that is a finding, not an omission.** A
+hand-built "realistic" fixture would encode this session's own assumptions about precisely the
+distributions being measured — injury prevalence, multi-eligibility rate, traded-pick frequency
+— and the resulting reach numbers would be invention wearing the costume of evidence. This
+audit has already caught itself four times reporting a fixture's property as an engine
+property; manufacturing the fixture that answers the reach question would be that same error
+committed deliberately.
+
+## The fixture contract
+
+**Must be present and non-normalized** — these *are* the measurement:
+
+| field | unblocks |
+|---|---|
+| `rosters[].players`, `rosters[].starters`, `league.roster_positions` | #87 peer-relative depth, real slot eligibility |
+| `rosters[].settings.wins` / `.losses` / `.ties` | #85 (the record the estimator reads) |
+| `traded_picks[].{season, round, roster_id, owner_id}` | #85 reach — which picks are even enumerable |
+| `players_nfl[].injury_status` | D reach |
+| `players_nfl[].fantasy_positions` | E reach |
+
+**Safe to redact**: `display_name`, `avatar`, `user_id`, league name, free-text `metadata.*`.
+
+**Admissibility is stronger than well-formedness.** A dimension counts only if the fixture can
+*exercise* it: a snapshot with zero traded picks cannot answer #85's reach question, a
+players payload with no `injury_status` cannot answer D's, and a single-position payload cannot
+answer E's — regardless of how complete the schema looks. `run_fixture_validation.py` enforces
+exactly this and refuses the fixture otherwise.
+
+Validated in both directions: the synthetic shape that fooled this audit (well-formed, 10
+rosters, 40 players, every key present) is **rejected** on all four reach dimensions, and a
+shape carrying real variation is **admitted**. The validator has no generation mode by design.
+
+## Invariants
+
+161. A reach question is answered only from a fixture that can exercise the dimension it asks
+     about. Schema completeness is not exercisability, and a well-formed fixture that cannot
+     vary the quantity under test yields a property of the fixture.
+162. Where the data required to answer a question cannot be obtained, the question stays open
+     and the blocker is named. Synthesising the input is not a substitute for acquiring it,
+     most of all when the synthesis would have to assume the very distribution being measured.
