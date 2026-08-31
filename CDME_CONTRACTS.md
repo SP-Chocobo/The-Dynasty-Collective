@@ -5573,3 +5573,179 @@ quantified basis, not a missing feature.
      fill more starting slots starts higher; no per-position constants are introduced.
 125. Before a contextual signal is added, the existing representation of that concept is located
      and measured. A signal that is invisible in the final ranking is not thereby absent.
+
+---
+
+# Appendix — three hypotheses, investigated
+
+Each is classified against the four possible conclusions: **already represented and working**,
+**represented but stranded**, **represented but miscalibrated**, or **not represented**.
+
+## H1 — is `need_bonus`'s 4.0-per-slot step miscalibrated?
+
+**Conclusion: already represented and working. Pinned, not recalibrated.**
+
+The raw counts (need changed the winner in 6 of 52 tie groups, fell short in 10) are not by
+themselves evidence of a wrong coefficient. Classifying all 10 fell-short cases on the two
+dimensions that decide whether each was a failure — was roster state **relevant** (do the
+candidates differ in coverage at all), and was the player-value gap **material** (bigger than
+ordering noise):
+
+| classification | n |
+|---|---|
+| roster state relevant, player-value gap **material** → need correctly lost | **8** |
+| roster state **not relevant** (both candidates equally covered) → need should not decide | 1 |
+| roster state relevant, player values **equivalent** → need should have won | **1** |
+
+`need_bonus` recovered a **median 86%** of the underlying valuation gap (min 26%, max 94%),
+leaving residuals of 0.27–1.95 — all inside the ordering-noise band.
+
+The one genuine miss: round 6, roster 6 — B Tuten (RB, 3/3 **saturated**, UV 16.00, need 0.00)
+beat D Goedert (TE, 1/2, UV 14.75, need 0.33). Value gap 1.25; contextual difference only 0.33.
+**That is not a step-size problem.** Raising 4.0 per slot would scale all eight steps that are
+currently working correctly in order to move one case whose contextual difference is small
+because TE-at-1-of-2 genuinely is a small distinction. No recalibration is indicated.
+
+## H2 — is "covered vs saturated" represented anywhere?
+
+**Conclusion: represented but stranded, with measured independent decision value.**
+
+`lineup_optimizer.marginal_lineup_value` is *"best lineup with him minus best lineup without
+him"* — precisely "incremental roster utility". It is **already computed for every candidate on
+every board**, inside `eligibility_bonus`, and returned as
+`marginal_value_full_eligibility`. `draft_room`'s call site reads only `eb["eligibility_bonus"]`
+— the *difference* between full and primary-only eligibility — and **discards the absolute
+marginal value**. The concept is stranded at the last inch, and it is already paid for.
+
+Two false starts are recorded here because each looked like a positive result and was not:
+
+1. A first run showed marginal value as a per-player constant. Cause: **my own probe passed
+   `_team_roster_players`' arguments in the wrong order** (`(picks, rid, m, db)` against a
+   signature of `(picks, players_db, roster_id, merger)`), so every roster came back empty and
+   every marginal equalled the player's own value. Production calls it correctly. Result void.
+2. A corrected run showed "19 of 19 tie groups separated — 100% independent information". That
+   was a **test-design flaw of mine**: selecting groups where `need_bonus` is identical selects
+   mostly *same-position* pairs, where coverage is identical by construction, so the separation
+   was `trade_value` variance rather than roster state. Result void.
+
+The controlled experiment — hold the candidate fixed, vary the roster — is what actually answers
+it. Marginal value against a roster holding 0…7 players at the candidate's own position, with
+every other position at full coverage:
+
+| candidate | tier | 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 |
+|---|---|---|---|---|---|---|---|---|---|
+| J Gibbs | **elite** RB | 95 | 95 | 95 | **48** | **20** | **14** | 14 | 14 |
+| D Henry | mid RB | 26 | 26 | 0 | 0 | 0 | 0 | 0 | 0 |
+| J Brooks | depth RB | 20 | 20 | 0 | 0 | 0 | 0 | 0 | 0 |
+| P Nacua | **elite** WR | 94 | 94 | 94 | 11 | 5 | 5 | 5 | 5 |
+| B Bowers | **elite** TE | 96 | 96 | 13 | 13 | 13 | 13 | 13 | 13 |
+
+It **declines with coverage**, and at four rostered RBs it separates **Gibbs (20 — he would
+displace a starter) from Henry and Brooks (0 — they would not)**, where `need_bonus` scores all
+three at exactly 0.00. That is the saturated-position distinction, *including* the exemption for
+an elite asset who still deserves preference over an ordinary depth piece.
+
+Also measured: the signal is **degenerate before the lineup fills** (100% of candidates have
+marginal == their own value at round 2, falling to 0% by round 14), so it only becomes
+informative from roughly round 10 — which is exactly when `need_bonus` reaches 0.00 and goes
+silent. **The two are complementary in time, not duplicative.**
+
+### Why this is NOT wired yet
+
+It is denominated in **`trade_value`** — Draft Sharks' dynasty market scale — not in the board's
+projected points. Consuming it anywhere in the decision path means crossing a measurement basis,
+which this engine requires to be explicit (the call site already performs exactly such a rescale
+for `eligibility_bonus`, via `ELIGIBILITY_BONUS_MAX / TRADE_VALUE_SCALE_MAX`, after a real units
+defect was found there). So the open questions are, in order:
+
+1. Should incremental lineup utility influence a tiebreak at all, given core value and need
+   already precede it in the hierarchy?
+2. If so, in whose currency — and is a market-value quantity acceptable as a tiebreak on a
+   projected-points board?
+
+**Proposed home, not implemented:** surface it as an *observable* on the board record first —
+the same treatment `waiting_cost` already has (computed, exposed, deliberately not consumed) —
+under a name that states its basis. That changes no decision today and makes the signal
+inspectable before it is trusted.
+
+## H3 — handcuff / contingent-role classification
+
+**Conclusion: not represented, and not constructible from data this repository holds.**
+
+Recovery first, as instructed. Searched the working tree and **every branch's history**: the only
+occurrence of "handcuff" anywhere is the line written in this document yesterday. No prior
+analysis, definitions, fixtures or measurements exist. "Ray Davis" and "Braelon Allen" appear
+only as rows inside vendor ranking CSVs.
+
+The concept does exist — **but only as prompt text**. `llm_engine.py`'s Beat Tracker persona is
+instructed to web-search depth charts and judge whether a player is *"the unquestioned starter,
+in a committee, or buried behind someone"*, and `bot_benchmark.py` poses a workload-inheritance
+scenario as a benchmark question. Both delegate the judgement to an LLM at runtime. Neither
+computes or stores anything. This is a concept that exists **nominally**.
+
+The five categories proposed (direct handcuff / partial or committee contingent / ambiguous
+backup / standalone with contingent upside / no relationship) all require role and workload
+evidence. Every canonical table's full field list is:
+
+```
+name, team, position, rank, projection, proj_3yr, trade_value, source_date
+plus, from external sources: age, rookie, injury_flag, bye_week, ecr_1qb/2qb,
+avg/best/worst, std_dev, trend_30d, tier, pos_rank
+```
+
+There are **no carries, targets, snaps, touches, games started, depth-chart order, or any
+linkage between two players**. A search of `data/` for any usage-shaped file returns nothing.
+
+What *is* constructible is "the Nth-highest-projected player at position P on NFL team T" — 28
+RB groups carry 2+ players. That is a projection-order proxy, **not** a role classification: it
+cannot separate a true next-man-up from a committee back from a standalone starter, which is the
+entire content of the proposed taxonomy. Building the label on it would produce exactly the
+`is_handcuff = true` nominal flag that was ruled out.
+
+**This is a data gap, not an architecture gap.** The prerequisite is a usage/role source
+(snap share, touch share, or a depth-chart feed). Until one exists, no measurable classification
+can be defended, and the concept stays where it is — delegated to the LLM layer, which can at
+least go and look.
+
+## Invariants
+
+126. A signal's independent decision value is established by a controlled comparison — hold the
+     player fixed and vary the state — not by observing that it separates candidates. Separation
+     can come from any correlated quantity, including a different measurement basis.
+127. A concept that exists only as instructions to an LLM is not represented in the engine. It is
+     recorded as nominal, and is neither cited as coverage nor duplicated by accident.
+128. A classification is proposed only when the evidence to compute it exists. Where the required
+     data is absent, the gap is reported as a data gap and the label is not invented.
+
+## Sweep: information computed and never read
+
+`marginal_value_full_eligibility` suggested a class worth sweeping mechanically — a function
+assembles a dict, a caller reads one key, and the rest is computed work nothing consumes. An AST
+pass collected every string key in a dict-literal `return` across the engine modules (71 keys)
+and cross-referenced every reader in the repository.
+
+**Result: 12 keys whose only non-producing readers are tests — of which 11 are explained and one
+is the H2 finding.** That concentration is itself useful: it says the stranded-signal problem is
+rare rather than systemic.
+
+| key(s) | verdict |
+|---|---|
+| `assignments`, `benched`, `with_candidate`, `without_candidate`, `marginal_value` | **deliberate transparency.** `marginal_lineup_value`'s docstring: *"never just the delta alone, so a caller (or a human auditing a recommendation) can see both lineups' actual totals."* Correct as-is. |
+| `growth_signal`, `unevidenced_picks`, `match_candidates` | **deliberate observables**, each documented as computed-and-exposed rather than consumed. |
+| `reach_label`, `tier_gap` | **false positives** — consumed in the producing file (`pick_synthesis.py:985`) and onward into `app.py` and `pick_debate.py`. |
+| `marginal_value_full_eligibility`, `marginal_value_primary_position_only` | **the H2 stranded signal.** Computed in production on every board row, asserted by tests, read by no production code. |
+
+### Two blind spots in this sweep, recorded so a rerun is not misled
+
+1. **Embedded JavaScript.** `draft_board_ui.py` ships a JS component that reads camelCase keys as
+   strings. The Python AST cannot see it, which produced one phantom finding (`waitNote`, in fact
+   read at `draft_board_ui.py:535`).
+2. **Same-file consumption.** Treating a producing file as ineligible to be its own reader
+   flagged `reach_label` and `tier_gap`, both of which are read a few lines below where they are
+   built.
+
+## Invariants
+
+129. A "computed and never read" audit accounts for every consumer channel the code actually
+     uses, including embedded non-Python and same-file reads. A finding from such a sweep is
+     confirmed against the real call path before it is reported as stranded.
