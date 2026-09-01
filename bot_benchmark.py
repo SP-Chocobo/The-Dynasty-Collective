@@ -19,7 +19,6 @@ bot_config.py itself -- applying a benchmark's recommendation is a UI action
 
 from __future__ import annotations
 
-import hashlib
 import json
 import re
 import time
@@ -27,6 +26,7 @@ from pathlib import Path
 from typing import Callable, Optional
 
 import llm_engine
+from content_hash import fingerprint
 
 RESULTS_PATH = Path("data/benchmark_results.json")
 
@@ -80,16 +80,15 @@ def _provider_sdk_versions() -> dict[str, str]:
     return versions
 
 
-def _fingerprint(*parts: str) -> str:
-    """A short content hash of exactly what a run was conducted under. Deliberately a hash
-    rather than a hand-maintained version number: a number has to be remembered and drifts out
-    of sync with the thing it names, whereas this cannot disagree with the battery, rubric, or
-    chair prompt it was computed from."""
-    digest = hashlib.sha256()
-    for part in parts:
-        digest.update(part.encode("utf-8"))
-        digest.update(b"\x00")
-    return digest.hexdigest()[:12]
+# A short content hash of exactly what a run was conducted under -- deliberately a hash rather
+# than a hand-maintained version number, since a number drifts out of sync with the thing it
+# names while this cannot disagree with the battery, rubric or chair prompt it came from.
+#
+# The implementation moved to content_hash.py when snapshot identity became a second consumer
+# (#111/#92). It is byte-identical to the private version this module used to carry, which is
+# what keeps every fingerprint already written into results.json comparable with new ones --
+# a changed hash would silently partition comparable_history into before and after.
+_fingerprint = fingerprint
 
 # Fixed, self-contained scenarios -- no live league data required, so every
 # candidate model is judged against literally the same inputs. Three per

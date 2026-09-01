@@ -144,11 +144,12 @@ and by how much.
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, fields as dataclass_fields
 from typing import Optional
 
 import draft_room as dr
 import draft_strategy as ds
+from content_hash import fingerprint
 from data_merger import DataMerger, name_key, normalize_name
 
 DEFAULT_NARROW_COUNT = 5
@@ -1015,6 +1016,100 @@ def build_snapshot(
     )
 
 
+def _canonical(value) -> str:
+    """One value, rendered as a string that depends only on its CONTENT.
+
+    Three things this must not let vary, because each would make the same frozen board hash
+    differently on two machines or two days:
+
+    * **Numeric subclasses.** A value arriving as `numpy.float64` rather than `float` reprs
+      differently across numpy majors (`41.56` vs `np.float64(41.56)`). Nothing currently puts
+      one on a CandidateSnapshot -- measured, all 37 fields are builtins today -- but the
+      identity of a stored record must not depend on an invariant enforced two modules away,
+      so every float subclass is normalized here. Pinned by a test that plants one.
+    * **Dict insertion order.** `repr` preserves it, so `positional_cliff` built with its keys
+      in a different order would hash differently while meaning exactly the same thing. Keys
+      are sorted.
+    * **Nesting ambiguity.** Containers are bracketed and comma-joined so a nested structure
+      cannot flatten into a different one that reads the same.
+    """
+    if isinstance(value, bool):          # before the float/int branches -- bool subclasses int
+        return repr(value)
+    if isinstance(value, float):
+        return repr(float(value))
+    if isinstance(value, int):
+        return repr(int(value))
+    if isinstance(value, dict):
+        inner = ",".join(f"{k!r}:{_canonical(v)}" for k, v in sorted(value.items(), key=lambda kv: str(kv[0])))
+        return "{" + inner + "}"
+    if isinstance(value, (list, tuple)):
+        return "[" + ",".join(_canonical(v) for v in value) + "]"
+    return repr(value)
+
+
+def snapshot_identity(snapshot: PickSnapshot) -> str:
+    """This exact frozen board's content-derived identity -- the name a stored record binds to.
+
+    A PURE FUNCTION of the snapshot's own frozen fields, and deliberately not a stored field:
+    an identity that is recomputed from content cannot drift out of agreement with the content
+    it names, which is the whole reason §5.10 chose a hash over a hand-maintained version
+    number for benchmark runs. Same primitive, same reasoning, second consumer (#111).
+
+    It adds NOTHING to the engine. Nothing here is read by valuation, candidate selection or
+    scarcity; `team_acquisition_value` is byte-identical whether or not this is ever called.
+
+    FIELD NAMES ARE PART OF THE IDENTITY, on purpose. Renaming a field changes the hash, which
+    makes a rename visible as a new identity rather than silently reusing the old one -- the
+    exact silent-meaning-change class §17.5/#110 demonstrated. Adding a field to
+    CandidateSnapshot or PickSnapshot likewise changes it, because a snapshot that carries a
+    new term genuinely is not the one that was shown before.
+
+    Candidate ORDER is part of the identity too: the tuple is the board's own ranked order, so
+    the same players in a different order is a different board, not the same one.
+    """
+    parts: list[str] = []
+    for field in dataclass_fields(snapshot):
+        if field.name == "candidates":
+            continue
+        parts.append(f"{field.name}={_canonical(getattr(snapshot, field.name))}")
+    for index, candidate in enumerate(snapshot.candidates):
+        rendered = "|".join(
+            f"{f.name}={_canonical(getattr(candidate, f.name))}"
+            for f in dataclass_fields(candidate)
+        )
+        parts.append(f"candidate[{index}]|{rendered}")
+    return fingerprint(*parts)
+
+
+def stamp_is_current(
+    picks_consumed: Optional[int], data_freshest_date: Optional[str],
+    picks: list[dict], merger: DataMerger,
+) -> tuple[bool, Optional[str]]:
+    """The staleness check itself, over a bare INPUT-STATE STAMP rather than a live object.
+
+    Split out from snapshot_is_current (below) so a RESTORED record can ask the identical
+    question a live snapshot can. A stored draft-history record carries the same two stamp
+    values but is a plain dict, not a PickSnapshot; without this split the only ways to check
+    it would be to fabricate a hollow PickSnapshot around the stamp, or to reimplement these
+    three comparisons somewhere else -- and a second copy of a staleness rule that is supposed
+    to agree with the first is exactly the drift class this app keeps finding (see
+    content_hash.py for the same extraction, same reasoning).
+
+    Checked purely by input identity, never by recomputing anything. False always comes with a
+    plain reason string a UI can show verbatim."""
+    if picks_consumed is None and data_freshest_date is None:
+        return False, "snapshot carries no input-state stamp (built before stamping, or hand-assembled)"
+    if picks_consumed is not None and len(picks) != picks_consumed:
+        delta = len(picks) - picks_consumed
+        return False, (
+            f"{delta} new pick(s) made since this snapshot was built" if delta > 0
+            else "the picks list has fewer picks than this snapshot was built from"
+        )
+    if merger.freshest_date != data_freshest_date:
+        return False, "the underlying player data changed since this snapshot was built"
+    return True, None
+
+
 def snapshot_is_current(snapshot: PickSnapshot, picks: list[dict], merger: DataMerger) -> tuple[bool, Optional[str]]:
     """(is_current, reason) -- whether this frozen snapshot still describes the live state its
     consumer is about to act on, checked purely by INPUT IDENTITY (the stamp build_snapshot
@@ -1023,17 +1118,8 @@ def snapshot_is_current(snapshot: PickSnapshot, picks: list[dict], merger: DataM
     or predating stamping) is reported not-current rather than silently trusted: "unknown
     provenance" and "known current" are different claims, same don't-fabricate posture as
     everywhere else in this app."""
-    if snapshot.picks_consumed is None and snapshot.data_freshest_date is None:
-        return False, "snapshot carries no input-state stamp (built before stamping, or hand-assembled)"
-    if snapshot.picks_consumed is not None and len(picks) != snapshot.picks_consumed:
-        delta = len(picks) - snapshot.picks_consumed
-        return False, (
-            f"{delta} new pick(s) made since this snapshot was built" if delta > 0
-            else "the picks list has fewer picks than this snapshot was built from"
-        )
-    if merger.freshest_date != snapshot.data_freshest_date:
-        return False, "the underlying player data changed since this snapshot was built"
-    return True, None
+    return stamp_is_current(
+        snapshot.picks_consumed, snapshot.data_freshest_date, picks, merger)
 
 
 _DIFF_FIELDS = (

@@ -42,6 +42,11 @@ _CDME_MODULES = ("draft_room.py", "pick_synthesis.py")
 _NEVER_IMPORTED = (
     "bot_research", "decision_log", "llm_engine", "pick_debate", "todo_log",
     "pinned_messages", "attachments",
+    # draft_history.py stores what the Draft Room showed. It is observational history and must
+    # never become an engine input: a stored number read back into the computation that
+    # produced it is a feedback loop, and acquires authority purely by having been written
+    # down. Same rule, same reason, as bot_research above.
+    "draft_history",
 )
 POSITIONS = ("QB", "RB", "WR", "TE")
 
