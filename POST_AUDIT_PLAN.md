@@ -2570,3 +2570,21 @@ caching since it does not depend on picks; (4) `#122` — the unmarked `mean_rat
 (5) `#61` re-scope, now settled by measurement rather than argument; (6) `#37` evidence
 discipline. `DEPTH_MULTIPLE`, D9's minimal rule and Register 2 remain parked with no reason
 to exist.
+
+## VERIFICATION RESULT — both instruments pass
+
+| instrument | before remediation | after |
+|---|---|---|
+| full suite | `FAILED (failures=14, errors=1)` | **`Ran 1548 tests ... OK (skipped=1)`** |
+| tests still exercising unpriced rows | **0** | **10** |
+| tests that lost their subject | 10 (5 loud, 5 silent) | **0** |
+
+Passing was never the claim. A suite that goes green by removing what a test observes is worse
+than one that fails, so the gating number is the second row, not the first.
+
+**Recorded honestly: the restored population is narrower, not equal.** The largest fixtures
+carry **143** unpriced rows where they previously carried **910** — superflex strands only QBs
+below the startability floor, where 1QB previously stranded four whole positions. The
+demand-exhausted rows are correctly priced now, so the reduction is the intended effect, but
+it is a genuine loss of coverage breadth and belongs in the record as a cost rather than a
+footnote.
