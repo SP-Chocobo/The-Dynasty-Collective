@@ -1643,3 +1643,70 @@ late-draft compression is about the pool thinning, not about bad players being h
 That distinction changes what the within-band gradient would even be for, and it is measured next.
 
 **Nothing implemented. The band is not being touched.**
+
+## D9 — round 11: it is QUALITY, not draft progression. And that reframes rounds 5 and 7b.
+
+Measured on a **single fresh board** — nothing drafted, so draft progression is held at zero and
+only quality varies. Adjacent-gap structure by rank slice:
+
+| slice (rank) | gap median | **% gaps ≤ 2.0** | spread |
+|---|---:|---:|---:|
+| 1–40 | 1.69 | 51% | 104.6 |
+| 41–80 | 0.94 | 69% | 60.9 |
+| **81–120** | **0.22** | **97%** | 17.8 |
+| **121–160** | **0.10** | **100%** | 11.0 |
+| 161–220 | 0.57 | 93% | 44.9 |
+| 221–300 | 0.70 | 89% | 71.1 |
+
+### The answer
+
+**Compression is a property of where you are on the quality curve, not of how deep the draft is.**
+At ranks 81–160, on a board where *nothing has been drafted*, 97–100% of adjacent gaps already sit
+inside the band — the same compression I attributed to rounds 8–12.
+
+**This reframes rounds 5 and 7b.** What I measured as "the valuation's discrimination degrading
+with draft depth" is really **the visible candidate set walking down the board's own quality curve
+into a region that was always compressed.** As the top 80 come off the board, the candidates a
+manager sees simply *become* the 81–160 slice. The engine's ability to discriminate did not
+deteriorate; the population it was asked to discriminate changed.
+
+That is a better explanation and it costs nothing — every number from rounds 5 and 7b stands, only
+the causal reading changes. It also means the compression is **predictable from the pool alone**,
+without waiting for a draft to reach a round.
+
+### The finding I did not expect: compression is NOT monotonic in quality
+
+Ranks 121–160 are the most compressed region on the board (median gap **0.10**, 100% in band), and
+then it **partially decompresses** below that — 161–220 at 0.57, 221–300 at 0.70. So it is not
+"worse players are harder to tell apart." There is a specific **compressed zone** around ranks
+80–160, with more spread both above and below it.
+
+A saturating transform produces exactly that shape. **This is very likely #58 — *"TAV saturation is
+information destruction at the BPA normalization layer"* — visible from a new direction**, and it
+suggests the compressed zone is an artifact of the normalization rather than a fact about players.
+Recorded as a strong lead, **not** a confirmed identification: #58's own diagnosis would have to be
+re-read against this before the two are declared the same thing.
+
+### Two corrections to my own work in this round
+
+**The band is not being touched, and this measurement does not argue for touching it.** If the
+compressed zone is a normalization artifact, then tightening the band there would be *resolving an
+artifact more finely* — the worst of both worlds.
+
+**And I nearly compared two different metrics.** This slice measurement uses the board's
+`final_score`; the round-10 percentile measurement used `team_acquisition_value` off the snapshot.
+Its 51% for ranks 1–40 is therefore **not** comparable to the constant's stated 72% calibration —
+round 10's 66% at round 1, measured on `tav`, is the right comparison, and it is consistent with
+the documented figure. The slice comparison above is internally valid because every row uses the
+same metric at the same moment; it says nothing about whether the constant is correctly calibrated.
+
+### Where this leaves the within-band question
+
+Round 10 measured the in-band internal structure: with 5–6 players inside the band, the median gap
+*between* them runs **0.19–0.56**. Numerically non-zero — but the band exists precisely because the
+engine has declared gaps of that size to be *"field noise, not ordering signal."*
+
+**So there is no finer tav resolution to recover.** Any within-band gradient must come from a
+**secondary, independent signal** — consensus rank, depth need, projection — and not from reading
+`tav` more closely. That is exactly the decomposition the operator specified, and it is now
+measured rather than assumed.
