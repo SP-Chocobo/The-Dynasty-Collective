@@ -334,3 +334,21 @@ snapshot identity, stale-result invalidation, in-flight obsolete-result rejectio
 retention, per-league scoping, historical readability, Prytaneum snapshot visibility, and the
 `#102`-free store the multi-tab clause needs. None of them is *implemented* — they are simply
 no longer blocked on a missing foundation.
+
+## D11 — ruled: deferred to the Insight contract
+
+The substrate stays **trigger-agnostic**. No production recording trigger is added in 1a.
+
+**Stated preference for the eventual contract**, to be written into it at Step 2 rather than
+implemented now: *record the user's own picks always, plus any PickSnapshot that becomes bound
+to an Insight, debate or research result.* Explicitly NOT: every board reconstruction, and not
+other managers' picks merely because a board was rendered.
+
+Two consequences the contract must carry, recorded now so they are not rediscovered later:
+
+* "My own picks always" needs a definition of *when* a pick is the user's own and final — a
+  board is rendered while the user is on the clock and again after they pick. The recorded
+  snapshot should be the one the decision was made against, which is not automatically the last
+  one rendered.
+* "Plus bindings" means the binder is the trigger, so every future binder (Insight, debate,
+  research) must record through the same path or history acquires holes silently.
