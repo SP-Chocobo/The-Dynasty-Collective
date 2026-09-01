@@ -8546,3 +8546,138 @@ cost documented as zero.
      across sources while doing the opposite within one.
 252. An unreachable fallback should be checked, not assumed, and then pinned. `get(key, default)`
      on a closed vocabulary is only safe while the vocabulary stays closed.
+
+---
+
+# Appendix §19 — System Integrity, Dependencies & Periodic Baseline Auditing
+
+**Baseline entering:** `694f2e4` on `ui-authority-pass`, suite 1457 OK. `main` frozen at
+`9fb5102`, untouched. Defect A1 untouched.
+
+**No production file was modified, and no test file was added.** §19 states "Do not modify
+production code during the audit" and that was treated as binding. The no-new-tests decision is
+methodological rather than obedient: §19 audits the audit machinery, so the suite's size,
+composition and reproducibility are among the measured quantities, and adding to it mid-section
+would move the thing being measured. One planted-and-reverted data probe is the only write.
+
+## What was measured
+
+**Code integrity.** Zero occurrences of `eval(`, `exec(`, `pickle`, `subprocess`, `os.system`,
+`__import__`, `shell=True` across every production module — the only `exec`-shaped hits are the
+word "execute" in prose and `ThreadPoolExecutor`, checked rather than assumed. Exactly **one**
+outbound HTTP surface in production (`sleeper_client`'s `requests.Session`) plus the three
+provider SDKs imported inside their own callers; no other `requests`/`urllib`/`httpx`/`socket`
+use anywhere.
+
+**Integrity primitives.** `hashlib` appears **once** in production (`bot_benchmark._fingerprint`).
+No checksum, manifest, signature or content hash over source or over `data/baseline/`.
+
+**Test-baseline reproducibility, four ways.**
+- **Inputs:** all `.csv`/`.json`/`.pdf` under the three directories `DataMerger` loads, cross-checked
+  against `git ls-files` — **28 files, 28 tracked, 0 untracked.**
+- **Assertions:** only **5 of 75** test files mention time, and every recency/staleness assertion
+  uses a fixed input (`recency_grade(7)`, a hardcoded `"2026-08-25"`), never the live clock.
+- **Numbers:** advancing `data_merger`'s clock +0/+30/+90/+365/+1095 days over 90 scored players
+  moved composite scores by **max |Δ| 0.00** at every horizon — the recency decay is a common
+  factor in a weighted average and cancels.
+- **Count:** 1,455 `def test_*` declarations + 2 inherited-and-rerun methods
+  (`SuperflexRookieDraftRosterContextTieredGateTests` subclasses its parent and overrides 1 of 3)
+  = **1,457**, exactly the runner's number.
+- **Residue:** `git status` verified clean after each of five full runs across §16–§19.
+
+**But the input set is a directory listing.** Planted one CSV in `data/projections/_global/` —
+where the app's own uploaders write, and which `.gitignore` excludes — and reverted it: the
+canonical pool went **764 → 766**, the fabricated row was **priced by the engine**
+(`projection=9999.0`, `trade_value=100.0`), git reported the file as ignored, and a suite class
+that reads the baseline still passed.
+
+**Cadence.** No `.github/` directory of any kind — no CI, no workflow, no hook. The documented
+launch path (`update_and_run.sh`) is `git pull` → `pip install -r requirements.txt` (unbounded,
+no lockfile) → `streamlit run`, with no test run in between and no signature or revision pin.
+
+**Behavioural baselines.** **274 tests across 15 `*_boundary.py` files** — 18.8% of the suite —
+covering identity, reconciliation, prompt constants, research ingestion and authority, context
+budget, provenance, temporal consistency, tenant scope, failure modes, cost envelope, override
+provenance, version, data semantics, and CDME ingestion. `test_cdme_ingestion_boundary.py` is a
+real adversarial data-injection control: a deliberately maximally-distorting `bot_research.json`
+finding is written to disk about a real baseline player and CDME's output for that player is
+proven byte-identical before and after. The evidence that this machinery detects regression is
+this audit's own record — **43 probes planted in real production code across §16–§18, every one
+failing the intended test, every one reverted.**
+
+**Doctrine.** `ENGINEERING_DOCTRINE.md` (186 lines, committed) carries a six-link required audit
+chain, an eight-part contract for load-bearing quantities, and ten standing rules — including
+*"A test that cannot fail proves nothing"* and *"A docstring can encode a defect."* Nothing
+enforces any of it; `ROADMAP.md` contains no audit cadence or trigger condition.
+
+**Configuration.** `.streamlit/config.toml` is theme-only plus `gatherUsageStats = false`.
+`.devcontainer/devcontainer.json` auto-launches with `--server.enableCORS false
+--server.enableXsrfProtection false` — scoped to the Codespaces preview launcher only, since
+`config.toml` sets neither and `update_and_run.sh` uses defaults. `.env.example` carries the same
+floating model aliases as production (#109).
+
+**A name trap.** `run_dependency_audit.py` is a *statistical cross-signal* audit — Pearson
+correlations between `compute_pick_necessity`'s six components, flagging pairs above 0.5 that may
+double-count the same scarcity signal. It has nothing to do with package dependencies. A reader
+auditing this repo for supply-chain controls would find the filename and stop looking.
+
+## Corrections to my own conclusions
+
+1. **§17.7's "regression corpus" framing was wrong.** I reported "31 of 31 stored trial records
+   carry no version identifier" and framed `data/draft_simulation_trials/` as the deterministic
+   corpus §19 would ask about. The facts hold; the framing does not. `.gitignore` excludes those
+   files as *"regenerated … not source"* and README says the same — **0 of 31 are tracked**. The
+   corpus is the 28 committed **input** files; the outputs are derived on demand, which is
+   defensible and is exactly what `compare_baseline_pre_post_95d2111.py` exists to exploit. The
+   real §19 answer is "yes in principle, unautomated in practice", not "no corpus".
+2. **I predicted composite scores drift with the clock. They do not** — max |Δ| 0.00 at three
+   years. What does drift is the baseline's self-described freshness: Recent/Fresh today, Aging
+   at +30 days, **Stale at +90 and permanently after**, with no refresh path short of a code
+   change. A real finding, and not the one I went looking for.
+3. **I predicted untracked files were already contaminating the suite. They are not** — 28 of 28
+   tracked. The hazard is real and demonstrated; the current state is clean. Reporting the
+   hypothesis as the finding would have been false.
+4. **A wrong denominator inside a correct finding.** Both write-ups first said "5 of 121 test
+   files mention time"; there are **75**. The claim built on it — that the suite is
+   clock-independent — was right, which is exactly why the bad number would have survived:
+   nothing downstream of it looked wrong. Caught on a verification pass before the commit.
+
+## Repairs
+
+**None.** Three findings here are mechanically correctable and were deliberately left alone: a
+checksum manifest over `data/baseline/`, a CI workflow running the suite, and upper bounds in
+`requirements.txt`. All three are parked in #113 for the repair pass.
+
+## Tests added
+
+**None** — see the methodological note above. The §19 measurements are read-only plus one
+planted-and-reverted data probe, so nothing about the suite's own composition moved while it was
+being measured.
+
+## Invariants
+
+253. Auditing the audit machinery is not the moment to extend it. Test count, suite composition
+     and reproducibility are the measured quantities; adding tests mid-measurement moves them.
+254. A checked input set and a declared input set are different guarantees. "Everything the suite
+     loads is committed" can be true today and hold nothing tomorrow, because a directory listing
+     is not a manifest.
+255. Gitignored is not harmless. A path excluded from version control because it holds user data
+     is still an input if production code reads it, and the two facts together are how a
+     fabricated row gets priced while every status check stays green.
+256. A guarantee nobody runs is a document. 1,457 tests that execute only when a human types the
+     command protect the commit they were last run against, not the branch.
+257. A launcher that installs unpinned dependencies on every start is a drift mechanism, not a
+     convenience — and running it before the tests, rather than after, is what makes the drift
+     silent.
+258. Trust the filename least of all. A file called `run_dependency_audit.py` that computes signal
+     correlations is honest work under a name that will stop the next auditor from looking
+     further.
+259. A characterization test's discipline is a docstring, and a docstring is not a mechanism.
+     Nothing distinguishes "the gap was repaired and the test inverted" from "the assertion was
+     weakened until it passed."
+260. Committed vendor data ages into a permanent warning. Numbers can be perfectly time-stable
+     while the freshness label attached to them decays monotonically to its worst value and stays
+     there, with no refresh path that isn't a code change.
+261. Doctrine is a re-audit mechanism only where something triggers it. A written audit chain and
+     a contract checklist are real assets; without a cadence or a gate they describe how an audit
+     would go if one happened.

@@ -3699,3 +3699,262 @@ half stands on its own.
 3. **The compute-then-drop class** — now four instances (`waiting_cost`, `_match_path`,
    `reconciliation_conflicts`, and until R16 `proj_3yr_state`). R16 is the first one closed;
    the other three still want one decision rather than three.
+
+## Pass 15 — §19
+
+**Scope:** Build Guide v2 §19 (system integrity, dependencies, periodic baseline auditing).
+
+**Baseline:** `694f2e4` on `ui-authority-pass`; `main` frozen at `9fb5102`.
+**No production file was modified.** §19 states *"Do not modify production code during the
+audit"* and that was treated as binding: mechanically correctable defects found here are
+characterized and parked, not repaired.
+
+**No test file was added either, and that is a methodological choice, not an omission.** §19
+audits the audit machinery — the suite's size, composition and reproducibility are among the
+things being measured. Adding tests mid-section would change the measurement. Everything below
+is read-only measurement plus one planted-and-reverted data probe.
+
+**Headline: the integrity story splits cleanly. What this repo checks, it checks unusually well
+— 274 boundary tests across 15 files, a real adversarial data-injection test, a committed
+engineering doctrine with a six-link audit chain, zero dangerous primitives in production, one
+outbound HTTP surface, and a test baseline that is genuinely reproducible and genuinely
+clock-independent. What it does not check, it does not check at all: nothing runs any of it
+automatically, nothing pins its inputs, nothing hashes anything, and the documented launch path
+upgrades every dependency on every start.**
+
+### 19.1 Code integrity of the deterministic layer
+
+**STATUS: EXISTS — stronger than expected**
+Grepped across every production module for `eval(`, `exec(`, `pickle`, `subprocess`,
+`os.system`, `__import__`, `shell=True`: **zero occurrences.** The only `exec`-shaped hits are
+the word "execute" in prose and `concurrent.futures.ThreadPoolExecutor` — checked, not assumed.
+
+Outbound network in production is **one** surface: `sleeper_client`'s `requests.Session`, plus
+the three provider SDKs imported inside their own caller functions. No other `requests`,
+`urllib`, `httpx` or `socket` use anywhere. §19's *"unexpected API/tool exposure"* is therefore
+enumerable in a sentence, which is the precondition for detecting a change to it.
+
+### 19.2 Can a trusted baseline detect unauthorized source or data changes?
+
+**STATUS: MISSING — no integrity primitive exists**
+`hashlib` appears **once** in production: `bot_benchmark._fingerprint`, hashing a battery, a
+rubric and a chair prompt (§5 R95). There is no checksum, manifest, signature or content hash
+over source files, over `data/baseline/`, or over anything else. §19's *"can a trusted baseline
+detect unauthorized source changes … schema/data changes"* has no mechanism to answer, and
+*"can dependency and code-integrity checks establish whether a deployed build corresponds to an
+approved source revision?"* inherits #111 — there is no build, no version, and no lockfile.
+
+Git is the de-facto integrity layer, and it is a real one for tracked files. It is also the
+whole of it.
+
+### 19.3 The test baseline is reproducible — measured, and it survived two hypotheses I expected it to fail
+
+**STATUS: EXISTS**
+
+**(a) Inputs are committed.** Enumerated every `.csv`/`.json`/`.pdf` under the three directories
+`DataMerger` actually loads and cross-checked each against `git ls-files`: **28 files, 28
+tracked, 0 untracked.** A fresh clone at a given commit loads exactly the data that commit
+declares. I expected to find drift here and did not.
+
+**(b) Assertions are clock-independent.** Only **5 of 75** test files mention time at all, and
+every recency/staleness assertion uses a **fixed** input (`recency_grade(7)`, a hardcoded
+`"2026-08-25"`), never the live clock against the live baseline.
+
+**(c) The numbers themselves are time-invariant.** I predicted composite scores would drift as
+`_recency_weight` decays. Measured by advancing the clock inside `data_merger` at +0/+30/+90/+365/+1095
+days over 90 scored players: **max |Δ| = 0.00 at every horizon.** The decay is a common factor
+in a weighted average and cancels. Hypothesis wrong, recorded.
+
+**(d) The test count fully reconciles.** 1,455 `def test_*` declarations + 2 inherited-and-rerun
+methods (`SuperflexRookieDraftRosterContextTieredGateTests` subclasses
+`RookieDraftRosterContextTieredGateTests` and overrides 1 of its 3) = **1,457**, exactly what the
+runner reports. Not a mystery number.
+
+**(e) The suite leaves no residue.** `git status` verified clean after each of five full runs
+across §16–§19.
+
+### 19.4 …but its input set is a directory listing, not a manifest
+
+**STATUS: MISSING — demonstrated**
+The suite loads *whatever is in* `data/baseline/`, `data/projections/_global/` and
+`data/baseline/external/`. `data/projections/**/*.csv` is **gitignored** — it is where the app's
+own "External Valuation Sources" and rankings uploaders write. Planted one CSV there and
+reverted it:
+
+```
+canonical pool rows: before=764  after=766  delta=+2
+the planted row is priced by the engine: trade_value=100.0, projection=9999.0
+git treats the planted file as: .gitignore:10:data/projections/**/*.csv
+a suite class that reads the baseline: OK
+```
+
+A fabricated player entered the priced universe, git reported the file as ignored, and the suite
+stayed green. **19.3(a) is true today by nobody having uploaded, not by construction.** Two
+developers on the same commit — one of whom has used the app — run the same tests against
+different data and both see green. **Verdict: SURFACE (#113).**
+
+### 19.5 Nothing runs any of it
+
+**STATUS: MISSING**
+There is **no `.github/` directory at all** — no workflow, no CI, no pre-commit, no hook. The
+1,457-test suite runs exactly when a human types the command.
+
+The documented launch path is `update_and_run.sh` / `.ps1`, and it is a live drift mechanism:
+
+```
+git pull                                  # no signature, no revision pin
+pip install -r requirements.txt --quiet   # unbounded versions, no lockfile (§17.1)
+streamlit run app.py                      # no test run in between
+```
+
+Every launch can silently upgrade `anthropic`, `openai`, `google-genai`, `pandas`, `scipy` and
+`pypdf`, and then start the app regardless. §19's *"which checks belong in every deployment
+versus periodic deeper audits"* is answered in **prose** (README documents the split between the
+fast unittest suite and the by-hand `run_*` drivers) and **nowhere in machinery**.
+**Verdict: SURFACE (#113).**
+
+### 19.6 The regression corpus — and a correction to §17.7
+
+**STATUS: EXISTS, differently than §17 recorded it**
+§17.7 reported *"31 of 31 stored trial records under `data/draft_simulation_trials/` carry no
+version identifier"* and framed them as *"the deterministic corpus §19 will ask about."* The
+facts are unchanged; the framing was wrong. `.gitignore` excludes
+`data/draft_simulation_trials/*.json` as *"regenerated by run_draft_validation.py /
+run_counterfactual_analysis.py, **not source**"*, and README says the same: those drivers are
+*"not part of the app or the fast test suite; run by hand, write to
+data/draft_simulation_trials/ (gitignored)."* **0 of 31 are tracked.**
+
+So the corpus is not the outputs — it is the **28 committed input files**, and the outputs are
+derived on demand. That is a defensible design: `compare_baseline_pre_post_95d2111.py` exists
+precisely to regenerate on two revisions and diff. §19's *"can deterministic outputs be compared
+against a fixed regression corpus before/after changes?"* is therefore **yes in principle** —
+the inputs are fixed and committed, and §17's determinism work (stable sorts, `player_id`
+tiebreakers) makes regeneration repeatable — **and unautomated in practice**: nothing runs the
+before/after comparison, and nothing pins the inputs it would run against (19.4).
+
+### 19.7 Behavioural baselines for routing, tool use, source selection and chair authority
+
+**STATUS: EXISTS — the strongest artifact in the repository**
+**274 tests across 15 `*_boundary.py` files**, 18.8% of the suite:
+
+| file | tests | what it holds |
+|---|---|---|
+| `test_data_semantics_boundary` | 33 | §18 absence kinds, AI-claim throttling |
+| `test_identity_boundary` | 29 | R1–R3 match resolution |
+| `test_override_provenance_boundary` | 28 | §16 human-in-the-loop provenance |
+| `test_version_boundary` | 26 | §17 envelope, legacy records, class drift |
+| `test_reconciliation_boundary` | 23 | §80/#83 field merge |
+| `test_research_ingestion_boundary` | 19 | §6 dampeners and admission |
+| `test_context_budget_boundary` / `test_research_authority_boundary` | 16 each | §9 / §7 |
+| `test_failure_mode_boundary` / `test_temporal_consistency_boundary` | 15 each | §14 / §11 |
+| `test_cost_envelope_boundary` / `test_tenant_scope_boundary` | 13 each | §15 / §12 |
+| `test_provenance_boundary` / `test_prompt_constant_boundary` | 11 / 10 | §10 / §4+§8 |
+| `test_cdme_ingestion_boundary` | 7 | LLM output cannot reach CDME inputs |
+
+`test_cdme_ingestion_boundary` deserves naming: it is a genuine **adversarial data-injection**
+test — a deliberately maximally-distorting `bot_research.json` finding is written to disk about
+a real baseline player, and CDME's own output for that player is proven **byte-identical**
+before and after. That is exactly the control §19 asks for, built before this audit started.
+
+The strongest evidence that this machinery actually detects regression is the audit's own
+record: **43 probes planted in real production code across §16–§18 (15 + 13 + 15), every one
+failing the intended test and every one reverted.** A guarantee that cannot fail was the thing
+this programme kept looking for and did not find here.
+
+### 19.8 What the machinery cannot detect
+
+**STATUS: MISSING**
+- **A loosened test.** 7 tests are explicitly named `CHARACTERIZATION` and each carries a
+  docstring saying *"delete this test when #N is settled — do not loosen it."* That is human
+  discipline. Nothing mechanical distinguishes "the gap was repaired and the test inverted" from
+  "the assertion was weakened until it passed."
+- **A changed input** (19.4).
+- **A changed dependency** (19.5), except by whatever the suite happens to exercise.
+- **A vulnerability.** No `pip-audit`, `safety`, Dependabot, SBOM or advisory check of any kind.
+
+**A name trap worth recording**: `run_dependency_audit.py` sounds like a supply-chain check and
+is not. It is a **statistical cross-signal correlation audit** — Pearson correlations between
+`compute_pick_necessity`'s six components, flagging pairs above 0.5 that might be double-counting
+the same scarcity signal. Excellent work, entirely unrelated to packages. A reader auditing this
+repo for dependency controls would find the filename and stop.
+
+### 19.9 Doctrine exists, and is not enforced
+
+**STATUS: EXISTS as process**
+`ENGINEERING_DOCTRINE.md` (186 lines, committed) is a real periodic-audit mechanism at the
+doctrine level: a six-link **required audit chain** (definition → domain of validity → state
+transitions → upstream assumptions → downstream consumers → interaction with other quantities),
+an **eight-part contract** every load-bearing quantity must answer before entering the engine
+(including *"how absence / unknown is represented — and the explicit statement that this is not
+the same as zero"*, and *"which consumers are authorized to use it — by name"*), and ten
+**standing rules**, two of which this audit has leaned on repeatedly:
+
+> **A test that cannot fail proves nothing.** Assert on behaviour that changes when the code is
+> wrong, and prefer a mutation to a re-derivation.
+>
+> **A docstring can encode a defect.** Several of the findings above were described as correct in
+> the docstrings that defined them. Documentation is evidence of intent, never of correctness.
+
+Nothing enforces any of it. `ROADMAP.md` contains no audit cadence, no scheduled re-audit, and
+no trigger condition.
+
+### 19.10 Configuration
+
+**STATUS: PARTIAL**
+- `.streamlit/config.toml` is theme-only plus `gatherUsageStats = false` — a deliberate privacy
+  control, worth crediting.
+- `.devcontainer/devcontainer.json` auto-launches with
+  `--server.enableCORS false --server.enableXsrfProtection false`. Scoped precisely: that is the
+  **Codespaces preview launcher only** — `config.toml` does not set either, and
+  `update_and_run.sh` uses Streamlit's defaults. A common Codespaces workaround, committed, and
+  worth a deliberate decision rather than inheritance. **Folded into #113.**
+- `.env.example` pins the same floating model aliases as production (#109) — consistent, and
+  consistently unpinned.
+- `.pytest_cache/` exists in a repo whose README says *"no pytest dependency."* It is
+  self-ignored (pytest writes its own `.gitignore`), so it is untracked and harmless — noted so
+  the next reader does not spend the two minutes I did.
+
+### 19.11 Corrections to my own readings
+
+1. **§17.7's "regression corpus" framing was wrong** (19.6). The trial outputs are gitignored,
+   README-documented scratch; the corpus is the committed inputs. Facts unchanged, conclusion
+   corrected.
+2. **I predicted composite scores drift with the clock. They do not** — max |Δ| 0.00 at three
+   years (19.3c). What *does* drift is the baseline's self-described freshness: Recent/Fresh
+   today, Aging at +30d, **Stale at +90d and permanently thereafter**, with no refresh path short
+   of a code change. A real finding, but not the one I went looking for.
+3. **I predicted untracked files were already contaminating the suite. They are not** — 28 of 28
+   tracked (19.3a). The hazard is real (19.4) and the current state is clean.
+4. **I miscounted the test-file denominator.** Both write-ups first said "5 of 121 test files
+   mention time"; the repository has **75** test files. Caught on a verification pass before the
+   commit, corrected in both documents. Worth recording because the surrounding claim — that the
+   suite is clock-independent — was right, and a wrong denominator inside a correct finding is
+   the easiest kind of error to carry forward unchallenged.
+
+## Pass 15 summary
+
+| § | question | status | verdict |
+|---|---|---|---|
+| 19.1 | code integrity of the deterministic layer | **EXISTS** | zero dangerous primitives |
+| 19.2 | trusted baseline detecting unauthorized change | **MISSING** | SURFACE (#113) |
+| 19.3 | is the test baseline reproducible? | **EXISTS** | inputs tracked, assertions clock-free |
+| 19.4 | is its input set declared? | **MISSING** | SURFACE (#113), demonstrated |
+| 19.5 | does anything run the checks? | **MISSING** | SURFACE (#113) |
+| 19.6 | fixed regression corpus for before/after | **EXISTS in principle** | corrects §17.7 |
+| 19.7 | behavioural baselines | **EXISTS** — 274 tests, 15 files | the repo's strongest artifact |
+| 19.8 | can it detect a loosened guarantee? | **MISSING** | SURFACE (#113) |
+| 19.9 | periodic re-audit mechanism | **EXISTS as doctrine**, unenforced | SURFACE (#113) |
+| 19.10 | configuration controls | **PARTIAL** | devcontainer flags → #113 |
+
+**Does anything clear the bar for a production change?** Several things would have. **None was
+made** — §19 forbids it, and that instruction was treated as binding. The three most obviously
+mechanical (a checksum manifest over `data/baseline/`, a CI workflow running the suite, upper
+bounds in `requirements.txt`) are parked in #113 for the repair pass, not applied here.
+
+**Ranked follow-ups**
+1. **#113** — the integrity-and-cadence family: nothing runs the checks, nothing pins their
+   inputs, nothing hashes anything, nothing detects a loosened test, and the launch script
+   upgrades every dependency on every start. One decision surface, several cheap mechanisms.
+2. **#111** (unchanged) — still the prerequisite for tying a deployed build to a source revision.
+3. **The baseline's permanent staleness** (19.11.2) — a refresh policy for committed vendor data
+   is a product decision, not an integrity one, but §19 is where it becomes visible.
