@@ -46,6 +46,18 @@ ROSTER = ["QB", "RB", "RB", "WR", "WR", "TE", "FLEX", "K", "DEF"] + ["BN"] * 11
 NUM_TEAMS = 12
 DYNASTY = {"roster_positions": ROSTER, "total_rosters": NUM_TEAMS,
            "settings": {"type": 2}, "scoring_settings": {}}
+# LateBoardIntegrationTests runs SUPERFLEX. Since predraft_replacement_anchor landed, a
+# position whose league-wide starter demand is exhausted keeps being priced against its
+# pre-draft level, so a 1QB board carries no unpriced row at ANY depth (measured: 0 at rounds
+# 16/18/20) and this file's whole subject becomes unreachable there. The one absence the
+# repair deliberately does NOT revive is the startable_floors decline -- "no remaining QB
+# clears the startability threshold", which is a different fact from "demand is filled" --
+# and that is reachable only in superflex (11 unpriced QBs at round 16).
+SUPERFLEX_ROSTER = (
+    ["QB", "RB", "RB", "WR", "WR", "TE", "FLEX", "SUPER_FLEX", "K", "DEF"] + ["BN"] * 10
+)
+DYNASTY_SUPERFLEX = {"roster_positions": SUPERFLEX_ROSTER, "total_rosters": NUM_TEAMS,
+                     "settings": {"type": 2}, "scoring_settings": {}}
 ROSTER_IDS = [str(i) for i in range(1, NUM_TEAMS + 1)]
 
 
@@ -258,7 +270,7 @@ class LateBoardIntegrationTests(unittest.TestCase):
                     "team": row.get("team"),
                 }
         cls.opening = dr.compute_draft_board(cls.merger, cls.players_db, [], my_roster_id="1",
-                                             league=DYNASTY, mode="balanced")
+                                             league=DYNASTY_SUPERFLEX, mode="balanced")
         cls.pick_order = ds.generate_pick_order(ROSTER_IDS, 22, "snake")
 
     def _state(self, rounds):
@@ -267,7 +279,7 @@ class LateBoardIntegrationTests(unittest.TestCase):
                   "round": (i // NUM_TEAMS) + 1, "pick_no": i + 1}
                  for i, r in enumerate(self.opening[:taken])]
         board = dr.compute_draft_board(self.merger, self.players_db, picks, my_roster_id="1",
-                                       league=DYNASTY, mode="balanced")
+                                       league=DYNASTY_SUPERFLEX, mode="balanced")
         index = next(i for i in range(taken, len(self.pick_order))
                      if self.pick_order[i] == "1")
         return picks, board, index
@@ -284,7 +296,7 @@ class LateBoardIntegrationTests(unittest.TestCase):
             if not board:
                 continue
             snapshot = ps.build_snapshot(self.merger, self.players_db, picks, self.pick_order,
-                                         index, "1", DYNASTY, pick_label=f"R{rounds + 1}")
+                                         index, "1", DYNASTY_SUPERFLEX, pick_label=f"R{rounds + 1}")
             self.assertTrue(snapshot.candidates, f"round {rounds} produced no candidates")
 
     def test_pick_analysis_survives_unpriced_candidates(self):
@@ -295,7 +307,7 @@ class LateBoardIntegrationTests(unittest.TestCase):
         candidates = [priced[0]["player_id"], unpriced[0]["player_id"],
                       unpriced[len(unpriced) // 2]["player_id"]]
         results = ds.pick_analysis(self.merger, self.players_db, picks, self.pick_order, index,
-                                   "1", DYNASTY, candidates, mode="balanced")
+                                   "1", DYNASTY_SUPERFLEX, candidates, mode="balanced")
         self.assertEqual(len(results), 3)
         by_id = {r["player_id"]: r for r in results}
         self.assertIsNone(by_id[unpriced[0]["player_id"]]["opportunity_cost"],
@@ -308,7 +320,7 @@ class LateBoardIntegrationTests(unittest.TestCase):
         unpriced = [r for r in board if r.get("final_score") is None]
         candidates = [unpriced[0]["player_id"], priced[0]["player_id"]]
         results = ds.pick_analysis(self.merger, self.players_db, picks, self.pick_order, index,
-                                   "1", DYNASTY, candidates, mode="balanced")
+                                   "1", DYNASTY_SUPERFLEX, candidates, mode="balanced")
         self.assertEqual(results[0]["player_id"], priced[0]["player_id"])
 
     def test_a_candidate_no_opponent_can_price_carries_no_rival_premium(self):
@@ -322,7 +334,7 @@ class LateBoardIntegrationTests(unittest.TestCase):
         unpriced = [r for r in board if r.get("final_score") is None]
         self.assertTrue(unpriced)
         results = ds.pick_analysis(self.merger, self.players_db, picks, self.pick_order, index,
-                                   "1", DYNASTY, [unpriced[0]["player_id"]], mode="balanced")
+                                   "1", DYNASTY_SUPERFLEX, [unpriced[0]["player_id"]], mode="balanced")
         self.assertEqual(len(results), 1)
         self.assertEqual(results[0]["rival_premium"], 0.0)
         self.assertIsNone(results[0]["rival_premium_take_probability"])
@@ -331,9 +343,9 @@ class LateBoardIntegrationTests(unittest.TestCase):
     def test_the_snapshot_is_identical_across_repeated_builds(self):
         picks, board, index = self._state(16)
         first = ps.build_snapshot(self.merger, self.players_db, picks, self.pick_order, index,
-                                  "1", DYNASTY, pick_label="R17")
+                                  "1", DYNASTY_SUPERFLEX, pick_label="R17")
         second = ps.build_snapshot(self.merger, self.players_db, picks, self.pick_order, index,
-                                   "1", DYNASTY, pick_label="R17")
+                                   "1", DYNASTY_SUPERFLEX, pick_label="R17")
         self.assertEqual([c.player_id for c in first.candidates],
                          [c.player_id for c in second.candidates])
 

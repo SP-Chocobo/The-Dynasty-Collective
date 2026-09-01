@@ -27,6 +27,19 @@ ROSTER = ["QB", "RB", "RB", "WR", "WR", "TE", "FLEX", "K", "DEF"] + ["BN"] * 11
 NUM_TEAMS = 12
 DYNASTY = {"roster_positions": ROSTER, "total_rosters": NUM_TEAMS,
            "settings": {"type": 2}, "scoring_settings": {}}
+# The late board below is SUPERFLEX on purpose. Since predraft_replacement_anchor landed, a
+# position whose league-wide starter demand is exhausted keeps being priced against its
+# pre-draft level, so a 1QB board no longer carries a single unpriced row at ANY depth
+# (measured: 0 at rounds 16/18/20). The one absence the repair deliberately does NOT revive is
+# the startable_floors decline -- "no remaining QB clears the startability threshold" is a
+# different fact from "demand is filled" -- and that is reachable only in superflex, where it
+# leaves 11 unpriced QBs at round 16. So the absence these tests exist to observe is still
+# here, and it is now absent for a MEASURED reason rather than a demand-domain artifact.
+SUPERFLEX_ROSTER = (
+    ["QB", "RB", "RB", "WR", "WR", "TE", "FLEX", "SUPER_FLEX", "K", "DEF"] + ["BN"] * 10
+)
+DYNASTY_SUPERFLEX = {"roster_positions": SUPERFLEX_ROSTER, "total_rosters": NUM_TEAMS,
+                     "settings": {"type": 2}, "scoring_settings": {}}
 REDRAFT = {"roster_positions": ROSTER, "total_rosters": NUM_TEAMS,
            "settings": {"type": 0}, "scoring_settings": {}}
 
@@ -62,12 +75,17 @@ class _BoardFixture(unittest.TestCase):
         # it there -- an assertion-reachability trace over the whole suite found exactly that:
         # five assertions in this file guarded by `if unpriced` had never executed once.
         taken = 16 * NUM_TEAMS
+        # Drained from the SUPERFLEX opening board so the picks and the valuation agree on one
+        # league rather than mixing two formats' orderings.
+        sf_opening = dr.compute_draft_board(
+            cls.merger, cls.players_db, [], my_roster_id="1", league=DYNASTY_SUPERFLEX,
+            mode="balanced")
         cls.late_picks = [{"player_id": r["player_id"], "roster_id": str((i % NUM_TEAMS) + 1),
                            "round": (i // NUM_TEAMS) + 1, "pick_no": i + 1}
-                          for i, r in enumerate(cls.board[:taken])]
+                          for i, r in enumerate(sf_opening[:taken])]
         cls.late_board = dr.compute_draft_board(
-            cls.merger, cls.players_db, cls.late_picks, my_roster_id="1", league=DYNASTY,
-            mode="balanced")
+            cls.merger, cls.players_db, cls.late_picks, my_roster_id="1",
+            league=DYNASTY_SUPERFLEX, mode="balanced")
 
 
 class BpaIsAPlayerPropertyTests(_BoardFixture):
@@ -79,9 +97,10 @@ class BpaIsAPlayerPropertyTests(_BoardFixture):
         # branch below never executed -- "a player property does not depend on who is asking"
         # has to hold for the absence too, and that half was untested until the reachability
         # trace found it.
-        for picks, mine_board in ((), self.board), (self.late_picks, self.late_board):
+        for picks, mine_board, league in (((), self.board, DYNASTY),
+                                          (self.late_picks, self.late_board, DYNASTY_SUPERFLEX)):
             other = dr.compute_draft_board(self.merger, self.players_db, list(picks),
-                                           my_roster_id="7", league=DYNASTY, mode="balanced")
+                                           my_roster_id="7", league=league, mode="balanced")
             mine = {r["player_id"]: r.get("bpa") for r in mine_board}
             theirs = {r["player_id"]: r.get("bpa") for r in other}
             self.assertEqual(set(mine), set(theirs))
@@ -92,9 +111,10 @@ class BpaIsAPlayerPropertyTests(_BoardFixture):
                     self.assertEqual(value, theirs[pid], pid)
 
     def test_universal_value_is_also_team_agnostic(self):
-        for picks, mine_board in ((), self.board), (self.late_picks, self.late_board):
+        for picks, mine_board, league in (((), self.board, DYNASTY),
+                                          (self.late_picks, self.late_board, DYNASTY_SUPERFLEX)):
             other = dr.compute_draft_board(self.merger, self.players_db, list(picks),
-                                           my_roster_id="7", league=DYNASTY, mode="balanced")
+                                           my_roster_id="7", league=league, mode="balanced")
             mine = {r["player_id"]: r.get("universal_value") for r in mine_board}
             for row in other:
                 value, expected = row.get("universal_value"), mine[row["player_id"]]
@@ -373,14 +393,15 @@ class SurvivalOnAnUnpricedBoardTests(_BoardFixture):
     so nothing here asserts an answer."""
 
     def _late_round_state(self):
-        return [{"player_id": r["player_id"], "roster_id": str((i % 12) + 1),
-                 "round": (i // 12) + 1, "pick_no": i + 1}
-                for i, r in enumerate(self.board[:12 * 16])]
+        # SUPERFLEX, and drained from the superflex board -- see DYNASTY_SUPERFLEX's comment.
+        # A 1QB late board carries no unpriced rows at any depth since the pre-draft anchor
+        # landed, so this class's whole subject is unreachable there.
+        return list(self.late_picks)
 
     def test_an_unpriced_targets_survival_is_labelled_rather_than_presented_as_measured(self):
         picks = self._late_round_state()
         late = dr.compute_draft_board(self.merger, self.players_db, picks, my_roster_id="1",
-                                      league=DYNASTY, mode="balanced")
+                                      league=DYNASTY_SUPERFLEX, mode="balanced")
         unpriced = [r for r in late if _is_absent(r.get("final_score"))]
         self.assertTrue(unpriced, "late-round board should contain unpriced rows")
 
@@ -389,10 +410,10 @@ class SurvivalOnAnUnpricedBoardTests(_BoardFixture):
         current_index = next(i for i in range(len(picks), len(pick_order))
                              if pick_order[i] == "1")
         opponent_boards = ds._build_opponent_boards(
-            self.merger, self.players_db, picks, DYNASTY, roster_ids, mode="balanced")
+            self.merger, self.players_db, picks, DYNASTY_SUPERFLEX, roster_ids, mode="balanced")
         result = ds.estimate_survival(
             picks, self.players_db, pick_order, current_index, "1",
-            unpriced[0]["player_id"], opponent_boards, league=DYNASTY)
+            unpriced[0]["player_id"], opponent_boards, league=DYNASTY_SUPERFLEX)
 
         self.assertTrue(result["risk_by_team"], "the fixture produced no intervening picks")
         self.assertEqual(result["unevidenced_picks"], len(result["risk_by_team"]))
@@ -401,7 +422,7 @@ class SurvivalOnAnUnpricedBoardTests(_BoardFixture):
     def test_a_priced_targets_survival_is_still_reported_as_measured(self):
         picks = self._late_round_state()
         late = dr.compute_draft_board(self.merger, self.players_db, picks, my_roster_id="1",
-                                      league=DYNASTY, mode="balanced")
+                                      league=DYNASTY_SUPERFLEX, mode="balanced")
         priced = [r for r in late if not _is_absent(r.get("final_score"))]
         self.assertTrue(priced)
 
@@ -410,10 +431,10 @@ class SurvivalOnAnUnpricedBoardTests(_BoardFixture):
         current_index = next(i for i in range(len(picks), len(pick_order))
                              if pick_order[i] == "1")
         opponent_boards = ds._build_opponent_boards(
-            self.merger, self.players_db, picks, DYNASTY, roster_ids, mode="balanced")
+            self.merger, self.players_db, picks, DYNASTY_SUPERFLEX, roster_ids, mode="balanced")
         result = ds.estimate_survival(
             picks, self.players_db, pick_order, current_index, "1",
-            priced[0]["player_id"], opponent_boards, league=DYNASTY)
+            priced[0]["player_id"], opponent_boards, league=DYNASTY_SUPERFLEX)
         self.assertEqual(result["unevidenced_picks"], 0)
 
 

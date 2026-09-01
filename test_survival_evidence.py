@@ -34,7 +34,19 @@ import draft_room as dr
 import draft_strategy as ds
 
 
-ROSTER = ["QB", "RB", "RB", "WR", "WR", "TE", "FLEX", "K", "DEF"] + ["BN"] * 11
+# SUPERFLEX for the whole module, because the whole module is about the UNPRICED register and
+# that register only exists in superflex now. Since predraft_replacement_anchor landed, a
+# position whose league-wide starter demand is exhausted keeps being priced against its
+# pre-draft level, so a 1QB board carries no unpriced row at ANY depth -- measured 0 at rounds
+# 16, 18 and 20. The one absence the repair deliberately does NOT revive is the
+# startable_floors decline: "no remaining QB clears the startability threshold" is a different
+# fact from "this position's demand is filled", and reviving a stale anchor there would assert
+# a startable replacement exists where the measurement says none does. That leaves 11 unpriced
+# QBs at round 16 here, so every assertion below keeps its subject -- and the subject is now
+# absent for a MEASURED reason rather than a demand-domain artifact, which is a better test
+# than the one it replaces. If the startability floor is ever changed, this module's own
+# non-vacuity guards (FixtureReachesTheStateTests) fail loudly rather than going quiet.
+ROSTER = ["QB", "RB", "RB", "WR", "WR", "TE", "FLEX", "SUPER_FLEX", "K", "DEF"] + ["BN"] * 10
 NUM_TEAMS = 12
 DYNASTY = {"roster_positions": ROSTER, "total_rosters": NUM_TEAMS,
            "settings": {"type": 2}, "scoring_settings": {}}
