@@ -285,3 +285,52 @@ Recorded now so the implementation cannot quietly drift into them:
   `test_cdme_ingestion_boundary.py` enforces the research boundary today.
 * **It must not silently trust an unstamped snapshot.** `snapshot_is_current` already reports an
   unstamped snapshot as *not* current rather than assuming; wiring it must preserve that posture.
+
+---
+
+# Step 1a — delivered
+
+**Commit `76be588`. Suite 1459 → 1489, no regressions. No valuation number changed.**
+
+| Piece | State |
+|---|---|
+| `content_hash.fingerprint` | **done** — one shared primitive, byte-identical to the `_fingerprint` it replaces (#111) |
+| `pick_synthesis.snapshot_identity` | **done** — pure, total, 1.36 ms / 72 candidates |
+| `pick_synthesis.stamp_is_current` | **done** — the staleness rule, now askable of a restored record (#101) |
+| `draft_history` store | **done** — per-league, append-only, content-addressed; #102 structurally impossible |
+| Evidence projection | **done** — carries the policy's required fields, plus the anchor provenance the board drops |
+| Import boundary | **done** — CDME may never import `draft_history`, enforced |
+| **Production call site** | **NOT done — deliberately. See D11.** |
+
+## Why there is no call site yet, and the decision that decides it
+
+The substrate is complete and proven, but nothing in production records a snapshot, because
+**what should trigger a recording is a product decision I should not make silently.** Two
+readings of the policy give materially different stores:
+
+* **Record every board built.** A complete history of everything the Draft Room showed —
+  including boards for other managers' picks and every pool-scope toggle. Largest store, and
+  it captures decision points that never got an Insight.
+* **Record on binding only** — when an Insight (or a debate) is actually generated against a
+  board. Closest to the policy's own wording, *"Insight records and their associated
+  PickSnapshots"*, and much leaner. But since Insight does not exist yet, wiring this today
+  would be a no-op, and building its plumbing ahead of the contract is exactly what the
+  greenlight said not to do.
+
+A third reading sits between them: record the user's **own** picks always, and other boards
+only on binding — the draft's real decision history without the noise.
+
+**Recorded as D11.** It belongs in the Insight contract (Step 2), not in the substrate.
+
+**Consequence to state plainly:** #92, #101 and #102 are **not closed** by this commit. Their
+mechanisms exist, are tested, and are unblocked; they acquire their first production consumer
+when D11 is settled. #111 *is* effectively closed — the content-hash mechanism now covers two
+artifacts through one implementation.
+
+## What Step 1a bought
+
+Ten Insight contract clauses that were previously unbuildable now have a substrate:
+snapshot identity, stale-result invalidation, in-flight obsolete-result rejection, persistence,
+retention, per-league scoping, historical readability, Prytaneum snapshot visibility, and the
+`#102`-free store the multi-tab clause needs. None of them is *implemented* — they are simply
+no longer blocked on a missing foundation.
