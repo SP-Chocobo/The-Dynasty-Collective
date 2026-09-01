@@ -816,3 +816,75 @@ settled before any candidate formulation is measured.
 **Still open. Next measurement round:** formulate candidate contextual-priority rules over the
 surviving inputs, and measure each against controlled drafts — with *"do I really need WR8 when I
 don't have QB4?"* as the acceptance test.
+
+## D9 — measurement round 2: consensus as a TIEBREAKER
+
+The operator's recollection — that the consensus/tier data was always meant to be *glanced at for
+tiebreakers*, for exactly the case where there is not enough other context to distinguish — is
+confirmed by the code's own stated intent, with one nuance that matters.
+
+### What the current contract actually says
+
+`consensus_reach`'s docstring: *"it's informational evidence for the debate layer, **never a block
+or a penalty applied here**."* Measured consumers: the debate prompt
+(`pick_debate._format_candidate`), both `app.py` panels, `draft_counterfactual` (as an ADP-proxy
+baseline), and now the 1a evidence projection. **It is consulted for ordering by nothing.**
+
+So consensus-as-tiebreaker would be the **first time this data touches engine output**. That is a
+small, bounded step — but it is a step across the line that docstring draws, so it is a policy
+decision rather than a mechanical repair. What does *not* change is the authority claim: a
+tiebreaker fires only where the engine has no signal of its own, and never moves a price.
+
+### Does it actually work? Measured in superflex (the only format where it populates today)
+
+| pick | rd | pool | priced | unpriced | with consensus | coverage |
+|---:|---:|---:|---:|---:|---:|---:|
+| 133 | 12 | 201 | 190 | 11 | 11 | **100%** |
+| 145 | 13 | 189 | 145 | 44 | 11 | 25% |
+| 157 | 14 | 177 | 41 | 136 | 101 | **74%** |
+| 169 | 15 | 165 | 0 | 165 | 130 | **79%** |
+| 193 | 17 | 141 | 0 | 141 | 106 | **75%** |
+| 205 | 18 | 129 | 0 | 129 | 94 | **73%** |
+
+**My worry was wrong in the good direction.** I expected consensus to be least available exactly
+where it is most needed — deep-bench players the source does not cover. Coverage instead holds at
+**73–79%** once pricing has collapsed. (The 25% dip at pick 145 is the transition: the *first*
+rows to go unpriced are the genuinely obscure ones; the well-covered players join the unpriced set
+as their positions' demand runs out.)
+
+**Discrimination is total among covered rows: 82 covered rows, 82 distinct consensus ranks.**
+
+### The sample that settles it
+
+The final board's first ten rows, in the order the board currently presents them:
+
+| board order (id string sort) | player | consensus rank | tier | proj |
+|---|---|---:|---:|---:|
+| 1st | K Boutte | 199 | 18 | 115 |
+| 2nd | J Bech | 234 | 18 | 87 |
+| 4th | J Jeudy | 225 | 18 | 136 |
+| **5th** | **Z Branch** | **168** ← best | 18 | 113 |
+| 10th | R Flournoy | 278 ← worst | 18 | 115 |
+
+### Two findings that change the proposed design
+
+**1. Tier does not discriminate at the tail; rank does.** All ten of those players are **tier 18**.
+The *"QB — Tier 2, 1 remaining"* display works in the mid-draft, where tiers are meaningful, but
+deep in a draft everyone collapses into the last tier. A tail tiebreaker has to key on **rank**,
+and any tier-based presentation needs a defined behaviour for "everyone left is the same tier."
+
+**2. Consensus and projection disagree, and cover different things.** `C Brazzell II` carries
+`proj = 0.0` and `consensus_rank = 230` — the market has an opinion where the projection has
+none. That is the strongest argument for the operator's framing: consensus is a **second,
+independent read** on who is the better asset in a vacuum, not a substitute ranking.
+
+### The design constraint this leaves
+
+A tiebreaker with ~75% coverage produces a **two-tier ordering**, and the uncovered quarter needs a
+defined home. Putting all uncovered rows below all covered ones is itself a claim — *"unknown to
+this source = worse"* — which may be false for exactly the populations a source under-covers
+(deep IDP, rookies, recent signings). Whatever is chosen there must be stated, not defaulted into.
+
+**Still open. Next: candidate formulations, measured against controlled drafts.** Consensus-as-
+tiebreaker is now the strongest and smallest of them — it changes nothing while the engine has
+signal, and replaces a zero-information string sort with a sourced one where it does not.
