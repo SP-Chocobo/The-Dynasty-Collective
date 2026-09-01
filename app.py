@@ -49,7 +49,7 @@ import trade_ledger_ui
 from attachments import ATTACHMENTS_DIR, list_attachments, save_attachment, set_caption, set_scope, delete_attachment
 from data_merger import (
     EXTERNAL_VALUES_DIR, GLOBAL_PROJECTIONS_DIR, PROJECTIONS_DIR, DataMerger, external_upload_targets,
-    load_projection_file, recency_grade, remove_alias, save_alias,
+    horizon_gap_lines, load_projection_file, recency_grade, remove_alias, save_alias,
 )
 from league_format import FORMAT_GUIDANCE, FORMAT_OPTIONS, STANDARD, get_format_override, set_format_override
 from league_prefs import forget_league, get_prefs, move_league, sorted_leagues, toggle_archive
@@ -1728,6 +1728,17 @@ def build_context(
             "and note where sources disagree on which of two players is worth more, since that's "
             "more informative than any single number alone."
         )
+
+    # Two different things arrive at the roster table above as the same blank "3yr Proj": a
+    # position that HAS no career arc to project, and a player who has one that nothing loaded
+    # publishes. data_merger._assign_horizon_state exists specifically to tell those apart --
+    # "exactly the distinction that decides whether restoring the data is even possible" -- and
+    # it was computed and then dropped before anything could read it. horizon_gap_lines states
+    # which absence each blank is, using the engine's own reason strings rather than re-wording
+    # them here, and leaves what to make of that to the panel. Same posture as the
+    # replacement_level_unpriced count roster_diagnostics already reports beside its value
+    # rather than folding into it.
+    lines.extend(horizon_gap_lines(roster_table))
 
     # The canonical Sleeper pool is intentionally separate from the optional
     # Draft Sharks free-agent export.  Include player(s) named in the question

@@ -3500,3 +3500,202 @@ Everything else in §17 needs either a decision or an environment this audit doe
    an unrecognised status hides a record. Both need a surfacing decision.
 4. **The compute-then-drop class** (17.8) — three instances now. Worth one decision about where
    diagnostics go, rather than three separate ones.
+
+## Pass 14 — §18
+
+**Scope:** Build Guide v2 §18 (data semantics — what does the system know?).
+
+**Baseline:** `c045f8e` on `ui-authority-pass`; `main` frozen at `9fb5102`. Two production files
+modified (`data_merger.py`, `app.py`) — R16. #91–94, #96–111 remain queued; #99 stays ahead of
+#94.
+
+**Headline: the absence contract is one bit deep, and it is excellent at that depth. "This has a
+value" versus "this does not" survives every calculation, ordering and consumer, defended by
+`test_absence_survives_consumers.py`'s EXCLUDE / PROPAGATE / ORDER LAST rule. §18 asks the second
+bit — WHICH absence — and the codebase computes exactly that distinction, on 500 of 764 canonical
+rows, in the one place it exists, and then dropped it at its own first consumer.**
+
+### 18.1 The eight states, and which of them this system can express
+
+**STATUS: PARTIAL — measured, not read off names**
+
+| §18 state | representation | reaches a consumer? |
+|---|---|---|
+| unknown | `proj_3yr_state == "unknown"` + reason; `None` on bpa/waiting_cost; `composite → None` | **now yes** (R16); values yes |
+| not applicable | `proj_3yr_state == "not_applicable"` + reason | **now yes** (R16) |
+| unavailable | `⚠️` fail-soft strings; `UNAVAILABLE_REPORT` (R12); DATA AVAILABILITY "NOT LOADED" | yes |
+| stale | freshness manifest (STALE / EGREGIOUSLY OUTDATED); `_recency_weight`; `snapshot_is_current` | yes, except the certifier (#101) |
+| intentionally omitted | `replacement_levels` OMITTED keys; ESPN/best-ball excluded from the composite | yes, as documented absence |
+| uncertain | `confidence` (from `bpa_source`); `CONVICTION`; `horizon_sensitivity`; composite `weight`/`pool_size` | yes |
+| disputed | resolved or excluded, never carried: `_drop_contested_identities` drops **both**, `match_verified` is dropped at the board (#107), `reconciliation_conflicts` is write-only (§17.8) | **no** |
+| never checked | **nothing** — AST scan over every production module for `unchecked`/`not_checked`/`never_checked` string constants returns zero | **no** |
+
+Six of eight are expressible; two are not. "Disputed" is a deliberate architectural choice
+(this system resolves or declines rather than carrying a contested value) and is defensible.
+"Never checked" is simply absent.
+
+### 18.2 The one place kinds of absence are distinguished — and where it stopped
+
+**STATUS: was MISSING at the boundary — repaired (R16)**
+`data_merger._assign_horizon_state` computes three states with a reason on every non-known row,
+and states its own purpose plainly: *"Three states because the old two could not distinguish
+'this position has no career arc' from 'this player has one and we do not have it' — and that
+is exactly the distinction that decides whether restoring the data is even possible."*
+
+Measured on the committed baseline:
+
+| state | rows | share |
+|---|---|---|
+| `known` | 264 | 34.6% |
+| `unknown` | 468 | 61.3% |
+| `not_applicable` | 32 (all DEF) | 4.2% |
+
+And the reasons are genuinely discriminating, not boilerplate — K's is *"no multi-year figure on
+the **sleeper_transcribed** basis that prices this position"* (the file that prices kickers
+publishes none), DB's is *"no multi-year figure from **any source carrying this player**"*. Two
+different claims, both true.
+
+**Grepped across the whole repo, `proj_3yr_state` and `proj_3yr_reason` appeared in
+`data_merger.py` and in tests, and nowhere else.** `merge_player`'s field whitelist did not carry
+them, and it drops `proj_3yr` itself when absent — so both states arrived at every consumer as
+the identical missing key. Demonstrated on real rows before the repair:
+
+```
+producer state=unknown         -> consumer sees {'proj_3yr': None, 'proj_3yr_state': None, ...}
+producer state=not_applicable  -> consumer sees {'proj_3yr': None, 'proj_3yr_state': None, ...}
+DEF 'P Eagles' vs DB 'C Conner': keys that could tell them apart -> NONE
+```
+
+Two near-opposite claims — *restoring this is impossible* and *restoring this is possible and
+worth doing* — were indistinguishable for 100% of the 500 rows the distinction applies to.
+**Verdict: REPAIR (R16).** See below on why this one was routed rather than surfaced.
+
+### 18.3 Five of six absence-namers reach a consumer; the sixth was the only one that named a kind
+
+**STATUS: EXISTS — now pinned**
+The codebase names absence in six independent places, and it is good at it:
+- `UNAVAILABLE_REPORT` / `_report_for_handoff` (R12) — a failed chair's slot is relabelled
+  *"MISSING information, never … a finding that there is nothing to report"* for the next chair.
+- `replacement_levels` — a position below whole-slot demand has its key **OMITTED**, and the
+  docstring says callers must read absence as such, *"never as zero and never as rank 1"*.
+- `_attach_waiting_cost` — *"None (not zero) … zero would read as 'waiting is free' — the most
+  dangerous possible wrong answer here."*
+- `INCOMPLETE_PLAYER_PROFILE` — a named constant for "every loaded source was checked and none
+  had a number", explicitly *"a deliberate, honest state, not a blank/missing field."*
+- `TeamDiagnostics.replacement_level_unpriced` — a **count of the absent, reported beside the
+  value rather than folded into it**. This is the precedent R16 follows.
+- `proj_3yr_state` / `proj_3yr_reason` — the only one that says *which kind*, and the only one
+  that reached nothing.
+
+### 18.4 An AI-generated claim cannot silently become authoritative — measured
+
+**STATUS: EXISTS — a genuine protection, now pinned**
+Planted a finding end to end and reverted it. A panel-vetted claim *does* reach the deterministic
+composite, and every step of the way it is labelled and throttled:
+
+```
+composite BEFORE the AI claim: 97.8      composite AFTER: 97.8
+  dynastyprocess  weight 0.812   pool 698
+  fantasypros     weight 0.871   pool 552
+  keeptradecut    weight 0.609   pool 463
+  bot_research    weight 0.025   pool   1      <- 24x below the smallest structured source
+```
+
+The `COMPOSITE_MIN_TRUSTED_POOL_SIZE` guard is doing the work: a one-row pool always ranks its
+only member at the 100th percentile, so its weight is scaled by `pool_size / 40`. The claim moved
+a real composite by **0.0**. The record says `composite_impact: "low-weight input"` (or `"none"`
+for a qualitative claim); the frame labels it `source_name: "bot_research"` with the cited outlet
+preserved separately as `cited_source`; `describe_external_value` renders it *"ESPN via panel
+research"*. The cited outlet never becomes a composite source in its own name.
+
+So §18's *"can an AI-generated claim ever silently upgrade itself from advisory context to
+authoritative data?"* is **no** — it can become an input, never silently and never with force.
+Relative comparisons are barred structurally (no `_EXTERNAL_PERCENTILE_RULES` entry at all).
+
+### 18.5 Does every noncanonical fact retain origin, timestamp, confidence, status?
+
+**STATUS: EXISTS — more completely than expected**
+
+| noncanonical fact | origin | timestamp | confidence | status |
+|---|---|---|---|---|
+| research finding | cited source ✓ (but not user-vs-search — #106) | `ts`/`date` ✓ | `conviction` ✓ | `composite_impact` ✓ |
+| composite component | `source` ✓ | `source_date` ✓ | `weight` + `pool_size` ✓ | — |
+| board row | `bpa_source` ✓ | — (snapshot-level only) | `confidence` ✓ | — |
+| attachment caption | user ✓ | `uploaded_at` ✓ | — | "claim to weigh" ✓ |
+| decision verdict | provider/model ✓ (R10) | `ts` ✓ | `conviction` ✓ | `outcome` ✓ |
+
+The one structural gap: a **board row carries no date**. It can say which anchor priced it, not
+when that anchor was measured. `PickSnapshot`'s INPUT-STATE STAMP covers freshness at the
+snapshot level, which is the right granularity for the decision — noted, not repaired.
+
+### 18.6 What happens when user-provided information contradicts CDME
+
+**STATUS: EXISTS — disagreement is shown, not resolved, which is the right answer**
+`build_context` hands the panel every source's own number side by side and instructs it to
+*"note where sources disagree on which of two players is worth more, since that's more
+informative than any single number alone"*, with each scale's incomparability spelled out.
+Cross-source contradiction is therefore surfaced as evidence rather than silently arbitrated.
+
+The asymmetry: **intra-source contradiction is recorded and shown to no one.**
+`DataMerger.reconciliation_conflicts` captures every field-level disagreement a load resolves —
+1,084 of them per load, per #83 — and §17.8 established it is read by nothing in production.
+Same finding, different lens; folded into the compute-then-drop class rather than raised again.
+
+### 18.7 Corrections to my own §18 readings
+
+1. **`_confidence`'s `35.0` fallback is not a defect.** I drafted it as an unknown anchor
+   silently collapsing to a known confidence tier. `bpa_source` is assigned unconditionally and
+   only ever takes one of the four values `CONFIDENCE_BY_SOURCE` scores, so the fallback is
+   unreachable. Checked before reporting; now pinned by a test so it stays unreachable.
+2. **I nearly added a fifth unread diagnostic.** The first draft of R16 stopped at carrying the
+   state through `merge_player`. That would have moved the drop point one module later and made
+   §17.8's compute-then-drop list longer, which is the exact reasoning I had just used to *decline*
+   repairing §17.5(a). Caught, and the repair extended to a real consumer before shipping.
+3. **The Free-Agent-table test was passing by skipping.** The first version checked the
+   "no such column" guard against `merger.free_agents`, which is empty in this baseline, so it
+   skipped rather than asserted. Replaced with a hand-built stateless frame that exercises the
+   guard for real.
+
+## Pass 14 summary
+
+| § | question | status | verdict |
+|---|---|---|---|
+| 18.1 | are the eight states expressible? | **6 of 8** | disputed: architectural; unchecked: SURFACE (#112) |
+| 18.2 | do kinds of absence survive the producer? | **was MISSING** | **REPAIR (R16)** |
+| 18.3 | do absence labels reach consumers? | **EXISTS** (5 of 6) | now pinned |
+| 18.4 | can an AI claim silently become authoritative? | **NO — protected** | now pinned |
+| 18.5 | origin/timestamp/confidence/status on noncanonical facts | **EXISTS** | board row carries no date — noted |
+| 18.6 | user info contradicting CDME | **EXISTS** cross-source | intra-source is §17.8's class |
+| 18.7 | does the kind-of-absence reach the board? | **MISSING** | SURFACE (#112) |
+
+**Does anything clear the bar for a production change?** One thing did, and it is the judgment
+call of this section — flagged as such.
+
+**R16 — the three horizon states survive their own producer, end to end.**
+`merge_player` now carries `proj_3yr_state` and `proj_3yr_reason` (tables with no such column are
+untouched by the existing `field in match.index` guard), and a new pure helper
+`data_merger.horizon_gap_lines` turns them into context lines that `build_context` emits under the
+roster table — counts per state, with the engine's own reason strings **verbatim**, and nothing at
+all when nothing is absent. It states which absence each blank is and says nothing about what to
+conclude from it.
+
+**Why routed rather than surfaced.** Carrying the field alone would have made a fifth
+compute-then-drop instance. Routing it changes what the panel reads, which is a behavioural
+change — the reason this is the section's judgment call rather than a mechanical certainty. It
+was taken because three established precedents cover the shape exactly:
+`replacement_level_unpriced` (a count of the absent, reported beside the value rather than folded
+into it), `INCOMPLETE_PLAYER_PROFILE` (build_context already names an honest absence rather than
+leaving a blank), and `_assign_horizon_state`'s own stated purpose, which a stranded field
+defeats. If that reads as too far, the revert is one line in `build_context` and the carrying
+half stands on its own.
+
+**Ranked follow-ups**
+1. **#112** — the kind-of-absence stops at the roster context. The board emits `bpa_source` and
+   `confidence` but no reason for anything it lacked, so the distinction does not reach the
+   PickSnapshot or the Draft Room debate — the same frozen boundary #107 is parked on. Same item
+   carries "never checked", the one §18 state with no representation at all.
+2. **#106** (unchanged) — a research finding still cannot say whether the user's screenshot or a
+   live search produced it, which is the one hole in an otherwise complete provenance record.
+3. **The compute-then-drop class** — now four instances (`waiting_cost`, `_match_path`,
+   `reconciliation_conflicts`, and until R16 `proj_3yr_state`). R16 is the first one closed;
+   the other three still want one decision rather than three.

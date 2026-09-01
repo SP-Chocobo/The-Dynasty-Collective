@@ -1484,6 +1484,48 @@ def _assign_horizon_state(df: pd.DataFrame) -> pd.DataFrame:
     return df
 
 
+def horizon_gap_lines(rows: list[dict], indent: str = "  ") -> list[str]:
+    """Context lines naming WHICH absence each blank multi-year projection is, or [] when every
+    row has one. Takes merge_player-shaped dicts (build_roster_table's rows).
+
+    _assign_horizon_state computes three states and a reason for each non-known row, and until
+    this existed nothing outside this module could read either: proj_3yr is simply absent from
+    merge_player's dict, so "a team defense has no career arc" and "this player has one and
+    nothing loaded publishes it" reached every consumer as the identical missing key. Those two
+    are close to opposites -- one says restoring the data is impossible, the other says it is
+    possible and worth doing -- and that is the distinction _assign_horizon_state was built for.
+
+    Counts and the engine's own reason strings, verbatim. This states what the state IS; it does
+    not tell a reader what to conclude from it, and deliberately says nothing at all when there
+    is nothing absent to report.
+    """
+    by_state: dict[str, list[str]] = {}
+    counts: dict[str, int] = {}
+    for row in rows:
+        if row.get("proj_3yr") is not None:
+            continue
+        state = row.get("proj_3yr_state")
+        if not state or state == "known":
+            continue
+        counts[state] = counts.get(state, 0) + 1
+        reasons = by_state.setdefault(state, [])
+        reason = row.get("proj_3yr_reason") or ""
+        if reason and reason not in reasons:
+            reasons.append(reason)
+    if not counts:
+        return []
+    total = sum(counts.values())
+    out = [
+        f"{indent}A blank '3yr Proj' above is not one state. Of the {total} player(s) without "
+        "one, the engine records:"
+    ]
+    for state, reasons in by_state.items():
+        label = "NOT APPLICABLE" if state == "not_applicable" else state.upper()
+        detail = "; ".join(reasons) or "(no reason recorded)"
+        out.append(f"{indent}  - {label} ({counts[state]}): {detail}")
+    return out
+
+
 def _dedup_by_name_and_position(frames: list[pd.DataFrame], empty: pd.DataFrame) -> pd.DataFrame:
     """Concat frames and drop to one row per player, the last frame's row winning ties --
     callers should order frames oldest/least-authoritative first, so a more specific or more
@@ -2098,6 +2140,19 @@ class DataMerger:
                                        _position_group(match.get("position")))}
         for field in ("projection", "vorp", "tier", "trade_value", "rank",
                        "position", "team", "pos_rank", "proj_3yr",
+                       # WHY the multi-year figure is absent, not just that it is. These two
+                       # are the only place this codebase distinguishes KINDS of absence
+                       # ("this position has no career arc" vs "this player has one and we do
+                       # not have it" -- see _assign_horizon_state, which exists for exactly
+                       # that distinction because it "decides whether restoring the data is
+                       # even possible"). They were computed on 500 of 764 canonical rows and
+                       # stopped here: proj_3yr is dropped from this dict when absent, so both
+                       # states arrived at every consumer as the same missing key. Carried, so
+                       # the distinction can survive its own producer. Tables that have no
+                       # proj_3yr to have a state about (free agents, the trade value chart)
+                       # simply have no such column, and the `field in match.index` guard below
+                       # leaves them alone.
+                       "proj_3yr_state", "proj_3yr_reason",
                        "roster_status", "proj_3d", "ros_3d", "ceiling", "value_3d",
                        # "value" is the Trade Value Chart's own column name (see
                        # parse_draftsharks_trade_value_chart_pdf) -- that table never goes

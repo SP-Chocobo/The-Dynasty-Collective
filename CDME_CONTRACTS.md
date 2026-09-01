@@ -8408,3 +8408,141 @@ to-do status vocabularies overlapping.
      `waiting_cost`, `_match_path`, `reconciliation_conflicts`. Adding a fourth unread
      diagnostic is not a repair, which is why a silent-drift signal was surfaced rather than
      stored.
+
+---
+
+# Appendix §18 — Data Semantics: What Does the System Know?
+
+**Baseline entering:** `c045f8e` on `ui-authority-pass`, suite 1424 OK. `main` frozen at
+`9fb5102`, untouched. Defect A1 untouched.
+
+## What was measured
+
+**The eight-state inventory.** Six of §18's eight states have a representation; two do not.
+"Disputed" is never carried as a value state — the system resolves it (`_dedup_by_name_and_position`),
+excludes it (`_drop_contested_identities` drops **both** contested rows), or records it where
+nothing reads it (`reconciliation_conflicts`, §17.8). "Never checked" has no representation at
+all: an AST scan over every production module for `unchecked` / `not_checked` / `never_checked`
+string constants returns **zero**.
+
+**The horizon states, on the committed baseline.** `known` 264, `unknown` 468, `not_applicable`
+32 — **500 of 764 rows (65.4%) carry a non-known state**, every one with a reason, and the
+reasons are genuinely discriminating rather than boilerplate: K gets *"no multi-year figure on the
+sleeper_transcribed basis that prices this position"*, DB gets *"no multi-year figure from any
+source carrying this player"*.
+
+**Where the distinction died.** Grepped repo-wide, `proj_3yr_state` / `proj_3yr_reason` appeared
+in `data_merger.py` and in tests, nowhere else. `merge_player`'s field whitelist omitted them and
+also drops `proj_3yr` itself when absent, so both states reached every consumer as the identical
+missing key. Demonstrated on real rows: a DEF (`not_applicable`) and a DB (`unknown`) differed in
+**no key** that could tell them apart.
+
+**The AI-claim path, planted end to end and reverted.** A panel-vetted finding reaches the
+composite as `bot_research` at **weight 0.025** against 0.609 / 0.812 / 0.871 for the three
+structured sources — 24x below the smallest — because `COMPOSITE_MIN_TRUSTED_POOL_SIZE` scales a
+one-row pool's weight by `1/40`. It moved a real composite by **0.0** (97.8 → 97.8). The cited
+outlet never becomes a composite source in its own name; `composite_impact` states the claim's own
+reach on the record; relative comparisons are barred structurally (no percentile rule at all).
+
+**Provenance completeness.** Research findings carry origin / `ts` / `conviction` /
+`composite_impact`; composite components carry `source` / `source_date` / `pool_size` / `weight`;
+decisions carry provider/model (R10) / `ts` / `conviction` / `outcome`; attachments carry user /
+`uploaded_at` / "claim to weigh". The one structural gap: a **board row carries no date** — it can
+say which anchor priced it, not when that anchor was measured. `PickSnapshot`'s INPUT-STATE STAMP
+covers freshness at the snapshot level, which is the right granularity for a decision. Noted, not
+repaired.
+
+## Corrections to my own conclusions
+
+1. **`_confidence`'s `35.0` fallback is not a defect.** I drafted it as an unrecognised anchor
+   silently collapsing to a known confidence tier. `bpa_source` is assigned unconditionally and
+   only ever takes one of the four values `CONFIDENCE_BY_SOURCE` scores, so the branch is
+   unreachable. Checked before reporting, and now pinned by a test so it stays that way.
+2. **I nearly added a fifth unread diagnostic.** R16's first draft stopped at carrying the state
+   through `merge_player`, which would have moved the drop point one module later and lengthened
+   §17.8's compute-then-drop list — the exact reasoning I had just used to *decline* repairing
+   §17.5(a). Caught before shipping; the repair was extended to a real consumer.
+3. **A test was passing by skipping.** The "a table with no such column gains no invented state"
+   check ran against `merger.free_agents`, which is empty in this baseline, so it skipped instead
+   of asserting. Replaced with a hand-built stateless frame that exercises the guard for real.
+   Tenth occurrence of the one-read-short pattern, and the first found in my own test rather than
+   in production.
+
+## Repairs
+
+**R16 — the three horizon states survive their own producer, end to end.** Two halves, one path:
+- `data_merger.merge_player` carries `proj_3yr_state` and `proj_3yr_reason`. Tables that have no
+  such column (the Free Agent Finder, the Trade Value Chart) are untouched — the existing
+  `field in match.index` guard already handles them, verified rather than assumed.
+- A new pure helper `data_merger.horizon_gap_lines(rows)` turns those states into context lines,
+  and `build_context` emits them under the roster table. Counts per state, the engine's own reason
+  strings **verbatim** rather than a paraphrase, and **nothing at all** when nothing is absent.
+  It states which absence each blank is, and says nothing about what to conclude from it.
+
+**Why this one was routed rather than surfaced, and why that is the judgment call of the section.**
+Carrying the field alone would have made a fifth compute-then-drop instance. Routing it changes
+what the panel reads, which is a behavioural change. It was taken because three established
+precedents cover the shape exactly: `TeamDiagnostics.replacement_level_unpriced` (a count of the
+absent, *"reported rather than folded into the number above"*), `INCOMPLETE_PLAYER_PROFILE`
+(build_context already names an honest absence instead of leaving a blank), and
+`_assign_horizon_state`'s own stated purpose, which a stranded field defeats. The revert, if this
+reads as too far, is one line in `build_context`; the carrying half stands on its own.
+
+No other production file was changed. §18's remaining gaps are boundary and vocabulary decisions.
+
+## Tests added
+
+`test_data_semantics_boundary.py` — **33 tests**. Enforcement: the reporter says nothing when
+nothing is absent; counts and labels the two opposite states separately; uses the engine's reason
+strings verbatim; keeps two different reasons within one state; de-duplicates a repeated reason
+while still counting both players; never counts a row with no state or a `known` row; the indent
+is a parameter. On the real baseline: every state reaches a consumer with its reason, the two
+opposite absences are distinguishable, a stateless table gains no invented state, the vocabulary
+is closed at three, the state never disagrees with the value, every non-known row states why, and
+the distinction covers >25% of the pool (non-vacuity for all of the above). `build_context`
+consumes the helper. The AI-claim protections: a planted claim arrives labelled as research and
+never as the cited outlet, at under a tenth of the smallest structured weight; `composite_impact`
+distinguishes rank-bearing from qualitative; a qualitative claim never reaches the composite; a
+relative comparison is barred structurally; every component keeps origin/time/trust; no opinion at
+all returns `None`. Plus the five absence-namers that already reach a consumer. Characterization
+(pinned, not endorsed): the board emits `bpa_source` and `confidence` but no absence reason
+(#112), and "unchecked" has no representation anywhere (#112).
+
+Non-vacuity: **15 probes** planted in real production code and reverted, all failing the intended
+tests — `merge_player` dropping the state; `build_context` dropping the report; the reporter
+re-wording the engine's reason; the two states merged into one bucket; a stateless row counted
+anyway; the reporter speaking up when nothing is absent; a `not_applicable` row losing its reason;
+the state contradicting the value; the board emitting the state; an `unchecked` constant appearing;
+a research finding given full source weight; the pool-size guard removed; `composite_impact`
+collapsing to one value; a failed chair report handed on unlabelled; and an unmeasurable waiting
+cost documented as zero.
+
+## Invariants
+
+242. A one-bit absence contract is worth having and is not the whole contract. "Has a value" and
+     "does not" can be perfectly propagated while every kind of not-knowing collapses into the
+     same blank.
+243. Two absences can be near-opposites. "No career arc exists to project" and "a career arc
+     exists and nothing loaded publishes it" differ on whether the data can ever be recovered,
+     which is the only question that decides what to do about it.
+244. A field whitelist is a semantic boundary, not a performance detail. Whatever it omits stops
+     existing for every consumer downstream, however carefully the producer computed it.
+245. Dropping a key when a value is absent destroys more than the value. The reader loses the
+     ability to ask why, and cannot tell an unmatched player from a matched one with nothing to
+     say.
+246. Carrying a diagnostic one module further is not the same as routing it. A field nobody reads
+     has moved, not landed, and the count of unread diagnostics is the honest measure of whether
+     a repair happened.
+247. Report the absence in the producer's own words. A consumer that paraphrases a reason puts its
+     summary in front of the reader instead of what was actually determined.
+248. Say nothing when there is nothing to say. A data-quality note that fires unconditionally
+     trains its reader to skip it, and the one time it matters it reads like the other times.
+249. Weight is how an advisory claim stays advisory. A single-source opinion admitted at 1/24th of
+     a structured source's weight is an input; the same claim at parity is an assertion.
+250. A percentile is a claim about a pool, and a pool of one is not a pool. Scaling weight by pool
+     size is what stops "the only thing we found" from reading as "the best thing there is".
+251. Surfacing a disagreement is a stronger answer than resolving one. Handing both numbers to the
+     reasoner with their scales named beats arbitrating silently, and this codebase does that
+     across sources while doing the opposite within one.
+252. An unreachable fallback should be checked, not assumed, and then pinned. `get(key, default)`
+     on a closed vocabulary is only safe while the vocabulary stays closed.
