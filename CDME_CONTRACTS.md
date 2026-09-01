@@ -9109,3 +9109,83 @@ reopen #18**, and until now the two items had never been read against each other
 291. Two mandates can be in tension, and a checklist scored item by item will never show it.
      Keeping proprietary constants out of a chair's context is exactly what leaves that chair
      reasoning over a summary.
+
+---
+
+# Appendix §24 — Recommended Execution Order
+
+**Baseline entering:** `7212d96` on `ui-authority-pass`. `main` frozen at `9fb5102`. No production
+file modified — §24 is a self-scoring pass plus two prescribed exercises that no earlier section
+performed.
+
+## Result
+
+**15 steps: 12 performed · 1 correctly declined · 2 are gaps in the audit itself.** Full table in
+ARCHITECTURE_AUDIT.md Pass 20.
+
+Two steps were executed here for the first time: **step 3** (classify every gap by kind) and
+**step 10** (prove how far causal reconstruction works on one complete user decision).
+
+## The register, classified by kind (step 3)
+
+41 open items — the 39 standing, plus #118 and #119 created in this pass.
+
+| Kind | Count | Items |
+|------|-------|-------|
+| Missing contract | 14 | 50, 53, 54, 55, 71, 93, 94, 97, 98, 104, 112, 114, 116, 117 |
+| Unknown behavior | 8 | 49, 51, 52, 86, 87, 88, 109, 115 |
+| Missing observability | 7 | 96, 99, 100, 106, 107, 118, 119 |
+| Missing implementation | 5 | 36, 48, 91, 108, 111 |
+| Missing enforcement | 4 | 101, 105, 110, 113 |
+| Missing isolation | 2 | 102, 103 |
+| Missing persistence | 1 | 92 |
+
+**The distribution is the finding.** Fourteen items are decisions nobody has made; five are
+implementations of decisions already made. The audit's output is nearly three-to-one *questions
+correctly refused* over *work correctly deferred* — which is what the repair rule exists to
+produce, and this is the first measurement showing it did. All eight unknown-behavior items are
+blocked on **access** (a board, a network, an SDK, an unrun pass), not one on a choice.
+
+## Causal reconstruction, measured (step 10)
+
+Pick 37 (round 4.01), contested regime, 69 candidates, 1.91 margin over the runner-up.
+
+**Reconstructs exactly:** `tav = uv + need_bonus + eligibility_bonus` → `41.56 = 37.23 + 4.33 +
+0.0`, and every contextual term (necessity, survival, intervening picks, cliff tier and gap,
+positional forfeit, rival premium, both fired forces) is carried on the snapshot and reaches the
+board.
+
+**Breaks at `uv`.** `universal_value = bpa + time_horizon_adj + risk_adj`, and:
+
+* `time_horizon_adj` and `risk_adj` are emitted on every balanced-mode board row and read by no
+  production consumer anywhere in the repository. `build_snapshot` never carries them onto
+  `CandidateSnapshot`.
+* `bpa` / `bpa_source` / `confidence` reach the snapshot, then diverge: the **debate** path labels
+  `universal_value` with its anchor and confidence (`pick_debate:231`); the **board** path drops
+  all three. 13 of `CandidateSnapshot`'s 37 fields are read nowhere in `draft_board_ui.py`.
+
+**Sixth compute-then-drop instance, and the largest** — the five before it were single values;
+this is an entire decomposition. Filed as **#119**.
+
+## The audit's own gap (step 9)
+
+§24 names four IP-exfiltration surfaces. **Seated models** and **provider/tool exposure** were
+audited hard (R90, §8). **Repeated-query inference** and **client/API scraping** were never
+examined. Recorded as a gap in the audit, not a finding about the system — and it gates #119,
+because the board already ships `uv`/`tav`/`needBonus`/`eligBonus` to the client and the terms it
+withholds are precisely the ones an inference attack would need.
+
+## Invariants
+
+292. Classify gaps by kind and the repair surface stops being a list and starts being a shape.
+     Fourteen missing contracts against five missing implementations says the work ahead is
+     decision work, not build work — a flat register says nothing at all.
+293. A value that survives one consumer's boundary and dies at another's is not "carried". The
+     same three fields reach the debate labelled and reach the board absent; provenance is a
+     property of each edge, never of the object.
+294. An audit scores itself against its own prescribed order, or it cannot know which of its
+     conclusions are absences of findings and which are absences of looking. Two of this audit's
+     fifteen steps were never attempted, and only the scorecard revealed it.
+295. The obvious repair and the unmeasured risk can point in opposite directions. Routing the
+     valuation anchor to the board is a two-line change that may also be the exfiltration control
+     nobody chose. Neither the fix nor the risk may be assumed away by the other.

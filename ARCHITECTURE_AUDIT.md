@@ -4724,3 +4724,183 @@ scores is already a register item with its own evidence and its own parked decis
    cost half.
 Plus **#93**, which is the only NOT MET that is not one of those four — and which must be settled
 without reopening #18.
+
+---
+
+# Pass 20 — §24 Recommended Execution Order
+
+**STATUS:** COMPLETE. Two of §24's fifteen steps had never been performed by any earlier pass —
+step 3 (the seven-way gap classification) and step 10 (the causal-reconstruction exercise). Both
+are performed here. Two more (step 9's second half, step 15) are recorded as **gaps in the audit
+itself**, not in the system. One (step 14) is **correctly declined**.
+
+**LOCATION:** the register (all 41 open items), `pick_synthesis.CandidateSnapshot`,
+`draft_board_ui.serialize_candidate`, `pick_debate._format_candidate`,
+`draft_room.compute_draft_board`.
+
+## 20.1 The audit scored against its own prescribed order
+
+§24 prescribes fifteen steps. Scored against §1–§23 as actually executed:
+
+| # | Step | Result |
+|---|------|--------|
+| 1 | Finish the repair/test gate; establish a clean baseline | **DONE** — re-established at every section boundary; 1370 → 1459 tests |
+| 2 | Architecture audit only; no speculative redesign | **DONE** — 17 repairs, every one mechanical and rule-derived; every new decision parked |
+| 3 | Mark every gap by kind (7-way) | **DONE HERE** — §20.2; never applied before this pass |
+| 4 | Trace canonical data/context handoff into every AI chair | **DONE** — §3/§4; produced #91 (ScreenContext reaches the model on 1 chip of 7) |
+| 5 | Trace chair contracts and authority boundaries, least-privilege | **DONE** — §4/§8; R90 pins it with an adversarial test |
+| 6 | **Formalize** evidence states, ingestion boundaries, snapshots, context packages | **PARTIAL BY DESIGN** — all four audited (§6, §7, §12, §16, §18); formalization is the parked half (#92, #97, #98, #106, #112, #117). §24 says formalize; the repair rule says characterize and park. The repair rule wins, and the deviation is deliberate |
+| 7 | Objective model-selection methodology, only after chair contracts are explicit | **PARTIAL** — chair contracts are explicit (§4); the harness exists and now fingerprints its runs (R95); the evaluation criteria do not cover the envelope (#96) |
+| 8 | Source legality/admissibility and prompt-injection boundaries | **DONE** — §7; produced #98 |
+| 9 | IP-exfiltration resistance: seated models, provider/tool exposure, **repeated-query inference, client/API scraping** | **HALF DONE** — the first two are done and tested (R90, §8). **The last two were never performed.** See §20.4 |
+| 10 | Take one complete user decision and prove how far causal reconstruction works | **DONE HERE** — §20.3 |
+| 11 | Exercise failure, concurrency, stale-result, quota, partial-completion, provider-switch | **DONE** — §11, §14, §22. Quota's result *is* that quota is indistinguishable from three other causes (§14) |
+| 12 | Establish cost/resource accounting and research reuse boundaries | **AUDITED, NOT ESTABLISHED** — §21 measured that neither exists anywhere. #100, #117 |
+| 13 | Controlled draft simulations; compare draft-shape diagnostics | **DONE** — §20, 1,293 decision points across varied league configurations |
+| 14 | *Only then* tune behavioral formulas, on numerical regression evidence | **CORRECTLY DECLINED** — its stated precondition (step 12) is unmet, and #58's unit drift means any tuning would be calibrated against a moving ruler. Not a gap; the step's own guard fired |
+| 15 | Rerun the audit against the same checklist so the audit becomes a regression artifact | **NOT POSSIBLE YET** — #113: nothing runs the checks on a cadence, nothing pins their inputs, nothing hashes anything. The audit is currently a document, not an artifact |
+
+**Twelve steps performed, one correctly declined, two are gaps in the audit** (step 9's second
+half and step 15). Neither of those two is a defect in the system.
+
+## 20.2 The seven-way gap classification (step 3)
+
+Applied to all 41 open register items — the 39 standing plus #118 and #119 created in this pass.
+
+**MISSING CONTRACT (14)** — a decision nobody has made:
+#50, #53, #54, #55, #71, #93, #94, #97, #98, #104, #112, #114, #116, #117
+
+**UNKNOWN BEHAVIOR (8)** — blocked on an input the audit could not obtain:
+#49, #51, #52, #86, #87, #88, #109, #115
+
+**MISSING OBSERVABILITY (7)** — the fact exists and is not recorded or not visible:
+#96, #99, #100, #106, #107, #118, #119
+
+**MISSING IMPLEMENTATION (5)** — decided, specified, not built:
+#36, #48, #91, #108, #111
+
+**MISSING ENFORCEMENT (4)** — the mechanism exists; nothing makes it run or consults it:
+#101, #105, #110, #113
+
+**MISSING ISOLATION (2)** — one tenant's writes or reads reach another's:
+#102, #103
+
+**MISSING PERSISTENCE (1)** — the object is built, used, and never survives:
+#92
+
+### What the shape of that distribution says
+
+**Thirty-four percent of the open register is a decision, not code.** Fourteen items are missing
+contracts; only five are missing implementations of something already decided. This audit's
+output is overwhelmingly *questions correctly refused* rather than *work correctly deferred* —
+which is what the repair rule was written to produce, and the first measurement that shows it did.
+
+**Eight more are unknown behavior, and every one is externally blocked** — no K/DEF/IDP startup
+board (#49), no reachable `api.sleeper.app` (#88), no SDK that reports the served model (#109), an
+adversarial pass not yet run (#51, #52), a sensitivity not yet measured (#86, #87), a mode the
+human's own board never enters (#115). None of the eight is blocked on a choice; all are blocked
+on access.
+
+**Only seven items are what a reader would expect an architecture audit to produce most of** —
+missing observability. That is because observability is where this codebase is *strong* at
+computing and *weak* at routing: every one of the seven is a value that already exists somewhere
+in memory and reaches no consumer. That is the compute-then-drop class, and §20.3 adds its sixth
+and largest instance.
+
+## 20.3 One complete user decision, traced end to end (step 10)
+
+Taking the single decision point with the richest context from §20's 18-round deep trial — a
+contested-regime pick where four forces fired at once:
+
+```
+DECISION: pick 37 (round 4, pick 1), roster 12 -- took D Swift (RB)
+  regime = contested        tav = 41.56   uv = 37.23
+  need_bonus = 4.33         eligibility_bonus = 0.0
+  necessity = STRONG ACTION (survival 0.001, 22 intervening picks)
+  cliff = HIGH, gap 12.0 against a typical 2.0
+  positional_forfeit = 25.38   rival_premium = 4.33 (denial team 11)
+  forces = [tie, cliff]     context_gap = None
+  runner-up: H Fannin, tav 39.65 -- margin 1.91 over a 69-candidate field
+```
+
+**How far reconstruction gets.** The outer layer is exact:
+`tav = uv + need_bonus + eligibility_bonus` → `41.56 = 37.23 + 4.33 + 0.0`. Every contextual
+term above — necessity, survival, intervening, cliff, forfeit, rival premium, both forces — is
+carried on the snapshot, reaches the board UI, and is individually reconstructible. The
+**contextual** half of the decision is fully causally traceable, which is more than most systems
+of this kind manage.
+
+**Where it stops.** `uv` is a leaf. `universal_value = bpa + time_horizon_adj + risk_adj`
+(`draft_room.py:34`), and of those three terms:
+
+* **`time_horizon_adj` and `risk_adj` are emitted on every balanced-mode board row and read by no
+  production consumer anywhere in the repository.** Verified by exhaustive grep across all
+  non-test, non-`run_*` modules: the only hits outside `draft_room.py` are a passing mention in
+  `sleeper_client.py`'s prose. Five test files read them off a board row; nothing else does.
+  `build_snapshot` does not carry them onto `CandidateSnapshot` at all — the drop is at the
+  snapshot boundary, before any surface.
+* **`bpa`, `bpa_source` and `confidence` survive onto `CandidateSnapshot` and then diverge.**
+  `pick_debate._format_candidate:231` reports `universal_value` *labelled* with its anchor and
+  confidence — so a chair knows which of the three anchors produced the number and how much to
+  trust it. `draft_board_ui.serialize_candidate` drops all three: an AST read of its emitted key
+  set returns 22 keys, and `bpa`, `bpa_source` and `confidence` are not among them.
+
+**The measured drop set.** Of `CandidateSnapshot`'s 37 fields, 13 are read nowhere in
+`draft_board_ui.py` — not by `serialize_candidate` and not by its three helpers:
+
+```
+bpa · bpa_source · confidence · opportunity_cost · expected_value_of_waiting ·
+denial_value · position_expected_taken · position_run_detected · pick_necessity ·
+consensus_rank · consensus_tier · reach_label · rival_premium_take_probability
+```
+
+**The finding.** No consumer outside `draft_room.py` — not the board, not the debate, not the
+decision log — can reconstruct `universal_value` from its three components, because two of the
+three exist only inside the module that computes them. The board UI additionally cannot say what
+anchored the number or how confident it is. **§23's mandate 23 — "every recommendation has a
+causal path back to its frozen inputs" — is met for the contextual layer and breaks at exactly
+one node: the valuation leaf.** Filed as **#119**.
+
+This is the **sixth compute-then-drop instance** and the largest by count. The five before it
+were single values; this one is a whole decomposition. It also has the class's usual shape: the
+values are correct, the computation is careful, and the routing is absent.
+
+## 20.4 The audit's own gap: two exfiltration surfaces never tested (step 9)
+
+§24 names four IP-exfiltration surfaces. Two were audited hard: **seated models** (R90 —
+no engine constant reaches any prompt, pinned by an adversarial test that plants one) and
+**provider/tool exposure** (§8 — the trust-class boundary, and §21's finding that no engine
+internal crosses into a provider payload).
+
+Two were never examined at all:
+
+* **Repeated-query inference** — whether an adversary with legitimate access to the Draft Room
+  can recover the equation's constants by varying inputs and observing outputs. The board emits
+  `uv`, `tav`, `needBonus` and `eligBonus` per candidate on every query; the layer identity is
+  public in this repository's own documentation. Whether that is sufficient to solve for the
+  constants is **unmeasured**, and §20.3's finding cuts both ways: the decomposition terms the
+  board *doesn't* emit are the ones an inference attack would need.
+* **Client/API scraping** — the board is rendered via `st.components.v1.html`, so the full
+  serialized candidate array is present in the client. What §20.3 measured as a provenance loss
+  is simultaneously an exfiltration *control* that nobody chose deliberately.
+
+**Recorded as an audit gap, not a system finding.** No claim is made here about the system's
+resistance in either direction; the point is that this audit cannot make one. Both belong to a
+security pass that has not been run.
+
+## Pass 20 summary
+
+**Does anything clear the bar for a production change?** No. §20.3's finding is a new register
+item (#119) whose repair — deciding what provenance the board surface owes, against the
+exfiltration surface §20.4 says is unmeasured — is exactly the kind of decision the repair rule
+parks. Routing `bpa_source` to the board is mechanically trivial and is **not** obviously safe:
+it is the one repair in this audit where the fix and an unmeasured security concern point in
+opposite directions.
+
+**Ranked follow-ups:**
+1. **#119** — the valuation leaf. Blocked on the same decision as #93 (what evidence may travel)
+   and now also on §20.4's unmeasured inference surface.
+2. **Step 9's missing half** — a repeated-query-inference and client-scraping pass. It gates #119
+   and it is the only step §24 prescribes that this audit simply did not attempt.
+3. **Step 15 (#113)** — until something runs these checks on a cadence against pinned inputs, the
+   audit is a document and not a regression artifact, and §24's final step cannot execute.
