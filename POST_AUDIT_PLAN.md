@@ -1295,3 +1295,76 @@ measurement is the combination rule, not the framework:
   happens without one.
 
 **Still no implementation. Still no tiebreaker wired. `_consensus_lookup` untouched.**
+
+## D9 — measurement round 7: the double-dip check (and it indicts my own F3)
+
+The operator's warning — *"don't overinflate the effect of this new signalling if it is already
+included elsewhere; be cognisant of what information feeds what variables before double dipping"* —
+lands directly on the F3 candidate from round 6.
+
+### What `team_acquisition_value` already contains
+
+```
+tav = uv + need_bonus + eligibility_bonus
+uv  = bpa + time_horizon_adj + risk_adj
+bpa = scale(_vor)      _vor = _points − replacement[pos]   (or trade_value − replacement[pos])
+replacement[pos] = the player sitting at REMAINING STARTER DEMAND rank
+```
+
+| Contextual input | Already inside `tav`? | Entering via |
+|---|---|---|
+| projected points | **yes** | `_points` in `_vor` |
+| my roster construction | **yes — twice** | `need_bonus`, **and** remaining demand inside `replacement[]` |
+| positional scarcity (starter demand) | **yes — twice** | the same two paths |
+| slot eligibility | **yes** | `eligibility_bonus` |
+| multi-year outlook | **yes** | `time_horizon_adj` |
+| injury status | **yes** | `risk_adj` |
+| **consensus rank / tier** | **no** | reaches `reach_label` and the trade composite only |
+| **per-opponent roster composition** | **no** | `replacement[]` uses *aggregate* league demand |
+
+And four sibling fields already encode things a contextual layer would otherwise re-derive:
+`positional_forfeit` / `positional_cliff` (cost of deferring this position), `rival_premium` /
+`denial_value` (opponent need), `survival_probability` (future availability), `waiting_cost` /
+`horizon_floor` (replaceability against the draft horizon).
+
+### The finding: F3's deficit term was a THIRD counting of roster need
+
+`replacement[]` uses remaining starter demand. `need_bonus` adds roster shortfall again. My round-6
+deficit multiplied it in a third time — and multiplicatively, which is also how pool scarcity came
+to swamp roster shortfall in the reverse test. **The two round-6 failures share one cause.**
+
+### One clean answer already measured
+
+**`trade_value` comes from Draft Sharks exports** (`superflex_idp_rankings`,
+`te_premium_dynasty_rankings`, `sleeper_*`), **not from KTC or FantasyPros**. So the trade-value
+branch of `bpa` does **not** smuggle consensus into the valuation, and consensus rank remains
+genuinely uncounted on the board path. That was worth checking rather than assuming — had
+`trade_value` been consensus-derived, consensus-as-tiebreaker would have been a double-dip from
+the start.
+
+### The timing implication, which reverses the design
+
+Every double-counted signal above is **live during the ramp and dead at exhaustion**:
+
+* **During the ramp (rounds ~5–13)** — `need_bonus`, `replacement[]`, `positional_forfeit`,
+  `rival_premium`, `survival_probability` are all still carrying information. Roster need, scarcity,
+  opponent demand and projection are therefore **already counted**. The one genuinely uncounted
+  signal here is **consensus rank/tier**.
+* **At exhaustion (round 14+)** — `need_bonus` is flat at 0.0, `replacement[]` is gone, and
+  forfeit/rival/survival have gone to zero coverage or a single distinct value. Nothing counts
+  roster context any more, so roster context is **free to use**.
+
+**This inverts what I proposed in round 2 and again in round 6.** The natural instinct — lean on
+roster context during the ramp, and on external rankings at the cliff — is backwards on the
+evidence:
+
+| Regime | Already counted | Safe to add |
+|---|---|---|
+| Ramp (valuation present, discriminating poorly) | roster need, scarcity, opponent demand, projection | **consensus rank/tier** |
+| Exhausted (valuation absent) | nothing | **roster context** (and consensus) |
+
+That is a sharper design constraint than anything the previous six rounds produced, and it came
+from the operator's warning rather than from my own measurement plan.
+
+**Still no implementation.** The next formulation must be built against this table, not against the
+round-6 deficit, which is now known to triple-count.
