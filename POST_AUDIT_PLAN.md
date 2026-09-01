@@ -1930,3 +1930,91 @@ That leaves the within-band differentiator resting on exactly what rounds 7 and 
 (never counted on the board path at all)** — bounded by round 13's ceiling of +0.16 to +0.24
 agreement in the middle-late board, which is the honest limit of how confident any ordering there
 may claim to be.
+
+---
+
+# D9 — VERDICT. The evidence chain is closed.
+
+Three formulations tested against real board data. **Two killed, one supported with a caveat.**
+
+## What was killed, and why
+
+**1. Band-scoped consolidation — KILLED.** The safety test is decisive: driving a full draft and
+comparing top picks against the current engine on identical states,
+
+| rounds | picks | changed |
+|---|---:|---:|
+| **1–9** (valuation strong, §20-validated) | 108 | **39 — 36%** |
+| 10–18 | 108 | 85 |
+
+50% of round 2, 67% of rounds 8–9. **Not a bounded change.** `avg in-band` is already 2.7 by round
+2, so band-scoped reordering acts throughout the draft, not where the valuation failed. It would
+have altered behaviour validated across §20's 1,293 decision points. Killed on the evidence, not
+negotiated down.
+
+**2. `need_bonus` as the within-band key — KILLED.** Measured at exhaustion, `need_bonus` is
+**0.0 for every position in 3 of 4 scenarios** (it fires only for TE-starved, where a starter slot
+is literally unfilled). With all-zero needs the ordering falls through to consensus, which is
+roster-blind, and **QB-starved returns a WR for a seven-WR roster.**
+
+*This also corrects my own Q1 reading.* I measured `rho(depth_need, need_bonus) = 0.82–0.99` and
+called depth_need a duplicate. That rho was **Spearman over a mostly-tied vector** — measuring
+ties, not agreement. I nearly killed a working term on an invalid statistic.
+
+## What survives — the minimal rule
+
+```
+if ANY row on the board carries a price:   return the current ordering, untouched
+otherwise:                                  order by depth need, then consensus, then projection
+```
+
+| rounds | picks | changed |
+|---|---:|---:|
+| **1–13** | 156 | **0 — provably inert** |
+| 14 | 12 | 4 *(only the picks whose own board had nothing priced)* |
+| 15–18 | 48 | 46 |
+
+**Inert by construction wherever the valuation exists**, and it acts only where the current
+behaviour is a `player_id` string sort carrying no information at all.
+
+## The caveat: the constants are load-bearing after all
+
+I tried a constant-free `depth_need` — shortfall measured against **the room's own median holding**
+rather than a multiple of the starting requirement — to avoid introducing unproven constants (#56:
+*a bound is not a threshold*).
+
+**It produced an identical change-count and a different answer.** Acceptance:
+
+| | QB-STARVED | WR-STARVED |
+|---|---|---|
+| `2× starter requirement` | **QB** ✅ | **WR** ✅ |
+| room-relative (constant-free) | **TE** ❌ | WR ✅ |
+
+Room medians are `{QB: 3, WR: 6, TE: 3}` — my roster holds 3 QBs and *so does everyone else*, so
+room-relative shortfall reads zero. It measures **"am I behind the room"**, not **"do I have enough
+to field a lineup."** In superflex those diverge exactly where it matters.
+
+**A methodological correction I owe:** I declared the two versions equivalent from the safety table,
+which counts *how many* picks changed — not *whether they changed correctly*. **Change-count is not
+correctness.** The acceptance tests caught what the safety table could not.
+
+So `DEPTH_MULTIPLE = 2.0` is not decoration; it encodes *"carry roughly twice your starting
+requirement"*, and removing it silently changes the question being asked. **It remains an unproven
+constant under #56 and needs a ruling before this ships** — that is the one open item between here
+and implementation.
+
+## On a pacing formula (`2.0 − 0.0025 × next_pick_count`)
+
+**Not recommended, and the measurements say why rather than taste.**
+
+* It would make the **band** a function of draft position, which is precisely the circularity of
+  round 10 — the band feeds `near_tie_flags` → the in-band fraction → the ramp variable → the
+  handover point. A pacing formula on the band contaminates the diagnostics that judge it.
+* Round 4 measured the collapse at **round 13 (1QB)**, **round 14 (SF)**, **round 11 (12×20)** —
+  the pacing varies by roster template, so any pick-count coefficient would need re-deriving per
+  template and would be wrong on the first untested one.
+* And it is unnecessary. **The minimal rule keys on an observable state — "can anything be priced"
+  — not on a schedule.** A pacing formula is a proxy for a condition already measurable exactly.
+
+The instinct is sound: influence should follow the signal. The evidence says read the signal
+directly rather than modelling its timetable.
