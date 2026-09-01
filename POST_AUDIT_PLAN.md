@@ -1218,3 +1218,80 @@ computes over a proxy that has to be maintained in agreement with it.
 The *shape* of the blend (linear in the fraction? thresholded? capped?), what the secondary signals
 are, and how roster context enters remain open — those are the candidate formulations, and they are
 the next measurement, not this one. **Still no implementation.**
+
+## D9 — measurement round 6: the knife edge, with both failure modes made visible
+
+> *"Can we construct a contextual score that produces sensible decisions when raw valuation is
+> weak, without allowing roster need to overwhelm genuinely meaningful player quality?"*
+
+**Controlled experiment.** Superflex 12-team, driven to full pricing exhaustion (**0 of 117 rows
+priced**). Identical opponents, identical draft state, and my roster **identical except that seven
+WRs and three QBs are swapped for seven QBs and three WRs**. Everything else — 4 RB, 2 TE, 1 DEF,
+1 K — is held equal and adequate, so the answer cannot be dominated by some third position.
+
+Five formulations, two of them deliberately bad controls, all scratchpad functions. **No
+production code.**
+
+| | QB-STARVED (7 WR / 3 QB) | WR-STARVED (7 QB / 3 WR) |
+|---|---|---|
+| **F0** current (id sort) | T Benson · RB · proj 64 · cons 271 | **T Benson · RB · proj 64 · cons 271** |
+| **F1** projected points | D Schultz · TE · proj 178 | S Diggs · WR · proj 184 |
+| **F2** pure need *(control)* | T Tagovailoa · QB · proj 114 | D Schultz · TE · proj 178 |
+| **F3** band → context | **T Tagovailoa · QB** ✅ | P Freiermuth · **TE** ❌ |
+| **F4** band → quality first | C Bell · **WR** ❌ | T Hunter · WR |
+| **F5** F3 + scale guard | **T Tagovailoa · QB** ✅ | P Freiermuth · **TE** ❌ |
+
+### What is now demonstrated rather than asserted
+
+**F0 is provably inert to roster context.** It returns **the same player in both scenarios** — and
+that player is the worst available by *both* independent quality measures (projection 64, consensus
+rank 271). The current behaviour is not merely arbitrary; on this state it is anti-correlated with
+every quality signal present.
+
+**F1 is inert too, and its apparent responsiveness is an artifact.** It answers differently across
+the two scenarios only because the two pools differ slightly. It reads no roster information at all.
+
+**F4 fails the primary acceptance test.** Quality-first inside the band picks a **WR for a roster
+already holding seven of them**, while three QBs remain in a 3-deep QB pool. That is failure mode
+B, reproduced on demand.
+
+**F3/F5 pass the primary test.** QB-starved → a QB. This is the WR8-vs-QB4 case answered correctly
+by a deterministic rule, with the valuation absent.
+
+### And the reverse test earned its keep immediately
+
+**F3/F5 fail the reverse case — and the reason is the formula, not the architecture.** WR-starved
+returns a **TE**, not a WR, because my crude deficit blended shortfall and pool scarcity
+*multiplicatively*: TE's small remaining pool (13) outweighed WR's larger roster shortfall
+(3 held against a 2.38 per-team requirement, 36 remaining).
+
+**So pool thinness swamped roster need** — the same knife edge, tipping the other way. Exactly the
+class of "plausible-looking, contextually stupid" answer the operator warned about: a TE for a
+2-TE roster is not obviously wrong on screen, and it is wrong.
+
+The mandatory reverse case caught it on its first run. That is precisely why it was made mandatory.
+
+### One structural insight worth keeping
+
+**At full exhaustion, F3 and F2 are the same function.** Band-scoping has nothing to scope when no
+row is priced, so the entire value of the band-scoped design lives in the **ramp** — rounds 5–13,
+where 5–68% of the field is inside the band and the rest is still meaningfully separated. At the
+cliff itself, any band-scoped rule degenerates to whatever its context ordering is.
+
+That reframes what the contextual layer is *for*: it is not primarily a late-draft rescue. It is
+the thing that should be gaining influence through the middle rounds, where the valuation is
+present but increasingly unable to separate candidates.
+
+### State: no formulation passes both tests
+
+The **architecture** survives — valuation authoritative where it separates, context ordering inside
+the band, quality never inert to roster. The **deficit formulation does not**, and the next
+measurement is the combination rule, not the framework:
+
+* additive rather than multiplicative shortfall/scarcity;
+* scarcity measured against *comparable-quality* remaining players rather than raw pool count
+  (36 WRs is not 36 usable WRs);
+* a floor on quality so need cannot promote a genuinely bad player — the F2 control shows what
+  happens without one.
+
+**Still no implementation. Still no tiebreaker wired. `_consensus_lookup` untouched.**
