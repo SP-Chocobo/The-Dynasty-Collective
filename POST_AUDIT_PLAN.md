@@ -626,3 +626,91 @@ actually fixes the reader's experience and should not be attempted before #58.
 **D9 and D10 are open and blocking 1c implementation.** D9 additionally blocks the Insight
 contract (Step 2), because Insight cannot honestly compare candidates whose ordering may carry no
 information without being told so.
+
+
+---
+
+# D9 — REVISED by the operator. Now a measured design task, not an A/B/C/D choice.
+
+The four options as I wrote them were too narrow, and option A was wrong in a way worth stating
+plainly: **"pricing is exhausted" does not mean "the engine has no information."** It means one
+particular VOR-style economic model has run out of a valid replacement-level comparison. Falling
+back to raw projected points would swap a correct refusal for cross-position nonsense.
+
+The operator's framing, which is the one to build against:
+
+> A WR8 is not worth its raw projection to a roster that already has seven usable WRs and three
+> QBs in superflex. The question is not "who projects highest" but **"where does another player
+> provide the most useful insulation against future uncertainty?"**
+
+## The revised decision
+
+**When the canonical acquisition-value calculation becomes non-certifiable because replacement
+demand is exhausted, the engine must not fabricate a universal value and must not substitute
+projected points as a cross-position stand-in for VOR.** It should instead enter an explicitly
+distinct **deep-draft / contextual selection regime**, considering at minimum:
+
+player rank/tier · projected production · positional depth remaining on the board · the user's
+current roster construction · positional insulation and vulnerability · league starting
+requirements · bench capacity · remaining draft length · scarcity of alternatives · likely
+availability of comparable players later · upside vs floor where appropriate · roster-specific
+contingency value
+
+That regime **still produces an ordered recommendation**, but the ordering must **carry an
+explicit basis** — not a fabricated `Universal Value: 0`, and not a silent re-sort. Something
+shaped like:
+
+```
+Contextual Priority
+  QB — Tier 2, 1 remaining
+  WR — Tier 3, 7 remaining
+  RB — Tier 4, 3 remaining
+Recommendation: QB — sufficient WR insulation; QB is a materially thinner remaining tier.
+```
+
+## Two architectural rules this settles
+
+**1. ADP is evidence, never authority.** It can answer *"what does the market expect?"* It must
+never answer *"what should this roster do?"* — the market's roster context is not the user's, and
+in deep dynasty/SF/IDP configurations that gap is where ADP is most confidently wrong.
+
+*Measured:* **there is no ADP in this system at all.** No column in `projections`, `trade_values`
+or `external_values`; the only occurrences anywhere are in `run_idp_counterfactual_analysis.py`,
+which tracks `adp_available` as a comparison baseline and records it as unavailable. So this rule
+constrains future ingestion rather than correcting present behaviour — but it should be written
+into the contract before any ADP source is ever added, not after.
+
+**2. The deterministic engine owns the reason, not just the pick.** This is the part that makes
+the whole architecture hold:
+
+```
+canonical valuation valid      -> use it
+canonical valuation invalid    -> do NOT fake it
+contextual selection layer     -> tier + projected value + roster need + depth/insulation
+                                  + future availability, with an explicit stated basis
+AI Insight                     -> renders that deterministic reason in human language
+```
+
+Insight never has to invent a rationale for why A beats B after VOR collapses, because the engine
+already produced one. **Engine owns truth; AI explains truth** — including in the regime where the
+canonical number does not exist.
+
+## How D9 gets resolved
+
+**Not by picking an option.** By measurement:
+
+1. inventory which contextual inputs the engine already has, and **which survive into the
+   exhausted regime** (in progress — most exist; several derive from the very value curves that
+   ran out, so availability is not the same as usability);
+2. formulate candidate contextual-priority rules;
+3. **measure each against controlled drafts** — the same harness §20 used;
+4. bring the measured comparison back before any contract is written.
+
+**Acceptance-test question, in the operator's words:** *"Do I really need WR8 when I don't have
+QB4?"* That is not an edge case. It is the problem the feature exists to solve, and any candidate
+formulation that cannot answer it is not a candidate.
+
+## Status
+
+**D9 is open and is now a measured design task.** D10 remains as previously written and is
+unaffected. No implementation until the measured comparison is delivered and a contract is agreed.
