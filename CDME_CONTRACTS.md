@@ -9164,8 +9164,9 @@ board.
   `universal_value` with its anchor and confidence (`pick_debate:231`); the **board** path drops
   all three. 13 of `CandidateSnapshot`'s 37 fields are read nowhere in `draft_board_ui.py`.
 
-**Sixth compute-then-drop instance, and the largest** — the five before it were single values;
-this is an entire decomposition. Filed as **#119**.
+**Fifth compute-then-drop instance, and the largest** — the four already on the record
+(`waiting_cost`, `_match_path`/`_match_verified`, `reconciliation_conflicts`, `proj_3yr_state`)
+are each a single value; this is an entire decomposition. Filed as **#119**.
 
 ## The audit's own gap (step 9)
 

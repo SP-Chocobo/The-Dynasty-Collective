@@ -4804,7 +4804,7 @@ on access.
 **Only seven items are what a reader would expect an architecture audit to produce most of** —
 missing observability. That is because observability is where this codebase is *strong* at
 computing and *weak* at routing: every one of the seven is a value that already exists somewhere
-in memory and reaches no consumer. That is the compute-then-drop class, and §20.3 adds its sixth
+in memory and reaches no consumer. That is the compute-then-drop class, and §20.3 adds its fifth
 and largest instance.
 
 ## 20.3 One complete user decision, traced end to end (step 10)
@@ -4861,8 +4861,10 @@ anchored the number or how confident it is. **§23's mandate 23 — "every recom
 causal path back to its frozen inputs" — is met for the contextual layer and breaks at exactly
 one node: the valuation leaf.** Filed as **#119**.
 
-This is the **sixth compute-then-drop instance** and the largest by count. The five before it
-were single values; this one is a whole decomposition. It also has the class's usual shape: the
+This is the **fifth compute-then-drop instance** and the largest by count. The four the record
+already names (`waiting_cost` -- which reaches the board but not the debate prompt, per the §18
+correction to #57 -- `_match_path`/`_match_verified`, `reconciliation_conflicts`, and
+`proj_3yr_state`, closed by R16) are each a single value; this one is a whole decomposition. It also has the class's usual shape: the
 values are correct, the computation is careful, and the routing is absent.
 
 ## 20.4 The audit's own gap: two exfiltration surfaces never tested (step 9)
