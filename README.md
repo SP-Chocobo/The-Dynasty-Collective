@@ -697,6 +697,18 @@ llm_engine.py               Four-persona prompt routing across Claude / Gemini /
                              plus the structured-verdict/TODO/SOURCE FINDING/
                              SOURCE COMPARISON parsers.
 decision_log.py               Per-league record of every parsed Moderator verdict.
+content_hash.py                One shared content-fingerprint primitive. Dependency-free
+                                on purpose, so CDME may import it without pulling the
+                                app layer in behind it.
+draft_history.py                Per-league, append-only, CONTENT-ADDRESSED store of
+                                 snapshot/candidate evidence -- one record is one file
+                                 named by its own hash, so it never reads before writing
+                                 and structurally cannot express a lost update.
+                                 Observational history, never an engine input.
+provider_meter.py                Side-channel metering for every provider call: attempt,
+                                  completion state (COMPLETE / TRUNCATED / BLOCKED /
+                                  UNKNOWN / FAILED / NOT_ATTEMPTED), and token/latency
+                                  totals. A measurement instrument, never a prompt input.
 
   -- Contextual Decision Matrix Engine (CDME) -- see "The Draft Engine" above --
 draft_room.py                    CDME's base valuation math: universal_value, Team

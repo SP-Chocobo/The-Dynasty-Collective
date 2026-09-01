@@ -43,6 +43,29 @@ found afterwards was of the same class:
 | `positional_bench_appetite` returning `0.0` for every position | The mean-rate fallback was correct per position and undefined for the empty case |
 | Observed share as a model of remaining demand | The shares are conserved exactly; a share is simply not a stock |
 | `_scale_vor_to_bpa` returning `0.0` for absent VOR | Clipping a negative to zero is defensible; clipping an *absence* to zero is not |
+| `replacement_levels` OMITTING a position once its league-wide starter demand is exhausted, composed with `_board_order` sorting unpriced rows last | **Nothing is wrong with either half.** Declining to invent a level the demand model cannot support is correct and is the documented domain. Refusing to substitute `0.0` for an absent score is correct and is the documented intent. Composed, they assert *"every kicker is better than every running back"* |
+
+The last row is the limit case of everything above it, and it was found much later, by a
+different route. Each of the first six has *something* locally imperfect — a clamp guarding the
+wrong thing, a fallback undefined at its edge, a share standing in for a stock. **The last has
+none.** Both components are correct, both are correctly documented, both decline for good
+reasons, and the defect exists only in the composition. Measured on a 12-team 1QB board at
+round 15: K and DEF 100% priced (37/37 and 32/32), QB/RB/TE/WR 100% unpriced (0 of
+15/36/24/9), and the candidate list opening with four defenses and a kicker ahead of every
+remaining skill player. Kickers and defenses are drafted last, so they are the last positions
+still holding starter demand — which makes the inversion **structural, not incidental.**
+
+Two things that row teaches beyond the six above it:
+
+**Refusing to answer is not neutral. It is an answer, and it propagates.** A layer that
+declines hands its consumer a decision, and the consumer's handling of that decline makes a
+claim about the declined population. Nobody ever asked what "sort unpriced last" asserts when
+everything still priced is a kicker.
+
+**The absence was not a sentinel.** `replacement_levels` did not return `None`; it omitted the
+dictionary key. A rule written about "functions returning `None`" walks straight past this. The
+class is *any way a layer can decline* — a `None`, a `NaN`, a missing key, an empty list, a
+dropped row, or (at the provider boundary) a `⚠️`-prefixed string.
 
 **Not one of these is a bad formula.** Every one is a correct operation on correctly typed,
 correctly shaped data whose meaning had changed somewhere upstream. Every one passed its own
