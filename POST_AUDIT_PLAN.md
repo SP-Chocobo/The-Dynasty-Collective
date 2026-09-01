@@ -1083,3 +1083,65 @@ causal quantities; the first is the one most likely to be wrong across configura
 **Deliverable:** a measured degradation curve per configuration, and a proposed calibrated
 influence curve keyed to whichever variable actually tracks it — with the explicit expectation
 that a continuous blend beats a threshold, since the underlying signal degrades continuously.
+
+## D9 — measurement round 4: is there a ramp, and what should key it?
+
+Four configurations, full drafts, measuring per pick: round, % of board unpriced, % of the top-12
+unpriced, and minimum remaining starter demand.
+
+| Config | Collapse round | Transition band | min_demand at collapse |
+|---|---:|---:|---:|
+| 1QB 12×18 | **13** | **0 picks** | **0.67** |
+| 1QB 12×22 | **13** | **0 picks** | **0.67** |
+| SF 12×18 | **14** | **0 picks** | **0.77** |
+| SF 10×16 | **14** | **0 picks** | **0.77** |
+
+### Finding 1 — at the presence level there is no ramp at all. It is a cliff.
+
+**The transition band is zero picks wide in every configuration.** The board goes from every row
+priced to every row unpriced between one pick and the next. There is no gradual thinning of
+pricing to blend against, so **any ramp keyed to "% unpriced" would be useless** — that variable
+reads 0% and then 100%.
+
+This is a direct answer to the ramp hypothesis, and it is the opposite of what a "signal weakens
+with depth" intuition predicts. It also explains why the phenomenon was recorded three times at
+three different magnitudes: what varies between configs is *when* the cliff falls, not how steep
+it is.
+
+### Finding 2 — the round is stable within a roster template, and the demand is stable *exactly*
+
+Round 13 for 1QB in **both** an 18-round and a **22**-round draft. Round 14 for superflex in both
+a 12-team×18 and a **10**-team×16 draft. And the demand at collapse is not merely similar but
+**identical within a template**: 0.67 for both 1QB configs, 0.77 for both superflex ones.
+
+The mechanism explains the invariance. Remaining starter demand scales with team count, and so does
+consumption — one pick per team per round — so **the round at which per-position demand crosses
+below 1.0 depends only on the roster template's own flex arithmetic**, not on how many teams play
+or how long the draft runs. `0.67 = 2/3` and `0.77 = 23/30` are the residues those two templates
+leave when their flex shares are divided out.
+
+### What this means for the operator's hypothesis
+
+The instinct — *"if it's consistent after ~15 rounds, hard-code where it begins"* — is **more right
+than I expected**: it *is* consistent, and stable enough to hard-code **within a roster template**.
+
+But the round is a *symptom*, and the template is the variable it is stable against. A 2QB league,
+a TE-premium template, an IDP template or any roster with different flex arithmetic moves the
+round, and neither of the two templates measured here would predict it. **Keying on minimum
+remaining starter demand crossing `replacement_levels`' own `< 1.0` domain guard gives the same
+answer for the tested templates and generalises to untested ones — at no extra cost, since the
+quantity is already computed on every board.**
+
+So: **do not hard-code round 13.** Key on the causal quantity, which is directly observable and
+already in hand.
+
+### What is still being measured
+
+Presence is a cliff — but the operator's sharper framing was **discriminatory power**, which §20
+already showed degrades *earlier* (genuine score collisions in rounds 6–9, with real non-`None`
+values). A valuation can be fully present and unable to separate two candidates.
+
+That is being measured against the engine's own yardstick — `NEAR_TIE_BAND = 2.0`, the band inside
+which `near_tie_flags` already refuses to call its own ordering a preference — as candidates-in-band
+per pick, against round and against demand. **If a real ramp exists anywhere, it is there and not
+in presence.** Result pending.
