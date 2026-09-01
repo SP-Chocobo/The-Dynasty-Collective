@@ -2018,3 +2018,76 @@ and implementation.
 
 The instinct is sound: influence should follow the signal. The evidence says read the signal
 directly rather than modelling its timetable.
+
+---
+
+# #56 isolated: DEPTH_MULTIPLE swept. **2.0 loses.**
+
+Treated as the only unresolved parameter and swept against the acceptance tests across two roster
+templates. **Evidence for a threshold, not a defence of 2.0** — and the evidence rejects it.
+
+## Structural finding first: M is a cutoff, not a scale
+
+`shortfall = 1 − (have/req)/M`. M is a **common divisor**, so among positions not clamped to zero
+the ordering is *independent of M*. M only decides **which positions count as satisfied**
+(`h = have/req ≥ M` → no depth claim).
+
+Confirmed by the sweep: the answers are **piecewise-constant with a handful of breakpoints**, not a
+smooth response. Nothing else is "scaled to" 2.0 — `NEAR_TIE_BAND`, appetite share and scarcity are
+all independent of it.
+
+## Superflex 12-team
+
+| M | QB-STARVED | WR-STARVED | BALANCED | |
+|---|---|---|---|---|
+| < 1.90 | K / WR ✗ | | | **fails acceptance** |
+| 1.90 – 2.05 | QB ✓ | WR ✓ | **K ✗** | recommends a *second kicker* |
+| **2.10 – 4.00** | **QB ✓** | **WR ✓** | **RB ✓** | **all pass** |
+| ≥ 5.00 | QB ✓ | **RB ✗** | QB | shortfall saturates at 1 → **roster ignored** |
+
+Both edges are measured failures, not extrapolations.
+
+## 1QB 12-team — the plateau moves
+
+| | lower edge | upper edge |
+|---|---|---|
+| Superflex | **2.10** | ~5.00 |
+| 1QB | **2.20** | ~4.80 |
+
+*(The "QB-STARVED" scenario correctly returns no QB under 1QB: with a 1.0 requirement, 3 QBs is
+`h = 3.0` — genuinely not starved. The label is a superflex concept; the formula is right to refuse
+a 4th QB in a 1QB league. That is the term behaving correctly, not a failure.)*
+
+**Intersection of the two safe regions: [2.20, 4.00].**
+
+## Verdict
+
+**2.0 is outside the valid region in BOTH templates.** It sits below the lower edge (2.10 SF,
+2.20 1QB) and produces the double-kicker answer on a balanced roster in each. It was never
+measured — it was assumed, and it is wrong.
+
+**Recommended: `DEPTH_MULTIPLE = 3.0`** — inside [2.20, 4.00], roughly central, maximally distant
+from both measured failure edges in both templates.
+
+## Answering the second question directly
+
+**Is 2.0 correct, or is everything else scaled to it?** Neither. M is an independent cutoff; nothing
+is calibrated against it. And 2.0 is not correct — it is 0.10–0.20 below the boundary of the region
+that passes.
+
+**Does it matter?** **Yes, but only once.** Crossing from 2.0 to anywhere in [2.20, 4.00] changes
+a wrong answer into a right one. *Within* the plateau the precise value is irrelevant — 2.20, 2.5,
+3.0 and 4.0 give **identical answers on every scenario in both templates.** So the parameter needs
+to be on the right side of a boundary; it does not need to be tuned.
+
+That is the strongest possible outcome for #56's *"a bound is not a threshold"* discipline: the
+constant is not a dial to be calibrated, it is a **region to be inside**, and the region is now
+measured on both ends.
+
+## Residual risk, stated
+
+**Two templates, not all of them.** The plateau edges are template-dependent (`h = have/req`, and
+`req` comes from the roster template), so a third template — 2QB, TE-premium, IDP, deep-bench —
+could narrow the intersection further. **3.0 is defensible on the evidence in hand and should be
+re-checked when a materially different template is first supported**, not treated as universal.
+This is exactly the kind of claim #56 exists to keep honest.
