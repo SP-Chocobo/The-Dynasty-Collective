@@ -1435,3 +1435,54 @@ The next formulation round should compare, on the same WR8/QB4 fixtures: equal w
 proportional renormalisation · discrimination-weighted with a shrinking total. Equal weights is
 worth running **as a control**, precisely because it is expected to fail — a formulation set with no
 losing entry is not measuring anything.
+
+## D9 — round 7b: *when* each double-counted signal is actually live
+
+Round 7 said "roster need is already counted during the ramp." Measured per round (SF 12×18),
+`d` = distinct values among candidates, `need_max` = the largest `need_bonus` on the board:
+
+| round | priced | `need_bonus` d | **`need_max`** | `elig` d | `forfeit` d | `rival` d |
+|---:|---:|---:|---:|---:|---:|---:|
+| 1–7 | 72 → 48 | 4.0 | **8.4 → 4.4** | 1.0 | 3.3–3.9 | 3.2–3.8 |
+| 8–9 | 37 → 26 | 3.2–3.4 | 4.2 → 4.1 | 1.0 | 3.2–3.5 | 3.2 |
+| **10–12** | 17 → 11 | 2.2–2.5 | **1.6 → 1.3** | 1.0 | 3.3–3.8 | 2.7–3.8 |
+| 13 | 6.4 | 2.0 | **0.4** | 1.0 | 2.4 | 1.9 |
+| 14+ | 3.3 → 0 | 1.2–1.8 | **0.3 → 0.1** | 1.0 | 0.7 → 0.0 | 1.7 → 1.0 |
+
+### The finding: roster need goes *impotent* four rounds before it goes absent
+
+**From round 10, `need_bonus`'s maximum value on the whole board (1.6) is below `NEAR_TIE_BAND`
+(2.0).** Even at full strength it can no longer move a candidate across the engine's own threshold
+for a meaningful difference. It is **present but unable to act** — which is a different state from
+both "live" and "dead", and neither of the two I used in round 7.
+
+So the double-dip boundary is not two-phase. It is three:
+
+| Phase | Valuation | `need_bonus` | Adding roster context would be |
+|---|---|---|---|
+| **Rounds 1–9** | discriminating (2–38% in band) | real (max 8.4 → 4.1) | **a genuine double-dip** |
+| **Rounds 10–13** | poor (26–68% in band) | **sub-threshold** (max 1.6 → 0.4) | **not a meaningful double-dip** — it supplies what the existing term is too weak to carry |
+| **Round 14+** | absent | dead (max 0.1) | the only thing left |
+
+### The two curves cross at round 10, and they were measured independently
+
+Round 5 found the valuation's discrimination departing its baseline at rounds 5–7 and reaching
+38–41% in-band by rounds 9–10. This measurement finds `need_bonus` dropping below the near-tie band
+at round 10. **The point where the existing need signal becomes too weak to act is essentially the
+point where the valuation stops discriminating** — from two separate measurements that were not
+designed to agree.
+
+That gives the contextual layer a **natural handover point that nobody has to choose**, and it is
+observable per-pick rather than being a constant: *roster context may act once `need_bonus`'s own
+range can no longer cross the band the engine uses to judge meaningfulness.* No new threshold, no
+round number, no tunable — the same self-calibrating principle as rounds 5 and 8.
+
+### A separate observation worth recording
+
+**`eligibility_bonus` has `d = 1.0` in every round of the draft** — it is a constant across
+candidates from round 1 to round 18, contributing nothing to any ordering while occupying a term in
+`tav = uv + need_bonus + eligibility_bonus`. Whether that is correct for this superflex template
+(where most positions are broadly eligible) or is the same latent failure as **#62**
+(`positional_bench_appetite` returning 0.0 for every position when none is measurable) is **not
+established here** — it is one configuration, and it needs a second template before it is a finding
+rather than an observation. Flagged, not claimed.
