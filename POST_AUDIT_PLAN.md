@@ -1861,3 +1861,72 @@ completely different direction.
 A more nuanced tiebreaker in that zone is still bounded by round 13's ceiling. **You cannot recover
 structure that is not there.** Any formulation claiming sharper discrimination among ranks 121–220
 than +0.24 is manufacturing confidence, and the reverse-case test should be extended to catch that.
+
+## D9 — round 15: the engine already has the cliff variables, and it has already ruled on this zone
+
+The reminder that cliff signals are already looked at applies to my own round-14 *instrument*, not
+just to the design. Checked, and it cuts both ways.
+
+### My instrument was independent — but only by luck of choosing the right input
+
+`detect_positional_cliff` measures gaps **in `bpa`** — *"A cliff is a drop measured in bpa against
+that position's own gap distribution."* It is **downstream of the normalization**, i.e. the very
+transform round 12 was trying to check. Had I used the engine's cliff detector as my benchmark, I
+would have been checking the transform against itself.
+
+Round 14 used **`projected_points`**, upstream of it. So the conclusion stands — but it stands
+because the instrument happened to be the independent one, and that deserved saying out loud rather
+than being discovered later.
+
+### The engine's cliff signal is scale-invariant — and then deliberately gated by an absolute floor
+
+`ratio = this_gap / typical_gap`, against a **trimmed** median of the position's own gaps, so the
+cliff *tier* is scale-free and survives compression. That is a genuinely well-built signal, and it
+explains round 3's measurement: `positional_cliff` still had **7 distinct values among 6 present**
+at pick 121, deep in the compressed zone, while coarser signals had faded.
+
+But the ratio is not the last word:
+
+```python
+if this_gap < CLIFF_MIN_MATERIAL_GAP:      #  == NEAR_TIE_BAND
+    tier = "LOW"
+```
+
+> *"A drop smaller than the band this app already calls ordering noise cannot be a tier break,
+> however unusual it looks against an essentially flat position's own neighbours."*
+
+**So in the compressed zone the engine's cliff detector deliberately goes quiet** — by an explicit
+design decision, with the reasoning written down, validated against three named cases including a
+suppressed 0.1-point kicker cliff.
+
+### Which settles the production-cliff idea, in the engine's favour
+
+Round 14's numbers said the compressed zone is genuinely flat production. This says **the engine
+already knows that and already refuses to call cliffs there, on purpose.**
+
+So adding a production-cliff term to the contextual layer would do two bad things at once:
+
+1. **Double-dip** with `positional_cliff`, `positional_forfeit` and `cliff_protection`, which are
+   live throughout the ramp (round 3: `forfeit` d≈3–4 through round 13); and
+2. **Contradict a deliberate, documented decision** — manufacturing cliff signal exactly where the
+   engine has ruled, with stated reasoning and validation cases, that there is none.
+
+The second is worse than the first. A double-dip inflates a signal; this would *reverse* a
+considered judgement while looking like an improvement.
+
+**Verdict: production cliffs are a legitimate measurement instrument and must not become an input.**
+That is the correct use of the operator's suggestion — it told me where to check, and the check
+says the engine's existing answer is right.
+
+### The consolidation, updated
+
+The contextual layer takes **no cliff term of its own**. Where cliff structure matters it is already
+carried by `positional_forfeit` and `cliff_protection`; where those go quiet, they go quiet
+*because the engine has judged there is nothing there* — and rounds 13 and 14 independently agree
+with that judgement.
+
+That leaves the within-band differentiator resting on exactly what rounds 7 and 13 said it could:
+**roster context (uncounted once `need_bonus` goes sub-threshold at round 10) and consensus rank
+(never counted on the board path at all)** — bounded by round 13's ceiling of +0.16 to +0.24
+agreement in the middle-late board, which is the honest limit of how confident any ordering there
+may claim to be.
