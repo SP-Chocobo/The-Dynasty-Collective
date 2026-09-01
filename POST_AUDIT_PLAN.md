@@ -440,3 +440,189 @@ absence, which is the correct failure direction.
 | **D13** | `CLIENT_MAX_RETRIES` — today the SDK defaults apply and the app's "no retries" claim is unverified. Set 0 to make the claim true, set a value deliberately, or leave SDK behaviour alone |
 | **D14** | #104's floor — is there a level of upstream failure below which the panel should decline to synthesize rather than degrade? |
 | **D15** | What the app *does* on a detected truncation, now that it can detect one — discard, annotate, or warn. Same choice shape as #99/#101, and it should be settled once for all three |
+
+---
+
+# Step 1c — #114 and #116, measured
+
+**Characterization only. No production code changed, no copy renamed, no scale normalized.**
+Two test files added (19 tests), both written to be inverted on repair.
+
+## #114 — where pricing dies, and what the board does next
+
+Measured on one 12-team × 18-round draft against the committed baseline, 216 picks.
+
+### Where it becomes exhausted — exactly
+
+| | |
+|---|---|
+| Unpriced rows first appear | long before they matter — **139 of a 203-row pool by pick 131**, correctly ordered last, changing nothing |
+| A position's demand hits zero | stepwise: 139 unpriced holds through pick 142, jumps to **153 at pick 143** |
+| **Pricing dies completely** | **pick 155 (round 13): 0 priced rows of 179** |
+| After that | **every remaining pick in the draft** is decided by the tiebreak alone |
+| Picks with a tied top score | **78 of 216 (36.1%)** |
+
+**Two regimes hide under that one percentage**, and conflating them would misdirect the repair:
+
+* **Rounds 6–9 — genuine score collisions.** Tie groups of 2–4, mostly DEF/K/QB, carrying
+  **real** `final_score` values. Ordinary rounding ties.
+* **Rounds 13–18 — total exhaustion.** Tie group = the entire remaining pool, `final_score` is
+  `None`. Not a tie at all: an absence.
+
+*(§20 recorded 27.8% and `_board_order`'s own docstring records 42.5% on a 12×20 mock. All three
+are the same phenomenon at different draft lengths; the collapse point depends on how fast
+starter demand is consumed, so the percentage is a property of the configuration, not a constant.)*
+
+### What the engine does after that point — and why
+
+`replacement_levels` omits a position once its remaining starter demand is exhausted.
+`compute_draft_board` then leaves `_vor` as NaN for every player at that position, so
+`bpa → universal_value → final_score` are all `None`. **This is correct and deliberate**: the
+engine refuses to price a player against a replacement level that no longer exists, which is
+this module's own don't-fabricate rule working exactly as intended.
+
+`_board_order` then sorts `(score is None, -score, str(player_id))`. Its docstring already says
+what is missing, in as many words:
+
+> *"it does not decide what the board SHOULD do once nothing on it can be priced; that is an
+> open product decision."*
+
+**#114 is that named-but-unmade decision.** The design is right; the terminal case was never
+specified.
+
+### The ordering, characterized explicitly
+
+It is **deterministic and carries no information**. Measured board order on the exhausted board:
+
+```
+['100','101','102','103','104','105','106','107','108','109','110','112','12','13','144']
+```
+
+**A lexicographic sort on the player-id string** — `'12'` ranks below `'110'`. Not numeric, and
+nothing about an id is a statement about a player.
+
+### What information remains — measured, not invented
+
+**A great deal.** Every row on the fully-unpriced board still carries a real, *differing*
+`projected_points`, plus `confidence` and `bpa_source`. Their projections in board order:
+
+```
+64, 52, 43, 43, 53, 46, 54, 47, 66, 38, 36,  96,  319, 312, 169
+                                              ^^^  ^^^  ^^^
+```
+
+**The board recommends a 36-point player over a 319-point player** — while carrying both numbers
+on the very rows it is ordering. And it compounds: the board stops recommending the better
+players, so they stay in the pool, so it keeps not recommending them.
+
+The board is **not** choosing between indistinguishable players. It is choosing between
+distinguishable players using none of what distinguishes them.
+
+### A contract inconsistency found while measuring
+
+`CandidateSnapshot.bpa`, `.universal_value` and `.team_acquisition_value` are annotated **`float`**,
+never `Optional[float]` — yet all three are genuinely `None` in the exhausted regime (a probe
+crashed on exactly that). The **behaviour is correct** — the absence contract working as designed.
+The **annotations** are wrong, which is the §17.5/#110 class in a type hint. Not repaired: it
+touches the same fields #119 is parked on.
+
+## #116 — what the numbers are, and what the UI implies
+
+Measured over **33,417 real board rows** and **48,708** `projected_points` readings.
+
+| Quantity | Population | min | median | max | negative |
+|---|---|---|---|---|---|
+| `universal_value` | all board rows | −319.2 | −42.6 | 178.9 | **83.9%** |
+| `team_acquisition_value` | **narrowed candidates** — what a user is shown | −16.1 | **10.8** | 187.3 | **10.9%** |
+| `projected_points` | all rows | 0.0 | 99.0 | 379.0 | **0.0%** |
+
+The two populations are different and must not be conflated. §20.8's earlier figures (median
+11.0, 11.8% negative) match the **candidate** row — the one the metric cards actually render.
+
+**The mechanical fact that settles the unit question:** an acquisition value can be negative
+(10.9% of shown candidates are); a season fantasy-point total never is (0 of 48,708). They are
+different quantities on different scales, and no clamp or rescale stands between the engine and
+the card.
+
+### What the UI implies
+
+`app.py`'s `metric_row1` places, in one row of six cards:
+
+```
+[0] "Universal Value"        <- universal_value        f"{...:.0f}"
+[1] "Projected Points"       <- projected_points       f"{...:.0f}"
+[2] "Your Acquisition Value" <- team_acquisition_value f"{...:.0f}"
+```
+
+**Two different units, adjacent, identically formatted, and only the middle card names its own
+unit.** In a fantasy app "points" is the domain's word for the quantity in card [1], so [0] and
+[2] borrow a meaning they do not have.
+
+### The corrected count
+
+§20.8's *"qualifies its unit three times and not twice"* covered **only the board's JS prose**.
+Across every surface that renders a universal-value-scale number:
+
+| Surface | Sites | Unit stated |
+|---|---|---|
+| `draft_board_ui` prose | 5 | 1 full (*"universal-value points"*), 2 partial (*"-point gap"*, *"-point rival premium"*), **2 bare** |
+| `app.py` metric cards (5 labels × 2 panels) | 10 | **0** |
+| `app.py` "Best alternative … acquisition value" | 2 | **0** |
+| **Total** | **17** | **1 fully qualified** |
+
+The Draft Room panel and its Mock Draft twin are **separate code carrying identical copy** — a
+repair that fixed one and not the other would be worse than neither. Pinned by a test.
+
+Also in the same panel: `_waiting_note` renders `projected_points` and `horizon_floor` — genuinely
+season points — beside the universal-value phrases. **Both units appear in one surface**, which is
+what makes the bare "points" ambiguous rather than merely imprecise.
+
+## A correction to my own 1c work
+
+My first #116 distribution reconstructed `picks` from board rows instead of real draft history,
+which corrupted replacement levels and produced figures (min −371.2, 76.6% negative) that
+contradicted §20.8. **Those numbers are discarded.** Everything above is from a properly
+sequential draft.
+
+---
+
+# D9 and D10 — the two decisions 1c produces
+
+**Not taken. Both need your ruling before any 1c implementation.**
+
+## D9 — what the board does once nothing on it can be priced
+
+The engine correctly refuses to invent a price. The question is only what it presents instead.
+
+| Option | What it does | Cost |
+|---|---|---|
+| **A. Order by `projected_points`, labelled as a different basis** | Uses the signal that demonstrably survives. Ends the 36-over-319 inversion immediately. | Season points are **not comparable across positions** the way VOR is — a 319-point QB and a 96-point RB are not ranked by the same yardstick. The board would be ordering by a measure it elsewhere refuses to treat as value. Must be labelled, not silently substituted. |
+| **B. Stop ranking and say so** | Present the exhausted pool as explicitly unranked — a flat list, an honest "no basis to rank these" state. | Least invention, most consistent with the existing absence contract. But an auto-draft still has to pick *something*, so a sub-rule is still needed underneath. |
+| **C. Extend pricing past starter demand** | Give `replacement_levels` a defined behaviour below zero demand so a price exists all the way down. | The largest change, overlaps **#50** (VOR/replacement/horizon redefinition) and **#58**'s parked unit work. Probably belongs there, not here. |
+| **D. Leave it, document it** | Keep the id sort; state plainly in the UI that late-draft ordering is arbitrary. | Cheapest and honest, but the board keeps actively recommending worse players over better ones. |
+
+**Interaction you should know about:** this is a **hard prerequisite for Insight**. Under the
+current behaviour Insight would be handed a Top 5 whose ordering carries no information and asked
+to "explain the important differences" — it will produce differences, because that is what it is
+asked for. Whatever D9 settles, Insight must be able to tell whether the ordering it is
+explaining is real.
+
+## D10 — what the display contract declares
+
+| Option | What it does | Cost |
+|---|---|---|
+| **A. Name the unit everywhere** | *"Universal Value (UV)"*, *"Acquisition Value (UV)"*, and finish the two bare board phrases. ~17 sites, two of them duplicated panels. | Purely additive copy; no number changes. Does **not** address that the scale is unintuitive — it makes it honest, not friendly. |
+| **B. Rescale to a stated band** | Normalise the displayed number into an explicit 0–100 (or similar) band. | Substantive. Depends on **#58** (BPA normalization / the ruler that drifts 72×) which is parked, and on **#75/#76**. Doing it before #58 would calibrate a display against a moving scale. |
+| **C. Show fewer numbers** | Drop raw UV from the cards; keep ranking, deltas and the qualified prose. | Removes the confusion by removing the confusable value. Loses information some users want. |
+| **D. Leave it, document it** | Record the scale in the manual and change nothing. | Keeps a 10.9%-negative number on a card next to a never-negative one, both `.0f`, neither labelled. |
+
+**My reading, for what it is worth and not acted on:** A is mechanical, safe, and independent of
+every parked item — it is the only one of the four that does not wait on #58. B is the one that
+actually fixes the reader's experience and should not be attempted before #58.
+
+## State
+
+**1c is complete as scoped.** Nothing normalized, nothing renamed, behaviour preserved and pinned.
+**D9 and D10 are open and blocking 1c implementation.** D9 additionally blocks the Insight
+contract (Step 2), because Insight cannot honestly compare candidates whose ordering may carry no
+information without being told so.
