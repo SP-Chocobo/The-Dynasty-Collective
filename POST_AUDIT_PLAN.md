@@ -714,3 +714,105 @@ formulation that cannot answer it is not a candidate.
 
 **D9 is open and is now a measured design task.** D10 remains as previously written and is
 unaffected. No implementation until the measured comparison is delivered and a contract is agreed.
+
+## D9 — measurement round 1: what the contextual regime would actually have to work with
+
+Read-only. Three measurements, one of which substantially changes the design space.
+
+### 1. Which inputs survive the exhausted regime
+
+Snapshot candidates at three points of one 12×18 draft. `d` = distinct values among the
+candidates; **`d=1` means the field is present but carries no discriminating information at all.**
+
+| Field | pick 1 (healthy) | pick 121 (partly) | **pick 155 (exhausted)** |
+|---|---|---|---|
+| `projected_points` | 72/72 d=53 | 10/10 d=10 | **10/10 d=8** |
+| `waiting_cost` | 48/72 d=35 | 10/10 d=9 | **9/10 d=8** |
+| `horizon_floor` | 48/72 d=5 | 10/10 d=6 | **9/10 d=6** |
+| `horizon_sensitivity` | 48/72 d=5 | 10/10 d=6 | **9/10 d=6** |
+| `need_bonus` | 72/72 d=3 | 10/10 d=2 | 10/10 d=2 |
+| `pick_necessity` | 72/72 d=14 | 10/10 d=8 | 10/10 d=2 |
+| `position_run_detected` | 72/72 d=1 | 10/10 d=1 | 10/10 d=2 |
+| `positional_cliff` | 72/72 d=36 | 6/10 d=7 | **0/10 — gone** |
+| `positional_forfeit` | 72/72 d=3 | 6/10 d=3 | **0/10 — gone** |
+| `position_expected_taken` | 72/72 d=3 | 6/10 d=3 | **0/10 — gone** |
+| `universal_value` / `tav` | 72/72 d=59 | 6/10 d=7 | **0/10 — gone** |
+| `survival_probability` | 72/72 d=5 | 10/10 d=7 | 10/10 **d=1 — no signal** |
+| `consensus_rank` / `consensus_tier` / `reach_label` | **0/72** | **0/10** | **0/10** |
+
+**Everything derived from a value curve dies with the value curve** — cliff, forfeit, expected-taken
+all go to zero coverage, as they must. `survival_probability` survives as a number but collapses
+to a single value, which is worse than absent: it looks like signal and is not.
+
+**The two strongest survivors are `projected_points` and `waiting_cost`, both d=8 of 10.** That
+second one is worth pausing on: `waiting_cost` measures replaceability **against the draft
+horizon** ("what is the best player at this position still likely to be undrafted when the draft
+ends"), not against starter demand — which is exactly why it survives when VOR does not. It is
+already computed, already on the snapshot, and is precisely two of the twelve inputs the revised
+D9 names: *positional insulation* and *likely availability of comparable players later*. It is
+also parked under **#57 / #48 / #71**.
+
+### 2. The tier data the proposed display needs does not reach the board in 1QB leagues
+
+`consensus_rank`, `consensus_tier` and `reach_label` are `None` on **every candidate at every
+point of the draft** — not exhausted, never populated. The cause is not missing data:
+
+* **KeepTradeCut carries `rank` and `tier`, 499/499 populated.**
+* `pick_synthesis._consensus_lookup` filters to `source_name == "keeptradecut"` and returns `{}`
+  unless the league is superflex — deliberately, because the committed KTC export is
+  `dynasty_superflex_halfppr.csv` and superflex-inflated QB consensus would misrepresent a 1QB
+  market.
+* Measured: `is_superflex=False → 0 entries`; `is_superflex=True → 448 entries`, and a superflex
+  snapshot populates 48 of 72 candidates with tiers spanning 1–18.
+
+**So the tier-based display is already buildable in superflex and unbuildable in 1QB — from a
+wiring gap, not a data gap.**
+
+### 3. The non-projecting benchmark sources are already ingested, and CDME reads none of them
+
+Prompted by the operator's note that rankings/tier lists from non-projecting sources should be a
+gauge of who is the better asset in a vacuum — evidence, not law:
+
+| Source | Rows | Carries | Format scope | Reaches the board's ranking? |
+|---|---|---|---|---|
+| **fantasypros** | 1198 | `rank`, `tier` (1198/1198), `pos_rank`, `age`, **`best`/`worst`/`avg`/`std_dev`** | `dynasty_ppr_rankings.csv` (**1QB**), best-ball, IDP redraft | **No** |
+| keeptradecut | 499 | `rank`, `tier`, `value`, `trend_30d` | superflex half-PPR only | Only via `_consensus_lookup`, superflex only |
+| dynastyprocess | 783 | **`ecr_1qb` and `ecr_2qb`**, `value_1qb`, `value_2qb` | both formats | **No** |
+| espn | 120 | `rank`, `analyst_avg` | IDP redraft | **No** |
+
+Two things follow.
+
+**FantasyPros fills the exact gap the superflex gate creates** — it publishes a dynasty **PPR
+(1QB)** ranking with tiers, 1198 rows, already loaded into `merger.external_values`. Today it
+reaches only the composite percentile that feeds the trade-value surface; it never reaches the
+board's consensus lookup. DynastyProcess's `ecr_1qb`/`ecr_2qb` is a second, format-aware benchmark
+in the same position.
+
+**FantasyPros also carries `best` / `worst` / `std_dev`** — a real measure of how much the experts
+disagree about a player. That is a genuine uncertainty signal, and it maps onto two more of the
+twelve inputs (*upside vs floor*, and how to express uncertainty honestly) without inventing
+anything.
+
+### The implementation constraint this creates, recorded now
+
+`_consensus_lookup`'s `source_name == "keeptradecut"` filter is **also the CDME ingestion
+boundary** — it is what keeps `bot_research`'s LLM-authored rows out of the engine, proven by
+`test_cdme_ingestion_boundary.py` and re-proven behaviourally in §25 (30 planted findings, 0 of
+333 board rows moved). Widening it to admit FantasyPros or DynastyProcess must be done as an
+**explicit allowlist of deterministic sources**, never by relaxing the filter. Removing it would
+reopen the boundary. This is the single most dangerous edit in the D9 space and it is worth
+saying before anyone writes it.
+
+### What this changes about D9
+
+The revised D9 is **more buildable than it looked**, and the reason is that most of what it needs
+is already computed and simply unrouted — the same pattern this audit found five times over as the
+compute-then-drop class. But it now has a **source-precedence decision inside it** that did not
+exist before: *which non-projecting benchmark provides tier/rank per league format, and with what
+authority relative to the projection-based engine.* That is a policy question, it is adjacent to
+**#43** (deterministic source precedence, already settled once for projections), and it should be
+settled before any candidate formulation is measured.
+
+**Still open. Next measurement round:** formulate candidate contextual-priority rules over the
+surviving inputs, and measure each against controlled drafts — with *"do I really need WR8 when I
+don't have QB4?"* as the acceptance test.
