@@ -195,6 +195,22 @@ These follow from the principle and are not negotiable per change.
   does not make it a property of that player. Scope travels with meaning, not with storage.
 - **A docstring can encode a defect.** Several of the findings above were described as correct in
   the docstrings that defined them. Documentation is evidence of intent, never of correctness.
+- **A measurement that cannot fail proves nothing either.** The rule above is written about
+  tests; it applies unchanged to instruments. Three measurements in the pre-draft-anchor work
+  were discarded as vacuous: a sweep where half the scenarios never reached the code under
+  test, a probe whose "control" recomputed full demand against a depleted pool, and a battery
+  that — once the repair landed — contained the fix in *both* of its arms. **An instrument that
+  shares code with its subject has stopped being an instrument.** Every harness needs a control
+  arm asserted to actually differ before its numbers are believed.
+- **A finished item names the commit that finished it.** A register entry marked done whose
+  supporting evidence cannot be located is indistinguishable from one that was never done —
+  the audit trail stops being deterministic, and six weeks later the work is re-litigated from
+  memory. The chain is *hypothesis → instrument → independent control → observed result →
+  decision → durable evidence*, and the last link is a SHA in the record, written at the time
+  of the decision rather than reconstructed after it. (Deliberately a convention and not yet a
+  test: across all three documents only two sections currently claim completion, so a test
+  would pass on a population of two and prove nothing. It becomes worth enforcing once the
+  convention has a population — which is itself an application of the rule above.)
 
 ---
 

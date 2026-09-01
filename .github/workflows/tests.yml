@@ -1,0 +1,51 @@
+# Two tiers, and NEITHER is ever skipped based on what a change touches.
+#
+# That restraint is deliberate. Selecting tests by "which files did this commit modify" needs a
+# map from source files to relevant tests, and such a map rots SILENTLY -- it skips the test
+# that mattered and still reports green. This repository's whole audit history is about exactly
+# that failure shape, so the split here is by COST only:
+#
+#   fast  53 modules / 845 tests / ~1.5s   -- every push and PR
+#   full  80 modules / 1548 tests / ~17m   -- every PR, and on demand
+#
+# The tier of a module is detected by suite_taxonomy (does it build a real DataMerger), never
+# hand-listed, so it cannot disagree with reality. test_suite_taxonomy fails if either tier
+# collapses, which is what stops "fast" quietly becoming "nothing".
+name: tests
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  fast:
+    name: fast tier (no data load)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - run: pip install -r requirements.txt
+      - name: run the fast tier
+        run: python -m unittest $(python suite_taxonomy.py --tier fast)
+
+  full:
+    name: full suite
+    # Only after the fast tier passes -- 17 minutes is not worth spending to learn something
+    # 1.5 seconds already knew.
+    needs: fast
+    if: github.event_name != 'push'
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - run: pip install -r requirements.txt
+      - name: run the whole suite
+        run: python -m unittest discover -p "test_*.py"
