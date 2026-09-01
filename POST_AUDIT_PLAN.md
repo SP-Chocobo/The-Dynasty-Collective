@@ -981,3 +981,105 @@ Five behaviours, each shown as an exact pick-level difference between formulatio
 
 **Source precedence and the exact roster-depth formulation are policy questions.** Measure the
 mechanical options, show where each changes the pick, bring the choices back. **No implementation.**
+
+---
+
+# D9 — the three-layer model, and what measurement says about each
+
+The operator's tightened framing. Three layers of information, with distinct lifetimes:
+
+| Layer | What it answers | Lifetime |
+|---|---|---|
+| **1. Player valuation** — VOR / BPA / universal value / acquisition value | *How valuable is this player relative to replacement?* | **Legitimately becomes undefined** when replacement demand is exhausted |
+| **2. External player-quality evidence** — FantasyPros, KTC, DynastyProcess, projections | *If I must distinguish these as assets, what does the broader information ecosystem think?* | **Secondary always.** Never overrides layer 1 where layer 1 is valid |
+| **3. Draft-state / roster-context calculus** — my roster, opponents' rosters, positional requirements, remaining demand, available pool, scarcity, insulation, consequences of passing | *Given all of it, which pick improves my roster most?* | **Never disappears** |
+
+> **The engine should never confuse "I cannot assign a valid VOR number" with "I cannot determine
+> what pick is best." Those are not equivalent.**
+
+And the property that makes it right: **the engine does not surrender when one model runs out of
+runway — it changes what evidence it trusts.**
+
+## Measured: layer 3's raw inputs survive completely
+
+At the exhausted pick (SF 12×18, pick 165, round 14), every layer-3 input is intact:
+
+* **my roster** — `{RB:3, TE:2, QB:2, WR:3, DEF:1, K:2}`
+* **starting requirements** — `{QB:1.85, RB:2.38, WR:2.38, TE:1.38, K:1.0, DEF:1.0}`
+* **all 11 opponent rosters** — fully countable
+* **remaining pool by position** — `{WR:68, RB:33, TE:24, DEF:20, K:13, QB:11}`
+
+That last line is the acceptance test appearing spontaneously in a real draft: **68 WRs left
+against 11 QBs, on a roster holding 3 WRs and 2 QBs.** The scarcity signal the WR8/QB4 case needs
+is fully present at exactly the moment the valuation is gone.
+
+## Measured: but layer 3's existing COMPUTATION does not survive
+
+This is the correction that matters, and it changes the size of the work.
+
+**`need_bonus` is `0.0` for every candidate at exhaustion** — present, but flat. Not because the
+`None` valuation destroyed it; it is already zero before it reaches anything.
+
+The cause is that `need_bonus` and `replacement_levels` are **the same underlying quantity**:
+remaining *starter* demand. When starters are filled, both die together, by construction.
+
+Measured directly:
+
+```
+remaining starter demand   pick 1                      pick 165
+  WR                        28.60                        0.77
+  RB                        28.60                        0.77
+  QB                        22.20                        0.85
+  TE                        16.60                        0.77
+  K / DEF                   12.00                        0.00
+```
+
+**Pricing dies when remaining demand falls below 1.0 per position — not when it reaches zero.**
+The 0.77–0.85 residue is real unfilled demand that `replacement_levels`' own domain guard cannot
+use (its docstring records the same effect: *"TE demand from round 11 onward is
+0.9999999999999998 … so replacement_levels returned an empty dict and the board could price
+nothing at all"*).
+
+**So the honest statement of the work is:** the raw context is all there, and *none of the engine's
+existing derived need machinery survives to consume it*, because every piece of it is keyed to
+starter demand. A contextual regime therefore needs a notion of need that is meaningful **after
+starters are filled** — depth, insulation, concentration — which is a **new deterministic
+computation over existing inputs**, not a rewiring of something already computed.
+
+That is more work than "route what already exists," and less than "invent a new valuation." It is
+also exactly what `positional_bench_appetite` was reaching for, and #62 records that it returns
+0.0 for every position when none is measurable — the same failure, from the same cause. *(My
+attempt to re-verify #62's state at exhaustion failed for a harness reason — `build_available_pool`
+does not create the `_points` column `compute_draft_board` adds — so that check is outstanding,
+not a finding.)*
+
+## On the ramp: measure it, do not assume round 13
+
+The operator's hypothesis — that this should already be happening by ~round 15, and could ramp in
+from ~13 — is a good one and is being tested rather than adopted. Two reasons not to hard-code a
+round:
+
+**It already varies across configurations in the data I have.** Full collapse: **round 13** (1QB
+12×18), **round 14** (SF 12×18), **round 11** (the 12×20 mock recorded in `_board_order`'s own
+docstring). The collapse point is a function of how fast a league consumes starter demand — roster
+template, team count, draft length — not of the calendar.
+
+**And presence is the wrong variable anyway.** The operator's sharper framing is *loss of
+discriminatory power*, which happens **earlier** than loss of presence: §20 measured genuine score
+collisions in rounds 6–9 with real, non-`None` values. A valuation can be fully present and still
+unable to separate two candidates.
+
+So discriminatory power is being measured against **the engine's own yardstick**, not one I invent:
+`NEAR_TIE_BAND = 2.0` universal-value points, the band inside which `near_tie_flags` already
+refuses to present its ordering as a real preference. Per pick, over the candidate set the decision
+actually sees: how many candidates sit inside that band of the leader (1 = clean standout), the
+leader-to-runner-up margin, distinct values, and how many carry a price at all — against round and
+against minimum remaining demand.
+
+**Candidate ramp variables under test:** round number · fraction of board unpriced · fraction of
+the top-12 unpriced · minimum remaining starter demand · candidates-in-band. The last two are the
+causal quantities; the first is the one most likely to be wrong across configurations.
+
+**Deliverable:** a measured degradation curve per configuration, and a proposed calibrated
+influence curve keyed to whichever variable actually tracks it — with the explicit expectation
+that a continuous blend beats a threshold, since the underlying signal degrades continuously.
