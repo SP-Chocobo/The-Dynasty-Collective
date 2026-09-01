@@ -2986,3 +2986,264 @@ Eleven tests now make those visible.
 2. **#100 — meter the usage object.** Now the only way to see the one unbounded term.
 3. **Pricing-change detection.** Named, unranked: nothing records a provider's price, so nothing
    can notice one changing. Downstream of #100 having anything to compare against.
+
+## Pass 12 — §16
+
+**Scope:** Build Guide v2 §16 (human-in-the-loop override provenance).
+
+**Baseline:** `ff460db` on `ui-authority-pass`; `main` frozen at `9fb5102`. Two production
+files modified (`todo_log.py`, `app.py`) — R13 and R14 below. #91–94, #96–105 remain queued;
+#99 stays ahead of #94.
+
+**Headline: §16 asks how a manual override of a CDME variable is isolated from canonical
+calculation. The measured answer is that no such override surface exists — injury status,
+positional need, replacement level and every valuation term are computed and cannot be
+user-moved. What the user *can* override is one layer earlier: which vendor row a player is
+priced from, which files the vendor pools are built out of, and what the panel is told the
+league's format is. All three reach the engine or the verdict; none of them says so.**
+
+### 16.1 The override inventory, measured
+
+Every persisted store a user can write from the UI, and what it reaches:
+
+| store | written by | reaches | when | who | why |
+|---|---|---|---|---|---|
+| `data/player_aliases.json` | user only | **`bpa` / `universal_value`** | ✗ | ✗ | ✗ |
+| `data/projections/**` (uploads) | user only | **`bpa` / `universal_value`** | file mtime | ✗ | note → attachment |
+| `data/baseline/external/*/*.csv` | user only | **`composite_player_score`** | file mtime | ✗ | ✗ |
+| `data/league_formats.json` | user only | debate context + guidance | ✗ | ✗ | ✗ |
+| `data/pins/{league}.json` | user only | debate context (on relevance) | ✗ | ✗ | ✗ |
+| `data/bot_config.json` | user only | routing | ✗ | ✗ | ✗ |
+| `data/league_prefs.json` | user only | display only | ✗ | keyed by user_id | ✗ |
+| `data/attachments/captions.json` | user only | debate context | ✓ `uploaded_at` | implicit | caption |
+| `data/todos/{league}.json` | **both** | debate context | ✓ ts/date | ✓ `source` | ✓ reason/notes/revisions |
+| `data/decisions/{league}.json` | **both** | debate context | ✓ ts/date | ✓ provider/model (R10) | ✓ reason |
+| `data/baseline/bot_research.json` | **both** | **`composite_player_score`** + context | ✓ ts/date | ✗ (see 16.5) | ✓ claim/question |
+
+**The pattern this table shows is the section's real finding, and it is the inverse of the one
+§7.10/§10.3 named.** There, provenance coverage was inversely proportional to how much a
+source mattered. Here it is proportional to **who wrote the record**: every store the AI
+writes into is stamped, sourced and reasoned; every store only the human writes into records
+nothing at all. Three of the four unstamped stores feed valuation.
+
+### 16.2 The isolation question answers itself — there is no CDME-variable override
+
+**STATUS: N/A BY CONSTRUCTION — and this is a protection, not a gap**
+**EVIDENCE:** `app.py` contains **zero** `st.number_input`, `st.slider` and `st.toggle` calls.
+`injury_status` is read at exactly four sites (`draft_room.build_available_pool`,
+`player_universe`, `data_merger`, `app`) and in every one of them it comes straight from
+Sleeper's `players_db` — `info.get("injury_status")`. `RISK_ADJ` keys off that value and
+nothing else. `need_bonus`, `eligibility_bonus`, `replacement_levels` and `time_horizon_adj`
+are all computed from roster state and the loaded pools.
+
+So §16's named examples — *"injury status, positional need, VOR baseline, custom value"* — have
+no override path at all. Isolation is total because the capability does not exist. This is
+worth stating plainly rather than scoring as a pass: the app's answer to "how is a manual
+override isolated from canonical calculation" is that it never offered one.
+
+### 16.3 Where user input *does* reach the deterministic engine — three doors
+
+**STATUS: EXISTS, unattributed downstream**
+
+**(a) The manual alias.** Demonstrated on a synthetic two-row pool (and reproduced against the
+real committed baseline): aliasing an unmatched Sleeper name onto `J Chase` moved that row's
+`trade_value` **41.0 → 100.0** and `projection` **202.0 → 339.0**, and did so *over a correct
+automatic match* (`match_path` was `"key"`, `match_verified` True, before the alias existed).
+The alias branch deliberately bypasses `_contradicted`'s team/position rejection — overriding
+the guards is the point of an override — and it resolved a CLE WR onto a CIN WR row.
+
+`merge_player` reports this honestly: `match_path == "alias"`. `build_available_pool` carries
+it onto every pool row as `_match_path`. And then **`compute_draft_board`'s two explicit output
+column lists drop it**, in both the upside and balanced branches. Verified by AST over the
+board's own subscript lists, not by substring: `bpa_source` and `universal_value` are emitted,
+`_match_path` and `_match_verified` are not. Grepped across the whole repo, both fields are
+**write-only in production** — nothing reads either one.
+
+Net: a candidate whose price rests on a user override is indistinguishable, at the decision
+boundary and in every debate downstream of it, from one the matcher resolved on its own.
+**Verdict: SURFACE (#107).** Carrying it through changes the `PickSnapshot` candidate schema —
+the frozen decision boundary — which is architectural, not mechanical.
+
+**(b) The external-source refresh.** `external_upload_targets()` deliberately overwrites the
+*exact* tracked filename for a source, and its docstring is right about why (any other name
+would sit alongside the baseline as a second, separately-percentiled `(source, file)` pair and
+double-count that source). The consequence is that after the upload, the user's CSV **is**
+DynastyProcess: same `source_name`, same `source_file`, same `COMPOSITE_SOURCE_WEIGHTS["dynastyprocess"] = 1.0`,
+and `describe_external_value` renders it to the panel under the vendor's name. Validation is
+`"name" in _ext_df.columns` — nothing checks the file came from that vendor. **Verdict: DOCUMENT.**
+Refreshing a source *is* the feature; the gap is that the record cannot distinguish a shipped
+export from a hand-made one. Folded into #107.
+
+**(c) The rankings upload.** Goes through the app's best human-in-the-loop gate — see 16.6.
+
+### 16.4 Attribution in the AI layer — labelled everywhere but one place
+
+**STATUS: EXISTS — one exception, now repaired (R14)**
+`build_context` already announces every user-supplied section, and does it well:
+- REFERENCE MATERIAL: *"captioned by hand — you're only given the caption text, not the actual
+  file, so treat it as a claim to weigh, not verified fact"*
+- PAST DECISION OUTCOMES: *"(user-recorded, not a guess)"*
+- PINNED: *"the user manually flagged these … pinning doesn't mean elevated priority — weigh it
+  like anything else here, not as a standing instruction or a settled conclusion"*
+
+`pinned_messages.find_relevant` backs the third one structurally, not just instructionally: a
+pin is retrieved only on keyword overlap with the current question, never injected by default,
+*"so an old, once-useful observation can't quietly bias every future debate forever."* That is
+§16's "isolated from canonical" answered at the retrieval layer.
+
+**The one exception was the manual league-format override.** It was appended to the League line
+as a bare peer of Sleeper's own fields —
+`League: X (2026) — Dynasty, Best Ball, 12 teams, …` — where *Dynasty* is API-detected and
+*Best Ball* is a dropdown the user set, and nothing distinguished them. `FORMAT_GUIDANCE` then
+followed as unattributed instruction: *"Trades are disabled in this format — never suggest or
+evaluate a trade here."* A mis-set toggle would have the panel refuse whole categories of
+advice and cite it as league fact. **This is the highest-consequence user override in the app**
+and it was the only unlabelled one. **Verdict: REPAIR (R14)** — mechanical under the convention
+the same function already applies three times over.
+
+### 16.5 A user's own claim can become a durable numeric input under a third party's name
+
+**STATUS: MISSING**
+`MODERATOR_SYSTEM_PROMPT` admits a SOURCE FINDING from either the Beat Tracker's live search
+**or the user's own hand-captioned reference material** — and says so explicitly, in one breath:
+*"Whichever way it entered the debate…"*. `bot_research.add_finding`'s record has no field for
+which. Its keys are exactly `id, ts, date, player_name, source, claim, rank, composite_impact,
+conviction, question, league_id` — verified by set comparison, not by eye.
+
+A rank-bearing finding then feeds `composite_player_score` at weight 0.5, and
+`data/baseline/bot_research.json` is **git-tracked** (unlike the per-league gitignored stores).
+So: user uploads a screenshot, captions it, the panel doesn't dispute it, and the user's own
+claim becomes a committed numeric input to the app's blended valuation, attributed to ESPN.
+
+The origin *distinction is deliberately collapsed by the prompt*, which makes this a contract
+question rather than a bug: recording it means adding a field to the Moderator's structured
+block. **Verdict: SURFACE (#106).** Adjacent to #97, not part of it.
+
+### 16.6 "Can a user correction trigger investigation without directly becoming canonical?" — yes, twice, and one of them erased itself
+
+**STATUS: EXISTS (two mechanisms) — one repaired (R13)**
+
+**The pending-upload gate is the app's best §16 artifact.** A rankings file whose own text says
+"Redraft" while parsing as Dynasty is **held**, not merged. The user gets the parser's own
+example row (deterministic, no API call), can optionally ask the Moderator, and then chooses
+between three fixed buttons. The button wording is pinned neutral *on purpose*, with the
+reasoning in the source: *"A parser that silently mislabels a column and a Moderator opinion
+that gets rubber-stamped without real scrutiny fail the same way: nothing catches the error."*
+An investigation that does not become canonical by itself — exactly what §16 asks for.
+
+**`todo_log` is the second, and it is the app's only place where a human directly overturns an
+AI conclusion.** A bot can only propose `likely_resolved` with a reason; the user confirms
+(`resolve_todo`) or rejects (`reopen_todo`, the "↩️ Keep Open" button). The module states the
+rule: *"Resolved/dismissed items are archived (kept, with a reason and date), never destroyed."*
+
+**It did not hold for the rejection.** Demonstrated before the repair: after
+`mark_likely_resolved` → `reopen_todo`, the stored entry was byte-identical to one no bot had
+ever spoken about — `status` back to `active`, `resolution_reason` cleared to `""`, nothing
+else touched. Neither the claim nor the rejection of it survived. `mark_likely_resolved` also
+wrote no timestamp of its own, so even a *surviving* proposal could not say when it was made.
+The asymmetry ran exactly backwards: `revise_todo` — **the bot** editing **the user's**
+objective text — archives the prior text in `revisions`; the user overruling the bot archived
+nothing. **Verdict: REPAIR (R13)** — mechanical under this module's own stated rule.
+
+**Correction to a finding I did not publish:** I first read `resolve_todo`'s
+`if reason: entry["resolution_reason"] = reason` as a second erasure — the user's confirmation
+note overwriting the bot's proposed reason. It cannot happen. `app.py` calls `resolve_todo`
+with a reason only from the `else` branch (`status != "likely_resolved"`), where no proposal
+exists; the "✅ Confirm Done" path passes no reason at all, which the docstring already
+identifies as the "don't override it" case. The UI wiring disproves the source reading — the
+fourth time this audit's most tempting finding has been one read short.
+
+### 16.7 Replay
+
+**STATUS: MISSING**
+`decision_log` stores the question, the parsed verdict, the full Moderator text, and (since R10)
+the provider and model. It stores **nothing about the state the overrides were in**: which
+aliases existed, which format override was set, which external CSVs were loaded, which
+attachments were in scope. §16's *"can replay reproduce the decision with the override exactly
+as it existed?"* is **no**, and not marginally so — the Prytaneum path has no snapshot at all,
+where the Draft Room at least has `PickSnapshot`'s INPUT-STATE STAMP (§11.6).
+
+This **widens #92** rather than adding a new item: what needs identifying is not just the draft
+snapshot but the decision context, and the Prytaneum half of it currently has none.
+
+### 16.8 Can the Moderator say its answer depends on a user override?
+
+**STATUS: PARTIAL — channels exist, nothing directs them here**
+The structured block has `CONVICTION: Speculative` (*"the underlying evidence is thin"*) and
+`RISK`, and REFERENCE MATERIAL already tells the panel a caption is unverified. So the Moderator
+*can* express reliance in prose. What does not exist is any instruction to do so specifically
+when the answer turns on a user-supplied override, and nothing in the machine-readable block
+distinguishes that case — so a downstream consumer of the verdict cannot filter for it.
+
+R14 adds this for the format override only, because that one is a factual claim about the
+league presented as detected fact. Generalizing it — a block field, or a standing instruction —
+changes the Moderator's contract and its `chair_prompt_fingerprint`. **Verdict: SURFACE (#108).**
+
+### 16.9 Two live items whose premises §16 changes
+
+- **#102 (cross-session lost update) widens.** It was scoped to per-league stores.
+  `save_alias`, `remove_alias` and `set_format_override` are the same read-modify-write shape on
+  **global** files, and `player_aliases.json` is one of the three that feeds valuation. The
+  lost-update window is no longer only "two sessions in one league" but "two sessions at all".
+- **#99 (truncation detection) sharpens.** `llm_engine`'s own `MAX_TOKENS` comment already
+  notes that truncation silently breaks the TODO tracker, decision log and research feed. §16
+  adds *which* lines those are: `TODO LIKELY RESOLVED` and `SOURCE FINDING` sit at the very end
+  of the block, so the first thing a truncated Moderator reply loses is precisely the
+  human-in-the-loop layer — the proposal the user was supposed to rule on.
+
+#94, #100, #101, #104 and #105 are untouched by §16.
+
+### 16.10 Corrections to my own §16 readings
+
+1. **`resolve_todo` does not lose the bot's reason** — see 16.6. Disproved by the call sites.
+2. I expected a numeric override UI (a "custom value" box) somewhere, on the strength of §16's
+   own wording. There is none — measured, not assumed: zero `number_input`/`slider`/`toggle`
+   calls in the entire app. The section's framing does not match this app's shape, and saying
+   so is the honest finding rather than manufacturing an equivalent.
+3. I considered labelling to-do origin (`source`: moderator vs manual) in `build_context`,
+   which the record already carries and the UI already shows as 🤖/✍️. Rejected as a repair:
+   unlike the format override, an objective is not a factual claim about the league, and
+   telling the panel which objectives the user wrote would change how it weighs them — a
+   behavioural change, not an attribution fix. Folded into #108's decision surface.
+
+## Pass 12 summary
+
+| § | question | status | verdict |
+|---|---|---|---|
+| 16.2 | CDME-variable override isolated? | **N/A by construction** | no override surface exists |
+| 16.3a | alias override attributed downstream? | **MISSING** | SURFACE (#107) |
+| 16.3b | user CSV distinguishable from vendor export? | **MISSING** | DOCUMENT / #107 |
+| 16.4 | user context distinguished from canonical? | **EXISTS**, 1 exception | **REPAIR (R14)** |
+| 16.5 | finding origin (user vs search) recorded? | **MISSING** | SURFACE (#106) |
+| 16.6 | correction triggers investigation, not canon? | **EXISTS ×2** | **REPAIR (R13)** |
+| 16.7 | replay with the override as it was? | **MISSING** | widens #92 |
+| 16.8 | Moderator can flag override dependence? | **PARTIAL** | SURFACE (#108) |
+
+**Does anything clear the bar for a production change?** Two things did.
+
+**R13 — `todo_log`: the rejection survives.** `mark_likely_resolved` now appends the proposal to
+a `proposals` history with its own timestamp; `reopen_todo` / `resolve_todo` / `dismiss_todo`
+close the pending entry as `rejected` / `accepted` / `superseded_by_dismissal` rather than
+clearing it. Legacy entries written before the field existed close cleanly and fabricate
+nothing. Justified by the module's own "archived, never destroyed" rule and by `revise_todo`'s
+existing implementation of exactly this pattern one function away.
+
+**R14 — `build_context`: the manual format override announces itself.** One guarded paragraph,
+emitted only when an override is actually set, placed *before* `FORMAT_GUIDANCE` so the caveat
+arrives ahead of the imperatives it qualifies. Justified by the convention the same function
+already applies to reference material, past outcomes and pins.
+
+Everything else in §16 needs a decision this audit does not get to make.
+
+**Ranked follow-ups**
+1. **#106** — a rank-bearing research finding cannot name its origin, and feeds a git-tracked
+   composite input. Needs a Moderator-contract field, or a rule that a finding whose origin
+   can't be named doesn't carry a rank.
+2. **#107** — the three doors from user input into valuation (alias, rankings upload, external
+   CSV) carry no when/who/why, and the alias marker is dropped before the decision boundary.
+   Schema + boundary decision.
+3. **#108** — no chair channel for "this answer rests materially on your own override". Contract
+   decision; would also settle the to-do-origin question from 16.10.
+4. **UI for R13.** The proposal history is recorded and nothing renders it. Follows the same
+   record-now-display-later precedent as R9/R10/R11; a "🔎 Proposal history" popover mirroring
+   the adjacent revision-history one is the obvious shape when someone wants it.

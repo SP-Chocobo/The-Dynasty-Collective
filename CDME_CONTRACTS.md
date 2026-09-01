@@ -8078,3 +8078,149 @@ the judge call, capping tool use, and removing the cost disclosure.
 219. An instructional boundary is worth re-checking structurally at the layer where it costs
      money. "The Moderator never triggers a debate itself" is a prompt sentence; that no code
      path leads from a parsed verdict to a provider call is the thing that makes it true.
+
+---
+
+# Appendix §16 — Human-in-the-Loop Override Provenance
+
+**Baseline entering:** `ff460db` on `ui-authority-pass`, suite 1370 OK. `main` frozen at
+`9fb5102`, untouched. Defect A1 untouched.
+
+## What was measured
+
+**The override inventory.** Eleven persisted stores a user can write from the UI, classified by
+what each reaches and whether it records when / who / why. Three feed the deterministic engine
+(`player_aliases.json`, the rankings uploads under `data/projections/**`, the external-source
+CSVs under `data/baseline/external/`); a fourth feeds it through the research path
+(`bot_research.json`). Of those four, exactly one records a timestamp.
+
+**The named §16 variables have no override surface.** Zero `st.number_input`, `st.slider` and
+`st.toggle` calls exist in `app.py`. `injury_status` reaches `RISK_ADJ` only from Sleeper's
+`players_db`; `need_bonus`, `eligibility_bonus`, `replacement_levels` and `time_horizon_adj`
+are computed. §16's *"injury status, positional need, VOR baseline, custom value"* is therefore
+N/A by construction — not a passing grade, a description of the shape of this app.
+
+**The alias re-price, measured.** On a synthetic two-row pool: aliasing a name onto the higher
+row moved `trade_value` **41.0 → 100.0** and `projection` **202.0 → 339.0**, over a
+previously-correct automatic match (`match_path == "key"`, `match_verified` True), and across a
+team boundary the automatic matcher would have rejected (CLE → CIN). Reproduced against the
+committed baseline before being pinned synthetically so the numbers cannot drift with a refresh.
+
+**The dropped marker, by AST.** `merge_player` returns `match_path == "alias"`;
+`build_available_pool` carries it as `_match_path`; `compute_draft_board`'s two explicit output
+column lists — walked as AST subscript lists, not grepped — emit `bpa_source` and
+`universal_value` and **do not** emit `_match_path` or `_match_verified`. Both fields are
+write-only across the entire repo, production and tests alike.
+
+**The erased rejection, demonstrated.** `add_todo` → `mark_likely_resolved` → `reopen_todo` left
+a stored entry byte-identical to one no bot had ever proposed anything about: `status` back to
+`"active"`, `resolution_reason` cleared to `""`, `revisions` and `notes` untouched.
+`mark_likely_resolved` wrote no timestamp of its own, so a surviving proposal could not say when
+it was made either.
+
+**The finding record's key set.** `add_finding` writes exactly
+`{id, ts, date, player_name, source, claim, rank, composite_impact, conviction, question,
+league_id}` — asserted by sorted-set comparison. No origin field, while
+`MODERATOR_SYSTEM_PROMPT` explicitly admits findings from the user's own captioned reference
+material *and* from live search in the same sentence (*"Whichever way it entered the debate"*).
+`data/baseline/bot_research.json` is git-tracked; `data/player_aliases.json` and
+`data/league_formats.json` are gitignored — confirmed via `git check-ignore`.
+
+## Corrections to my own conclusions
+
+1. **`resolve_todo` does not destroy the bot's proposed reason.** I read the source as a second
+   erasure — the user's confirmation note overwriting the panel's reason. The call sites
+   disprove it: `app.py` passes a reason only from the branch where `status != "likely_resolved"`
+   (so no proposal exists), and "✅ Confirm Done" passes none at all, which the docstring already
+   names as the "don't override it" case. Not reported. Fourth occurrence of the one-read-short
+   pattern.
+2. **My own timestamp test was weaker than its docstring claimed.** `_writes_a_timestamp`
+   originally scanned the whole unparsed function for `time.time()` / `datetime.now()`. A probe
+   that deleted `add_finding`'s `"ts"` field still passed, because `datetime.now()` remains in
+   the function for an unrelated `today`. Rewritten to require a clock call inside a dict value
+   or a subscript assignment — i.e. inside a *field of the record* — and re-probed.
+3. **No numeric override UI exists.** I expected one on the strength of §16's own wording and
+   went looking; measuring found none. Recorded as the honest answer rather than stretching a
+   different feature to fit the question.
+
+## Repairs
+
+**R13 — `todo_log.py`: the moment a human overrules the panel now survives.**
+`mark_likely_resolved` appends `{ts, date, reason, outcome: "pending"}` to a new `proposals`
+list; a new `_close_pending_proposal` helper stamps the open entry with `rejected` (reopen),
+`accepted` (resolve) or `superseded_by_dismissal` (dismiss) plus a `closed_date`. `add_todo`
+seeds `"proposals": []`. Entries written before the field existed close cleanly and get no
+fabricated history — absent means "no bot ever claimed this", never an invented outcome.
+Justified by this module's own stated rule (*"archived … never destroyed"*) and by `revise_todo`
+implementing exactly this pattern, one function away, for the mirror-image case.
+
+**R14 — `app.py` `build_context`: the manual format override announces itself.** One paragraph,
+guarded by `if special_format:` so it is emitted only when an override is actually set, placed
+*before* the `FORMAT_GUIDANCE` block so the caveat precedes the imperatives it qualifies. It
+states that the label is a manual setting, that every other field on that line is Sleeper's own
+data, and asks the panel to say so plainly when an answer turns materially on the format being
+right. Justified by the convention `build_context` already applies three times over — reference
+material *"captioned by hand … not verified fact"*, past outcomes *"user-recorded, not a guess"*,
+pins *"the user manually flagged these … doesn't mean elevated priority"*. `build_context` is not
+part of any benchmark fingerprint (`chair_prompt_fingerprint` covers chair system prompts only),
+so this does not invalidate stored reports.
+
+No other production file was changed. §16's remaining gaps are contract, schema and boundary
+decisions.
+
+## Tests added
+
+`test_override_provenance_boundary.py` — **28 tests**. Enforcement: the proposal record and its
+timestamp; user rejection preserved; acceptance distinguishable from rejection; dismissal as its
+own outcome; repeated proposals accumulating; nothing fabricated for an item never proposed;
+legacy records closing cleanly; revisions never touched by proposal handling; the archived record
+answering who/what/when/why; all four user-supplied context sections labelled; the format label
+guarded and ordered before its guidance; format-override store scoping; the alias re-price and
+its removal; an alias naming a nonexistent row falling through rather than missing; and every
+AI-authored record stamping itself. Characterization (pinned, not endorsed, each citing its
+register item): the alias marker dropped before the decision boundary (#107) and the finding
+record unable to name its origin (#106).
+
+Non-vacuity: **15 probes** planted in real production code and reverted, every one failing the
+intended tests — reopen no longer recording the rejection; the MANUAL SETTING label deleted;
+the label moved after `FORMAT_GUIDANCE`; pins losing the "not elevated priority" clause;
+reference material losing "not verified fact"; `add_finding` losing its `ts`; the board starting
+to emit `_match_path`; `save_alias` no-opping; `mark_likely_resolved` dropping its timestamp;
+dismissal folded into "accepted"; `log_decision` losing ts/date; `save_attachment` losing
+`uploaded_at`; `set_outcome` losing its date.
+
+## Invariants
+
+220. There is no such thing as an override that is only a display. Which vendor row a player is
+     priced from is a valuation input; a name-matching alias is therefore an override of the
+     engine, not of the UI, and inherits every obligation an engine input carries.
+221. An override that bypasses a guard is doing its job; an override that bypasses the *record*
+     of having bypassed it is not. The alias branch is right to skip team/position rejection —
+     that is what a manual override is for — and the resulting row is wrong to arrive downstream
+     looking like an ordinary match.
+222. A field computed and then dropped is not provenance. `match_path` reaching the pool and not
+     the decision boundary means the information existed at every step except the one where a
+     reader could have used it.
+223. Provenance tends to be recorded where the machine is the author and omitted where the human
+     is, because the human is assumed to remember. They will not, and a second user never could.
+     Whose hand wrote a record is a bad predictor of whether the record needs a timestamp.
+224. The moment a human overrules the system is the single most important event to keep, and the
+     easiest to implement as a reset. Clearing a field back to its default is the natural way to
+     express "never mind", and it destroys the only evidence that a disagreement occurred.
+225. Overwriting is asymmetric before it is wrong. When the machine's edit to the human's text is
+     archived and the human's edit to the machine's claim is not, the asymmetry is the defect,
+     independent of which direction anyone would have chosen.
+226. A caveat placed after the instruction it qualifies has already been read as fact. Order in a
+     prompt is not cosmetic: attribution has to arrive before the imperative it attaches to.
+227. Collapsing where a claim came from is a decision, not an omission, when a prompt says so out
+     loud. "Whichever way it entered the debate" is a deliberate rule; the cost of it is that the
+     stored record can never distinguish a search result from the user's own screenshot.
+228. Refreshing a source under the source's own name is correct and unfalsifiable at the same
+     time. Overwriting the tracked filename is what stops a double-count; nothing then separates
+     the vendor's export from a hand-made file wearing its weight.
+229. Replay needs the state of the overrides, not just the answer. A verdict plus its question
+     plus the model that produced it still cannot be reproduced if the aliases, the format toggle
+     and the loaded files have moved since.
+230. A capability that was never built is a real answer to "how is it isolated?". Reporting that
+     no override surface exists beats manufacturing an equivalent one so the question has
+     something to grade.

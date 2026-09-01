@@ -1504,6 +1504,15 @@ def build_context(
     merger: DataMerger = st.session_state.data_merger
     league_id = st.session_state.get("selected_league_id")
     special_format = get_format_override(league_id) if league_id else None
+    # Every OTHER field on this line is Sleeper's own answer about the league; special_format
+    # is the one the user typed in themselves, because Best Ball/Chopped aren't reliably
+    # auto-detectable (see league_format.py's docstring). Listed as a bare peer of "Dynasty"
+    # it read as one more detected fact, which is the one thing it isn't -- and it is also
+    # the highest-consequence user override in this app, since FORMAT_GUIDANCE below can
+    # switch off whole categories of advice (Chopped forbids trade talk outright). Marked as
+    # user-set, the same way every other user-supplied section in this context already
+    # announces itself (REFERENCE MATERIAL "captioned by hand", PAST DECISION OUTCOMES
+    # "user-recorded, not a guess", PINNED "the user manually flagged these").
     lines = [
         f"League: {fmt['name']} ({fmt['season']}) — {fmt['type']}"
         + (f", {special_format}" if special_format else "")
@@ -1511,6 +1520,15 @@ def build_context(
         f"taxi slots: {fmt['taxi_slots']}",
     ]
 
+    if special_format:
+        lines.append(
+            f"\nThe \"{special_format}\" label above is a MANUAL SETTING the user chose for this league, "
+            "not something detected from Sleeper (every other field on that line is Sleeper's own data). "
+            "Sleeper doesn't reliably expose this one, so it rests entirely on the user having set it "
+            "correctly. Reason from it normally — but if your answer turns materially on this format "
+            "being right, say so plainly, so a mis-set toggle gets caught instead of quietly steering "
+            "the advice."
+        )
     if special_format and special_format in FORMAT_GUIDANCE:
         lines.append(f"\n{FORMAT_GUIDANCE[special_format]}")
 
