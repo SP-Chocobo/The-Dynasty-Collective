@@ -2091,3 +2091,135 @@ measured on both ends.
 could narrow the intersection further. **3.0 is defensible on the evidence in hand and should be
 re-checked when a materially different template is first supported**, not treated as universal.
 This is exactly the kind of claim #56 exists to keep honest.
+
+---
+
+# D9 CORRECTION — the #56 sweep was partially vacuous; its recommendation is WITHDRAWN
+
+The sweep recorded immediately above (commit `c8bed44`) was instrumented for reachability
+before extending it to more templates. **Three of its six scenarios never executed the code
+under test.**
+
+`top_pick` orders on the priced branch and only falls through to the depth-need key when
+**no** row carries a `final_score`. Measuring the board each scenario actually evaluated:
+
+| scenario | board | priced | fallback |
+|---|---|---|---|
+| QB-STARVED 7WR/3QB | 117 | **0** | REACHED — valid |
+| WR-STARVED 7QB/3WR | 118 | **0** | REACHED — valid |
+| BALANCED | 119 | **0** | REACHED — valid |
+| QB-ZERO 8WR/0QB | 117 | 6 | **DEAD — priced branch won** |
+| TE-ZERO 7WR/3QB | 119 | 15 | **DEAD** |
+| RB-STARVED 7WR/3QB/1RB | 118 | 27 | **DEAD** |
+
+A scenario on the priced branch returns the same position at every M. In the segment table
+that is indistinguishable from *"passes at every M"* — so three scenarios that **could not
+fail** were read as three scenarios that **passed everywhere**, and the safe region was
+widened by exactly the constraints they should have imposed.
+
+**What survives:** roster-responsiveness (QB-STARVED vs WR-STARVED) and the BALANCED
+double-kicker lower edge were genuinely exercised. **What does not:** the width of
+`[2.20, 4.00]`, and therefore `DEPTH_MULTIPLE = 3.0`. **The recommendation is withdrawn.**
+
+This is the same class the audit named in §17.5 and the same one that voided the first
+knife-edge run: an instrument that cannot fail proves nothing, and a *silently* inert
+instrument is worse than a broken one because it still prints a table.
+
+## Collateral check on the constant (does anything else move?)
+
+- **`DEPTH_MULTIPLE` has no production consumers.** `grep` across the tree returns nothing
+  outside scratchpad. Introducing it breaks no existing caller.
+- **`NEAR_TIE_BAND = 2.0` (`pick_synthesis.py:266`) is a different 2.0** with real consumers:
+  `CLIFF_MIN_MATERIAL_GAP` (derived from it), `decision_regime`, `near_tie_flags`, and 7 test
+  modules. It degrades correctly in the depth rule's own regime — `near_tie_flags` returns
+  all-`False` when nothing is priced rather than raising or inventing a leader.
+- **DEFECT in the proposed formula: it multiplies `dneed` by `BAND = NEAR_TIE_BAND`.** In the
+  fallback nothing is compared against `tav`, so as a pure sort key that factor does no
+  ordering work — *except* that the key is `-round(dneed, 4)`, and a positive scale factor
+  changes which values collapse into ties at 4 dp. `NEAR_TIE_BAND` would therefore silently
+  govern depth-rule tie granularity, so retuning the near-tie band (or `CLIFF_MIN_MATERIAL_GAP`
+  with it) would quietly reorder late-draft picks through a path no one would think to check.
+  **The factor is removed:** the depth term carries its own intrinsic scale.
+
+## The structural edge model (what M_low and M_high are made of)
+
+Ruling taken: `M := (M_high + M_low)/2`, derived per league rather than swept per format.
+Both edges fall out of the algebra rather than a fit.
+
+Let `r_p = mine_p / req_p` — bodies held per starting slot. Then
+`shortfall_p = max(0, 1 - r_p/M)`.
+
+**Lower edge — annihilation.** `shortfall_p` hits 0 exactly when `r_p >= M`, and a zero
+shortfall is *absorbing*: no scarcity or appetite weight can revive it. On a roster filled in
+proportion to `req`, `mine_p = R·req_p/Σreq`, so `r_p = R/Σreq` **for every position at once** —
+position-independent. Call it the depth ratio `D`. Below `M = D` a proportionally-filled
+roster goes globally dark and only quantization survivors (low-`req` slots like K) still
+register need. That is precisely the observed BALANCED double-kicker failure.
+
+    M_low ≈ D = len(roster_positions) / Σ starter_slot_counts
+
+`Σ starter_slot_counts` is exactly the count of starting slots — every slot, flex or named,
+contributes total 1.0 (`FLEX`: 1/n × n; `SUPER_FLEX`: 0.85 + 0.15); `BN`/`IR`/`TAXI`
+contribute 0. So **D is literally total roster spots per starting spot.**
+
+**Upper edge — loss of authority.** `shortfall` ranges over `[1 - D/M, 1]`, so the roster's
+share of the signal is `D/M` and decays as `1/M`; once it falls below the spread contributed
+by scarcity × appetite, ordering is context-only and the roster is ignored (the observed
+"WR-STARVED answers RB" saturation). Requiring the roster to retain at least half the signal:
+
+    D/M >= 1/2   ->   M_high ≈ 2D        =>   M = (M_low + M_high)/2 = 1.5·D
+
+`f = 1/2` is the **one** dimensionless, format-independent constant in the model, and it
+replaces a depth multiple that was format-dependent. It is the only fitted quantity and must
+be reported per template so it can be checked rather than trusted.
+
+**Provisional corroboration** (against the two edges that were genuinely measured):
+
+| template | R | starting slots | D | measured M_low |
+|---|---|---|---|---|
+| 1QB 12 | 20 | 9.0 | **2.222** | **2.20** |
+| SUPERFLEX 12 | 20 | 10.0 | **2.000** | 1.90 accept / 2.10 kicker-free |
+
+Both templates' lower edges land on `D`. Upper edges (4.80 / 4.00 measured vs 4.44 / 4.00
+predicted) are consistent, superflex exactly. **This is corroboration, not validation** — two
+points, and the upper edges came from the run whose width is now withdrawn.
+
+## BLOCKER — the rule's live domain is far narrower than assumed
+
+The corpus sweep could not run: every template aborted on its own non-vacuity guards
+(`appetite vacuous`, `pool exhausted`, `board still has N priced rows`). Diagnosing that is
+the more important result. A realistic 12-team 1QB draft where every team drafts a roster
+shaped like its own starting requirement:
+
+| round | picks | board | priced | unpriced |
+|---|---|---|---|---|
+| 3 | 36 | 297 | 228 | 69 |
+| 9 | 108 | 225 | 117 | 108 |
+| 13 | 156 | 177 | 69 | 108 |
+| 18 | 216 | 117 | 69 | 48 |
+| 19 (K) | 228 | 105 | 32 | 73 |
+| **20 (DEF)** | **240** | **93** | **0** | **93** |
+
+Pricing decays in **plateaus and cliffs**, not smoothly — and reaches zero only in the
+**final round**. Positional bench appetite stays live throughout, so the window where the
+rule can fire *and* has its inputs is real but is **one round wide out of twenty**.
+
+Because `_board_order` sorts every priced row ahead of every unpriced one, the top of the
+board is a priced row whenever any priced row exists. So the minimal rule — inert unless
+*nothing* is priced — governs roughly **5% of picks in this draft, all of them in the last
+round**. It does **not** touch the mixed regime (rounds 3–19), where 48–108 unpriced rows are
+already being ordered among themselves by `str(player_id)`. **The minimal rule as scoped does
+not address #114**, which lives in that mixed regime.
+
+Note the tension with §20.6's "27.8% of an 18-round draft": that measurement and this one
+differ in draft construction (here all twelve teams draft identical proportional rosters,
+which spreads consumption and keeps pricing alive longer). Window width is
+construction-dependent and only one point has been measured. **Recorded as a discrepancy to
+resolve, not as a correction to §20.6.**
+
+## What this means for the sequence
+
+Settling `M` is downstream of a question that is now open: **what regime should the rule
+govern — only the all-unpriced board, or the mixed board where the unpriced tail is already
+being ordered by player-id?** The answer changes how much `M` matters, and possibly whether
+`M` is the right parameter at all. That is a scope decision, not a measurement.
