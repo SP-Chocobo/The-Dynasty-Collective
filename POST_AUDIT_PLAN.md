@@ -1567,3 +1567,79 @@ been diagnostic: multiplicative swamping (r6), scarcity inventing need (r9a), un
 repaired first, which is why #62 moved onto the critical path.
 
 **Nothing is implemented. `_consensus_lookup` is untouched. No production file has changed since 1c.**
+
+## D9 — round 10: the band must NOT become adaptive, and why that is bigger than a formula choice
+
+The question was whether `NEAR_TIE_BAND` should tighten as player quality declines, so that thirty
+players stop being lumped into one level. **The answer is no — and the reason is not conservatism,
+it is circularity.**
+
+### The feedback loop an adaptive band would create
+
+`NEAR_TIE_BAND` is currently a **fixed measuring instrument**: *"these are close enough that the
+valuation cannot meaningfully distinguish them."* Make it a gradient on quality and it stops being
+an instrument and becomes part of the thing being measured. Everything downstream moves with it:
+
+* `near_tie_flags` → which players are reported as tied
+* the **in-band fraction** → my round-5 measure of discriminatory power
+* → the **ramp variable** I recommended keying the influence curve on
+* → **when contextual need is permitted to act** (the round-7b handover)
+* → how much of the field receives contextual influence
+* → and therefore the *apparent* point at which the valuation loses discrimination
+
+**The fix would change the diagnostic that decides how strongly the fix is applied.**
+
+This is worse than a design smell. Rounds 5, 7b and 8 all rest on the in-band fraction being a
+*measurement* of the valuation's own resolving power against a fixed yardstick. If the yardstick
+moves with the intervention, **those three measurement rounds stop being evidence for anything** —
+the ramp curve, the round-10 handover, and the discrimination weighting would all need re-deriving
+against a ruler that is itself a function of the answer.
+
+An adaptive band is not a tuning choice. It is an intervention that retroactively invalidates the
+measurements used to justify it.
+
+### The right decomposition: separate measurement from interpretation
+
+The band stays **immutable, as the permission boundary**. The open question is a different one:
+
+```
+OUTSIDE the band :  valuation wins. Untouched, unconditional.
+INSIDE  the band :  secondary information is PERMITTED to differentiate.
+WITHIN that layer:  quality / context / need may vary continuously.
+```
+
+The band decides **who may be re-ordered**. It never decides **how**. Nothing about the gradient
+inside the band touches the statistics of the boundary itself, so every measurement taken so far
+keeps its meaning.
+
+### The question this reframes into — and it is not the one I was about to ask
+
+Not: *"should the band be 2.0 → 1.7 → 1.4 as quality falls?"*
+
+But: **"when thirty players fall inside the existing band, is there a secondary signal that
+consistently separates them WITHOUT contradicting the primary valuation?"**
+
+Those are different claims. The first assumes the thirty are distinguishable and blames the ruler.
+The second tests it. And the two possible readings are genuinely different problems:
+
+* *"These thirty really are equivalent"* → nothing to reveal; a tighter band would resolve noise.
+* *"The macro-scale valuation compresses them into one economic tier, but their relative quality
+  still has structure"* → a within-band gradient is warranted.
+
+**Only the second justifies anything, and it has not been established.**
+
+### And a confound I had not separated
+
+The instruction to *test whether the engine's ability to discriminate actually changes as quality
+declines* catches a real gap in rounds 5 and 7b: **I measured discrimination against draft
+progression, and in a draft, later and lower-quality are confounded.** I never established which
+one drives it.
+
+Separable cleanly: on a **single** board, compare discrimination among the top-N candidates against
+a lower-quality slice of that **same** board. If the low-quality slice discriminates worse *at round
+1*, the driver is quality. If it discriminates the same, the driver is draft progression — and the
+late-draft compression is about the pool thinning, not about bad players being harder to price.
+
+That distinction changes what the within-band gradient would even be for, and it is measured next.
+
+**Nothing implemented. The band is not being touched.**
