@@ -2469,3 +2469,104 @@ What fuller coverage *would* change, none of which touches this mechanism:
 * **The measurements here age, the mechanism does not.** Board sizes, the round at which each
   position flips, and the 42/34 unpriced counts all come from the current projection set and
   will move. The domain boundary that produces them will not.
+
+---
+
+# ANCHOR REPAIR — VERIFICATION RESULT AND DISPOSITION
+
+*Written before the remediation edits, so the record exists at the moment of the decision
+rather than being reconstructed after it. See #37 for why that ordering is now the rule.*
+
+## State of play
+
+* `cf06959` — the `predraft_replacement_anchor` repair, on `ui-authority-pass`. `main` frozen.
+* `8344714` — doctrine + README updates (records the FINDING, independent of the repair).
+* **The full suite does not pass on this branch right now**: `Ran 1548 tests ... FAILED
+  (failures=14, errors=1, skipped=1)`. `cf06959` was committed with that verification still
+  running, because a stop hook required a commit. That was disclosed in its message.
+
+## Evidence gathered
+
+**Instrument 1 — full suite, complete capture.** All 15 failures fall in three modules and
+share one root cause: fixtures assert their late board carries unpriced rows, and in a 1QB
+league it no longer does.
+
+| module | failures |
+|---|---|
+| `test_survival_evidence` | 7 |
+| `test_absence_survives_consumers` | 4 (1 as ERROR) |
+| `test_downstream_contracts` | 4 |
+
+**Four of the fifteen are explicit non-vacuity guards** — `test_the_fixture_reaches_a_board_
+that_cannot_price_everything`, `test_the_late_board_actually_contains_absence`,
+`test_the_late_board_really_does_carry_unpriced_rows`, `test_a_whole_position_can_be_unpriced_
+which_is_how_one_reaches_the_layer`. Those guards are the reason this class failed **loudly**
+instead of going quiet. The discipline worked, and it was already here before this phase.
+
+**Instrument 2 — vacuity sweep** (`scratchpad/vacuity_sweep.py`). Nine absence-related modules
+run twice, anchor disabled then live, tallying unpriced rows per test. The control arm is the
+anchor-disabled run, and it is asserted to differ before anything is concluded.
+
+```
+tests that never build a board (unaffected):        236
+tests still exercising unpriced rows AFTER:           0
+tests that LOST THEIR SUBJECT:                       10   (5 loud, 5 silent)
+```
+
+The five silent ones, graded rather than lumped:
+
+| test | unpriced before | verdict |
+|---|---|---|
+| `test_a_priced_targets_survival_is_still_reported_as_measured` | 819/1833 | **hollowed** — control arm of a two-sided contrast whose other side now fails |
+| `test_build_snapshot_survives_every_late_round` | 2407/7683 | **hollowed** — "survives" meant "survives absence" |
+| `test_the_snapshot_is_identical_across_repeated_builds` | 1701/3807 | partial — determinism still tested, absence-determinism not |
+| `test_bpa_is_identical_for_every_team_at_the_same_board_state` | 63/474 | incidental — team-agnosticism is a property of priced values |
+| `test_universal_value_is_also_team_agnostic` | 63/474 | incidental — same |
+
+## The decision, and the gate that governed it
+
+Stated in advance: **if the sweep showed a large silently-disarmed population, revert
+`cf06959`** rather than adapt tests around it. A change that quietly neutralises dozens of
+assertions is worse than the defect it fixes, even when the defect is real.
+
+**Gate not met.** Two tests materially hollowed, one partial, two incidental. Proceeding with
+remediation rather than revert. Recording the gate here because a threshold declared before
+the measurement is worth more than one justified after it.
+
+## Why not simply weaken the failing tests
+
+They are good tests. They pin the absence contract's foundational claim — that a priced `0.0`
+and an absence are different things — and `test_a_priced_zero_and_an_unpriced_row_are_
+distinguishable` guards **both** sides of its own pair. The repair does not violate that
+contract. It removes the population in which the contract can be **demonstrated** in a 1QB
+league, which is a subtler cost than a regression: *a contract you cannot exercise is a
+contract you cannot defend six weeks from now.*
+
+## Remediation: move the fixtures to superflex
+
+Measured reachability after the repair:
+
+| league | round 16 | round 18 | round 20 |
+|---|---|---|---|
+| 1QB 12 | **0 unpriced** | 0 | 0 |
+| SUPERFLEX 12 | **11 unpriced (all QB)** | 11 | 9 |
+
+The surviving unpriced state is the `startable_floors` decline the repair deliberately does
+NOT revive — no remaining QB clears the startability threshold. So the fixtures keep every
+assertion, and their subject improves: the row is unpriced for a **measured** reason rather
+than a demand-domain artifact. `test_survival_evidence` already carries a superflex `ROSTER`
+at line 218, so there is in-module precedent for the shape.
+
+Known consequence, accepted and recorded: **the absence contract will be exercised only in
+superflex.** If the startability floor is ever changed, these fixtures lose their subject
+again — but loudly, because their non-vacuity guards remain.
+
+## Picking this up cold
+
+Open, in priority order: (1) apply the superflex fixture move to the three modules and re-run
+them, then the full suite; (2) `#123` — the `trade_value` branch is wired but untested;
+(3) the anchor roughly doubles board-build time (0.52s -> 0.98s), fixable by content-keyed
+caching since it does not depend on picks; (4) `#122` — the unmarked `mean_rate` imputation;
+(5) `#61` re-scope, now settled by measurement rather than argument; (6) `#37` evidence
+discipline. `DEPTH_MULTIPLE`, D9's minimal rule and Register 2 remain parked with no reason
+to exist.
