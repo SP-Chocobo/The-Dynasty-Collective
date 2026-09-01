@@ -1710,3 +1710,71 @@ engine has declared gaps of that size to be *"field noise, not ordering signal."
 **secondary, independent signal** — consensus rank, depth need, projection — and not from reading
 `tav` more closely. That is exactly the decomposition the operator specified, and it is now
 measured rather than assumed.
+
+## D9 — round 12: the compressed zone is not a scale effect. Ordering information is lost there.
+
+Round 12a's first instrument failed and is discarded: normalising median gap by each slice's own
+spread is dominated by outliers differently in each signal, so the three columns were never
+comparable. Replaced with **rank correlation**, which cares only about ordering and is
+distribution-free.
+
+Fresh board. Within each quality slice, does the engine's ordering agree with two independent
+orderings?
+
+| slice | n | engine vs **projection** | engine vs consensus | (consensus pairs) |
+|---|---:|---:|---:|---:|
+| 1–40 | 40 | **+0.949** | +0.494 | 40 |
+| 41–80 | 40 | **+0.831** | +0.275 | 40 |
+| 81–120 | 40 | **+0.438** | +0.328 | 19 |
+| 121–160 | 40 | **+0.325** | −0.165 | *14 — too few* |
+| 161–220 | 60 | **+0.124** | −0.080 | 43 |
+| 221–300 | 80 | **+0.640** | +0.363 | 75 |
+
+### The finding
+
+**Agreement with projections collapses from +0.949 to +0.124 through the middle of the board, then
+partially recovers.** That column is fully sampled (n=40–80 every row) and the effect is large.
+
+So the compressed zone is **not merely a display or scale problem**. In ranks 161–220 the engine's
+ordering is essentially *unrelated* to the projections — and projections are an **input** to that
+ordering, via `_vor = _points − replacement[pos]`. Something between the input and the output is
+dissolving the ordering.
+
+**Some divergence there is by design** — subtracting a per-position replacement level is exactly
+what VOR is for, and it *should* reorder players relative to raw points. So this is not
+automatically a defect. What is hard to read as intended is the magnitude: at +0.124 the
+relationship is gone, not adjusted.
+
+This is a strong lead on **#58** (*TAV saturation is information destruction at the BPA
+normalization layer*) and **#76** (*the ruler carries 94.5% of BPA's movement*), now visible from a
+third direction. **Recorded as a lead, not an identification** — #58's own diagnosis has to be
+re-read against these numbers before they are called the same thing.
+
+**The consensus column is NOT load-bearing here** and I am not leaning on it: coverage falls to
+**14 pairs** at ranks 121–160, so its −0.165 is noise, not an inversion. Only the projection column
+supports the finding.
+
+### Which answers the tier-decay question — in the negative
+
+The proposal was that a sharper, non-linear tightening rate could be derived from tier decay. Two
+measurements say that cannot be done on this signal:
+
+1. **Round 11: the decay is not monotonic.** Compression peaks at ranks 121–160 and *loosens*
+   below. A tightening curve would have to tighten and then un-tighten — a shape with no
+   justification in tier structure.
+2. **Round 12: in the zone where it matters, the engine's ordering does not track the underlying
+   quality signals at all.** Fitting a rate to that curve would be fitting **the transform's
+   behaviour**, not the players' tier decay.
+
+**You cannot calibrate against a curve that is mostly the instrument.** The sharper math is the
+right instinct applied to the wrong layer — the thing to fix is the layer producing the curve
+(#58), not the band reading it.
+
+### What this does to D9's ordering
+
+**#58 moves ahead of the contextual layer**, not behind it. Both #62 (round 9's missing multiplier)
+and now #58 are prerequisites rather than adjacent work — and #58 was already blocking formula
+tuning under §24 step 14 and blocking D10(B)'s rescale. Three separate lines of work now converge
+on the same parked item.
+
+**Still nothing implemented. The band is untouched. No production file has changed since 1c.**
