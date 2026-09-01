@@ -1778,3 +1778,86 @@ tuning under §24 step 14 and blocking D10(B)'s rescale. Three separate lines of
 on the same parked item.
 
 **Still nothing implemented. The band is untouched. No production file has changed since 1c.**
+
+## D9 — rounds 13–14: the middle of the board is GENUINELY ambiguous. My #58 lead was wrong.
+
+### Round 13 — the ceiling on any tiebreaker
+
+Do the two **independent** quality signals agree with each other, by board region?
+
+| slice | pairs | projection vs consensus |
+|---|---:|---:|
+| 1–40 | 40 | **+0.511** |
+| 41–80 | 40 | +0.357 |
+| 81–120 | 19 | +0.505 |
+| 121–160 | *14 — thin* | +0.160 |
+| 161–220 | 43 | **+0.237** |
+| 221–300 | 75 | +0.380 |
+
+**This is the ceiling on any within-band tiebreaker: it cannot recover more structure than the
+independent signals themselves agree on.** In the middle-late board that ceiling is **+0.16 to
++0.24** — weak.
+
+### Round 14 — production cliffs, and the correction they force
+
+Production cliffs are computed from projected points *within* a position, upstream of the BPA
+normalization entirely — a domain-truthful landmark for where tiers actually break.
+
+| slice | **production cliffs** | engine % gaps ≤ band |
+|---|---:|---:|
+| 1–40 | 11 | 51% |
+| 41–80 | **18** | 69% |
+| 81–120 | 6 | 97% |
+| **121–160** | **1** | **100%** |
+| 161–220 | 9 | 93% |
+| 221+ | 25 | 89% |
+
+**I expected this to show the compression was manufactured. It shows the opposite.**
+
+Ranks 121–160 contain **exactly one** production cliff — the flattest region of real production on
+the board — and that is precisely where the engine compresses hardest. Ranks 41–80 are the most
+cliff-dense region below the top, and the engine compresses *least* there.
+
+**The compression tracks real production flatness.** It is not an artifact.
+
+### Correcting round 12
+
+Round 12 recorded the compressed zone as a *"strong lead"* on **#58** (TAV saturation as
+information destruction). **That reading is undercut and I am withdrawing it as a lead.**
+
+The simpler explanation covers all three measurements at once. If production is genuinely flat
+through ranks 121–220, then:
+
+* **spacing** is genuinely small there → compression is real, not manufactured *(round 14)*;
+* **ordering** is easily reshuffled by a legitimate per-position replacement subtraction, because
+  the underlying differences are tiny → rho with raw projections falls to +0.124 *(round 12)*;
+* **independent signals have little to agree about** → projection-vs-consensus falls to +0.16–0.24
+  *(round 13)*.
+
+No normalization defect is required to explain any of it. #58 may still be real on its own
+evidence — this simply is not evidence for it, and I should not have called it a lead before
+checking the production curve. **The instrument that caught it was the operator's suggestion to
+benchmark against production cliffs.**
+
+### And this is the strongest justification the contextual layer has
+
+The consequence is better than the finding I was chasing. If the middle-late board is **genuinely
+ambiguous on player quality** — not broken, not compressed by a bug, just genuinely flat — then:
+
+> **Roster context is not a fallback for a failed valuation. It is the legitimate differentiator
+> precisely where player quality genuinely does not differentiate.**
+
+That reframes the whole D9 case. "The engine broke, so use context" was always a weak argument.
+"These players really are near-equivalent in production, so the right question becomes *which one
+does this roster need*" is a strong one — and it is now measured rather than asserted.
+
+It also sets the honest expectations the display must carry: in that zone the system should say
+*"these are genuinely close; here is the roster reason to prefer one"* — not present a confident
+ordering. Which is exactly round 8's "let the total shrink and say so", arrived at from a
+completely different direction.
+
+### What this does NOT license
+
+A more nuanced tiebreaker in that zone is still bounded by round 13's ceiling. **You cannot recover
+structure that is not there.** Any formulation claiming sharper discrimination among ranks 121–220
+than +0.24 is manufacturing confidence, and the reverse-case test should be extended to catch that.
