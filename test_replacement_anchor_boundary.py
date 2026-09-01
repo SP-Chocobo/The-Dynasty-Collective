@@ -35,12 +35,21 @@ LEAGUE = {
 SKILL = ("QB", "RB", "WR", "TE")
 
 
-def _universe(merger):
+IDP_LEAGUE = {
+    "roster_positions": ["QB", "RB", "RB", "WR", "WR", "TE", "FLEX", "FLEX", "IDP_FLEX"]
+                        + ["BN"] * 8,
+    "total_rosters": NUM_TEAMS, "settings": {"type": 2}, "scoring_settings": {},
+}
+
+
+def _universe(merger, extra_positions=()):
     """A players_db over the merger's whole projection set, ordered by trade_value so a
     synthetic draft consumes the best players first the way a real one does."""
     players_db, by_position, next_id = {}, {}, 0
-    for position in ("QB", "RB", "WR", "TE", "K", "DEF"):
+    for position in ("QB", "RB", "WR", "TE", "K", "DEF") + tuple(extra_positions):
         rows = merger.projections[merger.projections["position"] == position]
+        if rows.empty:
+            continue
         for _, row in rows.sort_values("trade_value", ascending=False).iterrows():
             next_id += 1
             parts = str(row["name"]).split()
@@ -232,6 +241,85 @@ class StartableFloorIsNeverRevived(unittest.TestCase):
         levels = {"RB": 100.0}
         dr._fill_omitted_from_anchor(levels, {"RB"}, None, {"RB": 999.0})
         self.assertEqual(levels["RB"], 100.0)
+
+class TradeValueBranchIsAnchoredToo(unittest.TestCase):
+    """The `~has_proj` branch -- and measurement says that branch IS the IDP path.
+
+    compute_draft_board splits the pool: rows carrying a points projection are valued against a
+    points replacement level, and rows without one fall back to a trade_value level. The anchor
+    is wired identically on both, but every synthetic universe used to develop it was built
+    from the projection set, so every row took the points path and only `_points` was ever
+    observed as a value_col. This class closes that gap.
+
+    It matters more than "an untested branch" suggests. Of the 764 rows in the real projection
+    set, 76 carry a trade_value with no projection, and all 76 are IDP (LB 29, DL 24, DB 23).
+    IDP starter demand is also tiny -- one IDP_FLEX slot splits to 0.333 per team, about 4
+    league-wide -- so it exhausts around round 11 of 18, far earlier than any offensive
+    position. The anchor is therefore MORE load-bearing for IDP than for offense, in the one
+    branch that had no tests at all.
+    """
+
+    @classmethod
+    def setUpClass(cls):
+        cls.merger = dm.DataMerger()
+        cls.players_db, by_position = _universe(cls.merger, ("LB", "DL", "DB"))
+        # Drained past the round where IDP demand runs out (measured: anchoring starts at 11).
+        cls.picks = _drain(by_position, {"WR": 3, "RB": 3, "TE": 2, "QB": 2,
+                                         "LB": 2, "DL": 2, "DB": 2})
+        cls.board = dr.compute_draft_board(
+            cls.merger, cls.players_db, cls.picks, my_roster_id="1", league=IDP_LEAGUE,
+            mode="balanced")
+
+    def _control_board(self):
+        original = dr.predraft_replacement_anchor
+        dr.predraft_replacement_anchor = lambda *a, **k: {}
+        try:
+            return dr.compute_draft_board(
+                self.merger, self.players_db, self.picks, my_roster_id="1", league=IDP_LEAGUE,
+                mode="balanced")
+        finally:
+            dr.predraft_replacement_anchor = original
+
+    def test_the_fixture_actually_reaches_the_trade_value_branch(self):
+        """Guards everything below. If no row takes the ~has_proj path this class is testing
+        the points branch a second time under an IDP-shaped name."""
+        on_the_branch = [r for r in self.board
+                         if r.get("bpa_source") == "position_relative_trade_value_vor"]
+        self.assertGreater(len(on_the_branch), 0,
+                           "no row reached the trade_value branch -- fixture proves nothing")
+        self.assertTrue(all(r["position"] in ("LB", "DL", "DB") for r in on_the_branch),
+                        "the trade_value branch is expected to be the IDP path")
+
+    def test_the_control_really_does_lose_idp_prices(self):
+        """And guards the comparison: without the anchor, IDP must actually go unpriced here,
+        or the branch is not exercised at the state this fixture builds."""
+        control = self._control_board()
+        lost = [r for r in control
+                if r["position"] in ("LB", "DL", "DB") and r["final_score"] is None]
+        self.assertGreater(len(lost), 0,
+                           "IDP stays priced without the anchor, so this state does not "
+                           "exercise the demand-exhausted case on the trade_value branch")
+
+    def test_idp_keeps_its_price_once_league_demand_is_exhausted(self):
+        idp = [r for r in self.board if r["position"] in ("LB", "DL", "DB")]
+        self.assertGreater(len(idp), 0, "no IDP rows on the board at all")
+        unpriced = [r for r in idp if r["final_score"] is None]
+        self.assertEqual(unpriced, [], "IDP rows fell off the board despite the anchor")
+        anchored = [r for r in idp if r.get("replacement_basis") == "predraft_anchor"]
+        self.assertGreater(len(anchored), 0,
+                           "no IDP row rests on the pre-draft anchor, so demand has not "
+                           "actually run out at this draft state")
+
+    def test_the_anchor_adds_idp_prices_without_changing_any_other(self):
+        control = {r["player_id"]: r["final_score"] for r in self._control_board()}
+        after = {r["player_id"]: r["final_score"] for r in self.board}
+        for player_id, before in control.items():
+            if before is None:
+                continue
+            self.assertIsNotNone(after.get(player_id), f"{player_id} lost a price it had")
+            self.assertAlmostEqual(after[player_id], before, places=9,
+                                   msg=f"{player_id}'s existing price changed")
+
 
 
 if __name__ == "__main__":
