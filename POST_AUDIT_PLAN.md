@@ -1368,3 +1368,70 @@ from the operator's warning rather than from my own measurement plan.
 
 **Still no implementation.** The next formulation must be built against this table, not against the
 round-6 deficit, which is now known to triple-count.
+
+## D9 — round 8: when a signal fails, should the others take over in equal weights?
+
+**Measured answer: no, and the data says so rather than intuition.**
+
+### Equal weights would give a zero-information signal full influence
+
+From round 3, the surviving signals at exhaustion, scored by distinct values across 10 candidates
+(`d` = how many different answers the signal gives — `d=1` means it says the same thing about
+everyone, i.e. carries no discriminating information at all):
+
+| Surviving signal | d | Discriminating power |
+|---|---:|---|
+| consensus rank *(where covered)* | 82/82 distinct | **perfect** |
+| `projected_points` | 8/10 | strong |
+| `waiting_cost` | 8/10 | strong |
+| `horizon_floor` / `horizon_sensitivity` | 6/10 | moderate |
+| `need_bonus` | 2/10 | weak |
+| `pick_necessity` | 2/10 | weak |
+| **`survival_probability`** | **1/10** | **none — same value for every candidate** |
+
+Equal redistribution would hand `survival_probability` — which at exhaustion literally cannot tell
+two candidates apart — **the same influence as consensus rank, which separates all 82 covered
+players.** That is not a judgement call; it is measurably wrong.
+
+It is also worse than useless: a signal with `d=1` contributes a constant to every candidate, so it
+adds nothing to the ordering while *diluting* the signals that do discriminate. Equal weights would
+actively degrade the decision.
+
+### Why "just renormalise the survivors" is also wrong here
+
+Proportional redistribution (drop the failed signal, rescale the rest to sum to 1) is the usual
+default. It fails for a reason specific to this system: **round 7 showed the signals are not
+independent.** Roster need is already counted twice inside `tav`. When `tav` dies, its *components*
+do not become newly available — they died with it. There is no clean "remaining share" to
+redistribute, because the shares overlap.
+
+### The third option, which fits this architecture better
+
+Redistributing weight to keep a total at 1.0 asserts that the decision is as well-founded as it was
+before. **It isn't.** Topping the weights back up to full confidence is a quiet fabrication — the
+same class of error as substituting `0.0` for an absent price, which this engine already refuses to
+do everywhere else.
+
+The consistent posture is: **let the total shrink, and say so.**
+
+* Rank on the surviving signals, weighted by their **measured** discrimination at that pick — not
+  by fixed constants, and not equally.
+* Let the aggregate evidence shrink as signals fail, and **carry that shrinkage as a stated
+  confidence** rather than hiding it behind renormalisation.
+
+This introduces **no tunable constant**, which matters in a codebase that has already been bitten by
+unproven ones (#56: *a bound is not a threshold*; #58/#75: the ruler that drifts 72×). Discrimination
+is computed per pick from the candidate set in hand — the same self-calibrating principle that round
+5 recommended for the ramp variable, applied to weights instead of to the blend.
+
+It also connects two parked items rather than adding a ninth: the shrinking total is exactly the
+*"this ordering rests on less"* statement that **#112** (kind-of-absence has no representation) and
+**#116** (the display contract) are both about.
+
+### Status
+
+A proposal grounded in measurements already taken, **not yet tested against the acceptance cases**.
+The next formulation round should compare, on the same WR8/QB4 fixtures: equal weights ·
+proportional renormalisation · discrimination-weighted with a shrinking total. Equal weights is
+worth running **as a control**, precisely because it is expected to fail — a formulation set with no
+losing entry is not measuring anything.
