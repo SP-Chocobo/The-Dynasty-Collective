@@ -55,6 +55,31 @@ def _contract_ok(role: str, response: str) -> Optional[bool]:
     return bool(parser(response))
 
 
+# The provider SDKs, by distribution name, whose installed version is worth recording on a
+# run. A benchmark report is this app's only versioned audit event -- the one artifact that can
+# answer "did this model get worse, or did something underneath it move?" -- and the SDK is one
+# of the things that moves: a client library can change default parameters, request handling,
+# tool encoding, or how a response is assembled, none of which touches this repo's own source.
+_PROVIDER_SDK_DISTRIBUTIONS = ("anthropic", "google-genai", "openai")
+
+
+def _provider_sdk_versions() -> dict[str, str]:
+    """{distribution: installed version} for whichever provider SDKs are actually importable
+    here. A distribution that isn't installed is OMITTED, never recorded as a version this run
+    did not run against -- absent means "not recorded", the same rule decision_log.log_decision
+    applies to provider/model. Never raises: a metadata lookup failing is not a reason to lose
+    a benchmark run."""
+    from importlib import metadata
+
+    versions = {}
+    for dist in _PROVIDER_SDK_DISTRIBUTIONS:
+        try:
+            versions[dist] = metadata.version(dist)
+        except Exception:  # noqa: BLE001 -- not installed, or a broken/partial install
+            continue
+    return versions
+
+
 def _fingerprint(*parts: str) -> str:
     """A short content hash of exactly what a run was conducted under. Deliberately a hash
     rather than a hand-maintained version number: a number has to be remembered and drifts out
@@ -367,6 +392,17 @@ def run_benchmark(
         "battery_fingerprint": _fingerprint(*(q["label"] + q["prompt"] for q in battery)),
         "rubric_fingerprint": _fingerprint(*(f"{k}:{w}:{d}" for k, w, d in rubric)),
         "chair_prompt_fingerprint": _fingerprint(system_prompt),
+        # The operating envelope this run was conducted under, beside the three fingerprints.
+        # Both of these can move without a single character of this repo changing, and both
+        # change what a candidate is able to produce: max_tokens decides whether a chair's
+        # structured block survives at all (see llm_engine.MAX_TOKENS on what a tight budget
+        # truncates first), and a provider SDK upgrade can alter defaults and response handling
+        # underneath an unchanged model name. Recorded, not gated on -- comparable_history
+        # still keys off the three fingerprints alone, because deciding that a token-budget or
+        # SDK change makes two runs incomparable is a judgment about what counts as the same
+        # experiment, not a fact this module gets to assert.
+        "max_tokens": llm_engine.MAX_TOKENS,
+        "provider_sdk_versions": _provider_sdk_versions(),
         "candidates": results,
     }
 

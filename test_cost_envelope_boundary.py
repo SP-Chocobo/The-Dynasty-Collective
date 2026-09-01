@@ -120,6 +120,13 @@ class NothingAmplifiesTheEnvelopeTests(unittest.TestCase):
     """The three ways a fixed envelope silently stops being fixed."""
 
     def test_no_retry_or_backoff_exists(self):
+        """Deliberately cruder than NoBudgetPrimitivesExistTests below: a raw lowercased
+        substring scan over the whole source, comments and docstrings included, not
+        word-bounded. That is over-broad on purpose -- a comment that merely mentions retrying
+        trips it, and being made to re-read the diff and confirm no retry semantics were added
+        is worth more than the false positive costs. It has already earned that once (§17 R15's
+        first draft described an SDK's "retry behavior" in a comment). Do not narrow it to
+        code-only without deciding that the cheaper signal is no longer wanted."""
         combined = (inspect.getsource(llm_engine) + inspect.getsource(pick_debate)
                     + inspect.getsource(bot_benchmark)).lower()
         for marker in ("retry", "backoff", "max_retries", "tenacity"):

@@ -153,8 +153,14 @@ class BenchmarkCoverageTests(unittest.TestCase):
         self.assertEqual(captured, {
             "role", "ran_at", "judge_provider", "judge_model", "candidates",
             "battery_fingerprint", "rubric_fingerprint", "chair_prompt_fingerprint",
+            # §17 R15: the operating envelope this run was conducted under, beside the three
+            # fingerprints. Both can move without a character of this repo changing.
+            "max_tokens", "provider_sdk_versions",
         })
-        for absent in ("cost", "tokens", "price"):
+        # max_tokens is a REQUEST ceiling, not a measurement: it says what the run allowed, not
+        # what it consumed. Nothing here still meters actual usage or spend (#100), and adding
+        # the ceiling must not be mistaken for having closed that.
+        for absent in ("cost", "price", "input_tokens", "output_tokens", "usage"):
             self.assertNotIn(absent, captured)
 
     def test_saving_a_report_keeps_a_capped_history(self):

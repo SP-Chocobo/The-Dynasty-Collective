@@ -3247,3 +3247,256 @@ Everything else in §16 needs a decision this audit does not get to make.
 4. **UI for R13.** The proposal history is recorded and nothing renders it. Follows the same
    record-now-display-later precedent as R9/R10/R11; a "🔎 Proposal history" popover mirroring
    the adjacent revision-history one is the obvious shape when someone wants it.
+
+## Pass 13 — §17
+
+**Scope:** Build Guide v2 §17 (cross-version schema, provider and live-upgrade safety).
+
+**Baseline:** `7908136` on `ui-authority-pass`; `main` frozen at `9fb5102`. One production file
+modified (`bot_benchmark.py`) — R15. #91–94, #96–108 remain queued; #99 stays ahead of #94.
+
+**Headline: this system has exactly one artifact that can say what it is — the benchmark report,
+via §5's content fingerprints — and nothing else has any identity at all. No stored record
+carries a version field, 31 of 31 stored trial records carry no version/commit/date,
+`requirements.txt` pins nothing, and all three default model ids are floating aliases whose
+served weights the app throws away unread. The absence of `__version__` turned out to be a
+considered decision rather than an oversight (see the correction in 17.1), which narrows the
+finding without softening it: the repo's own answer to version identity works, and has been
+applied once.**
+
+### 17.1 The version inventory, measured
+
+**STATUS: MISSING beyond one artifact — and the shape of the gap is not what it looks like**
+AST-walked every production module (excluding `test_`/`run_`/`compare_`/`verify_`/`cdme_`
+scripts) for `__version__`, `SCHEMA_VERSION`, `VERSION`, `CDME_VERSION`, `ENGINE_VERSION`:
+**zero occurrences.** `requirements.txt` carries exactly one bound in the whole file —
+`streamlit>=1.34`, with a comment naming the widget that needs it. `anthropic`, `openai`,
+`google-genai`, `pandas`, `scipy` and `pypdf` are unbounded, and there is no lockfile,
+`pyproject.toml`, `Pipfile` or constraints file of any kind.
+
+So §17's *"are active operations pinned to CDME/schema/context/provider/model versions?"* is
+**no on every axis**, and *"can provider SDK, tokenizer, tool interface, pricing, or model
+behavior changes be tied to explicit versioned audit events?"* has no mechanism to answer.
+
+**Correction to this section's own first framing.** I drafted 17.1 as "no version constant
+exists, therefore add one." `bot_benchmark._fingerprint`'s docstring disproves the implied
+recommendation: a content hash is used *"deliberately … rather than a hand-maintained version
+number: a number has to be remembered and drifts out of sync with the thing it names, whereas
+this cannot disagree with the battery, rubric, or chair prompt it was computed from."* The
+version-number **shape was considered and rejected**, for a good reason, in the one place this
+app needed identity. The absence of `__version__` is therefore a decision, not an oversight,
+and the test covering it is an enforcement of that decision rather than a characterization of a
+gap — a version constant appearing would be a reversal to weigh, not progress.
+
+What survives the correction is narrower and sharper: **the fingerprint approach is the
+established answer and has been applied to exactly one artifact.** The CDME coefficient set,
+every record schema, and the chair contracts outside the benchmark still have no identity of
+any kind — no hash, no number, nothing. **Verdict: SURFACE (#111)**, framed as "extend content
+hashing to what else needs identity", not "introduce version numbers". Dependency pinning stays
+separate and cannot even be *verified* from this environment — the three provider SDKs are
+deliberately not installed here (every provider call in the suite is stubbed), so any pin I
+wrote would be untested. Same posture as #88.
+
+### 17.2 What answered is not what was asked for
+
+**STATUS: MISSING — and this is the section's sharpest finding**
+All three default model ids are **floating aliases**: `claude-sonnet-5`, `gemini-2.0-flash`,
+`gpt-4o`. `CLAUDE_MODEL`'s own comment records that it replaced *"a now-retired dated
+snapshot"* — the codebase moved deliberately from a pinned snapshot to an alias, for good
+availability reasons, and inherited the alias problem with it.
+
+Every provider's response object carries the model that actually served the call.
+**All three callers extract text and discard the object** — verified by AST over
+`_call_claude` / `_call_gemini` / `_call_openai`: every `return` in all three is a string
+expression; none hands the response out. So §17's last question — *"what happens if a provider
+silently aliases a model name to a newer underlying model?"* — has the answer: **nothing
+notices, and every audit record reads identically before and after.**
+
+**Correction to my own first reading.** I initially wrote this up as `DebateResult.role_models`
+and `decision_log`'s R10 fields *claiming* to record "what actually answered" while recording
+the request. Re-reading R9's comment in context, the contrast it draws is
+record-at-the-time versus re-derive-from-live-config-later, not
+requested-versus-served. The fields are honest; the response object is what is missing. The
+finding is a gap in the callers, not a mislabelled field.
+
+**Verdict: SURFACE (#109).** Capturing the served model changes what `PROVIDER_CALLERS`
+returns — today a plain `str`, which the entire fail-soft `⚠️` convention (§14) depends on —
+and requires verifying three different SDKs' field names against SDKs that are not installed
+here. Blocked on the same thing as #88.
+
+### 17.3 An object that outlives its class
+
+**STATUS: EXISTS — it fails loudly, which is the right answer, and it was worth checking**
+Streamlit's `LocalSourcesWatcher` **evicts edited local modules from `sys.modules`** so they
+re-import on the next rerun — read directly out of the installed streamlit 1.61 source, not
+assumed. `st.session_state` survives that. So a `PickSnapshot`, `DataMerger` or
+`PickDebateResult` held in session state across a code edit is an instance of a class
+definition that no longer exists. Measured: `isinstance(held, ps.PickSnapshot)` is **False**
+after a module reload, and `type(held) is ps.PickSnapshot` is **False**.
+
+What happens when such an object reaches a consumer:
+
+| consumer | old-schema snapshot |
+|---|---|
+| `pick_synthesis.snapshot_is_current` | `AttributeError: 'OldPickSnapshot' object has no attribute 'picks_consumed'` |
+| `draft_board_ui.serialize_snapshot` | `AttributeError: ... has no attribute 'decision_regime'` |
+
+**Loud is correct** — the alternative is reading `decision_regime == "contested"` off a
+snapshot that never said so. Pinned as an enforcement test rather than left to luck, together
+with the fact that both stamp fields default to `None` and never to a value that could pass for
+a real one.
+
+**Correction to my own probe.** My first attempt deleted the fields from a *current* instance's
+`__dict__` and reported that the consumers returned OK. That was wrong: dataclass fields with
+defaults live as **class** attributes, so the deleted instance attributes fell back to the
+current class's defaults. A genuinely old instance keeps `__class__` pointing at the old class
+object, which has neither the field nor the default. The corrected probe — an actual older
+class definition — produced the `AttributeError`s above. Recorded because the first result was
+the more alarming one and would have been reported.
+
+### 17.4 Old audit records stay readable — by defensive `.get()`, not by design
+
+**STATUS: EXISTS — undefended until now**
+§17's *"can old audit records still be interpreted after schema changes?"* is **yes**, and the
+reason is that every store reads with `.get()`: `todo_log` 17, `bot_research` 15, `decision_log`
+12, `bot_benchmark` 11, `attachments` 4, `league_prefs` 6. Fed the barest record a much older
+version could plausibly have written, `load_todos`, `search_archived`,
+`search_decisions_with_outcomes`, `set_outcome`, `findings_for_context`,
+`load_bot_research_as_external` and `list_attachments` all cope without raising.
+
+This is a real property held together by a convention that is lost one bracket at a time — a
+planted `entry["text"]` in `search_archived` breaks it immediately. Now covered by tests.
+
+### 17.5 An upgrade can silently change what a stored context means — measured twice
+
+**STATUS: MISSING — both instances demonstrated**
+
+**(a) A renamed external export silently re-scores players.** `_EXTERNAL_PERCENTILE_RULES` maps
+`(source, file)` → the field to percentile. Nothing reconciles that table against what is on
+disk. Renaming one tracked filename — exactly what happens when a vendor renames its export —
+**moved 31 of 131 sampled composite scores** (median |Δ| **4.3** on a 0–100 scale, largest
+13.6) and made **4 disappear entirely**, with **no exception, warning or log**. The file stays
+on disk, still loads into `external_values`, still counts as a loaded source; it simply stops
+feeding the composite. 887 of 2,600 external rows already carry no percentile rule today, some
+deliberately (ESPN's redraft list, FantasyPros' best-ball list — both documented as excluded on
+purpose), which is precisely why an automatic warning is not mechanical: distinguishing a
+deliberate exclusion from an accidental orphan is a policy call.
+The one unambiguous half — a rule naming a file that is *not there* — is now an enforced test.
+
+**(b) A status the running code does not recognise makes a record invisible everywhere.** All
+five production `load_todos` calls pass a status filter. A record whose `status` sits outside
+both vocabularies appears in no view at all: not the active list, not the archive, not the
+archive search, not the header count, not `build_context`. It is not deleted and raises
+nothing. Two upgrades produce it — renaming a status, and reading a file written by a newer
+version. This sits directly against `todo_log`'s own stated rule that archived items are *"kept
+… never destroyed"*, since a record invisible in every view is functionally destroyed.
+**Verdict: SURFACE (#110)** for both — where an unrecognised record should surface is a UI
+decision.
+
+### 17.6 The benchmark is the one versioned audit event this app has
+
+**STATUS: PARTIAL — improved (R15)**
+§5's R95 gave every report a `battery_fingerprint`, `rubric_fingerprint` and
+`chair_prompt_fingerprint`, and `comparable_history` uses them to answer "has this model
+degraded?" honestly. That is genuinely the mechanism §17 Q6 and Q7 are asking for, for the one
+dimension it covers: **model behaviour under a fixed chair contract**.
+
+What it could not say was what else the run was conducted under. Two things move without a
+character of this repo changing, and both change what a candidate can produce:
+`llm_engine.MAX_TOKENS` (which decides whether a chair's structured block survives at all —
+see the §99 truncation thread) and the installed provider SDK version (defaults, retry
+behaviour, tool encoding, response assembly). **Verdict: REPAIR (R15)** — record both, under
+R95's own stated rule that a report must say what it "was actually conducted under."
+
+Deliberately **recorded, not gated on**: `comparable_history` still keys off the three
+fingerprints alone. Deciding that a token-budget or SDK change makes two runs incomparable is a
+judgment about what counts as the same experiment, and that judgment belongs to #96, not to
+this pass. The restraint is itself pinned by a test.
+
+### 17.7 The regression corpus cannot say which engine produced it
+
+**STATUS: MISSING**
+`data/draft_simulation_trials/` holds **31** stored experiment and trial records — the
+deterministic corpus §19 will ask about. Scanned for any top-level key matching
+`commit|sha|version|baseline|ran_at|generated|timestamp|date`: **one file matched, and it was a
+false positive** — `rookie_roster_context_experiment.json`'s `baseline_gap` / `baseline_top` /
+`baseline_second` are that experiment's own measurements, not a version stamp. So **31 of 31
+carry no version identifier of any kind.** Eighth occurrence of the substring-artifact class,
+caught by reading the hit.
+
+The project does track this, by convention, in analysis-script filenames
+(`compare_baseline_pre_post_95d2111.py`, `run_95d2111_effect_report.py`). Folded into #111 —
+stamping the trials means calling git from ~20 `run_*.py` scripts and depends on how #111
+answers "what is a version".
+
+### 17.8 A third instance of the compute-then-drop class
+
+**STATUS: noted, not repaired**
+`DataMerger.reconciliation_conflicts` is populated on every load (it existed to stop 1,084
+per-load field conflicts being resolved silently, per #83) and is **read by nothing in
+production** — only by `test_reconciliation_boundary.py`. That makes three: `waiting_cost`
+(#57), `_match_path`/`_match_verified` (§16.3), and now this. Naming the class matters more
+than any one instance: **this codebase reliably computes the diagnostic and reliably fails to
+route it anywhere a reader will see it.** It also means "put the percentile-rule drift into
+`reconciliation_conflicts`" would have been adding a second unread list, which is why 17.5(a)
+is surfaced rather than repaired.
+
+### 17.9 Corrections to my own §17 readings
+
+1. **"No version constant" is not a gap** (17.1) — the biggest of the four, and found last,
+   while reviewing the R15 diff. `_fingerprint`'s own docstring records that hand-maintained
+   version numbers were considered and rejected in favour of content hashes. The section had
+   been written the other way round; the headline, the test's classification and #111's framing
+   all changed. Ninth occurrence of the one-read-short pattern, and the first to overturn a
+   section headline after it was written.
+2. **The stale-class probe** (17.3) — first result was wrong, corrected, both recorded.
+3. **`role_models` / R10 are not mislabelled** (17.2) — I nearly reported a contradiction that
+   a careful reading of R9's comment disproves.
+4. **The trial-corpus scan's single hit was a false positive** (17.7).
+5. **§15's appendix conflated two scans** — it described the no-retry guarantee as
+   "word-bounded with comments excluded", which is true of the *budget-primitive* scan and not
+   of `test_no_retry_or_backoff_exists`, a raw whole-source substring scan. R15's first draft
+   said "retry behavior" in a comment and the full suite failed on it. Comment reworded, test
+   left as-is with its docstring corrected.
+6. **A probe harness's `finally` does not survive an external kill.** The first probe batch hit
+   a 2-minute tool timeout mid-run and left P9's mutation (`gpt-4o` → `gpt-4o-20240513`) in
+   `llm_engine.py`. Caught by the `git status` check that follows every probe batch, reverted,
+   and the remaining probes re-run in the background instead. Recorded because the check is the
+   only reason it did not reach a commit.
+
+## Pass 13 summary
+
+| § | question | status | verdict |
+|---|---|---|---|
+| 17.1 | any version identity at all? | **MISSING** beyond the benchmark's hashes | SURFACE (#111), reframed |
+| 17.2 | is the served model knowable? | **MISSING** | SURFACE (#109), blocked |
+| 17.3 | object outliving its class | **EXISTS** — fails loudly | **now enforced** |
+| 17.4 | old records still interpretable? | **EXISTS** — by `.get()` | **now enforced** |
+| 17.5a | renamed export silently re-scores | **MISSING** — 31/131 moved | SURFACE (#110) |
+| 17.5b | unknown status invisible everywhere | **MISSING** | SURFACE (#110) |
+| 17.6 | benchmark identifies its version? | **PARTIAL** | **REPAIR (R15)** |
+| 17.7 | regression corpus versioned? | **MISSING** — 31/31 | folded into #111 |
+
+**Does anything clear the bar for a production change?** One thing did.
+
+**R15 — `bot_benchmark`: a report records the operating envelope it ran under.** Adds
+`max_tokens` and `provider_sdk_versions` (via `importlib.metadata`) to every stored report. An
+SDK that is not installed is **omitted**, never recorded as a version the run did not have —
+the absence contract, and the same rule `decision_log.log_decision` applies to provider/model.
+A metadata lookup that raises costs nothing: a benchmark run is not lost to a packaging quirk.
+Justified by R95's own words — a report must say what it "was actually conducted under" — and
+by §17 Q7 asking for exactly this artifact by name. Not gated on, by design.
+
+Everything else in §17 needs either a decision or an environment this audit does not have.
+
+**Ranked follow-ups**
+1. **#111** — content hashing is this repo's own answer to version identity, and it covers one
+   artifact. Extend it to the CDME coefficient set, the record schemas and the chair contracts;
+   stamp the 31 trial records. Dependency pinning is a separate, environment-blocked question.
+   The one that has to be answered before most of the others can be.
+2. **#109** — the served model is unrecoverable because the response object is discarded, and
+   all three default ids are floating aliases. Blocked on the provider SDKs, like #88.
+3. **#110** — two demonstrated silent-meaning-change paths: a renamed export re-scores players,
+   an unrecognised status hides a record. Both need a surfacing decision.
+4. **The compute-then-drop class** (17.8) — three instances now. Worth one decision about where
+   diagnostics go, rather than three separate ones.

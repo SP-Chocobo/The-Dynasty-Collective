@@ -8224,3 +8224,187 @@ dismissal folded into "accepted"; `log_decision` losing ts/date; `save_attachmen
 230. A capability that was never built is a real answer to "how is it isolated?". Reporting that
      no override surface exists beats manufacturing an equivalent one so the question has
      something to grade.
+
+---
+
+# Appendix §17 — Cross-Version Schema, Provider & Live-Upgrade Safety
+
+**Baseline entering:** `7908136` on `ui-authority-pass`, suite 1398 OK. `main` frozen at
+`9fb5102`, untouched. Defect A1 untouched.
+
+## What was measured
+
+**Version identity: one artifact has it, nothing else does.** AST over every production module
+for `__version__`, `SCHEMA_VERSION`, `VERSION`, `CDME_VERSION`, `ENGINE_VERSION` — **zero**,
+which is a *decision*: `bot_benchmark._fingerprint` states that a content hash is used
+*"deliberately … rather than a hand-maintained version number: a number has to be remembered and
+drifts out of sync with the thing it names."* That approach covers the benchmark report and
+nothing else. `requirements.txt`
+carries one bound in the whole file (`streamlit>=1.34`); `anthropic`, `openai`, `google-genai`,
+`pandas`, `scipy`, `pypdf` are unbounded, and there is no lockfile, `pyproject.toml`, `Pipfile`
+or constraints file. **31 of 31** stored records under `data/draft_simulation_trials/` carry no
+version, commit or date key — the single scan hit was a false positive (`baseline_gap` etc. are
+that experiment's own measurements).
+
+**The served model is discarded.** `CLAUDE_MODEL = "claude-sonnet-5"`,
+`GEMINI_MODEL = "gemini-2.0-flash"`, `OPENAI_MODEL = "gpt-4o"` — all floating aliases;
+`CLAUDE_MODEL`'s comment records that it replaced *"a now-retired dated snapshot"*. AST over
+`_call_claude` / `_call_gemini` / `_call_openai`: every `return` in all three is a string
+expression, none returns or reads the response object. The three provider SDKs are not
+installed in this environment (every provider call in the suite is stubbed), so which field
+each one exposes could not be verified here — the finding is stated at the level that *can* be
+verified: the object is thrown away, so nothing about it is available to anyone.
+
+**An object outliving its class.** Read out of installed streamlit 1.61's
+`LocalSourcesWatcher`: edited local modules are evicted from `sys.modules` and re-imported,
+while `st.session_state` survives. Measured on a reloaded module: `isinstance(held, PickSnapshot)`
+→ **False**, `type(held) is PickSnapshot` → **False**. An older-schema snapshot handed to the
+current consumers raises `AttributeError` in both `snapshot_is_current` (`picks_consumed`) and
+`serialize_snapshot` (`decision_regime`).
+
+**Old records stay readable by `.get()`.** Defensive-read counts: `todo_log` 17,
+`bot_research` 15, `decision_log` 12, `bot_benchmark` 11, `league_prefs` 6, `attachments` 4.
+Minimal legacy records round-trip through every reader without raising.
+
+**A renamed export silently re-scores players.** Removing `("dynastyprocess", "players.csv")`
+from `_EXTERNAL_PERCENTILE_RULES` and adding `players_v2.csv` in its place: **31 of 131**
+sampled composites moved (median |Δ| **4.3** / 100, largest 13.6), **4** disappeared, **no
+exception, warning or log**. 887 of 2,600 external rows already carry no percentile rule, some
+deliberately (ESPN redraft, FantasyPros best-ball).
+
+**An unrecognised status hides a record.** All five production `load_todos` call sites pass a
+status filter; a record whose `status` is outside both vocabularies is absent from the active
+list, the archive, the archive search, the header count and `build_context`, silently.
+
+**`reconciliation_conflicts` is write-only in production** — read only by
+`test_reconciliation_boundary.py`. Third instance of the compute-then-drop class, after
+`waiting_cost` (#57) and `_match_path` (§16.3).
+
+## Corrections to my own conclusions
+
+1. **The stale-class probe was wrong the first time.** I deleted the newer fields from a
+   *current* instance's `__dict__` and reported that the consumers returned OK. Dataclass
+   defaults live as class attributes, so the lookup fell through to the current class. A
+   genuinely old instance keeps `__class__` pointing at the old class object, which has neither
+   the field nor the default — the corrected probe raises `AttributeError`. The first, more
+   alarming result would have been reported.
+2. **`role_models` and R10 are not mislabelled.** I drafted a finding that they claim to record
+   "what actually answered" while recording the request. R9's comment draws a different
+   contrast — record-at-the-time versus re-derive-from-live-config-later — and under that
+   reading the fields are honest. Withdrawn before publication.
+3. **The trial-corpus version scan's one hit was a false positive** — eighth occurrence of the
+   substring-artifact class, caught by reading the hit rather than the count.
+4. **"No version constant exists" is not the gap I first wrote it as.** §17.1 was drafted as an
+   absence to be filled, and `_fingerprint`'s own docstring — found late, while reviewing the
+   R15 diff — records that the version-number shape was considered and rejected in favour of
+   content hashing, for a reason that holds. The section's headline was rewritten, the test
+   reclassified from characterization to enforcement (a version constant appearing is a
+   reversal, not progress), and #111 reframed from "introduce versions" to "extend the hashing
+   this repo already chose to what still has no identity". Ninth occurrence of the one-read-short
+   pattern, and the first to change a section's headline after it was written.
+5. **§15's appendix conflated two different scans, and this section's own repair caught it.**
+   The §15 record described the no-retry guarantee as *"verified word-bounded with comments
+   excluded."* That description belongs to
+   `NoBudgetPrimitivesExistTests.test_no_budget_ceiling_quota_cooldown_or_throttle_exists`,
+   which really is word-bounded and comment-stripped.
+   `test_no_retry_or_backoff_exists` is a much cruder thing: a raw lowercased substring scan
+   over the whole of `llm_engine` + `pick_debate` + `bot_benchmark`, docstrings and comments
+   included. R15's first draft described an SDK's "retry behavior" in a comment and the full
+   suite failed on it. The test is left as-is — being made to re-read the diff and confirm no
+   retry semantics were added is worth more than a false positive costs — but its docstring now
+   says what it actually is, so the next reader is not misled the way the §15 record was.
+6. **A probe harness's `finally` does not survive an external kill.** The first probe batch hit
+   a two-minute tool timeout mid-run and left P9's mutation in `llm_engine.py`. The `git status`
+   check that follows every probe batch caught it; reverted, remaining probes re-run in the
+   background. Recorded because that check is the only reason it did not reach a commit.
+
+## Repairs
+
+**R15 — `bot_benchmark.py`: a stored report records the operating envelope it ran under.**
+Adds `max_tokens` (from `llm_engine.MAX_TOKENS`) and `provider_sdk_versions` (from
+`importlib.metadata`, over `_PROVIDER_SDK_DISTRIBUTIONS`) to every report, beside the three
+R95 fingerprints. A distribution that is not installed is **omitted**, never recorded as a
+version the run did not have; a metadata lookup that raises never costs the run. Justified by
+R95's own stated rule — a report must say what it "was actually conducted under" — and by
+§17's question about tying provider-SDK changes to explicit versioned audit events, which the
+benchmark history is the only artifact in this app positioned to answer.
+
+**Deliberately not gated on.** `comparable_history` still keys off the three fingerprints
+alone. Whether a token-budget or SDK change makes two runs incomparable is a judgment about
+what counts as the same experiment; that belongs to #96. The restraint is pinned by its own
+test so a later change has to be a considered edit rather than a drift.
+
+No other production file was changed. §17's remaining gaps need either a product decision
+(#110, #111) or an environment with the provider SDKs installed (#109).
+
+## Tests added
+
+Two existing tests needed updating for R15, and both were doing their job:
+`test_benchmark_contract_coverage.test_the_report_shape_is_pinned_so_absent_fields_stay_visible`
+pins the report's exact top-level key set (updated to include the two new keys, plus a note that
+`max_tokens` is a request CEILING and not a usage measurement, so it cannot be mistaken for
+closing #100), and `test_cost_envelope_boundary.test_no_retry_or_backoff_exists` caught the word
+"retry" in an R15 comment (see correction 5).
+
+`test_version_boundary.py` — **26 tests**. Enforcement: an uninstalled SDK omitted rather than
+placeheld; an installed one reporting its real version; a partially-reporting environment;
+a metadata explosion costing nothing; the report carrying `max_tokens` and
+`provider_sdk_versions`; the envelope surviving save/reload; `comparable_history` still keyed on
+three fingerprints only; a pre-fingerprint report retained in history but excluded from
+comparable; four stores reading minimal legacy records without raising; an old-schema snapshot
+failing loudly in both consumers; the stamp fields defaulting to `None`; every file-backed
+percentile rule pointing at a file that exists; the synthetic research pair being the only
+ruleless one; upload targets derived from the rules; the two to-do vocabularies not overlapping.
+Also enforced: no module declaring a hand-maintained version constant — reclassified from
+characterization once `_fingerprint`'s docstring showed the absence to be a decision.
+Characterization (pinned, not endorsed, each citing its register item): the provider callers
+returning text only (#109), a status outside both vocabularies invisible everywhere (#110), and
+dropping a percentile rule moving composites silently (#110).
+
+Non-vacuity: **13 probes** planted in real production code and reverted, all failing the
+intended tests — the report dropping `max_tokens`; dropping `provider_sdk_versions`; recording
+`"unknown"` for a missing SDK; letting a metadata failure propagate; `comparable_history`
+starting to gate on `max_tokens`; `picks_consumed` defaulting to `0`; the certifier
+`getattr`-defaulting a field; a percentile rule pointing at a missing file; a default model id
+becoming a dated snapshot; a caller handing out the response object; `search_archived`
+bracket-reading a legacy field; a production module declaring `SCHEMA_VERSION`; and the two
+to-do status vocabularies overlapping.
+
+## Invariants
+
+231. A system with no version cannot be asked what version it is running, and every pinning
+     question downstream inherits that. Before "are active operations pinned?" can be answered,
+     something has to exist to pin them to.
+231a. An absent version number can be a decision. A content hash of the thing itself cannot
+     drift out of sync with what it names, which a hand-maintained number always eventually
+     does — so "no `__version__` anywhere" is worth reading as a rejected shape before it is
+     reported as a missing feature. The real question is then what else deserves the hash.
+232. A floating model alias is a dependency you did not declare. The string is stable, the
+     weights behind it are not, and nothing in a stored record distinguishes the two.
+233. Discarding a response object discards every fact it carried. Reading only the text is a
+     decision about provenance, not just about parsing, and it is made once at the caller and
+     felt everywhere downstream.
+234. An object in session state outlives the class that defined it whenever local modules are
+     reloaded. Failing loudly on the mismatch is the correct behaviour; reading a default the
+     old object never carried is the failure mode worth testing for.
+235. `getattr(obj, "field", default)` on a schema-versioned object converts a detectable
+     mismatch into a silent wrong answer. Defensive reads belong on records loaded from disk,
+     not on live objects whose class is supposed to match.
+236. Forward-compatible reads are a property held together by convention, and conventions are
+     lost one bracket at a time. If old records staying readable matters, one planted `[...]`
+     should break a test.
+237. A lookup table keyed on filenames is a schema, and renaming a file is a schema migration.
+     Nothing announces it, the file stays on disk, and the numbers quietly move.
+238. Filtering by a closed vocabulary makes every record outside that vocabulary invisible
+     rather than invalid. "Kept, never destroyed" is not satisfied by a record no view can
+     reach.
+239. Record what a run was conducted under; decide separately whether a difference makes two
+     runs incomparable. Recording is a fact, comparability is a judgment, and collapsing them
+     hides the judgment inside the fact.
+240. Absence of a version is absence, not version zero. An SDK that cannot be found is omitted
+     from the record; writing "unknown" into the slot makes a missing measurement look like a
+     taken one.
+241. This codebase computes diagnostics reliably and routes them nowhere reliably —
+     `waiting_cost`, `_match_path`, `reconciliation_conflicts`. Adding a fourth unread
+     diagnostic is not a repair, which is why a silent-drift signal was surfaced rather than
+     stored.
