@@ -8123,7 +8123,7 @@ it was made either.
 league_id}` — asserted by sorted-set comparison. No origin field, while
 `MODERATOR_SYSTEM_PROMPT` explicitly admits findings from the user's own captioned reference
 material *and* from live search in the same sentence (*"Whichever way it entered the debate"*).
-`data/baseline/bot_research.json` is git-tracked; `data/player_aliases.json` and
+`data/baseline/bot_research.json` is **not gitignored**, so a finding written there would be committed — but see the §21.7 correction: the file has never existed and was never committed. `data/player_aliases.json` and
 `data/league_formats.json` are gitignored — confirmed via `git check-ignore`.
 
 ## Corrections to my own conclusions
@@ -8819,3 +8819,115 @@ board's unit wording.
 271. When the prescribed validation depends on a parked repair, run it anyway and record the
      dependency. A blocked check with a measured current-state baseline is worth more than a
      deferred one, and far more than one made to pass.
+
+---
+
+# Appendix §21 — Operational Economics, Reuse & Research Memory
+
+**Baseline entering:** `af4126d` on `ui-authority-pass`, suite 1457 OK. `main` frozen at
+`9fb5102`, untouched. Defect A1 untouched. **No production file was modified.**
+
+## What was measured
+
+**Reuse.** `findings_for_context` / `comparisons_for_context` reach the panel through
+`build_context`, so a debate starts knowing what was already found, each line date-stamped.
+Research is read at exactly four production sites — `data_merger` (composite),
+`app.py:1922/1936` (context prose), `app.py:5225/5226` (a UI listing) — and **none is on the
+path that decides whether to spend a provider call**. Grepped production for
+`cache`/`memo`/`ttl`/`expire`/`expiry`/`reuse`: the only cache in the system is
+`sleeper_client`'s league-snapshot and players-DB cache. The §15 envelope is unchanged at four
+calls per debate regardless of what the store holds. `BEAT_SYSTEM_PROMPT` argues *against* reuse
+— *"your own live results are, by definition, fresher than any file-based source in your
+context"* — which is correct for injury and depth-chart signal and makes §21's "paying to
+rediscover" premise inapplicable to that half of the work.
+
+**The six reusability attributes, on a real stored row.** Present: source identity (`source`),
+freshness (`ts`/`date`, plus a 60-day half-life in the composite), topic/entity scope
+(`player_name`), validation status (`composite_impact`). Absent: **evidence fingerprint** and
+**expiration**. Beyond the six, three more absences already carry items: league scope recorded
+and never read (#103), origin (#106), discovery cost/latency (#100). Full key set:
+`claim, composite_impact, conviction, date, id, league_id, player_name, question, rank, source, ts`.
+
+**Two operations discovering the same fact.** Measured: identical wording same day → **deduped**
+(same id, 1 row); the same fact **reworded** → **duplicated** (2 rows); same rank from a
+different source → correctly distinct (3 rows). The composite then collapses 3 stored rows to
+**2** via `load_bot_research_as_external`'s newest-per-(player, cited source) rule — so the
+dedup's stated purpose (stopping weight inflation in the percentile pool) is already covered
+independently, and its real effect is on store size and on the prose both restatements reach.
+
+**Sharing versus private context.** Every finding stores `question` — the user's own typed
+question, passed through from `process_moderator_output(trigger_question)` — and `league_id`, in
+the same row as the shareable claim, with no boundary between them. Inert today
+(`findings_for_context` renders only date/player/source/rank/claim, and the app is
+single-tenant), and material because this is the one research store deliberately left out of
+`.gitignore`.
+
+**Expiration.** A finding aged **400 days** is served to the panel unchanged inside the
+newest-30 cap. The composite recency-weights rank-bearing findings (a 400-day claim contributes
+~1% of a same-day one); the context prose applies no weighting at all, only a visible date.
+
+**Cost and latency.** Latency is measured in exactly one place — `bot_benchmark` times each
+provider call and reports `latency` per question and `avg_latency` per candidate, surfaced as
+*"{score}/100, {avg_latency}s avg"*. `DebateResult` carries question, four reports, verdict,
+errors, `role_providers`, `role_models` and **no timing, usage or cost**, even though
+`run_debate` already runs two chairs inside a `ThreadPoolExecutor` where wall time is free.
+Grepped production for `price_per`, `per_token`, `cost_per`, `pricing`, `$0.`, `usd`: **every hit
+is fantasy-football player pricing** — verified by reading, not by count. There is no money
+anywhere in this codebase.
+
+## Corrections to my own conclusions
+
+1. **`data/baseline/bot_research.json` is not git-tracked, and never has been.** I wrote that it
+   was, in the §16 appendix and again in §18, and used it to sharpen #106 into "a user's own
+   claim becomes a committed numeric input". I took it from `bot_research.py`'s own docstring
+   (*"Both are global and git-tracked"*), which README repeats twice. Checked this pass: the file
+   **does not exist**, `git check-ignore` reports **NOT ignored**, and `git log --all` on the path
+   is **empty — never committed**. The claim is aspirational rather than false (nothing gitignores
+   it, so a finding would be committed the first time one is written), but the state has never
+   been reached: **the research memory has never held a single row in version control**, and every
+   measurement above is against a planted record. #106's severity drops from an observed state to
+   a live hazard. Both earlier records corrected in place.
+   This is a direct violation of the rule I have cited all programme —
+   `ENGINEERING_DOCTRINE.md`'s *"A docstring can encode a defect. Documentation is evidence of
+   intent, never of correctness"* — committed twice before being caught.
+2. **The same-day dedup matters less than its docstring says.** Its stated purpose is preventing
+   weight inflation in the composite; the composite's own newest-per-key rule already prevents
+   that. Measured, not inferred: 3 stored rows, 2 reaching the composite.
+
+## Repairs
+
+**None.** Every §21 gap is an economics or product decision — what may be cached and for how
+long, what a shared record must strip, and whether a price belongs on a benchmark report. The one
+thing that looked like a defect was my own record.
+
+## Tests added
+
+**None.** Nothing was repaired, and the two candidate enforcement tests both depend on decisions
+that are parked: an expiry rule has no policy to assert against, and a shareable-projection test
+has no defined boundary between claim and private context to assert.
+
+## Invariants
+
+272. Context reuse and cost reuse are different mechanisms. Handing a chair what was already
+     found makes the answer better; only something that reads the store *before* the call makes
+     it cheaper, and this system has the first without the second.
+273. Not all research is cacheable, and the store already knows which. A rank-bearing valuation
+     claim is durable; an injury or depth-chart read is worth less the moment it is stored, and
+     the field that separates them exists before any caching policy does.
+274. A dedup key is a definition of sameness. Keying on the exact claim string makes two
+     phrasings of one fact two facts, and no amount of downstream collapsing changes what the
+     store believes it holds.
+275. A guard whose stated purpose is served elsewhere is not thereby useless — but its real
+     effect is somewhere its docstring does not mention, and that is where it should be reasoned
+     about.
+276. A shareable claim and the question that produced it are different objects. Storing them in
+     one row costs nothing until the row travels, at which point there is no boundary to enforce.
+277. Freshness weighting applied to one consumer and not another is a half-policy. The composite
+     decays a 400-day-old finding to a rounding error while the prose hands the same claim to the
+     panel at full standing.
+278. An instrument that measures quality and speed cannot answer a question about cost, however
+     well it measures the other two. One missing field is the difference between "which model is
+     better" and "which model is worth it".
+279. Aspirational documentation reads exactly like descriptive documentation. "Both are global
+     and git-tracked" describes a file that has never existed, and the only way to tell is to
+     look at the filesystem instead of the sentence.

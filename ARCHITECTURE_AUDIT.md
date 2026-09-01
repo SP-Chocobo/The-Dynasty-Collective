@@ -3111,7 +3111,7 @@ which. Its keys are exactly `id, ts, date, player_name, source, claim, rank, com
 conviction, question, league_id` — verified by set comparison, not by eye.
 
 A rank-bearing finding then feeds `composite_player_score` at weight 0.5, and
-`data/baseline/bot_research.json` is **git-tracked** (unlike the per-league gitignored stores).
+`data/baseline/bot_research.json` is **not gitignored** (unlike the per-league stores), so a finding written there would be committed. [CORRECTED IN §21.7: I wrote "is git-tracked" here on the strength of `bot_research.py`'s own docstring. The file does not exist, is not tracked, and `git log --all` shows it was never committed. The mechanism is real; the state has never been reached.]
 So: user uploads a screenshot, captions it, the panel doesn't dispute it, and the user's own
 claim becomes a committed numeric input to the app's blended valuation, attributed to ESPN.
 
@@ -3236,7 +3236,7 @@ already applies to reference material, past outcomes and pins.
 Everything else in §16 needs a decision this audit does not get to make.
 
 **Ranked follow-ups**
-1. **#106** — a rank-bearing research finding cannot name its origin, and feeds a git-tracked
+1. **#106** — a rank-bearing research finding cannot name its origin, and feeds a would-be-committed
    composite input. Needs a Moderator-contract field, or a rule that a finding whose origin
    can't be named doesn't carry a rank.
 2. **#107** — the three doors from user input into valuation (alias, rankings upload, external
@@ -4205,3 +4205,208 @@ tidy the symptom of a parked scale defect and is parked with it.
    the board's prose qualifies its unit in three of five places.
 4. **Re-run this entire pass after the repair sequence.** Four of eleven checks are blocked; the
    trials here are the current-state baseline they should be compared against.
+
+## Pass 17 — §21
+
+**Scope:** Build Guide v2 §21 (operational economics, reuse & research memory).
+
+**Baseline:** `af4126d` on `ui-authority-pass`; `main` frozen at `9fb5102`. **No production file
+was modified** — every §21 gap is an economics or product decision, and the one thing that
+looked like a defect turned out to be a correction to my own earlier record instead.
+
+**Headline: the research memory has the right taxonomy and no mechanism, and the cost half of
+"operational economics" does not exist at any layer. Findings carry four of the six reusability
+attributes §21 names, nothing consults them before spending a call, nothing expires, and no
+price appears anywhere in the codebase — so §21's closing question, whether a more expensive
+model earns its cost, is structurally unanswerable by an instrument that measures quality and
+latency and never money.**
+
+### 21.1 Reuse: research is reused as context, never as a cache
+
+**STATUS: MISSING as a cost mechanism — EXISTS as context**
+`findings_for_context()` and `comparisons_for_context()` are injected into `build_context`, so
+the Beat Tracker does start a debate knowing what the panel has already found, each line stamped
+with its date. That is real value: the panel is never blind.
+
+But the read sites are exactly four, and **none of them is on the path that decides whether to
+spend a call**: `data_merger` (composite input), `app.py:1922/1936` (context prose),
+`app.py:5225/5226` (a UI listing). The §15 envelope stands unchanged — four provider calls per
+debate whatever the store already holds.
+
+**The only cache in the system is `sleeper_client`'s** (league snapshots and the players DB, with
+an age check). Grepped for `cache`/`memo`/`ttl`/`expire`/`expiry`/`reuse` across production: no
+hit anywhere on the AI or research path.
+
+**And the prompt argues against reuse, correctly.** `BEAT_SYSTEM_PROMPT`: *"Use live search
+whenever it would sharpen the answer — your own live results are, by definition, fresher than any
+file-based source in your context."* For the Beat Tracker's actual job — injury designations,
+depth charts, practice reports — cached research is *wrong*, and §21's premise ("paying to
+rediscover it") does not apply to that half of the work.
+
+**The store already draws the line §21 needs.** A finding with a `rank` is a durable valuation
+claim that feeds the composite; one without is qualitative and carries `composite_impact:
+"none"`. The taxonomy that would decide what is cacheable already exists in the record. What is
+absent is anything that reads it before spending.
+
+### 21.2 The six reusability attributes, measured on a real stored record
+
+**STATUS: PARTIAL — four of six**
+Written a finding through the production path and inspected the stored row:
+
+| §21 attribute | present? | as what |
+|---|---|---|
+| source identity | **yes** | `source` (the cited outlet) |
+| freshness | **yes** | `ts` + `date`, and a 60-day recency half-life in the composite |
+| topic / entity scope | **yes** | `player_name` |
+| validation status | **yes** | `composite_impact`; `panel_undisputed` on comparisons |
+| evidence fingerprint | **no** | the `claim` string is the only content; nothing hashed |
+| expiration | **no** | nothing ages out anywhere |
+
+Beyond §21's six, three more absences already carry register items: league scope is **recorded
+and never read** (#103), origin (search vs the user's own screenshot) is **absent** (#106), and
+the cost or latency of the discovery is **absent** (#100).
+
+Stored keys, in full: `claim, composite_impact, conviction, date, id, league_id, player_name,
+question, rank, source, ts`.
+
+**On the missing fingerprint**: §17.1 established that this repo's own chosen answer to identity
+is a content hash (`bot_benchmark._fingerprint`), deliberately preferred over a maintained
+version number. Applying it to an evidence claim is the same mechanism, one artifact further —
+folded into #111 rather than raised as a new idea.
+
+### 21.3 Two operations discovering the same fact
+
+**STATUS: PARTIAL — exact repeats deduped, restatements not**
+Measured directly:
+
+```
+identical wording, same day      -> same id returned, 1 row   DEDUPED
+same fact, reworded, same day    -> new id, 2 rows            DUPLICATED
+same rank, different source      -> new id, 3 rows            distinct key, correct
+```
+
+`add_finding`'s same-day guard keys on the exact tuple (player, source, claim, rank), so
+*"ESPN has him WR4"* and *"ESPN ranks him fourth among WRs"* are two findings.
+
+**But the consequence is smaller than the docstring implies.** That guard says it exists to stop
+a repeat *"inflating this finding's weight in whatever percentile pool it feeds."* The composite
+is already protected independently: `load_bot_research_as_external` keeps only the newest row per
+`(player, cited source)`, and the measurement confirms it — **3 stored rows collapsed to 2
+reaching the composite.** So the dedup's stated purpose is redundantly covered; its real effect
+is on the store's size and on the prose the panel reads, where both restatements appear.
+
+Concurrency is the #102 shape: `add_finding` is load-modify-write on one global file with no
+lock, so two simultaneous writers lose one row. Unchanged by §21, restated for completeness.
+
+### 21.4 Sharing across users versus private context
+
+**STATUS: MISSING — the record does not separate the claim from what produced it**
+Every finding stores `question` — the user's own typed question, passed straight through from
+`process_moderator_output(trigger_question)` — and `league_id`. The shareable artifact (player,
+source, claim, rank) and the private context that produced it (which league, what the user
+asked) live in the same row with no boundary between them.
+
+Today that is inert: `findings_for_context` renders only date/player/source/rank/claim, so the
+question text is stored but never re-injected, and the app is single-tenant (§12). It matters
+because `bot_research.json` is **the one research store deliberately left out of `.gitignore`**,
+i.e. the one designed to travel — which makes it the first thing that would be shared, carrying
+the private fields with it. **Verdict: SURFACE (#117).**
+
+### 21.5 Expiration
+
+**STATUS: MISSING at the context layer, EXISTS at the composite layer**
+Measured: a finding aged **400 days** is served to the panel unchanged, inside the newest-30 cap.
+Nothing ages out, and no TTL exists anywhere.
+
+The two consumers behave differently, and only one of them is defensible today:
+- **Composite**: rank-bearing findings are recency-weighted (`_recency_weight`, 60-day
+  half-life), so a 400-day claim contributes about 1% of a same-day one. Handled.
+- **Context prose**: no weighting at all. A 400-day-old qualitative claim reaches the panel with
+  the same standing as yesterday's — **labelled with its date**, which is honest, but unranked
+  against fresher material and competing for the same 30-slot cap.
+
+Folded into #117: an expiry policy is exactly the kind of product decision §21 is asking for, and
+"a stale claim is not a false claim" (§22's own later phrasing) is the rule it has to respect.
+
+### 21.6 Cost and latency — the half that does not exist
+
+**STATUS: MISSING**
+- **Latency** is measured in exactly one place: `bot_benchmark` times each provider call
+  (`t0 = time.time()` around it) and reports `latency` per question and `avg_latency` per
+  candidate. `app.py` surfaces it as *"{score}/100, {avg_latency}s avg"*.
+- **Production debates measure nothing.** `DebateResult` carries the question, four reports, the
+  verdict, errors, `role_providers` and `role_models` — **no timing, no usage, no cost.**
+  `run_debate` already runs Quant and Beat inside a `ThreadPoolExecutor`, where wall time is
+  trivially available, and does not capture it.
+- **No price exists anywhere.** Grepped production for `price_per`, `per_token`, `cost_per`,
+  `pricing`, `$0.`, `usd`: every hit is fantasy-football player pricing. Checked by reading, not
+  by count.
+
+So §21's *"can the system measure the marginal cost and latency of each operation and chair?"* is
+**latency: only in the benchmark, never in production; cost: nowhere, at any layer.** This is
+#100 seen from the economics side rather than the provenance side.
+
+**And that decides the section's closing question.** *"Can the platform determine whether a more
+expensive model actually improves downstream decision quality enough to justify its cost?"* The
+benchmark is the only instrument that could — it already scores quality per candidate model,
+records latency, and (since §17 R15) records the token budget and SDK versions it ran under. It
+records **no price**, so it can rank models by quality and by speed and **cannot express the
+comparison the question asks for at all.** The instrument is one field short of the question.
+Folded into #100.
+
+### 21.7 A correction to my own §16 and §18 records
+
+**This is the pass's most important output.**
+
+I wrote, in the §16 appendix and again in §18, that `data/baseline/bot_research.json` is
+**git-tracked**, and used it to sharpen #106: a user's own claim becoming *"a committed numeric
+input"*. I took it from `bot_research.py`'s own docstring — *"Both are global and git-tracked,
+unlike decision_log/todo_log's per-league, gitignored JSON"* — and README repeats it twice.
+
+Checked directly this pass:
+
+```
+data/baseline/bot_research.json      does not exist
+git check-ignore                     NOT ignored
+git log --all -- <path>              (empty: never committed)
+```
+
+Both research stores are **absent, untracked, and have never been committed.** The claim is
+aspirational rather than false — nothing gitignores them, so a finding *would* be committed the
+first time one is written — but the state has never been reached, and **the research memory this
+section is auditing has never held a single row in version control.** Every measurement in 21.2
+and 21.3 above is against a planted record, and says so.
+
+Two things follow. **#106's severity drops**: a user-supplied claim becoming a committed input is
+a live hazard, not an observed state. And I violated the rule I have been citing all programme —
+`ENGINEERING_DOCTRINE.md`'s *"A docstring can encode a defect. Documentation is evidence of
+intent, never of correctness"* — by carrying a docstring claim into two audit records without
+checking it. Both records are corrected in place.
+
+## Pass 17 summary
+
+| §21 question | measured result | verdict |
+|---|---|---|
+| reuse rather than rediscover | reused as context; no cache, no call suppression | **MISSING** as economics (#117) |
+| what makes research reusable | 4 of 6 attributes present | **PARTIAL** (#117, #111) |
+| shared across users, private preserved | `question` + `league_id` in the same row as the claim | **MISSING** (#117) |
+| two operations discover the same fact | exact repeat deduped; restatement duplicated | **PARTIAL** |
+| dedup without inheriting private context | no call dedup exists, so moot | **N/A today** |
+| marginal cost and latency per chair | latency in the benchmark only; cost nowhere | **MISSING** (#100) |
+| does a costlier model justify its cost | instrument has quality + latency, no price | **unanswerable** (#100) |
+
+**Does anything clear the bar for a production change?** No. Every gap here is an economics or
+product decision — what may be cached, for how long, and what a shared record must strip. The
+one thing that looked like a defect was my own record, and it is corrected rather than coded
+around.
+
+**Ranked follow-ups**
+1. **#117** — the research-memory contract: no expiry, no evidence fingerprint, and no boundary
+   between a shareable claim and the private question and league that produced it. One decision
+   surface; #103 (league scope recorded but unread) and #106 (origin) are the same record's
+   other two missing columns.
+2. **#100** (sharpened) — the benchmark is one field short of answering §21's closing question.
+   Adding a price to a report it already fingerprints is the cheapest path to a
+   quality-per-cost comparison this app cannot currently make.
+3. **#111** (unchanged) — an evidence fingerprint is this repo's own content-hash mechanism
+   applied one artifact further.
