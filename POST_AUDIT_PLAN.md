@@ -888,3 +888,96 @@ this source = worse"* — which may be false for exactly the populations a sourc
 **Still open. Next: candidate formulations, measured against controlled drafts.** Consensus-as-
 tiebreaker is now the strongest and smallest of them — it changes nothing while the engine has
 signal, and replaces a zero-information string sort with a sourced one where it does not.
+
+---
+
+# D9 — REFRAMED AGAIN by the operator, and a correction to my own recommendation
+
+My round-2 close said consensus-as-tiebreaker was *"the strongest and smallest of the candidate
+formulations."* **That ordering was wrong**, and the operator has corrected it: define the decision
+calculus that consumes the context the engine already has **first**, then consider external
+evidence as one input to it. Reaching for the external source first is how a fallback quietly
+becomes an authority.
+
+## The distinction that reframes the whole item
+
+> **The engine running out of player valuation information does not mean the engine has run out of
+> decision information. Those are two completely different failures.**
+
+When `universal_value` becomes `None`, exactly one thing has become invalid: *"how much better is
+Player A than the appropriate replacement player?"* Everything else the system knows is untouched —
+roster construction, positional requirements, remaining starting and bench slots, depth by
+position, insulation needs, **what opponents have and need**, who is likely to be available later,
+tiers and rankings, projections, the remaining pool, positional scarcity, the consequences of
+waiting, and whether the roster is already over-concentrated somewhere.
+
+**One dimension is exhausted. The decision is not.**
+
+## The architectural principle
+
+> **The system should degrade in precision, not in intelligence.**
+
+```
+normal:     economic valuation -> contextual roster calculus -> external evidence -> decision
+exhausted:  (valuation absent) -> contextual roster calculus -> external evidence -> decision
+NOT:        (valuation absent) -> sort by projected points
+```
+
+## The six rules this settles
+
+1. **Engine economics stay authoritative wherever they exist.** VOR / universal value / team
+   acquisition value are never overridden.
+2. **Only where the engine genuinely cannot distinguish** — pricing exhausted, or no valid
+   comparison — may an external deterministic ranking act as a *tiebreaker*.
+3. **Absence from a source is not negative information.** Unknown must stay unknown, never ranked
+   below covered. *(This directly answers the two-tier-ordering constraint round 2 left open.)*
+4. **Deterministic, non-LLM sources only**, via an **explicit allowlist** with documented
+   precedence. **The `bot_research` ingestion boundary is not to be weakened.**
+5. **Consensus rank must never become a universal ranking of the board.** It exists only to break
+   an otherwise unresolved engine tie.
+6. **The tiebreaker still passes through roster/contextual need.** The deep-draft question is not
+   *"who has the highest projection?"* but *"which available asset provides the most useful next
+   layer of insulation for this roster?"*
+
+## Explicitly NOT to be done yet
+
+* **Do not implement the consensus tiebreaker.**
+* **Do not solve the 1QB gap by adding FantasyPros into `_consensus_lookup`.** In the operator's
+  words, that is *"exactly the kind of seemingly tiny change that can accidentally turn a carefully
+  protected ingestion boundary into 'whatever data happens to be available gets to influence the
+  engine.'"* Round 2 already recorded that this filter **is** the CDME ingestion boundary; this
+  makes the prohibition explicit rather than merely advisory.
+
+## The risk that makes this worth doing carefully
+
+Fixing the 36-vs-319 inversion with a projection or consensus sort would stop the board making
+*obviously* stupid choices and start it making **plausible-looking, contextually stupid ones** —
+and those are far harder to detect. A WR8 outranking a QB4 on raw projection looks entirely
+reasonable on screen and is close to indefensible in a superflex dynasty draft where the roster
+already holds seven WRs and three QBs.
+
+## The acceptance tests
+
+**Primary — "Do I really need WR8 when I don't have QB4?"** Roster holds QB1–QB3 and WR1–WR7;
+the board offers a WR8 (proj ~180) and a QB4 (proj ~150); VOR is exhausted for both. A
+projection-only fallback takes the WR. The system must be *capable* of preferring the QB.
+
+**Reverse — the calculus must invert.** Strong QB depth, dangerously thin at WR, and the same
+machinery should prefer the WR. A rule that only ever favours QBs has encoded a positional bias,
+not a roster calculus. *(This is why the reverse case is mandatory, not optional: it is the
+non-vacuity test for the whole feature.)*
+
+## What the next measurement must demonstrate
+
+Five behaviours, each shown as an exact pick-level difference between formulations:
+
+1. engine signal available → **engine wins**;
+2. engine unavailable + deterministic consensus available → **consensus may break the tie**;
+3. consensus unavailable → **no penalty for being unknown**;
+4. roster-depth pressure → **materially changes the choice**;
+5. raw projected points alone → **demonstrably does not become the fallback**.
+
+## Status
+
+**Source precedence and the exact roster-depth formulation are policy questions.** Measure the
+mechanical options, show where each changes the pick, bring the choices back. **No implementation.**
