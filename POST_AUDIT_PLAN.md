@@ -1,0 +1,245 @@
+# Post-Audit Execution Plan — reconciled
+
+**Status: planning document. No production code has been written for this phase.**
+
+Inputs reconciled here:
+1. the completed 25-section architecture audit (`ARCHITECTURE_AUDIT.md`, Passes 1–21) and its
+   41 open register items;
+2. **Post-Audit Plan of Attack v2** (Phases 1–11);
+3. the operator's revised 12-step sequence.
+
+`main` stays frozen at `9fb5102`. All work continues on `ui-authority-pass`.
+Baseline entering this phase: **`d7902ac`, 1459 tests OK (1 skip), clean tree.**
+
+---
+
+## Part 1 — Where the three inputs disagree
+
+Four genuine conflicts. None is silently resolved here.
+
+### 1.1 Insight scope: Top 5, or Top-N?
+
+Plan v2 is explicit and repeated: *"exactly the Top 5 eligible deterministic candidates"*,
+*"Insight remains fixed at Top 5 scope."* The revised sequence says *"a fixed number of the
+highest-ranked candidates"* and lists **"exact Top-N scope"** as a contract item still to be
+settled. **The revised sequence reopens a decision Plan v2 had closed.** Treated as open.
+
+### 1.2 The targeted delta audit moves from before implementation to after
+
+* **Plan v2:** Phase 3 design contract → **Phase 4 targeted delta audit** → Phase 5 implement.
+* **Revised sequence:** step 3 contract → **step 4 implement and test** → step 5 delta audit.
+
+This is not cosmetic. Plan v2 audits a *design*; the revised order audits *running code*. This
+audit's entire method argues for the revised order — twelve of my own findings this audit were
+wrong until measured, and a boundary that does not exist yet cannot be probed. But part of Phase 4
+genuinely belongs at design time: anything whose answer would *change the contract* is cheaper to
+find before the contract is written.
+
+**Recommendation: split it.** A short design-time review against the boundaries the audit already
+established (authority, least-privilege, snapshot provenance, truncation, prompt injection), then
+the real measured delta audit after implementation. Recorded as decision **D2**.
+
+### 1.3 The Master Manual is absent from the revised sequence
+
+Plan v2 **Phase 9** requires a human-readable "dummy manual" for a non-programmer maintainer
+*before* v0.1 is declared, and Phase 10's freeze checklist includes *"Verify the Master Manual
+describes the actual system."* The revised 12-step sequence has no manual step: it runs smoke-out
+(9) → full Opus audit (10) → freeze (11) → Fable blind audit (12).
+
+Dropping it also removes a freeze criterion, and Phase 11 explicitly hands the blind auditor *"the
+system and documentation."* Flagged as **D3** — possibly a deliberate cut, possibly an omission.
+
+### 1.4 Phase 8 splits into two steps
+
+Plan v2 bundles the aggressive Opus audit and ~20 varied draft simulations into one phase. The
+revised sequence separates them (step 9 smoke-out, step 10 cross-discipline audit) and drops the
+"~20" figure. **No conflict** — the split is an improvement, since the smoke-out should *feed* the
+audit rather than run beside it. Adopting the revised split, and keeping Plan v2's ~20-draft
+figure as the smoke-out's floor.
+
+---
+
+## Part 2 — The register, triaged
+
+The audit's own §24 seven-way classification maps almost exactly onto the three buckets requested.
+41 open items.
+
+### A. Mandatory — demonstrated defects or structural gaps (13)
+
+Not policy. Each is either a measured defect or a mechanism that exists and is not wired.
+
+| Item | What is actually wrong | Evidence |
+|---|---|---|
+| **#92** | `PickSnapshot` carries **no identity field** at all | 8 fields, none an id/hash/version |
+| **#101** | `snapshot_is_current` exists, works, and has **zero production callers** | 4 references repo-wide: 3 docstrings + 1 comment |
+| **#102** | Cross-session lost update in every per-league store | demonstrated §11.4b |
+| **#99** | Provider output truncation undetectable | §9.6 |
+| **#100** | Nothing meters tokens, cost, or latency anywhere | §10.4a |
+| **#104** | No deterministic abort-vs-degrade rule on upstream failure | §14.6a |
+| **#105** | Four resource knobs, no enforcement surface | §15.3–15.5 |
+| **#107** | User overrides reach valuation unattributed | §16.3 |
+| **#110** | Two demonstrated silent-meaning-change paths | §17.5 |
+| **#113** | Nothing runs the checks, pins inputs, or hashes anything | §19 |
+| **#114** | Late-draft pricing collapse: 27.8% of an 18-round draft decided by a player-id tiebreak | §20.6, 1,293 decision points |
+| **#118** | Players-DB 24h cache undisclosed in the freshness manifest | §22 |
+| **#119** | `time_horizon_adj`/`risk_adj` reach no production consumer; board drops `bpa_source`/`confidence` | §24, AST + exhaustive grep |
+
+### B. Policy decisions — surfaced, never chosen here (14)
+
+The §24 "missing contract" class, verbatim: **#50, #53, #54, #55, #71, #93, #94, #97, #98, #104\*,
+#112, #114\*, #116, #117.**
+
+(\* #104 and #114 appear in both buckets: each has a mechanical half and a policy half. #114's
+defect is measured; *what the board should do when pricing information is exhausted* is a decision.)
+
+### C. Needs evidence before it can be actioned (8)
+
+**#49, #51, #52, #86, #87, #88, #109, #115** — every one blocked on *access* (a K/DEF/IDP board, a
+reachable `api.sleeper.app`, an SDK that reports the served model, an unrun pass), not on a choice.
+Do not schedule these as work; schedule *acquiring the input*.
+
+### D. Optional / deferrable polish (6)
+
+**#36, #48, #91, #96, #103, #106, #108, #111** — real, none blocking.
+
+---
+
+## Part 3 — The finding that changes the sequence
+
+**Insight, as specified, cannot be built on the current foundation.** This is not a style
+objection; it is measured.
+
+The operator's own Insight requirements include:
+
+> *"Insight results should become part of the reviewable record for that draft, **bound to the
+> exact PickSnapshot** that generated them."*
+> *"Historical Insight results must remain readable against the snapshot they were generated from
+> and **must never silently regenerate against a later board state**."*
+> *"Prytaneum should have explicit visibility of **available Draft PickSnapshots** as context."*
+
+Measured state of the foundation those three sentences require:
+
+* **`PickSnapshot` has no identity.** Its 8 fields are `pick_label, round, my_roster_id,
+  candidates, user_selected_player_id, picks_consumed, data_freshest_date, decision_regime`.
+  There is no id, hash, or version. **You cannot bind a record to an object that cannot be named.**
+* **`PickSnapshot` does not persist.** It is built per-rerun and lives in session state. There is
+  no "available Draft PickSnapshots" for Prytaneum to see, because there is no store.
+* **`snapshot_is_current` — the exact staleness check "never silently regenerate" needs — exists,
+  is correct, and is called by nothing in production.**
+
+Nine further contract clauses the operator requires map one-to-one onto open register items:
+
+| Required Insight contract clause | Blocked on |
+|---|---|
+| snapshot identity & stale-result invalidation | **#92**, **#101** |
+| in-flight cancellation / obsolete-result discard | **#92**, **#101** |
+| persistence and retention | **#92** |
+| multi-tab / multi-client synchronization | **#102** |
+| cost / token metering | **#100** |
+| maximum output length + truncation behavior | **#99** |
+| API failure behavior + deterministic fallback | **#104** |
+| strict input/token budget, timeout, cooldown/debounce | **#105** |
+| provider/model attribution | **#109** *(externally blocked — the contract must state what is actually recordable, not what is wished for)* |
+| exact deterministic context envelope | **#119**, **#93** *(and must not reopen #18/R90)* |
+
+**Both Plan v2 and the revised sequence schedule this foundation *after* Insight** — the revised
+sequence puts #114/#115/#116/#118/#119 at step 6, and the persistence/metering family is unscheduled
+in both. That is the building before the foundation.
+
+**Two further couplings, from measurement rather than principle:**
+
+* **#114 → Insight will confabulate.** In the late draft, 27.8% of picks are decided by a
+  player-id tiebreak — i.e. the ordering among those candidates carries *no information*. Insight's
+  stated job is "comparing them against one another and explaining the important differences."
+  Asked to explain a difference that does not exist, a language model will produce one. Insight must
+  either be told when it is in that regime, or be withheld there. **This is the sharpest
+  ENGINE OWNS TRUTH / AI EXPLAINS TRUTH violation available**, and it is reachable on the very
+  first draft.
+* **#116 → Insight will speak an ambiguous unit.** The internal scale is not the 0–100 band, and
+  the board's own prose qualifies its unit correctly only 3 times in 5. Insight puts numbers into
+  fluent prose, where a wrong unit is far harder to spot and correct than on a label.
+
+---
+
+## Part 4 — The reconciled sequence
+
+Renumbered. Deltas from the operator's 12 steps are marked **[CHANGED]** with the reason.
+
+**Step 0 — Consolidate and triage the register.** *(operator step 1)* — **done above.**
+
+**Step 1 — Insight Foundation. [CHANGED: promoted ahead of Insight]**
+The mandatory subset that Insight's own contract clauses require: **#92, #101, #102, #99, #100,
+#104, #105.** All bucket A. Nothing here is a new product decision except the storage/retention
+policy the operator has already asked to set (**D4**). This is real, small, and unblocks ten
+contract clauses.
+
+**Step 2 — Settle the Insight contract.** *(operator step 3)* — all 18 clauses, now answerable
+because step 1 made the substrate real. Decisions **D1, D5–D8** below.
+
+**Step 2a — Design-time boundary review. [CHANGED: split from operator step 5]**
+The subset of the delta audit that could change the contract: authority, least-privilege
+(must not reopen R90/#18), snapshot provenance, prompt injection, deterministic/AI separation.
+Cheap; runs against the contract, not code.
+
+**Step 3 — Implement Insight minimally, test thoroughly.** *(operator step 4)*
+
+**Step 4 — Measured delta audit.** *(operator step 5)* — the rest of Plan v2 Phase 4, now against
+running code: truncation, staleness, persistence, replayability, cost, provider attribution,
+concurrency.
+
+**Step 5 — Remaining deterministic work.** *(operator step 6)* — **#114** (with its policy half
+settled), **#115**, **#116**, **#118**, **#119**, **#107**, **#110**, **#113**.
+**[NOTE: #114 and #116 are candidates to pull into step 1](#part-3)** — see D6.
+
+**Step 6 — Gold Wyrm identity / UI rebuild.** *(operator step 7)* — including establishing how I
+can inspect the live site or a local preview **before** substantial UI work. That access question
+is worth resolving early since it has a lead time; raised as **D7**.
+
+**Step 7 — Provider/league integration matrix.** *(operator step 8)* — map, rank, recommend for
+v0.1. No blind implementation.
+
+**Step 8 — Full-system smoke-out.** *(operator step 9)* — ~20 varied drafts as the floor, plus
+adversarial configs, malformed data, provider failures, stale snapshots, concurrent clients.
+
+**Step 9 — Cross-discipline Opus audit.** *(operator step 10)*
+
+**Step 10 — Master Manual. [CHANGED: restored from Plan v2 Phase 9 — see D3]**
+
+**Step 11 — v0.1 freeze candidate.** *(operator step 11)*
+
+**Step 12 — Fable-tier blind full-spectrum audit.** *(operator step 12)*
+
+---
+
+## Part 5 — Decisions required before work starts
+
+| # | Decision | Blocks |
+|---|---|---|
+| **D1** | Insight scope: Plan v2's fixed Top 5, or a different fixed N? | Step 2 |
+| **D2** | Split the delta audit (design-time review + measured post-implementation pass), or keep it whole? | Step 2a |
+| **D3** | Is the Master Manual (Plan v2 Phase 9) dropped or retained before freeze? | Step 10 |
+| **D4** | Insight storage/retention: where records live, what evidence projection is retained with the prose, what is cleared at draft conclusion | Step 1 |
+| **D5** | Does Insight receive research/external findings at all? (safe default: no) | Step 2 |
+| **D6** | Do **#114** and **#116** move into step 1 as Insight prerequisites, or stay at step 5? | Step 1 vs 5 |
+| **D7** | How I get at the Gold Wyrm visual reference — live URL, local build, or exported assets | Step 6 |
+| **D8** | Is historical Insight prose admissible as Prytaneum context? (operator has already ruled: never engine truth; labelling required if admitted) | Step 2 |
+
+---
+
+## The first concrete work item
+
+**#92 — give `PickSnapshot` an identity and a store**, scoped to exactly what Insight's contract
+requires and no further:
+
+1. a deterministic content-derived identity on `PickSnapshot` (extending the mechanism **#111**
+   notes already exists for one artifact, rather than inventing a second one);
+2. a persisted, append-only per-draft snapshot store;
+3. **wire `snapshot_is_current`** — the function is already written and correct; #101 is one call
+   site plus the discard/annotate/warn decision, which is the *same* choice #99 and #101 were both
+   parked on.
+
+It is the keystone: **§23** named #92 the root of 4 of its 23 architectural mandates; **§25** ranked
+it #1; and it is the only "missing persistence" item in the register. Three of Insight's stated
+requirements are unbuildable without it.
+
+Gated on **D4** (retention/storage policy) before implementation begins.
