@@ -1145,3 +1145,76 @@ That is being measured against the engine's own yardstick — `NEAR_TIE_BAND = 2
 which `near_tie_flags` already refuses to call its own ordering a preference — as candidates-in-band
 per pick, against round and against demand. **If a real ramp exists anywhere, it is there and not
 in presence.** Result pending.
+
+## D9 — measurement round 5: the ramp exists, and it is in discriminatory power
+
+Measured against the engine's own yardstick — `NEAR_TIE_BAND = 2.0`, the band inside which
+`near_tie_flags` already refuses to present its ordering as a real preference. Reported as the
+**fraction of the priced candidate field sitting inside that band of the leader**: 2% means a clean
+standout, 60% means most of the field is indistinguishable from the leader.
+
+| round | 1QB 12×18 | SF 12×18 | | round | 1QB | SF |
+|---:|---:|---:|---|---:|---:|---:|
+| 1 | 2% | 2% | | 10 | 41% | 30% |
+| 2 | 3% | 4% | | 11 | 26% | 37% |
+| 3 | 2% | 3% | | 12 | 31% | **58%** |
+| 4 | 2% | 3% | | 13 | **68%** | 42% |
+| 5 | **5%** | 3% | | 14 | 100% | *(artifact)* |
+| 6 | 10% | 3% | | 15 | 100% | 100% |
+| 7 | 12% | **6%** | | 16–18 | 100% | 100% |
+| 8 | 21% | 14% | | | | |
+| 9 | 38% | 17% | | | | |
+
+*(SF round 14 reads 132% — an artifact of my harness averaging picks where pricing still existed
+with picks where it did not. Not a finding.)*
+
+Leader-to-runner-up margin tells the same story from the other side: **7.14 → 0.57** points in 1QB
+by round 9; **0.15** in SF at round 12.
+
+### Finding: the ramp is real, roughly monotonic, and starts SIX TO EIGHT ROUNDS before the cliff
+
+The primary valuation holds a flat ~2–3% baseline for the first four to six rounds — the leader is
+genuinely alone. It then departs that baseline at **round 5 (1QB)** and **round 7 (SF)** and climbs
+continuously to 40–68% before pricing disappears at all.
+
+**So the operator's hypothesis was right in kind and conservative in timing.** The guess was "start
+looking around round 13, ramp it up." The measurement says **start around round 5–7** — because
+that is when the engine actually begins failing to separate candidates, a full six to eight rounds
+before it stops producing numbers. Round 13 is where the *last* signal dies, not where the first
+one weakens.
+
+### Finding: min remaining demand predicts the CLIFF but NOT the ramp
+
+This is the measurement that decides what the influence curve should key on.
+
+In superflex, `min_demand` **flattens at 0.85 from round 6 onward** — and stays there — while the
+in-band fraction continues climbing from 3% to 58%. The causal variable that predicts the cliff
+exactly (round 4's finding) carries **no information at all** about the ramp that precedes it.
+
+Two different phenomena, two different variables:
+
+| | Predicted by |
+|---|---|
+| **The cliff** (pricing disappears) | `min_demand` crossing `< 1.0` — exact, template-invariant |
+| **The ramp** (pricing stops discriminating) | **not** `min_demand`, and **not** round number |
+
+### Recommendation: key the influence curve on the engine's own measure of its own discrimination
+
+The in-band fraction is the best candidate found, and it has properties nothing else does:
+
+* **It is the thing being measured.** It does not *predict* discriminatory power; it *is*
+  discriminatory power, so it cannot drift away from what it stands for.
+* **It is already computed.** `near_tie_flags` runs on every snapshot today; the fraction is a
+  count over its output. No new constant, no new model.
+* **It self-calibrates across configurations.** No round threshold, no template dependence, no
+  need to re-derive anything for 2QB / TE-premium / IDP templates.
+* **It degrades continuously**, which is what a blend needs — unlike presence, which is a step.
+
+This is the same principle the audit kept arriving at: prefer the quantity the system already
+computes over a proxy that has to be maintained in agreement with it.
+
+### What this does NOT settle
+
+The *shape* of the blend (linear in the fraction? thresholded? capped?), what the secondary signals
+are, and how roster context enters remain open — those are the candidate formulations, and they are
+the next measurement, not this one. **Still no implementation.**
