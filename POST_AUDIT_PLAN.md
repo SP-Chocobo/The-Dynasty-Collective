@@ -1486,3 +1486,84 @@ candidates from round 1 to round 18, contributing nothing to any ordering while 
 (`positional_bench_appetite` returning 0.0 for every position when none is measurable) is **not
 established here** — it is one configuration, and it needs a second template before it is a finding
 rather than an observation. Flagged, not claimed.
+
+---
+
+# D9 — the consolidation
+
+Nine measurement rounds converge on one shape. It is **not** a new layer blended alongside the
+valuation; it is a **second phase of a term the engine already has**.
+
+## The insight the measurements forced
+
+`need_bonus` and `replacement_levels` die together because **they are the same quantity** —
+remaining *starter* demand (round 3). The engine already has the right slot for roster need: an
+additive term, in universal-value points, applied in the right place. What it lacks is the
+continuation of that term once starters are filled.
+
+**"What does my roster need next" does not become zero when starters fill. It becomes depth.**
+
+That framing dissolves the double-dip problem by construction rather than by scheduling: starter
+need is non-zero only while starters are unfilled, depth need only once they are. The measured
+decay of `need_max` from 8.4 to 0.1 (round 7b) *is* that handover.
+
+## The consolidated form
+
+```
+need(pos) = starter_need(pos)                          # existing need_bonus, unchanged
+          + depth_need(pos)
+
+depth_need(pos) = NEAR_TIE_BAND
+                × shortfall(pos)                       # GATE   — no shortfall, no need
+                × (0.5 + 0.5 · scarcity(pos))          # MODULATE — bounded 0.5–1.0
+                × bench_appetite(pos)                  # WEIGHT  — the position's own value decay
+```
+
+Each factor is there because a measured failure put it there:
+
+| Factor | Fixes | Evidence |
+|---|---|---|
+| **Bounded by `NEAR_TIE_BAND`** | need promoting a bad player | Structural quality floor: depth need can break a near-tie but **can never overturn a gap the engine itself calls meaningful**. "I need a QB" can only decide among candidates already indistinguishable |
+| **shortfall as a GATE** | scarcity inventing need | Round 9: additive scarcity gave QB **1.0 with seven QBs rostered**, purely because the QB pool was empty |
+| **scarcity MODULATES, in [0.5, 1.0]** | pool thinness swamping roster need | Round 6: multiplying let a 13-deep TE pool beat a real WR shortfall |
+| **`bench_appetite` as the weight** | uniform depth targets | Round 9: a 2× depth target scored **K at 0.500 against WR at 0.371** — nobody rosters two kickers |
+
+## Why `bench_appetite`, and why it is not a positional special case
+
+The standing rule forbids K/DST special-casing. `bench_appetite` obeys it: it measures **how much
+value a position loses across the tier past starter demand**, from that position's own curve. A
+backup kicker is worth nearly what the starter is (flat curve → appetite ≈ 0, depth buys nothing);
+a backup at a steep position is worth a pick. **K and DEF fall out of the depth calculation on
+their own arithmetic**, with no rule naming them.
+
+**This puts #62 on D9's critical path.** `positional_bench_appetite` currently returns 0.0 for every
+position when none is measurable — the same failure class as `need_bonus` going flat, from the same
+cause. It must be repaired, and repaired **over projections rather than over VOR**, so it survives
+where VOR does not. That is a scheduling finding: an item parked as low-priority polish turns out to
+be the missing multiplier.
+
+## The three rules that sit around it
+
+1. **Consensus is a tiebreaker inside the band only** — never a term in `need` or `tav`, so it can
+   never move a price. Genuinely uncounted elsewhere (round 7: `trade_value` is Draft Sharks, not
+   KTC/FantasyPros), so admitting it here is not a double-dip.
+2. **Absence is never penalised.** A player uncovered by a ranking source orders on his own merits,
+   not below everyone who happens to be covered.
+3. **Weights follow measured discrimination, and the total is allowed to shrink** (round 8).
+   Renormalising to full confidence asserts a decision is as well-founded as before when it is not.
+
+## The handover point nobody has to choose
+
+**Roster context may act once `need_bonus`'s own range can no longer cross `NEAR_TIE_BAND`** —
+measured at round 10, and confirmed by two independent measurements that were not designed to agree
+(round 7b). No constant, no round number, no template dependence.
+
+## Honest status
+
+**The primary acceptance test passes** — QB-starved returns a QB. **The reverse case has failed
+three times**, each time on the combination rule rather than the architecture, and each failure has
+been diagnostic: multiplicative swamping (r6), scarcity inventing need (r9a), uniform depth targets
+(r9b). The current form addresses all three but **has not yet been run** — it needs `bench_appetite`
+repaired first, which is why #62 moved onto the critical path.
+
+**Nothing is implemented. `_consensus_lookup` is untouched. No production file has changed since 1c.**
