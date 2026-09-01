@@ -4906,3 +4906,149 @@ opposite directions.
    and it is the only step §24 prescribes that this audit simply did not attempt.
 3. **Step 15 (#113)** — until something runs these checks on a cadence against pinned inputs, the
    audit is a document and not a regression artifact, and §24's final step cannot execute.
+
+---
+
+# Pass 21 — §25 Required Output Format, and the Final Architectural Principle
+
+**STATUS:** COMPLETE. §25 has two halves: a required 11-field record format, and a closing
+architectural principle. The format is scored against this audit's own records and its four
+never-applied fields are applied to the whole register. The principle is **tested**, not asserted.
+
+**LOCATION:** `ARCHITECTURE_AUDIT.md` (all 21 passes), the register (41 open items),
+`data_merger.load_bot_research_as_external`, `data_merger.composite_player_score`,
+`draft_room._rookie_lookup`, `pick_synthesis._consensus_lookup`.
+
+## 21.1 Format compliance
+
+§25 requires eleven fields per finding. This audit's records carried six of them consistently —
+STATUS, LOCATION, EVIDENCE, BOUNDARY, RISK, DEPENDENCIES — and NEXT STEP in a different shape
+(each pass closes with "ranked follow-ups", which is the same content under another name, and
+each honours §25's *"only the smallest appropriate next action; do not redesign"*: that constraint
+and this audit's repair rule are the same rule).
+
+**Four fields were never applied to anything: TESTABILITY, AUDITABILITY,
+SECURITY/CONFIDENTIALITY, COST.** Applied below.
+
+## 21.2 The four missing fields, applied to all 41 open items
+
+**SECURITY/CONFIDENTIALITY — 9 items.** Tenant isolation: **#102** (cross-session lost update in
+every per-league store), **#103** (findings have no per-item league scope). External influence:
+**#97**, **#98**, **#106**, **#107**. Proprietary CDME/IP: **#54** (ownership documentation),
+**#119** (what the board ships to the client versus what it withholds), and §24.4's unrun
+step-9 pass. The other 32 items have no security dimension.
+
+**COST — 6 items.** **#100** (nothing meters anything — definitionally), **#105** (the four
+resource knobs), **#117** (no research reuse ⇒ recurring spend on re-establishing known facts),
+**#96** (running the benchmark costs real calls), **#92** (snapshot storage), **#113** (a cadence
+is an operational cost). The other 35 are free to leave open.
+
+**TESTABILITY — 36 of 41 are provable deterministically today**, most already carrying a
+characterization test written to invert on repair. Five are not: **#49**, **#51**, **#52**,
+**#88** (each blocked on data or an environment this machine does not have) and **#109** (blocked
+on an SDK that reports the served model).
+
+**AUDITABILITY — 9 items are states that cannot be reconstructed after the fact:** **#92**, **#100**,
+**#102**, **#106**, **#107**, **#109**, **#113**, **#118**, **#119**.
+
+### What the four fields re-rank
+
+The six-field format ranked by risk and dependency. Adding the other four produces one grouping
+the earlier passes never surfaced: **the four items that are both security-relevant and
+unauditable** — **#102, #106, #107, #119**. Each is a place where something crosses a trust
+boundary *and* leaves no record that it did. That intersection is the worst quadrant the format
+can express, and none of the four was previously ranked above the others in its own section.
+
+That is the answer to whether §25's format is bureaucracy: it re-ranked the register, so it is not.
+
+## 21.3 The final architectural principle, tested
+
+> *"Changing a model, provider, UI surface, research source, or downstream consumer does not
+> change what is authoritative, what is deterministic, what is canonical, or what can be
+> reconstructed."*
+
+Five axes × four invariants = 20 cells.
+
+| Change axis | Authoritative | Deterministic | Canonical | Reconstructible |
+|---|---|---|---|---|
+| **Model** | HOLDS | HOLDS | HOLDS *(measured)* | **FAILS** — #109 |
+| **Provider** | HOLDS | HOLDS | HOLDS *(measured)* | **FAILS** — #109 |
+| **UI surface** | HOLDS | HOLDS | HOLDS | **FAILS** — #119 |
+| **Research source** | HOLDS | HOLDS | HOLDS *(by declared contract; magnitude measured)* | **FAILS** — #106 |
+| **Downstream consumer** | HOLDS | HOLDS | HOLDS | **FAILS** — compute-then-drop |
+
+**Sixteen of twenty cells hold. All four failures are the same column.**
+
+### The measurement behind the "canonical" row
+
+Rather than reason from the filters, the boundary was exercised end to end. Thirty LLM-authored
+`bot_research` findings — the exact shape `process_moderator_output` writes, each carrying a rank
+— were planted with `FINDINGS_PATH` redirected to a temp directory, and the board rebuilt.
+
+*Non-vacuity first,* because a zero result is worthless if nothing arrived:
+`external_values` went **2600 → 2630 rows**; all 30 carried a computed percentile (so they cleared
+`COMPOSITE_MIN_TRUSTED_POOL_SIZE` and were live, not inert); and all 30 name-matched a real
+projections row, so each would have hit a real player if read.
+
+**Result: 0 of 333 board rows moved.** `bpa`, `universal_value` and `final_score` were identical
+for every player. The `source_name == "keeptradecut"` filter in `_rookie_lookup` and
+`_consensus_lookup` is the whole mechanism, and it holds behaviourally, not just structurally.
+
+**This reproduces existing coverage rather than adding to it.**
+`test_cdme_ingestion_boundary.py` already proves exactly this
+(`test_universal_value_and_tav_unaffected_by_adversarial_injection`), by adversarial injection at
+the filter; this probe arrives at the same result from the outside. **No test is added here** —
+adding one would duplicate a defence that already exists, which is the thing this audit has
+declined to do at every previous opportunity.
+
+### What the same probe found on the other side of the boundary
+
+The identical 30 findings **do** move the trade-value composite, by design:
+
+```
+composite_player_score("X Worthy", WR):  61.6  ->  66.6   (+5.0)
+new component: {source: bot_research, raw: 1.0, percentile: 100.0,
+                weight: 0.5, pool_size: 29, source_date: 2026-09-01}
+```
+
+This is the declared contract working exactly as written — weight 0.5, below even KeepTradeCut's
+crowd average, recency-decayed, pool-size-guarded. **The system has a two-tier trust
+architecture**: model-authored content is *structurally excluded* from CDME's valuation and
+*deliberately admitted, at a discount, into the composite*. That is a better answer than either
+"excluded everywhere" or "admitted everywhere", and it was designed, not stumbled into.
+
+**And it is where the reconstruction failure bites hardest.** That +5.0 is a real movement in a
+user-facing number, produced by a finding that records **no model** (#109) and **no origin** —
+live search or a user's screenshot caption (#106). The one path where external, model-authored
+content demonstrably moves a number is unattributable in both dimensions at once. #106 and #109
+were each filed as ordinary provenance gaps; together, on this path, they are the audit's clearest
+instance of its own closing finding.
+
+**A scope correction in the good direction, recorded as such:** before measuring, the obvious
+reading of `COMPOSITE_SOURCE_WEIGHTS["bot_research"] = 0.5` was that an LLM finding carries weight
+*in the valuation*. It does not. It carries weight in the composite, which CDME does not read.
+The distinction is the entire boundary, and it is the same shape as §18's correction to #57 —
+a real limitation, narrower than its own description.
+
+## Pass 21 summary
+
+**Does anything clear the bar for a production change?** No, and for the first time that is the
+expected answer rather than a deferral: §25 prescribes a *format*, and the only code change it
+could motivate was a test that already exists.
+
+**The audit's closing finding.** Across 25 sections, 21 passes, 17 repairs and 41 open items, one
+result subsumes the rest and the substitution matrix states it exactly:
+
+> **This system's boundaries are sound and its records are not.** Authority, determinism and
+> canonicality survive every substitution the final principle names — several of them proven by
+> planting something hostile and watching nothing move. Reconstruction survives none of them.
+> Every one of the four failures is a value that was computed correctly and then not written down.
+
+**Ranked follow-ups — the whole register, reduced:**
+1. **#92** — a frozen, identified decision context. Four of §23's mandates, and the root of the
+   UI-surface and downstream-consumer failures above.
+2. **#106 + #109 together** — attribution on the one path where model-authored content moves a
+   user-facing number. Neither is severe alone; on the composite path they compound.
+3. **#119** — the valuation leaf, gated on §24's unrun exfiltration pass.
+4. **#113** — until something runs these checks against pinned inputs, this document is a record
+   and not a regression artifact, and §24's final step cannot execute.

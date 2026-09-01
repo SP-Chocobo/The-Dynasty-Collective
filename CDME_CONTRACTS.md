@@ -9190,3 +9190,80 @@ withholds are precisely the ones an inference attack would need.
 295. The obvious repair and the unmeasured risk can point in opposite directions. Routing the
      valuation anchor to the board is a two-line change that may also be the exfiltration control
      nobody chose. Neither the fix nor the risk may be assumed away by the other.
+
+---
+
+# Appendix §25 — Required Output Format, and the Final Architectural Principle
+
+**Baseline entering:** `e9616a4` on `ui-authority-pass`. `main` frozen at `9fb5102`. No production
+file modified and **no test added** — §25 prescribes a record format, and the one code change it
+could have motivated is a test that already exists.
+
+## Format compliance
+
+Eleven required fields. This audit carried **seven**: STATUS, LOCATION, EVIDENCE, BOUNDARY, RISK,
+DEPENDENCIES, and NEXT STEP (as each pass's "ranked follow-ups" — and §25's *"only the smallest
+appropriate next action; do not redesign"* is this audit's repair rule in different words).
+
+**Four were never applied: TESTABILITY, AUDITABILITY, SECURITY/CONFIDENTIALITY, COST.** Applied to
+all 41 open items in ARCHITECTURE_AUDIT.md Pass 21. Counts: 9 security-relevant, 6 cost-bearing,
+5 not deterministically testable today, 9 unreconstructible.
+
+**They re-rank the register.** Four items are *both* security-relevant *and* unauditable —
+**#102, #106, #107, #119** — each a place where something crosses a trust boundary and leaves no
+record that it did. No earlier pass ranked those four together, because no earlier pass carried
+the two fields that intersect them.
+
+## The final principle, tested rather than asserted
+
+Five change axes × four invariants. **16 of 20 cells hold; all four failures are one column.**
+
+Authority, determinism and canonicality survive substituting the model, the provider, the UI
+surface, the research source and the downstream consumer. **Reconstruction survives none of the
+five** — #109 (model), #109 (provider), #119 (UI surface), #106 (research source), and the
+compute-then-drop class (downstream consumer).
+
+## The two-tier trust architecture, measured on both sides
+
+Thirty LLM-authored `bot_research` findings were planted (`FINDINGS_PATH` redirected to a temp
+directory; the repository file verified never to exist, before and after).
+
+**Non-vacuity established first:** `external_values` 2600 → 2630 rows; all 30 carried a computed
+percentile; all 30 name-matched a real projections row.
+
+* **CDME valuation: 0 of 333 board rows moved.** `bpa`, `universal_value`, `final_score` identical
+  for every player. Already defended by `test_cdme_ingestion_boundary.py`; this reproduces that
+  from the outside and adds no test.
+* **Trade-value composite: `X Worthy` 61.6 → 66.6 (+5.0)**, the finding entering as
+  `{bot_research, percentile 100.0, weight 0.5, pool_size 29}` — the declared contract working
+  exactly as documented.
+
+Model-authored content is **structurally excluded** from the valuation and **deliberately admitted
+at a discount** to the composite. That is a designed two-tier boundary, not an accident — and it
+is precisely where the reconstruction failure costs the most, because the finding that moved a
+user-facing number by 5.0 points records neither which model wrote it (#109) nor whether it came
+from a live search or a user's screenshot (#106).
+
+**Scope correction, in the good direction:** `COMPOSITE_SOURCE_WEIGHTS["bot_research"] = 0.5` reads
+as though an LLM finding carries weight in the valuation. It does not. It carries weight in the
+composite, which CDME never reads. Same shape as §18's correction to #57 — a real limitation,
+narrower than its own description.
+
+## Invariants
+
+296. Seven of eleven required fields is not a format failure; the four that were missing are the
+     four that re-rank. Testability, auditability, security and cost are the fields that turn a
+     list of gaps into an order of work.
+297. A boundary is proven by planting something hostile on the far side and measuring that nothing
+     moved — and the measurement is worthless until the plant is shown to have arrived. Thirty
+     findings, thirty computed percentiles, thirty real name matches, zero rows changed.
+298. Two tiers beat one. Excluding model-authored content everywhere wastes it; admitting it
+     everywhere corrupts the ruler. This system excludes it from the valuation and admits it to
+     the composite at a declared discount, and that is the right answer.
+299. Content admitted at a discount still needs attribution. A weight expresses how much a source
+     is trusted; it does not record who the source was. The one path where model-authored content
+     moves a user-facing number names neither its author nor its origin.
+300. **The closing finding of this audit.** This system's boundaries are sound and its records are
+     not. Authority, determinism and canonicality survive every substitution the architecture is
+     required to survive. Reconstruction survives none of them — and every failure is a value that
+     was computed correctly and then not written down.
