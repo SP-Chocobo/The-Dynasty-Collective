@@ -9056,3 +9056,56 @@ tests — restoring the old assertion, dropping the not-known clause, narrowing 
      reaches the engine.
 288. Amend, never overwrite, and the audit trail survives every correction. This codebase does it
      in four stores out of four — which is why the single exception was worth repairing.
+
+---
+
+# Appendix §23 — Implied Architectural Mandates
+
+**Baseline entering:** `54f0433` on `ui-authority-pass`. `main` frozen at `9fb5102`. No
+production file modified, no test added — §23 is a compliance scorecard over §1–§22's
+measurements.
+
+## Result
+
+**23 mandates: 12 MET · 9 PARTIAL · 2 NOT MET.** Full table in ARCHITECTURE_AUDIT.md Pass 19.
+
+**NOT MET (2):** evidence travelling as evidence rather than prose (#93), and validated research
+becoming reusable knowledge that reduces recurring cost (#117).
+
+## The two structural findings the scorecard produced
+
+**1. The met mandates are met structurally, not instructionally.** Nine of the twelve are
+boundary mandates — least privilege, confidentiality of the equation, provider-as-dependency,
+authority-in-architecture, failure states, trust classes, chair-contract stability,
+structured-context-first, auditable compaction. Every one holds through a mechanism (a source
+filter, an absent constant, a replaced string, a re-sent system prompt, a pre-write backup),
+never through a model complying with an instruction, and several are backed by an adversarial
+test. That is the strongest architectural property this audit found, and it was established the
+same way every time: plant something and watch the boundary hold.
+
+**2. Four register items account for every mandate this system does not meet.** Stripping the
+wording: mandates 1, 13, 14 and 23 are all **#92** (no frozen, identified decision context outside
+the Draft Room); 12 and 15 are **#117** (the research-memory contract); 14's other half is
+**#111** (content-hash identity applied to exactly one artifact); 11's unmet half and 12's cost
+half are **#100** (no price anywhere). Plus **#93**, the only miss that is not one of the four.
+Twenty-three mandates, five repairs.
+
+## A tension recorded for the first time
+
+Mandate 4's failure and mandate 18's success are the same discipline seen from two sides. R90
+proves **no engine constant reaches any prompt** — the least-privilege and confidentiality
+mandates are met because chairs are given prose, not the numbers. #93 is the complaint that the
+Contrarian therefore argues with a summary instead of the evidence. **Settling #93 must not
+reopen #18**, and until now the two items had never been read against each other.
+
+## Invariants
+
+289. A boundary that holds because a mechanism enforces it and a boundary that holds because a
+     model complied are indistinguishable until something is planted. Every mandate this system
+     genuinely meets was confirmed the second way.
+290. Count the repairs, not the requirements. Twenty-three mandates with nine partials and two
+     misses reduce to five register items; a scorecard that does not collapse its findings
+     overstates the work remaining.
+291. Two mandates can be in tension, and a checklist scored item by item will never show it.
+     Keeping proprietary constants out of a chair's context is exactly what leaves that chair
+     reasoning over a summary.
