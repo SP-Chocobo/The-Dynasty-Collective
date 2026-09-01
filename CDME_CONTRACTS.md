@@ -8681,3 +8681,141 @@ being measured.
 261. Doctrine is a re-audit mechanism only where something triggers it. A written audit chain and
      a contract checklist are real assets; without a cadence or a gate they describe how an audit
      would go if one happened.
+
+---
+
+# Appendix §20 — Live Draft Validation & Behavioral Regression
+
+**Baseline entering:** `55066fb` on `ui-authority-pass`, suite 1457 OK. `main` frozen at
+`9fb5102`, untouched. Defect A1 untouched.
+
+**No production file was modified.** §20 opens *"After the repair sequence and downstream
+contract gate…"*, and that sequence has not run. This pass measures the current system and marks
+which prescribed validations are blocked on parked work, rather than implementing that work so
+the validation can pass.
+
+## What was measured
+
+**Eight controlled drafts, 1,293 production decision points.** Every pick through
+`pick_synthesis.build_snapshot` → `candidates[0]` at `mode="auto"` — the same contract
+`draft_room.simulate_opponent_picks` uses. No provider call occurs anywhere in the harness.
+Conditions varied: 1QB, superflex, TE-premium, IDP, redraft, thin bench, reversed slot order,
+and an 18-round trial that crosses `UPSIDE_MODE_DEFAULT_ROUND = 15`. Pools of 349 (offense +
+K/DEF) and 764 (all positions). ~2.3 hours of CPU.
+
+**The shipped drivers could not have run §20's first check.** `run_draft_validation.py` is
+`("QB","RB","WR","TE")`; `run_idp_draft_validation.py` adds DL/LB/DB. **Neither includes K or
+DEF.** A K/DEF-inclusive pool had to be built for this pass.
+
+**K/DST timing.** K first taken round 6 (mean 7.9, **0 of 17** in the last third); DEF first
+round 5 (mean 7.2, 2 of 14). Superflex later but still mid-draft. Rounds 11–14 contain no K or
+DEF at all.
+
+**The margin that disproves the naive reading.** At the first DEF pick: DEF `tav=17.0 uv=13.0
+need=4.0`; best non-K/DEF QB `tav=16.9 uv=12.9 need=4.0`; K `tav=15.0 uv=11.0 need=4.0`. The
+empty-starter-slot lift is **identical across positions** — no positional term exists or fires.
+The DEF wins by **0.1** because the offensive pool has decayed from UV 187 at pick 1 to UV ~13
+by pick 56.
+
+**The IDP control.** 764-player pool, 168 picks consuming 22% instead of 48%: IDP spread across
+**every round from 3 to 13** (n=76, mean r8.5), longest same-position run **5** against **29** in
+the offense-only league — and **K and DEF never taken in 168 picks**, that league having no
+K/DEF starter slot. Demand absent, urgency absent.
+
+**Superflex QB.** [7, 8, 4, 3, 3, 0, 1, 0, 1, 0, 1, 0, 0, 0] against a 1QB control of
+[0, 0, 1, 0, 3, 1, 2, 4, 1, 0, 0, 0, 0, 2].
+
+**BPA versus context.** Over 1,077 priced decision points the pure-UV leader survived as TAV
+leader on **70.3%**; context flipped it on **29.7%** (IDP 48.8% high, 1QB 22.7% low).
+
+**Bench capacity is invisible.** `starter_slot_counts` counts only `FANTASY_POSITIONS` and
+`FLEX_SLOT_POSITIONS` entries; `"BN"` is neither. A 7-bench and a 2-bench league produced
+**byte-identical 168-pick drafts**.
+
+**The late-draft pricing collapse.** Leader TAV by round in the 18-round trial: 187.34, 99.53,
+73.37, …, 25.58 (r5), 6.0 (r8), **0.0 (r10)**, −3.67 (r11), −8.58 (r13), **None from r14 on**.
+From round 14 through 18, **12 of 12 boards every round have zero priced candidates** — **60 of
+216 picks, 27.8% of the draft**. The round-16 board presents ids 164/165/166/167/168 in order:
+pure `_board_order` `str(player_id)` tiebreak, `necessity = "DOESN'T MATTER MUCH"`, no forces.
+
+**A code-path identity, verified rather than measured.**
+`use_upside = mode == "upside" or (mode == "auto" and current_round >= upside_round)` — below
+round 15, `"auto"` and `"balanced"` are the same path, so the two unreconciled defaults diverge
+only at r ≥ 15. And **none of `app.py`'s three `build_snapshot` call sites passes `mode=`**
+(checked directly, not from the docstring), so a human's own board is always `"balanced"` and
+never enters upside mode while every auto-drafted opponent does.
+
+**The display contract.** `serialize_candidate` emits an explicit dict with `uv`/`tav` and never
+`projected_points` — a fantasy-point total cannot reach the board, by construction, though no
+test asserts the absence. Across **44,385 board rows**: min **−33.1**, max **190.5**, median
+**11.0**; **11.8% negative, 2.2% ≥ 100, 11.4% in the 50–400 band** that overlaps a plausible
+season point total. The board's prose qualifies its unit three times (*"universal-value
+points"*, *"-point gap to the next best {pos}"*, *"-point rival premium"*) and leaves it bare
+twice (*"X point(s) off the board leader"*, *"about X points of context lift"*).
+
+**The mechanical layer.** `chosen == candidates[0]` on **1,293/1,293** picks; **0** mis-sorted
+boards; unpriced rows last in every case. Three configs that differ only in engine-invisible
+parameters produced byte-identical sequences from three separate OS processes.
+
+## Corrections to my own conclusions
+
+1. **The K/DST finding was drafted as an engine fault and is not one.** The 0.1-margin
+   measurement with identical `need_bonus` across positions disproves the positional reading.
+   This is the difference between "tune the formula" and "the input scale is parked", and §20
+   says explicitly not to rationalize formula changes from anecdotes.
+2. **The reversed-slot config varied nothing.** Twelve chairs start with identical empty rosters,
+   so reversing first-round order is a relabeling. Identical trajectories confirmed it.
+3. **The thin-bench config varied a quantity the engine does not read** — which became the
+   finding rather than a wasted trial.
+4. **The 14-round wave could not reach upside mode** (threshold round 15). Caught after launch;
+   an 18-round trial was added and produced the section's largest finding.
+5. **The display wording was over-stated at first** — three of five prose sites already qualify
+   the unit.
+6. **One measurement was abandoned, not reported as a result.** A direct `balanced`-vs-`auto`
+   divergence probe ran ~20 minutes without completing one board pair and was killed; the
+   question is answered exactly by the code-path identity above, which is stronger. Recorded so
+   the gap is not mistaken for a measurement.
+
+## Repairs
+
+**None.** Every behavioural finding either passes or is blocked on a parked repair whose premise
+§20 says not to pre-empt. The one mechanically tempting change — the two unqualified "points"
+strings, which have in-file precedent for the fix — would tidy the symptom of a parked scale
+defect, so it is parked with it (#116).
+
+## Tests added
+
+**None.** §20 is a behavioural-validation pass; its instrument is the simulation harness, not
+the unit suite. Two test-shaped gaps were noted for the repair pass rather than filled:
+`SerializeCandidateTests` asserts which fields are present and none that must be absent (so the
+"no fantasy points on the board" contract is held by construction alone), and no test pins the
+board's unit wording.
+
+## Invariants
+
+262. A behavioural check is only as good as the pool it runs against. Two shipped validation
+     drivers omit K and DEF entirely, and the section's opening question is about K and DEF.
+263. Measure the margin before naming the cause. "K goes in round 6" reads as a positional
+     defect until the board shows the alternative was 0.1 behind with the identical need bonus.
+264. A control that changes the pool changes the verdict. The same engine buries K/DEF for 168
+     picks in a 764-player league and takes them in round 5 in a 349-player one; the difference
+     is not in the rules.
+265. A required roster slot creates demand, not urgency — and the honest test of that is the
+     league with no such slot, where the position must never be taken at all.
+266. Value that decays to zero mid-draft does not stop the draft. Ordering falls through to
+     whatever tiebreak exists, and a tiebreak chosen for determinism is not a valuation.
+267. A deterministic tiebreak looks like judgement when the ids happen to be sorted. In a harness
+     that numbers players by rank the late rounds look sensible; in production the same code
+     orders by an arbitrary vendor id.
+268. Vary only what the engine reads. A trial that changes bench depth against an engine that
+     never reads bench depth produces an identical draft and no information — until the identity
+     itself becomes the finding.
+269. Two defaults that agree everywhere except the tail still differ. `auto` and `balanced` are
+     the same code path below the upside round, which is why the divergence went unnoticed and
+     why it lands exactly where the board has the least signal.
+270. A displayed number needs its unit in the same sentence, every time. Qualifying it in three
+     places and not in two is how a scale becomes ambiguous in exactly the cases a reader is
+     least equipped to catch.
+271. When the prescribed validation depends on a parked repair, run it anyway and record the
+     dependency. A blocked check with a measured current-state baseline is worth more than a
+     deferred one, and far more than one made to pass.

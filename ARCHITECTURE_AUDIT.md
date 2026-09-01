@@ -3958,3 +3958,250 @@ bounds in `requirements.txt`) are parked in #113 for the repair pass, not applie
 2. **#111** (unchanged) — still the prerequisite for tying a deployed build to a source revision.
 3. **The baseline's permanent staleness** (19.11.2) — a refresh policy for committed vendor data
    is a product decision, not an integrity one, but §19 is where it becomes visible.
+
+## Pass 16 — §20
+
+**Scope:** Build Guide v2 §20 (live draft validation & behavioral regression).
+
+**Baseline:** `55066fb` on `ui-authority-pass`; `main` frozen at `9fb5102`.
+**No production file was modified.** §20 opens *"After the repair sequence and downstream
+contract gate…"* — that sequence has not run, so this pass measures the **current** system and
+marks which of §20's prescribed validations are blocked on parked work rather than
+implementing that work to make them pass.
+
+**Headline: the mechanical layer is flawless across 1,293 production decision points — the
+chosen player is `candidates[0]` on 1,293/1,293 picks, zero boards mis-sorted, absence always
+ordered last, and three independent OS processes produced byte-identical trajectories. Every
+behavioural question §20 asks resolves to the same underlying fact: the pricing signal is
+exhausted long before the draft is. Leader TAV falls 187.34 → 0.0 by round 10 of 18, goes
+negative at 11, and from round 14 onward every board in every round has zero priced candidates,
+so 27.8% of an 18-round draft is decided by a player-id tiebreak.**
+
+### 20.1 Simulations performed
+
+Eight controlled drafts, every pick through the production path
+(`pick_synthesis.build_snapshot` → `candidates[0]`, `mode="auto"` — the same contract
+`draft_room.simulate_opponent_picks` uses for auto-drafted teams). No provider call occurs
+anywhere in this harness; the AI layer is not on the auto-draft path at all.
+
+| trial | league | pool | picks | runtime |
+|---|---|---|---|---|
+| `kdst_1qb_slot1` | 1QB + K + DEF, half-PPR, 7 bench | 349 | 168 | 904s |
+| `kdst_1qb_slot12` | same, first-round order reversed | 349 | 168 | 895s |
+| `kdst_superflex` | + SUPER_FLEX | 349 | 168 | 900s |
+| `kdst_te_premium` | TE-premium bonus | 349 | 168 | ~890s |
+| `kdst_thin_bench` | 2 bench slots instead of 7 | 349 | 168 | 899s |
+| `redraft_1qb` | redraft (`settings.type=0`) | 349 | 168 | 881s |
+| `idp_league` | DL/DL/LB/LB/DB/DB/IDP_FLEX | 764 | 168 | 1281s |
+| `kdst_deep18` | 18 rounds — crosses `UPSIDE_MODE_DEFAULT_ROUND=15` | 349 | 216 | 511s |
+
+**The shipped drivers cannot run §20's first two checks.** `run_draft_validation.py` hardcodes
+`POSITIONS = ("QB","RB","WR","TE")` and `run_idp_draft_validation.py` adds DL/LB/DB — **neither
+includes K or DEF at all.** §20's opening check is about kickers and defenses. A K/DEF-inclusive
+pool had to be built for this pass.
+
+### 20.2 K and DST — measured, then the naive reading disproved
+
+**STATUS: does NOT match §20's expectation — and not for the reason it looks like**
+14-round 1QB league: K first taken **round 6** (mean 7.9, **0 of 17** in the last third); DEF
+first **round 5** (mean 7.2, 2 of 14 in the last third). Superflex pushes them later (K r8/9.1,
+DEF r7/8.4) but still mid-draft. Rounds 11–14 contain no K or DEF at all — they are *finished*
+before the late rounds.
+
+I drafted this as "the engine makes K/DST premature priorities." **The margin measurement
+disproves that reading.** At the first DEF pick (pick 56):
+
+```
+DEF P Eagles   tav=17.0   uv=13.0   need=4.0
+QB  J Burrow   tav=16.9   uv=12.9   need=4.0      <- best non-K/DEF, 0.1 behind
+K   B Aubrey   tav=15.0   uv=11.0   need=4.0
+```
+
+`need_bonus` is **4.0 on all three** — the identical empty-starter-slot lift, no positional
+term. The DEF wins by **0.1** because the *offensive* pool's measured value has decayed from
+UV 187 at pick 1 to UV ~13 by pick 56. There is no K/DST-specific logic, exactly as
+`test_kdst_integration` insists; the timing is a property of the value curve, not of the
+positional rules.
+
+**Verdict: BLOCKED, not FAIL.** This check cannot be graded until #58/#74/#75/#76 (bpa unit
+drift, TAV saturation) and #49/#50 (real K/DEF/IDP boards, VOR/replacement redefinition) are
+settled. §20's own instruction applies: *"Do not rationalize formula changes from anecdotes
+alone."*
+
+**The IDP league is the control that proves it.** With a 764-player pool, 168 picks consume 22%
+instead of 48%, values stay positive throughout — and **K and DEF are never taken in 168 picks**,
+because that league has no K/DEF starter slot. Demand absent → urgency absent. The contract
+holds in both directions.
+
+### 20.3 IDP distribution — passes cleanly
+
+**STATUS: PASSES**
+76 IDP picks, first at **round 3**, mean **round 8.5**, present in **every round from 3 to 13**.
+Longest consecutive same-position run: **5 picks** — against **29** in the offense-only league
+(RB, rounds 13–14). The IDP league produces the most balanced draft shape of all eight trials.
+§20's *"sprinkled into appropriate later rounds rather than clustering unnaturally"* is met.
+
+### 20.4 Superflex QB — passes cleanly
+
+**STATUS: PASSES**
+QB picks by round, superflex: **[7, 8, 4, 3, 3, 0, 1, 0, 1, 0, 1, 0, 0, 0]** — 15 QBs in the
+first two rounds, then monotone decay to zero. The 1QB control: **[0, 0, 1, 0, 3, 1, 2, 4, 1, 0,
+0, 0, 0, 2]**. Strong first wave, then demand *slows* rather than inflating indefinitely,
+exactly as §20 specifies, with the 1QB contrast confirming the effect is the superflex slot and
+not the pool.
+
+### 20.5 Depth, balanced pulls, and BPA
+
+**STATUS: PARTIAL — the BPA half passes; the depth half has no input to work from**
+Across **1,077 priced decision points**: the pure-UV leader survived as the TAV leader on
+**70.3%**, context flipped the leader on **29.7%** (IDP highest at 48.8%, 1QB lowest at 22.7%).
+Context participates without dominating — a defensible reading of *"loosely favors balanced
+pulls while still allowing clear BPA to win."* The mechanism is separately unit-tested
+(`need_bonus`/`eligibility_bonus` capped in bpa scale, with
+`test_need_bonus_cannot_flip_a_large_universal_value_gap` and its eligibility mirror).
+
+**But bench capacity is invisible to the engine.** `starter_slot_counts` iterates
+`roster_positions` and counts only entries in `FANTASY_POSITIONS` or `FLEX_SLOT_POSITIONS` —
+`"BN"` is neither, so it is skipped. Measured: a 7-bench league and a 2-bench league produced
+**byte-identical 168-pick drafts**. Depth economics come from pool value decay and round count
+alone; how many players a roster can actually hold is not an input. **Verdict: SURFACE (#115).**
+
+### 20.6 Late-draft behaviour — the section's real finding
+
+**STATUS: MISSING — demonstrated at draft scale**
+The 18-round trial exists specifically because a 14-round draft cannot reach
+`UPSIDE_MODE_DEFAULT_ROUND = 15`. Leader TAV on the first pick of each round:
+
+| rd | 1 | 2 | 3 | 5 | 8 | 10 | 11 | 13 | 14–18 |
+|---|---|---|---|---|---|---|---|---|---|
+| leader TAV | 187.34 | 99.53 | 73.37 | 25.58 | 6.0 | **0.0** | −3.67 | −8.58 | **None** |
+
+| round | boards with **zero** priced candidates | mean priced / total candidates |
+|---|---|---|
+| 11 | 0/12 | 5.2 of 9.2 |
+| 13 | 2/12 | 4.2 of 10.0 |
+| **14–18** | **12/12 every round** | **0.0 of ~9.4** |
+
+**60 of 216 picks (27.8%) are made from boards where nothing can be priced.** The first pick of
+round 16, as the board presents it:
+
+```
+id=164 WR A Pierce     tav=None uv=None nec="DOESN'T MATTER MUCH" forces=[]
+id=165 WR W Robinson   tav=None uv=None ...
+id=166 WR K Shakir     tav=None uv=None ...
+```
+
+Consecutive ids — the ordering is entirely `_board_order`'s `str(player_id)` tiebreak. In this
+harness ids happen to encode trade-value rank within a position block, so the result *looks*
+reasonable; in production `players_db` keys are Sleeper ids carrying no value ordering at all.
+`_board_order`'s docstring is explicit that it *"does not decide what the board SHOULD do once
+nothing on it can be priced; that is an open product decision"* — this is **#61** measured at
+draft scale. **Verdict: SURFACE (#114).**
+
+Upside mode does fire and does change behaviour — the position mix flips from RB-dominated
+(r13–14) to WR-dominated (r15–18) at exactly the threshold. So §20's *"late-draft behavior
+shifts toward upside"* is observably true, and it is operating over rows that carry no price.
+
+**A code-path identity worth stating rather than measuring:**
+`use_upside = mode == "upside" or (mode == "auto" and current_round >= upside_round)`. For every
+round below 15, `mode="auto"` and `mode="balanced"` are the **same path** — so the
+long-standing "two unreconciled defaults" noted in `draft_simulation.py` diverge *only* at
+rounds ≥ 15. Verified directly, not from the docstring: **none of `app.py`'s three
+`build_snapshot` call sites passes `mode=`**, so a human's own board is always `"balanced"` and
+**never enters upside mode**, while every auto-drafted opponent does. Folded into #115.
+
+### 20.7 TE behaviour
+
+**STATUS: same conditional as 20.2**
+TE clusters late (1QB: 5/4/5 across rounds 10–12; superflex: **9 TEs in round 13**). A
+nine-in-one-round run looks like scarcity becoming a positional command — but the same pool
+decay drives it, and the deeper IDP pool shows a longest run of 5 against 29. Blocked on the
+same items as 20.2.
+
+### 20.8 The display contract
+
+**STATUS: holds at the data layer; partial at the presentation layer**
+`serialize_candidate` emits an explicit dict containing `uv` and `tav` and **never
+`projected_points`** — the board cannot show a fantasy-point total, by construction. (Not
+defended by a test: `SerializeCandidateTests` asserts the fields that are present, none that
+must be absent.)
+
+Measured over **44,385 board rows**: min **−33.1**, max **190.5**, median **11.0** —
+**11.8% negative**, **2.2% ≥ 100**, **11.4% in the 50–400 band** that overlaps a plausible
+season fantasy-point total. Two observations follow:
+
+1. **§20's own example does not match the system.** The section says *"displayed values such as
+   72 or 91"*; the measured distribution is mostly single-digit, sometimes negative, occasionally
+   ~190. The internal scale is not the 0–100 band the check assumes — which is the same
+   unit-drift family as #58/#75/#76, seen from the UI.
+2. **The board's prose qualifies the unit three times and not twice.** *"universal-value
+   points"*, *"-point gap to the next best {pos}"* and *"-point rival premium"* are qualified;
+   *"He's X point(s) off the board leader"* and *"about X points of context lift"* are bare. In
+   a fantasy app, unqualified "points" is the domain's word for a different quantity, and 1 in 9
+   displayed values sits in a range where the two are confusable.
+
+**No repair made.** A two-word copy change has in-file precedent and would be mechanical, but
+the substantive half of this finding is the scale itself, which is parked. Fixing the wording
+now would tidy the symptom of a parked defect. **Verdict: SURFACE (#116).**
+
+### 20.9 Mechanical layer — flawless
+
+**STATUS: EXISTS**
+Across all 1,293 picks in eight trials: `chosen == candidates[0]` on **1,293/1,293**;
+**0** boards mis-sorted against `_board_order`'s contract; unpriced rows ordered last in every
+case (2,051 unpriced candidate rows observed across the trials). `kdst_1qb_slot1`,
+`kdst_1qb_slot12` and `kdst_thin_bench` produced **byte-identical** pick sequences from three
+separate OS processes — cross-process determinism, unforced.
+
+### 20.10 Corrections to my own §20 work
+
+1. **The K/DST reading (20.2)** — drafted as an engine fault, disproved by the 0.1-margin
+   measurement with identical `need_bonus`. This is the correction that matters most in this
+   pass: it is the difference between "tune the formula" and "the input scale is parked."
+2. **The reversed-slot config varied nothing.** All twelve chairs start with identical empty
+   rosters, so reversing the first-round order is a relabeling, not a different draft position.
+   Identical trajectories confirmed it. Varying draft position meaningfully needs an asymmetric
+   chair, a different team count, or a different draft type.
+3. **The thin-bench config varied a quantity the engine does not read** — which turned out to be
+   the finding in 20.5 rather than a wasted trial.
+4. **The 14-round wave could not test upside mode at all** (threshold is round 15). Caught after
+   the wave launched; the 18-round trial was added for it, and it produced the section's largest
+   finding.
+5. **I over-stated the display wording at first** — the board qualifies the unit in three of five
+   places, not none.
+6. **One measurement was abandoned rather than reported.** A direct `balanced` vs `auto`
+   divergence probe was killed after ~20 minutes without completing a single board pair; the
+   question was then answered exactly by the code-path identity in 20.6, which is stronger than
+   the probe would have been. Recorded so the gap is not mistaken for a measurement.
+
+## Pass 16 summary
+
+| §20 check | measured result | verdict |
+|---|---|---|
+| K/DST land near the end | K r6/mean 7.9, DEF r5/mean 7.2; 0/17 K in last third | **BLOCKED** (#58/#74/#75/#76, #49/#50) |
+| IDP sprinkled, not clustered | 76 picks, rounds 3–13, longest run 5 | **PASSES** |
+| Superflex QB wave then slowdown | [7,8,4,3,3,0,1,0,1,0,1,0,0,0] | **PASSES** |
+| Depth favours balance, BPA still wins | BPA leader survives 70.3% of 1,077 | **PASSES**; depth input missing (#115) |
+| Late draft shifts to upside | fires at r15; boards unpriced from r14 | **BLOCKED** (#61 → #114) |
+| TE scarcity not an automatic command | 9 TEs in one round (superflex) | **BLOCKED**, same as K/DST |
+| Stronger player beats a shallow pool | capped context terms, 70.3% BPA survival | **PASSES** |
+| Displayed values are internal-scale | true at the data layer; −33.1…190.5 | **PARTIAL** (#116) |
+| Quantified over many decision points | 1,293 picks / 1,077 priced decisions | **done** |
+| Build a regression corpus | corpus is gitignored scratch, unversioned | **BLOCKED** (#111, #113) |
+| Stability across shapes/formats/depletion | 8 conditions; ordering perfect throughout | **PASSES** mechanically |
+
+**Does anything clear the bar for a production change?** No. Every behavioural finding here
+either passes, or is blocked on a parked repair whose premise §20 explicitly says not to
+pre-empt. The one mechanically-tempting change (the two unqualified "points" strings) would
+tidy the symptom of a parked scale defect and is parked with it.
+
+**Ranked follow-ups**
+1. **#114** — the late-draft pricing collapse. 27.8% of an 18-round draft decided by a player-id
+   tiebreak, on boards where every candidate is unpriced. #61 left this open as a product
+   decision; §20 measures what leaving it open costs.
+2. **#115** — two behavioural-coverage gaps: bench capacity is not an engine input, and the
+   human's own board never enters upside mode while every simulated opponent does.
+3. **#116** — the display contract: the internal scale is not the 0–100 band §20 assumes, and
+   the board's prose qualifies its unit in three of five places.
+4. **Re-run this entire pass after the repair sequence.** Four of eleven checks are blocked; the
+   trials here are the current-state baseline they should be compared against.
