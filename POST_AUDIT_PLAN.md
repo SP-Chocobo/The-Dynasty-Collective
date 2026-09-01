@@ -2322,3 +2322,150 @@ completely untouched; the fallback orders **only within the unpriced tail**.
 2. Acceptance-test the tail ordering independently, with the invariant that **no priced pick
    changes** as the pass/fail gate.
 3. Only then sweep `M` inside that architecture, reporting results against `D` and `2D`.
+
+---
+
+# D9 RESOLVED BY REDIRECTION — #114 is not an ordering defect, it is a pricing-domain defect
+
+## What the instrumentation found
+
+Instrumenting the mixed board (regime (b)) on the real `narrow_candidates` path, 12-team,
+18 rounds, both templates:
+
+* **MIXED is the dominant regime: 16 of 18 rounds.** ALL-UNPRICED never occurred at all in
+  this construction. Restricting a rule to `priced == 0` would have addressed a case that
+  barely happens here.
+* **100% of unpriced candidates entered via best-at-position.** Not one arrived through the
+  `top_n` slice — confirming from measurement what the code read said.
+* Then the per-position breakdown showed the actual defect, and it is not about tiebreaks.
+
+Whole board, 12-team 1QB, after round 15:
+
+| position | priced | unpriced |
+|---|---|---|
+| DEF | **32** | 0 |
+| K | **37** | 0 |
+| QB | 0 | **15** |
+| RB | 0 | **36** |
+| TE | 0 | **24** |
+| WR | 0 | **9** |
+
+`narrow_candidates` →
+`[('DEF', 17.0), ('K', 15.0), ('DEF', 15.0), ('DEF', 14.0), ('DEF', 14.0), ('RB', None),
+('WR', None), ('QB', None), ('TE', None)]`
+
+**Four defenses and a kicker, ahead of every remaining running back, receiver, quarterback and
+tight end.** Positions do not degrade gradually — they flip to wholly unpriced.
+
+## The mechanism, and why it is structural
+
+`replacement_levels`' own docstring states the domain: *"defined only while a position has at
+least one whole starting slot still unfilled ... the position's key is OMITTED."* That is
+correct and stays. The failure is what happens downstream:
+
+1. Every team fills its RB starters → RB league-wide demand < 1 → RB omitted. **Correct.**
+2. Every remaining RB gets `_vor = NaN` → `bpa` NaN → `final_score = None`. **Defensible** —
+   the module refuses to fabricate a number.
+3. `_board_order` sorts `None` last → every RB below every priced K. **This is the defect.**
+4. **K and DEF are drafted last, so they are the last positions still carrying demand.** The
+   inversion is therefore guaranteed rather than incidental — it is the K/DST explosion (#37)
+   arriving through a different door.
+
+So #114's headline ("decided by a player-id tiebreak") describes a symptom. Ordering the
+unpriced tail perfectly — by depth need, consensus, anything — **would not have moved a single
+one of these picks**, because the whole tail sits beneath five kickers either way. The
+depth-need fallback was aimed at the wrong defect, and no value of `DEPTH_MULTIPLE` would have
+mattered. **D9's minimal rule is not implemented, and #56 stays open and unneeded for now.**
+
+## The repair: `predraft_replacement_anchor`
+
+When a position's level is omitted **for exhausted demand**, price its rows against the
+position's **pre-draft** level instead of dropping them off the board.
+
+Why that anchor, and why computed rather than remembered: `replacement_levels` already records
+that while demand stays positive, rank shrinkage and pool drain cancel exactly, so the live
+level is algebraically identical to the static pre-draft one. The last live level therefore
+*is* the pre-draft level — **verified directly, not assumed**: across 1QB-12, superflex-12 and
+1QB-14 full drafts, every position's first observed live level equals its pre-draft level to
+within 1e-9. That equality is what lets the anchor be a pure function of (player universe,
+league settings) rather than a memo of earlier calls. A memo was the first implementation and
+was **rejected**: it would have made a board's answer depend on which boards were built before
+it, breaking `replacement_levels`' own "never cached across picks" contract.
+
+**Never applied to the `startable_floors` branch.** That branch declines because no remaining
+player clears the startability threshold — a different fact from "demand is filled" — and
+reviving a stale anchor there would assert a startable replacement exists where the
+measurement says none does. Measured cost of that restriction: **zero.** Superflex still
+repairs 7 of 7 affected rounds with 9 floor-declines left standing.
+
+**Provenance recorded (#112).** Every board row now carries `replacement_basis` —
+`live_starter_demand` or `predraft_anchor`. A price resting on the pre-draft anchor is a
+weaker claim than one resting on live demand, and the board now says which it is instead of
+presenting both as the same number. Carried on both the balanced and upside serializations,
+since `upside_score` reads the same `bpa` the anchor feeds.
+
+## Evidence: HEAD vs working tree, identical draft states
+
+| invariant | result |
+|---|---|
+| **INV1** every player priced before keeps the **identical** `final_score` | holds in every template |
+| **INV2** the priced set only ever grows | holds |
+| **INV3** no newly-priced score exceeds that position's round-1 board maximum | holds |
+| **INV5** `replacement_basis` present and always one of the two legal values | holds |
+
+Two probes were **discarded as invalid before these numbers**, and both are worth recording:
+
+1. A "static pre-draft" arm that recomputed full demand against the **depleted** pool. It
+   inflated a round-15 QB to `271.0` — higher than anything on the round-1 board. An
+   implementation bug in the probe, not a property of the idea, but it would have been
+   reported as one had the absurd number not been visible.
+2. The monkeypatching battery, once the repair landed in production: both of its arms then
+   contained the fix, so it silently began comparing the change against itself. Replaced with
+   a true `git show HEAD:draft_room.py` before/after. **This is the same vacuity class as the
+   #56 sweep** — the third instance this phase — and the lesson is now explicit: an
+   instrument that shares code with the thing under test stops being an instrument.
+
+## What this does NOT settle
+
+* **The trade_value branch is unmeasured.** The synthetic universe is built from the
+  projection set, so every row took the points path and `_points` was the only `value_col`
+  ever observed. The same fill is wired on the trade_value branch for consistency — the same
+  defect through the same mechanism — but it is **untested**, and that is a real gap, not a
+  claim of coverage.
+* **The unvalued-vs-valued question is narrowed, not answered.** With skill positions priced
+  again, the crossing case gets rarer, but `_board_order` still asserts `unknown < known-bad`
+  wherever a row remains unpriced. #112's three kinds of absence still collapse to one `None`.
+* **1QB-14 keeps K/DEF on top and that is correct.** Revived skill players score −2 to +12.7
+  against kickers at 15–19, so `K 19.0` genuinely beats `RB −1.0`. The change is not that
+  skill players win; it is that the comparison now happens **on evidence instead of on missing
+  data**. Across the battery, 51 K/DEF-on-top rounds: 44 flip to a skill player, 7 stay.
+
+## Does fuller Sleeper coverage make this obsolete? Measured: no.
+
+The repair would be a stopgap only if the absence were a **data gap**. It is not. On the
+pre-repair board at the state where four skill positions are wholly unpriced:
+
+| position | unpriced **with** a points projection | unpriced with **no** projection |
+|---|---|---|
+| QB | 15 | 0 |
+| RB | 36 | 0 |
+| TE | 24 | 0 |
+| WR | 9 | 0 |
+
+**84 of 84 unpriced rows already carry a points projection.** Not one of them is missing data.
+They are unpriced because their position has no unfilled starting slot left in the league, so
+`replacement_levels` correctly declines to produce a level — a **domain boundary in the demand
+model**, which no amount of additional source coverage can close. A perfect projection for
+every player in the NFL would leave all 84 rows exactly as unpriced as they are now.
+
+What fuller coverage *would* change, none of which touches this mechanism:
+
+* **It shrinks the untested surface.** The `~has_proj` trade_value fallback is the branch this
+  phase could not exercise; better coverage moves rows off it onto the points path.
+* **IDP moves onto the points path.** Sleeper covers IDP where Draft Sharks does not, so IDP
+  positions currently lean on the trade_value fallback.
+* **The affected row count grows.** A deeper priced pool means more rows sitting at a position
+  whose demand has expired — the defect gets *bigger*, not smaller.
+* **The measurements here age, the mechanism does not.** Board sizes, the round at which each
+  position flips, and the 42/34 unpriced counts all come from the current projection set and
+  will move. The domain boundary that produces them will not.

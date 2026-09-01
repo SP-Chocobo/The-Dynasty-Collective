@@ -1307,6 +1307,108 @@ def _attach_waiting_cost(
     ).round(2)
 
 
+def _derive_points_and_source(pool: pd.DataFrame) -> pd.Series:
+    """Fill _points and bpa_source on a pool frame; returns the has_proj mask.
+
+    Extracted verbatim from compute_draft_board so the pre-draft replacement anchor below can
+    build an IDENTICALLY derived frame instead of a second, drifting copy of this logic --
+    two representations of one concept is exactly the defect class this module already fights.
+    """
+    pool["_points"] = pool["projection"].astype(float)
+    pool["bpa_source"] = "points_vor_draftsharks"
+    # Correct the default for rows whose "projection" didn't come from Draft Sharks at all --
+    # see KDST_SEEDED_SOURCE_FILES for why this exists and what it does and doesn't affect
+    # (a label and a confidence NUMBER, never bpa/universal_value/final_score).
+    if "source_file" in pool.columns:
+        pool.loc[pool["source_file"].isin(KDST_SEEDED_SOURCE_FILES), "bpa_source"] = "points_vor_sleeper_seeded"
+    no_ds_proj = pool["_points"].isna()
+    has_sleeper = pool["sleeper_points"].notna()
+    use_sleeper = no_ds_proj & has_sleeper
+    # Guarded rather than assigned unconditionally: when sleeper_points is entirely absent
+    # (no live sync passed one in), use_sleeper is all-False and the right-hand side
+    # collapses to an empty object-dtype Series, which pandas refuses to assign into an
+    # existing float64 column even though there's nothing to assign -- a real pandas gotcha.
+    if use_sleeper.any():
+        pool.loc[use_sleeper, "_points"] = pool.loc[use_sleeper, "sleeper_points"] * SLEEPER_WEEKLY_TO_SEASON_FACTOR
+        pool.loc[use_sleeper, "bpa_source"] = "points_vor_sleeper_extrapolated"
+
+    has_proj = pool["_points"].notna()
+    pool.loc[~has_proj, "bpa_source"] = "position_relative_trade_value_vor"
+    return has_proj
+
+
+def predraft_replacement_anchor(
+    merger: DataMerger, players_db: dict[str, dict], usable_positions, roster_positions: list[str],
+    num_teams: int, value_col: str, *, sleeper_projections=None, scoring_settings=None,
+    pool_scope: str = "all", startable_floors: Optional[dict[str, float]] = None,
+) -> dict[str, float]:
+    """This league's replacement level per position as it stood with NOBODY drafted.
+
+    Why this exists. replacement_levels is defined only while a position still has a whole
+    starting slot unfilled, and correctly OMITS the position below that. compute_draft_board
+    turned that omission into final_score=None, and _board_order sorts None last -- so once a
+    position's league-wide starter demand was satisfied, EVERY remaining player at it fell
+    below every priced row. Kickers and defenses are drafted last, so they are the last
+    positions still carrying demand, which made the ordering inversion structural rather than
+    incidental: measured on a 12-team 1QB board at round 15, K and DEF were 100% priced (37/37
+    and 32/32) while QB/RB/TE/WR were 100% UNPRICED (0 of 15/36/24/9), and the top five
+    candidates were four defenses and a kicker ahead of every remaining skill player.
+
+    The board is not entitled to read "this position has no live starter demand" as "these
+    players are worth less than every kicker." It is entitled to keep pricing them against the
+    anchor they were already being priced against, which is what this returns.
+
+    Why the PRE-DRAFT level is the right anchor, and why it is computed rather than
+    remembered. replacement_levels' own docstring records that while demand stays positive,
+    rank shrinkage and pool drain cancel exactly, so the live level is algebraically identical
+    to the static pre-draft one. The last live level is therefore the pre-draft level --
+    verified directly here, not assumed: across 1QB-12, superflex-12 and 1QB-14 full drafts,
+    every position's first observed live level equals its pre-draft level to within 1e-9.
+    That equality is what lets this be a pure function of (player universe, league settings)
+    instead of a memo of earlier calls, preserving replacement_levels' own contract that
+    nothing is cached across picks -- a memo would have made a board depend on which boards
+    were built before it.
+
+    NOT a fallback for the startable_floors branch. That branch declines for a different
+    reason -- no remaining player clears the startability threshold -- and reviving a stale
+    anchor there would assert a startable replacement exists where the measurement says none
+    does. Callers must not fill those positions from here; compute_draft_board doesn't.
+    """
+    full_pool = build_available_pool(
+        merger, players_db, set(), usable_positions,
+        sleeper_projections=sleeper_projections, scoring_settings=scoring_settings,
+        pool_scope=pool_scope,
+    )
+    if full_pool.empty:
+        return {}
+    has_proj = _derive_points_and_source(full_pool)
+    group = full_pool[has_proj] if value_col == "_points" else full_pool[~has_proj]
+    if group.empty:
+        return {}
+    return replacement_levels(
+        group, value_col, roster_positions, num_teams, None, startable_floors=startable_floors,
+    )
+
+
+def _fill_omitted_from_anchor(levels, present_positions, startable_floors, anchor):
+    """Fill positions replacement_levels omitted for EXHAUSTED DEMAND from the pre-draft
+    anchor, never those the startable_floors branch declined. Returns the positions filled, so
+    the board can record that their price rests on the pre-draft anchor rather than a live one
+    (see the replacement_basis column) instead of presenting both as the same kind of claim."""
+    missing = [
+        p for p in present_positions
+        if p not in levels and (startable_floors or {}).get(p) is None
+    ]
+    if not missing:
+        return set()
+    filled = set()
+    for position in missing:
+        if position in anchor:
+            levels[position] = anchor[position]
+            filled.add(position)
+    return filled
+
+
 def compute_draft_board(
     merger: DataMerger,
     players_db: dict[str, dict],
@@ -1404,30 +1506,31 @@ def compute_draft_board(
     # replacement-rank logic, and folded into the SAME shared linear scale as the points-
     # anchored group below, not given its own separate range (see module docstring on why a
     # separate per-position range was the other half of the original IDP bug).
-    pool["_points"] = pool["projection"].astype(float)
-    pool["bpa_source"] = "points_vor_draftsharks"
-    # Correct the default for rows whose "projection" didn't come from Draft Sharks at all --
-    # see KDST_SEEDED_SOURCE_FILES for why this exists and what it does and doesn't affect
-    # (a label and a confidence NUMBER, never bpa/universal_value/final_score).
-    if "source_file" in pool.columns:
-        pool.loc[pool["source_file"].isin(KDST_SEEDED_SOURCE_FILES), "bpa_source"] = "points_vor_sleeper_seeded"
-    no_ds_proj = pool["_points"].isna()
-    has_sleeper = pool["sleeper_points"].notna()
-    use_sleeper = no_ds_proj & has_sleeper
-    # Guarded rather than assigned unconditionally: when sleeper_points is entirely absent
-    # (no live sync passed one in), use_sleeper is all-False and the right-hand side
-    # collapses to an empty object-dtype Series, which pandas refuses to assign into an
-    # existing float64 column even though there's nothing to assign -- a real pandas gotcha.
-    if use_sleeper.any():
-        pool.loc[use_sleeper, "_points"] = pool.loc[use_sleeper, "sleeper_points"] * SLEEPER_WEEKLY_TO_SEASON_FACTOR
-        pool.loc[use_sleeper, "bpa_source"] = "points_vor_sleeper_extrapolated"
-
-    has_proj = pool["_points"].notna()
-    pool.loc[~has_proj, "bpa_source"] = "position_relative_trade_value_vor"
+    has_proj = _derive_points_and_source(pool)
 
     # NaN, not 0.0: a row whose position has no starter-demand replacement level has no VOR,
     # and 0.0 would say "exactly at replacement" -- a claim, where there is an absence.
     pool["_vor"] = float("nan")
+    # Which anchor each row's price ends up resting on. Live demand is the normal case; a
+    # position whose league-wide starter demand is exhausted keeps being priced against its
+    # PRE-DRAFT level instead of falling out of the board entirely (see
+    # predraft_replacement_anchor for the measured inversion that motivates this). The two are
+    # different strengths of claim, so they are recorded as different values rather than
+    # collapsed into one indistinguishable price.
+    pool["replacement_basis"] = "live_starter_demand"
+    _anchored: set = set()
+    _anchor_cache: dict = {}
+
+    def _anchor(value_col, floors):
+        """Built at most once per board, and only if some position actually needs it -- the
+        pre-draft pool is a second full pool construction, not something to do every build."""
+        if value_col not in _anchor_cache:
+            _anchor_cache[value_col] = predraft_replacement_anchor(
+                merger, players_db, usable_positions, roster_positions, num_teams, value_col,
+                sleeper_projections=sleeper_projections, scoring_settings=scoring_settings,
+                pool_scope=pool_scope, startable_floors=floors,
+            )
+        return _anchor_cache[value_col]
     pool["_season_proj_pct"] = 50.0
     pool["_proj3yr_pct"] = 50.0
     # Does this row carry a REAL multi-year outlook at all? time_horizon_adj is a DIFFERENCE
@@ -1453,6 +1556,10 @@ def compute_draft_board(
         point_replacement = replacement_levels(
             proj_pool, "_points", roster_positions, num_teams, starter_demand,
             startable_floors=startable_floors,
+        )
+        _anchored |= _fill_omitted_from_anchor(
+            point_replacement, set(proj_pool["position"].unique()), startable_floors,
+            _anchor("_points", startable_floors),
         )
         pool.loc[has_proj, "_vor"] = proj_pool.apply(
             lambda r: (r["_points"] - point_replacement[r["position"]])
@@ -1487,6 +1594,9 @@ def compute_draft_board(
     if (~has_proj).any():
         no_proj_pool = pool[~has_proj].copy()
         tv_replacement = replacement_levels(no_proj_pool, "trade_value", roster_positions, num_teams, starter_demand)
+        _anchored |= _fill_omitted_from_anchor(
+            tv_replacement, set(no_proj_pool["position"].unique()), None, _anchor("trade_value", None),
+        )
         pool.loc[~has_proj, "_vor"] = no_proj_pool.apply(
             lambda r: (r["trade_value"] - tv_replacement[r["position"]])
             if r["position"] in tv_replacement else float("nan"),
@@ -1498,6 +1608,8 @@ def compute_draft_board(
     # smaller than a points-based one (different units), so sharing this reference means a
     # thin-demand IDP fallback correctly can't out-compete a well-projected offensive player
     # just because it locally looked like "the best of its own small group."
+    if _anchored:
+        pool.loc[pool["position"].isin(_anchored), "replacement_basis"] = "predraft_anchor"
     pool["bpa"] = _scale_vor_to_bpa(pool["_vor"])
 
     if use_upside:
@@ -1543,6 +1655,7 @@ def compute_draft_board(
             "player_id", "name", "position", "team", "injury_status", "bpa", "bpa_source",
             "growth_signal", "universal_value", "confidence", "final_score", "mode",
             "projected_points", "horizon_floor", "horizon_sensitivity", "waiting_cost",
+            "replacement_basis",
         ]], "projected_points", "horizon_floor", "horizon_sensitivity", "waiting_cost",
             "bpa", "universal_value", "final_score")
 
@@ -1655,7 +1768,7 @@ def compute_draft_board(
         "player_id", "name", "position", "team", "injury_status", "bpa", "bpa_source",
         "time_horizon_adj", "risk_adj", "universal_value",
         "need_bonus", "eligibility_bonus", "confidence", "final_score", "mode", "projected_points",
-        "horizon_floor", "horizon_sensitivity", "waiting_cost",
+        "horizon_floor", "horizon_sensitivity", "waiting_cost", "replacement_basis",
     ]], "projected_points", "horizon_floor", "horizon_sensitivity", "waiting_cost",
         "bpa", "universal_value", "final_score")
 
