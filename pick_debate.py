@@ -63,61 +63,69 @@ from llm_engine import (
 )
 from pick_synthesis import CandidateSnapshot, PickSnapshot, diff_snapshots
 
+import provider_meter
+
 DEFAULT_ROLE_PROVIDERS = {"strategist": "claude", "skeptic": "openai", "caller": "claude"}
 
 
 def _call_claude(system_prompt: str, user_prompt: str, api_key: Optional[str] = None, model: Optional[str] = None) -> str:
     key = api_key or ANTHROPIC_API_KEY
     if not key:
+        provider_meter.record_not_attempted("claude", "api_key_missing")
         return "⚠️ ANTHROPIC_API_KEY not set — add it in the sidebar's Connect Your Accounts section, or in .env."
     try:
         import anthropic
 
-        client = anthropic.Anthropic(api_key=key)
+        client = anthropic.Anthropic(api_key=key, **provider_meter.client_limits("claude", anthropic.Anthropic))
         # No tools attached, deliberately -- see module docstring on why this doesn't reuse
         # llm_engine's web-search-equipped callers.
-        response = client.messages.create(
+        response = provider_meter.metered("claude", lambda: client.messages.create(
             model=model or CLAUDE_MODEL, max_tokens=MAX_TOKENS, system=system_prompt,
             messages=[{"role": "user", "content": user_prompt}],
-        )
+        ), model_requested=model or CLAUDE_MODEL)
         return "".join(block.text for block in response.content if hasattr(block, "text")).strip()
     except Exception as exc:  # noqa: BLE001
+        provider_meter.record_preflight_failure("claude", exc)
         return f"⚠️ Claude request failed: {exc}"
 
 
 def _call_gemini(system_prompt: str, user_prompt: str, api_key: Optional[str] = None, model: Optional[str] = None) -> str:
     key = api_key or GEMINI_API_KEY
     if not key:
+        provider_meter.record_not_attempted("gemini", "api_key_missing")
         return "⚠️ GEMINI_API_KEY not set — add it in the sidebar's Connect Your Accounts section, or in .env."
     try:
         from google import genai
         from google.genai import types
 
-        client = genai.Client(api_key=key)
-        response = client.models.generate_content(
+        client = genai.Client(api_key=key, **provider_meter.gemini_limits(genai, types))
+        response = provider_meter.metered("gemini", lambda: client.models.generate_content(
             model=model or GEMINI_MODEL, contents=user_prompt,
             config=types.GenerateContentConfig(system_instruction=system_prompt, max_output_tokens=MAX_TOKENS),
-        )
+        ), model_requested=model or GEMINI_MODEL)
         return (response.text or "").strip() or "⚠️ Gemini returned an empty response."
     except Exception as exc:  # noqa: BLE001
+        provider_meter.record_preflight_failure("gemini", exc)
         return f"⚠️ Gemini request failed: {exc}"
 
 
 def _call_openai(system_prompt: str, user_prompt: str, api_key: Optional[str] = None, model: Optional[str] = None) -> str:
     key = api_key or OPENAI_API_KEY
     if not key:
+        provider_meter.record_not_attempted("openai", "api_key_missing")
         return "⚠️ OPENAI_API_KEY not set — add it in the sidebar's Connect Your Accounts section, or in .env."
     try:
         from openai import OpenAI
 
-        client = OpenAI(api_key=key)
-        response = client.responses.create(
+        client = OpenAI(api_key=key, **provider_meter.client_limits("openai", OpenAI))
+        response = provider_meter.metered("openai", lambda: client.responses.create(
             model=model or OPENAI_MODEL,
             input=[{"role": "system", "content": system_prompt}, {"role": "user", "content": user_prompt}],
             max_output_tokens=MAX_TOKENS,
-        )
+        ), model_requested=model or OPENAI_MODEL)
         return (getattr(response, "output_text", "") or "").strip()
     except Exception as exc:  # noqa: BLE001
+        provider_meter.record_preflight_failure("openai", exc)
         return f"⚠️ ChatGPT request failed: {exc}"
 
 

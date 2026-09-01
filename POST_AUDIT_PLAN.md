@@ -352,3 +352,91 @@ Two consequences the contract must carry, recorded now so they are not rediscove
   one rendered.
 * "Plus bindings" means the binder is the trigger, so every future binder (Insight, debate,
   research) must record through the same path or history acquires holes silently.
+
+---
+
+# Step 1b — the operational envelope
+
+**No Insight code. No valuation change. Six provider callers wired; every `⚠️` string byte-identical.**
+
+## The structural finding that shapes all four items
+
+`#100`, the recoverable half of `#99`, and part of `#109` are **one gap, not three**: every provider
+caller returns a bare `str`, so the response object — which carries token usage, the stop reason
+and the served model id — is discarded inside the function.
+
+The obvious repair is a richer return type. **Rejected on measurement:** that value is passed
+straight through by **12 call sites** up into `app.py`, and §14 established the strongest property
+this app has — every caller returns a `⚠️ …` string rather than raising, so one dead provider
+cannot take out the panel. Rebuilding that chain to carry a new type would risk that property to
+gain bookkeeping. The metadata is recorded **beside** the call instead, in `provider_meter`, and
+nothing there can alter what a caller returns.
+
+## Delivered
+
+| Item | State |
+|---|---|
+| **#100** metering | **done** — per-call provider, model requested *and reported*, tokens, latency, outcome; `mark()`/`since()` scopes one operation's calls; ring-buffered at 500 |
+| **#99** truncation | **done (detection)** — four states: complete / truncated / blocked / **unknown**. A provider that did not say is never recorded as having said "complete" |
+| **#105** limits | **partly done** — a request timeout now exists where none did; the retry knob is explicit and deliberately **off** |
+| **#104** abort-vs-degrade | **characterized, not changed** — as scoped |
+
+**Truncation has four states, not two**, for the same reason §18/#112 gave: collapsing "did not
+report" into "complete" is the reading that does damage, and it is exactly what an SDK shape change
+(#110's class) would produce.
+
+**A never-attempted call is now separable from a failed one.** §14 recorded that four distinct
+causes collapse into one signal. The half that *can* be separated with certainty now is: no API
+key, or the SDK absent — the request never left the machine, so it cost nothing and could not have
+been truncated. Measured working: 6 of 6 calls recorded as `not_attempted` with their own reasons.
+§22's marker still stays agnostic about a call that *did* run; that ambiguity was always real.
+
+## #104, measured
+
+All eight failure combinations of the three upstream chairs, and the behaviour is **identical in
+every one**: 4 calls made, Moderator always runs, always returns a real verdict. `abort`,
+`degrade`, `minimum`, `quorum`, `threshold` — **zero occurrences** across both modules.
+
+**The policy is "always degrade, never abort", and it was never chosen** — it is what falls out of
+calling four chairs in sequence. The edge worth deciding: **with all three upstream chairs failed,
+the Moderator still synthesizes a verdict from three unavailability markers.** R12/R17 make those
+markers say *treat as MISSING, never as a finding that there is nothing to report*, so the chair is
+told it has nothing — but nothing stops a confident verdict, and it renders beside the error count
+rather than instead of it. Pinned as a characterization test to invert on repair.
+
+## A premise this step corrected
+
+§14/§15 concluded *"this app performs no retries."* What was actually established is narrower:
+**this repo contains no retry code.** Whether retries *happen* was never measured — the provider
+SDKs carry their own defaults that this app never set. The old claim was a property of the source
+text rather than of the running system, which is the trap this audit named repeatedly and then fell
+into. Both characterization tests are corrected rather than loosened, and the guards still hold:
+the limit logic was moved into `provider_meter` so the crude substring scan over `llm_engine` /
+`pick_debate` keeps its full value.
+
+## The honest limit on this step's evidence
+
+**None of the three provider SDKs is installed in this environment.** So every response shape here
+is a stand-in: the tests prove `provider_meter` *reads* a given shape correctly, and cannot prove
+what a live provider returns. Two consequences, both designed for rather than hoped past:
+
+* Limits are applied through `supported_kwargs`, which **asks the SDK** rather than assuming a
+  kwarg name. A wrong name would raise, be caught by the caller's own handler, and silently
+  disable that provider outright — so an unaccepted knob is **dropped and recorded** in
+  `applied_limits`, never guessed at. A limit that silently fails to apply is worse than none.
+* `#109` moves from *blocked* to *capture wired, verification outstanding*: the served-model echo
+  is recorded where present, but whether a given SDK resolves a floating alias there is unverified.
+
+**New task: verify the metering and limit surfaces against live SDKs** on a machine where they are
+installed — usage field names, stop-reason vocabularies, timeout kwarg names and units, and whether
+`model` echoes a resolved id. Until then the ledger may under-report, and it reports absence as
+absence, which is the correct failure direction.
+
+## Decisions surfaced (none taken)
+
+| # | Decision |
+|---|---|
+| **D12** | `REQUEST_TIMEOUT_SECONDS` — 180 s is provisional. Every caller enables server-side web search, so a search-and-synthesize turn is legitimately slow |
+| **D13** | `CLIENT_MAX_RETRIES` — today the SDK defaults apply and the app's "no retries" claim is unverified. Set 0 to make the claim true, set a value deliberately, or leave SDK behaviour alone |
+| **D14** | #104's floor — is there a level of upstream failure below which the panel should decline to synthesize rather than degrade? |
+| **D15** | What the app *does* on a detected truncation, now that it can detect one — discard, annotate, or warn. Same choice shape as #99/#101, and it should be settled once for all three |

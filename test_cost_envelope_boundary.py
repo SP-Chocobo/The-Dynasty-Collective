@@ -31,6 +31,7 @@ from pathlib import Path
 
 import bot_benchmark
 import llm_engine
+import provider_meter
 import pick_debate
 import pick_synthesis as ps
 
@@ -131,6 +132,43 @@ class NothingAmplifiesTheEnvelopeTests(unittest.TestCase):
                     + inspect.getsource(bot_benchmark)).lower()
         for marker in ("retry", "backoff", "max_retries", "tenacity"):
             self.assertNotIn(marker, combined, f"{marker} appeared -- the envelope is no longer fixed.")
+
+    def test_the_limits_module_adds_no_retry_semantics_either(self):
+        """provider_meter now sits directly on the provider call path, so the guard above has to
+        reach it too. It is scanned differently on purpose: it DECLARES a retry knob (that is
+        the point of #105's decision surface), so a raw substring scan would be meaningless
+        here. What must remain true is that nothing loops and nothing backs off."""
+        source = inspect.getsource(provider_meter).lower()
+        for marker in ("backoff", "tenacity", "time.sleep", "while true"):
+            self.assertNotIn(marker, source, f"{marker} appeared -- the envelope is no longer fixed.")
+
+    def test_the_retry_knob_exists_and_is_off_so_the_envelope_is_unchanged(self):
+        """§14/§15 concluded 'this app performs no retries'. What was actually established is
+        narrower: this REPO contains no retry code. Whether retries HAPPEN was never measured,
+        and the provider SDKs carry their own defaults, so the old claim was a property of the
+        source text rather than of the running system -- the exact trap this audit kept naming.
+
+        The knob is now explicit and deliberately OFF: None means nothing is passed, so runtime
+        behaviour is byte-identical to before it existed. Choosing a value is a cost/latency
+        policy decision and is parked."""
+        self.assertIsNone(provider_meter.CLIENT_MAX_RETRIES)
+
+        class _Client:
+            def __init__(self, api_key=None, timeout=None, max_retries=None):
+                pass
+
+        off = provider_meter.client_limits("probe", _Client)
+        self.assertNotIn("max_retries", off, "the knob is off; nothing may be passed")
+
+        # Non-vacuity: the knob is real, not decorative. With a value set it IS passed, so the
+        # test above is measuring an off switch rather than a missing wire.
+        original = provider_meter.CLIENT_MAX_RETRIES
+        provider_meter.CLIENT_MAX_RETRIES = 0
+        try:
+            on = provider_meter.client_limits("probe", _Client)
+        finally:
+            provider_meter.CLIENT_MAX_RETRIES = original
+        self.assertEqual(on.get("max_retries"), 0)
 
     def test_no_loop_wraps_a_provider_call(self):
         for module in (llm_engine, pick_debate):

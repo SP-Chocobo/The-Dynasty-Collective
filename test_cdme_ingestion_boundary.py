@@ -47,6 +47,11 @@ _NEVER_IMPORTED = (
     # produced it is a feedback loop, and acquires authority purely by having been written
     # down. Same rule, same reason, as bot_research above.
     "draft_history",
+    # provider_meter.py holds a ledger of what every LLM call cost and how it ended. It is not a
+    # data source, but it is a record OF model activity sitting directly on the provider call
+    # path, and CDME reading model activity back into valuation is the same feedback loop the
+    # entries above exist to prevent.
+    "provider_meter",
 )
 POSITIONS = ("QB", "RB", "WR", "TE")
 

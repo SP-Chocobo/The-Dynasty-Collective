@@ -28,6 +28,7 @@ from pathlib import Path
 import decision_log
 import llm_engine
 import pick_debate
+import provider_meter
 
 _HERE = Path(__file__).parent
 _APP = (_HERE / "app.py").read_text()
@@ -205,9 +206,31 @@ class FailureTaxonomyIsCoarseTests(unittest.TestCase):
                 self.assertNotIn(marker, source, f"{module.__name__} now classifies -- invert this test.")
 
     def test_there_are_no_retries_and_no_resume(self):
+        """PARTIALLY INVERTED (1b). The scan over these two modules still holds and still
+        matters. What has been corrected is the conclusion drawn from it: this proves the REPO
+        implements no retry or resume, which is not the same as proving none HAPPENS. The
+        provider SDKs carry their own retry defaults that this app never set and never measured,
+        so the running system's behaviour was never established by this test. See
+        test_cost_envelope_boundary for the now-explicit, deliberately-off knob."""
         combined = inspect.getsource(llm_engine) + inspect.getsource(pick_debate)
         for marker in ("retry", "backoff", "max_retries", "resume", "idempot"):
             self.assertNotIn(marker, combined.lower(), f"{marker} appeared -- invert this test.")
+
+    def test_a_never_attempted_call_is_no_longer_indistinguishable_from_a_failed_one(self):
+        """PARTIALLY INVERTS the coarse-taxonomy test above (1b/#99/#100). Four causes still
+        collapse into one ⚠️ STRING, but they no longer collapse in the RECORD: a call that
+        never left this machine -- no key, or the SDK absent -- is now recorded as
+        not_attempted with its own reason, separately from a request that was made and failed.
+
+        This is the half of §14's collapse that can be separated with certainty. §22's
+        unavailability marker still has to stay agnostic about a call that DID run."""
+        provider_meter.reset()
+        llm_engine._call_claude("system", "user", api_key="")          # never attempted: no key
+        records = provider_meter.recent()
+        self.assertEqual(len(records), 1)
+        self.assertEqual(records[0]["completion_state"], provider_meter.NOT_ATTEMPTED)
+        self.assertEqual(records[0]["completion_detail"], "api_key_missing")
+        self.assertIsNone(records[0]["input_tokens"], "a call that never ran has no token cost")
 
     def test_a_completely_failed_debate_writes_nothing_to_the_decision_log(self):
         """§14: is complete failure state recorded? Only in the session-scoped activity log
@@ -224,6 +247,57 @@ class FailureTaxonomyIsCoarseTests(unittest.TestCase):
                 self.assertEqual(len(decision_log.load_decisions("L1")), 1)
             finally:
                 decision_log.DECISIONS_DIR = saved
+
+    def test_the_panel_degrades_unconditionally_and_never_aborts(self):
+        """#104, CHARACTERIZED (1b). Measured across all eight failure combinations of the three
+        upstream chairs: the call count is 4 every time, the Moderator always runs, and it always
+        produces a real verdict. There is no threshold of any kind -- 'abort', 'degrade',
+        'minimum', 'quorum' and 'threshold' appear zero times across both modules.
+
+        So the policy is 'always degrade, never abort'. That is coherent and it was never chosen;
+        it is simply what falls out of calling four chairs in sequence. The edge it produces is
+        the one worth a decision: with ALL THREE upstream chairs failed, the Moderator still
+        synthesizes a verdict from three unavailability markers. R12/R17 make those markers say
+        'treat as MISSING, never as a finding that there is nothing to report', so the chair is
+        told it has nothing -- but nothing prevents a confident verdict anyway, and it renders
+        beside the error count rather than instead of it.
+
+        INVERT THIS TEST if a floor is ever introduced. Do not delete it."""
+        import itertools
+        roles = ("quant", "beat", "contrarian", "moderator")
+
+        def run(failing):
+            calls = []
+            def make(role):
+                def _call(system_prompt, user_prompt, api_key=None, model=None):
+                    calls.append(role)
+                    return _FAILURE if role in failing else f"{role} real report"
+                return _call
+            original = dict(llm_engine.PROVIDER_CALLERS)
+            llm_engine.PROVIDER_CALLERS.update({r: make(r) for r in roles})
+            try:
+                result = llm_engine.run_debate(
+                    "CTX", "Q", role_providers={r: r for r in roles},
+                    api_keys={r: "k" for r in roles})
+            finally:
+                llm_engine.PROVIDER_CALLERS.clear()
+                llm_engine.PROVIDER_CALLERS.update(original)
+            return result, calls
+
+        for count in range(4):
+            for combo in itertools.combinations(("quant", "beat", "contrarian"), count):
+                with self.subTest(failing=combo):
+                    result, calls = run(set(combo))
+                    self.assertEqual(len(calls), 4, "every chair is called regardless")
+                    self.assertIn("moderator", calls, "the moderator always runs")
+                    self.assertFalse(result.moderator.startswith("⚠️"))
+                    self.assertEqual(len(result.errors), len(combo))
+
+        for module in (llm_engine, pick_debate):
+            source = inspect.getsource(module).lower()
+            for threshold_word in ("abort", "quorum", "min_chairs"):
+                self.assertNotIn(threshold_word, source,
+                                 f"{threshold_word} appeared -- a floor exists; invert this test.")
 
     def test_no_fallback_provider_is_attempted_when_one_fails(self):
         source = inspect.getsource(llm_engine.run_debate)
