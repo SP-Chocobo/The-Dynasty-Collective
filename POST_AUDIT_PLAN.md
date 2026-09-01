@@ -2223,3 +2223,102 @@ Settling `M` is downstream of a question that is now open: **what regime should 
 govern — only the all-unpriced board, or the mixed board where the unpriced tail is already
 being ordered by player-id?** The answer changes how much `M` matters, and possibly whether
 `M` is the right parameter at all. That is a scope decision, not a measurement.
+
+---
+
+# D9 SCOPE — what #114 is actually asking, read off the record
+
+## §20.6 measured the all-unpriced board, not the mixed one
+
+> **"60 of 216 picks (27.8%) are made from boards where nothing can be priced."**
+> — ARCHITECTURE_AUDIT.md §20.6
+
+`boards with zero priced candidates`: 0/12 at round 11, 2/12 at round 13, **12/12 every round
+14–18**. So #114 as *measured* is regime (a) below. The discrepancy flagged in the previous
+section is resolved and was not a contradiction: both measurements are of the all-unpriced
+regime, and they differ only in **when** it begins — round 14 of 18 there, round 20 of 20 in
+the diag2 construction. §20.6's boards carry ~9.4 candidates; diag2 read the whole pool
+(93–321 rows). **§20.6 stands; the earlier note is withdrawn as a false alarm.**
+
+## The mixed board is structurally guaranteed, and here is the mechanism
+
+`select_candidates` (`pick_synthesis.py:785`) does not take a single top-N slice:
+
+```python
+ranked = sorted(board, key=_board_order)
+candidates = list(ranked[:top_n])            # priced-first, so all-priced while any exist
+for position, rows_at_position in by_position.items():
+    for row in rows_at_position[:depth]:     # BEST-AT-POSITION injection
+        if row["player_id"] not in included_ids:
+            candidates.append(row)           # <-- an UNPRICED row enters here
+candidates.sort(key=_board_order)            # and is tie-broken by str(player_id)
+```
+
+Once **any** position has no priced rows left, its best-at-position row is unpriced and is
+appended anyway. That is exactly §20.6's *"5.2 priced of 9.2 candidates"* at round 11 — about
+five priced from the top-N slice and about four unpriced injected by position. **The mixed
+board is not an edge case; it is produced deliberately, from early rounds, by the
+best-at-position rule.**
+
+## Two concepts that have been conflated — named separately
+
+**(a) Whole-board fallback.** *When should the entire board stop being ordered by price?*
+Fires only when nothing is priced. Decides the actual recommendation. 27.8% of the audited
+18-round draft; ~5% of the diag2 20-round draft. This is what §20.6 measured and what the
+"minimal rule" addresses.
+
+**(b) Unpriced-tail ordering.** *Among candidates that share the property of having no
+measured value, what determines their relative order?* Does **not** decide the recommendation
+— `_board_order` puts every priced row first — but it does decide the order the **debate
+layer and the UI** receive, which is the confabulation risk recorded at
+POST_AUDIT_PLAN.md:163. Present from early rounds via best-at-position.
+
+These are different questions with different blast radii and they need separate acceptance
+criteria. `DEPTH_MULTIPLE` is a parameter of the ordering rule and is therefore downstream of
+both — **no value is selected here, and 1.5·D is explicitly NOT adopted.** `D` and `2D` stand
+as structural reference points only: `D` is where a proportionally-filled roster is
+annihilated, `2D` is where the roster retains half the raw depth signal. The midpoint between
+them is a design hypothesis, not a discovered constant.
+
+## OPEN QUESTION (surfaced, not decided): may an unvalued row outrank a valued one?
+
+`_board_order` answers this today, silently, with an unconditional **no**. Its docstring
+defends only half of that:
+
+> *"it does not substitute a number for an absent score — ... treating that as 0.0 would rank
+> it exactly where 'worth nothing' ranks, which is a claim."*
+
+That defends **not fabricating 0.0**. It does not defend ORDER LAST, which is also a claim —
+and §20.6 shows precisely where that claim gets hard to hold. Leader TAV by round:
+
+| rd | 8 | 10 | 11 | 13 | 14–18 |
+|---|---|---|---|---|---|
+| leader TAV | 6.0 | **0.0** | **−3.67** | **−8.58** | None |
+
+**Priced values go negative before pricing collapses.** From round 11 on, `_board_order`
+ranks a row *measured at −8.58* above a row with **no measurement at all** — asserting
+`unknown < known-bad`, which is a strictly stronger claim than the 0.0 substitution the
+docstring rejects. At tav ≥ 0 the current rule is easy to defend; below 0 it is not.
+
+This cannot be answered by loosening the rule, because *why* a row is unpriced is not
+currently representable — **#112**, "kind-of-absence stops at the board, and 'never checked'
+has no representation." The three kinds have different answers:
+
+1. **no replacement level for the position** — structural absence; unknown, not bad.
+2. **no projection from any source** — coverage gap; unknown, not bad.
+3. **below every source's cutoff** — weak evidence of genuinely low value; ORDER LAST is fair.
+
+Only (3) justifies the current behaviour, and today all three are the same `None`. **#112 is
+therefore a prerequisite for answering this, and the instrumentation below must record the
+kind of absence per row rather than assume it.**
+
+## Instrumentation plan (no production change, no value selected)
+
+Architecture to be *tested*, not adopted: priced population keeps its existing ordering
+completely untouched; the fallback orders **only within the unpriced tail**.
+
+1. Instrument a realistic draft for regime (b): per round, how many candidates are unpriced,
+   how they entered (top-N vs best-at-position), and the **kind of absence** for each.
+2. Acceptance-test the tail ordering independently, with the invariant that **no priced pick
+   changes** as the pass/fail gate.
+3. Only then sweep `M` inside that architecture, reporting results against `D` and `2D`.
