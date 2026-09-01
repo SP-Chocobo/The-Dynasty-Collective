@@ -160,10 +160,12 @@ asserted in a docstring.
 
 from __future__ import annotations
 
+import collections
 from typing import Optional
 
 import pandas as pd
 
+import content_hash
 import lineup_optimizer as lo
 from data_merger import DataMerger, name_key, normalize_name
 from player_universe import FLEX_SLOT_POSITIONS, FANTASY_POSITIONS, league_usable_positions, player_eligible_positions, player_name, player_position, score_projection
@@ -1337,6 +1339,72 @@ def _derive_points_and_source(pool: pd.DataFrame) -> pd.Series:
     return has_proj
 
 
+
+# The pre-draft anchor is a PURE FUNCTION of (player universe, league settings) -- it takes no
+# picks argument and cannot vary with draft state. Building it costs a second full pool
+# construction, measured at ~544ms, which roughly doubled board-build time (0.52s -> 0.98s).
+#
+# So it is cached BY CONTENT, never by identity and never by call order. That distinction is
+# the whole safety argument: the memo rejected during this repair's design returned the FIRST
+# level a position was seen with, so its answer depended on which boards had been built before
+# it. This returns the same value for the same inputs and nothing else, which is a
+# pure-function cache rather than state.
+#
+# The danger is a key that MISSES an input: it would serve a stale anchor after the underlying
+# data changed and silently mis-price everything at that position. The key therefore covers
+# every input the anchor can read -- all four merger frames, the players_db content, and every
+# league/valuation argument -- and test_replacement_anchor_boundary asserts, input by input,
+# that changing each one changes the key. Cost measured at ~17ms against a ~544ms build.
+_ANCHOR_FRAMES = ("projections", "trade_values", "external_values", "free_agents")
+ANCHOR_CACHE_ENTRIES = 8
+_ANCHOR_CACHE: "collections.OrderedDict[str, dict[str, float]]" = collections.OrderedDict()
+
+
+def _merger_content_fingerprint(merger) -> str:
+    """Content of every merger frame the pool build can reach, not just the obvious one.
+
+    merge_player resolves against trade_values and external_values as well as projections, so
+    hashing projections alone would leave two inputs able to change under a stable key.
+    """
+    parts = []
+    for name in _ANCHOR_FRAMES:
+        frame = getattr(merger, name, None)
+        if frame is None or len(frame) == 0:
+            parts.append(f"{name}=empty")
+        else:
+            parts.append(f"{name}={int(pd.util.hash_pandas_object(frame, index=True).sum())}")
+    return content_hash.fingerprint(*parts)
+
+
+def _players_db_fingerprint(players_db: dict[str, dict]) -> str:
+    """Every player field the pool build reads -- id, position, eligibility and team."""
+    return content_hash.fingerprint(*(
+        f"{pid}|{(players_db[pid] or {}).get('position')}"
+        f"|{(players_db[pid] or {}).get('team')}"
+        f"|{','.join((players_db[pid] or {}).get('fantasy_positions') or ())}"
+        for pid in sorted(players_db)
+    ))
+
+
+def anchor_cache_key(
+    merger, players_db, usable_positions, roster_positions, num_teams, value_col,
+    sleeper_projections, scoring_settings, pool_scope, startable_floors,
+) -> str:
+    """Every input predraft_replacement_anchor can read, in one fingerprint."""
+    return content_hash.fingerprint(
+        _merger_content_fingerprint(merger),
+        _players_db_fingerprint(players_db),
+        repr(sorted(usable_positions or ())),
+        repr(list(roster_positions or ())),
+        repr(num_teams),
+        repr(value_col),
+        repr(sorted((sleeper_projections or {}).items())) if sleeper_projections else "none",
+        repr(sorted((scoring_settings or {}).items())) if scoring_settings else "none",
+        repr(pool_scope),
+        repr(sorted((startable_floors or {}).items())) if startable_floors else "none",
+    )
+
+
 def predraft_replacement_anchor(
     merger: DataMerger, players_db: dict[str, dict], usable_positions, roster_positions: list[str],
     num_teams: int, value_col: str, *, sleeper_projections=None, scoring_settings=None,
@@ -1374,23 +1442,40 @@ def predraft_replacement_anchor(
     anchor there would assert a startable replacement exists where the measurement says none
     does. Callers must not fill those positions from here; compute_draft_board doesn't.
     """
+    key = anchor_cache_key(
+        merger, players_db, usable_positions, roster_positions, num_teams, value_col,
+        sleeper_projections, scoring_settings, pool_scope, startable_floors,
+    )
+    cached = _ANCHOR_CACHE.get(key)
+    if cached is not None:
+        _ANCHOR_CACHE.move_to_end(key)
+        return dict(cached)          # a copy: callers fill omitted positions into their own dict
+
     full_pool = build_available_pool(
         merger, players_db, set(), usable_positions,
         sleeper_projections=sleeper_projections, scoring_settings=scoring_settings,
         pool_scope=pool_scope,
     )
     if full_pool.empty:
-        return {}
+        return _remember_anchor(key, {})
     has_proj = _derive_points_and_source(full_pool)
     group = full_pool[has_proj] if value_col == "_points" else full_pool[~has_proj]
     if group.empty:
-        return {}
-    return replacement_levels(
+        return _remember_anchor(key, {})
+    return _remember_anchor(key, replacement_levels(
         group, value_col, roster_positions, num_teams, None, startable_floors=startable_floors,
-    )
+    ))
 
 
-def _fill_omitted_from_anchor(levels, present_positions, startable_floors, anchor):
+def _remember_anchor(key: str, levels: dict[str, float]) -> dict[str, float]:
+    """Bounded, so a long-lived process cannot accumulate one entry per data reload."""
+    _ANCHOR_CACHE[key] = dict(levels)
+    while len(_ANCHOR_CACHE) > ANCHOR_CACHE_ENTRIES:
+        _ANCHOR_CACHE.popitem(last=False)
+    return dict(levels)
+
+
+def _fill_omitted_from_anchor(levels, present_positions, startable_floors, build_anchor):
     """Fill positions replacement_levels omitted for EXHAUSTED DEMAND from the pre-draft
     anchor, never those the startable_floors branch declined. Returns the positions filled, so
     the board can record that their price rests on the pre-draft anchor rather than a live one
@@ -1400,7 +1485,8 @@ def _fill_omitted_from_anchor(levels, present_positions, startable_floors, ancho
         if p not in levels and (startable_floors or {}).get(p) is None
     ]
     if not missing:
-        return set()
+        return set()          # nothing needs an anchor, so none is built -- see build_anchor
+    anchor = build_anchor()
     filled = set()
     for position in missing:
         if position in anchor:
@@ -1559,7 +1645,7 @@ def compute_draft_board(
         )
         _anchored |= _fill_omitted_from_anchor(
             point_replacement, set(proj_pool["position"].unique()), startable_floors,
-            _anchor("_points", startable_floors),
+            lambda: _anchor("_points", startable_floors),
         )
         pool.loc[has_proj, "_vor"] = proj_pool.apply(
             lambda r: (r["_points"] - point_replacement[r["position"]])
@@ -1595,7 +1681,8 @@ def compute_draft_board(
         no_proj_pool = pool[~has_proj].copy()
         tv_replacement = replacement_levels(no_proj_pool, "trade_value", roster_positions, num_teams, starter_demand)
         _anchored |= _fill_omitted_from_anchor(
-            tv_replacement, set(no_proj_pool["position"].unique()), None, _anchor("trade_value", None),
+            tv_replacement, set(no_proj_pool["position"].unique()), None,
+            lambda: _anchor("trade_value", None),
         )
         pool.loc[~has_proj, "_vor"] = no_proj_pool.apply(
             lambda r: (r["trade_value"] - tv_replacement[r["position"]])

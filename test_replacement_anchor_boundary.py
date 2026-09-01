@@ -220,26 +220,39 @@ class StartableFloorIsNeverRevived(unittest.TestCase):
     def test_fill_skips_a_position_the_floor_branch_declined(self):
         levels = {"RB": 100.0}
         filled = dr._fill_omitted_from_anchor(
-            levels, {"RB", "QB"}, {"QB": 250.0}, {"QB": 999.0, "RB": 111.0},
+            levels, {"RB", "QB"}, {"QB": 250.0}, lambda: {"QB": 999.0, "RB": 111.0},
         )
         self.assertEqual(filled, set(), "a floor-declined position was revived")
         self.assertNotIn("QB", levels)
 
     def test_fill_takes_a_position_whose_demand_merely_ran_out(self):
         levels = {"RB": 100.0}
-        filled = dr._fill_omitted_from_anchor(levels, {"RB", "QB"}, None, {"QB": 42.0})
+        filled = dr._fill_omitted_from_anchor(levels, {"RB", "QB"}, None, lambda: {"QB": 42.0})
         self.assertEqual(filled, {"QB"})
         self.assertEqual(levels["QB"], 42.0)
 
     def test_fill_cannot_invent_a_level_the_anchor_does_not_have(self):
         levels = {}
-        filled = dr._fill_omitted_from_anchor(levels, {"RB"}, None, {})
+        filled = dr._fill_omitted_from_anchor(levels, {"RB"}, None, dict)
         self.assertEqual(filled, set())
         self.assertEqual(levels, {})
 
+    def test_fill_does_not_call_the_builder_when_nothing_is_missing(self):
+        """The unit-level half of the laziness property -- the callable signature exists for
+        exactly this, and passing a built dict is what made it eager for one commit."""
+        calls = []
+
+        def build():
+            calls.append(1)
+            return {"RB": 1.0}
+
+        filled = dr._fill_omitted_from_anchor({"RB": 100.0}, {"RB"}, None, build)
+        self.assertEqual(filled, set())
+        self.assertEqual(calls, [], "the anchor was built despite nothing needing it")
+
     def test_fill_never_overwrites_a_live_level(self):
         levels = {"RB": 100.0}
-        dr._fill_omitted_from_anchor(levels, {"RB"}, None, {"RB": 999.0})
+        dr._fill_omitted_from_anchor(levels, {"RB"}, None, lambda: {"RB": 999.0})
         self.assertEqual(levels["RB"], 100.0)
 
 class TradeValueBranchIsAnchoredToo(unittest.TestCase):
@@ -319,6 +332,150 @@ class TradeValueBranchIsAnchoredToo(unittest.TestCase):
             self.assertIsNotNone(after.get(player_id), f"{player_id} lost a price it had")
             self.assertAlmostEqual(after[player_id], before, places=9,
                                    msg=f"{player_id}'s existing price changed")
+
+class TheAnchorCacheKeyIsComplete(unittest.TestCase):
+    """The cache is only as safe as its key.
+
+    predraft_replacement_anchor is a pure function of (player universe, league settings), so
+    caching it by CONTENT is legitimate in a way the rejected memo was not -- that one returned
+    the first level a position was seen with, making its answer depend on which boards were
+    built before it. This one returns the same value for the same inputs and nothing else.
+
+    The failure mode that remains is a key that MISSES an input: it would serve a stale anchor
+    after the underlying data changed and silently mis-price every row at that position -- an
+    absence-shaped defect wearing a number. So each test below changes exactly one input and
+    asserts the key moves. A key that ignored that input would fail here rather than in a
+    draft six weeks from now.
+    """
+
+    @classmethod
+    def setUpClass(cls):
+        cls.merger = dm.DataMerger()
+        cls.players_db, _ = _universe(cls.merger)
+        cls.usable = dr.league_usable_positions(ROSTER_POSITIONS)
+
+    def _key(self, **overrides):
+        args = dict(
+            merger=self.merger, players_db=self.players_db, usable_positions=self.usable,
+            roster_positions=ROSTER_POSITIONS, num_teams=NUM_TEAMS, value_col="_points",
+            sleeper_projections=None, scoring_settings=None, pool_scope="all",
+            startable_floors=None,
+        )
+        args.update(overrides)
+        return dr.anchor_cache_key(**args)
+
+    def test_the_same_inputs_give_the_same_key(self):
+        # Guards every assertion below: if the key were unstable, they would all "pass".
+        self.assertEqual(self._key(), self._key())
+
+    def test_a_changed_roster_template_changes_the_key(self):
+        other = ROSTER_POSITIONS + ["BN"]
+        self.assertNotEqual(self._key(), self._key(roster_positions=other))
+
+    def test_a_changed_team_count_changes_the_key(self):
+        self.assertNotEqual(self._key(), self._key(num_teams=NUM_TEAMS + 1))
+
+    def test_a_changed_value_col_changes_the_key(self):
+        self.assertNotEqual(self._key(), self._key(value_col="trade_value"))
+
+    def test_a_changed_pool_scope_changes_the_key(self):
+        self.assertNotEqual(self._key(), self._key(pool_scope="rookies"))
+
+    def test_changed_scoring_settings_change_the_key(self):
+        self.assertNotEqual(self._key(), self._key(scoring_settings={"rec": 1.0}))
+
+    def test_a_changed_startable_floor_changes_the_key(self):
+        self.assertNotEqual(self._key(), self._key(startable_floors={"QB": 250.0}))
+
+    def test_changed_usable_positions_change_the_key(self):
+        self.assertNotEqual(self._key(), self._key(usable_positions=set(self.usable) | {"LB"}))
+
+    def test_a_changed_players_db_changes_the_key(self):
+        # A player's POSITION moving is the case that matters: same ids, same count, different
+        # pool composition. A key over ids alone would miss it entirely.
+        moved = {pid: dict(info) for pid, info in self.players_db.items()}
+        victim = sorted(moved)[0]
+        moved[victim]["position"] = "TE" if moved[victim]["position"] != "TE" else "WR"
+        self.assertNotEqual(self._key(), self._key(players_db=moved))
+
+    def test_changed_merger_data_changes_the_key(self):
+        """The one a projections-only key would have missed: merge_player resolves against
+        trade_values and external_values too."""
+        import copy
+        for frame_name in ("projections", "trade_values", "external_values"):
+            with self.subTest(frame=frame_name):
+                clone = copy.copy(self.merger)
+                frame = getattr(self.merger, frame_name).copy()
+                if frame.empty:
+                    self.skipTest(f"{frame_name} is empty in this baseline")
+                column = frame.columns[0]
+                frame.iloc[0, frame.columns.get_loc(column)] = "MUTATED-FOR-TEST"
+                setattr(clone, frame_name, frame)
+                self.assertNotEqual(self._key(), self._key(merger=clone),
+                                    f"a change to {frame_name} left the key unmoved")
+
+
+class TheAnchorCacheIsSafeToReuse(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.merger = dm.DataMerger()
+        cls.players_db, _ = _universe(cls.merger)
+        cls.usable = dr.league_usable_positions(ROSTER_POSITIONS)
+
+    def _anchor(self):
+        return dr.predraft_replacement_anchor(
+            self.merger, self.players_db, self.usable, ROSTER_POSITIONS, NUM_TEAMS, "_points")
+
+    def test_a_cached_answer_equals_a_freshly_built_one(self):
+        dr._ANCHOR_CACHE.clear()
+        first = self._anchor()
+        self.assertTrue(first, "vacuous: the anchor produced no levels")
+        self.assertEqual(self._anchor(), first)
+
+    def test_the_caller_cannot_poison_the_cache_by_mutating_what_it_got(self):
+        # _fill_omitted_from_anchor writes into the dict it is handed, so a shared reference
+        # would let one board's fill leak into the next board's anchor.
+        dr._ANCHOR_CACHE.clear()
+        first = self._anchor()
+        first["QB"] = -999.0
+        self.assertNotEqual(self._anchor().get("QB"), -999.0)
+
+
+    def test_no_anchor_is_built_when_no_position_needs_one(self):
+        """The laziness the code claims, pinned as behaviour.
+
+        This was a real defect for one commit: _fill_omitted_from_anchor took the built anchor
+        as an ARGUMENT, so Python evaluated it eagerly on every board build and the "only if
+        some position actually needs it" in its own comment was false. A comment asserting
+        something the code does not do is the failure this repository's doctrine is named for,
+        so the property gets a test rather than a promise.
+        """
+        merger = dm.DataMerger()
+        players_db, by_position = _universe(merger)
+        opening = dr.compute_draft_board(merger, players_db, [], my_roster_id="1",
+                                         league=LEAGUE, mode="balanced")
+        self.assertTrue(opening, "vacuous: the opening board is empty")
+        # Early enough that every position still has unfilled starting slots league-wide.
+        picks = [{"player_id": row["player_id"], "roster_id": str((i % NUM_TEAMS) + 1),
+                  "round": (i // NUM_TEAMS) + 1, "pick_no": i + 1}
+                 for i, row in enumerate(opening[:4 * NUM_TEAMS])]
+        dr._ANCHOR_CACHE.clear()
+        board = dr.compute_draft_board(merger, players_db, picks, my_roster_id="1",
+                                       league=LEAGUE, mode="balanced")
+        self.assertTrue(board, "vacuous: the early board is empty")
+        self.assertEqual(
+            [r for r in board if r.get("replacement_basis") == "predraft_anchor"], [],
+            "a position was anchored this early, so this state does not test laziness")
+        self.assertEqual(len(dr._ANCHOR_CACHE), 0,
+                         "the anchor was built even though no position needed one")
+
+    def test_the_cache_is_bounded(self):
+        dr._ANCHOR_CACHE.clear()
+        for extra in range(dr.ANCHOR_CACHE_ENTRIES + 3):
+            dr.predraft_replacement_anchor(
+                self.merger, self.players_db, self.usable,
+                ROSTER_POSITIONS + ["BN"] * extra, NUM_TEAMS, "_points")
+        self.assertLessEqual(len(dr._ANCHOR_CACHE), dr.ANCHOR_CACHE_ENTRIES)
 
 
 
