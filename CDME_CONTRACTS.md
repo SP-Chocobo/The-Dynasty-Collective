@@ -8931,3 +8931,128 @@ has no defined boundary between claim and private context to assert.
 279. Aspirational documentation reads exactly like descriptive documentation. "Both are global
      and git-tracked" describes a file that has never existed, and the only way to tell is to
      look at the filesystem instead of the sentence.
+
+---
+
+## Interlude — audit scope: this checkout has never been run as an application
+
+Swept after §21.7's correction. Every runtime store is absent or empty:
+`bot_research.json`, `bot_comparisons.json`, `benchmark_results.json`, `bot_config.json`,
+`player_aliases.json`, `league_formats.json`, `league_prefs.json` and `last_session.json` do not
+exist; `data/decisions/`, `data/todos/` and `data/attachments/` are empty untracked directories;
+`data/chats/`, `data/sleeper_snapshots/` and `data/projections/` contain only a tracked
+`.gitkeep`; `data/draft_simulation_trials/` holds 31 untracked regenerated files. The only real
+data is the **28 committed files under `data/baseline/`**.
+
+Every §11–§21 finding that touched a runtime store was therefore measured against a planted or
+synthetic record. Each pass said so locally; none said it globally, and it belongs in the record
+once. It does not weaken the mechanism findings — a path that loses an update or drops a
+provenance field does so whether or not a file exists — but it downgrades every "observed state"
+phrasing to "live hazard" (#102, #103, #106, #107, #110), strengthens §19.3's reproducibility
+result (there is nothing else on disk for the suite to pick up), sharpens #113(c) (the upload
+directory is empty for the same reason everything else is), and explains why §20 had to
+synthesise its own `players_db` from the committed rankings.
+
+**280.** An audit of an unpopulated checkout establishes what the code will do, never what the
+data has done — and the difference has to be stated once, at the top, or every finding quietly
+inherits the stronger claim.
+
+---
+
+# Appendix §22 — Cross-Cutting Questions & Failure-Propagation Tests
+
+**Baseline entering:** `60d6097` on `ui-authority-pass`, suite 1457 OK. `main` frozen at
+`9fb5102`. Defect A1 untouched. One production file modified: **R17**, a correction to my own
+§14 repair.
+
+## What was measured
+
+**The lost-response ambiguity.** Every provider caller wraps its whole request in
+`except Exception`, which fires alike for a missing key (never executed), a connection error
+(never executed), a read timeout after the provider generated and billed a response (executed,
+not received), and a parse error on a response that did arrive. R12's marker asserted the call
+*"did not complete"* and that *"no analysis was produced"* — neither supportable, both false in
+the timeout case.
+
+**Cascade boundaries: two, both structural.** The chair handoff (R12/R17) replaces a failed
+upstream report rather than forwarding it, and the raw provider exception never reaches another
+provider. The CDME ingestion boundary confines LLM-originated data to `composite_player_score`,
+which `draft_room` deliberately removed from its math, and hard-filters CDME's two
+`external_values` touches to `source_name == "keeptradecut"` — proven by injecting a maximally
+distorting finding on a real baseline player and showing CDME's output byte-identical either way.
+
+**Stateless chairs.** Every call is single-shot — `messages=[{"role": "user", ...}]` with
+`system=` re-sent in full — so there is no thread for a replacement model to inherit assumptions
+from, and the contract travels with each request.
+
+**No independent reconstruction.** The engine rounds once at the source;
+`_records_with_normalized_nan` normalizes NaN to `None` **without recomputing or re-rounding**;
+`serialize_candidate` is a field-for-field read whose only computed values are two boolean
+renamings; the board's `.toFixed(1)` re-renders an already-rounded number.
+
+**Two Sleeper clocks, one disclosed.** `PLAYERS_CACHE_MAX_AGE_SECONDS = 24h`, deliberate and
+vendor-requested. `players_db` (`app.py:3117`) is what feeds the engine, and `injury_status` read
+from it is **the only Sleeper field reaching the deterministic valuation** via `RISK_ADJ`.
+`build_freshness_manifest` grades four sources — DS Dynasty Rankings, DS Free Agent Finder, DS
+Trade Value Chart, Sleeper league sync — and has **no entry for the players database**.
+
+**History is additive.** `log_decision` writes `moderator_text` and the parsed verdict once;
+`set_outcome` adds only `outcome`/`outcome_note`/`outcome_date`; `revise_todo` archives prior
+text; `bot_research` is append-only by construction. The one destructive path was `reopen_todo`,
+repaired in §16 R13.
+
+**Stale is never false.** Every `snapshot_is_current` reason is a staleness claim, and an
+unstamped snapshot is reported not-certifiable rather than silently current.
+
+## Corrections to my own conclusions
+
+1. **R12's marker overclaimed, and I wrote it.** It asserted non-completion and non-production of
+   analysis from inside a bare `except Exception`. That is the exact rule #89 established for the
+   alias branch and §6 R1 applied to `"validated"` — *a field may not claim a certainty its
+   writing path cannot establish* — applied twice by me and then broken in my own repair.
+   Corrected as R17.
+
+## Repairs
+
+**R17 — `llm_engine.UNAVAILABLE_REPORT` states what is known and names what is not.** New text:
+*"(unavailable — no report from this chair reached the panel. Whether the call never ran, ran and
+was lost, or ran and could not be read is not known here. Treat this as MISSING information,
+never as a finding that there is nothing to report.)"* Behaviour unchanged; R12's two load-bearing
+properties (`MISSING`, `never as a finding`) preserved.
+
+## Tests added
+
+Two, into `test_failure_mode_boundary.py` (R12's own file rather than a new one):
+`test_the_marker_does_not_assert_why_the_report_is_missing` forbids the overclaiming phrases and
+requires the three-way ambiguity be named; `test_every_provider_caller_catches_a_class_that_spans_all_three_outcomes`
+asserts every caller still catches bare `Exception`, because the marker's caution is only
+warranted while the catch is that broad — a future narrowing should force the wording to be
+revisited rather than left silently over-cautious.
+
+Non-vacuity: **4 probes** planted in real production code and reverted, all failing the intended
+tests — restoring the old assertion, dropping the not-known clause, narrowing a caller's catch to
+`ValueError`, and removing the absence-is-not-evidence clause.
+
+## Invariants
+
+281. A broad catch buys robustness and spends precision. `except Exception` around a whole
+     request makes the code fail soft and makes every downstream statement about *why* it failed
+     unsupportable.
+282. The rule that catches a defect will catch your repair too. #89's "a field may not claim a
+     certainty its writing path cannot establish" applied to the alias branch, then to
+     `"validated"`, and then to a marker I wrote while applying it.
+283. Naming an ambiguity is a stronger claim than resolving it. "Whether it never ran, ran and was
+     lost, or ran and could not be read is not known here" tells a reader more than any one of
+     the three asserted confidently.
+284. A caution is only warranted while its cause holds. If the catch is ever narrowed, the
+     over-cautious wording becomes a different kind of wrong — so the test pins the cause, not
+     just the wording.
+285. Statelessness is a safety property, not just an implementation detail. A chair that receives
+     its contract in full on every call cannot inherit anything from the model that answered last.
+286. Rounding once at the source is what makes "two components cannot disagree" true. Every
+     re-derivation downstream is a new opportunity for the same fact to arrive twice, differently.
+287. A cache with a vendor-mandated TTL is defensible; a cache whose age never appears beside the
+     sources that are graded is not. The undisclosed clock is the one carrying the field that
+     reaches the engine.
+288. Amend, never overwrite, and the audit trail survives every correction. This codebase does it
+     in four stores out of four — which is why the single exception was worth repairing.

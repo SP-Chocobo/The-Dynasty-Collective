@@ -126,6 +126,45 @@ class AFailedChairIsNotHandedOnAsEvidenceTests(unittest.TestCase):
         self.assertIn("MISSING", llm_engine.UNAVAILABLE_REPORT)
         self.assertIn("never as a finding", llm_engine.UNAVAILABLE_REPORT)
 
+    def test_the_marker_does_not_assert_why_the_report_is_missing(self):
+        """§22 (R17). Every provider caller wraps its whole request in `except Exception`, which
+        fires alike for a missing key (never executed), a connection error (never executed), a
+        read timeout after the provider generated and billed a response (executed, not
+        received), and a parse error on a response that did arrive. The marker therefore cannot
+        say the call "did not complete" or that "no analysis was produced" -- it said both until
+        §22 caught it, and in the timeout case both are false.
+
+        The rule is the one #89 set for the alias branch and §6 R1 applied to "validated": a
+        field may not claim a certainty its writing path cannot establish. What is known is that
+        no usable report reached this chair, and the marker now says only that."""
+        marker = llm_engine.UNAVAILABLE_REPORT.lower()
+        for overclaim in ("did not complete", "no analysis was produced", "never ran,",
+                          "failed to run", "was not executed"):
+            with self.subTest(phrase=overclaim):
+                # "never ran," with the comma is the enumeration in the honest wording; the bare
+                # assertions are what must not appear.
+                if overclaim == "never ran,":
+                    self.assertIn(overclaim, marker, "the three-way ambiguity must be named")
+                    continue
+                self.assertNotIn(overclaim, marker)
+        self.assertIn("is not known here", marker)
+
+    def test_every_provider_caller_catches_a_class_that_spans_all_three_outcomes(self):
+        """Non-vacuity for the test above: the marker's caution is only warranted because the
+        catch really is that broad. If a caller ever narrowed to a pre-flight error class, the
+        ambiguity would shrink and the wording should be revisited rather than kept."""
+        import ast
+        source = Path(__file__).with_name("llm_engine.py").read_text()
+        tree = ast.parse(source)
+        for name in ("_call_claude", "_call_gemini", "_call_openai"):
+            fn = next(n for n in ast.walk(tree)
+                      if isinstance(n, ast.FunctionDef) and n.name == name)
+            handlers = [h for n in ast.walk(fn) if isinstance(n, ast.Try) for h in n.handlers]
+            self.assertTrue(
+                any(isinstance(h.type, ast.Name) and h.type.id == "Exception" for h in handlers),
+                f"{name} no longer catches bare Exception -- revisit UNAVAILABLE_REPORT's wording",
+            )
+
     def test_the_raw_provider_exception_is_not_forwarded_to_another_provider(self):
         prompt = self._contrarian_prompt(_FAILURE, _FAILURE)
         self.assertNotIn("Connection reset", prompt)

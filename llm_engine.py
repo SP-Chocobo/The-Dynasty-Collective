@@ -582,9 +582,19 @@ def ask_beat(
 # text into another provider's prompt is a cross-provider disclosure with no upside -- see
 # ARCHITECTURE_AUDIT.md 7.8's residual on SDK exception contents. It still reaches the user
 # and the activity log intact via DebateResult.errors; only the model-facing copy is replaced.
+# The wording is deliberately about what THIS PROCESS HAS, not about what happened at the
+# provider. Every caller wraps its whole request in `except Exception`, which fires alike for a
+# missing key (never executed), a connection error (never executed), a read timeout after the
+# provider generated and billed a response (executed, not received), and a parse error on a
+# response that did arrive (executed, received, dropped locally). An earlier version of this
+# string said the call "did not complete, so no analysis was produced" -- two assertions the
+# catch cannot support, and in the timeout case simply false. Corrected under the rule #89 set
+# for the alias branch and §6 R1 applied to "validated": a field may not claim a certainty its
+# writing path cannot establish. What is known is that no usable report reached this chair.
 UNAVAILABLE_REPORT = (
-    "(unavailable — this chair's call did not complete, so no analysis was produced. "
-    "Treat this as MISSING information, never as a finding that there is nothing to report.)"
+    "(unavailable — no report from this chair reached the panel. Whether the call never ran, ran "
+    "and was lost, or ran and could not be read is not known here. Treat this as MISSING "
+    "information, never as a finding that there is nothing to report.)"
 )
 
 

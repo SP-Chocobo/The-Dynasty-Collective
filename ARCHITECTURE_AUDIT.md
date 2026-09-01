@@ -4410,3 +4410,229 @@ around.
    quality-per-cost comparison this app cannot currently make.
 3. **#111** (unchanged) — an evidence fingerprint is this repo's own content-hash mechanism
    applied one artifact further.
+
+## Interlude — a scope fact this audit implied but never stated
+
+Prompted by §21.7's correction, I swept every runtime store the audit has discussed:
+
+| store | state |
+|---|---|
+| `data/baseline/bot_research.json`, `bot_comparisons.json` | **absent** (never committed) |
+| `data/benchmark_results.json` | **absent** |
+| `data/bot_config.json` | **absent** |
+| `data/player_aliases.json`, `data/league_formats.json`, `data/league_prefs.json` | **absent** |
+| `data/last_session.json` | **absent** |
+| `data/decisions/`, `data/todos/`, `data/attachments/` | present, **0 files** (created by `mkdir`, untracked) |
+| `data/chats/`, `data/sleeper_snapshots/`, `data/projections/` | present, **only a tracked `.gitkeep`** |
+| `data/draft_simulation_trials/` | 31 files, **all untracked** regenerated scratch (§19.6) |
+| `data/baseline/` (rankings, trade_value, external) | **28 committed files — the only real data** |
+
+**This checkout has never been run as an application.** The only data behind it is the committed
+vendor baseline. Every finding across §11–§21 that touched a runtime store — aliases, format
+overrides, decisions, to-dos, pins, attachments, benchmark history, research memory — was
+measured against a **planted or synthetic record**, which each pass said locally and none said
+globally. It should have been stated once, at the top, and is stated here.
+
+What it changes, and what it does not:
+
+- **It does not weaken the mechanism findings.** A code path that loses an update, drops a
+  provenance field, or admits an unattributed claim does so whether or not a file exists yet.
+- **It does downgrade every "observed state" phrasing to "live hazard."** #106 was corrected
+  explicitly for this in §21.7; the same qualifier applies to #102's lost update, #103's
+  share-everything default, #107's alias overrides and #110's unrecognised status — all
+  demonstrated on planted records, none observed in production data.
+- **It strengthens §19.3.** "The test baseline is reproducible because all 28 loaded files are
+  committed" is stronger than it read: there is nothing else on disk for the suite to pick up.
+- **It sharpens #113(c).** The planted-CSV probe showed an untracked upload silently entering the
+  priced pool. That directory is empty today for the same reason everything else is — the app has
+  not been run here — which is exactly why "clean by construction" and "clean because nobody has
+  used it" needed separating.
+- **It is why §20 had to build its own pool.** With no Sleeper snapshot on disk, every draft
+  simulation had to synthesise `players_db` from the committed rankings.
+
+Recorded as a scope fact, not a defect. An audit of an unpopulated checkout can establish what
+the code will do; it cannot establish what the data has done.
+
+## Pass 18 — §22
+
+**Scope:** Build Guide v2 §22 (cross-cutting questions & failure-propagation tests).
+
+**Baseline:** `60d6097` on `ui-authority-pass`; `main` frozen at `9fb5102`. One production file
+modified (`llm_engine.py`) — **R17, a correction to my own §14 repair.**
+
+**Headline: §22's failure-propagation questions are answered better than expected — two
+deterministic cascade boundaries exist and one of them is adversarially tested, every chair call
+is stateless so a model swap cannot inherit conversational assumptions, and no two components
+recompute the same number. The one thing §22 caught is a label I wrote: R12's unavailability
+marker asserted that the call "did not complete" and that "no analysis was produced", two claims
+a bare `except Exception` cannot support and both false in the timeout case.**
+
+### 22.1 R17 — the marker asserted what the catch cannot know
+
+**STATUS: was WRONG — repaired**
+§22 asks: *"If a chair succeeds but its response is lost, can the operation identify the
+ambiguity between 'not executed,' 'executed but not received,' and 'executed and stored'?"*
+
+Every provider caller wraps its entire request in `except Exception`, which fires alike for:
+a missing key (**never executed**), a connection error (**never executed**), a read timeout after
+the provider generated and billed a response (**executed, not received**), and a parse error on
+a response that did arrive (**executed, received, dropped locally**).
+
+The marker I wrote in §14's R12 said:
+
+> *"(unavailable — this chair's call **did not complete**, so **no analysis was produced**. …)"*
+
+Both clauses are assertions the catch cannot establish, and in the timeout case both are simply
+false — the analysis exists and was paid for (#100). This is precisely the rule **#89** set for
+the alias branch and **§6 R1** applied to `"validated"` → `"panel_undisputed"`: *a field may not
+claim a certainty its writing path cannot establish.* I applied that rule twice and then broke it
+in a repair of my own.
+
+**R17** rewords it to what is known, and names the ambiguity rather than resolving it:
+
+> *"(unavailable — no report from this chair reached the panel. Whether the call never ran, ran
+> and was lost, or ran and could not be read is not known here. Treat this as MISSING
+> information, never as a finding that there is nothing to report.)"*
+
+Behaviour is unchanged — it is a string — and the two properties R12 existed for survive
+(`MISSING`, `never as a finding`). Two tests added to `test_failure_mode_boundary.py`: one
+forbidding the overclaiming phrases and requiring the ambiguity be named, and one asserting
+**every** caller still catches bare `Exception` — because the marker's caution is only warranted
+while the catch really is that broad, and a future narrowing should force the wording to be
+revisited rather than silently left over-cautious. Four probes planted and reverted, all failing
+as intended.
+
+### 22.2 Cascade boundaries — two, and one is adversarially tested
+
+**STATUS: EXISTS**
+§22: *"Can one bad upstream result contaminate an entire chain, and is there a deterministic
+boundary that stops the cascade?"* Two boundaries, both structural rather than instructional:
+
+1. **Chair handoff** (R12/R17): a failed upstream report is *replaced*, never forwarded. The raw
+   provider exception text never reaches another provider — one of §7's residuals, closed.
+2. **CDME ingestion** (`test_cdme_ingestion_boundary`): LLM-originated data reaches exactly one
+   consumer, `composite_player_score`, which `draft_room` deliberately removed from its math;
+   the two CDME touches of `external_values` hard-filter to `source_name == "keeptradecut"`,
+   structurally excluding every `bot_research` row. Proven by **injecting a maximally distorting
+   finding on a real baseline player and showing CDME's output byte-identical before and after.**
+
+### 22.3 A model replaced mid-thread cannot inherit conversational assumptions
+
+**STATUS: EXISTS — by construction**
+There is no thread. Every chair call is single-shot: `messages=[{"role": "user", "content":
+user_prompt}]` with `system=system_prompt` re-sent in full on every request. A chair's contract
+travels with each call rather than accumulating in a conversation, so a role re-pointed at a
+different model or provider receives the identical contract and evidence and inherits nothing.
+`role_providers` / `role_models` (R9/R10) then record which model actually answered, so an old
+record shows who answered it rather than whatever is configured now.
+
+The residual is §17's: the *recorded* model is the one requested, and all three defaults are
+floating aliases whose served weights the response object would have named had it not been
+discarded (#109).
+
+### 22.4 Two components reconstructing the same fact
+
+**STATUS: EXISTS — no independent reconstruction on the draft path**
+The engine rounds once, at the source (`.round(2)` on the board's own columns), and
+`_records_with_normalized_nan` **normalizes NaN to `None` without recomputing or re-rounding
+anything**. `draft_board_ui.serialize_candidate` is a field-for-field read — its own docstring
+says the only computed values are two renamings of booleans the engine already produced — and the
+board's `.toFixed(1)` is a display re-render of an already-rounded number. No consumer derives
+the same quantity by a second route, so §22's disagreement-by-transformation case does not arise
+here.
+
+Where it *could* arise is the Prytaneum path, which has no frozen context at all (#92): the
+Draft Room hands a `PickSnapshot`, while a chat debate rebuilds `build_context` from live state
+on every question.
+
+### 22.5 Two Sleeper clocks, one disclosed
+
+**STATUS: MISSING — disclosure, not caching**
+§22: *"Can an older cached evidence package override fresher canonical state?"* The only cache in
+the system is `sleeper_client`'s, and its players-database TTL is deliberate and
+vendor-requested: `PLAYERS_CACHE_MAX_AGE_SECONDS = 24h`, commented *"Sleeper asks that
+/players/nfl be pulled at most once/day."*
+
+But `players_db` is what `app.py:3117` hands the engine, and `injury_status` — read from it at
+`build_available_pool` — is **the only Sleeper field that feeds the deterministic valuation**
+(`RISK_ADJ`). So a freshly synced league (rosters, who is drafted) can be combined with an
+injury designation up to a day old.
+
+`build_freshness_manifest` grades four sources — DS Dynasty Rankings, DS Free Agent Finder, DS
+Trade Value Chart, and the Sleeper league sync — with STALE at ≥7d and EGREGIOUSLY OUTDATED at
+≥30d. **It has no entry for the players database.** One of the two Sleeper clocks is graded; the
+other is invisible.
+
+Not repaired: exposing the cache age needs a new accessor, and the existing 7/30-day scale would
+render a 24-hour bound permanently "fresh", so the disclosure needs its own scale — a product
+decision. **Verdict: SURFACE (#118).**
+
+### 22.6 History is amended, never rewritten
+
+**STATUS: EXISTS**
+§22: *"Can a newer canonical correction be prevented from retroactively rewriting historical
+audit records?"* Checked each store's write paths: `decision_log.log_decision` writes
+`moderator_text` and the parsed verdict **once**; `set_outcome` adds only `outcome`,
+`outcome_note`, `outcome_date` and touches nothing else. `todo_log.revise_todo` archives prior
+text in `revisions`; R13 added the same for proposals. `bot_research` is append-only by
+construction (its own docstring: *"a later entry … does not overwrite or delete an earlier one,
+it just outranks it at READ time"*).
+
+So corrections are **additive everywhere**. The one place a superseded statement was destroyed
+rather than kept was `reopen_todo`, which §16's R13 repaired.
+
+### 22.7 Stale versus false
+
+**STATUS: EXISTS as capability, unwired as practice**
+`snapshot_is_current` returns `(bool, reason)` where every reason is a **staleness** claim, never
+a correctness one — *"N new pick(s) made since this snapshot was built"*, *"the underlying player
+data changed"*, *"snapshot carries no input-state stamp"* — and an unstamped snapshot is reported
+*not-certifiable* rather than silently current. That is exactly §22's *"marked stale without being
+incorrectly marked false"*, and §18's eight-state work is the same distinction one layer down.
+
+§22's closing question — *"can the system tell the user 'this is the answer under the current CDME
+snapshot, but research indicates that snapshot may be stale' without conflating the two claims?"*
+— has both halves built (the certifier, and the freshness manifest that already tells the panel
+which sources are stale and by how much) and **no production caller** joining them. That is
+#101, unchanged by §22.
+
+### 22.8 Schema-valid but semantically corrupt
+
+**STATUS: PARTIAL — shape checked, evidence not**
+`parse_moderator_verdict` and `bot_benchmark._contract_ok` (§5 R95) detect whether a chair emitted
+the structured block it owes. Nothing checks that a verdict's claims are supported by the reports
+beneath it — the SOURCE FINDING gate is the Moderator's own assertion that the panel did not
+dispute a claim, which `process_moderator_output` persists without re-adjudicating, and says so.
+Unchanged by §22; this is #94's territory.
+
+## Pass 18 summary
+
+| §22 question | result | verdict |
+|---|---|---|
+| authoritative representation | `PickSnapshot` on the draft path; none on the Prytaneum path | #92 |
+| independent reconstruction disagreeing | engine rounds once; consumers read, never recompute | **EXISTS** |
+| canonical immutable operation context | frozen `PickSnapshot`; Prytaneum rebuilds live | #92 |
+| lost-response ambiguity | asserted away; now named | **REPAIRED (R17)** |
+| model replaced mid-thread | stateless single-shot calls, contract re-sent | **EXISTS** |
+| schema-valid but semantically corrupt | shape checked, evidence not | #94 |
+| cascade contamination | two boundaries, one adversarially tested | **EXISTS** |
+| older cache over fresher canonical state | 24h players cache, undisclosed | SURFACE (#118) |
+| retroactive rewriting of audit records | additive everywhere | **EXISTS** |
+| stale without being false | staleness reasons never assert falsity | **EXISTS** |
+| "answer under this snapshot, but it may be stale" | both halves built, never joined | #101 |
+
+**Does anything clear the bar for a production change?** One thing, and it was mine.
+
+**R17 — `llm_engine.UNAVAILABLE_REPORT` no longer asserts why a report is missing.** Justified by
+the rule this programme established twice (#89, §6 R1) and then broke in R12. Behaviour
+unchanged; two enforcement tests added, four probes planted and reverted.
+
+**Ranked follow-ups**
+1. **#118** — the players database has a 24-hour vendor-mandated TTL, carries the only Sleeper
+   field that feeds the deterministic engine, and appears in no freshness surface. Disclosure
+   needs its own scale, since the existing 7/30-day grades would call a 24-hour bound permanently
+   fresh.
+2. **#101** (unchanged) — the certifier and the freshness manifest are both built and never
+   joined; §22 asks for exactly their conjunction.
+3. **#92** (unchanged) — the Prytaneum path still has no frozen context to reference instead of
+   rebuild, which is where §22's disagreement-by-transformation case would first appear.
