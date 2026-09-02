@@ -1756,16 +1756,39 @@ measured fact about the position rather than an artifact of the demand model's d
 **BUILD: nothing yet.** Seven rules and twelve invariants of apparatus for eleven rows in one
 format is machinery looking for a job.
 
-**KEEP as correctness debt, deprioritised but not deleted.** Three rules argue from
-*correctness*, not from volume, and rarity changes their priority without changing whether
-they are right:
+**KEPT as correctness debt, deprioritised but not deleted** — and since resolved, in three
+different ways, which is the interesting part. All three argued from *correctness*, not from
+volume, and rarity changed their priority without changing whether they were right.
 
-* **Rule 5** — `near_tie_flags` returning `False` for an unknown comparison is a false
-  *"these are NOT tied"*, by the identical argument its own docstring uses to refuse a false
-  *"these are tied."* Still wrong at eleven rows. Deferred because it widens a return type to
-  `Optional[bool]` across `pick_synthesis` and the debate layer — a real diff for a rare case.
-* **Rule 6** — `survival_probability` must decline over an unpriced opponent board.
-* **Rule 12** — no consumer may read a rank derived from unpriced rows as evidence.
+* **Rule 5 — DONE at `034d99a`.** `near_tie_flags` returning `False` for an unknown comparison
+  was a false *"these are NOT tied"*, by the identical argument its own docstring uses to refuse
+  a false *"these are tied."* Wrong at eleven rows, and built as specified: the return type
+  widened to `Optional[bool]`, carried through `CandidateSnapshot`, `decision_regime`'s
+  `is False` guard (invariant 8, now structural), and the debate briefing, which names the
+  unknown state in words. `draft_board_ui` represents it by omission — `forces` is a list of
+  what fired, never a set of negations — and `draft_counterfactual` is deliberately left with
+  the false negative, unreachable behind invariant 15's own `TypeError` and pinned by a test
+  that fails if the repairs land in the wrong order.
+  **Measured population before building:** 1–2 candidates per late-round superflex snapshot
+  (r14 2/17, r15 2/13, r16 2/12, r18 2/10, r20 1/9), and a non-vacuity test fails if that ever
+  goes to zero.
+* **Rule 6 — resolved DIFFERENTLY at `cfe2a66`, and the difference is deliberate.** The rule
+  said `survival_probability` must decline (return `None`) over an unpriced opponent board.
+  What landed instead keeps the number identical to what production already produced — the
+  module's own `RANK_TAKE_PROBABILITY_FLOOR` — and labels the row `"evidenced": False`, so no
+  consumer can present it as a measurement. The false *claim* is gone; the *value* is unchanged.
+  What that commit explicitly declined to decide is whether an unpriced-but-draftable player
+  should instead count as zero risk: a product question with no evidence in this repository to
+  settle it. **That half of rule 6 is still open**, and it is a decision, not a fix.
+* **Rule 12 — DONE at `cfe2a66`, at the source rather than per consumer.**
+  `_build_opponent_boards` builds `rank_by_id` over priced rows only and declares `unpriced_ids`
+  separately, so `estimate_survival` and `positional_forfeits` inherit the exclusion instead of
+  each re-deriving it. The pace prior applies the same rule to its own ordinal:
+  `_pace_based_take_probability` filters `unpriced_ids` out of the position list and returns
+  `None` when the target itself has no valuation ordinal — a NaN in that sort made it non-total,
+  and `test_survival_evidence` demonstrates the 9x probability swing from row order alone.
+  `position_value_curves` excludes them too, which is what stopped the `TypeError` that reached
+  `build_snapshot` for the last quarter of every 20-round draft.
 
 **DELETE from the plan.** Rule 3 (re-deriving `rival_premium` / `context_elevated`), rule 7
 (suppressing `pick_necessity` in register 2), and the *"report need, not value"* apparatus.
