@@ -5,6 +5,7 @@
     "data/projections/_global"
   ],
   "files": {
+    "data/baseline/baseline_provenance.json": "c85802b2d710266cc05eb7bc43e1a97f85f407f3befcbf923343f196b04e3ffe",
     "data/baseline/external/dynastyprocess/picks.csv": "c601211633701b5d1e2eaf4086c46766ea7628f092e965d8bf1d124467161a3a",
     "data/baseline/external/dynastyprocess/players.csv": "b2825adbbb9753501472b0980497f0736b7a204cb8a7d2fe2a33db4c2618a0ab",
     "data/baseline/external/espn/idp_redraft_rankings.csv": "8078f213f203cbcb464572bba2eb3a1029f8b921276588c67abe33ec96e976b7",

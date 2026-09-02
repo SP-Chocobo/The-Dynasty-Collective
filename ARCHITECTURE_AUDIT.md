@@ -1802,6 +1802,30 @@ ATTRIBUTION (*"unlike Draft Sharks' subscription exports"*).
 asserting the terms under which a paid subscription export is retained and redistributed, which
 is a decision for the owner.
 
+> **RULED, AND BUILT — `data/baseline/baseline_provenance.json`.** The owner's ruling split the
+> act in two, which is what unblocked it: *state origins of information, as long as not
+> pay-locked.* So the record now carries everything that is a fact **about the file itself** —
+> scope, shape, row count, the date the export carried, how it was ingested, which known defects
+> touched it (#78's positional-index join, §19.11.2's fixed source_date) — and leaves the
+> originating vendor **unnamed**, with the omission itself written down as deliberate.
+>
+> The distinction that matters, and the reason the record says so in its own text: `README.md`
+> names the vendor freely, and that is a different act. README describes the workflow to its own
+> user — *upload your export here* — and makes no claim about redistribution. A provenance
+> record travels **with the committed data**. Copying the name across from README would convert
+> a workflow instruction into a redistribution posture, which is exactly the assertion this
+> section said was not mine to make. The record warns the next reader not to "fix" it that way.
+>
+> The expectation attached to the ruling is that the input set gets reworked toward publicly
+> sourced data, at which point the constraint dissolves and these records can name their origins
+> outright. **§19.11.2 folds into that same rework** rather than being solved separately — a
+> refresh policy for a paid export and the decision to stop depending on one are the same
+> decision, taken once.
+>
+> The inversion this section found is now closed in the direction it was found: the primary
+> valuation input, the highest-weighted source in the composite, is the one this file documents
+> in most detail.
+
 ### 7.11 Cross-section finding — this changes #94's premises
 
 **§7 supplies information §5 did not have, and it bears directly on the parked decision.**
@@ -1835,7 +1859,7 @@ the reasoning should now account for it. Recorded on #94.
 | **7.6 evidence vs instructions** | **MISSING** | absent |
 | 7.7 citations through the handoff | PARTIAL | absent (→ #93) |
 | 7.8 credentials are not input | EXISTS | structural, now pinned |
-| 7.10 baseline provenance coverage (9 of 20) | PARTIAL | — |
+| 7.10 baseline provenance coverage (9 of 20) | **PARTIAL → RESOLVED** (20 of 20; vendor unnamed by ruling) | **absent → documented** |
 | 7.11 cross-section effect on #94 | — | — |
 
 ### Does anything clear the bar for a production change?
@@ -3908,6 +3932,13 @@ no trigger condition.
   **Codespaces preview launcher only** — `config.toml` does not set either, and
   `update_and_run.sh` uses Streamlit's defaults. A common Codespaces workaround, committed, and
   worth a deliberate decision rather than inheritance. **Folded into #113.**
+  > **RULED — PIN, and deliberately no code change.** The finding was that the flags were
+  > *inherited* rather than chosen; they are now chosen, which is what the finding asked for.
+  > The reasoning: this launcher's whole scope is a Codespaces preview, and the surface it
+  > relaxes is expected to become irrelevant when Streamlit is outgrown — the customization
+  > ceiling, not the security posture, is what will move this app off it. Revisit then, as
+  > itself, rather than editing a preview launcher now. A pin is a decision with a stated
+  > trigger; it is not the same as leaving it alone, and this line is the difference.
 - `.env.example` pins the same floating model aliases as production (#109) — consistent, and
   consistently unpinned.
 - `.pytest_cache/` exists in a repo whose README says *"no pytest dependency."* It is
