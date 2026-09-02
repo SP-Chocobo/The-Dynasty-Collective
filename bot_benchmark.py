@@ -40,9 +40,20 @@ HISTORY_LIMIT = 20
 # consumed by machine rather than only read. The Moderator's system prompt requires a
 # structured block that four consumers depend on (decision_log, todo_log, bot_research, and
 # app.py's verdict card); a model can score well on every rubric dimension and still fail it,
-# because no dimension looks. This does NOT feed the score -- see run_benchmark, and
-# ARCHITECTURE_AUDIT.md 5.6a on why gating versus flagging is a decision that changes which
-# model wins and is deliberately not made here.
+# because no dimension looks.
+#
+# RULED (#94): FLAG ONLY. This does NOT feed the score and must not. 5.6a framed the choice as
+# gate-versus-flag and left it open because it changes which model wins; 7.11 then supplied the
+# consideration that settles it. The structured block is the entire channel through which model
+# output acquires authority -- rewriting an objective, proposing a resolution, writing a rank
+# into the composite, creating a to-do all run through it. So a Moderator that FAILS its machine
+# contract is inert on every authority path, and a compliant one is the one that can rewrite a
+# user's objectives and inject numbers. Disqualifying on failure would therefore SELECT FOR
+# MODELS THAT EXERCISE MORE AUTHORITY, which is not what a quality gate is for.
+#
+# Flag-only is not the same as ignoring it. The flag is surfaced beside the candidate AND
+# carried into the Apply outcome (app.py), because a flag the deciding action does not repeat is
+# a declaration nothing reads.
 MACHINE_CONTRACT_PARSERS = {"moderator": llm_engine.parse_moderator_verdict}
 
 
@@ -365,9 +376,11 @@ def run_benchmark(
                 "label": q["label"], "response": response, "scores": scores,
                 "weighted": round(weighted, 1), "notes": notes,
                 "latency": round(latency, 2), "failed": failed,
-                # Recorded, never scored. A candidate that answers well and does not emit the
-                # structured block its chair requires still ranks on its rubric average here --
-                # this only makes that visible to whoever presses Apply.
+                # Recorded, never scored -- ruled, not deferred (#94; see MACHINE_CONTRACT_PARSERS
+                # for why disqualifying would select for models that exercise more authority). A
+                # candidate that answers well and does not emit the structured block its chair
+                # requires still ranks on its rubric average here; what changes is that whoever
+                # presses Apply is told, twice.
                 "contract_ok": None if failed else _contract_ok(role, response),
             })
         avg_score = round(sum(q["weighted"] for q in per_question) / len(per_question), 1) if per_question else 0.0

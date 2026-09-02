@@ -2502,7 +2502,24 @@ with st.sidebar:
                             ):
                                 bot_config.set_role_provider(_role, _cand["provider"])
                                 bot_config.set_role_model(_role, _cand["model"])
-                                notify("success", f"Applied — {_info['label']} now runs on {_model_label}.")
+                                # #94 ruled FLAG ONLY: a contract failure never blocks Apply and
+                                # never moves the score. But the flag has to survive to where the
+                                # consequence actually lands, or it is a declaration nothing
+                                # reads -- the caption above is seen before the decision, this is
+                                # seen because of it. Names the four consumers by what they DO,
+                                # since "parse_moderator_verdict returned {}" tells a user
+                                # nothing about what they will notice going missing.
+                                if _cand.get("any_contract_failure"):
+                                    notify("warning",
+                                           f"Applied — {_info['label']} now runs on {_model_label}. "
+                                           "Note: this model did not emit the required structured "
+                                           "verdict block during the benchmark. While that holds, "
+                                           "its verdicts won't log a decision, won't create or "
+                                           "close to-dos, won't record a research finding, and "
+                                           "won't render the verdict card — the reply still "
+                                           "arrives as prose.")
+                                else:
+                                    notify("success", f"Applied — {_info['label']} now runs on {_model_label}.")
                                 st.rerun()
 
                 st.markdown("<hr style='margin:6px 0;opacity:0.15'>", unsafe_allow_html=True)
@@ -5365,9 +5382,37 @@ if bot_findings or bot_comparisons:
             "Everything the panel has vetted across every league, newest first — see "
             "MODERATOR_SYSTEM_PROMPT's SOURCE FINDING/SOURCE COMPARISON rules for how an item "
             "gets in here (survives scrutiny from the whole panel, Contrarian included). "
-            "Findings with a rank already feed the composite score at a low weight; "
-            "comparisons never do — see the README for why."
+            "A finding's **number** only starts counting toward the composite score once it "
+            "cites an allowed source *and* you have confirmed it below; the finding itself is "
+            "kept, shown, and read by the panel either way. Comparisons never carry a number — "
+            "see the README for why."
         )
+        # §6.2a's second adjudication, and the queue §6.2a said did not exist. Deliberately one
+        # button per finding rather than a "confirm all": the point of a second pass is that
+        # somebody looked at THIS claim, and a bulk action is the same say-so the gate replaced.
+        _pending = bot_research.findings_awaiting_adjudication()
+        if _pending:
+            st.markdown(f"**Awaiting your confirmation ({len(_pending)})**")
+            st.caption(
+                "These carry a number that is not counting yet. Confirming one says you looked "
+                "at it — not that it has been verified; nothing here can check the source itself."
+            )
+            for _f in _pending:
+                _rank_text = f"#{_f['rank']}" if _f.get("rank") is not None else "—"
+                _cols = st.columns([5, 1])
+                _cols[0].caption(
+                    f"**{_f['player_name']}** · {_f['source']} · {_rank_text} — {_f['claim']}  \n"
+                    f"_{_f.get('composite_impact', '')}_"
+                )
+                # An unlisted cited source is not a queue position -- no button, because
+                # confirming would not change the outcome and offering it would imply it might.
+                if _f.get("cited_source_admitted") and _cols[1].button(
+                    "Confirm", key=f"confirm_finding_{_f['id']}", use_container_width=True
+                ):
+                    bot_research.confirm_finding(_f["id"])
+                    notify("success", f"Confirmed — {_f['player_name']}'s number now counts "
+                                      "toward the composite score at a low weight.")
+                    st.rerun()
         if bot_findings:
             st.markdown("**Findings**")
             findings_df = pd.DataFrame(
@@ -5375,6 +5420,12 @@ if bot_findings or bot_comparisons:
                     {
                         "Date": f["date"], "Player": f["player_name"], "Source": f["source"],
                         "Claim": f["claim"], "Rank": f.get("rank") if f.get("rank") is not None else "—",
+                        # Three states, not two. A row written before the gate existed has no
+                        # `adjudication` key at all, and "never adjudicated" is not the same fact
+                        # as "adjudicated and not confirmed" -- the same never-checked-versus-
+                        # checked-and-absent distinction _finding_origin_note applies one field
+                        # over (#112).
+                        "Adjudication": f.get("adjudication") or "(not recorded)",
                         "Composite impact": f.get("composite_impact", ""),
                     }
                     for f in reversed(bot_findings)

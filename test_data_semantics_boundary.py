@@ -203,15 +203,28 @@ class AiClaimsCannotSilentlyBecomeAuthoritativeTests(unittest.TestCase):
         bot_research.FINDINGS_PATH = self._real
         self._tmp.cleanup()
 
+    def _plant(self, name, source, claim, rank):
+        """Plant a claim that actually reaches the composite.
+
+        7.4 and 6.2a now gate a finding's NUMBER on an allowlisted cited source plus a second
+        adjudication. Every test in this class is about what happens to a claim ONCE IT IS IN
+        the blend -- how it is labelled, how much weight it carries -- so the fixture has to get
+        it there, or the class would silently be measuring the gate instead and passing on an
+        empty components list.
+        """
+        finding_id = bot_research.add_finding(name, source, claim, rank=rank)
+        bot_research.confirm_finding(finding_id)
+        return finding_id
+
     def test_a_planted_claim_arrives_labelled_as_research_never_as_a_source(self):
-        bot_research.add_finding(self.target, "ESPN", "ESPN has him #1 overall", rank=1)
+        self._plant(self.target, "ESPN", "ESPN has him #1 overall", 1)
         after = dm.DataMerger().composite_player_score(self.target)
         sources = [c["source"] for c in after["components"]]
         self.assertIn("bot_research", sources)
         self.assertNotIn("ESPN", sources)   # the cited outlet never becomes a composite source
 
     def test_a_planted_claim_carries_far_less_weight_than_any_structured_source(self):
-        bot_research.add_finding(self.target, "ESPN", "ESPN has him #1 overall", rank=1)
+        self._plant(self.target, "ESPN", "ESPN has him #1 overall", 1)
         after = dm.DataMerger().composite_player_score(self.target)
         weights = {c["source"]: c["weight"] for c in after["components"]}
         research = weights.pop("bot_research")
@@ -219,10 +232,21 @@ class AiClaimsCannotSilentlyBecomeAuthoritativeTests(unittest.TestCase):
         self.assertLess(research * 10, min(weights.values()))
 
     def test_the_record_states_the_claims_own_impact_rather_than_leaving_it_inferable(self):
-        numeric = bot_research.add_finding(self.target, "ESPN", "ranked #1", rank=1)
+        """The property is that the record SAYS what its impact is, never that a reader has to
+        infer it from whether `rank` happens to be null. 6.2a widened that from two answers to
+        four, and each one still names its own reason -- which is the point, not an exception
+        to it: "not counting because nobody has confirmed it" and "not counting because it has
+        no number" are different facts about a row."""
+        unconfirmed = bot_research.add_finding(self.target, "ESPN", "ranked #1", rank=1)
+        confirmed = self._plant("A Other", "ESPN", "ranked #2", 2)
+        unlisted = bot_research.add_finding("C Third", "some blog", "ranked #3", rank=3)
         qualitative = bot_research.add_finding("B Backup", "ESPN", "likes the usage trend")
         by_id = {f["id"]: f for f in bot_research.load_findings()}
-        self.assertEqual(by_id[numeric]["composite_impact"], "low-weight input")
+        self.assertEqual(by_id[confirmed]["composite_impact"], "low-weight input")
+        self.assertEqual(by_id[unconfirmed]["composite_impact"],
+                         "none -- awaiting a second adjudication")
+        self.assertEqual(by_id[unlisted]["composite_impact"],
+                         "none -- cited source is not on the composite allowlist")
         self.assertEqual(by_id[qualitative]["composite_impact"], "none")
 
     def test_a_qualitative_claim_never_reaches_the_composite_at_all(self):

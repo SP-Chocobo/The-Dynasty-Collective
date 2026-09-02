@@ -73,11 +73,14 @@ of which announced itself as settling anything. The deployment model must be dec
 | 2 | §19.10 devcontainer | **PINNED** — recorded, no code, as ruled |
 | 3 | §7.10 provenance | built: `data/baseline/baseline_provenance.json`, vendor unnamed |
 | 4 | §19.9 cadence | weekly Wednesday scheduled run |
-| 5 | #94 flag-only | ruled and recorded; the flag now survives to Apply |
-| 6 | §7.4 allowlist | `source_policy.py` — gates the composite, leaves prose free |
-| 7 | §19.8 fingerprint | `assertion_floors.py` — per-name assertion FLOORS, failing |
-| 8 | §6.2a second pass | a finding does not feed the composite until a second adjudication |
-| 9 | §6.3 | **untouched**, by ruling |
+| 5 | #94 flag-only | **DONE** — ruled, and the flag now survives to Apply |
+| 6 | §7.4 allowlist | **DONE** — `source_policy.py` gates the composite, leaves prose free |
+| 7 | §19.8 fingerprint | **DONE** `a1409f2` — `assertion_floors.py`, per-name FLOORS, failing |
+| 8 | §6.2a second pass | **DONE** — `adjudication` state, a queue, and one transition |
+| 9 | §6.3 | **UNTOUCHED**, by ruling |
+
+**All nine are settled.** Full detail, including what each new check cannot do, is in
+`POST_AUDIT_PLAN.md` under "THE WARPATH".
 
 ### One thing worth flagging back
 

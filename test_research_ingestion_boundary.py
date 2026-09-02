@@ -57,9 +57,20 @@ class _TempResearchStore:
         return False
 
 
-def _finding(pid, ts, name, source, rank, date="2026-08-30"):
+def _finding(pid, ts, name, source, rank, date="2026-08-30",
+             adjudication=bot_research.ADJUDICATION_HUMAN_CONFIRMED):
+    """A stored finding that is ELIGIBLE to feed the composite by default.
+
+    Eligibility is now two gates wide (7.4's allowlist on the cited source, 6.2a's second
+    adjudication) and `load_bot_research_as_external` filters on both. Every test in this file
+    whose subject is the INGESTION PATH needs a row that actually reaches it, or the test
+    measures the gate instead of the thing it is about -- and would pass for the wrong reason.
+    Tests whose subject IS the gate pass `adjudication=` explicitly, so the difference is never
+    accidental.
+    """
     return {"id": pid, "ts": ts, "date": date, "player_name": name,
-            "source": source, "claim": f"{source} says {rank}", "rank": rank}
+            "source": source, "claim": f"{source} says {rank}", "rank": rank,
+            "adjudication": adjudication}
 
 
 class DampenersOnPanelSurfacedResearchTests(unittest.TestCase):
@@ -209,17 +220,48 @@ class ResearchFrameIsNotNameInjectiveTests(unittest.TestCase):
 
 
 class NoLifecycleAndNoValidationQueueTests(unittest.TestCase):
-    """KNOWN GAP — characterization of what §6 asks for and the architecture does not have."""
+    """KNOWN GAP — characterization of what §6 asks for and the architecture does not have.
 
-    def test_a_finding_carries_no_lifecycle_state(self):
-        """§6 asks for discovered -> corroborated -> disputed -> adjudicated ->
-        canonical/rejected/expired. `composite_impact` is a routing label, not a lifecycle."""
+    PARTIALLY INVERTED (6.2a). The lifecycle half below is now real: a finding has an
+    adjudication state, a queue, and a transition, and its number is held back until it moves.
+    The REST of §6's lifecycle -- disputed, expired, retracted -- is still absent, and the
+    remaining characterization tests here say so. Inverted rather than deleted, so the record
+    keeps showing which half moved.
+    """
+
+    def test_a_finding_now_carries_an_adjudication_state_and_starts_unadmitted(self):
+        """INVERTED (was: "`composite_impact` is a routing label, not a lifecycle").
+
+        §6 asks for discovered -> corroborated -> disputed -> adjudicated ->
+        canonical/rejected/expired. Two of those transitions now exist. What the old version
+        recorded -- that a rank-bearing finding was born feeding the composite on the
+        Moderator's own say-so -- is exactly what 6.2a ruled against, and this is the assertion
+        that used to say so.
+        """
+        with _TempResearchStore():
+            new_id = bot_research.add_finding("Some Player", "ESPN", "ESPN has him WR3", rank=3)
+            entry = bot_research.load_findings()[0]
+            self.assertEqual(entry["adjudication"], bot_research.ADJUDICATION_PANEL_ONLY)
+            self.assertEqual(entry["composite_impact"], "none -- awaiting a second adjudication")
+            self.assertEqual(entry["cited_source_admitted"], "espn")
+            # The queue §6.2a said did not exist.
+            self.assertEqual([f["id"] for f in bot_research.findings_awaiting_adjudication()],
+                             [new_id])
+            # And the transition out of it.
+            bot_research.confirm_finding(new_id)
+            confirmed = bot_research.load_findings()[0]
+            self.assertEqual(confirmed["composite_impact"], "low-weight input")
+            self.assertEqual(bot_research.findings_awaiting_adjudication(), [])
+
+    def test_the_rest_of_the_lifecycle_is_still_absent(self):
+        """Still a characterization. Adjudication is one transition, not a lifecycle: nothing
+        represents a finding being DISPUTED after the fact, EXPIRING, or being RETRACTED, and
+        6.2a deliberately did not invent those against an empty store."""
         with _TempResearchStore():
             bot_research.add_finding("Some Player", "ESPN", "ESPN has him WR3", rank=3)
             entry = bot_research.load_findings()[0]
-        self.assertEqual(entry["composite_impact"], "low-weight input")
         for absent in ("status", "lifecycle", "state", "corroborated", "disputed",
-                       "adjudicated", "expires_at", "retracted"):
+                       "expires_at", "retracted"):
             self.assertNotIn(absent, entry)
 
     def test_a_finding_preserves_no_evidence_snapshot(self):

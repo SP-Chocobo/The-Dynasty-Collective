@@ -3104,3 +3104,58 @@ The flags are checkable, not editorial: `test_providers.py` asserts a provider c
 detection actually has a reader in `provider_meter`. A flag that could disagree with reality would
 be a claim the writing path cannot establish — and worse than no flag, because the UI would print
 a capability the app does not have.
+
+---
+
+# THE WARPATH — SEVEN RULINGS BUILT, ONE PINNED, ONE UNTOUCHED
+
+Nine decisions were put up as card pickers and ruled in one sitting. This is what each turned
+into, and the two places where building them found something the ruling did not anticipate.
+
+## What landed
+
+| # | item | ruling | built |
+|---|---|---|---|
+| 1 | the socket | *"true neutrality, infrastructure that plays nicely with whatever they shove into it"* | `providers.py` — registry, derived tables, declared capability gaps (`9f9b737`) |
+| 2 | §19.10 devcontainer | **PIN** | recorded as a choice with a stated trigger; **no code** (`5154ee9`) |
+| 3 | §7.10 provenance | state origins where not pay-locked; vendor unnamed | `baseline_provenance.json`, 20/20 covered (`5154ee9`) |
+| 4 | §19.9 cadence | weekly, Wednesdays | `schedule:` cron + doctrine paragraph, held together by a test (`a1409f2`) |
+| 5 | #94 contract failure | **flag only** | ruled, and the flag now survives to Apply |
+| 6 | §7.4 allowlist | allowlist what feeds the composite; prose stays free | `source_policy.py` |
+| 7 | §19.8 fingerprint | build it, failing not warn-only | `assertion_floors.py` — per-name FLOORS (`a1409f2`) |
+| 8 | §6.2a re-adjudication | gate behind a second pass, human eye | `adjudication` state + queue + transition |
+| 9 | §6.3 crossover | **HOLD** | **untouched** |
+
+## Two things worth flagging back
+
+**Items 6 and 8 are one boundary, and together they are a real behaviour change.** They land on
+the same function and the same downstream consumer because they are the same question asked
+twice — *which sources may move a number*, and *who has to agree before one does*. The
+consequence: **a panel-vetted finding no longer feeds `composite_player_score` on the
+Moderator's own say-so.** It needs an allowlisted cited source AND a second adjudication.
+
+Nothing observable changes on this repository — the store has never held a row — but it is the
+first time the app declines to use something the panel approved. That is the ruling's own logic
+rather than caution added on top: under a shared deployment an accepted finding reaches
+everybody. Neither gate assumes that deployment, per the standing rule; both behave identically
+local or hosted, and `test_composite_admission_gate` fails if an automatic confirmer appears.
+
+**Building #94 and §19.8 each found a claim that could not be established.** §19.8's module
+docstring asserted that strengthening a test passes untouched; its own test proved otherwise, and
+the docstring was corrected rather than the test relaxed — per-name counting cannot tell a
+strengthening from a weakening without an invented strength ordering, so any *substitution*
+surfaces and only pure additions are free. And §7.10's first draft named the paid vendor through
+a parser function name in its ingest description; the test written to enforce the ruling caught
+it. Both are the same shape as the defect class this audit exists for: a description that was
+believed because nothing checked it.
+
+## What each check cannot do, collected
+
+Stated together because a check whose limits are unstated gets trusted past them:
+
+| check | cannot |
+|---|---|
+| `source_policy` | tell whether a citation is *truthful* — `ESPN (fabricated)` is admitted |
+| `assertion_floors` | see a vacuous assertion (`assertEqual(x, x)`), or tell a strengthening from a weakening |
+| `confirm_finding` | verify the claim; it records that a second party looked, not that the source says it |
+| `baseline_provenance` | verify the numbers in the CSVs — only that the record still matches them |

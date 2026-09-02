@@ -9,6 +9,19 @@ import bot_research
 import data_merger as dm
 
 
+def _admitted_finding(name, source, claim, rank):
+    """A finding that actually reaches the composite.
+
+    7.4 and 6.2a put two gates upstream of `load_bot_research_as_external` (an allowlisted cited
+    source, and a second adjudication), and every test in this file that asserts something about
+    PERCENTILES or POOL SIZES needs a row that gets past both -- otherwise it is measuring the
+    gate rather than the pooling, and would pass with an empty components list.
+    """
+    finding_id = bot_research.add_finding(name, source, claim, rank=rank)
+    bot_research.confirm_finding(finding_id)
+    return finding_id
+
+
 class NormalizeNameTests(unittest.TestCase):
     def test_strips_suffixes_and_punctuation(self):
         self.assertEqual(dm.normalize_name("A.J. Brown Jr."), "aj brown")
@@ -634,7 +647,7 @@ class CompositePoolSizeDampeningTests(unittest.TestCase):
 
     def test_single_finding_barely_moves_the_composite(self):
         baseline_only = dm.DataMerger().composite_player_score("Maxx Crosby", position="DL")
-        self.bot_research.add_finding("Maxx Crosby", "ESPN", "ranked #1 DL", rank=1)
+        _admitted_finding("Maxx Crosby", "ESPN", "ranked #1 DL", rank=1)
         with_one_finding = dm.DataMerger().composite_player_score("Maxx Crosby", position="DL")
         # A single, thin-pool finding should nudge the score, not swing it -- well under half
         # of the gap between draftsharks' own trade_value-as-score reading and a naive 100th
@@ -642,7 +655,7 @@ class CompositePoolSizeDampeningTests(unittest.TestCase):
         self.assertLess(with_one_finding["score"] - baseline_only["score"], 3.0)
 
     def test_weight_ramps_back_up_as_pool_grows_to_the_trusted_threshold(self):
-        self.bot_research.add_finding("Maxx Crosby", "ESPN", "ranked #1 DL", rank=1)
+        _admitted_finding("Maxx Crosby", "ESPN", "ranked #1 DL", rank=1)
         # bot_research's percentile pool is segmented by offense/IDP position group (see
         # _compute_percentiles), so fillers need to land in Crosby's own "idp" group to grow
         # HIS pool -- an unpositioned dummy name would just form its own separate one-off group.
@@ -657,7 +670,7 @@ class CompositePoolSizeDampeningTests(unittest.TestCase):
         ]
         self.assertEqual(len(idp_fillers), dm.COMPOSITE_MIN_TRUSTED_POOL_SIZE - 1)
         for i, name in enumerate(idp_fillers):
-            self.bot_research.add_finding(name, "ESPN", "filler", rank=i + 2)
+            _admitted_finding(name, "ESPN", "filler", rank=i + 2)
         result = dm.DataMerger().composite_player_score("Maxx Crosby", position="DL")
         bot_component = next(c for c in result["components"] if c["source"] == "bot_research")
         self.assertEqual(bot_component["pool_size"], dm.COMPOSITE_MIN_TRUSTED_POOL_SIZE)
@@ -671,7 +684,7 @@ class CompositePoolSizeDampeningTests(unittest.TestCase):
         # Draft Sharks/DynastyProcess/etc. already have hundreds of rows -- their own weight
         # should be untouched by bot_research separately having only one entry.
         baseline_only = dm.DataMerger().composite_player_score("Ja'Marr Chase", position="WR")
-        self.bot_research.add_finding("Some Unrelated Player", "ESPN", "unrelated claim", rank=1)
+        _admitted_finding("Some Unrelated Player", "ESPN", "unrelated claim", rank=1)
         after = dm.DataMerger().composite_player_score("Ja'Marr Chase", position="WR")
         ds_before = next(c for c in baseline_only["components"] if c["source"] == "draftsharks")
         ds_after = next(c for c in after["components"] if c["source"] == "draftsharks")
@@ -695,8 +708,8 @@ class BotResearchPercentilePositionSegmentationTests(unittest.TestCase):
         self.addCleanup(setattr, bot_research, "FINDINGS_PATH", self._orig_findings_path)
 
     def test_number_one_offense_and_number_one_idp_claims_stay_in_separate_pools(self):
-        self.bot_research.add_finding("Bijan Robinson", "FantasyPros", "ranked #1 RB", rank=1)
-        self.bot_research.add_finding("Maxx Crosby", "ESPN", "ranked #1 DL", rank=1)
+        _admitted_finding("Bijan Robinson", "FantasyPros", "ranked #1 RB", rank=1)
+        _admitted_finding("Maxx Crosby", "ESPN", "ranked #1 DL", rank=1)
         merger = dm.DataMerger()
         bijan = merger.composite_player_score("Bijan Robinson", position="RB")
         crosby = merger.composite_player_score("Maxx Crosby", position="DL")
@@ -709,8 +722,8 @@ class BotResearchPercentilePositionSegmentationTests(unittest.TestCase):
     def test_a_weak_offense_claim_does_not_borrow_an_idp_players_percentile(self):
         # A #1 IDP claim shouldn't inflate/deflate based on an unrelated offense player's rank,
         # and vice versa -- confirms the two groups' percentiles are computed independently.
-        self.bot_research.add_finding("Maxx Crosby", "ESPN", "ranked #1 DL", rank=1)
-        self.bot_research.add_finding("Some Bench WR", "ESPN", "ranked #40 WR", rank=40)
+        _admitted_finding("Maxx Crosby", "ESPN", "ranked #1 DL", rank=1)
+        _admitted_finding("Some Bench WR", "ESPN", "ranked #40 WR", rank=40)
         merger = dm.DataMerger()
         crosby = merger.composite_player_score("Maxx Crosby", position="DL")
         crosby_bot = next(c for c in crosby["components"] if c["source"] == "bot_research")

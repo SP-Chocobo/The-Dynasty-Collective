@@ -149,8 +149,15 @@ class GlobalResearchWithholdsItsPrivateFieldTests(unittest.TestCase):
             self.assertIn(expression, body)
 
     def test_neither_reaches_the_research_panel_in_the_ui(self):
+        # Sliced to the panel's real END rather than a fixed byte count. The old `start + 2000`
+        # silently shrank its own coverage every time the block grew -- when 6.2a added the
+        # confirmation queue, the window stopped reaching the row that renders a finding at all,
+        # and the non-vacuity check below is the only reason that surfaced. A window that can
+        # stop covering the thing it guards without failing is the defect class this file is
+        # part of catching.
         start = _APP.index("bot_findings = bot_research.load_findings()")
-        panel = _APP[start:start + 2000]
+        end = _APP.index("todo_league_id = st.session_state.selected_league_id", start)
+        panel = _APP[start:end]
         for expression in ('f["question"]', 'f["league_id"]', 'c["question"]', 'c["league_id"]',
                            'f.get("question")', 'f.get("league_id")'):
             self.assertNotIn(expression, panel)

@@ -647,12 +647,22 @@ SOURCE COMPARISON: <player A> | <player B> | > / < / ~ | <source> | <context> | 
 
 Both persist to `data/baseline/` (`bot_research.json` / `bot_comparisons.json`,
 global and git-tracked, append-only) via `bot_research.py`, and both are
-fed back into every future debate as dated context. Only findings that
-carry a real stated rank feed the composite score, at a low weight (below
-even KTC's); a qualitative finding, and *every* comparison (a relative
-claim has no absolute number to give it), stay reference-only forever —
-`composite_impact` is stored explicitly on each entry rather than left for
-a reader to infer. The reasoning: a handful of debate-surfaced comparisons
+fed back into every future debate as dated context.
+
+A finding's **number** reaching the composite score is gated twice, and the
+finding itself is never gated at all — it is stored, shown, and read by the
+panel regardless. To count, it must (1) cite a source this repository has
+written a provenance record for (`source_policy.COMPOSITE_ALLOWLIST`), and
+(2) be confirmed by you, in the Bot Research panel. Until both hold, the
+number is held back; the claim is not. A qualitative finding, and *every*
+comparison (a relative claim has no absolute number to give it), stay
+reference-only forever. `composite_impact` is stored explicitly on each
+entry, and says *which* of those reasons applies, rather than leaving a
+reader to infer it.
+
+The second confirmation is not a verification — nothing here can check what
+a source actually says. It records that a second party, not the panel that
+produced the finding, looked at it before its number moved a score. The reasoning: a handful of debate-surfaced comparisons
 is nowhere near KeepTradeCut's millions of votes, so there's no real
 signal yet to build an Elo-style relative model from — that stays a
 possible future step once (if) real volume accumulates, not something

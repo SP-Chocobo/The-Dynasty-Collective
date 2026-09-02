@@ -11,8 +11,12 @@ the rest of data/baseline/ does.
 Two separate stores, deliberately not one shape stretched to cover both:
 
   * findings (FINDINGS_PATH) -- a claim about ONE player. When it carries a real rank number
-    the source itself stated (never inferred), it also feeds DataMerger's composite score at a
-    low weight, not just future debates' reference context; a qualitative claim never does.
+    the source itself stated (never inferred), that NUMBER may eventually feed DataMerger's
+    composite score at a low weight -- but only after clearing two gates it does not clear on
+    arrival (7.4's cited-source allowlist and 6.2a's second adjudication; see
+    composite_eligibility below). A qualitative claim never feeds it at all. The CLAIM itself is
+    ungated in every case: stored, shown, and handed to future debates as reference context
+    whether or not its number ever counts.
   * comparisons (COMPARISONS_PATH) -- a RELATIVE claim between two players ("ESPN has Crosby
     ahead of Hutchinson"), which has no absolute number to feed a composite with at all. Kept
     as its own structured research layer -- composite_impact is always "none" today, an
@@ -36,11 +40,88 @@ import time
 from datetime import datetime
 from pathlib import Path
 from typing import Optional
+import source_policy
 import store_io
 
 
 FINDINGS_PATH = Path("data/baseline/bot_research.json")
 COMPARISONS_PATH = Path("data/baseline/bot_comparisons.json")
+
+# -- what has to be true before a finding's number may move a score ---------------------------
+#
+# Two rulings, one boundary, because they are the same question asked twice: 7.4 asks WHICH
+# SOURCES may move a number, 6.2a asks WHO HAS TO AGREE before one does. A finding must clear
+# both, and clearing neither costs it anything except its number -- it is still stored, still
+# shown, still read by the panel. Prose stays free; only the arithmetic is gated.
+
+#: 6.2a's states, in the order a finding can travel them. `PANEL_ONLY` is what the Moderator's
+#: own gate establishes and it is NOT a second adjudication: app.py's own comment on the persist
+#: site says so plainly -- "trusting the Moderator's own gate, not re-verifying it a second time
+#: in code". 6.2a asked whether anything re-adjudicates; the answer was no queue and no second
+#: adjudication, and this is the smallest honest version of one.
+ADJUDICATION_PANEL_ONLY = "panel_only"
+ADJUDICATION_HUMAN_CONFIRMED = "human_confirmed"
+
+#: A row written before this gate existed has NO `adjudication` key, and that is a THIRD state:
+#: never adjudicated, as distinct from adjudicated-and-not-confirmed. Both are treated as "does
+#: not feed", but they are not the same fact and the reader must be able to tell them apart --
+#: the never-checked-versus-checked-and-absent distinction (#112) that _finding_origin_note
+#: already applies one field over.
+ADJUDICATION_UNRECORDED = None
+
+
+def composite_eligibility(source: str, rank: Optional[int], adjudication: Optional[str]) -> dict:
+    """Whether this finding's number may reach composite_player_score, and why not when it may not.
+
+    Returns the three fields a stored finding carries, computed in one place so the record and the
+    ingestion filter cannot disagree about a row:
+
+        cited_source_admitted   the canonical allowlisted source, or None            (7.4)
+        adjudication            who has agreed so far                                (6.2a)
+        composite_impact        the derived answer, in the same vocabulary as before
+
+    WHY BOTH GATES AND NOT EITHER ALONE. The allowlist answers "does this citation name a source
+    this repository has documented", which is checkable and mechanical -- and deliberately does
+    NOT answer "is this claim true"; a fabricated claim naming ESPN passes it. The second
+    adjudication is what stands against that one. Neither is sufficient; together they are the
+    smallest gate that is honest about what each half can establish.
+
+    THE BAR THIS RAISES, stated because it is a real behaviour change: a panel-vetted finding no
+    longer feeds the composite on the Moderator's own say-so. On this repository that changes
+    nothing observable -- the store has never held a row -- but it is the first time the app has
+    declined to use something the panel approved. That is the ruling's own logic: an accepted
+    finding is exactly the kind of thing that, under a shared substrate, would reach everybody.
+    """
+    admitted = source_policy.admits(source)
+    if rank is None:
+        # A qualitative claim has no number to gate. Unchanged, and the reason it reads "none" is
+        # the same as it always was.
+        reason = "none"
+    elif admitted is None:
+        reason = "none -- cited source is not on the composite allowlist"
+    elif adjudication != ADJUDICATION_HUMAN_CONFIRMED:
+        reason = "none -- awaiting a second adjudication"
+    else:
+        reason = "low-weight input"
+    return {
+        "cited_source_admitted": admitted,
+        "adjudication": adjudication,
+        "composite_impact": reason,
+    }
+
+
+def feeds_composite(finding: dict) -> bool:
+    """The single question data_merger asks of a stored row.
+
+    Recomputed from the row's own fields rather than trusting its stored `composite_impact`,
+    because the stored string is a RECORD of a decision and this is the DECISION -- a row written
+    under an older rule must not carry its old eligibility forward just because the string is
+    still sitting there. That is the same discipline as recomputing a manifest rather than
+    believing it.
+    """
+    verdict = composite_eligibility(
+        finding.get("source", ""), finding.get("rank"), finding.get("adjudication"))
+    return verdict["composite_impact"] == "low-weight input"
 
 
 def _load(path: Path) -> list[dict]:
@@ -119,9 +200,13 @@ def add_finding(
         "source": source,
         "claim": claim,
         "rank": rank,
-        # Explicit and visible rather than something a reader has to infer from whether
-        # `rank` happens to be null -- mirrors comparisons' own composite_impact field below.
-        "composite_impact": "low-weight input" if rank is not None else "none",
+        # 7.4 + 6.2a, computed in one place (composite_eligibility) so the stored record and the
+        # ingestion filter cannot disagree about a row. Three fields rather than one, because
+        # "this number does not count" has more than one reason and a reader needs to know which:
+        # an unlisted cited source is a policy answer, an unconfirmed adjudication is a queue
+        # position. Still explicit and visible rather than inferred from whether `rank` happens
+        # to be null -- mirrors comparisons' own composite_impact field below.
+        **composite_eligibility(source, rank, ADJUDICATION_PANEL_ONLY),
         "conviction": conviction,
         "question": question,
         "league_id": league_id,
@@ -140,6 +225,62 @@ def add_finding(
     })
     _save(FINDINGS_PATH, entries)
     return new_id
+
+
+@store_io.atomic(lambda *a, **k: FINDINGS_PATH)
+def confirm_finding(finding_id: int, *, by: str = "human") -> Optional[dict]:
+    """6.2a's second adjudication: a person looks at a stored finding and accepts its number.
+
+    Returns the updated row, or None if there is no such finding. Idempotent -- confirming an
+    already-confirmed row rewrites the same values and is not an error, because the caller is a
+    UI button and a double-click is not a fact about the finding.
+
+    WHAT THIS IS AND IS NOT. It is not verification of the claim; nothing here can check whether
+    ESPN actually ranks that player third. It records that a SECOND party, not the panel that
+    produced the finding, looked at it and let its number through. 6.2a's question was whether
+    anything re-adjudicates at all, and the answer was no queue and no second adjudication. This
+    is the smallest honest one: one more pair of eyes between a model's assertion and a score.
+
+    WHY A HUMAN AND NOT A SECOND MODEL, for now. The ruling's reasoning, kept because it is the
+    part that will be re-litigated: under a shared substrate an accepted finding reaches
+    EVERYBODY, and ROADMAP's own trust boundary says agreement among models is not corroboration
+    when they may all be downstream of one source. A stronger model or a corroboration threshold
+    is a legitimate future adjudicator -- ROADMAP names four candidates and picks none -- but
+    choosing one now would be answering the deployment question by accretion, which is exactly
+    what this repository just spent a session unwinding. So: a person, explicitly "for now".
+
+    Deliberately NO auto-confirm path, no bulk confirm, and no confirm-on-write. Each of those
+    would turn the gate back into the thing it replaced.
+    """
+    entries = load_findings()
+    for entry in entries:
+        if entry.get("id") != finding_id:
+            continue
+        entry.update(composite_eligibility(
+            entry.get("source", ""), entry.get("rank"), ADJUDICATION_HUMAN_CONFIRMED))
+        # Records WHO and WHEN, under the rule #89 established for the alias branch: a stored
+        # field may not claim a certainty its writing path cannot establish. "confirmed_by" is
+        # honest about being an actor, not an authority.
+        entry["confirmed_by"] = by
+        entry["confirmed_at"] = datetime.now().strftime("%Y-%m-%d")
+        _save(FINDINGS_PATH, entries)
+        return dict(entry)
+    return None
+
+
+def findings_awaiting_adjudication() -> list[dict]:
+    """Rank-bearing findings whose number is being held back, newest first.
+
+    The queue 6.2a said did not exist -- deliberately a VIEW over the store rather than a second
+    file, because a queue that can drift from the thing it queues is a new defect, not a
+    mechanism. Includes findings blocked by either gate, since a user looking at this list wants
+    to see everything that is not counting and why; `composite_impact` on each row says which.
+    """
+    return sorted(
+        (f for f in load_findings()
+         if f.get("rank") is not None and not feeds_composite(f)),
+        key=lambda e: e.get("ts", 0), reverse=True,
+    )
 
 
 def findings_for_context(limit: int = 30) -> list[dict]:

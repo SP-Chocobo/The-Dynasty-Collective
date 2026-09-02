@@ -196,14 +196,37 @@ class OldRecordsStayReadableTests(unittest.TestCase):
             finally:
                 decision_log.DECISIONS_DIR = real
 
-    def test_a_minimal_legacy_finding_reads_and_still_reaches_the_composite_shape(self):
+    def test_a_minimal_legacy_finding_still_READS_but_no_longer_feeds_the_composite(self):
+        """CHANGED DELIBERATELY by 6.2a, and the distinction is the whole point of this class.
+
+        A legacy row -- one written before the adjudication gate existed, so carrying no
+        `adjudication` key at all -- must still READ without raising, still reach the panel as
+        context, and still be a full member of the record. That half is unchanged and is what
+        this class exists to guarantee.
+
+        What changed is that its NUMBER no longer reaches `composite_player_score`. An absent
+        `adjudication` key is a third state -- never adjudicated, as distinct from adjudicated
+        and not confirmed -- and under 6.2a's ruling both are held back. Reading it as "confirmed
+        by default" would be exactly the silent-grandfathering this file is here to catch: an old
+        record acquiring an authority nobody granted it, because the field that would have
+        withheld it did not exist yet.
+
+        Recovering it is a person confirming it, same as any other finding.
+        """
+        legacy = {"id": 1, "player_name": "A Star", "source": "ESPN", "claim": "WR4", "rank": 4}
         with tempfile.TemporaryDirectory() as tmp:
             real, bot_research.FINDINGS_PATH = bot_research.FINDINGS_PATH, Path(tmp) / "f.json"
             try:
-                bot_research.FINDINGS_PATH.write_text(json.dumps([
-                    {"id": 1, "player_name": "A Star", "source": "ESPN", "claim": "WR4", "rank": 4},
-                ]))
+                bot_research.FINDINGS_PATH.write_text(json.dumps([legacy]))
+                # Unchanged: it reads, and it reaches the panel.
                 self.assertEqual(len(bot_research.findings_for_context()), 1)
+                self.assertEqual(len(bot_research.load_findings()), 1)
+                # Changed: held back, and listed as awaiting a person rather than dropped.
+                self.assertTrue(dm.load_bot_research_as_external().empty)
+                self.assertEqual([f["id"] for f in bot_research.findings_awaiting_adjudication()],
+                                 [1])
+                # And recoverable, so this is a gate rather than a one-way loss.
+                bot_research.confirm_finding(1)
                 frame = dm.load_bot_research_as_external()
             finally:
                 bot_research.FINDINGS_PATH = real

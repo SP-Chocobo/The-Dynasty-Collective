@@ -92,14 +92,15 @@
       }
     },
     "test_bot_research.py": {
-      "test_methods": 22,
+      "test_methods": 27,
       "asserts": {
-        "assertEqual": 38,
-        "assertIsNone": 7,
+        "assertEqual": 46,
+        "assertFalse": 1,
+        "assertIsNone": 9,
         "assertIsNotNone": 2,
         "assertNotEqual": 1,
         "assertNotIn": 1,
-        "assertTrue": 2
+        "assertTrue": 3
       }
     },
     "test_bpa_unit.py": {
@@ -175,6 +176,18 @@
         "assertTrue": 1
       }
     },
+    "test_composite_admission_gate.py": {
+      "test_methods": 15,
+      "asserts": {
+        "assertEqual": 11,
+        "assertFalse": 2,
+        "assertIn": 1,
+        "assertIs": 1,
+        "assertIsNone": 1,
+        "assertNotIn": 5,
+        "assertTrue": 3
+      }
+    },
     "test_context_budget_boundary.py": {
       "test_methods": 16,
       "asserts": {
@@ -225,7 +238,7 @@
     "test_data_semantics_boundary.py": {
       "test_methods": 33,
       "asserts": {
-        "assertEqual": 12,
+        "assertEqual": 14,
         "assertFalse": 1,
         "assertGreater": 1,
         "assertIn": 21,
@@ -584,7 +597,7 @@
     "test_override_provenance_boundary.py": {
       "test_methods": 29,
       "asserts": {
-        "assertEqual": 36,
+        "assertEqual": 37,
         "assertIn": 2,
         "assertIsInstance": 1,
         "assertIsNone": 3,
@@ -764,10 +777,10 @@
       }
     },
     "test_research_ingestion_boundary.py": {
-      "test_methods": 19,
+      "test_methods": 20,
       "asserts": {
         "assertAlmostEqual": 1,
-        "assertEqual": 15,
+        "assertEqual": 20,
         "assertFalse": 2,
         "assertGreater": 3,
         "assertGreaterEqual": 1,
@@ -975,7 +988,7 @@
     "test_version_boundary.py": {
       "test_methods": 26,
       "asserts": {
-        "assertEqual": 25,
+        "assertEqual": 27,
         "assertGreater": 1,
         "assertIn": 7,
         "assertIsInstance": 1,
@@ -985,7 +998,7 @@
         "assertNotRegex": 1,
         "assertRaises": 2,
         "assertRegex": 1,
-        "assertTrue": 3
+        "assertTrue": 4
       }
     }
   }

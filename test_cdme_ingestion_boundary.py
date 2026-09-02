@@ -25,6 +25,16 @@ proven byte-identical before and after the injection exists on disk.
 
 No production decision logic is touched by this file under any outcome -- it only measures and
 locks in already-correct behavior.
+
+THE INJECTIONS NOW CLEAR TWO GATES THEY DID NOT USED TO, which makes them strictly more
+adversarial rather than less. 7.4's allowlist and 6.2a's second adjudication both sit UPSTREAM
+of this boundary: a finding citing "FabricatedSource" no longer reaches `external_values` at
+all, so an injection written that way would prove nothing here except that the new gate works
+(and would leave these tests silently vacuous -- their own control checks caught exactly that).
+So `_inject` below cites an ALLOWLISTED source and confirms the finding, i.e. it is an injection
+that has already passed everything the app can check about its provenance, and CDME still
+ignores it. That the composite gate stops a fabricated source is a different guarantee, tested
+where it lives (test_source_policy, test_research_ingestion_boundary).
 """
 
 from __future__ import annotations
@@ -127,7 +137,7 @@ class ExternalValuesFilterTests(unittest.TestCase):
         self.addCleanup(setattr, bot_research, "FINDINGS_PATH", self._orig_findings_path)
 
     def test_rookie_lookup_ignores_a_bot_research_only_row(self):
-        bot_research.add_finding("Zzz Fabricated Player", "ESPN", "a rookie, apparently", rank=1)
+        _inject("Zzz Fabricated Player", "a rookie, apparently")
         merger = dm.DataMerger()
         # Confirm the injection actually landed in external_values (a control check -- this
         # test must not pass merely because the finding silently failed to persist).
@@ -139,13 +149,28 @@ class ExternalValuesFilterTests(unittest.TestCase):
         self.assertEqual(set(lookup.keys()) - set(ktc_only.get("_name_key", [])), set())
 
     def test_consensus_lookup_ignores_a_bot_research_only_row(self):
-        bot_research.add_finding("Zzz Fabricated Player", "ESPN", "top consensus rank", rank=1)
+        _inject("Zzz Fabricated Player", "top consensus rank")
         merger = dm.DataMerger()
         self.assertTrue((merger.external_values["source_name"] == "bot_research").any())
         from pick_synthesis import _consensus_lookup
         result = _consensus_lookup(merger, is_superflex=True)
         ktc_only = merger.external_values[merger.external_values["source_name"] == "keeptradecut"]
         self.assertEqual(set(result.keys()) - set(ktc_only.get("_name_key", [])), set())
+
+
+def _inject(player_name: str, claim: str, *, rank: int = 1, conviction: str = "high") -> int:
+    """Add a finding AND take it all the way through to composite eligibility.
+
+    Cites an allowlisted source and confirms the second adjudication, so the row actually lands
+    in `external_values`. That is what makes these tests adversarial: the injection has already
+    passed every provenance check the app performs, and the assertions below are that CDME is
+    STILL untouched by it. An injection blocked upstream would leave every test here passing for
+    the wrong reason -- which the control checks are there to catch, and did.
+    """
+    finding_id = bot_research.add_finding(player_name, "ESPN", claim, rank=rank,
+                                          conviction=conviction)
+    bot_research.confirm_finding(finding_id)
+    return finding_id
 
 
 class CascadeInjectionTests(unittest.TestCase):
@@ -189,11 +214,8 @@ class CascadeInjectionTests(unittest.TestCase):
 
         # Maximally adversarial: a confident, specific, entirely fabricated claim, with an
         # extreme rank designed to swing any percentile-based reader as hard as possible.
-        bot_research.add_finding(
-            self.TARGET_PLAYER_NAME, "FabricatedSource",
-            "Confirmed: career-ending injury, retiring immediately, remove from all boards.",
-            rank=1, conviction="high",
-        )
+        _inject(self.TARGET_PLAYER_NAME,
+                "Confirmed: career-ending injury, retiring immediately, remove from all boards.")
         merger_after = dm.DataMerger()  # fresh instance -- external_values is loaded at construction
         self.assertTrue(
             (merger_after.external_values["source_name"] == "bot_research").any(),
@@ -224,11 +246,8 @@ class CascadeInjectionTests(unittest.TestCase):
         )
         veteran_ids_before = {r["player_id"] for r in board_before}
 
-        bot_research.add_finding(
-            self.TARGET_PLAYER_NAME, "FabricatedSource",
-            "This is actually a rookie this season, reclassify immediately.",
-            rank=1, conviction="high",
-        )
+        _inject(self.TARGET_PLAYER_NAME,
+                "This is actually a rookie this season, reclassify immediately.")
         merger_after = dm.DataMerger()
         board_after = dr.compute_draft_board(
             merger_after, players_db, [], my_roster_id="1", league=STANDARD_LEAGUE,
@@ -243,11 +262,8 @@ class CascadeInjectionTests(unittest.TestCase):
         merger_before = dm.DataMerger()
         lookup_before = _consensus_lookup(merger_before, is_superflex=True)
 
-        bot_research.add_finding(
-            self.TARGET_PLAYER_NAME, "FabricatedSource",
-            "Universally regarded as the consensus #1 overall dynasty asset.",
-            rank=1, conviction="high",
-        )
+        _inject(self.TARGET_PLAYER_NAME,
+                "Universally regarded as the consensus #1 overall dynasty asset.")
         merger_after = dm.DataMerger()
         lookup_after = _consensus_lookup(merger_after, is_superflex=True)
 

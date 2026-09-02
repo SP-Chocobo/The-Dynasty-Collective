@@ -1618,8 +1618,8 @@ def load_external_values(base_dir: Path = EXTERNAL_VALUES_DIR) -> pd.DataFrame:
 
 
 def load_bot_research_as_external() -> pd.DataFrame:
-    """Panel-vetted findings from bot_research.py (only the ones that carry a real rank
-    number -- a qualitative claim has nothing to percentile-rank) reshaped into the same
+    """Panel-vetted findings from bot_research.py (only the ones ELIGIBLE to move a number --
+    see bot_research.feeds_composite) reshaped into the same
     (name/norm_name/source_name/source_file) shape load_external_values' other sources
     produce, so they ride the exact same percentile/composite pipeline as every structured
     export -- weighted low (see COMPOSITE_SOURCE_WEIGHTS["bot_research"]) since this is an
@@ -1650,7 +1650,14 @@ def load_bot_research_as_external() -> pd.DataFrame:
     """
     import bot_research
 
-    findings = [f for f in bot_research.load_findings() if f.get("rank") is not None]
+    # THE INGESTION FILTER, and it is the boundary 7.4 and 6.2a both land on. It used to read
+    # `if f.get("rank") is not None`, i.e. the Moderator's own say-so was the whole gate. Now a
+    # row must ALSO cite a source on the composite allowlist (7.4) and have passed a second
+    # adjudication (6.2a). Asked of bot_research rather than reimplemented here, so the stored
+    # record and this filter cannot disagree -- and recomputed from the row's fields rather than
+    # read off its stored `composite_impact` string, so a row written under an older rule cannot
+    # carry its old eligibility forward.
+    findings = [f for f in bot_research.load_findings() if bot_research.feeds_composite(f)]
     empty = pd.DataFrame(columns=["name", "norm_name", "source_name", "source_file"])
     if not findings:
         return empty

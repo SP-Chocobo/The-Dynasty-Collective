@@ -365,10 +365,17 @@ class ResearchFindingOriginTests(unittest.TestCase):
         self._tmp.cleanup()
 
     def test_a_findings_composite_impact_is_stated_not_inferred(self):
+        """The property is that the row SAYS its impact rather than leaving a reader to infer it
+        from whether `rank` is null. 6.2a widened the answer from two to four; each still names
+        its own reason, which is the property holding, not an exception to it."""
         numeric = bot_research.add_finding("A Star", "ESPN", "ESPN has him WR4", rank=4)
         qualitative = bot_research.add_finding("B Backup", "ESPN", "ESPN likes the usage trend")
         by_id = {f["id"]: f for f in bot_research.load_findings()}
-        self.assertEqual(by_id[numeric]["composite_impact"], "low-weight input")
+        self.assertEqual(by_id[numeric]["composite_impact"],
+                         "none -- awaiting a second adjudication")
+        bot_research.confirm_finding(numeric)
+        after = {f["id"]: f for f in bot_research.load_findings()}
+        self.assertEqual(after[numeric]["composite_impact"], "low-weight input")
         self.assertEqual(by_id[qualitative]["composite_impact"], "none")
 
     def test_a_finding_now_records_its_own_origin_INVERTING_the_106_characterization(self):
@@ -395,10 +402,14 @@ class ResearchFindingOriginTests(unittest.TestCase):
             "A Star", "ESPN", "ESPN has him WR4", rank=4,
             debate_sources=[{"url": "https://espn.com/x", "title": "X"}])
         stored = next(f for f in bot_research.load_findings() if f["id"] == fid)
+        # 7.4 + 6.2a added two fields beside composite_impact, and they belong in this exact
+        # list rather than being waved through: this assertion is what stops a finding quietly
+        # growing a field nobody decided on.
         self.assertEqual(
             sorted(stored),
             sorted(["id", "ts", "date", "player_name", "source", "claim", "rank",
-                    "composite_impact", "conviction", "question", "league_id", "evidence"]),
+                    "cited_source_admitted", "adjudication", "composite_impact",
+                    "conviction", "question", "league_id", "evidence"]),
         )
         self.assertEqual(stored["evidence"]["origin"], bot_research.ORIGIN_PANEL_RETRIEVED)
 
@@ -409,9 +420,14 @@ class ResearchFindingOriginTests(unittest.TestCase):
             "A Star", "ESPN", "ESPN has him WR4", rank=4,
             debate_sources=[{"url": "https://espn.com/x", "title": "X"}])
         unattributed = bot_research.add_finding("B Star", "ESPN", "ESPN has him WR9", rank=9)
+        bot_research.confirm_finding(retrieved)
+        bot_research.confirm_finding(unattributed)
         by_id = {f["id"]: f for f in bot_research.load_findings()}
         self.assertEqual(by_id[retrieved]["composite_impact"], "low-weight input")
         self.assertEqual(by_id[unattributed]["composite_impact"], "low-weight input")
+        # The point of the row: origin and composite eligibility are INDEPENDENT. Confirming a
+        # finding says a person looked at it; it says nothing about whether the panel reported
+        # retrieving a page for it, and 6.2a's gate deliberately does not conflate the two.
         self.assertNotEqual(by_id[retrieved]["evidence"]["origin"],
                             by_id[unattributed]["evidence"]["origin"])
 

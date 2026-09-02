@@ -35,7 +35,53 @@ class BotResearchTests(unittest.TestCase):
         self.assertEqual(len(findings), 1)
         self.assertEqual(findings[0]["player_name"], "Maxx Crosby")
         self.assertEqual(findings[0]["rank"], 1)
-        self.assertEqual(findings[0]["composite_impact"], "low-weight input")
+        # 6.2a: a rank-bearing finding is NOT born feeding the composite any more. It used to
+        # read "low-weight input" here, on the Moderator's own say-so.
+        self.assertEqual(findings[0]["composite_impact"], "none -- awaiting a second adjudication")
+        self.assertEqual(findings[0]["adjudication"], bot_research.ADJUDICATION_PANEL_ONLY)
+
+    def test_a_confirmed_finding_becomes_a_low_weight_composite_input(self):
+        """The other side of the gate, so the test above is not just measuring a refusal."""
+        new_id = bot_research.add_finding("Maxx Crosby", "ESPN", "ranked #1 DL", rank=1)
+        updated = bot_research.confirm_finding(new_id)
+        self.assertEqual(updated["composite_impact"], "low-weight input")
+        self.assertEqual(updated["adjudication"], bot_research.ADJUDICATION_HUMAN_CONFIRMED)
+        self.assertEqual(updated["confirmed_by"], "human")
+        self.assertTrue(bot_research.feeds_composite(bot_research.load_findings()[0]))
+
+    def test_confirming_an_unlisted_cited_source_still_does_not_admit_it(self):
+        """7.4 and 6.2a are AND, not OR. A person confirming a finding does not promote the
+        source it cites -- the allowlist is a policy about sources, not about diligence."""
+        new_id = bot_research.add_finding("Maxx Crosby", "an anonymous forum post",
+                                          "ranked #1 DL", rank=1)
+        updated = bot_research.confirm_finding(new_id)
+        self.assertIsNone(updated["cited_source_admitted"])
+        self.assertEqual(updated["composite_impact"],
+                         "none -- cited source is not on the composite allowlist")
+        self.assertFalse(bot_research.feeds_composite(updated))
+
+    def test_confirming_an_unknown_id_is_a_no_op_rather_than_an_error(self):
+        self.assertIsNone(bot_research.confirm_finding(9999))
+
+    def test_confirming_twice_is_idempotent(self):
+        """The caller is a UI button; a double-click is not a fact about the finding."""
+        new_id = bot_research.add_finding("Maxx Crosby", "ESPN", "ranked #1 DL", rank=1)
+        first = bot_research.confirm_finding(new_id)
+        second = bot_research.confirm_finding(new_id)
+        self.assertEqual(first["composite_impact"], second["composite_impact"])
+        self.assertEqual(len(bot_research.load_findings()), 1)
+
+    def test_the_pending_queue_holds_only_rank_bearing_findings_that_do_not_count(self):
+        """A qualitative claim was never going to feed the composite, so it is not WAITING for
+        anything -- putting it in the queue would ask a person to adjudicate a number that does
+        not exist."""
+        blocked = bot_research.add_finding("A", "ESPN", "ranked #4", rank=4)
+        bot_research.add_finding("B", "ESPN", "trending up", rank=None)
+        unlisted = bot_research.add_finding("C", "some blog", "ranked #9", rank=9)
+        confirmed = bot_research.add_finding("D", "ESPN", "ranked #2", rank=2)
+        bot_research.confirm_finding(confirmed)
+        self.assertEqual({f["id"] for f in bot_research.findings_awaiting_adjudication()},
+                         {blocked, unlisted})
 
     def test_add_finding_without_rank_marks_no_composite_impact(self):
         bot_research.add_finding("Maxx Crosby", "ESPN", "trending up lately", rank=None)

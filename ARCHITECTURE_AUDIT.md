@@ -1046,6 +1046,19 @@ behavior change in a selection tool, and it raises one design question the manda
 you: whether a contract failure should **zero** the candidate (disqualification) or merely flag
 it (`any_failed`-style). Those give different winners. **DEFER, pending a scoped mandate.**
 
+> **RULED (#94) — FLAG ONLY. No longer deferred.** And 7.11's consideration is what makes it the
+> right answer rather than the lenient one: the structured block is the **entire channel through
+> which model output acquires authority**. A Moderator that fails its machine contract is inert
+> on every authority path; a compliant one is the one that can rewrite a user's objectives and
+> inject numbers into the composite. **Disqualifying on failure would select for models that
+> exercise more authority** — the opposite of what a quality gate is for.
+>
+> Flag-only is not the same as ignoring it. The flag is surfaced beside the candidate *and*
+> carried into the **Apply outcome**, which is the half that was missing: a caption above a
+> button is read before the decision; the applied notice is read because of it. It names the four
+> consumers by what the user will notice going missing — no decision logged, no to-dos created or
+> closed, no research finding recorded, no verdict card — rather than by parser name.
+
 ### 5.7 Per-chair evaluation dimensions against §5's own list
 
 **STATUS: PARTIAL.** §5 names the dimensions each chair should be evaluated on. Mapping the
@@ -1187,7 +1200,7 @@ answer at all. Prerequisite is #93's evidence schema, which stays queued.
 | 5.4 chair coverage | PARTIAL — 4 of 7 | pinned |
 | 5.5 operating envelope (contract exact, context schema not) | PARTIAL | structural / absent |
 | **5.6 Moderator's machine contract not benchmarked** | **VIOLATED → PARTIAL** (measured, not scored — 5.14 R5) | **instructional → enforced (observation only)** |
-| 5.6a scoring half (gate vs flag) | still DEFERRED — a selection decision (#94) | — |
+| 5.6a scoring half (gate vs flag) | **RULED: flag only** (#94) — surfaced beside the candidate and on Apply | **deferred → decided** |
 | 5.7 per-chair dimension coverage | PARTIAL (Quant 1 of 5) | — |
 | 5.8 score normalization (latency unscored, cost absent) | PARTIAL | absent |
 | 5.9 reasoning vs tool-use separation | MISSING (uniform grant) | instructional |
@@ -1325,6 +1338,38 @@ validation queue that independently re-adjudicates facts before canonical inclus
 There is no queue and no second adjudication.** The gate is one paragraph addressed to a model
 whose output is then parsed line-by-line.
 **RISK:** bounded by 6.4's dampeners rather than by the gate.
+
+> **RULED AND BUILT — a finding's number waits for a second pass.** `bot_research` now carries an
+> `adjudication` state, `findings_awaiting_adjudication()` is the queue this section said did not
+> exist, and `confirm_finding()` is the transition. A rank-bearing finding is born `panel_only`,
+> which does **not** feed `composite_player_score`; a person confirms it, or its number never
+> counts.
+>
+> **This is a real behaviour change, and the first time the app declines to use something the
+> panel approved.** On this repository nothing observable moves — the store has never held a row
+> — but the bar is genuinely higher than it was. The ruling's own reasoning is why: under a
+> shared substrate an accepted finding reaches **everybody**, so it waits, explicitly *"for now,
+> until that's more in place."*
+>
+> **Why a person and not a second model, for now.** ROADMAP's trust boundary already says
+> agreement among models is not corroboration when they may all be downstream of one source, and
+> it names four candidate adjudicators without picking one. Choosing one here would answer the
+> deployment question by accretion — precisely the failure mode this same session unwound in the
+> vendor defaults. So there is deliberately **no** auto-confirm, no bulk confirm, and no
+> confirm-on-write; `test_composite_admission_gate` fails if any appears.
+>
+> **What it does not claim.** `confirmed_by` records an actor, not an authority. Nothing here
+> verifies that ESPN actually ranks that player third — it records that a second party looked.
+> Under #89's rule, a stored field may not claim a certainty its writing path cannot establish.
+>
+> **Three states, not two.** A row predating the gate has no `adjudication` key at all, and
+> "never adjudicated" is not "adjudicated and not confirmed". Both block; a reader can still tell
+> them apart (#112).
+>
+> **What is still missing**, so this is not read as closing §6's lifecycle: nothing represents a
+> finding being *disputed* after the fact, *expiring*, or being *retracted*. Those were not
+> invented against an empty store, and `test_research_ingestion_boundary` still characterizes
+> their absence.
 
 ### 6.3 What stops a low-confidence finding becoming a durable fact — quantified
 
@@ -1507,7 +1552,7 @@ only under 13.5's hosting preconditions, and are queued there rather than answer
 | 6.0 reach — anything ever ingested | **none — 0 findings, stores absent** | — |
 | 6.1 ephemeral vs canonical, four tiers | EXISTS | structural + enforced (new) |
 | 6.2 materiality determination | PARTIAL | **instructional** |
-| 6.2a independent re-adjudication queue | MISSING | absent |
+| 6.2a independent re-adjudication queue | **MISSING → PARTIAL** (queue + one transition; disputed/expired/retracted still absent) | **absent → enforced** |
 | 6.3 dampeners on low-confidence findings | EXISTS (quantified) | enforced (new) |
 | **6.4 research frame not name-injective** | **PARTIAL (latent)** | characterized |
 | 6.4a correction — the general version is wrong | — | — |
@@ -1666,6 +1711,37 @@ CDME.
 **Verdict: DOCUMENT.** Deciding *which* sources a citation may name is a product source policy
 decision — exactly the thing 7.1's ATTRIBUTION files settle for file sources, and exactly the
 thing nobody has settled for model-surfaced ones. Surfaced (#98), not chosen.
+
+> **RULED AND BUILT — `source_policy.py`. Allowlist what feeds the composite; prose stays free.**
+> The ruling drew a line this section had left as one question:
+>
+> | act | governed |
+> |---|---|
+> | a claim a chair reads, quotes, or argues from | **no** — free text, never filtered |
+> | a NUMBER that alters `composite_player_score` | **yes** — must cite an allowlisted source |
+>
+> Enforced at the ingestion boundary (`bot_research.composite_eligibility`, honoured by
+> `data_merger.load_bot_research_as_external`), **not in a prompt** — §4.6/§8.3 already forbids an
+> engine constant reaching a prompt, and for the related reason: a rule a model is asked to
+> follow is not a rule the app enforces.
+>
+> **The list is not my opinion about which brands are reputable.** Every entry is a source this
+> repository has already written a provenance record for — the four `ATTRIBUTION.md` files, plus
+> Sleeper. `test_source_policy` checks that in **both** directions, because each fails
+> differently: an allowlisted source with no record is an unearned promotion; a documented source
+> off the list is a silent demotion. Adding a source is therefore the same act as documenting it.
+>
+> **Matching is on token runs, not substrings** — `espnfake.example` tokenizes to
+> `('espnfake','example')` and never matches `('espn',)`, while "ESPN's Field Yates" and "Keep
+> Trade Cut" both resolve. Multiple spellings per source are the other half of the requirement:
+> a false reject costs a genuine panel-vetted finding its number.
+>
+> **The limit, stated and tested.** Once a real source name appears as its own token the citation
+> is admitted — `fantasypros-mirror.example`, `ESPN (fabricated)`. This check answers *does this
+> citation name an allowlisted source*, never *is this citation truthful*; tightening it would
+> mean heuristics over free text, which fail in the expensive direction. What stands against
+> those strings is the panel gate upstream and **6.2a's second adjudication downstream** — which
+> is why the two were built together rather than either being treated as sufficient alone.
 
 ### 7.5 The prompt-injection boundary — what a retrieved instruction can actually do
 
@@ -1854,7 +1930,7 @@ the reasoning should now account for it. Recorded on #94.
 | 7.1 written per-source policy | EXISTS | **convention → enforced (R6)** |
 | 7.2 no fetcher of its own | EXISTS | structural, now pinned |
 | 7.3 admissibility is a code allowlist | EXISTS | structural, now pinned |
-| **7.4 cited source name unvalidated** | **PARTIAL (latent)** | absent |
+| **7.4 cited source name unvalidated** | **PARTIAL → RESOLVED** (`source_policy`) | **absent → enforced** |
 | 7.5 injection boundary / directive authority | PARTIAL | structural where present, now pinned |
 | **7.6 evidence vs instructions** | **MISSING** | absent |
 | 7.7 citations through the handoff | PARTIAL | absent (→ #93) |
