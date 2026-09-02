@@ -2588,3 +2588,41 @@ below the startability floor, where 1QB previously stranded four whole positions
 demand-exhausted rows are correctly priced now, so the reduction is the intended effect, but
 it is a genuine loss of coverage breadth and belongs in the record as a cost rather than a
 footnote.
+
+---
+
+# SUITE-LEVEL RESULT OF THE ANCHOR CACHE, AND #61 RE-SCOPED
+
+## The cache is worth more than the per-board measurement showed
+
+| | before the cache | after |
+|---|---|---|
+| full suite | `Ran 1548 tests in 1011.5s` | **`Ran 1575 tests in 573.8s`** |
+| single board, anchor firing | 0.602s | **0.260s** |
+| single board, anchor not needed | 0.512s | **0.336s** (nothing is built at all) |
+
+**43% off total suite runtime**, and green at 1575 tests. The per-board figure understated it
+because a large share of the suite builds boards. The laziness repair is the half that matters
+when no position is exhausted; the cache is the half that matters when one is.
+
+## #61 — re-scoped in CDME_CONTRACTS.md rather than built
+
+The two-register policy is preserved as written, with a re-scope section appended. Its rule 2
+justifies its own scope on *"the mixed regime spans six of twelve late rounds"*, and that is
+no longer true: a 1QB board now carries **zero** unpriced rows at rounds 16, 18 and 20, and
+superflex retains **11**, all QBs, from the `startable_floors` decline the anchor deliberately
+does not revive.
+
+**Build nothing yet.** Seven rules and twelve invariants for eleven rows in one format is
+apparatus looking for a job. **Keep rules 5, 6 and 12** as correctness debt — they argue from
+correctness rather than volume, so rarity lowers their priority without making them wrong.
+**Delete rules 3 and 7 and the "report need, not value" apparatus** — all sized for the old
+population. **Keep the semantic distinction** (value / need / unknown), which is what the
+engine reasons with; the register was only ever one implementation of it.
+
+**#112 is downgraded, not closed** — kind-of-absence now serves ~11 rows in one format.
+
+**What would reverse it:** a format whose demand exhausts while its pool stays deep, or a
+source thin enough that rows carry neither projection nor trade value. Both are now
+*observable* rather than assumed — `replacement_basis` and the unpriced count sit on every
+board row, so this population can be re-measured at any time instead of re-argued.

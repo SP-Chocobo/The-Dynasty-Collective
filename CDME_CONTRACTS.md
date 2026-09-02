@@ -1732,6 +1732,60 @@ claim entered as a side effect of a mechanical sort fix and deserves an explicit
 
 ---
 
+## RE-SCOPED — the population this policy was sized for no longer exists
+
+*Measured after `predraft_replacement_anchor` landed (see POST_AUDIT_PLAN, commits
+`cf06959` / `9ad758d` / `cf9106b`). The policy above is preserved as written because its
+reasoning is still the reasoning; what changed is how much of it is worth building.*
+
+The proposal assumes register 2 is a large, permanent regime — rule 2 justifies its scope on
+*"the mixed regime spans six of twelve late rounds."* That is no longer true. Once a position
+whose league-wide starter demand is exhausted keeps being priced against its pre-draft anchor,
+the unpriced register collapses:
+
+| league | round 16 | round 18 | round 20 |
+|---|---|---|---|
+| 1QB 12-team | **0 unpriced** | 0 | 0 |
+| SUPERFLEX 12-team | **11 unpriced (all QB)** | 11 | 9 |
+
+Measured on the real projection set. **In a 1QB league the unpriced register is empty at every
+depth.** What survives is the one absence the anchor deliberately does *not* revive — the
+`startable_floors` decline, *"no remaining QB clears the startability threshold"*, which is a
+measured fact about the position rather than an artifact of the demand model's domain.
+
+**BUILD: nothing yet.** Seven rules and twelve invariants of apparatus for eleven rows in one
+format is machinery looking for a job.
+
+**KEEP as correctness debt, deprioritised but not deleted.** Three rules argue from
+*correctness*, not from volume, and rarity changes their priority without changing whether
+they are right:
+
+* **Rule 5** — `near_tie_flags` returning `False` for an unknown comparison is a false
+  *"these are NOT tied"*, by the identical argument its own docstring uses to refuse a false
+  *"these are tied."* Still wrong at eleven rows. Deferred because it widens a return type to
+  `Optional[bool]` across `pick_synthesis` and the debate layer — a real diff for a rare case.
+* **Rule 6** — `survival_probability` must decline over an unpriced opponent board.
+* **Rule 12** — no consumer may read a rank derived from unpriced rows as evidence.
+
+**DELETE from the plan.** Rule 3 (re-deriving `rival_premium` / `context_elevated`), rule 7
+(suppressing `pick_necessity` in register 2), and the *"report need, not value"* apparatus.
+Every one was sized for the old population.
+
+**KEEP the semantic distinction, which is the part worth preserving regardless of how few rows
+occupy it:** *value* ("this can be meaningfully priced"), *need* ("the system knows this
+position still matters"), and *unknown* ("we know enough to assert neither"). The distinction
+is what the engine reasons with; the register was only ever one way to implement it.
+
+**Knock-on: #112 is downgraded, not closed.** Representing the *kind* of absence still matters,
+but it now serves roughly eleven rows in one format rather than most of a late board in every
+format.
+
+**What would reverse this.** A format whose starter demand exhausts while its pool stays deep,
+or a data source thin enough that rows carry neither a projection nor a trade value. Both are
+observable: `replacement_basis` and the count of unpriced rows are on every board row now, so
+the population is measurable at any time rather than assumed.
+
+
 # Appendix — #61's two remaining questions
 
 Investigation only. **No implementation.**
