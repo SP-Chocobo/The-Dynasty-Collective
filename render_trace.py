@@ -42,6 +42,8 @@ from datetime import date
 from pathlib import Path
 from unittest import mock
 
+import store_io
+
 TRACE_PATH = Path("RENDER_TRACE.json")
 
 
@@ -282,7 +284,14 @@ def main(argv: list[str] | None = None) -> int:
     traces = {view: capture(view=view) for view in VIEWS}
     calls = [f"[{view}] {call}" for view in VIEWS for call in traces[view]]
     if args.write:
-        TRACE_PATH.write_text(json.dumps({
+        # store_io.write for its atomic replace (#102), the same reason baseline_manifest and
+        # assertion_floors use it: an interrupted --write would otherwise leave a truncated
+        # trace on disk, and the next CI run would fail against the truncation rather than
+        # against a real UI change -- a false alarm indistinguishable from the true one.
+        # The READ below is deliberately NOT store_io.read, for those same two modules'
+        # reason: --write is how a damaged trace gets repaired, and store_io's
+        # do-not-overwrite-damage guard would block the repair command.
+        store_io.write(TRACE_PATH, {
             "_comment": (
                 "Ordered Streamlit calls made by app.py's default render path -- the before/after "
                 "reference for moving UI code out of it. See render_trace.py. Regenerate with "
@@ -290,7 +299,7 @@ def main(argv: list[str] | None = None) -> int:
                 "during a refactor means the refactor changed behaviour."
             ),
             "calls": calls,
-        }, indent=1) + "\n")
+        })
         print(f"wrote {TRACE_PATH} -- {len(calls)} calls across {len(VIEWS)} views")
         for view in VIEWS:
             print(f"  {len(traces[view]):5} {view}")
