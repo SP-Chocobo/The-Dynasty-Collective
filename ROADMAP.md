@@ -9,6 +9,23 @@
 > See `README.md`'s "The Draft Engine" (CDME) and "The Prytaneum" sections for the
 > architecture this roadmap extends. Nothing here changes either of those; this is what
 > sits *upstream* of both, someday.
+>
+> **Where the rest of the map is.** This file is the only one of six that looks forward at
+> the product; a reader who lands here first should know the others exist, because none of
+> them is discoverable from this one:
+>
+> | document | what it is |
+> |---|---|
+> | `README.md` | what the app is and how to run it |
+> | `ENGINEERING_DOCTRINE.md` | the semantic-integrity rules every change is held to |
+> | `ARCHITECTURE_AUDIT.md` | the 25-section audit, its findings and their status |
+> | `CDME_CONTRACTS.md` | what each engine quantity means, and what it may not claim |
+> | `POST_AUDIT_PLAN.md` | **the actual near-term plan** — the register of open items, the |
+> | | evidence behind each decision, and what is deliberately not being built |
+>
+> If you are looking for "what happens next", it is `POST_AUDIT_PLAN.md`, not this file.
+> This one answers "what is this for, eventually", which is a different question and is
+> deliberately not scheduled.
 
 ## The core idea, in one sentence
 
