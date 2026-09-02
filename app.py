@@ -41,6 +41,7 @@ import lineup_optimizer
 import lineup_readiness
 import pick_debate
 import pick_synthesis
+import corpus_state
 import panel_independence
 import pinned_messages
 import provider_meter
@@ -4252,6 +4253,52 @@ elif main_view == DRAFT_VIEW:
             "Draft Room mode", options=["Live Draft (Sleeper)", "🧪 Mock Draft"],
             horizontal=True, key="draft_room_mode_radio", label_visibility="collapsed",
         )
+
+    # WHAT CORPUS THIS BOARD IS COMPUTED FROM, above both modes because it is true of both.
+    # Board scope, not per-row: an uploaded projections file does not taint the rows it names,
+    # it moves REPLACEMENT LEVELS -- a league-level quantity every player at that position is
+    # measured against -- so it changes prices for players the file never mentions. Marking it
+    # per row would clear rows the upload did in fact move.
+    #
+    # Tone is deliberate. "Includes your data" is the NORMAL state for anyone using the product
+    # as intended, so it reads calmly; dressing the common case as a caution is how the genuinely
+    # loud marks (a per-row override, further down) stop being read.
+    _corpus = corpus_state.assess()
+    _corpus_icon, _corpus_line = corpus_state.light(_corpus)
+    st.caption(f"{_corpus_icon} {_corpus_line}")
+    if _corpus["local_files"]:
+        with st.expander(f"Which files are yours ({len(_corpus['local_files'])})", expanded=False):
+            # Named rather than counted, because "which file" is the first question and a count
+            # that cannot be expanded is a number nobody can act on.
+            for _path in _corpus["local_files"]:
+                st.caption(f"• `{_path}`")
+
+    # THE LOUD ONE, and it is per-player rather than board-wide because an alias is genuinely a
+    # per-row act: it moves ONE player's numbers, over whatever the automatic match found. §16.3
+    # measured that at trade_value 41.0 -> 100.0 and projection 202.0 -> 339.0, and did it over a
+    # CORRECT match -- the alias branch bypasses the team/position rejection on purpose, because
+    # overriding the guards is what an override is for.
+    #
+    # Computed from the alias map rather than from board rows on purpose: this is true on every
+    # screen that prices anything, not only where a board happens to be rendered, and reading it
+    # at the source means it cannot drift from what the engine actually used.
+    # Read off session state rather than a local name: this block sits inside the Draft Room
+    # view and must not depend on which enclosing branch happened to bind `merger` first.
+    _merger_for_aliases = st.session_state.get("data_merger")
+    _aliases = getattr(_merger_for_aliases, "aliases", None) or {}
+    if _aliases:
+        st.warning(
+            f"⚠️ **{len(_aliases)} player{'s' if len(_aliases) != 1 else ''} on this board "
+            f"{'are' if len(_aliases) != 1 else 'is'} priced through your own name override.** "
+            "An override deliberately bypasses the team and position checks, so it can attach "
+            "another player's numbers to this one — including over a match the engine had "
+            "already made correctly. These prices are yours, not the shared baseline's."
+        )
+        with st.expander(f"Which overrides are in play ({len(_aliases)})", expanded=False):
+            for _sleeper_name, _target in sorted(_aliases.items()):
+                st.caption(f"• **{_sleeper_name}** → priced as `{_target}`")
+            st.caption("Remove any of these under Sidebar → Manual Aliases to return those "
+                       "players to the engine's own matching.")
 
     if draft_room_mode == "🧪 Mock Draft":
         # -------------------------------------------------------------- mock draft --

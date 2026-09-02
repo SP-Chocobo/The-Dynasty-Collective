@@ -1561,6 +1561,46 @@ def _fill_omitted_from_anchor(levels, present_positions, startable_floors, build
     return filled
 
 
+#: How this row's IDENTITY was established -- which is a different question from how its value
+#: was computed (`bpa_source`) and from how confident that computation is (`confidence`).
+#:
+#: §16.3/#107 measured why it has to reach the board. `merge_player` reports `match_path`
+#: honestly, `build_available_pool` carries it onto every pool row as `_match_path` -- and both
+#: of compute_draft_board's output column lists dropped it, verified by AST over the subscript
+#: lists rather than by grep. Both fields were WRITE-ONLY in production: nothing read either
+#: one. So a user's own alias could move a row's trade_value 41.0 -> 100.0 and its projection
+#: 202.0 -> 339.0, OVER a correct automatic match, and every number downstream of that was
+#: indistinguishable from a canonical one.
+IDENTITY_USER_OVERRIDE = "user_override"   # an alias the user wrote put this row here
+IDENTITY_MATCHED = "matched"               # automatic, and exactly one row fit
+IDENTITY_AMBIGUOUS = "ambiguous"           # automatic, several fit, the first won
+
+
+def identity_basis(match_path, match_verified) -> "str | None":
+    """Which of the three ways this row's numbers came to be attached to this player.
+
+    Returns None when the pool row carries no `_match_path` at all -- a FOURTH state, and not a
+    synonym for any of the three. A row whose provenance was never recorded must not be labelled
+    `matched`: that would claim clean identity for a row nothing checked, which is the shape of
+    claim this codebase spends its audit removing. Absence is not a value.
+
+    `ambiguous` is the state nobody has been able to see. `_resolve` already reports that several
+    rows fit and the first was taken (`match_verified=False`), and `_find_match` is
+    `_resolve(...)[0]` -- the row, with that flag discarded. It is neither "your override" nor "a
+    clean match", and collapsing it into either would be inventing a certainty on one side or an
+    accusation on the other.
+    """
+    if match_path is None or (isinstance(match_path, float) and match_path != match_path):
+        return None
+    if match_path == "alias":
+        # Deliberately NOT gated on match_verified. An alias bypasses `_contradicted`'s
+        # team/position rejection on purpose -- overriding the guards is what an override IS --
+        # so "verified" means something different here and reporting it as a clean match would
+        # be exactly the mislabel #107 named.
+        return IDENTITY_USER_OVERRIDE
+    return IDENTITY_MATCHED if match_verified else IDENTITY_AMBIGUOUS
+
+
 def compute_draft_board(
     merger: DataMerger,
     players_db: dict[str, dict],
@@ -1791,6 +1831,12 @@ def compute_draft_board(
         # per-position decomposition terms (time_horizon_adj, risk_adj) stay absent because
         # upside_score genuinely never computes them and emitting 0.0 would fabricate them.
         scored["universal_value"] = scored["final_score"]
+        # #107: the provenance of the row's IDENTITY, carried to the board instead of dropped.
+        scored["identity_basis"] = [
+            identity_basis(path, verified)
+            for path, verified in zip(pool.get("_match_path", pd.Series(None, index=pool.index)),
+                                      pool.get("_match_verified", pd.Series(False, index=pool.index)))
+        ]
         _attach_waiting_cost(scored, pool, roster_positions, num_teams, demand_source, players_db)
         # kind="stable" + player_id as an explicit tiebreaker: without both, two players
         # landing on the exact same rounded final_score could rank in either relative order
@@ -1808,7 +1854,7 @@ def compute_draft_board(
             "player_id", "name", "position", "team", "injury_status", "bpa", "bpa_source",
             "growth_signal", "universal_value", "confidence", "final_score", "mode",
             "projected_points", "horizon_floor", "horizon_sensitivity", "waiting_cost",
-            "replacement_basis", "horizon_basis",
+            "replacement_basis", "horizon_basis", "identity_basis",
         ]], "projected_points", "horizon_floor", "horizon_sensitivity", "waiting_cost",
             "bpa", "universal_value", "final_score")
 
@@ -1913,6 +1959,14 @@ def compute_draft_board(
     scored["confidence"] = pool["bpa_source"].map(_confidence)
     scored["mode"] = "balanced"
     scored["projected_points"] = pool["_points"]
+    # #107, same field and same reason as the upside branch. Emitted by BOTH, because the two
+    # branches returning two different row schemas with nothing declaring it is the defect this
+    # module's own universal_value comment records having already been bitten by once.
+    scored["identity_basis"] = [
+        identity_basis(path, verified)
+        for path, verified in zip(pool.get("_match_path", pd.Series(None, index=pool.index)),
+                                  pool.get("_match_verified", pd.Series(False, index=pool.index)))
+    ]
     _attach_waiting_cost(scored, pool, roster_positions, num_teams, demand_source, players_db)
     # player_id tiebreaker + kind="stable" -- see the identical sort in the upside-mode branch
     # above for the full reasoning (input-order-independent tiebreaking among exact ties).
@@ -1922,7 +1976,7 @@ def compute_draft_board(
         "time_horizon_adj", "risk_adj", "universal_value",
         "need_bonus", "eligibility_bonus", "confidence", "final_score", "mode", "projected_points",
         "horizon_floor", "horizon_sensitivity", "waiting_cost", "replacement_basis",
-        "horizon_basis",
+        "horizon_basis", "identity_basis",
     ]], "projected_points", "horizon_floor", "horizon_sensitivity", "waiting_cost",
         "bpa", "universal_value", "final_score")
 

@@ -204,6 +204,15 @@
         "assertTrue": 2
       }
     },
+    "test_corpus_state.py": {
+      "test_methods": 16,
+      "asserts": {
+        "assertEqual": 8,
+        "assertIn": 12,
+        "assertNotIn": 3,
+        "assertTrue": 1
+      }
+    },
     "test_cost_envelope_boundary.py": {
       "test_methods": 15,
       "asserts": {
@@ -460,6 +469,17 @@
         "assertIsNotNone": 7,
         "assertNotEqual": 1,
         "assertTrue": 5
+      }
+    },
+    "test_identity_provenance.py": {
+      "test_methods": 12,
+      "asserts": {
+        "assertEqual": 6,
+        "assertIn": 3,
+        "assertIsNone": 3,
+        "assertIsNotNone": 1,
+        "assertNotEqual": 1,
+        "assertTrue": 3
       }
     },
     "test_idp_supply_boundary.py": {
