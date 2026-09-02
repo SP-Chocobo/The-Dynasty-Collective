@@ -76,6 +76,11 @@ class CallRecord:
     output_tokens: Optional[int] = None
     completion_state: str = UNKNOWN
     completion_detail: Optional[str] = None
+    # What this call reports having RETRIEVED -- [{"url", "title"}, ...] -- read off the
+    # response's own grounding metadata, never off the model's prose. Empty is not "searched
+    # and found nothing"; it is "this response reports no retrieval", which also covers a call
+    # that never searched and a shape this code could not read. See sources().
+    sources: list = field(default_factory=list)
     latency_ms: Optional[float] = None
     ok: bool = True
     error: Optional[str] = None
@@ -187,6 +192,87 @@ def _openai_completion(response: Any) -> tuple[str, Optional[str]]:
     return UNKNOWN, detail
 
 
+# --- What the panel actually retrieved -------------------------------------------------------
+#
+# All three providers run live web search server-side (see llm_engine's provider callers), and
+# all three report what they fetched in their own response shape. Reading it here rather than
+# asking the model to type a URL is the whole point: a chair ASKED for a citation will produce
+# one whether or not it has one, which manufactures provenance instead of recording it. The
+# response's own grounding metadata is the provider's report of what it actually retrieved.
+#
+# Same honesty bound as the completion extractors above: these prove THIS CODE reads a given
+# shape correctly, against stand-in objects. What a live provider actually returns is still
+# unverified from this environment -- no SDK is even installed here -- and stays recorded as
+# such under #120. Every one is total: an unexpected shape yields [] and never raises, because
+# a bookkeeping read must not be able to break the call it is describing.
+
+def _anthropic_sources(response: Any) -> list[dict]:
+    out = []
+    for block in (_chain(response, "content") or []):
+        if getattr(block, "type", None) != "web_search_tool_result":
+            continue
+        for result in (getattr(block, "content", None) or []):
+            url = _chain(result, "url")
+            if url:
+                out.append({"url": str(url), "title": str(_chain(result, "title") or "")})
+    return out
+
+
+def _gemini_sources(response: Any) -> list[dict]:
+    out = []
+    for candidate in (_chain(response, "candidates") or []):
+        meta = _chain(candidate, "grounding_metadata")
+        for chunk in (_chain(meta, "grounding_chunks") or []):
+            web = _chain(chunk, "web")
+            uri = _chain(web, "uri")
+            if uri:
+                out.append({"url": str(uri), "title": str(_chain(web, "title") or "")})
+    return out
+
+
+def _openai_sources(response: Any) -> list[dict]:
+    out = []
+    for item in (_chain(response, "output") or []):
+        for part in (_chain(item, "content") or []):
+            for annotation in (_chain(part, "annotations") or []):
+                if _chain(annotation, "type") != "url_citation":
+                    continue
+                url = _chain(annotation, "url")
+                if url:
+                    out.append({"url": str(url), "title": str(_chain(annotation, "title") or "")})
+    return out
+
+
+_SOURCE_EXTRACTORS = {
+    "claude": _anthropic_sources, "gemini": _gemini_sources, "openai": _openai_sources,
+}
+
+
+def sources(provider: str, response: Any) -> list[dict]:
+    """Every source this one response reports having retrieved, as [{"url", "title"}, ...].
+
+    Deduplicated by url, first occurrence winning, so a page cited three times in one report is
+    one source. Empty for an unknown provider, an unreadable shape, or a call that simply did
+    not search -- and those three are deliberately not distinguished HERE: the distinction that
+    matters (did this debate retrieve anything at all) is made where the ledger window is read,
+    with the call's own completion_state beside it.
+    """
+    extractor = _SOURCE_EXTRACTORS.get(provider)
+    if extractor is None or response is None:
+        return []
+    try:
+        found = extractor(response)
+    except Exception:  # noqa: BLE001 - never let a shape change break the call being metered
+        return []
+    seen, unique = set(), []
+    for entry in found:
+        if entry["url"] in seen:
+            continue
+        seen.add(entry["url"])
+        unique.append(entry)
+    return unique
+
+
 _EXTRACTORS = {
     # provider -> (completion reader, usage path pair)
     "claude": (_anthropic_completion, (("usage", "input_tokens"), ("usage", "output_tokens"))),
@@ -202,7 +288,8 @@ def describe(provider: str, response: Any) -> dict:
     extractor = _EXTRACTORS.get(provider)
     if extractor is None:
         return {"completion_state": UNKNOWN, "completion_detail": None,
-                "input_tokens": None, "output_tokens": None, "model_reported": None}
+                "input_tokens": None, "output_tokens": None, "model_reported": None,
+                "sources": []}
     completion, (in_path, out_path) = extractor
     try:
         state, detail = completion(response)
@@ -216,6 +303,7 @@ def describe(provider: str, response: Any) -> dict:
         # Anthropic and OpenAI both echo the served model; Gemini uses model_version. Whichever
         # is present is recorded, absence stays absence.
         "model_reported": (_chain(response, "model") or _chain(response, "model_version") or None),
+        "sources": sources(provider, response),
     }
 
 
@@ -233,7 +321,8 @@ def record(provider: str, role: str, *, response: Any = None, model_requested: O
     """
     try:
         fields = {"completion_state": FAILED if not ok else UNKNOWN, "completion_detail": None,
-                  "input_tokens": None, "output_tokens": None, "model_reported": None}
+                  "input_tokens": None, "output_tokens": None, "model_reported": None,
+                  "sources": []}
         if response is not None:
             fields = describe(provider, response)
         entry = CallRecord(
@@ -274,6 +363,28 @@ def was_truncated(marker: int, provider: Optional[str] = None) -> bool:
         record.completion_state == TRUNCATED and (provider is None or record.provider == provider)
         for record in since(marker)
     )
+
+
+def sources_since(marker: int) -> list[dict]:
+    """Every distinct source retrieved by calls recorded since `marker`, oldest first.
+
+    The unit is deliberately the WINDOW, not the call and not the claim. A debate's chairs
+    search independently and the Moderator's verdict synthesises all of them, so "which URL
+    backs this particular sentence" is a join nothing in this system can make -- the finding
+    line carries no citation and asking a model to add one would invent the link rather than
+    record it. What IS establishable is "the panel that produced this verdict retrieved these
+    pages", and that is what this returns. Any consumer that presents it as per-claim evidence
+    is making a claim this function does not support.
+    """
+    seen, out = set(), []
+    for entry in since(marker):
+        for source in (entry.sources or []):
+            url = source.get("url")
+            if not url or url in seen:
+                continue
+            seen.add(url)
+            out.append(dict(source))
+    return out
 
 
 def annotate_if_incomplete(text: str, marker: int, provider: Optional[str] = None) -> str:

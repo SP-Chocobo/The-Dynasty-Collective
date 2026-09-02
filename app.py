@@ -42,6 +42,7 @@ import lineup_readiness
 import pick_debate
 import pick_synthesis
 import pinned_messages
+import provider_meter
 import screen_context
 import todo_log
 import llm_engine
@@ -813,8 +814,27 @@ def append_message(role: str, content: str, provider: Optional[str] = None, mode
         save_chat_history(st.session_state.selected_league_id, st.session_state.chat_history)
 
 
+def _finding_origin_note(finding: dict) -> str:
+    """The origin tag for one stored finding, or "" when the row cannot say.
+
+    THREE states, and the third is why this is a function rather than a conditional expression.
+    A row written before bot_research carried an evidence snapshot has NO `evidence` key at all,
+    and that is not the same as a row that recorded "no retrieval": the first NEVER CHECKED, the
+    second checked and found none. Collapsing them would stamp a provenance claim onto rows that
+    predate the mechanism -- the same never-checked-versus-checked-and-absent distinction #112
+    left open at the board, applied here where it is cheap and the rows are few.
+    """
+    evidence = finding.get("evidence")
+    if not isinstance(evidence, dict):
+        return ""
+    if evidence.get("origin") == bot_research.ORIGIN_PANEL_RETRIEVED:
+        return f"  [panel retrieved {len(evidence.get('debate_sources') or [])} page(s)]"
+    return "  [no retrieval reported]"
+
+
 def process_moderator_output(
     moderator_text: str, trigger_question: str, provider: str = "", model: str = "",
+    debate_sources: Optional[list[dict]] = None,
 ) -> None:
     """Shared post-processing for any Moderator response that might carry the structured
     verdict block -- both a fresh debate and a lighter follow-up (see
@@ -846,6 +866,11 @@ def process_moderator_output(
             finding["player_name"], finding["source"], finding["claim"], rank=finding["rank"],
             conviction=verdict.get("conviction", ""), question=trigger_question,
             league_id=st.session_state.selected_league_id,
+            # What the responses behind THIS verdict reported retrieving -- see
+            # bot_research.add_finding on why it is stored at debate scope and never as this
+            # claim's own citation. None (a caller that has no window to read) stores
+            # UNATTRIBUTED, which is the honest answer and not a failure.
+            debate_sources=debate_sources,
         )
     # Same trust posture as SOURCE FINDING above -- a relative claim between two players, kept
     # in its own structured store (never the composite's inputs) since it carries no absolute
@@ -1924,14 +1949,23 @@ def build_context(
         lines.append(
             "\nPANEL-VETTED FINDINGS from past debates (see MODERATOR_SYSTEM_PROMPT's SOURCE FINDING rule — "
             "each already survived scrutiny from the whole panel, Contrarian included, when it was first "
-            "surfaced, whether that was a bot's live search or the user's own reference material). The ones "
+            "surfaced). The ones "
             "with a rank number already feed the composite score above at a low weight (this is still an "
             "LLM's own read, not a deterministic parser's) — don't double-count them by also treating this "
-            "prose as independent corroboration. Newer findings on the same player supersede older ones:"
+            "prose as independent corroboration. Newer findings on the same player supersede older "
+            "ones.\n"
+            "  Some carry an origin tag. '[panel retrieved N page(s)]' means the provider responses behind "
+            "that debate reported fetching that many pages while producing it -- DEBATE-level, not this "
+            "claim's own citation, so it does NOT tell you which page backs which sentence. '[no retrieval "
+            "reported]' means those responses reported fetching nothing, which covers a chair reasoning "
+            "from its given context, from its own training, or simply not searching -- treat it as UNKNOWN "
+            "provenance, never as a source-less claim. A finding with no tag at all predates this record "
+            "entirely and says nothing either way:"
         )
         for f in findings:
             rank_part = f" (rank {f['rank']})" if f.get("rank") is not None else ""
-            lines.append(f"  - [{f['date']}] {f['player_name']} — {f['source']}{rank_part}: {f['claim']}")
+            origin = _finding_origin_note(f)
+            lines.append(f"  - [{f['date']}] {f['player_name']} — {f['source']}{rank_part}: {f['claim']}{origin}")
 
     comparisons = bot_research.comparisons_for_context()
     if comparisons:
@@ -5753,6 +5787,12 @@ with st.container(key="debate_dock"):
                     # /debate in its own reply when a follow-up genuinely calls for it, but it
                     # never triggers that itself; only the user typing /debate does.
                     provider = role_providers["moderator"]
+                    # Marked BEFORE the call so the sources below are THIS follow-up's own, never
+                    # a neighbouring call's -- exactly what run_debate does with its own window.
+                    # A follow-up runs one chair rather than four, so its retrieval is genuinely
+                    # narrower than a full panel's; recording it as this row's own window rather
+                    # than reusing the original debate's is what keeps that true.
+                    _followup_meter_at = provider_meter.mark()
                     followup_text = llm_engine.ask_moderator_followup(
                         context, trigger_question,
                         last_debate["quant"], last_debate["beat"], last_debate["contrarian"], last_debate["moderator"],
@@ -5763,6 +5803,7 @@ with st.container(key="debate_dock"):
                     process_moderator_output(
                         followup_text, trigger_question,
                         provider=provider, model=role_models.get("moderator") or "",
+                        debate_sources=provider_meter.sources_since(_followup_meter_at),
                     )
                 else:
                     result = llm_engine.run_debate(
@@ -5777,6 +5818,7 @@ with st.container(key="debate_dock"):
                         result.moderator, trigger_question,
                         provider=role_providers["moderator"],
                         model=role_models.get("moderator") or "",
+                        debate_sources=result.sources_retrieved,
                     )
                     # run_debate already collects which role(s) failed (a missing/invalid API
                     # key, a provider outage) -- this was computed and silently thrown away

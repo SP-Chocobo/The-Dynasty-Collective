@@ -137,5 +137,92 @@ class BotResearchTests(unittest.TestCase):
         self.assertEqual(len(bot_research.load_comparisons()), 1)
 
 
+class FindingEvidenceSnapshotTests(unittest.TestCase):
+    """#97 / §6.5's evidence snapshot, at the scope the evidence actually supports -- and #106's
+    origin field, which turns out to be the same mechanism.
+
+    §6 asked for a URL, a retrieved-at, and an excerpt on every stored finding, so a claim stays
+    checkable after its source changes or disappears. The obvious implementation -- add a URL
+    field to the Moderator's SOURCE FINDING line -- is the wrong one, and the reason is the whole
+    point of the section: a chair ASKED for a citation will produce one whether or not it has
+    one. That manufactures provenance rather than recording it, in a store whose ranks feed the
+    composite score.
+
+    What is recorded instead is what the PROVIDER RESPONSES reported retrieving, read off their
+    own grounding metadata by provider_meter.sources. Two consequences, both deliberate:
+
+      1. The scope is the DEBATE, never the claim. Which page backs a given SOURCE FINDING line
+         is a join nothing in this system can make -- the line carries no citation.
+      2. "No sources" is UNATTRIBUTED, not "unsourced". It covers a chair reasoning from its
+         given context, from its training, a grounding shape this app could not read, and a call
+         that never searched. Four different things, and nothing separates them.
+    """
+
+    def setUp(self):
+        self._tmpdir = tempfile.mkdtemp()
+        self._orig = bot_research.FINDINGS_PATH
+        bot_research.FINDINGS_PATH = Path(self._tmpdir) / "bot_research.json"
+
+    def tearDown(self):
+        bot_research.FINDINGS_PATH = self._orig
+        shutil.rmtree(self._tmpdir, ignore_errors=True)
+
+    def _only(self):
+        findings = bot_research.load_findings()
+        self.assertEqual(len(findings), 1)
+        return findings[0]
+
+    def test_a_finding_from_a_debate_that_retrieved_pages_records_them(self):
+        pages = [{"url": "https://espn.com/x", "title": "X"},
+                 {"url": "https://pff.com/y", "title": "Y"}]
+        bot_research.add_finding("Maxx Crosby", "ESPN", "ranked #1 DL", rank=1,
+                                 debate_sources=pages)
+        evidence = self._only()["evidence"]
+        self.assertEqual(evidence["origin"], bot_research.ORIGIN_PANEL_RETRIEVED)
+        self.assertEqual(evidence["debate_sources"], pages)
+        self.assertTrue(evidence["retrieved_at"])
+
+    def test_a_finding_from_a_debate_that_retrieved_nothing_says_unattributed_not_none(self):
+        """The absence rule this whole codebase runs on, at one more boundary: the field is
+        present and says UNKNOWN, rather than being omitted or set to an empty claim."""
+        for sources in (None, []):
+            with self.subTest(sources=sources):
+                bot_research.FINDINGS_PATH.unlink(missing_ok=True)
+                bot_research.add_finding("A Player", "ESPN", "a claim", debate_sources=sources)
+                evidence = self._only()["evidence"]
+                self.assertEqual(evidence["origin"], bot_research.ORIGIN_UNATTRIBUTED)
+                self.assertEqual(evidence["debate_sources"], [])
+
+    def test_the_two_origins_are_distinguishable_which_is_the_entire_point_of_106(self):
+        self.assertNotEqual(bot_research.ORIGIN_PANEL_RETRIEVED,
+                            bot_research.ORIGIN_UNATTRIBUTED)
+
+    def test_the_stored_sources_are_a_copy_so_a_later_mutation_cannot_rewrite_history(self):
+        pages = [{"url": "https://espn.com/x", "title": "X"}]
+        bot_research.add_finding("Maxx Crosby", "ESPN", "ranked #1 DL", debate_sources=pages)
+        pages[0]["url"] = "https://somewhere-else.com"
+        self.assertEqual(self._only()["evidence"]["debate_sources"][0]["url"],
+                         "https://espn.com/x")
+
+    def test_evidence_is_not_part_of_the_same_day_dedup_key(self):
+        """Two identical findings on one day stay one row even if the second debate happened to
+        retrieve different pages. The dedup key is the CLAIM; provenance is a property of the
+        row, not a second identity for it -- otherwise a re-run /debate would inflate the
+        finding's weight in the composite, which is the exact thing the dedup exists to stop."""
+        first = bot_research.add_finding("Maxx Crosby", "ESPN", "ranked #1 DL", rank=1,
+                                         debate_sources=[{"url": "https://a.com", "title": ""}])
+        second = bot_research.add_finding("Maxx Crosby", "ESPN", "ranked #1 DL", rank=1,
+                                          debate_sources=[{"url": "https://b.com", "title": ""}])
+        self.assertEqual(first, second)
+        self.assertEqual(len(bot_research.load_findings()), 1)
+
+    def test_a_caller_that_passes_nothing_still_gets_a_well_formed_row(self):
+        """Backwards compatibility in the direction that matters: every existing call site keeps
+        working, and the row it writes is honest about knowing nothing rather than silently
+        lacking the field."""
+        bot_research.add_finding("A Player", "ESPN", "a claim")
+        self.assertEqual(self._only()["evidence"]["origin"], bot_research.ORIGIN_UNATTRIBUTED)
+
+
 if __name__ == "__main__":
     unittest.main()

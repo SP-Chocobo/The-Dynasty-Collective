@@ -212,5 +212,52 @@ def _minimal_snapshot():
     return PickSnapshot(**snap_kwargs)
 
 
+class FindingOriginReachesTheContextTests(unittest.TestCase):
+    """#97/§6.5 + #106, at the consumer. An evidence snapshot nothing reads is worse than no
+    snapshot -- it looks handled. The named consumer is build_context's PANEL-VETTED FINDINGS
+    block, the one place a stored finding is put in front of a model.
+
+    app.py is source-scanned rather than imported here, the same way every other app-level
+    contract in this suite is checked -- importing it pulls in streamlit and a live session.
+    """
+
+    def test_the_context_no_longer_hedges_every_finding_as_search_or_reference_material(self):
+        """The sentence this replaces said the app could not tell a bot's live search from the
+        user's own captioned upload. That was true and is the thing #106 recorded. It is no
+        longer the only thing the app can say, so the blanket hedge is gone."""
+        self.assertNotIn("whether that was a bot's live search or the user's own reference material", _APP)
+
+    def test_all_three_origin_states_are_rendered_distinctly(self):
+        self.assertIn("_finding_origin_note", _APP)
+        self.assertIn("panel retrieved", _APP)
+        self.assertIn("no retrieval reported", _APP)
+
+    def test_a_row_with_no_evidence_key_is_left_unlabelled_rather_than_called_unattributed(self):
+        """The third state, and the one a two-way conditional would silently lose. A row written
+        before the snapshot existed NEVER CHECKED; a row that recorded no sources CHECKED AND
+        FOUND NONE. Stamping the first with the second's label is a provenance claim about rows
+        that predate the mechanism."""
+        source = _APP.split("def _finding_origin_note(")[1].split("\ndef ")[0]
+        self.assertIn('if not isinstance(evidence, dict):', source)
+        self.assertIn('return ""', source)
+        self.assertIn("#112", source, "the never-checked distinction names where it comes from")
+
+    def test_the_prompt_tells_the_model_the_tag_is_debate_scoped_and_not_a_citation(self):
+        """The single most dangerous misreading available here: treating a debate-level page list
+        as the citation for one claim. The block says so in the model's own reading order."""
+        block = _APP.split("PANEL-VETTED FINDINGS")[1].split("PANEL-VETTED PLAYER COMPARISONS")[0]
+        self.assertIn("DEBATE-level", block)
+        self.assertIn("not this", block)
+        self.assertIn("UNKNOWN", block)
+
+    def test_both_moderator_paths_hand_over_their_own_retrieval_window(self):
+        """A fresh debate reads run_debate's window; a follow-up marks and reads its own. The
+        follow-up runs ONE chair, so reusing the original debate's four-chair window would
+        overstate what that reply rested on."""
+        self.assertIn("debate_sources=result.sources_retrieved", _APP)
+        self.assertIn("_followup_meter_at = provider_meter.mark()", _APP)
+        self.assertIn("debate_sources=provider_meter.sources_since(_followup_meter_at)", _APP)
+
+
 if __name__ == "__main__":
     unittest.main()

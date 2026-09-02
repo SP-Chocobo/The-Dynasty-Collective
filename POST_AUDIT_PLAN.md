@@ -2730,3 +2730,79 @@ coverage is asserted in the same calls, so "zero IDP projections" can never be a
 read, and the supply shortfall can never be a pool-wide thinness.
 
 No production code changed.
+
+---
+
+# #97 / #98 — RESEARCH INGESTION: ONE ITEM BUILT, ONE BLOCKED, FIVE DECISIONS
+
+Seven items were carried across §6 and §7 as *"each needs a decision, not a fix."* Sorted by what
+they are actually waiting on, rather than by section, the seven fall into three groups — and the
+sorting is the useful part, because two of them turned out not to be waiting on a decision at all.
+
+## Built: §6.5's evidence snapshot — and it is also #106
+
+§6 asked that a stored finding carry a URL, a retrieved-at, and an excerpt, so a claim stays
+checkable after its source changes or disappears. **The obvious implementation is the wrong one**,
+and the reason is the section's own mandate: adding a URL field to the Moderator's `SOURCE
+FINDING` line asks a model for a citation, and **a model asked for a citation produces one whether
+or not it has one.** That manufactures provenance rather than recording it, in a store whose ranks
+feed the composite valuation score at a low weight.
+
+What was built instead reads what the **provider responses themselves report retrieving** — all
+three providers run live web search server-side and all three report grounding in their own shape
+(`web_search_tool_result` blocks, `grounding_metadata.grounding_chunks`, `url_citation`
+annotations). `provider_meter.sources` normalises them, `sources_since` reads one debate's own
+ledger window, and `bot_research.add_finding` stores it.
+
+**This closes #106 as the same mechanism, not a second one.** §16.5 recorded that a finding could
+not name its origin — bot search versus the user's own captioned upload — and `build_context`'s
+own prose said so, hedging every finding with *"whether that was a bot's live search or the user's
+own reference material."* That sentence is gone; each finding now carries its own tag.
+
+Two properties are load-bearing and are pinned by tests:
+
+* **The scope is the DEBATE, never the claim.** Which page backs a given `SOURCE FINDING` line is
+  a join nothing in this system can make — the line carries no citation. The stored field is named
+  `debate_sources` and the prompt says *"DEBATE-level, not this claim's own citation"* in the
+  model's own reading order.
+* **Three states, not two.** `panel_retrieved` / `unattributed` / *no tag at all*. A row written
+  before the snapshot existed **never checked**; a row that recorded no sources **checked and
+  found none**. Stamping the first with the second's label is a provenance claim about rows that
+  predate the mechanism — the never-checked-versus-checked-and-absent distinction #112 left open
+  at the board, applied here where it is cheap and the rows are few.
+
+`unattributed` is not a failure state. It covers a chair reasoning from its given context, a chair
+reasoning from its training, a grounding shape this app could not read, and a call that never
+searched. Four different things, and nothing separates them — so the field says UNKNOWN rather
+than picking one.
+
+**Honesty bound, same as the completion extractors beside it:** the tests prove *this code reads a
+given shape correctly*, against stand-in objects. What a live provider actually returns is still
+unverified from this environment — no provider SDK is even installed here — and stays recorded
+under **#120**.
+
+## Blocked, with the prerequisite already named: §6.4 + §6.5's lifecycle half
+
+A finding's identity (representing *"two sources disagree about this player"* instead of silently
+dropping one) and its lifecycle (corroborated / disputed / retracted / expired) are one design;
+doing either alone would need redoing.
+
+**Measured: the store is empty.** `bot_research.load_findings()` returns `[]` and
+`data/baseline/bot_research.json` does not exist. Designing a disagreement key and a five-state
+lifecycle against zero rows is machinery looking for a job — the identical mistake the **#61**
+re-scope exists to prevent. **Prerequisite: real findings.** Not a decision.
+
+## Five decisions, each stated as a choice rather than a to-do
+
+| # | The question | Options | Recommendation |
+|---|---|---|---|
+| §6.3 | Is it *intended* that a fresh panel finding outweighs a stale vendor number? The crossover is now measured at **29–83 days**. | (a) yes, state it as policy; (b) no, cap a finding's recency weight below the vendor's; (c) make the crossover a setting | **(a)** — it is what the code already does and the measurement supports it; what is missing is a stated intent, not a change. |
+| §6.2a | Does a finding need re-adjudication by something other than the Moderator that wrote it? | (a) no, the panel's own gate is the bar; (b) a second independent pass; (c) a human confirm step | **(a) for now, with a named trigger.** With one user and a low composite weight the panel gate is a defensible bar. It stops being one under §13.5's hosting model — that is the trigger, not a date. |
+| §7.4 | Should cited sources be restricted to an allowlist? | (a) no allowlist; (b) allowlist for anything that feeds the composite, free for prose; (c) full allowlist | **(b)** — it splits along the line that already matters: a rank changes a price, a narrative does not. |
+| §7.6 | Should retrieved content be fenced as untrusted in the chairs' prompts? | (a) fence it; (b) leave it | **(a), and it is the largest item here** — a joint change to `build_context` and seven chair contracts. Worth doing; too big to fold into this pass without its own verification. |
+| §7.10 | Should the 11 unattributed baseline CSVs get provenance records? | (a) write them; (b) leave them | **Not mine to answer.** Writing one asserts the terms under which a *paid subscription export* is retained and redistributed. That is the owner's call, and it is the one item here I decline rather than defer. |
+
+**The inversion §7.10 found is worth restating, because it is the opposite of what one expects:**
+the *secondary* sources are documented and the **primary valuation input is not** — the
+highest-weighted source in the composite (1.3), the one feeding CDME's `bpa`, has provenance only
+as prose in `README.md`.

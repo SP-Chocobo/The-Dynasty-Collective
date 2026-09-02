@@ -14,12 +14,18 @@ Three separate guarantees, measured rather than assumed:
      highest-consequence user override in the app, since it can switch off whole
      categories of advice -- was the one exception (R14).
 
-  3. Characterization of the two override paths that are NOT repaired here, so a future
-     change to either is visible rather than silent: a manual alias re-prices a player and
-     the fact that it did never reaches the decision boundary (#107), and a research
-     finding cannot say whether it came from a bot's live search or the user's own
-     captioned screenshot (#106). These tests pin today's behavior and cite the register
-     item; they are not endorsements of it.
+  3. Characterization of the override path that is NOT repaired here, so a future change to
+     it is visible rather than silent: a manual alias re-prices a player and the fact that
+     it did never reaches the decision boundary (#107). That test pins today's behavior and
+     cites the register item; it is not an endorsement of it.
+
+     #106 -- a research finding that could not say whether it came from a chair's live search
+     or the user's own captioned screenshot -- WAS a second characterization here and is now
+     settled. Its test is INVERTED rather than deleted (its own earlier note said to delete
+     it, and that was wrong: a test that recorded a defect is the exact test that should
+     assert the repair). A finding now carries what the provider responses reported
+     retrieving, read off their own grounding metadata -- never asked of the model, which
+     would have produced a citation whether or not it had one.
 
 app.py is a top-level Streamlit script and cannot be imported (see
 test_debate_chip_wiring.py's docstring), so the build_context checks are AST-scoped to that
@@ -365,26 +371,49 @@ class ResearchFindingOriginTests(unittest.TestCase):
         self.assertEqual(by_id[numeric]["composite_impact"], "low-weight input")
         self.assertEqual(by_id[qualitative]["composite_impact"], "none")
 
-    def test_CHARACTERIZATION_a_finding_cannot_say_whether_the_user_or_a_search_produced_it(self):
-        """#106. MODERATOR_SYSTEM_PROMPT admits a finding from either the Beat Tracker's live
-        search or the user's own hand-captioned reference material -- explicitly, in the same
-        breath ("Whichever way it entered the debate") -- and the stored record has no field
-        for which. A rank-bearing finding then feeds composite_player_score, and the store is
-        git-tracked, so a user's own claim can become a durable numeric input attributed only
-        to the outlet it cited.
+    def test_a_finding_now_records_its_own_origin_INVERTING_the_106_characterization(self):
+        """#106, SETTLED -- and this test inverted rather than deleted, which its own earlier
+        instruction ("delete this when #106 is settled") got wrong. A test that recorded a defect
+        is the exact test that should assert the repair; deleting it leaves the repair unguarded
+        by the one check written by someone who understood the failure.
 
-        Pinned, not endorsed: recording the origin means adding a field to the Moderator's
-        structured contract, which is a chair-authority decision parked in the register, not
-        a mechanical repair. Delete this test when #106 is settled.
+        WHAT IT USED TO SAY. MODERATOR_SYSTEM_PROMPT admits a finding from either a chair's live
+        search or the user's own hand-captioned reference material -- explicitly, in the same
+        breath ("Whichever way it entered the debate") -- and the stored record had no field for
+        which. A rank-bearing finding feeds composite_player_score and the store is git-tracked,
+        so a user's own claim could become a durable numeric input attributed only to the outlet
+        it cited.
+
+        WHAT SETTLED IT, and why it is not the field this test's old note predicted. The old note
+        assumed recording the origin meant adding a field to the Moderator's structured contract
+        -- asking the model. That would have been the wrong repair: a chair asked for a citation
+        produces one whether or not it has one. What is recorded instead is what the PROVIDER
+        RESPONSES reported retrieving, read off their own grounding metadata. No chair contract
+        changed.
         """
-        fid = bot_research.add_finding("A Star", "ESPN", "ESPN has him WR4", rank=4)
+        fid = bot_research.add_finding(
+            "A Star", "ESPN", "ESPN has him WR4", rank=4,
+            debate_sources=[{"url": "https://espn.com/x", "title": "X"}])
         stored = next(f for f in bot_research.load_findings() if f["id"] == fid)
-        self.assertNotIn("origin", stored)
         self.assertEqual(
             sorted(stored),
             sorted(["id", "ts", "date", "player_name", "source", "claim", "rank",
-                    "composite_impact", "conviction", "question", "league_id"]),
+                    "composite_impact", "conviction", "question", "league_id", "evidence"]),
         )
+        self.assertEqual(stored["evidence"]["origin"], bot_research.ORIGIN_PANEL_RETRIEVED)
+
+    def test_the_rank_bearing_composite_input_is_the_row_that_most_needed_this(self):
+        """The specific danger the characterization named: a rank-bearing finding is the one that
+        becomes a durable numeric input. Both origins are now legible on exactly that row."""
+        retrieved = bot_research.add_finding(
+            "A Star", "ESPN", "ESPN has him WR4", rank=4,
+            debate_sources=[{"url": "https://espn.com/x", "title": "X"}])
+        unattributed = bot_research.add_finding("B Star", "ESPN", "ESPN has him WR9", rank=9)
+        by_id = {f["id"]: f for f in bot_research.load_findings()}
+        self.assertEqual(by_id[retrieved]["composite_impact"], "low-weight input")
+        self.assertEqual(by_id[unattributed]["composite_impact"], "low-weight input")
+        self.assertNotEqual(by_id[retrieved]["evidence"]["origin"],
+                            by_id[unattributed]["evidence"]["origin"])
 
 
 class AiAuthoredStoresCarryTimeTests(unittest.TestCase):

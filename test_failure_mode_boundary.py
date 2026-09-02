@@ -329,10 +329,17 @@ class _FakeAnthropicResponse:
     not that a live Anthropic call sets stop_reason this way. That second claim needs a live
     call and is recorded as still unverified (#120)."""
 
-    def __init__(self, stop_reason):
+    def __init__(self, stop_reason, sources=()):
         self.stop_reason = stop_reason
         self.usage = None
         self.model = "stand-in"
+        # The shape provider_meter._anthropic_sources reads. Empty by default, so every existing
+        # use of this stand-in keeps meaning "a response that reported no retrieval".
+        self.content = [
+            type("Block", (), {"type": "web_search_tool_result",
+                               "content": [type("R", (), {"url": url, "title": title})()
+                                           for url, title in sources]})()
+        ] if sources else []
 
 
 class AllUpstreamFailedTests(unittest.TestCase):
@@ -418,6 +425,43 @@ class AllUpstreamFailedTests(unittest.TestCase):
                 self._run(set(), truncating={role})
                 roles = [r.role for r in provider_meter.since(marker)]
                 self.assertEqual(roles, [role], f"{role} recorded under {roles}")
+
+    def test_the_debate_carries_what_its_own_calls_reported_retrieving(self):
+        """#97/§6.5 sharing run_debate's ledger window with the truncation scan above. The window
+        is the reason this is correct: a debate reports ITS OWN retrieval, not a neighbouring
+        call's, so a follow-up that searched once cannot inherit a full panel's four sources."""
+        provider_meter.record("claude", "beat", response=_FakeAnthropicResponse(
+            "end_turn", sources=[("https://before.com", "Before")]))
+
+        def make(role):
+            def _call(system_prompt, user_prompt, api_key=None, model=None):
+                provider_meter.record(
+                    "claude", provider_meter.current_role(),
+                    response=_FakeAnthropicResponse(
+                        "end_turn", sources=[(f"https://{role}.com", role)]))
+                return f"{role} real report"
+            return _call
+
+        original = dict(llm_engine.PROVIDER_CALLERS)
+        llm_engine.PROVIDER_CALLERS.update({r: make(r) for r in self.ROLES})
+        try:
+            result = llm_engine.run_debate(
+                "CTX", "Q", role_providers={r: r for r in self.ROLES},
+                api_keys={r: "k" for r in self.ROLES})
+        finally:
+            llm_engine.PROVIDER_CALLERS.clear()
+            llm_engine.PROVIDER_CALLERS.update(original)
+
+        urls = {entry["url"] for entry in result.sources_retrieved}
+        self.assertEqual(urls, {f"https://{role}.com" for role in self.ROLES})
+        self.assertNotIn("https://before.com", urls,
+                         "a call recorded before this debate leaked into its evidence")
+
+    def test_a_debate_whose_calls_reported_no_retrieval_carries_an_empty_list(self):
+        """Not None, and not omitted. Empty is what the downstream store reads as UNATTRIBUTED --
+        a real state, not a failure -- see bot_research.add_finding."""
+        result = self._run(set())
+        self.assertEqual(result.sources_retrieved, [])
 
     def test_the_policy_is_stated_where_it_is_enforced(self):
         """A constant nothing reads is documentation, so this pins the pair: the policy exists as

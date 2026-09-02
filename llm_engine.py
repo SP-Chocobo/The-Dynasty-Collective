@@ -285,6 +285,15 @@ class DebateResult:
     # stat-crunching -- see run_debate's own docstring), which a provider-only record
     # cannot distinguish at all. Recorded for the same reason and by the same rule.
     role_models: dict = field(default_factory=dict)
+    # What the PANEL retrieved while producing this verdict -- [{"url", "title"}, ...], read off
+    # each provider response's own grounding metadata (provider_meter.sources_since), never off
+    # any chair's prose. #97/§6.5 asked for an evidence snapshot on a stored finding, and this is
+    # the honest version of it: the unit is the DEBATE, not the claim. Which page backs a
+    # particular SOURCE FINDING line is a join nothing here can make -- the line carries no
+    # citation, and asking the Moderator to add one would invent the link rather than record it.
+    # An empty list means this response reported no retrieval; it does not mean the panel
+    # searched and found nothing, and no consumer may read it that way.
+    sources_retrieved: list = field(default_factory=list)
 
 
 VERDICT_FIELDS = [
@@ -994,4 +1003,7 @@ def run_debate(
             result.errors.append(
                 f"{label}: report was cut off at the provider's output cap -- it is a fragment, "
                 f"and its conclusion is missing rather than absent by choice.")
+    # Read from the same window, for the same reason: this debate's own calls, not a neighbouring
+    # one's. See DebateResult.sources_retrieved for what the list does and does not claim.
+    result.sources_retrieved = provider_meter.sources_since(debate_meter_at)
     return result

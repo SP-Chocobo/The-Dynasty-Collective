@@ -63,9 +63,27 @@ def load_findings() -> list[dict]:
     return _load(FINDINGS_PATH)
 
 
+# The three states a stored finding's origin can be in, and the reason there are three rather
+# than two (#106, §16.5). "The panel searched the web" and "the user captioned a screenshot" were
+# indistinguishable here -- build_context's own prose said so out loud, hedging every finding with
+# "whether that was a bot's live search or the user's own reference material". A finding now
+# carries what the PROVIDER RESPONSES reported retrieving while it was produced, so the first
+# case is evidenced rather than assumed.
+#
+# UNATTRIBUTED is not a failure state and must never be read as one. It is the honest answer for
+# a finding produced by a debate whose responses reported no retrieval -- which covers a chair
+# reasoning from the context it was given, a chair reasoning from its own training, a provider
+# that reports grounding in a shape this app could not read, and a call that simply did not
+# search. Those are four different things and nothing here can separate them; collapsing them
+# into "no sources" would be the same false precision this app removed everywhere else.
+ORIGIN_PANEL_RETRIEVED = "panel_retrieved"   # the debate's responses reported these pages
+ORIGIN_UNATTRIBUTED = "unattributed"         # they reported none; see above for what that covers
+
+
 def add_finding(
     player_name: str, source: str, claim: str, *, rank: Optional[int] = None,
     conviction: str = "", question: str = "", league_id: Optional[str] = None,
+    debate_sources: Optional[list[dict]] = None,
 ) -> Optional[int]:
     """Persist one panel-vetted single-player finding. Returns its id, or None if there's
     nothing real to record (blank player/source/claim) -- a no-op, not an error, since the
@@ -107,6 +125,18 @@ def add_finding(
         "conviction": conviction,
         "question": question,
         "league_id": league_id,
+        # §6.5's evidence snapshot, at the scope the evidence actually supports. DEBATE-level,
+        # never per-claim: `retrieved` lists what the panel that produced this verdict reported
+        # fetching, and NOT which of those pages backs this particular claim. The finding line
+        # carries no citation and no join exists; presenting these as this claim's sources would
+        # be manufacturing provenance. `retrieved_at` is when this row was written, which is the
+        # same debate turn -- it is not the page's own publication or crawl date, and nothing
+        # here knows that.
+        "evidence": {
+            "origin": ORIGIN_PANEL_RETRIEVED if debate_sources else ORIGIN_UNATTRIBUTED,
+            "retrieved_at": today,
+            "debate_sources": [dict(entry) for entry in (debate_sources or [])],
+        },
     })
     _save(FINDINGS_PATH, entries)
     return new_id

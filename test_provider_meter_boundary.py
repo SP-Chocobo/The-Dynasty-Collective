@@ -286,6 +286,114 @@ class ResourceLimitsTests(unittest.TestCase):
         self.assertGreater(pm.REQUEST_TIMEOUT_SECONDS, 0)
 
 
+class _Obj:
+    """A stand-in response. Same posture as the completion-extractor stand-ins above: these prove
+    THIS CODE reads a given shape, and deliberately do not claim to prove what a live provider
+    returns -- no SDK is even installed in this environment. That second claim needs a live call
+    and stays recorded as unverified under #120."""
+
+    def __init__(self, **fields):
+        for key, value in fields.items():
+            setattr(self, key, value)
+
+
+def _anthropic_with_sources(pairs):
+    return _Obj(content=[
+        _Obj(type="text", text="a report"),
+        _Obj(type="web_search_tool_result",
+             content=[_Obj(url=url, title=title) for url, title in pairs]),
+    ])
+
+
+def _gemini_with_sources(pairs):
+    chunks = [_Obj(web=_Obj(uri=url, title=title)) for url, title in pairs]
+    return _Obj(candidates=[_Obj(grounding_metadata=_Obj(grounding_chunks=chunks))])
+
+
+def _openai_with_sources(pairs):
+    annotations = [_Obj(type="url_citation", url=url, title=title) for url, title in pairs]
+    return _Obj(output=[_Obj(content=[_Obj(annotations=annotations)])])
+
+
+class RetrievedSourceExtractionTests(unittest.TestCase):
+    """#97/§6.5 + #106: what the panel retrieved, read off the response rather than the prose.
+
+    Asking a chair to type a URL would manufacture provenance -- a model asked for a citation
+    produces one whether or not it has one, and these rows feed the composite score. The
+    provider's own grounding metadata is its report of what it actually fetched.
+    """
+
+    def test_each_provider_shape_is_read_correctly(self):
+        pairs = [("https://espn.com/a", "A"), ("https://pff.com/b", "B")]
+        expected = [{"url": url, "title": title} for url, title in pairs]
+        for provider, build in (("claude", _anthropic_with_sources),
+                                ("gemini", _gemini_with_sources),
+                                ("openai", _openai_with_sources)):
+            with self.subTest(provider=provider):
+                self.assertEqual(pm.sources(provider, build(pairs)), expected)
+
+    def test_a_page_cited_repeatedly_in_one_response_is_one_source(self):
+        pairs = [("https://espn.com/a", "A"), ("https://espn.com/a", "A again"),
+                 ("https://pff.com/b", "B")]
+        found = pm.sources("claude", _anthropic_with_sources(pairs))
+        self.assertEqual([entry["url"] for entry in found],
+                         ["https://espn.com/a", "https://pff.com/b"])
+        self.assertEqual(found[0]["title"], "A", "first occurrence wins")
+
+    def test_every_unreadable_input_yields_an_empty_list_and_never_raises(self):
+        """Total, for the same reason describe() is: a bookkeeping read must not be able to
+        break the call it is describing."""
+        for provider, response in (
+            ("claude", None), ("claude", object()), ("claude", _Obj(content="not a list")),
+            ("gemini", _Obj(candidates=[_Obj()])), ("gemini", _Obj()),
+            ("openai", _Obj(output=[_Obj(content=[_Obj(annotations=[_Obj(type="file_citation")])])])),
+            ("openai", _Obj(output=None)),
+            ("nosuchprovider", _anthropic_with_sources([("https://x.com", "X")])),
+        ):
+            with self.subTest(provider=provider, response=type(response).__name__):
+                self.assertEqual(pm.sources(provider, response), [])
+
+    def test_a_response_that_reports_no_retrieval_is_empty_rather_than_absent(self):
+        """"Searched and found nothing" and "did not search" are not distinguished HERE, on
+        purpose -- see sources()'s own docstring. What matters is that neither becomes a claim."""
+        self.assertEqual(pm.sources("claude", _Obj(content=[_Obj(type="text", text="x")])), [])
+
+
+class SourcesSinceTests(unittest.TestCase):
+    """The window reader. The unit is the debate, never the call and never the claim."""
+
+    def test_it_collects_across_calls_in_the_window_and_dedupes_by_url(self):
+        marker = pm.mark()
+        pm.record("claude", "beat",
+                              response=_anthropic_with_sources([("https://a.com", "A")]))
+        pm.record("gemini", "contrarian",
+                              response=_gemini_with_sources([("https://a.com", "A dup"),
+                                                             ("https://b.com", "B")]))
+        self.assertEqual([entry["url"] for entry in pm.sources_since(marker)],
+                         ["https://a.com", "https://b.com"])
+
+    def test_it_does_not_see_calls_recorded_before_the_marker(self):
+        """The reason mark() exists at all: one debate meters exactly its own calls, never a
+        neighbouring debate's, a /pick panel's, or a summarize_history that ran in between."""
+        pm.record("claude", "beat",
+                              response=_anthropic_with_sources([("https://earlier.com", "E")]))
+        marker = pm.mark()
+        pm.record("claude", "moderator",
+                              response=_anthropic_with_sources([("https://later.com", "L")]))
+        self.assertEqual([entry["url"] for entry in pm.sources_since(marker)],
+                         ["https://later.com"])
+
+    def test_a_failed_call_contributes_no_sources_and_does_not_break_the_read(self):
+        marker = pm.mark()
+        pm.record("claude", "quant", ok=False, error="boom")
+        pm.record("claude", "moderator",
+                              response=_anthropic_with_sources([("https://a.com", "A")]))
+        self.assertEqual(len(pm.sources_since(marker)), 1)
+
+    def test_an_empty_window_is_an_empty_list(self):
+        self.assertEqual(pm.sources_since(pm.mark()), [])
+
+
 if __name__ == "__main__":
     unittest.main()
 
