@@ -294,6 +294,45 @@ class AIOutputCannotBecomeANumberTests(unittest.TestCase):
                          "computed deterministically rather than named by the model")
 
 
+
+class NearTieIsThreeStateInTheChairsBriefingTests(unittest.TestCase):
+    """#61 rule 5 at the consumer the rule names.
+
+    near_tie_with_leader is True / False / None. A chair reading a briefing that only ever
+    mentions the True case has no way to tell "measured, not close to the leader" from "never
+    measured" -- and silence reads as the first. That is the false "these are NOT tied" the
+    widening exists to stop, arriving at exactly the layer near_tie_flags' own docstring worries
+    about. Same register as UNAVAILABLE_REPORT: absent evidence, never evidence of absence."""
+
+    def _block(self, flag):
+        text = pd.format_snapshot_for_llm(
+            _snapshot([_candidate("1", "Brock Purdy", near_tie_with_leader=flag)]))
+        return text.split("CANDIDATE:")[-1]
+
+    def test_a_measured_tie_states_it(self):
+        block = self._block(True)
+        self.assertIn("NEAR-TIE: within the measured noise band", block)
+        self.assertNotIn("NOT DETERMINED", block)
+
+    def test_a_measured_non_tie_says_nothing_at_all(self):
+        """Silence is correct HERE and only here: the comparison happened and came back
+        negative, and the briefing does not enumerate what did not fire."""
+        self.assertNotIn("NEAR-TIE", self._block(False))
+
+    def test_an_unmeasured_comparison_is_named_rather_than_left_silent(self):
+        block = self._block(None)
+        self.assertIn("NEAR-TIE: NOT DETERMINED", block)
+        self.assertIn("UNKNOWN", block)
+        # The line has to say which way NOT to read it -- the danger is not the missing fact,
+        # it is a chair inferring a safe ranking gap from its absence.
+        self.assertIn("never as", block)
+        self.assertNotIn("within the measured noise band", block)
+
+    def test_the_three_states_produce_three_different_briefings(self):
+        blocks = [self._block(flag) for flag in (True, False, None)]
+        self.assertEqual(len(set(blocks)), 3)
+
+
 if __name__ == "__main__":
     unittest.main()
 

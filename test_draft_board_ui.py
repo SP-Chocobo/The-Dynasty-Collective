@@ -187,6 +187,37 @@ class RenderBoardHtmlTests(unittest.TestCase):
         self.assertIsInstance(out, str)
 
 
+
+class ForcesListOmitsWithoutAssertingTests(unittest.TestCase):
+    """#61 rule 5 at the board. near_tie_with_leader is three-state, and `forces` is a list of
+    what FIRED -- so both False and None are represented by omission, and that is correct only
+    because nothing here renders the negative. If this module (or its JS) ever grows a "not in a
+    tie" sentence, that sentence needs the three-state flag, not this list."""
+
+    def _c(self, flag):
+        return _candidate(near_tie_with_leader=flag)
+
+    def test_a_measured_tie_appears(self):
+        self.assertIn("tie", ui._forces(self._c(True)))
+
+    def test_a_measured_non_tie_is_omitted(self):
+        self.assertNotIn("tie", ui._forces(self._c(False)))
+
+    def test_an_unmeasured_comparison_is_omitted_and_invents_no_token(self):
+        forces = ui._forces(self._c(None))
+        self.assertNotIn("tie", forces)
+        # No "tie?" / "tie-unknown" token: the JS renders glyphs off this list by name, so a new
+        # member would be an unrendered string, and the honest place for the distinction is the
+        # debate briefing, which speaks in sentences. See test_pick_debate.
+        self.assertEqual([f for f in forces if f.startswith("tie")], [])
+
+    def test_the_serialized_candidate_carries_no_negative_tie_claim(self):
+        """The whole reason omission is allowed to stand in for two different states."""
+        payload = ui.serialize_candidate(self._c(None))
+        self.assertNotIn("tie", payload["forces"])
+        self.assertNotIn("nearTie", payload)
+
+
 if __name__ == "__main__":
     unittest.main()
 

@@ -34,6 +34,7 @@ compute_pick_necessity's standout component -- is documented at its test below, 
 rule that function already applies three times over for its own absent inputs.
 """
 import math
+import inspect
 import unittest
 
 import data_merger as dm
@@ -117,30 +118,55 @@ class ExpectedValueOfWaitingPropagatesBothOperandsTests(unittest.TestCase):
         self.assertEqual(ps.expected_value_of_waiting(100.0, 0.5), 50.0)
 
 
-class NearTieFlagsIgnoreAbsenceTests(unittest.TestCase):
-    """Rule 1 + rule 3. A row with no value is not in a tie with anyone -- it has no measured
-    separation from anything. It must not join the band, and it must not become the leader."""
+class NearTieFlagsSayUnknownTests(unittest.TestCase):
+    """Rule 1 + rule 3, and #61 RULE 5, which INVERTS the four assertions this class first made.
 
-    def test_an_absent_entry_is_never_flagged(self):
+    The original rule was right about the mechanics and wrong about the answer. A row with no
+    value must not join the band and must not become the leader -- that stands. But it used to
+    come back False, and `False` here is a claim with a measurement behind it: "compared to the
+    leader, not close to him". The board never made that comparison.
+
+    near_tie_flags' own docstring refuses to flag a lone leader because that would hand the
+    debate layer a false "these are tied". Handing it a false "these are NOT tied" is the same
+    argument, and it was being applied in one direction only. Three states now: True / False /
+    None."""
+
+    def test_an_absent_entry_is_unknown_not_negative(self):
         flags = ps.near_tie_flags([100.0, None, 99.5])
-        self.assertEqual(flags, [True, False, True])
+        self.assertEqual(flags, [True, None, True])
+        self.assertIsNone(flags[1], "None, not False -- the comparison was never made")
 
     def test_absence_cannot_become_the_leader(self):
         # max() over a list containing None used to raise; a None that sorted first would also
         # silently make every real row look far behind the "leader".
         flags = ps.near_tie_flags([None, 100.0, 99.5])
-        self.assertEqual(flags, [False, True, True])
+        self.assertEqual(flags, [None, True, True])
 
-    def test_an_all_absent_field_flags_nothing(self):
-        self.assertEqual(ps.near_tie_flags([None, None, None]), [False, False, False])
+    def test_an_all_absent_field_answers_nothing_rather_than_answering_no(self):
+        self.assertEqual(ps.near_tie_flags([None, None, None]), [None, None, None])
 
-    def test_a_lone_priced_row_among_absent_ones_is_not_a_tie(self):
-        self.assertEqual(ps.near_tie_flags([100.0, None, None]), [False, False, False])
+    def test_a_lone_priced_row_among_absent_ones_keeps_both_states_apart(self):
+        """The collapse branch (fewer than two in band) is where the two states are easiest to
+        conflate, because it returns a uniform list. The priced row really was measured and
+        really is in no tie group -- that is False. The unpriced ones stay unknown."""
+        flags = ps.near_tie_flags([100.0, None, None])
+        self.assertEqual(flags, [False, None, None])
+        self.assertIs(flags[0], False)
+        self.assertIsNone(flags[1])
 
     def test_the_priced_only_behaviour_is_unchanged(self):
         self.assertEqual(ps.near_tie_flags([100.0, 99.5, 50.0]), [True, True, False])
         self.assertEqual(ps.near_tie_flags([100.0, 50.0]), [False, False])
         self.assertEqual(ps.near_tie_flags([]), [])
+
+    def test_no_priced_row_ever_comes_back_unknown(self):
+        """The converse of the rule, so the widening cannot be satisfied by returning None
+        everywhere: a row that HAS a value always gets a real answer."""
+        for values in ([100.0, 99.5, 50.0], [100.0, None, 99.5], [100.0, None, None],
+                       [100.0, 50.0], [None, 100.0, 99.5]):
+            for value, flag in zip(values, ps.near_tie_flags(values)):
+                with self.subTest(values=values, value=value):
+                    self.assertEqual(flag is None, value is None)
 
 
 class DecisionRegimeExcludesUnpricedTests(unittest.TestCase):
@@ -162,6 +188,21 @@ class DecisionRegimeExcludesUnpricedTests(unittest.TestCase):
 
     def test_an_all_unpriced_field_is_contested(self):
         self.assertEqual(ps.decision_regime([self._c(None), self._c(None)]), "contested")
+
+    def test_decisive_is_read_off_a_measured_false_and_never_off_an_unknown(self):
+        """#61 invariant 8, made structural by rule 5. decision_regime asks near_tie_flags for
+        the leader's flag; it must test that flag for a measured False, not merely for
+        falsiness, or an UNKNOWN margin would produce "decisive" -- the one verdict this
+        function is not allowed to reach without a measurement.
+
+        The guard is unreachable through decision_regime's public path today (it ranks the
+        priced rows only, so the leader always has a value), which is exactly why it is pinned
+        here at the seam rather than left to a future caller to rediscover."""
+        source = inspect.getsource(ps.decision_regime)
+        self.assertIn("leader_in_tie_group is False", source)
+        self.assertNotIn("not leader_in_tie_group", source)
+        # And the behaviour the guard protects, driven directly.
+        self.assertEqual(ps.decision_regime([self._c(200.0), self._c(100.0)]), "decisive")
 
 
 class NecessityExcludesUnpricedFromTheFieldTests(unittest.TestCase):
@@ -298,6 +339,37 @@ class LateBoardIntegrationTests(unittest.TestCase):
             snapshot = ps.build_snapshot(self.merger, self.players_db, picks, self.pick_order,
                                          index, "1", DYNASTY_SUPERFLEX, pick_label=f"R{rounds + 1}")
             self.assertTrue(snapshot.candidates, f"round {rounds} produced no candidates")
+
+    def test_the_unknown_near_tie_state_is_reachable_on_a_real_board(self):
+        """NON-VACUITY for #61 rule 5. The three-state widening is pinned by unit inputs
+        elsewhere in this file; those prove near_tie_flags computes it, not that anything ever
+        produces it. This drives the whole path -- real merger, real board, real narrowing --
+        and fails if the late-round snapshots the rule was written for never actually carry a
+        candidate whose tie comparison could not be made.
+
+        If this ever goes quiet (an anchor repair prices the whole tail, say), the rule has lost
+        its population and that is a finding about the rule, not a test to relax. Re-scope it
+        the way #61 itself was re-scoped rather than deleting the check."""
+        unknown_rounds, priced_seen = [], False
+        for rounds in (15, 16, 18):
+            picks, board, index = self._state(rounds)
+            if not board:
+                continue
+            snapshot = ps.build_snapshot(self.merger, self.players_db, picks, self.pick_order,
+                                         index, "1", DYNASTY_SUPERFLEX, pick_label=f"R{rounds + 1}")
+            flags = [c.near_tie_with_leader for c in snapshot.candidates]
+            if any(f is None for f in flags):
+                unknown_rounds.append(rounds)
+            priced_seen = priced_seen or any(f is not None for f in flags)
+            # And the state always tracks pricing, on a real board and not just a synthetic list.
+            for candidate in snapshot.candidates:
+                self.assertEqual(candidate.near_tie_with_leader is None,
+                                 candidate.team_acquisition_value is None,
+                                 f"{candidate.name}: unknown-ness and unpriced-ness disagree")
+        self.assertTrue(unknown_rounds,
+                        "no real late-round snapshot carried an unknown near-tie -- rule 5 has "
+                        "no population here; re-scope it rather than relaxing this")
+        self.assertTrue(priced_seen, "every flag was unknown -- the fixture proves nothing")
 
     def test_pick_analysis_survives_unpriced_candidates(self):
         picks, board, index = self._state(16)

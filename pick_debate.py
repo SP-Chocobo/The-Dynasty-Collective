@@ -260,6 +260,16 @@ def _format_candidate(candidate: CandidateSnapshot, user_selected_player_id: Opt
             "ordering inside this group is NOT a real preference signal; the user's own "
             "player preference is a fully legitimate tiebreaker here."
         )
+    elif candidate.near_tie_with_leader is None:
+        # #61 rule 5's own reason for existing, at the one consumer the rule names. The flag is
+        # three-state; a chair that sees only the True case reads silence as "measured, and not
+        # close to the leader", which is the false claim the widening exists to stop. Said in the
+        # same register as UNAVAILABLE_REPORT: absent evidence, never evidence of absence.
+        lines.append(
+            "  NEAR-TIE: NOT DETERMINED -- this candidate has no team acquisition value, so his "
+            "distance from the top candidate was never measured. Read that as UNKNOWN, never as "
+            "'far enough behind the leader to rank below him safely'."
+        )
     if candidate.survival_probability is not None:
         lines.append(
             f"  Survival probability to your next pick: {_format_probability(candidate.survival_probability)} "

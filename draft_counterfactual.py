@@ -180,7 +180,17 @@ def _near_tie(candidates: list[dict], chosen_id: str) -> bool:
     """Reads the engine's OWN near_tie_with_leader signal off the serialized candidate --
     serialize_candidate exposes it as the string "tie" inside the "forces" list (see
     draft_board_ui._forces), the same rendered signal a human looking at the live board would
-    see, not a threshold re-derived here."""
+    see, not a threshold re-derived here.
+
+    KNOWN LIMIT, deliberately not repaired here. near_tie_with_leader is three-state (#61 rule
+    5) and this returns bool, so an unpriced candidate's UNKNOWN would read as False -- the
+    exact false negative rule 5 exists to stop. It is not repaired because it is unreachable,
+    not because it is acceptable: compare_trajectory calls bpa_row() on the full board BEFORE
+    it ever calls this, and bpa_row is max(board, key=universal_value), which raises TypeError
+    on any board carrying an unpriced row (verified directly; that is #61 invariant 15, still
+    open). Every board on which an unknown tie could exist kills this harness upstream of this
+    function. Repairing the false negative first would be building for a state the harness
+    cannot reach -- so the order is invariant 15, then this."""
     cand = next((c for c in candidates if c["id"] == chosen_id), None)
     if cand is None:
         return False

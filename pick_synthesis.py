@@ -622,34 +622,52 @@ def decision_regime(candidates: list[dict]) -> str:
     leader_in_tie_group = near_tie_flags(
         [c["team_acquisition_value"] for c in ranked])[0]
     survival = ranked[0].get("survival_probability")
-    if (not leader_in_tie_group
+    # `is False`, not `not ...`, since near_tie_flags is three-state (#61 rule 5). `ranked` is
+    # the priced-only list, so the leader's flag cannot be None today and this reads identically
+    # -- it is written this way so that if an unpriced row ever reaches here, an UNKNOWN margin
+    # falls through to "contested" instead of being read as "measured, and not close", which is
+    # what `not None` would have done. That is #61's invariant 8: decision_regime never returns
+    # "decisive" from an unknown margin.
+    if (leader_in_tie_group is False
             and survival is not None and survival <= DECISIVE_SURVIVAL_THRESHOLD):
         return "decisive"
     return "contested"
-    return flags
 
 
-def near_tie_flags(team_acquisition_values: list[float]) -> list[bool]:
+def near_tie_flags(team_acquisition_values: list[Optional[float]]) -> list[Optional[bool]]:
     """Which candidates sit inside NEAR_TIE_BAND of the leader's team_acquisition_value --
     True for every member of the tie group INCLUDING the leader, but only when the group has
     at least two members: a leader nobody is close to isn't 'in a tie' with anyone, and
     flagging him alone would hand the debate layer a false 'these are tied' claim. Same order
     as the input.
 
-    An UNPRICED entry (None) is never flagged and never becomes the leader. A row the board
-    could not price has no measured separation from anything, so it is not "close to" the
-    leader -- and letting it into max() either raised on the comparison or, worse, would have
-    made every real row look far behind a leader that was not a value at all.
+    THREE-STATE (#61 rule 5): True / False / None. An UNPRICED entry (None in, None out) is
+    never flagged and never becomes the leader -- unchanged. What changed is what it ANSWERS.
+    `False` is a claim with a measurement behind it: "this row was compared to the leader and
+    is not close to him". A row the board could not price has no measured separation from
+    anything, so that claim is unsupported in exactly the way the sentence above already
+    refuses for the other direction. Returning `False` there was the same argument applied in
+    one direction only -- a false "these are NOT tied" issued to avoid a false "these are
+    tied". None says the comparison was never made.
+
+    The leader is still chosen among priced rows only: letting a None into max() either raised
+    on the comparison or, worse, would have made every real row look far behind a "leader" that
+    was not a value at all.
+
+    A field with no priced rows at all is therefore all-None, not all-False: nothing in it was
+    compared to anything. And when the band holds fewer than two members the priced rows
+    collapse to False (measured, no tie group) while the unpriced ones stay None.
     """
     if not team_acquisition_values:
         return []
     priced = [v for v in team_acquisition_values if v is not None]
     if not priced:
-        return [False] * len(team_acquisition_values)
+        return [None] * len(team_acquisition_values)
     leader = max(priced)
-    in_band = [v is not None and leader - v <= NEAR_TIE_BAND for v in team_acquisition_values]
-    if sum(in_band) < 2:
-        return [False] * len(team_acquisition_values)
+    in_band = [None if v is None else (leader - v <= NEAR_TIE_BAND)
+               for v in team_acquisition_values]
+    if sum(1 for flag in in_band if flag) < 2:
+        return [None if v is None else False for v in team_acquisition_values]
     return in_band
 
 
@@ -838,7 +856,9 @@ class CandidateSnapshot:
     position_run_detected: bool
     pick_necessity: float
     necessity_label: str
-    near_tie_with_leader: bool
+    # Three-state (#61 rule 5): None means the comparison was never made because this row
+    # is unpriced -- NOT that it was made and came back negative. See near_tie_flags.
+    near_tie_with_leader: Optional[bool]
     cliff_protection: bool
     block_opportunity: bool
     pure_value: bool

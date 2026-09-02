@@ -59,8 +59,15 @@ _NECESSITY_CLASS = {
 
 
 def _forces(c: CandidateSnapshot) -> list[str]:
+    """Which of the four decision paths FIRED for this candidate -- a list of what is true,
+    never a set of negations. That distinction is what lets near_tie_with_leader's third state
+    (#61 rule 5: None, the comparison was never made) be represented here by omission without
+    the omission becoming a claim. Absence from this list already means "did not fire", which
+    covers "measured, did not fire" and "not measurable" alike; no rendered sentence in this
+    module or its JS asserts the negative, so neither state is misreported. The debate layer,
+    which DOES speak in sentences, distinguishes them explicitly -- see pick_debate."""
     forces = []
-    if c.near_tie_with_leader:
+    if c.near_tie_with_leader is True:
         forces.append("tie")
     if c.cliff_protection:
         forces.append("cliff")
