@@ -2799,10 +2799,80 @@ re-scope exists to prevent. **Prerequisite: real findings.** Not a decision.
 | §6.3 | Is it *intended* that a fresh panel finding outweighs a stale vendor number? The crossover is now measured at **29–83 days**. | (a) yes, state it as policy; (b) no, cap a finding's recency weight below the vendor's; (c) make the crossover a setting | **(a)** — it is what the code already does and the measurement supports it; what is missing is a stated intent, not a change. |
 | §6.2a | Does a finding need re-adjudication by something other than the Moderator that wrote it? | (a) no, the panel's own gate is the bar; (b) a second independent pass; (c) a human confirm step | **(a) for now, with a named trigger.** With one user and a low composite weight the panel gate is a defensible bar. It stops being one under §13.5's hosting model — that is the trigger, not a date. |
 | §7.4 | Should cited sources be restricted to an allowlist? | (a) no allowlist; (b) allowlist for anything that feeds the composite, free for prose; (c) full allowlist | **(b)** — it splits along the line that already matters: a rank changes a price, a narrative does not. |
-| §7.6 | Should retrieved content be fenced as untrusted in the chairs' prompts? | (a) fence it; (b) leave it | **(a), and it is the largest item here** — a joint change to `build_context` and seven chair contracts. Worth doing; too big to fold into this pass without its own verification. |
+| §7.6 | Should retrieved content be fenced as untrusted in the chairs' prompts? | (a) fence it; (b) leave it | **(a) — BUILT, see below.** It was the largest item here and it has its own verification. |
 | §7.10 | Should the 11 unattributed baseline CSVs get provenance records? | (a) write them; (b) leave them | **Not mine to answer.** Writing one asserts the terms under which a *paid subscription export* is retained and redistributed. That is the owner's call, and it is the one item here I decline rather than defer. |
 
 **The inversion §7.10 found is worth restating, because it is the opposite of what one expects:**
 the *secondary* sources are documented and the **primary valuation input is not** — the
 highest-weighted source in the composite (1.3), the one feeding CDME's `bpa`, has provenance only
 as prose in `README.md`.
+
+
+---
+
+# §7.6 — THE FENCE: WHAT THE APP IS SAYING VS WHAT IT IS SHOWING
+
+`build_context` returned one flat string. Into that single channel, adjacent to the app's own
+directives, went raw uploaded file text, user-written captions, prior model prose replayed as
+memory, past verdicts re-presented as fact, and user notes. A chair had nothing but content to
+tell "the app is telling me this" from "an uploaded file is saying this."
+
+## What was built
+
+**Nine fenced spans**, eight inside `build_context` and one at the chat call site:
+conversation memory, open to-do text, past objectives and their resolution notes, past decision
+outcomes, pinned messages, user-typed captions, panel findings, panel comparisons, and — the
+rawest of them — chat-scoped attachment bytes. Two more inputs never went through
+`build_context` and are fenced at their own call sites: `classify_unknown_upload`'s file excerpt
+and `summarize_history`'s transcript.
+
+**Not fenced:** anything the app, Sleeper, or a vendor file authored — the league line, roster
+tables, freshness, pick values, board numbers. That is the distinction §7 asked for: *what the
+app is saying stays outside; what it is showing goes inside.*
+
+## Three design decisions worth stating
+
+**1. The markers are stripped from the body, and that — not the tokens — is the mechanism.** A
+delimiter content can contain is not a delimiter: an uploaded file that writes the closing token
+ends the fence early, and everything after it reads in the app's own voice. `fence()` removes
+every marker-shaped run from the body before wrapping it. Deliberately *not* a per-call random
+nonce: a nonce has to appear in the system prompt too, which changes the cached prefix on every
+call, and stripping closes the same hole without that cost.
+
+**2. Stripping removes punctuation, never evidence.** The quieter failure is over-stripping —
+silently editing the user's own material while claiming only to remove markers. `>>>`, `>`, `<`,
+`</div>` and the bare word "untrusted" are all normal in this domain and all survive untouched;
+a removed marker leaves a space rather than joining the words either side of it. Both directions
+are pinned by tests.
+
+**3. The contract says fencing is about AUTHORSHIP, not credibility** — and this is the part
+easiest to leave out. A chair told only "this is untrusted" starts quietly discounting the user's
+own notes and the panel's own findings, which are among the best evidence it has. That failure is
+silent and looks like caution. The contract says so explicitly, and a test asserts the sentence
+is there.
+
+## Why it is a joint change, and where the fence stops
+
+*"A delimiter the chair prompts do not explain is decoration"* — the audit's own words, and the
+reason this was never a one-line fix. The contract is defined once in `untrusted.CONTRACT` and
+appended to all **seven** prompts that can now receive a fence (Quant, Beat, Contrarian,
+Moderator, Summarizer, Upload-classify, Condense-to-objective), so the fence and its explanation
+cannot drift apart. A test fails if any of the seven loses it.
+
+`pick_debate`'s three chairs are **deliberately not fenced**, recorded so the omission is a
+decision rather than an oversight: they never receive `build_context`: they read
+`format_snapshot_for_llm`, which renders a `PickSnapshot` the engine computed. The only
+externally-sourced strings in it are player names out of Sleeper's own database. Fencing a
+computed board would teach those chairs to discount the one thing in their context that is not
+authored at all. A test inverts if `build_context`, chat history, attachments or stored findings
+ever reach that path.
+
+## Verification
+
+`test_untrusted_fence.py` (16 tests) pins the primitive; `test_research_authority_boundary`
+carries the wiring, with its own §7.6 characterization **inverted** — it used to assert that
+`"<untrusted"`, `"BEGIN UNTRUSTED"` and friends appeared nowhere in `build_context`.
+
+Three planted mutations, each reverted, each producing a failure: removing the fence from the
+attachment append, making `fence()` stop stripping forged markers, and dropping the contract from
+one prompt.

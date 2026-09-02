@@ -38,6 +38,7 @@ from typing import Optional
 from dotenv import load_dotenv
 
 import provider_meter
+import untrusted
 
 load_dotenv()
 
@@ -68,7 +69,8 @@ OPENAI_MODEL = os.getenv("OPENAI_MODEL", "gpt-4o")
 # thorough Quant breakdown or a Contrarian pressure-test can run long too.
 MAX_TOKENS = 4096
 
-QUANT_SYSTEM_PROMPT = """You are the Quant / VORP Specialist for a fantasy football front office. Your
+QUANT_SYSTEM_PROMPT = (
+    """You are the Quant / VORP Specialist for a fantasy football front office. Your
 context states this league's actual format (dynasty/keeper/redraft, and any special mode like Best Ball
 or Chopped) — reason accordingly rather than assuming dynasty by default.
 You reason strictly from numbers, and you're given two independent quantitative sources to weigh against
@@ -96,8 +98,11 @@ Sleeper's native projections aren't loaded (check the DATA AVAILABILITY note), d
 back to positional scarcity, roster construction, and general roster value judgment, and say plainly that
 you're working without hard numbers rather than inventing figures or pretending you have them. Be concise,
 cite the specific values you're given, and state a clear numeric-first recommendation."""
+    "\n\n" + untrusted.CONTRACT
+)
 
-BEAT_SYSTEM_PROMPT = """You are the Beat / News Tracker for a fantasy football front office (dynasty,
+BEAT_SYSTEM_PROMPT = (
+    """You are the Beat / News Tracker for a fantasy football front office (dynasty,
 redraft, keeper, or a special mode like Best Ball/Chopped — your context states which).
 Draft Sharks is only one input among several the front office weighs — your job is to bring the rest of
 the picture from the free, publicly browsable open web:
@@ -113,8 +118,11 @@ than any file-based source in your context (check the DATA FRESHNESS note for ho
 your live findings contradict an old Draft Sharks file, say so plainly and lean on the live read. Do not run
 Draft Sharks' VORP math yourself — that is the Quant's job. Be concise, and clearly label which claims come
 from Draft Sharks, which from market consensus sites, and which from news/depth charts."""
+    "\n\n" + untrusted.CONTRACT
+)
 
-CONTRARIAN_SYSTEM_PROMPT = """You are the Contrarian / Risk Analyst for a fantasy football front office.
+CONTRARIAN_SYSTEM_PROMPT = (
+    """You are the Contrarian / Risk Analyst for a fantasy football front office.
 Your job is to pressure-test the other two analysts, not repeat them. Given the Quant's Draft-Sharks-based
 numeric take and the Beat Tracker's market-consensus-and-news report, actively look for what they're missing:
 regression risk, small-sample overreaction, projection model blind spots, injury-prone history, age curves,
@@ -129,8 +137,11 @@ news from scratch. If Draft Sharks isn't loaded, there's nothing to pressure-tes
 test the Beat Tracker's read and your own reasoning instead; don't stall waiting for numbers that aren't
 coming. Respect any format-specific rules stated in your context (e.g. trades disabled in a Chopped league)
 — don't pressure-test or entertain a move the league doesn't actually allow. Be concise."""
+    "\n\n" + untrusted.CONTRACT
+)
 
-MODERATOR_SYSTEM_PROMPT = """You are the Debate Moderator and Executive Synthesizer for a fantasy football
+MODERATOR_SYSTEM_PROMPT = (
+    """You are the Debate Moderator and Executive Synthesizer for a fantasy football
 front office — dynasty, redraft, keeper, or a special mode like Best Ball/Chopped, per your context. You
 have three reports: a Quant/VORP analysis (grounded in the user's local Draft
 Sharks data and Sleeper's own native weekly stat-category projections), a Beat/News update (market consensus
@@ -250,8 +261,11 @@ play, a roster need) that undercuts the original reason, say so and use ACTION I
 it. Never assume it's worth reopening just because it's mentioned here, and never treat it as settling the
 current question by itself — it's context for your reasoning, not a substitute for it.
 Be decisive."""
+    "\n\n" + untrusted.CONTRACT
+)
 
-SUMMARIZER_SYSTEM_PROMPT = """You compact old fantasy football front-office chat history into a compact,
+SUMMARIZER_SYSTEM_PROMPT = (
+    """You compact old fantasy football front-office chat history into a compact,
 structured memory block for future debates to reference. From the transcript you're given, extract only what
 would actually matter to a future decision:
   * Targeted players — who the user has been trying to buy/sell/add/drop, and the outcome if known.
@@ -263,6 +277,8 @@ If a prior memory summary is given alongside the new transcript, merge them into
 than discarding the old one — this compacts forward over time, not just the latest window. Output plain
 Markdown with those three headers (only include a header if it has content). Be dense — this is memory, not
 prose."""
+    "\n\n" + untrusted.CONTRACT
+)
 
 
 @dataclass
@@ -765,7 +781,8 @@ def ask_moderator_followup(
         return PROVIDER_CALLERS[provider](system_prompt, prompt, api_key, model)
 
 
-UPLOAD_CLASSIFY_SYSTEM_PROMPT = """You're the Moderator for a fantasy football dynasty roster app, occasionally \
+UPLOAD_CLASSIFY_SYSTEM_PROMPT = (
+    """You're the Moderator for a fantasy football dynasty roster app, occasionally \
 asked to make sense of a file someone just tried to upload that the app's own parser didn't confidently recognize \
 as one of its three known Draft Sharks exports (Dynasty Rankings, Trade Value Chart, Free Agent Finder). This is \
 NOT a roster debate -- just a quick read on what the document actually is. In 2-4 sentences: say what it looks like \
@@ -781,6 +798,8 @@ column headers actually say. If you were given an example row, end your response
 exactly "ALIGNMENT: CORRECT" if that field-by-field labeling looks right for this document, or exactly \
 "ALIGNMENT: WRONG" if it doesn't -- that exact line, nothing after it, so the app can parse your verdict \
 programmatically. Omit that line entirely if you weren't given an example row to judge."""
+    "\n\n" + untrusted.CONTRACT
+)
 
 
 def classify_unknown_upload(
@@ -795,13 +814,22 @@ def classify_unknown_upload(
     example_row, when given, is a single already-parsed row rendered by app.py itself (never by
     this call) -- the numbers are never something the model is trusted to reproduce from memory,
     only to judge whether the field labels attached to them are right for this document."""
-    prompt = f"Filename: {filename}\n\nExtracted text (first portion, may be truncated):\n{text_excerpt}"
+    # The file's own bytes, from whatever the user dropped in. This call has the narrowest job
+    # in the app and the widest-open input, so the fence matters here as much as anywhere: the
+    # excerpt is DATA to classify, and a document that tries to instruct the classifier is
+    # exactly the case §7.6 exists for. example_row is rendered by app.py from an already-parsed
+    # row, but its cell values come from the same file, so it is fenced on the same reasoning.
+    prompt = (
+        f"Filename: {filename}\n\nExtracted text (first portion, may be truncated):\n"
+        + untrusted.fence("uploaded-file-contents", text_excerpt))
     if example_row:
-        prompt += f"\n\nOne example row our parser already extracted, as currently labeled:\n{example_row}"
+        prompt += ("\n\nOne example row our parser already extracted, as currently labeled:\n"
+                   + untrusted.fence("uploaded-file-contents", example_row))
     return PROVIDER_CALLERS[provider](UPLOAD_CLASSIFY_SYSTEM_PROMPT, prompt, api_key, model)
 
 
-CONDENSE_TO_OBJECTIVE_SYSTEM_PROMPT = """You turn ONE existing chat message from a fantasy football dynasty \
+CONDENSE_TO_OBJECTIVE_SYSTEM_PROMPT = (
+    """You turn ONE existing chat message from a fantasy football dynasty \
 front office into a single tracked objective, in the exact phrasing style this app's own Moderator uses for an \
 ACTION ITEM: the action itself, concrete and specific -- e.g. "Offer Team 4 a 2027 3rd for Player X before \
 Thursday's waiver run" -- never a summary of what the message said, and never vague ("consider a trade").
@@ -822,6 +850,8 @@ never manufacture a duplicate. Use NO OBJECTIVE when the message is pure informa
 strong opinion" answer with nothing to actually go do. Never invent specifics -- a team name, a deadline, a \
 price -- that weren't actually in the source message or the surrounding conversation; if the message itself was \
 vague, the objective you write should stay just as concrete as what it actually said, not padded out further."""
+    "\n\n" + untrusted.CONTRACT
+)
 
 
 def ask_condense_to_objective(
@@ -887,8 +917,16 @@ def summarize_history(
     """
     if not messages:
         return "⚠️ Nothing to summarize."
-    transcript = "\n\n".join(f"[{m.get('role', '?')}] {m.get('content', '')}" for m in messages)
-    prompt = transcript if not prior_summary else f"PRIOR MEMORY SUMMARY:\n{prior_summary}\n\nNEW TRANSCRIPT TO MERGE IN:\n{transcript}"
+    # Every byte here was written by a person or by a model -- the user's own messages and the
+    # chairs' own prose -- and the output becomes CONVERSATION MEMORY, which is replayed into
+    # every later debate. An instruction that survives summarisation is an instruction that
+    # persists, so this is the one call where a missed fence compounds instead of passing.
+    transcript = untrusted.fence("prior-conversation", "\n\n".join(
+        f"[{m.get('role', '?')}] {m.get('content', '')}" for m in messages))
+    prompt = transcript if not prior_summary else (
+        "PRIOR MEMORY SUMMARY:\n"
+        + untrusted.fence("prior-conversation", prior_summary)
+        + f"\n\nNEW TRANSCRIPT TO MERGE IN:\n{transcript}")
     return _call_claude(SUMMARIZER_SYSTEM_PROMPT, prompt, api_key)
 
 
