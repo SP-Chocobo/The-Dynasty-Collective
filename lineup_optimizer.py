@@ -175,3 +175,133 @@ def eligibility_bonus(
         "marginal_value_full_eligibility": full_result["marginal_value"],
         "marginal_value_primary_position_only": primary_result["marginal_value"],
     }
+
+
+#: What `depth_exposure` reports when a position is in the league's slots but this roster has
+#: nobody starting there. NOT zero exposure -- the opposite. A vacancy is a hole that already
+#: exists, and reporting 0.0 would rank an empty slot as safely covered, which is the same
+#: "absence read as a value" defect this codebase has already had to repair repeatedly.
+EXPOSURE_VACANT = "vacant"
+
+#: The position isn't in this league's starting slots at all (no TE slot in a TE-less format,
+#: no IDP slots in an offense-only league). Nothing to be exposed to.
+EXPOSURE_NOT_APPLICABLE = "not_applicable"
+
+#: Every rostered player is starting -- there is no bench yet, so nothing can backfill a hole
+#: and every loss costs that player's whole value. The arithmetic still runs and still returns
+#: a number, and that number is NOT depth information: it is just each starter's own value
+#: wearing a depth-shaped label. Measured directly -- a 7-player roster against 8 slots reports
+#: QB 30 / RB 25 / WR 28 / TE 15, which is exactly the four players' values, and adding a TE2
+#: moves nothing because the TE2 merely fills the empty eighth slot.
+#:
+#: Marked rather than suppressed, because the consumer that most needs this signal is the one
+#: drafting in round 3 -- and a plausible-looking number it cannot distinguish from a measured
+#: one is worse than an honest refusal. It is also the exact complement of the round-10
+#: collapse in marginal_lineup_value: that quantity is informative while slots are empty and
+#: degenerate once they fill, and this one is the reverse.
+EXPOSURE_NO_SURPLUS = "no_surplus"
+
+
+def depth_exposure(roster_players: list[dict], roster_positions: list[str]) -> dict[str, dict]:
+    """Per position, what this roster loses if one of its starters there becomes unavailable.
+
+    THE QUESTION THIS ANSWERS. Depth demand is not "a slot exists, so fill it." Nobody needs a
+    fourth TE because their league has one TE slot. Depth is INSURANCE, and what it is worth
+    is what a hole would actually cost -- which depends on who else is already rostered, and on
+    whether anything else can cover the slot.
+
+    Both of those fall out of the assignment solve rather than being encoded as rules:
+
+      - SELF-LIMITING BY DEPTH. Remove TE1 from a roster that already has a competent TE2 and
+        the lineup only drops by (TE1 - TE2), because the solver promotes TE2. So exposure at
+        TE falls as soon as TE2 exists, and demand for a TE3 collapses on its own. No rule
+        says "you don't need four tight ends"; the arithmetic says it.
+
+      - SUBSTITUTABILITY IS FREE. Pull RB1 and the solver may slide a FLEX-eligible WR up, so
+        the hole is cheap. Pull the only TE and a mandatory TE slot goes empty, so the hole is
+        expensive. That asymmetry is the whole reason TE depth behaves differently from RB
+        depth, and it is discovered here, not asserted.
+
+    WHY IT CARRIES NO PROBABILITY. "Any one starter could become unavailable" is a uniform,
+    stated assumption -- deliberately not a per-position injury rate, because this app does not
+    have one. RISK_ADJ is a CURRENT-STATUS penalty (this player is Questionable today), not a
+    prospective rate, and inventing "RBs get hurt 1.4x more than WRs" would be exactly the kind
+    of unmeasured constant that has already had to be removed from this codebase once. A caller
+    that acquires real base rates can weight these numbers; until then they are pure severity,
+    and the docstring says so instead of the number implying otherwise.
+
+    Returns {position: {"exposure", "worst_loss", "starters", "basis"}}:
+      exposure    -- summed loss across every starter at that position: total value at risk.
+      worst_loss  -- the single largest loss: what ONE backup would have to cover.
+      starters    -- how many of this roster's starters sit at that position.
+      basis       -- "measured", or EXPOSURE_NO_SURPLUS / EXPOSURE_VACANT /
+                     EXPOSURE_NOT_APPLICABLE. Read it before reading the numbers: they are
+                     returned in every state, and only "measured" makes them depth evidence.
+
+    Both aggregates are returned rather than one, for the reason marginal_lineup_value returns
+    both lineup totals: they answer genuinely different questions (total risk carried vs. what
+    a single backup buys), and picking one here would make that choice invisible to the caller.
+    """
+    slots = slots_from_roster_positions(roster_positions)
+    slot_positions = set().union(*(s["eligible"] for s in slots)) if slots else set()
+
+    out: dict[str, dict] = {}
+    for position in sorted(slot_positions):
+        out[position] = {
+            "exposure": None, "worst_loss": None, "starters": 0, "basis": EXPOSURE_VACANT,
+        }
+    for position in FANTASY_POSITIONS:
+        if position not in slot_positions:
+            out[position] = {
+                "exposure": None, "worst_loss": None, "starters": 0,
+                "basis": EXPOSURE_NOT_APPLICABLE,
+            }
+
+    if not roster_players or not slots:
+        return out
+
+    baseline = optimize_lineup(roster_players, slots)
+    starting_ids = {a["player_id"] for a in baseline["assignments"]}
+    by_id = {p["id"]: p for p in roster_players}
+    # Depth cannot exist while every body is needed on the field. Compared against the players
+    # who actually START, not len(roster_players), so a roster carrying someone ineligible for
+    # every slot is not mistaken for having depth it cannot use.
+    has_surplus = len(roster_players) > len(starting_ids)
+
+    losses: dict[str, list[float]] = {}
+    for player_id in starting_ids:
+        player = by_id[player_id]
+        # The player's OWN eligibility decides which position bears this exposure. A WR
+        # starting in a FLEX slot is still WR depth: losing him is a WR-shaped hole, and the
+        # roster covers it by rostering another WR (or another FLEX-eligible body), not by
+        # rostering "a FLEX". Multi-eligible players count toward every position they can
+        # actually fill, because a hole at any of them is a hole this player was covering.
+        without = optimize_lineup([p for p in roster_players if p["id"] != player_id], slots)
+        loss = round(baseline["total_value"] - without["total_value"], 2)
+        for position in player["eligible"] & slot_positions:
+            losses.setdefault(position, []).append(loss)
+
+    for position, values in losses.items():
+        out[position] = {
+            "exposure": round(sum(values), 2),
+            "worst_loss": round(max(values), 2),
+            "starters": len(values),
+            "basis": "measured" if has_surplus else EXPOSURE_NO_SURPLUS,
+        }
+    return out
+
+
+def bench_capacity(roster_positions: list[str]) -> int:
+    """How many bench spots this league gives each team.
+
+    Sleeper states it directly -- roster_positions carries its own "BN" entries -- and nothing
+    in this app had ever counted them. slots_from_roster_positions drops them correctly, for
+    ITS purpose (a benched player contributes no lineup value), and the number was then simply
+    never read anywhere else: the only other "BN" in the tree synthesizes a hardcoded count for
+    MOCK drafts. So depth was unbounded in an engine whose real leagues bound it.
+
+    It matters because depth exposure is a RANKING of where insurance is worth buying, and
+    bench capacity is the budget: a 5-bench league cannot insure everything a 12-bench league
+    can, and the cutoff is the difference between a useful recommendation and a wish list.
+    """
+    return sum(1 for slot in (roster_positions or []) if slot == "BN")

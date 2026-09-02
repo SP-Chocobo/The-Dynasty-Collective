@@ -306,6 +306,17 @@
         "assertEqual": 3
       }
     },
+    "test_depth_exposure.py": {
+      "test_methods": 22,
+      "asserts": {
+        "assertEqual": 23,
+        "assertGreater": 2,
+        "assertGreaterEqual": 1,
+        "assertIsNone": 3,
+        "assertLess": 4,
+        "assertNotIn": 1
+      }
+    },
     "test_depth_ratings.py": {
       "test_methods": 8,
       "asserts": {
