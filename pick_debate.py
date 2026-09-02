@@ -63,9 +63,28 @@ from llm_engine import (
 )
 from pick_synthesis import CandidateSnapshot, PickSnapshot, diff_snapshots, stamp_is_current
 
+import bot_config
 import provider_meter
 
-DEFAULT_ROLE_PROVIDERS = {"strategist": "claude", "skeptic": "openai", "caller": "claude"}
+ROLES = ("strategist", "skeptic", "caller")
+
+
+def default_role_providers(available=None) -> dict[str, str]:
+    """This panel's three chairs dealt across whichever providers the user has a key for.
+
+    Same rule and same reasoning as bot_config.default_role_providers -- see it for the
+    measurement. This module had the identical defect in miniature: a hardcoded
+    strategist->claude / skeptic->openai / caller->claude, which left a user with one key
+    running one or two of three chairs, and which is itself just a round-robin over the
+    provider order. The rule is arbitrary and says so; it is not a claim that any family
+    suits any chair better, because nothing here has measured that.
+    """
+    return bot_config.default_role_providers_for(ROLES, available)
+
+
+#: The all-keys case, kept as a module constant because callers reference it. Identical to
+#: the previous hardcoded value, so a user with all three keys sees no change.
+DEFAULT_ROLE_PROVIDERS = default_role_providers()
 
 
 def _call_claude(system_prompt: str, user_prompt: str, api_key: Optional[str] = None, model: Optional[str] = None) -> str:

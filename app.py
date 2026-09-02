@@ -2283,7 +2283,13 @@ with st.sidebar:
             "role also has an optional benchmark: let candidate models actually audition for the job "
             "instead of picking one by reputation."
         )
-        _role_providers_cfg = bot_config.load_role_providers()
+        # Which providers this user can actually reach. Computed BEFORE the role assignment
+        # below, which now depends on it.
+        _bots_configured = [p for p in bot_config.PROVIDERS if IS_PROVIDER_CONFIGURED[p](api_key_for(PROVIDER_KEY_FIELD[p]))]
+        # Filled in from the keys this user actually has, so a one-key user gets all four
+        # chairs on that family instead of one working chair and three "⚠️ key not set".
+        # A saved choice still wins; this only fills gaps. See bot_config.default_role_providers.
+        _role_providers_cfg = bot_config.load_role_providers(_bots_configured)
         _role_names_cfg = bot_config.load_role_names()
         _role_models_cfg = bot_config.load_role_models()
         _moderator_personality_cfg = bot_config.load_moderator_personality()
@@ -2291,7 +2297,6 @@ with st.sidebar:
         # Discovery itself lives in 🔑 Connections & Models now -- this section only reads
         # the `available_models_{provider}` cache it populates, the same single source both
         # the manual model picker below and every role's benchmark candidate list draw from.
-        _bots_configured = [p for p in bot_config.PROVIDERS if IS_PROVIDER_CONFIGURED[p](api_key_for(PROVIDER_KEY_FIELD[p]))]
         if not _bots_configured:
             st.warning("No provider keys configured yet — add at least one in 🔑 Connections & Models first.")
         elif not any(st.session_state.get(f"available_models_{p}") for p in _bots_configured):
@@ -2328,12 +2333,13 @@ with st.sidebar:
                     format_func=lambda p: bot_config.PROVIDER_LABELS[p], key=f"bot_provider_input_{_role}",
                     label_visibility="collapsed",
                 )
-                _recommended = _info["recommended"]
-                # The "why" always shows now, matched or not -- "recommended fit" alone
-                # was a dead end; the reasoning is what actually helps someone decide
-                # whether to override it, so it shouldn't disappear the moment they agree.
-                _rec_prefix = "✓ Using the recommended provider" if _provider_choice == _recommended else f"Recommended: {bot_config.PROVIDER_LABELS[_recommended]}"
-                st.caption(f"{_rec_prefix} — {_info['why']}")
+                # There is deliberately no per-chair vendor recommendation here any more. The
+                # four that used to sit in this caption were exactly a round-robin over the
+                # provider list, justified after the fact, and nothing in this app has ever
+                # measured which family suits which chair -- see bot_config.ASSIGNMENT_RULE.
+                # What the caption shows instead is what the chair DOES, which is real, plus
+                # the honest state of the vendor question.
+                st.caption(f"{_info['description']}")
                 # Model is a layer below provider, not a peer to it -- two roles can share
                 # a provider and still want different models (the Moderator's synthesis
                 # doesn't need the same model as Quant's number-crunching). Free text by
@@ -2498,7 +2504,7 @@ with st.sidebar:
         # someone who just wants the recommended routing back shouldn't lose a custom
         # name like "Freddy" or a deliberately-picked model as a side effect of that.
         reset_provider_col, reset_name_col, reset_model_col = st.columns(3)
-        if reset_provider_col.button("Use recommended providers", key="reset_bot_providers", use_container_width=True):
+        if reset_provider_col.button("Reset provider routing", key="reset_bot_providers", use_container_width=True):
             bot_config.reset_role_providers()
             st.rerun()
         if reset_model_col.button("Clear model overrides", key="reset_bot_models", use_container_width=True):
@@ -4546,10 +4552,18 @@ elif main_view == DRAFT_VIEW:
                                 "claude": api_key_for("anthropic"), "gemini": api_key_for("gemini"),
                                 "openai": api_key_for("openai"),
                             }
+                            # These three chairs had NO provider override path at all -- neither
+                            # Draft Room call site passed role_providers, so they ran on
+                            # pick_debate's hardcoded default. With only a Gemini key that meant
+                            # ZERO working chairs here, not one. Dealt from the keys that
+                            # actually resolve, same rule as the Prytaneum's four.
                             with st.spinner("Strategist, Skeptic, and Caller are debating..."):
                                 mock_debate_result = pick_debate.debate_pick(
                                     mock_snap, previous_snapshot=st.session_state.mock_draft_last_snapshot,
                                     api_keys=mock_debate_api_keys,
+                                    role_providers=pick_debate.default_role_providers(
+                                        [p for p, k in mock_debate_api_keys.items()
+                                         if IS_PROVIDER_CONFIGURED[p](k)]),
                                 )
                             st.session_state.mock_draft_last_snapshot = mock_snap
                             st.session_state.mock_draft_debate_result = mock_debate_result
@@ -4922,10 +4936,16 @@ elif main_view == DRAFT_VIEW:
                                         "claude": api_key_for("anthropic"), "gemini": api_key_for("gemini"),
                                         "openai": api_key_for("openai"),
                                     }
+                                    # See the Mock Draft call site above for why this argument
+                                    # exists: without it these three chairs cannot be pointed at
+                                    # a provider the user actually has a key for.
                                     with st.spinner("Strategist, Skeptic, and Caller are debating..."):
                                         debate_result = pick_debate.debate_pick(
                                             snap, previous_snapshot=st.session_state.draft_room_last_snapshot,
                                             api_keys=debate_api_keys,
+                                            role_providers=pick_debate.default_role_providers(
+                                                [p for p, k in debate_api_keys.items()
+                                                 if IS_PROVIDER_CONFIGURED[p](k)]),
                                         )
                                     st.session_state.draft_room_last_snapshot = snap
                                     st.session_state.draft_room_debate_result = debate_result
@@ -5688,7 +5708,8 @@ with st.container(key="debate_dock"):
             if attached_context.entities:
                 st.caption("Involved: " + ", ".join(attached_context.entities))
 
-    role_providers = bot_config.load_role_providers()
+    role_providers = bot_config.load_role_providers(
+        [p for p in bot_config.PROVIDERS if IS_PROVIDER_CONFIGURED[p](api_key_for(PROVIDER_KEY_FIELD[p]))])
     role_names = bot_config.load_role_names()
     role_models = bot_config.load_role_models()
     moderator_personality_key = bot_config.load_moderator_personality()

@@ -27,41 +27,84 @@ ROLE_INFO = {
         "label": "Quant / VORP Specialist",
         "default_name": "Quant",
         "description": "Runs the numbers -- VORP, positional scarcity, trade value math. No news, no opinions, just the math.",
-        "recommended": "claude",
-        "why": "Strong at holding one consistent analytical framework across a long, structured answer.",
     },
     "beat": {
         "label": "Beat / News Tracker",
         "default_name": "Beat Tracker",
         "description": "Pulls current injury reports, depth-chart changes, and market buzz via live web search.",
-        "recommended": "gemini",
-        "why": (
-            "Native Google Search grounding -- real live results, not just what the model happened to learn "
-            "in training. ChatGPT and Claude both get their own web search tool if reassigned here too, so "
-            "live search isn't a reason to prefer one provider over another for this role anymore -- pick "
-            "whichever's answers you find most useful."
-        ),
     },
     "contrarian": {
         "label": "Contrarian / Risk Analyst",
         "default_name": "Contrarian",
         "description": "Pressure-tests the Quant and Beat reports -- argues the other side, flags what could go wrong.",
-        "recommended": "openai",
-        "why": "A distinct \"voice\" from whichever provider runs Quant keeps the debate from reading like one model quietly agreeing with itself.",
     },
     "moderator": {
         "label": "Moderator / Executive Synthesizer",
         "default_name": "Moderator",
         "description": "Weighs all three reports and issues one final verdict with a clear recommendation.",
-        "recommended": "claude",
-        "why": "Synthesis and judgment is a different task from Quant's number-crunching, even when the same provider ends up running both.",
     },
 }
 
-# Derived from ROLE_INFO, not a separately maintained dict -- a "recommended" value
-# changed in one place without the other would make "Use recommended providers" (the
-# button that resets to this) silently lie about what it just did.
-DEFAULT_ROLE_PROVIDERS = {role: ROLE_INFO[role]["recommended"] for role in ROLES}
+# WHY THERE IS NO PER-ROLE VENDOR RECOMMENDATION HERE ANY MORE.
+#
+# There used to be: quant->claude, beat->gemini, contrarian->openai, moderator->claude, each
+# with a hand-written `why`. Measured, that assignment is EXACTLY what cycling PROVIDERS in
+# declaration order across ROLES produces -- it was arbitrary first and justified afterwards,
+# which is why three of the four rationales argued for something other than the vendor they
+# were attached to. One retracted itself in its own second sentence ("live search isn't a
+# reason to prefer one provider over another for this role anymore"); one argued for
+# DIFFERENCE from whatever runs Quant, which any non-Quant provider satisfies; one said the
+# provider does not matter at all ("even when the same provider ends up running both").
+#
+# Nothing in this repository ever measured which family is better at which chair. A shipped
+# recommendation with no measurement behind it is a claim the writing path cannot establish --
+# the same defect this codebase repaired at the alias boundary (#89) and everywhere else.
+#
+# THE BAR FOR PUTTING ONE BACK, because recommendations are worth having and this is not a
+# ban on them: a per-role or per-model recommendation may ship when it carries the benchmark
+# run that produced it. bot_benchmark already fingerprints the battery, the rubric and the
+# chair prompts, so such a claim is reproducible rather than editorial. Until then the honest
+# state is "not measured", and the assignment below says so by being openly arbitrary.
+ASSIGNMENT_RULE = (
+    "Chairs are dealt round-robin across whichever providers you have a key for, in "
+    "declaration order. That order is ARBITRARY and is not a claim that any family suits any "
+    "chair better -- nothing here has measured that. With one key, all four chairs run on it."
+)
+
+
+def default_role_providers_for(roles, available: "tuple[str, ...] | list[str] | None" = None) -> dict[str, str]:
+    """The round-robin rule itself, for any set of chairs. pick_debate's Draft Room panel has
+    three of its own and had the identical hardcoded defect, so the rule lives in one place
+    rather than being written twice and drifting."""
+    pool = tuple(p for p in (available if available is not None else PROVIDERS) if p in PROVIDERS)
+    if not pool:
+        pool = PROVIDERS
+    return {role: pool[i % len(pool)] for i, role in enumerate(roles)}
+
+
+def default_role_providers(available: "tuple[str, ...] | list[str] | None" = None) -> dict[str, str]:
+    """The starting assignment for a user who has not configured one, from the keys they have.
+
+    ONE RULE COVERS BOTH CASES THAT MATTERED. Measured against the old hardcoded defaults: a
+    user with only a Gemini key got 1 of 4 chairs, and a user with only an OpenAI key got 1 of 4
+    -- and in both cases the dead one was the MODERATOR, the chair that writes the verdict, the
+    action item, the to-do directives and the source findings. Dealing round-robin over the
+    providers actually available degenerates to "all four on your one family" without a special
+    case for it.
+
+    `available=None` means "assume all of them", which reproduces the previous shipped
+    assignment exactly -- so a user with all three keys sees no change whatsoever.
+
+    An empty `available` also falls back to all providers rather than returning nothing: a
+    config screen still has to render a selectable value before any key exists, and an empty
+    assignment would be a different kind of lie than an unreachable one.
+    """
+    return default_role_providers_for(ROLES, available)
+
+
+#: The all-keys case, kept as a module constant because callers and tests reference it. It is
+#: derived from the same function rather than written out, so the two cannot disagree.
+DEFAULT_ROLE_PROVIDERS = default_role_providers()
 
 # Model choice is a separate layer from provider choice: two roles can share a
 # provider (e.g. both on Claude) and still want different models -- a role that just
@@ -86,9 +129,16 @@ def _save_raw(data: dict) -> None:
     store_io.write(CONFIG_PATH, data)
 
 
-def load_role_providers() -> dict[str, str]:
+def load_role_providers(available: "tuple[str, ...] | list[str] | None" = None) -> dict[str, str]:
+    """The saved assignment, with anything unset filled in from the keys the caller has.
+
+    A SAVED CHOICE ALWAYS WINS, including one that points at a provider with no key -- that is
+    the user's own decision and this is not the place to quietly overrule it. `available` only
+    fills the gaps.
+    """
     saved = _load_raw().get("providers", {})
-    return {role: saved.get(role, DEFAULT_ROLE_PROVIDERS[role]) for role in ROLES}
+    fallback = default_role_providers(available)
+    return {role: saved.get(role, fallback[role]) for role in ROLES}
 
 
 @store_io.atomic(lambda *a, **k: CONFIG_PATH)

@@ -211,6 +211,18 @@ These follow from the principle and are not negotiable per change.
   test: across all three documents only two sections currently claim completion, so a test
   would pass on a population of two and prove nothing. It becomes worth enforcing once the
   convention has a population — which is itself an application of the rule above.)
+- **A retracted justification obliges a re-decision, not an annotation.** When the reason for a
+  choice stops being true, the choice must be re-made — writing "the reason for this no longer
+  applies" beside it and leaving it standing is worse than saying nothing, because the note makes
+  it look handled. Traced across three commits: `d30f50d` made the debate personas
+  provider-agnostic *in mechanism* and left a per-role vendor default; `a58a295` responded to the
+  defaults being questioned by displaying their rationale **more prominently**; `d871078` gave
+  Claude live web search, which destroyed the `beat → gemini` justification, **noticed**, and
+  rewrote the shipped string to read *"live search isn't a reason to prefer one provider over
+  another for this role anymore"* — while leaving `"recommended": "gemini"` untouched. The app
+  then told every user the reason no longer applied while continuing to act on it, for months.
+  Each correction landed on the *explanation* instead of on the *value*. The test is mechanical:
+  if a `why` can be deleted without changing behaviour, the behaviour was never resting on it.
 
 ---
 
