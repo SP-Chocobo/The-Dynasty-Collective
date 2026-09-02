@@ -777,6 +777,16 @@
         "assertTrue": 5
       }
     },
+    "test_render_trace.py": {
+      "test_methods": 9,
+      "asserts": {
+        "assertEqual": 4,
+        "assertGreater": 1,
+        "assertIn": 4,
+        "assertNotIn": 1,
+        "assertTrue": 1
+      }
+    },
     "test_replacement_anchor_boundary.py": {
       "test_methods": 29,
       "asserts": {

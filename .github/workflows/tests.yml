@@ -57,6 +57,11 @@ jobs:
       # reviewer sees the number go down and reads why.
       - name: check no guarantee got smaller
         run: python assertion_floors.py --check
+      # The before/after reference for moving UI code out of app.py. Most of that file's
+      # coverage is source scanning, which goes VACUOUS rather than red when code moves -- so a
+      # green suite is not evidence a UI refactor preserved behaviour, and this is.
+      - name: check the render trace is unchanged
+        run: python render_trace.py --check
       # What the suite was actually verified against. The three provider SDKs are declared in
       # requirements.txt and the suite passes without exercising a single live call through any
       # of them (#120) -- this makes the versions a green run corresponds to a matter of record
@@ -89,6 +94,11 @@ jobs:
       # reviewer sees the number go down and reads why.
       - name: check no guarantee got smaller
         run: python assertion_floors.py --check
+      # The before/after reference for moving UI code out of app.py. Most of that file's
+      # coverage is source scanning, which goes VACUOUS rather than red when code moves -- so a
+      # green suite is not evidence a UI refactor preserved behaviour, and this is.
+      - name: check the render trace is unchanged
+        run: python render_trace.py --check
       - name: record the verified environment
         run: pip freeze
       - name: run the whole suite
