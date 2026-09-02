@@ -88,6 +88,25 @@ class CompareTrajectoryTests(unittest.TestCase):
         ]
         self.assertEqual(bpa_row(board)["player_id"], "1")
 
+    def test_an_unpriced_row_kills_this_harness_before_any_comparison_is_made(self):
+        """#61 invariant 15, still open -- pinned here as a REACHABILITY FACT, not as approval.
+
+        bpa_row is max(board, key=universal_value), and an unpriced row's universal_value is
+        None, so any board carrying one raises TypeError. compare_trajectory calls bpa_row
+        before it reads any per-candidate signal, which is what makes the known limit recorded
+        on _near_tie a limit rather than a live defect: this harness cannot reach a board on
+        which an unknown near-tie exists. Repair invariant 15 first, then _near_tie; that order
+        is the point of this test, and it fails loudly if the repair lands the other way round.
+        """
+        mixed = [
+            {"player_id": "1", "name": "Priced", "universal_value": 99.0, "final_score": 99.0, "position": "RB"},
+            {"player_id": "2", "name": "Unpriced", "universal_value": None, "final_score": None, "position": "K"},
+        ]
+        with self.assertRaises(TypeError):
+            bpa_row(mixed)
+        with self.assertRaises(TypeError):
+            bpa_row([dict(mixed[1], player_id="3"), mixed[1]])
+
 
     def test_determinism_repeated_comparison_is_identical(self):
         again = compare_trajectory(self.merger, self.players_db, self.league_1qb, self.traj_1qb)

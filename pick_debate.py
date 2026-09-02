@@ -59,64 +59,106 @@ from typing import Optional
 from llm_engine import (
     ANTHROPIC_API_KEY, GEMINI_API_KEY, OPENAI_API_KEY,
     CLAUDE_MODEL, GEMINI_MODEL, OPENAI_MODEL, MAX_TOKENS,
+    UNAVAILABLE_REPORT, _report_for_handoff,
 )
-from pick_synthesis import CandidateSnapshot, PickSnapshot, diff_snapshots
+from pick_synthesis import CandidateSnapshot, PickSnapshot, diff_snapshots, stamp_is_current
 
-DEFAULT_ROLE_PROVIDERS = {"strategist": "claude", "skeptic": "openai", "caller": "claude"}
+import bot_config
+import provider_meter
+
+ROLES = ("strategist", "skeptic", "caller")
+
+
+def default_role_providers(available=None) -> dict[str, str]:
+    """This panel's three chairs dealt across whichever providers the user has a key for.
+
+    Same rule and same reasoning as bot_config.default_role_providers -- see it for the
+    measurement. This module had the identical defect in miniature: a hardcoded
+    strategist->claude / skeptic->openai / caller->claude, which left a user with one key
+    running one or two of three chairs, and which is itself just a round-robin over the
+    provider order. The rule is arbitrary and says so; it is not a claim that any family
+    suits any chair better, because nothing here has measured that.
+    """
+    return bot_config.default_role_providers_for(ROLES, available)
+
+
+#: The all-keys case, kept as a module constant because callers reference it. Identical to
+#: the previous hardcoded value, so a user with all three keys sees no change.
+DEFAULT_ROLE_PROVIDERS = default_role_providers()
 
 
 def _call_claude(system_prompt: str, user_prompt: str, api_key: Optional[str] = None, model: Optional[str] = None) -> str:
     key = api_key or ANTHROPIC_API_KEY
     if not key:
+        provider_meter.record_not_attempted("claude", "api_key_missing")
         return "⚠️ ANTHROPIC_API_KEY not set — add it in the sidebar's Connect Your Accounts section, or in .env."
     try:
         import anthropic
 
-        client = anthropic.Anthropic(api_key=key)
+        client = anthropic.Anthropic(api_key=key, **provider_meter.client_limits("claude", anthropic.Anthropic))
         # No tools attached, deliberately -- see module docstring on why this doesn't reuse
         # llm_engine's web-search-equipped callers.
-        response = client.messages.create(
+        # Marked BEFORE the call so the notice below reflects THIS call, never a
+        # neighbouring one -- see provider_meter.mark's own docstring.
+        _meter_at = provider_meter.mark()
+        response = provider_meter.metered("claude", lambda: client.messages.create(
             model=model or CLAUDE_MODEL, max_tokens=MAX_TOKENS, system=system_prompt,
             messages=[{"role": "user", "content": user_prompt}],
-        )
-        return "".join(block.text for block in response.content if hasattr(block, "text")).strip()
+        ), model_requested=model or CLAUDE_MODEL)
+        return provider_meter.annotate_if_incomplete(
+            "".join(block.text for block in response.content if hasattr(block, "text")).strip(),
+            _meter_at, "claude")
     except Exception as exc:  # noqa: BLE001
+        provider_meter.record_preflight_failure("claude", exc)
         return f"⚠️ Claude request failed: {exc}"
 
 
 def _call_gemini(system_prompt: str, user_prompt: str, api_key: Optional[str] = None, model: Optional[str] = None) -> str:
     key = api_key or GEMINI_API_KEY
     if not key:
+        provider_meter.record_not_attempted("gemini", "api_key_missing")
         return "⚠️ GEMINI_API_KEY not set — add it in the sidebar's Connect Your Accounts section, or in .env."
     try:
         from google import genai
         from google.genai import types
 
-        client = genai.Client(api_key=key)
-        response = client.models.generate_content(
+        client = genai.Client(api_key=key, **provider_meter.gemini_limits(genai, types))
+        # Marked BEFORE the call so the notice below reflects THIS call, never a
+        # neighbouring one -- see provider_meter.mark's own docstring.
+        _meter_at = provider_meter.mark()
+        response = provider_meter.metered("gemini", lambda: client.models.generate_content(
             model=model or GEMINI_MODEL, contents=user_prompt,
             config=types.GenerateContentConfig(system_instruction=system_prompt, max_output_tokens=MAX_TOKENS),
-        )
-        return (response.text or "").strip() or "⚠️ Gemini returned an empty response."
+        ), model_requested=model or GEMINI_MODEL)
+        return provider_meter.annotate_if_incomplete(
+            (response.text or "").strip(), _meter_at, "gemini"
+        ) or "⚠️ Gemini returned an empty response."
     except Exception as exc:  # noqa: BLE001
+        provider_meter.record_preflight_failure("gemini", exc)
         return f"⚠️ Gemini request failed: {exc}"
 
 
 def _call_openai(system_prompt: str, user_prompt: str, api_key: Optional[str] = None, model: Optional[str] = None) -> str:
     key = api_key or OPENAI_API_KEY
     if not key:
+        provider_meter.record_not_attempted("openai", "api_key_missing")
         return "⚠️ OPENAI_API_KEY not set — add it in the sidebar's Connect Your Accounts section, or in .env."
     try:
         from openai import OpenAI
 
-        client = OpenAI(api_key=key)
-        response = client.responses.create(
+        client = OpenAI(api_key=key, **provider_meter.client_limits("openai", OpenAI))
+        # Marked BEFORE the call so the notice below reflects THIS call, never a
+        # neighbouring one -- see provider_meter.mark's own docstring.
+        _meter_at = provider_meter.mark()
+        response = provider_meter.metered("openai", lambda: client.responses.create(
             model=model or OPENAI_MODEL,
             input=[{"role": "system", "content": system_prompt}, {"role": "user", "content": user_prompt}],
             max_output_tokens=MAX_TOKENS,
-        )
-        return (getattr(response, "output_text", "") or "").strip()
+        ), model_requested=model or OPENAI_MODEL)
+        return provider_meter.annotate_if_incomplete(
+            (getattr(response, "output_text", "") or "").strip(), _meter_at, "openai")
     except Exception as exc:  # noqa: BLE001
+        provider_meter.record_preflight_failure("openai", exc)
         return f"⚠️ ChatGPT request failed: {exc}"
 
 
@@ -237,6 +279,16 @@ def _format_candidate(candidate: CandidateSnapshot, user_selected_player_id: Opt
             "ordering inside this group is NOT a real preference signal; the user's own "
             "player preference is a fully legitimate tiebreaker here."
         )
+    elif candidate.near_tie_with_leader is None:
+        # #61 rule 5's own reason for existing, at the one consumer the rule names. The flag is
+        # three-state; a chair that sees only the True case reads silence as "measured, and not
+        # close to the leader", which is the false claim the widening exists to stop. Said in the
+        # same register as UNAVAILABLE_REPORT: absent evidence, never evidence of absence.
+        lines.append(
+            "  NEAR-TIE: NOT DETERMINED -- this candidate has no team acquisition value, so his "
+            "distance from the top candidate was never measured. Read that as UNKNOWN, never as "
+            "'far enough behind the leader to rank below him safely'."
+        )
     if candidate.survival_probability is not None:
         lines.append(
             f"  Survival probability to your next pick: {_format_probability(candidate.survival_probability)} "
@@ -343,8 +395,15 @@ def _best_alternative(snapshot: PickSnapshot, recommended: Optional[CandidateSna
     deterministically here, never left for the LLM to name in its own prose (a model could
     misstate which alternative is actually best, or its survival number). None if there's no
     other real candidate to point to (a single-candidate snapshot) or nothing was recommended
-    at all."""
-    others = [c for c in snapshot.candidates if recommended is None or c.player_id != recommended.player_id]
+    at all.
+
+    Candidates the board could not price are excluded: "the best alternative" is a claim about
+    value, and a row with no team_acquisition_value cannot support it. None when every other
+    candidate is unpriced -- naming one anyway would tell the debate layer that a player the
+    engine has no opinion about is the runner-up."""
+    others = [c for c in snapshot.candidates
+              if (recommended is None or c.player_id != recommended.player_id)
+              and c.team_acquisition_value is not None]
     if not others:
         return None
     return max(others, key=lambda c: c.team_acquisition_value)
@@ -367,6 +426,70 @@ class PickDebateResult:
     caller_report: str = ""
     errors: list = field(default_factory=list)
     role_providers: dict = field(default_factory=dict)
+    # Which model answered each chair, not just which provider. Mirrors
+    # llm_engine.DebateResult.role_models and app.append_message's own rule: what actually
+    # answered must be recorded on the result, never re-derived from live configuration.
+    # Empty when a chair ran on its provider's default rather than an explicit override.
+    role_models: dict = field(default_factory=dict)
+    # The INPUT-STATE STAMP of the snapshot this debate reasoned over -- see PickSnapshot's own
+    # docstring, which names "a debate still running" as the first consumer this stamp exists
+    # for. pick_label alone cannot answer "is this still the current state": the user stays on
+    # the clock at one label while other rosters keep picking, so two materially different
+    # boards share a label routinely. Carrying the stamp is what lets any consumer put this
+    # result to pick_synthesis.snapshot_is_current. Recording only -- what a consumer should DO
+    # with a stale result (hide it, annotate it, warn beside it) is a product decision and is
+    # deliberately not made here; see ARCHITECTURE_AUDIT.md 11.3a.
+    snapshot_picks_consumed: Optional[int] = None
+    snapshot_data_freshest_date: Optional[str] = None
+
+
+def staleness_note(result, picks: list[dict], merger) -> Optional[str]:
+    """What to say beside a debate result whose board has moved on, or None if it has not.
+
+    #101 under the standing absence ruling: ANNOTATE, never discard. PickDebateResult has
+    carried the input-state stamp for a while and its own field comment says the consumer
+    decision was "deliberately not made here". This makes it.
+
+    What the UI does today is worse than either option, in both directions at once: it gates a
+    stored result on `pick_label` alone, so a result is HIDDEN whenever the label moves (even
+    though its reasoning may still be entirely valid) and PRESENTED AS CURRENT whenever the
+    label matches (even though, as PickDebateResult's own comment says, "the user stays on the
+    clock at one label while other rosters keep picking, so two materially different boards
+    share a label routinely").
+
+    Discarding a stale debate is the same mistake as sorting an unpriced row last: it asserts
+    the reader is better off with nothing. A debate over a board four picks old is usually
+    still worth reading -- what the reader cannot afford is not KNOWING that is what they are
+    reading. So the analysis stays and the condition is stated.
+
+    THREE states, not two, and the wording differs because the claims differ. A result whose
+    board demonstrably moved on gets "this reasoned over an earlier board". A result carrying
+    no input-state stamp at all gets "whether this is current cannot be determined" -- because
+    it cannot, and saying it moved on would assert something unmeasured. stamp_is_current
+    reports both as not-current with distinct reasons; collapsing them into one sentence would
+    be the same mistake as one None standing for several kinds of absence.
+    """
+    if result is None:
+        return None
+    # Read directly, not via getattr(..., None). Both fields are declared on
+    # PickDebateResult, so a default here would only paper over a result object that has
+    # stopped carrying the stamp -- and it would fail in the dangerous direction, silently
+    # reporting "not stale" for a result whose staleness can no longer be evaluated at all.
+    current, reason = stamp_is_current(
+        result.snapshot_picks_consumed, result.snapshot_data_freshest_date, picks, merger,
+    )
+    if current or not reason:
+        return None
+    if "no input-state stamp" in reason:
+        return (
+            f"Whether this debate is still current cannot be determined — {reason}. It is kept "
+            f"rather than hidden, but nothing here establishes that the board it saw is the "
+            f"board in front of you."
+        )
+    return (
+        f"This debate reasoned over an earlier board — {reason}. Its analysis is kept rather "
+        f"than hidden, but read it against the board it saw, not the one in front of you."
+    )
 
 
 def debate_pick(
@@ -400,20 +523,34 @@ def debate_pick(
     role_providers = {**DEFAULT_ROLE_PROVIDERS, **(role_providers or {})}
     api_keys = api_keys or {}
     role_models = role_models or {}
+    # Names the ledger window this debate owns, so the errors list below can report a chair the
+    # provider cut off without sniffing its report text for the notice. mark()'s own docstring
+    # exists for exactly this: "lets one debate meter exactly its own calls".
+    debate_meter_at = provider_meter.mark()
 
     diffs = diff_snapshots(previous_snapshot, snapshot) if previous_snapshot is not None else []
     evidence = format_snapshot_for_llm(snapshot, diffs)
 
     def _call(role: str, system_prompt: str, user_prompt: str) -> str:
         provider = role_providers.get(role, DEFAULT_ROLE_PROVIDERS[role])
-        return PROVIDER_CALLERS[provider](system_prompt, user_prompt, api_keys.get(provider), role_models.get(role))
+        # Scoped so every ledger record this call produces carries the CHAIR it was made for.
+        # Without it the records land under the default role, and the only way to tell which
+        # chair was cut off would be to sniff its report text for the notice -- deriving from
+        # prose a fact the ledger already holds exactly.
+        with provider_meter.role_scope(role):
+            return PROVIDER_CALLERS[provider](
+                system_prompt, user_prompt, api_keys.get(provider), role_models.get(role))
 
     strategist_report = _call("strategist", STRATEGIST_SYSTEM_PROMPT, evidence)
-    skeptic_prompt = f"{evidence}\n\n--- STRATEGIST'S CASE ---\n{strategist_report}"
+    # A failed chair's error string must not occupy the next chair's evidence slot -- see
+    # llm_engine.UNAVAILABLE_REPORT for the full reasoning. The frozen snapshot itself is
+    # unaffected, so a chair whose predecessor failed still has every real number to work from.
+    skeptic_prompt = f"{evidence}\n\n--- STRATEGIST'S CASE ---\n{_report_for_handoff(strategist_report)}"
     skeptic_report = _call("skeptic", SKEPTIC_SYSTEM_PROMPT, skeptic_prompt)
     caller_prompt = (
-        f"{evidence}\n\n--- STRATEGIST'S CASE ---\n{strategist_report}\n\n"
-        f"--- SKEPTIC'S CHALLENGE ---\n{skeptic_report}\n\nSynthesize these into one final recommendation."
+        f"{evidence}\n\n--- STRATEGIST'S CASE ---\n{_report_for_handoff(strategist_report)}\n\n"
+        f"--- SKEPTIC'S CHALLENGE ---\n{_report_for_handoff(skeptic_report)}\n\n"
+        "Synthesize these into one final recommendation."
     )
     caller_report = _call("caller", CALLER_SYSTEM_PROMPT, caller_prompt)
 
@@ -421,11 +558,23 @@ def debate_pick(
     recommended = _match_candidate(snapshot, verdict.get("recommendation"))
     best_alternative = _best_alternative(snapshot, recommended)
 
-    errors = [
-        f"{role}: {text}" for role, text in (
-            ("strategist", strategist_report), ("skeptic", skeptic_report), ("caller", caller_report),
-        ) if text.startswith("⚠️")
-    ]
+    chairs = (("strategist", strategist_report), ("skeptic", skeptic_report),
+              ("caller", caller_report))
+    errors = [f"{role}: {text}" for role, text in chairs if text.startswith("⚠️")]
+    # TRUNCATION is a different condition from failure and is reported as one. A chair whose
+    # report was cut off produced real analysis that simply stops early: the text is kept and
+    # annotated in place (see provider_meter.annotate_if_incomplete), and this line is the
+    # HUMAN-facing half of that -- without it the notice would reach the next chair and no one
+    # else, which is an annotation with no reader.
+    truncated_roles = {
+        record.role for record in provider_meter.since(debate_meter_at)
+        if record.completion_state == provider_meter.TRUNCATED
+    }
+    for role, _text in chairs:
+        if role in truncated_roles:
+            errors.append(
+                f"{role}: report was cut off at the provider's output cap -- it is a fragment, "
+                f"and its conclusion is missing rather than absent by choice.")
 
     return PickDebateResult(
         pick_label=snapshot.pick_label,
@@ -439,5 +588,7 @@ def debate_pick(
         disagreements=verdict.get("disagreements", []),
         diff=diffs,
         strategist_report=strategist_report, skeptic_report=skeptic_report, caller_report=caller_report,
-        errors=errors, role_providers=dict(role_providers),
+        errors=errors, role_providers=dict(role_providers), role_models=dict(role_models),
+        snapshot_picks_consumed=snapshot.picks_consumed,
+        snapshot_data_freshest_date=snapshot.data_freshest_date,
     )

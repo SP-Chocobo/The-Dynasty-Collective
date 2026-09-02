@@ -50,6 +50,7 @@ confident-sounding single number would misrepresent as certainty.
 
 from __future__ import annotations
 
+import math
 from collections import Counter
 from typing import Optional
 
@@ -230,13 +231,25 @@ def _pace_based_take_probability(
     deficit_now = max(expected_now - actual_now, 0.0)
     any_pick_probability = min(deficit_now / PACE_CATCH_UP_WINDOW, 1.0)
 
-    position_rows = [r for r in board["by_id"].values() if r["position"] == position]
+    # Priced rows only, for the same reason rank_by_id is built that way (see
+    # _build_opponent_boards): this rank is a VALUATION ordinal -- it narrows "some QB gets
+    # taken" down to "THIS QB gets taken" by how good the board says he is. An unpriced row
+    # carries NaN in universal_value, and every comparison against NaN is False, so including
+    # one makes this sort NON-TOTAL: the resulting "rank" depends on the order the rows arrived
+    # in. Demonstrated directly on a constructed board in test_survival_evidence -- the best
+    # QB's returned probability moved from 1.0 to 0.111, a 9x swing, purely from reversing the
+    # dict's insertion order. Latent rather than live on today's data (this prior returns None
+    # past 48 picks and the real board's first unpriced row appears in round 15, so the two
+    # never overlap), and closed here rather than left as a landmine behind that coincidence.
+    unpriced_ids = board.get("unpriced_ids", ())
+    position_rows = [r for r in board["by_id"].values()
+                     if r["position"] == position and r["player_id"] not in unpriced_ids]
     position_rows.sort(key=lambda r: r["universal_value"], reverse=True)
     target_rank = next(
         (i + 1 for i, r in enumerate(position_rows) if r["player_id"] == str(target_player_id)), None,
     )
     if target_rank is None:
-        return None
+        return None  # unpriced, or not at this position -- no valuation ordinal, no estimate
     return any_pick_probability / target_rank
 
 
@@ -317,6 +330,12 @@ def _take_probability(rank: int, is_run_position: bool) -> float:
     return p
 
 
+def _is_absent(value) -> bool:
+    """The board's own absence convention: a row the engine could not price carries None or
+    NaN, never 0.0 and never a substituted default (see draft_room's absence contract)."""
+    return value is None or (isinstance(value, float) and math.isnan(value))
+
+
 def _build_opponent_boards(
     merger: DataMerger, players_db: dict[str, dict], picks: list[dict], league: dict,
     roster_ids: list, *, mode: str = "auto", pool_scope: str = "all",
@@ -331,9 +350,22 @@ def _build_opponent_boards(
             merger, players_db, picks, my_roster_id=roster_id, league=league,
             mode=mode, pool_scope=pool_scope,
         )
+        # rank_by_id is a VALUATION ordinal and is built over priced rows only. Both consumers
+        # of it -- estimate_survival and expected_positional_forfeit -- read the number through
+        # RANK_TAKE_PROBABILITY, whose keys mean "the consensus best player available", "the
+        # second best", and so on. compute_draft_board sorts unpriced rows last in a stable,
+        # deterministic tiebreak, which keeps the board readable but is not a valuation; a
+        # position with no replacement level left to measure against produces nothing but
+        # tiebreak ordinals. Numbering those rows too and handing the result to that table is
+        # the same register error this codebase repaired at the identity and horizon
+        # boundaries. They are declared separately instead, so a consumer that cannot value a
+        # player has to say so rather than read a rank that means something else.
+        priced = [r for r in board_list if not _is_absent(r.get("final_score"))]
         boards[roster_id] = {
             "by_id": {r["player_id"]: r for r in board_list},
-            "rank_by_id": {r["player_id"]: i + 1 for i, r in enumerate(board_list)},
+            "rank_by_id": {r["player_id"]: i + 1 for i, r in enumerate(priced)},
+            "unpriced_ids": {r["player_id"] for r in board_list
+                             if _is_absent(r.get("final_score"))},
         }
     return boards
 
@@ -383,7 +415,8 @@ def estimate_survival(
     my_next_index = find_next_pick_index(pick_order, my_roster_id, current_index)
     intervening = intervening_roster_ids(pick_order, current_index, my_next_index)
     if not intervening:
-        return {"survival_probability": 1.0, "intervening_picks": 0, "risk_by_team": []}
+        return {"survival_probability": 1.0, "intervening_picks": 0, "risk_by_team": [],
+                "unevidenced_picks": 0}
 
     run_position = detect_positional_run(picks, players_db)
     info = players_db.get(str(target_player_id))
@@ -395,10 +428,32 @@ def estimate_survival(
         board = opponent_boards.get(str(roster_id))
         if not board:
             continue
-        rank = board["rank_by_id"].get(str(target_player_id))
-        if rank is None:
+        # Three cases, and they must stay distinct. (1) No entry at all: the player is not in
+        # this team's usable-position pool, so they cannot take him and contribute no risk --
+        # unchanged. (2) On their board but unpriced: they CAN take him, but the board holds no
+        # valuation for him, so there is no ordinal to read and no evidence of elevated risk.
+        # He gets the module's own floor -- which is exactly what he already received, via a
+        # tiebreak ordinal falling past the table's five keys -- and the row is labelled so no
+        # consumer can present the result as a measurement. (3) Priced: unchanged.
+        #
+        # What deliberately is NOT decided here: whether an unpriced-but-draftable player
+        # should instead count as zero risk. That is a product question with no evidence in
+        # this repository to settle it, and picking an answer would be inventing behaviour.
+        # The floor keeps every number identical to what production already produced.
+        target_key = str(target_player_id)
+        rank = board["rank_by_id"].get(target_key)
+        unpriced = target_key in board.get("unpriced_ids", ())
+        if rank is None and not unpriced:
             continue  # not even in this team's usable-position pool -- no risk from them
         is_run = bool(run_position and target_position == run_position)
+        if unpriced:
+            survival *= (1 - RANK_TAKE_PROBABILITY_FLOOR)
+            risk_by_team.append({
+                "roster_id": roster_id, "rank_on_their_board": None,
+                "take_probability": RANK_TAKE_PROBABILITY_FLOOR, "run_boosted": is_run,
+                "pace_driven": False, "evidenced": False,
+            })
+            continue
         rank_based_p_take = _take_probability(rank, is_run)
 
         # i (this pick's position within THIS survival computation, not the real, current pick
@@ -424,14 +479,65 @@ def estimate_survival(
         survival *= (1 - p_take)
         risk_by_team.append({
             "roster_id": roster_id, "rank_on_their_board": rank,
-            "take_probability": round(p_take, 3), "run_boosted": is_run, "pace_driven": pace_driven,
+            "take_probability": round(p_take, 3), "run_boosted": is_run,
+            "pace_driven": pace_driven, "evidenced": True,
         })
 
     return {
         "survival_probability": round(survival, 3),
         "intervening_picks": len(intervening),
         "risk_by_team": risk_by_team,
+        "unevidenced_picks": sum(1 for r in risk_by_team if not r["evidenced"]),
     }
+
+
+def _position_curves(my_board: dict) -> dict[str, list[float]]:
+    """Each position's remaining team-agnostic value curve, highest first.
+
+    UNPRICED ROWS ARE EXCLUDED, and that is the whole point of factoring this out. A curve is a
+    list of values; a row the board could not price has no value, and appending None then
+    sorting is not a wrong number, it is a TypeError. Measured on a real 12-team dynasty
+    startup: unpriced rows appear at round 15, and from that round on this sort raised
+
+        TypeError: '<' not supported between instances of 'NoneType' and 'NoneType'
+
+    all the way up through pick_analysis into pick_synthesis.build_snapshot -- the call the
+    Draft Room makes to build the Prytaneum's pick debate -- the last quarter of every
+    20-round draft.
+
+    A position with nothing priced left gets no key at all rather than an empty list, which is
+    the same absence-not-zero rule the board itself follows: positional_forfeits already skips
+    a position it has no curve for."""
+    curves: dict[str, list[float]] = {}
+    for row in my_board.values():
+        position = row.get("position")
+        value = row.get("universal_value")
+        if not position or value is None:
+            continue
+        curves.setdefault(position, []).append(value)
+    for curve in curves.values():
+        curve.sort(reverse=True)
+    return {position: curve for position, curve in curves.items() if curve}
+
+
+def _opportunity_cost(team_acquisition_value: Optional[float],
+                      survival_probability: Optional[float]) -> Optional[float]:
+    """value x (1 - survival): what waiting costs if he does not last until the next pick.
+
+    None when either operand is absent. With no acquisition value there is no loss to state,
+    and 0.0 would claim there is none -- the same rule expected_value_of_waiting already
+    applies to its own absent survival."""
+    if team_acquisition_value is None or survival_probability is None:
+        return None
+    return round(team_acquisition_value * (1 - survival_probability), 2)
+
+
+def _opportunity_cost_order(row: dict) -> tuple:
+    """Sort key: highest opportunity_cost first, rows with no cost last, player_id as the
+    tiebreak. Mirrors pick_synthesis._board_order exactly -- absence is ordered, never compared
+    as a number, and the result does not depend on the order the rows arrived in."""
+    cost = row.get("opportunity_cost")
+    return (cost is None, -cost if cost is not None else 0.0, str(row.get("player_id")))
 
 
 def pick_analysis(
@@ -483,14 +589,17 @@ def pick_analysis(
 
     # Position-level cost of delaying each position entirely (see positional_forfeits' own
     # docstring) -- built from the SAME opponent boards computed above, no extra board work.
-    # universal_value is absent from upside-mode rows, hence the guard; curves are the user's
-    # own board's remaining players per position, team-agnostic values.
-    position_curves: dict[str, list[float]] = {}
-    for row in my_board.values():
-        if "universal_value" in row and row.get("position"):
-            position_curves.setdefault(row["position"], []).append(row["universal_value"])
-    for curve in position_curves.values():
-        curve.sort(reverse=True)
+    # Curves are the user's own board's remaining players per position, team-agnostic values.
+    #
+    # Skipped entirely in upside mode. This used to read `if "universal_value" in row`, which
+    # had that effect only because upside boards did not carry the column at all; now that
+    # compute_draft_board emits it in both modes, the identical line would have silently
+    # SWITCHED forfeits ON in upside mode. That is a valuation decision, not a shape fix --
+    # an upside curve is a coherent team-agnostic curve, and computing forfeits off it is
+    # arguably more correct than the zero it yields today -- but it changes a live decision
+    # signal, so the existing behavior is preserved here explicitly and left open rather than
+    # changed as a side effect of a crash fix.
+    position_curves = {} if mode == "upside" else _position_curves(my_board)
     forfeits = positional_forfeits(position_curves, opponent_boards, intervening)
 
     results = []
@@ -503,7 +612,8 @@ def pick_analysis(
             league=league,
         )
         team_acquisition_value = my_row["final_score"]
-        opportunity_cost = round(team_acquisition_value * (1 - survival["survival_probability"]), 2)
+        opportunity_cost = _opportunity_cost(team_acquisition_value,
+                                             survival["survival_probability"])
 
         denial_value = 0.0
         denial_team = None
@@ -513,6 +623,12 @@ def pick_analysis(
             opp_board = opponent_boards.get(str(risk["roster_id"]), {})
             opp_row = opp_board.get("by_id", {}).get(str(player_id))
             if opp_row is None:
+                continue
+            # An opponent whose own board cannot price him gains no measurable value from
+            # taking him, and there is no premium of his over a universal_value that does not
+            # exist either. Skipping is the same exclusion rule the curve above follows; it is
+            # not a claim that the player is worthless to them.
+            if opp_row.get("final_score") is None or opp_row.get("universal_value") is None:
                 continue
             weighted = opp_row["final_score"] * risk["take_probability"]
             if weighted > denial_value:
@@ -528,18 +644,22 @@ def pick_analysis(
             # between the two components across simulated draft states, against this app's
             # own "don't double-count correlated scarcity signals" rule. Splitting the
             # magnitude (here) from the probability (survival) keeps each counted once.
-            # universal_value is absent from upside-mode board rows, hence the guard.
-            if "universal_value" in opp_row:
-                premium = opp_row["final_score"] - opp_row["universal_value"]
-                if premium > rival_premium:
-                    rival_premium = premium
-                    # THIS specific rival's own real take_probability -- kept alongside the
-                    # premium (not folded into it) so a downstream human-facing "denies a
-                    # rival" label can require a credible path (this rival actually being
-                    # positioned to take him), separately from premium magnitude. See
-                    # pick_synthesis.decision_path_flags' block_opportunity, the one
-                    # consumer of this field.
-                    rival_premium_take_probability = risk["take_probability"]
+            #
+            # No mode guard: upside boards now carry universal_value too, and there it equals
+            # final_score exactly (upside_score reads nothing off the roster), so this
+            # subtraction is 0.0 for every player -- the true answer in that mode, not a
+            # missing one. rival_premium stays 0.0 either way, so dropping the old
+            # `if "universal_value" in opp_row` guard changes no behavior.
+            premium = opp_row["final_score"] - opp_row["universal_value"]
+            if premium > rival_premium:
+                rival_premium = premium
+                # THIS specific rival's own real take_probability -- kept alongside the
+                # premium (not folded into it) so a downstream human-facing "denies a rival"
+                # label can require a credible path (this rival actually being positioned to
+                # take him), separately from premium magnitude. See
+                # pick_synthesis.decision_path_flags' block_opportunity, the one consumer of
+                # this field.
+                rival_premium_take_probability = risk["take_probability"]
 
         results.append({
             "player_id": player_id,
@@ -556,5 +676,5 @@ def pick_analysis(
             "positional_forfeit": (forfeits.get(my_row.get("position")) or {}).get("forfeit"),
             "position_expected_taken": (forfeits.get(my_row.get("position")) or {}).get("expected_taken"),
         })
-    results.sort(key=lambda r: r["opportunity_cost"], reverse=True)
+    results.sort(key=_opportunity_cost_order)
     return results

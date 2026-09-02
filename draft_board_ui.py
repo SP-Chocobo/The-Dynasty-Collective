@@ -41,7 +41,9 @@ import json
 from typing import Optional
 
 import design_system
-from pick_synthesis import CandidateSnapshot, PickSnapshot
+from draft_room import SLEEPER_WEEKLY_TO_SEASON_FACTOR
+from player_universe import FLEX_SLOT_POSITIONS
+from pick_synthesis import DEFAULT_NARROW_COUNT, CandidateSnapshot, PickSnapshot
 
 # The class NAMES the necessity badges use in the embedded HTML below -- the CSS itself
 # comes from design_system.BADGE_NECESSITY_CSS, the same source app.py's own <style> block
@@ -57,8 +59,15 @@ _NECESSITY_CLASS = {
 
 
 def _forces(c: CandidateSnapshot) -> list[str]:
+    """Which of the four decision paths FIRED for this candidate -- a list of what is true,
+    never a set of negations. That distinction is what lets near_tie_with_leader's third state
+    (#61 rule 5: None, the comparison was never made) be represented here by omission without
+    the omission becoming a claim. Absence from this list already means "did not fire", which
+    covers "measured, did not fire" and "not measurable" alike; no rendered sentence in this
+    module or its JS asserts the negative, so neither state is misreported. The debate layer,
+    which DOES speak in sentences, distinguishes them explicitly -- see pick_debate."""
     forces = []
-    if c.near_tie_with_leader:
+    if c.near_tie_with_leader is True:
         forces.append("tie")
     if c.cliff_protection:
         forces.append("cliff")
@@ -82,6 +91,104 @@ def _context_gap(c: CandidateSnapshot) -> Optional[str]:
     if c.pure_value:
         return "suppressed"
     return None
+
+
+WAITING_CHEAP_PER_WEEK = 0.5   # below this, deferring the position is not a real cost
+WAITING_STEEP_PER_WEEK = 3.0   # above this, deferring gives up real weekly production
+
+
+def _waiting_note(c: CandidateSnapshot) -> Optional[dict]:
+    """The sentence a suppressed-by-replaceability number owes the reader, or None.
+
+    A number the board has quietly marked cheap-to-defer looks like a bug unless it says why,
+    so this renders the actual arithmetic rather than a verdict: what the best player at this
+    position expected to survive the draft is worth, and what taking this one now buys per
+    week instead.
+
+    Wording is kept clear of "cost of waiting" on purpose. The debate layer already uses that
+    phrase for a DIFFERENT horizon in DIFFERENT units -- opportunity_cost and
+    positional_forfeit both answer "what does deferring cost me by my NEXT PICK", in
+    universal-value points. This one answers "what does deferring cost me for the whole
+    draft", in season points per week. Two honest numbers that would read as contradictory if
+    both were labelled the same thing, so this surface says replaceability and states its own
+    horizon ("when the draft ends") in every sentence it emits.
+
+    Deliberately NOT folded into the existing context-gap glyph. That one already means
+    something specific and different -- "his raw talent exceeds the board leader's, he trails
+    only on acquisition rank" -- and a glyph that means two unrelated things means neither.
+
+    None when waiting_cost is None: the pool ran out before the horizon, so there is no
+    honest claim to make. Absent, not reassuring.
+    """
+    if c.waiting_cost is None or c.horizon_floor is None:
+        return None
+    per_week = c.waiting_cost / SLEEPER_WEEKLY_TO_SEASON_FACTOR
+    basis = (
+        f"{c.name} projects {c.projected_points:.0f} against {c.horizon_floor:.0f} for the "
+        f"best {c.position} expected to still be undrafted when the draft ends."
+    )
+    # The floor's placement rests on how many further picks this position is expected to take,
+    # and that split comes from a decay rate which is MEASURED for some positions and IMPUTED
+    # for others -- the mean of whichever could be measured. Both arrive as the same kind of
+    # number, so without this sentence the prose asserts an assumed floor with exactly the
+    # confidence of a measured one. Measured on a real 12-team draft, the imputed case covers
+    # rounds 3 through 15 and four of six positions by round 10, so this is the common case
+    # late rather than a rare footnote.
+    if c.horizon_basis == "imputed":
+        basis += (
+            f" That floor is an estimate: {c.position}'s remaining pool is too thin to measure"
+            f" its own depth decay, so the average of the positions that still can be measured"
+            f" is assumed for it."
+        )
+
+    # Below the player you get for free later. Not "cheap to wait" -- strictly better to.
+    if c.waiting_cost <= 0:
+        return {
+            "tone": "cheap",
+            "label": "free",
+            "title": (
+                f"Waiting is better than free here. The best {c.position} expected to go "
+                f"undrafted projects {c.horizon_floor:.0f}, ahead of {c.name}'s "
+                f"{c.projected_points:.0f} -- this pick buys nothing you won't have anyway."
+            ),
+        }
+
+    # The floor is a point estimate on a curve, and positions do not share a curve. What makes
+    # that dangerous is not a large error bar in absolute terms -- it is an error bar big
+    # enough to FLIP THE ANSWER. QB sits a few ranks above a cliff: estimate 2.59/wk, but a
+    # normal swing in how hard a room drafts QB moves the floor 3.71/wk, so "you can wait"
+    # and "you cannot" are both live. DEF swings 0.71/wk against a 0.65/wk estimate -- a
+    # bigger ratio, and yet completely settled, because even the worst case stays cheap.
+    #
+    # So this compares the swing against the decision boundary, never against the estimate's
+    # own magnitude. Doing the latter flags every candidate sitting near his position's floor,
+    # which is precisely the interchangeable case the whole mechanism is most confident about.
+    if c.horizon_sensitivity is not None:
+        swing = c.horizon_sensitivity / SLEEPER_WEEKLY_TO_SEASON_FACTOR
+        if per_week <= WAITING_STEEP_PER_WEEK < per_week + swing:
+            return {
+                "tone": "unsettled",
+                "label": "~?/wk",  # deliberately not "cost of waiting" -- see the horizon note above
+                "title": (
+                    f"Replaceability at {c.position} is unresolved. Best estimate "
+                    f"{per_week:.2f} pts/week, but {c.position} falls off a cliff just past "
+                    f"this point: a normal swing in how hard the room drafts {c.position} "
+                    f"moves the floor by up to {swing:.2f} pts/week, which is the difference "
+                    f"between comfortably waiting and not being able to. {basis}"
+                ),
+            }
+
+    if per_week <= WAITING_CHEAP_PER_WEEK:
+        tone, verdict = "cheap", "Waiting is cheap"
+    elif per_week >= WAITING_STEEP_PER_WEEK:
+        tone, verdict = "steep", "Waiting is expensive"
+    else:
+        tone, verdict = "moderate", "Waiting costs a little"
+    return {
+        "tone": tone,
+        "label": f"{per_week:.2f}/wk",
+        "title": f"{verdict}. Deferring {c.position} costs {per_week:.2f} pts/week: {basis}",
+    }
 
 
 def serialize_candidate(c: CandidateSnapshot) -> dict:
@@ -110,18 +217,165 @@ def serialize_candidate(c: CandidateSnapshot) -> dict:
         "eligBonus": c.eligibility_bonus,
         "forces": _forces(c),
         "contextGap": _context_gap(c),
+        "waitNote": _waiting_note(c),
         "flagged": False,  # set by serialize_snapshot against user_selected_player_id
     }
 
 
+# Canonical display order for the Draft Room's single-select board-view control -- offense
+# skill positions, then the flex slots that combine them, then K/DEF, then IDP, then
+# IDP_FLEX. Purely a
+# presentation ordering; FLEX_SLOT_POSITIONS (imported from player_universe.py, never
+# duplicated) is the one and only source of which real positions each flex-type slot
+# actually covers -- this file invents no eligibility rule of its own.
+_POSITION_VIEW_ORDER = ["QB", "RB", "WR", "TE", "FLEX", "SUPER_FLEX", "K", "DEF",
+                        "DL", "LB", "DB", "IDP_FLEX"]
+
+
+def position_view_options(positions_present: set[str], roster_positions: list[str]) -> list[str]:
+    """"ALL" plus every real primary position actually present among today's candidates,
+    plus any flex-type slot this SPECIFIC league's roster_positions actually contains AND
+    whose real eligible-position set (FLEX_SLOT_POSITIONS) overlaps a position that's
+    actually present -- so a non-superflex, non-IDP league never offers a SUPER_FLEX or
+    IDP_FLEX view it has nowhere to start, and a league that does have the slot but happens
+    to have zero eligible candidates left doesn't get an empty, useless view option either."""
+    roster_slots = set(roster_positions or [])
+    options = []
+    for opt in _POSITION_VIEW_ORDER:
+        if opt in FLEX_SLOT_POSITIONS:
+            if opt in roster_slots and FLEX_SLOT_POSITIONS[opt] & positions_present:
+                options.append(opt)
+        elif opt in positions_present:
+            options.append(opt)
+    return ["ALL"] + options
+
+
+def filter_candidates_by_view(candidates: tuple, view: str) -> list:
+    """view is one value from position_view_options -- "ALL", a single real position, or a
+    flex-slot name. Never touches ranking/scoring, only which already-computed candidates are
+    shown; a flex-slot view reuses that slot's own real eligible-position set
+    (FLEX_SLOT_POSITIONS), the same semantics draft_room.py's own need_bonus math already
+    keys off of, never a display-only reinterpretation of what "FLEX" means.
+
+    `candidates` is now deeper than a single top-line overview -- pick_synthesis.build_snapshot
+    gives every position real replacement-rank depth (see POSITION_VIEW_DEPTH_CAP) so a
+    position view actually has something to show, not just whichever one player at that
+    position happened to crack the original small overall shortlist. ALL is one particular
+    LENS over that same, now-larger candidate universe, not "show every row in it": it
+    reconstructs the original curated overview (top overall by value, plus each position's own
+    single best) precisely so the default view's size/shape is unchanged -- the depth lives in
+    the position views, not in ALL. Every row, in every view, is the exact same
+    CandidateSnapshot object either way; nothing about a player's own bpa/universal_value/
+    team_acquisition_value/pick_necessity ever depends on which view is currently selected."""
+    if view == "ALL":
+        # `candidates` is already sorted by team_acquisition_value descending (build_snapshot's
+        # own final sort), so the first DEFAULT_NARROW_COUNT rows are the same top-overall
+        # slice narrow_candidates always surfaced, and the first candidate encountered per
+        # position while scanning in that same order is that position's own single best.
+        overview = list(candidates[:DEFAULT_NARROW_COUNT])
+        included_ids = {c.player_id for c in overview}
+        seen_positions = set()
+        for c in candidates:
+            if c.position in seen_positions:
+                continue
+            seen_positions.add(c.position)
+            if c.player_id not in included_ids:
+                overview.append(c)
+                included_ids.add(c.player_id)
+        # Absence is ordered, never compared as a number -- the same key shape
+        # pick_synthesis._board_order uses. An unpriced candidate reaches this list by design
+        # (build_snapshot always includes each position's best remaining player, priced or
+        # not), and sorting him against a float raised TypeError rather than mis-ranking him.
+        overview.sort(key=lambda c: (c.team_acquisition_value is None,
+                                     -c.team_acquisition_value
+                                     if c.team_acquisition_value is not None else 0.0,
+                                     str(c.player_id)))
+        return overview
+    if view in FLEX_SLOT_POSITIONS:
+        eligible = FLEX_SLOT_POSITIONS[view]
+        return [c for c in candidates if c.position in eligible]
+    return [c for c in candidates if c.position == view]
+
+
+# Flex slots are labelled by what they actually ACCEPT, so the control explains itself
+# instead of asking a reader to already know how FLEX and SUPER_FLEX differ. Derived from
+# FLEX_SLOT_POSITIONS, never a second hand-maintained list -- a flex type added there gets a
+# correct label here for free, which is the whole point: the fallback is the raw slot key, and
+# WRRB_FLEX and REC_FLEX shipped with none, rendering as "WRRB_FLEX" (9 characters) and
+# "REC_FLEX" (8) and blowing out the single-row layout worse than "SUPER FLEX" ever did.
+#
+# Two shapes, one convention:
+#   three or more positions -> initials run together, QWRT / WRT
+#   exactly two             -> full position codes, slashed: WR/RB, QB/WR, RB/TE
+# A two-slot flex has to stay slashed and full-length: WRRB_FLEX rendered as "WR" would be
+# indistinguishable from the plain WR position view sitting beside it in the same row.
+#
+# Letters and codes both run in FLEX_LABEL_ORDER -- the conventional QB, WR, RB, TE reading
+# order, not alphabetical -- so QWRT and WR/RB come out consistent with each other.
+FLEX_LABEL_ORDER = ("QB", "WR", "RB", "TE")
+
+# IDP_FLEX is named, not derived: D, L and B compose into nothing readable, and "IDP" is
+# already the established term for exactly that set.
+_POSITION_VIEW_LABELS = {"IDP_FLEX": "IDP"}
+
+
+def _flex_label(slot: str) -> Optional[str]:
+    """A flex slot's label from its own eligible set, or None if it isn't derivable."""
+    eligible = FLEX_SLOT_POSITIONS.get(slot)
+    if not eligible or not set(eligible) <= set(FLEX_LABEL_ORDER):
+        return None
+    ordered = [p for p in FLEX_LABEL_ORDER if p in eligible]
+    if len(ordered) == 2:
+        return "/".join(ordered)
+    return "".join(p[0] for p in ordered)
+
+
+def position_view_label(view: str) -> str:
+    """Display text for one view value -- Sleeper's own slot spelling (SUPER_FLEX,
+    IDP_FLEX) isn't meant for on-screen display, so this is presentation-only renaming,
+    never a second copy of what the slot actually means -- a flex label is DERIVED from the
+    eligible set FLEX_SLOT_POSITIONS already defines (see _flex_label)."""
+    if view in _POSITION_VIEW_LABELS:
+        return _POSITION_VIEW_LABELS[view]
+    return _flex_label(view) or view
+
+
+# Equal-width columns are the wrong shape for this control: of the thirteen views a fully
+# rostered league can offer, eleven are four characters or fewer (ALL, QB, K, DEF, DL...) and
+# exactly two are verbose -- SUPER FLEX at ten characters and IDP FLEX at eight. An equal
+# split hands "K" the same width as "SUPER FLEX", so the widest label sets the column and the
+# row runs out of space long before it needs to.
+#
+# Weighting each column by its own label keeps every view on ONE row at any count, which is
+# what the reveal was designed around -- it opens in place of the current-view tag, and a
+# second row turns a discreet inline control into a block. Wrapping and paging were both
+# considered and rejected: paging nests a second progressive disclosure inside a control that
+# is already behind one, so reaching DEF could cost two clicks and a guess.
+VIEW_OPTION_MIN_UNITS = 3   # floor, so a one-character label still gets a tappable button
+
+
+def view_option_widths(options: list[str]) -> list[float]:
+    """Relative column widths for the board-view options, proportional to label length.
+
+    Passed straight to st.columns, which accepts a weight list. Floored at
+    VIEW_OPTION_MIN_UNITS so "K" stays clickable rather than collapsing to its text width.
+    """
+    return [float(max(VIEW_OPTION_MIN_UNITS, len(position_view_label(o)))) for o in options]
+
+
 def serialize_snapshot(
-    snap: PickSnapshot, *, pick_header: str, state_tags: list[str],
+    snap: PickSnapshot, *, pick_header: str, state_tags: list[str | dict],
 ) -> dict:
     """The full board payload: every candidate (in the snapshot's own order -- callers
     must not re-sort; ranking is the engine's, not this module's) plus the header/tag
     strings app.py already builds from real draft-state values (pick label, 3RR status,
     intervening-picks-to-next-turn, league format). decision_regime rides along
-    unchanged from the snapshot -- this module never recomputes it."""
+    unchanged from the snapshot -- this module never recomputes it.
+
+    Each entry in state_tags is either a plain string (rendered as-is) or
+    {"label": str, "title": str} -- title becomes a native HTML tooltip on that one tag,
+    for a secondary explanation that shouldn't have to sit inline as permanent prose
+    elsewhere on the page."""
     candidates = [serialize_candidate(c) for c in snap.candidates]
     if snap.user_selected_player_id is not None:
         for cand in candidates:
@@ -195,6 +449,14 @@ __DESIGN_SYSTEM_BADGE_NECESSITY__
 .chevron { color: var(--dim); font-size: .7rem; transition: transform .15s ease; }
 .row.expanded .chevron { transform: rotate(180deg); }
 
+.wait-note {
+  font-size: .66rem; font-variant-numeric: tabular-nums; cursor: help;
+  padding: .05rem .3rem; border-radius: 3px; letter-spacing: .01em; opacity: .78;
+}
+.wait-note.wait-cheap { color: var(--tie-b); border: 1px solid color-mix(in srgb, var(--tie-b) 32%, transparent); }
+.wait-note.wait-moderate { opacity: .55; border: 1px solid transparent; }
+.wait-note.wait-unsettled { opacity: .45; border: 1px dashed currentColor; }
+.wait-note.wait-steep { color: var(--pure); border: 1px solid color-mix(in srgb, var(--pure) 32%, transparent); }
 .context-gap { font-size: .72rem; opacity: .62; cursor: help; }
 .context-gap.ctx-up { color: var(--tie-b); }
 .context-gap.ctx-down { color: var(--pure); }
@@ -256,8 +518,16 @@ const NEC_TEXT = {
 
 document.getElementById("state-bar").innerHTML = `
   <div class="clock">${PAYLOAD.pickHeader}</div>
-  <div class="state-tags">${(PAYLOAD.stateTags || []).map(t =>
-    `<span class="tag${/3RR/.test(t) ? ' hot' : ''}">${t}</span>`).join("")}</div>`;
+  <div class="state-tags">${(PAYLOAD.stateTags || []).map(t => {
+    // A tag is either a plain string (unchanged) or {label, title} -- title becomes a
+    // native HTML title attribute (a real, if plain, browser tooltip on hover), for a
+    // secondary explanation that shouldn't sit inline as permanent prose (see app.py's own
+    // Draft Room caption, moved into a "?" tag this way instead of running on every render).
+    const label = typeof t === "string" ? t : t.label;
+    const tooltip = typeof t === "string" ? "" : (t.title || "");
+    const titleAttr = tooltip ? ` title="${tooltip.replace(/"/g, "&quot;")}"` : "";
+    return `<span class="tag${/3RR/.test(label) ? ' hot' : ''}"${titleAttr}>${label}</span>`;
+  }).join("")}</div>`;
 
 function tickRow(c) {
   return ["tie", "cliff", "block", "pure"].map(f =>
@@ -276,6 +546,15 @@ function contextGapGlyph(c) {
     return `<span class="context-gap ctx-down" title="Context Gap: his raw talent exceeds the board leader's own value by ${gap} -- he trails only on acquisition rank.">▽</span>`;
   }
   return "";
+}
+
+// The cost of deferring this position, stated as the arithmetic behind it rather than as a
+// verdict. Absent (not reassuring) when the pool ran out before the draft horizon, since
+// there is no honest claim to make there -- see _waiting_note.
+function waitGlyph(c) {
+  if (!c.waitNote) return "";
+  const n = c.waitNote;
+  return `<span class="wait-note wait-${n.tone}" title="${n.title.replace(/"/g, "&quot;")}">${n.label}</span>`;
 }
 
 function connectionSentence(c) {
@@ -371,6 +650,7 @@ function render() {
         </div>
         <div class="row-metrics">
           <div class="ticks">${tickRow(c)}</div>
+          ${waitGlyph(c)}
           ${contextGapGlyph(c)}
           <span class="necessity-pill ${c.necClass}">${c.necessity}</span>
           <span class="tav mono">${c.tav}</span>

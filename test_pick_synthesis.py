@@ -143,6 +143,71 @@ class NarrowCandidatesTests(unittest.TestCase):
         values = [r["final_score"] for r in narrowed]
         self.assertEqual(values, sorted(values, reverse=True))
 
+    def _multi_position_board(self):
+        board = []
+        for pos, count in (("RB", 8), ("WR", 8), ("QB", 4), ("TE", 3)):
+            for i in range(count):
+                board.append({"player_id": f"{pos}{i}", "final_score": 100 - i, "position": pos})
+        return board
+
+    def test_position_depth_none_preserves_the_original_single_best_per_position_behavior(self):
+        # The whole existing test corpus (and every caller that predates this parameter) relies
+        # on this default staying exactly what it always was.
+        narrowed = ps.narrow_candidates(self._multi_position_board(), top_n=1, position_depth=None)
+        ids = {r["player_id"] for r in narrowed}
+        self.assertEqual(ids, {"RB0", "WR0", "QB0", "TE0"})
+
+    def test_position_depth_surfaces_real_depth_at_the_requested_position(self):
+        narrowed = ps.narrow_candidates(
+            self._multi_position_board(), top_n=1, position_depth={"WR": 5, "RB": 1, "QB": 1, "TE": 1},
+        )
+        wr_ids = {r["player_id"] for r in narrowed if r["position"] == "WR"}
+        self.assertEqual(wr_ids, {"WR0", "WR1", "WR2", "WR3", "WR4"})
+        # A position with depth 1 stays at exactly its single best, same as the old default.
+        self.assertEqual({r["player_id"] for r in narrowed if r["position"] == "QB"}, {"QB0"})
+
+    def test_position_depth_larger_than_the_available_pool_just_takes_everything_there(self):
+        narrowed = ps.narrow_candidates(
+            self._multi_position_board(), top_n=1, position_depth={"TE": 50, "RB": 1, "WR": 1, "QB": 1},
+        )
+        te_ids = {r["player_id"] for r in narrowed if r["position"] == "TE"}
+        self.assertEqual(te_ids, {"TE0", "TE1", "TE2"})
+
+    def test_position_depth_does_not_duplicate_rows_already_in_the_top_n_slice(self):
+        # top_n=3 already covers RB0/WR0/RB1 (values 100/100... use distinct scores for clarity)
+        board = [
+            {"player_id": "rb1", "final_score": 100, "position": "RB"},
+            {"player_id": "rb2", "final_score": 99, "position": "RB"},
+            {"player_id": "wr1", "final_score": 98, "position": "WR"},
+        ]
+        narrowed = ps.narrow_candidates(board, top_n=3, position_depth={"RB": 2, "WR": 1})
+        ids = [r["player_id"] for r in narrowed]
+        self.assertEqual(sorted(ids), ["rb1", "rb2", "wr1"], "no duplicate rows from the position_depth pass")
+
+    def test_result_stays_ranked_by_final_score_with_position_depth_applied(self):
+        narrowed = ps.narrow_candidates(
+            self._multi_position_board(), top_n=1, position_depth={"WR": 6, "RB": 4, "QB": 2, "TE": 1},
+        )
+        values = [r["final_score"] for r in narrowed]
+        self.assertEqual(values, sorted(values, reverse=True))
+
+
+class PositionViewDepthTests(unittest.TestCase):
+    """Position View Depth = min(league replacement demand for the position,
+    POSITION_VIEW_DEPTH_CAP) -- the exact boundary behavior requested: a thin position's real
+    demand passes through untouched, a deep one is capped at the ceiling, never expanded past
+    its own real demand."""
+
+    def test_replacement_below_the_cap_shows_the_full_replacement_count(self):
+        self.assertEqual(ps.position_view_depth(6), 6)
+
+    def test_replacement_exactly_at_the_cap_shows_exactly_the_cap(self):
+        self.assertEqual(ps.position_view_depth(ps.POSITION_VIEW_DEPTH_CAP), ps.POSITION_VIEW_DEPTH_CAP)
+
+    def test_replacement_well_above_the_cap_is_truncated_to_the_cap(self):
+        self.assertEqual(ps.position_view_depth(20), ps.POSITION_VIEW_DEPTH_CAP)
+        self.assertEqual(ps.position_view_depth(33), ps.POSITION_VIEW_DEPTH_CAP)
+
 
 def _raw_candidate(team_acquisition_value, survival_probability=1.0, positional_cliff=None,
                     position_run_detected=False, rival_premium=0.0, need_bonus=0.0, eligibility_bonus=0.0):
@@ -268,6 +333,72 @@ class ComputePickNecessityTests(unittest.TestCase):
         for score, _label in results:
             self.assertGreaterEqual(score, 0.0)
             self.assertLessEqual(score, 100.0)
+
+
+class NecessityComponentIsolationTests(unittest.TestCase):
+    """Mutation testing zeroed NECESSITY_SURVIVAL_WEIGHT and NECESSITY_ROSTER_FIT_WEIGHT --
+    deleting two of pick_necessity's terms outright -- and all 963 tests still passed. The
+    existing tests all stack several pressures at once and assert the total, so any single
+    term can vanish while the totals still order correctly.
+
+    These isolate one term at a time: two candidates identical in every other respect,
+    including team_acquisition_value (which holds the standout component equal for both), so
+    the only thing that can separate the scores is the term under test.
+    """
+
+    def test_survival_pressure_alone_changes_the_score(self):
+        # "Likely to be gone by your next pick" is one of the two things necessity exists to
+        # say. Equal players, one at real risk.
+        at_risk = _raw_candidate(100.0, survival_probability=0.1)
+        safe = _raw_candidate(100.0, survival_probability=0.95)
+        (risk_score, _), (safe_score, _) = ps.compute_pick_necessity([at_risk, safe], round_num=3)
+        self.assertGreater(
+            risk_score, safe_score,
+            "survival probability had no effect on necessity -- the term is not reaching the score",
+        )
+
+    def test_roster_fit_alone_changes_the_score(self):
+        # The other one: an identical player who actually fills a hole on THIS roster is a
+        # more necessary pick than one who does not. need_bonus and eligibility_bonus are the
+        # only team-specific inputs necessity gets.
+        fits = _raw_candidate(100.0, need_bonus=10.0)
+        does_not_fit = _raw_candidate(100.0, need_bonus=0.0)
+        (fit_score, _), (nofit_score, _) = ps.compute_pick_necessity([fits, does_not_fit], round_num=3)
+        self.assertGreater(
+            fit_score, nofit_score,
+            "need_bonus had no effect on necessity -- the roster-fit term is not reaching the score",
+        )
+
+    def test_eligibility_flexibility_alone_changes_the_score(self):
+        # eligibility_bonus enters through the same term, and is the half that carries a
+        # multi-position player's lineup flexibility. Pinned separately so zeroing either
+        # input is caught, not just the shared weight.
+        flexible = _raw_candidate(100.0, eligibility_bonus=8.0)
+        rigid = _raw_candidate(100.0, eligibility_bonus=0.0)
+        (flex_score, _), (rigid_score, _) = ps.compute_pick_necessity([flexible, rigid], round_num=3)
+        self.assertGreater(flex_score, rigid_score)
+
+    def test_every_pressure_term_is_individually_reachable(self):
+        # The general form of the two tests above, so a future term added to the sum starts
+        # out covered instead of silently inert. Each entry varies exactly one input away
+        # from a completely neutral candidate.
+        neutral = dict(_raw_candidate(100.0))
+        variants = {
+            "survival": dict(neutral, survival_probability=0.05),
+            "cliff": dict(neutral, positional_cliff={"tier": "HIGH", "gap": 20, "typical_gap": 2}),
+            "run": dict(neutral, position_run_detected=True),
+            "denial": dict(neutral, rival_premium=12.0),
+            "need_bonus": dict(neutral, need_bonus=10.0),
+            "eligibility_bonus": dict(neutral, eligibility_bonus=10.0),
+        }
+        base = ps.compute_pick_necessity([dict(neutral), dict(neutral)], round_num=3)[0][0]
+        for name, variant in variants.items():
+            with self.subTest(term=name):
+                score = ps.compute_pick_necessity([variant, dict(neutral)], round_num=3)[0][0]
+                self.assertGreater(
+                    score, base,
+                    f"the {name} term does not move pick_necessity at all",
+                )
 
 
 class NearTieFlagsTests(unittest.TestCase):
@@ -567,6 +698,31 @@ class BuildSnapshotTests(unittest.TestCase):
         self.assertIn(best_qb_id, candidate_ids)
         self.assertIn(best_te_id, candidate_ids)
 
+    def test_a_deep_position_gets_real_replacement_depth_capped_at_the_display_ceiling(self):
+        # End-to-end version of PositionViewDepthTests: LEAGUE has real WR demand (WR x3 +
+        # FLEX, 12 teams) against a 40-deep real-baseline WR pool -- comfortably above
+        # POSITION_VIEW_DEPTH_CAP, so this position's snapshot depth must land exactly at the
+        # cap, not at the old single-best-only behavior and not uncapped either.
+        snap = ps.build_snapshot(
+            self.merger, self.players_db, [], self.pick_order, current_index=0, my_roster_id="1",
+            league=LEAGUE, pick_label="1.01", top_n=1,
+        )
+        wr_count = sum(1 for c in snap.candidates if c.position == "WR")
+        self.assertEqual(wr_count, ps.POSITION_VIEW_DEPTH_CAP)
+
+    def test_position_depth_shrinks_as_that_position_gets_drafted_out(self):
+        # Draft progression: with 30 real WRs already off the board, LEAGUE's own remaining WR
+        # demand drops below the display cap -- the snapshot's WR depth must follow it down,
+        # not stay pinned at the cap.
+        wr_ids = [pid for pid, info in self.players_db.items() if info["position"] == "WR"][:30]
+        picks = [{"player_id": pid, "roster_id": "2", "round": 1} for pid in wr_ids]
+        snap = ps.build_snapshot(
+            self.merger, self.players_db, picks, self.pick_order, current_index=len(picks), my_roster_id="1",
+            league=LEAGUE, pick_label="3.01", top_n=1,
+        )
+        wr_count = sum(1 for c in snap.candidates if c.position == "WR")
+        self.assertLess(wr_count, ps.POSITION_VIEW_DEPTH_CAP)
+
     def test_every_candidate_carries_the_full_real_decomposition(self):
         snap = ps.build_snapshot(
             self.merger, self.players_db, [], self.pick_order, current_index=0, my_roster_id="1",
@@ -645,6 +801,170 @@ class BuildSnapshotTests(unittest.TestCase):
         self.assertIn(far_pick, {c.player_id for c in snap.candidates})
         self.assertEqual(snap.user_selected_player_id, far_pick)
 
+    def test_upside_mode_snapshots_build_at_all(self):
+        # Regression: upside-mode boards used to omit universal_value entirely (upside_score
+        # returns only final_score/growth_signal/confidence), and build_snapshot read that
+        # key unconditionally -- so ANY snapshot in upside mode raised KeyError. It went
+        # unnoticed because every app.py call site takes build_snapshot's own "balanced"
+        # default, and the one caller that passes mode="auto" (draft_simulation) only trips
+        # it past UPSIDE_MODE_DEFAULT_ROUND, deeper than any test drove a simulation.
+        snap = ps.build_snapshot(
+            self.merger, self.players_db, [], self.pick_order, current_index=0, my_roster_id="1",
+            league=LEAGUE, pick_label="1.01", top_n=5, mode="upside",
+        )
+        self.assertTrue(snap.candidates)
+
+    def test_upside_mode_preserves_the_value_layer_identity(self):
+        # team_acquisition_value == universal_value + need_bonus + eligibility_bonus is the
+        # contract every consumer of a candidate reads. Upside mode has no separated need or
+        # eligibility term at all, so the identity must hold with both at 0.0 -- which is
+        # only true if universal_value falls back to the team-agnostic final_score, not to
+        # some other number. This is what stops the KeyError fix from quietly turning into a
+        # value fabrication.
+        snap = ps.build_snapshot(
+            self.merger, self.players_db, [], self.pick_order, current_index=0, my_roster_id="1",
+            league=LEAGUE, pick_label="1.01", top_n=5, mode="upside",
+        )
+        for c in snap.candidates:
+            self.assertEqual(c.need_bonus, 0.0, c.name)
+            self.assertEqual(c.eligibility_bonus, 0.0, c.name)
+            self.assertAlmostEqual(
+                c.team_acquisition_value,
+                c.universal_value + c.need_bonus + c.eligibility_bonus,
+                places=6, msg=c.name,
+            )
+
+    def test_a_draft_deep_enough_to_flip_auto_mode_into_upside_completes(self):
+        # The actual uncovered path: auto mode reads the current round off the PICKS ALREADY
+        # MADE (compute_draft_board's own `current_round`), not off current_index, and flips
+        # to upside scoring at UPSIDE_MODE_DEFAULT_ROUND. So reaching it needs a real draft
+        # state that deep -- which no existing test had, since the only mode="auto" callers
+        # are simulations and the rookie-draft validator never runs past round 4.
+        #
+        # 8 teams, not 12: this fixture's pool is 40 players x 4 positions, and 14 completed
+        # rounds of 12 would drain it past what a round-15 board could still be built from.
+        # The picks themselves are laid out in a fixed pool order rather than engine-chosen
+        # -- what is under test is the board's SHAPE at depth, not the quality of the picks
+        # that got there, and an engine-chosen 14-round trajectory costs minutes to build.
+        teams = 8
+        league = dict(LEAGUE, total_rosters=teams)
+        # compute_draft_board derives the round as the MAX round among picks already made,
+        # so the flip lands once a round-UPSIDE_MODE_DEFAULT_ROUND pick is on the board, not
+        # when the next pick would open that round. This test takes that behavior as given
+        # and drives past it -- it is not the place to relitigate the boundary.
+        rounds_done = dr.UPSIDE_MODE_DEFAULT_ROUND
+        drafted = list(self.players_db)[:teams * rounds_done]
+        picks = [
+            {"pick_no": i + 1, "round": i // teams + 1,
+             "roster_id": str(i % teams + 1), "player_id": pid}
+            for i, pid in enumerate(drafted)
+        ]
+        deep_order = ds.generate_pick_order(
+            [str(i) for i in range(1, teams + 1)], total_rounds=dr.UPSIDE_MODE_DEFAULT_ROUND + 1,
+        )
+        snap = ps.build_snapshot(
+            self.merger, self.players_db, picks, deep_order, current_index=len(picks),
+            my_roster_id="1", league=league, pick_label=f"{dr.UPSIDE_MODE_DEFAULT_ROUND + 1}.01",
+            top_n=3, mode="auto",
+        )
+        # Guard against the vacuous version of this test: nothing above forces upside
+        # scoring, so if the round derivation ever stops flipping at this depth this test
+        # would silently become a plain balanced-mode snapshot and prove nothing. Asserted on
+        # the board's own mode field, NOT on the absence of universal_value -- that was the
+        # original probe here and it broke the moment both modes started emitting the column,
+        # which is exactly the coupling this whole fix removes.
+        board = dr.compute_draft_board(
+            self.merger, self.players_db, picks, my_roster_id="1", league=league, mode="auto",
+        )
+        self.assertEqual(board[0]["mode"], "upside", "board never entered upside mode")
+        self.assertTrue(snap.candidates)
+
+
+class UpsideSuperflexSurvivalTests(unittest.TestCase):
+    """The SECOND crash on the same board-shape contract, found by scoping the first one
+    rather than by a symptom. draft_strategy._pace_based_take_probability ranks a position's
+    remaining players on an opponent's board by universal_value -- unguarded -- but only runs
+    for superflex QB before the last documented pace anchor (48 picks). Upside mode normally
+    arrives at round >= 15, long past that, so auto-mode drafts never reached it; forcing
+    upside early in a superflex league does, and did raise KeyError."""
+
+    @classmethod
+    def setUpClass(cls):
+        BuildSnapshotTests.setUpClass()
+        cls.merger = BuildSnapshotTests.merger
+        cls.players_db = BuildSnapshotTests.players_db
+
+    def test_forced_upside_in_a_superflex_league_before_the_last_pace_anchor(self):
+        superflex = dict(LEAGUE, roster_positions=[
+            "QB", "RB", "RB", "WR", "WR", "WR", "TE", "FLEX", "SUPER_FLEX", "BN", "BN", "BN",
+        ])
+        order = ds.generate_pick_order([str(i) for i in range(1, 13)], total_rounds=4)
+        picks = [
+            {"pick_no": i + 1, "round": 1, "roster_id": str(i + 1), "player_id": pid}
+            for i, pid in enumerate(list(self.players_db)[:12])
+        ]
+        snap = ps.build_snapshot(
+            self.merger, self.players_db, picks, order, current_index=12, my_roster_id="1",
+            league=superflex, pick_label="2.01", top_n=5, mode="upside",
+        )
+        self.assertTrue(snap.candidates)
+
+
+class BoardShapeContractTests(unittest.TestCase):
+    """compute_draft_board returns two differently-shaped rows depending on mode, and for a
+    long time nothing declared that. Five production sites indexed row["universal_value"]
+    unguarded (draft_strategy x3, draft_counterfactual.bpa_row, pick_synthesis.build_snapshot)
+    and roster_diagnostics passes the column NAME into replacement_levels -- so an absent
+    column is a crash in every one of them, not a degraded reading. These tests pin the part
+    of the shape that is shared, so a future third mode has to make the same promise."""
+
+    @classmethod
+    def setUpClass(cls):
+        BuildSnapshotTests.setUpClass()
+        cls.merger = BuildSnapshotTests.merger
+        cls.players_db = BuildSnapshotTests.players_db
+
+    def _board(self, mode):
+        return dr.compute_draft_board(
+            self.merger, self.players_db, [], my_roster_id="1", league=LEAGUE, mode=mode,
+        )
+
+    def test_both_modes_carry_every_field_a_consumer_indexes_unguarded(self):
+        required = {"player_id", "name", "position", "bpa", "universal_value", "final_score", "mode"}
+        for mode in ("balanced", "upside"):
+            board = self._board(mode)
+            self.assertTrue(board, mode)
+            for row in board[:25]:
+                self.assertTrue(required <= set(row), f"{mode}: missing {required - set(row)}")
+
+    def test_upside_universal_value_is_the_team_agnostic_score_itself(self):
+        # Not an approximation and not a copy of the balanced number: upside_score reads
+        # nothing off the roster, so its final_score IS the team-agnostic value.
+        for row in self._board("upside")[:25]:
+            self.assertEqual(row["universal_value"], row["final_score"], row["name"])
+
+    def test_the_two_modes_are_not_claiming_to_be_the_same_valuation(self):
+        # Guards the comment on the upside branch: universal_value fills the same ROLE in
+        # both modes but is a different number, and must never be compared across them. If
+        # this ever starts passing trivially (every player identical), the two modes have
+        # collapsed into one and upside scoring has stopped doing anything.
+        balanced = {r["player_id"]: r["universal_value"] for r in self._board("balanced")}
+        upside = {r["player_id"]: r["universal_value"] for r in self._board("upside")}
+        shared = set(balanced) & set(upside)
+        self.assertTrue(shared)
+        self.assertTrue(
+            any(balanced[pid] != upside[pid] for pid in shared),
+            "upside and balanced produced identical universal_value for every player",
+        )
+
+    def test_upside_boards_do_not_fabricate_a_decomposition_they_never_computed(self):
+        # The deliberate other half of the fix: universal_value is emitted because consumers
+        # need the role filled; time_horizon_adj/risk_adj are NOT, because upside_score never
+        # computes them and a 0.0 would read as "measured, and it was zero."
+        for row in self._board("upside")[:25]:
+            self.assertNotIn("time_horizon_adj", row)
+            self.assertNotIn("risk_adj", row)
+
 
 class DiffSnapshotsTests(unittest.TestCase):
     @classmethod
@@ -692,6 +1012,13 @@ class DiffSnapshotsTests(unittest.TestCase):
             league=LEAGUE, pick_label="1.01", top_n=5,
         )
         diffs = ps.diff_snapshots(snap, snap)
+        # The real assertion, and it has to be stated directly. This used to be a `for d in
+        # diffs:` loop over the three checks below -- but diff_snapshots returns an EMPTY list
+        # for identical inputs, so the loop body never ran and the test asserted nothing at all
+        # beyond "no exception was raised". Found by an assertion-reachability trace over the
+        # whole suite. The loop is kept underneath as a belt-and-braces check in case the
+        # function ever starts emitting no-op rows instead of omitting them.
+        self.assertEqual(diffs, [], "identical snapshots must produce no diff rows at all")
         for d in diffs:
             self.assertIsNone(d.get("entered"))
             self.assertEqual(d["rank_delta"], 0)
@@ -862,6 +1189,153 @@ class ConsensusReachEndToEndTests(unittest.TestCase):
         self.assertEqual(gibbs.consensus_rank, 1)
         self.assertEqual(gibbs.consensus_tier, 1)
         self.assertIn(gibbs.reach_label, ("WITHIN CONSENSUS BAND",))
+
+
+class DecisionBoundaryIsClosedTests(unittest.TestCase):
+    """The architectural contract the whole decision layer rests on: PickSnapshot is the ONLY
+    thing that crosses from the engine to anything that decides. Every consumer --
+    pick_debate (the LLM debate that produces the recommendation), draft_board_ui (what the
+    human sees), screen_context (what the assistant panel sees) -- takes the frozen object and
+    cannot reach back for the merger, the players_db, or the board.
+
+    That is what makes "which fields cross the boundary" a well-posed question at all. If a
+    consumer could re-derive a value, the snapshot would stop being authoritative and the
+    debate's own instruction to the models -- "the candidates below are the ONLY real numbers
+    available, do not invent, estimate, or recompute" -- would be unenforceable rather than
+    structural.
+
+    draft_board_ui's single constant import from draft_room is allowed BY NAME below. It is a
+    unit conversion factor, not a way to price anybody, and naming it here means a future
+    import of the board builder itself fails this test instead of slipping in beside it."""
+
+    CONSUMERS = ("pick_debate.py", "draft_board_ui.py", "screen_context.py")
+    FORBIDDEN = {"data_merger", "draft_strategy", "lineup_optimizer", "rookie_draft",
+                 "depth_ratings", "lineup_readiness", "roster_diagnostics", "sleeper_client"}
+    # module -> the names it may import from draft_room, and nothing else.
+    DRAFT_ROOM_ALLOWANCE = {"draft_board_ui.py": {"SLEEPER_WEEKLY_TO_SEASON_FACTOR"}}
+
+    def _imports(self, filename):
+        import ast, os
+        path = os.path.join(os.path.dirname(os.path.abspath(__file__)), filename)
+        with open(path, encoding="utf-8") as handle:
+            tree = ast.parse(handle.read())
+        plain, froms = set(), {}
+        for node in ast.walk(tree):
+            if isinstance(node, ast.Import):
+                for alias in node.names:
+                    plain.add(alias.name.split(".")[0])
+            elif isinstance(node, ast.ImportFrom) and node.module:
+                mod = node.module.split(".")[0]
+                froms.setdefault(mod, set()).update(a.name for a in node.names)
+        return plain, froms
+
+    def test_the_snapshot_consumers_import_no_valuation_module(self):
+        for filename in self.CONSUMERS:
+            plain, froms = self._imports(filename)
+            reached = (plain | set(froms)) & self.FORBIDDEN
+            self.assertEqual(
+                reached, set(),
+                f"{filename} imports {sorted(reached)} -- a snapshot consumer that can reach a "
+                f"valuation module can recompute what the frozen snapshot already decided",
+            )
+
+    def test_only_the_named_constant_crosses_from_draft_room(self):
+        for filename in self.CONSUMERS:
+            plain, froms = self._imports(filename)
+            allowed = self.DRAFT_ROOM_ALLOWANCE.get(filename, set())
+            self.assertNotIn(
+                "draft_room", plain,
+                f"{filename} imports draft_room as a module, which gives it compute_draft_board",
+            )
+            got = froms.get("draft_room", set())
+            self.assertTrue(
+                got <= allowed,
+                f"{filename} imports {sorted(got - allowed)} from draft_room; only {sorted(allowed)} "
+                f"is allowed, and only because it is a unit constant rather than a way to price "
+                f"a player",
+            )
+
+    def test_the_scan_actually_found_imports_so_it_cannot_pass_vacuously(self):
+        for filename in self.CONSUMERS:
+            plain, froms = self._imports(filename)
+            self.assertTrue(plain or froms, f"{filename}: parsed no imports at all")
+            self.assertIn("pick_synthesis", froms,
+                          f"{filename} does not import from pick_synthesis -- either it is no "
+                          f"longer a snapshot consumer, or this scan is reading the wrong file")
+
+
+class ContextualSignalsCannotReachTheRankingTests(unittest.TestCase):
+    """E's central contract, pinned at the mechanism rather than by re-running the pipeline.
+
+    The recommendation is the head of the candidate list. narrow_candidates sorts by
+    _board_order, and _board_order reads exactly two things: final_score (= TAV) and
+    player_id. Every contextual signal -- survival, opportunity cost, denial, rival premium,
+    positional forfeit, positional cliff, positional run, pick_necessity, the decision-path
+    flags, the near-tie flag -- is computed AFTER that ordering and is carried alongside it,
+    never into it.
+
+    A full-pipeline ablation confirmed this end to end (each contextual signal suppressed at
+    its seam, then all of them at once: 0 of 12 real decision states changed order, TAV or
+    leader, while a positive control that zeroed bpa moved 12 of 12). That battery is too slow
+    for the suite; this pins the same property at the one function that enforces it, so a
+    future edit that lets a contextual field into the sort key fails here."""
+
+    CONTEXTUAL = {
+        "survival_probability": 0.01, "opportunity_cost": 99.0, "denial_value": 99.0,
+        "denial_team": "9", "rival_premium": 99.0, "rival_premium_take_probability": 0.99,
+        "positional_forfeit": 99.0, "position_expected_taken": 9.0,
+        "positional_cliff": {"tier": "SEVERE", "gap": 99.0, "typical_gap": 1.0},
+        "position_run_detected": True, "pick_necessity": 100.0, "necessity_label": "CRITICAL",
+        "near_tie_with_leader": True, "cliff_protection": True, "block_opportunity": True,
+        "pure_value": True, "context_elevated": True, "waiting_cost": 99.0,
+        "horizon_floor": 99.0, "horizon_sensitivity": 99.0, "consensus_rank": 1,
+        "consensus_tier": 1, "reach_label": "REACH", "projected_points": 999.0,
+    }
+
+    def test_the_sort_key_ignores_every_contextual_signal(self):
+        quiet = {"player_id": "p1", "final_score": 42.0}
+        loud = dict(quiet, **self.CONTEXTUAL)
+        self.assertEqual(
+            ps._board_order(quiet), ps._board_order(loud),
+            "a contextual signal reached the board sort key; the ranking is supposed to be "
+            "team_acquisition_value and player_id only",
+        )
+
+    def test_the_same_holds_for_an_unpriced_row(self):
+        # The unpriced register sorts last on `final_score is None`; contextual fields must not
+        # rescue or further demote it either.
+        quiet = {"player_id": "p1", "final_score": None}
+        loud = dict(quiet, **self.CONTEXTUAL)
+        self.assertEqual(ps._board_order(quiet), ps._board_order(loud))
+        self.assertGreater(ps._board_order(quiet), ps._board_order({"player_id": "p1",
+                                                                   "final_score": 0.0}),
+                           "an unpriced row must still sort after a priced one")
+
+    def test_the_key_does_respond_to_the_two_things_it_is_allowed_to_read(self):
+        """Non-vacuity guard: if _board_order stopped distinguishing anything, the two tests
+        above would pass while proving nothing."""
+        a = ps._board_order({"player_id": "p1", "final_score": 42.0})
+        b = ps._board_order({"player_id": "p1", "final_score": 41.0})
+        c = ps._board_order({"player_id": "p2", "final_score": 42.0})
+        self.assertLess(a, b, "a higher final_score must sort earlier")
+        self.assertLess(a, c, "player_id must break an exact tie deterministically")
+
+    def test_narrow_candidates_orders_by_that_key_and_nothing_else(self):
+        """The link that makes the above matter: the candidate list the snapshot freezes is
+        ordered by _board_order. A board deliberately supplied in the WRONG order, with the
+        contextual fields set to favour the weakest row, must come back in final_score order."""
+        board = [
+            {"player_id": "weak", "name": "Weak", "position": "RB", "final_score": 1.0,
+             "universal_value": 1.0, "bpa": 1.0, **self.CONTEXTUAL},
+            {"player_id": "mid", "name": "Mid", "position": "WR", "final_score": 50.0,
+             "universal_value": 50.0, "bpa": 50.0},
+            {"player_id": "best", "name": "Best", "position": "TE", "final_score": 99.0,
+             "universal_value": 99.0, "bpa": 99.0},
+        ]
+        got = [row["player_id"] for row in ps.narrow_candidates(board, top_n=3)]
+        self.assertEqual(got[0], "best",
+                         "the maximally contextual row outranked a row worth 99x more")
+        self.assertEqual(got, ["best", "mid", "weak"])
 
 
 if __name__ == "__main__":

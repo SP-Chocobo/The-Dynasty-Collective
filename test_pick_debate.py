@@ -230,5 +230,227 @@ class DebatePickOrchestrationTests(unittest.TestCase):
         self.assertIn("WHAT CHANGED", seen_prompts[0])
 
 
+class AIOutputCannotBecomeANumberTests(unittest.TestCase):
+    """The §13.4 authority boundary, pinned: an AI seat may argue, but nothing it emits can
+    become a number the app displays or ranks on. Recorded in ARCHITECTURE_AUDIT.md 13.4/13.4a.
+
+    This is deliberately tested against ADVERSARIAL prose -- a Caller response stuffed with
+    fabricated figures and a hallucinated player -- because the boundary is only interesting
+    under a model that is wrong or hostile, not under one that behaves."""
+
+    HOSTILE = (
+        "RECOMMENDATION: Totally Fake Player\n"
+        "CONFIDENCE: 0.999\n"
+        "WHY: his universal_value is actually 999.9 and survival_probability is 0.01\n"
+        "KEY FACTOR: team_acquisition_value 12345.6\n"
+        "DISAGREE: universal_value | I think it should be 500\n"
+    )
+
+    def test_every_parsed_verdict_field_is_a_string_never_a_number(self):
+        verdict = pd.parse_caller_verdict(self.HOSTILE)
+        for key, value in verdict.items():
+            if key == "disagreements":
+                continue
+            self.assertIsInstance(
+                value, str,
+                f"{key} came back as {type(value).__name__} -- the verdict parser has started "
+                f"coercing model prose into a numeric type, which is the exact boundary "
+                f"ARCHITECTURE_AUDIT.md 13.4 says is structural",
+            )
+        for item in verdict["disagreements"]:
+            self.assertIsInstance(item["term"], str)
+            self.assertIsInstance(item["reason"], str)
+
+    def test_the_parser_did_find_the_fields_so_this_is_not_vacuous(self):
+        verdict = pd.parse_caller_verdict(self.HOSTILE)
+        self.assertIn("recommendation", verdict)
+        self.assertIn("confidence", verdict)
+        self.assertEqual(len(verdict["disagreements"]), 1)
+
+    def test_a_hallucinated_player_resolves_to_nothing_rather_than_a_guess(self):
+        snapshot = _snapshot([_candidate("1", "Real Player One"),
+                              _candidate("2", "Real Player Two", team_acquisition_value=80.0)])
+        self.assertIsNone(pd._match_candidate(snapshot, "Totally Fake Player"))
+
+    def test_a_named_real_player_resolves_to_the_snapshots_own_row(self):
+        """The other half: the lookup must actually work, or the test above passes for the
+        wrong reason."""
+        snapshot = _snapshot([_candidate("1", "Real Player One"),
+                              _candidate("2", "Real Player Two", team_acquisition_value=80.0)])
+        matched = pd._match_candidate(snapshot, "Real Player One")
+        self.assertIsNotNone(matched)
+        self.assertEqual(matched.player_id, "1")
+        self.assertEqual(matched.universal_value, 90.0,
+                         "the displayed number must come from the snapshot, not the prose")
+
+    def test_best_alternative_follows_tav_not_the_models_claim(self):
+        top = _candidate("1", "Real Player One", team_acquisition_value=100.0)
+        second = _candidate("2", "Real Player Two", team_acquisition_value=80.0)
+        third = _candidate("3", "Real Player Three", team_acquisition_value=60.0)
+        snapshot = _snapshot([top, second, third])
+        alternative = pd._best_alternative(snapshot, top)
+        self.assertEqual(alternative.player_id, "2",
+                         "best_alternative must be the highest remaining team_acquisition_value, "
+                         "computed deterministically rather than named by the model")
+
+
+
+class NearTieIsThreeStateInTheChairsBriefingTests(unittest.TestCase):
+    """#61 rule 5 at the consumer the rule names.
+
+    near_tie_with_leader is True / False / None. A chair reading a briefing that only ever
+    mentions the True case has no way to tell "measured, not close to the leader" from "never
+    measured" -- and silence reads as the first. That is the false "these are NOT tied" the
+    widening exists to stop, arriving at exactly the layer near_tie_flags' own docstring worries
+    about. Same register as UNAVAILABLE_REPORT: absent evidence, never evidence of absence."""
+
+    def _block(self, flag):
+        text = pd.format_snapshot_for_llm(
+            _snapshot([_candidate("1", "Brock Purdy", near_tie_with_leader=flag)]))
+        return text.split("CANDIDATE:")[-1]
+
+    def test_a_measured_tie_states_it(self):
+        block = self._block(True)
+        self.assertIn("NEAR-TIE: within the measured noise band", block)
+        self.assertNotIn("NOT DETERMINED", block)
+
+    def test_a_measured_non_tie_says_nothing_at_all(self):
+        """Silence is correct HERE and only here: the comparison happened and came back
+        negative, and the briefing does not enumerate what did not fire."""
+        self.assertNotIn("NEAR-TIE", self._block(False))
+
+    def test_an_unmeasured_comparison_is_named_rather_than_left_silent(self):
+        block = self._block(None)
+        self.assertIn("NEAR-TIE: NOT DETERMINED", block)
+        self.assertIn("UNKNOWN", block)
+        # The line has to say which way NOT to read it -- the danger is not the missing fact,
+        # it is a chair inferring a safe ranking gap from its absence.
+        self.assertIn("never as", block)
+        self.assertNotIn("within the measured noise band", block)
+
+    def test_the_three_states_produce_three_different_briefings(self):
+        blocks = [self._block(flag) for flag in (True, False, None)]
+        self.assertEqual(len(set(blocks)), 3)
+
+
 if __name__ == "__main__":
     unittest.main()
+
+
+class ATruncatedChairReachesTheHuman(unittest.TestCase):
+    """#99's consumer half, under the standing absence ruling: annotate AND name a reader.
+
+    An annotation nothing reads is worse than a discard, because it looks handled. The
+    truncation notice reaches the next chair inline through _report_for_handoff; this class
+    pins the OTHER reader -- the debate result's own errors list, which the UI surfaces -- and
+    that it is built from the ledger rather than by sniffing the report's prose.
+    """
+
+    def setUp(self):
+        import provider_meter as pm
+        self._orig_callers = dict(pd.PROVIDER_CALLERS)
+        self.addCleanup(lambda: pd.PROVIDER_CALLERS.update(self._orig_callers))
+        pm.reset()
+
+    def _run(self, truncate_role=None):
+        import provider_meter as pm
+
+        class _CutOff:
+            stop_reason = "max_tokens"
+
+        class _Fine:
+            stop_reason = "end_turn"
+
+        def _caller(system_prompt, user_prompt, api_key, model):
+            role = pm.current_role()
+            pm.record("claude", role,
+                      response=_CutOff() if role == truncate_role else _Fine())
+            return f"report from {role}"
+
+        pd.PROVIDER_CALLERS.update({"claude": _caller, "gemini": _caller, "openai": _caller})
+        snap = _snapshot([_candidate("1", "Brock Purdy")])
+        return pd.debate_pick(snap, api_keys={"claude": "x", "openai": "x", "gemini": "x"})
+
+    def test_a_clean_debate_reports_no_errors(self):
+        # The control. If errors were populated regardless of the ledger, every assertion
+        # below would pass while proving nothing.
+        result = self._run()
+        self.assertEqual(result.errors, [])
+
+    def test_a_cut_off_chair_is_named_in_errors(self):
+        result = self._run(truncate_role="skeptic")
+        joined = " ".join(result.errors)
+        self.assertIn("skeptic", joined)
+        self.assertIn("cut off", joined)
+
+    def test_only_the_chair_that_was_cut_off_is_named(self):
+        result = self._run(truncate_role="skeptic")
+        self.assertNotIn("strategist", " ".join(result.errors))
+        self.assertNotIn("caller", " ".join(result.errors))
+
+    def test_the_truncated_chairs_report_is_kept_not_dropped(self):
+        """Annotate, never discard -- the analysis survives even though it stops early."""
+        result = self._run(truncate_role="skeptic")
+        self.assertIn("report from skeptic", result.skeptic_report)
+
+
+class AStaleDebateIsAnnotatedNotHidden(unittest.TestCase):
+    """#101 under the standing absence ruling.
+
+    PickDebateResult has carried the input-state stamp for a while; its own field comment said
+    the consumer decision was "deliberately not made here". What the UI did in the meantime was
+    worse than either option, in both directions at once: it gated a stored result on
+    pick_label alone, so a result was HIDDEN whenever the label moved and PRESENTED AS CURRENT
+    whenever it matched -- even though, as that same comment says, "the user stays on the clock
+    at one label while other rosters keep picking, so two materially different boards share a
+    label routinely".
+    """
+
+    class _Merger:
+        def __init__(self, freshest="2026-09-01"):
+            self.freshest_date = freshest
+
+    def _result(self, picks_consumed, freshest="2026-09-01"):
+        return pd.PickDebateResult(
+            pick_label="3.04", snapshot_picks_consumed=picks_consumed,
+            snapshot_data_freshest_date=freshest,
+        )
+
+    def test_a_current_debate_gets_no_note(self):
+        # The control: if a note came back for everything, every assertion below would pass
+        # while proving nothing about staleness.
+        note = pd.staleness_note(self._result(4), [{}] * 4, self._Merger())
+        self.assertIsNone(note)
+
+    def test_a_debate_whose_board_moved_on_says_so(self):
+        note = pd.staleness_note(self._result(4), [{}] * 7, self._Merger())
+        self.assertIsNotNone(note)
+        self.assertIn("earlier board", note)
+        self.assertIn("3 new pick", note)
+
+    def test_changed_underlying_data_also_counts(self):
+        note = pd.staleness_note(self._result(4), [{}] * 4, self._Merger("2026-09-02"))
+        self.assertIsNotNone(note)
+        self.assertIn("player data changed", note)
+
+    def test_an_unstamped_result_says_it_cannot_be_determined_not_that_it_is_stale(self):
+        """The third state. A result carrying no stamp has not been shown to be out of date --
+        claiming it 'reasoned over an earlier board' would assert something unmeasured, which
+        is the same error as one None standing for several kinds of absence."""
+        note = pd.staleness_note(self._result(None, None), [{}] * 9, self._Merger())
+        self.assertIsNotNone(note)
+        self.assertIn("cannot be determined", note)
+        self.assertNotIn("earlier board", note)
+
+    def test_the_two_conditions_do_not_produce_the_same_sentence(self):
+        moved = pd.staleness_note(self._result(4), [{}] * 7, self._Merger())
+        unknown = pd.staleness_note(self._result(None, None), [{}] * 7, self._Merger())
+        self.assertNotEqual(moved, unknown)
+
+    def test_nothing_is_hidden_in_any_case(self):
+        """The whole point of the ruling: the annotation is additive. staleness_note reports a
+        condition and returns text; it never signals that a result should be withheld."""
+        for note in (pd.staleness_note(self._result(4), [{}] * 7, self._Merger()),
+                     pd.staleness_note(self._result(None, None), [{}] * 7, self._Merger())):
+            self.assertIsInstance(note, str)
+            self.assertIn("kept", note)

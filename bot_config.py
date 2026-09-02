@@ -14,52 +14,103 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
+import llm_engine  # noqa: F401 - imported for its side effect: it registers the providers
+import providers
+import store_io
+
+
 CONFIG_PATH = Path("data/bot_config.json")
 
 ROLES = ("quant", "beat", "contrarian", "moderator")
-PROVIDERS = ("claude", "gemini", "openai")
-PROVIDER_LABELS = {"claude": "Claude", "gemini": "Gemini", "openai": "ChatGPT"}
+# Derived from the registry (see providers.py), not written out here. A hand-kept copy is a
+# list somebody has to remember to extend, which is how the extension surface got to six files
+# in the first place.
+PROVIDERS = providers.ids()
+PROVIDER_LABELS = providers.labels()
 
 ROLE_INFO = {
     "quant": {
         "label": "Quant / VORP Specialist",
         "default_name": "Quant",
         "description": "Runs the numbers -- VORP, positional scarcity, trade value math. No news, no opinions, just the math.",
-        "recommended": "claude",
-        "why": "Strong at holding one consistent analytical framework across a long, structured answer.",
     },
     "beat": {
         "label": "Beat / News Tracker",
         "default_name": "Beat Tracker",
         "description": "Pulls current injury reports, depth-chart changes, and market buzz via live web search.",
-        "recommended": "gemini",
-        "why": (
-            "Native Google Search grounding -- real live results, not just what the model happened to learn "
-            "in training. ChatGPT and Claude both get their own web search tool if reassigned here too, so "
-            "live search isn't a reason to prefer one provider over another for this role anymore -- pick "
-            "whichever's answers you find most useful."
-        ),
     },
     "contrarian": {
         "label": "Contrarian / Risk Analyst",
         "default_name": "Contrarian",
         "description": "Pressure-tests the Quant and Beat reports -- argues the other side, flags what could go wrong.",
-        "recommended": "openai",
-        "why": "A distinct \"voice\" from whichever provider runs Quant keeps the debate from reading like one model quietly agreeing with itself.",
     },
     "moderator": {
         "label": "Moderator / Executive Synthesizer",
         "default_name": "Moderator",
         "description": "Weighs all three reports and issues one final verdict with a clear recommendation.",
-        "recommended": "claude",
-        "why": "Synthesis and judgment is a different task from Quant's number-crunching, even when the same provider ends up running both.",
     },
 }
 
-# Derived from ROLE_INFO, not a separately maintained dict -- a "recommended" value
-# changed in one place without the other would make "Use recommended providers" (the
-# button that resets to this) silently lie about what it just did.
-DEFAULT_ROLE_PROVIDERS = {role: ROLE_INFO[role]["recommended"] for role in ROLES}
+# WHY THERE IS NO PER-ROLE VENDOR RECOMMENDATION HERE ANY MORE.
+#
+# There used to be: quant->claude, beat->gemini, contrarian->openai, moderator->claude, each
+# with a hand-written `why`. Measured, that assignment is EXACTLY what cycling PROVIDERS in
+# declaration order across ROLES produces -- it was arbitrary first and justified afterwards,
+# which is why three of the four rationales argued for something other than the vendor they
+# were attached to. One retracted itself in its own second sentence ("live search isn't a
+# reason to prefer one provider over another for this role anymore"); one argued for
+# DIFFERENCE from whatever runs Quant, which any non-Quant provider satisfies; one said the
+# provider does not matter at all ("even when the same provider ends up running both").
+#
+# Nothing in this repository ever measured which family is better at which chair. A shipped
+# recommendation with no measurement behind it is a claim the writing path cannot establish --
+# the same defect this codebase repaired at the alias boundary (#89) and everywhere else.
+#
+# THE BAR FOR PUTTING ONE BACK, because recommendations are worth having and this is not a
+# ban on them: a per-role or per-model recommendation may ship when it carries the benchmark
+# run that produced it. bot_benchmark already fingerprints the battery, the rubric and the
+# chair prompts, so such a claim is reproducible rather than editorial. Until then the honest
+# state is "not measured", and the assignment below says so by being openly arbitrary.
+ASSIGNMENT_RULE = (
+    "Chairs are dealt round-robin across whichever providers you have a key for, in "
+    "declaration order. That order is ARBITRARY and is not a claim that any family suits any "
+    "chair better -- nothing here has measured that. With one key, all four chairs run on it."
+)
+
+
+def default_role_providers_for(roles, available: "tuple[str, ...] | list[str] | None" = None) -> dict[str, str]:
+    """The round-robin rule itself, for any set of chairs. pick_debate's Draft Room panel has
+    three of its own and had the identical hardcoded defect, so the rule lives in one place
+    rather than being written twice and drifting."""
+    pool = tuple(p for p in (available if available is not None else PROVIDERS) if p in PROVIDERS)
+    if not pool:
+        pool = PROVIDERS
+    return {role: pool[i % len(pool)] for i, role in enumerate(roles)}
+
+
+def default_role_providers(available: "tuple[str, ...] | list[str] | None" = None) -> dict[str, str]:
+    """The starting assignment for a user who has not configured one, from the keys they have.
+
+    ONE RULE COVERS BOTH CASES THAT MATTERED. Measured against the old hardcoded defaults: a
+    user with only a Gemini key got 1 of 4 chairs, and a user with only an OpenAI key got 1 of 4
+    -- and in both cases the dead one was the MODERATOR, the chair that writes the verdict, the
+    action item, the to-do directives and the source findings. Dealing round-robin over the
+    providers actually available degenerates to "all four on your one family" without a special
+    case for it.
+
+    `available=None` means "assume all of them", which reproduces the previous shipped
+    assignment exactly -- so a user with all three keys sees no change whatsoever.
+
+    An empty `available` also falls back to all providers rather than returning nothing: a
+    config screen still has to render a selectable value before any key exists, and an empty
+    assignment would be a different kind of lie than an unreachable one.
+    """
+    return default_role_providers_for(ROLES, available)
+
+
+#: The all-keys case, kept as a module constant because callers and tests reference it. It is
+#: derived from the same function rather than written out, so the two cannot disagree.
+DEFAULT_ROLE_PROVIDERS = default_role_providers()
 
 # Model choice is a separate layer from provider choice: two roles can share a
 # provider (e.g. both on Claude) and still want different models -- a role that just
@@ -67,32 +118,32 @@ DEFAULT_ROLE_PROVIDERS = {role: ROLE_INFO[role]["recommended"] for role in ROLES
 # synthesis. Not an enum: providers ship new models on their own schedule, and the
 # per-role field is free text so a model this app doesn't know about yet still works.
 # These are just autocomplete-style suggestions shown in the UI.
-SUGGESTED_MODELS = {
-    "claude": ["claude-opus-5", "claude-sonnet-5", "claude-haiku-4-5"],
-    "gemini": ["gemini-2.0-flash", "gemini-2.0-pro"],
-    "openai": ["gpt-4o", "gpt-4.5-mini", "o3"],
-}
+SUGGESTED_MODELS = {pid: list(providers.get(pid).suggested_models) for pid in providers.ids()}
 
 
 def _load_raw() -> dict:
-    if CONFIG_PATH.exists():
-        try:
-            return json.loads(CONFIG_PATH.read_text())
-        except (json.JSONDecodeError, OSError):
-            return {}
-    return {}
+    # #102: atomic, locked, and no longer able to turn a torn read into an empty store
+    # that the next write persists -- see store_io's own docstring for the measurement.
+    return store_io.read(CONFIG_PATH, {})
 
 
 def _save_raw(data: dict) -> None:
-    CONFIG_PATH.parent.mkdir(parents=True, exist_ok=True)
-    CONFIG_PATH.write_text(json.dumps(data, indent=2))
+    store_io.write(CONFIG_PATH, data)
 
 
-def load_role_providers() -> dict[str, str]:
+def load_role_providers(available: "tuple[str, ...] | list[str] | None" = None) -> dict[str, str]:
+    """The saved assignment, with anything unset filled in from the keys the caller has.
+
+    A SAVED CHOICE ALWAYS WINS, including one that points at a provider with no key -- that is
+    the user's own decision and this is not the place to quietly overrule it. `available` only
+    fills the gaps.
+    """
     saved = _load_raw().get("providers", {})
-    return {role: saved.get(role, DEFAULT_ROLE_PROVIDERS[role]) for role in ROLES}
+    fallback = default_role_providers(available)
+    return {role: saved.get(role, fallback[role]) for role in ROLES}
 
 
+@store_io.atomic(lambda *a, **k: CONFIG_PATH)
 def set_role_provider(role: str, provider: str) -> bool:
     if role not in ROLES or provider not in PROVIDERS:
         return False
@@ -111,6 +162,7 @@ def load_role_names() -> dict[str, str]:
     return {role: saved.get(role, ROLE_INFO[role]["default_name"]) for role in ROLES}
 
 
+@store_io.atomic(lambda *a, **k: CONFIG_PATH)
 def set_role_name(role: str, name: str) -> bool:
     if role not in ROLES or not name.strip():
         return False
@@ -131,6 +183,7 @@ def load_role_models() -> dict[str, str]:
     return {role: saved.get(role, "") for role in ROLES}
 
 
+@store_io.atomic(lambda *a, **k: CONFIG_PATH)
 def set_role_model(role: str, model: str) -> bool:
     if role not in ROLES:
         return False
@@ -140,18 +193,21 @@ def set_role_model(role: str, model: str) -> bool:
     return True
 
 
+@store_io.atomic(lambda *a, **k: CONFIG_PATH)
 def reset_role_providers() -> None:
     data = _load_raw()
     data.pop("providers", None)
     _save_raw(data)
 
 
+@store_io.atomic(lambda *a, **k: CONFIG_PATH)
 def reset_role_models() -> None:
     data = _load_raw()
     data.pop("models", None)
     _save_raw(data)
 
 
+@store_io.atomic(lambda *a, **k: CONFIG_PATH)
 def reset_role_names() -> None:
     data = _load_raw()
     data.pop("names", None)
@@ -182,6 +238,7 @@ def load_moderator_personality() -> str:
     return _load_raw().get("moderator_personality", "")
 
 
+@store_io.atomic(lambda *a, **k: CONFIG_PATH)
 def set_moderator_personality(personality: str) -> bool:
     if personality and personality not in MODERATOR_PERSONALITIES:
         return False

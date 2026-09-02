@@ -187,5 +187,202 @@ class RenderBoardHtmlTests(unittest.TestCase):
         self.assertIsInstance(out, str)
 
 
+
+class ForcesListOmitsWithoutAssertingTests(unittest.TestCase):
+    """#61 rule 5 at the board. near_tie_with_leader is three-state, and `forces` is a list of
+    what FIRED -- so both False and None are represented by omission, and that is correct only
+    because nothing here renders the negative. If this module (or its JS) ever grows a "not in a
+    tie" sentence, that sentence needs the three-state flag, not this list."""
+
+    def _c(self, flag):
+        return _candidate(near_tie_with_leader=flag)
+
+    def test_a_measured_tie_appears(self):
+        self.assertIn("tie", ui._forces(self._c(True)))
+
+    def test_a_measured_non_tie_is_omitted(self):
+        self.assertNotIn("tie", ui._forces(self._c(False)))
+
+    def test_an_unmeasured_comparison_is_omitted_and_invents_no_token(self):
+        forces = ui._forces(self._c(None))
+        self.assertNotIn("tie", forces)
+        # No "tie?" / "tie-unknown" token: the JS renders glyphs off this list by name, so a new
+        # member would be an unrendered string, and the honest place for the distinction is the
+        # debate briefing, which speaks in sentences. See test_pick_debate.
+        self.assertEqual([f for f in forces if f.startswith("tie")], [])
+
+    def test_the_serialized_candidate_carries_no_negative_tie_claim(self):
+        """The whole reason omission is allowed to stand in for two different states."""
+        payload = ui.serialize_candidate(self._c(None))
+        self.assertNotIn("tie", payload["forces"])
+        self.assertNotIn("nearTie", payload)
+
+
 if __name__ == "__main__":
     unittest.main()
+
+
+class BoardViewOptionsTests(unittest.TestCase):
+    """The Draft Room's board-view selector.
+
+    These moved out of app.py to exist at all: app.py is a Streamlit script that cannot be
+    imported bare, so nothing here had ever been covered -- which is exactly how K and DEF
+    reached the scored pool while remaining unselectable on the board.
+    """
+
+    OFFENSE = ["QB", "RB", "RB", "WR", "WR", "TE", "FLEX", "BN"]
+    EVERYTHING = ["QB", "RB", "RB", "WR", "WR", "TE", "FLEX", "SUPER_FLEX",
+                  "K", "DEF", "DL", "LB", "DB", "IDP_FLEX", "BN"]
+
+    def test_kickers_and_defenses_are_selectable(self):
+        # The regression: they enter the pool, get scored, get a horizon floor and a waiting
+        # cost -- and were absent from _POSITION_VIEW_ORDER, so no view could ever show them.
+        options = ui.position_view_options({"QB", "RB", "WR", "TE", "K", "DEF"}, self.EVERYTHING)
+        self.assertIn("K", options)
+        self.assertIn("DEF", options)
+
+    def test_every_scoreable_position_can_be_viewed(self):
+        # Guards the class of bug rather than the instance: any position the engine ranks must
+        # be reachable in the selector when a league rosters it and candidates exist.
+        present = {"QB", "RB", "WR", "TE", "K", "DEF", "DL", "LB", "DB"}
+        options = set(ui.position_view_options(present, self.EVERYTHING))
+        self.assertTrue(present <= options, f"unreachable positions: {present - options}")
+
+    def test_a_league_without_a_position_is_not_offered_it(self):
+        options = ui.position_view_options({"QB", "RB", "WR", "TE"}, self.OFFENSE)
+        for absent in ("K", "DEF", "DL", "LB", "DB", "SUPER_FLEX", "IDP_FLEX"):
+            self.assertNotIn(absent, options)
+
+    def test_a_flex_slot_needs_both_the_slot_and_an_eligible_candidate(self):
+        # Rosters IDP_FLEX but no IDP candidates remain -> an empty view is not offered.
+        options = ui.position_view_options({"QB", "RB", "WR", "TE"}, self.EVERYTHING)
+        self.assertNotIn("IDP_FLEX", options)
+        self.assertIn("FLEX", options)
+
+    def test_all_is_always_first(self):
+        for present, roster in [({"QB"}, self.OFFENSE), (set(), self.EVERYTHING),
+                                ({"QB", "RB", "WR", "TE", "K", "DEF"}, self.EVERYTHING)]:
+            self.assertEqual(ui.position_view_options(present, roster)[0], "ALL")
+
+    def test_options_follow_the_canonical_order(self):
+        options = ui.position_view_options({"DEF", "QB", "K", "WR", "RB", "TE"}, self.EVERYTHING)
+        self.assertEqual(options, ["ALL", "QB", "RB", "WR", "TE", "FLEX", "SUPER_FLEX", "K", "DEF"])
+
+
+class BoardViewWidthTests(unittest.TestCase):
+    """One row at any option count, by weighting columns to their labels.
+
+    The control opens in place of the current-view tag, so it has to stay a single line. Of
+    the thirteen views a fully rostered league offers, eleven are <=4 characters and two are
+    verbose; an equal split lets the widest label set every column and runs the row out of
+    space. Wrapping was tried and rejected as visually a block rather than an inline reveal.
+    """
+
+    FULL = ["ALL", "QB", "RB", "WR", "TE", "FLEX", "SUPER_FLEX",
+            "K", "DEF", "DL", "LB", "DB", "IDP_FLEX"]
+
+    def test_one_width_per_option_in_order(self):
+        self.assertEqual(len(ui.view_option_widths(self.FULL)), len(self.FULL))
+
+    def test_every_flex_slot_has_a_label(self):
+        # The fallback is the raw slot key, and two of them are 8-9 characters: WRRB_FLEX and
+        # REC_FLEX shipped with no label at all and would have blown out the row worse than
+        # SUPER FLEX did. A new flex type must not be able to reach the UI unnamed.
+        from player_universe import FLEX_SLOT_POSITIONS
+        for slot in FLEX_SLOT_POSITIONS:
+            label = ui.position_view_label(slot)
+            self.assertNotEqual(label, slot, f"{slot} falls through to its raw key")
+            self.assertLessEqual(len(label), 5, f"{slot} label {label!r} is too wide for one row")
+
+    def test_a_flex_label_never_collides_with_a_position_label(self):
+        # WRRB_FLEX rendered as "WR" would be indistinguishable from the WR position view
+        # sitting beside it in the same row.
+        from player_universe import FLEX_SLOT_POSITIONS
+        positions = {"ALL", "QB", "RB", "WR", "TE", "K", "DEF", "DL", "LB", "DB"}
+        for slot in FLEX_SLOT_POSITIONS:
+            self.assertNotIn(ui.position_view_label(slot), positions)
+
+    def test_flex_labels_name_the_positions_they_accept(self):
+        # Self-documenting: the label is the eligible set, so WRT and QWRT read as a pair.
+        self.assertEqual(ui.position_view_label("FLEX"), "WRT")
+        self.assertEqual(ui.position_view_label("SUPER_FLEX"), "QWRT")
+
+    def test_a_two_position_flex_uses_full_slashed_codes(self):
+        # "WR" would collide with the plain WR view; "W/R" is terser but reads as initials in
+        # a row where every other entry is a real position code.
+        self.assertEqual(ui.position_view_label("WRRB_FLEX"), "WR/RB")
+        self.assertEqual(ui.position_view_label("REC_FLEX"), "WR/TE")
+
+    def test_a_new_flex_type_is_labelled_without_touching_this_module(self):
+        # The point of deriving: FLEX_SLOT_POSITIONS is the one list, and a slot added there
+        # must not need a second edit here to avoid rendering as its raw key.
+        from player_universe import FLEX_SLOT_POSITIONS
+        FLEX_SLOT_POSITIONS["QBTE_FLEX"] = {"QB", "TE"}
+        try:
+            self.assertEqual(ui.position_view_label("QBTE_FLEX"), "QB/TE")
+        finally:
+            del FLEX_SLOT_POSITIONS["QBTE_FLEX"]
+
+    def test_label_order_is_conventional_not_alphabetical(self):
+        # QB, WR, RB, TE -- so QWRT and WR/RB come out consistent with one another.
+        self.assertEqual(ui.position_view_label("WRRB_FLEX"), "WR/RB")   # not "RB/WR"
+        self.assertEqual(ui.position_view_label("SUPER_FLEX"), "QWRT")   # not "QRTW"
+
+    def test_super_flex_is_not_abbreviated_to_a_team_code(self):
+        # This board renders team codes beside positions ("QB - SF"), so a two-letter SF
+        # filter would read as San Francisco in exactly the context where it must not.
+        self.assertNotEqual(ui.position_view_label("SUPER_FLEX"), "SF")
+
+    def test_the_shortest_label_still_gets_a_tappable_floor(self):
+        # "K" is one character; without the floor its column collapses to the text width.
+        w = dict(zip(self.FULL, ui.view_option_widths(self.FULL)))
+        self.assertGreaterEqual(w["K"], ui.VIEW_OPTION_MIN_UNITS)
+
+    def test_every_option_fits_its_own_label_at_the_worst_case_count(self):
+        # 13 options in a ~900px row. Roughly 9px per character at this control's font size,
+        # plus button padding -- so the check is that no column is squeezed under its content.
+        widths = ui.view_option_widths(self.FULL)
+        px = [900 * x / sum(widths) for x in widths]
+        for opt, got in zip(self.FULL, px):
+            needed = 9 * len(ui.position_view_label(opt)) + 24
+            self.assertGreater(got, needed,
+                               f"{ui.position_view_label(opt)} would truncate at {got:.0f}px")
+
+    def test_a_small_league_is_unaffected(self):
+        widths = ui.view_option_widths(["ALL", "QB", "RB", "WR", "TE"])
+        self.assertEqual(len(set(widths)), 1, "equal-length labels should get equal columns")
+
+
+class WaitingCostProseSaysWhenTheFloorIsAssumed(unittest.TestCase):
+    """#122: an imputed bench-appetite rate must not be presented as a measured one.
+
+    horizon_floor's placement depends on a positional decay rate that is measured where the
+    remaining pool is deep enough and IMPUTED -- the mean of whatever could be measured --
+    where it is not. Both reach this layer as the same kind of number. Measured on a real
+    12-team 1QB draft, the imputed case covers rounds 3 through 15, and four of six positions
+    by round 10, so the prose was asserting an assumed floor with a measured floor's
+    confidence for most of a draft.
+    """
+
+    def _with_basis(self, horizon_basis):
+        return _candidate(projected_points=200.0, horizon_floor=120.0,
+                          horizon_sensitivity=None, waiting_cost=80.0,
+                          horizon_basis=horizon_basis)
+
+    def test_a_measured_floor_is_stated_without_a_hedge(self):
+        note = ui._waiting_note(self._with_basis("measured"))
+        self.assertIsNotNone(note, "vacuous: no waiting note produced at all")
+        self.assertNotIn("estimate", note["title"].lower())
+
+    def test_an_imputed_floor_says_so(self):
+        note = ui._waiting_note(self._with_basis("imputed"))
+        self.assertIsNotNone(note, "vacuous: no waiting note produced at all")
+        self.assertIn("estimate", note["title"].lower())
+        self.assertIn("too thin to measure", note["title"])
+
+    def test_the_two_actually_differ(self):
+        # Guards the pair: if the note ignored horizon_basis entirely, both tests above could
+        # still pass off one shared string that happened to contain the word.
+        measured = ui._waiting_note(self._with_basis("measured"))["title"]
+        imputed = ui._waiting_note(self._with_basis("imputed"))["title"]
+        self.assertNotEqual(measured, imputed)

@@ -1,0 +1,105 @@
+# Two tiers, and NEITHER is ever skipped based on what a change touches.
+#
+# That restraint is deliberate. Selecting tests by "which files did this commit modify" needs a
+# map from source files to relevant tests, and such a map rots SILENTLY -- it skips the test
+# that mattered and still reports green. This repository's whole audit history is about exactly
+# that failure shape, so the split here is by COST only:
+#
+#   fast  53 modules / 845 tests / ~1.5s   -- every push and PR
+#   full  80 modules / 1548 tests / ~17m   -- every PR, and on demand
+#
+# Both tiers check the declared input set FIRST (#113/§19.4) and print the installed versions.
+# CI is the only place the input set is guaranteed clean -- a fresh clone, nobody's uploads --
+# so a manifest failure here means the commit is wrong, not that somebody used the app.
+#
+# The tier of a module is detected by suite_taxonomy (does it build a real DataMerger), never
+# hand-listed, so it cannot disagree with reality. test_suite_taxonomy fails if either tier
+# collapses, which is what stops "fast" quietly becoming "nothing".
+name: tests
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+  # 19.9. ENGINEERING_DOCTRINE states standing rules and ROADMAP contains no audit cadence, no
+  # scheduled re-audit and no trigger condition -- so nothing ran these checks except a human
+  # pushing. Ruled: WEEKLY, WEDNESDAYS, chosen against the season rather than the calendar. The
+  # regular-season week of play concludes Monday night, so Wednesday is the first day the
+  # world's numbers have settled: injury designations resolved, waivers run, depth charts
+  # updated. A run that lands mid-week measures a stable week; one that lands Sunday measures a
+  # week in motion.
+  #
+  # 13:00 UTC = 09:00 US Eastern. Cron here is UTC; DST moves this an hour against local time
+  # twice a year, which for a weekly integrity run costs nothing and is not worth a workaround.
+  schedule:
+    - cron: "0 13 * * 3"
+
+jobs:
+  fast:
+    name: fast tier (no data load)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - run: pip install -r requirements.txt
+      # #113/§19.4. CI is the one place the input set is guaranteed clean -- a fresh clone, no
+      # uploads -- so a failure here means the COMMIT is wrong (a data file changed without its
+      # manifest, or a baseline file is missing), never that somebody used the app. Run before
+      # the tests, because every number they assert is computed from these bytes.
+      - name: check the declared input set
+        run: python baseline_manifest.py --check
+      # 19.8. Deleting a test is loud; weakening one is silent. These are FLOORS, not a
+      # fingerprint: adding tests needs no regeneration and only a DROP fails, so the repair is
+      # never reflexive. A drop that is deliberate lands as a --write in the same commit, where a
+      # reviewer sees the number go down and reads why.
+      - name: check no guarantee got smaller
+        run: python assertion_floors.py --check
+      # The before/after reference for moving UI code out of app.py. Most of that file's
+      # coverage is source scanning, which goes VACUOUS rather than red when code moves -- so a
+      # green suite is not evidence a UI refactor preserved behaviour, and this is.
+      - name: check the render trace is unchanged
+        run: python render_trace.py --check
+      # What the suite was actually verified against. The three provider SDKs are declared in
+      # requirements.txt and the suite passes without exercising a single live call through any
+      # of them (#120) -- this makes the versions a green run corresponds to a matter of record
+      # rather than of assumption, which is what §19.2 found missing everywhere.
+      - name: record the verified environment
+        run: pip freeze
+      - name: run the fast tier
+        run: python -m unittest $(python suite_taxonomy.py --tier fast)
+
+  full:
+    name: full suite
+    # Only after the fast tier passes -- 17 minutes is not worth spending to learn something
+    # 1.5 seconds already knew.
+    needs: fast
+    if: github.event_name != 'push'
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - run: pip install -r requirements.txt
+      - name: check the declared input set
+        run: python baseline_manifest.py --check
+      # 19.8. Deleting a test is loud; weakening one is silent. These are FLOORS, not a
+      # fingerprint: adding tests needs no regeneration and only a DROP fails, so the repair is
+      # never reflexive. A drop that is deliberate lands as a --write in the same commit, where a
+      # reviewer sees the number go down and reads why.
+      - name: check no guarantee got smaller
+        run: python assertion_floors.py --check
+      # The before/after reference for moving UI code out of app.py. Most of that file's
+      # coverage is source scanning, which goes VACUOUS rather than red when code moves -- so a
+      # green suite is not evidence a UI refactor preserved behaviour, and this is.
+      - name: check the render trace is unchanged
+        run: python render_trace.py --check
+      - name: record the verified environment
+        run: pip freeze
+      - name: run the whole suite
+        run: python -m unittest discover -p "test_*.py"

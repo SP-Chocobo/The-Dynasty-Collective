@@ -69,6 +69,9 @@ from typing import Optional
 
 import pandas as pd
 
+import store_io
+import upload_batches
+
 PROJECTIONS_DIR = Path("data/projections")
 GLOBAL_PROJECTIONS_DIR = PROJECTIONS_DIR / "_global"  # Dynasty Rankings: format-based, shared across leagues
 # Facts-only (name/team/position/rank/trade_value) CSVs extracted from format-based Draft
@@ -279,14 +282,78 @@ POSITION_CODES = ("QB", "RB", "WR", "TE", "K", "DEF", "LB", "DL", "DB")
 IDP_POSITIONS = {"LB", "DL", "DB", "DE", "DT", "S", "CB", "EDGE", "SS", "FS"}
 
 
+# Position families a single real person can never span at once. Each is its own IDENTITY
+# namespace for dedup -- two rows in different families with the same normalized name are two
+# different people, never a re-upload of one.
+#
+# The offensive skill positions deliberately share ONE namespace rather than getting four:
+# a genuine same-player re-upload really can list him RB in one file and WR in another
+# (real reclassification), and those rows must still collapse onto the newest. Nobody is
+# reclassified from tight end to kicker, and a team defense is not a person at all, so those
+# get namespaces of their own.
+_KICKER_POSITIONS = {"K", "PK"}
+_TEAM_DEFENSE_POSITIONS = {"DEF", "DST", "D/ST"}
+
+
+# Vendor synonyms for the SAME on-field role. Draft Sharks exports the three broad IDP codes
+# (LB/DL/DB) where FantasyPros and ESPN split them finer (S/CB for DB, DE/DT/EDGE for DL), and
+# Sleeper writes DST where Draft Sharks writes DEF -- none of which is a different player.
+#
+# Deliberately NOT _position_group. That one is the dedup IDENTITY namespace and is coarse on
+# purpose: every offensive skill position shares it, so a genuine RB->WR reclassification still
+# collapses onto one row. This is the COMPARISON key a resolution uses to ask "is the row I
+# matched even the same kind of player as the query", where QB/RB/WR/TE must stay four
+# different answers. Using either one for the other's job is a real defect in both directions.
+_POSITION_SYNONYMS = {
+    "DST": "DEF", "D/ST": "DEF", "PK": "K",
+    "S": "DB", "SS": "DB", "FS": "DB", "CB": "DB",
+    "DE": "DL", "DT": "DL", "EDGE": "DL", "NT": "DL",
+    "OLB": "LB", "ILB": "LB", "MLB": "LB",
+}
+
+
+def position_family(position) -> Optional[str]:
+    """The role a position names, with vendor synonyms collapsed -- or None when the position
+    is unknown. None means "no opinion", never "no match": an absent position is not evidence
+    that two rows describe different people."""
+    if position is None:
+        return None
+    try:
+        if pd.isna(position):
+            return None
+    except (TypeError, ValueError):
+        pass
+    text = str(position).strip().upper()
+    if not text:
+        return None
+    return _POSITION_SYNONYMS.get(text, text)
+
+
 def _position_group(position) -> str:
-    """Broad offense/IDP bucket so a same-named offensive and IDP player (a real
-    example that surfaced merging baseline data: "Josh Allen" the Bills QB vs.
-    "Josh Allen" a DL) never silently collide as the same dedup key in
-    _dedup_by_name_and_position below."""
+    """Identity namespace for the dedup key, so two same-named players from different
+    position families never silently shadow each other in _dedup_by_name_and_position below.
+
+    The original bucket was offense-vs-IDP, added for a real collision found merging baseline
+    data ("Josh Allen" the Bills QB vs. "Josh Allen" a DL). It left K and DST inside the
+    offense bucket, which was harmless only while the kicker pool was 13 vendor rows. Seeding
+    K and DST from league-scored Sleeper projections took that pool to 37 kickers and 32
+    defenses and made the gap reachable: J Sanders (TE, CAR) and J Sanders (K, NYJ) are two
+    different people, collided on "j sanders|offense", and the tight end was dropped from the
+    merged projections entirely -- not mispriced, absent, and therefore undraftable.
+
+    Same fix shape as the original, applied to the families it missed. Note this is an
+    IDENTITY rule, not a scoring one: it decides who is the same person, and nothing here
+    touches how any position is valued."""
     if not isinstance(position, str) or not position:
         return ""
-    return "idp" if position.upper() in IDP_POSITIONS else "offense"
+    upper = position.upper()
+    if upper in IDP_POSITIONS:
+        return "idp"
+    if upper in _KICKER_POSITIONS:
+        return "k"
+    if upper in _TEAM_DEFENSE_POSITIONS:
+        return "def"
+    return "offense"
 
 
 _REVIEWED_DATE_RE = re.compile(r"Reviewed By[^|]*\|([A-Za-z]{3,9}\s+\d{1,2},\s+\d{4})")
@@ -302,7 +369,35 @@ def _extract_reviewed_date(full_text: str) -> Optional[str]:
         return None
 
 
-def _sniff_pdf_kind(path: Path) -> str:
+def _sniff_pdf_kind_from_text(text: str) -> Optional[str]:
+    """Which Draft Sharks tool this page text came from, or None when nothing recognises it.
+
+    None is the important return. This used to fall through to "rankings" for anything it did
+    not recognise -- including an unreadable file -- so a mis-sniff silently handed the wrong
+    document to parse_draftsharks_pdf, which would then read whatever regex-shaped lines it
+    happened to contain. No parser is a default.
+
+    Rankings is identified POSITIVELY, by the structure of its own table (a stat row in either
+    published layout, plus a TEAM/POSITION/rank line), rather than by being the last option
+    left. That is a stronger test than the old fallthrough, not a weaker one.
+    """
+    upper = (text or "").upper()
+    if "TRADE VALUE CHART" in upper:
+        return "trade_value_chart"
+    if "FREE AGENT FINDER" in upper or "3D ROS" in upper:
+        return "free_agents"
+    if "LEAGUE ANALYZER" in upper or "LEAGUE POWER RANKINGS" in upper:
+        return "league_analyzer"
+    lines = [line.strip() for line in (text or "").split("\n")]
+    has_stat = any(_RANKINGS_STAT_RE.match(line) or _RANKINGS_ADP_STAT_RE.match(line)
+                   for line in lines)
+    has_team_pos = any(_RANKINGS_TEAM_POS_RE.match(line) for line in lines)
+    if has_stat and has_team_pos:
+        return "rankings"
+    return None
+
+
+def _sniff_pdf_kind(path: Path) -> Optional[str]:
     """Which Draft Sharks tool a PDF came from, sniffed from its own text (not the filename).
 
     'rankings' -> format-based, shareable across leagues. 'trade_value_chart' -> also
@@ -318,21 +413,69 @@ def _sniff_pdf_kind(path: Path) -> str:
         reader = pypdf.PdfReader(str(path))
         text = (reader.pages[0].extract_text() or "") if reader.pages else ""
     except Exception:
-        return "rankings"
-    upper = text.upper()
-    if "TRADE VALUE CHART" in upper:
-        return "trade_value_chart"
-    if "FREE AGENT FINDER" in upper or "3D ROS" in upper:
-        return "free_agents"
-    if "LEAGUE ANALYZER" in upper or "LEAGUE POWER RANKINGS" in upper:
-        return "league_analyzer"
-    return "rankings"
+        # An unreadable file is an unknown file. It used to become "rankings".
+        return None
+    return _sniff_pdf_kind_from_text(text)
 
 
 # -- Dynasty Rankings tool -----------------------------------------------------
 
+# Draft Sharks publishes these rankings pages in two different table layouts, and the
+# numbers alone don't distinguish them -- both are "rank plus three figures":
+#
+#   dynasty tables : RK | 1yr Proj | 3yr Proj | 3D Value    ->  "1 177 406 18"
+#   redraft DST    : RK | ADP      | DS Proj  | 3D Value    ->  "1 22.11 125 9"
+#
+# ADP is a decimal round.pick figure, which is what makes the two separable at all, but
+# keying off "is the second number a float" would be inference. The layout is read from the
+# page HEADER instead, which states it outright. Nothing here is position-specific: it is a
+# fact about the source's table formats, and any future DS page in either layout parses.
 _RANKINGS_STAT_RE = re.compile(r"^(\d+) ([\d,]+) ([\d,]+) (\d+)$")
+_RANKINGS_ADP_STAT_RE = re.compile(r"^(\d+) (\d+\.\d+) ([\d,]+) (\d+)$")
+_RANKINGS_ADP_HEADER_RE = re.compile(r"\bRK\b.*\bADP\b")
 _RANKINGS_TEAM_POS_RE = re.compile(rf"^({'|'.join(NFL_TEAM_CODES)})\s*({'|'.join(POSITION_CODES)})(\d+)$")
+
+
+def _verify_block_alignment(source: str, page_number: int, stat_rows: list, name_rows: list,
+                            rank_index: int) -> None:
+    """Both Draft Sharks PDF tools publish a page as two independent blocks -- the stats and
+    the names -- and both parsers join them by POSITIONAL INDEX. That join asserts an ordering
+    invariant about the source document, and until this existed nothing checked it.
+
+    Two checks, and deliberately only two:
+
+    * more stat rows than name rows means a NAME line went undetected, so every later stat on
+      the page belongs to the player above it. This is the dangerous direction: it leaves a
+      superficially perfect record -- valid name, team, position, contiguous rank, plausible
+      numbers -- with nothing anywhere marking it. The reverse (more names than stats) is the
+      one shortfall the parser documents, "just missed the cut" names with no stat row, and
+      stays a legitimate parse with null numerics.
+    * ranks must strictly increase down the page. A stray line matching the stat shape (a
+      footer, a page number block) lands in the middle of the block and breaks it.
+
+    Strictly increasing, NOT contiguous: real exports skip ranks -- the committed
+    te_premium_dynasty_rankings.csv carries 7 gaps over 250 rows -- so requiring contiguity
+    would reject good documents. Checking the weaker property that actually holds is the
+    difference between a check and a guess.
+
+    Raising is the point. parse_keeptradecut_pdf already refuses to emit a row it cannot place
+    (its expected_rank check truncates rather than mis-assigns), and this gives the other two
+    the same ability to know they are lost.
+    """
+    if len(stat_rows) > len(name_rows):
+        raise ValueError(
+            f"{source}: page {page_number} does not align -- {len(stat_rows)} stat rows against "
+            f"{len(name_rows)} names, so a name line went undetected and every stat after it "
+            "would be attributed to the wrong player. Refusing to emit the page."
+        )
+    ranks = [row[rank_index] for row in stat_rows]
+    for earlier, later in zip(ranks, ranks[1:]):
+        if later <= earlier:
+            raise ValueError(
+                f"{source}: page {page_number} does not align -- rank {later} follows {earlier}, "
+                "so the stat block contains a line that is not a player row. Refusing to emit "
+                "the page."
+            )
 
 
 def parse_draftsharks_pdf(path: Path) -> tuple[pd.DataFrame, Optional[str]]:
@@ -352,21 +495,36 @@ def parse_draftsharks_pdf(path: Path) -> tuple[pd.DataFrame, Optional[str]]:
     full_text_parts: list[str] = []
     records: list[dict] = []
 
-    for page in reader.pages:
+    for page_number, page in enumerate(reader.pages, start=1):
         text = page.extract_text()
         full_text_parts.append(text)
         lines = [l.strip() for l in text.split("\n")]
 
-        stat_rows: list[tuple[int, int, int, int]] = []
+        # Which of the two DS table layouts is this page? Read from its own header rather
+        # than inferred from the numbers -- see _RANKINGS_ADP_STAT_RE.
+        adp_layout = any(_RANKINGS_ADP_HEADER_RE.search(l) for l in lines)
+        stat_re = _RANKINGS_ADP_STAT_RE if adp_layout else _RANKINGS_STAT_RE
+
+        # (rank, season projection, 3yr projection or None, 3D value). The ADP layout has no
+        # multi-year column at all, so proj_3yr stays None there rather than being filled
+        # with a stand-in -- a defense has no career arc to project, and inventing one would
+        # feed a fabricated number straight into dynasty scoring. compute_draft_board treats
+        # a missing proj_3yr as "no opinion" (neutral), not as a bad outlook.
+        stat_rows: list[tuple[int, int, Optional[int], int]] = []
         name_rows: list[dict] = []
         i = 0
         while i < len(lines):
             line = lines[i]
-            stat_match = _RANKINGS_STAT_RE.match(line)
+            stat_match = stat_re.match(line)
             if stat_match:
-                rank, proj_1yr, proj_3yr, value_3d = stat_match.groups()
-                stat_rows.append((int(rank), int(proj_1yr.replace(",", "")),
-                                   int(proj_3yr.replace(",", "")), int(value_3d)))
+                if adp_layout:
+                    rank, _adp, projection, value_3d = stat_match.groups()
+                    proj_3yr_value = None
+                else:
+                    rank, projection, proj_3yr, value_3d = stat_match.groups()
+                    proj_3yr_value = int(proj_3yr.replace(",", ""))
+                stat_rows.append((int(rank), int(projection.replace(",", "")),
+                                   proj_3yr_value, int(value_3d)))
                 i += 1
                 continue
 
@@ -387,6 +545,8 @@ def parse_draftsharks_pdf(path: Path) -> tuple[pd.DataFrame, Optional[str]]:
 
             i += 1
 
+        _verify_block_alignment(getattr(path, "name", str(path)), page_number,
+                                 stat_rows, name_rows, rank_index=0)
         for idx, entry in enumerate(name_rows):
             if idx < len(stat_rows):
                 rank, proj_1yr, proj_3yr, value_3d = stat_rows[idx]
@@ -427,7 +587,7 @@ def parse_draftsharks_free_agents_pdf(path: Path) -> tuple[pd.DataFrame, Optiona
     reader = pypdf.PdfReader(str(path))
     records: list[dict] = []
 
-    for page in reader.pages:
+    for page_number, page in enumerate(reader.pages, start=1):
         lines = [l.strip() for l in page.extract_text().split("\n")]
 
         stat_rows: list[tuple[Optional[str], int, float, float, float, float]] = []
@@ -456,6 +616,8 @@ def parse_draftsharks_free_agents_pdf(path: Path) -> tuple[pd.DataFrame, Optiona
 
             i += 1
 
+        _verify_block_alignment(getattr(path, "name", str(path)), page_number,
+                                 stat_rows, name_rows, rank_index=1)
         for idx, entry in enumerate(name_rows):
             if idx < len(stat_rows):
                 status, rank, proj, ros, ceiling, value = stat_rows[idx]
@@ -837,6 +999,18 @@ def parse_keeptradecut_pdf(path: Path, start_rank: Optional[int] = None) -> tupl
     return df, None
 
 
+def _relative_to_cwd(path: Path) -> str:
+    """A repo-relative posix path, matching the spelling upload_batches stores.
+
+    Falls back to the name alone for a path outside the tree (a staging temp dir during an
+    upload, say) -- a miss there simply means no stated date, which is the honest answer.
+    """
+    try:
+        return path.resolve().relative_to(Path.cwd().resolve()).as_posix()
+    except (ValueError, OSError):
+        return path.name
+
+
 def load_projection_file(path: Path, default_kind: str = "rankings") -> tuple[pd.DataFrame, str]:
     """Returns (dataframe, kind) where kind is 'rankings', 'free_agents', or 'trade_value_chart'.
 
@@ -859,6 +1033,12 @@ def load_projection_file(path: Path, default_kind: str = "rankings") -> tuple[pd
         source_date = None
     elif suffix == ".pdf":
         kind = _sniff_pdf_kind(path)
+        if kind is None:
+            raise ValueError(
+                f"{path.name} does not match any supported export format — refusing to guess. "
+                "A PDF that no sniffer recognises used to be handed to the Dynasty Rankings "
+                "parser by default, which would read whatever regex-shaped lines it contained."
+            )
         if kind == "league_analyzer":
             raise ValueError(f"{path.name} looks like a Draft Sharks League Analyzer export — not supported yet")
         if kind == "trade_value_chart":
@@ -874,7 +1054,26 @@ def load_projection_file(path: Path, default_kind: str = "rankings") -> tuple[pd
         raise ValueError(f"Unsupported projection file type: {path.suffix}")
 
     df["source_file"] = path.name
-    df["source_date"] = source_date or datetime.fromtimestamp(path.stat().st_mtime).date().isoformat()
+    # THE DATE PRECEDENCE ACTUALLY USES, in three states -- and never a fourth invented one.
+    #
+    # This used to read `source_date or datetime.fromtimestamp(path.stat().st_mtime)...`, which
+    # meant NOTHING WAS EVER UNDATED. `_order_by_precedence` sorts on `_negated_date`, which has
+    # an explicit branch for an undated file -- "sorts after any digit-complement, so undated
+    # rows lose to dated ones" -- and that branch was UNREACHABLE in production, because an
+    # mtime always filled the gap first. The safe behaviour was written, and never ran.
+    #
+    # mtime is not a weak date, it is a DIFFERENT FACT: "when this file landed on this disk",
+    # which on a fresh clone is the checkout time. §19.4 records it breaking real numbers twice.
+    # Measured before removing it: 0 of the committed baseline files rely on it -- every one
+    # declares its own source_date -- so it existed purely to guess on behalf of uploads, which
+    # is exactly where guessing is worst and where a user can simply be asked instead.
+    #
+    # "" and not None: load_all stringifies this column, so a None would arrive downstream as
+    # the string "None" -- truthy, and therefore treated as a date. An empty string is the only
+    # spelling of "no date" that survives that round trip.
+    _stated = upload_batches.stated_as_of(_relative_to_cwd(path))
+    df["source_date"] = upload_batches.resolve_source_date(_stated, source_date) or ""
+    df["source_date_basis"] = upload_batches.date_basis(_stated, source_date)
     return df, kind
 
 
@@ -932,6 +1131,7 @@ def _rankings_format_match_score(tags: dict, league_format: dict) -> float:
 def load_all(
     projections_dir: Path = PROJECTIONS_DIR, default_kind: str = "rankings",
     format_hint: Optional[dict] = None,
+    conflicts: Optional[list] = None,
 ) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
     """Parse every CSV/JSON/PDF once, bucketed into (rankings_df, free_agents_df, trade_values_df).
 
@@ -940,7 +1140,7 @@ def load_all(
     format_hint (a league's {"scoring", "superflex", "te_premium"}), when given, reorders the
     RANKINGS frames (never free agents or trade values -- neither has multiple format variants
     today) from worst- to best-matching before the dedup below, so the best-fitting file wins
-    the same-player tiebreak instead of whichever file happened to sort last by mtime. See
+    the same-player tiebreak instead of whichever file happened to sort last. See
     _detect_rankings_format/_rankings_format_match_score for how that match is scored. Offense
     and IDP rows never contend for the same tiebreak (Draft Sharks' offense and IDP exports
     cover disjoint position sets entirely), so this reordering is safe to apply as one global
@@ -951,20 +1151,16 @@ def load_all(
     if not projections_dir.exists():
         return empty, empty.copy(), empty.copy()
 
-    # (mtime, name), not mtime alone: mtime stays the primary key so a genuinely newer upload
-    # still wins the same-player dedup tiebreak below ("newest wins" is real product behavior,
-    # not an accident) -- but a fresh git checkout writes every committed file with
-    # near-identical mtimes in arbitrary filesystem order, and under mtime-only sorting those
-    # ties resolved by iterdir() order, which is filesystem-dependent. Confirmed live during
-    # the M13 backtest: two checkouts of byte-identical data produced different row orders,
-    # which flipped merge_player tie-breaks (a real 13-point value swing on one player) with
-    # zero code difference. Filename breaks mtime ties canonically instead.
+    # Load order here doesn't matter -- sorted by name only so this loop itself is
+    # deterministic and doesn't depend on iterdir()'s filesystem order. What decides the
+    # dedup tiebreak is assigned AFTER loading, below.
     files = sorted(
         [p for p in projections_dir.iterdir() if p.suffix.lower() in (".csv", ".json", ".pdf")],
-        key=lambda p: (p.stat().st_mtime, p.name),
+        key=lambda p: p.name,
     )
-    rankings_frames, fa_frames, tvc_frames = [], [], []
-    rankings_scores: list[float] = []
+    rankings_entries: list[tuple[str, str, "pd.DataFrame", float]] = []
+    fa_entries: list[tuple[str, str, "pd.DataFrame"]] = []
+    tvc_entries: list[tuple[str, str, "pd.DataFrame"]] = []
     for f in files:
         try:
             df, kind = load_projection_file(f, default_kind=default_kind)
@@ -980,30 +1176,388 @@ def load_all(
             df = df.sort_values("rank", na_position="last").drop_duplicates(subset="norm_name", keep="first")
         else:
             df = df.drop_duplicates(subset="norm_name", keep="first")
-        # trade_value_chart rows (asset_type/value, no rank/team/position-rank) have a
-        # different shape than rankings rows -- a separate bucket, not folded into
-        # rankings, so DataMerger.projections never mixes player rankings with rookie
-        # pick slot/future pick rows that would never sensibly match a roster player.
+
+        # The dedup tiebreak below is decided by (source_date, filename), NOT filesystem
+        # mtime as this used to read. Every loaded file already carries a source_date -- real,
+        # if the file declares one, or an mtime-derived fallback otherwise (see
+        # load_projection_file) -- and that value is part of the file's own committed content,
+        # not the filesystem's, so it survives a fresh checkout unchanged where mtime does not.
+        #
+        # mtime broke this twice, confirmed on real data both times. (1) The M13 backtest:
+        # two checkouts of byte-identical baseline data produced different row orders under
+        # mtime sorting, which flipped a real 13-point value swing on one player with zero
+        # code difference. (2) The pre-freeze audit: simulating a reversed-order checkout
+        # (plausible mtime assignment, nothing exotic) turned a single-source kicker pool into
+        # an unintended MIXTURE of two differently-scored sources -- vendor Draft Sharks rows
+        # sitting beside league-scored Sleeper rows in the same position, invisible in output.
+        #
+        # Filename remains the tiebreak for files sharing a date (four K/DST files in the
+        # committed baseline all declare 2026-08-25) -- that has NOT become a semantic
+        # precedence rule, it is still an arbitrary string comparison. What changed is that it
+        # is now the ONLY thing left to depend on for that tie, and a filename is fixed and
+        # checkout-order-independent where an mtime is not: the exact same tie resolves the
+        # exact same way on every clone, forever, instead of accidentally doing so today.
+        source_date = str(df["source_date"].iloc[0]) if "source_date" in df.columns and not df.empty else ""
         if kind == "free_agents":
-            fa_frames.append(df)
+            fa_entries.append((source_date, f.name, df))
         elif kind == "trade_value_chart":
-            tvc_frames.append(df)
+            tvc_entries.append((source_date, f.name, df))
         else:
-            rankings_frames.append(df)
-            rankings_scores.append(_rankings_format_match_score(_detect_rankings_format(f.name), format_hint))
+            score = _rankings_format_match_score(_detect_rankings_format(f.name), format_hint)
+            rankings_entries.append((source_date, f.name, df, score))
+
+    # trade_value_chart rows (asset_type/value, no rank/team/position-rank) have a
+    # different shape than rankings rows -- a separate bucket, not folded into
+    # rankings, so DataMerger.projections never mixes player rankings with rookie
+    # pick slot/future pick rows that would never sensibly match a roster player.
+    fa_entries.sort(key=lambda e: (e[0], e[1]))
+    tvc_entries.sort(key=lambda e: (e[0], e[1]))
+    rankings_entries.sort(key=lambda e: (e[0], e[1]))
+    fa_frames = [df for _, _, df in fa_entries]
+    tvc_frames = [df for _, _, df in tvc_entries]
+    rankings_frames = [df for _, _, df, _ in rankings_entries]
+    rankings_scores = [score for _, _, _, score in rankings_entries]
+
+    # Carry the format-match score ON THE ROWS. It used to be expressed only by re-ordering
+    # whole frames and letting keep="last" pick the winner, which a field-level merge cannot
+    # see -- the score is a real semantic precedence rule and has to travel with the data.
+    for frame, score in zip(rankings_frames, rankings_scores):
+        if not frame.empty:
+            frame["_format_match_score"] = score
 
     if format_hint and len(rankings_frames) > 1:
         # Stable sort: among files tied on match score (e.g. two that both mismatch, or
-        # multiple with no scoring opinion at all), the original mtime order still decides --
-        # this only re-prioritizes real format matches, it doesn't invent a new tiebreak for
-        # files a hint can't distinguish between.
+        # multiple with no scoring opinion at all), the (source_date, filename) order above
+        # still decides -- this only re-prioritizes real format matches, it doesn't invent a
+        # new tiebreak for files a hint can't distinguish between.
         rankings_frames = [df for _, df in sorted(zip(rankings_scores, rankings_frames), key=lambda pair: pair[0])]
 
+    # Rankings go through the field-level reconciliation; this is where the duplicates
+    # actually meet, so it is where the conflicts are. Free agents and the trade-value chart
+    # have a different schema and no horizon dimension, and keep the plain row dedup.
     return (
-        _dedup_by_name_and_position(rankings_frames, empty),
+        _reconcile_rows(rankings_frames, conflicts=conflicts),
         _dedup_by_name_and_position(fa_frames, empty),
         _dedup_by_name_and_position(tvc_frames, empty),
     )
+
+
+# -- measurement basis ----------------------------------------------------------
+#
+# A basis says what SCALE a number is on -- who computed it, under whose scoring. Two figures
+# on different bases are not comparable, and combining them is not a merge, it is a category
+# error wearing a number.
+#
+# This registry is PROVENANCE-BACKED, not filename-guessed: data/baseline/
+# sleeper_projection_provenance.json documents these two CSVs as "transcribed from Sleeper app
+# screenshots (SEASON PROJ), not an API pull", captured from two DIFFERENT leagues, neither of
+# them the one being drafted. That file also states the reason this distinction matters: "the
+# same defense is a 111-point season under the settings below and a 276-point season under
+# CBS's assumptions -- and it is the SPREAD, not the level, that VOR reads as positional
+# separation."
+_TRANSCRIBED_SOURCE_FILES = {
+    "sleeper_kicker_projections.csv",
+    "sleeper_dst_projections.csv",
+}
+
+# How much a basis is trusted, matching the ordering draft_room.CONFIDENCE_BY_SOURCE already
+# states for the same sources: a dedicated cross-league projection methodology above a season
+# total transcribed from some other league's display.
+BASIS_CONFIDENCE = {
+    "draftsharks_vendor": 80.0,
+    "sleeper_transcribed": 50.0,
+}
+
+# Positions with no multi-year dimension AT ALL, as a declared fact about the domain rather
+# than an inference from missing data. Draft Sharks publishes DST only as a redraft table and
+# a team defense has no career arc to project -- so its absent proj_3yr is "not applicable",
+# not "unknown". A kicker has a career arc, so his absence is "unknown". Collapsing those two
+# is what made it impossible to say whether restoring data was even possible.
+NO_HORIZON_DIMENSION_POSITIONS = {"DEF", "DST", "D/ST"}
+
+
+def measurement_basis(source_file) -> Optional[str]:
+    """Which measurement basis a source file's numbers are on, or None if unknown."""
+    if source_file is None:
+        return None
+    try:
+        if pd.isna(source_file):
+            return None
+    except (TypeError, ValueError):
+        pass
+    name = str(source_file).strip()
+    if not name:
+        return None
+    if name in _TRANSCRIBED_SOURCE_FILES:
+        return "sleeper_transcribed"
+    return "draftsharks_vendor"
+
+
+def _basis_for_position(rows: pd.DataFrame) -> Optional[str]:
+    """The single basis a position is priced on: COVERAGE first, stated confidence second.
+
+    Coverage wins deliberately. Taking the higher-confidence basis at K would cut the pool from
+    37 kickers to the vendor table's 13 -- re-breaking the supply defect measured to overstate
+    the best K/DEF's VOR by ~45%, because replacement level would be computed off a scattered
+    vendor subset. A missing horizon nudge is the smaller loss of the two, and unlike a
+    distorted anchor it is recorded rather than silent.
+    """
+    if rows.empty or "measurement_basis" not in rows.columns:
+        return None
+    ranked = []
+    for basis, sub in rows.groupby("measurement_basis"):
+        ranked.append((len(set(sub["norm_name"])), BASIS_CONFIDENCE.get(basis, 0.0), basis))
+    if not ranked:
+        return None
+    ranked.sort(reverse=True)
+    return ranked[0][2]
+
+
+def _precedence_sort_key(row) -> tuple:
+    """Stated precedence, most significant first:
+
+      1. basis confidence  -- a vendor methodology over a transcribed screenshot
+      2. format match      -- how well the file's own format assumptions fit THIS league
+                              (_rankings_format_match_score; higher is better). This was
+                              previously expressed by re-ordering whole frames and relying on
+                              keep="last", which a field-level merge cannot see, so it is
+                              carried on the row instead.
+      3. recency           -- a newer source_date
+    Filename is applied separately, by a stable pre-sort (see _order_by_precedence), because
+    it must keep the LAST name winning -- the direction the old keep="last" dedup had. Both
+    directions are equally arbitrary, and changing which arbitrary answer is given would move
+    real numbers for no reason.
+    """
+    confidence = BASIS_CONFIDENCE.get(row.get("measurement_basis"), 0.0)
+    try:
+        format_score = float(row.get("_format_match_score") or 0.0)
+    except (TypeError, ValueError):
+        format_score = 0.0
+    date = str(row.get("source_date") or "")
+    return (-confidence, -format_score, _negated_date(date))
+
+
+def _order_by_precedence(group: list) -> list:
+    """Best candidate first.
+
+    Two passes, relying on sort stability: filename DESCENDING first, then the semantic keys.
+    The descending filename preserves the direction the previous `keep="last"` dedup had, so
+    files that nothing semantic separates resolve to the same winner they always did -- the
+    point of the filename tiebreak is determinism across checkouts, and flipping which
+    arbitrary answer it gives would move real numbers for no reason.
+    """
+    by_name = sorted(group, key=lambda row: str(row.get("source_file") or ""), reverse=True)
+    return sorted(by_name, key=_precedence_sort_key)
+
+
+def _negated_date(date: str) -> str:
+    """Sort newer-first as a string key, without parsing: complement each digit of an ISO date."""
+    if not date:
+        return "~"  # sorts after any digit-complement, so undated rows lose to dated ones
+    return "".join(str(9 - int(ch)) if ch.isdigit() else ch for ch in date)
+
+
+_CONFLICT_NOTES = {
+    "measurement_basis": "a higher-confidence measurement basis wins",
+    "format_match": "the file whose format assumptions fit this league wins",
+    "source_date": "the newer source_date wins",
+    "filename": ("decided by an ARBITRARY filename comparison -- nothing semantic separated "
+                 "these sources"),
+}
+
+
+def _conflict_reason(winner, loser) -> str:
+    """Which precedence rule actually decided this discard. Naming it is the point: a conflict
+    resolved by a filename is not the same event as one resolved by recency, and only one of
+    the two is a rule."""
+    if BASIS_CONFIDENCE.get(winner.get("measurement_basis"), 0.0) != \
+            BASIS_CONFIDENCE.get(loser.get("measurement_basis"), 0.0):
+        return "measurement_basis"
+    if (winner.get("_format_match_score") or 0.0) != (loser.get("_format_match_score") or 0.0):
+        return "format_match"
+    if str(winner.get("source_date")) != str(loser.get("source_date")):
+        return "source_date"
+    return "filename"
+
+
+_RECONCILED_IDENTITY_COLUMNS = {"norm_name", "_name_key", "_dedup_key"}
+# The fields worth recording a disagreement about -- the numbers that become a valuation.
+_CONFLICT_TRACKED_FIELDS = {"projection", "proj_3yr", "trade_value", "rank"}
+
+
+def _reconcile_rows(frames: list[pd.DataFrame], conflicts: Optional[list] = None) -> pd.DataFrame:
+    """Merge FIELDS under a stated precedence, not rows under a filename.
+
+    This replaced `drop_duplicates(subset=..., keep="last")`, under which the winning ROW
+    replaced the loser wholesale. Measured on the committed baseline, that discarded 51 fields
+    where the winner was null and a loser had a value, and resolved 1084 field-level conflicts
+    per load with no record of any of them. A merge that silently drops a value has not
+    succeeded.
+
+    Two rules, in order:
+
+    1. ONE BASIS PER POSITION (see _basis_for_position). A field-level merge across bases would
+       give K a pool of 13 players averaging 153 points beside 24 averaging 88 -- a 1.43x step
+       inside one position, landing straight on the anchor VOR measures spread against.
+    2. FIELD-LEVEL MERGE within that basis, first non-null in precedence order, with every
+       disagreement recorded.
+
+    Rule 1 is why this does not restore K's proj_3yr. The figure exists, on a basis that does
+    not price the position, and pairing them was measured to inflate every kicker's apparent
+    trajectory by a median 1.43x. The absence is now stated (see proj_3yr_state) rather than an
+    accident of alphabetical order.
+    """
+    if conflicts is None:
+        conflicts = []
+    non_empty = [f for f in frames if f is not None and not f.empty]
+    if not non_empty:
+        return pd.DataFrame(columns=["name", "norm_name"])
+    combined = pd.concat(non_empty, ignore_index=True, sort=False)
+    if "source_file" in combined.columns:
+        combined["measurement_basis"] = combined["source_file"].map(measurement_basis)
+    else:
+        combined["measurement_basis"] = None
+
+    # 1. one basis per position
+    if "position" in combined.columns:
+        keep = []
+        for position, rows in combined.groupby(combined["position"].astype(str)):
+            chosen = _basis_for_position(rows)
+            if chosen is None:
+                keep.append(rows)
+                continue
+            kept = rows[rows["measurement_basis"] == chosen]
+            dropped = rows[rows["measurement_basis"] != chosen]
+            for basis, sub in dropped.groupby("measurement_basis"):
+                conflicts.append({
+                    "player": f"<all {position}>", "field": "measurement_basis",
+                    "chosen_source": chosen, "chosen_value": chosen,
+                    "discarded_source": basis, "discarded_value": f"{len(sub)} rows",
+                    "reason": "single_basis_per_position",
+                    "note": (f"{position} is priced on {chosen}; {basis} rows excluded so one "
+                             "position is never measured on two scales"),
+                })
+            keep.append(kept)
+        combined = pd.concat(keep, ignore_index=True, sort=False) if keep else combined
+
+    # 2. field-level merge within the chosen basis
+    if "position" in combined.columns:
+        combined["_dedup_key"] = combined["norm_name"] + "|" + combined["position"].map(_position_group)
+    else:
+        combined["_dedup_key"] = combined["norm_name"]
+    value_columns = [c for c in combined.columns if c not in _RECONCILED_IDENTITY_COLUMNS]
+    # Plain dicts, not iterrows(): this walks every candidate of every field of every player,
+    # and pandas row access dominated the load time by an order of magnitude.
+    records = combined.to_dict("records")
+    grouped: dict = {}
+    for record in records:
+        grouped.setdefault(record["_dedup_key"], []).append(record)
+
+    merged_rows = []
+    for _key, group in grouped.items():
+        ordered = _order_by_precedence(group)
+        winner = ordered[0]
+        row = {"norm_name": winner["norm_name"]}
+        for column in value_columns:
+            chosen_value, chosen_source = None, None
+            for candidate in ordered:
+                value = candidate.get(column)
+                if value is None or (isinstance(value, float) and value != value):
+                    continue
+                if chosen_value is None:
+                    chosen_value, chosen_source = value, candidate.get("source_file")
+                    continue
+                if column in _CONFLICT_TRACKED_FIELDS and value != chosen_value:
+                    reason = _conflict_reason(winner, candidate)
+                    conflicts.append({
+                        "player": str(winner.get("name")), "field": column,
+                        "chosen_source": chosen_source, "chosen_value": chosen_value,
+                        "discarded_source": candidate.get("source_file"), "discarded_value": value,
+                        "reason": reason,
+                        "note": _CONFLICT_NOTES[reason],
+                    })
+            row[column] = chosen_value
+            if column in ("projection", "proj_3yr"):
+                row[f"{column}_source"] = chosen_source
+        merged_rows.append(row)
+    result = pd.DataFrame(merged_rows)
+    return _assign_horizon_state(result)
+
+
+def _assign_horizon_state(df: pd.DataFrame) -> pd.DataFrame:
+    """known / unknown / not_applicable, with a reason on every non-known row.
+
+    Three states because the old two could not distinguish "this position has no career arc"
+    from "this player has one and we do not have it" -- and that is exactly the distinction
+    that decides whether restoring the data is even possible.
+    """
+    if df.empty:
+        for column in ("proj_3yr_state", "proj_3yr_reason"):
+            df[column] = pd.Series(dtype="object")
+        return df
+    states, reasons = [], []
+    for row in df.to_dict("records"):
+        position = str(row.get("position") or "").upper()
+        value = row.get("proj_3yr")
+        has_value = value is not None and not (isinstance(value, float) and value != value)
+        if has_value:
+            states.append("known")
+            reasons.append("")
+        elif position in NO_HORIZON_DIMENSION_POSITIONS:
+            states.append("not_applicable")
+            reasons.append("a team defense has no career arc to project; no source publishes one")
+        else:
+            basis = measurement_basis(row.get("projection_source") or row.get("source_file"))
+            reasons.append(
+                f"no multi-year figure on the {basis} basis that prices this position"
+                if basis else "no multi-year figure from any source carrying this player"
+            )
+            states.append("unknown")
+    df["proj_3yr_state"] = states
+    df["proj_3yr_reason"] = reasons
+    return df
+
+
+def horizon_gap_lines(rows: list[dict], indent: str = "  ") -> list[str]:
+    """Context lines naming WHICH absence each blank multi-year projection is, or [] when every
+    row has one. Takes merge_player-shaped dicts (build_roster_table's rows).
+
+    _assign_horizon_state computes three states and a reason for each non-known row, and until
+    this existed nothing outside this module could read either: proj_3yr is simply absent from
+    merge_player's dict, so "a team defense has no career arc" and "this player has one and
+    nothing loaded publishes it" reached every consumer as the identical missing key. Those two
+    are close to opposites -- one says restoring the data is impossible, the other says it is
+    possible and worth doing -- and that is the distinction _assign_horizon_state was built for.
+
+    Counts and the engine's own reason strings, verbatim. This states what the state IS; it does
+    not tell a reader what to conclude from it, and deliberately says nothing at all when there
+    is nothing absent to report.
+    """
+    by_state: dict[str, list[str]] = {}
+    counts: dict[str, int] = {}
+    for row in rows:
+        if row.get("proj_3yr") is not None:
+            continue
+        state = row.get("proj_3yr_state")
+        if not state or state == "known":
+            continue
+        counts[state] = counts.get(state, 0) + 1
+        reasons = by_state.setdefault(state, [])
+        reason = row.get("proj_3yr_reason") or ""
+        if reason and reason not in reasons:
+            reasons.append(reason)
+    if not counts:
+        return []
+    total = sum(counts.values())
+    out = [
+        f"{indent}A blank '3yr Proj' above is not one state. Of the {total} player(s) without "
+        "one, the engine records:"
+    ]
+    for state, reasons in by_state.items():
+        label = "NOT APPLICABLE" if state == "not_applicable" else state.upper()
+        detail = "; ".join(reasons) or "(no reason recorded)"
+        out.append(f"{indent}  - {label} ({counts[state]}): {detail}")
+    return out
 
 
 def _dedup_by_name_and_position(frames: list[pd.DataFrame], empty: pd.DataFrame) -> pd.DataFrame:
@@ -1037,15 +1591,18 @@ def _dedup_by_name_and_position(frames: list[pd.DataFrame], empty: pd.DataFrame)
     ).drop(columns="_dedup_key")
 
 
-def _merge_rankings(*frames: pd.DataFrame) -> pd.DataFrame:
-    """Combine rankings frames from multiple pools (e.g. baseline + global + league-specific).
+def _merge_rankings(*frames: pd.DataFrame, conflicts: Optional[list] = None) -> pd.DataFrame:
+    """Combine rankings frames from multiple pools (baseline + global + league-specific).
 
-    Frames passed later win ties for the same player — callers should pass
-    the more-specific/more-authoritative source last (a league's own
-    rankings override should beat the shared global pool for that player).
+    Order no longer decides anything on its own: precedence is basis confidence, then recency,
+    then a filename comparison only where nothing semantic separates two sources -- and that
+    last case is recorded as arbitrary rather than left to look like a rule. See _reconcile_rows
+    for why this is a field-level merge and why one position is only ever priced on one basis.
+
+    Only the rankings pool goes through this. Free agents and the trade-value chart have a
+    different schema and no horizon dimension, so they keep the plain row dedup.
     """
-    non_empty = [f for f in frames if not f.empty]
-    return _dedup_by_name_and_position(non_empty, pd.DataFrame(columns=["name", "norm_name"]))
+    return _reconcile_rows(list(frames), conflicts=conflicts)
 
 
 def _compute_freshness(df: pd.DataFrame) -> tuple[Optional[str], Optional[int], bool]:
@@ -1093,8 +1650,8 @@ def load_external_values(base_dir: Path = EXTERNAL_VALUES_DIR) -> pd.DataFrame:
 
 
 def load_bot_research_as_external() -> pd.DataFrame:
-    """Panel-vetted findings from bot_research.py (only the ones that carry a real rank
-    number -- a qualitative claim has nothing to percentile-rank) reshaped into the same
+    """Panel-vetted findings from bot_research.py (only the ones ELIGIBLE to move a number --
+    see bot_research.feeds_composite) reshaped into the same
     (name/norm_name/source_name/source_file) shape load_external_values' other sources
     produce, so they ride the exact same percentile/composite pipeline as every structured
     export -- weighted low (see COMPOSITE_SOURCE_WEIGHTS["bot_research"]) since this is an
@@ -1109,10 +1666,30 @@ def load_bot_research_as_external() -> pd.DataFrame:
     never deletes anything (a real record of everything the panel has ever found), but an
     outdated finding on the same player/source shouldn't keep pulling composite weight once a
     fresher one supersedes it, same "newest wins" rule every other baseline source follows.
+
+    That rule is per KEY, not per player, and the distinction matters: two findings about ONE
+    player citing DIFFERENT sources are different keys, so both survive here as two rows
+    sharing a normalized name. This frame is therefore not name-injective the way R1-R3 made
+    the vendor pools, and it carries no team or position for a caller to disambiguate with --
+    so composite_player_score's _find_match resolves such a pair to whichever row comes first
+    (oldest, since `latest` is built in ts order), and the disagreement is neither averaged nor
+    recorded. _resolve does report it correctly as candidates=2, verified=False; _find_match is
+    _resolve(...)[0] and drops that flag. Characterized in
+    test_research_ingestion_boundary.ResearchFrameIsNotNameInjectiveTests and in
+    ARCHITECTURE_AUDIT.md 6.4 -- left as-is deliberately, because representing a disagreement
+    (rather than silently picking one) is a design decision that should not be made against an
+    empty store.
     """
     import bot_research
 
-    findings = [f for f in bot_research.load_findings() if f.get("rank") is not None]
+    # THE INGESTION FILTER, and it is the boundary 7.4 and 6.2a both land on. It used to read
+    # `if f.get("rank") is not None`, i.e. the Moderator's own say-so was the whole gate. Now a
+    # row must ALSO cite a source on the composite allowlist (7.4) and have passed a second
+    # adjudication (6.2a). Asked of bot_research rather than reimplemented here, so the stored
+    # record and this filter cannot disagree -- and recomputed from the row's fields rather than
+    # read off its stored `composite_impact` string, so a row written under an older rule cannot
+    # carry its old eligibility forward.
+    findings = [f for f in bot_research.load_findings() if bot_research.feeds_composite(f)]
     empty = pd.DataFrame(columns=["name", "norm_name", "source_name", "source_file"])
     if not findings:
         return empty
@@ -1153,17 +1730,22 @@ def load_aliases() -> dict[str, str]:
     return {}
 
 
+# §16.9 widened #102 from "two sessions in one league" to "two sessions at all": these two are
+# the same load -> mutate -> write shape on a GLOBAL file, and player_aliases.json is one of the
+# three that feeds valuation. Re-demonstrated on today's code before the repair -- tab A saves an
+# alias, tab B reads, tab A saves a second, tab B writes its stale view, and tab A's second alias
+# is gone. store_io.mutate is used here rather than the `atomic` decorator the per-league stores
+# take, because these two are small enough to say the whole read-modify-write in one place, and
+# the CM makes the mistake unavailable rather than merely fixed: a caller that cannot load
+# separately cannot put the load back outside the lock.
 def save_alias(sleeper_full_name: str, draft_sharks_name: str) -> None:
-    aliases = load_aliases()
-    aliases[sleeper_full_name] = draft_sharks_name
-    ALIASES_PATH.parent.mkdir(parents=True, exist_ok=True)
-    ALIASES_PATH.write_text(json.dumps(aliases, indent=2))
+    with store_io.mutate(ALIASES_PATH, {}) as aliases:
+        aliases[sleeper_full_name] = draft_sharks_name
 
 
 def remove_alias(sleeper_full_name: str) -> None:
-    aliases = load_aliases()
-    if aliases.pop(sleeper_full_name, None) is not None:
-        ALIASES_PATH.write_text(json.dumps(aliases, indent=2))
+    with store_io.mutate(ALIASES_PATH, {}) as aliases:
+        aliases.pop(sleeper_full_name, None)
 
 
 class DataMerger:
@@ -1194,16 +1776,34 @@ class DataMerger:
 
     def _load(self) -> None:
         empty = pd.DataFrame(columns=["name", "norm_name"])
-        baseline_rankings, _, _ = load_all(self.baseline_dir / "rankings", format_hint=self.league_format)
+        # Every field-level disagreement this load resolved, and how. A merge that silently
+        # discards a value has not succeeded -- 1084 of these were being resolved per load with
+        # no record of any of them.
+        self.reconciliation_conflicts: list[dict] = []
+        conflicts = self.reconciliation_conflicts
+        baseline_rankings, _, _ = load_all(self.baseline_dir / "rankings",
+                                            format_hint=self.league_format, conflicts=conflicts)
         _, _, baseline_tvc = load_all(self.baseline_dir / "trade_value", default_kind="trade_value_chart")
-        global_rankings, _, global_tvc = load_all(self.global_dir, format_hint=self.league_format)
+        global_rankings, _, global_tvc = load_all(self.global_dir,
+                                                   format_hint=self.league_format, conflicts=conflicts)
         if self.league_dir:
-            league_rankings, league_fa, league_tvc = load_all(self.league_dir, format_hint=self.league_format)
+            league_rankings, league_fa, league_tvc = load_all(self.league_dir,
+                                                               format_hint=self.league_format,
+                                                               conflicts=conflicts)
         else:
             league_rankings, league_fa, league_tvc = empty.copy(), empty.copy(), empty.copy()
-        self.projections = _merge_rankings(baseline_rankings, global_rankings, league_rankings)
+        self.projections = _merge_rankings(
+            baseline_rankings, global_rankings, league_rankings, conflicts=conflicts,
+        )
         self.free_agents = league_fa
-        self.trade_values = _merge_rankings(baseline_tvc, global_tvc, league_tvc)
+        # NOT _merge_rankings: the trade-value chart has a different schema (asset_type/value,
+        # and rows for rookie pick slots and future picks that have no position at all) and no
+        # horizon dimension. Routing it through the rankings reconciliation dropped every
+        # non-player asset and stamped a proj_3yr_state onto a table that has no proj_3yr.
+        self.trade_values = _dedup_by_name_and_position(
+            [f for f in (baseline_tvc, global_tvc, league_tvc) if not f.empty],
+            pd.DataFrame(columns=["name", "norm_name"]),
+        )
         # Precomputed once per _load()/reload(), not per lookup -- _find_match's fuzzy key
         # match used to recompute name_key() over every row of whichever table it was searching
         # on EVERY call (measured: ~11ms per composite_player_score call, ~330ms for a 30-player
@@ -1376,9 +1976,57 @@ class DataMerger:
         match = self.trade_values[self.trade_values["norm_name"] == normalize_name(label)]
         return int(match.iloc[0]["value"]) if not match.empty else None
 
+    @staticmethod
+    def _contradicted(row: pd.Series, position: Optional[str], team: Optional[str]) -> bool:
+        """Does anything KNOWN on both sides say this row is a different person?
+
+        Unknown on either side is not evidence of a mismatch -- an absent position or team must
+        not manufacture a contradiction any more than it may manufacture a match. Only a
+        disagreement between two values that both exist rejects.
+        """
+        if team and "team" in row.index and pd.notna(row.get("team")) and str(row["team"]) != str(team):
+            return True
+        if position and "position" in row.index and pd.notna(row.get("position")):
+            queried, matched = position_family(position), position_family(row["position"])
+            if queried and matched and queried != matched:
+                return True
+        return False
+
+    @staticmethod
+    def _different_identity_namespace(row: pd.Series, position: Optional[str]) -> bool:
+        """Do these two rows sit in different dedup identity namespaces?
+
+        _dedup_by_name_and_position already treats rows in different _position_group buckets as
+        two different PEOPLE -- that is what stops "Josh Allen" the QB and "Josh Allen" the DL
+        from collapsing onto one record. A resolution that crosses that boundary therefore
+        contradicts the merger's own identity model, whatever path it took to get there.
+
+        Deliberately the coarse group, not position_family: a real edge rusher is exported as
+        LB by one vendor and DL by another, and both are `idp`, so this leaves those 20 real
+        matches alone while rejecting a WR resolving onto a DB.
+        """
+        if not position or "position" not in row.index or pd.isna(row.get("position")):
+            return False
+        return _position_group(position) != _position_group(row["position"])
+
     def _find_match(self, full_name: str, position: Optional[str] = None,
                      team: Optional[str] = None, df: Optional[pd.DataFrame] = None) -> Optional[pd.Series]:
-        """Match a Sleeper player onto a row of the given table (default: self.projections).
+        """The matched row alone, for the callers that only want that. See _resolve."""
+        return self._resolve(full_name, position=position, team=team, df=df)[0]
+
+    def _resolve(self, full_name: str, position: Optional[str] = None,
+                  team: Optional[str] = None, df: Optional[pd.DataFrame] = None
+                  ) -> tuple[Optional[pd.Series], Optional[str], int, bool]:
+        """(row, path, candidate_count, verified) -- the match AND how confident the match is.
+
+        Ambiguity is a property of the resolution, so it is returned with it. It used to be
+        neither returned nor recorded, which made a silent first-candidate pick indistinguishable
+        from an unambiguous exact hit at every call site; app.py's trade calculator had to
+        recompute name_key itself to close that gap for one caller. `verified` is True only when
+        exactly one row survived, so a caller can tell "this is the player" from "this is the
+        first of several that fit".
+
+        Match a Sleeper player onto a row of the given table (default: self.projections).
 
         Draft Sharks' PDFs give first-initial-only names ("J Chase", not
         "Ja'Marr Chase"), which tanks a naive whole-string fuzzy ratio for anyone
@@ -1393,7 +2041,7 @@ class DataMerger:
         """
         table = self.projections if df is None else df
         if table.empty or not full_name:
-            return None
+            return None, None, 0, False
 
         alias = self.aliases.get(full_name)
         if alias:
@@ -1403,14 +2051,22 @@ class DataMerger:
                     narrowed = exact[exact["team"] == team]
                     if not narrowed.empty:
                         exact = narrowed
-                return exact.iloc[0]
+                # verified mirrors every other path in this function -- exactly one
+                # surviving row, never a first-of-several pick reported as certain. The
+                # alias branch returned a hard-coded True until the architecture audit
+                # (ARCHITECTURE_AUDIT.md 13.3) measured it against this function's own
+                # stated contract: R1-R3 repaired the automatic paths and left this one
+                # behind, so a manual alias onto a colliding name reported an arbitrary
+                # iloc[0] pick as verified. The row still returns (same as the automatic
+                # paths do when ambiguous); only the certainty claim is corrected.
+                return exact.iloc[0], "alias", len(exact), len(exact) == 1
             # alias didn't resolve in this particular table (e.g. player isn't in
             # the free-agent table) — fall through to normal matching below
 
         norm_name = normalize_name(full_name)
         tokens = norm_name.split()
         if not tokens:
-            return None
+            return None, None, 0, False
 
         # Try an exact normalized-name match before the fuzzy key below. Vendors that export
         # full names (unlike Draft Sharks' own first-initial-only PDFs) can be matched exactly
@@ -1432,7 +2088,7 @@ class DataMerger:
                 narrowed = exact_matches[exact_matches["position"] == position]
                 if not narrowed.empty:
                     exact_matches = narrowed
-            return exact_matches.iloc[0]
+            return exact_matches.iloc[0], "exact", len(exact_matches), len(exact_matches) == 1
 
         key = name_key(norm_name)
         # Use the precomputed column when this table has one (every table _load() builds
@@ -1465,30 +2121,84 @@ class DataMerger:
             # is not a lossy hash, so a team mismatch there is far more likely just stale
             # roster data than a misidentified player, and shouldn't be thrown out.
             if team and "team" in table.columns and pd.notna(candidate.get("team")) and candidate["team"] != team:
-                return None
-            return candidate
+                return None, None, len(key_matches), False
+            # Same rejection, on the other axis the merger already treats as identity: a
+            # same-team, same-key pair can still be two different people if they sit in
+            # different dedup namespaces (confirmed live -- a WR resolving onto a DB who
+            # happened to share a club and a first initial, which the team check above cannot
+            # see). Only the coarse group, so the LB/DL vocabulary split between vendors stays
+            # a match.
+            if self._different_identity_namespace(candidate, position):
+                return None, None, len(key_matches), False
+            return candidate, "key", len(key_matches), len(key_matches) == 1
 
+        # The fallback of last resort, and the only path with no key holding it together --
+        # so it is the one that must be able to decline. It used to prefer a position-matching
+        # candidate and then return candidates[0] regardless, checking team nowhere at all: the
+        # rejection rule added to the key path above (see the Bijan/Brian Robinson comment) was
+        # never carried down here. Measured on the real committed baseline before this changed,
+        # EVERY fuzzy match that resolved against a team-bearing query was a different real
+        # person -- 9 of 9 -- each one handing that person's projection, trade value and 3-year
+        # outlook to someone else. Guessing and declining are different outcomes, and only one
+        # of them is acceptable for a field that becomes a valuation input.
         choices = table["norm_name"].tolist()
         candidates = difflib.get_close_matches(norm_name, choices, n=3, cutoff=self.match_cutoff)
         if not candidates:
-            return None
-        if position and "position" in table.columns:
-            for cand in candidates:
-                rows = table[table["norm_name"] == cand]
-                pos_match = rows[rows["position"] == position]
-                if not pos_match.empty:
-                    return pos_match.iloc[0]
-        return table[table["norm_name"] == candidates[0]].iloc[0]
+            return None, None, 0, False
+        survivors = []
+        for cand in candidates:
+            for _, row in table[table["norm_name"] == cand].iterrows():
+                if not self._contradicted(row, position, team):
+                    survivors.append(row)
+        if not survivors:
+            return None, None, len(candidates), False
+        return survivors[0], "fuzzy", len(survivors), len(survivors) == 1
 
     def merge_player(self, player_full_name: str, position: Optional[str] = None,
                       team: Optional[str] = None, df: Optional[pd.DataFrame] = None) -> dict:
-        """Return matched fields (tier/vorp/projection/trade_value/rank/...) for one player."""
-        match = self._find_match(player_full_name, position=position, team=team, df=df)
+        """Return matched fields (tier/vorp/projection/trade_value/rank/...) for one player,
+        plus how the match was reached.
+
+        match_path       -- "alias" / "exact" / "key" / "fuzzy", or None on a miss
+        match_candidates -- how many rows survived as plausible; 0 on a miss
+        match_verified   -- True only when exactly one row fit, so a caller can tell "this is
+                            the player" from "this is the first of several that fit"
+
+        Those three exist because ambiguity is a property of the resolution and belongs to the
+        producer. Without them a silent first-candidate pick was indistinguishable from an
+        unambiguous exact hit at every call site, and the one consumer that needed the
+        distinction (app.py's trade calculator, free-text input with no position to narrow on)
+        had to recompute name_key itself to recover it."""
+        match, path, candidates, verified = self._resolve(
+            player_full_name, position=position, team=team, df=df)
         if match is None:
-            return {"matched": False}
-        row = {"matched": True}
+            return {"matched": False, "match_path": None,
+                    "match_candidates": candidates, "match_verified": False}
+        # The identity of the row that was matched, not of the query -- so a caller can tell
+        # whether two different players resolved onto the SAME canonical record. Deliberately
+        # (norm_name, position_group): the dedup identity namespace, which is what makes two
+        # rows one record in the first place. Namespaced with the other match_ fields so it
+        # never collides with a caller's own "name"/"position" keys (build_roster_table
+        # row.update()s this straight onto a Sleeper-derived row).
+        row = {"matched": True, "match_path": path,
+               "match_candidates": candidates, "match_verified": verified,
+               "match_canonical_key": (str(match.get("norm_name")),
+                                       _position_group(match.get("position")))}
         for field in ("projection", "vorp", "tier", "trade_value", "rank",
                        "position", "team", "pos_rank", "proj_3yr",
+                       # WHY the multi-year figure is absent, not just that it is. These two
+                       # are the only place this codebase distinguishes KINDS of absence
+                       # ("this position has no career arc" vs "this player has one and we do
+                       # not have it" -- see _assign_horizon_state, which exists for exactly
+                       # that distinction because it "decides whether restoring the data is
+                       # even possible"). They were computed on 500 of 764 canonical rows and
+                       # stopped here: proj_3yr is dropped from this dict when absent, so both
+                       # states arrived at every consumer as the same missing key. Carried, so
+                       # the distinction can survive its own producer. Tables that have no
+                       # proj_3yr to have a state about (free agents, the trade value chart)
+                       # simply have no such column, and the `field in match.index` guard below
+                       # leaves them alone.
+                       "proj_3yr_state", "proj_3yr_reason",
                        "roster_status", "proj_3d", "ros_3d", "ceiling", "value_3d",
                        # "value" is the Trade Value Chart's own column name (see
                        # parse_draftsharks_trade_value_chart_pdf) -- that table never goes

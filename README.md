@@ -27,6 +27,13 @@ default, not a hard requirement; all three providers now have their own
 native live web search, so which one ends up on Beat/Contrarian is a
 "whose answers do you like" choice, not a capability tradeoff.
 
+## Engineering Doctrine
+
+Semantic integrity, the required audit chain, and the contracts a load-bearing quantity must
+carry before it enters the engine: see [ENGINEERING_DOCTRINE.md](ENGINEERING_DOCTRINE.md). It
+exists because a component-level audit passed a system whose quantities had drifted apart at the
+boundaries, and the K/DST investigation is recorded there as the discovery mechanism.
+
 ## Design Principles
 
 - **Zero manual credential exposure for league data.** Sleeper's read API
@@ -640,12 +647,22 @@ SOURCE COMPARISON: <player A> | <player B> | > / < / ~ | <source> | <context> | 
 
 Both persist to `data/baseline/` (`bot_research.json` / `bot_comparisons.json`,
 global and git-tracked, append-only) via `bot_research.py`, and both are
-fed back into every future debate as dated context. Only findings that
-carry a real stated rank feed the composite score, at a low weight (below
-even KTC's); a qualitative finding, and *every* comparison (a relative
-claim has no absolute number to give it), stay reference-only forever —
-`composite_impact` is stored explicitly on each entry rather than left for
-a reader to infer. The reasoning: a handful of debate-surfaced comparisons
+fed back into every future debate as dated context.
+
+A finding's **number** reaching the composite score is gated twice, and the
+finding itself is never gated at all — it is stored, shown, and read by the
+panel regardless. To count, it must (1) cite a source this repository has
+written a provenance record for (`source_policy.COMPOSITE_ALLOWLIST`), and
+(2) be confirmed by you, in the Bot Research panel. Until both hold, the
+number is held back; the claim is not. A qualitative finding, and *every*
+comparison (a relative claim has no absolute number to give it), stay
+reference-only forever. `composite_impact` is stored explicitly on each
+entry, and says *which* of those reasons applies, rather than leaving a
+reader to infer it.
+
+The second confirmation is not a verification — nothing here can check what
+a source actually says. It records that a second party, not the panel that
+produced the finding, looked at it before its number moved a score. The reasoning: a handful of debate-surfaced comparisons
 is nowhere near KeepTradeCut's millions of votes, so there's no real
 signal yet to build an Elo-style relative model from — that stays a
 possible future step once (if) real volume accumulates, not something
@@ -690,6 +707,18 @@ llm_engine.py               Four-persona prompt routing across Claude / Gemini /
                              plus the structured-verdict/TODO/SOURCE FINDING/
                              SOURCE COMPARISON parsers.
 decision_log.py               Per-league record of every parsed Moderator verdict.
+content_hash.py                One shared content-fingerprint primitive. Dependency-free
+                                on purpose, so CDME may import it without pulling the
+                                app layer in behind it.
+draft_history.py                Per-league, append-only, CONTENT-ADDRESSED store of
+                                 snapshot/candidate evidence -- one record is one file
+                                 named by its own hash, so it never reads before writing
+                                 and structurally cannot express a lost update.
+                                 Observational history, never an engine input.
+provider_meter.py                Side-channel metering for every provider call: attempt,
+                                  completion state (COMPLETE / TRUNCATED / BLOCKED /
+                                  UNKNOWN / FAILED / NOT_ATTEMPTED), and token/latency
+                                  totals. A measurement instrument, never a prompt input.
 
   -- Contextual Decision Matrix Engine (CDME) -- see "The Draft Engine" above --
 draft_room.py                    CDME's base valuation math: universal_value, Team

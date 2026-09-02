@@ -11,22 +11,20 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
+import store_io
+
 
 PREFS_PATH = Path("data/league_prefs.json")
 
 
 def _load_all() -> dict:
-    if PREFS_PATH.exists():
-        try:
-            return json.loads(PREFS_PATH.read_text())
-        except (json.JSONDecodeError, OSError):
-            return {}
-    return {}
+    # #102: atomic, locked, and no longer able to turn a torn read into an empty store
+    # that the next write persists -- see store_io's own docstring for the measurement.
+    return store_io.read(PREFS_PATH, {})
 
 
 def _save_all(data: dict) -> None:
-    PREFS_PATH.parent.mkdir(parents=True, exist_ok=True)
-    PREFS_PATH.write_text(json.dumps(data, indent=2))
+    store_io.write(PREFS_PATH, data)
 
 
 def get_prefs(user_id: str) -> dict:
@@ -61,6 +59,7 @@ def sorted_leagues(user_id: str, leagues: list[dict]) -> tuple[list[dict], list[
     return visible, archived
 
 
+@store_io.atomic(lambda *a, **k: PREFS_PATH)
 def toggle_archive(user_id: str, league_id: str) -> None:
     prefs = get_prefs(user_id)
     archived = set(prefs.get("archived", []))
@@ -69,6 +68,7 @@ def toggle_archive(user_id: str, league_id: str) -> None:
     _set_prefs(user_id, prefs)
 
 
+@store_io.atomic(lambda *a, **k: PREFS_PATH)
 def move_league(user_id: str, leagues: list[dict], league_id: str, direction: int) -> None:
     """direction: -1 moves the league earlier in the display order, +1 moves it later."""
     order = _full_order(user_id, leagues)
@@ -81,6 +81,7 @@ def move_league(user_id: str, leagues: list[dict], league_id: str, direction: in
     _set_prefs(user_id, prefs)
 
 
+@store_io.atomic(lambda *a, **k: PREFS_PATH)
 def forget_league(user_id: str, league_id: str) -> None:
     """Drop a league from this user's saved order/archived lists entirely (used by hard delete)."""
     prefs = get_prefs(user_id)

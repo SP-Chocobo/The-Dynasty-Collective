@@ -67,16 +67,51 @@ class IrrelevantAdditionTests(unittest.TestCase):
         top_after = ps.narrow_candidates(board_plus_one, top_n=5)[0]["player_id"]
         self.assertEqual(top_before, top_after)
 
-    def test_adding_an_unrelated_bench_slot_does_not_change_universal_value_or_final_score(self):
-        board_before = dr.compute_draft_board(
+    def _boards_with_and_without_an_extra_bench_slot(self):
+        before = dr.compute_draft_board(
             self.merger, self.players_db, [], my_roster_id="1", league=STANDARD_LEAGUE, mode="balanced",
         )
         league_plus_bn = dict(STANDARD_LEAGUE)
         league_plus_bn["roster_positions"] = list(STANDARD_LEAGUE["roster_positions"]) + ["BN"]
-        board_after = dr.compute_draft_board(
+        after = dr.compute_draft_board(
             self.merger, self.players_db, [], my_roster_id="1", league=league_plus_bn, mode="balanced",
         )
-        self.assertEqual(board_before, board_after)
+        return before, after
+
+    # This used to be one assertEqual over the whole board row. The valuation half of that is
+    # the real metamorphic property and is unchanged below -- but the row now also carries
+    # draft-horizon fields, and a bench slot is emphatically NOT irrelevant to those: one more
+    # BN across 12 teams is 12 more picks, so 12 more players come off the board and the best
+    # one left when the draft ends is genuinely worse. A whole-row equality would have
+    # asserted the horizon estimator ignores draft depth, which would be the bug, not the fix.
+    # Split into the two separate claims so both directions are actually pinned.
+    VALUATION_FIELDS = ("player_id", "name", "position", "bpa", "bpa_source", "universal_value",
+                        "need_bonus", "eligibility_bonus", "final_score", "projected_points")
+
+    def test_adding_an_unrelated_bench_slot_does_not_change_universal_value_or_final_score(self):
+        before, after = self._boards_with_and_without_an_extra_bench_slot()
+        self.assertEqual(
+            [{k: r[k] for k in self.VALUATION_FIELDS} for r in before],
+            [{k: r[k] for k in self.VALUATION_FIELDS} for r in after],
+        )
+
+    def test_adding_a_bench_slot_does_deepen_the_draft_horizon(self):
+        # The other half: a longer draft leaves a worse player undrafted, so the floor must
+        # fall and the cost of waiting must rise. If this ever stops moving, the horizon has
+        # gone blind to how many picks the league actually makes.
+        before, after = self._boards_with_and_without_an_extra_bench_slot()
+        pairs = [
+            (b, a) for b, a in zip(before, after)
+            if b["horizon_floor"] is not None and a["horizon_floor"] is not None
+        ]
+        self.assertTrue(pairs, "no measurable horizon floors to compare")
+        self.assertTrue(
+            any(a["horizon_floor"] < b["horizon_floor"] for b, a in pairs),
+            "a deeper draft must lower the expected end-of-draft floor somewhere",
+        )
+        for b, a in pairs:
+            self.assertLessEqual(a["horizon_floor"], b["horizon_floor"])
+            self.assertGreaterEqual(a["waiting_cost"], b["waiting_cost"])
 
 
 class OrderShuffleTests(unittest.TestCase):

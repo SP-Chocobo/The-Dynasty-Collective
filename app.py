@@ -41,7 +41,14 @@ import lineup_optimizer
 import lineup_readiness
 import pick_debate
 import pick_synthesis
+import corpus_state
+import panel_independence
 import pinned_messages
+import provider_meter
+import providers
+import store_io
+import upload_batches
+import untrusted
 import screen_context
 import todo_log
 import llm_engine
@@ -49,11 +56,11 @@ import trade_ledger_ui
 from attachments import ATTACHMENTS_DIR, list_attachments, save_attachment, set_caption, set_scope, delete_attachment
 from data_merger import (
     EXTERNAL_VALUES_DIR, GLOBAL_PROJECTIONS_DIR, PROJECTIONS_DIR, DataMerger, external_upload_targets,
-    load_projection_file, name_key, normalize_name, recency_grade, remove_alias, save_alias,
+    horizon_gap_lines, load_projection_file, recency_grade, remove_alias, save_alias,
 )
 from league_format import FORMAT_GUIDANCE, FORMAT_OPTIONS, STANDARD, get_format_override, set_format_override
 from league_prefs import forget_league, get_prefs, move_league, sorted_leagues, toggle_archive
-from player_universe import available_players, build_player_universe, league_usable_positions, matching_players, player_name, player_position
+from player_universe import FLEX_SLOT_POSITIONS, available_players, build_player_universe, league_usable_positions, matching_players, player_name, player_position
 from sleeper_client import SleeperAPIError, SleeperClient, compute_points_from_stats, find_roster_for_user, league_format_summary
 
 # Friendly display labels for pick_synthesis.diff_snapshots' real field names -- presentation
@@ -301,6 +308,223 @@ _GLOBAL_CSS = """
         min-height: 44px;
         font-weight: 600;
     }
+    /* Draft Room UI-authority pass. Both Player Pool controls (Live + Mock) use
+       st.segmented_control (same single-select semantics as the old st.radio, same
+       options/default) styled as a compact filter bar in the board's own idiom: small
+       mono-caps buttons, quiet until selected. Selected state uses --sky (the same "this
+       control is engaged" signal the embedded board already uses for its own expanded-row
+       state), deliberately never --emerald, which the necessity pills on the very same
+       screen already use to mean "this candidate is a good value" -- one UI-state color,
+       one analytical-signal color, never sharing a hue on a screen where both appear.
+       segmented_control specifically because it's already this app's idiom for "exactly one
+       of a few named exclusive choices" (main nav, Draft Room mode toggle). */
+    .st-key-draft_room_pool_scope_control [data-testid="stButtonGroup"],
+    .st-key-mock_draft_pool_scope_control [data-testid="stButtonGroup"] {
+        gap: 6px;
+        row-gap: 6px;
+    }
+    .st-key-draft_room_pool_scope_control button[data-variant="segmented_control"],
+    .st-key-mock_draft_pool_scope_control button[data-variant="segmented_control"] {
+        min-height: 30px;
+        min-width: 0;
+        padding: 4px 12px;
+        font-family: 'JetBrains Mono', 'DejaVu Sans Mono', monospace;
+        font-size: 0.72rem;
+        font-weight: 600;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+        background: #1b1c1f;
+        border: 1px solid #2a2b2e !important;
+        color: #6b7076;
+        border-radius: 6px;
+        transition: border-color 0.15s ease, color 0.15s ease, background 0.15s ease;
+    }
+    .st-key-draft_room_pool_scope_control button[data-variant="segmented_control"]:hover,
+    .st-key-mock_draft_pool_scope_control button[data-variant="segmented_control"]:hover {
+        border-color: #3a3c42 !important;
+        color: #9ca3af;
+    }
+    .st-key-draft_room_pool_scope_control button[data-variant="segmented_control"][data-selected="true"],
+    .st-key-mock_draft_pool_scope_control button[data-variant="segmented_control"][data-selected="true"] {
+        background: rgba(14,165,233,0.10);
+        border-color: #0ea5e9 !important;
+        color: #7dd3fc;
+    }
+    /* Refresh Picks previously had no styling of its own -- a bare st.button, so it fell back
+       to the app-wide default (full container width, generic large touch-target box), making
+       it read as the loudest thing in the toolbar despite being a secondary, occasional sync
+       action next to the quiet Player Pool segmented control. Restyled as a sibling of that
+       same control (identical height/font/border/radius language) rather than a big CTA box,
+       and no longer stretched to its column's full width. */
+    .st-key-draft_room_refresh_btn button {
+        width: auto !important;
+        min-height: 30px;
+        padding: 4px 12px;
+        font-family: 'JetBrains Mono', 'DejaVu Sans Mono', monospace;
+        font-size: 0.72rem;
+        font-weight: 600;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+        background: #1b1c1f;
+        border: 1px solid #2a2b2e !important;
+        color: #6b7076;
+        border-radius: 6px;
+        transition: border-color 0.15s ease, color 0.15s ease, background 0.15s ease;
+    }
+    /* Quiet at rest, same sky-blue language ALL PLAYERS' selected state uses on hover/focus
+       (a shared visual family), but never a PERSISTENT blue outline -- Refresh is a
+       one-shot action, not a selected state, and an always-on blue border would incorrectly
+       imply it's "currently active" the way a segmented-control selection is. A stronger,
+       briefly-held blue on :active gives real press feedback (the app-wide button
+       :active scale/brightness rule only reaches stButtonGroup/popover triggers, not a bare
+       .stButton like this one, so it needs its own). */
+    .st-key-draft_room_refresh_btn button:hover,
+    .st-key-draft_room_refresh_btn button:focus-visible {
+        background: rgba(14,165,233,0.10);
+        border-color: #0ea5e9 !important;
+        color: #7dd3fc;
+    }
+    .st-key-draft_room_refresh_btn button:active {
+        background: rgba(14,165,233,0.24);
+        border-color: #0ea5e9 !important;
+        color: #bae6fd;
+        transform: scale(0.96);
+    }
+    /* Position filter, round 3: the multi-select itself was rejected -- a user can only ever
+       be looking at one meaningful board view at a time (a real position, a real flex-slot
+       view, or everything), never an arbitrary hand-picked SET of positions. Concept 1/3:
+       the view control is the board's own title row ("CANDIDATES" ... current value),
+       directly above the board, not grouped with Player Pool. No border, no chevron, no
+       pill shape anywhere -- the current value's own typography (bold, brighter than the
+       muted label beside it) is the only affordance that it's interactive. */
+    .drv-board-title {
+        font-family: 'JetBrains Mono', 'DejaVu Sans Mono', monospace;
+        font-size: 0.72rem;
+        font-weight: 600;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: #6b7076;
+        white-space: nowrap;
+        line-height: 1.5;
+    }
+    .drv-board-title .dot {
+        color: #3a3c42;
+        padding: 0 0.4em;
+        font-weight: 400;
+    }
+    .st-key-draft_room_board_title_row,
+    .st-key-mock_draft_board_title_row {
+        margin-bottom: 2px;
+    }
+    .st-key-draft_room_board_title_row [data-testid="stColumn"],
+    .st-key-mock_draft_board_title_row [data-testid="stColumn"] {
+        margin-top: 0 !important;
+    }
+    /* This row is only ever two short words ("CANDIDATES" + the current view) -- it should
+       never need Streamlit's default narrow-viewport behavior of stacking st.columns into a
+       vertical list, which otherwise breaks the "one phrase" reading entirely below ~640px. */
+    .st-key-draft_room_board_title_row [data-testid="stHorizontalBlock"],
+    .st-key-mock_draft_board_title_row [data-testid="stHorizontalBlock"] {
+        flex-wrap: nowrap !important;
+    }
+    .st-key-draft_room_board_title_row [data-testid="stColumn"]:nth-child(1),
+    .st-key-mock_draft_board_title_row [data-testid="stColumn"]:nth-child(1),
+    .st-key-draft_room_board_title_row [data-testid="stColumn"]:nth-child(2),
+    .st-key-mock_draft_board_title_row [data-testid="stColumn"]:nth-child(2) {
+        width: auto !important;
+        min-width: 0 !important;
+        flex: 0 0 auto !important;
+    }
+    .st-key-draft_room_view_toggle,
+    .st-key-mock_draft_view_toggle {
+        margin: 0 !important;
+    }
+    /* Round 3 refinement, take 2: a bordered tag box (matching draft_board_ui.py's .tag
+       language) read as its own separate pill sitting apart from "CANDIDATES" instead of
+       one continuous phrase with it -- explicit, but disjointed. Dropped the box entirely:
+       the current value is now bare bold text picking up the same bright ink as the
+       "CANDIDATES" label is muted, directly abutting the bullet with no gap of its own, so
+       "CANDIDATES • ALL" reads as a single unit and only the brightness/weight signals
+       "this part is interactive." No border, no background, no chevron. */
+    .st-key-draft_room_view_toggle button,
+    .st-key-mock_draft_view_toggle button {
+        min-height: 0 !important;
+        width: auto !important;
+        display: inline-flex !important;
+        align-items: baseline !important;
+        padding: 0 !important;
+        margin: 0 !important;
+        background: transparent !important;
+        border: none !important;
+        font-family: 'JetBrains Mono', 'DejaVu Sans Mono', monospace;
+        font-size: 0.72rem;
+        font-weight: 700;
+        letter-spacing: 0.03em;
+        line-height: 1.5;
+        color: #e5e7eb;
+        text-align: left;
+        justify-content: flex-start !important;
+        border-bottom: 2px solid transparent;
+        border-radius: 0;
+        transition: color 0.15s ease, border-color 0.15s ease;
+    }
+    .st-key-draft_room_view_toggle button:hover,
+    .st-key-mock_draft_view_toggle button:hover {
+        color: #7dd3fc;
+        border-bottom-color: #0ea5e9;
+    }
+    /* The button's own visible text sits inside Streamlit's stMarkdownContainer -> <p>,
+       which carries its own hardcoded 14px/21px line box that does NOT inherit the
+       font-size/line-height set on the <button> above -- left alone, that mismatched taller
+       line box is exactly what put "ALL" a few px below the "CANDIDATES" baseline despite
+       both elements sharing the same top edge. Match it explicitly so the two truly share
+       one line. */
+    .st-key-draft_room_view_toggle button p,
+    .st-key-mock_draft_view_toggle button p {
+        font-size: 0.72rem !important;
+        line-height: 1.5 !important;
+        font-weight: 700 !important;
+        letter-spacing: 0.03em !important;
+        margin: 0 !important;
+    }
+    /* Concept 3, refined: the expanded surface is a single horizontal row of bare-text
+       options (never boxed pills, never a vertical list stacking the whole page down) that
+       unfolds directly beneath the title row in normal document flow, and collapses back to
+       just the tag the instant an option is picked -- so the at-rest state is always only
+       "CANDIDATES - ALL", never a lingering open panel. */
+    .st-key-draft_room_view_menu,
+    .st-key-mock_draft_view_menu {
+        border-top: 1px solid #2a2b2e;
+        margin-top: 8px;
+        padding-top: 10px;
+        margin-bottom: 10px;
+    }
+    .st-key-draft_room_view_menu button,
+    .st-key-mock_draft_view_menu button {
+        width: auto !important;
+        min-height: 0;
+        padding: 4px 2px;
+        background: transparent !important;
+        border: none !important;
+        font-family: 'JetBrains Mono', 'DejaVu Sans Mono', monospace;
+        font-size: 0.8rem;
+        font-weight: 500;
+        letter-spacing: 0.03em;
+        color: #8b8f98;
+        text-align: left;
+        justify-content: flex-start !important;
+        border-radius: 0;
+        transition: color 0.15s ease;
+    }
+    .st-key-draft_room_view_menu button:hover,
+    .st-key-mock_draft_view_menu button:hover {
+        color: #e5e7eb;
+    }
+    .st-key-draft_room_view_menu [class*="st-key-draft_room_view_opt_active_"] button,
+    .st-key-mock_draft_view_menu [class*="st-key-mock_draft_view_opt_active_"] button {
+        color: #7dd3fc;
+        font-weight: 700;
+    }
 
     /* The Free Agents table's clickable sort header (real st.button()s, since a
        static HTML <th> can't call back into Python) needs to read as a table
@@ -460,6 +684,15 @@ st.markdown(
 
 # ------------------------------------------------------------------ state ---
 
+def _pool_relpath(path: Path) -> str:
+    """A repo-relative posix path, in the spelling upload_batches stores and data_merger looks
+    up. Both ends have to agree on this or a stated as-of date silently never gets found."""
+    try:
+        return path.resolve().relative_to(Path.cwd().resolve()).as_posix()
+    except (ValueError, OSError):
+        return path.name
+
+
 def league_projections_dir(league_id: str) -> Path:
     """Draft Sharks data is tied to one league's roster/format — never share it across leagues."""
     return PROJECTIONS_DIR / league_id
@@ -481,8 +714,10 @@ def load_last_username() -> str:
 
 
 def save_last_username(username: str) -> None:
-    LAST_SESSION_PATH.parent.mkdir(parents=True, exist_ok=True)
-    LAST_SESSION_PATH.write_text(json.dumps({"username": username}))
+    # #102: one field, but it is read on every startup to restore the session, and a torn read
+    # of it is a user who has to type their username again for no visible reason. Atomic writes
+    # cost nothing here and the exemption would be harder to justify than the call.
+    store_io.write(LAST_SESSION_PATH, {"username": username})
 
 
 ENV_PATH = Path(".env")
@@ -577,8 +812,17 @@ def load_chat_history(league_id: str) -> list[dict]:
 
 
 def save_chat_history(league_id: str, history: list[dict]) -> None:
-    path = CHATS_DIR / f"{league_id}_history.json"
-    path.write_text(json.dumps(history, indent=2))
+    """#102, the half of it this call can actually fix. The write is now atomic, so a reader can
+    never see a prefix -- which was the failure that turned a transient torn read into permanent
+    loss everywhere else in the tree.
+
+    It does NOT fix a lost update between two tabs, and a lock here would not either: each tab's
+    session_state holds its own whole copy of the history and this call replaces the file with
+    it, so the read-modify-write spans the user's entire session rather than this function. That
+    is a session-model question, not a file-locking one, and it is recorded rather than papered
+    over. load_chat_history's own quarantine-on-corrupt rename stays as it is -- it is stronger
+    than store_io's mark-and-refuse and the two compose."""
+    store_io.write(CHATS_DIR / f"{league_id}_history.json", history)
 
 
 def append_message(role: str, content: str, provider: Optional[str] = None, model: Optional[str] = None) -> None:
@@ -596,7 +840,28 @@ def append_message(role: str, content: str, provider: Optional[str] = None, mode
         save_chat_history(st.session_state.selected_league_id, st.session_state.chat_history)
 
 
-def process_moderator_output(moderator_text: str, trigger_question: str) -> None:
+def _finding_origin_note(finding: dict) -> str:
+    """The origin tag for one stored finding, or "" when the row cannot say.
+
+    THREE states, and the third is why this is a function rather than a conditional expression.
+    A row written before bot_research carried an evidence snapshot has NO `evidence` key at all,
+    and that is not the same as a row that recorded "no retrieval": the first NEVER CHECKED, the
+    second checked and found none. Collapsing them would stamp a provenance claim onto rows that
+    predate the mechanism -- the same never-checked-versus-checked-and-absent distinction #112
+    left open at the board, applied here where it is cheap and the rows are few.
+    """
+    evidence = finding.get("evidence")
+    if not isinstance(evidence, dict):
+        return ""
+    if evidence.get("origin") == bot_research.ORIGIN_PANEL_RETRIEVED:
+        return f"  [panel retrieved {len(evidence.get('debate_sources') or [])} page(s)]"
+    return "  [no retrieval reported]"
+
+
+def process_moderator_output(
+    moderator_text: str, trigger_question: str, provider: str = "", model: str = "",
+    debate_sources: Optional[list[dict]] = None,
+) -> None:
     """Shared post-processing for any Moderator response that might carry the structured
     verdict block -- both a fresh debate and a lighter follow-up (see
     llm_engine.ask_moderator_followup) can produce one. No-ops cleanly on plain conversational
@@ -604,7 +869,10 @@ def process_moderator_output(moderator_text: str, trigger_question: str) -> None
     safe no-op on an empty/falsy input, so a "just talking it through" follow-up doesn't spam
     the decision log or to-do list with nothing."""
     verdict = llm_engine.parse_moderator_verdict(moderator_text) if not moderator_text.startswith("⚠️") else {}
-    decision_log.log_decision(st.session_state.selected_league_id, trigger_question, verdict, moderator_text)
+    decision_log.log_decision(
+        st.session_state.selected_league_id, trigger_question, verdict, moderator_text,
+        provider=provider, model=model,
+    )
     action_item = verdict.get("action_item")
     if action_item:
         todo_log.add_todo(
@@ -624,6 +892,11 @@ def process_moderator_output(moderator_text: str, trigger_question: str) -> None
             finding["player_name"], finding["source"], finding["claim"], rank=finding["rank"],
             conviction=verdict.get("conviction", ""), question=trigger_question,
             league_id=st.session_state.selected_league_id,
+            # What the responses behind THIS verdict reported retrieving -- see
+            # bot_research.add_finding on why it is stored at debate scope and never as this
+            # claim's own citation. None (a caller that has no window to read) stores
+            # UNATTRIBUTED, which is the honest answer and not a failure.
+            debate_sources=debate_sources,
         )
     # Same trust posture as SOURCE FINDING above -- a relative claim between two players, kept
     # in its own structured store (never the composite's inputs) since it carries no absolute
@@ -708,15 +981,13 @@ def api_key_for(provider: str) -> Optional[str]:
     return st.session_state.get(f"{provider}_api_key_override") or None
 
 
-# bot_config's short provider ids ("claude") vs. api_key_for's credential-field names
-# ("anthropic") -- two different vocabularies that predate each other, kept apart
-# rather than unified since api_key_for's names mirror the .env vars directly.
-PROVIDER_KEY_FIELD = {"claude": "anthropic", "gemini": "gemini", "openai": "openai"}
-IS_PROVIDER_CONFIGURED = {
-    "claude": llm_engine.is_claude_configured,
-    "gemini": llm_engine.is_gemini_configured,
-    "openai": llm_engine.is_openai_configured,
-}
+# The two vocabularies -- a provider's short id ("claude") and the credential field its key
+# travels under ("anthropic") -- still differ, because api_key_for's names mirror the .env vars
+# directly. What changed is that the mapping is no longer maintained here: each provider
+# declares its own key_field and configured-check in the registry (see providers.py), so adding
+# one cannot leave app.py silently out of date.
+PROVIDER_KEY_FIELD = {pid: providers.get(pid).key_field for pid in providers.ids()}
+IS_PROVIDER_CONFIGURED = {pid: providers.get(pid).is_configured for pid in providers.ids()}
 
 
 CREDENTIAL_FIELD_ALIASES = {
@@ -1036,6 +1307,29 @@ def maybe_nudge_stale_free_agents(league_id: str, merger: DataMerger) -> None:
     )
 
 
+def warn_about_unreadable_stores() -> None:
+    """#102's named consumer. store_io declines to overwrite a store it could not parse, which
+    keeps a damaged file recoverable instead of replacing it with a one-element one -- but the
+    cost is that the app is then quietly running with an empty view of that store and silently
+    dropping every write to it. A guard nobody is told about is the "looks handled" failure this
+    codebase keeps finding; this is the half that makes it honest.
+
+    Once per store per session, keyed by path, for the same reason maybe_nudge_stale_free_agents
+    is: a persistent condition re-rendered on every rerun would spam the activity log rather than
+    inform anyone."""
+    seen = st.session_state.setdefault("unreadable_stores_warned", set())
+    for path, reason in store_io.unreadable_stores().items():
+        if path in seen:
+            continue
+        seen.add(path)
+        notify(
+            "error",
+            f"Couldn't read {path} — it {reason}. The file has been left exactly as it is so "
+            f"you can recover it; until it parses again, this app is working from an empty view "
+            f"of that store and is NOT saving changes to it."
+        )
+
+
 def compact_league_history(league_id: str, max_age_days: int = 30) -> tuple[bool, str]:
     """Distill chat messages older than max_age_days into one memory block, pruning the raw turns.
 
@@ -1061,8 +1355,10 @@ def compact_league_history(league_id: str, max_age_days: int = 30) -> tuple[bool
     if new_summary.startswith("⚠️"):
         return False, f"Compaction aborted, history untouched: {new_summary}"
 
+    # The pre-compaction backup is the ONLY copy of the messages about to be summarised away,
+    # so a torn write here loses exactly the thing the backup exists to protect.
     backup_path = CHATS_DIR / f"{league_id}_history.pre_compact_{int(time.time())}.json"
-    backup_path.write_text(json.dumps(history, indent=2))
+    store_io.write(backup_path, history)
 
     new_history = [{"role": "summary", "content": new_summary, "ts": time.time()}] + recent_messages
     save_chat_history(league_id, new_history)
@@ -1282,6 +1578,15 @@ def build_context(
     merger: DataMerger = st.session_state.data_merger
     league_id = st.session_state.get("selected_league_id")
     special_format = get_format_override(league_id) if league_id else None
+    # Every OTHER field on this line is Sleeper's own answer about the league; special_format
+    # is the one the user typed in themselves, because Best Ball/Chopped aren't reliably
+    # auto-detectable (see league_format.py's docstring). Listed as a bare peer of "Dynasty"
+    # it read as one more detected fact, which is the one thing it isn't -- and it is also
+    # the highest-consequence user override in this app, since FORMAT_GUIDANCE below can
+    # switch off whole categories of advice (Chopped forbids trade talk outright). Marked as
+    # user-set, the same way every other user-supplied section in this context already
+    # announces itself (REFERENCE MATERIAL "captioned by hand", PAST DECISION OUTCOMES
+    # "user-recorded, not a guess", PINNED "the user manually flagged these").
     lines = [
         f"League: {fmt['name']} ({fmt['season']}) — {fmt['type']}"
         + (f", {special_format}" if special_format else "")
@@ -1289,6 +1594,15 @@ def build_context(
         f"taxi slots: {fmt['taxi_slots']}",
     ]
 
+    if special_format:
+        lines.append(
+            f"\nThe \"{special_format}\" label above is a MANUAL SETTING the user chose for this league, "
+            "not something detected from Sleeper (every other field on that line is Sleeper's own data). "
+            "Sleeper doesn't reliably expose this one, so it rests entirely on the user having set it "
+            "correctly. Reason from it normally — but if your answer turns materially on this format "
+            "being right, say so plainly, so a mis-set toggle gets caught instead of quietly steering "
+            "the advice."
+        )
     if special_format and special_format in FORMAT_GUIDANCE:
         lines.append(f"\n{FORMAT_GUIDANCE[special_format]}")
 
@@ -1326,10 +1640,12 @@ def build_context(
         recent_msgs = [m for m in history if m.get("role") not in ("summary", "notice")][-RECENT_TURNS_IN_CONTEXT:]
     if summary_msgs or recent_msgs:
         lines.append("\nCONVERSATION MEMORY — prior debates in this league (older-to-newer):")
+        memory = []
         if summary_msgs:
-            lines.append(f"  [compacted memory of older history]\n{summary_msgs[-1]['content']}")
+            memory.append(f"  [compacted memory of older history]\n{summary_msgs[-1]['content']}")
         for m in recent_msgs:
-            lines.append(f"  [{m.get('role', '?')}] {m.get('content', '')}")
+            memory.append(f"  [{m.get('role', '?')}] {m.get('content', '')}")
+        lines.append(untrusted.fence("prior-conversation", "\n".join(memory)))
 
     active_todos = todo_log.load_todos(league_id, statuses=todo_log.ACTIVE_STATUSES) if league_id else []
     if active_todos:
@@ -1340,15 +1656,20 @@ def build_context(
             "it, or to propose it looks done, use TODO UPDATE: / TODO LIKELY RESOLVED: lines as described "
             "in your instructions:"
         )
+        todo_lines = []
         for item in active_todos:
             if item["status"] == "likely_resolved":
                 proposed = item.get("resolution_reason") or ""
-                lines.append(
+                todo_lines.append(
                     f"  - #{item['id']}: {item['text']} (since {item['date']}) — proposed as likely "
                     f"resolved: {proposed} (awaiting user confirmation)"
                 )
             else:
-                lines.append(f"  - #{item['id']}: {item['text']} (since {item['date']})")
+                todo_lines.append(f"  - #{item['id']}: {item['text']} (since {item['date']})")
+        # The ids are this app's own integers and the instruction to act on them is in the
+        # unfenced preamble above; what is fenced is the objective TEXT, which a person or a past
+        # verdict wrote. Using #3 is following the app; doing what #3's text says to do is not.
+        lines.append(untrusted.fence("objectives-written-by-user-or-past-verdict", "\n".join(todo_lines)))
 
     relevant_history = todo_log.search_archived(league_id, question, limit=5) if league_id and question else []
     if relevant_history:
@@ -1358,10 +1679,12 @@ def build_context(
             "resolution note to understand why it ended the way it did, and weigh whether anything material "
             "has changed since before treating this as a brand-new investigation:"
         )
+        history_lines = []
         for item in relevant_history:
             outcome = "Completed" if item["status"] == "resolved" else "Dismissed"
             reason = item.get("resolution_reason") or "(no reason recorded)"
-            lines.append(f"  - {item['text']} — {outcome} {item.get('resolution_date', '')}: {reason}")
+            history_lines.append(f"  - {item['text']} — {outcome} {item.get('resolution_date', '')}: {reason}")
+        lines.append(untrusted.fence("past-objectives-and-their-resolution-notes", "\n".join(history_lines)))
 
     past_outcomes = (
         decision_log.search_decisions_with_outcomes(league_id, question, limit=5) if league_id and question else []
@@ -1372,9 +1695,11 @@ def build_context(
             "played out (user-recorded, not a guess). Weigh whether the panel's read has a track record on "
             "this kind of call before repeating the same reasoning that already worked or already missed:"
         )
+        outcome_lines = []
         for d in past_outcomes:
             note = f" — {d['outcome_note']}" if d.get("outcome_note") else ""
-            lines.append(f"  - \"{d['question']}\" ({d['date']}): called {d['recommendation']}. Outcome: {d['outcome']}{note}")
+            outcome_lines.append(f"  - \"{d['question']}\" ({d['date']}): called {d['recommendation']}. Outcome: {d['outcome']}{note}")
+        lines.append(untrusted.fence("past-verdicts-and-user-recorded-outcomes", "\n".join(outcome_lines)))
 
     # Retrieved only when this question actually seems to relate to one -- never injected by
     # default. Pinning something once and having it silently color every future debate forever
@@ -1393,8 +1718,8 @@ def build_context(
             "pinning doesn't mean elevated priority — weigh it like anything else here, not as a "
             "standing instruction or a settled conclusion:"
         )
-        for pm in relevant_pins:
-            lines.append(f"  - [{pm.get('role', '?')}] {pm.get('content', '')[:400]}")
+        lines.append(untrusted.fence("pinned-chat-messages", "\n".join(
+            f"  - [{pm.get('role', '?')}] {pm.get('content', '')[:400]}" for pm in relevant_pins)))
 
     lines.append(
         "\nDATA AVAILABILITY — work with whatever is actually loaded; none of this is required to answer. "
@@ -1488,6 +1813,17 @@ def build_context(
             "and note where sources disagree on which of two players is worth more, since that's "
             "more informative than any single number alone."
         )
+
+    # Two different things arrive at the roster table above as the same blank "3yr Proj": a
+    # position that HAS no career arc to project, and a player who has one that nothing loaded
+    # publishes. data_merger._assign_horizon_state exists specifically to tell those apart --
+    # "exactly the distinction that decides whether restoring the data is even possible" -- and
+    # it was computed and then dropped before anything could read it. horizon_gap_lines states
+    # which absence each blank is, using the engine's own reason strings rather than re-wording
+    # them here, and leaves what to make of that to the panel. Same posture as the
+    # replacement_level_unpriced count roster_diagnostics already reports beside its value
+    # rather than folding into it.
+    lines.extend(horizon_gap_lines(roster_table))
 
     # The canonical Sleeper pool is intentionally separate from the optional
     # Draft Sharks free-agent export.  Include player(s) named in the question
@@ -1665,22 +2001,34 @@ def build_context(
             "\nREFERENCE MATERIAL the user uploaded (screenshots/articles, captioned by hand — you're only "
             "given the caption text, not the actual file, so treat it as a claim to weigh, not verified fact):"
         )
-        for a in captioned[:20]:
-            lines.append(f"  - {a['caption']}")
+        lines.append(untrusted.fence("user-typed-captions", "\n".join(
+            f"  - {a['caption']}" for a in captioned[:20])))
 
     findings = bot_research.findings_for_context()
     if findings:
         lines.append(
             "\nPANEL-VETTED FINDINGS from past debates (see MODERATOR_SYSTEM_PROMPT's SOURCE FINDING rule — "
             "each already survived scrutiny from the whole panel, Contrarian included, when it was first "
-            "surfaced, whether that was a bot's live search or the user's own reference material). The ones "
+            "surfaced). The ones "
             "with a rank number already feed the composite score above at a low weight (this is still an "
             "LLM's own read, not a deterministic parser's) — don't double-count them by also treating this "
-            "prose as independent corroboration. Newer findings on the same player supersede older ones:"
+            "prose as independent corroboration. Newer findings on the same player supersede older "
+            "ones.\n"
+            "  Some carry an origin tag. '[panel retrieved N page(s)]' means the provider responses behind "
+            "that debate reported fetching that many pages while producing it -- DEBATE-level, not this "
+            "claim's own citation, so it does NOT tell you which page backs which sentence. '[no retrieval "
+            "reported]' means those responses reported fetching nothing, which covers a chair reasoning "
+            "from its given context, from its own training, or simply not searching -- treat it as UNKNOWN "
+            "provenance, never as a source-less claim. A finding with no tag at all predates this record "
+            "entirely and says nothing either way:"
         )
+        finding_lines = []
         for f in findings:
             rank_part = f" (rank {f['rank']})" if f.get("rank") is not None else ""
-            lines.append(f"  - [{f['date']}] {f['player_name']} — {f['source']}{rank_part}: {f['claim']}")
+            origin = _finding_origin_note(f)
+            finding_lines.append(
+                f"  - [{f['date']}] {f['player_name']} — {f['source']}{rank_part}: {f['claim']}{origin}")
+        lines.append(untrusted.fence("past-verdicts-quoting-outside-sources", "\n".join(finding_lines)))
 
     comparisons = bot_research.comparisons_for_context()
     if comparisons:
@@ -1692,14 +2040,20 @@ def build_context(
             "(not attempted yet). Useful as a cross-check on ordering against the numeric composite above, "
             "not a competing number:"
         )
+        comparison_lines = []
         for c in comparisons:
             verb = {">": "rated ahead of", "<": "rated behind", "~": "rated about even with"}[c["direction"]]
             ctx = f" [{c['context']}]" if c.get("context") else ""
-            lines.append(
+            comparison_lines.append(
                 f"  - [{c['date']}] {c['subject']} {verb} {c['compared_to']}{ctx}, per {c['source']}: {c['evidence']}"
             )
+        lines.append(untrusted.fence("past-verdicts-quoting-outside-sources", "\n".join(comparison_lines)))
 
-    return "\n".join(lines)
+    # fence() returns "" for an empty body so a caller can wrap unconditionally; drop those here
+    # rather than emitting blank lines into the middle of the context. An empty fence would be
+    # worse than none -- it tells a chair there is untrusted content to discount when there is
+    # none -- so this is the one place that decision lands.
+    return "\n".join(line for line in lines if line)
 
 
 # ------------------------------------------------------------------ sidebar --
@@ -1940,7 +2294,13 @@ with st.sidebar:
             "role also has an optional benchmark: let candidate models actually audition for the job "
             "instead of picking one by reputation."
         )
-        _role_providers_cfg = bot_config.load_role_providers()
+        # Which providers this user can actually reach. Computed BEFORE the role assignment
+        # below, which now depends on it.
+        _bots_configured = [p for p in bot_config.PROVIDERS if IS_PROVIDER_CONFIGURED[p](api_key_for(PROVIDER_KEY_FIELD[p]))]
+        # Filled in from the keys this user actually has, so a one-key user gets all four
+        # chairs on that family instead of one working chair and three "⚠️ key not set".
+        # A saved choice still wins; this only fills gaps. See bot_config.default_role_providers.
+        _role_providers_cfg = bot_config.load_role_providers(_bots_configured)
         _role_names_cfg = bot_config.load_role_names()
         _role_models_cfg = bot_config.load_role_models()
         _moderator_personality_cfg = bot_config.load_moderator_personality()
@@ -1948,11 +2308,34 @@ with st.sidebar:
         # Discovery itself lives in 🔑 Connections & Models now -- this section only reads
         # the `available_models_{provider}` cache it populates, the same single source both
         # the manual model picker below and every role's benchmark candidate list draw from.
-        _bots_configured = [p for p in bot_config.PROVIDERS if IS_PROVIDER_CONFIGURED[p](api_key_for(PROVIDER_KEY_FIELD[p]))]
         if not _bots_configured:
             st.warning("No provider keys configured yet — add at least one in 🔑 Connections & Models first.")
         elif not any(st.session_state.get(f"available_models_{p}") for p in _bots_configured):
             st.caption("No models fetched yet — use 🔑 Connections & Models above to see what each key can call.")
+
+        # How many genuinely different models are in the room. This is the one fact about a
+        # panel that the round-robin assignment makes easy to get wrong: with a single key all
+        # four chairs are dealt to the same provider, and "the Contrarian didn't dispute it" then
+        # means one model declined to argue with itself. Shown here rather than only at the
+        # verdict, because THIS is the screen where it can be changed.
+        _voices = panel_independence.distinct_voices(
+            bot_config.ROLES, _role_providers_cfg, _role_models_cfg)
+        _dissent_note = panel_independence.note(
+            "moderator", "contrarian", _role_providers_cfg, _role_models_cfg,
+            labels={r: bot_config.ROLE_INFO[r]["label"] for r in bot_config.ROLES})
+        if _voices == 1:
+            st.caption(
+                f"⚠️ All four chairs are the same model — **1 distinct voice**. The panel still "
+                f"runs, and its reasoning is still worth reading, but agreement between chairs "
+                f"is not corroboration here: it is one model answering four times. A second "
+                f"provider key is what makes dissent mean something."
+            )
+        elif _dissent_note:
+            # Named specifically because these two are the pair whose disagreement the whole
+            # design leans on -- the Moderator writes the verdict, the Contrarian is the check.
+            st.caption(f"⚠️ {_dissent_note}")
+        else:
+            st.caption(f"{_voices} distinct voices across the four chairs.")
 
         for _role in bot_config.ROLES:
             _info = bot_config.ROLE_INFO[_role]
@@ -1985,12 +2368,21 @@ with st.sidebar:
                     format_func=lambda p: bot_config.PROVIDER_LABELS[p], key=f"bot_provider_input_{_role}",
                     label_visibility="collapsed",
                 )
-                _recommended = _info["recommended"]
-                # The "why" always shows now, matched or not -- "recommended fit" alone
-                # was a dead end; the reasoning is what actually helps someone decide
-                # whether to override it, so it shouldn't disappear the moment they agree.
-                _rec_prefix = "✓ Using the recommended provider" if _provider_choice == _recommended else f"Recommended: {bot_config.PROVIDER_LABELS[_recommended]}"
-                st.caption(f"{_rec_prefix} — {_info['why']}")
+                # There is deliberately no per-chair vendor recommendation here any more. The
+                # four that used to sit in this caption were exactly a round-robin over the
+                # provider list, justified after the fact, and nothing in this app has ever
+                # measured which family suits which chair -- see bot_config.ASSIGNMENT_RULE.
+                # What sits here instead is the one thing about a provider that IS measured:
+                # what it does and does not report back. A provider that cannot tell the app
+                # whether a reply was truncated is not the same as one that reported nothing
+                # this run, and only the registry knows which is which.
+                _gaps = providers.get(_provider_choice).capability_gaps()
+                if _gaps:
+                    st.caption(
+                        f"{bot_config.PROVIDER_LABELS[_provider_choice]} does not report: "
+                        + "; ".join(_gaps)
+                        + ". That is a property of the provider, not a failure of a run."
+                    )
                 # Model is a layer below provider, not a peer to it -- two roles can share
                 # a provider and still want different models (the Moderator's synthesis
                 # doesn't need the same model as Quant's number-crunching). Free text by
@@ -2128,6 +2520,14 @@ with st.sidebar:
                             _medal = _medals[_idx] if _idx < len(_medals) else f"{_idx + 1}."
                             _model_label = _cand["model"] or "(provider default)"
                             _warn = " ⚠️ one or more calls failed" if _cand["any_failed"] else ""
+                            # Recorded by run_benchmark but deliberately NOT scored (see
+                            # bot_benchmark.MACHINE_CONTRACT_PARSERS): a candidate can win this
+                            # rubric and still fail the structured block four production
+                            # consumers depend on. Surfaced here so it is visible to whoever
+                            # presses Apply, rather than discovered later as four systems
+                            # quietly doing nothing.
+                            if _cand.get("any_contract_failure"):
+                                _warn += " ⚠️ did not emit the required structured verdict block"
                             st.caption(
                                 f"{_medal} {bot_config.PROVIDER_LABELS[_cand['provider']]} · {_model_label} — "
                                 f"**{_cand['score']}**/100, {_cand['avg_latency']}s avg{_warn}"
@@ -2138,7 +2538,24 @@ with st.sidebar:
                             ):
                                 bot_config.set_role_provider(_role, _cand["provider"])
                                 bot_config.set_role_model(_role, _cand["model"])
-                                notify("success", f"Applied — {_info['label']} now runs on {_model_label}.")
+                                # #94 ruled FLAG ONLY: a contract failure never blocks Apply and
+                                # never moves the score. But the flag has to survive to where the
+                                # consequence actually lands, or it is a declaration nothing
+                                # reads -- the caption above is seen before the decision, this is
+                                # seen because of it. Names the four consumers by what they DO,
+                                # since "parse_moderator_verdict returned {}" tells a user
+                                # nothing about what they will notice going missing.
+                                if _cand.get("any_contract_failure"):
+                                    notify("warning",
+                                           f"Applied — {_info['label']} now runs on {_model_label}. "
+                                           "Note: this model did not emit the required structured "
+                                           "verdict block during the benchmark. While that holds, "
+                                           "its verdicts won't log a decision, won't create or "
+                                           "close to-dos, won't record a research finding, and "
+                                           "won't render the verdict card — the reply still "
+                                           "arrives as prose.")
+                                else:
+                                    notify("success", f"Applied — {_info['label']} now runs on {_model_label}.")
                                 st.rerun()
 
                 st.markdown("<hr style='margin:6px 0;opacity:0.15'>", unsafe_allow_html=True)
@@ -2147,7 +2564,7 @@ with st.sidebar:
         # someone who just wants the recommended routing back shouldn't lose a custom
         # name like "Freddy" or a deliberately-picked model as a side effect of that.
         reset_provider_col, reset_name_col, reset_model_col = st.columns(3)
-        if reset_provider_col.button("Use recommended providers", key="reset_bot_providers", use_container_width=True):
+        if reset_provider_col.button("Reset provider routing", key="reset_bot_providers", use_container_width=True):
             bot_config.reset_role_providers()
             st.rerun()
         if reset_model_col.button("Clear model overrides", key="reset_bot_models", use_container_width=True):
@@ -2190,7 +2607,41 @@ with st.sidebar:
             uploaded = st.file_uploader(
                 "Upload Draft Sharks PDF/CSV/JSON, or any other file as reference material",
                 type=["pdf", "csv", "json", "png", "jpg", "jpeg", "webp", "gif", "txt"],
+                accept_multiple_files=True,
             )
+            # TWO FIELDS ON THE WAY IN, and only two. The name and note are prose -- for your own
+            # reference later, and as context the panel can read -- and they gate nothing: a name
+            # containing "superflex" must never quietly become a format claim, or you would have
+            # to guess a regex's vocabulary to be understood.
+            _batch_name = st.text_input(
+                "What is this? (a name for this set of files)",
+                placeholder="e.g. \"Week 3 refresh\" or \"my own PPR superflex board\"",
+            )
+            # The ONE stated fact, and the reason it is asked rather than inferred: precedence
+            # keys on it. Absent, this file's rows lose every tie instead of winning one on a
+            # filesystem timestamp -- which is what used to happen, invisibly. Optional on
+            # purpose: a required date gets typed through, and a wrong date is worse than none
+            # because precedence acts on it and is then confidently wrong.
+            # A PICKER, not a text box -- so the format question mostly disappears rather than
+            # being enforced. It is paired with an explicit "I don't know", because a bare
+            # date_input has no empty state: it defaults to today, and a field that cannot be
+            # left blank is a required field wearing an optional label. Today is the one date
+            # this must never quietly assume, since it would outrank every real source.
+            _as_of_unknown = st.checkbox(
+                "I don't know when this data is from",
+                help="Perfectly fine. These files still load — they just lose a tie to a dated "
+                     "source rather than beating one by accident.",
+            )
+            _batch_as_of = ""
+            if not _as_of_unknown:
+                _picked = st.date_input(
+                    "As of what date is this data?",
+                    value=datetime.now().date(),
+                    max_value=datetime.now().date(),
+                    help="The date the SOURCE published or computed it — not the date you are "
+                         "uploading it. Those are different facts and precedence uses the first.",
+                )
+                _batch_as_of = _picked.isoformat() if _picked else ""
             note = st.text_area(
                 "Comments, questions, or labels for this upload (optional)",
                 placeholder="e.g. \"ignore this ranking, Bijan tweaked his hamstring in preseason\" or "
@@ -2201,157 +2652,207 @@ with st.sidebar:
 
         if submitted and scope_mode == "Specific league(s)" and not scope_league_ids:
             notify("warning", "Select at least one league above, or switch back to Global.")
-        elif submitted and uploaded is None:
-            notify("warning", "Choose a file before clicking Upload.")
-        elif submitted and uploaded is not None:
-            data = bytes(uploaded.getbuffer())
-            note = note.strip()
-            suffix = Path(uploaded.name).suffix.lower()
-            recognized = False
-            note_scope = scope_league_ids if scope_mode == "Specific league(s)" else None
+        elif submitted and not uploaded:
+            notify("warning", "Choose at least one file before clicking Upload.")
+        elif submitted and uploaded:
+            # ONE BATCH, MANY FILES. You export four format variants from one tool in one
+            # sitting -- same source, same as-of date, same intent -- so the story is asked
+            # for once and the files are processed under it. `filed` collects what actually
+            # landed in a pool, so the batch record names the files it really covers rather
+            # than everything that was dropped on it.
+            _batch_files: list[str] = []
+            # Bound to its own name rather than rebinding `uploaded` in place. The in-place form
+            # works -- list() snapshots before the first rebind -- but it reads as a bug, and a
+            # loop that has to be reasoned about to be believed is one somebody will "fix".
+            _uploaded_files = list(uploaded)
+            for uploaded in _uploaded_files:
+                data = bytes(uploaded.getbuffer())
+                note = note.strip()
+                suffix = Path(uploaded.name).suffix.lower()
+                recognized = False
+                note_scope = scope_league_ids if scope_mode == "Specific league(s)" else None
 
-            if suffix in (".pdf", ".csv", ".json"):
-                import pypdf
+                if suffix in (".pdf", ".csv", ".json"):
+                    import pypdf
 
-                staging_dir = PROJECTIONS_DIR / "_staging"
-                staging_dir.mkdir(parents=True, exist_ok=True)
-                staging_path = staging_dir / uploaded.name
-                staging_path.write_bytes(data)
-                parse_error = None
-                parsed_df = None
-                try:
-                    parsed_df, kind = load_projection_file(staging_path)
-                except Exception as exc:
-                    kind, parse_error = None, str(exc)
-
-                # A PDF that parses cleanly as "rankings" (the default/catch-all bucket -- see
-                # _sniff_pdf_kind) might still not actually BE Dynasty Rankings; that bucket has
-                # no positive-match check of its own, just elimination of the other three known
-                # tools. Draft Sharks' own PDFs plainly self-label DYNASTY vs REDRAFT in their
-                # title text (confirmed against a real "Redraft > IDP" export that parsed
-                # without error yet silently mislabeled two columns) -- catching that here is
-                # cheap (local text, no API call) and catches exactly the case a keyword-based
-                # sniff can't: a real table, just the wrong dynasty-vs-redraft product.
-                suspicious_excerpt = None
-                example_row = None
-                if kind == "rankings" and suffix == ".pdf":
+                    staging_dir = PROJECTIONS_DIR / "_staging"
+                    staging_dir.mkdir(parents=True, exist_ok=True)
+                    staging_path = staging_dir / uploaded.name
+                    staging_path.write_bytes(data)
+                    parse_error = None
+                    parsed_df = None
                     try:
-                        first_page = pypdf.PdfReader(str(staging_path)).pages[0].extract_text() or ""
-                    except Exception:
-                        first_page = ""
-                    upper = first_page.upper()
-                    if "REDRAFT" in upper and "DYNASTY" not in upper:
-                        suspicious_excerpt = first_page[:1500]
-                        # A concrete row from the parser's OWN output, not anything the Moderator
-                        # is asked to restate from memory -- the numbers stay exactly what the
-                        # deterministic parser already extracted; only their labeling is ever in
-                        # question, so this is what actually gets shown/confirmed, not an LLM's
-                        # potentially-misremembered echo of them.
-                        if parsed_df is not None and not parsed_df.empty:
-                            _ex = parsed_df.iloc[0]
-                            example_row = (
-                                f"{_ex.get('name', '?')} ({_ex.get('team', '?')} {_ex.get('position', '?')}): "
-                                f"parsed as rank={_ex.get('rank')}, \"1yr projection\"={_ex.get('projection')}, "
-                                f"\"3yr projection\"={_ex.get('proj_3yr')}, trade_value={_ex.get('trade_value')}"
-                            )
+                        parsed_df, kind = load_projection_file(staging_path)
+                    except Exception as exc:
+                        kind, parse_error = None, str(exc)
 
-                if kind == "free_agents" and not st.session_state.selected_league_id:
-                    staging_path.unlink(missing_ok=True)
-                    notify("error", "This looks like a Free Agent Finder export, tied to one league's roster — select a league above first, then re-upload.")
-                    recognized = True  # handled (as a rejection), don't also file it as an attachment
-                elif suspicious_excerpt:
-                    # The parser flagged real, recoverable data as ambiguous -- try to self-heal
-                    # via the Moderator automatically, before ever bothering the user with it.
-                    # Optically, whether the fix came from the parser alone or with the
-                    # Moderator's help doesn't matter -- only that the right data lands and the
-                    # user isn't interrupted for something the app could sort out on its own.
-                    _mod_provider = bot_config.load_role_providers()["moderator"]
-                    _mod_key = api_key_for(PROVIDER_KEY_FIELD[_mod_provider])
-                    auto_opinion, auto_alignment = None, None
-                    if IS_PROVIDER_CONFIGURED[_mod_provider](_mod_key):
-                        with st.spinner("Parser flagged this file as ambiguous — checking with the Moderator..."):
-                            auto_opinion = llm_engine.classify_unknown_upload(
-                                uploaded.name, suspicious_excerpt, example_row=example_row, provider=_mod_provider,
-                                api_key=_mod_key, model=bot_config.load_role_models().get("moderator") or None,
-                            )
-                        auto_alignment = llm_engine.parse_alignment_verdict(auto_opinion)
+                    # A PDF that parses cleanly as "rankings" (the default/catch-all bucket -- see
+                    # _sniff_pdf_kind) might still not actually BE Dynasty Rankings; that bucket has
+                    # no positive-match check of its own, just elimination of the other three known
+                    # tools. Draft Sharks' own PDFs plainly self-label DYNASTY vs REDRAFT in their
+                    # title text (confirmed against a real "Redraft > IDP" export that parsed
+                    # without error yet silently mislabeled two columns) -- catching that here is
+                    # cheap (local text, no API call) and catches exactly the case a keyword-based
+                    # sniff can't: a real table, just the wrong dynasty-vs-redraft product.
+                    suspicious_excerpt = None
+                    example_row = None
+                    if kind == "rankings" and suffix == ".pdf":
+                        try:
+                            first_page = pypdf.PdfReader(str(staging_path)).pages[0].extract_text() or ""
+                        except Exception:
+                            first_page = ""
+                        upper = first_page.upper()
+                        if "REDRAFT" in upper and "DYNASTY" not in upper:
+                            suspicious_excerpt = first_page[:1500]
+                            # A concrete row from the parser's OWN output, not anything the Moderator
+                            # is asked to restate from memory -- the numbers stay exactly what the
+                            # deterministic parser already extracted; only their labeling is ever in
+                            # question, so this is what actually gets shown/confirmed, not an LLM's
+                            # potentially-misremembered echo of them.
+                            if parsed_df is not None and not parsed_df.empty:
+                                _ex = parsed_df.iloc[0]
+                                example_row = (
+                                    f"{_ex.get('name', '?')} ({_ex.get('team', '?')} {_ex.get('position', '?')}): "
+                                    f"parsed as rank={_ex.get('rank')}, \"1yr projection\"={_ex.get('projection')}, "
+                                    f"\"3yr projection\"={_ex.get('proj_3yr')}, trade_value={_ex.get('trade_value')}"
+                                )
 
-                    if auto_alignment is True:
-                        # False alarm -- the parser's own mapping actually held up. Proceed
-                        # exactly like any other recognized upload; the question's resolved.
-                        dest_dir = GLOBAL_PROJECTIONS_DIR
+                    if kind == "free_agents" and not st.session_state.selected_league_id:
+                        staging_path.unlink(missing_ok=True)
+                        notify("error", "This looks like a Free Agent Finder export, tied to one league's roster — select a league above first, then re-upload.")
+                        recognized = True  # handled (as a rejection), don't also file it as an attachment
+                    elif suspicious_excerpt:
+                        # The parser flagged real, recoverable data as ambiguous -- try to self-heal
+                        # via the Moderator automatically, before ever bothering the user with it.
+                        # Optically, whether the fix came from the parser alone or with the
+                        # Moderator's help doesn't matter -- only that the right data lands and the
+                        # user isn't interrupted for something the app could sort out on its own.
+                        _mod_provider = bot_config.load_role_providers()["moderator"]
+                        _mod_key = api_key_for(PROVIDER_KEY_FIELD[_mod_provider])
+                        auto_opinion, auto_alignment = None, None
+                        if IS_PROVIDER_CONFIGURED[_mod_provider](_mod_key):
+                            with st.spinner("Parser flagged this file as ambiguous — checking with the Moderator..."):
+                                auto_opinion = llm_engine.classify_unknown_upload(
+                                    uploaded.name, suspicious_excerpt, example_row=example_row, provider=_mod_provider,
+                                    api_key=_mod_key, model=bot_config.load_role_models().get("moderator") or None,
+                                )
+                            auto_alignment = llm_engine.parse_alignment_verdict(auto_opinion)
+
+                        if auto_alignment is True:
+                            # False alarm -- the parser's own mapping actually held up. Proceed
+                            # exactly like any other recognized upload; the question's resolved.
+                            dest_dir = GLOBAL_PROJECTIONS_DIR
+                            dest_dir.mkdir(parents=True, exist_ok=True)
+                            staging_path.replace(dest_dir / uploaded.name)
+                            _batch_files.append(_pool_relpath(dest_dir / uploaded.name))
+                            st.session_state.data_merger.reload()
+                            notify("success", "Recognized as Draft Sharks data — the Moderator double-checked an ambiguous label and it held up.")
+                            recognized = True
+                            if note:
+                                save_attachment(f"{uploaded.name}.note.txt", note.encode(), caption=note, league_ids=note_scope)
+                        elif auto_alignment is False:
+                            # Confirmed mislabeled. Drop only the specific fields whose meaning is in
+                            # question (never invent a replacement value for them) and keep what's
+                            # still valid -- identity fields and trade_value, which for a Trade Value
+                            # Chart / Dynasty Rankings PDF sits in the same column position either
+                            # way. Written out as a CSV, not the raw PDF, so a future reload parses
+                            # the already-corrected data directly instead of re-deriving the same
+                            # wrong labels from the PDF's raw text every time.
+                            corrected_cols = [c for c in ("name", "team", "position", "rank", "trade_value") if c in parsed_df.columns]
+                            corrected_name = Path(uploaded.name).stem + ".corrected.csv"
+                            dest_dir = GLOBAL_PROJECTIONS_DIR
+                            dest_dir.mkdir(parents=True, exist_ok=True)
+                            parsed_df[corrected_cols].to_csv(dest_dir / corrected_name, index=False)
+                            _batch_files.append(_pool_relpath(dest_dir / corrected_name))
+                            staging_path.unlink(missing_ok=True)
+                            st.session_state.data_merger.reload()
+                            notify(
+                                "success",
+                                "Recognized as Draft Sharks data, with the Moderator's help — this file's own "
+                                "projection columns didn't mean what our schema expected (it looks like a "
+                                "single-season export, not a dynasty one), so those were left out rather than "
+                                "shown under the wrong label. Its trade value still applies.",
+                            )
+                            recognized = True
+                            if note:
+                                save_attachment(f"{uploaded.name}.note.txt", note.encode(), caption=note, league_ids=note_scope)
+                        else:
+                            # Couldn't self-heal -- no key configured to even ask, or the Moderator
+                            # itself wasn't confident. This is the one case that actually needs a
+                            # human decision, not a second automated guess dressed up as one.
+                            # A QUEUE, not a slot. A single upload can now carry several files, and
+                            # more than one of them can land here -- assigning to one slot would have
+                            # silently dropped every ambiguous file but the last, which is the exact
+                            # shape of loss this app refuses everywhere else.
+                            st.session_state.setdefault("pending_uploads", [])
+                            st.session_state.pending_uploads.append({
+                                "staging_path": str(staging_path), "name": uploaded.name, "kind": kind,
+                                "parse_error": None, "excerpt": suspicious_excerpt, "data": data,
+                                "note": note, "note_scope": note_scope,
+                                "moderator_opinion": auto_opinion, "alignment": auto_alignment,
+                                "example_row": example_row,
+                            })
+                            recognized = True  # held for a decision below, not silently filed either way
+                    elif parse_error:
+                        # Nothing usable parsed at all -- no data to align, so there's nothing for
+                        # the Moderator to fix here. Falls through to reference material below,
+                        # same as it always has.
+                        staging_path.unlink(missing_ok=True)
+                    else:
+                        if kind == "free_agents":
+                            dest_dir = league_projections_dir(st.session_state.selected_league_id)
+                            location_label = "this league only (roster-specific)"
+                        else:
+                            dest_dir = GLOBAL_PROJECTIONS_DIR
+                            location_label = "the shared pool (applies to any league using this format)"
                         dest_dir.mkdir(parents=True, exist_ok=True)
                         staging_path.replace(dest_dir / uploaded.name)
+                        _batch_files.append(_pool_relpath(dest_dir / uploaded.name))
                         st.session_state.data_merger.reload()
-                        notify("success", "Recognized as Draft Sharks data — the Moderator double-checked an ambiguous label and it held up.")
+                        notify("success", f"Recognized as Draft Sharks data — saved to {location_label}.")
                         recognized = True
                         if note:
+                            # The data went into the projections pool, not the attachment store — but the
+                            # note is still worth surfacing to the panel, so it gets a small text-only entry.
                             save_attachment(f"{uploaded.name}.note.txt", note.encode(), caption=note, league_ids=note_scope)
-                    elif auto_alignment is False:
-                        # Confirmed mislabeled. Drop only the specific fields whose meaning is in
-                        # question (never invent a replacement value for them) and keep what's
-                        # still valid -- identity fields and trade_value, which for a Trade Value
-                        # Chart / Dynasty Rankings PDF sits in the same column position either
-                        # way. Written out as a CSV, not the raw PDF, so a future reload parses
-                        # the already-corrected data directly instead of re-deriving the same
-                        # wrong labels from the PDF's raw text every time.
-                        corrected_cols = [c for c in ("name", "team", "position", "rank", "trade_value") if c in parsed_df.columns]
-                        corrected_name = Path(uploaded.name).stem + ".corrected.csv"
-                        dest_dir = GLOBAL_PROJECTIONS_DIR
-                        dest_dir.mkdir(parents=True, exist_ok=True)
-                        parsed_df[corrected_cols].to_csv(dest_dir / corrected_name, index=False)
-                        staging_path.unlink(missing_ok=True)
-                        st.session_state.data_merger.reload()
-                        notify(
-                            "success",
-                            "Recognized as Draft Sharks data, with the Moderator's help — this file's own "
-                            "projection columns didn't mean what our schema expected (it looks like a "
-                            "single-season export, not a dynasty one), so those were left out rather than "
-                            "shown under the wrong label. Its trade value still applies.",
-                        )
-                        recognized = True
-                        if note:
-                            save_attachment(f"{uploaded.name}.note.txt", note.encode(), caption=note, league_ids=note_scope)
-                    else:
-                        # Couldn't self-heal -- no key configured to even ask, or the Moderator
-                        # itself wasn't confident. This is the one case that actually needs a
-                        # human decision, not a second automated guess dressed up as one.
-                        st.session_state.pending_upload = {
-                            "staging_path": str(staging_path), "name": uploaded.name, "kind": kind,
-                            "parse_error": None, "excerpt": suspicious_excerpt, "data": data,
-                            "note": note, "note_scope": note_scope,
-                            "moderator_opinion": auto_opinion, "alignment": auto_alignment,
-                            "example_row": example_row,
-                        }
-                        recognized = True  # held for a decision below, not silently filed either way
-                elif parse_error:
-                    # Nothing usable parsed at all -- no data to align, so there's nothing for
-                    # the Moderator to fix here. Falls through to reference material below,
-                    # same as it always has.
-                    staging_path.unlink(missing_ok=True)
+
+                if not recognized:
+                    save_attachment(uploaded.name, data, caption=note, league_ids=note_scope)
+                    notify("info", f"Didn't match a known Draft Sharks format — saved '{uploaded.name}' as reference material below for the panel to consider when you ask about it.")
+
+            # ONE record for the set, written after the loop rather than per file. Only files
+            # that actually reached a pool are named: reference material does not feed
+            # precedence, so recording it here would make the batch claim a scope it does not
+            # have. A batch with nothing in a pool is not recorded at all -- there would be
+            # nothing for its as-of date to date.
+            _as_of_clean, _as_of_error = upload_batches.parse_as_of(_batch_as_of)
+            if _as_of_error:
+                # Refused, and SAID SO. Silently dropping to "unknown" would leave a user
+                # believing they had dated their upload when they had not -- and an undated
+                # file behaves differently in a tiebreak, so that belief would be load-bearing.
+                notify("warning", f"Date not recorded — {_as_of_error}")
+            if _batch_files:
+                upload_batches.record(
+                    name=_batch_name, note=note, as_of=_as_of_clean, files=_batch_files,
+                    league_ids=list(scope_league_ids or []),
+                )
+                if _as_of_clean:
+                    notify("info", f"Recorded {len(_batch_files)} file(s) as of {_as_of_clean}.")
                 else:
-                    if kind == "free_agents":
-                        dest_dir = league_projections_dir(st.session_state.selected_league_id)
-                        location_label = "this league only (roster-specific)"
-                    else:
-                        dest_dir = GLOBAL_PROJECTIONS_DIR
-                        location_label = "the shared pool (applies to any league using this format)"
-                    dest_dir.mkdir(parents=True, exist_ok=True)
-                    staging_path.replace(dest_dir / uploaded.name)
-                    st.session_state.data_merger.reload()
-                    notify("success", f"Recognized as Draft Sharks data — saved to {location_label}.")
-                    recognized = True
-                    if note:
-                        # The data went into the projections pool, not the attachment store — but the
-                        # note is still worth surfacing to the panel, so it gets a small text-only entry.
-                        save_attachment(f"{uploaded.name}.note.txt", note.encode(), caption=note, league_ids=note_scope)
+                    # Said out loud rather than left to be discovered: an undated file is not
+                    # broken, it just cannot win a disagreement.
+                    notify("info", f"Recorded {len(_batch_files)} file(s) with no as-of date — "
+                                   "where these disagree with a dated source, the dated one wins.")
 
-            if not recognized:
-                save_attachment(uploaded.name, data, caption=note, league_ids=note_scope)
-                notify("info", f"Didn't match a known Draft Sharks format — saved '{uploaded.name}' as reference material below for the panel to consider when you ask about it.")
-
-        pending = st.session_state.get("pending_upload")
+        # Oldest first, one at a time: each of these needs a human call, and showing several
+        # half-answered decisions at once is how the wrong button gets pressed. The count is
+        # surfaced so a user knows more are waiting rather than discovering it on the next rerun.
+        _pending_queue = st.session_state.get("pending_uploads") or []
+        pending = _pending_queue[0] if _pending_queue else None
         if pending:
+            if len(_pending_queue) > 1:
+                st.caption(f"{len(_pending_queue)} files from this upload need a decision — "
+                           f"this is the first.")
             # This is only ever reached once self-healing has already been tried and failed (see
             # above) -- either no Moderator key was configured to even attempt it, or the
             # Moderator itself wasn't confident either way. Either way, this genuinely needs a
@@ -2416,22 +2917,74 @@ with st.sidebar:
                     if pending["note"]:
                         save_attachment(f"{pending['name']}.note.txt", pending["note"].encode(), caption=pending["note"], league_ids=pending["note_scope"])
                     notify("success", f"Saved \"{pending['name']}\" to the shared Dynasty Rankings pool.")
-                    st.session_state.pending_upload = None
+                    st.session_state.pending_uploads = _pending_queue[1:]
                     st.rerun()
             with pu_cols[-1]:
                 if st.button(reference_label, key="pending_upload_reference", use_container_width=True):
                     Path(pending["staging_path"]).unlink(missing_ok=True)
                     save_attachment(pending["name"], pending["data"], caption=pending["note"], league_ids=pending["note_scope"])
                     notify("info", f"Saved \"{pending['name']}\" as reference material for the panel to consider when asked about it.")
-                    st.session_state.pending_upload = None
+                    st.session_state.pending_uploads = _pending_queue[1:]
                     st.rerun()
 
+        # WHAT IS IN THE POOL, grouped the way it arrived. A flat list of filenames answers
+        # "what is loaded" and nothing else; grouped by batch it also answers "where did this
+        # come from, when is it from, and what did I say about it at the time" -- which is the
+        # question anyone actually has when a number looks wrong.
         global_files = sorted(p.name for p in GLOBAL_PROJECTIONS_DIR.glob("*") if p.suffix in (".csv", ".json", ".pdf"))
-        if global_files:
-            st.caption("Shared rankings (any league): " + ", ".join(global_files))
+        league_files = []
         if st.session_state.selected_league_id:
             league_proj_dir = league_projections_dir(st.session_state.selected_league_id)
             league_files = sorted(p.name for p in league_proj_dir.glob("*") if p.suffix in (".csv", ".json", ".pdf")) if league_proj_dir.exists() else []
+
+        _batches = upload_batches.batches()
+        if _batches:
+            st.markdown("**Your uploads**")
+            _accounted: set[str] = set()
+            for _batch in _batches:
+                _present = [f for f in _batch.get("files", []) if Path(f).exists()]
+                _accounted.update(Path(f).name for f in _batch.get("files", []))
+                if not _present:
+                    # Every file from this batch is gone from disk. The record is kept rather
+                    # than hidden: "I uploaded that and it is not here any more" is a real
+                    # question, and a silently vanished batch cannot answer it.
+                    st.caption(f"~~**{_batch['name']}**~~ — files no longer on disk "
+                               f"(uploaded {_batch['uploaded_at']})")
+                    continue
+                _as_of = _batch.get("as_of")
+                _date_line = (f"as of **{_as_of}**" if _as_of
+                              else "**no as-of date** — loses ties to dated sources")
+                st.caption(f"**{_batch['name']}** · {len(_present)} file(s) · {_date_line} "
+                           f"· uploaded {_batch['uploaded_at']}")
+                with st.expander(f"Files and notes — {_batch['name']}", expanded=False):
+                    for _f in _present:
+                        st.caption(f"• `{Path(_f).name}`")
+                    if _batch.get("note"):
+                        # Shown as the user's own words, quoted rather than restated -- this is
+                        # also what reaches the panel as context, and it should read the same
+                        # in both places.
+                        st.caption(f"> {_batch['note']}")
+                    if st.button("Remove this upload", key=f"forget_batch_{_batch['id']}",
+                                 use_container_width=True):
+                        # The batch is the undo unit -- the reason it has an identity at all.
+                        _removed = upload_batches.forget(_batch["id"])
+                        for _f in (_removed or {}).get("files", []):
+                            Path(_f).unlink(missing_ok=True)
+                        st.session_state.data_merger.reload()
+                        notify("success", f"Removed \"{_batch['name']}\" and its "
+                                          f"{len(_present)} file(s).")
+                        st.rerun()
+
+            # Anything in a pool that no batch claims -- the committed baseline, and anything
+            # uploaded before batches existed. Named separately rather than folded in, because
+            # "I put this here" and "this shipped with the app" are different facts.
+            _unclaimed = [f for f in global_files + league_files if f not in _accounted]
+            if _unclaimed:
+                st.caption("Not from any recorded upload (shipped with the app, or added before "
+                           "uploads were grouped): " + ", ".join(sorted(_unclaimed)))
+        else:
+            if global_files:
+                st.caption("Shared rankings (any league): " + ", ".join(global_files))
             if league_files:
                 st.caption("This league only (roster-specific): " + ", ".join(league_files))
 
@@ -3283,25 +3836,13 @@ elif main_view == MAINTENANCE_VIEW:
         else merger.trade_values
     )
 
-    def _match_key(name: str) -> tuple[str, str]:
-        return name_key(normalize_name(name))
-
-    # merge_player's own key-match silently picks the first candidate when several players
-    # share a name_key and no position/team was given to disambiguate (confirmed live: a
-    # same-keyed "Jaylen Allen" resolved to "Josh Allen"'s value instead of its own) -- fine
-    # for callers that always have a position in hand (the free-agent/roster tables), but the
-    # trade calculator's free-text input never does. Recomputing the same key here to count
-    # real candidates catches that specific gap without touching merge_player's own contract,
-    # which plenty of other call sites already depend on staying as-is.
-    # DataMerger._load() already precomputes this exact column on trade_values (and it
-    # survives the asset_type=="player" filter above) -- reuse it instead of remapping every
-    # row again here, same fix as _find_match's own internal lookup.
-    if _tvc_players.empty:
-        _tvc_player_keys = None
-    elif "_name_key" in _tvc_players.columns:
-        _tvc_player_keys = _tvc_players["_name_key"]
-    else:
-        _tvc_player_keys = _tvc_players["norm_name"].map(_match_key)
+    # Ambiguity used to be recomputed here: merge_player silently picked the first candidate
+    # when several players shared a name_key and no position/team was given to disambiguate
+    # (confirmed live -- a same-keyed "Jaylen Allen" resolved to "Josh Allen"'s value instead
+    # of its own), and it returned nothing a caller could read, so this one caller counted
+    # candidates itself. It reports match_verified now, so the count is gone and both branches
+    # below read the resolution instead. Ambiguity is a property of the resolution, and a
+    # consumer that has to re-derive it is a consumer that can forget to.
 
     # FAAB dollars and waiver-priority swaps are common lopsided-piece-count sweeteners in a
     # real trade, but Draft Sharks has no market value for either -- a league's FAAB budget can
@@ -3342,20 +3883,25 @@ elif main_view == MAINTENANCE_VIEW:
             external = merger.external_player_values(line) if merger.is_external_values_loaded else []
             composite = merger.composite_player_score(line)
             tvc_player = merger.merge_player(line, df=_tvc_players) if merger.is_trade_values_loaded else {}
-            if tvc_player.get("matched") and _tvc_player_keys is not None:
-                candidates = int((_tvc_player_keys == _match_key(line)).sum())
-                if candidates > 1:
-                    # external/composite above were resolved from the same unresolvable free
-                    # text as `value` -- whichever candidate merge_player/composite_player_score
-                    # silently picked is exactly as uncertain as the price the UI already hides
-                    # here (confirmed: an ambiguous line still had a specific player's real
-                    # composite score reach the panel's context, undermining the point of
-                    # flagging it as ambiguous at all). Drop both, same as value.
-                    rows.append({
-                        "label": line, "value": None, "position": None, "source": None,
-                        "ambiguous": True, "external": [], "composite": None,
-                    })
-                    continue
+            if tvc_player.get("matched") and not tvc_player.get("match_verified", True):
+                # external/composite above were resolved from the same unresolvable free
+                # text as `value` -- whichever candidate merge_player/composite_player_score
+                # silently picked is exactly as uncertain as the price the UI already hides
+                # here (confirmed: an ambiguous line still had a specific player's real
+                # composite score reach the panel's context, undermining the point of
+                # flagging it as ambiguous at all). Drop both, same as value.
+                #
+                # This used to recompute name_key over the whole table to count candidates
+                # itself, because merge_player returned no ambiguity at all. It does now, and
+                # the returned flag is the better signal: it reflects the path the resolution
+                # actually took, so an exact single-row hit is no longer flagged just because
+                # some other row shares its key, and a fuzzy hit with several survivors IS
+                # flagged where a key count saw nothing.
+                rows.append({
+                    "label": line, "value": None, "position": None, "source": None,
+                    "ambiguous": True, "external": [], "composite": None,
+                })
+                continue
             # The Trade Value Chart's own column is "value", not "trade_value" -- it's the one
             # table that skips the CSV/JSON header-alias renaming (see merge_player's own note).
             tvc_price = tvc_player.get("trade_value", tvc_player.get("value"))
@@ -3376,20 +3922,9 @@ elif main_view == MAINTENANCE_VIEW:
             rankings_player = merger.merge_player(line)
             if rankings_player.get("matched") and rankings_player.get("trade_value") is not None:
                 # Same free-text-without-a-position-hint exposure as the Trade Value Chart
-                # path above, against the (larger) Dynasty Rankings pool this time.
-                # Series == tuple broadcasts elementwise as intended; Series.eq(tuple) does not
-                # -- pandas treats a tuple RHS as array-like for .eq() and raises on the length
-                # mismatch instead of comparing each element against it. Confirmed the hard way.
-                # DataMerger._load() already precomputes this column -- reuse it rather than
-                # remapping every row of the whole rankings pool again on every trade line.
-                _proj_keys = (
-                    merger.projections["_name_key"] if "_name_key" in merger.projections.columns
-                    else merger.projections["norm_name"].map(_match_key)
-                )
-                candidates = int(
-                    (_proj_keys == _match_key(line)).sum()
-                ) if not merger.projections.empty else 1
-                if candidates > 1:
+                # path above, against the (larger) Dynasty Rankings pool this time -- read
+                # off the resolution rather than recounted here, same as the branch above.
+                if not rankings_player.get("match_verified", True):
                     # Same reasoning as the Trade Value Chart branch above -- don't leak a
                     # specific, unresolvable candidate's external/composite data either.
                     rows.append({
@@ -3845,10 +4380,71 @@ elif main_view == DRAFT_VIEW:
     st.session_state.setdefault("mock_draft_last_snapshot", None)
     st.session_state.setdefault("mock_draft_editing_index", None)
 
-    draft_room_mode = st.radio(
-        "Draft Room mode", options=["Live Draft (Sleeper)", "🧪 Mock Draft"],
-        horizontal=True, key="draft_room_mode_radio", label_visibility="collapsed",
-    )
+    # One header row for "what am I looking at" (Live/Mock) and "which draft" together --
+    # the draft selector used to sit in its own full-width row much further down (only
+    # reachable once roster/drafts data was already fetched), reading as an unexplained,
+    # disconnected structural break between the mode toggle and the Refresh/Player Pool
+    # controls below it (see REVIEW_LOG.md). mode_col is filled immediately below;
+    # draft_picker_col stays an open placeholder -- a DeltaGenerator column handle stays
+    # writable no matter when later in the script it's used -- and gets filled once the
+    # Live Draft branch further down actually has drafts to offer, so both still render in
+    # this same visual row.
+    # Grouped tightly on the left (small gap between the two), trailing empty space absorbing
+    # the rest of the row -- not edge-justified/spread across the full row width, which just
+    # opens a dead gap in the middle at real screen widths. Same "group tight, let whitespace
+    # trail" language the position-view tag and Refresh/Player Pool row already use.
+    mode_col, draft_picker_col, _header_spacer_col = st.columns([3, 2, 5])
+    with mode_col:
+        draft_room_mode = st.radio(
+            "Draft Room mode", options=["Live Draft (Sleeper)", "🧪 Mock Draft"],
+            horizontal=True, key="draft_room_mode_radio", label_visibility="collapsed",
+        )
+
+    # WHAT CORPUS THIS BOARD IS COMPUTED FROM, above both modes because it is true of both.
+    # Board scope, not per-row: an uploaded projections file does not taint the rows it names,
+    # it moves REPLACEMENT LEVELS -- a league-level quantity every player at that position is
+    # measured against -- so it changes prices for players the file never mentions. Marking it
+    # per row would clear rows the upload did in fact move.
+    #
+    # Tone is deliberate. "Includes your data" is the NORMAL state for anyone using the product
+    # as intended, so it reads calmly; dressing the common case as a caution is how the genuinely
+    # loud marks (a per-row override, further down) stop being read.
+    _corpus = corpus_state.assess()
+    _corpus_icon, _corpus_line = corpus_state.light(_corpus)
+    st.caption(f"{_corpus_icon} {_corpus_line}")
+    if _corpus["local_files"]:
+        with st.expander(f"Which files are yours ({len(_corpus['local_files'])})", expanded=False):
+            # Named rather than counted, because "which file" is the first question and a count
+            # that cannot be expanded is a number nobody can act on.
+            for _path in _corpus["local_files"]:
+                st.caption(f"• `{_path}`")
+
+    # THE LOUD ONE, and it is per-player rather than board-wide because an alias is genuinely a
+    # per-row act: it moves ONE player's numbers, over whatever the automatic match found. §16.3
+    # measured that at trade_value 41.0 -> 100.0 and projection 202.0 -> 339.0, and did it over a
+    # CORRECT match -- the alias branch bypasses the team/position rejection on purpose, because
+    # overriding the guards is what an override is for.
+    #
+    # Computed from the alias map rather than from board rows on purpose: this is true on every
+    # screen that prices anything, not only where a board happens to be rendered, and reading it
+    # at the source means it cannot drift from what the engine actually used.
+    # Read off session state rather than a local name: this block sits inside the Draft Room
+    # view and must not depend on which enclosing branch happened to bind `merger` first.
+    _merger_for_aliases = st.session_state.get("data_merger")
+    _aliases = getattr(_merger_for_aliases, "aliases", None) or {}
+    if _aliases:
+        st.warning(
+            f"⚠️ **{len(_aliases)} player{'s' if len(_aliases) != 1 else ''} on this board "
+            f"{'are' if len(_aliases) != 1 else 'is'} priced through your own name override.** "
+            "An override deliberately bypasses the team and position checks, so it can attach "
+            "another player's numbers to this one — including over a match the engine had "
+            "already made correctly. These prices are yours, not the shared baseline's."
+        )
+        with st.expander(f"Which overrides are in play ({len(_aliases)})", expanded=False):
+            for _sleeper_name, _target in sorted(_aliases.items()):
+                st.caption(f"• **{_sleeper_name}** → priced as `{_target}`")
+            st.caption("Remove any of these under Sidebar → Manual Aliases to return those "
+                       "players to the engine's own matching.")
 
     if draft_room_mode == "🧪 Mock Draft":
         # -------------------------------------------------------------- mock draft --
@@ -3956,10 +4552,11 @@ elif main_view == DRAFT_VIEW:
                     st.session_state.mock_draft_last_snapshot = None
                     st.rerun()
             with scope_col:
-                mock_pool_scope_label = st.radio(
+                _mock_scope_by_key = {"all": "All players", "rookies_only": "Rookies only", "veterans_only": "Veterans only"}
+                mock_pool_scope_label = st.segmented_control(
                     "Player pool", options=["All players", "Rookies only", "Veterans only"],
-                    index=["all", "rookies_only", "veterans_only"].index(st.session_state.mock_draft_pool_scope),
-                    horizontal=True, key="mock_draft_pool_scope_radio",
+                    default=_mock_scope_by_key[st.session_state.mock_draft_pool_scope],
+                    required=True, key="mock_draft_pool_scope_control",
                 )
                 st.session_state.mock_draft_pool_scope = {
                     "All players": "all", "Rookies only": "rookies_only", "Veterans only": "veterans_only",
@@ -4117,15 +4714,58 @@ elif main_view == DRAFT_VIEW:
                         st.info("No candidates available in the current player pool/scope.")
                     elif mock_snap is not None:
                         mock_positions_present = sorted({c.position for c in mock_snap.candidates})
-                        mock_position_filter = st.multiselect(
-                            "Filter by position (display only -- never changes what's analyzed)",
-                            options=mock_positions_present, default=mock_positions_present,
-                            key="mock_draft_position_filter",
+                        # Same board-view control as Live Draft (see REVIEW_LOG.md, round 3) --
+                        # Mock Draft and Live Draft are two modes of the same Draft Room
+                        # surface, so the control has to feel identical switching between them.
+                        # Exactly ONE view active at a time (a real position, a real flex-slot
+                        # view, or ALL) -- never an arbitrary hand-picked set.
+                        mock_view_options = draft_board_ui.position_view_options(
+                            set(mock_positions_present), md["league"].get("roster_positions") or [],
                         )
-                        mock_filtered = (
-                            [c for c in mock_snap.candidates if c.position in mock_position_filter]
-                            if mock_position_filter else list(mock_snap.candidates)
-                        )
+                        mock_current_view = st.session_state.get("mock_draft_position_view", "ALL")
+                        if mock_current_view not in mock_view_options:
+                            mock_current_view = "ALL"
+                            st.session_state.mock_draft_position_view = "ALL"
+
+                        with st.container(key="mock_draft_board_title_row"):
+                            mock_title_col, mock_value_col, _mock_spacer_col = st.columns(
+                                [0.85, 1.2, 7.95], gap="xxsmall", vertical_alignment="top",
+                            )
+                            with mock_title_col:
+                                st.markdown(
+                                    '<div class="drv-board-title">CANDIDATES<span class="dot">•</span></div>',
+                                    unsafe_allow_html=True,
+                                )
+                            with mock_value_col:
+                                if st.button(
+                                    draft_board_ui.position_view_label(mock_current_view),
+                                    key="mock_draft_view_toggle",
+                                    help="Board view -- display only, never changes what's analyzed, ranked, or scored.",
+                                ):
+                                    st.session_state.mock_draft_position_view_open = not st.session_state.get(
+                                        "mock_draft_position_view_open", False
+                                    )
+                                    st.rerun()
+
+                        if st.session_state.get("mock_draft_position_view_open", False):
+                            with st.container(key="mock_draft_view_menu"):
+                                # ONE row at any option count -- columns weighted by label, so
+                                # SUPER FLEX gets the width it needs without "K" claiming the
+                                # same. The reveal opens in place of the current-view tag; a
+                                # second row would turn a discreet inline control into a block.
+                                mock_opt_cols = st.columns(draft_board_ui.view_option_widths(mock_view_options))
+                                for opt, mock_opt_col in zip(mock_view_options, mock_opt_cols):
+                                    opt_key = (
+                                        f"mock_draft_view_opt_active_{opt}" if opt == mock_current_view
+                                        else f"mock_draft_view_opt_{opt}"
+                                    )
+                                    with mock_opt_col:
+                                        if st.button(draft_board_ui.position_view_label(opt), key=opt_key):
+                                            st.session_state.mock_draft_position_view = opt
+                                            st.session_state.mock_draft_position_view_open = False
+                                            st.rerun()
+
+                        mock_filtered = draft_board_ui.filter_candidates_by_view(mock_snap.candidates, mock_current_view)
                         # The same production board component Live Draft Room renders
                         # (draft_board_ui + components.html) -- proving the redesigned board
                         # survives real, repeated, stateful interaction was the whole point of
@@ -4154,10 +4794,18 @@ elif main_view == DRAFT_VIEW:
                                 "claude": api_key_for("anthropic"), "gemini": api_key_for("gemini"),
                                 "openai": api_key_for("openai"),
                             }
+                            # These three chairs had NO provider override path at all -- neither
+                            # Draft Room call site passed role_providers, so they ran on
+                            # pick_debate's hardcoded default. With only a Gemini key that meant
+                            # ZERO working chairs here, not one. Dealt from the keys that
+                            # actually resolve, same rule as the Prytaneum's four.
                             with st.spinner("Strategist, Skeptic, and Caller are debating..."):
                                 mock_debate_result = pick_debate.debate_pick(
                                     mock_snap, previous_snapshot=st.session_state.mock_draft_last_snapshot,
                                     api_keys=mock_debate_api_keys,
+                                    role_providers=pick_debate.default_role_providers(
+                                        [p for p, k in mock_debate_api_keys.items()
+                                         if IS_PROVIDER_CONFIGURED[p](k)]),
                                 )
                             st.session_state.mock_draft_last_snapshot = mock_snap
                             st.session_state.mock_draft_debate_result = mock_debate_result
@@ -4172,6 +4820,16 @@ elif main_view == DRAFT_VIEW:
                         )
                         if mock_current_debate is not None:
                             st.markdown("---")
+                            # #101: a debate whose board has moved on is ANNOTATED, not hidden.
+                            # The pick_label gate above cannot see this -- the user sits at one
+                            # label while other rosters keep picking, so two materially
+                            # different boards routinely share it. Discarding the analysis
+                            # would assert the reader is better off with nothing; stating the
+                            # condition lets them read it against the board it actually saw.
+                            mock_stale = pick_debate.staleness_note(
+                                mock_current_debate, md["picks"], merger)
+                            if mock_stale:
+                                st.warning(mock_stale)
                             mock_rec = mock_current_debate.recommended
                             if mock_rec is None:
                                 st.warning("The panel's recommendation didn't cleanly match a candidate -- see the raw reports below.")
@@ -4269,9 +4927,11 @@ elif main_view == DRAFT_VIEW:
                 d = draft_options[did]
                 return f"{d.get('season', '?')} · {d.get('type', 'draft')} · {d.get('status', '?')}"
 
-            draft_id = st.selectbox(
-                "Draft", options=ordered_draft_ids, format_func=_draft_label, key="draft_room_draft_picker",
-            )
+            with draft_picker_col:
+                draft_id = st.selectbox(
+                    "Draft", options=ordered_draft_ids, format_func=_draft_label,
+                    key="draft_room_draft_picker", label_visibility="collapsed",
+                )
             active_draft = draft_options[draft_id]
             draft_type = active_draft.get("type")
             # Sleeper marks 3rd Round Reversal on the draft's own settings, not the type
@@ -4302,9 +4962,13 @@ elif main_view == DRAFT_VIEW:
                         st.caption("⚠️ Couldn't map every drafter to a roster in this league -- pick-order analysis may be incomplete.")
                         round_1_order = [rid for rid in round_1_order if rid is not None]
 
-                    top_row_col1, top_row_col2 = st.columns([1, 2])
+                    # Grouped tightly (Refresh, then Player Pool right after it), trailing empty
+                    # space absorbing the rest of the row -- same "group tight, let whitespace
+                    # trail" language the header row above already uses, rather than Player Pool
+                    # starting wherever its wide column happened to begin.
+                    top_row_col1, top_row_col2, _top_row_spacer_col = st.columns([1.5, 3.5, 5], vertical_alignment="center")
                     with top_row_col1:
-                        if st.button("🔄 Refresh Picks", key="draft_room_refresh_btn", use_container_width=True):
+                        if st.button("↻ Refresh Picks", key="draft_room_refresh_btn"):
                             try:
                                 fetched_picks = draft_client.get_draft_picks(draft_id)
                                 st.session_state.draft_room_picks_by_draft[draft_id] = fetched_picks
@@ -4312,10 +4976,16 @@ elif main_view == DRAFT_VIEW:
                             except SleeperAPIError as exc:
                                 notify("error", f"Couldn't reach Sleeper: {exc}")
                     with top_row_col2:
-                        pool_scope_label = st.radio(
+                        # A separate "PLAYER POOL" label read as redundant -- the three options
+                        # themselves (ALL PLAYERS / ROOKIES ONLY / VETERANS ONLY) already say
+                        # what this control is without a caption naming it. Label collapsed
+                        # entirely rather than replaced with an inline one.
+                        _scope_by_key = {"all": "All players", "rookies_only": "Rookies only", "veterans_only": "Veterans only"}
+                        pool_scope_label = st.segmented_control(
                             "Player pool", options=["All players", "Rookies only", "Veterans only"],
-                            index=["all", "rookies_only", "veterans_only"].index(st.session_state.draft_room_pool_scope),
-                            horizontal=True, key="draft_room_pool_scope_radio",
+                            default=_scope_by_key[st.session_state.draft_room_pool_scope],
+                            required=True, key="draft_room_pool_scope_control",
+                            label_visibility="collapsed",
                             help="Rookies only / Veterans only is detected from KeepTradeCut's own source data, not a maintained list.",
                         )
                         st.session_state.draft_room_pool_scope = {
@@ -4327,10 +4997,17 @@ elif main_view == DRAFT_VIEW:
                     num_teams = len(round_1_order)
                     current_index = len(draft_picks)
 
-                    st.caption(
+                    # This used to run on as a permanent inline caption between the toolbar and
+                    # the board -- administrative prose about the draft's own state that
+                    # interrupted the flow from controls straight to the candidates. Moved onto
+                    # a "?" tag directly on the board's own state-tags row instead (see
+                    # board_tags below), next to the "N pick(s) to your next selection" tag it's
+                    # actually a caveat about -- available on hover, not permanently occupying
+                    # the page.
+                    draft_state_caveat = (
                         f"{len(draft_picks)} pick(s) made · {num_teams} teams · {total_rounds} rounds. "
-                        "Pick order assumes no picks have been traded within this draft -- a traded future "
-                        "pick may show the original owner's needs instead of the new owner's."
+                        "Pick order assumes no picks have been traded within this draft -- a traded "
+                        "future pick may show the original owner's needs instead of the new owner's."
                     )
 
                     if current_index >= len(pick_order):
@@ -4353,20 +5030,12 @@ elif main_view == DRAFT_VIEW:
                                 "settings": league.get("settings"),
                             }
 
-                            flag_query = st.text_input(
-                                "Also consider a specific player (optional)", key="draft_room_flag_query",
-                            )
-                            flagged_player_id = None
-                            if flag_query:
-                                flag_matches = [m for m in matching_players(player_universe, flag_query) if m.get("available")]
-                                if flag_matches:
-                                    flag_labels = {m["player_id"]: f"{m['name']} ({m['position']}, {m['team']})" for m in flag_matches[:8]}
-                                    flagged_player_id = st.selectbox(
-                                        "Which one?", options=list(flag_labels.keys()),
-                                        format_func=lambda pid: flag_labels[pid], key="draft_room_flag_select",
-                                    )
-                                else:
-                                    st.caption("No available player matched that.")
+                            # Flag a Player was removed (see REVIEW_LOG.md) -- Sleeper already has
+                            # its own player-watchlist feature, and this control's real function
+                            # (forcing one specific player into the fully-analyzed candidate set via
+                            # user_selected_player_id, even if the board wouldn't otherwise surface
+                            # him) had no UI trigger left to reach it once removed, so build_snapshot
+                            # below is now always called with the default (None).
 
                             # build_snapshot is the single most expensive call in this view (a full
                             # board computation plus one opponent board per intervening roster) --
@@ -4383,7 +5052,6 @@ elif main_view == DRAFT_VIEW:
                             snapshot_cache_key = (
                                 draft_id, target_index, str(my_roster_id),
                                 st.session_state.draft_room_pool_scope,
-                                str(flagged_player_id) if flagged_player_id is not None else None,
                                 len(draft_picks), merger.freshest_date,
                             )
                             cached = st.session_state.get("draft_room_snapshot_cache")
@@ -4395,7 +5063,6 @@ elif main_view == DRAFT_VIEW:
                                         merger, players_db, draft_picks, pick_order, target_index, my_roster_id,
                                         league_for_engine, pick_label=pick_label,
                                         pool_scope=st.session_state.draft_room_pool_scope,
-                                        user_selected_player_id=flagged_player_id,
                                     )
                                     st.session_state.draft_room_snapshot_cache = (snapshot_cache_key, snap)
                                 except Exception as exc:  # noqa: BLE001 -- surface, never crash the whole dashboard
@@ -4411,12 +5078,59 @@ elif main_view == DRAFT_VIEW:
                                     st.caption(f"Not your turn yet -- {on_clock_name} is on the clock.")
 
                                 positions_present = sorted({c.position for c in snap.candidates})
-                                position_filter = st.multiselect(
-                                    "Filter by position (display only -- never changes what's analyzed)",
-                                    options=positions_present, default=positions_present,
-                                    key="draft_room_position_filter",
+                                # Board-view control, round 3 (see REVIEW_LOG.md): the position
+                                # filter is no longer a multi-select at all -- exactly ONE board
+                                # view is active at a time (a single real position, a real
+                                # flex-slot view like FLEX/IDP_FLEX using that slot's own actual
+                                # eligible-position set, or ALL). Placed as the board's own
+                                # title row, directly above the board itself, not grouped with
+                                # Player Pool -- this is a property of the board ("what view am
+                                # I looking at"), not a page-level filter.
+                                view_options = draft_board_ui.position_view_options(
+                                    set(positions_present), league_for_engine.get("roster_positions") or [],
                                 )
-                                filtered = [c for c in snap.candidates if c.position in position_filter] if position_filter else list(snap.candidates)
+                                current_view = st.session_state.get("draft_room_position_view", "ALL")
+                                if current_view not in view_options:
+                                    current_view = "ALL"
+                                    st.session_state.draft_room_position_view = "ALL"
+
+                                with st.container(key="draft_room_board_title_row"):
+                                    title_col, value_col, _spacer_col = st.columns(
+                                        [0.85, 1.2, 7.95], gap="xxsmall", vertical_alignment="top",
+                                    )
+                                    with title_col:
+                                        st.markdown(
+                                            '<div class="drv-board-title">CANDIDATES<span class="dot">•</span></div>',
+                                            unsafe_allow_html=True,
+                                        )
+                                    with value_col:
+                                        if st.button(
+                                            draft_board_ui.position_view_label(current_view),
+                                            key="draft_room_view_toggle",
+                                            help="Board view -- display only, never changes what's analyzed, ranked, or scored.",
+                                        ):
+                                            st.session_state.draft_room_position_view_open = not st.session_state.get(
+                                                "draft_room_position_view_open", False
+                                            )
+                                            st.rerun()
+
+                                if st.session_state.get("draft_room_position_view_open", False):
+                                    with st.container(key="draft_room_view_menu"):
+                                        # See the mock path above: one row, columns weighted by
+                                        # label width rather than split equally.
+                                        opt_cols = st.columns(draft_board_ui.view_option_widths(view_options))
+                                        for opt, opt_col in zip(view_options, opt_cols):
+                                            opt_key = (
+                                                f"draft_room_view_opt_active_{opt}" if opt == current_view
+                                                else f"draft_room_view_opt_{opt}"
+                                            )
+                                            with opt_col:
+                                                if st.button(draft_board_ui.position_view_label(opt), key=opt_key):
+                                                    st.session_state.draft_room_position_view = opt
+                                                    st.session_state.draft_room_position_view_open = False
+                                                    st.rerun()
+
+                                filtered = draft_board_ui.filter_candidates_by_view(snap.candidates, current_view)
                                 display_snap = dataclasses.replace(snap, candidates=tuple(filtered))
 
                                 board_header = f"ON THE CLOCK — {pick_label}" if is_live else f"YOUR NEXT PICK — {pick_label}"
@@ -4430,6 +5144,7 @@ elif main_view == DRAFT_VIEW:
                                 )
                                 if first_intervening is not None:
                                     board_tags.append(f"{first_intervening} pick(s) to your next selection")
+                                    board_tags.append({"label": "?", "title": draft_state_caveat})
                                 board_tags.append(
                                     f"{num_teams}-team · {'Superflex' if is_superflex_fmt else '1QB'} · "
                                     f"{'Dynasty' if is_dynasty_fmt else 'Redraft'}"
@@ -4463,10 +5178,16 @@ elif main_view == DRAFT_VIEW:
                                         "claude": api_key_for("anthropic"), "gemini": api_key_for("gemini"),
                                         "openai": api_key_for("openai"),
                                     }
+                                    # See the Mock Draft call site above for why this argument
+                                    # exists: without it these three chairs cannot be pointed at
+                                    # a provider the user actually has a key for.
                                     with st.spinner("Strategist, Skeptic, and Caller are debating..."):
                                         debate_result = pick_debate.debate_pick(
                                             snap, previous_snapshot=st.session_state.draft_room_last_snapshot,
                                             api_keys=debate_api_keys,
+                                            role_providers=pick_debate.default_role_providers(
+                                                [p for p, k in debate_api_keys.items()
+                                                 if IS_PROVIDER_CONFIGURED[p](k)]),
                                         )
                                     st.session_state.draft_room_last_snapshot = snap
                                     st.session_state.draft_room_debate_result = debate_result
@@ -4476,6 +5197,12 @@ elif main_view == DRAFT_VIEW:
                                 debate_result = st.session_state.draft_room_debate_result
                                 if debate_result is not None and debate_result.pick_label == pick_label:
                                     st.markdown("---")
+                                    # #101, same rule as the Mock Draft site above: a debate
+                                    # whose board has moved on is annotated, never hidden.
+                                    debate_stale = pick_debate.staleness_note(
+                                        debate_result, draft_picks, merger)
+                                    if debate_stale:
+                                        st.warning(debate_stale)
                                     rec = debate_result.recommended
                                     if rec is None:
                                         st.warning("The panel's recommendation didn't cleanly match a candidate -- see the raw reports below.")
@@ -4873,9 +5600,77 @@ if bot_findings or bot_comparisons:
             "Everything the panel has vetted across every league, newest first — see "
             "MODERATOR_SYSTEM_PROMPT's SOURCE FINDING/SOURCE COMPARISON rules for how an item "
             "gets in here (survives scrutiny from the whole panel, Contrarian included). "
-            "Findings with a rank already feed the composite score at a low weight; "
-            "comparisons never do — see the README for why."
+            "A finding's **number** only starts counting toward the composite score once it "
+            "cites an allowed source *and* you have confirmed it below; the finding itself is "
+            "kept, shown, and read by the panel either way. Comparisons never carry a number — "
+            "see the README for why."
         )
+        # §6.2a's second adjudication, and the queue §6.2a said did not exist. Deliberately one
+        # button per finding rather than a "confirm all": the point of a second pass is that
+        # somebody looked at THIS claim, and a bulk action is the same say-so the gate replaced.
+        _pending = bot_research.findings_awaiting_adjudication()
+        if _pending:
+            st.markdown(f"**Awaiting your confirmation ({len(_pending)})**")
+            st.caption(
+                "These carry a number that is not counting yet. Confirming one says you looked "
+                "at it — not that it has been verified; nothing here can check the source itself."
+            )
+            for _f in _pending:
+                _rank_text = f"#{_f['rank']}" if _f.get("rank") is not None else "—"
+                _cols = st.columns([5, 1])
+                _cols[0].caption(
+                    f"**{_f['player_name']}** · {_f['source']} · {_rank_text} — {_f['claim']}  \n"
+                    f"_{_f.get('composite_impact', '')}_"
+                )
+                # An unlisted cited source is not a queue position -- no button, because
+                # confirming would not change the outcome and offering it would imply it might.
+                if _f.get("cited_source_admitted") and _cols[1].button(
+                    "Confirm", key=f"confirm_finding_{_f['id']}", use_container_width=True
+                ):
+                    bot_research.confirm_finding(_f["id"])
+                    notify("success", f"Confirmed — {_f['player_name']}'s number now counts "
+                                      "toward the composite score at a low weight.")
+                    st.rerun()
+
+        # Retraction, and its own list. A confirmation you cannot take back is a one-way door,
+        # and the whole reason the gate above is safe to relax later is that this exists.
+        _counting = [f for f in bot_findings
+                     if not f.get("retracted") and bot_research.feeds_composite(f)]
+        if _counting:
+            st.markdown(f"**Counting toward the composite ({len(_counting)})**")
+            for _f in _counting:
+                _cols = st.columns([5, 1])
+                _cols[0].caption(f"**{_f['player_name']}** · {_f['source']} · #{_f['rank']} — {_f['claim']}")
+                if _cols[1].button("Retract", key=f"retract_finding_{_f['id']}",
+                                   use_container_width=True):
+                    bot_research.retract_finding(_f["id"], bot_research.RETRACTED_WITHDRAWN)
+                    notify("success", f"Retracted — {_f['player_name']}'s number stops counting. "
+                                      "The finding stays in the record.")
+                    st.rerun()
+
+        _retracted = bot_research.retracted_findings()
+        if _retracted:
+            # Listed, never hidden: a retraction nobody can see is indistinguishable from a
+            # deletion, and the point of retracting rather than deleting is that the record
+            # survives -- including the fact that it was wrong.
+            st.markdown(f"**Retracted ({len(_retracted)})**")
+            st.caption("Kept in the record on purpose. A claim that turned out to be wrong is "
+                       "information; deleting it would only make the same mistake re-acceptable.")
+            for _f in _retracted:
+                _r = _f["retracted"]
+                _cols = st.columns([5, 1])
+                _cols[0].caption(
+                    f"~~**{_f['player_name']}** · {_f['source']} — {_f['claim']}~~  \n"
+                    f"_{_r['reason']}, by {_r['by']} on {_r['at']}"
+                    + (f" — {_r['note']}" if _r.get("note") else "") + "_"
+                )
+                if _cols[1].button("Restore", key=f"restore_finding_{_f['id']}",
+                                   use_container_width=True):
+                    bot_research.restore_finding(_f["id"])
+                    notify("success", f"Restored — {_f['player_name']} returns to whatever "
+                                      "adjudication state it already had, not straight to counting.")
+                    st.rerun()
+
         if bot_findings:
             st.markdown("**Findings**")
             findings_df = pd.DataFrame(
@@ -4883,6 +5678,12 @@ if bot_findings or bot_comparisons:
                     {
                         "Date": f["date"], "Player": f["player_name"], "Source": f["source"],
                         "Claim": f["claim"], "Rank": f.get("rank") if f.get("rank") is not None else "—",
+                        # Three states, not two. A row written before the gate existed has no
+                        # `adjudication` key at all, and "never adjudicated" is not the same fact
+                        # as "adjudicated and not confirmed" -- the same never-checked-versus-
+                        # checked-and-absent distinction _finding_origin_note applies one field
+                        # over (#112).
+                        "Adjudication": f.get("adjudication") or "(not recorded)",
                         "Composite impact": f.get("composite_impact", ""),
                     }
                     for f in reversed(bot_findings)
@@ -5223,7 +6024,8 @@ with st.container(key="debate_dock"):
             if attached_context.entities:
                 st.caption("Involved: " + ", ".join(attached_context.entities))
 
-    role_providers = bot_config.load_role_providers()
+    role_providers = bot_config.load_role_providers(
+        [p for p in bot_config.PROVIDERS if IS_PROVIDER_CONFIGURED[p](api_key_for(PROVIDER_KEY_FIELD[p]))])
     role_names = bot_config.load_role_names()
     role_models = bot_config.load_role_models()
     moderator_personality_key = bot_config.load_moderator_personality()
@@ -5346,11 +6148,22 @@ with st.container(key="debate_dock"):
             st.session_state["_last_submitted"] = question
             context = build_context(snapshot, roster_table if roster else [], player_universe, trigger_question)
             if st.session_state.get("chat_scoped_attachments"):
-                context += "\n\nATTACHED TO THIS CHAT (this session only, not part of the permanent Reference Material library):\n" + "\n\n".join(
-                    f"--- {a['name']} ---\n{a['text'][:4000]}" for a in st.session_state.chat_scoped_attachments
+                # Raw file text, straight off whatever the user dropped in -- the single most
+                # attacker-controllable input this app has, and the one §7.6 named first. The
+                # heading stays outside the fence because the app wrote it; every byte of the
+                # file goes inside, with any forged marker stripped (see untrusted.fence).
+                context += (
+                    "\n\nATTACHED TO THIS CHAT (this session only, not part of the permanent "
+                    "Reference Material library):\n"
+                    + untrusted.fence("uploaded-file-contents", "\n\n".join(
+                        f"--- {a['name']} ---\n{a['text'][:4000]}"
+                        for a in st.session_state.chat_scoped_attachments))
                 )
             append_message("user", trigger_question)
             maybe_nudge_stale_free_agents(st.session_state.selected_league_id, st.session_state.data_merger)
+            # Checked here because this is the point where the app has just read every per-league
+            # store to build the context -- so anything unreadable has been discovered by now.
+            warn_about_unreadable_stores()
 
             with st.spinner("Consulting the front office..."):
                 if trigger_mode == "quant":
@@ -5380,6 +6193,12 @@ with st.container(key="debate_dock"):
                     # /debate in its own reply when a follow-up genuinely calls for it, but it
                     # never triggers that itself; only the user typing /debate does.
                     provider = role_providers["moderator"]
+                    # Marked BEFORE the call so the sources below are THIS follow-up's own, never
+                    # a neighbouring call's -- exactly what run_debate does with its own window.
+                    # A follow-up runs one chair rather than four, so its retrieval is genuinely
+                    # narrower than a full panel's; recording it as this row's own window rather
+                    # than reusing the original debate's is what keeps that true.
+                    _followup_meter_at = provider_meter.mark()
                     followup_text = llm_engine.ask_moderator_followup(
                         context, trigger_question,
                         last_debate["quant"], last_debate["beat"], last_debate["contrarian"], last_debate["moderator"],
@@ -5387,7 +6206,11 @@ with st.container(key="debate_dock"):
                         personality=moderator_personality,
                     )
                     append_message("moderator", followup_text, provider=provider, model=role_models.get("moderator") or None)
-                    process_moderator_output(followup_text, trigger_question)
+                    process_moderator_output(
+                        followup_text, trigger_question,
+                        provider=provider, model=role_models.get("moderator") or "",
+                        debate_sources=provider_meter.sources_since(_followup_meter_at),
+                    )
                 else:
                     result = llm_engine.run_debate(
                         context, trigger_question, role_providers=role_providers, api_keys=api_keys,
@@ -5397,7 +6220,12 @@ with st.container(key="debate_dock"):
                     append_message("beat", result.beat, provider=role_providers["beat"], model=role_models.get("beat") or None)
                     append_message("contrarian", result.contrarian, provider=role_providers["contrarian"], model=role_models.get("contrarian") or None)
                     append_message("moderator", result.moderator, provider=role_providers["moderator"], model=role_models.get("moderator") or None)
-                    process_moderator_output(result.moderator, trigger_question)
+                    process_moderator_output(
+                        result.moderator, trigger_question,
+                        provider=role_providers["moderator"],
+                        model=role_models.get("moderator") or "",
+                        debate_sources=result.sources_retrieved,
+                    )
                     # run_debate already collects which role(s) failed (a missing/invalid API
                     # key, a provider outage) -- this was computed and silently thrown away
                     # before, so a failed call just looked like a "⚠️ ..." chat message with no

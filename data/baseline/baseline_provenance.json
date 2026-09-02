@@ -1,0 +1,111 @@
+{
+  "_README": [
+    "Provenance for the committed baseline CSVs that had no record: the ten ranking exports in",
+    "data/baseline/rankings/ and the trade-value chart in data/baseline/trade_value/.",
+    "",
+    "WHY THIS FILE EXISTS. Audit section 7.10 found provenance coverage INVERTED: the four",
+    "secondary market sources each carry an ATTRIBUTION.md, and the two Sleeper projection CSVs",
+    "carry sleeper_projection_provenance.json -- while the PRIMARY valuation input, the",
+    "highest-weighted source in the composite (COMPOSITE_SOURCE_WEIGHTS 1.3) and the one feeding",
+    "CDME's bpa, was documented nowhere but prose in README.md. The input questioned least was",
+    "documented last.",
+    "",
+    "WHY THE ORIGINATING VENDOR IS NOT NAMED HERE, AND WHY THAT IS NOT AN OVERSIGHT.",
+    "The rule this file was written under: state the origin of information wherever the origin is",
+    "not pay-locked; where it IS pay-locked, describe the file honestly and leave the vendor",
+    "unnamed. These eleven files are derived from a PAID SUBSCRIPTION EXPORT that the repository",
+    "owner obtained under that subscription's own terms. Writing the vendor into a provenance",
+    "record is not a neutral act of documentation -- it asserts a posture about what may be",
+    "retained and redistributed from a subscription product, and that assertion belongs to the",
+    "owner, not to this file.",
+    "",
+    "This is deliberately NOT the same act as README.md naming the vendor. README describes the",
+    "app's workflow to its own user -- 'upload your export here' -- which requires the name and",
+    "makes no claim about redistribution. A provenance record travels with the committed data.",
+    "Do not 'fix' the omission by copying the name across from README; the two are different",
+    "statements. If the licensing posture is ever settled explicitly, this note is the place to",
+    "record that decision, and only then does the name belong here.",
+    "",
+    "EXPECTED LIFESPAN. The stated intent is to rework the input set toward publicly-sourced data,",
+    "at which point the constraint above dissolves and these records can name their origins",
+    "outright. Section 19.11.2 (the committed baseline goes permanently Stale at +90d with no",
+    "refresh path) is folded into that same rework, not solved separately.",
+    "",
+    "WHAT IS RECORDED INSTEAD. Everything that is a fact about the file itself: scope, shape, the",
+    "date the source carried, how it got here, and what reads it. Those are the facts a reader",
+    "needs to judge whether a number is trustworthy, and none of them is pay-locked.",
+    "",
+    "THIS IS DOCUMENTATION, NOT AN INPUT. Nothing reads this file at runtime."
+  ],
+
+  "_common": {
+    "origin": "paid subscription export, vendor deliberately unnamed -- see _README",
+    "origin_public": false,
+    "ingest_method": [
+      "Exported from the vendor's own tool by the repository owner, then parsed to CSV by the",
+      "vendor-specific PDF/CSV parser family in data_merger.py (grep that module for its parse_",
+      "functions; they are named after the vendor, which is why the name is not transcribed",
+      "here), and committed as the offline pool DataMerger reads when no upload is present.",
+      "See sleeper_client.py:337."
+    ],
+    "source_date_field": "the date the export itself carried, not the date it was committed here",
+    "known_limitations": [
+      "Section 7.9/#78: two of the PDF parsers joined stats to names by positional index with no",
+      "verification. Repaired (#82, #83), but rows ingested before that repair are the reason a",
+      "row's numbers should be treated as vendor-reported rather than vendor-verified.",
+      "Section 19.11.2: these files carry a fixed source_date and have no refresh path short of a",
+      "new export, so the freshness grade degrades monotonically from the dates below."
+    ]
+  },
+
+  "data/baseline/rankings/": {
+    "_note": [
+      "Ten format-scoped ranking exports covering the SAME player pool under DIFFERENT league",
+      "settings -- that is the point of carrying ten rather than one: rank and trade_value are",
+      "format-dependent quantities, and DataMerger selects the file matching the active format.",
+      "The two sleeper_*_projections.csv files in this directory are NOT covered here; they have",
+      "their own record in sleeper_projection_provenance.json."
+    ],
+    "columns": ["name", "team", "position", "rank", "projection", "proj_3yr", "trade_value", "source_date"],
+    "files": {
+      "fantasy_football_dynasty_rankings.csv": {"rows": 250, "scope": "dynasty, 1QB, standard TE", "source_date": "2026-08-18"},
+      "dynasty_ppr_rankings.csv": {"rows": 250, "scope": "dynasty, 1QB, PPR", "source_date": "2026-08-18"},
+      "dynasty_superflex_rankings.csv": {"rows": 250, "scope": "dynasty, superflex", "source_date": "2026-08-18"},
+      "dynasty_ppr_superflex_rankings.csv": {"rows": 250, "scope": "dynasty, superflex, PPR", "source_date": "2026-08-18"},
+      "te_premium_dynasty_rankings.csv": {"rows": 250, "scope": "dynasty, 1QB, TE premium", "source_date": "2026-08-18"},
+      "dynasty_te_premium_superflex_rankings.csv": {"rows": 250, "scope": "dynasty, superflex, TE premium", "source_date": "2026-08-18"},
+      "ppr_idp_rankings.corrected.csv": {
+        "rows": 425, "scope": "dynasty, 1QB, PPR, IDP", "source_date": "2026-08-19",
+        "columns_differ": ["name", "team", "position", "rank", "trade_value", "source_date"],
+        "_note": [
+          "No projection or proj_3yr column: the IDP export carries a RANK, not a point",
+          "projection. That absence is the supply defect #51 measured -- 0 of 415 IDP rows are",
+          "projected, and the draft exhausts IDP supply at rounds 14-15 as a result. The '.corrected'",
+          "suffix marks a hand-repaired parse, which is itself why these rows are the ones to",
+          "re-derive first when the input set is reworked."
+        ]
+      },
+      "superflex_idp_rankings.corrected.csv": {
+        "rows": 425, "scope": "dynasty, superflex, IDP", "source_date": "2026-08-19",
+        "columns_differ": ["name", "team", "position", "rank", "trade_value", "source_date"],
+        "_note": "Same shape and same caveat as ppr_idp_rankings.corrected.csv."
+      },
+      "dynasty_kicker_rankings.csv": {"rows": 13, "scope": "dynasty, K", "source_date": "2026-08-25"},
+      "redraft_dst_rankings.csv": {"rows": 13, "scope": "redraft, DEF", "source_date": "2026-08-25"}
+    }
+  },
+
+  "data/baseline/trade_value/dynasty_ppr_trade_value_chart.csv": {
+    "rows": 215,
+    "scope": "dynasty, PPR",
+    "source_date": "2026-08-20",
+    "columns": ["asset_type", "name", "position", "value", "source_league_type", "source_scoring", "source_date"],
+    "composition": {"player": 157, "rookie_pick_slot": 48, "future_pick": 10},
+    "_note": [
+      "The only committed source that prices PICKS as well as players, which is why it is loaded",
+      "separately (data_merger.load_all(..., default_kind='trade_value_chart')) rather than as an",
+      "eleventh rankings file: its rows carry asset_type/value and no rank, and #85 settled that",
+      "the flat future-pick price here is the distribution's centre rather than a placeholder."
+    ]
+  }
+}

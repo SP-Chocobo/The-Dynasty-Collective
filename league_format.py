@@ -21,6 +21,8 @@ from __future__ import annotations
 import json
 from pathlib import Path
 from typing import Optional
+import store_io
+
 
 FORMATS_PATH = Path("data/league_formats.json")
 
@@ -56,17 +58,13 @@ FORMAT_GUIDANCE = {
 
 
 def _load_all() -> dict:
-    if FORMATS_PATH.exists():
-        try:
-            return json.loads(FORMATS_PATH.read_text())
-        except (json.JSONDecodeError, OSError):
-            return {}
-    return {}
+    # #102: atomic, locked, and no longer able to turn a torn read into an empty store
+    # that the next write persists -- see store_io's own docstring for the measurement.
+    return store_io.read(FORMATS_PATH, {})
 
 
 def _save_all(data: dict) -> None:
-    FORMATS_PATH.parent.mkdir(parents=True, exist_ok=True)
-    FORMATS_PATH.write_text(json.dumps(data, indent=2))
+    store_io.write(FORMATS_PATH, data)
 
 
 def get_format_override(league_id: str) -> Optional[str]:
@@ -74,6 +72,7 @@ def get_format_override(league_id: str) -> Optional[str]:
     return _load_all().get(league_id)
 
 
+@store_io.atomic(lambda *a, **k: FORMATS_PATH)
 def set_format_override(league_id: str, format_value: Optional[str]) -> None:
     """Pass None or STANDARD to clear the override."""
     data = _load_all()

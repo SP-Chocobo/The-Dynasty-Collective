@@ -20,7 +20,9 @@ import pandas as pd
 
 import data_merger as dm
 import draft_room as dr
+import draft_strategy as ds
 import lineup_optimizer as lo
+import pick_synthesis as ps
 
 
 def _build_pool_players_db(positions=("QB", "RB", "WR", "TE", "DL", "LB", "DB")):
@@ -41,6 +43,25 @@ def _build_pool_players_db(positions=("QB", "RB", "WR", "TE", "DL", "LB", "DB"))
                 "position": pos, "fantasy_positions": [pos], "team": row.get("team"),
             }
     return merger, players_db
+
+
+_SYNTH_DB = {
+    f"{pos}{i}": {"position": pos, "fantasy_positions": [pos]}
+    for pos in ("QB", "RB", "WR", "TE", "K", "DEF") for i in range(1, 600)
+}
+
+
+def _synthetic_picks(counts, num_teams=12):
+    """Remaining demand is per-team now, so a fixture has to say WHICH roster took what, not
+    only how many went league-wide. Round-robin is the realistic reading of "N of these have
+    gone" and the one the old league-wide subtraction assumed without saying so."""
+    out = []
+    for position, n in counts.items():
+        for i in range(int(n)):
+            out.append({"player_id": f"{position}{i + 1}",
+                        "roster_id": str(len(out) % num_teams + 1),
+                        "round": len(out) // num_teams + 1, "pick_no": len(out) + 1})
+    return out
 
 
 LIGHT_IDP_LEAGUE = {
@@ -129,6 +150,104 @@ class ReplacementLevelMonotonicityTests(unittest.TestCase):
         self.assertLessEqual(heavy, light)
 
 
+class ReplacementRanksTests(unittest.TestCase):
+    """replacement_ranks (and its _remaining_demand_rank helper, shared with
+    replacement_levels' own non-floor branch) is the real per-league depth signal
+    pick_synthesis.narrow_candidates uses for position-view depth -- see
+    pick_synthesis.POSITION_VIEW_DEPTH_CAP. Exercises the exact boundary cases the position-
+    view-depth feature was designed against: remaining demand at, below, and well above the
+    display cap, plus draft progression (demand shrinking as a position gets drafted out)."""
+
+    def test_matches_replacement_levels_own_rank_via_the_value_at_that_rank(self):
+        # Cross-check against the existing, separately-tested replacement_levels: the VALUE
+        # it reports for a position must be the pool's value at exactly the rank
+        # replacement_ranks reports for that same position (same formula, two return shapes).
+        pool = pd.DataFrame({"position": ["RB"] * 30, "value": [100 - i for i in range(30)]})
+        rank = dr.replacement_ranks(["RB"] * 2, num_teams=12)["RB"]
+        level = dr.replacement_levels(pool, "value", ["RB"] * 2, num_teams=12)["RB"]
+        expected_idx = min(rank - 1, len(pool) - 1)
+        self.assertEqual(level, float(pool.sort_values("value", ascending=False).iloc[expected_idx]["value"]))
+
+    def test_boundary_remaining_demand_at_and_below_the_display_cap(self):
+        # 6 teams x one named RB slot = 6 remaining demand -- below POSITION_VIEW_DEPTH_CAP
+        # (12); replacement_ranks itself is never capped (that's
+        # pick_synthesis.position_view_depth's job) -- it always reports the real, uncapped
+        # league demand.
+        ranks = dr.replacement_ranks(["RB"], num_teams=6)
+        self.assertEqual(ranks["RB"], 6)
+
+    def test_boundary_remaining_demand_exactly_at_the_display_cap(self):
+        ranks = dr.replacement_ranks(["RB"], num_teams=12)  # 12 teams x one RB slot = 12
+        self.assertEqual(ranks["RB"], 12)
+
+    def test_boundary_remaining_demand_well_above_the_display_cap(self):
+        # A real superflex/2WR league shape: WR gets ~2.7 slot share/team -> ~33 at 12 teams,
+        # well past where any display cap would bind -- replacement_ranks itself still reports
+        # the true, uncapped number.
+        roster_positions = ["QB", "RB", "RB", "WR", "WR", "TE", "FLEX", "FLEX", "SUPER_FLEX"]
+        ranks = dr.replacement_ranks(roster_positions, num_teams=12)
+        self.assertGreater(ranks["WR"], 30)
+
+    def test_remaining_demand_shrinks_as_the_position_gets_drafted(self):
+        # Draft progression: the same league's WR rank must fall as WRs actually get drafted,
+        # and once every team's WR slots are full it reports ABSENCE -- not the old floor of
+        # 1, which said "one slot still needs filling" about a position where none does.
+        roster_positions = ["QB", "RB", "RB", "WR", "WR", "TE", "FLEX", "FLEX"]
+        none_drafted = dr.replacement_ranks(roster_positions, num_teams=12)["WR"]
+        some = dr.replacement_ranks(
+            roster_positions, num_teams=12, picks=_synthetic_picks({"WR": 10}), players_db=_SYNTH_DB)["WR"]
+        exhausted = dr.replacement_ranks(
+            roster_positions, num_teams=12, picks=_synthetic_picks({"WR": 500}), players_db=_SYNTH_DB)["WR"]
+        self.assertLess(some, none_drafted)
+        self.assertIsNone(exhausted)
+
+    def test_a_position_this_league_cannot_start_has_no_rank_rather_than_one(self):
+        # Zero starting slots is zero starter demand. Reporting rank 1 there claimed a
+        # replacement player exists for a position the league never starts -- the same
+        # 0-becomes-1 conflation, arriving from the roster settings instead of the draft.
+        ranks = dr.replacement_ranks(["QB", "RB", "WR", "TE"], num_teams=12)
+        self.assertIsNone(ranks["DL"])
+
+
+class DraftedCountsByPositionPublicWrapperTests(unittest.TestCase):
+    def test_matches_the_internal_helper_exactly(self):
+        picks = [{"player_id": "1", "roster_id": "1"}, {"player_id": "2", "roster_id": "2"}]
+        players_db = {
+            "1": {"position": "WR", "fantasy_positions": ["WR"]},
+            "2": {"position": "RB", "fantasy_positions": ["RB"]},
+        }
+        self.assertEqual(
+            dr.drafted_counts_by_position(picks, players_db),
+            dr._drafted_counts_by_position(picks, players_db),
+        )
+
+    def test_its_docstring_no_longer_claims_a_caller_that_does_not_exist(self):
+        """The docstring used to justify this wrapper by naming pick_synthesis.narrow_candidates
+        as its caller, "via replacement_ranks". That path does not exist -- replacement_ranks
+        reaches the same counts through remaining_starter_demand. This pins the corrected claim:
+        no production module outside draft_room references the wrapper. It fails the day someone
+        wires it, which is the day the docstring has to be updated again."""
+        import os, re
+        here = os.path.dirname(os.path.abspath(__file__))
+        production = [
+            f for f in sorted(os.listdir(here))
+            if f.endswith(".py") and not f.startswith(("test_", "run_", "compare_", "bot_"))
+            and f != "draft_room.py"
+        ]
+        self.assertGreater(len(production), 10,
+                           "the scan found almost no production modules -- it would pass "
+                           "vacuously, so the guard fails instead")
+        pattern = re.compile(r"\bdrafted_counts_by_position\b")
+        offenders = []
+        for name in production:
+            with open(os.path.join(here, name), encoding="utf-8", errors="replace") as handle:
+                if pattern.search(handle.read()):
+                    offenders.append(name)
+        self.assertEqual(offenders, [],
+                         "drafted_counts_by_position now has a production consumer; its "
+                         "docstring says it has none and must be corrected")
+
+
 class CliffAnchoredQBReplacementTests(unittest.TestCase):
     """The startable-floor replacement model for superflex QB (see qb_startable_floor and
     replacement_levels' startable_floors) -- chosen over the reverted flat bench-demand
@@ -167,8 +286,8 @@ class CliffAnchoredQBReplacementTests(unittest.TestCase):
     def test_replacement_rises_as_startables_drain_and_collapses_at_exhaustion(self):
         # Dynamic behavior for free: drafted startables leave the pool, the above-floor
         # count shrinks, replacement rises toward the top -- and once nothing above the
-        # floor remains, rank floors at 1 (replacement = best remaining, VOR ~ 0), the same
-        # exhaustion collapse the remaining-demand model has.
+        # floor remains there is no startable replacement to report at all, the same domain
+        # boundary the remaining-demand branch declines on.
         floor = {"QB": 150.0}
         drained = self._pool(self.CLIFF_CURVE[20:])   # 4 startables + 200 remain above floor
         level_drained = dr.replacement_levels(drained, "value", ["QB", "SUPER_FLEX"],
@@ -176,8 +295,10 @@ class CliffAnchoredQBReplacementTests(unittest.TestCase):
         self.assertEqual(level_drained, 200.0)  # still the last one above the floor
         exhausted = self._pool([130.0, 60.0, 30.0])   # nothing startable left at all
         level_exhausted = dr.replacement_levels(exhausted, "value", ["QB", "SUPER_FLEX"],
-                                                num_teams=12, startable_floors=floor)["QB"]
-        self.assertEqual(level_exhausted, 130.0)  # rank 1: best remaining, VOR -> 0
+                                                num_teams=12, startable_floors=floor)
+        # No startable player left is not "the best leftover is the replacement". This was the
+        # second, independent copy of the >= 1 clamp; it now declines like the demand branch.
+        self.assertNotIn("QB", level_exhausted)
 
     def test_positions_without_a_floor_are_identical_to_the_demand_model(self):
         pool = pd.DataFrame({
@@ -329,44 +450,86 @@ class DemandPicksSplitTests(unittest.TestCase):
         roster_positions = self.league["roster_positions"]
         num_teams = self.league["total_rosters"]
 
-        old_drafted_counts = dr._drafted_counts_by_position(history, self.players_db)
-        levels_old = dr.replacement_levels(proj_pool, "_points", roster_positions, num_teams, drafted_counts=old_drafted_counts)
-        levels_split = dr.replacement_levels(proj_pool, "_points", roster_positions, num_teams, drafted_counts={})
+        unsplit_demand = dr.remaining_starter_demand(roster_positions, num_teams, history, self.players_db)
+        levels_unsplit = dr.replacement_levels(proj_pool, "_points", roster_positions, num_teams, unsplit_demand)
+        levels_split = dr.replacement_levels(proj_pool, "_points", roster_positions, num_teams)
 
-        # The real bug, at its actual source: WR/RB's already-exceeded demand collapses
-        # replacement level UP (toward the best remaining player's own high value) in the old,
-        # unsplit accounting -- demand_picks=[] (drafted_counts={}) keeps it at its normal,
-        # deeper, lower-value rank.
-        self.assertGreater(levels_old["WR"], levels_split["WR"])
-        self.assertGreater(levels_old["RB"], levels_split["RB"])
-        # QB demand is essentially untouched either way, so its replacement level shouldn't
-        # swing much between the two.
-        self.assertAlmostEqual(levels_old["QB"], levels_split["QB"], delta=max(levels_split["QB"] * 0.1, 5.0))
+        # Same bug, now visible in its honest form. Fed the prior phase's history, every team's
+        # WR/RB starting slots read as already filled -- which is TRUE of those rosters -- so
+        # the starter-demand model correctly declines to price WR/RB at all rather than
+        # collapsing their replacement level up toward the best remaining player, which is what
+        # the >= 1 clamp used to do. demand_picks=[] asks the same question of a fresh league
+        # and gets a real, deeper, lower-value rank back.
+        # WR is the position that history genuinely exhausts (67 of its 81 picks): every
+        # team's WR slots read as filled, so WR is declined rather than priced off a collapsed
+        # rank-1 anchor. RB is only lightly touched by the same history, so it stays priced --
+        # at a shallower, higher-value rank, which is the honest consequence of some of its
+        # demand having been met, not a collapse.
+        self.assertNotIn("WR", levels_unsplit)
+        self.assertIn("WR", levels_split)
+        self.assertGreater(levels_unsplit["RB"], levels_split["RB"])
+        # QB demand is essentially untouched by that history either way, so QB stays priced
+        # and its level shouldn't swing much between the two.
+        self.assertAlmostEqual(levels_unsplit["QB"], levels_split["QB"],
+                               delta=max(levels_split["QB"] * 0.1, 5.0))
 
-    def test_compute_draft_board_actually_passes_demand_picks_to_drafted_counts(self):
+    def test_compute_draft_board_actually_passes_demand_picks_to_the_demand_model(self):
         # The direct wiring proof -- decoupled from _scale_vor_to_bpa's pool-relative scaling
         # entirely (see the test above for why that scaling makes per-player bpa the wrong
-        # level to assert this at): spy on the real _drafted_counts_by_position call
-        # compute_draft_board makes internally, and confirm it actually receives demand_picks
-        # (not `picks`) when given one.
+        # level to assert this at): spy on the demand call compute_draft_board makes
+        # internally, and confirm it actually receives demand_picks (not `picks`) when given
+        # one.
+        #
+        # RE-POINTED. This used to spy on _drafted_counts_by_position, and it passed -- but
+        # commit 05a4abb had removed that census from every consumer, so the test was proving
+        # that the right picks reached a computation whose result was then discarded. The
+        # intent it protects is real and unchanged; remaining_starter_demand is where
+        # demand_source is actually consumed now, so that is where the proof belongs. Asserted
+        # over EVERY call rather than a single one, so an added second demand call site cannot
+        # quietly slip `picks` through.
         import unittest.mock as mock
 
         my_picks = [{"pick_no": 1, "round": 1, "roster_id": "1", "player_id": "1"}]
         demand_picks = [{"pick_no": 1, "round": 1, "roster_id": "1", "player_id": "2"}]
 
-        real_fn = dr._drafted_counts_by_position
-        with mock.patch.object(dr, "_drafted_counts_by_position", side_effect=real_fn) as spy:
+        def picks_arguments(spy):
+            # remaining_starter_demand(roster_positions, num_teams, picks, players_db)
+            seen = [call.args[2] if len(call.args) > 2 else call.kwargs.get("picks")
+                    for call in spy.call_args_list]
+            self.assertTrue(seen, "compute_draft_board never consulted the demand model at all "
+                                  "-- this test would pass vacuously, so it fails instead")
+            return seen
+
+        real_fn = dr.remaining_starter_demand
+        with mock.patch.object(dr, "remaining_starter_demand", side_effect=real_fn) as spy:
             dr.compute_draft_board(
                 self.merger, self.players_db, my_picks, my_roster_id="99", league=self.league,
                 mode="balanced", demand_picks=demand_picks,
             )
-        spy.assert_called_once_with(demand_picks, self.players_db)
+        for seen in picks_arguments(spy):
+            self.assertIs(seen, demand_picks,
+                          "the demand model was fed `picks` when demand_picks was supplied")
 
-        with mock.patch.object(dr, "_drafted_counts_by_position", side_effect=real_fn) as spy2:
+        with mock.patch.object(dr, "remaining_starter_demand", side_effect=real_fn) as spy2:
             dr.compute_draft_board(
                 self.merger, self.players_db, my_picks, my_roster_id="99", league=self.league, mode="balanced",
             )
-        spy2.assert_called_once_with(my_picks, self.players_db)
+        for seen in picks_arguments(spy2):
+            self.assertIs(seen, my_picks,
+                          "with no demand_picks, the demand model must see `picks` itself")
+
+    def test_the_discarded_drafted_counts_census_stays_gone(self):
+        """Commit 05a4abb removed the census from every consumer and left the producer in
+        compute_draft_board. It was recomputed on every board build and read by nothing. This
+        pins the removal, so a future edit cannot silently reintroduce a computed-and-discarded
+        census under the same name."""
+        import inspect, re
+        source = inspect.getsource(dr.compute_draft_board)
+        assignments = re.findall(r"^\s*(\w+)\s*=\s*_drafted_counts_by_position\(", source,
+                                 flags=re.MULTILINE)
+        self.assertEqual(assignments, [],
+                         "compute_draft_board computes a drafted-counts census again; if it is "
+                         "genuinely consumed now, update this test, and if it is not, remove it")
 
     def test_demand_picks_does_not_affect_need_bonus_or_pool_filtering(self):
         # need_bonus/eligibility_bonus and drafted_ids pool exclusion must still read the FULL
@@ -592,11 +755,33 @@ class SuperflexRookieDraftRosterContextTieredGateTests(RookieDraftRosterContextT
         # Maximal superflex QB need: nothing else drafted at all, so both the dedicated slot
         # and the SUPER_FLEX flex share are wide open.
         starved = self._rookie_board(self._roster_history("test", {"RB": 1, "WR": 1, "TE": 1}))
+
+        # The claim is about the QB ORDERING, not about the whole board's #1 -- and that
+        # distinction is the whole point. `gap` above is a WITHIN-QB gap (leader vs. second
+        # QB); it licenses a claim about how the QBs sit relative to each other under maximal
+        # QB need, and nothing whatsoever about whether a QB outranks the best rookie RB. The
+        # previous version asserted `starved[0]` was the QB leader, which quietly conflated the
+        # two registers. It survived only because the old [0,100] bpa clip flattened this
+        # rookie QB class onto a single value, so the within-QB gap never cleared the skip
+        # gate above and the assertion never ran. With bpa as real vor the class separates
+        # honestly -- and the top rookie RB sits 256 points above HIS replacement while the
+        # best rookie QB sits exactly AT his, so the RB leading the board is the engine working,
+        # not context manufacturing anything. Need is near-identical for both (4.72 vs 4.85).
+        starved_qbs = [r for r in starved if r["position"] == "QB"]
+        self.assertTrue(starved_qbs, "the starved board lost every rookie QB")
         self.assertEqual(
-            starved[0]["player_id"], leader["player_id"],
-            "maximal superflex QB need flipped a real rookie QB tier-gap standout -- context "
-            "manufactured superiority over a meaningful gap under the higher SUPER_FLEX ceiling",
+            starved_qbs[0]["player_id"], leader["player_id"],
+            "maximal superflex QB need flipped a real rookie QB tier-gap standout among the QBs "
+            "-- context manufactured superiority over a meaningful gap under the higher "
+            "SUPER_FLEX ceiling",
         )
+        # And the standout must not be quietly demoted on the full board either: with a real
+        # tier gap at his own position, maximal need for that position may not push a lesser
+        # QB above him anywhere in the ordering.
+        starved_ids = [r["player_id"] for r in starved]
+        self.assertLess(starved_ids.index(leader["player_id"]),
+                        starved_ids.index(second["player_id"]),
+                        "the second QB overtook the tier-gap standout on the full board")
 
 
 class DataIntegrityTests(unittest.TestCase):
@@ -956,16 +1141,41 @@ class InvariantTests(unittest.TestCase):
             self.merger, pdb_ir, [], my_roster_id="99", league=LIGHT_IDP_LEAGUE, mode="balanced",
         )
         row_ir = next((r for r in board_ir if r["player_id"] == young_rising["player_id"]), None)
-        if row_ir is not None and young_rising["bpa"] < abs(dr.RISK_ADJ["IR"]) * dr.DYNASTY_RISK_ADJ_MIN_SCALE - dr.TIME_HORIZON_CLAMP[1]:
-            self.assertGreaterEqual(
-                row_ir["universal_value"], 0.0,
-                "trajectory-aware risk_adj (experiment D) should keep a thin-bpa, "
-                "max-positive-trajectory player's universal_value from crossing zero on an IR "
-                "flag alone -- if this regresses, either the D formula or its constants changed",
+        self.assertIsNotNone(row_ir, "the flagged player must still be on the board")
+
+        # THE FORMULA, asserted unconditionally. At the exact positive clamp this player's own
+        # d_scale IS DYNASTY_RISK_ADJ_MIN_SCALE (the floor), and the flag must move his
+        # universal_value by exactly that scaled penalty and by nothing else -- risk_adj is the
+        # only term an injury status is allowed to touch.
+        self.assertAlmostEqual(row_ir["risk_adj"], dr.RISK_ADJ["IR"] * dr.DYNASTY_RISK_ADJ_MIN_SCALE)
+        self.assertAlmostEqual(row_ir["universal_value"],
+                               young_rising["universal_value"] + row_ir["risk_adj"], places=2)
+
+        # THE SIGN CLAUSE, and why it is now guarded by a skip rather than by a silent `if`.
+        # The original gate read `bpa < abs(RISK_ADJ["IR"]) * MIN_SCALE - TIME_HORIZON_CLAMP[1]`
+        # -- that is bpa < -4.6, which the old [0,100] clip made unreachable, so this block
+        # never ran and the test passed by never testing anything. "Thin bpa" means SMALL, so
+        # it is stated as |bpa| now that bpa is vor in real points and carries a real sign. It
+        # is also compared against the HEALTHY row rather than against zero: a player already
+        # below replacement while healthy is negative for reasons that have nothing to do with
+        # an injury flag, and asserting "universal_value >= 0" there would be asserting his
+        # position's scarcity, not experiment D. If the real pool contains no such player this
+        # run, that is a reportable fixture limitation, not a pass.
+        thin_bound = abs(dr.RISK_ADJ["IR"]) * dr.DYNASTY_RISK_ADJ_MIN_SCALE
+        if abs(young_rising["bpa"]) > thin_bound or young_rising["universal_value"] < 0.0:
+            self.skipTest(
+                "no max-positive-trajectory player in the current real pool is also thin-bpa "
+                f"and non-negative while healthy (best available: bpa={young_rising['bpa']:.1f} "
+                f"against a thin bound of {thin_bound:.1f}, healthy universal_value="
+                f"{young_rising['universal_value']:.1f}) -- the sign clause has no subject to "
+                "observe, which is a fixture limitation and must not read as a pass"
             )
-            # At the exact positive clamp, this player's own d_scale IS DYNASTY_RISK_ADJ_MIN_SCALE
-            # (the floor) -- confirms the formula, not just the end result.
-            self.assertAlmostEqual(row_ir["risk_adj"], dr.RISK_ADJ["IR"] * dr.DYNASTY_RISK_ADJ_MIN_SCALE)
+        self.assertGreaterEqual(
+            row_ir["universal_value"], 0.0,
+            "trajectory-aware risk_adj (experiment D) should keep a thin-bpa, "
+            "max-positive-trajectory player's universal_value from crossing zero on an IR "
+            "flag alone -- if this regresses, either the D formula or its constants changed",
+        )
 
     def test_need_bonus_is_zero_once_a_position_is_fully_satisfied(self):
         board = dr.compute_draft_board(
@@ -1331,19 +1541,35 @@ class EligibilityBonusWiringTests(unittest.TestCase):
 
         wrs = [r for r in by_uv if r["position"] == "WR"]
         best_wr = wrs[0]
-        cand_row = next(
-            (r for r in wrs
-             if best_wr["universal_value"] - r["universal_value"] > 25.0 and (trade_value_of(r) or 0) > 0),
-            None,
-        )
+
+        # The candidate is chosen by the properties this fixture actually REQUIRES, not by a
+        # magic universal_value threshold. The previous version searched for the first WR more
+        # than 25.0 behind the best WR -- a number written when bpa was rescaled onto 0-100, so
+        # 25.0 meant "a quarter of the whole board" and landed deep in the WR field. bpa is now
+        # vor in real projected points, where 25.0 is roughly the WR3-to-WR4 step, so the same
+        # search returned WR #3 -- too good for six strictly-better RB/WR fillers to exist, the
+        # WR/FLEX slots never saturated, and the eligibility term never fired. The two things
+        # the scenario needs are stated directly instead: a gap larger than the combined
+        # context bound, and enough strictly-better RB/WR to actually fill every WR/FLEX-
+        # reachable slot.
+        def fillers_for(row):
+            tv = trade_value_of(row)
+            if not tv:
+                return []
+            return [r for r in by_uv
+                    if r["position"] in ("RB", "WR")
+                    and r["player_id"] not in (best_wr["player_id"], row["player_id"])
+                    and (trade_value_of(r) or 0) > tv][:6]
+
+        cand_row, fillers = None, []
+        for row in wrs[1:]:
+            if best_wr["universal_value"] - row["universal_value"] <= dr.NEED_BONUS_MAX + dr.ELIGIBILITY_BONUS_MAX:
+                continue
+            candidate_fillers = fillers_for(row)
+            if len(candidate_fillers) == 6:
+                cand_row, fillers = row, candidate_fillers
+                break
         self.assertIsNotNone(cand_row, "real baseline should contain a WR well behind the best WR")
-        cand_tv = trade_value_of(cand_row)
-        # Saturate every WR/FLEX-reachable slot with players strictly MORE valuable than the
-        # candidate, so his WR-ness genuinely buys nothing and only the IDP_FLEX is open.
-        fillers = [r for r in by_uv
-                   if r["position"] in ("RB", "WR")
-                   and r["player_id"] not in (best_wr["player_id"], cand_row["player_id"])
-                   and (trade_value_of(r) or 0) > cand_tv][:6]
         picks = [{"pick_no": i + 1, "round": 1, "roster_id": "99", "player_id": r["player_id"]}
                  for i, r in enumerate(fillers)]
         db = dict(players_db)
@@ -1493,6 +1719,111 @@ class SimulateOpponentPicksTests(unittest.TestCase):
             merger=self.merger, players_db=self.players_db, league=self.league,
         )
         self.assertEqual(len(picks), 4)
+
+
+class CalibrationConstantsDoNotDriftSilentlyTests(unittest.TestCase):
+    """Mutation testing found these three constants could be changed to a materially
+    different value with the entire 963-test suite still green. That is not an argument for
+    any particular value -- it is that nothing recorded what the current one BUYS, so a
+    later edit could not tell a deliberate retune from an accident. Each test below pins a
+    consequence, not the number.
+    """
+
+    def test_two_empty_dedicated_slots_is_not_yet_maximum_urgency(self):
+        # need_bonus = min(PER_DEDICATED_SLOT * empty + PER_FLEX_SHARE * flex, MAX). With
+        # PER_DEDICATED_SLOT at 4.0 against a MAX of 12.0, the cap is reached only by a
+        # position group that is genuinely THREE deep and completely empty; two empty slots
+        # still leaves headroom, so "very urgent" and "maximally urgent" stay distinguishable.
+        # Doubling PER_DEDICATED_SLOT silently collapses that: two empty slots saturate the
+        # cap and every deeper shortage becomes indistinguishable from it.
+        #
+        # No FLEX slot here on purpose, so flex_share is 0 and the dedicated term is the only
+        # thing under test.
+        league = {
+            "roster_positions": ["QB", "RB", "RB", "WR", "TE", "BN", "BN", "BN"],
+            "total_rosters": 12, "settings": {"type": 2}, "scoring_settings": {},
+        }
+        merger, db = _build_pool_players_db(("QB", "RB", "WR", "TE"))
+        board = dr.compute_draft_board(
+            merger, db, [], my_roster_id="1", league=league, mode="balanced",
+        )
+        rbs = [r for r in board if r["position"] == "RB"]
+        self.assertTrue(rbs, "no RB on the board")
+        need = rbs[0]["need_bonus"]
+        self.assertGreater(need, 0.0, "two empty dedicated RB slots must create real demand")
+        self.assertLess(
+            need, dr.NEED_BONUS_MAX,
+            "two empty dedicated slots reached the need_bonus cap -- nothing distinguishes "
+            "them from a three-deep empty position group any more",
+        )
+
+    def test_auto_mode_switches_to_upside_exactly_at_the_documented_round(self):
+        # The boundary itself is a calibration decision (see UPSIDE_MODE_DEFAULT_ROUND's own
+        # comment). What must not happen is it moving without anyone noticing: this is the
+        # round where the board's whole scoring formula changes, and a draft that crosses it
+        # earlier than intended silently switches every remaining pick to upside-only scoring.
+        # The literal is deliberate -- change it here, on purpose, or not at all.
+        self.assertEqual(dr.UPSIDE_MODE_DEFAULT_ROUND, 15)
+        merger, db = _build_pool_players_db(("QB", "RB", "WR", "TE"))
+        league = {
+            "roster_positions": ["QB", "RB", "RB", "WR", "WR", "TE", "FLEX"] + ["BN"] * 13,
+            "total_rosters": 8, "settings": {"type": 2}, "scoring_settings": {},
+        }
+
+        def board_mode(round_no):
+            picks = [
+                {"pick_no": i + 1, "round": i // 8 + 1, "roster_id": str(i % 8 + 1), "player_id": pid}
+                for i, pid in enumerate(list(db)[:8 * round_no])
+            ]
+            rows = dr.compute_draft_board(
+                merger, db, picks, my_roster_id="1", league=league, mode="auto",
+            )
+            return rows[0]["mode"] if rows else None
+
+        self.assertEqual(board_mode(dr.UPSIDE_MODE_DEFAULT_ROUND - 1), "balanced")
+        self.assertEqual(board_mode(dr.UPSIDE_MODE_DEFAULT_ROUND), "upside")
+
+    def test_the_superflex_slot_goes_to_a_qb_the_large_majority_of_the_time(self):
+        # SUPER_FLEX_QB_SHARE splits the SUPER_FLEX slot's demand between QB and the other
+        # flex-eligible positions. Halving it survived the suite, and it is exactly the
+        # number M1's cliff-anchored QB replacement rests on: QB starter demand in a
+        # superflex league sets where replacement lands, which sets every QB's VOR.
+        # The claim being pinned is the one the constant's own comment makes -- the slot is
+        # filled by a QB the LARGE majority of the time, not close to a coin flip.
+        counts = dr.starter_slot_counts(["QB", "RB", "RB", "WR", "WR", "TE", "SUPER_FLEX"])
+        qb_share_of_the_superflex_slot = counts["QB"] - 1.0
+        self.assertGreater(
+            qb_share_of_the_superflex_slot, 0.75,
+            "the SUPER_FLEX slot stopped being a predominantly-QB slot",
+        )
+        # ...and the remainder really does go to the other eligible positions, rather than
+        # being dropped on the floor.
+        non_qb = sum(counts.get(p, 0.0) for p in ("RB", "WR", "TE"))
+        self.assertAlmostEqual(non_qb, 5.0 + (1.0 - qb_share_of_the_superflex_slot), places=6)
+
+    def test_the_narrowed_field_is_wide_enough_to_measure_a_standout_against(self):
+        # DEFAULT_NARROW_COUNT feeds pick_necessity's standout component, which is a margin
+        # over the best OTHER candidate. Shrinking it to 2 survived the suite, but it makes
+        # "stands out from the field" a comparison against a single alternative, which is a
+        # different and much weaker claim than the one necessity reports.
+        self.assertGreaterEqual(ps.DEFAULT_NARROW_COUNT, 5)
+
+    def test_the_horizon_error_bar_spans_a_plausible_positional_run(self):
+        # horizon_sensitivity is the floor's error bar: how far it moves across
+        # +/-HORIZON_SENSITIVITY_WINDOW ranks. Its own docstring names the mechanism that
+        # moves it -- "consumption is exactly the quantity a positional run shifts by that
+        # much" -- so the window has to be at least as wide as a run this engine will
+        # actually detect, or the error bar cannot represent the event it exists to model.
+        self.assertGreaterEqual(dr.HORIZON_SENSITIVITY_WINDOW, ds.RUN_LOOKBACK)
+
+    def test_the_weekly_to_season_factor_is_the_length_of_an_nfl_season(self):
+        # Not a tuning knob: every NFL team plays exactly 17 games, and this constant exists
+        # to turn Sleeper's WEEKLY projection into a season-equivalent so it shares a scale
+        # with Draft Sharks' season numbers. Any other value silently rescales every
+        # Sleeper-sourced projection -- which today means the entire K and DST pool -- against
+        # an offensive pool that was never rescaled, reintroducing exactly the cross-source
+        # unit mismatch this conversion exists to remove.
+        self.assertEqual(dr.SLEEPER_WEEKLY_TO_SEASON_FACTOR, 17)
 
 
 if __name__ == "__main__":

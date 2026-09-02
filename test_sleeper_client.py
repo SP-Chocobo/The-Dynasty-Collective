@@ -162,5 +162,93 @@ class LeagueFormatSummaryTests(unittest.TestCase):
         self.assertEqual(fmt["teams"], 12)
 
 
+class BaselineProjectionRowsTests(unittest.TestCase):
+    """The refresh path that regenerates a committed baseline rankings CSV from a live sync."""
+
+    # One real league's kicking settings, from its own Sleeper scoring_settings.
+    # A real league's scoring_settings is one flat map covering every position at once,
+    # so the offensive weights sit alongside the kicking ones here too.
+    KICKING = {
+        "xpm": 1, "xpmiss": -1, "fgmiss": -1,
+        "fgm_0_19": 3, "fgm_20_29": 3, "fgm_30_39": 3, "fgm_40_49": 4, "fgm_50p": 5,
+        "rec": 1,
+    }
+    PLAYERS = {
+        "1": {"first_name": "Brandon", "last_name": "Aubrey", "team": "DAL", "position": "K"},
+        "2": {"first_name": "Cam", "last_name": "Little", "team": "JAC", "position": "K"},
+        "3": {"first_name": "Some", "last_name": "Receiver", "team": "SEA", "position": "WR"},
+        "4": {"first_name": "Retired", "last_name": "Kicker", "team": "", "position": "K"},
+    }
+    PROJ = {
+        "1": {"xpm": 2.5, "fgm_40_49": 0.6, "fgm_50p": 0.4},
+        "2": {"xpm": 2.0, "fgm_30_39": 0.7},
+        "3": {"rec": 6.0},
+        "4": {"xpm": 0.0},
+    }
+
+    def _rows(self, **kwargs):
+        return sc.build_baseline_projection_rows(
+            self.PROJ, self.PLAYERS, self.KICKING, season_factor=17,
+            source_date="2026-08-25", **kwargs)
+
+    def test_points_are_league_scored_and_extrapolated_to_a_season(self):
+        row = next(r for r in self._rows(positions=["K"]) if r["name"] == "B Aubrey")
+        # 2.5*1 + 0.6*4 + 0.4*5 = 2.5 + 2.4 + 2.0 = 6.9/week -> 117.3 over 17 weeks
+        self.assertAlmostEqual(row["projection"], 117.3, places=1)
+
+    def test_position_filter_is_a_plain_filter_not_a_special_case(self):
+        # Same call, different filter: nothing about K is privileged in the code path.
+        self.assertEqual({r["position"] for r in self._rows(positions=["K"])}, {"K"})
+        self.assertEqual({r["position"] for r in self._rows(positions=["WR"])}, {"WR"})
+        self.assertEqual({r["position"] for r in self._rows()}, {"K", "WR"})
+
+    def test_nonpositive_projections_are_dropped(self):
+        # A 0-point kicker is "no projection at all", not "projected to be bad" -- keeping
+        # him would drag the position's replacement rank onto an undraftable player.
+        self.assertNotIn("R Kicker", [r["name"] for r in self._rows(positions=["K"])])
+
+    def test_rank_is_dense_and_ordered_by_projection(self):
+        rows = self._rows(positions=["K"])
+        self.assertEqual([r["rank"] for r in rows], [float(i) for i in range(1, len(rows) + 1)])
+        points = [r["projection"] for r in rows]
+        self.assertEqual(points, sorted(points, reverse=True))
+
+    def test_multi_year_columns_are_left_empty_not_faked(self):
+        # Sleeper supplies no multi-year outlook, and an empty proj_3yr is genuinely
+        # neutral downstream -- a stand-in value would manufacture a growth signal.
+        for row in self._rows(positions=["K"]):
+            self.assertEqual(row["proj_3yr"], "")
+            self.assertEqual(row["trade_value"], "")
+
+    def test_name_uses_the_committed_baseline_initial_surname_convention(self):
+        self.assertIn("B Aubrey", [r["name"] for r in self._rows(positions=["K"])])
+
+    def test_unknown_player_ids_are_skipped_rather_than_guessed(self):
+        rows = sc.build_baseline_projection_rows(
+            {"999": {"xpm": 3.0}}, self.PLAYERS, self.KICKING, season_factor=17)
+        self.assertEqual(rows, [])
+
+    def test_write_round_trips_into_the_baseline_csv_shape(self):
+        import csv as _csv
+        from pathlib import Path
+        rows = self._rows(positions=["K"])
+        with tempfile.TemporaryDirectory() as tmp:
+            path = sc.write_baseline_projection_csv(rows, Path(tmp) / "sub" / "k.csv")
+            with path.open() as handle:
+                back = list(_csv.DictReader(handle))
+        self.assertEqual(list(back[0].keys()), sc.BASELINE_RANKINGS_COLUMNS)
+        self.assertEqual(back[0]["name"], "B Aubrey")
+
+    def test_empty_rows_refuse_to_truncate_a_committed_baseline(self):
+        from pathlib import Path
+        with tempfile.TemporaryDirectory() as tmp:
+            target = Path(tmp) / "k.csv"
+            target.write_text("name,team\nB Aubrey,DAL\n")
+            with self.assertRaises(ValueError):
+                sc.write_baseline_projection_csv([], target)
+            # the existing pool survived an unreachable-API day
+            self.assertIn("Aubrey", target.read_text())
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -144,14 +144,63 @@ and by how much.
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, fields as dataclass_fields
 from typing import Optional
 
 import draft_room as dr
 import draft_strategy as ds
+from content_hash import fingerprint
 from data_merger import DataMerger, name_key, normalize_name
 
 DEFAULT_NARROW_COUNT = 5
+
+# Position-view depth ceiling (see narrow_candidates' own docstring): the board's real,
+# league-aware replacement rank per position (draft_room.replacement_ranks) is the right
+# SOURCE for how much positional depth exists, but replacement rank alone can run to 30+ at
+# a deep position in a real league -- far more than anyone wants displayed, and far more than
+# draft_strategy.pick_analysis's per-candidate cost can absorb every rerun. This is a UI/
+# compute ceiling on top of that real signal, not a valuation constant -- it never changes
+# what a position's actual replacement demand is, only how much of it gets surfaced and fully
+# analyzed at once. A thin position (real demand below this) is never artificially truncated;
+# only a genuinely deep one gets capped.
+POSITION_VIEW_DEPTH_CAP = 12
+
+
+def _board_order(row: dict) -> tuple:
+    """Sort key for a board row: highest final_score first, UNPRICED rows last, player_id as
+    the tiebreak.
+
+    Two things this deliberately does not do. It does not substitute a number for an absent
+    score -- a row whose position has no replacement level has no team_acquisition_value, and
+    treating that as 0.0 would rank it exactly where "worth nothing" ranks, which is a claim.
+    And it does not decide what the board SHOULD do once nothing on it can be priced; that is
+    an open product decision, and all this settles is that an unpriced row never outranks a
+    priced one and that the resulting order is deterministic.
+
+    The player_id tiebreak also closes a real determinism gap: sorting on final_score alone
+    left rows with equal scores in whatever order the board happened to arrive in, and
+    survived only on Python's sort being stable -- while draft_room's own board sort has
+    carried an explicit player_id tiebreak for exactly this reason since the players_db
+    iteration-order bug."""
+    score = row.get("final_score")
+    return (score is None, -score if score is not None else 0.0, str(row.get("player_id")))
+
+
+def position_view_depth(replacement_rank: Optional[int]) -> int:
+    """Position View Depth = min(this league's real replacement-rank demand for the position,
+    POSITION_VIEW_DEPTH_CAP). A thin position (replacement_rank at or below the cap) is never
+    truncated below its own real demand; a deep one is capped, not expanded, at the ceiling.
+    Named and isolated specifically so the cap is one obvious, tunable constant rather than a
+    number buried inside build_snapshot's own wiring.
+
+    A position with no remaining starter demand (draft_room.replacement_ranks returns None,
+    not a rank) shows its single best player. That is a DISPLAY decision made here, on purpose:
+    once no starting slot is unfilled there is no starter-relevant depth to surface, and one
+    row is the honest amount. It deliberately does not read as "demand is 1" -- the engine no
+    longer has a rank to give, and this layer chooses what to show without inventing one."""
+    if replacement_rank is None:
+        return 1
+    return min(replacement_rank, POSITION_VIEW_DEPTH_CAP)
 
 # How much bigger this player's own gap to the next-best remaining player at his position has
 # to be than that position's own TYPICAL adjacent gap (median, robust to one already-huge
@@ -165,6 +214,7 @@ CLIFF_MEDIUM_RATIO = 1.5
 # A position needs at least this many players still on the board for "typical gap" to mean
 # anything -- below it, there's no real distribution to compare against.
 CLIFF_MIN_POOL_SIZE = 3
+
 
 # Pick necessity -- see the module docstring's full account of why each weight exists and why
 # two of the originally-considered ten factors were deliberately folded rather than added as
@@ -215,6 +265,33 @@ LATE_ROUND_NECESSITY_CAP = 30.0
 # ever observed (10.6) on purpose, since full standout credit should demand something rare.
 NEAR_TIE_BAND = 2.0
 
+# A cliff is a RATIO ("this drop is unusually large for this position"), which silently
+# assumes the position has enough dispersion for a ratio to mean anything. On a genuinely
+# FLAT position it doesn't: as typical_gap collapses toward 0, an arbitrarily tiny drop
+# divides out to an enormous ratio -- at exactly 0 the original code returned float("inf"),
+# so EVERY positive gap became a HIGH cliff. Measured on the real Draft Sharks kicker
+# projections (34 season points of spread across the whole ranked list, with several EXACT
+# ties), that produced HIGH cliffs worth +12 necessity on gaps of ~7 season points -- 0.4
+# points a WEEK, between two functionally interchangeable streamers -- on a player whose
+# entire bpa was 19.7, so the phantom cliff was worth more than half his total board value.
+# The ratio was never wrong; it was being asked a question it cannot answer without real
+# dispersion to measure against.
+#
+# The tier is therefore gated on ABSOLUTE materiality as well as ratio: below this, an
+# adjacent drop is not a cliff no matter how it compares to its neighbours. Deliberately
+# derived from NEAR_TIE_BAND rather than independently invented -- that constant is already
+# this module's own data-derived answer to "below this, an ordering difference is field
+# noise rather than signal," which is exactly the judgement needed here. Kept under its own
+# name because the two express genuinely different concepts (one bounds a tie GROUP measured
+# against the leader, one bounds a single ADJACENT drop) and could legitimately diverge
+# later -- same concept-representation discipline applied everywhere else in this engine.
+#
+# Validated against the three cases that actually matter: a genuine 35-point structural
+# cliff still reports HIGH (35.0 >> 2.0); a spurious 0.1-point kicker cliff is suppressed;
+# and -- the case a naive "flat position => never a cliff" guard would have silently broken
+# -- a flat position carrying one real standout still reports HIGH (45.0 >> 2.0).
+CLIFF_MIN_MATERIAL_GAP = NEAR_TIE_BAND
+
 # The survival half of "this is basically decided" (see decision_regime): a principled
 # starting point, not empirically backtested -- same honesty this app applies to every other
 # unproven constant (CLIFF_HIGH_RATIO, NECESSITY_STANDOUT_REFERENCE_GAP itself, and others,
@@ -253,11 +330,22 @@ def compute_pick_necessity(raw_candidates: list[dict], round_num: int) -> list[t
 
     results = []
     for i, c in enumerate(raw_candidates):
-        others = [v for j, v in enumerate(values) if j != i]
-        if not others:
+        # The standout term asks how far ahead of the REST OF THE FIELD this candidate is.
+        # Rows the board could not price are not part of that field and must not enter max():
+        # they have no value to be ahead of or behind. A candidate who is himself unpriced has
+        # no margin to compute, so his standout term is the neutral 0.0 -- and that is this
+        # function's own existing rule, not a number substituted for absence. It already
+        # assigns exactly 0.0 for an absent survival, an absent cliff and an absent rival
+        # premium, and the comment below argues the standout floor is neutral rather than a
+        # penalty. His survival, cliff and run components stay real evidence.
+        others = [v for j, v in enumerate(values) if j != i and v is not None]
+        mine = c["team_acquisition_value"]
+        if mine is None:
+            standout_component = 0.0
+        elif not others:
             standout_component = NECESSITY_STANDOUT_WEIGHT  # no alternative exists at all
         else:
-            margin = c["team_acquisition_value"] - max(others)
+            margin = mine - max(others)
             normalized_margin = margin / NECESSITY_STANDOUT_REFERENCE_GAP
             # Floored at 0, not -1: "not the single best option on the board right now" is
             # neutral, not itself evidence of low urgency -- the other real signals below
@@ -433,9 +521,20 @@ def decision_path_flags(candidates: list[dict]) -> list[dict]:
     rival_premium_take_probability."""
     if not candidates:
         return []
-    tav_leader_idx = max(range(len(candidates)), key=lambda i: candidates[i]["team_acquisition_value"])
-    leader_uv = candidates[tav_leader_idx]["universal_value"]
-    best_uv = max(c["universal_value"] for c in candidates)
+    # Both cross-candidate comparisons below are over VALUES, so rows the board could not price
+    # are excluded from them: an unpriced row cannot be the acquisition leader and cannot hold
+    # the field's best universal_value, because it holds no value at all. With no priced
+    # candidate there is no leader and no best to compare against, and every flag is a claim
+    # this function then cannot support -- all four go False rather than being invented.
+    priced = [i for i, c in enumerate(candidates)
+              if c.get("team_acquisition_value") is not None
+              and c.get("universal_value") is not None]
+    if priced:
+        tav_leader_idx = max(priced, key=lambda i: candidates[i]["team_acquisition_value"])
+        leader_uv = candidates[tav_leader_idx]["universal_value"]
+        best_uv = max(candidates[i]["universal_value"] for i in priced)
+    else:
+        tav_leader_idx, leader_uv, best_uv = None, None, None
 
     flags = []
     for i, c in enumerate(candidates):
@@ -443,15 +542,22 @@ def decision_path_flags(candidates: list[dict]) -> list[dict]:
         premium = c.get("rival_premium") or 0.0
         take_prob = c.get("rival_premium_take_probability")
         credible_rival_path = take_prob is not None and take_prob >= CREDIBLE_RIVAL_PATH_THRESHOLD
+        measurable = i in priced
         flags.append({
+            # cliff_protection and block_opportunity read forfeit and rival_premium, which carry
+            # their own absence handling and are not this row's own value -- unchanged.
             "cliff_protection": forfeit is not None and forfeit >= NECESSITY_STANDOUT_REFERENCE_GAP,
             "block_opportunity": premium >= 2 * dr.NEED_BONUS_PER_DEDICATED_SLOT and credible_rival_path,
             "pure_value": (
-                i != tav_leader_idx
+                measurable
+                and i != tav_leader_idx
                 and c["universal_value"] == best_uv
                 and c["universal_value"] - leader_uv > NEAR_TIE_BAND
             ),
-            "context_elevated": (c["team_acquisition_value"] - c["universal_value"]) >= dr.NEED_BONUS_MAX,
+            "context_elevated": (
+                measurable
+                and (c["team_acquisition_value"] - c["universal_value"]) >= dr.NEED_BONUS_MAX
+            ),
         })
     return flags
 
@@ -460,14 +566,20 @@ def decision_regime(candidates: list[dict]) -> str:
     """"decisive" or "contested" -- which register a decision surface's explanatory prose
     should use for the CURRENT leader, never a per-candidate flag (only the leader can be
     "the elite asset"; nobody else's situation determines whether this pick is genuinely
-    close). Reads only margin-to-second-place and the leader's own survival_probability --
-    deliberately NOT round number or pick label. A leader clearing both bars gets read as
-    conviction-first regardless of whether that happens in round 1 or round 8; a bunched
-    field in round 1 stays "contested." The two thresholds are independent, real signals:
-    margin alone (a big lead that still might not survive) or survival alone (safe, but
-    only marginally ahead of the next-best option) each leave real ambiguity a "just take
-    him" framing would misrepresent -- only both together mean there is no actual decision
-    left to explain, just a fact to state.
+    close). Reads only whether the leader is clear of the field and the leader's own
+    survival_probability -- deliberately NOT round number or pick label. A leader clearing
+    both bars gets read as conviction-first regardless of whether that happens in round 1 or
+    round 8; a bunched field in round 1 stays "contested." The two conditions are independent,
+    real signals: being clear of the field alone (a real lead that still might not survive) or
+    survival alone (safe, but inside the tie band with the next-best option) each leave real
+    ambiguity a "just take him" framing would misrepresent -- only both together mean there is
+    no actual decision left to explain, just a fact to state.
+
+    "Clear of the field" is NOT a second definition of closeness: it is exactly the leader's
+    own near_tie_flags result, which is the module's one data-derived answer to "below this, an
+    ordering difference is field noise rather than signal", and is already the flag the UI
+    shows and the debate layer receives. See the implementation for the category error this
+    replaced.
 
     "contested" (not "messy" or "close") on purpose: plenty of contested picks aren't
     messy at all (a real cliff, a real denial case) -- what makes the enumerated,
@@ -476,32 +588,86 @@ def decision_regime(candidates: list[dict]) -> str:
     be manufacturing a decision that doesn't exist. Returns "contested" for an empty or
     single-candidate list -- a lone or empty field has no SECOND place to measure a margin
     against, so "decisive" (a claim this module can actually support) is never assumed by
-    default. Expects each candidate dict to carry team_acquisition_value and
-    survival_probability, sorted or not -- this function does its own ranking."""
-    if len(candidates) < 2:
+    default, and unpriced candidates are excluded before any of this. Expects each candidate
+    dict to carry team_acquisition_value and survival_probability, sorted or not -- this
+    function does its own ranking."""
+    # Unpriced candidates are excluded from the ranking rather than ordered into it: the regime
+    # is decided by a MARGIN between the best and second-best measurable option, and a row with
+    # no team_acquisition_value is neither. Once they are out, the function's own existing rule
+    # for a field with fewer than two members applies unchanged -- a field with nothing to
+    # measure a second place against is "contested", never "decisive".
+    priced = [c for c in candidates if c.get("team_acquisition_value") is not None]
+    if len(candidates) < 2 or len(priced) < 2:
         return "contested"
-    ranked = sorted(candidates, key=lambda c: c["team_acquisition_value"], reverse=True)
-    leader, second = ranked[0], ranked[1]
-    margin = leader["team_acquisition_value"] - second["team_acquisition_value"]
-    survival = leader.get("survival_probability")
-    if margin >= NECESSITY_STANDOUT_REFERENCE_GAP and survival is not None and survival <= DECISIVE_SURVIVAL_THRESHOLD:
+    ranked = sorted(priced, key=lambda c: c["team_acquisition_value"], reverse=True)
+
+    # THE MARGIN HALF IS near_tie_flags' OWN QUESTION, so it is asked of near_tie_flags rather
+    # than re-derived here. "Is the leader clear of the field?" and "is the leader in a tie
+    # group?" are the same predicate: near_tie_flags marks the leader exactly when a second
+    # candidate sits within NEAR_TIE_BAND of him. Measured across 24 real board-state/roster
+    # pairs, the two agreed on every single one.
+    #
+    # It used to read `margin >= NECESSITY_STANDOUT_REFERENCE_GAP`, and that was a category
+    # error rather than a bad number. That constant is a NORMALIZER'S REFERENCE, and its own
+    # comment says it was deliberately placed "above the largest adjacent gap ever observed ...
+    # since full standout credit should demand something rare" -- being unreachable is the
+    # POINT of a normalizer reference, and is fatal for a firing threshold. Measured on the
+    # repaired real-points unit: the leader-second margin has a median of 0.35 and a maximum of
+    # 12.69 against a threshold of 15.0, so "decisive" was produced at 0 of 24 real board
+    # states. One of this function's two states did not exist.
+    #
+    # Expressing it once, in the module's own ordering-noise concept, is also what stops the
+    # two drifting apart -- and the leader's tie flag is already shown in the UI and handed to
+    # the debate layer, so the regime and the badge can no longer disagree.
+    leader_in_tie_group = near_tie_flags(
+        [c["team_acquisition_value"] for c in ranked])[0]
+    survival = ranked[0].get("survival_probability")
+    # `is False`, not `not ...`, since near_tie_flags is three-state (#61 rule 5). `ranked` is
+    # the priced-only list, so the leader's flag cannot be None today and this reads identically
+    # -- it is written this way so that if an unpriced row ever reaches here, an UNKNOWN margin
+    # falls through to "contested" instead of being read as "measured, and not close", which is
+    # what `not None` would have done. That is #61's invariant 8: decision_regime never returns
+    # "decisive" from an unknown margin.
+    if (leader_in_tie_group is False
+            and survival is not None and survival <= DECISIVE_SURVIVAL_THRESHOLD):
         return "decisive"
     return "contested"
-    return flags
 
 
-def near_tie_flags(team_acquisition_values: list[float]) -> list[bool]:
+def near_tie_flags(team_acquisition_values: list[Optional[float]]) -> list[Optional[bool]]:
     """Which candidates sit inside NEAR_TIE_BAND of the leader's team_acquisition_value --
     True for every member of the tie group INCLUDING the leader, but only when the group has
     at least two members: a leader nobody is close to isn't 'in a tie' with anyone, and
     flagging him alone would hand the debate layer a false 'these are tied' claim. Same order
-    as the input."""
+    as the input.
+
+    THREE-STATE (#61 rule 5): True / False / None. An UNPRICED entry (None in, None out) is
+    never flagged and never becomes the leader -- unchanged. What changed is what it ANSWERS.
+    `False` is a claim with a measurement behind it: "this row was compared to the leader and
+    is not close to him". A row the board could not price has no measured separation from
+    anything, so that claim is unsupported in exactly the way the sentence above already
+    refuses for the other direction. Returning `False` there was the same argument applied in
+    one direction only -- a false "these are NOT tied" issued to avoid a false "these are
+    tied". None says the comparison was never made.
+
+    The leader is still chosen among priced rows only: letting a None into max() either raised
+    on the comparison or, worse, would have made every real row look far behind a "leader" that
+    was not a value at all.
+
+    A field with no priced rows at all is therefore all-None, not all-False: nothing in it was
+    compared to anything. And when the band holds fewer than two members the priced rows
+    collapse to False (measured, no tie group) while the unpriced ones stay None.
+    """
     if not team_acquisition_values:
         return []
-    leader = max(team_acquisition_values)
-    in_band = [leader - v <= NEAR_TIE_BAND for v in team_acquisition_values]
-    if sum(in_band) < 2:
-        return [False] * len(team_acquisition_values)
+    priced = [v for v in team_acquisition_values if v is not None]
+    if not priced:
+        return [None] * len(team_acquisition_values)
+    leader = max(priced)
+    in_band = [None if v is None else (leader - v <= NEAR_TIE_BAND)
+               for v in team_acquisition_values]
+    if sum(1 for flag in in_band if flag) < 2:
+        return [None if v is None else False for v in team_acquisition_values]
     return in_band
 
 
@@ -521,8 +687,22 @@ def detect_positional_cliff(board: list[dict], player_id) -> Optional[dict]:
     row = _find_row(board, player_id)
     if row is None:
         return None
+    # A cliff is a drop measured in bpa against that position's own gap distribution, so rows
+    # the board could not price are not in the distribution -- and if the target himself has no
+    # bpa there is no drop of his to measure. Excluding them is the same rule the curve and the
+    # near-tie band follow; sorting them in was a TypeError, not a mis-ranking.
+    #
+    # The early return is REDUNDANT GIVEN THE FILTER BELOW, and that is recorded rather than
+    # left for someone to rediscover: an unpriced target is excluded from same_position, so
+    # `idx` comes back None and the function returns None by that route anyway. Verified across
+    # 112 unpriced rows on real rounds 16 and 18 -- none would reach the body without it. It is
+    # kept because it states the intent at the top where a reader looks for it, but the FILTER
+    # is what actually enforces the rule, so removing the filter is not made safe by this line.
+    if row.get("bpa") is None:
+        return None
     same_position = sorted(
-        (r for r in board if r["position"] == row["position"]), key=lambda r: r["bpa"], reverse=True,
+        (r for r in board if r["position"] == row["position"] and r.get("bpa") is not None),
+        key=lambda r: r["bpa"], reverse=True,
     )
     if len(same_position) < CLIFF_MIN_POOL_SIZE:
         return None
@@ -534,7 +714,12 @@ def detect_positional_cliff(board: list[dict], player_id) -> Optional[dict]:
     this_gap = gaps[idx]
     other_gaps = sorted(g for i, g in enumerate(gaps) if i != idx and g > 0)
     if not other_gaps:
-        return {"tier": "HIGH" if this_gap > 0 else "LOW", "gap": round(this_gap, 2), "typical_gap": 0.0}
+        # Every OTHER adjacent gap at this position is zero -- a perfectly tied field, where
+        # there is no dispersion whatsoever to compare against. Same materiality gate as the
+        # ratio path below: a real standout sitting above a tied block is still a genuine
+        # cliff, but a hairline separation inside one is not.
+        tier = "HIGH" if this_gap >= CLIFF_MIN_MATERIAL_GAP else "LOW"
+        return {"tier": tier, "gap": round(this_gap, 2), "typical_gap": 0.0}
 
     # TRIMMED median: drop the largest ~10% of gaps first (only when the pool carries enough
     # gaps for a trim to mean anything). A position with a genuine structural cliff has that
@@ -549,7 +734,14 @@ def detect_positional_cliff(board: list[dict], player_id) -> Optional[dict]:
 
     typical_gap = other_gaps[len(other_gaps) // 2]  # median
     ratio = this_gap / typical_gap if typical_gap > 0 else float("inf") if this_gap > 0 else 0.0
-    tier = "HIGH" if ratio >= CLIFF_HIGH_RATIO else "MEDIUM" if ratio >= CLIFF_MEDIUM_RATIO else "LOW"
+    # Absolute-materiality gate, applied BEFORE the ratio decides a tier -- see
+    # CLIFF_MIN_MATERIAL_GAP for the measured failure this closes. A drop smaller than the
+    # band this app already calls ordering noise cannot be a tier break, however unusual it
+    # looks against an essentially flat position's own neighbours.
+    if this_gap < CLIFF_MIN_MATERIAL_GAP:
+        tier = "LOW"
+    else:
+        tier = "HIGH" if ratio >= CLIFF_HIGH_RATIO else "MEDIUM" if ratio >= CLIFF_MEDIUM_RATIO else "LOW"
     return {"tier": tier, "gap": round(this_gap, 2), "typical_gap": round(typical_gap, 2)}
 
 
@@ -559,19 +751,19 @@ def expected_value_of_waiting(universal_value: float, survival_probability: Opti
     surviving to your next pick. None when survival_probability itself isn't known (no
     intervening-pick context available), same "don't fabricate a number" posture as everywhere
     else in this app rather than silently assuming certainty."""
-    if survival_probability is None:
+    if universal_value is None or survival_probability is None:
         return None
     return round(universal_value * survival_probability, 2)
 
 
 def narrow_candidates(
     board: list[dict], top_n: int = DEFAULT_NARROW_COUNT, user_selected_player_id: Optional[str] = None,
+    position_depth: Optional[dict[str, int]] = None,
 ) -> list[dict]:
     """The top top_n rows by team_acquisition_value (final_score, draft_room's own ranking),
-    PLUS the single best remaining player at every position this board actually covers, plus
-    the user's own explicitly-flagged player if there is one -- none of these three are
-    optional, and the second one specifically closes a real blind spot, not a cosmetic
-    addition.
+    PLUS the best remaining players at every position this board actually covers, plus the
+    user's own explicitly-flagged player if there is one -- none of these three are optional,
+    and the second one specifically closes a real blind spot, not a cosmetic addition.
 
     universal_value/team_acquisition_value answer "how good is this player," a rational,
     single-team VOR question -- they were never meant to reproduce real-world ADP, which
@@ -585,24 +777,43 @@ def narrow_candidates(
     single best remaining player rank outside the raw top_n on value alone, and he would then
     NEVER be handed to the strategic layer at all -- not undervalued, literally invisible to
     it, so a real "grab him now before he's gone" case could never even be considered, let
-    alone recommended. Always including the best-at-position player means the strategic layer
-    gets a fair look at him regardless of where a pure VOR ranking places him; if he genuinely
-    isn't urgent, pick_necessity says so honestly (a LOW/CLOSE-CALL score, not exclusion from
-    the conversation entirely).
+    alone recommended. Always including at least the best-at-position player means the
+    strategic layer gets a fair look at him regardless of where a pure VOR ranking places him;
+    if he genuinely isn't urgent, pick_necessity says so honestly (a LOW/CLOSE-CALL score, not
+    exclusion from the conversation entirely).
+
+    position_depth: optional {position: how many of that position's best remaining players to
+    include}, keyed by the SAME "position" strings this board itself uses. None (the default)
+    preserves this function's original behavior exactly -- exactly one (the single best) per
+    position, nothing more. Passing a real per-league depth map (see
+    draft_room.replacement_ranks, capped by app.py's own POSITION_VIEW_DEPTH_CAP before it
+    ever reaches here) is what turns a UI position VIEW from "whichever of the top_n happened
+    to be a WR" into an actually-useful WR board -- a position with real replacement demand
+    gets real depth, a thin one still gets just its one best player, and every player included
+    this way still goes through the exact same downstream necessity/survival/denial analysis
+    as the original top_n slice, not a lesser "board-only" pass. This never changes any
+    player's own bpa/universal_value/final_score -- those are already fixed on `board` before
+    this function ever runs; it only changes which rows get selected for the heavier
+    contextual analysis build_snapshot layers on afterward.
 
     The user_selected_player_id addition still exists on top of this for the same reason it
     always did: a live debate is never blind to a player the user is specifically considering
     (a dynasty stash, a personal favorite, a punt pick) just because the deterministic board
     doesn't currently rank him near the top OR at the top of his own position."""
-    ranked = sorted(board, key=lambda r: r["final_score"], reverse=True)
+    ranked = sorted(board, key=_board_order)
     candidates = list(ranked[:top_n])
     included_ids = {r["player_id"] for r in candidates}
 
-    for position in {r["position"] for r in board}:
-        best_at_position = next((r for r in ranked if r["position"] == position), None)
-        if best_at_position is not None and best_at_position["player_id"] not in included_ids:
-            candidates.append(best_at_position)
-            included_ids.add(best_at_position["player_id"])
+    by_position: dict[str, list[dict]] = {}
+    for row in ranked:
+        by_position.setdefault(row["position"], []).append(row)
+
+    for position, rows_at_position in by_position.items():
+        depth = 1 if position_depth is None else max(1, position_depth.get(position, 1))
+        for row in rows_at_position[:depth]:
+            if row["player_id"] not in included_ids:
+                candidates.append(row)
+                included_ids.add(row["player_id"])
 
     if user_selected_player_id is not None and str(user_selected_player_id) not in included_ids:
         extra = _find_row(board, user_selected_player_id)
@@ -612,7 +823,7 @@ def narrow_candidates(
     # Re-sorted after every addition above -- rank order has to stay meaningful (rank_delta
     # in diff_snapshots depends on it) even once best-at-position/user-flagged rows get
     # appended out of value order.
-    candidates.sort(key=lambda r: r["final_score"], reverse=True)
+    candidates.sort(key=_board_order)
     return candidates
 
 
@@ -645,7 +856,9 @@ class CandidateSnapshot:
     position_run_detected: bool
     pick_necessity: float
     necessity_label: str
-    near_tie_with_leader: bool
+    # Three-state (#61 rule 5): None means the comparison was never made because this row
+    # is unpriced -- NOT that it was made and came back negative. See near_tie_flags.
+    near_tie_with_leader: Optional[bool]
     cliff_protection: bool
     block_opportunity: bool
     pure_value: bool
@@ -658,6 +871,24 @@ class CandidateSnapshot:
     # THRESHOLD and decision_path_flags' block_opportunity, the one consumer. Defaulted so
     # existing hand-built CandidateSnapshot fixtures that predate this field still construct.
     rival_premium_take_probability: Optional[float] = None
+    # What deferring this position actually costs: this player's projected points minus the
+    # points of the best player at his position expected to be STILL UNDRAFTED when the draft
+    # ends (draft_room.horizon_replacement). OBSERVABLE ONLY -- read by nothing that scores,
+    # so team_acquisition_value above is byte-identical with or without it.
+    #
+    # None, never 0.0, when the loaded pool ends before the horizon: an unknown waiting cost
+    # is not a free one, and zero would read as "wait, it's fine" at exactly the positions
+    # whose data is thinnest. Consumers must render absence as absence.
+    waiting_cost: Optional[float] = None
+    horizon_floor: Optional[float] = None
+    # "measured" | "imputed" | "unavailable" -- which kind of bench-appetite
+    # number placed horizon_floor. See draft_room.positional_bench_appetite_basis.
+    horizon_basis: Optional[str] = None
+    # How far that floor moves across a realistic miss in positional consumption. A point
+    # estimate is only as good as the curve it sits on: +/-6 ranks moves DEF by 12 points and
+    # QB by 63, because QB falls off a cliff just past its horizon. Consumers must not state
+    # a waiting cost more confidently than this allows.
+    horizon_sensitivity: Optional[float] = None
 
 
 @dataclass(frozen=True)
@@ -711,7 +942,18 @@ def build_snapshot(
     board = dr.compute_draft_board(
         merger, players_db, picks, my_roster_id=my_roster_id, league=league, mode=mode, pool_scope=pool_scope,
     )
-    narrowed = narrow_candidates(board, top_n=top_n, user_selected_player_id=user_selected_player_id)
+    # Real per-league positional depth for narrow_candidates' position_depth -- the same
+    # remaining-demand rank replacement_levels itself uses for VOR (num_teams matches
+    # compute_draft_board's own derivation above), capped at POSITION_VIEW_DEPTH_CAP so a deep
+    # position (WR/RB can run 30+ replacement rank in a real league) never balloons the
+    # candidate set past what's actually useful to display or affordable to fully analyze.
+    num_teams = league.get("total_rosters") or len({p.get("roster_id") for p in picks}) or 1
+    replacement_ranks = dr.replacement_ranks(
+        league.get("roster_positions") or [], num_teams, picks, players_db)
+    position_depth = {pos: position_view_depth(rank) for pos, rank in replacement_ranks.items()}
+    narrowed = narrow_candidates(
+        board, top_n=top_n, user_selected_player_id=user_selected_player_id, position_depth=position_depth,
+    )
     candidate_ids = [row["player_id"] for row in narrowed]
     # A real, observable signal straight from the picks already made (see
     # draft_strategy.detect_positional_run's own docstring) -- computed once and shared across
@@ -740,6 +982,11 @@ def build_snapshot(
         pid = str(row["player_id"])
         a = analysis_by_id.get(pid, {})
         survival = a.get("survival_probability")
+        # Read strictly, no default: compute_draft_board owns the board's shape and now emits
+        # universal_value in BOTH modes (see its upside branch for what the column means
+        # there). A default here would only re-create the situation that broke this line --
+        # every consumer quietly deciding for itself what an absent column meant -- and would
+        # swallow a genuinely new third shape instead of failing where it was introduced.
         universal_value = row["universal_value"]
         reach = consensus_reach(row["name"], current_overall_pick, consensus_by_key)
         raw_candidates.append({
@@ -761,6 +1008,12 @@ def build_snapshot(
             "consensus_tier": reach["consensus_tier"] if reach else None,
             "reach_label": reach["reach_label"] if reach else None,
             "projected_points": row.get("projected_points"),
+            # Straight off the board row -- computed once per board in draft_room, not
+            # recomputed per candidate here (see _attach_waiting_cost).
+            "waiting_cost": row.get("waiting_cost"),
+            "horizon_floor": row.get("horizon_floor"),
+            "horizon_basis": row.get("horizon_basis"),
+            "horizon_sensitivity": row.get("horizon_sensitivity"),
         })
 
     round_num = (max((p.get("round") or 1) for p in picks) if picks else 1)
@@ -787,6 +1040,100 @@ def build_snapshot(
     )
 
 
+def _canonical(value) -> str:
+    """One value, rendered as a string that depends only on its CONTENT.
+
+    Three things this must not let vary, because each would make the same frozen board hash
+    differently on two machines or two days:
+
+    * **Numeric subclasses.** A value arriving as `numpy.float64` rather than `float` reprs
+      differently across numpy majors (`41.56` vs `np.float64(41.56)`). Nothing currently puts
+      one on a CandidateSnapshot -- measured, all 37 fields are builtins today -- but the
+      identity of a stored record must not depend on an invariant enforced two modules away,
+      so every float subclass is normalized here. Pinned by a test that plants one.
+    * **Dict insertion order.** `repr` preserves it, so `positional_cliff` built with its keys
+      in a different order would hash differently while meaning exactly the same thing. Keys
+      are sorted.
+    * **Nesting ambiguity.** Containers are bracketed and comma-joined so a nested structure
+      cannot flatten into a different one that reads the same.
+    """
+    if isinstance(value, bool):          # before the float/int branches -- bool subclasses int
+        return repr(value)
+    if isinstance(value, float):
+        return repr(float(value))
+    if isinstance(value, int):
+        return repr(int(value))
+    if isinstance(value, dict):
+        inner = ",".join(f"{k!r}:{_canonical(v)}" for k, v in sorted(value.items(), key=lambda kv: str(kv[0])))
+        return "{" + inner + "}"
+    if isinstance(value, (list, tuple)):
+        return "[" + ",".join(_canonical(v) for v in value) + "]"
+    return repr(value)
+
+
+def snapshot_identity(snapshot: PickSnapshot) -> str:
+    """This exact frozen board's content-derived identity -- the name a stored record binds to.
+
+    A PURE FUNCTION of the snapshot's own frozen fields, and deliberately not a stored field:
+    an identity that is recomputed from content cannot drift out of agreement with the content
+    it names, which is the whole reason §5.10 chose a hash over a hand-maintained version
+    number for benchmark runs. Same primitive, same reasoning, second consumer (#111).
+
+    It adds NOTHING to the engine. Nothing here is read by valuation, candidate selection or
+    scarcity; `team_acquisition_value` is byte-identical whether or not this is ever called.
+
+    FIELD NAMES ARE PART OF THE IDENTITY, on purpose. Renaming a field changes the hash, which
+    makes a rename visible as a new identity rather than silently reusing the old one -- the
+    exact silent-meaning-change class §17.5/#110 demonstrated. Adding a field to
+    CandidateSnapshot or PickSnapshot likewise changes it, because a snapshot that carries a
+    new term genuinely is not the one that was shown before.
+
+    Candidate ORDER is part of the identity too: the tuple is the board's own ranked order, so
+    the same players in a different order is a different board, not the same one.
+    """
+    parts: list[str] = []
+    for field in dataclass_fields(snapshot):
+        if field.name == "candidates":
+            continue
+        parts.append(f"{field.name}={_canonical(getattr(snapshot, field.name))}")
+    for index, candidate in enumerate(snapshot.candidates):
+        rendered = "|".join(
+            f"{f.name}={_canonical(getattr(candidate, f.name))}"
+            for f in dataclass_fields(candidate)
+        )
+        parts.append(f"candidate[{index}]|{rendered}")
+    return fingerprint(*parts)
+
+
+def stamp_is_current(
+    picks_consumed: Optional[int], data_freshest_date: Optional[str],
+    picks: list[dict], merger: DataMerger,
+) -> tuple[bool, Optional[str]]:
+    """The staleness check itself, over a bare INPUT-STATE STAMP rather than a live object.
+
+    Split out from snapshot_is_current (below) so a RESTORED record can ask the identical
+    question a live snapshot can. A stored draft-history record carries the same two stamp
+    values but is a plain dict, not a PickSnapshot; without this split the only ways to check
+    it would be to fabricate a hollow PickSnapshot around the stamp, or to reimplement these
+    three comparisons somewhere else -- and a second copy of a staleness rule that is supposed
+    to agree with the first is exactly the drift class this app keeps finding (see
+    content_hash.py for the same extraction, same reasoning).
+
+    Checked purely by input identity, never by recomputing anything. False always comes with a
+    plain reason string a UI can show verbatim."""
+    if picks_consumed is None and data_freshest_date is None:
+        return False, "snapshot carries no input-state stamp (built before stamping, or hand-assembled)"
+    if picks_consumed is not None and len(picks) != picks_consumed:
+        delta = len(picks) - picks_consumed
+        return False, (
+            f"{delta} new pick(s) made since this snapshot was built" if delta > 0
+            else "the picks list has fewer picks than this snapshot was built from"
+        )
+    if merger.freshest_date != data_freshest_date:
+        return False, "the underlying player data changed since this snapshot was built"
+    return True, None
+
+
 def snapshot_is_current(snapshot: PickSnapshot, picks: list[dict], merger: DataMerger) -> tuple[bool, Optional[str]]:
     """(is_current, reason) -- whether this frozen snapshot still describes the live state its
     consumer is about to act on, checked purely by INPUT IDENTITY (the stamp build_snapshot
@@ -795,17 +1142,8 @@ def snapshot_is_current(snapshot: PickSnapshot, picks: list[dict], merger: DataM
     or predating stamping) is reported not-current rather than silently trusted: "unknown
     provenance" and "known current" are different claims, same don't-fabricate posture as
     everywhere else in this app."""
-    if snapshot.picks_consumed is None and snapshot.data_freshest_date is None:
-        return False, "snapshot carries no input-state stamp (built before stamping, or hand-assembled)"
-    if snapshot.picks_consumed is not None and len(picks) != snapshot.picks_consumed:
-        delta = len(picks) - snapshot.picks_consumed
-        return False, (
-            f"{delta} new pick(s) made since this snapshot was built" if delta > 0
-            else "the picks list has fewer picks than this snapshot was built from"
-        )
-    if merger.freshest_date != snapshot.data_freshest_date:
-        return False, "the underlying player data changed since this snapshot was built"
-    return True, None
+    return stamp_is_current(
+        snapshot.picks_consumed, snapshot.data_freshest_date, picks, merger)
 
 
 _DIFF_FIELDS = (

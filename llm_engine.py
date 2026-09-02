@@ -37,6 +37,10 @@ from typing import Optional
 
 from dotenv import load_dotenv
 
+import provider_meter
+import providers
+import untrusted
+
 load_dotenv()
 
 ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY")
@@ -66,7 +70,8 @@ OPENAI_MODEL = os.getenv("OPENAI_MODEL", "gpt-4o")
 # thorough Quant breakdown or a Contrarian pressure-test can run long too.
 MAX_TOKENS = 4096
 
-QUANT_SYSTEM_PROMPT = """You are the Quant / VORP Specialist for a fantasy football front office. Your
+QUANT_SYSTEM_PROMPT = (
+    """You are the Quant / VORP Specialist for a fantasy football front office. Your
 context states this league's actual format (dynasty/keeper/redraft, and any special mode like Best Ball
 or Chopped) — reason accordingly rather than assuming dynasty by default.
 You reason strictly from numbers, and you're given two independent quantitative sources to weigh against
@@ -94,8 +99,11 @@ Sleeper's native projections aren't loaded (check the DATA AVAILABILITY note), d
 back to positional scarcity, roster construction, and general roster value judgment, and say plainly that
 you're working without hard numbers rather than inventing figures or pretending you have them. Be concise,
 cite the specific values you're given, and state a clear numeric-first recommendation."""
+    "\n\n" + untrusted.CONTRACT
+)
 
-BEAT_SYSTEM_PROMPT = """You are the Beat / News Tracker for a fantasy football front office (dynasty,
+BEAT_SYSTEM_PROMPT = (
+    """You are the Beat / News Tracker for a fantasy football front office (dynasty,
 redraft, keeper, or a special mode like Best Ball/Chopped — your context states which).
 Draft Sharks is only one input among several the front office weighs — your job is to bring the rest of
 the picture from the free, publicly browsable open web:
@@ -111,8 +119,11 @@ than any file-based source in your context (check the DATA FRESHNESS note for ho
 your live findings contradict an old Draft Sharks file, say so plainly and lean on the live read. Do not run
 Draft Sharks' VORP math yourself — that is the Quant's job. Be concise, and clearly label which claims come
 from Draft Sharks, which from market consensus sites, and which from news/depth charts."""
+    "\n\n" + untrusted.CONTRACT
+)
 
-CONTRARIAN_SYSTEM_PROMPT = """You are the Contrarian / Risk Analyst for a fantasy football front office.
+CONTRARIAN_SYSTEM_PROMPT = (
+    """You are the Contrarian / Risk Analyst for a fantasy football front office.
 Your job is to pressure-test the other two analysts, not repeat them. Given the Quant's Draft-Sharks-based
 numeric take and the Beat Tracker's market-consensus-and-news report, actively look for what they're missing:
 regression risk, small-sample overreaction, projection model blind spots, injury-prone history, age curves,
@@ -127,8 +138,11 @@ news from scratch. If Draft Sharks isn't loaded, there's nothing to pressure-tes
 test the Beat Tracker's read and your own reasoning instead; don't stall waiting for numbers that aren't
 coming. Respect any format-specific rules stated in your context (e.g. trades disabled in a Chopped league)
 — don't pressure-test or entertain a move the league doesn't actually allow. Be concise."""
+    "\n\n" + untrusted.CONTRACT
+)
 
-MODERATOR_SYSTEM_PROMPT = """You are the Debate Moderator and Executive Synthesizer for a fantasy football
+MODERATOR_SYSTEM_PROMPT = (
+    """You are the Debate Moderator and Executive Synthesizer for a fantasy football
 front office — dynasty, redraft, keeper, or a special mode like Best Ball/Chopped, per your context. You
 have three reports: a Quant/VORP analysis (grounded in the user's local Draft
 Sharks data and Sleeper's own native weekly stat-category projections), a Beat/News update (market consensus
@@ -248,8 +262,11 @@ play, a roster need) that undercuts the original reason, say so and use ACTION I
 it. Never assume it's worth reopening just because it's mentioned here, and never treat it as settling the
 current question by itself — it's context for your reasoning, not a substitute for it.
 Be decisive."""
+    "\n\n" + untrusted.CONTRACT
+)
 
-SUMMARIZER_SYSTEM_PROMPT = """You compact old fantasy football front-office chat history into a compact,
+SUMMARIZER_SYSTEM_PROMPT = (
+    """You compact old fantasy football front-office chat history into a compact,
 structured memory block for future debates to reference. From the transcript you're given, extract only what
 would actually matter to a future decision:
   * Targeted players — who the user has been trying to buy/sell/add/drop, and the outcome if known.
@@ -261,6 +278,8 @@ If a prior memory summary is given alongside the new transcript, merge them into
 than discarding the old one — this compacts forward over time, not just the latest window. Output plain
 Markdown with those three headers (only include a header if it has content). Be dense — this is memory, not
 prose."""
+    "\n\n" + untrusted.CONTRACT
+)
 
 
 @dataclass
@@ -277,6 +296,21 @@ class DebateResult:
     # role to a different provider; a message must show who answered it, not
     # whatever's currently configured.
     role_providers: dict = field(default_factory=dict)
+    # The other half of that same identity. A provider name alone does not say which
+    # model answered, and a role can be re-pointed at a different model of the SAME
+    # provider (the Moderator on Opus for synthesis, the Quant on Sonnet for cheaper
+    # stat-crunching -- see run_debate's own docstring), which a provider-only record
+    # cannot distinguish at all. Recorded for the same reason and by the same rule.
+    role_models: dict = field(default_factory=dict)
+    # What the PANEL retrieved while producing this verdict -- [{"url", "title"}, ...], read off
+    # each provider response's own grounding metadata (provider_meter.sources_since), never off
+    # any chair's prose. #97/§6.5 asked for an evidence snapshot on a stored finding, and this is
+    # the honest version of it: the unit is the DEBATE, not the claim. Which page backs a
+    # particular SOURCE FINDING line is a join nothing here can make -- the line carries no
+    # citation, and asking the Moderator to add one would invent the link rather than record it.
+    # An empty list means this response reported no retrieval; it does not mean the panel
+    # searched and found nothing, and no consumer may read it that way.
+    sources_retrieved: list = field(default_factory=list)
 
 
 VERDICT_FIELDS = [
@@ -444,25 +478,22 @@ def list_openai_models(api_key: Optional[str] = None) -> tuple[list[str], Option
         return [], str(exc)
 
 
-LIST_MODELS_BY_PROVIDER = {
-    "claude": list_claude_models,
-    "gemini": list_gemini_models,
-    "openai": list_openai_models,
-}
-
-
 # -- Per-provider callers -- generic: system prompt in, provider's own quirks
 # (tool access, client setup) handled here, indifferent to which role is calling. ---
 
 def _call_claude(system_prompt: str, user_prompt: str, api_key: Optional[str] = None, model: Optional[str] = None) -> str:
     key = api_key or ANTHROPIC_API_KEY
     if not key:
+        provider_meter.record_not_attempted("claude", "api_key_missing")
         return "⚠️ ANTHROPIC_API_KEY not set — add it in the sidebar's Connect Your Accounts section, or in .env."
     try:
         import anthropic
 
-        client = anthropic.Anthropic(api_key=key)
-        response = client.messages.create(
+        client = anthropic.Anthropic(api_key=key, **provider_meter.client_limits("claude", anthropic.Anthropic))
+        # Marked BEFORE the call so the notice below reflects THIS call, never a
+        # neighbouring one -- see provider_meter.mark's own docstring.
+        _meter_at = provider_meter.mark()
+        response = provider_meter.metered("claude", lambda: client.messages.create(
             model=model or CLAUDE_MODEL,
             max_tokens=MAX_TOKENS,
             system=system_prompt,
@@ -475,22 +506,29 @@ def _call_claude(system_prompt: str, user_prompt: str, api_key: Optional[str] = 
             # web_search_tool_result/server_tool_use blocks have no .text attribute and are
             # skipped the same way any other non-text block already was.
             tools=[{"type": "web_search_20260209", "name": "web_search"}],
-        )
-        return "".join(block.text for block in response.content if hasattr(block, "text")).strip()
+        ), model_requested=model or CLAUDE_MODEL)
+        return provider_meter.annotate_if_incomplete(
+            "".join(block.text for block in response.content if hasattr(block, "text")).strip(),
+            _meter_at, "claude")
     except Exception as exc:  # noqa: BLE001 - surface any provider error to the UI, don't crash the app
+        provider_meter.record_preflight_failure("claude", exc)
         return f"⚠️ Claude request failed: {exc}"
 
 
 def _call_gemini(system_prompt: str, user_prompt: str, api_key: Optional[str] = None, model: Optional[str] = None) -> str:
     key = api_key or GEMINI_API_KEY
     if not key:
+        provider_meter.record_not_attempted("gemini", "api_key_missing")
         return "⚠️ GEMINI_API_KEY not set — add it in the sidebar's Connect Your Accounts section, or in .env."
     try:
         from google import genai
         from google.genai import types
 
-        client = genai.Client(api_key=key)
-        response = client.models.generate_content(
+        client = genai.Client(api_key=key, **provider_meter.gemini_limits(genai, types))
+        # Marked BEFORE the call so the notice below reflects THIS call, never a
+        # neighbouring one -- see provider_meter.mark's own docstring.
+        _meter_at = provider_meter.mark()
+        response = provider_meter.metered("gemini", lambda: client.models.generate_content(
             model=model or GEMINI_MODEL,
             contents=user_prompt,
             config=types.GenerateContentConfig(
@@ -498,21 +536,28 @@ def _call_gemini(system_prompt: str, user_prompt: str, api_key: Optional[str] = 
                 tools=[types.Tool(google_search=types.GoogleSearch())],
                 max_output_tokens=MAX_TOKENS,
             ),
-        )
-        return (response.text or "").strip() or "⚠️ Gemini returned an empty response."
+        ), model_requested=model or GEMINI_MODEL)
+        return provider_meter.annotate_if_incomplete(
+            (response.text or "").strip(), _meter_at, "gemini"
+        ) or "⚠️ Gemini returned an empty response."
     except Exception as exc:  # noqa: BLE001
+        provider_meter.record_preflight_failure("gemini", exc)
         return f"⚠️ Gemini request failed: {exc}"
 
 
 def _call_openai(system_prompt: str, user_prompt: str, api_key: Optional[str] = None, model: Optional[str] = None) -> str:
     key = api_key or OPENAI_API_KEY
     if not key:
+        provider_meter.record_not_attempted("openai", "api_key_missing")
         return "⚠️ OPENAI_API_KEY not set — add it in the sidebar's Connect Your Accounts section, or in .env."
     try:
         from openai import OpenAI
 
-        client = OpenAI(api_key=key)
-        response = client.responses.create(
+        client = OpenAI(api_key=key, **provider_meter.client_limits("openai", OpenAI))
+        # Marked BEFORE the call so the notice below reflects THIS call, never a
+        # neighbouring one -- see provider_meter.mark's own docstring.
+        _meter_at = provider_meter.mark()
+        response = provider_meter.metered("openai", lambda: client.responses.create(
             model=model or OPENAI_MODEL,
             input=[
                 {"role": "system", "content": system_prompt},
@@ -520,9 +565,11 @@ def _call_openai(system_prompt: str, user_prompt: str, api_key: Optional[str] = 
             ],
             tools=[{"type": "web_search"}],
             max_output_tokens=MAX_TOKENS,
-        )
-        return (getattr(response, "output_text", "") or "").strip()
+        ), model_requested=model or OPENAI_MODEL)
+        return provider_meter.annotate_if_incomplete(
+            (getattr(response, "output_text", "") or "").strip(), _meter_at, "openai")
     except Exception as exc:  # noqa: BLE001
+        provider_meter.record_preflight_failure("openai", exc)
         return f"⚠️ ChatGPT request failed: {exc}"
 
 
@@ -532,7 +579,44 @@ def _call_openai(system_prompt: str, user_prompt: str, api_key: Optional[str] = 
 # so which provider ends up on the Beat Tracker/Contrarian role is purely a "whose answers do
 # you like" choice now, not a capability tradeoff. See bot_config.ROLE_INFO for the UI's own
 # framing of that choice.
-PROVIDER_CALLERS = {"claude": _call_claude, "gemini": _call_gemini, "openai": _call_openai}
+# -- The registry ------------------------------------------------------------------------------
+#
+# Registered HERE rather than in providers.py, because the adapters live here: the module that
+# owns the vendor-specific code is the one that can honestly declare what that code reads. A
+# registry filled in from somewhere else would be a second place to keep in sync -- the exact
+# shape this replaces.
+#
+# The four `reports_*` flags are claims about THIS REPOSITORY'S EXTRACTORS, not about the
+# vendors. provider_meter has a reader for each of these three shapes; a provider with no
+# reader declares False and the app says so rather than showing a blank. What a live provider
+# actually returns is still unverified from this environment -- no SDK is installed here -- and
+# stays recorded under #120.
+providers.register(providers.Provider(
+    id="claude", label="Claude", call=_call_claude, is_configured=is_claude_configured,
+    key_field="anthropic", list_models=list_claude_models,
+    suggested_models=("claude-opus-5", "claude-sonnet-5", "claude-haiku-4-5"),
+    reports_completion=True, reports_usage=True, reports_model=True, reports_sources=True,
+))
+providers.register(providers.Provider(
+    id="gemini", label="Gemini", call=_call_gemini, is_configured=is_gemini_configured,
+    key_field="gemini", list_models=list_gemini_models,
+    suggested_models=("gemini-2.0-flash", "gemini-2.0-pro"),
+    reports_completion=True, reports_usage=True, reports_model=True, reports_sources=True,
+))
+providers.register(providers.Provider(
+    id="openai", label="ChatGPT", call=_call_openai, is_configured=is_openai_configured,
+    key_field="openai", list_models=list_openai_models,
+    suggested_models=("gpt-4o", "gpt-4.5-mini", "o3"),
+    reports_completion=True, reports_usage=True, reports_model=True, reports_sources=True,
+))
+
+#: Derived from the registry rather than written out, so a registered provider cannot be
+#: missing from the dispatch table and a dispatch entry cannot exist without a registration.
+PROVIDER_CALLERS = {pid: providers.get(pid).call for pid in providers.ids()}
+LIST_MODELS_BY_PROVIDER = {
+    pid: providers.get(pid).list_models
+    for pid in providers.ids() if providers.get(pid).list_models is not None
+}
 
 ROLE_SYSTEM_PROMPTS = {
     "quant": QUANT_SYSTEM_PROMPT,
@@ -546,14 +630,84 @@ def ask_quant(
     context: str, question: str, *, provider: str = "claude", api_key: Optional[str] = None, model: Optional[str] = None
 ) -> str:
     prompt = f"League/roster context:\n{context}\n\nQuestion: {question}"
-    return PROVIDER_CALLERS[provider](QUANT_SYSTEM_PROMPT, prompt, api_key, model)
+    # Scoped so every ledger record this call produces carries the CHAIR it was made for.
+    # Without it the records land under the default role and the only way to tell which chair
+    # was cut off would be to sniff its report text for the notice -- deriving from prose a
+    # fact the ledger already holds exactly. Opened HERE rather than around run_debate's
+    # executor.submit deliberately: this call runs on a pool worker, and a worker thread
+    # starts with a fresh contextvars Context, so a scope set in the submitting thread would
+    # not be visible to it.
+    with provider_meter.role_scope("quant"):
+        return PROVIDER_CALLERS[provider](QUANT_SYSTEM_PROMPT, prompt, api_key, model)
 
 
 def ask_beat(
     context: str, question: str, *, provider: str = "gemini", api_key: Optional[str] = None, model: Optional[str] = None
 ) -> str:
     prompt = f"League/roster context:\n{context}\n\nQuestion: {question}"
-    return PROVIDER_CALLERS[provider](BEAT_SYSTEM_PROMPT, prompt, api_key, model)
+    # Scoped inside for the same reason as ask_quant above -- this one also runs on a worker.
+    with provider_meter.role_scope("beat"):
+        return PROVIDER_CALLERS[provider](BEAT_SYSTEM_PROMPT, prompt, api_key, model)
+
+
+# What a downstream chair is shown in place of an upstream chair's report when that chair's
+# call never completed. It used to be handed the raw "⚠️ <provider> request failed: <exc>"
+# string under the upstream chair's own section heading -- so the Contrarian was asked to
+# pressure-test a connection error as though it were the Quant's analysis.
+#
+# This app's own rule, applied everywhere else, is that a missing thing is represented as
+# missing and never as a value: an unpriced row carries None rather than 0.0, an unstamped
+# snapshot is "not certifiable" rather than current, an unrecorded model is "" rather than the
+# default. A failed chair's error text occupying the report slot breaks that rule at the one
+# place a model reads it.
+#
+# The second sentence is load-bearing and not padding: absent evidence must not be read as
+# evidence of absence, which is exactly the failure mode a bare "unavailable" invites from a
+# chair whose whole job is finding what the others missed.
+#
+# The raw exception is NOT forwarded, deliberately. It says nothing useful to another chair
+# ("Connection reset by peer" is not analysis), and forwarding one provider's internal error
+# text into another provider's prompt is a cross-provider disclosure with no upside -- see
+# ARCHITECTURE_AUDIT.md 7.8's residual on SDK exception contents. It still reaches the user
+# and the activity log intact via DebateResult.errors; only the model-facing copy is replaced.
+# The wording is deliberately about what THIS PROCESS HAS, not about what happened at the
+# provider. Every caller wraps its whole request in `except Exception`, which fires alike for a
+# missing key (never executed), a connection error (never executed), a read timeout after the
+# provider generated and billed a response (executed, not received), and a parse error on a
+# response that did arrive (executed, received, dropped locally). An earlier version of this
+# string said the call "did not complete, so no analysis was produced" -- two assertions the
+# catch cannot support, and in the timeout case simply false. Corrected under the rule #89 set
+# for the alias branch and §6 R1 applied to "validated": a field may not claim a certainty its
+# writing path cannot establish. What is known is that no usable report reached this chair.
+# THE POLICY, CHOSEN RATHER THAN INHERITED. A failed chair never stops the panel: every chair
+# is called regardless, the Moderator always runs, and a verdict is always produced. That
+# behaviour predates this constant and used to be merely what fell out of calling four chairs in
+# sequence -- test_failure_mode_boundary measured it across all eight failure combinations and
+# recorded that it "is coherent and it was never chosen".
+#
+# It is chosen now: DEGRADE, NEVER ABORT. Aborting would assert the reader is better off with
+# nothing, which is the same claim that put every kicker above every running back on a late
+# board. A panel missing one voice still carries three; what it must never do is hide which
+# voice is missing.
+#
+# The two obligations that make degrading honest, both enforced in run_debate:
+#   1. every failure is named in DebateResult.errors, and
+#   2. a verdict resting on NO upstream analysis says so explicitly.
+# A floor (quorum, minimum chairs, abort threshold) would be a deliberate reversal of this and
+# must invert test_failure_mode_boundary's characterization rather than quietly coexist with it.
+DEGRADE_NEVER_ABORT = True
+
+UNAVAILABLE_REPORT = (
+    "(unavailable — no report from this chair reached the panel. Whether the call never ran, ran "
+    "and was lost, or ran and could not be read is not known here. Treat this as MISSING "
+    "information, never as a finding that there is nothing to report.)"
+)
+
+
+def _report_for_handoff(report: str) -> str:
+    """One upstream chair's output as the next chair should see it. Failed calls are the
+    only thing rewritten; every real report passes through untouched."""
+    return UNAVAILABLE_REPORT if report.startswith("⚠️") else report
 
 
 def ask_contrarian(
@@ -563,11 +717,12 @@ def ask_contrarian(
     prompt = (
         f"League/roster context:\n{context}\n\n"
         f"Original question: {question}\n\n"
-        f"--- QUANT / VORP REPORT ---\n{quant}\n\n"
-        f"--- BEAT / NEWS REPORT ---\n{beat}\n\n"
+        f"--- QUANT / VORP REPORT ---\n{_report_for_handoff(quant)}\n\n"
+        f"--- BEAT / NEWS REPORT ---\n{_report_for_handoff(beat)}\n\n"
         "Pressure-test these two reports."
     )
-    return PROVIDER_CALLERS[provider](CONTRARIAN_SYSTEM_PROMPT, prompt, api_key, model)
+    with provider_meter.role_scope("contrarian"):
+        return PROVIDER_CALLERS[provider](CONTRARIAN_SYSTEM_PROMPT, prompt, api_key, model)
 
 
 def ask_moderator(
@@ -578,9 +733,9 @@ def ask_moderator(
     prompt = (
         f"League/roster context:\n{context}\n\n"
         f"Original question: {question}\n\n"
-        f"--- QUANT / VORP REPORT ---\n{quant}\n\n"
-        f"--- BEAT / NEWS REPORT ---\n{beat}\n\n"
-        f"--- CONTRARIAN / RISK REPORT ---\n{contrarian}\n\n"
+        f"--- QUANT / VORP REPORT ---\n{_report_for_handoff(quant)}\n\n"
+        f"--- BEAT / NEWS REPORT ---\n{_report_for_handoff(beat)}\n\n"
+        f"--- CONTRARIAN / RISK REPORT ---\n{_report_for_handoff(contrarian)}\n\n"
         "Synthesize these into one verdict."
     )
     # A tone directive, never a content one -- it changes how the verdict is written,
@@ -589,7 +744,8 @@ def ask_moderator(
     system_prompt = MODERATOR_SYSTEM_PROMPT
     if personality:
         system_prompt += f"\n\nResponse style: {personality}"
-    return PROVIDER_CALLERS[provider](system_prompt, prompt, api_key, model)
+    with provider_meter.role_scope("moderator"):
+        return PROVIDER_CALLERS[provider](system_prompt, prompt, api_key, model)
 
 
 MODERATOR_FOLLOWUP_ADDENDUM = """
@@ -652,10 +808,12 @@ def ask_moderator_followup(
     system_prompt = MODERATOR_SYSTEM_PROMPT + "\n" + MODERATOR_FOLLOWUP_ADDENDUM
     if personality:
         system_prompt += f"\n\nResponse style: {personality}"
-    return PROVIDER_CALLERS[provider](system_prompt, prompt, api_key, model)
+    with provider_meter.role_scope("moderator"):
+        return PROVIDER_CALLERS[provider](system_prompt, prompt, api_key, model)
 
 
-UPLOAD_CLASSIFY_SYSTEM_PROMPT = """You're the Moderator for a fantasy football dynasty roster app, occasionally \
+UPLOAD_CLASSIFY_SYSTEM_PROMPT = (
+    """You're the Moderator for a fantasy football dynasty roster app, occasionally \
 asked to make sense of a file someone just tried to upload that the app's own parser didn't confidently recognize \
 as one of its three known Draft Sharks exports (Dynasty Rankings, Trade Value Chart, Free Agent Finder). This is \
 NOT a roster debate -- just a quick read on what the document actually is. In 2-4 sentences: say what it looks like \
@@ -671,6 +829,8 @@ column headers actually say. If you were given an example row, end your response
 exactly "ALIGNMENT: CORRECT" if that field-by-field labeling looks right for this document, or exactly \
 "ALIGNMENT: WRONG" if it doesn't -- that exact line, nothing after it, so the app can parse your verdict \
 programmatically. Omit that line entirely if you weren't given an example row to judge."""
+    "\n\n" + untrusted.CONTRACT
+)
 
 
 def classify_unknown_upload(
@@ -685,13 +845,22 @@ def classify_unknown_upload(
     example_row, when given, is a single already-parsed row rendered by app.py itself (never by
     this call) -- the numbers are never something the model is trusted to reproduce from memory,
     only to judge whether the field labels attached to them are right for this document."""
-    prompt = f"Filename: {filename}\n\nExtracted text (first portion, may be truncated):\n{text_excerpt}"
+    # The file's own bytes, from whatever the user dropped in. This call has the narrowest job
+    # in the app and the widest-open input, so the fence matters here as much as anywhere: the
+    # excerpt is DATA to classify, and a document that tries to instruct the classifier is
+    # exactly the case §7.6 exists for. example_row is rendered by app.py from an already-parsed
+    # row, but its cell values come from the same file, so it is fenced on the same reasoning.
+    prompt = (
+        f"Filename: {filename}\n\nExtracted text (first portion, may be truncated):\n"
+        + untrusted.fence("uploaded-file-contents", text_excerpt))
     if example_row:
-        prompt += f"\n\nOne example row our parser already extracted, as currently labeled:\n{example_row}"
+        prompt += ("\n\nOne example row our parser already extracted, as currently labeled:\n"
+                   + untrusted.fence("uploaded-file-contents", example_row))
     return PROVIDER_CALLERS[provider](UPLOAD_CLASSIFY_SYSTEM_PROMPT, prompt, api_key, model)
 
 
-CONDENSE_TO_OBJECTIVE_SYSTEM_PROMPT = """You turn ONE existing chat message from a fantasy football dynasty \
+CONDENSE_TO_OBJECTIVE_SYSTEM_PROMPT = (
+    """You turn ONE existing chat message from a fantasy football dynasty \
 front office into a single tracked objective, in the exact phrasing style this app's own Moderator uses for an \
 ACTION ITEM: the action itself, concrete and specific -- e.g. "Offer Team 4 a 2027 3rd for Player X before \
 Thursday's waiver run" -- never a summary of what the message said, and never vague ("consider a trade").
@@ -712,6 +881,8 @@ never manufacture a duplicate. Use NO OBJECTIVE when the message is pure informa
 strong opinion" answer with nothing to actually go do. Never invent specifics -- a team name, a deadline, a \
 price -- that weren't actually in the source message or the surrounding conversation; if the message itself was \
 vague, the objective you write should stay just as concrete as what it actually said, not padded out further."""
+    "\n\n" + untrusted.CONTRACT
+)
 
 
 def ask_condense_to_objective(
@@ -777,8 +948,16 @@ def summarize_history(
     """
     if not messages:
         return "⚠️ Nothing to summarize."
-    transcript = "\n\n".join(f"[{m.get('role', '?')}] {m.get('content', '')}" for m in messages)
-    prompt = transcript if not prior_summary else f"PRIOR MEMORY SUMMARY:\n{prior_summary}\n\nNEW TRANSCRIPT TO MERGE IN:\n{transcript}"
+    # Every byte here was written by a person or by a model -- the user's own messages and the
+    # chairs' own prose -- and the output becomes CONVERSATION MEMORY, which is replayed into
+    # every later debate. An instruction that survives summarisation is an instruction that
+    # persists, so this is the one call where a missed fence compounds instead of passing.
+    transcript = untrusted.fence("prior-conversation", "\n\n".join(
+        f"[{m.get('role', '?')}] {m.get('content', '')}" for m in messages))
+    prompt = transcript if not prior_summary else (
+        "PRIOR MEMORY SUMMARY:\n"
+        + untrusted.fence("prior-conversation", prior_summary)
+        + f"\n\nNEW TRANSCRIPT TO MERGE IN:\n{transcript}")
     return _call_claude(SUMMARIZER_SYSTEM_PROMPT, prompt, api_key)
 
 
@@ -818,7 +997,14 @@ def run_debate(
     work against that.
     """
     role_models = role_models or {}
-    result = DebateResult(question=question, role_providers=dict(role_providers))
+    # Where this debate's own slice of the provider ledger starts. The ledger is process-wide
+    # and long-lived, so a bare scan would also see calls from an earlier debate, from the
+    # /pick panel, or from a summarize_history that happened to run in between -- mark() exists
+    # for exactly this: it lets one debate meter exactly its own calls.
+    debate_meter_at = provider_meter.mark()
+    result = DebateResult(
+        question=question, role_providers=dict(role_providers), role_models=dict(role_models),
+    )
 
     def _key(role: str) -> Optional[str]:
         return api_keys.get(role_providers[role])
@@ -852,8 +1038,41 @@ def run_debate(
     )
     if not result.moderator.startswith("⚠️"):
         result.verdict = parse_moderator_verdict(result.moderator)
-    for label, text in (("quant", result.quant), ("beat", result.beat),
-                         ("contrarian", result.contrarian), ("moderator", result.moderator)):
+    chairs = (("quant", result.quant), ("beat", result.beat),
+              ("contrarian", result.contrarian), ("moderator", result.moderator))
+    for label, text in chairs:
         if text.startswith("⚠️"):
             result.errors.append(f"{label}: {text}")
+
+    # #104, the edge the characterization named and left undecided. The panel ALWAYS degrades
+    # and never aborts -- that policy is now chosen rather than incidental (see DEGRADE_NEVER_
+    # ABORT). Its one genuinely dangerous case is this: with every upstream chair failed, the
+    # Moderator still runs, receives three unavailability markers, and can synthesize a
+    # confident-sounding verdict out of nothing at all. The markers tell it to treat those as
+    # MISSING, but nothing prevents a verdict anyway.
+    #
+    # Under the standing absence ruling the answer is not to suppress that verdict -- discarding
+    # asserts the reader is better off with nothing -- but to say what it rests on. Annotate,
+    # and let the reader discount it.
+    upstream = [text for label, text in chairs if label != "moderator"]
+    if upstream and all(text.startswith("⚠️") for text in upstream):
+        result.errors.append(
+            "every upstream chair failed — the moderator's verdict was synthesized from "
+            "unavailability markers alone, not from any chair's actual analysis. Read it as "
+            "resting on NO evidence, however confident its wording.")
+    # Truncation, same rule and a different condition: a chair cut off at its output cap
+    # produced real analysis that stops early. The text is kept and annotated in place (see
+    # provider_meter.annotate_if_incomplete); this is the human-facing half.
+    truncated_roles = {
+        record.role for record in provider_meter.since(debate_meter_at)
+        if record.completion_state == provider_meter.TRUNCATED
+    }
+    for label, _text in chairs:
+        if label in truncated_roles:
+            result.errors.append(
+                f"{label}: report was cut off at the provider's output cap -- it is a fragment, "
+                f"and its conclusion is missing rather than absent by choice.")
+    # Read from the same window, for the same reason: this debate's own calls, not a neighbouring
+    # one's. See DebateResult.sources_retrieved for what the list does and does not claim.
+    result.sources_retrieved = provider_meter.sources_since(debate_meter_at)
     return result

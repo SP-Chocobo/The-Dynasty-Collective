@@ -23,6 +23,40 @@ price as the target draft gets further away -- a team's CURRENT record says a lo
 they'll likely finish THIS season, much less about two seasons from now -- via
 FUTURE_YEAR_RECORD_DISCOUNT, a labeled, bounded approximation like every other non-empirically-
 backtested constant in this app (see draft_room.py's own constants for the same pattern).
+
+AUDIT NOTE -- READ BEFORE WIRING THIS MODULE ANYWHERE. Nothing in the application imports
+rookie_draft; the module is reached only by its own tests. An investigation (CDME_CONTRACTS.md,
+appendix "future-pick valuation") measured whether it should be wired and concluded it should
+NOT, on this evidence:
+
+  * The motivating comparison was between two different assets. The CURRENT year's draft is
+    already priced EXACTLY, slot by slot (1.01=83 ... 1.12=19). The flat number applies only to
+    a genuinely-unknown-slot future pick -- and there the flat number is already a well-
+    calibrated central estimate, not a placeholder: round 1's slot median is 29.5 and its mean
+    excluding the 1.01 lottery is 27.7, against a vendor flat price of 29. Round 2 is
+    mean 13.8 against a flat 14.
+  * 67% of round 1's entire spread sits in the single 1.01 slot, so beating the flat price
+    means identifying the 1.01 holder specifically.
+  * estimate_pick_slot cannot do that, because a draft slot is ORDINAL -- reverse order of
+    finish among this league's own teams -- and estimate_pick_slot derives it CARDINALLY from
+    one team's win percentage in isolation, with no reference to the other rosters. Over 400
+    simulated 12-team seasons the mean absolute slot error is 1.89 of 12 (17% of the range),
+    3.05 slots on the league's actual worst team, and it placed that team within half a slot
+    of 1.01 in 0 of 400 leagues. In a league whose worst team finishes 5-9 it prices that
+    team's pick near slot 4.9 -- the pick is 1.01.
+  * estimate_pick_slot also ignores SAMPLE SIZE apart from the zero-games case: 0-1 after one
+    week and 0-14 after a full season both return slot 1.00 and the identical valuation. The
+    signal is therefore loudest exactly where the evidence is weakest.
+  * FUTURE_YEAR_RECORD_DISCOUNT's 1.0 entry is unreachable in production -- the vendor prices
+    flat future picks only one and two seasons out, so only 0.6 and 0.3 ever apply. The
+    discount is also keyed to whole seasons while the information about next year's draft
+    accumulates weekly; nfl_state["week"] is in the snapshot and is not consulted.
+
+Every input a corrected version would need is already present (league_standings.team_standings
+returns wins/losses/ties for ALL rosters; snapshot["nfl_state"] carries season and week). This
+is not a data gap. It is a primitive that under-specifies its own inputs, and it is left
+unwired and unchanged rather than retuned. See the appendix for the architectural cost on the
+consuming side, which is a separate and larger question.
 """
 
 from __future__ import annotations

@@ -13,12 +13,13 @@ reason and date), never destroyed, so they remain useful as history.
 
 from __future__ import annotations
 
-import json
 import re
 import time
 from datetime import datetime
 from pathlib import Path
 from typing import Optional
+
+import store_io
 
 TODOS_DIR = Path("data/todos")
 
@@ -31,18 +32,24 @@ def _path(league_id: str) -> Path:
 
 
 def _load(league_id: str) -> list[dict]:
-    path = _path(league_id)
-    if path.exists():
-        try:
-            return json.loads(path.read_text())
-        except (json.JSONDecodeError, OSError):
-            return []
-    return []
+    # #102: the swallow-and-return-empty that used to live here is now store_io's, and it no
+    # longer amplifies. Measured before the change: a store holding five objectives, given ONE
+    # torn read, held exactly one after the next add_todo, because the empty view was written
+    # back. store_io refuses to overwrite a file it could not parse, and its atomic writes stop
+    # a reader from seeing a prefix in the first place.
+    return store_io.read(_path(league_id), [])
 
 
 def _save(league_id: str, entries: list[dict]) -> None:
-    TODOS_DIR.mkdir(parents=True, exist_ok=True)
-    _path(league_id).write_text(json.dumps(entries, indent=2))
+    store_io.write(_path(league_id), entries)
+
+
+def _store_path(league_id: str, *args, **kwargs) -> Path:
+    """The file a decorated call will touch, from that call's own arguments. Every public
+    mutator here is keyed by league_id in the first position; store_io.atomic needs to know
+    which store to hold before the body runs, which is the whole point -- the lost update was a
+    load that happened outside the lock, not a missing lock."""
+    return _path(league_id)
 
 
 def _next_id(entries: list[dict]) -> int:
@@ -53,6 +60,7 @@ def _find(entries: list[dict], todo_id: int) -> Optional[dict]:
     return next((e for e in entries if e.get("id") == todo_id), None)
 
 
+@store_io.atomic(_store_path)
 def add_todo(
     league_id: str, text: str, *, source: str = "manual", question: str = "",
     decision_ts: Optional[float] = None,
@@ -78,12 +86,17 @@ def add_todo(
             "resolution_date": None,
             "revisions": [],
             "notes": [],
+            # Every "likely resolved" claim a bot has made about this objective, and how
+            # each one ended (accepted / rejected / superseded_by_dismissal / pending).
+            # See mark_likely_resolved and reopen_todo.
+            "proposals": [],
         }
     )
     _save(league_id, entries)
     return new_id
 
 
+@store_io.atomic(_store_path)
 def add_note(league_id: str, todo_id: int, text: str) -> bool:
     """A free-form note the user attaches to an objective — distinct from `revisions`
     (which tracks the objective's own text changing) and `resolution_reason` (why it
@@ -102,6 +115,19 @@ def add_note(league_id: str, todo_id: int, text: str) -> bool:
     return True
 
 
+def _close_pending_proposal(entry: dict, outcome: str) -> None:
+    """Stamp the still-open "likely resolved" proposal on `entry` with how it ended.
+    A no-op for an entry that has no pending proposal (one written before `proposals`
+    existed, or an item the user closed without a bot ever proposing anything) --
+    absent means "not recorded", never a fabricated outcome."""
+    for proposal in reversed(entry.get("proposals") or []):
+        if proposal.get("outcome") == "pending":
+            proposal["outcome"] = outcome
+            proposal["closed_date"] = datetime.now().strftime("%Y-%m-%d")
+            return
+
+
+@store_io.atomic(_store_path)
 def revise_todo(league_id: str, todo_id: int, new_text: str, reason: str = "") -> bool:
     """Update an active objective's text when new information changes it — the old text
     is kept in `revisions`, not overwritten silently. No-op (returns False) if the item
@@ -120,19 +146,33 @@ def revise_todo(league_id: str, todo_id: int, new_text: str, reason: str = "") -
     return True
 
 
+@store_io.atomic(_store_path)
 def mark_likely_resolved(league_id: str, todo_id: int, reason: str) -> bool:
     """A bot's proposal that an objective looks done — pending, not final. Only valid
-    from "active"; doesn't touch resolution_date, since nothing is actually resolved yet."""
+    from "active"; doesn't touch resolution_date, since nothing is actually resolved yet.
+
+    The proposal is also appended to `proposals` with its own timestamp. Until that
+    existed, the only copy of a bot's proposed reason lived in `resolution_reason`, a
+    single mutable slot the very next action overwrote or cleared -- so a proposal the
+    user rejected left no trace at all, and one they accepted carried no record of WHEN
+    it was proposed as opposed to when it was confirmed. Same rule this module already
+    applies to an objective's own text in revise_todo: a superseded statement is kept,
+    not silently overwritten."""
     entries = _load(league_id)
     entry = _find(entries, todo_id)
     if not entry or entry.get("status") != "active":
         return False
     entry["status"] = "likely_resolved"
     entry["resolution_reason"] = reason.strip()
+    entry.setdefault("proposals", []).append(
+        {"ts": time.time(), "date": datetime.now().strftime("%Y-%m-%d"),
+         "reason": reason.strip(), "outcome": "pending"}
+    )
     _save(league_id, entries)
     return True
 
 
+@store_io.atomic(_store_path)
 def mark_referenced(league_id: str, todo_id: int) -> bool:
     """Stamp that a debate turn actually engaged with this objective (mentioned it by id
     in the Moderator's response), not just that it was sitting in context unused. Purely
@@ -147,18 +187,30 @@ def mark_referenced(league_id: str, todo_id: int) -> bool:
     return True
 
 
+@store_io.atomic(_store_path)
 def reopen_todo(league_id: str, todo_id: int) -> bool:
-    """The user rejects a "Likely Resolved" proposal — back to active, proposal cleared."""
+    """The user rejects a "Likely Resolved" proposal — back to active, proposal cleared
+    from the live slot but KEPT in `proposals`, stamped rejected.
+
+    This is the one moment in this app where a human overrules a panel conclusion, and
+    it used to erase itself: clearing resolution_reason left an entry byte-identical to
+    one that was never proposed resolved at all, so neither the claim nor the rejection
+    of it survived. The pending proposal is closed out rather than deleted -- the same
+    "archived, never destroyed" rule this module states for resolved/dismissed items."""
     entries = _load(league_id)
     entry = _find(entries, todo_id)
     if not entry or entry.get("status") not in ACTIVE_STATUSES:
         return False
+    was_proposed = entry.get("status") == "likely_resolved"
     entry["status"] = "active"
     entry["resolution_reason"] = ""
+    if was_proposed:
+        _close_pending_proposal(entry, "rejected")
     _save(league_id, entries)
     return True
 
 
+@store_io.atomic(_store_path)
 def resolve_todo(league_id: str, todo_id: int, reason: Optional[str] = None) -> bool:
     """User confirms an objective is actually finished — from "active" directly (they
     just know it's done) or from "likely_resolved" (confirming the bot's proposal, in
@@ -168,16 +220,20 @@ def resolve_todo(league_id: str, todo_id: int, reason: Optional[str] = None) -> 
     entry = _find(entries, todo_id)
     if not entry or entry.get("status") not in ACTIVE_STATUSES:
         return False
+    was_proposed = entry.get("status") == "likely_resolved"
     entry["status"] = "resolved"
     if reason and reason.strip():
         entry["resolution_reason"] = reason.strip()
     elif not entry.get("resolution_reason"):
         entry["resolution_reason"] = "Marked done by user"
     entry["resolution_date"] = datetime.now().strftime("%Y-%m-%d")
+    if was_proposed:
+        _close_pending_proposal(entry, "accepted")
     _save(league_id, entries)
     return True
 
 
+@store_io.atomic(_store_path)
 def dismiss_todo(league_id: str, todo_id: int, reason: str = "Dismissed by user") -> bool:
     """User calls off an objective without it ever being 'done' (no longer relevant,
     was a bad idea, overtaken by events) — still archived with a reason, not deleted."""
@@ -185,13 +241,21 @@ def dismiss_todo(league_id: str, todo_id: int, reason: str = "Dismissed by user"
     entry = _find(entries, todo_id)
     if not entry or entry.get("status") not in ACTIVE_STATUSES:
         return False
+    was_proposed = entry.get("status") == "likely_resolved"
     entry["status"] = "dismissed"
     entry["resolution_reason"] = reason.strip() or "Dismissed by user"
+    if was_proposed:
+        # Dismissing an item the panel proposed as DONE is not the same as accepting
+        # that proposal -- the user is closing it as no-longer-relevant, which is a
+        # different claim about the world. Recorded as its own outcome, never folded
+        # into "accepted".
+        _close_pending_proposal(entry, "superseded_by_dismissal")
     entry["resolution_date"] = datetime.now().strftime("%Y-%m-%d")
     _save(league_id, entries)
     return True
 
 
+@store_io.atomic(_store_path)
 def delete_todo(league_id: str, todo_id: int) -> bool:
     """Full erasure — distinct from resolve/dismiss, which archive (kept for reference,
     with a reason/date) rather than remove. This actually drops the entry from the

@@ -46,12 +46,63 @@ class BotConfigTests(unittest.TestCase):
         bc.reset_role_providers()
         self.assertEqual(bc.load_role_providers(), bc.DEFAULT_ROLE_PROVIDERS)
 
-    def test_default_role_providers_actually_matches_role_info(self):
-        # The reset button's whole promise depends on these never drifting apart.
-        for role in bc.ROLES:
-            self.assertEqual(bc.DEFAULT_ROLE_PROVIDERS[role], bc.ROLE_INFO[role]["recommended"])
+    def test_the_default_assignment_is_an_openly_arbitrary_deal_not_a_vendor_claim(self):
+        """INVERTS a test that asserted DEFAULT_ROLE_PROVIDERS matched ROLE_INFO's per-role
+        `recommended` field. That field is gone, and its removal is the point.
 
-    # -- role names ---------------------------------------------------------------------------
+        Measured: the four hand-justified picks (quant->claude, beat->gemini,
+        contrarian->openai, moderator->claude) are EXACTLY what cycling PROVIDERS in
+        declaration order across ROLES produces. They were arbitrary first and rationalised
+        afterwards -- which is why three of the four `why` strings argued for something other
+        than the vendor attached to them, and why one of them (beat) had its justification
+        retracted in place at d871078 while the recommendation it justified stayed put.
+
+        Nothing in this repository has ever measured which family suits which chair. A
+        recommendation may come back when it carries the benchmark run that produced it; until
+        then the assignment is a stated-arbitrary deal and this test holds it to that."""
+        cycled = {role: bc.PROVIDERS[i % len(bc.PROVIDERS)] for i, role in enumerate(bc.ROLES)}
+        self.assertEqual(bc.DEFAULT_ROLE_PROVIDERS, cycled)
+        for role in bc.ROLES:
+            self.assertNotIn("recommended", bc.ROLE_INFO[role],
+                             "a per-role vendor recommendation came back -- it may, but only "
+                             "with the measurement that supports it (see ASSIGNMENT_RULE)")
+            self.assertNotIn("why", bc.ROLE_INFO[role])
+
+    def test_a_single_key_user_gets_every_chair_rather_than_one(self):
+        """The defect this replaced, measured against the old hardcoded defaults: a Gemini-only
+        or OpenAI-only user got 1 of 4 chairs, and in both cases the dead one was the MODERATOR
+        -- the chair that writes the verdict, the action item, the to-do directives and the
+        source findings."""
+        for only in bc.PROVIDERS:
+            with self.subTest(only=only):
+                assignment = bc.default_role_providers([only])
+                self.assertEqual(set(assignment.values()), {only})
+                self.assertEqual(len(assignment), len(bc.ROLES))
+
+    def test_a_three_key_user_sees_exactly_what_they_saw_before(self):
+        """The repair is free for anyone already set up: the keys-derived rule reproduces the
+        previous shipped assignment when all three keys are present."""
+        self.assertEqual(bc.default_role_providers(), 
+                         {"quant": "claude", "beat": "gemini",
+                          "contrarian": "openai", "moderator": "claude"})
+
+    def test_two_keys_deal_across_both_rather_than_stranding_a_chair(self):
+        assignment = bc.default_role_providers(["claude", "openai"])
+        self.assertEqual(set(assignment.values()), {"claude", "openai"})
+
+    def test_an_unknown_or_empty_provider_set_falls_back_rather_than_returning_nothing(self):
+        """A config screen still has to render a selectable value before any key exists, and an
+        empty assignment would be a different kind of lie than an unreachable one."""
+        self.assertEqual(bc.default_role_providers([]), bc.DEFAULT_ROLE_PROVIDERS)
+        self.assertEqual(bc.default_role_providers(["nosuchvendor"]), bc.DEFAULT_ROLE_PROVIDERS)
+
+    def test_a_saved_choice_still_wins_even_when_its_key_is_missing(self):
+        """`available` fills gaps; it does not overrule the user. Someone who deliberately
+        pointed a chair at a provider they are about to add a key for should not find the app
+        has quietly moved it."""
+        bc.set_role_provider("quant", "openai")
+        self.assertEqual(bc.load_role_providers(["claude"])["quant"], "openai")
+        self.assertEqual(bc.load_role_providers(["claude"])["beat"], "claude")
 
     def test_no_names_saved_returns_default_labels(self):
         names = bc.load_role_names()

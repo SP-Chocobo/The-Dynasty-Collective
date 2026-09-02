@@ -105,3 +105,31 @@ class MockDraftBoardComponentTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class StalenessAnnotationReachesBothDebateSurfaces(unittest.TestCase):
+    """#101's named-consumer half.
+
+    The standing absence ruling is annotate AND name a consumer, because an annotation nothing
+    reads is worse than a discard -- it looks handled. pick_debate.staleness_note is that
+    annotation, and app.py is its only reader. If a future edit drops either call the note
+    becomes a computed-and-dropped string, which is the class #57 and #119 already document.
+
+    Structural rather than behavioural because app.py is a Streamlit script that cannot be
+    imported and driven under test -- the same constraint every other wiring check in this
+    file works within.
+    """
+
+    def test_both_debate_render_sites_consult_the_staleness_note(self):
+        calls = _APP_SOURCE.count("pick_debate.staleness_note(")
+        self.assertEqual(calls, 2, (
+            "expected the Draft Room and Mock Draft debate panels each to annotate a stale "
+            f"result; found {calls} call site(s). A render path that shows a stored debate "
+            "without consulting it presents an out-of-date panel as current."))
+
+    def test_a_stale_result_is_warned_about_rather_than_withheld(self):
+        # Annotate, never discard: the note must reach a visible warning, not gate the render.
+        for guard in ("if mock_stale:", "if debate_stale:"):
+            self.assertIn(guard, _APP_SOURCE)
+        self.assertIn("st.warning(mock_stale)", _APP_SOURCE)
+        self.assertIn("st.warning(debate_stale)", _APP_SOURCE)

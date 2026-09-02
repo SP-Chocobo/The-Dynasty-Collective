@@ -1,0 +1,31 @@
+{
+  "_comment": "Declared input set for this commit's engine measurements -- see baseline_manifest.py. Regenerate with `python3 baseline_manifest.py --write` and commit the result ALONGSIDE the data change that caused it; a manifest updated on its own is a hash that agrees with whatever is on one machine.",
+  "directories": [
+    "data/baseline",
+    "data/projections/_global"
+  ],
+  "files": {
+    "data/baseline/baseline_provenance.json": "c85802b2d710266cc05eb7bc43e1a97f85f407f3befcbf923343f196b04e3ffe",
+    "data/baseline/external/dynastyprocess/picks.csv": "c601211633701b5d1e2eaf4086c46766ea7628f092e965d8bf1d124467161a3a",
+    "data/baseline/external/dynastyprocess/players.csv": "b2825adbbb9753501472b0980497f0736b7a204cb8a7d2fe2a33db4c2618a0ab",
+    "data/baseline/external/espn/idp_redraft_rankings.csv": "8078f213f203cbcb464572bba2eb3a1029f8b921276588c67abe33ec96e976b7",
+    "data/baseline/external/fantasypros/best_ball_rankings.csv": "529d277d594bd1dc131b45ba7cab03210bf1758aa7d5db566bad5683af2cede6",
+    "data/baseline/external/fantasypros/dynasty_ppr_rankings.csv": "e23c5f5267c9fa78cd3633a32dad7348a75662cce81b075ddb4708b7d1863208",
+    "data/baseline/external/fantasypros/idp_redraft_rankings.csv": "0efa9b6828b2e2e9d11f562df9540907144434423ac4c2413c605ed15b785cf9",
+    "data/baseline/external/keeptradecut/dynasty_superflex_halfppr.csv": "dba59af3a336e58e97fe48e30ab30c6f262b449a124c124b7b8005592a220edf",
+    "data/baseline/rankings/dynasty_kicker_rankings.csv": "ad132634a21e708b86a4cf10c787a8e80461540c762961096e3190bd47142bea",
+    "data/baseline/rankings/dynasty_ppr_rankings.csv": "be7f975cc050323a8a555e33dad65a8adcd542ea54fb5bb63ad8b02e8b4dbd6a",
+    "data/baseline/rankings/dynasty_ppr_superflex_rankings.csv": "8502093c6f8b9bde83839c6f81696914f97f3044729a689335a6e484826d9b20",
+    "data/baseline/rankings/dynasty_superflex_rankings.csv": "6606e1b17135551fa68613fc548158241383c17796876193a20c06cbdb1303b4",
+    "data/baseline/rankings/dynasty_te_premium_superflex_rankings.csv": "a25e43a733b6c7f61d06101cf32e78f9af55843f8eb4fcd396476f7853c015d8",
+    "data/baseline/rankings/fantasy_football_dynasty_rankings.csv": "953bbde6b849f5e69718bf5c78661335e618703048fbf8274979bd47e3a692cf",
+    "data/baseline/rankings/ppr_idp_rankings.corrected.csv": "08b3451f59961e2880f4b111a0bb7b0939545ace51b04dfae022463984748690",
+    "data/baseline/rankings/redraft_dst_rankings.csv": "3a8449df75b2d532343aba610f192b3a48218871bda260fbc5d5dad5769b9ed7",
+    "data/baseline/rankings/sleeper_dst_projections.csv": "85b70a4a123502a1b7c5e7fed8d94c09bc4f78e12e219606dcffb5991d849627",
+    "data/baseline/rankings/sleeper_kicker_projections.csv": "845e78f8b576dfd5fd2dd2fe1875065e9ab9c20f3308a7cf04a7236adef13847",
+    "data/baseline/rankings/superflex_idp_rankings.corrected.csv": "38c98fc1ed4afc473772252aa2948313299f6ced83c84f3cbca9594e276b22e1",
+    "data/baseline/rankings/te_premium_dynasty_rankings.csv": "28e72f93dc4f9e5195f1bba517cf5912d7a195e6c526d7f734c5387380deb512",
+    "data/baseline/sleeper_projection_provenance.json": "d2d1265b74aac160d5c78f5438e938a603e81550f1e984fea9d7aff9916d9949",
+    "data/baseline/trade_value/dynasty_ppr_trade_value_chart.csv": "0bab30ee0b4e2c394a752158d5bfe704064b489bcb65719710ed7ff19b7e46c8"
+  }
+}

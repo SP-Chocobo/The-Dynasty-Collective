@@ -160,10 +160,12 @@ asserted in a docstring.
 
 from __future__ import annotations
 
+import collections
 from typing import Optional
 
 import pandas as pd
 
+import content_hash
 import lineup_optimizer as lo
 from data_merger import DataMerger, name_key, normalize_name
 from player_universe import FLEX_SLOT_POSITIONS, FANTASY_POSITIONS, league_usable_positions, player_eligible_positions, player_name, player_position, score_projection
@@ -321,8 +323,27 @@ UPSIDE_GROWTH_WEIGHT = 0.5
 CONFIDENCE_BY_SOURCE = {
     "points_vor_draftsharks": 80.0,
     "points_vor_sleeper_extrapolated": 60.0,
+    "points_vor_sleeper_seeded": 50.0,
     "position_relative_trade_value_vor": 35.0,
 }
+
+# The committed baseline CSVs whose points are a season total TRANSCRIBED from a specific
+# league's own Sleeper display (see sleeper_client.build_baseline_projection_rows and
+# data/baseline/sleeper_projection_provenance.json) -- not Draft Sharks' season-long
+# modeling, and not this module's own points_vor_sleeper_extrapolated path either (that one
+# only ever fires for a LIVE Sleeper feed scored against THIS league's real settings; see
+# TheBaselineIsScoringInertTests for the confirmed fact that nothing here re-scores these
+# rows for any league). Every row carrying a "projection" used to be labeled
+# points_vor_draftsharks unconditionally, which was simply false for these two files' 69
+# rows (37 K + 32 DEF on the committed baseline) -- confirmed by cross-referencing every
+# board row's bpa_source against the source_file it actually came from.
+#
+# Given CONFIDENCE_BY_SOURCE's own stated confidence tier: below Draft Sharks (80.0, a
+# dedicated cross-league projection methodology) and below sleeper_extrapolated (60.0, which
+# at least scores against the ACTUAL league being drafted) -- these are real season
+# projections, but fixed to whichever unrelated league's scoring happened to produce them,
+# and cannot adapt to the league actually being drafted the way either of those two can.
+KDST_SEEDED_SOURCE_FILES = {"sleeper_kicker_projections.csv", "sleeper_dst_projections.csv"}
 
 
 def starter_slot_counts(roster_positions: list[str]) -> dict[str, float]:
@@ -382,8 +403,10 @@ def _percentile_map(values: pd.Series) -> pd.Series:
 
 def _drafted_counts_by_position(picks: list[dict], players_db: dict[str, dict]) -> dict[str, int]:
     """How many picks, league-wide (every roster, not just one), have landed at each fantasy
-    position so far -- what replacement_levels needs to know REMAINING demand, not static
-    league-wide demand (see module docstring's replacement-level section)."""
+    position so far. A plain census -- it is NOT remaining demand and must not be subtracted
+    from league-wide slot capacity to produce one (see remaining_starter_demand for why that
+    subtraction is wrong). Still the right number for anything that genuinely wants "how many
+    of these have gone", e.g. positional-run detection."""
     counts: dict[str, int] = {}
     for pick in picks:
         info = players_db.get(str(pick.get("player_id")))
@@ -393,6 +416,97 @@ def _drafted_counts_by_position(picks: list[dict], players_db: dict[str, dict]) 
         if position:
             counts[position] = counts.get(position, 0) + 1
     return counts
+
+
+def team_filled_by_position(
+    picks: list[dict], players_db: dict[str, dict],
+) -> dict[str, dict[str, int]]:
+    """roster_id -> position -> how many that ONE roster has taken there. The per-team census
+    remaining_starter_demand is built from, and the generalisation of _team_starters_filled
+    (which answers the same question for a single roster and now delegates here, so there is
+    one definition of "what has this team taken" rather than two)."""
+    filled: dict[str, dict[str, int]] = {}
+    for pick in picks:
+        info = players_db.get(str(pick.get("player_id")))
+        if not info:
+            continue
+        position = player_position(info)
+        if not position:
+            continue
+        roster = filled.setdefault(str(pick.get("roster_id")), {})
+        roster[position] = roster.get(position, 0) + 1
+    return filled
+
+
+def remaining_starter_demand(
+    roster_positions: list[str], num_teams: int, picks: list[dict], players_db: dict[str, dict],
+) -> dict[str, float]:
+    """How many starting slots at each position are STILL UNFILLED across the league --
+    summed per team, never subtracted league-wide.
+
+        sum over teams of max(starter_slot_counts[position] - that team's own picks there, 0)
+
+    EXACT and BOUNDED. It is computed entirely from roster_positions and the observed picks;
+    it carries no prior, no estimate and no behavioural claim. It is bounded in
+    [0, num_teams x slots], is monotone non-increasing as picks accumulate, reaches exactly
+    zero when every team has filled its slots, and is invariant to the ORDER the picks
+    arrived in. Those properties are what make it usable as the domain test for a valuation
+    anchor -- see replacement_levels.
+
+    WHY PER TEAM. The previous model computed `num_teams x slots - drafted_league_wide`, and
+    that is not the same quantity, because max(., 0) does not distribute over a sum: one team
+    hoarding at a position silently cancelled another team's unmet need at the same position.
+    Measured on six completed 240-pick boards, the league-wide form declared a position
+    exhausted 2.0 rounds early on average, ran as far as -71 (a "demand" that cannot exist),
+    and for four board-positions declared exhaustion for a position that never satisfied its
+    starter demand at all. The pathological case states it plainest: one team taking twelve
+    quarterbacks reads as 12 - 12 = 0, "QB satisfied", while eleven teams still have none.
+
+    TEAMS WITH NO PICKS YET count as needing all of their starters, which is correct for the
+    case this actually runs in -- a live draft where a team simply has not reached its first
+    selection. It is also exactly what the league-wide form implied, so nothing changes for a
+    draft observed from its own beginning.
+
+    ROSTER UNIVERSE. Because this makes a per-team claim, it is only meaningful when the pick
+    history belongs to the league being modelled. A history carrying more distinct rosters
+    than the league has teams did not come from this league, and is refused rather than
+    modelled -- the league-wide form could not detect that at all, since it only ever summed a
+    count. See compute_draft_board's `demand_picks` for the one caller that supplies a
+    separate history, and why an EMPTY one is well defined while a foreign one is not."""
+    slot_counts = starter_slot_counts(roster_positions)
+    filled = team_filled_by_position(picks, players_db)
+    if len(filled) > max(num_teams, 0):
+        raise ValueError(
+            f"demand history covers {len(filled)} rosters but the league has {num_teams} teams; "
+            "per-team starter demand cannot be computed from a foreign roster universe"
+        )
+    rosters = list(filled.values()) + [{}] * (num_teams - len(filled))
+    return {
+        position: sum(max(slot_counts.get(position, 0.0) - roster.get(position, 0), 0.0)
+                      for roster in rosters)
+        for position in FANTASY_POSITIONS
+    }
+
+
+def remaining_draft_capacity(
+    roster_positions: list[str], num_teams: int, picks: list[dict],
+) -> float:
+    """How many draft picks the league still has to spend, summed per team:
+
+        sum over teams of max(draftable_slots_per_team - that team's picks so far, 0)
+
+    EXACT and BOUNDED, reaching exactly zero when every roster is full. Counts EVERY pick a
+    team has made, including one spent on a position this league cannot start -- that pick
+    still consumed a roster spot, and excluding it would assert it never happened. (The
+    previous accounting excluded exactly those picks from the count while still counting their
+    slots in the total, so it believed the league had more picks left than it did.)"""
+    per_team = draftable_slots_per_team(roster_positions)
+    made: dict[str, int] = {}
+    for pick in picks:
+        roster = str(pick.get("roster_id"))
+        made[roster] = made.get(roster, 0) + 1
+    counts = list(made.values()) + [0] * max(num_teams - len(made), 0)
+    return float(sum(max(per_team - n, 0) for n in counts))
 
 
 def _rookie_lookup(merger: DataMerger) -> dict[tuple[str, str], bool]:
@@ -428,11 +542,33 @@ def build_available_pool(
     scoring_settings: Optional[dict] = None,
     pool_scope: str = "all",
 ) -> pd.DataFrame:
-    """One row per undrafted, fantasy-relevant player Draft Sharks actually has a value
-    for -- joined from Sleeper's player_id-keyed database (drafts speak player_id, Draft
-    Sharks speaks name) the same way player_universe.py already bridges the two elsewhere
-    in this app. A player with no Draft Sharks match is dropped, not scored at 0 -- there's
-    no honest BPA to rank them by, same "don't fabricate a number" rule as everywhere else.
+    """One row per undrafted, fantasy-relevant player this app has a real number for --
+    joined from Sleeper's player_id-keyed database (drafts speak player_id, the ranking
+    sources speak name) the same way player_universe.py already bridges the two elsewhere
+    in this app. A player with no usable number at all is dropped, not scored at 0 --
+    there's no honest BPA to rank them by, same "don't fabricate a number" rule as
+    everywhere else.
+
+    "A real number" means a season points projection OR a trade value. It used to mean a
+    trade value alone, which was equivalent right up until points started arriving from a
+    source that publishes no trade values (league-scored Sleeper projections -- see
+    sleeper_client.build_baseline_projection_rows). After that the old rule silently
+    conflated two different situations: "nothing is known about this player" and "we have
+    real league-scored points, but one vendor's trade-value chart stopped early."
+
+    Measured before the change, the second case was doing real damage at K/DEF:
+      - Supply capped at 13 of 37 kickers and 13 of 32 defenses, with NO backfill: those
+        13 were a permanent allowlist, so drafting them emptied the position to zero
+        while real, projected players sat unused. A 12-team league where two managers
+        take a second defense for bye/matchup coverage exhausts the position outright.
+      - The admitted 13 were not the TOP 13 -- they were a vendor subset scattered
+        through the field (Sleeper's K4 and DEF8 were both excluded while lower-projected
+        players were admitted), so replacement level was computed on a distorted set and
+        overstated the best K/DEF's VOR by ~45%.
+    Widening the rule adds ZERO players at QB/RB/WR/TE (measured): Draft Sharks publishes
+    a trade value for every offensive player it projects, so the two conditions are still
+    equivalent there. The whole effect is confined to positions where points now arrive
+    independently of a trade-value chart.
 
     sleeper_projections (player_id -> raw stat category -> projected value, from
     SleeperClient.get_weekly_projections) and scoring_settings (this league's real Sleeper
@@ -478,7 +614,9 @@ def build_available_pool(
             if pool_scope == "veterans_only" and is_rookie:
                 continue
         match = merger.merge_player(name, position=position, team=info.get("team"))
-        if not match.get("matched") or match.get("trade_value") is None:
+        if not match.get("matched"):
+            continue
+        if match.get("trade_value") is None and match.get("projection") is None:
             continue
         sleeper_points = None
         if sleeper_projections is not None and scoring_settings is not None:
@@ -501,13 +639,50 @@ def build_available_pool(
             "projection": match.get("projection"),
             "proj_3yr": match.get("proj_3yr"),
             "sleeper_points": sleeper_points,
+            # Which committed file this row's projection actually came from -- not used for
+            # anything about the player's VALUE, only so compute_draft_board can label bpa_source
+            # honestly instead of assuming every non-live-sync "projection" came from Draft
+            # Sharks (see KDST_SEEDED_SOURCE_FILES).
+            "source_file": match.get("source_file"),
+            # Which canonical row this player's numbers came from. Not a value, not displayed --
+            # it exists so the pool can assert it never prices two different players off one
+            # row (see the injectivity pass below), and so a caller can trace a pool row back
+            # to the record it was joined from.
+            "_canonical_key": match.get("match_canonical_key"),
+            "_match_path": match.get("match_path"),
+            "_match_verified": match.get("match_verified"),
         })
     if not rows:
         return pd.DataFrame(columns=[
             "player_id", "name", "position", "team", "injury_status", "trade_value",
-            "projection", "proj_3yr", "sleeper_points", "bpa",
+            "projection", "proj_3yr", "sleeper_points", "source_file", "bpa",
+            "_canonical_key", "_match_path", "_match_verified",
         ])
-    return pd.DataFrame(rows)
+    return _drop_contested_identities(pd.DataFrame(rows))
+
+
+def _drop_contested_identities(pool: pd.DataFrame) -> pd.DataFrame:
+    """Two different Sleeper players resolving onto ONE canonical record is a contested
+    identity, and at least one of them is a misidentification. Nothing here can tell which, so
+    neither is priced -- declining is the only honest outcome, and it is the same rule this
+    module already applies everywhere else absence turns up.
+
+    Dropping BOTH costs the real player his row, which is a genuine loss and is the point: a
+    phantom duplicate is not a local error. It is a second copy of a real player's points at
+    his position, so it moves that position's replacement RANK -- a league-level quantity every
+    player at that position is measured against. Measured before the identity guard landed:
+    +1 to +8 real points of baseline error, cutting top-of-position VOR by 2-5%, and unbounded
+    in principle depending on where in the curve the duplicate falls. Silently pricing two
+    players off one row trades a visible missing row for an invisible wrong anchor.
+    """
+    if pool.empty or "_canonical_key" not in pool.columns:
+        return pool
+    keyed = pool["_canonical_key"].map(lambda k: k if isinstance(k, tuple) else None)
+    counts = keyed.value_counts()
+    contested = {k for k, n in counts.items() if n > 1}
+    if not contested:
+        return pool
+    return pool[~keyed.isin(contested)].reset_index(drop=True)
 
 
 def qb_startable_floor(merger: DataMerger) -> Optional[float]:
@@ -531,22 +706,37 @@ def qb_startable_floor(merger: DataMerger) -> Optional[float]:
 
 def replacement_levels(
     pool: pd.DataFrame, value_col: str, roster_positions: list[str], num_teams: int,
-    drafted_counts: Optional[dict[str, int]] = None,
+    remaining_demand: Optional[dict[str, float]] = None,
     startable_floors: Optional[dict[str, float]] = None,
 ) -> dict[str, float]:
-    """Per position, this pool's value_col at the player currently sitting at "replacement
-    rank" within the REMAINING pool -- not the original full-field rank. The rank target is
-    league-wide demand for this position (num_teams x its starter_slot_counts share) MINUS
-    however many have already been drafted league-wide (drafted_counts) -- REMAINING demand,
-    not static demand. That's what makes this genuinely dynamic in the right direction: drain
-    a position past its real demand and the target collapses to 1 (replacement = the best
-    player still on the board), correctly driving everyone left there toward ~0 VOR, instead
-    of the target staying fixed and replacement level collapsing toward the bottom of an
-    ever-thinning pool as an artifact of scarcity that no longer actually exists (a real bug
-    the first pass had -- see module docstring). drafted_counts defaults to "nobody drafted
-    yet" when omitted, which recovers the original static behavior for callers (this
-    module's own unit tests) that only care about the pool-shape math in isolation, not a
-    live draft's remaining-demand state.
+    """Per position, this pool's value_col at the player sitting at replacement rank within
+    the REMAINING pool. The rank target is remaining_starter_demand -- how many starting slots
+    at that position are still unfilled ACROSS THE LEAGUE, summed per team. remaining_demand
+    defaults to "nobody has drafted yet" (full league-wide slot capacity) when omitted, which
+    is the right anchor for a caller that wants the pre-draft level rather than a live draft's
+    state.
+
+    DOMAIN. This is defined only while a position has at least one whole starting slot still
+    unfilled. Below that -- remaining demand under 1, or no remaining player clearing a
+    startability floor -- the position's key is OMITTED, and callers must read absence as
+    "no starter-demand replacement exists here", never as zero and never as rank 1.
+
+    That omission replaces a clamp, and the clamp was the defect. Ranks used to be floored at
+    1, so "no starter slot creates demand here any more" and "one slot still needs filling"
+    produced the identical rank and therefore the identical level -- and at rank 1 the level
+    resolves to THE BEST PLAYER STILL ON THE BOARD, which asserts that the scarcest thing left
+    at that position is the freely available alternative. That is backwards, and it put every
+    remaining player at or below replacement by construction: measured on a real 12x20 board,
+    pool-wide maximum VOR reached exactly 0.0 at pick 108 and stayed there for the remaining
+    55% of the draft, taking bpa with it.
+
+    An earlier docstring here described that collapse as correct ("drain a position past its
+    real demand and the target collapses to 1 ... correctly driving everyone left there toward
+    ~0 VOR"). It is not correct, and the same audit found the claim of dynamism overstated
+    too: while demand stays positive and picks come off the top, rank shrinkage and pool drain
+    cancel exactly, so the level is algebraically identical to the static pre-draft one
+    (measured: identical at 19 of 19 sample points for five of six positions across all 240
+    picks). The real behaviour is a fixed anchor with a domain, which is what this now says.
 
     An extra flat per-team "bench QB demand" term for superflex leagues was tried and reverted
     here (see git history) -- real Draft Sharks QB projections have a genuine CLIFF around
@@ -575,8 +765,11 @@ def replacement_levels(
 
     Recomputed fresh every time this module is asked for a board, never cached across
     picks."""
-    slot_counts = starter_slot_counts(roster_positions)
-    drafted = drafted_counts or {}
+    demand = (
+        remaining_demand if remaining_demand is not None
+        else {p: num_teams * starter_slot_counts(roster_positions).get(p, 0.0)
+              for p in FANTASY_POSITIONS}
+    )
     levels: dict[str, float] = {}
     # player_id tiebreaker + kind="stable" -- see compute_draft_board's own sort_values calls
     # for the full reasoning (input-order-independent tiebreaking among exact ties). Only
@@ -593,31 +786,401 @@ def replacement_levels(
             continue
         floor = (startable_floors or {}).get(position)
         if floor is not None:
-            rank = max(int((at_pos[value_col] >= floor).sum()), 1)
+            # No remaining player clears the startability threshold -> there is no startable
+            # replacement at this position, which is a different fact from "the best one left
+            # is the replacement". Declining here closes the second, independent copy of the
+            # >= 1 clamp that used to live on this branch.
+            rank = int((at_pos[value_col] >= floor).sum()) or None
         else:
-            remaining_demand = max(num_teams * slot_counts.get(position, 0) - drafted.get(position, 0), 0)
-            rank = max(1, round(remaining_demand))
+            rank = _remaining_demand_rank(position, demand)
+        if rank is None:
+            continue  # outside the domain -- see this function's docstring
         idx = min(rank - 1, len(at_pos) - 1)
         levels[position] = float(at_pos.iloc[idx][value_col])
     return levels
+
+
+# How far below a whole starting slot a demand may sit and still count as one whole slot.
+# Not a tuning knob: remaining demand is a sum of integers and k/num_teams flex shares, so two
+# genuinely different demands are at least 1/32 apart even in the largest league, while the
+# float error accumulated across those terms is ~1e-15. Any value in that six-orders-of-
+# magnitude gap gives the identical answer. See _remaining_demand_rank's own docstring for the
+# measurement that made this necessary.
+DEMAND_WHOLE_SLOT_TOLERANCE = 1e-9
+
+
+def _remaining_demand_rank(
+    position: str, remaining_demand: dict[str, float],
+) -> Optional[int]:
+    """How many players deep at `position` still carry unfilled starter demand -- the plain
+    (non-startable-floor) half of replacement_levels' rank math, factored out so
+    replacement_ranks() below reuses the identical rule rather than restating it.
+
+    None, never 1, when less than one whole starting slot is still unfilled. A demand of 0.7
+    is not a demand for one more player, and rounding it up to rank 1 is exactly the
+    conflation this returns None to avoid -- see replacement_levels' own docstring.
+
+    The comparison carries a tolerance because remaining_starter_demand accumulates flex
+    SHARES -- 1/3 and 2/3 of a slot per team -- so a demand that is mathematically exactly one
+    whole slot arrives one ULP below it. Written as the bare `demand < 1`, that put a real,
+    unfilled starting slot OUTSIDE the domain. Measured on a real 12x20 mock: TE demand from
+    round 11 onward is 0.9999999999999998, and by that point every other position's demand is
+    genuinely 0 -- so replacement_levels returned an empty dict and the board could price
+    nothing at all. 102 of that mock's 240 auto-drafted picks (42.5%) were made from a top row
+    carrying no value, with rounds 11-20 decided entirely on the deterministic player_id
+    tiebreak.
+
+    The tolerance is DERIVED, not tuned. Demand is a sum of integers and k/num_teams shares, so
+    two genuinely different demands differ by at least 1/num_teams: 0.083 in a 12-team league,
+    no smaller than 1/32 = 0.031 in the largest league anyone fields. Accumulated double
+    error over a few dozen such terms is ~1e-15. 1e-9 sits about six orders below the smallest
+    real distinction and six above the largest plausible error, so every value in that gap
+    gives identical answers.
+
+    The `int(round(...))` below is deliberately untouched: its rounding boundary is a separate
+    question with its own behaviour, and this repair changes only the domain gate."""
+    demand = remaining_demand.get(position, 0.0)
+    if demand < 1 - DEMAND_WHOLE_SLOT_TOLERANCE:
+        return None
+    return int(round(demand))
+
+
+def replacement_ranks(
+    roster_positions: list[str], num_teams: int,
+    picks: Optional[list[dict]] = None, players_db: Optional[dict[str, dict]] = None,
+) -> dict[str, Optional[int]]:
+    """Per position, the same remaining-demand RANK replacement_levels resolves internally --
+    exposed directly as an integer (not a value threshold against a scored pool), for callers
+    that need "how many players deep at this position still carry real starter-relevant
+    demand" without needing a scored pool at all. Used by pick_synthesis.narrow_candidates to
+    give a position-filtered board view genuine positional depth instead of just its single
+    best player (see that function's own docstring) -- the depth itself is real and
+    league-aware (a thin position stays thin, a deep one stays deep, and it shrinks correctly
+    as that position gets drafted out), it's simply the DISPLAY-facing sibling of the same
+    number replacement_levels already uses for VOR.
+
+    Deliberately does not include the QB startable-floor refinement (see qb_startable_floor/
+    replacement_levels) -- that one only ever nudges VOR's own replacement anchor by a few
+    ranks and needs an actual points-scored pool to evaluate against a threshold; the plain
+    remaining-demand rank alone is already the same real, tested, per-league signal this
+    module relies on everywhere else it doesn't apply.
+
+    None for a position whose starter demand is exhausted -- the same domain
+    replacement_levels declines on, reported the same way. A consumer that wants a display
+    depth for such a position has to choose one deliberately (see
+    pick_synthesis.position_view_depth); it cannot inherit "1" from a clamp that meant
+    something else."""
+    demand = remaining_starter_demand(roster_positions, num_teams, picks or [], players_db or {})
+    return {
+        position: _remaining_demand_rank(position, demand)
+        for position in FANTASY_POSITIONS
+    }
+
+
+def drafted_counts_by_position(picks: list[dict], players_db: dict[str, dict]) -> dict[str, int]:
+    """Public wrapper over _drafted_counts_by_position, for callers outside this module that
+    want a plain league-wide per-position census of what has already been drafted.
+
+    CORRECTION (two claims, both false, both from the same drift): this docstring previously
+    said the counts were "the same … counts replacement_levels itself uses", and named
+    pick_synthesis.narrow_candidates, "via replacement_ranks above", as the caller. Neither
+    holds. Commit 05a4abb removed the drafted_counts parameter from replacement_levels
+    entirely -- it prices replacement off remaining_starter_demand, not off a census -- and
+    replacement_ranks reaches its numbers the same way, not through this wrapper. Nothing
+    outside this module calls this function at all. The wrapper is
+    kept (it is the intended public spelling of a private helper, and a test pins it to that
+    helper exactly), but it is currently unconsumed, and this docstring now says so instead of
+    asserting a consumer relationship the call graph does not contain -- the same honesty
+    data_merger.parse_espn_idp_pdf already applies to itself."""
+    return _drafted_counts_by_position(picks, players_db)
+
+
+# -- draft-horizon consumption: what will still be here when the draft ENDS ---------------
+#
+# replacement_levels answers "what is this position worth over the guy at starter-demand rank
+# RIGHT NOW". That prices replacement at draft day. It is the right question for a position
+# you can only acquire by drafting, and the wrong one for a position whose replacement is
+# still sitting there when the draft ends -- and the difference is measurable rather than
+# rhetorical. Scored under one real league's settings, the best player still undrafted when
+# the draft ends delivers 98% of a starting defense and 96% of a starting kicker, against 36%
+# of a starting running back. Waiting costs 0.12 pts/week at DEF and 7.53 at RB.
+#
+# Nothing below knows what a kicker is. Every position goes through the identical arithmetic;
+# the split above falls out of each position's own value decay, which is the point.
+
+HORIZON_UNDRAFTED_SLOTS = ("IR",)  # slots a draft doesn't fill, so they aren't draft demand
+# Ranks either side of the horizon to read the floor's error bar across. Sized to the scale
+# of miss a real draft produces: a positional run moves consumption by roughly this much, so
+# it asks "if this room drafts this position a little harder or softer than expected, how far
+# does the floor actually move?" -- which is a question with a very different answer on a
+# cliff than on a plateau.
+HORIZON_SENSITIVITY_WINDOW = 6
+
+
+def draftable_slots_per_team(roster_positions: list[str]) -> int:
+    """How many roster slots a draft actually fills per team. TAXI counts (rookie picks land
+    there); IR does not (nobody drafts onto injured reserve)."""
+    return sum(1 for slot in roster_positions or [] if slot not in HORIZON_UNDRAFTED_SLOTS)
+
+
+def _bench_appetite_rates(
+    pool: pd.DataFrame, value_col: str, roster_positions: list[str], num_teams: int,
+) -> tuple[dict[str, int], dict[str, float]]:
+    """(league-wide demand per position, measured decay rate per MEASURABLE position).
+
+    Split out so positional_bench_appetite and positional_bench_appetite_basis read the same
+    numbers rather than each deriving them -- two computations of one quantity is the
+    concept-duplication this module fights everywhere else.
+    """
+    slot_counts = starter_slot_counts(roster_positions)
+    demands, rates = {}, {}
+    for position in FANTASY_POSITIONS:
+        demand = round(num_teams * slot_counts.get(position, 0))
+        demands[position] = demand
+        if demand < 1:
+            continue
+        values = sorted(
+            pool.loc[pool["position"] == position, value_col].dropna().astype(float),
+            reverse=True,
+        )
+        if len(values) < 2 * demand or values[demand - 1] <= 0:
+            continue  # unmeasurable here; filled in from the mean rate by the caller
+        rates[position] = max(0.0, 1.0 - values[2 * demand - 1] / values[demand - 1])
+    return demands, rates
+
+
+APPETITE_MEASURED = "measured"
+APPETITE_IMPUTED = "imputed"
+APPETITE_UNAVAILABLE = "unavailable"
+
+
+def positional_bench_appetite_basis(
+    pool: pd.DataFrame, value_col: str, roster_positions: list[str], num_teams: int,
+) -> dict[str, str]:
+    """Which of positional_bench_appetite's three outcomes each position actually got.
+
+    The function returns a float for a MEASURED decay rate and a float for an IMPUTED one --
+    the mean of whichever positions could be measured -- and those two are indistinguishable
+    to every consumer. The imputation is a deliberate, documented missing-information rule
+    ("no evidence this one decays differently from average"), and it is the right rule. But
+    unlike time_horizon_adj's neutral 50th-percentile default, which resolves to roughly no
+    opinion, an imputed appetite is a POSITIVE NUMBER that competes for bench capacity against
+    the measured ones.
+
+    Measured on a real 12-team 1QB draft: a position becomes unmeasurable as soon as its pool
+    falls under 2x league demand, which happens to RB by round 3, to DEF by round 7, and to
+    four of six positions by round 10. From round 16 nothing is measurable and the existing
+    all-None path takes over correctly (#62). So the silent window is rounds 3-15 -- most of
+    the draft -- and in its middle two measured positions donate their mean to four others.
+
+    Adversarially bounded: truncating ONLY RB below 2x demand, every other curve identical,
+    moved RB's appetite from 20.29 measured to 3.37 imputed (-83%) and its share of bench
+    capacity from 63.5% to 22.5%. That is a constructed worst case, not a typical error, but it
+    is the size of claim the number can carry with no marker on it.
+
+    OBSERVABLE ONLY. Nothing here changes a value; it reports which kind of number a consumer
+    is holding, the same job replacement_basis does for pricing.
+    """
+    demands, rates = _bench_appetite_rates(pool, value_col, roster_positions, num_teams)
+    out: dict[str, str] = {}
+    for position in FANTASY_POSITIONS:
+        if demands.get(position, 0) < 1:
+            out[position] = APPETITE_UNAVAILABLE      # league starts nobody here
+        elif position in rates:
+            out[position] = APPETITE_MEASURED
+        elif rates:
+            out[position] = APPETITE_IMPUTED
+        else:
+            out[position] = APPETITE_UNAVAILABLE      # nothing measurable anywhere -> None
+    return out
+
+
+def positional_bench_appetite(
+    pool: pd.DataFrame, value_col: str, roster_positions: list[str], num_teams: int,
+) -> dict[str, Optional[float]]:
+    """Relative appetite for drafting DEPTH at each position, derived from that position's own
+    value decay rather than from any belief about the position.
+
+    The reasoning: a team benches a player because the drop from their starter to the next one
+    available is worth owning. Where a position holds its value just past starter demand, its
+    backup is nearly free later and stocking one buys little; where it falls away sharply, the
+    backup is worth a pick. So appetite tracks how much value is LOST across the tier past
+    starter demand -- (1 - retention) -- not how much is retained.
+
+    KNOWN WRONG AT THE TAIL, deliberately left in place. Checked against a real completed
+    12-team superflex dynasty startup: ~52 QBs actually went; this says 80.6. It reads a cliff
+    as depth-hunger, so superflex QB -- demand 22, QB44 holding 8.5% of QB22 -- scores the
+    highest appetite of any position despite having maybe 35 draftable players.
+
+    A replacement was tried and REVERTED: appetite as the share of a position's own total value
+    sitting past starter demand. It fixed QB almost exactly (52.3 vs 52) and broke K and DEF,
+    which it drove from ~15 and ~14 consumed to ~25 each, because a FLAT position necessarily
+    holds a large share of its value past starter demand. Fitting one position's number while
+    inverting two others is overfitting, and the existing tests caught it. Whatever replaces
+    this has to satisfy both ends -- cliff positions and flat ones -- and that needs more than
+    one draft to derive honestly.
+
+    This is a PRIOR either way: expected_positional_consumption hands control to observed picks
+    as soon as the draft produces any, which is what limits the damage in a live draft.
+    A position whose loaded pool can't reach 2x starter demand has no decay to read. It does
+    NOT get 0.0 -- that would assert "this position is never benched", which is a claim, not
+    an absence, and it hands that position's bench picks to whichever positions happened to
+    load deeper (measured: a 40-deep RB pool zeroed RB and drove TE's consumption to 66 of
+    180 picks). Nor does it get a number read off the bottom of the short list, which is the
+    original K/DST defect. It gets the mean rate of the positions that COULD be measured --
+    "no evidence this one decays differently from average" -- the same missing-information
+    rule time_horizon_adj follows for an absent multi-year outlook.
+    """
+    demands, rates = _bench_appetite_rates(pool, value_col, roster_positions, num_teams)
+
+    # NOTHING measurable is a different state from "measurably flat", and the difference is
+    # the whole point of the mean-rate fallback above. With rates empty there is no mean to
+    # fall back TO, and the previous 0.0 default asserted "no position is ever benched" --
+    # precisely the claim-not-an-absence this function's own reasoning rules out. It fires in
+    # exactly the regime that matters: measured, from round 16 on one real 12x20 board and
+    # round 18 on two more, no position has 2x its starter demand still on the board.
+    if not rates:
+        return {
+            position: (0.0 if demands[position] < 1 else None)
+            for position in FANTASY_POSITIONS
+        }
+
+    mean_rate = sum(rates.values()) / len(rates)
+    return {
+        position: demands[position] * rates.get(position, mean_rate) if demands[position] >= 1 else 0.0
+        for position in FANTASY_POSITIONS
+    }
+
+
+def estimated_bench_demand(
+    pool: pd.DataFrame, value_col: str, roster_positions: list[str], num_teams: int,
+    picks: list[dict], players_db: dict[str, dict],
+) -> dict[str, Optional[float]]:
+    """How many further picks at each position are expected to go to BENCH spots -- the
+    INFERRED half of remaining consumption, and the only half that rests on a claim about how
+    rooms draft rather than on what the league's own roster_positions require.
+
+    Bounded above by what the draft can still spend: remaining_draft_capacity minus the
+    starting slots still owed (remaining_starter_demand), split across positions by
+    positional_bench_appetite. Both bounds are exact and both reach zero, so this reaches zero
+    too once rosters fill -- unlike the share-of-remaining-picks model it replaces, which was
+    strictly positive for any position ever drafted and therefore could not express "this
+    position is finished".
+
+    None, position by position, when there is no bench-appetite evidence to split by. An
+    unknown split is not a zero split, and it is not a confident one either; a consumer must
+    render it as absence (see horizon_replacement, which stops claiming a floor).
+
+    NEVER REACHES VALUATION. Nothing on the replacement_levels / VOR / bpa path reads this,
+    by design and by test -- see the module docstring on why a behavioural prior is allowed to
+    inform the debate layer and not the anchor.
+
+    This replaces expected_positional_consumption, which fused this inferred quantity with the
+    exact starter half into a single number that was neither exact nor honest about its
+    uncertainty. Callers that want the total now add the two halves themselves, and can see
+    which one is missing when one is."""
+    starter = remaining_starter_demand(roster_positions, num_teams, picks, players_db)
+    capacity = remaining_draft_capacity(roster_positions, num_teams, picks)
+    bench_capacity = max(capacity - sum(starter.values()), 0.0)
+
+    appetite = positional_bench_appetite(pool, value_col, roster_positions, num_teams)
+    # A single unknown makes the SHARE undefined for every position, not just its own: shares
+    # are normalised against the total, and a total with a hole in it cannot be normalised
+    # against. Reporting the rest as though the split were known would be the same
+    # manufactured confidence at one remove.
+    if any(value is None for value in appetite.values()):
+        return {position: None for position in FANTASY_POSITIONS}
+
+    total = sum(appetite.values())
+    if total <= 0:
+        # Every position measurably holds its value past starter demand, so no position's
+        # decay argues for stocking depth there. A real measured zero, not an absent one.
+        return {position: 0.0 for position in FANTASY_POSITIONS}
+    return {
+        position: bench_capacity * appetite[position] / total
+        for position in FANTASY_POSITIONS
+    }
+
+
+def horizon_replacement(
+    pool: pd.DataFrame, value_col: str, roster_positions: list[str], num_teams: int,
+    picks: Optional[list[dict]] = None, players_db: Optional[dict[str, dict]] = None,
+) -> dict[str, dict]:
+    """Per position, the best player expected to be STILL UNDRAFTED when the draft ends.
+
+    {position: {"rank", "value", "pool_depth", "certain"}} against the CURRENT (undrafted)
+    pool: if this position is expected to lose `n` more players, the best one left is the
+    (n+1)th best still on the board.
+
+    `value` is None and `certain` is False when the horizon rank falls past the end of the
+    loaded pool, and equally when there is no bench-demand evidence to place the rank with. That case is reported as unknown rather than answered with the worst player
+    we happen to have loaded -- the whole reason K/DST were mispriced for so long is that a
+    truncated source's last row got treated as though it were a real replacement level, and
+    a floor read off the bottom of a short list would rebuild that same defect one layer up.
+    Callers must treat value=None as "no opinion", never as zero.
+
+    `sensitivity` is the error bar the floor is worth stating with: how far the floor moves
+    across +/-HORIZON_SENSITIVITY_WINDOW ranks around it. A point estimate is only as good as
+    the curve it sits on, and positions do not share a curve -- measured on real data, +/-6
+    ranks moves DEF by 12 points and QB by 63, because QB falls off a cliff a few ranks past
+    its horizon while DEF is flat all the way down. Consumption is exactly the quantity a
+    positional run shifts by that much, so a floor sitting on a cliff edge is a far weaker
+    claim than one sitting on a plateau, even though both are single numbers. Callers that
+    render a floor should say so when sensitivity is large next to the quantity being claimed
+    (see draft_board_ui._waiting_note).
+
+    The flat positions this whole mechanism was built for are the ones it estimates best,
+    which is not a coincidence: flatness is simultaneously what makes waiting cheap and what
+    makes the cost of waiting precisely measurable.
+    """
+    picks = picks or []
+    players_db = players_db or {}
+    starter = remaining_starter_demand(roster_positions, num_teams, picks, players_db)
+    bench = estimated_bench_demand(pool, value_col, roster_positions, num_teams, picks, players_db)
+
+    out: dict[str, dict] = {}
+    for position in FANTASY_POSITIONS:
+        values = sorted(
+            pool.loc[pool["position"] == position, value_col].dropna().astype(float),
+            reverse=True,
+        )
+        # The exact half alone is a LOWER BOUND on how many more will go: those starting slots
+        # have to be filled, and bench picks land on top of them. rank is reported from that
+        # bound because it is real information, but a floor read off a lower bound would be a
+        # point estimate resting on a number we do not have, so `value` is withheld and
+        # `certain` says so. Absent bench evidence used to resolve to still_to_go = 0, rank 1
+        # and certain=True -- "this position is finished, and here is a confident floor",
+        # neither of which was earned.
+        bench_here = bench.get(position)
+        still_to_go = starter.get(position, 0.0) + (bench_here or 0.0)
+        rank = int(round(still_to_go)) + 1
+        certain = bench_here is not None and 1 <= rank <= len(values)
+        sensitivity = None
+        if certain and values:
+            window = HORIZON_SENSITIVITY_WINDOW
+            high = values[max(rank - window, 1) - 1]
+            low = values[min(rank + window, len(values)) - 1]
+            sensitivity = round(high - low, 2)
+        out[position] = {
+            "rank": rank,
+            "value": values[rank - 1] if certain else None,
+            "pool_depth": len(values),
+            "certain": certain,
+            "sensitivity": sensitivity,
+        }
+    return out
 
 
 def _team_starters_filled(picks: list[dict], players_db: dict[str, dict], roster_id) -> dict[str, int]:
     """How many of THIS roster's picks so far landed at each fantasy position -- the raw
     count, not weighed against slot capacity yet (need_bonus does that separately).
     Bench-vs-starter isn't distinguishable mid-draft (nothing's been assigned to a lineup
-    slot yet), so every pick counts toward "already have one of these" for need purposes."""
-    filled: dict[str, int] = {}
-    for pick in picks:
-        if str(pick.get("roster_id")) != str(roster_id):
-            continue
-        info = players_db.get(str(pick.get("player_id")))
-        if not info:
-            continue
-        position = player_position(info)
-        if position:
-            filled[position] = filled.get(position, 0) + 1
-    return filled
+    slot yet), so every pick counts toward "already have one of these" for need purposes.
+
+    One roster's row out of team_filled_by_position -- the same census
+    remaining_starter_demand sums over every team, deliberately not a second implementation
+    of "what has this team taken"."""
+    return dict(team_filled_by_position(picks, players_db).get(str(roster_id), {}))
 
 
 def _team_roster_players(
@@ -644,6 +1207,39 @@ def _team_roster_players(
         match = merger.merge_player(name, position=player_position(info), team=info.get("team"))
         value = match.get("trade_value")
         if value is None:
+            # He is on the roster and he occupies a slot; we simply cannot PRICE him. Those
+            # are different facts, and dropping him conflates them -- the lineup CONSTRAINT
+            # goes out with the missing value, so eligibility_bonus solves against a roster
+            # one player emptier than it really is.
+            #
+            # ATTEMPTED AND REVERTED: admitting him at value 0.0. It reads like the right
+            # separation -- no value claimed, slot still held -- and it does not work.
+            # optimize_lineup maximises total value, so a zero-value player is always the
+            # first benched and never holds a slot against contention, which is the only
+            # regime where occupancy matters. Measured: a dual DL/LB candidate's
+            # eligibility_bonus was 25.0 with him dropped and 25.0 with him at 0.0, and the
+            # roster-only lineup value was 58.0 either way. Behaviourally identical to
+            # dropping him, so it would have bought nothing but false confidence.
+            #
+            # Converting his projection into trade_value units is the other tempting repair
+            # and is worse: that is precisely the scale contamination ELIGIBILITY_BONUS_MAX
+            # exists to prevent (mean |bpa - trade_value| = 11.7, max divergence 63.0).
+            #
+            # A real repair has to model occupancy INDEPENDENTLY of value, which means
+            # lineup_optimizer, not here. Two viable shapes, neither chosen yet:
+            #   (a) pre-occupied slots -- remove the slot he holds from the assignment rather
+            #       than adding him as a player. Expresses the constraint exactly and invents
+            #       no value, but needs a rule for which slot a dual-eligible player holds.
+            #   (b) decline to answer -- when the roster contains a player who cannot be
+            #       priced, eligibility_bonus has no honest marginal to report, so return no
+            #       opinion instead of a confidently wrong number. Matches the
+            #       missing-information rule this engine follows everywhere else.
+            #
+            # Exposure if left as-is: 339 of 415 IDP rows in the baseline carry no trade
+            # value, and IDP has no offline projections at all, so a live Sleeper feed sends
+            # most of an IDP pool down this path. DL/LB dual listings are graded on the same
+            # rubric, so flexibility is the ONLY thing that dual listing conveys -- and it is
+            # exactly what gets discarded. Pinned by ProjectionOnlyRosterVisibilityTests.
             continue
         players.append({"id": player_id, "value": float(value), "eligible": player_eligible_positions(info)})
     return players
@@ -670,35 +1266,339 @@ def upside_score(row: pd.Series) -> dict:
     growth = 0.0
     season_pct = row.get("_season_proj_pct")
     proj3yr_pct = row.get("_proj3yr_pct")
-    if season_pct is not None and proj3yr_pct is not None:
+    # _has_3yr, exactly as time_horizon_adj gates on it -- the two are the only readers of
+    # this percentile pair and they must agree on what an absent 3yr outlook means. Without
+    # it, a row with real points and no proj_3yr keeps the neutral 50.0 default on the 3yr
+    # side while the season side is a real (and, for such a row, usually LOW) percentile, so
+    # this subtraction returns 50 - season_pct: a growth signal manufactured entirely out of
+    # the missing half, and one that is LARGEST for the worst-projected player.
+    #
+    # Measured on a real 20-round board before this guard: mean growth 24.22 for K and 20.11
+    # for DEF -- neither of which has a 3yr outlook from any committed source -- against
+    # 0.57-1.63 for every position that carries both numbers. Because bpa collapses to 0.00
+    # board-wide once positional demand is exhausted (every position, not just offense),
+    # growth becomes the SOLE ranking term at that point, and the artifact took over the
+    # board outright: rounds 16 and 17 of a 12x20 draft went 100% K/DEF, and the 22-point
+    # kicker sitting last in the remaining pool ranked first overall.
+    #
+    # time_horizon_adj already had this guard (see its own comment for the +6.5 average it
+    # was measured to remove). This function reads the same two columns and did not, which
+    # is the entire defect -- the trigger arrived when K and DST moved onto league-scored
+    # Sleeper projections, which publish points but no multi-year outlook.
+    if row.get("_has_3yr", False) and season_pct is not None and proj3yr_pct is not None:
         growth = max(0.0, proj3yr_pct - season_pct)
     value = round(bpa + UPSIDE_GROWTH_WEIGHT * growth, 2)
     return {"final_score": value, "growth_signal": round(growth, 1), "confidence": _confidence(row.get("bpa_source"))}
 
 
 def _scale_vor_to_bpa(vor: pd.Series) -> pd.Series:
-    """Linear scaling against the single largest VOR gap in the pool -- the fix for
-    percentile-ranking the anchor (see module docstring's ARCHITECTURE section). A player
-    below replacement level (negative VOR) clips to 0, not a negative score: they'd make a
-    roster worse than not drafting anyone there, which the rest of this module's additive,
-    0-100-scale adjustments aren't built to represent as a further negative swing."""
-    reference = vor.max()
-    if reference is None or reference <= 0:
-        return pd.Series(0.0, index=vor.index)
-    return (vor / reference * 100).clip(lower=0, upper=100)
+    """bpa IS vor: real projected points above this position's replacement level. No
+    reference, no rescale, no clip.
+
+    It used to be `clip(vor / max(vor) * 100, 0, 100)`, and both halves of that were defects.
+
+    THE UNIT MOVED. The reference was the largest VOR in the LIVE pool, so it shrank as the
+    pool drained -- 97 -> 72 -> 27 -> 16 -> 1 -> 0 across a real 12x20 draft. Decomposing
+    every player's bpa change into "his own value moved" and "the ruler moved under him", the
+    ruler carried 94.6% of ALL bpa movement. Isaiah Likely, 186 projected points in every
+    single round, read 0.0 -> 50.0 -> 61.5 -> 88.9 -> 0.0. bpa is a player property, and a
+    player property may not move because a DIFFERENT player was drafted.
+
+    THE MEASUREMENT WAS DESTROYED. Clipping at 0 flattened every below-replacement player into
+    the same value as a genuine boundary zero and a degenerate anchor: 141 distinguishable
+    states became 20 at round 4, and 95%+ of all zeros board-wide were real, measured negative
+    VOR. A signed measurement is evidence; a floor is an assertion that the evidence does not
+    exist.
+
+    Why removing the scale rather than choosing a better reference: any max is a property of
+    ONE row (the invariant that forbids it), and measured across every consumer, none requires
+    bpa <= 100 while five read magnitude and need a stable unit. A bounded range is a
+    presentation concern, so the underlying quantity keeps its own unit -- real points, which
+    is what production margin and VOR already speak and what makes the number checkable
+    against a projection by hand.
+
+    NaN still passes through untouched. "His position has no replacement level" (see
+    replacement_levels' domain) is a different statement from "he is below it", and collapsing
+    the two is what let an absent anchor read as a confident zero."""
+    return vor.astype(float)
 
 
-def _records_with_normalized_nan(df: pd.DataFrame, column: str) -> list[dict]:
-    """.to_dict("records") with one column's NaN normalized to real None -- pandas leaves a
-    missing float as NaN (a non-None float, `nan is not None`), not the "missing" convention
-    every consumer of this board (pick_synthesis.py, the Draft Room UI) actually expects.
-    Fixed here, once, at the source, rather than every downstream caller re-guarding against
-    NaN on its own."""
+def _records_with_normalized_nan(df: pd.DataFrame, *columns: str) -> list[dict]:
+    """.to_dict("records") with the named columns' NaN normalized to real None -- pandas
+    leaves a missing float as NaN (a non-None float, `nan is not None`), not the "missing"
+    convention every consumer of this board (pick_synthesis.py, the Draft Room UI) actually
+    expects. Fixed here, once, at the source, rather than every downstream caller re-guarding
+    against NaN on its own."""
     records = df.to_dict("records")
     for record in records:
-        if pd.isna(record.get(column)):
-            record[column] = None
+        for column in columns:
+            if pd.isna(record.get(column)):
+                record[column] = None
     return records
+
+
+def _attach_waiting_cost(
+    scored: pd.DataFrame, pool: pd.DataFrame, roster_positions: list[str], num_teams: int,
+    picks: list[dict], players_db: dict[str, dict],
+) -> None:
+    """Attach horizon_floor and waiting_cost to a scored board, in place.
+
+    waiting_cost = this player's own projected points MINUS the points of the best player at
+    his position expected to still be undrafted when the draft ends (see horizon_replacement).
+    It answers "what does deferring this position actually cost me", in season points, on the
+    same footing for every position.
+
+    OBSERVABLE ONLY. Nothing here feeds universal_value, team_acquisition_value, bpa, or
+    necessity -- team_acquisition_value is computed and rounded before this runs and is
+    byte-identical with these columns present or absent. That separation is deliberate: the
+    raw quantity gets to be measured and argued with before it is allowed to move a decision.
+
+    None (not zero) when horizon_replacement has no confident floor for that position. A
+    position whose loaded pool ends before the horizon has an UNKNOWN waiting cost, and zero
+    would read as "waiting is free" -- the most dangerous possible wrong answer here.
+    """
+    horizon = horizon_replacement(pool, "_points", roster_positions, num_teams, picks, players_db)
+    floors = {position: data["value"] for position, data in horizon.items()}
+    scored["horizon_floor"] = scored["position"].map(floors)
+    scored["horizon_sensitivity"] = scored["position"].map(
+        {position: data["sensitivity"] for position, data in horizon.items()}
+    )
+    # Which KIND of bench-appetite number placed this floor. A measured decay rate and an
+    # imputed one (the mean of whatever could be measured) are the same type and the same
+    # magnitude order, so without this a consumer cannot tell an estimate from an assumption --
+    # and the assumption covers most of a real draft (see positional_bench_appetite_basis).
+    scored["horizon_basis"] = scored["position"].map(
+        positional_bench_appetite_basis(pool, "_points", roster_positions, num_teams)
+    )
+    scored["waiting_cost"] = (
+        scored["projected_points"].astype(float) - scored["horizon_floor"].astype(float)
+    ).round(2)
+
+
+def _derive_points_and_source(pool: pd.DataFrame) -> pd.Series:
+    """Fill _points and bpa_source on a pool frame; returns the has_proj mask.
+
+    Extracted verbatim from compute_draft_board so the pre-draft replacement anchor below can
+    build an IDENTICALLY derived frame instead of a second, drifting copy of this logic --
+    two representations of one concept is exactly the defect class this module already fights.
+    """
+    pool["_points"] = pool["projection"].astype(float)
+    pool["bpa_source"] = "points_vor_draftsharks"
+    # Correct the default for rows whose "projection" didn't come from Draft Sharks at all --
+    # see KDST_SEEDED_SOURCE_FILES for why this exists and what it does and doesn't affect
+    # (a label and a confidence NUMBER, never bpa/universal_value/final_score).
+    if "source_file" in pool.columns:
+        pool.loc[pool["source_file"].isin(KDST_SEEDED_SOURCE_FILES), "bpa_source"] = "points_vor_sleeper_seeded"
+    no_ds_proj = pool["_points"].isna()
+    has_sleeper = pool["sleeper_points"].notna()
+    use_sleeper = no_ds_proj & has_sleeper
+    # Guarded rather than assigned unconditionally: when sleeper_points is entirely absent
+    # (no live sync passed one in), use_sleeper is all-False and the right-hand side
+    # collapses to an empty object-dtype Series, which pandas refuses to assign into an
+    # existing float64 column even though there's nothing to assign -- a real pandas gotcha.
+    if use_sleeper.any():
+        pool.loc[use_sleeper, "_points"] = pool.loc[use_sleeper, "sleeper_points"] * SLEEPER_WEEKLY_TO_SEASON_FACTOR
+        pool.loc[use_sleeper, "bpa_source"] = "points_vor_sleeper_extrapolated"
+
+    has_proj = pool["_points"].notna()
+    pool.loc[~has_proj, "bpa_source"] = "position_relative_trade_value_vor"
+    return has_proj
+
+
+
+# The pre-draft anchor is a PURE FUNCTION of (player universe, league settings) -- it takes no
+# picks argument and cannot vary with draft state. Building it costs a second full pool
+# construction, measured at ~544ms, which roughly doubled board-build time (0.52s -> 0.98s).
+#
+# So it is cached BY CONTENT, never by identity and never by call order. That distinction is
+# the whole safety argument: the memo rejected during this repair's design returned the FIRST
+# level a position was seen with, so its answer depended on which boards had been built before
+# it. This returns the same value for the same inputs and nothing else, which is a
+# pure-function cache rather than state.
+#
+# The danger is a key that MISSES an input: it would serve a stale anchor after the underlying
+# data changed and silently mis-price everything at that position. The key therefore covers
+# every input the anchor can read -- all four merger frames, the players_db content, and every
+# league/valuation argument -- and test_replacement_anchor_boundary asserts, input by input,
+# that changing each one changes the key. Cost measured at ~17ms against a ~544ms build.
+_ANCHOR_FRAMES = ("projections", "trade_values", "external_values", "free_agents")
+ANCHOR_CACHE_ENTRIES = 8
+_ANCHOR_CACHE: "collections.OrderedDict[str, dict[str, float]]" = collections.OrderedDict()
+
+
+def _merger_content_fingerprint(merger) -> str:
+    """Content of every merger frame the pool build can reach, not just the obvious one.
+
+    merge_player resolves against trade_values and external_values as well as projections, so
+    hashing projections alone would leave two inputs able to change under a stable key.
+    """
+    parts = []
+    for name in _ANCHOR_FRAMES:
+        frame = getattr(merger, name, None)
+        if frame is None or len(frame) == 0:
+            parts.append(f"{name}=empty")
+        else:
+            parts.append(f"{name}={int(pd.util.hash_pandas_object(frame, index=True).sum())}")
+    return content_hash.fingerprint(*parts)
+
+
+def _players_db_fingerprint(players_db: dict[str, dict]) -> str:
+    """Every player field the pool build reads -- id, position, eligibility and team."""
+    return content_hash.fingerprint(*(
+        f"{pid}|{(players_db[pid] or {}).get('position')}"
+        f"|{(players_db[pid] or {}).get('team')}"
+        f"|{','.join((players_db[pid] or {}).get('fantasy_positions') or ())}"
+        for pid in sorted(players_db)
+    ))
+
+
+def anchor_cache_key(
+    merger, players_db, usable_positions, roster_positions, num_teams, value_col,
+    sleeper_projections, scoring_settings, pool_scope, startable_floors,
+) -> str:
+    """Every input predraft_replacement_anchor can read, in one fingerprint."""
+    return content_hash.fingerprint(
+        _merger_content_fingerprint(merger),
+        _players_db_fingerprint(players_db),
+        repr(sorted(usable_positions or ())),
+        repr(list(roster_positions or ())),
+        repr(num_teams),
+        repr(value_col),
+        repr(sorted((sleeper_projections or {}).items())) if sleeper_projections else "none",
+        repr(sorted((scoring_settings or {}).items())) if scoring_settings else "none",
+        repr(pool_scope),
+        repr(sorted((startable_floors or {}).items())) if startable_floors else "none",
+    )
+
+
+def predraft_replacement_anchor(
+    merger: DataMerger, players_db: dict[str, dict], usable_positions, roster_positions: list[str],
+    num_teams: int, value_col: str, *, sleeper_projections=None, scoring_settings=None,
+    pool_scope: str = "all", startable_floors: Optional[dict[str, float]] = None,
+) -> dict[str, float]:
+    """This league's replacement level per position as it stood with NOBODY drafted.
+
+    Why this exists. replacement_levels is defined only while a position still has a whole
+    starting slot unfilled, and correctly OMITS the position below that. compute_draft_board
+    turned that omission into final_score=None, and _board_order sorts None last -- so once a
+    position's league-wide starter demand was satisfied, EVERY remaining player at it fell
+    below every priced row. Kickers and defenses are drafted last, so they are the last
+    positions still carrying demand, which made the ordering inversion structural rather than
+    incidental: measured on a 12-team 1QB board at round 15, K and DEF were 100% priced (37/37
+    and 32/32) while QB/RB/TE/WR were 100% UNPRICED (0 of 15/36/24/9), and the top five
+    candidates were four defenses and a kicker ahead of every remaining skill player.
+
+    The board is not entitled to read "this position has no live starter demand" as "these
+    players are worth less than every kicker." It is entitled to keep pricing them against the
+    anchor they were already being priced against, which is what this returns.
+
+    Why the PRE-DRAFT level is the right anchor, and why it is computed rather than
+    remembered. replacement_levels' own docstring records that while demand stays positive,
+    rank shrinkage and pool drain cancel exactly, so the live level is algebraically identical
+    to the static pre-draft one. The last live level is therefore the pre-draft level --
+    verified directly here, not assumed: across 1QB-12, superflex-12 and 1QB-14 full drafts,
+    every position's first observed live level equals its pre-draft level to within 1e-9.
+    That equality is what lets this be a pure function of (player universe, league settings)
+    instead of a memo of earlier calls, preserving replacement_levels' own contract that
+    nothing is cached across picks -- a memo would have made a board depend on which boards
+    were built before it.
+
+    NOT a fallback for the startable_floors branch. That branch declines for a different
+    reason -- no remaining player clears the startability threshold -- and reviving a stale
+    anchor there would assert a startable replacement exists where the measurement says none
+    does. Callers must not fill those positions from here; compute_draft_board doesn't.
+    """
+    key = anchor_cache_key(
+        merger, players_db, usable_positions, roster_positions, num_teams, value_col,
+        sleeper_projections, scoring_settings, pool_scope, startable_floors,
+    )
+    cached = _ANCHOR_CACHE.get(key)
+    if cached is not None:
+        _ANCHOR_CACHE.move_to_end(key)
+        return dict(cached)          # a copy: callers fill omitted positions into their own dict
+
+    full_pool = build_available_pool(
+        merger, players_db, set(), usable_positions,
+        sleeper_projections=sleeper_projections, scoring_settings=scoring_settings,
+        pool_scope=pool_scope,
+    )
+    if full_pool.empty:
+        return _remember_anchor(key, {})
+    has_proj = _derive_points_and_source(full_pool)
+    group = full_pool[has_proj] if value_col == "_points" else full_pool[~has_proj]
+    if group.empty:
+        return _remember_anchor(key, {})
+    return _remember_anchor(key, replacement_levels(
+        group, value_col, roster_positions, num_teams, None, startable_floors=startable_floors,
+    ))
+
+
+def _remember_anchor(key: str, levels: dict[str, float]) -> dict[str, float]:
+    """Bounded, so a long-lived process cannot accumulate one entry per data reload."""
+    _ANCHOR_CACHE[key] = dict(levels)
+    while len(_ANCHOR_CACHE) > ANCHOR_CACHE_ENTRIES:
+        _ANCHOR_CACHE.popitem(last=False)
+    return dict(levels)
+
+
+def _fill_omitted_from_anchor(levels, present_positions, startable_floors, build_anchor):
+    """Fill positions replacement_levels omitted for EXHAUSTED DEMAND from the pre-draft
+    anchor, never those the startable_floors branch declined. Returns the positions filled, so
+    the board can record that their price rests on the pre-draft anchor rather than a live one
+    (see the replacement_basis column) instead of presenting both as the same kind of claim."""
+    missing = [
+        p for p in present_positions
+        if p not in levels and (startable_floors or {}).get(p) is None
+    ]
+    if not missing:
+        return set()          # nothing needs an anchor, so none is built -- see build_anchor
+    anchor = build_anchor()
+    filled = set()
+    for position in missing:
+        if position in anchor:
+            levels[position] = anchor[position]
+            filled.add(position)
+    return filled
+
+
+#: How this row's IDENTITY was established -- which is a different question from how its value
+#: was computed (`bpa_source`) and from how confident that computation is (`confidence`).
+#:
+#: §16.3/#107 measured why it has to reach the board. `merge_player` reports `match_path`
+#: honestly, `build_available_pool` carries it onto every pool row as `_match_path` -- and both
+#: of compute_draft_board's output column lists dropped it, verified by AST over the subscript
+#: lists rather than by grep. Both fields were WRITE-ONLY in production: nothing read either
+#: one. So a user's own alias could move a row's trade_value 41.0 -> 100.0 and its projection
+#: 202.0 -> 339.0, OVER a correct automatic match, and every number downstream of that was
+#: indistinguishable from a canonical one.
+IDENTITY_USER_OVERRIDE = "user_override"   # an alias the user wrote put this row here
+IDENTITY_MATCHED = "matched"               # automatic, and exactly one row fit
+IDENTITY_AMBIGUOUS = "ambiguous"           # automatic, several fit, the first won
+
+
+def identity_basis(match_path, match_verified) -> "str | None":
+    """Which of the three ways this row's numbers came to be attached to this player.
+
+    Returns None when the pool row carries no `_match_path` at all -- a FOURTH state, and not a
+    synonym for any of the three. A row whose provenance was never recorded must not be labelled
+    `matched`: that would claim clean identity for a row nothing checked, which is the shape of
+    claim this codebase spends its audit removing. Absence is not a value.
+
+    `ambiguous` is the state nobody has been able to see. `_resolve` already reports that several
+    rows fit and the first was taken (`match_verified=False`), and `_find_match` is
+    `_resolve(...)[0]` -- the row, with that flag discarded. It is neither "your override" nor "a
+    clean match", and collapsing it into either would be inventing a certainty on one side or an
+    accusation on the other.
+    """
+    if match_path is None or (isinstance(match_path, float) and match_path != match_path):
+        return None
+    if match_path == "alias":
+        # Deliberately NOT gated on match_verified. An alias bypasses `_contradicted`'s
+        # team/position rejection on purpose -- overriding the guards is what an override IS --
+        # so "verified" means something different here and reporting it as a clean match would
+        # be exactly the mislabel #107 named.
+        return IDENTITY_USER_OVERRIDE
+    return IDENTITY_MATCHED if match_verified else IDENTITY_AMBIGUOUS
 
 
 def compute_draft_board(
@@ -770,7 +1670,19 @@ def compute_draft_board(
     demand_source = picks if demand_picks is None else demand_picks
     current_round = (max((p.get("round") or 1) for p in demand_source) if demand_source else 1)
     use_upside = mode == "upside" or (mode == "auto" and current_round >= upside_round)
-    drafted_counts = _drafted_counts_by_position(demand_source, players_db)
+    # NOTE: a `drafted_counts = _drafted_counts_by_position(demand_source, players_db)` line
+    # sat here until an audit sweep for computed-and-discarded locals found it. Commit 05a4abb
+    # ("Decompose remaining demand into its exact and inferred halves") removed the
+    # drafted_counts parameter from replacement_levels, horizon_replacement and
+    # _attach_waiting_cost -- every consumer -- and left the producer standing. The census was
+    # recomputed on every board build and read by nothing. Removed; the demand model below is
+    # the live path, and the test that used to prove demand_picks reaches the accounting now
+    # proves it against that path instead of against the dead one.
+    #
+    # The EXACT half, computed once per board and shared by both replacement anchors below.
+    # Per-team, bounded, order-invariant, and able to reach exactly zero -- see
+    # remaining_starter_demand. Nothing inferred is mixed in here.
+    starter_demand = remaining_starter_demand(roster_positions, num_teams, demand_source, players_db)
 
     # bpa anchor -- see module docstring's ARCHITECTURE section in full for why this is VOR
     # in raw projected POINTS (never Draft Sharks' trade_value/composite scale directly),
@@ -786,25 +1698,41 @@ def compute_draft_board(
     # replacement-rank logic, and folded into the SAME shared linear scale as the points-
     # anchored group below, not given its own separate range (see module docstring on why a
     # separate per-position range was the other half of the original IDP bug).
-    pool["_points"] = pool["projection"].astype(float)
-    pool["bpa_source"] = "points_vor_draftsharks"
-    no_ds_proj = pool["_points"].isna()
-    has_sleeper = pool["sleeper_points"].notna()
-    use_sleeper = no_ds_proj & has_sleeper
-    # Guarded rather than assigned unconditionally: when sleeper_points is entirely absent
-    # (no live sync passed one in), use_sleeper is all-False and the right-hand side
-    # collapses to an empty object-dtype Series, which pandas refuses to assign into an
-    # existing float64 column even though there's nothing to assign -- a real pandas gotcha.
-    if use_sleeper.any():
-        pool.loc[use_sleeper, "_points"] = pool.loc[use_sleeper, "sleeper_points"] * SLEEPER_WEEKLY_TO_SEASON_FACTOR
-        pool.loc[use_sleeper, "bpa_source"] = "points_vor_sleeper_extrapolated"
+    has_proj = _derive_points_and_source(pool)
 
-    has_proj = pool["_points"].notna()
-    pool.loc[~has_proj, "bpa_source"] = "position_relative_trade_value_vor"
+    # NaN, not 0.0: a row whose position has no starter-demand replacement level has no VOR,
+    # and 0.0 would say "exactly at replacement" -- a claim, where there is an absence.
+    pool["_vor"] = float("nan")
+    # Which anchor each row's price ends up resting on. Live demand is the normal case; a
+    # position whose league-wide starter demand is exhausted keeps being priced against its
+    # PRE-DRAFT level instead of falling out of the board entirely (see
+    # predraft_replacement_anchor for the measured inversion that motivates this). The two are
+    # different strengths of claim, so they are recorded as different values rather than
+    # collapsed into one indistinguishable price.
+    pool["replacement_basis"] = "live_starter_demand"
+    _anchored: set = set()
+    _anchor_cache: dict = {}
 
-    pool["_vor"] = 0.0
+    def _anchor(value_col, floors):
+        """Built at most once per board, and only if some position actually needs it -- the
+        pre-draft pool is a second full pool construction, not something to do every build."""
+        if value_col not in _anchor_cache:
+            _anchor_cache[value_col] = predraft_replacement_anchor(
+                merger, players_db, usable_positions, roster_positions, num_teams, value_col,
+                sleeper_projections=sleeper_projections, scoring_settings=scoring_settings,
+                pool_scope=pool_scope, startable_floors=floors,
+            )
+        return _anchor_cache[value_col]
     pool["_season_proj_pct"] = 50.0
     pool["_proj3yr_pct"] = 50.0
+    # Does this row carry a REAL multi-year outlook at all? time_horizon_adj is a DIFFERENCE
+    # between two percentiles, and a "neutral" 50.0 standing in on one side of a difference is
+    # not neutral -- against a genuinely low season percentile it reads as "this player's
+    # future is far better than his present," manufacturing a growth signal from missing data.
+    # (Measured: team defenses, whose season points sit far below offensive skill players,
+    # picked up a spurious +6.5 average from exactly that.) Neutrality has to be expressed on
+    # the ADJUSTMENT, not on one of its inputs -- see score_row.
+    pool["_has_3yr"] = pool["proj_3yr"].notna()
 
     # Cliff-anchored QB replacement, superflex only (see qb_startable_floor/replacement_levels)
     # -- applied only to the points-anchored path: the startability threshold is in projected
@@ -818,22 +1746,54 @@ def compute_draft_board(
     if has_proj.any():
         proj_pool = pool[has_proj].copy()
         point_replacement = replacement_levels(
-            proj_pool, "_points", roster_positions, num_teams, drafted_counts,
+            proj_pool, "_points", roster_positions, num_teams, starter_demand,
             startable_floors=startable_floors,
         )
+        _anchored |= _fill_omitted_from_anchor(
+            point_replacement, set(proj_pool["position"].unique()), startable_floors,
+            lambda: _anchor("_points", startable_floors),
+        )
         pool.loc[has_proj, "_vor"] = proj_pool.apply(
-            lambda r: r["_points"] - point_replacement.get(r["position"], r["_points"]), axis=1,
+            lambda r: (r["_points"] - point_replacement[r["position"]])
+            if r["position"] in point_replacement else float("nan"),
+            axis=1,
         ).values
         pool.loc[has_proj, "_season_proj_pct"] = _percentile_map(proj_pool["_points"]).values
-        pool.loc[has_proj, "_proj3yr_pct"] = _percentile_map(
-            proj_pool["proj_3yr"].fillna(proj_pool["proj_3yr"].min() if proj_pool["proj_3yr"].notna().any() else 0)
-        ).values
+        # Only rows that ACTUALLY carry a 3yr outlook get a real percentile here; everything
+        # else keeps the neutral 50.0 default set above, which makes time_horizon_adj resolve
+        # to ~0 (no opinion) rather than to a penalty.
+        #
+        # This previously fillna'd the missing values with the pool MINIMUM, which
+        # percentile-maps to ~0 and therefore applied a systematic NEGATIVE time_horizon_adj
+        # in dynasty leagues -- reading "we have no multi-year outlook for this player" as
+        # "this player has a bad multi-year outlook." Those are different statements, and the
+        # module's own rule everywhere else is that absent data must not be turned into a
+        # fabricated signal. The 50.0 default a few lines above is already this module's
+        # stated intent for an unknown outlook; the minimum-fill was the accident.
+        #
+        # Provably a no-op for every source committed at the time of this change: zero rows
+        # in the real baseline carry a points projection WITHOUT a proj_3yr alongside it (see
+        # test_missing_proj_3yr_is_neutral_not_a_penalty). It exists for sources that legitimately
+        # have no multi-year dimension at all -- team defenses being the concrete case, since
+        # Draft Sharks publishes DST only as a redraft table and a defense has no career arc
+        # to project in the first place.
+        has_3yr = proj_pool["proj_3yr"].notna()
+        if has_3yr.any():
+            pool.loc[proj_pool.index[has_3yr], "_proj3yr_pct"] = _percentile_map(
+                proj_pool.loc[has_3yr, "proj_3yr"]
+            ).values
 
     if (~has_proj).any():
         no_proj_pool = pool[~has_proj].copy()
-        tv_replacement = replacement_levels(no_proj_pool, "trade_value", roster_positions, num_teams, drafted_counts)
+        tv_replacement = replacement_levels(no_proj_pool, "trade_value", roster_positions, num_teams, starter_demand)
+        _anchored |= _fill_omitted_from_anchor(
+            tv_replacement, set(no_proj_pool["position"].unique()), None,
+            lambda: _anchor("trade_value", None),
+        )
         pool.loc[~has_proj, "_vor"] = no_proj_pool.apply(
-            lambda r: r["trade_value"] - tv_replacement.get(r["position"], r["trade_value"]), axis=1,
+            lambda r: (r["trade_value"] - tv_replacement[r["position"]])
+            if r["position"] in tv_replacement else float("nan"),
+            axis=1,
         ).values
 
     # ONE shared linear scale across both groups -- the actual fix for the cross-positional
@@ -841,12 +1801,43 @@ def compute_draft_board(
     # smaller than a points-based one (different units), so sharing this reference means a
     # thin-demand IDP fallback correctly can't out-compete a well-projected offensive player
     # just because it locally looked like "the best of its own small group."
+    if _anchored:
+        pool.loc[pool["position"].isin(_anchored), "replacement_basis"] = "predraft_anchor"
     pool["bpa"] = _scale_vor_to_bpa(pool["_vor"])
 
     if use_upside:
         scored = pool.join(pd.DataFrame(list(pool.apply(upside_score, axis=1))))
         scored["mode"] = "upside"
         scored["projected_points"] = scored["_points"]
+        # universal_value is a ROLE, not a formula: "the team-agnostic value of this player,"
+        # which is what every consumer outside this module reads it for (draft_strategy ranks
+        # an opponent's remaining pool by it, draft_counterfactual takes its argmax as BPA,
+        # roster_diagnostics passes the NAME of this column into replacement_levels,
+        # pick_synthesis separates it from team_acquisition_value to detect context
+        # elevation). In balanced mode that role is filled by bpa + time_horizon_adj +
+        # risk_adj. In upside mode it is filled by final_score directly: upside_score reads
+        # nothing off the roster -- it returns only {final_score, growth_signal, confidence}
+        # from the row's own bpa and growth -- so there is no need_bonus or eligibility_bonus
+        # separated out of it to subtract back off, and the layer identity
+        # team_acquisition_value == universal_value + need_bonus + eligibility_bonus holds
+        # with both bonuses at 0.0. It is deliberately NOT the same NUMBER as a balanced
+        # board's universal_value for the same player, and must never be compared across
+        # modes -- see this module's docstring on upside mode being a different valuation.
+        #
+        # Emitted here rather than defaulted at each read site because the two branches used
+        # to return two different row schemas with nothing declaring that: five production
+        # sites indexed row["universal_value"] unguarded, two guarded it inline with the same
+        # reasoning duplicated, and the rest crashed. One owner of the shape is the fix; the
+        # per-position decomposition terms (time_horizon_adj, risk_adj) stay absent because
+        # upside_score genuinely never computes them and emitting 0.0 would fabricate them.
+        scored["universal_value"] = scored["final_score"]
+        # #107: the provenance of the row's IDENTITY, carried to the board instead of dropped.
+        scored["identity_basis"] = [
+            identity_basis(path, verified)
+            for path, verified in zip(pool.get("_match_path", pd.Series(None, index=pool.index)),
+                                      pool.get("_match_verified", pd.Series(False, index=pool.index)))
+        ]
+        _attach_waiting_cost(scored, pool, roster_positions, num_teams, demand_source, players_db)
         # kind="stable" + player_id as an explicit tiebreaker: without both, two players
         # landing on the exact same rounded final_score could rank in either relative order
         # depending on players_db's own dict iteration order (pool's own row order traces
@@ -861,8 +1852,11 @@ def compute_draft_board(
         results = scored.sort_values(["final_score", "player_id"], ascending=[False, True], kind="stable")
         return _records_with_normalized_nan(results[[
             "player_id", "name", "position", "team", "injury_status", "bpa", "bpa_source",
-            "growth_signal", "confidence", "final_score", "mode", "projected_points",
-        ]], "projected_points")
+            "growth_signal", "universal_value", "confidence", "final_score", "mode",
+            "projected_points", "horizon_floor", "horizon_sensitivity", "waiting_cost",
+            "replacement_basis", "horizon_basis", "identity_basis",
+        ]], "projected_points", "horizon_floor", "horizon_sensitivity", "waiting_cost",
+            "bpa", "universal_value", "final_score")
 
     my_filled = _team_starters_filled(picks, players_db, my_roster_id)
     slot_counts = starter_slot_counts(roster_positions)
@@ -874,7 +1868,13 @@ def compute_draft_board(
         bpa = row["bpa"]
 
         time_horizon_adj = 0.0
-        if is_dynasty:
+        # No real multi-year outlook -> no opinion about the time horizon, which means an
+        # adjustment of exactly zero rather than one computed against a stand-in percentile
+        # (see _has_3yr above for the measured failure that guards against). A source with no
+        # multi-year dimension at all -- Draft Sharks publishes DST only as a redraft table,
+        # and a team defense has no career arc to project -- must neither be penalised for
+        # the absence nor rewarded by it.
+        if is_dynasty and row.get("_has_3yr", False):
             time_horizon_adj = min(max((row["_proj3yr_pct"] - row["_season_proj_pct"]) * TIME_HORIZON_SLOPE, TIME_HORIZON_CLAMP[0]), TIME_HORIZON_CLAMP[1])
 
         risk_adj = RISK_ADJ.get(row.get("injury_status"), 0.0)
@@ -916,19 +1916,33 @@ def compute_draft_board(
         # is worth beyond his raw value. Self-limiting rather than capped like need_bonus (see
         # eligibility_bonus's own docstring): it can never exceed his own trade_value, since
         # the best he can ever do is fill a genuinely open slot outright.
-        eb = lo.eligibility_bonus(
-            my_roster_players, candidate_id=row["player_id"], candidate_value=row["trade_value"],
-            candidate_full_eligible=player_eligible_positions(players_db.get(str(row["player_id"])) or {}),
-            candidate_primary_position=position, roster_positions=roster_positions,
-        )
-        # Converted from trade_value units into this sum's own bpa scale -- see
-        # TRADE_VALUE_SCALE_MAX/ELIGIBILITY_BONUS_MAX above for the units defect this fixes and
-        # the real-data evidence behind it. min() is a defensive guard for out-of-scale source
-        # data, not the bounding mechanism (the rescale is already bounded by construction).
-        eligibility_bonus_value = min(
-            round(eb["eligibility_bonus"] * (ELIGIBILITY_BONUS_MAX / TRADE_VALUE_SCALE_MAX), 2),
-            ELIGIBILITY_BONUS_MAX,
-        )
+        #
+        # A player admitted on a points projection alone carries no trade_value, and this
+        # term is denominated in trade_value units -- so there is nothing to measure and the
+        # honest answer is exactly 0.0, the same "missing information is not information"
+        # rule time_horizon_adj follows for a missing 3yr outlook. Guarded here, where the
+        # meaning of the absence is known, rather than inside the optimizer: passing the NaN
+        # through reaches a Hungarian-algorithm cost matrix and raises outright ("matrix
+        # contains invalid numeric entries"), and a value substituted down there would be a
+        # fabricated flexibility premium rather than a declined one.
+        candidate_value = row["trade_value"]
+        if candidate_value is None or pd.isna(candidate_value):
+            eligibility_bonus_value = 0.0
+        else:
+            eb = lo.eligibility_bonus(
+                my_roster_players, candidate_id=row["player_id"], candidate_value=candidate_value,
+                candidate_full_eligible=player_eligible_positions(players_db.get(str(row["player_id"])) or {}),
+                candidate_primary_position=position, roster_positions=roster_positions,
+            )
+            # Converted from trade_value units into this sum's own bpa scale -- see
+            # TRADE_VALUE_SCALE_MAX/ELIGIBILITY_BONUS_MAX above for the units defect this fixes
+            # and the real-data evidence behind it. min() is a defensive guard for out-of-scale
+            # source data, not the bounding mechanism (the rescale is already bounded by
+            # construction).
+            eligibility_bonus_value = min(
+                round(eb["eligibility_bonus"] * (ELIGIBILITY_BONUS_MAX / TRADE_VALUE_SCALE_MAX), 2),
+                ELIGIBILITY_BONUS_MAX,
+            )
 
         team_acquisition_value = round(universal_value + need_bonus + eligibility_bonus_value, 2)
 
@@ -945,6 +1959,15 @@ def compute_draft_board(
     scored["confidence"] = pool["bpa_source"].map(_confidence)
     scored["mode"] = "balanced"
     scored["projected_points"] = pool["_points"]
+    # #107, same field and same reason as the upside branch. Emitted by BOTH, because the two
+    # branches returning two different row schemas with nothing declaring it is the defect this
+    # module's own universal_value comment records having already been bitten by once.
+    scored["identity_basis"] = [
+        identity_basis(path, verified)
+        for path, verified in zip(pool.get("_match_path", pd.Series(None, index=pool.index)),
+                                  pool.get("_match_verified", pd.Series(False, index=pool.index)))
+    ]
+    _attach_waiting_cost(scored, pool, roster_positions, num_teams, demand_source, players_db)
     # player_id tiebreaker + kind="stable" -- see the identical sort in the upside-mode branch
     # above for the full reasoning (input-order-independent tiebreaking among exact ties).
     results = scored.sort_values(["final_score", "player_id"], ascending=[False, True], kind="stable")
@@ -952,7 +1975,10 @@ def compute_draft_board(
         "player_id", "name", "position", "team", "injury_status", "bpa", "bpa_source",
         "time_horizon_adj", "risk_adj", "universal_value",
         "need_bonus", "eligibility_bonus", "confidence", "final_score", "mode", "projected_points",
-    ]], "projected_points")
+        "horizon_floor", "horizon_sensitivity", "waiting_cost", "replacement_basis",
+        "horizon_basis", "identity_basis",
+    ]], "projected_points", "horizon_floor", "horizon_sensitivity", "waiting_cost",
+        "bpa", "universal_value", "final_score")
 
 
 # -- in-app Mock Draft sandbox (see app.py's Draft Room view) -------------------------------

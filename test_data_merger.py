@@ -9,6 +9,19 @@ import bot_research
 import data_merger as dm
 
 
+def _admitted_finding(name, source, claim, rank):
+    """A finding that actually reaches the composite.
+
+    7.4 and 6.2a put two gates upstream of `load_bot_research_as_external` (an allowlisted cited
+    source, and a second adjudication), and every test in this file that asserts something about
+    PERCENTILES or POOL SIZES needs a row that gets past both -- otherwise it is measuring the
+    gate rather than the pooling, and would pass with an empty components list.
+    """
+    finding_id = bot_research.add_finding(name, source, claim, rank=rank)
+    bot_research.confirm_finding(finding_id)
+    return finding_id
+
+
 class NormalizeNameTests(unittest.TestCase):
     def test_strips_suffixes_and_punctuation(self):
         self.assertEqual(dm.normalize_name("A.J. Brown Jr."), "aj brown")
@@ -295,9 +308,39 @@ class PositionGroupTests(unittest.TestCase):
     collision this baseline effort surfaced -- these tests exist to make sure that class of
     bug can't silently come back."""
 
-    def test_broad_offense_positions(self):
-        for pos in ("QB", "RB", "WR", "TE", "K", "DEF"):
+    def test_the_offensive_skill_positions_share_one_namespace(self):
+        # Deliberately ONE group, not four: a genuine same-player re-upload can list him RB in
+        # one file and WR in another, and those rows must still collapse onto the newest.
+        for pos in ("QB", "RB", "WR", "TE"):
             self.assertEqual(dm._position_group(pos), "offense", pos)
+
+    def test_kickers_and_team_defenses_are_not_offensive_skill_players(self):
+        # This assertion previously read ("QB","RB","WR","TE","K","DEF") -> "offense", and
+        # that is precisely what the bug was: it pinned K and DST inside the offensive skill
+        # namespace, so a kicker and a skill player sharing a normalized name became one
+        # dedup key and one of the two real people was dropped. Reproduced on committed
+        # baseline data -- J Sanders (TE, CAR) and J Sanders (K, NYJ) collided on
+        # "j sanders|offense" and the tight end disappeared from merged projections.
+        #
+        # Harmless while the kicker pool was 13 vendor rows; reachable once K and DST moved
+        # to league-scored Sleeper projections at 37 and 32 rows.
+        self.assertEqual(dm._position_group("K"), "k")
+        for pos in ("DEF", "DST", "D/ST"):
+            self.assertEqual(dm._position_group(pos), "def", pos)
+
+    def test_every_family_that_cannot_be_the_same_person_is_a_separate_namespace(self):
+        # The general rule, so a position added later starts out separated rather than
+        # silently sharing an identity namespace with a family it can never belong to.
+        groups = {
+            "offensive skill": {dm._position_group(p) for p in ("QB", "RB", "WR", "TE")},
+            "kicker": {dm._position_group("K")},
+            "team defense": {dm._position_group(p) for p in ("DEF", "DST")},
+            "idp": {dm._position_group(p) for p in ("LB", "DL", "DB", "EDGE")},
+        }
+        for label, values in groups.items():
+            self.assertEqual(len(values), 1, f"{label} must be internally consistent: {values}")
+        flat = [next(iter(v)) for v in groups.values()]
+        self.assertEqual(len(set(flat)), len(flat), f"two families share a namespace: {flat}")
 
     def test_broad_and_granular_idp_positions_all_classify_as_idp(self):
         # LB/DL/DB are Draft Sharks' three broad buckets; DE/DT/S/CB are FantasyPros' more
@@ -312,17 +355,83 @@ class PositionGroupTests(unittest.TestCase):
         self.assertEqual(dm._position_group(""), "")
 
 
+class SameNameDifferentFamilyTests(unittest.TestCase):
+    """The end-to-end version of the _position_group fix, at the level a user would notice:
+    a real player must not vanish from the merged pool because someone in another position
+    family happens to normalize to the same name."""
+
+    KICKER = ("name,team,position,rank,projection,proj_3yr,trade_value,source_date\n"
+              "J Sanders,NYJ,K,1.0,91.0,,,2026-08-25\n")
+    TIGHT_END = ("name,team,position,rank,projection,proj_3yr,trade_value,source_date\n"
+                 "J Sanders,CAR,TE,40.0,120.0,300.0,15.0,2026-08-18\n")
+
+    def _load(self, files):
+        import os
+        tmpdir = tempfile.mkdtemp()
+        self.addCleanup(lambda: shutil.rmtree(tmpdir, ignore_errors=True))
+        for i, (fname, content) in enumerate(files):
+            (Path(tmpdir) / fname).write_text(content)
+            os.utime(Path(tmpdir) / fname, (1_700_000_000 + i, 1_700_000_000 + i))
+        rankings, _, _ = dm.load_all(Path(tmpdir))
+        return rankings
+
+    def test_a_kicker_does_not_delete_a_same_named_tight_end(self):
+        # Kicker file written second, so it is unambiguously "newer" and wins any tiebreak it
+        # is allowed to enter. It must not be allowed to enter this one: these are two people.
+        rankings = self._load([("offense.csv", self.TIGHT_END), ("kickers.csv", self.KICKER)])
+        rows = rankings[rankings["norm_name"] == "j sanders"]
+        self.assertEqual(len(rows), 2, "one of two different real players was dropped")
+        self.assertEqual(set(rows["position"].str.upper()), {"K", "TE"})
+        te = rows[rows["position"].str.upper() == "TE"].iloc[0]
+        self.assertEqual(te["team"], "CAR")
+        self.assertEqual(float(te["projection"]), 120.0)
+
+    def test_the_same_player_re_uploaded_still_collapses_to_the_newest_row(self):
+        # The other half -- the fix must not turn every duplicate into two survivors. Same
+        # person, same family, newer file wins, exactly as before.
+        older = ("name,team,position,rank,projection,proj_3yr,trade_value,source_date\n"
+                 "J Sanders,CAR,TE,40.0,120.0,300.0,15.0,2026-08-18\n")
+        newer = ("name,team,position,rank,projection,proj_3yr,trade_value,source_date\n"
+                 "J Sanders,CAR,TE,22.0,168.0,410.0,31.0,2026-08-25\n")
+        rankings = self._load([("a_old.csv", older), ("b_new.csv", newer)])
+        rows = rankings[rankings["norm_name"] == "j sanders"]
+        self.assertEqual(len(rows), 1, "a genuine re-upload must still collapse")
+        self.assertEqual(float(rows.iloc[0]["projection"]), 168.0)
+
+    def test_a_reclassified_player_still_collapses_across_offensive_skill_positions(self):
+        # RB in one source, WR in another, same real person -- the reason the four offensive
+        # skill positions deliberately share one namespace.
+        as_rb = ("name,team,position,rank,projection,proj_3yr,trade_value,source_date\n"
+                 "D Hybrid,SF,RB,30.0,150.0,400.0,20.0,2026-08-18\n")
+        as_wr = ("name,team,position,rank,projection,proj_3yr,trade_value,source_date\n"
+                 "D Hybrid,SF,WR,25.0,175.0,430.0,26.0,2026-08-25\n")
+        rankings = self._load([("a_old.csv", as_rb), ("b_new.csv", as_wr)])
+        rows = rankings[rankings["norm_name"] == "d hybrid"]
+        self.assertEqual(len(rows), 1, "a reclassified player must not become two people")
+        self.assertEqual(rows.iloc[0]["position"].upper(), "WR")
+
+
 class LoadAllDeterminismTests(unittest.TestCase):
-    """load_all's file ordering decides same-player dedup tiebreaks ("newest wins"), and a
-    fresh git checkout writes every committed file with near-identical mtimes -- under
-    mtime-only sorting those ties resolved by filesystem iteration order, which is not
-    deterministic across checkouts (confirmed live during the M13 backtest: byte-identical
-    data, different row order, a real 13-point value swing on one player's tie-break). These
-    tests pin the two halves of the fix: identical mtimes resolve canonically by filename
-    regardless of creation order, and a genuinely newer file still wins regardless of name."""
+    """load_all's file ordering decides same-player dedup tiebreaks ("newest wins"). The
+    original version of this fix (M13/A0) kept mtime as the primary key on the theory that a
+    genuinely newer upload should still win regardless of filename -- and that held right up
+    until the pre-freeze audit reproduced a second, worse failure mode from the same root
+    cause: mtime is not part of a file's committed content, so a fresh git checkout can assign
+    it in effectively arbitrary order, and a plausible reversed-order checkout turned a
+    single-source kicker pool into an unintended MIXTURE of two differently-scored sources
+    (vendor Draft Sharks rows beside league-scored Sleeper rows), invisible in the output.
+
+    The fix now reads recency from the file's OWN DECLARED source_date -- part of its
+    committed content, so it survives a checkout unchanged -- with filename only breaking
+    ties between files that declare the identical date. These tests pin both halves: files
+    sharing a date resolve canonically by filename regardless of mtime or write order, and a
+    file whose CONTENT declares a genuinely later date still wins regardless of mtime or name.
+    """
 
     CSV_A = "name,team,position,rank,projection,proj_3yr,trade_value,source_date\nT Player,KC,RB,1.0,300.0,900.0,90.0,2026-08-01\n"
     CSV_B = "name,team,position,rank,projection,proj_3yr,trade_value,source_date\nT Player,KC,RB,1.0,250.0,800.0,70.0,2026-08-01\n"
+    CSV_NEWER_DATE = "name,team,position,rank,projection,proj_3yr,trade_value,source_date\nT Player,KC,RB,1.0,300.0,900.0,90.0,2026-08-25\n"
+    CSV_OLDER_DATE = "name,team,position,rank,projection,proj_3yr,trade_value,source_date\nT Player,KC,RB,1.0,250.0,800.0,70.0,2026-08-01\n"
 
     def _load_dir(self, write_order):
         import os
@@ -346,19 +455,52 @@ class LoadAllDeterminismTests(unittest.TestCase):
         self.assertEqual(row_one["trade_value"], row_two["trade_value"])
         self.assertEqual(row_one["trade_value"], 70.0)
 
-    def test_a_genuinely_newer_file_still_wins_regardless_of_name(self):
+    def test_a_genuinely_newer_file_still_wins_regardless_of_name_or_mtime(self):
+        # Deliberately adversarial on BOTH axes that must NOT decide this: the newer-dated
+        # file ("a_new_upload.csv", source_date 2026-08-25) sorts FIRST alphabetically and
+        # gets the OLDER filesystem mtime; the older-dated file ("z_old_upload.csv",
+        # source_date 2026-08-01) sorts LAST alphabetically and gets the NEWER filesystem
+        # mtime. A filename-only fallback would pick z_old_upload (70.0, wrong). An
+        # mtime-only fallback -- the exact thing this fix removes -- would also pick
+        # z_old_upload (70.0, wrong). Only reading the file's own declared source_date
+        # produces the right answer (90.0).
         import os
         tmpdir = tempfile.mkdtemp()
         self.addCleanup(lambda: shutil.rmtree(tmpdir, ignore_errors=True))
-        (Path(tmpdir) / "z_old_upload.csv").write_text(self.CSV_B)
-        (Path(tmpdir) / "a_new_upload.csv").write_text(self.CSV_A)
-        os.utime(Path(tmpdir) / "z_old_upload.csv", (1_700_000_000, 1_700_000_000))
-        os.utime(Path(tmpdir) / "a_new_upload.csv", (1_700_009_999, 1_700_009_999))
+        (Path(tmpdir) / "z_old_upload.csv").write_text(self.CSV_OLDER_DATE)
+        (Path(tmpdir) / "a_new_upload.csv").write_text(self.CSV_NEWER_DATE)
+        os.utime(Path(tmpdir) / "z_old_upload.csv", (1_700_009_999, 1_700_009_999))
+        os.utime(Path(tmpdir) / "a_new_upload.csv", (1_700_000_000, 1_700_000_000))
         rankings, _, _ = dm.load_all(Path(tmpdir))
         row = rankings[rankings["name"] == "T Player"].iloc[0]
-        # "a_" sorts FIRST by name, but it's newer -- mtime stays the primary key, so the
-        # newer upload's value (90.0) wins. The filename tiebreak never overrides recency.
         self.assertEqual(row["trade_value"], 90.0)
+
+    def test_reversed_checkout_order_no_longer_flips_the_real_kdst_pool(self):
+        # The exact reproduction from the pre-freeze audit: a plausible reversed-order
+        # checkout assigns mtimes in reverse alphabetical order across the real baseline's
+        # rankings directory. Before this fix, that turned the kicker pool into a mixture of
+        # two differently-scored sources (13 vendor Draft Sharks rows regained alongside the
+        # 37 league-scored Sleeper rows) with zero code difference -- purely from mtime.
+        import os, shutil as sh
+        real_dir = Path(__file__).parent / "data" / "baseline" / "rankings"
+        if not real_dir.exists():
+            self.skipTest("real baseline rankings directory not present")
+        tmpdir = tempfile.mkdtemp()
+        self.addCleanup(lambda: sh.rmtree(tmpdir, ignore_errors=True))
+        dst = Path(tmpdir) / "rankings"
+        sh.copytree(real_dir, dst)
+        names = sorted(p.name for p in dst.iterdir())
+        base = 1_700_000_000
+        for i, name in enumerate(names):
+            t = base - i  # reverse alphabetical order gets the LARGEST mtime
+            os.utime(dst / name, (t, t))
+        rankings, _, _ = dm.load_all(dst)
+        k = rankings[rankings["position"].astype(str).str.upper() == "K"]
+        sources = {os.path.basename(str(s)) for s in k["source_file"].unique()}
+        self.assertEqual(
+            sources, {"sleeper_kicker_projections.csv"},
+            f"reversed-order checkout produced a mixed-source kicker pool: {sources}",
+        )
 
 
 class DedupByNameAndPositionTests(unittest.TestCase):
@@ -505,7 +647,7 @@ class CompositePoolSizeDampeningTests(unittest.TestCase):
 
     def test_single_finding_barely_moves_the_composite(self):
         baseline_only = dm.DataMerger().composite_player_score("Maxx Crosby", position="DL")
-        self.bot_research.add_finding("Maxx Crosby", "ESPN", "ranked #1 DL", rank=1)
+        _admitted_finding("Maxx Crosby", "ESPN", "ranked #1 DL", rank=1)
         with_one_finding = dm.DataMerger().composite_player_score("Maxx Crosby", position="DL")
         # A single, thin-pool finding should nudge the score, not swing it -- well under half
         # of the gap between draftsharks' own trade_value-as-score reading and a naive 100th
@@ -513,7 +655,7 @@ class CompositePoolSizeDampeningTests(unittest.TestCase):
         self.assertLess(with_one_finding["score"] - baseline_only["score"], 3.0)
 
     def test_weight_ramps_back_up_as_pool_grows_to_the_trusted_threshold(self):
-        self.bot_research.add_finding("Maxx Crosby", "ESPN", "ranked #1 DL", rank=1)
+        _admitted_finding("Maxx Crosby", "ESPN", "ranked #1 DL", rank=1)
         # bot_research's percentile pool is segmented by offense/IDP position group (see
         # _compute_percentiles), so fillers need to land in Crosby's own "idp" group to grow
         # HIS pool -- an unpositioned dummy name would just form its own separate one-off group.
@@ -528,7 +670,7 @@ class CompositePoolSizeDampeningTests(unittest.TestCase):
         ]
         self.assertEqual(len(idp_fillers), dm.COMPOSITE_MIN_TRUSTED_POOL_SIZE - 1)
         for i, name in enumerate(idp_fillers):
-            self.bot_research.add_finding(name, "ESPN", "filler", rank=i + 2)
+            _admitted_finding(name, "ESPN", "filler", rank=i + 2)
         result = dm.DataMerger().composite_player_score("Maxx Crosby", position="DL")
         bot_component = next(c for c in result["components"] if c["source"] == "bot_research")
         self.assertEqual(bot_component["pool_size"], dm.COMPOSITE_MIN_TRUSTED_POOL_SIZE)
@@ -542,7 +684,7 @@ class CompositePoolSizeDampeningTests(unittest.TestCase):
         # Draft Sharks/DynastyProcess/etc. already have hundreds of rows -- their own weight
         # should be untouched by bot_research separately having only one entry.
         baseline_only = dm.DataMerger().composite_player_score("Ja'Marr Chase", position="WR")
-        self.bot_research.add_finding("Some Unrelated Player", "ESPN", "unrelated claim", rank=1)
+        _admitted_finding("Some Unrelated Player", "ESPN", "unrelated claim", rank=1)
         after = dm.DataMerger().composite_player_score("Ja'Marr Chase", position="WR")
         ds_before = next(c for c in baseline_only["components"] if c["source"] == "draftsharks")
         ds_after = next(c for c in after["components"] if c["source"] == "draftsharks")
@@ -566,8 +708,8 @@ class BotResearchPercentilePositionSegmentationTests(unittest.TestCase):
         self.addCleanup(setattr, bot_research, "FINDINGS_PATH", self._orig_findings_path)
 
     def test_number_one_offense_and_number_one_idp_claims_stay_in_separate_pools(self):
-        self.bot_research.add_finding("Bijan Robinson", "FantasyPros", "ranked #1 RB", rank=1)
-        self.bot_research.add_finding("Maxx Crosby", "ESPN", "ranked #1 DL", rank=1)
+        _admitted_finding("Bijan Robinson", "FantasyPros", "ranked #1 RB", rank=1)
+        _admitted_finding("Maxx Crosby", "ESPN", "ranked #1 DL", rank=1)
         merger = dm.DataMerger()
         bijan = merger.composite_player_score("Bijan Robinson", position="RB")
         crosby = merger.composite_player_score("Maxx Crosby", position="DL")
@@ -580,8 +722,8 @@ class BotResearchPercentilePositionSegmentationTests(unittest.TestCase):
     def test_a_weak_offense_claim_does_not_borrow_an_idp_players_percentile(self):
         # A #1 IDP claim shouldn't inflate/deflate based on an unrelated offense player's rank,
         # and vice versa -- confirms the two groups' percentiles are computed independently.
-        self.bot_research.add_finding("Maxx Crosby", "ESPN", "ranked #1 DL", rank=1)
-        self.bot_research.add_finding("Some Bench WR", "ESPN", "ranked #40 WR", rank=40)
+        _admitted_finding("Maxx Crosby", "ESPN", "ranked #1 DL", rank=1)
+        _admitted_finding("Some Bench WR", "ESPN", "ranked #40 WR", rank=40)
         merger = dm.DataMerger()
         crosby = merger.composite_player_score("Maxx Crosby", position="DL")
         crosby_bot = next(c for c in crosby["components"] if c["source"] == "bot_research")
