@@ -41,6 +41,7 @@ import lineup_optimizer
 import lineup_readiness
 import pick_debate
 import pick_synthesis
+import panel_independence
 import pinned_messages
 import provider_meter
 import providers
@@ -2300,6 +2301,30 @@ with st.sidebar:
             st.warning("No provider keys configured yet — add at least one in 🔑 Connections & Models first.")
         elif not any(st.session_state.get(f"available_models_{p}") for p in _bots_configured):
             st.caption("No models fetched yet — use 🔑 Connections & Models above to see what each key can call.")
+
+        # How many genuinely different models are in the room. This is the one fact about a
+        # panel that the round-robin assignment makes easy to get wrong: with a single key all
+        # four chairs are dealt to the same provider, and "the Contrarian didn't dispute it" then
+        # means one model declined to argue with itself. Shown here rather than only at the
+        # verdict, because THIS is the screen where it can be changed.
+        _voices = panel_independence.distinct_voices(
+            bot_config.ROLES, _role_providers_cfg, _role_models_cfg)
+        _dissent_note = panel_independence.note(
+            "moderator", "contrarian", _role_providers_cfg, _role_models_cfg,
+            labels={r: bot_config.ROLE_INFO[r]["label"] for r in bot_config.ROLES})
+        if _voices == 1:
+            st.caption(
+                f"⚠️ All four chairs are the same model — **1 distinct voice**. The panel still "
+                f"runs, and its reasoning is still worth reading, but agreement between chairs "
+                f"is not corroboration here: it is one model answering four times. A second "
+                f"provider key is what makes dissent mean something."
+            )
+        elif _dissent_note:
+            # Named specifically because these two are the pair whose disagreement the whole
+            # design leans on -- the Moderator writes the verdict, the Contrarian is the check.
+            st.caption(f"⚠️ {_dissent_note}")
+        else:
+            st.caption(f"{_voices} distinct voices across the four chairs.")
 
         for _role in bot_config.ROLES:
             _info = bot_config.ROLE_INFO[_role]
@@ -5413,6 +5438,46 @@ if bot_findings or bot_comparisons:
                     notify("success", f"Confirmed — {_f['player_name']}'s number now counts "
                                       "toward the composite score at a low weight.")
                     st.rerun()
+
+        # Retraction, and its own list. A confirmation you cannot take back is a one-way door,
+        # and the whole reason the gate above is safe to relax later is that this exists.
+        _counting = [f for f in bot_findings
+                     if not f.get("retracted") and bot_research.feeds_composite(f)]
+        if _counting:
+            st.markdown(f"**Counting toward the composite ({len(_counting)})**")
+            for _f in _counting:
+                _cols = st.columns([5, 1])
+                _cols[0].caption(f"**{_f['player_name']}** · {_f['source']} · #{_f['rank']} — {_f['claim']}")
+                if _cols[1].button("Retract", key=f"retract_finding_{_f['id']}",
+                                   use_container_width=True):
+                    bot_research.retract_finding(_f["id"], bot_research.RETRACTED_WITHDRAWN)
+                    notify("success", f"Retracted — {_f['player_name']}'s number stops counting. "
+                                      "The finding stays in the record.")
+                    st.rerun()
+
+        _retracted = bot_research.retracted_findings()
+        if _retracted:
+            # Listed, never hidden: a retraction nobody can see is indistinguishable from a
+            # deletion, and the point of retracting rather than deleting is that the record
+            # survives -- including the fact that it was wrong.
+            st.markdown(f"**Retracted ({len(_retracted)})**")
+            st.caption("Kept in the record on purpose. A claim that turned out to be wrong is "
+                       "information; deleting it would only make the same mistake re-acceptable.")
+            for _f in _retracted:
+                _r = _f["retracted"]
+                _cols = st.columns([5, 1])
+                _cols[0].caption(
+                    f"~~**{_f['player_name']}** · {_f['source']} — {_f['claim']}~~  \n"
+                    f"_{_r['reason']}, by {_r['by']} on {_r['at']}"
+                    + (f" — {_r['note']}" if _r.get("note") else "") + "_"
+                )
+                if _cols[1].button("Restore", key=f"restore_finding_{_f['id']}",
+                                   use_container_width=True):
+                    bot_research.restore_finding(_f["id"])
+                    notify("success", f"Restored — {_f['player_name']} returns to whatever "
+                                      "adjudication state it already had, not straight to counting.")
+                    st.rerun()
+
         if bot_findings:
             st.markdown("**Findings**")
             findings_df = pd.DataFrame(

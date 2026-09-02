@@ -3159,3 +3159,67 @@ Stated together because a check whose limits are unstated gets trusted past them
 | `assertion_floors` | see a vacuous assertion (`assertEqual(x, x)`), or tell a strengthening from a weakening |
 | `confirm_finding` | verify the claim; it records that a second party looked, not that the source says it |
 | `baseline_provenance` | verify the numbers in the CSVs — only that the record still matches them |
+
+---
+
+# THE TWO PREREQUISITES FOR TIERED ACCEPTANCE
+
+Built after a design conversation that settled the shape of the shared-substrate question, and
+they are the two pieces every version of that shape needs. Neither commits to a deployment.
+
+## The design they serve, in the owner's own framing
+
+> *"They get live data, we get data poisoning control."*
+
+Users can act on an unconfirmed finding **provisionally** — recalculate assuming it is right, for
+their next pick — and simultaneously request that it be considered for universal inclusion.
+Acceptance for everyone stays behind an admin-gated confirmation pass on the server.
+
+**This dissolves ROADMAP's "single biggest unresolved tension" rather than picking a side.** Local
+sovereignty stays the default: nothing leaves the machine. Sharing becomes a **per-item,
+user-initiated export of one claim** — a sentence about a player — not a sync of the user's data.
+That is a categorically different act from a shared substrate, and it is why the contradiction the
+roadmap declared unresolvable stops being one.
+
+**The governing rule that falls out of it, and it is checkable in a way "is this true" never is:**
+
+> **The gate is on blast radius, not on truth.** A provisional acceptance is safe to leave
+> ungated not because the claim is good but because it is scoped to one install and one moment —
+> poisoning it costs that user their next pick, not the watering hole. Tier 2 is gated because
+> its blast radius is N.
+
+## 1. Retraction (§6 lifecycle) — the floor
+
+6.2a's gate is safe because its default is to **withhold**. The provisional path flips that
+default to **admit**, and a system that can admit without a person and cannot un-admit has no
+floor. So retraction ships first. Detail in `ARCHITECTURE_AUDIT.md` §6.2a; the short version is
+that retraction is orthogonal to adjudication (so "confirmed then rejected" stays distinguishable
+from "never confirmed"), the claim survives while only the number leaves, restore is not a grant,
+and the recompute path is the ordinary one because nothing caches an accepted finding.
+
+## 2. Panel independence (§6.2b) — what makes a second opinion second
+
+Measured, not assumed: **the shipped one-key default is 1 distinct voice across all four chairs.**
+"The Contrarian didn't dispute it" can therefore mean one model declined to argue with itself —
+and that sentence is the Moderator's own bar for writing a durable finding.
+
+Four states rather than a boolean, because a provider default is a floating alias (#109) and
+"not knowably distinct" is not "distinct". The module reports; the caller supplies the bar, with
+no default, because the two real bars differ by blast radius rather than by model quality.
+
+## What this makes safe to build next, and in what order
+
+| step | unblocked by |
+|---|---|
+| provisional "assume accurate for my next pick" | retraction — a provisional acceptance must be revocable when the verdict lands |
+| "request universal inclusion" queue | nothing new; it is a per-item export, and the privacy story is already the strongest part of the design |
+| server-side confirmation panel | independence — server-side is the only place cross-family composition can be *enforced*, which is the real argument for putting tier 2 there |
+| capability-threshold auto-acceptance | **still blocked**, and not by these. The benchmark rubric has no accuracy dimension for the Moderator (§5.7), and its judge is itself an unmeasured model — a threshold on that score would grant fact-acceptance authority on a number that never scored facts |
+
+## The open question these do not answer
+
+Findings do not record **which panel produced them** — `evidence` carries the debate's retrieved
+pages, not its `role_providers`/`role_models`. So `panel_independence` can tell a user their
+CURRENT panel is one voice, but cannot tell them that a finding *already in the store* was
+produced by one. Recorded rather than built: it is a schema addition to a store that is still
+empty, and §6.5's own rule was not to invent structure against an empty store.

@@ -177,15 +177,15 @@
       }
     },
     "test_composite_admission_gate.py": {
-      "test_methods": 15,
+      "test_methods": 29,
       "asserts": {
-        "assertEqual": 11,
-        "assertFalse": 2,
-        "assertIn": 1,
+        "assertEqual": 27,
+        "assertFalse": 4,
+        "assertIn": 6,
         "assertIs": 1,
-        "assertIsNone": 1,
-        "assertNotIn": 5,
-        "assertTrue": 3
+        "assertIsNone": 4,
+        "assertNotIn": 7,
+        "assertTrue": 6
       }
     },
     "test_context_budget_boundary.py": {
@@ -606,6 +606,17 @@
         "assertNotEqual": 3,
         "assertNotIn": 3,
         "assertTrue": 10
+      }
+    },
+    "test_panel_independence.py": {
+      "test_methods": 20,
+      "asserts": {
+        "assertEqual": 10,
+        "assertFalse": 3,
+        "assertGreaterEqual": 1,
+        "assertIn": 6,
+        "assertRaises": 1,
+        "assertTrue": 4
       }
     },
     "test_parser_integrity.py": {

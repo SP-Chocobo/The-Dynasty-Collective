@@ -1367,9 +1367,64 @@ whose output is then parsed line-by-line.
 > them apart (#112).
 >
 > **What is still missing**, so this is not read as closing §6's lifecycle: nothing represents a
-> finding being *disputed* after the fact, *expiring*, or being *retracted*. Those were not
-> invented against an empty store, and `test_research_ingestion_boundary` still characterizes
-> their absence.
+> finding *expiring*. `test_research_ingestion_boundary` still characterizes that absence.
+>
+> **RETRACTION, ADDED IMMEDIATELY AFTER — and the ordering is the argument.** 6.2a's gate is safe
+> because its default is to **withhold**: a number does not count until somebody says so. The
+> moment anything accepts *without* a person — a provisional "assume this for my next pick", a
+> second panel, a capability threshold — the default flips to **admit**, and a system that can
+> admit without a person and cannot un-admit has no floor. So `retract_finding` /
+> `restore_finding` ship **ahead of** any acceptance automation rather than after it.
+>
+> Three properties carry it:
+>
+> | property | why |
+> |---|---|
+> | retraction is **orthogonal** to adjudication, not a fourth state | *"confirmed, then rejected"* and *"never confirmed"* are different histories, and a collapsed state cannot tell them apart |
+> | the **claim survives**; only the number leaves | a claim that turned out to be wrong is information — deleting it makes the same mistake re-acceptable to the next person who looks |
+> | **restore is not a grant** | undo touches only the axis the retraction took away; restoring an unconfirmed finding returns it to *waiting*, never to counting |
+>
+> **There is no cache to invalidate, and that is deliberate.**
+> `load_bot_research_as_external` filters on `feeds_composite` on every `DataMerger`
+> construction, so a retraction propagates by the same route an addition does. A separate
+> invalidation path would be a second thing to keep in sync with the first.
+
+### 6.2b The independence problem the neutrality pass created — measured, and now stated
+
+**STATUS: SURFACED → ENFORCED** (`panel_independence.py`)
+
+ROADMAP's trust boundary already names it: *"multiple models agreeing is not, by itself,
+sufficient corroboration if they're all downstream of the same single source."* The neutrality
+pass made that concrete rather than theoretical. Chairs are dealt round-robin across whichever
+providers a user has a key for, so **with one API key all four chairs run on the same family** —
+frequently the same model. Measured on the shipped default: `distinct_voices` over the four
+chairs with one key and no model overrides is **1**.
+
+That matters because the Moderator's own prompt sets *"the Contrarian didn't dispute it"* as the
+bar for writing a durable finding. Under one key that sentence can mean **one model declined to
+argue with itself**.
+
+**Four states, and the fourth is why a boolean was wrong:**
+
+| state | meaning |
+|---|---|
+| `SAME_VOICE` | same provider, same model — one opinion, counted twice |
+| `SAME_FAMILY` | same provider, two different models — two opinions, correlated |
+| `INDEPENDENT` | different providers |
+| `INDETERMINATE` | same provider, and at least one side is on the **provider default** |
+
+`INDETERMINATE` is §17.2/#109 arriving at a new consumer: the default ids are floating aliases,
+so a chair on "(provider default)" and a chair on a named model of the same provider *might* be
+the same model and this app cannot tell. Reporting that as "different" invents a distinction;
+reporting it as "same" invents an identity. It gets its own state, and **absence is not a value**
+decides which way it falls — `INDETERMINATE` never counts as corroboration, under either bar.
+
+**The module reports the relationship and refuses to set the bar.** `counts_as_corroboration`
+takes `require_cross_provider` with **no default**, because a caller that has not decided which
+bar it is applying has not decided the thing that matters — and because the two real bars differ
+by blast radius, not by model quality: a one-install provisional acceptance can live with
+`SAME_FAMILY`; a shared canonical one cannot. Baking either in would put a deployment decision
+inside a measurement.
 
 ### 6.3 What stops a low-confidence finding becoming a durable fact — quantified
 

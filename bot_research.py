@@ -27,10 +27,17 @@ Two separate stores, deliberately not one shape stretched to cover both:
     time, a genuinely separate relative-valuation model built from them is a real future option
     -- deliberately not attempted here.
 
-Both are append-only: a later entry about the same player(s)/source doesn't overwrite or
-delete an earlier one, it just outranks it at READ time where that matters (see DataMerger's
-newest-wins handling for findings) -- the full log stays a real record of what the panel has
-found over time, not just today's latest opinion.
+Both are append-only IN THE CLAIM: a later entry about the same player(s)/source doesn't
+overwrite or delete an earlier one, it just outranks it at READ time where that matters (see
+DataMerger's newest-wins handling for findings) -- the full log stays a real record of what the
+panel has found over time, not just today's latest opinion.
+
+A finding's LIFECYCLE STATE is deliberately not append-only, and the distinction is the point.
+The claim, its source, its rank and its evidence are written once and never edited; what a
+finding is currently ALLOWED TO DO changes over time (`adjudication`, `retracted`), and each
+transition stamps who and when so the history stays reconstructible from the row itself. A
+retraction therefore removes a number from circulation without removing the claim from the
+record -- deleting it would make the same mistake re-acceptable to the next person who looks.
 """
 
 from __future__ import annotations
@@ -62,6 +69,16 @@ COMPARISONS_PATH = Path("data/baseline/bot_comparisons.json")
 ADJUDICATION_PANEL_ONLY = "panel_only"
 ADJUDICATION_HUMAN_CONFIRMED = "human_confirmed"
 
+#: Why a finding stopped counting. RETRACTION IS NOT DELETION and is not a fourth adjudication
+#: state -- it is orthogonal: a retracted finding keeps whatever adjudication it had reached, and
+#: still loses its number. Collapsing the two would destroy the difference between "nobody has
+#: confirmed this yet" and "this was confirmed and then turned out to be wrong", which is exactly
+#: the information a reader needs most.
+RETRACTED_SUPERSEDED = "superseded"      # a later, better-supported claim contradicts it
+RETRACTED_REJECTED = "rejected"          # a second adjudication looked and said no
+RETRACTED_WITHDRAWN = "withdrawn"        # the person who accepted it took it back
+RETRACTION_REASONS = (RETRACTED_SUPERSEDED, RETRACTED_REJECTED, RETRACTED_WITHDRAWN)
+
 #: A row written before this gate existed has NO `adjudication` key, and that is a THIRD state:
 #: never adjudicated, as distinct from adjudicated-and-not-confirmed. Both are treated as "does
 #: not feed", but they are not the same fact and the reader must be able to tell them apart --
@@ -70,7 +87,8 @@ ADJUDICATION_HUMAN_CONFIRMED = "human_confirmed"
 ADJUDICATION_UNRECORDED = None
 
 
-def composite_eligibility(source: str, rank: Optional[int], adjudication: Optional[str]) -> dict:
+def composite_eligibility(source: str, rank: Optional[int], adjudication: Optional[str],
+                          retracted: Optional[dict] = None) -> dict:
     """Whether this finding's number may reach composite_player_score, and why not when it may not.
 
     Returns the three fields a stored finding carries, computed in one place so the record and the
@@ -93,7 +111,13 @@ def composite_eligibility(source: str, rank: Optional[int], adjudication: Option
     finding is exactly the kind of thing that, under a shared substrate, would reach everybody.
     """
     admitted = source_policy.admits(source)
-    if rank is None:
+    if retracted:
+        # Checked FIRST and unconditionally: a retracted finding loses its number no matter how
+        # far it got. It keeps its `adjudication` value, so the record still says how far that
+        # was -- "confirmed, then rejected" and "never confirmed" are different histories and a
+        # single collapsed state could not tell them apart.
+        reason = f"none -- retracted ({retracted.get('reason', 'reason not recorded')})"
+    elif rank is None:
         # A qualitative claim has no number to gate. Unchanged, and the reason it reads "none" is
         # the same as it always was.
         reason = "none"
@@ -120,7 +144,8 @@ def feeds_composite(finding: dict) -> bool:
     believing it.
     """
     verdict = composite_eligibility(
-        finding.get("source", ""), finding.get("rank"), finding.get("adjudication"))
+        finding.get("source", ""), finding.get("rank"), finding.get("adjudication"),
+        finding.get("retracted"))
     return verdict["composite_impact"] == "low-weight input"
 
 
@@ -206,7 +231,7 @@ def add_finding(
         # an unlisted cited source is a policy answer, an unconfirmed adjudication is a queue
         # position. Still explicit and visible rather than inferred from whether `rank` happens
         # to be null -- mirrors comparisons' own composite_impact field below.
-        **composite_eligibility(source, rank, ADJUDICATION_PANEL_ONLY),
+        **composite_eligibility(source, rank, ADJUDICATION_PANEL_ONLY, None),
         "conviction": conviction,
         "question": question,
         "league_id": league_id,
@@ -268,6 +293,81 @@ def confirm_finding(finding_id: int, *, by: str = "human") -> Optional[dict]:
     return None
 
 
+@store_io.atomic(lambda *a, **k: FINDINGS_PATH)
+def retract_finding(finding_id: int, reason: str, *, by: str = "human",
+                    note: str = "") -> Optional[dict]:
+    """Take a finding's number back out of circulation, without taking the finding out of the record.
+
+    Returns the updated row, or None if there is no such finding or `reason` is not one of
+    RETRACTION_REASONS. An unrecognised reason is refused rather than stored: "retracted for
+    reasons unknown" is the kind of row that gets re-accepted later by someone who cannot tell
+    what went wrong.
+
+    WHY THIS HAD TO EXIST BEFORE ANYTHING AUTOMATIC. 6.2a's gate holds a number back until a
+    person confirms it; that is safe because the default is to withhold. The moment anything
+    accepts a claim WITHOUT a person -- a provisional "assume this is right for my next pick", a
+    second panel, a threshold -- the default flips to admit, and a system that can admit without
+    a person and cannot un-admit has no floor. Retraction is that floor, and it is why it ships
+    ahead of any acceptance automation rather than after it.
+
+    WHAT RECOMPUTES, and why there is no second mechanism for it. Nothing caches an accepted
+    finding's contribution: `load_bot_research_as_external` filters on `feeds_composite` every
+    time a DataMerger is constructed, and composite_player_score reads that frame. So the next
+    build simply does not see this row, and every score derived from it moves on its own. A
+    separate invalidation path would be a second thing to keep in sync with the first.
+
+    THE RECORD IS NOT EDITED. The claim, its source, its rank and its evidence stay exactly as
+    written -- this adds a `retracted` block beside them. The store's append-only promise is
+    about the CLAIM; its lifecycle state is deliberately mutable, and every transition stamps who
+    and when so the history stays reconstructible.
+    """
+    if reason not in RETRACTION_REASONS:
+        return None
+    entries = load_findings()
+    for entry in entries:
+        if entry.get("id") != finding_id:
+            continue
+        entry["retracted"] = {
+            "reason": reason,
+            "by": by,
+            "at": datetime.now().strftime("%Y-%m-%d"),
+            "note": note.strip(),
+        }
+        entry.update(composite_eligibility(
+            entry.get("source", ""), entry.get("rank"), entry.get("adjudication"),
+            entry["retracted"]))
+        _save(FINDINGS_PATH, entries)
+        return dict(entry)
+    return None
+
+
+@store_io.atomic(lambda *a, **k: FINDINGS_PATH)
+def restore_finding(finding_id: int) -> Optional[dict]:
+    """Undo a retraction, returning the finding to whatever adjudication state it already held.
+
+    Deliberately does NOT re-confirm: a restored finding that had never been confirmed goes back
+    to waiting for a person, not to counting. Retraction and adjudication are orthogonal, and
+    restore only touches the axis it took away -- otherwise "undo" would quietly be a grant.
+    """
+    entries = load_findings()
+    for entry in entries:
+        if entry.get("id") != finding_id or not entry.get("retracted"):
+            continue
+        entry.pop("retracted", None)
+        entry.update(composite_eligibility(
+            entry.get("source", ""), entry.get("rank"), entry.get("adjudication"), None))
+        _save(FINDINGS_PATH, entries)
+        return dict(entry)
+    return None
+
+
+def retracted_findings() -> list[dict]:
+    """Everything currently retracted, newest first -- a real list, because a retraction nobody
+    can see is indistinguishable from a deletion."""
+    return sorted((f for f in load_findings() if f.get("retracted")),
+                  key=lambda e: e.get("ts", 0), reverse=True)
+
+
 def findings_awaiting_adjudication() -> list[dict]:
     """Rank-bearing findings whose number is being held back, newest first.
 
@@ -278,7 +378,7 @@ def findings_awaiting_adjudication() -> list[dict]:
     """
     return sorted(
         (f for f in load_findings()
-         if f.get("rank") is not None and not feeds_composite(f)),
+         if f.get("rank") is not None and not f.get("retracted") and not feeds_composite(f)),
         key=lambda e: e.get("ts", 0), reverse=True,
     )
 

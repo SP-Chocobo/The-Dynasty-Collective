@@ -165,3 +165,132 @@ class TheGateDoesNotAssumeADeploymentTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class RetractionIsNotDeletionTests(_Store):
+    """§6's missing lifecycle half, and the floor under every future relaxation of the gate.
+
+    6.2a's gate is safe because its default is to WITHHOLD -- a number does not count until
+    somebody says so. The moment anything accepts without a person (a provisional "assume this
+    for my next pick", a second panel, a threshold), the default flips to ADMIT, and a system
+    that can admit without a person and cannot un-admit has no floor. That is why this ships
+    ahead of any acceptance automation rather than after it.
+    """
+
+    def _confirmed(self, source="ESPN", rank=3):
+        finding_id = bot_research.add_finding("Some Player", source, "a claim", rank=rank)
+        bot_research.confirm_finding(finding_id)
+        return finding_id
+
+    def test_a_retracted_finding_stops_counting(self):
+        finding_id = self._confirmed()
+        self.assertTrue(bot_research.feeds_composite(bot_research.load_findings()[0]))
+        bot_research.retract_finding(finding_id, bot_research.RETRACTED_REJECTED)
+        row = bot_research.load_findings()[0]
+        self.assertFalse(bot_research.feeds_composite(row))
+        self.assertEqual(row["composite_impact"], "none -- retracted (rejected)")
+
+    def test_the_claim_itself_survives_intact(self):
+        """Retraction is not deletion. A claim that turned out to be wrong is information, and
+        deleting it makes the same mistake re-acceptable by the next person who looks."""
+        finding_id = self._confirmed()
+        bot_research.retract_finding(finding_id, bot_research.RETRACTED_SUPERSEDED)
+        row = bot_research.load_findings()[0]
+        self.assertEqual(row["claim"], "a claim")
+        self.assertEqual(row["rank"], 3)
+        self.assertEqual(row["source"], "ESPN")
+        self.assertEqual(len(bot_research.load_findings()), 1)
+
+    def test_retraction_is_orthogonal_to_adjudication_and_preserves_the_history(self):
+        """The distinction a single collapsed state would destroy: "confirmed, then rejected" and
+        "never confirmed" are different histories, and the first is the one worth knowing."""
+        finding_id = self._confirmed()
+        bot_research.retract_finding(finding_id, bot_research.RETRACTED_REJECTED)
+        row = bot_research.load_findings()[0]
+        self.assertEqual(row["adjudication"], bot_research.ADJUDICATION_HUMAN_CONFIRMED)
+        self.assertEqual(row["retracted"]["reason"], bot_research.RETRACTED_REJECTED)
+
+    def test_a_retracted_finding_leaves_the_pending_queue(self):
+        """It is not waiting on anybody. Leaving it there would ask a person to adjudicate
+        something already decided against."""
+        finding_id = bot_research.add_finding("Some Player", "ESPN", "a claim", rank=3)
+        self.assertEqual(len(bot_research.findings_awaiting_adjudication()), 1)
+        bot_research.retract_finding(finding_id, bot_research.RETRACTED_REJECTED)
+        self.assertEqual(bot_research.findings_awaiting_adjudication(), [])
+        self.assertEqual([f["id"] for f in bot_research.retracted_findings()], [finding_id])
+
+    def test_an_unrecognised_reason_is_refused_rather_than_stored(self):
+        """"Retracted for reasons unknown" is the row that gets re-accepted later by somebody
+        who cannot tell what went wrong."""
+        finding_id = self._confirmed()
+        self.assertIsNone(bot_research.retract_finding(finding_id, "because"))
+        self.assertNotIn("retracted", bot_research.load_findings()[0])
+        self.assertTrue(bot_research.feeds_composite(bot_research.load_findings()[0]))
+
+    def test_it_records_who_and_when_and_an_optional_note(self):
+        finding_id = self._confirmed()
+        row = bot_research.retract_finding(finding_id, bot_research.RETRACTED_REJECTED,
+                                           by="server", note="second panel disagreed")
+        self.assertEqual(row["retracted"]["by"], "server")
+        self.assertEqual(row["retracted"]["note"], "second panel disagreed")
+        self.assertIn("at", row["retracted"])
+
+    def test_retracting_something_that_does_not_exist_is_a_no_op(self):
+        self.assertIsNone(bot_research.retract_finding(9999, bot_research.RETRACTED_REJECTED))
+
+
+class RestoringIsNotGrantingTests(_Store):
+    def test_restore_returns_a_finding_to_the_state_it_already_held(self):
+        finding_id = bot_research.add_finding("Some Player", "ESPN", "a claim", rank=3)
+        bot_research.confirm_finding(finding_id)
+        bot_research.retract_finding(finding_id, bot_research.RETRACTED_WITHDRAWN)
+        row = bot_research.restore_finding(finding_id)
+        self.assertNotIn("retracted", row)
+        self.assertEqual(row["composite_impact"], "low-weight input")
+
+    def test_restoring_an_unconfirmed_finding_does_NOT_make_it_count(self):
+        """The trap: "undo" must only touch the axis the retraction took away. A restore that
+        also confirmed would be a grant wearing an undo's clothes."""
+        finding_id = bot_research.add_finding("Some Player", "ESPN", "a claim", rank=3)
+        bot_research.retract_finding(finding_id, bot_research.RETRACTED_REJECTED)
+        row = bot_research.restore_finding(finding_id)
+        self.assertEqual(row["composite_impact"], "none -- awaiting a second adjudication")
+        self.assertFalse(bot_research.feeds_composite(row))
+
+    def test_restoring_something_not_retracted_is_a_no_op(self):
+        finding_id = bot_research.add_finding("Some Player", "ESPN", "a claim", rank=3)
+        self.assertIsNone(bot_research.restore_finding(finding_id))
+
+
+class TheRecomputePathIsTheOrdinaryOneTests(_Store):
+    """There is deliberately no cache invalidation to keep in sync -- because there is no cache.
+    Every DataMerger construction re-reads the store through `feeds_composite`, so a retraction
+    propagates by the same route an addition does."""
+
+    def test_a_retraction_removes_the_row_from_external_values_on_the_next_build(self):
+        finding_id = bot_research.add_finding("Some Player", "ESPN", "a claim", rank=3)
+        bot_research.confirm_finding(finding_id)
+        self.assertEqual(len(dm.load_bot_research_as_external()), 1)
+        bot_research.retract_finding(finding_id, bot_research.RETRACTED_REJECTED)
+        self.assertTrue(dm.load_bot_research_as_external().empty)
+
+    def test_and_a_restore_brings_it_back_by_the_same_route(self):
+        finding_id = bot_research.add_finding("Some Player", "ESPN", "a claim", rank=3)
+        bot_research.confirm_finding(finding_id)
+        bot_research.retract_finding(finding_id, bot_research.RETRACTED_REJECTED)
+        bot_research.restore_finding(finding_id)
+        self.assertEqual(len(dm.load_bot_research_as_external()), 1)
+
+
+class RetractionReachesTheScreenTests(unittest.TestCase):
+    def test_the_panel_offers_retraction_and_lists_what_is_retracted(self):
+        app = (_HERE / "app.py").read_text()
+        self.assertIn("bot_research.retract_finding(", app)
+        self.assertIn("bot_research.retracted_findings()", app)
+        self.assertIn("bot_research.restore_finding(", app)
+
+    def test_retracted_findings_are_shown_rather_than_hidden(self):
+        """A retraction nobody can see is indistinguishable from a deletion, which defeats the
+        reason for retracting instead of deleting."""
+        app = (_HERE / "app.py").read_text()
+        self.assertIn("Retracted (", app)
