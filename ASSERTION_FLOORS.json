@@ -1016,6 +1016,17 @@
         "assertNotIn": 4
       }
     },
+    "test_ui_source.py": {
+      "test_methods": 27,
+      "asserts": {
+        "assertEqual": 11,
+        "assertGreater": 5,
+        "assertIn": 10,
+        "assertLess": 1,
+        "assertNotIn": 5,
+        "assertRaises": 3
+      }
+    },
     "test_untrusted_fence.py": {
       "test_methods": 16,
       "asserts": {

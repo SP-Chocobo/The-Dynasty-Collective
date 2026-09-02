@@ -31,6 +31,7 @@ import unittest
 from pathlib import Path
 
 import store_io
+import ui_source
 
 
 def _tmp(name="store.json"):
@@ -317,7 +318,7 @@ class TheGuardIsSurfacedTests(unittest.TestCase):
 
     app.py is source-scanned rather than imported, as every app-level contract here is."""
 
-    APP = (Path(__file__).parent / "app.py").read_text()
+    APP = ui_source.text()
 
     def test_the_app_reads_the_unreadable_register_and_reports_it(self):
         self.assertIn("def warn_about_unreadable_stores(", self.APP)

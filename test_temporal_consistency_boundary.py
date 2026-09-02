@@ -28,9 +28,10 @@ from pathlib import Path
 import pick_debate
 import pick_synthesis as ps
 import todo_log
+import ui_source
 
 _HERE = Path(__file__).parent
-_APP = (_HERE / "app.py").read_text()
+_APP = ui_source.text()
 
 
 class _FakeMerger:

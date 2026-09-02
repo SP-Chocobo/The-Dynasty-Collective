@@ -40,6 +40,7 @@ import llm_engine
 import pick_debate
 import todo_log
 import untrusted
+import ui_source
 
 _HERE = Path(__file__).parent
 _SENTINEL_KEY = "sk-ant-SENTINEL-must-never-appear-000"
@@ -255,10 +256,8 @@ def _build_context_source() -> str:
     """app.build_context's own body. app.py is a top-level Streamlit script and cannot be
     imported, so every app-level contract in this suite is checked against its source; slicing to
     the one function keeps a bare `in` from passing on a match elsewhere in a 6,000-line file."""
-    app_source = (_HERE / "app.py").read_text()
-    start = app_source.index("def build_context(")
-    end = app_source.index("\ndef ", start + 10)
-    return app_source[start:end]
+    app_source = ui_source.text()
+    return ui_source.block("def build_context(", "\ndef ")
 
 
 class UnvalidatedCitationAndSharedChannelTests(unittest.TestCase):
@@ -297,12 +296,11 @@ class UnvalidatedCitationAndSharedChannelTests(unittest.TestCase):
         # The ninth fence is not in build_context: chat-scoped attachments are appended to the
         # context at the call site, and they are the rawest input of the lot -- an uploaded file's
         # own bytes. Checked against the whole module so moving the append cannot lose the fence.
-        app_source = (_HERE / "app.py").read_text()
+        app_source = ui_source.text()
         # Not just "a fence exists somewhere near it": the truncated file text must be the
         # ARGUMENT to fence(), which is what a careless refactor would break while leaving both
         # the call and the truncation intact.
-        attachment_fence = app_source.index('untrusted.fence("uploaded-file-contents"')
-        self.assertIn("a['text'][:4000]", app_source[attachment_fence:attachment_fence + 300],
+        self.assertIn("a['text'][:4000]", ui_source.block('untrusted.fence("uploaded-file-contents"', chars=300),
                       "the raw attachment text is no longer the fenced body")
 
     def test_the_headings_stay_outside_the_fence_which_is_the_whole_point(self):

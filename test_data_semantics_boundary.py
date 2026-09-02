@@ -38,9 +38,10 @@ import bot_research
 import data_merger as dm
 import draft_room
 import llm_engine
+import ui_source
 
 
-_APP_SOURCE = Path(__file__).with_name("app.py").read_text()
+_APP_SOURCE = ui_source.text()
 
 _NOT_APPLICABLE_REASON = "a team defense has no career arc to project; no source publishes one"
 

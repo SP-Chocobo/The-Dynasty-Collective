@@ -18,15 +18,14 @@ Specifically, they pin that:
 
 import re
 import unittest
-from pathlib import Path
 
-_APP_SOURCE = Path(__file__).with_name("app.py").read_text()
+import ui_source
+
+_APP_SOURCE = ui_source.text()
 
 
 def _extract_block(start_marker: str, end_marker: str) -> str:
-    start = _APP_SOURCE.index(start_marker)
-    end = _APP_SOURCE.index(end_marker, start)
-    return _APP_SOURCE[start:end]
+    return ui_source.block(start_marker, end_marker)
 
 
 class MockDraftSettingsDefaultTests(unittest.TestCase):

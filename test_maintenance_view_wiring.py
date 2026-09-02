@@ -9,15 +9,16 @@ guarded against explicitly.
 """
 
 import unittest
-from pathlib import Path
 
-_APP_SOURCE = Path(__file__).with_name("app.py").read_text()
+import ui_source
+
+_APP_SOURCE = ui_source.text()
 
 
 def _ledger_block() -> str:
-    start = _APP_SOURCE.index("elif main_view == MAINTENANCE_VIEW:")
-    end = _APP_SOURCE.index("# ------------------------------------------------------------------ free agents --", start)
-    return _APP_SOURCE[start:end]
+    return ui_source.block(
+        "elif main_view == MAINTENANCE_VIEW:",
+        "# ------------------------------------------------------------------ free agents --")
 
 
 class AttentionLedgerWiringTests(unittest.TestCase):

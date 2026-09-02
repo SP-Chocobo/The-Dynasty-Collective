@@ -25,9 +25,10 @@ from pathlib import Path
 
 import baseline_manifest
 import corpus_state
+import ui_source
 
 _HERE = Path(__file__).parent
-_APP = (_HERE / "app.py").read_text()
+_APP = ui_source.text()
 
 
 class _Tree(unittest.TestCase):

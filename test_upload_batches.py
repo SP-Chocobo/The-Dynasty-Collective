@@ -21,6 +21,7 @@ from pathlib import Path
 
 import data_merger as dm
 import upload_batches as ub
+import ui_source
 
 
 class _Store(unittest.TestCase):
@@ -268,7 +269,7 @@ class TheStoreItselfRefusesGarbageTests(_Store):
 
 
 class TheDateFieldIsAPickerNotATypedStringTests(unittest.TestCase):
-    APP = Path("app.py").read_text()
+    APP = ui_source.text()
 
     def test_the_ui_offers_a_picker_so_the_format_question_mostly_disappears(self):
         self.assertIn("st.date_input(", self.APP)
@@ -292,7 +293,7 @@ class TheDateFieldIsAPickerNotATypedStringTests(unittest.TestCase):
 class TheUploaderAsksForTheBatchNotThePieceTests(unittest.TestCase):
     """The two fields on the way in, and the properties that keep them honest."""
 
-    APP = Path("app.py").read_text()
+    APP = ui_source.text()
 
     def test_the_uploader_takes_several_files_at_once(self):
         self.assertIn("accept_multiple_files=True", self.APP)
@@ -325,7 +326,7 @@ class TheUploaderAsksForTheBatchNotThePieceTests(unittest.TestCase):
 class TheAmbiguityQueueTests(unittest.TestCase):
     """A single upload can now carry several files, and more than one can need a human call."""
 
-    APP = Path("app.py").read_text()
+    APP = ui_source.text()
 
     def test_pending_uploads_is_a_queue_not_a_slot(self):
         """Assigning to one slot would have silently dropped every ambiguous file but the last
@@ -344,7 +345,7 @@ class TheAmbiguityQueueTests(unittest.TestCase):
 
 
 class TheReviewSectionGroupsByBatchTests(unittest.TestCase):
-    APP = Path("app.py").read_text()
+    APP = ui_source.text()
 
     def test_uploads_are_listed_by_batch_with_their_own_story(self):
         self.assertIn("upload_batches.batches()", self.APP)

@@ -17,18 +17,18 @@ a cleanly importable module, so these are source-level checks. They exist to pin
 """
 
 import unittest
-from pathlib import Path
 
-_APP_SOURCE = Path(__file__).with_name("app.py").read_text()
+import ui_source
+
+_APP_SOURCE = ui_source.text()
 
 
 class MainNavRequiredTests(unittest.TestCase):
     def test_main_view_segmented_control_is_required(self):
-        start = _APP_SOURCE.index("main_view = st.segmented_control(")
         # A fixed window rather than index(")", start) -- the call's own explanatory comment
         # contains a literal ")" (part of a parenthetical), which would truncate the search
         # before reaching the real end of the call.
-        call_text = _APP_SOURCE[start:start + 1200]
+        call_text = ui_source.block("main_view = st.segmented_control(", chars=1200)
         self.assertIn("required=True", call_text)
 
     def test_league_view_is_reached_by_an_explicit_check(self):

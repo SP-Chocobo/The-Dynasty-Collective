@@ -15,15 +15,14 @@ contract's application to this surface specifically:
 
 import re
 import unittest
-from pathlib import Path
 
-_APP_SOURCE = Path(__file__).with_name("app.py").read_text()
+import ui_source
+
+_APP_SOURCE = ui_source.text()
 
 
 def _matchup_block() -> str:
-    start = _APP_SOURCE.index("if main_view == MATCHUP_VIEW:")
-    end = _APP_SOURCE.index("elif main_view == MAINTENANCE_VIEW:", start)
-    return _APP_SOURCE[start:end]
+    return ui_source.block("if main_view == MATCHUP_VIEW:", "elif main_view == MAINTENANCE_VIEW:")
 
 
 class MatchupReadinessWiringTests(unittest.TestCase):

@@ -44,9 +44,10 @@ from __future__ import annotations
 import re
 import unittest
 from pathlib import Path
+import ui_source
 
 _HERE = Path(__file__).parent
-_APP = (_HERE / "app.py").read_text()
+_APP = ui_source.text()
 _BOARD = (_HERE / "draft_board_ui.py").read_text()
 
 

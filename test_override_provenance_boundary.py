@@ -46,9 +46,10 @@ import draft_room
 import league_format
 import todo_log
 import bot_research
+import ui_source
 
 
-_APP_SOURCE = Path(__file__).with_name("app.py").read_text()
+_APP_SOURCE = ui_source.text()
 
 
 def _function_source(name: str) -> str:

@@ -18,6 +18,7 @@ from pathlib import Path
 import bot_research
 import data_merger as dm
 import source_policy
+import ui_source
 
 _HERE = Path(__file__).parent
 
@@ -284,7 +285,7 @@ class TheRecomputePathIsTheOrdinaryOneTests(_Store):
 
 class RetractionReachesTheScreenTests(unittest.TestCase):
     def test_the_panel_offers_retraction_and_lists_what_is_retracted(self):
-        app = (_HERE / "app.py").read_text()
+        app = ui_source.text()
         self.assertIn("bot_research.retract_finding(", app)
         self.assertIn("bot_research.retracted_findings()", app)
         self.assertIn("bot_research.restore_finding(", app)
@@ -292,5 +293,5 @@ class RetractionReachesTheScreenTests(unittest.TestCase):
     def test_retracted_findings_are_shown_rather_than_hidden(self):
         """A retraction nobody can see is indistinguishable from a deletion, which defeats the
         reason for retracting instead of deleting."""
-        app = (_HERE / "app.py").read_text()
+        app = ui_source.text()
         self.assertIn("Retracted (", app)

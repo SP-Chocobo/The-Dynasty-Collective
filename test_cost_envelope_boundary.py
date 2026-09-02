@@ -34,9 +34,10 @@ import llm_engine
 import provider_meter
 import pick_debate
 import pick_synthesis as ps
+import ui_source
 
 _HERE = Path(__file__).parent
-_APP = (_HERE / "app.py").read_text()
+_APP = ui_source.text()
 
 _VERDICT = "RECOMMENDATION: HOLD\nCONVICTION: Split\nREASON: x"
 _JUDGE = "SYNTHESIS: 50\nDISAGREEMENT_HANDLING: 50\nCLARITY: 50\nACTIONABILITY: 50\nNOTES: ok"
@@ -191,8 +192,7 @@ class NothingAmplifiesTheEnvelopeTests(unittest.TestCase):
         # ask_moderator_followup (explaining which callers can produce a verdict block), and a
         # line-prefix filter does not remove a docstring's body lines -- which is how this test
         # first reported a recursion path that does not exist.
-        start = _APP.index("def process_moderator_output(")
-        body = _APP[start:_APP.index("\ndef ", start + 10)]
+        body = ui_source.block("def process_moderator_output(", "\ndef ")
         func = ast.parse(body).body[0]
         statements = func.body
         if (statements and isinstance(statements[0], ast.Expr)

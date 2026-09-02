@@ -38,14 +38,14 @@ from pathlib import Path
 import llm_engine
 import pick_synthesis
 import screen_context
+import ui_source
 
 _HERE = Path(__file__).parent
-_APP = (_HERE / "app.py").read_text()
+_APP = ui_source.text()
 
 
 def _build_context_body() -> str:
-    start = _APP.index("def build_context(")
-    return _APP[start:_APP.index("\ndef ", start + 10)]
+    return ui_source.block("def build_context(", "\ndef ")
 
 
 class MandatoryStateIsNeverCompactedTests(unittest.TestCase):
@@ -105,8 +105,7 @@ class CompactionIsNonDestructiveTests(unittest.TestCase):
     """§9: is the original uncompacted context preserved for audit/replay?"""
 
     def _compact_source(self) -> str:
-        start = _APP.index("def compact_league_history(")
-        return _APP[start:_APP.index("\ndef ", start + 10)]
+        return ui_source.block("def compact_league_history(", "\ndef ")
 
     def test_a_backup_is_written_before_history_is_overwritten(self):
         source = self._compact_source()
