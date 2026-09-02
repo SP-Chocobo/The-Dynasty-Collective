@@ -1017,16 +1017,16 @@
       }
     },
     "test_upload_batches.py": {
-      "test_methods": 38,
+      "test_methods": 52,
       "asserts": {
-        "assertEqual": 24,
+        "assertEqual": 28,
         "assertFalse": 1,
-        "assertGreater": 1,
-        "assertIn": 24,
-        "assertIsNone": 6,
+        "assertGreater": 2,
+        "assertIn": 31,
+        "assertIsNone": 12,
         "assertNotEqual": 2,
         "assertNotIn": 6,
-        "assertTrue": 1
+        "assertTrue": 2
       }
     },
     "test_version_boundary.py": {

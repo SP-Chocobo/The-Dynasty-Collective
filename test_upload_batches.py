@@ -193,6 +193,102 @@ if __name__ == "__main__":
     unittest.main()
 
 
+class AMalformedDateMustNotOUTRANKARealOneTests(unittest.TestCase):
+    """The defect this parser exists for, measured on the real sort key rather than argued.
+
+    `_negated_date` complements each digit of a date so newer sorts first as a plain string.
+    Hand it something that is not an ISO date and it does not fail -- it produces a key that
+    lands somewhere arbitrary, and arbitrary is frequently FIRST. Which means a malformed date
+    does not merely fail to help: it silently beats every correctly dated source, on a field
+    that decides which of two files prices a player.
+    """
+
+    def test_the_measurement_that_motivated_this(self):
+        """Kept as an executable record, because the numbers are the entire argument. If
+        `_negated_date` ever changes, this says loudly that the reasoning needs redoing."""
+        import data_merger as dm
+        beats_a_real_date = [dm._negated_date(bad) < dm._negated_date("2026-08-18")
+                             for bad in ("8/28/26", "202-08-18")]
+        self.assertEqual(beats_a_real_date, [True, True],
+                         "these malformed dates outrank a correct one -- which is why they are "
+                         "refused before they can be stored")
+
+    def test_every_shape_that_is_not_iso_is_refused_rather_than_guessed(self):
+        for bad in ("8/28/26", "202-08-18", "last Tuesday", "2026/08/18", "18-08-2026"):
+            with self.subTest(raw=bad):
+                value, error = ub.parse_as_of(bad)
+                self.assertIsNone(value)
+                self.assertTrue(error)
+
+    def test_an_impossible_calendar_date_is_refused(self):
+        self.assertIsNone(ub.parse_as_of("2026-02-30")[0])
+
+    def test_a_future_date_is_refused_because_it_would_win_forever(self):
+        value, error = ub.parse_as_of("2099-01-01")
+        self.assertIsNone(value)
+        self.assertIn("future", error)
+
+    def test_a_real_iso_date_passes_through_unchanged(self):
+        self.assertEqual(ub.parse_as_of("2026-08-18"), ("2026-08-18", None))
+
+    def test_blank_is_not_an_error_it_is_an_answer(self):
+        """"I don't know" is a legitimate response and must not be reported as a mistake."""
+        for blank in ("", "   ", None):
+            with self.subTest(raw=blank):
+                self.assertEqual(ub.parse_as_of(blank), (None, None))
+
+    def test_the_ambiguous_case_is_refused_ON_PURPOSE_not_by_omission(self):
+        """8/9/26 is August 9th to a US reader and September 8th to most of the world, and
+        nothing in the string says which. A parser that guessed would be inventing the exact
+        value this field exists to stop inventing -- confidently, on a precedence decision."""
+        self.assertIsNone(ub.parse_as_of("8/9/26")[0])
+        self.assertIn("two different days", ub.parse_as_of("8/9/26")[1])
+
+
+class TheStoreItselfRefusesGarbageTests(_Store):
+    """Validated at the data layer as well as the UI. The store is what precedence reads, so a
+    caller that skipped the form must not be able to poison a tiebreak."""
+
+    def test_an_unparseable_date_is_stored_as_unknown_never_raw(self):
+        ub.record(name="x", as_of="8/28/26", files=["a.csv"])
+        self.assertIsNone(ub.batches()[0]["as_of"])
+        self.assertIsNone(ub.stated_as_of("a.csv"))
+
+    def test_a_valid_date_still_stores(self):
+        ub.record(name="x", as_of="2026-08-18", files=["a.csv"])
+        self.assertEqual(ub.stated_as_of("a.csv"), "2026-08-18")
+
+    def test_a_poisoning_string_can_never_reach_the_sort_key(self):
+        """End to end: the thing the measurement above proved dangerous cannot get in."""
+        import data_merger as dm
+        ub.record(name="x", as_of="8/28/26", files=["a.csv"])
+        stored = ub.batches()[0]["as_of"] or ""
+        self.assertGreater(dm._negated_date(stored), dm._negated_date("2026-08-18"),
+                           "an unknown date must LOSE to a real one, not beat it")
+
+
+class TheDateFieldIsAPickerNotATypedStringTests(unittest.TestCase):
+    APP = Path("app.py").read_text()
+
+    def test_the_ui_offers_a_picker_so_the_format_question_mostly_disappears(self):
+        self.assertIn("st.date_input(", self.APP)
+
+    def test_the_picker_is_paired_with_an_explicit_unknown(self):
+        """A bare date_input has no empty state -- it defaults to today, so a field that cannot
+        be left blank is a required field wearing an optional label. And today is the one value
+        this must never assume, since it would outrank every real source."""
+        self.assertIn("I don't know when this data is from", self.APP)
+
+    def test_the_picker_cannot_select_a_future_date(self):
+        self.assertIn("max_value=datetime.now().date()", self.APP)
+
+    def test_a_refused_date_is_reported_rather_than_silently_downgraded(self):
+        """Dropping quietly to "unknown" would leave a user believing they had dated their
+        upload when they had not -- and that belief is load-bearing, because an undated file
+        behaves differently in a tiebreak."""
+        self.assertIn("Date not recorded —", self.APP)
+
+
 class TheUploaderAsksForTheBatchNotThePieceTests(unittest.TestCase):
     """The two fields on the way in, and the properties that keep them honest."""
 
@@ -208,12 +304,14 @@ class TheUploaderAsksForTheBatchNotThePieceTests(unittest.TestCase):
     def test_the_date_field_is_optional_and_says_what_blank_costs(self):
         """A required date gets typed through, and a wrong date is worse than none. Saying what
         blank actually costs is what makes leaving it blank an informed choice rather than a
-        shrug."""
-        self.assertIn("(optional, YYYY-MM-DD)", self.APP)
-        self.assertIn("lose a tie to a dated one rather than beating it by accident", self.APP)
+        shrug. (The field is now a picker plus an explicit unknown -- this asserts the PROPERTY,
+        not the widget, which is what the first version of it got wrong.)"""
+        self.assertIn("I don't know when this data is from", self.APP)
+        self.assertIn("lose a tie to a dated ", self.APP)
 
     def test_it_asks_for_the_sources_date_not_todays(self):
-        self.assertIn("the date the SOURCE published it, not today", self.APP)
+        self.assertIn("published or computed it", self.APP)
+        self.assertIn("not the date you are ", self.APP)
 
     def test_one_record_is_written_for_the_whole_batch(self):
         self.assertIn("upload_batches.record(", self.APP)

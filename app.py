@@ -2622,12 +2622,26 @@ with st.sidebar:
             # filesystem timestamp -- which is what used to happen, invisibly. Optional on
             # purpose: a required date gets typed through, and a wrong date is worse than none
             # because precedence acts on it and is then confidently wrong.
-            _batch_as_of = st.text_input(
-                "As of what date is this data? (optional, YYYY-MM-DD)",
-                placeholder="e.g. 2026-08-28 — the date the SOURCE published it, not today",
-                help="Leave blank if you genuinely do not know. Undated files still load; they "
-                     "simply lose a tie to a dated one rather than beating it by accident.",
+            # A PICKER, not a text box -- so the format question mostly disappears rather than
+            # being enforced. It is paired with an explicit "I don't know", because a bare
+            # date_input has no empty state: it defaults to today, and a field that cannot be
+            # left blank is a required field wearing an optional label. Today is the one date
+            # this must never quietly assume, since it would outrank every real source.
+            _as_of_unknown = st.checkbox(
+                "I don't know when this data is from",
+                help="Perfectly fine. These files still load — they just lose a tie to a dated "
+                     "source rather than beating one by accident.",
             )
+            _batch_as_of = ""
+            if not _as_of_unknown:
+                _picked = st.date_input(
+                    "As of what date is this data?",
+                    value=datetime.now().date(),
+                    max_value=datetime.now().date(),
+                    help="The date the SOURCE published or computed it — not the date you are "
+                         "uploading it. Those are different facts and precedence uses the first.",
+                )
+                _batch_as_of = _picked.isoformat() if _picked else ""
             note = st.text_area(
                 "Comments, questions, or labels for this upload (optional)",
                 placeholder="e.g. \"ignore this ranking, Bijan tweaked his hamstring in preseason\" or "
@@ -2811,13 +2825,19 @@ with st.sidebar:
             # precedence, so recording it here would make the batch claim a scope it does not
             # have. A batch with nothing in a pool is not recorded at all -- there would be
             # nothing for its as-of date to date.
+            _as_of_clean, _as_of_error = upload_batches.parse_as_of(_batch_as_of)
+            if _as_of_error:
+                # Refused, and SAID SO. Silently dropping to "unknown" would leave a user
+                # believing they had dated their upload when they had not -- and an undated
+                # file behaves differently in a tiebreak, so that belief would be load-bearing.
+                notify("warning", f"Date not recorded — {_as_of_error}")
             if _batch_files:
                 upload_batches.record(
-                    name=_batch_name, note=note, as_of=_batch_as_of, files=_batch_files,
+                    name=_batch_name, note=note, as_of=_as_of_clean, files=_batch_files,
                     league_ids=list(scope_league_ids or []),
                 )
-                if _batch_as_of:
-                    notify("info", f"Recorded {len(_batch_files)} file(s) as of {_batch_as_of}.")
+                if _as_of_clean:
+                    notify("info", f"Recorded {len(_batch_files)} file(s) as of {_as_of_clean}.")
                 else:
                     # Said out loud rather than left to be discovered: an undated file is not
                     # broken, it just cannot win a disagreement.

@@ -54,6 +54,56 @@ DATE_DECLARED = "declared"    # the file carried its own source_date column
 DATE_UNKNOWN = "unknown"      # nobody said, and we are NOT inventing one from mtime
 
 
+#: The one shape accepted, and it is deliberately narrow. See parse_as_of for why a friendlier
+#: parser was rejected rather than merely skipped.
+AS_OF_FORMAT = "YYYY-MM-DD"
+
+
+def parse_as_of(raw: Optional[str]) -> tuple[Optional[str], Optional[str]]:
+    """(iso_date, error). Exactly one of the two is None.
+
+    WHY THIS EXISTS AT ALL, measured rather than assumed. `_negated_date` complements each digit
+    of a date to sort newest-first as a string. Feed it something that is not an ISO date and it
+    does not fail -- it produces a key that sorts somewhere arbitrary, and the arbitrary place is
+    often FIRST:
+
+        '8/28/26'      -> '1/71/73'      sorts BEFORE every real date -- it wins precedence
+        '202-08-18'    -> '797-91-81'    a typo'd year, also wins
+        '2026-08-18'   -> '7973-91-81'   the correct answer, beaten by both
+        'last Tuesday' -> unchanged      loses, but for no principled reason
+
+    So a malformed date does not merely fail to help. It silently outranks correctly dated
+    sources, which is the precise failure the whole three-state design was built to prevent --
+    and it arrived through the field added to prevent it.
+
+    WHY NOT A FRIENDLIER PARSER. The obvious next step is to accept '8/28/26' and convert it.
+    That works until '8/9/26', which is August 9th to a US reader and September 8th to most of
+    the world, and nothing in the string says which. A parser that guesses is inventing the very
+    value this field exists to stop inventing -- and it would guess CONFIDENTLY, on a field that
+    decides which of two sources prices a player. Refusing is the honest answer; the UI offers a
+    date picker so almost nobody has to type one anyway.
+
+    A FUTURE DATE IS REFUSED for the same reason it would be poisonous: "when was this data
+    published" cannot be answered with tomorrow, and a far-future date would win every tie
+    forever.
+    """
+    text = (raw or "").strip()
+    if not text:
+        # Not an error. Blank is a legitimate answer and stays one -- resolve_source_date turns
+        # it into "loses every tie", which is exactly right for "nobody said".
+        return None, None
+    try:
+        parsed = datetime.strptime(text, "%Y-%m-%d").date()
+    except ValueError:
+        return None, (f"{text!r} is not a date in {AS_OF_FORMAT} form. Use the picker, or type "
+                      f"it like 2026-08-28 — other spellings are refused rather than guessed at, "
+                      f"because 8/9/26 means two different days depending on who wrote it.")
+    if parsed > datetime.now().date():
+        return None, (f"{text!r} is in the future. This asks when the data was PUBLISHED, and a "
+                      f"future date would outrank every real source indefinitely.")
+    return parsed.isoformat(), None
+
+
 def _load() -> list[dict]:
     return store_io.read(BATCHES_PATH, [])
 
@@ -73,13 +123,18 @@ def record(*, name: str, note: str = "", as_of: Optional[str] = None,
     would make the field required, and a required date field gets typed through -- a wrong date
     is worse than an absent one, because precedence acts on it and is then confidently wrong.
     """
+    # Validated HERE as well as in the UI, deliberately. The store is what precedence reads, so
+    # it is the boundary that must never hold an unparseable date -- a caller that skipped the
+    # UI check must not be able to poison a tiebreak. An unparseable value is recorded as
+    # UNKNOWN rather than stored raw: absence is honest, garbage is not.
+    as_of, _as_of_error = parse_as_of(as_of)
     batches = _load()
     batch_id = uuid.uuid4().hex[:12]
     batches.append({
         "id": batch_id,
         "name": (name or "").strip() or "Untitled upload",
         "note": (note or "").strip(),
-        "as_of": (as_of or "").strip() or None,
+        "as_of": as_of,
         "uploaded_at": datetime.now().strftime("%Y-%m-%d"),
         "ts": time.time(),
         "files": list(files or []),
