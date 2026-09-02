@@ -1,0 +1,992 @@
+{
+  "_comment": "Per-module assertion FLOORS -- see assertion_floors.py. These are minimums, not a fingerprint: adding tests needs no regeneration, and only a DROP fails. Regenerate with `python3 assertion_floors.py --write` and commit the result in the same commit as the test change that lowered a number, so the drop is reviewable rather than incidental.",
+  "modules": {
+    "test_absence_survives_consumers.py": {
+      "test_methods": 32,
+      "asserts": {
+        "assertEqual": 28,
+        "assertIn": 2,
+        "assertIs": 1,
+        "assertIsInstance": 2,
+        "assertIsNone": 9,
+        "assertIsNotNone": 2,
+        "assertLess": 1,
+        "assertNotIn": 2,
+        "assertTrue": 6
+      }
+    },
+    "test_assertion_floors.py": {
+      "test_methods": 13,
+      "asserts": {
+        "assertEqual": 12,
+        "assertIn": 2,
+        "assertTrue": 1
+      }
+    },
+    "test_attachments.py": {
+      "test_methods": 16,
+      "asserts": {
+        "assertEqual": 18,
+        "assertFalse": 2,
+        "assertIsNone": 3,
+        "assertNotEqual": 1,
+        "assertTrue": 1
+      }
+    },
+    "test_audit_cadence.py": {
+      "test_methods": 9,
+      "asserts": {
+        "assertEqual": 6,
+        "assertIn": 7,
+        "assertIsNotNone": 1,
+        "assertTrue": 1
+      }
+    },
+    "test_baseline_manifest.py": {
+      "test_methods": 11,
+      "asserts": {
+        "assertEqual": 9,
+        "assertIn": 4,
+        "assertNotIn": 2,
+        "assertTrue": 2
+      }
+    },
+    "test_baseline_provenance.py": {
+      "test_methods": 10,
+      "asserts": {
+        "assertEqual": 8,
+        "assertIn": 6,
+        "assertIs": 1,
+        "assertNotIn": 4
+      }
+    },
+    "test_benchmark_contract_coverage.py": {
+      "test_methods": 32,
+      "asserts": {
+        "assertEqual": 24,
+        "assertFalse": 3,
+        "assertGreater": 1,
+        "assertIn": 18,
+        "assertNotEqual": 2,
+        "assertNotIn": 8,
+        "assertTrue": 9
+      }
+    },
+    "test_bot_benchmark.py": {
+      "test_methods": 18,
+      "asserts": {
+        "assertEqual": 23,
+        "assertIn": 1,
+        "assertIsNone": 1,
+        "assertIsNotNone": 2,
+        "assertTrue": 2
+      }
+    },
+    "test_bot_config.py": {
+      "test_methods": 27,
+      "asserts": {
+        "assertEqual": 34,
+        "assertFalse": 6,
+        "assertNotIn": 2,
+        "assertTrue": 1
+      }
+    },
+    "test_bot_research.py": {
+      "test_methods": 22,
+      "asserts": {
+        "assertEqual": 38,
+        "assertIsNone": 7,
+        "assertIsNotNone": 2,
+        "assertNotEqual": 1,
+        "assertNotIn": 1,
+        "assertTrue": 2
+      }
+    },
+    "test_bpa_unit.py": {
+      "test_methods": 11,
+      "asserts": {
+        "assertAlmostEqual": 2,
+        "assertEqual": 6,
+        "assertIsNotNone": 2,
+        "assertNotEqual": 3,
+        "assertTrue": 2
+      }
+    },
+    "test_cdme_certification.py": {
+      "test_methods": 14,
+      "asserts": {
+        "assertEqual": 20,
+        "assertFalse": 1,
+        "assertGreater": 2,
+        "assertGreaterEqual": 1,
+        "assertLess": 1,
+        "assertRaises": 2,
+        "assertTrue": 1
+      }
+    },
+    "test_cdme_denial_semantics_audit.py": {
+      "test_methods": 3,
+      "asserts": {
+        "assertAlmostEqual": 1,
+        "assertEqual": 3,
+        "assertGreaterEqual": 1,
+        "assertIsNotNone": 1,
+        "assertLessEqual": 1,
+        "assertTrue": 1
+      }
+    },
+    "test_cdme_force_ablation.py": {
+      "test_methods": 4,
+      "asserts": {
+        "assertEqual": 5,
+        "assertRaises": 1
+      }
+    },
+    "test_cdme_ingestion_boundary.py": {
+      "test_methods": 7,
+      "asserts": {
+        "assertEqual": 6,
+        "assertNotIn": 2,
+        "assertTrue": 3
+      }
+    },
+    "test_cdme_metamorphic.py": {
+      "test_methods": 8,
+      "asserts": {
+        "assertEqual": 5,
+        "assertGreaterEqual": 3,
+        "assertLessEqual": 2,
+        "assertTrue": 2
+      }
+    },
+    "test_cdme_terminology.py": {
+      "test_methods": 7,
+      "asserts": {
+        "assertEqual": 2,
+        "assertIn": 7,
+        "assertNotIn": 1
+      }
+    },
+    "test_cdme_threshold_fuzzing.py": {
+      "test_methods": 20,
+      "asserts": {
+        "assertEqual": 20,
+        "assertFalse": 1,
+        "assertTrue": 1
+      }
+    },
+    "test_context_budget_boundary.py": {
+      "test_methods": 16,
+      "asserts": {
+        "assertEqual": 4,
+        "assertGreater": 1,
+        "assertGreaterEqual": 1,
+        "assertIn": 14,
+        "assertLess": 3,
+        "assertLessEqual": 1,
+        "assertNotIn": 4,
+        "assertNotIsInstance": 1,
+        "assertNotRegex": 1,
+        "assertRegex": 1,
+        "assertTrue": 2
+      }
+    },
+    "test_cost_envelope_boundary.py": {
+      "test_methods": 15,
+      "asserts": {
+        "assertEqual": 10,
+        "assertIn": 6,
+        "assertIsNone": 2,
+        "assertIsNotNone": 2,
+        "assertLessEqual": 1,
+        "assertNotIn": 5,
+        "assertTrue": 2
+      }
+    },
+    "test_data_merger.py": {
+      "test_methods": 79,
+      "asserts": {
+        "assertAlmostEqual": 5,
+        "assertEqual": 86,
+        "assertFalse": 1,
+        "assertGreater": 5,
+        "assertGreaterEqual": 1,
+        "assertIn": 7,
+        "assertIsInstance": 1,
+        "assertIsNone": 1,
+        "assertIsNotNone": 15,
+        "assertLess": 1,
+        "assertLessEqual": 1,
+        "assertNotEqual": 5,
+        "assertNotIn": 4,
+        "assertTrue": 11
+      }
+    },
+    "test_data_semantics_boundary.py": {
+      "test_methods": 33,
+      "asserts": {
+        "assertEqual": 12,
+        "assertFalse": 1,
+        "assertGreater": 1,
+        "assertIn": 21,
+        "assertIsNone": 3,
+        "assertIsNotNone": 1,
+        "assertLess": 1,
+        "assertNotEqual": 1,
+        "assertNotIn": 7,
+        "assertTrue": 9
+      }
+    },
+    "test_debate_chip_wiring.py": {
+      "test_methods": 12,
+      "asserts": {
+        "assertIn": 16,
+        "assertNotIn": 2
+      }
+    },
+    "test_decision_log.py": {
+      "test_methods": 17,
+      "asserts": {
+        "assertEqual": 27,
+        "assertFalse": 1,
+        "assertIsNone": 1,
+        "assertIsNotNone": 1,
+        "assertTrue": 1
+      }
+    },
+    "test_demand_decomposition.py": {
+      "test_methods": 37,
+      "asserts": {
+        "assertAlmostEqual": 2,
+        "assertEqual": 29,
+        "assertFalse": 1,
+        "assertGreaterEqual": 2,
+        "assertIn": 1,
+        "assertIsNone": 6,
+        "assertIsNotNone": 1,
+        "assertLessEqual": 2,
+        "assertNotEqual": 1,
+        "assertNotIn": 3,
+        "assertRaises": 1,
+        "assertTrue": 2
+      }
+    },
+    "test_denial_ablation_experiment.py": {
+      "test_methods": 5,
+      "asserts": {
+        "assertEqual": 6
+      }
+    },
+    "test_dependency_audit.py": {
+      "test_methods": 5,
+      "asserts": {
+        "assertAlmostEqual": 3,
+        "assertEqual": 3
+      }
+    },
+    "test_depth_ratings.py": {
+      "test_methods": 8,
+      "asserts": {
+        "assertEqual": 6,
+        "assertIsNone": 2
+      }
+    },
+    "test_design_system.py": {
+      "test_methods": 4,
+      "asserts": {
+        "assertEqual": 3,
+        "assertRaises": 1
+      }
+    },
+    "test_display_contract_boundary.py": {
+      "test_methods": 10,
+      "asserts": {
+        "assertEqual": 3,
+        "assertIn": 8,
+        "assertLess": 1,
+        "assertNotIn": 3,
+        "assertNotRegex": 1,
+        "assertRegex": 2
+      }
+    },
+    "test_downstream_contracts.py": {
+      "test_methods": 21,
+      "asserts": {
+        "assertAlmostEqual": 5,
+        "assertEqual": 11,
+        "assertFalse": 2,
+        "assertGreater": 1,
+        "assertIn": 1,
+        "assertLess": 1,
+        "assertNotEqual": 1,
+        "assertTrue": 16,
+        "fail": 1
+      }
+    },
+    "test_draft_board_ui.py": {
+      "test_methods": 43,
+      "asserts": {
+        "assertEqual": 37,
+        "assertFalse": 1,
+        "assertGreater": 1,
+        "assertGreaterEqual": 1,
+        "assertIn": 9,
+        "assertIsInstance": 1,
+        "assertIsNone": 4,
+        "assertIsNotNone": 2,
+        "assertLessEqual": 1,
+        "assertNotEqual": 3,
+        "assertNotIn": 10,
+        "assertTrue": 2
+      }
+    },
+    "test_draft_counterfactual.py": {
+      "test_methods": 10,
+      "asserts": {
+        "assertAlmostEqual": 1,
+        "assertEqual": 9,
+        "assertFalse": 1,
+        "assertGreaterEqual": 1,
+        "assertIn": 1,
+        "assertIsNone": 3,
+        "assertIsNotNone": 1,
+        "assertRaises": 2
+      }
+    },
+    "test_draft_horizon.py": {
+      "test_methods": 26,
+      "asserts": {
+        "assertAlmostEqual": 1,
+        "assertEqual": 16,
+        "assertFalse": 1,
+        "assertGreater": 8,
+        "assertGreaterEqual": 1,
+        "assertIn": 3,
+        "assertIsNone": 5,
+        "assertIsNotNone": 2,
+        "assertLess": 5,
+        "assertLessEqual": 1,
+        "assertNotEqual": 1,
+        "assertNotIn": 1,
+        "assertTrue": 4
+      }
+    },
+    "test_draft_room.py": {
+      "test_methods": 86,
+      "asserts": {
+        "assertAlmostEqual": 22,
+        "assertEqual": 44,
+        "assertFalse": 3,
+        "assertGreater": 30,
+        "assertGreaterEqual": 5,
+        "assertIn": 3,
+        "assertIs": 2,
+        "assertIsNone": 4,
+        "assertIsNotNone": 5,
+        "assertLess": 7,
+        "assertLessEqual": 6,
+        "assertNotAlmostEqual": 1,
+        "assertNotEqual": 2,
+        "assertNotIn": 4,
+        "assertTrue": 10
+      }
+    },
+    "test_draft_simulation.py": {
+      "test_methods": 14,
+      "asserts": {
+        "assertEqual": 17,
+        "assertGreater": 1,
+        "assertIn": 2,
+        "assertNotEqual": 2,
+        "assertRaises": 2
+      }
+    },
+    "test_draft_strategy.py": {
+      "test_methods": 49,
+      "asserts": {
+        "assertAlmostEqual": 7,
+        "assertEqual": 43,
+        "assertGreater": 7,
+        "assertGreaterEqual": 3,
+        "assertIsNone": 9,
+        "assertIsNotNone": 1,
+        "assertLess": 5,
+        "assertLessEqual": 5,
+        "assertTrue": 1
+      }
+    },
+    "test_failure_mode_boundary.py": {
+      "test_methods": 27,
+      "asserts": {
+        "assertEqual": 21,
+        "assertFalse": 2,
+        "assertIn": 20,
+        "assertIs": 2,
+        "assertIsNone": 1,
+        "assertNotIn": 12,
+        "assertTrue": 3
+      }
+    },
+    "test_harness_league_format_hygiene.py": {
+      "test_methods": 1,
+      "asserts": {
+        "assertEqual": 1,
+        "assertGreaterEqual": 1,
+        "assertTrue": 1
+      }
+    },
+    "test_identity_boundary.py": {
+      "test_methods": 29,
+      "asserts": {
+        "assertEqual": 24,
+        "assertFalse": 7,
+        "assertGreater": 1,
+        "assertGreaterEqual": 1,
+        "assertIn": 2,
+        "assertIsNone": 8,
+        "assertIsNotNone": 7,
+        "assertNotEqual": 1,
+        "assertTrue": 5
+      }
+    },
+    "test_idp_supply_boundary.py": {
+      "test_methods": 9,
+      "asserts": {
+        "assertEqual": 22,
+        "assertGreater": 5,
+        "assertLess": 3,
+        "assertTrue": 1
+      }
+    },
+    "test_kdst_integration.py": {
+      "test_methods": 51,
+      "asserts": {
+        "assertAlmostEqual": 3,
+        "assertEqual": 28,
+        "assertFalse": 2,
+        "assertGreater": 13,
+        "assertGreaterEqual": 2,
+        "assertIn": 1,
+        "assertLess": 8,
+        "assertLessEqual": 2,
+        "assertNotIn": 3,
+        "assertTrue": 25
+      }
+    },
+    "test_league_format.py": {
+      "test_methods": 7,
+      "asserts": {
+        "assertEqual": 2,
+        "assertIn": 1,
+        "assertIsNone": 4,
+        "assertTrue": 1
+      }
+    },
+    "test_league_prefs.py": {
+      "test_methods": 11,
+      "asserts": {
+        "assertEqual": 14,
+        "assertIn": 1,
+        "assertNotIn": 2
+      }
+    },
+    "test_league_standings.py": {
+      "test_methods": 10,
+      "asserts": {
+        "assertEqual": 13
+      }
+    },
+    "test_league_view_wiring.py": {
+      "test_methods": 15,
+      "asserts": {
+        "assertEqual": 5,
+        "assertIn": 20,
+        "assertLess": 1,
+        "assertNotIn": 8
+      }
+    },
+    "test_lineup_marginal_contract.py": {
+      "test_methods": 7,
+      "asserts": {
+        "assertAlmostEqual": 2,
+        "assertEqual": 5,
+        "assertGreater": 3,
+        "assertIn": 2,
+        "assertLess": 1,
+        "assertLessEqual": 1
+      }
+    },
+    "test_lineup_optimizer.py": {
+      "test_methods": 11,
+      "asserts": {
+        "assertEqual": 26,
+        "assertGreater": 1
+      }
+    },
+    "test_lineup_readiness.py": {
+      "test_methods": 11,
+      "asserts": {
+        "assertEqual": 13,
+        "assertFalse": 2
+      }
+    },
+    "test_llm_engine.py": {
+      "test_methods": 2,
+      "asserts": {
+        "assertEqual": 4,
+        "assertLess": 1
+      }
+    },
+    "test_llm_engine_parsing.py": {
+      "test_methods": 25,
+      "asserts": {
+        "assertEqual": 34,
+        "assertIn": 1,
+        "assertIsNone": 1,
+        "assertNotIn": 2
+      }
+    },
+    "test_maintenance_view_wiring.py": {
+      "test_methods": 8,
+      "asserts": {
+        "assertIn": 11,
+        "assertLess": 1,
+        "assertNotIn": 1
+      }
+    },
+    "test_matchup_view_wiring.py": {
+      "test_methods": 8,
+      "asserts": {
+        "assertIn": 9,
+        "assertIsNotNone": 1,
+        "assertNotIn": 2
+      }
+    },
+    "test_mock_draft_wiring.py": {
+      "test_methods": 13,
+      "asserts": {
+        "assertEqual": 2,
+        "assertIn": 18,
+        "assertNotIn": 3,
+        "assertNotRegex": 1
+      }
+    },
+    "test_option_set_analysis.py": {
+      "test_methods": 10,
+      "asserts": {
+        "assertEqual": 9,
+        "assertFalse": 1,
+        "assertGreaterEqual": 1,
+        "assertRaises": 1,
+        "assertTrue": 1
+      }
+    },
+    "test_override_provenance_boundary.py": {
+      "test_methods": 29,
+      "asserts": {
+        "assertEqual": 36,
+        "assertIn": 2,
+        "assertIsInstance": 1,
+        "assertIsNone": 3,
+        "assertIsNotNone": 1,
+        "assertLess": 1,
+        "assertNotEqual": 3,
+        "assertNotIn": 3,
+        "assertTrue": 10
+      }
+    },
+    "test_parser_integrity.py": {
+      "test_methods": 10,
+      "asserts": {
+        "assertEqual": 12,
+        "assertIn": 1,
+        "assertIsNone": 1,
+        "assertRaises": 3,
+        "assertTrue": 2,
+        "fail": 1
+      }
+    },
+    "test_pick_debate.py": {
+      "test_methods": 39,
+      "asserts": {
+        "assertEqual": 26,
+        "assertIn": 24,
+        "assertIsInstance": 4,
+        "assertIsNone": 6,
+        "assertIsNotNone": 4,
+        "assertNotEqual": 1,
+        "assertNotIn": 9,
+        "assertTrue": 2
+      }
+    },
+    "test_pick_synthesis.py": {
+      "test_methods": 100,
+      "asserts": {
+        "assertAlmostEqual": 10,
+        "assertEqual": 76,
+        "assertFalse": 18,
+        "assertGreater": 9,
+        "assertGreaterEqual": 7,
+        "assertIn": 11,
+        "assertIsInstance": 2,
+        "assertIsNone": 10,
+        "assertIsNotNone": 8,
+        "assertLess": 5,
+        "assertLessEqual": 4,
+        "assertNotIn": 8,
+        "assertRaises": 2,
+        "assertTrue": 19
+      }
+    },
+    "test_pinned_messages.py": {
+      "test_methods": 15,
+      "asserts": {
+        "assertEqual": 16,
+        "assertFalse": 1,
+        "assertTrue": 1
+      }
+    },
+    "test_player_universe.py": {
+      "test_methods": 5,
+      "asserts": {
+        "assertEqual": 6,
+        "assertIn": 2,
+        "assertNotIn": 2,
+        "assertTrue": 1
+      }
+    },
+    "test_pricing_exhaustion_boundary.py": {
+      "test_methods": 9,
+      "asserts": {
+        "assertEqual": 11,
+        "assertNotEqual": 1,
+        "assertTrue": 1
+      }
+    },
+    "test_prompt_constant_boundary.py": {
+      "test_methods": 10,
+      "asserts": {
+        "assertEqual": 3,
+        "assertGreater": 2,
+        "assertGreaterEqual": 2,
+        "assertIn": 6,
+        "assertTrue": 3
+      }
+    },
+    "test_provenance_boundary.py": {
+      "test_methods": 16,
+      "asserts": {
+        "assertEqual": 12,
+        "assertIn": 16,
+        "assertIsNone": 1,
+        "assertNotEqual": 1,
+        "assertNotIn": 5,
+        "assertTrue": 1
+      }
+    },
+    "test_provider_meter_boundary.py": {
+      "test_methods": 42,
+      "asserts": {
+        "assertEqual": 48,
+        "assertFalse": 2,
+        "assertGreater": 2,
+        "assertGreaterEqual": 1,
+        "assertIn": 3,
+        "assertIs": 1,
+        "assertIsNone": 9,
+        "assertIsNotNone": 2,
+        "assertRaises": 1,
+        "assertTrue": 1
+      }
+    },
+    "test_providers.py": {
+      "test_methods": 17,
+      "asserts": {
+        "assertEqual": 20,
+        "assertIn": 8,
+        "assertIs": 1,
+        "assertIsNone": 2,
+        "assertIsNot": 1,
+        "assertNotIn": 3
+      }
+    },
+    "test_prytaneum_terminology.py": {
+      "test_methods": 9,
+      "asserts": {
+        "assertEqual": 2,
+        "assertIn": 10,
+        "assertLessEqual": 1,
+        "assertNotIn": 1
+      }
+    },
+    "test_reconciliation_boundary.py": {
+      "test_methods": 23,
+      "asserts": {
+        "assertEqual": 14,
+        "assertFalse": 4,
+        "assertGreater": 2,
+        "assertGreaterEqual": 1,
+        "assertIn": 5,
+        "assertIsInstance": 1,
+        "assertIsNotNone": 1,
+        "assertLessEqual": 1,
+        "assertTrue": 5
+      }
+    },
+    "test_replacement_anchor_boundary.py": {
+      "test_methods": 29,
+      "asserts": {
+        "assertAlmostEqual": 3,
+        "assertEqual": 15,
+        "assertGreater": 6,
+        "assertGreaterEqual": 2,
+        "assertIn": 2,
+        "assertIsNotNone": 2,
+        "assertLessEqual": 1,
+        "assertNotEqual": 10,
+        "assertNotIn": 1,
+        "assertTrue": 9
+      }
+    },
+    "test_research_authority_boundary.py": {
+      "test_methods": 21,
+      "asserts": {
+        "assertEqual": 12,
+        "assertFalse": 2,
+        "assertGreater": 1,
+        "assertGreaterEqual": 1,
+        "assertIn": 13,
+        "assertIsInstance": 7,
+        "assertIsNone": 1,
+        "assertLess": 1,
+        "assertNotIn": 8,
+        "assertTrue": 7
+      }
+    },
+    "test_research_ingestion_boundary.py": {
+      "test_methods": 19,
+      "asserts": {
+        "assertAlmostEqual": 1,
+        "assertEqual": 15,
+        "assertFalse": 2,
+        "assertGreater": 3,
+        "assertGreaterEqual": 1,
+        "assertIn": 7,
+        "assertIsNone": 2,
+        "assertIsNotNone": 1,
+        "assertNotIn": 8,
+        "assertTrue": 1
+      }
+    },
+    "test_rookie_draft.py": {
+      "test_methods": 13,
+      "asserts": {
+        "assertAlmostEqual": 5,
+        "assertEqual": 5,
+        "assertGreater": 4,
+        "assertIsNone": 1,
+        "assertIsNotNone": 4,
+        "assertLess": 3,
+        "assertNotIn": 1,
+        "assertTrue": 1
+      }
+    },
+    "test_roster_diagnostics.py": {
+      "test_methods": 9,
+      "asserts": {
+        "assertAlmostEqual": 2,
+        "assertEqual": 4,
+        "assertGreaterEqual": 1,
+        "assertIn": 1,
+        "assertLessEqual": 1,
+        "assertNotIn": 2
+      }
+    },
+    "test_roster_state_ladder.py": {
+      "test_methods": 7,
+      "asserts": {
+        "assertAlmostEqual": 1,
+        "assertEqual": 1,
+        "assertGreater": 1,
+        "assertGreaterEqual": 2,
+        "assertIsNotNone": 1,
+        "assertLessEqual": 2
+      }
+    },
+    "test_run_out_of_sample_validation.py": {
+      "test_methods": 9,
+      "asserts": {
+        "assertEqual": 8,
+        "assertIn": 2
+      }
+    },
+    "test_scoring_functions_parity.py": {
+      "test_methods": 11,
+      "asserts": {
+        "assertEqual": 2,
+        "assertRaises": 1
+      }
+    },
+    "test_screen_context.py": {
+      "test_methods": 63,
+      "asserts": {
+        "assertEqual": 16,
+        "assertIn": 66,
+        "assertIsNone": 1,
+        "assertNotEqual": 1,
+        "assertNotIn": 12,
+        "assertTrue": 1
+      }
+    },
+    "test_sleeper_client.py": {
+      "test_methods": 35,
+      "asserts": {
+        "assertAlmostEqual": 4,
+        "assertEqual": 28,
+        "assertFalse": 3,
+        "assertIn": 2,
+        "assertIsNone": 6,
+        "assertNotIn": 1,
+        "assertRaises": 1,
+        "assertTrue": 3
+      }
+    },
+    "test_snapshot_identity_boundary.py": {
+      "test_methods": 30,
+      "asserts": {
+        "assertEqual": 29,
+        "assertFalse": 4,
+        "assertIn": 5,
+        "assertIsNone": 3,
+        "assertLess": 1,
+        "assertNotEqual": 6,
+        "assertNotIn": 2,
+        "assertRaises": 1,
+        "assertTrue": 3
+      }
+    },
+    "test_source_policy.py": {
+      "test_methods": 13,
+      "asserts": {
+        "assertEqual": 4,
+        "assertFalse": 4,
+        "assertIsInstance": 1,
+        "assertIsNone": 1,
+        "assertNotIn": 2,
+        "assertTrue": 3
+      }
+    },
+    "test_store_io.py": {
+      "test_methods": 23,
+      "asserts": {
+        "assertEqual": 20,
+        "assertGreater": 1,
+        "assertGreaterEqual": 1,
+        "assertIn": 12,
+        "assertNotIn": 1,
+        "assertTrue": 1
+      }
+    },
+    "test_suite_taxonomy.py": {
+      "test_methods": 8,
+      "asserts": {
+        "assertEqual": 7,
+        "assertGreater": 3,
+        "assertTrue": 1
+      }
+    },
+    "test_survival_evidence.py": {
+      "test_methods": 16,
+      "asserts": {
+        "assertAlmostEqual": 3,
+        "assertEqual": 11,
+        "assertFalse": 2,
+        "assertGreaterEqual": 1,
+        "assertIsInstance": 1,
+        "assertIsNone": 2,
+        "assertIsNotNone": 2,
+        "assertLess": 1,
+        "assertTrue": 9
+      }
+    },
+    "test_temporal_consistency_boundary.py": {
+      "test_methods": 17,
+      "asserts": {
+        "assertEqual": 8,
+        "assertFalse": 4,
+        "assertIn": 10,
+        "assertIsNone": 3,
+        "assertNotEqual": 2,
+        "assertNotIn": 2,
+        "assertTrue": 3
+      }
+    },
+    "test_tenant_scope_boundary.py": {
+      "test_methods": 13,
+      "asserts": {
+        "assertEqual": 9,
+        "assertGreaterEqual": 1,
+        "assertIn": 16,
+        "assertIsNone": 1,
+        "assertNotIn": 4
+      }
+    },
+    "test_threshold_reachability.py": {
+      "test_methods": 9,
+      "asserts": {
+        "assertAlmostEqual": 1,
+        "assertEqual": 5,
+        "assertGreater": 4,
+        "assertIn": 2,
+        "assertLess": 1,
+        "assertTrue": 1
+      }
+    },
+    "test_todo_log.py": {
+      "test_methods": 33,
+      "asserts": {
+        "assertEqual": 45,
+        "assertFalse": 10,
+        "assertIn": 1,
+        "assertIsNone": 3,
+        "assertIsNotNone": 2,
+        "assertTrue": 9
+      }
+    },
+    "test_trade_ledger_ui.py": {
+      "test_methods": 20,
+      "asserts": {
+        "assertEqual": 1,
+        "assertIn": 21,
+        "assertIsNone": 3,
+        "assertNotIn": 4
+      }
+    },
+    "test_untrusted_fence.py": {
+      "test_methods": 16,
+      "asserts": {
+        "assertEqual": 7,
+        "assertFalse": 3,
+        "assertIn": 16,
+        "assertNotIn": 4,
+        "assertTrue": 4
+      }
+    },
+    "test_version_boundary.py": {
+      "test_methods": 26,
+      "asserts": {
+        "assertEqual": 25,
+        "assertGreater": 1,
+        "assertIn": 7,
+        "assertIsInstance": 1,
+        "assertIsNone": 2,
+        "assertNotEqual": 1,
+        "assertNotIn": 5,
+        "assertNotRegex": 1,
+        "assertRaises": 2,
+        "assertRegex": 1,
+        "assertTrue": 3
+      }
+    }
+  }
+}

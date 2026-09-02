@@ -235,3 +235,28 @@ trace proves it is a claim about *magnitude*.
 
 Tuning a coefficient to remove a symptom whose cause is semantic does not fix the defect. It
 hides the evidence that would have found it.
+
+---
+
+## The re-audit cadence
+
+Everything above is a standing rule, and §19.9 found the obvious thing about standing rules:
+**nothing ran them.** No schedule, no trigger condition, no re-audit — the checks executed only
+when a human happened to push. A doctrine that is enforced by remembering is enforced by nobody.
+
+**The cadence: weekly, Wednesdays, 13:00 UTC.** Chosen against the season rather than the
+calendar. The regular-season week of play concludes Monday night, so Wednesday is the first day
+the world's numbers have settled — injury designations resolved, waivers run, depth charts
+updated. A run that lands mid-week measures a stable week; one that lands Sunday measures a week
+in motion.
+
+**What the run does** is the full suite plus `baseline_manifest.py --check` plus
+`assertion_floors.py --check` — the same three things CI already does on a pull request, on a
+clock rather than on a person. That is deliberately not a new instrument: the point of a cadence
+is that the checks you already trust keep running when nobody is looking, not that a scheduled
+run gets its own weaker or stronger standard.
+
+**Where it is configured:** `.github/workflows/tests.yml`, the `schedule:` trigger.
+`test_audit_cadence.py` holds this paragraph and that cron to each other, because a documented
+cadence and a configured one that disagree is worse than either alone — the document is the one
+that gets believed, and it is the one that cannot run anything.

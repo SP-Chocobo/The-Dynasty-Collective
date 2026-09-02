@@ -21,6 +21,18 @@ on:
   push:
   pull_request:
   workflow_dispatch:
+  # 19.9. ENGINEERING_DOCTRINE states standing rules and ROADMAP contains no audit cadence, no
+  # scheduled re-audit and no trigger condition -- so nothing ran these checks except a human
+  # pushing. Ruled: WEEKLY, WEDNESDAYS, chosen against the season rather than the calendar. The
+  # regular-season week of play concludes Monday night, so Wednesday is the first day the
+  # world's numbers have settled: injury designations resolved, waivers run, depth charts
+  # updated. A run that lands mid-week measures a stable week; one that lands Sunday measures a
+  # week in motion.
+  #
+  # 13:00 UTC = 09:00 US Eastern. Cron here is UTC; DST moves this an hour against local time
+  # twice a year, which for a weekly integrity run costs nothing and is not worth a workaround.
+  schedule:
+    - cron: "0 13 * * 3"
 
 jobs:
   fast:
@@ -39,6 +51,12 @@ jobs:
       # the tests, because every number they assert is computed from these bytes.
       - name: check the declared input set
         run: python baseline_manifest.py --check
+      # 19.8. Deleting a test is loud; weakening one is silent. These are FLOORS, not a
+      # fingerprint: adding tests needs no regeneration and only a DROP fails, so the repair is
+      # never reflexive. A drop that is deliberate lands as a --write in the same commit, where a
+      # reviewer sees the number go down and reads why.
+      - name: check no guarantee got smaller
+        run: python assertion_floors.py --check
       # What the suite was actually verified against. The three provider SDKs are declared in
       # requirements.txt and the suite passes without exercising a single live call through any
       # of them (#120) -- this makes the versions a green run corresponds to a matter of record
@@ -65,6 +83,12 @@ jobs:
       - run: pip install -r requirements.txt
       - name: check the declared input set
         run: python baseline_manifest.py --check
+      # 19.8. Deleting a test is loud; weakening one is silent. These are FLOORS, not a
+      # fingerprint: adding tests needs no regeneration and only a DROP fails, so the repair is
+      # never reflexive. A drop that is deliberate lands as a --write in the same commit, where a
+      # reviewer sees the number go down and reads why.
+      - name: check no guarantee got smaller
+        run: python assertion_floors.py --check
       - name: record the verified environment
         run: pip freeze
       - name: run the whole suite

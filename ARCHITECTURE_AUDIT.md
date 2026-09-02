@@ -3922,6 +3922,55 @@ the same as zero"*, and *"which consumers are authorized to use it — by name"*
 Nothing enforces any of it. `ROADMAP.md` contains no audit cadence, no scheduled re-audit, and
 no trigger condition.
 
+> **RULED AND BUILT — weekly, Wednesdays, 13:00 UTC.** Chosen against the *season*, not the
+> calendar: the regular-season week of play concludes Monday night, so Wednesday is the first day
+> the world's numbers have settled — injuries designated, waivers run, depth charts updated. A
+> run that lands mid-week measures a stable week; one that lands Sunday measures a week in motion.
+>
+> Configured as a `schedule:` trigger in `.github/workflows/tests.yml`, which reaches the **full**
+> tier (the job's guard is `github.event_name != 'push'`). It runs the same three checks a pull
+> request runs — full suite, `baseline_manifest.py --check`, `assertion_floors.py --check` — on a
+> clock rather than on a person. Deliberately not a new instrument: the point of a cadence is that
+> the checks you already trust keep running when nobody is looking.
+>
+> The cadence is stated in `ENGINEERING_DOCTRINE.md` and held to the cron by
+> `test_audit_cadence.py`, because a documented cadence and a configured one that disagree is
+> worse than either alone — the document is the one that gets believed, and it is the one that
+> cannot run anything.
+
+### 19.8a RULED AND BUILT — the loosened-guarantee detector
+
+**STATUS: MISSING → EXISTS** (`assertion_floors.py`, `test_assertion_floors.py`)
+
+Deleting a test is loud. **Weakening one is silent**, and these two files pass identical checks:
+
+```python
+self.assertEqual(board.iloc[0]["universal_value"], 41.0)     # before
+self.assertIsNotNone(board.iloc[0]["universal_value"])       # after
+```
+
+Same module, same method count, same *total* assertion count, same green run — and the engine is
+no longer held to a number. The mutation pass (#38/#41) is this repository's own proof that a
+test does not have to be removed to stop proving anything; every vacuous test it found had been
+green for months.
+
+`ASSERTION_FLOORS.json` records, per test module, its test-method count and its assertion counts
+**per assertion name**, and `--check` fails when one goes DOWN. Two design choices carry it:
+
+| choice | rejected alternative | why |
+|---|---|---|
+| **floors**, not an exact fingerprint | hash each module, check equality | an exact hash fails on *every* test edit including additions, so the regeneration becomes reflexive — and a check whose repair is reflexive is not a check |
+| counts **per assertion name** | one total per module | a total misses the substitution above entirely: `assertEqual → assertIsNotNone` leaves it unchanged |
+
+**The honest cost, and it is recorded because the first draft of the module's own docstring got it
+wrong.** Per-name counting has no opinion about which assertions are stronger — that ordering
+would be invented — so it cannot distinguish a weakening from a *strengthening*: `assertIsNotNone
+→ assertEqual` also drops a per-name count and also fails. Pure additions always pass; **any**
+substitution surfaces. That is the correct trade: a substitution is the one edit where a reviewer
+has to look, and the failure names both sides so the direction reads in a glance.
+`test_assertion_floors` pins that limit rather than papering over it — and it was that test which
+caught the docstring's overclaim.
+
 ### 19.10 Configuration
 
 **STATUS: PARTIAL**
