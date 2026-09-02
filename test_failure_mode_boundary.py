@@ -76,8 +76,13 @@ class EveryCallFailsSoftTests(unittest.TestCase):
             )
         finally:
             llm_engine.PROVIDER_CALLERS.update(original)
-        self.assertEqual(len(result.errors), 4)
-        self.assertTrue(all(e.startswith(("quant:", "beat:", "contrarian:", "moderator:")) for e in result.errors))
+        chair_errors = [e for e in result.errors
+                        if e.startswith(("quant:", "beat:", "contrarian:", "moderator:"))]
+        self.assertEqual(len(chair_errors), 4)
+        # The fifth entry is #104's all-upstream-failed annotation, which is not a chair error
+        # and deliberately carries no chair prefix -- it is about the verdict, not about a chair.
+        # See AllUpstreamFailedTests.
+        self.assertEqual(len(result.errors), 5)
         self.assertIn("Debate finished with issues", _APP)
 
     def test_a_failed_moderator_never_reaches_the_verdict_parser(self):
@@ -249,18 +254,19 @@ class FailureTaxonomyIsCoarseTests(unittest.TestCase):
                 decision_log.DECISIONS_DIR = saved
 
     def test_the_panel_degrades_unconditionally_and_never_aborts(self):
-        """#104, CHARACTERIZED (1b). Measured across all eight failure combinations of the three
-        upstream chairs: the call count is 4 every time, the Moderator always runs, and it always
-        produces a real verdict. There is no threshold of any kind -- 'abort', 'degrade',
-        'minimum', 'quorum' and 'threshold' appear zero times across both modules.
+        """#104, RESOLVED -- and this test kept, with the half that was a complaint removed.
 
-        So the policy is 'always degrade, never abort'. That is coherent and it was never chosen;
-        it is simply what falls out of calling four chairs in sequence. The edge it produces is
-        the one worth a decision: with ALL THREE upstream chairs failed, the Moderator still
-        synthesizes a verdict from three unavailability markers. R12/R17 make those markers say
-        'treat as MISSING, never as a finding that there is nothing to report', so the chair is
-        told it has nothing -- but nothing prevents a confident verdict anyway, and it renders
-        beside the error count rather than instead of it.
+        The measurement stands unchanged: across all eight failure combinations of the three
+        upstream chairs the call count is 4 every time, the Moderator always runs, and it always
+        produces a real verdict. What changed is the status of that behaviour. It used to be
+        what merely fell out of calling four chairs in sequence -- this test said so, and said
+        it "was never chosen". It is chosen now, as llm_engine.DEGRADE_NEVER_ABORT, with the
+        reasoning written where the policy lives.
+
+        The edge this test named is now handled rather than merely noted: with ALL THREE
+        upstream chairs failed, the Moderator still synthesizes a verdict from three
+        unavailability markers, and run_debate now appends an error saying exactly that. Its
+        coverage lives in AllUpstreamFailedTests below; what remains here is the floor check.
 
         INVERT THIS TEST if a floor is ever introduced. Do not delete it."""
         import itertools
@@ -291,13 +297,22 @@ class FailureTaxonomyIsCoarseTests(unittest.TestCase):
                     self.assertEqual(len(calls), 4, "every chair is called regardless")
                     self.assertIn("moderator", calls, "the moderator always runs")
                     self.assertFalse(result.moderator.startswith("⚠️"))
-                    self.assertEqual(len(result.errors), len(combo))
+                    # One error per failed chair, plus the all-upstream-failed annotation in the
+                    # one combination that earns it (see AllUpstreamFailedTests).
+                    expected = len(combo) + (1 if len(combo) == 3 else 0)
+                    self.assertEqual(len(result.errors), expected)
 
+        self.assertIs(llm_engine.DEGRADE_NEVER_ABORT, True,
+                      "the policy constant is the thing a floor would have to flip")
         for module in (llm_engine, pick_debate):
-            source = inspect.getsource(module).lower()
-            for threshold_word in ("abort", "quorum", "min_chairs"):
-                self.assertNotIn(threshold_word, source,
-                                 f"{threshold_word} appeared -- a floor exists; invert this test.")
+            for lineno, line in enumerate(inspect.getsource(module).splitlines(), 1):
+                stripped = line.strip()
+                if stripped.startswith("#") or "DEGRADE_NEVER_ABORT" in stripped:
+                    continue  # the policy's own name and its written reasoning
+                for threshold_word in ("abort", "quorum", "min_chairs"):
+                    self.assertNotIn(threshold_word, stripped.lower(),
+                                     f"{module.__name__}:{lineno} -- {threshold_word} in executable "
+                                     f"code means a floor exists; invert this test.")
 
     def test_no_fallback_provider_is_attempted_when_one_fails(self):
         source = inspect.getsource(llm_engine.run_debate)
@@ -305,6 +320,112 @@ class FailureTaxonomyIsCoarseTests(unittest.TestCase):
         # Each role calls exactly the provider it was assigned, once.
         self.assertEqual(source.count("PROVIDER_CALLERS"), 0)
         self.assertIn("_key(", source)
+
+
+class _FakeAnthropicResponse:
+    """The one field provider_meter._anthropic_completion reads to call a report a fragment.
+
+    A stand-in, and the tests below say so: they prove run_debate reads the LEDGER correctly,
+    not that a live Anthropic call sets stop_reason this way. That second claim needs a live
+    call and is recorded as still unverified (#120)."""
+
+    def __init__(self, stop_reason):
+        self.stop_reason = stop_reason
+        self.usage = None
+        self.model = "stand-in"
+
+
+class AllUpstreamFailedTests(unittest.TestCase):
+    """#104: the panel degrades rather than aborting, and says what the degraded verdict rests on.
+
+    DEGRADE_NEVER_ABORT keeps every chair's failure from stopping the panel. Its one dangerous
+    case is a Moderator verdict synthesized from three unavailability markers and nothing else --
+    which reads exactly like a verdict resting on three real reports. Under the standing absence
+    ruling the answer is to annotate rather than suppress, and to name a consumer that reads the
+    annotation. The consumer is DebateResult.errors, which app.py already renders.
+    """
+
+    ROLES = ("quant", "beat", "contrarian", "moderator")
+    _MARKER = "resting on NO evidence"
+
+    def _run(self, failing, *, truncating=()):
+        def make(role):
+            def _call(system_prompt, user_prompt, api_key=None, model=None):
+                if role in truncating:
+                    # Recorded under whatever role scope the caller opened -- which is the point
+                    # of the assertions below, so this deliberately does NOT pass `role`.
+                    provider_meter.record(
+                        "claude", provider_meter.current_role(),
+                        response=_FakeAnthropicResponse("max_tokens"))
+                return _FAILURE if role in failing else f"{role} real report"
+            return _call
+
+        original = dict(llm_engine.PROVIDER_CALLERS)
+        llm_engine.PROVIDER_CALLERS.update({r: make(r) for r in self.ROLES})
+        try:
+            return llm_engine.run_debate(
+                "CTX", "Q", role_providers={r: r for r in self.ROLES},
+                api_keys={r: "k" for r in self.ROLES})
+        finally:
+            llm_engine.PROVIDER_CALLERS.clear()
+            llm_engine.PROVIDER_CALLERS.update(original)
+
+    def test_a_verdict_built_from_three_unavailability_markers_says_so(self):
+        result = self._run({"quant", "beat", "contrarian"})
+        self.assertFalse(result.moderator.startswith("⚠️"),
+                         "precondition: the moderator still produced a verdict")
+        annotations = [e for e in result.errors if self._MARKER in e]
+        self.assertEqual(len(annotations), 1, result.errors)
+        # The wording has to survive: a reader who sees only the three chair errors can still
+        # read the verdict as a fourth opinion that happens to be the only one that arrived.
+        self.assertIn("every upstream chair failed", annotations[0])
+
+    def test_the_annotation_does_not_fire_while_any_upstream_chair_reported(self):
+        """Non-vacuity in the direction that matters. An annotation that fires on a partial
+        panel would train the reader to ignore it, which is the same end state as not having it."""
+        import itertools
+        for count in range(3):
+            for combo in itertools.combinations(("quant", "beat", "contrarian"), count):
+                with self.subTest(failing=combo):
+                    result = self._run(set(combo))
+                    self.assertEqual([e for e in result.errors if self._MARKER in e], [])
+
+    def test_a_failed_moderator_alone_does_not_trigger_it(self):
+        """The claim is about what the VERDICT rests on. With three real reports in hand and only
+        the Moderator down, there is no verdict to qualify -- just a chair that failed."""
+        result = self._run({"moderator"})
+        self.assertEqual([e for e in result.errors if self._MARKER in e], [])
+        self.assertEqual(len(result.errors), 1)
+
+    def test_a_truncated_chair_reaches_the_human_through_errors_not_through_prose(self):
+        """#99's other half. The report text is annotated in place by annotate_if_incomplete;
+        this is the ledger-side copy, so the human sees a fragment named as a fragment even if
+        they never scroll to the end of the report."""
+        result = self._run(set(), truncating={"contrarian"})
+        cut_off = [e for e in result.errors if "cut off at the provider's output cap" in e]
+        self.assertEqual(len(cut_off), 1, result.errors)
+        self.assertTrue(cut_off[0].startswith("contrarian:"), cut_off[0])
+
+    def test_every_chair_scopes_its_own_ledger_records_including_the_threaded_two(self):
+        """The regression this protects: quant and beat run on a ThreadPoolExecutor worker, and
+        a worker thread starts with a FRESH contextvars Context. A role scope opened around
+        executor.submit in the calling thread would silently not reach them, and both would
+        record under the default role -- leaving the truncation attribution above able to name
+        only contrarian and moderator, with no test failing."""
+        for role in self.ROLES:
+            with self.subTest(role=role):
+                marker = provider_meter.mark()
+                self._run(set(), truncating={role})
+                roles = [r.role for r in provider_meter.since(marker)]
+                self.assertEqual(roles, [role], f"{role} recorded under {roles}")
+
+    def test_the_policy_is_stated_where_it_is_enforced(self):
+        """A constant nothing reads is documentation, so this pins the pair: the policy exists as
+        a value, and the two obligations it names are both discharged in run_debate."""
+        self.assertIs(llm_engine.DEGRADE_NEVER_ABORT, True)
+        source = inspect.getsource(llm_engine.run_debate)
+        self.assertIn("DEGRADE_NEVER_", source, "run_debate points back at the policy it enforces")
+        self.assertIn("result.errors.append", source)
 
 
 if __name__ == "__main__":

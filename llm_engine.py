@@ -574,14 +574,24 @@ def ask_quant(
     context: str, question: str, *, provider: str = "claude", api_key: Optional[str] = None, model: Optional[str] = None
 ) -> str:
     prompt = f"League/roster context:\n{context}\n\nQuestion: {question}"
-    return PROVIDER_CALLERS[provider](QUANT_SYSTEM_PROMPT, prompt, api_key, model)
+    # Scoped so every ledger record this call produces carries the CHAIR it was made for.
+    # Without it the records land under the default role and the only way to tell which chair
+    # was cut off would be to sniff its report text for the notice -- deriving from prose a
+    # fact the ledger already holds exactly. Opened HERE rather than around run_debate's
+    # executor.submit deliberately: this call runs on a pool worker, and a worker thread
+    # starts with a fresh contextvars Context, so a scope set in the submitting thread would
+    # not be visible to it.
+    with provider_meter.role_scope("quant"):
+        return PROVIDER_CALLERS[provider](QUANT_SYSTEM_PROMPT, prompt, api_key, model)
 
 
 def ask_beat(
     context: str, question: str, *, provider: str = "gemini", api_key: Optional[str] = None, model: Optional[str] = None
 ) -> str:
     prompt = f"League/roster context:\n{context}\n\nQuestion: {question}"
-    return PROVIDER_CALLERS[provider](BEAT_SYSTEM_PROMPT, prompt, api_key, model)
+    # Scoped inside for the same reason as ask_quant above -- this one also runs on a worker.
+    with provider_meter.role_scope("beat"):
+        return PROVIDER_CALLERS[provider](BEAT_SYSTEM_PROMPT, prompt, api_key, model)
 
 
 # What a downstream chair is shown in place of an upstream chair's report when that chair's
@@ -613,6 +623,24 @@ def ask_beat(
 # catch cannot support, and in the timeout case simply false. Corrected under the rule #89 set
 # for the alias branch and §6 R1 applied to "validated": a field may not claim a certainty its
 # writing path cannot establish. What is known is that no usable report reached this chair.
+# THE POLICY, CHOSEN RATHER THAN INHERITED. A failed chair never stops the panel: every chair
+# is called regardless, the Moderator always runs, and a verdict is always produced. That
+# behaviour predates this constant and used to be merely what fell out of calling four chairs in
+# sequence -- test_failure_mode_boundary measured it across all eight failure combinations and
+# recorded that it "is coherent and it was never chosen".
+#
+# It is chosen now: DEGRADE, NEVER ABORT. Aborting would assert the reader is better off with
+# nothing, which is the same claim that put every kicker above every running back on a late
+# board. A panel missing one voice still carries three; what it must never do is hide which
+# voice is missing.
+#
+# The two obligations that make degrading honest, both enforced in run_debate:
+#   1. every failure is named in DebateResult.errors, and
+#   2. a verdict resting on NO upstream analysis says so explicitly.
+# A floor (quorum, minimum chairs, abort threshold) would be a deliberate reversal of this and
+# must invert test_failure_mode_boundary's characterization rather than quietly coexist with it.
+DEGRADE_NEVER_ABORT = True
+
 UNAVAILABLE_REPORT = (
     "(unavailable — no report from this chair reached the panel. Whether the call never ran, ran "
     "and was lost, or ran and could not be read is not known here. Treat this as MISSING "
@@ -637,7 +665,8 @@ def ask_contrarian(
         f"--- BEAT / NEWS REPORT ---\n{_report_for_handoff(beat)}\n\n"
         "Pressure-test these two reports."
     )
-    return PROVIDER_CALLERS[provider](CONTRARIAN_SYSTEM_PROMPT, prompt, api_key, model)
+    with provider_meter.role_scope("contrarian"):
+        return PROVIDER_CALLERS[provider](CONTRARIAN_SYSTEM_PROMPT, prompt, api_key, model)
 
 
 def ask_moderator(
@@ -659,7 +688,8 @@ def ask_moderator(
     system_prompt = MODERATOR_SYSTEM_PROMPT
     if personality:
         system_prompt += f"\n\nResponse style: {personality}"
-    return PROVIDER_CALLERS[provider](system_prompt, prompt, api_key, model)
+    with provider_meter.role_scope("moderator"):
+        return PROVIDER_CALLERS[provider](system_prompt, prompt, api_key, model)
 
 
 MODERATOR_FOLLOWUP_ADDENDUM = """
@@ -722,7 +752,8 @@ def ask_moderator_followup(
     system_prompt = MODERATOR_SYSTEM_PROMPT + "\n" + MODERATOR_FOLLOWUP_ADDENDUM
     if personality:
         system_prompt += f"\n\nResponse style: {personality}"
-    return PROVIDER_CALLERS[provider](system_prompt, prompt, api_key, model)
+    with provider_meter.role_scope("moderator"):
+        return PROVIDER_CALLERS[provider](system_prompt, prompt, api_key, model)
 
 
 UPLOAD_CLASSIFY_SYSTEM_PROMPT = """You're the Moderator for a fantasy football dynasty roster app, occasionally \
@@ -888,6 +919,11 @@ def run_debate(
     work against that.
     """
     role_models = role_models or {}
+    # Where this debate's own slice of the provider ledger starts. The ledger is process-wide
+    # and long-lived, so a bare scan would also see calls from an earlier debate, from the
+    # /pick panel, or from a summarize_history that happened to run in between -- mark() exists
+    # for exactly this: it lets one debate meter exactly its own calls.
+    debate_meter_at = provider_meter.mark()
     result = DebateResult(
         question=question, role_providers=dict(role_providers), role_models=dict(role_models),
     )
@@ -924,8 +960,38 @@ def run_debate(
     )
     if not result.moderator.startswith("⚠️"):
         result.verdict = parse_moderator_verdict(result.moderator)
-    for label, text in (("quant", result.quant), ("beat", result.beat),
-                         ("contrarian", result.contrarian), ("moderator", result.moderator)):
+    chairs = (("quant", result.quant), ("beat", result.beat),
+              ("contrarian", result.contrarian), ("moderator", result.moderator))
+    for label, text in chairs:
         if text.startswith("⚠️"):
             result.errors.append(f"{label}: {text}")
+
+    # #104, the edge the characterization named and left undecided. The panel ALWAYS degrades
+    # and never aborts -- that policy is now chosen rather than incidental (see DEGRADE_NEVER_
+    # ABORT). Its one genuinely dangerous case is this: with every upstream chair failed, the
+    # Moderator still runs, receives three unavailability markers, and can synthesize a
+    # confident-sounding verdict out of nothing at all. The markers tell it to treat those as
+    # MISSING, but nothing prevents a verdict anyway.
+    #
+    # Under the standing absence ruling the answer is not to suppress that verdict -- discarding
+    # asserts the reader is better off with nothing -- but to say what it rests on. Annotate,
+    # and let the reader discount it.
+    upstream = [text for label, text in chairs if label != "moderator"]
+    if upstream and all(text.startswith("⚠️") for text in upstream):
+        result.errors.append(
+            "every upstream chair failed — the moderator's verdict was synthesized from "
+            "unavailability markers alone, not from any chair's actual analysis. Read it as "
+            "resting on NO evidence, however confident its wording.")
+    # Truncation, same rule and a different condition: a chair cut off at its output cap
+    # produced real analysis that stops early. The text is kept and annotated in place (see
+    # provider_meter.annotate_if_incomplete); this is the human-facing half.
+    truncated_roles = {
+        record.role for record in provider_meter.since(debate_meter_at)
+        if record.completion_state == provider_meter.TRUNCATED
+    }
+    for label, _text in chairs:
+        if label in truncated_roles:
+            result.errors.append(
+                f"{label}: report was cut off at the provider's output cap -- it is a fragment, "
+                f"and its conclusion is missing rather than absent by choice.")
     return result
