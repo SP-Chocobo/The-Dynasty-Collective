@@ -134,7 +134,26 @@ class TheScaleIsNotAPointsTotalTests(unittest.TestCase):
             reach_label=None, projected_points=None,
         )
         self.assertLess(candidate.team_acquisition_value, 0)
-        self.assertEqual(len([f for f in dataclasses.fields(candidate)]), 37)
+
+    def test_the_snapshot_schema_is_pinned_so_additions_are_noticed(self):
+        """A field count, given its own home and its own reason.
+
+        It used to sit inside the negative-value test above, where its purpose was invisible: a
+        bare 37 next to an assertion about scale reads as incidental, so the natural response to
+        it failing is to bump the number without asking what changed.
+
+        What it actually protects: every field on CandidateSnapshot is a candidate for the
+        card, and this file's whole subject is what the card implies about the engine's numbers.
+        A new field is not a problem -- it is a PROMPT, to confirm the display contract still
+        holds for whatever was just added, and to decide whether the card should show it.
+        """
+        import dataclasses
+        import pick_synthesis as ps
+        self.assertEqual(
+            len(dataclasses.fields(ps.CandidateSnapshot)), 38,
+            "CandidateSnapshot's field count changed. That is fine and often correct -- but "
+            "confirm the new field does not imply a scale the card cannot support, decide "
+            "whether the card should render it, then update this number.")
 
     def test_no_clamp_or_rescale_stands_between_the_engine_and_the_card(self):
         """Non-vacuity for the whole file: if the number were normalised into a 0-100 band on
