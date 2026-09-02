@@ -43,6 +43,7 @@ import pick_debate
 import pick_synthesis
 import pinned_messages
 import provider_meter
+import providers
 import store_io
 import untrusted
 import screen_context
@@ -968,15 +969,13 @@ def api_key_for(provider: str) -> Optional[str]:
     return st.session_state.get(f"{provider}_api_key_override") or None
 
 
-# bot_config's short provider ids ("claude") vs. api_key_for's credential-field names
-# ("anthropic") -- two different vocabularies that predate each other, kept apart
-# rather than unified since api_key_for's names mirror the .env vars directly.
-PROVIDER_KEY_FIELD = {"claude": "anthropic", "gemini": "gemini", "openai": "openai"}
-IS_PROVIDER_CONFIGURED = {
-    "claude": llm_engine.is_claude_configured,
-    "gemini": llm_engine.is_gemini_configured,
-    "openai": llm_engine.is_openai_configured,
-}
+# The two vocabularies -- a provider's short id ("claude") and the credential field its key
+# travels under ("anthropic") -- still differ, because api_key_for's names mirror the .env vars
+# directly. What changed is that the mapping is no longer maintained here: each provider
+# declares its own key_field and configured-check in the registry (see providers.py), so adding
+# one cannot leave app.py silently out of date.
+PROVIDER_KEY_FIELD = {pid: providers.get(pid).key_field for pid in providers.ids()}
+IS_PROVIDER_CONFIGURED = {pid: providers.get(pid).is_configured for pid in providers.ids()}
 
 
 CREDENTIAL_FIELD_ALIASES = {
@@ -2337,9 +2336,17 @@ with st.sidebar:
                 # four that used to sit in this caption were exactly a round-robin over the
                 # provider list, justified after the fact, and nothing in this app has ever
                 # measured which family suits which chair -- see bot_config.ASSIGNMENT_RULE.
-                # What the caption shows instead is what the chair DOES, which is real, plus
-                # the honest state of the vendor question.
-                st.caption(f"{_info['description']}")
+                # What sits here instead is the one thing about a provider that IS measured:
+                # what it does and does not report back. A provider that cannot tell the app
+                # whether a reply was truncated is not the same as one that reported nothing
+                # this run, and only the registry knows which is which.
+                _gaps = providers.get(_provider_choice).capability_gaps()
+                if _gaps:
+                    st.caption(
+                        f"{bot_config.PROVIDER_LABELS[_provider_choice]} does not report: "
+                        + "; ".join(_gaps)
+                        + ". That is a property of the provider, not a failure of a run."
+                    )
                 # Model is a layer below provider, not a peer to it -- two roles can share
                 # a provider and still want different models (the Moderator's synthesis
                 # doesn't need the same model as Quant's number-crunching). Free text by

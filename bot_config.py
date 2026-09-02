@@ -13,14 +13,20 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
+
+import llm_engine  # noqa: F401 - imported for its side effect: it registers the providers
+import providers
 import store_io
 
 
 CONFIG_PATH = Path("data/bot_config.json")
 
 ROLES = ("quant", "beat", "contrarian", "moderator")
-PROVIDERS = ("claude", "gemini", "openai")
-PROVIDER_LABELS = {"claude": "Claude", "gemini": "Gemini", "openai": "ChatGPT"}
+# Derived from the registry (see providers.py), not written out here. A hand-kept copy is a
+# list somebody has to remember to extend, which is how the extension surface got to six files
+# in the first place.
+PROVIDERS = providers.ids()
+PROVIDER_LABELS = providers.labels()
 
 ROLE_INFO = {
     "quant": {
@@ -112,11 +118,7 @@ DEFAULT_ROLE_PROVIDERS = default_role_providers()
 # synthesis. Not an enum: providers ship new models on their own schedule, and the
 # per-role field is free text so a model this app doesn't know about yet still works.
 # These are just autocomplete-style suggestions shown in the UI.
-SUGGESTED_MODELS = {
-    "claude": ["claude-opus-5", "claude-sonnet-5", "claude-haiku-4-5"],
-    "gemini": ["gemini-2.0-flash", "gemini-2.0-pro"],
-    "openai": ["gpt-4o", "gpt-4.5-mini", "o3"],
-}
+SUGGESTED_MODELS = {pid: list(providers.get(pid).suggested_models) for pid in providers.ids()}
 
 
 def _load_raw() -> dict:

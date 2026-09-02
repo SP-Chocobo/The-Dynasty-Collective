@@ -61,3 +61,37 @@ of which announced itself as settling anything. The deployment model must be dec
 7. §19.8 — assertion fingerprint.
 8. §6.2a — second-pass gate on findings.
 9. §6.3 — **skipped by ruling.**
+
+---
+
+## PROGRESS LOG (appended as items land, so a cold pick-up reads the state, not the plan)
+
+| # | item | state |
+|---|---|---|
+| 0 | provider neutrality | **DONE** `5859ea5` |
+| 1 | the socket (`providers.py`) | **DONE** — registry + declared capabilities + a UI consumer for `capability_gaps()` |
+| 2 | §19.10 devcontainer | **PINNED** — recorded, no code, as ruled |
+| 3 | §7.10 provenance | built: `data/baseline/baseline_provenance.json`, vendor unnamed |
+| 4 | §19.9 cadence | weekly Wednesday scheduled run |
+| 5 | #94 flag-only | ruled and recorded; the flag now survives to Apply |
+| 6 | §7.4 allowlist | `source_policy.py` — gates the composite, leaves prose free |
+| 7 | §19.8 fingerprint | `assertion_floors.py` — per-name assertion FLOORS, failing |
+| 8 | §6.2a second pass | a finding does not feed the composite until a second adjudication |
+| 9 | §6.3 | **untouched**, by ruling |
+
+### One thing worth flagging back
+
+Items 6 and 8 land on the same function (`bot_research.add_finding`) and the same downstream
+consumer (`data_merger.load_bot_research_as_external`), because they are the same boundary asked
+two different ways: *which sources may move a number* and *who has to agree before it does.*
+
+Together they are a real behaviour change, not just a record: **a panel-vetted finding no longer
+feeds `composite_player_score` on the Moderator's own say-so.** It needs an allowlisted cited
+source AND a second adjudication. On this repository that changes nothing observable — the store
+has never held a row — but it is the first time the app has declined to use something the panel
+approved, and that is the ruling's own logic: under a shared deployment an accepted finding
+affects everybody, so it waits for a second pass "for now, until that's more in place."
+
+Per the standing rule, neither item assumes the deployment. Both work identically on a local
+install and a hosted one; what they build is the *mechanism* the deployment decision will need
+either way, and nothing here votes on which deployment that is.

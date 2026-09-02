@@ -3041,3 +3041,66 @@ would give, available today. The rest waits on the same prerequisite as **#120**
 | §19.9 | `ENGINEERING_DOCTRINE.md` states a re-audit cadence and nothing enforces it. | A scheduled full-suite + manifest run is cheap now that CI exists. Needs a cadence *you* pick, not one I invent. |
 | §19.10 | `.devcontainer/devcontainer.json` launches with `--server.enableCORS false --server.enableXsrfProtection false`. | Scoped to the Codespaces preview only, and a common workaround — but it should be a **deliberate** decision rather than an inherited one. Yours to make. |
 | §19.11.2 | The committed baseline is Recent/Fresh today, **Stale at +90d and permanently after**, with no refresh path short of a code change. | A refresh policy for paid vendor data is a product decision, same family as §7.10. |
+
+---
+
+# #126 / #127 — PROVIDER NEUTRALITY: THE ROUTING WAS ALREADY NEUTRAL, THE *SET* WAS NOT
+
+Raised as a question, not a bug: *"Wasn't it discussed that API integration needs be source and
+model agnostic? Having specific tags to anthropic, openai, and google-genai feels like a step
+backwards."* Measuring it split the concern cleanly in two, and only one half was what the
+question was aiming at.
+
+## What the measurement found
+
+**The three SDK imports are not the problem, and removing them would make the app worse.** They
+are adapters, one per response shape, and `provider_meter`'s own docstring already argues why a
+single "find the tokens" heuristic would be guessing. You cannot read Gemini's
+`grounding_metadata` with Anthropic's `web_search_tool_result` shape. A lowest-common-denominator
+wrapper would fabricate exactly the class of number this audit spent twenty sections removing.
+
+**Two other things, neither of them the SDK imports, were real:**
+
+| what | measured |
+|---|---|
+| The shipped per-chair vendor defaults | Exactly a round-robin over the declaration order, justified after the fact. 3 of 4 `why` strings did not support their own recommendation. |
+| Single-key coverage | With one key, a user got **2 of 4** chairs (Anthropic), or **1 of 4** with the Moderator dead (Gemini, OpenAI). |
+| The Draft Room's override path | **Did not exist.** Neither `debate_pick` call site passed `role_providers`, so the panel's own routing config could not reach it. |
+
+The vendor picks came from an off-the-cuff remark early in the SaaS discussion — *"who it thought
+may have been decent in each chair"* — and calcified. They had been called out once already, in an
+earlier UI, and survived: traced across `d30f50d` → `a58a295` → `d871078`, where each rewrite
+carried the strings forward as content rather than re-deciding them. That produced a doctrine rule:
+
+> **A retracted justification obliges a re-decision, not an annotation.**
+
+## What landed (#126, `5859ea5`)
+
+- Chairs are dealt round-robin across **whichever providers you have a key for**, in declaration
+  order — and `bot_config.ASSIGNMENT_RULE` states in the config file that the order is arbitrary
+  and nothing has measured it. With one key, all four chairs run on it.
+- Both Draft Room `debate_pick` call sites now pass `role_providers`, so the override path exists.
+- `ROLE_INFO` no longer carries `recommended` or `why`. The caption shows what the chair **does**.
+
+A *measured* recommendation is a different thing and is welcome later — that is what the benchmark
+harness is for. The bar is that it ships with the run behind it.
+
+## What landed (#127, the socket)
+
+Adding a fourth provider meant editing six files, with nothing anywhere declaring that six was the
+list. `providers.py` is that declaration: a frozen `Provider` dataclass, a registry, and every
+per-provider table in `llm_engine`, `bot_config` and `app` **derived** from it rather than
+hand-kept beside it.
+
+The part that is not just plumbing: a `Provider` declares what its responses can actually
+**report** — completion state (#99), usage (#100), served model (#109), retrieved sources (#97) —
+and `capability_gaps()` turns the absences into a sentence the config screen shows. A generic
+adapter that reports none of them still works; the machinery already degrades correctly. What was
+missing is that nothing *said so*, so a user plugging in a local model could not tell *"this
+provider does not report that"* from *"this provider reported nothing this time"*. That is #112's
+never-checked-versus-checked-and-absent distinction, arriving at the provider boundary.
+
+The flags are checkable, not editorial: `test_providers.py` asserts a provider claiming truncation
+detection actually has a reader in `provider_meter`. A flag that could disagree with reality would
+be a claim the writing path cannot establish — and worse than no flag, because the UI would print
+a capability the app does not have.

@@ -38,6 +38,7 @@ from typing import Optional
 from dotenv import load_dotenv
 
 import provider_meter
+import providers
 import untrusted
 
 load_dotenv()
@@ -477,13 +478,6 @@ def list_openai_models(api_key: Optional[str] = None) -> tuple[list[str], Option
         return [], str(exc)
 
 
-LIST_MODELS_BY_PROVIDER = {
-    "claude": list_claude_models,
-    "gemini": list_gemini_models,
-    "openai": list_openai_models,
-}
-
-
 # -- Per-provider callers -- generic: system prompt in, provider's own quirks
 # (tool access, client setup) handled here, indifferent to which role is calling. ---
 
@@ -585,7 +579,44 @@ def _call_openai(system_prompt: str, user_prompt: str, api_key: Optional[str] = 
 # so which provider ends up on the Beat Tracker/Contrarian role is purely a "whose answers do
 # you like" choice now, not a capability tradeoff. See bot_config.ROLE_INFO for the UI's own
 # framing of that choice.
-PROVIDER_CALLERS = {"claude": _call_claude, "gemini": _call_gemini, "openai": _call_openai}
+# -- The registry ------------------------------------------------------------------------------
+#
+# Registered HERE rather than in providers.py, because the adapters live here: the module that
+# owns the vendor-specific code is the one that can honestly declare what that code reads. A
+# registry filled in from somewhere else would be a second place to keep in sync -- the exact
+# shape this replaces.
+#
+# The four `reports_*` flags are claims about THIS REPOSITORY'S EXTRACTORS, not about the
+# vendors. provider_meter has a reader for each of these three shapes; a provider with no
+# reader declares False and the app says so rather than showing a blank. What a live provider
+# actually returns is still unverified from this environment -- no SDK is installed here -- and
+# stays recorded under #120.
+providers.register(providers.Provider(
+    id="claude", label="Claude", call=_call_claude, is_configured=is_claude_configured,
+    key_field="anthropic", list_models=list_claude_models,
+    suggested_models=("claude-opus-5", "claude-sonnet-5", "claude-haiku-4-5"),
+    reports_completion=True, reports_usage=True, reports_model=True, reports_sources=True,
+))
+providers.register(providers.Provider(
+    id="gemini", label="Gemini", call=_call_gemini, is_configured=is_gemini_configured,
+    key_field="gemini", list_models=list_gemini_models,
+    suggested_models=("gemini-2.0-flash", "gemini-2.0-pro"),
+    reports_completion=True, reports_usage=True, reports_model=True, reports_sources=True,
+))
+providers.register(providers.Provider(
+    id="openai", label="ChatGPT", call=_call_openai, is_configured=is_openai_configured,
+    key_field="openai", list_models=list_openai_models,
+    suggested_models=("gpt-4o", "gpt-4.5-mini", "o3"),
+    reports_completion=True, reports_usage=True, reports_model=True, reports_sources=True,
+))
+
+#: Derived from the registry rather than written out, so a registered provider cannot be
+#: missing from the dispatch table and a dispatch entry cannot exist without a registration.
+PROVIDER_CALLERS = {pid: providers.get(pid).call for pid in providers.ids()}
+LIST_MODELS_BY_PROVIDER = {
+    pid: providers.get(pid).list_models
+    for pid in providers.ids() if providers.get(pid).list_models is not None
+}
 
 ROLE_SYSTEM_PROMPTS = {
     "quant": QUANT_SYSTEM_PROMPT,
