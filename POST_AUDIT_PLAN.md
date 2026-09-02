@@ -2626,3 +2626,107 @@ engine reasons with; the register was only ever one implementation of it.
 source thin enough that rows carry neither projection nor trade value. Both are now
 *observable* rather than assumed — `replacement_basis` and the unpriced count sit on every
 board row, so this population can be re-measured at any time instead of re-argued.
+
+---
+
+# #51 — THE IDP ADVERSARIAL PASS: A SUPPLY DEFECT, NOT AN ARITHMETIC ONE
+
+IDP was chosen as the hostile domain because it is the one position family where this app's data
+sources behave differently from everywhere else, and every valuation decision in the engine was
+designed against offense. The pass found **no arithmetic defect**. The trade-value pricing branch
+does the right thing with what it is given, labels itself honestly (`bpa_source ==
+"position_relative_trade_value_vor"`, `confidence == 35.0` against offense's `80.0`), and prices
+every row it admits.
+
+The defect is upstream of all of that, and it is structural.
+
+## What was measured
+
+Against the committed baseline and the repo's own realistic IDP league shape
+(`run_idp_draft_validation.IDP_LEAGUE` — `DL,DL,LB,LB,DB,DB,IDP_FLEX` over 12 teams):
+
+| | IDP | offense | K/DEF |
+|---|---|---|---|
+| players in the universe | 415 | 280 | 69 |
+| carry a season projection | **0** | 264 (94%) | 69 (100%) |
+| carry a 3-year projection | **0** | 264 | 0 |
+| carry a trade value | **76 (18%)** | 264 (94%) | 26 (38%) |
+| **admitted to the pool** | **76** | 264 | — |
+
+Zero is the number that matters, and it is zero rather than few: Draft Sharks projects **no IDP
+player at all**, for `projection` and `proj_3yr` alike. So `build_available_pool`'s admission
+rule — *"a real number means a season points projection OR a trade value"* — has only one live
+branch at IDP, and that branch covers 18% of the position family.
+
+**The drop is not an identity failure.** All 415 match a canonical record; 339 match a record that
+is empty of numbers. That distinction decides the remedy: a matching gap is repaired at the name
+boundary (#82's territory), a coverage gap is repaired by acquiring data.
+
+## The consequence: supply below the league's own starting lineup
+
+League-wide IDP **starter** demand in that shape is **84** — 24 DL + 24 LB + 24 DB + 12 IDP_FLEX,
+which draws on the same three positions. Admitted supply is **76**.
+
+* **DL: 24 supply against 24 demand.** Zero margin.
+* **DB: 23 supply against 24 demand.** Below its own slot demand, before a single bench spot.
+* Offense, on the identical board and call, clears its own starter demand **2.75x** (264 against
+  96). The pool is not globally thin; it is thin at exactly the family nothing projects.
+
+## And it is not a paper shortfall — the draft actually runs out
+
+Simulated: 12 teams, engine-selected picks (each team takes its own board's top row), 20 rounds
+against a 23-round league (15 starting slots + 8 bench).
+
+```
+r 8: DL= 12 LB= 15 DB= 18      r13: DL=  3 LB=  6 DB=  3
+r 9: DL= 12 LB= 13 DB= 14      r14: DL=  1 LB=  5 DB=  0   <- DB exhausted
+r10: DL=  9 LB= 12 DB= 12      r15: DL=  0 LB=  0 DB=  0   <- DL and LB exhausted
+```
+
+**Every position exhausts outright** — DB in round 14, DL and LB in round 15, with a third of the
+draft still to run. All 76 admitted IDP players are drafted and **8 of the league's 84 IDP starter
+slots can never be filled by anyone**.
+
+`unpriced` was **0 at every round**, so this is emphatically not #114's unpriced-tail phenomenon
+wearing a different hat. The board does not run out of *prices*; it runs out of *rows*.
+
+This is the same shape as the K/DEF supply defect `build_available_pool`'s own docstring records
+(*"supply capped at 13 of 37 kickers … drafting them emptied the position to zero"*). That one was
+repaired by widening admission from *trade value* to *points OR trade value*. **The same fix does
+nothing here, because the widened half is empty.**
+
+## Why external_values is not the fix, and must not be made one
+
+The one remaining offline source with IDP rows is `external_values` — 324 of them, from
+FantasyPros and ESPN, and 124 of the 339 dropped players have a row there. It is not a latent
+value source:
+
+1. Those 324 rows carry `value_1qb` and `value_2qb` for **exactly zero** of them. They carry a
+   **rank**.
+2. Admitting a rank as a value is the cross-register laundering #61 and #70 spent the whole audit
+   removing — a rank is a value comparison already collapsed into an integer.
+3. That filter **is** the CDME ingestion boundary, the same standing rule that forbids solving the
+   1QB consensus gap by adding FantasyPros to `_consensus_lookup`.
+
+## The remedy is an input, not a code change
+
+Live Sleeper IDP projections, scored through this league's own `scoring_settings`.
+`build_available_pool` **already has that wiring** (`sleeper_projections` + `scoring_settings` →
+`score_projection` → `sleeper_points`), and its docstring already names IDP as the case it exists
+for — *"this DB is projected for 7 sacks, and this league gives 8 points per sack"*. It is
+unreachable from this environment (#88 and #120, both blocked on network access).
+
+**So: schedule acquiring the input, not designing around its absence.** This is the same
+disposition #49 already carries for real K/DEF/IDP boards, and it is now measured rather than
+assumed.
+
+## What was built
+
+`test_idp_supply_boundary.py` — nine tests pinning every number above, in the direction that
+matters: **they fail if IDP supply changes in either direction.** A source landing real IDP points
+is good news that should still stop the build and be read, not absorbed silently; the shortfall
+getting quietly worse should do the same. Non-vacuity is explicit throughout — offense and K/DEF
+coverage is asserted in the same calls, so "zero IDP projections" can never be a broken column
+read, and the supply shortfall can never be a pool-wide thinness.
+
+No production code changed.
