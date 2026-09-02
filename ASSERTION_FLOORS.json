@@ -1016,6 +1016,19 @@
         "assertTrue": 4
       }
     },
+    "test_upload_batches.py": {
+      "test_methods": 22,
+      "asserts": {
+        "assertEqual": 23,
+        "assertFalse": 1,
+        "assertGreater": 1,
+        "assertIn": 1,
+        "assertIsNone": 6,
+        "assertNotEqual": 2,
+        "assertNotIn": 4,
+        "assertTrue": 1
+      }
+    },
     "test_version_boundary.py": {
       "test_methods": 26,
       "asserts": {

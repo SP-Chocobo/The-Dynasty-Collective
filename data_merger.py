@@ -70,6 +70,7 @@ from typing import Optional
 import pandas as pd
 
 import store_io
+import upload_batches
 
 PROJECTIONS_DIR = Path("data/projections")
 GLOBAL_PROJECTIONS_DIR = PROJECTIONS_DIR / "_global"  # Dynasty Rankings: format-based, shared across leagues
@@ -998,6 +999,18 @@ def parse_keeptradecut_pdf(path: Path, start_rank: Optional[int] = None) -> tupl
     return df, None
 
 
+def _relative_to_cwd(path: Path) -> str:
+    """A repo-relative posix path, matching the spelling upload_batches stores.
+
+    Falls back to the name alone for a path outside the tree (a staging temp dir during an
+    upload, say) -- a miss there simply means no stated date, which is the honest answer.
+    """
+    try:
+        return path.resolve().relative_to(Path.cwd().resolve()).as_posix()
+    except (ValueError, OSError):
+        return path.name
+
+
 def load_projection_file(path: Path, default_kind: str = "rankings") -> tuple[pd.DataFrame, str]:
     """Returns (dataframe, kind) where kind is 'rankings', 'free_agents', or 'trade_value_chart'.
 
@@ -1041,7 +1054,26 @@ def load_projection_file(path: Path, default_kind: str = "rankings") -> tuple[pd
         raise ValueError(f"Unsupported projection file type: {path.suffix}")
 
     df["source_file"] = path.name
-    df["source_date"] = source_date or datetime.fromtimestamp(path.stat().st_mtime).date().isoformat()
+    # THE DATE PRECEDENCE ACTUALLY USES, in three states -- and never a fourth invented one.
+    #
+    # This used to read `source_date or datetime.fromtimestamp(path.stat().st_mtime)...`, which
+    # meant NOTHING WAS EVER UNDATED. `_order_by_precedence` sorts on `_negated_date`, which has
+    # an explicit branch for an undated file -- "sorts after any digit-complement, so undated
+    # rows lose to dated ones" -- and that branch was UNREACHABLE in production, because an
+    # mtime always filled the gap first. The safe behaviour was written, and never ran.
+    #
+    # mtime is not a weak date, it is a DIFFERENT FACT: "when this file landed on this disk",
+    # which on a fresh clone is the checkout time. §19.4 records it breaking real numbers twice.
+    # Measured before removing it: 0 of the committed baseline files rely on it -- every one
+    # declares its own source_date -- so it existed purely to guess on behalf of uploads, which
+    # is exactly where guessing is worst and where a user can simply be asked instead.
+    #
+    # "" and not None: load_all stringifies this column, so a None would arrive downstream as
+    # the string "None" -- truthy, and therefore treated as a date. An empty string is the only
+    # spelling of "no date" that survives that round trip.
+    _stated = upload_batches.stated_as_of(_relative_to_cwd(path))
+    df["source_date"] = upload_batches.resolve_source_date(_stated, source_date) or ""
+    df["source_date_basis"] = upload_batches.date_basis(_stated, source_date)
     return df, kind
 
 
