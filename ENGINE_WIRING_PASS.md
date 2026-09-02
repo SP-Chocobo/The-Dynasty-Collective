@@ -1,0 +1,226 @@
+# The Engine Wiring Pass
+
+> **What this is.** One session's record, written to be read cold. It exists because six
+> findings arrived in an afternoon and were living only in task descriptions and a chat
+> transcript. It is a *session log with evidence*, not a contract — `CDME_CONTRACTS.md` and
+> `ENGINEERING_DOCTRINE.md` remain authoritative for anything that disagrees.
+>
+> **Scope note for a later auditor.** The blind adversarial pass (#52) is code-only by
+> standing instruction. This document is for the owner, not an audit input. Reading it before
+> auditing would defeat the point of the audit being blind.
+
+---
+
+## The one finding underneath the others
+
+The engine's problem is not missing arithmetic. It is a habit of **computing a number and
+then not spending it**, in two distinct flavours, and almost everything below is one of them.
+
+### Flavour 1 — write-only quantities
+
+Values produced (or ingested) and then dropped before any decision reads them.
+
+| quantity | where it dies |
+|---|---|
+| `waiting_cost` | computed in `draft_room._attach_waiting_cost`, rendered as prose, never enters `final_score` / `pick_necessity` / ordering |
+| `marginal_value_full_eligibility`, `marginal_value_primary_position_only` | `eligibility_bonus` solves the lineup and returns both; `draft_room.py:1932` reads only their *difference*. Zero production references to either absolute |
+| `bye_week` | parsed at `data_merger.py:804` and `:851`, reaches nothing |
+| bench depth (`"BN"`) | arrives from Sleeper inside `roster_positions`; counted nowhere. The only other `"BN"` in the tree is a **mock** draft's hardcoded constant |
+
+Plus eleven source-provided fields with no production reader at all (below).
+
+### Flavour 2 — the starters-full collapse
+
+Every quantity the engine computes about *roster need* goes to zero or `None` the moment the
+starting lineup is full. Three separate open tickets turned out to be one root cause.
+
+| quantity | behaviour |
+|---|---|
+| `marginal_lineup_value` | ratio to own value: **1.000** rounds 1–6, 0.097 by round 10, **0.005** by round 12 |
+| `need_bonus` | spread collapses to 0.67 (~2–3% of the value spread) from round 10 |
+| `estimated_bench_demand` | returns `None` from round 13 — the **sole** cause of every missing `waiting_cost` |
+
+The engine has no model of bench value, so everything depth-dependent dies exactly when depth
+decisions start. Filed separately as #62, #115, and the round-13 `waiting_cost` cliff; they are
+one defect.
+
+---
+
+## What was built
+
+### `depth_exposure()` — depth is what a hole costs, not what a slot wants
+
+Removes each starter, re-solves the lineup, and reports what the hole costs. Two properties
+fall out of the assignment solve rather than being encoded as rules:
+
+**Self-limiting.** One TE: losing him costs 15. Add a TE2 worth 13 → costs 2. Add a *third*
+TE → still 2. The third buys exactly zero insurance. No rule says "you don't need four tight
+ends"; the arithmetic does. A *bad* backup (worth 3) leaves 12 exposed, so the number tracks
+the quality of the cover, not merely its existence.
+
+**Substitutability.** A spare RB improves RB *and* WR — the FLEX slot is shared. A spare TE
+improves only TE, and improves it enormously, because nothing else can start in a mandatory TE
+slot. That asymmetry is why TE depth behaves unlike RB depth, and it is discovered, not asserted.
+
+**Four states**, because the numbers are returned in all of them and only one makes them
+evidence: `measured` / `no_surplus` / `vacant` / `not_applicable`.
+
+`no_surplus` was found by measurement, not design. The self-limiting property does **not**
+hold while every rostered body is on the field — nothing can backfill, so every loss costs full
+value and the number is each starter's own value wearing a depth-shaped label. Real arithmetic
+carrying no depth information. Marked rather than suppressed, because the reader most likely to
+see it is drafting in round 3.
+
+**No invented probability.** "Any one starter could become unavailable" is a uniform stated
+assumption. `RISK_ADJ` is a current-status penalty, not a prospective rate, and no per-position
+injury base rate exists here. A risk multiplier is a socket left honestly empty; a test fails if
+a `POSITION_RISK`-style constant ever appears in the module.
+
+### What this model is NOT, and why that matters next
+
+Depth is insurance against a starter being unavailable. Insurance has two halves — **severity**
+(what the hole costs) and **frequency** (how often the hole opens). This pass built severity
+only, and the frequency socket is deliberately empty rather than filled with a guess.
+
+That is a real limit, not a formality: two positions with identical exposure are currently
+treated identically even if one loses starters twice as often. What would close it does not
+exist in this data — `injury_flag` is 16 rows of 2600, and suspension will never be structured.
+
+**`bye_week` is the exception, and it is the only piece of the frequency half this app can
+compute.** It is also a different KIND of quantity from the rest: a bye is not a risk. It is
+probability 1.0 on a known date. Every player misses exactly one week and the week is published.
+So two starters sharing a bye is not exposure to something that might happen — it is a
+*scheduled outage*, visible in advance, and the only case where the engine could say "you will
+have this hole, in week 9" rather than "you might."
+
+That argues for treating bye overlap as its own term rather than as a multiplier on exposure:
+certainty and risk should not be summed into one number, for the same reason `horizon_basis`
+distinguishes a measured floor from an imputed one.
+
+### `bench_capacity()`
+
+`roster_positions.count("BN")`. Depth was unbounded in an engine whose real leagues bound it.
+
+---
+
+## What was measured
+
+**`depth_exposure` and `marginal_lineup_value` are exact complements.** Exposure is `measured`
+for 100% of rounds 9–15 and unavailable before round 9; marginal value is informative rounds
+1–6 and dead by round 10. Together they cover the draft with no gap. Separately, each looked
+broken.
+
+**`need_bonus` has zero within-position standard deviation in every round.** It is a
+per-position constant. It cannot distinguish two RBs from each other, it moves the board 8.72%
+of the value spread on average, and it collapses from round 10.
+
+**They disagree, and exposure is right.** By round 9: `need_bonus` says TE = 0.50 ("you need a
+TE") while measured exposure says TE = 4.0 ("your TE is covered"), with RB at 77.9. It is
+pointing at the position you are *least* exposed at, because it is a starter-slot heuristic that
+structurally cannot see a rostered backup.
+
+**`waiting_cost` is independent of `positional_cliff`** — Spearman **+0.094**. Not a
+restatement. 37 rows carry high waiting cost with no cliff signal, and necessity is blind on all
+of them.
+
+**Eleven of thirty source-provided fields reach no production reader.**
+
+| field(s) | rows | note |
+|---|---|---|
+| `std_dev`, `best`, `worst`, `avg`, `analyst_avg` | 552 | expert-panel *disagreement*. Already measured orthogonal in a prior experiment, never wired. The engine has a `confidence` concept with no panel input |
+| `bye_week` | 638 | FantasyPros only; real weeks 5–14 |
+| `age` | 526 | **a dynasty app that has never read a player's age.** `proj_3yr` is the entire aging proxy |
+| `trend_30d` | 499 | KTC market momentum |
+| `ecr_1qb`, `ecr_2qb` | 783 | **DO NOT ACT ON — see prohibition below** |
+| `injury_flag` | **16** | too sparse to be a signal |
+
+---
+
+## Standing prohibition
+
+`ecr_1qb` / `ecr_2qb` look like an easy fix for the 1QB consensus gap (`_consensus_lookup`
+returns empty for 1QB because the KTC export is superflex-only). **They are not.** The
+`source_name == "keeptradecut"` filter *is* the CDME ingestion boundary, proven by
+`test_cdme_ingestion_boundary.py`'s adversarial injection tests. Recorded here so a later reader
+does not helpfully close the gap with it.
+
+---
+
+## What I got wrong today
+
+Three claims were made, then corrected. Recorded because someone reading only the commits
+cannot tell which numbers superseded which, and the corrections are more instructive than the
+findings.
+
+**1. A broken harness manufactured a defect that did not exist.** The first draft simulation
+assigned every pick `roster_id: "x"` — all 56 RBs to one team. `remaining_starter_demand` is
+per-team, so the other eleven teams "still needed" RBs forever, freezing the horizon and
+producing a fake pool exhaustion. This yielded: `waiting_cost` 39.7% unknown (really **20.0%**),
+RB 63.2% unknown (really **26.9%**), and a confident claim that the engine was discarding a
+scarcity signal by collapsing "pool exhausts" into "unknown". **The `rank > pool_depth` branch
+never fires on real offense data.** Caught by noticing that RB demand held at exactly 29.33 for
+fourteen consecutive rounds — a constancy too clean to be real.
+
+**2. `injury_flag` was called usable when it is 16/2600.** I first said prospective injury data
+was absent, then "corrected" myself on finding `injury_flag` in `external_values`, then found it
+populated on 16 rows. The original statement was right. Prospective injury data really is absent.
+
+**3. The first write-only scanner was too noisy to report.** Scanning all dict literals produced
+246 "orphans" that were mostly table headers and label constants, and it misclassified
+`waiting_cost` as `DECISION`. Its own non-vacuity check caught that, and it was discarded rather
+than reported. The closed-set version (30 known columns) is the one whose result is above.
+
+The pattern in all three: **an instrument that shares its subject's assumptions is not an
+instrument.** Already doctrine here; violated three times in one afternoon anyway.
+
+---
+
+## Rulings taken this session
+
+| # | question | ruling |
+|---|---|---|
+| #71 | name the two costs of waiting | **Player scarcity** (`1 − survival_probability`, wired) and **positional decay** (`waiting_cost`, not wired). Different units, different horizons, independent |
+| #87 | is `depth_label` independent of `need_bonus`? | **Unanswerable as posed.** `need_bonus` has no within-position variance, so a correlation test is degenerate by construction. That is very likely why the original measurement was voided. Reframe as between-position, or as ablation |
+| — | where does `depth_exposure` feed? | **`team_acquisition_value`** (worth) — owner's call, then hedged and improved: coverage against a hole *is* a roster need, so it bridges both layers. Resolved as a decomposition — see below |
+| — | what happens to `need_bonus`? | **Ablate first.** Measure what changes if it is removed before deciding to keep, replace, or repair it |
+| — | which orphaned field next? | **`bye_week`** (deterministic; no probability to invent) and **`age`** — but age is *measured against `proj_3yr` first*, since a three-year projection necessarily encodes an aging view and may already price it |
+
+### The bridge, and why it is a decomposition rather than two placements
+
+Exposure alone supports *worth*, not *urgency*. High TE exposure with twelve tight ends still
+on the board is an expensive hole you can comfortably wait on. What converts worth into urgency
+is the other stranded quantity: `waiting_cost` — how much worse the fallback gets by not acting.
+
+So the two layers read **different functions of the same concern**, never the same number twice:
+
+| layer | reads | claim |
+|---|---|---|
+| `team_acquisition_value` | `depth_exposure` — the *level* | "this hole is expensive" |
+| `pick_necessity` | `waiting_cost` — the *rate* | "and it is getting harder to fill" |
+
+Placing exposure in both would be exactly the double-count this whole pass exists to avoid: the
+same position boosted twice for one reason, with nothing downstream able to tell. The
+decomposition also lands both stranded quantities — #48's `waiting_cost` and this pass's
+`depth_exposure` — in exactly one layer each, which resolves #48 better than wiring
+`waiting_cost` into necessity alone would have.
+
+### Hazard on the TAV ruling
+
+`depth_exposure` is only `measured` from round 9, but TAV feeds ordering in all fifteen rounds.
+A term that contributes nothing for eight rounds and then switches on is a **discontinuity at
+round 9** — the same knife-edge shape as the open complaint in #86. And #58 established that TAV
+*saturates*, so a term added there may move less than its arithmetic suggests. Neither changes
+the ruling; both constrain the implementation. The basis must gate the contribution explicitly
+and the transition must be visible.
+
+---
+
+## State at the end of this pass
+
+- `main` merged and unfrozen at `cf8fa0c`; marker branch `pre-blind-audit` sits there.
+- Branch `ui-authority-pass` at `8638159`. Full suite **1,968 tests**.
+- The `pre-hull-extraction` freeze is deliberately **not** placed. It marks the moment before
+  the hull moves, and the hull is not moving until the brain is finished — placing it now would
+  put engine work between the marker and the extraction, mixing both into one diff and defeating
+  the before/after it exists to provide.
+- Agreed sequence: **finish the brain → freeze → audit → fix → merge → freeze v2 → extract.**
