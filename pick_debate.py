@@ -61,7 +61,7 @@ from llm_engine import (
     CLAUDE_MODEL, GEMINI_MODEL, OPENAI_MODEL, MAX_TOKENS,
     UNAVAILABLE_REPORT, _report_for_handoff,
 )
-from pick_synthesis import CandidateSnapshot, PickSnapshot, diff_snapshots
+from pick_synthesis import CandidateSnapshot, PickSnapshot, diff_snapshots, stamp_is_current
 
 import provider_meter
 
@@ -412,6 +412,55 @@ class PickDebateResult:
     # deliberately not made here; see ARCHITECTURE_AUDIT.md 11.3a.
     snapshot_picks_consumed: Optional[int] = None
     snapshot_data_freshest_date: Optional[str] = None
+
+
+def staleness_note(result, picks: list[dict], merger) -> Optional[str]:
+    """What to say beside a debate result whose board has moved on, or None if it has not.
+
+    #101 under the standing absence ruling: ANNOTATE, never discard. PickDebateResult has
+    carried the input-state stamp for a while and its own field comment says the consumer
+    decision was "deliberately not made here". This makes it.
+
+    What the UI does today is worse than either option, in both directions at once: it gates a
+    stored result on `pick_label` alone, so a result is HIDDEN whenever the label moves (even
+    though its reasoning may still be entirely valid) and PRESENTED AS CURRENT whenever the
+    label matches (even though, as PickDebateResult's own comment says, "the user stays on the
+    clock at one label while other rosters keep picking, so two materially different boards
+    share a label routinely").
+
+    Discarding a stale debate is the same mistake as sorting an unpriced row last: it asserts
+    the reader is better off with nothing. A debate over a board four picks old is usually
+    still worth reading -- what the reader cannot afford is not KNOWING that is what they are
+    reading. So the analysis stays and the condition is stated.
+
+    THREE states, not two, and the wording differs because the claims differ. A result whose
+    board demonstrably moved on gets "this reasoned over an earlier board". A result carrying
+    no input-state stamp at all gets "whether this is current cannot be determined" -- because
+    it cannot, and saying it moved on would assert something unmeasured. stamp_is_current
+    reports both as not-current with distinct reasons; collapsing them into one sentence would
+    be the same mistake as one None standing for several kinds of absence.
+    """
+    if result is None:
+        return None
+    # Read directly, not via getattr(..., None). Both fields are declared on
+    # PickDebateResult, so a default here would only paper over a result object that has
+    # stopped carrying the stamp -- and it would fail in the dangerous direction, silently
+    # reporting "not stale" for a result whose staleness can no longer be evaluated at all.
+    current, reason = stamp_is_current(
+        result.snapshot_picks_consumed, result.snapshot_data_freshest_date, picks, merger,
+    )
+    if current or not reason:
+        return None
+    if "no input-state stamp" in reason:
+        return (
+            f"Whether this debate is still current cannot be determined — {reason}. It is kept "
+            f"rather than hidden, but nothing here establishes that the board it saw is the "
+            f"board in front of you."
+        )
+    return (
+        f"This debate reasoned over an earlier board — {reason}. Its analysis is kept rather "
+        f"than hidden, but read it against the board it saw, not the one in front of you."
+    )
 
 
 def debate_pick(

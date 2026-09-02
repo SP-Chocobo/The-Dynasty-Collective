@@ -4472,6 +4472,16 @@ elif main_view == DRAFT_VIEW:
                         )
                         if mock_current_debate is not None:
                             st.markdown("---")
+                            # #101: a debate whose board has moved on is ANNOTATED, not hidden.
+                            # The pick_label gate above cannot see this -- the user sits at one
+                            # label while other rosters keep picking, so two materially
+                            # different boards routinely share it. Discarding the analysis
+                            # would assert the reader is better off with nothing; stating the
+                            # condition lets them read it against the board it actually saw.
+                            mock_stale = pick_debate.staleness_note(
+                                mock_current_debate, md["picks"], merger)
+                            if mock_stale:
+                                st.warning(mock_stale)
                             mock_rec = mock_current_debate.recommended
                             if mock_rec is None:
                                 st.warning("The panel's recommendation didn't cleanly match a candidate -- see the raw reports below.")
@@ -4833,6 +4843,12 @@ elif main_view == DRAFT_VIEW:
                                 debate_result = st.session_state.draft_room_debate_result
                                 if debate_result is not None and debate_result.pick_label == pick_label:
                                     st.markdown("---")
+                                    # #101, same rule as the Mock Draft site above: a debate
+                                    # whose board has moved on is annotated, never hidden.
+                                    debate_stale = pick_debate.staleness_note(
+                                        debate_result, draft_picks, merger)
+                                    if debate_stale:
+                                        st.warning(debate_stale)
                                     rec = debate_result.recommended
                                     if rec is None:
                                         st.warning("The panel's recommendation didn't cleanly match a candidate -- see the raw reports below.")

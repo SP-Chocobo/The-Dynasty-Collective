@@ -353,3 +353,65 @@ class ATruncatedChairReachesTheHuman(unittest.TestCase):
         """Annotate, never discard -- the analysis survives even though it stops early."""
         result = self._run(truncate_role="skeptic")
         self.assertIn("report from skeptic", result.skeptic_report)
+
+
+class AStaleDebateIsAnnotatedNotHidden(unittest.TestCase):
+    """#101 under the standing absence ruling.
+
+    PickDebateResult has carried the input-state stamp for a while; its own field comment said
+    the consumer decision was "deliberately not made here". What the UI did in the meantime was
+    worse than either option, in both directions at once: it gated a stored result on
+    pick_label alone, so a result was HIDDEN whenever the label moved and PRESENTED AS CURRENT
+    whenever it matched -- even though, as that same comment says, "the user stays on the clock
+    at one label while other rosters keep picking, so two materially different boards share a
+    label routinely".
+    """
+
+    class _Merger:
+        def __init__(self, freshest="2026-09-01"):
+            self.freshest_date = freshest
+
+    def _result(self, picks_consumed, freshest="2026-09-01"):
+        return pd.PickDebateResult(
+            pick_label="3.04", snapshot_picks_consumed=picks_consumed,
+            snapshot_data_freshest_date=freshest,
+        )
+
+    def test_a_current_debate_gets_no_note(self):
+        # The control: if a note came back for everything, every assertion below would pass
+        # while proving nothing about staleness.
+        note = pd.staleness_note(self._result(4), [{}] * 4, self._Merger())
+        self.assertIsNone(note)
+
+    def test_a_debate_whose_board_moved_on_says_so(self):
+        note = pd.staleness_note(self._result(4), [{}] * 7, self._Merger())
+        self.assertIsNotNone(note)
+        self.assertIn("earlier board", note)
+        self.assertIn("3 new pick", note)
+
+    def test_changed_underlying_data_also_counts(self):
+        note = pd.staleness_note(self._result(4), [{}] * 4, self._Merger("2026-09-02"))
+        self.assertIsNotNone(note)
+        self.assertIn("player data changed", note)
+
+    def test_an_unstamped_result_says_it_cannot_be_determined_not_that_it_is_stale(self):
+        """The third state. A result carrying no stamp has not been shown to be out of date --
+        claiming it 'reasoned over an earlier board' would assert something unmeasured, which
+        is the same error as one None standing for several kinds of absence."""
+        note = pd.staleness_note(self._result(None, None), [{}] * 9, self._Merger())
+        self.assertIsNotNone(note)
+        self.assertIn("cannot be determined", note)
+        self.assertNotIn("earlier board", note)
+
+    def test_the_two_conditions_do_not_produce_the_same_sentence(self):
+        moved = pd.staleness_note(self._result(4), [{}] * 7, self._Merger())
+        unknown = pd.staleness_note(self._result(None, None), [{}] * 7, self._Merger())
+        self.assertNotEqual(moved, unknown)
+
+    def test_nothing_is_hidden_in_any_case(self):
+        """The whole point of the ruling: the annotation is additive. staleness_note reports a
+        condition and returns text; it never signals that a result should be withheld."""
+        for note in (pd.staleness_note(self._result(4), [{}] * 7, self._Merger()),
+                     pd.staleness_note(self._result(None, None), [{}] * 7, self._Merger())):
+            self.assertIsInstance(note, str)
+            self.assertIn("kept", note)
