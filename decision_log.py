@@ -14,6 +14,8 @@ import time
 from datetime import datetime
 from pathlib import Path
 from typing import Optional
+import store_io
+
 
 DECISIONS_DIR = Path("data/decisions")
 OUTCOME_LABELS = ("Worked", "Didn't Work", "Mixed", "Too Early To Tell")
@@ -24,15 +26,12 @@ def _path(league_id: str) -> Path:
 
 
 def _load(league_id: str) -> list[dict]:
-    path = _path(league_id)
-    if path.exists():
-        try:
-            return json.loads(path.read_text())
-        except (json.JSONDecodeError, OSError):
-            return []
-    return []
+    # #102: atomic, locked, and no longer able to turn a torn read into an empty store that the
+    # next write persists -- see store_io's own docstring for the measurement.
+    return store_io.read(_path(league_id), [])
 
 
+@store_io.atomic(lambda league_id, *a, **k: _path(league_id))
 def log_decision(
     league_id: str, question: str, verdict: dict, moderator_text: str,
     provider: str = "", model: str = "",
@@ -72,9 +71,10 @@ def log_decision(
             "outcome_date": None,
         }
     )
-    _path(league_id).write_text(json.dumps(entries, indent=2))
+    store_io.write(_path(league_id), entries)
 
 
+@store_io.atomic(lambda league_id, *a, **k: _path(league_id))
 def set_outcome(league_id: str, ts: float, outcome: str, note: str = "") -> bool:
     """Record how a past call actually played out — the missing piece that turns this
     from a pure audit trail into something the bots can learn from. `ts` identifies the
@@ -86,7 +86,7 @@ def set_outcome(league_id: str, ts: float, outcome: str, note: str = "") -> bool
     entry["outcome"] = outcome
     entry["outcome_note"] = note.strip()
     entry["outcome_date"] = datetime.now().strftime("%Y-%m-%d")
-    _path(league_id).write_text(json.dumps(entries, indent=2))
+    store_io.write(_path(league_id), entries)
     return True
 
 

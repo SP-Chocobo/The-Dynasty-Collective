@@ -13,6 +13,8 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
+import store_io
+
 
 CONFIG_PATH = Path("data/bot_config.json")
 
@@ -75,17 +77,13 @@ SUGGESTED_MODELS = {
 
 
 def _load_raw() -> dict:
-    if CONFIG_PATH.exists():
-        try:
-            return json.loads(CONFIG_PATH.read_text())
-        except (json.JSONDecodeError, OSError):
-            return {}
-    return {}
+    # #102: atomic, locked, and no longer able to turn a torn read into an empty store
+    # that the next write persists -- see store_io's own docstring for the measurement.
+    return store_io.read(CONFIG_PATH, {})
 
 
 def _save_raw(data: dict) -> None:
-    CONFIG_PATH.parent.mkdir(parents=True, exist_ok=True)
-    CONFIG_PATH.write_text(json.dumps(data, indent=2))
+    store_io.write(CONFIG_PATH, data)
 
 
 def load_role_providers() -> dict[str, str]:
@@ -93,6 +91,7 @@ def load_role_providers() -> dict[str, str]:
     return {role: saved.get(role, DEFAULT_ROLE_PROVIDERS[role]) for role in ROLES}
 
 
+@store_io.atomic(lambda *a, **k: CONFIG_PATH)
 def set_role_provider(role: str, provider: str) -> bool:
     if role not in ROLES or provider not in PROVIDERS:
         return False
@@ -111,6 +110,7 @@ def load_role_names() -> dict[str, str]:
     return {role: saved.get(role, ROLE_INFO[role]["default_name"]) for role in ROLES}
 
 
+@store_io.atomic(lambda *a, **k: CONFIG_PATH)
 def set_role_name(role: str, name: str) -> bool:
     if role not in ROLES or not name.strip():
         return False
@@ -131,6 +131,7 @@ def load_role_models() -> dict[str, str]:
     return {role: saved.get(role, "") for role in ROLES}
 
 
+@store_io.atomic(lambda *a, **k: CONFIG_PATH)
 def set_role_model(role: str, model: str) -> bool:
     if role not in ROLES:
         return False
@@ -140,18 +141,21 @@ def set_role_model(role: str, model: str) -> bool:
     return True
 
 
+@store_io.atomic(lambda *a, **k: CONFIG_PATH)
 def reset_role_providers() -> None:
     data = _load_raw()
     data.pop("providers", None)
     _save_raw(data)
 
 
+@store_io.atomic(lambda *a, **k: CONFIG_PATH)
 def reset_role_models() -> None:
     data = _load_raw()
     data.pop("models", None)
     _save_raw(data)
 
 
+@store_io.atomic(lambda *a, **k: CONFIG_PATH)
 def reset_role_names() -> None:
     data = _load_raw()
     data.pop("names", None)
@@ -182,6 +186,7 @@ def load_moderator_personality() -> str:
     return _load_raw().get("moderator_personality", "")
 
 
+@store_io.atomic(lambda *a, **k: CONFIG_PATH)
 def set_moderator_personality(personality: str) -> bool:
     if personality and personality not in MODERATOR_PERSONALITIES:
         return False

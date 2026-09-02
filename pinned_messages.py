@@ -15,6 +15,8 @@ from __future__ import annotations
 import json
 import re
 from pathlib import Path
+import store_io
+
 
 PINS_DIR = Path("data/pins")
 
@@ -29,12 +31,13 @@ def load_pinned_ts(league_id: str) -> set[float]:
     path = _path(league_id)
     if path.exists():
         try:
-            return set(json.loads(path.read_text()))
+            return set(store_io.read(path, []))
         except (json.JSONDecodeError, OSError):
             return set()
     return set()
 
 
+@store_io.atomic(lambda league_id, *a, **k: _path(league_id))
 def toggle_pin(league_id: str, ts: float) -> bool:
     """Flip one message's pinned state. Returns the new state (True = now pinned)."""
     pinned = load_pinned_ts(league_id)
@@ -45,7 +48,7 @@ def toggle_pin(league_id: str, ts: float) -> bool:
         pinned.add(ts)
         now_pinned = True
     PINS_DIR.mkdir(parents=True, exist_ok=True)
-    _path(league_id).write_text(json.dumps(sorted(pinned)))
+    store_io.write(_path(league_id), sorted(pinned))
     return now_pinned
 
 

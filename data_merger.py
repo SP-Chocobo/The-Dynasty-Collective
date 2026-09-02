@@ -69,6 +69,8 @@ from typing import Optional
 
 import pandas as pd
 
+import store_io
+
 PROJECTIONS_DIR = Path("data/projections")
 GLOBAL_PROJECTIONS_DIR = PROJECTIONS_DIR / "_global"  # Dynasty Rankings: format-based, shared across leagues
 # Facts-only (name/team/position/rank/trade_value) CSVs extracted from format-based Draft
@@ -1689,17 +1691,22 @@ def load_aliases() -> dict[str, str]:
     return {}
 
 
+# §16.9 widened #102 from "two sessions in one league" to "two sessions at all": these two are
+# the same load -> mutate -> write shape on a GLOBAL file, and player_aliases.json is one of the
+# three that feeds valuation. Re-demonstrated on today's code before the repair -- tab A saves an
+# alias, tab B reads, tab A saves a second, tab B writes its stale view, and tab A's second alias
+# is gone. store_io.mutate is used here rather than the `atomic` decorator the per-league stores
+# take, because these two are small enough to say the whole read-modify-write in one place, and
+# the CM makes the mistake unavailable rather than merely fixed: a caller that cannot load
+# separately cannot put the load back outside the lock.
 def save_alias(sleeper_full_name: str, draft_sharks_name: str) -> None:
-    aliases = load_aliases()
-    aliases[sleeper_full_name] = draft_sharks_name
-    ALIASES_PATH.parent.mkdir(parents=True, exist_ok=True)
-    ALIASES_PATH.write_text(json.dumps(aliases, indent=2))
+    with store_io.mutate(ALIASES_PATH, {}) as aliases:
+        aliases[sleeper_full_name] = draft_sharks_name
 
 
 def remove_alias(sleeper_full_name: str) -> None:
-    aliases = load_aliases()
-    if aliases.pop(sleeper_full_name, None) is not None:
-        ALIASES_PATH.write_text(json.dumps(aliases, indent=2))
+    with store_io.mutate(ALIASES_PATH, {}) as aliases:
+        aliases.pop(sleeper_full_name, None)
 
 
 class DataMerger:

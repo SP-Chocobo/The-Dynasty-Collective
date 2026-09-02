@@ -27,6 +27,8 @@ import json
 import time
 from pathlib import Path
 from typing import Optional
+import store_io
+
 
 ATTACHMENTS_DIR = Path("data/attachments")
 CAPTIONS_PATH = ATTACHMENTS_DIR / "captions.json"
@@ -36,19 +38,16 @@ ATTACHMENT_EXTENSIONS = IMAGE_EXTENSIONS + (".pdf", ".txt")
 
 
 def _load_captions() -> dict:
-    if CAPTIONS_PATH.exists():
-        try:
-            return json.loads(CAPTIONS_PATH.read_text())
-        except (json.JSONDecodeError, OSError):
-            return {}
-    return {}
+    # #102: atomic, locked, and no longer able to turn a torn read into an empty store
+    # that the next write persists -- see store_io's own docstring for the measurement.
+    return store_io.read(CAPTIONS_PATH, {})
 
 
 def _save_captions(captions: dict) -> None:
-    ATTACHMENTS_DIR.mkdir(parents=True, exist_ok=True)
-    CAPTIONS_PATH.write_text(json.dumps(captions, indent=2))
+    store_io.write(CAPTIONS_PATH, captions)
 
 
+@store_io.atomic(lambda *a, **k: CAPTIONS_PATH)
 def save_attachment(filename: str, data: bytes, caption: str = "",
                      league_ids: Optional[list[str]] = None) -> str:
     """Save an uploaded file, returning the stored filename (deduped if one already exists)."""
@@ -64,6 +63,7 @@ def save_attachment(filename: str, data: bytes, caption: str = "",
     return dest.name
 
 
+@store_io.atomic(lambda *a, **k: CAPTIONS_PATH)
 def set_caption(filename: str, caption: str) -> None:
     captions = _load_captions()
     captions.setdefault(filename, {})["caption"] = caption
@@ -72,6 +72,7 @@ def set_caption(filename: str, caption: str) -> None:
     _save_captions(captions)
 
 
+@store_io.atomic(lambda *a, **k: CAPTIONS_PATH)
 def set_scope(filename: str, league_ids: Optional[list[str]]) -> None:
     """league_ids=None (or []) makes an item global; a list scopes it to just those leagues."""
     captions = _load_captions()
@@ -111,6 +112,7 @@ def list_attachments(league_id: Optional[str] = None) -> list[dict]:
     return items
 
 
+@store_io.atomic(lambda *a, **k: CAPTIONS_PATH)
 def delete_attachment(filename: str) -> None:
     (ATTACHMENTS_DIR / filename).unlink(missing_ok=True)
     captions = _load_captions()

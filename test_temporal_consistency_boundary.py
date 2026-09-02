@@ -21,6 +21,7 @@ No provider is called anywhere in this file.
 import dataclasses
 import inspect
 import tempfile
+import threading
 import unittest
 from pathlib import Path
 
@@ -178,39 +179,80 @@ class StalenessIsDetectableAndNotConsultedTests(unittest.TestCase):
         self.assertIn("len(draft_picks), merger.freshest_date,", _APP)
 
 
-class ConcurrentWritersLoseUpdatesTests(unittest.TestCase):
-    """KNOWN GAP — characterization. §11: can an older operation overwrite a newer one?"""
+class ConcurrentWritersNoLongerLoseUpdatesTests(unittest.TestCase):
+    """#102, REPAIRED -- and these tests inverted rather than deleted. §11 asked "can an older
+    operation overwrite or contaminate a newer one?" and the answer was yes.
 
-    def test_two_sessions_on_one_league_lose_an_update(self):
+    THE OLD TEST HAD A FLAW WORTH RECORDING, because it is the reason the repair was measured
+    twice. It interleaved todo_log._load and _save by hand. That was a fair model of the old
+    code -- the public functions did exactly that, with nothing between them -- but it is not a
+    model of any production path, and re-running it unchanged against the repair would have
+    measured a route nothing takes. So the repair was measured on the PRODUCTION path instead:
+    concurrent processes calling the real public functions.
+
+    What that found was worse than the two-tab scenario suggested. Before the repair, 8
+    processes calling todo_log.add_todo 25 times each kept 6 of 200 objectives, and
+    data_merger.save_alias kept 9 of 200 -- 97% and 95% loss, not an edge case. After: 200 of
+    200 for both.
+    """
+
+    def test_concurrent_writers_through_the_public_api_all_survive(self):
+        """Threads rather than processes here on purpose: Streamlit serves many browser tabs
+        from ONE process, so this is the common multi-tab case, and it is cheap enough to run in
+        the suite. The cross-process case lives in test_store_io."""
         with tempfile.TemporaryDirectory() as tmp:
             saved = todo_log.TODOS_DIR
             todo_log.TODOS_DIR = Path(tmp)
             try:
-                todo_log.add_todo("L1", "written by tab A")
-                stale_view = todo_log._load("L1")          # tab B reads
-                todo_log.add_todo("L1", "written by tab A, second")
-                stale_view.append({"id": 99, "text": "written by tab B", "status": "active",
-                                   "date": "2026-08-31", "ts": 1.0})
-                todo_log._save("L1", stale_view)           # tab B writes its stale view
-                surviving = [e["text"] for e in todo_log._load("L1")]
-                self.assertIn("written by tab A", surviving)
-                self.assertIn("written by tab B", surviving)
-                self.assertNotIn(
-                    "written by tab A, second", surviving,
-                    "The lost update was fixed -- invert this test.",
-                )
+                def writer(n):
+                    todo_log.add_todo("L1", f"objective {n}")
+
+                threads = [threading.Thread(target=writer, args=(n,)) for n in range(30)]
+                for t in threads:
+                    t.start()
+                for t in threads:
+                    t.join()
+                surviving = {e["text"] for e in todo_log.load_todos("L1")}
+                self.assertEqual(surviving, {f"objective {n}" for n in range(30)})
             finally:
                 todo_log.TODOS_DIR = saved
 
-    def test_no_store_uses_a_lock_or_an_atomic_replace(self):
-        """Recorded rather than repaired: a torn write is undemonstrated here, and this
-        programme does not make production changes for undemonstrated failures (§7.8)."""
+    def test_every_objective_still_gets_a_distinct_id_under_contention(self):
+        """The quieter half of the same race. _next_id is max(existing) + 1, so two writers
+        loading the same view mint the same id -- and a duplicate id is worse than a lost row,
+        because resolve_todo/revise_todo address items BY id and would then hit whichever one
+        _find happens to reach first."""
+        with tempfile.TemporaryDirectory() as tmp:
+            saved = todo_log.TODOS_DIR
+            todo_log.TODOS_DIR = Path(tmp)
+            try:
+                threads = [threading.Thread(target=todo_log.add_todo, args=("L1", f"o{n}"))
+                           for n in range(30)]
+                for t in threads:
+                    t.start()
+                for t in threads:
+                    t.join()
+                ids = [e["id"] for e in todo_log.load_todos("L1")]
+                self.assertEqual(len(ids), len(set(ids)), "two objectives share an id")
+            finally:
+                todo_log.TODOS_DIR = saved
+
+    def test_every_store_now_writes_through_the_one_mechanism(self):
+        """The inversion of "no store uses a lock or an atomic replace". The scan that keeps this
+        true for stores written in future lives in test_store_io."""
         import bot_research, decision_log, pinned_messages
         for module in (todo_log, decision_log, pinned_messages, bot_research):
-            source = inspect.getsource(module)
-            self.assertIn("write_text", source)
-            for marker in ("os.replace", "flock", "FileLock", "NamedTemporaryFile"):
-                self.assertNotIn(marker, source, f"{module.__name__} gained write safety -- invert this test.")
+            with self.subTest(module=module.__name__):
+                source = inspect.getsource(module)
+                self.assertIn("store_io", source)
+                self.assertNotIn("write_text(json.dumps", source)
+
+    def test_the_mechanism_really_is_a_lock_and_an_atomic_replace(self):
+        """Non-vacuity for the test above: importing store_io proves nothing on its own."""
+        import store_io
+        source = inspect.getsource(store_io)
+        self.assertIn("os.replace", source)
+        self.assertIn("flock", source)
 
 
 if __name__ == "__main__":

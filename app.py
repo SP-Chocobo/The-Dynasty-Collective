@@ -43,6 +43,7 @@ import pick_debate
 import pick_synthesis
 import pinned_messages
 import provider_meter
+import store_io
 import untrusted
 import screen_context
 import todo_log
@@ -700,8 +701,10 @@ def load_last_username() -> str:
 
 
 def save_last_username(username: str) -> None:
-    LAST_SESSION_PATH.parent.mkdir(parents=True, exist_ok=True)
-    LAST_SESSION_PATH.write_text(json.dumps({"username": username}))
+    # #102: one field, but it is read on every startup to restore the session, and a torn read
+    # of it is a user who has to type their username again for no visible reason. Atomic writes
+    # cost nothing here and the exemption would be harder to justify than the call.
+    store_io.write(LAST_SESSION_PATH, {"username": username})
 
 
 ENV_PATH = Path(".env")
@@ -796,8 +799,17 @@ def load_chat_history(league_id: str) -> list[dict]:
 
 
 def save_chat_history(league_id: str, history: list[dict]) -> None:
-    path = CHATS_DIR / f"{league_id}_history.json"
-    path.write_text(json.dumps(history, indent=2))
+    """#102, the half of it this call can actually fix. The write is now atomic, so a reader can
+    never see a prefix -- which was the failure that turned a transient torn read into permanent
+    loss everywhere else in the tree.
+
+    It does NOT fix a lost update between two tabs, and a lock here would not either: each tab's
+    session_state holds its own whole copy of the history and this call replaces the file with
+    it, so the read-modify-write spans the user's entire session rather than this function. That
+    is a session-model question, not a file-locking one, and it is recorded rather than papered
+    over. load_chat_history's own quarantine-on-corrupt rename stays as it is -- it is stronger
+    than store_io's mark-and-refuse and the two compose."""
+    store_io.write(CHATS_DIR / f"{league_id}_history.json", history)
 
 
 def append_message(role: str, content: str, provider: Optional[str] = None, model: Optional[str] = None) -> None:
@@ -1284,6 +1296,29 @@ def maybe_nudge_stale_free_agents(league_id: str, merger: DataMerger) -> None:
     )
 
 
+def warn_about_unreadable_stores() -> None:
+    """#102's named consumer. store_io declines to overwrite a store it could not parse, which
+    keeps a damaged file recoverable instead of replacing it with a one-element one -- but the
+    cost is that the app is then quietly running with an empty view of that store and silently
+    dropping every write to it. A guard nobody is told about is the "looks handled" failure this
+    codebase keeps finding; this is the half that makes it honest.
+
+    Once per store per session, keyed by path, for the same reason maybe_nudge_stale_free_agents
+    is: a persistent condition re-rendered on every rerun would spam the activity log rather than
+    inform anyone."""
+    seen = st.session_state.setdefault("unreadable_stores_warned", set())
+    for path, reason in store_io.unreadable_stores().items():
+        if path in seen:
+            continue
+        seen.add(path)
+        notify(
+            "error",
+            f"Couldn't read {path} — it {reason}. The file has been left exactly as it is so "
+            f"you can recover it; until it parses again, this app is working from an empty view "
+            f"of that store and is NOT saving changes to it."
+        )
+
+
 def compact_league_history(league_id: str, max_age_days: int = 30) -> tuple[bool, str]:
     """Distill chat messages older than max_age_days into one memory block, pruning the raw turns.
 
@@ -1309,8 +1344,10 @@ def compact_league_history(league_id: str, max_age_days: int = 30) -> tuple[bool
     if new_summary.startswith("⚠️"):
         return False, f"Compaction aborted, history untouched: {new_summary}"
 
+    # The pre-compaction backup is the ONLY copy of the messages about to be summarised away,
+    # so a torn write here loses exactly the thing the backup exists to protect.
     backup_path = CHATS_DIR / f"{league_id}_history.pre_compact_{int(time.time())}.json"
-    backup_path.write_text(json.dumps(history, indent=2))
+    store_io.write(backup_path, history)
 
     new_history = [{"role": "summary", "content": new_summary, "ts": time.time()}] + recent_messages
     save_chat_history(league_id, new_history)
@@ -5787,6 +5824,9 @@ with st.container(key="debate_dock"):
                 )
             append_message("user", trigger_question)
             maybe_nudge_stale_free_agents(st.session_state.selected_league_id, st.session_state.data_merger)
+            # Checked here because this is the point where the app has just read every per-league
+            # store to build the context -- so anything unreadable has been discovered by now.
+            warn_about_unreadable_stores()
 
             with st.spinner("Consulting the front office..."):
                 if trigger_mode == "quant":

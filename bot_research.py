@@ -36,23 +36,22 @@ import time
 from datetime import datetime
 from pathlib import Path
 from typing import Optional
+import store_io
+
 
 FINDINGS_PATH = Path("data/baseline/bot_research.json")
 COMPARISONS_PATH = Path("data/baseline/bot_comparisons.json")
 
 
 def _load(path: Path) -> list[dict]:
-    if path.exists():
-        try:
-            return json.loads(path.read_text())
-        except (json.JSONDecodeError, OSError):
-            return []
-    return []
+    # #102: atomic, locked, and no longer able to turn a torn read into an empty store. That
+    # mattered most here: these two files are git-tracked application data, and a rank-bearing
+    # finding feeds the composite valuation score.
+    return store_io.read(path, [])
 
 
 def _save(path: Path, entries: list[dict]) -> None:
-    path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(json.dumps(entries, indent=2))
+    store_io.write(path, entries)
 
 
 def _next_id(entries: list[dict]) -> int:
@@ -80,6 +79,7 @@ ORIGIN_PANEL_RETRIEVED = "panel_retrieved"   # the debate's responses reported t
 ORIGIN_UNATTRIBUTED = "unattributed"         # they reported none; see above for what that covers
 
 
+@store_io.atomic(lambda *a, **k: FINDINGS_PATH)
 def add_finding(
     player_name: str, source: str, claim: str, *, rank: Optional[int] = None,
     conviction: str = "", question: str = "", league_id: Optional[str] = None,
@@ -153,6 +153,7 @@ def load_comparisons() -> list[dict]:
     return _load(COMPARISONS_PATH)
 
 
+@store_io.atomic(lambda *a, **k: COMPARISONS_PATH)
 def add_comparison(
     subject: str, compared_to: str, direction: str, source: str, *, context: str = "",
     evidence: str = "", question: str = "", league_id: Optional[str] = None,

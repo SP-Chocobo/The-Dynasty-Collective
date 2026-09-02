@@ -110,7 +110,7 @@ class CompactionIsNonDestructiveTests(unittest.TestCase):
 
     def test_a_backup_is_written_before_history_is_overwritten(self):
         source = self._compact_source()
-        backup_at = source.index("backup_path.write_text")
+        backup_at = source.index("store_io.write(backup_path")
         save_at = source.index("save_chat_history(")
         self.assertLess(backup_at, save_at, "History is overwritten before the backup is written.")
         self.assertIn("pre_compact_", source)
@@ -118,7 +118,7 @@ class CompactionIsNonDestructiveTests(unittest.TestCase):
     def test_compaction_aborts_rather_than_pruning_on_a_summarizer_failure(self):
         source = self._compact_source()
         abort_at = source.index('if new_summary.startswith("⚠️")')
-        self.assertLess(abort_at, source.index("backup_path.write_text"))
+        self.assertLess(abort_at, source.index("store_io.write(backup_path"))
         self.assertIn("Compaction aborted, history untouched", source)
 
     def test_the_summariser_fails_soft_so_that_abort_can_fire(self):

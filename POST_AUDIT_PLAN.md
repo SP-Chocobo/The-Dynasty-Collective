@@ -2876,3 +2876,85 @@ carries the wiring, with its own §7.6 characterization **inverted** — it used
 Three planted mutations, each reverted, each producing a failure: removing the fence from the
 attachment append, making `fence()` stop stripping forged markers, and dropping the contract from
 one prompt.
+
+---
+
+# #102 — THE STORE CONCURRENCY MODEL: ONE FAILURE WAS RECORDED, TWO WERE REAL
+
+§11.4b recorded a lost update as demonstrated and a torn write as **undemonstrated**, with §7.8's
+rule attached: this programme does not make production changes for undemonstrated failures. So
+both were demonstrated first, on real files, through the real functions.
+
+## What the measurement actually found
+
+**The lost update is not an edge case under contention — it is near-total loss.** The audit's
+scenario interleaved `_load`/`_save` by hand, which was a fair model of the old code. Re-measured
+on the **production call path** instead — 8 concurrent processes calling the real public
+functions 25 times each:
+
+| store | expected | survived (before) | survived (after) |
+|---|---|---|---|
+| `todo_log.add_todo` | 200 | **6** | 200 |
+| `data_merger.save_alias` (global; feeds valuation, §16.9) | 200 | **9** | 200 |
+
+97% and 95% loss.
+
+**The torn write reproduces, and it is the worse half.** One process rewriting a 718 KB store
+while three read it, through the same `Path.write_text`/`read_text` calls every store used:
+
+```
+98,405 reads | 3,920 clean | 2,529 JSONDecodeError | 91,956 read an EMPTY file
+```
+
+`write_text` truncates before it writes. And every `_load` in the tree had this shape:
+
+```python
+except (json.JSONDecodeError, OSError):
+    return []
+```
+
+**A transient read error became an empty store, and the next ordinary write persisted it.**
+Measured end to end: a store holding five objectives, given one torn read, held exactly **one**
+after the next `add_todo` — the new one. Four gone, silently, **with no race between two writers
+required.** One writer mid-write and one reader is enough.
+
+## The mechanism, and why it is one rather than two
+
+`os.replace` is atomic: a reader sees the complete old file or the complete new file, never a
+prefix. That removes the torn read *at its source* rather than teaching every reader to cope. The
+lock then removes the lost update by making load-and-write one indivisible step — which is why
+`store_io.mutate` **loads for you**. The lost update was never a missing lock so much as *a load
+that happened outside one*; a caller that cannot read separately cannot reintroduce it.
+
+Two lock layers, covering different cases: a process-wide `RLock`, because Streamlit serves many
+browser tabs from **one process** so the common multi-tab case is threads and not processes at
+all; and an OS file lock on a **sidecar** `.lock` file for genuinely separate processes. The
+sidecar is not incidental — the data file's inode is replaced on every write, so a lock held on it
+would protect a file that no longer exists. Both are reentrant by depth count, because these
+stores nest.
+
+## The third piece: a damaged store is not overwritten
+
+`store_io` refuses to write over a file it could not parse, and clears that refusal as soon as the
+file parses again. Losing the one item being added beats losing everything already there, and the
+bytes stay recoverable rather than being replaced by a one-element store.
+
+That guard has a cost — the app then runs with an empty view of that store and silently drops
+writes to it — so it is **surfaced**: `warn_about_unreadable_stores()` tells the user the file was
+left alone, that the view is empty, and that changes are not being saved. A guard nobody is told
+about is the same "looks handled" failure as an annotation nothing reads.
+
+## Coverage, and what is deliberately exempt
+
+Nine modules were converted. A test **scans** rather than enumerates — a hand-kept list of
+protected stores is a list someone has to remember to extend, which is the same failure one level
+up — and fails if any module writes JSON outside `store_io`. Four exemptions, each with a stated
+reason the test also checks is a real one: `store_io` itself, `draft_history` (already atomic, and
+write-if-absent means it never read-modify-writes), `sleeper_client` (a replaceable cache of a
+remote API), and `bot_benchmark` (developer-run measurement output).
+
+**One thing is explicitly not fixed, and a lock would not fix it.** `save_chat_history` replaces
+the file with the whole history held in `st.session_state`, so its read-modify-write spans the
+user's entire session rather than the function. Two tabs will still clobber each other's history.
+That is a session-model question, not a file-locking one; the write is now atomic and the rest is
+recorded rather than papered over.
