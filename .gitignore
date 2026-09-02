@@ -23,3 +23,10 @@ data/draft_simulation_trials/*.json
 data/draft_simulation_trials/**/*.json
 
 .streamlit/secrets.toml
+
+# store_io's lock sidecars and its in-flight temp files. Both are runtime artifacts of the
+# read-modify-write discipline (#102), never content: a .lock file is an empty inode that exists
+# only to hold an OS lock, and a .tmp-<pid> is a write in progress that os.replace is about to
+# rename away. Committing either would ship one machine's transient state as source.
+*.json.lock
+*.json.tmp-*
