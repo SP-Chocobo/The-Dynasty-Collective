@@ -288,3 +288,69 @@ class ResourceLimitsTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TruncationIsAnnotatedNeverDiscarded(unittest.TestCase):
+    """#99 under the standing absence ruling: annotate, and name a consumer.
+
+    A truncated report is REAL analysis that stops early -- categorically different from the
+    "⚠️" prefix, which means no usable report arrived at all. Discarding it would assert the
+    reader is better off with nothing, the same claim "unpriced sorts last" made about a
+    running back, and the reason kickers outranked every skill player for a third of a draft.
+
+    So the text is returned intact with the condition beside it. These tests pin that, and that
+    the notice is distinguishable from the missing-report marker rather than collapsed into it.
+    """
+
+    def setUp(self):
+        pm.reset()
+
+    def test_a_complete_call_gets_no_notice(self):
+        marker = pm.mark()
+        pm.record("claude", "strategist", response=_Anthropic(stop_reason="end_turn"))
+        self.assertEqual(pm.annotate_if_incomplete("the report", marker), "the report")
+
+    def test_a_truncated_call_keeps_its_text_and_gains_the_notice(self):
+        marker = pm.mark()
+        pm.record("claude", "strategist", response=_Anthropic(stop_reason="max_tokens"))
+        annotated = pm.annotate_if_incomplete("the report", marker)
+        self.assertTrue(annotated.startswith("the report"), "the analysis was not preserved")
+        self.assertIn("incomplete", annotated)
+        self.assertGreater(len(annotated), len("the report"))
+
+    def test_the_notice_is_not_the_missing_report_marker(self):
+        """The two conditions must stay tellable apart: one means 'a fragment', the other means
+        'nothing arrived'. A consumer that treats a fragment as missing throws away real work;
+        one that treats missing as a fragment invents work that never happened."""
+        self.assertFalse(pm.TRUNCATION_NOTICE.strip().startswith("⚠️"))
+
+    def test_a_truncation_before_the_marker_does_not_leak_forward(self):
+        """The window is what makes this attributable. Without it, one cut-off call would
+        annotate every later report in the process."""
+        pm.record("claude", "strategist", response=_Anthropic(stop_reason="max_tokens"))
+        marker = pm.mark()
+        pm.record("claude", "skeptic", response=_Anthropic(stop_reason="end_turn"))
+        self.assertEqual(pm.annotate_if_incomplete("later report", marker), "later report")
+
+    def test_another_providers_truncation_does_not_annotate_this_one(self):
+        marker = pm.mark()
+        pm.record("gemini", "skeptic", response=_Gemini(finish="MAX_TOKENS"))
+        self.assertEqual(pm.annotate_if_incomplete("claude text", marker, "claude"), "claude text")
+        self.assertIn("incomplete", pm.annotate_if_incomplete("gemini text", marker, "gemini"))
+
+    def test_empty_text_is_left_alone(self):
+        # An empty body is the "⚠️ returned an empty response" case, which its own caller
+        # already labels. Appending a truncation notice to nothing would manufacture a report.
+        marker = pm.mark()
+        pm.record("gemini", "skeptic", response=_Gemini(finish="MAX_TOKENS"))
+        self.assertEqual(pm.annotate_if_incomplete("", marker), "")
+
+    def test_the_ledger_names_which_role_was_cut_off(self):
+        """The property the debate's error list depends on. Without the role on the record the
+        only way to attribute a truncation to a chair is to sniff its prose for the notice --
+        deriving from text a fact the ledger already holds exactly."""
+        marker = pm.mark()
+        pm.record("claude", "strategist", response=_Anthropic(stop_reason="end_turn"))
+        pm.record("gemini", "skeptic", response=_Gemini(finish="MAX_TOKENS"))
+        cut = {r.role for r in pm.since(marker) if r.completion_state == pm.TRUNCATED}
+        self.assertEqual(cut, {"skeptic"})

@@ -296,3 +296,60 @@ class AIOutputCannotBecomeANumberTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class ATruncatedChairReachesTheHuman(unittest.TestCase):
+    """#99's consumer half, under the standing absence ruling: annotate AND name a reader.
+
+    An annotation nothing reads is worse than a discard, because it looks handled. The
+    truncation notice reaches the next chair inline through _report_for_handoff; this class
+    pins the OTHER reader -- the debate result's own errors list, which the UI surfaces -- and
+    that it is built from the ledger rather than by sniffing the report's prose.
+    """
+
+    def setUp(self):
+        import provider_meter as pm
+        self._orig_callers = dict(pd.PROVIDER_CALLERS)
+        self.addCleanup(lambda: pd.PROVIDER_CALLERS.update(self._orig_callers))
+        pm.reset()
+
+    def _run(self, truncate_role=None):
+        import provider_meter as pm
+
+        class _CutOff:
+            stop_reason = "max_tokens"
+
+        class _Fine:
+            stop_reason = "end_turn"
+
+        def _caller(system_prompt, user_prompt, api_key, model):
+            role = pm.current_role()
+            pm.record("claude", role,
+                      response=_CutOff() if role == truncate_role else _Fine())
+            return f"report from {role}"
+
+        pd.PROVIDER_CALLERS.update({"claude": _caller, "gemini": _caller, "openai": _caller})
+        snap = _snapshot([_candidate("1", "Brock Purdy")])
+        return pd.debate_pick(snap, api_keys={"claude": "x", "openai": "x", "gemini": "x"})
+
+    def test_a_clean_debate_reports_no_errors(self):
+        # The control. If errors were populated regardless of the ledger, every assertion
+        # below would pass while proving nothing.
+        result = self._run()
+        self.assertEqual(result.errors, [])
+
+    def test_a_cut_off_chair_is_named_in_errors(self):
+        result = self._run(truncate_role="skeptic")
+        joined = " ".join(result.errors)
+        self.assertIn("skeptic", joined)
+        self.assertIn("cut off", joined)
+
+    def test_only_the_chair_that_was_cut_off_is_named(self):
+        result = self._run(truncate_role="skeptic")
+        self.assertNotIn("strategist", " ".join(result.errors))
+        self.assertNotIn("caller", " ".join(result.errors))
+
+    def test_the_truncated_chairs_report_is_kept_not_dropped(self):
+        """Annotate, never discard -- the analysis survives even though it stops early."""
+        result = self._run(truncate_role="skeptic")
+        self.assertIn("report from skeptic", result.skeptic_report)

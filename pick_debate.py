@@ -79,11 +79,16 @@ def _call_claude(system_prompt: str, user_prompt: str, api_key: Optional[str] = 
         client = anthropic.Anthropic(api_key=key, **provider_meter.client_limits("claude", anthropic.Anthropic))
         # No tools attached, deliberately -- see module docstring on why this doesn't reuse
         # llm_engine's web-search-equipped callers.
+        # Marked BEFORE the call so the notice below reflects THIS call, never a
+        # neighbouring one -- see provider_meter.mark's own docstring.
+        _meter_at = provider_meter.mark()
         response = provider_meter.metered("claude", lambda: client.messages.create(
             model=model or CLAUDE_MODEL, max_tokens=MAX_TOKENS, system=system_prompt,
             messages=[{"role": "user", "content": user_prompt}],
         ), model_requested=model or CLAUDE_MODEL)
-        return "".join(block.text for block in response.content if hasattr(block, "text")).strip()
+        return provider_meter.annotate_if_incomplete(
+            "".join(block.text for block in response.content if hasattr(block, "text")).strip(),
+            _meter_at, "claude")
     except Exception as exc:  # noqa: BLE001
         provider_meter.record_preflight_failure("claude", exc)
         return f"⚠️ Claude request failed: {exc}"
@@ -99,11 +104,16 @@ def _call_gemini(system_prompt: str, user_prompt: str, api_key: Optional[str] = 
         from google.genai import types
 
         client = genai.Client(api_key=key, **provider_meter.gemini_limits(genai, types))
+        # Marked BEFORE the call so the notice below reflects THIS call, never a
+        # neighbouring one -- see provider_meter.mark's own docstring.
+        _meter_at = provider_meter.mark()
         response = provider_meter.metered("gemini", lambda: client.models.generate_content(
             model=model or GEMINI_MODEL, contents=user_prompt,
             config=types.GenerateContentConfig(system_instruction=system_prompt, max_output_tokens=MAX_TOKENS),
         ), model_requested=model or GEMINI_MODEL)
-        return (response.text or "").strip() or "⚠️ Gemini returned an empty response."
+        return provider_meter.annotate_if_incomplete(
+            (response.text or "").strip(), _meter_at, "gemini"
+        ) or "⚠️ Gemini returned an empty response."
     except Exception as exc:  # noqa: BLE001
         provider_meter.record_preflight_failure("gemini", exc)
         return f"⚠️ Gemini request failed: {exc}"
@@ -118,12 +128,16 @@ def _call_openai(system_prompt: str, user_prompt: str, api_key: Optional[str] = 
         from openai import OpenAI
 
         client = OpenAI(api_key=key, **provider_meter.client_limits("openai", OpenAI))
+        # Marked BEFORE the call so the notice below reflects THIS call, never a
+        # neighbouring one -- see provider_meter.mark's own docstring.
+        _meter_at = provider_meter.mark()
         response = provider_meter.metered("openai", lambda: client.responses.create(
             model=model or OPENAI_MODEL,
             input=[{"role": "system", "content": system_prompt}, {"role": "user", "content": user_prompt}],
             max_output_tokens=MAX_TOKENS,
         ), model_requested=model or OPENAI_MODEL)
-        return (getattr(response, "output_text", "") or "").strip()
+        return provider_meter.annotate_if_incomplete(
+            (getattr(response, "output_text", "") or "").strip(), _meter_at, "openai")
     except Exception as exc:  # noqa: BLE001
         provider_meter.record_preflight_failure("openai", exc)
         return f"⚠️ ChatGPT request failed: {exc}"
@@ -431,13 +445,23 @@ def debate_pick(
     role_providers = {**DEFAULT_ROLE_PROVIDERS, **(role_providers or {})}
     api_keys = api_keys or {}
     role_models = role_models or {}
+    # Names the ledger window this debate owns, so the errors list below can report a chair the
+    # provider cut off without sniffing its report text for the notice. mark()'s own docstring
+    # exists for exactly this: "lets one debate meter exactly its own calls".
+    debate_meter_at = provider_meter.mark()
 
     diffs = diff_snapshots(previous_snapshot, snapshot) if previous_snapshot is not None else []
     evidence = format_snapshot_for_llm(snapshot, diffs)
 
     def _call(role: str, system_prompt: str, user_prompt: str) -> str:
         provider = role_providers.get(role, DEFAULT_ROLE_PROVIDERS[role])
-        return PROVIDER_CALLERS[provider](system_prompt, user_prompt, api_keys.get(provider), role_models.get(role))
+        # Scoped so every ledger record this call produces carries the CHAIR it was made for.
+        # Without it the records land under the default role, and the only way to tell which
+        # chair was cut off would be to sniff its report text for the notice -- deriving from
+        # prose a fact the ledger already holds exactly.
+        with provider_meter.role_scope(role):
+            return PROVIDER_CALLERS[provider](
+                system_prompt, user_prompt, api_keys.get(provider), role_models.get(role))
 
     strategist_report = _call("strategist", STRATEGIST_SYSTEM_PROMPT, evidence)
     # A failed chair's error string must not occupy the next chair's evidence slot -- see
@@ -456,11 +480,23 @@ def debate_pick(
     recommended = _match_candidate(snapshot, verdict.get("recommendation"))
     best_alternative = _best_alternative(snapshot, recommended)
 
-    errors = [
-        f"{role}: {text}" for role, text in (
-            ("strategist", strategist_report), ("skeptic", skeptic_report), ("caller", caller_report),
-        ) if text.startswith("⚠️")
-    ]
+    chairs = (("strategist", strategist_report), ("skeptic", skeptic_report),
+              ("caller", caller_report))
+    errors = [f"{role}: {text}" for role, text in chairs if text.startswith("⚠️")]
+    # TRUNCATION is a different condition from failure and is reported as one. A chair whose
+    # report was cut off produced real analysis that simply stops early: the text is kept and
+    # annotated in place (see provider_meter.annotate_if_incomplete), and this line is the
+    # HUMAN-facing half of that -- without it the notice would reach the next chair and no one
+    # else, which is an annotation with no reader.
+    truncated_roles = {
+        record.role for record in provider_meter.since(debate_meter_at)
+        if record.completion_state == provider_meter.TRUNCATED
+    }
+    for role, _text in chairs:
+        if role in truncated_roles:
+            errors.append(
+                f"{role}: report was cut off at the provider's output cap -- it is a fragment, "
+                f"and its conclusion is missing rather than absent by choice.")
 
     return PickDebateResult(
         pick_label=snapshot.pick_label,

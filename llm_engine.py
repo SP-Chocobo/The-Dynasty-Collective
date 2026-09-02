@@ -471,6 +471,9 @@ def _call_claude(system_prompt: str, user_prompt: str, api_key: Optional[str] = 
         import anthropic
 
         client = anthropic.Anthropic(api_key=key, **provider_meter.client_limits("claude", anthropic.Anthropic))
+        # Marked BEFORE the call so the notice below reflects THIS call, never a
+        # neighbouring one -- see provider_meter.mark's own docstring.
+        _meter_at = provider_meter.mark()
         response = provider_meter.metered("claude", lambda: client.messages.create(
             model=model or CLAUDE_MODEL,
             max_tokens=MAX_TOKENS,
@@ -485,7 +488,9 @@ def _call_claude(system_prompt: str, user_prompt: str, api_key: Optional[str] = 
             # skipped the same way any other non-text block already was.
             tools=[{"type": "web_search_20260209", "name": "web_search"}],
         ), model_requested=model or CLAUDE_MODEL)
-        return "".join(block.text for block in response.content if hasattr(block, "text")).strip()
+        return provider_meter.annotate_if_incomplete(
+            "".join(block.text for block in response.content if hasattr(block, "text")).strip(),
+            _meter_at, "claude")
     except Exception as exc:  # noqa: BLE001 - surface any provider error to the UI, don't crash the app
         provider_meter.record_preflight_failure("claude", exc)
         return f"⚠️ Claude request failed: {exc}"
@@ -501,6 +506,9 @@ def _call_gemini(system_prompt: str, user_prompt: str, api_key: Optional[str] = 
         from google.genai import types
 
         client = genai.Client(api_key=key, **provider_meter.gemini_limits(genai, types))
+        # Marked BEFORE the call so the notice below reflects THIS call, never a
+        # neighbouring one -- see provider_meter.mark's own docstring.
+        _meter_at = provider_meter.mark()
         response = provider_meter.metered("gemini", lambda: client.models.generate_content(
             model=model or GEMINI_MODEL,
             contents=user_prompt,
@@ -510,7 +518,9 @@ def _call_gemini(system_prompt: str, user_prompt: str, api_key: Optional[str] = 
                 max_output_tokens=MAX_TOKENS,
             ),
         ), model_requested=model or GEMINI_MODEL)
-        return (response.text or "").strip() or "⚠️ Gemini returned an empty response."
+        return provider_meter.annotate_if_incomplete(
+            (response.text or "").strip(), _meter_at, "gemini"
+        ) or "⚠️ Gemini returned an empty response."
     except Exception as exc:  # noqa: BLE001
         provider_meter.record_preflight_failure("gemini", exc)
         return f"⚠️ Gemini request failed: {exc}"
@@ -525,6 +535,9 @@ def _call_openai(system_prompt: str, user_prompt: str, api_key: Optional[str] = 
         from openai import OpenAI
 
         client = OpenAI(api_key=key, **provider_meter.client_limits("openai", OpenAI))
+        # Marked BEFORE the call so the notice below reflects THIS call, never a
+        # neighbouring one -- see provider_meter.mark's own docstring.
+        _meter_at = provider_meter.mark()
         response = provider_meter.metered("openai", lambda: client.responses.create(
             model=model or OPENAI_MODEL,
             input=[
@@ -534,7 +547,8 @@ def _call_openai(system_prompt: str, user_prompt: str, api_key: Optional[str] = 
             tools=[{"type": "web_search"}],
             max_output_tokens=MAX_TOKENS,
         ), model_requested=model or OPENAI_MODEL)
-        return (getattr(response, "output_text", "") or "").strip()
+        return provider_meter.annotate_if_incomplete(
+            (getattr(response, "output_text", "") or "").strip(), _meter_at, "openai")
     except Exception as exc:  # noqa: BLE001
         provider_meter.record_preflight_failure("openai", exc)
         return f"⚠️ ChatGPT request failed: {exc}"

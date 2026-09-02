@@ -248,6 +248,54 @@ def record(provider: str, role: str, *, response: Any = None, model_requested: O
         return None
 
 
+# What a caller appends to a report the provider cut off. Deliberately NOT the "⚠️" prefix:
+# that marker means "no usable report reached the panel at all", and every consumer treats it
+# as MISSING. A truncated report is the opposite kind of problem -- real content, honestly
+# produced, that simply stops early. Collapsing the two would either discard a mostly-complete
+# analysis or present a fragment as whole, and both are worse than saying which it is.
+#
+# The wording matters as much as the flag. A cut-off report characteristically loses its
+# CONCLUSION first, so the danger is not the missing words -- it is a reader inferring
+# "this chair had nothing further to say" from a section that never got written.
+TRUNCATION_NOTICE = (
+    "\n\n(incomplete — the provider stopped at its output cap, so this report is a fragment "
+    "and whatever it was building toward is missing. Read the absence of a conclusion as "
+    "UNFINISHED, never as 'nothing further to say'.)"
+)
+
+
+def was_truncated(marker: int, provider: Optional[str] = None) -> bool:
+    """Did any call recorded since `marker` stop at the provider's output cap?
+
+    Reads the ledger rather than the response, so a caller does not have to know which of the
+    three SDK shapes it is holding -- describe() already normalised that.
+    """
+    return any(
+        record.completion_state == TRUNCATED and (provider is None or record.provider == provider)
+        for record in since(marker)
+    )
+
+
+def annotate_if_incomplete(text: str, marker: int, provider: Optional[str] = None) -> str:
+    """A report, with a truncation notice appended if the call that produced it was cut off.
+
+    ANNOTATE, NEVER DISCARD. A truncated report is partial evidence, and dropping it asserts
+    the reader is better off with nothing -- the same claim "unpriced sorts last" made about a
+    running back, and the reason kickers outranked every skill player for a third of a draft.
+    The text is returned intact and the condition travels beside it.
+
+    Two named consumers, because an annotation nothing reads is worse than a discard -- it
+    looks handled:
+      1. the NEXT CHAIR, which receives this text through _report_for_handoff and so reads the
+         notice inline; and
+      2. the HUMAN, via the debate result's own errors list, which is built from the same
+         ledger window rather than by sniffing this string.
+    """
+    if not text or not was_truncated(marker, provider):
+        return text
+    return text.rstrip() + TRUNCATION_NOTICE
+
+
 def mark() -> int:
     """A token naming 'now', for `since`. Lets one debate meter exactly its own calls without
     every caller having to thread an id through a chain it does not own."""
