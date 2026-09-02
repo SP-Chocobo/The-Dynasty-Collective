@@ -120,6 +120,19 @@ def _waiting_note(c: CandidateSnapshot) -> Optional[dict]:
         f"{c.name} projects {c.projected_points:.0f} against {c.horizon_floor:.0f} for the "
         f"best {c.position} expected to still be undrafted when the draft ends."
     )
+    # The floor's placement rests on how many further picks this position is expected to take,
+    # and that split comes from a decay rate which is MEASURED for some positions and IMPUTED
+    # for others -- the mean of whichever could be measured. Both arrive as the same kind of
+    # number, so without this sentence the prose asserts an assumed floor with exactly the
+    # confidence of a measured one. Measured on a real 12-team draft, the imputed case covers
+    # rounds 3 through 15 and four of six positions by round 10, so this is the common case
+    # late rather than a rare footnote.
+    if c.horizon_basis == "imputed":
+        basis += (
+            f" That floor is an estimate: {c.position}'s remaining pool is too thin to measure"
+            f" its own depth decay, so the average of the positions that still can be measured"
+            f" is assumed for it."
+        )
 
     # Below the player you get for free later. Not "cheap to wait" -- strictly better to.
     if c.waiting_cost <= 0:

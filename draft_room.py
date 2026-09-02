@@ -923,6 +923,78 @@ def draftable_slots_per_team(roster_positions: list[str]) -> int:
     return sum(1 for slot in roster_positions or [] if slot not in HORIZON_UNDRAFTED_SLOTS)
 
 
+def _bench_appetite_rates(
+    pool: pd.DataFrame, value_col: str, roster_positions: list[str], num_teams: int,
+) -> tuple[dict[str, int], dict[str, float]]:
+    """(league-wide demand per position, measured decay rate per MEASURABLE position).
+
+    Split out so positional_bench_appetite and positional_bench_appetite_basis read the same
+    numbers rather than each deriving them -- two computations of one quantity is the
+    concept-duplication this module fights everywhere else.
+    """
+    slot_counts = starter_slot_counts(roster_positions)
+    demands, rates = {}, {}
+    for position in FANTASY_POSITIONS:
+        demand = round(num_teams * slot_counts.get(position, 0))
+        demands[position] = demand
+        if demand < 1:
+            continue
+        values = sorted(
+            pool.loc[pool["position"] == position, value_col].dropna().astype(float),
+            reverse=True,
+        )
+        if len(values) < 2 * demand or values[demand - 1] <= 0:
+            continue  # unmeasurable here; filled in from the mean rate by the caller
+        rates[position] = max(0.0, 1.0 - values[2 * demand - 1] / values[demand - 1])
+    return demands, rates
+
+
+APPETITE_MEASURED = "measured"
+APPETITE_IMPUTED = "imputed"
+APPETITE_UNAVAILABLE = "unavailable"
+
+
+def positional_bench_appetite_basis(
+    pool: pd.DataFrame, value_col: str, roster_positions: list[str], num_teams: int,
+) -> dict[str, str]:
+    """Which of positional_bench_appetite's three outcomes each position actually got.
+
+    The function returns a float for a MEASURED decay rate and a float for an IMPUTED one --
+    the mean of whichever positions could be measured -- and those two are indistinguishable
+    to every consumer. The imputation is a deliberate, documented missing-information rule
+    ("no evidence this one decays differently from average"), and it is the right rule. But
+    unlike time_horizon_adj's neutral 50th-percentile default, which resolves to roughly no
+    opinion, an imputed appetite is a POSITIVE NUMBER that competes for bench capacity against
+    the measured ones.
+
+    Measured on a real 12-team 1QB draft: a position becomes unmeasurable as soon as its pool
+    falls under 2x league demand, which happens to RB by round 3, to DEF by round 7, and to
+    four of six positions by round 10. From round 16 nothing is measurable and the existing
+    all-None path takes over correctly (#62). So the silent window is rounds 3-15 -- most of
+    the draft -- and in its middle two measured positions donate their mean to four others.
+
+    Adversarially bounded: truncating ONLY RB below 2x demand, every other curve identical,
+    moved RB's appetite from 20.29 measured to 3.37 imputed (-83%) and its share of bench
+    capacity from 63.5% to 22.5%. That is a constructed worst case, not a typical error, but it
+    is the size of claim the number can carry with no marker on it.
+
+    OBSERVABLE ONLY. Nothing here changes a value; it reports which kind of number a consumer
+    is holding, the same job replacement_basis does for pricing.
+    """
+    demands, rates = _bench_appetite_rates(pool, value_col, roster_positions, num_teams)
+    out: dict[str, str] = {}
+    for position in FANTASY_POSITIONS:
+        if demands.get(position, 0) < 1:
+            out[position] = APPETITE_UNAVAILABLE      # league starts nobody here
+        elif position in rates:
+            out[position] = APPETITE_MEASURED
+        elif rates:
+            out[position] = APPETITE_IMPUTED
+        else:
+            out[position] = APPETITE_UNAVAILABLE      # nothing measurable anywhere -> None
+    return out
+
+
 def positional_bench_appetite(
     pool: pd.DataFrame, value_col: str, roster_positions: list[str], num_teams: int,
 ) -> dict[str, Optional[float]]:
@@ -959,20 +1031,7 @@ def positional_bench_appetite(
     "no evidence this one decays differently from average" -- the same missing-information
     rule time_horizon_adj follows for an absent multi-year outlook.
     """
-    slot_counts = starter_slot_counts(roster_positions)
-    demands, rates = {}, {}
-    for position in FANTASY_POSITIONS:
-        demand = round(num_teams * slot_counts.get(position, 0))
-        demands[position] = demand
-        if demand < 1:
-            continue
-        values = sorted(
-            pool.loc[pool["position"] == position, value_col].dropna().astype(float),
-            reverse=True,
-        )
-        if len(values) < 2 * demand or values[demand - 1] <= 0:
-            continue  # unmeasurable here; filled in from the mean rate below
-        rates[position] = max(0.0, 1.0 - values[2 * demand - 1] / values[demand - 1])
+    demands, rates = _bench_appetite_rates(pool, value_col, roster_positions, num_teams)
 
     # NOTHING measurable is a different state from "measurably flat", and the difference is
     # the whole point of the mean-rate fallback above. With rates empty there is no mean to
@@ -1303,6 +1362,13 @@ def _attach_waiting_cost(
     scored["horizon_floor"] = scored["position"].map(floors)
     scored["horizon_sensitivity"] = scored["position"].map(
         {position: data["sensitivity"] for position, data in horizon.items()}
+    )
+    # Which KIND of bench-appetite number placed this floor. A measured decay rate and an
+    # imputed one (the mean of whatever could be measured) are the same type and the same
+    # magnitude order, so without this a consumer cannot tell an estimate from an assumption --
+    # and the assumption covers most of a real draft (see positional_bench_appetite_basis).
+    scored["horizon_basis"] = scored["position"].map(
+        positional_bench_appetite_basis(pool, "_points", roster_positions, num_teams)
     )
     scored["waiting_cost"] = (
         scored["projected_points"].astype(float) - scored["horizon_floor"].astype(float)
@@ -1742,7 +1808,7 @@ def compute_draft_board(
             "player_id", "name", "position", "team", "injury_status", "bpa", "bpa_source",
             "growth_signal", "universal_value", "confidence", "final_score", "mode",
             "projected_points", "horizon_floor", "horizon_sensitivity", "waiting_cost",
-            "replacement_basis",
+            "replacement_basis", "horizon_basis",
         ]], "projected_points", "horizon_floor", "horizon_sensitivity", "waiting_cost",
             "bpa", "universal_value", "final_score")
 
@@ -1856,6 +1922,7 @@ def compute_draft_board(
         "time_horizon_adj", "risk_adj", "universal_value",
         "need_bonus", "eligibility_bonus", "confidence", "final_score", "mode", "projected_points",
         "horizon_floor", "horizon_sensitivity", "waiting_cost", "replacement_basis",
+        "horizon_basis",
     ]], "projected_points", "horizon_floor", "horizon_sensitivity", "waiting_cost",
         "bpa", "universal_value", "final_score")
 

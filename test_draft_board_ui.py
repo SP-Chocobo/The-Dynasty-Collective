@@ -320,3 +320,38 @@ class BoardViewWidthTests(unittest.TestCase):
     def test_a_small_league_is_unaffected(self):
         widths = ui.view_option_widths(["ALL", "QB", "RB", "WR", "TE"])
         self.assertEqual(len(set(widths)), 1, "equal-length labels should get equal columns")
+
+
+class WaitingCostProseSaysWhenTheFloorIsAssumed(unittest.TestCase):
+    """#122: an imputed bench-appetite rate must not be presented as a measured one.
+
+    horizon_floor's placement depends on a positional decay rate that is measured where the
+    remaining pool is deep enough and IMPUTED -- the mean of whatever could be measured --
+    where it is not. Both reach this layer as the same kind of number. Measured on a real
+    12-team 1QB draft, the imputed case covers rounds 3 through 15, and four of six positions
+    by round 10, so the prose was asserting an assumed floor with a measured floor's
+    confidence for most of a draft.
+    """
+
+    def _with_basis(self, horizon_basis):
+        return _candidate(projected_points=200.0, horizon_floor=120.0,
+                          horizon_sensitivity=None, waiting_cost=80.0,
+                          horizon_basis=horizon_basis)
+
+    def test_a_measured_floor_is_stated_without_a_hedge(self):
+        note = ui._waiting_note(self._with_basis("measured"))
+        self.assertIsNotNone(note, "vacuous: no waiting note produced at all")
+        self.assertNotIn("estimate", note["title"].lower())
+
+    def test_an_imputed_floor_says_so(self):
+        note = ui._waiting_note(self._with_basis("imputed"))
+        self.assertIsNotNone(note, "vacuous: no waiting note produced at all")
+        self.assertIn("estimate", note["title"].lower())
+        self.assertIn("too thin to measure", note["title"])
+
+    def test_the_two_actually_differ(self):
+        # Guards the pair: if the note ignored horizon_basis entirely, both tests above could
+        # still pass off one shared string that happened to contain the word.
+        measured = ui._waiting_note(self._with_basis("measured"))["title"]
+        imputed = ui._waiting_note(self._with_basis("imputed"))["title"]
+        self.assertNotEqual(measured, imputed)

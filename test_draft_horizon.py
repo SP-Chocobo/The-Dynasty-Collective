@@ -267,12 +267,18 @@ class CliffSensitivityTests(unittest.TestCase):
 
 
 def _snapshot_stub(row):
-    """The four fields _waiting_note actually reads, off a real board row."""
+    """The fields _waiting_note actually reads, off a real board row.
+
+    Read straight off `row` with [] rather than .get(): a stub that quietly supplies None for a
+    field the board really carries would let this module keep passing while the UI lost an
+    input, which is the "a default in a consumer is a contract change" rule applied to a test
+    double. horizon_basis was added for #122 and belongs here for the same reason.
+    """
     from types import SimpleNamespace
     return SimpleNamespace(
         name=row["name"], position=row["position"], projected_points=row["projected_points"],
         waiting_cost=row["waiting_cost"], horizon_floor=row["horizon_floor"],
-        horizon_sensitivity=row["horizon_sensitivity"],
+        horizon_sensitivity=row["horizon_sensitivity"], horizon_basis=row["horizon_basis"],
     )
 
 
@@ -346,3 +352,73 @@ class RealBaselineTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class BenchAppetiteSaysWhichKindOfNumberItGave(unittest.TestCase):
+    """#122 -- positional_bench_appetite has three outcomes and used to expose only two.
+
+    A position whose remaining pool reaches 2x league demand gets a MEASURED decay rate. One
+    whose pool falls short gets the mean of the positions that could be measured -- a real
+    number, same type, no marker. The imputation is a deliberate missing-information rule and
+    it is the right rule; the defect was that a consumer could not tell it from a measurement.
+
+    Why it is worth a marker rather than a footnote: unlike time_horizon_adj's neutral
+    50th-percentile default, which resolves to roughly no opinion, an imputed appetite is a
+    POSITIVE number competing for bench capacity against the measured ones. Measured on a real
+    12-team 1QB draft it covers rounds 3-15, and four of six positions by round 10.
+    """
+
+    ROSTER = ["QB", "RB", "RB", "WR", "WR", "TE", "FLEX", "K", "DEF"] + ["BN"] * 11
+    TEAMS = 12
+
+    def _basis(self, spec):
+        return dr.positional_bench_appetite_basis(_pool(spec), "_v", self.ROSTER, self.TEAMS)
+
+    def _deep(self, position, count):
+        return [100.0 - i * 0.5 for i in range(count)]
+
+    def test_a_deep_pool_is_reported_as_measured(self):
+        demand = round(self.TEAMS * dr.starter_slot_counts(self.ROSTER)["RB"])
+        basis = self._basis({"RB": self._deep("RB", 2 * demand + 5)})
+        self.assertEqual(basis["RB"], dr.APPETITE_MEASURED)
+
+    def test_a_thin_position_beside_a_deep_one_is_reported_as_imputed(self):
+        """The adversarial shape: one position unmeasurable while another still is. That is
+        exactly the state where the mean-rate fallback fires and produces a number."""
+        slots = dr.starter_slot_counts(self.ROSTER)
+        rb_demand = round(self.TEAMS * slots["RB"])
+        wr_demand = round(self.TEAMS * slots["WR"])
+        basis = self._basis({
+            "RB": self._deep("RB", 2 * rb_demand - 1),     # one short of measurable
+            "WR": self._deep("WR", 2 * wr_demand + 5),     # comfortably measurable
+        })
+        self.assertEqual(basis["WR"], dr.APPETITE_MEASURED,
+                         "vacuous: nothing was measurable, so nothing could be imputed FROM")
+        self.assertEqual(basis["RB"], dr.APPETITE_IMPUTED)
+
+    def test_nothing_measurable_anywhere_is_unavailable_not_imputed(self):
+        # With no rates at all there is no mean to impute from, and the function returns None
+        # rather than a number (#62). The basis must say that, not claim an imputation.
+        basis = self._basis({"RB": [100.0, 99.0], "WR": [100.0, 99.0]})
+        self.assertEqual(basis["RB"], dr.APPETITE_UNAVAILABLE)
+        self.assertEqual(basis["WR"], dr.APPETITE_UNAVAILABLE)
+
+    def test_the_basis_agrees_with_what_the_appetite_actually_returned(self):
+        """The two functions must not drift apart -- they read one shared helper for exactly
+        this reason, and this is what would catch it if that ever stopped being true."""
+        slots = dr.starter_slot_counts(self.ROSTER)
+        rb_demand = round(self.TEAMS * slots["RB"])
+        wr_demand = round(self.TEAMS * slots["WR"])
+        spec = {"RB": self._deep("RB", 2 * rb_demand - 1),
+                "WR": self._deep("WR", 2 * wr_demand + 5)}
+        appetite = dr.positional_bench_appetite(_pool(spec), "_v", self.ROSTER, self.TEAMS)
+        basis = self._basis(spec)
+        seen = set()
+        for position, label in basis.items():
+            seen.add(label)
+            if label == dr.APPETITE_UNAVAILABLE:
+                continue
+            self.assertIsNotNone(appetite[position],
+                                 f"{position} is labelled {label} but has no number")
+        self.assertIn(dr.APPETITE_MEASURED, seen)
+        self.assertIn(dr.APPETITE_IMPUTED, seen)
