@@ -8,6 +8,10 @@
 #   fast  53 modules / 845 tests / ~1.5s   -- every push and PR
 #   full  80 modules / 1548 tests / ~17m   -- every PR, and on demand
 #
+# Both tiers check the declared input set FIRST (#113/§19.4) and print the installed versions.
+# CI is the only place the input set is guaranteed clean -- a fresh clone, nobody's uploads --
+# so a manifest failure here means the commit is wrong, not that somebody used the app.
+#
 # The tier of a module is detected by suite_taxonomy (does it build a real DataMerger), never
 # hand-listed, so it cannot disagree with reality. test_suite_taxonomy fails if either tier
 # collapses, which is what stops "fast" quietly becoming "nothing".
@@ -29,6 +33,18 @@ jobs:
           python-version: "3.11"
           cache: pip
       - run: pip install -r requirements.txt
+      # #113/§19.4. CI is the one place the input set is guaranteed clean -- a fresh clone, no
+      # uploads -- so a failure here means the COMMIT is wrong (a data file changed without its
+      # manifest, or a baseline file is missing), never that somebody used the app. Run before
+      # the tests, because every number they assert is computed from these bytes.
+      - name: check the declared input set
+        run: python baseline_manifest.py --check
+      # What the suite was actually verified against. The three provider SDKs are declared in
+      # requirements.txt and the suite passes without exercising a single live call through any
+      # of them (#120) -- this makes the versions a green run corresponds to a matter of record
+      # rather than of assumption, which is what §19.2 found missing everywhere.
+      - name: record the verified environment
+        run: pip freeze
       - name: run the fast tier
         run: python -m unittest $(python suite_taxonomy.py --tier fast)
 
@@ -47,5 +63,9 @@ jobs:
           python-version: "3.11"
           cache: pip
       - run: pip install -r requirements.txt
+      - name: check the declared input set
+        run: python baseline_manifest.py --check
+      - name: record the verified environment
+        run: pip freeze
       - name: run the whole suite
         run: python -m unittest discover -p "test_*.py"

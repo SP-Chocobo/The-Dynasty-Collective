@@ -2958,3 +2958,86 @@ the file with the whole history held in `st.session_state`, so its read-modify-w
 user's entire session rather than the function. Two tabs will still clobber each other's history.
 That is a session-model question, not a file-locking one; the write is now atomic and the rest is
 recorded rather than papered over.
+
+---
+
+# #113 — THE INTEGRITY FAMILY: WHAT LANDED, AND WHAT IS A DECISION OR A BLOCKER
+
+§19 named five things under one number. Sorted by what each is actually waiting on:
+
+## Landed
+
+**§19.5 — nothing runs the checks.** Already closed earlier in this pass: `.github/workflows/
+tests.yml` runs a fast tier (~1.5s, no data load) on every push and the full suite on every PR,
+with tiers detected by `suite_taxonomy` rather than hand-listed. Extended here: both tiers now
+check the declared input set *before* running anything, and print `pip freeze`.
+
+**§19.5, the launch path.** `update_and_run.sh` / `.ps1` did `git pull` → `pip install` →
+`streamlit run` with nothing checked in between, so a pull that broke the engine reached the
+user's live draft board first. Both now run the fast tier and **warn rather than block** — this
+is somebody's own copy of their own app, and refusing to start it mid-draft is a worse failure
+than starting it with a problem they were told about.
+
+**§19.4 — the input set is a directory listing, not a manifest.** The one that was *demonstrated*,
+and re-demonstrated before building:
+
+```
+canonical pool rows: before=764  after=765  delta=+1
+the planted row is priced: trade_value=100.0, projection=9999.0
+git treats the planted file as: .gitignore:10:data/projections/**/*.csv
+suite (test_data_merger): OK
+```
+
+A fabricated player with a 9999-point projection entered the priced universe from a **gitignored**
+directory — the one the app's own uploaders write to — and the suite stayed green. §19.3(a) had
+measured 28 of 28 inputs tracked and read that as reproducibility; it was true by nobody having
+uploaded, not by construction.
+
+`baseline_manifest.py` declares the set with **sha256 per file**, and three tests fail on the
+three distinct disagreements: `missing`, `changed`, `undeclared`.
+
+Three design points worth stating:
+
+* **Hashes, not a file list.** A listing catches the planted file and misses the worse case — an
+  *edit* to a tracked baseline file, which moves every price the engine computes while the
+  listing stays byte-identical. §19.2 recorded that `hashlib` appeared exactly once in this
+  production tree.
+* **It is not a lock on the data directories.** Uploading rankings *is* the product. The rule is
+  not "no extra files" but "a run is only reproducible if the loaded set equals the declared
+  set" — and a run that is not reproducible must say so instead of reporting green. Exactly one
+  test fails, it names the files, and it says how to get a clean run.
+* **The directory list is a literal, not an import from `data_merger`.** A manifest that followed
+  the code it checks would agree with a bug. A test fails if the two ever disagree.
+
+**#102's coverage guard caught this module on its first full-suite run**, which is the guard
+working rather than a nuisance: `baseline_manifest` was writing JSON outside `store_io`. It now
+writes through it — an interrupted `--write` would otherwise leave a truncated manifest, and
+every run afterwards would report every declared file as undeclared, a broken check wearing the
+costume of a catastrophic integrity failure. Its `load()` deliberately does **not** read through
+`store_io`: that marks an unparseable file and refuses to write over it, which is right for a
+data store and exactly wrong here, because `--write` is how a broken manifest gets fixed. A guard
+that blocked the recovery command would be a trap.
+
+## Blocked, and inventing a number would be worse than the gap
+
+**Upper bounds in `requirements.txt`.** The audit called this "obviously mechanical". It is not.
+Writing `anthropic>=0.40,<1.0` asserts that this app works across a range nothing here has run —
+a certainty claim the writing path cannot establish, which is the defect class this whole
+programme chases (§13.3, #89). And a lockfile cannot be produced honestly from this environment:
+measured, **3 of 10 declared dependencies are not installed here** — `anthropic`, `openai` and
+`google-genai`, the three the entire AI layer runs on.
+
+That measurement is itself the sharper finding: **the 1,697-test suite passes without a single
+provider SDK present.** The provider layer is exercised only through stand-ins, which
+`provider_meter`'s own docstrings already say. `pip freeze` in CI now makes the versions a green
+run corresponds to a matter of record rather than assumption — the honest half of what a lockfile
+would give, available today. The rest waits on the same prerequisite as **#120**.
+
+## Still open, and each is a decision
+
+| item | the question | recommendation |
+|---|---|---|
+| §19.8 | Can the suite detect a *loosened guarantee* — a test quietly weakened rather than deleted? | Worth building: a fingerprint over assertion counts per module, so a weakened test shows as a diff. Not built here; it wants its own verification pass. |
+| §19.9 | `ENGINEERING_DOCTRINE.md` states a re-audit cadence and nothing enforces it. | A scheduled full-suite + manifest run is cheap now that CI exists. Needs a cadence *you* pick, not one I invent. |
+| §19.10 | `.devcontainer/devcontainer.json` launches with `--server.enableCORS false --server.enableXsrfProtection false`. | Scoped to the Codespaces preview only, and a common workaround — but it should be a **deliberate** decision rather than an inherited one. Yours to make. |
+| §19.11.2 | The committed baseline is Recent/Fresh today, **Stale at +90d and permanently after**, with no refresh path short of a code change. | A refresh policy for paid vendor data is a product decision, same family as §7.10. |
