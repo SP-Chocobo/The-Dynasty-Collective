@@ -191,3 +191,95 @@ class ProseGatesNothingTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TheUploaderAsksForTheBatchNotThePieceTests(unittest.TestCase):
+    """The two fields on the way in, and the properties that keep them honest."""
+
+    APP = Path("app.py").read_text()
+
+    def test_the_uploader_takes_several_files_at_once(self):
+        self.assertIn("accept_multiple_files=True", self.APP)
+
+    def test_it_asks_what_this_is_and_when_it_is_from(self):
+        self.assertIn("What is this? (a name for this set of files)", self.APP)
+        self.assertIn("As of what date is this data?", self.APP)
+
+    def test_the_date_field_is_optional_and_says_what_blank_costs(self):
+        """A required date gets typed through, and a wrong date is worse than none. Saying what
+        blank actually costs is what makes leaving it blank an informed choice rather than a
+        shrug."""
+        self.assertIn("(optional, YYYY-MM-DD)", self.APP)
+        self.assertIn("lose a tie to a dated one rather than beating it by accident", self.APP)
+
+    def test_it_asks_for_the_sources_date_not_todays(self):
+        self.assertIn("the date the SOURCE published it, not today", self.APP)
+
+    def test_one_record_is_written_for_the_whole_batch(self):
+        self.assertIn("upload_batches.record(", self.APP)
+        self.assertEqual(self.APP.count("upload_batches.record("), 1,
+                         "one record per upload, written after the loop -- not one per file")
+
+    def test_the_undated_case_is_stated_at_upload_rather_than_discovered_later(self):
+        self.assertIn("where these disagree with a dated source, the dated one wins", self.APP)
+
+
+class TheAmbiguityQueueTests(unittest.TestCase):
+    """A single upload can now carry several files, and more than one can need a human call."""
+
+    APP = Path("app.py").read_text()
+
+    def test_pending_uploads_is_a_queue_not_a_slot(self):
+        """Assigning to one slot would have silently dropped every ambiguous file but the last
+        -- the exact shape of loss this app refuses everywhere else."""
+        self.assertIn("st.session_state.pending_uploads.append(", self.APP)
+        self.assertNotIn("st.session_state.pending_upload =", self.APP)
+
+    def test_the_queue_is_resolved_oldest_first_one_at_a_time(self):
+        self.assertIn("_pending_queue[0] if _pending_queue else None", self.APP)
+        self.assertIn("st.session_state.pending_uploads = _pending_queue[1:]", self.APP)
+
+    def test_the_user_is_told_more_are_waiting(self):
+        """Discovering a second decision on the next rerun is how the wrong button gets
+        pressed."""
+        self.assertIn("files from this upload need a decision", self.APP)
+
+
+class TheReviewSectionGroupsByBatchTests(unittest.TestCase):
+    APP = Path("app.py").read_text()
+
+    def test_uploads_are_listed_by_batch_with_their_own_story(self):
+        self.assertIn("upload_batches.batches()", self.APP)
+        self.assertIn("Your uploads", self.APP)
+
+    def test_a_batch_shows_its_as_of_date_or_says_it_has_none(self):
+        self.assertIn("no as-of date", self.APP)
+        self.assertIn("loses ties to dated sources", self.APP)
+
+    def test_the_batch_is_the_undo_unit(self):
+        self.assertIn("upload_batches.forget(", self.APP)
+        self.assertIn("Remove this upload", self.APP)
+
+    def test_files_no_batch_claims_are_named_separately_not_folded_in(self):
+        """"I put this here" and "this shipped with the app" are different facts, and the
+        committed baseline must not read as something the user uploaded."""
+        self.assertIn("Not from any recorded upload", self.APP)
+
+    def test_a_batch_whose_files_are_gone_is_still_shown(self):
+        """"I uploaded that and it is not here any more" is a real question, and a silently
+        vanished batch cannot answer it."""
+        self.assertIn("files no longer on disk", self.APP)
+
+    def test_only_pooled_files_are_recorded_in_a_batch(self):
+        """Reference material does not feed precedence, so recording it would make the batch
+        claim a scope it does not have."""
+        self.assertIn("_batch_files.append(_pool_relpath(", self.APP)
+        self.assertNotIn("_batch_files.append(uploaded.name)", self.APP)
+
+    def test_both_ends_agree_on_the_path_spelling(self):
+        """A stated as-of date is looked up by path. If app.py and data_merger spell it
+        differently the lookup silently never matches, and the date the user typed does
+        nothing."""
+        self.assertIn("relative_to(Path.cwd().resolve()).as_posix()", self.APP)
+        self.assertIn("relative_to(Path.cwd().resolve()).as_posix()",
+                      Path("data_merger.py").read_text())

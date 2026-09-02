@@ -47,6 +47,7 @@ import pinned_messages
 import provider_meter
 import providers
 import store_io
+import upload_batches
 import untrusted
 import screen_context
 import todo_log
@@ -682,6 +683,15 @@ st.markdown(
 )
 
 # ------------------------------------------------------------------ state ---
+
+def _pool_relpath(path: Path) -> str:
+    """A repo-relative posix path, in the spelling upload_batches stores and data_merger looks
+    up. Both ends have to agree on this or a stated as-of date silently never gets found."""
+    try:
+        return path.resolve().relative_to(Path.cwd().resolve()).as_posix()
+    except (ValueError, OSError):
+        return path.name
+
 
 def league_projections_dir(league_id: str) -> Path:
     """Draft Sharks data is tied to one league's roster/format — never share it across leagues."""
@@ -2597,6 +2607,26 @@ with st.sidebar:
             uploaded = st.file_uploader(
                 "Upload Draft Sharks PDF/CSV/JSON, or any other file as reference material",
                 type=["pdf", "csv", "json", "png", "jpg", "jpeg", "webp", "gif", "txt"],
+                accept_multiple_files=True,
+            )
+            # TWO FIELDS ON THE WAY IN, and only two. The name and note are prose -- for your own
+            # reference later, and as context the panel can read -- and they gate nothing: a name
+            # containing "superflex" must never quietly become a format claim, or you would have
+            # to guess a regex's vocabulary to be understood.
+            _batch_name = st.text_input(
+                "What is this? (a name for this set of files)",
+                placeholder="e.g. \"Week 3 refresh\" or \"my own PPR superflex board\"",
+            )
+            # The ONE stated fact, and the reason it is asked rather than inferred: precedence
+            # keys on it. Absent, this file's rows lose every tie instead of winning one on a
+            # filesystem timestamp -- which is what used to happen, invisibly. Optional on
+            # purpose: a required date gets typed through, and a wrong date is worse than none
+            # because precedence acts on it and is then confidently wrong.
+            _batch_as_of = st.text_input(
+                "As of what date is this data? (optional, YYYY-MM-DD)",
+                placeholder="e.g. 2026-08-28 — the date the SOURCE published it, not today",
+                help="Leave blank if you genuinely do not know. Undated files still load; they "
+                     "simply lose a tie to a dated one rather than beating it by accident.",
             )
             note = st.text_area(
                 "Comments, questions, or labels for this upload (optional)",
@@ -2608,157 +2638,201 @@ with st.sidebar:
 
         if submitted and scope_mode == "Specific league(s)" and not scope_league_ids:
             notify("warning", "Select at least one league above, or switch back to Global.")
-        elif submitted and uploaded is None:
-            notify("warning", "Choose a file before clicking Upload.")
-        elif submitted and uploaded is not None:
-            data = bytes(uploaded.getbuffer())
-            note = note.strip()
-            suffix = Path(uploaded.name).suffix.lower()
-            recognized = False
-            note_scope = scope_league_ids if scope_mode == "Specific league(s)" else None
+        elif submitted and not uploaded:
+            notify("warning", "Choose at least one file before clicking Upload.")
+        elif submitted and uploaded:
+            # ONE BATCH, MANY FILES. You export four format variants from one tool in one
+            # sitting -- same source, same as-of date, same intent -- so the story is asked
+            # for once and the files are processed under it. `filed` collects what actually
+            # landed in a pool, so the batch record names the files it really covers rather
+            # than everything that was dropped on it.
+            _batch_files: list[str] = []
+            # Bound to its own name rather than rebinding `uploaded` in place. The in-place form
+            # works -- list() snapshots before the first rebind -- but it reads as a bug, and a
+            # loop that has to be reasoned about to be believed is one somebody will "fix".
+            _uploaded_files = list(uploaded)
+            for uploaded in _uploaded_files:
+                data = bytes(uploaded.getbuffer())
+                note = note.strip()
+                suffix = Path(uploaded.name).suffix.lower()
+                recognized = False
+                note_scope = scope_league_ids if scope_mode == "Specific league(s)" else None
 
-            if suffix in (".pdf", ".csv", ".json"):
-                import pypdf
+                if suffix in (".pdf", ".csv", ".json"):
+                    import pypdf
 
-                staging_dir = PROJECTIONS_DIR / "_staging"
-                staging_dir.mkdir(parents=True, exist_ok=True)
-                staging_path = staging_dir / uploaded.name
-                staging_path.write_bytes(data)
-                parse_error = None
-                parsed_df = None
-                try:
-                    parsed_df, kind = load_projection_file(staging_path)
-                except Exception as exc:
-                    kind, parse_error = None, str(exc)
-
-                # A PDF that parses cleanly as "rankings" (the default/catch-all bucket -- see
-                # _sniff_pdf_kind) might still not actually BE Dynasty Rankings; that bucket has
-                # no positive-match check of its own, just elimination of the other three known
-                # tools. Draft Sharks' own PDFs plainly self-label DYNASTY vs REDRAFT in their
-                # title text (confirmed against a real "Redraft > IDP" export that parsed
-                # without error yet silently mislabeled two columns) -- catching that here is
-                # cheap (local text, no API call) and catches exactly the case a keyword-based
-                # sniff can't: a real table, just the wrong dynasty-vs-redraft product.
-                suspicious_excerpt = None
-                example_row = None
-                if kind == "rankings" and suffix == ".pdf":
+                    staging_dir = PROJECTIONS_DIR / "_staging"
+                    staging_dir.mkdir(parents=True, exist_ok=True)
+                    staging_path = staging_dir / uploaded.name
+                    staging_path.write_bytes(data)
+                    parse_error = None
+                    parsed_df = None
                     try:
-                        first_page = pypdf.PdfReader(str(staging_path)).pages[0].extract_text() or ""
-                    except Exception:
-                        first_page = ""
-                    upper = first_page.upper()
-                    if "REDRAFT" in upper and "DYNASTY" not in upper:
-                        suspicious_excerpt = first_page[:1500]
-                        # A concrete row from the parser's OWN output, not anything the Moderator
-                        # is asked to restate from memory -- the numbers stay exactly what the
-                        # deterministic parser already extracted; only their labeling is ever in
-                        # question, so this is what actually gets shown/confirmed, not an LLM's
-                        # potentially-misremembered echo of them.
-                        if parsed_df is not None and not parsed_df.empty:
-                            _ex = parsed_df.iloc[0]
-                            example_row = (
-                                f"{_ex.get('name', '?')} ({_ex.get('team', '?')} {_ex.get('position', '?')}): "
-                                f"parsed as rank={_ex.get('rank')}, \"1yr projection\"={_ex.get('projection')}, "
-                                f"\"3yr projection\"={_ex.get('proj_3yr')}, trade_value={_ex.get('trade_value')}"
-                            )
+                        parsed_df, kind = load_projection_file(staging_path)
+                    except Exception as exc:
+                        kind, parse_error = None, str(exc)
 
-                if kind == "free_agents" and not st.session_state.selected_league_id:
-                    staging_path.unlink(missing_ok=True)
-                    notify("error", "This looks like a Free Agent Finder export, tied to one league's roster — select a league above first, then re-upload.")
-                    recognized = True  # handled (as a rejection), don't also file it as an attachment
-                elif suspicious_excerpt:
-                    # The parser flagged real, recoverable data as ambiguous -- try to self-heal
-                    # via the Moderator automatically, before ever bothering the user with it.
-                    # Optically, whether the fix came from the parser alone or with the
-                    # Moderator's help doesn't matter -- only that the right data lands and the
-                    # user isn't interrupted for something the app could sort out on its own.
-                    _mod_provider = bot_config.load_role_providers()["moderator"]
-                    _mod_key = api_key_for(PROVIDER_KEY_FIELD[_mod_provider])
-                    auto_opinion, auto_alignment = None, None
-                    if IS_PROVIDER_CONFIGURED[_mod_provider](_mod_key):
-                        with st.spinner("Parser flagged this file as ambiguous — checking with the Moderator..."):
-                            auto_opinion = llm_engine.classify_unknown_upload(
-                                uploaded.name, suspicious_excerpt, example_row=example_row, provider=_mod_provider,
-                                api_key=_mod_key, model=bot_config.load_role_models().get("moderator") or None,
-                            )
-                        auto_alignment = llm_engine.parse_alignment_verdict(auto_opinion)
+                    # A PDF that parses cleanly as "rankings" (the default/catch-all bucket -- see
+                    # _sniff_pdf_kind) might still not actually BE Dynasty Rankings; that bucket has
+                    # no positive-match check of its own, just elimination of the other three known
+                    # tools. Draft Sharks' own PDFs plainly self-label DYNASTY vs REDRAFT in their
+                    # title text (confirmed against a real "Redraft > IDP" export that parsed
+                    # without error yet silently mislabeled two columns) -- catching that here is
+                    # cheap (local text, no API call) and catches exactly the case a keyword-based
+                    # sniff can't: a real table, just the wrong dynasty-vs-redraft product.
+                    suspicious_excerpt = None
+                    example_row = None
+                    if kind == "rankings" and suffix == ".pdf":
+                        try:
+                            first_page = pypdf.PdfReader(str(staging_path)).pages[0].extract_text() or ""
+                        except Exception:
+                            first_page = ""
+                        upper = first_page.upper()
+                        if "REDRAFT" in upper and "DYNASTY" not in upper:
+                            suspicious_excerpt = first_page[:1500]
+                            # A concrete row from the parser's OWN output, not anything the Moderator
+                            # is asked to restate from memory -- the numbers stay exactly what the
+                            # deterministic parser already extracted; only their labeling is ever in
+                            # question, so this is what actually gets shown/confirmed, not an LLM's
+                            # potentially-misremembered echo of them.
+                            if parsed_df is not None and not parsed_df.empty:
+                                _ex = parsed_df.iloc[0]
+                                example_row = (
+                                    f"{_ex.get('name', '?')} ({_ex.get('team', '?')} {_ex.get('position', '?')}): "
+                                    f"parsed as rank={_ex.get('rank')}, \"1yr projection\"={_ex.get('projection')}, "
+                                    f"\"3yr projection\"={_ex.get('proj_3yr')}, trade_value={_ex.get('trade_value')}"
+                                )
 
-                    if auto_alignment is True:
-                        # False alarm -- the parser's own mapping actually held up. Proceed
-                        # exactly like any other recognized upload; the question's resolved.
-                        dest_dir = GLOBAL_PROJECTIONS_DIR
+                    if kind == "free_agents" and not st.session_state.selected_league_id:
+                        staging_path.unlink(missing_ok=True)
+                        notify("error", "This looks like a Free Agent Finder export, tied to one league's roster — select a league above first, then re-upload.")
+                        recognized = True  # handled (as a rejection), don't also file it as an attachment
+                    elif suspicious_excerpt:
+                        # The parser flagged real, recoverable data as ambiguous -- try to self-heal
+                        # via the Moderator automatically, before ever bothering the user with it.
+                        # Optically, whether the fix came from the parser alone or with the
+                        # Moderator's help doesn't matter -- only that the right data lands and the
+                        # user isn't interrupted for something the app could sort out on its own.
+                        _mod_provider = bot_config.load_role_providers()["moderator"]
+                        _mod_key = api_key_for(PROVIDER_KEY_FIELD[_mod_provider])
+                        auto_opinion, auto_alignment = None, None
+                        if IS_PROVIDER_CONFIGURED[_mod_provider](_mod_key):
+                            with st.spinner("Parser flagged this file as ambiguous — checking with the Moderator..."):
+                                auto_opinion = llm_engine.classify_unknown_upload(
+                                    uploaded.name, suspicious_excerpt, example_row=example_row, provider=_mod_provider,
+                                    api_key=_mod_key, model=bot_config.load_role_models().get("moderator") or None,
+                                )
+                            auto_alignment = llm_engine.parse_alignment_verdict(auto_opinion)
+
+                        if auto_alignment is True:
+                            # False alarm -- the parser's own mapping actually held up. Proceed
+                            # exactly like any other recognized upload; the question's resolved.
+                            dest_dir = GLOBAL_PROJECTIONS_DIR
+                            dest_dir.mkdir(parents=True, exist_ok=True)
+                            staging_path.replace(dest_dir / uploaded.name)
+                            _batch_files.append(_pool_relpath(dest_dir / uploaded.name))
+                            st.session_state.data_merger.reload()
+                            notify("success", "Recognized as Draft Sharks data — the Moderator double-checked an ambiguous label and it held up.")
+                            recognized = True
+                            if note:
+                                save_attachment(f"{uploaded.name}.note.txt", note.encode(), caption=note, league_ids=note_scope)
+                        elif auto_alignment is False:
+                            # Confirmed mislabeled. Drop only the specific fields whose meaning is in
+                            # question (never invent a replacement value for them) and keep what's
+                            # still valid -- identity fields and trade_value, which for a Trade Value
+                            # Chart / Dynasty Rankings PDF sits in the same column position either
+                            # way. Written out as a CSV, not the raw PDF, so a future reload parses
+                            # the already-corrected data directly instead of re-deriving the same
+                            # wrong labels from the PDF's raw text every time.
+                            corrected_cols = [c for c in ("name", "team", "position", "rank", "trade_value") if c in parsed_df.columns]
+                            corrected_name = Path(uploaded.name).stem + ".corrected.csv"
+                            dest_dir = GLOBAL_PROJECTIONS_DIR
+                            dest_dir.mkdir(parents=True, exist_ok=True)
+                            parsed_df[corrected_cols].to_csv(dest_dir / corrected_name, index=False)
+                            _batch_files.append(_pool_relpath(dest_dir / corrected_name))
+                            staging_path.unlink(missing_ok=True)
+                            st.session_state.data_merger.reload()
+                            notify(
+                                "success",
+                                "Recognized as Draft Sharks data, with the Moderator's help — this file's own "
+                                "projection columns didn't mean what our schema expected (it looks like a "
+                                "single-season export, not a dynasty one), so those were left out rather than "
+                                "shown under the wrong label. Its trade value still applies.",
+                            )
+                            recognized = True
+                            if note:
+                                save_attachment(f"{uploaded.name}.note.txt", note.encode(), caption=note, league_ids=note_scope)
+                        else:
+                            # Couldn't self-heal -- no key configured to even ask, or the Moderator
+                            # itself wasn't confident. This is the one case that actually needs a
+                            # human decision, not a second automated guess dressed up as one.
+                            # A QUEUE, not a slot. A single upload can now carry several files, and
+                            # more than one of them can land here -- assigning to one slot would have
+                            # silently dropped every ambiguous file but the last, which is the exact
+                            # shape of loss this app refuses everywhere else.
+                            st.session_state.setdefault("pending_uploads", [])
+                            st.session_state.pending_uploads.append({
+                                "staging_path": str(staging_path), "name": uploaded.name, "kind": kind,
+                                "parse_error": None, "excerpt": suspicious_excerpt, "data": data,
+                                "note": note, "note_scope": note_scope,
+                                "moderator_opinion": auto_opinion, "alignment": auto_alignment,
+                                "example_row": example_row,
+                            })
+                            recognized = True  # held for a decision below, not silently filed either way
+                    elif parse_error:
+                        # Nothing usable parsed at all -- no data to align, so there's nothing for
+                        # the Moderator to fix here. Falls through to reference material below,
+                        # same as it always has.
+                        staging_path.unlink(missing_ok=True)
+                    else:
+                        if kind == "free_agents":
+                            dest_dir = league_projections_dir(st.session_state.selected_league_id)
+                            location_label = "this league only (roster-specific)"
+                        else:
+                            dest_dir = GLOBAL_PROJECTIONS_DIR
+                            location_label = "the shared pool (applies to any league using this format)"
                         dest_dir.mkdir(parents=True, exist_ok=True)
                         staging_path.replace(dest_dir / uploaded.name)
+                        _batch_files.append(_pool_relpath(dest_dir / uploaded.name))
                         st.session_state.data_merger.reload()
-                        notify("success", "Recognized as Draft Sharks data — the Moderator double-checked an ambiguous label and it held up.")
+                        notify("success", f"Recognized as Draft Sharks data — saved to {location_label}.")
                         recognized = True
                         if note:
+                            # The data went into the projections pool, not the attachment store — but the
+                            # note is still worth surfacing to the panel, so it gets a small text-only entry.
                             save_attachment(f"{uploaded.name}.note.txt", note.encode(), caption=note, league_ids=note_scope)
-                    elif auto_alignment is False:
-                        # Confirmed mislabeled. Drop only the specific fields whose meaning is in
-                        # question (never invent a replacement value for them) and keep what's
-                        # still valid -- identity fields and trade_value, which for a Trade Value
-                        # Chart / Dynasty Rankings PDF sits in the same column position either
-                        # way. Written out as a CSV, not the raw PDF, so a future reload parses
-                        # the already-corrected data directly instead of re-deriving the same
-                        # wrong labels from the PDF's raw text every time.
-                        corrected_cols = [c for c in ("name", "team", "position", "rank", "trade_value") if c in parsed_df.columns]
-                        corrected_name = Path(uploaded.name).stem + ".corrected.csv"
-                        dest_dir = GLOBAL_PROJECTIONS_DIR
-                        dest_dir.mkdir(parents=True, exist_ok=True)
-                        parsed_df[corrected_cols].to_csv(dest_dir / corrected_name, index=False)
-                        staging_path.unlink(missing_ok=True)
-                        st.session_state.data_merger.reload()
-                        notify(
-                            "success",
-                            "Recognized as Draft Sharks data, with the Moderator's help — this file's own "
-                            "projection columns didn't mean what our schema expected (it looks like a "
-                            "single-season export, not a dynasty one), so those were left out rather than "
-                            "shown under the wrong label. Its trade value still applies.",
-                        )
-                        recognized = True
-                        if note:
-                            save_attachment(f"{uploaded.name}.note.txt", note.encode(), caption=note, league_ids=note_scope)
-                    else:
-                        # Couldn't self-heal -- no key configured to even ask, or the Moderator
-                        # itself wasn't confident. This is the one case that actually needs a
-                        # human decision, not a second automated guess dressed up as one.
-                        st.session_state.pending_upload = {
-                            "staging_path": str(staging_path), "name": uploaded.name, "kind": kind,
-                            "parse_error": None, "excerpt": suspicious_excerpt, "data": data,
-                            "note": note, "note_scope": note_scope,
-                            "moderator_opinion": auto_opinion, "alignment": auto_alignment,
-                            "example_row": example_row,
-                        }
-                        recognized = True  # held for a decision below, not silently filed either way
-                elif parse_error:
-                    # Nothing usable parsed at all -- no data to align, so there's nothing for
-                    # the Moderator to fix here. Falls through to reference material below,
-                    # same as it always has.
-                    staging_path.unlink(missing_ok=True)
+
+                if not recognized:
+                    save_attachment(uploaded.name, data, caption=note, league_ids=note_scope)
+                    notify("info", f"Didn't match a known Draft Sharks format — saved '{uploaded.name}' as reference material below for the panel to consider when you ask about it.")
+
+            # ONE record for the set, written after the loop rather than per file. Only files
+            # that actually reached a pool are named: reference material does not feed
+            # precedence, so recording it here would make the batch claim a scope it does not
+            # have. A batch with nothing in a pool is not recorded at all -- there would be
+            # nothing for its as-of date to date.
+            if _batch_files:
+                upload_batches.record(
+                    name=_batch_name, note=note, as_of=_batch_as_of, files=_batch_files,
+                    league_ids=list(scope_league_ids or []),
+                )
+                if _batch_as_of:
+                    notify("info", f"Recorded {len(_batch_files)} file(s) as of {_batch_as_of}.")
                 else:
-                    if kind == "free_agents":
-                        dest_dir = league_projections_dir(st.session_state.selected_league_id)
-                        location_label = "this league only (roster-specific)"
-                    else:
-                        dest_dir = GLOBAL_PROJECTIONS_DIR
-                        location_label = "the shared pool (applies to any league using this format)"
-                    dest_dir.mkdir(parents=True, exist_ok=True)
-                    staging_path.replace(dest_dir / uploaded.name)
-                    st.session_state.data_merger.reload()
-                    notify("success", f"Recognized as Draft Sharks data — saved to {location_label}.")
-                    recognized = True
-                    if note:
-                        # The data went into the projections pool, not the attachment store — but the
-                        # note is still worth surfacing to the panel, so it gets a small text-only entry.
-                        save_attachment(f"{uploaded.name}.note.txt", note.encode(), caption=note, league_ids=note_scope)
+                    # Said out loud rather than left to be discovered: an undated file is not
+                    # broken, it just cannot win a disagreement.
+                    notify("info", f"Recorded {len(_batch_files)} file(s) with no as-of date — "
+                                   "where these disagree with a dated source, the dated one wins.")
 
-            if not recognized:
-                save_attachment(uploaded.name, data, caption=note, league_ids=note_scope)
-                notify("info", f"Didn't match a known Draft Sharks format — saved '{uploaded.name}' as reference material below for the panel to consider when you ask about it.")
-
-        pending = st.session_state.get("pending_upload")
+        # Oldest first, one at a time: each of these needs a human call, and showing several
+        # half-answered decisions at once is how the wrong button gets pressed. The count is
+        # surfaced so a user knows more are waiting rather than discovering it on the next rerun.
+        _pending_queue = st.session_state.get("pending_uploads") or []
+        pending = _pending_queue[0] if _pending_queue else None
         if pending:
+            if len(_pending_queue) > 1:
+                st.caption(f"{len(_pending_queue)} files from this upload need a decision — "
+                           f"this is the first.")
             # This is only ever reached once self-healing has already been tried and failed (see
             # above) -- either no Moderator key was configured to even attempt it, or the
             # Moderator itself wasn't confident either way. Either way, this genuinely needs a
@@ -2823,22 +2897,74 @@ with st.sidebar:
                     if pending["note"]:
                         save_attachment(f"{pending['name']}.note.txt", pending["note"].encode(), caption=pending["note"], league_ids=pending["note_scope"])
                     notify("success", f"Saved \"{pending['name']}\" to the shared Dynasty Rankings pool.")
-                    st.session_state.pending_upload = None
+                    st.session_state.pending_uploads = _pending_queue[1:]
                     st.rerun()
             with pu_cols[-1]:
                 if st.button(reference_label, key="pending_upload_reference", use_container_width=True):
                     Path(pending["staging_path"]).unlink(missing_ok=True)
                     save_attachment(pending["name"], pending["data"], caption=pending["note"], league_ids=pending["note_scope"])
                     notify("info", f"Saved \"{pending['name']}\" as reference material for the panel to consider when asked about it.")
-                    st.session_state.pending_upload = None
+                    st.session_state.pending_uploads = _pending_queue[1:]
                     st.rerun()
 
+        # WHAT IS IN THE POOL, grouped the way it arrived. A flat list of filenames answers
+        # "what is loaded" and nothing else; grouped by batch it also answers "where did this
+        # come from, when is it from, and what did I say about it at the time" -- which is the
+        # question anyone actually has when a number looks wrong.
         global_files = sorted(p.name for p in GLOBAL_PROJECTIONS_DIR.glob("*") if p.suffix in (".csv", ".json", ".pdf"))
-        if global_files:
-            st.caption("Shared rankings (any league): " + ", ".join(global_files))
+        league_files = []
         if st.session_state.selected_league_id:
             league_proj_dir = league_projections_dir(st.session_state.selected_league_id)
             league_files = sorted(p.name for p in league_proj_dir.glob("*") if p.suffix in (".csv", ".json", ".pdf")) if league_proj_dir.exists() else []
+
+        _batches = upload_batches.batches()
+        if _batches:
+            st.markdown("**Your uploads**")
+            _accounted: set[str] = set()
+            for _batch in _batches:
+                _present = [f for f in _batch.get("files", []) if Path(f).exists()]
+                _accounted.update(Path(f).name for f in _batch.get("files", []))
+                if not _present:
+                    # Every file from this batch is gone from disk. The record is kept rather
+                    # than hidden: "I uploaded that and it is not here any more" is a real
+                    # question, and a silently vanished batch cannot answer it.
+                    st.caption(f"~~**{_batch['name']}**~~ — files no longer on disk "
+                               f"(uploaded {_batch['uploaded_at']})")
+                    continue
+                _as_of = _batch.get("as_of")
+                _date_line = (f"as of **{_as_of}**" if _as_of
+                              else "**no as-of date** — loses ties to dated sources")
+                st.caption(f"**{_batch['name']}** · {len(_present)} file(s) · {_date_line} "
+                           f"· uploaded {_batch['uploaded_at']}")
+                with st.expander(f"Files and notes — {_batch['name']}", expanded=False):
+                    for _f in _present:
+                        st.caption(f"• `{Path(_f).name}`")
+                    if _batch.get("note"):
+                        # Shown as the user's own words, quoted rather than restated -- this is
+                        # also what reaches the panel as context, and it should read the same
+                        # in both places.
+                        st.caption(f"> {_batch['note']}")
+                    if st.button("Remove this upload", key=f"forget_batch_{_batch['id']}",
+                                 use_container_width=True):
+                        # The batch is the undo unit -- the reason it has an identity at all.
+                        _removed = upload_batches.forget(_batch["id"])
+                        for _f in (_removed or {}).get("files", []):
+                            Path(_f).unlink(missing_ok=True)
+                        st.session_state.data_merger.reload()
+                        notify("success", f"Removed \"{_batch['name']}\" and its "
+                                          f"{len(_present)} file(s).")
+                        st.rerun()
+
+            # Anything in a pool that no batch claims -- the committed baseline, and anything
+            # uploaded before batches existed. Named separately rather than folded in, because
+            # "I put this here" and "this shipped with the app" are different facts.
+            _unclaimed = [f for f in global_files + league_files if f not in _accounted]
+            if _unclaimed:
+                st.caption("Not from any recorded upload (shipped with the app, or added before "
+                           "uploads were grouped): " + ", ".join(sorted(_unclaimed)))
+        else:
+            if global_files:
+                st.caption("Shared rankings (any league): " + ", ".join(global_files))
             if league_files:
                 st.caption("This league only (roster-specific): " + ", ".join(league_files))
 
