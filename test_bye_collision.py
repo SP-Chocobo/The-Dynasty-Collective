@@ -7,11 +7,20 @@ Two things are covered, and the second is the one that will look wrong to a late
   hole and has nothing left for the second -- which is exactly what depth_exposure's
   one-at-a-time removal cannot express and what a headcount gets backwards.
 
-  THE REFUSAL. It feeds no valuation. That was measured, not assumed: the engine's own drafted
-  rosters already sit at the pigeonhole floor for an 8-starter shape, and no swap within 10
-  universal_value points improves them. A term that cannot improve the outcome it targets is
-  the write-only defect (#138) with the arrow reversed -- built, read by the scorer, and
-  changing nothing worth changing.
+  THE REFUSAL. It feeds no valuation, and the reason is a CATEGORY argument rather than the
+  magnitude one this file originally carried. Bye weeks are reassigned every season, so a
+  collision belongs to the (player, season) pair and dissolves in months while the dynasty
+  asset outlives it. A quantity whose lifetime is shorter than the asset's horizon cannot price
+  that asset at ANY magnitude -- which is why the measured effect (worst-week losses of 41-127
+  trade_value, a reachable tail near 7 bpa) does not reopen the question.
+
+  That also rules out a draft-time FLAG, which an earlier version of this work was about to
+  recommend: a flag describes a transient property of a permanent decision, and in a startup
+  draft it invites trading multi-year asset value for one season's tidiness. A candidate-level
+  penalty function was built for that flag and then deleted with it.
+
+  Where the quantity legitimately lives is a single-season surface: roster_diagnostics, whose
+  questions are this-season questions.
 """
 
 from __future__ import annotations
@@ -170,10 +179,13 @@ class ItIsDeliberatelyNotAValuationTermTests(unittest.TestCase):
                 names |= {n.id for n in ast.walk(tree) if isinstance(n, ast.Name)}
                 self.assertNotIn(
                     "bye_collision", names,
-                    f"{module} now reads bye_collision. Measured on the committed baseline: "
-                    "the engine's rosters already sit at the pigeonhole floor for an 8-starter "
-                    "shape and no swap within 10 universal_value points improves them. If that "
-                    "has changed, re-measure and record it -- do not just wire the term.")
+                    f"{module} now reads bye_collision. This is excluded on a CATEGORY rule, "
+                    "not a magnitude one, so a new measurement showing a large effect does not "
+                    "reopen it: the NFL reassigns bye weeks every season, so a collision is a "
+                    "property of the (player, season) pair and dissolves in months while a "
+                    "dynasty asset does not. A quantity whose lifetime is shorter than the "
+                    "asset's horizon cannot price that asset at any magnitude. See "
+                    "CDME_CONTRACTS.md's team_acquisition_value invariants.")
 
     def test_but_something_DOES_read_it(self):
         """The other half. 'Not scored' must not slide into 'not used', which is the exact
@@ -325,37 +337,6 @@ class ConcentrationSeparatesShapeFromSeverityTests(unittest.TestCase):
         rows = [{"id": "a", "value": 10, "eligible": {"QB"}}]
         self.assertIsNone(lo.bye_concentration(rows, ROSTER)["concentration"])
         self.assertEqual(lo.bye_concentration([], ROSTER)["basis"], lo.BYE_UNKNOWN)
-
-
-class TheCandidateLevelPenaltyIsolatesTheByeTests(unittest.TestCase):
-    """bye_stack_penalty holds the candidate fixed and varies only his bye. The obvious
-    alternative -- cost with him minus cost without him -- is dominated by whether he would
-    start at all, and measured that way the resulting flag was ANTI-correlated with real bye
-    damage across ~4,000 evaluations."""
-
-    ROSTER_ROWS = [
-        {"id": "q1", "value": 30, "eligible": {"QB"}, "bye": 7},
-        {"id": "r1", "value": 25, "eligible": {"RB"}, "bye": 7},
-        {"id": "r2", "value": 24, "eligible": {"RB"}, "bye": 7},
-        {"id": "w1", "value": 20, "eligible": {"WR"}, "bye": 9},
-        {"id": "w2", "value": 19, "eligible": {"WR"}, "bye": 10},
-        {"id": "t1", "value": 15, "eligible": {"TE"}, "bye": 11},
-    ]
-
-    def test_the_same_player_costs_more_on_a_crowded_week(self):
-        crowded = {"id": "c", "value": 22, "eligible": {"WR"}, "bye": 7}
-        clear = {"id": "c", "value": 22, "eligible": {"WR"}, "bye": 13}
-        self.assertGreater(lo.bye_stack_penalty(self.ROSTER_ROWS, ROSTER, crowded),
-                           lo.bye_stack_penalty(self.ROSTER_ROWS, ROSTER, clear))
-
-    def test_a_candidate_with_no_known_bye_yields_None_not_zero(self):
-        """Zero would read as "his bye is free". Unknown is not free."""
-        self.assertIsNone(lo.bye_stack_penalty(
-            self.ROSTER_ROWS, ROSTER, {"id": "c", "value": 22, "eligible": {"WR"}}))
-
-    def test_an_empty_roster_yields_None(self):
-        self.assertIsNone(lo.bye_stack_penalty(
-            [], ROSTER, {"id": "c", "value": 22, "eligible": {"WR"}, "bye": 7}))
 
 if __name__ == "__main__":
     unittest.main()

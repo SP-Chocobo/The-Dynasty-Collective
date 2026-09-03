@@ -460,57 +460,6 @@ def bye_concentration(roster_players: list[dict], roster_positions: list[str]) -
     }
 
 
-def bye_stack_penalty(roster_players: list[dict], roster_positions: list[str],
-                      candidate: dict) -> Optional[float]:
-    """How much WORSE this roster's worst bye week gets because of THIS candidate's bye.
-
-    THE COUNTERFACTUAL IS THE WHOLE CONSTRUCTION. The obvious version -- worst-week cost with
-    the candidate minus worst-week cost without him -- was built first and is useless: it is
-    dominated by whether he would start at all, so it fires on every good player regardless of
-    when his bye falls. Measured that way, the flag it produced was anti-correlated with real
-    bye damage.
-
-    So the comparison holds the CANDIDATE fixed and varies only his bye: the same player, on
-    the same roster, sitting on his real bye versus on the emptiest week this roster has. The
-    difference is attributable to his bye and to nothing else.
-
-    WHY NOT A HEADCOUNT RULE. The natural hand-built version of this is "he shares a bye with
-    one of your best players AND you already start several that week". Measured against this
-    counterfactual across ~4,000 (roster, candidate) pairs at two lineup depths, that rule
-    fires at almost exactly the right RATE (3.9% vs 3.5%) on almost entirely the WRONG
-    candidates: ~80% of its hits carry no real penalty and it misses ~80% of the ones that do.
-    A headcount cannot see whether the bench covers the hole, and "one of your best by points"
-    cannot see whether that player is replaceable. The assignment solve sees both, and it is
-    already here.
-
-    Returns the penalty in the caller's own value units, or None when the candidate or the
-    roster carries no resolvable bye -- never 0.0 for an unknown, which would read as "this
-    bye is free" (the absence contract this codebase enforces everywhere else).
-    """
-    candidate_bye = candidate.get("bye")
-    if candidate_bye is None or not roster_players or not roster_positions:
-        return None
-    known = [int(p["bye"]) for p in roster_players if p.get("bye") is not None]
-    if not known:
-        return None
-
-    # The emptiest week available to this roster is the best bye the candidate could have had,
-    # so it is the right zero point: it asks "what did his bye cost me relative to the luckiest
-    # draw", not "relative to no bye at all", which no real player has.
-    occupancy = {week: known.count(week) for week in set(known)}
-    span = range(min(known + [candidate_bye]), max(known + [candidate_bye]) + 1)
-    best_week = min(span, key=lambda week: occupancy.get(week, 0))
-    if best_week == candidate_bye:
-        return 0.0
-
-    def worst(bye):
-        rows = roster_players + [{**candidate, "bye": bye}]
-        weeks = bye_collision(rows, roster_positions)
-        return max((row["value_lost"] for row in weeks.values()), default=0.0)
-
-    return round(worst(candidate_bye) - worst(best_week), 2)
-
-
 def bench_capacity(roster_positions: list[str]) -> int:
     """How many bench spots this league gives each team.
 

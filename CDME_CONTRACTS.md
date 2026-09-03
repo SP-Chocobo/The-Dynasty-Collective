@@ -79,7 +79,50 @@ failure the additive layering exists to prevent.
    for exactly this reason (`NEED_BONUS_MAX`, `ELIGIBILITY_BONUS_MAX`, `DEPTH_EXPOSURE_MAX` —
    the same number three times, deliberately: they are one class of term, and giving them
    different magnitudes would be inventing a ranking among them that no measurement supports).
-5. `depth_exposure` contributes only where `depth_basis == "measured"`. Its other three states
+5. **A quantity may enter a dynasty valuation only if its lifetime is at least as long as the
+   asset's horizon.** This is a category rule, not a magnitude rule: it disqualifies a term
+   regardless of how large its effect measures.
+
+   The distinction that makes it usable, since the three team-specific terms are all transient
+   in some sense:
+
+   | transient in | example | admissible? |
+   |---|---|---|
+   | **roster state** | `need_bonus`, `eligibility_bonus`, `depth_exposure` | **yes** — TAV is a *decision* number, priced in the state the decision is made in |
+   | **the calendar** | bye-week collision | **no** — it expires on a schedule unrelated to the roster or the player, and the asset outlives it |
+
+   Worked case (#142). Bye overlap is real, measurable, and was measured: worst-week losses of
+   41–127 trade_value across twelve rosters, concentration 0.25–0.62, a reachable tail of ~7
+   bpa. None of that matters here. **The NFL reassigns bye weeks every season**, so a collision
+   is a property of the (player, season) pair and dissolves in months while the dynasty asset
+   does not. It is therefore inadmissible to `universal_value` and to `team_acquisition_value`
+   at any magnitude. The same reasoning excludes a draft-time *flag*: a flag describes a
+   transient property of a permanent decision, and in a startup draft it would invite trading
+   multi-year asset value for one season's tidiness.
+
+   Where such a quantity legitimately lives instead: a **single-season** surface. Bye collision
+   is read by `roster_diagnostics`, whose questions ("which week am I thin, who should I trade
+   for") are this-season questions with this-season answers.
+
+   **THE COROLLARY, AND IT IS NOT A CONSOLATION PRIZE — IN REDRAFT, BYE WEEK IS ADMISSIBLE.**
+   The rule cuts both ways from one principle: in a redraft league the asset's horizon *is* one
+   season, so a bye collision's lifetime exactly matches the horizon it would price. Everything
+   that disqualifies it under `type == 2` qualifies it under redraft, and none of the measured
+   magnitude has to be re-established — it was measured on this data and stands.
+
+   That is buildable rather than aspirational. `draft_room` already reads
+   `is_dynasty = (league.get("settings") or {}).get("type") == 2` and already gates
+   `time_horizon_adj` on it, so a format-gated term has precedent in this engine. The inputs
+   exist too: `DataMerger.bye_week_by_team` (99.1% coverage) and
+   `lineup_optimizer.bye_collision`. What was deleted was `bye_stack_penalty`, the
+   candidate-level counterfactual — it would need rebuilding, and its docstring's warning about
+   the confounded first version should be rebuilt with it.
+
+   This rule is the reason to check any proposed term's LIFETIME before its magnitude. The
+   magnitude work on #142 was done first, and the category question settles the dynasty case
+   either way — worth recording so the next term is checked in the right order. Note that the
+   magnitude work is not wasted: it is exactly what the redraft case will need.
+6. `depth_exposure` contributes only where `depth_basis == "measured"`. Its other three states
    (`no_surplus`, `vacant`, `not_applicable`) contribute `0.0`, and that zero means **"not
    measured here"**, never "this roster's depth at this position is safe". Read `depth_basis`
    before reading the value.

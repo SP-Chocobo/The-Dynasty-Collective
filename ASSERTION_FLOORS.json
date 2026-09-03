@@ -114,12 +114,12 @@
       }
     },
     "test_bye_collision.py": {
-      "test_methods": 28,
+      "test_methods": 25,
       "asserts": {
         "assertEqual": 20,
-        "assertGreater": 8,
+        "assertGreater": 7,
         "assertIn": 4,
-        "assertIsNone": 3,
+        "assertIsNone": 1,
         "assertLess": 1,
         "assertLessEqual": 1,
         "assertNotIn": 2,

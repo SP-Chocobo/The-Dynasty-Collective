@@ -381,6 +381,60 @@ the refusal, so wiring it later means deleting a test that explains why not.
 
 ---
 
+## Addendum 3 — the bye question, closed on a category argument
+
+Three sessions of measurement on bye overlap ended with the owner closing it in one sentence:
+
+> "Dynastic value is immune to bye week overlap, since byes change next season."
+
+That is a **category** argument where everything above it was a magnitude argument, and it is
+strictly stronger. The NFL reassigns bye weeks annually, so a collision is a property of the
+(player, season) pair. It dissolves in months; the dynasty asset does not. A quantity whose
+lifetime is shorter than the asset's horizon cannot price that asset **at any magnitude** — so
+the measured effect (worst-week losses of 41–127 trade_value, concentration 0.25–0.62, a
+reachable tail near 7 bpa) does not reopen it, and neither would a larger one.
+
+It also closes the draft-time FLAG, which this work was one step from recommending. A flag
+describes a transient property of a permanent decision, and in a startup draft it invites
+trading multi-year asset value for one season's tidiness. The owner's follow-up narrowed it
+further — bye fit only ever bears on mid-round flex and first-depth picks — which is precisely
+the range where candidates are interchangeable *as assets*, and therefore the range where
+spending asset ordering on a single-season convenience is the worst trade available.
+
+**What was deleted:** `bye_stack_penalty`, the candidate-level counterfactual built to feed
+that flag. Removed rather than left contract-pinned, because it was built for a decision now
+closed on principle — unlike `marginal_lineup_value` (#84), which is stranded for want of data
+and whose use case remains valid.
+
+**What was kept, and why it is not the same thing:** `bye_collision` and `bye_concentration`,
+read by `roster_diagnostics`. Those answer this-season questions — which week am I thin, who
+should I trade for — on a single-season surface. The quantity is fine; it was the *destination*
+that was wrong.
+
+**The rule this generalizes to** now sits in `CDME_CONTRACTS.md` as invariant 5 of
+`team_acquisition_value`, with the distinction that makes it usable: `need_bonus`,
+`eligibility_bonus` and `depth_exposure` are transient in ROSTER STATE, and TAV is a decision
+number priced in the state the decision is made in, so they are admissible. A bye collision is
+transient in the CALENDAR, on a schedule unrelated to either the roster or the player.
+
+**The corollary the owner added, and it matters: in REDRAFT, bye week should be a factor.**
+The same lifetime rule admits it there — a redraft asset's horizon *is* one season, so the
+collision's lifetime exactly matches what it would price. That reframes this whole thread's
+output: the measurement is not wasted, it is the evidence a redraft term would need, and it was
+taken on real data. The substrate survives too — `bye_week_by_team` (99.1% coverage) and
+`bye_collision` are both committed, and `draft_room` already gates `time_horizon_adj` on
+`is_dynasty`, so a format-gated term has precedent rather than needing an architecture. Only
+`bye_stack_penalty` would need rebuilding, along with its warning about the confounded first
+version. Registered rather than built, because this owner plays dynasty.
+
+**The process lesson, recorded because it cost real effort.** The magnitude work came first and
+the category question settles it either way. Check a proposed term's LIFETIME before measuring
+its size. Everything above this addendum is what happens when that order is reversed — including
+one measurement that was confidently anti-correlated with the thing it claimed to measure, and
+one published conclusion ("no headroom") that had to be corrected two commits later.
+
+---
+
 ## State at the end of this pass
 
 - `main` merged and unfrozen at `cf8fa0c`; marker branch `pre-blind-audit` sits there.
