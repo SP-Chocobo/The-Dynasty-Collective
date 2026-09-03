@@ -32,7 +32,7 @@ watching the draft) with "how good is this player FOR THIS ROSTER" (inherently t
 specific). Kept as two explicit numbers:
 
     universal_value = BPA + time_horizon_adj + risk_adj
-    team_acquisition_value = universal_value + need_bonus + eligibility_bonus
+    team_acquisition_value = universal_value + need_bonus + eligibility_bonus + depth_exposure
 
 BPA is Value Over Replacement in raw projected POINTS (never Draft Sharks' trade_value/
 composite scale directly -- see build_available_pool's docstring on why IDP's real points
@@ -314,6 +314,30 @@ NEED_BONUS_MAX = 12.0
 # evidence does not support. The explicit min() below is a defensive guard against anomalous
 # source data above the documented scale, not the mechanism that does the bounding.
 TRADE_VALUE_SCALE_MAX = 100.0  # Draft Sharks' documented trade_value range (verified: real max is exactly 100.0)
+
+# THE THIRD team-specific term (#139). depth_exposure prices what a HOLE would cost: remove a
+# starter, re-solve the lineup, and the drop is what one backup at that position would be
+# buying. Bounded and converted exactly like eligibility_bonus above, for the same two reasons
+# and with no new reasoning of its own:
+#
+#   UNITS. lineup_optimizer solves in whatever currency its caller supplies, and this caller
+#   supplies trade_value (see _team_roster_players). The same rescale applies, and it is
+#   bounded by construction for the same structural reason: removing one player can cost the
+#   lineup at most that player's own value, so worst_loss <= TRADE_VALUE_SCALE_MAX.
+#
+#   MAGNITUDE. Set equal to NEED_BONUS_MAX deliberately. All three team-specific terms answer
+#   "how good is this player FOR THIS ROSTER", the architecture already fixes the bound for
+#   that class, and choosing a different number would be inventing a magnitude no measurement
+#   supports (#56: a bound is not a threshold).
+#
+# WHY IT DOES NOT DOUBLE-COUNT need_bonus, which was measured rather than assumed
+# (run_need_bonus_ablation.py): need_bonus is a POSITIONAL GATE with zero within-position
+# variance -- it prevents stacking a position the roster does not need, and removing it makes
+# the engine draft four QBs in a one-QB league. depth_exposure prices insurance against losing
+# a starter you DO need. Different altitudes, and temporally complementary as well: need_bonus
+# is strongest rounds 1-8, depth_exposure is only `measured` from round 9, once a bench exists
+# for depth to be a meaningful question about.
+DEPTH_EXPOSURE_MAX = NEED_BONUS_MAX
 ELIGIBILITY_BONUS_MAX = NEED_BONUS_MAX
 
 UPSIDE_GROWTH_WEIGHT = 0.5
@@ -1616,8 +1640,9 @@ def compute_draft_board(
 ) -> list[dict]:
     """The live recommendation board: every undrafted, Draft-Sharks-valued player, ranked
     best pick first, with every scoring layer broken out separately -- universal_value
-    (what any manager at this draft would compute), need_bonus and eligibility_bonus (the two
-    team-specific terms), the final team_acquisition_value used to rank, and confidence (never
+    (what any manager at this draft would compute), need_bonus, eligibility_bonus and
+    depth_exposure (the three team-specific terms, each paired with the basis that produced it
+    where one exists), the final team_acquisition_value used to rank, and confidence (never
     folded into either value). See module docstring for why value is split into two numbers
     instead of one. projected_points is the raw season point projection universal_value's own
     VOR anchor is built from (see ARCHITECTURE section) -- exposed directly, independent of the
@@ -1819,8 +1844,10 @@ def compute_draft_board(
         # nothing off the roster -- it returns only {final_score, growth_signal, confidence}
         # from the row's own bpa and growth -- so there is no need_bonus or eligibility_bonus
         # separated out of it to subtract back off, and the layer identity
-        # team_acquisition_value == universal_value + need_bonus + eligibility_bonus holds
-        # with both bonuses at 0.0. It is deliberately NOT the same NUMBER as a balanced
+        # team_acquisition_value == universal_value + need_bonus + eligibility_bonus +
+        # depth_exposure holds with all three team-specific terms at 0.0. depth_exposure is
+        # additionally never even COMPUTED on this path (the solve happens below this return),
+        # so upside mode pays nothing for a term it does not use. It is deliberately NOT the same NUMBER as a balanced
         # board's universal_value for the same player, and must never be compared across
         # modes -- see this module's docstring on upside mode being a different valuation.
         #
@@ -1862,6 +1889,10 @@ def compute_draft_board(
     slot_counts = starter_slot_counts(roster_positions)
     dedicated_counts = dedicated_slot_counts(roster_positions)
     my_roster_players = _team_roster_players(picks, players_db, my_roster_id, merger)
+    # Per POSITION, not per candidate -- one lineup solve per rostered starter for the whole
+    # board, rather than per row. Computed here beside the roster it reads because that is the
+    # only thing it depends on; the candidate does not enter it at all.
+    depth_by_position = lo.depth_exposure(my_roster_players, roster_positions)
 
     def score_row(row: pd.Series) -> pd.Series:
         position = row["position"]
@@ -1944,13 +1975,35 @@ def compute_draft_board(
                 ELIGIBILITY_BONUS_MAX,
             )
 
-        team_acquisition_value = round(universal_value + need_bonus + eligibility_bonus_value, 2)
+        # The third team-specific term: what a hole at this position would cost, converted from
+        # trade_value into this sum's bpa scale by the same documented ratio eligibility_bonus
+        # uses. ONLY when the exposure is actually measured -- the other three basis states
+        # (no_surplus / vacant / not_applicable) each return a number that is real arithmetic
+        # carrying no depth information, and adding one would be spending an unearned claim.
+        # A candidate at a position with no measurement contributes nothing here and says so
+        # via depth_basis, rather than being silently scored as if his position were safe.
+        depth = depth_by_position.get(position) or {}
+        depth_basis = depth.get("basis")
+        if depth_basis == "measured" and depth.get("worst_loss") is not None:
+            depth_exposure_value = min(
+                round(float(depth["worst_loss"]) * (DEPTH_EXPOSURE_MAX / TRADE_VALUE_SCALE_MAX), 2),
+                DEPTH_EXPOSURE_MAX,
+            )
+        else:
+            depth_exposure_value = 0.0
+
+        team_acquisition_value = round(
+            universal_value + need_bonus + eligibility_bonus_value + depth_exposure_value, 2)
 
         return pd.Series({
             "time_horizon_adj": round(time_horizon_adj, 2),
             "risk_adj": risk_adj,
             "universal_value": universal_value,
             "need_bonus": need_bonus,
+            "depth_exposure": depth_exposure_value,
+            # Which of the four states produced that number. Read it before reading the value:
+            # 0.0 means "not measured here", never "this position is safe".
+            "depth_basis": depth_basis,
             "eligibility_bonus": eligibility_bonus_value,
             "final_score": team_acquisition_value,
         })
@@ -1974,7 +2027,8 @@ def compute_draft_board(
     return _records_with_normalized_nan(results[[
         "player_id", "name", "position", "team", "injury_status", "bpa", "bpa_source",
         "time_horizon_adj", "risk_adj", "universal_value",
-        "need_bonus", "eligibility_bonus", "confidence", "final_score", "mode", "projected_points",
+        "need_bonus", "eligibility_bonus", "depth_exposure", "depth_basis",
+        "confidence", "final_score", "mode", "projected_points",
         "horizon_floor", "horizon_sensitivity", "waiting_cost", "replacement_basis",
         "horizon_basis", "identity_basis",
     ]], "projected_points", "horizon_floor", "horizon_sensitivity", "waiting_cost",

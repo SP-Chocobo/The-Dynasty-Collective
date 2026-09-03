@@ -75,7 +75,11 @@ Five real signals this module adds that didn't exist anywhere in the engine befo
         signal against the other, making both less interpretable to remove a correlation that
         reflects reality.
       - need_bonus + eligibility_bonus (this roster's own fit) -- applied directly, the same
-        additive-nudge treatment draft_room.py already gives these two terms.
+        additive-nudge treatment draft_room.py already gives these two terms. Deliberately TWO
+        of draft_room's three team-specific terms: depth_exposure is excluded, because
+        team_acquisition_value already reads it and necessity's counterpart to it is
+        waiting_cost. See the roster_fit_component itself, and ENGINE_WIRING_PASS.md, for the
+        level-versus-rate decomposition that makes that a ruling rather than an oversight.
       - round: late-round picks (round >= draft_room's own UPSIDE_MODE_DEFAULT_ROUND) get the
         WHOLE score rescaled proportionally into a low band (see LATE_ROUND_NECESSITY_CAP), not
         forced to one identical flat number -- deliberately NOT the same shape as the
@@ -235,7 +239,11 @@ NECESSITY_SURVIVAL_WEIGHT = 20.0     # (1 - survival_probability) scaled up
 NECESSITY_CLIFF_POINTS = {"HIGH": 12.0, "MEDIUM": 6.0, "LOW": 0.0}
 NECESSITY_RUN_BONUS = 6.0
 NECESSITY_DENIAL_WEIGHT = 10.0       # rival_premium normalized against draft_room.NEED_BONUS_MAX
-NECESSITY_ROSTER_FIT_WEIGHT = 0.8    # applied directly to (need_bonus + eligibility_bonus)
+                                     # -- which that quantity now exceeds; see #144 at the
+                                     # denial_component, where the saturation is measured.
+NECESSITY_ROSTER_FIT_WEIGHT = 0.8    # applied to (need_bonus + eligibility_bonus) -- NOT
+                                     # depth_exposure; see the component for why that
+                                     # exclusion is a ruling rather than an omission
 
 # Credible-rival-path floor for the human-facing block_opportunity ("denies a rival") flag --
 # the premium-driving rival's own real take_probability must clear this before the label
@@ -369,9 +377,43 @@ def compute_pick_necessity(raw_candidates: list[dict], round_num: int) -> list[t
 
         # p_take-free by design -- see the module docstring's rival_premium bullet for why
         # the p_take-weighted denial_value double-counted survival's own probability here.
+        #
+        # THE DIVISOR IS SATURATING AND THAT IS AN OPEN ITEM, NOT AN OVERSIGHT (#144). It is
+        # the cap on need_bonus, chosen when need_bonus and eligibility_bonus were the whole of
+        # the rival gap this normalizes -- the gap's max was then 8.33 against a divisor of
+        # 12.0, so the min() never bound. #139 added a third term; measured 2026-09-03 the gap
+        # reaches 16.21 and clips for 21.9% of sampled candidates, whose denial contribution is
+        # now identical whether the rival premium is 12.1 or 16.2. NOT repaired here, on
+        # purpose: the structurally matching divisor is the sum of all three caps, which would
+        # divide every denial contribution by three across every round -- a far larger change
+        # than the saturation it fixes, and NECESSITY_DENIAL_WEIGHT was calibrated against the
+        # old range. Choosing between them needs a measurement of necessity ordering that
+        # nothing in this repository has yet made (#56: a bound is not a threshold, and a cap
+        # borrowed as a normalizer is the same category error). The rate is pinned by
+        # test_threshold_reachability so it cannot drift unnoticed in either direction.
         rival_premium = c.get("rival_premium") or 0.0
         denial_component = (min(rival_premium / dr.NEED_BONUS_MAX, 1.0) * NECESSITY_DENIAL_WEIGHT) if rival_premium > 0 else 0.0
 
+        # TWO of draft_room's three team-specific terms, and the third is EXCLUDED ON PURPOSE.
+        #
+        # depth_exposure (#139) is the same quantity class on the same scale, and reading it
+        # here is the obvious-looking move -- it was written, measured (up to 7.39 necessity
+        # points, 0 argmax flips on 8 real board states), and then reverted, because the
+        # measurement was not the question. ENGINE_WIRING_PASS.md rules that exposure and
+        # waiting_cost are different functions of one concern and belong in one layer each:
+        #
+        #   team_acquisition_value reads depth_exposure -- the LEVEL: "this hole is expensive"
+        #   pick_necessity reads waiting_cost      -- the RATE:  "and it is getting harder to fill"
+        #
+        # A hole worth 12 points with twelve replacements still on the board is expensive and
+        # not urgent. Adding exposure here would boost the same position twice for one reason,
+        # with nothing downstream able to separate the two contributions -- the exact
+        # double-count that pass exists to prevent. necessity still SEES the term, through
+        # team_acquisition_value's own standout component; it just does not count it again.
+        #
+        # The snapshot carries depth_exposure regardless (see CandidateSnapshot), because
+        # "does not score it" and "cannot show it" are different claims and only the first is
+        # intended. test_pick_synthesis holds this boundary as an executable assertion.
         roster_fit_component = (c.get("need_bonus", 0.0) + c.get("eligibility_bonus", 0.0)) * NECESSITY_ROSTER_FIT_WEIGHT
 
         raw_score = (
@@ -505,15 +547,24 @@ def decision_path_flags(candidates: list[dict]) -> list[dict]:
         the board's best raw asset is being outranked by contextual terms -- real, worth
         surfacing explicitly so context never silently buries a materially better player.
       context_elevated -- this candidate's own (team_acquisition_value - universal_value)
-        meets or exceeds NEED_BONUS_MAX: the maximum a single roster slot can ever contribute
-        to acquisition value. Unlike pure_value (a cross-candidate comparison -- TAV can never
-        fall below UV for any one candidate, since need_bonus/eligibility_bonus are both
+        meets or exceeds NEED_BONUS_MAX. Unlike pure_value (a cross-candidate comparison -- TAV
+        can never fall below UV for any one candidate, since all three team-specific terms are
         non-negative by construction, so "his own TAV dipping under his own UV" is structurally
         impossible), this is a real per-candidate quantity: a large, meaningful share of his
         rank here is roster fit, not raw talent. The two are the Context Gap signal's two
         directions -- pure_value is "buried despite excellent talent," context_elevated is
         "ranked highly substantially because of fit" -- and a UI is expected to surface them as
         one indicator with two readings, never as competing scores.
+
+        READ THE THRESHOLD CAREFULLY. NEED_BONUS_MAX is the cap on ONE of the three terms that
+        make up that gap, and it was picked as this flag's bar back when it was the cap on
+        nearly all of it -- measured then at 0.0% firing and recorded in CDME_CONTRACTS.md as
+        an unreachable threshold. #139 added depth_exposure as a third term; the gap's ceiling
+        grew, the constant did not, and the flag now fires on ~7.8% of priced rows, all of them
+        in the middle rounds. That is a bound that became a discriminator by accident, not a
+        threshold anyone has argued for (#56), and the product decision about what SHOULD light
+        this badge is still open. test_threshold_reachability.py holds the live measurement and
+        fails if it drifts to either never-fires or almost-always-fires.
 
     Classification over existing numbers, never new scoring: nothing here feeds necessity,
     ranking, or any value -- same rule as near_tie_flags below. Expects each candidate dict
@@ -871,6 +922,12 @@ class CandidateSnapshot:
     # THRESHOLD and decision_path_flags' block_opportunity, the one consumer. Defaulted so
     # existing hand-built CandidateSnapshot fixtures that predate this field still construct.
     rival_premium_take_probability: Optional[float] = None
+    # #139's third team-specific term, alongside need_bonus and eligibility_bonus above.
+    # Defaulted, and down here rather than beside them, for the same two reasons that field
+    # is: upside-mode boards genuinely never compute it, and hand-built CandidateSnapshot
+    # fixtures predate it. None means "not measured", which is what depth_basis says in words
+    # on the board row this is read from -- never "this roster's depth here is safe".
+    depth_exposure: Optional[float] = None
     # What deferring this position actually costs: this player's projected points minus the
     # points of the best player at his position expected to be STILL UNDRAFTED when the draft
     # ends (draft_room.horizon_replacement). OBSERVABLE ONLY -- read by nothing that scores,
@@ -993,7 +1050,9 @@ def build_snapshot(
             "player_id": pid, "name": row["name"], "position": row["position"], "team": row.get("team"),
             "bpa": row["bpa"], "bpa_source": row["bpa_source"], "confidence": row["confidence"],
             "universal_value": universal_value, "need_bonus": row.get("need_bonus", 0.0),
-            "eligibility_bonus": row.get("eligibility_bonus", 0.0), "team_acquisition_value": row["final_score"],
+            "eligibility_bonus": row.get("eligibility_bonus", 0.0),
+            "depth_exposure": row.get("depth_exposure"),
+            "team_acquisition_value": row["final_score"],
             "survival_probability": survival, "intervening_picks": a.get("intervening_picks"),
             "opportunity_cost": a.get("opportunity_cost"),
             "expected_value_of_waiting": expected_value_of_waiting(universal_value, survival),
@@ -1147,7 +1206,8 @@ def snapshot_is_current(snapshot: PickSnapshot, picks: list[dict], merger: DataM
 
 
 _DIFF_FIELDS = (
-    "universal_value", "need_bonus", "eligibility_bonus", "team_acquisition_value",
+    "universal_value", "need_bonus", "eligibility_bonus", "depth_exposure",
+    "team_acquisition_value",
     "survival_probability", "opportunity_cost", "expected_value_of_waiting", "denial_value",
     "rival_premium", "positional_forfeit", "pick_necessity",
 )

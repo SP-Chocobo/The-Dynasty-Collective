@@ -210,3 +210,103 @@ class NoInventedProbabilityTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class WiredIntoTeamAcquisitionValueTests(unittest.TestCase):
+    """#139: the term reaches a decision, and does so under the same contract as its two
+    siblings. Built after run_need_bonus_ablation established that need_bonus is a POSITIONAL
+    GATE rather than a depth signal, so the two are not double-counting."""
+
+    @classmethod
+    def setUpClass(cls):
+        import data_merger as dm, draft_room as dr
+        from run_asset_character_measurement import OFFENSE_POSITIONS
+        cls.dr = dr
+        cls.league = {"roster_positions": LEAGUE, "total_rosters": 12, "settings": {"type": 2}}
+        merger = dm.DataMerger()
+        proj, db, pid = merger.projections, {}, 0
+        for pos in OFFENSE_POSITIONS:
+            sub = proj[proj["position"] == pos].sort_values("trade_value", ascending=False)
+            for _, row in sub.iterrows():
+                pid += 1
+                parts = str(row["norm_name"]).split()
+                db[str(pid)] = {"first_name": (parts[0] if parts else "").upper(),
+                                "last_name": " ".join(parts[1:]).title(),
+                                "position": pos, "fantasy_positions": [pos],
+                                "team": row.get("team")}
+        cls.merger, cls.db = merger, db
+        # A deep roster: depth only becomes a measurable question once a bench exists, so an
+        # empty-board fixture would exercise only the vacant branch.
+        cls.picks = []
+        for rnd in range(1, 13):
+            board = dr.compute_draft_board(merger, db, cls.picks, my_roster_id="1",
+                                           league=cls.league, mode="balanced")
+            order = list(range(1, 13)) if rnd % 2 else list(range(12, 0, -1))
+            for slot, row in zip(order, board[:12]):
+                cls.picks.append({"player_id": row["player_id"], "roster_id": str(slot),
+                                  "round": rnd})
+        cls.board = dr.compute_draft_board(merger, db, cls.picks, my_roster_id="1",
+                                           league=cls.league, mode="balanced")
+
+    def test_the_term_reaches_the_board(self):
+        self.assertIn("depth_exposure", self.board[0])
+        self.assertIn("depth_basis", self.board[0])
+
+    def test_it_is_actually_non_zero_somewhere(self):
+        """Non-vacuity. A term wired but always 0.0 would pass every other test here and be
+        exactly the write-only quantity this whole pass exists to stop creating."""
+        self.assertTrue(any((row.get("depth_exposure") or 0) > 0 for row in self.board),
+                        "depth_exposure is 0.0 on every row -- it is wired but inert")
+
+    def test_the_layer_identity_holds(self):
+        """team_acquisition_value is a SUM of named parts, and a reader must be able to
+        reconstruct it. final_score is that sum for a balanced board."""
+        for row in self.board[:30]:
+            with self.subTest(player=row["name"]):
+                parts = (row["universal_value"] + row["need_bonus"]
+                         + row["eligibility_bonus"] + row["depth_exposure"])
+                self.assertAlmostEqual(parts, row["final_score"], places=1)
+
+    def test_only_a_measured_basis_contributes(self):
+        """The other three states each return real arithmetic that carries no depth
+        information. Spending one would be claiming a measurement that was not made."""
+        for row in self.board:
+            with self.subTest(player=row["name"], basis=row["depth_basis"]):
+                if row["depth_basis"] != "measured":
+                    self.assertEqual(row["depth_exposure"], 0.0)
+
+    def test_zero_means_not_measured_and_never_this_position_is_safe(self):
+        """The distinction the basis exists to carry: a vacant position is the WORST case, not
+        a covered one, and it reports 0.0 because nothing was measured."""
+        vacant = [r for r in self.board if r["depth_basis"] == lo.EXPOSURE_VACANT]
+        if vacant:
+            self.assertTrue(all(r["depth_exposure"] == 0.0 for r in vacant))
+
+    def test_it_is_bounded_by_its_own_constant(self):
+        for row in self.board:
+            with self.subTest(player=row["name"]):
+                self.assertLessEqual(row["depth_exposure"], self.dr.DEPTH_EXPOSURE_MAX)
+
+    def test_it_cannot_flip_a_large_universal_value_gap(self):
+        """The same invariant need_bonus and eligibility_bonus each carry. A contextual term
+        that can override a real value gap has stopped being a nudge -- an uncapped
+        eligibility_bonus did exactly that once, at 6.8x NEED_BONUS_MAX."""
+        top, bottom = self.board[0], self.board[-1]
+        spread = top["universal_value"] - bottom["universal_value"]
+        self.assertGreater(spread, self.dr.DEPTH_EXPOSURE_MAX,
+                           "fixture's value spread is too small to exercise this invariant")
+        self.assertGreater(top["universal_value"] - (bottom["universal_value"]
+                                                     + self.dr.DEPTH_EXPOSURE_MAX), 0)
+
+    def test_the_bound_matches_the_other_roster_specific_terms(self):
+        """All three answer 'how good is this player FOR THIS ROSTER'. A different magnitude
+        would be inventing one the evidence does not support (#56)."""
+        self.assertEqual(self.dr.DEPTH_EXPOSURE_MAX, self.dr.NEED_BONUS_MAX)
+
+    def test_upside_mode_does_not_fabricate_the_term(self):
+        """upside_score never computes it, and emitting 0.0 there would invent a measurement --
+        the rule already stated for time_horizon_adj and risk_adj on that path."""
+        upside = self.dr.compute_draft_board(self.merger, self.db, self.picks,
+                                             my_roster_id="1", league=self.league, mode="upside")
+        self.assertNotIn("depth_exposure", upside[0])
+        self.assertNotIn("depth_basis", upside[0])

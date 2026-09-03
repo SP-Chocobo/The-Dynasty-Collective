@@ -636,7 +636,18 @@ def pick_analysis(
                 denial_team = risk["roster_id"]
             # rival_premium: how much MORE this player is worth to the best-positioned
             # intervening rival than his team-agnostic universal_value -- their own
-            # need/eligibility premium, with NO take-probability in it. This exists as a
+            # roster-fit premium, with NO take-probability in it. Whatever team-specific terms
+            # compute_draft_board layers on, this subtraction picks up automatically, by
+            # construction: since #139 that is three terms (need_bonus, eligibility_bonus,
+            # depth_exposure) rather than two, which is correct here -- a rival's depth hole is
+            # as real a reason for them to take this player as an empty starting slot is.
+            #
+            # ONE CONSEQUENCE, DOWNSTREAM, that this comment exists to make findable: the
+            # necessity denial term normalizes this number by draft_room.NEED_BONUS_MAX, which
+            # is the cap on ONE of those three terms. That divisor was never exceeded when the
+            # gap had two terms (max 8.33). Measured 2026-09-03 with three: max 16.21, and
+            # 21.9% of sampled candidates now clip at the divisor. See pick_synthesis's
+            # denial_component and test_threshold_reachability. This exists as a
             # separate number specifically for pick_necessity's denial term: denial_value
             # above is (opponent value x p_take), and that same p_take already compounds
             # into survival_probability, so a necessity score using both counted the

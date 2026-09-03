@@ -66,12 +66,23 @@ be folded *into* it. This split is the engine's central architectural commitment
 failure the additive layering exists to prevent.
 
 **Invariants**
-1. `team_acquisition_value == universal_value + need_bonus + eligibility_bonus`, in every mode.
+1. `team_acquisition_value == universal_value + need_bonus + eligibility_bonus +
+   depth_exposure`, in every mode. (`depth_exposure` joined the sum in #139; every earlier
+   measurement in this document that states the two-term form was correct when taken and is
+   marked where it is load-bearing.)
 2. Identical for a given player across every roster on the same board, by construction.
 3. In upside mode it equals `final_score` — the *role* is filled, but by a different formula.
-   **Cross-mode comparison of this number is meaningless** and must never be done.
-4. Neither `need_bonus` nor `eligibility_bonus` may flip a large `universal_value` gap; both
-   are capped for exactly this reason (`NEED_BONUS_MAX`, `ELIGIBILITY_BONUS_MAX`).
+   **Cross-mode comparison of this number is meaningless** and must never be done. Upside mode
+   never computes `depth_exposure` at all, and emits no column for it rather than emitting
+   `0.0`, which would fabricate a measurement.
+4. None of the three team-specific terms may flip a large `universal_value` gap; each is capped
+   for exactly this reason (`NEED_BONUS_MAX`, `ELIGIBILITY_BONUS_MAX`, `DEPTH_EXPOSURE_MAX` —
+   the same number three times, deliberately: they are one class of term, and giving them
+   different magnitudes would be inventing a ranking among them that no measurement supports).
+5. `depth_exposure` contributes only where `depth_basis == "measured"`. Its other three states
+   (`no_surplus`, `vacant`, `not_applicable`) contribute `0.0`, and that zero means **"not
+   measured here"**, never "this roster's depth at this position is safe". Read `depth_basis`
+   before reading the value.
 
 **Boundary cases that are legitimate, not bugs**
 - Negative, for a declining player with an injury flag.
@@ -5444,7 +5455,8 @@ is not one contract with four numbers.
 | | threshold (aliased as `CLIFF_MIN_MATERIAL_GAP`) | bpa gap **within one position** |
 | `NEED_BONUS_MAX` 12.0 | **cap** | `need_bonus` itself |
 | | **divisor** | `rival_premium` (necessity's denial term) |
-| | threshold | `TAV − UV` (`context_elevated`) |
+| | **cap** | `eligibility_bonus`, and `depth_exposure` (#139) |
+| | threshold | `TAV − UV` (`context_elevated`) — now the sum of **three** capped terms |
 | `NECESSITY_STANDOUT_REFERENCE_GAP` 15.0 | **divisor** | leader-vs-field TAV margin (necessity's standout term) |
 | | threshold | leader−second TAV margin (`decision_regime`) |
 | | threshold | `positional_forfeit` (`cliff_protection`) |
@@ -5456,7 +5468,8 @@ Measured distributions, on the repaired unit across eight real board states:
 | TAV adjacent gap | 2061 | 0.54 | 2.88 | 21.67 | 56.85 | 15.7% |
 | UV adjacent gap | 2061 | 0.54 | 2.88 | 20.54 | 56.85 | 16.1% |
 | bpa gap within a position | 2020 | **2.00** | 10.00 | 34.00 | 71.00 | 58.5% |
-| `TAV − UV` | 2070 | 4.00 | 8.33 | 8.33 | **8.33** | **0.0%** |
+| `TAV − UV` | 2070 | 4.00 | 8.33 | 8.33 | **8.33** | **0.0%** | *(superseded — see below)* |
+| `TAV − UV` *(re-measured 2026-09-03, three terms)* | 1992 | 6.12 | 9.24 | 13.21 | **13.21** | **7.8%** |
 | leader−second TAV margin | 9 | 0.35 | 4.99 | 11.92 | **12.69** | **0.0%** |
 | `positional_forfeit` | 72 | **54.81** | 121.89 | 154.94 | 154.94 | **73.6%** |
 | `rival_premium` | 72 | 4.33 | 8.33 | 8.33 | 8.33 | 0.0% |
@@ -5508,11 +5521,26 @@ diverge later."* The concept split is already made explicitly. No change.
 product decision and nothing in this repository determines it. Both are now pinned by tests that
 assert the measured state, so the numbers here cannot silently rot:
 
-1. `context_elevated` (`TAV − UV >= NEED_BONUS_MAX`). Unreachable. Max observed `TAV − UV` is
-   **8.33** on the standard board and **8.67** across **1020 rows** of a real IDP league with
-   genuine multi-eligibility; a deliberately constructed triple-eligible candidate on a
-   saturated roster reached only **3.55**. `NEED_BONUS_MAX` is three dedicated slots' worth and
-   this roster shape has at most two.
+1. `context_elevated` (`TAV − UV >= NEED_BONUS_MAX`). **No longer unreachable — and nothing was
+   repaired.** The original measurement stands as written: max observed `TAV − UV` was **8.33**
+   on the standard board and **8.67** across **1020 rows** of a real IDP league with genuine
+   multi-eligibility; a deliberately constructed triple-eligible candidate on a saturated roster
+   reached only **3.55**. `NEED_BONUS_MAX` is three dedicated slots' worth and that roster shape
+   has at most two.
+
+   What changed is the *quantity*, not the constant. #139 added `depth_exposure` as a **third**
+   team-specific term, each capped at `NEED_BONUS_MAX`, so the gap's ceiling went from ~2× that
+   cap to 3×. Re-measured 2026-09-03 across the same eight board states: p50 **6.12**, max
+   **13.21**, firing on **7.8%** of 1992 priced rows — concentrated entirely in rounds 6–8, the
+   window where a bench exists for depth to be a real question about and positional holes are
+   still open.
+
+   This is filed as a bound that became a discriminator *by accident*, not as a threshold anyone
+   has argued for. The category error §A(#56) names is unchanged: `NEED_BONUS_MAX` is still the
+   cap on one of three terms being read as a firing threshold on their sum. **The product
+   decision about what should light this badge remains open.** What is now pinned, in
+   `ContextElevatedBecameReachableTests`, is that neither failure mode is currently present —
+   the rule is asserted to fire, and asserted not to fire for most candidates.
 2. `cliff_protection` (`positional_forfeit >= NECESSITY_STANDOUT_REFERENCE_GAP`). Fires 73.6% of
    the time against a quantity whose median is 3.6× the threshold.
 

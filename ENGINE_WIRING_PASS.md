@@ -215,6 +215,60 @@ and the transition must be visible.
 
 ---
 
+## Addendum — #139 implemented, and what implementing it turned up
+
+Written after the pass above, on the same branch. The ruling held; three things around it did
+not survive contact.
+
+**The term landed as ruled.** `team_acquisition_value = universal_value + need_bonus +
+eligibility_bonus + depth_exposure`, converted from `trade_value` into the bpa scale by the
+same documented ratio `eligibility_bonus` uses, bounded by `DEPTH_EXPOSURE_MAX = NEED_BONUS_MAX`
+— the same number as the other two, deliberately, because they are one class of term and
+different magnitudes would rank them by nothing. Contributes only where `depth_basis ==
+"measured"`; the other three states contribute `0.0` and that zero means *not measured*, never
+*safe*. Upside mode never computes it and emits no column for it.
+
+The predicted round-9 discontinuity is real and visible in the basis rather than hidden: on the
+sampled 20-slot shape the board reads `vacant` in rounds 1–5, `no_surplus` mid, and `measured`
+from round 6–7 once a bench exists.
+
+**The necessity wiring was built, measured, and reverted.** `roster_fit_component` reads
+`need_bonus + eligibility_bonus`, and adding the third term to it looks like an obvious
+consistency fix — the bullet's own claim is "this roster's own fit". It was implemented and
+measured: up to **7.39** necessity points, **0** argmax flips across 8 real board states. Then
+reverted, because the measurement was answering the wrong question. The level/rate
+decomposition above is the answer, and a clean measurement does not overturn it. Recorded here
+because the next person to notice the asymmetry will reach for the same fix; the exclusion is
+now an executable assertion (`DepthExposureStopsAtTheValueLayerTests`) rather than a silence.
+
+**#144 — the same constant borrowed twice, against a quantity that outgrew it.** `NEED_BONUS_MAX`
+is the cap on *one* term. Two places compare it against the *sum*:
+
+| site | before #139 | after #139 |
+|---|---|---|
+| `context_elevated` (`TAV − UV >= NEED_BONUS_MAX`) | max gap **8.33**, fires **0.0%** — recorded as a dead threshold | max **13.21**, fires **7.8%** of 1992 priced rows, all in rounds 6–8 |
+| necessity's `denial_component` (`min(rival_premium / NEED_BONUS_MAX, 1)`) | max **8.33**, never bound | max **16.21**, **21.9%** of sampled candidates now clip |
+
+`rival_premium` is `(rival TAV − rival UV)` on the rival's own board, so it picked the term up
+automatically — correctly, since a rival's depth hole is as real a reason for them to take a
+player as an empty slot is. The divisor did not follow it.
+
+Neither is repaired. The first is a bound that became a discriminator *by accident*, which is
+still #56's category error and still an open product decision. The second's structurally
+matching divisor is the sum of all three caps, which would divide every denial contribution by
+three across every round to fix a tail — a larger change than the problem, against a weight
+calibrated on the old range. Both rates are pinned in `test_threshold_reachability.py` so
+neither can move unseen.
+
+**One presentation defect, found by generalizing.** The Draft Room's "What changed?" drawer
+renders `_DRAFT_ROOM_DIFF_LABELS.get(k, k)` — a missing label shows the raw identifier rather
+than failing. Adding `depth_exposure` to the diff fields would have rendered `depth_exposure:
++7.39` to a person; writing the coverage test generally rather than for that one field found
+`rival_premium` and `positional_forfeit` had been doing it already. All three now have labels
+and the coverage is asserted.
+
+---
+
 ## State at the end of this pass
 
 - `main` merged and unfrozen at `cf8fa0c`; marker branch `pre-blind-audit` sits there.

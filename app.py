@@ -68,9 +68,15 @@ from sleeper_client import SleeperAPIError, SleeperClient, compute_points_from_s
 # number itself. See the Draft Room view's "What changed?" drawer.
 _DRAFT_ROOM_DIFF_LABELS = {
     "universal_value": "Universal value", "need_bonus": "Roster need",
-    "eligibility_bonus": "Lineup flexibility", "team_acquisition_value": "Acquisition value",
+    "eligibility_bonus": "Lineup flexibility", "depth_exposure": "Depth exposure",
+    "team_acquisition_value": "Acquisition value",
     "survival_probability": "Survival probability", "opportunity_cost": "Opportunity cost",
     "expected_value_of_waiting": "Value of waiting", "denial_value": "Denial value",
+    # These two were unlabelled until a coverage test over _DIFF_FIELDS found them: the drawer
+    # falls back to the raw identifier rather than failing, so they had been rendering to
+    # people as "rival_premium" and "positional_forfeit". Worded from the reader's side --
+    # what the number tells them, not what the engine calls it.
+    "rival_premium": "Value to a rival", "positional_forfeit": "Cost of skipping this position",
     "pick_necessity": "Pick necessity",
 }
 

@@ -307,14 +307,18 @@
       }
     },
     "test_depth_exposure.py": {
-      "test_methods": 22,
+      "test_methods": 31,
       "asserts": {
-        "assertEqual": 23,
-        "assertGreater": 2,
+        "assertAlmostEqual": 1,
+        "assertEqual": 25,
+        "assertGreater": 4,
         "assertGreaterEqual": 1,
+        "assertIn": 2,
         "assertIsNone": 3,
         "assertLess": 4,
-        "assertNotIn": 1
+        "assertLessEqual": 1,
+        "assertNotIn": 3,
+        "assertTrue": 2
       }
     },
     "test_depth_ratings.py": {
@@ -687,14 +691,14 @@
       }
     },
     "test_pick_synthesis.py": {
-      "test_methods": 100,
+      "test_methods": 107,
       "asserts": {
-        "assertAlmostEqual": 10,
-        "assertEqual": 76,
+        "assertAlmostEqual": 12,
+        "assertEqual": 79,
         "assertFalse": 18,
-        "assertGreater": 9,
+        "assertGreater": 10,
         "assertGreaterEqual": 7,
-        "assertIn": 11,
+        "assertIn": 14,
         "assertIsInstance": 2,
         "assertIsNone": 10,
         "assertIsNotNone": 8,
@@ -1022,14 +1026,14 @@
       }
     },
     "test_threshold_reachability.py": {
-      "test_methods": 9,
+      "test_methods": 12,
       "asserts": {
-        "assertAlmostEqual": 1,
+        "assertAlmostEqual": 3,
         "assertEqual": 5,
-        "assertGreater": 4,
+        "assertGreater": 8,
         "assertIn": 2,
-        "assertLess": 1,
-        "assertTrue": 1
+        "assertLess": 2,
+        "assertTrue": 3
       }
     },
     "test_todo_log.py": {

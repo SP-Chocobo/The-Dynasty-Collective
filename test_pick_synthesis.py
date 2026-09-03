@@ -210,11 +210,16 @@ class PositionViewDepthTests(unittest.TestCase):
 
 
 def _raw_candidate(team_acquisition_value, survival_probability=1.0, positional_cliff=None,
-                    position_run_detected=False, rival_premium=0.0, need_bonus=0.0, eligibility_bonus=0.0):
+                    position_run_detected=False, rival_premium=0.0, need_bonus=0.0,
+                    eligibility_bonus=0.0, depth_exposure=None):
+    # depth_exposure defaults to None rather than 0.0 so this helper keeps producing the shape
+    # a row with no depth measurement actually has -- the distinction the whole basis idiom
+    # exists to preserve. Passing 0.0 explicitly would test a different case.
     return {
         "team_acquisition_value": team_acquisition_value, "survival_probability": survival_probability,
         "positional_cliff": positional_cliff, "position_run_detected": position_run_detected,
         "rival_premium": rival_premium, "need_bonus": need_bonus, "eligibility_bonus": eligibility_bonus,
+        "depth_exposure": depth_exposure,
     }
 
 
@@ -1336,6 +1341,117 @@ class ContextualSignalsCannotReachTheRankingTests(unittest.TestCase):
         self.assertEqual(got[0], "best",
                          "the maximally contextual row outranked a row worth 99x more")
         self.assertEqual(got, ["best", "mid", "weak"])
+
+
+
+class DepthExposureStopsAtTheValueLayerTests(unittest.TestCase):
+    """#139: the term reaches team_acquisition_value and deliberately goes no further.
+
+    This class exists because the opposite was built first. depth_exposure is on the same
+    scale as need_bonus and eligibility_bonus and sits in the same sum, so adding it to
+    necessity's roster_fit_component looks like a straightforward consistency fix -- and it
+    measures fine (up to 7.39 necessity points, 0 argmax flips on 8 real board states). It was
+    written, measured, and reverted, because the measurement was answering the wrong question.
+
+    ENGINE_WIRING_PASS.md rules that depth_exposure and waiting_cost are different functions of
+    one concern, and each belongs in exactly one layer:
+
+        team_acquisition_value  <- depth_exposure  (the LEVEL: this hole is expensive)
+        pick_necessity          <- waiting_cost    (the RATE:  and it is getting harder to fill)
+
+    An expensive hole with twelve replacements still on the board is not urgent. Reading
+    exposure in both layers boosts one position twice for one reason, with nothing downstream
+    able to separate the contributions.
+
+    So this asserts an ABSENCE, which is the fragile kind of test: it must distinguish "the
+    term is excluded by decision" from "the term never arrives", or it would pass just as
+    happily against a broken pipeline. Both halves are asserted."""
+
+    def test_depth_exposure_does_not_move_the_necessity_score(self):
+        exposed = _raw_candidate(100.0, depth_exposure=10.0)
+        covered = _raw_candidate(100.0, depth_exposure=0.0)
+        (exposed_score, _), (covered_score, _) = ps.compute_pick_necessity(
+            [exposed, covered], round_num=3)
+        self.assertAlmostEqual(
+            exposed_score, covered_score, places=6,
+            msg="depth_exposure now moves pick_necessity. team_acquisition_value already "
+                "prices it; necessity's counterpart is waiting_cost. Counting it in both "
+                "boosts one position twice for one reason -- see ENGINE_WIRING_PASS.md")
+
+    def test_but_the_two_terms_that_ARE_read_still_move_it(self):
+        """Non-vacuity for the test above, and the thing that makes the absence a decision.
+        If roster_fit had simply stopped working, the assertion above would pass and mean
+        nothing."""
+        with_fit = _raw_candidate(100.0, need_bonus=6.0, eligibility_bonus=4.0)
+        without = _raw_candidate(100.0)
+        (fit_score, _), (plain_score, _) = ps.compute_pick_necessity(
+            [with_fit, without], round_num=3)
+        self.assertGreater(fit_score, plain_score,
+                           "roster_fit is not reaching necessity at all -- the exclusion test "
+                           "above is passing for the wrong reason")
+
+    def test_the_snapshot_still_CARRIES_the_term_it_does_not_score(self):
+        """"Not scored" and "not visible" are different claims, and only the first is intended.
+        A number that changed the acquisition value must remain readable in the record that
+        explains it, or the causal chain breaks exactly where someone would ask (#119) -- the
+        same defect family #138 catalogues, one layer up."""
+        self.assertIn("depth_exposure", ps.CandidateSnapshot.__dataclass_fields__)
+        self.assertIn("depth_exposure", ps._DIFF_FIELDS,
+                      "a term inside team_acquisition_value must appear in the snapshot diff, "
+                      "or a TAV change it caused shows up as an unexplained delta")
+
+    def test_an_ABSENT_depth_exposure_is_not_scored_as_a_zero_hazard(self):
+        """None means "not measured here" -- upside-mode rows never compute it, and three of
+        the four depth_basis states produce no measurement. It must not crash a scorer that
+        expects a float, and must not read as "this position is safe"."""
+        unmeasured = _raw_candidate(100.0, depth_exposure=None)
+        explicit_zero = _raw_candidate(100.0, depth_exposure=0.0)
+        (a, _), (b, _) = ps.compute_pick_necessity([unmeasured, explicit_zero], round_num=3)
+        self.assertAlmostEqual(a, b, places=6)
+
+    def test_a_candidate_dict_that_predates_the_field_still_scores(self):
+        """Non-vacuity for the `.get()`s: every hand-built fixture and every upside-mode row in
+        this repo omits the key entirely, and a KeyError here would be a crash rather than a
+        wrong number."""
+        legacy = {"team_acquisition_value": 100.0, "survival_probability": 1.0,
+                  "positional_cliff": None, "position_run_detected": False,
+                  "rival_premium": 0.0, "need_bonus": 0.0, "eligibility_bonus": 0.0}
+        self.assertEqual(len(ps.compute_pick_necessity([legacy], round_num=3)), 1)
+
+    def test_the_board_key_and_the_snapshot_field_actually_meet(self):
+        """build_snapshot constructs CandidateSnapshot with **c, so a mismatch between the key
+        draft_room emits and the field the dataclass declares is a TypeError at runtime, not a
+        missing number. Checked by name, since the two halves are written 500 lines apart."""
+        import draft_room as dr
+        self.assertIn("depth_exposure", dr.compute_draft_board.__doc__ or "",
+                      "draft_room's board docstring no longer names the term it emits")
+        snapshot = ps.CandidateSnapshot(
+            player_id="1", name="A", position="RB", team="X", bpa=1.0, bpa_source="s",
+            confidence=1.0, universal_value=10.0, need_bonus=0.0, eligibility_bonus=0.0,
+            team_acquisition_value=10.0, survival_probability=None, intervening_picks=None,
+            opportunity_cost=None, expected_value_of_waiting=None, denial_value=None,
+            denial_team=None, rival_premium=None, positional_forfeit=None,
+            position_expected_taken=None, positional_cliff=None, position_run_detected=False,
+            pick_necessity=50.0, necessity_label="CLOSE CALL", near_tie_with_leader=None,
+            cliff_protection=False, block_opportunity=False, pure_value=False,
+            context_elevated=False, consensus_rank=None, consensus_tier=None, reach_label=None,
+            projected_points=None, depth_exposure=7.5)
+        self.assertEqual(snapshot.depth_exposure, 7.5)
+
+    def test_every_diff_field_has_a_human_label_in_the_drawer(self):
+        """The drawer renders `_DRAFT_ROOM_DIFF_LABELS.get(k, k)`, so a field added to
+        _DIFF_FIELDS without a label does not fail -- it silently shows the raw identifier to a
+        person. Found exactly that way: depth_exposure would have rendered as "depth_exposure:
+        +7.39", and it turned out rival_premium and positional_forfeit had been doing that
+        already. Generalized past those three so the next addition is caught too.
+
+        Source-scanned through ui_source rather than imported, as every app-level contract here
+        is: app.py is a top-level Streamlit script. Scanning the label BLOCK, not the whole
+        file, so a field name appearing in unrelated prose cannot satisfy this."""
+        import ui_source
+        block = ui_source.block("_DRAFT_ROOM_DIFF_LABELS = {", until="}")
+        missing = [f for f in ps._DIFF_FIELDS if f'"{f}":' not in block]
+        self.assertEqual(missing, [], f"diff fields with no display label: {missing}")
 
 
 if __name__ == "__main__":

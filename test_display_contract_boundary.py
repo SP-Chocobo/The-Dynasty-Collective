@@ -150,8 +150,22 @@ class TheScaleIsNotAPointsTotalTests(unittest.TestCase):
         """
         import dataclasses
         import pick_synthesis as ps
+        # 38 -> 39 (2026-09-03): depth_exposure, #139's third team-specific term inside
+        # team_acquisition_value. The two questions this test exists to force, answered rather
+        # than skipped past:
+        #
+        #   SCALE. It is on the same bpa-anchored scale as need_bonus and eligibility_bonus,
+        #   bounded [0, DEPTH_EXPOSURE_MAX] and never negative. It implies no unit this file
+        #   has not already measured, and cannot by itself make a TAV negative -- the mechanical
+        #   fact the rest of this module rests on is untouched.
+        #
+        #   SHOULD THE CARD RENDER IT? No, and for the reason the card already does not render
+        #   need_bonus or eligibility_bonus: the metric row shows the three headline quantities,
+        #   and the decomposition of TAV belongs in the "What changed?" drawer, where this term
+        #   now appears with a display label. Adding a fourth adjacent identically-formatted
+        #   card would deepen exactly the unit-borrowing problem documented above, not fix it.
         self.assertEqual(
-            len(dataclasses.fields(ps.CandidateSnapshot)), 38,
+            len(dataclasses.fields(ps.CandidateSnapshot)), 39,
             "CandidateSnapshot's field count changed. That is fine and often correct -- but "
             "confirm the new field does not imply a scale the card cannot support, decide "
             "whether the card should render it, then update this number.")

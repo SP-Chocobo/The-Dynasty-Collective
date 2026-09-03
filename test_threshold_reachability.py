@@ -6,12 +6,18 @@ real-points unit:
     quantity                        p50      max    rule fires
     leader-second TAV margin        0.35    12.69      0.0%   <- "decisive"
     positional_forfeit             54.81   154.94     73.6%   <- cliff_protection
-    TAV - UV (context)              4.00     8.67      0.0%   <- context_elevated
+    TAV - UV (context)              6.12    13.21      7.8%   <- context_elevated
     TAV adjacent gap                0.54    56.85     15.7%   <- near_tie
     bpa gap within a position       2.00    71.00     58.5%   <- CLIFF_MIN_MATERIAL_GAP
 
 The same literal 15.0 gates two quantities whose medians differ by 150x. That is not one
 contract with one number; it is several concepts that happen to share a literal.
+
+The context row was re-measured 2026-09-03, after #139 added depth_exposure as a third
+team-specific term: `TAV - UV` used to be capped near NEED_BONUS_MAX and fired 0.0% of the
+time. It now clears it on 7.8% of priced rows. NOTHING WAS FIXED -- the constant never moved;
+the quantity underneath it grew. See ContextElevatedBecameReachableTests, which is where that
+distinction is kept from being forgotten.
 
 THE ROOT PATTERN, and it is what these tests exist to prevent recurring. Two of the three
 constants were chosen -- correctly -- as a BOUND or a REFERENCE:
@@ -184,25 +190,15 @@ class DecisiveIsTheComplementOfANearTieTests(_RealBoards):
 
 
 class KnownUnreachableThresholdsTests(_RealBoards):
-    """Two rules whose thresholds are still bounds borrowed as thresholds. These are recorded
-    as executable measurements rather than repaired, because choosing what SHOULD fire them is
-    a product decision and no evidence in this repository determines it. They are asserted to
+    """Rules whose thresholds are still bounds borrowed as thresholds. These are recorded as
+    executable measurements rather than repaired, because choosing what SHOULD fire them is a
+    product decision and no evidence in this repository determines it. They are asserted to
     still be unreachable so that a future change to either constant is noticed here, and so the
-    claim in CDME_CONTRACTS.md cannot silently rot."""
+    claim in CDME_CONTRACTS.md cannot silently rot.
 
-    def test_context_elevated_is_measurably_unreachable(self):
-        worst = 0.0
-        for _, _, board in self._boards():
-            for row in board:
-                if row.get("final_score") is None or row.get("universal_value") is None:
-                    continue
-                worst = max(worst, row["final_score"] - row["universal_value"])
-        self.assertLess(worst, dr.NEED_BONUS_MAX,
-                        "context_elevated has become reachable -- that is good news, but the "
-                        "measurement recorded in CDME_CONTRACTS.md is now stale and the "
-                        "open decision on it should be revisited")
-        # And the reason: the cap is three dedicated slots' worth, this shape has at most two.
-        self.assertAlmostEqual(dr.NEED_BONUS_MAX, 3 * dr.NEED_BONUS_PER_DEDICATED_SLOT)
+    context_elevated USED TO LIVE HERE and no longer does -- see
+    ContextElevatedBecameReachableTests below for what moved it and why the move is not a
+    repair of the constant."""
 
     def test_cliff_protection_fires_for_most_candidates_rather_than_flagging_a_few(self):
         # The mirror-image failure: a threshold far BELOW its quantity's median, so the flag is
@@ -226,6 +222,119 @@ class KnownUnreachableThresholdsTests(_RealBoards):
         self.assertGreater(share, 0.5,
                            "cliff_protection has stopped firing for most candidates -- the "
                            "measurement in CDME_CONTRACTS.md is stale, revisit the decision")
+
+
+
+class ContextElevatedBecameReachableTests(_RealBoards):
+    """The one rule that escaped the class above, and NOT because anyone chose a better number.
+
+    NEED_BONUS_MAX was always a cap on ONE term. When context_elevated was written, that term
+    plus eligibility_bonus were the whole of `team_acquisition_value - universal_value`, so a
+    threshold set at the cap of one of them was a threshold at roughly the ceiling of the
+    quantity: measured at 0.0% firing, max gap 8.67, and recorded in CDME_CONTRACTS.md as dead.
+
+    #139 added depth_exposure as a THIRD team-specific term. The gap's ceiling tripled, the
+    constant did not move, and the same literal that was sitting at the top of the old
+    distribution now sits inside the new one. That is the whole of what changed.
+
+    So this is deliberately not filed as "the threshold is now correct". A number that became
+    a discriminator because the quantity underneath it grew is still a bound being read as a
+    threshold (#56), and the open product decision on what SHOULD light this badge is
+    untouched. What HAS changed, and what is worth pinning, is that the two failure modes the
+    module docstring names -- a threshold above its distribution (dead) and a threshold far
+    below it (always on, no information) -- are both currently absent. Both directions are
+    asserted, so drifting into either one fails here."""
+
+    def _gaps(self):
+        gaps = []
+        for _, _, board in self._boards():
+            gaps += [row["final_score"] - row["universal_value"] for row in board
+                     if row.get("final_score") is not None
+                     and row.get("universal_value") is not None]
+        return gaps
+
+    def test_it_fires_and_fires_selectively(self):
+        gaps = self._gaps()
+        self.assertTrue(gaps, "no priced rows measured; this test observed nothing")
+        share = sum(1 for g in gaps if g >= dr.NEED_BONUS_MAX) / len(gaps)
+        # Measured 2026-09-03: 7.8% of 1992 priced rows across the eight sampled board states,
+        # concentrated entirely in rounds 6-8 -- the window where a bench exists for depth to
+        # be a real question about and positional holes are still open. Both bounds below are
+        # wide on purpose: they are there to catch a rule going dead or going always-on, not
+        # to pin a rate nobody has argued for.
+        self.assertGreater(share, 0.0,
+                           "context_elevated is dead again -- the gap no longer reaches "
+                           "NEED_BONUS_MAX on any real board, so the badge can never light")
+        self.assertLess(share, 0.5,
+                        "context_elevated now fires for most candidates -- the same failure "
+                        "cliff_protection has, in the other direction: a flag that is almost "
+                        "always on carries almost no information")
+
+    def test_the_cap_no_longer_caps_the_quantity_it_is_compared_against(self):
+        """The structural fact underneath the change, asserted rather than narrated: three
+        additive team-specific terms now feed the gap, so a cap on one of them is no longer an
+        upper bound on their sum. This is what makes the reachability real rather than a data
+        wobble, and it fails if a term is ever removed without revisiting the threshold."""
+        self.assertAlmostEqual(dr.NEED_BONUS_MAX, 3 * dr.NEED_BONUS_PER_DEDICATED_SLOT)
+        self.assertGreater(max(self._gaps()), dr.NEED_BONUS_MAX)
+        # The three terms, each independently capped at NEED_BONUS_MAX.
+        self.assertAlmostEqual(dr.ELIGIBILITY_BONUS_MAX, dr.NEED_BONUS_MAX)
+        self.assertAlmostEqual(dr.DEPTH_EXPOSURE_MAX, dr.NEED_BONUS_MAX)
+
+
+
+class TheDenialNormalizerNowSaturatesTests(_RealBoards):
+    """#144, the second consequence of the same borrowed constant.
+
+    pick_necessity's denial term is `min(rival_premium / NEED_BONUS_MAX, 1.0) * WEIGHT`.
+    rival_premium is `(rival TAV - rival UV)` computed on the RIVAL's own board, so it picked up
+    #139's third team-specific term automatically and correctly -- a rival's depth hole is as
+    real a reason for them to want this player as an empty starting slot is.
+
+    What did not follow it is the divisor. With two terms the premium never reached 12.0 (max
+    8.33), so the min() was decorative and every rival premium mapped to a distinct denial
+    contribution. It now clips, and a clipped normalizer is not a smaller version of the same
+    signal -- it is the SAME number for every candidate above the bar, which is information
+    destruction rather than compression.
+
+    Left unrepaired on purpose (see #144: the structurally matching divisor is the sum of all
+    three caps, which changes every round's denial contribution by 3x to fix a tail). Pinned
+    here so the rate cannot move without someone seeing it."""
+
+    def _premiums(self):
+        out = []
+        for rounds, picks, board in self._boards():
+            index = next((i for i in range(rounds * NUM_TEAMS, len(self.pick_order))
+                          if self.pick_order[i] == "1"), None)
+            priced = [r for r in board if r.get("final_score") is not None]
+            if index is None or len(priced) < 4:
+                continue
+            analysis = ds.pick_analysis(
+                self.merger, self.players_db, picks, self.pick_order, index, "1", DYNASTY,
+                [r["player_id"] for r in priced[:12]], mode="balanced")
+            out += [a.get("rival_premium") or 0.0 for a in analysis]
+        return out
+
+    def test_the_premium_exceeds_its_own_divisor(self):
+        premiums = self._premiums()
+        self.assertTrue(premiums, "no rival premiums measured; this test observed nothing")
+        # Measured 2026-09-03: max 16.21 against a divisor of 12.0. Before #139: max 8.33.
+        self.assertGreater(max(premiums), dr.NEED_BONUS_MAX,
+                           "rival_premium no longer exceeds NEED_BONUS_MAX -- #144's premise "
+                           "is gone and the open decision on the divisor can be closed")
+
+    def test_the_clipping_is_a_real_minority_not_the_whole_population(self):
+        """The severity claim, separate from the existence claim. A normalizer that clips a
+        fifth of its population has lost resolution in a tail; one that clips most of it has
+        stopped being a normalizer, and #144 would stop being a decision and become a defect."""
+        premiums = self._premiums()
+        share = sum(1 for p in premiums if p >= dr.NEED_BONUS_MAX) / len(premiums)
+        # Measured 2026-09-03: 21.9% of 96 sampled candidates.
+        self.assertGreater(share, 0.0, "nothing clips -- see the test above")
+        self.assertLess(share, 0.5,
+                        "the denial normalizer now clips for most candidates, which makes the "
+                        "term nearly constant across the field -- #144 has escalated from an "
+                        "open decision to a defect and should be repaired, not recorded")
 
 
 if __name__ == "__main__":

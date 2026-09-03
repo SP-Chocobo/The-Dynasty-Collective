@@ -79,9 +79,10 @@ so far in the current draft.
 - `draft_room.py` computes the base valuation math per candidate —
   `universal_value` (team-agnostic: BPA + time-horizon + risk adjustments)
   and **Team Acquisition Value (TAV)**, CDME's principal quantitative
-  output — `universal_value + need_bonus + eligibility_bonus`, this
-  roster's own fit layered on top of the team-agnostic number. All three
-  terms are unit-matched to the same bpa-anchored scale and individually
+  output — `universal_value + need_bonus + eligibility_bonus +
+  depth_exposure`, this roster's own fit layered on top of the
+  team-agnostic number. All four terms are unit-matched to the same
+  bpa-anchored scale and individually
   bounded (`need_bonus` capped at `NEED_BONUS_MAX`; `eligibility_bonus` —
   the value a candidate's multi-position flexibility unlocks, computed by
   `lineup_optimizer.py`'s real assignment-problem solver — is rescaled from
