@@ -114,13 +114,16 @@
       }
     },
     "test_bye_collision.py": {
-      "test_methods": 14,
+      "test_methods": 28,
       "asserts": {
-        "assertEqual": 11,
-        "assertGreater": 3,
-        "assertIn": 2,
-        "assertNotIn": 1,
-        "assertTrue": 2
+        "assertEqual": 20,
+        "assertGreater": 8,
+        "assertIn": 4,
+        "assertIsNone": 3,
+        "assertLess": 1,
+        "assertLessEqual": 1,
+        "assertNotIn": 2,
+        "assertTrue": 4
       }
     },
     "test_cdme_certification.py": {

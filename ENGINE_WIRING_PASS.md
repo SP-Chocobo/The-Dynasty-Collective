@@ -337,7 +337,35 @@ problem?
                                   no swap within 10 universal_value points improves it
 
 The engine is not clustering byes — it is not avoiding them either, and on this shape those are
-the same number. Reachable gain: roughly one starter in one **known** week. It does grow with
+the same number. Reachable gain: roughly one starter in one **known** week.
+
+> **CORRECTED — that conclusion was measured on the wrong quantity.** The headcount reading
+> above is true and nearly irrelevant. Re-measured in VALUE terms on twelve fully-drafted
+> rosters from one league: worst-week losses ran **41 to 127** trade_value while every roster
+> sat at the pigeonhole floor for starters-out. The bodies were spread; the value was not.
+> Concentration — the share of a roster's total bye damage landing in one week — ranged **0.25
+> to 0.62** across the same twelve. Reassigning the *same players* to a staggered profile cut
+> roster 3's worst week from **127 to 69**; median reachable gain 9.0, tail 58.0, which is ~7
+> bpa against a `NEED_BONUS_MAX` of 12.
+>
+> The mechanism, and why a headcount cannot see it: spread your byes and every week you field
+> starters plus your first-up depth. Stack them and one week consumes two or three bodies at
+> once — and bench value decays, so the same absences cost more together than apart.
+> `bye_collision` now reports `bench_used` and `bench_value_used` per week, and
+> `bye_concentration` reports the shape, both traceable to the week that caused them.
+>
+> **No depth RANK is reported, and that is a correction, not an omission.** Two definitions
+> were built and both were unsound, because FLEX substitution routes coverage across positions:
+> a WR going out is covered by sliding the *flexed* WR up into the WR slot and dropping a bench
+> **RB** into the vacated FLEX. Verified on a real fixture — that chain costs **5** where the
+> naive "best bench WR" reading predicts **16**. A per-position rank then calls the covering RB
+> "depth 1 among RBs" when he is not covering an RB hole; a global rank calls him "depth 2"
+> whenever a better body went unused, implying waste the optimal solve did not commit. The
+> count and the value consumed survive because neither depends on routing, and `value_lost`
+> already carries the exact cost with the chain included.
+>
+> This does not by itself make it a scoring term — that decision is open, and now has evidence
+> behind it where before it had a measurement pointing the other way. It does grow with
 lineup depth (simulated against the real 32-team spread: 12 starters → mean 3.49; 20-starter
 IDP → 5.12, where the pigeonhole floor is itself 3), so the function is built to be read at any
 shape — but a term that cannot improve the outcome it targets is #138's defect with the arrow

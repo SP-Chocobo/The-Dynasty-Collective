@@ -186,5 +186,176 @@ class ItIsDeliberatelyNotAValuationTermTests(unittest.TestCase):
         self.assertIn("not a valuation term", (lo.bye_collision.__doc__ or "").lower())
 
 
+
+class StaggeredVersusLayeredTests(unittest.TestCase):
+    """The mechanism underneath the shape, in the owner's own terms.
+
+    "If you spread out byes, you're either playing your starters, or your first-up depth. If
+    there's more byes in one week, you need to use deeper, less producing assets."
+
+    That is why concentration costs more than a headcount suggests, and it is not an assumption
+    -- bench value decays with rank, so reaching to depth 3 once is worse than reaching to
+    depth 1 three times, even though both are three absences. The assignment solver already
+    knows which bodies get promoted; these tests pin that it SAYS so."""
+
+    # Same players, same values, same total absences -- only the WEEKS differ.
+    BASE = [(30, "QB"), (25, "RB"), (24, "RB"), (20, "WR"), (19, "WR"), (15, "TE"), (14, "RB")]
+    BENCH = [(13, "RB"), (9, "WR"), (4, "RB")]
+
+    def _roster(self, byes):
+        return [{"id": f"p{i}", "value": value, "eligible": {position}, "bye": bye}
+                for i, ((value, position), bye) in enumerate(zip(self.BASE + self.BENCH, byes))]
+
+    STAGGERED = [5, 6, 7, 8, 9, 10, 11, 12, 13, 14]
+    LAYERED = [7, 7, 7, 8, 9, 10, 11, 12, 13, 14]
+
+    def test_staggered_byes_never_reach_past_first_up_depth(self):
+        weeks = lo.bye_collision(self._roster(self.STAGGERED), ROSTER)
+        for week, row in weeks.items():
+            with self.subTest(week=week):
+                self.assertLessEqual(row["bench_used"], 1,
+                                     "a spread bye profile should promote at most one body "
+                                     "per week -- that is what spreading it buys")
+
+    def test_layering_the_same_absences_consumes_several_at_once(self):
+        weeks = lo.bye_collision(self._roster(self.LAYERED), ROSTER)
+        self.assertEqual(weeks[7]["starters_out"], 3)
+        self.assertGreater(weeks[7]["bench_used"], 1)
+
+    def test_and_that_costs_more_than_the_same_absences_spread_out(self):
+        """The claim the whole distinction rests on. Identical players, identical number of
+        absences, worse outcome -- purely from when they land."""
+        staggered = lo.bye_collision(self._roster(self.STAGGERED), ROSTER)
+        layered = lo.bye_collision(self._roster(self.LAYERED), ROSTER)
+        self.assertGreater(max(r["value_lost"] for r in layered.values()),
+                           max(r["value_lost"] for r in staggered.values()))
+
+    def test_a_week_that_promotes_nobody_consumes_no_bench(self):
+        """No promotion is not a cheap promotion. The QB has no backup here, so his week costs
+        full value and consumes nothing -- both facts, separately reported."""
+        weeks = lo.bye_collision(self._roster(self.STAGGERED), ROSTER)
+        self.assertEqual(weeks[5]["bench_used"], 0)
+        self.assertEqual(weeks[5]["bench_value_used"], 0.0)
+        self.assertEqual(weeks[5]["value_lost"], 30.0)
+
+    def test_consuming_your_best_body_and_your_worst_are_different_depletions(self):
+        """Why a count alone is not enough: one promotion can spend a near-starter or a scrub,
+        and the roster is in different shape afterwards."""
+        weeks = lo.bye_collision(self._roster(self.LAYERED), ROSTER)
+        self.assertGreater(weeks[7]["bench_value_used"], 0)
+        self.assertEqual(weeks[7]["bench_used"], 2)
+
+
+class FlexChainsAreHandledAndNoDepthRankIsClaimedTests(unittest.TestCase):
+    """The owner's correction, and the field it removed.
+
+    "Just because your bye is a wr, a rb sometimes can cover in a flex, shift a prior flexed wr
+    up to the wr slot."
+
+    That is exactly right and the solver already does it -- which is why value_lost is sound
+    and why a DEPTH RANK is not. Two rank definitions were built and both were unsound: a
+    per-position rank calls the covering RB "depth 1 among RBs" when he is not covering an RB
+    hole at all, and a global rank calls him "depth 2" whenever a better bench body went
+    unused, implying waste an optimal solve did not commit."""
+
+    ROSTER_ROWS = [
+        {"id": "qb", "value": 30, "eligible": {"QB"}, "bye": 5},
+        {"id": "rb1", "value": 25, "eligible": {"RB"}, "bye": 6},
+        {"id": "rb2", "value": 24, "eligible": {"RB"}, "bye": 7},
+        {"id": "wr1", "value": 22, "eligible": {"WR"}, "bye": 9},
+        {"id": "wr2", "value": 21, "eligible": {"WR"}, "bye": 10},
+        {"id": "te", "value": 15, "eligible": {"TE"}, "bye": 11},
+        {"id": "wr3", "value": 18, "eligible": {"WR"}, "bye": 12},
+        {"id": "bench_rb3", "value": 17, "eligible": {"RB"}, "bye": 13},
+        {"id": "bench_wr4", "value": 6, "eligible": {"WR"}, "bye": 14},
+    ]
+
+    def test_a_WR_hole_is_covered_through_the_flex_by_an_RB(self):
+        """The chain itself: wr3 slides FLEX -> WR, and a bench RB takes the vacated FLEX."""
+        slots = lo.slots_from_roster_positions(ROSTER)
+        without = lo.optimize_lineup(
+            [p for p in self.ROSTER_ROWS if p["id"] != "wr1"], slots)
+        placed = {a["player_id"]: a["slot_id"] for a in without["assignments"]}
+        self.assertIn("bench_rb3", placed, "the bench RB should be used to cover a WR absence")
+        self.assertTrue(placed["bench_rb3"].startswith("FLEX"))
+        self.assertTrue(placed["wr3"].startswith("WR"),
+                        "the flexed WR should shift up into the vacated WR slot")
+
+    def test_the_chain_makes_the_week_far_cheaper_than_the_naive_reading(self):
+        """Naive: best bench WR is worth 6, so losing a 22 costs 16. Actual: 5."""
+        week = lo.bye_collision(self.ROSTER_ROWS, ROSTER)[9]
+        self.assertEqual(week["value_lost"], 5.0)
+        self.assertLess(week["value_lost"], 22.0 - 6.0)
+
+    def test_no_depth_rank_is_reported_at_all(self):
+        """The removal, asserted so it is not helpfully restored. Both definitions tried were
+        plausible numbers with no sound meaning under flex substitution."""
+        week = lo.bye_collision(self.ROSTER_ROWS, ROSTER)[9]
+        for field in week:
+            self.assertNotIn("depth", field,
+                             "a depth RANK is undefined once FLEX chains route coverage across "
+                             "positions -- report the count and value consumed instead")
+
+
+class ConcentrationSeparatesShapeFromSeverityTests(unittest.TestCase):
+    """Two rosters can lose the same total and be in completely different trouble."""
+
+    def _roster(self, byes):
+        rows = [(30, "QB"), (25, "RB"), (24, "RB"), (20, "WR"), (19, "WR"), (15, "TE"), (14, "RB")]
+        return [{"id": f"p{i}", "value": value, "eligible": {position}, "bye": bye}
+                for i, ((value, position), bye) in enumerate(zip(rows, byes))]
+
+    def test_layering_raises_concentration_at_an_identical_total(self):
+        staggered = lo.bye_concentration(self._roster([5, 6, 7, 8, 9, 10, 11]), ROSTER)
+        layered = lo.bye_concentration(self._roster([7, 7, 7, 8, 9, 10, 11]), ROSTER)
+        self.assertEqual(staggered["total_loss"], layered["total_loss"],
+                         "the fixtures must hold total damage fixed, or this measures severity")
+        self.assertGreater(layered["concentration"], staggered["concentration"])
+
+    def test_it_names_the_week_rather_than_only_scoring_the_shape(self):
+        """Traceability is the point. A recommendation that cannot say WHICH week is not
+        actionable, and a bare ratio is not a reason."""
+        result = lo.bye_concentration(self._roster([7, 7, 7, 8, 9, 10, 11]), ROSTER)
+        self.assertEqual(result["worst_week"], 7)
+        self.assertIn(7, result["weeks"])
+
+    def test_a_roster_with_no_bye_damage_has_NO_shape_rather_than_a_flat_one(self):
+        """None, not 0.0. Zero concentration would rank a roster with nothing at stake as
+        perfectly staggered -- a claim about a distribution that does not exist."""
+        rows = [{"id": "a", "value": 10, "eligible": {"QB"}}]
+        self.assertIsNone(lo.bye_concentration(rows, ROSTER)["concentration"])
+        self.assertEqual(lo.bye_concentration([], ROSTER)["basis"], lo.BYE_UNKNOWN)
+
+
+class TheCandidateLevelPenaltyIsolatesTheByeTests(unittest.TestCase):
+    """bye_stack_penalty holds the candidate fixed and varies only his bye. The obvious
+    alternative -- cost with him minus cost without him -- is dominated by whether he would
+    start at all, and measured that way the resulting flag was ANTI-correlated with real bye
+    damage across ~4,000 evaluations."""
+
+    ROSTER_ROWS = [
+        {"id": "q1", "value": 30, "eligible": {"QB"}, "bye": 7},
+        {"id": "r1", "value": 25, "eligible": {"RB"}, "bye": 7},
+        {"id": "r2", "value": 24, "eligible": {"RB"}, "bye": 7},
+        {"id": "w1", "value": 20, "eligible": {"WR"}, "bye": 9},
+        {"id": "w2", "value": 19, "eligible": {"WR"}, "bye": 10},
+        {"id": "t1", "value": 15, "eligible": {"TE"}, "bye": 11},
+    ]
+
+    def test_the_same_player_costs_more_on_a_crowded_week(self):
+        crowded = {"id": "c", "value": 22, "eligible": {"WR"}, "bye": 7}
+        clear = {"id": "c", "value": 22, "eligible": {"WR"}, "bye": 13}
+        self.assertGreater(lo.bye_stack_penalty(self.ROSTER_ROWS, ROSTER, crowded),
+                           lo.bye_stack_penalty(self.ROSTER_ROWS, ROSTER, clear))
+
+    def test_a_candidate_with_no_known_bye_yields_None_not_zero(self):
+        """Zero would read as "his bye is free". Unknown is not free."""
+        self.assertIsNone(lo.bye_stack_penalty(
+            self.ROSTER_ROWS, ROSTER, {"id": "c", "value": 22, "eligible": {"WR"}}))
+
+    def test_an_empty_roster_yields_None(self):
+        self.assertIsNone(lo.bye_stack_penalty(
+            [], ROSTER, {"id": "c", "value": 22, "eligible": {"WR"}, "bye": 7}))
+
 if __name__ == "__main__":
     unittest.main()

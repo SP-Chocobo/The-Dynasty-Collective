@@ -26,6 +26,12 @@ What's covered, and what it reuses:
     nothing and a headcount would rank it below one that loses a single irreplaceable starter.
     Observable only: it feeds no valuation, and that is a measured decision recorded at the
     function, not an omission.
+  - bye_concentration: lineup_optimizer.bye_concentration -- the SHAPE of that same profile.
+    Staggered byes let a roster field its first-up depth every week; layered byes force depth
+    1, 2 and 3 into one lineup at once, and bench value decays with rank, so the deep reach
+    costs disproportionately more. Measured across twelve fully-drafted rosters: worst-week
+    losses ran 41 to 127 in trade_value units while every roster sat at the pigeonhole FLOOR
+    for starters-out. The bodies were spread; the value was not.
 
 What's explicitly NOT supported here, reported rather than approximated: age/trajectory
 composition. This harness's own synthetic players_db (built from Draft Sharks projections
@@ -87,6 +93,10 @@ class TeamDiagnostics:
     # than score it. Empty when no rostered player has a resolvable bye; a week's numbers are
     # a FLOOR when its basis is "partial".
     bye_collision: dict
+    # The SHAPE of that profile, not just its worst point: how much of this roster's total bye
+    # damage lands in one week. Two rosters can lose the same total and be in different
+    # trouble. None (not 0.0) when there is no damage to have a shape.
+    bye_concentration: dict
 
 
 def _chosen_candidate(rec) -> dict:
@@ -169,6 +179,7 @@ def compute_team_diagnostics(
         # the week its byes land. Observable only -- nothing here feeds a value (see
         # lineup_optimizer.bye_collision on why that is a measured decision, not an omission).
         bye_exposure = lineup_optimizer.bye_collision(opt_players, roster_positions)
+        bye_shape = lineup_optimizer.bye_concentration(opt_players, roster_positions)
         accumulated_value = round(sum(p["uv"] for p in players), 2)
         starting_lineup_value = lineup["total_value"]
         bench_surplus_value = round(accumulated_value - starting_lineup_value, 2)
@@ -201,5 +212,6 @@ def compute_team_diagnostics(
             replacement_level_unpriced=replacement_level_unpriced,
             positional_counts=positional_counts, thin_positions=tuple(sorted(thin_positions)),
             structural_holes=structural_holes, bye_collision=bye_exposure,
+            bye_concentration=bye_shape,
         )
     return results

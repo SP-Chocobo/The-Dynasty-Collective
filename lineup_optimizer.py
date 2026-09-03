@@ -32,6 +32,8 @@ from __future__ import annotations
 
 from typing import Optional
 
+from typing import Optional
+
 import numpy as np
 from scipy.optimize import linear_sum_assignment
 
@@ -337,6 +339,14 @@ def bye_collision(roster_players: list[dict], roster_positions: list[str]) -> di
       players_out  -- rostered players on that bye, starters and bench alike (the bench ones
                       are why the loss is often smaller than the headcount suggests).
       starters_out -- how many of them were in the baseline starting lineup.
+      bench_used   -- how many bench bodies this week promotes into the lineup at once. This
+                      is the quantity that makes stacking worse than its headcount: three
+                      absences in one week consume three bodies, while the same three spread
+                      across three weeks consume one each time and the bench refills in
+                      between.
+      bench_value_used -- their total value, since consuming your best body and your worst are
+                      not the same depletion. No depth RANK is reported; FLEX substitution
+                      chains leave that undefined (see the note in the body).
       basis        -- "measured", or BYE_PARTIAL / BYE_UNKNOWN. Read it first: a week's numbers
                       are a FLOOR under BYE_PARTIAL, not the cost.
 
@@ -356,6 +366,23 @@ def bye_collision(roster_players: list[dict], roster_positions: list[str]) -> di
 
     baseline = optimize_lineup(roster_players, slots)
     starting_ids = {a["player_id"] for a in baseline["assignments"]}
+    # NO DEPTH RANK IS REPORTED, and the reason is worth keeping. Two were built and both were
+    # wrong, because FLEX substitution makes "how far down the bench" ill-defined:
+    #
+    #   A WR goes out. The naive reading promotes the best bench WR. What the solver actually
+    #   does -- verified on a real fixture -- is slide the WR already in FLEX up into the WR
+    #   slot and drop a BENCH RB into the vacated FLEX. The hole at WR was covered by an RB,
+    #   through a chain, and it cost 5 instead of the 16 the naive reading predicts.
+    #
+    # A per-position rank then calls that RB "depth 1 among RBs", which is the right number for
+    # the wrong reason -- he is not covering an RB hole. A global rank calls him "depth 2"
+    # whenever a better bench body was not used, implying waste the optimal solve did not
+    # commit. Both are plausible numbers with no sound definition behind them.
+    #
+    # What survives contact is the COUNT of bodies consumed and their total value, neither of
+    # which depends on routing. value_lost already carries the exact cost, chain included.
+    bench_ids = {p["id"] for p in roster_players if p["id"] not in starting_ids}
+    bench_value = {p["id"]: p.get("value", 0.0) for p in roster_players if p["id"] in bench_ids}
 
     out: dict[int, dict] = {}
     for week in weeks:
@@ -363,11 +390,24 @@ def bye_collision(roster_players: list[dict], roster_positions: list[str]) -> di
                          if p.get("bye") is not None and int(p["bye"]) == week]
         available = [p for p in roster_players if p not in out_this_week]
         without = optimize_lineup(available, slots)
+        promoted = [a["player_id"] for a in without["assignments"]
+                    if a["player_id"] in bench_ids]
         out[week] = {
             "value_lost": round(baseline["total_value"] - without["total_value"], 2),
             "lineup_value": round(without["total_value"], 2),
             "players_out": len(out_this_week),
             "starters_out": sum(1 for p in out_this_week if p["id"] in starting_ids),
+            # HOW MUCH BENCH THIS WEEK CONSUMES, which is the mechanism concentration proxies
+            # for. Spread your byes and every week you field starters plus your first-up depth;
+            # stack them and one week consumes two or three bodies at once. That is worse than
+            # the same absences spread out, because bench value decays -- your best bench
+            # player is nearly a starter and your third is not -- and because the bench can
+            # simply run out, which is what makes simultaneous loss superadditive.
+            #
+            # A count and a sum, deliberately, rather than a depth RANK: see the note above the
+            # loop on why FLEX chains leave no sound definition of "how far down".
+            "bench_used": len(promoted),
+            "bench_value_used": round(sum(bench_value[p] for p in promoted), 2),
             # Unknown byes are a property of the ROSTER, not of one week: any of those players
             # could be out in any week, so every week's number is equally a floor. Marking only
             # the weeks that happen to have a collision would imply the clean-looking weeks
@@ -377,6 +417,98 @@ def bye_collision(roster_players: list[dict], roster_positions: list[str]) -> di
     if not out and unknown:
         return {}
     return out
+
+
+def bye_concentration(roster_players: list[dict], roster_positions: list[str]) -> dict:
+    """Is this roster's bye damage STAGGERED across weeks or LAYERED into one?
+
+    Same total, different shape, and the shape is the part a headcount cannot see. Measured on
+    twelve fully-drafted rosters from one league: worst-week losses ran 41 to 127 in
+    trade_value units while every roster sat at the pigeonhole FLOOR for starters-out. The
+    bodies were spread; the value was not. Roster 3 lost 127 in a single week with a
+    floor-level headcount, purely because the wrong players shared it.
+
+    `concentration` is the share of a roster's total bye damage landing in its single worst
+    week -- deliberately a RATIO, so shape is separated from severity. Two rosters can lose the
+    same total and be in completely different trouble: 0.25 means the damage is spread thin
+    enough that no week is decisive, 0.62 means most of a season's bye cost arrives at once, in
+    a league where each week is an independent matchup.
+
+    It is None, never 0.0, when the roster carries no bye damage at all. A roster with nothing
+    to lose has no shape; reporting 0.0 would rank it as maximally staggered, which is a claim
+    about a distribution that does not exist.
+
+    Returns {"concentration", "worst_week", "worst_week_loss", "total_loss", "weeks", "basis"}.
+    `weeks` is the full profile, zeros included, so a reader can say WHICH week and by how much
+    rather than only how bad the shape is -- the traceability is the point, not the ratio.
+    """
+    weeks = bye_collision(roster_players, roster_positions)
+    if not weeks:
+        return {"concentration": None, "worst_week": None, "worst_week_loss": None,
+                "total_loss": None, "weeks": {}, "basis": BYE_UNKNOWN}
+    losses = {week: row["value_lost"] for week, row in weeks.items()}
+    total = sum(losses.values())
+    worst_week = max(losses, key=lambda w: losses[w])
+    basis = weeks[worst_week]["basis"]
+    return {
+        "concentration": round(losses[worst_week] / total, 3) if total > 0 else None,
+        "worst_week": worst_week if total > 0 else None,
+        "worst_week_loss": round(losses[worst_week], 2),
+        "total_loss": round(total, 2),
+        "weeks": {week: round(value, 2) for week, value in sorted(losses.items())},
+        "basis": basis,
+    }
+
+
+def bye_stack_penalty(roster_players: list[dict], roster_positions: list[str],
+                      candidate: dict) -> Optional[float]:
+    """How much WORSE this roster's worst bye week gets because of THIS candidate's bye.
+
+    THE COUNTERFACTUAL IS THE WHOLE CONSTRUCTION. The obvious version -- worst-week cost with
+    the candidate minus worst-week cost without him -- was built first and is useless: it is
+    dominated by whether he would start at all, so it fires on every good player regardless of
+    when his bye falls. Measured that way, the flag it produced was anti-correlated with real
+    bye damage.
+
+    So the comparison holds the CANDIDATE fixed and varies only his bye: the same player, on
+    the same roster, sitting on his real bye versus on the emptiest week this roster has. The
+    difference is attributable to his bye and to nothing else.
+
+    WHY NOT A HEADCOUNT RULE. The natural hand-built version of this is "he shares a bye with
+    one of your best players AND you already start several that week". Measured against this
+    counterfactual across ~4,000 (roster, candidate) pairs at two lineup depths, that rule
+    fires at almost exactly the right RATE (3.9% vs 3.5%) on almost entirely the WRONG
+    candidates: ~80% of its hits carry no real penalty and it misses ~80% of the ones that do.
+    A headcount cannot see whether the bench covers the hole, and "one of your best by points"
+    cannot see whether that player is replaceable. The assignment solve sees both, and it is
+    already here.
+
+    Returns the penalty in the caller's own value units, or None when the candidate or the
+    roster carries no resolvable bye -- never 0.0 for an unknown, which would read as "this
+    bye is free" (the absence contract this codebase enforces everywhere else).
+    """
+    candidate_bye = candidate.get("bye")
+    if candidate_bye is None or not roster_players or not roster_positions:
+        return None
+    known = [int(p["bye"]) for p in roster_players if p.get("bye") is not None]
+    if not known:
+        return None
+
+    # The emptiest week available to this roster is the best bye the candidate could have had,
+    # so it is the right zero point: it asks "what did his bye cost me relative to the luckiest
+    # draw", not "relative to no bye at all", which no real player has.
+    occupancy = {week: known.count(week) for week in set(known)}
+    span = range(min(known + [candidate_bye]), max(known + [candidate_bye]) + 1)
+    best_week = min(span, key=lambda week: occupancy.get(week, 0))
+    if best_week == candidate_bye:
+        return 0.0
+
+    def worst(bye):
+        rows = roster_players + [{**candidate, "bye": bye}]
+        weeks = bye_collision(rows, roster_positions)
+        return max((row["value_lost"] for row in weeks.values()), default=0.0)
+
+    return round(worst(candidate_bye) - worst(best_week), 2)
 
 
 def bench_capacity(roster_positions: list[str]) -> int:
