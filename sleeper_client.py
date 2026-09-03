@@ -198,6 +198,51 @@ class SleeperClient:
                     result[str(pid)] = stats
         return result
 
+    def get_weekly_stats(self, season: str, week: int, season_type: str = "regular") -> dict[str, dict]:
+        """player_id -> {stat_category: ACTUAL_value, ...} for one completed week.
+
+        The realized counterpart to get_weekly_projections, and the missing half of every
+        question about whether this engine's numbers mean anything. Everything validating the
+        engine so far compares it to itself; this is the only endpoint that supplies an
+        external answer.
+
+        NOTE THE URL SHAPE. season_type goes in the PATH here, not the query string --
+        the opposite of get_weekly_projections, whose own comment records that putting it in
+        the path "silently returned no records" and names the stats endpoint as the one that
+        works the other way. Two adjacent endpoints on the same host disagreeing about where a
+        parameter lives is exactly the kind of thing that gets guessed wrong, so it is
+        mirrored from that hard-won note rather than re-derived.
+
+        RETURNS RAW STATS, NEVER POINTS. Fantasy points are a function of (stats, a league's
+        scoring settings), so a capture that stored points would bake in one league's rules
+        and be unusable for any other. compute_points_from_stats already converts, at the
+        moment a specific league asks. One fetch, every scoring format.
+
+        Raises rather than returning {} when the API cannot be reached -- unlike its
+        projections sibling, which fails soft because a missing projection degrades a board
+        gracefully. A missing OUTCOME does not degrade gracefully: an empty result would be
+        indistinguishable from "nobody scored", and a validation record built on that would
+        report the engine as catastrophically wrong about a week that simply never downloaded.
+        """
+        data = self._get(f"/stats/nfl/{season_type}/{season}/{week}", base=ROOT_URL)
+        if not data:
+            return {}
+
+        result: dict[str, dict] = {}
+        if isinstance(data, dict):
+            for pid, entry in data.items():
+                stats = entry.get("stats", entry) if isinstance(entry, dict) else None
+                if stats:
+                    result[str(pid)] = stats
+        elif isinstance(data, list):
+            for entry in data:
+                if not isinstance(entry, dict):
+                    continue
+                pid, stats = entry.get("player_id"), entry.get("stats")
+                if pid and stats:
+                    result[str(pid)] = stats
+        return result
+
     # -- aggregate sync -------------------------------------------------------
 
     def sync_league(self, league_id: str, players_db: Optional[dict[str, dict]] = None) -> dict:

@@ -625,6 +625,18 @@
         "assertTrue": 1
       }
     },
+    "test_outcome_record.py": {
+      "test_methods": 18,
+      "asserts": {
+        "assertEqual": 12,
+        "assertFalse": 1,
+        "assertGreater": 1,
+        "assertIn": 5,
+        "assertNotEqual": 1,
+        "assertNotIn": 1,
+        "assertRaises": 3
+      }
+    },
     "test_override_provenance_boundary.py": {
       "test_methods": 29,
       "asserts": {
