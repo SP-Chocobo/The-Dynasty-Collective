@@ -1038,6 +1038,15 @@
         "assertNotIn": 4
       }
     },
+    "test_term_lifetimes.py": {
+      "test_methods": 8,
+      "asserts": {
+        "assertEqual": 3,
+        "assertIn": 6,
+        "assertTrue": 1,
+        "fail": 2
+      }
+    },
     "test_threshold_reachability.py": {
       "test_methods": 12,
       "asserts": {

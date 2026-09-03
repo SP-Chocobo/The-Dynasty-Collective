@@ -118,6 +118,32 @@ failure the additive layering exists to prevent.
    candidate-level counterfactual — it would need rebuilding, and its docstring's warning about
    the confounded first version should be rebuilt with it.
 
+   **APPLIED RETROACTIVELY, AND IT FOUND ONE (#147).** A rule that settles one case and then
+   lives only in prose will not settle the next, so it is mechanised in `term_lifetimes.py`
+   with `test_term_lifetimes.py` reading the AST of the actual sum — a term added to the
+   valuation without a declared lifetime fails the suite. Result over the six shipped terms:
+
+   | term | lifetime | verdict |
+   |---|---|---|
+   | `bpa` | season | **OPEN — #147** |
+   | `time_horizon_adj` | multi-year | admissible |
+   | `risk_adj` | week | mitigated (#35) |
+   | `need_bonus` / `eligibility_bonus` / `depth_exposure` | roster state | admissible |
+
+   `bpa` is VOR in raw projected points **for the current season**, and #76 measured the anchor
+   carrying **94.5%** of `universal_value`'s movement — so a one-season quantity dominates a
+   multi-year price, with a ±10 clamp on a ~500 scale as the only correction. This reframes
+   #50/#81 from "the horizon layer is undersized" to "the anchor is wrong-lifetime and the
+   horizon layer is a patch on it", which changes what the repair is. Note the inversion:
+   `bpa`'s own fallback (`position_relative_trade_value_vor`) is built from `trade_value`,
+   which *is* a dynasty price carrying the aging discount — the fallback is lifetime-correct
+   and the primary path is not.
+
+   `risk_adj` is the precedent worth copying: the same defect (a current-week status applied
+   identically in dynasty and redraft) fixed in #35 by scaling per-player against
+   `time_horizon_adj` rather than by a flat constant — a lifetime-aware mitigation reached
+   before the rule was named.
+
    This rule is the reason to check any proposed term's LIFETIME before its magnitude. The
    magnitude work on #142 was done first, and the category question settles the dynasty case
    either way — worth recording so the next term is checked in the right order. Note that the
