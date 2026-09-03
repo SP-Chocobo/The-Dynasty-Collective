@@ -58,6 +58,7 @@ from data_merger import (
     EXTERNAL_VALUES_DIR, GLOBAL_PROJECTIONS_DIR, PROJECTIONS_DIR, DataMerger, external_upload_targets,
     horizon_gap_lines, load_projection_file, recency_grade, remove_alias, save_alias,
 )
+import league_config
 from league_format import FORMAT_GUIDANCE, FORMAT_OPTIONS, STANDARD, get_format_override, set_format_override
 from league_prefs import forget_league, get_prefs, move_league, sorted_leagues, toggle_archive
 from player_universe import FLEX_SLOT_POSITIONS, available_players, build_player_universe, league_usable_positions, matching_players, player_name, player_position
@@ -1515,8 +1516,17 @@ def build_freshness_manifest(snapshot: dict, merger: DataMerger) -> list[tuple[s
     synced_at = snapshot.get("synced_at")
     if synced_at:
         sync_dt = datetime.fromtimestamp(synced_at)
+        # #140: the DAYS column is a difference of calendar dates, which is wrong in both
+        # directions at the boundary -- measured: a 9am sync read at 8pm reports "0 days" for
+        # an eleven-hour-old config, and a 23:59 sync read at 00:01 reports "1 day" for a
+        # two-minute-old one. League config changes on an hours timescale (a commissioner
+        # edits scoring or a roster slot), so the label carries the real age at a resolution
+        # that can express it. The days column keeps its existing meaning and sort order --
+        # every other row in this manifest is a source with a genuine per-DAY date, and
+        # changing the column's unit for one row would make the sort compare two things.
         entries.append((
-            "Sleeper league sync (rosters + native weekly projections)",
+            f"Sleeper league sync (rosters + native weekly projections) — "
+            f"{league_config.describe_config_age(snapshot)}",
             sync_dt.date().isoformat(),
             (datetime.now().date() - sync_dt.date()).days,
         ))

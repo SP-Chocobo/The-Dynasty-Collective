@@ -534,6 +534,17 @@
         "assertTrue": 25
       }
     },
+    "test_league_config.py": {
+      "test_methods": 19,
+      "asserts": {
+        "assertEqual": 8,
+        "assertFalse": 2,
+        "assertIn": 8,
+        "assertIsNone": 3,
+        "assertNotIn": 1,
+        "assertTrue": 4
+      }
+    },
     "test_league_format.py": {
       "test_methods": 7,
       "asserts": {
