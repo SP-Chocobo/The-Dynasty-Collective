@@ -2215,6 +2215,49 @@ class DataMerger:
     def is_external_values_loaded(self) -> bool:
         return not self.external_values.empty
 
+    def bye_week_by_team(self) -> dict[str, int]:
+        """NFL team -> its bye week, derived from the source rows that carry one.
+
+        WHY DERIVED FROM TEAM RATHER THAN READ PER PLAYER. `bye_week` arrives as a column on
+        individual player rows and is non-null on only 638 of 2600 of them, which joins onto
+        just 66.5% of the valuation frame. But a bye is a property of an NFL TEAM, not of a
+        player: everyone on a roster sits out the same week. Collapsing to a team map and
+        reading it back through `team` lifts coverage to 99.1% of the valuation frame -- the
+        remaining gap is rows with no team at all, which is a different absence and stays
+        absent rather than being guessed.
+
+        THE INTEGRITY PROPERTY, and why it is checked rather than assumed. If two players on
+        the same team report different bye weeks, either the source is wrong or -- far more
+        likely here, given this codebase's history with joins (#77, #78) -- rows have been
+        attached to the wrong players. That would be invisible downstream: every consumer
+        would just see a plausible week. So a team whose rows disagree is DROPPED and reported
+        by `bye_week_conflicts()`, never resolved by majority vote: a conflict means the input
+        is not trustworthy for that team, and picking a winner would hide exactly the defect
+        worth seeing. Verified on the committed baseline: 32 teams, 0 conflicts, weeks 5-14.
+        """
+        return {team: week for team, (week, ok) in self._bye_week_map().items() if ok}
+
+    def bye_week_conflicts(self) -> dict[str, list[int]]:
+        """Teams whose rows disagree about their own bye week -- empty on sound input.
+
+        Separated from the map itself so a caller cannot mistake "no conflicts" for "no data":
+        an empty map and an empty conflict list together mean the source carries no bye weeks,
+        which is a different fact from a clean parse.
+        """
+        return {team: weeks for team, (weeks, ok) in self._bye_week_map().items() if not ok}
+
+    def _bye_week_map(self):
+        if self.external_values.empty or "bye_week" not in self.external_values.columns:
+            return {}
+        rows = self.external_values[
+            self.external_values["bye_week"].notna() & self.external_values["team"].notna()
+        ]
+        out = {}
+        for team, group in rows.groupby("team"):
+            weeks = sorted({int(w) for w in group["bye_week"]})
+            out[str(team)] = (weeks[0], True) if len(weeks) == 1 else (weeks, False)
+        return out
+
     def composite_capable_source_names(self) -> list[str]:
         """Distinct source_name values currently loaded that can ACTUALLY feed
         composite_player_score -- i.e. have at least one (source_name, source_file) pair in

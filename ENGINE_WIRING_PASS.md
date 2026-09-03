@@ -269,6 +269,90 @@ and the coverage is asserted.
 
 ---
 
+## Addendum 2 — #142's two owner-picked fields, and why only one of them got wired
+
+`age` and `bye_week` were the two orphans picked to act on. Both were measured before anything
+was built, and the measurements pointed in opposite directions from the obvious plan.
+
+### `age` — the largest unread signal in the input, and adding a term is the wrong fix
+
+Coverage is not the problem: **100% of QB/RB/TE and 98% of WR** in the valuation frame resolve
+an age. The gap is IDP (~5%) and DEF (0%) — #51's supply problem, not this one. So the
+`roster_diagnostics` note claiming the repository "carries no age or experience field at all"
+was true of that harness and false of the repo; corrected in place rather than rewritten away.
+
+The measurement ran in three steps, each correcting the one before:
+
+| step | QB | RB | WR | TE |
+|---|---|---|---|---|
+| raw `r(age, trade_value)` within position | +0.05 | −0.02 | +0.12 | −0.27 |
+| **partial, holding current projection fixed** | **−0.50** | **−0.68** | **−0.52** | **−0.55** |
+
+The raw row is a trap, and taking it at face value would have closed this as "the market
+doesn't price age" — which is absurd for a dynasty product. Two confounds cancel the effect
+almost exactly: the young cohort is full of unproven depth, and the old cohort is
+survivorship-filtered to players good enough to still be rostered at 30. Control for current
+production and the discount is enormous. Matched pairs say it without a coefficient:
+
+    D Henry    32  proj 262 -> tv 26      O Hampton   23  proj 254 -> tv 73
+    T Kelce    36  proj 221 -> tv  6      H Fannin    22  proj 236 -> tv 56
+    D Adams    33  proj 230 -> tv 22      M Nabers    23  proj 237 -> tv 81
+
+**Almost none of it reaches `universal_value`.** `bpa` is VOR in raw projected POINTS — a
+current-season quantity with no aging discount in it — so the only channel is
+`time_horizon_adj`, clamped to ±10 on a scale spanning ~500. On same-position pairs within 15
+projected points where the market prefers the younger player:
+
+| age gap | pairs | engine agrees | mean market ratio |
+|---|---|---|---|
+| 0–2 | 262 | 68.3% | 6.88× |
+| 3–5 | 254 | 58.7% | 8.98× |
+| 6–8 | 100 | 65.0% | 7.51× |
+| **9+** | 33 | **51.5%** | 4.33× |
+
+The rate *falling* as the gap widens is the signature: where the market is most certain, the
+engine is least aligned. A weakly-read signal gives a flat rate; an unread one gives this.
+
+**Not wired, and the reason is the magnitude, not the evidence.** A fourth bounded additive
+nudge cannot close a 4–9× pricing gap, and picking a bound big enough to try would invent
+exactly the number #56 forbids. What this actually indicts is the dynasty horizon layer's own
+size, which is #50's subject and #81's contract. Delivered instead as
+`run_age_signal_measurement.py` — a committed, re-runnable instrument that hands #50 its
+evidence and can be re-run against whatever #50 produces.
+
+### `bye_week` — derivable at 99.1%, real in deep lineups, and still not a scoring term
+
+The per-player column is non-null on 638/2600 rows and joins to 66.5% of the valuation frame.
+But **a bye belongs to an NFL team, not a player**: collapsing to a team map lifts coverage to
+**99.1%**. Verified on the baseline — 32 teams, 0 internal conflicts, weeks 5–14. A team whose
+rows disagree is dropped and reported rather than resolved by majority vote, because a conflict
+there means rows are attached to the wrong players (#77, #78) and picking a winner hides it.
+
+Then the question that decides whether to price it — does the engine actually have this
+problem?
+
+    chance baseline, 8 starters   mean worst week 2.62   (46.9% at 2, 41.4% at 3)
+    engine's own 12 rosters       median 2, max 3, 5/12 at 3+
+    best reachable                the top-value legal eight ALREADY sits at the floor;
+                                  no swap within 10 universal_value points improves it
+
+The engine is not clustering byes — it is not avoiding them either, and on this shape those are
+the same number. Reachable gain: roughly one starter in one **known** week. It does grow with
+lineup depth (simulated against the real 32-team spread: 12 starters → mean 3.49; 20-starter
+IDP → 5.12, where the pigeonhole floor is itself 3), so the function is built to be read at any
+shape — but a term that cannot improve the outcome it targets is #138's defect with the arrow
+reversed.
+
+**Built as `lineup_optimizer.bye_collision`, read by `roster_diagnostics.TeamDiagnostics`, and
+scored by nothing.** It measures VALUE lost, not bodies lost — a roster covering three absences
+from its bench loses nothing, and a headcount ranks it below one losing a single irreplaceable
+starter. It is also the genuine extension of `depth_exposure` rather than a loop over it:
+removing several starters *simultaneously* is superadditive, because the bench covers the first
+hole and has nothing left for the second. `test_bye_collision` asserts both the mechanism and
+the refusal, so wiring it later means deleting a test that explains why not.
+
+---
+
 ## State at the end of this pass
 
 - `main` merged and unfrozen at `cf8fa0c`; marker branch `pre-blind-audit` sits there.

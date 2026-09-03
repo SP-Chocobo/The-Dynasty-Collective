@@ -20,6 +20,12 @@ What's covered, and what it reuses:
     remaining-demand replacement math the live engine itself uses, not a new baseline.
   - structural_holes: player_universe.league_usable_positions, compared against what a team
     actually rostered -- a set difference, nothing computed.
+  - bye_collision: lineup_optimizer.bye_collision (#142) -- the SAME assignment solver, run
+    once per bye week against the roster with everyone on that bye removed. Reports value
+    lost, not bodies lost, because a roster that covers three absences from its bench loses
+    nothing and a headcount would rank it below one that loses a single irreplaceable starter.
+    Observable only: it feeds no valuation, and that is a measured decision recorded at the
+    function, not an omission.
 
 What's explicitly NOT supported here, reported rather than approximated: age/trajectory
 composition. This harness's own synthetic players_db (built from Draft Sharks projections
@@ -27,6 +33,15 @@ reconstructed into a Sleeper-like shape for simulation purposes) carries no age 
 field at all -- the real app's live players_db (from Sleeper's /players/nfl) does, but that
 data was never threaded into this harness's player pool. Reported as a data-availability gap,
 not filled with an invented estimate.
+
+  CORRECTION (#142, 2026-09-03): the gap is narrower than that paragraph claims, and the
+  correction is left visible rather than quietly rewritten. A real `age` column DOES reach
+  this repository, on external_values, covering 100% of QB/RB/TE and 98% of WR in the
+  valuation frame -- it had simply never been read by anything. So the sentence "carries no
+  age or experience field at all" is true of THIS HARNESS's players_db and false of the
+  repository. The gap is a wiring gap, not a supply gap, for offensive skill positions; it
+  remains a supply gap for IDP (~5%) and DEF (0%). What age would be worth is measured in
+  run_age_signal_measurement.py, and the reason it is still not wired is recorded there.
 """
 
 from __future__ import annotations
@@ -66,6 +81,12 @@ class TeamDiagnostics:
     positional_counts: dict
     thin_positions: tuple
     structural_holes: tuple
+    # #142: bye-week exposure, as VALUE lost rather than bodies lost. {week: {...}} straight
+    # from lineup_optimizer.bye_collision -- see that function for why a headcount ranks two
+    # rosters backwards, and for the measurement behind the decision to report this rather
+    # than score it. Empty when no rostered player has a resolvable bye; a week's numbers are
+    # a FLOOR when its basis is "partial".
+    bye_collision: dict
 
 
 def _chosen_candidate(rec) -> dict:
@@ -92,7 +113,13 @@ def compute_team_diagnostics(
     drafted_counts: Counter = Counter()
     for rec in trajectory.picks:
         cand = _chosen_candidate(rec)
-        by_team[rec.roster_id].append({"id": cand["id"], "name": cand["name"], "position": cand["pos"], "uv": cand["uv"]})
+        # team comes from players_db rather than the candidate record: the trajectory's own
+        # candidate shape carries no team, and a bye is a property of the team (see
+        # DataMerger.bye_week_by_team).
+        by_team[rec.roster_id].append({
+            "id": cand["id"], "name": cand["name"], "position": cand["pos"], "uv": cand["uv"],
+            "team": (players_db.get(str(cand["id"])) or {}).get("team"),
+        })
         drafted_counts[cand["pos"]] += 1
 
     # replacement_levels needs a scored DataFrame carrying "universal_value" -- that column
@@ -131,11 +158,17 @@ def compute_team_diagnostics(
             cell["value"] += p["uv"]
 
     slots = lineup_optimizer.slots_from_roster_positions(roster_positions)
+    bye_by_team = merger.bye_week_by_team()
 
     results: dict[str, TeamDiagnostics] = {}
     for rid, players in by_team.items():
-        opt_players = [{"id": p["id"], "value": p["uv"], "eligible": {p["position"]}} for p in players]
+        opt_players = [{"id": p["id"], "value": p["uv"], "eligible": {p["position"]},
+                        "bye": bye_by_team.get(p.get("team"))} for p in players]
         lineup = lineup_optimizer.optimize_lineup(opt_players, slots)
+        # Same rows, same solver, one more question asked of them: what is this lineup worth in
+        # the week its byes land. Observable only -- nothing here feeds a value (see
+        # lineup_optimizer.bye_collision on why that is a measured decision, not an omission).
+        bye_exposure = lineup_optimizer.bye_collision(opt_players, roster_positions)
         accumulated_value = round(sum(p["uv"] for p in players), 2)
         starting_lineup_value = lineup["total_value"]
         bench_surplus_value = round(accumulated_value - starting_lineup_value, 2)
@@ -167,6 +200,6 @@ def compute_team_diagnostics(
             replacement_level_surplus=replacement_level_surplus,
             replacement_level_unpriced=replacement_level_unpriced,
             positional_counts=positional_counts, thin_positions=tuple(sorted(thin_positions)),
-            structural_holes=structural_holes,
+            structural_holes=structural_holes, bye_collision=bye_exposure,
         )
     return results
