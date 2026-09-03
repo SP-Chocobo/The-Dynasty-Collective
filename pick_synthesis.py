@@ -74,11 +74,15 @@ Five real signals this module adds that didn't exist anywhere in the engine befo
         not shared measurement. Orthogonalizing further would mean residualizing one real
         signal against the other, making both less interpretable to remove a correlation that
         reflects reality.
+      - positional_forfeit (#48/#71) -- what delaying this POSITION to the next turn costs.
+        The MAGNITUDE half of the pair whose PROBABILITY half is survival_probability above --
+        the same split already made deliberately for denial. Normalized against the
+        universal_value scale's own top and weighted like the denial magnitude beside it.
       - need_bonus + eligibility_bonus (this roster's own fit) -- applied directly, the same
         additive-nudge treatment draft_room.py already gives these two terms. Deliberately TWO
         of draft_room's three team-specific terms: depth_exposure is excluded, because
-        team_acquisition_value already reads it and necessity's counterpart to it is
-        waiting_cost. See the roster_fit_component itself, and ENGINE_WIRING_PASS.md, for the
+        team_acquisition_value already reads it and necessity's counterpart to it is the
+        positional waiting magnitude directly above. See the roster_fit_component itself, and ENGINE_WIRING_PASS.md, for the
         level-versus-rate decomposition that makes that a ruling rather than an oversight.
       - round: late-round picks (round >= draft_room's own UPSIDE_MODE_DEFAULT_ROUND) get the
         WHOLE score rescaled proportionally into a low band (see LATE_ROUND_NECESSITY_CAP), not
@@ -241,6 +245,23 @@ NECESSITY_RUN_BONUS = 6.0
 NECESSITY_DENIAL_WEIGHT = 10.0       # rival_premium normalized against draft_room.NEED_BONUS_MAX
                                      # -- which that quantity now exceeds; see #144 at the
                                      # denial_component, where the saturation is measured.
+
+# #48 / #71: the POSITIONAL WAITING MAGNITUDE -- what delaying this position to my next turn
+# actually costs. Set equal to NECESSITY_DENIAL_WEIGHT deliberately, and no new number is
+# introduced: both are magnitude terms on the universal_value scale normalized into necessity
+# points, they are one class, and giving them different weights would rank them by nothing
+# (the same reasoning that set DEPTH_EXPOSURE_MAX = NEED_BONUS_MAX).
+NECESSITY_FORFEIT_WEIGHT = 10.0
+
+# The divisor, and it is borrowed rather than invented. positional_forfeit is a gap on the
+# universal_value scale, and that scale is CONSTRUCTED so 100 is the largest real VOR gap in
+# the remaining pool (see draft_room's ARCHITECTURE section on linear scaling). So a forfeit
+# expressed as a fraction of 100 is already a meaningful fraction of "the biggest gap actually
+# out there" -- the same move eligibility_bonus and depth_exposure make with
+# TRADE_VALUE_SCALE_MAX. Measured on real boards: forfeit p50 23.47, p90 95.82, max 117.39, so
+# this is a real gradient rather than a near-constant, and the min() below is a defensive clip
+# at the scale's documented top, not the mechanism doing the work.
+FORFEIT_SCALE_MAX = 100.0
 NECESSITY_ROSTER_FIT_WEIGHT = 0.8    # applied to (need_bonus + eligibility_bonus) -- NOT
                                      # depth_exposure; see the component for why that
                                      # exclusion is a ruling rather than an omission
@@ -373,6 +394,42 @@ def compute_pick_necessity(raw_candidates: list[dict], round_num: int) -> list[t
         cliff = c.get("positional_cliff")
         cliff_component = NECESSITY_CLIFF_POINTS.get(cliff["tier"], 0.0) if cliff else 0.0
 
+        # THE POSITIONAL WAITING MAGNITUDE (#48/#71). What it costs to take the other position
+        # now and come back to this one next turn -- the magnitude whose PROBABILITY half is
+        # survival_component above. That split is the same one already made deliberately for
+        # denial (rival_premium carries the magnitude, survival carries the probability, and
+        # denial_value's p_take-weighted form was removed for counting the probability twice).
+        # Residual r(forfeit, survival) = -0.352 measured, which is shared CAUSE -- a scarce
+        # position is both harder to wait on and likelier to be picked -- not shared
+        # measurement, and well inside the ~0.6 already accepted for the denial pair.
+        #
+        # WHY THIS TERM AND NOT waiting_cost, which #48 originally named and which this
+        # module's own comments incorrectly claimed was already wired. Measured on real boards:
+        #   - HORIZON. necessity asks "act now, or next turn?". positional_forfeit is exactly
+        #     the next-turn cost; waiting_cost is the cost of deferring to the END OF THE
+        #     DRAFT, which answers a different question.
+        #   - DOUBLE-COUNT. r(waiting_cost, bpa) = +0.847. necessity's standout component is
+        #     already TAV/bpa-anchored, so wiring waiting_cost would re-add it under another
+        #     name. r(positional_forfeit, bpa) = +0.364.
+        #   - COVERAGE. positional_forfeit is present on 100% of candidates; waiting_cost is
+        #     `measured` on 52% (28% imputed, 17% unavailable).
+        # The two are r = +0.569 with each other: genuinely two costs at two horizons (#71),
+        # not one quantity under two names.
+        #
+        # It is NOT redundant with cliff_component beside it: r(forfeit, cliff_points) = +0.207,
+        # and forfeit's range inside each cliff tier is nearly the full range (HIGH p50 24.44,
+        # LOW p50 20.45, both spanning 0 to 117.39). The tier is an adjacent-gap shape; this is
+        # the decay over the intervening picks.
+        #
+        # None, not 0.0, when there is nothing to forfeit -- a back-to-back snake turn has no
+        # intervening picks, so the question does not arise. Contributing 0.0 there is correct
+        # and means "no wait to pay for", which is why absence and zero coincide for once.
+        forfeit = c.get("positional_forfeit")
+        forfeit_component = (
+            min(max(forfeit, 0.0) / FORFEIT_SCALE_MAX, 1.0) * NECESSITY_FORFEIT_WEIGHT
+            if forfeit is not None else 0.0
+        )
+
         run_component = NECESSITY_RUN_BONUS if c.get("position_run_detected") else 0.0
 
         # p_take-free by design -- see the module docstring's rival_premium bullet for why
@@ -402,8 +459,17 @@ def compute_pick_necessity(raw_candidates: list[dict], round_num: int) -> list[t
         # measurement was not the question. ENGINE_WIRING_PASS.md rules that exposure and
         # waiting_cost are different functions of one concern and belong in one layer each:
         #
-        #   team_acquisition_value reads depth_exposure -- the LEVEL: "this hole is expensive"
-        #   pick_necessity reads waiting_cost      -- the RATE:  "and it is getting harder to fill"
+        #   team_acquisition_value reads depth_exposure     -- the LEVEL: this hole is expensive
+        #   pick_necessity reads positional_forfeit         -- the RATE:  and it is getting
+        #                                                      harder to fill
+        #
+        # CORRECTED (#48). These lines previously named waiting_cost as the rate half AND
+        # asserted necessity already read it. Necessity read neither: waiting_cost appeared in
+        # this module only as a dataclass field and in this claim. Measured, it is also the
+        # WRONG half -- it prices deferral to the end of the DRAFT, and r(waiting_cost, bpa) =
+        # +0.847 would re-add the standout component under a new name. positional_forfeit
+        # prices deferral to the NEXT TURN, which is the horizon a per-pick decision has, and
+        # it is now genuinely wired (see forfeit_component).
         #
         # A hole worth 12 points with twelve replacements still on the board is expensive and
         # not urgent. Adding exposure here would boost the same position twice for one reason,
@@ -419,6 +485,7 @@ def compute_pick_necessity(raw_candidates: list[dict], round_num: int) -> list[t
         raw_score = (
             NECESSITY_BASELINE + standout_component + survival_component
             + cliff_component + run_component + denial_component + roster_fit_component
+            + forfeit_component
         )
         raw_score = max(0.0, min(100.0, raw_score))
 

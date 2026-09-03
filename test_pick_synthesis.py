@@ -7,6 +7,7 @@ support.
 """
 
 import unittest
+from pathlib import Path
 
 import dataclasses
 
@@ -14,6 +15,8 @@ import data_merger as dm
 import draft_room as dr
 import draft_strategy as ds
 import pick_synthesis as ps
+
+_HERE = Path(__file__).parent
 
 SUPERFLEX_LEAGUE = {
     "roster_positions": ["QB", "RB", "RB", "WR", "WR", "TE", "FLEX", "FLEX", "SUPER_FLEX", "BN", "BN", "BN", "BN"],
@@ -211,7 +214,7 @@ class PositionViewDepthTests(unittest.TestCase):
 
 def _raw_candidate(team_acquisition_value, survival_probability=1.0, positional_cliff=None,
                     position_run_detected=False, rival_premium=0.0, need_bonus=0.0,
-                    eligibility_bonus=0.0, depth_exposure=None):
+                    eligibility_bonus=0.0, depth_exposure=None, positional_forfeit=None):
     # depth_exposure defaults to None rather than 0.0 so this helper keeps producing the shape
     # a row with no depth measurement actually has -- the distinction the whole basis idiom
     # exists to preserve. Passing 0.0 explicitly would test a different case.
@@ -220,6 +223,9 @@ def _raw_candidate(team_acquisition_value, survival_probability=1.0, positional_
         "positional_cliff": positional_cliff, "position_run_detected": position_run_detected,
         "rival_premium": rival_premium, "need_bonus": need_bonus, "eligibility_bonus": eligibility_bonus,
         "depth_exposure": depth_exposure,
+        # None, not 0.0: a back-to-back snake turn has no intervening picks, so there is no
+        # wait to price. See DepthExposureStopsAtTheValueLayerTests' sibling below.
+        "positional_forfeit": positional_forfeit,
     }
 
 
@@ -1452,6 +1458,93 @@ class DepthExposureStopsAtTheValueLayerTests(unittest.TestCase):
         block = ui_source.block("_DRAFT_ROOM_DIFF_LABELS = {", until="}")
         missing = [f for f in ps._DIFF_FIELDS if f'"{f}":' not in block]
         self.assertEqual(missing, [], f"diff fields with no display label: {missing}")
+
+
+
+class ThePositionalWaitingMagnitudeReachesNecessityTests(unittest.TestCase):
+    """#48 / #71: necessity's missing magnitude, and the term that was nearly wired instead.
+
+    This module's own comments claimed pick_necessity read waiting_cost. It read neither cost of
+    waiting -- waiting_cost appeared only as a dataclass field and in that claim, and
+    positional_forfeit reached necessity only through cliff_protection, a flag measured firing
+    71.1% of the time (a bound used as a threshold, #56). Both costs are real and DIFFERENT
+    (r = +0.569); the one necessity needs is the one at ITS horizon."""
+
+    def test_the_forfeit_magnitude_alone_changes_the_score(self):
+        """Isolated the way every other necessity term is: identical candidates, including
+        team_acquisition_value so the standout component is held equal."""
+        costly = _raw_candidate(100.0, positional_forfeit=100.0)
+        free = _raw_candidate(100.0, positional_forfeit=0.0)
+        (costly_score, _), (free_score, _) = ps.compute_pick_necessity([costly, free], round_num=3)
+        self.assertGreater(costly_score, free_score,
+                           "positional_forfeit does not reach necessity -- the magnitude half "
+                           "of the wait is missing and only the probability half is counted")
+
+    def test_absent_forfeit_scores_the_same_as_zero_and_does_not_crash(self):
+        """The one place absence and zero legitimately coincide: a back-to-back snake turn has
+        no intervening picks, so there is genuinely no wait to pay for. Stated rather than
+        assumed, because everywhere else in this codebase that identification is a defect."""
+        absent = _raw_candidate(100.0, positional_forfeit=None)
+        zero = _raw_candidate(100.0, positional_forfeit=0.0)
+        (a, _), (b, _) = ps.compute_pick_necessity([absent, zero], round_num=3)
+        self.assertAlmostEqual(a, b, places=6)
+
+    def test_it_is_bounded_by_its_own_weight(self):
+        """A forfeit past the scale's documented top clips rather than running away -- the
+        defensive min(), matching how eligibility_bonus and depth_exposure treat a source value
+        above their documented range."""
+        huge = _raw_candidate(100.0, positional_forfeit=10_000.0)
+        at_max = _raw_candidate(100.0, positional_forfeit=ps.FORFEIT_SCALE_MAX)
+        (huge_score, _), (max_score, _) = ps.compute_pick_necessity([huge, at_max], round_num=3)
+        self.assertAlmostEqual(huge_score, max_score, places=6)
+
+    def test_a_negative_forfeit_cannot_subtract_from_necessity(self):
+        """Delaying a position cannot make it MORE optional than not delaying it. One-directional
+        for the same reason risk_adj is."""
+        negative = _raw_candidate(100.0, positional_forfeit=-50.0)
+        zero = _raw_candidate(100.0, positional_forfeit=0.0)
+        (neg, _), (base, _) = ps.compute_pick_necessity([negative, zero], round_num=3)
+        self.assertAlmostEqual(neg, base, places=6)
+
+    def test_it_carries_the_same_weight_as_the_other_magnitude_term(self):
+        """One class, one magnitude. rival_premium is the denial magnitude; this is the
+        positional-wait magnitude; both are normalized into necessity points from a
+        universal_value-scale gap. Different weights would rank them by nothing."""
+        self.assertEqual(ps.NECESSITY_FORFEIT_WEIGHT, ps.NECESSITY_DENIAL_WEIGHT)
+
+    def test_waiting_cost_is_still_NOT_wired_and_the_module_says_why(self):
+        """The correction, pinned. waiting_cost is the OTHER cost of waiting -- deferral to the
+        end of the draft -- and measured r(waiting_cost, bpa) = +0.847, so wiring it would
+        re-add necessity's own standout component under a new name. If someone wires it later
+        this fails, and the right response is to re-measure that correlation, not delete this."""
+        import ast
+        tree = ast.parse((_HERE / "pick_synthesis.py").read_text())
+        target = next(node for node in ast.walk(tree)
+                      if isinstance(node, ast.FunctionDef)
+                      and node.name == "compute_pick_necessity")
+        read = {node.args[0].value for node in ast.walk(target)
+                if isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute)
+                and node.func.attr == "get" and node.args
+                and isinstance(node.args[0], ast.Constant)}
+        self.assertIn("positional_forfeit", read, "the forfeit magnitude is no longer read")
+        self.assertNotIn("waiting_cost", read,
+                         "compute_pick_necessity now reads waiting_cost -- r(waiting_cost, bpa) "
+                         "= +0.847 means this re-adds the standout component under another "
+                         "name; re-measure before keeping it")
+
+    def test_the_two_costs_of_waiting_are_named_separately(self):
+        """#71. They are two horizons, not two names for one quantity, and the module has to say
+        so or the next reader collapses them again."""
+        # Normalized past BOTH line wraps and comment markers. A literal search failed first
+        # (the phrases wrap), and plain whitespace-normalization failed second -- "END OF THE\n
+        # #     DRAFT" collapses to "END OF THE # DRAFT", with the comment prefix now inside the
+        # phrase. A prose guard that breaks whenever a paragraph is re-wrapped is a guard that
+        # gets deleted rather than fixed, so it is worth getting right once.
+        import re
+        raw = (_HERE / "pick_synthesis.py").read_text()
+        source = " ".join(re.sub(r"^\s*#\s?", " ", raw, flags=re.MULTILINE).split())
+        self.assertIn("END OF THE DRAFT", source)
+        self.assertIn("NEXT TURN", source)
 
 
 if __name__ == "__main__":

@@ -715,20 +715,20 @@
       }
     },
     "test_pick_synthesis.py": {
-      "test_methods": 107,
+      "test_methods": 114,
       "asserts": {
-        "assertAlmostEqual": 12,
-        "assertEqual": 79,
+        "assertAlmostEqual": 15,
+        "assertEqual": 80,
         "assertFalse": 18,
-        "assertGreater": 10,
+        "assertGreater": 11,
         "assertGreaterEqual": 7,
-        "assertIn": 14,
+        "assertIn": 17,
         "assertIsInstance": 2,
         "assertIsNone": 10,
         "assertIsNotNone": 8,
         "assertLess": 5,
         "assertLessEqual": 4,
-        "assertNotIn": 8,
+        "assertNotIn": 9,
         "assertRaises": 2,
         "assertTrue": 19
       }

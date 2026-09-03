@@ -435,6 +435,58 @@ one published conclusion ("no headroom") that had to be corrected two commits la
 
 ---
 
+## Addendum 4 — #48 and #71, and a claim this document made that was false
+
+`pick_synthesis.py` and this file both asserted that **`pick_necessity` reads `waiting_cost`** —
+the rate half of the level/rate decomposition used to justify keeping `depth_exposure` out of
+necessity. **It read neither cost of waiting.** `waiting_cost` appeared in that module only as a
+dataclass field and in the claim itself. So the decomposition was half-built: TAV got its level,
+necessity got nothing.
+
+Worse, `waiting_cost` is the **wrong half**, which only became visible on measuring it:
+
+| | positional_forfeit | waiting_cost |
+|---|---|---|
+| horizon | **to my next turn** | to the end of the draft |
+| units | `universal_value` | season points |
+| `r(·, bpa)` | +0.364 | **+0.847** |
+| `r(·, survival)` | −0.352 | −0.145 |
+| coverage | **100%** of candidates | `measured` on 52% (28% imputed, 17% unavailable) |
+
+`r(forfeit, waiting) = +0.569` — genuinely **two costs at two horizons (#71)**, not one quantity
+under two names. And necessity asks *"act now, or next turn?"*, so the next-turn cost is the one
+at its horizon. Wiring `waiting_cost` would have re-added necessity's own standout component —
+which is TAV/bpa-anchored — under a new name.
+
+**`positional_forfeit` is now wired as a continuous term**, and it was not previously reaching
+necessity in any usable form: it entered only through `cliff_protection`, a flag measured firing
+**71.1%** of the time — a bound used as a threshold (#56), on almost always, carrying almost
+nothing. Nor is it redundant with the `cliff_component` beside it: `r(forfeit, cliff_points) =
++0.207`, and forfeit's range *inside* each cliff tier is nearly the full range (HIGH p50 24.44,
+LOW p50 20.45, both spanning 0→117.39). The tier is an adjacent-gap shape; this is the decay
+across the intervening picks.
+
+**No new magnitude was invented.** The weight equals `NECESSITY_DENIAL_WEIGHT` — both are
+magnitude terms on the `universal_value` scale normalized into necessity points, one class, one
+number, the same reasoning that set `DEPTH_EXPOSURE_MAX = NEED_BONUS_MAX`. The divisor is the
+`universal_value` scale's own top (100), which is *constructed* so 100 is the largest real VOR
+gap in the remaining pool — the same borrowing `eligibility_bonus` and `depth_exposure` do with
+`TRADE_VALUE_SCALE_MAX`.
+
+Measured impact: non-zero for **80.1%** of candidates (a real gradient, not a near-constant),
+max contribution 10.0 of the 0–100 band, and it flipped the necessity argmax on **1 of 6**
+sampled real board states. It changes recommendations, which is what distinguishes it from the
+flag it replaces.
+
+**A harness bug nearly published as an engine finding, for the second time this session.** The
+first measurement reported `positional_forfeit` absent on 100% of candidates. The cause: taking
+the next `"1"` in the pick order after a completed round lands on the **snake turn**, where the
+manager picks back-to-back — `intervening_picks` is 0, so survival is 1.0 and there is genuinely
+nothing to forfeit. The engine was right and the harness was wrong. Non-vacuity checks for this
+shape are now written into #150's brief.
+
+---
+
 ## State at the end of this pass
 
 - `main` merged and unfrozen at `cf8fa0c`; marker branch `pre-blind-audit` sits there.
