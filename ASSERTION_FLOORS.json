@@ -710,6 +710,19 @@
         "assertTrue": 1
       }
     },
+    "test_prediction_record.py": {
+      "test_methods": 18,
+      "asserts": {
+        "assertEqual": 12,
+        "assertFalse": 1,
+        "assertGreater": 2,
+        "assertIn": 3,
+        "assertLess": 1,
+        "assertLessEqual": 1,
+        "assertRaises": 2,
+        "assertTrue": 1
+      }
+    },
     "test_pricing_exhaustion_boundary.py": {
       "test_methods": 9,
       "asserts": {
