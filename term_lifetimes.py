@@ -139,6 +139,103 @@ EXCLUDED: dict[str, dict] = {
 }
 
 
+#: THE SECOND AXIS, and for source-provided fields it usually binds first: can this field
+#: REACH CDME at all? merger.external_values carries every external source, but CDME touches it
+#: in exactly two places -- pick_synthesis._consensus_lookup and draft_room._rookie_lookup --
+#: and both hard-filter to `source_name == "keeptradecut"` before reading a row. That filter IS
+#: the ingestion boundary (test_cdme_ingestion_boundary.py's adversarial injection tests), and
+#: composite_player_score, which does read every source, was deliberately removed from CDME's
+#: math after an earlier audit found it corrupting the scarcity signal.
+#:
+#: So a field on any other source is unreachable by construction. Not "unused" -- UNREACHABLE,
+#: which is a different finding and a different remedy: wiring it means loosening the filter,
+#: which is the one thing the boundary forbids.
+CDME_READABLE_SOURCE = "keeptradecut"
+
+#: Every source-provided field with no production reader (#142's audit, #145's remainder),
+#: scored on BOTH axes. Recorded because eight of the nine were being carried as "promising
+#: orphans" when they are structurally blocked, and the ninth was not singled out.
+CANDIDATE_INPUTS: dict[str, dict] = {
+    "std_dev": {"source": "fantasypros", "file": "dynasty_ppr_rankings.csv",
+                "lifetime": MULTI_YEAR, "what": "expert-panel disagreement about a dynasty rank"},
+    "best": {"source": "fantasypros", "file": "dynasty_ppr_rankings.csv",
+             "lifetime": MULTI_YEAR, "what": "most optimistic panel rank"},
+    "worst": {"source": "fantasypros", "file": "dynasty_ppr_rankings.csv",
+              "lifetime": MULTI_YEAR, "what": "most pessimistic panel rank"},
+    "avg": {"source": "fantasypros", "file": "dynasty_ppr_rankings.csv",
+            "lifetime": MULTI_YEAR, "what": "mean panel rank"},
+    "analyst_avg": {"source": "espn", "file": "idp_redraft_rankings.csv",
+                    "lifetime": SEASON, "what": "mean analyst rank, REDRAFT scope"},
+    "injury_flag": {"source": "espn", "file": "idp_redraft_rankings.csv",
+                    "lifetime": WEEK, "what": "current injury note; reaches 2.2% of the frame"},
+    "ecr_1qb": {"source": "dynastyprocess", "file": "players.csv",
+                "lifetime": MULTI_YEAR, "what": "expert consensus rank, 1QB"},
+    "ecr_2qb": {"source": "dynastyprocess", "file": "players.csv",
+                "lifetime": MULTI_YEAR, "what": "expert consensus rank, superflex"},
+    "trend_30d": {"source": "keeptradecut", "file": "dynasty_superflex_halfppr.csv",
+                  "lifetime": None,
+                  "what": "30-day movement in the dynasty market price",
+                  # The ONLY candidate on the source CDME can read, so neither the ingestion
+                  # boundary nor the lifetime rule blocks it -- and it is blocked anyway, by
+                  # the data. See UNSIGNED_TREND below.
+                  "data_defect": "unsigned"},
+    "source_format": {"source": "keeptradecut", "file": "dynasty_superflex_halfppr.csv",
+                      "lifetime": None, "what": "plumbing: which format the export was for"},
+}
+
+
+#: #148. `trend_30d` survives both gates and fails on its own contents: across all 499 rows of
+#: the committed KTC export there is not a single negative value. Direction is the entire
+#: information content of a trend -- at +401 a player is either breaking out or collapsing, and
+#: the column cannot say which -- so it is unusable as ingested.
+#:
+#: MOST LIKELY CAUSE, stated as a hypothesis because it cannot be confirmed from here: the
+#: export is PDF text extraction of KTC's paginated web view (see that source's ATTRIBUTION.md),
+#: and the site renders direction as a coloured arrow glyph rather than a "-" character, so the
+#: magnitude survives extraction and the sign does not. That is the same failure family as the
+#: value/rank concatenation the same attribution already documents. KTC's API is blocked from
+#: this environment (403), so it cannot be checked against the live source.
+#:
+#: EITHER WAY IT IS AN INPUT DEFECT, NOT A PRINCIPLE -- which makes it the one #145 candidate
+#: that is fixable rather than ruled out. A re-scrape that preserves sign makes the field
+#: immediately admissible on both axes.
+#:
+#: Worth recording alongside: run_asset_character_measurement.py already wrote trend_30d off as
+#: "always NaN, not usable today" -- but it checked the FANTASYPROS file, where the column is
+#: absent. Nobody checked the keeptradecut file, where it is present and unsigned. A field
+#: dismissed on the wrong source stays dismissed.
+UNSIGNED_TREND = "unsigned"
+
+
+def reachable(field: str) -> bool:
+    """Could this field reach CDME without loosening the ingestion filter?"""
+    entry = CANDIDATE_INPUTS.get(field)
+    return bool(entry) and entry["source"] == CDME_READABLE_SOURCE
+
+
+def candidate_verdicts() -> list[dict]:
+    """Both axes per candidate field, most actionable first.
+
+    A field can be blocked twice, and saying so matters: `analyst_avg` is on an unreachable
+    source AND is redraft-scoped, so neither fixing the boundary nor finding a big effect would
+    make it admissible. Reporting only the first blocker invites someone to remove it and think
+    the field is now available.
+    """
+    out = []
+    for field, entry in sorted(CANDIDATE_INPUTS.items()):
+        blockers = []
+        if not reachable(field):
+            blockers.append(f"unreachable: on `{entry['source']}`, CDME reads only "
+                            f"`{CDME_READABLE_SOURCE}`")
+        if entry["lifetime"] in (SEASON, WEEK):
+            blockers.append(f"lifetime `{entry['lifetime']}` is shorter than the dynasty horizon")
+        if entry.get("data_defect") == UNSIGNED_TREND:
+            blockers.append("DATA DEFECT: the ingested column is unsigned, so direction -- the "
+                            "whole signal -- is missing (#148, fixable at the input)")
+        out.append({"field": field, **entry, "blockers": blockers})
+    return sorted(out, key=lambda row: len(row["blockers"]))
+
+
 def violations() -> list[dict]:
     """Terms whose lifetime is shorter than the dynasty horizon with nothing done about it.
 
@@ -171,6 +268,12 @@ def main() -> int:
     print("\nEXCLUDED BY THIS RULE\n")
     for name, entry in sorted(EXCLUDED.items()):
         print(f"  {name:22} {entry['lifetime']:14} excluded ({entry['register']})")
+
+    print("\n\nCANDIDATE INPUTS -- source fields with no production reader (#145)\n")
+    print(f"  {'field':16} {'source':16} {'lifetime':12} verdict")
+    for row in candidate_verdicts():
+        verdict = "; ".join(row["blockers"]) if row["blockers"] else "REACHABLE -- open question"
+        print(f"  {row['field']:16} {row['source']:16} {str(row['lifetime']):12} {verdict}")
 
     open_items = violations()
     print(f"\n{len(open_items)} open item(s).")

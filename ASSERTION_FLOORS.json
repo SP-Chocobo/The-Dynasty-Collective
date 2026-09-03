@@ -1039,11 +1039,13 @@
       }
     },
     "test_term_lifetimes.py": {
-      "test_methods": 8,
+      "test_methods": 15,
       "asserts": {
-        "assertEqual": 3,
-        "assertIn": 6,
-        "assertTrue": 1,
+        "assertEqual": 5,
+        "assertGreater": 2,
+        "assertGreaterEqual": 2,
+        "assertIn": 9,
+        "assertTrue": 3,
         "fail": 2
       }
     },

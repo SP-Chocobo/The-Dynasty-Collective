@@ -130,5 +130,92 @@ class TheRegistryStaysHonestTests(unittest.TestCase):
         self.assertIn("lifetime is at least as long as the asset's horizon", contracts)
 
 
+
+class CandidateInputsAreScoredOnBothAxesTests(unittest.TestCase):
+    """#145 / #148: the nine source fields with no production reader, and why eight of them
+    were never really candidates.
+
+    They had been carried as "promising orphans" ranked by how interesting the QUANTITY was.
+    That is the wrong first question. Two structural gates settle almost all of them before any
+    measurement: can the field reach CDME at all, and does what it measures outlive the asset.
+    Ranking by interest put the uncertainty cluster first when it is in fact the most blocked."""
+
+    def test_the_ingestion_boundary_is_still_a_single_source_allowlist(self):
+        """The premise the whole reachability verdict rests on. If a second source is ever
+        admitted, every 'unreachable' verdict below is void and must be re-derived -- so this
+        fails loudly rather than letting the table quietly go stale."""
+        for module, symbol in (("pick_synthesis.py", "_consensus_lookup"),
+                               ("draft_room.py", "_rookie_lookup")):
+            source = (_HERE / module).read_text()
+            with self.subTest(module=module):
+                self.assertIn(symbol, source)
+                self.assertIn(f'"{tl.CDME_READABLE_SOURCE}"', source,
+                              f"{module} no longer filters external_values to "
+                              f"{tl.CDME_READABLE_SOURCE} -- the reachability table in "
+                              f"term_lifetimes.py is now wrong")
+
+    def test_every_candidate_names_a_real_source_file(self):
+        """Non-vacuity: a table of blockers about fields that do not exist proves nothing."""
+        import data_merger as dm
+        merger = dm.DataMerger()
+        external = merger.external_values
+        for field, entry in tl.CANDIDATE_INPUTS.items():
+            with self.subTest(field=field):
+                self.assertIn(field, external.columns)
+                rows = external[(external["source_name"] == entry["source"])
+                                & (external["source_file"] == entry["file"])]
+                self.assertGreater(len(rows), 0,
+                                   f"{field} is attributed to {entry['source']}/{entry['file']}, "
+                                   f"which loaded no rows")
+
+    def test_only_keeptradecut_fields_are_reachable(self):
+        for field, entry in tl.CANDIDATE_INPUTS.items():
+            with self.subTest(field=field):
+                self.assertEqual(tl.reachable(field),
+                                 entry["source"] == tl.CDME_READABLE_SOURCE)
+
+    def test_a_field_blocked_twice_says_so_twice(self):
+        """analyst_avg is on an unreachable source AND is redraft-scoped. Reporting only the
+        first blocker invites someone to fix that one and think the field is now available."""
+        verdicts = {row["field"]: row for row in tl.candidate_verdicts()}
+        self.assertGreaterEqual(len(verdicts["analyst_avg"]["blockers"]), 2)
+        self.assertGreaterEqual(len(verdicts["injury_flag"]["blockers"]), 2)
+
+
+class TheTrendColumnIsUnsignedTests(unittest.TestCase):
+    """#148: the one candidate that clears both structural gates, and fails on its contents.
+
+    A characterization, not a requirement. When a re-scrape preserves direction this fails, and
+    that failure is the prompt to re-open the field -- which is the whole reason to pin a defect
+    rather than only describe it."""
+
+    @classmethod
+    def setUpClass(cls):
+        import data_merger as dm
+        merger = dm.DataMerger()
+        external = merger.external_values
+        cls.rows = external[(external["source_name"] == "keeptradecut")
+                            & external["trend_30d"].notna()]
+
+    def test_the_column_is_populated_at_all(self):
+        """Guards the test below from passing because the column is simply empty -- which is
+        what a prior measurement concluded, having checked the wrong source's file."""
+        self.assertGreater(len(self.rows), 100)
+
+    def test_not_one_value_is_negative(self):
+        negative = (self.rows["trend_30d"] < 0).sum()
+        self.assertEqual(
+            negative, 0,
+            "trend_30d now carries negative values -- direction survived ingestion. #148's "
+            "blocker is gone and the field is admissible on both structural axes; re-measure "
+            "its independence from KTC rank before wiring it.")
+
+    def test_the_defect_is_recorded_where_the_verdict_is_read(self):
+        verdict = next(row for row in tl.candidate_verdicts() if row["field"] == "trend_30d")
+        self.assertTrue(any("unsigned" in blocker for blocker in verdict["blockers"]))
+        self.assertTrue(tl.reachable("trend_30d"),
+                        "trend_30d must stay marked REACHABLE -- its blocker is the data, not "
+                        "the boundary, and conflating the two loses a fixable finding")
+
 if __name__ == "__main__":
     unittest.main()
