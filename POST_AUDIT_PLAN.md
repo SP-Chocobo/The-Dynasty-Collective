@@ -3755,3 +3755,88 @@ The root cause of the QB consumption is therefore OPEN. It resembles #114's late
 collapse (value-flat boards where near-arbitrary tiebreaks decide, 21 of 30 picks in rounds
 12-14 going to one position), but that is a resemblance, not a finding, and this file has
 already carried one wrong explanation today.
+
+---
+
+# #156 — ROOT CAUSE OF THE MONOCULTURES: AN EXHAUSTED POSITION PRICES AT ZERO AND WINS
+
+## The corrected baseline first
+
+With `set_league_format` wired, the battery's real incidence is **4 findings across 32 formats
+and 5,244 picks** -- not 13. Nine of the thirteen were artifacts of every format drafting from
+one ranking export.
+
+| format | chair | shape | unfillable |
+|---|---|---|---|
+| 10T_half_ppr / 10T_ppr | 2 | RB 7, WR 6, TE 1 | **QB** |
+| 12T_ppr_redraft | 7 | RB 8, WR 3, TE 3 | **QB** |
+| HEAVY_IDP | 5 | one DB | DB |
+
+`12T_ppr_mode_upside` is now CLEAN (0 findings), so "upside mode has no positional gate" does
+not by itself break rosters once scoring is correct. `4WR_TE_PREMIUM` is clean too -- #153's
+cap collapse does not produce an unfillable roster.
+
+**Three of the four are QB, all one mechanism.**
+
+## The mechanism, measured
+
+10T_ppr, board entering round 12:
+
+```
+QB  uv=  0.00  bpa=  0.00  need=0.00  basis=live_starter_demand   <- top of board
+TE  uv= -6.01  bpa=  1.00  need=0.67  basis=live_starter_demand
+RB  uv= -9.48  bpa=  0.00  need=0.00  basis=live_starter_demand
+WR  uv=-15.79  bpa=-13.00  need=0.00  basis=predraft_anchor
+```
+
+Once a position's league-wide starter demand is met, `replacement_levels` collapses its target
+rank to 1 -- replacement becomes THE BEST PLAYER STILL ON THE BOARD -- so that player's VOR is
+his own points minus his own points, **exactly 0.00**. A position with live demand still
+measures against a real demand rank, so its remaining players price NEGATIVE.
+
+**Zero beats negative.** The engine takes the exhausted position's best player on every
+subsequent pick until that position is empty, then moves to the next-exhausted position and
+drains that one. Hence 39 of 39 priceable QBs consumed by a ten-team 1QB league, 21 of them in
+rounds 12-14, and a chair left with none.
+
+## Why the docstring is right and the behaviour is still wrong
+
+`replacement_levels` calls the collapse correct, and **in isolation it is** -- nobody left at
+that position is above replacement, so ~0 is the honest within-position answer. The defect is
+cross-positional:
+
+> **VOR is comparable across positions only while every position's replacement level is the
+> same KIND of claim.** Once one bar is a self-reference ("the best still here") and another is
+> a demand rank ("the 10th best"), a 0.00 from the first is not the same quantity as a 0.00
+> from the second -- and it outranks every honest negative on the board.
+
+This is the same category error #56 keeps catching, one level up: not a bound reused as a
+threshold, but two different MEASUREMENTS reported in one column as though interchangeable.
+
+## What this reframes
+
+#59, #60, #114, #147 and #50 all named this pricing. **None of them measured that it makes the
+engine systematically drain exhausted positions**, because none of them ran a full draft and
+looked at the resulting rosters. That is what the battery was for.
+
+## What it means for the repair
+
+**Tier 3 cannot fix this and never could.** By the time a feasibility backstop binds, the
+position it needs to promote has been drained to zero -- measured directly: at chair 2's last
+pick the backstop bound correctly and found **zero QBs on the board**.
+
+**Tier 2 is now the load-bearing half**, and #156 may make even that insufficient: an
+opportunity-cost rule reads `positional_forfeit`, which is computed from the same replacement
+model. A rule fed by a broken comparison inherits the break.
+
+So the order is: **#156 first, then tier 2.** Two candidate repairs, neither chosen:
+  1. Price an exhausted position against its PRE-DRAFT anchor. Already partly present via
+     `_fill_omitted_from_anchor` -- but measured NOT to be the current mechanism (every late QB
+     pick carries `live_starter_demand`, not one `predraft_anchor`), so this would be a change
+     in when the anchor applies, not a new idea.
+  2. Make "no remaining demand" produce an ABSENT price rather than a zero. This is the absence
+     contract's own answer -- an unpriced row is ordered last (#61), which takes drained
+     positions OUT of contention instead of putting them on top. It also makes the claim
+     honest: with demand met, this engine has no basis for saying what another one is worth.
+
+Both are #50/Phase 3 redefinitions, not patches, and the owner owns the equation.
