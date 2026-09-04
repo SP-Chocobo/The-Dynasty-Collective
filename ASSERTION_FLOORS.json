@@ -384,6 +384,18 @@
         "fail": 1
       }
     },
+    "test_draft_battery.py": {
+      "test_methods": 17,
+      "asserts": {
+        "assertAlmostEqual": 1,
+        "assertEqual": 19,
+        "assertGreater": 2,
+        "assertIn": 3,
+        "assertIsNone": 1,
+        "assertNotIn": 1,
+        "assertTrue": 3
+      }
+    },
     "test_draft_board_ui.py": {
       "test_methods": 43,
       "asserts": {
