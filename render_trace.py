@@ -18,22 +18,35 @@ Streamlit and writes down every call it makes, in order, with the shape of its a
 trace is the "before". Extract, re-run, diff. A byte-identical trace is real evidence the
 refactor preserved behaviour; a green suite is not.
 
-KNOWN FLAW, MEASURED AND NOT YET FIXED (#151): THIS TRACE IS TIME-DEPENDENT. Long strings are
-recorded as `str[97]` -- a length -- and a length is a VALUE, which contradicts the paragraph
-directly below. Demonstrated: the committed trace went stale overnight with a single diff,
-`str[97]` -> `str[98]`, because the Data Sources caption reads "(9d ago)" one day and
-"(10d ago)" the next. No UI changed.
+#151, FIXED, AND THE OTHER OPTION IS STRUCTURALLY IMPOSSIBLE HERE. This trace used to record
+long strings as `str[97]` -- a length, which is a VALUE, contradicting the paragraph directly
+below. It went stale overnight with a single diff, `str[97]` -> `str[98]`, because the Data
+Sources caption reads "(9d ago)" one day and "(10d ago)" the next. No UI changed. That is the
+worst failure an instrument can have: it teaches its reader to regenerate without looking, and
+a trace regenerated without looking is evidence of nothing.
 
-That is the worst failure an instrument can have, because it teaches its reader to regenerate
-without looking -- and a trace regenerated without looking is evidence of nothing. A clock-freeze
-fix was attempted and REVERTED: patching `datetime` across already-imported modules did swap the
-class but `now()` still returned real time, and shipping a monkeypatch that looks like it works
-and does not is strictly worse here than a documented flaw. See #151 for the two real options
-(freeze the clock properly, or stop recording exact lengths) and why the choice belongs with the
-hull pass that rebuilds this area.
+Of the two options, FREEZING THE CLOCK CANNOT WORK IN THIS PROCESS -- measured, not assumed,
+and this is why the first attempt failed rather than carelessness. Both available seams break
+identically:
 
-Until then: a length-only diff on a date-bearing caption is this flaw, not a regression. A diff
-in call PATH or ORDER never is.
+    RuntimeWarning: datetime.datetime size changed, may indicate binary incompatibility.
+                    Expected 48 from C header, got 56 from PyObject
+
+Any C extension imported during a capture runs `PyDateTime_IMPORT`, which validates the type's
+binary layout. A `datetime` subclass is a different size, so it trips whether the class is
+swapped at the source (`datetime.datetime = Frozen`) or hidden behind a `sys.modules` shim --
+and app.py's import graph pulls in C extensions on every capture. That is what the earlier
+"swapped the class but `now()` still returned real time" was a symptom of. Freezing the clock
+here needs either a third-party dependency or an injectable clock seam through app.py and
+data_merger's six `datetime.now()` call sites -- the hull pass's territory, not a patch.
+
+So the fix is the other option: long strings record as `str[long]`, with no length. That is what
+the paragraph below already promised. The cost is real and worth stating: 147 of 491 calls (30%)
+carried a length, and dropping it loses the ability to notice a refactor that swaps two
+same-shaped adjacent calls without changing path or order. Position in the sequence still
+separates everything else, and "is the copy identical" was never a question this trace answered.
+An instrument that emits a false diff every time a day counter ticks is worth less than one that
+is slightly less sensitive and never lies.
 
 WHAT IT RECORDS AND WHAT IT DELIBERATELY DOES NOT. Call path, ordering, and argument SHAPES --
 `st.columns(3)`, `st.button('Retract', key=...)`. Not the full argument values: a caption
@@ -70,8 +83,10 @@ def _shape(value) -> str:
     measuring the data, not the refactor."""
     if isinstance(value, str):
         # Short literals are kept: they are usually labels and keys, which ARE the structure.
-        # Long ones are almost always computed prose, which is not.
-        return f"str:{value}" if len(value) <= 60 else f"str[{len(value)}]"
+        # Long ones are almost always computed prose, which is not -- and their LENGTH is prose
+        # too, not structure (#151). Recording it made this trace churn on the calendar; see the
+        # module docstring for why freezing the clock instead is not available here.
+        return f"str:{value}" if len(value) <= 60 else "str[long]"
     if isinstance(value, bool):
         return f"bool:{value}"
     if isinstance(value, (int, float)):

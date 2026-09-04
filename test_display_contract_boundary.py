@@ -164,8 +164,34 @@ class TheScaleIsNotAPointsTotalTests(unittest.TestCase):
         #   and the decomposition of TAV belongs in the "What changed?" drawer, where this term
         #   now appears with a display label. Adding a fourth adjacent identically-formatted
         #   card would deepen exactly the unit-borrowing problem documented above, not fix it.
+        # 39 -> 41 (2026-09-04): replacement_basis and growth_signal, #138's last two
+        # write-only quantities, carried from the board row so the retained decision record can
+        # read them. The same two questions, and for growth_signal the answer is NOT routine:
+        #
+        #   SCALE. replacement_basis is a string enum -- "live_starter_demand" |
+        #   "predraft_anchor" -- and implies no unit at all.
+        #
+        #   growth_signal DOES imply one, and it is the wrong one for this card. It is a
+        #   PERCENTILE DIFFERENCE (proj3yr_pct - season_pct, clamped at 0), so it lives on
+        #   exactly the 0-100 band this whole file exists to say the engine's values do NOT
+        #   live on. Measured range on real upside boards: 0 to 87.5. Rendering it beside
+        #   universal_value -- raw projected points, unbounded and signed -- in matching
+        #   formatting is precisely the unit-borrowing this module documents, and would be
+        #   worse than the cases above because here the borrowed unit really is 0-100 and would
+        #   look authoritative.
+        #
+        #   SHOULD THE CARD RENDER THEM? Neither, and for growth_signal the question is
+        #   currently moot rather than merely declined: all three build_snapshot call sites in
+        #   app.py omit `mode`, and build_snapshot forces "balanced", where growth_signal is
+        #   always None. The card cannot render a quantity its own regime never computes. If
+        #   #115 ever routes upside mode to a human board, the scale hazard above has to be
+        #   settled BEFORE the field reaches a metric row, not after.
+        #
+        #   replacement_basis is a qualifier on a price rather than a number, so it belongs
+        #   with horizon_basis in the explanation drawer rather than the metric row -- #36/#137
+        #   territory, and deliberately not done here.
         self.assertEqual(
-            len(dataclasses.fields(ps.CandidateSnapshot)), 39,
+            len(dataclasses.fields(ps.CandidateSnapshot)), 41,
             "CandidateSnapshot's field count changed. That is fine and often correct -- but "
             "confirm the new field does not imply a scale the card cannot support, decide "
             "whether the card should render it, then update this number.")

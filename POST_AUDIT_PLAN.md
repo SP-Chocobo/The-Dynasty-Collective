@@ -3523,3 +3523,76 @@ the carry, faking absence as zero, and severing the record's read.
 `test_the_two_real_gaps_are_still_recorded_as_gaps` was **inverted rather than deleted** — it
 now asserts they are *not* write-only, so a refactor that drops the carry fails loudly instead
 of vanishing quietly.
+
+---
+
+# #151 CLOSED — AND THE OPTION EVERYONE REACHES FOR FIRST IS IMPOSSIBLE HERE
+
+`render_trace` recorded long strings as `str[97]` -- a length. A length is a VALUE, which
+contradicts the module's own rule that argument values are blurred so the trace records
+STRUCTURE. The committed reference went stale overnight on a single diff, `str[97]` ->
+`str[98]`, because the Data Sources caption ticks from "(9d ago)" to "(10d ago)". No UI changed.
+
+The register named two options. One of them is not available, and that is now measured rather
+than suspected.
+
+## Freezing the clock cannot work in this process
+
+Both seams fail identically:
+
+```
+RuntimeWarning: datetime.datetime size changed, may indicate binary incompatibility.
+                Expected 48 from C header, got 56 from PyObject
+```
+
+Any C extension imported during a capture runs `PyDateTime_IMPORT`, which validates
+`datetime`'s binary layout. A `datetime` subclass is a different size, so it trips whether the
+class is installed at the source (`datetime.datetime = Frozen`) or hidden behind a
+`sys.modules` shim -- and `app.py`'s import graph pulls C extensions in on every capture, since
+`capture()` pops and re-imports `app` each time.
+
+**This is a better explanation than the original note's.** "Patching datetime across
+already-imported modules did swap the class but `now()` still returned real time" described a
+symptom; the type-layout check is the cause, and it rules out the whole approach rather than
+one implementation of it. Freezing the clock here needs a third-party dependency (blocked
+behind #120's pinning) or an injectable clock seam through `app.py` and `data_merger`'s six
+`datetime.now()` call sites -- the hull pass's territory (#137), not a patch.
+
+## So: stop recording the length
+
+`str[long]`, which is what the module's own contract already promised.
+
+**The cost, stated rather than buried:** 147 of 491 calls (30%) carried a length. Dropping it
+loses the ability to notice a refactor that swaps two same-shaped adjacent calls without
+changing path or order. Position in the sequence still separates everything else, and "is the
+copy identical" was never a question this trace answered -- its docstring disclaims it.
+
+An instrument that emits a false diff every time a day counter ticks is worth less than one
+that is slightly less sensitive and never lies, because the first teaches its reader to
+regenerate without looking, and a trace regenerated without looking is evidence of nothing.
+
+## The guard is the flaw's own signature
+
+`_shape("x" * 97) == _shape("x" * 98)`, asserted directly on `_shape` rather than by faking a
+clock -- because a clock cannot be faked here, per above. Two companions keep it honest: a
+non-vacuity test (blurring EVERYTHING would pass while destroying the labels and keys that are
+the trace's actual structure -- the 60-character boundary is still a boundary), and a test that
+the rejected option's REASON stays in the source, since the next person will reach for a clock
+freeze first and the failure is not guessable from the code.
+
+## The display-contract ratchet fired too, and it asks a question rather than for a bump
+
+`CandidateSnapshot` 39 -> 41. Its own message: *"confirm the new field does not imply a scale
+the card cannot support, decide whether the card should render it, then update this number."*
+Both answered in place:
+
+| field | scale | render on the card? |
+|---|---|---|
+| `replacement_basis` | string enum -- implies no unit at all | no; it is a qualifier on a price, belongs with `horizon_basis` in the explanation drawer (#36/#137) |
+| `growth_signal` | **the wrong one.** A percentile difference (0-87.5 measured), living on exactly the 0-100 band this file exists to say the engine's values do NOT live on | no -- and currently MOOT: all three `build_snapshot` call sites omit `mode`, `build_snapshot` forces `"balanced"`, and growth_signal is always `None` there |
+
+Recorded as a precondition rather than a preference: if #115 ever routes upside mode to a human
+board, `growth_signal`'s scale hazard must be settled BEFORE it reaches a metric row. Rendering
+a 0-100 percentile difference beside raw-points `universal_value` in matching formatting is the
+unit-borrowing this module documents, made worse by the fact that the borrowed unit really is
+0-100 and would look authoritative.

@@ -94,8 +94,38 @@ class WhatItCannotSeeIsStatedTests(unittest.TestCase):
     def test_argument_values_are_blurred_so_the_trace_is_about_structure(self):
         """A trace that churned whenever a projection changed would be measuring the data, not
         the refactor."""
-        self.assertEqual(render_trace._shape("x" * 200), "str[200]")
+        self.assertEqual(render_trace._shape("x" * 200), "str[long]")
         self.assertEqual(render_trace._shape("Retract"), "str:Retract")
+
+    def test_a_long_strings_own_length_is_not_recorded(self):
+        """#151, as its exact signature. This trace used to emit `str[97]`, and a length is a
+        VALUE -- so the committed reference went stale overnight on `str[97]` -> `str[98]`
+        when the Data Sources caption ticked from "(9d ago)" to "(10d ago)". No UI changed.
+
+        Asserted on _shape directly rather than by faking a clock, because a clock CANNOT be
+        faked in this process: any C extension imported during a capture runs PyDateTime_IMPORT,
+        which validates datetime's binary layout, so a subclass trips
+        "RuntimeWarning: datetime.datetime size changed" whether it is installed at the source
+        or behind a sys.modules shim. Two strings of different lengths that differ by nothing
+        else must be indistinguishable here -- that is the whole property, and it is exactly
+        testable without a clock."""
+        self.assertEqual(render_trace._shape("x" * 97), render_trace._shape("x" * 98))
+        self.assertEqual(render_trace._shape("updated 2026-08-26 (9d ago)" + "x" * 60),
+                         render_trace._shape("updated 2026-08-26 (10d ago)" + "x" * 60))
+
+    def test_the_boundary_between_kept_and_blurred_is_still_a_boundary(self):
+        """Non-vacuity for the test above: if _shape blurred EVERYTHING, it would pass while
+        the trace lost the labels and keys that are its actual structure."""
+        self.assertEqual(render_trace._shape("x" * 60), "str:" + "x" * 60)
+        self.assertEqual(render_trace._shape("x" * 61), "str[long]")
+
+    def test_the_module_records_why_the_clock_cannot_be_frozen_instead(self):
+        """The rejected option, kept in the source rather than only in a register entry -- the
+        next person to look at this will reach for a clock freeze first, and the reason it
+        fails is not guessable from the code."""
+        source = (_HERE / "render_trace.py").read_text()
+        self.assertIn("PyDateTime_IMPORT", source)
+        self.assertIn("size changed", source)
 
 
 if __name__ == "__main__":

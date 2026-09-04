@@ -289,6 +289,17 @@
         "assertTrue": 1
       }
     },
+    "test_decision_qualifiers.py": {
+      "test_methods": 10,
+      "asserts": {
+        "assertAlmostEqual": 1,
+        "assertEqual": 5,
+        "assertGreater": 1,
+        "assertIn": 2,
+        "assertIsNone": 1,
+        "assertTrue": 4
+      }
+    },
     "test_demand_decomposition.py": {
       "test_methods": 37,
       "asserts": {
@@ -828,14 +839,14 @@
       }
     },
     "test_quantity_readers.py": {
-      "test_methods": 10,
+      "test_methods": 11,
       "asserts": {
-        "assertEqual": 4,
+        "assertEqual": 5,
         "assertFalse": 2,
         "assertGreater": 1,
         "assertIn": 2,
-        "assertNotIn": 1,
-        "assertTrue": 1
+        "assertNotIn": 2,
+        "assertTrue": 2
       }
     },
     "test_reconciliation_boundary.py": {
@@ -853,11 +864,11 @@
       }
     },
     "test_render_trace.py": {
-      "test_methods": 9,
+      "test_methods": 12,
       "asserts": {
-        "assertEqual": 4,
+        "assertEqual": 8,
         "assertGreater": 1,
-        "assertIn": 4,
+        "assertIn": 6,
         "assertNotIn": 1,
         "assertTrue": 1
       }
