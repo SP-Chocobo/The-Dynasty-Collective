@@ -48,8 +48,12 @@ def _components(candidate: dict, others_tav: list[float]) -> dict[str, float]:
     run_c = ps.NECESSITY_RUN_BONUS if candidate.get("position_run_detected") else 0.0
 
     rival_premium = candidate.get("rival_premium") or 0.0
+    # Mirrors compute_pick_necessity's denial term exactly -- including #144's saturation
+    # point, which is the SUM of draft_room's team-specific caps rather than one of them.
+    # An ablation that reproduces the formula has to move with it or it silently measures a
+    # version of the engine that no longer exists.
     denial_c = (
-        min(rival_premium / dr.NEED_BONUS_MAX, 1.0) * ps.NECESSITY_DENIAL_WEIGHT
+        min(rival_premium / ps.NECESSITY_DENIAL_SATURATION, 1.0) * ps.NECESSITY_DENIAL_CEILING
     ) if rival_premium > 0 else 0.0
 
     roster_fit_c = (candidate.get("need_bonus", 0.0) + candidate.get("eligibility_bonus", 0.0)) * ps.NECESSITY_ROSTER_FIT_WEIGHT

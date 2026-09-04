@@ -58,8 +58,8 @@ Five real signals this module adds that didn't exist anywhere in the engine befo
       - position_run_detected: a real, observed signal, not a guess.
       - rival_premium (NOT denial_value): how much more the best-positioned intervening rival's
         own roster makes this player worth to them than his team-agnostic universal_value --
-        their need/eligibility premium, normalized against draft_room's own NEED_BONUS_MAX
-        scale. Deliberately the p_take-FREE half of the denial signal: denial_value is
+        their need/eligibility/depth premium, normalized against the SUM of draft_room's
+        team-specific caps -- that premium's own bound, not one term's (#144). Deliberately the p_take-FREE half of the denial signal: denial_value is
         (opponent value x take-probability), and that same take-probability already compounds
         into survival_probability above, so using denial_value here counted the identical
         underlying probability twice -- measured at r = +0.82 between the survival and denial
@@ -242,9 +242,40 @@ NECESSITY_STANDOUT_REFERENCE_GAP = 15.0
 NECESSITY_SURVIVAL_WEIGHT = 20.0     # (1 - survival_probability) scaled up
 NECESSITY_CLIFF_POINTS = {"HIGH": 12.0, "MEDIUM": 6.0, "LOW": 0.0}
 NECESSITY_RUN_BONUS = 6.0
-NECESSITY_DENIAL_WEIGHT = 10.0       # rival_premium normalized against draft_room.NEED_BONUS_MAX
-                                     # -- which that quantity now exceeds; see #144 at the
-                                     # denial_component, where the saturation is measured.
+NECESSITY_DENIAL_WEIGHT = 10.0       # the denial contribution at ONE team-term's worth of
+                                     # rival premium. Kept as the RATE's anchor; the ramp's
+                                     # own ceiling is derived from it below (#144).
+
+# #144, closed by measurement. rival_premium is (rival TAV - rival UV) -- the SUM of
+# draft_room's team-specific terms, each independently capped -- so its own bound is their SUM,
+# and that is what a saturation point for it has to be. It used to be NEED_BONUS_MAX, the cap
+# on ONE of them, which was an upper bound on the quantity right up until #139 added a third
+# term and stopped being one.
+#
+# Derived from draft_room's own caps rather than written as 36.0, so a fourth team-specific
+# term moves it automatically instead of silently re-flattening the ramp the way the third did.
+NECESSITY_DENIAL_SATURATION = (
+    dr.NEED_BONUS_MAX + dr.ELIGIBILITY_BONUS_MAX + dr.DEPTH_EXPOSURE_MAX
+)
+
+# THE DIVISOR AND THE WEIGHT ARE ONE SLOPE, NOT TWO KNOBS, and that is the whole of what the
+# measurement found. Below saturation the term is `premium x (WEIGHT / DIVISOR)`, so raising
+# the divisor to 36 while holding the weight at 10 does not repair a saturation -- it cuts
+# denial's calibrated influence to a third of itself. Measured across six real turns and 272
+# candidates:
+#
+#   divisor 36, weight held    478/7046 pairs reorder, 54/272 necessity labels flip, mean
+#                              necessity falls 3-4.5 points -- and 259 of those inversions are
+#                              at ROUND 4, where nothing clips at all. Pure re-weighting.
+#   this form (both scaled)      7/7046 pairs reorder, 1/272 labels flip, max change 0.9, and
+#                              `rows changed` equals `rows clipped` on every single turn.
+#
+# So the ceiling moves WITH the saturation point, by the same factor, which holds the rate at
+# exactly what it was calibrated at (10/12 = 0.8333 necessity points per premium point) and
+# changes nothing except the flat spot above 12.
+NECESSITY_DENIAL_CEILING = NECESSITY_DENIAL_SATURATION * (
+    NECESSITY_DENIAL_WEIGHT / dr.NEED_BONUS_MAX
+)
 
 # #48 / #71: the POSITIONAL WAITING MAGNITUDE -- what delaying this position to my next turn
 # actually costs. Set equal to NECESSITY_DENIAL_WEIGHT deliberately, and no new number is
@@ -435,21 +466,19 @@ def compute_pick_necessity(raw_candidates: list[dict], round_num: int) -> list[t
         # p_take-free by design -- see the module docstring's rival_premium bullet for why
         # the p_take-weighted denial_value double-counted survival's own probability here.
         #
-        # THE DIVISOR IS SATURATING AND THAT IS AN OPEN ITEM, NOT AN OVERSIGHT (#144). It is
-        # the cap on need_bonus, chosen when need_bonus and eligibility_bonus were the whole of
-        # the rival gap this normalizes -- the gap's max was then 8.33 against a divisor of
-        # 12.0, so the min() never bound. #139 added a third term; measured 2026-09-03 the gap
-        # reaches 16.21 and clips for 21.9% of sampled candidates, whose denial contribution is
-        # now identical whether the rival premium is 12.1 or 16.2. NOT repaired here, on
-        # purpose: the structurally matching divisor is the sum of all three caps, which would
-        # divide every denial contribution by three across every round -- a far larger change
-        # than the saturation it fixes, and NECESSITY_DENIAL_WEIGHT was calibrated against the
-        # old range. Choosing between them needs a measurement of necessity ordering that
-        # nothing in this repository has yet made (#56: a bound is not a threshold, and a cap
-        # borrowed as a normalizer is the same category error). The rate is pinned by
-        # test_threshold_reachability so it cannot drift unnoticed in either direction.
+        # #144 CLOSED. This divided by NEED_BONUS_MAX -- the cap on ONE of the terms
+        # rival_premium sums -- which was an upper bound on the quantity until #139 added a
+        # third one. It then clipped, and a clipped normalizer is not a smaller version of the
+        # same signal: it is the SAME number for every candidate above the bar.
+        #
+        # The repair the old note proposed (divisor -> 36, weight held) was measured and is
+        # NOT what it claimed to be; see NECESSITY_DENIAL_SATURATION above for the numbers.
+        # Saturating against the quantity's real bound while holding the calibrated rate
+        # changes exactly the rows that were being flattened and nothing else.
         rival_premium = c.get("rival_premium") or 0.0
-        denial_component = (min(rival_premium / dr.NEED_BONUS_MAX, 1.0) * NECESSITY_DENIAL_WEIGHT) if rival_premium > 0 else 0.0
+        denial_component = (
+            min(rival_premium / NECESSITY_DENIAL_SATURATION, 1.0) * NECESSITY_DENIAL_CEILING
+        ) if rival_premium > 0 else 0.0
 
         # TWO of draft_room's three team-specific terms, and the third is EXCLUDED ON PURPOSE.
         #

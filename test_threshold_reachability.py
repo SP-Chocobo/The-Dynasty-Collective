@@ -38,6 +38,18 @@ whole defect, and it is a category error rather than a bad number:
 
 These tests assert reachability against real boards, so a threshold that can never fire fails
 here rather than silently never lighting a badge.
+
+ONE OF THE TWO REUSES IS NOW REPAIRED (#144, 2026-09-04). pick_necessity's denial ramp divided
+by NEED_BONUS_MAX -- one term's cap -- while normalizing rival_premium, which SUMS three of
+them. It now saturates at the sum, derived from draft_room's own caps so a fourth term moves it
+automatically. The repair is narrower than the item proposed, and the measurement is why:
+moving the divisor alone would have been a 3x DE-WEIGHTING of denial wearing a saturation
+repair's clothes (478/7046 pairs reorder, 259 of them at a round where nothing clips). The
+ceiling had to move with it. See TheDenialNormalizerSaturatesAtItsOwnBoundTests.
+
+The OTHER reuse -- context_elevated's threshold at NEED_BONUS_MAX -- is untouched and still an
+open product decision; see ContextElevatedBecameReachableTests for why its reachability is an
+accident of the quantity growing rather than a number anyone chose.
 """
 import unittest
 
@@ -283,23 +295,32 @@ class ContextElevatedBecameReachableTests(_RealBoards):
 
 
 
-class TheDenialNormalizerNowSaturatesTests(_RealBoards):
-    """#144, the second consequence of the same borrowed constant.
+class TheDenialNormalizerSaturatesAtItsOwnBoundTests(_RealBoards):
+    """#144, CLOSED -- and the close is the opposite of what the item proposed.
 
-    pick_necessity's denial term is `min(rival_premium / NEED_BONUS_MAX, 1.0) * WEIGHT`.
-    rival_premium is `(rival TAV - rival UV)` computed on the RIVAL's own board, so it picked up
-    #139's third team-specific term automatically and correctly -- a rival's depth hole is as
-    real a reason for them to want this player as an empty starting slot is.
+    pick_necessity's denial term is a saturating ramp on rival_premium, which is
+    `(rival TAV - rival UV)` computed on the RIVAL's own board -- the SUM of draft_room's
+    team-specific terms. It picked up #139's third term automatically and correctly; the
+    divisor did not follow, and NEED_BONUS_MAX (the cap on ONE term) stopped being an upper
+    bound on the quantity. It clipped, and a clipped normalizer is not a smaller version of
+    the same signal -- it is the SAME number for every candidate above the bar.
 
-    What did not follow it is the divisor. With two terms the premium never reached 12.0 (max
-    8.33), so the min() was decorative and every rival premium mapped to a distinct denial
-    contribution. It now clips, and a clipped normalizer is not a smaller version of the same
-    signal -- it is the SAME number for every candidate above the bar, which is information
-    destruction rather than compression.
+    The proposed repair was "divisor -> the sum of all three caps", held back because it
+    "changes every round's denial contribution by 3x to fix a tail". THAT WAS THE RIGHT
+    INSTINCT AND THE WRONG DIAGNOSIS. Below saturation the term is `premium x (WEIGHT/DIVISOR)`,
+    so divisor and weight are ONE SLOPE. Moving the divisor alone is not a saturation repair at
+    all; it is a 3x de-weighting of denial that happens to also remove the clip. Measured over
+    six real turns, 272 candidates:
 
-    Left unrepaired on purpose (see #144: the structurally matching divisor is the sum of all
-    three caps, which changes every round's denial contribution by 3x to fix a tail). Pinned
-    here so the rate cannot move without someone seeing it."""
+        divisor 36, weight held    478/7046 pairs reorder, 54/272 labels flip, mean necessity
+                                   -3 to -4.5. 259 of those inversions are at ROUND 4, where
+                                   NOTHING CLIPS -- proof it is re-weighting, not saturation.
+        both scaled (shipped)        7/7046 pairs reorder, 1/272 labels flip, max change 0.9,
+                                   and `rows changed` == `rows clipped` on every turn.
+
+    So the ramp now saturates at the quantity's own bound while the rate stays exactly where it
+    was calibrated. These tests pin BOTH halves: that the flat spot is gone, and that the rate
+    did not move while removing it -- because either one alone is a way to get this wrong."""
 
     def _premiums(self):
         out = []
@@ -315,26 +336,49 @@ class TheDenialNormalizerNowSaturatesTests(_RealBoards):
             out += [a.get("rival_premium") or 0.0 for a in analysis]
         return out
 
-    def test_the_premium_exceeds_its_own_divisor(self):
+    def test_the_premium_still_exceeds_one_terms_cap(self):
+        """Non-vacuity for the whole class. If rival_premium stopped clearing NEED_BONUS_MAX,
+        the old divisor would be an upper bound again and none of this would be load-bearing --
+        so the repair would be untestable rather than unnecessary, which is worth failing on."""
         premiums = self._premiums()
         self.assertTrue(premiums, "no rival premiums measured; this test observed nothing")
-        # Measured 2026-09-03: max 16.21 against a divisor of 12.0. Before #139: max 8.33.
+        # Measured 2026-09-03: max 16.21 against one term's cap of 12.0. Before #139: max 8.33.
         self.assertGreater(max(premiums), dr.NEED_BONUS_MAX,
-                           "rival_premium no longer exceeds NEED_BONUS_MAX -- #144's premise "
-                           "is gone and the open decision on the divisor can be closed")
+                           "rival_premium no longer exceeds one team-term's cap -- #144's "
+                           "premise is gone and this class has lost its subject")
 
-    def test_the_clipping_is_a_real_minority_not_the_whole_population(self):
-        """The severity claim, separate from the existence claim. A normalizer that clips a
-        fifth of its population has lost resolution in a tail; one that clips most of it has
-        stopped being a normalizer, and #144 would stop being a decision and become a defect."""
+    def test_the_flat_spot_is_gone(self):
+        """The repair's actual claim. Nothing may sit at or above the saturation point, because
+        everything there receives an identical denial contribution regardless of how much more
+        a rival wants it."""
         premiums = self._premiums()
-        share = sum(1 for p in premiums if p >= dr.NEED_BONUS_MAX) / len(premiums)
-        # Measured 2026-09-03: 21.9% of 96 sampled candidates.
-        self.assertGreater(share, 0.0, "nothing clips -- see the test above")
-        self.assertLess(share, 0.5,
-                        "the denial normalizer now clips for most candidates, which makes the "
-                        "term nearly constant across the field -- #144 has escalated from an "
-                        "open decision to a defect and should be repaired, not recorded")
+        clipped = [p for p in premiums if p >= ps.NECESSITY_DENIAL_SATURATION]
+        self.assertEqual(
+            [], clipped,
+            f"{len(clipped)} of {len(premiums)} rival premiums reach the saturation point "
+            f"({ps.NECESSITY_DENIAL_SATURATION}) and are again indistinguishable from each "
+            f"other; the ramp has re-flattened and #144 is open again",
+        )
+
+    def test_the_saturation_point_is_derived_from_every_term_it_sums(self):
+        """Why the flat spot went away, asserted structurally rather than left to the data.
+        rival_premium sums draft_room's three team-specific terms, so its bound is their sum.
+        A FOURTH term added later moves this automatically -- which is exactly what did not
+        happen when #139 added the third, and is the whole mechanism of the original defect."""
+        self.assertAlmostEqual(
+            ps.NECESSITY_DENIAL_SATURATION,
+            dr.NEED_BONUS_MAX + dr.ELIGIBILITY_BONUS_MAX + dr.DEPTH_EXPOSURE_MAX)
+        self.assertGreater(ps.NECESSITY_DENIAL_SATURATION, max(self._premiums()))
+
+    def test_removing_the_flat_spot_did_not_re_weight_the_term(self):
+        """The other half, and the one an eager repair gets wrong. The ceiling and the
+        saturation point are one slope; moving only the divisor would have cut denial's
+        calibrated influence to a third while appearing to fix a tail (measured: 478 of 7046
+        pairs reorder, 259 of them at a round where nothing clips at all)."""
+        self.assertAlmostEqual(
+            ps.NECESSITY_DENIAL_CEILING / ps.NECESSITY_DENIAL_SATURATION,
+            ps.NECESSITY_DENIAL_WEIGHT / dr.NEED_BONUS_MAX, places=9,
+            msg="the denial rate moved; the repair has become a re-weighting")
 
 
 if __name__ == "__main__":

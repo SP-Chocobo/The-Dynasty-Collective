@@ -3319,3 +3319,102 @@ Three changes, no arithmetic touched:
 **#150 inherits this as a known-expected behaviour.** A mass draft battery run over heavy-IDP
 formats will produce boards where IDP is taken late relative to its real roster demand. That is
 this, it is expected, and it must not be re-reported as a fresh anomaly.
+
+---
+
+# #144 CLOSED — AND THE ITEM'S OWN PROPOSED REPAIR WAS THE WRONG ONE
+
+`pick_necessity`'s denial term normalised `rival_premium` — `(rival TAV − rival UV)`, the SUM of
+`draft_room`'s team-specific terms — by `NEED_BONUS_MAX`, the cap on **one** of them. That was an
+upper bound on the quantity until `#139` added a third term, after which it clipped, and a
+clipped normaliser is the same number for every candidate above the bar.
+
+The item proposed divisor → the sum of all three caps, and held it back because it *"changes
+every round's denial contribution by 3x to fix a tail"*. **Right instinct, wrong diagnosis.**
+The code's own comment named the missing evidence: *"Choosing between them needs a measurement
+of necessity ordering that nothing in this repository has yet made."*
+
+## The measurement, six real turns, 272 candidates
+
+| form | inversions | label flips | mean necessity | rows changed |
+|---|---|---|---|---|
+| divisor 36, weight held (**the proposal**) | 478/7046 | 54/272 | −3 to −4.5 | — |
+| **both scaled (shipped)** | **7**/7046 | **1**/272 | unchanged | **== rows clipped, every turn** |
+
+**The decisive row is round 4: 259 of those 2080 inversions occur where NOTHING CLIPS.** If the
+divisor governed only saturation, changing it could move only the clipped tail. It moves the
+whole field, because below saturation the term is `premium × (WEIGHT / DIVISOR)` — **the divisor
+and the weight are one slope, not two knobs.** Moving the divisor alone is not a saturation
+repair; it is a 3× de-weighting of denial wearing one's clothes.
+
+There is no third option: hold the slope and the ceiling must rise 10 → 30; hold the ceiling and
+the slope must fall 0.833 → 0.278. So the choice is explicit, and holding the calibrated rate is
+the one that changes only what the defect broke.
+
+## What shipped
+
+```
+NECESSITY_DENIAL_SATURATION = NEED_BONUS_MAX + ELIGIBILITY_BONUS_MAX + DEPTH_EXPOSURE_MAX  # 36.0
+NECESSITY_DENIAL_CEILING    = SATURATION × (NECESSITY_DENIAL_WEIGHT / NEED_BONUS_MAX)      # 30.0
+```
+
+Both **derived**, neither written as a literal (#56). Deriving the saturation point from the sum
+rather than hardcoding `3 ×` is the part that matters: **a fourth team-specific term now moves it
+automatically**, which is exactly what failed to happen when `#139` added the third and is the
+entire mechanism of the original defect. Slope before `0.8333333333333334`, after
+`0.8333333333333334`.
+
+`cdme_force_ablation.py` reproduces this formula independently and moved in lockstep — left
+alone it would have silently measured an engine version that no longer exists.
+
+## Two tests rewritten, not left to pass
+
+`TheDenialNormalizerNowSaturatesTests` asserted **that it clips**, which is what the repair
+removes; it would have gone vacuous rather than red. Replaced by
+`TheDenialNormalizerSaturatesAtItsOwnBoundTests`, pinning **both** halves — the flat spot is gone
+**and** the rate did not move — because either alone is a way to get this wrong.
+
+## The half the item never named, found by the same probe
+
+`need_bonus`'s own cap. Raising `NEED_BONUS_MAX` out of reach so the real code path emits the raw
+value, across 30,324 candidate rows per league:
+
+| league | raw > 12.0 | distinct raw states collapsed onto 12.0 | discarded |
+|---|---|---|---|
+| 1QB 3WR | 6.6% | **1** (12.33) | 0.33 |
+| SUPERFLEX | 11.2% | **1** (12.38) | 0.38 |
+| 3RB 3WR | 12.6% | **1** (12.33) | 0.33 |
+| **4WR TE-premium** | 18.2% | **2** (12.33, 16.33) | **4.33 (36% of the cap)** |
+
+In three shapes the clip is order-preserving — one state maps onto the cap, nothing is destroyed,
+the bound is genuinely defensive. In a 4WR format it collapses **"zero of my four WRs" and "one
+of my four WRs"** onto the same 12.0. That is a flattened form of the exact defect the
+`need_bonus` docstring says it fixed. **NOT repaired here** — it is a second, independent
+decision about `need_bonus`'s own magnitude, and bundling it into a denial-normaliser fix is how
+#139's third term got missed in the first place. Registered as **#153**.
+
+Also cleared by measurement rather than assertion, and worth recording because both docstrings
+*asserted* it: `eligibility_bonus`'s `min()` fires **0.0%** and `depth_exposure`'s **0.0–0.4%**.
+Their "a defensive guard for out-of-scale source data, not the bounding mechanism" is now true by
+measurement.
+
+## One consequence flagged rather than buried
+
+The ceiling rising 10 → 30 is exercised only in an unobserved regime — real premiums max at
+13.09, so denial contributes ≤10.9 in practice. If premiums ever reach ~24+, denial could push
+`raw_score` into the existing `[0,100]` clamp more often, trading this flat spot for that one.
+`test_the_flat_spot_is_gone` fires if premiums approach the new saturation point, so that regime
+cannot arrive unnoticed.
+
+**Population note:** this run measures 8.5% clipping where `test_threshold_reachability` recorded
+21.9%. Different populations, both real — that test samples the top 12 priced rows via
+`pick_analysis` over eight board states; this samples `DEFAULT_NARROW_COUNT` via `build_snapshot`
+over six turns with genuine forward gaps. Neither number is a correction of the other.
+
+**Two harness errors made reaching this, recorded because both produced confident wrong output.**
+First run: `rival_premium` was 0.00 for 269 of 269 candidates. `rival_premium` is computed over
+the picks **ahead** of a turn, and I filtered on the gap **behind** it — rejecting exactly the
+round-opening turns carrying ~22 intervening picks and keeping the round-closing ones carrying
+none. Second run: backgrounded with a `cd` into a scratch directory, so `DataMerger` loaded from
+the wrong working directory and returned a frame with no `position` column. A vacuous measurement
+that *looks* like a clean null result is the more dangerous of the two.

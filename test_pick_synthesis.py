@@ -319,7 +319,7 @@ class ComputePickNecessityTests(unittest.TestCase):
         # compounds into survival_probability. The necessity denial term now reads ONLY the
         # p_take-free rival_premium -- so two candidates with the identical premium but very
         # different survival must differ by exactly their survival components and nothing
-        # else, and the premium itself caps at draft_room's own NEED_BONUS_MAX scale.
+        # else, and the premium itself saturates at its own structural bound (#144).
         import draft_room as dr
         same_premium_safe = _raw_candidate(100.0, survival_probability=1.0, rival_premium=6.0)
         same_premium_risky = _raw_candidate(100.0, survival_probability=0.5, rival_premium=6.0)
@@ -327,13 +327,31 @@ class ComputePickNecessityTests(unittest.TestCase):
         survival_delta = 0.5 * ps.NECESSITY_SURVIVAL_WEIGHT
         self.assertAlmostEqual(results[1][0] - results[0][0], survival_delta, places=6)
 
-        # Premium scales the component linearly up to the NEED_BONUS_MAX cap, then saturates.
-        half = _raw_candidate(100.0, rival_premium=dr.NEED_BONUS_MAX / 2)
-        full = _raw_candidate(100.0, rival_premium=dr.NEED_BONUS_MAX)
-        beyond = _raw_candidate(100.0, rival_premium=dr.NEED_BONUS_MAX * 10)
+        # Premium scales the component linearly up to its own saturation point, then flattens.
+        # #144 moved that point from NEED_BONUS_MAX -- the cap on ONE of the three terms
+        # rival_premium sums -- to the sum of all three, which is the quantity's actual bound.
+        # The RATE is unchanged: the ceiling moved by the same factor as the divisor, so the
+        # step from half-saturation to saturation is still half the ramp's full height.
+        half = _raw_candidate(100.0, rival_premium=ps.NECESSITY_DENIAL_SATURATION / 2)
+        full = _raw_candidate(100.0, rival_premium=ps.NECESSITY_DENIAL_SATURATION)
+        beyond = _raw_candidate(100.0, rival_premium=ps.NECESSITY_DENIAL_SATURATION * 10)
         r = ps.compute_pick_necessity([half, full, beyond], round_num=3)
-        self.assertAlmostEqual(r[1][0] - r[0][0], ps.NECESSITY_DENIAL_WEIGHT / 2, places=6)
+        self.assertAlmostEqual(r[1][0] - r[0][0], ps.NECESSITY_DENIAL_CEILING / 2, places=6)
         self.assertAlmostEqual(r[2][0], r[1][0], places=6)
+
+        # The rate itself, pinned separately from the ramp's endpoints -- this is the number
+        # #144 held fixed, and holding it is what made the repair surgical rather than a 3x
+        # re-weighting of the whole term.
+        self.assertAlmostEqual(
+            ps.NECESSITY_DENIAL_CEILING / ps.NECESSITY_DENIAL_SATURATION,
+            ps.NECESSITY_DENIAL_WEIGHT / dr.NEED_BONUS_MAX, places=9,
+            msg="the denial rate moved -- the ceiling and the saturation point are ONE slope",
+        )
+        # And a premium at one team-term's worth still contributes exactly what it always did.
+        one_term = _raw_candidate(100.0, rival_premium=dr.NEED_BONUS_MAX)
+        none_at_all = _raw_candidate(100.0, rival_premium=0.0)
+        r2 = ps.compute_pick_necessity([one_term, none_at_all], round_num=3)
+        self.assertAlmostEqual(r2[0][0] - r2[1][0], ps.NECESSITY_DENIAL_WEIGHT, places=6)
 
     def test_necessity_never_leaves_the_0_to_100_range(self):
         extreme = _raw_candidate(
