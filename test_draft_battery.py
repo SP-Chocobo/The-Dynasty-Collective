@@ -177,6 +177,60 @@ class ReportedDistributionsDescribeRatherThanJudgeTests(unittest.TestCase):
         self.assertIsNone(batt.first_round_taken(traj, PLAYERS, "TE"))
 
 
+class TheFormatReachesTheMergerTests(unittest.TestCase):
+    """The gap that made the first full run's scoring axis vacuous.
+
+    `rec` and `bonus_rec_te` do NOT propagate through scoring_settings into offensive
+    valuation -- Draft Sharks' season projection is a static pre-computed number. They
+    propagate by FILE SELECTION: DataMerger.set_league_format picks a different Dynasty
+    Rankings export, which app.py calls every rerun. A battery that never calls it drafts
+    every format from whichever export happened to load, and reports "32 formats" while
+    holding scoring constant -- measured: standard, half_ppr and ppr produced BYTE-IDENTICAL
+    drafts in all eight size/superflex combinations.
+    """
+
+    def test_the_hint_is_derived_from_the_league_not_carried_beside_it(self):
+        """A hint stored alongside each entry could disagree with the league it describes --
+        two sources of truth for one fact. It is computed from roster_positions and
+        scoring_settings by the same rules sleeper_client.league_format_summary uses."""
+        self.assertEqual(
+            {"scoring": "ppr", "superflex": False, "te_premium": True},
+            batt.league_format_hint({"roster_positions": ["QB", "RB", "WR"],
+                                     "scoring_settings": {"rec": 1.0, "bonus_rec_te": 0.5}}))
+        self.assertEqual(
+            {"scoring": "half_ppr", "superflex": True, "te_premium": False},
+            batt.league_format_hint({"roster_positions": ["QB", "SUPER_FLEX"],
+                                     "scoring_settings": {"rec": 0.5}}))
+        self.assertEqual(
+            {"scoring": "standard", "superflex": False, "te_premium": False},
+            batt.league_format_hint({"roster_positions": ["QB", "RB"], "scoring_settings": {}}))
+
+    def test_two_qbs_counts_as_superflex_without_a_superflex_slot(self):
+        """sleeper_client's own rule: a league starting two QBs IS a superflex league however
+        it spells the slot. Mirrored here rather than reinvented."""
+        hint = batt.league_format_hint({"roster_positions": ["QB", "QB", "RB"],
+                                        "scoring_settings": {}})
+        self.assertTrue(hint["superflex"])
+
+    def test_every_matrix_format_yields_a_usable_hint(self):
+        for entry in batt.league_matrix():
+            with self.subTest(label=entry["label"]):
+                hint = batt.league_format_hint(entry["league"])
+                self.assertIn(hint["scoring"], {"standard", "half_ppr", "ppr"})
+                self.assertIsInstance(hint["superflex"], bool)
+                self.assertIsInstance(hint["te_premium"], bool)
+
+    def test_the_matrix_actually_varies_the_scoring_axis(self):
+        """Non-vacuity: if every format resolved to the same hint, calling set_league_format
+        would change nothing and the axis would still be untested."""
+        hints = {tuple(sorted(batt.league_format_hint(e["league"]).items()))
+                 for e in batt.league_matrix()}
+        scorings = {dict(h)["scoring"] for h in hints}
+        self.assertEqual({"standard", "half_ppr", "ppr"}, scorings)
+        self.assertTrue(any(dict(h)["te_premium"] for h in hints))
+        self.assertTrue(any(dict(h)["superflex"] for h in hints))
+
+
 class TheMatrixIsWideAndCarriesItsNamedFormatsTests(unittest.TestCase):
     def test_it_spans_the_axes_a_real_league_varies_on(self):
         matrix = batt.league_matrix()

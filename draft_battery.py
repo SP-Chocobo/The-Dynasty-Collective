@@ -130,6 +130,23 @@ def league_matrix() -> list[dict]:
     return out
 
 
+def league_format_hint(league: dict) -> dict:
+    """The {scoring, superflex, te_premium} triple set_league_format discriminates on.
+
+    Derived from the league's own settings by the same rules sleeper_client.league_format_summary
+    uses, rather than carried alongside each matrix entry -- a hint that could disagree with the
+    league it describes is a second source of truth for the same fact.
+    """
+    scoring_settings = league.get("scoring_settings") or {}
+    roster_positions = league.get("roster_positions") or []
+    rec = scoring_settings.get("rec", 0)
+    return {
+        "scoring": "ppr" if rec >= 1 else ("half_ppr" if rec == 0.5 else "standard"),
+        "superflex": roster_positions.count("SUPER_FLEX") > 0 or roster_positions.count("QB") > 1,
+        "te_premium": scoring_settings.get("bonus_rec_te", 0) > 0,
+    }
+
+
 def _position_of(players_db: dict, player_id: str) -> Optional[str]:
     info = players_db.get(str(player_id)) or {}
     return info.get("position")
@@ -409,6 +426,19 @@ def run_battery(merger, players_db: dict, matrix: Optional[list[dict]] = None,
     """
     results = []
     for entry in matrix if matrix is not None else league_matrix():
+        # THE FORMAT HAS TO REACH THE MERGER, and this line is why the first full run was
+        # partly vacuous. `rec` and `bonus_rec_te` do NOT propagate through scoring_settings
+        # into offensive valuation -- Draft Sharks' season projection is a STATIC pre-computed
+        # number. They propagate by FILE SELECTION: set_league_format picks a different Dynasty
+        # Rankings export (see data_merger._detect_rankings_format), which app.py calls on every
+        # rerun. A battery that never calls it drafts every format from whichever export
+        # happened to load, so scoring is silently held constant.
+        #
+        # Measured on the run before this was added: standard, half_ppr and ppr produced
+        # BYTE-IDENTICAL drafts in all eight size/superflex combinations, and TE premium was
+        # equally inert. The roster geometry was genuinely exercised; the scoring axis was not
+        # exercised at all while appearing in every label.
+        merger.set_league_format(league_format_hint(entry["league"]))
         roster_ids = [str(i) for i in range(1, entry["teams"] + 1)]
         pick_order = ds.generate_pick_order(roster_ids, entry["rounds"], "snake")
         trajectory = draft_simulation.simulate_full_draft(
