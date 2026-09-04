@@ -827,6 +827,17 @@
         "assertNotIn": 1
       }
     },
+    "test_quantity_readers.py": {
+      "test_methods": 10,
+      "asserts": {
+        "assertEqual": 4,
+        "assertFalse": 2,
+        "assertGreater": 1,
+        "assertIn": 2,
+        "assertNotIn": 1,
+        "assertTrue": 1
+      }
+    },
     "test_reconciliation_boundary.py": {
       "test_methods": 23,
       "asserts": {

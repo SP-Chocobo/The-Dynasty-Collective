@@ -18,6 +18,23 @@ Streamlit and writes down every call it makes, in order, with the shape of its a
 trace is the "before". Extract, re-run, diff. A byte-identical trace is real evidence the
 refactor preserved behaviour; a green suite is not.
 
+KNOWN FLAW, MEASURED AND NOT YET FIXED (#151): THIS TRACE IS TIME-DEPENDENT. Long strings are
+recorded as `str[97]` -- a length -- and a length is a VALUE, which contradicts the paragraph
+directly below. Demonstrated: the committed trace went stale overnight with a single diff,
+`str[97]` -> `str[98]`, because the Data Sources caption reads "(9d ago)" one day and
+"(10d ago)" the next. No UI changed.
+
+That is the worst failure an instrument can have, because it teaches its reader to regenerate
+without looking -- and a trace regenerated without looking is evidence of nothing. A clock-freeze
+fix was attempted and REVERTED: patching `datetime` across already-imported modules did swap the
+class but `now()` still returned real time, and shipping a monkeypatch that looks like it works
+and does not is strictly worse here than a documented flaw. See #151 for the two real options
+(freeze the clock properly, or stop recording exact lengths) and why the choice belongs with the
+hull pass that rebuilds this area.
+
+Until then: a length-only diff on a date-bearing caption is this flaw, not a regression. A diff
+in call PATH or ORDER never is.
+
 WHAT IT RECORDS AND WHAT IT DELIBERATELY DOES NOT. Call path, ordering, and argument SHAPES --
 `st.columns(3)`, `st.button('Retract', key=...)`. Not the full argument values: a caption
 containing a computed number would make the trace churn on every data change and stop being a
