@@ -501,6 +501,12 @@
         "assertTrue": 3
       }
     },
+    "test_feasibility_backstop.py": {
+      "test_methods": 13,
+      "asserts": {
+        "assertEqual": 14
+      }
+    },
     "test_harness_league_format_hygiene.py": {
       "test_methods": 1,
       "asserts": {

@@ -1634,6 +1634,51 @@ def identity_basis(match_path, match_verified) -> "str | None":
     return IDENTITY_MATCHED if match_verified else IDENTITY_AMBIGUOUS
 
 
+def feasibility_first(scored, picks, players_db, my_roster_id, roster_positions):
+    """#154 tier 3. A sort key: 0 for candidates that fill an unfilled DEDICATED starting slot
+    once the roster can no longer afford to miss one, 1 for everyone else. All 1s -- a complete
+    no-op on the ordering -- whenever it does not bind, which is almost always.
+
+    THIS IS ARITHMETIC, NOT A VALUATION, and that is the whole reason it is admissible under
+    #56. It invents no constant and expresses no opinion about how much a positional hole is
+    worth. It says only: this roster has N picks left and M starting slots it cannot fill from
+    what it owns, and when N <= M every remaining pick must fill one or the roster finishes
+    unable to field a legal lineup. A team in that state is not weighing value against need --
+    it has run out of the picks with which to weigh anything.
+
+    Measured need for it (#150's battery, 32 formats, 5244 picks): 13 rosters finished
+    unfillable, every one a positional monoculture -- nine RBs and no TE, ten WRs and one RB,
+    seven TEs and no QB. need_bonus could not prevent it because it reads roster STATE only:
+    a roster with zero TEs applied the identical 4.72 nudge in round 1 and in round 15 with one
+    pick left. Nothing in team_acquisition_value knew the draft was ending.
+
+    Deliberately DEDICATED slots only, never flex. A flex slot is fillable from several
+    positions, so it is not at risk in the way a named slot is, and counting it would let this
+    bind on a roster that was never actually in danger -- turning a backstop into a preference,
+    which is exactly what this must not become.
+
+    Deliberately NOT a value term. Adding it to team_acquisition_value would make a player's
+    worth depend on who happens to be drafting, which is the one thing universal_value exists
+    to keep separate. It reorders the board's SELECTION and leaves every price untouched.
+    """
+    default = pd.Series(1, index=scored.index, dtype=int)
+    if my_roster_id is None or not roster_positions or scored.empty:
+        return default
+    filled = _team_starters_filled(picks, players_db, my_roster_id)
+    dedicated = dedicated_slot_counts(roster_positions)
+    needed = {p: max(dedicated.get(p, 0) - filled.get(p, 0), 0) for p in dedicated}
+    unfilled = sum(needed.values())
+    if unfilled <= 0:
+        return default
+    mine = sum(1 for pick in picks if str(pick.get("roster_id")) == str(my_roster_id))
+    picks_remaining = len(roster_positions) - mine
+    # Strictly greater: with MORE picks than holes there is still room to take value now and
+    # fill later, which is the whole point of not making this a preference.
+    if picks_remaining > unfilled:
+        return default
+    return scored["position"].map(lambda position: 0 if needed.get(position, 0) > 0 else 1).astype(int)
+
+
 def compute_draft_board(
     merger: DataMerger,
     players_db: dict[str, dict],
@@ -1887,7 +1932,14 @@ def compute_draft_board(
         # repeat-call determinism on a FIXED input order, not this. Never changes any
         # player's own computed values -- only which of several exactly-tied players a human
         # sees listed first.
-        results = scored.sort_values(["final_score", "player_id"], ascending=[False, True], kind="stable")
+        # #154 tier 3 applies in UPSIDE MODE TOO, and here it matters most: upside scoring
+        # zeroes every team-specific term (see the layer identity above), so this branch has no
+        # roster awareness of any kind -- and mode="auto" enters it at UPSIDE_MODE_DEFAULT_ROUND,
+        # which is exactly when the last starting slots are still open. The battery caught two
+        # unfillable rosters in explicit upside mode against zero in balanced.
+        scored["_feasible"] = feasibility_first(scored, picks, players_db, my_roster_id, roster_positions)
+        results = scored.sort_values(["_feasible", "final_score", "player_id"],
+                                     ascending=[True, False, True], kind="stable")
         return _records_with_normalized_nan(results[[
             "player_id", "name", "position", "team", "injury_status", "bpa", "bpa_source",
             "growth_signal", "universal_value", "confidence", "final_score", "mode",
@@ -2032,9 +2084,14 @@ def compute_draft_board(
                                   pool.get("_match_verified", pd.Series(False, index=pool.index)))
     ]
     _attach_waiting_cost(scored, pool, roster_positions, num_teams, demand_source, players_db)
+    # #154 tier 3, ahead of value. See feasibility_first: a no-op on the ordering until this
+    # roster has as few picks left as it has unfillable named slots, at which point the choice
+    # is not between two values but between a legal roster and an illegal one.
+    scored["_feasible"] = feasibility_first(scored, picks, players_db, my_roster_id, roster_positions)
     # player_id tiebreaker + kind="stable" -- see the identical sort in the upside-mode branch
     # above for the full reasoning (input-order-independent tiebreaking among exact ties).
-    results = scored.sort_values(["final_score", "player_id"], ascending=[False, True], kind="stable")
+    results = scored.sort_values(["_feasible", "final_score", "player_id"],
+                                 ascending=[True, False, True], kind="stable")
     return _records_with_normalized_nan(results[[
         "player_id", "name", "position", "team", "injury_status", "bpa", "bpa_source",
         "time_horizon_adj", "risk_adj", "universal_value",
