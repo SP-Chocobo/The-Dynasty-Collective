@@ -3840,3 +3840,82 @@ So the order is: **#156 first, then tier 2.** Two candidate repairs, neither cho
      honest: with demand met, this engine has no basis for saying what another one is worth.
 
 Both are #50/Phase 3 redefinitions, not patches, and the owner owns the equation.
+
+---
+
+# #156 CORRECTED — IT IS A SIGNAL-PRECEDENCE PROBLEM, NOT A REPLACEMENT-LEVEL ONE
+
+The mechanism I published one commit ago was **partly wrong**, and the correction is sharper
+than the original. Decomposing the same round-12 board instead of reading only `uv`:
+
+```
+QB  uv=  0.00 = bpa  0.00 + horizon  0.00 + risk 0.00   <- top of board
+TE  uv= -6.49 = bpa  0.00 + horizon -6.49 + risk 0.00
+RB  uv= -9.48 = bpa  0.00 + horizon -9.48 + risk 0.00
+```
+
+**THREE positions collapse to bpa == 0.00, not one.** So "an exhausted position outranks a live
+one" is wrong: the collapsed positions all TIE at zero, and what separates them is
+`time_horizon_adj` -- QB 0.00, TE -6.49, RB -9.48.
+
+Two statements, both true, replacing the one that was not:
+
+1. `bpa` collapses to exactly 0.00 for the best remaining player at EVERY position whose
+   demand rank has reached 1. That is #73's `demand in [1,2)` degeneracy, observed live.
+2. Once several positions sit at 0.00, the pick is decided ENTIRELY by the dynasty aging
+   adjustment -- which answers a different question ("who ages best") and systematically
+   favours QBs, who have the longest careers and flattest decline.
+
+**When the primary signal goes flat, a secondary signal silently becomes the primary one, and
+nothing declares that it happened.** That is the defect. It is worse than a mispriced anchor
+because the engine is not wrong about anything locally -- `bpa` is right, `time_horizon_adj` is
+right, and the composition is nonsense.
+
+## What this rules OUT
+
+The demand model is **sound**, and I nearly blamed it twice. `remaining_starter_demand` is
+summed per team, never league-wide, and its docstring records the measurement that forced that:
+the league-wide form *"declared a position exhausted 2.0 rounds early on average, ran as far as
+-71, and one team taking twelve quarterbacks reads as 12 - 12 = 0, 'QB satisfied', while eleven
+teams still have none."* That defect was already found and fixed. This is not it.
+
+The pre-draft anchor is also ruled out by measurement -- every late QB pick carries
+`replacement_basis == "live_starter_demand"`, not one `predraft_anchor`.
+
+## What it means for the repair, and the coupling nobody should miss
+
+The ABSENCE option is stronger than I first credited: if `bpa` cannot distinguish, "no claim" is
+the honest answer, and an unpriced row drops out of contention instead of being ranked by a
+question it was not asked.
+
+**But absence and the feasibility backstop become COUPLED, not independent.** Unpriced rows sort
+LAST (#61). If every QB goes unpriced while a roster still needs one, that roster never takes a
+QB -- catastrophic in the other direction, and worse than the defect being repaired. Tier 3
+would have to rescue it, which means the two mechanisms can no longer be reasoned about
+separately. That is a real architectural cost and it belongs in the decision, not in a
+footnote.
+
+Still #50/Phase 3, still the owner's call.
+
+---
+
+# #150 — THE GATE'S OWN RESULT: 4 -> 3, AND ZERO COLLATERAL
+
+Full matrix before and after tier 3 + #155, identical configs:
+
+| | before | after |
+|---|---|---|
+| structural findings | 4 | **3** |
+| `12T_ppr_redraft` chair 7 (RB 8, WR 3, TE 3, no QB) | illegal | **legal** |
+| 10T_half_ppr / 10T_ppr / HEAVY_IDP | 1 each | 1 each |
+| **formats whose `starter_value_max` changed** | -- | **0 of 32** |
+
+32 formats, 5,244 picks, ~2.9 hours per run.
+
+**The backstop fixed the one roster that ran out of PICKS and left the three that ran out of
+PLAYERS**, which is exactly what its own docstring says it can do. And it did so without moving
+the top-end starter value of a single format -- a true no-op wherever it does not bind, which is
+the property that separates a backstop from a positional preference.
+
+The three survivors are #156's supply exhaustion. No feasibility rule can reach them: at chair
+2's last pick the backstop binds correctly and finds zero QBs on the board.
