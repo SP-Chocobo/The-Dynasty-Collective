@@ -3223,3 +3223,99 @@ pages, not its `role_providers`/`role_models`. So `panel_independence` can tell 
 CURRENT panel is one voice, but cannot tell them that a finding *already in the store* was
 produced by one. Recorded rather than built: it is a schema addition to a store that is still
 empty, and §6.5's own rule was not to invent structure against an empty store.
+
+---
+
+# #123 CLOSED — THE THIRD ANCHOR NOW HAS TESTS, AND ITS CEILING HAS A NAME (#152)
+
+`compute_draft_board` has three anchors. Two were tested directly. The third — the
+`trade_value` branch under `if (~has_proj).any()` — was wired identically to the points branch
+above it and read by nothing in the suite, because **every synthetic universe in this repo is
+built from the projection set**, so no fixture ever entered it on purpose.
+`RealBaselineIDPBugRegressionTests` exercised its *consequences* (rank order, differentiation)
+without ever naming the branch or checking a single number it produces.
+
+## It was testable on committed data all along
+
+| | |
+|---|---|
+| baseline rows with a `trade_value` and **no** projection of any kind | **76** (DL 24, LB 29, DB 23) |
+| `bpa_source` on those rows | `position_relative_trade_value_vor`, 76/76 |
+| `projected_points` on those rows | `None`, 76/76 — never fabricated |
+| baseline IDP rows with **neither** number | **339** (DL 147, LB 62, DB 130) |
+| of those, rows reaching the board | **0** — `build_available_pool`'s EXCLUDE arm |
+
+`TradeValueAnchorBranchTests`, 8 tests. The one that matters most is the arithmetic, which
+nothing in the suite had ever read: `bpa` is unscaled VOR, so `trade_value − bpa` must recover
+**one** replacement level per position. Measured on the light-IDP board: DB 11.0, DL 22.0,
+LB 27.0 — a single value each, 76/76 rows.
+
+## Mutation-checked rather than assumed
+
+| mutation | tests that fired |
+|---|---|
+| drop the replacement subtraction (`trade_value` raw) | 3 |
+| clip the branch at zero (the pre-#74 defect) | 2 |
+| remove `_fill_omitted_from_anchor` from this path | 2 |
+
+## What is deliberately NOT tested, and why that is not a gap
+
+The branch's own NaN arm — `if r["position"] in tv_replacement else float("nan")` — **is
+unreachable.** `_fill_omitted_from_anchor` fills every position `replacement_levels` omits from
+the PRE-DRAFT pool, and the pre-draft pool is a superset of the live one, so any position that
+reaches this branch has a level by the time the lambda runs. Measured across four demand
+states (0 / 4 / 10 / 20 IDP taken per position): **0 unpriced rows in every one**, with
+`replacement_basis` moving `live_starter_demand` → `predraft_anchor` at 10. Asserted as a
+negative rather than assumed, so a future repair that makes it reachable fails loudly here
+instead of quietly widening the branch's domain.
+
+The absence contract is exercised on this path at `build_available_pool` instead — the EXCLUDE
+arm, 339 rows, measured above.
+
+**One measurement artifact worth recording**, because it nearly became a finding: matching
+those excluded rows against the board **by name alone** reports 13 false hits. The baseline
+abbreviates to a first initial, so `j smith` (DB) matches `j smith` (LB). Matching on
+`(name, position)` gives 0. The 13 were an artifact of my join, not of the pool.
+
+---
+
+# #152 — THE FALLBACK'S CEILING IS PARTLY A UNIT ARTIFACT, AND THE PROSE CLAIMED OTHERWISE
+
+Writing the shared-scale test forced the question the old prose answered too confidently.
+
+`draft_room`'s docstring said the fallback *"correctly can't compete"* with a well-projected
+player because the two anchors share one scale. **They share a number line, not a unit.**
+
+| | points anchor | trade_value fallback |
+|---|---|---|
+| unit | projected season points | Draft Sharks' 0-100 trade scale |
+| real max in the baseline | 379 (QB) | 100 (WR) |
+| real max at the positions that actually use it | — | **DL 30, LB 35, DB 15** |
+
+So the fallback is compressed twice over: once by the scale, once again by where IDP sits
+within it. Measured on the same pool under two leagues:
+
+| league | IDP starters/team | best fallback `bpa` | best points `bpa` | fallback rows in top 25 |
+|---|---|---|---|---|
+| LIGHT (one shared `IDP_FLEX`) | 0.33 | 8.0 | 194.0 | 0 |
+| HEAVY (`DL DL LB LB DB DB`) | 6 | 34.0 | 160.0 | **0** |
+
+**In the light league the ceiling is a demand judgment and the right one.** In the heavy league
+— 72 IDP starters wanted against 76 priceable IDP players, so essentially the whole position
+goes — zero IDP inside the top 25 is not a demand judgment at all. It is the unit.
+
+**This is #51's supply defect seen from the arithmetic side, not a new one.** #51 ruled the IDP
+remedy is an input (#49), not code, and that ruling stands: with no IDP points source, there is
+no honest way to price IDP in points, and substituting a compressed proxy is better than
+fabricating one. What was wrong was the *prose* — "correctly" asserted a judgment the mechanism
+does not make.
+
+Three changes, no arithmetic touched:
+1. `draft_room`'s docstring now states the unit split explicitly and withdraws "correctly".
+2. The inline comment at the scale site points at it rather than repeating the old claim.
+3. `CDME_CONTRACTS.md`'s appendix quote of that docstring is dated, since it quotes prose that
+   no longer exists in the code and reasons about a 0-100 scale #74/#75 removed.
+
+**#150 inherits this as a known-expected behaviour.** A mass draft battery run over heavy-IDP
+formats will produce boards where IDP is taken late relative to its real roster demand. That is
+this, it is expected, and it must not be re-reported as a fresh anomaly.

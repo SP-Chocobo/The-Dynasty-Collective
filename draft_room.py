@@ -59,16 +59,25 @@ player still on the board), correctly driving VOR there to ~0 for everyone left.
 A position Draft Sharks has zero real projection data for at all (currently every IDP
 position when Sleeper's projections aren't wired into a given call) falls back to a VOR
 computed from trade_value instead of points, using the exact same remaining-demand
-replacement-rank logic -- and is folded into the SAME shared linear scale as every points-
-anchored player, not given its own separate 0-100 range. That separate range was the other
+replacement-rank logic -- and lands on the SAME unrescaled number line as every points-
+anchored player, not given its own separate range. That separate range was the other
 half of the first pass's IDP bug: ranking the fallback WITHIN each position individually gave
 every position's own top player bpa=100 regardless of real demand, so three unrelated
 positions' best remaining player all tied at the maximum score and landed in the top 25 of
-the whole board on a pure normalization artifact, not real value. Sharing one linear scale
+the whole board on a pure normalization artifact, not real value. Sharing one number line
 means a position with almost no real roster demand (an IDP_FLEX splitting 0.33 slots across
-three positions) correctly can't compete with a well-projected offensive skill player just
-because it's "the best of a locally re-normalized handful" -- it has to actually clear the
-same bar. bpa_source on every row says which of the three anchors was actually used
+three positions) can't compete with a well-projected offensive skill player just because
+it's "the best of a locally re-normalized handful" -- it has to clear the same bar.
+
+Stated precisely, because the older wording here claimed more than the code delivers (#152):
+one number line is NOT one unit. A points VOR is in projected points; a trade_value VOR is in
+a 0-100 trade scale that prices IDP lower again (real per-position maxima 30/35/15 against
+100 for WR). In a light-IDP league the ceiling that produces is a demand judgment and the
+right one. In a heavy-IDP league -- 72 IDP starters against 76 priceable IDP players -- it is
+mostly a unit artifact, and IDP is underpriced for a reason that has nothing to do with the
+league. The remedy is a real IDP points source (#51 ruled this a SUPPLY defect, #49 is the
+input), not different arithmetic here; TradeValueAnchorBranchTests pins what the branch does
+guarantee. bpa_source on every row says which of the three anchors was actually used
 (points_vor_draftsharks / points_vor_sleeper_extrapolated / position_relative_trade_value_vor)
 -- never silently presented as equivalent precision.
 
@@ -1821,11 +1830,13 @@ def compute_draft_board(
             axis=1,
         ).values
 
-    # ONE shared linear scale across both groups -- the actual fix for the cross-positional
+    # ONE shared number line across both groups -- the actual fix for the cross-positional
     # compression bug (see module docstring). A trade_value-based VOR is numerically much
-    # smaller than a points-based one (different units), so sharing this reference means a
-    # thin-demand IDP fallback correctly can't out-compete a well-projected offensive player
-    # just because it locally looked like "the best of its own small group."
+    # smaller than a points-based one, so a thin-demand IDP fallback can't out-compete a
+    # well-projected offensive player just because it locally looked like "the best of its own
+    # small group." Read the module docstring's #152 paragraph before treating that ceiling as
+    # a demand judgment: these are two different UNITS sharing a line, and in a heavy-IDP
+    # league the ceiling is mostly the unit rather than the demand.
     if _anchored:
         pool.loc[pool["position"].isin(_anchored), "replacement_basis"] = "predraft_anchor"
     pool["bpa"] = _scale_vor_to_bpa(pool["_vor"])

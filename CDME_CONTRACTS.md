@@ -3185,6 +3185,13 @@ And a second purpose, stated separately:
 > position with almost no real roster demand correctly can't compete … it has to actually clear
 > the same bar."*
 
+*(Quoted as the docstring stood when this appendix was written. Both halves have since changed
+in the code and the docstring: the 0-100 scale was removed outright (#74/#75 — `bpa` is now raw
+signed VOR, so "one linear scale" is a number line rather than a rescale), and the word
+"correctly" was withdrawn under #152 — the ceiling on the trade_value fallback is partly a unit
+artifact, not wholly a demand judgment. The quote is left as-is because the investigation below
+reasons about the scale that existed at the time; it is not a live claim about current code.)*
+
 So `bpa` is **not** absolute production above a baseline, and **not** a bounded rank. Its contract
 is:
 

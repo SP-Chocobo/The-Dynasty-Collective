@@ -13,6 +13,7 @@ have enough depth (or, for the third bug, enough real multi-position eligibility
 reproduce any of them.
 """
 
+import collections
 import time
 import unittest
 
@@ -951,6 +952,195 @@ class RealBaselineIDPBugRegressionTests(unittest.TestCase):
             f"every IDP position's top player pinned to the maximum score again: {top_by_position}",
         )
 
+
+class TradeValueAnchorBranchTests(unittest.TestCase):
+    """#123. compute_draft_board has three anchors, and only two of them were ever tested
+    DIRECTLY. The trade_value branch (`if (~has_proj).any()`) is wired identically to the
+    points branch above it, but every synthetic universe in this suite is built FROM the
+    projection set, so nothing in it ever entered that branch on purpose -- the class above
+    exercises the branch's CONSEQUENCES (rank order, differentiation) without ever naming the
+    branch or checking its arithmetic.
+
+    It is reachable on real committed data: 76 rows in the real baseline carry a trade_value
+    with no projection of any kind (DL 24, LB 29, DB 23), so these tests price them and read
+    the branch's own output rather than a downstream effect of it.
+
+    Deliberately NOT tested here, with the reason, because the alternative is a fixture that
+    pretends: the branch's own NaN arm (`if r["position"] in tv_replacement else nan`) is
+    unreachable. _fill_omitted_from_anchor fills every position replacement_levels omits from
+    the PRE-DRAFT pool, and the pre-draft pool is a superset of the live one, so a position
+    that reaches this branch always has a level by the time the lambda runs. Measured across
+    four demand states (see the exhaustion test below): 0 unpriced rows in every one. The
+    absence contract is exercised in this branch at build_available_pool's EXCLUDE arm
+    instead, which is the last test in the class."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.merger, cls.players_db = _build_pool_players_db()
+        cls.heavy_league = dict(LIGHT_IDP_LEAGUE, roster_positions=[
+            "QB", "RB", "RB", "WR", "WR", "TE", "DL", "DL", "LB", "LB", "DB", "DB", "BN",
+        ])
+        cls.light_board = cls._board(LIGHT_IDP_LEAGUE, [])
+        cls.heavy_board = cls._board(cls.heavy_league, [])
+
+    @classmethod
+    def _board(cls, league, picks):
+        return dr.compute_draft_board(
+            cls.merger, cls.players_db, picks, my_roster_id="99", league=league, mode="balanced",
+        )
+
+    @staticmethod
+    def _branch(board):
+        return [r for r in board if r["bpa_source"] == "position_relative_trade_value_vor"]
+
+    @staticmethod
+    def _points(board):
+        return [r for r in board if r["bpa_source"] != "position_relative_trade_value_vor"]
+
+    def test_the_trade_value_branch_is_taken_and_labels_itself(self):
+        # Non-vacuity for every other test in this class: if the real baseline ever gains IDP
+        # projections (#49), this branch stops firing and these tests lose their subject --
+        # loudly, here, rather than by silently passing on an empty population.
+        rows = self._branch(self.light_board)
+        self.assertGreater(len(rows), 50, "the trade_value branch did not fire on real data")
+        self.assertEqual({r["position"] for r in rows}, {"DL", "LB", "DB"})
+        # The branch's precondition, read off the output: no points source had anything.
+        # projected_points is None here, never fabricated -- see compute_draft_board's docstring.
+        self.assertTrue(all(r["projected_points"] is None for r in rows))
+        # And the converse, so the label is a partition rather than a one-way marker.
+        self.assertTrue(all(r["projected_points"] is not None for r in self._points(self.light_board)))
+
+    def test_bpa_on_the_branch_is_trade_value_minus_one_level_per_position(self):
+        """The arithmetic itself, which nothing else in the suite reads. bpa is unscaled VOR
+        (see _scale_vor_to_bpa), so `trade_value - bpa` must recover a SINGLE replacement level
+        per position -- a per-row or per-subgroup constant would mean the branch is computing
+        something other than one position-relative VOR."""
+        proj = self.merger.projections
+        trade_value = {
+            (row["norm_name"], row["position"]): row["trade_value"]
+            for _, row in proj.iterrows()
+        }
+        implied = collections.defaultdict(set)
+        for r in self._branch(self.light_board):
+            key = (r["name"].lower(), r["position"])
+            self.assertIn(key, trade_value, f"{r['name']} did not join back to its source row")
+            implied[r["position"]].add(round(trade_value[key] - r["bpa"], 6))
+        self.assertEqual(sorted(implied), ["DB", "DL", "LB"])
+        for position, levels in implied.items():
+            self.assertEqual(
+                len(levels), 1,
+                f"{position} implies more than one replacement level: {sorted(levels)}",
+            )
+            # A level of 0.0 would mean "replacement is a worthless player", which for a
+            # position with real starter demand is the degenerate anchor, not a measurement.
+            self.assertGreater(next(iter(levels)), 0.0)
+
+    def test_the_branch_keeps_below_replacement_players_negative(self):
+        """The same signed-measurement rule the points branch is held to (#74/#75). A clip at
+        zero here would flatten every below-replacement IDP into one indistinguishable value
+        AND make them indistinguishable from a genuine boundary zero."""
+        priced = [r["bpa"] for r in self._branch(self.light_board)]
+        self.assertTrue(any(v < 0 for v in priced), "no below-replacement row survived the branch")
+        self.assertTrue(any(v > 0 for v in priced), "no above-replacement row in the branch")
+        self.assertGreater(len(set(priced)), 20, "the branch collapsed real players onto too few values")
+
+    def test_the_branch_is_priced_against_this_leagues_own_demand(self):
+        """The branch shares replacement_levels with the points path, so its level has to move
+        with the league's real IDP demand -- not sit on a fixed positional constant. The class
+        above pins the RANK consequence of this; this pins the branch's own number."""
+        light = sorted(r["bpa"] for r in self._branch(self.light_board))
+        heavy = sorted(r["bpa"] for r in self._branch(self.heavy_board))
+        self.assertEqual(len(light), len(heavy), "the two leagues priced different populations")
+        # Six IDP starters per team instead of a third of one shared flex slot: replacement
+        # level is a far worse player, so the same pool prices out higher throughout.
+        self.assertGreater(heavy[len(heavy) // 2], light[len(light) // 2])
+        self.assertGreater(max(heavy), max(light))
+
+    def test_a_trade_value_row_does_not_out_compete_a_projected_one(self):
+        """The half of the original IDP bug this branch exists to not re-introduce: a locally
+        renormalized handful reaching the top of the whole board.
+
+        Recorded honestly, because the test would otherwise read as proof of something it does
+        not prove: the two branches share a NUMBER LINE, not a UNIT. A points VOR is in
+        projected points (real max 379); a trade_value VOR is in Draft Sharks' 0-100 trade
+        scale, and within that scale IDP is capped far lower again (real per-position maxima
+        30/35/15 against 100 for WR). So the ceiling below is partly a demand judgment and
+        partly a unit artifact, and in the heavy-IDP league -- 72 IDP starters against 76
+        priceable IDP players -- it is mostly the artifact. That is #51's supply defect
+        (no IDP points source at all), whose remedy is an input, not this arithmetic; see
+        #152 for the measurement. The assertion here is the narrow one the branch does
+        guarantee, not the broad one the old prose claimed."""
+        for label, board in (("light", self.light_board), ("heavy", self.heavy_board)):
+            branch, points = self._branch(board), self._points(board)
+            self.assertLess(
+                max(r["bpa"] for r in branch), max(r["bpa"] for r in points),
+                f"{label}: a trade_value row out-priced every projected player",
+            )
+            top = board[:25]
+            self.assertEqual(
+                0, sum(1 for r in top if r["bpa_source"] == "position_relative_trade_value_vor"),
+                f"{label}: a trade_value fallback row reached the top 25 of the board",
+            )
+
+    def test_both_replacement_bases_are_reachable_inside_this_branch(self):
+        """_fill_omitted_from_anchor is called on the trade_value path too, and its effect is
+        recorded rather than folded into an indistinguishable price. Both states have to be
+        reachable here or the column is decorative on this branch."""
+        by_position = collections.defaultdict(list)
+        for pid, p in self.players_db.items():
+            by_position[p["position"]].append(pid)
+        picks = []
+        for position in ("DL", "LB", "DB"):
+            for pid in by_position[position][:10]:
+                picks.append({"player_id": pid, "roster_id": str(len(picks) % 12 + 1),
+                              "round": len(picks) // 12 + 1, "pick_no": len(picks) + 1})
+        exhausted = self._branch(self._board(LIGHT_IDP_LEAGUE, picks))
+        self.assertGreater(len(exhausted), 20, "drafting emptied the branch's population")
+        self.assertEqual({r["replacement_basis"] for r in self._branch(self.light_board)},
+                         {"live_starter_demand"})
+        self.assertEqual({r["replacement_basis"] for r in exhausted}, {"predraft_anchor"})
+
+    def test_no_row_reaching_this_branch_is_left_unpriced(self):
+        """The measurement behind the class docstring's claim that the branch's NaN arm is
+        unreachable. Four demand states, from untouched to nearly drained; if a repair ever
+        makes an unpriced row reachable here, this fires and the docstring above needs
+        rewriting -- which is the point of asserting a negative rather than assuming it."""
+        by_position = collections.defaultdict(list)
+        for pid, p in self.players_db.items():
+            by_position[p["position"]].append(pid)
+        for taken in (0, 4, 10, 20):
+            picks = []
+            for position in ("DL", "LB", "DB"):
+                for pid in by_position[position][:taken]:
+                    picks.append({"player_id": pid, "roster_id": str(len(picks) % 12 + 1),
+                                  "round": len(picks) // 12 + 1, "pick_no": len(picks) + 1})
+            rows = self._branch(self._board(LIGHT_IDP_LEAGUE, picks))
+            self.assertGreater(len(rows), 10, f"{taken} taken: the branch stopped firing")
+            self.assertEqual(
+                [], [r["name"] for r in rows if r["bpa"] is None],
+                f"{taken} taken: the trade_value branch left rows unpriced",
+            )
+
+    def test_a_player_with_neither_number_is_excluded_rather_than_priced_at_zero(self):
+        """Where the absence contract actually lives on this path. Most of the real IDP field
+        has no trade_value either -- 339 rows across the three positions -- and build_available_
+        pool's EXCLUDE arm drops them instead of handing the branch a row it would have to
+        invent a number for. Matched on (name, position) rather than name alone: the baseline
+        abbreviates to a first initial, so a bare-name check reports false hits across
+        positions (13 of them, all spurious, on this exact fixture)."""
+        proj = self.merger.projections
+        on_board = {(r["name"].lower(), r["position"]) for r in self.light_board}
+        unnumbered = 0
+        for position in ("DL", "LB", "DB"):
+            sub = proj[proj["position"] == position]
+            neither = sub[sub["trade_value"].isna() & sub["projection"].isna()]
+            unnumbered += len(neither)
+            for name in neither["norm_name"]:
+                self.assertNotIn(
+                    (name, position), on_board,
+                    f"{name} ({position}) has no number of any kind and still reached the board",
+                )
+        self.assertGreater(unnumbered, 100, "no unnumbered IDP rows left to exclude")
 
 class InvariantTests(unittest.TestCase):
     """The hard invariants named in draft_room.py's own module docstring, enforced as real
