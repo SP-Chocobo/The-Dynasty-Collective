@@ -314,7 +314,75 @@ def qualifier_profile(trajectory) -> dict:
     }
 
 
-def audit_trajectory(trajectory, league: dict, players_db: dict) -> dict:
+def reference_values(merger, players_db: dict, league: dict) -> dict[str, float]:
+    """player_id -> universal_value on the PRE-DRAFT board. ONE RULER for the whole format.
+
+    Emphatically NOT each player's value at the moment he was taken. Those numbers are measured
+    against different board states, and comparing them is the moving-ruler defect #75/#76 found,
+    where the reference carried 94.5% of all bpa movement. #74 removed that scale, so values are
+    far more stable now -- but "far more stable" is not "comparable", and a strength number that
+    sums across fifteen different board states would be measuring the draft's progress as much
+    as the roster.
+    """
+    board = dr.compute_draft_board(merger, players_db, [], my_roster_id=None,
+                                   league=league, mode="balanced")
+    return {str(row["player_id"]): row["universal_value"] for row in board
+            if row.get("universal_value") is not None}
+
+
+def roster_strength(trajectory, league: dict, players_db: dict,
+                    values: dict[str, float]) -> dict:
+    """What each roster is actually WORTH, not merely whether it is legal.
+
+    Two numbers per chair, both on the shared pre-draft ruler:
+      starter_value -- the optimal legal lineup's total, solved with REAL values (unlike
+        unfilled_starting_slots, which passes 1.0 to ask a pure feasibility question). This is
+        the roster-quality number: it is what the team actually fields.
+      bench_value   -- everything else. Depth, and the price paid for it.
+
+    UNPRICED PLAYERS ARE COUNTED, NEVER SUMMED AS ZERO. A player the pre-draft board could not
+    price contributes no value here, and that makes starter_value a FLOOR rather than an
+    estimate -- so the count travels with the number instead of being folded into it.
+
+    Reported, never asserted. "Is 812 a good starter_value" needs a threshold nobody has
+    argued for; the SPREAD across chairs is the readable signal, and it is comparative.
+    """
+    slots = lo.slots_from_roster_positions(league.get("roster_positions") or [])
+    per_roster, starters = {}, []
+    for roster_id, player_ids in sorted(trajectory.final_rosters().items()):
+        players, unpriced = [], 0
+        for pid in player_ids:
+            info = players_db.get(str(pid)) or {}
+            if str(pid) not in values:
+                unpriced += 1
+            players.append({
+                "id": str(pid), "value": values.get(str(pid), 0.0),
+                "eligible": set(info.get("fantasy_positions")
+                                or ([info["position"]] if info.get("position") else [])),
+            })
+        solved = lo.optimize_lineup(players, slots)
+        starter_value = round(solved["total_value"], 2)
+        total = round(sum(p["value"] for p in players), 2)
+        per_roster[roster_id] = {
+            "starter_value": starter_value, "total_value": total,
+            "bench_value": round(total - starter_value, 2),
+            "unpriced_players": unpriced,
+        }
+        starters.append(starter_value)
+    starters.sort()
+    return {
+        "per_roster": per_roster,
+        "starter_value_min": starters[0] if starters else None,
+        "starter_value_median": starters[len(starters) // 2] if starters else None,
+        "starter_value_max": starters[-1] if starters else None,
+        # The readable signal. A coherent engine should produce a draft-slot GRADIENT, not
+        # chaos -- so a spread far larger than the gap between adjacent chairs is worth a look.
+        "starter_value_spread": round(starters[-1] - starters[0], 2) if starters else None,
+    }
+
+
+def audit_trajectory(trajectory, league: dict, players_db: dict,
+                     values: Optional[dict[str, float]] = None) -> dict:
     """One trajectory, fully judged and fully described."""
     return {
         "label": trajectory.config.get("label", ""),
@@ -325,6 +393,8 @@ def audit_trajectory(trajectory, league: dict, players_db: dict) -> dict:
         "margins": tav_margin_profile(trajectory),
         "qualifiers": qualifier_profile(trajectory),
         "regimes": dict(collections.Counter(p.decision_regime for p in trajectory.picks)),
+        "strength": (roster_strength(trajectory, league, players_db, values)
+                     if values is not None else None),
     }
 
 
@@ -344,7 +414,8 @@ def run_battery(merger, players_db: dict, matrix: Optional[list[dict]] = None,
         trajectory = draft_simulation.simulate_full_draft(
             merger, players_db, entry["league"], pick_order,
             mode=entry.get("mode", mode), config_label=entry["label"])
-        audited = audit_trajectory(trajectory, entry["league"], players_db)
+        values = reference_values(merger, players_db, entry["league"])
+        audited = audit_trajectory(trajectory, entry["league"], players_db, values)
         audited["teams"] = entry["teams"]
         audited["rounds"] = entry["rounds"]
         results.append(audited)

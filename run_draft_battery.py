@@ -71,8 +71,12 @@ def main(argv: list[str] | None = None) -> int:
         audited["seconds"] = round(time.time() - t0, 1)
         results.append(audited)
         findings = len(audited["findings"])
+        strength = audited.get("strength") or {}
         print(f"{audited['label']:22s} picks={audited['picks']:4d} "
-              f"findings={findings:3d} {audited['seconds']:7.1f}s"
+              f"findings={findings:3d} "
+              f"starters {strength.get('starter_value_min')}-{strength.get('starter_value_max')}"
+              f" (spread {strength.get('starter_value_spread')})"
+              f" {audited['seconds']:7.1f}s"
               + ("   <-- DEFECTS" if findings else ""), flush=True)
 
     total_findings = sum(len(r["findings"]) for r in results)
