@@ -1938,13 +1938,14 @@ def compute_draft_board(
         # which is exactly when the last starting slots are still open. The battery caught two
         # unfillable rosters in explicit upside mode against zero in balanced.
         scored["_feasible"] = feasibility_first(scored, picks, players_db, my_roster_id, roster_positions)
+        scored["fills_required_slot"] = scored["_feasible"] == 0
         results = scored.sort_values(["_feasible", "final_score", "player_id"],
                                      ascending=[True, False, True], kind="stable")
         return _records_with_normalized_nan(results[[
             "player_id", "name", "position", "team", "injury_status", "bpa", "bpa_source",
             "growth_signal", "universal_value", "confidence", "final_score", "mode",
             "projected_points", "horizon_floor", "horizon_sensitivity", "waiting_cost",
-            "replacement_basis", "horizon_basis", "identity_basis",
+            "replacement_basis", "horizon_basis", "identity_basis", "fills_required_slot",
         ]], "projected_points", "horizon_floor", "horizon_sensitivity", "waiting_cost",
             "bpa", "universal_value", "final_score")
 
@@ -2088,6 +2089,13 @@ def compute_draft_board(
     # roster has as few picks left as it has unfillable named slots, at which point the choice
     # is not between two values but between a legal roster and an illegal one.
     scored["_feasible"] = feasibility_first(scored, picks, players_db, my_roster_id, roster_positions)
+    # EMITTED, not just sorted on. compute_draft_board's own ordering is NOT authoritative --
+    # pick_synthesis.narrow_candidates re-sorts every board it receives through its own
+    # `_board_order` key (#155), so a decision expressed only as row order is silently
+    # discarded before it reaches a pick. Measured: tier 3 promoted a QB correctly on the
+    # board and the chair still took its seventh RB. The flag travels as data so the one
+    # authority that decides it stays the one authority, wherever the rows are re-sorted.
+    scored["fills_required_slot"] = scored["_feasible"] == 0
     # player_id tiebreaker + kind="stable" -- see the identical sort in the upside-mode branch
     # above for the full reasoning (input-order-independent tiebreaking among exact ties).
     results = scored.sort_values(["_feasible", "final_score", "player_id"],
@@ -2098,7 +2106,7 @@ def compute_draft_board(
         "need_bonus", "eligibility_bonus", "depth_exposure", "depth_basis",
         "confidence", "final_score", "mode", "projected_points",
         "horizon_floor", "horizon_sensitivity", "waiting_cost", "replacement_basis",
-        "horizon_basis", "identity_basis",
+        "horizon_basis", "identity_basis", "fills_required_slot",
     ]], "projected_points", "horizon_floor", "horizon_sensitivity", "waiting_cost",
         "bpa", "universal_value", "final_score")
 

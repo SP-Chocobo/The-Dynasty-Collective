@@ -3682,3 +3682,76 @@ draft the fixed harness no longer produces.
 
 Sequence, therefore: corrected battery completes -> real incidence -> then build, with
 `positional_forfeit` as tier 2's cost and tier 3 carrying the endgame.
+
+---
+
+# #154 TIER 3 IS NECESSARY AND NOT SUFFICIENT, AND #155 IS WHY IT LOOKED LIKE IT WORKED
+
+## The claim I made and then disproved
+
+I reported "tier 3 fixed 12T_ppr_mode_upside: 2 findings -> 0". **That was wrong.** The
+2-findings figure came from the FIRST battery, before `set_league_format` was wired; the
+corrected battery had not reached that format. The improvement was the scoring repair, not the
+backstop. I verified against a stale baseline -- the exact error I had flagged one message
+earlier and then committed anyway.
+
+The honest A/B, same code both arms, feasibility ON vs OFF:
+
+```
+12T_ppr_mode_upside   OFF findings=0  starters 194.24 / 353.16 / 430.97   league_total 4065.26
+                      ON  findings=0  starters 194.24 / 353.16 / 430.97   league_total 4065.26
+10T_ppr               OFF findings=1  starters 331.89 / 365.01 / 402.30   league_total 3669.16
+                      ON  findings=1  starters 331.89 / 365.01 / 402.30   league_total 3669.16
+```
+
+Byte-identical. Tier 3 changed nothing at all.
+
+## #155: compute_draft_board's ordering is NOT authoritative
+
+`pick_synthesis.narrow_candidates` re-sorts every board it receives through its own
+`_board_order` key. **Any decision expressed only as row order is silently discarded before it
+reaches a pick.** Tier 3 was measured promoting a QB correctly on the board while the chair
+took its seventh RB.
+
+Repaired by making the backstop travel as DATA rather than as order: `compute_draft_board`
+emits `fills_required_slot`, and `_board_order` leads with it. The one authority that decides
+it stays the one authority wherever the rows are re-sorted. This is a general hazard, not a
+tier-3 one -- a second ordering authority will discard the next such decision too.
+
+## Tier 3 still does not fix 10T_ppr, and the reason matters
+
+With the flag honoured end to end, chair 2 still finishes with no QB. Instrumented at its last
+pick:
+
+```
+chair2 picks before last: 13    rounds: 14
+board rows: 126    flagged: 0    QBs on board: 0
+```
+
+**The backstop bound correctly and had nothing to promote.** Every QB was gone:
+
+| | |
+|---|---|
+| QBs in the universe (with a number) | 39 |
+| QBs drafted, 1QB 10-team league | **39** |
+| per chair | 1, 0, 3, 4, 5, 5, 5, 6, 4, 6 |
+| QB picks by round 12/13/14 | 7 / 8 / 6 -- 21 of 39 |
+
+A ten-team league needing ten quarterbacks consumed forty.
+
+**So tier 3 is necessary and not sufficient, by construction.** A feasibility backstop can only
+promote a position that still has supply. Preventing the state where supply is gone is tier 2's
+job -- which is exactly the owner's framing: the cost of leaving a need unresolved rises as the
+alternatives disappear, and that has to bite BEFORE the last pick.
+
+## A hypothesis I checked and disproved, recorded so nobody re-runs it
+
+I expected the pile-in to be the pre-draft anchor: demand exhausts, `_fill_omitted_from_anchor`
+prices the rest against a much lower pre-draft bar, and the position looks artificially good.
+**Measured: every late QB pick carries `replacement_basis == "live_starter_demand"`.** Not one
+`predraft_anchor`. The anchor is not the mechanism.
+
+The root cause of the QB consumption is therefore OPEN. It resembles #114's late-draft pricing
+collapse (value-flat boards where near-arbitrary tiebreaks decide, 21 of 30 picks in rounds
+12-14 going to one position), but that is a resemblance, not a finding, and this file has
+already carried one wrong explanation today.

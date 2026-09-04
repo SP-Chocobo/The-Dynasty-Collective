@@ -175,8 +175,16 @@ POSITION_VIEW_DEPTH_CAP = 12
 
 
 def _board_order(row: dict) -> tuple:
-    """Sort key for a board row: highest final_score first, UNPRICED rows last, player_id as
-    the tiebreak.
+    """Sort key for a board row: the feasibility backstop first, then highest final_score,
+    UNPRICED rows last, player_id as the tiebreak.
+
+    THE BACKSTOP LEADS, and it has to be honoured here rather than only in draft_room, because
+    this function is a SECOND ORDERING AUTHORITY (#155): it re-sorts every board it is handed,
+    so compute_draft_board's own row order never survives to the pick. Tier 3 was measured
+    promoting a QB correctly on the board while the chair still took its seventh RB, purely
+    because this key threw that order away. `fills_required_slot` is False on essentially every
+    row of essentially every board -- see draft_room.feasibility_first for why it binds only
+    when a roster has as few picks left as it has unfillable named slots.
 
     Two things this deliberately does not do. It does not substitute a number for an absent
     score -- a row whose position has no replacement level has no team_acquisition_value, and
@@ -191,7 +199,8 @@ def _board_order(row: dict) -> tuple:
     carried an explicit player_id tiebreak for exactly this reason since the players_db
     iteration-order bug."""
     score = row.get("final_score")
-    return (score is None, -score if score is not None else 0.0, str(row.get("player_id")))
+    return (not row.get("fills_required_slot", False),
+            score is None, -score if score is not None else 0.0, str(row.get("player_id")))
 
 
 def position_view_depth(replacement_rank: Optional[int]) -> int:
