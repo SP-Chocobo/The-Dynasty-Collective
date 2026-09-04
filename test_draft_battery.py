@@ -141,8 +141,35 @@ class ReportedDistributionsDescribeRatherThanJudgeTests(unittest.TestCase):
         profile = batt.qualifier_profile(traj)
         self.assertEqual({"live_starter_demand": 1, "predraft_anchor": 1},
                          profile["replacement_basis"])
-        self.assertEqual(1, profile["picks_with_growth"])
+        self.assertEqual(1, profile["picks_with_growth_measured"])
         self.assertEqual(12.5, profile["max_growth"])
+
+    def test_a_measured_growth_of_zero_is_not_reported_as_no_growth(self):
+        """The absence contract, in the battery's OWN reporting -- and it failed here first.
+        A truthiness test read an upside pick that legitimately measured 0.0 as if growth had
+        never been computed, which is the same conflation the engine is held to everywhere
+        else. Balanced picks carry None (never computed); an upside pick can carry 0.0
+        (computed, and this player has no trajectory). Those are different facts."""
+        traj = _trajectory([
+            _record(1, "1", "q1", growth=0.0),    # upside, measured, genuinely zero
+            _record(2, "2", "r1", growth=None),   # balanced, never computed
+            _record(3, "3", "w1", growth=4.0),
+        ])
+        profile = batt.qualifier_profile(traj)
+        self.assertEqual(2, profile["picks_with_growth_measured"])
+        self.assertEqual(1, profile["picks_with_growth_above_zero"])
+
+    def test_the_matrix_varies_mode_explicitly(self):
+        """Modes are one of the axes #150 names, and auto alone does not vary it: auto switches
+        to upside only at UPSIDE_MODE_DEFAULT_ROUND, which most formats never reach. Measured
+        before this was added -- 0 picks carried a growth_signal across 280 picks."""
+        entries = {e["label"]: e for e in batt.league_matrix()}
+        modes = {e.get("mode") for e in entries.values()}
+        self.assertIn("upside", modes, "no format runs upside mode, so growth_signal and the "
+                                       "whole upside scoring path go unexercised")
+        self.assertIn("balanced", modes)
+        upside = next(e for e in entries.values() if e.get("mode") == "upside")
+        self.assertGreater(upside["rounds"], 0)
 
     def test_first_round_taken_reports_absence_as_none(self):
         traj = _trajectory([_record(1, "1", "q1")])

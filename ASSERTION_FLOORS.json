@@ -385,12 +385,12 @@
       }
     },
     "test_draft_battery.py": {
-      "test_methods": 17,
+      "test_methods": 19,
       "asserts": {
         "assertAlmostEqual": 1,
-        "assertEqual": 19,
-        "assertGreater": 2,
-        "assertIn": 3,
+        "assertEqual": 21,
+        "assertGreater": 3,
+        "assertIn": 5,
         "assertIsNone": 1,
         "assertNotIn": 1,
         "assertTrue": 3

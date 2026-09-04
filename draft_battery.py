@@ -110,6 +110,23 @@ def league_matrix() -> list[dict]:
     for label, league in custom.items():
         out.append({"label": label, "league": league, "teams": league["total_rosters"],
                     "rounds": len(league["roster_positions"])})
+
+    # MODE IS AN AXIS, and until this was added the battery barely varied it. Every format
+    # above runs mode="auto", which switches to upside scoring only at
+    # UPSIDE_MODE_DEFAULT_ROUND (15) -- and most formats here are 14 rounds, so auto never
+    # reached upside at all. The battery would have reported "modes covered" while exercising
+    # one. Measured on the smoke run before this was fixed: 0 picks with a growth_signal across
+    # 280 picks in two formats.
+    #
+    # So one 12-team format is run in each mode explicitly. upside is the one that matters:
+    # it is the only path that computes growth_signal, it is what every auto-drafted opponent
+    # falls into late, and #115 records that a human board never reaches it -- which makes the
+    # simulation the ONLY place its behaviour is observable at all.
+    base = dr.build_mock_league(teams=12, superflex=False, scoring="ppr",
+                               te_premium=False, dynasty=True)
+    for mode in ("balanced", "upside"):
+        out.append({"label": f"12T_ppr_mode_{mode}", "league": base, "teams": 12,
+                    "rounds": len(base["roster_positions"]), "mode": mode})
     return out
 
 
@@ -281,11 +298,19 @@ def qualifier_profile(trajectory) -> dict:
     demand, and a report that cannot tell them apart is the exact blindness #138 repaired.
     """
     bases = collections.Counter(p.chosen_replacement_basis for p in trajectory.picks)
-    growth = [p.chosen_growth_signal for p in trajectory.picks if p.chosen_growth_signal]
+    # `is not None` and `> 0` are SEPARATE counts, and conflating them is the exact defect this
+    # repository forbids everywhere else -- caught here in the battery's own reporting, where a
+    # truthiness test read a measured growth of 0.0 as "no growth measured". Balanced-mode picks
+    # have growth_signal None because the quantity is never computed; an upside pick can
+    # legitimately measure 0.0, and those are different facts about the draft.
+    measured = [p.chosen_growth_signal for p in trajectory.picks
+                if p.chosen_growth_signal is not None]
+    positive = [value for value in measured if value > 0]
     return {
         "replacement_basis": {str(k): v for k, v in sorted(bases.items(), key=lambda kv: str(kv[0]))},
-        "picks_with_growth": len(growth),
-        "max_growth": max(growth) if growth else None,
+        "picks_with_growth_measured": len(measured),
+        "picks_with_growth_above_zero": len(positive),
+        "max_growth": max(measured) if measured else None,
     }
 
 
@@ -318,7 +343,7 @@ def run_battery(merger, players_db: dict, matrix: Optional[list[dict]] = None,
         pick_order = ds.generate_pick_order(roster_ids, entry["rounds"], "snake")
         trajectory = draft_simulation.simulate_full_draft(
             merger, players_db, entry["league"], pick_order,
-            mode=mode, config_label=entry["label"])
+            mode=entry.get("mode", mode), config_label=entry["label"])
         audited = audit_trajectory(trajectory, entry["league"], players_db)
         audited["teams"] = entry["teams"]
         audited["rounds"] = entry["rounds"]
