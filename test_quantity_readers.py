@@ -52,14 +52,14 @@ KNOWN_WRITE_ONLY = {
     "exposure",
     # marginal_lineup_value: only the difference is used (#84).
     "without_candidate",
-    # THE TWO REAL GAPS, both display qualifiers with no display (#116/#137 territory):
-    #   replacement_basis distinguishes live_starter_demand from predraft_anchor precisely so
-    #   the board does not present two kinds of claim as one -- and nothing reads it, so it
-    #   presents them as one anyway.
-    "replacement_basis",
-    #   growth_signal is upside mode's ONLY distinguishing output; no scorer and no surface
-    #   reads it, which compounds #115 (the human's board never enters upside mode).
-    "growth_signal",
+    #
+    # THE TWO REAL GAPS ARE GONE. replacement_basis and growth_signal were here until the
+    # commit that carried both from the board row onto CandidateSnapshot, and from there into
+    # draft_board_ui.serialize_candidate and draft_simulation.PickRecord. Both now scan as
+    # `observable` with two readers each. They are NOT re-listed below as deliberate
+    # exclusions, because that would be the "stale inventory describing an engine from months
+    # ago" this file's own second test exists to prevent -- see
+    # TheTwoRealGapsGainedReadersTests, which pins the new state from the other direction.
 }
 
 
@@ -123,12 +123,36 @@ class TheWriteOnlySetMustNotGrowTests(unittest.TestCase):
             f"these are no longer write-only: {resolved}. Good -- remove them from "
             f"KNOWN_WRITE_ONLY and note which commit gave them a reader.")
 
-    def test_the_two_real_gaps_are_still_recorded_as_gaps(self):
-        """Distinguished from the deliberate entries beside them. If either gains a reader this
-        fails, and that failure is the prompt to close its register item."""
+    def test_the_two_real_gaps_gained_readers(self):
+        """The inverse of what this test asserted until #138's second half. Both quantities
+        were computed by compute_draft_board, placed on every board row, and dropped at
+        pick_synthesis's raw_candidates boundary -- so no surface could read them however much
+        it wanted to. They now reach CandidateSnapshot, serialize_candidate, and PickRecord.
+
+        Kept as an explicit assertion rather than deleted: "these two are no longer write-only"
+        is a claim worth failing on if a future refactor drops the carry again, and a silently
+        absent test would not."""
         for quantity in ("replacement_basis", "growth_signal"):
             with self.subTest(quantity=quantity):
-                self.assertIn(quantity, self.found)
+                self.assertNotIn(
+                    quantity, self.found,
+                    f"{quantity} is write-only again -- the raw_candidates carry was dropped")
+
+    def test_both_gained_readers_that_are_not_merely_relays(self):
+        """A carry into a dict is not consumption -- that is the trap
+        test_a_relay_is_not_counted_as_a_consumer pins for waiting_cost. pick_synthesis is a
+        CARRIER for both of these; the terminus has to be somewhere else, and it is."""
+        rows = {row["quantity"]: row for row in qr.scan()}
+        for quantity in ("replacement_basis", "growth_signal"):
+            with self.subTest(quantity=quantity):
+                row = rows[quantity]
+                self.assertEqual(row["verdict"], qr.OBSERVABLE)
+                self.assertIn("pick_synthesis.py", row["carriers"],
+                              "pick_synthesis relays these; it is not their consumer")
+                self.assertTrue(
+                    set(row["observing_readers"]) >= {"draft_board_ui.py", "draft_simulation.py"},
+                    f"expected both the serializer and the retained record to read "
+                    f"{quantity}, got {row['observing_readers']}")
 
 
 class TheClassificationIsWellFormedTests(unittest.TestCase):

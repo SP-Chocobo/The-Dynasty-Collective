@@ -422,23 +422,23 @@
       }
     },
     "test_draft_room.py": {
-      "test_methods": 86,
+      "test_methods": 94,
       "asserts": {
         "assertAlmostEqual": 22,
-        "assertEqual": 44,
+        "assertEqual": 52,
         "assertFalse": 3,
-        "assertGreater": 30,
+        "assertGreater": 38,
         "assertGreaterEqual": 5,
-        "assertIn": 3,
+        "assertIn": 4,
         "assertIs": 2,
         "assertIsNone": 4,
         "assertIsNotNone": 5,
-        "assertLess": 7,
+        "assertLess": 8,
         "assertLessEqual": 6,
         "assertNotAlmostEqual": 1,
         "assertNotEqual": 2,
-        "assertNotIn": 4,
-        "assertTrue": 10
+        "assertNotIn": 5,
+        "assertTrue": 14
       }
     },
     "test_draft_simulation.py": {
@@ -717,7 +717,7 @@
     "test_pick_synthesis.py": {
       "test_methods": 114,
       "asserts": {
-        "assertAlmostEqual": 15,
+        "assertAlmostEqual": 17,
         "assertEqual": 80,
         "assertFalse": 18,
         "assertGreater": 11,
@@ -1072,13 +1072,13 @@
       }
     },
     "test_threshold_reachability.py": {
-      "test_methods": 12,
+      "test_methods": 14,
       "asserts": {
-        "assertAlmostEqual": 3,
-        "assertEqual": 5,
+        "assertAlmostEqual": 5,
+        "assertEqual": 6,
         "assertGreater": 8,
         "assertIn": 2,
-        "assertLess": 2,
+        "assertLess": 1,
         "assertTrue": 3
       }
     },

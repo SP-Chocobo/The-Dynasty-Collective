@@ -218,6 +218,13 @@ def serialize_candidate(c: CandidateSnapshot) -> dict:
         "forces": _forces(c),
         "contextGap": _context_gap(c),
         "waitNote": _waiting_note(c),
+        # #138. Both are QUALIFIERS on numbers already in this dict, not new claims:
+        # replacementBasis says whether `uv`/`tav` rest on live demand or a pre-draft anchor,
+        # and growthSignal is the trajectory half of an upside-mode `tav`. Carried for every
+        # candidate rather than only the chosen one, because the retained board is what makes
+        # "over what alternatives" answerable (see draft_simulation.PickRecord).
+        "replacementBasis": c.replacement_basis,
+        "growthSignal": c.growth_signal,
         "flagged": False,  # set by serialize_snapshot against user_selected_player_id
     }
 

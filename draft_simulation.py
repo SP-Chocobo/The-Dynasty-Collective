@@ -51,6 +51,18 @@ class PickRecord:
     chosen_player_id: str
     decision_regime: str
     snapshot: dict
+    # #138. Read off the chosen candidate, not re-derived: the two qualifiers that say what
+    # KIND of number won this pick. chosen_replacement_basis distinguishes a price resting on
+    # live starter demand from one resting on the pre-draft anchor; chosen_growth_signal is
+    # the trajectory term that decides late upside-mode picks (measured: it changes the argmax
+    # by round 15). Both default so trajectories recorded before this field still construct.
+    #
+    # These are DECOMPOSITIONS of a decision this record already stores, which is exactly what
+    # makes them worth storing: without them the record answers "who was taken" but not "on
+    # what kind of evidence", and #150 reads these records to judge whether a draft is
+    # defensible rather than merely deterministic.
+    chosen_replacement_basis: Optional[str] = None
+    chosen_growth_signal: Optional[float] = None
 
 
 @dataclass(frozen=True)
@@ -110,6 +122,8 @@ def simulate_full_draft(
             pick_no=idx + 1, round=round_no, roster_id=roster_id, pick_label=pick_label,
             chosen_player_id=chosen.player_id, decision_regime=snap.decision_regime,
             snapshot=draft_board_ui.serialize_snapshot(snap, pick_header=pick_label, state_tags=[]),
+            chosen_replacement_basis=chosen.replacement_basis,
+            chosen_growth_signal=chosen.growth_signal,
         ))
 
     return DraftTrajectory(

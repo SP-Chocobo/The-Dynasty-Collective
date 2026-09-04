@@ -3418,3 +3418,108 @@ round-opening turns carrying ~22 intervening picks and keeping the round-closing
 none. Second run: backgrounded with a `cd` into a scratch directory, so `DataMerger` loaded from
 the wrong working directory and returned a frame with no `position` column. A vacuous measurement
 that *looks* like a clean null result is the more dangerous of the two.
+
+---
+
+# #144 CLOSED — AND THE ITEM'S OWN PROPOSED FIX WAS THE WRONG ONE
+
+`pick_necessity`'s denial ramp divided `rival_premium` by `NEED_BONUS_MAX`. That was an upper
+bound on the quantity until #139 added a third team-specific term, after which the ramp clipped
+and every candidate above the bar received an identical denial contribution.
+
+The register's proposed repair — *"the structurally matching divisor is the sum of all three
+caps"* — was held back because it *"changes every round's denial contribution by 3x to fix a
+tail"*. **Right instinct, wrong diagnosis.** The code's own comment named the missing evidence:
+*"Choosing between them needs a measurement of necessity ordering that nothing in this
+repository has yet made."* It has now been made.
+
+## The measurement, six real turns, 272 candidates
+
+Below saturation the term is `premium × (WEIGHT / DIVISOR)` — so **the divisor and the weight
+are one slope, not two knobs.**
+
+| form | inversions | label flips | mean necessity |
+|---|---|---|---|
+| divisor 36, weight held at 10 | **478**/7046 | **54**/272 | −3 to −4.5 |
+| both scaled (shipped) | **7**/7046 | **1**/272 | unchanged |
+
+**The decisive row is round 4: 259 of those 478 inversions occur where NOTHING CLIPS.** A
+saturation repair cannot reorder a population that never reached saturation. Moving the divisor
+alone is a 3× de-weighting of denial wearing a saturation repair's clothes.
+
+The shipped form holds the calibrated rate (`10/12 = 0.8333` necessity points per premium
+point, bit-identical before and after) and moves only the flat spot. `rows changed` equals
+`rows clipped` on every single turn — the signature of a change that touched only what it
+claimed to.
+
+Both constants are **derived, never written as literals**, so a fourth team-specific term moves
+them automatically instead of silently re-flattening the ramp the way the third did:
+
+```
+NECESSITY_DENIAL_SATURATION = NEED_BONUS_MAX + ELIGIBILITY_BONUS_MAX + DEPTH_EXPOSURE_MAX
+NECESSITY_DENIAL_CEILING    = SATURATION × (NECESSITY_DENIAL_WEIGHT / NEED_BONUS_MAX)
+```
+
+`cdme_force_ablation.py` reproduces this formula independently and moved in lockstep; left
+alone it would have silently measured an engine version that no longer exists.
+
+## What the floors ratchet caught, and why it was right to
+
+The full suite failed on `assertion_floors`: `test_threshold_reachability.py: self.assertLess
+2 -> 1`. Not a regression — the rewrite replaced a two-sided band (`0 < share < 0.5`, "it clips
+but not for most") with an exact `assertEqual([], clipped)` ("it must not clip at all"), and
+test methods went 12 → 14. A **strengthening**, which the counter cannot distinguish from a
+weakening by design (§19.8: it "cannot see a vacuous assertion, or tell a strengthening from a
+weakening"). Floors regenerated deliberately, which is the workflow the instrument exists to
+force.
+
+**Process note, recorded because it cost a cycle:** #144 was pushed after six targeted modules
+passed but before the full suite finished. The targeted set was 530 tests across every
+denial-touching module and all of them passed — the failure was in an instrument none of them
+exercised. A behaviour change to the equation earns the whole suite, not a subset chosen by the
+person who wrote the change.
+
+## Two things measured here that were NOT the item
+
+- `eligibility_bonus`'s `min()` fires **0.0%** and `depth_exposure`'s **0.0–0.4%** across
+  30,324 candidate rows per league. Their docstrings' claim to be "a defensive guard for
+  out-of-scale source data, not the bounding mechanism" is now measured rather than asserted.
+- `need_bonus`'s own cap is a separate defect — **#153**.
+
+---
+
+# #138 SECOND HALF — THE TWO REAL GAPS NOW HAVE READERS
+
+`replacement_basis` and `growth_signal` were produced by `compute_draft_board`, placed on every
+board row, and **dropped at `pick_synthesis`'s `raw_candidates` boundary**. Nothing downstream
+could read them however much it wanted to — including the retained decision record that exists
+to answer "why this player".
+
+Both now reach `CandidateSnapshot` → `draft_board_ui.serialize_candidate` →
+`draft_simulation.PickRecord`. The scanner moves both `write_only` → `observable`, with
+`pick_synthesis` correctly classified a **carrier** rather than a consumer (the same relay trap
+`test_a_relay_is_not_counted_as_a_consumer` already pins for `waiting_cost`).
+
+They are not the same kind of quantity:
+
+| | why it matters | measured |
+|---|---|---|
+| `replacement_basis` | `live_starter_demand` and `predraft_anchor` are two different **strengths of claim** about one number; a consumer rendering both identically states a live measurement it does not have | both states reachable through the snapshot layer — the anchor appears by round 15, once a position's live demand drains |
+| `growth_signal` | upside mode's whole distinguishing output: `final_score = bpa + UPSIDE_GROWTH_WEIGHT × growth` | 43–52% of upside rows carry growth > 0 (mean 11.1 early, 25.5 as the pool drains), and **by round 15 it changes which player is taken** |
+
+`growth_signal` is `None` in balanced mode, never `0.0` — the absence contract at the one
+boundary where it is easy to get wrong, since a zero would read as "measured, and this player
+has no trajectory".
+
+**The reconstruction test is the one that matters.** The scanner proves a reader exists; it
+cannot prove the value arriving is the right one, and a carry that always delivered `None`
+would satisfy it while telling a reader nothing. So `growth_signal` is checked against the
+identity it decomposes — `final_score = bpa + UPSIDE_GROWTH_WEIGHT × growth_signal` closes to
+one decimal on every candidate.
+
+Ten tests in `test_decision_qualifiers.py`, mutation-checked **4 / 2 / 37** against dropping
+the carry, faking absence as zero, and severing the record's read.
+
+`test_the_two_real_gaps_are_still_recorded_as_gaps` was **inverted rather than deleted** — it
+now asserts they are *not* write-only, so a refactor that drops the carry fails loudly instead
+of vanishing quietly.

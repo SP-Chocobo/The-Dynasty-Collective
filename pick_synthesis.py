@@ -1042,6 +1042,22 @@ class CandidateSnapshot:
     # QB by 63, because QB falls off a cliff just past its horizon. Consumers must not state
     # a waiting cost more confidently than this allows.
     horizon_sensitivity: Optional[float] = None
+    # #138's two remaining write-only quantities. Both were computed by compute_draft_board,
+    # placed on every board row, and then dropped HERE -- so nothing downstream could read
+    # them, including the retained decision record that exists to answer "why this player".
+    #
+    # "live_starter_demand" | "predraft_anchor": which anchor this row's price actually rests
+    # on. Two different STRENGTHS of claim that the board presented as one number -- a position
+    # whose league-wide starter demand is exhausted keeps being priced against its PRE-DRAFT
+    # level (see draft_room._fill_omitted_from_anchor), and a record that renders both
+    # identically asserts a live measurement it does not have.
+    replacement_basis: Optional[str] = None
+    # Upside mode only, and there it is the term that DECIDES late picks:
+    # final_score = bpa + UPSIDE_GROWTH_WEIGHT * growth. Measured on real upside boards --
+    # 43-52% of rows carry growth > 0, mean 11.1 rising to 25.5 as the pool drains, and by
+    # round 15 it changes which player is taken. None in balanced mode, where the quantity
+    # genuinely is not computed; never 0.0, which would read as "measured, no trajectory".
+    growth_signal: Optional[float] = None
 
 
 @dataclass(frozen=True)
@@ -1169,6 +1185,11 @@ def build_snapshot(
             "horizon_floor": row.get("horizon_floor"),
             "horizon_basis": row.get("horizon_basis"),
             "horizon_sensitivity": row.get("horizon_sensitivity"),
+            # Straight off the board row, same as the horizon fields above. balanced-mode
+            # boards carry no growth_signal at all, so .get returns None there -- which is the
+            # honest reading, not a fabricated zero.
+            "replacement_basis": row.get("replacement_basis"),
+            "growth_signal": row.get("growth_signal"),
         })
 
     round_num = (max((p.get("round") or 1) for p in picks) if picks else 1)
