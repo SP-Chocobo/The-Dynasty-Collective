@@ -3596,3 +3596,89 @@ board, `growth_signal`'s scale hazard must be settled BEFORE it reaches a metric
 a 0-100 percentile difference beside raw-points `universal_value` in matching formatting is the
 unit-borrowing this module documents, made worse by the fact that the borrowed unit really is
 0-100 and would look authoritative.
+
+---
+
+# #154 / #55 — THE OPPORTUNITY-COST FRAME, AND TWO CORRECTIONS THE MEASUREMENT FORCED
+
+The owner's framing, which is the right one and reframes the repair away from where #154 first
+pointed:
+
+> *"don't draft a TE because you're missing a TE; draft the TE when the cost of not drafting
+> him exceeds the value of taking the stud."*
+
+Not a bigger positional bonus. The **marginal cost of leaving a need unresolved**, integrating
+temporal urgency, positional forfeit, remaining alternatives, and the waiver/replacement level.
+Three tiers: BPA by default, opportunity-cost necessity as the draft closes, hard feasibility
+when the alternative is a roster that cannot be fielded.
+
+## Most of it already exists, measured and unplugged
+
+| input | quantity | state |
+|---|---|---|
+| waiver / replacement level | `horizon_replacement` — best at this position expected STILL UNDRAFTED when the draft ends | built; this IS the waiver replacement |
+| cost of not solving it | `waiting_cost` = this player's points − that floor | computed per player per board, **scored by nothing** |
+| cost to the next turn | `positional_forfeit` | wired to `pick_necessity`, not to selection |
+| temporal urgency | `intervening_picks`, `survival_probability` | present |
+
+The correlation trap is real -- `r(waiting_cost, bpa) = +0.847`, which is why #48 refused it as
+an additive necessity term. The owner's form avoids it by **comparing** rather than summing:
+cost-of-not-solving against the uv GAP surrendered. Both sides are raw season points, so no
+constant is required, which matters because every failed repair in this codebase has been a
+magnitude somebody picked.
+
+## CORRECTION 1: `waiting_cost` is the wrong quantity for most of the draft
+
+Measured on the real 10T_standard_SF board, roster 1, every turn:
+
+```
+ 2.10  chosen_uv  99.51 | best TE uv 67.14  wait 88.00  measured | GAP 32.37  FIRES
+ 7.01  chosen_uv  29.43 | best TE uv 29.43  wait 53.00  measured | GAP  0.00  FIRES
+11.01  chosen_uv  -0.98 | best TE uv -0.79  wait 22.00  measured | GAP -0.19  FIRES
+```
+
+**The rule fires in ROUND 2** and stays on for ten rounds. It would take a TE over a player
+worth 32 more universal_value.
+
+The counterfactual is wrong. `waiting_cost` prices deferral to the END OF THE DRAFT -- "this TE
+is 88 points better than the one I get if I never take a TE." But declining now does not mean
+never; it means taking one at the NEXT turn. That is exactly the distinction #48/#71 established
+and then only half-wired: `positional_forfeit` is the next-turn cost, `waiting_cost` the
+draft-end cost, and they correlate at only r=+0.569, so they are genuinely different questions.
+
+**So the rule needs `positional_forfeit` for most of the draft, and `waiting_cost` only as the
+remaining opportunities at that position collapse toward one.** The two are not
+interchangeable, and the draft-end cost is what makes the rule fire absurdly early.
+
+## CORRECTION 2: the `horizon_basis` guard has the wrong sign
+
+My proposed guard was "fire only on a `measured` floor", since an imputed floor driving a
+positional override is fabricated urgency (#62/#122's defect class). The measurement inverts it:
+
+```
+11.01  measured   fires
+12.10  imputed    silent
+15.01  imputed    silent
+```
+
+The floor goes `imputed` from round 12 -- so that guard switches the rule OFF exactly in the
+endgame where the need is real and the pool is thinnest. The guard is still correct in what it
+refuses to claim; what is wrong is expecting tier 2 to cover the endgame at all. **Tier 3's
+pure arithmetic (`picks_remaining == unfilled_dedicated_slots`) has to carry it**, and it needs
+no evidence about the pool, which is why it still holds when the evidence runs out.
+
+## CORRECTION 3: the case I was designing against no longer exists
+
+That trace ran with `set_league_format` wired (the harness repair). Roster 1 **took a TE at
+7.01** and the 9-RB/0-TE roster did not reproduce. The first battery's incidence table is void:
+on the corrected run, 10T_standard_SF went 2 findings -> 0, while 10T_half_ppr and 10T_ppr went
+0 -> 1. Starter values now separate by scoring (10T standard 221-293 vs half_ppr 332-402) where
+before all three were byte-identical.
+
+**Nothing about #154's mechanism changes** -- need_bonus is still flat across the draft, upside
+mode still zeroes every team-specific term, and rosters still finish unfillable. What changes is
+WHICH formats and chairs, so sizing the repair against the old trace would have fitted it to a
+draft the fixed harness no longer produces.
+
+Sequence, therefore: corrected battery completes -> real incidence -> then build, with
+`positional_forfeit` as tier 2's cost and tier 3 carrying the endgame.
