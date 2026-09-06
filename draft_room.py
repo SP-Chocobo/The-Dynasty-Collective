@@ -205,15 +205,38 @@ UPSIDE_MODE_DEFAULT_ROUND = 15
 # for the slot) badly understated real superflex QB demand: confirmed directly, even the
 # #1-projected QB by raw season points ranked outside the top 30 overall on a real superflex
 # board before this constant existed, nowhere close to the real market's well-known "4-6 QBs
-# typically go in round 1 of a 12-team superflex startup" behavior. Not empirically
-# backtested to an exact percentage -- a principled, bounded starting point, same honesty this
-# module applies to every other unproven constant. Even with this fix, pure points-based VOR
+# typically go in round 1 of a 12-team superflex startup" behavior.
+#
+# DERIVATION OF RECORD (#178). This was 0.85 and said so honestly: "not empirically backtested
+# to an exact percentage -- a principled, bounded starting point". It is now DERIVED, and the
+# derived answer is 1.0. Method: build the league's entire starting requirement (num_teams
+# copies of every starting slot) and assign the projection pool to it with this repo's own
+# exact optimizer (lineup_optimizer.optimize_lineup, Hungarian); whatever lands in the
+# SUPER_FLEX slots IS the share. Dedicated slots compete for the same players in the same
+# solve, so the flex share cannot double-count a player a named slot was always going to take.
+# NOT CIRCULAR: only projections and roster_positions enter -- no engine valuation and no
+# drafting behaviour that the old 0.85 already shaped, so the constant cannot be fitted to its
+# own consequences.
+#
+#   12T_ppr_SF   SUPER_FLEX  n=12  QB = 1.000
+#   10T_ppr_SF   SUPER_FLEX  n=10  QB = 1.000
+#
+# Identical under BOTH yardsticks (projection and proj_3yr), which is why this is stated as a
+# derivation rather than a single-instrument reading. The pool says why: QB13-24 average 293.5
+# projected points against 156.0 for the flex-eligible bodies they displace, a 1.9x edge that
+# no non-QB closes. The 0.15 the old constant left to RB/WR/TE was demand that position group
+# never actually won.
+#
+# WHAT 1.0 DOES NOT MEAN. It is the share of the SLOT, not a claim that a roster wants exactly
+# two quarterbacks -- a third QB for bye and injury coverage is a BENCH question, and bench
+# capacity is not an engine input at all (#115). It also does not close the market gap below:
+# pure points-based VOR
 # still likely underrates elite QBs somewhat relative to real superflex market pricing: the
 # market's real premium partly reflects a hard structural scarcity (only ~32 real starting-
 # caliber NFL QBs exist leaguewide, a ceiling RB/WR/TE don't share) that a single season's
 # point projection doesn't fully capture on its own -- worth knowing as a real limitation,
 # not silently pretending this fix closes the whole gap.
-SUPER_FLEX_QB_SHARE = 0.85
+SUPER_FLEX_QB_SHARE = 1.0
 
 # Cliff-anchored superflex QB replacement (see qb_startable_floor and replacement_levels):
 # "startable QB" is defined as projecting at least this FRACTION of the ANCHOR_RANK-th best

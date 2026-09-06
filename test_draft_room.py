@@ -710,8 +710,8 @@ class SuperflexRookieDraftRosterContextTieredGateTests(RookieDraftRosterContextT
     matching draft_room.build_mock_league's own real superflex shape.
 
     This matters as its own case, not just a parameterization: SUPER_FLEX gives QB a real
-    flex share via SUPER_FLEX_QB_SHARE (0.85 of a slot, not an even split -- see that
-    constant's own docstring), so a rookie QB's need_bonus ceiling here is meaningfully
+    flex share via SUPER_FLEX_QB_SHARE (the whole slot as of #178's derivation, not an even
+    split -- see that constant's own comment), so a rookie QB's need_bonus ceiling here is
     higher than in the standard-1QB class above. Real superflex rookie drafts see QB
     desperation far more often and more severely than 1QB drafts do (this was the user's own
     domain point motivating this audit item), so the standout-protection contract has to be
@@ -1979,7 +1979,10 @@ class CalibrationConstantsDoNotDriftSilentlyTests(unittest.TestCase):
         # number M1's cliff-anchored QB replacement rests on: QB starter demand in a
         # superflex league sets where replacement lands, which sets every QB's VOR.
         # The claim being pinned is the one the constant's own comment makes -- the slot is
-        # filled by a QB the LARGE majority of the time, not close to a coin flip.
+        # filled by a QB the LARGE majority of the time, not close to a coin flip. #178
+        # derived that majority as the WHOLE slot (1.000 in both SF formats, both yardsticks);
+        # this test deliberately still pins the weaker "large majority" claim, so it keeps
+        # holding if a future derivation moves the share without reaching for the ceiling.
         counts = dr.starter_slot_counts(["QB", "RB", "RB", "WR", "WR", "TE", "SUPER_FLEX"])
         qb_share_of_the_superflex_slot = counts["QB"] - 1.0
         self.assertGreater(
