@@ -137,35 +137,37 @@ body {{ background: var(--bg); color: var(--ink); font-family: {ds.FONT_SANS}; f
 .state-word.imputed {{ color: var(--amber-b); border-color: var(--amber); }}
 .state-word.unavailable {{ color: var(--muted); border-style: dashed; }}
 
-/* The spec card: what this variant asserts and what it gives up, and the fixture note. */
-.spec {{
-  margin: 0 0 1.1rem; padding: .8rem 1rem; border: 1px solid var(--line); border-radius: 8px;
-  background: var(--surface-2); font-size: .82rem; color: var(--muted); display: grid;
-  grid-template-columns: auto 1fr; gap: .25rem .9rem; align-items: baseline;
-}}
+/* The spec card: closed by default so the board's own height is what the gate measures. */
+.spec {{ margin: 0 0 .5rem; border: 1px solid var(--line); border-radius: 8px; background: var(--surface-2); font-size: .82rem; color: var(--muted); }}
+.spec summary {{ cursor: pointer; padding: .55rem .9rem; list-style: none; }}
+.spec summary::-webkit-details-marker {{ display: none; }}
+.spec summary .hint {{ color: var(--muted); font-size: .74rem; }}
 .spec b {{ color: var(--ink); }}
 .spec .k {{ font-family: {ds.FONT_MONO}; font-size: .66rem; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }}
-.spec .controls {{ grid-column: 1 / -1; display: flex; gap: .6rem; flex-wrap: wrap; margin-top: .3rem; }}
-.spec button {{
+.spec .specbody {{ padding: .2rem .9rem .8rem; display: grid; grid-template-columns: auto 1fr; gap: .25rem .9rem; align-items: baseline; }}
+.controls {{ display: flex; gap: .6rem; flex-wrap: wrap; margin: 0 0 .7rem; }}
+.controls button {{
   font-family: {ds.FONT_MONO}; font-size: .68rem; letter-spacing: .04em; text-transform: uppercase;
   background: var(--surface); color: var(--muted); border: 1px solid var(--line-2); border-radius: 6px;
   padding: .3rem .7rem; cursor: pointer;
 }}
-.spec button[aria-pressed="true"] {{ color: var(--ink); border-color: var(--gold); box-shadow: inset 0 -2px 0 var(--gold); }}
+.controls button[aria-pressed="true"] {{ color: var(--ink); border-color: var(--ink); }}
+.controls button:focus-visible {{ outline: 2px solid var(--ink); outline-offset: 2px; }}
 {ds.REDUCED_MOTION_CSS}
 """
 
 SPEC_HTML = """
-<div class="spec">
-  <span class="k">Variant</span><span><b>{title}</b> — {tagline}</span>
+<details class="spec">
+  <summary><span class="k">Variant</span> <b>{title}</b> — {tagline} <span class="hint">· open for assertion, sacrifice and data</span></summary>
+  <div class="specbody">
   <span class="k">Asserts</span><span>{asserts}</span>
   <span class="k">Sacrifices</span><span>{sacrifices}</span>
-  <span class="k">Data</span><span>Real snapshot: 12-team superflex dynasty, on the clock at 3.03, 16 picks to the next turn; two real IDP rows from an IDP-flex league (horizon <i>unavailable</i>); one real negative-value kicker priced against the pre-draft anchor. Two rows are <b>constructed fixtures</b> and are marked on screen: an unpriced position-best with every Optional null, and a row of measured zeros.</span>
-  <div class="controls">
-    <button id="btn-leader" aria-pressed="false" onclick="toggleLeader(this)">Unpriced row as leader</button>
-    <button id="btn-motion" aria-pressed="false" onclick="toggleMotion(this)">Simulate reduced motion</button>
-    <span class="state-word" style="align-self:center">gates G1–G7 · 4-row fixture</span>
+  <span class="k">Data</span><span>Real snapshot: 12-team superflex dynasty, on the clock at 3.03, 16 picks to the next turn; two real IDP rows from an IDP-flex league (horizon <i>unavailable</i>); one real negative-value kicker priced against the pre-draft anchor. Two rows are <b>constructed fixtures</b> and are marked on screen: an unpriced position-best with every Optional field absent, and a row of measured zeros.</span>
   </div>
+</details>
+<div class="controls">
+  <button id="btn-leader" aria-pressed="false" onclick="toggleLeader(this)">Unpriced row as leader</button>
+  <button id="btn-motion" aria-pressed="false" onclick="toggleMotion(this)">Simulate reduced motion</button>
 </div>
 """
 

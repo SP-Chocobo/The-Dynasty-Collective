@@ -1,0 +1,122 @@
+[
+ {
+  "file": "synthesis_h1_dense.html",
+  "population": "fixture-14",
+  "candidates": 13,
+  "readable": 13,
+  "pxPerCandidate": 47.8,
+  "rawRowPx": 65.9,
+  "elementsPerCandidate": 10.2,
+  "elementsLeader": 9,
+  "pageHeight": 1400,
+  "boardTop": 300
+ },
+ {
+  "file": "synthesis_h1_dense.html",
+  "population": "real-33",
+  "candidates": 33,
+  "readable": 29,
+  "pxPerCandidate": 38.5,
+  "rawRowPx": 65.5,
+  "elementsPerCandidate": 9.5,
+  "elementsLeader": 9,
+  "pageHeight": 1591,
+  "boardTop": 255
+ },
+ {
+  "file": "synthesis_h2_split.html",
+  "population": "fixture-14",
+  "candidates": 13,
+  "readable": 13,
+  "pxPerCandidate": 65.8,
+  "rawRowPx": 109.5,
+  "elementsPerCandidate": 13.1,
+  "elementsLeader": 12,
+  "pageHeight": 1400,
+  "boardTop": 280
+ },
+ {
+  "file": "synthesis_h2_split.html",
+  "population": "real-33",
+  "candidates": 33,
+  "readable": 20,
+  "pxPerCandidate": 55.4,
+  "rawRowPx": 79.5,
+  "elementsPerCandidate": 11.1,
+  "elementsLeader": 12,
+  "pageHeight": 2128,
+  "boardTop": 235
+ },
+ {
+  "file": "synthesis_h3_deck.html",
+  "population": "fixture-14",
+  "candidates": 13,
+  "readable": 13,
+  "pxPerCandidate": 44.5,
+  "rawRowPx": 35.9,
+  "elementsPerCandidate": 10.2,
+  "elementsLeader": 9,
+  "pageHeight": 1400,
+  "boardTop": 300
+ },
+ {
+  "file": "synthesis_h3_deck.html",
+  "population": "real-33",
+  "candidates": 33,
+  "readable": 33,
+  "pxPerCandidate": 33.8,
+  "rawRowPx": 32.3,
+  "elementsPerCandidate": 9.5,
+  "elementsLeader": 9,
+  "pageHeight": 1436,
+  "boardTop": 255
+ },
+ {
+  "file": "synthesis_s1_verdict.html",
+  "population": "fixture-14",
+  "candidates": 13,
+  "readable": 13,
+  "pxPerCandidate": 62.7,
+  "rawRowPx": 50.4,
+  "elementsPerCandidate": 10.2,
+  "elementsLeader": 9,
+  "pageHeight": 1400,
+  "boardTop": 473
+ },
+ {
+  "file": "synthesis_s1_verdict.html",
+  "population": "real-33",
+  "candidates": 33,
+  "readable": 16,
+  "pxPerCandidate": 52.9,
+  "rawRowPx": 47.5,
+  "elementsPerCandidate": 9.5,
+  "elementsLeader": 9,
+  "pageHeight": 2237,
+  "boardTop": 428
+ },
+ {
+  "file": "synthesis_s2_ledger.html",
+  "population": "fixture-14",
+  "candidates": 13,
+  "readable": 13,
+  "pxPerCandidate": 62.7,
+  "rawRowPx": 50.4,
+  "elementsPerCandidate": 10.2,
+  "elementsLeader": 9,
+  "pageHeight": 1400,
+  "boardTop": 345
+ },
+ {
+  "file": "synthesis_s2_ledger.html",
+  "population": "real-33",
+  "candidates": 33,
+  "readable": 19,
+  "pxPerCandidate": 52.9,
+  "rawRowPx": 47.5,
+  "elementsPerCandidate": 9.5,
+  "elementsLeader": 9,
+  "pageHeight": 2109,
+  "boardTop": 300
+ }
+]
