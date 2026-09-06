@@ -5235,3 +5235,27 @@ Mutation-checked 4/4, each turning the suite red: widening the tier set to inclu
 the flag to the old forfeit rule; narrowing to HIGH only; and replacing the context threshold's
 mean with the full sum. The second is the one that matters -- without it, a revert to the old
 rule would still have passed the tier test.
+
+### A side effect of #160's A2 worth recording: a live UI contradiction is gone
+
+Checked whether the restructure left any surface describing the OLD rule. It did not -- the board
+renders `cliff_protection` as a bare "cliff" force token, and both `pick_debate` and `app.py`
+speak about `positional_cliff` (the dict) rather than the flag. No prose needed correcting.
+
+But asking that question surfaced something better. Under the old rule the two were DIFFERENT
+QUANTITIES sharing one visual story, so they could disagree on screen. Measured on real boards:
+
+    10T_ppr        3 of 20 candidates
+    12T_half_ppr   7 of 20 candidates
+    POOLED        10 of 40 = 25.0%
+
+-- a quarter of candidates had the board ticking its "cliff" force while the SAME screen's
+Positional Cliff metric read LOW or an em-dash. The force said "there is a cliff here"; the
+metric said there is not. Both were honest about their own input, and together they were
+incoherent, because `cliff_protection` measured positional_forfeit while the metric measured the
+cliff.
+
+Now they read the same quantity and cannot contradict each other. This was not the argument for
+the change and is not claimed as one -- the change was ruled on the category error. It is
+recorded because it is a real user-visible defect that closed silently, and a defect that closes
+without being written down is one nobody can be sure stayed closed.
