@@ -4926,3 +4926,37 @@ because the draft halts exactly at the boundary that would produce it. That is a
 gap -- but the fix is NOT a new format, because no ordinary league shape crosses the line. It is
 whatever falls out of the #154 ruling, since the same pricing behaviour is what stops the draft
 there. Registered, not built.
+
+## Battery re-run at HEAD, post-#166: nothing moved, and the new reporting works live
+
+The loop requires a re-run of the affected battery after a repair lands. #166 changed a LABEL
+(`horizon_basis` stopped claiming "imputed" beside a floor that was never produced), so the
+prediction was that no pick, no roster and no finding would move. Verified rather than assumed.
+
+    formats                 prior 33      post-166 33      labels identical
+    findings                prior  3      post-166  3      IDENTICAL
+    formats whose content changed, ignoring wall-clock:  0
+
+The three findings are the same three rows, unchanged:
+
+    10T_half_ppr   unfilled_starting_slots   roster 2   empty QB
+    10T_ppr        unfilled_starting_slots   roster 2   empty QB
+    HEAVY_IDP      unfilled_starting_slots   roster 5   empty DB
+
+So the #166 repair is confirmed behaviour-free on 33 formats and ~5,000 picks, which is what a
+label-only fix should be and what nothing had yet demonstrated.
+
+SECOND THING THIS RUN CONFIRMS, and it is the first live exercise of it: #159's reporting fields
+came back **24 independent formats and 9 duplicate arms** out of 33 -- exactly the numbers
+predicted from the derived detector before the run. The prior report predates both fields, so
+this is their first appearance on a real matrix rather than on a fixture.
+
+The runner exited 1. That is `return 1 if total_findings else 0` doing its job, not a crash --
+zero tracebacks in a 33-format log. Worth stating because a nonzero exit on a clean run is
+exactly the kind of thing that gets read as a failure later.
+
+NOT IN THIS REPORT, deliberately: `unpriced_at_decision` (#170). This battery ran in a worktree
+pinned at `ce9d631`, before that counter existed, so its absence here is the pin and not a gap.
+It arrives on the next full run, where it is expected to read "no unpriced candidate reached any
+of the N decisions" in every arm -- for the reason #171 gives, that the draft halts at exactly
+the boundary that would produce one.
