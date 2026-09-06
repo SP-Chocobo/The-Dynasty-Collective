@@ -3919,3 +3919,348 @@ the property that separates a backstop from a positional preference.
 
 The three survivors are #156's supply exhaustion. No feasibility rule can reach them: at chair
 2's last pick the backstop binds correctly and finds zero QBs on the board.
+
+
+## #157 — the Gold Wyrm repaint, and what measuring a palette found
+
+DONE at 26b8db8. The brand asset the old palette derived from is a cold blue football macro;
+the identity that replaces it is warm near-black under metallic gold. The accents deliberately
+did NOT follow the brand: they encode meaning (chair identity, necessity tier, the four
+decision-path forces), so unifying them toward gold would destroy information. Emerald / ruby /
+amethyst / sapphire / topaz already are a hoard, which is how both were served at once.
+
+Measured on the two properties that can regress:
+  - CONTRAST. Every foreground token improved or held; all clear WCAG AA on `surface`. `dim`
+    stays deliberately below AA (3.22 -> 3.39) as the one recede role, bounded at AA-large.
+  - SEPARATION. Worst pair between the meaning-bearing accents, CIE Lab dE 16.4 -> 35.2.
+
+INSTRUMENT REJECTED, and recording this matters more than the result: raw hue-degree
+separation was tried first and called gold-vs-tie a collision at 2.9 degrees apart. `tie` is a
+near-neutral at saturation 0.28; nobody could mistake it for the brand gold. Hue degrees
+over-penalise low-chroma colors. dE accounts for lightness and chroma together and judged the
+OLD palette by the same rule -- which is the only reason the swap is not self-serving.
+
+THREE DRIFTS THE MEASUREMENT FOUND, none of which was the repaint:
+
+  1. design_system.py had drifted internally -- the module whose whole purpose is preventing
+     that. Two badges tinted with #38bdf8 while bordering with the sky token (dE 10.6, two
+     skies in one badge); "notice" used an amber in no token at all, landing dE 9.6 from
+     gold-b. Both badge blocks are now DERIVED from TOKENS under one rule.
+  2. app.py carried 82 hex literals across 31 distinct values, 66 of them exact OLD token
+     values, while draft_board_ui.py was clean. Repainting TOKENS alone would have shipped
+     warm gold inside the embedded board and cold blue in every surface around it. Now 0.
+     Four rgba() tints still carried the old sky, invisible to a search for the token's name;
+     __RGBA_<token>_<pct>__ markers close that.
+  3. The position pills claimed to "stay clear of hues this app already uses to MEAN
+     something" while RB was cliff-b verbatim and TE was block-b verbatim. The claim was never
+     tested, so it was free to be false. Narrowed to the real co-occurrence (a pill shares a
+     table row with an injury pill) and tested.
+
+## #158 — an unpriced leader crashes the Draft Room, and the annotation is why
+
+DONE. `metric_row1` formatted `universal_value` and `team_acquisition_value` with `:.0f` and
+no guard. Both are None when a position has no replacement level, so the render raises
+TypeError and takes the whole panel with it. Six sites: two metric cards x two panels, plus
+the "Best alternative" line in each -- the last two found by the ratchet, not by reading.
+
+THE PATTERN IS THE FINDING. In the SAME six-card row, `projected_points` and
+`survival_probability` WERE guarded. The guard was applied to the fields that rarely need it
+and skipped on the two the absence contract explicitly names. Cause: `CandidateSnapshot`
+annotated `bpa`, `universal_value` and `team_acquisition_value` as `float`, never
+`Optional[float]`. The annotation lied, and whoever wrote the card believed it. This exact
+inconsistency was already recorded ("a probe crashed on exactly that") and deferred as
+touching #119's fields; the deferral is what let it reach a render path.
+
+REACHABILITY IS OURS. `_board_order` sorts None-scored rows last, so a None leader looks
+impossible. #154's feasibility backstop sorts `_feasible` AHEAD of `final_score`, so an
+unpriced candidate filling a REQUIRED slot is promoted over priced candidates that do not --
+measured as `unpriced QB, feasibility BINDING -> ['qb1','qb2','rb1','wr1']`. Tier 3 made this
+reachable. Each layer was correct alone; the composition was not.
+
+Repaired: annotations corrected, six sites guarded, and a CLASS test that derives the Optional
+fields from the dataclass and AST-scans for a format spec with no matching `is not None`.
+
+## #159 — the panel was told an identity the engine does not compute
+
+DONE. `depth_exposure` joined the team_acquisition_value sum at #139 and neither the
+Strategist prompt's definition of TAV nor the per-candidate evidence line was updated. The
+panel was handed a whole and two of its three parts -- an arithmetic contradiction shown to a
+model instructed never to recompute, which is the one thing the snapshot exists to prevent.
+
+Also repaired at the same boundary, same contract: `if candidate.denial_value:` swallowed a
+MEASURED 0.0 ("no intervening rival gains from him" -- an argument for waiting, reading to the
+panel as "never computed"), and `positional_forfeit > 0` did the same despite carrying an
+`is not None` beside it.
+
+Ratchet: the summed terms are extracted from draft_room's own assignment by AST, so a fourth
+term fails the test the day it is added rather than silently making the prompt wrong again.
+
+## #156 — Q3 answered: the modifier decides, and there is a second road in
+
+71 board states, 5 formats.
+  - >=1 position at demand rank 1:            20 / 71  (28.2%)
+  - >=2 positions simultaneously at rank 1:   12 / 71  (16.9%)   <- Q3's literal question
+  - top two board rows share a bpa:           12 / 71  (16.9%)
+  - of those, a modifier decides the order:   12 / 12  (100%)
+
+The spine/modifier interpretation is CONFIRMED and stronger than posed: not that modifiers can
+take over, but that whenever the spine stops discriminating, `time_horizon_adj + risk_adj`
+breaks the tie every time. No counterexample in 71 states.
+
+CORRECTION TO MY OWN CHARACTERIZATION: the rank-1 identity is not the only road to a flat
+spine. Per format, spine_flat and rank1>=2 diverge (8T: 2 vs 3; superflex: 1 vs 4); the totals
+coincide at 12 by accident. In superflex the flattening is mostly NOT #156's mechanism.
+Claiming #156 explains the collapse would be an overclaim. Classification of the second road
+is measuring now.
+
+---
+
+
+---
+
+# #156 — THE CONTRACT BOUNDARY, CHARACTERIZED. NO REPAIR PROPOSED.
+
+Requested as a semantic-contract question, not a coefficient exercise. Five questions, answered
+against the code and against real boards. **Nothing here is implemented.**
+
+## Q1 — what is `bpa == 0.00` asserting at demand rank 1?
+
+`replacement_levels` ends with:
+
+```python
+idx = min(rank - 1, len(at_pos) - 1)
+levels[position] = float(at_pos.iloc[idx][value_col])
+```
+
+At `rank == 1`, `idx == 0`: the replacement level IS the best remaining player at that position.
+His VOR is therefore `x - x`. **Exactly 0.00, by identity, for any x.**
+
+**This is a fourth category, and none of the three proposed in the framing question fits it.**
+
+| candidate reading | verdict |
+|---|---|
+| "genuinely zero value" | NO. It says nothing about the player. Swap in a 400-point QB and it is still 0.00. |
+| "unable to discriminate" | NO. Inability implies a comparison was attempted and came back flat. |
+| "numerical zero granting permission" | That is the CONSEQUENCE, not the assertion. |
+| **a tautology reported as a measurement** | **YES.** Arithmetically valid, semantically vacuous. |
+
+Is it comparable across positions? **No, and that is the whole defect.** A position at rank 4
+reports "this player is N points better than the 4th-best remaining, who is what you get if you
+wait." A position at rank 1 reports "this player equals himself." Those are not two values of one
+quantity; they are two different sentences sharing a column. The rank-1 sentence contains no
+information about the player, and it outranks every honest negative on the board.
+
+## Q2 — is `time_horizon_adj` intended to discriminate when `bpa` cannot?
+
+**No, and the repository says so explicitly, in two independent places.**
+
+`TIME_HORIZON_CLAMP = (-10.0, 10.0)`, and CDME_CONTRACTS calls it *"a small bounded dynasty
+nudge"* measured at 2.99 / 2.63 / 2.84 / 1.33 / 1.41. It is designed and sized as a MODIFIER.
+
+More decisively, the contract already states the exact rule this violates:
+
+> *"Outside the domain the engine declines and says so. It must not clamp, must not substitute a
+> different anchor under the same name, **and must not let a downstream term silently become the
+> whole decision.** `universal_value` must not be permitted to reduce to
+> `time_horizon_adj + risk_adj` without the board declaring that it has."*
+
+**So the semantic contract is not missing. It is written and partially unimplemented.** The
+domain repair it authorises was applied to `demand < 1` (the key is omitted, and
+`_remaining_demand_rank` returns `None`). Rank 1 sits INSIDE that domain and reproduces the same
+prohibited outcome.
+
+The owner's spine/modifier interpretation is therefore **confirmed, and it is not novel** -- it
+is the contract's own words. What is new is that the boundary is drawn in the wrong place:
+
+> The domain gate asks **"is at least one whole slot still unfilled?"**
+> The semantic requirement is **"is the replacement someone OTHER than the player being priced?"**
+> Those differ exactly on rank 1.
+
+`_remaining_demand_rank`'s own docstring flags the gap in advance: *"The `int(round(...))` below
+is deliberately untouched: its rounding boundary is a separate question with its own behaviour,
+and this repair changes only the domain gate."* #156 IS that deferred question, observed live.
+
+## Q2b — the feedback loop, which no prior item names
+
+`remaining_starter_demand` is summed PER TEAM (correctly -- its docstring records the measurement
+that forced that, including the twelve-QB hoarding case). So demand of exactly 1.00 means **one
+team still needs one**.
+
+In the failing draft, QB demand is **1.00 from round 10 to the end and never moves.** That 1.00
+is chair 2's own unmet need. Which produces:
+
+> **One team's unmet need makes the position price at 0.00 -- the best number on a board where
+> everything else is negative -- so the OTHER nine teams drain it.** The need advertises the
+> position to everyone except the team that has it, and cannot resolve, because the team that
+> needs it is one of ten competing for a supply its own need created demand-signal for.
+
+39 of 39 priceable QBs consumed by a ten-team 1QB league; 21 in rounds 12-14; chair 2 finished
+with none.
+
+## Q3 — reachable states where positions collapse together
+
+**MEASURED.** 71 board states, 5 formats (10T / 12T / 8T / 12T superflex / 14T), every round,
+one chair, real boards.
+
+| | count | share |
+|---|---|---|
+| at least one position at demand rank 1 | 20 / 71 | 28.2% |
+| **two or more positions simultaneously at rank 1** | 12 / 71 | **16.9%** |
+| top two board rows carry the same `bpa` (spine flat) | 12 / 71 | 16.9% |
+| **of those, the two rows differ in `universal_value`** | **12 / 12** | **100%** |
+
+The last row is the answer to the framing question, and it is unconditional. Whenever the
+spine stopped discriminating, `time_horizon_adj + risk_adj` decided the order — every time, no
+counterexample in 71 states. The transition from modifier to primary ranking signal is not a
+tendency that shows up under some conditions; it is what always happens once `bpa` goes flat,
+because nothing else in the ordering is capable of breaking the tie.
+
+Concretely, at round 12 of 10T_ppr: QB (demand 1.00) and RB (demand 1.33) are simultaneously
+rank 1, both price at exactly 0.00, and `time_horizon_adj` (0.00 vs −9.48) chooses.
+
+**A CORRECTION TO MY OWN CHARACTERIZATION, and it narrows what #156 explains.** The rank-1
+identity is *not* the only way the spine goes flat. Per format the two counts diverge — 8T has
+2 multi-rank-1 states against 3 flat spines, superflex has 1 against 4 — and the totals
+coincide at 12 only by accident. In superflex, most flat spines are NOT this mechanism.
+
+So: the *consequence* (a modifier decides) is universal, but the *cause* is at least two
+distinct things, and repairing #156 would fix only one of them. Saying "#156 causes the
+collapse" would be an overclaim. The second road is being classified now — the live hypothesis
+is same-position ties from coarse or identical projections, which would be an honest INPUT tie
+rather than an engine tautology, and would deserve disclosure rather than repair. Those are
+different defects and must not receive the same fix.
+
+## Q4/Q5 — the options, their architecture, and their opposite failures
+
+**No option is chosen. The equation is the owner's.**
+
+### Option 1 — pre-draft anchor continuation
+Price a rank-1 position against its PRE-DRAFT replacement level instead of the live one.
+
+*Architecture:* machinery already exists (`_fill_omitted_from_anchor`, `predraft_replacement_anchor`,
+and `replacement_basis` already distinguishes the two claims on every row). Smallest change.
+*Interaction:* Tier 2 and Tier 3 both unaffected -- the number stays a number.
+*OPPOSITE FAILURE:* **it makes the problem worse, not better.** The pre-draft anchor is a LOWER
+bar than the live one, so a drained position's remaining players price HIGHER, not lower. This
+would accelerate the drain it is meant to stop. It also revives the exact claim
+`replacement_levels`' docstring says was wrong -- asserting a scarcity number for a position
+whose scarcity is no longer being measured.
+*Status: I believe this is disqualified on its own mechanism, not on taste.*
+
+### Option 2 — semantic absence
+At rank 1, the comparison is degenerate, so decline: no VOR, no `bpa`, `None`.
+
+*Architecture:* the absence contract's own answer, and the same move `replacement_levels`
+already makes for `demand < 1`. It draws the domain gate at "is the comparison non-degenerate"
+rather than "is a slot unfilled" -- one predicate, consistently applied.
+*Interaction with Tier 3:* **TESTED, and it works.** `_board_order` leads with
+`fills_required_slot`, so an unpriced-but-required row is promoted to the top while an
+unpriced-but-not-required row correctly falls last:
+```
+unpriced QB, feasibility BINDING     -> ['qb1','qb2','rb1','wr1']   reachable
+unpriced QB, feasibility NOT binding -> ['rb1','wr1','qb1','qb2']   unpriced last
+```
+That coupling exists by accident -- the flag leads the sort because of #155, for an unrelated
+reason -- but it holds.
+*Interaction with Tier 2:* Tier 2 reads `positional_forfeit`, which is a difference of
+`universal_value`s. If those become `None`, forfeit becomes `None` and Tier 2 goes SILENT at
+exactly the positions in the collapsed state. **Tier 2 must be designed knowing this**, and it
+is a real constraint on its design, not a footnote.
+*PREDICTED second-order property, NOT MEASURED:* if absence applies league-wide, nobody drafts
+the position while it is unpriced, so the supply #156 currently drains is PRESERVED until a
+team's feasibility binds. The one team that needs it takes it; the other nine do not spend picks
+on it. That is the exact inverse of today's pathology from the same mechanism -- and it needs a
+full-draft test before anyone believes it.
+*OPPOSITE FAILURE to hunt for:* every team defers the position to its final picks, so the
+position is allocated by feasibility ordering rather than by value -- "everyone gets a QB, all of
+them replacement-level, and which one you get is arbitrary." Whether that is a pathology or the
+CORRECT answer depends on whether QB VOR above replacement is genuinely ~0 at that point. If it
+is, arbitrary allocation is honest. If it is not, absence has thrown away real information.
+**That question is unmeasured and is the one I would want answered before choosing option 2.**
+
+### Option 3 — principled cross-positional treatment
+Keep pricing rank-1 positions, but make the comparison legitimate -- e.g. price against a
+common cross-positional reference so that a rank-1 zero and a rank-4 zero mean the same thing.
+
+*Architecture:* the largest change, and the only one that addresses the stated defect DIRECTLY
+(comparability) rather than by removing one side of the comparison. It is also #50/Phase 3's
+actual subject.
+*Interaction:* Tier 2 keeps a working `positional_forfeit` (unlike option 2). Tier 3 unchanged.
+*OPPOSITE FAILURE:* a cross-positional reference is a new ruler, and #74/#75/#76 measured what
+happens when this engine's ruler moves -- the reference carried 94.5% of all `bpa` movement, and
+a 5-point real gap read as 6.9 bpa at round 2 and 500 at round 13. **Any new shared reference
+must be shown NOT to reintroduce that**, and that is a substantial measurement, not an argument.
+
+### Option 4 — declare the transition (the contract's literal text)
+Keep the number, but make the board SAY that `universal_value` has reduced to
+`time_horizon_adj + risk_adj`, and let consumers decide.
+
+*Architecture:* smallest possible. A new basis field alongside `replacement_basis` /
+`horizon_basis` -- the idiom already exists six times over.
+*Interaction:* none forced. Tier 2/Tier 3 unchanged.
+*OPPOSITE FAILURE:* **it changes no behaviour.** The engine would still drain the position; it
+would merely annotate that it was doing so. That is honest, and it is not a repair. Worth having
+REGARDLESS of which repair is chosen, because it makes the state observable -- but it must not
+be mistaken for fixing anything.
+
+## What I would want measured before the choice is made
+
+1. Q3's frequency (running) -- is the collapsed state routine or marginal?
+2. Under option 2, is QB VOR above replacement genuinely ~0 at rank 1, or is real information
+   being discarded? This decides whether option 2's "arbitrary allocation" is honest or lossy.
+3. For option 3, whether any candidate shared reference survives #74/#75's ruler-drift test.
+
+## The rule this establishes regardless of the choice
+
+> **A number may only be compared against another number produced by the same kind of claim.**
+> `bpa` at rank 1 and `bpa` at rank 4 are different sentences. Whatever repair is chosen must
+> make them either the same sentence, or not comparable at all -- never silently both.
+
+---
+
+## The policy choice, after Q3
+
+**The equation stays the owner's. This is a recommendation with its reasoning exposed, not a
+decision.**
+
+Q3 changed which option I would argue for, and the reason is the second road. Before Q3 the
+problem looked like one mechanism with one repair. It is not: the *consequence* (a modifier
+decides) is universal at 12/12, but the *cause* is at least two different things, and only one
+of them is #156's rank-1 tautology. **A repair aimed at the tautology fixes one road and leaves
+the board silently doing the same thing by the other.** That asymmetry is the whole argument
+below.
+
+**RECOMMENDED FIRST MOVE: Option 4 — declare the transition.** Three reasons, in order of
+weight:
+
+1. **It is road-agnostic.** Declaring "the spine is flat here; a modifier is deciding" is true
+   whether the flatness came from the rank-1 identity, a same-position projection tie, or a
+   road not yet classified. Every other option is mechanism-specific and therefore partial.
+2. **It is the contract's own remedy, already written.** *"must not let a downstream term
+   silently become the whole decision"* — the operative word is **silently**. The contract does
+   not prohibit the modifier deciding; it prohibits the board not saying so. On that reading
+   the engine is not currently wrong about the number, it is wrong about the disclosure.
+3. **It changes no behaviour**, so it cannot introduce an opposite failure — the one option in
+   the set with nothing to trade. Under the audit rule, an option whose adversarial case is
+   empty because it alters no output is the cheapest thing on the table.
+
+Its honest weakness: it does not make the ordering better. A user told "a modifier decided
+this" still gets the modifier's answer. It converts a hidden defect into a visible limitation.
+That is a real improvement in a tool whose entire premise is a defensible decision record, and
+it is not the same as fixing it.
+
+**AND IT IS NOW CHEAP.** The board already carries `replacement_basis`, and the pass in flight
+is putting the decomposition on screen. A "spine flat — ordered by trajectory/risk" marker is
+the same surface, the same commit, and it is the first thing that would have made #156 visible
+to a human watching a draft rather than to a probe run afterwards.
+
+**WHAT I WOULD NOT DO YET.** Option 3 (a common cross-positional reference) is the only option
+that addresses comparability directly and is the real fix, but it is #50/Phase 3's subject and
+it introduces a new ruler — and #74/#75/#76 measured what happens when this engine's ruler
+moves (the reference carried 94.5% of all `bpa` movement; a 5-point real gap read as 6.9 at
+round 2 and 500 at round 13). Shipping a new shared reference without that measurement would
+trade a disclosed local defect for an undisclosed global one.
+
+**SEQUENCING.** Declare now (road-agnostic, no behaviour change, already on the surface being
+built); classify the second road (measuring); then decide the pricing question with Phase 3,
+where the ruler can be measured properly rather than argued.
