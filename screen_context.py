@@ -25,6 +25,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Optional, Sequence
 
+import design_system
 from pick_synthesis import PickSnapshot
 
 # The two Debate-labeled controls that can appear on the same screen (Draft Room) must never
@@ -120,9 +121,12 @@ def build_draft_room_context(snap: PickSnapshot) -> ScreenContext:
         # reaches the TOP of this list, not the bottom -- #154's feasibility backstop sorts a
         # required-slot candidate ahead of final_score, and this builder formats the first
         # _MAX_CANDIDATES_IN_CONTEXT of them.
-        tav = (f"{c.team_acquisition_value:.0f}"
+        # The unit rides with the number (#116): this text seeds a question box a person reads,
+        # and "TAV 97" beside "survival 31%" gave the value no scale at all.
+        tav = (f"{c.team_acquisition_value:.0f} {design_system.VALUE_UNIT_SHORT}"
                if c.team_acquisition_value is not None else "unpriced")
-        lines.append(f"{c.name} ({c.position}) — {c.necessity_label}, TAV {tav}, survival {survival}")
+        lines.append(f"{c.name} ({c.position}) — {c.necessity_label}, acquisition value {tav}, "
+                     f"survival {survival}")
     remaining = len(snap.candidates) - len(shown)
     if remaining > 0:
         lines.append(f"...and {remaining} more candidate(s) in the current pool/scope.")

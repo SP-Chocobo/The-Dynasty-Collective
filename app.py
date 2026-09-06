@@ -1457,6 +1457,83 @@ def render_debate_chip(context: "screen_context.ScreenContext", key: str) -> Non
             st.rerun()
 
 
+def _render_pick_metrics(rec) -> None:
+    """The recommendation panel's two metric rows, shared by the live Draft Room and its
+    Mock Draft twin. #116 found the two as separate code carrying identical copy, with no
+    label naming its unit; one function is what makes "repaired together" structural rather
+    than a test's hope.
+
+    Every label names its unit and every card carries a help sentence, both from
+    design_system.DISPLAY_CONTRACT: the value cards are in universal-value points, the
+    projection card in season fantasy points, and the two must never read as one unit.
+
+    Absence renders as an em dash; a measured value renders as itself, including a measured
+    zero. denial_value used to be tested for truthiness, so a real 0.0 -- "no rival was
+    positioned to gain" -- rendered as the same dash an unmeasured value does. That is the
+    absence contract violated in the other direction, and it is repaired here with the same
+    `is not None` guard the other Optional fields already had. position_run_detected is a
+    bool, never None, so its False renders as a word (NONE) rather than borrowing the dash.
+    """
+    label, note = design_system.metric_label, design_system.metric_help
+    metric_row1 = st.columns(6)
+    metric_row1[0].metric(
+        label("universal_value"),
+        f"{rec.universal_value:.0f}" if rec.universal_value is not None else "—",
+        help=note("universal_value"),
+    )
+    metric_row1[1].metric(
+        label("projected_points"),
+        f"{rec.projected_points:.0f}" if rec.projected_points is not None else "—",
+        help=note("projected_points"),
+    )
+    metric_row1[2].metric(
+        label("team_acquisition_value"),
+        f"{rec.team_acquisition_value:.0f}" if rec.team_acquisition_value is not None else "—",
+        help=note("team_acquisition_value"),
+    )
+    metric_row1[3].metric(
+        label("survival_probability"),
+        f"{round(rec.survival_probability * 100)}%" if rec.survival_probability is not None else "—",
+        help=note("survival_probability"),
+    )
+    metric_row1[4].metric(
+        label("positional_cliff"),
+        rec.positional_cliff["tier"] if rec.positional_cliff else "—",
+        help=note("positional_cliff"),
+    )
+    run_label = label("position_run")
+    metric_row1[5].metric(
+        f"{rec.position} {run_label}",
+        "DETECTED" if rec.position_run_detected else "NONE",
+        help=note("position_run"),
+    )
+
+    metric_row2 = st.columns(3)
+    metric_row2[0].metric(
+        label("opportunity_cost"),
+        f"{rec.opportunity_cost:.1f}" if rec.opportunity_cost is not None else "—",
+        help=note("opportunity_cost"),
+    )
+    metric_row2[1].metric(
+        label("expected_value_of_waiting"),
+        f"{rec.expected_value_of_waiting:.1f}" if rec.expected_value_of_waiting is not None else "—",
+        help=note("expected_value_of_waiting"),
+    )
+    metric_row2[2].metric(
+        label("denial_value"),
+        f"{rec.denial_value:.1f}" if rec.denial_value is not None else "—",
+        help=note("denial_value"),
+    )
+
+
+def _best_alternative_line(alt) -> str:
+    """One sentence for the runner-up, its number carrying its unit (#116): the old line said
+    "97 acquisition value", which names the quantity and not the scale it is on."""
+    tav = (f"{alt.team_acquisition_value:.0f} {design_system.VALUE_UNIT_SHORT}"
+           if alt.team_acquisition_value is not None else "unpriced")
+    return f"**Best alternative:** {alt.name} — acquisition value {tav}"
+
+
 def build_pick_ledger(snapshot: dict) -> dict[int, dict[str, list[dict]]]:
     """roster_id -> {"acquired": [...], "given_away": [...]}, built only from Sleeper's own
     traded_picks (the authoritative source for who owns what -- Draft Sharks' own pick imports
@@ -4878,35 +4955,11 @@ elif main_view == DRAFT_VIEW:
                                             f"rank {mock_rec.consensus_rank}, tier {mock_rec.consensus_tier} — **{mock_rec.reach_label}**"
                                         )
 
-                                mock_metric_row1 = st.columns(6)
-                                mock_metric_row1[0].metric(
-                                    "Universal Value",
-                                    f"{mock_rec.universal_value:.0f}" if mock_rec.universal_value is not None else "—",
-                                )
-                                mock_metric_row1[1].metric(
-                                    "Projected Points", f"{mock_rec.projected_points:.0f}" if mock_rec.projected_points is not None else "—",
-                                )
-                                mock_metric_row1[2].metric(
-                                    "Your Acquisition Value",
-                                    f"{mock_rec.team_acquisition_value:.0f}" if mock_rec.team_acquisition_value is not None else "—",
-                                )
-                                mock_metric_row1[3].metric(
-                                    "Survival to Next Pick",
-                                    f"{round(mock_rec.survival_probability * 100)}%" if mock_rec.survival_probability is not None else "—",
-                                )
-                                mock_metric_row1[4].metric("Positional Cliff", mock_rec.positional_cliff["tier"] if mock_rec.positional_cliff else "—")
-                                mock_metric_row1[5].metric(f"{mock_rec.position} Run", "DETECTED" if mock_rec.position_run_detected else "—")
-
-                                mock_metric_row2 = st.columns(3)
-                                mock_metric_row2[0].metric("Opportunity Cost of Waiting", mock_rec.opportunity_cost if mock_rec.opportunity_cost is not None else "—")
-                                mock_metric_row2[1].metric("Expected Value If You Wait", mock_rec.expected_value_of_waiting if mock_rec.expected_value_of_waiting is not None else "—")
-                                mock_metric_row2[2].metric("Denial Value", mock_rec.denial_value if mock_rec.denial_value else "—")
+                                _render_pick_metrics(mock_rec)
 
                                 mock_alt = mock_current_debate.best_alternative
                                 if mock_alt is not None:
-                                    mock_alt_tav = (f"{mock_alt.team_acquisition_value:.0f}"
-                                                    if mock_alt.team_acquisition_value is not None else "—")
-                                    st.markdown(f"**Best alternative:** {mock_alt.name} — {mock_alt_tav} acquisition value")
+                                    st.markdown(_best_alternative_line(mock_alt))
 
                             if mock_current_debate.disagreements:
                                 for d in mock_current_debate.disagreements:
@@ -5264,35 +5317,11 @@ elif main_view == DRAFT_VIEW:
                                                     f"rank {rec.consensus_rank}, tier {rec.consensus_tier} — **{rec.reach_label}**"
                                                 )
 
-                                        metric_row1 = st.columns(6)
-                                        metric_row1[0].metric(
-                                            "Universal Value",
-                                            f"{rec.universal_value:.0f}" if rec.universal_value is not None else "—",
-                                        )
-                                        metric_row1[1].metric(
-                                            "Projected Points", f"{rec.projected_points:.0f}" if rec.projected_points is not None else "—",
-                                        )
-                                        metric_row1[2].metric(
-                                            "Your Acquisition Value",
-                                            f"{rec.team_acquisition_value:.0f}" if rec.team_acquisition_value is not None else "—",
-                                        )
-                                        metric_row1[3].metric(
-                                            "Survival to Next Pick",
-                                            f"{round(rec.survival_probability * 100)}%" if rec.survival_probability is not None else "—",
-                                        )
-                                        metric_row1[4].metric("Positional Cliff", rec.positional_cliff["tier"] if rec.positional_cliff else "—")
-                                        metric_row1[5].metric(f"{rec.position} Run", "DETECTED" if rec.position_run_detected else "—")
-
-                                        metric_row2 = st.columns(3)
-                                        metric_row2[0].metric("Opportunity Cost of Waiting", rec.opportunity_cost if rec.opportunity_cost is not None else "—")
-                                        metric_row2[1].metric("Expected Value If You Wait", rec.expected_value_of_waiting if rec.expected_value_of_waiting is not None else "—")
-                                        metric_row2[2].metric("Denial Value", rec.denial_value if rec.denial_value else "—")
+                                        _render_pick_metrics(rec)
 
                                         alt = debate_result.best_alternative
                                         if alt is not None:
-                                            alt_tav = (f"{alt.team_acquisition_value:.0f}"
-                                                       if alt.team_acquisition_value is not None else "—")
-                                            st.markdown(f"**Best alternative:** {alt.name} — {alt_tav} acquisition value")
+                                            st.markdown(_best_alternative_line(alt))
                                             alt_survival = f"{round(alt.survival_probability * 100)}%" if alt.survival_probability is not None else "—"
                                             st.caption(f"Survival: {alt_survival}")
 
@@ -5323,7 +5352,14 @@ elif main_view == DRAFT_VIEW:
                                                 elif d.get("entered") is False:
                                                     st.markdown(f"❌ **{d['name']}** is no longer a live candidate (was rank {d['rank']})")
                                                 elif d.get("deltas"):
-                                                    delta_str = ", ".join(f"{_DRAFT_ROOM_DIFF_LABELS.get(k, k)}: {v:+}" for k, v in d["deltas"].items())
+                                                    # Each delta carries its unit (#116): the terms on this one
+                                                    # line are universal-value points, a probability and a
+                                                    # /100 score, and a bare "+3.2, -0.1" reads as one scale.
+                                                    delta_str = ", ".join(
+                                                        f"{_DRAFT_ROOM_DIFF_LABELS.get(k, k)}: {v:+} "
+                                                        f"{design_system.DIFF_UNITS.get(k, '')}".rstrip()
+                                                        for k, v in d["deltas"].items()
+                                                    )
                                                     st.markdown(f"**{d['name']}**: rank moved {d['rank_delta']:+d} ({delta_str})")
                                 elif debate_result is not None:
                                     st.caption("A prior debate result is available for a different pick -- click Debate This Pick to refresh for this one.")

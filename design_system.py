@@ -149,6 +149,145 @@ FOCUS_VISIBLE_CSS = (
 )
 
 
+# ---------------------------------------------------------------------------------------
+# DISPLAY CONTRACT (#116). What each number a person is shown IS, and what unit it is in --
+# one vocabulary shared by every surface that renders an engine quantity (app.py's metric
+# cards, draft_board_ui's prose and focus metrics, screen_context's evidence lines), so the
+# unit a card states cannot drift from the unit the board's sentence states.
+#
+# WHY IT IS NEEDED, measured (test_display_contract_boundary): universal_value and
+# team_acquisition_value are SIGNED and UNBOUNDED -- 10.9% of the candidates a user is shown
+# carry a negative acquisition value -- while projected_points is a season fantasy total that
+# is never negative (0 of 48,708). The cards used to sit the two side by side, identically
+# formatted, with only the points card naming its unit, so the value cards borrowed "points"
+# in the fantasy sense. The scale is deliberately NOT normalised here (D10 option B waits on
+# #58); the repair is to say what the number is, everywhere it appears.
+#
+# VOCABULARY. The engine's value quantities all live on one scale, universal_value's:
+#   BPA (value over replacement, in projected points scaled linearly against the largest gap
+#   in the remaining pool) + dynasty-horizon and injury-risk adjustments = universal value;
+#   + the roster's need, lineup-flexibility and depth-insurance terms = acquisition value.
+# That scale is called "universal-value points", abbreviated "UV pts" where a label must stay
+# short. Season fantasy points are always called that. Nothing here names a data vendor.
+# ---------------------------------------------------------------------------------------
+
+#: The long and short spelling of the engine's own value unit. The board's prose already said
+#: "universal-value points" in its one fully qualified phrase; the abbreviation is derived from
+#: it so a reader who hovers a short label finds the long form in the help text.
+VALUE_UNIT = "universal-value points"
+VALUE_UNIT_SHORT = "UV pts"
+SEASON_POINTS_UNIT = "season fantasy points"
+
+#: {quantity: {"label", "unit", "help"}} for every quantity a metric card renders. `label`
+#: names the unit in parentheses so it is readable without a hover; `help` is the sentence a
+#: hover shows (st.metric's `help=`), saying what the number is and what it is not.
+DISPLAY_CONTRACT: dict[str, dict[str, str]] = {
+    "universal_value": {
+        "label": f"Universal Value ({VALUE_UNIT_SHORT})",
+        "unit": VALUE_UNIT,
+        "help": (
+            "How good he is for ANY roster: value over the replacement player at his "
+            "position (in projected season points, scaled against the largest gap left in the "
+            "pool), plus dynasty-horizon and injury-risk adjustments. Universal-value points "
+            "are signed and unbounded and are NOT fantasy points."
+        ),
+    },
+    "projected_points": {
+        "label": "Projected Points (season)",
+        "unit": SEASON_POINTS_UNIT,
+        "help": (
+            "Projected season fantasy points under this league's scoring. Never negative -- a "
+            "different unit from the value cards beside it."
+        ),
+    },
+    "team_acquisition_value": {
+        "label": f"Your Acquisition Value ({VALUE_UNIT_SHORT})",
+        "unit": VALUE_UNIT,
+        "help": (
+            "Universal value plus what he is worth to YOUR roster specifically: the "
+            "unfilled-need, lineup-flexibility and depth-insurance terms. Same universal-value "
+            "points as the Universal Value card; the difference between the two is roster "
+            "context."
+        ),
+    },
+    "survival_probability": {
+        "label": "Survival to Next Pick (%)",
+        "unit": "percent",
+        "help": (
+            "Chance he is still on the board at your next turn, compounded across every "
+            "intervening pick from those rosters' own boards."
+        ),
+    },
+    "positional_cliff": {
+        "label": "Positional Cliff (tier)",
+        "unit": "tier",
+        "help": (
+            "How steep the drop-off in best-player-available value is behind him at his "
+            "position, relative to that position's typical gap: HIGH, MEDIUM or LOW. A dash "
+            "means no cliff could be measured for him."
+        ),
+    },
+    "position_run": {
+        "label": "Run (recent picks)",
+        "unit": "detected / none",
+        "help": (
+            "Whether the last few picks show a run on his position. NONE is a measured "
+            "no-run, not a missing value."
+        ),
+    },
+    "opportunity_cost": {
+        "label": f"Opportunity Cost of Waiting ({VALUE_UNIT_SHORT})",
+        "unit": VALUE_UNIT,
+        "help": (
+            "Acquisition value you expect to lose by passing: your acquisition value times the "
+            "chance he does NOT survive to your next pick. Universal-value points, by your next "
+            "turn -- not the whole-draft deferral cost the board states in season points per "
+            "week."
+        ),
+    },
+    "expected_value_of_waiting": {
+        "label": f"Expected Value If You Wait ({VALUE_UNIT_SHORT})",
+        "unit": VALUE_UNIT,
+        "help": (
+            "Universal value times his chance of surviving to your next pick: what you can "
+            "expect to still have available if you pass now. Universal-value points."
+        ),
+    },
+    "denial_value": {
+        "label": f"Denial Value ({VALUE_UNIT_SHORT})",
+        "unit": VALUE_UNIT,
+        "help": (
+            "The best acquisition value an intervening rival would have gotten from him, "
+            "weighted by how likely that rival was to take him -- what your pick keeps from "
+            "someone else. Universal-value points; a measured 0 means no rival was positioned "
+            "to gain."
+        ),
+    },
+}
+
+#: The unit that follows a per-field delta in the "What changed?" drawer. The deltas are
+#: rendered on one line, so a bare "+3.2" beside a "-0.1" would be two units read as one.
+DIFF_UNITS: dict[str, str] = {
+    "universal_value": VALUE_UNIT_SHORT, "need_bonus": VALUE_UNIT_SHORT,
+    "eligibility_bonus": VALUE_UNIT_SHORT, "depth_exposure": VALUE_UNIT_SHORT,
+    "team_acquisition_value": VALUE_UNIT_SHORT,
+    "survival_probability": "probability", "opportunity_cost": VALUE_UNIT_SHORT,
+    "expected_value_of_waiting": VALUE_UNIT_SHORT, "denial_value": VALUE_UNIT_SHORT,
+    "rival_premium": VALUE_UNIT_SHORT, "positional_forfeit": VALUE_UNIT_SHORT,
+    "pick_necessity": "/100",
+}
+
+
+def metric_label(quantity: str) -> str:
+    """The card label for one DISPLAY_CONTRACT quantity -- the unit is in the label itself."""
+    return DISPLAY_CONTRACT[quantity]["label"]
+
+
+def metric_help(quantity: str) -> str:
+    """The hover sentence for one DISPLAY_CONTRACT quantity."""
+    return DISPLAY_CONTRACT[quantity]["help"]
+
+
 def token_rgba(token_name: str, alpha: float) -> str:
     """A TOKENS hex value as an alpha-blended `rgba(r,g,b,a)` string -- for the specific,
     recurring case of an inline `style="background-color: ..."` attribute (pandas Styler

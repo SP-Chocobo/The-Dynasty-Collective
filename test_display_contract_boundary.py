@@ -32,8 +32,12 @@ covered only draft_board_ui's JS prose. Counting every surface that renders a va
 number, the rate is far lower -- the Streamlit metric cards state no unit at all, and there are
 two copies of them (the live Draft Room panel and its Mock Draft twin).
 
-NOTHING IS RENAMED OR NORMALIZED HERE. These tests pin the current copy so that a change to it
-is deliberate and visible. INVERT them on repair; do not delete them.
+REPAIRED (D10 option A, the one option independent of #58): nothing is normalised and no
+number changes, but every surface now says what its number IS. The vocabulary lives in
+design_system.DISPLAY_CONTRACT / VALUE_UNIT / VALUE_UNIT_SHORT, and the two Draft Room panels
+render their cards through ONE function (app._render_pick_metrics) rather than two copies of
+identical copy. The tests below were inverted from the pinning form they had before the
+repair, not deleted; the mechanical half (TheScaleIsNotAPointsTotalTests) is unchanged.
 
 These are source-text tests, and that is stated rather than hidden: for UI copy the source text
 IS the artifact. They prove what the app will render, not what a user concludes from it.
@@ -70,41 +74,80 @@ def _scanned_sources():
         yield path.name, path.read_text()
 
 
-class TheTwoUnitsSitAdjacentTests(unittest.TestCase):
+class TheTwoUnitsAreToldApartTests(unittest.TestCase):
+    """INVERTED on repair. The cards used to sit UV / projected points / TAV in one row, all
+    `.0f`, with only the middle one naming a unit. They still share a format spec -- that was
+    never the defect -- but every label now carries its unit and every card a help sentence,
+    all from design_system.DISPLAY_CONTRACT, and both panels render through one function."""
 
-    def test_universal_value_and_projected_points_are_rendered_identically(self):
-        """Same format spec, same card row, different units. The two being indistinguishable
-        IS the finding, so this fails if either format changes.
+    def _renderer(self):
+        return ui_source.block("def _render_pick_metrics(rec)", until="\n\n\ndef ")
 
-        The three cards each gained an `is not None` guard (they render an em dash for an
-        unpriced candidate rather than raising). That is a different defect, fixed separately;
-        it does NOT address this one. The assertion is therefore on the format spec and the
-        card position, not on the exact one-line spelling it used to have."""
-        for panel in ("metric_row1", "mock_metric_row1"):
-            with self.subTest(panel=panel):
-                for slot, label in ((0, "Universal Value"), (2, "Your Acquisition Value")):
-                    window = _APP[_APP.index(f'{panel}[{slot}].metric('):][:320]
-                    self.assertIn(f'"{label}"', window)
-                    self.assertRegex(window, r'f"\{[a-z_.]+:\.0f\}"')
-                self.assertIn('"Projected Points", f"', _APP)
+    def test_both_draft_panels_render_through_one_function(self):
+        """One definition, two call sites (live Draft Room and its Mock Draft twin). The old
+        pin counted two copies of the label; a shared renderer is what makes "repaired
+        together" a property of the code rather than of a test's vigilance."""
+        self.assertEqual(_APP.count("def _render_pick_metrics("), 1)
+        self.assertIn("_render_pick_metrics(rec)", _APP)
+        self.assertIn("_render_pick_metrics(mock_rec)", _APP)
+        for bare in ('"Universal Value"', '"Your Acquisition Value"', '"Denial Value"',
+                     '"Opportunity Cost of Waiting"', '"Expected Value If You Wait"'):
+            with self.subTest(label=bare):
+                self.assertNotIn(bare, _APP, "a bare, unit-less label came back")
 
-    def test_the_value_cards_state_no_unit_at_all(self):
-        """'Projected Points' names its unit in its own label. Its two neighbours do not."""
-        self.assertIn('"Projected Points"', _APP)
-        for bare_label in ('"Universal Value"', '"Your Acquisition Value"',
-                           '"Opportunity Cost of Waiting"', '"Expected Value If You Wait"',
-                           '"Denial Value"'):
-            with self.subTest(label=bare_label):
-                self.assertIn(bare_label, _APP)
-                self.assertNotIn(bare_label.rstrip('"') + ' (universal-value points)"', _APP)
+    def test_every_card_takes_its_label_and_help_from_the_contract(self):
+        import design_system as ds
+        block = self._renderer()
+        for quantity in ds.DISPLAY_CONTRACT:
+            with self.subTest(quantity=quantity):
+                self.assertIn(f'label("{quantity}")', block)
+                self.assertIn(f'help=note("{quantity}")', block)
 
-    def test_both_draft_panels_carry_the_same_copy(self):
-        """The live Draft Room panel and the Mock Draft twin are separate code. A repair that
-        fixed one and not the other would be worse than neither, so the duplication is pinned."""
-        for label in ("Universal Value", "Your Acquisition Value", "Denial Value"):
-            with self.subTest(label=label):
-                self.assertEqual(_APP.count(f'"{label}"'), 2,
-                                 "both panels must be repaired together")
+    def test_every_value_label_names_the_value_unit_and_the_points_label_names_season(self):
+        import design_system as ds
+        for quantity, entry in ds.DISPLAY_CONTRACT.items():
+            with self.subTest(quantity=quantity):
+                if entry["unit"] == ds.VALUE_UNIT:
+                    self.assertIn(f"({ds.VALUE_UNIT_SHORT})", entry["label"])
+                    self.assertIn(ds.VALUE_UNIT, entry["help"].lower(),
+                                  "the help sentence must spell the short label out")
+                else:
+                    self.assertNotIn(ds.VALUE_UNIT_SHORT, entry["label"])
+        self.assertIn("(season)", ds.DISPLAY_CONTRACT["projected_points"]["label"])
+        self.assertIn("NOT fantasy points", ds.DISPLAY_CONTRACT["universal_value"]["help"])
+
+    def test_the_format_specs_are_still_identical_which_is_now_fine(self):
+        """The two numbers are STILL rendered `.0f` side by side. The repair is the label,
+        not the number -- D10 option B (rescaling) waits on #58 and must not be smuggled in."""
+        block = self._renderer()
+        self.assertIn("rec.universal_value:.0f", block)
+        self.assertIn("rec.projected_points:.0f", block)
+        self.assertIn("rec.team_acquisition_value:.0f", block)
+
+    def test_a_measured_zero_denial_value_is_a_number_not_a_dash(self):
+        """Found while repairing: `rec.denial_value if rec.denial_value else "—"` rendered a
+        real 0.0 -- no rival positioned to gain -- as the same dash an unmeasured value gets.
+        The absence contract in the other direction."""
+        block = self._renderer()
+        self.assertIn("if rec.denial_value is not None else", block)
+        self.assertNotIn("if rec.denial_value else", block)
+
+    def test_a_measured_no_run_is_a_word_not_a_dash(self):
+        block = self._renderer()
+        self.assertIn('"DETECTED" if rec.position_run_detected else "NONE"', block)
+
+    def test_the_best_alternative_line_carries_its_unit(self):
+        import design_system as ds
+        block = ui_source.block("def _best_alternative_line(alt)", until="\n\n\n")
+        self.assertIn("design_system.VALUE_UNIT_SHORT", block)
+        self.assertEqual(_APP.count("_best_alternative_line("), 3, "def + two call sites")
+
+    def test_the_diff_drawer_deltas_carry_their_unit(self):
+        import design_system as ds
+        import pick_synthesis as ps
+        self.assertIn("design_system.DIFF_UNITS.get(k, '')", _APP)
+        missing = [f for f in ps._DIFF_FIELDS if f not in ds.DIFF_UNITS]
+        self.assertEqual(missing, [], "diff fields with no unit in the drawer")
 
 
 class AbsenceReachesTheMetricCardsTests(unittest.TestCase):
@@ -226,26 +269,45 @@ class AbsenceReachesTheMetricCardsTests(unittest.TestCase):
         return unguarded
 
 
-class TheBoardsProseQualifiesItsUnitUnevenlyTests(unittest.TestCase):
-    """§20.8's count, re-derived here so it cannot drift out of date."""
+class TheBoardsProseQualifiesItsUnitEverywhereTests(unittest.TestCase):
+    """§20.8's count, re-derived here so it cannot drift out of date -- INVERTED on repair.
+    The two "-point" shortenings are gone, the focus metrics carry a unit suffix, and a legend
+    line states both scales once above the board."""
 
     def test_one_phrase_names_the_full_unit(self):
         self.assertIn("universal-value points", _BOARD)
 
-    def test_two_phrases_name_the_quantity_but_shorten_the_unit_to_point(self):
-        self.assertIn("-point gap to the next best", _BOARD)
-        self.assertIn("-point rival premium", _BOARD)
+    def test_the_two_shortened_phrases_now_name_their_full_unit(self):
+        self.assertNotIn("-point gap to the next best", _BOARD)
+        self.assertIn("universal-value points of drop-off to the next best", _BOARD)
+        self.assertNotIn("-point rival premium", _BOARD)
+        self.assertIn("acquisition-value points, not routine need", _BOARD)
+
+    def test_the_unit_vocabulary_is_the_contracts_not_the_boards_own(self):
+        """The JS interpolates PAYLOAD.valueUnitShort rather than spelling "UV pts" itself, and
+        serialize_snapshot takes it from design_system -- one source, no drift."""
+        self.assertIn('"valueUnitShort": design_system.VALUE_UNIT_SHORT', _BOARD)
+        self.assertGreaterEqual(_BOARD.count("${PAYLOAD.valueUnitShort}"), 6)
+
+    def test_the_focus_metrics_carry_a_unit_suffix(self):
+        for needle in ('UV <b>', 'ACQ <b>', 'PROJ <b>'):
+            with self.subTest(needle=needle):
+                self.assertIn(needle, _BOARD)
+        self.assertIn('<span class="unit">season pts</span>', _BOARD)
+        self.assertIn('<span class="unit">${PAYLOAD.valueUnitShort}</span>', _BOARD)
+
+    def test_the_legend_states_both_scales(self):
+        self.assertIn('id="legend"', _BOARD)
+        self.assertIn("not fantasy points", _BOARD)
+        self.assertIn("season points per week", _BOARD)
 
     def test_no_phrase_says_only_points(self):
-        """INVERTED, at the invitation of the test this replaces. These three phrases used to
-        say bare "points" about a UV/TAV-family quantity. In a fantasy app, unqualified "points"
-        is the domain's own word for a season scoring total -- which this same panel renders a
-        few lines away ("projects 250 against 180"), so the bare wording did not merely omit a
-        unit, it asserted the wrong one.
-
-        The third phrase is why #116's original count was low: it recorded "3 of 5", and the
-        decisive-branch forfeit chip -- the sentence shown for the LEADER, when the engine is
-        most confident, and therefore the most-read sentence on the surface -- was not in it."""
+        """These three phrases used to say bare "points" about a UV/TAV-family quantity. In a
+        fantasy app, unqualified "points" is the domain's own word for a season scoring total
+        -- which this same panel renders a few lines away -- so the bare wording did not merely
+        omit a unit, it asserted the wrong one. The third phrase is why #116's original count
+        was low: the decisive-branch forfeit chip -- the sentence shown for the LEADER -- was
+        not in it."""
         qualified = (
             ("point(s) off the board leader", "acquisition-value"),
             ("points</b> of context lift", "acquisition-value"),
@@ -254,9 +316,7 @@ class TheBoardsProseQualifiesItsUnitUnevenlyTests(unittest.TestCase):
         for phrase, unit in qualified:
             with self.subTest(phrase=phrase):
                 if unit is None:
-                    # the bare form is gone entirely, replaced by a named unit
-                    self.assertNotIn(phrase, _BOARD,
-                                     "the bare 'pts' form came back")
+                    self.assertNotIn(phrase, _BOARD, "the bare 'pts' form came back")
                     continue
                 lines = [ln for ln in _BOARD.splitlines() if phrase in ln]
                 self.assertEqual(len(lines), 1, "phrase moved or was duplicated")
@@ -265,13 +325,16 @@ class TheBoardsProseQualifiesItsUnitUnevenlyTests(unittest.TestCase):
     def test_the_forfeit_chip_names_the_unit_it_is_measured_in(self):
         self.assertIn("universal-value points if you wait", _BOARD)
 
-    def test_the_same_panel_also_renders_real_season_points(self):
+    def test_the_same_panel_also_renders_real_season_points_and_says_so(self):
         """`_waiting_note` renders projected_points and horizon_floor -- genuinely season
         fantasy points -- in the same surface as the universal-value phrases above. Both units
-        are present in one panel, which is what makes the bare 'points' ambiguous rather than
-        merely imprecise."""
+        are present in one panel, which is what made the bare 'points' ambiguous; each now
+        says which it is."""
         self.assertIn("c.projected_points:.0f", _BOARD)
         self.assertIn("c.horizon_floor:.0f", _BOARD)
+        self.assertIn("season points against", _BOARD)
+        self.assertIn("season points per week", _BOARD)
+        self.assertIn('"label": f"{per_week:.2f} pts/wk"', _BOARD)
 
 
 class TheScaleIsNotAPointsTotalTests(unittest.TestCase):
@@ -375,7 +438,9 @@ class TheScaleIsNotAPointsTotalTests(unittest.TestCase):
         """Non-vacuity for the whole file: if the number were normalised into a 0-100 band on
         the way out, none of the above would matter. It is not -- the card renders the engine's
         own value with a format specifier and nothing else."""
-        self.assertNotRegex(_APP, r'metric\("Universal Value", f"\{[^}]*(min|max|clamp|/ *100)')
+        block = ui_source.block("def _render_pick_metrics(rec)", until="\n\n\ndef ")
+        self.assertIn("rec.universal_value:.0f", block, "non-vacuity: the card is in this block")
+        self.assertNotRegex(block, r"(min|max|clamp)\(|/ *100")
         self.assertNotIn("normalize_display", _APP)
 
 

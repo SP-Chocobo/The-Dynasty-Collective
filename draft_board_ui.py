@@ -126,8 +126,9 @@ def _waiting_note(c: CandidateSnapshot) -> Optional[dict]:
         return None
     per_week = c.waiting_cost / SLEEPER_WEEKLY_TO_SEASON_FACTOR
     basis = (
-        f"{c.name} projects {c.projected_points:.0f} against {c.horizon_floor:.0f} for the "
-        f"best {c.position} expected to still be undrafted when the draft ends."
+        f"{c.name} projects {c.projected_points:.0f} season points against "
+        f"{c.horizon_floor:.0f} for the best {c.position} expected to still be undrafted when "
+        f"the draft ends."
     )
     # The floor's placement rests on how many further picks this position is expected to take,
     # and that split comes from a decay rate which is MEASURED for some positions and IMPUTED
@@ -157,8 +158,9 @@ def _waiting_note(c: CandidateSnapshot) -> Optional[dict]:
             "label": "free",
             "title": (
                 f"Waiting is better than free here. The best {c.position} expected to go "
-                f"undrafted projects {c.horizon_floor:.0f}, ahead of {c.name}'s "
-                f"{c.projected_points:.0f} -- this pick buys nothing you won't have anyway."
+                f"undrafted projects {c.horizon_floor:.0f} season points, ahead of "
+                f"{c.name}'s {c.projected_points:.0f} -- this pick buys nothing you won't "
+                f"have anyway."
             ),
         }
 
@@ -177,12 +179,13 @@ def _waiting_note(c: CandidateSnapshot) -> Optional[dict]:
         if per_week <= WAITING_STEEP_PER_WEEK < per_week + swing:
             return {
                 "tone": "unsettled",
-                "label": "~?/wk",  # deliberately not "cost of waiting" -- see the horizon note above
+                "label": "~? pts/wk",  # deliberately not "cost of waiting" -- see the horizon note above
                 "title": (
                     f"Replaceability at {c.position} is unresolved. Best estimate "
-                    f"{per_week:.2f} pts/week, but {c.position} falls off a cliff just past "
-                    f"this point: a normal swing in how hard the room drafts {c.position} "
-                    f"moves the floor by up to {swing:.2f} pts/week, which is the difference "
+                    f"{per_week:.2f} season points per week, but {c.position} falls off a "
+                    f"cliff just past this point: a normal swing in how hard the room drafts "
+                    f"{c.position} moves the floor by up to {swing:.2f} season points per "
+                    f"week, which is the difference "
                     f"between comfortably waiting and not being able to. {basis}"
                 ),
             }
@@ -195,8 +198,12 @@ def _waiting_note(c: CandidateSnapshot) -> Optional[dict]:
         tone, verdict = "moderate", "Waiting costs a little"
     return {
         "tone": tone,
-        "label": f"{per_week:.2f}/wk",
-        "title": f"{verdict}. Deferring {c.position} costs {per_week:.2f} pts/week: {basis}",
+        # "pts/wk" is season-projection points per week -- a different unit from the
+        # universal-value points the same row's big number is in. The label says "pts", the
+        # title spells the unit out, and the board's legend line states both units once.
+        "label": f"{per_week:.2f} pts/wk",
+        "title": (f"{verdict}. Deferring {c.position} costs {per_week:.2f} season points per "
+                  f"week: {basis}"),
     }
 
 
@@ -212,6 +219,9 @@ def serialize_candidate(c: CandidateSnapshot) -> dict:
         "team": c.team or "",
         "uv": c.universal_value,
         "tav": c.team_acquisition_value,
+        # Season fantasy points -- the one number in the focus panel that is NOT on the
+        # universal-value scale, carried so the panel can show it labelled as such (#116).
+        "proj": c.projected_points,
         "necessity": c.necessity_label,
         "necClass": _NECESSITY_CLASS.get(c.necessity_label, "badge-necessity-low"),
         "survival": c.survival_probability,
@@ -404,6 +414,10 @@ def serialize_snapshot(
         "pickHeader": pick_header,
         "stateTags": state_tags,
         "decisionRegime": snap.decision_regime,
+        # The display contract's vocabulary (#116), from its one source. The JS interpolates
+        # these into every sentence that states a value, so a rename there is a rename here.
+        "valueUnit": design_system.VALUE_UNIT,
+        "valueUnitShort": design_system.VALUE_UNIT_SHORT,
         "candidates": candidates,
     }
 
@@ -562,6 +576,17 @@ __DESIGN_SYSTEM_BADGE_NECESSITY__
 .focus-sentence.tie-note { color: var(--muted); }
 .focus-metrics { display: flex; gap: 1rem; flex-wrap: wrap; margin-top: .65rem; font-family: "JetBrains Mono", monospace; font-size: .72rem; color: var(--dim); }
 .focus-metrics b { color: var(--ink); }
+.focus-metrics .unit { color: var(--dim); font-size: .64rem; letter-spacing: .02em; margin-left: .15rem; }
+/* The display contract (#116), stated once where every number on the board can see it: the
+   big number on each row is in universal-value points, the wait chip is in season points per
+   week, and neither is a fantasy-points total. */
+.legend {
+  display: flex; gap: .9rem; flex-wrap: wrap; align-items: center;
+  font-family: "JetBrains Mono", monospace; font-size: .66rem; letter-spacing: .04em;
+  color: var(--dim); margin: -.45rem 0 .6rem .2rem; text-transform: uppercase;
+}
+.legend span { cursor: help; }
+.legend b { color: var(--muted); font-weight: 600; }
 
 .empty-state { color: var(--muted); font-size: .88rem; padding: 1rem; text-align: center; }
 
@@ -569,7 +594,8 @@ __DESIGN_SYSTEM_REDUCED_MOTION__
 </style></head>
 <body>
   <div class="state-bar" id="state-bar"></div>
-  <div class="board" id="board" role="listbox" aria-label="Draft candidates, ranked by acquisition value"></div>
+  <div class="legend" id="legend"></div>
+  <div class="board" id="board" role="listbox" aria-label="Draft candidates, ranked by acquisition value in universal-value points"></div>
 
 <script>
 const PAYLOAD = __DRAFT_BOARD_PAYLOAD_JSON__;
@@ -595,6 +621,13 @@ document.getElementById("state-bar").innerHTML = `
     return `<span class="tag${/3RR/.test(label) ? ' hot' : ''}"${titleAttr}>${label}</span>`;
   }).join("")}</div>`;
 
+// UNIT LEGEND. Two different point scales share this surface -- acquisition/universal value
+// (signed, unbounded, the engine's own scale) and season-projection points per week (the wait
+// chip) -- and a reader who has to learn that from a hover has already misread the board once.
+document.getElementById("legend").innerHTML = `
+  <span title="Universal-value points (UV pts): value over the replacement player at his position, in projected points scaled against the largest gap left in the pool, plus horizon, risk and roster-context terms. Signed and unbounded. NOT a fantasy-points total."><b>${PAYLOAD.valueUnitShort}</b> = ${PAYLOAD.valueUnit} · not fantasy points</span>
+  <span title="The wait chip is the cost of deferring this position until the draft ends, in season-projection points per week -- a different unit from the value beside it."><b>PTS/WK</b> = season points per week</span>`;
+
 function tickRow(c) {
   return ["tie", "cliff", "block", "pure"].map(f =>
     c.forces.includes(f) ? `<span class="tick" data-force="${f}" data-owner="${c.id}">${TICK_GLYPH[f]}</span>` : ""
@@ -604,12 +637,12 @@ function tickRow(c) {
 function contextGapGlyph(c) {
   if (c.contextGap === "elevated") {
     const gap = (c.tav - c.uv).toFixed(1);
-    return `<span class="context-gap ctx-up" title="Context Gap: roster fit is elevating his acquisition value well beyond his raw talent (+${gap}).">▲</span>`;
+    return `<span class="context-gap ctx-up" title="Context Gap: roster fit is elevating his acquisition value well beyond his raw talent (+${gap} ${PAYLOAD.valueUnitShort}).">▲</span>`;
   }
   if (c.contextGap === "suppressed") {
     const leaderUv = ordered[0].uv;
     const gap = (c.uv - leaderUv).toFixed(1);
-    return `<span class="context-gap ctx-down" title="Context Gap: his raw talent exceeds the board leader's own value by ${gap} -- he trails only on acquisition rank.">▽</span>`;
+    return `<span class="context-gap ctx-down" title="Context Gap: his raw talent exceeds the board leader's own value by ${gap} ${PAYLOAD.valueUnitShort} -- he trails only on acquisition rank.">▽</span>`;
   }
   return "";
 }
@@ -662,13 +695,13 @@ function focusSentences(c) {
   s.push(`<p class="focus-sentence">This is <b>${NEC_TEXT[c.necessity] || c.necessity.toLowerCase()}</b> pick — ${survivalBit}.</p>`);
 
   if (c.forces.includes("cliff") && c.forfeit != null) {
-    s.push(`<p class="focus-sentence">Waiting on him costs about <b>${c.forfeit.toFixed(1)} universal-value points</b> by your next turn — a ${c.cliffTier} positional cliff${c.cliffGap != null ? ` (${c.cliffGap.toFixed(1)}-point gap to the next best ${c.pos}, vs. a typical ${(c.cliffTypical || 0).toFixed(1)})` : ''}.</p>`);
+    s.push(`<p class="focus-sentence">Waiting on him costs about <b>${c.forfeit.toFixed(1)} universal-value points</b> by your next turn — a ${c.cliffTier} positional cliff${c.cliffGap != null ? ` (${c.cliffGap.toFixed(1)} universal-value points of drop-off to the next best ${c.pos}, against a typical ${(c.cliffTypical || 0).toFixed(1)})` : ''}.</p>`);
   }
   if (c.forces.includes("block")) {
-    s.push(`<p class="focus-sentence"><b>${c.denialTeam || "A rival"}</b> has a real hole here${c.rivalPremium != null ? ` — a ${c.rivalPremium.toFixed(1)}-point rival premium, not routine need` : ''}. Taking him is value and denial at once.</p>`);
+    s.push(`<p class="focus-sentence"><b>${c.denialTeam || "A rival"}</b> has a real hole here${c.rivalPremium != null ? ` — a rival premium of ${c.rivalPremium.toFixed(1)} acquisition-value points, not routine need` : ''}. Taking him is value and denial at once.</p>`);
   }
   if (c.forces.includes("pure")) {
-    s.push(`<p class="focus-sentence">His raw universal value (<b>${c.uv}</b>) is the best in this field — context, not quality, is what's holding his acquisition rank down.</p>`);
+    s.push(`<p class="focus-sentence">His raw universal value (<b>${c.uv}</b> ${PAYLOAD.valueUnitShort}) is the best in this field — context, not quality, is what's holding his acquisition rank down.</p>`);
   }
   if (c.forces.includes("tie")) {
     const partners = ordered.filter(o => o.id !== c.id && o.forces.includes("tie")).map(o => o.name);
@@ -680,12 +713,12 @@ function focusSentences(c) {
     s.push(`<p class="focus-sentence tie-note">A meaningful share of his acquisition value here is roster fit, not raw talent — about <b>${(c.tav - c.uv).toFixed(1)} acquisition-value points</b> of context lift. Worth knowing if your read on him leans on talent alone.</p>`);
   }
   if (c.contextGap === "suppressed" && !isLeader) {
-    s.push(`<p class="focus-sentence tie-note">His raw talent (UV <b>${c.uv}</b>) arguably exceeds the board leader's own (${ordered[0].uv}) — he trails only because of roster-fit context, not quality.</p>`);
+    s.push(`<p class="focus-sentence tie-note">His raw talent (universal value <b>${c.uv}</b> ${PAYLOAD.valueUnitShort}) arguably exceeds the board leader's own (${ordered[0].uv}) — he trails only because of roster-fit context, not quality.</p>`);
   }
   if (c.needBonus > 0 || c.eligBonus > 0) {
     const bits = [];
-    if (c.needBonus > 0) bits.push(`+${c.needBonus.toFixed(1)} for an unfilled roster need`);
-    if (c.eligBonus > 0) bits.push(`+${c.eligBonus.toFixed(1)} for multi-position flexibility`);
+    if (c.needBonus > 0) bits.push(`+${c.needBonus.toFixed(1)} ${PAYLOAD.valueUnitShort} for an unfilled roster need`);
+    if (c.eligBonus > 0) bits.push(`+${c.eligBonus.toFixed(1)} ${PAYLOAD.valueUnitShort} for multi-position flexibility`);
     s.push(`<p class="focus-sentence tie-note">Fills a real roster gap: ${bits.join(" and ")}.</p>`);
   }
   if (c.flagged) {
@@ -720,15 +753,17 @@ function render() {
           ${waitGlyph(c)}
           ${contextGapGlyph(c)}
           <span class="necessity-pill ${c.necClass}">${c.necessity}</span>
-          <span class="tav mono" title="Acquisition value: universal value plus this roster's need, eligibility and depth terms. Signed, unbounded, not fantasy points.">${c.tav != null ? c.tav.toFixed(0) : '—'}</span>
+          <span class="tav mono" title="Acquisition value in universal-value points (UV pts): universal value plus this roster's need, eligibility and depth terms. Signed, unbounded, not fantasy points.">${c.tav != null ? c.tav.toFixed(0) : '—'}</span>
           <span class="chevron mono">▾</span>
         </div>
       </div>
       <div class="hover-note">${connectionSentence(c) || "No shared forces with another candidate right now."}</div>
       <div class="focus-wrap"><div class="focus-inner"><div class="focus-body">${focusSentences(c)}
         <div class="focus-metrics">
-          <span>UV <b>${c.uv != null ? c.uv.toFixed(0) : '—'}</b></span><span>TAV <b>${c.tav != null ? c.tav.toFixed(0) : '—'}</b></span>
-          <span>SURV <b>${c.survival != null ? Math.round(c.survival * 100) + '%' : '—'}</b></span>
+          <span title="Universal value, in universal-value points">UV <b>${c.uv != null ? c.uv.toFixed(0) : '—'}</b><span class="unit">${PAYLOAD.valueUnitShort}</span></span>
+          <span title="Acquisition value for this roster, in universal-value points">ACQ <b>${c.tav != null ? c.tav.toFixed(0) : '—'}</b><span class="unit">${PAYLOAD.valueUnitShort}</span></span>
+          <span title="Projected season fantasy points -- a different unit from the two values before it">PROJ <b>${c.proj != null ? c.proj.toFixed(0) : '—'}</b><span class="unit">season pts</span></span>
+          <span title="Chance he is still on the board at your next turn">SURV <b>${c.survival != null ? Math.round(c.survival * 100) + '%' : '—'}</b></span>
           <span>CLIFF <b>${c.cliffTier || '—'}</b></span>
           ${c.replacementBasis ? `<span class="basis-note">PRICED VS <b>${c.replacementBasis === 'predraft_anchor' ? 'pre-draft anchor' : 'live starter demand'}</b></span>` : ''}
           ${c.growthSignal != null ? `<span class="basis-note">GROWTH <b>${c.growthSignal.toFixed(1)}</b></span>` : ''}
