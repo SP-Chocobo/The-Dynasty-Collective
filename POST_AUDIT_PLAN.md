@@ -4487,3 +4487,83 @@ exists to forbid. The honest repair is to derive the divisor from the same distr
 comment already half-measured, or to stop dividing by a constant at all and normalise against
 the board's own observed forfeit range -- and that choice belongs with #50/Phase 3, where the
 ruler question is already open.
+
+
+## #165 — the measurement harness crashes on the state the engine is designed to produce
+
+CONFIRMED by reading the producing chain. `roster_diagnostics.compute_team_diagnostics` reads
+`p["uv"]` unguarded at three sites -- `:168` (`cell["value"] += p["uv"]`), `:175` (fed to
+lineup_optimizer as `value`), `:183` (`sum(...)` for accumulated_value). `uv` arrives from
+`cand["uv"]` (`:130`) <- draft_simulation's serialize_snapshot <- `draft_board_ui.py:204`
+`"uv": c.universal_value`, which is Optional and is None exactly when a position has no
+replacement level. Any trajectory containing one unpriced pick raises TypeError on the first
+`+=`.
+
+THE MODULE ALREADY KNOWS HOW. `:204` filters to `priced` and reports `replacement_level_unpriced`
+as a SEPARATE COUNT rather than folding absence into the sum -- the correct treatment, present
+in one of four places. Same asymmetry as the Draft Room metric cards, where two fields were
+guarded and the two the contract names were not.
+
+WHY IT MATTERS MORE THAN "HARNESS-ONLY": app.py never imports roster_diagnostics, so this is
+not a user-facing crash. It is worse in one specific way -- this module is how the BATTERY
+measures roster quality, and the battery is the instrument behind #150 and behind most findings
+recorded today. An instrument that dies on the exact board state the engine is contractually
+required to produce cannot measure the regime it most needs to measure. Combined with #161
+(the battery's rounds == slots assumption), that is two independent blind spots in the same
+harness, both discovered from outside it.
+
+REPAIR, when made, is to apply the module's OWN existing idiom to the other three sites -- skip
+unpriced and carry the count -- not to coerce None to 0.0, which would silently understate
+every roster containing an unpriced pick and would be the absence contract broken inside the
+tool that exists to check it.
+
+### Refinement: the repair is two-thirds mechanical and one-third a decision
+
+`:204`'s filter is `p["position"] in repl_levels` -- it excludes on the REASON (the position has
+no replacement level), not on the symptom (`uv is None`). Its comment states the rule this
+module already holds itself to: "Unpriced players are excluded and COUNTED, so the number states
+its own coverage instead of quietly absorbing the gap."
+
+That rule transfers cleanly to two of the three unguarded sites and NOT to the third:
+
+  :168  per-position depth sum        MECHANICAL. Exclude, carry the count.
+  :183  accumulated_value             MECHANICAL. Exclude, carry the count.
+  :175  rows fed to lineup_optimizer  A DECISION, not a guard.
+
+At :175 the rows become `value` in the lineup solve. Dropping an unpriced player does not merely
+understate a total -- it removes him from the optimisation, so the "optimal" lineup can come back
+SHORT A STARTER and `starting_lineup_value` changes meaning without saying so. The alternatives
+each assert something:
+
+  exclude          -> the roster is treated as though the player does not exist; a legal lineup
+                      may be reported as unfillable.
+  value at 0.0     -> he is startable but worthless; breaks the absence contract inside the tool
+                      that exists to check it, and he still occupies the slot.
+  value = replacement level -> asserts a price the engine explicitly declined to give.
+
+There is no neutral option, which is the tell that this is a semantic question about what an
+unpriced asset is WORTH IN A LINEUP, not a missing null check. Recorded and left to the owner;
+fixing :168 and :183 does not depend on it and can proceed first.
+
+### REPAIRED, and the repair's own test found a fourth site I had asserted was safe
+
+Two turns before writing the fix I stated that `:204` "already does it correctly". It does not,
+and the regression test caught me: its filter is `p["position"] in repl_levels`, which is a
+PROXY for what the arithmetic needs (`p["uv"] is not None`). I had even noted the two were
+different predicates in the same breath as assuming they coincide -- the implicit-invariant
+trap this register keeps recording, walked into while documenting it.
+
+Repaired at all four sites using the module's own stated rule (exclude and COUNT, never coerce
+to 0.0), plus a new `unpriced_players` field so every value on the record states its own
+coverage: greater than zero means accumulated / starting-lineup / bench-surplus / depth are
+FLOORS, not totals. Distinct from `replacement_level_unpriced`, which counts the narrower thing.
+
+The `:175` decision is taken and named in the code rather than left implicit: unpriced players
+are excluded from the lineup solve, because it is the only option that asserts nothing about
+their VALUE -- 0.0 would say startable-and-worthless, and a replacement level would assert a
+price the engine declined to give. The cost is real and recorded: a legally fillable lineup can
+come back short a starter, so starting_lineup_value with unpriced_players > 0 is a floor.
+
+Honest limit of the test: it blanks a uv without removing the position's replacement level, so
+for the three sums it reproduces a reachable crash and for the surplus it pins robustness
+against a coincidence. Stated in the test rather than glossed.
