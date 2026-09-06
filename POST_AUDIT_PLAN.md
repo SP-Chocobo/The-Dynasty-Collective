@@ -4264,3 +4264,226 @@ trade a disclosed local defect for an undisclosed global one.
 **SEQUENCING.** Declare now (road-agnostic, no behaviour change, already on the surface being
 built); classify the second road (measuring); then decide the pricing question with Phase 3,
 where the ruler can be measured properly rather than argued.
+
+
+
+## #160 — in a rookie draft the spine is an affine function of projection
+
+SURFACED by the briefed adversarial pass, then INDEPENDENTLY RE-MEASURED here before being
+believed, because it reorders priorities if true. It is true, and by a wider margin than the
+pass reported.
+
+12-team PPR dynasty, `picks=[]`, one board per scope, same engine, same call:
+
+  pool_scope       QB min    RB min    WR min    TE min   negatives
+  rookies_only       0.00      0.00      0.00      0.00     0 of 48
+  all             -324.00   -129.00   -202.00   -127.00   168 of 264
+
+Every position's minimum bpa in rookie scope is EXACTLY 0.00 and not one row is negative.
+
+MECHANISM, four layers each correct alone. `build_available_pool(pool_scope="rookies_only")`
+filters to rookies (correct). `remaining_starter_demand` with an empty history counts every
+team as needing all its starters -- documented, and correct for a startup. `replacement_levels`
+clamps `idx = min(rank - 1, len(at_pos) - 1)`, so a rank of 12 against a 5-deep rookie QB pool
+lands on the LAST rookie (documented behaviour). And `compute_draft_board`'s own `demand_picks`
+docstring says a rookie draft must pass full roster history as `picks` with `demand_picks`
+scoped to the rookie draft's own picks -- but `build_snapshot` has no `demand_picks` parameter,
+so the live path cannot express the split its own contract mandates.
+
+WHY IT MATTERS MORE THAN IT LOOKS. Within a position nothing is wrong: subtracting a constant
+preserves order. The damage is CROSS-POSITIONAL, which is the one job the spine exists to do.
+A WR at 201 and a QB at 183 are each measured above a DIFFERENT baseline -- the worst remaining
+rookie at their own position -- and those baselines have no common meaning, so the comparison
+between them is not a comparison of anything. `bpa` has become projection minus a per-position
+constant: a monotone transform of a single input, wearing the name of a value-over-replacement.
+
+RELATION TO #156, and this is the useful part. #156 is the spine going FLAT (zero spread, so a
+modifier inherits the decision). This is the spine going AFFINE (full spread, but the spread is
+just the input's own). Both are the same failure at the contract level -- the primary
+cross-positional signal no longer carries the information its name asserts -- and neither is
+visible from the number alone, because in both cases bpa looks like a perfectly ordinary float.
+That is the argument for instrumenting the SPINE'S DOMAIN rather than patching either symptom.
+
+NOT REPAIRED. Recording only. The repair interacts with #50/Phase 3 (the replacement/horizon
+redefinition) and with the `demand_picks` plumbing gap, and picking a rookie-specific baseline
+here would be exactly the "tune around a broken ruler" move the standing review warns against.
+
+
+## #161 — tier 3 assumes rounds == roster slots, and the battery could not have caught it
+
+MINE. `feasibility_first` (the #154 backstop) computes "picks left" as
+`len(roster_positions) - mine`. Roster size is not round count: Sleeper carries `settings.rounds`
+separately, benches are routinely filled from waivers rather than drafted, and the two numbers
+are equal only by coincidence.
+
+VERIFIED by execution. 14-slot roster, 10-round draft, chair has made 9 picks and has no TE,
+one pick left:
+    ACTUAL picks remaining      = 1
+    what feasibility_first uses = 5
+    feasibility_first ->        [1, 1]      (0 = promoted, 1 = not)
+    BINDS? NO -- the roster finishes illegal and tier 3 stays silent.
+On the repo's one real league (33 roster_positions, 29 draftable) the arithmetic makes it
+UNABLE TO BIND AT ANY POINT of a 29-round startup.
+
+WHY #150 MISSED IT, which is the more useful half. `draft_battery.py` sets
+`rounds = len(roster_positions)` by construction, so every one of the 5,244 picks in the final
+gate satisfied the assumption under test. The instrument and the code shared a premise, so the
+battery was structurally incapable of falsifying it -- 32 formats of evidence that could only
+ever confirm. A harness that fixes a variable cannot test a defect in that variable, and the
+right response is not a bigger battery but a battery whose rounds and roster size are allowed
+to differ.
+
+SAME SHAPE AS EVERYTHING ELSE FOUND TODAY. The adversarial pass's own closing observation was
+that every contract that broke involved a quantity crossing a layer WITHOUT a companion it
+needs to be read correctly -- a value without its basis, a pool without the demand it should be
+measured against, a pick number without the draft it belongs to. This is that shape again: a
+pick count without the round count that gives it meaning. `app.py` HAS `total_rounds` and uses
+it only to build the pick order; `league_for_engine` never carries it.
+
+NOT YET REPAIRED (suite mid-run when found). The repair is to give the engine the companion --
+an explicit rounds input, defaulting to the current assumption with that default NAMED as an
+assumption rather than left implicit -- plus a battery arm where rounds != slots, without which
+the fix would be as untestable as the defect.
+
+## #162 — reach_label is saturated where it exists and absent where it does not
+
+SURFACED by the adversarial pass as a rookie-draft defect; MEASURED here and found broader.
+
+  format / scope              SIGNIFICANT REACH
+  superflex, rookies_only     35 / 35   (100%)
+  superflex, all              41 / 48   ( 85%)
+  1QB, either scope           reach_label is None on every candidate
+
+TWO DIFFERENT SITUATIONS, and only one is a defect.
+
+The 1QB None is EXPECTED and stays. `_consensus_lookup` filters `source_name == "keeptradecut"`,
+and that filter IS the CDME ingestion boundary (test_cdme_ingestion_boundary.py proves it with
+adversarial injection). The consensus corpus is superflex-shaped; 1QB simply has no consensus
+row. Closing that gap by admitting another vendor into the lookup is explicitly forbidden and
+remains so. The honest statement is that the feature does not exist in 1QB -- which is fine,
+provided the UI says so rather than rendering an empty space that reads as "no reach".
+
+The superflex saturation IS a defect. A label whose top severity fires on 85% of a normal board
+and 100% of a rookie board is not classifying anything: it partitions the population into
+"nearly all" and "a rounding error". That is the #56 shape in a categorical rather than a
+numeric guise -- a boundary that does not sit where the data's structure changes, so it carries
+no information while presenting as a judgment. It is also self-reinforcing in rookie scope,
+where every candidate is compared against the tier of the #1 overall dynasty asset because a
+rookie draft's 1.01 is overall pick 1 -- the pick number crossing into the consensus layer
+WITHOUT the companion that says which draft it belongs to. The same missing-companion shape as
+#160 and #161.
+
+NOT REPAIRED. Recalibrating a band is exactly the kind of change that must not be made to fit a
+fixture; the band needs a derived basis (where does the tier-gap distribution actually change
+shape?) before any boundary is moved, and that measurement is not done.
+
+## #163 — the basis idiom has the defect it was built to prevent, and that changes the #156 fix
+
+SURFACED by the adversarial pass; MECHANISM confirmed here by reading, and it is structural
+rather than incidental.
+
+  draft_room.py:1791   pool["replacement_basis"] = "live_starter_demand"   <- EVERY row
+  draft_room.py:1886   relabel to "predraft_anchor"                        <- only _anchored
+  _fill_omitted_from_anchor (:1577-1596) EXCLUDES positions the startable-floor branch declined
+
+A floor-declined position is in neither set: no replacement level, so no price, and not in
+`_anchored`, so never relabelled. It keeps the default. The column therefore asserts "this
+price rests on live starter demand" about a row that HAS NO PRICE. Three real states --
+priced live, priced from the anchor, declined and unpriced -- carried by two labels.
+
+THE PATTERN IS THE DEFECT, not this instance of it. `initialize to the common case, then
+relabel the exceptions` guarantees that any state the author did not enumerate silently
+inherits the common-case label, and inherits it INVISIBLY, because the field is populated and
+well-formed. That is the same failure as `depth_exposure = 0.0` standing for four states and
+the same as `float` standing for an Optional: a well-formed value that lies. The safe shape is
+the opposite -- initialise to UNSET and require every branch to write it, so an unenumerated
+state is detectable rather than plausible.
+
+WHY THIS OUTRANKS ITS OWN SIZE. The recommended #156 first move is to INSTRUMENT the spine's
+domain -- to add a state saying "the ruler is not ruling here, and this is why". That
+instrument is a basis field. Built the way the existing basis fields are built, it would
+inherit this exact hole: a spine state nobody enumerated would arrive labelled "normal", which
+is precisely the silent authority transfer the instrument exists to expose. So the fix to #156
+now has a prerequisite it did not have this morning:
+
+  The spine state must be UNSET by construction and set explicitly on every path, and the
+  measurement already says there are at least four paths, not one -- rank-1 tautology (41.7%),
+  same-position projection tie (41.7%), cross-position coincidence (8.3%), anchor-priced tie
+  (the two rank=None rows). A boolean SPINE_FLAT would merge them and recreate the collapse.
+
+This is the strongest argument yet for the standing review's warning about absence: the repo
+already HAS the vocabulary for this and still got it wrong at three separate sites, which
+means the idiom needs an enforcement mechanism, not another instance of itself written
+carefully.
+
+## What #160-#163 converge on, and the ONE mechanism worth building
+
+Four findings, four different files, one shape. Every contract that broke today involves a
+quantity crossing a layer WITHOUT a companion that gives it meaning:
+
+  #160  a rookie pool without the demand it should be measured against
+  #161  a pick count without the round count that bounds it
+  #162  a pick number without the draft it belongs to
+  #163  a price without the basis it rests on -- and the basis field itself mislabelled
+
+The repo's existing answer to this shape is the `*_basis` companion column. #163 shows that
+answer is not sufficient AS BUILT, because a companion written by "default to the common case,
+relabel the exceptions" silently absorbs every state its author did not enumerate.
+
+THE STRUCTURAL FIX would be to make the companion part of the TYPE -- a value that cannot be
+constructed in a self-contradicting state (priced-but-no-basis, basis-but-no-price) rather than
+two parallel fields trusted to agree. That is the correct long-term shape and it is also a
+large refactor of the exact code that is about to be frozen, so it is NOT proposed now. The
+standing sequence (freeze, then refactor) is right, and this belongs after it.
+
+WHAT IS WORTH BUILDING NOW is the one invariant that would have caught all three basis
+instances, and it meets the bar the standing review sets -- it prevents a DEMONSTRATED class of
+failure at a load-bearing boundary, rather than encoding a preference:
+
+  No board row may carry a basis label while the quantity that basis describes is absent,
+  and no row may carry that quantity while its basis is absent.
+
+That is checkable over a real board in one pass, it is falsifiable, and it fails today on
+floor-declined rows. It is also the prerequisite for the #156 spine instrument: the instrument
+is a basis field, and there is no point adding a fourth companion column to a codebase where
+three of the existing ones can lie.
+
+NOT a new ratchet for its own sake -- explicitly contrast this with the WCAG contrast floor
+added earlier today, which protects no demonstrated failure and is documentation wearing a
+ratchet's clothes. That one should be kept only as a labelled exception or dropped. This one
+has three live instances.
+
+## #164 — FORFEIT_SCALE_MAX is a divisor left over from a scale that no longer exists
+
+SURFACED by the adversarial pass; MEASURED here, and my own first measurement OVERSTATED it,
+so both the finding and the correction are recorded.
+
+`FORFEIT_SCALE_MAX = 100.0` divides positional_forfeit before it enters pick_necessity. Its
+stated justification, in the comment above it, is that "a forfeit expressed as a fraction of
+100 is already a meaningful fraction of the biggest gap actually out there -- see draft_room's
+ARCHITECTURE section on linear scaling". That linear scaling is GONE: `_scale_vor_to_bpa` is
+now the identity and bpa is raw signed points. The constant's basis was invalidated when the
+unit beneath it changed, which is invariant 121's exact subject. The same comment already
+records a measured max of 117.39 -- above its own divisor -- and kept 100.
+
+MEASURED at the 1.01 of a 12-team PPR draft, the pick with the longest wait in the draft and
+therefore where the cost of waiting matters most:
+
+    QB 0.0   RB 155.03   TE 0.0   WR 54.60      (one distinct value per position)
+
+MY FIRST READING WAS WRONG and is corrected here. I reported "12 of 48 candidates clipped,
+erasing a spread of 55.03 points". The 12 are every RB, and positional_forfeit is a PER-POSITION
+quantity -- all of them already carried the identical 155.03 -- so the clip erases nothing
+between them. Recording the error because the shape of it matters: a per-position quantity
+counted per candidate looks like a distribution and is not one.
+
+WHAT THE CLIP ACTUALLY COSTS is the CROSS-POSITION ratio, which is the only thing this term is
+for. True RB:WR urgency at that board is 155.03 : 54.60 = 2.84x. After the divisor clips RB to
+1.0, necessity sees 1.0 : 0.546 = 1.83x. The term does not lose the ordering -- RB still leads
+-- it understates by how much, at exactly the state where the answer is least ambiguous.
+
+NOT REPAIRED. Raising the divisor to fit 155 would be fitting a fixture, which is the move #56
+exists to forbid. The honest repair is to derive the divisor from the same distribution the
+comment already half-measured, or to stop dividing by a constant at all and normalise against
+the board's own observed forfeit range -- and that choice belongs with #50/Phase 3, where the
+ruler question is already open.
