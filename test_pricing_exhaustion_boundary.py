@@ -114,23 +114,32 @@ class TerminalOrderIsAStringSortTests(unittest.TestCase):
 
 
 class TheSnapshotTypeDisagreesWithTheDataTests(unittest.TestCase):
-    """A contract inconsistency found while measuring #114, recorded rather than repaired.
+    """INVERTED (#158), at the instruction of the test this replaces.
 
-    In the exhausted regime `CandidateSnapshot` really does carry None for bpa,
-    universal_value and team_acquisition_value -- a probe crashed on exactly that. The BEHAVIOUR
-    is correct and is the absence contract working as intended. The ANNOTATIONS are what is
-    wrong: all three say `float`, so the declared meaning and the actual meaning diverge, which
-    is the §17.5/#110 class seen in a type hint rather than a rename.
+    The inconsistency was found while measuring #114 and recorded rather than repaired: in the
+    exhausted regime `CandidateSnapshot` really does carry None for bpa, universal_value and
+    team_acquisition_value -- a probe crashed on exactly that -- while all three annotations
+    said `float`. The BEHAVIOUR was always right (the absence contract working as intended);
+    the DECLARED MEANING was what diverged, the §17.5/#110 class seen in a type hint.
 
-    Not repaired here: 1c is scoped to measurement, and widening these to Optional touches the
-    same fields #119 is parked on. INVERT when the annotations are corrected."""
+    WHAT THE DEFERRAL COST, which is the reason this class now asserts the opposite. The
+    original note deferred the repair because widening these touched the fields #119 was parked
+    on. While deferred, the wrong annotation did real work: two of the six Draft Room metric
+    cards formatted these fields with `:.0f` and no guard, because a reader of the dataclass saw
+    `float` and reasonably believed it. That raises TypeError on an unpriced leader and takes
+    the whole panel down -- reachable because #154's feasibility backstop sorts a required-slot
+    candidate ahead of final_score, measured as
+    `unpriced QB, feasibility BINDING -> ['qb1','qb2','rb1','wr1']`.
 
-    def test_three_fields_are_annotated_float_but_are_none_when_pricing_is_gone(self):
+    The lesson is not "repair every annotation immediately". It is that a KNOWN-WRONG DECLARED
+    TYPE is not inert while it waits: it is an instruction to everyone who reads it."""
+
+    def test_the_three_fields_are_annotated_optional_as_the_data_always_was(self):
         annotations = {f.name: f.type for f in dataclasses.fields(ps.CandidateSnapshot)}
         for field in ("bpa", "universal_value", "team_acquisition_value"):
             with self.subTest(field=field):
-                self.assertEqual(annotations[field], "float",
-                                 "annotation corrected -- invert this test")
+                self.assertEqual(annotations[field], "Optional[float]",
+                                 "annotation regressed to a type the data contradicts")
 
     def test_the_absence_itself_is_representable_and_survives(self):
         """The behaviour half, which is right: None flows through the ordering contract without
