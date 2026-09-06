@@ -460,22 +460,47 @@ class DecisionPathFlagsTests(unittest.TestCase):
     pin that reuse (each boundary is asserted against the constant itself, not a copied
     literal) and the rule that the flags classify without ever changing a score."""
 
-    def _cand(self, uv, tav, forfeit=None, premium=0.0, take_prob=1.0):
+    def _cand(self, uv, tav, forfeit=None, premium=0.0, take_prob=1.0, cliff=None):
         # take_prob defaults to 1.0 (fully credible) so every PRE-EXISTING test in this class
         # -- none of which cares about the credible-path gate -- keeps exercising exactly the
         # boundary it was written to test, undisturbed by that gate's addition.
         return {"universal_value": uv, "team_acquisition_value": tav,
                 "positional_forfeit": forfeit, "rival_premium": premium,
-                "rival_premium_take_probability": take_prob}
+                "rival_premium_take_probability": take_prob,
+                "positional_cliff": ({"tier": cliff} if cliff is not None else None)}
 
-    def test_cliff_protection_at_the_standout_gap_boundary(self):
-        below = self._cand(90, 95, forfeit=ps.NECESSITY_STANDOUT_REFERENCE_GAP - 0.1)
-        at = self._cand(80, 85, forfeit=ps.NECESSITY_STANDOUT_REFERENCE_GAP)
-        missing = self._cand(70, 75, forfeit=None)
-        flags = ps.decision_path_flags([below, at, missing])
+    def test_cliff_protection_fires_on_the_material_cliff_tiers_and_no_others(self):
+        # REPLACES the old standout-gap boundary test, which pinned a rule #160 deliberately
+        # removed: cliff_protection used to read `positional_forfeit >=
+        # NECESSITY_STANDOUT_REFERENCE_GAP`, a normalizer's reference applied to a quantity
+        # twenty times its range. Deleting that test without replacing it would have dropped
+        # this flag's only behavioural coverage, so the boundary moved rather than vanished.
+        high = self._cand(90, 95, cliff="HIGH")
+        medium = self._cand(85, 90, cliff="MEDIUM")
+        low = self._cand(80, 85, cliff="LOW")
+        no_cliff = self._cand(75, 80, cliff=None)
+        flags = ps.decision_path_flags([high, medium, low, no_cliff])
+        self.assertTrue(flags[0]["cliff_protection"], "HIGH is a material cliff")
+        self.assertTrue(flags[1]["cliff_protection"], "MEDIUM is a material cliff")
+        self.assertFalse(flags[2]["cliff_protection"], "LOW earns no necessity points")
+        self.assertFalse(flags[3]["cliff_protection"],
+                         "no computable cliff means nothing to protect against, not True")
+
+    def test_forfeit_alone_no_longer_lights_cliff_protection(self):
+        # The specific regression #160 repaired, pinned directly: an enormous forfeit with no
+        # detected cliff used to fire this flag and must not any more. Without this, reverting
+        # the flag to the old forfeit rule would still pass the tier test above.
+        huge_forfeit_no_cliff = self._cand(90, 95, forfeit=1000.0, cliff=None)
+        flags = ps.decision_path_flags([huge_forfeit_no_cliff])
         self.assertFalse(flags[0]["cliff_protection"])
-        self.assertTrue(flags[1]["cliff_protection"])
-        self.assertFalse(flags[2]["cliff_protection"])
+
+    def test_the_material_tier_set_is_derived_from_the_points_table(self):
+        # CLIFF_PROTECTION_TIERS must stay the tiers the engine actually prices into necessity.
+        # Hand-listing them in either place lets the two definitions drift apart silently, which
+        # is the whole reason it is derived.
+        self.assertEqual(
+            set(ps.CLIFF_PROTECTION_TIERS),
+            {tier for tier, points in ps.NECESSITY_CLIFF_POINTS.items() if points > 0})
 
     def test_block_opportunity_at_the_two_dedicated_slots_premium_boundary(self):
         # 2x, not 1x, deliberately: one slot's worth of rival need fired for 73% of

@@ -5216,3 +5216,22 @@ What changed is that the relationship stopped being a coincidence and started be
 The orphaned `forfeit` local was removed with it. A local left behind after its only consumer
 moves implies a dependency that no longer exists, and this file has already been bitten once by
 a comment asserting the opposite of its own code (#168).
+
+### The gate earned its keep: #160's first suite run was RED
+
+`test_cliff_protection_at_the_standout_gap_boundary` failed, and correctly -- it pinned the rule
+#160 deliberately removed. This is exactly why the push is armed behind the suite rather than
+fired on a comment-only-looking diff: the change was small, well-reasoned, measured on five
+formats, and still broke a real test.
+
+REPLACED, NOT DELETED. Dropping that test would have removed cliff_protection's only behavioural
+coverage while calling the change "done". The boundary moved instead:
+
+    fires on the material tiers and no others   HIGH/MEDIUM yes, LOW no, absent no
+    forfeit alone no longer lights the flag     the exact regression #160 repaired
+    the tier set is DERIVED from the points table   so the two cannot drift apart
+
+Mutation-checked 4/4, each turning the suite red: widening the tier set to include LOW; reverting
+the flag to the old forfeit rule; narrowing to HIGH only; and replacing the context threshold's
+mean with the full sum. The second is the one that matters -- without it, a revert to the old
+rule would still have passed the tier test.
