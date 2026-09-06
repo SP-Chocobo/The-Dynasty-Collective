@@ -1,0 +1,108 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Draft Room mockups — index</title><style>
+:root {
+  --bg: #15120b;
+  --surface: #1f1a11;
+  --surface-2: #1a1610;
+  --line: #2c2517;
+  --line-2: #3f3522;
+  --ink: #ece3d2;
+  --muted: #a79a83;
+  --dim: #776d5a;
+  --emerald: #1a9e4b;
+  --emerald-b: #4ee08c;
+  --gold: #d4a017;
+  --gold-b: #f7cf4a;
+  --violet: #9457d4;
+  --violet-b: #c9a4f0;
+  --crimson: #b0193c;
+  --crimson-b: #ff6b85;
+  --sky: #1466c4;
+  --sky-b: #6fb2f7;
+  --amber: #e07b0a;
+  --amber-b: #f9a828;
+  --cliff: #0d9488;
+  --cliff-b: #3ad9c8;
+  --block: #c2410c;
+  --block-b: #f9a05c;
+  --pure: #e2d8c3;
+  --tie: #7b7059;
+  --tie-b: #a99d84;
+  --status-ok: #4ee08c;
+  --status-bad: #7b7059;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; }
+body { background: var(--bg); color: var(--ink); font-family: "Segoe UI", system-ui, sans-serif; font-size: 15px; line-height: 1.5; }
+.mono { font-family: "JetBrains Mono", "DejaVu Sans Mono", monospace; }
+.display { font-family: "Cinzel", "Trajan Pro", Georgia, "Times New Roman", serif; letter-spacing: .06em; }
+:focus { outline: none; }
+:focus-visible { outline: 2px solid var(--gold); outline-offset: -1px; }
+.badge-necessity-must-take { background: rgba(148,87,212,0.18); color: #c9a4f0; border: 1px solid #9457d4; box-shadow: 0 0 0 1px rgba(201,164,240,0.35), 0 0 8px rgba(148,87,212,0.45); }
+.badge-necessity-strong { background: rgba(20,102,196,0.18); color: #6fb2f7; border: 1px solid #1466c4; }
+.badge-necessity-preferred { background: rgba(26,158,75,0.18); color: #4ee08c; border: 1px solid #1a9e4b; }
+.badge-necessity-close-call { background: rgba(224,123,10,0.18); color: #f9a828; border: 1px solid #e07b0a; }
+.badge-necessity-low { background: rgba(176,25,60,0.18); color: #ff6b85; border: 1px solid #b0193c; }
+.pill-QB { background: rgba(143,134,240,0.18); color: #8f86f0; }
+.pill-RB { background: rgba(23,191,160,0.18); color: #17bfa0; }
+.pill-WR { background: rgba(74,168,239,0.18); color: #4aa8ef; }
+.pill-TE { background: rgba(232,104,63,0.18); color: #e8683f; }
+.pill-K { background: rgba(160,148,128,0.18); color: #a09480; }
+.pill-DEF { background: rgba(239,127,192,0.18); color: #ef7fc0; }
+.pill-DL { background: rgba(160,148,128,0.18); color: #a09480; }
+.pill-LB { background: rgba(160,148,128,0.18); color: #a09480; }
+.pill-DB { background: rgba(160,148,128,0.18); color: #a09480; }
+.pill { display: inline-block; font-family: "JetBrains Mono", "DejaVu Sans Mono", monospace; font-size: .66rem; font-weight: 700; padding: .1rem .4rem; border-radius: 4px; letter-spacing: .04em; }
+.necessity-pill { font-family: "JetBrains Mono", "DejaVu Sans Mono", monospace; font-size: .66rem; font-weight: 700; padding: .16rem .5rem; border-radius: 4px; letter-spacing: .03em; white-space: nowrap; }
+.unit { color: var(--muted); font-size: .68em; letter-spacing: .02em; margin-left: .2em; }
+/* ABSENCE. One mark, everywhere: muted, hatched, with a title. It can never be mistaken for a
+   small number, an empty cell, or a zero-length bar. */
+.absent {
+  color: var(--muted); font-weight: 500; cursor: help; border-radius: 3px; padding: 0 .3em;
+  background: repeating-linear-gradient(135deg, transparent 0 3px, color-mix(in srgb, var(--line-2) 75%, transparent) 3px 4px);
+}
+.state-word { font-family: "JetBrains Mono", "DejaVu Sans Mono", monospace; font-size: .64rem; letter-spacing: .05em; text-transform: uppercase; padding: .08rem .4rem; border-radius: 3px; border: 1px solid var(--line-2); color: var(--muted); }
+.state-word.measured { color: var(--muted); }
+.state-word.imputed { color: var(--amber-b); border-color: var(--amber); }
+.state-word.unavailable { color: var(--muted); border-style: dashed; }
+
+/* The spec card: what this variant asserts and what it gives up, and the fixture note. */
+.spec {
+  margin: 0 0 1.1rem; padding: .8rem 1rem; border: 1px solid var(--line); border-radius: 8px;
+  background: var(--surface-2); font-size: .82rem; color: var(--muted); display: grid;
+  grid-template-columns: auto 1fr; gap: .25rem .9rem; align-items: baseline;
+}
+.spec b { color: var(--ink); }
+.spec .k { font-family: "JetBrains Mono", "DejaVu Sans Mono", monospace; font-size: .66rem; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+.spec .controls { grid-column: 1 / -1; display: flex; gap: .6rem; flex-wrap: wrap; margin-top: .3rem; }
+.spec button {
+  font-family: "JetBrains Mono", "DejaVu Sans Mono", monospace; font-size: .68rem; letter-spacing: .04em; text-transform: uppercase;
+  background: var(--surface); color: var(--muted); border: 1px solid var(--line-2); border-radius: 6px;
+  padding: .3rem .7rem; cursor: pointer;
+}
+.spec button[aria-pressed="true"] { color: var(--ink); border-color: var(--gold); box-shadow: inset 0 -2px 0 var(--gold); }
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { transition-duration: .001ms !important; animation-duration: .001ms !important; }
+}
+
+h1 { font-family: "Cinzel", Georgia, serif; letter-spacing: .08em; font-weight: 600; margin: .2rem 0; }
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(22rem, 1fr)); gap: .8rem; margin-top: 1rem; }
+.v { border: 1px solid var(--line); border-radius: 10px; padding: .9rem 1rem; background: var(--surface-2); display: flex; flex-direction: column; gap: .35rem; }
+.v a { color: var(--gold-b); font-weight: 700; text-decoration: none; font-size: 1.05rem; }
+.v .tag { color: var(--muted); font-size: .84rem; }
+.v .k { font-family: "JetBrains Mono", monospace; font-size: .6rem; letter-spacing: .1em; text-transform: uppercase; color: var(--dim); margin-top: .3rem; }
+.v p { margin: 0; font-size: .84rem; }
+.sec { font-family: "JetBrains Mono", monospace; font-size: .64rem; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); margin: 1.6rem 0 .2rem; border-bottom: 1px solid var(--line-2); padding-bottom: .3rem; }
+.gates { font-size: .84rem; color: var(--muted); max-width: 90ch; }
+.gates li { margin: .15rem 0; }
+.page { max-width: 1180px; margin: 0 auto; padding: 1.4rem 1.2rem 4rem; }</style></head>
+<body><div class="page">
+<h1>Gold Wyrm Dynasty · Draft Room directions</h1>
+<div class="gates"><p>Every mockup renders the same real snapshot (12-team superflex dynasty, on the clock at 3.03, 16 picks to the next turn) plus two real IDP rows, one real negative-value kicker, and two labelled fixture rows (an unpriced position-best with every Optional null; a row of measured zeros). Each page has a button to promote the unpriced row to leader and one to simulate reduced motion.</p>
+<p>Gates every variant was built against and self-tested on (Node ran each page's JS on the fixture in both leader orders):</p>
+<ul><li><b>G1</b> a None never renders as 0 / 0% / an empty slot — it is a hatched em-dash with a title.</li><li><b>G2</b> a measured 0.0 renders as 0.0.</li><li><b>G3</b> no bounded geometry on the UV-points scale; the one axis drawn (B3) is signed with a marked zero.</li><li><b>G4</b> gold marks user state and chrome only.</li><li><b>G5</b> meaning-bearing text ≥ 4.5:1 and glyphs ≥ 3:1 at rest — hierarchy is size, weight and detail, never faded data.</li><li><b>G6</b> the engine's order is never re-sorted; the relevance tier is the engine's own necessity vocabulary.</li><li><b>G7</b> every animation dies under prefers-reduced-motion.</li></ul></div>
+<div class="sec">Track C — the Draft Room page: five answers to "what does hierarchy mean here"</div>
+<div class="grid"><div class="v"><a href="draft_room_v1_reliquary.html">C1 · Reliquary</a><span class="tag">the incumbent's shape, argued with: value leads, size carries hierarchy</span><span class="k">asserts</span><p>The acquisition value is the loudest element on every row and its type size tracks decision relevance (decide / context / tail), so the eye lands on the top six before it reads a word. The necessity badge is demoted to a mono caption. The tail folds into one line that states its value range. Glass plates, a gold hairline and a slow chrome sheen carry the brand; no data fades.</p><span class="k">sacrifices</span><p>Comparison across rows is by scanning one column; the reasons live behind a click. A candidate outside the decision tier gets less room even when a drafter wants to argue for him.</p></div><div class="v"><a href="draft_room_v2_ledger.html">C2 · Ledger</a><span class="tag">density and comparison: a real table with unit headers and a sliding evidence drawer</span><span class="k">asserts</span><p>Every quantity is a column with its unit in the header, so nothing on the page is a bare number; the decision band is bracketed, the tail folds. Selecting a row slides a drawer in from the right with the reasons and the full numbers-with-units list. Hierarchy is row height and type size only.</p><span class="k">sacrifices</span><p>It reads as a spreadsheet. The prose explanation is one click away instead of in the row, and the page is wide -- on a phone the table must scroll horizontally.</p></div><div class="v"><a href="draft_room_v3_verdict.html">C3 · Verdict</a><span class="tag">the reason leads: a verdict plate for the pick, sentence cards for the field</span><span class="k">asserts</span><p>The pick is a plate whose text is the argument, with the numbers as a footer; every other candidate is a card that leads with its forces and two sentences. Hierarchy is the amount of text: decision cards get reasons, context cards get one line, the tail gets a name and a value.</p><span class="k">sacrifices</span><p>Column comparison is gone -- to compare two numbers you read two cards. It is the most honest about WHY and the least efficient about HOW MUCH, and it needs more vertical space than any other direction.</p></div><div class="v"><a href="draft_room_v4_hoard.html">C4 · Hoard</a><span class="tag">the departure: candidates as cut gems on a cloth, the clock as an orb, the tail in a tray</span><span class="k">asserts</span><p>A striking, spatial board: card size is relevance, facet tint is position, the leader spans the width with a 3.4rem numeral, and the cards tilt slightly under the pointer (dead under reduced motion). The tail is a tray of small stones with names and values only. Gold is the orb's ring and the leader's border -- chrome, never a value.</p><span class="k">sacrifices</span><p>Rank as a strict vertical order is weakened by the grid; the eye reads size before rank number. It is the most expensive layout to keep legible on narrow screens and the least like a drafting tool people already know.</p></div><div class="v"><a href="draft_room_v5_clock.html">C5 · Clock</a><span class="tag">time leads: survival is a marker on a strip of the picks between now and your next turn</span><span class="k">asserts</span><p>The one quantity a drafter cannot recover from -- will he still be here -- is the widest column, drawn as a marker on the actual intervening picks (16 of them, from the snapshot), colour-coded gone / coin-flip / safe with a percentage beside it. The leader is a hero with its reasons; rows stay in the engine's order and grow with relevance. An unestimable survival is a word in the lane, not a marker at zero.</p><span class="k">sacrifices</span><p>Value is a narrow column on the right; the forces are glyphs only. A drafter who thinks in value first has to read across. The strip is a probability marker, not a timeline of who picks when -- it must not be read as 'he goes at pick 9'.</p></div></div>
+<div class="sec">Track B — surfacing the quantities no screen reads: four answers to "where does a state live"</div>
+<div class="grid"><div class="v"><a href="quantities_v1_chips.html">B1 · Chips</a><span class="tag">the incumbent's metric cards finished, plus a Deferral card and coverage chips</span><span class="k">asserts</span><p>Every card label carries its unit and a ? tooltip; the three quantities no card ever showed get their own row -- deferral cost with the floor's state as a word, depth insurance with its caveat, the replacement anchor -- and coverage is a chip in the header that turns amber when a candidate is unpriced. The same chips repeat on the row so the panel and the board agree.</p><span class="k">sacrifices</span><p>It is the busiest of the four: fourteen tiles. The three-state reads as a chip beside a number, which a hurried eye can skip; the caveat text under each new card is what carries the honesty and it is small.</p></div><div class="v"><a href="quantities_v2_sentences.html">B2 · Sentences</a><span class="tag">no cards: every quantity is a clause, every absence is a clause, every state is a word</span><span class="k">asserts</span><p>The Caller's voice with the numbers inside it. Absence cannot be mistaken for a value because it is a sentence ('carries no acquisition value -- an absence, not a zero'); a measured zero is named as measured; the floor's state is a bold word in running text. Units sit beside every number as a small mono suffix.</p><span class="k">sacrifices</span><p>Slow to scan and impossible to compare across candidates at a glance. Sentences are long for the unpriced row by construction. It needs the board beside it; it cannot be the board.</p></div><div class="v"><a href="quantities_v3_axis.html">B3 · Signed axis</a><span class="tag">the value quantities as points on a signed number line with a marked zero; season points on their own axis with the floor as a bracket</span><span class="k">asserts</span><p>The one geometric treatment the scale permits: a ruler, symmetric about a marked zero, its domain taken from the data, never a 0-100 band. Universal value, acquisition value, denial and opportunity cost sit on it as labelled points so the roster-context lift is a visible distance. Projected points and the draft-end floor share a second axis, the floor bracket coloured by its basis. An absence is a hatched slot where the point would be; a negative value is simply left of zero.</p><span class="k">sacrifices</span><p>Two axes per candidate cost height; the per-row version shows acquisition value only. Points close together overlap their labels. It shows relationships better than any other direction and raw magnitudes worse than a numeral.</p></div><div class="v"><a href="quantities_v4_receipt.html">B4 · Receipt</a><span class="tag">small numbers on the row; a provenance sheet slides up with value · unit · basis · coverage for every quantity</span><span class="k">asserts</span><p>The row shows three numbers and a provenance ring (◌ when any quantity rests on an estimate, an anchor, a missing floor or no price). Selecting a row slides a sheet up from the bottom listing every quantity with its unit, its basis word and its coverage note -- the only direction where depth_exposure's 'basis not carried' gap and the floor's ± error bar are visible.</p><span class="k">sacrifices</span><p>Everything that matters most is one click away. The sheet is a table of fourteen lines, dense and mono; a drafter on a clock will read the row and skip the receipt. The provenance ring is a single glyph carrying four different flags.</p></div></div>
+</div></body></html>
