@@ -10,7 +10,7 @@ import json
 import unittest
 
 import draft_board_ui as ui
-import draft_room as dr
+import pick_synthesis as ps
 from pick_synthesis import CandidateSnapshot, PickSnapshot
 
 
@@ -372,12 +372,12 @@ class WaitingCostProseSaysWhenTheFloorIsAssumed(unittest.TestCase):
                           horizon_basis=horizon_basis)
 
     def test_a_measured_floor_is_stated_without_a_hedge(self):
-        note = ui._waiting_note(self._with_basis(dr.APPETITE_MEASURED))
+        note = ui._waiting_note(self._with_basis(ps.HORIZON_BASIS_MEASURED))
         self.assertIsNotNone(note, "vacuous: no waiting note produced at all")
         self.assertNotIn("estimate", note["title"].lower())
 
     def test_an_imputed_floor_says_so(self):
-        note = ui._waiting_note(self._with_basis(dr.APPETITE_IMPUTED))
+        note = ui._waiting_note(self._with_basis(ps.HORIZON_BASIS_IMPUTED))
         self.assertIsNotNone(note, "vacuous: no waiting note produced at all")
         self.assertIn("estimate", note["title"].lower())
         self.assertIn("too thin to measure", note["title"])
@@ -385,6 +385,6 @@ class WaitingCostProseSaysWhenTheFloorIsAssumed(unittest.TestCase):
     def test_the_two_actually_differ(self):
         # Guards the pair: if the note ignored horizon_basis entirely, both tests above could
         # still pass off one shared string that happened to contain the word.
-        measured = ui._waiting_note(self._with_basis(dr.APPETITE_MEASURED))["title"]
-        imputed = ui._waiting_note(self._with_basis(dr.APPETITE_IMPUTED))["title"]
+        measured = ui._waiting_note(self._with_basis(ps.HORIZON_BASIS_MEASURED))["title"]
+        imputed = ui._waiting_note(self._with_basis(ps.HORIZON_BASIS_IMPUTED))["title"]
         self.assertNotEqual(measured, imputed)

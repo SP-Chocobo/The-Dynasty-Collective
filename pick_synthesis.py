@@ -1083,6 +1083,27 @@ class CandidateSnapshot:
     fills_required_slot: bool = False
 
 
+#: The vocabulary of CandidateSnapshot.horizon_basis, re-exported at the snapshot boundary.
+#:
+#: BOUND to draft_room's constants, never copied: there is still exactly one definition of each
+#: value, and a rename or revalue there follows through here automatically. What this adds is a
+#: LEGAL CHANNEL. A snapshot consumer may not import from draft_room -- reaching a valuation
+#: module is how a consumer recomputes what the frozen snapshot already decided, and
+#: test_pick_synthesis pins that with an allowance of exactly one unit constant. So a consumer
+#: that needs to branch on this field had no way to name the value and used a literal instead,
+#: which is the drift #122 measured: renaming APPETITE_IMPUTED passed the full suite while the
+#: Draft Room's "this floor is an estimate" sentence silently stopped rendering.
+#:
+#: The vocabulary belongs here on its own terms, not only as a workaround: horizon_basis is a
+#: field of THIS dataclass, and the tokens a field can hold are part of that field's contract.
+#: All three are exported rather than only the one branched on today -- a partial vocabulary is
+#: an invitation to write the next literal.
+HORIZON_BASIS_MEASURED = dr.APPETITE_MEASURED
+HORIZON_BASIS_IMPUTED = dr.APPETITE_IMPUTED
+HORIZON_BASIS_UNAVAILABLE = dr.APPETITE_UNAVAILABLE
+
+
+
 @dataclass(frozen=True)
 class PickSnapshot:
     """The full frozen state a single "Debate My Pick" run reasons over. candidates is a tuple,

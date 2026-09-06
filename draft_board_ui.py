@@ -41,9 +41,11 @@ import json
 from typing import Optional
 
 import design_system
-from draft_room import APPETITE_IMPUTED, SLEEPER_WEEKLY_TO_SEASON_FACTOR
+from draft_room import SLEEPER_WEEKLY_TO_SEASON_FACTOR
 from player_universe import FLEX_SLOT_POSITIONS
-from pick_synthesis import DEFAULT_NARROW_COUNT, CandidateSnapshot, PickSnapshot
+from pick_synthesis import (
+    DEFAULT_NARROW_COUNT, HORIZON_BASIS_IMPUTED, CandidateSnapshot, PickSnapshot,
+)
 
 # The class NAMES the necessity badges use in the embedded HTML below -- the CSS itself
 # comes from design_system.BADGE_NECESSITY_CSS, the same source app.py's own <style> block
@@ -134,13 +136,14 @@ def _waiting_note(c: CandidateSnapshot) -> Optional[dict]:
     # confidence of a measured one. Measured on a real 12-team draft, the imputed case covers
     # rounds 3 through 15 and four of six positions by round 10, so this is the common case
     # late rather than a rare footnote.
-    # APPETITE_IMPUTED, not the literal "imputed". Measured: renaming that constant used to
+    # HORIZON_BASIS_IMPUTED, not the literal "imputed". Measured: renaming the constant it is
+    # bound to used to
     # pass the FULL 2209-test suite, because three independent copies of the string existed
     # (the producer's constant, this comparison, and the tests' own fixture) with nothing
     # linking them -- the UI and the tests agreed with each other while the producer drifted
     # away from both, and this sentence silently stopped rendering. A basis state that gates a
     # NUMBER is caught by value regressions; one that gates only prose had nothing catching it.
-    if c.horizon_basis == APPETITE_IMPUTED:
+    if c.horizon_basis == HORIZON_BASIS_IMPUTED:
         basis += (
             f" That floor is an estimate: {c.position}'s remaining pool is too thin to measure"
             f" its own depth decay, so the average of the positions that still can be measured"

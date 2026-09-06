@@ -132,6 +132,33 @@ class ABasisStateIsReferencedByNameNotByLiteralTests(unittest.TestCase):
                     fh.write(source)
                 self.assertEqual(offences(Path(fh.name)), [], f"scanner false-fired on {why}")
 
+    def test_the_re_exported_vocabulary_is_BOUND_to_its_definer_not_copied(self):
+        """pick_synthesis re-exports the horizon-basis vocabulary so a snapshot consumer has a
+        legal way to name these values -- consumers may not import from draft_room at all (that
+        boundary is pinned separately, and this pass tripped it). A re-export written as
+        `HORIZON_BASIS_IMPUTED = "imputed"` would satisfy every other test here while quietly
+        restoring the exact defect: two definitions of one value, drifting apart on the next
+        rename. Found by mutating the binding into a copy and watching everything stay green.
+
+        The RHS must be an attribute of the defining module. Checked in source rather than by
+        comparing values, because equal strings prove nothing -- a copy and a binding compare
+        equal right up until the moment one of them changes."""
+        tree = ast.parse((_HERE / "pick_synthesis.py").read_text())
+        checked = 0
+        for node in ast.walk(tree):
+            if not isinstance(node, ast.Assign):
+                continue
+            for target in node.targets:
+                if not (isinstance(target, ast.Name) and target.id.startswith("HORIZON_BASIS_")):
+                    continue
+                checked += 1
+                self.assertIsInstance(
+                    node.value, ast.Attribute,
+                    f"{target.id} is assigned a literal; bind it to the module that defines the "
+                    "vocabulary so a rename there cannot leave this copy behind",
+                )
+        self.assertGreaterEqual(checked, 3, "the re-exported vocabulary went missing entirely")
+
     def test_it_is_scanning_a_real_and_non_trivial_set_of_modules(self):
         """A glob that silently matched nothing would make every assertion above vacuous."""
         names = {p.name for p in _PRODUCTION}
