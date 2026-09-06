@@ -5259,3 +5259,43 @@ Now they read the same quantity and cannot contradict each other. This was not t
 the change and is not claimed as one -- the change was ruled on the category error. It is
 recorded because it is a real user-visible defect that closed silently, and a defect that closes
 without being written down is one nobody can be sure stayed closed.
+
+## #173 -- the absence contract stops at a LANGUAGE boundary, and #158 never crossed it
+
+Found by the adversarial UI critic, verified here against the file rather than taken on report.
+
+#158 repaired the absence contract at six Python sites so an unpriced candidate could not be
+misreported. The board's JAVASCRIPT does the same work over the same payload, and it was never
+in that scan. Confirmed live in `draft_board_ui.py`:
+
+    :643  const leaderUv = ordered[0].uv;            unguarded
+    :698  (c.cliffTypical || 0).toFixed(1)           the `|| 0` idiom the contract forbids
+    :704  ${c.uv}                                    raw, unformatted, unguarded
+    :710  (ordered[0].tav - c.tav).toFixed(1)        arithmetic on a possible null -> NaN
+    :716  ${c.uv} ... (${ordered[0].uv})             two more unguarded
+
+WHY THIS IS NOT THEORETICAL. The leader can legitimately be unpriced: narrow_candidates always
+includes each position's best remaining player whether or not it is priced, and the #154
+feasibility backstop can promote exactly such a row to the top. That is the state #158 existed
+to handle. At it, a person mid-draft reads a sentence explaining their pick that says `null`, or
+"about NaN acquisition-value points off the board leader".
+
+THE SHAPE, and it is the third instance today: a repair that stops at a boundary. #166 was a
+label outliving its quantity; #172 was a term inert because its input never crossed the fixture
+boundary; this is a contract enforced on one side of a language boundary inside a single file.
+The Python sites were enumerable by an AST scan, and the JS in a string literal was not, so the
+scan silently reported full coverage of a partial surface.
+
+Repair is assigned to the UI agent that owns this file. Not repaired here, deliberately: two
+writers in one file is defect #169, which this session has already committed twice.
+
+### The critic's calibration point, worth keeping
+
+Scoring the CURRENT board against the rubric written for the new variants, it fails its own
+house rules -- force ticks at 1.65-2.13:1 (readable only on hover, when the README says the four
+forces are "surfaced directly rather than left to infer"), the unit-disclosure line below AA,
+and the JS absence sites above. Three of the four force glyphs are colour emoji, so `color:`
+never applies and the semantic force channel does not reach the screen at all.
+
+So **"no worse than today" is not the bar.** A variant that merely matches the incumbent inherits
+a failing grade. That framing is more useful than any individual finding in the list.
