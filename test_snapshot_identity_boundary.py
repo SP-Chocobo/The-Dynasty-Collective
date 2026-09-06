@@ -334,6 +334,91 @@ class EvidenceProjectionTests(unittest.TestCase):
         draft_history.record_snapshot("L1", snap, ps.snapshot_identity(snap))
         self.assertEqual(dataclasses.astuple(snap), before)
 
+    def test_the_recorded_columns_cannot_SHRINK_without_the_drop_being_visible(self):
+        """The other direction of test_every_projected_field_is_a_real_candidate_field, which
+        pins projected-implies-real and nothing else.
+
+        FOUND BY MUTATION, not by reading. Deleting "positional_forfeit" from
+        _CANDIDATE_EVIDENCE_FIELDS survived a full 2195-test run: every stored record stayed
+        well-formed, every existing test stayed green, and the historical record silently lost a
+        column. candidate_evidence's own docstring said "a test pins the field list against the
+        dataclass" -- true, but narrower than it reads, and this is the half that was missing.
+
+        A FLOOR, not an equality pin, for assertion_floors' reason (§19.8): an exact set fails on
+        every addition, so the regeneration command gets run reflexively and a check whose repair
+        is reflexive is not a check. Adding a column asks nothing. Removing one edits this literal
+        in the same commit as the removal, where a reviewer sees the name go and reads why.
+
+        The floor lives HERE rather than beside _CANDIDATE_EVIDENCE_FIELDS deliberately: a floor
+        in the same file as the thing it constrains can be edited in the same careless motion.
+        """
+        recorded_floor = frozenset({
+            "player_id", "name", "position", "team",
+            "universal_value", "need_bonus", "eligibility_bonus", "team_acquisition_value",
+            "bpa_source", "confidence",
+            "pick_necessity", "necessity_label",
+            "survival_probability", "intervening_picks",
+            "positional_forfeit", "rival_premium", "denial_team",
+            "positional_cliff", "position_run_detected",
+            "near_tie_with_leader", "cliff_protection", "block_opportunity", "pure_value",
+            "context_elevated", "reach_label", "projected_points", "waiting_cost",
+        })
+        dropped = sorted(recorded_floor - set(draft_history._CANDIDATE_EVIDENCE_FIELDS))
+        self.assertEqual(
+            dropped, [],
+            "the stored evidence record lost column(s) -- if that is deliberate, drop them from "
+            "this floor in the same commit so the removal lands in a reviewable diff",
+        )
+
+    def test_every_recorded_column_carries_the_candidates_OWN_value(self):
+        """The second mutation that survived a full suite: keep a name in the field list and
+        stop reading its value, and the column becomes permanently null.
+
+        That one is invisible precisely BECAUSE of the absence contract. A genuinely unpriced
+        field is stored as null and must be (test_absence_is_stored_as_absence_never_as_zero
+        requires it), so on disk "absent because unpriced" and "absent because the projector
+        stopped reading it" are the same bytes. EXCLUDE / PROPAGATE / ORDER LAST says what to do
+        with an absence; it says nothing about telling those two apart.
+
+        So this projects a candidate whose every field carries a value no plausible hardcode
+        would produce -- never None, never False, never 0, never "" -- and requires each column
+        to arrive intact. It catches a dropped read, a hardcoded default, a field read off the
+        wrong attribute, and a value transformed in transit, as one property rather than four.
+
+        Sentinels are DERIVED from the dataclass's own annotations, so a field added later is
+        covered without anyone remembering to extend a list -- and an annotation this cannot
+        type raises here, which forces a decision instead of silently skipping the field.
+        """
+        def sentinel(field, i):
+            annotation = str(field.type)
+            if "bool" in annotation:
+                return True                       # distinguishable from the False default
+            if "dict" in annotation:
+                return {"sentinel": field.name}
+            if "str" in annotation:
+                return f"sentinel-{field.name}"
+            if "int" in annotation:
+                return 1000 + i
+            if "float" in annotation:
+                return 1000.5 + i
+            raise AssertionError(
+                f"{field.name}: {annotation} is a type this test cannot build a sentinel for. "
+                "Add one rather than excluding the field -- an unsentinelled field is an "
+                "uncovered column."
+            )
+
+        fields = list(dataclasses.fields(CandidateSnapshot))
+        values = {f.name: sentinel(f, i) for i, f in enumerate(fields)}
+        row = draft_history.candidate_evidence(CandidateSnapshot(**values))
+
+        for name in draft_history._CANDIDATE_EVIDENCE_FIELDS:
+            with self.subTest(column=name):
+                self.assertEqual(
+                    row[name], values[name],
+                    f"the stored record's {name!r} is not the candidate's {name!r} -- the column "
+                    "is present and its value is not being read",
+                )
+
     def test_the_projection_is_compact_not_the_whole_pool(self):
         """Plan v2 asked for a compact immutable evidence projection rather than raw pools.
         A candidate row keeps a chosen subset, not all 37 CandidateSnapshot fields."""
