@@ -4960,3 +4960,51 @@ pinned at `ce9d631`, before that counter existed, so its absence here is the pin
 It arrives on the next full run, where it is expected to read "no unpriced candidate reached any
 of the N decisions" in every arm -- for the reason #171 gives, that the draft halts at exactly
 the boundary that would produce one.
+
+## The eight freeze rulings, and the three clarifications that shape #160
+
+All eight docket cards were ruled by the owner (2026-09-06, 16:12-16:21 UTC), read back from
+the artifact store rather than paraphrased from memory:
+
+    #154/#155/#114   Phase 3 scope -- re-anchor an exhausted position
+    #160             Commission a derivation for each constant, BEFORE FREEZE
+    #161/#52         Run #52 blind and unbriefed, but UNSCORED
+    #165             Phase 3 -- carry it when the horizon layer is redefined
+    #167             Demote reach_label to display-only
+    #49/#88/#109/#120  Accept all four as known-open at freeze
+    #53/#36/#137     Freeze the ENGINE ONLY; the interface track continues
+    #55              Defer until after the #154 ruling lands
+
+TWO CONSEQUENCES that reshape the path rather than just filling blanks:
+
+**#55 resolved itself the moment #154 did.** Necessity-in-selection was deferred until the #154
+ruling landed; #154 landed as Phase 3, so #55 follows it there rather than holding its own queue
+slot. No separate decision is owed.
+
+**The freeze blocker moved.** #154 was the blocker; ruling it Phase 3 takes it OFF the freeze
+path and puts #160 there instead -- it is now the only ruling carrying "before freeze". The
+critical path is therefore: derive the three constants -> demote reach_label -> freeze the
+engine -> run #52 blind and unscored.
+
+### The three clarifications, and the reading where two of them interact
+
+Asked before starting, because each would have changed the work:
+
+1. **What a derivation may conclude:** it may conclude RESTRUCTURE -- "this constant is
+   structurally wrong" or "it should not exist" -- and that verdict returns to the owner. It
+   does not land as a diff on my own authority.
+2. **What "before freeze" means:** FULLY IMPLEMENTED pre-freeze, restructures included.
+3. **#167's boundary:** out of engine math, but it STAYS in the debate prompt.
+
+(1) and (2) are compatible, and the way they compose is worth stating because it is not the
+obvious reading of either alone: a structural conclusion goes to the owner as a VERDICT, and
+once ruled it is implemented BEFORE the freeze rather than deferred to Phase 3. **So the freeze
+waits on those rulings.** The engine does not freeze while a derivation's structural verdict is
+outstanding. That is a stronger pre-freeze bar than #160 carried on the docket, and it is the
+owner's call, so it is recorded here rather than negotiated.
+
+(3) is the conservative half of #167 and deliberately so. The ablation I ran measured the ENGINE
+path -- 0 of 36 board states changed. It measured nothing about what `reach_label` does inside a
+debate prompt. Removing it from the prompt would be acting where nothing was established, which
+is the exact error class this pass exists to catch, so the prompt keeps it and the prompt effect
+is registered as explicitly UNMEASURED rather than silently assumed absent.
