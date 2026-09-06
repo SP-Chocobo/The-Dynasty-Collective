@@ -4755,3 +4755,95 @@ untouched for its own reason -- Decision A is reopened and no constant is to be 
 This is a gradeability finding about the audit record, not about the engine. The engine is
 unaffected. What is affected is the claim, repeated seven times, that a known defect was being
 deliberately preserved -- a claim this project could not have substantiated if asked.
+
+## #164 — FREEZE-READINESS TRIAGE: one blocker family, and it is the owner's to rule on
+
+The target is a clean bill of health, freezable. This classifies every open item against that
+gate. The headline first, because it is the whole answer:
+
+**The engine is ONE architectural ruling away from freezable, and I cannot make that ruling.**
+
+The full battery over 33 formats and ~5,000 picks produces exactly THREE findings, and all three
+are the same audit -- `unfilled_starting_slots`: 10T_half_ppr roster 2 (QB, 7 of 8), 10T_ppr
+roster 2 (QB, 7 of 8), HEAVY_IDP roster 5 (DB, 12 of 13). One finding class, in 3 of 33 formats.
+Everything else the register holds is a decision, a documented acceptable limit, or blocked on
+something outside this machine.
+
+### BLOCKER -- exactly one family (#154 / #155 / #114, with #121 superseding)
+
+A chair finishes a draft unable to field a legal starting lineup. That is user-visible
+wrongness, and it is the only thing in the register that is.
+
+MECHANISM, established rather than assumed. In a 10-team 1QB league, 39 QB picks are made
+against 10 starting slots; by round 9 every row on the board prices negative, and the
+least-negative row is an unstartable backup QB (QB -0.56 against RB -1.45). `feasibility_first`
+binds correctly, at exactly the last pick, with zero QBs left on the board -- so the backstop is
+not failing. It is being handed a shortage that the pricing layer manufactured upstream. #155 is
+the root cause in one line: an exhausted position prices at 0.00 and outranks every live
+position's honest negative.
+
+WHY I AM NOT FIXING IT. Every available repair is a change to what the valuation layer means:
+
+  - re-anchor an exhausted position so 0.00 stops beating a live negative -> changes the VOR
+    reference, which is #50 Phase 3, which the owner holds ("Opus owns the math" was scoped to
+    Phase 3 and Phase 3 has not run).
+  - let feasibility_first bind earlier -> makes the backstop compensate for a pricing defect,
+    which is the shape #154's recharacterization exists to reject.
+  - clamp or floor the negative -> inventing a constant to make an observed regime behave, which
+    is exactly what #56 forbids and what the owner voided Decision A over.
+
+There is no version of this that is a null-check. It is the engine's central question, and it
+is reserved. NEEDS-OWNER, and it is the single item standing between here and a clean bill.
+
+### NEEDS-OWNER -- decisions, not defects
+
+#50 (Phase 3: VOR/replacement/horizon redefinition -- parent of the blocker) - #147 (the anchor
+has a one-season lifetime in a dynasty engine; Phase 3 input) - #152 (the trade_value fallback's
+ceiling is a unit artifact; Phase 3 input) - #165's reserved half (contextualizing an unpriced
+player: material EXISTS, carrying it is a valuation-layer change; Phase 3 input -- see the
+section above) - #160 (Decision A, reopened from zero; no constant to be tuned) - #164 as
+originally filed (runtime normalization invariant; deferred behind Phase 3) - #55 (does
+pick_necessity participate in candidate selection) - #167 (reach_label: 0 of 36 board states
+changed under ablation; demote/remove supported for the engine, LLM-debate effect NOT
+established -- recommendation ready, ratification is the owner's) - #146 (bye week is admissible
+when the asset horizon is one season) - #149 (upload storage custody) - #98 (the §7.4 allowlist
+decision; §7.10 already declined as the owner's call).
+
+### KNOWN-OPEN-ACCEPTABLE -- real, bounded, documented, does not invalidate the engine
+
+#168's behaviour half is now the clean example of this category rather than a loose end: it is
+bounded to superflex QB tails (see the #165 section), the docstring no longer asserts the
+opposite of its code, and the running battery reports "every player priced, so the values are
+totals" for every format -- the population is empty in all 33 arms.
+
+Also here: #153 (need_bonus's cap collapses two roster states in 4WR) - #148 (trend_30d loses
+its sign; the quantity is an unwired orphan) - #163 (the H2 comparator changes 2 of 55 evaluable
+groups, insufficient in both regimes; #84 already pinned marginal_lineup_value as correctly
+stranded) - #122 - #112 - #116 - #119 - #86 - #107/#108 - #110/#111 - #115 - #91/#92/#93/#96/
+#97/#100/#103/#105/#117 (the LLM and operations layer) - #37 - #161 (gradeability, recorded
+above and deliberately not repaired by inventing a target) - #169 (a broken intermediate commit;
+the tree is correct at HEAD and every commit since is clean).
+
+### BLOCKED-EXTERNAL -- cannot be closed on this machine, and no amount of session time changes that
+
+#88 (needs api.sleeper.app reachable) - #120 and #109 (need live provider SDKs) - #49 (needs
+real K/DEF/IDP startup boards the owner supplies). These must be either accepted at freeze or
+the freeze waits on the owner's inputs. They are not engine defects.
+
+### SEQUENCING -- not gates on correctness
+
+#52 (blind audit, after freeze, stays unbriefed) - #53 (reconciliation and freeze, owner's sole
+authority) - #150 (the final-gate battery, running) - #143 - #162 - #158 - #54 - #36/#137 (UI
+and hull extraction, a parallel track that does not gate the engine).
+
+### What this means for the standing order
+
+"Repeat the cycle until the batteries and the audit stop producing meaningful defects" has, on
+this evidence, converged: the batteries now produce ONE finding class, its mechanism is
+established to the pick, and its repair is reserved. Continuing to iterate would not surface
+more -- it would re-measure the same three rows.
+
+So the honest state is not "not yet clean". It is: clean except for one named family, whose fix
+is a decision the owner reserved and #56 forbids me from guessing at. That is a freezable state
+IF the owner is willing to freeze with #154 recorded as a known limitation; it is not one if the
+lineup-legality guarantee is meant to hold. That choice is the ruling I need.
