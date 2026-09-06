@@ -4624,9 +4624,13 @@ transition lands exactly where the chain says it must.
 
 That knife-edge doubles as the mutation check on my own instrument: the probe that returned zero
 for HEAVY_IDP and 10T_ppr DOES report unpriced rows when they exist, so those zeros are a real
-negative result and not a broken predicate. Independently corroborated by the battery running at
-HEAD, whose per-format line reads "every player priced, so the values are totals" -- the #168
-coverage statement, reporting the same fact from a different instrument.
+negative result and not a broken predicate.
+
+CORRECTION, made the same day I wrote it. I first cited the battery as independent corroboration
+here -- its per-format line reads "every player priced, so the values are totals" across all 33
+arms. That is NOT independent evidence and I should not have offered it as such. See #170 below:
+the number behind that sentence is structurally incapable of being anything but zero. The
+knife-edge above stands on its own; the battery adds nothing to it.
 
 Note what this costs #168 and #165's own framing: a 12-team superflex has 24 QB starter slots,
 and the state needs 28 QBs gone. It is reachable, not typical. Every prior sentence in this
@@ -4847,3 +4851,78 @@ So the honest state is not "not yet clean". It is: clean except for one named fa
 is a decision the owner reserved and #56 forbids me from guessing at. That is a freezable state
 IF the owner is willing to freeze with #154 recorded as a known limitation; it is not one if the
 lineup-legality guarantee is meant to hold. That choice is the ruling I need.
+
+## #170 — the battery's reassuring coverage number cannot come out any other way
+
+`roster_strength` reports `unpriced_players` per roster, and every format's summary line says
+"every player priced, so the values are totals." Across all 33 arms and ~5,000 picks the total is
+**0**. I cited that as corroboration for #165. It corroborates nothing, and the reason is
+structural rather than a bug in the counting.
+
+`reference_values` builds the ruler from the PRE-DRAFT board:
+
+    board = dr.compute_draft_board(merger, players_db, [], my_roster_id=None, ...)
+    return {str(row["player_id"]): row["universal_value"] for row in board
+            if row.get("universal_value") is not None}
+
+Two facts close the loop. The opening board prices every row -- measured, in every format. And
+every drafted player is on the opening board, because the pool is "every undrafted valued
+player" and mid-draft pools are that same set minus the drafted. So every drafted id is a key in
+`values`, `values.get(str(pid), 0.0)` never reaches its fallback, and `unpriced_players` is 0 by
+construction rather than by measurement.
+
+WHAT THE SENTENCE ACTUALLY MEANS, versus what it reads as. It reads as "the engine priced
+everyone in this draft." It means "every drafted player had a PRE-DRAFT price." Those come apart
+exactly where #165 lives: a superflex QB tail can be unpriced on the live board at pick 200 and
+still carry a pre-draft price from pick 0, so the roster number is computed against a value the
+engine would no longer stand behind, and the coverage line says everything is fine.
+
+SAME SHAPE AS #161, which is why it is worth a number of its own. There the battery could not
+falsify a `rounds == slots` assumption because a test enforced it. Here the battery cannot report
+a coverage gap because the reference it measures coverage against is taken at the one moment when
+coverage is total. In both cases an instrument reports a reassuring number that could not have
+come out otherwise, and in both cases the discovery came from outside the instrument.
+
+NOT REPAIRED YET, and the repair is not obvious, which is why it is registered rather than fixed.
+The pre-draft ruler is deliberate and correct -- #75/#76 found the moving-ruler defect where the
+reference carried 94.5% of all bpa movement, and `reference_values`' own docstring is right that
+summing across fifteen board states would measure the draft's progress as much as the roster. So
+the fix is NOT "price each player at the moment he was taken". The honest minimum is to stop the
+sentence claiming more than it knows: report coverage against the pre-draft ruler explicitly, and
+separately count players who were unpriced ON THE BOARD AT THE PICK THAT TOOK THEM, which is the
+quantity #165 and #168 are actually about. That second counter does not exist today.
+
+## #171 — QB consumption in superflex is set by the startability floor, not by roster demand
+
+Found while checking whether any battery arm reaches the unpriced regime. It does not, and the
+reason turned out to be more interesting than the question.
+
+Every superflex arm drafts **exactly 28 quarterbacks**. Not approximately: exactly, in all twelve.
+
+    league size      8      10      12      14
+    QB starters     16      20      24      28
+    QB drafted      28      28      28      28
+
+And 28 is not a coincidence. It is the number of QBs that clear `qb_startable_floor`, measured
+per format -- the floor itself differs (162.0 in the standard arms, 163.5 in half-PPR and PPR)
+and the clearing count is 28 under both, out of 39 QBs in the pool.
+
+So across a range where starter demand nearly doubles (16 -> 28), consumption does not move at
+all. The draft takes every QB above the startability floor and then stops, because the ones below
+it lose their replacement anchor, go unpriced, and can no longer compete for a pick. In the
+8-team league that is 28 quarterbacks drafted for 16 starting slots -- 75% over-selection -- and
+in the 14-team league the same 28 happens to match demand exactly.
+
+WHY IT MATTERS FOR THE BLOCKER. #155 says an exhausted position prices at 0.00 and outranks every
+live position's honest negative; #154 says the 1QB shortage is manufactured upstream of the
+backstop. This is the same claim from the opposite direction and in a different league shape: the
+PRICING layer decides how much of a position gets consumed, and roster demand -- the thing a
+human would say governs it -- does not enter. A 1QB league over-selects QBs into a shortage; a
+superflex league consumes a fixed 28 regardless of whether it needs 16 or 28. One mechanism,
+two symptoms.
+
+It also means the battery cannot presently observe the unpriced regime at all, in any arm,
+because the draft halts exactly at the boundary that would produce it. That is a real coverage
+gap -- but the fix is NOT a new format, because no ordinary league shape crosses the line. It is
+whatever falls out of the #154 ruling, since the same pricing behaviour is what stops the draft
+there. Registered, not built.
