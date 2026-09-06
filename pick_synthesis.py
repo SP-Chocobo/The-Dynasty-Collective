@@ -250,6 +250,29 @@ NECESSITY_STANDOUT_WEIGHT = 30.0     # normalized margin over the best OTHER nar
 NECESSITY_STANDOUT_REFERENCE_GAP = 15.0
 NECESSITY_SURVIVAL_WEIGHT = 20.0     # (1 - survival_probability) scaled up
 NECESSITY_CLIFF_POINTS = {"HIGH": 12.0, "MEDIUM": 6.0, "LOW": 0.0}
+
+# #160 (A2), ruled by the owner: cliff_protection is gated on THE CLIFF MACHINERY IT IS NAMED
+# FOR, not on a magnitude borrowed from a different quantity. It used to read
+# `positional_forfeit >= NECESSITY_STANDOUT_REFERENCE_GAP` -- a normalizer's reference, chosen
+# to sit above the leader-second TAV margin distribution (max 12.66 across five formats),
+# applied as a firing threshold to a quantity whose max is 248.0. Twenty times the range, one
+# literal, and it fired on 39-72% of candidates depending on format.
+#
+# DERIVED FROM THE TABLE ABOVE RATHER THAN HAND-LISTED. The engine has already ratified which
+# tiers are material by giving them necessity points; writing "HIGH"/"MEDIUM" out a second time
+# would be a second source of truth that can silently drift from the first (the same reasoning
+# behind league_config.ambiguities() and source_policy's derived allowlist).
+#
+# WHAT THIS DOES AND DOES NOT FIX, measured across five formats before choosing rather than
+# after: HIGH+MEDIUM fires 49.0% pooled (43.5-55.3%), HIGH alone 37.3% (34.8-40.4%). So this
+# does NOT make the badge rare, and it is not claimed to. What it fixes is that the rate is now
+# driven by a real detected cliff carrying its own derived materiality gate, and that it is
+# STABLE: the old rule swung 33 points across formats, this swings 12. HIGH-alone was rejected
+# deliberately -- picking it would mean choosing a bar because its percentage reads better,
+# which is exactly the move #56 exists to forbid.
+CLIFF_PROTECTION_TIERS = frozenset(
+    tier for tier, points in NECESSITY_CLIFF_POINTS.items() if points > 0
+)
 NECESSITY_RUN_BONUS = 6.0
 NECESSITY_DENIAL_WEIGHT = 10.0       # the denial contribution at ONE team-term's worth of
                                      # rival premium. Kept as the RATE's anchor; the ramp's
@@ -263,9 +286,26 @@ NECESSITY_DENIAL_WEIGHT = 10.0       # the denial contribution at ONE team-term'
 #
 # Derived from draft_room's own caps rather than written as 36.0, so a fourth team-specific
 # term moves it automatically instead of silently re-flattening the ramp the way the third did.
-NECESSITY_DENIAL_SATURATION = (
-    dr.NEED_BONUS_MAX + dr.ELIGIBILITY_BONUS_MAX + dr.DEPTH_EXPOSURE_MAX
-)
+#: The three team-specific caps, named ONCE so everything that needs "the bound on their sum"
+#: or "one term's worth" derives from the same tuple. A fourth term added to draft_room lands
+#: here and moves both consumers below automatically (#144's requirement, now shared with #160).
+TEAM_SPECIFIC_CAPS = (dr.NEED_BONUS_MAX, dr.ELIGIBILITY_BONUS_MAX, dr.DEPTH_EXPOSURE_MAX)
+
+NECESSITY_DENIAL_SATURATION = sum(TEAM_SPECIFIC_CAPS)
+
+# #160 (A3), ruled by the owner: anchor context_elevated to the SUM's own bound, exactly as
+# #144 did for the denial ramp -- the same defect, in the one place #144 did not reach.
+#
+# The flag reads `team_acquisition_value - universal_value`, which is the SUM of the three
+# team-specific terms, so its ceiling is their sum (36.0 today). The threshold was
+# NEED_BONUS_MAX -- the cap on ONE of them -- picked back when it was the cap on nearly all of
+# it. #139 added a third term, the quantity's ceiling grew, the constant did not.
+#
+# Expressed as the MEAN cap, which is "one term's worth of contextual lift on a quantity that
+# can hold three". At today's values that is 12.0, so THIS CHANGES NO BEHAVIOUR TODAY, and that
+# is stated plainly rather than dressed up: what changes is that the relationship stops being a
+# coincidence and starts being maintained.
+CONTEXT_ELEVATED_THRESHOLD = sum(TEAM_SPECIFIC_CAPS) / len(TEAM_SPECIFIC_CAPS)
 
 # THE DIVISOR AND THE WEIGHT ARE ONE SLOPE, NOT TWO KNOBS, and that is the whole of what the
 # measurement found. Below saturation the term is `premium x (WEIGHT / DIVISOR)`, so raising
@@ -647,10 +687,24 @@ def decision_path_flags(candidates: list[dict]) -> list[dict]:
     frozen-snapshot architecture exists to prevent). Every boundary here REUSES an existing,
     already-justified engine constant -- no new number was introduced for presentation's sake:
 
-      cliff_protection -- positional_forfeit >= NECESSITY_STANDOUT_REFERENCE_GAP: delaying
-        this candidate's position until the next pick forfeits at least a standout-sized
-        value gap, the same absolute gap this module already treats as "a genuine standout"
-        when it separates candidates.
+      cliff_protection -- this candidate's position carries a MATERIAL DETECTED CLIFF
+        (detect_positional_cliff's tier is in CLIFF_PROTECTION_TIERS, i.e. one the engine
+        already prices into necessity). Taking him now is protection against the drop-off
+        behind him at his own position.
+
+        REBUILT UNDER #160. It used to read `positional_forfeit >= NECESSITY_STANDOUT_
+        REFERENCE_GAP` -- a normalizer's reference borrowed as a firing threshold on a
+        quantity twenty times its range, firing on 39-72% of candidates. It now asks the
+        cliff machinery it is named for. Absence stays False rather than None on purpose:
+        detect_positional_cliff returns None when the player is last at his position or the
+        remaining pool is too small to have a typical gap, and in BOTH of those cases "is
+        there a cliff behind him" genuinely has no cliff to protect against -- so False is
+        the answer, not an invention.
+
+        NOT CLAIMED TO BE RARE. Measured across five formats: 49.0% pooled. The repair is to
+        its MEANING and its STABILITY across formats (a 12-point spread, against 33 before),
+        not to how often it lights.
+
       block_opportunity -- rival_premium >= 2 x NEED_BONUS_PER_DEDICATED_SLOT AND that same
         premium-driving rival's own take_probability clears CREDIBLE_RIVAL_PATH_THRESHOLD:
         at least one intervening rival values him at a MULTIPLE-unfilled-dedicated-starters
@@ -688,15 +742,18 @@ def decision_path_flags(candidates: list[dict]) -> list[dict]:
         "ranked highly substantially because of fit" -- and a UI is expected to surface them as
         one indicator with two readings, never as competing scores.
 
-        READ THE THRESHOLD CAREFULLY. NEED_BONUS_MAX is the cap on ONE of the three terms that
-        make up that gap, and it was picked as this flag's bar back when it was the cap on
-        nearly all of it -- measured then at 0.0% firing and recorded in CDME_CONTRACTS.md as
-        an unreachable threshold. #139 added depth_exposure as a third term; the gap's ceiling
-        grew, the constant did not, and the flag now fires on ~7.8% of priced rows, all of them
-        in the middle rounds. That is a bound that became a discriminator by accident, not a
-        threshold anyone has argued for (#56), and the product decision about what SHOULD light
-        this badge is still open. test_threshold_reachability.py holds the live measurement and
-        fails if it drifts to either never-fires or almost-always-fires.
+        THE THRESHOLD IS NOW DERIVED, AND #160 CLOSED THE PRODUCT DECISION. It reads
+        CONTEXT_ELEVATED_THRESHOLD -- the MEAN of the three team-specific caps, i.e. one term's
+        worth of lift on a quantity that can hold three. It used to read NEED_BONUS_MAX, the cap
+        on ONE of them, chosen back when it was the cap on nearly all of it; #139 added a third
+        term, the ceiling grew, the constant did not. Deriving it from TEAM_SPECIFIC_CAPS means a
+        fourth term moves it automatically instead of silently re-shrinking the bar.
+
+        AT TODAY'S VALUES THIS IS STILL 12.0, so the change is behaviour-free and is not dressed
+        up as more. The scope of the old "~7.8% of priced rows" note is also corrected here: that
+        was one format. Across five it fires 0.0% on four of them and 4.4% on the fifth.
+        test_threshold_reachability.py holds the live measurement and fails if it drifts to
+        either never-fires or almost-always-fires.
 
     Classification over existing numbers, never new scoring: nothing here feeds necessity,
     ranking, or any value -- same rule as near_tie_flags below. Expects each candidate dict
@@ -721,15 +778,18 @@ def decision_path_flags(candidates: list[dict]) -> list[dict]:
 
     flags = []
     for i, c in enumerate(candidates):
-        forfeit = c.get("positional_forfeit")
         premium = c.get("rival_premium") or 0.0
         take_prob = c.get("rival_premium_take_probability")
         credible_rival_path = take_prob is not None and take_prob >= CREDIBLE_RIVAL_PATH_THRESHOLD
         measurable = i in priced
         flags.append({
-            # cliff_protection and block_opportunity read forfeit and rival_premium, which carry
-            # their own absence handling and are not this row's own value -- unchanged.
-            "cliff_protection": forfeit is not None and forfeit >= NECESSITY_STANDOUT_REFERENCE_GAP,
+            # block_opportunity reads rival_premium and cliff_protection reads the cliff dict.
+            # Neither is this row's own value, and both carry their own absence handling, so
+            # neither is gated on `measurable` the way the two value comparisons below are.
+            # `positional_forfeit` is no longer read here at all -- #160 moved cliff_protection
+            # onto the cliff machinery -- and the local that held it is gone with it, rather
+            # than left behind to imply a dependency that no longer exists.
+            "cliff_protection": (c.get("positional_cliff") or {}).get("tier") in CLIFF_PROTECTION_TIERS,
             "block_opportunity": premium >= 2 * dr.NEED_BONUS_PER_DEDICATED_SLOT and credible_rival_path,
             "pure_value": (
                 measurable
@@ -739,7 +799,7 @@ def decision_path_flags(candidates: list[dict]) -> list[dict]:
             ),
             "context_elevated": (
                 measurable
-                and (c["team_acquisition_value"] - c["universal_value"]) >= dr.NEED_BONUS_MAX
+                and (c["team_acquisition_value"] - c["universal_value"]) >= CONTEXT_ELEVATED_THRESHOLD
             ),
         })
     return flags

@@ -5168,3 +5168,51 @@ later to re-measure more sensitively. "It is not connected" closes it.
 The prompt half stands untouched per the ruling, and the 85% prevalence figure remains what it
 always was -- a statement about a DISPLAY label's distribution, with its LLM-debate effect still
 unmeasured and now explicitly registered as such.
+
+## #160 implemented: both restructures landed, and what each one did and did not fix
+
+Ruled by the owner: `cliff_protection` -> gate on the cliff machinery it is named for;
+`context_elevated` -> anchor to the sum's own bound, as #144 did.
+
+### A2 -- cliff_protection now asks the cliff machinery
+
+`CLIFF_PROTECTION_TIERS` is DERIVED from `NECESSITY_CLIFF_POINTS` -- the tiers the engine
+already prices into necessity -- rather than hand-listing "HIGH"/"MEDIUM" a second time where
+the two lists could silently drift apart.
+
+The tier set was MEASURED BEFORE IT WAS CHOSEN, across five formats:
+
+    HIGH + MEDIUM   49.0% pooled   (43.5 - 55.3%)   <- chosen
+    HIGH alone      37.3% pooled   (34.8 - 40.4%)
+    old rule        (39 - 72%)     forfeit >= 15.0
+
+HIGH-alone was REJECTED DELIBERATELY. It reads better, and that is the entire argument for it;
+picking a bar because its percentage is more flattering is the exact move #56 forbids. HIGH and
+MEDIUM are the tiers this engine has already ratified as material, so reusing that split is
+derivation and inventing a tighter one is not.
+
+**WHAT THIS DOES NOT FIX, stated because the temptation is to claim both:** the badge is still
+not rare -- one candidate in two. What changed is that the rate is now produced by a real
+detected cliff carrying its own derived materiality gate, and that it is STABLE across formats:
+a 12-point spread, against the old rule's 33. A flag whose meaning holds steady across league
+shapes is a better flag even when it is not a rarer one.
+
+Absence stays False rather than None, and that is not a shortcut: `detect_positional_cliff`
+returns None when the player is last at his position or the pool is too small for a typical
+gap, and in both of those cases there is genuinely no cliff to be protected from.
+
+### A3 -- context_elevated anchored to the bound of the quantity it reads
+
+`TEAM_SPECIFIC_CAPS` is now named once, and BOTH consumers derive from it: the denial ramp's
+saturation (#144) and this threshold (#160). A fourth team-specific term added to draft_room
+now moves both automatically, where before it would have re-broken the second the way #139
+broke the first.
+
+`CONTEXT_ELEVATED_THRESHOLD` is the MEAN of those caps -- one term's worth of lift on a quantity
+that can hold three. **At today's values this is 12.0, so it changes no behaviour today**
+(measured: 0.8% pooled, unchanged), and that is said plainly rather than dressed up as a repair.
+What changed is that the relationship stopped being a coincidence and started being maintained.
+
+The orphaned `forfeit` local was removed with it. A local left behind after its only consumer
+moves implies a dependency that no longer exists, and this file has already been bitten once by
+a comment asserting the opposite of its own code (#168).
