@@ -225,6 +225,9 @@ def serialize_candidate(c: CandidateSnapshot) -> dict:
         # "over what alternatives" answerable (see draft_simulation.PickRecord).
         "replacementBasis": c.replacement_basis,
         "growthSignal": c.growth_signal,
+        # #154's backstop, now visible. It is an ORDERING fact, not a value, so it renders as a
+        # marker on the row rather than joining the numbers in the focus panel.
+        "fillsRequiredSlot": c.fills_required_slot,
         "flagged": False,  # set by serialize_snapshot against user_selected_player_id
     }
 
@@ -426,6 +429,23 @@ body {
   background-image: linear-gradient(90deg, var(--emerald), var(--gold), var(--violet), var(--crimson));
   background-size: 100% 2px; background-repeat: no-repeat; background-position: top;
 }
+/* Light travelling across metal -- the one decorative animation in the whole surface, on the
+   chrome bar and never on a number. Killed entirely by the shared reduced-motion block. */
+.state-bar { position: relative; overflow: hidden; }
+.state-bar::after {
+  content: ""; position: absolute; top: 0; bottom: 0; left: -40%; width: 40%;
+  pointer-events: none; will-change: transform;
+  background: linear-gradient(105deg, transparent,
+              color-mix(in srgb, var(--gold-b) 14%, transparent) 50%, transparent);
+  animation: wyrm-sheen 11s ease-in-out infinite;
+}
+/* transform, not background-position: a transform sweep is GPU-composited, so the sheen costs
+   nothing during a live draft. Animating background-position would repaint the bar every frame
+   for the same picture. */
+@keyframes wyrm-sheen {
+  0%, 62% { transform: translateX(0); }
+  100%    { transform: translateX(350%); }
+}
 .state-bar .clock { font-weight: 700; font-size: .98rem; }
 .state-tags { display: flex; gap: .5rem; flex-wrap: wrap; font-size: .76rem; }
 .tag { font-family: "JetBrains Mono", monospace; padding: .2rem .55rem; border-radius: 4px; background: var(--surface-2); border: 1px solid var(--line-2); color: var(--muted); letter-spacing: .03em; }
@@ -434,14 +454,37 @@ body {
 __DESIGN_SYSTEM_BADGE_NECESSITY__
 .necessity-pill { font-family: "JetBrains Mono", monospace; font-size: .68rem; font-weight: 700; padding: .18rem .5rem; border-radius: 4px; letter-spacing: .03em; white-space: nowrap; }
 
-.board { display: flex; flex-direction: column; gap: .4rem; }
-.row {
-  background: var(--surface); border: 1px solid var(--line); border-radius: 8px;
-  padding: .8rem 1rem; cursor: pointer;
-  transition: border-color .15s ease, opacity .2s ease;
+.board { display: flex; flex-direction: column; gap: .4rem; position: relative; }
+/* the hoard: one very low ambient warmth behind the top of the stack, so the plates below
+   read as lit from somewhere rather than floating on flat black. */
+.board::before {
+  content: ""; position: absolute; inset: -10% -5% auto -5%; height: 40%;
+  background: radial-gradient(60% 100% at 50% 0%, rgba(212,160,23,.055), transparent 70%);
+  pointer-events: none; z-index: 0;
 }
-.row:hover { border-color: var(--line-2); }
-.row.expanded { border-color: var(--sky); cursor: default; }
+.row {
+  position: relative; z-index: 1;
+  background: linear-gradient(180deg, color-mix(in srgb, var(--surface) 82%, transparent),
+                                      color-mix(in srgb, var(--surface-2) 88%, transparent));
+  backdrop-filter: blur(9px) saturate(1.06);
+  border: 1px solid var(--line); border-top-color: color-mix(in srgb, var(--gold) 22%, var(--line));
+  border-radius: 8px;
+  padding: .8rem 1rem; cursor: pointer;
+  transition: border-color .15s ease, opacity .2s ease, box-shadow .15s ease, background .15s ease;
+}
+/* hover was border-color alone, which on a dark plate is nearly invisible. A gold rail reads
+   instantly and costs no layout. */
+.row:hover {
+  border-color: var(--line-2);
+  box-shadow: inset 3px 0 0 color-mix(in srgb, var(--gold) 70%, transparent);
+}
+/* WAS var(--sky). Sky MEANS "strong secondary signal" everywhere else in this app; spending it
+   on a chrome state (which row is open) leaked a semantic hue into decoration. Expanded is
+   chrome, so it takes the brand gold and sky goes back to meaning only what it means. */
+.row.expanded {
+  border-color: color-mix(in srgb, var(--gold) 55%, var(--line-2)); cursor: default;
+  box-shadow: inset 3px 0 0 var(--gold), 0 6px 22px rgba(0,0,0,.32);
+}
 .row:focus { outline: none; }
 .row:focus-visible { outline: 2px solid var(--gold); outline-offset: -1px; }
 
@@ -451,6 +494,12 @@ __DESIGN_SYSTEM_BADGE_NECESSITY__
 .name { font-size: .95rem; font-weight: 600; }
 .posteam { color: var(--muted); font-size: .8rem; }
 .considering { font-size: .62rem; font-weight: 700; color: var(--gold-b); letter-spacing: .05em; }
+/* amber = system notice, the shared meaning of that token. This is not an urgency claim (the
+   necessity pill owns urgency) -- it is the board telling you it moved a row for legality. */
+.required-slot { font-size: .62rem; font-weight: 700; color: var(--amber-b); letter-spacing: .05em;
+  border: 1px solid var(--amber); border-radius: 9px; padding: 1px 6px; margin-left: .35rem; }
+.basis-note { color: var(--muted); }
+.basis-note b { color: var(--ink); }
 .row-metrics { display: flex; align-items: center; gap: .6rem; flex-wrap: wrap; }
 .tav { font-size: 1rem; font-weight: 700; min-width: 3.1rem; text-align: right; }
 .chevron { color: var(--dim); font-size: .7rem; transition: transform .15s ease; }
@@ -494,9 +543,10 @@ __DESIGN_SYSTEM_BADGE_NECESSITY__
 .focus-inner { overflow: hidden; min-height: 0; }
 .focus-body {
   margin-top: .75rem; padding-top: .75rem; border-top: 1px solid var(--line-2);
-  opacity: 0; transition: opacity .15s ease;
+  opacity: 0; transform: translateY(-6px);
+  transition: opacity .15s ease, transform .22s ease;
 }
-.row.expanded .focus-body { opacity: 1; transition-delay: .05s; }
+.row.expanded .focus-body { opacity: 1; transform: none; transition-delay: .05s; }
 .focus-sentence { font-size: .87rem; color: var(--ink); margin: 0 0 .5rem; line-height: 1.5; max-width: 68ch; }
 .focus-sentence:last-of-type { margin-bottom: 0; }
 .focus-sentence b { font-weight: 700; }
@@ -588,7 +638,7 @@ function focusSentences(c) {
   if (PAYLOAD.decisionRegime === "decisive" && isLeader) {
     s.push(`<p class="focus-sentence"><b>Best-in-class talent, full stop.</b> ${c.survival != null ? Math.round(c.survival * 100) + '% survival to your next turn — ' : ''}he is not walking back to this roster. Take the elite asset.</p>`);
     const support = [];
-    if (c.forces.includes("cliff") && c.forfeit != null) support.push(`the position is thinning fast behind him (≈${c.forfeit.toFixed(0)} pts if you wait)`);
+    if (c.forces.includes("cliff") && c.forfeit != null) support.push(`the position is thinning fast behind him (≈${c.forfeit.toFixed(0)} universal-value points if you wait)`);
     if (c.forces.includes("block")) support.push(`it also denies ${c.denialTeam || "a rival"} a real need`);
     if (c.needBonus > 0) support.push(`it fills a genuine roster gap`);
     if (support.length) {
@@ -615,10 +665,10 @@ function focusSentences(c) {
     const partners = ordered.filter(o => o.id !== c.id && o.forces.includes("tie")).map(o => o.name);
     s.push(isLeader
       ? `<p class="focus-sentence tie-note">${partners.join(", ")} sit within the measured noise band of him — a real group, not a clear lead. Their preference for someone else here isn't a disagreement with the model.</p>`
-      : `<p class="focus-sentence tie-note">He's <b>${(ordered[0].tav - c.tav).toFixed(1)}</b> point(s) off the board leader — inside the measured noise band, so preference is a legitimate tiebreaker here, not a disagreement with the model.</p>`);
+      : `<p class="focus-sentence tie-note">He's <b>${(ordered[0].tav - c.tav).toFixed(1)}</b> acquisition-value point(s) off the board leader — inside the measured noise band, so preference is a legitimate tiebreaker here, not a disagreement with the model.</p>`);
   }
   if (c.contextGap === "elevated") {
-    s.push(`<p class="focus-sentence tie-note">A meaningful share of his acquisition value here is roster fit, not raw talent — about <b>${(c.tav - c.uv).toFixed(1)} points</b> of context lift. Worth knowing if your read on him leans on talent alone.</p>`);
+    s.push(`<p class="focus-sentence tie-note">A meaningful share of his acquisition value here is roster fit, not raw talent — about <b>${(c.tav - c.uv).toFixed(1)} acquisition-value points</b> of context lift. Worth knowing if your read on him leans on talent alone.</p>`);
   }
   if (c.contextGap === "suppressed" && !isLeader) {
     s.push(`<p class="focus-sentence tie-note">His raw talent (UV <b>${c.uv}</b>) arguably exceeds the board leader's own (${ordered[0].uv}) — he trails only because of roster-fit context, not quality.</p>`);
@@ -654,22 +704,25 @@ function render() {
           <span class="name">${c.name}</span>
           <span class="posteam">${c.pos}${c.team ? ' · ' + c.team : ''}</span>
           ${c.flagged ? '<span class="considering">★ CONSIDERING</span>' : ''}
+          ${c.fillsRequiredSlot ? '<span class="required-slot" title="Ranked above higher-scoring candidates because your roster cannot still be filled legally otherwise.">FILLS REQUIRED SLOT</span>' : ''}
         </div>
         <div class="row-metrics">
           <div class="ticks">${tickRow(c)}</div>
           ${waitGlyph(c)}
           ${contextGapGlyph(c)}
           <span class="necessity-pill ${c.necClass}">${c.necessity}</span>
-          <span class="tav mono">${c.tav}</span>
+          <span class="tav mono" title="Acquisition value: universal value plus this roster's need, eligibility and depth terms. Signed, unbounded, not fantasy points.">${c.tav != null ? c.tav.toFixed(0) : '—'}</span>
           <span class="chevron mono">▾</span>
         </div>
       </div>
       <div class="hover-note">${connectionSentence(c) || "No shared forces with another candidate right now."}</div>
       <div class="focus-wrap"><div class="focus-inner"><div class="focus-body">${focusSentences(c)}
         <div class="focus-metrics">
-          <span>UV <b>${c.uv}</b></span><span>TAV <b>${c.tav}</b></span>
+          <span>UV <b>${c.uv != null ? c.uv.toFixed(0) : '—'}</b></span><span>TAV <b>${c.tav != null ? c.tav.toFixed(0) : '—'}</b></span>
           <span>SURV <b>${c.survival != null ? Math.round(c.survival * 100) + '%' : '—'}</b></span>
           <span>CLIFF <b>${c.cliffTier || '—'}</b></span>
+          ${c.replacementBasis ? `<span class="basis-note">PRICED VS <b>${c.replacementBasis === 'predraft_anchor' ? 'pre-draft anchor' : 'live starter demand'}</b></span>` : ''}
+          ${c.growthSignal != null ? `<span class="basis-note">GROWTH <b>${c.growthSignal.toFixed(1)}</b></span>` : ''}
         </div>
       </div></div></div>
     </div>`).join("");

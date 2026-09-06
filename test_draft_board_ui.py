@@ -53,6 +53,7 @@ class SerializeCandidateTests(unittest.TestCase):
         self.assertEqual(row["denialTeam"], c.denial_team)
         self.assertEqual(row["needBonus"], c.need_bonus)
         self.assertEqual(row["eligBonus"], c.eligibility_bonus)
+        self.assertEqual(row["fillsRequiredSlot"], c.fills_required_slot)
 
     def test_positional_cliff_fields_unpacked_when_present(self):
         row = ui.serialize_candidate(_candidate())

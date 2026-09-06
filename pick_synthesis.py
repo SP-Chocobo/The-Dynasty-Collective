@@ -1074,6 +1074,13 @@ class CandidateSnapshot:
     # round 15 it changes which player is taken. None in balanced mode, where the quantity
     # genuinely is not computed; never 0.0, which would read as "measured, no trajectory".
     growth_signal: Optional[float] = None
+    # #154's feasibility backstop, which until now ordered the board from off-screen.
+    # pick_synthesis._board_order leads with this key, so a candidate that fills a REQUIRED
+    # roster slot is placed above better-scoring candidates that do not -- and no surface said
+    # so. A reordering the user cannot see is a reordering the user cannot audit, and this is
+    # the same field whose invisibility let an unpriced leader reach an unguarded format.
+    # Defaulted False and placed in the tail so every existing construction site still works.
+    fills_required_slot: bool = False
 
 
 @dataclass(frozen=True)
@@ -1206,6 +1213,9 @@ def build_snapshot(
             # honest reading, not a fabricated zero.
             "replacement_basis": row.get("replacement_basis"),
             "growth_signal": row.get("growth_signal"),
+            # False, not None: the backstop either binds or it does not, and "did not bind"
+            # is a real measured state rather than an absence.
+            "fills_required_slot": bool(row.get("fills_required_slot", False)),
         })
 
     round_num = (max((p.get("round") or 1) for p in picks) if picks else 1)

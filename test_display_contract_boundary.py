@@ -236,18 +236,34 @@ class TheBoardsProseQualifiesItsUnitUnevenlyTests(unittest.TestCase):
         self.assertIn("-point gap to the next best", _BOARD)
         self.assertIn("-point rival premium", _BOARD)
 
-    def test_two_phrases_say_only_points(self):
-        """These are the bare ones. In a fantasy app, unqualified 'points' is the domain's word
-        for a season scoring total -- which is a different quantity, shown on the same screen."""
-        bare_phrases = ("point(s) off the board leader", "points</b> of context lift")
-        for phrase in bare_phrases:
+    def test_no_phrase_says_only_points(self):
+        """INVERTED, at the invitation of the test this replaces. These three phrases used to
+        say bare "points" about a UV/TAV-family quantity. In a fantasy app, unqualified "points"
+        is the domain's own word for a season scoring total -- which this same panel renders a
+        few lines away ("projects 250 against 180"), so the bare wording did not merely omit a
+        unit, it asserted the wrong one.
+
+        The third phrase is why #116's original count was low: it recorded "3 of 5", and the
+        decisive-branch forfeit chip -- the sentence shown for the LEADER, when the engine is
+        most confident, and therefore the most-read sentence on the surface -- was not in it."""
+        qualified = (
+            ("point(s) off the board leader", "acquisition-value"),
+            ("points</b> of context lift", "acquisition-value"),
+            ("pts if you wait", None),
+        )
+        for phrase, unit in qualified:
             with self.subTest(phrase=phrase):
+                if unit is None:
+                    # the bare form is gone entirely, replaced by a named unit
+                    self.assertNotIn(phrase, _BOARD,
+                                     "the bare 'pts' form came back")
+                    continue
                 lines = [ln for ln in _BOARD.splitlines() if phrase in ln]
                 self.assertEqual(len(lines), 1, "phrase moved or was duplicated")
-                # The unit is unqualified ON THIS LINE. Checking the whole file would pass
-                # trivially, since the forfeit sentence elsewhere does say "universal-value".
-                self.assertNotIn("universal-value", lines[0],
-                                 "this phrase now names its unit -- invert this test")
+                self.assertIn(unit, lines[0], "this phrase lost its unit again")
+
+    def test_the_forfeit_chip_names_the_unit_it_is_measured_in(self):
+        self.assertIn("universal-value points if you wait", _BOARD)
 
     def test_the_same_panel_also_renders_real_season_points(self):
         """`_waiting_note` renders projected_points and horizon_floor -- genuinely season
@@ -335,8 +351,22 @@ class TheScaleIsNotAPointsTotalTests(unittest.TestCase):
         #   replacement_basis is a qualifier on a price rather than a number, so it belongs
         #   with horizon_basis in the explanation drawer rather than the metric row -- #36/#137
         #   territory, and deliberately not done here.
+        # 41 -> 42 (2026-09-06): fills_required_slot, #154's feasibility backstop. The two
+        # questions, and this one inverts the usual answer:
+        #
+        #   SCALE. A bool. It implies no unit at all, because it is not a value -- it is an
+        #   ORDERING fact. pick_synthesis._board_order leads with it, ahead of final_score, so
+        #   it can place a candidate above better-scoring candidates.
+        #
+        #   SHOULD THE CARD RENDER IT? Not the metric row -- that row is for quantities, and a
+        #   bool in it would be the unit-borrowing problem in a new costume. But unlike every
+        #   previous addition, the answer is not "no, leave it to the drawer": this field MUST
+        #   reach a surface, because it silently REORDERS the board and no surface said so. A
+        #   reordering the user cannot see is a reordering the user cannot audit. It renders as
+        #   a marker on the row itself, next to the rank it changed, which is also where the
+        #   same invisibility let an unpriced leader reach an unguarded format string.
         self.assertEqual(
-            len(dataclasses.fields(ps.CandidateSnapshot)), 41,
+            len(dataclasses.fields(ps.CandidateSnapshot)), 42,
             "CandidateSnapshot's field count changed. That is fine and often correct -- but "
             "confirm the new field does not imply a scale the card cannot support, decide "
             "whether the card should render it, then update this number.")
