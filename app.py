@@ -129,7 +129,7 @@ st.set_page_config(page_title="Fantasy Football Command Center", layout="wide", 
 _GLOBAL_CSS = """
     <style>
     __DESIGN_SYSTEM_ROOT_TOKENS__
-    .stApp { background-color: #16171a; }
+    .stApp { background-color: var(--bg); }
     __DESIGN_SYSTEM_BADGE_ROLE__
     /* Pick Necessity's own color ramp (Draft Room view) -- distinct classes from the debate
        personas above even though the colors are reused from that same palette, so a necessity
@@ -138,7 +138,7 @@ _GLOBAL_CSS = """
     __DESIGN_SYSTEM_BADGE_NECESSITY__
     .agent-block {
         border-radius: 8px; padding: 10px 14px; margin-bottom: 10px;
-        background: #202124; border: 1px solid #2f3033;
+        background: var(--surface); border: 1px solid var(--line);
     }
     /* Reasoning prose reads as an actual chat reply -- proportional font, not the
        monospace/pre-wrap treatment every message used to get regardless of whether it was
@@ -158,10 +158,10 @@ _GLOBAL_CSS = """
         font-size: 0.9rem;
         margin-top: 10px;
         padding-top: 10px;
-        border-top: 1px dashed #3a3c42;
+        border-top: 1px dashed var(--line-2);
     }
-    .status-ok { color: #4ade80; }
-    .status-bad { color: #64748b; }
+    .status-ok { color: var(--emerald-b); }
+    .status-bad { color: var(--tie); }
 
     /* A persistent brand mark for the platform itself -- once a league loads, its own
        name takes over the big st.title() below (correctly; knowing which league you're
@@ -170,7 +170,7 @@ _GLOBAL_CSS = """
        same spot regardless of which league is focused. */
     .brand-eyebrow {
         font-size: 0.78rem; font-weight: 600; letter-spacing: 0.09em; text-transform: uppercase;
-        color: #94a3b8; margin-bottom: 2px;
+        color: var(--tie-b); margin-bottom: 2px;
     }
 
     /* The header's own background art (see _header_banner_data_uri) -- the source image
@@ -178,17 +178,17 @@ _GLOBAL_CSS = """
        block (left-aligned, see below) sits on its darkest region already. The linear-
        gradient layered on top is still needed for the narrower/mid-width case where the
        art's midtones creep further left than the text can safely sit on. Falls back to
-       the plain flat color already used elsewhere (#202124-ish dark surfaces) with no
+       the plain flat color already used elsewhere (var(--surface)-ish dark surfaces) with no
        image layer if the asset failed to load, so a missing file just means "no banner",
        never a broken header. */
     .st-key-app_header {
         border-radius: 10px;
         padding: 1.1rem 1.4rem 1rem;
         margin-bottom: 0.5rem;
-        background-color: #0b0d12;
+        background-color: var(--bg);
         background-size: cover;
         background-position: center;
-        border: 1px solid #23262e;
+        border: 1px solid var(--line);
     }
     .st-key-app_header h1 { margin-bottom: 0; }
 
@@ -198,8 +198,8 @@ _GLOBAL_CSS = """
        real <select>), and give it its own subtle background/border so it visually
        reads as "pick a league" rather than "do a thing". */
     [data-testid="stPopoverButton"] {
-        background: #1b1c1f !important;
-        border: 1px solid #2a2b2e !important;
+        background: var(--surface-2) !important;
+        border: 1px solid var(--line) !important;
         border-radius: 8px !important;
     }
     [data-testid="stPopoverButton"] > div {
@@ -217,13 +217,13 @@ _GLOBAL_CSS = """
        switcher read as the one thing this row is actually for. */
     .st-key-league_switcher_row .stButton button {
         background: transparent;
-        border-color: #2a2b2e !important;
-        color: #9ca3af;
+        border-color: var(--line) !important;
+        color: var(--muted);
         font-weight: 500;
     }
     .st-key-league_switcher_row .stButton button:hover {
-        color: #e5e7eb;
-        border-color: #3a3c42 !important;
+        color: var(--ink);
+        border-color: var(--line-2) !important;
         background: rgba(255,255,255,0.03);
     }
 
@@ -238,16 +238,16 @@ _GLOBAL_CSS = """
        a literal divider between it and whatever primary actions sit in the same row. */
     [class*="st-key-debate_chip_"] .stButton button {
         background: transparent;
-        border-color: #2a2b2e !important;
-        border-left: 1px solid #3a3c42 !important;
+        border-color: var(--line) !important;
+        border-left: 1px solid var(--line-2) !important;
         border-radius: 0 8px 8px 0 !important;
-        color: #9ca3af;
+        color: var(--muted);
         font-weight: 500;
     }
     [class*="st-key-debate_chip_"] .stButton button:hover {
-        color: #7dd3fc;
-        border-color: #0ea5e9 !important;
-        background: rgba(14,165,233,0.06);
+        color: var(--sky-b);
+        border-color: var(--sky) !important;
+        background: __RGBA_sky_6__;
     }
 
     /* Sidebar defaults to a width that crowds the Manage Leagues row and the
@@ -340,22 +340,22 @@ _GLOBAL_CSS = """
         font-weight: 600;
         letter-spacing: 0.04em;
         text-transform: uppercase;
-        background: #1b1c1f;
-        border: 1px solid #2a2b2e !important;
-        color: #6b7076;
+        background: var(--surface-2);
+        border: 1px solid var(--line) !important;
+        color: var(--dim);
         border-radius: 6px;
         transition: border-color 0.15s ease, color 0.15s ease, background 0.15s ease;
     }
     .st-key-draft_room_pool_scope_control button[data-variant="segmented_control"]:hover,
     .st-key-mock_draft_pool_scope_control button[data-variant="segmented_control"]:hover {
-        border-color: #3a3c42 !important;
-        color: #9ca3af;
+        border-color: var(--line-2) !important;
+        color: var(--muted);
     }
     .st-key-draft_room_pool_scope_control button[data-variant="segmented_control"][data-selected="true"],
     .st-key-mock_draft_pool_scope_control button[data-variant="segmented_control"][data-selected="true"] {
-        background: rgba(14,165,233,0.10);
-        border-color: #0ea5e9 !important;
-        color: #7dd3fc;
+        background: __RGBA_sky_10__;
+        border-color: var(--sky) !important;
+        color: var(--sky-b);
     }
     /* Refresh Picks previously had no styling of its own -- a bare st.button, so it fell back
        to the app-wide default (full container width, generic large touch-target box), making
@@ -372,9 +372,9 @@ _GLOBAL_CSS = """
         font-weight: 600;
         letter-spacing: 0.04em;
         text-transform: uppercase;
-        background: #1b1c1f;
-        border: 1px solid #2a2b2e !important;
-        color: #6b7076;
+        background: var(--surface-2);
+        border: 1px solid var(--line) !important;
+        color: var(--dim);
         border-radius: 6px;
         transition: border-color 0.15s ease, color 0.15s ease, background 0.15s ease;
     }
@@ -387,14 +387,14 @@ _GLOBAL_CSS = """
        .stButton like this one, so it needs its own). */
     .st-key-draft_room_refresh_btn button:hover,
     .st-key-draft_room_refresh_btn button:focus-visible {
-        background: rgba(14,165,233,0.10);
-        border-color: #0ea5e9 !important;
-        color: #7dd3fc;
+        background: __RGBA_sky_10__;
+        border-color: var(--sky) !important;
+        color: var(--sky-b);
     }
     .st-key-draft_room_refresh_btn button:active {
-        background: rgba(14,165,233,0.24);
-        border-color: #0ea5e9 !important;
-        color: #bae6fd;
+        background: __RGBA_sky_24__;
+        border-color: var(--sky) !important;
+        color: var(--sky-b);
         transform: scale(0.96);
     }
     /* Position filter, round 3: the multi-select itself was rejected -- a user can only ever
@@ -410,12 +410,12 @@ _GLOBAL_CSS = """
         font-weight: 600;
         letter-spacing: 0.08em;
         text-transform: uppercase;
-        color: #6b7076;
+        color: var(--dim);
         white-space: nowrap;
         line-height: 1.5;
     }
     .drv-board-title .dot {
-        color: #3a3c42;
+        color: var(--line-2);
         padding: 0 0.4em;
         font-weight: 400;
     }
@@ -468,7 +468,7 @@ _GLOBAL_CSS = """
         font-weight: 700;
         letter-spacing: 0.03em;
         line-height: 1.5;
-        color: #e5e7eb;
+        color: var(--ink);
         text-align: left;
         justify-content: flex-start !important;
         border-bottom: 2px solid transparent;
@@ -477,8 +477,8 @@ _GLOBAL_CSS = """
     }
     .st-key-draft_room_view_toggle button:hover,
     .st-key-mock_draft_view_toggle button:hover {
-        color: #7dd3fc;
-        border-bottom-color: #0ea5e9;
+        color: var(--sky-b);
+        border-bottom-color: var(--sky);
     }
     /* The button's own visible text sits inside Streamlit's stMarkdownContainer -> <p>,
        which carries its own hardcoded 14px/21px line box that does NOT inherit the
@@ -501,7 +501,7 @@ _GLOBAL_CSS = """
        "CANDIDATES - ALL", never a lingering open panel. */
     .st-key-draft_room_view_menu,
     .st-key-mock_draft_view_menu {
-        border-top: 1px solid #2a2b2e;
+        border-top: 1px solid var(--line);
         margin-top: 8px;
         padding-top: 10px;
         margin-bottom: 10px;
@@ -517,7 +517,7 @@ _GLOBAL_CSS = """
         font-size: 0.8rem;
         font-weight: 500;
         letter-spacing: 0.03em;
-        color: #8b8f98;
+        color: var(--muted);
         text-align: left;
         justify-content: flex-start !important;
         border-radius: 0;
@@ -525,11 +525,11 @@ _GLOBAL_CSS = """
     }
     .st-key-draft_room_view_menu button:hover,
     .st-key-mock_draft_view_menu button:hover {
-        color: #e5e7eb;
+        color: var(--ink);
     }
     .st-key-draft_room_view_menu [class*="st-key-draft_room_view_opt_active_"] button,
     .st-key-mock_draft_view_menu [class*="st-key-mock_draft_view_opt_active_"] button {
-        color: #7dd3fc;
+        color: var(--sky-b);
         font-weight: 700;
     }
 
@@ -545,14 +545,14 @@ _GLOBAL_CSS = """
         text-transform: uppercase;
         letter-spacing: 0.06em;
         font-weight: 600;
-        color: #8b8f98;
-        background: #1b1c1f;
-        border: 1px solid #2a2b2e !important;
+        color: var(--muted);
+        background: var(--surface-2);
+        border: 1px solid var(--line) !important;
         border-radius: 6px;
     }
     .st-key-fa_sort_header .stButton button:hover {
-        color: #e5e7eb;
-        border-color: #3a3c42 !important;
+        color: var(--ink);
+        border-color: var(--line-2) !important;
     }
 
     /* Archive/reorder/delete per league — frequent-but-minor list-management actions,
@@ -591,8 +591,8 @@ _GLOBAL_CSS = """
            the solid background reads as its own thing without needing a heavier
            treatment — and unlike a pseudo-element, a background-image layer isn't at
            risk of being clipped by this element's own overflow-y: auto below. */
-        background: linear-gradient(90deg, #16a34a, #d4a017, #8b5cf6, #b91c1c) top / 100% 2px no-repeat, #16171a;
-        border-top: 1px solid #2a2b2e;
+        background: linear-gradient(90deg, var(--emerald), var(--gold), var(--violet), var(--crimson)) top / 100% 2px no-repeat, var(--bg);
+        border-top: 1px solid var(--line);
         padding: 10px 24px 18px;
         /* max-height wasn't in here, so switching collapsed/partial/full tiers just
            snapped the dock to its new size instantly — jarring for what's supposed to
@@ -638,15 +638,15 @@ _GLOBAL_CSS = """
        so this targets the key-derived class directly; the key varies per league id,
        hence the attribute-substring match rather than an exact class name. */
     [class*="st-key-confirm_del_"] button {
-        border-color: #b91c1c !important;
-        color: #f87171 !important;
+        border-color: var(--crimson) !important;
+        color: var(--crimson-b) !important;
     }
     [class*="st-key-confirm_del_"] button:hover {
-        background: rgba(185,28,28,0.12) !important;
+        background: __RGBA_crimson_12__ !important;
     }
     [class*="st-key-del_"] button:hover {
-        border-color: #b91c1c !important;
-        color: #f87171 !important;
+        border-color: var(--crimson) !important;
+        color: var(--crimson-b) !important;
     }
 
     /* Every transition/animation added above respects a system-level "please don't
@@ -682,10 +682,12 @@ _GLOBAL_CSS = """
     """
 
 st.markdown(
-    _GLOBAL_CSS
-    .replace("__DESIGN_SYSTEM_ROOT_TOKENS__", design_system.root_css_block())
-    .replace("__DESIGN_SYSTEM_BADGE_ROLE__", design_system.BADGE_ROLE_CSS)
-    .replace("__DESIGN_SYSTEM_BADGE_NECESSITY__", design_system.BADGE_NECESSITY_CSS),
+    design_system.expand_rgba_markers(
+        _GLOBAL_CSS
+        .replace("__DESIGN_SYSTEM_ROOT_TOKENS__", design_system.root_css_block())
+        .replace("__DESIGN_SYSTEM_BADGE_ROLE__", design_system.BADGE_ROLE_CSS)
+        .replace("__DESIGN_SYSTEM_BADGE_NECESSITY__", design_system.BADGE_NECESSITY_CSS)
+    ),
     unsafe_allow_html=True,
 )
 
@@ -1121,33 +1123,20 @@ def sleeper_proj_label(snapshot: dict) -> str:
 
 
 def _injury_pill_color(val: str) -> tuple[str, str]:
-    if val in INJURY_OK_STATUSES:
-        return ("rgba(212,160,23,0.18)", "#facc15")
-    return ("rgba(185,28,28,0.18)", "#f87171")  # Out/IR/PUP/etc.
+    # gold = playable-but-flagged, crimson = unavailable, straight off the shared urgency ramp.
+    # Derived rather than spelled out, because these are the two colors a POSITION pill has to
+    # stay clear of (see design_system.POSITION_PILL_TOKENS) -- a hand-copied hex here would let
+    # that separation drift without anything noticing.
+    token = "gold" if val in INJURY_OK_STATUSES else "crimson"
+    return (design_system.token_rgba(token, 0.18), design_system.TOKENS[f"{token}-b"])
 
 
-# Position was rendering as plain gray text in every table — every row required reading
-# to find what you were looking for, where a color-coded badge lets it register at a
-# glance instead. Not a copy of Sleeper's own QB/RB/WR color mapping (their choices
-# aren't inherently "correct," just one reference point) — chosen instead to stay clear
-# of hues this app already uses to MEAN something. Gold and crimson are the injury pills
-# (Questionable/Out), and a Questionable TE would otherwise show a gold position pill
-# right next to a gold injury pill in the same row, saying two different things with the
-# same color. Persona colors (green/gold/purple/red) are chat badges, a different
-# context, but avoided anyway for a fully distinct set.
-_POSITION_PILL_COLORS = {
-    "QB": ("rgba(129,140,248,0.18)", "#818cf8"),   # indigo
-    "RB": ("rgba(45,212,191,0.18)", "#2dd4bf"),    # teal
-    "WR": ("rgba(56,189,248,0.18)", "#38bdf8"),    # sky blue
-    "TE": ("rgba(251,146,60,0.18)", "#fb923c"),    # orange
-    "K": ("rgba(148,163,184,0.18)", "#94a3b8"),    # neutral gray
-    "DEF": ("rgba(244,114,182,0.18)", "#f472b6"),  # pink
-    "DST": ("rgba(244,114,182,0.18)", "#f472b6"),
-}
-
-
+# Position identity gets its own color family, kept in design_system next to the tokens it
+# must stay clear of. A colored badge lets the position register at a glance instead of
+# every row needing to be read; which colors, and why they are not the semantic accents,
+# is stated and TESTED there rather than asserted in a comment here.
 def _position_pill_color(val: str) -> tuple[str, str]:
-    return _POSITION_PILL_COLORS.get(val, ("rgba(148,163,184,0.18)", "#94a3b8"))
+    return design_system.position_pill_color(val)
 
 
 def render_styled_table(
@@ -1188,7 +1177,7 @@ def render_styled_table(
 
     def _cell_html(col: str, val) -> str:
         if pd.isna(val) or val in (None, ""):
-            return '<span style="color:#4b5563;">—</span>'
+            return '<span style="color:var(--dim);">—</span>'
         if col in pill_columns:
             bg, color = pill_columns[col](val)
             text = html.escape(str(val))
@@ -1201,15 +1190,15 @@ def render_styled_table(
         if col == "name":
             return f'<span style="font-weight:600;white-space:nowrap;">{text}</span>'
         if col in ("position", "team"):
-            return f'<span style="color:#9ca3af;">{text}</span>'
+            return f'<span style="color:var(--muted);">{text}</span>'
         if col in numeric_cols:
             return f'<span style="font-variant-numeric: tabular-nums;">{text}</span>'
         return text
 
     headers = "".join(
         f'<th style="text-align:left;padding:9px 14px;font-size:0.7rem;text-transform:uppercase;'
-        f'letter-spacing:0.07em;color:#8b8f98;font-weight:600;border-bottom:1px solid #2a2b2e;'
-        f'background:#1b1c1f;white-space:nowrap;">'
+        f'letter-spacing:0.07em;color:var(--muted);font-weight:600;border-bottom:1px solid var(--line);'
+        f'background:var(--surface-2);white-space:nowrap;">'
         f'{html.escape(labels.get(c, c.replace("_", " ").title()))}</th>'
         for c in display_cols
     ) if render_header else ""
@@ -1223,8 +1212,8 @@ def render_styled_table(
                 row_parts.append(
                     f'<tr><td colspan="{len(display_cols)}" style="padding:10px 14px 5px;'
                     f'font-size:0.72rem;text-transform:uppercase;letter-spacing:0.08em;'
-                    f'color:#6b7280;font-weight:700;background:#141517;'
-                    f'border-top:1px solid #2a2b2e;">'
+                    f'color:var(--dim);font-weight:700;background:var(--surface-2);'
+                    f'border-top:1px solid var(--line);">'
                     f'{html.escape(str(group_val))}</td></tr>'
                 )
                 last_group = group_val
@@ -1235,7 +1224,7 @@ def render_styled_table(
         # to its content already, so nothing to truncate in that case.
         cell_overflow_style = "overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" if not render_header else ""
         cells = "".join(
-            f'<td style="padding:9px 14px;border-bottom:1px solid #202124;{cell_overflow_style}">{_cell_html(c, row[c])}</td>'
+            f'<td style="padding:9px 14px;border-bottom:1px solid var(--line);{cell_overflow_style}">{_cell_html(c, row[c])}</td>'
             for c in display_cols
         )
         row_parts.append(f"<tr>{cells}</tr>")
@@ -1263,7 +1252,7 @@ def render_styled_table(
     st.markdown(
         f"""
         <div style="overflow-x:auto;overflow-y:auto;max-height:600px;
-                    border:1px solid #2a2b2e;border-radius:10px;">
+                    border:1px solid var(--line);border-radius:10px;">
           <table style="{table_style}">{thead_html}
             <tbody>{''.join(row_parts)}</tbody>
           </table>
@@ -3363,8 +3352,9 @@ if _banner_uri:
     # applies underneath it either way.
     st.markdown(
         f"<style>.st-key-app_header {{ background-image: "
-        f"linear-gradient(90deg, rgba(11,13,18,0.94) 0%, rgba(11,13,18,0.75) 32%, "
-        f"rgba(11,13,18,0.25) 62%, rgba(11,13,18,0.05) 100%), url('{_banner_uri}'); }}</style>",
+        f"linear-gradient(90deg, {design_system.token_rgba('bg', 0.94)} 0%, "
+        f"{design_system.token_rgba('bg', 0.75)} 32%, {design_system.token_rgba('bg', 0.25)} 62%, "
+        f"{design_system.token_rgba('bg', 0.05)} 100%), url('{_banner_uri}'); }}</style>",
         unsafe_allow_html=True,
     )
 with st.container(key="app_header"):
@@ -5400,9 +5390,9 @@ elif main_view == LEAGUE_VIEW:
                     cell = depth.get(team_label, {}).get(position, {"count": 0, "value": None})
                     label = depth_ratings.depth_label(cell, peer_cells)
                     if label == "Strong":
-                        styles.append(f"background-color: {design_system.token_rgba('emerald', 0.18)}; color: #4ade80;")
+                        styles.append(f"background-color: {design_system.token_rgba('emerald', 0.18)}; color: {design_system.TOKENS['emerald-b']};")
                     elif label == "Weak":
-                        styles.append(f"background-color: {design_system.token_rgba('crimson', 0.18)}; color: #f87171;")
+                        styles.append(f"background-color: {design_system.token_rgba('crimson', 0.18)}; color: {design_system.TOKENS['crimson-b']};")
                     else:
                         styles.append("")
                 return styles
@@ -5816,7 +5806,7 @@ with st.expander(f"🎯 Active Objectives ({len(active_items)})", expanded=bool(
                 )
                 header = (
                     f"{source_tag} **#{item['id']}** {item['text']}  \n"
-                    f"<span style='color:#6b7280;font-size:0.78rem;'>{item['date']}{referenced}</span>"
+                    f"<span style='color:var(--dim);font-size:0.78rem;'>{item['date']}{referenced}</span>"
                 )
                 st.markdown(header, unsafe_allow_html=True)
 
@@ -5894,7 +5884,7 @@ with st.expander(f"🗄️ Archive ({len(archived_items)})"):
             with st.container(border=True):
                 st.markdown(
                     f"**#{item['id']}** {item['text']}  \n"
-                    f"<span style='color:#6b7280;font-size:0.78rem;'>{item['date']} → {outcome} "
+                    f"<span style='color:var(--dim);font-size:0.78rem;'>{item['date']} → {outcome} "
                     f"{item.get('resolution_date', '')}</span>",
                     unsafe_allow_html=True,
                 )
