@@ -13,6 +13,7 @@ from __future__ import annotations
 import csv
 import json
 import time
+from datetime import datetime
 from pathlib import Path
 from typing import Any, Optional
 
@@ -25,8 +26,86 @@ ROOT_URL = "https://api.sleeper.app"  # projections/stats live outside /v1 — s
 # unreachable. Not something that needs bumping every year on its own.
 DEFAULT_SEASON = "2026"
 PLAYERS_CACHE_MAX_AGE_SECONDS = 24 * 60 * 60  # Sleeper asks that /players/nfl be pulled at most once/day
+
+#: One name for the directory both the client and the freshness manifest look in, so the
+#: manifest cannot drift onto a path the client stopped using.
+DEFAULT_CACHE_DIR = "data/sleeper_snapshots"
+PLAYERS_CACHE_FILENAME = "players_nfl.json"
+
+#: #118: the three states the players database can actually be in -- and the fact that they are
+#: indistinguishable to every consumer is the defect. `get_players` falls back to an
+#: ARBITRARILY OLD cache when a live fetch fails (its second `cache_path.exists()` branch) and
+#: returns `{}` when there is no cache at all -- an empty player universe. From the outside both
+#: look exactly like a healthy daily cache.
+#:
+#: DERIVED from the file's mtime and the window above, never stored: the window is Sleeper's own
+#: documented request rather than a magnitude invented here (#56), and mtime is the one record
+#: that outlives the process that wrote it. What mtime cannot say is WHY the file is old -- a
+#: failed refetch and a session that simply never asked look identical on disk -- so the state is
+#: named for what is observable ("beyond the window") and not for a cause it cannot see.
+PLAYERS_WITHIN_WINDOW = "within_window"
+PLAYERS_BEYOND_WINDOW = "beyond_window"
+PLAYERS_ABSENT = "absent"
+
+
 REQUEST_TIMEOUT = 15
 SNAPSHOT_HISTORY_KEEP = 10  # timestamped snapshots kept per league beyond the always-current _latest.json
+
+
+def players_cache_age_seconds(
+    cache_dir: str = DEFAULT_CACHE_DIR, now: Optional[float] = None,
+) -> Optional[float]:
+    """How old the players database on disk is, or None when there is none.
+
+    None is ABSENCE, never 0.0: a cache that was never written and one written this instant are
+    different facts, and only the second is a duration. Callers that sort on this put the None
+    last rather than treating it as the freshest thing present.
+
+    `now` is injectable for the same reason `league_config.config_age_seconds` takes one: the
+    interesting case is the exact window boundary, and a test that sets an mtime and then reads
+    the wall clock can never land on it -- microseconds pass in between, so `<` and `<=` come
+    out identical and the test proves nothing. That vacuity was found by mutating this very
+    comparison and watching the test survive.
+    """
+    cache_path = Path(cache_dir) / PLAYERS_CACHE_FILENAME
+    if not cache_path.exists():
+        return None
+    return max(0.0, (time.time() if now is None else now) - cache_path.stat().st_mtime)
+
+
+def players_cache_basis(cache_dir: str = DEFAULT_CACHE_DIR, now: Optional[float] = None) -> str:
+    """Which of the three #118 states the players database is in. Derived on every call."""
+    age = players_cache_age_seconds(cache_dir, now)
+    if age is None:
+        return PLAYERS_ABSENT
+    return PLAYERS_WITHIN_WINDOW if age < PLAYERS_CACHE_MAX_AGE_SECONDS else PLAYERS_BEYOND_WINDOW
+
+
+def players_freshness_entry(
+    cache_dir: str = DEFAULT_CACHE_DIR, now: Optional[float] = None,
+) -> tuple[str, Optional[str], Optional[int]]:
+    """One `build_freshness_manifest` row for the players database: (label, as-of date, days).
+
+    It lives here rather than in the manifest for the reason `describe_config_age` lives in
+    league_config: the thing that knows what the state MEANS is the module that owns the cache,
+    and a row assembled at the call site cannot be tested without importing the whole app.
+
+    ABSENT returns None for both date and days. Not 0, and not omitted: the manifest's sort puts
+    a None last, and "never fetched" is a state the reader needs to see rather than an entry to
+    leave out -- an input that is silently missing looks exactly like an input that is fine.
+    """
+    now = time.time() if now is None else now
+    age = players_cache_age_seconds(cache_dir, now)
+    if age is None:
+        return ("Sleeper player database — never fetched on this machine", None, None)
+    as_of = datetime.fromtimestamp(now - age).date()
+    beyond = age >= PLAYERS_CACHE_MAX_AGE_SECONDS
+    label = "Sleeper player database"
+    if beyond:
+        # Names what is OBSERVABLE. A failed refetch and a session that never asked leave the
+        # same mtime, so the label describes the consequence both share instead of guessing.
+        label += " — past its daily refresh; a failed refresh silently keeps using this copy"
+    return (label, as_of.isoformat(), (datetime.fromtimestamp(now).date() - as_of).days)
 
 
 class SleeperAPIError(RuntimeError):
@@ -34,7 +113,7 @@ class SleeperAPIError(RuntimeError):
 
 
 class SleeperClient:
-    def __init__(self, cache_dir: str = "data/sleeper_snapshots"):
+    def __init__(self, cache_dir: str = DEFAULT_CACHE_DIR):
         self.cache_dir = Path(cache_dir)
         self.cache_dir.mkdir(parents=True, exist_ok=True)
         self.session = requests.Session()
@@ -115,7 +194,7 @@ class SleeperClient:
     # -- player database (large, cached daily) ------------------------------
 
     def get_players(self, force_refresh: bool = False) -> dict[str, dict]:
-        cache_path = self.cache_dir / "players_nfl.json"
+        cache_path = self.cache_dir / PLAYERS_CACHE_FILENAME
         if not force_refresh and cache_path.exists():
             age = time.time() - cache_path.stat().st_mtime
             if age < PLAYERS_CACHE_MAX_AGE_SECONDS:
@@ -139,6 +218,14 @@ class SleeperClient:
             if cached is not None:
                 return cached
         return {}
+
+    def players_cache_age_seconds(self, now: Optional[float] = None) -> Optional[float]:
+        """This client's players-database age -- the module function, bound to its cache_dir."""
+        return players_cache_age_seconds(str(self.cache_dir), now)
+
+    def players_cache_basis(self, now: Optional[float] = None) -> str:
+        """This client's players-database state -- the module function, bound to its cache_dir."""
+        return players_cache_basis(str(self.cache_dir), now)
 
     @staticmethod
     def _read_players_cache(cache_path: Path) -> Optional[dict[str, dict]]:

@@ -46,6 +46,7 @@ import panel_independence
 import pinned_messages
 import provider_meter
 import providers
+import sleeper_client
 import store_io
 import upload_batches
 import untrusted
@@ -1519,6 +1520,12 @@ def build_freshness_manifest(snapshot: dict, merger: DataMerger) -> list[tuple[s
             sync_dt.date().isoformat(),
             (datetime.now().date() - sync_dt.date()).days,
         ))
+    # #118: the players database decides who exists, what position they play, and whether they
+    # are hurt -- an input to every board on every screen, and the one input this manifest did
+    # not mention. Silence here is not neutral: get_players falls back to an arbitrarily old
+    # cache when a live fetch fails, so "the app is running" never implied "the player universe
+    # is current". Unconditional, ABSENT included; sleeper_client owns what each state means.
+    entries.append(sleeper_client.players_freshness_entry())
     entries.sort(key=lambda e: (e[2] is None, e[2]))
     return entries
 

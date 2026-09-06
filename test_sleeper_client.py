@@ -1,8 +1,12 @@
+import os
+import pathlib
 import tempfile
+import time
 import unittest
 from unittest import mock
 
 import sleeper_client as sc
+import ui_source
 
 
 class ComputePointsFromStatsTests(unittest.TestCase):
@@ -248,6 +252,130 @@ class BaselineProjectionRowsTests(unittest.TestCase):
                 sc.write_baseline_projection_csv([], target)
             # the existing pool survived an unreachable-API day
             self.assertIn("Aubrey", target.read_text())
+
+
+class PlayersDatabaseFreshnessIsDisclosedTests(unittest.TestCase):
+    """#118. The players database decides who exists, what position they play and whether they
+    are hurt -- and `build_freshness_manifest` listed four sources, none of them this one.
+
+    The sharp half is not the 24h window; it is `get_players`' SECOND `cache_path.exists()`
+    branch, which returns an arbitrarily old cache when a live fetch fails. From every consumer's
+    side that is indistinguishable from a healthy daily pull, so nothing anywhere could have told
+    a reader that the player universe they were looking at was a week old.
+    """
+
+    def setUp(self):
+        self.dir = tempfile.mkdtemp()
+        self.cache = pathlib.Path(self.dir) / sc.PLAYERS_CACHE_FILENAME
+
+    def _age(self, seconds):
+        self.cache.write_text("{}")
+        stamp = time.time() - seconds
+        os.utime(self.cache, (stamp, stamp))
+
+    def test_a_cache_that_was_never_written_reports_absence_not_a_zero_age(self):
+        """'Never fetched' and 'fetched this instant' are opposite facts. Only one is a
+        duration, and reporting 0.0 for the other says the reassuring one."""
+        self.assertIsNone(sc.players_cache_age_seconds(self.dir))
+        self.assertEqual(sc.players_cache_basis(self.dir), sc.PLAYERS_ABSENT)
+
+    def test_a_fresh_cache_is_within_the_window(self):
+        self._age(60)
+        self.assertEqual(sc.players_cache_basis(self.dir), sc.PLAYERS_WITHIN_WINDOW)
+
+    def test_a_week_old_cache_is_beyond_the_window(self):
+        """The failed-refetch case, which is the one the register item is really about."""
+        self._age(7 * 86400)
+        self.assertEqual(sc.players_cache_basis(self.dir), sc.PLAYERS_BEYOND_WINDOW)
+
+    def test_the_disclosed_boundary_is_the_SAME_boundary_get_players_refetches_on(self):
+        """The whole value of this disclosure is that it agrees with the code it describes. If
+        `get_players` refetches at exactly MAX_AGE (it uses `age < MAX_AGE`) but the manifest
+        still called that copy fresh, the manifest would be reassuring at the one moment the
+        client itself had decided the data was too old."""
+        self.cache.write_text("{}")
+        mtime = self.cache.stat().st_mtime
+        window = sc.PLAYERS_CACHE_MAX_AGE_SECONDS
+        # `now` is injected so the age is EXACTLY the window -- setting an mtime and reading the
+        # wall clock cannot land there, and the earlier version of this test that tried was
+        # vacuous: it survived flipping `<` to `<=`.
+        self.assertEqual(sc.players_cache_basis(self.dir, now=mtime + window),
+                         sc.PLAYERS_BEYOND_WINDOW, "at the window, get_players refetches")
+        self.assertEqual(sc.players_cache_basis(self.dir, now=mtime + window - 0.001),
+                         sc.PLAYERS_WITHIN_WINDOW, "a hair inside the window is still fresh")
+
+    def test_the_state_is_derived_every_call_never_remembered(self):
+        """A stored state would go stale exactly when it mattered -- after a refresh that the
+        thing holding the state did not perform."""
+        self._age(7 * 86400)
+        self.assertEqual(sc.players_cache_basis(self.dir), sc.PLAYERS_BEYOND_WINDOW)
+        self._age(1)
+        self.assertEqual(sc.players_cache_basis(self.dir), sc.PLAYERS_WITHIN_WINDOW)
+
+    def test_the_absent_manifest_row_carries_None_date_and_None_days(self):
+        """Not zeros. The manifest sorts on `(days is None, days)`, so a None lands last; a 0
+        would put 'never fetched' at the top of the list beside the freshest source there is."""
+        label, as_of, days = sc.players_freshness_entry(self.dir)
+        self.assertIsNone(as_of)
+        self.assertIsNone(days)
+        self.assertIn("never fetched", label)
+
+    def test_the_beyond_window_row_says_a_failed_refresh_keeps_using_this_copy(self):
+        """The label has to name the consequence, because that is the part a reader cannot see.
+        An old date alone reads as 'nobody opened the app', not 'a refresh failed and the board
+        you are looking at was built from this'."""
+        self._age(7 * 86400)
+        label, as_of, days = sc.players_freshness_entry(self.dir)
+        self.assertIn("failed refresh", label)
+        self.assertEqual(days, 7)
+
+    def test_a_fresh_row_does_not_carry_the_warning(self):
+        """Non-vacuity for the test above: a label that always warned would prove nothing."""
+        self._age(60)
+        label, _, days = sc.players_freshness_entry(self.dir)
+        self.assertNotIn("failed refresh", label)
+        self.assertEqual(days, 0)
+
+    def test_the_row_is_shaped_like_every_other_manifest_row(self):
+        """(label, ISO date or None, int days or None) -- it is appended into the same list and
+        sorted by the same key, so a differently shaped row would raise inside the sort."""
+        self._age(3 * 86400)
+        row = sc.players_freshness_entry(self.dir)
+        self.assertEqual(len(row), 3)
+        rows = [("A", "2026-01-01", 5), row, sc.players_freshness_entry(tempfile.mkdtemp())]
+        rows.sort(key=lambda e: (e[2] is None, e[2]))
+        self.assertEqual([r[2] for r in rows], [3, 5, None])
+
+    def test_the_client_method_reads_its_OWN_cache_dir_not_the_default(self):
+        """Two clients on different directories must not report each other's freshness."""
+        self._age(7 * 86400)
+        other = tempfile.mkdtemp()
+        self.assertEqual(sc.SleeperClient(self.dir).players_cache_basis(),
+                         sc.PLAYERS_BEYOND_WINDOW)
+        self.assertEqual(sc.SleeperClient(other).players_cache_basis(), sc.PLAYERS_ABSENT)
+
+
+class TheManifestActuallyAppendsThePlayersRowTests(unittest.TestCase):
+    """Non-vacuity at the consumer. Everything above can pass while the manifest never calls it,
+    which is exactly the shape #118 is an instance of: a quantity that exists and reaches nobody.
+
+    Read through ui_source rather than off app.py directly (#136): the manifest is a candidate
+    for #137's hull extraction, and a raw app.py read would stop covering it the moment the view
+    moves -- silently, with the test still green. This module's first draft did read app.py, and
+    test_ui_source failed it."""
+
+    def _manifest(self):
+        return ui_source.block("def build_freshness_manifest", until="\ndef ")
+
+    def test_build_freshness_manifest_appends_the_players_entry(self):
+        self.assertIn("players_freshness_entry", self._manifest(),
+                      "the players database is computed but never reaches the manifest")
+
+    def test_the_entry_is_appended_before_the_sort_that_orders_it(self):
+        """Appending after the sort would leave the row wherever it landed -- for an absent
+        cache, the top of the list, the exact opposite of what its None days column asks for."""
+        body = self._manifest()
+        self.assertLess(body.index("players_freshness_entry"), body.index("entries.sort("))
 
 
 if __name__ == "__main__":
