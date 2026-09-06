@@ -689,6 +689,15 @@
         "assertNotIn": 2
       }
     },
+    "test_measurement.py": {
+      "test_methods": 10,
+      "asserts": {
+        "assertEqual": 9,
+        "assertIn": 1,
+        "assertNotIn": 1,
+        "assertRaises": 4
+      }
+    },
     "test_mock_draft_wiring.py": {
       "test_methods": 13,
       "asserts": {

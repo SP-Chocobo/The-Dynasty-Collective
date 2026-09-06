@@ -260,3 +260,73 @@ run gets its own weaker or stronger standard.
 `test_audit_cadence.py` holds this paragraph and that cron to each other, because a documented
 cadence and a configured one that disagree is worse than either alone — the document is the one
 that gets believed, and it is the one that cannot run anything.
+
+## The instrument standard
+
+The engine is held to 2267 tests, per-name assertion floors, mutation checks and a full-suite
+push gate. The code that MEASURES the engine has had none of that -- and on 2026-09-06 a single
+experiment produced three separate measurement failures, two of which were caught only because
+someone went looking. Every headline number that day came from an instrument written the same
+day. The freeze decision was resting on the least-tested code in the repository.
+
+Each rule below is derived from an incident in this repository, cited. None is invented.
+
+**M1 -- A FINDING REPRODUCES BEFORE IT IS QUOTED.** Run the measurement a second time, from a
+fresh process, and diff the result. A number that has been produced once has not been measured;
+it has been observed. *(#176: the stored roster proof reported `[7,7,8,8,8,7]` for a partition
+that two independent reproductions rendered `[8,8,8,8,8,8]`. The finding was published before
+anyone tried to get it twice.)*
+
+**M2 -- BOTH ARMS REACH THE SAME SCOREABLE UNIVERSE.** In any A/B, verify that each arm can
+access everything the metric is able to score. An arm that draws from a wider pool than the
+scorer can price is penalised by the scorer, not by its own decisions. *(#176 attempt 1: 61% of
+the pool had no `projection`; only the engine drafted those, and `score_roster` excluded them.
+A ~10% deficit existed before either drafter made a choice.)*
+
+**M3 -- PARTIAL RESULTS ARE DURABLE.** Persist after every unit of work, never at the end of a
+batch. A long run WILL die. *(#176 attempt 1 wrote its report per-format and died seven runs
+into the first one, discarding every completed run.)*
+
+**M4 -- PRINT n, AND PROVE THE POPULATION CAN PRODUCE THE PHENOMENON.** A rate over an empty or
+structurally impossible population is not a rate. Before reporting "X% of rows do Y", confirm a
+row COULD do Y. *(#172: `eligibility_bonus` measured 0.0 at every percentile across five
+formats. It cannot be anything else -- `build_players_db` gives every player exactly one
+`fantasy_positions` entry, so the dual-eligibility term is structurally zero in every automated
+arm. A perfect measurement of nothing.)*
+
+**M5 -- PROVE THE THING UNDER TEST ACTUALLY FIRED.** If ON and OFF produce identical output, it
+did not fire; find out why before concluding it has no effect. *(#167: `reach_label` ablation
+returned 0 of 36 board states changed. The correct reading was not "a weak effect" but "no
+effect exists" -- `quantity_readers` shows it has zero scoring readers. A null result about a
+wire that does not exist is not the same claim as a null result about one that does.)*
+
+**M6 -- ABSENCE IN THE INSTRUMENT, TOO.** `if value:` conflates never-computed with a measured
+zero. Count `is not None` and `> 0` separately, in the measuring code, not only in the engine.
+*(The absence contract has been re-found by hand a dozen times; a reporting function that
+counted a legitimate `growth_signal == 0.0` as "not measured" is how it entered the instruments.)*
+
+**M7 -- ONE PROCESS, ONE CODE VERSION, FOR BOTH ARMS.** Never compare a fresh run against a
+saved baseline from different code. Record which commit produced any stored baseline.
+*(A tier-3 change was once reported as fixing a format 2 findings -> 0; the 2 came from a run
+predating an unrelated scoring repair, and the improvement was that repair.)*
+
+**M8 -- STATE THE ARTIFACT HYPOTHESIS BEFORE REPORTING.** Write down what would have to be true
+for this number to be about a different question, then check that specific thing. This is the
+rule that caught M2 and M4; it is the cheapest of all of them and the one most often skipped
+because the number already looks like an answer.
+
+**M9 -- EVERY PERCENTAGE CARRIES ITS POPULATION AND ITS SCOPE.** "34%" means nothing without
+"of all priced board rows, across three formats". Single-format figures are labelled as such.
+*(#160: an in-code comment recorded `context_elevated` firing "~7.8% of priced rows". Across
+five formats it fires 0.0% on four and 4.4% on the fifth. The measurement was not wrong; its
+scope was never stated, so it read as general.)*
+
+### What this does not claim
+
+These are a checklist, not a ratchet. Nothing here is enforced by a test, and a measurement can
+satisfy all nine and still be about the wrong question. They are the nine failures this
+repository has actually suffered, written down so the tenth is a new one.
+
+**The standing consequence:** a finding from an instrument that has not cleared M1 is reported
+as PROVISIONAL and may not be used as an input to the freeze decision. Suspending #176 was that
+rule being applied before it was written down.
