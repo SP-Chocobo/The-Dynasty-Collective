@@ -392,9 +392,30 @@ def roster_strength(trajectory, league: dict, players_db: dict,
         the roster-quality number: it is what the team actually fields.
       bench_value   -- everything else. Depth, and the price paid for it.
 
-    UNPRICED PLAYERS ARE COUNTED, NEVER SUMMED AS ZERO. A player the pre-draft board could not
-    price contributes no value here, and that makes starter_value a FLOOR rather than an
-    estimate -- so the count travels with the number instead of being folded into it.
+    UNPRICED PLAYERS ARE COUNTED, AND -- CONTRARY TO WHAT THIS DOCSTRING USED TO CLAIM -- THEY
+    ARE ALSO ENTERED AT 0.0. The count is real (`unpriced_players` travels with every roster),
+    and that half was always true. The other half was not: `values.get(str(pid), 0.0)` below
+    admits an unpriced player to the lineup solve valued at zero, so the zero lands in
+    total_value, in bench_value, and in the optimizer's own choice of who starts.
+
+    This is #165's OPEN question -- what an unpriced player is worth inside a lineup solve --
+    answered here, silently, as 0.0. That is the option roster_diagnostics rejected on the
+    record, and draft_room._team_roster_players measured what it does: "optimize_lineup
+    maximises total value, so a zero-value player is always the first benched and never holds a
+    slot against contention", i.e. behaviourally near-identical to dropping him while buying
+    "nothing but false confidence". starter_value is therefore a floor for a DIFFERENT reason
+    than this docstring gave, and the floor is not clean.
+
+    NOT REPAIRED HERE ON PURPOSE. Choosing what an unpriced player is worth in a solve IS #165,
+    which the owner has reserved pending an investigation into whether rank, tier or positional
+    context can carry him without inventing a price. Fixing it here would answer a reserved
+    question by implementation. The comment is corrected because a docstring asserting the
+    opposite of its code is worse than none -- it is what let this survive: a reader checking
+    the absence contract would have read the old sentence and moved on. Registered as #168.
+
+    WHERE IT BITES: any roster holding unpriced players, i.e. the IDP arms -- 339 of 415 IDP
+    baseline rows carry no trade value. The starter-value SPREAD this function names below as
+    "the readable signal" is the number most affected by it.
 
     Reported, never asserted. "Is 812 a good starter_value" needs a threshold nobody has
     argued for; the SPREAD across chairs is the readable signal, and it is comparative.
