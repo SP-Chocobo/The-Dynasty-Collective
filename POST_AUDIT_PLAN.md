@@ -5099,3 +5099,41 @@ Two restructure verdicts, and they are THE SAME DEFECT #144 ALREADY REPAIRED ONC
 chosen as a bound or a reference, reused as a firing threshold. #144 fixed that for the denial
 normalizer. `cliff_protection` and `context_elevated` are the two remaining instances, and the
 constants contract test already names the second one as an open product decision.
+
+## #172 -- two engine terms are inert in every automated arm, and it is one cause, already ruled
+
+#160's probe found `eligibility_bonus` reading 0.0 at every percentile on every format. Rather
+than report that, I asked whether it was a one-off or a class, by sweeping every numeric column
+a board row carries across the same five formats and reporting which never vary.
+
+**It is a class of exactly two.** Across 4,144 board rows in five formats:
+
+    eligibility_bonus   1 distinct value   == 0.0
+    risk_adj            1 distinct value   == 0.0
+
+Every other numeric column varies (`need_bonus` 13 distinct, `depth_exposure` 24, `bpa` 386,
+`final_score` 3,529).
+
+ONE CAUSE, confirmed rather than inferred. `run_draft_battery.build_players_db` synthesizes its
+player universe from the projections frame, and that frame carries neither field:
+
+    injury_status        None for all 764 players      -> risk_adj is structurally 0.0
+    fantasy_positions    exactly 1 entry for all 764   -> eligibility_bonus is structurally 0.0
+
+Both fields come from Sleeper's players API in production. So this is not a valuation defect and
+not a battery-design defect: it is the SAME missing input as #88 (capture the real Sleeper
+research fixture), showing up in a second place. The dual-eligibility case draft_room's own
+comment was built for -- the WR/DB one -- and the entire injury-penalty path are exercised by
+unit tests and by nothing else.
+
+**WHY THIS DOES NOT REOPEN THE FREEZE.** The remedy is a real Sleeper fixture, which is
+BLOCKED-EXTERNAL on this machine (no route to api.sleeper.app). That is precisely the family the
+owner ruled on this session -- "#49/#88/#109/#120: accept all four as known-open at freeze". So
+#172 does not add a new decision; it makes an accepted known-open item PRICED, by naming exactly
+what the battery cannot see: two of the engine's terms, one of them a whole scoring path.
+
+What it does change is a claim I should now state more carefully. The battery's clean bill of
+health covers what the battery can vary, and these two terms are outside that. Any statement
+that "33 formats found one finding class" must carry this caveat, and the #52 blind pass should
+be run knowing it -- not because #52 is briefed (it is not), but because a blind pass that
+happens to probe injury handling would be probing a path no arm has ever moved.
