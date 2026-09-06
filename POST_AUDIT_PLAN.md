@@ -5395,3 +5395,37 @@ finding, not something to wave through as "well, dynasty".
 experiment did not find a new defect -- it PRICED the known one, and the price is roughly a
 tenth of the roster. That is a materially different input to the freeze decision than the one
 the docket carried, and it belongs in front of the owner before #52 rather than after.
+
+## #176 SUSPENDED -- the roster proof does not currently reproduce
+
+Posted #176 as a finding. It is now suspended, and this correction sits directly under it rather
+than somewhere a reader will not look.
+
+**The contradiction.** Run 0's seat partition is chairs 1-6. The stored experiment reports its
+engine chairs filled `[7, 7, 8, 8, 8, 7]` -- three required slots short. TWO independent
+reproductions of that identical configuration, same 235-player pool, same functions, report
+`[8, 8, 8, 8, 8, 8]`. Deterministic code does not answer the same question two ways.
+
+**Four causes tested, four dead:**
+
+    draft terminated early          168 of 168 picks made -- no
+    scarcity detection failed       supply healthy all draft, no slot ever hit zero -- no
+    feasibility model lied          never entered an unrecoverable state -- no
+    format sequence contaminated    fresh and after-10T both give 8/8 -- no
+
+**What is still true regardless.** Every trace shows the engine holding available players,
+picks remaining, and no dead slot at any point. Nothing measured supports "contextual reasoning
+produces worse decisions". What is under suspicion is the INSTRUMENT, not the engine.
+
+**The tally that matters.** This experiment has now produced three measurement failures: a
+scoring artifact (61% of the pool unpriced by `projection`, and only the engine drafts those,
+which manufactured a -10% deficit before either drafter did anything); a crash that discarded
+seven completed runs because the report only wrote per-format; and now a result that does not
+reproduce. Two of the three I caught only because I went looking. That is the honest reason
+#176 is suspended rather than defended: an instrument wrong twice has not earned the benefit of
+the doubt on the third.
+
+A full 12-partition re-run against the stored JSON is in flight. If it reproduces, the finding
+stands and my single-run probes were unrepresentative. If it does not, #176 is withdrawn and the
+engine's roster behaviour returns to UNMEASURED -- which is a worse position than we thought we
+were in this morning, and the correct one.
