@@ -271,6 +271,18 @@ _GLOBAL_CSS = """
         [data-testid="stSidebar"][aria-expanded="true"] { min-width: 400px; }
     }
 
+    /* The primary button is GOLD by theme (.streamlit/config.toml, #173): a primary is user
+       action, the one non-brand job the gold ruling allows, and it replaces an emerald that
+       meant "value surplus" everywhere else on the page. Streamlit paints a primary's label
+       white, which is 2.3:1 on gold; the page ground is 7.6:1 on it, so the label takes bg. */
+    [data-testid="stBaseButton-primary"], .stButton button[kind="primary"] {
+        color: var(--bg) !important;
+        font-weight: 700;
+    }
+    [data-testid="stBaseButton-primary"] p, .stButton button[kind="primary"] p {
+        color: var(--bg) !important;
+    }
+
     /* Default Streamlit buttons read as understated on a dark theme — thin,
        low-contrast border, flat background that barely lifts off the page. Give
        every button (including icon-only ones like the reorder arrows) a bigger

@@ -388,3 +388,135 @@ class WaitingCostProseSaysWhenTheFloorIsAssumed(unittest.TestCase):
         measured = ui._waiting_note(self._with_basis(ps.HORIZON_BASIS_MEASURED))["title"]
         imputed = ui._waiting_note(self._with_basis(ps.HORIZON_BASIS_IMPUTED))["title"]
         self.assertNotEqual(measured, imputed)
+
+
+class TheJavaScriptSurvivesAbsenceTests(unittest.TestCase):
+    """#173. The board's prose lives in a JavaScript string the Python AST scan cannot see, and
+    it carried five unguarded reads of Optional numbers: an unpriced position-best -- which
+    narrow_candidates always includes, and which #154's backstop can promote to LEADER --
+    rendered as "null" in a sentence and "NaN" in a subtraction.
+
+    So the JS is EXECUTED here, under Node against a minimal DOM stub, on the four rows the
+    contract demands (a priced leader, an unpriced row with every Optional null, a row of
+    measured ZEROS, a row with NEGATIVE value), and again with the unpriced row as leader.
+    Skipped, loudly, when no Node is on the path -- a skip is visible in the run; a regex over
+    the string would only look like coverage."""
+
+    _DOM_STUB = r"""
+const _els = {};
+function _el(id) {
+  if (!_els[id]) _els[id] = { innerHTML: "", addEventListener() {}, setAttribute() {}, focus() {},
+                              querySelectorAll() { return []; }, contains() { return false; } };
+  return _els[id];
+}
+globalThis.document = {
+  getElementById: _el,
+  querySelectorAll() { return []; },
+};
+"""
+
+    def _rows(self):
+        priced = _candidate(player_id="p", name="Priced Leader", team_acquisition_value=97.4)
+        unpriced = _candidate(
+            player_id="u", name="Unpriced Best", position="K", bpa=None, universal_value=None,
+            team_acquisition_value=None, survival_probability=None, intervening_picks=None,
+            opportunity_cost=None, expected_value_of_waiting=None, denial_value=None,
+            denial_team=None, rival_premium=None, positional_forfeit=None,
+            position_expected_taken=None, positional_cliff=None, near_tie_with_leader=None,
+            cliff_protection=True, block_opportunity=True, pure_value=True,
+            context_elevated=True, projected_points=None, need_bonus=None,
+            eligibility_bonus=None, necessity_label="CLOSE CALL",
+        )
+        zeros = _candidate(
+            player_id="z", name="Measured Zeros", universal_value=0.0, team_acquisition_value=0.0,
+            need_bonus=0.0, eligibility_bonus=0.0, survival_probability=0.0, denial_value=0.0,
+            rival_premium=0.0, positional_forfeit=0.0, projected_points=0.0,
+            positional_cliff={"tier": "LOW", "gap": 0.0, "typical_gap": 0.0},
+        )
+        negative = _candidate(
+            player_id="n", name="Negative Value", universal_value=-16.1,
+            team_acquisition_value=-16.1, near_tie_with_leader=True, context_elevated=True,
+        )
+        return priced, unpriced, zeros, negative
+
+    def _render(self, candidates):
+        import shutil
+        import subprocess
+        node = shutil.which("node")
+        if node is None:
+            self.skipTest("node is not on the path; the board's JS cannot be executed here")
+        payload = ui.serialize_snapshot(_snapshot(candidates), pick_header="ON THE CLOCK — 3.04",
+                                        state_tags=["3RR ACTIVE"])
+        html = ui.render_board_html(payload)
+        script = html.split("<script>", 1)[1].split("</script>", 1)[0]
+        program = (self._DOM_STUB + script
+                   + '\nconsole.log(JSON.stringify({board: _el("board").innerHTML, '
+                     'bar: _el("state-bar").innerHTML, legend: _el("legend").innerHTML}));\n')
+        run = subprocess.run([node, "-e", program], capture_output=True, text=True, timeout=30)
+        self.assertEqual(run.returncode, 0, run.stderr)
+        return json.loads(run.stdout.strip().splitlines()[-1])
+
+    def _row(self, board_html, player_id):
+        start = board_html.index(f'data-id="{player_id}"')
+        end = board_html.find('data-id="', start + 10)
+        return board_html[start:end if end != -1 else None]
+
+    def test_no_row_renders_null_nan_or_undefined(self):
+        priced, unpriced, zeros, negative = self._rows()
+        for order in ((priced, unpriced, zeros, negative), (unpriced, priced, zeros, negative)):
+            with self.subTest(leader=order[0].name):
+                out = self._render(list(order))
+                for token in ("null", "NaN", "undefined"):
+                    self.assertNotIn(token, out["board"], f"{token!r} rendered to a person")
+                    self.assertNotIn(token, out["bar"])
+                    self.assertNotIn(token, out["legend"])
+
+    def test_an_unpriced_value_is_a_deliberate_mark_not_a_number(self):
+        priced, unpriced, zeros, negative = self._rows()
+        row = self._row(self._render([priced, unpriced, zeros, negative])["board"], "u")
+        self.assertIn('class="tav mono absent"', row)
+        self.assertIn(">—<", row)
+        self.assertIn("Unpriced", row)
+        # Every optional clause is omitted, not filled -- no "0.0 universal-value points".
+        self.assertNotIn("0.0 universal-value points", row)
+        self.assertNotIn("about <b>", row)
+
+    def test_a_measured_zero_is_rendered_as_zero(self):
+        priced, unpriced, zeros, negative = self._rows()
+        row = self._row(self._render([priced, unpriced, zeros, negative])["board"], "z")
+        self.assertIn('class="tav mono"', row)
+        self.assertNotIn("absent", row)
+        self.assertIn(">0<", row, "a measured 0 acquisition value is a number")
+        self.assertIn("SURV <b>0%</b>", row)
+        self.assertIn("against a typical 0.0", row, "a measured flat position renders its 0.0")
+
+    def test_a_negative_value_keeps_its_sign(self):
+        priced, unpriced, zeros, negative = self._rows()
+        row = self._row(self._render([priced, unpriced, zeros, negative])["board"], "n")
+        self.assertIn(">-16<", row)
+        self.assertIn("acquisition-value point(s) off the board leader", row)
+
+    def test_the_source_carries_no_zero_coalescing_idiom(self):
+        """`|| 0` / `?? 0` render an absence as a measured zero. The one occurrence allowed is
+        the comment that says so."""
+        script = ui._TEMPLATE_SOURCE.split("<script>", 1)[1]
+        code = "\n".join(ln for ln in script.splitlines() if not ln.strip().startswith("//"))
+        self.assertNotIn("|| 0", code)
+        self.assertNotIn("?? 0", code)
+
+    def test_the_force_glyphs_are_text_not_colour_emoji(self):
+        """CSS `color:` does not apply to a colour emoji, so a force whose glyph was an emoji
+        never showed its token. Every glyph must be a single BMP text character."""
+        import re
+        glyphs = re.search(r"const TICK_GLYPH = \{([^}]*)\}", ui._TEMPLATE_SOURCE).group(1)
+        for glyph in re.findall(r'"([^"]+)"', glyphs):
+            with self.subTest(glyph=glyph):
+                self.assertEqual(len(glyph), 1)
+                self.assertLess(ord(glyph), 0x1F000, "a colour emoji cannot take a fill")
+                self.assertNotIn(glyph, "🛡⚔💎")
+
+    def test_ticks_are_legible_at_rest(self):
+        css = ui._TEMPLATE_SOURCE.split("<script>", 1)[0]
+        tick_rule = css[css.index(".tick {"):css.index("}", css.index(".tick {"))]
+        self.assertNotIn("opacity", tick_rule)
+        self.assertNotIn("grayscale", tick_rule)

@@ -525,6 +525,13 @@ __DESIGN_SYSTEM_BADGE_NECESSITY__
 .basis-note b { color: var(--ink); }
 .row-metrics { display: flex; align-items: center; gap: .6rem; flex-wrap: wrap; }
 .tav { font-size: 1rem; font-weight: 700; min-width: 3.1rem; text-align: right; }
+/* An unpriced candidate's value cell: a deliberate mark, muted and hatched so it can never be
+   misread as a small number or an empty cell. The row is still ranked; the number does not exist. */
+.tav.absent {
+  color: var(--muted); font-weight: 500; cursor: help;
+  background: repeating-linear-gradient(135deg, transparent 0 3px, color-mix(in srgb, var(--line-2) 70%, transparent) 3px 4px);
+  border-radius: 3px; padding: 0 .3rem;
+}
 .chevron { color: var(--dim); font-size: .7rem; transition: transform .15s ease; }
 .row.expanded .chevron { transform: rotate(180deg); }
 
@@ -541,11 +548,16 @@ __DESIGN_SYSTEM_BADGE_NECESSITY__
 .context-gap.ctx-down { color: var(--pure); }
 
 .ticks { display: flex; gap: .3rem; align-items: center; }
+/* Ticks are READABLE AT REST (#173). They used to sit at opacity .28 under a grayscale
+   filter until a row was hovered -- composited 1.65:1 to 2.13:1, below the 3:1 glyph floor --
+   which left the four decision forces, the thing this surface exists to surface, illegible by
+   default. Full colour is the resting state; hover/focus adds the tint ring, never the colour. */
 .tick {
-  font-size: .76rem; opacity: .28; filter: grayscale(.6); border-radius: 4px; padding: 0 .15rem;
-  transition: opacity .15s ease, filter .15s ease, background .15s ease;
+  font-family: "JetBrains Mono", "DejaVu Sans Mono", monospace; font-size: .8rem; line-height: 1;
+  border-radius: 4px; padding: .05rem .2rem; cursor: help;
+  transition: background .15s ease, box-shadow .15s ease;
 }
-.tick.active { opacity: 1; filter: none; }
+.tick.active { box-shadow: 0 0 0 1px currentColor; }
 .tick[data-force="tie"] { color: var(--tie-b); }
 .tick[data-force="cliff"] { color: var(--cliff-b); }
 .tick[data-force="block"] { color: var(--block-b); }
@@ -601,7 +613,27 @@ __DESIGN_SYSTEM_REDUCED_MOTION__
 const PAYLOAD = __DRAFT_BOARD_PAYLOAD_JSON__;
 const ordered = PAYLOAD.candidates; // already in the engine's own order -- never re-sorted here
 
-const TICK_GLYPH = { tie: "≈", cliff: "🛡", block: "⚔", pure: "💎" };
+// TEXT glyphs, never colour emoji (#173): the shield / swords / gem this used were emoji
+// presentation on most platforms, and CSS `color:` does not apply to a colour emoji -- so
+// the cliff/block/pure force tokens never reached the screen. These four are plain text
+// shapes from the same monospace face the rank uses, and they take the force's colour.
+const TICK_GLYPH = { tie: "≈", cliff: "◣", block: "⊘", pure: "◆" };
+const TICK_TITLE = {
+  tie: "Near-tie: inside the measured noise band of the board leader",
+  cliff: "Cliff protection: the position thins sharply behind him",
+  block: "Block opportunity: a rival with a real hole here was positioned to take him",
+  pure: "Pure value: his raw universal value is the best in this field",
+};
+
+// ABSENCE (#173). Every number on a candidate is Optional: an unpriced position-best
+// reaches this board by design, and #154's feasibility backstop can make him the LEADER.
+// JavaScript turns a null into "null" in a template literal and into NaN in arithmetic, so a
+// sentence about a missing number must be OMITTED, and a displayed missing number is a
+// deliberate mark. `|| 0` and `?? 0` are the same defect wearing a different operator: they
+// render an absence as a measured zero, which the contract forbids.
+const ABSENT = "—";
+function num(x) { return typeof x === "number" && Number.isFinite(x); }
+function fmt(x, digits) { return num(x) ? x.toFixed(digits) : ABSENT; }
 const NEC_TEXT = {
   "MUST TAKE": "a genuine must-take", "STRONG ACTION": "a strong action",
   "PREFERRED": "a preferred, defensible", "CLOSE CALL": "a real close call",
@@ -630,19 +662,19 @@ document.getElementById("legend").innerHTML = `
 
 function tickRow(c) {
   return ["tie", "cliff", "block", "pure"].map(f =>
-    c.forces.includes(f) ? `<span class="tick" data-force="${f}" data-owner="${c.id}">${TICK_GLYPH[f]}</span>` : ""
+    c.forces.includes(f) ? `<span class="tick" data-force="${f}" data-owner="${c.id}" title="${TICK_TITLE[f]}">${TICK_GLYPH[f]}</span>` : ""
   ).join("");
 }
 
 function contextGapGlyph(c) {
   if (c.contextGap === "elevated") {
-    const gap = (c.tav - c.uv).toFixed(1);
-    return `<span class="context-gap ctx-up" title="Context Gap: roster fit is elevating his acquisition value well beyond his raw talent (+${gap} ${PAYLOAD.valueUnitShort}).">▲</span>`;
+    const gap = num(c.tav) && num(c.uv) ? ` (+${(c.tav - c.uv).toFixed(1)} ${PAYLOAD.valueUnitShort})` : "";
+    return `<span class="context-gap ctx-up" title="Context Gap: roster fit is elevating his acquisition value well beyond his raw talent${gap}.">▲</span>`;
   }
   if (c.contextGap === "suppressed") {
     const leaderUv = ordered[0].uv;
-    const gap = (c.uv - leaderUv).toFixed(1);
-    return `<span class="context-gap ctx-down" title="Context Gap: his raw talent exceeds the board leader's own value by ${gap} ${PAYLOAD.valueUnitShort} -- he trails only on acquisition rank.">▽</span>`;
+    const gap = num(c.uv) && num(leaderUv) ? ` by ${(c.uv - leaderUv).toFixed(1)} ${PAYLOAD.valueUnitShort}` : "";
+    return `<span class="context-gap ctx-down" title="Context Gap: his raw talent exceeds the board leader's own value${gap} -- he trails only on acquisition rank.">▽</span>`;
   }
   return "";
 }
@@ -678,47 +710,57 @@ function focusSentences(c) {
   const isLeader = ordered[0].id === c.id;
 
   if (PAYLOAD.decisionRegime === "decisive" && isLeader) {
-    s.push(`<p class="focus-sentence"><b>Best-in-class talent, full stop.</b> ${c.survival != null ? Math.round(c.survival * 100) + '% survival to your next turn — ' : ''}he is not walking back to this roster. Take the elite asset.</p>`);
+    s.push(`<p class="focus-sentence"><b>Best-in-class talent, full stop.</b> ${num(c.survival) ? Math.round(c.survival * 100) + '% survival to your next turn — ' : ''}he is not walking back to this roster. Take the elite asset.</p>`);
     const support = [];
-    if (c.forces.includes("cliff") && c.forfeit != null) support.push(`the position is thinning fast behind him (≈${c.forfeit.toFixed(0)} universal-value points if you wait)`);
+    if (c.forces.includes("cliff")) support.push(`the position is thinning fast behind him${num(c.forfeit) ? ` (≈${c.forfeit.toFixed(0)} universal-value points if you wait)` : ''}`);
     if (c.forces.includes("block")) support.push(`it also denies ${c.denialTeam || "a rival"} a real need`);
-    if (c.needBonus > 0) support.push(`it fills a genuine roster gap`);
+    if (num(c.needBonus) && c.needBonus > 0) support.push(`it fills a genuine roster gap`);
     if (support.length) {
       s.push(`<p class="focus-sentence tie-note">For context: ${support.join(", and ")}. None of that is why he's the pick — it's just additional reasons the pick was never close.</p>`);
     }
     return s.join("");
   }
 
-  const survivalBit = c.survival != null
-    ? `${Math.round(c.survival * 100)}% survival to your next turn${c.intervening != null ? ` across ${c.intervening} intervening pick(s)` : ''}`
+  const survivalBit = num(c.survival)
+    ? `${Math.round(c.survival * 100)}% survival to your next turn${num(c.intervening) ? ` across ${c.intervening} intervening pick(s)` : ''}`
     : `survival to your next turn isn't estimable right now`;
   s.push(`<p class="focus-sentence">This is <b>${NEC_TEXT[c.necessity] || c.necessity.toLowerCase()}</b> pick — ${survivalBit}.</p>`);
 
-  if (c.forces.includes("cliff") && c.forfeit != null) {
-    s.push(`<p class="focus-sentence">Waiting on him costs about <b>${c.forfeit.toFixed(1)} universal-value points</b> by your next turn — a ${c.cliffTier} positional cliff${c.cliffGap != null ? ` (${c.cliffGap.toFixed(1)} universal-value points of drop-off to the next best ${c.pos}, against a typical ${(c.cliffTypical || 0).toFixed(1)})` : ''}.</p>`);
+  if (c.forces.includes("cliff")) {
+    // Each number is its own optional clause. A cliff whose forfeit was never measured is
+    // still a cliff; the sentence just says less. cliffTypical of 0.0 is a MEASURED flat
+    // position (the engine returns it explicitly) and renders as 0.0, never as absence.
+    const cost = num(c.forfeit) ? `Waiting on him costs about <b>${c.forfeit.toFixed(1)} universal-value points</b> by your next turn — ` : `Waiting on him has a cost this board could not measure — but it is `;
+    const tier = c.cliffTier ? `a ${c.cliffTier} positional cliff` : `a positional cliff`;
+    const gap = num(c.cliffGap) ? ` (${c.cliffGap.toFixed(1)} universal-value points of drop-off to the next best ${c.pos}${num(c.cliffTypical) ? `, against a typical ${c.cliffTypical.toFixed(1)}` : ''})` : '';
+    s.push(`<p class="focus-sentence">${cost}${tier}${gap}.</p>`);
   }
   if (c.forces.includes("block")) {
-    s.push(`<p class="focus-sentence"><b>${c.denialTeam || "A rival"}</b> has a real hole here${c.rivalPremium != null ? ` — a rival premium of ${c.rivalPremium.toFixed(1)} acquisition-value points, not routine need` : ''}. Taking him is value and denial at once.</p>`);
+    s.push(`<p class="focus-sentence"><b>${c.denialTeam || "A rival"}</b> has a real hole here${num(c.rivalPremium) ? ` — a rival premium of ${c.rivalPremium.toFixed(1)} acquisition-value points, not routine need` : ''}. Taking him is value and denial at once.</p>`);
   }
   if (c.forces.includes("pure")) {
-    s.push(`<p class="focus-sentence">His raw universal value (<b>${c.uv}</b> ${PAYLOAD.valueUnitShort}) is the best in this field — context, not quality, is what's holding his acquisition rank down.</p>`);
+    s.push(`<p class="focus-sentence">His raw universal value${num(c.uv) ? ` (<b>${c.uv.toFixed(1)}</b> ${PAYLOAD.valueUnitShort})` : ''} is the best in this field — context, not quality, is what's holding his acquisition rank down.</p>`);
   }
   if (c.forces.includes("tie")) {
     const partners = ordered.filter(o => o.id !== c.id && o.forces.includes("tie")).map(o => o.name);
+    const margin = num(ordered[0].tav) && num(c.tav) ? `<b>${(ordered[0].tav - c.tav).toFixed(1)}</b> acquisition-value point(s) off the board leader` : `within the noise band of the board leader`;
     s.push(isLeader
       ? `<p class="focus-sentence tie-note">${partners.join(", ")} sit within the measured noise band of him — a real group, not a clear lead. Their preference for someone else here isn't a disagreement with the model.</p>`
-      : `<p class="focus-sentence tie-note">He's <b>${(ordered[0].tav - c.tav).toFixed(1)}</b> acquisition-value point(s) off the board leader — inside the measured noise band, so preference is a legitimate tiebreaker here, not a disagreement with the model.</p>`);
+      : `<p class="focus-sentence tie-note">He's ${margin} — inside the measured noise band, so preference is a legitimate tiebreaker here, not a disagreement with the model.</p>`);
   }
   if (c.contextGap === "elevated") {
-    s.push(`<p class="focus-sentence tie-note">A meaningful share of his acquisition value here is roster fit, not raw talent — about <b>${(c.tav - c.uv).toFixed(1)} acquisition-value points</b> of context lift. Worth knowing if your read on him leans on talent alone.</p>`);
+    const lift = num(c.tav) && num(c.uv) ? ` — about <b>${(c.tav - c.uv).toFixed(1)} acquisition-value points</b> of context lift` : '';
+    s.push(`<p class="focus-sentence tie-note">A meaningful share of his acquisition value here is roster fit, not raw talent${lift}. Worth knowing if your read on him leans on talent alone.</p>`);
   }
   if (c.contextGap === "suppressed" && !isLeader) {
-    s.push(`<p class="focus-sentence tie-note">His raw talent (universal value <b>${c.uv}</b> ${PAYLOAD.valueUnitShort}) arguably exceeds the board leader's own (${ordered[0].uv}) — he trails only because of roster-fit context, not quality.</p>`);
+    const mine = num(c.uv) ? ` (universal value <b>${c.uv.toFixed(1)}</b> ${PAYLOAD.valueUnitShort})` : '';
+    const theirs = num(ordered[0].uv) ? ` (${ordered[0].uv.toFixed(1)})` : '';
+    s.push(`<p class="focus-sentence tie-note">His raw talent${mine} arguably exceeds the board leader's own${theirs} — he trails only because of roster-fit context, not quality.</p>`);
   }
-  if (c.needBonus > 0 || c.eligBonus > 0) {
+  if ((num(c.needBonus) && c.needBonus > 0) || (num(c.eligBonus) && c.eligBonus > 0)) {
     const bits = [];
-    if (c.needBonus > 0) bits.push(`+${c.needBonus.toFixed(1)} ${PAYLOAD.valueUnitShort} for an unfilled roster need`);
-    if (c.eligBonus > 0) bits.push(`+${c.eligBonus.toFixed(1)} ${PAYLOAD.valueUnitShort} for multi-position flexibility`);
+    if (num(c.needBonus) && c.needBonus > 0) bits.push(`+${c.needBonus.toFixed(1)} ${PAYLOAD.valueUnitShort} for an unfilled roster need`);
+    if (num(c.eligBonus) && c.eligBonus > 0) bits.push(`+${c.eligBonus.toFixed(1)} ${PAYLOAD.valueUnitShort} for multi-position flexibility`);
     s.push(`<p class="focus-sentence tie-note">Fills a real roster gap: ${bits.join(" and ")}.</p>`);
   }
   if (c.flagged) {
@@ -753,20 +795,20 @@ function render() {
           ${waitGlyph(c)}
           ${contextGapGlyph(c)}
           <span class="necessity-pill ${c.necClass}">${c.necessity}</span>
-          <span class="tav mono" title="Acquisition value in universal-value points (UV pts): universal value plus this roster's need, eligibility and depth terms. Signed, unbounded, not fantasy points.">${c.tav != null ? c.tav.toFixed(0) : '—'}</span>
+          <span class="tav mono${num(c.tav) ? '' : ' absent'}" title="${num(c.tav) ? 'Acquisition value in universal-value points (UV pts): universal value plus this roster\'s need, eligibility and depth terms. Signed, unbounded, not fantasy points.' : 'Unpriced: his position has no replacement level left to price against, so no acquisition value exists for him. Ordered after every priced candidate; not a zero.'}">${fmt(c.tav, 0)}</span>
           <span class="chevron mono">▾</span>
         </div>
       </div>
       <div class="hover-note">${connectionSentence(c) || "No shared forces with another candidate right now."}</div>
       <div class="focus-wrap"><div class="focus-inner"><div class="focus-body">${focusSentences(c)}
         <div class="focus-metrics">
-          <span title="Universal value, in universal-value points">UV <b>${c.uv != null ? c.uv.toFixed(0) : '—'}</b><span class="unit">${PAYLOAD.valueUnitShort}</span></span>
-          <span title="Acquisition value for this roster, in universal-value points">ACQ <b>${c.tav != null ? c.tav.toFixed(0) : '—'}</b><span class="unit">${PAYLOAD.valueUnitShort}</span></span>
-          <span title="Projected season fantasy points -- a different unit from the two values before it">PROJ <b>${c.proj != null ? c.proj.toFixed(0) : '—'}</b><span class="unit">season pts</span></span>
-          <span title="Chance he is still on the board at your next turn">SURV <b>${c.survival != null ? Math.round(c.survival * 100) + '%' : '—'}</b></span>
+          <span title="Universal value, in universal-value points">UV <b>${fmt(c.uv, 0)}</b><span class="unit">${PAYLOAD.valueUnitShort}</span></span>
+          <span title="Acquisition value for this roster, in universal-value points">ACQ <b>${fmt(c.tav, 0)}</b><span class="unit">${PAYLOAD.valueUnitShort}</span></span>
+          <span title="Projected season fantasy points -- a different unit from the two values before it">PROJ <b>${fmt(c.proj, 0)}</b><span class="unit">season pts</span></span>
+          <span title="Chance he is still on the board at your next turn">SURV <b>${num(c.survival) ? Math.round(c.survival * 100) + '%' : ABSENT}</b></span>
           <span>CLIFF <b>${c.cliffTier || '—'}</b></span>
           ${c.replacementBasis ? `<span class="basis-note">PRICED VS <b>${c.replacementBasis === 'predraft_anchor' ? 'pre-draft anchor' : 'live starter demand'}</b></span>` : ''}
-          ${c.growthSignal != null ? `<span class="basis-note">GROWTH <b>${c.growthSignal.toFixed(1)}</b></span>` : ''}
+          ${num(c.growthSignal) ? `<span class="basis-note">GROWTH <b>${c.growthSignal.toFixed(1)}</b></span>` : ''}
         </div>
       </div></div></div>
     </div>`).join("");

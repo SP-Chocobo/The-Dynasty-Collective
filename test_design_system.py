@@ -294,3 +294,39 @@ class RgbaMarkerTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TheStreamlitThemeIsTheSamePaletteTests(unittest.TestCase):
+    """#173: `.streamlit/config.toml` themed native widgets in a cool grey with an emerald
+    primary while every custom surface was warm-black under gold -- two palettes meeting at
+    the iframe edge, and a semantic hue (emerald = surplus/good) spent on a primary button.
+    Every colour the theme file names must be a TOKENS value, verbatim."""
+
+    def _theme(self):
+        import tomllib
+        from pathlib import Path
+        return tomllib.loads((Path(__file__).parent / ".streamlit" / "config.toml").read_text())
+
+    def test_every_theme_colour_is_a_token_value(self):
+        theme = self._theme()["theme"]
+        colours = {k: v for k, v in theme.items() if isinstance(v, str) and v.startswith("#")}
+        colours.update({f"sidebar.{k}": v for k, v in theme.get("sidebar", {}).items()
+                        if isinstance(v, str) and v.startswith("#")})
+        self.assertGreaterEqual(len(colours), 8, "non-vacuity: the theme names its colours")
+        values = set(ds.TOKENS.values())
+        for name, hex_value in colours.items():
+            with self.subTest(name=name):
+                self.assertIn(hex_value.lower(), values, f"{name} is not a design_system token")
+
+    def test_the_primary_is_gold_and_not_a_semantic_hue(self):
+        primary = self._theme()["theme"]["primaryColor"].lower()
+        self.assertEqual(primary, ds.TOKENS["gold"])
+        for semantic in ("emerald", "amber", "crimson", "violet", "sky", "cliff", "block"):
+            self.assertNotEqual(primary, ds.TOKENS[semantic])
+
+    def test_the_label_on_a_gold_primary_button_clears_the_floor(self):
+        # White on gold does not (2.3:1); bg on gold does. app.py paints the label in bg.
+        self.assertLess(ds._contrast_hex("#ffffff", ds.TOKENS["gold"]), ds.WCAG_AA_NORMAL_TEXT)
+        self.assertGreaterEqual(ds.contrast_ratio("bg", "gold"), ds.WCAG_AA_NORMAL_TEXT)
+        import ui_source
+        self.assertIn('[data-testid="stBaseButton-primary"]', ui_source.text())
