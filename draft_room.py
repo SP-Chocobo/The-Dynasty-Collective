@@ -1400,8 +1400,28 @@ def _attach_waiting_cost(
     # imputed one (the mean of whatever could be measured) are the same type and the same
     # magnitude order, so without this a consumer cannot tell an estimate from an assumption --
     # and the assumption covers most of a real draft (see positional_bench_appetite_basis).
+    #
+    # #166: CONDITIONED ON THE FLOOR EXISTING, because a basis explains how a number was
+    # PLACED and cannot speak where nothing was placed. positional_bench_appetite_basis and
+    # horizon_replacement are different functions with different coverage: the first asks "could
+    # this position's decay rate be measured" (IDP: no, so impute from the offensive mean), the
+    # second asks "is there a horizon floor here at all" (IDP: no value whatsoever). Attaching
+    # the first as an explanation of the second's output let the label outlive the number.
+    #
+    # Measured on HEAVY_IDP and LIGHT_IDP opening boards: 76 of 340 rows (LB 29, DL 24, DB 23)
+    # carried "imputed" beside horizon_floor=None and waiting_cost=None -- and draft_board_ui
+    # renders "That floor is an estimate: ... the average of the positions that still can be
+    # measured is assumed for it" on exactly that value, describing the production of a number
+    # that was never produced. Zero of the 76 carried APPETITE_UNAVAILABLE, which already
+    # existed and is precisely the honest answer.
+    #
+    # Invisible in every offensive-only format, where all 264 rows are measured AND floored, so
+    # the pairing holds vacuously. It takes an IDP board to make the two coverage domains
+    # diverge -- which is why test_draft_horizon, having no IDP arm, never saw it.
+    _appetite = positional_bench_appetite_basis(pool, "_points", roster_positions, num_teams)
     scored["horizon_basis"] = scored["position"].map(
-        positional_bench_appetite_basis(pool, "_points", roster_positions, num_teams)
+        lambda position: (_appetite.get(position, APPETITE_UNAVAILABLE)
+                          if floors.get(position) is not None else APPETITE_UNAVAILABLE)
     )
     scored["waiting_cost"] = (
         scored["projected_points"].astype(float) - scored["horizon_floor"].astype(float)

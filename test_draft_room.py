@@ -2016,5 +2016,81 @@ class CalibrationConstantsDoNotDriftSilentlyTests(unittest.TestCase):
         self.assertEqual(dr.SLEEPER_WEEKLY_TO_SEASON_FACTOR, 17)
 
 
+class EveryBasisLabelHasTheQuantityItDescribesTests(unittest.TestCase):
+    """#166. A basis column explains how a NUMBER was produced. Where no number was produced it
+    has nothing to explain, and a label that speaks anyway asserts a production that did not
+    happen.
+
+    MEASURED, before this existed: on a HEAVY_IDP opening board, 76 of 340 rows (LB 29, DL 24,
+    DB 23) carried horizon_basis="imputed" beside horizon_floor=None and waiting_cost=None --
+    and draft_board_ui renders "That floor is an estimate: ... the average of the positions that
+    still can be measured is assumed for it" on exactly that value. Zero of the 76 carried
+    APPETITE_UNAVAILABLE, which already existed and is the honest answer.
+
+    The cause was two functions with different coverage domains, one labelling the other's
+    output: positional_bench_appetite_basis answers "could this position's decay rate be
+    measured", horizon_replacement answers "is there a floor here at all". IDP answers no to both
+    but only the first produces a label.
+
+    WHY IT NEEDS AN IDP LEAGUE. Every offensive-only format is all-measured AND all-floored, so
+    the pairing holds vacuously there -- checked directly across three states of a real 10T_ppr
+    draft (264 / 194 / 125 rows): zero rows with any of these quantities absent, so zero
+    violations possible. A version of this test written against an offensive board would pass
+    forever without ever exercising the property. It takes IDP to make the domains diverge."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.merger, cls.players_db = _build_pool_players_db()
+
+    #: basis column -> the quantity whose production it explains
+    PAIRS = (("horizon_basis", "horizon_floor"),
+             ("replacement_basis", "universal_value"),
+             ("depth_basis", "depth_exposure"))
+
+    def _board(self):
+        return dr.compute_draft_board(
+            self.merger, self.players_db, [], my_roster_id="99", league=LIGHT_IDP_LEAGUE,
+            mode="balanced",
+        )
+
+    def test_no_row_carries_a_basis_label_for_a_quantity_it_does_not_have(self):
+        board = self._board()
+        self.assertGreater(len(board), 50, "vacuous: no real board to check")
+        for basis, quantity in self.PAIRS:
+            with self.subTest(basis=basis):
+                offenders = [r for r in board
+                             if r.get(quantity) is None
+                             and r.get(basis) not in (None, dr.APPETITE_UNAVAILABLE,
+                                                      lo.EXPOSURE_NOT_APPLICABLE)]
+                self.assertEqual(
+                    [(r["position"], r["name"], r.get(basis)) for r in offenders[:3]], [],
+                    f"{basis} explains how {quantity} was produced, and {len(offenders)} row(s) "
+                    f"carry it where {quantity} is absent",
+                )
+
+    def test_the_idp_rows_that_have_no_floor_say_unavailable_rather_than_imputed(self):
+        """The specific regression, named. Not folded into the sweep above because a sweep that
+        went vacuous would still pass, and this states the actual measured population."""
+        board = self._board()
+        floorless = [r for r in board if r.get("horizon_floor") is None]
+        self.assertGreater(len(floorless), 0,
+                           "vacuous: this league produced no floorless rows, so the property "
+                           "under test was never exercised")
+        self.assertEqual(
+            sorted({str(r.get("horizon_basis")) for r in floorless}), [dr.APPETITE_UNAVAILABLE])
+
+    def test_a_row_that_HAS_a_floor_still_reports_a_real_appetite_basis(self):
+        """Non-vacuity in the other direction: forcing every row to 'unavailable' would satisfy
+        both tests above while destroying the signal. The floored rows must still discriminate."""
+        board = self._board()
+        floored = [r for r in board if r.get("horizon_floor") is not None]
+        self.assertGreater(len(floored), 50, "vacuous: no floored rows")
+        bases = {str(r.get("horizon_basis")) for r in floored}
+        self.assertTrue(
+            bases & {dr.APPETITE_MEASURED, dr.APPETITE_IMPUTED},
+            f"floored rows report only {bases} -- the appetite basis has stopped saying anything",
+        )
+
+
 if __name__ == "__main__":
     unittest.main()
