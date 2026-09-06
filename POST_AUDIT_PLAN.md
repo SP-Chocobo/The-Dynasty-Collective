@@ -5008,3 +5008,94 @@ path -- 0 of 36 board states changed. It measured nothing about what `reach_labe
 debate prompt. Removing it from the prompt would be acting where nothing was established, which
 is the exact error class this pass exists to catch, so the prompt keeps it and the prompt effect
 is registered as explicitly UNMEASURED rather than silently assumed absent.
+
+## #160 -- the three constants, derived against the populations they actually gate
+
+The docket ruled: commission a derivation for each constant, before freeze; a derivation MAY
+conclude "restructure", and that verdict returns to the owner rather than landing as a diff.
+
+### Why the existing measurement was not already the answer
+
+`test_threshold_reachability.py` holds a five-row table and already names the root pattern --
+A BOUND SAYS "NEVER MORE THAN THIS", A THRESHOLD SAYS "MEANINGFUL ABOVE THIS". That table is
+SINGLE-FORMAT, and its fixture never calls `set_league_format`, so every row of it comes from
+one rankings export on one roster shape. A constant's derivation cannot be settled on one board
+shape, so the probe re-measured all of it across five formats chosen to differ in team count,
+scoring, superflex and IDP (`scratchpad/probe_const.py`, output `probe_const.json`).
+
+Percentages are the share of each population the constant actually splits off:
+
+    population / rule                    10T_ppr  12T_half  12T_SF  14T_std  HEAVY_IDP   max
+    P1 leader gap, narrowed  <= 2.0        22.5%    21.1%   11.1%     7.7%     15.3%   161.36
+    P2 leader-second margin  >= 2.0        28.6%    57.1%   57.1%    85.7%     28.6%    12.66
+    P3 best_uv - leader_uv   >  2.0         0.0%     0.0%   28.6%    14.3%     42.9%     6.03
+    P4 within-pos bpa gap    >= 2.0        62.2%    61.7%   60.7%    56.2%     54.7%    71.00
+    P5 positional_forfeit    >= 15.0       53.2%    60.0%   72.1%    65.2%     39.4%   248.00
+    P6 TAV - UV (context)    >= 12.0        0.0%     4.4%    0.0%     0.0%      0.0%    16.07
+    P7a need_bonus           >= 12.0        0.0%     0.0%    0.0%     0.0%      0.0%     8.72
+    P7b eligibility_bonus    >= 12.0        VACUOUS -- see the coverage finding below
+    P7c depth_exposure       >= 12.0        0.0%     0.0%    0.0%     0.0%      0.0%    11.40
+
+### A1 -- NEAR_TIE_BAND = 2.0. VALUE STANDS; ITS DERIVATION OF RECORD DOES NOT.
+
+The band gates four rules, and it splits all four populations on all five formats: 8-23%,
+29-86%, 0-43%, 55-62%. Nothing here is degenerate. **The number survives contact with the
+populations it governs, and no re-value is supported.**
+
+What does not survive is the justification written beside it. The comment derives 2.0 from
+ADJACENT tav gaps in the TOP 40 of ONE 12-team superflex board. Three of the four rules it
+gates are LEADER-RELATIVE on the NARROWED CANDIDATE LIST, and the fourth is a WITHIN-POSITION
+bpa gap -- three different populations, none of them the one the derivation cites. That the
+value happens to work on all of them is luck the record should not keep claiming as design.
+This is a documentation repair with no behaviour change, and it is the honest form of "derived":
+say which population it was checked against, and that it was checked against the rest after.
+
+One caveat kept rather than smoothed: P3 (`pure_value`) fires 0.0% on two of five formats. It is
+not dead overall (42.9% on IDP) but it is format-dependent, which nothing previously recorded.
+
+### A2 -- NECESSITY_STANDOUT_REFERENCE_GAP = 15.0. CORRECT AS A REFERENCE, WRONG AS A THRESHOLD.
+
+As the standout normalizer's reference it is **correct, and confirmed correct across formats**:
+the largest leader-second margin anywhere in five formats is 12.66, so 15.0 still sits above the
+distribution, which is the POINT of a normalizer reference.
+
+As `cliff_protection`'s firing threshold on `positional_forfeit` it fires on 39-72% of
+candidates -- a badge that lights for most of the field carries almost no information. The two
+quantities are not commensurable: leader-second margin has a max of 12.66, forfeit a max of
+248.0, a 20x difference in range gated by one literal.
+
+**VERDICT: RESTRUCTURE. Returns to the owner.**
+
+### A3 -- NEED_BONUS_MAX = 12.0. ONE VALUE DOING FOUR JOBS, THREE OF WHICH DISAGREE.
+
+  * As `DEPTH_EXPOSURE_MAX` it is **exactly right and well derived**: depth_exposure rescales
+    trade_value by TRADE_VALUE_SCALE_MAX, so its structural maximum IS 12.0, and the measured
+    max is 11.40 -- the bound is attained to within 5%. Nothing to change.
+  * As `need_bonus`'s own cap it **never binds on any format** (max 8.72, 38% below the cap).
+    That is legitimate for a bound under #56 -- a cap is allowed to be slack -- but it means no
+    measurement supports 12.0 over any other number above 8.72. It is inert, not wrong.
+  * As `ELIGIBILITY_BONUS_MAX` it is **UNMEASURED**, for a fixture reason, not an engine one.
+  * As `context_elevated`'s firing threshold it fires **0.0% on four of five formats and 4.4%
+    on the fifth**. The in-code comment records "~7.8% of priced rows"; that figure is from a
+    sixth, different single format and it does not generalize. Not a wrong measurement -- a
+    measurement whose scope was never stated.
+
+**VERDICT: RESTRUCTURE for the context_elevated reuse. Returns to the owner.** The other three
+uses stand as they are.
+
+### The coverage finding, which is about the battery rather than the constant
+
+`eligibility_bonus` measured 0.0 at every percentile on every format. That is NOT an engine
+property. `run_draft_battery.build_players_db` gives every player exactly one entry in
+`fantasy_positions`, so the dual-eligibility term is **structurally zero in this probe and in
+all 33 battery arms**. The WR/TE and WR/DB cases the term was built for -- the Travis-Hunter
+case named in draft_room's own comment -- are exercised by unit tests and by nothing else.
+Registered as #172 rather than reported as a result, because a number measured on a population
+that cannot produce it is not evidence about anything.
+
+### What this means for the freeze
+
+Two restructure verdicts, and they are THE SAME DEFECT #144 ALREADY REPAIRED ONCE: a value
+chosen as a bound or a reference, reused as a firing threshold. #144 fixed that for the denial
+normalizer. `cliff_protection` and `context_elevated` are the two remaining instances, and the
+constants contract test already names the second one as an open product decision.
