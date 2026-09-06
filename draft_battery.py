@@ -34,6 +34,8 @@ DELIBERATELY NOT AUDITED, so the report is not read as covering it:
 
 from __future__ import annotations
 
+import json
+
 import collections
 from typing import Any, Optional
 
@@ -448,6 +450,45 @@ def audit_trajectory(trajectory, league: dict, players_db: dict,
         "strength": (roster_strength(trajectory, league, players_db, values)
                      if values is not None else None),
     }
+
+
+#: Fields excluded from an arm's content fingerprint. `label` is the thing being compared, and
+#: `seconds` is wall-clock -- including it would make every arm unique and the check vacuous.
+#: Found the hard way: the first version of this comparison included `seconds` and reported 0
+#: duplicates against a matrix that has 8.
+_FINGERPRINT_EXCLUDES = frozenset({"label", "seconds"})
+
+
+def duplicate_arms(results: list[dict]) -> list[dict]:
+    """Arms of the matrix whose ENTIRE measured content is identical to another arm's.
+
+    WHY THE INSTRUMENT HAS TO SAY THIS ABOUT ITSELF. league_matrix() crosses four sizes x three
+    scorings x two QB modes and reports the count as though every arm were independent evidence.
+    It is not: `set_league_format` resolves a league's format to the best-fitting Dynasty
+    Rankings export, and no HALF-PPR export exists in the baseline -- so a half_ppr league
+    legitimately draws PPR values (scored 0.5 rather than 1.0 by
+    data_merger._rankings_format_match_score, and disclosed to the user in app.py). That is
+    CORRECT handling of a real data limitation. What is not correct is a report claiming 33
+    formats of coverage when 8 of them reproduce another arm byte for byte, which inflates the
+    denominator under every rate this battery produces and makes a duplicated finding look like
+    independent corroboration.
+
+    DERIVED, NEVER HAND-LISTED, for the reason league_config.ambiguities() is derived: a list
+    naming half_ppr would go stale the first time a half-PPR export is added, or miss a
+    collapse on an axis nobody predicted. This compares what the arms actually PRODUCED, so a
+    new duplicate announces itself and a resolved one disappears without anyone editing a list.
+    """
+    seen: dict[str, str] = {}
+    dupes: list[dict] = []
+    for row in results:
+        body = json.dumps({k: v for k, v in row.items() if k not in _FINGERPRINT_EXCLUDES},
+                          sort_keys=True, default=str)
+        first = seen.get(body)
+        if first is None:
+            seen[body] = row.get("label")
+        else:
+            dupes.append({"label": row.get("label"), "duplicates": first})
+    return dupes
 
 
 def run_battery(merger, players_db: dict, matrix: Optional[list[dict]] = None,

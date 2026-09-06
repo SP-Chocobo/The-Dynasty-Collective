@@ -21,6 +21,7 @@ from pathlib import Path
 
 import data_merger as dm
 import draft_battery
+import roster_diagnostics
 import store_io
 
 REPORT_PATH = Path("BATTERY_REPORT.json")
@@ -50,6 +51,36 @@ def build_players_db(merger: dm.DataMerger, positions=BATTERY_POSITIONS) -> dict
     return out
 
 
+def strength_coverage(strength: dict | None) -> str:
+    """The words beside the starter-value range on the per-format line below, so the number
+    states its own coverage on the one screen roster strength reaches a person. The phrasing
+    is roster_diagnostics.coverage_statement -- the one place it is written -- because the
+    battery's starter_value makes the same exclusion that module's starting_lineup_value does
+    (an unpriced player contributes nothing, so one anywhere makes the value a floor).
+
+    Absence is not a value, and there are three absences here, each its own sentence and none
+    of them a zero:
+      strength is None       -> audit_trajectory was given no pre-draft values; nothing was
+                                measured, so there is no coverage to state.
+      per_roster absent      -> a strength record with no rosters in it; unmeasured, not zero.
+      per_roster empty       -> measured, and there was nobody to price.
+      a roster with no count -> a record from before draft_battery carried unpriced_players;
+                                the count is unknown, not zero.
+    Otherwise the per-roster counts are summed and stated.
+    """
+    if strength is None:
+        return "strength not measured (no pre-draft values), so coverage is unknown"
+    per_roster = strength.get("per_roster")
+    if per_roster is None:
+        return roster_diagnostics.coverage_statement(None)
+    if not per_roster:
+        return "no rosters to price"
+    counts = [row.get("unpriced_players") for row in per_roster.values()]
+    if any(count is None for count in counts):
+        return roster_diagnostics.coverage_statement(None)
+    return roster_diagnostics.coverage_statement(sum(counts))
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     parser.add_argument("--out", default=str(REPORT_PATH))
@@ -72,24 +103,37 @@ def main(argv: list[str] | None = None) -> int:
         results.append(audited)
         findings = len(audited["findings"])
         strength = audited.get("strength") or {}
+        # The coverage clause reads the RAW strength, not the `or {}` above, so None stays an
+        # absence with its own sentence instead of collapsing into an empty record.
         print(f"{audited['label']:22s} picks={audited['picks']:4d} "
               f"findings={findings:3d} "
               f"starters {strength.get('starter_value_min')}-{strength.get('starter_value_max')}"
-              f" (spread {strength.get('starter_value_spread')})"
+              f" (spread {strength.get('starter_value_spread')}; "
+              f"{strength_coverage(audited.get('strength'))})"
               f" {audited['seconds']:7.1f}s"
               + ("   <-- DEFECTS" if findings else ""), flush=True)
 
     total_findings = sum(len(r["findings"]) for r in results)
+    # The instrument states its own coverage. `formats` is how many arms RAN;
+    # `independent_formats` is how many produced evidence nothing else already produced. They
+    # differ whenever two arms resolve to the same rankings export -- see duplicate_arms.
+    dupes = draft_battery.duplicate_arms(results)
     report = {
         "formats": len(results),
+        "independent_formats": len(results) - len(dupes),
+        "duplicate_arms": dupes,
         "picks": sum(r["picks"] for r in results),
         "total_findings": total_findings,
         "seconds": round(time.time() - started, 1),
         "results": results,
     }
     store_io.write(Path(args.out), report)
-    print(f"\n{report['formats']} formats, {report['picks']} picks, "
-          f"{total_findings} structural findings, {report['seconds']}s -> {args.out}")
+    print(f"\n{report['formats']} formats ({report['independent_formats']} independent), "
+          f"{report['picks']} picks, {total_findings} structural findings, "
+          f"{report['seconds']}s -> {args.out}")
+    for dupe in dupes:
+        print(f"  DUPLICATE ARM: {dupe['label']} reproduces {dupe['duplicates']} exactly "
+              f"-- same rankings export, so it is not independent evidence")
     return 1 if total_findings else 0
 
 

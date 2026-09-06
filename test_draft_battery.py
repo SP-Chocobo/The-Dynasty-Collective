@@ -288,5 +288,57 @@ class TheMatrixIsWideAndCarriesItsNamedFormatsTests(unittest.TestCase):
                 self.assertEqual(entry["league"].get("draft_rounds"), entry["rounds"])
 
 
+class TheInstrumentStatesItsOwnCoverageTests(unittest.TestCase):
+    """#159. league_matrix() crosses four sizes x three scorings x two QB modes and the report
+    named that count as though every arm were independent evidence. Measured against a real
+    33-arm run: NINE arms reproduce another byte for byte, so the honest coverage is 24.
+
+    Eight of the nine are the half_ppr family. There is no half-PPR export in
+    data/baseline/rankings/, so set_league_format resolves a half_ppr league to the PPR file --
+    scored 0.5 rather than 1.0 by data_merger._rankings_format_match_score, and disclosed to
+    the user in app.py. The ENGINE is behaving correctly; the report was the thing overstating.
+
+    The ninth was not predicted and is why this is derived rather than hand-listed:
+    12T_ppr_mode_balanced reproduces 12T_ppr because UPSIDE_MODE_DEFAULT_ROUND is 15 and those
+    arms draft 14 rounds, so "auto" never reaches its upside switch and IS "balanced" there.
+    Benign -- 14 of 33 arms do run >= 15 rounds, so auto's upside branch is exercised elsewhere
+    -- but a hand-written list naming half_ppr would have missed it entirely."""
+
+    def _arm(self, label, **over):
+        base = {"label": label, "picks": 10, "findings": [], "seconds": 1.0,
+                "strength": {"starter_value_min": 1.0}, "teams": 12, "rounds": 14}
+        base.update(over)
+        return base
+
+    def test_two_arms_with_identical_content_are_reported_as_one_duplicating_the_other(self):
+        arms = [self._arm("a"), self._arm("b")]
+        self.assertEqual(batt.duplicate_arms(arms), [{"label": "b", "duplicates": "a"}])
+
+    def test_arms_that_differ_in_any_measured_field_are_not_duplicates(self):
+        """Non-vacuity: a checker that called everything a duplicate would pass the test above."""
+        self.assertEqual(batt.duplicate_arms([self._arm("a"), self._arm("b", picks=11)]), [])
+        self.assertEqual(
+            batt.duplicate_arms([self._arm("a"), self._arm("b", findings=[{"audit": "x"}])]), [])
+
+    def test_wall_clock_does_not_make_every_arm_look_unique(self):
+        """The bug this check was FIRST written with. A fingerprint including `seconds` reported
+        zero duplicates against a matrix that has nine -- a plausible number about the wrong
+        question, which is this repo's dominant measurement failure."""
+        arms = [self._arm("a", seconds=1.0), self._arm("b", seconds=99.9)]
+        self.assertEqual(batt.duplicate_arms(arms), [{"label": "b", "duplicates": "a"}])
+
+    def test_the_label_itself_never_makes_two_arms_differ(self):
+        arms = [self._arm("zzz"), self._arm("aaa")]
+        self.assertEqual(len(batt.duplicate_arms(arms)), 1)
+
+    def test_three_identical_arms_all_point_at_the_first(self):
+        arms = [self._arm("a"), self._arm("b"), self._arm("c")]
+        self.assertEqual([d["duplicates"] for d in batt.duplicate_arms(arms)], ["a", "a"])
+
+    def test_an_empty_or_single_arm_run_reports_no_duplicates(self):
+        self.assertEqual(batt.duplicate_arms([]), [])
+        self.assertEqual(batt.duplicate_arms([self._arm("only")]), [])
+
+
 if __name__ == "__main__":
     unittest.main()
