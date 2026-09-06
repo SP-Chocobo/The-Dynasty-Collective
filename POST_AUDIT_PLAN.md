@@ -5335,3 +5335,63 @@ constant and passes. The floors do not claim to catch it; MUTATION TESTING (#38,
 the instrument for that, and it is the one that has actually found vacuous tests here. Two
 instruments, two jobs -- which is coherent, and worth writing down so the floors are not
 mistaken for a coverage guarantee they never claimed to be.
+
+## #176 -- THE ROSTER PROOF: the engine loses to a constrained naive baseline, 48 of 48 drafts
+
+The question the battery could never answer -- "does the decision architecture actually build
+stronger teams, or only defensible picks?" -- now has a measured answer, and it is negative.
+
+    48 drafts. 4 formats. Every seat an engine chair in exactly half the runs.
+    ENGINE WIN RATE: 0.0%.  On both yardsticks. In every format. In every run.
+
+                      year 1 (projection)        three-year (proj_3yr)
+    10T_ppr           -10.3%  worst -12.0%       -11.1%  worst -13.7%
+    12T_half_ppr      -12.8%  worst -17.9%       -12.7%  worst -15.6%
+    12T_ppr_SF        -13.7%  worst -15.6%       -13.2%  worst -18.0%
+    14T_standard       -9.5%  worst -12.3%        -6.0%  worst -10.9%
+
+THE METHODOLOGY HELD, which is why the result has to be taken seriously:
+  * The SEAT-CONTROLLED estimate (each seat against ITSELF as an engine chair vs a baseline
+    chair) matches the run-level number to three decimals -- -10.271 vs -10.26 on 10T_ppr. Draft
+    position is not doing the work.
+  * The STABILITY LADDER is flat: the conclusion at 25% of runs equals the conclusion at 100%.
+    More runs will not move it.
+  * Both arms drew from the SAME 235-player pool, restricted to what both yardsticks can price,
+    after the first attempt's -10% turned out to be a scoring artifact (61% of the full pool is
+    unpriced by `projection`, and only the engine drafts those).
+
+### The mechanism, and it is a defect we already have a number for
+
+    format          required slots   ENGINE unfilled   BASELINE unfilled
+    10T_ppr              400          25   6.2%            0   0.0%
+    12T_half_ppr         576          45   7.8%            0   0.0%
+    12T_ppr_SF           648          50   7.7%            0   0.0%
+    14T_standard         784          54   6.9%            0   0.0%
+
+**The engine finishes 6-8% of required starting slots EMPTY. The baseline finishes 0%.** That is
+#154/#155 -- and the battery had it as three formats with one empty slot each. It is not an edge
+case. Under pool pressure it is roughly one starting slot in fourteen, in every format.
+
+### What is inflated here, stated so the number is not quoted naked
+
+1. **The baseline is structurally immune to the failure being measured.** Its rule IS "fill
+   starters first", so 0.0% is guaranteed by construction rather than earned. A fair reading is
+   "the engine loses to a drafter that cannot make this mistake", not "the engine is 12% worse
+   than a human".
+2. **The restricted pool is scarcer than a real board** -- 235 players against 140-196 picks,
+   where production sees 764. Scarcity is what converts the #155 pricing collapse into an empty
+   slot, so the RATE here is an upper bound.
+3. **The metric counts starters only**, so every pick the engine spent on bench or dynasty
+   horizon scores zero. That is defensible for year 1 and arguably unfair over three.
+
+None of that rescues the direction. A dynasty engine may legitimately trade present value for
+future value; it may not fail to field a legal lineup, and it loses the three-year yardstick
+too. The owner's instruction on this was explicit and is honoured here: a year-1 deficit is a
+finding, not something to wave through as "well, dynasty".
+
+### What this changes
+
+#154 was ruled Phase 3 scope on evidence of three formats with one empty slot each. This
+experiment did not find a new defect -- it PRICED the known one, and the price is roughly a
+tenth of the roster. That is a materially different input to the freeze decision than the one
+the docket carried, and it belongs in front of the owner before #52 rather than after.
