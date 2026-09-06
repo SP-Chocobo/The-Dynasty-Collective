@@ -2098,5 +2098,148 @@ class EveryBasisLabelHasTheQuantityItDescribesTests(unittest.TestCase):
         )
 
 
+SUPERFLEX_LEAGUE = {
+    "roster_positions": ["QB", "RB", "RB", "WR", "WR", "TE", "FLEX", "SUPER_FLEX"] + ["BN"] * 7,
+    "total_rosters": 12, "settings": {"type": 2},
+}
+
+
+class WhereTheAbsenceContractIsReachableTests(unittest.TestCase):
+    """#165. Unpriced rows live at ONE position in ONE league shape, and several write-ups in
+    this register -- including my own first two probes -- reasoned about them somewhere else.
+
+    `_fill_omitted_from_anchor` fills every position `replacement_levels` omitted for EXHAUSTED
+    DEMAND from the pre-draft anchor, and pointedly refuses to fill the one the
+    `startable_floors` branch declined. `startable_floors` is set in exactly one place: QB, when
+    SUPER_FLEX is in roster_positions. So `universal_value` is None only at QB, only in a
+    superflex league, and only once no remaining QB clears `qb_startable_floor`.
+
+    MEASURED before this existed. HEAVY_IDP, LIGHT_IDP, 10T_ppr and 12T_ppr carry ZERO unpriced
+    rows -- on the opening board and at every depth of a full draft's consumption (216 and 132
+    picks). In a 12-team superflex the floor is 163.5, 28 of 39 QBs clear it, and draining 27
+    leaves 0 unpriced while draining 28 leaves 11. The battery agrees from the other side: all
+    33 formats report "every player priced".
+
+    WHAT THIS PREVENTS, stated against the over-hardening rule. Not "the implementation should
+    stay as written". The demonstrated failure is reasoning about the absence contract against a
+    population that does not contain it: #165's own write-up and #168's both located unpriced
+    players in IDP formats, where the trade_value fallback prices every row, and the conclusions
+    drawn there were about nothing. Anchoring the declined branch would make the contract
+    unreachable and every absence test below it vacuous; widening absence to another position
+    would move the population out from under the register's conclusions without saying so.
+
+    MUTATION-CHECKED 5 of 6, and the sixth is stated rather than hidden. Caught: anchoring the
+    declined floor (2 tests), dropping the not-missing early return, never setting
+    startable_floors, an anchor that fills nothing, and replacement_levels declining every
+    demand-ranked position (2 tests). NOT caught: an anchor that omits IDP positions from its
+    COVERAGE. The reason is a real limit of reach, not an oversight -- in LIGHT_IDP no position
+    is missing from replacement_levels in the first place, so the anchor is never asked to cover
+    one and a hole in its coverage cannot show. Pinning that would need a league where a
+    position's demand genuinely exhausts, which is a different fixture and a different finding."""
+
+    @classmethod
+    def setUpClass(cls):
+        # Format FIRST, then the pool -- set_league_format reloads, so a players_db built
+        # before it can describe a different export than the board is scored against.
+        cls.merger = dm.DataMerger()
+        cls.merger.set_league_format(
+            {"scoring": "ppr", "superflex": True, "te_premium": False})
+        proj, players_db, pid = cls.merger.projections, {}, 0
+        for pos in ("QB", "RB", "WR", "TE", "DL", "LB", "DB"):
+            sub = proj[proj["position"] == pos].sort_values("trade_value", ascending=False)
+            for _, row in sub.iterrows():
+                pid += 1
+                parts = row["norm_name"].split()
+                players_db[str(pid)] = {
+                    "first_name": parts[0].upper(), "last_name": " ".join(parts[1:]).title(),
+                    "position": pos, "fantasy_positions": [pos], "team": row.get("team"),
+                }
+        cls.players_db = players_db
+
+    def _board(self, league, picks=()):
+        return dr.compute_draft_board(self.merger, self.players_db, list(picks),
+                                      my_roster_id="99", league=league, mode="balanced")
+
+    def test_the_anchor_fills_exhausted_demand_and_never_the_declined_floor(self):
+        """The branch rule itself, in isolation. WR was omitted because its demand ran out and
+        is anchorable; QB was omitted because nobody cleared its floor, which is a different
+        claim -- "there is no startable replacement here" -- and anchoring it would answer a
+        question the engine deliberately declined."""
+        levels = {"RB": 100.0}
+        filled = dr._fill_omitted_from_anchor(
+            levels, {"QB", "RB", "WR"}, {"QB": 163.5},
+            lambda: {"QB": 150.0, "WR": 90.0},
+        )
+        self.assertEqual(filled, {"WR"})
+        self.assertEqual(levels, {"RB": 100.0, "WR": 90.0})
+        self.assertNotIn(
+            "QB", levels,
+            "the startable_floors branch declined QB; anchoring it would convert 'no startable "
+            "replacement exists' into a price, which is the conflation replacement_levels "
+            "returns None to avoid",
+        )
+
+    def test_no_anchor_is_built_when_nothing_was_omitted(self):
+        """Guards the cost, which is the reason the early return exists: building the pre-draft
+        anchor is a second full pool construction (~544ms)."""
+        built = []
+
+        def _anchor():
+            built.append(1)
+            return {"QB": 150.0}
+
+        filled = dr._fill_omitted_from_anchor({"QB": 1.0}, {"QB"}, None, _anchor)
+        self.assertEqual((filled, built), (set(), []))
+
+    def test_a_league_without_superflex_prices_every_row(self):
+        """The negative half, and the one that makes the register's IDP reasoning checkable:
+        with no SUPER_FLEX there is no startable floor, so every position replacement_levels
+        omits is anchorable and nothing can go unpriced."""
+        board = self._board(LIGHT_IDP_LEAGUE)
+        self.assertGreater(len(board), 50, "vacuous: no real board to check")
+        unpriced = [r for r in board if r.get("universal_value") is None]
+        self.assertEqual(
+            [(r["position"], r["name"]) for r in unpriced[:5]], [],
+            f"{len(unpriced)} unpriced row(s) in a league with no startable floor",
+        )
+
+    def test_superflex_qb_goes_unpriced_only_once_none_clears_the_floor(self):
+        """The knife-edge, which is also this class's non-vacuity proof: the same predicate that
+        reports zero above reports a real population here, so the zeros are a measurement and
+        not a broken check."""
+        floor = dr.qb_startable_floor(self.merger)
+        self.assertIsNotNone(floor, "vacuous: no QB startable floor, so the branch never runs")
+
+        opening = self._board(SUPERFLEX_LEAGUE)
+        qbs = sorted((r for r in opening if r["position"] == "QB"),
+                     key=lambda r: r.get("projected_points") or -1.0, reverse=True)
+        clearing = [r for r in qbs if (r.get("projected_points") or -1.0) >= floor]
+        self.assertGreater(len(clearing), 1, "vacuous: fewer than two QBs clear the floor")
+        self.assertEqual([r for r in opening if r.get("universal_value") is None], [],
+                         "the opening board should price every row")
+
+        def _drain(n):
+            picks = [{"player_id": str(r["player_id"]), "roster_id": "1"} for r in qbs[:n]]
+            return [r for r in self._board(SUPERFLEX_LEAGUE, picks)
+                    if r.get("universal_value") is None]
+
+        one_left = _drain(len(clearing) - 1)
+        none_left = _drain(len(clearing))
+        self.assertEqual(
+            [(r["position"], r["name"]) for r in one_left[:3]], [],
+            "one QB still clears the floor, so QB still has a replacement level",
+        )
+        self.assertGreater(
+            len(none_left), 0,
+            "with no QB left above the floor, replacement_levels declines QB and the anchor "
+            "refuses to fill it -- the rows below must be unpriced, not priced against a "
+            "fabricated level",
+        )
+        self.assertEqual(
+            sorted({r["position"] for r in none_left}), ["QB"],
+            "absence must stay confined to the position whose floor was declined",
+        )
+
+
 if __name__ == "__main__":
     unittest.main()
