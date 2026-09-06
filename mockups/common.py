@@ -25,6 +25,9 @@ HERE = Path(__file__).parent
 sys.path.insert(0, str(HERE.parent))
 import design_system as ds  # noqa: E402
 from draft_room import SLEEPER_WEEKLY_TO_SEASON_FACTOR  # noqa: E402  the engine's own factor, never a literal
+from pick_synthesis import (  # noqa: E402  the engine's own thresholds, never literals
+    CLIFF_MIN_MATERIAL_GAP, DECISIVE_SURVIVAL_THRESHOLD, NEAR_TIE_BAND,
+)
 
 SLICE = json.loads((HERE / "_slice.json").read_text())
 
@@ -86,6 +89,12 @@ def payload() -> dict:
         "valueUnitShort": ds.VALUE_UNIT_SHORT,
         "contract": ds.DISPLAY_CONTRACT,
         "weeksFactor": SLEEPER_WEEKLY_TO_SEASON_FACTOR,
+        # Round 3 reads these so the plate can say WHY the regime is what it is, in the
+        # engine's own numbers: the noise band that decides "clear of the field", the survival
+        # bar that decides "decisive", and the materiality floor behind the cliff mark (#175).
+        "nearTieBand": NEAR_TIE_BAND,
+        "decisiveSurvival": DECISIVE_SURVIVAL_THRESHOLD,
+        "cliffMinGap": CLIFF_MIN_MATERIAL_GAP,
         "candidates": rows(),
         "nextPicks": ["Roster 5", "Roster 6", "Roster 7", "Roster 8", "Roster 9", "Roster 10",
                       "Roster 11", "Roster 12", "Roster 12", "Roster 11", "Roster 10", "Roster 9",
@@ -209,7 +218,7 @@ function depth(c) {
 function coverage(cands) {
   const n = cands.filter(c => !num(c.tav)).length;
   if (n === 0) return `every candidate priced`;
-  return `${n} of ${cands.length} candidates unpriced — no replacement level at their position; ordered last, not scored`;
+  return `${n} of ${cands.length} unpriced · no replacement level · ordered last, not scored`;
 }
 function forceTitle(f) {
   return { tie: "Near-tie: inside the measured noise band of the board leader",

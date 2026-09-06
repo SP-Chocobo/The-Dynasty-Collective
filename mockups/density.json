@@ -9,7 +9,7 @@
   "elementsPerCandidate": 10.2,
   "elementsLeader": 9,
   "pageHeight": 1400,
-  "boardTop": 300
+  "boardTop": 255
  },
  {
   "file": "synthesis_h1_dense.html",
@@ -33,7 +33,7 @@
   "elementsPerCandidate": 13.1,
   "elementsLeader": 12,
   "pageHeight": 1400,
-  "boardTop": 280
+  "boardTop": 235
  },
  {
   "file": "synthesis_h2_split.html",
@@ -57,7 +57,7 @@
   "elementsPerCandidate": 10.2,
   "elementsLeader": 9,
   "pageHeight": 1400,
-  "boardTop": 300
+  "boardTop": 255
  },
  {
   "file": "synthesis_h3_deck.html",
@@ -72,6 +72,78 @@
   "boardTop": 255
  },
  {
+  "file": "synthesis_r1_2across.html",
+  "population": "fixture-14",
+  "candidates": 13,
+  "readable": 13,
+  "pxPerCandidate": 79.4,
+  "rawRowPx": 91.9,
+  "elementsPerCandidate": 12.9,
+  "elementsLeader": 22,
+  "pageHeight": 1400,
+  "boardTop": 224
+ },
+ {
+  "file": "synthesis_r1_2across.html",
+  "population": "real-33",
+  "candidates": 33,
+  "readable": 16,
+  "pxPerCandidate": 59,
+  "rawRowPx": 62.5,
+  "elementsPerCandidate": 10.5,
+  "elementsLeader": 22,
+  "pageHeight": 2235,
+  "boardTop": 224
+ },
+ {
+  "file": "synthesis_r2_3across.html",
+  "population": "fixture-14",
+  "candidates": 13,
+  "readable": 13,
+  "pxPerCandidate": 73.3,
+  "rawRowPx": 114.6,
+  "elementsPerCandidate": 13.6,
+  "elementsLeader": 22,
+  "pageHeight": 1400,
+  "boardTop": 224
+ },
+ {
+  "file": "synthesis_r2_3across.html",
+  "population": "real-33",
+  "candidates": 33,
+  "readable": 18,
+  "pxPerCandidate": 56.8,
+  "rawRowPx": 71.7,
+  "elementsPerCandidate": 10.8,
+  "elementsLeader": 22,
+  "pageHeight": 2162,
+  "boardTop": 224
+ },
+ {
+  "file": "synthesis_r3_lanes.html",
+  "population": "fixture-14",
+  "candidates": 13,
+  "readable": 13,
+  "pxPerCandidate": 79.5,
+  "rawRowPx": 118.2,
+  "elementsPerCandidate": 12.7,
+  "elementsLeader": 22,
+  "pageHeight": 1400,
+  "boardTop": 224
+ },
+ {
+  "file": "synthesis_r3_lanes.html",
+  "population": "real-33",
+  "candidates": 33,
+  "readable": 21,
+  "pxPerCandidate": 49.6,
+  "rawRowPx": 69.9,
+  "elementsPerCandidate": 10,
+  "elementsLeader": 22,
+  "pageHeight": 1923,
+  "boardTop": 224
+ },
+ {
   "file": "synthesis_s1_verdict.html",
   "population": "fixture-14",
   "candidates": 13,
@@ -81,7 +153,7 @@
   "elementsPerCandidate": 10.2,
   "elementsLeader": 9,
   "pageHeight": 1400,
-  "boardTop": 473
+  "boardTop": 428
  },
  {
   "file": "synthesis_s1_verdict.html",
@@ -105,7 +177,7 @@
   "elementsPerCandidate": 10.2,
   "elementsLeader": 9,
   "pageHeight": 1400,
-  "boardTop": 345
+  "boardTop": 300
  },
  {
   "file": "synthesis_s2_ledger.html",

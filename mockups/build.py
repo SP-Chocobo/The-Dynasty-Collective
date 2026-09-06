@@ -1,8 +1,9 @@
 """Regenerate the mockups: `python3 mockups/build.py` from the repo root.
 
-ROUND 2 builds the three syntheses (s_variants) and the index. The nine round-1 pages are
-the scored record -- the owner's verdicts and the critic's scores refer to them as they were
--- so they are NOT regenerated; their generator modules stay for reference.
+ROUND 3 builds the three banded boards (r_variants) and rebuilds the round-2 syntheses
+(s_variants) on the same payload, plus the index. The nine round-1 pages are the scored
+record -- the owner's verdicts and the critic's scores refer to them as they were -- so they
+are NOT regenerated; their generator modules stay for reference.
 Each file is self-contained -- tokens, data, CSS and JS inlined; no external requests.
 """
 
@@ -18,6 +19,7 @@ import common  # noqa: E402
 import b_variants  # noqa: E402
 import c_variants  # noqa: E402
 import s_variants  # noqa: E402
+import r_variants  # noqa: E402
 
 INDEX_CSS = """
 h1 { font-family: "Cinzel", Georgia, serif; letter-spacing: .08em; font-weight: 600; margin: .2rem 0; }
@@ -71,8 +73,10 @@ def index_html() -> str:
 <div class="gates"><p>Every mockup renders the same real snapshot (12-team superflex dynasty, on the clock at 3.03, 16 picks to the next turn) plus two real IDP rows, one real negative-value kicker, and two labelled fixture rows (an unpriced position-best with every Optional null; a row of measured zeros). Each page has a button to promote the unpriced row to leader and one to simulate reduced motion.</p>
 <p>Gates every variant was built against and self-tested on (Node ran each page's JS on the fixture in both leader orders):</p>
 <ul><li><b>G1</b> a None never renders as 0 / 0% / an empty slot — it is a hatched em-dash with a title.</li><li><b>G2</b> a measured 0.0 renders as 0.0.</li><li><b>G3</b> no bounded geometry on the UV-points scale; the one axis drawn (B3) is signed with a marked zero.</li><li><b>G4</b> gold marks user state and chrome only.</li><li><b>G5</b> meaning-bearing text ≥ 4.5:1 and glyphs ≥ 3:1 at rest — hierarchy is size, weight and detail, never faded data.</li><li><b>G6</b> the engine's order is never re-sorted; the relevance tier is the engine's own necessity vocabulary.</li><li><b>G7</b> every animation dies under prefers-reduced-motion.</li></ul></div>
-<div class="sec">Round 2 — two list syntheses and three card directions on one spine (gated in Chromium: per-field absence on the fixture rows, keyboard, height, reduced motion)</div>
+<div class="sec">Round 3 — the owner's direction: three bands of decreasing weight on the split field. Band 2 is derived from the engine's contiguous decide tier (2 or 3 across is the cap, never the count); band 3 is "keep an eye on"; the cliff is drawn as its size</div>
 {density_table()}
+<div class="grid">{cards(r_variants.VARIANTS)}</div>
+<div class="sec">Round 2 — two list syntheses and three card directions on one spine (superseded by round 3; gated the same way)</div>
 <div class="grid">{cards(s_variants.VARIANTS)}</div>
 <div class="sec">Round 1 — the scored record (superseded; kept as the owner and the critic saw them)</div>
 <p class="gates">Critic: C1 82 pass · C3 70 · C2 69 · C4 63 · C5 62 (four failed G4, gold on engine state) · B4 83 · B1 81 · B2 81 · B3 60. Owner: Reliquary liked; Hoard "interesting"; Ledger "too busy, 2ish details"; Verdict "the sub-bar may be right, cleaner, 2–3 driving factors"; Clock no; and "filter out garbage fluff" — sentences about absent or trivially-true facts.</p>
@@ -82,7 +86,7 @@ def index_html() -> str:
 
 
 def main() -> int:
-    for slug, title, tagline, asserts, sacrifices, css, body, js in s_variants.VARIANTS:
+    for slug, title, tagline, asserts, sacrifices, css, body, js in r_variants.VARIANTS + s_variants.VARIANTS:
         (HERE / f"{slug}.html").write_text(
             common.page(title, tagline, asserts, sacrifices, css, body, js, width="1180px"))
         print("wrote", slug)
