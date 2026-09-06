@@ -131,5 +131,59 @@ class TheOrderingConsequenceTests(unittest.TestCase):
         self.assertEqual(list(by_value["position"]), list(ordered["position"]))
 
 
+
+class TheDraftIsNotAsLongAsTheRosterTests(unittest.TestCase):
+    """#161. Every test in this module -- and every one of the 5,244 picks in #150's battery --
+    was written with `rounds == len(roster_positions)`, which is the exact assumption the
+    backstop's arithmetic makes. A harness that fixes a variable cannot test a defect in that
+    variable, so the defect was structurally invisible to its own final gate.
+
+    Sleeper carries `settings.rounds` separately from roster size, and benches are routinely
+    filled from waivers rather than drafted. On the repo's one real league (33 roster_positions,
+    29 draftable) the old arithmetic made the backstop unable to bind at ANY point of the draft.
+    """
+
+    def _fixture(self, made):
+        rp = ["QB", "RB", "RB", "WR", "WR", "TE", "FLEX"] + ["BN"] * 7   # 14 slots
+        players_db = {f"p{i}": {"player_id": f"p{i}", "position": pos, "full_name": f"P{i}"}
+                      for i, pos in enumerate(["QB", "RB", "RB", "WR", "WR", "WR",
+                                               "RB", "QB", "WR"])}
+        picks = [{"pick_no": i + 1, "round": i + 1, "roster_id": "3", "player_id": f"p{i}"}
+                 for i in range(made)]
+        scored = pd.DataFrame([{"player_id": "te1", "position": "TE"},
+                               {"player_id": "wr9", "position": "WR"}])
+        return scored, picks, players_db, rp
+
+    def test_a_ten_round_draft_of_a_fourteen_slot_roster_binds_on_the_last_pick(self):
+        # 9 picks made, no TE, ONE pick left. The roster cannot finish legal unless the last
+        # pick is a TE, so the backstop must promote it.
+        scored, picks, players_db, rp = self._fixture(made=9)
+        out = dr.feasibility_first(scored, picks, players_db, "3", rp, draft_rounds=10)
+        self.assertEqual(list(out), [0, 1], "the required TE must be promoted")
+
+    def test_the_same_state_without_the_round_count_cannot_bind(self):
+        """The defect, pinned. Absent draft_rounds the fallback assumes rounds == slots and
+        computes 5 picks left instead of 1, so it does not bind and the roster finishes
+        illegal. Kept as a characterization of the FALLBACK, not a blessing of it: callers that
+        know the round count must pass it."""
+        scored, picks, players_db, rp = self._fixture(made=9)
+        out = dr.feasibility_first(scored, picks, players_db, "3", rp)
+        self.assertEqual(list(out), [1, 1])
+
+    def test_the_fallback_is_exactly_the_old_behaviour(self):
+        # Non-regression: where rounds is unknown nothing changes, so this repair cannot have
+        # altered any board the battery already measured.
+        scored, picks, players_db, rp = self._fixture(made=9)
+        self.assertEqual(list(dr.feasibility_first(scored, picks, players_db, "3", rp)),
+                         list(dr.feasibility_first(scored, picks, players_db, "3", rp,
+                                                   draft_rounds=len(rp))))
+
+    def test_a_draft_longer_than_the_roster_does_not_bind_early(self):
+        # The other direction: more rounds than slots must not make the backstop fire sooner.
+        scored, picks, players_db, rp = self._fixture(made=9)
+        out = dr.feasibility_first(scored, picks, players_db, "3", rp, draft_rounds=20)
+        self.assertEqual(list(out), [1, 1])
+
+
 if __name__ == "__main__":
     unittest.main()

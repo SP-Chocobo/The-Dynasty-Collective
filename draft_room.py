@@ -1634,7 +1634,8 @@ def identity_basis(match_path, match_verified) -> "str | None":
     return IDENTITY_MATCHED if match_verified else IDENTITY_AMBIGUOUS
 
 
-def feasibility_first(scored, picks, players_db, my_roster_id, roster_positions):
+def feasibility_first(scored, picks, players_db, my_roster_id, roster_positions,
+                      draft_rounds=None):
     """#154 tier 3. A sort key: 0 for candidates that fill an unfilled DEDICATED starting slot
     once the roster can no longer afford to miss one, 1 for everyone else. All 1s -- a complete
     no-op on the ordering -- whenever it does not bind, which is almost always.
@@ -1671,7 +1672,14 @@ def feasibility_first(scored, picks, players_db, my_roster_id, roster_positions)
     if unfilled <= 0:
         return default
     mine = sum(1 for pick in picks if str(pick.get("roster_id")) == str(my_roster_id))
-    picks_remaining = len(roster_positions) - mine
+    # ROSTER SIZE IS NOT ROUND COUNT. A 14-slot roster drafted for 10 rounds leaves 1 pick at
+    # 9 made, not 5, and that difference decides whether the backstop binds at all. Use the
+    # real count when the caller knows it; otherwise fall back to the old assumption -- but
+    # NAME the fallback here rather than hide it in a subtraction. An unnamed assumption is
+    # exactly what let this survive a 5,244-pick battery that happened to share it
+    # (draft_battery sets rounds = len(roster_positions) by construction).
+    total_picks = draft_rounds if draft_rounds else len(roster_positions)
+    picks_remaining = total_picks - mine
     # Strictly greater: with MORE picks than holes there is still room to take value now and
     # fill later, which is the whole point of not making this a preference.
     if picks_remaining > unfilled:
@@ -1732,6 +1740,9 @@ def compute_draft_board(
     rookie draft run against a real veteran roster has.
     own source data, not a maintained list."""
     roster_positions = league.get("roster_positions") or []
+    # How many picks this draft actually has. Absent for callers that never knew it,
+    # in which case feasibility_first says so and falls back explicitly (#161).
+    draft_rounds = league.get("draft_rounds")
     usable_positions = league_usable_positions(roster_positions)
     is_dynasty = (league.get("settings") or {}).get("type") == 2
 
@@ -1937,7 +1948,8 @@ def compute_draft_board(
         # roster awareness of any kind -- and mode="auto" enters it at UPSIDE_MODE_DEFAULT_ROUND,
         # which is exactly when the last starting slots are still open. The battery caught two
         # unfillable rosters in explicit upside mode against zero in balanced.
-        scored["_feasible"] = feasibility_first(scored, picks, players_db, my_roster_id, roster_positions)
+        scored["_feasible"] = feasibility_first(scored, picks, players_db, my_roster_id, roster_positions,
+                                              draft_rounds=draft_rounds)
         scored["fills_required_slot"] = scored["_feasible"] == 0
         results = scored.sort_values(["_feasible", "final_score", "player_id"],
                                      ascending=[True, False, True], kind="stable")
@@ -2088,7 +2100,8 @@ def compute_draft_board(
     # #154 tier 3, ahead of value. See feasibility_first: a no-op on the ordering until this
     # roster has as few picks left as it has unfillable named slots, at which point the choice
     # is not between two values but between a legal roster and an illegal one.
-    scored["_feasible"] = feasibility_first(scored, picks, players_db, my_roster_id, roster_positions)
+    scored["_feasible"] = feasibility_first(scored, picks, players_db, my_roster_id, roster_positions,
+                                              draft_rounds=draft_rounds)
     # EMITTED, not just sorted on. compute_draft_board's own ordering is NOT authoritative --
     # pick_synthesis.narrow_candidates re-sorts every board it receives through its own
     # `_board_order` key (#155), so a decision expressed only as row order is silently

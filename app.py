@@ -5042,6 +5042,11 @@ elif main_view == DRAFT_VIEW:
                                 "scoring_settings": league.get("scoring_settings"),
                                 "total_rosters": league.get("total_rosters"),
                                 "settings": league.get("settings"),
+                                # The DRAFT's round count, not the league's roster size. Read
+                                # from Sleeper above and previously spent only on the pick
+                                # order; the feasibility backstop needs it to know how many
+                                # picks are actually left (#161).
+                                "draft_rounds": total_rounds,
                             }
 
                             # Flag a Player was removed (see REVIEW_LOG.md) -- Sleeper already has
