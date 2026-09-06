@@ -2042,7 +2042,13 @@ class EveryBasisLabelHasTheQuantityItDescribesTests(unittest.TestCase):
     def setUpClass(cls):
         cls.merger, cls.players_db = _build_pool_players_db()
 
-    #: basis column -> the quantity whose production it explains
+    #: basis column -> the quantity whose production it explains.
+    #:
+    #: identity_basis is deliberately ABSENT, and the exclusion is a ruling rather than an
+    #: oversight: it records the provenance of the row's IDENTITY (which match path produced
+    #: this player, and whether it was verified -- #107), not the production of a number. Its
+    #: partner is the row's own existence, and every row on a board exists by construction, so
+    #: pairing it here would assert a property that cannot fail.
     PAIRS = (("horizon_basis", "horizon_floor"),
              ("replacement_basis", "universal_value"),
              ("depth_basis", "depth_exposure"))
