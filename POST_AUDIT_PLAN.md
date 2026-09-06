@@ -5512,3 +5512,41 @@ a scoring artifact, a crash that discarded seven runs, a non-reproducing result,
 write race between two code versions -- against zero engine defects of its own discovery. The
 instrument standard (M1-M9) was written from the first three. The fourth was already in the
 tree while I was writing it.
+
+## #178 PRE-REGISTRATION, AMENDED: a one-sided criterion is not a criterion
+
+I first registered the acceptance test for `SUPER_FLEX_QB_SHARE = 1.0` as: *re-run the 12
+superflex roster-proof partitions and see whether #177's -2% to -4% deficit closes.* The owner
+caught that this is one-sided -- **"or a degrade elsewhere"** -- and they are right. As written
+it would accept a change that buys superflex points by quietly costing something else, because
+it never looks anywhere else. A criterion that can only confirm is not a criterion.
+
+**The blast radius, proven rather than asserted.** `SUPER_FLEX_QB_SHARE` is read in exactly one
+branch of `starter_slot_counts`, the one guarded by `slot == "SUPER_FLEX"`. So a format with no
+such slot cannot see this change at all. Checked by holding the roster shape fixed and toggling
+the constant between 0.85 and 1.0:
+
+    12 of 33 battery formats have a SUPER_FLEX slot -- these may move
+    21 of 33 do not -- 12T_ppr, 12T_standard, 10T_ppr, 14T_standard, HEAVY_IDP and 16 others
+    all five spot-checked non-SF formats: starter_slot_counts IDENTICAL at 0.85 and at 1.0
+
+That turns "don't degrade anything else" from a vague hope into a hard invariant.
+
+**The amended gate. All four must hold, or the commit is reverted.**
+
+    1. 12T_ppr_SF's projection deficit closes materially.        (the thing being bought)
+    2. The three NON-superflex roster-proof formats -- 10T_ppr, 12T_half_ppr, 14T_standard --
+       come back BYTE-IDENTICAL. Not "no worse". Identical. The constant cannot reach them.
+    3. The 21 non-superflex battery formats report the same findings as before. Any
+       difference is an unexpected coupling and is itself a finding, investigated before
+       anything is kept.
+    4. No superflex format GAINS a finding. Buying starter value while breaking something
+       else in the same format is the trade this gate exists to refuse.
+
+Condition 2 is the sharp one, and it is the owner's amendment doing the work: it is a
+falsifiable prediction rather than a comparison. A change that is supposed to be inert in 21 of
+33 formats and is not inert has done something I did not understand, and no improvement in the
+twelfth format would make that acceptable.
+
+**Recorded before the results exist.** The suite gate was still running when this was written.
+
