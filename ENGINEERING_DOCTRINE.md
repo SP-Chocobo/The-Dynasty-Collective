@@ -310,6 +310,19 @@ saved baseline from different code. Record which commit produced any stored base
 *(A tier-3 change was once reported as fixing a format 2 findings -> 0; the 2 came from a run
 predating an unrelated scoring repair, and the improvement was that repair.)*
 
+**M7b -- AN INVALIDATED RUN IS NOT INVALIDATED UNTIL IT IS DEAD.** Renaming its log does not
+stop it writing. A long probe found to be measuring the wrong thing must be KILLED, and its
+output paths must be moved out of the way, before the corrected run is launched -- and the
+corrected run writes to a DIFFERENT path. Two versions of a harness that share an output path
+race, and the loser is whichever finishes first, not whichever is right.
+*(#176: a pre-fix roster proof was diagnosed mid-flight as invalid and its log was renamed
+`..._INVALID_run1.log`. The process was never killed. The corrected run finished at 21:00 and
+wrote the valid result; the invalid run finished at 21:13 and overwrote it, aggregate and
+per-format alike. The finding filed from that file -- "the engine loses 48 of 48 drafts" --
+was the dead run's, inverted in sign from the truth, and it survived long enough to be
+written down twice. Three of the four per-format `.part` files still held the valid numbers,
+which is the only reason it was recoverable at all.)*
+
 **M8 -- STATE THE ARTIFACT HYPOTHESIS BEFORE REPORTING.** Write down what would have to be true
 for this number to be about a different question, then check that specific thing. This is the
 rule that caught M2 and M4; it is the cheapest of all of them and the one most often skipped

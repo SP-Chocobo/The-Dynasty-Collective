@@ -5336,7 +5336,8 @@ the instrument for that, and it is the one that has actually found vacuous tests
 instruments, two jobs -- which is coherent, and worth writing down so the floors are not
 mistaken for a coverage guarantee they never claimed to be.
 
-## #176 -- THE ROSTER PROOF: the engine loses to a constrained naive baseline, 48 of 48 drafts
+## #176 [WITHDRAWN -- see #177 at the end of this file] -- THE ROSTER PROOF: the engine
+## loses to a constrained naive baseline, 48 of 48 drafts
 
 The question the battery could never answer -- "does the decision architecture actually build
 stronger teams, or only defensible picks?" -- now has a measured answer, and it is negative.
@@ -5429,3 +5430,85 @@ A full 12-partition re-run against the stored JSON is in flight. If it reproduce
 stands and my single-run probes were unrepresentative. If it does not, #176 is withdrawn and the
 engine's roster behaviour returns to UNMEASURED -- which is a worse position than we thought we
 were in this morning, and the correct one.
+
+## #177 -- THE ROSTER PROOF, RESOLVED: #176 was a dead process's output, and the sign was backwards
+
+The re-run answered it. #176 is **withdrawn**, and the mechanism is not a subtle one.
+
+**What happened.** A pre-fix run of the proof -- the one whose pool was never restricted, so the
+engine drafted players `score_roster` then excluded while the baseline drafted only players it
+could score -- was diagnosed mid-flight as invalid. I renamed its log to `..._INVALID_run1.log`
+and moved on. **I never killed the process.** Both runs wrote to the same `ROSTER_PROOF.json`
+and the same per-format `.part` paths. The corrected run finished at 21:00 and wrote the valid
+result. The invalid run finished at 21:13 and overwrote it -- the aggregate, and one of the four
+`.part` files. I then read the aggregate, found 48/48, and filed #176 from a run I had already
+declared invalid three hours earlier.
+
+**How it is provable rather than merely plausible.** `pool: len(scoreable)` is unconditional in
+the current harness; every format block it writes carries an integer. The clobbered aggregate
+carries `pool: None` in all four formats and `engine_unpriced` of 15-18, which the restriction
+makes impossible. Three of the four `.part` files -- 10T_ppr, 12T_half_ppr, 12T_ppr_SF -- still
+carry `pool: 235` and `engine_unpriced: 0`. The valid run's own log survived intact under its own
+name. An independent re-run, launched fresh in its own process, reproduces the valid `.part`
+byte-for-byte: 6 of the first 6 runs identical in every field, the rest still in flight.
+The harness is deterministic and the valid numbers are the ones it produces.
+Everything is preserved under `scratchpad/proof_valid/`.
+
+**The actual result, 48 runs.** Engine advantage over a rank-by-projection baseline. Both arms
+draft the same 235-player pool priceable by both yardsticks; `engine_unpriced` and
+`baseline_unpriced` are 0 in every arm; `runs_per_format = teams`, so every seat is an engine
+chair in exactly half the runs of its format.
+
+| format | yardstick | n | engine win rate | mean adv | worst | unfilled eng starters |
+|---|---|---|---|---|---|---|
+| 10T_ppr | projection | 10 | 60.0% | +0.86% | -2.34% | 0 |
+| 10T_ppr | proj_3yr | 10 | 70.0% | +1.37% | -1.66% | 0 |
+| 12T_half_ppr | projection | 12 | 75.0% | +1.25% | -1.26% | 1 |
+| 12T_half_ppr | proj_3yr | 12 | 58.3% | +0.70% | -1.59% | 1 |
+| **12T_ppr_SF** | **projection** | **12** | **8.3%** | **-1.83%** | **-4.61%** | **0** |
+| 12T_ppr_SF | proj_3yr | 12 | 58.3% | +0.32% | -3.80% | 0 |
+| 14T_standard | projection | 14 | 100.0% | +3.32% | +0.71% | 8 |
+| 14T_standard | proj_3yr | 14 | 100.0% | +6.20% | +0.74% | 8 |
+
+The seat-controlled estimate -- each seat compared with itself across runs rather than against
+the other arm's average -- lands within 0.02pp of the raw mean in all eight arms. Chair position
+is not carrying these numbers.
+
+**Two things this leaves on the table.**
+
+*The superflex loss is real and it is localized.* 12T_ppr_SF on `projection` wins 1 of 12, and it
+loses on the baseline's own objective. The same format on `proj_3yr` is +0.32%. So the engine's
+superflex QB behaviour costs current-season starter points and is about neutral across three
+years. That is the #154/#155/#165/#171 family -- the halt at exactly 28 QBs, the count that
+clears the floor -- appearing for the first time as a measured roster-quality cost rather than a
+structural description. The owner's standing instruction applies directly: we do not assume or
+aim to lose year 1. This is a finding to act on, not a dynasty trade-off to wave through.
+
+*14T_standard wins 100% while leaving 8 starter slots empty* across 98 engine rosters. An
+unfilled slot contributes 0 to `starter_value`, so the engine is beating the baseline while
+carrying a self-imposed hole. The hole is the #154 family again, and it is a second, independent
+sighting of it.
+
+**What I will not claim, and the wrong fix for it.** The SF projection arm's cumulative mean runs
+-0.11 -> -1.55 -> -2.09 -> -1.83 across its 12 runs, which looks like an unsettled magnitude. It
+is not, and reading it that way produces the wrong remedy. `seat_partitions(teams, runs)` selects
+engine seats by `(s - k) mod teams`, so for a 12-team league the 12 partitions ARE the complete
+enumeration of the contiguous-rotation family -- run 12 would be byte-identical to run 0. The
+trace is a cumulative mean over an ordered enumeration, not a convergence diagnostic over random
+draws, and -1.83% is exact over that family. **More runs would add nothing but duplicate rows.**
+
+What is genuinely untested is whether the result generalizes beyond this one SF configuration.
+Three things vary and none of them is `runs`: a different partition SHAPE (contiguous blocks is
+one family; interleaved seats is another, and would separate "the engine is worse in superflex"
+from "the engine is worse when its chairs are adjacent"), a second superflex league with a
+different roster shape, and a baseline that is not deterministic rank-by-projection. Until at
+least the first two are run, "-1.8% in superflex" is a direction measured exactly on one
+configuration, not a property of superflex.
+
+**The rule this bought.** Doctrine M7b: *an invalidated run is not invalidated until it is dead.*
+Renaming a log does not stop a writer. Kill the process, move its output paths aside, and give
+the corrected run a different path. This experiment has now produced four measurement failures --
+a scoring artifact, a crash that discarded seven runs, a non-reproducing result, and a
+write race between two code versions -- against zero engine defects of its own discovery. The
+instrument standard (M1-M9) was written from the first three. The fourth was already in the
+tree while I was writing it.
