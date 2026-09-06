@@ -51,12 +51,44 @@ def build_players_db(merger: dm.DataMerger, positions=BATTERY_POSITIONS) -> dict
     return out
 
 
+#: Named in front of the coverage sentence so it cannot be read as a claim about the board at
+#: the pick. See strength_coverage's docstring and #170.
+PREDRAFT_RULER = "against the pre-draft ruler"
+
+
+def decision_coverage(at_decision: dict | None) -> str:
+    """The companion clause: what the board looked like AT THE PICK, not before the draft.
+
+    Absence keeps its own sentence here too -- a record from before draft_battery carried this
+    block is unmeasured, never zero."""
+    if not at_decision:
+        return "absence at the pick not measured"
+    examined = at_decision.get("picks_examined")
+    if not examined:
+        return "no picks carried a candidate set, so nothing at the pick was measurable"
+    contended = at_decision.get("picks_with_an_unpriced_candidate", 0)
+    took = at_decision.get("picks_that_took_an_unpriced_candidate", 0)
+    if not contended:
+        return f"no unpriced candidate reached any of the {examined} decisions"
+    return (f"an unpriced candidate reached {contended} of {examined} decisions "
+            f"and won {took}")
+
+
 def strength_coverage(strength: dict | None) -> str:
     """The words beside the starter-value range on the per-format line below, so the number
     states its own coverage on the one screen roster strength reaches a person. The phrasing
     is roster_diagnostics.coverage_statement -- the one place it is written -- because the
     battery's starter_value makes the same exclusion that module's starting_lineup_value does
     (an unpriced player contributes nothing, so one anywhere makes the value a floor).
+
+    #170. The sentence NAMES ITS REFERENCE, because without that it claimed more than it knew.
+    `reference_values` builds the ruler from the PRE-DRAFT board, which prices every row, and
+    every drafted player is necessarily on that board -- so the count behind this sentence is 0
+    by construction and was read (by me, in the register) as "the engine priced everyone in this
+    draft" when it means "everyone had a pre-draft price". The phrasing is still
+    roster_diagnostics.coverage_statement, the one place it is written; the reference is stated
+    in front of it. What the engine did at the pick is a DIFFERENT number --
+    draft_battery.unpriced_at_decision -- printed separately rather than merged into this one.
 
     Absence is not a value, and there are three absences here, each its own sentence and none
     of them a zero:
@@ -78,7 +110,7 @@ def strength_coverage(strength: dict | None) -> str:
     counts = [row.get("unpriced_players") for row in per_roster.values()]
     if any(count is None for count in counts):
         return roster_diagnostics.coverage_statement(None)
-    return roster_diagnostics.coverage_statement(sum(counts))
+    return f"{PREDRAFT_RULER}: {roster_diagnostics.coverage_statement(sum(counts))}"
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -109,7 +141,8 @@ def main(argv: list[str] | None = None) -> int:
               f"findings={findings:3d} "
               f"starters {strength.get('starter_value_min')}-{strength.get('starter_value_max')}"
               f" (spread {strength.get('starter_value_spread')}; "
-              f"{strength_coverage(audited.get('strength'))})"
+              f"{strength_coverage(audited.get('strength'))}; "
+              f"{decision_coverage(audited.get('unpriced_at_decision'))})"
               f" {audited['seconds']:7.1f}s"
               + ("   <-- DEFECTS" if findings else ""), flush=True)
 

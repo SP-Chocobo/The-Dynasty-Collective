@@ -340,5 +340,69 @@ class TheInstrumentStatesItsOwnCoverageTests(unittest.TestCase):
         self.assertEqual(batt.duplicate_arms([self._arm("only")]), [])
 
 
+def _pick_with(candidates, chosen, pick_no=1):
+    """A pick whose snapshot carries exactly the candidate rows given -- the shape
+    draft_board_ui.serialize_candidate produces, which is what PickRecord actually retains."""
+    return draft_simulation.PickRecord(
+        pick_no=pick_no, round=1, roster_id="1", pick_label=f"1.{pick_no:02d}",
+        chosen_player_id=chosen, decision_regime="balanced",
+        snapshot={"candidates": list(candidates)})
+
+
+class UnpricedAtDecisionTests(unittest.TestCase):
+    """#170. roster_strength's `unpriced_players` measures against the PRE-DRAFT ruler, where
+    every row is priced and every drafted player is present -- so it is 0 by construction and
+    reported as "every player priced" it reads like a statement about the engine. I made
+    exactly that misreading in the register on the day it was written.
+
+    This counter reads the board AS IT WAS AT THE PICK, off the snapshot the record already
+    keeps, so it can come out non-zero. These tests pin the three things that make it worth
+    having: it sees an unpriced candidate, it separates contending from winning, and it does
+    NOT fold a missing key into a present None."""
+
+    def test_a_priced_candidate_set_reports_no_absence(self):
+        traj = _trajectory([_pick_with(
+            [{"id": "a", "uv": 12.0}, {"id": "b", "uv": 3.5}], "a")])
+        got = batt.unpriced_at_decision(traj)
+        self.assertEqual(got["picks_examined"], 1)
+        self.assertEqual(got["picks_with_an_unpriced_candidate"], 0)
+        self.assertEqual(got["picks_that_took_an_unpriced_candidate"], 0)
+
+    def test_an_unpriced_candidate_that_only_contends_is_not_counted_as_taken(self):
+        traj = _trajectory([_pick_with(
+            [{"id": "a", "uv": 12.0}, {"id": "b", "uv": None}], "a")])
+        got = batt.unpriced_at_decision(traj)
+        self.assertEqual(got["picks_with_an_unpriced_candidate"], 1)
+        self.assertEqual(got["picks_that_took_an_unpriced_candidate"], 0)
+
+    def test_an_unpriced_candidate_that_wins_the_pick_is_counted_as_taken(self):
+        traj = _trajectory([_pick_with(
+            [{"id": "a", "uv": 12.0}, {"id": "b", "uv": None}], "b")])
+        got = batt.unpriced_at_decision(traj)
+        self.assertEqual(got["picks_with_an_unpriced_candidate"], 1)
+        self.assertEqual(got["picks_that_took_an_unpriced_candidate"], 1)
+
+    def test_a_missing_uv_key_is_its_own_state_and_never_read_as_unpriced(self):
+        """The defect a mutation found in this counter's first version. A row with no `uv` key
+        is schema drift -- the field was never emitted -- and a row carrying None is the engine
+        declining to price a player it did emit. Folding the first into the second would report
+        an absence the engine never claimed, which is the same conflation the absence contract
+        exists to prevent, committed inside the instrument that checks it."""
+        traj = _trajectory([_pick_with(
+            [{"id": "a", "uv": 12.0}, {"id": "b", "name": "no uv field at all"}], "a")])
+        got = batt.unpriced_at_decision(traj)
+        self.assertEqual(got["candidate_rows_missing_the_uv_key"], 1)
+        self.assertEqual(got["picks_with_an_unpriced_candidate"], 0,
+                         "a row with no uv key must not be reported as an unpriced candidate")
+
+    def test_a_pick_with_no_candidate_set_is_not_examined_rather_than_counted_clean(self):
+        """An empty candidate set is a pick nothing can be said about. Counting it as examined
+        would put it in the denominator of a rate it was never eligible for."""
+        traj = _trajectory([_pick_with([], "a"), _pick_with([{"id": "b", "uv": None}], "b", 2)])
+        got = batt.unpriced_at_decision(traj)
+        self.assertEqual(got["picks_examined"], 1)
+        self.assertEqual(got["picks_with_an_unpriced_candidate"], 1)
+
+
 if __name__ == "__main__":
     unittest.main()

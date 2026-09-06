@@ -224,12 +224,58 @@ class TheBatteryRunnerStatesCoverageTests(unittest.TestCase):
         self.assertEqual(text, coverage_statement(None))
 
     def test_counts_are_summed_across_rosters_and_a_zero_sum_says_totals(self):
+        """Substring rather than equality since #170: the sentence now names the ruler it was
+        measured against. coverage_statement is still the ONE place the phrasing is written,
+        which is what this pins -- the reference is asserted separately below."""
         floors = run_draft_battery.strength_coverage(
             {"per_roster": {"1": {"unpriced_players": 2}, "2": {"unpriced_players": 1}}})
-        self.assertEqual(floors, coverage_statement(3))
+        self.assertIn(coverage_statement(3), floors)
         totals = run_draft_battery.strength_coverage(
             {"per_roster": {"1": {"unpriced_players": 0}, "2": {"unpriced_players": 0}}})
-        self.assertEqual(totals, coverage_statement(0))
+        self.assertIn(coverage_statement(0), totals)
+
+    def test_the_coverage_sentence_names_the_ruler_it_was_measured_against(self):
+        """#170. The count behind this sentence is 0 by construction -- reference_values prices
+        against the PRE-DRAFT board, and every drafted player is on it -- so unqualified it
+        reads as a claim about the engine and is a property of the ruler's timing. I misread it
+        that way in the register on the day it was written."""
+        text = run_draft_battery.strength_coverage(
+            {"per_roster": {"1": {"unpriced_players": 0}}})
+        self.assertEqual(
+            text, f"{run_draft_battery.PREDRAFT_RULER}: {coverage_statement(0)}",
+            "the reference leads and the shared phrasing follows it, unchanged",
+        )
+        floors = run_draft_battery.strength_coverage(
+            {"per_roster": {"1": {"unpriced_players": 4}}})
+        self.assertEqual(
+            floors, f"{run_draft_battery.PREDRAFT_RULER}: {coverage_statement(4)}")
+
+    def test_the_pick_time_clause_is_a_separate_sentence_from_the_predraft_one(self):
+        """The two coverage numbers have different references, and merging them is how the
+        first one came to be misread. Absence keeps its own sentence in the new clause too."""
+        unmeasured = run_draft_battery.decision_coverage(None)
+        nothing_to_measure = run_draft_battery.decision_coverage({"picks_examined": 0})
+        self.assertIn("not measured", unmeasured)
+        self.assertIn("measurable", nothing_to_measure)
+        self.assertNotEqual(
+            unmeasured, nothing_to_measure,
+            "a record that never carried this block and a draft with no candidate sets are "
+            "different absences and must not collapse into one sentence",
+        )
+        for text in (unmeasured, nothing_to_measure):
+            self.assertNotIn("0 of", text, "absence must never be reported as a rate of zero")
+        clean = run_draft_battery.decision_coverage(
+            {"picks_examined": 168, "picks_with_an_unpriced_candidate": 0,
+             "picks_that_took_an_unpriced_candidate": 0})
+        self.assertEqual(clean, "no unpriced candidate reached any of the 168 decisions")
+        hit = run_draft_battery.decision_coverage(
+            {"picks_examined": 168, "picks_with_an_unpriced_candidate": 12,
+             "picks_that_took_an_unpriced_candidate": 3})
+        self.assertEqual(
+            hit, "an unpriced candidate reached 12 of 168 decisions and won 3",
+            "both halves are stated: contending and winning are different facts",
+        )
+        self.assertNotEqual(clean, hit)
 
     def test_nobody_to_price_is_not_the_same_as_unmeasured(self):
         empty = run_draft_battery.strength_coverage({"per_roster": {}})

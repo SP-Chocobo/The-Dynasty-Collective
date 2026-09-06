@@ -2118,7 +2118,9 @@ class WhereTheAbsenceContractIsReachableTests(unittest.TestCase):
     rows -- on the opening board and at every depth of a full draft's consumption (216 and 132
     picks). In a 12-team superflex the floor is 163.5, 28 of 39 QBs clear it, and draining 27
     leaves 0 unpriced while draining 28 leaves 11. The battery agrees from the other side: all
-    33 formats report "every player priced".
+    33 formats report "every player priced" -- though see #170: that battery line measures
+    against the PRE-DRAFT ruler and is 0 by construction, so it corroborates nothing here. The
+    knife-edge below stands on its own.
 
     WHAT THIS PREVENTS, stated against the over-hardening rule. Not "the implementation should
     stay as written". The demonstrated failure is reasoning about the absence contract against a

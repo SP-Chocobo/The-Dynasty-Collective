@@ -454,6 +454,53 @@ def roster_strength(trajectory, league: dict, players_db: dict,
     }
 
 
+def unpriced_at_decision(trajectory) -> dict:
+    """Picks whose CANDIDATE SET carried an unpriced row, and picks that TOOK one.
+
+    #170. This exists because roster_strength's `unpriced_players` cannot answer the question
+    it appears to answer. That counter measures against `reference_values`, which is built from
+    the PRE-DRAFT board -- and the pre-draft board prices every row while every drafted player
+    is necessarily on it, so its `values.get(pid, 0.0)` fallback is unreachable and the count is
+    0 by construction across all 33 formats and ~5,000 picks. Reported as "every player priced",
+    it reads as a measurement of the engine and is a property of the ruler's timing.
+
+    This reads the board AS IT WAS AT THE PICK, off the snapshot every PickRecord already
+    retains, so it can actually come out non-zero. Same idiom as chosen_replacement_basis: a
+    decomposition of a decision the record already stores, read rather than re-derived.
+
+    HONEST SCOPE, because the two are not the same question. The snapshot carries the NARROWED
+    CANDIDATE SET, not the whole board, so this measures whether absence reached the DECISION
+    SURFACE -- did an unpriced player contend for, or win, a pick -- and not what fraction of
+    the board was unpriced. The decision surface is the question #165 and #168 are about; board
+    coverage would need the board retained, which no record currently keeps.
+
+    Absence is counted as absence: a candidate whose "uv" key is missing is NOT the same as one
+    carrying None, and neither is folded into a zero. `examined` is reported so a rate is never
+    quoted over an empty set."""
+    examined = with_unpriced = took_unpriced = no_uv_key = 0
+    for pick in trajectory.picks:
+        candidates = (pick.snapshot or {}).get("candidates") or []
+        if not candidates:
+            continue
+        examined += 1
+        unpriced_ids = set()
+        for cand in candidates:
+            if "uv" not in cand:
+                no_uv_key += 1
+            elif cand.get("uv") is None:
+                unpriced_ids.add(str(cand.get("id")))
+        if unpriced_ids:
+            with_unpriced += 1
+            if str(pick.chosen_player_id) in unpriced_ids:
+                took_unpriced += 1
+    return {
+        "picks_examined": examined,
+        "picks_with_an_unpriced_candidate": with_unpriced,
+        "picks_that_took_an_unpriced_candidate": took_unpriced,
+        "candidate_rows_missing_the_uv_key": no_uv_key,
+    }
+
+
 def audit_trajectory(trajectory, league: dict, players_db: dict,
                      values: Optional[dict[str, float]] = None,
                      *, audit_roster_fill: bool = True) -> dict:
@@ -470,6 +517,10 @@ def audit_trajectory(trajectory, league: dict, players_db: dict,
         "regimes": dict(collections.Counter(p.decision_regime for p in trajectory.picks)),
         "strength": (roster_strength(trajectory, league, players_db, values)
                      if values is not None else None),
+        # #170. Deliberately NOT folded into "strength": that block measures against the
+        # pre-draft ruler, this one against the board at the pick, and merging two coverage
+        # numbers with different references is how the first one came to be misread.
+        "unpriced_at_decision": unpriced_at_decision(trajectory),
     }
 
 
