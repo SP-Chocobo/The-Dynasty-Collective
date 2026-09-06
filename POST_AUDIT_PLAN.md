@@ -4593,3 +4593,165 @@ GENERAL FORM, worth carrying: when a test encodes a precondition of one audit as
 the whole fixture, it stops being a check and becomes a limit on what can be observed. That is
 the same shape as the ui_source scope (a class test scoped by which framework a file imports)
 found earlier today -- a guard whose reach was decided by something incidental to what it guards.
+
+### #165, the reserved half: CAN an unpriced player be contextualized without inventing a value?
+
+The owner reserved this and named the test: "Explore whether an unpriced player can be
+legitimately contextualized using existing rankings, relative ordering, positional/tier
+information, etc., without inventing a numeric value. Only fall back to exclude + report count
+if that investigation fails."
+
+ANSWER: the investigation does NOT fail. Contextualizing material exists, it is not a price,
+and it is already in this repo. It just does not reach the board. But acting on it is a
+valuation-layer change, not a null-handling one, and that boundary is the whole result.
+
+**First: the population, which is far narrower than every prior write-up assumed.**
+
+I measured before theorising, and the first two measurements were about the wrong thing. On the
+OPENING board of HEAVY_IDP, LIGHT_IDP, 10T_ppr and 12T_ppr there are ZERO unpriced rows. Walking
+a full draft's worth of consumption in HEAVY_IDP (216 picks) and 10T_ppr (132 picks), still zero
+at every depth. `universal_value is None` simply does not occur in those regimes.
+
+The reason is `_fill_omitted_from_anchor`, which fills any position `replacement_levels` omitted
+for EXHAUSTED DEMAND from the pre-draft anchor -- and pointedly refuses to fill the ones the
+`startable_floors` branch declined. `startable_floors` is set in exactly one place: QB, when
+`SUPER_FLEX` is in roster_positions. So the unpriced state is reachable at ONE position in ONE
+league shape, and nowhere else.
+
+Confirmed on a knife-edge rather than by reading. `qb_startable_floor` is 163.5 and 28 of 39 QBs
+clear it in 12T_ppr_SF. Drain 27 -> 0 unpriced. Drain 28 -> 11 unpriced QBs. Drain 31 -> 8. The
+transition lands exactly where the chain says it must.
+
+That knife-edge doubles as the mutation check on my own instrument: the probe that returned zero
+for HEAVY_IDP and 10T_ppr DOES report unpriced rows when they exist, so those zeros are a real
+negative result and not a broken predicate. Independently corroborated by the battery running at
+HEAD, whose per-format line reads "every player priced, so the values are totals" -- the #168
+coverage statement, reporting the same fact from a different instrument.
+
+Note what this costs #168 and #165's own framing: a 12-team superflex has 24 QB starter slots,
+and the state needs 28 QBs gone. It is reachable, not typical. Every prior sentence in this
+register implying unpriced players are ordinary in IDP formats was wrong about WHERE the
+absence lives -- IDP rows are priced through the trade_value fallback, which is #152's unit
+problem, a different finding.
+
+**Second: what survives on an unpriced row, and what does not.**
+
+Present: `projected_points`, `replacement_basis`, `confidence`, `bpa_source`.
+Absent: `bpa`, `final_score`, `universal_value` -- all None, correctly.
+
+The board row does NOT carry `proj_3yr`, `trade_value`, or the vendor's `rank`. All three exist
+in the merger for the same players. That is the missing-companion shape this register keeps
+recording, in its inverse form: the quantity (points) crosses the layer, and the companions that
+would let a consumer place the player on a dynasty horizon do not.
+
+On the 11-row tail, the merger holds `proj_3yr`, `trade_value` and `rank` for 10 of 11, and the
+three agree with each other strongly (|rho| 0.92, 0.92, 0.99). None of them is a price: they are
+a vendor ranking and two relative orderings -- exactly the material the owner authorised.
+
+The eleventh row is why any such scheme must be THREE-state and not two. M Penix carries a
+season projection (129.0, the best in the tail) and none of the three dynasty signals. So the
+states are: priced / contextualizable / neither -- and collapsing the last two would re-commit
+the absence-is-a-value error one layer up.
+
+**Third, and this is where I corrected myself: the ordering disagreement is NOT established.**
+
+On the 11-row tail the surviving signal disagrees with the dynasty signals (rho 0.644 against
+proj_3yr), and one player inverts hard: T Simpson is 7th of 11 by projected_points and 1st by
+all three dynasty signals (proj_3yr 752, trade_value 23, vendor rank 81 -- best in the tail on
+each). I was ready to write that the surviving signal is the wrong one.
+
+The full pool says otherwise. Across all 264 rows carrying both numbers, season projection and
+proj_3yr agree at +0.824, and WITHIN QB at +0.940. Per-position: RB +0.872, TE +0.920, WR +0.892.
+The lower tail figure is n=11 with severe range restriction, which attenuates a correlation on
+its own -- reading it as "disagreement widens in the tail" would be exactly the artifact this
+project's measurement discipline exists to catch.
+
+So: Simpson is a real individual counterexample, not a demonstrated systematic inversion. The
+claim that survives is the weaker and true one -- the contextualizing material exists and is
+concordant; whether it would ORDER the tail differently enough to matter is not established at
+n=11 and would need the population widened before anyone acts on it.
+
+**Fourth: a suspicion I chased and had to drop.**
+
+Two QBs in the unpriced tail (J Milroe, A Richardson) carry `projected_points == 0.0` with
+`bpa_source: points_vor_draftsharks` and `confidence: 80`. That reads like absence coded as a
+measured zero on the valuation path, which would be a serious finding. It is not one.
+
+The raw exports distinguish the two cases, and so does the engine. Every ranking file that
+contains a 0.0 also contains blanks, and the two row shapes are different: a BLANK row is blank
+in every column (no rank, no proj_3yr, no trade_value -- an unrated player), while a 0.0 row is
+fully populated except the season number (rank 124-244, proj_3yr 283-475, trade_value 1-13). The
+vendor is saying "rated, and projected not to play this season", which is coherent for these
+four players and internally consistent with a real multi-year number. `_derive_points_and_source`
+routes blank -> NaN -> the trade_value fallback and 0.0 -> the points path, which is correct
+treatment of two genuinely different claims. No defect. Recorded because the negative result is
+worth as much as the positive one, and because the next reader will have the same suspicion.
+
+**Disposition, and the line I am not crossing.**
+
+The exclude-and-count fallback is NOT forced -- the investigation the owner ordered found real
+material. But the repair that material implies is "carry proj_3yr / trade_value / rank onto the
+board row so a consumer can place an unpriced player on a dynasty horizon," and that is a
+change to what the valuation layer publishes, in the same territory as #147 (the anchor's
+one-season lifetime) and #50 (Phase 3, VOR/replacement/horizon redefinition, which the owner
+holds). #164 is already deferred to "after Phase 3 establishes the new scaling/unit". Making it
+here, under a null-handling ticket, would be answering a reserved question by implementation --
+the exact thing #168's docstring repair refused to do.
+
+So the standing behaviour is unchanged and stays unchanged deliberately: `roster_diagnostics`
+excludes unpriced players from the lineup solve and counts them, because exclusion asserts
+nothing. `roster_strength` still admits them at 0.0 (#168's behaviour half), which asserts
+something false -- and that is now the narrower, cleaner defect, because we know the population
+it can bite: superflex QB tails only.
+
+PHASE 3 INPUT, not a repair to make now.
+
+## #161 (identity), resolved as far as evidence allows: there is no BLIND-A1 to preserve
+
+The owner's instruction was explicit: "Separately, resolve the identity of 'Defect A1' before
+freeze/#52 ... If no canonical definition exists anywhere in the project/audit record, register
+that as a documentation/gradeability finding rather than inventing the target."
+
+Searched, and the answer is the second branch. Evidence, full-history rather than working-tree:
+
+1. `git grep` for `\bA1\b` across EVERY commit reachable from every ref, over `*.md` and `*.py`,
+   returns exactly one definition-shaped line, and it is the same line in every commit that has
+   one: `CDME_CONTRACTS.md:### A1. NEAR_TIE_BAND = 2.0 -- discriminating per position,
+   meaningless board-wide`. That is CONST-A1 -- the constants-calibration item, Decision A, which
+   the owner VOIDED this session and renamed out of this namespace precisely because the two
+   collided.
+
+2. The frozen baseline itself contains NO mention of A1. `9fb5102` -- the commit every audit
+   appendix names as "`main` frozen at `9fb5102`, untouched. Defect A1 untouched." -- has zero
+   occurrences of the token. The artifact the phrase asserts something about does not contain
+   the thing asserted.
+
+3. The phrase enters the record at `7908136` (Audit §16) and is thereafter copied verbatim into
+   the baseline header of §17, §18, §19, §20, §21 and §22 -- seven occurrences, all of them the
+   same boilerplate line, none of them a definition. Every commit before §16 that mentions A1 at
+   all mentions only CONST-A1, twice, in the constants section.
+
+4. The README's own "Known Limitations & Audit History" -- the prose record of the adversarial
+   cycle that `9fb5102` closed -- names the defect that pass "caught and fixed" as the
+   eligibility-bonus unit defect. FIXED, not preserved. It names no retained planted defect.
+
+CONCLUSION: "Defect A1" as a preserved blind-audit target does not exist as a defined thing. It
+exists as a sentence that was written once and then propagated by copy-paste through seven
+appendix headers, each new instance drawing its authority from the previous one. Nothing it
+points at was ever written down.
+
+CONSEQUENCE FOR #52, stated plainly rather than worked around: #52 is not gradeable against
+BLIND-A1, because there is no BLIND-A1 to grade against. A blind audit can still be run and is
+still worth running -- it just cannot be scored on "did the auditor find the planted defect",
+because no defect was planted, or if one was, the record of it did not survive.
+
+WHAT I AM NOT DOING, per the owner's instruction and #56's discipline: not inventing a target.
+Not nominating some existing open finding as "the" A1 so the exercise has a scoreboard, and not
+planting a fresh defect now to give #52 something to find. Either would manufacture the evidence
+the audit is supposed to produce. The preservation constraint on "BLIND-A1" is hereby understood
+to constrain nothing, because it names nothing; the CONST-A1 constant (`NEAR_TIE_BAND`) remains
+untouched for its own reason -- Decision A is reopened and no constant is to be tuned.
+
+This is a gradeability finding about the audit record, not about the engine. The engine is
+unaffected. What is affected is the claim, repeated seven times, that a known defect was being
+deliberately preserved -- a claim this project could not have substantiated if asked.
