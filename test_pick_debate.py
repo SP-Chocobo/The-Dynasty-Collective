@@ -7,6 +7,9 @@ numbers, never parsed out of the LLM's own prose, even when that prose is wrong.
 """
 
 import unittest
+from pathlib import Path
+
+_HERE = Path(__file__).parent
 
 import pick_debate as pd
 from pick_synthesis import CandidateSnapshot, PickSnapshot
@@ -331,6 +334,65 @@ class NearTieIsThreeStateInTheChairsBriefingTests(unittest.TestCase):
     def test_the_three_states_produce_three_different_briefings(self):
         blocks = [self._block(flag) for flag in (True, False, None)]
         self.assertEqual(len(set(blocks)), 3)
+
+
+
+class TheEvidenceLineTellsTheTruthAboutTheSumTests(unittest.TestCase):
+    """The panel is instructed never to recompute a number, so every identity the prompt states
+    has to be one the engine actually computes.
+
+    IT WAS NOT. `depth_exposure` joined the team_acquisition_value sum when it was wired in,
+    and both the Strategist's definition of TAV and the per-candidate evidence line kept saying
+    "need and lineup-eligibility bonuses" -- handing a model a whole and two of its three parts.
+    A model told the parts do not sum to the whole has been handed a reason to distrust the
+    snapshot, which is the one thing the snapshot exists to prevent.
+
+    DERIVED, not listed: the terms come out of draft_room's own assignment by AST. A fourth
+    term added to the sum tomorrow fails this test the same day rather than silently making the
+    prompt wrong again."""
+
+    def _summed_terms(self):
+        import ast
+        tree = ast.parse((_HERE / "draft_room.py").read_text())
+        for node in ast.walk(tree):
+            if not isinstance(node, ast.Assign):
+                continue
+            targets = [t.id for t in node.targets if isinstance(t, ast.Name)]
+            if "team_acquisition_value" not in targets:
+                continue
+            names = {n.id for n in ast.walk(node.value) if isinstance(n, ast.Name)}
+            names.discard("round")
+            # locals carry a `_value` suffix where the snapshot field does not
+            return {n[:-6] if n.endswith("_value") and n != "universal_value" else n
+                    for n in names}
+        self.fail("could not find the team_acquisition_value assignment in draft_room.py")
+
+    def test_the_sum_really_has_more_than_two_terms(self):
+        # Non-vacuity: if extraction silently returned {} the check below would pass trivially.
+        terms = self._summed_terms()
+        self.assertIn("universal_value", terms)
+        self.assertIn("depth_exposure", terms)
+        self.assertGreaterEqual(len(terms), 4)
+
+    def test_every_summed_term_is_named_in_the_candidate_evidence_line(self):
+        source = (_HERE / "pick_debate.py").read_text()
+        line = next(ln for ln in source.splitlines()
+                    if "Team acquisition value:" in ln)
+        block = source[source.index(line):source.index(line) + 600]
+        for term in self._summed_terms():
+            with self.subTest(term=term):
+                self.assertIn(term, block,
+                              f"{term} is summed into team_acquisition_value but the evidence "
+                              f"line does not name it -- the parts will not sum to the whole")
+
+    def test_the_strategist_definition_names_the_same_terms(self):
+        import pick_debate
+        prompt = pick_debate.STRATEGIST_SYSTEM_PROMPT
+        start = prompt.index("team_acquisition_value (")
+        definition = prompt[start:start + 220]
+        for word in ("need", "eligibility", "depth"):
+            with self.subTest(word=word):
+                self.assertIn(word, definition)
 
 
 if __name__ == "__main__":

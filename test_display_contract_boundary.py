@@ -54,13 +54,20 @@ _BOARD = (_HERE / "draft_board_ui.py").read_text()
 class TheTwoUnitsSitAdjacentTests(unittest.TestCase):
 
     def test_universal_value_and_projected_points_are_rendered_identically(self):
-        """Same format, same card row, different units. If either format ever changes this
-        fails, which is the point: the two being indistinguishable is the finding."""
+        """Same format spec, same card row, different units. The two being indistinguishable
+        IS the finding, so this fails if either format changes.
+
+        The three cards each gained an `is not None` guard (they render an em dash for an
+        unpriced candidate rather than raising). That is a different defect, fixed separately;
+        it does NOT address this one. The assertion is therefore on the format spec and the
+        card position, not on the exact one-line spelling it used to have."""
         for panel in ("metric_row1", "mock_metric_row1"):
             with self.subTest(panel=panel):
-                self.assertRegex(_APP, rf'{panel}\[0\]\.metric\("Universal Value", f"\{{[a-z_.]+:\.0f\}}"\)')
+                for slot, label in ((0, "Universal Value"), (2, "Your Acquisition Value")):
+                    window = _APP[_APP.index(f'{panel}[{slot}].metric('):][:320]
+                    self.assertIn(f'"{label}"', window)
+                    self.assertRegex(window, r'f"\{[a-z_.]+:\.0f\}"')
                 self.assertIn('"Projected Points", f"', _APP)
-                self.assertRegex(_APP, rf'{panel}\[2\]\.metric\("Your Acquisition Value", f"\{{[a-z_.]+:\.0f\}}"\)')
 
     def test_the_value_cards_state_no_unit_at_all(self):
         """'Projected Points' names its unit in its own label. Its two neighbours do not."""
@@ -79,6 +86,79 @@ class TheTwoUnitsSitAdjacentTests(unittest.TestCase):
             with self.subTest(label=label):
                 self.assertEqual(_APP.count(f'"{label}"'), 2,
                                  "both panels must be repaired together")
+
+
+class AbsenceReachesTheMetricCardsTests(unittest.TestCase):
+    """Two of the six cards in `metric_row1` used to format an Optional field with `:.0f` and
+    no guard, which raises TypeError on None and takes the whole Draft Room render with it.
+
+    The pattern was not random. In the SAME row, `projected_points` and `survival_probability`
+    were guarded, while `universal_value` and `team_acquisition_value` -- the two the absence
+    contract explicitly says WILL be None when a position has no replacement level -- were not.
+    The guard had been applied to the fields that rarely need it and skipped on the fields the
+    contract names.
+
+    REACHABILITY is the part worth recording: `_board_order` sorts None-scored rows last, so a
+    None leader looks impossible. But #154's feasibility backstop sorts `_feasible` AHEAD of
+    `final_score`, so an unpriced candidate that fills a REQUIRED slot is promoted over priced
+    candidates that do not -- measured directly as
+    `unpriced QB, feasibility BINDING -> ['qb1','qb2','rb1','wr1']`. Tier 3 is what made this
+    reachable; the backstop and the card were each correct alone.
+
+    This is a CLASS test on purpose. Pinning the four repaired sites would not stop the next
+    Optional field from being rendered bare."""
+
+    #: Fields the dataclass itself declares can be absent. Derived, so a new Optional field is
+    #: covered the day it is added rather than the day someone remembers to extend a list.
+    def _optional_snapshot_fields(self):
+        import typing
+        import pick_synthesis
+        hints = typing.get_type_hints(pick_synthesis.CandidateSnapshot)
+        out = set()
+        for name, hint in hints.items():
+            if type(None) in typing.get_args(hint):
+                out.add(name)
+        return out
+
+    def test_the_dataclass_really_does_declare_these_optional(self):
+        # Non-vacuity: if this returned an empty set the scan below would pass trivially.
+        optional = self._optional_snapshot_fields()
+        self.assertIn("universal_value", optional)
+        self.assertIn("team_acquisition_value", optional)
+        self.assertGreater(len(optional), 5)
+
+    def test_no_optional_field_is_formatted_without_a_none_guard(self):
+        """AST, not regex: find every f-string that applies a format spec to `<x>.<field>` for
+        an Optional field, and require the enclosing expression to test that same field against
+        None. A conditional whose test names a DIFFERENT field does not count."""
+        import ast
+        optional = self._optional_snapshot_fields()
+        tree = ast.parse(_APP)
+
+        guarded_by = {}   # id(JoinedStr) -> set of attribute names tested against None
+        for node in ast.walk(tree):
+            if isinstance(node, ast.IfExp):
+                tested = {n.attr for n in ast.walk(node.test) if isinstance(n, ast.Attribute)}
+                for branch in (node.body, node.orelse):
+                    for sub in ast.walk(branch):
+                        if isinstance(sub, ast.JoinedStr):
+                            guarded_by.setdefault(id(sub), set()).update(tested)
+
+        unguarded = []
+        for node in ast.walk(tree):
+            if not isinstance(node, ast.JoinedStr):
+                continue
+            for part in node.values:
+                if not (isinstance(part, ast.FormattedValue) and part.format_spec is not None):
+                    continue
+                if not isinstance(part.value, ast.Attribute):
+                    continue
+                field = part.value.attr
+                if field not in optional:
+                    continue
+                if field not in guarded_by.get(id(node), set()):
+                    unguarded.append(f"{field} at line {part.lineno}")
+        self.assertEqual(unguarded, [], "Optional field formatted with no `is not None` guard")
 
 
 class TheBoardsProseQualifiesItsUnitUnevenlyTests(unittest.TestCase):

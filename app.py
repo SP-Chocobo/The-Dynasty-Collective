@@ -4863,11 +4863,17 @@ elif main_view == DRAFT_VIEW:
                                         )
 
                                 mock_metric_row1 = st.columns(6)
-                                mock_metric_row1[0].metric("Universal Value", f"{mock_rec.universal_value:.0f}")
+                                mock_metric_row1[0].metric(
+                                    "Universal Value",
+                                    f"{mock_rec.universal_value:.0f}" if mock_rec.universal_value is not None else "—",
+                                )
                                 mock_metric_row1[1].metric(
                                     "Projected Points", f"{mock_rec.projected_points:.0f}" if mock_rec.projected_points is not None else "—",
                                 )
-                                mock_metric_row1[2].metric("Your Acquisition Value", f"{mock_rec.team_acquisition_value:.0f}")
+                                mock_metric_row1[2].metric(
+                                    "Your Acquisition Value",
+                                    f"{mock_rec.team_acquisition_value:.0f}" if mock_rec.team_acquisition_value is not None else "—",
+                                )
                                 mock_metric_row1[3].metric(
                                     "Survival to Next Pick",
                                     f"{round(mock_rec.survival_probability * 100)}%" if mock_rec.survival_probability is not None else "—",
@@ -4882,7 +4888,9 @@ elif main_view == DRAFT_VIEW:
 
                                 mock_alt = mock_current_debate.best_alternative
                                 if mock_alt is not None:
-                                    st.markdown(f"**Best alternative:** {mock_alt.name} — {mock_alt.team_acquisition_value:.0f} acquisition value")
+                                    mock_alt_tav = (f"{mock_alt.team_acquisition_value:.0f}"
+                                                    if mock_alt.team_acquisition_value is not None else "—")
+                                    st.markdown(f"**Best alternative:** {mock_alt.name} — {mock_alt_tav} acquisition value")
 
                             if mock_current_debate.disagreements:
                                 for d in mock_current_debate.disagreements:
@@ -5236,11 +5244,17 @@ elif main_view == DRAFT_VIEW:
                                                 )
 
                                         metric_row1 = st.columns(6)
-                                        metric_row1[0].metric("Universal Value", f"{rec.universal_value:.0f}")
+                                        metric_row1[0].metric(
+                                            "Universal Value",
+                                            f"{rec.universal_value:.0f}" if rec.universal_value is not None else "—",
+                                        )
                                         metric_row1[1].metric(
                                             "Projected Points", f"{rec.projected_points:.0f}" if rec.projected_points is not None else "—",
                                         )
-                                        metric_row1[2].metric("Your Acquisition Value", f"{rec.team_acquisition_value:.0f}")
+                                        metric_row1[2].metric(
+                                            "Your Acquisition Value",
+                                            f"{rec.team_acquisition_value:.0f}" if rec.team_acquisition_value is not None else "—",
+                                        )
                                         metric_row1[3].metric(
                                             "Survival to Next Pick",
                                             f"{round(rec.survival_probability * 100)}%" if rec.survival_probability is not None else "—",
@@ -5255,7 +5269,9 @@ elif main_view == DRAFT_VIEW:
 
                                         alt = debate_result.best_alternative
                                         if alt is not None:
-                                            st.markdown(f"**Best alternative:** {alt.name} — {alt.team_acquisition_value:.0f} acquisition value")
+                                            alt_tav = (f"{alt.team_acquisition_value:.0f}"
+                                                       if alt.team_acquisition_value is not None else "—")
+                                            st.markdown(f"**Best alternative:** {alt.name} — {alt_tav} acquisition value")
                                             alt_survival = f"{round(alt.survival_probability * 100)}%" if alt.survival_probability is not None else "—"
                                             st.caption(f"Survival: {alt_survival}")
 

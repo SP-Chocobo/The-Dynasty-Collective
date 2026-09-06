@@ -167,8 +167,8 @@ PROVIDER_CALLERS = {"claude": _call_claude, "gemini": _call_gemini, "openai": _c
 
 STRATEGIST_SYSTEM_PROMPT = """You are the Draft Strategist for a live fantasy football draft, arguing for the
 correct action THIS PICK. You are given a frozen snapshot of real, already-computed numbers -- universal_value
-(position-agnostic player quality), team_acquisition_value (universal_value plus this specific roster's own need
-and lineup-eligibility bonuses), survival_probability (the odds this player is still available at the user's next
+(position-agnostic player quality), team_acquisition_value (universal_value plus this specific roster's own need,
+lineup-eligibility and depth-exposure terms), survival_probability (the odds this player is still available at the user's next
 pick), opportunity_cost (expected value lost if he doesn't survive), expected_value_of_waiting (the flip side --
 what you'd expect to keep if you pass and gamble), denial_value (what the likeliest intervening opponent would
 gain from him), positional_cliff (whether a real, computed gap sits between this player and the next-best
@@ -271,7 +271,17 @@ def _format_candidate(candidate: CandidateSnapshot, user_selected_player_id: Opt
         f"  Pick necessity: {candidate.pick_necessity}/100 -- {candidate.necessity_label} (NOT a value score -- see below for value)",
         f"  Universal value: {candidate.universal_value} (source: {candidate.bpa_source}, confidence: {candidate.confidence})"
         + (f" -- {candidate.projected_points} projected season points" if candidate.projected_points is not None else ""),
-        f"  Team acquisition value: {candidate.team_acquisition_value} (need_bonus: {candidate.need_bonus:+}, eligibility_bonus: {candidate.eligibility_bonus:+})",
+        # ALL THREE team terms or none. depth_exposure joined this sum when it was wired into
+        # team_acquisition_value, and this line was not updated -- so the panel was handed a
+        # whole and two of its three parts, an arithmetic contradiction shown to a model that
+        # is instructed never to recompute. A measured 0.0 depth term is stated as 0.0; an
+        # absent one says it was not computed, because those are different claims.
+        f"  Team acquisition value: {candidate.team_acquisition_value} "
+        f"(universal_value {candidate.universal_value} + need_bonus {candidate.need_bonus:+}"
+        f" + eligibility_bonus {candidate.eligibility_bonus:+}"
+        + (f" + depth_exposure {candidate.depth_exposure:+})"
+           if candidate.depth_exposure is not None
+           else "; depth_exposure not computed for this board)"),
     ]
     if candidate.near_tie_with_leader:
         lines.append(
@@ -296,12 +306,26 @@ def _format_candidate(candidate: CandidateSnapshot, user_selected_player_id: Opt
         )
         lines.append(f"  Opportunity cost of waiting: {candidate.opportunity_cost}")
         lines.append(f"  Expected value if you wait: {candidate.expected_value_of_waiting}")
-    if candidate.denial_value:
-        lines.append(f"  Denial value: {candidate.denial_value} (would go to roster {candidate.denial_team})")
+    # `if candidate.denial_value:` swallowed a MEASURED 0.0 -- "no rival gains anything from
+    # him" is a real finding and an argument for waiting, and it read to the panel exactly like
+    # "never computed". Absence is not a value, and a zero is not an absence.
+    if candidate.denial_value is not None:
+        if candidate.denial_value == 0:
+            lines.append("  Denial value: 0 -- measured, no intervening rival gains from him")
+        else:
+            lines.append(f"  Denial value: {candidate.denial_value} (would go to roster {candidate.denial_team})")
     if candidate.positional_cliff:
         cliff = candidate.positional_cliff
         lines.append(f"  Positional cliff: {cliff['tier']} (gap to next at position: {cliff['gap']}, typical gap: {cliff['typical_gap']})")
-    if candidate.positional_forfeit is not None and candidate.positional_forfeit > 0:
+    # Same shape as denial_value: the `is not None` was here, but `> 0` still dropped a
+    # measured zero -- the case where waiting at this position costs nothing, which is the
+    # strongest evidence FOR waiting and was the one thing never said.
+    if candidate.positional_forfeit is not None and candidate.positional_forfeit == 0:
+        lines.append(
+            f"  Cost of delaying {candidate.position} entirely: measured 0 -- the best remaining "
+            f"{candidate.position} at your next pick is expected to be no worse than now"
+        )
+    elif candidate.positional_forfeit is not None and candidate.positional_forfeit > 0:
         lines.append(
             f"  Cost of delaying {candidate.position} entirely: best remaining {candidate.position} at your next "
             f"pick expected ~{candidate.positional_forfeit} universal-value points worse than now "

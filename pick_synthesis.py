@@ -992,13 +992,20 @@ class CandidateSnapshot:
     name: str
     position: str
     team: Optional[str]
-    bpa: float
+    # These three are Optional and were annotated `float` until now, which is the defect that
+    # matters more than the wrong hint: a reader of this dataclass sees `float` and writes
+    # f"{rec.universal_value:.0f}" with no guard -- which is exactly what two of the six Draft
+    # Room metric cards did, raising TypeError on an unpriced leader. The absence contract has
+    # always been that a position with no replacement level yields bpa=None, and None then
+    # propagates to universal_value and team_acquisition_value (draft_room.py normalizes the
+    # NaN at the board edge). The behaviour was right; the annotation lied about it.
+    bpa: Optional[float]
     bpa_source: str
     confidence: float
-    universal_value: float
+    universal_value: Optional[float]
     need_bonus: float
     eligibility_bonus: float
-    team_acquisition_value: float
+    team_acquisition_value: Optional[float]
     survival_probability: Optional[float]
     intervening_picks: Optional[int]
     opportunity_cost: Optional[float]
