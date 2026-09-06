@@ -1,5 +1,7 @@
 import re
 import unittest
+import warnings
+from unittest import mock
 
 import design_system as ds
 
@@ -130,24 +132,86 @@ class BadgeDerivationTests(unittest.TestCase):
 
 
 class PaletteLegibilityTests(unittest.TestCase):
-    """WCAG AA is an external standard, so it can be held as a floor without inventing a
-    constant to fit the sample (#56). This is the ratchet that keeps a future repaint --
-    including one that looks fine to whoever makes it -- from quietly dropping a badge below
-    readable on the surface it actually sits on."""
+    """WCAG AA is an external standard, so it can be written down as a floor without inventing
+    a constant to fit the sample (#56). Until 2026-09-06 this class ASSERTED that floor on the
+    live palette, and the owner ruled it out of the suite: a ratchet here is meant to prevent a
+    DEMONSTRATED class of failure, no contrast failure has ever been demonstrated in this
+    palette, and a build gate on a preference turns every visual adjustment into a test failure.
+    The floor is now the LEGIBILITY POLICY in design_system's docstring, and nothing below
+    asserts that the live palette clears it.
 
-    def test_every_foreground_token_clears_wcag_aa_on_the_surface_tone(self):
-        foreground = [k for k in ds.TOKENS if k.endswith("-b")] + ["ink", "muted", "pure"]
-        for token in foreground:
-            with self.subTest(token=token):
-                self.assertGreaterEqual(ds.contrast_ratio(token, "surface"), 4.5)
+    What IS asserted is the instrument, because a test that only passes while the palette is
+    pretty proves nothing about the thing that measures it: the written scope is exactly what
+    the policy names, `meets` is the measured ratio against the floor and nothing else, a
+    synthetic token below its floor is reported as a shortfall and raised as a warning rather
+    than an error, and a palette inside policy warns about nothing. The live palette is run
+    through it once, UNCAUGHT, so a real shortfall shows up in this run's output as a
+    LegibilityWarning without failing it -- visible, not fatal, which is the ruling."""
 
-    def test_dim_is_deliberately_below_aa_but_never_below_aa_large(self):
-        # `dim` is the one recede-into-the-page role and is NOT held to 4.5:1 -- raising it
-        # would make it indistinguishable from `muted`. It is held to AA-large so the
-        # exemption stays bounded rather than open-ended.
-        ratio = ds.contrast_ratio("dim", "surface")
-        self.assertLess(ratio, 4.5)
-        self.assertGreaterEqual(ratio, 3.0)
+    def test_the_written_scope_is_every_foreground_token_dim_and_every_pill(self):
+        scope = ds.legibility_scope()
+        expected = ({k for k in ds.TOKENS if k.endswith("-b")} | {"ink", "muted", "pure", "dim"}
+                    | {f"pill:{p}" for p in ds.POSITION_PILL_TOKENS})
+        self.assertEqual(set(scope), expected)
+        # `dim` is the one recede-into-the-page role: held to AA-large, and meant to stay below
+        # normal-text AA because raising it would make it indistinguishable from `muted`.
+        self.assertEqual(scope["dim"], ds.WCAG_AA_LARGE_TEXT)
+        for name, floor in scope.items():
+            if name != "dim":
+                with self.subTest(name=name):
+                    self.assertEqual(floor, ds.WCAG_AA_NORMAL_TEXT)
+
+    def test_the_floors_are_the_external_standard_not_numbers_fitted_to_the_palette(self):
+        self.assertEqual(ds.WCAG_AA_NORMAL_TEXT, 4.5)
+        self.assertEqual(ds.WCAG_AA_LARGE_TEXT, 3.0)
+
+    def test_meets_is_the_measured_ratio_against_the_floor_and_nothing_else(self):
+        # Checked against this file's own independent contrast implementation, so the report
+        # cannot agree with itself by construction.
+        for row in ds.legibility_report():
+            with self.subTest(name=row["name"]):
+                self.assertEqual(row["meets"], row["ratio"] >= row["floor"])
+                self.assertGreaterEqual(row["ratio"], 1.0)
+                self.assertLessEqual(row["ratio"], 21.0)
+                self.assertAlmostEqual(row["ratio"], _contrast(row["hex"], ds.TOKENS["surface"]), places=9)
+
+    def test_a_token_below_its_floor_is_reported_not_raised(self):
+        # A "-b" token painted the surface colour itself: 1.0:1, the worst case there is.
+        with mock.patch.dict(ds.TOKENS, {"ghost-b": ds.TOKENS["surface"]}):
+            short = {row["name"]: row for row in ds.legibility_shortfalls()}
+        self.assertIn("ghost-b", short)
+        self.assertFalse(short["ghost-b"]["meets"])
+        self.assertLess(short["ghost-b"]["ratio"], short["ghost-b"]["floor"])
+        self.assertAlmostEqual(short["ghost-b"]["ratio"], 1.0, places=9)
+
+    def test_a_shortfall_is_a_warning_not_a_failure(self):
+        with mock.patch.dict(ds.TOKENS, {"ghost-b": ds.TOKENS["surface"]}):
+            with self.assertWarns(ds.LegibilityWarning) as caught:
+                short = ds.warn_if_out_of_policy()
+        self.assertIn("ghost-b", str(caught.warning))
+        self.assertIn("ghost-b", [row["name"] for row in short])
+
+    def test_a_palette_inside_policy_warns_about_nothing(self):
+        # A synthetic palette, not the live one -- asserting the live palette is clean would be
+        # the ratchet the ruling removed, wearing a different name.
+        white_on_black = {"surface": "#000000", "ink": "#ffffff", "muted": "#ffffff",
+                          "pure": "#ffffff", "dim": "#ffffff", "only-b": "#ffffff"}
+        with mock.patch.dict(ds.TOKENS, white_on_black, clear=True), \
+                mock.patch.dict(ds.POSITION_PILL_TOKENS, {"QB": "#ffffff"}, clear=True), \
+                warnings.catch_warnings(record=True) as caught:
+            warnings.simplefilter("always")
+            short = ds.warn_if_out_of_policy()
+        self.assertEqual(short, [])
+        self.assertEqual(caught, [])
+
+    def test_the_live_palette_is_measured_every_run_and_a_shortfall_is_seen_not_fatal(self):
+        # Deliberately NOT inside assertWarns or catch_warnings: if the live palette is below
+        # the written floor, the LegibilityWarning has to reach this run's output. What is
+        # asserted is consistency -- the warning names exactly the rows the report marks --
+        # never that the list is empty.
+        short = ds.warn_if_out_of_policy()
+        self.assertEqual([row["name"] for row in short],
+                         [row["name"] for row in ds.legibility_report() if not row["meets"]])
 
     def test_contrast_ratio_is_symmetric_and_bounded(self):
         self.assertAlmostEqual(ds.contrast_ratio("ink", "bg"),
@@ -174,8 +238,10 @@ class PositionPillTests(unittest.TestCase):
     def test_a_pill_never_collides_with_an_injury_pill_in_the_same_row(self):
         # THE actual co-occurrence: app.py renders a position pill and an injury pill in one
         # table row, so a TE pill the color of a Questionable pill says two things at once.
+        # The Questionable pill is amber-b since the 2026-09-06 ruling (it was gold-b); the
+        # nearest pill to it is TE at dE 39.8, measured when the move was made.
         for position, value in ds.POSITION_PILL_TOKENS.items():
-            for injury in ("gold-b", "crimson-b"):
+            for injury in ("amber-b", "crimson-b"):
                 with self.subTest(position=position, injury=injury):
                     self.assertGreaterEqual(_delta_e(value, ds.TOKENS[injury]), 25.0)
 
@@ -193,10 +259,10 @@ class PositionPillTests(unittest.TestCase):
             with self.subTest(position=position):
                 self.assertNotIn(value.lower(), semantic)
 
-    def test_every_pill_is_legible_on_the_surface_tone(self):
-        for position, value in ds.POSITION_PILL_TOKENS.items():
-            with self.subTest(position=position):
-                self.assertGreaterEqual(_contrast(value, ds.TOKENS["surface"]), 4.5)
+    # Pill legibility on `surface` used to be asserted here at 4.5:1. It is the same WCAG floor
+    # the 2026-09-06 ruling made written policy, so it moved with it: every pill is inside
+    # design_system.legibility_scope() (pinned in PaletteLegibilityTests) and a pill that drops
+    # under the floor is warned about, not failed on.
 
     def test_dst_is_the_same_slot_as_def_and_unknown_falls_back_to_neutral(self):
         self.assertEqual(ds.position_pill_color("DST"), ds.position_pill_color("DEF"))

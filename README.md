@@ -915,7 +915,7 @@ producing a failing test.
   instead of a visually-fused continuation of the main page.
 - **Roster table**: sorted Starters → Bench → TAXI → IR (not roster order
   as Sleeper returns it), and slot/injury status are color-coded with the
-  same emerald/gold/crimson palette as everything else, via a pandas
+  same emerald/amber/crimson palette as everything else, via a pandas
   `Styler` passed straight to `st.dataframe`.
 - **Sleeper's own native projections**: alongside Draft Sharks, every league
   sync also pulls Sleeper's own per-stat-category weekly projection for each

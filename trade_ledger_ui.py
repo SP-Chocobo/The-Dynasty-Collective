@@ -24,12 +24,17 @@ TRADE_LEDGER_CSS = """
   font-size: .76rem; padding: .2rem .6rem; border-radius: 4px; letter-spacing: .03em;
 }
 .tl-pill.fresh { color: var(--emerald-b); border: 1px solid var(--emerald); background: rgba(22,163,74,.12); }
-.tl-pill.stale { color: var(--gold-b); border: 1px solid var(--gold); background: rgba(212,160,23,.12); }
+/* amber = attention, the shared meaning of that token: a ruler that has gone stale, and (the
+   EST badge below) a pick value that is an estimate. Both were gold until the 2026-09-06
+   ruling took gold out of the semantic channel -- design_system.TOKENS["amber"] records it.
+   The tint is mixed from the token rather than written as an rgb triplet, so it cannot drift
+   from TOKENS on its own the way a hand-copied literal can. */
+.tl-pill.stale { color: var(--amber-b); border: 1px solid var(--amber); background: color-mix(in srgb, var(--amber) 12%, transparent); }
 
 .tl-postag { color: var(--muted); font-size: .8rem; }
 .tl-value { font-family: "JetBrains Mono", "DejaVu Sans Mono", monospace; font-weight: 700; font-size: .92rem; text-align: right; }
 .tl-value.tl-dim { color: var(--dim); font-weight: 400; font-style: italic; font-size: .78rem; }
-.tl-pickbadge { font-size: .62rem; color: var(--gold-b); border: 1px solid var(--gold); border-radius: 4px; padding: 0 .3rem; margin-left: .35rem; }
+.tl-pickbadge { font-size: .62rem; color: var(--amber-b); border: 1px solid var(--amber); border-radius: 4px; padding: 0 .3rem; margin-left: .35rem; }
 
 .tl-selected-send { color: var(--crimson-b); font-weight: 700; font-size: .68rem; letter-spacing: .04em; margin-right: .4rem; }
 .tl-selected-receive { color: var(--emerald-b); font-weight: 700; font-size: .68rem; letter-spacing: .04em; margin-right: .4rem; }

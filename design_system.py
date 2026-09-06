@@ -9,17 +9,44 @@ component uses which token and no Streamlit/HTML-structure code of its own -- th
 (which of the three interaction paradigms a given surface should follow: ranked list +
 causal explanation, comparison/balance, or conversational verdict) lives in the published
 design-language reference, not here.
+
+LEGIBILITY POLICY -- a written design requirement, deliberately not a build gate.
+
+  Every foreground token (each "-b" brightening, plus ink, muted and pure) and every position
+  pill colour is held to WCAG 2.x AA for normal text: >= 4.5:1 against `surface`, the tone
+  text actually sits on. `dim` is the one recede-into-the-page role and is held to AA-large
+  instead (>= 3.0:1); it is meant to stay BELOW 4.5:1, because raising it would make it
+  indistinguishable from `muted`. Measured today: every "-b" token >= 6.34:1 (crimson-b is the
+  lowest), ink 13.58, muted 6.25, pure 12.23, dim 3.39, every pill >= 4.5.
+
+  Until 2026-09-06 that floor was asserted by test_design_system, so a token dipping under it
+  failed the build. RULED by the owner: "Keep the contrast floor as written policy, not a hard
+  code ratchet. A documented design requirement, not an immutable code-law ratchet." The bar a
+  ratchet has to meet here is that it prevents a DEMONSTRATED class of failure; no contrast
+  failure has ever been demonstrated in this palette, so that check encoded a preference in a
+  defect ratchet's clothing, and every future visual adjustment would have had to clear it or
+  break the build. What survives is the standard (this paragraph), the instrument
+  (contrast_ratio, legibility_report) and the visibility: `python3 design_system.py` prints
+  every name against its floor, and the suite runs warn_if_out_of_policy() once, uncaught, so
+  a shortfall appears in the run's output as a LegibilityWarning without failing it. A palette
+  edit that drops below the floor is therefore seen, not stopped, and whoever makes it is
+  expected to say why in the commit.
 """
 
 from __future__ import annotations
 
 import re
+import warnings
 
 # One canonical hex value per named token, reused everywhere as a CSS custom property
 # (--<key>). Semantic hues carry the SAME meaning on every surface: emerald = value
-# surplus/good, gold = attention/taxi-bench-alert, crimson = risk/injury/negative, violet =
-# highest urgency (must-take), sky = strong secondary signal, amber = system notice,
+# surplus/good, amber = attention (a heads-up that is not an error: stale values, a
+# Questionable status, thin depth, a legality promotion, the CLOSE CALL tier), crimson =
+# risk/injury/negative, violet = highest urgency (must-take), sky = strong secondary signal,
 # cliff/block/pure/tie = the four decision-path forces first established in the Draft Room.
+# GOLD IS NOT ON THAT LIST. It is the brand's metal -- wordmark, rails, focus ring, gradient
+# hairlines, the CONSIDERING star -- and it means nothing; the ruling that took it out of the
+# semantic channel, and what that cost, is recorded at `amber` below.
 # A "-b" suffix is the identical hue brightened for foreground text/icon use against the dark
 # surface tones -- never a different color standing in for the same name.
 #
@@ -51,13 +78,40 @@ TOKENS: dict[str, str] = {
     "violet": "#9457d4", "violet-b": "#c9a4f0",
     "crimson": "#b0193c", "crimson-b": "#ff6b85",
     "sky": "#1466c4", "sky-b": "#6fb2f7",
-    # amber was NOT a token before this pass: BADGE_ROLE_CSS's "notice" badge spelled out
+    # amber was NOT a token before the repaint: BADGE_ROLE_CSS's "notice" badge spelled out
     # #f59e0b/#fbbf24 by hand, a fourth color family with no entry here and nothing keeping it
-    # honest. It is squeezed -- the measured best available separation is only dE 25.8 from
-    # gold and dE 26.2 from block, against dE 35.2 for every other pair -- because gold is
-    # carrying three jobs at once (brand chrome, the Beat chair, and "attention"). Narrowing
-    # gold's semantic load is a decision about what the chairs MEAN, so it is recorded in the
-    # register for the owner rather than settled here by choosing a hex.
+    # honest. When it was added it was squeezed -- dE 25.8 from gold and 26.2 from block,
+    # against 35.2 for every other pair -- because gold was carrying three jobs at once (brand
+    # chrome, the Beat chair, and "attention"), and narrowing that load was left to the owner.
+    #
+    # RULED (2026-09-06): "Gold may remain brand chrome/flourish, but do not ingest it into the
+    # semantic UI/data channel where doing so creates a collision. Brand decoration is allowed;
+    # semantic ambiguity isn't." Applied by moving every semantic use OFF gold and onto tokens
+    # that already exist -- no new hex -- with each move measured in CIE Lab dE, the same
+    # instrument the repaint used:
+    #   "attention" (the Questionable injury pill, the warn chips, the stale-values pill, the
+    #     EST pick badge) -> amber, which already meant "system notice": one hue, one meaning.
+    #     amber-b sits >= 39.8 from every position pill it shares a roster row with (TE is the
+    #     nearest; it was 57.2 from gold-b) and 69.0 from crimson-b, the other injury colour.
+    #   Beat chair -> cliff. The role family's tightest pair moves from gold/amber 25.8 to
+    #     violet/sky 36.7 (base tokens; 22.2 -> 30.8 on the "-b" text colours, and that 30.8
+    #     is the pre-existing Contrarian/Summary pair, untouched here). Beat's own nearest
+    #     neighbours are cliff/tie 40.2 and cliff/emerald 40.5. The cost, recorded rather than
+    #     hidden: a Beat badge in the Prytaneum column and a cliff force tick in a board row
+    #     now share a hue on the Draft Room page. They never share a visual unit, which is the
+    #     co-occurrence POSITION_PILL_TOKENS' rule below was narrowed to, and User/tie is the
+    #     existing precedent for a chair borrowing a force's token.
+    #   CLOSE CALL tier -> amber, keeping the ramp's shape (red -> amber -> green -> blue ->
+    #     purple; the family's tightest pair stays violet/sky). The cost, also recorded: inside
+    #     a board row the pill's nearest tick is now block-b at 23.8 (it was 34.6 from gold-b),
+    #     and it shares amber with the FILLS REQUIRED SLOT marker, which pick_synthesis sets on
+    #     essentially no rows. Gold would have kept 34.6 from the tick and 22.2 from that
+    #     marker -- and a gold pill inside a gold-railed, gold-starred row is exactly the
+    #     ambiguity the ruling forbids: the most common tier reading as decoration.
+    # Every home for CLOSE CALL collides with something in its own row; this one collides least
+    # often. What is left is amber's squeeze against block (26.2), now the tightest pair in the
+    # ladder. Re-deriving amber away from block, now that gold no longer hems it in on the
+    # other side, is the remaining lever -- a palette decision, not settled here.
     "amber": "#e07b0a", "amber-b": "#f9a828",
     "cliff": "#0d9488", "cliff-b": "#3ad9c8",
     "block": "#c2410c", "block-b": "#f9a05c",
@@ -150,7 +204,8 @@ def root_css_block() -> str:
 #: MUST TAKE necessity) -- it is emphasis, not decoration, and adding a third would dilute it.
 _ROLE_BADGES: tuple[tuple[str, str, bool], ...] = (
     ("badge-quant", "emerald", False),
-    ("badge-beat", "gold", False),
+    # Was gold until 2026-09-06; the ruling and the dE it cost are recorded at TOKENS["amber"].
+    ("badge-beat", "cliff", False),
     ("badge-contrarian", "violet", False),
     ("badge-moderator", "crimson", False),
     ("badge-moderator-verdict", "crimson", True),
@@ -163,7 +218,8 @@ _NECESSITY_BADGES: tuple[tuple[str, str, bool], ...] = (
     ("badge-necessity-must-take", "violet", True),
     ("badge-necessity-strong", "sky", False),
     ("badge-necessity-preferred", "emerald", False),
-    ("badge-necessity-close-call", "gold", False),
+    # Was gold until 2026-09-06 -- same ruling, same record at TOKENS["amber"].
+    ("badge-necessity-close-call", "amber", False),
     ("badge-necessity-low", "crimson", False),
 )
 
@@ -196,32 +252,97 @@ BADGE_NECESSITY_CSS = "\n".join(
 )
 
 
-def contrast_ratio(token_a: str, token_b: str) -> float:
-    """WCAG 2.x relative-luminance contrast ratio between two TOKENS entries, 1.0 to 21.0.
+#: WCAG 2.x AA minimums for normal and for large text. External standards, not numbers fitted
+#: to this palette -- the distinction #56 draws between a bound and a threshold. Which names are
+#: held to which is legibility_scope(); why nothing FAILS on them is the LEGIBILITY POLICY in
+#: the module docstring.
+WCAG_AA_NORMAL_TEXT = 4.5
+WCAG_AA_LARGE_TEXT = 3.0
 
-    Here so the design system can state its own legibility instead of asserting it in a
-    comment. The 4.5:1 floor the tests hold every foreground token to is WCAG AA for normal
-    text -- an external standard, not a number chosen to fit this palette, which is the whole
-    distinction #56 draws between a bound and a threshold. A repaint that reads well to the
-    person making it and fails here is a repaint that lost information."""
+
+class LegibilityWarning(UserWarning):
+    """A name in legibility_scope() measured below its written floor. A warning and never an
+    error, by ruling -- see LEGIBILITY POLICY."""
+
+
+def _contrast_hex(hex_a: str, hex_b: str) -> float:
     def _channel(value: int) -> float:
         c = value / 255.0
         return c / 12.92 if c <= 0.03928 else ((c + 0.055) / 1.055) ** 2.4
 
-    def _luminance(token_name: str) -> float:
-        hex_value = TOKENS[token_name].lstrip("#")
-        r, g, b = (_channel(int(hex_value[i:i + 2], 16)) for i in (0, 2, 4))
+    def _luminance(hex_value: str) -> float:
+        h = hex_value.lstrip("#")
+        r, g, b = (_channel(int(h[i:i + 2], 16)) for i in (0, 2, 4))
         return 0.2126 * r + 0.7152 * g + 0.0722 * b
 
-    la, lb = _luminance(token_a), _luminance(token_b)
+    la, lb = _luminance(hex_a), _luminance(hex_b)
     hi, lo = max(la, lb), min(la, lb)
     return (hi + 0.05) / (lo + 0.05)
+
+
+def contrast_ratio(token_a: str, token_b: str) -> float:
+    """WCAG 2.x relative-luminance contrast ratio between two TOKENS entries, 1.0 to 21.0.
+
+    Here so the design system can state its own legibility instead of asserting it in a
+    comment. The 4.5:1 floor the LEGIBILITY POLICY holds every foreground token to is WCAG AA
+    for normal text -- an external standard, not a number chosen to fit this palette, which is
+    the whole distinction #56 draws between a bound and a threshold. A repaint that reads well
+    to the person making it and falls short here is a repaint that lost information -- which is
+    why the shortfall is REPORTED (legibility_report, warn_if_out_of_policy) rather than
+    asserted: the standard stays external, the enforcement stays human."""
+    return _contrast_hex(TOKENS[token_a], TOKENS[token_b])
+
+
+def legibility_scope() -> dict[str, float]:
+    """{name: floor} -- exactly what the written policy holds, and to what. Pills are keyed
+    "pill:<POS>" so one report covers both families. Computed from TOKENS and
+    POSITION_PILL_TOKENS at call time rather than listed once, so a token added later is
+    inside the policy the moment it exists, not when somebody remembers to enrol it."""
+    scope = {name: WCAG_AA_NORMAL_TEXT for name in TOKENS if name.endswith("-b")}
+    scope.update({name: WCAG_AA_NORMAL_TEXT for name in ("ink", "muted", "pure") if name in TOKENS})
+    if "dim" in TOKENS:
+        scope["dim"] = WCAG_AA_LARGE_TEXT
+    scope.update({f"pill:{position}": WCAG_AA_NORMAL_TEXT for position in POSITION_PILL_TOKENS})
+    return scope
+
+
+def legibility_report() -> list[dict]:
+    """Every name in legibility_scope() measured on `surface`, the tone text sits on:
+    [{"name", "hex", "ratio", "floor", "meets"}]. `ratio` is unrounded, so `meets` is the
+    same comparison a reader would make from the row and never disagrees with it by a
+    rounding. Measures and reports; never asserts."""
+    rows = []
+    for name, floor in legibility_scope().items():
+        hex_value = POSITION_PILL_TOKENS[name[5:]] if name.startswith("pill:") else TOKENS[name]
+        ratio = _contrast_hex(hex_value, TOKENS["surface"])
+        rows.append({"name": name, "hex": hex_value, "ratio": ratio, "floor": floor,
+                     "meets": ratio >= floor})
+    return rows
+
+
+def legibility_shortfalls() -> list[dict]:
+    return [row for row in legibility_report() if not row["meets"]]
+
+
+def warn_if_out_of_policy() -> list[dict]:
+    """The whole of the policy's enforcement: ONE LegibilityWarning naming every shortfall,
+    returned as well so a caller can print or log it. Visible in any run that calls this,
+    fatal in none. Silent, returning [], when the palette is inside policy."""
+    short = legibility_shortfalls()
+    if short:
+        detail = ", ".join(f"{row['name']} {row['ratio']:.2f}:1 < {row['floor']}:1" for row in short)
+        warnings.warn(
+            f"design_system LEGIBILITY POLICY: below the written floor on surface -- {detail}",
+            LegibilityWarning, stacklevel=2,
+        )
+    return short
 
 
 # ---------------------------------------------------------------------------------------
 # Position identity is a SEPARATE semantic axis from value and urgency, and these colors are
 # deliberately not the accents above: a position pill and an injury pill share a table row, so
-# a gold TE pill beside a gold Questionable pill would say two different things in one color.
+# an amber TE pill beside an amber Questionable pill would say two different things in one
+# color (the Questionable pill was gold until the ruling recorded at TOKENS["amber"]).
 #
 # THE ORIGINAL CLAIM WAS BROADER THAN THE CODE, AND FALSE. The old hand-written map said its
 # colors were "chosen to stay clear of hues this app already uses to MEAN something", while two
@@ -270,3 +391,19 @@ def expand_rgba_markers(css: str) -> str:
         lambda m: token_rgba(m.group(1), int(m.group(2)) / 100.0),
         css,
     )
+
+
+def main() -> int:
+    """`python3 design_system.py`: the LEGIBILITY POLICY, measured, for a person to read.
+    Exit 0 whether or not anything is short -- this is the report, not a gate."""
+    for row in legibility_report():
+        flag = "" if row["meets"] else "   <-- BELOW THE WRITTEN FLOOR"
+        print(f"{row['name']:12s} {row['hex']}  {row['ratio']:6.2f}:1  floor {row['floor']}:1{flag}")
+    short = legibility_shortfalls()
+    print(f"\n{len(short)} of {len(legibility_scope())} below the written floor on `surface` "
+          f"-- advisory by ruling (see LEGIBILITY POLICY), exit 0 either way")
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

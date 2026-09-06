@@ -3,7 +3,8 @@ Fantasy Football Multi-LLM Command Center — Streamlit UI.
 
 Sleeper Meets Claude: a dark, minimalist dashboard (Claude) accented with
 functional sports-data color coding (Sleeper) — emerald for value surplus,
-gold for taxi/bench alerts, crimson for injury flags — plus The Prytaneum, a
+amber for attention flags (stale data, a Questionable status, thin depth), crimson
+for injury flags; gold is brand chrome only — plus The Prytaneum, a
 four-persona deliberation chamber (Quant, Beat, Contrarian, Moderator) — each
 role's LLM provider is independently configurable, not fixed to a given brand.
 """
@@ -135,7 +136,8 @@ _GLOBAL_CSS = """
     /* Pick Necessity's own color ramp (Draft Room view) -- distinct classes from the debate
        personas above even though the colors are reused from that same palette, so a necessity
        tier is never visually confusable with a Quant/Beat/Contrarian/Moderator badge. Low to
-       high necessity: red -> gold -> green -> blue -> purple. */
+       high necessity: red -> amber -> green -> blue -> purple (the middle tier was gold until
+       the 2026-09-06 ruling took gold out of the semantic channel; design_system records it). */
     __DESIGN_SYSTEM_BADGE_NECESSITY__
     .agent-block {
         border-radius: 8px; padding: 10px 14px; margin-bottom: 10px;
@@ -587,11 +589,14 @@ _GLOBAL_CSS = """
         bottom: 0;
         z-index: 999;
         /* A flat 1px border read as just "more page," not a distinct always-on
-           analytical layer over the workspace. Layering a thin accent gradient
-           (blending the four persona colors the chat badges already use) on top of
-           the solid background reads as its own thing without needing a heavier
-           treatment — and unlike a pseudo-element, a background-image layer isn't at
-           risk of being clipped by this element's own overflow-y: auto below. */
+           analytical layer over the workspace. Layering a thin accent gradient (the
+           brand hairline the Draft Room's state bar wears too) on top of the solid
+           background reads as its own thing without needing a heavier treatment — and
+           unlike a pseudo-element, a background-image layer isn't at risk of being
+           clipped by this element's own overflow-y: auto below. Its stops matched the
+           four chair badges until Beat moved to cliff on 2026-09-06; gold stays in the
+           hairline because a hairline is flourish, which that ruling allows, and the
+           stops were never load-bearing -- the line reads the same without the story. */
         background: linear-gradient(90deg, var(--emerald), var(--gold), var(--violet), var(--crimson)) top / 100% 2px no-repeat, var(--bg);
         border-top: 1px solid var(--line);
         padding: 10px 24px 18px;
@@ -1124,11 +1129,13 @@ def sleeper_proj_label(snapshot: dict) -> str:
 
 
 def _injury_pill_color(val: str) -> tuple[str, str]:
-    # gold = playable-but-flagged, crimson = unavailable, straight off the shared urgency ramp.
+    # amber = playable-but-flagged (attention), crimson = unavailable, straight off the shared
+    # urgency ramp. Was gold until the 2026-09-06 ruling took gold out of the semantic channel
+    # (design_system.TOKENS["amber"] records the move and its measured dE against every pill).
     # Derived rather than spelled out, because these are the two colors a POSITION pill has to
     # stay clear of (see design_system.POSITION_PILL_TOKENS) -- a hand-copied hex here would let
     # that separation drift without anything noticing.
-    token = "gold" if val in INJURY_OK_STATUSES else "crimson"
+    token = "amber" if val in INJURY_OK_STATUSES else "crimson"
     return (design_system.token_rgba(token, 0.18), design_system.TOKENS[f"{token}-b"])
 
 
@@ -3481,7 +3488,8 @@ if main_view == MATCHUP_VIEW:
         readiness = lineup_readiness.compute_readiness(roster_table, depth, my_team_label, total_starting_slots)
 
         def _readiness_chip(label: str, tone: str) -> str:
-            color = {"ok": "var(--emerald-b)", "warn": "var(--gold-b)", "bad": "var(--crimson-b)"}[tone]
+            # warn is amber, the app's one attention hue (gold until the 2026-09-06 ruling).
+            color = {"ok": "var(--emerald-b)", "warn": "var(--amber-b)", "bad": "var(--crimson-b)"}[tone]
             icon = {"ok": "✅", "warn": "⚠️", "bad": "⚠️"}[tone]
             return (
                 f'<span style="display:inline-flex;align-items:center;gap:.35rem;'
@@ -3645,7 +3653,8 @@ elif main_view == MAINTENANCE_VIEW:
             _attn_chips.append(("warn", f"Thin at {', '.join(_attn_thin)}"))
 
     if _attn_chips:
-        _attn_tone_color = {"warn": "var(--gold-b)", "info": "var(--sky-b)"}
+        # warn is amber, the app's one attention hue (gold until the 2026-09-06 ruling).
+        _attn_tone_color = {"warn": "var(--amber-b)", "info": "var(--sky-b)"}
         _attn_chip_html = "".join(
             f'<span style="display:inline-flex;align-items:center;gap:.35rem;'
             f"font-family:'JetBrains Mono',monospace;font-size:.78rem;border-radius:5px;"

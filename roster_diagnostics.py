@@ -73,6 +73,28 @@ AGE_TRAJECTORY_UNAVAILABLE_REASON = (
 )
 
 
+def coverage_statement(unpriced_players: Optional[int]) -> str:
+    """The words that travel with every value on a TeamDiagnostics record -- and with the
+    battery's starter_value, which makes the same exclusion -- so a number states its own
+    coverage wherever a person reads it. Until 2026-09-06 nothing did: quantity_readers classed
+    every number on this record as DECOMPOSITION (computed, published, read by no production
+    surface), and the one line that shows roster strength to a person (run_draft_battery's
+    per-format print) carried the starter-value range with no coverage beside it, so "a FLOOR,
+    not a total" was true in the comment at the lineup solve and invisible on any screen.
+
+    THE ABSENCE CONTRACT IS ABSOLUTE HERE. None is a count nobody measured, not a count of zero,
+    and the two must never read the same: the unmeasured case is words with no digit in them --
+    never 0, never a dash, never blank. A measured zero says the values are totals; a positive
+    count names itself and says they are floors.
+    """
+    if unpriced_players is None:
+        return "unpriced count not measured, so coverage is unknown"
+    if unpriced_players == 0:
+        return "every player priced, so the values are totals"
+    noun = "player" if unpriced_players == 1 else "players"
+    return f"{unpriced_players} {noun} unpriced, so the values are floors, not totals"
+
+
 @dataclass(frozen=True)
 class TeamDiagnostics:
     roster_id: str
@@ -88,7 +110,9 @@ class TeamDiagnostics:
     #: record (accumulated, starting-lineup, bench surplus, depth) excludes them. Greater than
     #: zero means those numbers are FLOORS rather than totals. Distinct from
     #: replacement_level_unpriced above, which counts a narrower thing: players whose POSITION
-    #: has no replacement level, which is what stops a surplus being computable.
+    #: has no replacement level, which is what stops a surplus being computable. Put into words
+    #: for a reader by starting_lineup_statement() below -- the count is never left for the
+    #: value to imply.
     unpriced_players: int
     positional_counts: dict
     thin_positions: tuple
@@ -103,6 +127,12 @@ class TeamDiagnostics:
     # damage lands in one week. Two rosters can lose the same total and be in different
     # trouble. None (not 0.0) when there is no damage to have a shape.
     bye_concentration: dict
+
+    def starting_lineup_statement(self) -> str:
+        """starting_lineup_value with its coverage attached -- the form any surface that shows
+        the number should show, since the number alone cannot say whether it is a floor."""
+        return (f"starting lineup value {self.starting_lineup_value:.2f} "
+                f"({coverage_statement(self.unpriced_players)})")
 
 
 def _chosen_candidate(rec) -> dict:
