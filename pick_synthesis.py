@@ -322,16 +322,43 @@ LATE_ROUND_THRESHOLD = dr.UPSIDE_MODE_DEFAULT_ROUND  # same round draft_room swi
 LATE_ROUND_NECESSITY_CAP = 30.0
 
 # A team_acquisition_value gap at or below this is field noise, not ordering signal --
-# DATA-DERIVED, not an invented percentage: on a real fresh 12-team superflex dynasty board,
-# adjacent tav gaps in the top 40 ran median 1.23 / p75 2.26 / p90 3.53, so 2.0 sits right at
-# the "most adjacent pairs are inside it" line (72% measured). Candidates this close to the
+# DERIVED ON ONE POPULATION, THEN CHECKED AGAINST THE FOUR IT ACTUALLY GATES (#160). The
+# original derivation is the first sentence below and it is honest about only one thing --
+# where the number CAME from, which is not the same as where it is USED:
+#
+#   ORIGIN. On a real fresh 12-team superflex dynasty board, ADJACENT tav gaps in the top 40
+#   ran median 1.23 / p75 2.26 / p90 3.53, so 2.0 sat at the "most adjacent pairs are inside
+#   it" line (72% measured). One board, one format, one population.
+#
+#   WHERE IT IS ACTUALLY USED. Three of the four rules this constant gates are LEADER-RELATIVE
+#   over the NARROWED CANDIDATE LIST, not adjacent gaps over the top 40; the fourth
+#   (CLIFF_MIN_MATERIAL_GAP) is a WITHIN-POSITION bpa gap. Those are three different
+#   populations and none of them is the one the origin measured. That the value works on all
+#   of them was, until #160, luck this comment was claiming as design.
+#
+#   THE CHECK (#160), five formats differing in team count, scoring, superflex and IDP. Share
+#   of each population the band splits off:
+#       leader-relative gap, narrowed     8% - 23%
+#       leader-second margin             29% - 86%
+#       best_uv - leader_uv (pure_value)  0% - 43%
+#       within-position bpa gap          55% - 62%
+#   Every one splits. Nothing is degenerate, no re-value is supported, and the number stands --
+#   now on the populations it governs rather than on the one it came from.
+#
+#   ONE CAVEAT KEPT RATHER THAN SMOOTHED: pure_value fires 0.0% on two of the five formats. It
+#   is not dead (42.9% on IDP) but it IS format-dependent, which nothing previously recorded.
+#
+# Candidates this close to the
 # LEADER form a tie group where the deterministic ordering must not be presented as a real
 # preference -- this is exactly where the user's own player preference legitimately decides,
 # and the debate layer needs the boundary handed to it as a computed number (an LLM inventing
 # its own "feels close" threshold is precisely what this module's frozen-snapshot architecture
 # exists to prevent). Distinct from NECESSITY_STANDOUT_REFERENCE_GAP (15.0), which measures a
-# CUMULATIVE lead over the whole field -- that reference sits above the largest adjacent gap
-# ever observed (10.6) on purpose, since full standout credit should demand something rare.
+# CUMULATIVE lead over the whole field -- that reference sits above the largest gap ever
+# observed on purpose, since full standout credit should demand something rare. (#160 re-checked
+# that across five formats: the largest leader-second margin anywhere is 12.66, so 15.0 is still
+# above the distribution. The 10.6 previously quoted here was one format's figure, stated
+# without its scope -- the same slip this block's own origin note now warns about.)
 NEAR_TIE_BAND = 2.0
 
 # A cliff is a RATIO ("this drop is unusually large for this position"), which silently

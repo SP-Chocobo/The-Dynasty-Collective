@@ -5137,3 +5137,34 @@ health covers what the battery can vary, and these two terms are outside that. A
 that "33 formats found one finding class" must carry this caveat, and the #52 blind pass should
 be run knowing it -- not because #52 is briefed (it is not), but because a blind pass that
 happens to probe injury handling would be probing a path no arm has ever moved.
+
+## #167 -- the demotion was already the state of the code, and my characterization was wrong
+
+The ruling was: take `reach_label` out of engine math, leave it in the debate prompt. Doing that
+required first establishing what engine math it was in. It is in none.
+
+The repo's own derived tool answers this without my judgement -- `quantity_readers.scan()`
+classifies every surfaced quantity by who reads it:
+
+    reach_label       verdict=observable   scoring_readers=[]   observing=[app.py, pick_debate.py]
+    consensus_rank    verdict=observable   scoring_readers=[]   observing=[app.py, pick_debate.py]
+    consensus_tier    verdict=observable   scoring_readers=[]   observing=[app.py, pick_debate.py]
+
+Confirmed independently of the tool rather than trusted: every one of the eleven `reach_label`
+references in non-test code is a docstring, an f-string for display or the prompt, a dataclass
+field declaration, a snapshot carrier, or a history column name. **There is no arithmetic
+consumer anywhere.**
+
+SO THE RULING IS ALREADY SATISFIED AND NO CODE CHANGES. What needs correcting is the record --
+mine. I wrote #167 up as "reach_label changes 0 of 36 engine decisions under ablation ...
+demote/remove supported for the engine", which reads as though there were an engine effect too
+small to matter. There was never an engine effect at all. The ablation returned 0/36 because it
+was toggling a quantity that no scoring path reads -- a null result about a wire that does not
+exist, not a weak result about a wire that does.
+
+That distinction matters for the freeze: "we measured it and it did nothing" invites someone
+later to re-measure more sensitively. "It is not connected" closes it.
+
+The prompt half stands untouched per the ruling, and the 85% prevalence figure remains what it
+always was -- a statement about a DISPLAY label's distribution, with its LLM-debate effect still
+unmeasured and now explicitly registered as such.
