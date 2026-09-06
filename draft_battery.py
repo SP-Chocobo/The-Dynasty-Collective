@@ -72,19 +72,24 @@ def league_matrix() -> list[dict]:
             for superflex in (False, True):
                 league = dr.build_mock_league(teams=teams, superflex=superflex,
                                               scoring=scoring, te_premium=False, dynasty=True)
+                rounds = len(league["roster_positions"])
+                # The engine cannot know the round count unless the league says so (#161).
+                # Carrying it here is what makes the battery measure the repaired path.
+                league["draft_rounds"] = rounds
                 out.append({
                     "label": f"{teams}T_{scoring}{'_SF' if superflex else ''}",
-                    "league": league, "teams": teams,
-                    "rounds": len(league["roster_positions"]),
+                    "league": league, "teams": teams, "rounds": rounds,
                 })
     # TE premium and redraft, on one size, so the axis is isolated rather than crossed with
     # everything above (which would quadruple runtime to re-measure the same thing).
     for te_premium, dynasty in ((True, True), (False, False), (True, False)):
         league = dr.build_mock_league(teams=12, superflex=False, scoring="ppr",
                                       te_premium=te_premium, dynasty=dynasty)
+        rounds = len(league["roster_positions"])
+        league["draft_rounds"] = rounds
         out.append({
             "label": f"12T_ppr{'_TEP' if te_premium else ''}{'_dynasty' if dynasty else '_redraft'}",
-            "league": league, "teams": 12, "rounds": len(league["roster_positions"]),
+            "league": league, "teams": 12, "rounds": rounds,
         })
     # The two shapes build_mock_league cannot express, both carried for a named reason above.
     custom = {
@@ -108,6 +113,7 @@ def league_matrix() -> list[dict]:
         },
     }
     for label, league in custom.items():
+        league["draft_rounds"] = len(league["roster_positions"])
         out.append({"label": label, "league": league, "teams": league["total_rosters"],
                     "rounds": len(league["roster_positions"])})
 
@@ -124,9 +130,27 @@ def league_matrix() -> list[dict]:
     # simulation the ONLY place its behaviour is observable at all.
     base = dr.build_mock_league(teams=12, superflex=False, scoring="ppr",
                                te_premium=False, dynasty=True)
+    base["draft_rounds"] = len(base["roster_positions"])
     for mode in ("balanced", "upside"):
         out.append({"label": f"12T_ppr_mode_{mode}", "league": base, "teams": 12,
                     "rounds": len(base["roster_positions"]), "mode": mode})
+
+    # THE ARM THAT MAKES #161 FALSIFIABLE, and the reason it did not exist before is the
+    # finding. Every format above sets rounds = len(roster_positions), which is precisely the
+    # equation feasibility_first was guessing -- so all 5,244 picks of #150 satisfied the
+    # assumption under test and the battery was structurally incapable of contradicting it.
+    # A harness that fixes a variable cannot falsify a defect in that variable.
+    #
+    # rounds < slots is the ORDINARY shape, not an exotic one: benches are filled from waivers
+    # rather than drafted, and this repo's own real league is 33 roster positions against 29
+    # draftable. Here a 20-slot roster is drafted for 12 rounds, so eight bench seats are never
+    # picked and the backstop's "picks left" is wrong by eight unless it is told the truth.
+    short = dr.build_mock_league(teams=12, superflex=False, scoring="ppr",
+                                 te_premium=False, dynasty=True)
+    short_rounds = max(len(short["roster_positions"]) - 8, 8)
+    short["draft_rounds"] = short_rounds
+    out.append({"label": "12T_ppr_SHORT_DRAFT", "league": short, "teams": 12,
+                "rounds": short_rounds, "audit_roster_fill": False})
     return out
 
 
@@ -236,12 +260,21 @@ def duplicate_picks(trajectory) -> list[dict]:
     return findings
 
 
-def structural_findings(trajectory, league: dict, players_db: dict) -> list[dict]:
-    """Every structural audit, in one call. A finding here is a DEFECT, not an observation."""
-    return (unfilled_starting_slots(trajectory, league, players_db)
-            + unpriced_picks(trajectory)
-            + undraftable_positions(trajectory, league, players_db)
-            + duplicate_picks(trajectory))
+def structural_findings(trajectory, league: dict, players_db: dict,
+                        *, audit_roster_fill: bool = True) -> list[dict]:
+    """Every structural audit, in one call. A finding here is a DEFECT, not an observation.
+
+    `audit_roster_fill=False` for a format whose draft is SHORTER than its roster. That is not
+    an exemption for convenience: a 12-round draft of a 20-slot roster cannot fill 20 slots, so
+    an unfilled-slot finding there would report arithmetic as an engine defect. The other three
+    audits still run -- a short draft can still price nothing, draft an impossible position, or
+    take the same player twice, and those remain defects at any length."""
+    findings = (unpriced_picks(trajectory)
+                + undraftable_positions(trajectory, league, players_db)
+                + duplicate_picks(trajectory))
+    if audit_roster_fill:
+        findings = unfilled_starting_slots(trajectory, league, players_db) + findings
+    return findings
 
 
 # --------------------------------------------------------------------------------------
@@ -399,13 +432,15 @@ def roster_strength(trajectory, league: dict, players_db: dict,
 
 
 def audit_trajectory(trajectory, league: dict, players_db: dict,
-                     values: Optional[dict[str, float]] = None) -> dict:
+                     values: Optional[dict[str, float]] = None,
+                     *, audit_roster_fill: bool = True) -> dict:
     """One trajectory, fully judged and fully described."""
     return {
         "label": trajectory.config.get("label", ""),
         "picks": len(trajectory.picks),
         "rosters": len(trajectory.final_rosters()),
-        "findings": structural_findings(trajectory, league, players_db),
+        "findings": structural_findings(trajectory, league, players_db,
+                                        audit_roster_fill=audit_roster_fill),
         "shape": roster_shape(trajectory, players_db),
         "margins": tav_margin_profile(trajectory),
         "qualifiers": qualifier_profile(trajectory),
@@ -445,7 +480,10 @@ def run_battery(merger, players_db: dict, matrix: Optional[list[dict]] = None,
             merger, players_db, entry["league"], pick_order,
             mode=entry.get("mode", mode), config_label=entry["label"])
         values = reference_values(merger, players_db, entry["league"])
-        audited = audit_trajectory(trajectory, entry["league"], players_db, values)
+        # Formats whose draft is shorter than their roster opt out of the fill audit only
+        # (see structural_findings); every other audit still applies to them.
+        audited = audit_trajectory(trajectory, entry["league"], players_db, values,
+                                   audit_roster_fill=entry.get("audit_roster_fill", True))
         audited["teams"] = entry["teams"]
         audited["rounds"] = entry["rounds"]
         results.append(audited)

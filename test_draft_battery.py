@@ -249,12 +249,43 @@ class TheMatrixIsWideAndCarriesItsNamedFormatsTests(unittest.TestCase):
         self.assertIn("4WR_TE_PREMIUM", labels)
         self.assertIn("HEAVY_IDP", labels)
 
-    def test_every_format_drafts_a_full_roster(self):
-        """Rounds equal roster slots, which is what makes "did it fill its starters" a fair
-        question -- a short draft would fail that audit for a reason that is not the engine's."""
+    def test_every_fill_audited_format_drafts_a_full_roster(self):
+        """Rounds equal roster slots wherever the fill audit runs, which is what makes "did it
+        fill its starters" a fair question -- a short draft would fail that audit for a reason
+        that is not the engine's, and that reasoning is still right.
+
+        WHAT CHANGED, AND WHY IT IS #161's SHARPEST FORM. This assertion used to apply to EVERY
+        format, so the battery did not merely happen to share feasibility_first's
+        `rounds == len(roster_positions)` assumption -- a test FORBADE anyone from varying it.
+        #150 could not falsify #161 because the harness had a guard against the only
+        configuration that would have. The protection for one audit had become a constraint on
+        what the instrument could ever measure.
+
+        Narrowed rather than deleted: the audit's own precondition is preserved where it runs,
+        and the format that exists to break the assumption is exempted from that audit alone."""
         for entry in batt.league_matrix():
+            if not entry.get("audit_roster_fill", True):
+                continue
             with self.subTest(label=entry["label"]):
                 self.assertEqual(entry["rounds"], len(entry["league"]["roster_positions"]))
+
+    def test_the_matrix_carries_a_format_where_rounds_differ_from_slots(self):
+        """Without this arm the repair to #161 is correct and untestable at scale. Pinned as a
+        requirement so the battery cannot quietly return to measuring one relationship."""
+        differing = [e["label"] for e in batt.league_matrix()
+                     if e["rounds"] != len(e["league"]["roster_positions"])]
+        self.assertTrue(differing, "the battery can no longer falsify #161")
+        for label in differing:
+            entry = next(e for e in batt.league_matrix() if e["label"] == label)
+            self.assertFalse(entry.get("audit_roster_fill", True),
+                             "a short draft must opt out of the fill audit, not fail it")
+
+    def test_every_league_tells_the_engine_its_round_count(self):
+        """#161: the engine cannot know the round count unless the league says so, and a
+        battery that does not say so measures the fallback rather than the repair."""
+        for entry in batt.league_matrix():
+            with self.subTest(label=entry["label"]):
+                self.assertEqual(entry["league"].get("draft_rounds"), entry["rounds"])
 
 
 if __name__ == "__main__":

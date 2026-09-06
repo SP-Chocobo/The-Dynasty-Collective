@@ -4567,3 +4567,29 @@ come back short a starter, so starting_lineup_value with unpriced_players > 0 is
 Honest limit of the test: it blanks a uv without removing the position's replacement level, so
 for the three sums it reproduces a reachable crash and for the surplus it pins robustness
 against a coincidence. Stated in the test rather than glossed.
+
+### #161, sharpened: a TEST enforced the assumption the battery could not falsify
+
+The first write-up said the battery "happened to share" feasibility_first's
+`rounds == len(roster_positions)` premise. That was too kind. `test_draft_battery` carried
+`test_every_format_drafts_a_full_roster`, which ASSERTED that equality for every format in the
+matrix. So #150 could not falsify #161 because a guard existed against the only configuration
+that would have.
+
+The guard's reasoning was correct for what it protected: a draft shorter than its roster cannot
+fill every slot, so auditing it for unfilled starters reports arithmetic as an engine defect.
+What went wrong is scope -- protecting ONE audit was expressed as a constraint on the WHOLE
+instrument, and nothing distinguished "this audit needs equal rounds and slots" from "the
+battery may only ever contain formats with equal rounds and slots".
+
+Resolved by narrowing rather than deleting. The equality still holds wherever the fill audit
+runs; `structural_findings` gained `audit_roster_fill`, and the short-draft arm opts out of that
+ONE audit while still being checked for unpriced picks, undraftable positions and duplicates --
+all of which remain defects at any draft length. Two new pins: the matrix must contain a format
+where rounds differ from slots, and every league must tell the engine its round count (without
+which the battery measures the fallback rather than the repair).
+
+GENERAL FORM, worth carrying: when a test encodes a precondition of one audit as a property of
+the whole fixture, it stops being a check and becomes a limit on what can be observed. That is
+the same shape as the ui_source scope (a class test scoped by which framework a file imports)
+found earlier today -- a guard whose reach was decided by something incidental to what it guards.
