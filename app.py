@@ -3487,6 +3487,14 @@ MATCHUP_VIEW = "🏈 Matchup"
 MAINTENANCE_VIEW = "🔧 Roster Maintenance"
 DRAFT_VIEW = "📋 Draft Room"
 LEAGUE_VIEW = "👥 League"
+#: A DIAGNOSTIC view, deliberately last and deliberately inert: it reads Sleeper and reports what
+#: came back. It writes nothing, changes no valuation, and touches no other view's state. It
+#: exists because several open questions about this engine are questions about an INPUT -- what
+#: the players payload actually carries, whether age and injury_status arrive, which of a real
+#: league's scoring rules the offline pricing path can express -- and those cannot be answered
+#: from a machine that cannot reach the API. Guessing at an input is how this project has had to
+#: withdraw claims before, so this asks instead of assuming.
+IMPORT_VIEW = "🔌 Import Audit"
 # A cross-surface crosslink (e.g. League's "Open in Trade Calculator", F6) can't set
 # st.session_state.main_view directly from inside another view's branch -- that branch runs
 # AFTER this segmented_control has already been instantiated this run, and Streamlit forbids
@@ -3497,7 +3505,7 @@ if st.session_state.get("pending_main_view"):
     st.session_state.main_view = st.session_state.pop("pending_main_view")
 main_view = st.segmented_control(
     "Dashboard view",
-    options=[MATCHUP_VIEW, MAINTENANCE_VIEW, DRAFT_VIEW, LEAGUE_VIEW],
+    options=[MATCHUP_VIEW, MAINTENANCE_VIEW, DRAFT_VIEW, LEAGUE_VIEW, IMPORT_VIEW],
     default=MATCHUP_VIEW,
     key="main_view",
     label_visibility="collapsed",
@@ -3510,7 +3518,8 @@ main_view = st.segmented_control(
     help="Matchup: your lineup, projections, and The Prytaneum for start/sit calls. "
     "Roster Maintenance: free agents/waivers and reference material for trade and pickup research. "
     "Draft Room: live startup/rookie draft pick recommendations. "
-    "League: every other team's roster, for trade scouting.",
+    "League: every other team's roster, for trade scouting. "
+    "Import Audit: read-only -- what the Sleeper connection actually brings in, and in what form.",
 )
 st.markdown("---")
 
@@ -5612,6 +5621,61 @@ elif main_view == LEAGUE_VIEW:
                 "read — it can see any team's roster, not just the one selected above."
             )
 
+
+elif main_view == IMPORT_VIEW:
+    # ----------------------------------------------------------------- import audit --
+    # READ-ONLY BY CONSTRUCTION. Nothing in this branch writes to data/, mutates the merger, or
+    # sets state another view reads. It calls the same SleeperClient the rest of the app uses and
+    # reports what came back -- shape, coverage, and the exact form of one real record.
+    #
+    # It answers input questions the offline harness cannot: whether `age` and `injury_status`
+    # actually arrive (#142, #172), what the players payload's real field set is (#88), whether
+    # per-category stat projections exist for OFFENCE and not only IDP, and -- the one with teeth
+    # -- how many of THIS league's scoring rules the offline pricing path is structurally unable
+    # to express (#180). That last number is measured here rather than argued: the same players
+    # are scored under the league's full settings and under the two keys the offline path reads,
+    # and the report says how many move.
+    st.subheader("🔌 Import Audit")
+    st.caption(
+        "What the Sleeper connection actually brings in, and in what form. Read-only: this view "
+        "fetches and counts, it never writes or changes a valuation."
+    )
+    if not st.session_state.get("sleeper_client"):
+        st.info("Connect to Sleeper first — this view reads the same connection the rest of the app uses.")
+    else:
+        _audit_league = st.session_state.get("selected_league_id")
+        st.write(f"League under audit: `{_audit_league or 'none selected'}`")
+        _scrub = st.toggle(
+            "Scrub names and ids",
+            value=True,
+            help="On: league/team/user names become stable short hashes, so the report describes "
+            "SHAPE and COVERAGE without carrying who you are. Turn off only if you intend to keep "
+            "the file yourself.",
+        )
+        if st.button("Run import audit", type="primary", key="run_import_audit"):
+            import sleeper_import_report
+            with st.spinner("Probing Sleeper..."):
+                try:
+                    st.session_state.import_audit = sleeper_import_report.build_report(
+                        None, str(_audit_league) if _audit_league else None, raw=not _scrub
+                    )
+                except Exception as exc:  # noqa: BLE001 -- a diagnostic must report its own failure
+                    st.session_state.import_audit = {"fatal": f"{type(exc).__name__}: {exc}"}
+        _audit = st.session_state.get("import_audit")
+        if _audit and _audit.get("fatal"):
+            st.error(f"Audit could not run: {_audit['fatal']}")
+        elif _audit:
+            st.code(sleeper_import_report.render(_audit), language="text")
+            for _name, _probe in _audit.get("probes", {}).items():
+                with st.expander(f"{'✅' if _probe['ok'] else '❌'} {_name} — full detail"):
+                    st.json(_probe.get("result") if _probe["ok"] else _probe.get("error"))
+            st.download_button(
+                "Download report (JSON)",
+                data=json.dumps(_audit, indent=2, default=str),
+                file_name="sleeper_import_report.json",
+                mime="application/json",
+            )
+
 # ------------------------------------------------------------------ pinned messages --
 # The Decision Log below is "what the system decided" -- this is "what someone in this
 # conversation thought was worth preserving," the user's own curation rather than the
@@ -6501,4 +6565,3 @@ with st.container(key="debate_dock"):
                     st.rerun()
                 else:
                     notify("warning", message)
-
