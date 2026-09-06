@@ -116,7 +116,13 @@ def build_draft_room_context(snap: PickSnapshot) -> ScreenContext:
     lines = []
     for c in shown:
         survival = f"{round(c.survival_probability * 100)}%" if c.survival_probability is not None else "unknown"
-        lines.append(f"{c.name} ({c.position}) — {c.necessity_label}, TAV {c.team_acquisition_value:.0f}, survival {survival}")
+        # Guarded for the same reason `survival` is on the line above: an unpriced candidate
+        # reaches the TOP of this list, not the bottom -- #154's feasibility backstop sorts a
+        # required-slot candidate ahead of final_score, and this builder formats the first
+        # _MAX_CANDIDATES_IN_CONTEXT of them.
+        tav = (f"{c.team_acquisition_value:.0f}"
+               if c.team_acquisition_value is not None else "unpriced")
+        lines.append(f"{c.name} ({c.position}) — {c.necessity_label}, TAV {tav}, survival {survival}")
     remaining = len(snap.candidates) - len(shown)
     if remaining > 0:
         lines.append(f"...and {remaining} more candidate(s) in the current pool/scope.")

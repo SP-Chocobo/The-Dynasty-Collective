@@ -51,6 +51,25 @@ _APP = ui_source.text()
 _BOARD = (_HERE / "draft_board_ui.py").read_text()
 
 
+def _scanned_sources():
+    """Every production module that could format an engine quantity -- NOT just the ones that
+    import streamlit.
+
+    THE ORIGINAL SCOPE WAS `ui_source.text()`, which resolves to ['app.py'] alone, and that is
+    how the seventh crash site survived the fix that closed the other six. `screen_context.py`
+    formats team_acquisition_value with no guard and reaches the Draft Room through
+    render_debate_chip -- but it draws no widgets, so it imports no streamlit, so a scope keyed
+    on "is this a UI file" could not see it. The scope was chosen by an INCIDENTAL property.
+
+    Formatting an absent value raises wherever it happens, so the scan covers every production
+    module and lets the AST decide. A curated list would only move the blind spot to whichever
+    file is forgotten next."""
+    for path in sorted(_HERE.glob("*.py")):
+        if path.name.startswith("test_") or path.name == "conftest.py":
+            continue
+        yield path.name, path.read_text()
+
+
 class TheTwoUnitsSitAdjacentTests(unittest.TestCase):
 
     def test_universal_value_and_projected_points_are_rendered_identically(self):
@@ -133,8 +152,49 @@ class AbsenceReachesTheMetricCardsTests(unittest.TestCase):
         None. A conditional whose test names a DIFFERENT field does not count."""
         import ast
         optional = self._optional_snapshot_fields()
-        tree = ast.parse(_APP)
+        unguarded = []
+        for module_name, module_src in _scanned_sources():
+            unguarded.extend(self._unguarded_in(ast.parse(module_src), optional, module_name))
+        self.assertEqual(unguarded, [], "Optional field formatted with no `is not None` guard")
 
+    #: Sites that are SAFE for a reason no static scan can see, each with that reason. Kept
+    #: deliberately tiny: an allowlist is a place defects hide, so an entry earns its place only
+    #: by naming an invariant a reader can check.
+    _TRANSITIVELY_GUARDED = {
+        # draft_board_ui._waiting_note returns early when `waiting_cost is None`, and
+        # waiting_cost IS projected_points minus horizon_floor (draft_room.py:1379/:1406) --
+        # so projected_points cannot be None past that guard. The protection is real but
+        # TRANSITIVE: the field is guarded by testing something derived FROM it, which no
+        # reasonable AST check can follow. If waiting_cost ever stops deriving from
+        # projected_points, this entry becomes a live crash and must be deleted.
+        ("draft_board_ui.py", "projected_points"),
+    }
+
+    def _unguarded_in(self, tree, optional, module_name):
+        import ast
+
+        unguarded = []
+        # An enclosing `if <field> is None: return` guards every later line in that function.
+        # The original scan saw only ternary guards, so it called four safe board sites unsafe
+        # the moment its file scope widened -- a scan that cries wolf gets switched off, which
+        # would cost more than the blind spot it replaced.
+        early_returned = set()
+        for fn in ast.walk(tree):
+            if not isinstance(fn, (ast.FunctionDef, ast.AsyncFunctionDef)):
+                continue
+            names = set()
+            for stmt in fn.body:
+                if not isinstance(stmt, ast.If):
+                    continue
+                if not any(isinstance(n, ast.Return) for n in stmt.body):
+                    continue
+                names.update(n.attr for n in ast.walk(stmt.test) if isinstance(n, ast.Attribute))
+            for node in ast.walk(fn):
+                if isinstance(node, ast.JoinedStr):
+                    early_returned.add((id(node), frozenset(names)))
+        early_map = {}
+        for node_id, names in early_returned:
+            early_map.setdefault(node_id, set()).update(names)
         guarded_by = {}   # id(JoinedStr) -> set of attribute names tested against None
         for node in ast.walk(tree):
             if isinstance(node, ast.IfExp):
@@ -156,9 +216,14 @@ class AbsenceReachesTheMetricCardsTests(unittest.TestCase):
                 field = part.value.attr
                 if field not in optional:
                     continue
-                if field not in guarded_by.get(id(node), set()):
-                    unguarded.append(f"{field} at line {part.lineno}")
-        self.assertEqual(unguarded, [], "Optional field formatted with no `is not None` guard")
+                if field in guarded_by.get(id(node), set()):
+                    continue
+                if field in early_map.get(id(node), set()):
+                    continue
+                if (module_name, field) in self._TRANSITIVELY_GUARDED:
+                    continue
+                unguarded.append(f"{module_name}:{part.lineno} {field}")
+        return unguarded
 
 
 class TheBoardsProseQualifiesItsUnitUnevenlyTests(unittest.TestCase):
