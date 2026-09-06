@@ -203,6 +203,14 @@ EXPOSURE_NOT_APPLICABLE = "not_applicable"
 #: degenerate once they fill, and this one is the reverse.
 EXPOSURE_NO_SURPLUS = "no_surplus"
 
+#: The state the other three EXPOSURE_* names were defined AGAINST, and it had no name of its
+#: own -- every "no information" state was a constant while the one that says "these numbers are
+#: real evidence" stayed a bare literal, here and at its consumer. That asymmetry is not
+#: cosmetic: the named states cannot be mistyped at a call site without a NameError, and this one
+#: could. Measured on the sibling vocabulary: renaming APPETITE_IMPUTED passed the FULL
+#: 2209-test suite while its disclosure silently stopped rendering (#122).
+EXPOSURE_MEASURED = "measured"
+
 
 def depth_exposure(roster_players: list[dict], roster_positions: list[str]) -> dict[str, dict]:
     """Per position, what this roster loses if one of its starters there becomes unavailable.
@@ -236,9 +244,9 @@ def depth_exposure(roster_players: list[dict], roster_positions: list[str]) -> d
       exposure    -- summed loss across every starter at that position: total value at risk.
       worst_loss  -- the single largest loss: what ONE backup would have to cover.
       starters    -- how many of this roster's starters sit at that position.
-      basis       -- "measured", or EXPOSURE_NO_SURPLUS / EXPOSURE_VACANT /
+      basis       -- EXPOSURE_MEASURED, or EXPOSURE_NO_SURPLUS / EXPOSURE_VACANT /
                      EXPOSURE_NOT_APPLICABLE. Read it before reading the numbers: they are
-                     returned in every state, and only "measured" makes them depth evidence.
+                     returned in every state, and only EXPOSURE_MEASURED makes them depth evidence.
 
     Both aggregates are returned rather than one, for the reason marginal_lineup_value returns
     both lineup totals: they answer genuinely different questions (total risk carried vs. what
@@ -288,7 +296,7 @@ def depth_exposure(roster_players: list[dict], roster_positions: list[str]) -> d
             "exposure": round(sum(values), 2),
             "worst_loss": round(max(values), 2),
             "starters": len(values),
-            "basis": "measured" if has_surplus else EXPOSURE_NO_SURPLUS,
+            "basis": EXPOSURE_MEASURED if has_surplus else EXPOSURE_NO_SURPLUS,
         }
     return out
 
@@ -301,6 +309,11 @@ BYE_PARTIAL = "partial"
 
 #: No rostered player has a known bye week. Not "no collisions" -- nothing was measured.
 BYE_UNKNOWN = "unknown"
+
+#: Same completion for the bye vocabulary. Deliberately its own constant rather than an alias of
+#: EXPOSURE_MEASURED: these are two independent vocabularies that happen to share a token, and
+#: one name for both would assert a relationship that does not exist.
+BYE_MEASURED = "measured"
 
 
 def bye_collision(roster_players: list[dict], roster_positions: list[str]) -> dict[int, dict]:
@@ -347,7 +360,7 @@ def bye_collision(roster_players: list[dict], roster_positions: list[str]) -> di
       bench_value_used -- their total value, since consuming your best body and your worst are
                       not the same depletion. No depth RANK is reported; FLEX substitution
                       chains leave that undefined (see the note in the body).
-      basis        -- "measured", or BYE_PARTIAL / BYE_UNKNOWN. Read it first: a week's numbers
+      basis        -- BYE_MEASURED, or BYE_PARTIAL / BYE_UNKNOWN. Read it first: a week's numbers
                       are a FLOOR under BYE_PARTIAL, not the cost.
 
     Reads each player's own "bye" (see DataMerger.bye_week_by_team, which derives it from team
@@ -412,7 +425,7 @@ def bye_collision(roster_players: list[dict], roster_positions: list[str]) -> di
             # could be out in any week, so every week's number is equally a floor. Marking only
             # the weeks that happen to have a collision would imply the clean-looking weeks
             # were verified, and they were not.
-            "basis": BYE_PARTIAL if unknown else "measured",
+            "basis": BYE_PARTIAL if unknown else BYE_MEASURED,
         }
     if not out and unknown:
         return {}

@@ -2060,7 +2060,7 @@ def compute_draft_board(
         # via depth_basis, rather than being silently scored as if his position were safe.
         depth = depth_by_position.get(position) or {}
         depth_basis = depth.get("basis")
-        if depth_basis == "measured" and depth.get("worst_loss") is not None:
+        if depth_basis == lo.EXPOSURE_MEASURED and depth.get("worst_loss") is not None:
             depth_exposure_value = min(
                 round(float(depth["worst_loss"]) * (DEPTH_EXPOSURE_MAX / TRADE_VALUE_SCALE_MAX), 2),
                 DEPTH_EXPOSURE_MAX,
