@@ -5299,3 +5299,39 @@ never applies and the semantic force channel does not reach the screen at all.
 
 So **"no worse than today" is not the bar.** A variant that merely matches the incumbent inherits
 a failing grade. That framing is more useful than any individual finding in the list.
+
+### Auditing the ratchet itself, prompted by its own false alarm
+
+The floors failed the UI gate on `test_display_contract_boundary.py` (assertRegex 1 -> 0), and
+the sensible next question was whether the instrument is grading the other 107 modules any
+better. Checked, and the answer is that it is sound WITHIN ITS DOCUMENTED LIMITS -- which are
+already stated correctly in its own docstring, more precisely than my repair commit gave it
+credit for:
+
+    "per-name counting has no opinion about which assertions are stronger ... it cannot tell a
+     weakening from a STRENGTHENING. pure additions PASS always; any substitution FAILS, either
+     way."
+
+So it is a SUBSTITUTION DETECTOR, not a coverage meter, and it says so. My case was a
+substitution (one regex -> three named assertIns) and it fired exactly as designed. Worth
+recording that the module it blocked had simultaneously gone 13 -> 21 test methods and assertIn
+13 -> 35: **a module can nearly double its coverage and still trip this ratchet on a single
+substitution.** That is a real friction cost, it is inherent to the design, and the design
+accepted it deliberately over a fingerprint (whose repair would be reflexive, and "a check whose
+repair is reflexive is not a check").
+
+TWO THINGS CHECKED BEYOND THAT, both clean:
+
+  * **Thinnest floor in the repo**: `test_scoring_functions_parity.py`, 11 test methods against
+    3 assertions (0.27/test), which is the vacuous-test silhouette #38/#41 hunted. It is not
+    one -- the assertions live in a shared parity helper each test calls. And deleting tests to
+    exploit that would drop `test_methods` 11 -> 4, which is floored too. The two counts cover
+    each other.
+  * **Modules floored at zero assertions**: none. 108 modules, median 1.64 asserts/test.
+
+THE RESIDUAL GAP, stated because no instrument here closes it: a WITHIN-NAME weakening is
+invisible to both counts. `assertEqual(x, 5)` -> `assertEqual(x, x)` holds every number
+constant and passes. The floors do not claim to catch it; MUTATION TESTING (#38, #41, #157) is
+the instrument for that, and it is the one that has actually found vacuous tests here. Two
+instruments, two jobs -- which is coherent, and worth writing down so the floors are not
+mistaken for a coverage guarantee they never claimed to be.
