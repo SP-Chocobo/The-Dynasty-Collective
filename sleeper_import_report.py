@@ -621,6 +621,119 @@ def render(report: dict) -> str:
     return "\n".join(out)
 
 
+#: The fields build_players_db and the valuation layer actually read. Nine of roughly forty.
+#: Deliberately a list rather than "everything Sleeper sends": a fixture that carries fields
+#: nothing consumes invites someone to start consuming them without deciding to.
+FIXTURE_PLAYER_FIELDS = (
+    "player_id", "first_name", "last_name", "position", "team",
+    "age", "years_exp", "injury_status", "status", "fantasy_positions",
+)
+
+
+def _resolve_league_id(client, username: Optional[str], league_id: Optional[str]):
+    """The league id, resolved the same way the report resolves it. Returns None rather than
+    guessing -- the fixture's league half is OPTIONAL, and a missing league shape is reported
+    as missing rather than filled with a default that would read as this league's real one."""
+    if league_id:
+        return str(league_id)
+    if not username:
+        return None
+    user = client.get_user(username)
+    if not user:
+        return None
+    leagues = client.get_user_leagues(str(user.get("user_id"))) or []
+    return str(leagues[0].get("league_id")) if leagues else None
+
+
+def write_fixture(client, league_id: Optional[str], path: str) -> dict:
+    """Capture a REAL player universe and season projection set, trimmed to what the engine
+    reads, for measurement against live data instead of a three-week-old committed snapshot.
+
+    WHY THIS EXISTS. Every number this project measured today -- the draft battery, the roster
+    proof, build_players_db's whole universe -- ran against baseline files dated 2026-08-18 and
+    2026-08-20. Grading an engine against a stale universe and then freezing it certifies its
+    behaviour on a condition that will not recur. The engine's input layer was built to accept
+    updating information and record what it is (source_date, _compute_freshness's three states,
+    snapshot_is_current, baseline_provenance); declining fresh data to avoid "contamination"
+    refuses the machinery this project already built for exactly that.
+
+    WHAT IT IS AND IS NOT. This is a CAPTURE, stamped with the moment it was taken. It is not a
+    claim that these numbers are true later, and every consumer must read captured_at before
+    trusting it -- the same rule the committed baseline is already supposed to follow and, per
+    KDST_SEEDED_SOURCE_FILES' own comment, does not.
+
+    TRIMMED, and the trim is the point. Fantasy-relevant positions only, the nine fields above,
+    and only stat categories with a NON-ZERO projection. Sleeper sends ~12,226 players x ~40
+    fields and 92 stat categories, nearly all zeros. The trim takes it from tens of megabytes to
+    something a person can actually review before committing it.
+
+    SCRUBBED OF PEOPLE, NOT OF FOOTBALL. Player names, teams and stats are public NFL facts and
+    are kept verbatim -- a fixture with hashed player names cannot be joined to anything and is
+    useless. League IDENTIFIERS, user names and team names are not captured at all: the league
+    half records only roster_positions, scoring_settings and total_rosters, which is what the
+    engine reads and carries nothing about who plays in it.
+    """
+    state = client.get_nfl_state() or {}
+    season = str(state.get("season") or "")
+    db = client.get_players()
+    totals, coverage = client.get_season_projections(season) if season else ({}, {})
+
+    keep = set(FANTASY)
+    players, projections = {}, {}
+    for pid, info in (db or {}).items():
+        info = info or {}
+        if info.get("position") not in keep:
+            continue
+        pid = str(pid)
+        players[pid] = {f: info.get(f) for f in FIXTURE_PLAYER_FIELDS}
+        stats = totals.get(pid) or {}
+        # Non-zero only. A zero here is Sleeper's own empty cell, not a measured zero, and
+        # carrying ~90 of them per player would triple the file to say nothing.
+        trimmed = {k: v for k, v in stats.items() if isinstance(v, (int, float)) and v}
+        if trimmed:
+            projections[pid] = trimmed
+
+    league = {}
+    if league_id:
+        lg = client.get_league(league_id) or {}
+        league = {
+            "roster_positions": lg.get("roster_positions"),
+            "scoring_settings": lg.get("scoring_settings"),
+            "total_rosters": lg.get("total_rosters"),
+        }
+
+    fixture = {
+        "_README": (
+            "A CAPTURE, not a truth. Read captured_at before using any number here. Trimmed to "
+            "the fields the engine reads and to non-zero stat categories. Player names/teams "
+            "are public NFL facts and are verbatim; no league id, user name or team name is "
+            "captured. Produced by sleeper_import_report.py --fixture."
+        ),
+        "captured_at": __import__("datetime").datetime.now(
+            __import__("datetime").timezone.utc).isoformat(),
+        "season": season,
+        "season_projection_coverage": {
+            "weeks_requested": coverage.get("weeks_requested"),
+            "weeks_answered": coverage.get("weeks_answered"),
+            "weeks_failed": coverage.get("weeks_failed"),
+        },
+        "league_shape": league,
+        "players": players,
+        "season_projections": projections,
+    }
+    with open(path, "w", encoding="utf-8") as fh:
+        json.dump(fixture, fh, separators=(",", ":"), sort_keys=True)
+    import os
+    return {
+        "path": path,
+        "bytes": os.path.getsize(path),
+        "players": len(players),
+        "players_with_projections": len(projections),
+        "weeks_answered": len(coverage.get("weeks_answered") or []),
+        "weeks_failed": coverage.get("weeks_failed") or [],
+    }
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__,
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
@@ -629,6 +742,10 @@ def main() -> int:
     ap.add_argument("--raw", action="store_true",
                     help="keep real names and ids (read the file before sharing it)")
     ap.add_argument("--out", default="sleeper_import_report.json")
+    ap.add_argument("--fixture", nargs="?", const="data/fixtures/sleeper_capture.json",
+                    default=None,
+                    help="ALSO write a trimmed real-data capture for measurement (see "
+                         "write_fixture). Player facts verbatim; no league/user identifiers.")
     args = ap.parse_args()
     if not args.username and not args.league_id:
         ap.error("give --username or --league-id")
@@ -642,6 +759,28 @@ def main() -> int:
     with open(args.out.replace(".json", ".txt"), "w", encoding="utf-8") as fh:
         fh.write(text)
     print(f"wrote {args.out} and {args.out.replace('.json', '.txt')}")
+
+    if args.fixture:
+        # Written AFTER the report, and its failure is reported rather than fatal: the report
+        # is the thing you came for, and a fixture that could not be captured must not take it
+        # down with it.
+        try:
+            from sleeper_client import SleeperClient
+            import os
+            os.makedirs(os.path.dirname(os.path.abspath(args.fixture)), exist_ok=True)
+            client = SleeperClient()
+            lid = _resolve_league_id(client, args.username, args.league_id)
+            info = write_fixture(client, lid, args.fixture)
+            print(f"\nFIXTURE  {info['path']}  "
+                  f"{info['bytes']/1_000_000:.2f} MB  "
+                  f"{info['players']} players, {info['players_with_projections']} with season "
+                  f"projections, {info['weeks_answered']} weeks answered"
+                  + (f", weeks FAILED: {info['weeks_failed']}" if info["weeks_failed"] else ""))
+            print("   review it before committing -- it carries real player facts (public NFL "
+                  "data) and your league's roster/scoring shape, but no league id, user name "
+                  "or team name.")
+        except Exception as exc:                      # noqa: BLE001 -- reporting tool
+            print(f"\nFIXTURE FAILED: {type(exc).__name__}: {exc}")
     return 0
 
 
