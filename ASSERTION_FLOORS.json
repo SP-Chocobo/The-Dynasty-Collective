@@ -443,15 +443,17 @@
       }
     },
     "test_draft_counterfactual.py": {
-      "test_methods": 10,
+      "test_methods": 16,
       "asserts": {
         "assertAlmostEqual": 1,
-        "assertEqual": 11,
+        "assertEqual": 13,
         "assertFalse": 1,
         "assertGreaterEqual": 1,
-        "assertIn": 1,
-        "assertIsNone": 4,
-        "assertIsNotNone": 1
+        "assertIn": 3,
+        "assertIs": 2,
+        "assertIsNone": 9,
+        "assertIsNotNone": 1,
+        "assertTrue": 1
       }
     },
     "test_draft_horizon.py": {
@@ -554,6 +556,16 @@
         "assertIsNotNone": 7,
         "assertNotEqual": 1,
         "assertTrue": 5
+      }
+    },
+    "test_identity_partition_boundary.py": {
+      "test_methods": 28,
+      "asserts": {
+        "assertAlmostEqual": 2,
+        "assertEqual": 12,
+        "assertFalse": 17,
+        "assertIsNone": 2,
+        "assertTrue": 15
       }
     },
     "test_identity_provenance.py": {
@@ -1098,6 +1110,14 @@
         "assertIsNone": 1,
         "assertNotIn": 2,
         "assertTrue": 3
+      }
+    },
+    "test_source_scan.py": {
+      "test_methods": 9,
+      "asserts": {
+        "assertEqual": 3,
+        "assertIn": 5,
+        "assertNotIn": 5
       }
     },
     "test_store_io.py": {

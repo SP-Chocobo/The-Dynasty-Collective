@@ -59,7 +59,7 @@ class NodeComparison:
     engine_uv: float
     engine_tav: float
     engine_necessity: str
-    engine_near_tie: bool
+    engine_near_tie: Optional[bool]   # None: the tie comparison was never made (#61 rule 5)
 
     bpa_player_id: str
     bpa_player_name: str
@@ -79,7 +79,14 @@ class NodeComparison:
 
     equals_bpa: bool
     equals_adp: Optional[bool]  # None when adp_available is False
-    deviation_supported: Optional[bool]  # None when equals_bpa (nothing to classify)
+    deviation_supported: Optional[bool]  # None when equals_bpa, and when unmeasurable -- see basis
+    #: WHY deviation_supported holds the value it does. Required, because None on that field
+    #: now covers two genuinely different situations and neither may be read as the other:
+    #: "the engine took BPA, there is no deviation to classify" and "the engine deviated and
+    #: this harness could not tell whether it was supported". A consumer counting unsupported
+    #: deviations must not count the second as either. Values: None (equals_bpa), "necessity",
+    #: "near_tie", "neither", "unmeasurable_tie".
+    deviation_support_basis: Optional[str]
 
 
 def _full_board(merger: DataMerger, players_db: dict, picks_so_far: list[dict], roster_id: str, league: dict, mode: str, pool_scope: str) -> list[dict]:
@@ -168,18 +175,16 @@ def compare_trajectory(
         equals_bpa = str(bpa_row_["player_id"]) == rec.chosen_player_id
         equals_adp = (str(adp_row["player_id"]) == rec.chosen_player_id) if adp_row is not None else None
 
-        deviation_supported = None
-        if not equals_bpa:
-            deviation_supported = (
-                engine_cand["necessity"] in _SUPPORTED_NECESSITY_LABELS
-                or _near_tie(engine_candidates, rec.chosen_player_id)
-            )
+        deviation_supported, deviation_support_basis = (None, None) if equals_bpa else (
+            classify_deviation(engine_cand["necessity"],
+                               _near_tie(engine_candidates, rec.chosen_player_id)))
 
         results.append(NodeComparison(
             pick_no=rec.pick_no, pick_label=rec.pick_label, roster_id=rec.roster_id,
             engine_player_id=rec.chosen_player_id, engine_player_name=engine_cand["name"],
             engine_position=engine_cand["pos"], engine_uv=engine_cand["uv"], engine_tav=engine_tav,
-            engine_necessity=engine_cand["necessity"], engine_near_tie=_near_tie(engine_candidates, rec.chosen_player_id),
+            engine_necessity=engine_cand["necessity"],
+            engine_near_tie=_near_tie(engine_candidates, rec.chosen_player_id),
             bpa_player_id=str(bpa_row_["player_id"]), bpa_player_name=bpa_row_["name"],
             bpa_position=bpa_row_["position"], bpa_uv=float(bpa_row_["universal_value"]), bpa_tav=bpa_tav,
             adp_available=adp_row is not None, adp_unavailable_reason=adp_reason,
@@ -190,37 +195,79 @@ def compare_trajectory(
             regret_vs_bpa=round(engine_tav - bpa_tav, 3),
             regret_vs_adp=(round(engine_tav - adp_tav, 3) if adp_tav is not None else None),
             equals_bpa=equals_bpa, equals_adp=equals_adp, deviation_supported=deviation_supported,
+            deviation_support_basis=deviation_support_basis,
         ))
         picks_so_far.append({"pick_no": rec.pick_no, "round": rec.round, "roster_id": rec.roster_id, "player_id": rec.chosen_player_id})
 
     return results
 
 
-def _near_tie(candidates: list[dict], chosen_id: str) -> bool:
-    """Reads the engine's OWN near_tie_with_leader signal off the serialized candidate --
-    serialize_candidate exposes it as the string "tie" inside the "forces" list (see
-    draft_board_ui._forces), the same rendered signal a human looking at the live board would
-    see, not a threshold re-derived here.
+def classify_deviation(necessity: str, near_tie: Optional[bool]) -> tuple[Optional[bool], str]:
+    """Was a deviation from BPA supported, and BY WHAT -- as a pair, never as a bare verdict.
 
-    KNOWN LIMIT, NOW REACHABLE AND STILL UNREPAIRED -- read this before trusting the flag.
-    near_tie_with_leader is three-state (#61 rule 5) and this returns bool, so an unpriced
-    candidate's UNKNOWN reads as False: the exact false negative rule 5 exists to stop.
+    Extracted from compare_trajectory so this decision can be tested directly rather than only
+    through a full simulated draft. That matters here specifically: the interesting branch is
+    the one that fires when a tie was never measurable, which a fixture draft may or may not
+    happen to produce, so a test that only runs a draft can pass while never reaching it. Two
+    mutations proved exactly that -- reporting an unmeasurable tie as "unsupported", and
+    collapsing two bases onto one label, both survived the draft-only test untouched (#195).
 
-    Until #193 this was unreachable rather than acceptable, and said so: compare_trajectory
-    calls bpa_row() on the full board before it ever calls this, and bpa_row used to raise
-    TypeError on any board carrying an unpriced row (#61 invariant 15), so every board on
-    which an unknown tie could exist killed the harness upstream. The recorded order was
-    invariant 15 first, then this.
+    The basis is REQUIRED, not decoration, because deviation_supported's None covers two
+    unrelated situations and a consumer must not read one as the other:
+      - the engine took BPA, so there is no deviation to classify (caller's case, basis None);
+      - the engine deviated and this harness could not tell (basis "unmeasurable_tie").
+    Reporting the second as False would assert the engine deviated WITHOUT support on the
+    strength of a comparison nobody performed -- the harsher reading, and exactly the false
+    negative #61 rule 5 exists to stop.
 
-    Invariant 15 is now repaired -- bpa_row excludes unpriced rows instead of dying on them --
-    which means THE UNREACHABILITY ARGUMENT IS GONE. Boards carrying unpriced rows now flow
-    all the way through to this function, and a chosen candidate that is itself unpriced will
-    report "not a near tie" when the truthful answer is "unknown". That is the second half of
-    the order, it is now due, and it is deliberately not being done inside the admission
-    change: the fix is to make this three-state and to decide what a comparison against an
-    unknown tie means for deviation_supported, which is a decision about the counterfactual
-    report rather than about who gets into the pool."""
+    Necessity is checked before the tie deliberately: a MUST TAKE is supported whether or not
+    anyone could measure a tie, so an unmeasurable tie must not downgrade it to unknown."""
+    if necessity in _SUPPORTED_NECESSITY_LABELS:
+        return True, "necessity"
+    if near_tie is True:
+        return True, "near_tie"
+    if near_tie is None:
+        return None, "unmeasurable_tie"
+    return False, "neither"
+
+
+def _near_tie(candidates: list[dict], chosen_id: str) -> Optional[bool]:
+    """Three-state (#61 rule 5, wired at #195): True / False / None where the comparison was
+    never made.
+
+    Reads the engine's OWN near_tie_with_leader off the serialized candidate. It used to read
+    the rendered "tie" string out of the "forces" list instead, and that was a lossy channel by
+    construction: forces is a list of what FIRED, so "measured, no tie" and "never measurable"
+    both appear there as absence. This function returned bool, so an unpriced candidate's
+    UNKNOWN read as False -- the exact false negative rule 5 exists to stop -- and that False
+    became deviation_supported=False, asserting the engine had deviated without support on the
+    strength of a comparison nobody performed.
+
+    HOW THAT WAS ALLOWED TO STAND, AND WHY IT NO LONGER IS. The limit was recorded as
+    unreachable rather than acceptable: compare_trajectory calls bpa_row() on the full board
+    before it ever reaches here, and bpa_row used to raise TypeError on any board carrying an
+    unpriced row (#61 invariant 15), so every board on which an unknown tie could exist killed
+    the harness upstream. The recorded order was invariant 15 first, then this. #193 forced
+    invariant 15 to the front by making unpriced rows routine, bpa_row was repaired to exclude
+    them, and the unreachability argument went with it. This is the second half of that order.
+
+    HOW THE THIRD STATE IS RECOVERED WITHOUT WIDENING ANY BOUNDARY. The serialized board is a
+    PRESENTATION payload, and its `forces` list deliberately represents both False and None by
+    omission -- draft_board_ui's own contract test forbids a negative tie claim in that payload,
+    correctly, because nothing it renders asserts one. So the state cannot be read off `forces`.
+    It does not have to be: near_tie_flags returns None for exactly one reason, an entry whose
+    team_acquisition_value is None, and the payload already carries `tav`. A priced candidate
+    was therefore compared, and the absence of "tie" on him is a measured False; an unpriced one
+    was never compared, and is None. The distinction is derived from what the payload already
+    says rather than bolted onto it.
+
+    A candidate this harness cannot find at all still returns None rather than False, for the
+    same reason: not finding the row is not evidence that the tie did not fire."""
     cand = next((c for c in candidates if c["id"] == chosen_id), None)
     if cand is None:
-        return False
-    return "tie" in (cand.get("forces") or [])
+        return None
+    if "tie" in (cand.get("forces") or []):
+        return True
+    # Not flagged. Whether that is a measured "no" or an unmade comparison is decided by
+    # whether this candidate had a price to be compared with -- see above.
+    return False if cand.get("tav") is not None else None

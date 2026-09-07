@@ -329,6 +329,16 @@ def position_family(position) -> Optional[str]:
     return _POSITION_SYNONYMS.get(text, text)
 
 
+#: A club value meaning "this player is on no NFL roster", as distinct from "the caller did
+#: not say". Sleeper reports a team for everyone who has one, so its absence there is a real
+#: statement and callers holding a Sleeper record pass this rather than None. Every ordinary
+#: team comparison then does the right thing without a special case, because a sentinel club
+#: agrees with nothing. It is deliberately not a real abbreviation and not empty: an empty
+#: string is falsy and would collapse straight back into "unspecified", which is the exact
+#: conflation that broke the trade calculator (#196).
+NO_NFL_TEAM = "__no_nfl_team__"
+
+
 def _position_group(position) -> str:
     """Identity namespace for the dedup key, so two same-named players from different
     position families never silently shadow each other in _dedup_by_name_and_position below.
@@ -1983,7 +1993,16 @@ class DataMerger:
         Unknown on either side is not evidence of a mismatch -- an absent position or team must
         not manufacture a contradiction any more than it may manufacture a match. Only a
         disagreement between two values that both exist rejects.
-        """
+
+        THE ONE SUBTLETY, AND IT COST A REGRESSION TO LEARN (#196). "The caller passed no team"
+        and "this player is on no NFL roster" are DIFFERENT FACTS, and only the second is
+        evidence. An earlier version of this rule treated a falsy `team` as the second, which
+        broke every legitimately team-less lookup in the app -- the trade calculator resolves
+        free text with neither team nor position (app.py), and 16 tests that pin exactly that
+        went red. A caller who knows the player is unrostered says so with NO_NFL_TEAM, which
+        is a team value like any other and disagrees with every real club through the ordinary
+        comparison below. A caller who simply has nothing to say passes None and gets the
+        principle above, unchanged."""
         if team and "team" in row.index and pd.notna(row.get("team")) and str(row["team"]) != str(team):
             return True
         if position and "position" in row.index and pd.notna(row.get("position")):
@@ -2008,6 +2027,45 @@ class DataMerger:
         if not position or "position" not in row.index or pd.isna(row.get("position")):
             return False
         return _position_group(position) != _position_group(row["position"])
+
+    @staticmethod
+    def _different_offense_position(row: pd.Series, positions) -> bool:
+        """The same rejection one notch finer, and ONLY inside the offense group (#196).
+
+        _different_identity_namespace above is deliberately coarse because IDP vendors
+        genuinely disagree about the same man: measured on the captured universe, 94 of 398
+        matched IDP rows carried an exact-position disagreement, overwhelmingly LB<->DL (27),
+        DB<->DL (23) and LB<->DB (20) -- a vocabulary split, not a misidentification. Those
+        survive this rule by design (10 remain after the club rejections thin the field).
+        Coarsening is right there and must stay.
+
+        Offence is not like that. Nobody exports a running back as a tight end. Measured on the
+        captured universe with set_league_format applied (which selects the rankings export and
+        therefore changes these counts -- an earlier version of this note quoted format-free
+        numbers), 61 of 381 matched offensive rows carried an exact-position disagreement
+        before this rule, and EVERY ONE was a different person:
+            60 of 61 had no team on the query side, so the club rejection could not fire --
+               the Josiah Price shape (TE, unrostered) taking Jadarian Price's RB/SEA row;
+             1 of 61 shared a team and was also wrong: Jermar Jefferson (RB, MIN) resolving
+               onto the WR/MIN row that belongs to Justin Jefferson, priced at his value.
+             0 of 61 disagreed on team, because that case is rejected upstream.
+        After the rule: 0 of 272. So within offence an exact-position disagreement is evidence
+        of a different person, with no measured counterexample to trade away.
+
+        Takes a SET of the query's eligible positions rather than one string, because a
+        genuinely multi-position player is the only shape that could make this rule wrong, and
+        #172 is about to make that list available. Today every caller passes a single primary
+        position, so the set is a singleton and the rule is exactly as measured; when
+        fantasy_positions arrives the call site widens and nothing here changes."""
+        eligible = {p for p in (positions or ()) if p}
+        if not eligible or "position" not in row.index or pd.isna(row.get("position")):
+            return False
+        candidate = row["position"]
+        if _position_group(candidate) != "offense":
+            return False
+        if any(_position_group(p) != "offense" for p in eligible):
+            return False
+        return candidate not in eligible
 
     def _find_match(self, full_name: str, position: Optional[str] = None,
                      team: Optional[str] = None, df: Optional[pd.DataFrame] = None) -> Optional[pd.Series]:
@@ -2122,6 +2180,19 @@ class DataMerger:
             # roster data than a misidentified player, and shouldn't be thrown out.
             if team and "team" in table.columns and pd.notna(candidate.get("team")) and candidate["team"] != team:
                 return None, None, len(key_matches), False
+            # A player Sleeper reports as unrostered arrives here as NO_NFL_TEAM, not as None,
+            # so the rejection above already covers him: a sentinel club disagrees with every
+            # real one. That is the whole of #196's team half. Measured with set_league_format
+            # applied, 236 matched rows were an unrostered query against a club-bearing vendor
+            # row before this landed, and 5 of them carried a real league-scored projection --
+            # Van Jefferson (via the FUZZY path, holding Justin Jefferson's row), Kyle Williams
+            # (holding Kyren Williams'), Myles Murphy, Chris Johnson and Ben Sauls. After: 0.
+            # The rest were unrostered namesakes with no projection, so the cost is stale trade
+            # values on players nothing else could price; each still keeps his own sleeper_points
+            # (#193). No separate asymmetric clause is needed here, and an earlier one that
+            # inferred unrostered-ness from a MISSING ARGUMENT instead broke every free-text
+            # lookup in the app -- the trade calculator resolves names with no team and no
+            # position at all, and 16 tests pinning that went red.
             # Same rejection, on the other axis the merger already treats as identity: a
             # same-team, same-key pair can still be two different people if they sit in
             # different dedup namespaces (confirmed live -- a WR resolving onto a DB who
@@ -2129,6 +2200,10 @@ class DataMerger:
             # see). Only the coarse group, so the LB/DL vocabulary split between vendors stays
             # a match.
             if self._different_identity_namespace(candidate, position):
+                return None, None, len(key_matches), False
+            # ...and the finer offence-only rejection, which is what actually recovers the
+            # players a first-initial export throws together. See _different_offense_position.
+            if self._different_offense_position(candidate, {position}):
                 return None, None, len(key_matches), False
             return candidate, "key", len(key_matches), len(key_matches) == 1
 

@@ -176,7 +176,7 @@ import pandas as pd
 
 import content_hash
 import lineup_optimizer as lo
-from data_merger import DataMerger, name_key, normalize_name
+from data_merger import NO_NFL_TEAM, DataMerger, name_key, normalize_name
 from player_universe import FLEX_SLOT_POSITIONS, FANTASY_POSITIONS, league_usable_positions, player_eligible_positions, player_name, player_position, score_projection
 
 # Sleeper's projection endpoint is per-week, not season-long (see sleeper_client.py's
@@ -872,7 +872,11 @@ def build_available_pool(
         # PRICING FIRST, ADMISSION SECOND -- and they are no longer the same question (#193).
         # merge_player still runs for every candidate because a vendor price is worth having;
         # what changed is that failing to find one no longer removes the player.
-        match = merger.merge_player(name, position=position, team=info.get("team"))
+        # NO_NFL_TEAM, not None, when Sleeper reports no club. The merger distinguishes "on no
+        # roster" from "unspecified" and only the first is evidence of a different person; a
+        # pool row always knows which it has, so it always says (#196).
+        match = merger.merge_player(name, position=position,
+                                    team=info.get("team") or NO_NFL_TEAM)
         if not _admits_to_pool(info, sleeper_points, match):
             continue
         rows.append({
@@ -913,19 +917,44 @@ def build_available_pool(
     return _drop_contested_identities(pd.DataFrame(rows))
 
 
-def _drop_contested_identities(pool: pd.DataFrame) -> pd.DataFrame:
-    """Two different Sleeper players resolving onto ONE canonical record is a contested
-    identity, and at least one of them is a misidentification. Nothing here can tell which, so
-    neither is priced -- declining is the only honest outcome, and it is the same rule this
-    module already applies everywhere else absence turns up.
+#: Columns on a pool row that came from the VENDOR record the row was matched to, rather than
+#: from the player's own live feed. These are exactly what a contested identity puts in doubt:
+#: two people cannot both own one vendor row's numbers, but they each own their own projection.
+VENDOR_DERIVED_COLUMNS = ("trade_value", "projection", "proj_3yr", "source_file")
 
-    Dropping BOTH costs the real player his row, which is a genuine loss and is the point: a
-    phantom duplicate is not a local error. It is a second copy of a real player's points at
-    his position, so it moves that position's replacement RANK -- a league-level quantity every
-    player at that position is measured against. Measured before the identity guard landed:
-    +1 to +8 real points of baseline error, cutting top-of-position VOR by 2-5%, and unbounded
-    in principle depending on where in the curve the duplicate falls. Silently pricing two
-    players off one row trades a visible missing row for an invisible wrong anchor.
+
+def _drop_contested_identities(pool: pd.DataFrame) -> pd.DataFrame:
+    """Two different players resolving onto ONE canonical record is a contested identity, and
+    at least one of them is a misidentification. Nothing here can tell which, so neither may
+    keep that record's numbers -- declining is the only honest outcome, the same rule this
+    module applies everywhere else absence turns up.
+
+    WHAT IS DECLINED IS THE BORROWED PRICE, NOT THE PLAYER (#196). This function used to drop
+    both ROWS, and that was right when it was written: before #193 a player who lost his vendor
+    match had no other source, so keeping his row meant keeping a row with nothing in it. The
+    cost was accepted deliberately, because a phantom duplicate is not a local error -- it is a
+    second copy of a real player's points at his position, so it moves that position's
+    replacement RANK, a league-level quantity every player at that position is measured
+    against. Measured then: +1 to +8 points of baseline error, cutting top-of-position VOR by
+    2-5%, and unbounded in principle depending where in the curve the duplicate falls.
+
+    That reasoning is unchanged and still enforced. What changed is that the player now has an
+    independent price of his own: sleeper_points is scored per player from his own live
+    projection under this league's rules, and owes nothing to the vendor. So the contested
+    thing is precisely the vendor's fields, and nulling those achieves everything dropping the
+    rows achieved -- no two players are priced off one record, so no phantom duplicate can move
+    a replacement rank -- while costing nobody his existence.
+
+    Worked case, and the reason this could not be fixed by a better key: Bijan Robinson and
+    Brian Robinson are both running backs, both on Atlanta, and the vendor publishes ONE
+    'B Robinson RB ATL' row between them. No name, position or team test can split that, and
+    the old guard therefore deleted the RB1 in dynasty football from the board entirely. Now
+    both keep their rows, Bijan prices off his own 405.2 and Brian off his own 89.4, and the
+    one number neither can safely claim -- a trade value of 99 that belongs to exactly one of
+    them -- is claimed by neither.
+
+    A row left with no live projection AND no vendor fields is simply unpriced, which is a
+    state the board already represents honestly (see NO_PRICEABLE_INPUT).
     """
     if pool.empty or "_canonical_key" not in pool.columns:
         return pool
@@ -934,7 +963,24 @@ def _drop_contested_identities(pool: pd.DataFrame) -> pd.DataFrame:
     contested = {k for k, n in counts.items() if n > 1}
     if not contested:
         return pool
-    return pool[~keyed.isin(contested)].reset_index(drop=True)
+    disputed = keyed.isin(contested)
+    pool = pool.copy()
+    for column in VENDOR_DERIVED_COLUMNS:
+        if column in pool.columns:
+            pool.loc[disputed, column] = None
+    # The whole provenance of the match goes with it, not just the key. _match_path and
+    # _match_verified are read TOGETHER by identity_basis, and leaving the path behind while
+    # nulling the rest produced a row labelled "ambiguous" -- "automatic, several fit, the
+    # first won" -- describing a match that no longer exists at all. That is the #166 defect
+    # exactly: a companion outliving the quantity it explains. Measured before this line: 2
+    # board rows (both Robinsons) carried identity_basis="ambiguous" with every vendor field
+    # already None.
+    pool.loc[disputed, "_canonical_key"] = None
+    if "_match_path" in pool.columns:
+        pool.loc[disputed, "_match_path"] = None
+    if "_match_verified" in pool.columns:
+        pool.loc[disputed, "_match_verified"] = False
+    return pool.reset_index(drop=True)
 
 
 def qb_startable_floor(merger: DataMerger) -> Optional[float]:

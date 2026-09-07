@@ -10,7 +10,9 @@ import unittest
 import data_merger as dm
 import draft_room as dr
 import draft_strategy as ds
-from draft_counterfactual import bpa_row, compare_trajectory
+from draft_counterfactual import (
+    _SUPPORTED_NECESSITY_LABELS, _near_tie, bpa_row, classify_deviation,
+    compare_trajectory)
 from draft_simulation import simulate_full_draft
 
 
@@ -123,10 +125,83 @@ class CompareTrajectoryTests(unittest.TestCase):
             "4")
 
 
+    def test_a_flagged_tie_reads_true(self):
+        cands = [{"id": "1", "forces": ["tie"], "tav": 50.0}]
+        self.assertIs(_near_tie(cands, "1"), True)
+
+    def test_an_unflagged_but_PRICED_candidate_reads_a_measured_false(self):
+        # He had a team_acquisition_value, so near_tie_flags DID compare him to the leader and
+        # answered no. That is a measurement, and reporting it as False is correct.
+        cands = [{"id": "1", "forces": ["cliff"], "tav": 50.0}]
+        self.assertIs(_near_tie(cands, "1"), False)
+
+    def test_an_unflagged_and_UNPRICED_candidate_reads_unknown(self):
+        # near_tie_flags returns None for exactly one reason: an entry whose tav is None. The
+        # forces list cannot show the difference (it lists what fired), so the payload's own
+        # tav is what recovers it. This is the false negative #61 rule 5 exists to stop.
+        cands = [{"id": "1", "forces": ["cliff"], "tav": None}]
+        self.assertIsNone(_near_tie(cands, "1"))
+
+    def test_a_candidate_this_harness_cannot_find_reads_unknown(self):
+        self.assertIsNone(_near_tie([{"id": "other", "forces": [], "tav": 9.0}], "1"))
+
     def test_determinism_repeated_comparison_is_identical(self):
         again = compare_trajectory(self.merger, self.players_db, self.league_1qb, self.traj_1qb)
         for a, b in zip(self.comparisons_1qb, again):
             self.assertEqual(a, b)
+
+
+class DeviationSupportCarriesItsBasisTests(unittest.TestCase):
+    """deviation_supported's None now covers two different situations, so it travels with a
+    companion that says which. Conflating "the engine took BPA, nothing to classify" with "the
+    engine deviated and this harness could not tell" would let a consumer count the second as
+    the first, or worse report it as unsupported."""
+
+    def test_each_input_state_produces_a_DIFFERENT_verdict_and_basis(self):
+        """Calls the production classifier. The previous version of this test reimplemented the
+        branch inside the test body and therefore asserted nothing about the code -- a mutation
+        that made an unmeasurable tie report "unsupported" passed it untouched (#195)."""
+        cases = {
+            ("MUST TAKE", False): (True, "necessity"),
+            ("STRONG ACTION", None): (True, "necessity"),   # necessity wins before the tie is read
+            ("PREFERRED", True): (True, "near_tie"),
+            ("PREFERRED", None): (None, "unmeasurable_tie"),
+            ("PREFERRED", False): (False, "neither"),
+        }
+        for (necessity, tie), expected in cases.items():
+            with self.subTest(necessity=necessity, near_tie=tie):
+                self.assertEqual(classify_deviation(necessity, tie), expected)
+        # The two Nones in the value space are told apart by the basis, never by the value.
+        self.assertEqual(len({b for _, b in cases.values()}), 4)
+
+    def test_an_unmeasurable_tie_is_not_reported_as_unsupported(self):
+        """The whole point. False would assert the engine deviated without support on the
+        strength of a comparison nobody made."""
+        # The classifier's own contract is pinned above. This is the WIRING check: the pair
+        # actually reaches NodeComparison intact on a real draft, and no row carries a verdict
+        # its basis cannot account for. It deliberately does NOT claim the fixture reaches the
+        # unmeasurable branch -- whether it does is a property of the data, not of the code, and
+        # asserting it here is what made the earlier version vacuous.
+        merger, players_db = _build_pool_players_db(("QB", "RB", "WR", "TE"))
+        league = dr.build_mock_league(teams=4, superflex=False, scoring="ppr",
+                                      te_premium=False, dynasty=True)
+        pick_order = ds.generate_pick_order(["1", "2", "3", "4"], total_rounds=2)
+        traj = simulate_full_draft(merger, players_db, league, pick_order)
+        comparisons = compare_trajectory(merger, players_db, league, traj)
+        self.assertTrue(comparisons, "vacuous: no comparisons produced")
+        for c in comparisons:
+            with self.subTest(pick=c.pick_no):
+                if c.equals_bpa:
+                    self.assertIsNone(c.deviation_supported)
+                    self.assertIsNone(c.deviation_support_basis)
+                else:
+                    self.assertIn(c.deviation_support_basis,
+                                  ("necessity", "near_tie", "neither", "unmeasurable_tie"))
+                    if c.deviation_support_basis == "unmeasurable_tie":
+                        self.assertIsNone(c.deviation_supported)
+                    else:
+                        self.assertIn(c.deviation_supported, (True, False))
+
 
 
 class NoMutationTests(unittest.TestCase):
