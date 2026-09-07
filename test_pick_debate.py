@@ -379,6 +379,19 @@ class TheEvidenceLineTellsTheTruthAboutTheSumTests(unittest.TestCase):
         line = next(ln for ln in source.splitlines()
                     if "Team acquisition value:" in ln)
         block = source[source.index(line):source.index(line) + 600]
+        # FOLLOW THE HELPERS THIS LINE DELEGATES TO (#174). The invariant is that every term in
+        # the sum is NAMED to the model, not that every term appears in one contiguous 600
+        # characters -- a term whose clause needs a conditional (depth_exposure's, which must
+        # now say whether the number was measured) belongs in a function, and a text scan that
+        # cannot follow one call would force the prose to stay inline to satisfy the
+        # instrument. Extraction is legitimate; silence is not.
+        import re
+        import pick_debate as _pd
+        import inspect as _inspect
+        for helper in set(re.findall(r"\b(_[a-z_]+)\(candidate\)", block)):
+            fn = getattr(_pd, helper, None)
+            if fn is not None:
+                block += "\n" + _inspect.getsource(fn)
         for term in self._summed_terms():
             with self.subTest(term=term):
                 self.assertIn(term, block,

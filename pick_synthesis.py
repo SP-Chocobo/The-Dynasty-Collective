@@ -157,6 +157,7 @@ from typing import Optional
 
 import draft_room as dr
 import draft_strategy as ds
+import lineup_optimizer as lo
 from content_hash import fingerprint
 from data_merger import DataMerger, name_key, normalize_name
 
@@ -169,6 +170,16 @@ DEFAULT_NARROW_COUNT = 5
 #: words have one home while the boundary stays closed -- a second literal table in
 #: pick_debate would be exactly the #186 defect, one module over.
 DENIAL_BASIS_LABELS = ds.DENIAL_BASIS_LABELS
+
+#: Same re-export, same reason (#174). lineup_optimizer is likewise forbidden to snapshot
+#: consumers, and depth_exposure's basis was simply DROPPED here rather than carried -- the
+#: quantity crossed the boundary without the thing that gives it meaning, which is #166's
+#: defect with the two halves swapped.
+EXPOSURE_BASIS_LABELS = lo.EXPOSURE_BASIS_LABELS
+#: The one token a consumer needs to ASK a question with, rather than to print. Re-exported
+#: for the same reason as the labels: lineup_optimizer is closed to snapshot consumers, and
+#: a consumer spelling "measured" as its own literal is a second home for the vocabulary.
+EXPOSURE_MEASURED = lo.EXPOSURE_MEASURED
 
 # Position-view depth ceiling (see narrow_candidates' own docstring): the board's real,
 # league-aware replacement rank per position (draft_room.replacement_ranks) is the right
@@ -1138,6 +1149,13 @@ class CandidateSnapshot:
     # fixtures predate it. None means "not measured", which is what depth_basis says in words
     # on the board row this is read from -- never "this roster's depth here is safe".
     depth_exposure: Optional[float] = None
+    # THE COMPANION THAT WAS DROPPED HERE (#174). The board emits it beside depth_exposure and
+    # the snapshot did not carry it, so every consumer past this boundary -- the chair prose,
+    # the board UI, screen_context -- saw a 0.0 and could not tell "measured, no exposure" from
+    # "never measured". The docstring above already said the basis "says in words" what the
+    # number means; it just never arrived. Defaulted for the same reason depth_exposure is:
+    # upside-mode boards never compute it, and hand-built fixtures predate it.
+    depth_basis: Optional[str] = None
     # What deferring this position actually costs: this player's projected points minus the
     # points of the best player at his position expected to be STILL UNDRAFTED when the draft
     # ends (draft_room.horizon_replacement). OBSERVABLE ONLY -- read by nothing that scores,
@@ -1315,6 +1333,9 @@ def build_snapshot(
             "universal_value": universal_value, "need_bonus": row.get("need_bonus", 0.0),
             "eligibility_bonus": row.get("eligibility_bonus", 0.0),
             "depth_exposure": row.get("depth_exposure"),
+            # Read this BEFORE depth_exposure: a 0.0 whose basis is not `measured` is an
+            # absence wearing a number's clothes (#174).
+            "depth_basis": row.get("depth_basis"),
             "team_acquisition_value": row["final_score"],
             "survival_probability": survival, "intervening_picks": a.get("intervening_picks"),
             "opportunity_cost": a.get("opportunity_cost"),

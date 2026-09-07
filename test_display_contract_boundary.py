@@ -438,8 +438,15 @@ class TheScaleIsNotAPointsTotalTests(unittest.TestCase):
         #   a measurement while an absence is not. A separate marker on the row would be a
         #   third place for the same sentence to drift out of agreement, which is #186's defect
         #   rather than a fix for it.
+        #   depth_basis (#174), field 44. DOES IT IMPLY A SCALE? No -- a categorical token from
+        #   a closed four-value vocabulary. SHOULD THE CARD RENDER IT? Not as its own metric.
+        #   It qualifies depth_exposure, which the card already renders, and the honest place
+        #   for the qualification is beside that number rather than as a separate tile: the
+        #   board's own depth chip and the chair prose both now state whether the value was
+        #   measured. What made this field necessary was not display, it was that the snapshot
+        #   DROPPED it -- so every consumer past this boundary saw a 0.0 it could not read.
         self.assertEqual(
-            len(dataclasses.fields(ps.CandidateSnapshot)), 43,
+            len(dataclasses.fields(ps.CandidateSnapshot)), 44,
             "CandidateSnapshot's field count changed. That is fine and often correct -- but "
             "confirm the new field does not imply a scale the card cannot support, decide "
             "whether the card should render it, then update this number.")

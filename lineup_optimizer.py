@@ -211,6 +211,19 @@ EXPOSURE_NO_SURPLUS = "no_surplus"
 #: 2209-test suite while its disclosure silently stopped rendering (#122).
 EXPOSURE_MEASURED = "measured"
 
+#: token -> the words a person reads (#174). depth_exposure crossed the snapshot boundary
+#: WITHOUT this companion, so every consumer downstream of PickSnapshot saw a 0.0 that could
+#: mean "measured, this position carries no exposure" or "never measured" and had no way to
+#: tell. Measured on a real mid-draft board: 806 rows measured with a real number, 1,218 rows
+#: at 0.0 with basis `vacant`, and NOT ONE measured zero -- so on that board every 0.0 the
+#: consumers saw meant "not measured", and every one of them read as "safe".
+EXPOSURE_BASIS_LABELS = {
+    EXPOSURE_MEASURED: "measured against your own lineup",
+    EXPOSURE_VACANT: "not measured -- you hold no starter at this position to insure",
+    EXPOSURE_NO_SURPLUS: "not measured -- you hold no backup here, so there is no surplus to value",
+    EXPOSURE_NOT_APPLICABLE: "not measured -- this position has no startable slot in this league",
+}
+
 
 def depth_exposure(roster_players: list[dict], roster_positions: list[str]) -> dict[str, dict]:
     """Per position, what this roster loses if one of its starters there becomes unavailable.

@@ -62,6 +62,7 @@ from llm_engine import (
     UNAVAILABLE_REPORT, _report_for_handoff,
 )
 from pick_synthesis import (CandidateSnapshot, PickSnapshot, DENIAL_BASIS_LABELS,
+                            EXPOSURE_BASIS_LABELS, EXPOSURE_MEASURED,
                             diff_snapshots, stamp_is_current)
 
 import bot_config
@@ -265,6 +266,26 @@ def _format_probability(value: Optional[float]) -> str:
     return f"{round(value * 100)}%" if value is not None else "unknown"
 
 
+def _depth_term(candidate) -> str:
+    """The depth_exposure clause of the acquisition-value sum, qualified by its basis (#174).
+
+    Three claims, and the panel used to make only two of them. The arithmetic is unchanged in
+    every case -- a 0.0 really is +0.0 in the sum -- but a model instructed never to recompute
+    is entitled to know whether that zero was MEASURED. Before the basis reached this boundary
+    it could not be told: on a real mid-draft board, 1,218 rows carried 0.0 with basis
+    `vacant` and not one carried a measured zero, so every zero the chairs ever saw meant "not
+    measured" and every one of them read as "no depth risk here".
+    """
+    if candidate.depth_exposure is None:
+        return "; depth_exposure not computed for this board)"
+    basis = getattr(candidate, "depth_basis", None)
+    if basis is not None and basis != EXPOSURE_MEASURED:
+        words = EXPOSURE_BASIS_LABELS.get(basis, basis)
+        return (f" + depth_exposure {candidate.depth_exposure:+}, "
+                f"which is NOT a measurement: {words})")
+    return f" + depth_exposure {candidate.depth_exposure:+})"
+
+
 def _format_candidate(candidate: CandidateSnapshot, user_selected_player_id: Optional[str]) -> str:
     flag = " (USER-FLAGGED)" if user_selected_player_id == candidate.player_id else ""
     lines = [
@@ -280,9 +301,7 @@ def _format_candidate(candidate: CandidateSnapshot, user_selected_player_id: Opt
         f"  Team acquisition value: {candidate.team_acquisition_value} "
         f"(universal_value {candidate.universal_value} + need_bonus {candidate.need_bonus:+}"
         f" + eligibility_bonus {candidate.eligibility_bonus:+}"
-        + (f" + depth_exposure {candidate.depth_exposure:+})"
-           if candidate.depth_exposure is not None
-           else "; depth_exposure not computed for this board)"),
+        + _depth_term(candidate),
     ]
     if candidate.near_tie_with_leader:
         lines.append(
