@@ -265,8 +265,10 @@ DISPLAY_CONTRACT: dict[str, dict[str, str]] = {
         "help": (
             "The best acquisition value an intervening rival would have gotten from him, "
             "weighted by how likely that rival was to take him -- what your pick keeps from "
-            "someone else. Universal-value points; a measured 0 means no rival was positioned "
-            "to gain."
+            "someone else. Universal-value points. A 0 is a measurement: either no rival held "
+            "a pick before your next turn, or every rival who could be priced would have "
+            "gained nothing. Absent (not 0) when no rival's board could price him at all, "
+            "because then nothing was measured."
         ),
     },
 }

@@ -540,6 +540,22 @@ def _opportunity_cost_order(row: dict) -> tuple:
     return (cost is None, -cost if cost is not None else 0.0, str(row.get("player_id")))
 
 
+#: WHY denial_value is what it is -- the vocabulary, with one home (#187). The UI used to
+#: promise "a measured 0 means no rival was positioned to gain" for every zero it saw, which
+#: was true of one of these three states and false of another.
+DENIAL_NO_INTERVENING_RIVAL = "no_intervening_rival"
+DENIAL_NO_RIVAL_PRICED = "no_rival_priced"
+DENIAL_MEASURED = "measured"
+
+#: token -> the words a person reads. Absence of the BASIS itself is not a key: every candidate
+#: that reaches pick_analysis gets one of the three.
+DENIAL_BASIS_LABELS = {
+    DENIAL_NO_INTERVENING_RIVAL: "no rival had a pick before your next turn",
+    DENIAL_NO_RIVAL_PRICED: "no rival's board could price him, so nothing was measured",
+    DENIAL_MEASURED: "measured against every rival board that could price him",
+}
+
+
 def pick_analysis(
     merger: DataMerger,
     players_db: dict[str, dict],
@@ -619,7 +635,14 @@ def pick_analysis(
         denial_team = None
         rival_premium = 0.0
         rival_premium_take_probability = None
+        # #187. THREE different facts used to leave denial_value at exactly 0.0, and the UI
+        # promised, verbatim, that "a measured 0 means no rival was positioned to gain".
+        # Counted here, where the difference is knowable, instead of being reconstructed
+        # downstream from a number that no longer carries it.
+        rivals_considered = 0
+        rivals_priced = 0
         for risk in survival["risk_by_team"]:
+            rivals_considered += 1
             opp_board = opponent_boards.get(str(risk["roster_id"]), {})
             opp_row = opp_board.get("by_id", {}).get(str(player_id))
             if opp_row is None:
@@ -630,6 +653,7 @@ def pick_analysis(
             # not a claim that the player is worthless to them.
             if opp_row.get("final_score") is None or opp_row.get("universal_value") is None:
                 continue
+            rivals_priced += 1
             weighted = opp_row["final_score"] * risk["take_probability"]
             if weighted > denial_value:
                 denial_value = weighted
@@ -672,6 +696,26 @@ def pick_analysis(
                 # this field.
                 rival_premium_take_probability = risk["take_probability"]
 
+        # WHICH OF THE THREE (#187), and the absence made real where there was no measurement.
+        #
+        #   no_intervening_rival -- nobody had a pick between now and my next turn, so "no
+        #       rival was positioned to gain" is TRUE and 0.0 is a measurement.
+        #   measured             -- at least one opponent board priced him. 0.0 here means the
+        #       best weighted value was <= 0, which is also a real finding: you cannot deny
+        #       someone value they would not have got. The floor at 0.0 is deliberate and
+        #       stays -- denial is a quantity of value KEPT FROM a rival, and a rival who
+        #       values him negatively loses nothing when you take him.
+        #   no_rival_priced      -- rivals existed and not one of their boards could price
+        #       him. Nothing was measured, so there is no number, and 0.0 would assert the
+        #       strongest of the three claims off the weakest evidence.
+        if not rivals_considered:
+            denial_basis = DENIAL_NO_INTERVENING_RIVAL
+        elif not rivals_priced:
+            denial_basis = DENIAL_NO_RIVAL_PRICED
+            denial_value = None
+        else:
+            denial_basis = DENIAL_MEASURED
+
         results.append({
             "player_id": player_id,
             "name": my_row.get("name"),
@@ -680,7 +724,11 @@ def pick_analysis(
             "survival_probability": survival["survival_probability"],
             "intervening_picks": survival["intervening_picks"],
             "opportunity_cost": opportunity_cost,
-            "denial_value": round(denial_value, 2),
+            "denial_value": (None if denial_value is None else round(denial_value, 2)),
+            # The companion that says WHICH of the three produced that number, or its absence.
+            # Read it before reading the value: 0.0 means "measured, nothing to keep from
+            # anyone", never "not checked" (#187).
+            "denial_basis": denial_basis,
             "denial_team": denial_team,
             "rival_premium": round(rival_premium, 2),
             "rival_premium_take_probability": rival_premium_take_probability,

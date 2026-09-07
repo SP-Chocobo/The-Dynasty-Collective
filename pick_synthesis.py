@@ -162,6 +162,14 @@ from data_merger import DataMerger, name_key, normalize_name
 
 DEFAULT_NARROW_COUNT = 5
 
+#: RE-EXPORT, not a copy (#187). draft_strategy owns this vocabulary because it owns the
+#: measurement; pick_debate is a snapshot CONSUMER and may not import draft_strategy at all
+#: (test_pick_synthesis.DecisionBoundaryIsClosedTests forbids it, so that a consumer cannot
+#: recompute what the frozen snapshot already decided). Binding the same object here lets the
+#: words have one home while the boundary stays closed -- a second literal table in
+#: pick_debate would be exactly the #186 defect, one module over.
+DENIAL_BASIS_LABELS = ds.DENIAL_BASIS_LABELS
+
 # Position-view depth ceiling (see narrow_candidates' own docstring): the board's real,
 # league-aware replacement rank per position (draft_room.replacement_ranks) is the right
 # SOURCE for how much positional depth exists, but replacement rank alone can run to 30+ at
@@ -1098,6 +1106,9 @@ class CandidateSnapshot:
     opportunity_cost: Optional[float]
     expected_value_of_waiting: Optional[float]
     denial_value: Optional[float]
+    # The companion that makes denial_value readable (#187). Three states, never inferred from
+    # the number: no_intervening_rival / no_rival_priced / measured.
+    denial_basis: Optional[str]
     denial_team: Optional[str]
     rival_premium: Optional[float]
     positional_forfeit: Optional[float]
@@ -1308,7 +1319,11 @@ def build_snapshot(
             "survival_probability": survival, "intervening_picks": a.get("intervening_picks"),
             "opportunity_cost": a.get("opportunity_cost"),
             "expected_value_of_waiting": expected_value_of_waiting(universal_value, survival),
-            "denial_value": a.get("denial_value"), "denial_team": a.get("denial_team"),
+            "denial_value": a.get("denial_value"),
+            # #187: read this BEFORE denial_value. A 0.0 means "measured, nothing to keep from
+            # anyone"; None means no rival board could price him and nothing was measured.
+            "denial_basis": a.get("denial_basis"),
+            "denial_team": a.get("denial_team"),
             "rival_premium": a.get("rival_premium"),
             "rival_premium_take_probability": a.get("rival_premium_take_probability"),
             "positional_forfeit": a.get("positional_forfeit"),

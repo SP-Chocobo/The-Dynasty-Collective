@@ -410,7 +410,15 @@ class LateBoardIntegrationTests(unittest.TestCase):
         self.assertEqual(len(results), 1)
         self.assertEqual(results[0]["rival_premium"], 0.0)
         self.assertIsNone(results[0]["rival_premium_take_probability"])
-        self.assertEqual(results[0]["denial_value"], 0.0)
+        # CHANGED BY #187, and this test's own comment above is the argument for the change:
+        # they are skipped "for having no value to take a premium over". A 0.0 asserted that a
+        # measurement had been taken and come back empty; nothing was measured here at all, so
+        # the value is absent and the basis says which of the three states produced it.
+        self.assertIsNone(results[0]["denial_value"])
+        self.assertEqual(results[0]["denial_basis"], ds.DENIAL_NO_RIVAL_PRICED)
+        # STILL 0.0 AND DELIBERATELY NOT CHANGED HERE: rival_premium feeds pick_necessity's
+        # denial term, so giving it the same absence treatment would move real necessity
+        # scores and needs its own measurement first. Recorded rather than swept along.
 
     def test_the_snapshot_is_identical_across_repeated_builds(self):
         picks, board, index = self._state(16)

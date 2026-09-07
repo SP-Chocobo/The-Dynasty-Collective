@@ -19,7 +19,7 @@ def _candidate(**overrides) -> CandidateSnapshot:
         universal_value=88.5, need_bonus=6.0, eligibility_bonus=2.9,
         team_acquisition_value=97.4, survival_probability=0.31, intervening_picks=11,
         opportunity_cost=67.2, expected_value_of_waiting=27.4,
-        denial_value=8.4, denial_team="Roster 9", rival_premium=8.4,
+        denial_value=8.4, denial_basis="measured", denial_team="Roster 9", rival_premium=8.4,
         positional_forfeit=77.9, position_expected_taken=2.4,
         positional_cliff={"tier": "HIGH", "gap": 22.4, "typical_gap": 6.1},
         position_run_detected=False, pick_necessity=88.0, necessity_label="STRONG ACTION",

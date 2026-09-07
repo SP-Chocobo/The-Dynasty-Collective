@@ -61,7 +61,8 @@ from llm_engine import (
     CLAUDE_MODEL, GEMINI_MODEL, OPENAI_MODEL, MAX_TOKENS,
     UNAVAILABLE_REPORT, _report_for_handoff,
 )
-from pick_synthesis import CandidateSnapshot, PickSnapshot, diff_snapshots, stamp_is_current
+from pick_synthesis import (CandidateSnapshot, PickSnapshot, DENIAL_BASIS_LABELS,
+                            diff_snapshots, stamp_is_current)
 
 import bot_config
 import provider_meter
@@ -309,11 +310,17 @@ def _format_candidate(candidate: CandidateSnapshot, user_selected_player_id: Opt
     # `if candidate.denial_value:` swallowed a MEASURED 0.0 -- "no rival gains anything from
     # him" is a real finding and an argument for waiting, and it read to the panel exactly like
     # "never computed". Absence is not a value, and a zero is not an absence.
-    if candidate.denial_value is not None:
-        if candidate.denial_value == 0:
-            lines.append("  Denial value: 0 -- measured, no intervening rival gains from him")
-        else:
-            lines.append(f"  Denial value: {candidate.denial_value} (would go to roster {candidate.denial_team})")
+    # #187: THREE states, and this used to assert the strongest of them for every zero it saw.
+    # A 0.0 that came from "no rival's board could price him" is not a measurement that nobody
+    # gains -- it is no measurement at all, and it now arrives as None with a basis beside it.
+    if candidate.denial_value is None:
+        if candidate.denial_basis:
+            lines.append(f"  Denial value: not measured -- "
+                         f"{DENIAL_BASIS_LABELS.get(candidate.denial_basis, candidate.denial_basis)}")
+    elif candidate.denial_value == 0:
+        lines.append("  Denial value: 0 -- measured, no intervening rival gains from him")
+    else:
+        lines.append(f"  Denial value: {candidate.denial_value} (would go to roster {candidate.denial_team})")
     if candidate.positional_cliff:
         cliff = candidate.positional_cliff
         lines.append(f"  Positional cliff: {cliff['tier']} (gap to next at position: {cliff['gap']}, typical gap: {cliff['typical_gap']})")

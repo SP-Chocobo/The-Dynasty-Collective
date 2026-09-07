@@ -1487,7 +1487,7 @@ class DepthExposureStopsAtTheValueLayerTests(unittest.TestCase):
             player_id="1", name="A", position="RB", team="X", bpa=1.0, bpa_source="s",
             confidence=1.0, universal_value=10.0, need_bonus=0.0, eligibility_bonus=0.0,
             team_acquisition_value=10.0, survival_probability=None, intervening_picks=None,
-            opportunity_cost=None, expected_value_of_waiting=None, denial_value=None,
+            opportunity_cost=None, expected_value_of_waiting=None, denial_value=None, denial_basis="no_rival_priced",
             denial_team=None, rival_premium=None, positional_forfeit=None,
             position_expected_taken=None, positional_cliff=None, position_run_detected=False,
             pick_necessity=50.0, necessity_label="CLOSE CALL", near_tie_with_leader=None,

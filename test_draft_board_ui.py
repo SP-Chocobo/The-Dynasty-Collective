@@ -21,7 +21,7 @@ def _candidate(**overrides) -> CandidateSnapshot:
         universal_value=88.5, need_bonus=6.0, eligibility_bonus=2.9,
         team_acquisition_value=97.4, survival_probability=0.31, intervening_picks=11,
         opportunity_cost=67.2, expected_value_of_waiting=27.4,
-        denial_value=8.4, denial_team="Roster 9", rival_premium=8.4,
+        denial_value=8.4, denial_basis="measured", denial_team="Roster 9", rival_premium=8.4,
         positional_forfeit=77.9, position_expected_taken=2.4,
         positional_cliff={"tier": "HIGH", "gap": 22.4, "typical_gap": 6.1},
         position_run_detected=False, pick_necessity=88.0, necessity_label="STRONG ACTION",
@@ -420,7 +420,7 @@ globalThis.document = {
         unpriced = _candidate(
             player_id="u", name="Unpriced Best", position="K", bpa=None, universal_value=None,
             team_acquisition_value=None, survival_probability=None, intervening_picks=None,
-            opportunity_cost=None, expected_value_of_waiting=None, denial_value=None,
+            opportunity_cost=None, expected_value_of_waiting=None, denial_value=None, denial_basis="no_rival_priced",
             denial_team=None, rival_premium=None, positional_forfeit=None,
             position_expected_taken=None, positional_cliff=None, near_tie_with_leader=None,
             cliff_protection=True, block_opportunity=True, pure_value=True,
@@ -429,7 +429,7 @@ globalThis.document = {
         )
         zeros = _candidate(
             player_id="z", name="Measured Zeros", universal_value=0.0, team_acquisition_value=0.0,
-            need_bonus=0.0, eligibility_bonus=0.0, survival_probability=0.0, denial_value=0.0,
+            need_bonus=0.0, eligibility_bonus=0.0, survival_probability=0.0, denial_value=0.0, denial_basis="measured",
             rival_premium=0.0, positional_forfeit=0.0, projected_points=0.0,
             positional_cliff={"tier": "LOW", "gap": 0.0, "typical_gap": 0.0},
         )

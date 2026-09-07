@@ -350,7 +350,7 @@ class TheScaleIsNotAPointsTotalTests(unittest.TestCase):
             bpa=-10.0, bpa_source="s", confidence=50.0,
             universal_value=-12.5, need_bonus=0.0, eligibility_bonus=0.0,
             team_acquisition_value=-12.5, survival_probability=None, intervening_picks=None,
-            opportunity_cost=None, expected_value_of_waiting=None, denial_value=None,
+            opportunity_cost=None, expected_value_of_waiting=None, denial_value=None, denial_basis="no_rival_priced",
             denial_team=None, rival_premium=None, positional_forfeit=None,
             position_expected_taken=None, positional_cliff=None, position_run_detected=False,
             pick_necessity=0.0, necessity_label="HOLD", near_tie_with_leader=False,
@@ -428,8 +428,18 @@ class TheScaleIsNotAPointsTotalTests(unittest.TestCase):
         #   reordering the user cannot see is a reordering the user cannot audit. It renders as
         #   a marker on the row itself, next to the rank it changed, which is also where the
         #   same invisibility let an unpriced leader reach an unguarded format string.
+        #   denial_basis (#187), field 43. DOES IT IMPLY A SCALE? No -- it is a categorical
+        #   token from a closed three-value vocabulary, never a quantity, so it cannot borrow a
+        #   unit from the metric row the way a number would.
+        #   SHOULD THE CARD RENDER IT? Not on its own. Unlike fills_required_slot, this field
+        #   reorders nothing and hides nothing: it QUALIFIES denial_value, and the two surfaces
+        #   that state denial_value already carry the qualification -- pick_debate names which
+        #   of the three states produced the number, and the metric's own help text says a 0 is
+        #   a measurement while an absence is not. A separate marker on the row would be a
+        #   third place for the same sentence to drift out of agreement, which is #186's defect
+        #   rather than a fix for it.
         self.assertEqual(
-            len(dataclasses.fields(ps.CandidateSnapshot)), 42,
+            len(dataclasses.fields(ps.CandidateSnapshot)), 43,
             "CandidateSnapshot's field count changed. That is fine and often correct -- but "
             "confirm the new field does not imply a scale the card cannot support, decide "
             "whether the card should render it, then update this number.")
