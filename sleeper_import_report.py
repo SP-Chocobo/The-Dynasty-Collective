@@ -439,14 +439,29 @@ def build_report(username: Optional[str], league_id: Optional[str], raw: bool) -
         db = client.get_players()
 
         buckets: dict = collections.defaultdict(lambda: {"n": 0, "weekly_pts": [], "ratio": []})
+        # WHY THE REASON IS CAPTURED. The first version of this probe swallowed every failure
+        # into a bare `by_key = {}` and then reported the same string -- "UNAVAILABLE" -- for a
+        # missing dependency, an empty frame, and a path failure. That is an absence with its
+        # cause stripped off, which is the one thing this whole report exists to stop other
+        # code doing. pandas is the live case: the report itself needs only `requests`, but
+        # data_merger needs pandas, so a machine set up to run the report is NOT necessarily
+        # set up to run this half -- and the operator has no way to know that from "UNAVAILABLE".
+        join_error = None
+        by_key = {}
         try:
             import data_merger as dm
             merger = dm.DataMerger()
-            by_key = {}
+            rows_seen = len(merger.projections)
             for _, row in merger.projections.iterrows():
                 by_key[str(row.get("_name_key"))] = row
-        except Exception:                                   # noqa: BLE001 -- reporting tool
-            by_key = {}
+            if not by_key:
+                join_error = (f"data_merger loaded but projections is EMPTY "
+                              f"({rows_seen} rows) -- baseline files missing or unreadable")
+        except ImportError as exc:
+            join_error = (f"{exc} -- the ratio half needs data_merger, which needs pandas. "
+                          f"Install it and re-run: pip install pandas")
+        except Exception as exc:                            # noqa: BLE001 -- reporting tool
+            join_error = f"{type(exc).__name__}: {exc}"
 
         for pid, stats in raw.items():
             info = db.get(str(pid)) or {}
@@ -486,8 +501,9 @@ def build_report(username: Optional[str], league_id: Optional[str], raw: bool) -
                     "weekly_points": summarise(v["weekly_pts"]),
                     "proj3yr_over_season_ratio": summarise(v["ratio"])}
                 for k, v in sorted(buckets.items())},
-            "baseline_join": ("committed baseline joined by _name_key"
-                              if by_key else "UNAVAILABLE - ratio half not measured"),
+            "baseline_join": (f"committed baseline joined by _name_key ({len(by_key)} rows)"
+                              if by_key else
+                              f"UNAVAILABLE - ratio half not measured. REASON: {join_error}"),
         }
     _step(report, "injury_already_priced", injury_already_priced)
 
