@@ -366,7 +366,9 @@ def qualifier_profile(trajectory) -> dict:
     }
 
 
-def reference_values(merger, players_db: dict, league: dict) -> dict[str, float]:
+def reference_values(merger, players_db: dict, league: dict,
+                     sleeper_projections: Optional[dict[str, dict]] = None,
+                     sleeper_basis: str = dr.SLEEPER_BASIS_WEEKLY) -> dict[str, float]:
     """player_id -> universal_value on the PRE-DRAFT board. ONE RULER for the whole format.
 
     Emphatically NOT each player's value at the moment he was taken. Those numbers are measured
@@ -376,8 +378,15 @@ def reference_values(merger, players_db: dict, league: dict) -> dict[str, float]
     sums across fifteen different board states would be measuring the draft's progress as much
     as the roster.
     """
+    # THE RULER AND THE DRAFT MUST BE PRICED THE SAME WAY (#204). run_battery passes whatever
+    # it passed to simulate_full_draft; a ruler built off vendor-only points while the draft
+    # itself ran scoring-aware would make every value-against-the-ruler number in the audit a
+    # comparison between two different quantities -- worse than the consistent-but-wrong state
+    # this replaced, because it would look measured.
     board = dr.compute_draft_board(merger, players_db, [], my_roster_id=None,
-                                   league=league, mode="balanced")
+                                   league=league, mode="balanced",
+                                   sleeper_projections=sleeper_projections,
+                                   sleeper_basis=sleeper_basis)
     return {str(row["player_id"]): row["universal_value"] for row in board
             if row.get("universal_value") is not None}
 
@@ -564,7 +573,9 @@ def duplicate_arms(results: list[dict]) -> list[dict]:
 
 
 def run_battery(merger, players_db: dict, matrix: Optional[list[dict]] = None,
-                *, mode: str = "auto") -> list[dict]:
+                *, mode: str = "auto",
+                sleeper_projections: Optional[dict[str, dict]] = None,
+                sleeper_basis: str = dr.SLEEPER_BASIS_WEEKLY) -> list[dict]:
     """Draft every format in the matrix and audit each one.
 
     pick_order is generated per format rather than reused, since team count varies -- and it is
@@ -589,10 +600,21 @@ def run_battery(merger, players_db: dict, matrix: Optional[list[dict]] = None,
         merger.set_league_format(league_format_hint(entry["league"]))
         roster_ids = [str(i) for i in range(1, entry["teams"] + 1)]
         pick_order = ds.generate_pick_order(roster_ids, entry["rounds"], "snake")
+        # THE SECOND HALF OF THE SAME LESSON (#204). set_league_format above carries scoring
+        # into the VENDOR export by file selection; these two carry the league's own scoring
+        # into the SLEEPER points, which is the other half of what production prices from
+        # (app.py passes season_projections + SLEEPER_BASIS_SEASON_SUM on every rerun). A
+        # battery that omits them drafts a board where sleeper_points, sleeper_basis and
+        # availability_basis are None on every row -- so the scoring-aware path and the
+        # availability haircut are both absent from the final gate while appearing nowhere in
+        # the report as absent.
         trajectory = draft_simulation.simulate_full_draft(
             merger, players_db, entry["league"], pick_order,
-            mode=entry.get("mode", mode), config_label=entry["label"])
-        values = reference_values(merger, players_db, entry["league"])
+            mode=entry.get("mode", mode), config_label=entry["label"],
+            sleeper_projections=sleeper_projections, sleeper_basis=sleeper_basis)
+        values = reference_values(merger, players_db, entry["league"],
+                                  sleeper_projections=sleeper_projections,
+                                  sleeper_basis=sleeper_basis)
         # Formats whose draft is shorter than their roster opt out of the fill audit only
         # (see structural_findings); every other audit still applies to them.
         audited = audit_trajectory(trajectory, entry["league"], players_db, values,

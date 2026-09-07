@@ -2639,7 +2639,8 @@ def compute_draft_board(
         "horizon_floor", "horizon_sensitivity", "waiting_cost", "replacement_basis",
         "horizon_basis", "identity_basis", "availability_basis", "fills_required_slot",
     ]], "projected_points", "horizon_floor", "horizon_sensitivity", "waiting_cost",
-        "bpa", "universal_value", "final_score", "confidence", "replacement_basis")
+        "bpa", "universal_value", "final_score", "confidence", "replacement_basis",
+        "availability_basis")
 
 
 # -- in-app Mock Draft sandbox (see app.py's Draft Room view) -------------------------------

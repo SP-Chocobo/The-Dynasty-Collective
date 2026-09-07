@@ -21,6 +21,7 @@ from pathlib import Path
 
 import data_merger as dm
 import draft_battery
+import draft_room as dr
 import roster_diagnostics
 import player_universe
 import store_io
@@ -109,6 +110,27 @@ def build_players_db_from_capture(positions=BATTERY_POSITIONS,
     return out, provenance
 
 
+def season_projections_from_capture(path: Path = CAPTURE_PATH) -> dict[str, dict]:
+    """The per-category SEASON SUMS the app itself prices from (#204).
+
+    Production (app.py's Draft Room) passes these into build_snapshot alongside
+    SLEEPER_BASIS_SEASON_SUM on every rerun, and #180/#192 is what happens when they are
+    missing: score_projection never runs, so the league's own scoring reaches no price. The
+    battery omitted them entirely, which meant the final gate certified a vendor-only board
+    while production shipped a vendor-plus-Sleeper one.
+
+    Same file, same raise-on-missing contract as build_players_db_from_capture -- the two
+    halves of one universe must never come from different captures.
+    """
+    if not path.exists():
+        raise FileNotFoundError(
+            f"{path} is missing -- the battery prices from the REAL season projections and "
+            "must not quietly fall back to vendor-only points (#204)")
+    with open(path, encoding="utf-8") as handle:
+        capture = json.load(handle)
+    return capture.get("season_projections") or {}
+
+
 #: Named in front of the coverage sentence so it cannot be read as a claim about the board at
 #: the pick. See strength_coverage's docstring and #170.
 PREDRAFT_RULER = "against the pre-draft ruler"
@@ -179,6 +201,12 @@ def main(argv: list[str] | None = None) -> int:
 
     merger = dm.DataMerger()
     players_db, universe = build_players_db_from_capture()
+    season_projections = season_projections_from_capture()
+    # STATED, not assumed -- the report has to say which pricing path produced it, because the
+    # two are not comparable and the difference is otherwise invisible (#204).
+    universe["season_projections_supplied"] = len(season_projections)
+    universe["priced_from"] = "vendor+sleeper" if season_projections else "vendor_only"
+    universe["sleeper_basis"] = dr.SLEEPER_BASIS_SEASON_SUM if season_projections else None
     matrix = draft_battery.league_matrix()
     if args.only:
         wanted = {name.strip() for name in args.only.split(",") if name.strip()}
@@ -188,7 +216,10 @@ def main(argv: list[str] | None = None) -> int:
     results = []
     for entry in matrix:
         t0 = time.time()
-        audited = draft_battery.run_battery(merger, players_db, [entry])[0]
+        audited = draft_battery.run_battery(
+            merger, players_db, [entry],
+            sleeper_projections=season_projections or None,
+            sleeper_basis=dr.SLEEPER_BASIS_SEASON_SUM)[0]
         audited["seconds"] = round(time.time() - t0, 1)
         results.append(audited)
         findings = len(audited["findings"])

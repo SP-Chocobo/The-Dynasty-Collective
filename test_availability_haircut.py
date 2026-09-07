@@ -173,6 +173,28 @@ class ThroughTheRealBoardTests(unittest.TestCase):
         pid = self.by_name[name]["player_id"]
         return (self.players.get(str(pid)) or {}).get("injury_status")
 
+    def test_availability_basis_is_never_a_float_nan_on_the_board_production_builds(self):
+        """THE ABSENCE CONTRACT, on the board a person actually looks at.
+
+        `None` means "no points to explain"; a float NaN means the same thing while failing
+        `is None` on every consumer that guards correctly. compute_draft_board has TWO return
+        sites -- the upside branch and the main one -- and #191 added availability_basis to the
+        COLUMN list of both but to the NaN-normalisation list of only the upside one. Measured
+        on the real capture with the fix removed: 1,649 of 2,080 rows on the main board came
+        back NaN, and 0 on the upside board. That asymmetry is the whole defect: the branch a
+        manager sees by default was the broken one.
+        """
+        offenders = [row["name"] for row in self.board
+                     if isinstance(row.get("availability_basis"), float)]
+        self.assertEqual(offenders[:5], [], f"{len(offenders)} rows carry a non-string basis")
+
+    def test_every_row_without_points_says_so_with_None_not_a_number(self):
+        """The pair contract: no points to explain -> no explanation, and it must be None."""
+        unpriced = [row for row in self.board if row.get("projected_points") is None]
+        self.assertTrue(unpriced, "no unpriced row on this board -- the test would be vacuous")
+        for row in unpriced:
+            self.assertIsNone(row.get("availability_basis"), row["name"])
+
     def test_the_haircut_actually_demotes_the_designated_players(self):
         """Measured as a MOVE, not an absolute rank, and on the production basis.
 

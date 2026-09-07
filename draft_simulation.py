@@ -33,6 +33,7 @@ from dataclasses import dataclass
 from typing import Any, Optional
 
 import draft_board_ui
+import draft_room as dr
 import pick_synthesis
 from data_merger import DataMerger
 
@@ -86,6 +87,8 @@ class DraftTrajectory:
 def simulate_full_draft(
     merger: DataMerger, players_db: dict[str, dict], league: dict, pick_order: list,
     *, mode: str = "auto", pool_scope: str = "all", config_label: str = "",
+    sleeper_projections: Optional[dict[str, dict]] = None,
+    sleeper_basis: str = dr.SLEEPER_BASIS_WEEKLY,
 ) -> DraftTrajectory:
     """Run one complete draft, every chair using the real production engine -- never a
     simulation-specific valuation or decision heuristic.
@@ -113,6 +116,13 @@ def simulate_full_draft(
         snap = pick_synthesis.build_snapshot(
             merger, players_db, picks, pick_order, idx, roster_id, league,
             pick_label=pick_label, mode=mode, pool_scope=pool_scope,
+            # #204: production (app.py's Draft Room) passes BOTH of these, so a simulated
+            # draft that omits them is not drafting from the production pricing path -- every
+            # row comes back with sleeper_points/sleeper_basis/availability_basis all None,
+            # and the scoring-aware path (#180/#192) plus the availability haircut (#191/#202)
+            # are silently inert. Defaulted to None/WEEKLY so every existing caller keeps its
+            # exact previous behaviour; the battery is what supplies them.
+            sleeper_projections=sleeper_projections, sleeper_basis=sleeper_basis,
         )
         if not snap.candidates:
             break
@@ -127,7 +137,13 @@ def simulate_full_draft(
         ))
 
     return DraftTrajectory(
-        config={"pick_order": [str(r) for r in pick_order], "mode": mode, "pool_scope": pool_scope, "label": config_label},
+        config={"pick_order": [str(r) for r in pick_order], "mode": mode, "pool_scope": pool_scope,
+                "label": config_label,
+                # WHICH PRICING PATH produced this trajectory, carried with it. Two trajectories
+                # drafted off different point sources are not comparable, and without this the
+                # difference is invisible in the record (#204).
+                "sleeper_basis": (sleeper_basis if sleeper_projections else None),
+                "priced_from": ("vendor+sleeper" if sleeper_projections else "vendor_only")},
         picks=tuple(records),
     )
 
@@ -145,6 +161,8 @@ def run_trials(
             merger, players_db, cfg["league"], cfg["pick_order"],
             mode=cfg.get("mode", "auto"), pool_scope=cfg.get("pool_scope", "all"),
             config_label=cfg.get("label", ""),
+            sleeper_projections=cfg.get("sleeper_projections"),
+            sleeper_basis=cfg.get("sleeper_basis", dr.SLEEPER_BASIS_WEEKLY),
         )
         for cfg in configs
     ]
