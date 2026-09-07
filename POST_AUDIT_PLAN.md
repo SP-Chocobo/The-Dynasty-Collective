@@ -5954,3 +5954,68 @@ The defect is a per-game rate multiplied by a game count that has not yet been c
 games of the season" -- and the player card reads "injured reserve/designated to return". The
 four-game figure taken from the NFL rulebook is confirmed by the feed's own reporting, which is
 the strongest form this constant's derivation could take.
+
+
+## #114 RESOLVED, #154 DISSOLVED, #155 RECHARACTERIZED -- THE BLOCKER FAMILY RE-MEASURED ON THE
+## CURRENT ENGINE
+
+All three were measured before #193 widened the pool, #196 recovered 56 priced players, #201
+gave the harness the real universe, and #191 corrected the availability input. Re-measured on a
+full 12-team, 19-round draft against the real capture, with `set_league_format` and
+`sleeper_basis=SEASON_SUM` both explicit.
+
+### #114 -- RESOLVED
+
+The claim: 27.8% of an 18-round draft decided by a player-id tiebreak, because so many
+candidates shared an identical `final_score`.
+
+**Measured now: 0 of 19 rounds.** No round's top pick ties its runner-up on `final_score`. The
+pool widening gave the engine enough genuinely priced players that the degenerate tie regime is
+not entered at all. Nothing to repair.
+
+### #154 -- DISSOLVED
+
+The claim: an upstream relative-value collapse manufactures the shortage the backstop then
+correctly detects.
+
+The top pick's `universal_value` now declines cleanly across the whole draft, every one priced
+through the scoring-aware path:
+
+    r1  Jahmyr Gibbs    RB   217.28
+    r5  Saquon Barkley  RB    78.80
+    r10 Tony Pollard    RB    12.46
+    r15 Jared Verse     DL    11.07
+    r19 Travon Walker   DL     2.22
+
+There is no collapse to a degenerate regime. The premise no longer holds.
+
+### #155 -- RECHARACTERIZED, AND MY FIRST DETECTOR WAS WRONG
+
+The claim: "an exhausted position prices at 0.00 and outranks every live position's honest
+negative."
+
+**My first detector reported 7 of 19 rounds and did not check the POSITION.** Inspecting round
+7, the offending rows were Andy Borregales (K) at 0.00 above Harrison Butker (K) at -0.09,
+Tyler Bass (K) at -0.13, and so on -- **all kickers, correctly ordered among themselves.** A
+player sitting exactly at his own position's replacement level has a VOR of 0.00 by definition.
+That is the arithmetic working, not failing.
+
+Re-run with the position compared: **21 same-position pairs (correct) and 70 cross-position
+pairs.** The cross-position cases are real and look like this:
+
+    r7  Dallas Turner    DL  0.00  outranks  Dallas Goedert  TE  -3.86
+    r9  Nick Emmanwori   DB  0.00  outranks  Stefon Diggs    WR  -5.43
+
+**But the mechanism is not the one the item names.** Nothing is exhausted -- DL has 219 rows.
+Dallas Turner, Nick Emmanwori and Keyshaun Elliott recur because each IS his position's
+replacement-level player, and such a player prices at exactly 0.00 tautologically. So the
+finding is not "a degenerate zero from an empty position", it is **"cross-position VOR
+comparison ranks a zero above a negative"** -- which is what VOR means, and whether VOR is
+comparable across positions at all is #74/#76's open question about the bpa unit, not a
+late-draft defect.
+
+**NOT REPAIRED, and deliberately not.** Making the engine prefer the -3.86 TE to the 0.00 DL
+would require a cross-position comparability rule nobody has derived, which is #56's
+prohibition exactly. The honest output is the recharacterization: #155 folds into the bpa-unit
+question (#74/#76) and stops being a member of the late-draft blocker family, because the
+late-draft collapse it was grouped with no longer exists.
