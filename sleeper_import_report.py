@@ -112,6 +112,63 @@ def _coverage(rows, field: str, by: str = "position") -> dict:
     return dict(sorted(out.items()))
 
 
+def _headshot_probe(client) -> dict:
+    """Can we put a face in a player box? MEASURED, not remembered.
+
+    The owner asked whether player photos are available to fill the player boxes. The URL
+    pattern is a thing this codebase does not currently use anywhere -- no reference to
+    sleepercdn exists in any shipping module -- so the honest answer is not a pattern recited
+    from memory but an HTTP status from the real CDN. This fetches headers for a handful of
+    real, currently-rostered-calibre players and reports what came back.
+
+    ABSENCE, deliberately not flattened: "this player has no photo" and "the fetch failed" are
+    different facts and are counted separately, exactly as _coverage does for data fields. A
+    photo is also a weaker case than a VALUE -- a missing headshot may honestly fall back to a
+    silhouette, because a silhouette asserts nothing about the player. That is not the same
+    permission the absence contract withholds for a number, and this note exists so the
+    distinction is not lost when someone wires this up.
+    """
+    import urllib.request
+
+    db = client.get_players()
+    offense = [(pid, r) for pid, r in db.items()
+               if (r or {}).get("position") in ("QB", "RB", "WR", "TE")
+               and (r or {}).get("team")]
+    offense.sort(key=lambda kv: str(kv[0]))
+    sample = offense[:4]
+    if not sample:
+        return {"checked": 0, "note": "no offensive player with a team in the payload"}
+
+    found, missing, errored, results = 0, 0, 0, []
+    for pid, row in sample:
+        url = f"https://sleepercdn.com/content/nfl/players/{pid}.jpg"
+        entry = {"position": (row or {}).get("position"), "url_pattern": url}
+        try:
+            req = urllib.request.Request(url, method="HEAD")
+            with urllib.request.urlopen(req, timeout=10) as resp:
+                entry.update(status=resp.status,
+                             content_type=resp.headers.get("Content-Type"),
+                             bytes=resp.headers.get("Content-Length"))
+                if resp.status == 200:
+                    found += 1
+                else:
+                    missing += 1
+        except Exception as exc:                                # noqa: BLE001
+            entry["error"] = f"{type(exc).__name__}: {exc}"
+            errored += 1
+        results.append(entry)
+
+    return {
+        "checked": len(sample),
+        "headshot_returned_200": found,
+        "no_headshot_for_that_player": missing,
+        "fetch_errored": errored,          # NOT the same fact as "no headshot"
+        "results": results,
+        "verdict": ("player headshots ARE available at this pattern" if found
+                    else "no headshot resolved -- do NOT wire photos on this evidence"),
+    }
+
+
 def _step(report: dict, name: str, fn):
     """Run one probe. A failure is RECORDED, never fatal -- a report that dies on its third
     endpoint tells you less than one that finishes and names what it could not reach."""
@@ -159,7 +216,14 @@ def build_report(username: Optional[str], league_id: Optional[str], raw: bool) -
     def projections():
         state = client.get_nfl_state() or {}
         season = str(state.get("season") or "")
-        week = int(state.get("week") or 1) or 1
+        # A17: this used to read `int(state.get("week") or 1) or 1`, which invented week 1
+        # whenever Sleeper reported none -- and then printed it as the week it had FETCHED.
+        # A report whose whole job is "what actually arrived" must not fabricate its own
+        # inputs. The doubled `or 1` also silently converted a real week 0 to 1.
+        reported_week = state.get("week")
+        week = int(reported_week) if reported_week is not None else None
+        if week is None:
+            raise ValueError("Sleeper reported no current week; refusing to invent one")
         proj = client.get_weekly_projections(season, week)
         rows = list(proj.values())
         cats = collections.Counter(c for r in rows for c in (r or {}))
@@ -182,9 +246,10 @@ def build_report(username: Optional[str], league_id: Optional[str], raw: bool) -
     _step(report, "weekly_projections", projections)
 
     # ---- 3. the league itself: scoring surface (#180) and roster shape (#178) -------------
+    resolved: dict = {}
     def league():
         lid = league_id
-        if not lid:
+        if not lid:  # noqa: SIM102 -- readability over nesting here
             if not username:
                 raise ValueError("need --username or --league-id to read a league")
             user = client.get_user(username)
@@ -194,6 +259,7 @@ def build_report(username: Optional[str], league_id: Optional[str], raw: bool) -
             if not leagues:
                 raise ValueError("that user has no leagues this season")
             lid = str(leagues[0].get("league_id"))
+        resolved["league_id"] = lid      # the RAW id; the reported one is hashed unless --raw
         lg = client.get_league(lid) or {}
         scoring = lg.get("scoring_settings") or {}
         rpos = lg.get("roster_positions") or []
@@ -218,15 +284,79 @@ def build_report(username: Optional[str], league_id: Optional[str], raw: bool) -
         }
     _step(report, "league_config", league)
 
-    # ---- 4. does this league's OWN scoring change a real player's points? -----------------
+    # ---- 4. what arrives about the PEOPLE, and how much of it do we throw away? ----------
+    def league_users():
+        """Whether Sleeper sends profile imagery, and what this app currently does with it.
+
+        Asked because the answer was about to be given from memory. `avatar` is known to arrive
+        -- run_fixture_validation.py:30 already lists it among the fields safe to strip -- but
+        "a field named avatar arrives" is not "we can render a photo", and the difference is a
+        URL pattern nobody here has verified against the live CDN. So this fetches the candidate
+        image and reports the HTTP status, rather than asserting the pattern is right.
+
+        Absence is reported as absence: a user with no avatar set is counted separately from a
+        user whose avatar failed to fetch. Those are different facts.
+        """
+        import urllib.request
+
+        users = client.get_league_users(resolved["league_id"]) or []
+        if not users:
+            raise ValueError("no users returned for this league")
+
+        fields = collections.Counter()
+        for u in users:
+            for k in (u or {}):
+                fields[k] += 1
+            for k in ((u or {}).get("metadata") or {}):
+                fields[f"metadata.{k}"] += 1
+
+        with_avatar = [u for u in users if (u or {}).get("avatar")]
+        meta_avatar = [u for u in users if ((u or {}).get("metadata") or {}).get("avatar")]
+
+        # MEASURE the URL pattern instead of remembering it.
+        probes = []
+        for u in with_avatar[:3]:
+            aid = str(u.get("avatar"))
+            for label, url in (("full", f"https://sleepercdn.com/avatars/{aid}"),
+                               ("thumb", f"https://sleepercdn.com/avatars/thumbs/{aid}")):
+                try:
+                    req = urllib.request.Request(url, method="HEAD")
+                    with urllib.request.urlopen(req, timeout=10) as resp:
+                        probes.append({"kind": label, "status": resp.status,
+                                       "content_type": resp.headers.get("Content-Type"),
+                                       "bytes": resp.headers.get("Content-Length")})
+                except Exception as exc:                        # noqa: BLE001
+                    probes.append({"kind": label, "error": f"{type(exc).__name__}: {exc}"})
+
+        return {
+            "users_in_league": len(users),
+            "users_with_a_profile_avatar": len(with_avatar),
+            "users_with_NO_avatar_set": len(users) - len(with_avatar),
+            "users_with_a_custom_team_avatar": len(meta_avatar),
+            "FORM_user_record": _shape(users[0], not raw),
+            "fields_seen": dict(sorted(fields.items())),
+            "avatar_url_probe": probes or "no user in this league has an avatar set",
+            "player_headshots": _headshot_probe(client),
+            # The gap this probe exists to size.
+            "this_app_reads_only": ["display_name", "metadata.team_name"],
+            "arrives_but_UNUSED": sorted(
+                k for k in fields
+                if k not in ("display_name", "metadata.team_name")
+            ),
+        }
+    _step(report, "league_users", league_users)
+
+    # ---- 5. does this league's OWN scoring change a real player's points? -----------------
     def scoring_effect():
         lg = report["probes"]["league_config"]["result"]
         proj = report["probes"]["weekly_projections"]["result"]
         if not lg.get("ok", True) or "scoring_settings" not in lg:
             raise ValueError("league_config did not resolve")
         state = client.get_nfl_state() or {}
-        raw_proj = client.get_weekly_projections(str(state.get("season") or ""),
-                                                 int(state.get("week") or 1) or 1)
+        wk = state.get("week")                      # A17: never invented -- see probe 2
+        if wk is None:
+            raise ValueError("Sleeper reported no current week; refusing to invent one")
+        raw_proj = client.get_weekly_projections(str(state.get("season") or ""), int(wk))
         db = client.get_players()
         mine = lg["scoring_settings"]
         plain = {"rec": mine.get("rec", 0), "bonus_rec_te": mine.get("bonus_rec_te", 0)}
@@ -284,10 +414,27 @@ def render(report: dict) -> str:
             out.append(f"    scoring keys: {r['scoring_keys_total']}, "
                        f"UNMODELLED by the offline path: {r['unmodelled_count']}")
             out.append(f"    unmodelled: {r['scoring_keys_it_CANNOT_honour']}")
+        elif name == "league_users":
+            out.append(f"    {r['users_in_league']} users; "
+                       f"{r['users_with_a_profile_avatar']} have a profile avatar, "
+                       f"{r['users_with_NO_avatar_set']} have none set")
+            out.append(f"    custom team avatars: {r['users_with_a_custom_team_avatar']}")
+            out.append(f"    avatar URL probe: {r['avatar_url_probe']}")
+            _hs = r.get("player_headshots") or {}
+            out.append(f"    player headshots: {_hs.get('headshot_returned_200', '?')} of "
+                       f"{_hs.get('checked', '?')} checked returned 200 "
+                       f"({_hs.get('fetch_errored', '?')} fetch errors) "
+                       f"-> {_hs.get('verdict', 'not probed')}")
+            out.append(f"    this app reads only: {r['this_app_reads_only']}")
+            out.append(f"    arrives but UNUSED: {r['arrives_but_UNUSED']}")
         elif name == "scoring_effect":
+            # A18: pct_changed is legitimately None when nothing was scoreable. The
+            # producer honoured that and the renderer did not -- it printed "(None%)".
+            _pct = r.get("pct_changed")
+            _pct_txt = "not computable -- no scoreable player" if _pct is None else f"{_pct}%"
             out.append(f"    {r['players_whose_points_change']} of "
                        f"{r['scoreable_offensive_players']} offensive players change "
-                       f"({r['pct_changed']}%)")
+                       f"({_pct_txt})")
             out.append(f"    -> {r['reading']}")
         out.append("")
     return "\n".join(out)
