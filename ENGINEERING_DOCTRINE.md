@@ -343,3 +343,38 @@ repository has actually suffered, written down so the tenth is a new one.
 **The standing consequence:** a finding from an instrument that has not cleared M1 is reported
 as PROVISIONAL and may not be used as an input to the freeze decision. Suspending #176 was that
 rule being applied before it was written down.
+
+## Two freezes, and they are not the same question
+
+A finding that blocks shipping does not necessarily block freezing the decision engine, and the
+reverse is also true. Conflating them produced arguments that went nowhere, because the same
+finding was being weighed against two different bars at once. So the vocabulary is fixed:
+
+**ENGINE FREEZE.** The deterministic machinery is stable and its blocker state is known. Asks:
+*can the decision procedure still change under us?* A defect qualifies if it can alter what the
+engine picks, given the same inputs -- ordering, pricing, selection, the constants that feed
+them.
+
+**PRODUCT FREEZE.** The engine is receiving and displaying the user's actual league semantics
+correctly. Asks: *is the machine answering the question the user asked?* A defect qualifies if
+the engine is correct about the wrong league, or reports its answer in a way that misleads.
+
+The test to apply, in order: does this change what the engine picks from identical inputs
+(engine), or does it change whether the inputs describe the user's real league (product)? Some
+findings are both -- #180 is, because the scoring transformation lives INSIDE the valuation path
+rather than upstream of it, so a scoring-regime substitution changes pick ordering.
+
+Worked examples from this register:
+  #154/#155  ENGINE. A chair finishes unable to field a legal lineup. Pure machinery.
+  #179       PRODUCT, not engine. A vendor's aging curve is an input property; the engine's
+             arithmetic on it is correct. Remedy is an input, not code.
+  #183 (#6)  PRODUCT. A failed chair rendered as a report misleads the reader; it does not
+             change a pick.
+  #180       BOTH. See above.
+
+WHY THE COUNT IS NOT THE METRIC. A dozen small bounded findings that reproduce and do not touch
+the architecture is a healthier state than zero findings from a shallow audit. What matters is
+whether the findings are still ARCHITECTURAL (the design is wrong) or now RESIDUAL (the design is
+right, a specific boundary is not yet proven). Watch the kind, not the number. A register that
+stops growing has usually stopped looking.
+
