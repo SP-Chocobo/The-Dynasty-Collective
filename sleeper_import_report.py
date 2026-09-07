@@ -90,6 +90,53 @@ def _field_types(rows, limit: int = 400) -> dict:
     return {k: sorted(v) for k, v in sorted(seen.items())}
 
 
+#: Fields whose VALUE DOMAIN is reported verbatim, never scrubbed. These are league-independent
+#: NFL facts drawn from a small closed vocabulary -- "Questionable", "IR", "Active" -- so they
+#: identify nobody, and hashing them would destroy the only thing worth knowing about them.
+#: The scrubber exists to protect who you are and who you play with; applied here it would hide
+#: the answer to the question the probe is asking.
+VALUE_DOMAIN_FIELDS = ("injury_status", "status", "practice_participation")
+
+
+def _value_domain(rows, field: str, limit: int = 25) -> dict:
+    """WHAT a field actually says, not merely how often it says it.
+
+    THE QUESTION THIS EXISTS TO SETTLE, and it is not a detail. `injury_status` present on 6.8%
+    of WRs supports two OPPOSITE readings:
+      (a) the field is populated ONLY for players carrying a designation, so ABSENCE MEANS
+          HEALTHY -- the input is complete and risk_adj can be wired against it; or
+      (b) the field is sparsely or unreliably populated, so ABSENCE MEANS UNKNOWN -- and
+          treating a missing value as "healthy" would fabricate a clean bill of health for
+          93.2% of receivers.
+    A coverage percentage cannot distinguish those. The value domain can: if every present
+    value is a real designation (Questionable / Doubtful / Out / IR / PUP / Sus / NA) and none
+    of them means "healthy", reading (a) holds. If "Healthy" or "Active" appears among them,
+    (b) does. Reporting `status` alongside is the cross-check -- a field that IS ~100% present
+    and DOES carry Active/Inactive is the one that answers "is this player available at all",
+    and its existence is what makes designation-only injury_status coherent.
+
+    This is the failure the module's own _shape docstring already names -- a field could be a
+    string, a null, an enum or a nested object, and the difference decides whether it can be
+    wired at all -- and the first version of this report measured presence and never looked.
+    """
+    seen = collections.Counter()
+    for row in rows:
+        value = (row or {}).get(field, "__absent__")
+        if value is None:
+            seen["__explicit_null__"] += 1
+        elif value == "__absent__":
+            seen["__key_missing__"] += 1
+        elif isinstance(value, (list, tuple)):
+            seen[f"list{sorted(map(str, value))}"] += 1
+        else:
+            seen[str(value)] += 1
+    return {
+        "distinct_values": len(seen),
+        "counts": dict(seen.most_common(limit)),
+        "truncated": len(seen) > limit,
+    }
+
+
 def _coverage(rows, field: str, by: str = "position") -> dict:
     """Present / absent / blank, counted SEPARATELY per position.
 
@@ -202,6 +249,11 @@ def build_report(username: Optional[str], league_id: Optional[str], raw: bool) -
             "injury_status_coverage": _coverage(rows, "injury_status"),
             "years_exp_coverage": _coverage(rows, "years_exp"),
             "fantasy_positions_coverage": _coverage(rows, "fantasy_positions"),
+            # WHAT the status fields actually say -- see _value_domain for why a coverage
+            # percentage alone cannot tell "absent means healthy" from "absent means unknown".
+            "VALUES_status_fields": {f: _value_domain(rows, f) for f in VALUE_DOMAIN_FIELDS},
+            "VALUES_status_fields_offence_only": {
+                f: _value_domain(offense, f) for f in VALUE_DOMAIN_FIELDS},
             "multi_position_players": sum(
                 1 for r in rows if len((r or {}).get("fantasy_positions") or []) > 1),
             "offensive_players": len(offense),
@@ -402,6 +454,13 @@ def render(report: dict) -> str:
                 shown = {k: v["present_pct"] for k, v in cov.items() if k in FANTASY}
                 out.append(f"    {f} present %% by position: {shown}")
             out.append(f"    players with >1 fantasy position: {r['multi_position_players']}")
+            for f in VALUE_DOMAIN_FIELDS:
+                dom = (r.get("VALUES_status_fields") or {}).get(f)
+                if not dom:
+                    continue
+                real = {k: v for k, v in dom["counts"].items()
+                        if not k.startswith("__")}
+                out.append(f"    {f} VALUES ({dom['distinct_values']} distinct): {real}")
         elif name == "weekly_projections":
             out.append(f"    season {r['season']} week {r['week']}: "
                        f"{r['players_with_a_projection']} projected")
