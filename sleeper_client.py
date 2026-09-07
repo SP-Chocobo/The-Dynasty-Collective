@@ -285,6 +285,73 @@ class SleeperClient:
                     result[str(pid)] = stats
         return result
 
+    #: Weeks summed for a season projection. 18 is the NFL regular season's WEEK COUNT, not a
+    #: games-played assumption: each team byes once, and a bye week simply returns no row for
+    #: that player, so it contributes nothing. That is the point -- see get_season_projections.
+    REGULAR_SEASON_WEEKS = 18
+
+    def get_season_projections(
+        self, season: str, season_type: str = "regular", weeks: Optional[int] = None,
+    ) -> tuple[dict[str, dict], dict]:
+        """player_id -> {stat_category: SEASON TOTAL}, summed from every week, plus a coverage
+        record describing how that total was assembled.
+
+        WHY A SUM RATHER THAN ONE WEEK SCALED. The engine needs a season-shaped number scored
+        under THIS league's rules. Sleeper publishes per-category projections weekly; the vendor
+        publishes a season POINT TOTAL that cannot be re-scored, because you cannot recover
+        stats from a total. Summing the weeks is the only construction that gets both halves
+        right -- real season shape AND the league's own scoring (#180).
+
+        Multiplying one week by a fixed factor was the alternative and is worse in a way that
+        matters: it assumes every week is the average week. Summing does not. A bye week returns
+        no row and contributes nothing; a player projected out for six games contributes six
+        fewer weeks; a player whose usage is expected to climb contributes his real later weeks.
+        None of that survives a single-week extrapolation.
+
+        THE COVERAGE RECORD IS NOT OPTIONAL. A total summed from 11 of 18 weeks is a different
+        claim from one summed from 18, and a consumer that cannot tell them apart will read a
+        partial season as a weak player. So this returns (totals, coverage) rather than a bare
+        dict, and coverage carries the weeks REQUESTED, the weeks that actually ANSWERED, and
+        the per-player week count. A caller that wants to reject thin coverage can; one that
+        drops the second element has made that choice visibly rather than by accident.
+
+        A week that errors is recorded as a failed week and does NOT abort the sum -- one bad
+        response should not cost the other seventeen -- but it is never silently treated as a
+        week of zeros, which would understate every player in the league by exactly that week.
+        """
+        wanted = int(weeks or self.REGULAR_SEASON_WEEKS)
+        totals: dict[str, dict] = {}
+        weeks_present: dict[str, int] = {}
+        answered: list[int] = []
+        failed: list[int] = []
+        for week in range(1, wanted + 1):
+            rows = self.get_weekly_projections(season, week, season_type)
+            if not rows:
+                failed.append(week)
+                continue
+            answered.append(week)
+            for pid, stats in rows.items():
+                bucket = totals.setdefault(pid, {})
+                counted = False
+                for category, value in (stats or {}).items():
+                    try:
+                        bucket[category] = bucket.get(category, 0.0) + float(value)
+                    except (TypeError, ValueError):
+                        continue          # a non-numeric category is skipped, never coerced to 0
+                    counted = True
+                if counted:
+                    weeks_present[pid] = weeks_present.get(pid, 0) + 1
+        coverage = {
+            "season": season,
+            "season_type": season_type,
+            "weeks_requested": wanted,
+            "weeks_answered": answered,
+            "weeks_failed": failed,
+            "players": len(totals),
+            "weeks_present_by_player": weeks_present,
+        }
+        return totals, coverage
+
     def get_weekly_stats(self, season: str, week: int, season_type: str = "regular") -> dict[str, dict]:
         """player_id -> {stat_category: ACTUAL_value, ...} for one completed week.
 
@@ -392,6 +459,22 @@ class SleeperClient:
         # don't exist for a preseason week anyway (no schedule generated yet), so this keeps
         # "which week is this snapshot about" a single decision instead of two that could
         # silently disagree.
+        # #180: the board needs a SEASON-shaped number scored under THIS league's rules. The
+        # weekly fetch above stays exactly as it was -- matchups and the freshness stamp read
+        # it -- and this adds the season sum alongside rather than replacing it, so a failure
+        # here degrades to the previous behaviour instead of emptying the board.
+        season_projections: dict[str, dict] = {}
+        season_projection_coverage: dict = {"weeks_answered": [], "weeks_failed": [],
+                                            "players": 0, "error": None}
+        if season:
+            try:
+                season_projections, season_projection_coverage = self.get_season_projections(
+                    str(season), str(projection_request.get("season_type") or season_type))
+            except Exception as exc:                    # noqa: BLE001 -- degrade, never abort
+                season_projection_coverage = {
+                    "weeks_answered": [], "weeks_failed": [], "players": 0,
+                    "error": f"{type(exc).__name__}: {exc}"}
+
         matchup_week = projection_request.get("week")
         matchups = self.get_matchups(league_id, int(matchup_week)) if matchup_week is not None else []
 
@@ -404,6 +487,12 @@ class SleeperClient:
             "nfl_state": nfl_state,
             "projection_request": projection_request,
             "projection_attempts": projection_attempts,
+            # Season totals per raw stat category, summed from every week that answered, plus
+            # the coverage record that says WHICH weeks those were. A consumer must read the
+            # coverage before trusting a total: 11 of 18 weeks summed is a different claim from
+            # 18, and nothing downstream can recover that from the number alone.
+            "season_projections": season_projections,
+            "season_projection_coverage": season_projection_coverage,
             "projections": projections,
             "matchups": matchups,
         }

@@ -5290,10 +5290,17 @@ elif main_view == DRAFT_VIEW:
                                 snap = cached[1]
                             else:
                                 try:
+                                    # #180: the league's own scoring reaches the board here or
+                                    # nowhere. season_projections is the per-category season
+                                    # sum; scoring_settings already rides on league_for_engine.
+                                    # Absent (no sync, or the fetch failed) it is None and the
+                                    # board falls back to the vendor total exactly as before.
                                     snap = pick_synthesis.build_snapshot(
                                         merger, players_db, draft_picks, pick_order, target_index, my_roster_id,
                                         league_for_engine, pick_label=pick_label,
                                         pool_scope=st.session_state.draft_room_pool_scope,
+                                        sleeper_projections=(snapshot.get("season_projections") or None),
+                                        sleeper_basis=draft_room.SLEEPER_BASIS_SEASON_SUM,
                                     )
                                     st.session_state.draft_room_snapshot_cache = (snapshot_cache_key, snap)
                                 except Exception as exc:  # noqa: BLE001 -- surface, never crash the whole dashboard

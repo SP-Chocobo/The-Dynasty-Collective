@@ -1232,6 +1232,8 @@ def build_snapshot(
     pool_scope: str = "all",
     top_n: int = DEFAULT_NARROW_COUNT,
     user_selected_player_id: Optional[str] = None,
+    sleeper_projections: Optional[dict[str, dict]] = None,
+    sleeper_basis: str = dr.SLEEPER_BASIS_WEEKLY,
 ) -> PickSnapshot:
     """Build one frozen PickSnapshot: compute the real board, narrow to the live candidates,
     layer on survival/opportunity-cost/denial (draft_strategy.pick_analysis) and positional
@@ -1239,8 +1241,15 @@ def build_snapshot(
     "balanced" (not draft_room's own "auto") -- upside-mode scoring drops universal_value/
     need_bonus/eligibility_bonus entirely (see draft_room.compute_draft_board's own docstring),
     and this snapshot's whole shape depends on those fields existing."""
+    # #180: sleeper_projections had NO production caller -- build_snapshot never passed it, so
+    # score_projection never ran outside the measurement harness and the league's own scoring
+    # reached no price at any position. scoring_settings was already wired (compute_draft_board
+    # reads it off `league`); the stats were the missing half. Passing None keeps the previous
+    # behaviour exactly, which is what every offline caller and every test does.
     board = dr.compute_draft_board(
-        merger, players_db, picks, my_roster_id=my_roster_id, league=league, mode=mode, pool_scope=pool_scope,
+        merger, players_db, picks, my_roster_id=my_roster_id, league=league, mode=mode,
+        pool_scope=pool_scope, sleeper_projections=sleeper_projections,
+        sleeper_basis=sleeper_basis,
     )
     # Real per-league positional depth for narrow_candidates' position_depth -- the same
     # remaining-demand rank replacement_levels itself uses for VOR (num_teams matches

@@ -188,6 +188,17 @@ from player_universe import FLEX_SLOT_POSITIONS, FANTASY_POSITIONS, league_usabl
 # a real season projection (no bye week, no matchup variance, no injury-game-missed
 # adjustment) -- it exists to fix "no real points data at all", not to be mistaken for Draft
 # Sharks' own season methodology.
+#: How a Sleeper-derived point total was ASSEMBLED. It travels with the number because the two
+#: bases are different quantities on different scales, and a consumer that cannot tell them
+#: apart will either scale a season total again or leave a weekly one unscaled. Named constants
+#: rather than bare strings so a rename cannot silently disagree across a boundary (#186).
+SLEEPER_BASIS_SEASON_SUM = "season_sum"      # every week's per-category projection, summed
+SLEEPER_BASIS_WEEKLY = "weekly"              # ONE week, scaled by the factor below
+
+#: Applies ONLY to SLEEPER_BASIS_WEEKLY. Retired from the season-sum path, where the number is
+#: already a season total -- see _derive_points_and_source. It is also an unvalidated constant
+#: in its own right: 17 is a games-played assumption (a player who misses six weeks is still
+#: multiplied by 17), which is exactly the error the season sum does not make.
 SLEEPER_WEEKLY_TO_SEASON_FACTOR = 17
 
 # Round at which the engine switches from the balanced formula to upside-only scoring,
@@ -416,6 +427,10 @@ UPSIDE_GROWTH_WEIGHT = 0.5
 # confidence is now a direct, cheap encoding of which anchor a row actually used -- see
 # module docstring on why this replaced a composite-score cross-source-agreement lookup.
 CONFIDENCE_BY_SOURCE = {
+    # Highest, and deliberately above the vendor: this is the only anchor that is BOTH season-
+    # shaped and scored under the league's own rules. The vendor's number is a real season
+    # model but answers a different league's scoring question (#180).
+    "points_vor_sleeper_season_scored": 85.0,
     "points_vor_draftsharks": 80.0,
     "points_vor_sleeper_extrapolated": 60.0,
     "points_vor_sleeper_seeded": 50.0,
@@ -636,6 +651,7 @@ def build_available_pool(
     sleeper_projections: Optional[dict[str, dict]] = None,
     scoring_settings: Optional[dict] = None,
     pool_scope: str = "all",
+    sleeper_basis: str = SLEEPER_BASIS_WEEKLY,
 ) -> pd.DataFrame:
     """One row per undrafted, fantasy-relevant player this app has a real number for --
     joined from Sleeper's player_id-keyed database (drafts speak player_id, the ranking
@@ -718,11 +734,17 @@ def build_available_pool(
             raw_stats = sleeper_projections.get(player_id)
             if raw_stats:
                 scored = score_projection(raw_stats, scoring_settings)
-                # A true zero here is indistinguishable from an empty/stale stat line --
-                # IDP projections specifically have a known history of gaps (flagged
-                # directly, unverified from this environment -- no live Sleeper access to
-                # confirm current data quality). Treat it as "no real projection" rather
-                # than "this player projects for zero," same as a missing entry entirely.
+                # THE ZERO GUARD, AND WHY IT STILL APPLIES TO BOTH BASES (#180).
+                # Written for the weekly basis, where a 0 is indistinguishable from an empty or
+                # stale stat line -- IDP had a known history of gaps. A SEASON SUM changes the
+                # arithmetic but not the conclusion: the sum is taken over whatever weeks
+                # answered, so a total of exactly 0.0 means every answering week scored zero
+                # under this league's rules, which for a real fantasy-relevant player does not
+                # happen and for an empty stat line happens every time. It remains far likelier
+                # to be absence than a measurement, and the contract is that absence is not a
+                # value. A player who genuinely projects to zero is therefore reported as
+                # unpriced and ordered last, never as a measured 0.0 competing on the number
+                # line -- the conservative direction, and the same one taken everywhere else.
                 sleeper_points = scored if scored != 0 else None
         rows.append({
             "player_id": player_id,
@@ -734,6 +756,12 @@ def build_available_pool(
             "projection": match.get("projection"),
             "proj_3yr": match.get("proj_3yr"),
             "sleeper_points": sleeper_points,
+            # The companion that makes sleeper_points readable. Never inferred downstream: a
+            # season total and a weekly one are different quantities, and _derive_points_and_source
+            # reads this to decide BOTH the scale factor and the precedence. None whenever
+            # sleeper_points is None, so the pair is always consistent (#166's lesson: a
+            # quantity must not cross a layer without the companion that gives it meaning).
+            "sleeper_basis": (sleeper_basis if sleeper_points is not None else None),
             # Which committed file this row's projection actually came from -- not used for
             # anything about the player's VALUE, only so compute_draft_board can label bpa_source
             # honestly instead of assuming every non-live-sync "projection" came from Draft
@@ -750,7 +778,7 @@ def build_available_pool(
     if not rows:
         return pd.DataFrame(columns=[
             "player_id", "name", "position", "team", "injury_status", "trade_value",
-            "projection", "proj_3yr", "sleeper_points", "source_file", "bpa",
+            "projection", "proj_3yr", "sleeper_points", "sleeper_basis", "source_file", "bpa",
             "_canonical_key", "_match_path", "_match_verified",
         ])
     return _drop_contested_identities(pd.DataFrame(rows))
@@ -1504,16 +1532,49 @@ def _derive_points_and_source(pool: pd.DataFrame) -> pd.Series:
     # (a label and a confidence NUMBER, never bpa/universal_value/final_score).
     if "source_file" in pool.columns:
         pool.loc[pool["source_file"].isin(KDST_SEEDED_SOURCE_FILES), "bpa_source"] = "points_vor_sleeper_seeded"
-    no_ds_proj = pool["_points"].isna()
+    # #180 -- THE PRECEDENCE, AND WHY IT CHANGED.
+    #
+    # This branch used to read `no_ds_proj & has_sleeper`: the league-scored number was used
+    # ONLY where the vendor had nothing. The vendor projects every offensive player, so that
+    # condition was False for all of them, and a number computed correctly under this league's
+    # own 64 scoring keys was thrown away one line later. IDP/K/DST appeared to "route through
+    # scoring" only because the vendor does not cover them. Measured against the owner's real
+    # league: 390 of 391 offensive players priced from a total that its scoring cannot express,
+    # with 57 of 64 keys unreachable.
+    #
+    # The rule now is basis-first, not coverage-first: a SEASON-SUMMED, LEAGUE-SCORED total
+    # beats a static vendor total for every position, because it is the only number that is
+    # both season-shaped and scored under the rules actually in force. Where no such total
+    # exists the vendor still wins, unchanged.
+    #
+    # WHY sleeper_basis GATES THIS RATHER THAN sleeper_points ALONE. A weekly figure and a
+    # season sum are different quantities, and the old code multiplied whatever it got by
+    # SLEEPER_WEEKLY_TO_SEASON_FACTOR. Promoting a season total through that same line would
+    # multiply an already-seasonal number by 17. So the basis travels WITH the number and
+    # decides both the scale factor and the precedence -- a quantity and the companion that
+    # gives it meaning, together, which is the #166/#174 lesson applied before it can bite.
     has_sleeper = pool["sleeper_points"].notna()
-    use_sleeper = no_ds_proj & has_sleeper
+    if "sleeper_basis" in pool.columns:
+        season_basis = pool["sleeper_basis"].eq(SLEEPER_BASIS_SEASON_SUM)
+    else:
+        season_basis = pd.Series(False, index=pool.index)
+    no_ds_proj = pool["_points"].isna()
+    # A season-summed league-scored total takes precedence everywhere; a weekly one keeps the
+    # old, narrower role of filling in only where the vendor is silent.
+    use_season = has_sleeper & season_basis
+    use_weekly = has_sleeper & ~season_basis & no_ds_proj
     # Guarded rather than assigned unconditionally: when sleeper_points is entirely absent
-    # (no live sync passed one in), use_sleeper is all-False and the right-hand side
+    # (no live sync passed one in), the mask is all-False and the right-hand side
     # collapses to an empty object-dtype Series, which pandas refuses to assign into an
     # existing float64 column even though there's nothing to assign -- a real pandas gotcha.
-    if use_sleeper.any():
-        pool.loc[use_sleeper, "_points"] = pool.loc[use_sleeper, "sleeper_points"] * SLEEPER_WEEKLY_TO_SEASON_FACTOR
-        pool.loc[use_sleeper, "bpa_source"] = "points_vor_sleeper_extrapolated"
+    if use_season.any():
+        # NO SCALE FACTOR. The number is already a season total; multiplying it by 17 here
+        # would inflate every price by 17x, and the bug would look like a calibration problem.
+        pool.loc[use_season, "_points"] = pool.loc[use_season, "sleeper_points"]
+        pool.loc[use_season, "bpa_source"] = "points_vor_sleeper_season_scored"
+    if use_weekly.any():
+        pool.loc[use_weekly, "_points"] = pool.loc[use_weekly, "sleeper_points"] * SLEEPER_WEEKLY_TO_SEASON_FACTOR
+        pool.loc[use_weekly, "bpa_source"] = "points_vor_sleeper_extrapolated"
 
     has_proj = pool["_points"].notna()
     pool.loc[~has_proj, "bpa_source"] = "position_relative_trade_value_vor"
@@ -1570,8 +1631,15 @@ def _players_db_fingerprint(players_db: dict[str, dict]) -> str:
 def anchor_cache_key(
     merger, players_db, usable_positions, roster_positions, num_teams, value_col,
     sleeper_projections, scoring_settings, pool_scope, startable_floors,
+    sleeper_basis=SLEEPER_BASIS_WEEKLY,
 ) -> str:
-    """Every input predraft_replacement_anchor can read, in one fingerprint."""
+    """Every input predraft_replacement_anchor can read, in one fingerprint.
+
+    sleeper_basis is in the key because it changes the ANSWER: it decides whether a Sleeper
+    total is used as-is or multiplied by 17, and whether it outranks the vendor at all. #184
+    is the cautionary case -- SUPER_FLEX_QB_SHARE moves this anchor and is NOT in this key,
+    because it is a module constant rather than an argument, which silently served one arm the
+    other's anchor during an in-process A/B. An argument has no such excuse."""
     return content_hash.fingerprint(
         _merger_content_fingerprint(merger),
         _players_db_fingerprint(players_db),
@@ -1583,6 +1651,7 @@ def anchor_cache_key(
         repr(sorted((scoring_settings or {}).items())) if scoring_settings else "none",
         repr(pool_scope),
         repr(sorted((startable_floors or {}).items())) if startable_floors else "none",
+        repr(sleeper_basis),
     )
 
 
@@ -1590,6 +1659,7 @@ def predraft_replacement_anchor(
     merger: DataMerger, players_db: dict[str, dict], usable_positions, roster_positions: list[str],
     num_teams: int, value_col: str, *, sleeper_projections=None, scoring_settings=None,
     pool_scope: str = "all", startable_floors: Optional[dict[str, float]] = None,
+    sleeper_basis: str = SLEEPER_BASIS_WEEKLY,
 ) -> dict[str, float]:
     """This league's replacement level per position as it stood with NOBODY drafted.
 
@@ -1625,7 +1695,7 @@ def predraft_replacement_anchor(
     """
     key = anchor_cache_key(
         merger, players_db, usable_positions, roster_positions, num_teams, value_col,
-        sleeper_projections, scoring_settings, pool_scope, startable_floors,
+        sleeper_projections, scoring_settings, pool_scope, startable_floors, sleeper_basis,
     )
     cached = _ANCHOR_CACHE.get(key)
     if cached is not None:
@@ -1635,7 +1705,7 @@ def predraft_replacement_anchor(
     full_pool = build_available_pool(
         merger, players_db, set(), usable_positions,
         sleeper_projections=sleeper_projections, scoring_settings=scoring_settings,
-        pool_scope=pool_scope,
+        pool_scope=pool_scope, sleeper_basis=sleeper_basis,
     )
     if full_pool.empty:
         return _remember_anchor(key, {})
@@ -1781,6 +1851,7 @@ def compute_draft_board(
     sleeper_projections: Optional[dict[str, dict]] = None,
     pool_scope: str = "all",
     demand_picks: Optional[list[dict]] = None,
+    sleeper_basis: str = SLEEPER_BASIS_WEEKLY,
 ) -> list[dict]:
     """The live recommendation board: every undrafted, Draft-Sharks-valued player, ranked
     best pick first, with every scoring layer broken out separately -- universal_value
@@ -1833,7 +1904,7 @@ def compute_draft_board(
     pool = build_available_pool(
         merger, players_db, drafted_ids, usable_positions,
         sleeper_projections=sleeper_projections, scoring_settings=scoring_settings,
-        pool_scope=pool_scope,
+        pool_scope=pool_scope, sleeper_basis=sleeper_basis,
     )
     if pool.empty:
         return []
@@ -1892,7 +1963,7 @@ def compute_draft_board(
             _anchor_cache[value_col] = predraft_replacement_anchor(
                 merger, players_db, usable_positions, roster_positions, num_teams, value_col,
                 sleeper_projections=sleeper_projections, scoring_settings=scoring_settings,
-                pool_scope=pool_scope, startable_floors=floors,
+                pool_scope=pool_scope, startable_floors=floors, sleeper_basis=sleeper_basis,
             )
         return _anchor_cache[value_col]
     pool["_season_proj_pct"] = 50.0
