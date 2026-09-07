@@ -41,7 +41,7 @@ import json
 from typing import Optional
 
 import design_system
-from draft_room import SLEEPER_WEEKLY_TO_SEASON_FACTOR
+from draft_room import SLEEPER_WEEKLY_TO_SEASON_FACTOR, REPLACEMENT_BASIS_LABELS
 from player_universe import FLEX_SLOT_POSITIONS
 from pick_synthesis import (
     DEFAULT_NARROW_COUNT, HORIZON_BASIS_IMPUTED, CandidateSnapshot, PickSnapshot,
@@ -418,6 +418,12 @@ def serialize_snapshot(
         # these into every sentence that states a value, so a rename there is a rename here.
         "valueUnit": design_system.VALUE_UNIT,
         "valueUnitShort": design_system.VALUE_UNIT_SHORT,
+        # #186: the replacement_basis vocabulary, carried across the boundary instead of
+        # restated on the other side. The JS used to hold its own two-branch ternary, so any
+        # token it did not know about rendered as "live starter demand" -- an unrecognised
+        # value silently becoming the STRONGEST claim in the vocabulary. Derived from
+        # draft_room's own table (#126), so a value added there cannot go unlabelled here.
+        "replacementBasisLabels": dict(REPLACEMENT_BASIS_LABELS),
         "candidates": candidates,
     }
 
@@ -633,6 +639,17 @@ const TICK_TITLE = {
 // render an absence as a measured zero, which the contract forbids.
 const ABSENT = "—";
 function num(x) { return typeof x === "number" && Number.isFinite(x); }
+// #186. The words for a replacement_basis token come from Python's own table
+// (draft_room.REPLACEMENT_BASIS_LABELS), never from a branch written over here. An
+// UNRECOGNISED token renders as ITSELF rather than silently becoming the strongest claim in
+// the vocabulary -- the ternary this replaced defaulted every unknown value to the
+// live-demand phrasing, asserting that the league's starter demand produced a price it may
+// not have produced. A raw token is honest and findable; a confident wrong sentence is not.
+// The phrases themselves are deliberately absent from this file, and a test enforces that.
+function basisLabel(token) {
+  const labels = PAYLOAD.replacementBasisLabels || {};
+  return Object.prototype.hasOwnProperty.call(labels, token) ? labels[token] : token;
+}
 function fmt(x, digits) { return num(x) ? x.toFixed(digits) : ABSENT; }
 const NEC_TEXT = {
   "MUST TAKE": "a genuine must-take", "STRONG ACTION": "a strong action",
@@ -807,7 +824,7 @@ function render() {
           <span title="Projected season fantasy points -- a different unit from the two values before it">PROJ <b>${fmt(c.proj, 0)}</b><span class="unit">season pts</span></span>
           <span title="Chance he is still on the board at your next turn">SURV <b>${num(c.survival) ? Math.round(c.survival * 100) + '%' : ABSENT}</b></span>
           <span>CLIFF <b>${c.cliffTier || '—'}</b></span>
-          ${c.replacementBasis ? `<span class="basis-note">PRICED VS <b>${c.replacementBasis === 'predraft_anchor' ? 'pre-draft anchor' : 'live starter demand'}</b></span>` : ''}
+          ${c.replacementBasis ? `<span class="basis-note">PRICED VS <b>${basisLabel(c.replacementBasis)}</b></span>` : ''}
           ${num(c.growthSignal) ? `<span class="basis-note">GROWTH <b>${c.growthSignal.toFixed(1)}</b></span>` : ''}
         </div>
       </div></div></div>

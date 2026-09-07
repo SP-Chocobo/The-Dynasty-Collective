@@ -1266,7 +1266,16 @@ class DecisionBoundaryIsClosedTests(unittest.TestCase):
     FORBIDDEN = {"data_merger", "draft_strategy", "lineup_optimizer", "rookie_draft",
                  "depth_ratings", "lineup_readiness", "roster_diagnostics", "sleeper_client"}
     # module -> the names it may import from draft_room, and nothing else.
-    DRAFT_ROOM_ALLOWANCE = {"draft_board_ui.py": {"SLEEPER_WEEKLY_TO_SEASON_FACTOR"}}
+    # WIDENED ONCE, DELIBERATELY (#186). The rule this list enforces is not "import nothing
+    # from draft_room" -- it is that a snapshot consumer must not acquire the ability to
+    # RECOMPUTE a price. Both entries are inert data by that test: a unit conversion factor,
+    # and the token -> words table for replacement_basis. The alternative was for the board's
+    # JS to keep its own copy of those words, which is precisely the defect #186 records --
+    # the JS ternary defaulted every unrecognised token to the strongest claim in the
+    # vocabulary. One home for the vocabulary is worth one more name on this list; a second
+    # copy of it across a language boundary is not.
+    DRAFT_ROOM_ALLOWANCE = {"draft_board_ui.py": {"SLEEPER_WEEKLY_TO_SEASON_FACTOR",
+                                                  "REPLACEMENT_BASIS_LABELS"}}
 
     def _imports(self, filename):
         import ast, os

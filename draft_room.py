@@ -306,6 +306,28 @@ SUPER_FLEX_QB_SHARE = 0.85
 QB_STARTABLE_ANCHOR_RANK = 12
 QB_STARTABLE_FLOOR_FRACTION = 0.5
 
+# WHICH AUTHORITY SET THIS ROW'S REPLACEMENT LEVEL -- the vocabulary, with ONE home (#185/#186).
+#
+# It lived as bare string literals in draft_room and as a hand-written ternary in the board's
+# JS, which is two homes for one vocabulary and is how #186 happened: the JS read
+#     replacementBasis === 'predraft_anchor' ? 'pre-draft anchor' : 'live starter demand'
+# so EVERY value it did not know about -- including the one this file is adding -- rendered as
+# "live starter demand". An unrecognised token has to fail toward the WEAKER claim, never the
+# stronger one, and the only way to guarantee that across a language boundary is for the
+# labels to be derived from this table rather than restated over there.
+REPLACEMENT_BASIS_LIVE_DEMAND = "live_starter_demand"
+REPLACEMENT_BASIS_PREDRAFT = "predraft_anchor"
+REPLACEMENT_BASIS_STARTABLE_FLOOR = "startable_floor"
+
+#: token -> the words a person reads. Absence (None) is deliberately NOT a key: a row with no
+#: price has no basis to state, and giving that its own label here would invite a caller to
+#: render one.
+REPLACEMENT_BASIS_LABELS = {
+    REPLACEMENT_BASIS_LIVE_DEMAND: "live starter demand",
+    REPLACEMENT_BASIS_PREDRAFT: "pre-draft anchor",
+    REPLACEMENT_BASIS_STARTABLE_FLOOR: "the startability floor",
+}
+
 # time_horizon_adj and risk_adj are both small, bounded, additive nudges on the same linear
 # 0-100 BPA scale -- deliberately incapable of overriding a real VOR gap on their own (see
 # module docstring's ARCHITECTURE section and test_draft_room.py's invariant tests).
@@ -2299,7 +2321,7 @@ def compute_draft_board(
     # predraft_replacement_anchor for the measured inversion that motivates this). The two are
     # different strengths of claim, so they are recorded as different values rather than
     # collapsed into one indistinguishable price.
-    pool["replacement_basis"] = "live_starter_demand"
+    pool["replacement_basis"] = REPLACEMENT_BASIS_LIVE_DEMAND
     _anchored: set = set()
     _anchor_cache: dict = {}
 
@@ -2401,7 +2423,23 @@ def compute_draft_board(
     # a demand judgment: these are two different UNITS sharing a line, and in a heavy-IDP
     # league the ceiling is mostly the unit rather than the demand.
     if _anchored:
-        pool.loc[pool["position"].isin(_anchored), "replacement_basis"] = "predraft_anchor"
+        pool.loc[pool["position"].isin(_anchored), "replacement_basis"] = REPLACEMENT_BASIS_PREDRAFT
+    # THE FLOOR IS NOT DEMAND (#185). replacement_levels' startable_floors branch counts how
+    # many remaining players clear a projection threshold; it never reads `demand` at all (see
+    # the `if floor is not None` arm). Every superflex QB row was nonetheless labelled
+    # "live_starter_demand" -- the #166 shape at the point a person reads it, and failing
+    # toward the stronger claim, because "this league's starter demand set this price" is a
+    # bigger assertion than "a startability threshold did".
+    #
+    # DERIVED, never hand-listed (#126): a position took the floor branch exactly when it was
+    # handed a floor AND came back with a level. One that was handed a floor and declined has
+    # no level and therefore no basis to state. Restricted to `has_proj` because the
+    # trade_value fallback calls replacement_levels with NO floors at all, so a QB priced
+    # there really did get his level from demand and must keep saying so.
+    _floor_priced = {p for p in (startable_floors or {}) if p in point_replacement}
+    if _floor_priced:
+        pool.loc[has_proj & pool["position"].isin(_floor_priced),
+                 "replacement_basis"] = REPLACEMENT_BASIS_STARTABLE_FLOOR
     # replacement_basis EXPLAINS a price. A row that got no price has nothing for it to
     # explain, and saying "live_starter_demand" there asserts that this league's starter
     # demand produced a number it did not produce -- the #166/#185 shape, a label crossing a
