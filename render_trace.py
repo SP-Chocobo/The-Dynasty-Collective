@@ -274,7 +274,7 @@ def _seeded_session() -> _SessionState:
 #: Every top-level view, by its own label in app.py. Kept as literals rather than imported from
 #: app, because importing app is the thing under test -- a view that disappeared should show up
 #: as a trace that stops covering it, not as a list that quietly shrank to match.
-VIEWS = ("🏈 Matchup", "🔧 Roster Maintenance", "📋 Draft Room", "👥 League")
+VIEWS = ("🏈 Matchup", "🔧 Roster Maintenance", "📋 Draft Room", "👥 League", "🔌 Import Audit")
 
 
 def capture(seeded: bool = True, view: str | None = None) -> list[str]:
