@@ -96,6 +96,9 @@ def is_material_injury_status(status: Optional[str]) -> bool:
 #: engine entirely -- see IMMATERIAL_INJURY_STATUSES). "Sus" varies by the length of the
 #: suspension, which the feed does not carry. "NA" and "DNR" are not health designations.
 #: A number for any of those would be invented, and inventing one is exactly what #56 forbids.
+#: The NFL regular season. A fact about the league, not a tuning constant.
+SEASON_GAMES = 17
+
 GAMES_MISSED_FLOOR = {"IR": 4, "PUP": 4, "Out": 1}
 
 #: What the engine does with a designation it has never seen. NOT 0.0, which would silently
@@ -139,8 +142,22 @@ def availability_factor(status: Optional[str], projected_games: Optional[float])
         return 1.0, UNRECOGNISED_DESIGNATION
     if not projected_games or projected_games <= 0:
         return 1.0, NO_GAMES_REPORTED
-    remaining = max(projected_games - missed, 0.0)
-    return remaining / projected_games, RULE_FLOOR
+    # ANCHORED TO THE SEASON, NOT TO gp -- which is what makes the cut SELF-LIMITING.
+    #
+    # The player will play at most SEASON_GAMES - missed. Sleeper counts `gp`. Only the excess
+    # is fabricated, so the factor is what he can play over what Sleeper counted, never > 1.
+    #
+    # WHY THAT MATTERS, from a live observation the owner made against the running app: Sleeper
+    # had NOT yet zeroed James Conner's weeks 2-4, still showing ~3 points in each, and it
+    # eventually will. The naive form -- (gp - missed) / gp -- keeps removing four games
+    # forever, so the moment Sleeper caught up and dropped gp, the engine would charge the same
+    # absence a second time. This form stops on its own:
+    #
+    #   gp=17 (nothing removed yet)   -> 13/17 = 0.765, the full correction
+    #   gp=16 (one game already gone) -> 13/16 = 0.813, correspondingly smaller
+    #   gp<=13 (the feed has caught up) -> 1.0, no cut at all
+    playable = max(SEASON_GAMES - missed, 0.0)
+    return min(playable / projected_games, 1.0), RULE_FLOOR
 
 
 def player_position(info: dict) -> Optional[str]:

@@ -5839,3 +5839,118 @@ was originally a branch restated inside the test body -- a tautology, the same m
 pool row broke nothing, because every reader uses `.get()` so the companion's absence degrades
 silently to None and the rank assertions still hold. That is #166's defect inside the repair for
 #166's cousin.
+
+
+## #191 CORRECTION, AND #180 CLOSED: THE RANKS I PUBLISHED WERE MEASURED ON A BOARD PRODUCTION
+## DOES NOT BUILD
+
+**The correction, in full, because it was published in a commit and in the entry above.** The
+#191 entry states "the board ranks James Conner 32nd" and gives a before/after table --
+32 -> 41, Musgrave 62 -> 161, Savion Williams 71 -> 172, Joe Royer 119 -> 255. **Every one of
+those numbers came from a board built with `sleeper_basis` left at its WEEKLY default.**
+`app.py:5303` passes `SLEEPER_BASIS_SEASON_SUM`, and the committed capture holds season
+projections, so the weekly board is not one this app ever builds.
+
+On the production-shaped board, before the haircut runs at all:
+
+    James Conner    (IR)   rank ~607
+    Luke Musgrave   (PUP)  rank ~580
+    Savion Williams (IR)   rank ~732
+    Joe Royer       (PUP)  rank ~608
+
+**Conner was never 32nd.** The urgency framing was an artifact of my own probe's default
+argument -- the fourth instrument error of this session, and precisely what the
+engine-measurement skill's fixture checklist exists to prevent. I did not run its checklist
+against my own probe.
+
+### What the repair actually does, re-measured correctly
+
+A/B in one process, one code version, toggling only `GAMES_MISSED_FLOOR`, on the production
+basis:
+
+    top10 same | top25 same | top50 same
+    players moved: 547        max move: +90
+    statuses of movers: None 444, Questionable 63, IR 25, PUP 12, Sus 2, NA 1
+
+    biggest drops:  Harold Landry  (PUP)  200 -> 290  (+90)
+                    Kyler Gordon   (PUP)  295 -> 373  (+78)
+                    Kerby Joseph   (PUP)  319 -> 388  (+69)
+                    Micah Parsons  (PUP)  294 -> 361  (+67)
+                    Jordyn Tyson   (IR)   479 -> 525  (+46)
+
+**The repair is correct and lands where intended -- the designated players fall, healthy ones
+rise past them -- but its effect is entirely BELOW the top 50.** It is a mid-board correction,
+not the top-of-board rescue the entry above implied. The 444 unlabelled movers are healthy
+players displaced upward, not a side effect on them.
+
+`test_availability_haircut` now builds its board with `sleeper_basis=SEASON_SUM` and asserts the
+MOVE rather than an absolute rank, so this specific mistake cannot be made again silently.
+
+### #180 IS ALREADY REPAIRED, and my contrary finding was the same artifact
+
+I measured `bpa_source` per position and reported offence split roughly half-and-half between
+the scoring-aware path and the vendor -- QB 39 vendor vs 3 sleeper, WR 102 vs 96. **Same cause:
+the weekly default.** `_derive_points_and_source`'s precedence is basis-first and gates on
+`SLEEPER_BASIS_SEASON_SUM`; under the weekly basis a league-scored number only fills where the
+vendor is silent, which is the OLD rule the #180 comment in that function says was replaced.
+
+Re-measured on the production basis, every position resolves to
+`points_vor_sleeper_season_scored`; the vendor retains 12 rows in total across the whole board
+(QB 8, WR 3, RB 1). **Offence routes through the scoring-aware path.** #180's premise no longer
+holds, and it closes as ALREADY REPAIRED -- by #192's work, not by anything in this pass.
+
+### The standing lesson, stated because it has now cost four measurements in one day
+
+`sleeper_basis` is a fixture parameter that silently changes the ANSWER, and it defaults to the
+value production does not use. Every probe against `compute_draft_board` must pass
+`SLEEPER_BASIS_SEASON_SUM` explicitly. This belongs in the engine-measurement checklist beside
+`set_league_format`, which is the same class of error and already has a warning there.
+
+### Also fixed here
+
+`availability_basis` was emitted but not in `_records_with_normalized_nan`'s list, so unpriced
+rows crossed the board boundary carrying `nan` instead of `None` -- the absence contract broken
+by the very field added to describe an absence.
+
+### THE FORMULA WAS CORRECTED BY A LIVE OBSERVATION, AND THE CORRECTION REMOVES A LATENT
+### DOUBLE-COUNT
+
+The owner checked James Conner against the running Sleeper app and reported two things the
+committed capture alone could not show:
+
+  1. **"He currently still shows ~3 points projected in weeks 2, 3, and 4. Not zeroed out yet."**
+  2. **"His projection seasonally will drop by at least 9ish once it does."**
+
+Both are decisive, and the second is a prediction the derived formula can be checked against.
+
+**The first invalidated the shape of the original factor.** It was `(gp - missed) / gp`, which
+removes four games from whatever the feed reports -- FOREVER. Sleeper has not yet zeroed those
+weeks and eventually will; the moment it did and `gp` fell, the engine would have charged the
+same absence a second time. That is exactly the defect this item exists to prevent, reintroduced
+one layer down.
+
+**Anchored to the season instead -- `(SEASON_GAMES - missed) / gp`, capped at 1.0 -- the cut is
+self-limiting.** The numerator is what he can PLAY; the denominator is what the feed COUNTED;
+only the gap between them is fabricated:
+
+    gp=17  (nothing removed yet)     -> 13/17 = 0.765   the full correction
+    gp=16  (one game already gone)   -> 13/16 = 0.813   correspondingly smaller
+    gp=13  (the feed has caught up)  -> 1.000           no cut at all
+    gp<13                            -> 1.000           capped; never amplifies
+
+**And the second confirmed the magnitude independently.** Conner in the capture: `gp=16`,
+`pts_ppr=48.94`, which is **3.06 points per game** -- and the app's own weekly cards read 3.16
+and 3.07. The corrected factor takes 48.94 to 39.76, a cut of **9.18 points**, against an
+estimate of "at least 9ish" made from watching the app. Two independent routes to the same
+number.
+
+**It also sharpens the finding's wording, which was imprecise in the entry above.** "Sleeper
+projects injured players for a full season" is not right. Sleeper applies the ROLE discount and
+not the AVAILABILITY discount: Conner's total is low because 3.06/game is low, not because
+games were removed. Jonathan Taylor is 19.44/game over 17, Bijan Robinson 21.95/game over 17.
+The defect is a per-game rate multiplied by a game count that has not yet been corrected.
+
+**The news item states the rule floor verbatim** -- "Conner will miss at least the first four
+games of the season" -- and the player card reads "injured reserve/designated to return". The
+four-game figure taken from the NFL rulebook is confirmed by the feed's own reporting, which is
+the strongest form this constant's derivation could take.

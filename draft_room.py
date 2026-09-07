@@ -2476,7 +2476,8 @@ def compute_draft_board(
             "replacement_basis", "horizon_basis", "identity_basis", "availability_basis",
             "fills_required_slot",
         ]], "projected_points", "horizon_floor", "horizon_sensitivity", "waiting_cost",
-            "bpa", "universal_value", "final_score", "confidence", "replacement_basis")
+            "bpa", "universal_value", "final_score", "confidence", "replacement_basis",
+            "availability_basis")
 
     my_filled = _team_starters_filled(picks, players_db, my_roster_id)
     slot_counts = starter_slot_counts(roster_positions)

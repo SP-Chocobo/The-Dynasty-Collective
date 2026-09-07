@@ -76,9 +76,14 @@ class EveryFactorArrivesWithItsBasisTests(unittest.TestCase):
         self.assertEqual(basis, pu.RULE_FLOOR)
         self.assertAlmostEqual(factor, 13 / 17)
 
-    def test_the_cut_tracks_the_reported_games_not_a_fixed_number(self):
-        self.assertAlmostEqual(pu.availability_factor("IR", 16)[0], 12 / 16)
+    def test_the_cut_is_what_the_feed_still_overcounts(self):
+        """(SEASON_GAMES - missed) / gp, not (gp - missed) / gp. The numerator is what he can
+        PLAY; the denominator is what the feed COUNTED. Only the gap between them is fabricated,
+        and that is what gets removed -- see test_the_cut_STOPS_once_the_feed_has_caught_up for
+        why anchoring to gp instead would eventually charge the same absence twice."""
+        self.assertAlmostEqual(pu.availability_factor("IR", 16)[0], 13 / 16)
         self.assertAlmostEqual(pu.availability_factor("Out", 17)[0], 16 / 17)
+        self.assertAlmostEqual(pu.availability_factor("PUP", 17)[0], 13 / 17)
 
     def test_no_designation_is_its_own_basis(self):
         self.assertEqual(pu.availability_factor(None, 17), (1.0, pu.NO_DESIGNATION))
@@ -103,8 +108,38 @@ class EveryFactorArrivesWithItsBasisTests(unittest.TestCase):
         self.assertEqual(pu.availability_factor("IR", None), (1.0, pu.NO_GAMES_REPORTED))
         self.assertNotEqual(pu.NO_GAMES_REPORTED, pu.UNRECOGNISED_DESIGNATION)
 
-    def test_the_factor_never_goes_below_zero(self):
-        self.assertEqual(pu.availability_factor("IR", 2)[0], 0.0)
+    def test_the_cut_STOPS_once_the_feed_has_caught_up(self):
+        """The property that keeps this from becoming the double-count it was built to avoid.
+
+        Observed live by the owner against the running app: Sleeper had NOT yet zeroed James
+        Conner's weeks 2-4, still showing ~3 points in each, and it eventually will. Anchoring
+        the factor to `gp` -- (gp - missed) / gp -- would keep removing four games forever, so
+        the moment the feed caught up and dropped gp, the engine would charge the same absence
+        twice. Anchored to the SEASON instead, the cut shrinks as the feed corrects itself and
+        reaches exactly zero when gp equals the games he can actually play."""
+        self.assertAlmostEqual(pu.availability_factor("IR", 17)[0], 13 / 17)
+        self.assertAlmostEqual(pu.availability_factor("IR", 16)[0], 13 / 16)
+        self.assertEqual(pu.availability_factor("IR", 13)[0], 1.0)
+
+    def test_it_never_AMPLIFIES_a_projection(self):
+        """If the feed has already cut further than the rule floor requires, the factor is
+        capped at 1.0 rather than scaling the number UP -- an availability correction that
+        increased a projection would be an invention, not a correction."""
+        for gp in (12, 10, 4, 1):
+            with self.subTest(gp=gp):
+                self.assertEqual(pu.availability_factor("IR", gp)[0], 1.0)
+
+    def test_the_season_length_is_a_fact_not_a_tunable(self):
+        self.assertEqual(pu.SEASON_GAMES, 17)
+
+    def test_the_cut_on_the_live_case_matches_what_the_app_shows(self):
+        """James Conner: gp=16, 48.94 PPR in the committed capture, which is 3.06 per game --
+        and the app's own weekly cards read 3.16 and 3.07. Four games at that rate is the size
+        of the correction, and the owner's independent estimate from watching the app was
+        "at least 9ish"."""
+        factor, basis = pu.availability_factor("IR", 16)
+        self.assertEqual(basis, pu.RULE_FLOOR)
+        self.assertAlmostEqual(48.94 - 48.94 * factor, 9.18, places=2)
 
 
 class ThroughTheRealBoardTests(unittest.TestCase):
@@ -121,9 +156,16 @@ class ThroughTheRealBoardTests(unittest.TestCase):
         cls.projections = cap.get("season_projections")
         merger = dm.DataMerger()
         merger.set_league_format(db.league_format_hint(cls.league))
+        # sleeper_basis=SEASON_SUM, because that is what app.py passes (app.py:5303) and the
+        # capture holds season projections. Omitting it takes the WEEKLY default and measures a
+        # board production never builds -- which is exactly how the first version of this file
+        # came to report "James Conner ranks 32nd". He does not; on the production-shaped board
+        # he is around 600th before this repair ever runs. The correction is recorded in
+        # POST_AUDIT_PLAN under #191, and the guard against repeating it is right here.
         cls.board = dr.compute_draft_board(
             merger, cls.players, picks=[], my_roster_id="1", league=cls.league,
-            sleeper_projections=cls.projections)
+            sleeper_projections=cls.projections,
+            sleeper_basis=dr.SLEEPER_BASIS_SEASON_SUM)
         cls.rank = {r["player_id"]: i for i, r in enumerate(cls.board)}
         cls.by_name = {r["name"]: r for r in cls.board}
 
@@ -131,15 +173,50 @@ class ThroughTheRealBoardTests(unittest.TestCase):
         pid = self.by_name[name]["player_id"]
         return (self.players.get(str(pid)) or {}).get("injury_status")
 
-    def test_the_live_cases_are_no_longer_priced_as_healthy(self):
-        """Pinned by ORDER, not by an absolute rank, since the board's length moves with other
-        repairs. Each of these outranked most of the board on a full-season projection."""
-        for name, status, worse_than in (("James Conner", "IR", 35),
-                                         ("Luke Musgrave", "PUP", 100),
-                                         ("Savion Williams", "IR", 100)):
-            with self.subTest(player=name):
-                self.assertEqual(self._status(name), status)
-                self.assertGreater(self.rank[self.by_name[name]["player_id"]], worse_than)
+    def test_the_haircut_actually_demotes_the_designated_players(self):
+        """Measured as a MOVE, not an absolute rank, and on the production basis.
+
+        The A/B (one process, toggling only GAMES_MISSED_FLOOR) moves 547 rows, at most 90
+        places, and leaves the top 50 untouched. The demoted set is exactly the designated one:
+        Harold Landry (PUP) +90, Micah Parsons (PUP) +67, Jordyn Tyson (IR) +46."""
+        import player_universe as _pu
+        real = dict(_pu.GAMES_MISSED_FLOOR)
+        try:
+            _pu.GAMES_MISSED_FLOOR.clear()
+            merger = dm.DataMerger()
+            merger.set_league_format(db.league_format_hint(self.league))
+            uncut = dr.compute_draft_board(
+                merger, self.players, picks=[], my_roster_id="1", league=self.league,
+                sleeper_projections=self.projections,
+                sleeper_basis=dr.SLEEPER_BASIS_SEASON_SUM)
+        finally:
+            _pu.GAMES_MISSED_FLOOR.update(real)
+        before = {r["player_id"]: i for i, r in enumerate(uncut)}
+        moved_down = [p for p, i in before.items()
+                      if p in self.rank and self.rank[p] > i]
+        self.assertGreater(len(moved_down), 0, "the haircut moved nobody -- it is not reaching the board")
+        # and every one of them carries a rule-floor designation
+        designated = {p for p in moved_down
+                      if (self.players.get(str(p)) or {}).get("injury_status") in pu.GAMES_MISSED_FLOOR}
+        self.assertGreater(len(designated), 10)
+
+    def test_it_does_not_disturb_the_top_of_the_board(self):
+        """Non-vacuity in the other direction, and the honest scope of this repair: on the
+        production-shaped board the effect is entirely BELOW the top 50."""
+        import player_universe as _pu
+        real = dict(_pu.GAMES_MISSED_FLOOR)
+        try:
+            _pu.GAMES_MISSED_FLOOR.clear()
+            merger = dm.DataMerger()
+            merger.set_league_format(db.league_format_hint(self.league))
+            uncut = dr.compute_draft_board(
+                merger, self.players, picks=[], my_roster_id="1", league=self.league,
+                sleeper_projections=self.projections,
+                sleeper_basis=dr.SLEEPER_BASIS_SEASON_SUM)
+        finally:
+            _pu.GAMES_MISSED_FLOOR.update(real)
+        self.assertEqual([r["player_id"] for r in uncut[:50]],
+                         [r["player_id"] for r in self.board[:50]])
 
     def test_a_healthy_comparator_is_untouched(self):
         """Non-vacuity: the haircut must be scoped to the designation, not applied to the
@@ -211,6 +288,10 @@ class ThePenaltyIsNotChargedTwiceTests(unittest.TestCase):
 #   1. player_universe: GAMES_MISSED_FLOOR gains "Questionable": 1
 #        -> TheFloorComesFromTheRulebook.test_only_designations_with_a_real_rule_floor... FAILED
 #           and ...test_the_judgement_calls_are_deliberately_absent FAILED
+#   2b. player_universe: factor anchored to gp again -- (gp - missed) / gp
+#        -> EveryFactorArrivesWithItsBasis.test_the_cut_STOPS_once_the_feed_has_caught_up FAILED
+#   2c. player_universe: the min(..., 1.0) cap removed, so a caught-up feed AMPLIFIES
+#        -> ...test_it_never_AMPLIFIES_a_projection FAILED
 #   2. player_universe: GAMES_MISSED_FLOOR["IR"] = 1
 #        -> ...test_the_game_counts_are_the_rule_minimums FAILED, and
 #           EveryFactorArrivesWithItsBasis.test_a_rule_floor_designation_cuts_the_projection FAILED

@@ -43,11 +43,11 @@
       }
     },
     "test_availability_haircut.py": {
-      "test_methods": 18,
+      "test_methods": 22,
       "asserts": {
-        "assertAlmostEqual": 3,
-        "assertEqual": 16,
-        "assertGreater": 2,
+        "assertAlmostEqual": 7,
+        "assertEqual": 19,
+        "assertGreater": 3,
         "assertIn": 2,
         "assertIsNone": 1,
         "assertNotEqual": 1,
