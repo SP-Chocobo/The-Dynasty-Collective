@@ -2502,8 +2502,28 @@ def compute_draft_board(
         if is_dynasty and row.get("_has_3yr", False):
             time_horizon_adj = min(max((row["_proj3yr_pct"] - row["_season_proj_pct"]) * TIME_HORIZON_SLOPE, TIME_HORIZON_CLAMP[0]), TIME_HORIZON_CLAMP[1])
 
-        risk_adj = health_penalty(row.get("injury_status"), row.get("availability_basis"))
-        if is_dynasty:
+        # NO PRICE, NOTHING TO ADJUST (#203). bpa is NaN for a row the pricing layer could not
+        # value at all, so universal_value is NaN and every consumer correctly reads it as
+        # absent. risk_adj was the one term that went on answering anyway: measured on the
+        # production-shaped board, 102 rows carried a confident -18.0 as the health adjustment
+        # to a number that was never produced. That is #166's defect exactly -- a quantity
+        # crossing a layer without the thing that gives it meaning -- and it fails toward the
+        # STRONGER claim, because -18.0 reads as "measured and penalised" rather than
+        # "unpriced". Absent here, so the pair is always consistent: no universal_value, no
+        # decomposition of it.
+        #
+        # NOT extended to the other terms, and deliberately. time_horizon_adj's 0.0 is the
+        # documented "no multi-year dimension, so neither penalised nor rewarded" ruling above;
+        # eligibility_bonus and depth_exposure each decline explicitly with a stated companion;
+        # depth_basis reporting "vacant" is that companion doing its job. need_bonus is a real
+        # measurement of THIS ROSTER's unfilled slots that happens to land in a sum that is
+        # absent -- nulling it would destroy a measurement that was genuinely taken, and
+        # whether an unpriced row should carry one is a decision, not a defect.
+        if pd.isna(bpa):
+            risk_adj = float("nan")
+        else:
+            risk_adj = health_penalty(row.get("injury_status"), row.get("availability_basis"))
+        if is_dynasty and not pd.isna(risk_adj):
             # Trajectory-aware scaling (experiment "D" -- see this constant's own docstring
             # above for the full evidence trail): a flat-or-declining trajectory
             # (time_horizon_adj <= 0) keeps the FULL flat penalty -- his value case is already
@@ -2640,7 +2660,7 @@ def compute_draft_board(
         "horizon_basis", "identity_basis", "availability_basis", "fills_required_slot",
     ]], "projected_points", "horizon_floor", "horizon_sensitivity", "waiting_cost",
         "bpa", "universal_value", "final_score", "confidence", "replacement_basis",
-        "availability_basis")
+        "availability_basis", "risk_adj")
 
 
 # -- in-app Mock Draft sandbox (see app.py's Draft Room view) -------------------------------
