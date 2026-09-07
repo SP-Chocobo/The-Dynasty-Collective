@@ -5550,3 +5550,119 @@ twelfth format would make that acceptable.
 
 **Recorded before the results exist.** The suite gate was still running when this was written.
 
+
+
+## #191 RETRACTED AND INVERTED -- THERE IS NO DOUBLE-COUNT; SLEEPER PROJECTS INJURED PLAYERS
+## FOR A FULL SEASON, AND "QUESTIONABLE" IS NOT AN INJURY STATUS AT ALL
+
+**A published claim of mine was wrong and is withdrawn in full.** I reported that Sleeper's
+season projection already degrades with `injury_status` -- "10-23% in every band", controlling
+on the vendor trade value -- and that `risk_adj` therefore counted the same fact twice, live,
+since #192/#193 made `sleeper_points` a pricing input. I recommended dropping `risk_adj` where
+that basis prices the row. Every part of that is wrong.
+
+**Why it was wrong.** The four trade-value bands were coarse and the injured sample was 97/145
+`Questionable`. Re-measured per status against each player's 15 nearest-trade-value HEALTHY
+peers, the estimator's own noise floor swallows the effect:
+
+    group            n     median ratio    p25     p75
+    (healthy ctrl)  188        1.01        0.82    1.47   <- the noise floor
+    Questionable     52        0.85        0.74    1.04
+    IR                3        0.56        0.10    0.94   <- n=3
+    PUP               1        0.24         -       -
+
+`Questionable`'s 0.85 sits inside the healthy control's own IQR. `IR` had n=3.
+
+**What actually settled it was not a ratio.** Sleeper publishes a projected GAMES PLAYED:
+
+    status          n     gp
+    (none)        700     overwhelmingly 17
+    Questionable  100     95 x gp=17,  5 x gp=16
+    IR             23     20 x gp=16,  3 x gp=17
+    PUP            12      4 x gp=16,  8 x gp=17
+    Sus             2      1 x gp=16,  1 x gp=17
+
+**Sleeper projects injured players for a full season.** There is no degradation to double-count
+and there never was; the entire apparent effect is a one-game 17->16 shift, about 6%.
+
+**So the real finding is the opposite of the one I filed.** `risk_adj` is the ONLY place health
+enters the valuation, and -18 does not come close to offsetting a full-season projection for a
+man who will not play. On the real capture the board ranks **James Conner (IR) 32nd** with
+`universal_value` 616, **Luke Musgrave (PUP) 62nd**, **Savion Williams (IR) 71st**.
+
+### The ablation (one process, one code version, toggling only RISK_ADJ)
+
+Board 2084 rows off the committed Sleeper capture; statuses present: Questionable 172, IR 120,
+NA 26, PUP 21, Sus 5, DNR 1.
+
+    arm                    top10   top25   top50    moved   max move
+    B drop entirely        same    same    CHANGED    253      -34 (Ty Chandler, IR)
+    C Questionable -> 0    same    same    same        99       -6 (John Bates)
+    D halve everything     same    same    CHANGED    153      -22
+    E IR/Out only          same    same    same        99       -6
+
+Answering the three options the owner put: **drop** is actively harmful (it raises men who are
+already too high); **downtick** is the same direction with no double-count left to justify it;
+**prose-only** is right for `Questionable` and wrong for `IR`.
+
+**What this rules OUT, so nobody re-runs it.** Arm E is bit-identical to arm C. "Doubtful" never
+occurs in the capture and "Out" occurs exactly once in the whole player universe, so the only
+live statuses the table prices are `Questionable` and `IR`. Two of the four configured
+magnitudes are dead letters.
+
+### The ruling, and what shipped
+
+**Owner's ruling: `Questionable` is out of the valuation entirely, and out of the prose too,**
+unless historical backing makes it case-specific. Two independent reasons that agree -- the
+owner's, which is about football (anything can inspire a Questionable tag; its use around the
+league is close to strategic, so it is not a report on a player's health), and the engine's own
+(its -1.5 moved 99 of 2084 rows by at most six ranks and never touched the top 50 -- priced
+precision on a signal that is not there).
+
+`player_universe.IMMATERIAL_INJURY_STATUSES` states it once and four modules read it:
+`RISK_ADJ` no longer prices it; `lineup_readiness` no longer raises a Questionable starter as a
+lineup problem; all three of `screen_context`'s evidence builders stop handing it to a chair.
+Verified after shipping, same harness: **99 moved, max -6, top-50 unchanged** -- identical to
+arm C, as predicted before the change.
+
+**The half-measure was considered and ruled against.** Stop pricing it, keep mentioning it, was
+the obvious compromise. Raising a designation to a person asserts that it matters, and repeating
+one the engine has just measured as meaningless spends the reader's attention on noise -- the
+same defect #200 closed this same day, where two guards that could never go green were teaching
+everyone that some red is normal.
+
+**PASSIVE DISPLAY IS DELIBERATELY UNTOUCHED.** A roster table showing what Sleeper says about a
+player is reporting the feed, not the engine speaking. The amber pill still renders.
+
+**The one cost, stated rather than glossed.** A person asking the chairs a start/sit question no
+longer sees the tag in the evidence handed over, and there is a real argument that a human
+deliberating a lineup wants to know a tag exists so they can go check the beat reports
+themselves. The mitigation is the pill above. If that trade is judged wrong, restoring it is one
+line in `screen_context` and the valuation half stands alone.
+
+**The condition for its return is recorded in the code, not just here:** historical backing,
+applied case-specifically to a player whose own record supports it. What may never come back is
+the blanket league-wide magnitude (#56 -- a bound is not a threshold).
+
+### What is NOT fixed
+
+- **The IR/PUP half is the owner's call and is untouched** (still #191, open). It needs MORE
+  weight, not less -- but the honest repair is at the INPUT (`gp=16` for a player who will not
+  play), not a larger hand-set constant. Sizing a repair by inventing a magnitude to fit a
+  sample is exactly what #56 forbids.
+- **#201 (new):** the draft battery has NEVER exercised `risk_adj`. `run_draft_battery.
+  build_players_db` reconstructs players from the VENDOR baseline, which carries no
+  `injury_status` at all -- the first ablation returned "0 moved" in all four arms and the
+  reason was an empty status Counter, not a null result. Every certification claim to date
+  describes a health-free board.
+- **#202 (new):** `RISK_ADJ` has no entry for PUP, NA, Sus or DNR, all of which occur in the
+  real feed, while "Doubtful" (which never occurs) has one. The recognised vocabulary was set
+  without reference to the emitted vocabulary. Deriving it (#126) is structural; choosing the
+  magnitudes is a valuation decision and the owner's.
+
+Tests: `test_injury_status_materiality.py`, 9 tests, mutation-checked 9/9 (including reverting
+each of `screen_context`'s three emission sites separately -- patching two of them left the
+third live, and a test caught it). Four pre-existing tests were INVERTED rather than deleted,
+and one -- `test_injury_still_never_increases_universal_value_under_d` -- was switched from
+`Questionable` to `Out`, because with the penalty removed it would have compared a player
+against himself and passed vacuously.

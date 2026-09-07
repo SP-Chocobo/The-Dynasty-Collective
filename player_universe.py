@@ -44,6 +44,44 @@ def league_usable_positions(roster_positions: list[str]) -> set[str]:
     return positions or set(FANTASY_POSITIONS)
 
 
+#: Designations this engine has ruled carry NO material information about a player (#191).
+#:
+#: "Questionable" is not really an injury status: anything can inspire it, and the NFL's own
+#: use of it is close to strategic. The engine's own data says the same. Sleeper projects a
+#: Questionable player for a FULL SEASON -- of 100 with a games-played projection, 95 carry
+#: gp=17 and 5 carry gp=16, indistinguishable from healthy players (700, overwhelmingly gp=17).
+#: And the penalty it used to carry, -1.5, moved 99 of 2084 board rows by at most SIX ranks and
+#: never touched the top 50. So it was priced precision on a signal that is not there.
+#:
+#: OUT OF THE ARITHMETIC AND OUT OF THE PROSE, which is the part worth stating plainly. The
+#: obvious half-measure -- stop pricing it, keep mentioning it -- was considered and ruled
+#: against by the owner: a flag raised to a person is a claim that the fact matters, and
+#: repeating a designation the engine has just measured as meaningless spends the reader's
+#: attention on noise. Silence is the honest output for a fact that carries nothing.
+#:
+#: THE CONDITION FOR ITS RETURN, recorded so this is a ruling and not a deletion: historical
+#: backing, applied case-specifically. If a record ever shows that THIS player's Questionable
+#: designations track missed games or reduced output, that is evidence about him and may be
+#: surfaced as such. What may never come back is the blanket constant -- a league-wide
+#: magnitude applied to everyone carrying the word (#56: a bound is not a threshold).
+#:
+#: PASSIVE DISPLAY IS NOT AFFECTED, and the distinction is the whole line this constant draws.
+#: A roster table showing what Sleeper says about a player is REPORTING THE FEED. This set
+#: governs the places where the ENGINE ITSELF speaks -- what it prices, what it flags as a
+#: problem, what it hands a chair as evidence.
+IMMATERIAL_INJURY_STATUSES = ("Questionable",)
+
+
+def is_material_injury_status(status: Optional[str]) -> bool:
+    """Should the engine act on, or speak about, this designation at all? (#191)
+
+    False for absence AND for a designation ruled immaterial -- deliberately one predicate, so
+    a caller cannot accidentally treat "he is Questionable" as more actionable than "nothing is
+    known about him", which is the state it is closest to.
+    """
+    return bool(status) and status not in IMMATERIAL_INJURY_STATUSES
+
+
 def player_position(info: dict) -> Optional[str]:
     """The fantasy-relevant position bucket for a player, Sleeper's own way.
 

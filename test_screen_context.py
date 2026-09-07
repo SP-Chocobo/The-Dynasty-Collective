@@ -241,10 +241,22 @@ class BuildLeagueContextTests(unittest.TestCase):
         self.assertIn("Justin Jefferson (WR, MIN)", ctx.evidence)
         self.assertIn("18.4", ctx.evidence)
 
-    def test_injury_status_included_when_present(self):
+    def test_a_material_injury_status_is_included(self):
+        row = self._row(injury_status="IR")
+        ctx = build_league_context("X", [row])
+        self.assertIn("IR", ctx.evidence)
+
+    def test_QUESTIONABLE_is_not_handed_to_a_chair_at_all(self):
+        """Inverted, not deleted (#191). This test used to assert the opposite.
+
+        The owner's ruling went further than the arithmetic: Questionable is out of the PROSE
+        too. Raising a designation to a person is a claim that the fact matters, and the
+        engine has measured that this one does not -- Sleeper projects such players for a full
+        season (95 of 100 at gp=17), and its former -1.5 moved no board row more than six
+        ranks. Repeating it here would spend a reader's attention on noise."""
         row = self._row(injury_status="Questionable")
         ctx = build_league_context("X", [row])
-        self.assertIn("Questionable", ctx.evidence)
+        self.assertNotIn("Questionable", ctx.evidence)
 
     def test_no_injury_status_omits_it_cleanly(self):
         row = self._row(injury_status=None)

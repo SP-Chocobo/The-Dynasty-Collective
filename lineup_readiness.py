@@ -18,6 +18,7 @@ from __future__ import annotations
 from typing import Optional
 
 import depth_ratings
+import player_universe
 
 # The producer names this vocabulary (depth_ratings.THIN_LABELS) -- copying the two literals
 # here again is how a rename to the label goes SILENT rather than loud: nothing would match,
@@ -37,9 +38,13 @@ def compute_readiness(
     Returns {"total_starting_slots", "filled_starting_slots", "starter_injury_flags",
     "thin_positions"} -- every field a direct read or a reuse of an existing judgment."""
     filled_starting_slots = sum(1 for r in roster_table if r.get("slot") == "Starter")
+    # "a REAL injury_status" -- the docstring's own word, now enforced rather than assumed
+    # (#191). A Questionable starter is not a lineup problem, and raising him as one spends a
+    # person's attention on a designation the engine has measured as carrying nothing.
     starter_injury_flags = [
         {"name": r["name"], "position": r["position"], "injury_status": r["injury_status"]}
-        for r in roster_table if r.get("slot") == "Starter" and r.get("injury_status")
+        for r in roster_table
+        if r.get("slot") == "Starter" and player_universe.is_material_injury_status(r.get("injury_status"))
     ]
     thin_positions = []
     if my_team_label and my_team_label in depth:

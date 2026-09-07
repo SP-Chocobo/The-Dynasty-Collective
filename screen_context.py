@@ -26,6 +26,7 @@ from dataclasses import dataclass
 from typing import Optional, Sequence
 
 import design_system
+import player_universe
 from pick_synthesis import PickSnapshot
 
 # The two Debate-labeled controls that can appear on the same screen (Draft Room) must never
@@ -183,7 +184,7 @@ def _matchup_evidence_lines(rows: Sequence[dict]) -> str:
         proj = r.get("sleeper_proj", r.get("projection"))
         if proj is not None:
             bits.append(f"proj {proj:.1f}")
-        if r.get("injury_status"):
+        if player_universe.is_material_injury_status(r.get("injury_status")):
             bits.append(r["injury_status"])
         team_bit = f", {r['team']}" if r.get("team") else ""
         tail = " — " + ", ".join(bits) if bits else ""
@@ -215,7 +216,7 @@ def build_free_agents_context(rows: Sequence[dict], position_filter: Optional[st
             bits.append(f"proj {r['sleeper_proj']:.1f}")
         if r.get("ds_trade_value") is not None:
             bits.append(f"value {r['ds_trade_value']:.0f}")
-        if r.get("injury_status"):
+        if player_universe.is_material_injury_status(r.get("injury_status")):
             bits.append(r["injury_status"])
         team_bit = f", {r['team']}" if r.get("team") else ""
         tail = " — " + ", ".join(bits) if bits else ""
@@ -245,7 +246,8 @@ def build_league_context(team_label: str, team_rows: Sequence[dict]) -> ScreenCo
     for r in team_rows:
         team_bit = f", {r['team']}" if r.get("team") else ""
         proj_bit = f", proj {r['sleeper_proj']:.1f}" if r.get("sleeper_proj") is not None else ""
-        injury_bit = f", {r['injury_status']}" if r.get("injury_status") else ""
+        injury_bit = (f", {r['injury_status']}"
+                      if player_universe.is_material_injury_status(r.get("injury_status")) else "")
         lines.append(f"{r['name']} ({r['position']}{team_bit}) — {r.get('slot') or 'Bench'}{proj_bit}{injury_bit}")
     evidence = "\n".join(lines) if lines else "No rostered players found."
     return ScreenContext(

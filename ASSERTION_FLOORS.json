@@ -478,15 +478,15 @@
       "test_methods": 102,
       "asserts": {
         "assertAlmostEqual": 22,
-        "assertEqual": 64,
+        "assertEqual": 63,
         "assertFalse": 3,
         "assertGreater": 47,
         "assertGreaterEqual": 5,
         "assertIn": 4,
         "assertIs": 2,
-        "assertIsNone": 7,
+        "assertIsNone": 8,
         "assertIsNotNone": 6,
-        "assertLess": 8,
+        "assertLess": 9,
         "assertLessEqual": 6,
         "assertNotAlmostEqual": 1,
         "assertNotEqual": 4,
@@ -587,6 +587,16 @@
         "assertLess": 3
       }
     },
+    "test_injury_status_materiality.py": {
+      "test_methods": 9,
+      "asserts": {
+        "assertEqual": 3,
+        "assertFalse": 3,
+        "assertIn": 2,
+        "assertNotIn": 2,
+        "assertTrue": 1
+      }
+    },
     "test_kdst_integration.py": {
       "test_methods": 52,
       "asserts": {
@@ -668,9 +678,9 @@
       }
     },
     "test_lineup_readiness.py": {
-      "test_methods": 11,
+      "test_methods": 12,
       "asserts": {
-        "assertEqual": 13,
+        "assertEqual": 14,
         "assertFalse": 2
       }
     },
@@ -1073,13 +1083,13 @@
       }
     },
     "test_screen_context.py": {
-      "test_methods": 63,
+      "test_methods": 64,
       "asserts": {
         "assertEqual": 16,
         "assertIn": 66,
         "assertIsNone": 1,
         "assertNotEqual": 1,
-        "assertNotIn": 12,
+        "assertNotIn": 13,
         "assertTrue": 1
       }
     },

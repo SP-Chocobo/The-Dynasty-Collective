@@ -1376,7 +1376,10 @@ class InvariantTests(unittest.TestCase):
         # pre-existing injury test (immediately above) happened to cover, so nothing caught this.
         self.assertEqual(dr.RISK_ADJ.get("Out"), -10.0)
         self.assertEqual(dr.RISK_ADJ.get("Doubtful"), -5.0)
-        self.assertEqual(dr.RISK_ADJ.get("Questionable"), -1.5)
+        # "Questionable" was here at -1.5 and is GONE by owner ruling (#191) -- inverted, not
+        # deleted, so the vocabulary repair this test records stays pinned for the statuses
+        # that survived it.
+        self.assertIsNone(dr.RISK_ADJ.get("Questionable"))
         self.assertEqual(dr.RISK_ADJ.get("IR"), -18.0)
 
         healthy = dict(self.players_db)
@@ -1571,9 +1574,15 @@ class RiskAdjTrajectoryScalingTests(unittest.TestCase):
             return 1.0
         return 1.0 - (1.0 - dr.DYNASTY_RISK_ADJ_MIN_SCALE) * (time_horizon_adj / dr.TIME_HORIZON_CLAMP[1])
 
-    def test_the_four_magnitudes_are_unchanged_by_this_experiment(self):
-        # The vocabulary itself was explicitly NOT touched -- only whether/how it's applied.
-        self.assertEqual(dr.RISK_ADJ, {"IR": -18.0, "Out": -10.0, "Doubtful": -5.0, "Questionable": -1.5})
+    def test_the_magnitudes_are_unchanged_by_this_experiment(self):
+        """Experiment D changed only WHETHER/HOW the penalties apply, never their sizes.
+
+        The set is three, not four: "Questionable" was removed later and for an unrelated
+        reason (#191 -- it is not really an injury status, and Sleeper projects such players
+        for a full season). That removal is a change to the VOCABULARY, which is exactly what
+        this test says experiment D did not make -- so it is recorded here rather than allowed
+        to look like drift in D's own scope."""
+        self.assertEqual(dr.RISK_ADJ, {"IR": -18.0, "Out": -10.0, "Doubtful": -5.0})
 
     def test_redraft_league_is_byte_identical_to_before_this_change(self):
         # A non-dynasty league must see EXACTLY the old flat discount -- this experiment is
@@ -1636,12 +1645,17 @@ class RiskAdjTrajectoryScalingTests(unittest.TestCase):
                 )
                 healthy_uv = next(r["universal_value"] for r in healthy_board if r["player_id"] == pid)
                 pdb_hurt = dict(pdb)
-                pdb_hurt[pid] = dict(pdb_hurt[pid], injury_status="Questionable")
+                # "Out", not "Questionable". Questionable was removed from RISK_ADJ by owner
+                # ruling (#191), so using it here would compare a player against himself and
+                # pass with hurt_uv == healthy_uv -- a vacuous test of a real invariant.
+                pdb_hurt[pid] = dict(pdb_hurt[pid], injury_status="Out")
                 hurt_board = dr.compute_draft_board(
                     self.merger, pdb_hurt, [], my_roster_id="99", league=league, mode="balanced",
                 )
                 hurt_uv = next(r["universal_value"] for r in hurt_board if r["player_id"] == pid)
                 self.assertLessEqual(hurt_uv, healthy_uv)
+                self.assertLess(hurt_uv, healthy_uv,
+                                "no penalty was applied at all -- the invariant is untested here")
 
     def test_d_never_gives_full_forgiveness_even_at_the_positive_clamp(self):
         # The floor: even the most extreme forward trajectory keeps DYNASTY_RISK_ADJ_MIN_SCALE

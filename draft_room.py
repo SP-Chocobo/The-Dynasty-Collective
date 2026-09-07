@@ -325,7 +325,14 @@ TIME_HORIZON_CLAMP = (-10.0, 10.0)  # season-proj percentile)
 # the one status this went unnoticed for, since it's already an abbreviation in Sleeper's own
 # real vocabulary too -- see test_risk_adj_vocabulary_mismatch... in test_draft_room.py for
 # the full evidence trail.
-RISK_ADJ = {"IR": -18.0, "Out": -10.0, "Doubtful": -5.0, "Questionable": -1.5}
+#: "Questionable" was here, at -1.5, and was REMOVED by owner ruling (#191). It is not really
+#: an injury status -- anything can inspire it -- and the measurement agreed: Sleeper projects
+#: Questionable players for a full season (95 of 100 at gp=17), and the penalty moved 99 of
+#: 2084 board rows by at most six ranks, never touching the top 50. See
+#: player_universe.IMMATERIAL_INJURY_STATUSES for the ruling and the condition for its return.
+#: NOT a statement that the remaining magnitudes are right -- see #202: PUP, NA, Sus and DNR
+#: occur in the real feed and have no entry here at all, while "Doubtful" never occurs once.
+RISK_ADJ = {"IR": -18.0, "Out": -10.0, "Doubtful": -5.0}
 
 # Dynasty risk_adj calibration, history preserved for attribution (see
 # test_draft_room.py's DynastyRiskAdjSofteningTests/RiskAdjTrajectoryScalingTests and
