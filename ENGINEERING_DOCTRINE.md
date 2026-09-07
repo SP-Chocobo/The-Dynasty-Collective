@@ -236,6 +236,43 @@ trace proves it is a claim about *magnitude*.
 Tuning a coefficient to remove a symptom whose cause is semantic does not fix the defect. It
 hides the evidence that would have found it.
 
+### The inverse: when a coefficient cannot move what it names
+
+The rule above catches tuning a number whose cause is semantic. #184 is that failure inverted,
+and it is the harder one to see because the number is *correct* and still does nothing.
+
+`SUPER_FLEX_QB_SHARE` sets QB starter demand. `replacement_levels` forks on `startable_floors`
+to pick the rank it prices against:
+
+```python
+if floor is not None:  rank = <count above the cliff>       # taken in every superflex league
+else:                  rank = _remaining_demand_rank(...)   # the demand answer
+```
+
+Two mechanisms answer one question — *what is the QB replacement level in a superflex league?* —
+and the fork has no join. In the only format that reads the constant, the demand-derived answer
+is **never computed at all**: not overridden, not logged, not available to compare. Deriving a
+better value for that constant (#178 derived 1.000, soundly) could not move a single QB price,
+and its whole surviving effect was to make the other positions cheaper.
+
+**The rule: a constant that cannot move the quantity it is named for is not a tuning parameter,
+it is a dead wire, and the finding is architectural rather than numerical.** Before deriving,
+tightening, or defending any constant, prove it reaches the thing it claims to set — perturb it
+and measure the layer it is supposed to govern, not merely the layer it is read in.
+
+Two corollaries this cost real cycles to learn:
+
+- **Measure on the path production takes.** The first two measurements here passed
+  `startable_floors=None` and showed the constant working perfectly. That is a real code path;
+  it is not the one any superflex league uses. A number measured off the live branch is a
+  plausible number about something else.
+- **When two mechanisms can answer one question, the loser must leave a record.** This engine
+  already does that well in three places — `bpa_source` names which of four anchors priced a
+  row, `replacement_basis` separates a live level from a pre-draft anchor, `horizon_basis` was
+  repaired in #166 for exactly this. The floor fork has no such record, which is why the
+  behaviour survived this long: nothing anywhere in the system says QB was priced by the cliff
+  rather than by demand. Silent precedence is how a dead wire stays invisible.
+
 ---
 
 ## The re-audit cadence
