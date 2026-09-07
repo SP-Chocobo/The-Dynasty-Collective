@@ -4,7 +4,7 @@ sorting follows the league's real record, never an invented rating."""
 
 import unittest
 
-from league_standings import team_standings
+from league_standings import has_record, team_standings
 
 
 def _roster(roster_id, **settings_overrides) -> dict:
@@ -37,10 +37,44 @@ class TeamStandingsTests(unittest.TestCase):
         rows = team_standings([_roster(1, fpts_against=98, fpts_against_decimal=7)], {1: "X"})
         self.assertEqual(rows[0]["points_against"], 98.07)
 
-    def test_missing_settings_block_reads_as_all_zero_not_a_crash(self):
+    def test_missing_settings_block_reads_as_absent_not_as_a_zero_record(self):
+        # Was `assertEqual(rows[0]["wins"], 0)`: a roster Sleeper reported no settings for
+        # rendered identically to a team that has played and stands at 0-0-0, and the League
+        # view then STATED "no games played yet this season (0-0 across the board)" off it.
         rows = team_standings([{"roster_id": 1}], {1: "X"})
+        self.assertIsNone(rows[0]["wins"])
+        self.assertIsNone(rows[0]["losses"])
+        self.assertIsNone(rows[0]["ties"])
+        self.assertIsNone(rows[0]["points_for"])
+        self.assertFalse(has_record(rows[0]))
+
+    def test_a_measured_zero_record_is_still_a_zero_not_an_absence(self):
+        # The other half of the same contract: 0-0-0 with points reported is a real, measured
+        # standing and must keep rendering as the number 0.
+        rows = team_standings([_roster(1)], {1: "X"})
         self.assertEqual(rows[0]["wins"], 0)
-        self.assertEqual(rows[0]["points_for"], 0)
+        self.assertEqual(rows[0]["points_for"], 0.0)
+        self.assertTrue(has_record(rows[0]))
+
+    def test_an_explicit_null_field_is_absent_not_zero(self):
+        # `.get(k, 0) or 0` collapsed an explicit null the same way it collapsed a missing key.
+        rows = team_standings([{"roster_id": 1, "settings": {"wins": None, "losses": 2, "ties": 0}}], {1: "X"})
+        self.assertIsNone(rows[0]["wins"])
+        self.assertEqual(rows[0]["losses"], 2)
+        self.assertFalse(has_record(rows[0]))
+
+    def test_a_reported_whole_with_no_decimal_remainder_keeps_the_total_it_has(self):
+        rows = team_standings([{"roster_id": 1, "settings": {"fpts": 88}}], {1: "X"})
+        self.assertEqual(rows[0]["points_for"], 88.0)
+
+    def test_teams_with_no_record_order_last_and_never_outrank_a_measured_one(self):
+        rows = team_standings(
+            [{"roster_id": 1}, _roster(2, wins=0, losses=1), {"roster_id": 3}],
+            {1: "Zeta", 2: "Beaten", 3: "Alpha"},
+        )
+        # The 0-1 team is measured and outranks both unreported ones, which sort last
+        # alphabetically among themselves rather than being compared as numbers.
+        self.assertEqual([r["team"] for r in rows], ["Beaten", "Alpha", "Zeta"])
 
     def test_sorted_by_wins_descending_first(self):
         rows = team_standings(

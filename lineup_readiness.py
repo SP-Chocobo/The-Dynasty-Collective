@@ -19,7 +19,10 @@ from typing import Optional
 
 import depth_ratings
 
-_THIN_LABELS = ("Weak", "None — no rostered players here")
+# The producer names this vocabulary (depth_ratings.THIN_LABELS) -- copying the two literals
+# here again is how a rename to the label goes SILENT rather than loud: nothing would match,
+# and this module would simply stop ever flagging a thin position.
+_THIN_LABELS = depth_ratings.THIN_LABELS
 
 
 def compute_readiness(

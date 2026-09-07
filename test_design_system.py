@@ -330,3 +330,50 @@ class TheStreamlitThemeIsTheSamePaletteTests(unittest.TestCase):
         self.assertGreaterEqual(ds.contrast_ratio("bg", "gold"), ds.WCAG_AA_NORMAL_TEXT)
         import ui_source
         self.assertIn('[data-testid="stBaseButton-primary"]', ui_source.text())
+
+
+class SharedTreatmentsAreActuallyInjectedTests(unittest.TestCase):
+    """A treatment declared "every surface's" that no surface injects is a dead wire.
+
+    FOCUS_VISIBLE_CSS's own docstring says it is the one keyboard-focus treatment every
+    interactive row/control on EVERY surface should share; its only consumer was mockups/
+    common.py. REDUCED_MOTION_CSS was honoured in the Draft Room iframe only -- while app.py,
+    the entire native Streamlit surface, defines global button transitions and inherited
+    neither. Both are checked here against the real UI surface text, not against the mockups.
+    """
+
+    def setUp(self):
+        import ui_source
+        self.ui = ui_source.text()
+
+    def test_the_focus_treatment_reaches_the_native_surface(self):
+        self.assertIn('.replace("__DESIGN_SYSTEM_FOCUS_VISIBLE__", design_system.FOCUS_VISIBLE_CSS)', self.ui)
+        self.assertIn("__DESIGN_SYSTEM_FOCUS_VISIBLE__\n", self.ui)
+
+    def test_the_reduced_motion_treatment_reaches_the_native_surface(self):
+        self.assertIn('.replace("__DESIGN_SYSTEM_REDUCED_MOTION__", design_system.REDUCED_MOTION_CSS)', self.ui)
+        self.assertIn("__DESIGN_SYSTEM_REDUCED_MOTION__\n", self.ui)
+
+    def test_every_placeholder_the_stylesheet_carries_is_substituted(self):
+        # A placeholder with no matching .replace ships to the browser verbatim.
+        placeholders = set(re.findall(r"__DESIGN_SYSTEM_[A-Z_]+__", self.ui))
+        for marker in placeholders:
+            self.assertIn(f'.replace("{marker}"', self.ui, f"{marker} is never substituted")
+
+    def test_the_mono_stack_is_the_shared_one_not_eight_hand_copies(self):
+        # Two of the eight hand-copied stacks had already dropped the DejaVu Sans Mono
+        # fallback, which is the drift a single constant makes impossible.
+        self.assertIn('.replace("__DESIGN_SYSTEM_FONT_MONO__", design_system.FONT_MONO)', self.ui)
+        self.assertNotIn("JetBrains Mono", self.ui)
+
+    def test_the_attribute_safe_mono_stack_is_derived_from_the_same_constant(self):
+        # An inline style="..." attribute cannot carry the double-quoted form, which is why
+        # the two chip builders hand-wrote a shortened one. Derived, so it cannot drift.
+        self.assertEqual(ds.FONT_MONO_ATTR, ds.FONT_MONO.replace('"', "'"))
+        self.assertIn("DejaVu Sans Mono", ds.FONT_MONO_ATTR)
+        self.assertNotIn('"', ds.FONT_MONO_ATTR)
+        self.assertIn("design_system.FONT_MONO_ATTR", self.ui)
+
+
+if __name__ == "__main__":
+    unittest.main()

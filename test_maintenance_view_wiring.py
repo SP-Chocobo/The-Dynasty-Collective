@@ -75,5 +75,77 @@ class AttentionLedgerWiringTests(unittest.TestCase):
         self.assertIn("if _attn_chips:", block)
 
 
+class TradeTotalsAbsenceTests(unittest.TestCase):
+    """The Trade Calculator's metric cards must not price an unpriced side at zero.
+
+    Reproduction, before the fix: one misspelled name in each box gave "0 / 0 / +0%" in cards
+    labelled You send / You receive / Balance, directly beneath the caption that correctly
+    said nothing had matched. `sum(... if r["value"] is not None)` returns 0 over an all-absent
+    side, and the verdict line below was the only thing guarded."""
+
+    def _calc_block(self) -> str:
+        return ui_source.block('hcol1.subheader("Trade Calculator")', "def _describe_trade_side(")
+
+    def test_a_side_total_is_absent_when_no_row_on_it_is_priced(self):
+        block = self._calc_block()
+        self.assertIn("trade_send_total = sum(send_priced) if send_priced else None", block)
+        self.assertIn("trade_receive_total = sum(receive_priced) if receive_priced else None", block)
+        # The bare sums that produced a zero out of nothing must not come back.
+        self.assertNotIn('trade_send_total = sum(r["value"] for r in trade_send_rows', block)
+        self.assertNotIn('trade_receive_total = sum(r["value"] for r in trade_receive_rows', block)
+
+    def test_the_cards_render_the_absence_rather_than_a_number(self):
+        block = self._calc_block()
+        self.assertIn('mcol1.metric("You send", _side_total_text(trade_send_total))', block)
+        self.assertIn('mcol2.metric("You receive", _side_total_text(trade_receive_total))', block)
+        self.assertIn("if both_sides_priced else TRADE_BALANCE_NOT_COMPUTABLE", block)
+        self.assertNotIn('mcol1.metric("You send", f"{trade_send_total:.0f}")', block)
+
+    def test_a_measured_zero_still_renders_as_a_plain_number(self):
+        # It is the LIST of priced rows that decides whether a total exists, never its sum --
+        # a side whose priced assets really do add to 0 is measured, and prints 0.
+        block = self._calc_block()
+        self.assertIn('send_priced = [r["value"] for r in trade_send_rows if r["value"] is not None]', block)
+        self.assertIn('return f"{total:.0f}" if total is not None else TRADE_SIDE_UNPRICED', block)
+
+    def test_the_replacement_says_why_rather_than_blanking_the_card(self):
+        block = self._calc_block()
+        self.assertIn("Not computable — nothing on the", block)
+        self.assertIn("is priced", block)
+
+    def test_no_percentage_is_derived_from_a_side_that_has_no_total(self):
+        block = self._calc_block()
+        self.assertIn("larger_total = delta = delta_pct = None", block)
+        self.assertNotIn("delta_pct = (abs(delta) / larger_total * 100) if larger_total else 0.0\n        favorable = delta > 0\n", block)
+
+
+class DepthLabelVocabularyTests(unittest.TestCase):
+    """depth_ratings owns the label vocabulary; this surface consumes it and never respells it.
+
+    The literal "None — no rostered players here" lived in four places and failed
+    ASYMMETRICALLY: rename the producer and the two membership tests go quietly silent, while
+    _DEPTH_RANK's `.get(label, 2)` silently reclassifies every empty position room as a
+    measured, mid-league "Average"."""
+
+    def test_the_surface_never_respells_the_producers_labels(self):
+        self.assertNotIn("None — no rostered players here", _APP_SOURCE)
+        self.assertIn("depth_ratings.NO_PLAYERS_LABEL", _APP_SOURCE)
+        self.assertIn("depth_ratings.THIN_LABELS", _APP_SOURCE)
+
+    def test_an_unmeasurable_depth_is_excluded_from_fit_never_defaulted_to_average(self):
+        block = ui_source.block('hcol1.subheader("Trade Calculator")', "def _describe_trade_side(")
+        self.assertIn("before_rank = _DEPTH_RANK.get(before_label)", block)
+        self.assertIn("after_rank = _DEPTH_RANK.get(after_label)", block)
+        self.assertIn("if before_rank is None or after_rank is None:", block)
+        # The default that turned a documented "cannot be measured" into a measured Average.
+        self.assertNotIn("_DEPTH_RANK.get(before_label, 2)", block)
+        self.assertNotIn("_DEPTH_RANK.get(after_label, 2)", block)
+
+    def test_a_fit_verdict_is_withheld_when_nothing_was_measurable(self):
+        block = ui_source.block('hcol1.subheader("Trade Calculator")', "def _describe_trade_side(")
+        self.assertIn("if not measured_positions:", block)
+        self.assertIn("⚪ Not computable — no league-wide depth data at", block)
+
+
 if __name__ == "__main__":
     unittest.main()

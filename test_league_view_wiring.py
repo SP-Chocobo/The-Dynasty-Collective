@@ -159,5 +159,74 @@ class AntiTwoDashboardContractTests(unittest.TestCase):
         self.assertLess(consume_at, widget_at)
 
 
+class StandingsAbsenceTests(unittest.TestCase):
+    """A league with no record data must not produce a positive claim about the world.
+
+    Same source-level constraint as the rest of this file. What is pinned here is the three-
+    state read: league_standings now returns None for a record Sleeper never sent, so
+    `season_started` is True / False / None, and only the measured False may print "No games
+    played yet this season (0-0 across the board)" -- which this view used to print off a
+    sum of fabricated zeros."""
+
+    def _league_block(self) -> str:
+        start = _APP_SOURCE.index("elif main_view == LEAGUE_VIEW:")
+        end = _APP_SOURCE.index("# ------------------------------------------------------------------ the prytaneum --", start)
+        return _APP_SOURCE[start:end]
+
+    def test_games_played_is_summed_only_over_rosters_that_reported_a_record(self):
+        block = self._league_block()
+        self.assertIn("league_standings.has_record(row)", block)
+        self.assertIn('row["wins"] + row["losses"] + row["ties"] for row in recorded_rows', block)
+        # The unguarded sum over every row -- the one that turned absent records into a
+        # measured 0-0 league -- must not come back.
+        self.assertNotIn('row["wins"] + row["losses"] + row["ties"] for row in standings', block)
+
+    def test_season_started_is_three_state_not_a_bare_boolean(self):
+        block = self._league_block()
+        self.assertIn("season_started = (games_played_total > 0) if games_played_total is not None else None", block)
+        self.assertNotIn("season_started = games_played_total > 0\n", block)
+
+    def test_the_zero_zero_claim_is_made_only_from_a_measured_false(self):
+        block = self._league_block()
+        claim_at = block.index("No games played yet this season (0-0 across the board)")
+        # An identity check, not a truthiness one: `if not season_started` would let the
+        # unknown state print the claim too, which is the defect this pins.
+        self.assertIn("if season_started is False:", block)
+        self.assertLess(block.index("if season_started is False:"), claim_at)
+        self.assertIn("elif season_started is None:", block)
+
+    def test_an_unreported_figure_renders_as_absent_never_as_zero_or_a_dash(self):
+        block = self._league_block()
+        self.assertIn("return NOT_REPORTED if value is None else value", block)
+        self.assertIn('"W": _reported_cell(row["wins"])', block)
+        # A dash in a numeric column reads as zero; the absence state must be worded.
+        self.assertIn('NOT_REPORTED = "not reported"', _APP_SOURCE)
+
+
+class ValueRankFieldTests(unittest.TestCase):
+    """An unvalued team is not a team measured at the bottom.
+
+    It used to sort as -1 and STAY in value_rank_order, which pushed every real team's
+    user-facing rank down by one per unvalued team and padded the "of N" denominator with
+    teams that were never ranked."""
+
+    def _league_block(self) -> str:
+        start = _APP_SOURCE.index("elif main_view == LEAGUE_VIEW:")
+        end = _APP_SOURCE.index("# ------------------------------------------------------------------ the prytaneum --", start)
+        return _APP_SOURCE[start:end]
+
+    def test_unvalued_teams_are_excluded_from_the_ranking_not_given_a_sentinel(self):
+        block = self._league_block()
+        self.assertIn("[label for label in all_team_labels if team_values[label] is not None]", block)
+        self.assertNotIn("if _team_total_value(t) is not None else -1", block)
+        self.assertNotIn("else -1,", block)
+
+    def test_the_rank_comparison_is_withheld_when_the_field_is_incomplete(self):
+        block = self._league_block()
+        self.assertIn("n_unvalued = n_teams - len(value_rank_order)", block)
+        self.assertIn("if n_unvalued and team_label in value_rank_order:", block)
+        self.assertIn("isn't computable for this league", block)
+
+
 if __name__ == "__main__":
     unittest.main()

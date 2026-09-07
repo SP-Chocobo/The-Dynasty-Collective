@@ -131,6 +131,14 @@ st.set_page_config(page_title="Fantasy Football Command Center", layout="wide", 
 _GLOBAL_CSS = """
     <style>
     __DESIGN_SYSTEM_ROOT_TOKENS__
+    /* The two treatments design_system declares as EVERY surface's, injected here so this app
+       is one of the surfaces that actually has them. Both were previously honoured only by the
+       Draft Room iframe and the mockups, while this file -- the whole native Streamlit surface,
+       and the one that defines global button transitions below -- inherited neither: keyboard
+       focus fell back to the browser default, and prefers-reduced-motion was declared and then
+       never honoured where the motion actually was. */
+    __DESIGN_SYSTEM_REDUCED_MOTION__
+    __DESIGN_SYSTEM_FOCUS_VISIBLE__
     .stApp { background-color: var(--bg); }
     __DESIGN_SYSTEM_BADGE_ROLE__
     /* Pick Necessity's own color ramp (Draft Room view) -- distinct classes from the debate
@@ -156,7 +164,7 @@ _GLOBAL_CSS = """
        that fixed-format tail -- set apart from the conversational prose above it by a
        divider, instead of the two reading as one undifferentiated wall of typewriter text. */
     .agent-verdict {
-        font-family: 'JetBrains Mono', 'DejaVu Sans Mono', monospace;
+        font-family: __DESIGN_SYSTEM_FONT_MONO__;
         white-space: pre-wrap;
         font-size: 0.9rem;
         margin-top: 10px;
@@ -350,7 +358,7 @@ _GLOBAL_CSS = """
         min-height: 30px;
         min-width: 0;
         padding: 4px 12px;
-        font-family: 'JetBrains Mono', 'DejaVu Sans Mono', monospace;
+        font-family: __DESIGN_SYSTEM_FONT_MONO__;
         font-size: 0.72rem;
         font-weight: 600;
         letter-spacing: 0.04em;
@@ -382,7 +390,7 @@ _GLOBAL_CSS = """
         width: auto !important;
         min-height: 30px;
         padding: 4px 12px;
-        font-family: 'JetBrains Mono', 'DejaVu Sans Mono', monospace;
+        font-family: __DESIGN_SYSTEM_FONT_MONO__;
         font-size: 0.72rem;
         font-weight: 600;
         letter-spacing: 0.04em;
@@ -420,7 +428,7 @@ _GLOBAL_CSS = """
        pill shape anywhere -- the current value's own typography (bold, brighter than the
        muted label beside it) is the only affordance that it's interactive. */
     .drv-board-title {
-        font-family: 'JetBrains Mono', 'DejaVu Sans Mono', monospace;
+        font-family: __DESIGN_SYSTEM_FONT_MONO__;
         font-size: 0.72rem;
         font-weight: 600;
         letter-spacing: 0.08em;
@@ -478,7 +486,7 @@ _GLOBAL_CSS = """
         margin: 0 !important;
         background: transparent !important;
         border: none !important;
-        font-family: 'JetBrains Mono', 'DejaVu Sans Mono', monospace;
+        font-family: __DESIGN_SYSTEM_FONT_MONO__;
         font-size: 0.72rem;
         font-weight: 700;
         letter-spacing: 0.03em;
@@ -528,7 +536,7 @@ _GLOBAL_CSS = """
         padding: 4px 2px;
         background: transparent !important;
         border: none !important;
-        font-family: 'JetBrains Mono', 'DejaVu Sans Mono', monospace;
+        font-family: __DESIGN_SYSTEM_FONT_MONO__;
         font-size: 0.8rem;
         font-weight: 500;
         letter-spacing: 0.03em;
@@ -705,6 +713,9 @@ st.markdown(
         .replace("__DESIGN_SYSTEM_ROOT_TOKENS__", design_system.root_css_block())
         .replace("__DESIGN_SYSTEM_BADGE_ROLE__", design_system.BADGE_ROLE_CSS)
         .replace("__DESIGN_SYSTEM_BADGE_NECESSITY__", design_system.BADGE_NECESSITY_CSS)
+        .replace("__DESIGN_SYSTEM_REDUCED_MOTION__", design_system.REDUCED_MOTION_CSS)
+        .replace("__DESIGN_SYSTEM_FOCUS_VISIBLE__", design_system.FOCUS_VISIBLE_CSS)
+        .replace("__DESIGN_SYSTEM_FONT_MONO__", design_system.FONT_MONO)
     ),
     unsafe_allow_html=True,
 )
@@ -1642,6 +1653,18 @@ def format_scoring_settings(scoring_settings: dict) -> str:
 # player, so this is a deliberate, honest state, not a blank/missing field to explain away.
 # Never a placeholder score -- see composite_player_score's own docstring on not fabricating one.
 INCOMPLETE_PLAYER_PROFILE = "Incomplete Player Profile"
+
+# The two absence states the Trade Calculator's own metric cards can be in. A side with no
+# priced asset has no total, and a balance between two totals only exists when both of them
+# do. Neither is a 0, and neither is a bare dash -- a dash in a numeric card reads as zero,
+# which is the same false claim in quieter type. The card says what it cannot state; the
+# caption beneath it says why. A MEASURED zero is never routed through either of these.
+TRADE_SIDE_UNPRICED = "Not priced"
+TRADE_BALANCE_NOT_COMPUTABLE = "Not computable"
+
+# Sleeper reported no figure at all for this cell (no settings block, or the field absent/null
+# in it). Distinct from a real 0 in the same column, which stays a plain 0.
+NOT_REPORTED = "not reported"
 
 
 def describe_external_value(ext: dict) -> str:
@@ -3587,20 +3610,40 @@ if main_view == MATCHUP_VIEW:
 
         def _readiness_chip(label: str, tone: str) -> str:
             # warn is amber, the app's one attention hue (gold until the 2026-09-06 ruling).
-            color = {"ok": "var(--emerald-b)", "warn": "var(--amber-b)", "bad": "var(--crimson-b)"}[tone]
-            icon = {"ok": "✅", "warn": "⚠️", "bad": "⚠️"}[tone]
+            # "unknown" is a fourth tone on purpose: it is neither an all-clear nor a measured
+            # problem, and giving it either of those colours would state something.
+            color = {
+                "ok": "var(--emerald-b)", "warn": "var(--amber-b)", "bad": "var(--crimson-b)",
+                "unknown": "var(--muted)",
+            }[tone]
+            icon = {"ok": "✅", "warn": "⚠️", "bad": "⚠️", "unknown": "❔"}[tone]
             return (
                 f'<span style="display:inline-flex;align-items:center;gap:.35rem;'
-                f"font-family:'JetBrains Mono',monospace;font-size:.78rem;border-radius:5px;"
+                f"font-family:{design_system.FONT_MONO_ATTR};font-size:.78rem;border-radius:5px;"
                 f'padding:.3rem .6rem;margin:0 .5rem .5rem 0;color:{color};'
                 f'border:1px solid {color};background:rgba(255,255,255,.03);">{icon} {label}</span>'
             )
 
-        slots_ok = readiness["filled_starting_slots"] >= readiness["total_starting_slots"]
-        chips = [_readiness_chip(
-            f"{readiness['filled_starting_slots']}/{readiness['total_starting_slots']} starting slots filled",
-            "ok" if slots_ok else "bad",
-        )]
+        # total_starting_slots is len(slots_from_roster_positions(league["roster_positions"])).
+        # An absent or empty roster_positions makes it 0 -- and `filled >= 0` is then True for
+        # every roster that has ever existed, so the most prominent element on this surface
+        # emitted an emerald all-clear ("0/0 starting slots filled") asserting readiness from a
+        # quantity that was never computed. No slot count, no readiness judgment: the chip
+        # states the absence and names its cause, and the filled count it really does know is
+        # still reported alongside it.
+        slots_measured = readiness["total_starting_slots"] > 0
+        if slots_measured:
+            slots_ok = readiness["filled_starting_slots"] >= readiness["total_starting_slots"]
+            chips = [_readiness_chip(
+                f"{readiness['filled_starting_slots']}/{readiness['total_starting_slots']} starting slots filled",
+                "ok" if slots_ok else "bad",
+            )]
+        else:
+            chips = [_readiness_chip(
+                "Starting slots not computable — this league reports no roster positions "
+                f"({readiness['filled_starting_slots']} players currently in starting slots)",
+                "unknown",
+            )]
         if readiness["starter_injury_flags"]:
             names = ", ".join(f["name"] for f in readiness["starter_injury_flags"][:3])
             extra = len(readiness["starter_injury_flags"]) - 3
@@ -3745,7 +3788,7 @@ elif main_view == MAINTENANCE_VIEW:
             if depth_ratings.depth_label(
                 _attn_depth[_attn_my_team].get(pos, {"count": 0, "value": None}),
                 [teams[pos] for teams in _attn_depth.values() if pos in teams],
-            ) in ("Weak", "None — no rostered players here")
+            ) in depth_ratings.THIN_LABELS
         ]
         if _attn_thin:
             _attn_chips.append(("warn", f"Thin at {', '.join(_attn_thin)}"))
@@ -3755,7 +3798,7 @@ elif main_view == MAINTENANCE_VIEW:
         _attn_tone_color = {"warn": "var(--amber-b)", "info": "var(--sky-b)"}
         _attn_chip_html = "".join(
             f'<span style="display:inline-flex;align-items:center;gap:.35rem;'
-            f"font-family:'JetBrains Mono',monospace;font-size:.78rem;border-radius:5px;"
+            f"font-family:{design_system.FONT_MONO_ATTR};font-size:.78rem;border-radius:5px;"
             f'padding:.3rem .6rem;margin:0 .5rem .5rem 0;color:{_attn_tone_color[tone]};'
             f'border:1px solid {_attn_tone_color[tone]};background:rgba(255,255,255,.03);">{text}</span>'
             for tone, text in _attn_chips
@@ -4232,17 +4275,57 @@ elif main_view == MAINTENANCE_VIEW:
         with rrcol2:
             _render_trade_side(trade_receive_rows)
 
-        trade_send_total = sum(r["value"] for r in trade_send_rows if r["value"] is not None)
-        trade_receive_total = sum(r["value"] for r in trade_receive_rows if r["value"] is not None)
-        larger_total = max(trade_send_total, trade_receive_total)
-        delta = trade_receive_total - trade_send_total
-        delta_pct = (abs(delta) / larger_total * 100) if larger_total else 0.0
-        favorable = delta > 0
+        # ABSENCE IS NOT A VALUE, and a summed-over-nothing 0 is the purest way to break that
+        # rule: `sum(... if r["value"] is not None)` over a side where NOTHING priced returns
+        # 0, and 0 in a metric card is a measured claim ("this side is worth nothing"), not the
+        # absence it actually is. Typing one misspelled name into each box rendered
+        # "0 / 0 / +0%" in a card labelled Balance, in the same viewport as the caption above
+        # correctly saying nothing had matched -- the prose and the numbers contradicting each
+        # other on one screen. The verdict line below was already guarded (`if larger_total`);
+        # only the cards were not.
+        #
+        # It is the LIST of priced rows, not its sum, that decides whether a total exists. A
+        # side whose priced rows genuinely add up to 0 is a MEASURED zero and still renders as
+        # a plain 0, formatted exactly like any other number.
+        send_priced = [r["value"] for r in trade_send_rows if r["value"] is not None]
+        receive_priced = [r["value"] for r in trade_receive_rows if r["value"] is not None]
+        trade_send_total = sum(send_priced) if send_priced else None
+        trade_receive_total = sum(receive_priced) if receive_priced else None
+        both_sides_priced = trade_send_total is not None and trade_receive_total is not None
+        if both_sides_priced:
+            larger_total = max(trade_send_total, trade_receive_total)
+            delta = trade_receive_total - trade_send_total
+            delta_pct = (abs(delta) / larger_total * 100) if larger_total else 0.0
+            favorable = delta > 0
+        else:
+            # No total on a side means no difference and no percentage of one -- every
+            # downstream read stays absent rather than defaulting to a number. The raw-value
+            # verdict below already tests `if larger_total:` and so stays silent on its own.
+            larger_total = delta = delta_pct = None
+            favorable = False
+
+        def _side_total_text(total: Optional[float]) -> str:
+            return f"{total:.0f}" if total is not None else TRADE_SIDE_UNPRICED
 
         mcol1, mcol2, mcol3 = st.columns(3)
-        mcol1.metric("You send", f"{trade_send_total:.0f}")
-        mcol2.metric("You receive", f"{trade_receive_total:.0f}")
-        mcol3.metric("Balance", f"{'+' if delta >= 0 else ''}{delta_pct if delta >= 0 else -delta_pct:.0f}%")
+        mcol1.metric("You send", _side_total_text(trade_send_total))
+        mcol2.metric("You receive", _side_total_text(trade_receive_total))
+        mcol3.metric(
+            "Balance",
+            f"{'+' if delta >= 0 else ''}{delta_pct if delta >= 0 else -delta_pct:.0f}%"
+            if both_sides_priced else TRADE_BALANCE_NOT_COMPUTABLE,
+        )
+        if not both_sides_priced:
+            _unpriced_sides = [
+                name for name, total in (("send", trade_send_total), ("receive", trade_receive_total))
+                if total is None
+            ]
+            st.caption(
+                f"Not computable — nothing on the {' or '.join(_unpriced_sides)} side is priced, "
+                "so there is no total to state and no balance between two totals to compute. "
+                "A side with no priced asset has no value; that is not the same as a value of "
+                "zero, and the buttons below still work without one."
+            )
 
         # Two independent reads, not one number with a caveat bolted on. A real Draft Sharks
         # trade evaluation (checked directly against this app's own vendor, not a competitor)
@@ -4279,11 +4362,22 @@ elif main_view == MAINTENANCE_VIEW:
         touched_positions = sorted(set(sent_positions) | set(received_positions))
 
         fit_verdict, fit_line = None, None
-        _DEPTH_RANK = {"None — no rostered players here": 0, "Weak": 1, "Average": 2, "Strong": 3}
+        # One vocabulary, named by its producer. Spelling these four labels out again here is
+        # how a rename to depth_ratings' own strings went silently WRONG rather than loudly
+        # broken: an unmatched key fell to the `.get(label, 2)` default and every empty
+        # position room was reclassified as measured, mid-league "Average".
+        _DEPTH_RANK = {
+            depth_ratings.NO_PLAYERS_LABEL: 0,
+            depth_ratings.WEAK: 1,
+            depth_ratings.AVERAGE: 2,
+            depth_ratings.STRONG: 3,
+        }
         position_detail: list[str] = []
         if touched_positions and my_team_label:
             fit_score = 0
             improved, worsened = [], []
+            unmeasured: list[str] = []
+            measured_positions = 0
             for pos in touched_positions:
                 before_cell = depth.get(my_team_label, {}).get(pos, {"count": 0, "value": None})
                 value_sent_here = sum(r["value"] for r in trade_send_rows if r.get("position") == pos and r["value"] is not None)
@@ -4298,13 +4392,26 @@ elif main_view == MAINTENANCE_VIEW:
                 after_value = (before_cell["value"] or 0) - value_sent_here + value_received_here
                 before_label = _depth_label(my_team_label, pos)
                 after_label = _depth_label(my_team_label, pos, override_cell={"count": after_count, "value": after_value})
-                before_rank = _DEPTH_RANK.get(before_label, 2)
-                after_rank = _DEPTH_RANK.get(after_label, 2)
-                fit_score += after_rank - before_rank
-                if after_rank > before_rank:
-                    improved.append(pos)
-                elif after_rank < before_rank:
-                    worsened.append(pos)
+                # depth_ratings.depth_label documents None as "cannot be measured" -- there
+                # is no peer data at this position for an above/below-league read to mean
+                # anything. `.get(label, 2)` turned that absence into a measured "Average" and
+                # fed the difference straight into fit_score, while the line built two
+                # statements below rendered the very same quantity honestly as "unknown":
+                # one screen, one quantity, two answers. A position whose depth cannot be
+                # measured is EXCLUDED from the fit comparison instead (rule 1 of this repo's
+                # own absence contract), and named in the verdict line so its exclusion is
+                # visible rather than silent.
+                before_rank = _DEPTH_RANK.get(before_label)
+                after_rank = _DEPTH_RANK.get(after_label)
+                if before_rank is None or after_rank is None:
+                    unmeasured.append(pos)
+                else:
+                    measured_positions += 1
+                    fit_score += after_rank - before_rank
+                    if after_rank > before_rank:
+                        improved.append(pos)
+                    elif after_rank < before_rank:
+                        worsened.append(pos)
 
                 line = f"Your {pos} depth: {before_label or 'unknown'}"
                 if after_count != before_cell["count"]:
@@ -4315,7 +4422,17 @@ elif main_view == MAINTENANCE_VIEW:
                         line += f" · {trade_partner}'s {pos} depth: {theirs}"
                 position_detail.append(line)
 
-            if fit_score > 0:
+            if not measured_positions:
+                # Every touched position came back unmeasurable, so there is no roster-fit
+                # read at all -- not a neutral one. fit_verdict stays None, which
+                # trade_ledger_ui.overall_synthesis already treats as "not enough signal on
+                # one side to say anything", and the line states why rather than blanking.
+                fit_verdict = None
+                fit_line = (
+                    "⚪ Not computable — no league-wide depth data at "
+                    f"{', '.join(touched_positions)} to compare your room against."
+                )
+            elif fit_score > 0:
                 fit_verdict = "favorable"
                 fit_line = f"🟢 Favorable — improves your depth at {', '.join(improved)}."
             elif fit_score < 0:
@@ -4324,6 +4441,11 @@ elif main_view == MAINTENANCE_VIEW:
             else:
                 fit_verdict = "neutral"
                 fit_line = "⚪ Roughly neutral — no meaningful shift in positional depth either way."
+            if unmeasured and measured_positions:
+                fit_line += (
+                    f" {', '.join(unmeasured)} left out — depth there can't be measured against"
+                    " the rest of the league."
+                )
 
         if raw_line or fit_line:
             vcol1, vcol2 = st.columns(2)
@@ -5408,11 +5530,21 @@ elif main_view == LEAGUE_VIEW:
     # Real record only -- league_standings.team_standings reads Sleeper's own settings.wins/
     # losses/ties/fpts fields directly, never a computed rating (see that module's own docstring).
     standings = league_standings.team_standings(snapshot.get("rosters") or [], owner_labels)
-    games_played_total = sum(row["wins"] + row["losses"] + row["ties"] for row in standings)
-    season_started = games_played_total > 0
+    # THREE STATES, NOT TWO. "Has this league played any games" is only answerable off rosters
+    # that actually reported a record. league_standings returns None for a record Sleeper never
+    # sent, so a league whose rosters carry no settings block reads as UNKNOWN here instead of
+    # summing a pile of fabricated zeros into a measured False -- which is what used to let
+    # this view state, positively and on screen, "No games played yet this season (0-0 across
+    # the board)" about data that was never there.
+    recorded_rows = [row for row in standings if league_standings.has_record(row)]
+    games_played_total = sum(
+        row["wins"] + row["losses"] + row["ties"] for row in recorded_rows
+    ) if recorded_rows else None
+    season_started = (games_played_total > 0) if games_played_total is not None else None
     if not season_started:
-        # 0-0 across the board makes "sorted by wins" a meaningless stable-sort tiebreak --
-        # alphabetical is at least honestly arbitrary instead of quietly implying a real order.
+        # 0-0 across the board -- or no record to read at all -- makes "sorted by wins" a
+        # meaningless stable-sort tiebreak; alphabetical is at least honestly arbitrary instead
+        # of quietly implying a real order.
         standings = sorted(standings, key=lambda row: row["team"])
 
     depth = positional_depth(player_universe, merger)
@@ -5432,16 +5564,32 @@ elif main_view == LEAGUE_VIEW:
         "team. Selecting a team in either one carries over to the other, and both open the same "
         "team breakdown below. Neither is a computed team-strength score.",
     )
-    if not season_started:
+    if season_started is False:
+        # A real, measured 0-0: every team reported a record and every record is empty.
         st.caption(
             "No games played yet this season (0-0 across the board), so Standings isn't "
             "meaningful yet — Depth Map leads for now. Standings is still one tap away, and "
             "it's listing teams alphabetically rather than implying a fake early order."
         )
+    elif season_started is None:
+        st.caption(
+            "This league's rosters came back with no won-lost record at all, so whether the "
+            "season has started can't be read from them — that's an absent record, not an 0-0 "
+            "one. Standings lists teams alphabetically and shows each unreported figure as "
+            f'"{NOT_REPORTED}" rather than as a 0; Depth Map, which doesn\'t depend on the '
+            "record, leads for now."
+        )
 
     if lens == LADDER_LENS:
+        def _reported_cell(value):
+            # A figure Sleeper never sent renders as an explicit "not reported" -- never as 0,
+            # and never as a dash, which in a numeric column reads as zero. A measured 0 is
+            # passed straight through and formatted exactly like every other number here.
+            return NOT_REPORTED if value is None else value
+
         standings_df = pd.DataFrame([
-            {"Team": row["team"], "W": row["wins"], "L": row["losses"], "T": row["ties"], "PF": row["points_for"]}
+            {"Team": row["team"], "W": _reported_cell(row["wins"]), "L": _reported_cell(row["losses"]),
+             "T": _reported_cell(row["ties"]), "PF": _reported_cell(row["points_for"])}
             for row in standings
         ])
         ladder_event = st.dataframe(
@@ -5536,15 +5684,32 @@ elif main_view == LEAGUE_VIEW:
                 values = [c["value"] for c in depth.get(label, {}).values() if c["value"] is not None]
                 return sum(values) if values else None
 
+            # A team with nothing priced has NO asset-base total. Sorting it as -1 placed it
+            # below every real team as though it had been measured at the bottom, and -- the
+            # part that reached every other team's caption -- kept it INSIDE value_rank_order,
+            # inflating the rank printed for everyone above it and padding the "of N"
+            # denominator with teams that were never ranked at all. Unvalued teams are excluded
+            # from the ranking outright rather than given a sentinel position in it.
+            team_values = {label: _team_total_value(label) for label in all_team_labels}
             value_rank_order = sorted(
-                all_team_labels,
-                key=lambda t: _team_total_value(t) if _team_total_value(t) is not None else -1,
+                [label for label in all_team_labels if team_values[label] is not None],
+                key=lambda t: team_values[t],
                 reverse=True,
             )
-            if team_label in win_rank_order and _team_total_value(team_label) is not None:
+            n_teams = len(all_team_labels)
+            n_unvalued = n_teams - len(value_rank_order)
+            if n_unvalued and team_label in value_rank_order:
+                # Win rank is over every team; an asset-base rank can only be over the teams
+                # that have one. Comparing a rank of 12 against a rank of 7 is not a
+                # comparison, so this says what it cannot do instead of doing it anyway.
+                st.caption(
+                    f"Record-vs-asset-base read isn't computable for this league — {n_unvalued} "
+                    f"of {n_teams} teams have no priced assets loaded, so an asset-base rank "
+                    "would be a rank within an incomplete field, not within the league."
+                )
+            elif team_label in win_rank_order and team_label in value_rank_order:
                 win_rank = win_rank_order.index(team_label) + 1
                 value_rank = value_rank_order.index(team_label) + 1
-                n_teams = len(all_team_labels)
                 threshold = max(1, n_teams // 3)
                 if abs(win_rank - value_rank) > threshold:
                     if win_rank > value_rank:

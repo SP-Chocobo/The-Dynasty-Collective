@@ -3,23 +3,52 @@ returns a direct textual reshaping of its arguments, never a new computed value.
 
 import unittest
 
+import design_system
 import trade_ledger_ui as ui
 
 
 class FreshnessPillTests(unittest.TestCase):
-    def test_not_stale_reads_current_regardless_of_age(self):
+    def test_a_measured_zero_day_age_reads_current(self):
+        # A real, measured "loaded today" -- the positive green assertion is earned here.
         self.assertIn("Values current", ui.freshness_pill(False, 0))
-        self.assertIn("Values current", ui.freshness_pill(False, None))
+        self.assertIn("tl-pill fresh", ui.freshness_pill(False, 0))
+
+    def test_unknown_age_is_its_own_state_not_the_green_current_pill(self):
+        # data_merger._compute_freshness returns (None, None, False) for an empty frame or one
+        # with no source_date column -- "we do not know how old this is." That used to fall
+        # through to "Values current", turning an absence into a positive assertion on two
+        # surfaces whose captions tell the reader to check this pill when something looks off.
+        html = ui.freshness_pill(False, None)
+        self.assertIn("age unknown", html)
+        self.assertIn("tl-pill unknown", html)
+        self.assertNotIn("Values current", html)
+        self.assertNotIn("tl-pill fresh", html)
 
     def test_stale_with_known_age_shows_the_day_count(self):
         html = ui.freshness_pill(True, 9)
         self.assertIn("Values 9d stale", html)
         self.assertIn("tl-pill stale", html)
 
-    def test_stale_with_unknown_age_falls_back_to_current(self):
-        # Nothing to report a day count against -- reads as "current" rather than a
-        # misleading "stale" with no number attached.
-        self.assertIn("Values current", ui.freshness_pill(True, None))
+    def test_stale_with_unknown_age_reads_unknown_not_current(self):
+        # Nothing to report a day count against. It is not "stale" (no number to state) and it
+        # is certainly not "current" -- it is unknown, which is what it now says.
+        html = ui.freshness_pill(True, None)
+        self.assertIn("age unknown", html)
+        self.assertNotIn("Values current", html)
+
+    def test_the_fresh_tint_is_mixed_from_the_token_never_a_hand_copied_literal(self):
+        # rgba(22,163,74,.12) is #16a34a; TOKENS["emerald"] is #1a9e4b -- the literal had
+        # already drifted off the token it was meant to be. The stale rule beside it was
+        # already color-mixed from its own token, with a comment saying why.
+        self.assertIn("color-mix(in srgb, var(--emerald) 12%, transparent)", ui.TRADE_LEDGER_CSS)
+        self.assertNotIn("rgba(22,163,74", ui.TRADE_LEDGER_CSS)
+
+    def test_the_type_stack_is_the_shared_one_not_a_hand_copy(self):
+        # Same class of defect as the tint above: a stack copied per rule is a stack that can
+        # lose its fallback in one place and not the others.
+        self.assertIn(design_system.FONT_MONO, ui.TRADE_LEDGER_CSS)
+        self.assertNotIn("__DESIGN_SYSTEM_FONT_MONO__", ui.TRADE_LEDGER_CSS)
+        self.assertEqual(ui.TRADE_LEDGER_CSS.count("DejaVu Sans Mono"), 2)
 
     def test_never_names_a_vendor(self):
         for html in (ui.freshness_pill(True, 5), ui.freshness_pill(False, 0)):

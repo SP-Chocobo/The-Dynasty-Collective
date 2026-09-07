@@ -122,6 +122,12 @@ TOKENS: dict[str, str] = {
 
 FONT_SANS = '"Segoe UI", system-ui, sans-serif'
 FONT_MONO = '"JetBrains Mono", "DejaVu Sans Mono", monospace'
+# The same stack, single-quoted, for the ONE context that cannot take the double-quoted
+# form: an inline HTML style="..." attribute, where an inner double quote ends the
+# attribute. Derived from FONT_MONO rather than retyped -- the two app.py chip builders
+# that need it had each hand-written a shortened `'JetBrains Mono',monospace` and dropped
+# the DejaVu fallback in the process, which is exactly the drift a derived constant closes.
+FONT_MONO_ATTR = FONT_MONO.replace('"', "'")
 # Brand voice, for the wordmark and top-level headings ONLY -- never for data. The fallback
 # chain ends at Georgia deliberately: it ships nearly everywhere, so a machine with no webfont
 # access still renders a classical serif rather than dropping to the sans and losing the

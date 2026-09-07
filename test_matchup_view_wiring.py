@@ -78,5 +78,46 @@ class MatchupCommittedObjectWiringTests(unittest.TestCase):
         self.assertIn("default_position = next((p for p in positions_present if p in flagged_positions)", block)
 
 
+class ReadinessSlotCountAbsenceTests(unittest.TestCase):
+    """An all-clear may not be emitted from a slot count that was never computed.
+
+    total_starting_slots is len(lineup_optimizer.slots_from_roster_positions(roster_positions)).
+    An absent or empty roster_positions makes it 0, and `filled >= 0` is True for every roster
+    that has ever existed -- so the most prominent element on this surface rendered an emerald
+    "0/0 starting slots filled" all-clear off a quantity nothing had measured."""
+
+    def test_the_slot_comparison_is_gated_on_the_count_being_measured(self):
+        block = _matchup_block()
+        self.assertIn('slots_measured = readiness["total_starting_slots"] > 0', block)
+        self.assertIn("if slots_measured:", block)
+
+    def test_an_unmeasured_slot_count_is_neither_ok_nor_bad(self):
+        block = _matchup_block()
+        # Not the emerald all-clear, and not a red failure either -- it is unknown, which is
+        # its own tone with its own icon.
+        self.assertIn('"unknown": "var(--muted)"', block)
+        self.assertIn('"unknown": "❔"', block)
+        self.assertIn("Starting slots not computable — this league reports no roster positions", block)
+
+    def test_the_unguarded_always_true_comparison_cannot_come_back(self):
+        block = _matchup_block()
+        self.assertNotIn(
+            'chips = [_readiness_chip(\n            f"{readiness[\'filled_starting_slots\']}/'
+            '{readiness[\'total_starting_slots\']} starting slots filled",\n            '
+            '"ok" if slots_ok else "bad",\n        )]',
+            block,
+        )
+        # The comparison itself only exists inside the measured branch now.
+        slots_ok_at = block.index('slots_ok = readiness["filled_starting_slots"] >=')
+        guard_at = block.index("if slots_measured:")
+        self.assertLess(guard_at, slots_ok_at)
+
+    def test_the_count_it_does_know_is_still_reported(self):
+        # Absence is stated, not substituted -- and the one figure that IS measured (how many
+        # players sit in starting slots) still reaches the reader.
+        block = _matchup_block()
+        self.assertIn("players currently in starting slots", block)
+
+
 if __name__ == "__main__":
     unittest.main()
