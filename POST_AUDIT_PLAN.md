@@ -5755,3 +5755,87 @@ Tests: `test_battery_universe_boundary.py` (9), `test_resolution_memo.py` (9),
 "return the cached dict without copying on read", SURVIVED the first version of the memo tests
 and is recorded there rather than quietly patched: every test then mutated the FIRST result,
 which is a fresh dict either way, so a copy on one side only was invisible.
+
+
+## #191 IR/PUP + #202 -- THE PROJECTION SAID SIXTEEN GAMES FOR A MAN WHO WILL NOT PLAY THEM
+
+**Ruled by the owner: fix the INPUT, not the penalty.** A wrong number penalised by a hand-set
+constant is still a wrong number, and everything reading `projected_points` directly -- the
+board's own "who scores most" column -- would go on showing the full season.
+
+### The evidence, and the whole emitted vocabulary
+
+    injury_status   players   with a projection   games played
+    (none)             6101              4882     gp16=61  gp17=628
+    Questionable        290               286     gp16=5   gp17=95
+    IR                  126               126     gp16=20  gp17=3
+    NA                   46                22     gp16=1   gp17=2
+    PUP                  21                21     gp16=4   gp17=8
+    Sus                   8                 7     gp16=1   gp17=1
+    DNR                   2                 2
+    Out                   1                 0
+
+`RISK_ADJ` recognised `IR`, `Out` and `Doubtful`. **"Doubtful" never occurs once. "Out" occurs
+once in the entire universe. PUP, NA, Sus and DNR all occur and had no entry at all** -- so the
+designations that ARE season-affecting were priced as fully fit, which is #202.
+
+### The factor is derived from the rulebook, not fitted to the sample
+
+`GAMES_MISSED_FLOOR = {"IR": 4, "PUP": 4, "Out": 1}` -- a regular-season PUP player must miss at
+least the first four games; IR with a designation to return, at least four; "Out" is one week.
+**The omissions are as deliberate as the entries** (#56): Questionable and Doubtful are
+game-time calls with no rule floor, `Sus` depends on a suspension length the feed does not
+carry, and `NA`/`DNR` are not health designations. A number for any of them would be invented.
+
+**IT IS A BOUND, NOT AN ESTIMATE, AND THE BASIS SAYS SO.** We know a man on IR misses AT LEAST
+four games; we do not know he misses only four. Cutting by the floor removes what is certain and
+fabricates nothing. This is exactly the state #188 says the absence vocabulary still lacks a
+name for, and `availability_basis` carries it in the meantime:
+`rule_floor` / `no_designation` / `immaterial_designation` / `unrecognised_designation` /
+`no_games_reported`.
+
+`no_games_reported` is split from `unrecognised_designation` on purpose. "We do not know what
+this designation means" and "we know exactly what it means and lack the denominator" are
+different absences with different remedies, and collapsing them is the defect this item exists
+to correct.
+
+### Measured on the real board
+
+| player | before | after | universal_value |
+|---|---|---|---|
+| James Conner (IR) | 32 | **41** | 616 -> 404 |
+| Luke Musgrave (PUP) | 62 | **161** | -> -13.4 |
+| Savion Williams (IR) | 71 | **172** | -> -23.0 |
+| Joe Royer (PUP) | 119 | **255** | -> -157 |
+
+34 rows take the cut; 4 carry `unrecognised_designation` and are visible rather than silently
+healthy.
+
+**Conner staying 41st is correct, not timid.** Asserting a season-ending absence would invent
+the very number this repair refuses to invent. The board now says what is known and labels it.
+
+### The penalty is not charged twice
+
+`health_penalty(status, availability_basis)` returns 0.0 where the input already carries the
+cut, and the full `RISK_ADJ` everywhere else. **A split, not a blanket removal**: a row priced
+off the vendor's projection has no games-played figure to cut against, so `risk_adj` is still
+the only place health enters for it. This is the REAL double-count, as against the one I claimed
+on different evidence earlier and retracted in full.
+
+### What is NOT fixed
+
+- **The magnitudes are untouched.** `RISK_ADJ` still holds -18/-10/-5 and "Doubtful" still has
+  an entry it will never use. Whether those numbers are right is a separate question and the
+  owner's; this repair only stops them from being the ONLY health signal.
+- **The battery has still not been re-run** on the real universe. #150.
+- **#143 is blocked**: `api.sleeper.app` is denied by this environment's network policy (403 at
+  CONNECT, from the proxy's own status endpoint -- not inferred from a failed call). The
+  Questionable reintroduction condition therefore stays unreachable.
+
+Tests: `test_availability_haircut.py`, 18 tests, mutation-checked 10/10. **Two mutations
+survived the first version and are recorded there rather than patched over**: `health_penalty`
+was originally a branch restated inside the test body -- a tautology, the same mistake caught in
+#195 the same day, fixed by extracting the function; and DELETING `availability_basis` from the
+pool row broke nothing, because every reader uses `.get()` so the companion's absence degrades
+silently to None and the rank assertions still hold. That is #166's defect inside the repair for
+#166's cousin.

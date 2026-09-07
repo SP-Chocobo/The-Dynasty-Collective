@@ -42,6 +42,19 @@
         "assertTrue": 1
       }
     },
+    "test_availability_haircut.py": {
+      "test_methods": 18,
+      "asserts": {
+        "assertAlmostEqual": 3,
+        "assertEqual": 16,
+        "assertGreater": 2,
+        "assertIn": 2,
+        "assertIsNone": 1,
+        "assertNotEqual": 1,
+        "assertNotIn": 1,
+        "assertTrue": 1
+      }
+    },
     "test_baseline_manifest.py": {
       "test_methods": 11,
       "asserts": {

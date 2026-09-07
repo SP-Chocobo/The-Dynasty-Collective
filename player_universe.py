@@ -82,6 +82,67 @@ def is_material_injury_status(status: Optional[str]) -> bool:
     return bool(status) and status not in IMMATERIAL_INJURY_STATUSES
 
 
+#: Games a designation GUARANTEES the player misses, taken from the NFL's own roster rules
+#: rather than chosen to fit a sample (#191, #56).
+#:
+#:   IR   -- a player placed on injured reserve and designated to return must miss at least
+#:           four games; without the designation it is season-ending, so four is the FLOOR.
+#:   PUP  -- regular-season Physically Unable to Perform requires missing at least the first
+#:           four games, on the same reading.
+#:   Out  -- ruled out for THIS week: one game.
+#:
+#: Nothing else is here, and the omissions are the disciplined part. "Questionable" and
+#: "Doubtful" are game-time calls with no rule floor at all (and Questionable is out of the
+#: engine entirely -- see IMMATERIAL_INJURY_STATUSES). "Sus" varies by the length of the
+#: suspension, which the feed does not carry. "NA" and "DNR" are not health designations.
+#: A number for any of those would be invented, and inventing one is exactly what #56 forbids.
+GAMES_MISSED_FLOOR = {"IR": 4, "PUP": 4, "Out": 1}
+
+#: What the engine does with a designation it has never seen. NOT 0.0, which would silently
+#: price an unknown as healthy -- the absence contract's whole point (#202). PUP reached the
+#: board with no entry anywhere and was treated as fully fit for exactly that reason.
+UNRECOGNISED_DESIGNATION = "unrecognised_designation"
+NO_DESIGNATION = "no_designation"
+RULE_FLOOR = "rule_floor"
+IMMATERIAL = "immaterial_designation"
+#: A RECOGNISED designation whose haircut could not be computed because the feed reported no
+#: games-played for the player. Split from UNRECOGNISED_DESIGNATION deliberately: "we do not
+#: know what this designation means" and "we know exactly what it means and lack the
+#: denominator" are different absences with different remedies, and collapsing them is the
+#: defect this whole item exists to correct.
+NO_GAMES_REPORTED = "no_games_reported"
+
+
+def availability_factor(status: Optional[str], projected_games: Optional[float]):
+    """(factor, basis) -- what share of a full-season projection this player can still earn.
+
+    THE COMPANION IS RETURNED WITH THE NUMBER, never separately (#166). A factor of 1.0 means
+    four different things -- nobody said anything, the designation carries no information, the
+    designation is unrecognised, or games-played was never reported -- and a consumer that
+    cannot tell them apart will read the last two as health.
+
+    THE FACTOR IS A BOUND, NOT AN ESTIMATE, and the basis says so. We know a man on IR misses
+    AT LEAST four games; we do not know he misses only four. Applying the floor removes the
+    part that is certain and fabricates nothing, which is the most that can honestly be taken
+    off. Reading it as a point estimate would overstate a season-ending case -- see #188, which
+    is the register item for the "bounded/partial" state this vocabulary still lacks.
+
+    `projected_games` is Sleeper's own `gp` for the player. Absent, no factor is computable:
+    a share of an unknown denominator is not a quantity.
+    """
+    if not status:
+        return 1.0, NO_DESIGNATION
+    if status in IMMATERIAL_INJURY_STATUSES:
+        return 1.0, IMMATERIAL
+    missed = GAMES_MISSED_FLOOR.get(status)
+    if missed is None:
+        return 1.0, UNRECOGNISED_DESIGNATION
+    if not projected_games or projected_games <= 0:
+        return 1.0, NO_GAMES_REPORTED
+    remaining = max(projected_games - missed, 0.0)
+    return remaining / projected_games, RULE_FLOOR
+
+
 def player_position(info: dict) -> Optional[str]:
     """The fantasy-relevant position bucket for a player, Sleeper's own way.
 

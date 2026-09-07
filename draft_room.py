@@ -177,7 +177,10 @@ import pandas as pd
 import content_hash
 import lineup_optimizer as lo
 from data_merger import NO_NFL_TEAM, DataMerger, name_key, normalize_name
-from player_universe import FLEX_SLOT_POSITIONS, FANTASY_POSITIONS, league_usable_positions, player_eligible_positions, player_name, player_position, score_projection
+import player_universe as pu
+from player_universe import (FLEX_SLOT_POSITIONS, FANTASY_POSITIONS, league_usable_positions,
+                             player_eligible_positions, player_name, player_position,
+                             score_projection, availability_factor as player_availability_factor)
 
 # Sleeper's projection endpoint is per-week, not season-long (see sleeper_client.py's
 # get_weekly_projections) -- for positions Draft Sharks doesn't project at all (currently
@@ -333,6 +336,27 @@ TIME_HORIZON_CLAMP = (-10.0, 10.0)  # season-proj percentile)
 #: NOT a statement that the remaining magnitudes are right -- see #202: PUP, NA, Sus and DNR
 #: occur in the real feed and have no entry here at all, while "Doubtful" never occurs once.
 RISK_ADJ = {"IR": -18.0, "Out": -10.0, "Doubtful": -5.0}
+
+def health_penalty(status: Optional[str], availability_basis: Optional[str]) -> float:
+    """The health term of universal_value -- and ZERO where the input already carries it (#191).
+
+    Extracted so the decision is testable directly rather than only through a full board.
+    A test that re-implements this branch in its own body asserts nothing about production;
+    that mistake was made once already this session (#195) and is not repeated here.
+
+    WHEN THIS ROW'S POINTS WERE CUT BY THE RULE FLOOR, the games the designation costs are
+    already gone from the number, and a penalty on top charges the same fact twice -- the real
+    version of a double-count I once claimed existed on different evidence and had to retract.
+
+    IT STAYS EVERYWHERE ELSE, which is why this is a split and not a blanket removal: a row
+    priced off the vendor's projection has no games-played figure to cut against, so this is
+    still the only place health enters for it. NOT a claim that the surviving magnitudes are
+    right -- see #202 and the note above RISK_ADJ.
+    """
+    if availability_basis == pu.RULE_FLOOR:
+        return 0.0
+    return RISK_ADJ.get(status, 0.0)
+
 
 # Dynasty risk_adj calibration, history preserved for attribution (see
 # test_draft_room.py's DynastyRiskAdjSofteningTests/RiskAdjTrajectoryScalingTests and
@@ -969,6 +993,23 @@ def build_available_pool(
                 # unpriced and ordered last, never as a measured 0.0 competing on the number
                 # line -- the conservative direction, and the same one taken everywhere else.
                 sleeper_points = scored if scored != 0 else None
+                # THE AVAILABILITY HAIRCUT (#191). Sleeper projects a man on injured reserve
+                # for a FULL SEASON -- measured on the capture, 20 of 23 IR players with a
+                # games-played figure carry gp=16 and 3 carry gp=17, indistinguishable from
+                # the healthy population. So the projection is a number for a season he will
+                # not play, and the board ranked James Conner 32nd off one.
+                #
+                # Corrected HERE, at the input, rather than by growing a penalty downstream:
+                # a wrong number penalised by a hand-set constant is still a wrong number, and
+                # everything that reads projected_points directly (the board's own "who scores
+                # most" column) would go on showing the full season.
+                #
+                # The factor comes from the NFL's own roster rules, never from fitting a
+                # sample, and its BASIS travels with it -- see availability_factor.
+                availability, availability_basis = player_availability_factor(
+                    info.get("injury_status"), (raw_stats or {}).get("gp"))
+                if sleeper_points is not None and availability != 1.0:
+                    sleeper_points = round(sleeper_points * availability, 2)
         # PRICING FIRST, ADMISSION SECOND -- and they are no longer the same question (#193).
         # merge_player still runs for every candidate because a vendor price is worth having;
         # what changed is that failing to find one no longer removes the player.
@@ -996,6 +1037,9 @@ def build_available_pool(
             # sleeper_points is None, so the pair is always consistent (#166's lesson: a
             # quantity must not cross a layer without the companion that gives it meaning).
             "sleeper_basis": (sleeper_basis if sleeper_points is not None else None),
+            # WHY this player's points are what they are, carried beside them (#166/#191).
+            # None whenever there are no points to explain, so the pair is always consistent.
+            "availability_basis": (availability_basis if sleeper_points is not None else None),
             # Which committed file this row's projection actually came from -- not used for
             # anything about the player's VALUE, only so compute_draft_board can label bpa_source
             # honestly instead of assuming every non-live-sync "projection" came from Draft
@@ -1012,7 +1056,8 @@ def build_available_pool(
     if not rows:
         return pd.DataFrame(columns=[
             "player_id", "name", "position", "team", "injury_status", "trade_value",
-            "projection", "proj_3yr", "sleeper_points", "sleeper_basis", "source_file", "bpa",
+            "projection", "proj_3yr", "sleeper_points", "sleeper_basis",
+            "availability_basis", "source_file", "bpa",
             "_canonical_key", "_match_path", "_match_verified",
         ])
     return _drop_contested_identities(pd.DataFrame(rows))
@@ -2428,7 +2473,8 @@ def compute_draft_board(
             "player_id", "name", "position", "team", "injury_status", "bpa", "bpa_source",
             "growth_signal", "universal_value", "confidence", "final_score", "mode",
             "projected_points", "horizon_floor", "horizon_sensitivity", "waiting_cost",
-            "replacement_basis", "horizon_basis", "identity_basis", "fills_required_slot",
+            "replacement_basis", "horizon_basis", "identity_basis", "availability_basis",
+            "fills_required_slot",
         ]], "projected_points", "horizon_floor", "horizon_sensitivity", "waiting_cost",
             "bpa", "universal_value", "final_score", "confidence", "replacement_basis")
 
@@ -2455,7 +2501,7 @@ def compute_draft_board(
         if is_dynasty and row.get("_has_3yr", False):
             time_horizon_adj = min(max((row["_proj3yr_pct"] - row["_season_proj_pct"]) * TIME_HORIZON_SLOPE, TIME_HORIZON_CLAMP[0]), TIME_HORIZON_CLAMP[1])
 
-        risk_adj = RISK_ADJ.get(row.get("injury_status"), 0.0)
+        risk_adj = health_penalty(row.get("injury_status"), row.get("availability_basis"))
         if is_dynasty:
             # Trajectory-aware scaling (experiment "D" -- see this constant's own docstring
             # above for the full evidence trail): a flat-or-declining trajectory
@@ -2590,7 +2636,7 @@ def compute_draft_board(
         "need_bonus", "eligibility_bonus", "depth_exposure", "depth_basis",
         "confidence", "final_score", "mode", "projected_points",
         "horizon_floor", "horizon_sensitivity", "waiting_cost", "replacement_basis",
-        "horizon_basis", "identity_basis", "fills_required_slot",
+        "horizon_basis", "identity_basis", "availability_basis", "fills_required_slot",
     ]], "projected_points", "horizon_floor", "horizon_sensitivity", "waiting_cost",
         "bpa", "universal_value", "final_score", "confidence", "replacement_basis")
 
