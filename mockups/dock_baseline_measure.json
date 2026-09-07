@@ -1,0 +1,261 @@
+{
+ "partial": {
+  "dockTop": 840,
+  "dockHeight": 560,
+  "dockScrollHeight": 720,
+  "regionTop": 1329,
+  "regionBottom": 1459,
+  "regionHeight": 130,
+  "regionScrollHeight": 2873,
+  "regionBelowDockEdge": -71,
+  "chromeAboveRegion": 489,
+  "messages": 8,
+  "fullyVisible": 0,
+  "partlyVisible": 0,
+  "pxPerMessage": 359.1,
+  "chromePxPerMessage": 105.3,
+  "contentPxPerMessage": 193.9,
+  "chromeShare": 0.35,
+  "elementsPerMessage": 6,
+  "buttonsPerMessage": 1.63,
+  "perMessage": [
+   {
+    "b": "MODERATOR VERDICT · claude-opus-4-1",
+    "chrome": 166,
+    "content": 459,
+    "els": 15
+   },
+   {
+    "b": "⚠️ NOTICE",
+    "chrome": 78,
+    "content": 90,
+    "els": 3
+   },
+   {
+    "b": "You",
+    "chrome": 78,
+    "content": 41,
+    "els": 3
+   },
+   {
+    "b": "MODERATOR · claude-opus-4-1",
+    "chrome": 122,
+    "content": 302,
+    "els": 6
+   },
+   {
+    "b": "You",
+    "chrome": 78,
+    "content": 41,
+    "els": 3
+   },
+   {
+    "b": "MODERATOR VERDICT · claude-opus-4-1",
+    "chrome": 166,
+    "content": 438,
+    "els": 12
+   },
+   {
+    "b": "You",
+    "chrome": 78,
+    "content": 66,
+    "els": 3
+   },
+   {
+    "b": "🧠 MEMORY SUMMARY",
+    "chrome": 78,
+    "content": 115,
+    "els": 3
+   }
+  ],
+  "markdown": {
+   "proseBlocksWithLiteralStars": 0,
+   "renderedBold": 0,
+   "renderedListItems": 0,
+   "renderedParagraphs": 2
+  }
+ },
+ "full": {
+  "dockTop": 274,
+  "dockHeight": 1126,
+  "dockScrollHeight": 1125,
+  "regionTop": 818,
+  "regionBottom": 1298,
+  "regionHeight": 480,
+  "regionScrollHeight": 2873,
+  "regionBelowDockEdge": -582,
+  "chromeAboveRegion": 544,
+  "messages": 8,
+  "fullyVisible": 0,
+  "partlyVisible": 1,
+  "pxPerMessage": 359.1,
+  "chromePxPerMessage": 105.3,
+  "contentPxPerMessage": 193.9,
+  "chromeShare": 0.35,
+  "elementsPerMessage": 6,
+  "buttonsPerMessage": 1.63,
+  "perMessage": [
+   {
+    "b": "MODERATOR VERDICT · claude-opus-4-1",
+    "chrome": 166,
+    "content": 459,
+    "els": 15
+   },
+   {
+    "b": "⚠️ NOTICE",
+    "chrome": 78,
+    "content": 90,
+    "els": 3
+   },
+   {
+    "b": "You",
+    "chrome": 78,
+    "content": 41,
+    "els": 3
+   },
+   {
+    "b": "MODERATOR · claude-opus-4-1",
+    "chrome": 122,
+    "content": 302,
+    "els": 6
+   },
+   {
+    "b": "You",
+    "chrome": 78,
+    "content": 41,
+    "els": 3
+   },
+   {
+    "b": "MODERATOR VERDICT · claude-opus-4-1",
+    "chrome": 166,
+    "content": 438,
+    "els": 12
+   },
+   {
+    "b": "You",
+    "chrome": 78,
+    "content": 66,
+    "els": 3
+   },
+   {
+    "b": "🧠 MEMORY SUMMARY",
+    "chrome": 78,
+    "content": 115,
+    "els": 3
+   }
+  ],
+  "markdown": {
+   "proseBlocksWithLiteralStars": 0,
+   "renderedBold": 0,
+   "renderedListItems": 0,
+   "renderedParagraphs": 2
+  }
+ },
+ "fullOpen": {
+  "dockTop": 274,
+  "dockHeight": 1126,
+  "dockScrollHeight": 1125,
+  "regionTop": 818,
+  "regionBottom": 1298,
+  "regionHeight": 480,
+  "regionScrollHeight": 4207,
+  "regionBelowDockEdge": -582,
+  "chromeAboveRegion": 544,
+  "messages": 11,
+  "fullyVisible": 0,
+  "partlyVisible": 2,
+  "pxPerMessage": 382.5,
+  "chromePxPerMessage": 109.9,
+  "contentPxPerMessage": 211.5,
+  "chromeShare": 0.34,
+  "elementsPerMessage": 6.2,
+  "buttonsPerMessage": 1.73,
+  "perMessage": [
+   {
+    "b": "MODERATOR VERDICT · claude-opus-4-1",
+    "chrome": 166,
+    "content": 459,
+    "els": 15
+   },
+   {
+    "b": "QUANT ANALYST · claude-sonnet-4-5",
+    "chrome": 122,
+    "content": 392,
+    "els": 9
+   },
+   {
+    "b": "BEAT TRACKER · gemini-2.5-pro",
+    "chrome": 122,
+    "content": 41,
+    "els": 4
+   },
+   {
+    "b": "CONTRARIAN · gpt-5",
+    "chrome": 122,
+    "content": 343,
+    "els": 7
+   },
+   {
+    "b": "⚠️ NOTICE",
+    "chrome": 78,
+    "content": 90,
+    "els": 3
+   },
+   {
+    "b": "You",
+    "chrome": 78,
+    "content": 41,
+    "els": 3
+   },
+   {
+    "b": "MODERATOR · claude-opus-4-1",
+    "chrome": 122,
+    "content": 302,
+    "els": 6
+   },
+   {
+    "b": "You",
+    "chrome": 78,
+    "content": 41,
+    "els": 3
+   },
+   {
+    "b": "MODERATOR VERDICT · claude-opus-4-1",
+    "chrome": 166,
+    "content": 438,
+    "els": 12
+   },
+   {
+    "b": "You",
+    "chrome": 78,
+    "content": 66,
+    "els": 3
+   },
+   {
+    "b": "🧠 MEMORY SUMMARY",
+    "chrome": 78,
+    "content": 115,
+    "els": 3
+   }
+  ],
+  "markdown": {
+   "proseBlocksWithLiteralStars": 1,
+   "renderedBold": 2,
+   "renderedListItems": 0,
+   "renderedParagraphs": 8
+  }
+ },
+ "quantProseHtml": "**Trade equity (Draft Sharks trade values, this league's format)**\n- D Achane: 6,410\n- K Williams: 4,180\n- Roster 6's 2027 1st: the engine values a future 1st at the league's mid-round average, 2,900, until the standings give it a slot. Roster 6 finished 3rd last year; if that holds, the pick is worth closer to 2,200.\n<p>Raw: you send 6,410, you receive 6,380 to 7,080 depending on the pick. Even to slightly favourable on paper.</p>\n<p><strong>Roster fit</strong>\nYour RB room after the trade: Williams, B Hall, K Walker. Starter demand at RB in this format is 2 plus flex; you would still fill it. Achane's need term on your roster is +4.2; Williams' would be +3.9 — near-identical fit.</p>\n<p><s",
+ "collapsed_n0": {
+  "dockHeight": 112,
+  "text": "▲ Expand Last call: WAIT — The 2027 1st is priced at a league average it will not reach if Roster 6 contends again; the trade is even only at that",
+  "hasLastCall": true,
+  "lastCallChars": 137
+ },
+ "collapsed_n8": {
+  "dockHeight": 73,
+  "text": "▲ Expand",
+  "hasLastCall": false,
+  "lastCallChars": 0
+ }
+}

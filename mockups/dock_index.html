@@ -1,0 +1,116 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Debate Dock mockups — index</title><style>
+:root {
+  --bg: #15120b;
+  --surface: #1f1a11;
+  --surface-2: #1a1610;
+  --line: #2c2517;
+  --line-2: #3f3522;
+  --ink: #ece3d2;
+  --muted: #a79a83;
+  --dim: #776d5a;
+  --emerald: #1a9e4b;
+  --emerald-b: #4ee08c;
+  --gold: #d4a017;
+  --gold-b: #f7cf4a;
+  --violet: #9457d4;
+  --violet-b: #c9a4f0;
+  --crimson: #b0193c;
+  --crimson-b: #ff6b85;
+  --sky: #1466c4;
+  --sky-b: #6fb2f7;
+  --amber: #e07b0a;
+  --amber-b: #f9a828;
+  --cliff: #0d9488;
+  --cliff-b: #3ad9c8;
+  --block: #c2410c;
+  --block-b: #f9a05c;
+  --pure: #e2d8c3;
+  --tie: #7b7059;
+  --tie-b: #a99d84;
+  --status-ok: #4ee08c;
+  --status-bad: #7b7059;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; }
+body { background: var(--bg); color: var(--ink); font-family: "Segoe UI", system-ui, sans-serif; font-size: 15px; line-height: 1.5; }
+.mono { font-family: "JetBrains Mono", "DejaVu Sans Mono", monospace; }
+.display { font-family: "Cinzel", "Trajan Pro", Georgia, "Times New Roman", serif; letter-spacing: .06em; }
+:focus { outline: none; }
+:focus-visible { outline: 2px solid var(--gold); outline-offset: -1px; }
+.badge-necessity-must-take { background: rgba(148,87,212,0.18); color: #c9a4f0; border: 1px solid #9457d4; box-shadow: 0 0 0 1px rgba(201,164,240,0.35), 0 0 8px rgba(148,87,212,0.45); }
+.badge-necessity-strong { background: rgba(20,102,196,0.18); color: #6fb2f7; border: 1px solid #1466c4; }
+.badge-necessity-preferred { background: rgba(26,158,75,0.18); color: #4ee08c; border: 1px solid #1a9e4b; }
+.badge-necessity-close-call { background: rgba(224,123,10,0.18); color: #f9a828; border: 1px solid #e07b0a; }
+.badge-necessity-low { background: rgba(176,25,60,0.18); color: #ff6b85; border: 1px solid #b0193c; }
+.pill-QB { background: rgba(143,134,240,0.18); color: #8f86f0; }
+.pill-RB { background: rgba(23,191,160,0.18); color: #17bfa0; }
+.pill-WR { background: rgba(74,168,239,0.18); color: #4aa8ef; }
+.pill-TE { background: rgba(232,104,63,0.18); color: #e8683f; }
+.pill-K { background: rgba(160,148,128,0.18); color: #a09480; }
+.pill-DEF { background: rgba(239,127,192,0.18); color: #ef7fc0; }
+.pill-DL { background: rgba(160,148,128,0.18); color: #a09480; }
+.pill-LB { background: rgba(160,148,128,0.18); color: #a09480; }
+.pill-DB { background: rgba(160,148,128,0.18); color: #a09480; }
+.pill { display: inline-block; font-family: "JetBrains Mono", "DejaVu Sans Mono", monospace; font-size: .66rem; font-weight: 700; padding: .1rem .4rem; border-radius: 4px; letter-spacing: .04em; }
+.necessity-pill { font-family: "JetBrains Mono", "DejaVu Sans Mono", monospace; font-size: .66rem; font-weight: 700; padding: .16rem .5rem; border-radius: 4px; letter-spacing: .03em; white-space: nowrap; }
+.unit { color: var(--muted); font-size: .68em; letter-spacing: .02em; margin-left: .2em; }
+/* ABSENCE. One mark, everywhere: muted, hatched, with a title. It can never be mistaken for a
+   small number, an empty cell, or a zero-length bar. */
+.absent {
+  color: var(--muted); font-weight: 500; cursor: help; border-radius: 3px; padding: 0 .3em;
+  background: repeating-linear-gradient(135deg, transparent 0 3px, color-mix(in srgb, var(--line-2) 75%, transparent) 3px 4px);
+}
+.state-word { font-family: "JetBrains Mono", "DejaVu Sans Mono", monospace; font-size: .64rem; letter-spacing: .05em; text-transform: uppercase; padding: .08rem .4rem; border-radius: 3px; border: 1px solid var(--line-2); color: var(--muted); }
+.state-word.measured { color: var(--muted); }
+.state-word.imputed { color: var(--amber-b); border-color: var(--amber); }
+.state-word.unavailable { color: var(--muted); border-style: dashed; }
+
+/* The spec card: closed by default so the board's own height is what the gate measures. */
+.spec { margin: 0 0 .5rem; border: 1px solid var(--line); border-radius: 8px; background: var(--surface-2); font-size: .82rem; color: var(--muted); }
+.spec summary { cursor: pointer; padding: .55rem .9rem; list-style: none; }
+.spec summary::-webkit-details-marker { display: none; }
+.spec summary .hint { color: var(--muted); font-size: .74rem; }
+.spec b { color: var(--ink); }
+.spec .k { font-family: "JetBrains Mono", "DejaVu Sans Mono", monospace; font-size: .66rem; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+.spec .specbody { padding: .2rem .9rem .8rem; display: grid; grid-template-columns: auto 1fr; gap: .25rem .9rem; align-items: baseline; }
+.controls { display: flex; gap: .6rem; flex-wrap: wrap; margin: 0 0 .7rem; }
+.controls button {
+  font-family: "JetBrains Mono", "DejaVu Sans Mono", monospace; font-size: .68rem; letter-spacing: .04em; text-transform: uppercase;
+  background: var(--surface); color: var(--muted); border: 1px solid var(--line-2); border-radius: 6px;
+  padding: .3rem .7rem; cursor: pointer;
+}
+.controls button[aria-pressed="true"] { color: var(--ink); border-color: var(--ink); }
+.controls button:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { transition-duration: .001ms !important; animation-duration: .001ms !important; }
+}
+
+h1 { font-family: "Cinzel", Georgia, serif; letter-spacing: .08em; font-weight: 600; margin: .2rem 0; }
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(22rem, 1fr)); gap: .8rem; margin-top: 1rem; }
+.v { border: 1px solid var(--line); border-radius: 10px; padding: .9rem 1rem; background: var(--surface-2); display: flex; flex-direction: column; gap: .35rem; }
+.v a { color: var(--gold-b); font-weight: 700; text-decoration: none; font-size: 1.05rem; }
+.v .tag { color: var(--muted); font-size: .84rem; }
+.v .k { font-family: "JetBrains Mono", monospace; font-size: .6rem; letter-spacing: .1em; text-transform: uppercase; color: var(--dim); margin-top: .3rem; }
+.v p { margin: 0; font-size: .84rem; }
+.sec { font-family: "JetBrains Mono", monospace; font-size: .64rem; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); margin: 1.6rem 0 .2rem; border-bottom: 1px solid var(--line-2); padding-bottom: .3rem; }
+.gates { font-size: .84rem; color: var(--muted); max-width: 100ch; }
+.gates li { margin: .15rem 0; }
+.dens { border-collapse: collapse; font-family: "JetBrains Mono", monospace; font-size: .72rem; margin: .6rem 0 .2rem; }
+.dens th, .dens td { border: 1px solid var(--line-2); padding: .28rem .55rem; text-align: right; }
+.dens th:first-child, .dens td:first-child, .dens td:nth-child(2) { text-align: left; }
+.dens th { color: var(--muted); font-weight: 600; }
+.dens tr.base td { color: var(--muted); }
+.page { max-width: 1180px; margin: 0 auto; padding: 1.4rem 1.2rem 4rem; }</style></head>
+<body><div class="page">
+<h1>Gold Wyrm Dynasty · Debate Dock directions</h1>
+<div class="gates"><p>Three docks over the same constructed chat history (14 rows in app.append_message's shape: a memory summary, two Full Prytaneum runs, a block-less follow-up, a stale-data notice; the second run's Beat chair is llm_engine's own fail-soft string). Each page has a harness: the three levels, the sidebar on/off, a history cut after the follow-up (the standing verdict must survive it), and reduced motion.</p>
+<p>Carried forward from the Draft Room rounds, and checked by <code>dock_gate.cjs</code> in a real Chromium:</p>
+<ul><li><b>G1</b> a failed chair is a hatched, titled absence everywhere it appears — never a report, never a model badge claiming a 503.</li><li><b>G2</b> the standing verdict is the newest block-bearing Moderator message; cutting the history after a block-less follow-up leaves it standing.</li><li><b>G3</b> only a designated scroll region scrolls: the dock itself never overflows its tier's cap at 1,400 × 1,400.</li><li><b>G4</b> gold is the primary button and the focus ring only; amber is the one signal hue (below-Majority conviction, a missing chair, a notice); the recommendation is a word.</li><li><b>G5</b> no text in the dock under 11px; ratios below.</li><li><b>G6</b> the transcript's order is time's; pinned and objective are marks.</li><li><b>G7</b> every animation dies under prefers-reduced-motion.</li><li><b>G8</b> no colour emoji; the four seats are letters on their badge tokens.</li></ul></div>
+<div class="sec">Density at 1,400 × 1,400 — the app's own dock (baseline) against the three</div>
+<table class="dens"><thead><tr><th>dock</th><th>level</th><th>height / cap px</th><th>units rendered</th><th>fully visible</th><th>px / unit</th><th>elements / unit</th><th>chrome above first unit px</th><th>facts (collapsed)</th><th>min font px</th></tr></thead><tbody><tr class="base"><td>baseline (app.py dock)</td><td>collapsed</td><td>112 / 126</td><td>1</td><td>1</td><td>—</td><td>2</td><td>44</td><td>2</td><td>14</td></tr><tr class="base"><td>baseline (app.py dock)</td><td>partial</td><td>560 / 560 · overflows</td><td>8</td><td>0</td><td>359.1</td><td>6</td><td>489</td><td>—</td><td>14</td></tr><tr class="base"><td>baseline (app.py dock)</td><td>full</td><td>1126 / 1316</td><td>8</td><td>0</td><td>359.1</td><td>6</td><td>544</td><td>—</td><td>14</td></tr><tr class=""><td>dock_1_ledger</td><td>collapsed</td><td>54 / 126</td><td>0</td><td>0</td><td>—</td><td>—</td><td>—</td><td>6</td><td>11.2</td></tr><tr class=""><td>dock_1_ledger</td><td>partial</td><td>560 / 560</td><td>0</td><td>0</td><td>—</td><td>—</td><td>—</td><td>—</td><td>11.2</td></tr><tr class=""><td>dock_1_ledger</td><td>full</td><td>796 / 1316</td><td>5</td><td>5</td><td>34.4</td><td>7.6</td><td>610</td><td>—</td><td>11.2</td></tr><tr class=""><td>dock_2_thread</td><td>collapsed</td><td>54 / 126</td><td>0</td><td>0</td><td>—</td><td>—</td><td>—</td><td>8</td><td>11.2</td></tr><tr class=""><td>dock_2_thread</td><td>partial</td><td>479 / 560</td><td>1</td><td>1</td><td>317</td><td>24</td><td>43</td><td>—</td><td>11.2</td></tr><tr class=""><td>dock_2_thread</td><td>full</td><td>1316 / 1316</td><td>5</td><td>3</td><td>261.6</td><td>16.6</td><td>43</td><td>—</td><td>11.2</td></tr><tr class=""><td>dock_3_chairs</td><td>collapsed</td><td>54 / 126</td><td>0</td><td>0</td><td>—</td><td>—</td><td>—</td><td>12</td><td>11.2</td></tr><tr class=""><td>dock_3_chairs</td><td>partial</td><td>560 / 560</td><td>4</td><td>4</td><td>862.6</td><td>12.8</td><td>43</td><td>—</td><td>11.2</td></tr><tr class=""><td>dock_3_chairs</td><td>full</td><td>1101 / 1316</td><td>4</td><td>4</td><td>884.6</td><td>12</td><td>43</td><td>—</td><td>11.2</td></tr></tbody></table><p class="gates">Measured in Chromium at 1,400 × 1,400 with the 400px sidebar (the dock is 1,000px wide, as in the app), at rest: nothing open, no hover, no tab selected. A unit is one rendered message-bearing element (a ledger row, a bubble, a seat column); "fully visible" counts units whose box lies inside the dock's visible box and inside their own scroll region's visible box. "Elements" counts visible text-bearing elements per unit. "Facts" counts the named facts a collapsed line carries (data-fact). The baseline rows are the app's own dock, measured the same way (scratchpad/asis_measure2.json), where a unit is one chat message.</p>
+<div class="sec">Contrast, from design_system.contrast_ratio — written policy, reported not asserted</div>
+<table class="dens"><thead><tr><th>pair</th><th></th><th>ratio</th><th>floor</th><th></th></tr></thead><tbody><tr><td>ink on surface</td><td></td><td>13.58:1</td><td>4.5:1</td><td>meets</td></tr><tr><td>muted on surface</td><td></td><td>6.25:1</td><td>4.5:1</td><td>meets</td></tr><tr><td>dim on surface</td><td></td><td>3.39:1</td><td>3.0:1</td><td>meets</td></tr><tr><td>amber-b on surface</td><td></td><td>8.78:1</td><td>4.5:1</td><td>meets</td></tr><tr><td>gold-b on surface</td><td></td><td>11.51:1</td><td>4.5:1</td><td>meets</td></tr><tr><td>emerald-b on surface</td><td></td><td>10.18:1</td><td>4.5:1</td><td>meets</td></tr><tr><td>cliff-b on surface</td><td></td><td>9.83:1</td><td>4.5:1</td><td>meets</td></tr><tr><td>violet-b on surface</td><td></td><td>8.28:1</td><td>4.5:1</td><td>meets</td></tr><tr><td>crimson-b on surface</td><td></td><td>6.34:1</td><td>4.5:1</td><td>meets</td></tr><tr><td>tie-b on surface</td><td></td><td>6.46:1</td><td>4.5:1</td><td>meets</td></tr><tr><td>sky-b on surface</td><td></td><td>7.73:1</td><td>4.5:1</td><td>meets</td></tr><tr><td>ink on bg</td><td></td><td>14.68:1</td><td>4.5:1</td><td>meets</td></tr><tr><td>muted on bg</td><td></td><td>6.76:1</td><td>4.5:1</td><td>meets</td></tr><tr><td>amber-b on bg</td><td></td><td>9.49:1</td><td>4.5:1</td><td>meets</td></tr><tr><td>bg on gold</td><td></td><td>7.87:1</td><td>4.5:1</td><td>meets</td></tr></tbody></table>
+<div class="sec">The three</div>
+<div class="grid"><div class="v"><a href="dock_1_ledger.html">D1 · Ledger</a><span class="tag">the unit is the decision: standing call → receipt + ask → the ledger of every decision</span><span class="k">collapsed</span><p>One line: the recommendation, the conviction ladder, the question it answered (truncated at a word, full on hover), how many chairs it rests on, and its age — plus the attached context and the one action. It is the newest BLOCK-BEARING verdict, so a follow-up that only talked cannot blank it (the app's collapsed dock does blank: probe asis_collapsed_n8).</p><span class="k">partial</span><p>The receipt of that call beside the ask panel, and nothing else. Every field of the Moderator's block as a labelled row (the four the prompt requires shown as absent when missing; the optional ones omitted, which is the Moderator's own statement that they do not apply), the ACTION ITEM marked when it is tracked as an objective, the dissenting chair named by its seat. No transcript: at 40vh a transcript is what the app currently spends its partial tier on and shows none of (probe: 0 messages visible).</p><span class="k">full</span><p>Adds the ledger: one row per decision or exchange, newest first, in a scroll region of its own — time, kind, question, recommendation, conviction, the four seats, marks. A row opens to the three reports across (a failed chair as a labelled absence), the Moderator's prose and receipt. Follow-ups are their own rows and say when they issued no new call.</p><span class="k">sacrifices</span><p>The conversation is not readable as a conversation: a follow-up's prose is a row's detail, not a bubble under its question. The receipt is repeated (standing call above, its row below) at full. The partial tier carries only ONE decision; if you want the one before it you go to full.</p></div><div class="v"><a href="dock_2_thread.html">D2 · Thread</a><span class="tag">the unit is the exchange: newest question → answer, input at the bottom, reports one tab away</span><span class="k">collapsed</span><p>One line: the four seats of the newest exchange, your question, an arrow, the Moderator's recommendation and REASON (or, for a block-less follow-up, its first words and a 'stands: BUY' mark for the call that still holds). It is the newest EXCHANGE, not the standing verdict — a conversation's collapsed state is its last turn.</p><span class="k">partial</span><p>The newest exchange above the ask box: your question, the Moderator's reply (clamped to five lines, opening on Enter), the call with its conviction and seats, the REASON only, and the three reports as tabs in one line — the Beat chair's tab reads 'no report' as a hatched absence. The input sits at the bottom, where a conversation's input belongs, one line tall, with the routing rule stated once beside it.</p><span class="k">full</span><p>The whole thread, oldest at the top and newest at the bottom, scrolled to the bottom on open, the input pinned beneath. Memory summaries and notices are one-line system rows (a notice takes the amber glyph). A verdict bubble carries the full receipt and the report tabs; a follow-up bubble says 'no new call' when it issued none. Pinned and objective are marks on the bubble.</p><span class="k">sacrifices</span><p>The standing verdict is not the first thing you see when the newest turn is a follow-up — it is a mark in the header. Reports are one press away, never side by side. A long thread's early decisions are far up a scroll, with no index: this is a chat, not a ledger.</p></div><div class="v"><a href="dock_3_chairs.html">D3 · Chairs</a><span class="tag">the unit is the chair: four seat columns per debate, a scrubber between debates</span><span class="k">collapsed</span><p>The four seats as cells: three chairs each with reported / no report / not asked, and the Moderator's cell carrying the recommendation and the conviction ladder — then the debate's question and age and a count of follow-ups. This is the panel's STATE, which is what a panel's collapsed line should be; the app's has no notion of a chair that did not report.</p><span class="k">partial</span><p>Four columns, one per seat, each scrolling on its own: the seat, the model that answered, the report clamped to eight lines (Enter opens the column). The Moderator's column leads with the call and the receipt, then its prose, and counts the follow-ups. A scrubber in the header moves between debates. The ask row sits below the columns.</p><span class="k">full</span><p>The same columns with the whole report in each, the follow-ups in full under the Moderator, and a session strip of every debate (number, age, recommendation, a ⊘ where a chair sent no report) plus the summary and notice rows. History is navigated by debate, not by scrolling a transcript.</p><span class="k">sacrifices</span><p>Four columns in 952px are 226px each: a chair's report wraps at ~34 characters and the Quant's bullet lists read tall. The thread order of a conversation is gone — you see one debate at a time. A user question with no answer, or a solo Quant/Beat lookup, has no column to live in and is shown only in the session strip.</p></div></div>
+</div></body></html>
