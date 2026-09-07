@@ -52,7 +52,7 @@ html[data-level="collapsed"] .main {{ padding-bottom: max(9vh, 64px); }}
 /* needs-you: the ONE UI-state hue on this surface (sky). Never used for a data signal. */
 .needs {{ color: var(--sky-b); }}
 .mark.needs {{ border-color: var(--sky); color: var(--sky-b); }}
-.chip {{ font-family: {ds.FONT_MONO}; font-size: .68rem; letter-spacing: .05em; text-transform: uppercase; color: var(--muted); border: 1px solid var(--line-2); border-radius: 6px; padding: .22rem .6rem; background: var(--surface); cursor: pointer; white-space: nowrap; }}
+.chip {{ font-family: {ds.FONT_MONO}; font-size: .7rem; letter-spacing: .05em; text-transform: uppercase; color: var(--muted); border: 1px solid var(--line-2); border-radius: 6px; padding: .22rem .6rem; background: var(--surface); cursor: pointer; white-space: nowrap; }}
 .chip[aria-pressed="true"] {{ color: var(--ink); border-color: var(--ink); }}
 .chip.needs[aria-pressed="true"] {{ color: var(--sky-b); border-color: var(--sky); }}
 .chip .n {{ color: var(--dim); margin-left: .35em; }}
@@ -62,16 +62,16 @@ html[data-level="collapsed"] .main {{ padding-bottom: max(9vh, 64px); }}
 /* A kind: a letter on a bordered box, like the dock's seats, in the ink -- kinds carry no hue.
    The AUTHOR seat beside it borrows the dock's own role tokens, so a row here and a bubble in
    the dock say "Moderator" the same way. */
-.kind {{ display: inline-grid; place-items: center; min-width: 1.35rem; height: 1.35rem; padding: 0 .3rem; border-radius: 4px; border: 1px solid var(--line-2); font-family: {ds.FONT_MONO}; font-size: .66rem; font-weight: 700; letter-spacing: .04em; color: var(--muted); cursor: help; flex: none; }}
+.kind {{ display: inline-grid; place-items: center; min-width: 1.35rem; height: 1.35rem; padding: 0 .3rem; border-radius: 4px; border: 1px solid var(--line-2); font-family: {ds.FONT_MONO}; font-size: .7rem; font-weight: 700; letter-spacing: .04em; color: var(--muted); cursor: help; flex: none; }}
 .kind.on {{ color: var(--ink); border-color: var(--ink); }}
 .seat.you {{ color: var(--tie-b); border-color: var(--tie); background: {ds.token_rgba('tie', 0.18)}; }}
 /* The state word, the SIGNAL hue (amber) only for what the data says: a call that missed, a
    number retracted, conviction below Majority. Never for what the UI wants from you. */
-.state {{ font-family: {ds.FONT_MONO}; font-size: .68rem; letter-spacing: .05em; text-transform: uppercase; color: var(--muted); white-space: nowrap; cursor: help; }}
+.state {{ font-family: {ds.FONT_MONO}; font-size: .7rem; letter-spacing: .05em; text-transform: uppercase; color: var(--muted); white-space: nowrap; cursor: help; }}
 .state.attn {{ color: var(--amber-b); }}
 .state.needs {{ color: var(--sky-b); }}
 .state.closed {{ color: var(--dim); }}
-.scope {{ font-family: {ds.FONT_MONO}; font-size: .66rem; letter-spacing: .05em; color: var(--dim); white-space: nowrap; cursor: help; }}
+.scope {{ font-family: {ds.FONT_MONO}; font-size: .7rem; letter-spacing: .05em; color: var(--dim); white-space: nowrap; cursor: help; }}
 
 /* Rows. One grammar for every kind: when · kind · author · the line · state · the verb. */
 .rows {{ border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }}
@@ -109,7 +109,7 @@ html[data-level="collapsed"] .main {{ padding-bottom: max(9vh, 64px); }}
 .panel > .ph .name {{ font-weight: 600; font-size: .9rem; }}
 .panel > .ph .count {{ font-family: {ds.FONT_MONO}; font-size: .72rem; color: var(--muted); }}
 .panel > .ph .grow {{ flex: 1; }}
-.panel > .ph .read {{ font-family: {ds.FONT_MONO}; font-size: .66rem; letter-spacing: .06em; text-transform: uppercase; color: var(--dim); cursor: help; }}
+.panel > .ph .read {{ font-family: {ds.FONT_MONO}; font-size: .7rem; letter-spacing: .06em; text-transform: uppercase; color: var(--dim); cursor: help; }}
 .panel > .ph .tri {{ font-family: {ds.FONT_MONO}; color: var(--dim); width: 1rem; }}
 .panel > .pb {{ padding: 0 .8rem .55rem; }}
 .panel > .pb .rows {{ border-radius: 8px; }}
@@ -190,6 +190,12 @@ function authorSeat(role, model) {
   const t = `${PAYLOAD.roleNames[r]} · ${ROLE_JOB[r]}` + (model ? ` (${model})` : " (model not recorded)");
   return `<span class="seat" data-role="${r}" title="${esc(t)}">${ROLE_LETTER[r]}</span>`;
 }
+// THREE renderings for three states, never two for three. A hatched "—" with a title is a
+// quantity that was never computed; "none" is a quantity computed and empty; a numeral is a
+// quantity. A bare 0 sitting beside a hatched absence makes the reader do the telling-apart,
+// which is the whole distinction this group exists to keep.
+function qty(n) { return n ? String(n) : "none"; }
+function tally(n, word) { return n ? `${n} ${word}${n === 1 ? "" : "s"}` : `no ${word}s`; }
 function stateHtml(cls, word, why) { return `<span class="state ${cls}" title="${esc(why)}">${esc(word)}</span>`; }
 // A decision's state: rated (the outcome word; Didn't Work takes the signal hue) or unrated
 // (the needs-you hue: the row has nothing to teach a future debate until you rate it).

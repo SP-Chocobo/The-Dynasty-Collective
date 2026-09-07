@@ -3,6 +3,8 @@
 //       still render, each empty part carrying a hatched .absent with a title; the rec-less
 //       verdict's call slot is a titled absence, never blank; the orphaned pin is a titled
 //       absence with the words "no longer", never dropped.
+//       With every store empty no unit renders, every panel still carries a labelled absence,
+//       and no bare 0 appears anywhere -- a counted zero reads "none", an uncomputed one "—".
 //   A2  a pinned verdict shows its block when opened (a receipt with a REASON field).
 //   A3  the rating control has no default: on an unrated verdict opened, no rating chip is
 //       pressed and save is disabled; pressing a chip enables it; the same-day re-run renders as
@@ -73,7 +75,7 @@ const { resolve, basename } = require("node:path");
     }
     // A2 a pinned verdict's block.
     const pinUnit = await page.evaluate(() => { const u = [...document.querySelectorAll('#group [data-kind="pin"][data-role="moderator"]')][0]; return u ? u.dataset.unit : null; });
-    const decUnit = await page.evaluate(() => { const u = [...document.querySelectorAll('#group [data-kind="decision"]')].find(u => /pinned/.test(u.innerText)); return u ? u.dataset.unit : null; });
+    const decUnit = await page.evaluate(() => { const u = [...document.querySelectorAll('#group [data-kind="decision"]')].find(u => /pinned/i.test(u.innerText)); return u ? u.dataset.unit : null; });  // innerText is as-rendered, and the mark is text-transform: uppercase
     const target = pinUnit || decUnit;
     if (!target) fail(file, "A2 the pinned verdict is rendered nowhere (no pin row for it and no verdict row marked pinned)");
     else {
@@ -103,13 +105,17 @@ const { resolve, basename } = require("node:path");
       const panels = [...g.querySelectorAll("[data-panel]")];
       const empties = [...g.querySelectorAll("[data-empty]")].filter(e => e.querySelector(".absent") && (e.querySelector(".absent").getAttribute("title") || "").length > 10);
       const units = g.querySelectorAll("[data-unit]").length;
-      const bareZero = /(^|\s)0(\s|$)/.test(g.innerText.replace(/\d+ (verdict|objective|finding|pin)/g, ""));
-      return { panels: panels.length, empties: empties.length, units, headPresent: !!g.querySelector(".group-head"), text: g.innerText.slice(0, 200) };
+      // A counted zero must read "none", never "0": a bare numeral 0 beside a hatched absence
+      // makes the reader tell two different states apart by eye. (A quantity never computed
+      // is the absence itself, checked above.)
+      const bareZero = (g.innerText.match(/(?<![\d.,])0(?![\d.,%])/g) || []).length;
+      return { panels: panels.length, empties: empties.length, units, bareZero, headPresent: !!g.querySelector(".group-head"), text: g.innerText.slice(0, 200) };
     });
     if (!e1.headPresent) fail(file, "A1 with every store empty the group frame is gone");
     if (e1.units) fail(file, `A1 with every store empty ${e1.units} units still render`);
     if (e1.empties < 1) fail(file, "A1 with every store empty no labelled absence renders");
     if (e1.panels && e1.empties < e1.panels) fail(file, `A1 with every store empty ${e1.panels} panels but only ${e1.empties} labelled absences`);
+    if (e1.bareZero) fail(file, `A1 with every store empty a bare 0 renders ${e1.bareZero} time(s); a counted zero must read "none"`);
     await page.evaluate(() => document.getElementById("btn-empty").click());
     await page.waitForTimeout(200);
     // K1 keyboard.

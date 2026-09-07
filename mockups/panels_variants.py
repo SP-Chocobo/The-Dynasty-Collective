@@ -1,9 +1,9 @@
-"""Two structural answers to "what is the panel group FOR", both built on the same test:
+"""Three structural answers to "what is the panel group FOR", all built on the same test:
 
     Can a reader get WHAT was decided, WHY, WHAT UNCERTAINTY REMAINS and WHAT IT IS OPTIMISING
     without assembling four interfaces?
 
-and both mapped onto the two chains that have to line up:
+and all mapped onto the two chains that have to line up:
 
     ENGINE   signals  ->  synthesis  ->  decision  ->  proof
     UI       state    ->  decision   ->  evidence  ->  objective
@@ -21,8 +21,20 @@ and both mapped onto the two chains that have to line up:
                 header grammar for all five; a strip at the top that owns the one link neither
                 the app nor the engine chain gives a surface: what remains uncertain and what
                 only you can settle.
+  P3 BRIEF      neither store nor verdict: the four QUESTIONS the test asks, in its order, each
+                answered first in one computed sentence and then by the records that sentence
+                rests on. Every record lands in exactly one section -- verdicts under "what was
+                decided", findings/comparisons/pins together under "why", objectives under "what
+                it is optimising". "What remains uncertain" is the only section whose rows are
+                DERIVED: one per open question, split by author into what the panel could not
+                settle (a chair that sent no report, dissent, RECON, conviction below majority)
+                and what only you can settle. And the fourth question is answered with an
+                ABSENCE, because no store in the system holds what the team is optimising.
 
-Both obey the same fixes over the baseline (panels_common): the orphaned pin is a labelled
+The three axes are meant to be orthogonal: P1 sorts by what PRODUCED a record, P2 by WHEN the
+panel reads it, P3 by WHICH QUESTION it answers.
+
+All three obey the same fixes over the baseline (panels_common): the orphaned pin is a labelled
 absence; a pinned verdict shows its block; a rec-less verdict shows a hatched absence; the
 rating has no default; delete is never a peer of done; eligibility is recomputed; counts say
 what they count; the global store says it is global.
@@ -30,10 +42,20 @@ what they count; the global store says it is global.
 
 from __future__ import annotations
 
+import sys
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).parent.parent))
+import design_system as ds  # noqa: E402  the single source of design tokens
+
 # ---------------------------------------------------------------------------------------
-# Shared renderers: one grammar per kind, used by both variants.
+# Shared renderers: one grammar per kind, used by all three variants.
 # ---------------------------------------------------------------------------------------
 SHARED_JS = r"""
+// A string argument inside an inline handler is inside a double-quoted HTML attribute, so
+// its own quotes must be entity-escaped or the attribute ends early. OUTCOME_LABELS contains
+// "Didn't Work"; the unescaped form truncated every rating handler to `rate(ts, `.
+function jsArg(v) { return esc(JSON.stringify(v)); }
 function when(ts) {
   const s = NOW - ts, d = new Date(ts * 1000).toISOString().slice(0, 16).replace("T", " ");
   if (s < 48 * 3600) return ago(ts);
@@ -77,7 +99,7 @@ function ratingHtml(d) {
   const r = ratings[d.ts] || {};
   return `<div class="rate" data-field="rating">
     <span class="k eyebrow">how did it play out</span>
-    ${PAYLOAD.outcomeLabels.map(o => `<button class="chip" aria-pressed="${r.outcome === o}" onclick="event.stopPropagation(); rate(${d.ts}, ${JSON.stringify(o)})">${esc(o)}</button>`).join("")}
+    ${PAYLOAD.outcomeLabels.map(o => `<button class="chip" aria-pressed="${r.outcome === o}" onclick="event.stopPropagation(); rate(${d.ts}, ${jsArg(o)})">${esc(o)}</button>`).join("")}
     <input class="note" id="note-${d.ts}" placeholder="what actually happened (optional)" onclick="event.stopPropagation()" onkeydown="event.stopPropagation()">
     <button class="btn primary" ${r.outcome ? "" : "disabled"} title="${r.outcome ? "Record this rating; future related debates will be shown it." : "Choose a rating first. There is no default: an unrated call stays unrated."}" onclick="event.stopPropagation(); saveRating(${d.ts})">save</button>
   </div>`;
@@ -177,7 +199,8 @@ function pinRow(ts, i) {
   if (!m) return `<div class="row" ${optAttrs({ kind: "pin", ts }, i)} data-kind="pin" data-orphan="true">
     ${when(ts)}${kindHtml("pin")}<span class="seat silent" title="Unknown: the message is gone.">·</span>
     <span class="line">${absent("Pinned, but the message is no longer in this chat: it was older than a compaction cutoff and was summarised away. The pin store still holds it; a debate can no longer retrieve it.")} <span class="q">message no longer in this chat</span></span>
-    <span class="marks"></span>${stateHtml("needs", "message gone", "The pin outlived its message. Unpin it, or accept that it can never surface again.")}<span class="verb"><button class="btn quiet" onclick="event.stopPropagation(); unpin(${ts})">unpin</button></span></div>`;
+    <span class="marks"></span>${stateHtml("needs", "message gone", "The pin outlived its message. Unpin it, or accept that it can never surface again.")}<span class="verb"><button class="btn quiet" onclick="event.stopPropagation(); unpin(${ts})">unpin</button></span>
+    ${openId === id ? `<div class="detail"><div class="prose">The pin store holds a timestamp and nothing else — <span class="mono">${new Date(ts * 1000).toISOString().slice(0, 16).replace("T", " ")} UTC</span>. The message it points at is no longer in this chat: <b>compact_chat_history</b> summarised it away without consulting the pin store, so nothing can retrieve it — not this panel, and not a debate.</div><div class="sub">The text is not recoverable from the pin store, and this is the only place in the product that says so: the app's own panel lists only pins whose message survives, and counts only those, so its header reads two where three are stored. Unpin to stop carrying a pointer to nothing.</div></div>` : ""}</div>`;
   const v = parseVerdict(m.content);
   return `<div class="row" ${optAttrs({ kind: "pin", ts }, i)} data-kind="pin" data-role="${m.role}">
     ${when(ts)}${kindHtml("pin")}${authorSeat(m.role, m.model)}
@@ -255,10 +278,10 @@ function render() {
   const S = stores(), C = counts(S), n = C.n;
   const needs = n.unrated + n.proposed + n.awaiting + n.orphans;
   document.getElementById("gh-sub").innerHTML = S.decisions.length || C.tailN
-    ? `${S.decisions.length} verdict${S.decisions.length === 1 ? "" : "s"} · ${n.open} objective${n.open === 1 ? "" : "s"} open · ${S.findings.length} finding${S.findings.length === 1 ? "" : "s"} · ${needs ? `<span class="needs" title="Rows waiting on you: ${n.unrated} unrated, ${n.proposed} proposed done, ${n.awaiting} awaiting confirmation, ${n.orphans} pin(s) without a message.">${needs} need you</span>` : `<span title="Nothing is waiting on you.">nothing needs you</span>`}`
+    ? `${tally(S.decisions.length, "verdict")} · ${tally(n.open, "objective")} open · ${tally(S.findings.length, "finding")} · ${needs ? `<span class="needs" title="Rows waiting on you: ${n.unrated} unrated, ${n.proposed} proposed done, ${n.awaiting} awaiting confirmation, ${n.orphans} pin(s) without a message.">${needs} need you</span>` : `<span title="Nothing is waiting on you.">nothing needs you</span>`}`
     : `${absent("Every store is empty: no verdict has been logged, no objective opened, nothing pinned, nothing found. The next debate is handed nothing but the transcript.")} nothing on record yet`;
   const chips = [["all", null, S.decisions.length + C.tailN], ["need you", "needs", needs], ["open objectives", "open", n.open + n.proposed], ["rated", "rated", S.decisions.filter(d => d.outcome).length], ["not from a verdict", "tail", C.tailN]];
-  document.getElementById("chips").innerHTML = chips.map(([w, k, c]) => `<button class="chip${k === "needs" ? " needs" : ""}" aria-pressed="${filters.kind === k}" onclick="setFilter(${JSON.stringify(k)})">${w}<span class="n">${c}</span></button>`).join("");
+  document.getElementById("chips").innerHTML = chips.map(([w, k, c]) => `<button class="chip${k === "needs" ? " needs" : ""}" aria-pressed="${filters.kind === k}" onclick="setFilter(${jsArg(k)})">${w}<span class="n">${qty(c)}</span></button>`).join("");
   const keepD = d => filters.kind === null || (filters.kind === "needs" && (!d.outcome || (objectiveOfDecision(d) || {}).status === "likely_resolved" || findingsOf(d).some(f => findingFeeds(f).cls === "needs")))
     || (filters.kind === "open" && ["active", "likely_resolved"].includes((objectiveOfDecision(d) || {}).status)) || (filters.kind === "rated" && !!d.outcome);
   const ds = [...S.decisions].sort((a, b) => b.ts - a.ts).filter(keepD);
@@ -339,28 +362,224 @@ function render() {
   const fl = [...S.findings.map(f => ["f", f]), ...S.comparisons.map(c => ["c", c])].sort((a, b) => b[1].ts - a[1].ts);
   const counting = S.findings.filter(f => findingFeeds(f).feeds).length;
   const standing = [
-    panel("objectives", "Objectives", `${n.open} open${n.proposed ? ` · <span class="needs">${n.proposed} proposed done</span>` : ""}`, "every question",
+    panel("objectives", "Objectives", `${qty(n.open)} open${n.proposed ? ` · <span class="needs">${n.proposed} proposed done</span>` : ""}`, "every question",
       "Every open objective is in the context of every debate, as standing context: a rebuild-vs-contend objective changes what the right call even is. They are opened by a Moderator ACTION ITEM or by you; a bot can revise or propose one done; only you close one.",
       live.map(t => objRow(t, i++)), "no open objectives", "No objective is open. The next debate is handed none; ACTION ITEM lines in a verdict open them, or you can."),
-    panel("findings", "Findings", `${S.findings.length} · ${S.comparisons.length} comparison${S.comparisons.length === 1 ? "" : "s"}${n.awaiting ? ` · <span class="needs">${n.awaiting} awaiting you</span>` : ""} · ${counting} counting · <span title="Stored globally and read by every league, unlike everything else here.">global</span>`, "every question",
+    panel("findings", "Findings", `${qty(S.findings.length)} · ${tally(S.comparisons.length, "comparison")}${n.awaiting ? ` · <span class="needs">${n.awaiting} awaiting you</span>` : ""} · ${qty(counting)} counting · <span title="Stored globally and read by every league, unlike everything else here.">global</span>`, "every question",
       "The newest thirty findings and comparisons are in every debate's context, across every league. A finding's NUMBER also feeds the composite score, at a low weight, once its source is allowed and you have confirmed it. This is a signals gate, not evidence for any one verdict.",
       fl.map(([k, x]) => k === "f" ? findingRow(x, i++) : comparisonRow(x, i++)), "no findings", "No panel-vetted finding has been recorded in any league. The Moderator writes one only when the whole panel left a named-source claim undisputed."),
   ];
   const ds = [...S.decisions].sort((a, b) => (a.outcome ? 1 : 0) - (b.outcome ? 1 : 0) || b.ts - a.ts);
   const closed = S.todos.filter(t => ["resolved", "dismissed"].includes(t.status)).sort((a, b) => b.ts - a.ts);
   const record = [
-    panel("verdicts", "Verdicts", `${S.decisions.length}${n.unrated ? ` · <span class="needs">${n.unrated} unrated</span>` : ""} · ${S.decisions.length - n.unrated} rated`, "when related and rated",
+    panel("verdicts", "Verdicts", `${qty(S.decisions.length)}${n.unrated ? ` · <span class="needs">${n.unrated} unrated</span>` : ""} · ${qty(S.decisions.length - n.unrated)} rated`, "when related and rated",
       "A past verdict reaches a debate only when the question shares words with it AND you have rated how it played out. Unrated verdicts are excluded: an unrated call has nothing to teach.",
       ds.map(d => decisionRow(d, i++, { joins: false })), "no verdicts logged", "No Moderator verdict has been logged in this league. One is logged whenever the Moderator's reply carries its closing block."),
-    panel("closed", "Closed objectives", `${closed.length} · ${closed.filter(t => t.status === "resolved").length} done · ${closed.filter(t => t.status === "dismissed").length} dismissed`, "when related",
+    panel("closed", "Closed objectives", `${qty(closed.length)} · ${qty(closed.filter(t => t.status === "resolved").length)} done · ${qty(closed.filter(t => t.status === "dismissed").length)} dismissed`, "when related",
       "Resolved and dismissed objectives reach a debate when the question shares words with them, with their resolution note -- so the panel can say why a similar idea ended the way it did.",
       closed.map(t => objRow(t, i++)), "nothing closed", "No objective has been resolved or dismissed yet."),
-    panel("pins", "Pins", `${S.pinned.length}${n.orphans ? ` · <span class="needs">${n.orphans} message gone</span>` : ""}`, "when related",
+    panel("pins", "Pins", `${qty(S.pinned.length)}${n.orphans ? ` · <span class="needs">${n.orphans} message gone</span>` : ""}`, "when related",
       "A pinned message reaches a debate only when the question shares two or more words with it. Pinning is findability, never priority. These are marks on the transcript; the dock shows them on the message.",
       [...S.pinned].sort((a, b) => b - a).map(ts => pinRow(ts, i++)), "nothing pinned", "You have pinned nothing. Pin from a message in the dock."),
   ];
   document.getElementById("standing").innerHTML = standing.join("");
   document.getElementById("record").innerHTML = record.join("");
+  wire(document.getElementById("group"));
+}
+"""
+
+
+# ---------------------------------------------------------------------------------------
+# P3 BRIEF
+# ---------------------------------------------------------------------------------------
+BRIEF_CSS = r"""
+.row { grid-template-columns: 4.2rem auto auto minmax(0, 1fr) auto auto auto; }
+.row .marks { display: inline-flex; gap: .25rem; align-items: center; white-space: nowrap; }
+.detail .acts .eyebrow { min-width: 11rem; }
+.attn-text b { color: var(--ink); }
+/* A question section: the number, the question, the answer in a sentence, then the record
+   that answer rests on. No expander anywhere -- the brief is a document, not a drawer. */
+.qsec { margin: 0 0 1.05rem; }
+.qh { display: flex; align-items: baseline; gap: .6rem; }
+.qh .qn { font-family: var(--mono, monospace); font-size: .72rem; color: var(--dim); border: 1px solid var(--line-2); border-radius: 3px; padding: 0 .38rem; flex: none; }
+.qh .qq { font-size: .95rem; font-weight: 600; color: var(--ink); margin: 0; letter-spacing: 0; }
+.qh .qc { font-family: var(--mono, monospace); font-size: .7rem; letter-spacing: .05em; text-transform: uppercase; color: var(--dim); }
+.qh .grow { flex: 1; }
+.qa { font-size: .88rem; color: var(--ink); max-width: 104ch; margin: .3rem 0 .55rem; line-height: 1.5; }
+.qa b { font-weight: 600; }
+.qa .q { color: var(--muted); }
+.qa .rec { font-size: .82rem; }
+.qf { font-size: .78rem; color: var(--muted); max-width: 104ch; margin: .4rem 0 0; }
+/* The unresolved row: no timestamp and no author, because an open question has neither. */
+.orow { grid-template-columns: auto minmax(0, 1fr) auto auto auto; }
+.orow .kind { cursor: help; }
+.divider { display: flex; align-items: baseline; gap: .8rem; padding: .45rem .8rem .3rem; border-bottom: 1px solid var(--line); background: color-mix(in srgb, var(--surface-2) 80%, transparent); }
+.divider .eyebrow b { color: var(--ink); }
+.divider .sub { color: var(--dim); font-size: .76rem; }
+""".replace("var(--mono, monospace)", ds.FONT_MONO)
+
+BRIEF_HTML = """
+<div class="group-head">
+  <span class="wordmark">Front office memory</span>
+  <span class="sub">the brief — four questions, in the order the test asks them</span>
+  <span class="grow"></span>
+  <span class="sub" id="asof"></span>
+</div>
+<div id="brief"></div>
+"""
+
+BRIEF_JS = r"""
+// A section = one of the test's four questions. Heading, the answer in a sentence, then the
+// record that answer rests on. Every record in the four stores appears in exactly ONE section,
+// under the question it answers -- that is the whole hierarchy.
+function qsec(k, n, question, count, answer, rows, emptyWhat, emptyWhy, foot) {
+  return `<section class="qsec" data-panel="${k}">
+    <div class="qh"><span class="qn">${n}</span><h2 class="qq">${question}</h2><span class="grow"></span><span class="qc">${count}</span></div>
+    <div class="qa">${answer}</div>
+    <div class="rows" role="listbox" aria-label="${esc(question)}">${rows.length ? rows.join("") : emptyRow(emptyWhat, emptyWhy)}</div>
+    ${foot ? `<div class="qf">${foot}</div>` : ""}
+  </section>`;
+}
+function jumpUnit(unit) {
+  openId = unit; focusedId = unit; render();
+  const el = document.querySelector(`[data-unit="${unit}"]`);
+  if (el) el.scrollIntoView({ block: "center" });
+}
+// A row whose unit is not a record but an OPEN QUESTION. It is the only derived unit in the
+// group: it exists because something is unsettled, and it dies when that thing is settled.
+function openRow(o, i) {
+  const id = `open-${o.id}`;
+  return `<div class="row orow" ${optAttrs({ kind: "open", ts: o.id }, i)} data-kind="open" data-id="${o.id}" data-who="${o.who}">
+    <span class="kind" title="${esc(o.who === "panel" ? "The panel could not settle this: it is a limit of the debate that produced the call, not a task." : "Only you can settle this: the system cannot perform this verb for itself.")}">?</span>
+    <span class="line">${o.line}</span>
+    <span class="marks">${o.marks || ""}</span>
+    ${stateHtml(o.cls, o.word, o.why)}
+    <span class="verb">${o.verb ? `<button class="btn quiet" title="${esc(o.verb.title)}" onclick="event.stopPropagation(); jumpUnit(${jsArg(o.verb.unit)})">${esc(o.verb.label)}</button>` : ""}</span>
+    ${openId === id ? `<div class="detail"><div class="prose">${o.detail}</div></div>` : ""}</div>`;
+}
+// The open questions, derived. Two authors: what the PANEL could not settle about the call
+// that stands, and what only YOU can settle across the stores.
+function briefOpen(S) {
+  const out = [], ds = [...S.decisions].sort((a, b) => b.ts - a.ts), st = ds[0];
+  if (st) {
+    const u = units(hist()).find(x => x.moderator && Math.abs(x.moderator.ts - st.ts) < 5);
+    const seeCall = { label: "see the call", unit: `decision-${st.ts}`, title: "Open the standing call above." };
+    if (!u) {
+      out.push({ id: "chairs-gone", who: "panel", cls: "", word: "not recoverable",
+        line: `Which chairs reported to the standing call is <b>not on record here</b>`,
+        why: "The transcript for that verdict is not in the current chat history -- compacted, or from before it. Missing information, never a finding that all three reported.",
+        detail: "decision_log stores no message key: a verdict's ts lands within a second of the Moderator message's, which is the only join. Once a compaction summarises that message away, which chairs reported becomes unrecoverable from the log alone.", verb: seeCall });
+    } else if (u.kind === "debate") {
+      const r = reached(u);
+      if (r.n < r.of) {
+        const missing = chairs(u).filter(c => c.status !== "reported").map(c => PAYLOAD.roleNames[c.role]);
+        out.push({ id: "chairs", who: "panel", cls: "attn", word: `${r.n} of ${r.of} chairs`,
+          line: `The standing call rests on <b>${r.n} of ${r.of} chairs</b> <span class="q">— no report reached the panel from ${esc(missing.join(" and "))}</span>`,
+          marks: chairs(u).filter(c => c.status !== "reported").map(seatHtml).join(""),
+          why: `${missing.join(" and ")} sent no report. Whether the call never ran, ran and was lost, or ran and could not be read is not known here.`,
+          detail: "A chair that sent no report is missing information, never a chair with nothing to say. The verdict was written on the two that did report and does not say so in its own block.", verb: seeCall });
+      }
+    }
+    const cv = (st.conviction || "").toLowerCase();
+    if (!st.conviction) out.push({ id: "conv", who: "panel", cls: "", word: "not recorded",
+      line: `The standing call's conviction ${absent("The Moderator's block carried no CONVICTION line, so how firmly the panel held this call is not on record.")} <span class="q">— the block carried no CONVICTION line</span>`,
+      why: "The prompt requires a CONVICTION line; this block has none. Not recorded is not the same as unanimous.", detail: "llm_engine.parse_moderator_verdict is per-field: a block missing a required line is still logged, with that field absent.", verb: seeCall });
+    else if (CONV[cv] && CONV[cv][2]) out.push({ id: "conv", who: "panel", cls: "attn", word: cv,  // stateHtml escapes; escaping here too would double it
+      line: `The standing call is <b>${esc(st.conviction)}</b> <span class="q">— ${esc(CONV[cv][1].replace(/^[^:]*: /, ""))}</span>`,
+      why: CONV[cv][1], detail: esc(CONV[cv][1]), verb: seeCall });
+    if (st.dissent) out.push({ id: "dissent", who: "panel", cls: "attn", word: "dissent",
+      line: `A chair dissented from the standing call <span class="q">— ${trunc(st.dissent, 90)}</span>`, marks: dissentSeat(st),
+      why: `DISSENT — ${st.dissent}`, detail: `${esc(st.dissent)}<br><br>The Decision Log's table has ten columns and this is not one of them: dissent is stored on every row and shown on none.`, verb: seeCall });
+    if (st.recon) out.push({ id: "recon", who: "panel", cls: "attn", word: "recon",
+      line: `The call turns on something only another manager can tell you <span class="q">— ${trunc(st.recon, 90)}</span>`,
+      why: `RECON — ${st.recon}`, detail: `${esc(st.recon)}<br><br>RECON is the panel naming a question it cannot answer from any data it has. Nothing in the group tracks whether you asked.`, verb: seeCall });
+  }
+  const n = needsYou(S);
+  if (n.unrated) { const first = ds.filter(d => !d.outcome).slice(-1)[0];
+    out.push({ id: "unrated", who: "you", cls: "needs", word: "unrated",
+      line: `<b>${n.unrated} verdict${n.unrated === 1 ? "" : "s"}</b> ${n.unrated === 1 ? "has" : "have"} no outcome <span class="q">— until rated, ${n.unrated === 1 ? "it teaches" : "they teach"} the next debate nothing</span>`,
+      why: "search_decisions_with_outcomes excludes an unrated verdict entirely: rating is what turns the log into a track record.",
+      detail: "The rating control is on each verdict in question 1, one per row, with no default -- a same-day re-run is rated on its own timestamp.", verb: { label: "rate the oldest", unit: `decision-${first.ts}`, title: "Open the oldest unrated verdict." } }); }
+  if (n.proposed) { const t = S.todos.find(x => x.status === "likely_resolved");
+    out.push({ id: "proposed", who: "you", cls: "needs", word: "proposed done",
+      line: `<b>${n.proposed} objective${n.proposed === 1 ? "" : "s"}</b> a bot proposed as done <span class="q">— only you close one</span>`,
+      why: "A bot may open, revise or propose an objective done. Confirming or keeping it open is the one verb the system cannot perform for itself.",
+      detail: "The app counts these inside “Active Objectives (N)”, so a proposed-done objective is presented to you, to the dock header and to the bots as still active.", verb: { label: "see it", unit: `objective-${t.id}`, title: "Open the proposed-done objective in question 4." } }); }
+  if (n.awaiting) { const f = S.findings.find(x => findingFeeds(x).cls === "needs");
+    out.push({ id: "awaiting", who: "you", cls: "needs", word: "awaiting you",
+      line: `<b>${n.awaiting} finding${n.awaiting === 1 ? "" : "s"}</b> ${n.awaiting === 1 ? "has a number" : "have numbers"} held back <span class="q">— confirming says you looked, not that it is verified</span>`,
+      why: "A rank from an allowed source counts toward the composite only after a second pair of eyes. Until then the number is out of the score.",
+      detail: "Recomputed from each row the way bot_research.feeds_composite does -- never read from the stored composite_impact string, which is a record of an older decision.", verb: { label: "see them", unit: `finding-${f.id}`, title: "Open the first held-back finding in question 2." } }); }
+  if (n.orphans) { const ts = S.pinned.find(x => !pinMessage(x));
+    out.push({ id: "orphans", who: "you", cls: "needs", word: "message gone",
+      line: `<b>${n.orphans} pin${n.orphans === 1 ? "" : "s"}</b> outlived ${n.orphans === 1 ? "its" : "their"} message <span class="q">— a compaction summarised it away</span>`,
+      why: "compact_chat_history does not consult the pin store. The pin remains; the message it points at cannot be retrieved by anything.",
+      detail: "The app's own panel simply does not list these and does not count them, so the header says two pins where three are stored.", verb: { label: "see it", unit: `pin-${ts}`, title: "Open the orphaned pin in question 2." } }); }
+  return out;
+}
+function render() {
+  const S = stores(), n = needsYou(S), i0 = { i: 0 };
+  const ds = [...S.decisions].sort((a, b) => b.ts - a.ts);
+  const anything = S.decisions.length + S.todos.length + S.findings.length + S.comparisons.length + S.pinned.length;
+  document.getElementById("asof").innerHTML = anything
+    ? `as of ${new Date(NOW * 1000).toISOString().slice(0, 16).replace("T", " ")} UTC`
+    : `${absent("Every store is empty: no verdict logged, no objective opened, nothing pinned, nothing found. The next debate is handed nothing but the transcript.")} nothing on record`;
+
+  // 1 -- WHAT WAS DECIDED
+  const rated = ds.filter(d => d.outcome).length, unrated = ds.length - rated;
+  const st = ds[0];
+  const a1 = st
+    ? `The call that stands is ${decisionRec(st)} ${decisionConv(st)} <span class="q">to</span> ${trunc(st.question, 78)}, ${ago(st.ts)}. `
+      + `<b>${ds.length}</b> call${ds.length === 1 ? "" : "s"} on record — ${rated ? `<b>${rated}</b> rated` : "<b>none</b> rated"}, `
+      + (unrated ? `<span class="needs">${unrated} not</span>. A past call reaches the next debate only when the question relates <b>and</b> you have rated it.` : "all of them rated, so every related one can reach the next debate.")
+    : `${absent("No Moderator verdict has been logged in this league. A verdict is logged when the Moderator's reply carries its closing block; nothing here has one.")} <b>Nothing has been decided on the record.</b> The transcript may hold calls the log does not: a block missing every field is not logged at all.`;
+  // 2 -- WHY
+  const fs = S.findings, counting = fs.filter(f => findingFeeds(f).feeds).length;
+  const reasons = new Set(fs.filter(f => !findingFeeds(f).feeds).map(f => findingFeeds(f).word));
+  const a2 = (fs.length + S.comparisons.length + S.pinned.length)
+    ? `<b>${fs.length}</b> panel-vetted finding${fs.length === 1 ? "" : "s"} and <b>${S.comparisons.length}</b> comparison${S.comparisons.length === 1 ? "" : "s"} are read by every debate, in <b>every league</b>, alongside <b>${S.pinned.length}</b> message${S.pinned.length === 1 ? "" : "s"} you kept. `
+      + `Of the numbers, ${counting ? `<b>${counting}</b> count${counting === 1 ? "s" : ""} toward the composite` : "<b>none</b> counts toward the composite"}; the rest do not, for <b>${reasons.size}</b> different reason${reasons.size === 1 ? "" : "s"} — the state word on each row says which, recomputed from the row.`
+    : `${absent("No finding, no comparison and no pinned message is on record, so nothing here says why any call was made except the Moderator's own prose inside each verdict.")} <b>The system holds no evidence of its own.</b> The reasoning lives only inside the verdicts above.`;
+  // 3 -- WHAT REMAINS UNCERTAIN
+  const opens = briefOpen(S);
+  const byPanel = opens.filter(o => o.who === "panel"), byYou = opens.filter(o => o.who === "you");
+  const a3 = opens.length
+    ? `<b>${opens.length}</b> thing${opens.length === 1 ? "" : "s"} ${opens.length === 1 ? "is" : "are"} unsettled: `
+      + `${byPanel.length ? `<b>${byPanel.length}</b> the panel could not settle` : "<b>none</b> the panel could not settle"}, `
+      + `${byYou.length ? `<span class="needs"><b>${byYou.length}</b> only you can</span>` : "<b>none</b> only you can"}. `
+      + `This is the one question the app gives no surface at all: conviction, dissent, RECON and which chairs reported reach the reader only in the dock, and only for the standing call.`
+    : `${absent("Nothing is on record, so nothing is unsettled on record either. That is not the same as a settled system.")} <b>Nothing is on record to be uncertain about.</b>`;
+  // 4 -- WHAT IT IS OPTIMISING
+  const live = S.todos.filter(t => ["active", "likely_resolved"].includes(t.status)).sort((a, b) => (b.status === "likely_resolved") - (a.status === "likely_resolved") || b.ts - a.ts);
+  const closed = S.todos.filter(t => ["resolved", "dismissed"].includes(t.status)).sort((a, b) => b.ts - a.ts);
+  const a4 = `${absent("No store in this system holds what the team is optimising. league_prefs holds display order; the draft engine's contend/rebuild mode is a per-view control, not a stored target. The engine chain has no objective link and the UI chain's is filled by something else.")} `
+    + `<b>Nothing on record says what this team is optimising.</b> `
+    + (live.length
+        ? `The nearest answer is <b>${live.length}</b> open objective${live.length === 1 ? "" : "s"} — ACTION ITEMs a verdict set and you have not closed: a specific trade to propose, a claim to submit, a manager to ask. Tasks, not a target.`
+        : `Not one objective is open either, so the nearest answer is empty too. An objective is a task a verdict set, never a target.`);
+
+  let i = 0;
+  const html = [
+    qsec("decided", "1", "What was decided", `${tally(ds.length, "verdict")}`, a1,
+      ds.map(d => decisionRow(d, i++, { joins: false })),
+      "no verdicts logged", "No Moderator verdict has been logged in this league. One is logged whenever the Moderator's reply carries its closing block.",
+      "A row opens to the Moderator's own prose and the receipt, DISSENT included, and to the rating control — no default, one per timestamp, so a same-day re-run is rated on its own. What each call opened and produced is not here: those answer questions 2 and 4."),
+    qsec("why", "2", "Why", `${tally(fs.length + S.comparisons.length, "signal")} · ${qty(S.pinned.length)} kept`, a2,
+      [...fs.map(f => ["f", f]), ...S.comparisons.map(c => ["c", c]), ...S.pinned.map(ts => ["p", ts])]
+        .sort((a, b) => (b[0] === "p" ? b[1] : b[1].ts) - (a[0] === "p" ? a[1] : a[1].ts))
+        .map(([k, x]) => k === "f" ? findingRow(x, i++) : k === "c" ? comparisonRow(x, i++) : pinRow(x, i++)),
+      "no evidence on record", "No finding, comparison or pinned message exists. The panel's reasoning survives only inside each verdict's own prose.",
+      "This is a <b>signals gate</b>, not evidence for any one call: nothing joins a finding to the verdict it was surfaced in except the question text, and the store is global — a finding from another league is read here, and is marked as such."),
+    qsec("unresolved", "3", "What remains uncertain", opens.length ? `${qty(byPanel.length)} the panel · ${qty(byYou.length)} you` : "nothing open", a3,
+      opens.map(o => openRow(o, i++)),
+      "nothing unresolved", "Nothing is on record, so no question about it is open.",
+      "The only derived rows in the group: each exists because something is unsettled and disappears when it is settled. The verb on the right goes to the record it is about."),
+    qsec("optimising", "4", "What it is optimising", `${qty(live.length)} open · ${qty(closed.length)} closed`, a4,
+      [...live.map(t => objRow(t, i++)), ...(closed.length ? [`<div class="divider"><span class="eyebrow"><b>Closed</b></span><span class="sub">kept because a future debate is shown them, with their resolution note</span></div>`] : []), ...closed.map(t => objRow(t, i++))],
+      "no objectives", "No objective is open or closed. ACTION ITEM lines in a verdict open them, or you can by hand.",
+      "todo_log has a <b>decision_ts</b> slot and nothing writes it, so the join back to question 1 is by ACTION ITEM text: rename an objective and it breaks. The opened row says which verdict it came from, or that the verdict is not in the log."),
+  ].join("");
+  document.getElementById("brief").innerHTML = html;
   wire(document.getElementById("group"));
 }
 """
@@ -381,5 +600,13 @@ VARIANTS = [
         earns="Objectives: the closest thing to the UI's 'objective' link, and the frame says plainly that they are tasks (ACTION ITEMs), not the target the engine optimises — no store holds that. Findings: labelled as a signals gate, global, feeding the composite, not evidence for any one call; the frame notes they could as well live beside the sidebar's valuation sources. Verdicts: decision + proof, with DISSENT back in the receipt and the rating per row by timestamp. Closed objectives: the objective link's past tense, with the note a future debate is told. Pins: kept, demoted to the record tier, and told the truth about compaction.",
         sacrifices="Still five headers and a rule to learn (the two tiers). A verdict and the objective it opened live in different tiers, joined only by a sentence in the opened row. A reader who wants the chain for one decision must open the verdict, then find its objective above. The strip repeats counts the headers also carry.",
         css=STANDING_CSS, html=STANDING_HTML, js=SHARED_JS + STANDING_JS,
+    ),
+    dict(
+        slug="panels_3_brief", title="P3 · Brief", tagline="the four questions the test asks, in that order; the fourth has no store behind it and says so",
+        purpose="Answer the test literally. The group is not organised by store (P2) or by the verdict that produced each record (P1) but by the four questions a reader actually arrives with — what was decided, why, what remains uncertain, what it is optimising. Each question is answered first in one sentence, computed from the stores, and only then by the records that sentence rests on. Every record in all four stores appears in exactly one section: the section whose question it answers.",
+        structure="Four numbered sections, none of them collapsible — the brief is a document, not a set of drawers. 1 What was decided: every verdict, newest first, with the rating control. 2 Why: findings, comparisons and pinned messages together as one body of evidence, labelled as the signals gate it is. 3 What remains uncertain: the only DERIVED rows in the group — one per open question, split by author into what the panel could not settle (chairs that sent no report, dissent, RECON, conviction below majority) and what only you can settle (unrated calls, proposed-done objectives, held-back numbers, orphaned pins), each with a verb that jumps to the record it is about. 4 What it is optimising: opens with an explicit absence, because no store holds it, then the open and closed objectives as the nearest available answer, labelled as tasks rather than a target.",
+        earns="A section earns its place by being a question a reader has; a record earns its place by answering one. Verdicts answer 'what was decided' and nothing else here. Findings, comparisons and pins answer 'why' as one body — the reader never has to know they came from three stores. The uncertainty rows earn their place by existing nowhere else in the product: the app has no surface for conviction, dissent, RECON or a missing chair outside the dock. And question 4 earns its place by being ANSWERED WITH AN ABSENCE: the page states that nothing on record says what the team is optimising, rather than letting a to-do list stand in for a target.",
+        sacrifices="The tallest of the three, and it cannot be shortened by collapsing — everything is at rest. One verdict's own chain is split across three sections: the call in 1, its findings in 2, its objective in 4, joined only by the uncertainty rows' verbs and by a sentence in each opened row. A reader who wants 'everything about this decision' is worse off here than in P1. The answer sentences are computed prose, so they restate counts the sections also carry, and they are the part most likely to go stale if a store gains a state nobody thought about. Comparisons and pins sit under 'why' by argument, not because either store knows anything about a call.",
+        css=BRIEF_CSS, html=BRIEF_HTML, js=SHARED_JS + BRIEF_JS,
     ),
 ]

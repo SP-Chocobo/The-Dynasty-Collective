@@ -1,0 +1,359 @@
+[
+ {
+  "file": "baseline (app.py)",
+  "panel": "Pinned Messages",
+  "open": false,
+  "height": 670,
+  "units": 2,
+  "fullyVisible": null,
+  "pxPerUnit": 315,
+  "elementsPerUnit": 6.5,
+  "buttons": 2,
+  "inputs": 0,
+  "chromeAbove": null,
+  "minFontPx": 14,
+  "note": "closed as shipped (40px); numbers are the panel opened",
+  "captionWords": 38,
+  "colourEmoji": 1
+ },
+ {
+  "file": "baseline (app.py)",
+  "panel": "Decision Log",
+  "open": false,
+  "height": 678,
+  "units": 6,
+  "fullyVisible": null,
+  "pxPerUnit": 106.3,
+  "elementsPerUnit": 1.3,
+  "buttons": 7,
+  "inputs": 5,
+  "chromeAbove": null,
+  "minFontPx": 14,
+  "note": "closed as shipped (40px); numbers are the panel opened",
+  "captionWords": 24,
+  "colourEmoji": 1
+ },
+ {
+  "file": "baseline (app.py)",
+  "panel": "Bot Research",
+  "open": false,
+  "height": 1197,
+  "units": 8,
+  "fullyVisible": null,
+  "pxPerUnit": 144.6,
+  "elementsPerUnit": 3.6,
+  "buttons": 11,
+  "inputs": 0,
+  "chromeAbove": null,
+  "minFontPx": 14,
+  "note": "closed as shipped (40px); numbers are the panel opened",
+  "captionWords": 78,
+  "colourEmoji": 1
+ },
+ {
+  "file": "baseline (app.py)",
+  "panel": "Active Objectives",
+  "open": true,
+  "height": 1483,
+  "units": 4,
+  "fullyVisible": null,
+  "pxPerUnit": 360.8,
+  "elementsPerUnit": 10.3,
+  "buttons": 18,
+  "inputs": 8,
+  "chromeAbove": null,
+  "minFontPx": 12.5,
+  "note": "open as shipped",
+  "captionWords": 76,
+  "colourEmoji": 23
+ },
+ {
+  "file": "baseline (app.py)",
+  "panel": "Archive",
+  "open": false,
+  "height": 805,
+  "units": 3,
+  "fullyVisible": null,
+  "pxPerUnit": 255,
+  "elementsPerUnit": 8.3,
+  "buttons": 6,
+  "inputs": 1,
+  "chromeAbove": null,
+  "minFontPx": 12.5,
+  "note": "closed as shipped (40px); numbers are the panel opened",
+  "captionWords": 34,
+  "colourEmoji": 10
+ },
+ {
+  "file": "panels_1_calls.html",
+  "panel": "calls",
+  "open": true,
+  "height": 587,
+  "units": 15,
+  "fullyVisible": 15,
+  "pxPerUnit": 39.1,
+  "elementsPerUnit": 10.1,
+  "buttons": 13,
+  "inputs": 0,
+  "chromeAbove": 1,
+  "minFontPx": 11.2,
+  "kinds": {
+   "decision": {
+    "units": 6,
+    "pxPerUnit": 35.5,
+    "elementsPerUnit": 13.7
+   },
+   "pin": {
+    "units": 2,
+    "pxPerUnit": 36.2,
+    "elementsPerUnit": 6.5
+   },
+   "objective": {
+    "units": 5,
+    "pxPerUnit": 36.2,
+    "elementsPerUnit": 7.8
+   },
+   "comparison": {
+    "units": 1,
+    "pxPerUnit": 34.8,
+    "elementsPerUnit": 9
+   },
+   "finding": {
+    "units": 1,
+    "pxPerUnit": 35.2,
+    "elementsPerUnit": 9
+   }
+  }
+ },
+ {
+  "file": "panels_1_calls.html",
+  "panel": "(group)",
+  "top": 341,
+  "height": 665,
+  "textElements": 167,
+  "buttons": 18,
+  "inputs": 0,
+  "colourEmoji": 0,
+  "minFontPx": 11.2,
+  "page": {
+   "scrollHeight": 1400,
+   "viewBottom": 1330
+  }
+ },
+ {
+  "file": "panels_2_standing.html",
+  "panel": "objectives",
+  "open": true,
+  "height": 197,
+  "units": 4,
+  "fullyVisible": 4,
+  "pxPerUnit": 36.4,
+  "elementsPerUnit": 8.5,
+  "buttons": 8,
+  "inputs": 0,
+  "chromeAbove": 42,
+  "minFontPx": 11.2,
+  "kinds": {
+   "objective": {
+    "units": 4,
+    "pxPerUnit": 35.9,
+    "elementsPerUnit": 8.5
+   }
+  }
+ },
+ {
+  "file": "panels_2_standing.html",
+  "panel": "findings",
+  "open": true,
+  "height": 336,
+  "units": 8,
+  "fullyVisible": 8,
+  "pxPerUnit": 35.6,
+  "elementsPerUnit": 8.8,
+  "buttons": 4,
+  "inputs": 0,
+  "chromeAbove": 42,
+  "minFontPx": 11.2,
+  "kinds": {
+   "comparison": {
+    "units": 2,
+    "pxPerUnit": 34.8,
+    "elementsPerUnit": 9
+   },
+   "finding": {
+    "units": 6,
+    "pxPerUnit": 35.5,
+    "elementsPerUnit": 8.7
+   }
+  }
+ },
+ {
+  "file": "panels_2_standing.html",
+  "panel": "verdicts",
+  "open": false,
+  "height": 42,
+  "units": 0,
+  "fullyVisible": 0,
+  "pxPerUnit": null,
+  "elementsPerUnit": null,
+  "buttons": 0,
+  "inputs": 0,
+  "chromeAbove": null,
+  "minFontPx": 11.2,
+  "kinds": {}
+ },
+ {
+  "file": "panels_2_standing.html",
+  "panel": "closed",
+  "open": false,
+  "height": 42,
+  "units": 0,
+  "fullyVisible": 0,
+  "pxPerUnit": null,
+  "elementsPerUnit": null,
+  "buttons": 0,
+  "inputs": 0,
+  "chromeAbove": null,
+  "minFontPx": 11.2,
+  "kinds": {}
+ },
+ {
+  "file": "panels_2_standing.html",
+  "panel": "pins",
+  "open": false,
+  "height": 42,
+  "units": 0,
+  "fullyVisible": 0,
+  "pxPerUnit": null,
+  "elementsPerUnit": null,
+  "buttons": 0,
+  "inputs": 0,
+  "chromeAbove": null,
+  "minFontPx": 11.2,
+  "kinds": {}
+ },
+ {
+  "file": "panels_2_standing.html",
+  "panel": "(group)",
+  "top": 341,
+  "height": 881,
+  "textElements": 144,
+  "buttons": 17,
+  "inputs": 0,
+  "colourEmoji": 0,
+  "minFontPx": 11.2,
+  "page": {
+   "scrollHeight": 1400,
+   "viewBottom": 1330
+  }
+ },
+ {
+  "file": "panels_3_brief.html",
+  "panel": "decided",
+  "open": true,
+  "height": 377,
+  "units": 6,
+  "fullyVisible": 6,
+  "pxPerUnit": 35.7,
+  "elementsPerUnit": 12.3,
+  "buttons": 3,
+  "inputs": 0,
+  "chromeAbove": 101,
+  "minFontPx": 11.2,
+  "kinds": {
+   "decision": {
+    "units": 6,
+    "pxPerUnit": 35.4,
+    "elementsPerUnit": 12.3
+   }
+  }
+ },
+ {
+  "file": "panels_3_brief.html",
+  "panel": "why",
+  "open": true,
+  "height": 537,
+  "units": 11,
+  "fullyVisible": 11,
+  "pxPerUnit": 35.8,
+  "elementsPerUnit": 8.3,
+  "buttons": 7,
+  "inputs": 0,
+  "chromeAbove": 101,
+  "minFontPx": 11.2,
+  "kinds": {
+   "comparison": {
+    "units": 2,
+    "pxPerUnit": 34.8,
+    "elementsPerUnit": 9
+   },
+   "finding": {
+    "units": 6,
+    "pxPerUnit": 35.5,
+    "elementsPerUnit": 8.7
+   },
+   "pin": {
+    "units": 3,
+    "pxPerUnit": 36.2,
+    "elementsPerUnit": 7
+   }
+  }
+ },
+ {
+  "file": "panels_3_brief.html",
+  "panel": "unresolved",
+  "open": true,
+  "height": 398,
+  "units": 7,
+  "fullyVisible": 0,
+  "pxPerUnit": 36.3,
+  "elementsPerUnit": 6.1,
+  "buttons": 7,
+  "inputs": 0,
+  "chromeAbove": 101,
+  "minFontPx": 11.2,
+  "kinds": {
+   "open": {
+    "units": 7,
+    "pxPerUnit": 36,
+    "elementsPerUnit": 6.1
+   }
+  }
+ },
+ {
+  "file": "panels_3_brief.html",
+  "panel": "optimising",
+  "open": true,
+  "height": 430,
+  "units": 7,
+  "fullyVisible": 0,
+  "pxPerUnit": 40.9,
+  "elementsPerUnit": 7.9,
+  "buttons": 11,
+  "inputs": 0,
+  "chromeAbove": 101,
+  "minFontPx": 11.2,
+  "kinds": {
+   "objective": {
+    "units": 7,
+    "pxPerUnit": 36,
+    "elementsPerUnit": 7.9
+   }
+  }
+ },
+ {
+  "file": "panels_3_brief.html",
+  "panel": "(group)",
+  "top": 341,
+  "height": 1833,
+  "textElements": 313,
+  "buttons": 28,
+  "inputs": 0,
+  "colourEmoji": 0,
+  "minFontPx": 11.2,
+  "page": {
+   "scrollHeight": 2317,
+   "viewBottom": 1330
+  }
+ }
+]

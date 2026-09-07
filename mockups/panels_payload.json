@@ -1,0 +1,592 @@
+{
+ "league": {
+  "id": "panelprobe",
+  "name": "Gold Wyrm Dynasty",
+  "format": "12-team \u00b7 Superflex \u00b7 Dynasty"
+ },
+ "history": [
+  {
+   "role": "summary",
+   "content": "Earlier in this chat (compacted 2025-08-30): the panel reviewed the startup draft plan twice. Consensus was to anchor the roster on two QBs before round 4 in this superflex format and to treat TE as a round-5-or-later position unless T Mcbride fell. A HOLD verdict on D Achane was recorded on 08-22 (Majority; Contrarian dissented on workload). One objective was opened: check with Roster 6 whether their 2027 1st is available.",
+   "ts": 1757116800.0
+  },
+  {
+   "role": "user",
+   "content": "On the clock at 3.03. The board has Stafford at 107 and Shough at 104 but Shough has 37% survival to my next turn and Stafford is basically gone. Do I take Stafford here or gamble that Shough comes back?",
+   "ts": 1757188800.0
+  },
+  {
+   "role": "quant",
+   "content": "Numbers first, then what they mean for 3.03.\n\n**Draft Sharks / engine view (season + 3-year)**\n- M Stafford (QB, LAR): universal value 101.8, your acquisition value 106.7 UV pts. Need term +4.85 \u2014 you have one QB and this is superflex, so the second QB slot is live starter demand, not depth.\n- T Shough (QB, NO): universal value 99.6, acquisition 104.1. Same need term. The 2.6-point gap between them is INSIDE the engine's 2.0-point noise band only if you round generously; it is not.\n- Next QB after those two: B Mayfield at 100 acquisition, survival 72%.\n\n**Sleeper weekly projection (this week only)**\nStafford 19.4, Shough 15.1, Mayfield 18.8 under your scoring (6 pt pass TD, -2 INT). One week; do not read it as the season.\n\n**Positional scarcity**\nThere are 3 QBs in the top 8 of your board and 16 picks before your next turn. The engine's forfeit for skipping QB until then is 34.9 UV pts \u2014 the largest positional forfeit on the board by 9 points. That is the number that decides this, not the Stafford-vs-Shough gap.\n\n**Divergence to note**\nDraft Sharks' 3-year view has Shough ahead of Stafford (age: 37 vs 25). Your league scoring gives no bonus that closes that; it is purely horizon. The engine's dynasty-horizon adjustment already prices it and still lands Stafford 2.6 ahead on acquisition.\n\nNet: if you want a QB at this pick, Stafford is the number. If you want to defer QB, the cost is 34.9, and Mayfield at 72% survival is the realistic fallback, not Shough at 37%.",
+   "ts": 1757188804.0,
+   "provider": "claude",
+   "model": "claude-sonnet-4-5"
+  },
+  {
+   "role": "beat",
+   "content": "Market and news, labelled by source.\n\n**Market consensus (KTC / FantasyCalc, checked today)**\n- KTC superflex dynasty: Shough 4,410, Stafford 3,120, Mayfield 3,390. The market has Shough a full tier above Stafford \u2014 this is the biggest Draft Sharks vs market split on your board.\n- FantasyCalc superflex: same ordering, Shough ranked QB14, Stafford QB22.\n- Why they disagree: age. The market is pricing 2027-2029; Draft Sharks' season projection is pricing this year, where Stafford's offense (Nacua, Adams) is the better situation.\n\n**News / depth chart (ESPN, team beat, last 72h)**\n- Stafford: full participant all week, no back flare-up reported since August. Named starter, no controversy.\n- Shough: named Week 1 starter over Rattler on Tuesday's presser. Coaching staff quote: \"he's earned it.\" Rookie contract, four-year window.\n- Mayfield: healthy; Evans/Godwin both active.\n\n**Signal**\nThe room is drafting rookies early \u2014 42 of 48 picks in the last comparable startup went to first-year players in rounds 1-3. Shough's 37% survival is the engine's read of those rosters' boards; the market number says the real figure is probably lower.\n\nLabel: KTC/FantasyCalc figures are market, not projection. Depth chart claims are from team pressers, not speculation.",
+   "ts": 1757188813.0,
+   "provider": "gemini",
+   "model": "gemini-2.5-pro"
+  },
+  {
+   "role": "contrarian",
+   "content": "Pressure-testing both.\n\nAgainst the Quant: the 2.6-point gap is real but it is a SEASON number on a 37-year-old with a back history. The engine's horizon adjustment is a model, not an observation \u2014 Draft Sharks' own 3-year view flips the order, and the Quant said so. Two of your three numeric sources disagree with the recommendation; that should cap conviction.\n\nAgainst the Beat: KTC is a crowd of dynasty players who systematically overpay for youth at QB. A 4,410 vs 3,120 spread is a market opinion about 2028, and you are on the clock in 2025 with one QB rostered. The market being \"right\" about Shough does not make him available at 3.19.\n\nWhat both are missing: you do not have to choose between them at THIS pick. Mayfield at 100 acquisition and 72% survival is within 7 points of Stafford and almost certainly there at your next turn. The real question is whether 7 UV pts of QB is worth more than the best non-QB on the board now \u2014 C Lamb at 100, 18% survival, at a position where you have nothing.\n\nMy read: taking Stafford is defensible and it is what the numbers say. Taking Lamb and Mayfield across the two picks is the higher-variance, higher-ceiling line, and nobody above priced it. Risk on Stafford is not the pick \u2014 it is the age cliff arriving mid-window with no exit value.",
+   "ts": 1757188827.0,
+   "provider": "openai",
+   "model": "gpt-5"
+  },
+  {
+   "role": "moderator",
+   "content": "Take Stafford. The forfeit for skipping QB to your next turn is 34.9 UV pts, the biggest positional cost on the board, and Shough at 37% survival is not a plan \u2014 the market number the Beat pulled says the true figure is lower. The Contrarian's Lamb-then-Mayfield line is the one real alternative and it rests on Mayfield surviving 16 picks at 72%; that is a bet, and this is a decisive regime where the engine's own margin (4.1 clear of the second priced candidate, outside the 2.0 noise band) says you do not need one. Draft Sharks' 3-year view flipping the order is why this is Majority and not Unanimous.\n\nRECOMMENDATION: BUY\nCONVICTION: Majority\nREASON: 34.9 UV pts positional forfeit for deferring QB, with the only alternative QB at 37% survival\nDISSENT: Contrarian \u2014 prefers C Lamb now and B Mayfield at 3.19 (72% survival) as a higher-ceiling two-pick line\nRISK: Stafford's age cliff arrives inside your window with no exit value; a back recurrence turns a 107 into a 2027 problem\nACTION ITEM: If Mayfield is still on the board at 3.19, take him as QB2 regardless of what else is there\nSOURCE FINDING: Tyler Shough | KTC | Ranked a full tier above Stafford in superflex dynasty value | 14\nSOURCE COMPARISON: Tyler Shough | Matthew Stafford | > | KTC superflex dynasty | market values the four-year window over the 2025 offense",
+   "ts": 1757188835.0,
+   "provider": "claude",
+   "model": "claude-opus-4-1"
+  },
+  {
+   "role": "user",
+   "content": "Why not Shough though? 37% isn't nothing and he's 12 years younger.",
+   "ts": 1757188955.0
+  },
+  {
+   "role": "moderator",
+   "content": "Because 37% is the engine compounding sixteen rosters' own boards, and the Beat's market read says those boards like Shough MORE than the engine assumes \u2014 so the honest number is below 37, not above it. You'd be passing on a 107 for a coin flip that's weighted against you.\n\nThe age point is real and it's exactly why the call was Majority rather than Unanimous. If your plan is to compete in 2027-2029 rather than now, that changes the weighting and I'd say so \u2014 but nothing in your roster context says that; you have one QB, twelve teams, and a superflex slot that is live demand today.\n\nIf you want the younger arm, the line that actually works is the Contrarian's: Lamb now, Mayfield at 3.19 at 72%. That gives you the WR you have nothing at and a QB2 who is 32 rather than 37. It is not the call I made, but it is a coherent one, and it does not involve hoping Shough falls.",
+   "ts": 1757188961.0,
+   "provider": "claude",
+   "model": "claude-opus-4-1"
+  },
+  {
+   "role": "user",
+   "content": "Roster 6 just offered me their 2027 1st and Kyren Williams for Achane. I'm rebuilding at RB anyway. Take it?",
+   "ts": 1757206961.0
+  },
+  {
+   "role": "notice",
+   "content": "Your Free Agent Finder data is 19 days old (as of 2025-08-18). Waiver/roster value shifts week to week, so if this question is about a current decision, a fresh export would likely be more accurate \u2014 upload one in the sidebar when you get a chance. Answering with what's loaded for now.",
+   "ts": 1757206962.0
+  },
+  {
+   "role": "quant",
+   "content": "**Trade equity (Draft Sharks trade values, this league's format)**\n- D Achane: 6,410\n- K Williams: 4,180\n- Roster 6's 2027 1st: the engine values a future 1st at the league's mid-round average, 2,900, until the standings give it a slot. Roster 6 finished 3rd last year; if that holds, the pick is worth closer to 2,200.\n\nRaw: you send 6,410, you receive 6,380 to 7,080 depending on the pick. Even to slightly favourable on paper.\n\n**Roster fit**\nYour RB room after the trade: Williams, B Hall, K Walker. Starter demand at RB in this format is 2 plus flex; you would still fill it. Achane's need term on your roster is +4.2; Williams' would be +3.9 \u2014 near-identical fit.\n\n**What the numbers do not know**\nWhether the 2027 1st lands at 1.03 or 1.10 is the whole trade. That is a standings question, not a valuation one.",
+   "ts": 1757206966.0,
+   "provider": "claude",
+   "model": "claude-sonnet-4-5"
+  },
+  {
+   "role": "beat",
+   "content": "\u26a0\ufe0f Gemini request failed: 503 Service Unavailable",
+   "ts": 1757206967.0,
+   "provider": "gemini",
+   "model": "gemini-2.5-pro"
+  },
+  {
+   "role": "contrarian",
+   "content": "The Quant has this as even and it is not, in two ways that cut against each other.\n\nAgainst taking it: Roster 6 is a contender trading a future pick for a win-now back. Contenders' picks are late. Pricing that 1st at 2,900 flatters it; 2,200 is the realistic figure and the Quant said so. At 2,200 you are sending 6,410 for 6,380 and taking on Williams' workload questions (the Rams drafted Hunter in April).\n\nFor taking it: Achane's value is a health number. He has finished one full season in three. The market price of 6,410 assumes the healthy version; you are selling the assumption, which is what a rebuild should do.\n\nNo Beat report reached me, so I could not check the Hunter split or Achane's current status. Treat both of those as unverified. My position: the trade is fine in principle and mispriced in one specific place. Ask for the 2027 1st to become their 2026 1st, or add a 2nd. Do not take it as offered.",
+   "ts": 1757206974.0,
+   "provider": "openai",
+   "model": "gpt-5"
+  },
+  {
+   "role": "moderator",
+   "content": "The trade is close to even on paper and the paper is missing the one number that decides it: where Roster 6's 2027 1st lands. The Beat Tracker did not report this round \u2014 the Gemini call failed \u2014 so nothing here about Kyren Williams' Hunter split or Achane's current status is verified, and I am not going to pretend it is. Two of three chairs reached the panel. What they agree on: as offered, this is a contender buying your best asset with their latest pick.\n\nRECOMMENDATION: WAIT\nCONVICTION: Worth investigation\nREASON: The 2027 1st is priced at a league average it will not reach if Roster 6 contends again; the trade is even only at that flattering price\nRISK: Achane's next injury arrives before a better offer does and the 6,410 becomes a 4,500\nRECON: Ask Roster 6 whether they would swap the 2027 1st for their 2026 1st, or add a 2027 2nd \u2014 that is the exact gap the Quant measured\nPRICE CEILING: Achane for Williams plus a 1st and a 2nd, nothing less\nALTERNATIVE: If Roster 6 will not move on the pick, Roster 9 is the other contender with an RB hole and they hold their own 2026 1st, which is a known slot rather than a guess \u2014 the same conversation there resolves the one number this panel could not.\nACTION ITEM: Counter Roster 6 with Achane for K Williams + 2026 1st before Thursday's waiver run\nTODO UPDATE: 1 | Check with Roster 6 whether their 2026 1st is available, not the 2027 | the 2027 pick is priced at a slot it is unlikely to reach",
+   "ts": 1757206983.0,
+   "provider": "claude",
+   "model": "claude-opus-4-1"
+  }
+ ],
+ "decisions": [
+  {
+   "ts": 1755248400.0,
+   "date": "2025-08-15",
+   "question": "Nacua or Adams at WR2 this week?",
+   "recommendation": "",
+   "conviction": "Unanimous",
+   "reason": "31% target share against a defense allowing the most slot receptions in the league",
+   "dissent": "",
+   "risk": "Nacua's knee was listed limited on Wednesday; if he sits, Adams is the start by default",
+   "recon": "",
+   "price_ceiling": "",
+   "alternative": "",
+   "moderator_text": "Start Nacua over Adams this week: the target share is 31% to 22% and the Rams' opponent funnels to the slot.\n\nRECOMMENDATION - START NACUA\nCONVICTION: Unanimous\nREASON: 31% target share against a defense allowing the most slot receptions in the league\nRISK: Nacua's knee was listed limited on Wednesday; if he sits, Adams is the start by default",
+   "provider": "",
+   "model": "",
+   "outcome": "Mixed",
+   "outcome_note": "Nacua 14.2, Adams 13.9 -- both started in the end via flex.",
+   "outcome_date": "2025-08-20"
+  },
+  {
+   "ts": 1755860400.0,
+   "date": "2025-08-22",
+   "question": "Roster 6 wants Achane for their 2027 1st. Hold or sell?",
+   "recommendation": "HOLD",
+   "conviction": "Majority",
+   "reason": "6,410 for 5,900 as offered; a contender's 2027 1st prices at the back of the round",
+   "dissent": "Contrarian \u2014 the health discount is real and a rebuild should sell the assumption of health while the market still pays for it",
+   "risk": "An injury before a better offer arrives; the 6,410 is a health number",
+   "recon": "",
+   "price_ceiling": "",
+   "alternative": "",
+   "moderator_text": "Hold Achane. The 2027 1st on offer is a contender's pick and prices at the back of the round; the Quant's number says you are selling 6,410 of value for 5,900, and the Beat has no news that changes his workload. The Contrarian's workload point is the reason this is Majority.\n\nRECOMMENDATION: HOLD\nCONVICTION: Majority\nREASON: 6,410 for 5,900 as offered; a contender's 2027 1st prices at the back of the round\nDISSENT: Contrarian \u2014 the health discount is real and a rebuild should sell the assumption of health while the market still pays for it\nRISK: An injury before a better offer arrives; the 6,410 is a health number\nACTION ITEM: Check with Roster 6 whether their 2027 1st is available",
+   "provider": "",
+   "model": "",
+   "outcome": "Didn't Work",
+   "outcome_note": "Achane tweaked the hamstring 09-01; the same offer came back 400 lower.",
+   "outcome_date": "2025-09-02"
+  },
+  {
+   "ts": 1756540800.0,
+   "date": "2025-08-30",
+   "question": "Promote Shough from taxi or keep the slot?",
+   "recommendation": "BUY",
+   "conviction": "Unanimous",
+   "reason": "The superflex slot is live starter demand and the taxi squad exists for players you are not starting",
+   "dissent": "",
+   "risk": "Rattler clears waivers to a contender who needed a QB2; small, and the Beat found no roster that does",
+   "recon": "",
+   "price_ceiling": "",
+   "alternative": "",
+   "moderator_text": "Promote Shough to the active roster and drop Rattler; the taxi slot is worth more to a rookie WR than a QB2 you are now starting in superflex.\n\nRECOMMENDATION: BUY\nCONVICTION: Unanimous\nREASON: The superflex slot is live starter demand and the taxi squad exists for players you are not starting\nRISK: Rattler clears waivers to a contender who needed a QB2; small, and the Beat found no roster that does",
+   "provider": "claude",
+   "model": "claude-opus-4-1",
+   "outcome": "Worked",
+   "outcome_note": "",
+   "outcome_date": "2025-09-04"
+  },
+  {
+   "ts": 1757188835.0,
+   "date": "2025-09-06",
+   "question": "On the clock at 3.03. The board has Stafford at 107 and Shough at 104 but Shough has 37% survival to my next turn and Stafford is basically gone. Do I take Stafford here or gamble that Shough comes back?",
+   "recommendation": "BUY",
+   "conviction": "Majority",
+   "reason": "34.9 UV pts positional forfeit for deferring QB, with the only alternative QB at 37% survival",
+   "dissent": "Contrarian \u2014 prefers C Lamb now and B Mayfield at 3.19 (72% survival) as a higher-ceiling two-pick line",
+   "risk": "Stafford's age cliff arrives inside your window with no exit value; a back recurrence turns a 107 into a 2027 problem",
+   "recon": "",
+   "price_ceiling": "",
+   "alternative": "",
+   "moderator_text": "Take Stafford. The forfeit for skipping QB to your next turn is 34.9 UV pts, the biggest positional cost on the board, and Shough at 37% survival is not a plan \u2014 the market number the Beat pulled says the true figure is lower. The Contrarian's Lamb-then-Mayfield line is the one real alternative and it rests on Mayfield surviving 16 picks at 72%; that is a bet, and this is a decisive regime where the engine's own margin (4.1 clear of the second priced candidate, outside the 2.0 noise band) says you do not need one. Draft Sharks' 3-year view flipping the order is why this is Majority and not Unanimous.\n\nRECOMMENDATION: BUY\nCONVICTION: Majority\nREASON: 34.9 UV pts positional forfeit for deferring QB, with the only alternative QB at 37% survival\nDISSENT: Contrarian \u2014 prefers C Lamb now and B Mayfield at 3.19 (72% survival) as a higher-ceiling two-pick line\nRISK: Stafford's age cliff arrives inside your window with no exit value; a back recurrence turns a 107 into a 2027 problem\nACTION ITEM: If Mayfield is still on the board at 3.19, take him as QB2 regardless of what else is there\nSOURCE FINDING: Tyler Shough | KTC | Ranked a full tier above Stafford in superflex dynasty value | 14\nSOURCE COMPARISON: Tyler Shough | Matthew Stafford | > | KTC superflex dynasty | market values the four-year window over the 2025 offense",
+   "provider": "claude",
+   "model": "claude-opus-4-1",
+   "outcome": "",
+   "outcome_note": "",
+   "outcome_date": null
+  },
+  {
+   "ts": 1757188960.0,
+   "date": "2025-09-06",
+   "question": "On the clock at 3.03. The board has Stafford at 107 and Shough at 104 but Shough has 37% survival to my next turn and Stafford is basically gone. Do I take Stafford here or gamble that Shough comes back?",
+   "recommendation": "BUY",
+   "conviction": "Majority",
+   "reason": "34.9 UV pts positional forfeit for deferring QB, with the only alternative QB at 37% survival",
+   "dissent": "Contrarian \u2014 prefers C Lamb now and B Mayfield at 3.19 (72% survival) as a higher-ceiling two-pick line",
+   "risk": "Stafford's age cliff arrives inside your window with no exit value; a back recurrence turns a 107 into a 2027 problem",
+   "recon": "",
+   "price_ceiling": "",
+   "alternative": "",
+   "moderator_text": "Take Stafford. The forfeit for skipping QB to your next turn is 34.9 UV pts, the biggest positional cost on the board, and Shough at 37% survival is not a plan \u2014 the market number the Beat pulled says the true figure is lower. The Contrarian's Lamb-then-Mayfield line is the one real alternative and it rests on Mayfield surviving 16 picks at 72%; that is a bet, and this is a decisive regime where the engine's own margin (4.1 clear of the second priced candidate, outside the 2.0 noise band) says you do not need one. Draft Sharks' 3-year view flipping the order is why this is Majority and not Unanimous.\n\nRECOMMENDATION: BUY\nCONVICTION: Majority\nREASON: 34.9 UV pts positional forfeit for deferring QB, with the only alternative QB at 37% survival\nDISSENT: Contrarian \u2014 prefers C Lamb now and B Mayfield at 3.19 (72% survival) as a higher-ceiling two-pick line\nRISK: Stafford's age cliff arrives inside your window with no exit value; a back recurrence turns a 107 into a 2027 problem\nACTION ITEM: If Mayfield is still on the board at 3.19, take him as QB2 regardless of what else is there\nSOURCE FINDING: Tyler Shough | KTC | Ranked a full tier above Stafford in superflex dynasty value | 14\nSOURCE COMPARISON: Tyler Shough | Matthew Stafford | > | KTC superflex dynasty | market values the four-year window over the 2025 offense",
+   "provider": "claude",
+   "model": "claude-opus-4-1",
+   "outcome": "",
+   "outcome_note": "",
+   "outcome_date": null
+  },
+  {
+   "ts": 1757206983.0,
+   "date": "2025-09-07",
+   "question": "Roster 6 just offered me their 2027 1st and Kyren Williams for Achane. I'm rebuilding at RB anyway. Take it?",
+   "recommendation": "WAIT",
+   "conviction": "Worth investigation",
+   "reason": "The 2027 1st is priced at a league average it will not reach if Roster 6 contends again; the trade is even only at that flattering price",
+   "dissent": "",
+   "risk": "Achane's next injury arrives before a better offer does and the 6,410 becomes a 4,500",
+   "recon": "Ask Roster 6 whether they would swap the 2027 1st for their 2026 1st, or add a 2027 2nd \u2014 that is the exact gap the Quant measured",
+   "price_ceiling": "Achane for Williams plus a 1st and a 2nd, nothing less",
+   "alternative": "If Roster 6 will not move on the pick, Roster 9 is the other contender with an RB hole and they hold their own 2026 1st, which is a known slot rather than a guess \u2014 the same conversation there resolves the one number this panel could not.",
+   "moderator_text": "The trade is close to even on paper and the paper is missing the one number that decides it: where Roster 6's 2027 1st lands. The Beat Tracker did not report this round \u2014 the Gemini call failed \u2014 so nothing here about Kyren Williams' Hunter split or Achane's current status is verified, and I am not going to pretend it is. Two of three chairs reached the panel. What they agree on: as offered, this is a contender buying your best asset with their latest pick.\n\nRECOMMENDATION: WAIT\nCONVICTION: Worth investigation\nREASON: The 2027 1st is priced at a league average it will not reach if Roster 6 contends again; the trade is even only at that flattering price\nRISK: Achane's next injury arrives before a better offer does and the 6,410 becomes a 4,500\nRECON: Ask Roster 6 whether they would swap the 2027 1st for their 2026 1st, or add a 2027 2nd \u2014 that is the exact gap the Quant measured\nPRICE CEILING: Achane for Williams plus a 1st and a 2nd, nothing less\nALTERNATIVE: If Roster 6 will not move on the pick, Roster 9 is the other contender with an RB hole and they hold their own 2026 1st, which is a known slot rather than a guess \u2014 the same conversation there resolves the one number this panel could not.\nACTION ITEM: Counter Roster 6 with Achane for K Williams + 2026 1st before Thursday's waiver run\nTODO UPDATE: 1 | Check with Roster 6 whether their 2026 1st is available, not the 2027 | the 2027 pick is priced at a slot it is unlikely to reach",
+   "provider": "claude",
+   "model": "claude-opus-4-1",
+   "outcome": "",
+   "outcome_note": "",
+   "outcome_date": null
+  }
+ ],
+ "todos": [
+  {
+   "id": 1,
+   "ts": 1755860402.0,
+   "date": "2025-08-22",
+   "text": "Check with Roster 6 whether their 2026 1st is available, not the 2027",
+   "source": "moderator",
+   "question": "Roster 6 wants Achane for their 2027 1st. Hold or sell?",
+   "decision_ts": null,
+   "status": "active",
+   "resolution_reason": "",
+   "resolution_date": null,
+   "revisions": [
+    {
+     "ts": 1757206984.0,
+     "date": "2025-09-07",
+     "text": "Check with Roster 6 whether their 2027 1st is available",
+     "reason": "the 2027 pick is priced at a slot it is unlikely to reach"
+    }
+   ],
+   "notes": [
+    {
+     "ts": 1756252800.0,
+     "date": "2025-08-27",
+     "text": "Messaged Roster 6 on 08-27; no answer yet."
+    }
+   ],
+   "proposals": [],
+   "last_referenced": "2025-09-07"
+  },
+  {
+   "id": 2,
+   "ts": 1757188836.0,
+   "date": "2025-09-06",
+   "text": "If Mayfield is still on the board at 3.19, take him as QB2 regardless of what else is there",
+   "source": "moderator",
+   "question": "On the clock at 3.03. The board has Stafford at 107 and Shough at 104 but Shough has 37% survival to my next turn and Stafford is basically gone. Do I take Stafford here or gamble that Shough comes back?",
+   "decision_ts": null,
+   "status": "active",
+   "resolution_reason": "",
+   "resolution_date": null,
+   "revisions": [],
+   "notes": [],
+   "proposals": []
+  },
+  {
+   "id": 3,
+   "ts": 1757206984.0,
+   "date": "2025-09-07",
+   "text": "Counter Roster 6 with Achane for K Williams + 2026 1st before Thursday's waiver run",
+   "source": "moderator",
+   "question": "Roster 6 just offered me their 2027 1st and Kyren Williams for Achane. I'm rebuilding at RB anyway. Take it?",
+   "decision_ts": null,
+   "status": "active",
+   "resolution_reason": "",
+   "resolution_date": null,
+   "revisions": [],
+   "notes": [],
+   "proposals": []
+  },
+  {
+   "id": 4,
+   "ts": 1756080000.0,
+   "date": "2025-08-25",
+   "text": "Find a taxi-squad rookie WR to stash before the trade deadline",
+   "source": "manual",
+   "question": "",
+   "decision_ts": null,
+   "status": "likely_resolved",
+   "resolution_reason": "The roster data shows a rookie WR added to the taxi squad on 09-04.",
+   "resolution_date": null,
+   "revisions": [],
+   "notes": [],
+   "proposals": [
+    {
+     "ts": 1757030400.0,
+     "date": "2025-09-05",
+     "reason": "The roster data shows a rookie WR added to the taxi squad on 09-04.",
+     "outcome": "pending"
+    }
+   ]
+  },
+  {
+   "id": 5,
+   "ts": 1755248402.0,
+   "date": "2025-08-15",
+   "text": "Confirm Nacua's knee status before Sunday's lock",
+   "source": "moderator",
+   "question": "Nacua or Adams at WR2 this week?",
+   "decision_ts": null,
+   "status": "resolved",
+   "resolution_reason": "Full participant Friday; started him.",
+   "resolution_date": "2025-08-18",
+   "revisions": [],
+   "notes": [],
+   "proposals": [
+    {
+     "ts": 1755475200.0,
+     "date": "2025-08-18",
+     "reason": "The Beat reported him a full participant Friday.",
+     "outcome": "accepted",
+     "closed_date": "2025-08-18"
+    }
+   ]
+  },
+  {
+   "id": 6,
+   "ts": 1754524800.0,
+   "date": "2025-08-07",
+   "text": "Offer Roster 11 a 2026 2nd for their backup TE",
+   "source": "manual",
+   "question": "",
+   "decision_ts": null,
+   "status": "dismissed",
+   "resolution_reason": "Dismissed by user",
+   "resolution_date": "2025-08-12",
+   "revisions": [],
+   "notes": [],
+   "proposals": []
+  },
+  {
+   "id": 7,
+   "ts": 1756339200.0,
+   "date": "2025-08-28",
+   "text": "Set the Week 1 lineup before Thursday night",
+   "source": "manual",
+   "question": "",
+   "decision_ts": null,
+   "status": "resolved",
+   "resolution_reason": "Marked done by user",
+   "resolution_date": "2025-09-03",
+   "revisions": [],
+   "notes": [],
+   "proposals": []
+  }
+ ],
+ "pinned": [
+  1753671600.0,
+  1757188804.0,
+  1757188835.0
+ ],
+ "findings": [
+  {
+   "id": 1,
+   "ts": 1753660800.0,
+   "date": "2025-07-28",
+   "player_name": "Josh Allen",
+   "source": "ESPN",
+   "claim": "Ranked the overall QB1 in dynasty for 2025",
+   "rank": 1,
+   "composite_impact": "low-weight input",
+   "conviction": "Unanimous",
+   "question": "Is Allen worth a first?",
+   "league_id": "panelprobe"
+  },
+  {
+   "id": 2,
+   "ts": 1755248400.0,
+   "date": "2025-08-15",
+   "player_name": "Puka Nacua",
+   "source": "ESPN",
+   "claim": "Top-five WR in target share through the preseason",
+   "rank": 4,
+   "cited_source_admitted": "espn",
+   "adjudication": "human_confirmed",
+   "composite_impact": "low-weight input",
+   "conviction": "Unanimous",
+   "question": "Nacua or Adams at WR2 this week?",
+   "league_id": "panelprobe",
+   "evidence": {
+    "origin": "panel_retrieved",
+    "retrieved_at": "2025-08-15",
+    "debate_sources": [
+     {
+      "url": "https://example.invalid/0",
+      "title": "page 0"
+     },
+     {
+      "url": "https://example.invalid/1",
+      "title": "page 1"
+     },
+     {
+      "url": "https://example.invalid/2",
+      "title": "page 2"
+     }
+    ]
+   },
+   "confirmed_by": "human",
+   "confirmed_at": "2025-08-17"
+  },
+  {
+   "id": 3,
+   "ts": 1755860400.0,
+   "date": "2025-08-22",
+   "player_name": "De'Von Achane",
+   "source": "FantasyCalc",
+   "claim": "Priced as an RB1 in superflex dynasty",
+   "rank": 7,
+   "cited_source_admitted": null,
+   "adjudication": "panel_only",
+   "composite_impact": "none -- cited source is not on the composite allowlist",
+   "conviction": "Majority",
+   "question": "Roster 6 wants Achane for their 2027 1st. Hold or sell?",
+   "league_id": "panelprobe",
+   "evidence": {
+    "origin": "panel_retrieved",
+    "retrieved_at": "2025-08-22",
+    "debate_sources": [
+     {
+      "url": "https://example.invalid/0",
+      "title": "page 0"
+     },
+     {
+      "url": "https://example.invalid/1",
+      "title": "page 1"
+     }
+    ]
+   }
+  },
+  {
+   "id": 4,
+   "ts": 1755860401.0,
+   "date": "2025-08-22",
+   "player_name": "Kyren Williams",
+   "source": "ESPN",
+   "claim": "Expected to cede early-down work to the rookie after the bye",
+   "rank": null,
+   "cited_source_admitted": "espn",
+   "adjudication": "panel_only",
+   "composite_impact": "none",
+   "conviction": "Majority",
+   "question": "Roster 6 wants Achane for their 2027 1st. Hold or sell?",
+   "league_id": "panelprobe",
+   "evidence": {
+    "origin": "panel_retrieved",
+    "retrieved_at": "2025-08-22",
+    "debate_sources": [
+     {
+      "url": "https://example.invalid/0",
+      "title": "page 0"
+     },
+     {
+      "url": "https://example.invalid/1",
+      "title": "page 1"
+     }
+    ]
+   }
+  },
+  {
+   "id": 5,
+   "ts": 1756540800.0,
+   "date": "2025-08-30",
+   "player_name": "Spencer Rattler",
+   "source": "KTC",
+   "claim": "Ranked QB31 in superflex dynasty",
+   "rank": 31,
+   "cited_source_admitted": "keeptradecut",
+   "adjudication": "human_confirmed",
+   "composite_impact": "none -- retracted (rejected)",
+   "conviction": "Unanimous",
+   "question": "Promote Shough from taxi or keep the slot?",
+   "league_id": "panelprobe",
+   "evidence": {
+    "origin": "unattributed",
+    "retrieved_at": "2025-08-30",
+    "debate_sources": []
+   },
+   "confirmed_by": "human",
+   "confirmed_at": "2025-08-31",
+   "retracted": {
+    "reason": "rejected",
+    "by": "human",
+    "at": "2025-09-04",
+    "note": "KTC had him QB38 when I looked; the panel misread a 1QB list."
+   }
+  },
+  {
+   "id": 6,
+   "ts": 1757188835.0,
+   "date": "2025-09-06",
+   "player_name": "Tyler Shough",
+   "source": "KTC",
+   "claim": "Ranked a full tier above Stafford in superflex dynasty value",
+   "rank": 14,
+   "cited_source_admitted": "keeptradecut",
+   "adjudication": "panel_only",
+   "composite_impact": "none -- awaiting a second adjudication",
+   "conviction": "Majority",
+   "question": "On the clock at 3.03. The board has Stafford at 107 and Shough at 104 but Shough has 37% survival to my next turn and Stafford is basically gone. Do I take Stafford here or gamble that Shough comes back?",
+   "league_id": "panelprobe",
+   "evidence": {
+    "origin": "panel_retrieved",
+    "retrieved_at": "2025-09-06",
+    "debate_sources": [
+     {
+      "url": "https://example.invalid/0",
+      "title": "page 0"
+     },
+     {
+      "url": "https://example.invalid/1",
+      "title": "page 1"
+     },
+     {
+      "url": "https://example.invalid/2",
+      "title": "page 2"
+     },
+     {
+      "url": "https://example.invalid/3",
+      "title": "page 3"
+     }
+    ]
+   }
+  }
+ ],
+ "comparisons": [
+  {
+   "id": 1,
+   "ts": 1757188837.0,
+   "date": "2025-09-06",
+   "subject": "Tyler Shough",
+   "compared_to": "Matthew Stafford",
+   "direction": ">",
+   "source": "KTC",
+   "context": "superflex dynasty",
+   "evidence": "market values the four-year window over the 2025 offense",
+   "evidence_type": "qualitative comparative",
+   "panel_undisputed": true,
+   "composite_impact": "none",
+   "question": "On the clock at 3.03. The board has Stafford at 107 and Shough at 104 but Shough has 37% survival to my next turn and Stafford is basically gone. Do I take Stafford here or gamble that Shough comes back?",
+   "league_id": "panelprobe"
+  },
+  {
+   "id": 2,
+   "ts": 1754265600.0,
+   "date": "2025-08-04",
+   "subject": "Brock Bowers",
+   "compared_to": "Trey McBride",
+   "direction": "~",
+   "source": "ESPN",
+   "context": "1QB, TE premium",
+   "evidence": "back-to-back at TE1/TE2 with the order flipping week to week",
+   "evidence_type": "qualitative comparative",
+   "panel_undisputed": true,
+   "composite_impact": "none",
+   "question": "Bowers or McBride at 1.11?",
+   "league_id": "otherleague"
+  }
+ ],
+ "roleNames": {
+  "quant": "Quant",
+  "beat": "Beat Tracker",
+  "contrarian": "Contrarian",
+  "moderator": "Moderator"
+ },
+ "outcomeLabels": [
+  "Worked",
+  "Didn't Work",
+  "Mixed",
+  "Too Early To Tell"
+ ],
+ "verdictFields": [
+  "RECOMMENDATION",
+  "CONVICTION",
+  "REASON",
+  "DISSENT",
+  "RISK",
+  "RECON",
+  "PRICE CEILING",
+  "ALTERNATIVE",
+  "ACTION ITEM"
+ ],
+ "activeStatuses": [
+  "active",
+  "likely_resolved"
+ ],
+ "archivedStatuses": [
+  "resolved",
+  "dismissed"
+ ]
+}

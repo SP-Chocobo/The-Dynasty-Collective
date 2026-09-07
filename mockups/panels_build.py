@@ -1,6 +1,7 @@
 """Build the panel-group mockups: `python3 mockups/panels_build.py` from the repo root.
 
-Writes panels_1_calls.html, panels_2_standing.html, panels_payload.json and panels_index.html
+Writes panels_1_calls.html, panels_2_standing.html, panels_3_brief.html, panels_payload.json
+and panels_index.html
 (which folds in panels_density.json and panels_baseline_measure.json when the instruments have
 run). Each page is self-contained. Run `python3 mockups/panels_smoke.py` afterwards for the
 gate and the density instrument. Also prints the WCAG ratios of every foreground/ground pair
@@ -138,26 +139,26 @@ def index_html() -> str:
 .page {{ max-width: 1180px; margin: 0 auto; padding: 1.4rem 1.2rem 4rem; }}</style></head>
 <body><div class="page">
 <h1>Gold Wyrm Dynasty · the panel group</h1>
-<div class="gates"><p>The four panels app.py renders under every view, between the view's content and the Debate Dock: Pinned Messages, Decision Log, Bot Research, Active Objectives (and its Archive, a fifth expander). Built at different times, never designed as a group. Two structural answers over the same constructed stores, the app's own panels measured against them, and the defects the measurement found.</p></div>
+<div class="gates"><p>The four panels app.py renders under every view, between the view's content and the Debate Dock: Pinned Messages, Decision Log, Bot Research, Active Objectives (and its Archive, a fifth expander). Built at different times, never designed as a group. Three structural answers over the same constructed stores — sorted by what produced a record, by when the panel reads it, and by which of the reader's questions it answers — the app's own panels measured against them, and the defects the measurement found.</p></div>
 <div class="test"><b>The test.</b> Can someone understand what the system decided, why it decided it, what uncertainty remains, and what it is optimising — without mentally assembling four interfaces? Held against the two chains that have to line up: <span class="mono">engine: signals → synthesis → decision → proof</span> and <span class="mono">ui: state → decision → evidence → objective</span>.</div>
 
 <div class="sec">What the group is for, and what each panel earns its place by</div>
 <div class="gates"><p>Every one of the four stores is written during a debate and read back by the next one. Collectively they are the front office's <b>memory</b> — what the next debate is handed, and what only a person can add to it. Each store has exactly one human verb the system cannot perform for itself: a verdict is <b>rated</b> (until it is, <code>search_decisions_with_outcomes</code> excludes it — the log has nothing to teach a future debate), an objective is <b>closed</b> (a bot may open, revise or propose; only the user resolves or dismisses), a finding's number is <b>confirmed</b> (the second adjudication), a message is <b>kept</b> (the one store the user authors). That is one idea. The reader today meets it as five expanders whose order is neither by liveness nor by verb nor by author, whose counts each count something different (pins found in history, decisions including re-runs, findings across every league including retracted ones, objectives including proposed-done), whose captions restate "the bots read this" five ways in 250 words, and of which the only one open by default is the one carrying eighteen buttons.</p>
 <p>Mapped onto the chain, panel by panel:</p></div>
 <table class="chain"><thead><tr><th>panel</th><th>engine link</th><th>ui link</th><th>what it actually is</th><th>verdict</th></tr></thead><tbody>{chain}</tbody></table>
-<div class="gates"><p>Two of the four map cleanly (Decision Log to <i>decision</i>, Objectives to <i>decision → action</i>), one is a signals gate wearing evidence's clothes, one maps to nothing. And the link the test names — <b>what uncertainty remains</b> — has no surface: it is a column in the dock's receipt for one call and a set of table cells, minus DISSENT, in the log. That is the finding worth more than either layout: the interface presents a decided system, and the engine's own uncertainty vocabulary (conviction, dissent, chairs reached, RECON) reaches the reader only for the standing call and only in the dock. Both pages below give it a surface; P2 makes it the group's first line.</p></div>
+<div class="gates"><p>Two of the four map cleanly (Decision Log to <i>decision</i>, Objectives to <i>decision → action</i>), one is a signals gate wearing evidence's clothes, one maps to nothing. And the link the test names — <b>what uncertainty remains</b> — has no surface: it is a column in the dock's receipt for one call and a set of table cells, minus DISSENT, in the log. That is the finding worth more than either layout: the interface presents a decided system, and the engine's own uncertainty vocabulary (conviction, dissent, chairs reached, RECON) reaches the reader only for the standing call and only in the dock. All three pages below give it a surface, and each gives it a different weight: a chip and a mark on the row in P1, a strip above the panels in P2, and in P3 a whole numbered section whose rows exist nowhere else in the product.</p></div>
 
 <div class="sec">Defects in the live code, from the measurement</div>
 <ol class="defects">{defects_html(checks)}</ol>
 
-<div class="sec">Density at 1,400 × 1,400 — the app's own panels (baseline) against the two</div>
+<div class="sec">Density at 1,400 × 1,400 — the app's own panels (baseline) against the three</div>
 {density_table()}
 
 <div class="sec">Contrast, from design_system.contrast_ratio — written policy, reported not asserted</div>
 <table class="dens"><thead><tr><th>pair</th><th></th><th>ratio</th><th>floor</th><th></th></tr></thead><tbody>{contrast}</tbody></table>
 <p class="gates">Colour is spent as the constraints say: <b>sky</b> is the one UI-state hue (a row waiting on you: unrated, proposed done, awaiting confirmation, a pin without a message; the pressed need-you chip). <b>amber</b> is the one analytical-signal hue (a call that did not work, a retracted number, conviction below Majority, a missing chair) — the dock's own signal hue, unchanged. The two never share an element and the gate checks it. Gold is the primary button and the focus ring. Kinds are letters on bordered boxes in the ink; authors are the dock's seat tokens, so a row here and a bubble there say "Moderator" the same way. Recommendations and outcomes are words.</p>
 
-<div class="sec">The two</div>
+<div class="sec">The three</div>
 <div class="grid">{cards(panels_variants.VARIANTS)}</div>
 
 <div class="sec">Gates, checked by panels_gate.cjs in a real Chromium</div>

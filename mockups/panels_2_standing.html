@@ -1,0 +1,881 @@
+<!doctype html>
+<html lang="en" data-level="collapsed" data-sidebar="on"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>P2 · Standing / Record — panel group mockup</title>
+<style>
+
+
+
+:root {
+  --bg: #15120b;
+  --surface: #1f1a11;
+  --surface-2: #1a1610;
+  --line: #2c2517;
+  --line-2: #3f3522;
+  --ink: #ece3d2;
+  --muted: #a79a83;
+  --dim: #776d5a;
+  --emerald: #1a9e4b;
+  --emerald-b: #4ee08c;
+  --gold: #d4a017;
+  --gold-b: #f7cf4a;
+  --violet: #9457d4;
+  --violet-b: #c9a4f0;
+  --crimson: #b0193c;
+  --crimson-b: #ff6b85;
+  --sky: #1466c4;
+  --sky-b: #6fb2f7;
+  --amber: #e07b0a;
+  --amber-b: #f9a828;
+  --cliff: #0d9488;
+  --cliff-b: #3ad9c8;
+  --block: #c2410c;
+  --block-b: #f9a05c;
+  --pure: #e2d8c3;
+  --tie: #7b7059;
+  --tie-b: #a99d84;
+  --status-ok: #4ee08c;
+  --status-bad: #7b7059;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; }
+body { background: var(--bg); color: var(--ink); font-family: "Segoe UI", system-ui, sans-serif; font-size: 15px; line-height: 1.5; }
+.mono { font-family: "JetBrains Mono", "DejaVu Sans Mono", monospace; }
+.display { font-family: "Cinzel", "Trajan Pro", Georgia, "Times New Roman", serif; letter-spacing: .06em; }
+:focus { outline: none; }
+:focus-visible { outline: 2px solid var(--gold); outline-offset: -1px; }
+.badge-necessity-must-take { background: rgba(148,87,212,0.18); color: #c9a4f0; border: 1px solid #9457d4; box-shadow: 0 0 0 1px rgba(201,164,240,0.35), 0 0 8px rgba(148,87,212,0.45); }
+.badge-necessity-strong { background: rgba(20,102,196,0.18); color: #6fb2f7; border: 1px solid #1466c4; }
+.badge-necessity-preferred { background: rgba(26,158,75,0.18); color: #4ee08c; border: 1px solid #1a9e4b; }
+.badge-necessity-close-call { background: rgba(224,123,10,0.18); color: #f9a828; border: 1px solid #e07b0a; }
+.badge-necessity-low { background: rgba(176,25,60,0.18); color: #ff6b85; border: 1px solid #b0193c; }
+.pill-QB { background: rgba(143,134,240,0.18); color: #8f86f0; }
+.pill-RB { background: rgba(23,191,160,0.18); color: #17bfa0; }
+.pill-WR { background: rgba(74,168,239,0.18); color: #4aa8ef; }
+.pill-TE { background: rgba(232,104,63,0.18); color: #e8683f; }
+.pill-K { background: rgba(160,148,128,0.18); color: #a09480; }
+.pill-DEF { background: rgba(239,127,192,0.18); color: #ef7fc0; }
+.pill-DL { background: rgba(160,148,128,0.18); color: #a09480; }
+.pill-LB { background: rgba(160,148,128,0.18); color: #a09480; }
+.pill-DB { background: rgba(160,148,128,0.18); color: #a09480; }
+.pill { display: inline-block; font-family: "JetBrains Mono", "DejaVu Sans Mono", monospace; font-size: .66rem; font-weight: 700; padding: .1rem .4rem; border-radius: 4px; letter-spacing: .04em; }
+.necessity-pill { font-family: "JetBrains Mono", "DejaVu Sans Mono", monospace; font-size: .66rem; font-weight: 700; padding: .16rem .5rem; border-radius: 4px; letter-spacing: .03em; white-space: nowrap; }
+.unit { color: var(--muted); font-size: .68em; letter-spacing: .02em; margin-left: .2em; }
+/* ABSENCE. One mark, everywhere: muted, hatched, with a title. It can never be mistaken for a
+   small number, an empty cell, or a zero-length bar. */
+.absent {
+  color: var(--muted); font-weight: 500; cursor: help; border-radius: 3px; padding: 0 .3em;
+  background: repeating-linear-gradient(135deg, transparent 0 3px, color-mix(in srgb, var(--line-2) 75%, transparent) 3px 4px);
+}
+.state-word { font-family: "JetBrains Mono", "DejaVu Sans Mono", monospace; font-size: .64rem; letter-spacing: .05em; text-transform: uppercase; padding: .08rem .4rem; border-radius: 3px; border: 1px solid var(--line-2); color: var(--muted); }
+.state-word.measured { color: var(--muted); }
+.state-word.imputed { color: var(--amber-b); border-color: var(--amber); }
+.state-word.unavailable { color: var(--muted); border-style: dashed; }
+
+/* The spec card: closed by default so the board's own height is what the gate measures. */
+.spec { margin: 0 0 .5rem; border: 1px solid var(--line); border-radius: 8px; background: var(--surface-2); font-size: .82rem; color: var(--muted); }
+.spec summary { cursor: pointer; padding: .55rem .9rem; list-style: none; }
+.spec summary::-webkit-details-marker { display: none; }
+.spec summary .hint { color: var(--muted); font-size: .74rem; }
+.spec b { color: var(--ink); }
+.spec .k { font-family: "JetBrains Mono", "DejaVu Sans Mono", monospace; font-size: .66rem; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+.spec .specbody { padding: .2rem .9rem .8rem; display: grid; grid-template-columns: auto 1fr; gap: .25rem .9rem; align-items: baseline; }
+.controls { display: flex; gap: .6rem; flex-wrap: wrap; margin: 0 0 .7rem; }
+.controls button {
+  font-family: "JetBrains Mono", "DejaVu Sans Mono", monospace; font-size: .68rem; letter-spacing: .04em; text-transform: uppercase;
+  background: var(--surface); color: var(--muted); border: 1px solid var(--line-2); border-radius: 6px;
+  padding: .3rem .7rem; cursor: pointer;
+}
+.controls button[aria-pressed="true"] { color: var(--ink); border-color: var(--ink); }
+.controls button:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { transition-duration: .001ms !important; animation-duration: .001ms !important; }
+}
+
+.badge { display: inline-block; padding: 2px 10px; border-radius: 12px; font-size: 0.75rem; font-weight: 600; margin-bottom: 6px; letter-spacing: 0.02em; }
+.badge-quant { background: rgba(26,158,75,0.18); color: #4ee08c; border: 1px solid #1a9e4b; }
+.badge-beat { background: rgba(13,148,136,0.18); color: #3ad9c8; border: 1px solid #0d9488; }
+.badge-contrarian { background: rgba(148,87,212,0.18); color: #c9a4f0; border: 1px solid #9457d4; }
+.badge-moderator { background: rgba(176,25,60,0.18); color: #ff6b85; border: 1px solid #b0193c; }
+.badge-moderator-verdict { background: rgba(176,25,60,0.18); color: #ff6b85; border: 1px solid #b0193c; box-shadow: 0 0 0 1px rgba(255,107,133,0.35), 0 0 8px rgba(176,25,60,0.45); }
+.badge-user { background: rgba(123,112,89,0.18); color: #a99d84; border: 1px solid #7b7059; }
+.badge-summary { background: rgba(20,102,196,0.18); color: #6fb2f7; border: 1px solid #1466c4; }
+.badge-notice { background: rgba(224,123,10,0.18); color: #f9a828; border: 1px solid #e07b0a; }
+.reduced-motion *, .reduced-motion *::before, .reduced-motion *::after { transition-duration: .001ms !important; animation-duration: .001ms !important; }
+.seat[data-role="quant"], .msg[data-role="quant"] > .mh .seat { color: #4ee08c; border-color: #1a9e4b; background: rgba(26,158,75,0.18); }
+.msg[data-role="quant"] { --rail: #1a9e4b; }
+.tab[data-role="quant"][aria-selected="true"] { border-bottom-color: #4ee08c; color: #4ee08c; }
+.seat[data-role="beat"], .msg[data-role="beat"] > .mh .seat { color: #3ad9c8; border-color: #0d9488; background: rgba(13,148,136,0.18); }
+.msg[data-role="beat"] { --rail: #0d9488; }
+.tab[data-role="beat"][aria-selected="true"] { border-bottom-color: #3ad9c8; color: #3ad9c8; }
+.seat[data-role="contrarian"], .msg[data-role="contrarian"] > .mh .seat { color: #c9a4f0; border-color: #9457d4; background: rgba(148,87,212,0.18); }
+.msg[data-role="contrarian"] { --rail: #9457d4; }
+.tab[data-role="contrarian"][aria-selected="true"] { border-bottom-color: #c9a4f0; color: #c9a4f0; }
+.seat[data-role="moderator"], .msg[data-role="moderator"] > .mh .seat { color: #ff6b85; border-color: #b0193c; background: rgba(176,25,60,0.18); }
+.msg[data-role="moderator"] { --rail: #b0193c; }
+.tab[data-role="moderator"][aria-selected="true"] { border-bottom-color: #ff6b85; color: #ff6b85; }
+.seat[data-role="user"], .msg[data-role="user"] > .mh .seat { color: #a99d84; border-color: #7b7059; background: rgba(123,112,89,0.18); }
+.msg[data-role="user"] { --rail: #7b7059; }
+.tab[data-role="user"][aria-selected="true"] { border-bottom-color: #a99d84; color: #a99d84; }
+.seat[data-role="summary"], .msg[data-role="summary"] > .mh .seat { color: #6fb2f7; border-color: #1466c4; background: rgba(20,102,196,0.18); }
+.msg[data-role="summary"] { --rail: #1466c4; }
+.tab[data-role="summary"][aria-selected="true"] { border-bottom-color: #6fb2f7; color: #6fb2f7; }
+.seat[data-role="notice"], .msg[data-role="notice"] > .mh .seat { color: #f9a828; border-color: #e07b0a; background: rgba(224,123,10,0.18); }
+.msg[data-role="notice"] { --rail: #e07b0a; }
+.tab[data-role="notice"][aria-selected="true"] { border-bottom-color: #f9a828; color: #f9a828; }
+body { font-size: 14px; overflow-x: hidden; }
+/* The stand-in for the app: a 400px sidebar and a page of faux blocks. The dock is fixed over
+   it exactly as .st-key-debate_dock is (left: sidebar width, right: 0, bottom: 0). */
+.app { display: grid; grid-template-columns: 400px minmax(0, 1fr); min-height: 100vh; }
+html[data-sidebar="off"] .app { grid-template-columns: 0 minmax(0, 1fr); }
+html[data-sidebar="off"] .side { display: none; }
+html[data-sidebar="off"] .dock { left: 0; }
+.side { background: var(--surface-2); border-right: 1px solid var(--line); padding: 1.2rem; }
+.side .ph, .main .ph { border: 1px solid var(--line); border-radius: 8px; background: color-mix(in srgb, var(--surface) 70%, transparent); color: var(--dim); font-size: .78rem; padding: .5rem .8rem; margin-bottom: .6rem; }
+.main { padding: 1.4rem 5.7rem 0; }
+.main .banner { border: 1px solid var(--line); border-radius: 10px; padding: 1rem 1.4rem; margin-bottom: .6rem; background: var(--surface-2); }
+.main .banner .eyebrow { font-size: .72rem; letter-spacing: .09em; text-transform: uppercase; color: var(--tie-b); font-weight: 600; }
+.main .banner h1 { margin: .1rem 0 .2rem; font-size: 2rem; }
+.main .banner .sub { color: var(--muted); font-size: .84rem; }
+.tabs { display: flex; gap: 0; border: 1px solid var(--line-2); border-radius: 8px; overflow: hidden; width: max-content; margin: .6rem 0 1rem; }
+.tabs span { padding: .5rem .9rem; font-size: .84rem; color: var(--muted); border-right: 1px solid var(--line-2); }
+.tabs span:last-child { border-right: 0; }
+.tabs span.on { color: var(--ink); background: var(--surface); }
+/* Padding-bottom = the dock's cap, as the app does with [data-testid='stMain']. */
+html[data-level="collapsed"] .main { padding-bottom: max(9vh, 64px); }
+html[data-level="partial"] .main { padding-bottom: 40vh; }
+html[data-level="full"] .main { padding-bottom: 94vh; }
+
+/* THE DOCK FRAME. The app's own: the four-stop hairline (flourish; gold allowed there), the
+   line, the shadow, the caps per tier. overflow-y auto is kept so the instrument can SEE an
+   overflow (dockScrollHeight > clientHeight); a variant that scrolls the whole dock has
+   failed, and only its designated .scroll region may scroll. */
+.dock { position: fixed; left: 400px; right: 0; bottom: 0; z-index: 9; box-sizing: border-box;
+  background: linear-gradient(90deg, var(--emerald), var(--gold), var(--violet), var(--crimson)) top / 100% 2px no-repeat, var(--bg);
+  border-top: 1px solid var(--line); box-shadow: 0 -4px 16px rgba(0,0,0,.45);
+  padding: 8px 24px 10px; overflow-y: auto; display: flex; flex-direction: column; gap: .45rem;
+  transition: left .15s ease, max-height .22s ease; }
+html[data-level="collapsed"] .dock { max-height: max(9vh, 64px); }
+html[data-level="partial"] .dock { max-height: 40vh; }
+html[data-level="full"] .dock { max-height: 94vh; }
+.dock .scroll { overflow-y: auto; min-height: 0; }
+/* The floating harness: level, sidebar, the history cut, reduced motion. Not part of the dock. */
+.harness { position: fixed; top: .5rem; right: .8rem; z-index: 20; display: flex; gap: .4rem; flex-wrap: wrap; justify-content: flex-end; }
+.harness button { font-family: "JetBrains Mono", "DejaVu Sans Mono", monospace; font-size: .7rem; letter-spacing: .04em; text-transform: uppercase; background: var(--surface); color: var(--muted); border: 1px solid var(--line-2); border-radius: 6px; padding: .28rem .6rem; cursor: pointer; }
+.harness button[aria-pressed="true"] { color: var(--ink); border-color: var(--ink); }
+
+/* Shared vocabulary inside the dock. */
+.eyebrow { font-family: "JetBrains Mono", "DejaVu Sans Mono", monospace; font-size: .7rem; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); }
+.eyebrow b { color: var(--ink); font-weight: 600; }
+.wordmark { font-family: "Cinzel", "Trajan Pro", Georgia, "Times New Roman", serif; letter-spacing: .1em; font-size: .9rem; color: var(--ink); text-transform: uppercase; }
+.mono { font-family: "JetBrains Mono", "DejaVu Sans Mono", monospace; }
+.seat { display: inline-grid; place-items: center; width: 1.35rem; height: 1.35rem; border-radius: 4px; border: 1px solid; font-family: "JetBrains Mono", "DejaVu Sans Mono", monospace; font-size: .7rem; font-weight: 700; cursor: help; flex: none; }
+.seat.failed { color: var(--muted); border-style: dashed; background: repeating-linear-gradient(135deg, transparent 0 3px, color-mix(in srgb, var(--line-2) 75%, transparent) 3px 4px); }
+.seat.silent { color: var(--dim); border-color: var(--line-2); background: transparent; }
+.seats { display: inline-flex; gap: .22rem; align-items: center; }
+/* The recommendation is a WORD, weighted by size and never coloured: four values would need
+   four hues. Conviction is a ladder of glyphs; below Majority it takes the one signal hue. */
+.rec { font-family: "JetBrains Mono", "DejaVu Sans Mono", monospace; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--ink); }
+.conv { font-family: "JetBrains Mono", "DejaVu Sans Mono", monospace; font-size: .74rem; color: var(--ink); cursor: help; white-space: nowrap; }
+.conv i { font-style: normal; letter-spacing: .12em; margin-right: .3em; }
+.conv.low { color: var(--amber-b); }
+.attn { color: var(--amber-b); }
+.age { font-family: "JetBrains Mono", "DejaVu Sans Mono", monospace; font-size: .7rem; color: var(--muted); white-space: nowrap; cursor: help; }
+.q { color: var(--ink); }
+.trunc { cursor: help; }
+.mark { font-family: "JetBrains Mono", "DejaVu Sans Mono", monospace; font-size: .7rem; letter-spacing: .05em; text-transform: uppercase; color: var(--muted); border: 1px solid var(--line-2); border-radius: 3px; padding: .04rem .34rem; cursor: help; white-space: nowrap; }
+.mark.on { color: var(--ink); border-color: var(--ink); }
+/* Buttons: primary is gold (user action, the one non-brand job gold has), label in bg. */
+.btn { font-family: "Segoe UI", system-ui, sans-serif; font-size: .8rem; font-weight: 600; border: 1px solid var(--line-2); background: var(--surface); color: var(--ink); border-radius: 7px; padding: .38rem .8rem; cursor: pointer; white-space: nowrap; }
+.btn.primary { background: var(--gold); border-color: var(--gold); color: var(--bg); font-weight: 700; }
+.btn.quiet { color: var(--muted); font-weight: 500; }
+.btn.icon { padding: .3rem .5rem; font-family: "JetBrains Mono", "DejaVu Sans Mono", monospace; }
+.btn:hover { border-color: var(--ink); }
+textarea.ask { width: 100%; box-sizing: border-box; background: var(--surface); color: var(--ink); border: 1px solid var(--line-2); border-radius: 7px; padding: .5rem .7rem; font-family: "Segoe UI", system-ui, sans-serif; font-size: .86rem; resize: none; }
+textarea.ask::placeholder { color: var(--dim); }
+/* Prose: one renderer, one style, the whole message. */
+.prose { font-size: .86rem; line-height: 1.5; color: var(--ink); }
+.prose p { margin: 0 0 .45rem; }
+.prose p:last-child { margin-bottom: 0; }
+.prose ul { margin: 0 0 .45rem; padding-left: 1.1rem; }
+.prose li { margin: 0 0 .12rem; }
+.prose b { font-weight: 700; }
+.prose.clamp { display: -webkit-box; -webkit-box-orient: vertical; overflow: hidden; }
+/* The receipt: the Moderator's block as labelled fields. */
+.receipt { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: .2rem .8rem; align-items: baseline; font-size: .84rem; }
+.receipt .k { font-family: "JetBrains Mono", "DejaVu Sans Mono", monospace; font-size: .7rem; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); white-space: nowrap; }
+.receipt .v { color: var(--ink); min-width: 0; }
+.receipt .v .absent { font-size: .8rem; }
+.extra { font-family: "JetBrains Mono", "DejaVu Sans Mono", monospace; font-size: .7rem; color: var(--muted); }
+.extra div { margin-top: .15rem; }
+/* An absent report: a card-sized labelled absence, not a message. */
+.absent-report { border: 1px dashed var(--line-2); border-radius: 8px; padding: .55rem .8rem; color: var(--muted); font-size: .8rem;
+  background: repeating-linear-gradient(135deg, transparent 0 6px, color-mix(in srgb, var(--line) 55%, transparent) 6px 7px); }
+.absent-report b { color: var(--ink); font-weight: 600; }
+.fold { font-family: "JetBrains Mono", "DejaVu Sans Mono", monospace; font-size: .7rem; color: var(--muted); border: 1px dashed var(--line-2); border-radius: 6px; padding: .3rem .7rem; text-align: center; cursor: pointer; }
+.fold:hover { color: var(--ink); }
+[role="option"] { cursor: pointer; }
+
+/* The panel group sits in the page's flow; the dock is collapsed beneath it. */
+html[data-level="collapsed"] .main { padding-bottom: max(9vh, 64px); }
+.main { padding-top: 1.2rem; }
+.view { border: 1px solid var(--line); border-radius: 8px; background: color-mix(in srgb, var(--surface) 70%, transparent); color: var(--dim); font-size: .78rem; padding: .5rem .8rem; margin-bottom: .6rem; }
+.harness .lbl { font-family: "JetBrains Mono", "DejaVu Sans Mono", monospace; font-size: .66rem; color: var(--dim); align-self: center; letter-spacing: .06em; text-transform: uppercase; }
+
+/* THE GROUP FRAME. One frame for the whole group, so a reader meets one idea before four. */
+.group { margin-top: 1rem; border-top: 1px solid var(--line-2); padding-top: .7rem; }
+.group-head { display: flex; align-items: baseline; gap: .9rem; flex-wrap: wrap; margin-bottom: .55rem; }
+.group-head .wordmark { font-size: .86rem; }
+.group-head .sub { color: var(--muted); font-size: .8rem; }
+.group-head .grow { flex: 1; }
+/* needs-you: the ONE UI-state hue on this surface (sky). Never used for a data signal. */
+.needs { color: var(--sky-b); }
+.mark.needs { border-color: var(--sky); color: var(--sky-b); }
+.chip { font-family: "JetBrains Mono", "DejaVu Sans Mono", monospace; font-size: .7rem; letter-spacing: .05em; text-transform: uppercase; color: var(--muted); border: 1px solid var(--line-2); border-radius: 6px; padding: .22rem .6rem; background: var(--surface); cursor: pointer; white-space: nowrap; }
+.chip[aria-pressed="true"] { color: var(--ink); border-color: var(--ink); }
+.chip.needs[aria-pressed="true"] { color: var(--sky-b); border-color: var(--sky); }
+.chip .n { color: var(--dim); margin-left: .35em; }
+.chip[aria-pressed="true"] .n { color: var(--muted); }
+.chips { display: flex; gap: .4rem; flex-wrap: wrap; align-items: center; }
+
+/* A kind: a letter on a bordered box, like the dock's seats, in the ink -- kinds carry no hue.
+   The AUTHOR seat beside it borrows the dock's own role tokens, so a row here and a bubble in
+   the dock say "Moderator" the same way. */
+.kind { display: inline-grid; place-items: center; min-width: 1.35rem; height: 1.35rem; padding: 0 .3rem; border-radius: 4px; border: 1px solid var(--line-2); font-family: "JetBrains Mono", "DejaVu Sans Mono", monospace; font-size: .7rem; font-weight: 700; letter-spacing: .04em; color: var(--muted); cursor: help; flex: none; }
+.kind.on { color: var(--ink); border-color: var(--ink); }
+.seat.you { color: var(--tie-b); border-color: var(--tie); background: rgba(123,112,89,0.18); }
+/* The state word, the SIGNAL hue (amber) only for what the data says: a call that missed, a
+   number retracted, conviction below Majority. Never for what the UI wants from you. */
+.state { font-family: "JetBrains Mono", "DejaVu Sans Mono", monospace; font-size: .7rem; letter-spacing: .05em; text-transform: uppercase; color: var(--muted); white-space: nowrap; cursor: help; }
+.state.attn { color: var(--amber-b); }
+.state.needs { color: var(--sky-b); }
+.state.closed { color: var(--dim); }
+.scope { font-family: "JetBrains Mono", "DejaVu Sans Mono", monospace; font-size: .7rem; letter-spacing: .05em; color: var(--dim); white-space: nowrap; cursor: help; }
+
+/* Rows. One grammar for every kind: when · kind · author · the line · state · the verb. */
+.rows { border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
+.row { display: grid; grid-template-columns: 4.2rem auto auto minmax(0, 1fr) auto auto; gap: .6rem; align-items: center; padding: .38rem .8rem; border-bottom: 1px solid var(--line); min-height: 2.15rem; }
+.row:last-child { border-bottom: 0; }
+.row[aria-expanded="true"] { background: color-mix(in srgb, var(--surface) 80%, transparent); }
+.row:hover { background: color-mix(in srgb, var(--surface) 60%, transparent); }
+.row .line { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: .86rem; color: var(--ink); }
+.row .line b { font-weight: 600; }
+.row .line .q { color: var(--muted); }
+.row .verb { justify-self: end; display: flex; gap: .3rem; align-items: center; }
+.row .verb .btn { padding: .22rem .6rem; font-size: .74rem; }
+.row .age { font-size: .7rem; }
+.detail { grid-column: 1 / -1; padding: .35rem 0 .3rem 4.8rem; display: grid; gap: .5rem; }
+.detail .receipt { font-size: .82rem; }
+.detail .prose { font-size: .84rem; max-width: 92ch; }
+.detail .sub { color: var(--muted); font-size: .78rem; }
+.detail .acts { display: flex; gap: .4rem; flex-wrap: wrap; align-items: center; }
+.detail .acts .sep { flex: 1; }
+.detail .hist { font-family: "JetBrains Mono", "DejaVu Sans Mono", monospace; font-size: .7rem; color: var(--muted); display: grid; gap: .12rem; }
+.detail .hist b { color: var(--ink); font-weight: 600; }
+.detail input.note { width: min(60ch, 100%); background: var(--surface); color: var(--ink); border: 1px solid var(--line-2); border-radius: 6px; padding: .3rem .55rem; font-family: "Segoe UI", system-ui, sans-serif; font-size: .82rem; }
+.detail input.note::placeholder { color: var(--dim); }
+.detail .rate { display: flex; gap: .35rem; flex-wrap: wrap; align-items: center; }
+.detail .rate .chip { text-transform: none; letter-spacing: 0; font-family: "Segoe UI", system-ui, sans-serif; font-size: .78rem; }
+.detail .rate .chip[aria-pressed="true"] { color: var(--ink); border-color: var(--ink); }
+.btn[disabled] { opacity: .45; cursor: not-allowed; }
+.btn.danger { color: var(--muted); border-style: dashed; }
+.empty { padding: .55rem .8rem; color: var(--muted); font-size: .82rem; }
+.empty .absent { font-size: .8rem; }
+
+/* Panels (the governed group): one header grammar. */
+.panel { border: 1px solid var(--line); border-radius: 10px; margin-bottom: .55rem; background: color-mix(in srgb, var(--surface-2) 60%, transparent); }
+.panel > .ph { display: flex; align-items: center; gap: .7rem; padding: .45rem .8rem; cursor: pointer; border: 0; background: transparent; width: 100%; text-align: left; color: var(--ink); font-family: "Segoe UI", system-ui, sans-serif; }
+.panel > .ph .name { font-weight: 600; font-size: .9rem; }
+.panel > .ph .count { font-family: "JetBrains Mono", "DejaVu Sans Mono", monospace; font-size: .72rem; color: var(--muted); }
+.panel > .ph .grow { flex: 1; }
+.panel > .ph .read { font-family: "JetBrains Mono", "DejaVu Sans Mono", monospace; font-size: .7rem; letter-spacing: .06em; text-transform: uppercase; color: var(--dim); cursor: help; }
+.panel > .ph .tri { font-family: "JetBrains Mono", "DejaVu Sans Mono", monospace; color: var(--dim); width: 1rem; }
+.panel > .pb { padding: 0 .8rem .55rem; }
+.panel > .pb .rows { border-radius: 8px; }
+.tier { margin: .9rem 0 .4rem; display: flex; align-items: baseline; gap: .8rem; }
+.tier .eyebrow b { color: var(--ink); }
+.tier .sub { color: var(--dim); font-size: .76rem; }
+.strip { display: flex; gap: .5rem; flex-wrap: wrap; align-items: center; margin-bottom: .6rem; }
+
+
+.row { grid-template-columns: 4.2rem auto auto minmax(0, 1fr) auto auto auto; }
+.row .marks { display: inline-flex; gap: .25rem; align-items: center; white-space: nowrap; }
+.strip .mark { font-size: .72rem; padding: .18rem .5rem; cursor: pointer; }
+.strip .mark:hover { border-color: var(--ink); }
+.strip .eyebrow { margin-right: .2rem; }
+.detail .acts .eyebrow { min-width: 11rem; }
+.attn-text b { color: var(--ink); }
+
+</style></head>
+<body>
+
+<div class="harness" aria-label="mockup harness">
+  <span class="lbl">harness</span>
+  <button id="btn-sidebar" aria-pressed="true" onclick="toggleSidebar(this)">sidebar 400px</button>
+  <button id="btn-empty" aria-pressed="false" onclick="toggleEmpty(this)" title="Every store empty: the group must still say what it is and that each part is empty. The app hides three of the five panels entirely when their store is empty.">all stores empty</button>
+  <button id="btn-motion" aria-pressed="false" onclick="toggleMotion(this)">reduced motion</button>
+</div>
+
+
+<div class="app">
+  <aside class="side" aria-hidden="true">
+    <div class="ph">Activity Log (0)</div><div class="ph">Connections &amp; Models</div><div class="ph">Roles &amp; Routing</div><div class="ph">Data Uploads</div><div class="ph">External Valuation Sources</div>
+    <div class="ph" style="margin-top:2rem">Status · Data Freshness: Stale</div>
+  </aside>
+  <div class="main">
+    
+<details class="spec">
+  <summary><span class="k">Variant</span> <b>P2 · Standing / Record</b> — a governed group in two tiers by when the panel reads them, under one frame <span class="hint">· open for the argument, what each panel earns its place by, sacrifice and data</span></summary>
+  <div class="specbody">
+  <span class="k">The group is for</span><span>The same memory, kept in its five kinds, but governed: one frame, one header grammar (name · count that says what it counts · what needs you · when the panel reads it), and a strip at the top that owns the link nothing else does — what remains uncertain and what only you can settle: the newest call's conviction and chairs, unrated verdicts, proposed-done objectives, findings awaiting confirmation, pins without a message.</span>
+  <span class="k">Structure</span><span>STANDING (open by default): Objectives and Findings, the two stores handed to every debate whether or not the question is about them. RECORD (closed by default): Verdicts, Closed objectives, Pins — handed to a debate only when the question relates, and a verdict only once rated. Each panel is one row grammar; a row opens to its detail and its verbs; delete is dashed and two presses, in the detail.</span>
+  <span class="k">Earns its place</span><span>Objectives: the closest thing to the UI's 'objective' link, and the frame says plainly that they are tasks (ACTION ITEMs), not the target the engine optimises — no store holds that. Findings: labelled as a signals gate, global, feeding the composite, not evidence for any one call; the frame notes they could as well live beside the sidebar's valuation sources. Verdicts: decision + proof, with DISSENT back in the receipt and the rating per row by timestamp. Closed objectives: the objective link's past tense, with the note a future debate is told. Pins: kept, demoted to the record tier, and told the truth about compaction.</span>
+  <span class="k">Sacrifices</span><span>Still five headers and a rule to learn (the two tiers). A verdict and the objective it opened live in different tiers, joined only by a sentence in the opened row. A reader who wants the chain for one decision must open the verdict, then find its objective above. The strip repeats counts the headers also carry.</span>
+  <span class="k">Data</span><span><b>Every record on this page is constructed</b>: all four stores are empty in this tree. The rows are in the stores' own shapes (decision_log, todo_log, bot_research, pinned_messages), with the verdict fields produced by llm_engine.parse_moderator_verdict over the Debate Dock's constructed transcript and every finding's eligibility by bot_research.composite_eligibility. Six decisions (one whose block had no RECOMMENDATION line, one same-day re-run, three rated), seven objectives (three open from ACTION ITEMs, one proposed done, three closed), three pins (one orphaned by a compaction), six findings (one per reason a number does or does not count) and two comparisons from two leagues.</span>
+  </div>
+</details>
+
+    <div class="banner"><div class="eyebrow">Fantasy Football Command Center</div><h1>Gold Wyrm Dynasty</h1><div class="sub">Dynasty · 12-team · Superflex · Full PPR · Taxi: 4</div></div>
+    <div class="tabs"><span>Matchup</span><span>Roster Maintenance</span><span>Draft Room</span><span>League</span><span class="on">Import Audit</span></div>
+    <div class="view" style="height:3.2rem">Import Audit · what the Sleeper connection actually brings in (the view's own content; the lightest host, as in the probe)</div>
+    <div id="group" class="group" aria-label="the panel group">
+<div class="group-head">
+  <span class="wordmark">Front office memory</span>
+  <span class="sub">what the next debate is handed, and what only you can tell it</span>
+  <span class="grow"></span>
+</div>
+<div class="strip" id="strip" aria-label="what remains uncertain"></div>
+<div class="tier"><span class="eyebrow"><b>Standing</b> · handed to the panel on every question</span><span class="sub">whether or not the question is about them</span></div>
+<div id="standing"></div>
+<div class="tier"><span class="eyebrow"><b>Record</b> · handed to the panel only when a question relates</span><span class="sub">by word overlap with the question; a verdict only once rated</span></div>
+<div id="record"></div>
+</div>
+  </div>
+</div>
+
+<div class="dock" id="dock" aria-label="The Prytaneum">
+<div class="bar">
+  <span class="wordmark">The Prytaneum</span>
+  <span class="rec">WAIT</span>
+  <span class="conv low" title="Worth investigation: the answer depends on something only another manager can tell you — RECON says what to ask."><i>?</i>worth investigation</span>
+  <span class="q">to <b>Roster 6 just offered me their 2027 1st and Kyren Williams for Achane…</b></span>
+  <span class="seats"><span class="seat" data-role="quant" title="Quant · reported">Q</span><span class="seat failed" data-role="beat" title="Beat Tracker: no report reached the panel — Gemini request failed: 503 Service Unavailable.">B</span><span class="seat" data-role="contrarian" title="Contrarian · reported">C</span></span>
+  <span class="mark attn" title="1 chair sent no report; the verdict rests on 2 of 3.">2 of 3 chairs</span>
+  <span class="age" title="2025-09-07 01:00 UTC">5h ago</span>
+  <span class="grow"></span>
+  <button class="btn primary">Ask</button>
+  <button class="btn icon quiet" title="Expand one tier">▲</button>
+</div>
+</div>
+<script>
+const PAYLOAD = {"league": {"id": "panelprobe", "name": "Gold Wyrm Dynasty", "format": "12-team \u00b7 Superflex \u00b7 Dynasty"}, "history": [{"role": "summary", "content": "Earlier in this chat (compacted 2025-08-30): the panel reviewed the startup draft plan twice. Consensus was to anchor the roster on two QBs before round 4 in this superflex format and to treat TE as a round-5-or-later position unless T Mcbride fell. A HOLD verdict on D Achane was recorded on 08-22 (Majority; Contrarian dissented on workload). One objective was opened: check with Roster 6 whether their 2027 1st is available.", "ts": 1757116800.0}, {"role": "user", "content": "On the clock at 3.03. The board has Stafford at 107 and Shough at 104 but Shough has 37% survival to my next turn and Stafford is basically gone. Do I take Stafford here or gamble that Shough comes back?", "ts": 1757188800.0}, {"role": "quant", "content": "Numbers first, then what they mean for 3.03.\n\n**Draft Sharks / engine view (season + 3-year)**\n- M Stafford (QB, LAR): universal value 101.8, your acquisition value 106.7 UV pts. Need term +4.85 \u2014 you have one QB and this is superflex, so the second QB slot is live starter demand, not depth.\n- T Shough (QB, NO): universal value 99.6, acquisition 104.1. Same need term. The 2.6-point gap between them is INSIDE the engine's 2.0-point noise band only if you round generously; it is not.\n- Next QB after those two: B Mayfield at 100 acquisition, survival 72%.\n\n**Sleeper weekly projection (this week only)**\nStafford 19.4, Shough 15.1, Mayfield 18.8 under your scoring (6 pt pass TD, -2 INT). One week; do not read it as the season.\n\n**Positional scarcity**\nThere are 3 QBs in the top 8 of your board and 16 picks before your next turn. The engine's forfeit for skipping QB until then is 34.9 UV pts \u2014 the largest positional forfeit on the board by 9 points. That is the number that decides this, not the Stafford-vs-Shough gap.\n\n**Divergence to note**\nDraft Sharks' 3-year view has Shough ahead of Stafford (age: 37 vs 25). Your league scoring gives no bonus that closes that; it is purely horizon. The engine's dynasty-horizon adjustment already prices it and still lands Stafford 2.6 ahead on acquisition.\n\nNet: if you want a QB at this pick, Stafford is the number. If you want to defer QB, the cost is 34.9, and Mayfield at 72% survival is the realistic fallback, not Shough at 37%.", "ts": 1757188804.0, "provider": "claude", "model": "claude-sonnet-4-5"}, {"role": "beat", "content": "Market and news, labelled by source.\n\n**Market consensus (KTC / FantasyCalc, checked today)**\n- KTC superflex dynasty: Shough 4,410, Stafford 3,120, Mayfield 3,390. The market has Shough a full tier above Stafford \u2014 this is the biggest Draft Sharks vs market split on your board.\n- FantasyCalc superflex: same ordering, Shough ranked QB14, Stafford QB22.\n- Why they disagree: age. The market is pricing 2027-2029; Draft Sharks' season projection is pricing this year, where Stafford's offense (Nacua, Adams) is the better situation.\n\n**News / depth chart (ESPN, team beat, last 72h)**\n- Stafford: full participant all week, no back flare-up reported since August. Named starter, no controversy.\n- Shough: named Week 1 starter over Rattler on Tuesday's presser. Coaching staff quote: \"he's earned it.\" Rookie contract, four-year window.\n- Mayfield: healthy; Evans/Godwin both active.\n\n**Signal**\nThe room is drafting rookies early \u2014 42 of 48 picks in the last comparable startup went to first-year players in rounds 1-3. Shough's 37% survival is the engine's read of those rosters' boards; the market number says the real figure is probably lower.\n\nLabel: KTC/FantasyCalc figures are market, not projection. Depth chart claims are from team pressers, not speculation.", "ts": 1757188813.0, "provider": "gemini", "model": "gemini-2.5-pro"}, {"role": "contrarian", "content": "Pressure-testing both.\n\nAgainst the Quant: the 2.6-point gap is real but it is a SEASON number on a 37-year-old with a back history. The engine's horizon adjustment is a model, not an observation \u2014 Draft Sharks' own 3-year view flips the order, and the Quant said so. Two of your three numeric sources disagree with the recommendation; that should cap conviction.\n\nAgainst the Beat: KTC is a crowd of dynasty players who systematically overpay for youth at QB. A 4,410 vs 3,120 spread is a market opinion about 2028, and you are on the clock in 2025 with one QB rostered. The market being \"right\" about Shough does not make him available at 3.19.\n\nWhat both are missing: you do not have to choose between them at THIS pick. Mayfield at 100 acquisition and 72% survival is within 7 points of Stafford and almost certainly there at your next turn. The real question is whether 7 UV pts of QB is worth more than the best non-QB on the board now \u2014 C Lamb at 100, 18% survival, at a position where you have nothing.\n\nMy read: taking Stafford is defensible and it is what the numbers say. Taking Lamb and Mayfield across the two picks is the higher-variance, higher-ceiling line, and nobody above priced it. Risk on Stafford is not the pick \u2014 it is the age cliff arriving mid-window with no exit value.", "ts": 1757188827.0, "provider": "openai", "model": "gpt-5"}, {"role": "moderator", "content": "Take Stafford. The forfeit for skipping QB to your next turn is 34.9 UV pts, the biggest positional cost on the board, and Shough at 37% survival is not a plan \u2014 the market number the Beat pulled says the true figure is lower. The Contrarian's Lamb-then-Mayfield line is the one real alternative and it rests on Mayfield surviving 16 picks at 72%; that is a bet, and this is a decisive regime where the engine's own margin (4.1 clear of the second priced candidate, outside the 2.0 noise band) says you do not need one. Draft Sharks' 3-year view flipping the order is why this is Majority and not Unanimous.\n\nRECOMMENDATION: BUY\nCONVICTION: Majority\nREASON: 34.9 UV pts positional forfeit for deferring QB, with the only alternative QB at 37% survival\nDISSENT: Contrarian \u2014 prefers C Lamb now and B Mayfield at 3.19 (72% survival) as a higher-ceiling two-pick line\nRISK: Stafford's age cliff arrives inside your window with no exit value; a back recurrence turns a 107 into a 2027 problem\nACTION ITEM: If Mayfield is still on the board at 3.19, take him as QB2 regardless of what else is there\nSOURCE FINDING: Tyler Shough | KTC | Ranked a full tier above Stafford in superflex dynasty value | 14\nSOURCE COMPARISON: Tyler Shough | Matthew Stafford | > | KTC superflex dynasty | market values the four-year window over the 2025 offense", "ts": 1757188835.0, "provider": "claude", "model": "claude-opus-4-1"}, {"role": "user", "content": "Why not Shough though? 37% isn't nothing and he's 12 years younger.", "ts": 1757188955.0}, {"role": "moderator", "content": "Because 37% is the engine compounding sixteen rosters' own boards, and the Beat's market read says those boards like Shough MORE than the engine assumes \u2014 so the honest number is below 37, not above it. You'd be passing on a 107 for a coin flip that's weighted against you.\n\nThe age point is real and it's exactly why the call was Majority rather than Unanimous. If your plan is to compete in 2027-2029 rather than now, that changes the weighting and I'd say so \u2014 but nothing in your roster context says that; you have one QB, twelve teams, and a superflex slot that is live demand today.\n\nIf you want the younger arm, the line that actually works is the Contrarian's: Lamb now, Mayfield at 3.19 at 72%. That gives you the WR you have nothing at and a QB2 who is 32 rather than 37. It is not the call I made, but it is a coherent one, and it does not involve hoping Shough falls.", "ts": 1757188961.0, "provider": "claude", "model": "claude-opus-4-1"}, {"role": "user", "content": "Roster 6 just offered me their 2027 1st and Kyren Williams for Achane. I'm rebuilding at RB anyway. Take it?", "ts": 1757206961.0}, {"role": "notice", "content": "Your Free Agent Finder data is 19 days old (as of 2025-08-18). Waiver/roster value shifts week to week, so if this question is about a current decision, a fresh export would likely be more accurate \u2014 upload one in the sidebar when you get a chance. Answering with what's loaded for now.", "ts": 1757206962.0}, {"role": "quant", "content": "**Trade equity (Draft Sharks trade values, this league's format)**\n- D Achane: 6,410\n- K Williams: 4,180\n- Roster 6's 2027 1st: the engine values a future 1st at the league's mid-round average, 2,900, until the standings give it a slot. Roster 6 finished 3rd last year; if that holds, the pick is worth closer to 2,200.\n\nRaw: you send 6,410, you receive 6,380 to 7,080 depending on the pick. Even to slightly favourable on paper.\n\n**Roster fit**\nYour RB room after the trade: Williams, B Hall, K Walker. Starter demand at RB in this format is 2 plus flex; you would still fill it. Achane's need term on your roster is +4.2; Williams' would be +3.9 \u2014 near-identical fit.\n\n**What the numbers do not know**\nWhether the 2027 1st lands at 1.03 or 1.10 is the whole trade. That is a standings question, not a valuation one.", "ts": 1757206966.0, "provider": "claude", "model": "claude-sonnet-4-5"}, {"role": "beat", "content": "\u26a0\ufe0f Gemini request failed: 503 Service Unavailable", "ts": 1757206967.0, "provider": "gemini", "model": "gemini-2.5-pro"}, {"role": "contrarian", "content": "The Quant has this as even and it is not, in two ways that cut against each other.\n\nAgainst taking it: Roster 6 is a contender trading a future pick for a win-now back. Contenders' picks are late. Pricing that 1st at 2,900 flatters it; 2,200 is the realistic figure and the Quant said so. At 2,200 you are sending 6,410 for 6,380 and taking on Williams' workload questions (the Rams drafted Hunter in April).\n\nFor taking it: Achane's value is a health number. He has finished one full season in three. The market price of 6,410 assumes the healthy version; you are selling the assumption, which is what a rebuild should do.\n\nNo Beat report reached me, so I could not check the Hunter split or Achane's current status. Treat both of those as unverified. My position: the trade is fine in principle and mispriced in one specific place. Ask for the 2027 1st to become their 2026 1st, or add a 2nd. Do not take it as offered.", "ts": 1757206974.0, "provider": "openai", "model": "gpt-5"}, {"role": "moderator", "content": "The trade is close to even on paper and the paper is missing the one number that decides it: where Roster 6's 2027 1st lands. The Beat Tracker did not report this round \u2014 the Gemini call failed \u2014 so nothing here about Kyren Williams' Hunter split or Achane's current status is verified, and I am not going to pretend it is. Two of three chairs reached the panel. What they agree on: as offered, this is a contender buying your best asset with their latest pick.\n\nRECOMMENDATION: WAIT\nCONVICTION: Worth investigation\nREASON: The 2027 1st is priced at a league average it will not reach if Roster 6 contends again; the trade is even only at that flattering price\nRISK: Achane's next injury arrives before a better offer does and the 6,410 becomes a 4,500\nRECON: Ask Roster 6 whether they would swap the 2027 1st for their 2026 1st, or add a 2027 2nd \u2014 that is the exact gap the Quant measured\nPRICE CEILING: Achane for Williams plus a 1st and a 2nd, nothing less\nALTERNATIVE: If Roster 6 will not move on the pick, Roster 9 is the other contender with an RB hole and they hold their own 2026 1st, which is a known slot rather than a guess \u2014 the same conversation there resolves the one number this panel could not.\nACTION ITEM: Counter Roster 6 with Achane for K Williams + 2026 1st before Thursday's waiver run\nTODO UPDATE: 1 | Check with Roster 6 whether their 2026 1st is available, not the 2027 | the 2027 pick is priced at a slot it is unlikely to reach", "ts": 1757206983.0, "provider": "claude", "model": "claude-opus-4-1"}], "decisions": [{"ts": 1755248400.0, "date": "2025-08-15", "question": "Nacua or Adams at WR2 this week?", "recommendation": "", "conviction": "Unanimous", "reason": "31% target share against a defense allowing the most slot receptions in the league", "dissent": "", "risk": "Nacua's knee was listed limited on Wednesday; if he sits, Adams is the start by default", "recon": "", "price_ceiling": "", "alternative": "", "moderator_text": "Start Nacua over Adams this week: the target share is 31% to 22% and the Rams' opponent funnels to the slot.\n\nRECOMMENDATION - START NACUA\nCONVICTION: Unanimous\nREASON: 31% target share against a defense allowing the most slot receptions in the league\nRISK: Nacua's knee was listed limited on Wednesday; if he sits, Adams is the start by default", "provider": "", "model": "", "outcome": "Mixed", "outcome_note": "Nacua 14.2, Adams 13.9 -- both started in the end via flex.", "outcome_date": "2025-08-20"}, {"ts": 1755860400.0, "date": "2025-08-22", "question": "Roster 6 wants Achane for their 2027 1st. Hold or sell?", "recommendation": "HOLD", "conviction": "Majority", "reason": "6,410 for 5,900 as offered; a contender's 2027 1st prices at the back of the round", "dissent": "Contrarian \u2014 the health discount is real and a rebuild should sell the assumption of health while the market still pays for it", "risk": "An injury before a better offer arrives; the 6,410 is a health number", "recon": "", "price_ceiling": "", "alternative": "", "moderator_text": "Hold Achane. The 2027 1st on offer is a contender's pick and prices at the back of the round; the Quant's number says you are selling 6,410 of value for 5,900, and the Beat has no news that changes his workload. The Contrarian's workload point is the reason this is Majority.\n\nRECOMMENDATION: HOLD\nCONVICTION: Majority\nREASON: 6,410 for 5,900 as offered; a contender's 2027 1st prices at the back of the round\nDISSENT: Contrarian \u2014 the health discount is real and a rebuild should sell the assumption of health while the market still pays for it\nRISK: An injury before a better offer arrives; the 6,410 is a health number\nACTION ITEM: Check with Roster 6 whether their 2027 1st is available", "provider": "", "model": "", "outcome": "Didn't Work", "outcome_note": "Achane tweaked the hamstring 09-01; the same offer came back 400 lower.", "outcome_date": "2025-09-02"}, {"ts": 1756540800.0, "date": "2025-08-30", "question": "Promote Shough from taxi or keep the slot?", "recommendation": "BUY", "conviction": "Unanimous", "reason": "The superflex slot is live starter demand and the taxi squad exists for players you are not starting", "dissent": "", "risk": "Rattler clears waivers to a contender who needed a QB2; small, and the Beat found no roster that does", "recon": "", "price_ceiling": "", "alternative": "", "moderator_text": "Promote Shough to the active roster and drop Rattler; the taxi slot is worth more to a rookie WR than a QB2 you are now starting in superflex.\n\nRECOMMENDATION: BUY\nCONVICTION: Unanimous\nREASON: The superflex slot is live starter demand and the taxi squad exists for players you are not starting\nRISK: Rattler clears waivers to a contender who needed a QB2; small, and the Beat found no roster that does", "provider": "claude", "model": "claude-opus-4-1", "outcome": "Worked", "outcome_note": "", "outcome_date": "2025-09-04"}, {"ts": 1757188835.0, "date": "2025-09-06", "question": "On the clock at 3.03. The board has Stafford at 107 and Shough at 104 but Shough has 37% survival to my next turn and Stafford is basically gone. Do I take Stafford here or gamble that Shough comes back?", "recommendation": "BUY", "conviction": "Majority", "reason": "34.9 UV pts positional forfeit for deferring QB, with the only alternative QB at 37% survival", "dissent": "Contrarian \u2014 prefers C Lamb now and B Mayfield at 3.19 (72% survival) as a higher-ceiling two-pick line", "risk": "Stafford's age cliff arrives inside your window with no exit value; a back recurrence turns a 107 into a 2027 problem", "recon": "", "price_ceiling": "", "alternative": "", "moderator_text": "Take Stafford. The forfeit for skipping QB to your next turn is 34.9 UV pts, the biggest positional cost on the board, and Shough at 37% survival is not a plan \u2014 the market number the Beat pulled says the true figure is lower. The Contrarian's Lamb-then-Mayfield line is the one real alternative and it rests on Mayfield surviving 16 picks at 72%; that is a bet, and this is a decisive regime where the engine's own margin (4.1 clear of the second priced candidate, outside the 2.0 noise band) says you do not need one. Draft Sharks' 3-year view flipping the order is why this is Majority and not Unanimous.\n\nRECOMMENDATION: BUY\nCONVICTION: Majority\nREASON: 34.9 UV pts positional forfeit for deferring QB, with the only alternative QB at 37% survival\nDISSENT: Contrarian \u2014 prefers C Lamb now and B Mayfield at 3.19 (72% survival) as a higher-ceiling two-pick line\nRISK: Stafford's age cliff arrives inside your window with no exit value; a back recurrence turns a 107 into a 2027 problem\nACTION ITEM: If Mayfield is still on the board at 3.19, take him as QB2 regardless of what else is there\nSOURCE FINDING: Tyler Shough | KTC | Ranked a full tier above Stafford in superflex dynasty value | 14\nSOURCE COMPARISON: Tyler Shough | Matthew Stafford | > | KTC superflex dynasty | market values the four-year window over the 2025 offense", "provider": "claude", "model": "claude-opus-4-1", "outcome": "", "outcome_note": "", "outcome_date": null}, {"ts": 1757188960.0, "date": "2025-09-06", "question": "On the clock at 3.03. The board has Stafford at 107 and Shough at 104 but Shough has 37% survival to my next turn and Stafford is basically gone. Do I take Stafford here or gamble that Shough comes back?", "recommendation": "BUY", "conviction": "Majority", "reason": "34.9 UV pts positional forfeit for deferring QB, with the only alternative QB at 37% survival", "dissent": "Contrarian \u2014 prefers C Lamb now and B Mayfield at 3.19 (72% survival) as a higher-ceiling two-pick line", "risk": "Stafford's age cliff arrives inside your window with no exit value; a back recurrence turns a 107 into a 2027 problem", "recon": "", "price_ceiling": "", "alternative": "", "moderator_text": "Take Stafford. The forfeit for skipping QB to your next turn is 34.9 UV pts, the biggest positional cost on the board, and Shough at 37% survival is not a plan \u2014 the market number the Beat pulled says the true figure is lower. The Contrarian's Lamb-then-Mayfield line is the one real alternative and it rests on Mayfield surviving 16 picks at 72%; that is a bet, and this is a decisive regime where the engine's own margin (4.1 clear of the second priced candidate, outside the 2.0 noise band) says you do not need one. Draft Sharks' 3-year view flipping the order is why this is Majority and not Unanimous.\n\nRECOMMENDATION: BUY\nCONVICTION: Majority\nREASON: 34.9 UV pts positional forfeit for deferring QB, with the only alternative QB at 37% survival\nDISSENT: Contrarian \u2014 prefers C Lamb now and B Mayfield at 3.19 (72% survival) as a higher-ceiling two-pick line\nRISK: Stafford's age cliff arrives inside your window with no exit value; a back recurrence turns a 107 into a 2027 problem\nACTION ITEM: If Mayfield is still on the board at 3.19, take him as QB2 regardless of what else is there\nSOURCE FINDING: Tyler Shough | KTC | Ranked a full tier above Stafford in superflex dynasty value | 14\nSOURCE COMPARISON: Tyler Shough | Matthew Stafford | > | KTC superflex dynasty | market values the four-year window over the 2025 offense", "provider": "claude", "model": "claude-opus-4-1", "outcome": "", "outcome_note": "", "outcome_date": null}, {"ts": 1757206983.0, "date": "2025-09-07", "question": "Roster 6 just offered me their 2027 1st and Kyren Williams for Achane. I'm rebuilding at RB anyway. Take it?", "recommendation": "WAIT", "conviction": "Worth investigation", "reason": "The 2027 1st is priced at a league average it will not reach if Roster 6 contends again; the trade is even only at that flattering price", "dissent": "", "risk": "Achane's next injury arrives before a better offer does and the 6,410 becomes a 4,500", "recon": "Ask Roster 6 whether they would swap the 2027 1st for their 2026 1st, or add a 2027 2nd \u2014 that is the exact gap the Quant measured", "price_ceiling": "Achane for Williams plus a 1st and a 2nd, nothing less", "alternative": "If Roster 6 will not move on the pick, Roster 9 is the other contender with an RB hole and they hold their own 2026 1st, which is a known slot rather than a guess \u2014 the same conversation there resolves the one number this panel could not.", "moderator_text": "The trade is close to even on paper and the paper is missing the one number that decides it: where Roster 6's 2027 1st lands. The Beat Tracker did not report this round \u2014 the Gemini call failed \u2014 so nothing here about Kyren Williams' Hunter split or Achane's current status is verified, and I am not going to pretend it is. Two of three chairs reached the panel. What they agree on: as offered, this is a contender buying your best asset with their latest pick.\n\nRECOMMENDATION: WAIT\nCONVICTION: Worth investigation\nREASON: The 2027 1st is priced at a league average it will not reach if Roster 6 contends again; the trade is even only at that flattering price\nRISK: Achane's next injury arrives before a better offer does and the 6,410 becomes a 4,500\nRECON: Ask Roster 6 whether they would swap the 2027 1st for their 2026 1st, or add a 2027 2nd \u2014 that is the exact gap the Quant measured\nPRICE CEILING: Achane for Williams plus a 1st and a 2nd, nothing less\nALTERNATIVE: If Roster 6 will not move on the pick, Roster 9 is the other contender with an RB hole and they hold their own 2026 1st, which is a known slot rather than a guess \u2014 the same conversation there resolves the one number this panel could not.\nACTION ITEM: Counter Roster 6 with Achane for K Williams + 2026 1st before Thursday's waiver run\nTODO UPDATE: 1 | Check with Roster 6 whether their 2026 1st is available, not the 2027 | the 2027 pick is priced at a slot it is unlikely to reach", "provider": "claude", "model": "claude-opus-4-1", "outcome": "", "outcome_note": "", "outcome_date": null}], "todos": [{"id": 1, "ts": 1755860402.0, "date": "2025-08-22", "text": "Check with Roster 6 whether their 2026 1st is available, not the 2027", "source": "moderator", "question": "Roster 6 wants Achane for their 2027 1st. Hold or sell?", "decision_ts": null, "status": "active", "resolution_reason": "", "resolution_date": null, "revisions": [{"ts": 1757206984.0, "date": "2025-09-07", "text": "Check with Roster 6 whether their 2027 1st is available", "reason": "the 2027 pick is priced at a slot it is unlikely to reach"}], "notes": [{"ts": 1756252800.0, "date": "2025-08-27", "text": "Messaged Roster 6 on 08-27; no answer yet."}], "proposals": [], "last_referenced": "2025-09-07"}, {"id": 2, "ts": 1757188836.0, "date": "2025-09-06", "text": "If Mayfield is still on the board at 3.19, take him as QB2 regardless of what else is there", "source": "moderator", "question": "On the clock at 3.03. The board has Stafford at 107 and Shough at 104 but Shough has 37% survival to my next turn and Stafford is basically gone. Do I take Stafford here or gamble that Shough comes back?", "decision_ts": null, "status": "active", "resolution_reason": "", "resolution_date": null, "revisions": [], "notes": [], "proposals": []}, {"id": 3, "ts": 1757206984.0, "date": "2025-09-07", "text": "Counter Roster 6 with Achane for K Williams + 2026 1st before Thursday's waiver run", "source": "moderator", "question": "Roster 6 just offered me their 2027 1st and Kyren Williams for Achane. I'm rebuilding at RB anyway. Take it?", "decision_ts": null, "status": "active", "resolution_reason": "", "resolution_date": null, "revisions": [], "notes": [], "proposals": []}, {"id": 4, "ts": 1756080000.0, "date": "2025-08-25", "text": "Find a taxi-squad rookie WR to stash before the trade deadline", "source": "manual", "question": "", "decision_ts": null, "status": "likely_resolved", "resolution_reason": "The roster data shows a rookie WR added to the taxi squad on 09-04.", "resolution_date": null, "revisions": [], "notes": [], "proposals": [{"ts": 1757030400.0, "date": "2025-09-05", "reason": "The roster data shows a rookie WR added to the taxi squad on 09-04.", "outcome": "pending"}]}, {"id": 5, "ts": 1755248402.0, "date": "2025-08-15", "text": "Confirm Nacua's knee status before Sunday's lock", "source": "moderator", "question": "Nacua or Adams at WR2 this week?", "decision_ts": null, "status": "resolved", "resolution_reason": "Full participant Friday; started him.", "resolution_date": "2025-08-18", "revisions": [], "notes": [], "proposals": [{"ts": 1755475200.0, "date": "2025-08-18", "reason": "The Beat reported him a full participant Friday.", "outcome": "accepted", "closed_date": "2025-08-18"}]}, {"id": 6, "ts": 1754524800.0, "date": "2025-08-07", "text": "Offer Roster 11 a 2026 2nd for their backup TE", "source": "manual", "question": "", "decision_ts": null, "status": "dismissed", "resolution_reason": "Dismissed by user", "resolution_date": "2025-08-12", "revisions": [], "notes": [], "proposals": []}, {"id": 7, "ts": 1756339200.0, "date": "2025-08-28", "text": "Set the Week 1 lineup before Thursday night", "source": "manual", "question": "", "decision_ts": null, "status": "resolved", "resolution_reason": "Marked done by user", "resolution_date": "2025-09-03", "revisions": [], "notes": [], "proposals": []}], "pinned": [1753671600.0, 1757188804.0, 1757188835.0], "findings": [{"id": 1, "ts": 1753660800.0, "date": "2025-07-28", "player_name": "Josh Allen", "source": "ESPN", "claim": "Ranked the overall QB1 in dynasty for 2025", "rank": 1, "composite_impact": "low-weight input", "conviction": "Unanimous", "question": "Is Allen worth a first?", "league_id": "panelprobe"}, {"id": 2, "ts": 1755248400.0, "date": "2025-08-15", "player_name": "Puka Nacua", "source": "ESPN", "claim": "Top-five WR in target share through the preseason", "rank": 4, "cited_source_admitted": "espn", "adjudication": "human_confirmed", "composite_impact": "low-weight input", "conviction": "Unanimous", "question": "Nacua or Adams at WR2 this week?", "league_id": "panelprobe", "evidence": {"origin": "panel_retrieved", "retrieved_at": "2025-08-15", "debate_sources": [{"url": "https://example.invalid/0", "title": "page 0"}, {"url": "https://example.invalid/1", "title": "page 1"}, {"url": "https://example.invalid/2", "title": "page 2"}]}, "confirmed_by": "human", "confirmed_at": "2025-08-17"}, {"id": 3, "ts": 1755860400.0, "date": "2025-08-22", "player_name": "De'Von Achane", "source": "FantasyCalc", "claim": "Priced as an RB1 in superflex dynasty", "rank": 7, "cited_source_admitted": null, "adjudication": "panel_only", "composite_impact": "none -- cited source is not on the composite allowlist", "conviction": "Majority", "question": "Roster 6 wants Achane for their 2027 1st. Hold or sell?", "league_id": "panelprobe", "evidence": {"origin": "panel_retrieved", "retrieved_at": "2025-08-22", "debate_sources": [{"url": "https://example.invalid/0", "title": "page 0"}, {"url": "https://example.invalid/1", "title": "page 1"}]}}, {"id": 4, "ts": 1755860401.0, "date": "2025-08-22", "player_name": "Kyren Williams", "source": "ESPN", "claim": "Expected to cede early-down work to the rookie after the bye", "rank": null, "cited_source_admitted": "espn", "adjudication": "panel_only", "composite_impact": "none", "conviction": "Majority", "question": "Roster 6 wants Achane for their 2027 1st. Hold or sell?", "league_id": "panelprobe", "evidence": {"origin": "panel_retrieved", "retrieved_at": "2025-08-22", "debate_sources": [{"url": "https://example.invalid/0", "title": "page 0"}, {"url": "https://example.invalid/1", "title": "page 1"}]}}, {"id": 5, "ts": 1756540800.0, "date": "2025-08-30", "player_name": "Spencer Rattler", "source": "KTC", "claim": "Ranked QB31 in superflex dynasty", "rank": 31, "cited_source_admitted": "keeptradecut", "adjudication": "human_confirmed", "composite_impact": "none -- retracted (rejected)", "conviction": "Unanimous", "question": "Promote Shough from taxi or keep the slot?", "league_id": "panelprobe", "evidence": {"origin": "unattributed", "retrieved_at": "2025-08-30", "debate_sources": []}, "confirmed_by": "human", "confirmed_at": "2025-08-31", "retracted": {"reason": "rejected", "by": "human", "at": "2025-09-04", "note": "KTC had him QB38 when I looked; the panel misread a 1QB list."}}, {"id": 6, "ts": 1757188835.0, "date": "2025-09-06", "player_name": "Tyler Shough", "source": "KTC", "claim": "Ranked a full tier above Stafford in superflex dynasty value", "rank": 14, "cited_source_admitted": "keeptradecut", "adjudication": "panel_only", "composite_impact": "none -- awaiting a second adjudication", "conviction": "Majority", "question": "On the clock at 3.03. The board has Stafford at 107 and Shough at 104 but Shough has 37% survival to my next turn and Stafford is basically gone. Do I take Stafford here or gamble that Shough comes back?", "league_id": "panelprobe", "evidence": {"origin": "panel_retrieved", "retrieved_at": "2025-09-06", "debate_sources": [{"url": "https://example.invalid/0", "title": "page 0"}, {"url": "https://example.invalid/1", "title": "page 1"}, {"url": "https://example.invalid/2", "title": "page 2"}, {"url": "https://example.invalid/3", "title": "page 3"}]}}], "comparisons": [{"id": 1, "ts": 1757188837.0, "date": "2025-09-06", "subject": "Tyler Shough", "compared_to": "Matthew Stafford", "direction": ">", "source": "KTC", "context": "superflex dynasty", "evidence": "market values the four-year window over the 2025 offense", "evidence_type": "qualitative comparative", "panel_undisputed": true, "composite_impact": "none", "question": "On the clock at 3.03. The board has Stafford at 107 and Shough at 104 but Shough has 37% survival to my next turn and Stafford is basically gone. Do I take Stafford here or gamble that Shough comes back?", "league_id": "panelprobe"}, {"id": 2, "ts": 1754265600.0, "date": "2025-08-04", "subject": "Brock Bowers", "compared_to": "Trey McBride", "direction": "~", "source": "ESPN", "context": "1QB, TE premium", "evidence": "back-to-back at TE1/TE2 with the order flipping week to week", "evidence_type": "qualitative comparative", "panel_undisputed": true, "composite_impact": "none", "question": "Bowers or McBride at 1.11?", "league_id": "otherleague"}], "roleNames": {"quant": "Quant", "beat": "Beat Tracker", "contrarian": "Contrarian", "moderator": "Moderator"}, "outcomeLabels": ["Worked", "Didn't Work", "Mixed", "Too Early To Tell"], "verdictFields": ["RECOMMENDATION", "CONVICTION", "REASON", "DISSENT", "RISK", "RECON", "PRICE CEILING", "ALTERNATIVE", "ACTION ITEM"], "activeStatuses": ["active", "likely_resolved"], "archivedStatuses": ["resolved", "dismissed"], "attached": null};
+
+const ABSENT = "—";
+const ROLE_WORD = { quant: "Quant", beat: "Beat Tracker", contrarian: "Contrarian", moderator: "Moderator", user: "You", summary: "Memory summary", notice: "Notice" };
+const ROLE_LETTER = { quant: "Q", beat: "B", contrarian: "C", moderator: "M" };
+const ROLE_JOB = { quant: "numbers: VORP, scarcity, trade math", beat: "market consensus and news, via live search", contrarian: "pressure-tests the other two", moderator: "synthesises the three reports into one verdict" };
+const CHAIRS = ["quant", "beat", "contrarian"];
+const FIELDS = PAYLOAD.verdictFields;
+const FIELD_KEY = f => f.toLowerCase().replace(/ /g, "_");
+const CONV = { unanimous: ["●●●", "Unanimous: all three chairs land the same direction.", false],
+               majority: ["●●○", "Majority: two chairs agree, one dissents — DISSENT names who and why.", false],
+               split: ["●○○", "Split: no real consensus among the three.", true],
+               speculative: ["◌◌◌", "Speculative: the chairs may agree, but the evidence under them is thin.", true],
+               "worth investigation": ["?", "Worth investigation: the answer depends on something only another manager can tell you — RECON says what to ask.", true] };
+//: A fixed "now" so ages are stable: five hours after the newest row. Stated on the page.
+const NOW = Math.max(...PAYLOAD.history.map(m => m.ts)) + 5 * 3600;
+function esc(s) { return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;"); }
+function absent(why) { return `<span class="absent" title="${esc(why)}">${ABSENT}</span>`; }
+function ago(ts) {
+  const s = NOW - ts, d = new Date(ts * 1000).toISOString().slice(0, 16).replace("T", " ");
+  const w = s < 90 ? "just now" : s < 3600 ? `${Math.round(s / 60)}m ago` : s < 86400 ? `${Math.round(s / 3600)}h ago` : `${Math.round(s / 86400)}d ago`;
+  return `<span class="age" title="${d} UTC">${w}</span>`;
+}
+function trunc(s, n) {
+  s = String(s).replace(/\s+/g, " ").trim();
+  if (s.length <= n) return esc(s);
+  const cut = s.slice(0, n).replace(/\s+\S*$/, "");
+  return `<span class="trunc" title="${esc(s)}">${esc(cut)}…</span>`;
+}
+// ONE markdown renderer over the WHOLE message: paragraphs on blank lines, "- " bullets,
+// **bold**. Escaped first. Nothing else is interpreted.
+function md(text) {
+  const blocks = String(text).trim().split(/\n\s*\n/);
+  return blocks.map(b => {
+    const lines = b.split("\n");
+    if (lines.every(l => /^\s*[-*•]\s+/.test(l))) return `<ul>${lines.map(l => `<li>${inline(l.replace(/^\s*[-*•]\s+/, ""))}</li>`).join("")}</ul>`;
+    return `<p>${lines.map(inline).join("<br>")}</p>`;
+  }).join("");
+}
+function inline(s) { return esc(s).replace(/\*\*(.+?)\*\*/g, "<b>$1</b>"); }
+// The Moderator's block, parsed the way llm_engine.parse_moderator_verdict does (each labelled
+// line at most once; TODO / SOURCE lines collected separately). Prose is everything before the
+// first RECOMMENDATION: line, exactly app.format_agent_content's split.
+function parseVerdict(text) {
+  const m = /^RECOMMENDATION:/m.exec(text);
+  if (!m) return { prose: text, fields: {}, extra: [], has: false };
+  const prose = text.slice(0, m.index).trim(), block = text.slice(m.index);
+  const fields = {}, extra = [];
+  for (const raw of block.split("\n")) {
+    const line = raw.trim().replace(/^[-*# ]+/, "");
+    let hit = false;
+    for (const f of FIELDS) { if (line.toUpperCase().startsWith(f + ":")) { const v = line.slice(f.length + 1).trim(); if (v && !(FIELD_KEY(f) in fields)) fields[FIELD_KEY(f)] = v; hit = true; break; } }
+    if (!hit && /^(TODO UPDATE|TODO LIKELY RESOLVED|SOURCE FINDING|SOURCE COMPARISON):/i.test(line)) extra.push(line);
+  }
+  return { prose, fields, extra, has: true };
+}
+function failed(msg) { return msg.content.startsWith("⚠️"); }
+function failText(msg) { return msg.content.replace(/^⚠️\s*/, ""); }
+// Units: a Full Prytaneum run is exactly [quant, beat, contrarian, moderator]; the user line
+// immediately before it is its question. A Moderator alone after a user line is a follow-up.
+function units(history) {
+  const out = []; let i = 0;
+  while (i < history.length) {
+    const r = history[i];
+    if (i + 3 < history.length && ["quant", "beat", "contrarian", "moderator"].every((role, k) => history[i + k].role === role)) {
+      const u = { kind: "debate", ts: history[i + 3].ts, quant: history[i], beat: history[i + 1], contrarian: history[i + 2], moderator: history[i + 3], question: null, followups: [] };
+      takeQuestion(out, u); out.push(u); i += 4; continue;
+    }
+    if (r.role === "moderator") {
+      const u = { kind: "followup", ts: r.ts, moderator: r, question: null };
+      takeQuestion(out, u); out.push(u); i += 1; continue;
+    }
+    out.push({ kind: r.role === "user" ? "user" : r.role, ts: r.ts, msg: r }); i += 1;
+  }
+  return out;
+}
+// The user line that opened a run sits before it, possibly behind a notice: app.py appends the
+// question, then maybe_nudge_stale_free_agents' notice, then the chairs. Look back past notices.
+function takeQuestion(out, u) {
+  for (let k = out.length - 1; k >= 0 && k >= out.length - 2; k--) {
+    if (out[k].kind === "user") { u.question = out[k].msg; out.splice(k, 1); return; }
+    if (out[k].kind !== "notice") return;
+  }
+}
+// The standing verdict: the newest unit whose Moderator text CARRIES a block. A follow-up
+// that re-emitted the block counts; one that only talked does not, and the earlier call stands.
+function standing(us) {
+  for (let k = us.length - 1; k >= 0; k--) { const u = us[k]; if (u.moderator && parseVerdict(u.moderator.content).has) return u; }
+  return null;
+}
+function chairs(u) {
+  if (u.kind !== "debate") return CHAIRS.map(r => ({ role: r, msg: null, status: "silent" }));
+  return CHAIRS.map(r => ({ role: r, msg: u[r], status: failed(u[r]) ? "failed" : "reported" }));
+}
+function reached(u) { const cs = chairs(u); return { n: cs.filter(c => c.status === "reported").length, of: u.kind === "debate" ? 3 : 0 }; }
+function seatHtml(c) {
+  const name = PAYLOAD.roleNames[c.role];
+  const t = c.status === "reported" ? `${name} · ${ROLE_JOB[c.role]} · reported (${c.msg.model || "model not recorded"})`
+    : c.status === "failed" ? `${name}: no report reached the panel — ${failText(c.msg)}. Missing information, never a finding that there is nothing to report.`
+    : `${name} was not asked: this was a Moderator-only follow-up.`;
+  return `<span class="seat ${c.status}" data-role="${c.role}" data-status="${c.status}" title="${esc(t)}">${ROLE_LETTER[c.role]}</span>`;
+}
+function seatsHtml(u, withM) {
+  let s = chairs(u).map(seatHtml).join("");
+  if (withM) s += `<span class="seat" data-role="moderator" title="${esc(`Moderator · ${ROLE_JOB.moderator} (${u.moderator.model || "model not recorded"})`)}">M</span>`;
+  return `<span class="seats">${s}</span>`;
+}
+function reachedHtml(u) {
+  const r = reached(u); if (!r.of) return "";
+  return r.n === r.of ? `<span class="mark" title="All three chairs reported to the Moderator.">3 of 3 chairs</span>`
+    : `<span class="mark attn" title="${esc(`${r.of - r.n} chair${r.of - r.n === 1 ? "" : "s"} sent no report; the verdict rests on ${r.n} of ${r.of}. Named in the seats.`)}">${r.n} of ${r.of} chairs</span>`;
+}
+function convHtml(fields, big) {
+  const c = fields.conviction; if (!c) return `<span class="conv">${absent("The Moderator's block carried no CONVICTION line.")}</span>`;
+  const k = c.toLowerCase(), e = CONV[k];
+  if (!e) return `<span class="conv" title="${esc(c)}">${esc(c)}</span>`;
+  return `<span class="conv${e[2] ? " low" : ""}" title="${esc(e[1])}"><i>${e[0]}</i>${big ? esc(c) : esc(c.toLowerCase())}</span>`;
+}
+function recHtml(fields, cls) { return fields.recommendation ? `<span class="rec ${cls || ""}" data-fact="rec">${esc(fields.recommendation)}</span>` : `<span class="rec ${cls || ""}" data-fact="rec">${absent("The Moderator's block carried no RECOMMENDATION line.")}</span>`; }
+function questionOf(u) { return u.question ? u.question.content : null; }
+function modelOf(m) { return m.model ? esc(m.model) : absent("The model that answered was not recorded on this message; it is not the current default."); }
+function objectiveFor(text) { return PAYLOAD.todos.find(t => t.status === "active" && t.text.trim() === String(text).trim()) || null; }
+function pinned(m) { return PAYLOAD.pinned.includes(m.ts); }
+// The receipt: fields present, in the block's own order; the four the prompt requires are
+// shown as absent when missing, the optional ones are omitted (the prompt says omit, so an
+// omitted optional line is the Moderator's own statement that it does not apply).
+function receiptHtml(v, opts) {
+  opts = opts || {};
+  const req = ["recommendation", "conviction", "reason", "risk"], rows = [];
+  for (const f of FIELDS) {
+    const k = FIELD_KEY(f), val = v.fields[k];
+    if (k === "recommendation" || k === "conviction") continue;
+    if (val === undefined) { if (req.includes(k)) rows.push([f, absent(`The Moderator's block carried no ${f} line; the prompt requires one.`)]); continue; }
+    let html = esc(val);
+    if (k === "action_item") { const t = objectiveFor(val); html += t ? ` <span class="mark on" title="Tracked as objective #${t.id}, opened by this verdict.">→ objective #${t.id}</span>` : ` <span class="mark" title="Not found among the open objectives.">not tracked</span>`; }
+    if (k === "dissent") { const who = /^(quant|beat|contrarian)/i.exec(val); if (who) html = `<span class="seat" data-role="${who[1].toLowerCase()}" style="width:1.2rem;height:1.2rem;font-size:.7rem;vertical-align:-3px;margin-right:.3rem">${ROLE_LETTER[who[1].toLowerCase()]}</span>` + html; }
+    rows.push([f, html]);
+  }
+  const ex = v.extra.length && !opts.noExtra ? `<div class="extra">${v.extra.map(l => `<div title="${esc(l)}">${trunc(l, opts.extraChars || 140)}</div>`).join("")}</div>` : "";
+  return `<div class="receipt">${rows.map(([k, h]) => `<span class="k">${k}</span><span class="v" data-field="${FIELD_KEY(k)}">${h}</span>`).join("")}</div>${ex}`;
+}
+function openObjectives() { return PAYLOAD.todos.filter(t => t.status === "active").length; }
+function considering() {
+  const a = PAYLOAD.attached; if (!a) return "";
+  return `<span class="mark on" title="${esc(`${a.surface} · ${a.looking_at}\n${a.decision}\n${a.evidence}\nInvolved: ${a.entities.join(", ")}`)}">considering · ${esc(a.looking_at.replace(/\.$/, ""))} · ${a.entities.length} names</span>`;
+}
+
+// ---- state and harness -----------------------------------------------------------------
+let level = "partial", openId = null, focusedId = null, tabOf = {}, cut = false;
+function hist() { return cut ? PAYLOAD.history.slice(0, 8) : PAYLOAD.history; }
+function setLevel(l) { level = l; document.documentElement.dataset.level = l; for (const x of ["collapsed", "partial", "full"]) document.getElementById("lv-" + x).setAttribute("aria-pressed", x === l); render(); }
+function toggleSidebar(b) { const on = b.getAttribute("aria-pressed") !== "true"; b.setAttribute("aria-pressed", on); document.documentElement.dataset.sidebar = on ? "on" : "off"; }
+function toggleCut(b) { cut = b.getAttribute("aria-pressed") !== "true"; b.setAttribute("aria-pressed", cut); openId = null; render(); }
+function toggleMotion(b) { const on = b.getAttribute("aria-pressed") !== "true"; b.setAttribute("aria-pressed", on); document.documentElement.classList.toggle("reduced-motion", on); }
+function levelBtns() {
+  const up = level !== "full" ? `<button class="btn icon quiet" onclick="setLevel('${level === "collapsed" ? "partial" : "full"}')" title="Expand one tier">▲</button>` : "";
+  const dn = level !== "collapsed" ? `<button class="btn icon quiet" onclick="setLevel('${level === "full" ? "partial" : "collapsed"}')" title="Collapse one tier">▼</button>` : "";
+  return `<span class="levels">${up}${dn}</span>`;
+}
+function uid(u) { return `${u.kind}-${u.ts}`; }
+function optAttrs(u, i) { const id = uid(u); return `role="option" data-unit="${id}" data-kind="${u.kind}" aria-expanded="${openId === id}" tabindex="${(focusedId ? focusedId === id : i === 0) ? 0 : -1}"`; }
+function wire(root) {
+  const opts = [...root.querySelectorAll('[role="option"]')];
+  opts.forEach(el => {
+    el.addEventListener("click", ev => { if (ev.target.closest("button, a, textarea, .tab")) return; openId = openId === el.dataset.unit ? null : el.dataset.unit; focusedId = el.dataset.unit; render(); });
+    el.addEventListener("keydown", ev => {
+      const k = opts.indexOf(el);
+      if (ev.key === "ArrowDown" && opts[k + 1]) { ev.preventDefault(); focusedId = opts[k + 1].dataset.unit; opts[k + 1].focus(); opts[k].tabIndex = -1; opts[k + 1].tabIndex = 0; }
+      else if (ev.key === "ArrowUp" && opts[k - 1]) { ev.preventDefault(); focusedId = opts[k - 1].dataset.unit; opts[k - 1].focus(); opts[k].tabIndex = -1; opts[k - 1].tabIndex = 0; }
+      else if (ev.key === "Enter" || ev.key === " ") { ev.preventDefault(); openId = openId === el.dataset.unit ? null : el.dataset.unit; focusedId = el.dataset.unit; render(); }
+      else if (ev.key === "Escape" && openId) { ev.preventDefault(); openId = null; render(); }
+    });
+  });
+  if (focusedId && (document.activeElement === document.body || root.contains(document.activeElement))) { const f = root.querySelector(`[data-unit="${focusedId}"]`); if (f && document.activeElement !== f) { opts.forEach(o => o.tabIndex = o === f ? 0 : -1); f.focus(); } }
+}
+function setTab(id, role) { tabOf[id] = tabOf[id] === role ? null : role; render(); const t = document.querySelector(`[data-unit="${id}"] .tab[data-role="${role}"]`); t && t.focus(); }
+
+// ---- the panel group's own vocabulary ---------------------------------------------------
+const KIND = { decision: ["V", "verdict", "A Moderator verdict, logged from its closing block. Read by the next debate only once you have rated how it played out."],
+               objective: ["O", "objective", "An open objective: standing context for EVERY question the panel is asked."],
+               finding: ["F", "finding", "A panel-vetted claim about one player from a named source. Read by every debate; its NUMBER counts toward the composite only after you confirm it."],
+               comparison: ["C", "comparison", "A panel-vetted relative claim between two players. Read by every debate; never carries a number."],
+               pin: ["P", "pin", "A chat message you pinned. Read by a debate only when the question relates to it -- a findability aid, not a priority."] };
+function kindHtml(k, on) { const e = KIND[k]; return `<span class="kind${on ? " on" : ""}" title="${esc(e[2])}">${e[0]}</span>`; }
+function authorSeat(role, model) {
+  if (role === "user" || role === "manual") return `<span class="seat you" title="You wrote this.">Y</span>`;
+  const r = role === "moderator" || role === "moderator" ? "moderator" : role;
+  if (!ROLE_LETTER[r]) return `<span class="seat silent" title="${esc(role)}">·</span>`;
+  const t = `${PAYLOAD.roleNames[r]} · ${ROLE_JOB[r]}` + (model ? ` (${model})` : " (model not recorded)");
+  return `<span class="seat" data-role="${r}" title="${esc(t)}">${ROLE_LETTER[r]}</span>`;
+}
+// THREE renderings for three states, never two for three. A hatched "—" with a title is a
+// quantity that was never computed; "none" is a quantity computed and empty; a numeral is a
+// quantity. A bare 0 sitting beside a hatched absence makes the reader do the telling-apart,
+// which is the whole distinction this group exists to keep.
+function qty(n) { return n ? String(n) : "none"; }
+function tally(n, word) { return n ? `${n} ${word}${n === 1 ? "" : "s"}` : `no ${word}s`; }
+function stateHtml(cls, word, why) { return `<span class="state ${cls}" title="${esc(why)}">${esc(word)}</span>`; }
+// A decision's state: rated (the outcome word; Didn't Work takes the signal hue) or unrated
+// (the needs-you hue: the row has nothing to teach a future debate until you rate it).
+function decisionState(d) {
+  if (d.outcome) return stateHtml(d.outcome === "Didn't Work" ? "attn" : "", d.outcome, `Rated ${d.outcome} on ${d.outcome_date}${d.outcome_note ? ": " + d.outcome_note : ""}. Past verdicts reach a debate only when rated and related.`);
+  return stateHtml("needs", "unrated", "Not yet rated. An unrated verdict is excluded from what future debates are shown -- rating it is what turns the log into a track record.");
+}
+function decisionRec(d) { return d.recommendation ? `<span class="rec" data-fact="rec">${esc(d.recommendation)}</span>` : `<span class="rec" data-fact="rec">${absent("The block was logged without a RECOMMENDATION line (the parser is per-field); the rest of the verdict is here.")}</span>`; }
+function decisionConv(d) { return convHtml({ conviction: d.conviction || undefined }, false); }
+// Objectives: three live states and two closed ones, counted apart, never as one "active".
+function objectiveState(t) {
+  if (t.status === "likely_resolved") return stateHtml("needs", "proposed done", `A bot proposed this is done: ${t.resolution_reason}. Nothing closes until you confirm or keep it open.`);
+  if (t.status === "active") return stateHtml("", "open", "Open. Handed to the panel on every question as standing context.");
+  if (t.status === "resolved") return stateHtml("closed", "done", `Closed ${t.resolution_date}: ${t.resolution_reason}`);
+  return stateHtml("closed", "dismissed", `Dismissed ${t.resolution_date}: ${t.resolution_reason}`);
+}
+// A finding's eligibility, RECOMPUTED as bot_research.feeds_composite does -- the stored
+// composite_impact is a record of an old decision, not the decision.
+function findingFeeds(f) {
+  if (f.retracted) return { feeds: false, word: "retracted", cls: "attn", why: `Retracted (${f.retracted.reason}) by ${f.retracted.by} on ${f.retracted.at}${f.retracted.note ? ": " + f.retracted.note : ""}. Its number is out of circulation; the claim stays in the record.` };
+  if (f.rank === null || f.rank === undefined) return { feeds: false, word: "no number", cls: "", why: "A qualitative claim: nothing to gate, nothing to count. Read by the panel as prose." };
+  if (!("adjudication" in f)) return { feeds: false, word: "never adjudicated", cls: "needs", why: `Written before the confirmation gate existed: no adjudication was ever recorded. Its stored impact string says "${f.composite_impact}", but the decision is recomputed from the row and this number does NOT count until confirmed.` };
+  if (f.cited_source_admitted === null) return { feeds: false, word: "source not allowed", cls: "", why: `"${f.source}" is not on the composite allowlist, so its number cannot count whatever you do. Confirming is not offered because it would change nothing.` };
+  if (f.adjudication !== "human_confirmed") return { feeds: false, word: "awaiting you", cls: "needs", why: "A rank from an allowed source, panel-vetted, not yet confirmed by a second pair of eyes. Confirming says you looked -- not that it is verified." };
+  return { feeds: true, word: "counting", cls: "", why: `Confirmed by ${f.confirmed_by} on ${f.confirmed_at}: this number feeds the composite score at a low weight. Retract to take it back out.` };
+}
+function rankHtml(f) { return f.rank === null || f.rank === undefined ? absent("The source stated no rank number; a qualitative claim.") : `<span class="mono">#${f.rank}</span>`; }
+function originHtml(f) {
+  const e = f.evidence;
+  if (!e) return `<span class="mark" title="Written before the evidence snapshot existed: never checked, which is not the same as checked and found none.">origin not recorded</span>`;
+  if (e.origin === "panel_retrieved") return `<span class="mark" title="The provider responses behind that debate reported fetching ${e.debate_sources.length} page(s) -- debate-level, not this claim's own citation.">panel retrieved ${e.debate_sources.length}</span>`;
+  return `<span class="mark" title="Those responses reported fetching nothing: a chair reasoning from its context or its training, or simply not searching. Unknown provenance, never a source-less claim.">no retrieval reported</span>`;
+}
+function leagueMark(id) {
+  if (!id) return `<span class="scope" title="No league recorded on this row.">league not recorded</span>`;
+  if (id === PAYLOAD.league.id) return `<span class="scope" title="Asked in this league. Findings are stored globally and read by every league.">this league</span>`;
+  return `<span class="scope" title="Asked in another league (${id}). Findings are stored globally and read by every league, including this one.">another league</span>`;
+}
+// Pins: the message, or a labelled orphan when compaction summarised the message away.
+function pinMessage(ts) { return hist().find(m => m.ts === ts) || null; }
+function pinLine(msg) { const v = parseVerdict(msg.content); return v.has ? `<b>${esc(v.fields.recommendation || "verdict")}</b> <span class="q">${trunc(v.prose, 110)}</span>` : trunc(msg.content, 130); }
+// The one join the stores actually support: an objective's text against a verdict's ACTION
+// ITEM. (todo_log has a decision_ts slot; nothing writes it.)
+function objectiveOfDecision(d) { const v = parseVerdict(d.moderator_text); const a = v.fields.action_item; if (!a) return null; return PAYLOAD.todos.find(t => t.text.trim() === a.trim()) || null; }
+function decisionOfObjective(t) { if (t.source !== "moderator") return null; return PAYLOAD.decisions.find(d => { const v = parseVerdict(d.moderator_text); return v.fields.action_item && v.fields.action_item.trim() === (t.revisions && t.revisions.length ? t.revisions[0].text : t.text).trim(); }) || null; }
+function decisionReceipt(d) {
+  const v = parseVerdict(d.moderator_text);
+  const model = d.model ? esc(d.model) : absent("The model that answered was not recorded on this row (written before that field existed); it is not the current default.");
+  return `<div class="prose">${md(v.prose)}</div>${receiptHtml(v)}<div class="sub">Answered by ${authorSeat("moderator", d.model)} ${model}${d.provider ? ` · ${esc(d.provider)}` : ""}</div>`;
+}
+
+// ---- state ------------------------------------------------------------------------------
+let empty = false, filters = { kind: null, needs: false }, ratings = {}, openPanels = {};
+function stores() {
+  if (empty) return { decisions: [], todos: [], pinned: [], findings: [], comparisons: [] };
+  return { decisions: PAYLOAD.decisions, todos: PAYLOAD.todos, pinned: PAYLOAD.pinned, findings: PAYLOAD.findings, comparisons: PAYLOAD.comparisons };
+}
+function toggleEmpty(b) { empty = b.getAttribute("aria-pressed") !== "true"; b.setAttribute("aria-pressed", empty); openId = null; render(); }
+function setLevel() {}
+function needsYou(S) {
+  return { unrated: S.decisions.filter(d => !d.outcome).length,
+           proposed: S.todos.filter(t => t.status === "likely_resolved").length,
+           open: S.todos.filter(t => t.status === "active").length,
+           awaiting: S.findings.filter(f => { const e = findingFeeds(f); return e.cls === "needs"; }).length,
+           orphans: S.pinned.filter(ts => !pinMessage(ts)).length };
+}
+
+
+// A string argument inside an inline handler is inside a double-quoted HTML attribute, so
+// its own quotes must be entity-escaped or the attribute ends early. OUTCOME_LABELS contains
+// "Didn't Work"; the unescaped form truncated every rating handler to `rate(ts, `.
+function jsArg(v) { return esc(JSON.stringify(v)); }
+function when(ts) {
+  const s = NOW - ts, d = new Date(ts * 1000).toISOString().slice(0, 16).replace("T", " ");
+  if (s < 48 * 3600) return ago(ts);
+  return `<span class="age" title="${d} UTC">${d.slice(5, 10)}</span>`;
+}
+function chairsOf(d) {
+  // The chairs that reported to THIS verdict: the debate unit in the transcript whose
+  // Moderator message is this row's (log_decision runs in the same second as append_message).
+  const u = units(hist()).find(u => u.moderator && Math.abs(u.moderator.ts - d.ts) < 5);
+  if (!u) return `<span class="mark" title="This verdict's transcript is not in the current chat history (compacted or from before this history), so which chairs reported is not recoverable here.">chairs not on record</span>`;
+  if (u.kind !== "debate") return `<span class="mark" title="A Moderator-only follow-up: no chairs were asked.">follow-up</span>`;
+  return reachedHtml(u);
+}
+function dissentSeat(d) {
+  if (!d.dissent) return "";
+  const who = /^(quant|beat|contrarian)/i.exec(d.dissent);
+  const r = who ? who[1].toLowerCase() : null;
+  return r ? `<span class="seat" data-role="${r}" title="${esc(`Dissent — ${d.dissent}`)}">${ROLE_LETTER[r]}</span>` : `<span class="mark" title="${esc(`Dissent — ${d.dissent}`)}">dissent</span>`;
+}
+function remainsMarks(d) {
+  const out = [chairsOf(d), dissentSeat(d)];
+  if (d.recon) out.push(`<span class="mark attn" title="${esc(`RECON — ${d.recon}`)}">? recon</span>`);
+  if (d.risk) out.push(`<span class="mark" title="${esc(`RISK — ${d.risk}`)}">risk</span>`);
+  return out.filter(Boolean).join("");
+}
+function findingsOf(d) { return stores().findings.filter(f => f.question && f.question.trim() === d.question.trim() && f.date === d.date); }
+function comparisonsOf(d) { return stores().comparisons.filter(c => c.question && c.question.trim() === d.question.trim() && c.date === d.date); }
+function pinnedDecision(d) { return stores().pinned.some(ts => Math.abs(ts - d.ts) < 5); }
+function rerunOf(d) { return stores().decisions.filter(x => x !== d && x.question === d.question && x.date === d.date); }
+
+// ---- rating: no default. Save is disabled until a rating is chosen; each row by its ts. ----
+function rate(ts, outcome) { ratings[ts] = Object.assign({}, ratings[ts], { outcome }); render(); }
+function saveRating(ts) {
+  const r = ratings[ts]; if (!r || !r.outcome) return;
+  const d = PAYLOAD.decisions.find(x => x.ts === ts); if (!d) return;
+  d.outcome = r.outcome; d.outcome_note = (document.getElementById(`note-${ts}`) || {}).value || ""; d.outcome_date = new Date(NOW * 1000).toISOString().slice(0, 10);
+  delete ratings[ts]; render();
+}
+function ratingHtml(d) {
+  if (d.outcome) return `<div class="sub">Rated <b>${esc(d.outcome)}</b> on ${esc(d.outcome_date)}${d.outcome_note ? ` — ${esc(d.outcome_note)}` : ""}. <button class="btn quiet" onclick="event.stopPropagation(); rerate(${d.ts})">re-rate</button></div>`;
+  const r = ratings[d.ts] || {};
+  return `<div class="rate" data-field="rating">
+    <span class="k eyebrow">how did it play out</span>
+    ${PAYLOAD.outcomeLabels.map(o => `<button class="chip" aria-pressed="${r.outcome === o}" onclick="event.stopPropagation(); rate(${d.ts}, ${jsArg(o)})">${esc(o)}</button>`).join("")}
+    <input class="note" id="note-${d.ts}" placeholder="what actually happened (optional)" onclick="event.stopPropagation()" onkeydown="event.stopPropagation()">
+    <button class="btn primary" ${r.outcome ? "" : "disabled"} title="${r.outcome ? "Record this rating; future related debates will be shown it." : "Choose a rating first. There is no default: an unrated call stays unrated."}" onclick="event.stopPropagation(); saveRating(${d.ts})">save</button>
+  </div>`;
+}
+function rerate(ts) { const d = PAYLOAD.decisions.find(x => x.ts === ts); d.outcome = ""; d.outcome_note = ""; d.outcome_date = null; render(); }
+
+// ---- objectives: the verbs, and delete behind the detail, dashed, two presses. ----
+let armedDelete = null;
+function objVerb(t, id) {
+  const stop = "event.stopPropagation();";
+  if (t.status === "likely_resolved") return `<button class="btn" title="Confirm the bot's proposal: closes it as done with the proposed reason." onclick="${stop} objAct(${t.id}, 'resolve')">confirm done</button><button class="btn quiet" title="Reject the proposal: back to open; the proposal is kept in the record as rejected." onclick="${stop} objAct(${t.id}, 'reopen')">keep open</button>`;
+  if (t.status === "active") return `<button class="btn" title="Close as done. A note in the opened row travels with it into the closed list." onclick="${stop} objAct(${t.id}, 'resolve')">done</button><button class="btn quiet" title="Close as no longer relevant, never done." onclick="${stop} objAct(${t.id}, 'dismiss')">dismiss</button>`;
+  return `<button class="btn quiet" title="Open it again as a new objective (the closed one stays closed)." onclick="${stop} objAct(${t.id}, 'revisit')">revisit</button>`;
+}
+function objAct(id, act) {
+  const t = PAYLOAD.todos.find(x => x.id === id); if (!t) return;
+  const note = (document.getElementById(`onote-${id}`) || {}).value || "";
+  const today = new Date(NOW * 1000).toISOString().slice(0, 10);
+  if (act === "resolve") { const was = t.status === "likely_resolved"; t.status = "resolved"; if (note) t.resolution_reason = note; else if (!t.resolution_reason) t.resolution_reason = "Marked done by user"; t.resolution_date = today; if (was) closeProposal(t, "accepted"); }
+  if (act === "dismiss") { const was = t.status === "likely_resolved"; t.status = "dismissed"; t.resolution_reason = note || "Dismissed by user"; t.resolution_date = today; if (was) closeProposal(t, "superseded_by_dismissal"); }
+  if (act === "reopen") { t.status = "active"; t.resolution_reason = ""; closeProposal(t, "rejected"); }
+  if (act === "revisit") { const nid = Math.max(...PAYLOAD.todos.map(x => x.id)) + 1; PAYLOAD.todos.push({ id: nid, ts: NOW, date: today, text: t.text, source: "manual", question: `Revisit of #${t.id}`, decision_ts: null, status: "active", resolution_reason: "", resolution_date: null, revisions: [], notes: [], proposals: [] }); }
+  if (act === "delete") { if (armedDelete !== id) { armedDelete = id; render(); return; } PAYLOAD.todos.splice(PAYLOAD.todos.indexOf(t), 1); armedDelete = null; }
+  if (act === "addnote") { const v = (document.getElementById(`anote-${id}`) || {}).value || ""; if (v.trim()) t.notes.push({ ts: NOW, date: today, text: v.trim() }); }
+  render();
+}
+function closeProposal(t, outcome) { for (const p of [...(t.proposals || [])].reverse()) if (p.outcome === "pending") { p.outcome = outcome; p.closed_date = new Date(NOW * 1000).toISOString().slice(0, 10); return; } }
+function objDetail(t) {
+  const d = decisionOfObjective(t);
+  const hist = [];
+  for (const r of t.revisions || []) hist.push(`<div>${esc(r.date)} · was <b>${esc(r.text)}</b>${r.reason ? ` — ${esc(r.reason)}` : ""}</div>`);
+  for (const n of t.notes || []) hist.push(`<div>${esc(n.date)} · note: ${esc(n.text)}</div>`);
+  for (const p of t.proposals || []) hist.push(`<div>${esc(p.date)} · proposed done: ${esc(p.reason)} → <b>${esc(p.outcome)}</b>${p.closed_date ? ` ${esc(p.closed_date)}` : ""}</div>`);
+  if (t.last_referenced) hist.push(`<div>${esc(t.last_referenced)} · cited by id in a Moderator reply</div>`);
+  const from = d ? `<div class="sub">Opened by the verdict <b>${esc(d.recommendation || "—")}</b> to “${trunc(d.question, 70)}” on ${esc(d.date)} (joined on the ACTION ITEM text — todo_log has a decision_ts slot and nothing writes it).</div>`
+    : t.source === "moderator" ? `<div class="sub">Opened by a Moderator ACTION ITEM to “${trunc(t.question || "", 70)}”; that verdict is not in the log.</div>` : `<div class="sub">Written by you${t.question ? ` · ${esc(t.question)}` : ""}.</div>`;
+  const live = t.status === "active" || t.status === "likely_resolved";
+  const stop = "event.stopPropagation();";
+  return `<div class="detail">${from}${hist.length ? `<div class="hist">${hist.join("")}</div>` : `<div class="sub">No revisions, notes or proposals on record.</div>`}
+    ${live ? `<div class="acts"><input class="note" id="anote-${t.id}" placeholder="add a note while this is open" onclick="${stop}" onkeydown="${stop}"><button class="btn quiet" onclick="${stop} objAct(${t.id}, 'addnote')">add note</button></div>
+    <div class="acts"><input class="note" id="onote-${t.id}" placeholder="resolution note (optional) — it is what a future debate will be told" onclick="${stop}" onkeydown="${stop}"><span class="sep"></span>
+      <button class="btn danger" title="Erase this record entirely -- for a mistaken or duplicate entry, never for 'done'. Two presses." onclick="${stop} objAct(${t.id}, 'delete')">${armedDelete === t.id ? "press again to delete permanently" : "delete…"}</button></div>`
+    : `<div class="acts"><span class="sep"></span><button class="btn danger" title="Erase this record entirely. Two presses." onclick="${stop} objAct(${t.id}, 'delete')">${armedDelete === t.id ? "press again to delete permanently" : "delete…"}</button></div>`}
+  </div>`;
+}
+function objRow(t, i, opts) {
+  opts = opts || {};
+  const id = `objective-${t.id}`;
+  return `<div class="row" ${optAttrs({ kind: "objective", ts: t.id }, i)} data-kind="objective" data-id="${t.id}" data-state="${t.status}">
+    ${when(t.ts)}${kindHtml("objective")}${authorSeat(t.source === "moderator" ? "moderator" : "user")}
+    <span class="line"><b>#${t.id}</b> ${esc(t.text)}</span>
+    <span class="marks">${(t.revisions || []).length ? `<span class="mark" title="Revised ${(t.revisions || []).length} time(s) by a TODO UPDATE; the earlier text is kept.">revised</span>` : ""}${t.last_referenced ? `<span class="mark" title="Cited by id in a Moderator reply on ${t.last_referenced}.">cited</span>` : ""}</span>
+    ${objectiveState(t)}<span class="verb">${objVerb(t)}</span>
+    ${openId === id ? objDetail(t) : ""}</div>`;
+}
+
+// ---- findings and comparisons: the signals gate. ----
+function findingVerb(f) {
+  const e = findingFeeds(f), stop = "event.stopPropagation();";
+  if (e.word === "awaiting you") return `<button class="btn" title="Says you looked, not that it is verified. Its number then counts at a low weight." onclick="${stop} findAct(${f.id}, 'confirm')">confirm</button>`;
+  if (e.feeds) return `<button class="btn quiet" title="Take the number back out of circulation; the claim stays in the record." onclick="${stop} findAct(${f.id}, 'retract')">retract</button>`;
+  if (e.word === "retracted") return `<button class="btn quiet" title="Undo the retraction: back to whatever adjudication it had, not straight to counting." onclick="${stop} findAct(${f.id}, 'restore')">restore</button>`;
+  if (e.word === "never adjudicated") return `<button class="btn" title="Confirm as with any other: says you looked." onclick="${stop} findAct(${f.id}, 'confirm')">confirm</button>`;
+  return "";
+}
+function findAct(id, act) {
+  const f = PAYLOAD.findings.find(x => x.id === id); if (!f) return;
+  const today = new Date(NOW * 1000).toISOString().slice(0, 10);
+  if (act === "confirm") { f.adjudication = "human_confirmed"; f.confirmed_by = "human"; f.confirmed_at = today; if (!("cited_source_admitted" in f)) f.cited_source_admitted = f.source.toLowerCase().replace(/\s/g, ""); }
+  if (act === "retract") f.retracted = { reason: "withdrawn", by: "human", at: today, note: "" };
+  if (act === "restore") delete f.retracted;
+  render();
+}
+function findingRow(f, i) {
+  const e = findingFeeds(f), id = `finding-${f.id}`;
+  return `<div class="row" ${optAttrs({ kind: "finding", ts: f.id }, i)} data-kind="finding" data-id="${f.id}" data-feeds="${e.feeds}">
+    ${when(f.ts)}${kindHtml("finding")}${authorSeat("moderator")}
+    <span class="line"><b>${esc(f.player_name)}</b> <span class="q">· ${esc(f.source)} ${rankHtml(f)} · ${trunc(f.claim, 80)}</span></span>
+    <span class="marks">${leagueMark(f.league_id)}</span>
+    ${stateHtml(e.cls, e.word, e.why)}<span class="verb">${findingVerb(f)}</span>
+    ${openId === id ? `<div class="detail"><div class="prose">${esc(f.claim)}</div><div class="sub">${esc(e.why)}</div><div class="acts">${originHtml(f)}${f.conviction ? `<span class="mark" title="The verdict's conviction when this was surfaced.">${esc(f.conviction.toLowerCase())}</span>` : ""}<span class="scope">asked: ${trunc(f.question || "", 90)}</span></div></div>` : ""}</div>`;
+}
+function comparisonRow(c, i) {
+  const id = `comparison-${c.id}`, verb = { ">": "ahead of", "<": "behind", "~": "about even with" }[c.direction];
+  return `<div class="row" ${optAttrs({ kind: "comparison", ts: c.id }, i)} data-kind="comparison" data-id="${c.id}">
+    ${when(c.ts)}${kindHtml("comparison")}${authorSeat("moderator")}
+    <span class="line"><b>${esc(c.subject)}</b> <span class="q">${esc(verb)}</span> <b>${esc(c.compared_to)}</b> <span class="q">· ${esc(c.source)}${c.context ? ` · ${esc(c.context)}` : ""}</span></span>
+    <span class="marks">${leagueMark(c.league_id)}</span>
+    ${stateHtml("", "no number", "A relative claim: read by every debate as a cross-check on ordering, never as a number. It cannot count and nothing here offers to make it.")}<span class="verb"></span>
+    ${openId === id ? `<div class="detail"><div class="prose">${esc(c.evidence)}</div><div class="sub">Panel-undisputed when surfaced; not re-verified by anything here.</div><div class="acts"><span class="scope">asked: ${trunc(c.question || "", 90)}</span></div></div>` : ""}</div>`;
+}
+
+// ---- pins: the message, or the labelled orphan. ----
+function unpin(ts) { const i = PAYLOAD.pinned.indexOf(ts); if (i >= 0) PAYLOAD.pinned.splice(i, 1); render(); }
+function pinRow(ts, i) {
+  const m = pinMessage(ts), id = `pin-${ts}`;
+  if (!m) return `<div class="row" ${optAttrs({ kind: "pin", ts }, i)} data-kind="pin" data-orphan="true">
+    ${when(ts)}${kindHtml("pin")}<span class="seat silent" title="Unknown: the message is gone.">·</span>
+    <span class="line">${absent("Pinned, but the message is no longer in this chat: it was older than a compaction cutoff and was summarised away. The pin store still holds it; a debate can no longer retrieve it.")} <span class="q">message no longer in this chat</span></span>
+    <span class="marks"></span>${stateHtml("needs", "message gone", "The pin outlived its message. Unpin it, or accept that it can never surface again.")}<span class="verb"><button class="btn quiet" onclick="event.stopPropagation(); unpin(${ts})">unpin</button></span>
+    ${openId === id ? `<div class="detail"><div class="prose">The pin store holds a timestamp and nothing else — <span class="mono">${new Date(ts * 1000).toISOString().slice(0, 16).replace("T", " ")} UTC</span>. The message it points at is no longer in this chat: <b>compact_chat_history</b> summarised it away without consulting the pin store, so nothing can retrieve it — not this panel, and not a debate.</div><div class="sub">The text is not recoverable from the pin store, and this is the only place in the product that says so: the app's own panel lists only pins whose message survives, and counts only those, so its header reads two where three are stored. Unpin to stop carrying a pointer to nothing.</div></div>` : ""}</div>`;
+  const v = parseVerdict(m.content);
+  return `<div class="row" ${optAttrs({ kind: "pin", ts }, i)} data-kind="pin" data-role="${m.role}">
+    ${when(ts)}${kindHtml("pin")}${authorSeat(m.role, m.model)}
+    <span class="line">${pinLine(m)}</span>
+    <span class="marks">${v.has ? `<span class="mark" title="A verdict: its block is shown whole when opened.">verdict</span>` : ""}</span>
+    ${stateHtml("", "in transcript", "Retrieved for a debate only when the question shares two or more words with it.")}<span class="verb"><button class="btn quiet" onclick="event.stopPropagation(); unpin(${ts})">unpin</button></span>
+    ${openId === id ? `<div class="detail"><div class="prose">${md(v.has ? v.prose : m.content)}</div>${v.has ? receiptHtml(v) : ""}<div class="sub">${esc(m.content.length)} characters, shown whole. The app cuts a pinned message at 500 and hands a debate 400.</div></div>` : ""}</div>`;
+}
+
+// ---- decisions ----
+function decisionDetail(d, opts) {
+  opts = opts || {};
+  const t = objectiveOfDecision(d), fs = findingsOf(d), cs = comparisonsOf(d), rr = rerunOf(d);
+  const joins = [];
+  if (opts.joins !== false) {
+    if (t) joins.push(`<div class="acts"><span class="eyebrow">objective it opened</span>${kindHtml("objective")}<b>#${t.id}</b> <span class="q">${trunc(t.text, 90)}</span> ${objectiveState(t)} <span class="verb">${objVerb(t)}</span></div>`);
+    else if (parseVerdict(d.moderator_text).fields.action_item) joins.push(`<div class="sub">Its ACTION ITEM is not among the objectives (text join; nothing writes decision_ts).</div>`);
+    for (const f of fs) { const e = findingFeeds(f); joins.push(`<div class="acts"><span class="eyebrow">finding it produced</span>${kindHtml("finding")}<b>${esc(f.player_name)}</b> <span class="q">· ${esc(f.source)} ${rankHtml(f)} · ${trunc(f.claim, 60)}</span> ${stateHtml(e.cls, e.word, e.why)} <span class="verb">${findingVerb(f)}</span></div>`); }
+    for (const c of cs) joins.push(`<div class="acts"><span class="eyebrow">comparison it produced</span>${kindHtml("comparison")}<b>${esc(c.subject)}</b> <span class="q">${({ ">": "ahead of", "<": "behind", "~": "about even with" })[c.direction]}</span> <b>${esc(c.compared_to)}</b> <span class="q">· ${esc(c.source)}</span></div>`);
+  }
+  if (rr.length) joins.push(`<div class="sub attn-text">Asked again the same day: ${rr.map(x => `a ${x.ts > d.ts ? "later" : "earlier"} run ${Math.abs(Math.round(x.ts - d.ts))}s ${x.ts > d.ts ? "after" : "before"} this one called <b>${esc(x.recommendation || "—")}</b>`).join("; ")}. Each row is rated on its own.</div>`);
+  return `<div class="detail">${decisionReceipt(d)}${joins.join("")}${ratingHtml(d)}</div>`;
+}
+function decisionRow(d, i, opts) {
+  opts = opts || {};
+  const id = `decision-${d.ts}`, t = opts.joins === false ? null : objectiveOfDecision(d), fs = opts.joins === false ? [] : findingsOf(d);
+  const marks = [remainsMarks(d)];
+  if (t) marks.push(`<span class="mark${t.status === "likely_resolved" ? " needs" : t.status === "active" ? " on" : ""}" title="${esc(`Opened objective #${t.id}: ${t.text} — ${t.status.replace("_", " ")}`)}">objective #${t.id}</span>`);
+  if (fs.length) { const w = fs.filter(f => findingFeeds(f).cls === "needs").length; marks.push(`<span class="mark${w ? " needs" : ""}" title="${esc(`${fs.length} finding(s) from this debate${w ? `; ${w} awaiting your confirmation` : ""}`)}">${fs.length} finding${fs.length > 1 ? "s" : ""}</span>`); }
+  if (pinnedDecision(d)) marks.push(`<span class="mark" title="You pinned this verdict in the transcript.">pinned</span>`);
+  return `<div class="row" ${optAttrs({ kind: "decision", ts: d.ts }, i)} data-kind="decision" data-date="${d.date}" data-rated="${!!d.outcome}">
+    ${when(d.ts)}${kindHtml("decision")}${authorSeat("moderator", d.model)}
+    <span class="line">${decisionRec(d)} ${decisionConv(d)} <span class="q">to</span> ${trunc(d.question, 90)}</span>
+    <span class="marks">${marks.join("")}</span>
+    ${decisionState(d)}<span class="verb">${d.outcome ? "" : `<button class="btn" title="Open the row to rate it. Nothing is chosen for you." onclick="event.stopPropagation(); openId = openId === '${id}' ? null : '${id}'; focusedId = '${id}'; render()">rate</button>`}</span>
+    ${openId === id ? decisionDetail(d, opts) : ""}</div>`;
+}
+function emptyRow(what, why) { return `<div class="empty" data-empty="${esc(what)}">${absent(why)} <span>${esc(what)}</span></div>`; }
+
+openPanels = { objectives: true, findings: true, verdicts: false, closed: false, pins: false };
+function togglePanel(k) { openPanels[k] = !openPanels[k]; render(); }
+function jump(k) { openPanels[k] = true; render(); const el = document.querySelector(`[data-panel="${k}"]`); el && el.scrollIntoView({ block: "nearest" }); }
+function panel(k, name, countHtml, readWord, readWhy, rows, emptyWhat, emptyWhy) {
+  const open = openPanels[k];
+  return `<section class="panel" data-panel="${k}" data-open="${open}">
+    <button class="ph" aria-expanded="${open}" onclick="togglePanel('${k}')"><span class="tri">${open ? "▾" : "▸"}</span><span class="name">${name}</span><span class="count">${countHtml}</span><span class="grow"></span><span class="read" title="${esc(readWhy)}">read: ${readWord}</span></button>
+    ${open ? `<div class="pb"><div class="rows" role="listbox" aria-label="${esc(name)}">${rows.length ? rows.join("") : emptyRow(emptyWhat, emptyWhy)}</div></div>` : ""}
+  </section>`;
+}
+function render() {
+  const S = stores(), n = needsYou(S);
+  // The strip: the link with no surface -- what remains uncertain, and what only you can settle.
+  const newest = [...S.decisions].sort((a, b) => b.ts - a.ts)[0];
+  const marks = [];
+  if (newest) {
+    const low = newest.conviction && CONV[newest.conviction.toLowerCase()] && CONV[newest.conviction.toLowerCase()][2];
+    marks.push(`<span class="mark${low ? " attn" : ""}" title="${esc(`The newest call, ${newest.recommendation || "—"}, is ${newest.conviction || "of unrecorded conviction"}${newest.recon ? ". RECON: " + newest.recon : ""}${newest.dissent ? ". DISSENT: " + newest.dissent : ""}`)}" onclick="jump('verdicts')">newest call: ${esc((newest.conviction || "conviction not recorded").toLowerCase())}</span>`);
+    marks.push(`<span class="mark" onclick="jump('verdicts')" title="Which chairs reported to the newest call.">${chairsOf(newest).replace(/<span class="mark[^>]*>|<\/span>/g, "")}</span>`);
+  }
+  if (n.unrated) marks.push(`<span class="mark needs" onclick="jump('verdicts')" title="Verdicts you have not rated. Until rated they teach nothing to a future debate.">${n.unrated} verdict${n.unrated === 1 ? "" : "s"} unrated</span>`);
+  if (n.proposed) marks.push(`<span class="mark needs" onclick="jump('objectives')" title="A bot proposed these are done; only you can close them.">${n.proposed} objective${n.proposed === 1 ? "" : "s"} proposed done</span>`);
+  if (n.awaiting) marks.push(`<span class="mark needs" onclick="jump('findings')" title="Rank-bearing findings whose number is held back until you confirm.">${n.awaiting} finding${n.awaiting === 1 ? "" : "s"} awaiting you</span>`);
+  if (n.orphans) marks.push(`<span class="mark needs" onclick="jump('pins')" title="Pins whose message a compaction summarised away.">${n.orphans} pin${n.orphans === 1 ? "" : "s"} without a message</span>`);
+  document.getElementById("strip").innerHTML = `<span class="eyebrow"><b>Remains</b></span>` + (marks.length ? marks.join("") : `<span class="sub">${absent("Nothing is on record, so nothing is uncertain on record either. The transcript is the only memory the next debate gets.")} <span class="scope">nothing on record</span></span>`);
+
+  let i = 0;
+  const live = S.todos.filter(t => ["active", "likely_resolved"].includes(t.status)).sort((a, b) => (a.status === "likely_resolved" ? -1 : 0) - (b.status === "likely_resolved" ? -1 : 0) || b.ts - a.ts);
+  const fl = [...S.findings.map(f => ["f", f]), ...S.comparisons.map(c => ["c", c])].sort((a, b) => b[1].ts - a[1].ts);
+  const counting = S.findings.filter(f => findingFeeds(f).feeds).length;
+  const standing = [
+    panel("objectives", "Objectives", `${qty(n.open)} open${n.proposed ? ` · <span class="needs">${n.proposed} proposed done</span>` : ""}`, "every question",
+      "Every open objective is in the context of every debate, as standing context: a rebuild-vs-contend objective changes what the right call even is. They are opened by a Moderator ACTION ITEM or by you; a bot can revise or propose one done; only you close one.",
+      live.map(t => objRow(t, i++)), "no open objectives", "No objective is open. The next debate is handed none; ACTION ITEM lines in a verdict open them, or you can."),
+    panel("findings", "Findings", `${qty(S.findings.length)} · ${tally(S.comparisons.length, "comparison")}${n.awaiting ? ` · <span class="needs">${n.awaiting} awaiting you</span>` : ""} · ${qty(counting)} counting · <span title="Stored globally and read by every league, unlike everything else here.">global</span>`, "every question",
+      "The newest thirty findings and comparisons are in every debate's context, across every league. A finding's NUMBER also feeds the composite score, at a low weight, once its source is allowed and you have confirmed it. This is a signals gate, not evidence for any one verdict.",
+      fl.map(([k, x]) => k === "f" ? findingRow(x, i++) : comparisonRow(x, i++)), "no findings", "No panel-vetted finding has been recorded in any league. The Moderator writes one only when the whole panel left a named-source claim undisputed."),
+  ];
+  const ds = [...S.decisions].sort((a, b) => (a.outcome ? 1 : 0) - (b.outcome ? 1 : 0) || b.ts - a.ts);
+  const closed = S.todos.filter(t => ["resolved", "dismissed"].includes(t.status)).sort((a, b) => b.ts - a.ts);
+  const record = [
+    panel("verdicts", "Verdicts", `${qty(S.decisions.length)}${n.unrated ? ` · <span class="needs">${n.unrated} unrated</span>` : ""} · ${qty(S.decisions.length - n.unrated)} rated`, "when related and rated",
+      "A past verdict reaches a debate only when the question shares words with it AND you have rated how it played out. Unrated verdicts are excluded: an unrated call has nothing to teach.",
+      ds.map(d => decisionRow(d, i++, { joins: false })), "no verdicts logged", "No Moderator verdict has been logged in this league. One is logged whenever the Moderator's reply carries its closing block."),
+    panel("closed", "Closed objectives", `${qty(closed.length)} · ${qty(closed.filter(t => t.status === "resolved").length)} done · ${qty(closed.filter(t => t.status === "dismissed").length)} dismissed`, "when related",
+      "Resolved and dismissed objectives reach a debate when the question shares words with them, with their resolution note -- so the panel can say why a similar idea ended the way it did.",
+      closed.map(t => objRow(t, i++)), "nothing closed", "No objective has been resolved or dismissed yet."),
+    panel("pins", "Pins", `${qty(S.pinned.length)}${n.orphans ? ` · <span class="needs">${n.orphans} message gone</span>` : ""}`, "when related",
+      "A pinned message reaches a debate only when the question shares two or more words with it. Pinning is findability, never priority. These are marks on the transcript; the dock shows them on the message.",
+      [...S.pinned].sort((a, b) => b - a).map(ts => pinRow(ts, i++)), "nothing pinned", "You have pinned nothing. Pin from a message in the dock."),
+  ];
+  document.getElementById("standing").innerHTML = standing.join("");
+  document.getElementById("record").innerHTML = record.join("");
+  wire(document.getElementById("group"));
+}
+
+render();
+</script>
+</body></html>
