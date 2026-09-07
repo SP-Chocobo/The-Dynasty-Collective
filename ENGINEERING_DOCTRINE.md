@@ -287,6 +287,17 @@ A ~10% deficit existed before either drafter made a choice.)*
 batch. A long run WILL die. *(#176 attempt 1 wrote its report per-format and died seven runs
 into the first one, discarding every completed run.)*
 
+**M3b -- DURABLE IS NOT COMPLETE, AND RECOVERY IS NOT PROMOTION.** M3 makes partial results
+survive a crash; it does not make them results. Every long run declares its completion condition
+BEFORE it starts, and an artifact that has not met it is treated as nonexistent for citation --
+"the file is on disk" is not "the experiment finished". When a run dies partway, reading its log
+to understand what happened is recovery and is fine; RECONSTRUCTING the artifact from that log
+and citing it is not. That manufactures completeness from partial output and creates a second,
+parallel artifact format that reads as canonical and cannot be told apart later. Rerun instead.
+*(Surfaced as a new failure mode -- artifact completeness ambiguity -- while two experiments were
+in flight and the session's runway was uncertain. The remedy is a completion contract written
+next to the artifact, not another mechanism.)*
+
 **M4 -- PRINT n, AND PROVE THE POPULATION CAN PRODUCE THE PHENOMENON.** A rate over an empty or
 structurally impossible population is not a rate. Before reporting "X% of rows do Y", confirm a
 row COULD do Y. *(#172: `eligibility_bonus` measured 0.0 at every percentile across five
