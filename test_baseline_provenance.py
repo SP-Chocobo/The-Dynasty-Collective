@@ -12,6 +12,8 @@ correct, only that the record describing them still matches them.
 
 import json
 import unittest
+
+from test_source_scan import code_text
 from pathlib import Path
 
 import data_merger
@@ -126,12 +128,18 @@ class TheVendorStaysUnnamedTests(unittest.TestCase):
 class TheRecordIsDocumentationNotAnInputTests(unittest.TestCase):
     def test_no_production_module_reads_it(self):
         """Same posture as sleeper_projection_provenance.json: nothing consumes this at runtime,
-        so a prose edit cannot change a price. Its only reader is this test."""
+        so a prose edit cannot change a price. Its only reader is this test.
+
+        Scanned over CODE, not raw text (#200). This used to search the whole file, which made
+        a docstring EXPLAINING that provenance is documentation indistinguishable from code
+        consuming it -- sleeper_import_report.py says exactly that, in prose, and this guard
+        called it a violation. Ordinary string literals are still scanned, deliberately: the
+        record is a FILE, so a real reader looks like open(".../baseline_provenance.json")."""
         for path in sorted(_HERE.glob("*.py")):
             if path.name.startswith("test_"):
                 continue
             with self.subTest(module=path.name):
-                self.assertNotIn("baseline_provenance", path.read_text())
+                self.assertNotIn("baseline_provenance", code_text(path))
 
 
 if __name__ == "__main__":

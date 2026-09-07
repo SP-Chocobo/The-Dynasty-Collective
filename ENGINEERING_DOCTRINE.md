@@ -467,3 +467,29 @@ the same as whether anyone has put a number on it. Collapsing them lets a pricin
 define the boundary of the universe. Keep them separate, admit on evidence of existence, and let
 the absence contract carry the rows nobody has priced yet -- None, never 0.0, ordered last, and
 labelled for what they are.
+
+## A guard's evidence must be about the thing it claims
+
+Two guards in this suite assert that a quantity has no production reader: `snapshot_is_current`
+(a freshness certifier built deliberately and wired to nothing) and `baseline_provenance` (a
+record that is documentation and must never become an input). Both proved the claim the cheap
+way -- search each production module's raw text for the name, fail if it appears at all.
+
+That is a strictly stronger claim than the one they mean, and on 2026-09-07 the difference came
+due. A measurement tool's docstring EXPLAINS that the input layer already has machinery for
+freshness, and names both as examples. No call, no import, no read: prose. Both guards went red,
+and no repair to the code could clear them, because there was nothing wrong with the code.
+
+**A check that cannot be satisfied is worse than no check.** It is not merely useless -- it
+teaches everyone who runs the suite that some red is normal, which is the one belief that makes
+every other guard in the file stop working. A standing failure is a defect with the same urgency
+as a wrong number, and it is fixed in the guard, not by silencing it and not by contorting the
+code to avoid a word.
+
+**State the claim, then find evidence that matches it exactly.** "No module CALLS this" and "this
+string does not appear" are different propositions, and the gap between them is where the false
+alarm lives. Here the fix was to scan the code with comments and docstrings blanked -- and,
+just as deliberately, to leave ordinary string literals in place, because `baseline_provenance`
+is the stem of a filename and a real reader looks like `open(".../baseline_provenance.json")`.
+Narrowing the evidence to kill a false alarm is only correct while the guard can still see its
+own target; the failure mode one step past the repair is a green check that proves nothing.

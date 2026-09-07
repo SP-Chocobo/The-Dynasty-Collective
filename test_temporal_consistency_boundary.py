@@ -23,6 +23,8 @@ import inspect
 import tempfile
 import threading
 import unittest
+
+from test_source_scan import code_text
 from pathlib import Path
 
 import pick_debate
@@ -164,8 +166,12 @@ class StalenessIsDetectableAndNotConsultedTests(unittest.TestCase):
         for path in _HERE.glob("*.py"):
             if path.name.startswith("test_") or path.name == "pick_synthesis.py":
                 continue
-            for line in path.read_text().splitlines():
-                if "snapshot_is_current" in line and not line.strip().startswith("#"):
+            # Over CODE, not raw text (#200). The old scan skipped whole-line comments and
+            # nothing else, so a docstring naming this function as an EXAMPLE of freshness
+            # machinery -- which is what sleeper_import_report.py's does -- was reported as a
+            # caller, and the failure could not be cleared by any repair to the code.
+            for line in code_text(path).splitlines():
+                if "snapshot_is_current" in line:
                     callers.append(f"{path.name}: {line.strip()}")
         self.assertEqual(callers, [], "snapshot_is_current gained a caller -- invert this test.")
 
