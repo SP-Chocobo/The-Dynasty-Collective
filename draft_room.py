@@ -435,7 +435,25 @@ CONFIDENCE_BY_SOURCE = {
     "points_vor_sleeper_extrapolated": 60.0,
     "points_vor_sleeper_seeded": 50.0,
     "position_relative_trade_value_vor": 35.0,
+    # NOT A TIER. This source name means no anchor produced anything, so there is no number
+    # to grade and None is the only honest confidence -- see NO_PRICEABLE_INPUT.
+    "no_priceable_input": None,
 }
+
+#: bpa_source for a row that reached the board with NOTHING to price it: no league-scored
+#: projection, no vendor season projection, and no trade value either. It is a legitimate
+#: state, not an error -- _admits_to_pool deliberately admits a player on evidence that he is
+#: a real, currently relevant footballer (a rookie, or a man on an NFL roster) without
+#: requiring that anyone has yet put a number on him.
+#:
+#: It exists because the alternative was a lie that used to be nearly invisible. Every row
+#: without points was labelled position_relative_trade_value_vor unconditionally, including
+#: rows with no trade value, which asserts an anchor that produced nothing -- the #166 shape,
+#: a name crossing a layer without the quantity it claims to explain. Before the admission
+#: widening that mislabel covered 6 rows and was easy to miss; after it, it would have covered
+#: 1,257 and become the board's most common source string. Widening the pool without splitting
+#: the label would have turned a small false claim into the dominant one.
+NO_PRICEABLE_INPUT = "no_priceable_input"
 
 # The committed baseline CSVs whose points are a season total TRANSCRIBED from a specific
 # league's own Sleeper display (see sleeper_client.build_baseline_projection_rows and
@@ -643,6 +661,113 @@ def _rookie_lookup(merger: DataMerger) -> dict[tuple[str, str], bool]:
     return dict(zip(ktc["_name_key"], ktc["rookie"]))
 
 
+#: A player with zero completed NFL seasons -- this year's rookie class. Sleeper reports it
+#: as an int; 42 of the 6,595 players in the captured universe carry None, which is "not
+#: reported", not "rookie", and is read as neither below.
+ROOKIE_YEARS_EXP = 0
+
+
+#: Sleeper statuses that assert the player is not on an NFL roster right now. Deliberately
+#: NOT a list of "hurt" statuses: Injured Reserve, Physically Unable to Perform and Practice
+#: Squad all describe a player a team still holds, and in a DYNASTY league a player who is
+#: hurt this month is still an asset -- see #191 on why an injury is already inside the
+#: projected number rather than a separate penalty.
+#:
+#: Sleeper does not actually send "Retired" in the captured universe (the observed vocabulary
+#: is Inactive / Active / Injured Reserve / Physically Unable to Perform / Practice Squad /
+#: None). It is kept because the feed is not promised to be closed, and an unrecognised
+#: status must not silently mean "playing" -- see #110 on unrecognised statuses as a
+#: silent-meaning-change path.
+NOT_CURRENTLY_PLAYING = ("Inactive", "Retired")
+
+
+def _admits_to_pool(info: dict, sleeper_points, match: dict) -> bool:
+    """Does this player get a row in the draft pool at all? Owner-ruled 2026-09-07.
+
+    Admit on ANY of five independent signals that this is a real, currently relevant
+    football player. It is a UNION on purpose: each clause covers a case the others miss,
+    and a player only has to be interesting once.
+
+      1. A NON-ZERO PROJECTION UNDER THIS LEAGUE'S SCORING (sleeper_points). The zero guard
+         in the caller has already collapsed a 0.0 to None, so reaching here non-None means
+         a real measured number, not an empty stat line.
+      2. A ROOKIE -- years_exp == 0, admitted unconditionally. Clauses 1 and 3 together
+         still miss the case the owner named: a rookie cut to a practice squad has no NFL
+         team listed and no projection, and in a dynasty league he is one of the most
+         taxi-relevant players on the board. years_exp ABSENT fails this clause without
+         being read as "veteran" either -- absence is not a value here any more than
+         anywhere else; the other four clauses simply decide on their own.
+      3. LISTED ON AN NFL TEAM. Measured against the captured universe: of the players
+         carrying no 2026 projection at all, only 14.6% are on a team, and essentially
+         every player with any non-zero projection is rostered -- so team membership and
+         projection are largely non-overlapping evidence of the same thing, which is what
+         makes the union worth taking.
+      4. 2025 PRODUCTION. THIS CLAUSE IS THE RULE AND IS NOT YET IMPLEMENTED, deliberately
+         and on the record: the owner ruled "measure first" on fetching last season's
+         actuals, so this app holds no 2025 stat line to test against. It is written here
+         rather than quietly dropped so the gap is a NAMED MISSING INPUT rather than a
+         clause that evaporated between the decision and the code. When actuals land, this
+         function is where they attach, and nothing else has to move.
+      5. A VENDOR PUBLISHED A REAL NUMBER FOR HIM -- the OLD RULE, demoted from gate to
+         clause. Retained so this change is purely WIDENING: every player admitted before
+         is still admitted, and no existing replacement level moves because a player it was
+         computed over vanished. This is the ONE clause a not-currently-playing status
+         vetoes, for the reason given below.
+
+    STATUS IS A FRESHNESS RULE, NOT A GATE. A NOT_CURRENTLY_PLAYING status used to remove a
+    player in the caller, before any of the five clauses was tested. That ordering is the
+    #180 defect one layer up: a gate standing in front of the evidence, settling the
+    question on the strength of the staler fact. Measured against the captured universe, it
+    was vetoing 304 players who carried a positive signal -- 199 rookies, 131 players listed
+    on an NFL team, and 18 with a real non-zero projection under this league's own scoring,
+    including a Philadelphia tight end projected for 32.92 points while marked Inactive.
+
+    So the precedence now follows FRESHNESS, which is the only principled ordering available
+    when two fields from the same feed contradict each other. Clauses 1-3 are read from the
+    live Sleeper feed in the same fetch that produced the status, and a projection generated
+    for the SEASON AHEAD is the more specific and more recent statement about whether this
+    person is going to play football. They win. Clause 5 is a paid vendor's file, cut weeks
+    earlier, and it loses -- otherwise a genuinely retired player would sit in the pool
+    forever on the strength of a trade value nobody has revisited.
+
+    THIS IS THE RE-ENTRY MECHANISM (owner's case: a retired player un-retires). Nothing here
+    is a remembered exclusion. The pool is rebuilt from the live players_db on every board
+    build, so the moment Sleeper puts a returning player back on a team -- or simply starts
+    publishing a projection for him -- clause 1 or clause 3 fires and he is in, with no list
+    to edit, no cache to bust and no code change. That is the whole point of expressing
+    admission as a union over live fields instead of a maintained roster of who counts:
+    the same property that lets a rookie appear mid-August lets a comeback appear mid-season.
+
+    WHY THE OLD GATE HAD TO STOP BEING A GATE. It admitted a player only when a ranking
+    vendor had both matched him and published a number, which made a paid third party's
+    coverage decision the outer boundary of this app's player universe -- not a pricing
+    limit, an EXISTENCE limit. Measured against the captured Sleeper universe, it dropped
+    451-466 players who carried a real league-scored projection: Jordan Love (317.4),
+    Aaron Rodgers (262.5), Javonte Williams (260.0), Keenan Allen (167.2), Cooper Kupp
+    (149.1). Those are not obscure players; they are overwhelmingly players whose SITUATION
+    CHANGED after the vendor file was cut, which is exactly the population a dynasty engine
+    exists to have an opinion about. The vendor is a PRICING SOURCE now. A player it does
+    not cover is admitted and simply carries no vendor price, and the absence contract
+    already knows what to do with that: propagate None, never 0.0, and order him last.
+
+    Note what this function deliberately does NOT do: it never looks at position. There is
+    no K/DST/IDP special case here, and there must not be one -- a position with thin
+    vendor coverage is admitted by the same five clauses as every other position.
+    """
+    if sleeper_points is not None:
+        return True
+    if info.get("years_exp") == ROOKIE_YEARS_EXP:
+        return True
+    if info.get("team"):
+        return True
+    # Clause 4 (2025 production) belongs here. See the docstring: the input does not exist yet.
+    if info.get("status") in NOT_CURRENTLY_PLAYING:
+        return False
+    return bool(match.get("matched")) and (
+        match.get("trade_value") is not None or match.get("projection") is not None
+    )
+
+
 def build_available_pool(
     merger: DataMerger,
     players_db: dict[str, dict],
@@ -653,21 +778,26 @@ def build_available_pool(
     pool_scope: str = "all",
     sleeper_basis: str = SLEEPER_BASIS_WEEKLY,
 ) -> pd.DataFrame:
-    """One row per undrafted, fantasy-relevant player this app has a real number for --
-    joined from Sleeper's player_id-keyed database (drafts speak player_id, the ranking
-    sources speak name) the same way player_universe.py already bridges the two elsewhere
-    in this app. A player with no usable number at all is dropped, not scored at 0 --
-    there's no honest BPA to rank them by, same "don't fabricate a number" rule as
-    everywhere else.
+    """One row per undrafted, currently relevant football player -- joined from Sleeper's
+    player_id-keyed database (drafts speak player_id, the ranking sources speak name) the
+    same way player_universe.py already bridges the two elsewhere in this app.
 
-    "A real number" means a season points projection OR a trade value. It used to mean a
-    trade value alone, which was equivalent right up until points started arriving from a
-    source that publishes no trade values (league-scored Sleeper projections -- see
-    sleeper_client.build_baseline_projection_rows). After that the old rule silently
-    conflated two different situations: "nothing is known about this player" and "we have
-    real league-scored points, but one vendor's trade-value chart stopped early."
+    WHO GETS A ROW is _admits_to_pool's five-clause union; read that docstring first, it is
+    the owner's ruling and the reason this function no longer stops at a vendor's coverage.
+    WHAT A ROW IS WORTH is a separate question answered further down the pipe, and a row
+    admitted with no price at all is legitimate: it carries None, never 0.0, and
+    _derive_points_and_source orders it last. Those two questions used to be one question,
+    and collapsing them let a paid vendor's roster decisions define this app's universe.
 
-    Measured before the change, the second case was doing real damage at K/DEF:
+    A not-currently-playing status no longer removes a player before the evidence is read.
+    It used to, and that ordering was the same defect as #180 one layer up: a gate placed in
+    front of the facts, deciding on the strength of the staler one. See _admits_to_pool.
+
+    The prior rule -- admit only on "a season points projection OR a trade value" -- survives
+    as clause 5, so this widening removes nobody. That rule had itself already been widened
+    once, from trade value alone, and the history is worth keeping because it is the same
+    defect one layer in: measured at the time, the trade-value-only form was doing real
+    damage at K/DEF:
       - Supply capped at 13 of 37 kickers and 13 of 32 defenses, with NO backfill: those
         13 were a permanent allowlist, so drafting them emptied the position to zero
         while real, projected players sat unused. A 12-team league where two managers
@@ -715,8 +845,6 @@ def build_available_pool(
         position = player_position(info)
         if position not in usable_positions:
             continue
-        if info.get("status") in ("Inactive", "Retired"):
-            continue
         name = player_name(info, player_id)
         if pool_scope != "all":
             is_rookie = rookie_by_key.get(name_key(normalize_name(name)), False)
@@ -724,11 +852,6 @@ def build_available_pool(
                 continue
             if pool_scope == "veterans_only" and is_rookie:
                 continue
-        match = merger.merge_player(name, position=position, team=info.get("team"))
-        if not match.get("matched"):
-            continue
-        if match.get("trade_value") is None and match.get("projection") is None:
-            continue
         sleeper_points = None
         if sleeper_projections is not None and scoring_settings is not None:
             raw_stats = sleeper_projections.get(player_id)
@@ -746,6 +869,12 @@ def build_available_pool(
                 # unpriced and ordered last, never as a measured 0.0 competing on the number
                 # line -- the conservative direction, and the same one taken everywhere else.
                 sleeper_points = scored if scored != 0 else None
+        # PRICING FIRST, ADMISSION SECOND -- and they are no longer the same question (#193).
+        # merge_player still runs for every candidate because a vendor price is worth having;
+        # what changed is that failing to find one no longer removes the player.
+        match = merger.merge_player(name, position=position, team=info.get("team"))
+        if not _admits_to_pool(info, sleeper_points, match):
+            continue
         rows.append({
             "player_id": player_id,
             "name": name,
@@ -902,7 +1031,21 @@ def replacement_levels(
     sort_cols = [value_col, "player_id"] if "player_id" in pool.columns else [value_col]
     sort_ascending = [False, True] if len(sort_cols) == 2 else [False]
     for position in FANTASY_POSITIONS:
-        at_pos = pool[pool["position"] == position].sort_values(
+        # ONLY ROWS THAT CARRY value_col. A replacement level is "the value of the player at
+        # replacement rank", and a row with no value cannot be that player -- counting it
+        # shifts the rank onto a neighbour, or onto absence itself, and then the level IS
+        # absence and every price at the position collapses to unpriced.
+        #
+        # This was inert while a row could not reach the pool without a number: the old
+        # admission gate guaranteed every row had one, so filtering changed nothing. The
+        # admission widening (#193) breaks that guarantee on purpose -- a rookie or a rostered
+        # player is admitted on evidence he is real, not on evidence someone priced him -- and
+        # the trade_value branch went from 5 rows at LB, all valued, to 214 of which 5 are.
+        # Measured: LB's trade_value replacement level went 0.0 -> nan, taking six genuinely
+        # valued IDP rows unpriced with it. Restricting the population restores exactly the
+        # pre-widening semantics ("the Nth best PRICED player at this position") rather than
+        # inventing a new rule.
+        at_pos = pool[(pool["position"] == position) & pool[value_col].notna()].sort_values(
             sort_cols, ascending=sort_ascending, kind="stable",
         )
         if at_pos.empty:
@@ -1368,11 +1511,19 @@ def _team_roster_players(
     return players
 
 
-def _confidence(bpa_source: str) -> float:
+def _confidence(bpa_source: str) -> Optional[float]:
     """0-100: how much to trust this player's value, separate from the value itself -- a
     direct encoding of which anchor actually produced bpa (see CONFIDENCE_BY_SOURCE and the
-    module docstring on why this no longer calls composite_player_score)."""
-    return CONFIDENCE_BY_SOURCE.get(bpa_source, 35.0)
+    module docstring on why this no longer calls composite_player_score).
+
+    None, not a number, when the source is NO_PRICEABLE_INPUT: confidence grades a value, and
+    grading a value that was never produced is the absence contract broken at the exact point
+    a person reads it (the #187 shape). An UNRECOGNISED source still falls back to the lowest
+    real tier rather than to None -- that is a different situation ("a source this function
+    has not been taught about") and must not be quietly reported as "nothing was measured"."""
+    if bpa_source == NO_PRICEABLE_INPUT:
+        return None
+    return CONFIDENCE_BY_SOURCE.get(bpa_source) or 35.0
 
 
 def upside_score(row: pd.Series) -> dict:
@@ -1577,7 +1728,11 @@ def _derive_points_and_source(pool: pd.DataFrame) -> pd.Series:
         pool.loc[use_weekly, "bpa_source"] = "points_vor_sleeper_extrapolated"
 
     has_proj = pool["_points"].notna()
-    pool.loc[~has_proj, "bpa_source"] = "position_relative_trade_value_vor"
+    # The trade-value fallback only EXPLAINS a row it can actually price. A row with neither
+    # points nor a trade value is labelled for what it is -- see NO_PRICEABLE_INPUT.
+    no_points = ~has_proj
+    pool.loc[no_points & pool["trade_value"].notna(), "bpa_source"] = "position_relative_trade_value_vor"
+    pool.loc[no_points & pool["trade_value"].isna(), "bpa_source"] = NO_PRICEABLE_INPUT
     return has_proj
 
 
@@ -2029,8 +2184,15 @@ def compute_draft_board(
     if (~has_proj).any():
         no_proj_pool = pool[~has_proj].copy()
         tv_replacement = replacement_levels(no_proj_pool, "trade_value", roster_positions, num_teams, starter_demand)
+        # Only positions that actually have a trade value to be priced against can NEED the
+        # pre-draft anchor. A position where no remaining row carries one is not "exhausted
+        # demand" -- it is a position nothing can price at all, and asking for the anchor there
+        # builds a whole second pool (~544ms) to answer a question with no answer, breaking the
+        # laziness test_no_anchor_is_built_when_no_position_needs_one pins.
         _anchored |= _fill_omitted_from_anchor(
-            tv_replacement, set(no_proj_pool["position"].unique()), None,
+            tv_replacement,
+            set(no_proj_pool.loc[no_proj_pool["trade_value"].notna(), "position"].unique()),
+            None,
             lambda: _anchor("trade_value", None),
         )
         pool.loc[~has_proj, "_vor"] = no_proj_pool.apply(
@@ -2048,6 +2210,15 @@ def compute_draft_board(
     # league the ceiling is mostly the unit rather than the demand.
     if _anchored:
         pool.loc[pool["position"].isin(_anchored), "replacement_basis"] = "predraft_anchor"
+    # replacement_basis EXPLAINS a price. A row that got no price has nothing for it to
+    # explain, and saying "live_starter_demand" there asserts that this league's starter
+    # demand produced a number it did not produce -- the #166/#185 shape, a label crossing a
+    # layer without the quantity that gives it meaning. Absence gets the absence value.
+    #
+    # This became load-bearing with the admission widening: a row can now reach the board on
+    # evidence that the player is real (a rookie, or a man on an NFL roster) while carrying no
+    # priceable input at all, so the unpriced case went from a rarity to a routine state.
+    pool.loc[pool["_vor"].isna(), "replacement_basis"] = None
     pool["bpa"] = _scale_vor_to_bpa(pool["_vor"])
 
     if use_upside:
@@ -2112,7 +2283,7 @@ def compute_draft_board(
             "projected_points", "horizon_floor", "horizon_sensitivity", "waiting_cost",
             "replacement_basis", "horizon_basis", "identity_basis", "fills_required_slot",
         ]], "projected_points", "horizon_floor", "horizon_sensitivity", "waiting_cost",
-            "bpa", "universal_value", "final_score")
+            "bpa", "universal_value", "final_score", "confidence", "replacement_basis")
 
     my_filled = _team_starters_filled(picks, players_db, my_roster_id)
     slot_counts = starter_slot_counts(roster_positions)
@@ -2274,7 +2445,7 @@ def compute_draft_board(
         "horizon_floor", "horizon_sensitivity", "waiting_cost", "replacement_basis",
         "horizon_basis", "identity_basis", "fills_required_slot",
     ]], "projected_points", "horizon_floor", "horizon_sensitivity", "waiting_cost",
-        "bpa", "universal_value", "final_score")
+        "bpa", "universal_value", "final_score", "confidence", "replacement_basis")
 
 
 # -- in-app Mock Draft sandbox (see app.py's Draft Room view) -------------------------------

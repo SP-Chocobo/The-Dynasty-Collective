@@ -214,10 +214,27 @@ class AbsenceIsNotAValueTests(_BoardFixture):
         self.assertTrue(_is_absent(unpriced[0].get("bpa")))
         self.assertNotEqual(priced_zero[0].get("bpa"), unpriced[0].get("bpa"))
 
-    def test_the_opening_board_prices_everything_which_is_why_the_late_one_exists(self):
-        # Pins the reason the second fixture board is here, so a future change that starts
-        # leaving opening-board rows unpriced is noticed rather than silently absorbed.
-        self.assertFalse([r for r in self.board if _is_absent(r.get("bpa"))])
+    def test_the_opening_board_prices_everything_it_can_which_is_why_the_late_one_exists(self):
+        # RESTATED at #193, by this test doing its job. It was written to notice a change that
+        # started leaving opening-board rows unpriced "rather than silently absorbing it", and
+        # that change has now happened deliberately: admission no longer requires that anyone
+        # published a number, so the opening board legitimately carries rows with no price.
+        #
+        # The property worth keeping is the one the late-board fixture still exists to contrast
+        # with: on the OPENING board, absence only ever means "nobody has priced this player",
+        # never "the draft consumed this position's replacement level". So every unpriced
+        # opening row must say so with the no-input label; a row unpriced for any OTHER reason
+        # is the regression this test was built to catch, and still fails here.
+        unpriced = [r for r in self.board if _is_absent(r.get("bpa"))]
+        self.assertEqual(
+            [(r["position"], r["name"]) for r in unpriced
+             if r.get("bpa_source") != dr.NO_PRICEABLE_INPUT],
+            [], "an opening-board row went unpriced for a reason other than having no input")
+        # And the priced field is still the overwhelming majority -- if that inverts, the
+        # admission rule has stopped selecting for relevance and this should be looked at.
+        priced = [r for r in self.board if not _is_absent(r.get("bpa"))]
+        self.assertGreater(len(priced), len(unpriced),
+                           "most of the opening board is now unpriced; admission has drifted")
 
 
 class HorizonIsGatedOnRealDataTests(_BoardFixture):

@@ -426,3 +426,44 @@ whether the findings are still ARCHITECTURAL (the design is wrong) or now RESIDU
 right, a specific boundary is not yet proven). Watch the kind, not the number. A register that
 stops growing has usually stopped looking.
 
+
+## A gate in front of the evidence
+
+#180 and #193 are the same defect at two different layers, and the shape is worth naming because
+it does not look like a bug in review. Both times, a cheap early test stood in front of the
+expensive real one and answered the question on the strength of the weaker fact:
+
+  #180  Offence never routed through the league-scored path, because a `no vendor projection`
+        precondition was checked before the league's own scoring was consulted. The better
+        number existed and was never reached.
+  #193  A player was removed from the universe if a paid vendor had not matched him, and
+        removed again if Sleeper's `status` field said he was not currently playing -- both
+        decided before anything that actually knew whether he was a real, relevant footballer
+        had been read. Measured: 451-466 players with a real league-scored projection dropped
+        by the first, 304 players carrying a positive signal dropped by the second.
+
+The tell is structural, not numerical. A gate returns EARLY and returns a DECISION, using an
+input that is cheaper, older, or narrower than the inputs below it. It reads as defensive
+("obviously we skip retired players"), and its cost is invisible because the rows it removes
+never appear anywhere to be counted. Nobody files a bug about a player who is not on a list.
+
+Two rules follow.
+
+**Read the evidence, then decide.** If several independent facts bear on a question, none of them
+gets to short-circuit the others by being listed first. Express the decision as a union or a
+ranking over all of them, so that adding a new source of evidence widens the answer instead of
+being pre-empted by a check written before that source existed. This is what makes an engine that
+"cleanly integrates updating information" actually do so: new information has to be able to REACH
+the decision.
+
+**When two facts from one feed disagree, freshness decides, and the ordering is written down.**
+Sleeper reporting a man as Inactive while also projecting him 32.92 points for the season ahead is
+a feed contradicting itself. There is no neutral answer, so pick one on a stated principle -- the
+more recent and more specific statement wins -- and record WHY in the code, because the next
+reader will otherwise assume the ordering was arbitrary and reverse it.
+
+**Corollary: admission and pricing are different questions.** Whether a row should exist is not
+the same as whether anyone has put a number on it. Collapsing them lets a pricing source silently
+define the boundary of the universe. Keep them separate, admit on evidence of existence, and let
+the absence contract carry the rows nobody has priced yet -- None, never 0.0, ordered last, and
+labelled for what they are.

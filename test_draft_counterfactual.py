@@ -88,24 +88,39 @@ class CompareTrajectoryTests(unittest.TestCase):
         ]
         self.assertEqual(bpa_row(board)["player_id"], "1")
 
-    def test_an_unpriced_row_kills_this_harness_before_any_comparison_is_made(self):
-        """#61 invariant 15, still open -- pinned here as a REACHABILITY FACT, not as approval.
+    def test_an_unpriced_row_is_excluded_from_bpa_rather_than_killing_the_harness(self):
+        """#61 invariant 15, REPAIRED at #193 -- and this test inverted, as its own previous
+        version required.
 
-        bpa_row is max(board, key=universal_value), and an unpriced row's universal_value is
-        None, so any board carrying one raises TypeError. compare_trajectory calls bpa_row
-        before it reads any per-candidate signal, which is what makes the known limit recorded
-        on _near_tie a limit rather than a live defect: this harness cannot reach a board on
-        which an unknown near-tie exists. Repair invariant 15 first, then _near_tie; that order
-        is the point of this test, and it fails loudly if the repair lands the other way round.
-        """
+        It used to assert the opposite: that bpa_row raised TypeError on any board carrying an
+        unpriced row, pinned as a REACHABILITY FACT rather than as approval. That fact was what
+        made the known limit recorded on _near_tie a limit rather than a live defect -- the
+        harness could not reach a board on which an unknown near-tie existed, so repairing the
+        false negative first would have been building for an unreachable state. The stated
+        order was: invariant 15, then _near_tie.
+
+        #193 forced invariant 15 to the front of that queue. Admission stopped requiring that
+        someone had published a number, so unpriced rows became routine rather than a
+        late-round curiosity, and the crash stopped being a theoretical guard and started
+        killing this harness on ordinary boards. bpa_row now EXCLUDES unpriced rows from the
+        argmax -- an unpriced player is not the best player available in any sense -- and
+        returns None when nothing on the board is priced, which compare_trajectory treats as a
+        node with no ruler and skips.
+
+        The second half of the order is now UNBLOCKED and NOT DONE: see _near_tie's docstring,
+        which no longer has an unreachability argument behind it."""
         mixed = [
             {"player_id": "1", "name": "Priced", "universal_value": 99.0, "final_score": 99.0, "position": "RB"},
             {"player_id": "2", "name": "Unpriced", "universal_value": None, "final_score": None, "position": "K"},
         ]
-        with self.assertRaises(TypeError):
-            bpa_row(mixed)
-        with self.assertRaises(TypeError):
-            bpa_row([dict(mixed[1], player_id="3"), mixed[1]])
+        self.assertEqual(bpa_row(mixed)["player_id"], "1")
+        # ...and the unpriced row does not win merely by being the only survivor of a filter.
+        self.assertIsNone(bpa_row([dict(mixed[1], player_id="3"), mixed[1]]))
+        # A higher-valued priced row still wins on the merits, so the filter has not become the
+        # whole decision.
+        self.assertEqual(
+            bpa_row(mixed + [dict(mixed[0], player_id="4", universal_value=120.0)])["player_id"],
+            "4")
 
 
     def test_determinism_repeated_comparison_is_identical(self):

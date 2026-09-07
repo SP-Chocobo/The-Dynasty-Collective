@@ -186,8 +186,17 @@ class ExhaustedDemandKeepsItsPrice(unittest.TestCase):
 
     def test_every_row_records_which_anchor_its_price_rests_on(self):
         self.assertTrue(self.board)
-        bases = {r.get("replacement_basis") for r in self.board}
+        # replacement_basis explains a PRICE, so it is paired with one: a row that got a price
+        # names the anchor it rests on, and a row that got none carries None rather than a
+        # basis for a number that was never produced (#193).
+        priced = [r for r in self.board if r.get("final_score") is not None]
+        self.assertTrue(priced, "vacuous: no priced row on this board")
+        bases = {r.get("replacement_basis") for r in priced}
         self.assertTrue(bases <= {"live_starter_demand", "predraft_anchor"}, bases)
+        self.assertEqual(
+            [r["name"] for r in self.board
+             if r.get("final_score") is None and r.get("replacement_basis") is not None],
+            [], "an unpriced row named an anchor for a price it does not have")
         self.assertIn("predraft_anchor", bases,
                       "vacuous: no row in this state rests on the pre-draft anchor")
 
@@ -314,10 +323,18 @@ class TradeValueBranchIsAnchoredToo(unittest.TestCase):
                            "exercise the demand-exhausted case on the trade_value branch")
 
     def test_idp_keeps_its_price_once_league_demand_is_exhausted(self):
-        idp = [r for r in self.board if r["position"] in ("LB", "DL", "DB")]
-        self.assertGreater(len(idp), 0, "no IDP rows on the board at all")
+        # Scoped to rows the trade_value branch can actually price. Since the admission
+        # widening (#193) the IDP field also carries rows admitted on evidence the player is
+        # real (rostered, or a rookie) with no number of any kind attached; those were never
+        # priced, so "kept its price" is not a claim that can be made about them. The subject
+        # here is a row that HAD a price surviving demand exhaustion.
+        idp = [r for r in self.board
+               if r["position"] in ("LB", "DL", "DB")
+               and r.get("bpa_source") == "position_relative_trade_value_vor"]
+        self.assertGreater(len(idp), 0, "no priceable IDP rows on the board at all")
         unpriced = [r for r in idp if r["final_score"] is None]
-        self.assertEqual(unpriced, [], "IDP rows fell off the board despite the anchor")
+        self.assertEqual([r["name"] for r in unpriced], [],
+                         "IDP rows fell off the board despite the anchor")
         anchored = [r for r in idp if r.get("replacement_basis") == "predraft_anchor"]
         self.assertGreater(len(anchored), 0,
                            "no IDP row rests on the pre-draft anchor, so demand has not "

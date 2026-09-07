@@ -26,6 +26,23 @@ import lineup_optimizer as lo
 import pick_synthesis as ps
 
 
+def _priced(board):
+    """The rows this board actually put a price on.
+
+    Since the admission widening (#193), a player can reach the board on evidence that he is a
+    real, currently relevant footballer -- a rookie, or a man on an NFL roster -- while nobody
+    has yet published a number for him. Those rows carry universal_value None by contract and
+    are ordered last; they are not a defect and must not be silently dropped from the board.
+
+    But a test about ORDER, about a VALUE GAP, or about which row out-ranks which is a test
+    about the priced field. An unpriced row has no position on that number line at all, so
+    including it does not make such a test stricter -- it makes it crash on None, or compare
+    against a value that was never produced. Every use of this helper is a test whose subject
+    is the priced ordering; a test whose subject is admission or absence must NOT use it.
+    """
+    return [r for r in board if r.get("universal_value") is not None]
+
+
 def _build_pool_players_db(positions=("QB", "RB", "WR", "TE", "DL", "LB", "DB")):
     """Every real baseline player, reconstructed into a Sleeper-shaped players_db the same
     way Draft Sharks itself abbreviates names (first-initial + full last name) -- see
@@ -655,14 +672,14 @@ class RookieDraftRosterContextTieredGateTests(unittest.TestCase):
             self.merger, self.players_db, history, my_roster_id="test", league=self.league, mode="balanced",
             pool_scope="rookies_only", demand_picks=[],
         )
-        return sorted(board, key=lambda r: -r["final_score"])
+        return sorted(_priced(board), key=lambda r: -r["final_score"])
 
     def _baseline_board(self) -> list[dict]:
         return sorted(
-            dr.compute_draft_board(
+            _priced(dr.compute_draft_board(
                 self.merger, self.players_db, [], my_roster_id="test", league=self.league, mode="balanced",
                 pool_scope="rookies_only", demand_picks=[],
-            ),
+            )),
             key=lambda r: -r["universal_value"],
         )
 
@@ -1002,7 +1019,7 @@ class RealBaselineIDPBugRegressionTests(unittest.TestCase):
         )
         top_by_position = {}
         for pos in ("DL", "LB", "DB"):
-            rows = [r for r in board if r["position"] == pos]
+            rows = [r for r in _priced(board) if r["position"] == pos]
             if rows:
                 top_by_position[pos] = max(r["bpa"] for r in rows)
         self.assertGreaterEqual(len(top_by_position), 2, "need at least two IDP positions represented")
@@ -1054,7 +1071,16 @@ class TradeValueAnchorBranchTests(unittest.TestCase):
 
     @staticmethod
     def _points(board):
-        return [r for r in board if r["bpa_source"] != "position_relative_trade_value_vor"]
+        """Rows anchored on POINTS. Deliberately not "everything that is not the trade_value
+        branch": since #193 bpa_source is a three-way space -- a points source, the trade_value
+        branch, or NO_PRICEABLE_INPUT for a row admitted on evidence the player is real with no
+        number attached. Defining this arm by negation would silently sweep that third state in
+        and make the partition assertion below false for the wrong reason."""
+        return [r for r in board if str(r["bpa_source"]).startswith("points_vor")]
+
+    @staticmethod
+    def _unpriced(board):
+        return [r for r in board if r["bpa_source"] == dr.NO_PRICEABLE_INPUT]
 
     def test_the_trade_value_branch_is_taken_and_labels_itself(self):
         # Non-vacuity for every other test in this class: if the real baseline ever gains IDP
@@ -1068,6 +1094,13 @@ class TradeValueAnchorBranchTests(unittest.TestCase):
         self.assertTrue(all(r["projected_points"] is None for r in rows))
         # And the converse, so the label is a partition rather than a one-way marker.
         self.assertTrue(all(r["projected_points"] is not None for r in self._points(self.light_board)))
+        # The third arm, and the proof the partition is exhaustive: every row lands in exactly
+        # one of the three, and the no-number arm carries no points either.
+        self.assertEqual(
+            len(self._branch(self.light_board)) + len(self._points(self.light_board))
+            + len(self._unpriced(self.light_board)),
+            len(self.light_board), "bpa_source is not a partition of the board")
+        self.assertTrue(all(r["projected_points"] is None for r in self._unpriced(self.light_board)))
 
     def test_bpa_on_the_branch_is_trade_value_minus_one_level_per_position(self):
         """The arithmetic itself, which nothing else in the suite reads. bpa is unscaled VOR
@@ -1180,26 +1213,44 @@ class TradeValueAnchorBranchTests(unittest.TestCase):
                 f"{taken} taken: the trade_value branch left rows unpriced",
             )
 
-    def test_a_player_with_neither_number_is_excluded_rather_than_priced_at_zero(self):
-        """Where the absence contract actually lives on this path. Most of the real IDP field
-        has no trade_value either -- 339 rows across the three positions -- and build_available_
-        pool's EXCLUDE arm drops them instead of handing the branch a row it would have to
-        invent a number for. Matched on (name, position) rather than name alone: the baseline
-        abbreviates to a first initial, so a bare-name check reports false hits across
-        positions (13 of them, all spurious, on this exact fixture)."""
+    def test_a_player_with_neither_number_is_admitted_unpriced_rather_than_priced_at_zero(self):
+        """Where the absence contract actually lives on this path -- RESTATED for #193.
+
+        This test used to assert EXCLUSION: a player with no number of any kind never reached
+        the board at all. That was the old admission gate's guarantee and the owner has ruled it
+        out, for a reason this test's own population illustrates -- "no vendor number" was
+        standing in for "not a real player", and it is not the same claim. Most of the real IDP
+        field has no trade_value, and a rostered linebacker is a real footballer whether or not
+        a paid export got round to him.
+
+        So the contract moves from EXCLUDE to PROPAGATE-AND-ORDER-LAST, which is the arm the
+        absence contract prefers everywhere else in this engine. The thing that must never
+        happen is unchanged and is what this still pins: the branch is never handed a row it
+        would have to invent a number for. Such a row is admitted, priced at None, ordered last,
+        and labelled NO_PRICEABLE_INPUT rather than borrowing the trade_value branch's name.
+
+        Matched on (name, position) rather than name alone: the baseline abbreviates to a first
+        initial, so a bare-name check reports false hits across positions (13 of them, all
+        spurious, on this exact fixture)."""
         proj = self.merger.projections
-        on_board = {(r["name"].lower(), r["position"]) for r in self.light_board}
+        by_key = {(r["name"].lower(), r["position"]): r for r in self.light_board}
         unnumbered = 0
+        reached = 0
         for position in ("DL", "LB", "DB"):
             sub = proj[proj["position"] == position]
             neither = sub[sub["trade_value"].isna() & sub["projection"].isna()]
             unnumbered += len(neither)
             for name in neither["norm_name"]:
-                self.assertNotIn(
-                    (name, position), on_board,
-                    f"{name} ({position}) has no number of any kind and still reached the board",
-                )
-        self.assertGreater(unnumbered, 100, "no unnumbered IDP rows left to exclude")
+                row = by_key.get((name, position))
+                if row is None:
+                    continue    # not every baseline name resolves back through the fixture
+                reached += 1
+                self.assertIsNone(row["bpa"], f"{name} ({position}) was priced from nothing")
+                self.assertIsNone(row["universal_value"], f"{name} ({position})")
+                self.assertIsNone(row["confidence"], f"{name} ({position})")
+                self.assertEqual(row["bpa_source"], dr.NO_PRICEABLE_INPUT, f"{name} ({position})")
+        self.assertGreater(unnumbered, 100, "no unnumbered IDP rows in the baseline at all")
+        self.assertGreater(reached, 0, "vacuous: no unnumbered row reached the board to check")
 
 class InvariantTests(unittest.TestCase):
     """The hard invariants named in draft_room.py's own module docstring, enforced as real
@@ -1213,7 +1264,8 @@ class InvariantTests(unittest.TestCase):
         board = dr.compute_draft_board(
             self.merger, self.players_db, [], my_roster_id="99", league=LIGHT_IDP_LEAGUE, mode="balanced",
         )
-        top, bottom = board[0], board[-1]
+        priced = _priced(board)
+        top, bottom = priced[0], priced[-1]
         self.assertGreater(top["universal_value"] - bottom["universal_value"], dr.NEED_BONUS_MAX,
                             "fixture's own value spread is too small to exercise this invariant")
         # Even at max possible need_bonus, the universal-value gap must still dominate.
@@ -1783,7 +1835,7 @@ class EligibilityBonusWiringTests(unittest.TestCase):
         merger, players_db = _build_pool_players_db()  # full pool -- needs real value spread
         league = LIGHT_IDP_LEAGUE
         base = dr.compute_draft_board(merger, players_db, [], my_roster_id="99", league=league, mode="balanced")
-        by_uv = sorted(base, key=lambda r: -r["universal_value"])
+        by_uv = sorted(_priced(base), key=lambda r: -r["universal_value"])
 
         def trade_value_of(row):
             return merger.merge_player(row["name"], position=row["position"], team=row.get("team")).get("trade_value")
@@ -2264,10 +2316,19 @@ class WhereTheAbsenceContractIsReachableTests(unittest.TestCase):
         omits is anchorable and nothing can go unpriced."""
         board = self._board(LIGHT_IDP_LEAGUE)
         self.assertGreater(len(board), 50, "vacuous: no real board to check")
-        unpriced = [r for r in board if r.get("universal_value") is None]
+        # Scoped to rows that HAD something to price. Since #193 there is a second, entirely
+        # independent route to unpriced -- a player admitted on evidence he is real, with no
+        # number attached -- and it has nothing to do with startable floors. Counting those
+        # here would not make the check stricter; it would make it a different check, and the
+        # class's subject is what the FLOOR does. The no-number arm is pinned separately by
+        # TradeValueAnchorBranchTests, and is excluded by its own label rather than by a
+        # value test, so a floor-induced absence can never hide inside this filter.
+        priceable = [r for r in board if r["bpa_source"] != dr.NO_PRICEABLE_INPUT]
+        self.assertGreater(len(priceable), 50, "vacuous: nothing priceable on this board")
+        unpriced = [r for r in priceable if r.get("universal_value") is None]
         self.assertEqual(
             [(r["position"], r["name"]) for r in unpriced[:5]], [],
-            f"{len(unpriced)} unpriced row(s) in a league with no startable floor",
+            f"{len(unpriced)} priceable row(s) unpriced in a league with no startable floor",
         )
 
     def test_superflex_qb_goes_unpriced_only_once_none_clears_the_floor(self):
@@ -2282,13 +2343,18 @@ class WhereTheAbsenceContractIsReachableTests(unittest.TestCase):
                      key=lambda r: r.get("projected_points") or -1.0, reverse=True)
         clearing = [r for r in qbs if (r.get("projected_points") or -1.0) >= floor]
         self.assertGreater(len(clearing), 1, "vacuous: fewer than two QBs clear the floor")
-        self.assertEqual([r for r in opening if r.get("universal_value") is None], [],
-                         "the opening board should price every row")
+        # Priceable rows only -- see the sibling test above for why the no-number arm (#193)
+        # is a different question than the startable floor's.
+        self.assertEqual([r["name"] for r in opening
+                          if r.get("universal_value") is None
+                          and r["bpa_source"] != dr.NO_PRICEABLE_INPUT], [],
+                         "the opening board should price every priceable row")
 
         def _drain(n):
             picks = [{"player_id": str(r["player_id"]), "roster_id": "1"} for r in qbs[:n]]
             return [r for r in self._board(SUPERFLEX_LEAGUE, picks)
-                    if r.get("universal_value") is None]
+                    if r.get("universal_value") is None
+                    and r["bpa_source"] != dr.NO_PRICEABLE_INPUT]
 
         one_left = _drain(len(clearing) - 1)
         none_left = _drain(len(clearing))

@@ -60,7 +60,13 @@ class InvariantTests(unittest.TestCase):
         # decision_path_flags' own docstring already claims this is "structurally impossible"
         # (need_bonus/eligibility_bonus both non-negative by construction) -- proven here
         # against the real board rather than trusted from the comment alone.
-        for row in self.board:
+        # Priced rows only. Since #193 a board can carry rows admitted on evidence the
+        # player is real (rostered, or a rookie) with no number attached; those hold None
+        # by contract and are ordered last. This invariant is about the priced scale, and
+        # an unpriced row has no position on it.
+        priced = [r for r in self.board if r["universal_value"] is not None]
+        self.assertTrue(priced, "vacuous: no priced row on this board")
+        for row in priced:
             self.assertGreaterEqual(
                 row["final_score"], row["universal_value"],
                 f"{row['name']}: TAV {row['final_score']} fell below UV {row['universal_value']}",
@@ -153,6 +159,9 @@ class InvariantTests(unittest.TestCase):
                 continue
             after = after_by_id.get(row["player_id"])
             if after is None:
+                continue
+            # A ripple is a CHANGE in a price, so it needs a price on both sides (#193).
+            if row["universal_value"] is None or after["universal_value"] is None:
                 continue
             ripple = abs(row["universal_value"] - after["universal_value"])
             max_ripple = max(max_ripple, ripple)

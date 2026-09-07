@@ -314,12 +314,20 @@ class RealBaselineTests(unittest.TestCase):
         # team_acquisition_value is its three documented terms and nothing else. If
         # waiting_cost ever starts moving a decision, it will be because someone wired it in
         # deliberately, and this test will say so.
-        for row in self.board:
+        # The identity is between a price and its own terms, so it is stated over rows that
+        # HAVE a price. An unpriced row carries final_score None and universal_value None (#193)
+        # -- checked separately below so the absence is asserted rather than skipped.
+        priced = [r for r in self.board if r["universal_value"] is not None]
+        self.assertTrue(priced, "vacuous: no priced row on this board")
+        for row in priced:
             self.assertAlmostEqual(
                 row["final_score"],
                 round(row["universal_value"] + row["need_bonus"] + row["eligibility_bonus"], 2),
                 places=2,
             )
+        for row in self.board:
+            if row["universal_value"] is None:
+                self.assertIsNone(row["final_score"], row["name"])
 
     def test_the_draw_is_concentrated_at_the_top_of_a_flat_position_and_vanishes_below_it(self):
         # Being per-CANDIDATE rather than per-position, waiting_cost says something a

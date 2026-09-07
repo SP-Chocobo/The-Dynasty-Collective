@@ -167,19 +167,53 @@ class PoolAdmissionTests(unittest.TestCase):
         # real number" until league-scored points began arriving from a source that
         # publishes no trade values at all.
         pool = self._pool(KDST_LEAGUE)
-        no_tv = pool[pool["trade_value"].isna()]
+        # Scoped to rows that HAVE a projection, because the projection-only path is what this
+        # test is about. Since #193 the pool also carries rows admitted on evidence the player
+        # is real rather than on any number at all, so "no trade value" alone no longer implies
+        # "therefore projection-anchored" -- it splits into two populations and this is the one
+        # with a number. The other is covered by test_a_row_with_no_number_is_admitted_and_says_so.
+        no_tv = pool[pool["trade_value"].isna() & pool["projection"].notna()]
         self.assertGreater(len(no_tv), 0, "nobody is riding the projection-only path")
         self.assertTrue(no_tv["projection"].notna().all(),
                         "a projection-only admission must still carry a real projection")
+
+    def test_a_row_with_no_number_is_admitted_and_says_so(self):
+        # The other half of the split above, and the #193 contract stated positively: a player
+        # can now reach the pool on evidence he is a real, currently relevant footballer with
+        # nobody having published a number for him. That row is legitimate, carries None rather
+        # than a fabricated 0.0, and the board labels it for what it is instead of borrowing
+        # the trade_value branch's name.
+        pool = self._pool(KDST_LEAGUE)
+        unnumbered = pool[pool["trade_value"].isna() & pool["projection"].isna()
+                          & pool["sleeper_points"].isna()]
+        self.assertGreater(len(unnumbered), 0,
+                           "vacuous: this fixture admits nobody on the no-number path")
+        board = dr.compute_draft_board(
+            self.merger, self.db, [], my_roster_id="1", league=KDST_LEAGUE, mode="balanced")
+        ids = set(unnumbered["player_id"].astype(str))
+        rows = [r for r in board if str(r["player_id"]) in ids]
+        self.assertTrue(rows, "the no-number admissions never reached the board")
+        for r in rows:
+            self.assertIsNone(r["bpa"], r["name"])
+            self.assertIsNone(r["universal_value"], r["name"])
+            self.assertIsNone(r["confidence"], r["name"])
+            self.assertIsNone(r["replacement_basis"], r["name"])
+            self.assertEqual(r["bpa_source"], dr.NO_PRICEABLE_INPUT, r["name"])
 
     def test_widening_the_gate_adds_nobody_at_an_offensive_position(self):
         # The blast-radius guarantee that made this change safe to make at all: every
         # offensive player the ranking sources project also carries a trade value, so the
         # old and new rules are still exactly equivalent there. If this ever fails, the
         # change has started moving players it was measured not to touch.
+        # Restated for #193, which deliberately DID widen admission at every position. What
+        # survives -- and is the property that actually made the K/DEF change safe -- is the
+        # narrower one it was really asserting: the vendor still prices every offensive player
+        # it projects, so no row gets a PROJECTION without also getting a trade value. A row
+        # with neither is the widening's own population and is not a counterexample to that.
         pool = self._pool(KDST_LEAGUE)
         for pos in ("QB", "RB", "WR", "TE"):
-            rows = pool[pool["position"] == pos]
+            rows = pool[(pool["position"] == pos) & pool["projection"].notna()]
+            self.assertTrue(len(rows), f"no projected {pos} in the pool at all")
             self.assertTrue(rows["trade_value"].notna().all(),
                             f"{pos} gained a projection-only admission; blast radius has widened")
 
@@ -226,7 +260,10 @@ class ProjectionOnlyAdmissionScoringTests(unittest.TestCase):
         from player_universe import league_usable_positions
         pool = dr.build_available_pool(
             self.merger, self.db, set(), league_usable_positions(KDST_LEAGUE["roster_positions"]))
-        no_tv = set(pool[pool["trade_value"].isna()]["player_id"].astype(str))
+        # Projection-only, not "no trade value": since #193 the latter also catches rows with
+        # no number at all, whose final_score is None and which have no premium to decline.
+        no_tv = set(pool[pool["trade_value"].isna() & pool["projection"].notna()]
+                    ["player_id"].astype(str))
         self.assertTrue(no_tv, "no projection-only players to check")
         checked = [r for r in self.board if str(r["player_id"]) in no_tv]
         self.assertTrue(checked)
@@ -565,7 +602,9 @@ class SeededProjectionProvenanceTests(unittest.TestCase):
         # The fix touches ONLY rows sourced from the two seeded files -- every offensive
         # position must still claim genuine Draft Sharks provenance, unchanged.
         for r in self.board:
-            if r["position"] not in ("K", "DEF"):
+            # An unpriced row has no provenance to be unaffected -- nothing sourced it. The
+            # claim here is about rows the vendor actually priced (#193).
+            if r["position"] not in ("K", "DEF") and r["bpa"] is not None:
                 self.assertEqual(r["bpa_source"], "points_vor_draftsharks", r["name"])
 
     def test_seeded_confidence_sits_strictly_between_the_two_it_borders(self):

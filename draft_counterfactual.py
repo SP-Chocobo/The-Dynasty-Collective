@@ -86,12 +86,24 @@ def _full_board(merger: DataMerger, players_db: dict, picks_so_far: list[dict], 
     return dr.compute_draft_board(merger, players_db, picks_so_far, my_roster_id=roster_id, league=league, mode=mode, pool_scope=pool_scope)
 
 
-def bpa_row(board: list[dict]) -> dict:
-    """Pure argmax(universal_value) over a full board -- extracted so this specific property
-    (BPA is a UV-argmax, never a TAV-argmax) is directly unit-testable against a small
-    synthetic board, not dependent on a real draft happening to produce a case where they
-    diverge."""
-    return max(board, key=lambda r: r["universal_value"])
+def bpa_row(board: list[dict]) -> Optional[dict]:
+    """Pure argmax(universal_value) over the PRICED rows of a full board -- extracted so this
+    specific property (BPA is a UV-argmax, never a TAV-argmax) is directly unit-testable
+    against a small synthetic board, not dependent on a real draft happening to produce a case
+    where they diverge.
+
+    None when no row on the board carries a price. That is a real state since #193: admission
+    stopped requiring that someone had published a number, so a board can legitimately contain
+    rows whose universal_value is None. Those rows are not candidates for "best player
+    available" -- there is no sense in which an unpriced player is the best one -- and the
+    unguarded argmax this replaced did not merely rank them wrongly, it raised TypeError on the
+    first None it touched. Filtering rather than defaulting is the same rule the rest of this
+    engine follows: absence is excluded from a comparison, never coerced to a number that would
+    place it on the scale."""
+    priced = [r for r in board if r.get("universal_value") is not None]
+    if not priced:
+        return None
+    return max(priced, key=lambda r: r["universal_value"])
 
 
 def _adp_pick(board: list[dict], merger: DataMerger, is_superflex: bool, current_overall_pick: int) -> tuple[Optional[dict], Optional[str]]:
@@ -138,6 +150,14 @@ def compare_trajectory(
             continue
 
         bpa_row_ = bpa_row(board)
+        if bpa_row_ is None:
+            # No priced row on this board, so there is no best-player-available to compare the
+            # engine against. Skipped exactly like the empty-board case above rather than
+            # compared against a fabricated baseline -- a node with no ruler is not a node the
+            # engine can be scored at.
+            picks_so_far.append({"pick_no": rec.pick_no, "round": rec.round,
+                                 "roster_id": rec.roster_id, "player_id": rec.chosen_player_id})
+            continue
         current_overall_pick = rec.pick_no
         adp_row, adp_reason = _adp_pick(board, merger, is_superflex, current_overall_pick)
 
@@ -182,15 +202,24 @@ def _near_tie(candidates: list[dict], chosen_id: str) -> bool:
     draft_board_ui._forces), the same rendered signal a human looking at the live board would
     see, not a threshold re-derived here.
 
-    KNOWN LIMIT, deliberately not repaired here. near_tie_with_leader is three-state (#61 rule
-    5) and this returns bool, so an unpriced candidate's UNKNOWN would read as False -- the
-    exact false negative rule 5 exists to stop. It is not repaired because it is unreachable,
-    not because it is acceptable: compare_trajectory calls bpa_row() on the full board BEFORE
-    it ever calls this, and bpa_row is max(board, key=universal_value), which raises TypeError
-    on any board carrying an unpriced row (verified directly; that is #61 invariant 15, still
-    open). Every board on which an unknown tie could exist kills this harness upstream of this
-    function. Repairing the false negative first would be building for a state the harness
-    cannot reach -- so the order is invariant 15, then this."""
+    KNOWN LIMIT, NOW REACHABLE AND STILL UNREPAIRED -- read this before trusting the flag.
+    near_tie_with_leader is three-state (#61 rule 5) and this returns bool, so an unpriced
+    candidate's UNKNOWN reads as False: the exact false negative rule 5 exists to stop.
+
+    Until #193 this was unreachable rather than acceptable, and said so: compare_trajectory
+    calls bpa_row() on the full board before it ever calls this, and bpa_row used to raise
+    TypeError on any board carrying an unpriced row (#61 invariant 15), so every board on
+    which an unknown tie could exist killed the harness upstream. The recorded order was
+    invariant 15 first, then this.
+
+    Invariant 15 is now repaired -- bpa_row excludes unpriced rows instead of dying on them --
+    which means THE UNREACHABILITY ARGUMENT IS GONE. Boards carrying unpriced rows now flow
+    all the way through to this function, and a chosen candidate that is itself unpriced will
+    report "not a near tie" when the truthful answer is "unknown". That is the second half of
+    the order, it is now due, and it is deliberately not being done inside the admission
+    change: the fix is to make this three-state and to decide what a comparison against an
+    unknown tie means for deviation_supported, which is a decision about the counterfactual
+    report rather than about who gets into the pool."""
     cand = next((c for c in candidates if c["id"] == chosen_id), None)
     if cand is None:
         return False

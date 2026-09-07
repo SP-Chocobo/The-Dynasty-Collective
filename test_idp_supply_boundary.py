@@ -157,8 +157,18 @@ class IDPSupplyCannotFillTheLeagueTests(unittest.TestCase):
         cls.players_db = _build_pool_players_db(cls.merger)
         cls.board = dr.compute_draft_board(
             cls.merger, cls.players_db, [], my_roster_id="1", league=IDP_LEAGUE, mode="balanced")
+        # PRICED supply, not admitted supply -- the two stopped being the same thing at #193.
+        # A player is now admitted on evidence he is a real, currently relevant footballer (on
+        # an NFL roster, or a rookie) rather than on evidence that someone published a number
+        # for him, so the IDP field carries 415 admitted rows of which 76 can be priced. The
+        # finding this class states has always been about the field the engine can RANK: a row
+        # it cannot price cannot fill a starting slot in any recommendation it makes. Scoping
+        # to priced reproduces every number in this class unchanged (76 total; LB 29, DL 24,
+        # DB 23; offense 264), which is the evidence that the widening moved admission and left
+        # the finding itself exactly where it was.
+        cls.priced = [row for row in cls.board if row["final_score"] is not None]
         cls.supply = collections.Counter(
-            row["position"] for row in cls.board if row["position"] in IDP)
+            row["position"] for row in cls.priced if row["position"] in IDP)
         slots = collections.Counter(p for p in IDP_LEAGUE["roster_positions"] if p != "BN")
         teams = IDP_LEAGUE["total_rosters"]
         cls.demand = {position: slots[position] * teams for position in IDP}
@@ -185,7 +195,7 @@ class IDPSupplyCannotFillTheLeagueTests(unittest.TestCase):
         fact about fantasy football. Same board, same call, same fixture, same league: offense
         clears its own starter demand 2.75x while IDP comes in at 0.90x. The pool is not
         globally thin; it is thin at exactly the position family no committed source projects."""
-        offense_supply = sum(1 for row in self.board if row["position"] in OFFENSE)
+        offense_supply = sum(1 for row in self.priced if row["position"] in OFFENSE)
         slots = collections.Counter(p for p in IDP_LEAGUE["roster_positions"] if p != "BN")
         offense_demand = (sum(slots[p] for p in OFFENSE) + slots["FLEX"]) * IDP_LEAGUE["total_rosters"]
         self.assertEqual((offense_supply, offense_demand), (264, 96))
@@ -199,14 +209,21 @@ class IDPSupplyCannotFillTheLeagueTests(unittest.TestCase):
         confidence is 35.0 against offense's 80.0. Pinned because #51's whole premise was that
         the trade_value branch IS the IDP path, and an untested branch on a hostile domain is
         exactly where a silent change would land."""
-        idp_rows = [row for row in self.board if row["position"] in IDP]
+        idp_rows = [row for row in self.priced if row["position"] in IDP]
         self.assertEqual(len(idp_rows), 76)
         self.assertEqual({row["bpa_source"] for row in idp_rows},
                          {"position_relative_trade_value_vor"})
         self.assertEqual({row["confidence"] for row in idp_rows}, {35.0})
-        self.assertTrue(all(row["final_score"] is not None for row in idp_rows),
-                        "an admitted row must be priced -- admission is 'we have a number'")
-        offense_rows = [row for row in self.board if row["position"] in OFFENSE]
+        # The converse half, restated for the post-#193 contract: admission is no longer "we
+        # have a number", so the invariant is not "every admitted row is priced" but "every row
+        # that is NOT priced says exactly that, and never borrows a pricing branch's label".
+        unpriced_idp = [row for row in self.board
+                        if row["position"] in IDP and row["final_score"] is None]
+        self.assertGreater(len(unpriced_idp), 0,
+                           "vacuous: no unpriced IDP row, so the absence label is untested here")
+        self.assertEqual({row["bpa_source"] for row in unpriced_idp}, {dr.NO_PRICEABLE_INPUT})
+        self.assertEqual({row["confidence"] for row in unpriced_idp}, {None})
+        offense_rows = [row for row in self.priced if row["position"] in OFFENSE]
         self.assertEqual({row["bpa_source"] for row in offense_rows}, {"points_vor_draftsharks"})
         self.assertEqual({row["confidence"] for row in offense_rows}, {80.0})
 

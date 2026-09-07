@@ -291,7 +291,11 @@ class WiredIntoTeamAcquisitionValueTests(unittest.TestCase):
         """The same invariant need_bonus and eligibility_bonus each carry. A contextual term
         that can override a real value gap has stopped being a nudge -- an uncapped
         eligibility_bonus did exactly that once, at 6.8x NEED_BONUS_MAX."""
-        top, bottom = self.board[0], self.board[-1]
+        # Priced rows only: the board's last row is now routinely an unpriced admission (#193),
+        # and "the value spread" is a statement about the priced field.
+        priced = [r for r in self.board if r["universal_value"] is not None]
+        self.assertGreaterEqual(len(priced), 2, "vacuous: fewer than two priced rows")
+        top, bottom = priced[0], priced[-1]
         spread = top["universal_value"] - bottom["universal_value"]
         self.assertGreater(spread, self.dr.DEPTH_EXPOSURE_MAX,
                            "fixture's value spread is too small to exercise this invariant")
