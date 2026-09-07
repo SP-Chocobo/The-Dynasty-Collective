@@ -725,6 +725,16 @@
         "assertNotRegex": 1
       }
     },
+    "test_multi_position_eligibility.py": {
+      "test_methods": 19,
+      "asserts": {
+        "assertEqual": 23,
+        "assertFalse": 3,
+        "assertIsNone": 1,
+        "assertIsNotNone": 2,
+        "assertTrue": 3
+      }
+    },
     "test_option_set_analysis.py": {
       "test_methods": 10,
       "asserts": {

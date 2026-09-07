@@ -768,6 +768,93 @@ def _admits_to_pool(info: dict, sleeper_points, match: dict) -> bool:
     )
 
 
+def _merge_across_eligibility(merger: DataMerger, name: str, eligible: set[str],
+                              primary: Optional[str], team: Optional[str]) -> dict:
+    """Resolve one player against the vendor table at ANY position he can actually be started
+    at, not only the single bucket player_position() picks for grouping (#172).
+
+    WHY THIS IS NOT "TRY UNTIL SOMETHING MATCHES". Every attempt is a full, unweakened
+    merge_player call with every rejection rule live -- the club disagreement, the identity
+    namespace, the offence-position rule (#196). Nothing is loosened. What widens is the
+    QUESTION: for a player Sleeper says is eligible at DB and at WR, "is he the wide receiver
+    in that row?" is a legitimate question about a real man, and asking only about his
+    first-listed bucket answers a narrower one.
+
+    Measured on the committed capture: 178 players in the fantasy universe carry more than one
+    eligible position, 39 of them resolve to a vendor row, and exactly ONE gains a match he did
+    not have -- Travis Hunter (JAX), whose fantasy_positions are ["DB", "WR"]. player_position
+    takes the first, so the engine called him a defensive back and the coarse namespace
+    rejection then correctly refused his wide receiver row: a season projection of 94 and a
+    trade value of 8, discarded, on a two-way player nobody would accept an engine having no
+    number for. The population is one because two-way players are close to nonexistent; the
+    defect is that the engine could not REPRESENT one at all.
+
+    THE PRIMARY IS TRIED FIRST AND WINS TIES, so every single-position player and every
+    multi-position player whose own bucket already resolved is bit-identical to before. Only
+    "the primary missed and another eligible position hit" is new.
+
+    AMBIGUITY DECLINES, and this branch is built despite measuring zero. If two eligible
+    positions resolve to two DIFFERENT canonical rows, at most one of them is this player and
+    nothing here can say which, so the honest answer is no match -- the same rule
+    _drop_contested_identities applies one layer down. Zero occurrences today is a measurement
+    of this capture, not a property of the vendor's export, and a rule that silently took
+    whichever position sorted first would be a coin flip presented as a resolution.
+    """
+    first = merger.merge_player(name, position=primary, team=team)
+    others = sorted(p for p in (eligible or ()) if p and p != primary)
+    if not others:
+        return first
+    found: dict = {}
+    if first.get("matched"):
+        found[first.get("match_canonical_key")] = first
+    for position in others:
+        got = merger.merge_player(name, position=position, team=team)
+        if got.get("matched"):
+            found.setdefault(got.get("match_canonical_key"), got)
+    if len(found) > 1:
+        # Reported as a miss with the count that produced it, so a reader can tell an
+        # ambiguity decline from "nothing in the table looked like him at all".
+        return {"matched": False, "match_path": None,
+                "match_candidates": len(found), "match_verified": False}
+    return next(iter(found.values())) if found else first
+
+
+def _pool_position(primary: Optional[str], eligible: set[str], match: dict) -> Optional[str]:
+    """Which position this player is VALUED at -- which must be the one his number was earned
+    at (#172).
+
+    The bucket is not cosmetic. It selects the replacement level the player's points are
+    measured against, so a projection earned as a wide receiver and compared to a defensive
+    back's replacement is the #166 defect in its purest form: a quantity crossing a layer
+    without the companion that gives it meaning. Travis Hunter is the live case -- a season
+    projection of 94 filed under DB would have made him the best defensive back in football
+    by a distance, off a number that describes a receiver.
+
+    So when the vendor row that priced him names a position he is genuinely eligible at, THAT
+    is the bucket, because the price and the bucket then agree. Otherwise his primary, and if
+    this league cannot start his primary at all, the first eligible slot it can -- sorted, so
+    a player's bucket never depends on dict ordering.
+
+    `eligible` has already been intersected with the league's usable positions by the caller,
+    so every branch below returns something this league can actually start.
+    """
+    # ...and only when that row actually SUPPLIES one. The justification for taking the
+    # vendor's label is that the price and the bucket then agree, so a row with no price has
+    # nothing to make agree, and deferring to it anyway would move a player between positions
+    # on a vendor's labelling preference alone. Measured: without this condition, five IDP
+    # players (Ezeiruaku, Reese, Barnes, Bailey, Chaisson) moved DL -> LB -- the known
+    # DL/LB vocabulary split, changing which replacement level they are measured against, on
+    # the strength of a match that carried no number at all.
+    priced = any(match.get(field) is not None
+                 for field in ("trade_value", "projection", "proj_3yr"))
+    matched = match.get("position") if match.get("matched") and priced else None
+    if matched in eligible:
+        return matched
+    if primary in eligible:
+        return primary
+    return next(iter(sorted(eligible)), None)
+
+
 def build_available_pool(
     merger: DataMerger,
     players_db: dict[str, dict],
@@ -842,9 +929,15 @@ def build_available_pool(
     for player_id, info in players_db.items():
         if player_id in drafted_player_ids:
             continue
-        position = player_position(info)
-        if position not in usable_positions:
+        # ELIGIBILITY, not the single grouping bucket (#172). player_position picks
+        # fantasy_positions[0] for grouping, and filtering on that alone excludes a player
+        # this league can actually start: Travis Hunter's list is ["DB", "WR"], so an
+        # offence-only league dropped a wide receiver for being a defensive back. Measured on
+        # the capture: 6 players in an offence-only league, 0 in a full IDP one.
+        eligible = player_eligible_positions(info) & usable_positions
+        if not eligible:
             continue
+        primary = player_position(info)
         name = player_name(info, player_id)
         if pool_scope != "all":
             is_rookie = rookie_by_key.get(name_key(normalize_name(name)), False)
@@ -875,10 +968,11 @@ def build_available_pool(
         # NO_NFL_TEAM, not None, when Sleeper reports no club. The merger distinguishes "on no
         # roster" from "unspecified" and only the first is evidence of a different person; a
         # pool row always knows which it has, so it always says (#196).
-        match = merger.merge_player(name, position=position,
-                                    team=info.get("team") or NO_NFL_TEAM)
+        match = _merge_across_eligibility(merger, name, eligible, primary,
+                                          info.get("team") or NO_NFL_TEAM)
         if not _admits_to_pool(info, sleeper_points, match):
             continue
+        position = _pool_position(primary, eligible, match)
         rows.append({
             "player_id": player_id,
             "name": name,
