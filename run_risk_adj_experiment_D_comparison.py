@@ -42,6 +42,17 @@ DYNASTY_LEAGUE = {
     "total_rosters": 12, "settings": {"type": 2},
 }
 STATUSES = ("Questionable", "Doubtful", "Out", "IR")
+
+#: The RISK_ADJ table AS IT STOOD WHEN THIS EXPERIMENT WAS RUN, pinned locally rather than read
+#: live from draft_room (#191). A script that reproduces a past measurement must not silently
+#: become a different measurement when production changes: "Questionable" was removed from
+#: RISK_ADJ by owner ruling after these results were recorded, and reading the live table would
+#: either crash on the missing key (which is how this was found) or, worse, quietly re-run the
+#: experiment over three statuses and report it under the same name as the four-status one.
+#: The recorded results describe THESE magnitudes. See ENGINEERING_DOCTRINE and the skill note:
+#: never compare a fresh run against a baseline built by different code.
+RISK_ADJ_AS_MEASURED = {"IR": -18.0, "Out": -10.0, "Doubtful": -5.0, "Questionable": -1.5}
+
 D_MIN_SCALE = 0.3
 # Experiment A's own scale, hardcoded here since D superseded it in draft_room.py -- this
 # script's whole point is comparing against A's historical behavior, not re-deriving it.
@@ -92,7 +103,7 @@ def main() -> None:
     }
 
     for status in STATUSES:
-        flat_penalty = dr.RISK_ADJ[status]
+        flat_penalty = RISK_ADJ_AS_MEASURED[status]
         a_penalty = flat_penalty * EXPERIMENT_A_SCALE
         crossed = {"flat": 0, "A": 0, "D": 0}
         for pid, row in healthy_board.items():
@@ -121,9 +132,9 @@ def main() -> None:
             if abs(a["time_horizon_adj"] - b["time_horizon_adj"]) < TH_GAP_MIN:
                 continue
             forward, declining = (a, b) if a["time_horizon_adj"] > b["time_horizon_adj"] else (b, a)
-            flat_p, a_p = dr.RISK_ADJ["IR"], dr.RISK_ADJ["IR"] * EXPERIMENT_A_SCALE
-            forward_d = dr.RISK_ADJ["IR"] * _d_scale(forward["time_horizon_adj"])
-            declining_d = dr.RISK_ADJ["IR"] * _d_scale(declining["time_horizon_adj"])
+            flat_p, a_p = RISK_ADJ_AS_MEASURED["IR"], RISK_ADJ_AS_MEASURED["IR"] * EXPERIMENT_A_SCALE
+            forward_d = RISK_ADJ_AS_MEASURED["IR"] * _d_scale(forward["time_horizon_adj"])
+            declining_d = RISK_ADJ_AS_MEASURED["IR"] * _d_scale(declining["time_horizon_adj"])
             matched_pairs.append({
                 "forward_player": forward["name"], "forward_time_horizon_adj": forward["time_horizon_adj"],
                 "forward_healthy_uv": forward["universal_value"],

@@ -50,72 +50,87 @@ LEAGUE = {"roster_positions": ["QB","RB","RB","WR","WR","TE","FLEX","FLEX","BN",
           "total_rosters": 12, "settings": {"type": 2}}
 ME = "1"
 
-m = dm.DataMerger(); proj, db, pid = m.projections, {}, 0
-for pos in OFFENSE_POSITIONS:
-    for _, r in proj[proj["position"] == pos].sort_values("trade_value", ascending=False).iterrows():
-        pid += 1; parts = str(r["norm_name"]).split()
-        db[str(pid)] = {"first_name": parts[0].upper(), "last_name": " ".join(parts[1:]).title(),
-                        "position": pos, "fantasy_positions": [pos], "team": r.get("team")}
-
-def board(picks, ablate):
+def board(m, db, picks, ablate):
+    """Takes its merger and pool explicitly, so nothing this script needs is built at import."""
     if not ablate:
         return dr.compute_draft_board(m, db, picks, my_roster_id=ME, league=LEAGUE, mode="balanced")
     with mock.patch.object(dr, "NEED_BONUS_PER_DEDICATED_SLOT", 0.0), \
          mock.patch.object(dr, "NEED_BONUS_PER_FLEX_SHARE", 0.0):
         return dr.compute_draft_board(m, db, picks, my_roster_id=ME, league=LEAGUE, mode="balanced")
 
-print("=== NON-VACUITY: did the ablation actually take effect? ===")
-live, dead = board([], False), board([], True)
-lnb = max((r.get("need_bonus") or 0) for r in live[:40])
-dnb = max((r.get("need_bonus") or 0) for r in dead[:40])
-print(f"  max need_bonus  live={lnb}  ablated={dnb}")
-assert lnb > 0, "need_bonus is already zero in the LIVE arm -- nothing to ablate"
-assert dnb == 0, "ablation did not apply; a 'no change' result would be meaningless"
-print("  ok -- the term is live in one arm and zero in the other\n")
 
-# ---- ARM A: frozen trajectory, no compounding -------------------------------
-picks, changed, rounds = [], 0, 0
-detail = []
-for rnd in range(1, 16):
-    a, b = board(picks, False), board(picks, True)
-    if not a or not b:
-        break
-    rounds += 1
-    if a[0]["player_id"] != b[0]["player_id"]:
-        changed += 1
-        detail.append((rnd, a[0]["position"], a[0]["name"], b[0]["position"], b[0]["name"]))
-    order = list(range(1, 13)) if rnd % 2 else list(range(12, 0, -1))
-    for slot, row in zip(order, a[:12]):
-        picks.append({"player_id": row["player_id"], "roster_id": str(slot), "round": rnd})
+def main() -> None:
+    """Guarded (#201). This module ran its ENTIRE ablation at import: two full 15-round drafts
+    and a printed report, triggered by nothing more than `import run_need_bonus_ablation`.
 
-print(f"=== ARM A (frozen state): top recommendation differs in {changed}/{rounds} rounds ===")
-for rnd, pa, na, pb, nb in detail:
-    print(f"  r{rnd:<3} with need_bonus: {pa} {na:<22}  without: {pb} {nb}")
-if not detail:
-    print("  (identical in every round)")
+    Found by accident, and the accident is the argument. Checking whether the run_* scripts
+    still loaded after a constant was removed, I imported all 26 -- and watched an experiment
+    execute instead. Anything that enumerates modules (a test sweeping the directory, a tool
+    building an index, a future guard exactly like the one this repair adds) would have done
+    the same. It was the only one of 26 without a guard, which is why it had never bitten."""
+    m = dm.DataMerger(); proj, db, pid = m.projections, {}, 0
+    for pos in OFFENSE_POSITIONS:
+        for _, r in proj[proj["position"] == pos].sort_values("trade_value", ascending=False).iterrows():
+            pid += 1; parts = str(r["norm_name"]).split()
+            db[str(pid)] = {"first_name": parts[0].upper(), "last_name": " ".join(parts[1:]).title(),
+                            "position": pos, "fantasy_positions": [pos], "team": r.get("team")}
 
-# ---- ARM B: each arm drafts its own way -------------------------------------
-def run(ablate):
-    picks, mine = [], []
+    print("=== NON-VACUITY: did the ablation actually take effect? ===")
+    live, dead = board(m, db, [], False), board(m, db, [], True)
+    lnb = max((r.get("need_bonus") or 0) for r in live[:40])
+    dnb = max((r.get("need_bonus") or 0) for r in dead[:40])
+    print(f"  max need_bonus  live={lnb}  ablated={dnb}")
+    assert lnb > 0, "need_bonus is already zero in the LIVE arm -- nothing to ablate"
+    assert dnb == 0, "ablation did not apply; a 'no change' result would be meaningless"
+    print("  ok -- the term is live in one arm and zero in the other\n")
+
+    # ---- ARM A: frozen trajectory, no compounding -------------------------------
+    picks, changed, rounds = [], 0, 0
+    detail = []
     for rnd in range(1, 16):
-        bd = board(picks, ablate)
-        if not bd:
+        a, b = board(m, db, picks, False), board(m, db, picks, True)
+        if not a or not b:
             break
+        rounds += 1
+        if a[0]["player_id"] != b[0]["player_id"]:
+            changed += 1
+            detail.append((rnd, a[0]["position"], a[0]["name"], b[0]["position"], b[0]["name"]))
         order = list(range(1, 13)) if rnd % 2 else list(range(12, 0, -1))
-        for slot, row in zip(order, bd[:12]):
+        for slot, row in zip(order, a[:12]):
             picks.append({"player_id": row["player_id"], "roster_id": str(slot), "round": rnd})
-            if str(slot) == ME:
-                mine.append((row["position"], row["name"]))
-    return mine
 
-with_nb, without_nb = run(False), run(True)
-same = sum(1 for x, y in zip(with_nb, without_nb) if x == y)
-print(f"\n=== ARM B (divergent): my roster, {len(with_nb)} picks ===")
-print(f"  identical picks: {same}/{len(with_nb)}")
-print(f"  {'rd':<4} {'with need_bonus':<32} without")
-for i, (a, b) in enumerate(zip(with_nb, without_nb), 1):
-    mark = "  " if a == b else "->"
-    print(f"  {mark}{i:<2} {a[0]+' '+a[1]:<32} {b[0]+' '+b[1]}")
-from collections import Counter
-print(f"\n  positional shape WITH   : {dict(Counter(p for p, _ in with_nb))}")
-print(f"  positional shape WITHOUT: {dict(Counter(p for p, _ in without_nb))}")
+    print(f"=== ARM A (frozen state): top recommendation differs in {changed}/{rounds} rounds ===")
+    for rnd, pa, na, pb, nb in detail:
+        print(f"  r{rnd:<3} with need_bonus: {pa} {na:<22}  without: {pb} {nb}")
+    if not detail:
+        print("  (identical in every round)")
+
+    # ---- ARM B: each arm drafts its own way -------------------------------------
+    def run(ablate):
+        picks, mine = [], []
+        for rnd in range(1, 16):
+            bd = board(m, db, picks, ablate)
+            if not bd:
+                break
+            order = list(range(1, 13)) if rnd % 2 else list(range(12, 0, -1))
+            for slot, row in zip(order, bd[:12]):
+                picks.append({"player_id": row["player_id"], "roster_id": str(slot), "round": rnd})
+                if str(slot) == ME:
+                    mine.append((row["position"], row["name"]))
+        return mine
+
+    with_nb, without_nb = run(False), run(True)
+    same = sum(1 for x, y in zip(with_nb, without_nb) if x == y)
+    print(f"\n=== ARM B (divergent): my roster, {len(with_nb)} picks ===")
+    print(f"  identical picks: {same}/{len(with_nb)}")
+    print(f"  {'rd':<4} {'with need_bonus':<32} without")
+    for i, (a, b) in enumerate(zip(with_nb, without_nb), 1):
+        mark = "  " if a == b else "->"
+        print(f"  {mark}{i:<2} {a[0]+' '+a[1]:<32} {b[0]+' '+b[1]}")
+    from collections import Counter
+    print(f"\n  positional shape WITH   : {dict(Counter(p for p, _ in with_nb))}")
+    print(f"  positional shape WITHOUT: {dict(Counter(p for p, _ in without_nb))}")
+
+
+if __name__ == "__main__":
+    main()

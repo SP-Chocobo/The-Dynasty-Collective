@@ -22,6 +22,7 @@ from pathlib import Path
 import data_merger as dm
 import draft_battery
 import roster_diagnostics
+import player_universe
 import store_io
 
 REPORT_PATH = Path("BATTERY_REPORT.json")
@@ -32,10 +33,25 @@ REPORT_PATH = Path("BATTERY_REPORT.json")
 BATTERY_POSITIONS = ("QB", "RB", "WR", "TE", "K", "DEF", "DL", "LB", "DB")
 
 
+CAPTURE_PATH = Path("data/fixtures/sleeper_capture.json")
+
+
 def build_players_db(merger: dm.DataMerger, positions=BATTERY_POSITIONS) -> dict[str, dict]:
-    """Every real baseline player as a Sleeper-shaped row, the same reconstruction
-    test_draft_room._build_pool_players_db uses -- see merge_player on why first-initial +
-    last name is a fair stand-in rather than a test artifact."""
+    """Every real baseline player as a Sleeper-SHAPED row, reconstructed from the vendor table.
+
+    CARRIES NO injury_status, AND THAT IS THE POINT OF ITS NAME NOW (#201). The vendor export
+    has no health column, so a pool built from it gives every player a status of None and
+    `risk_adj` is 0.00 for all of them. The battery ran on this for its entire life, which means
+    every arm ever certified described a board with no health signal on it at all -- discovered
+    when a four-arm risk_adj ablation returned "0 players moved" in every arm and the reason
+    turned out to be an empty status counter, not a null result.
+
+    KEPT, NOT DELETED, and kept as the universe of the measurements that already used it:
+    run_demand_reach_audit.py records results against this pool, and silently re-pointing it at
+    a different universe would make a recorded experiment describe something else under the same
+    name -- the hazard test_measurement_script_boundary now enforces. New work uses
+    build_players_db_from_capture below.
+    """
     proj = merger.projections
     out: dict[str, dict] = {}
     pid = 0
@@ -49,6 +65,48 @@ def build_players_db(merger: dm.DataMerger, positions=BATTERY_POSITIONS) -> dict
                 "position": position, "fantasy_positions": [position], "team": row.get("team"),
             }
     return out
+
+
+def build_players_db_from_capture(positions=BATTERY_POSITIONS,
+                                  path: Path = CAPTURE_PATH) -> tuple[dict[str, dict], dict]:
+    """The REAL Sleeper player universe, as the app itself receives it (#201).
+
+    Returns (players_db, provenance). The battery certifies the engine, so it has to draft from
+    the universe the engine actually gets: injury_status, fantasy_positions, years_exp, status
+    and team, per player, exactly the fields build_available_pool reads. The reconstruction
+    above supplies none of them, so every property the battery has ever asserted about health,
+    multi-position eligibility or rookie admission was asserted about a pool that could not
+    express them.
+
+    NO SILENT FALLBACK. A missing capture raises. Falling back to the vendor reconstruction is
+    precisely how this defect stayed invisible for so long: the battery went on producing
+    plausible reports about a universe nobody had chosen.
+
+    The provenance dict travels into the report so a reader can tell WHICH capture a run
+    drafted from -- a battery is a dated measurement, and #201 exists because one silently
+    was not the measurement it claimed.
+    """
+    if not path.exists():
+        raise FileNotFoundError(
+            f"{path} is missing -- the battery certifies against the REAL player universe and "
+            "must not quietly fall back to the vendor reconstruction (#201)")
+    with open(path, encoding="utf-8") as handle:
+        capture = json.load(handle)
+    players = capture.get("players") or {}
+    wanted = set(positions)
+    out = {pid: info for pid, info in players.items()
+           if player_universe.player_eligible_positions(info) & wanted}
+    provenance = {
+        "source": str(path),
+        "captured_at": capture.get("captured_at"),
+        "season": capture.get("season"),
+        "players_in_capture": len(players),
+        "players_in_pool": len(out),
+        # Stated, not assumed: the whole reason this function exists.
+        "injury_statuses_present": sorted(
+            {info.get("injury_status") for info in out.values() if info.get("injury_status")}),
+    }
+    return out, provenance
 
 
 #: Named in front of the coverage sentence so it cannot be read as a claim about the board at
@@ -120,7 +178,7 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
 
     merger = dm.DataMerger()
-    players_db = build_players_db(merger)
+    players_db, universe = build_players_db_from_capture()
     matrix = draft_battery.league_matrix()
     if args.only:
         wanted = {name.strip() for name in args.only.split(",") if name.strip()}
@@ -152,6 +210,10 @@ def main(argv: list[str] | None = None) -> int:
     # differ whenever two arms resolve to the same rankings export -- see duplicate_arms.
     dupes = draft_battery.duplicate_arms(results)
     report = {
+        # WHICH UNIVERSE THIS RUN DRAFTED FROM. A battery is a dated measurement against a
+        # dated pool, and #201 is what happens when that goes unrecorded: every arm was
+        # certified against a reconstruction with no health signal and nothing said so.
+        "universe": universe,
         "formats": len(results),
         "independent_formats": len(results) - len(dupes),
         "duplicate_arms": dupes,

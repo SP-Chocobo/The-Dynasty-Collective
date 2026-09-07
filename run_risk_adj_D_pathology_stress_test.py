@@ -20,7 +20,8 @@ from pathlib import Path
 
 import data_merger as dm
 import draft_room as dr
-from run_risk_adj_experiment_D_comparison import DYNASTY_LEAGUE, EXPERIMENT_A_SCALE, _build_players_db, _d_scale
+from run_risk_adj_experiment_D_comparison import (
+    DYNASTY_LEAGUE, EXPERIMENT_A_SCALE, RISK_ADJ_AS_MEASURED, _build_players_db, _d_scale)
 
 OUT_PATH = Path("data/draft_simulation_trials") / "risk_adj_D_pathology_stress_test.json"
 STATUSES = ("Questionable", "Doubtful", "Out", "IR")
@@ -55,7 +56,7 @@ def main() -> None:
     # status? (D_MIN_SCALE=0.3 guarantees SOME penalty always remains -- confirm what that
     # floor actually looks like in real points for each status.)
     report["floor_effective_penalty_by_status"] = {
-        status: round(dr.RISK_ADJ[status] * 0.3, 2) for status in STATUSES
+        status: round(RISK_ADJ_AS_MEASURED[status] * 0.3, 2) for status in STATUSES
     }
 
     # --- 1 & 3 & 5: the guardrail. For every real pair, bucket by healthy-value gap size, and
@@ -67,7 +68,7 @@ def main() -> None:
     guardrail: dict[str, dict] = {f"{lo}-{hi}": {"n_pairs": 0, "flips_under_flat": 0, "flips_under_A": 0, "flips_under_D": 0, "d_only_flips": []} for lo, hi in GAP_BANDS}
 
     for status in STATUSES:
-        flat_p = dr.RISK_ADJ[status]
+        flat_p = RISK_ADJ_AS_MEASURED[status]
         a_p = flat_p * EXPERIMENT_A_SCALE
         for i, a in enumerate(rows):
             for b in rows[i + 1:]:

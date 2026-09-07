@@ -5666,3 +5666,92 @@ third live, and a test caught it). Four pre-existing tests were INVERTED rather 
 and one -- `test_injury_still_never_increases_universal_value_under_d` -- was switched from
 `Questionable` to `Out`, because with the penalty removed it would have compared a player
 against himself and passed vacuously.
+
+
+## #201 -- THE BATTERY NEVER SAW A SICK PLAYER, AND FIXING THAT EXPOSED A 22x COST NOBODY HAD PAID
+
+**The instrument was measuring a universe nobody chose.** `run_draft_battery.build_players_db`
+reconstructed every player from the VENDOR projections table -- first initial, surname, position,
+team. That table has no health column, so every player carried `injury_status: None`, `risk_adj`
+was 0.00 for all of them, and every arm the battery has ever certified described a board with no
+health signal on it.
+
+**How it was found, because the shape matters.** A four-arm `risk_adj` ablation returned "0
+players moved" in every arm -- a clean, plausible null result. It was not one:
+
+    injury_status present on the board: Counter()
+
+Nothing had been ablated because nothing was there. A null finding and an unexercised instrument
+are indistinguishable from the outside.
+
+**What else was unexercised**, not just `risk_adj`: `fantasy_positions` was a one-element list
+per player, so #172's multi-position eligibility could not fire; `years_exp` and `status` were
+absent entirely, so #193's rookie and not-currently-playing admission clauses were never reached.
+
+### What the real universe costs, measured rather than assumed
+
+| pool | players | board rows | first build | warm build |
+|---|---|---|---|---|
+| vendor reconstruction | 764 | 280 | 0.60s | 0.18s |
+| real Sleeper capture | 6595 | 1111 | **13.19s** | **0.49s** |
+
+**A CORRECTION TO A NUMBER I GAVE VERBALLY MID-RUN.** I reported "one arm has been running 40+
+minutes against ~300s before" while the probe was still going. That was not measured: the probe
+ran both arms in one process with buffered stdout, so no per-arm number existed at the time. The
+table above is the real measurement, taken unbuffered with each stage printed as it finished.
+
+**13.55s per board x 168 picks x 33 arms is roughly 21 hours** -- the difference between a gate
+that gets run and one that does not.
+
+### The repair: resolution is a pure function, and it was being recomputed 168 times
+
+`build_available_pool` calls `merge_player` for every player on EVERY board build. Nothing about
+a draft in progress can change that answer -- the vendor table is fixed and a player's name,
+position and team do not move between picks -- and a MISS runs difflib's fuzzy search over the
+whole table before concluding nothing fits. Memoized on `(name, position, team)`, cleared in
+`_load` (the one place the tables are rebuilt; `reload()` and `set_league_format()` both route
+through it).
+
+**After: 13.19s -> 0.49s warm, a 26x improvement, and the vendor path improved too (0.60 ->
+0.18s), which speeds the existing suite.** One arm goes from ~38 minutes to ~97s; the battery
+lands at roughly 3x its old cost rather than 22x, which is the honest price of certifying
+against the universe the app actually receives.
+
+Three deliberate limits, each with a test: a caller-supplied `df` is never cached; the cached
+dict is COPIED OUT (`build_roster_table` does `row.update()` straight onto its result); misses
+are cached too, since the miss is the expensive path.
+
+### Collateral from #191, fixed here, and the gap that let it through
+
+Removing `Questionable` from `RISK_ADJ` broke three measurement scripts that subscripted
+`dr.RISK_ADJ[status]` live. **Breaking was the lucky outcome** -- had the ruling changed a VALUE
+rather than removing a key, they would have re-run silently over different magnitudes and
+reported the result under the same name as the recorded one. Each now pins
+`RISK_ADJ_AS_MEASURED`.
+
+Nothing in the suite covered the `run_*` scripts at all. Adding that guard found a second defect:
+`run_need_bonus_ablation.py` executed its ENTIRE ablation at import -- two full 15-round drafts
+and a printed report, on nothing more than an `import`. Found by importing all 26 to check they
+still loaded, and watching an experiment run instead. It was the only one of 26 without a
+`__main__` guard, which is exactly why it had never bitten.
+
+### What it rules OUT, so nobody re-checks it
+
+**The RISK_ADJ calibration (experiments A and D) is NOT invalidated.** Those scripts INJECT
+`injury_status` deliberately (`run_risk_adj_softening_measurement.py:107`, and D's own
+`STATUSES` tuple), so they measured real players under synthetic designations. The claims in
+`draft_room`'s docstring stand. Only the BATTERY was health-blind.
+
+### What is NOT fixed
+
+- The battery has not yet been RE-RUN on the real universe. #150 remains open and is now the
+  gate that matters: a full battery on a correct instrument, producing no new finding class.
+- #202 (PUP/NA/Sus/DNR have no `RISK_ADJ` entry) is now measurable for the first time, because
+  the battery pool finally contains those designations. Still the owner's ruling.
+- #191's IR/PUP half is ruled (fix the input) and unstarted.
+
+Tests: `test_battery_universe_boundary.py` (9), `test_resolution_memo.py` (9),
+`test_measurement_script_boundary.py` (6). Mutation-checked 15/15 -- one of which,
+"return the cached dict without copying on read", SURVIVED the first version of the memo tests
+and is recorded there rather than quietly patched: every test then mutated the FIRST result,
+which is a fresh dict either way, so a copy on one side only was invisible.

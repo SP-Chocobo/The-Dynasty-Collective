@@ -71,6 +71,18 @@
         "assertTrue": 1
       }
     },
+    "test_battery_universe_boundary.py": {
+      "test_methods": 9,
+      "asserts": {
+        "assertEqual": 1,
+        "assertGreater": 1,
+        "assertIn": 5,
+        "assertIsNotNone": 1,
+        "assertNotIn": 1,
+        "assertRaises": 1,
+        "assertTrue": 1
+      }
+    },
     "test_benchmark_contract_coverage.py": {
       "test_methods": 32,
       "asserts": {
@@ -726,6 +738,15 @@
         "assertRaises": 4
       }
     },
+    "test_measurement_script_boundary.py": {
+      "test_methods": 6,
+      "asserts": {
+        "assertEqual": 3,
+        "assertGreater": 1,
+        "assertIn": 1,
+        "assertNotEqual": 1
+      }
+    },
     "test_mock_draft_wiring.py": {
       "test_methods": 13,
       "asserts": {
@@ -1017,6 +1038,17 @@
         "assertIsNotNone": 1,
         "assertNotIn": 8,
         "assertTrue": 1
+      }
+    },
+    "test_resolution_memo.py": {
+      "test_methods": 9,
+      "asserts": {
+        "assertEqual": 6,
+        "assertGreater": 2,
+        "assertIn": 1,
+        "assertIsNot": 2,
+        "assertNotEqual": 2,
+        "assertTrue": 2
       }
     },
     "test_rookie_draft.py": {

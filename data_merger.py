@@ -1785,6 +1785,10 @@ class DataMerger:
         self._load()
 
     def _load(self) -> None:
+        # THE RESOLUTION MEMO, cleared here because _load is the one place the tables it
+        # describes are rebuilt -- reload() and set_league_format() both route through it, so
+        # a format switch cannot leave a stale answer behind (#201). See merge_player.
+        self._merge_memo: dict[tuple, dict] = {}
         empty = pd.DataFrame(columns=["name", "norm_name"])
         # Every field-level disagreement this load resolved, and how. A merge that silently
         # discards a value has not succeeded -- 1084 of these were being resolved per load with
@@ -2244,11 +2248,31 @@ class DataMerger:
         unambiguous exact hit at every call site, and the one consumer that needed the
         distinction (app.py's trade calculator, free-text input with no position to narrow on)
         had to recompute name_key itself to recover it."""
+        # MEMOIZED, and only on the default table (#201). Resolution is a pure function of
+        # (name, position, team) and the loaded projections: nothing about a draft in progress
+        # can change the answer, yet build_available_pool asks it again for every player on
+        # every board build -- 168 times per simulated draft. Measured on the real Sleeper
+        # universe: one board build took 13.55s against 0.61s for the 764-row vendor
+        # reconstruction, a 22x gap that put a full 33-arm battery at roughly 21 hours.
+        #
+        # A caller-supplied `df` is NEVER cached: it is an ad hoc table this merger knows
+        # nothing about, and keying on its identity would be a correctness bet for no gain.
+        # The cached dict is COPIED out, because callers own what they receive -- build_roster_table
+        # does row.update() straight onto its result, and handing out the cached object would
+        # let one caller's mutation become another's input.
+        memo_key = (player_full_name, position, team) if df is None else None
+        if memo_key is not None:
+            hit = self._merge_memo.get(memo_key)
+            if hit is not None:
+                return dict(hit)
         match, path, candidates, verified = self._resolve(
             player_full_name, position=position, team=team, df=df)
         if match is None:
-            return {"matched": False, "match_path": None,
+            miss = {"matched": False, "match_path": None,
                     "match_candidates": candidates, "match_verified": False}
+            if memo_key is not None:
+                self._merge_memo[memo_key] = miss
+            return dict(miss)
         # The identity of the row that was matched, not of the query -- so a caller can tell
         # whether two different players resolved onto the SAME canonical record. Deliberately
         # (norm_name, position_group): the dedup identity namespace, which is what makes two
@@ -2284,7 +2308,9 @@ class DataMerger:
                        "source_file", "source_date"):
             if field in match.index and pd.notna(match[field]):
                 row[field] = match[field]
-        return row
+        if memo_key is not None:
+            self._merge_memo[memo_key] = row
+        return dict(row)
 
     @property
     def is_external_values_loaded(self) -> bool:
