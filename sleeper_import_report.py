@@ -398,7 +398,100 @@ def build_report(username: Optional[str], league_id: Optional[str], raw: bool) -
         }
     _step(report, "league_users", league_users)
 
-    # ---- 5. does this league's OWN scoring change a real player's points? -----------------
+    # ---- 5. is the injury already IN the number? (#191) ----------------------------------
+    def injury_already_priced():
+        """Does injury_status carry information the PROJECTION does not already have?
+
+        THE HAZARD (#191). The owner reports that Sleeper degrades a player's status and then
+        updates the projection to match: a weekly projection "zeroes out" for a player who
+        shifts to Out or Doubtful shortly before kickoff, and a season total is the sum of the
+        weeks he is expected to play, so a six-game absence is subtracted before the number
+        ever reaches this engine. If that holds, then risk_adj -- which penalises a player a
+        SECOND time for the same injury_status -- subtracts one real-world fact twice. That is
+        a fused quantity: the total is neither the vendor's estimate nor an honest independent
+        adjustment, and nothing downstream can tell which.
+
+        TWO PREDICTIONS, MEASURED SEPARATELY BECAUSE THEY ARE DIFFERENT MECHANISMS.
+          A. WEEKLY ZEROING. Out/Doubtful players should show ~0 projected points for the week.
+             This is the direct test and it needs no baseline join.
+          B. HORIZON ASYMMETRY. In dynasty the injury matters less, because the player recovers.
+             If the vendor already models that, then for injured players the ratio
+             proj_3yr / projection should be HIGHER than for healthy ones -- the multi-year view
+             pricing a recovery the season view does not. This uses the committed baseline.
+
+        TIMING CAVEAT, AND IT IS NOT A FOOTNOTE. Prediction A is time-dependent: the owner's
+        own statement is "the day or so prior to a game". Run mid-week, the zeroing may not have
+        happened yet, and a null result would mean "measured too early", NOT "the vendor does
+        not do this". The probe therefore reports the NFL week and the count per bucket so a
+        reader can tell an early measurement from a real absence of effect. n is printed for
+        every bucket; a rate over an empty bucket is not a rate.
+        """
+        lg = report["probes"]["league_config"]["result"]
+        if not lg.get("ok", True) or "scoring_settings" not in lg:
+            raise ValueError("league_config did not resolve")
+        lg_scoring = lg["scoring_settings"]
+        state = client.get_nfl_state() or {}
+        wk = state.get("week")                      # A17: never invented -- see probe 2
+        if wk is None:
+            raise ValueError("Sleeper reported no current week; refusing to invent one")
+        season, week = str(state.get("season") or ""), int(wk)
+        raw = client.get_weekly_projections(season, week)
+        db = client.get_players()
+
+        buckets: dict = collections.defaultdict(lambda: {"n": 0, "weekly_pts": [], "ratio": []})
+        try:
+            import data_merger as dm
+            merger = dm.DataMerger()
+            by_key = {}
+            for _, row in merger.projections.iterrows():
+                by_key[str(row.get("_name_key"))] = row
+        except Exception:                                   # noqa: BLE001 -- reporting tool
+            by_key = {}
+
+        for pid, stats in raw.items():
+            info = db.get(str(pid)) or {}
+            if info.get("position") not in ("QB", "RB", "WR", "TE"):
+                continue
+            status = info.get("injury_status")
+            label = "(none set)" if status in (None, "") else str(status)
+            b = buckets[label]
+            b["n"] += 1
+            pts = compute_points_from_stats(stats, lg_scoring) if lg_scoring else None
+            if pts is not None:
+                b["weekly_pts"].append(float(pts))
+            nm = f"{info.get('first_name','')} {info.get('last_name','')}".strip()
+            row = by_key.get(str(dm.name_key(dm.normalize_name(nm)))) if by_key else None
+            if row is not None:
+                season_proj, three = row.get("projection"), row.get("proj_3yr")
+                if (season_proj is not None and three is not None
+                        and season_proj == season_proj and three == three
+                        and float(season_proj) > 0):
+                    b["ratio"].append(float(three) / float(season_proj))
+
+        def summarise(vals):
+            if not vals:
+                return None                                  # absence, never 0.0
+            ordered = sorted(vals)
+            mid = ordered[len(ordered) // 2]
+            return {"n": len(ordered), "median": round(mid, 3),
+                    "mean": round(sum(ordered) / len(ordered), 3),
+                    "zero_or_less": sum(1 for v in ordered if v <= 0.0)}
+
+        return {
+            "season": season, "week": week,
+            "TIMING_CAVEAT": ("weekly zeroing is reported to happen ~1 day before kickoff; "
+                              "a null result mid-week means MEASURED TOO EARLY, not no effect"),
+            "by_injury_status": {
+                k: {"players": v["n"],
+                    "weekly_points": summarise(v["weekly_pts"]),
+                    "proj3yr_over_season_ratio": summarise(v["ratio"])}
+                for k, v in sorted(buckets.items())},
+            "baseline_join": ("committed baseline joined by _name_key"
+                              if by_key else "UNAVAILABLE - ratio half not measured"),
+        }
+    _step(report, "injury_already_priced", injury_already_priced)
+
+    # ---- 6. does this league's OWN scoring change a real player's points? -----------------
     def scoring_effect():
         lg = report["probes"]["league_config"]["result"]
         proj = report["probes"]["weekly_projections"]["result"]
@@ -486,6 +579,19 @@ def render(report: dict) -> str:
                        f"-> {_hs.get('verdict', 'not probed')}")
             out.append(f"    this app reads only: {r['this_app_reads_only']}")
             out.append(f"    arrives but UNUSED: {r['arrives_but_UNUSED']}")
+        elif name == "injury_already_priced":
+            out.append(f"    season {r['season']} week {r['week']}  "
+                       f"(join: {r['baseline_join']})")
+            for k, v in r["by_injury_status"].items():
+                wp, ra = v["weekly_points"], v["proj3yr_over_season_ratio"]
+                out.append(
+                    f"    {k:<14} n={v['players']:<5} "
+                    f"weekly median={wp['median'] if wp else 'n/a'} "
+                    f"(zero-or-less {wp['zero_or_less']}/{wp['n']})" if wp else
+                    f"    {k:<14} n={v['players']:<5} weekly: not measurable")
+                if ra:
+                    out.append(f"        proj_3yr/season ratio median={ra['median']} (n={ra['n']})")
+            out.append(f"    NOTE: {r['TIMING_CAVEAT']}")
         elif name == "scoring_effect":
             # A18: pct_changed is legitimately None when nothing was scoreable. The
             # producer honoured that and the renderer did not -- it printed "(None%)".
