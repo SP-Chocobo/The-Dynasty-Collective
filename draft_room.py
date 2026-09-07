@@ -227,16 +227,55 @@ UPSIDE_MODE_DEFAULT_ROUND = 15
 # no non-QB closes. The 0.15 the old constant left to RB/WR/TE was demand that position group
 # never actually won.
 #
-# WHAT 1.0 DOES NOT MEAN. It is the share of the SLOT, not a claim that a roster wants exactly
+# WHAT 1.0 WOULD NOT MEAN. It is the share of the SLOT, not a claim that a roster wants exactly
 # two quarterbacks -- a third QB for bye and injury coverage is a BENCH question, and bench
-# capacity is not an engine input at all (#115). It also does not close the market gap below:
+# capacity is not an engine input at all (#115).
+#
+# WHY THE VALUE IS STILL 0.85 (#184). The derivation above is not withdrawn; it is not
+# APPLICABLE, and the reason is a defect in a different constant's interaction with this one.
+# 1.0 was committed at 605e0cb under a pre-registered behavioural gate, the gate FAILED, and
+# tracing the failure found that this constant is structurally half-dead in the only format
+# that reads it.
+#
+# Measured on 12T_ppr_SF, empty board, one process, both arms, anchor cache cleared between
+# them (its key does not include this constant, so an uncleared in-process A/B silently serves
+# arm 2 the anchor arm 1 built -- that contamination was checked for and excluded):
+#
+#            replacement level          board bpa, mean over the position
+#   pos    0.85 -> 1.00   moved       0.85 -> 1.00     delta    rows moved
+#   QB     200.0  200.0   NO          33.205  33.205   +0.000       0 / 39
+#   RB     162.0  165.0   yes         -3.819  -6.819   -3.000      72 / 72
+#   TE     143.0  147.0   yes        -22.104 -26.104   -4.000      48 / 48
+#   WR     201.0  202.0   yes        -39.676 -40.676   -1.000     105 /105
+#
+# QB DOES NOT MOVE because compute_draft_board passes startable_floors={"QB": ...} in every
+# superflex league (see QB_STARTABLE_ANCHOR_RANK directly below), and that branch of
+# replacement_levels sets the QB level from the CLIFF, unconditionally, without consulting
+# demand. Two constants answer the same question -- "what is the QB replacement level in a
+# superflex league?" -- and the floor wins every time. Raising this share therefore cannot
+# make a QB more valuable; its whole realized effect is to REMOVE the 0.15 of demand RB/WR/TE
+# were holding, which raises their replacement level and makes all 225 of them cheaper. The
+# QB promotion that does appear on the board happens purely by demoting everyone else, and
+# the only thing QBs themselves gain is a flat +0.150 need_bonus applied identically to all
+# 39 of them -- a uniform shift, so it carries no information about WHICH quarterback.
+#
+# That one-sidedness is the measured result: across the 12 superflex roster-proof partitions
+# the deficit did not close (-1.83% -> -1.97% contiguous/projection, +0.31% -> +0.01%
+# contiguous/proj_3yr, and the interleaved family likewise), while QBs held moved only
+# 2.319 -> 2.347. So 1.0 is reverted per its own pre-registration. 0.85 is NOT thereby
+# vindicated: it feeds RB/WR/TE a share of a slot the optimizer says they never win. Both
+# values are wrong in the same place. The repair is to make the floor and the demand model
+# compose into one statement instead of overriding each other, and that is an engine change
+# held for owner ruling (#184), not something to slip in under a freeze.
+#
+# The market gap below is a SEPARATE, older limitation and is unaffected by any of this:
 # pure points-based VOR
 # still likely underrates elite QBs somewhat relative to real superflex market pricing: the
 # market's real premium partly reflects a hard structural scarcity (only ~32 real starting-
 # caliber NFL QBs exist leaguewide, a ceiling RB/WR/TE don't share) that a single season's
 # point projection doesn't fully capture on its own -- worth knowing as a real limitation,
 # not silently pretending this fix closes the whole gap.
-SUPER_FLEX_QB_SHARE = 1.0
+SUPER_FLEX_QB_SHARE = 0.85
 
 # Cliff-anchored superflex QB replacement (see qb_startable_floor and replacement_levels):
 # "startable QB" is defined as projecting at least this FRACTION of the ANCHOR_RANK-th best

@@ -313,6 +313,65 @@ class CliffAnchoredQBReplacementTests(unittest.TestCase):
         self.assertEqual(with_floors["RB"], without["RB"])
         self.assertNotEqual(with_floors["QB"], without["QB"])
 
+    def test_the_floor_makes_SUPER_FLEX_QB_SHARE_inert_at_QB_and_live_only_elsewhere(self):
+        """CHARACTERIZATION OF A DEFECT (#184), not an endorsement of it.
+
+        Two constants answer the same question -- "what is the QB replacement level in a
+        superflex league?" -- and they do not compose: SUPER_FLEX_QB_SHARE sets QB starter
+        demand, the startable floor overrides that answer unconditionally, so raising the
+        share cannot make a QB more valuable. Its ONLY surviving effect is to take demand
+        AWAY from RB/WR/TE, which raises their replacement level and makes them cheaper.
+        Every superflex league takes this path -- compute_draft_board passes a QB floor
+        whenever SUPER_FLEX is in roster_positions -- so the share is half-dead in the only
+        format that reads it.
+
+        Measured consequence on real data (12T_ppr_SF, empty board, anchor cache cleared
+        between arms): moving the share 0.85 -> 1.00 moved QB bpa on 0 of 39 rows, and moved
+        RB/TE/WR bpa on 225 of 225, all downward. That one-sidedness is why #178's derived
+        1.000 was reverted at the pre-registered gate despite the derivation being sound.
+
+        THIS TEST IS EXPECTED TO FAIL when the two are made to compose. That failure is the
+        point: it is the tripwire that sends whoever fixes it to #184 rather than letting
+        them rediscover the collision. Do not "repair" it by loosening the assertions.
+        """
+        pool = pd.DataFrame({
+            "position": ["QB"] * 28 + ["RB"] * 30,
+            "value": self.CLIFF_CURVE + [300 - i * 5 for i in range(30)],
+        })
+        roster = ["QB", "RB", "RB", "SUPER_FLEX"]
+
+        def levels(share, floors):
+            original = dr.SUPER_FLEX_QB_SHARE
+            dr.SUPER_FLEX_QB_SHARE = share
+            try:
+                return dr.replacement_levels(pool, "value", roster, num_teams=12,
+                                             startable_floors=floors)
+            finally:
+                dr.SUPER_FLEX_QB_SHARE = original
+
+        floors = {"QB": 150.0}
+        low, high = levels(0.85, floors), levels(1.0, floors)
+        self.assertEqual(
+            low["QB"], high["QB"],
+            "#184: the floor no longer overrides QB demand. If that is deliberate, this "
+            "constant is now live at QB and the reverted #178 derivation (share = 1.000) "
+            "should be re-run against the behavioural gate before this test is changed.")
+
+        # The other half of the same defect: the share is not inert, it is inert ONLY at QB.
+        self.assertNotEqual(
+            low["RB"], high["RB"],
+            "#184: the share stopped reaching RB. It is supposed to be live on the "
+            "flex-eligible complement -- that is the whole of its surviving effect.")
+        self.assertGreater(
+            high["RB"], low["RB"],
+            "#184: raising QB's slot share must RAISE the RB replacement level (less RB "
+            "demand => a shallower starter pool => a higher bar), which is what makes every "
+            "RB cheaper without making any QB dearer.")
+
+        # And without the floor the constant works as designed at QB, which is what makes
+        # this a composition defect rather than a broken constant.
+        self.assertNotEqual(levels(0.85, None)["QB"], levels(1.0, None)["QB"])
+
     def test_real_baseline_threshold_band_still_holds(self):
         # The cheap validation the mechanism's own spec calls for: if a future season's
         # projection curve loses its sharp cliff, the 0.45-0.60 threshold band stops agreeing
@@ -710,8 +769,8 @@ class SuperflexRookieDraftRosterContextTieredGateTests(RookieDraftRosterContextT
     matching draft_room.build_mock_league's own real superflex shape.
 
     This matters as its own case, not just a parameterization: SUPER_FLEX gives QB a real
-    flex share via SUPER_FLEX_QB_SHARE (the whole slot as of #178's derivation, not an even
-    split -- see that constant's own comment), so a rookie QB's need_bonus ceiling here is
+    flex share via SUPER_FLEX_QB_SHARE (0.85 of a slot, not an even split -- see that
+    constant's own comment), so a rookie QB's need_bonus ceiling here is
     higher than in the standard-1QB class above. Real superflex rookie drafts see QB
     desperation far more often and more severely than 1QB drafts do (this was the user's own
     domain point motivating this audit item), so the standout-protection contract has to be
@@ -1980,9 +2039,12 @@ class CalibrationConstantsDoNotDriftSilentlyTests(unittest.TestCase):
         # superflex league sets where replacement lands, which sets every QB's VOR.
         # The claim being pinned is the one the constant's own comment makes -- the slot is
         # filled by a QB the LARGE majority of the time, not close to a coin flip. #178
-        # derived that majority as the WHOLE slot (1.000 in both SF formats, both yardsticks);
-        # this test deliberately still pins the weaker "large majority" claim, so it keeps
-        # holding if a future derivation moves the share without reaching for the ceiling.
+        # derived that majority as the WHOLE slot (1.000 in both SF formats, both yardsticks),
+        # but #184 found the derived value cannot be APPLIED -- the startable floor pins the
+        # superflex QB replacement level and this share only ever reaches RB/WR/TE -- so the
+        # committed value stayed 0.85. This test deliberately pins the weaker "large majority"
+        # claim, which both values satisfy, so it survives that argument being settled either
+        # way and keeps finding a drift toward the even split.
         counts = dr.starter_slot_counts(["QB", "RB", "RB", "WR", "WR", "TE", "SUPER_FLEX"])
         qb_share_of_the_superflex_slot = counts["QB"] - 1.0
         self.assertGreater(
