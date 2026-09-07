@@ -6019,3 +6019,97 @@ would require a cross-position comparability rule nobody has derived, which is #
 prohibition exactly. The honest output is the recharacterization: #155 folds into the bpa-unit
 question (#74/#76) and stops being a member of the late-draft blocker family, because the
 late-draft collapse it was grouped with no longer exists.
+
+## OWNER RULINGS, this session: #55 stays observable, #184 is documented not fixed
+
+Both were put to the owner with a measurement and a recommendation. Both were ruled "proceed
+per your recommendations." Recorded here rather than only in the register, because these are
+the two entries the freeze record has to carry.
+
+### #55 -- pick_necessity keeps ZERO selection authority
+
+No code change. What changes is that the current state is now a ruling instead of an accident.
+
+Necessity is computed over the narrowed set and attached to every candidate, but the pick is
+`candidates[0]` and that order is `_board_order`. Measured over 60 decisions of a 12-team
+superflex dynasty PPR draft on the real capture and the production pricing path (#204):
+
+    necessity agrees with the board's pick : 12 (20.0%)
+    necessity would pick someone else     : 48 (80.0%)
+
+**The 80% does not survive inspection.** Seven distinct players were ever nominated, and 42 of
+the 48 come from three of them -- McCaffrey 24x, Jonathan Taylor 10x, James Cook 8x, with 46 of
+48 at RB. That is three standing objections restated every turn, not 48 independent judgements.
+
+The drivers say why:
+
+    1.02  McCaffrey  nec=100.0  surv=0.00  cliff=HIGH  forfeit=148.67  denial=57.91  tav=60.84
+          board took Lamar Jackson  nec=78.1  tav=147.79
+
+Necessity is SATURATED at its own 100.0 cap, so it cannot distinguish "urgent" from "urgent
+enough to give up 87 points of value." It is a RATE; `team_acquisition_value` is a LEVEL.
+Giving a saturated rate authority over an unsaturated level does not add a signal -- it
+replaces the objective with one that cannot express magnitude. This independently reproduces
+the level/rate ruling that reverted the earlier wiring at #139, on fresh data, after #196,
+#172, #191 and #204.
+
+**The deciding reason is new.** Necessity's loudest disagreements are driven by
+`survival_probability`, and #206 records that this input may be miscalibrated: McCaffrey carries
+survival 0.00 across 24 consecutive turns and is never taken. A signal is not promoted to
+decision-maker while one of its main inputs is under investigation.
+
+**Offered and not taken, recorded so it is not lost:** necessity as a tiebreaker INSIDE the
+near-tie band only. `near_tie_with_leader` already exists as a three-state (#195), and that band
+is defined as measured noise -- the one region where TAV differences are explicitly not
+meaningful and a rate is the right tiebreaker. The measurement is small if the owner ever wants
+the option on the table.
+
+The blind spot #55 was originally filed against is separately already closed:
+`narrow_candidates` includes the best remaining player at every position precisely so a
+scarce-position leader is never invisible to the strategic layer.
+
+### #184 -- KNOWN-OPEN-ACCEPTABLE: the floor and the demand model both answer one question
+
+`compute_draft_board` passes `startable_floors={"QB": ...}` in every superflex league, and that
+branch of `replacement_levels` sets the QB level from the CLIFF, unconditionally, without
+consulting demand. Two constants answer "what is QB replacement level in superflex" and the
+floor wins every time. Measured on 12T_ppr_SF, empty board, one process, both arms, anchor cache
+cleared between them (the cache key does not include this constant, so an uncleared in-process
+A/B silently serves arm 2 the anchor arm 1 built -- checked for and excluded):
+
+    pos   replacement 0.85 -> 1.00   moved   mean board bpa            delta    rows moved
+    QB    200.0 -> 200.0             NO      33.205 -> 33.205          +0.000   0 / 39
+    RB    162.0 -> 165.0             yes     -3.819 -> -6.819          -3.000   72 / 72
+    TE    143.0 -> 147.0             yes    -22.104 -> -26.104         -4.000   48 / 48
+    WR    201.0 -> 202.0             yes    -39.676 -> -40.676         -1.000   105 / 105
+
+So `SUPER_FLEX_QB_SHARE` cannot make a QB more valuable. Its whole realized effect is to remove
+0.15 of a slot from RB/WR/TE, raising their replacement level and making all 225 of them
+cheaper. 0.85 is not thereby vindicated either: it feeds RB/WR/TE a share of a slot the
+optimizer says they never win. Both values are wrong in the same place.
+
+**Why this is documented rather than repaired before the freeze.**
+
+  - BOUNDED, AND PROVEN RATHER THAN ASSERTED. 12 of 33 battery formats have a SUPER_FLEX slot;
+    21 provably cannot see the constant at all. Blast radius measured by holding roster shape
+    fixed and toggling, with five non-superflex formats confirmed byte-identical.
+  - NOW DISCLOSED ON THE BOARD. #185 (shipped at 735c972) makes those 39 QB rows say
+    `startable_floor` instead of falsely claiming `live_starter_demand`. The engine states the
+    thing it gets wrong rather than hiding it behind a confident wrong label, which is what
+    makes "documented limitation" a real category here rather than a euphemism.
+  - THE REPAIR IS PHASE 3 BY DEFINITION. Making the floor and the demand model compose into one
+    statement changes what replacement level MEANS in a superflex league -- #50, which the owner
+    holds. The precedent is the owner's own docket ruling `d154-pricing-collapse = phase3`.
+  - THE COST IS MEASURED AND SMALL. #177 puts it at -1.83% to -1.97% on one arm of eight, with
+    the engine still ahead in 7 of 8.
+
+**The dependency, named here rather than left to surface later.** #206 MAY PARTIALLY DISSOLVE
+THIS ITEM'S PREMISE. #177's superflex deficit is measured on simulated drafts, and those
+simulations produce twelve straight QBs in round one. If #206 establishes that the simulated
+chairs behave unrealistically, that deficit is partly a simulation artifact rather than an
+engine weakness -- which would make #184 less urgent, not more. That is NOT established; it is a
+dependency. It is also an argument for documenting rather than fixing, because repairing #184
+now would be tuning against a benchmark whose validity is currently under question.
+
+**Reopen triggers, explicit:** Phase 3 (#50) running, OR #206 resolving in a way that changes
+#177's numbers.
