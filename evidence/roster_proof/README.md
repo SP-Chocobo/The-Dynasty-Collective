@@ -61,3 +61,43 @@ READ THIS WITH THE PRE-REGISTRATION, NOT INSTEAD OF IT. In particular:
   1147). Whatever drives it is stronger where the engine cannot spend a pick on a second QB.
 - 4 of 6 formats is not the ordered run. `12T_standard` and `12T_ppr_TEP` are absent, and the
   scoring axis they were chosen to test is therefore untested here.
+
+### ROSTER_PROOF_2026-09-08_realrules_5of6_ef98dd9 — 5 of 6, REAL 64-key rulebook
+
+The first roster proof measured against a league that exists. `scoring_keys: 64`,
+`season_projections_priceable: 840` of 5,346 supplied, pool 481.
+
+**Incomplete because the CONTAINER RESTARTED mid-run**, not because anything failed. It survives
+at all only because the report is written after every format (#205's own durability fix). The
+battery running beside it had no such fix and lost all 11 of its completed arms -- that gap is
+closed in the same commit as this file.
+
+| format | asset ruler | eng vs ctl | points ruler | points gap | starters filled |
+|---|---|---|---|---|---|
+| `12T_ppr` | 12/12 | 333.3 vs 188.0 | 0/12 | **-11.2%** | 8/8 |
+| `12T_ppr_SF` | 12/12 | 791.5 vs 489.3 | 1/12 | **-5.0%** | 9/9 |
+| `10T_ppr` | 10/10 | 358.3 vs 185.7 | 0/10 | **-9.7%** | 8/8 |
+| `10T_ppr_SF` | 10/10 | 868.3 vs 541.2 | 0/10 | **-11.1%** | 9/9 |
+| `12T_standard` | 12/12 | 316.5 vs 99.8 | 0/12 | **-9.8%** | 8/8 |
+
+**Totals: asset ruler 56/56. Points ruler 1/56.**
+
+THREE THINGS THIS ESTABLISHES, and one it does not.
+
+1. **The engine builds materially higher-asset rosters, every seat, every format.** 56 of
+   56, with control means it roughly doubles or better.
+2. **It fields fewer projected points, by 5-11%.** Not the 27% an earlier summary quoted -- that
+   figure came from the withdrawn stub-rulebook run and is void.
+3. **The deficit is NOT a lineup artifact.** Every seat of every format fills its lineup
+   completely (8/8 in 1QB, 9/9 in superflex). The engine is not failing to field a team; it is
+   fielding a different one on purpose.
+
+WHAT IT DOES NOT ESTABLISH: whether that trade is correct. There is no established exchange rate
+between present-season points and dynasty asset value in this system, so "good dynasty
+construction" and "systematic mispricing" both fit these numbers. That is #50/Phase 3, and it is
+the owner's call, not a number this instrument can produce.
+
+AND ONE HYPOTHESIS THIS KILLS: the earlier "the deficit is much worse in 1QB than superflex"
+pattern does NOT survive. On the real rulebook the SF arms straddle the 1QB ones (-5.0% and
+-11.1% against -11.2% and -9.7%). It was an artifact of a rulebook in which quarterbacks scored
+zero, which is exactly where a 1QB/SF difference would be manufactured.

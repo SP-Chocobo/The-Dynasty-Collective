@@ -113,6 +113,28 @@ def positions_the_rulebook_cannot_price(census: dict[str, dict]) -> list[str]:
     return sorted(p for p, r in census.items() if r["stat_lines"] and not r["priced"])
 
 
+def _battery_report(universe: dict, results: list, started: float, *, complete: bool) -> dict:
+    """One report shape for the mid-run and end-of-run writes.
+
+    #213b: WRITTEN AFTER EVERY ARM. This run is ~4 hours and wrote only on its last line, so a
+    container restart 11 arms in destroyed all 11 -- which is exactly the durability hole
+    evidence/batteries/ exists to close, reproduced one layer in. The roster proof already had
+    this fix and survived the same restart with 5 of 6 formats intact; the battery did not and
+    lost everything. `complete` says which kind of file a reader is holding."""
+    dupes = draft_battery.duplicate_arms(results)
+    return {
+        "universe": universe,
+        "complete": complete,
+        "formats": len(results),
+        "independent_formats": len(results) - len(dupes),
+        "duplicate_arms": dupes,
+        "picks": sum(r["picks"] for r in results),
+        "total_findings": sum(len(r["findings"]) for r in results),
+        "seconds": round(time.time() - started, 1),
+        "results": results,
+    }
+
+
 def priceable_projection_count(season_projections: dict) -> int:
     """How many supplied projections carry anything score_projection could actually price.
 
@@ -330,25 +352,18 @@ def main(argv: list[str] | None = None) -> int:
               f"{decision_coverage(audited.get('unpriced_at_decision'))})"
               f" {audited['seconds']:7.1f}s"
               + ("   <-- DEFECTS" if findings else ""), flush=True)
+        # #213b: every arm, not just the last one. A four-hour run must survive a restart.
+        store_io.write(Path(args.out), _battery_report(universe, results, started, complete=False))
 
     total_findings = sum(len(r["findings"]) for r in results)
     # The instrument states its own coverage. `formats` is how many arms RAN;
     # `independent_formats` is how many produced evidence nothing else already produced. They
     # differ whenever two arms resolve to the same rankings export -- see duplicate_arms.
-    dupes = draft_battery.duplicate_arms(results)
-    report = {
-        # WHICH UNIVERSE THIS RUN DRAFTED FROM. A battery is a dated measurement against a
-        # dated pool, and #201 is what happens when that goes unrecorded: every arm was
-        # certified against a reconstruction with no health signal and nothing said so.
-        "universe": universe,
-        "formats": len(results),
-        "independent_formats": len(results) - len(dupes),
-        "duplicate_arms": dupes,
-        "picks": sum(r["picks"] for r in results),
-        "total_findings": total_findings,
-        "seconds": round(time.time() - started, 1),
-        "results": results,
-    }
+    # WHICH UNIVERSE THIS RUN DRAFTED FROM. A battery is a dated measurement against a dated
+    # pool, and #201 is what happens when that goes unrecorded: every arm was certified against
+    # a reconstruction with no health signal and nothing said so.
+    report = _battery_report(universe, results, started, complete=True)
+    dupes = report["duplicate_arms"]
     store_io.write(Path(args.out), report)
     print(f"\n{report['formats']} formats ({report['independent_formats']} independent), "
           f"{report['picks']} picks, {total_findings} structural findings, "
