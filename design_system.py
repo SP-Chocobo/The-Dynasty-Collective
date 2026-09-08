@@ -204,11 +204,11 @@ DISPLAY_CONTRACT: dict[str, dict[str, str]] = {
         "label": f"Slot Displacement ({VALUE_UNIT_SHORT})",
         "unit": VALUE_UNIT,
         "help": (
-            "Never positive. How much of his universal value YOUR lineup cannot use: when every "
-            "starting slot he could fill is held by one of your own players who out-projects the "
-            "league's free alternative, he is priced against that player instead. Zero when a "
-            "slot he can reach is open. Read its basis first -- a zero that was not measured is "
-            "not room for him."
+            "Never positive, in universal-value points. How much of his universal value YOUR "
+            "lineup cannot use: when every starting slot he could fill is held by one of your "
+            "own players who out-projects the league's free alternative, he is priced against "
+            "that player instead. Zero when a slot he can reach is open; a dash when it was not "
+            "measured -- an unmeasured zero is not room for him."
         ),
     },
     "projected_points": {
@@ -224,9 +224,10 @@ DISPLAY_CONTRACT: dict[str, dict[str, str]] = {
         "unit": VALUE_UNIT,
         "help": (
             "Universal value plus what he is worth to YOUR roster specifically: the "
-            "unfilled-need, lineup-flexibility and depth-insurance terms. Same universal-value "
-            "points as the Universal Value card; the difference between the two is roster "
-            "context."
+            "unfilled-need, lineup-flexibility and depth-insurance terms, minus the slot "
+            "displacement -- credit the league anchor gave him for a slot your lineup cannot "
+            "offer (see that card). Same universal-value points as the Universal Value card; "
+            "the difference between the two is roster context, and it can be negative."
         ),
     },
     "survival_probability": {
@@ -291,6 +292,7 @@ DISPLAY_CONTRACT: dict[str, dict[str, str]] = {
 DIFF_UNITS: dict[str, str] = {
     "universal_value": VALUE_UNIT_SHORT, "need_bonus": VALUE_UNIT_SHORT,
     "eligibility_bonus": VALUE_UNIT_SHORT, "depth_exposure": VALUE_UNIT_SHORT,
+    "displacement_adj": VALUE_UNIT_SHORT,
     "team_acquisition_value": VALUE_UNIT_SHORT,
     "survival_probability": "probability", "opportunity_cost": VALUE_UNIT_SHORT,
     "expected_value_of_waiting": VALUE_UNIT_SHORT, "denial_value": VALUE_UNIT_SHORT,

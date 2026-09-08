@@ -72,6 +72,7 @@ from sleeper_client import SleeperAPIError, SleeperClient, compute_points_from_s
 _DRAFT_ROOM_DIFF_LABELS = {
     "universal_value": "Universal value", "need_bonus": "Roster need",
     "eligibility_bonus": "Lineup flexibility", "depth_exposure": "Depth exposure",
+    "displacement_adj": "Slot displacement",
     "team_acquisition_value": "Acquisition value",
     "survival_probability": "Survival probability", "opportunity_cost": "Opportunity cost",
     "expected_value_of_waiting": "Value of waiting", "denial_value": "Denial value",
@@ -1531,7 +1532,7 @@ def _render_pick_metrics(rec) -> None:
         help=note("position_run"),
     )
 
-    metric_row2 = st.columns(3)
+    metric_row2 = st.columns(4)
     metric_row2[0].metric(
         label("opportunity_cost"),
         f"{rec.opportunity_cost:.1f}" if rec.opportunity_cost is not None else "—",
@@ -1546,6 +1547,23 @@ def _render_pick_metrics(rec) -> None:
         label("denial_value"),
         f"{rec.denial_value:.1f}" if rec.denial_value is not None else "—",
         help=note("denial_value"),
+    )
+    # #216: the fourth roster term, rendered ONLY under a measured basis. A 0.0 whose basis
+    # says it was never produced is an absence (#187), and renders as the same dash an
+    # unpriced value does; a floor (a rostered player could not be priced) says so beside the
+    # number rather than passing as a measurement.
+    displacement_basis = getattr(rec, "displacement_basis", None)
+    displacement = getattr(rec, "displacement_adj", None)
+    if displacement is None or displacement_basis == "measured":
+        displacement_text = f"{displacement:+.1f}" if displacement is not None else "—"
+    elif displacement_basis == "roster_partially_priced":
+        displacement_text = f"{displacement:+.1f} (floor)"
+    else:
+        displacement_text = "—"
+    metric_row2[3].metric(
+        label("displacement_adj"),
+        displacement_text,
+        help=note("displacement_adj"),
     )
 
 

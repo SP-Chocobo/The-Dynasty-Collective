@@ -62,6 +62,7 @@ from llm_engine import (
     UNAVAILABLE_REPORT, _report_for_handoff,
 )
 from pick_synthesis import (CandidateSnapshot, PickSnapshot, DENIAL_BASIS_LABELS,
+                            DISPLACEMENT_BASIS_LABELS, DISPLACEMENT_MEASURED,
                             EXPOSURE_BASIS_LABELS, EXPOSURE_MEASURED,
                             diff_snapshots, stamp_is_current)
 
@@ -277,13 +278,29 @@ def _depth_term(candidate) -> str:
     measured" and every one of them read as "no depth risk here".
     """
     if candidate.depth_exposure is None:
-        return "; depth_exposure not computed for this board)"
+        return "; depth_exposure not computed for this board"
     basis = getattr(candidate, "depth_basis", None)
     if basis is not None and basis != EXPOSURE_MEASURED:
         words = EXPOSURE_BASIS_LABELS.get(basis, basis)
         return (f" + depth_exposure {candidate.depth_exposure:+}, "
-                f"which is NOT a measurement: {words})")
-    return f" + depth_exposure {candidate.depth_exposure:+})"
+                f"which is NOT a measurement: {words}")
+    return f" + depth_exposure {candidate.depth_exposure:+}"
+
+
+def _displacement_term(candidate) -> str:
+    """The displacement_adj clause of the sum (#216), qualified the same way as depth. The
+    term is non-positive: a deduction is the league anchor's over-credit for a slot this
+    roster cannot offer him, and a 0.0 under `measured` is a solved lineup with room for him.
+    Any other basis means the zero was never produced, and the clause says so rather than
+    letting a model read it as room."""
+    value = getattr(candidate, "displacement_adj", None)
+    if value is None:
+        return "; displacement_adj not computed for this board"
+    basis = getattr(candidate, "displacement_basis", None)
+    if basis is not None and basis != DISPLACEMENT_MEASURED:
+        words = DISPLACEMENT_BASIS_LABELS.get(basis, basis)
+        return f" + displacement_adj {value:+}, which is NOT a measurement: {words}"
+    return f" + displacement_adj {value:+}"
 
 
 def _format_candidate(candidate: CandidateSnapshot, user_selected_player_id: Optional[str]) -> str:
@@ -301,7 +318,7 @@ def _format_candidate(candidate: CandidateSnapshot, user_selected_player_id: Opt
         f"  Team acquisition value: {candidate.team_acquisition_value} "
         f"(universal_value {candidate.universal_value} + need_bonus {candidate.need_bonus:+}"
         f" + eligibility_bonus {candidate.eligibility_bonus:+}"
-        + _depth_term(candidate),
+        + _depth_term(candidate) + _displacement_term(candidate) + ")",
     ]
     if candidate.near_tie_with_leader:
         lines.append(

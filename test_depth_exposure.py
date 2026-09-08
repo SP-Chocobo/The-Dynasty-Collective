@@ -263,8 +263,9 @@ class WiredIntoTeamAcquisitionValueTests(unittest.TestCase):
         reconstruct it. final_score is that sum for a balanced board."""
         for row in self.board[:30]:
             with self.subTest(player=row["name"]):
+                # Five terms since #216: displacement_adj is non-positive and joins the sum.
                 parts = (row["universal_value"] + row["need_bonus"]
-                         + row["eligibility_bonus"] + row["depth_exposure"])
+                         + row["eligibility_bonus"] + row["depth_exposure"] + row["displacement_adj"])
                 self.assertAlmostEqual(parts, row["final_score"], places=1)
 
     def test_only_a_measured_basis_contributes(self):

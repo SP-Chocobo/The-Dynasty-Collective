@@ -118,6 +118,22 @@ TERMS: dict[str, dict] = {
         "what": "What a hole at this position would cost THIS roster.",
         "why": "Transient in roster state, which TAV prices by construction.",
     },
+    "displacement_adj": {
+        "lifetime": ROSTER_STATE,
+        "mitigation": None,
+        "register": "#216",
+        "what": (
+            "The league replacement anchor's over-credit for a slot THIS roster cannot offer "
+            "him: replacement level minus what he must displace in my own optimal lineup. "
+            "Non-positive; zero wherever a slot he can reach is open."
+        ),
+        "why": (
+            "Transient in roster state, which TAV prices by construction -- the same category "
+            "as need_bonus. It is the roster-relative half of the season VOR that bpa carries, "
+            "so it inherits bpa's SEASON basis through its inputs; what makes it admissible is "
+            "that it only ever REMOVES season credit the roster cannot use, never adds any."
+        ),
+    },
 }
 
 #: Quantities deliberately kept OUT of the valuation by this rule, recorded so the exclusion

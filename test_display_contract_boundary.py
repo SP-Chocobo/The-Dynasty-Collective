@@ -458,8 +458,15 @@ class TheScaleIsNotAPointsTotalTests(unittest.TestCase):
         #   the quantity was becoming 0.0 where nothing had been measured, and #187 had already
         #   repaired its sibling in the SAME LOOP while leaving this one asserting the strongest
         #   available claim off no evidence.
+        #   displacement_adj + displacement_basis (#216), fields 46-47. DOES IT IMPLY A SCALE?
+        #   No -- universal-value points, the same scale as the three terms it joins, and
+        #   non-positive by construction. SHOULD THE CARD RENDER IT? Yes, and it does: a fourth
+        #   tile on the second metric row, rendered under a `measured` basis only (an
+        #   unmeasured zero is a dash, a floor says "(floor)"), label and help from
+        #   DISPLAY_CONTRACT like every other card. The basis travels beside the number from
+        #   the first commit, which is the lesson depth_basis (field 44) taught.
         self.assertEqual(
-            len(dataclasses.fields(ps.CandidateSnapshot)), 45,
+            len(dataclasses.fields(ps.CandidateSnapshot)), 47,
             "CandidateSnapshot's field count changed. That is fine and often correct -- but "
             "confirm the new field does not imply a scale the card cannot support, decide "
             "whether the card should render it, then update this number.")

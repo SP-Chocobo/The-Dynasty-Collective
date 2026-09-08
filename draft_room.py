@@ -2888,11 +2888,25 @@ def compute_draft_board(
         # roster cannot offer him -- see displacement_adjustments. Non-positive by
         # construction. 0.0 with a basis that is not `measured` means "no points anchor to
         # correct at this position", never "this roster has room for him".
-        displacement = displacement_by_position.get(position)
-        if displacement is None:
+        #
+        # A multi-eligible candidate reaches every slot his FULL eligibility reaches, so he is
+        # deducted only by the LEAST of his positions' deductions: a WR/DB with WR, WR, FLEX
+        # held and IDP_FLEX open is not surplus -- the open slot is his (eligibility_bonus
+        # prices what that flexibility GAINS him; this term must not take it away). Positions
+        # no slot accepts are not "open" for this purpose, so a WR/DB in a league with no IDP
+        # slot is still priced as the WR he is there.
+        reachable = [
+            displacement_by_position[p]
+            for p in [position] + sorted(player_eligible_positions(players_db.get(str(row["player_id"])) or {}) - {position})
+            if p in displacement_by_position and displacement_by_position[p]["displaced"] is not None
+        ]
+        if not reachable:
             displacement_adj = 0.0
-            displacement_basis = lo.DISPLACEMENT_NO_POINTS_ANCHOR
+            primary = displacement_by_position.get(position)
+            displacement_basis = (primary["basis"] if primary is not None
+                                  else lo.DISPLACEMENT_NO_POINTS_ANCHOR)
         else:
+            displacement = max(reachable, key=lambda d: d["adjustment"])
             displacement_adj = float(displacement["adjustment"])
             displacement_basis = displacement["basis"]
 

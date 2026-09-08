@@ -1702,12 +1702,20 @@ class EligibilityBonusWiringTests(unittest.TestCase):
             "WR/DB eligibility should unlock the open IDP_FLEX slot a WR-only player of similar value could not reach",
         )
         self.assertEqual(by_id[control_id]["eligibility_bonus"], 0.0)
-        # The wiring invariant itself: final_score must equal the documented three-term sum,
-        # not a silently-dropped term.
+        # The wiring invariant itself: final_score must equal the documented sum, not a
+        # silently-dropped term. Five terms since #216 (depth_exposure and displacement_adj
+        # joined the three this comment used to count). On THIS roster -- WR, WR, FLEX all held
+        # above the league alternative -- a WR-only candidate IS displaced, and the dual-eligible
+        # one is not: his DB eligibility reaches the open IDP_FLEX, which is the same open slot
+        # his eligibility_bonus above prices. The two terms agree about that slot by design.
         row = by_id[candidate_id]
         self.assertAlmostEqual(
-            row["final_score"], row["universal_value"] + row["need_bonus"] + row["eligibility_bonus"], places=2,
+            row["final_score"],
+            row["universal_value"] + row["need_bonus"] + row["eligibility_bonus"]
+            + row["depth_exposure"] + row["displacement_adj"], places=2,
         )
+        self.assertEqual(row["displacement_adj"], 0.0, "an open slot his eligibility reaches: no deduction")
+        self.assertLess(by_id[control_id]["displacement_adj"], 0.0, "the WR-only control has no open slot to reach")
 
     def test_full_board_stays_fast_even_when_most_candidates_are_multi_eligible(self):
         # eligibility_bonus solves a real assignment problem per candidate row -- this guards

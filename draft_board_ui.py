@@ -42,7 +42,10 @@ from typing import Optional
 
 import design_system
 from draft_room import SLEEPER_WEEKLY_TO_SEASON_FACTOR, REPLACEMENT_BASIS_LABELS
-from lineup_optimizer import DISPLACEMENT_BASIS_LABELS, EXPOSURE_BASIS_LABELS
+# #216: the two lineup-solved vocabularies, through the snapshot boundary (pick_synthesis
+# re-exports them), never from lineup_optimizer -- a snapshot consumer must not be able to
+# reach a valuation module (test_pick_synthesis.DecisionBoundaryIsClosedTests).
+from pick_synthesis import DISPLACEMENT_BASIS_LABELS, EXPOSURE_BASIS_LABELS
 from player_universe import FLEX_SLOT_POSITIONS
 from pick_synthesis import (
     DEFAULT_NARROW_COUNT, HORIZON_BASIS_IMPUTED, CandidateSnapshot, PickSnapshot,

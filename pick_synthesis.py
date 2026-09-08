@@ -180,6 +180,10 @@ EXPOSURE_BASIS_LABELS = lo.EXPOSURE_BASIS_LABELS
 #: for the same reason as the labels: lineup_optimizer is closed to snapshot consumers, and
 #: a consumer spelling "measured" as its own literal is a second home for the vocabulary.
 EXPOSURE_MEASURED = lo.EXPOSURE_MEASURED
+#: #216: the fourth term's vocabulary, re-exported for the same reason and consumed the same
+#: way (draft_board_ui carries the table to the JS; pick_debate qualifies the clause).
+DISPLACEMENT_BASIS_LABELS = lo.DISPLACEMENT_BASIS_LABELS
+DISPLACEMENT_MEASURED = lo.DISPLACEMENT_MEASURED
 
 # Position-view depth ceiling (see narrow_candidates' own docstring): the board's real,
 # league-aware replacement rank per position (draft_room.replacement_ranks) is the right
