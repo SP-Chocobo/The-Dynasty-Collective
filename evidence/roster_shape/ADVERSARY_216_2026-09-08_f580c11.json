@@ -1,0 +1,1449 @@
+{
+  "commit": "f580c11",
+  "universe": {
+    "source": "data/fixtures/sleeper_capture.json",
+    "captured_at": "2026-09-07T08:14:10.990206+00:00",
+    "season": "2026",
+    "players_in_capture": 6595,
+    "players_in_pool": 6595,
+    "injury_statuses_present": [
+      "DNR",
+      "IR",
+      "NA",
+      "Out",
+      "PUP",
+      "Questionable",
+      "Sus"
+    ]
+  },
+  "formats": [
+    {
+      "label": "12T_ppr",
+      "roster_positions": [
+        "QB",
+        "RB",
+        "RB",
+        "WR",
+        "WR",
+        "TE",
+        "FLEX",
+        "FLEX",
+        "BN",
+        "BN",
+        "BN",
+        "BN",
+        "BN",
+        "BN"
+      ],
+      "pool": {
+        "RB": 126,
+        "WR": 197,
+        "TE": 115,
+        "QB": 42,
+        "DB": 1
+      },
+      "pool_n": 481,
+      "feedback": {
+        "rows": 1114,
+        "uv_rows_differing": 0,
+        "next_te": "Sam LaPorta",
+        "state_A_own_one": {
+          "projected_points": 230.85,
+          "universal_value": 68.14,
+          "need_bonus": 0.67,
+          "eligibility_bonus": 0.0,
+          "depth_exposure": 0.0,
+          "depth_basis": "no_surplus",
+          "final_score": 68.81
+        },
+        "state_B_own_four": {
+          "projected_points": 230.85,
+          "universal_value": 68.14,
+          "need_bonus": 0.0,
+          "eligibility_bonus": 0.0,
+          "depth_exposure": 3.72,
+          "depth_basis": "measured",
+          "final_score": 71.86
+        },
+        "swing_A_minus_B": -3.05,
+        "bias_levelWR_minus_levelTE": 58.47,
+        "levels": {
+          "RB": {
+            "n": 126,
+            "min": 185.64,
+            "max": 185.64
+          },
+          "WR": {
+            "n": 198,
+            "min": 216.25,
+            "max": 216.25
+          },
+          "TE": {
+            "n": 110,
+            "min": 157.78,
+            "max": 157.78
+          },
+          "QB": {
+            "n": 42,
+            "min": 328.6,
+            "max": 328.6
+          }
+        },
+        "k_series_te7": [
+          {
+            "k_te_owned": 0,
+            "gap_WR_minus_TE": 43.56,
+            "te7_final": 48.94,
+            "te7_uv": 44.27
+          },
+          {
+            "k_te_owned": 1,
+            "gap_WR_minus_TE": 43.56,
+            "te7_final": 44.93,
+            "te7_uv": 44.26
+          },
+          {
+            "k_te_owned": 2,
+            "gap_WR_minus_TE": 43.56,
+            "te7_final": 44.26,
+            "te7_uv": 44.26
+          },
+          {
+            "k_te_owned": 3,
+            "gap_WR_minus_TE": 53.6,
+            "te7_final": 54.29,
+            "te7_uv": 54.29
+          },
+          {
+            "k_te_owned": 4,
+            "gap_WR_minus_TE": 58.47,
+            "te7_final": 62.87,
+            "te7_uv": 59.15
+          },
+          {
+            "k_te_owned": 5,
+            "gap_WR_minus_TE": 64.81,
+            "te7_final": 69.21,
+            "te7_uv": 65.49
+          },
+          {
+            "k_te_owned": 6,
+            "gap_WR_minus_TE": 67.81,
+            "te7_final": 72.2,
+            "te7_uv": 68.48
+          }
+        ]
+      },
+      "ablation": [
+        {
+          "seat": "1",
+          "backstop_on": true,
+          "composition": {
+            "RB": 3,
+            "TE": 8,
+            "WR": 2,
+            "QB": 1
+          },
+          "missing_dedicated_slots": {},
+          "unfillable_starting_slots": [],
+          "legal": true,
+          "backstop_bound_picks": 3,
+          "backstop_overrode_picks": 3,
+          "sequence": "1:RB 2:TE 3:TE 4:RB 5:TE 6:TE 7:TE 8:RB 9:TE 10:TE 11:TE 12:WR* 13:WR* 14:QB*",
+          "picks": [
+            {
+              "round": 1,
+              "chosen": "Jahmyr Gibbs",
+              "position": "RB",
+              "final": 232.93,
+              "bound": false,
+              "pure_value_top": "Jahmyr Gibbs",
+              "overrode": false
+            },
+            {
+              "round": 2,
+              "chosen": "Brock Bowers",
+              "position": "TE",
+              "final": 142.0,
+              "bound": false,
+              "pure_value_top": "Brock Bowers",
+              "overrode": false
+            },
+            {
+              "round": 3,
+              "chosen": "Trey McBride",
+              "position": "TE",
+              "final": 129.02,
+              "bound": false,
+              "pure_value_top": "Trey McBride",
+              "overrode": false
+            },
+            {
+              "round": 4,
+              "chosen": "Javonte Williams",
+              "position": "RB",
+              "final": 79.02,
+              "bound": false,
+              "pure_value_top": "Javonte Williams",
+              "overrode": false
+            },
+            {
+              "round": 5,
+              "chosen": "Tyler Warren",
+              "position": "TE",
+              "final": 70.64,
+              "bound": false,
+              "pure_value_top": "Tyler Warren",
+              "overrode": false
+            },
+            {
+              "round": 6,
+              "chosen": "George Kittle",
+              "position": "TE",
+              "final": 55.53,
+              "bound": false,
+              "pure_value_top": "George Kittle",
+              "overrode": false
+            },
+            {
+              "round": 7,
+              "chosen": "Kyle Pitts",
+              "position": "TE",
+              "final": 61.0,
+              "bound": false,
+              "pure_value_top": "Kyle Pitts",
+              "overrode": false
+            },
+            {
+              "round": 8,
+              "chosen": "RJ Harvey",
+              "position": "RB",
+              "final": 24.71,
+              "bound": false,
+              "pure_value_top": "RJ Harvey",
+              "overrode": false
+            },
+            {
+              "round": 9,
+              "chosen": "Dalton Kincaid",
+              "position": "TE",
+              "final": 23.28,
+              "bound": false,
+              "pure_value_top": "Dalton Kincaid",
+              "overrode": false
+            },
+            {
+              "round": 10,
+              "chosen": "AJ Barner",
+              "position": "TE",
+              "final": 25.94,
+              "bound": false,
+              "pure_value_top": "AJ Barner",
+              "overrode": false
+            },
+            {
+              "round": 11,
+              "chosen": "Chig Okonkwo",
+              "position": "TE",
+              "final": 31.68,
+              "bound": false,
+              "pure_value_top": "Chig Okonkwo",
+              "overrode": false
+            },
+            {
+              "round": 12,
+              "chosen": "Devaughn Vele",
+              "position": "WR",
+              "final": 12.85,
+              "bound": true,
+              "pure_value_top": "T.J. Hockenson",
+              "overrode": true
+            },
+            {
+              "round": 13,
+              "chosen": "KC Concepcion",
+              "position": "WR",
+              "final": 7.73,
+              "bound": true,
+              "pure_value_top": "T.J. Hockenson",
+              "overrode": true
+            },
+            {
+              "round": 14,
+              "chosen": "Michael Penix",
+              "position": "QB",
+              "final": 3.37,
+              "bound": true,
+              "pure_value_top": "Greg Dulcich",
+              "overrode": true
+            }
+          ]
+        },
+        {
+          "seat": "1",
+          "backstop_on": false,
+          "composition": {
+            "RB": 3,
+            "TE": 11
+          },
+          "missing_dedicated_slots": {
+            "QB": 1,
+            "WR": 2
+          },
+          "unfillable_starting_slots": [
+            "QB",
+            "WR"
+          ],
+          "legal": false,
+          "backstop_bound_picks": 0,
+          "backstop_overrode_picks": 0,
+          "sequence": "1:RB 2:TE 3:TE 4:RB 5:TE 6:TE 7:TE 8:RB 9:TE 10:TE 11:TE 12:TE 13:TE 14:TE",
+          "picks": [
+            {
+              "round": 1,
+              "chosen": "Jahmyr Gibbs",
+              "position": "RB",
+              "final": 232.93,
+              "bound": false,
+              "pure_value_top": "Jahmyr Gibbs",
+              "overrode": false
+            },
+            {
+              "round": 2,
+              "chosen": "Brock Bowers",
+              "position": "TE",
+              "final": 142.0,
+              "bound": false,
+              "pure_value_top": "Brock Bowers",
+              "overrode": false
+            },
+            {
+              "round": 3,
+              "chosen": "Trey McBride",
+              "position": "TE",
+              "final": 129.02,
+              "bound": false,
+              "pure_value_top": "Trey McBride",
+              "overrode": false
+            },
+            {
+              "round": 4,
+              "chosen": "Javonte Williams",
+              "position": "RB",
+              "final": 79.02,
+              "bound": false,
+              "pure_value_top": "Javonte Williams",
+              "overrode": false
+            },
+            {
+              "round": 5,
+              "chosen": "Tyler Warren",
+              "position": "TE",
+              "final": 70.64,
+              "bound": false,
+              "pure_value_top": "Tyler Warren",
+              "overrode": false
+            },
+            {
+              "round": 6,
+              "chosen": "George Kittle",
+              "position": "TE",
+              "final": 55.53,
+              "bound": false,
+              "pure_value_top": "George Kittle",
+              "overrode": false
+            },
+            {
+              "round": 7,
+              "chosen": "Kyle Pitts",
+              "position": "TE",
+              "final": 61.0,
+              "bound": false,
+              "pure_value_top": "Kyle Pitts",
+              "overrode": false
+            },
+            {
+              "round": 8,
+              "chosen": "RJ Harvey",
+              "position": "RB",
+              "final": 24.71,
+              "bound": false,
+              "pure_value_top": "RJ Harvey",
+              "overrode": false
+            },
+            {
+              "round": 9,
+              "chosen": "Dalton Kincaid",
+              "position": "TE",
+              "final": 23.28,
+              "bound": false,
+              "pure_value_top": "Dalton Kincaid",
+              "overrode": false
+            },
+            {
+              "round": 10,
+              "chosen": "AJ Barner",
+              "position": "TE",
+              "final": 25.94,
+              "bound": false,
+              "pure_value_top": "AJ Barner",
+              "overrode": false
+            },
+            {
+              "round": 11,
+              "chosen": "Chig Okonkwo",
+              "position": "TE",
+              "final": 31.68,
+              "bound": false,
+              "pure_value_top": "Chig Okonkwo",
+              "overrode": false
+            },
+            {
+              "round": 12,
+              "chosen": "T.J. Hockenson",
+              "position": "TE",
+              "final": 33.24,
+              "bound": false,
+              "pure_value_top": "T.J. Hockenson",
+              "overrode": false
+            },
+            {
+              "round": 13,
+              "chosen": "Brenton Strange",
+              "position": "TE",
+              "final": 32.4,
+              "bound": false,
+              "pure_value_top": "Brenton Strange",
+              "overrode": false
+            },
+            {
+              "round": 14,
+              "chosen": "Greg Dulcich",
+              "position": "TE",
+              "final": 15.12,
+              "bound": false,
+              "pure_value_top": "Greg Dulcich",
+              "overrode": false
+            }
+          ]
+        },
+        {
+          "seat": "6",
+          "backstop_on": true,
+          "composition": {
+            "RB": 3,
+            "TE": 8,
+            "WR": 2,
+            "QB": 1
+          },
+          "missing_dedicated_slots": {},
+          "unfillable_starting_slots": [],
+          "legal": true,
+          "backstop_bound_picks": 3,
+          "backstop_overrode_picks": 3,
+          "sequence": "1:RB 2:TE 3:RB 4:TE 5:TE 6:TE 7:RB 8:TE 9:TE 10:TE 11:TE 12:WR* 13:QB* 14:WR*",
+          "picks": [
+            {
+              "round": 1,
+              "chosen": "Jonathan Taylor",
+              "position": "RB",
+              "final": 176.08,
+              "bound": false,
+              "pure_value_top": "Jonathan Taylor",
+              "overrode": false
+            },
+            {
+              "round": 2,
+              "chosen": "Brock Bowers",
+              "position": "TE",
+              "final": 141.97,
+              "bound": false,
+              "pure_value_top": "Brock Bowers",
+              "overrode": false
+            },
+            {
+              "round": 3,
+              "chosen": "Jeremiyah Love",
+              "position": "RB",
+              "final": 106.59,
+              "bound": false,
+              "pure_value_top": "Jeremiyah Love",
+              "overrode": false
+            },
+            {
+              "round": 4,
+              "chosen": "Colston Loveland",
+              "position": "TE",
+              "final": 92.09,
+              "bound": false,
+              "pure_value_top": "Colston Loveland",
+              "overrode": false
+            },
+            {
+              "round": 5,
+              "chosen": "Tyler Warren",
+              "position": "TE",
+              "final": 70.59,
+              "bound": false,
+              "pure_value_top": "Tyler Warren",
+              "overrode": false
+            },
+            {
+              "round": 6,
+              "chosen": "George Kittle",
+              "position": "TE",
+              "final": 55.74,
+              "bound": false,
+              "pure_value_top": "George Kittle",
+              "overrode": false
+            },
+            {
+              "round": 7,
+              "chosen": "TreVeyon Henderson",
+              "position": "RB",
+              "final": 52.54,
+              "bound": false,
+              "pure_value_top": "TreVeyon Henderson",
+              "overrode": false
+            },
+            {
+              "round": 8,
+              "chosen": "Isaiah Likely",
+              "position": "TE",
+              "final": 23.02,
+              "bound": false,
+              "pure_value_top": "Isaiah Likely",
+              "overrode": false
+            },
+            {
+              "round": 9,
+              "chosen": "Dalton Kincaid",
+              "position": "TE",
+              "final": 22.18,
+              "bound": false,
+              "pure_value_top": "Dalton Kincaid",
+              "overrode": false
+            },
+            {
+              "round": 10,
+              "chosen": "AJ Barner",
+              "position": "TE",
+              "final": 24.74,
+              "bound": false,
+              "pure_value_top": "AJ Barner",
+              "overrode": false
+            },
+            {
+              "round": 11,
+              "chosen": "Chig Okonkwo",
+              "position": "TE",
+              "final": 30.56,
+              "bound": false,
+              "pure_value_top": "Chig Okonkwo",
+              "overrode": false
+            },
+            {
+              "round": 12,
+              "chosen": "Rashid Shaheed",
+              "position": "WR",
+              "final": 11.76,
+              "bound": true,
+              "pure_value_top": "Hunter Henry",
+              "overrode": true
+            },
+            {
+              "round": 13,
+              "chosen": "Michael Penix",
+              "position": "QB",
+              "final": 4.57,
+              "bound": true,
+              "pure_value_top": "Brenton Strange",
+              "overrode": true
+            },
+            {
+              "round": 14,
+              "chosen": "De'Zhaun Stribling",
+              "position": "WR",
+              "final": 4.19,
+              "bound": true,
+              "pure_value_top": "Cade Otton",
+              "overrode": true
+            }
+          ]
+        },
+        {
+          "seat": "6",
+          "backstop_on": false,
+          "composition": {
+            "RB": 3,
+            "TE": 11
+          },
+          "missing_dedicated_slots": {
+            "QB": 1,
+            "WR": 2
+          },
+          "unfillable_starting_slots": [
+            "QB",
+            "WR"
+          ],
+          "legal": false,
+          "backstop_bound_picks": 0,
+          "backstop_overrode_picks": 0,
+          "sequence": "1:RB 2:TE 3:RB 4:TE 5:TE 6:TE 7:RB 8:TE 9:TE 10:TE 11:TE 12:TE 13:TE 14:TE",
+          "picks": [
+            {
+              "round": 1,
+              "chosen": "Jonathan Taylor",
+              "position": "RB",
+              "final": 176.08,
+              "bound": false,
+              "pure_value_top": "Jonathan Taylor",
+              "overrode": false
+            },
+            {
+              "round": 2,
+              "chosen": "Brock Bowers",
+              "position": "TE",
+              "final": 141.97,
+              "bound": false,
+              "pure_value_top": "Brock Bowers",
+              "overrode": false
+            },
+            {
+              "round": 3,
+              "chosen": "Jeremiyah Love",
+              "position": "RB",
+              "final": 106.59,
+              "bound": false,
+              "pure_value_top": "Jeremiyah Love",
+              "overrode": false
+            },
+            {
+              "round": 4,
+              "chosen": "Colston Loveland",
+              "position": "TE",
+              "final": 92.09,
+              "bound": false,
+              "pure_value_top": "Colston Loveland",
+              "overrode": false
+            },
+            {
+              "round": 5,
+              "chosen": "Tyler Warren",
+              "position": "TE",
+              "final": 70.59,
+              "bound": false,
+              "pure_value_top": "Tyler Warren",
+              "overrode": false
+            },
+            {
+              "round": 6,
+              "chosen": "George Kittle",
+              "position": "TE",
+              "final": 55.74,
+              "bound": false,
+              "pure_value_top": "George Kittle",
+              "overrode": false
+            },
+            {
+              "round": 7,
+              "chosen": "TreVeyon Henderson",
+              "position": "RB",
+              "final": 52.54,
+              "bound": false,
+              "pure_value_top": "TreVeyon Henderson",
+              "overrode": false
+            },
+            {
+              "round": 8,
+              "chosen": "Isaiah Likely",
+              "position": "TE",
+              "final": 23.02,
+              "bound": false,
+              "pure_value_top": "Isaiah Likely",
+              "overrode": false
+            },
+            {
+              "round": 9,
+              "chosen": "Dalton Kincaid",
+              "position": "TE",
+              "final": 22.18,
+              "bound": false,
+              "pure_value_top": "Dalton Kincaid",
+              "overrode": false
+            },
+            {
+              "round": 10,
+              "chosen": "AJ Barner",
+              "position": "TE",
+              "final": 24.74,
+              "bound": false,
+              "pure_value_top": "AJ Barner",
+              "overrode": false
+            },
+            {
+              "round": 11,
+              "chosen": "Chig Okonkwo",
+              "position": "TE",
+              "final": 30.56,
+              "bound": false,
+              "pure_value_top": "Chig Okonkwo",
+              "overrode": false
+            },
+            {
+              "round": 12,
+              "chosen": "Hunter Henry",
+              "position": "TE",
+              "final": 29.41,
+              "bound": false,
+              "pure_value_top": "Hunter Henry",
+              "overrode": false
+            },
+            {
+              "round": 13,
+              "chosen": "Brenton Strange",
+              "position": "TE",
+              "final": 30.86,
+              "bound": false,
+              "pure_value_top": "Brenton Strange",
+              "overrode": false
+            },
+            {
+              "round": 14,
+              "chosen": "Pat Freiermuth",
+              "position": "TE",
+              "final": 27.32,
+              "bound": false,
+              "pure_value_top": "Pat Freiermuth",
+              "overrode": false
+            }
+          ]
+        },
+        {
+          "seat": "12",
+          "backstop_on": true,
+          "composition": {
+            "TE": 2,
+            "RB": 9,
+            "WR": 2,
+            "QB": 1
+          },
+          "missing_dedicated_slots": {},
+          "unfillable_starting_slots": [],
+          "legal": true,
+          "backstop_bound_picks": 3,
+          "backstop_overrode_picks": 1,
+          "sequence": "1:TE 2:RB 3:RB 4:RB 5:RB 6:RB 7:TE 8:RB 9:RB 10:RB 11:RB 12:WR* 13:WR 14:QB",
+          "picks": [
+            {
+              "round": 1,
+              "chosen": "Brock Bowers",
+              "position": "TE",
+              "final": 141.96,
+              "bound": false,
+              "pure_value_top": "Brock Bowers",
+              "overrode": false
+            },
+            {
+              "round": 2,
+              "chosen": "De'Von Achane",
+              "position": "RB",
+              "final": 139.14,
+              "bound": false,
+              "pure_value_top": "De'Von Achane",
+              "overrode": false
+            },
+            {
+              "round": 3,
+              "chosen": "Kenneth Walker",
+              "position": "RB",
+              "final": 99.54,
+              "bound": false,
+              "pure_value_top": "Kenneth Walker",
+              "overrode": false
+            },
+            {
+              "round": 4,
+              "chosen": "Omarion Hampton",
+              "position": "RB",
+              "final": 94.27,
+              "bound": false,
+              "pure_value_top": "Omarion Hampton",
+              "overrode": false
+            },
+            {
+              "round": 5,
+              "chosen": "Quinshon Judkins",
+              "position": "RB",
+              "final": 58.25,
+              "bound": false,
+              "pure_value_top": "Quinshon Judkins",
+              "overrode": false
+            },
+            {
+              "round": 6,
+              "chosen": "Travis Etienne",
+              "position": "RB",
+              "final": 59.05,
+              "bound": false,
+              "pure_value_top": "Travis Etienne",
+              "overrode": false
+            },
+            {
+              "round": 7,
+              "chosen": "Harold Fannin",
+              "position": "TE",
+              "final": 35.5,
+              "bound": false,
+              "pure_value_top": "Harold Fannin",
+              "overrode": false
+            },
+            {
+              "round": 8,
+              "chosen": "RJ Harvey",
+              "position": "RB",
+              "final": 24.79,
+              "bound": false,
+              "pure_value_top": "RJ Harvey",
+              "overrode": false
+            },
+            {
+              "round": 9,
+              "chosen": "Chuba Hubbard",
+              "position": "RB",
+              "final": 18.56,
+              "bound": false,
+              "pure_value_top": "Chuba Hubbard",
+              "overrode": false
+            },
+            {
+              "round": 10,
+              "chosen": "Jadarian Price",
+              "position": "RB",
+              "final": 18.42,
+              "bound": false,
+              "pure_value_top": "Jadarian Price",
+              "overrode": false
+            },
+            {
+              "round": 11,
+              "chosen": "Kenny Gainwell",
+              "position": "RB",
+              "final": 17.32,
+              "bound": false,
+              "pure_value_top": "Kenny Gainwell",
+              "overrode": false
+            },
+            {
+              "round": 12,
+              "chosen": "Tre Tucker",
+              "position": "WR",
+              "final": 11.84,
+              "bound": true,
+              "pure_value_top": "Dallas Goedert",
+              "overrode": true
+            },
+            {
+              "round": 13,
+              "chosen": "Cooper Kupp",
+              "position": "WR",
+              "final": 15.4,
+              "bound": true,
+              "pure_value_top": "Cooper Kupp",
+              "overrode": false
+            },
+            {
+              "round": 14,
+              "chosen": "Michael Penix",
+              "position": "QB",
+              "final": 4.13,
+              "bound": true,
+              "pure_value_top": "Michael Penix",
+              "overrode": false
+            }
+          ]
+        },
+        {
+          "seat": "12",
+          "backstop_on": false,
+          "composition": {
+            "TE": 3,
+            "RB": 9,
+            "WR": 1,
+            "QB": 1
+          },
+          "missing_dedicated_slots": {
+            "WR": 1
+          },
+          "unfillable_starting_slots": [
+            "WR"
+          ],
+          "legal": false,
+          "backstop_bound_picks": 0,
+          "backstop_overrode_picks": 0,
+          "sequence": "1:TE 2:RB 3:RB 4:RB 5:RB 6:RB 7:TE 8:RB 9:RB 10:RB 11:RB 12:TE 13:WR 14:QB",
+          "picks": [
+            {
+              "round": 1,
+              "chosen": "Brock Bowers",
+              "position": "TE",
+              "final": 141.96,
+              "bound": false,
+              "pure_value_top": "Brock Bowers",
+              "overrode": false
+            },
+            {
+              "round": 2,
+              "chosen": "De'Von Achane",
+              "position": "RB",
+              "final": 139.14,
+              "bound": false,
+              "pure_value_top": "De'Von Achane",
+              "overrode": false
+            },
+            {
+              "round": 3,
+              "chosen": "Kenneth Walker",
+              "position": "RB",
+              "final": 99.54,
+              "bound": false,
+              "pure_value_top": "Kenneth Walker",
+              "overrode": false
+            },
+            {
+              "round": 4,
+              "chosen": "Omarion Hampton",
+              "position": "RB",
+              "final": 94.27,
+              "bound": false,
+              "pure_value_top": "Omarion Hampton",
+              "overrode": false
+            },
+            {
+              "round": 5,
+              "chosen": "Quinshon Judkins",
+              "position": "RB",
+              "final": 58.25,
+              "bound": false,
+              "pure_value_top": "Quinshon Judkins",
+              "overrode": false
+            },
+            {
+              "round": 6,
+              "chosen": "Travis Etienne",
+              "position": "RB",
+              "final": 59.05,
+              "bound": false,
+              "pure_value_top": "Travis Etienne",
+              "overrode": false
+            },
+            {
+              "round": 7,
+              "chosen": "Harold Fannin",
+              "position": "TE",
+              "final": 35.5,
+              "bound": false,
+              "pure_value_top": "Harold Fannin",
+              "overrode": false
+            },
+            {
+              "round": 8,
+              "chosen": "RJ Harvey",
+              "position": "RB",
+              "final": 24.79,
+              "bound": false,
+              "pure_value_top": "RJ Harvey",
+              "overrode": false
+            },
+            {
+              "round": 9,
+              "chosen": "Chuba Hubbard",
+              "position": "RB",
+              "final": 18.56,
+              "bound": false,
+              "pure_value_top": "Chuba Hubbard",
+              "overrode": false
+            },
+            {
+              "round": 10,
+              "chosen": "Jadarian Price",
+              "position": "RB",
+              "final": 18.42,
+              "bound": false,
+              "pure_value_top": "Jadarian Price",
+              "overrode": false
+            },
+            {
+              "round": 11,
+              "chosen": "Kenny Gainwell",
+              "position": "RB",
+              "final": 17.32,
+              "bound": false,
+              "pure_value_top": "Kenny Gainwell",
+              "overrode": false
+            },
+            {
+              "round": 12,
+              "chosen": "Dallas Goedert",
+              "position": "TE",
+              "final": 16.23,
+              "bound": false,
+              "pure_value_top": "Dallas Goedert",
+              "overrode": false
+            },
+            {
+              "round": 13,
+              "chosen": "Cooper Kupp",
+              "position": "WR",
+              "final": 22.28,
+              "bound": false,
+              "pure_value_top": "Cooper Kupp",
+              "overrode": false
+            },
+            {
+              "round": 14,
+              "chosen": "Michael Penix",
+              "position": "QB",
+              "final": 4.13,
+              "bound": false,
+              "pure_value_top": "Michael Penix",
+              "overrode": false
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "label": "12T_ppr_SF",
+      "roster_positions": [
+        "QB",
+        "RB",
+        "RB",
+        "WR",
+        "WR",
+        "TE",
+        "FLEX",
+        "FLEX",
+        "SUPER_FLEX",
+        "BN",
+        "BN",
+        "BN",
+        "BN",
+        "BN",
+        "BN"
+      ],
+      "pool": {
+        "RB": 126,
+        "WR": 197,
+        "QB": 42,
+        "TE": 115,
+        "DB": 1
+      },
+      "pool_n": 481,
+      "feedback": {
+        "rows": 1114,
+        "uv_rows_differing": 0,
+        "next_te": "Sam LaPorta",
+        "state_A_own_one": {
+          "projected_points": 230.85,
+          "universal_value": 74.44,
+          "need_bonus": 0.72,
+          "eligibility_bonus": 0.0,
+          "depth_exposure": 0.0,
+          "depth_basis": "no_surplus",
+          "final_score": 75.16
+        },
+        "state_B_own_four": {
+          "projected_points": 230.85,
+          "universal_value": 74.44,
+          "need_bonus": 0.0,
+          "eligibility_bonus": 0.0,
+          "depth_exposure": 0.0,
+          "depth_basis": "no_surplus",
+          "final_score": 74.44
+        },
+        "swing_A_minus_B": 0.72,
+        "bias_levelWR_minus_levelTE": 63.61,
+        "levels": {
+          "RB": {
+            "n": 126,
+            "min": 176.98,
+            "max": 176.98
+          },
+          "WR": {
+            "n": 198,
+            "min": 215.05,
+            "max": 215.05
+          },
+          "QB": {
+            "n": 42,
+            "min": 207.5,
+            "max": 207.5
+          },
+          "TE": {
+            "n": 110,
+            "min": 151.44,
+            "max": 151.44
+          }
+        },
+        "k_series_te7": [
+          {
+            "k_te_owned": 0,
+            "gap_WR_minus_TE": 52.4,
+            "te7_final": 59.15,
+            "te7_uv": 54.43
+          },
+          {
+            "k_te_owned": 1,
+            "gap_WR_minus_TE": 52.4,
+            "te7_final": 55.14,
+            "te7_uv": 54.42
+          },
+          {
+            "k_te_owned": 2,
+            "gap_WR_minus_TE": 52.4,
+            "te7_final": 54.41,
+            "te7_uv": 54.41
+          },
+          {
+            "k_te_owned": 3,
+            "gap_WR_minus_TE": 57.27,
+            "te7_final": 59.28,
+            "te7_uv": 59.28
+          },
+          {
+            "k_te_owned": 4,
+            "gap_WR_minus_TE": 63.61,
+            "te7_final": 65.61,
+            "te7_uv": 65.61
+          },
+          {
+            "k_te_owned": 5,
+            "gap_WR_minus_TE": 66.61,
+            "te7_final": 72.21,
+            "te7_uv": 68.61
+          },
+          {
+            "k_te_owned": 6,
+            "gap_WR_minus_TE": 73.75,
+            "te7_final": 79.34,
+            "te7_uv": 75.74
+          }
+        ]
+      },
+      "ablation": [
+        {
+          "seat": "1",
+          "backstop_on": true,
+          "composition": {
+            "RB": 3,
+            "TE": 6,
+            "QB": 4,
+            "WR": 2
+          },
+          "missing_dedicated_slots": {},
+          "unfillable_starting_slots": [],
+          "legal": true,
+          "backstop_bound_picks": 1,
+          "backstop_overrode_picks": 1,
+          "sequence": "1:RB 2:TE 3:RB 4:RB 5:TE 6:QB 7:QB 8:QB 9:QB 10:TE 11:TE 12:WR 13:TE 14:TE 15:WR*",
+          "picks": [
+            {
+              "round": 1,
+              "chosen": "Jahmyr Gibbs",
+              "position": "RB",
+              "final": 241.72,
+              "bound": false,
+              "pure_value_top": "Jahmyr Gibbs",
+              "overrode": false
+            },
+            {
+              "round": 2,
+              "chosen": "Brock Bowers",
+              "position": "TE",
+              "final": 151.92,
+              "bound": false,
+              "pure_value_top": "Brock Bowers",
+              "overrode": false
+            },
+            {
+              "round": 3,
+              "chosen": "James Cook",
+              "position": "RB",
+              "final": 142.2,
+              "bound": false,
+              "pure_value_top": "James Cook",
+              "overrode": false
+            },
+            {
+              "round": 4,
+              "chosen": "Omarion Hampton",
+              "position": "RB",
+              "final": 103.16,
+              "bound": false,
+              "pure_value_top": "Omarion Hampton",
+              "overrode": false
+            },
+            {
+              "round": 5,
+              "chosen": "Colston Loveland",
+              "position": "TE",
+              "final": 102.63,
+              "bound": false,
+              "pure_value_top": "Colston Loveland",
+              "overrode": false
+            },
+            {
+              "round": 6,
+              "chosen": "C.J. Stroud",
+              "position": "QB",
+              "final": 91.39,
+              "bound": false,
+              "pure_value_top": "C.J. Stroud",
+              "overrode": false
+            },
+            {
+              "round": 7,
+              "chosen": "Malik Willis",
+              "position": "QB",
+              "final": 82.78,
+              "bound": false,
+              "pure_value_top": "Malik Willis",
+              "overrode": false
+            },
+            {
+              "round": 8,
+              "chosen": "Daniel Jones",
+              "position": "QB",
+              "final": 73.78,
+              "bound": false,
+              "pure_value_top": "Daniel Jones",
+              "overrode": false
+            },
+            {
+              "round": 9,
+              "chosen": "Bryce Young",
+              "position": "QB",
+              "final": 58.59,
+              "bound": false,
+              "pure_value_top": "Bryce Young",
+              "overrode": false
+            },
+            {
+              "round": 10,
+              "chosen": "Isaiah Likely",
+              "position": "TE",
+              "final": 21.08,
+              "bound": false,
+              "pure_value_top": "Isaiah Likely",
+              "overrode": false
+            },
+            {
+              "round": 11,
+              "chosen": "Dallas Goedert",
+              "position": "TE",
+              "final": 22.6,
+              "bound": false,
+              "pure_value_top": "Dallas Goedert",
+              "overrode": false
+            },
+            {
+              "round": 12,
+              "chosen": "Devaughn Vele",
+              "position": "WR",
+              "final": 12.9,
+              "bound": false,
+              "pure_value_top": "Devaughn Vele",
+              "overrode": false
+            },
+            {
+              "round": 13,
+              "chosen": "T.J. Hockenson",
+              "position": "TE",
+              "final": 9.61,
+              "bound": false,
+              "pure_value_top": "T.J. Hockenson",
+              "overrode": false
+            },
+            {
+              "round": 14,
+              "chosen": "Greg Dulcich",
+              "position": "TE",
+              "final": 15.55,
+              "bound": false,
+              "pure_value_top": "Greg Dulcich",
+              "overrode": false
+            },
+            {
+              "round": 15,
+              "chosen": "De'Zhaun Stribling",
+              "position": "WR",
+              "final": 7.84,
+              "bound": true,
+              "pure_value_top": "Mike Gesicki",
+              "overrode": true
+            }
+          ]
+        },
+        {
+          "seat": "1",
+          "backstop_on": false,
+          "composition": {
+            "RB": 3,
+            "TE": 7,
+            "QB": 4,
+            "WR": 1
+          },
+          "missing_dedicated_slots": {
+            "WR": 1
+          },
+          "unfillable_starting_slots": [
+            "WR"
+          ],
+          "legal": false,
+          "backstop_bound_picks": 0,
+          "backstop_overrode_picks": 0,
+          "sequence": "1:RB 2:TE 3:RB 4:RB 5:TE 6:QB 7:QB 8:QB 9:QB 10:TE 11:TE 12:WR 13:TE 14:TE 15:TE",
+          "picks": [
+            {
+              "round": 1,
+              "chosen": "Jahmyr Gibbs",
+              "position": "RB",
+              "final": 241.72,
+              "bound": false,
+              "pure_value_top": "Jahmyr Gibbs",
+              "overrode": false
+            },
+            {
+              "round": 2,
+              "chosen": "Brock Bowers",
+              "position": "TE",
+              "final": 151.92,
+              "bound": false,
+              "pure_value_top": "Brock Bowers",
+              "overrode": false
+            },
+            {
+              "round": 3,
+              "chosen": "James Cook",
+              "position": "RB",
+              "final": 142.2,
+              "bound": false,
+              "pure_value_top": "James Cook",
+              "overrode": false
+            },
+            {
+              "round": 4,
+              "chosen": "Omarion Hampton",
+              "position": "RB",
+              "final": 103.16,
+              "bound": false,
+              "pure_value_top": "Omarion Hampton",
+              "overrode": false
+            },
+            {
+              "round": 5,
+              "chosen": "Colston Loveland",
+              "position": "TE",
+              "final": 102.63,
+              "bound": false,
+              "pure_value_top": "Colston Loveland",
+              "overrode": false
+            },
+            {
+              "round": 6,
+              "chosen": "C.J. Stroud",
+              "position": "QB",
+              "final": 91.39,
+              "bound": false,
+              "pure_value_top": "C.J. Stroud",
+              "overrode": false
+            },
+            {
+              "round": 7,
+              "chosen": "Malik Willis",
+              "position": "QB",
+              "final": 82.78,
+              "bound": false,
+              "pure_value_top": "Malik Willis",
+              "overrode": false
+            },
+            {
+              "round": 8,
+              "chosen": "Daniel Jones",
+              "position": "QB",
+              "final": 73.78,
+              "bound": false,
+              "pure_value_top": "Daniel Jones",
+              "overrode": false
+            },
+            {
+              "round": 9,
+              "chosen": "Bryce Young",
+              "position": "QB",
+              "final": 58.59,
+              "bound": false,
+              "pure_value_top": "Bryce Young",
+              "overrode": false
+            },
+            {
+              "round": 10,
+              "chosen": "Isaiah Likely",
+              "position": "TE",
+              "final": 21.08,
+              "bound": false,
+              "pure_value_top": "Isaiah Likely",
+              "overrode": false
+            },
+            {
+              "round": 11,
+              "chosen": "Dallas Goedert",
+              "position": "TE",
+              "final": 22.6,
+              "bound": false,
+              "pure_value_top": "Dallas Goedert",
+              "overrode": false
+            },
+            {
+              "round": 12,
+              "chosen": "Devaughn Vele",
+              "position": "WR",
+              "final": 12.9,
+              "bound": false,
+              "pure_value_top": "Devaughn Vele",
+              "overrode": false
+            },
+            {
+              "round": 13,
+              "chosen": "T.J. Hockenson",
+              "position": "TE",
+              "final": 9.61,
+              "bound": false,
+              "pure_value_top": "T.J. Hockenson",
+              "overrode": false
+            },
+            {
+              "round": 14,
+              "chosen": "Greg Dulcich",
+              "position": "TE",
+              "final": 15.55,
+              "bound": false,
+              "pure_value_top": "Greg Dulcich",
+              "overrode": false
+            },
+            {
+              "round": 15,
+              "chosen": "Mike Gesicki",
+              "position": "TE",
+              "final": 13.56,
+              "bound": false,
+              "pure_value_top": "Mike Gesicki",
+              "overrode": false
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "seconds": 99.3
+}
