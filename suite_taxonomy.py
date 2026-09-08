@@ -69,7 +69,6 @@ _UNMARKED: dict[str, tuple[str, ...]] = {
     "demand_decomposition": ("valuation",),
     "draft_horizon": ("valuation",),
     "kdst_integration": ("valuation",),
-    "lineup_marginal_contract": ("valuation",),
     "scoring_functions_parity": ("valuation",),
     "llm_engine_parsing": ("provider",),
     "downstream_contracts": ("absence",),
