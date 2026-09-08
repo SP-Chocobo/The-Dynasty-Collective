@@ -68,6 +68,20 @@ def build_players_db(merger: dm.DataMerger, positions=BATTERY_POSITIONS) -> dict
     return out
 
 
+def priceable_projection_count(season_projections: dict) -> int:
+    """How many supplied projections carry anything score_projection could actually price.
+
+    ADP is not a stat. An entry holding only `adp_dd_ppr`/`pos_adp_dd_ppr` says where the market
+    drafted a player, not what he is projected to DO, and nothing downstream can turn it into
+    points. Derived from the keys themselves rather than a hand-listed roster of stat names
+    (#126), so a new Sleeper stat counts the day it appears instead of the day someone
+    remembers to add it here."""
+    return sum(1 for v in (season_projections or {}).values()
+               if any(not k.startswith(("adp_", "pos_adp_"))
+                      for k, x in (v or {}).items()
+                      if isinstance(x, (int, float)) and x))
+
+
 def build_players_db_from_capture(positions=BATTERY_POSITIONS,
                                   path: Path = CAPTURE_PATH) -> tuple[dict[str, dict], dict]:
     """The REAL Sleeper player universe, as the app itself receives it (#201).
@@ -154,6 +168,18 @@ def decision_coverage(at_decision: dict | None) -> str:
             f"and won {took}")
 
 
+def _forced_clause(strength: dict) -> str:
+    """#211's companion, in the console line. A lineup total that includes below-replacement
+    players the optimizer was FORCED to start is not the same number as one that does not, and
+    without this clause the two are indistinguishable -- which is how a -205.4 got printed as
+    though it described a roster's quality. Absence and zero stay separate: a missing count says
+    so, a measured zero says the lineup was clean."""
+    n = strength.get("forced_negative_starters")
+    if n is None:
+        return " [forced-negative starters not measured]"
+    return "" if n == 0 else f" [{n} started below replacement, forced -- see #211]"
+
+
 def strength_coverage(strength: dict | None) -> str:
     """The words beside the starter-value range on the per-format line below, so the number
     states its own coverage on the one screen roster strength reaches a person. The phrasing
@@ -204,7 +230,14 @@ def main(argv: list[str] | None = None) -> int:
     season_projections = season_projections_from_capture()
     # STATED, not assumed -- the report has to say which pricing path produced it, because the
     # two are not comparable and the difference is otherwise invisible (#204).
+    # #212: SUPPLIED IS NOT PRICEABLE, and reporting only the first made a coverage claim the
+    # data does not support. Of 5,346 supplied entries, 4,506 carry ONLY an ADP field
+    # (`adp_dd_ppr`, often the 18000.0 "undrafted" sentinel) and no stat line at all, so
+    # score_projection returns None for them and the board correctly says no_priceable_input.
+    # Reported alone, "season_projections_supplied: 5346" reads as "5,346 players are priced"
+    # and overstates real coverage by 6.4x. Both numbers now travel together.
     universe["season_projections_supplied"] = len(season_projections)
+    universe["season_projections_priceable"] = priceable_projection_count(season_projections)
     universe["priced_from"] = "vendor+sleeper" if season_projections else "vendor_only"
     universe["sleeper_basis"] = dr.SLEEPER_BASIS_SEASON_SUM if season_projections else None
     matrix = draft_battery.league_matrix()
@@ -228,8 +261,10 @@ def main(argv: list[str] | None = None) -> int:
         # absence with its own sentence instead of collapsing into an empty record.
         print(f"{audited['label']:22s} picks={audited['picks']:4d} "
               f"findings={findings:3d} "
-              f"starters {strength.get('starter_value_min')}-{strength.get('starter_value_max')}"
-              f" (spread {strength.get('starter_value_spread')}; "
+              f"worth {strength.get('total_value_min')}-{strength.get('total_value_max')}"
+              f" (spread {strength.get('total_value_spread')}; "
+              f"lineup {strength.get('starter_value_min')}-{strength.get('starter_value_max')}"
+              f"{_forced_clause(strength)}; "
               f"{strength_coverage(audited.get('strength'))}; "
               f"{decision_coverage(audited.get('unpriced_at_decision'))})"
               f" {audited['seconds']:7.1f}s"

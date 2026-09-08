@@ -391,15 +391,44 @@ def reference_values(merger, players_db: dict, league: dict,
             if row.get("universal_value") is not None}
 
 
+#: Which quantity answers "what is this roster worth". Named rather than implied, because the
+#: two candidates differ in KIND and the wrong one was reported for the life of this battery.
+ROSTER_WORTH_BASIS = "total_value: universal_value is an asset LEVEL, so roster worth is what "\
+                     "the chair OWNS; starter_value sums that level over a starting lineup and "\
+                     "measures positional breadth instead (#211)"
+
+
 def roster_strength(trajectory, league: dict, players_db: dict,
                     values: dict[str, float]) -> dict:
     """What each roster is actually WORTH, not merely whether it is legal.
 
-    Two numbers per chair, both on the shared pre-draft ruler:
+    Three numbers per chair, all on the shared pre-draft ruler:
+      total_value   -- what the chair OWNS. THIS IS THE ROSTER-WORTH NUMBER (see
+        ROSTER_WORTH_BASIS), and saying so is a correction, not a convention.
       starter_value -- the optimal legal lineup's total, solved with REAL values (unlike
-        unfilled_starting_slots, which passes 1.0 to ask a pure feasibility question). This is
-        the roster-quality number: it is what the team actually fields.
+        unfilled_starting_slots, which passes 1.0 to ask a pure feasibility question). It
+        answers "can this roster field a lineup, and what does doing so cost", which is a real
+        question and NOT the same one.
       bench_value   -- everything else. Depth, and the price paid for it.
+
+    #211: starter_value WAS DESCRIBED HERE AS "the roster-quality number: it is what the team
+    actually fields", and that was a category error this docstring helped hide for the life of
+    this battery. universal_value is an asset LEVEL -- what a player is worth to OWN -- not a
+    rate that starting him realises, so summing the started subset does not measure quality.
+    Worse, it does not even measure it badly-but-monotonically: 83.8% of a typical pool's
+    universal_value is NEGATIVE (min -319.22, median -30.74, max +79.03) and optimize_lineup
+    has no "leave the slot empty" move, so a roster thin at a position is FORCED to start deep
+    negatives. Measured directly: one +50 WR and one -80 RB against a WR slot and an RB slot
+    returns -30, not +50. The battery duly produced `12T_ppr_mode_upside starters -205.4`.
+    What starter_value therefore ranks is POSITIONAL BREADTH -- who is forced to start the
+    fewest negatives -- which is a property of how a chair spread its picks, not of how good
+    they were. `forced_negative_starters` now travels with it so the contamination is visible
+    at the point of reading, and total_value carries the roster-worth question instead.
+
+    SCOPE, deliberately narrow: NO FINDING CHANGES. The battery's findings are legality checks
+    (unfilled_starting_slots and friends) and none of them has ever read starter_value; this
+    corrects a REPORTED LINE, not a verdict. The numbers in the committed evidence files were
+    produced by the code as it stood and are not retroactively altered -- only their reading is.
 
     UNPRICED PLAYERS ARE COUNTED, AND -- CONTRARY TO WHAT THIS DOCSTRING USED TO CLAIM -- THEY
     ARE ALSO ENTERED AT 0.0. The count is real (`unpriced_players` travels with every roster),
@@ -430,7 +459,7 @@ def roster_strength(trajectory, league: dict, players_db: dict,
     argued for; the SPREAD across chairs is the readable signal, and it is comparative.
     """
     slots = lo.slots_from_roster_positions(league.get("roster_positions") or [])
-    per_roster, starters = {}, []
+    per_roster, starters, totals = {}, [], []
     for roster_id, player_ids in sorted(trajectory.final_rosters().items()):
         players, unpriced = [], 0
         for pid in player_ids:
@@ -445,21 +474,41 @@ def roster_strength(trajectory, league: dict, players_db: dict,
         solved = lo.optimize_lineup(players, slots)
         starter_value = round(solved["total_value"], 2)
         total = round(sum(p["value"] for p in players), 2)
+        # #211's COMPANION. optimize_lineup has no "leave the slot empty" move -- it fills every
+        # slot it can -- so a roster thin at a position is FORCED to start a below-replacement
+        # player and his negative value lands in starter_value. Counting them is what lets a
+        # reader tell a weak lineup from a lineup that was never fillable.
+        forced_negative = sum(1 for a in solved["assignments"] if a["value"] < 0)
         per_roster[roster_id] = {
             "starter_value": starter_value, "total_value": total,
             "bench_value": round(total - starter_value, 2),
             "unpriced_players": unpriced,
+            "forced_negative_starters": forced_negative,
+            "slots_filled": len(solved["assignments"]),
+            "starting_slots": len(slots),
         }
         starters.append(starter_value)
+        totals.append(total)
     starters.sort()
+    totals.sort()
     return {
         "per_roster": per_roster,
+        # THE ROSTER-WORTH LINE (#211). universal_value is an asset LEVEL, so the quantity that
+        # answers "what is this roster worth" is what the chair OWNS, not what it starts.
+        "roster_worth_basis": ROSTER_WORTH_BASIS,
+        "total_value_min": totals[0] if totals else None,
+        "total_value_median": totals[len(totals) // 2] if totals else None,
+        "total_value_max": totals[-1] if totals else None,
+        "total_value_spread": round(totals[-1] - totals[0], 2) if totals else None,
+        # THE LINEUP LINE. Retained because it answers a real and different question -- can this
+        # roster field a legal lineup, and what does the forced assignment cost -- but it is NOT
+        # the roster-worth number and the companion below is what stops it being read as one.
         "starter_value_min": starters[0] if starters else None,
         "starter_value_median": starters[len(starters) // 2] if starters else None,
         "starter_value_max": starters[-1] if starters else None,
-        # The readable signal. A coherent engine should produce a draft-slot GRADIENT, not
-        # chaos -- so a spread far larger than the gap between adjacent chairs is worth a look.
         "starter_value_spread": round(starters[-1] - starters[0], 2) if starters else None,
+        "forced_negative_starters": sum(r["forced_negative_starters"]
+                                        for r in per_roster.values()),
     }
 
 

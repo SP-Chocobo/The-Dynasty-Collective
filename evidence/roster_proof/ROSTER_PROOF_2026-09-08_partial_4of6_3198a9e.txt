@@ -1,0 +1,5 @@
+commit 3198a9e | universe 6595 players | captured 2026-09-07T08:14:10.990206+00:00
+12T_ppr          pool=  475 rounds=14 [cdme/total] eng=-5.98 ctl=-168.28 gap=162.3 win=12/12  [points/starter] eng=610.76 ctl=840.61 gap=-229.85 win=0/12    430.9s
+12T_ppr_SF       pool=  475 rounds=15 [cdme/total] eng=440.99 ctl=150.95 gap=290.05 win=12/12  [points/starter] eng=1077.09 ctl=1147.53 gap=-70.44 win=0/12    463.9s
+10T_ppr          pool=  475 rounds=14 [cdme/total] eng=-24.3 ctl=-173.21 gap=148.91 win=10/10  [points/starter] eng=663.82 ctl=863.9 gap=-200.08 win=0/10    313.7s
+10T_ppr_SF       pool=  475 rounds=15 [cdme/total] eng=578.0 ctl=186.28 gap=391.72 win=10/10  [points/starter] eng=988.58 ctl=1203.87 gap=-215.29 win=0/10    336.8s

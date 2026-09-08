@@ -153,3 +153,26 @@ roster-quality measure and must not be read as one. Registered as **#211**.
 **What this licenses.** The #150 legality gate is clean apart from two named, understood arms
 (14T_standard's single unpriced player, HEAVY_IDP's supply exhaustion). It says nothing about
 whether the engine drafts WELL — that is #205 — and nothing about #206 or #184.
+
+### #211 applied — what changed in the reported line, and what did NOT
+
+Fixed in `draft_battery.roster_strength` and `run_draft_battery`'s console line:
+
+- **`total_value_*` is now the roster-worth line**, named by `ROSTER_WORTH_BASIS`. It answers
+  "what is this chair worth", which is the question `universal_value` — an asset LEVEL — can
+  actually carry.
+- **`starter_value_*` is retained, not deleted.** It answers a real and different question: can
+  this roster field a legal lineup, and what does the forced assignment cost.
+- **`forced_negative_starters` now travels with it**, per roster and in aggregate, and the
+  console line prints `[N started below replacement, forced -- see #211]`. Absence and zero stay
+  separate: an unmeasured count says so, a measured zero prints nothing.
+- The `roster_strength` docstring called `starter_value` "the roster-quality number: it is what
+  the team actually fields". That sentence is corrected. A docstring asserting the opposite of
+  its code is what let #168 survive a reader who was specifically checking for that defect.
+
+**NO FINDING CHANGES, AND NO COMMITTED NUMBER IS REWRITTEN.** The battery's findings are legality
+checks and none has ever read `starter_value`. The figures in both committed evidence files were
+produced by the code as it stood; they are left exactly as generated. What this changes is their
+READING — where those files say `starters X-Y`, that is a lineup total contaminated by forced
+below-replacement assignment, not a roster-worth measure. `12T_ppr_mode_upside starters -205.4`
+is the clearest case and is now explicable rather than alarming.

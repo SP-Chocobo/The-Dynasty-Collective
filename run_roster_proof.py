@@ -340,7 +340,10 @@ def _write_report(args, commit, universe, season, results, started, *, complete)
         "rounds_requested": args.rounds or "derived from roster_positions",
         "pricing": {"priced_from": "vendor+sleeper",
                     "sleeper_basis": dr.SLEEPER_BASIS_SEASON_SUM,
-                    "season_projections_supplied": len(season)},
+                    "season_projections_supplied": len(season),
+                    # #212: supplied counts dict entries; priceable counts entries carrying a
+                    # stat line. ADP-only entries are supplied and cannot be priced.
+                    "season_projections_priceable": rdb.priceable_projection_count(season)},
         "control": "best projected points at an unfilled starting slot, else best available "
                    "by projection; player_id tiebreak",
         "rulers": {
