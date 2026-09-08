@@ -2719,7 +2719,8 @@ MOCK_TE_PREMIUM_BONUS = 0.5
 MOCK_BENCH_SLOTS = 6
 
 
-def build_mock_league(*, teams: int, superflex: bool, scoring: str, te_premium: bool, dynasty: bool) -> dict:
+def build_mock_league(*, teams: int, superflex: bool, scoring: str, te_premium: bool,
+                      dynasty: bool, base_scoring: Optional[dict] = None) -> dict:
     """A synthetic Sleeper-shaped league dict for the Mock Draft sandbox -- the exact same
     roster_positions/scoring_settings/settings shape compute_draft_board already expects from
     a real league, so nothing downstream (including narrow_candidates, pick_analysis, or
@@ -2730,7 +2731,23 @@ def build_mock_league(*, teams: int, superflex: bool, scoring: str, te_premium: 
     if superflex:
         starters.append("SUPER_FLEX")
     roster_positions = starters + ["BN"] * MOCK_BENCH_SLOTS
-    scoring_settings = {"rec": MOCK_SCORING_REC_VALUES.get(scoring, 1.0)}
+    # #213: `base_scoring` IS REQUIRED BY ANYTHING THAT PRICES FROM STAT LINES.
+    #
+    # Without it this returns a ONE-KEY scoring dict, and `score_projection` scores a stat line
+    # against exactly that key. A real Sleeper league carries ~64 keys. Measured against the
+    # committed capture, the one-key dict scores Josh Allen at 0.0 (real: 372.46), Christian
+    # McCaffrey at 86.22 -- his RECEPTION COUNT -- (real: 413.24), and every LB/DB/DL at 0.0
+    # (real: 299 IDP players price). Under `scoring="standard"` the sole key is rec=0.0, so
+    # NOTHING prices and every row falls back to the vendor.
+    #
+    # That is inert wherever nothing scores stat lines -- the Mock Draft sandbox never passes
+    # `sleeper_projections`, so the stub never reaches `score_projection` and the sandbox is
+    # unaffected. It is NOT inert in any harness that does pass them: there the arm measures a
+    # league in which quarterbacks score nothing and receivers are paid one point per catch.
+    # Pass the real league's scoring_settings as `base_scoring`; the rec/te-premium overlay is
+    # then the ONLY thing that varies between arms, which is what those arms were built to vary.
+    scoring_settings = dict(base_scoring or {})
+    scoring_settings["rec"] = MOCK_SCORING_REC_VALUES.get(scoring, 1.0)
     if te_premium:
         scoring_settings["bonus_rec_te"] = MOCK_TE_PREMIUM_BONUS
     return {

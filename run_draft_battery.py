@@ -68,6 +68,51 @@ def build_players_db(merger: dm.DataMerger, positions=BATTERY_POSITIONS) -> dict
     return out
 
 
+def scoring_settings_from_capture(path: Path = CAPTURE_PATH) -> dict:
+    """The REAL league's scoring_settings, from the captured league shape.
+
+    #213. Every arm that prices from stat lines must score them against a real rulebook. The
+    synthetic league builder emits a ONE-KEY dict, and an arm built on that measures a league in
+    which quarterbacks score nothing and receivers are paid one point per catch. Measured on the
+    committed capture: 835 players price under these settings, 431 under `{"rec": 1.0}` (all of
+    them RB/WR/TE, in reception counts), and 0 under `{"rec": 0.0}`.
+
+    Raises rather than defaulting. A silent `{}` here would restore exactly the defect this
+    exists to close, and it would do it invisibly."""
+    shape = (json.loads(path.read_text(encoding="utf-8")).get("league_shape") or {})
+    scoring = shape.get("scoring_settings") or {}
+    if not scoring:
+        raise ValueError(f"{path} carries no league_shape.scoring_settings -- an arm built on "
+                         "a synthetic one-key rulebook is not evidence (#213)")
+    return dict(scoring)
+
+
+def pricing_census(season_projections: dict, players_db: dict, scoring: dict) -> dict[str, dict]:
+    """Per position: how many stat lines EXIST, and how many price > 0 under `scoring`.
+
+    This is the check that would have caught #213 on its first run. `season_projections_supplied`
+    and even `priceable_projection_count` answer "could anything price this entry"; only this
+    answers "does THIS ARM's rulebook price it". A position holding stat lines that all score
+    zero is a rulebook missing that position's keys, not a thin player pool."""
+    census: dict[str, dict] = {}
+    for pid, stats in (season_projections or {}).items():
+        pos = (players_db.get(pid) or {}).get("position") or "UNKNOWN"
+        row = census.setdefault(pos, {"stat_lines": 0, "priced": 0})
+        if not any(not k.startswith(("adp_", "pos_adp_"))
+                   for k, x in (stats or {}).items() if isinstance(x, (int, float)) and x):
+            continue
+        row["stat_lines"] += 1
+        value = dr.score_projection(stats, scoring)
+        if value and value > 0:
+            row["priced"] += 1
+    return census
+
+
+def positions_the_rulebook_cannot_price(census: dict[str, dict]) -> list[str]:
+    """Positions that HAVE stat lines and price NONE of them. Derived, never hand-listed."""
+    return sorted(p for p, r in census.items() if r["stat_lines"] and not r["priced"])
+
+
 def priceable_projection_count(season_projections: dict) -> int:
     """How many supplied projections carry anything score_projection could actually price.
 
@@ -240,7 +285,23 @@ def main(argv: list[str] | None = None) -> int:
     universe["season_projections_priceable"] = priceable_projection_count(season_projections)
     universe["priced_from"] = "vendor+sleeper" if season_projections else "vendor_only"
     universe["sleeper_basis"] = dr.SLEEPER_BASIS_SEASON_SUM if season_projections else None
-    matrix = draft_battery.league_matrix()
+    # #213. THE RULEBOOK IS DERIVED FROM THE CAPTURE AND THE ARMS ARE REFUSED IF IT CANNOT
+    # PRICE THEM. Both halves matter: the first stops the synthetic one-key dict reaching a
+    # scoring-aware run, the second means a future rulebook gap FAILS THE RUN instead of
+    # producing 14,000 seconds of confident numbers about a league nobody plays.
+    scoring = scoring_settings_from_capture()
+    matrix = draft_battery.league_matrix(scoring)
+    census = pricing_census(season_projections, players_db, scoring)
+    unpriceable = positions_the_rulebook_cannot_price(census)
+    if unpriceable:
+        raise SystemExit(
+            "REFUSING TO RUN (#213): the rulebook prices no player at "
+            + ", ".join(unpriceable)
+            + " despite stat lines existing there. That is a missing scoring key, not a thin "
+              "pool, and an arm built on it measures a league nobody plays.\n  census: "
+            + json.dumps(census, sort_keys=True))
+    universe["scoring_keys"] = len(scoring)
+    universe["pricing_census"] = census
     if args.only:
         wanted = {name.strip() for name in args.only.split(",") if name.strip()}
         matrix = [entry for entry in matrix if entry["label"] in wanted]

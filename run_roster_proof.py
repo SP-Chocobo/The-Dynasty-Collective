@@ -343,7 +343,8 @@ def _write_report(args, commit, universe, season, results, started, *, complete)
                     "season_projections_supplied": len(season),
                     # #212: supplied counts dict entries; priceable counts entries carrying a
                     # stat line. ADP-only entries are supplied and cannot be priced.
-                    "season_projections_priceable": rdb.priceable_projection_count(season)},
+                    "season_projections_priceable": rdb.priceable_projection_count(season),
+                    "scoring_keys": len(scoring)},
         "control": "best projected points at an unfilled starting slot, else best available "
                    "by projection; player_id tiebreak",
         "rulers": {
@@ -373,6 +374,7 @@ def main(argv=None) -> int:
     args = ap.parse_args(argv)
 
     commit = head_commit()
+    scoring = rdb.scoring_settings_from_capture()          # #213, before anything is drafted
     merger = dm.DataMerger()
     players_db, universe = rdb.build_players_db_from_capture()
     season = rdb.season_projections_from_capture()
@@ -382,9 +384,12 @@ def main(argv=None) -> int:
     results = []
     started = time.time()
     for spec in PROOF_FORMATS[:args.formats]:
+        # #213: the REAL rulebook, with this arm's rec/te-premium overlaid. Without it every
+        # board here priced quarterbacks at zero and receivers at one point per catch, and
+        # BOTH arms of the proof were then compared inside a league nobody plays.
         league = dr.build_mock_league(teams=spec["teams"], superflex=spec["superflex"],
                                       scoring=spec["scoring"], te_premium=spec["te_premium"],
-                                      dynasty=True)
+                                      dynasty=True, base_scoring=scoring)
         merger.set_league_format(db.league_format_hint(league))          # rule 4
         points = scoreable_pool(merger, players_db, league, season)      # rule 2
         values = db.reference_values(merger, players_db, league,

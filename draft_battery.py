@@ -53,7 +53,7 @@ def _starting_slots(roster_positions: list[str]) -> list[str]:
     return [s for s in (roster_positions or []) if s not in NON_STARTING_SLOTS]
 
 
-def league_matrix() -> list[dict]:
+def league_matrix(base_scoring: dict | None = None) -> list[dict]:
     """Every format the battery drafts, as {label, league, teams, rounds}.
 
     Chosen to span the axes a real league varies on -- size, scoring, superflex, TE premium,
@@ -68,12 +68,16 @@ def league_matrix() -> list[dict]:
         defect seen from the arithmetic side, and the report says so rather than rediscovering
         it as an anomaly.
     """
+    # #213: EVERY ARM'S RULEBOOK IS THE REAL ONE, with rec/te-premium overlaid. A synthetic
+    # one-key dict made 27 of these arms measure a league in which quarterbacks score nothing.
+    base = dict(base_scoring or {})
     out: list[dict] = []
     for teams in (8, 10, 12, 14):
         for scoring in ("standard", "half_ppr", "ppr"):
             for superflex in (False, True):
                 league = dr.build_mock_league(teams=teams, superflex=superflex,
-                                              scoring=scoring, te_premium=False, dynasty=True)
+                                              scoring=scoring, te_premium=False, dynasty=True,
+                                              base_scoring=base)
                 rounds = len(league["roster_positions"])
                 # The engine cannot know the round count unless the league says so (#161).
                 # Carrying it here is what makes the battery measure the repaired path.
@@ -86,7 +90,7 @@ def league_matrix() -> list[dict]:
     # everything above (which would quadruple runtime to re-measure the same thing).
     for te_premium, dynasty in ((True, True), (False, False), (True, False)):
         league = dr.build_mock_league(teams=12, superflex=False, scoring="ppr",
-                                      te_premium=te_premium, dynasty=dynasty)
+                                      te_premium=te_premium, dynasty=dynasty, base_scoring=base)
         rounds = len(league["roster_positions"])
         league["draft_rounds"] = rounds
         out.append({
@@ -98,19 +102,23 @@ def league_matrix() -> list[dict]:
         "4WR_TE_PREMIUM": {
             "roster_positions": ["QB", "RB", "RB", "WR", "WR", "WR", "WR", "TE", "TE", "FLEX"]
                                 + ["BN"] * 6,
-            "scoring_settings": {"rec": 1.0, "bonus_rec_te": dr.MOCK_TE_PREMIUM_BONUS},
+            "scoring_settings": {**base, "rec": 1.0,
+                                 "bonus_rec_te": dr.MOCK_TE_PREMIUM_BONUS},
             "total_rosters": 12, "settings": {"type": 2},
         },
         "HEAVY_IDP": {
             "roster_positions": ["QB", "RB", "RB", "WR", "WR", "TE", "FLEX",
                                  "DL", "DL", "LB", "LB", "DB", "DB"] + ["BN"] * 5,
-            "scoring_settings": {"rec": 1.0},
+            # The IDP arm above all others needs the real rulebook: {"rec": 1.0} carries no
+            # idp_* key at all, so every LB/DB/DL scored 0.0 and the arm's 14 findings were
+            # read as an IDP SUPPLY gap (#210) when 299 IDP stat lines price under real rules.
+            "scoring_settings": {**base, "rec": 1.0},
             "total_rosters": 12, "settings": {"type": 2},
         },
         "LIGHT_IDP": {
             "roster_positions": ["QB", "RB", "RB", "WR", "WR", "TE", "FLEX", "IDP_FLEX"]
                                 + ["BN"] * 6,
-            "scoring_settings": {"rec": 1.0},
+            "scoring_settings": {**base, "rec": 1.0},
             "total_rosters": 12, "settings": {"type": 2},
         },
     }
@@ -130,12 +138,12 @@ def league_matrix() -> list[dict]:
     # it is the only path that computes growth_signal, it is what every auto-drafted opponent
     # falls into late, and #115 records that a human board never reaches it -- which makes the
     # simulation the ONLY place its behaviour is observable at all.
-    base = dr.build_mock_league(teams=12, superflex=False, scoring="ppr",
+    mode_base = dr.build_mock_league(base_scoring=base_scoring, teams=12, superflex=False, scoring="ppr",
                                te_premium=False, dynasty=True)
-    base["draft_rounds"] = len(base["roster_positions"])
+    mode_base["draft_rounds"] = len(mode_base["roster_positions"])
     for mode in ("balanced", "upside"):
-        out.append({"label": f"12T_ppr_mode_{mode}", "league": base, "teams": 12,
-                    "rounds": len(base["roster_positions"]), "mode": mode})
+        out.append({"label": f"12T_ppr_mode_{mode}", "league": mode_base, "teams": 12,
+                    "rounds": len(mode_base["roster_positions"]), "mode": mode})
 
     # THE ARM THAT MAKES #161 FALSIFIABLE, and the reason it did not exist before is the
     # finding. Every format above sets rounds = len(roster_positions), which is precisely the
@@ -147,7 +155,7 @@ def league_matrix() -> list[dict]:
     # rather than drafted, and this repo's own real league is 33 roster positions against 29
     # draftable. Here a 20-slot roster is drafted for 12 rounds, so eight bench seats are never
     # picked and the backstop's "picks left" is wrong by eight unless it is told the truth.
-    short = dr.build_mock_league(teams=12, superflex=False, scoring="ppr",
+    short = dr.build_mock_league(base_scoring=base_scoring, teams=12, superflex=False, scoring="ppr",
                                  te_premium=False, dynasty=True)
     short_rounds = max(len(short["roster_positions"]) - 8, 8)
     short["draft_rounds"] = short_rounds
