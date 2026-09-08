@@ -318,6 +318,19 @@ QB_STARTABLE_FLOOR_FRACTION = 0.5
 REPLACEMENT_BASIS_LIVE_DEMAND = "live_starter_demand"
 REPLACEMENT_BASIS_PREDRAFT = "predraft_anchor"
 REPLACEMENT_BASIS_STARTABLE_FLOOR = "startable_floor"
+#: #214/F3. The demand rank fell PAST THE END of the priced list, so the "replacement level" is
+#: the worst player the vendor happens to cover rather than the player a real replacement would
+#: be. horizon_replacement REFUSES this exact case on the record -- "a floor read off the bottom
+#: of a short list would rebuild that same defect one layer up" -- and its sibling here clamped
+#: silently and stamped the strongest basis token on the result.
+#:
+#: LATENT, NOT LIVE, and that distinction is the finding. It was reported as active in HEAVY_IDP
+#: (DL rank 24 against 13 priced), but that measurement was taken under #213's one-key rulebook,
+#: where almost no IDP could price at all. Measured on the REAL rulebook: 86 DL, 85 LB and 130
+#: DB price, and the clamp binds at NO position in either a 1QB or an IDP league. So this token
+#: changes no number today; it exists so that if the pool ever thins to where the clamp does
+#: bind, the board says which claim it is making instead of making the strongest one silently.
+REPLACEMENT_BASIS_POOL_TRUNCATED = "pool_truncated"
 
 #: token -> the words a person reads. Absence (None) is deliberately NOT a key: a row with no
 #: price has no basis to state, and giving that its own label here would invite a caller to
@@ -326,6 +339,7 @@ REPLACEMENT_BASIS_LABELS = {
     REPLACEMENT_BASIS_LIVE_DEMAND: "live starter demand",
     REPLACEMENT_BASIS_PREDRAFT: "pre-draft anchor",
     REPLACEMENT_BASIS_STARTABLE_FLOOR: "the startability floor",
+    REPLACEMENT_BASIS_POOL_TRUNCATED: "the bottom of a short priced list",
 }
 
 # time_horizon_adj and risk_adj are both small, bounded, additive nudges on the same linear
@@ -1174,6 +1188,10 @@ def replacement_levels(
     pool: pd.DataFrame, value_col: str, roster_positions: list[str], num_teams: int,
     remaining_demand: Optional[dict[str, float]] = None,
     startable_floors: Optional[dict[str, float]] = None,
+    #: #214/F3. An OUT-PARAMETER rather than a changed return type, so every existing caller is
+    #: untouched and the one caller that wants to label its rows can ask. Positions added here
+    #: had their demand rank fall past the end of the priced list.
+    truncated_out: Optional[set] = None,
 ) -> dict[str, float]:
     """Per position, this pool's value_col at the player sitting at replacement rank within
     the REMAINING pool. The rank target is remaining_starter_demand -- how many starting slots
@@ -1275,7 +1293,12 @@ def replacement_levels(
             rank = _remaining_demand_rank(position, demand)
         if rank is None:
             continue  # outside the domain -- see this function's docstring
+        # #214/F3: the clamp is RECORDED, not removed. Removing it would change a live number
+        # in a case that does not occur today; leaving it unrecorded is what let the board
+        # present "the worst player anyone priced" as "live starter demand".
         idx = min(rank - 1, len(at_pos) - 1)
+        if rank - 1 > len(at_pos) - 1 and truncated_out is not None:
+            truncated_out.add(position)
         levels[position] = float(at_pos.iloc[idx][value_col])
     return levels
 
@@ -2374,11 +2397,15 @@ def compute_draft_board(
         if qb_floor is not None:
             startable_floors = {"QB": qb_floor}
 
+    # #214/F3: declared OUTSIDE the branch. A board with no projected rows at all skips the
+    # branch entirely, and the stamp below would then reference a name that was never bound --
+    # an absence-shaped bug inside the fix for an absence-shaped bug.
+    _pool_truncated: set = set()
     if has_proj.any():
         proj_pool = pool[has_proj].copy()
         point_replacement = replacement_levels(
             proj_pool, "_points", roster_positions, num_teams, starter_demand,
-            startable_floors=startable_floors,
+            startable_floors=startable_floors, truncated_out=_pool_truncated,
         )
         _anchored |= _fill_omitted_from_anchor(
             point_replacement, set(proj_pool["position"].unique()), startable_floors,
@@ -2459,6 +2486,14 @@ def compute_draft_board(
     if _floor_priced:
         pool.loc[has_proj & pool["position"].isin(_floor_priced),
                  "replacement_basis"] = REPLACEMENT_BASIS_STARTABLE_FLOOR
+    # #214/F3, applied AFTER the floor stamp because it is the WEAKEST claim available and must
+    # not be overwritten by a stronger one: this position's replacement is the bottom of a short
+    # priced list, not a player anyone measured demand against. Binds at NO position on the real
+    # rulebook today (86 DL, 85 LB, 130 DB price in an IDP league) -- it exists so the board
+    # cannot make the strong claim silently if the pool ever thins to where the clamp does bind.
+    if _pool_truncated:
+        pool.loc[has_proj & pool["position"].isin(_pool_truncated),
+                 "replacement_basis"] = REPLACEMENT_BASIS_POOL_TRUNCATED
     # replacement_basis EXPLAINS a price. A row that got no price has nothing for it to
     # explain, and saying "live_starter_demand" there asserts that this league's starter
     # demand produced a number it did not produce -- the #166/#185 shape, a label crossing a

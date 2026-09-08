@@ -23,6 +23,7 @@ from __future__ import annotations
 
 import collections
 import re
+import inspect
 import unittest
 from pathlib import Path
 
@@ -38,8 +39,13 @@ CAPTURE = Path("data/fixtures/sleeper_capture.json")
 class TheVocabularyHasOneHomeTests(unittest.TestCase):
 
     def test_every_token_the_engine_can_emit_has_words(self):
+        # Hand-enumerated ON PURPOSE: this list is where a new token must be added
+        # DELIBERATELY, which is what makes the guard catch one that gained a label without
+        # gaining a meaning. #214/F3 added pool_truncated -- the WEAKEST claim in the
+        # vocabulary, stamped when a position's demand rank runs past the end of the priced
+        # list. It binds at no position on the real rulebook today.
         emitted = {dr.REPLACEMENT_BASIS_LIVE_DEMAND, dr.REPLACEMENT_BASIS_PREDRAFT,
-                   dr.REPLACEMENT_BASIS_STARTABLE_FLOOR}
+                   dr.REPLACEMENT_BASIS_STARTABLE_FLOOR, dr.REPLACEMENT_BASIS_POOL_TRUNCATED}
         self.assertEqual(emitted, set(dr.REPLACEMENT_BASIS_LABELS))
 
     def test_absence_is_not_a_key(self):
@@ -166,3 +172,101 @@ class OnTheRealBoardTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class ATruncatedPoolSaysSoInsteadOfClaimingDemandTests(unittest.TestCase):
+    """#214/F3: the demand rank can fall past the end of the priced list.
+
+    `idx = min(rank - 1, len(at_pos) - 1)` then reads the WORST priced player and the board
+    stamped `live_starter_demand` on it -- the strongest claim in the vocabulary, for a floor
+    nobody measured demand against. `horizon_replacement` refuses this exact case on the record
+    ("a floor read off the bottom of a short list would rebuild that same defect one layer up");
+    its sibling did it silently.
+
+    LATENT, NOT LIVE, and that distinction is the finding. It was reported as active in
+    HEAVY_IDP (DL rank 24 against 13 priced) -- but that measurement was taken under #213's
+    one-key rulebook, where almost no IDP could price. On the REAL rulebook 86 DL, 85 LB and
+    130 DB price and the clamp binds at NO position in either a 1QB or an IDP league. So this
+    changes no number today. It exists so that if the pool ever thins, the board says which
+    claim it is making rather than making the strongest one silently.
+    """
+
+    def test_the_clamp_is_recorded_when_it_binds(self):
+        import pandas as pd
+        pool = pd.DataFrame([{"position": "DL", "_points": v} for v in (100.0, 50.0, 10.0)])
+        truncated = set()
+        levels = dr.replacement_levels(pool, "_points", ["DL"] * 24, 12, {"DL": 24.0},
+                                       truncated_out=truncated)
+        self.assertEqual(truncated, {"DL"}, "rank 24 against 3 priced rows -- the clamp binds")
+        self.assertEqual(levels["DL"], 10.0, "and still returns the clamped value, unchanged")
+
+    def test_a_deep_pool_is_not_flagged(self):
+        """A measured floor and a truncated one are different facts, and only one is flagged."""
+        import pandas as pd
+        pool = pd.DataFrame([{"position": "DL", "_points": float(100 - i)} for i in range(40)])
+        truncated = set()
+        dr.replacement_levels(pool, "_points", ["DL"] * 2, 12, {"DL": 2.0},
+                              truncated_out=truncated)
+        self.assertEqual(truncated, set())
+
+    def test_the_out_parameter_is_optional_so_no_existing_caller_changed(self):
+        import pandas as pd
+        pool = pd.DataFrame([{"position": "DL", "_points": v} for v in (100.0, 50.0, 10.0)])
+        self.assertEqual(dr.replacement_levels(pool, "_points", ["DL"] * 24, 12, {"DL": 24.0}),
+                         {"DL": 10.0})
+
+    def test_the_weakest_claim_is_stamped_last_so_nothing_overwrites_it(self):
+        src = inspect.getsource(dr.compute_draft_board)
+        floor_at = src.index("REPLACEMENT_BASIS_STARTABLE_FLOOR")
+        trunc_at = src.index("REPLACEMENT_BASIS_POOL_TRUNCATED")
+        self.assertGreater(trunc_at, floor_at,
+                           "pool_truncated is the weakest claim available; a stronger token "
+                           "stamped after it would bury exactly the qualification it adds")
+
+    def test_it_binds_at_no_position_on_the_real_board(self):
+        """The measurement that makes this latent rather than live. If this ever fails, the
+        pool has thinned and the finding has become active -- re-derive, do not delete."""
+        for board in (self.__class__._real_boards()):
+            bases = {r.get("replacement_basis") for r in board}
+            self.assertNotIn(dr.REPLACEMENT_BASIS_POOL_TRUNCATED, bases)
+
+    @classmethod
+    def _real_boards(cls):
+        import data_merger as dm, draft_battery as dbat, run_draft_battery as rdb
+        merger = dm.DataMerger()
+        players_db, _ = rdb.build_players_db_from_capture()
+        season = rdb.season_projections_from_capture()
+        scoring = rdb.scoring_settings_from_capture()
+        for league in (
+            dr.build_mock_league(teams=12, superflex=False, scoring="ppr", te_premium=False,
+                                 dynasty=True, base_scoring=scoring),
+            {"roster_positions": ["QB", "RB", "RB", "WR", "WR", "TE", "FLEX",
+                                  "DL", "DL", "LB", "LB", "DB", "DB"] + ["BN"] * 5,
+             "scoring_settings": {**scoring, "rec": 1.0},
+             "total_rosters": 12, "settings": {"type": 2}},
+        ):
+            merger.set_league_format(dbat.league_format_hint(league))
+            yield dr.compute_draft_board(
+                merger, players_db, [], my_roster_id=None, league=league, mode="balanced",
+                sleeper_projections=season, sleeper_basis=dr.SLEEPER_BASIS_SEASON_SUM)
+
+    def test_the_board_actually_hands_the_collector_to_replacement_levels(self):
+        """The WIRING, asserted on the call via AST.
+
+        Behaviour cannot cover this: the clamp binds nowhere on real data, so a board that
+        never passes the collector produces identical output to one that does. Removing the
+        argument survived a mutation pass against every behavioural test here. Asserted on the
+        call node -- not a substring, which this session has twice seen satisfied by a
+        function's own explanatory prose.
+        """
+        import ast
+        tree = ast.parse(inspect.getsource(dr.compute_draft_board).lstrip())
+        calls = [n for n in ast.walk(tree)
+                 if isinstance(n, ast.Call)
+                 and getattr(n.func, "id", None) == "replacement_levels"]
+        self.assertTrue(calls, "compute_draft_board must call replacement_levels")
+        wired = [c for c in calls
+                 if any(k.arg == "truncated_out" for k in c.keywords)]
+        self.assertTrue(wired,
+                        "the points-replacement call must hand over a collector, or the "
+                        "pool_truncated basis can never be stamped no matter what happens")

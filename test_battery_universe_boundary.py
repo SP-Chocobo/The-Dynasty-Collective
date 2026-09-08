@@ -121,10 +121,16 @@ class TheRunRecordsWhichUniverseItUsedTests(unittest.TestCase):
         with open(os.path.join(_HERE, "run_draft_battery.py"), encoding="utf-8") as handle:
             source = handle.read()
         tree = ast.parse(source)
-        main = next(n for n in tree.body
-                    if isinstance(n, ast.FunctionDef) and n.name == "main")
+        # Scans main AND the report builder it delegates to. #213b moved the report dict out
+        # of main into _battery_report so the mid-run and end-of-run writes share one shape;
+        # a scan pinned to main alone then found an empty set and reported the universe block
+        # missing when it had simply moved.
+        owners = [n for n in tree.body
+                  if isinstance(n, ast.FunctionDef) and n.name in ("main", "_battery_report")]
+        self.assertTrue(owners, "neither main nor _battery_report was found")
         keys = set()
-        for node in ast.walk(main):
+        for owner in owners:
+          for node in ast.walk(owner):
             if isinstance(node, ast.Dict):
                 keys |= {k.value for k in node.keys
                          if isinstance(k, ast.Constant) and isinstance(k.value, str)}

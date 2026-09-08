@@ -97,10 +97,13 @@ class PreDraftAnchorEquivalence(unittest.TestCase):
         seen = {}
         original = dr.replacement_levels
 
+        # The spy MIRRORS the real signature, including #214/F3's truncated_out. A stand-in
+        # that accepts fewer arguments than the function it replaces turns a caller change into
+        # a TypeError in an unrelated test rather than a finding here.
         def spy(pool, value_col, roster_positions, num_teams, remaining_demand=None,
-                startable_floors=None):
+                startable_floors=None, truncated_out=None):
             levels = original(pool, value_col, roster_positions, num_teams, remaining_demand,
-                              startable_floors)
+                              startable_floors, truncated_out=truncated_out)
             for position, level in levels.items():
                 seen.setdefault((value_col, position), level)
             return levels

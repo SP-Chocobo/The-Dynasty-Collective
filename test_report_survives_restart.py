@@ -1,4 +1,6 @@
-"""#213b: a multi-hour instrument must not lose everything to a container restart.
+"""#213: a multi-hour instrument must not lose everything to a container restart.
+
+(Filed as #213b -- the durability half of #213, separate from the rulebook half.)
 
 MEASURED, TWICE, TODAY. The container restarted mid-run. The roster proof writes its report
 after every format and survived with 5 of 6 intact. The battery wrote only on its last line and
