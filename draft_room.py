@@ -33,17 +33,31 @@ specific). Kept as two explicit numbers:
 
     universal_value = BPA + time_horizon_adj + risk_adj
     team_acquisition_value = universal_value + need_bonus + eligibility_bonus + depth_exposure
+                             + displacement_adj
 
 BPA is Value Over Replacement in raw projected POINTS (never Draft Sharks' trade_value/
 composite scale directly -- see build_available_pool's docstring on why IDP's real points
-have to come from Sleeper's native projection instead), scaled LINEARLY against the single
-largest VOR gap in the whole remaining pool -- NOT percentile-ranked. Percentile-ranking VOR
-was the first pass's mistake: it threw away the actual size of the gap between players,
-which is the entire reason VOR is the right anchor over a bounded score in the first place.
-Confirmed live: a real 60-point VOR gap between the #1 and #8 remaining players compressed
-to a 2.8-point percentile gap, while the additive adjustment terms below it could swing
-several times that -- the adjustments were deciding the board, not the anchor. Linear scaling
-against the pool's own largest gap keeps a blowout blowout and a toss-up a toss-up.
+have to come from Sleeper's native projection instead). It is NOT percentile-ranked, and --
+correcting this paragraph's older text -- it is no longer rescaled either: the linear
+"scaled against the single largest VOR gap in the pool" step this section used to describe
+was removed by the bpa-unit repair (#74-76), and _scale_vor_to_bpa is the identity. The
+number on the board is projected points minus the replacement level, signed and unbounded.
+Percentile-ranking VOR was the first pass's mistake: it threw away the actual size of the gap
+between players, which is the entire reason VOR is the right anchor over a bounded score in
+the first place. Confirmed live: a real 60-point VOR gap between the #1 and #8 remaining
+players compressed to a 2.8-point percentile gap, while the additive adjustment terms below
+it could swing several times that -- the adjustments were deciding the board, not the anchor.
+
+displacement_adj (#216) is the FOURTH team-specific term and the only one that can be
+negative. The league anchor prices a player against the free alternative at his position; for
+a slot THIS roster has already filled with someone better than that alternative, he has to
+displace MY starter to contribute, and the term is exactly the difference: replacement level
+minus what he must displace in my own optimal lineup (lineup_optimizer.displacement_level).
+Zero wherever a slot he can reach is open. Measured need for it: with the legality backstop
+off, the board drafted eleven tight ends and no receiver or quarterback in a one-TE league
+(the tight end's league VOR credited him for a slot he could not reach), and no bounded nudge
+could span the 43-60 point bias. See displacement_adjustments for the construction and the
+derivation of why it needs no constant and no cap.
 
 Replacement level itself is computed against REMAINING roster demand, not static league-wide
 demand -- also a first-pass bug, also caught live: with a fixed target of "the Nth-best
@@ -95,8 +109,10 @@ outright rather than patched: a corroboration signal correctly built later would
 compare like units to like units, which the composite score doesn't currently give this
 module without recomputing scarcity itself.
 
-need_bonus is the ONLY team-specific term, added on top rather than multiplied in, and split
-by urgency rather than a flat per-slot rate -- also a real fix, not a refinement: a flat rate
+need_bonus was the first team-specific term (there are four now -- see the identity above;
+the "ONLY" this sentence used to claim expired with eligibility_bonus and was never
+corrected), added on top rather than multiplied in, and split by urgency rather than a flat
+per-slot rate -- also a real fix, not a refinement: a flat rate
 scaled with how many total roster slots a position has, which meant a team with ZERO QBs
 scored a smaller bonus than a team wanting a fourth bench WR, since WR simply has more named/
 flex slots than QB does. An unfilled DEDICATED starting slot (a named position, not a flex
@@ -1217,10 +1233,31 @@ def replacement_levels(
     An earlier docstring here described that collapse as correct ("drain a position past its
     real demand and the target collapses to 1 ... correctly driving everyone left there toward
     ~0 VOR"). It is not correct, and the same audit found the claim of dynamism overstated
-    too: while demand stays positive and picks come off the top, rank shrinkage and pool drain
-    cancel exactly, so the level is algebraically identical to the static pre-draft one
-    (measured: identical at 19 of 19 sample points for five of six positions across all 240
-    picks). The real behaviour is a fixed anchor with a domain, which is what this now says.
+    too: while demand stays positive and picks come off the TOP -- starter-filling picks --
+    rank shrinkage and pool drain cancel exactly, so the level is algebraically identical to
+    the static pre-draft one (measured: identical at 19 of 19 sample points for five of six
+    positions across all 240 picks of a roster-sane draft).
+
+    CORRECTED (#216): that cancellation holds ONLY for starter-filling picks, and the earlier
+    wording here presented it as the whole behaviour. A BENCH pick at a position drains the
+    pool without reducing any team's starter demand, so it moves the level. Measured on the
+    real rulebook: the WR-TE level gap opens at 43.6 and WIDENS to 59.3 by round 11 on a seat
+    that holds seven tight ends, and SHRINKS to -2.3 on a seat that hoards running backs
+    instead -- the level is a fixed anchor while rosters fill from the top, and it moves in
+    the hoarder's favour once they stop. The anchor has a domain (below) and a regime
+    (starter-filling picks); this docstring used to state only the domain.
+
+    Two further facts about this anchor that the fourth team-specific term (#216,
+    displacement_adjustments) exists to correct, recorded here so nobody reads the level as a
+    roster-relative price: (1) the rank is LEAGUE demand, so a player is priced against the
+    league's free alternative even when the drafter's own slots at his position are already
+    held by better players -- the league anchor credits him for a slot that roster cannot
+    offer; (2) when the drafter's own unfilled slot is the LAST unfilled slot at a position,
+    demand is 1.0 and rank 1 makes the replacement the best remaining player himself, so his
+    VOR is exactly 0.00 -- "waiting costs nothing by starter demand" is what this model says,
+    and it says it for as long as that slot stays open. The displacement term corrects (1); it
+    does not correct (2), which is a property of the starter-demand model itself (the quantity
+    that would price it is horizon_replacement's floor, observable-only by #48's ruling).
 
     An extra flat per-team "bench QB demand" term for superflex leagues was tried and reverted
     here (see git history) -- real Draft Sharks QB projections have a genuine CLIFF around
@@ -2396,9 +2433,10 @@ def compute_draft_board(
 ) -> list[dict]:
     """The live recommendation board: every undrafted, Draft-Sharks-valued player, ranked
     best pick first, with every scoring layer broken out separately -- universal_value
-    (what any manager at this draft would compute), need_bonus, eligibility_bonus and
-    depth_exposure (the three team-specific terms, each paired with the basis that produced it
-    where one exists), the final team_acquisition_value used to rank, and confidence (never
+    (what any manager at this draft would compute), need_bonus, eligibility_bonus,
+    depth_exposure and displacement_adj (the four team-specific terms, each paired with the
+    basis that produced it where one exists; the last is non-positive, see
+    displacement_adjustments), the final team_acquisition_value used to rank, and confidence (never
     folded into either value). See module docstring for why value is split into two numbers
     instead of one. projected_points is the raw season point projection universal_value's own
     VOR anchor is built from (see ARCHITECTURE section) -- exposed directly, independent of the

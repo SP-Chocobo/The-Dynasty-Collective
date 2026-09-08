@@ -50,6 +50,21 @@ disagrees with team_acquisition_value; in the regime where it disagrees it is no
 
 So it stays an observable. These tests pin the primitive so that conclusion can be re-checked
 rather than re-derived, and so a future change to the optimizer cannot silently invalidate it.
+
+CORRECTION (#216). The paragraph above says the displacement regime "never disagrees with
+team_acquisition_value". That was measured on rosters that were sane -- and it stopped being
+true once the engine drifted into building rosters that were not. Re-measured at the states
+the engine actually reaches (evidence/roster_shape/REVIEW_216_fable.md, section 3): with a
+replacement-filled lineup marginal as the ruler, the board's own top row agreed with it in only
+4, 5 and 6 of 14 states (1QB) and 5-7 of 15 (superflex), with 8-10 of the top ten reordering
+through rounds 5-11. The premise expired; "no decision waiting for it" was a fact about the
+roster it was measured on, not about the quantity. This file's tests pin the primitive, which
+is unchanged; the ruling they were written to support is withdrawn, and the concept it
+declined to wire now reaches the board as lineup_optimizer.displacement_level -> draft_room's
+displacement_adj, the fourth team-specific term. What was NOT wired is the raw marginal (the
+empty-slot regime's "his own full value" is still raw points, and that half of the reasoning
+stands); what was wired is the displacement half, phrased as a level rather than a marginal so
+it invents no constant and stays a per-position constant at a board state.
 """
 import unittest
 

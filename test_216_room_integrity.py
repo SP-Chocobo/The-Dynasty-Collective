@@ -450,24 +450,42 @@ class TheRealBoardStillRunsTests(unittest.TestCase):
         snap = _real_snapshot()
         with_depth = [c for c in snap.candidates if c.depth_exposure]
         self.assertTrue(with_depth, f"no candidate of {len(snap.candidates)} carries depth_exposure")
+        # UPDATED BY THE #216 IMPLEMENTER: the identity now carries the fourth term, and on
+        # this state (four tight ends owned) at least one candidate carries a real deduction --
+        # asserted, so the term is non-vacuous here the way depth is.
+        with_displacement = [c for c in snap.candidates if c.displacement_adj]
+        self.assertTrue(with_displacement, f"no candidate of {len(snap.candidates)} carries displacement_adj")
         for c in snap.candidates:
             if c.team_acquisition_value is None:
                 continue
             self.assertAlmostEqual(
                 c.team_acquisition_value,
-                c.universal_value + c.need_bonus + c.eligibility_bonus + (c.depth_exposure or 0.0),
+                c.universal_value + c.need_bonus + c.eligibility_bonus + (c.depth_exposure or 0.0)
+                + (c.displacement_adj or 0.0),
                 places=2, msg=c.name)
 
-    def test_no_roster_term_is_negative_on_todays_board(self):
-        """The non-vacuity partner of the deduction test above: today the room's silence about
-        deductions is harmless because none exist. When this fails, that test stops being
-        latent."""
+    def test_every_negative_roster_term_on_todays_board_is_a_measured_displacement(self):
+        """The non-vacuity partner of the deduction test above, REWRITTEN BY THE #216
+        IMPLEMENTER. As written by the adversary this pinned "no roster term is negative
+        today", with the note that when it failed the deduction test would stop being latent.
+        It failed the day the fourth term landed, exactly as predicted, so the pin now states
+        the new contract instead of the old fact: every candidate whose acquisition value sits
+        below his universal value owes the WHOLE difference to displacement_adj, and that term
+        carries a `measured` basis -- never an unnamed deduction, never a deduction under a
+        basis that says it was not measured."""
         snap = _real_snapshot()
-        negative = [f"{c.name} uv {c.universal_value} tav {c.team_acquisition_value}"
-                    for c in snap.candidates
+        negative = [c for c in snap.candidates
                     if c.team_acquisition_value is not None and c.team_acquisition_value < c.universal_value - 1e-9]
         self.assertGreater(len(snap.candidates), 10)
-        self.assertEqual(negative, [])
+        self.assertTrue(negative, "no candidate is deducted on a four-tight-end roster: the term did not fire")
+        for c in negative:
+            with self.subTest(candidate=c.name):
+                self.assertIsNotNone(c.displacement_adj)
+                self.assertLess(c.displacement_adj, 0.0)
+                self.assertEqual(c.displacement_basis, "measured")
+                other_terms = c.need_bonus + c.eligibility_bonus + (c.depth_exposure or 0.0)
+                self.assertAlmostEqual(c.universal_value - c.team_acquisition_value,
+                                       -c.displacement_adj - other_terms, places=2)
 
     @_EXECUTABLE
     def test_the_real_board_renders_every_candidate_with_words_for_its_basis(self):
