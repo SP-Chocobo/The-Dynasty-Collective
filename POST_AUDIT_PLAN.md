@@ -6302,3 +6302,9 @@ running backs and the TE gap SHRINKS 43.6 -> -2.3. Same arithmetic as #60, oppos
 **Freeze status: OWNER DECISION.** My reading is that an engine which cannot draft a receiver or
 a quarterback without a legality backstop is not shippable, whatever the dynasty philosophy. The
 call is #53's and the owner's.
+
+**FREEZE STATUS — RULED (owner): #216 BLOCKS THE FREEZE.** No freeze until it is addressed.
+This supersedes the "owner decision" line above and the #164 triage, which listed one blocker
+family (#154/#155/#114) — all three of those are closed, and #216 is now the blocker in their
+place. #53 does not proceed while the board is inert for WR and QB and `feasibility_first` is
+the only thing making a roster legal.
