@@ -27,6 +27,7 @@ import collections
 import json
 import time
 from pathlib import Path
+from unittest import mock
 
 import data_merger as dm
 import draft_battery as db
@@ -176,8 +177,13 @@ def draft_one(arm, merger, players_db, league, pick_order, seat, points, season,
             chosen = rp.control_pick(free, points, mine[who], players_db, slots)
         else:
             t0 = time.time()
-            board = dr.compute_draft_board(merger, players_db, picks, seat, league, mode="balanced",
-                                           sleeper_projections=season, sleeper_basis=dr.SLEEPER_BASIS_SEASON_SUM)
+            if arm == "BASE":      # the pre-fix engine: the displacement term switched off
+                with mock.patch.object(dr, "displacement_adjustments", lambda *a, **k: {}):
+                    board = dr.compute_draft_board(merger, players_db, picks, seat, league, mode="balanced",
+                                                   sleeper_projections=season, sleeper_basis=dr.SLEEPER_BASIS_SEASON_SUM)
+            else:
+                board = dr.compute_draft_board(merger, players_db, picks, seat, league, mode="balanced",
+                                               sleeper_projections=season, sleeper_basis=dr.SLEEPER_BASIS_SEASON_SUM)
             live = [r for r in board if str(r["player_id"]) in points and str(r["player_id"]) not in taken]
             ordered = sorted(live, key=ps._board_order)
             priced = [r for r in ordered if r.get("final_score") is not None]
@@ -225,7 +231,37 @@ def draft_one(arm, merger, players_db, league, pick_order, seat, points, season,
         "g9_engine": asset_and_character(picks, seat, players_db, rulers, slots, horizon_map),
         "g9_control": asset_and_character(picks, control_seat, players_db, rulers, slots, horizon_map),
         "qb_rounds": [s["round"] for s in seq if s["position"] == "QB"],
+        # Every roster's player ids, so conditional picks (handcuffs) can be IDENTIFIED post
+        # hoc from fields already on the rows -- NFL team + position + who owns the team's
+        # top-projected player at that position. Identification only; nothing prices it.
+        "all_rosters": {s: list(ids) for s, ids in mine.items()},
+        "my_ids": list(mine[seat]),
     }
+
+
+#: The owner's real league (out of sample for everything measured before it): 9 starters,
+#: 5 bench, no dedicated TE slot, superflex, PPR with a 0.5 TE premium, 12 teams, third-round
+#: reversal, redraft (no dynasty horizon). Seat 12 is the turn slot.
+OWNER_LEAGUE = {
+    "label": "OWNER_3RR_SF_noTE",
+    "roster_positions": ["QB", "WR", "WR", "RB", "RB", "FLEX", "FLEX", "WRRB_FLEX", "SUPER_FLEX"] + ["BN"] * 5,
+    "teams": 12, "rec": 1.0, "bonus_rec_te": 0.5, "dynasty": False, "draft_type": "3rr",
+}
+
+
+def build_league(spec_label, scoring):
+    """A PROOF_FORMATS league (snake, dynasty, the mock roster) or the owner's league."""
+    if spec_label == OWNER_LEAGUE["label"]:
+        settings = dict(scoring or {})
+        settings["rec"] = OWNER_LEAGUE["rec"]
+        settings["bonus_rec_te"] = OWNER_LEAGUE["bonus_rec_te"]
+        league = {"roster_positions": list(OWNER_LEAGUE["roster_positions"]), "scoring_settings": settings,
+                  "total_rosters": OWNER_LEAGUE["teams"], "settings": {"type": 2 if OWNER_LEAGUE["dynasty"] else 0}}
+        return league, OWNER_LEAGUE["draft_type"]
+    spec = next(s for s in rp.PROOF_FORMATS if s["label"] == spec_label)
+    league = dr.build_mock_league(teams=spec["teams"], superflex=spec["superflex"], scoring=spec["scoring"],
+                                  te_premium=spec["te_premium"], dynasty=True, base_scoring=scoring)
+    return league, "snake"
 
 
 def main(argv=None):
@@ -249,9 +285,7 @@ def main(argv=None):
     players_db, universe = rdb.build_players_db_from_capture()
     season = rdb.season_projections_from_capture()
     for fmt_label in args.formats.split(","):
-        spec = next(s for s in rp.PROOF_FORMATS if s["label"] == fmt_label)
-        league = dr.build_mock_league(teams=spec["teams"], superflex=spec["superflex"], scoring=spec["scoring"],
-                                      te_premium=spec["te_premium"], dynasty=True, base_scoring=scoring)
+        league, draft_type = build_league(fmt_label, scoring)
         merger.set_league_format(db.league_format_hint(league))
         points = rp.scoreable_pool(merger, players_db, league, season)
         values = db.reference_values(merger, players_db, league, sleeper_projections=season, sleeper_basis=dr.SLEEPER_BASIS_SEASON_SUM)
@@ -259,10 +293,10 @@ def main(argv=None):
         predraft = dr.compute_draft_board(merger, players_db, [], None, league, mode="balanced",
                                           sleeper_projections=season, sleeper_basis=dr.SLEEPER_BASIS_SEASON_SUM)
         horizon_map = {str(r["player_id"]): r.get("time_horizon_adj") for r in predraft}
-        seats = [str(i) for i in range(1, spec["teams"] + 1)]
+        seats = [str(i) for i in range(1, league["total_rosters"] + 1)]
         rounds = len(league["roster_positions"])
         slots = lo.slots_from_roster_positions(league["roster_positions"])
-        pick_order = ds.generate_pick_order(seats, rounds, "snake")
+        pick_order = ds.generate_pick_order(seats, rounds, draft_type)
         out_path = out_dir / f"{fmt_label}.json"
         log(f"commit {commit} | {fmt_label} | pool {len(points)} | rounds {rounds}")
         results = {"commit": commit, "format": fmt_label, "roster_positions": league["roster_positions"], "drafts": []}
