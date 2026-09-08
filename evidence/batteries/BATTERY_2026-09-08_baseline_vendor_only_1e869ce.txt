@@ -1,0 +1,46 @@
+8T_standard            picks= 112 findings=  0 starters 214.83-268.1 (spread 53.27; against the pre-draft ruler: every player priced, so the values are totals; no unpriced candidate reached any of the 112 decisions)   235.6s
+8T_standard_SF         picks= 120 findings=  0 starters 404.17-593.0 (spread 188.83; against the pre-draft ruler: every player priced, so the values are totals; an unpriced candidate reached 40 of 120 decisions and won 0)   248.4s
+8T_half_ppr            picks= 112 findings=  0 starters 327.9-377.02 (spread 49.12; against the pre-draft ruler: every player priced, so the values are totals; no unpriced candidate reached any of the 112 decisions)   236.3s
+8T_half_ppr_SF         picks= 120 findings=  0 starters 464.76-679.36 (spread 214.6; against the pre-draft ruler: every player priced, so the values are totals; an unpriced candidate reached 29 of 120 decisions and won 0)   253.0s
+8T_ppr                 picks= 112 findings=  0 starters 327.9-377.02 (spread 49.12; against the pre-draft ruler: every player priced, so the values are totals; no unpriced candidate reached any of the 112 decisions)   238.6s
+8T_ppr_SF              picks= 120 findings=  0 starters 464.76-679.36 (spread 214.6; against the pre-draft ruler: every player priced, so the values are totals; an unpriced candidate reached 29 of 120 decisions and won 0)   251.4s
+10T_standard           picks= 140 findings=  0 starters 225.46-289.57 (spread 64.11; against the pre-draft ruler: every player priced, so the values are totals; no unpriced candidate reached any of the 140 decisions)   335.2s
+10T_standard_SF        picks= 150 findings=  0 starters 345.83-516.45 (spread 170.62; against the pre-draft ruler: every player priced, so the values are totals; an unpriced candidate reached 51 of 150 decisions and won 0)   351.8s
+10T_half_ppr           picks= 140 findings=  0 starters 336.12-412.82 (spread 76.7; against the pre-draft ruler: every player priced, so the values are totals; no unpriced candidate reached any of the 140 decisions)   326.8s
+10T_half_ppr_SF        picks= 150 findings=  0 starters 296.17-661.23 (spread 365.06; against the pre-draft ruler: every player priced, so the values are totals; an unpriced candidate reached 46 of 150 decisions and won 0)   349.5s
+10T_ppr                picks= 140 findings=  0 starters 336.12-412.82 (spread 76.7; against the pre-draft ruler: every player priced, so the values are totals; no unpriced candidate reached any of the 140 decisions)   331.7s
+10T_ppr_SF             picks= 150 findings=  0 starters 296.17-661.23 (spread 365.06; against the pre-draft ruler: every player priced, so the values are totals; an unpriced candidate reached 46 of 150 decisions and won 0)   355.8s
+12T_standard           picks= 168 findings=  0 starters 52.95-311.26 (spread 258.31; against the pre-draft ruler: every player priced, so the values are totals; no unpriced candidate reached any of the 168 decisions)   439.7s
+12T_standard_SF        picks= 180 findings=  0 starters 419.93-535.35 (spread 115.42; against the pre-draft ruler: every player priced, so the values are totals; an unpriced candidate reached 65 of 180 decisions and won 0)   474.8s
+12T_half_ppr           picks= 168 findings=  0 starters 353.68-426.97 (spread 73.29; against the pre-draft ruler: every player priced, so the values are totals; no unpriced candidate reached any of the 168 decisions)   454.3s
+12T_half_ppr_SF        picks= 180 findings=  0 starters 459.45-693.92 (spread 234.47; against the pre-draft ruler: every player priced, so the values are totals; an unpriced candidate reached 54 of 180 decisions and won 0)   474.4s
+12T_ppr                picks= 168 findings=  0 starters 353.68-426.97 (spread 73.29; against the pre-draft ruler: every player priced, so the values are totals; no unpriced candidate reached any of the 168 decisions)   454.5s
+12T_ppr_SF             picks= 180 findings=  0 starters 459.45-693.92 (spread 234.47; against the pre-draft ruler: every player priced, so the values are totals; an unpriced candidate reached 54 of 180 decisions and won 0)   480.3s
+14T_standard           picks= 196 findings=  1 starters 228.74-331.83 (spread 103.09; against the pre-draft ruler: 1 player unpriced, so the values are floors, not totals; an unpriced candidate reached 46 of 196 decisions and won 1)   589.7s   <-- DEFECTS
+14T_standard_SF        picks= 210 findings=  0 starters 263.04-525.51 (spread 262.47; against the pre-draft ruler: every player priced, so the values are totals; an unpriced candidate reached 80 of 210 decisions and won 0)   620.5s
+14T_half_ppr           picks= 196 findings=  0 starters 335.96-440.0 (spread 104.04; against the pre-draft ruler: every player priced, so the values are totals; no unpriced candidate reached any of the 196 decisions)   583.4s
+14T_half_ppr_SF        picks= 210 findings=  1 starters 430.94-624.41 (spread 193.47; against the pre-draft ruler: 1 player unpriced, so the values are floors, not totals; an unpriced candidate reached 68 of 210 decisions and won 1)   626.6s   <-- DEFECTS
+14T_ppr                picks= 196 findings=  0 starters 335.96-440.0 (spread 104.04; against the pre-draft ruler: every player priced, so the values are totals; no unpriced candidate reached any of the 196 decisions)   581.5s
+14T_ppr_SF             picks= 210 findings=  1 starters 430.94-624.41 (spread 193.47; against the pre-draft ruler: 1 player unpriced, so the values are floors, not totals; an unpriced candidate reached 68 of 210 decisions and won 1)   616.6s   <-- DEFECTS
+12T_ppr_TEP_dynasty    picks= 168 findings=  0 starters 249.62-449.87 (spread 200.25; against the pre-draft ruler: every player priced, so the values are totals; no unpriced candidate reached any of the 168 decisions)   446.2s
+12T_ppr_redraft        picks= 168 findings=  0 starters 317.0-436.0 (spread 119.0; against the pre-draft ruler: every player priced, so the values are totals; no unpriced candidate reached any of the 168 decisions)   436.5s
+12T_ppr_TEP_redraft    picks= 168 findings=  0 starters 364.0-447.0 (spread 83.0; against the pre-draft ruler: every player priced, so the values are totals; no unpriced candidate reached any of the 168 decisions)   435.0s
+4WR_TE_PREMIUM         picks= 192 findings=  1 starters 467.99-586.83 (spread 118.84; against the pre-draft ruler: 1 player unpriced, so the values are floors, not totals; an unpriced candidate reached 18 of 192 decisions and won 1)   462.7s   <-- DEFECTS
+HEAVY_IDP              picks= 216 findings= 14 starters 239.6-419.14 (spread 179.54; against the pre-draft ruler: 14 players unpriced, so the values are floors, not totals; an unpriced candidate reached 164 of 216 decisions and won 14)   847.1s   <-- DEFECTS
+LIGHT_IDP              picks= 168 findings=  0 starters 278.78-335.22 (spread 56.44; against the pre-draft ruler: every player priced, so the values are totals; an unpriced candidate reached 11 of 168 decisions and won 0)   729.8s
+12T_ppr_mode_balanced  picks= 168 findings=  0 starters 353.68-426.97 (spread 73.29; against the pre-draft ruler: every player priced, so the values are totals; no unpriced candidate reached any of the 168 decisions)   434.5s
+12T_ppr_mode_upside    picks= 168 findings=  0 starters 21.47-453.83 (spread 432.36; against the pre-draft ruler: every player priced, so the values are totals; no unpriced candidate reached any of the 168 decisions)   140.2s
+12T_ppr_SHORT_DRAFT    picks=  96 findings=  0 starters 353.68-426.97 (spread 73.29; against the pre-draft ruler: every player priced, so the values are totals; no unpriced candidate reached any of the 96 decisions)   239.1s
+
+33 formats (24 independent), 5340 picks, 18 structural findings, 14081.2s -> /tmp/claude-0/-home-user-The-Dynasty-Collective/90289f87-1d2a-5009-8163-038c3cedfc5f/scratchpad/BATTERY_FULL.json
+  DUPLICATE ARM: 8T_ppr reproduces 8T_half_ppr exactly -- same rankings export, so it is not independent evidence
+  DUPLICATE ARM: 8T_ppr_SF reproduces 8T_half_ppr_SF exactly -- same rankings export, so it is not independent evidence
+  DUPLICATE ARM: 10T_ppr reproduces 10T_half_ppr exactly -- same rankings export, so it is not independent evidence
+  DUPLICATE ARM: 10T_ppr_SF reproduces 10T_half_ppr_SF exactly -- same rankings export, so it is not independent evidence
+  DUPLICATE ARM: 12T_ppr reproduces 12T_half_ppr exactly -- same rankings export, so it is not independent evidence
+  DUPLICATE ARM: 12T_ppr_SF reproduces 12T_half_ppr_SF exactly -- same rankings export, so it is not independent evidence
+  DUPLICATE ARM: 14T_ppr reproduces 14T_half_ppr exactly -- same rankings export, so it is not independent evidence
+  DUPLICATE ARM: 14T_ppr_SF reproduces 14T_half_ppr_SF exactly -- same rankings export, so it is not independent evidence
+  DUPLICATE ARM: 12T_ppr_mode_balanced reproduces 12T_half_ppr exactly -- same rankings export, so it is not independent evidence
+
+[exited with code 1]
