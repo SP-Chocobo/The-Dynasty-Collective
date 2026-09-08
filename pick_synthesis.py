@@ -305,9 +305,17 @@ NECESSITY_DENIAL_WEIGHT = 10.0       # the denial contribution at ONE team-term'
 #
 # Derived from draft_room's own caps rather than written as 36.0, so a fourth team-specific
 # term moves it automatically instead of silently re-flattening the ramp the way the third did.
-#: The three team-specific caps, named ONCE so everything that needs "the bound on their sum"
-#: or "one term's worth" derives from the same tuple. A fourth term added to draft_room lands
-#: here and moves both consumers below automatically (#144's requirement, now shared with #160).
+#: The three CAPPED team-specific terms, named ONCE so everything that needs "the bound on
+#: their sum" or "one term's worth" derives from the same tuple.
+#:
+#: #216 added a FOURTH term, displacement_adj, and it is deliberately NOT here: it is
+#: non-positive by construction (draft_room.displacement_adjustments -- it only ever removes
+#: credit the league anchor gave for a slot the roster cannot offer), so it cannot raise the
+#: sum these caps bound. sum(TEAM_SPECIFIC_CAPS) remains the UPPER bound on
+#: team_acquisition_value - universal_value; the LOWER bound is now open, which matters to the
+#: two consumers below only in that rival_premium can be negative, and both already treat a
+#: non-positive premium as "no premium" (see the `if rival_premium > 0` guard in
+#: compute_pick_necessity and the elevated-context flag's one-sided test).
 TEAM_SPECIFIC_CAPS = (dr.NEED_BONUS_MAX, dr.ELIGIBILITY_BONUS_MAX, dr.DEPTH_EXPOSURE_MAX)
 
 NECESSITY_DENIAL_SATURATION = sum(TEAM_SPECIFIC_CAPS)
@@ -1169,6 +1177,14 @@ class CandidateSnapshot:
     # number means; it just never arrived. Defaulted for the same reason depth_exposure is:
     # upside-mode boards never compute it, and hand-built fixtures predate it.
     depth_basis: Optional[str] = None
+    # #216's fourth team-specific term: the league replacement anchor's over-credit for a slot
+    # this roster cannot offer him (draft_room.displacement_adjustments). Non-positive, unbounded
+    # by construction (it IS the measured over-credit), 0.0 wherever a slot he can reach is
+    # open. Carried WITH its basis from the first commit rather than after the fact (#174): a
+    # 0.0 under `measured` is a solved lineup with room for him; under any other token it is a
+    # number that was never produced. Defaulted for the same reasons as depth_exposure.
+    displacement_adj: Optional[float] = None
+    displacement_basis: Optional[str] = None
     # What deferring this position actually costs: this player's projected points minus the
     # points of the best player at his position expected to be STILL UNDRAFTED when the draft
     # ends (draft_room.horizon_replacement). OBSERVABLE ONLY -- read by nothing that scores,
@@ -1354,6 +1370,9 @@ def build_snapshot(
             # Read this BEFORE depth_exposure: a 0.0 whose basis is not `measured` is an
             # absence wearing a number's clothes (#174).
             "depth_basis": row.get("depth_basis"),
+            # #216: the same discipline for the fourth term -- the basis travels with the number.
+            "displacement_adj": row.get("displacement_adj"),
+            "displacement_basis": row.get("displacement_basis"),
             "team_acquisition_value": row["final_score"],
             "survival_probability": survival, "intervening_picks": a.get("intervening_picks"),
             "opportunity_cost": a.get("opportunity_cost"),
@@ -1521,7 +1540,7 @@ def snapshot_is_current(snapshot: PickSnapshot, picks: list[dict], merger: DataM
 
 
 _DIFF_FIELDS = (
-    "universal_value", "need_bonus", "eligibility_bonus", "depth_exposure",
+    "universal_value", "need_bonus", "eligibility_bonus", "depth_exposure", "displacement_adj",
     "team_acquisition_value",
     "survival_probability", "opportunity_cost", "expected_value_of_waiting", "denial_value",
     "rival_premium", "positional_forfeit", "pick_necessity",

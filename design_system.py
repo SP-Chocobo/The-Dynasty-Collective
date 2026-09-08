@@ -170,9 +170,11 @@ FOCUS_VISIBLE_CSS = (
 # #58); the repair is to say what the number is, everywhere it appears.
 #
 # VOCABULARY. The engine's value quantities all live on one scale, universal_value's:
-#   BPA (value over replacement, in projected points scaled linearly against the largest gap
-#   in the remaining pool) + dynasty-horizon and injury-risk adjustments = universal value;
-#   + the roster's need, lineup-flexibility and depth-insurance terms = acquisition value.
+#   BPA (value over replacement, in projected points -- the pool-gap rescale that used to sit
+#   here was removed by the bpa-unit repair; draft_room._scale_vor_to_bpa is the identity)
+#   + dynasty-horizon and injury-risk adjustments = universal value;
+#   + the roster's need, lineup-flexibility and depth-insurance terms, minus the league
+#   anchor's over-credit for a slot the roster cannot offer (#216) = acquisition value.
 # That scale is called "universal-value points", abbreviated "UV pts" where a label must stay
 # short. Season fantasy points are always called that. Nothing here names a data vendor.
 # ---------------------------------------------------------------------------------------
@@ -192,10 +194,21 @@ DISPLAY_CONTRACT: dict[str, dict[str, str]] = {
         "label": f"Universal Value ({VALUE_UNIT_SHORT})",
         "unit": VALUE_UNIT,
         "help": (
-            "How good he is for ANY roster: value over the replacement player at his "
-            "position (in projected season points, scaled against the largest gap left in the "
-            "pool), plus dynasty-horizon and injury-risk adjustments. Universal-value points "
-            "are signed and unbounded and are NOT fantasy points."
+            "How good he is for ANY roster: his projected season points minus the replacement "
+            "player's at his position (the league's free alternative at that position's "
+            "remaining starter demand), plus dynasty-horizon and injury-risk adjustments. "
+            "Universal-value points are signed and unbounded and are NOT fantasy points."
+        ),
+    },
+    "displacement_adj": {
+        "label": f"Slot Displacement ({VALUE_UNIT_SHORT})",
+        "unit": VALUE_UNIT,
+        "help": (
+            "Never positive. How much of his universal value YOUR lineup cannot use: when every "
+            "starting slot he could fill is held by one of your own players who out-projects the "
+            "league's free alternative, he is priced against that player instead. Zero when a "
+            "slot he can reach is open. Read its basis first -- a zero that was not measured is "
+            "not room for him."
         ),
     },
     "projected_points": {

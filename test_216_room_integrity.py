@@ -217,7 +217,11 @@ class EveryTermOfTheIdentityReachesTheRoomTests(unittest.TestCase):
         # test_display_contract_boundary). A fourth term must be carried to CandidateSnapshot,
         # serialize_candidate, the JS roster-gap sentence and DISPLAY_CONTRACT's acquisition
         # help TOGETHER, and then this set updated -- never bumped alone.
-        self.assertEqual(set(_identity_terms().values()), {"need_bonus", "eligibility_bonus", "depth_exposure"},
+        # UPDATED BY THE #216 IMPLEMENTER, as this pin instructs: the fourth term
+        # (displacement_adj) is carried to CandidateSnapshot, serialize_candidate, the JS
+        # sentence and DISPLAY_CONTRACT in the same commit -- each checked by the tests below.
+        self.assertEqual(set(_identity_terms().values()),
+                         {"need_bonus", "eligibility_bonus", "depth_exposure", "displacement_adj"},
                          f"identity terms now: {_identity_terms()}")
 
     def test_the_snapshot_carries_every_term(self):
@@ -230,15 +234,49 @@ class EveryTermOfTheIdentityReachesTheRoomTests(unittest.TestCase):
         """FAILS on f580c11: depth_exposure (and its basis) never reach the JS. Distinct,
         recognisable magnitudes per term so each can be found by VALUE in the serialized row,
         whatever key it travels under."""
-        magnitudes = {"need_bonus": 1.25, "eligibility_bonus": 2.5, "depth_exposure": 5.0}
+        # #216: the fourth term carries a distinct magnitude of its own (negative, as it is
+        # by construction) so it too is found by VALUE.
+        magnitudes = {"need_bonus": 1.25, "eligibility_bonus": 2.5, "depth_exposure": 5.0,
+                      "displacement_adj": -7.75}
         c = _candidate(universal_value=50.0, need_bonus=1.25, eligibility_bonus=2.5,
-                       depth_exposure=5.0, depth_basis="measured", team_acquisition_value=58.75)
+                       depth_exposure=5.0, depth_basis="measured",
+                       displacement_adj=-7.75, displacement_basis="measured",
+                       team_acquisition_value=51.0)
         row = ui.serialize_candidate(c)
         carried = {v for v in row.values() if isinstance(v, (int, float)) and not isinstance(v, bool)}
         missing = [f"{term}={mag}" for term, mag in magnitudes.items()
                    if term in _identity_terms().values() and mag not in carried]
         self.assertEqual(missing, [], f"serialize_candidate drops identity terms: {missing}; "
                                       f"payload keys {sorted(row)}")
+
+    def test_the_payload_carries_the_displacement_basis_beside_the_number(self):
+        """#216, same shape as the depth companion below: a 0.0 whose basis is not `measured`
+        is an absence wearing a number, and may not cross the boundary alone."""
+        row = ui.serialize_candidate(_candidate(displacement_adj=0.0, displacement_basis="no_points_anchor"))
+        self.assertIn("no_points_anchor", [v for v in row.values() if isinstance(v, str)],
+                      f"displacement_basis is not in the payload: {sorted(row)}")
+
+    @_EXECUTABLE
+    def test_the_rendered_panel_states_a_displacement_deduction_with_its_words(self):
+        """#216, executed. A candidate whose whole context is a displacement deduction: the
+        panel must state the magnitude AND the basis words from lineup_optimizer's own table,
+        and an unknown basis token must render as itself (the #186 rule)."""
+        import lineup_optimizer as lo
+        c = _candidate(universal_value=50.0, need_bonus=0.0, eligibility_bonus=0.0,
+                       displacement_adj=-12.5, displacement_basis=lo.DISPLACEMENT_MEASURED,
+                       team_acquisition_value=37.5)
+        raw = _candidate(player_id="7", name="R. Token", universal_value=50.0, need_bonus=0.0,
+                         eligibility_bonus=0.0, displacement_adj=-3.0,
+                         displacement_basis="some_future_token", team_acquisition_value=47.0)
+        out = _execute(_payload([c, raw]))
+        self.assertEqual(out["errors"], [])
+        focus = out["rows"][0]["focus"]
+        self.assertIn("12.5", focus, f"the panel does not state the deduction: {focus!r}")
+        self.assertIn(lo.DISPLACEMENT_BASIS_LABELS[lo.DISPLACEMENT_MEASURED], focus)
+        self.assertNotIn("Roster context deducts", focus, "a named deduction was also reported as unexplained")
+        self.assertIn("some_future_token", out["rows"][1]["focus"])
+        for words in lo.DISPLACEMENT_BASIS_LABELS.values():
+            self.assertNotIn(words, out["rows"][1]["focus"])
 
     def test_the_payload_carries_the_depth_basis_beside_the_number(self):
         """#174/#187 shape: a 0.0 whose basis is not `measured` is an absence wearing a number.

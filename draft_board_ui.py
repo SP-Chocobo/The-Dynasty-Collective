@@ -42,6 +42,7 @@ from typing import Optional
 
 import design_system
 from draft_room import SLEEPER_WEEKLY_TO_SEASON_FACTOR, REPLACEMENT_BASIS_LABELS
+from lineup_optimizer import DISPLACEMENT_BASIS_LABELS, EXPOSURE_BASIS_LABELS
 from player_universe import FLEX_SLOT_POSITIONS
 from pick_synthesis import (
     DEFAULT_NARROW_COUNT, HORIZON_BASIS_IMPUTED, CandidateSnapshot, PickSnapshot,
@@ -234,6 +235,14 @@ def serialize_candidate(c: CandidateSnapshot) -> dict:
         "denialTeam": c.denial_team,
         "needBonus": c.need_bonus,
         "eligBonus": c.eligibility_bonus,
+        # #216. The two remaining terms of the identity, each WITH its basis. depth_exposure
+        # never reached the JS before this (the room showed ACQ 72 over UV 68 with no sentence
+        # for the difference), and the fourth term lands in exactly that gap if it is not
+        # carried from the first commit.
+        "depthExposure": c.depth_exposure,
+        "depthBasis": c.depth_basis,
+        "displacementAdj": c.displacement_adj,
+        "displacementBasis": c.displacement_basis,
         "forces": _forces(c),
         "contextGap": _context_gap(c),
         "waitNote": _waiting_note(c),
@@ -424,6 +433,9 @@ def serialize_snapshot(
         # value silently becoming the STRONGEST claim in the vocabulary. Derived from
         # draft_room's own table (#126), so a value added there cannot go unlabelled here.
         "replacementBasisLabels": dict(REPLACEMENT_BASIS_LABELS),
+        # #216: the same discipline for the two lineup-solved terms' vocabularies.
+        "depthBasisLabels": dict(EXPOSURE_BASIS_LABELS),
+        "displacementBasisLabels": dict(DISPLACEMENT_BASIS_LABELS),
         "candidates": candidates,
     }
 
@@ -650,6 +662,12 @@ function basisLabel(token) {
   const labels = PAYLOAD.replacementBasisLabels || {};
   return Object.prototype.hasOwnProperty.call(labels, token) ? labels[token] : token;
 }
+// #216: the same rule for the two lineup-solved terms. Unknown token -> itself, never a
+// stronger claim than the Python side made.
+function termBasisLabel(table, token) {
+  const labels = PAYLOAD[table] || {};
+  return Object.prototype.hasOwnProperty.call(labels, token) ? labels[token] : token;
+}
 function fmt(x, digits) { return num(x) ? x.toFixed(digits) : ABSENT; }
 const NEC_TEXT = {
   "MUST TAKE": "a genuine must-take", "STRONG ACTION": "a strong action",
@@ -674,7 +692,7 @@ document.getElementById("state-bar").innerHTML = `
 // (signed, unbounded, the engine's own scale) and season-projection points per week (the wait
 // chip) -- and a reader who has to learn that from a hover has already misread the board once.
 document.getElementById("legend").innerHTML = `
-  <span title="Universal-value points (UV pts): value over the replacement player at his position, in projected points scaled against the largest gap left in the pool, plus horizon, risk and roster-context terms. Signed and unbounded. NOT a fantasy-points total."><b>${PAYLOAD.valueUnitShort}</b> = ${PAYLOAD.valueUnit} · not fantasy points</span>
+  <span title="Universal-value points (UV pts): his projected season points minus the replacement player's at his position (the league's free alternative at that position's remaining starter demand), plus horizon, risk and roster-context terms. Signed and unbounded. NOT a fantasy-points total."><b>${PAYLOAD.valueUnitShort}</b> = ${PAYLOAD.valueUnit} · not fantasy points</span>
   <span title="The wait chip is the cost of deferring this position until the draft ends, in season-projection points per week -- a different unit from the value beside it."><b>PTS/WK</b> = season points per week</span>`;
 
 function tickRow(c) {
@@ -779,6 +797,24 @@ function focusSentences(c) {
     if (num(c.needBonus) && c.needBonus > 0) bits.push(`+${c.needBonus.toFixed(1)} ${PAYLOAD.valueUnitShort} for an unfilled roster need`);
     if (num(c.eligBonus) && c.eligBonus > 0) bits.push(`+${c.eligBonus.toFixed(1)} ${PAYLOAD.valueUnitShort} for multi-position flexibility`);
     s.push(`<p class="focus-sentence tie-note">Fills a real roster gap: ${bits.join(" and ")}.</p>`);
+  }
+  // #216. The two lineup-solved terms, stated with their magnitude and their basis, so every
+  // term that moved ACQ away from UV has a sentence. A depth number is only evidence under
+  // its `measured` basis; the sentence says which.
+  if (num(c.depthExposure) && c.depthExposure > 0) {
+    s.push(`<p class="focus-sentence tie-note">Depth insurance: +${c.depthExposure.toFixed(1)} ${PAYLOAD.valueUnitShort} — what a hole at ${c.pos} would cost your lineup, ${termBasisLabel("depthBasisLabels", c.depthBasis)}.</p>`);
+  }
+  if (num(c.displacementAdj) && c.displacementAdj < 0) {
+    s.push(`<p class="focus-sentence tie-note">Priced against your own starter: <b>${(-c.displacementAdj).toFixed(1)} ${PAYLOAD.valueUnitShort}</b> of his universal value is credit for a slot your lineup cannot offer him — every slot he could fill is held by someone you own who out-projects the league's free alternative (${termBasisLabel("displacementBasisLabels", c.displacementBasis)}).</p>`);
+  }
+  // A deduction the terms above did not name is still a deduction a person is reading. Say
+  // the size of it rather than leaving ACQ silently below UV (#187).
+  if (num(c.tav) && num(c.uv) && c.tav < c.uv - 1e-9) {
+    const named = (num(c.displacementAdj) && c.displacementAdj < 0) ? -c.displacementAdj : 0;
+    const unexplained = (c.uv - c.tav) - named;
+    if (unexplained > 0.05) {
+      s.push(`<p class="focus-sentence tie-note">Roster context deducts <b>${unexplained.toFixed(1)} ${PAYLOAD.valueUnitShort}</b> here beyond any term named above: his acquisition value sits below his universal value.</p>`);
+    }
   }
   if (c.flagged) {
     s.push(`<p class="focus-sentence tie-note">You flagged him specifically — nothing here argues for taking him now, and nothing here argues you're wrong to like him for later.</p>`);
