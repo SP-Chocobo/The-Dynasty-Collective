@@ -275,8 +275,8 @@ test_the_unmarked_table_holds_only_modules_that_need_it`: the #84 correction I w
 `test_lineup_marginal_contract`'s docstring cites `#216`, so that module now resolves to a
 register item on its own and its row in `suite_taxonomy._UNMARKED` became redundant — the
 table's own rule ("the fix for a new unlabelled module is a docstring, not a row"). Row
-dropped; `test_suite_taxonomy` 8/8. The second full run, after that one-line change, is
-recorded in the commit message and in the README of `fix_216/`. `assertion_floors.py --write
+dropped; `test_suite_taxonomy` 8/8. The second full run, after that one-line change: **2710
+tests, 1217.9s, OK (1 skipped)** — the push was made on this run. `assertion_floors.py --write
 && --check`: 137 modules, 4746 assertions, no guarantee shrunk against the base branch's floors
 (every pre-existing module's per-assert counts are ≥ before; 18 modules the base file did not
 list are now listed).
