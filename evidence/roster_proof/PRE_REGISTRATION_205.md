@@ -30,6 +30,47 @@ the two rulers genuinely disagree, and the machinery is not degenerate (the SF a
 per-seat spread; the 4-round 1QB arm's identical-across-all-seats advantage was a truncation
 artifact that disappeared at 8 rounds).
 
+## AMENDMENT, before any full-depth result was recorded — the cdme ruler was a category error
+
+The first full-depth run (12T_ppr, 14 of 14 rounds) printed the engine at **−171.7%** on `cdme`,
+having been **+176.5%** at 8 rounds. A sign flip that large is a defect in the instrument before
+it is a fact about the engine, so it was diagnosed rather than reported. Two measurements:
+
+- **83.8% of the 475-player shared pool carries a NEGATIVE `universal_value`** (min −319.22,
+  median −30.74, max +79.03).
+- **`lineup_optimizer` has no "leave the slot empty" move.** `linear_sum_assignment` fills every
+  slot it can, so a roster thin at a position is FORCED to start a deeply negative player.
+  Verified directly: one +50 WR and one −80 RB against a WR slot and an RB slot returns −30.
+
+So a **starting-lineup sum of `universal_value` is a category error**. `universal_value` is an
+asset LEVEL — what a player is worth to OWN — not a rate that starting him realises. Summing the
+started subset measures POSITIONAL BREADTH (who is forced to start the fewest negatives), which
+is the control's design by construction and not a virtue of anyone's roster. This is the same
+level-versus-rate distinction the owner already ruled on in #55.
+
+**The run was killed and restarted** rather than allowed to produce 45 minutes of uninterpretable
+numbers. What changed in the instrument:
+
+| ruler | compared on | why |
+|---|---|---|
+| `cdme` | `total_value` | what you OWN |
+| `points` | `starter_value` | what you FIELD — here the lineup sum is exactly right |
+
+Also changed, both from this same incident: **absolute engine/control means are now reported on
+every line** (a percentage was the only number on offer, and −171.7% turned out to be a ratio
+against a near-zero denominator), and **the report is written after every format** rather than
+once at the end, so a partial run is still readable.
+
+**A known contamination is carried in the report rather than fixed.** `total_value` sums
+below-replacement negatives, which assumes such a player is a liability you carry rather than
+someone you drop. What a below-replacement player is worth to own is #155 and #165, both
+RESERVED; flooring the sum at zero would answer a reserved question by implementation and would
+be the invented bound #56 forbids. Both arms are contaminated identically, so the COMPARISON
+survives it — the absolute cdme totals do not and must not be quoted as roster worth.
+
+**The outcome table below stands unchanged.** It was written about which ruler the engine wins
+on, not about which quantity each ruler is measured with, and that question is untouched.
+
 ## The two rulers
 
 Reported separately, never collapsed. Measured over the 475-player pool,

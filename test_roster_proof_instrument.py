@@ -128,6 +128,80 @@ class TwoRulersNeverCollapsedTests(unittest.TestCase):
         self.assertNotIn("engine_is_better", src)
 
 
+class ARulerIsComparedOnAQuantityItCanCarryTests(unittest.TestCase):
+    """The category error that inverted the first full-depth run from +176% to -171.7%."""
+
+    def test_the_optimizer_is_forced_to_start_a_negative_player(self):
+        """The premise. If this ever stops being true, COMPARE_ON's reasoning is void."""
+        import lineup_optimizer as lo
+        slots = [{"slot_id": "RB_0", "eligible": {"RB"}}, {"slot_id": "WR_1", "eligible": {"WR"}}]
+        solved = lo.optimize_lineup(
+            [{"id": "goodwr", "value": 50.0, "eligible": {"WR"}},
+             {"id": "badrb", "value": -80.0, "eligible": {"RB"}}], slots)
+        self.assertEqual(solved["total_value"], -30.0,
+                         "the solver has no 'leave it empty' move -- it starts the -80 rather "
+                         "than skipping the slot, so a starting-lineup SUM can go negative")
+
+    def test_cdme_is_not_compared_on_a_starting_lineup_sum(self):
+        """universal_value is an asset LEVEL, not a rate that starting a player realises."""
+        self.assertEqual(rp.COMPARE_ON["cdme"], "total_value")
+        self.assertNotEqual(rp.COMPARE_ON["cdme"], "starter_value")
+
+    def test_points_IS_compared_on_the_starting_lineup(self):
+        """Projected points is exactly the quantity a lineup realises -- here the sum is right."""
+        self.assertEqual(rp.COMPARE_ON["points"], "starter_value")
+
+    def test_every_ruler_has_a_declared_quantity(self):
+        for name in rp.RULERS:
+            self.assertIn(name, rp.COMPARE_ON,
+                          "a ruler with no declared quantity would silently take a default")
+
+    def test_no_percentage_is_reported_against_a_near_zero_denominator(self):
+        """(eng - ctl)/|ctl| manufactures a huge number from a tiny gap when ctl approaches 0."""
+        runs = [{"engine_seat": "1",
+                 "engine": {"cdme": {"total_value": -0.4}},
+                 "controls": [{"cdme": {"total_value": 0.0001}}]}]
+        out = rp.compare(runs, "cdme")
+        self.assertEqual(out["comparable_runs"], 1, "the run itself is still comparable")
+        self.assertEqual(out["advantage_population"], 0,
+                         "but no ratio may be quoted against that denominator")
+        self.assertIsNone(out["mean_advantage_pct"])
+        self.assertIsNotNone(out["mean_gap"], "the ABSOLUTE gap is always reportable")
+
+    def test_the_absolute_numbers_are_always_present(self):
+        """A percentage must never be the only number on offer."""
+        runs = [{"engine_seat": "1",
+                 "engine": {"points": {"starter_value": 120.0}},
+                 "controls": [{"points": {"starter_value": 100.0}}]}]
+        out = rp.compare(runs, "points")
+        self.assertEqual(out["engine_mean"], 120.0)
+        self.assertEqual(out["control_mean"], 100.0)
+        self.assertEqual(out["mean_gap"], 20.0)
+        self.assertEqual(out["compared_on"], "starter_value")
+
+
+class APartialRunIsStillReadableTests(unittest.TestCase):
+
+    def test_the_report_is_written_after_every_format_not_once_at_the_end(self):
+        src = inspect.getsource(rp.main)
+        self.assertIn("complete=False", src,
+                      "a 45-minute run that writes only on its last line reproduces exactly "
+                      "the durability hole this item exists to close")
+        self.assertIn("complete=True", src)
+
+    def test_a_partial_report_says_it_is_partial(self):
+        src = inspect.getsource(rp._write_report)
+        self.assertIn('"complete": complete', src)
+        self.assertIn('"formats_done"', src,
+                      "a reader must be able to tell a partial file from a finished one")
+
+    def test_the_known_contamination_travels_in_the_report(self):
+        src = inspect.getsource(rp._write_report)
+        self.assertIn("known_contamination", src,
+                      "the cdme total sums below-replacement negatives (#155/#165, reserved); "
+                      "a report that omits that reads as a clean roster-worth number")
+
+
 class AbsenceIsCountedNotImputedTests(unittest.TestCase):
 
     def test_an_unpriced_player_is_counted_per_ruler_and_never_becomes_a_measured_zero(self):
@@ -155,17 +229,17 @@ class AbsenceIsCountedNotImputedTests(unittest.TestCase):
 
     def test_compare_never_quotes_a_rate_over_runs_it_could_not_evaluate(self):
         runs = [{"engine_seat": "1",
-                 "engine": {"cdme": {"starter_value": 100.0}},
-                 "controls": [{"cdme": {"starter_value": None}}]}]
+                 "engine": {"cdme": {"total_value": 100.0}},
+                 "controls": [{"cdme": {"total_value": None}}]}]
         out = rp.compare(runs, "cdme")
         self.assertEqual(out["comparable_runs"], 0)
         self.assertIsNone(out["win_rate"], "a rate over an empty set is not a rate")
 
     def test_compare_counts_a_win_against_the_mean_of_the_controls_actually_faced(self):
         runs = [{"engine_seat": "1",
-                 "engine": {"cdme": {"starter_value": 120.0}},
-                 "controls": [{"cdme": {"starter_value": 100.0}},
-                              {"cdme": {"starter_value": 100.0}}]}]
+                 "engine": {"cdme": {"total_value": 120.0}},
+                 "controls": [{"cdme": {"total_value": 100.0}},
+                              {"cdme": {"total_value": 100.0}}]}]
         out = rp.compare(runs, "cdme")
         self.assertEqual(out["comparable_runs"], 1)
         self.assertEqual(out["engine_wins"], 1)

@@ -200,6 +200,38 @@ def run_one(merger, players_db, league, pick_order, engine_seat, points, season,
 #: the strong claim: the engine beat the control at the control's own game.
 RULERS = ("cdme", "points")
 
+#: WHICH QUANTITY EACH RULER IS COMPARED ON, and this mapping is the whole point of the entry.
+#:
+#: Measured, not assumed: 83.8% of the 475-player shared pool carries a NEGATIVE
+#: universal_value (min −319.22, median −30.74, max +79.03), and `lineup_optimizer` has no
+#: "leave it empty" move — `linear_sum_assignment` fills every slot it can, so a roster thin at
+#: a position is FORCED to start a deeply negative player rather than start nobody. Verified
+#: directly: one +50 WR and one −80 RB against a WR and an RB slot returns total −30, not +50.
+#:
+#: So a STARTING-LINEUP SUM OF universal_value IS A CATEGORY ERROR. universal_value is an asset
+#: LEVEL — what a player is worth to OWN — not a weekly production rate that starting him
+#: realises. Summing the started subset of it measures POSITIONAL BREADTH (who is forced to
+#: start the fewest negatives), which is the control's design by construction and not a virtue
+#: of anyone's roster. This is the same level-vs-rate distinction the owner ruled on in #55.
+#: Under `points` the starting-lineup sum is exactly right — that IS what you field and score.
+#:
+#: Both quantities are reported for both rulers regardless; this only says which one the win
+#: rate is computed on, so the choice is named rather than buried in an aggregate.
+COMPARE_ON = {
+    "cdme": "total_value",      # what you OWN
+    "points": "starter_value",  # what you FIELD
+}
+
+#: A KNOWN CONTAMINATION, named rather than fixed. `total_value` sums deep negatives, which
+#: assumes a below-replacement player is a LIABILITY you carry rather than someone you simply
+#: drop. What a below-replacement player is actually worth to own is #155 ("a replacement-level
+#: player prices at 0.00 tautologically") and #165, both RESERVED. Flooring the sum at zero here
+#: would answer a reserved question by implementation and would be exactly the invented bound
+#: #56 forbids. Both arms are contaminated identically, so the COMPARISON survives it; the
+#: absolute cdme totals do not, and must not be quoted as roster worth.
+CDME_TOTAL_CONTAMINATION = ("total_value sums below-replacement negatives; what such a player "
+                            "is worth to own is reserved (#155/#165)")
+
 
 def score_roster(picks, seat, players_db, rulers, slots):
     """starter_value under EVERY ruler for one seat, from one shared lineup solve per ruler.
@@ -251,29 +283,75 @@ def score_roster(picks, seat, players_db, rulers, slots):
 def compare(runs, ruler):
     """Engine vs the mean of the controls it actually sat against, under ONE ruler.
 
+    The quantity compared is COMPARE_ON[ruler] -- see that mapping for why it is not
+    starter_value for both.
+
     Counted, not imputed (rule 5): a run enters the rate only if BOTH sides produced a number,
     and `comparable_runs` is reported so nobody quotes a rate over an empty set.
+
+    A PERCENTAGE IS ONLY REPORTED WHEN ITS DENOMINATOR CAN CARRY ONE. These values legitimately
+    sit near zero and legitimately go negative, and (eng - ctl)/|ctl| against a near-zero ctl
+    manufactures a huge number out of a tiny difference -- the first full-depth run printed
+    -171.7% for exactly that reason. Percentages are therefore computed only where the control
+    mean is meaningfully non-zero, `advantage_population` says over how many runs, and the
+    ABSOLUTE means are always reported so the percentage can never be read alone.
     """
-    comparable, wins, advantages = [], 0, []
+    field = COMPARE_ON[ruler]
+    comparable, wins, advantages, engs, ctls = [], 0, [], [], []
     for r in runs:
-        eng = r["engine"][ruler]["starter_value"]
-        ctl = [c[ruler]["starter_value"] for c in r["controls"]]
+        eng = r["engine"][ruler][field]
+        ctl = [c[ruler][field] for c in r["controls"]]
         if eng is None or any(v is None for v in ctl) or not ctl:
             continue
         comparable.append(r)
         mean_ctl = sum(ctl) / len(ctl)
+        engs.append(eng)
+        ctls.append(mean_ctl)
         if eng > mean_ctl:
             wins += 1
-        if mean_ctl:
+        # A denominator smaller than 1% of the engine's own magnitude cannot carry a ratio.
+        if abs(mean_ctl) > max(1e-9, 0.01 * abs(eng)):
             advantages.append((eng - mean_ctl) / abs(mean_ctl) * 100)
     return {
+        "compared_on": field,
         "comparable_runs": len(comparable),
         "engine_wins": wins,
         "win_rate": round(wins / len(comparable), 4) if comparable else None,
+        # The absolutes. These are the primary numbers; the percentages are secondary.
+        "engine_mean": round(sum(engs) / len(engs), 2) if engs else None,
+        "control_mean": round(sum(ctls) / len(ctls), 2) if ctls else None,
+        "mean_gap": round((sum(engs) - sum(ctls)) / len(engs), 2) if engs else None,
+        "advantage_population": len(advantages),
         "mean_advantage_pct": round(sum(advantages) / len(advantages), 3) if advantages else None,
         "worst_advantage_pct": round(min(advantages), 3) if advantages else None,
         "best_advantage_pct": round(max(advantages), 3) if advantages else None,
     }
+
+
+def _write_report(args, commit, universe, season, results, started, *, complete):
+    """One report shape for the mid-run and end-of-run writes, so a partial file is never a
+    different document from a finished one -- `complete` says which it is, and a reader who
+    finds `complete: false` knows the run did not reach its last format."""
+    Path(args.out).write_text(json.dumps({
+        "commit": commit,
+        "complete": complete,
+        "formats_done": len(results),
+        "universe": universe,
+        "rounds_requested": args.rounds or "derived from roster_positions",
+        "pricing": {"priced_from": "vendor+sleeper",
+                    "sleeper_basis": dr.SLEEPER_BASIS_SEASON_SUM,
+                    "season_projections_supplied": len(season)},
+        "control": "best projected points at an unfilled starting slot, else best available "
+                   "by projection; player_id tiebreak",
+        "rulers": {
+            "cdme": "pre-draft board universal_value -- the engine's own objective",
+            "points": "projected season points -- the control's objective",
+        },
+        "compared_on": dict(COMPARE_ON),
+        "known_contamination": {"cdme": CDME_TOTAL_CONTAMINATION},
+        "seconds": round(time.time() - started, 1),
+        "formats": results,
+    }, indent=2, default=str), encoding="utf-8")
 
 
 def main(argv=None) -> int:
@@ -344,10 +422,13 @@ def main(argv=None) -> int:
             "per_seat": [
                 {"engine_seat": r["engine_seat"],
                  **{name: {
-                     "engine": r["engine"][name]["starter_value"],
+                     "compared_on": COMPARE_ON[name],
+                     "engine": r["engine"][name][COMPARE_ON[name]],
                      "control_mean": round(
-                         sum(c[name]["starter_value"] for c in r["controls"])
+                         sum(c[name][COMPARE_ON[name]] for c in r["controls"])
                          / len(r["controls"]), 2) if r["controls"] else None,
+                     "engine_starter_value": r["engine"][name]["starter_value"],
+                     "engine_total_value": r["engine"][name]["total_value"],
                      "engine_starters_filled": r["engine"][name]["starters_filled"],
                      "starting_slots": r["engine"][name]["starting_slots"],
                  } for name in RULERS}}
@@ -357,31 +438,27 @@ def main(argv=None) -> int:
             "seconds": round(time.time() - t0, 1),
         }
         results.append(block)
-        print(f"{block['label']:16s} pool={block['pool']:5d} runs={block['runs']:3d} "
+        # WRITTEN AFTER EVERY FORMAT, not once at the end. A 45-minute run whose output lands
+        # only on the final line is the durability hole this whole item exists to close
+        # (#177's harness, the battery reports before evidence/batteries/) reproduced one layer
+        # in: a crash, a kill, or an unreadable intermediate result and there is nothing to
+        # inspect. Each write is a complete, self-describing report of the formats done so far.
+        _write_report(args, commit, universe, season, results, started, complete=False)
+        # ABSOLUTES FIRST. A percentage against a near-zero denominator is exactly the
+        # "plausible number about something else" this project keeps catching, so eng/ctl are
+        # printed on every line and the ratio is shown only where one could be computed.
+        print(f"{block['label']:16s} pool={block['pool']:5d} rounds={block['rounds']:2d} "
               + "  ".join(
-                  f"[{name}] rate={block['by_ruler'][name]['win_rate']} "
-                  f"mean={block['by_ruler'][name]['mean_advantage_pct']}% "
-                  f"worst={block['by_ruler'][name]['worst_advantage_pct']}%"
+                  f"[{name}/{block['by_ruler'][name]['compared_on'].split('_')[0]}] "
+                  f"eng={block['by_ruler'][name]['engine_mean']} "
+                  f"ctl={block['by_ruler'][name]['control_mean']} "
+                  f"gap={block['by_ruler'][name]['mean_gap']} "
+                  f"win={block['by_ruler'][name]['engine_wins']}/"
+                  f"{block['by_ruler'][name]['comparable_runs']}"
                   for name in RULERS)
               + f"  {block['seconds']:7.1f}s", flush=True)
 
-    report = {
-        "commit": commit,
-        "universe": universe,
-        "rounds_requested": args.rounds or "derived from roster_positions",
-        "pricing": {"priced_from": "vendor+sleeper",
-                    "sleeper_basis": dr.SLEEPER_BASIS_SEASON_SUM,
-                    "season_projections_supplied": len(season)},
-        "control": "best projected points at an unfilled starting slot, else best "
-                   "available by projection; player_id tiebreak",
-        "rulers": {
-            "cdme": "pre-draft board universal_value -- the engine's own objective",
-            "points": "projected season points -- the control's objective",
-        },
-        "seconds": round(time.time() - started, 1),
-        "formats": results,
-    }
-    Path(args.out).write_text(json.dumps(report, indent=2, default=str), encoding="utf-8")
+    _write_report(args, commit, universe, season, results, started, complete=True)
     print("", flush=True)
     for name in RULERS:
         ahead = sum(1 for b in results if (b["by_ruler"][name]["win_rate"] or 0) > 0.5)
