@@ -59,7 +59,6 @@ from __future__ import annotations
 
 import argparse
 import json
-import subprocess
 import time
 from pathlib import Path
 
@@ -69,6 +68,7 @@ import draft_room as dr
 import draft_strategy as ds
 import lineup_optimizer as lo
 import pick_synthesis
+import resume_join
 import run_draft_battery as rdb
 
 REPORT_PATH = Path("ROSTER_PROOF.json")
@@ -88,14 +88,6 @@ PROOF_FORMATS = [
     {"label": "12T_standard",   "teams": 12, "superflex": False, "scoring": "standard", "te_premium": False},
     {"label": "12T_ppr_TEP",    "teams": 12, "superflex": False, "scoring": "ppr",      "te_premium": True},
 ]
-
-
-def head_commit() -> str:
-    try:
-        return subprocess.run(["git", "rev-parse", "--short", "HEAD"],
-                              capture_output=True, text=True, timeout=10).stdout.strip() or "unknown"
-    except Exception:                                   # noqa: BLE001 -- provenance, never fatal
-        return "unknown"
 
 
 def scoreable_pool(merger, players_db, league, season):
@@ -328,6 +320,28 @@ def compare(runs, ruler):
     }
 
 
+def console_line(block) -> str:
+    """ABSOLUTES FIRST. A percentage against a near-zero denominator is exactly the "plausible
+    number about something else" this project keeps catching, so eng/ctl are printed on every
+    line and the ratio is shown only where one could be computed.
+
+    One home (#126) so a CARRIED format prints identically to a freshly computed one -- with a
+    marker, never a different shape. Two console vocabularies for one quantity is how a reader
+    ends up believing a resumed run measured something a fresh run did not."""
+    return (f"{block['label']:16s} pool={block['pool']:5d} rounds={block['rounds']:2d} "
+            + "  ".join(
+                f"[{name}/{block['by_ruler'][name]['compared_on'].split('_')[0]}] "
+                f"eng={block['by_ruler'][name]['engine_mean']} "
+                f"ctl={block['by_ruler'][name]['control_mean']} "
+                f"gap={block['by_ruler'][name]['mean_gap']} "
+                f"win={block['by_ruler'][name]['engine_wins']}/"
+                f"{block['by_ruler'][name]['comparable_runs']}"
+                for name in RULERS)
+            + f"  {block['seconds']:7.1f}s"
+            + ("  [carried from " + str(block.get("produced_at_commit")) + "]"
+               if block.get("carried_forward") else ""))
+
+
 def _write_report(args, commit, universe, season, scoring, results, started, *, complete):
     """One report shape for the mid-run and end-of-run writes, so a partial file is never a
     different document from a finished one -- `complete` says which it is, and a reader who
@@ -336,6 +350,12 @@ def _write_report(args, commit, universe, season, scoring, results, started, *, 
         "commit": commit,
         "complete": complete,
         "formats_done": len(results),
+        # #215: a resumed report is a JOIN ACROSS PROCESSES, and says so. `commit` above is the
+        # commit THIS process ran at; commits_present is every commit that contributed a block.
+        # A reader who sees more than one entry there knows to check they agree before quoting
+        # the report as a single result.
+        "commits_present": resume_join.commits_present(results),
+        "carried_forward": [b["label"] for b in results if b.get(resume_join.CARRIED)],
         "universe": universe,
         "rounds_requested": args.rounds or "derived from roster_positions",
         "pricing": {"priced_from": "vendor+sleeper",
@@ -353,7 +373,10 @@ def _write_report(args, commit, universe, season, scoring, results, started, *, 
         },
         "compared_on": dict(COMPARE_ON),
         "known_contamination": {"cdme": CDME_TOTAL_CONTAMINATION},
-        "seconds": round(time.time() - started, 1),
+        # THIS PROCESS ONLY. On a resumed run the carried formats were timed in an earlier
+        # process; their own per-format `seconds` are the authority for those. Summing this
+        # field across a join would invent a wall clock that never elapsed.
+        "seconds_this_process": round(time.time() - started, 1),
         "formats": results,
     }, indent=2, default=str), encoding="utf-8")
 
@@ -371,9 +394,12 @@ def main(argv=None) -> int:
     #: compares who FRONT-LOADS starters, not who ends up with the better roster. Only override
     #: this for a smoke test, and never report a short run as an answer to #205.
     ap.add_argument("--rounds", type=int, default=0)
+    #: #215: reuse the completed format blocks already in --out instead of recomputing them.
+    #: OFF by default: a silent resume would let a stale file masquerade as a fresh measurement.
+    ap.add_argument("--resume", action="store_true")
     args = ap.parse_args(argv)
 
-    commit = head_commit()
+    commit = resume_join.head_commit()
     scoring = rdb.scoring_settings_from_capture()          # #213, before anything is drafted
     merger = dm.DataMerger()
     players_db, universe = rdb.build_players_db_from_capture()
@@ -381,9 +407,21 @@ def main(argv=None) -> int:
     print(f"commit {commit} | universe {universe['players_in_pool']} players "
           f"| captured {universe['captured_at']}", flush=True)
 
+    specs = PROOF_FORMATS[:args.formats]
+    # Keyed by label and consumed IN SPEC ORDER below, so a resumed report lists its formats in
+    # the same order as a fresh one. Appending the carried blocks first would silently reorder
+    # the document between two runs that measured the same thing.
+    carried = {b["label"]: b for b in (
+        resume_join.carry_forward(args.out, [sp["label"] for sp in specs], units_key="formats")
+        if args.resume else [])}
     results = []
     started = time.time()
-    for spec in PROOF_FORMATS[:args.formats]:
+    for spec in specs:
+        if spec["label"] in carried:
+            block = carried[spec["label"]]      # already stamped carried_forward by the join
+            results.append(block)
+            print(console_line(block), flush=True)
+            continue
         # #213: the REAL rulebook, with this arm's rec/te-premium overlaid. Without it every
         # board here priced quarterbacks at zero and receivers at one point per catch, and
         # BOTH arms of the proof were then compared inside a league nobody plays.
@@ -415,6 +453,12 @@ def main(argv=None) -> int:
             runs.append({"engine_seat": seat, "engine": engine, "controls": controls})
 
         block = {
+            # #215: the commit this block's numbers were PRODUCED at. A resumed report joins
+            # blocks from more than one process, and each block has to carry its own provenance
+            # -- a single top-level commit on a joined document would be a false claim about
+            # every block the current process did not compute.
+            resume_join.PRODUCED_AT: commit,
+            resume_join.CARRIED: False,
             "label": spec["label"], "teams": spec["teams"], "superflex": spec["superflex"],
             "scoring": spec["scoring"], "te_premium": spec["te_premium"],
             "pool": len(points),
@@ -452,19 +496,7 @@ def main(argv=None) -> int:
         # in: a crash, a kill, or an unreadable intermediate result and there is nothing to
         # inspect. Each write is a complete, self-describing report of the formats done so far.
         _write_report(args, commit, universe, season, scoring, results, started, complete=False)
-        # ABSOLUTES FIRST. A percentage against a near-zero denominator is exactly the
-        # "plausible number about something else" this project keeps catching, so eng/ctl are
-        # printed on every line and the ratio is shown only where one could be computed.
-        print(f"{block['label']:16s} pool={block['pool']:5d} rounds={block['rounds']:2d} "
-              + "  ".join(
-                  f"[{name}/{block['by_ruler'][name]['compared_on'].split('_')[0]}] "
-                  f"eng={block['by_ruler'][name]['engine_mean']} "
-                  f"ctl={block['by_ruler'][name]['control_mean']} "
-                  f"gap={block['by_ruler'][name]['mean_gap']} "
-                  f"win={block['by_ruler'][name]['engine_wins']}/"
-                  f"{block['by_ruler'][name]['comparable_runs']}"
-                  for name in RULERS)
-              + f"  {block['seconds']:7.1f}s", flush=True)
+        print(console_line(block), flush=True)
 
     _write_report(args, commit, universe, season, scoring, results, started, complete=True)
     print("", flush=True)

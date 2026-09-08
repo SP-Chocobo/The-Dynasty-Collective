@@ -1,0 +1,11 @@
+commit 8cee942 | universe 6595 players | captured 2026-09-07T08:14:10.990206+00:00
+12T_ppr          pool=  481 rounds=14 [cdme/total] eng=333.32 ctl=188.0 gap=145.33 win=12/12  [points/starter] eng=1932.97 ctl=2176.95 gap=-243.98 win=0/12    381.7s  [carried from cf0b283]
+12T_ppr_SF       pool=  481 rounds=15 [cdme/total] eng=791.5 ctl=489.3 gap=302.2 win=12/12  [points/starter] eng=2363.88 ctl=2489.14 gap=-125.26 win=1/12    415.0s  [carried from cf0b283]
+10T_ppr          pool=  481 rounds=14 [cdme/total] eng=358.3 ctl=185.73 gap=172.57 win=10/10  [points/starter] eng=2037.3 ctl=2257.12 gap=-219.82 win=0/10    297.1s  [carried from cf0b283]
+10T_ppr_SF       pool=  481 rounds=15 [cdme/total] eng=868.29 ctl=541.2 gap=327.09 win=10/10  [points/starter] eng=2310.88 ctl=2600.56 gap=-289.68 win=0/10    307.1s  [carried from cf0b283]
+12T_standard     pool=  481 rounds=14 [cdme/total] eng=316.51 ctl=99.75 gap=216.76 win=12/12  [points/starter] eng=1521.54 ctl=1687.02 gap=-165.48 win=0/12    389.9s  [carried from cf0b283]
+12T_ppr_TEP      pool=  481 rounds=14 [cdme/total] eng=317.85 ctl=206.38 gap=111.47 win=12/12  [points/starter] eng=1985.86 ctl=2220.41 gap=-234.55 win=0/12    637.1s
+
+  ruler cdme   : engine ahead in 6 of 6 formats
+  ruler points : engine ahead in 0 of 6 formats
+-> /tmp/claude-0/-home-user-The-Dynasty-Collective/90289f87-1d2a-5009-8163-038c3cedfc5f/scratchpad/PROOF_RESUME.json

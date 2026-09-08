@@ -6113,3 +6113,96 @@ now would be tuning against a benchmark whose validity is currently under questi
 
 **Reopen triggers, explicit:** Phase 3 (#50) running, OR #206 resolving in a way that changes
 #177's numbers.
+
+## #205 ANSWERED, AND #215 -- THE INSTRUMENTS COULD SURVIVE A RESTART BUT COULD NOT FINISH ONE
+
+### #205, complete: six boards, 68 seats, on the real rulebook
+
+`evidence/roster_proof/ROSTER_PROOF_2026-09-08_realrules_COMPLETE_6of6.json`.
+
+| format | asset ruler | mean advantage | points ruler | points gap | starters filled |
+|---|---|---|---|---|---|
+| `12T_ppr` | 12/12 | +78.2% | 0/12 | -11.2% | 8/8 every seat |
+| `12T_ppr_SF` | 12/12 | +61.8% | 1/12 | -5.0% | 9/9 every seat |
+| `10T_ppr` | 10/10 | +93.2% | 0/10 | -9.7% | 8/8 every seat |
+| `10T_ppr_SF` | 10/10 | +60.5% | 0/10 | -11.1% | 9/9 every seat |
+| `12T_standard` | 12/12 | +217.9% | 0/12 | -9.8% | 8/8 every seat |
+| `12T_ppr_TEP` | 12/12 | +54.1% | 0/12 | -10.6% | 8/8 every seat |
+
+**Asset ruler 68/68. Points ruler 1/68.** The sixth format adds no format-specific effect; it
+lands inside the band the first five described.
+
+ESTABLISHED: the engine builds materially higher-asset rosters in every seat of every format;
+it fields 5-11% fewer projected points; and that deficit is NOT a lineup artifact, because every
+seat fills every starting slot.
+
+KILLED: the "much worse in 1QB than superflex" pattern does not survive the real rulebook -- the
+SF arms straddle the 1QB ones. It was manufactured by #213's rulebook, in which quarterbacks
+scored zero, which is precisely where such a difference would be invented.
+
+VOID: the -27% figure. It came from the withdrawn stub-rulebook run.
+
+NOT ESTABLISHED, and stated as a limit of the instrument rather than a hedge: **whether the
+trade is correct.** No exchange rate exists in this system between present-season points and
+dynasty asset value, so "good dynasty construction" and "systematic mispricing" both fit these
+numbers equally well. That is #50/Phase 3 and it is the owner's.
+
+TWO THINGS THE POINTS RULER IS NOT, recorded because the number reads stronger than it is:
+  1. **It is not a win rate.** It is the projected points of the draft-day starting lineup.
+     Nothing here measures what a 10% projected-points gap does to games won; that mapping is
+     nonlinear and UNMEASURED.
+  2. **The control is the ceiling on that ruler by construction.** It drafts nothing but "best
+     projected points at an unfilled starting slot", so -10% is the gap to a theoretical maximum
+     this-season roster, not the gap to a league of ordinary drafters. Measuring the engine
+     against an ADP-drafting field, scored by simulated head-to-head, is a DIFFERENT and more
+     answerable question, and it is not answered here.
+
+### #215: writing after every unit made the output survivable, not the run finishable
+
+**MEASURED THREE TIMES on 2026-09-08.** The container is reclaimed on OPERATOR inactivity, not
+on the job's -- a backgrounded run does not hold it open. Two full-depth roster proofs were
+killed 67s and 45s into their SIXTH format, having spent 45 and 30 minutes on the first five.
+The 33-arm battery was killed twice, most recently 8 arms in. #213b's incremental write saved
+the partial results every time and did not once let a run finish, because the next process
+started again at unit one. A ~3-hour battery cannot fit inside the reclaim window at all, so
+without a join it can never complete no matter how many times it is launched.
+
+BUILT: `resume_join.py`, one home for the join, used by both instruments via `--resume`.
+
+  - Every unit carries `produced_at_commit`; the document declares `commits_present` and
+    `carried_forward`. A single top-level commit on a joined document would be a false claim
+    about every unit the last process did not compute.
+  - A pre-#215 report MAY lend its own commit to its units, because nothing could resume into it
+    and it is therefore single-process by construction. A JOINED report may not -- there the
+    report-level commit describes the last process only. Recognised by the absence of this
+    module's own keys, never assumed.
+  - `--only` together with `--resume` is REFUSED, before any write. `--resume` rewrites `--out`
+    from the current matrix, so filtering the matrix would delete every carried arm outside the
+    filter. A resume that destroys results is worse than no resume.
+  - A carried unit prints through the SAME console builder as a fresh one, with a marker (#126).
+
+**THE JOIN IS LEGITIMATE ONLY BECAUSE THE INSTRUMENT IS DETERMINISTIC, AND THAT IS MEASURED.**
+The two 5-of-6 runs above ran at DIFFERENT COMMITS (ef98dd9, cf0b283) and produced byte-identical
+numbers for all five shared formats, down to per-seat detail: zero non-timing differences.
+`test_resume_join.py` reads both committed evidence files and fails if that ever stops holding.
+It also incidentally establishes that #214/F2+F5+#207 changed no roster-proof number.
+
+29 tests, 12 mutations, 12 caught, 0 survivors.
+
+### The process defect this pass produced, recorded because it nearly shipped silently
+
+Two mutation batches ran CONCURRENTLY sharing one backup path. Batch A backed up
+`run_roster_proof.py` to it; batch B then "restored" `run_draft_battery.py` FROM it. **The
+battery's entire source was replaced with the roster proof's**, and a leftover `if False:` was
+left disabling the proof's resume branch. Neither failure announced itself -- the battery still
+imported, because it was valid Python, merely the wrong module.
+
+Separately, three mutation scripts died with a `SyntaxError` and never applied. **An unapplied
+mutation reads exactly like a surviving one**, and one of them was reported as OK before the
+pattern was checked by hand.
+
+Three rules, now recorded in `resume_join.py` beside the code they nearly destroyed:
+  1. One backup path PER TARGET FILE, never one shared path.
+  2. Verify the pattern is PRESENT before mutating and the file BYTE-IDENTICAL after restoring.
+  3. Never run two mutation batches at once, and read the batch's FULL output -- grepping only
+     for OK/FAILED hides the SyntaxError that means nothing was tested.

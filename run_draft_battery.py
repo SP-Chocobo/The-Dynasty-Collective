@@ -24,6 +24,7 @@ import draft_battery
 import draft_room as dr
 import roster_diagnostics
 import player_universe
+import resume_join
 import store_io
 
 REPORT_PATH = Path("BATTERY_REPORT.json")
@@ -125,6 +126,13 @@ def _battery_report(universe: dict, results: list, started: float, *, complete: 
     return {
         "universe": universe,
         "complete": complete,
+        # #215: `commit` is the commit THIS process ran at. A resumed report is a JOIN ACROSS
+        # PROCESSES, so commits_present names every commit that contributed an arm and
+        # carried_forward names the arms this process did not run. A reader who sees more than
+        # one commit knows to check they agree before quoting the battery as a single result.
+        "commit": resume_join.head_commit(),
+        "commits_present": resume_join.commits_present(results),
+        "carried_forward": [r["label"] for r in results if r.get(resume_join.CARRIED)],
         "formats": len(results),
         "independent_formats": len(results) - len(dupes),
         "duplicate_arms": dupes,
@@ -286,10 +294,39 @@ def strength_coverage(strength: dict | None) -> str:
     return f"{PREDRAFT_RULER}: {roster_diagnostics.coverage_statement(sum(counts))}"
 
 
+def _arm_line(audited: dict) -> str:
+    """The console line for one arm.
+
+    One home (#126) so a CARRIED arm prints identically to a freshly drafted one -- with a
+    marker, never a different shape. Two console vocabularies for one quantity is how a reader
+    ends up believing a resumed run measured something a fresh run did not."""
+    findings = len(audited["findings"])
+    strength = audited.get("strength") or {}
+    # The coverage clause reads the RAW strength, not the `or {}` above, so None stays an
+    # absence with its own sentence instead of collapsing into an empty record.
+    return (f"{audited['label']:22s} picks={audited['picks']:4d} "
+            f"findings={findings:3d} "
+            f"worth {strength.get('total_value_min')}-{strength.get('total_value_max')}"
+            f" (spread {strength.get('total_value_spread')}; "
+            f"lineup {strength.get('starter_value_min')}-{strength.get('starter_value_max')}"
+            f"{_forced_clause(strength)}; "
+            f"{strength_coverage(audited.get('strength'))}; "
+            f"{decision_coverage(audited.get('unpriced_at_decision'))})"
+            f" {audited['seconds']:7.1f}s"
+            + ("   <-- DEFECTS" if findings else "")
+            + (f"   [carried from {audited.get(resume_join.PRODUCED_AT)}]"
+               if audited.get(resume_join.CARRIED) else ""))
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     parser.add_argument("--out", default=str(REPORT_PATH))
     parser.add_argument("--only", default="", help="comma-separated labels, for a partial run")
+    #: #215: reuse the arms already in --out instead of re-drafting them. OFF by default -- a
+    #: silent resume would let a stale file masquerade as a fresh measurement. This run is ~3
+    #: hours and the container is reclaimed on operator inactivity, so without a resume it
+    #: cannot complete in one process no matter how many times it is launched.
+    parser.add_argument("--resume", action="store_true")
     args = parser.parse_args(argv)
 
     merger = dm.DataMerger()
@@ -325,33 +362,45 @@ def main(argv: list[str] | None = None) -> int:
     universe["scoring_keys"] = len(scoring)
     universe["pricing_census"] = census
     if args.only:
+        # #215: REFUSED, not silently allowed. --resume rewrites --out from the arms in the
+        # current matrix, so filtering the matrix would drop every carried arm outside the
+        # filter -- a resume that DESTROYS results is worse than no resume at all. --only is for
+        # a deliberate partial run to its own file; --resume is for completing a full one.
+        if args.resume:
+            raise SystemExit(
+                "REFUSING TO RUN (#215): --only with --resume would rewrite "
+                f"{args.out} from the filtered matrix and drop every arm outside --only. "
+                "Run --only against its own --out, or --resume without --only.")
         wanted = {name.strip() for name in args.only.split(",") if name.strip()}
         matrix = [entry for entry in matrix if entry["label"] in wanted]
+
+    # Keyed by label and consumed IN MATRIX ORDER below, so a resumed report lists its arms in
+    # the same order as a fresh one. Appending the carried arms first would silently reorder the
+    # document between two runs that measured the same thing.
+    carried = {r["label"]: r for r in (
+        resume_join.carry_forward(args.out, [e["label"] for e in matrix], units_key="results")
+        if args.resume else [])}
+    commit = resume_join.head_commit()
 
     started = time.time()
     results = []
     for entry in matrix:
+        if entry["label"] in carried:
+            audited = carried[entry["label"]]   # already stamped carried_forward by the join
+            results.append(audited)
+            print(_arm_line(audited), flush=True)
+            continue
         t0 = time.time()
         audited = draft_battery.run_battery(
             merger, players_db, [entry],
             sleeper_projections=season_projections or None,
             sleeper_basis=dr.SLEEPER_BASIS_SEASON_SUM)[0]
         audited["seconds"] = round(time.time() - t0, 1)
+        # #215: the commit this arm's numbers were PRODUCED at, carried with the arm itself.
+        audited[resume_join.PRODUCED_AT] = commit
+        audited[resume_join.CARRIED] = False
         results.append(audited)
-        findings = len(audited["findings"])
-        strength = audited.get("strength") or {}
-        # The coverage clause reads the RAW strength, not the `or {}` above, so None stays an
-        # absence with its own sentence instead of collapsing into an empty record.
-        print(f"{audited['label']:22s} picks={audited['picks']:4d} "
-              f"findings={findings:3d} "
-              f"worth {strength.get('total_value_min')}-{strength.get('total_value_max')}"
-              f" (spread {strength.get('total_value_spread')}; "
-              f"lineup {strength.get('starter_value_min')}-{strength.get('starter_value_max')}"
-              f"{_forced_clause(strength)}; "
-              f"{strength_coverage(audited.get('strength'))}; "
-              f"{decision_coverage(audited.get('unpriced_at_decision'))})"
-              f" {audited['seconds']:7.1f}s"
-              + ("   <-- DEFECTS" if findings else ""), flush=True)
+        print(_arm_line(audited), flush=True)
         # #213b: every arm, not just the last one. A four-hour run must survive a restart.
         store_io.write(Path(args.out), _battery_report(universe, results, started, complete=False))
 

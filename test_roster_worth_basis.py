@@ -126,12 +126,49 @@ class TheConsoleLineCarriesTheCompanionTests(unittest.TestCase):
         self.assertIn("not measured", rdb._forced_clause({}))
 
     def test_the_printed_line_leads_with_roster_worth(self):
-        import inspect
+        """Asserted on the LINE THE BUILDER RETURNS, not on the source of whichever function
+        happens to hold it today.
+
+        This test used to scan `run_draft_battery.main` for the format string. #215 moved the
+        line into `_arm_line` so a carried arm and a fresh one print identically, and the scan
+        broke -- correctly, but for the wrong reason: it was pinned to a LOCATION when the
+        contract is about the OUTPUT. A source scan also cannot tell a printed number from one
+        mentioned in a comment. This builds a real arm and reads the real line."""
         import run_draft_battery as rdb
-        src = inspect.getsource(rdb.main)
-        self.assertIn("total_value_min", src, "the worth line must be printed")
-        self.assertIn("_forced_clause(strength)", src,
-                      "and the lineup number must never print without its companion")
+        line = rdb._arm_line({
+            "label": "PROBE", "picks": 168, "findings": [], "seconds": 1.0,
+            "strength": {"total_value_min": 11.5, "total_value_max": 99.5,
+                         "total_value_spread": 88.0,
+                         "starter_value_min": -4.0, "starter_value_max": 7.0,
+                         "forced_negative_starters": 2, "slots_filled": 8,
+                         "starting_slots": 8},
+            "unpriced_at_decision": None,
+        })
+        # WORTH LEADS. total_value is what you OWN and is the roster-quality number (#211);
+        # the lineup range is reported after it, never in its place.
+        self.assertIn("worth 11.5-99.5", line)
+        self.assertLess(line.index("worth "), line.index("lineup "),
+                        "worth must lead the line, not trail the lineup total")
+        # AND THE LINEUP NUMBER NEVER TRAVELS WITHOUT ITS COMPANION.
+        self.assertIn("lineup -4.0-7.0", line)
+        self.assertIn("#211", line)
+        self.assertIn("2 started below replacement", line)
+
+    def test_a_clean_arm_prints_the_lineup_range_with_no_forced_clause(self):
+        """The companion is a THREE-STATE reading, so the clean state is pinned too -- a test
+        that only ever saw the flagged case would pass on a builder that always flags."""
+        import run_draft_battery as rdb
+        line = rdb._arm_line({
+            "label": "PROBE", "picks": 168, "findings": [], "seconds": 1.0,
+            "strength": {"total_value_min": 11.5, "total_value_max": 99.5,
+                         "total_value_spread": 88.0,
+                         "starter_value_min": 3.0, "starter_value_max": 7.0,
+                         "forced_negative_starters": 0, "slots_filled": 8,
+                         "starting_slots": 8},
+            "unpriced_at_decision": None,
+        })
+        self.assertIn("lineup 3.0-7.0", line)
+        self.assertNotIn("#211", line)
 
 
 # MUTATION PASS recorded after the guards were written -- see the commit message.

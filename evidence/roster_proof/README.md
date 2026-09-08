@@ -101,3 +101,39 @@ AND ONE HYPOTHESIS THIS KILLS: the earlier "the deficit is much worse in 1QB tha
 pattern does NOT survive. On the real rulebook the SF arms straddle the 1QB ones (-5.0% and
 -11.1% against -11.2% and -9.7%). It was an artifact of a rulebook in which quarterbacks scored
 zero, which is exactly where a 1QB/SF difference would be manufactured.
+
+
+---
+
+# COMPLETE, 6 of 6 -- `ROSTER_PROOF_2026-09-08_realrules_COMPLETE_6of6.json`
+
+This SUPERSEDES the 5-of-6 partials above. It is the answer to #205.
+
+**It is a JOIN ACROSS TWO PROCESSES** (#215), and says so in its own header:
+`commits_present: ["8cee942", "cf0b283"]`, `carried_forward` naming the five formats the
+second process did not recompute. That is legitimate here and the legitimacy is MEASURED, not
+assumed -- the two 5-of-6 runs above ran at DIFFERENT COMMITS (ef98dd9, cf0b283) and produced
+byte-identical numbers for all five shared formats, down to the per-seat detail. Zero
+non-timing differences. `test_resume_join.py` reads both files and fails if that stops being
+true.
+
+Why a join at all: the container is reclaimed on OPERATOR inactivity, not the job's. Three runs
+were killed today, twice at 67s and 45s into the SIXTH format after 45 and 30 minutes of work.
+Writing after every format (#213b) made that survivable; it did not make it finishable.
+
+| format | asset ruler | mean advantage | points ruler | points gap | starters filled |
+|---|---|---|---|---|---|
+| `12T_ppr` | 12/12 | +78.2% | 0/12 | **-11.2%** | 8/8 every seat |
+| `12T_ppr_SF` | 12/12 | +61.8% | 1/12 | **-5.0%** | 9/9 every seat |
+| `10T_ppr` | 10/10 | +93.2% | 0/10 | **-9.7%** | 8/8 every seat |
+| `10T_ppr_SF` | 10/10 | +60.5% | 0/10 | **-11.1%** | 9/9 every seat |
+| `12T_standard` | 12/12 | +217.9% | 0/12 | **-9.8%** | 8/8 every seat |
+| `12T_ppr_TEP` | 12/12 | +54.1% | 0/12 | **-10.6%** | 8/8 every seat |
+
+**TOTALS over 68 seats: asset ruler 68/68. Points ruler 1/68.**
+
+The sixth format, TE premium, changes nothing. It lands inside the band the other five already
+described (-10.6% points, +54.1% asset, every lineup full), so no format-specific effect
+survives the completed set. The three conclusions and the one killed hypothesis recorded for the
+5-of-6 partial stand unchanged on the full six, and the exchange-rate question they leave open is
+still #50/Phase 3 and still the owner's.
