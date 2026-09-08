@@ -6371,3 +6371,54 @@ the knob's units will be invented rather than derived (#56).
 
 Sequenced AFTER #216: an objective input is meaningless while the board cannot execute any
 objective.
+
+## #218 — "the pool is sludge" — a mode signal that routes around the pricing problem
+
+**Owner's idea, and it is a good one precisely because it does not require what we do not have.**
+At the point in a draft where the value board has stopped discriminating, show the human a line
+along the lines of *"start contemplating handcuffs / correlation plays"* — and let them do the
+pricing the engine cannot.
+
+### Why it works
+
+Handcuff PRICING does not exist and is #50 (no term can raise a player's value on the basis of a
+specific teammate). But the human does not need the engine to price one. They need the engine to
+say **"depth picks have stopped paying"** — which is a statement about the board, not about a
+player, and is fully measurable today.
+
+### The trigger is already measured
+
+Top available player's value over replacement, by round, 12T_ppr (`evidence/roster_shape/`):
+
+| round | QB | RB | WR | TE |
+|---|---|---|---|---|
+| 1 | 43.9 | 227.6 | 179.4 | 137.5 |
+| 6 | **0.0** | 46.6 | 9.2 | 61.8 |
+| 10 | **0.0** | 20.9 | **3.7** | 31.0 |
+| 13 | **0.0** | 9.1 | **4.2** | 38.3 |
+
+The same collapse #216 treats as a defect SYMPTOM is, read as a MODE SIGNAL, real information:
+when nothing available clears its own replacement, marginal depth is worthless and conditional
+picks (handcuffs, workload lotteries, correlation) are what remains. The owner's own reference
+draft agrees — both handcuffs were taken at 13.1 and 14.12, exactly where the curve flattens.
+
+### Design constraints
+
+- **OBSERVABLE, NOT AUTHORITY** (#55's pattern). It reports a board state; it does not select,
+  rank, or recommend a player. No selection power means it does not touch valuation and does not
+  wait on #50.
+- **DERIVE THE TRIGGER (#56).** Not a picked round number and not a magic VOR floor. The natural
+  boundary is when the top of the board falls inside the board's own NEAR-TIE BAND of its
+  replacement level — i.e. the board can no longer distinguish the best available from the freely
+  available. Three-state near-tie machinery already exists (#195, #124). If that derivation does
+  not hold up, say so rather than substituting a constant.
+- **SAY THE CATEGORY, NEVER THE PLAYER.** "Consider handcuffs and correlation plays" is a
+  statement the engine can support. Naming a specific handcuff is a valuation claim it cannot.
+- **Absence contract**: if the trigger cannot be computed (no priced pool, missing replacement),
+  the surface says so rather than staying silent, which would read as "not yet".
+
+### Status
+
+PRODUCT, not engine. Ships independently of #216 and does NOT block the freeze. Home is #36
+(Draft Room presentation) / #181 (UI pass). Sequenced after #216 because the collapse curve it
+keys off is exactly what #216's fix changes — build it against the FIXED board, not this one.
