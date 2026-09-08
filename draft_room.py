@@ -2157,6 +2157,136 @@ def _fill_omitted_from_anchor(levels, present_positions, startable_floors, build
     return filled
 
 
+#: #216. The roster side of the displacement term needs every DRAFTED player's projected points
+#: on the same basis the pool prices the undrafted ones, and the live pool has dropped them by
+#: construction. Built once per (player universe, league inputs) from a full pool with nobody
+#: excluded -- the same construction predraft_replacement_anchor uses -- and remembered under
+#: the same fingerprint discipline, so a board never depends on which boards came before it.
+_ROSTER_POINTS_CACHE: "collections.OrderedDict[str, dict[str, float]]" = collections.OrderedDict()
+_ROSTER_POINTS_KEY_COL = "_points:roster_lookup"
+
+
+def roster_points_lookup(
+    merger: DataMerger, players_db: dict[str, dict], usable_positions, roster_positions: list[str],
+    num_teams: int, *, sleeper_projections=None, scoring_settings=None, pool_scope: str = "all",
+    sleeper_basis: str = SLEEPER_BASIS_WEEKLY,
+) -> dict[str, float]:
+    """{player_id: projected points} for every player the pool CAN price, drafted or not.
+
+    Why a separate lookup. eligibility_bonus and depth_exposure price a roster in trade_value
+    (see _team_roster_players) because bpa only exists for the undrafted pool. The
+    displacement term (#216) compares a rostered starter against a replacement LEVEL, and the
+    level is in projected points, so the roster has to be priced in projected points -- the
+    other currency is the scale contamination ELIGIBILITY_BONUS_MAX exists to keep out. #84's
+    contract measured that the data exists (the season projections cover every drafted
+    player); what was missing was this lookup.
+
+    Same fingerprint key as the pre-draft anchor, under a column name of its own, so the two
+    caches can never hand each other the wrong shape."""
+    key = anchor_cache_key(
+        merger, players_db, usable_positions, roster_positions, num_teams, _ROSTER_POINTS_KEY_COL,
+        sleeper_projections, scoring_settings, pool_scope, None, sleeper_basis,
+    )
+    cached = _ROSTER_POINTS_CACHE.get(key)
+    if cached is not None:
+        _ROSTER_POINTS_CACHE.move_to_end(key)
+        return cached
+    full_pool = build_available_pool(
+        merger, players_db, set(), usable_positions,
+        sleeper_projections=sleeper_projections, scoring_settings=scoring_settings,
+        pool_scope=pool_scope, sleeper_basis=sleeper_basis,
+    )
+    points: dict[str, float] = {}
+    if not full_pool.empty:
+        has_proj = _derive_points_and_source(full_pool)
+        priced = full_pool[has_proj]
+        points = {str(pid): float(v) for pid, v in zip(priced["player_id"], priced["_points"])}
+    _ROSTER_POINTS_CACHE[key] = points
+    while len(_ROSTER_POINTS_CACHE) > ANCHOR_CACHE_ENTRIES:
+        _ROSTER_POINTS_CACHE.popitem(last=False)
+    return points
+
+
+def _team_roster_points_players(
+    picks: list[dict], players_db: dict[str, dict], roster_id, points: dict[str, float],
+) -> tuple[list[dict], list[set[str]]]:
+    """This roster's drafted players as lineup rows valued in PROJECTED POINTS, plus the
+    eligibility sets of the ones the lookup could not price.
+
+    The second return value is not decoration: a rostered player without a price still holds a
+    slot, and leaving him out solves against a roster one body emptier than it is (the same
+    hole _team_roster_players records for trade_value). Here the consequence is stated on the
+    answer instead of silently absorbed -- displacement_adjustments marks every position such
+    a player could have blocked as DISPLACEMENT_ROSTER_PARTIAL."""
+    players, unpriced = [], []
+    for pick in picks:
+        if str(pick.get("roster_id")) != str(roster_id):
+            continue
+        player_id = str(pick.get("player_id"))
+        info = players_db.get(player_id)
+        if not info:
+            continue
+        eligible = player_eligible_positions(info)
+        value = points.get(player_id)
+        if value is None:
+            unpriced.append(set(eligible))
+            continue
+        players.append({"id": player_id, "value": float(value), "eligible": eligible})
+    return players, unpriced
+
+
+def displacement_adjustments(
+    roster_players: list[dict], roster_positions: list[str], levels: dict[str, float],
+    unpriced_eligible: Optional[list[set[str]]] = None,
+) -> dict[str, dict]:
+    """The fourth team-specific term (#216), per POSITION: how much the league replacement
+    anchor over-credits a player at that position for THIS roster.
+
+        displacement_adj = replacement_level - displacement_level   (<= 0.0, never positive)
+
+    where displacement_level (lineup_optimizer) is what he must beat to start here -- the
+    league's free alternative where a slot he can reach is open, one of my own starters where
+    every slot he can reach is held by someone better than that alternative. Zero on an empty
+    roster, zero for every position with an open slot, and a deduction of exactly the surplus
+    a bench player at a covered position was being paid for. It is the roster-relative half of
+    VOR that the league anchor leaves out, computed with the shipped optimizer and the levels
+    the board already has, so it introduces no constant and needs no cap: its magnitude IS the
+    over-credit, measured.
+
+    WHY THIS AND NOT A BIGGER need_bonus. The measured bias a surplus tight end is handed in a
+    one-TE league is 43-60 universal-value points (level_WR - level_TE, widening as the pool is
+    drained); the whole reachable need_bonus is 8.67 and its cap never binds (NEED_BONUS_MAX at
+    1e9 is pick-for-pick identical). No bounded nudge can span a bias of that order without a
+    scale nobody can derive, and #56 forbids one. The right side of the ledger is the tight
+    end's: he is not worth his league VOR to a roster that cannot start him, and this term says
+    by how much.
+
+    WHY IT IS NON-POSITIVE. A slot held by someone BELOW the league alternative deducts nothing
+    rather than lifting the candidate: the league says a free player at that level is coming,
+    and the candidate's VOR already prices him against it. Lifting him again for my own weak
+    starter would be paying twice for one fact. So this term only ever removes credit the
+    league anchor gave for a slot the roster cannot offer -- the reason TEAM_SPECIFIC_CAPS
+    (pick_synthesis) remains an upper bound on the sum of the team terms with no fourth cap.
+
+    Per position, not per candidate: every candidate at a position faces the same lineup, so
+    the level is a per-position constant at a board state -- the same shape replacement_levels
+    has, and what lets a difference of two rows' prices stay a difference of anchors.
+
+    Returns {position: {"adjustment", "displaced", "basis"}} for every position in `levels`;
+    positions without a level are absent, and a caller must read absence as "no league anchor
+    to correct", never as zero. MODULE-LEVEL AND PATCHABLE ON PURPOSE: an in-process A/B
+    (engine-measurement skill) switches the term off by replacing this function with one that
+    returns zeros, so both arms run the same code and differ in exactly one thing."""
+    out: dict[str, dict] = {}
+    for position, level in levels.items():
+        if level is None or pd.isna(level):
+            continue
+        out[position] = lo.displacement_level(
+            roster_players, roster_positions, position, float(level), unpriced_eligible,
+        )
+    return out
+
+
 #: How this row's IDENTITY was established -- which is a different question from how its value
 #: was computed (`bpa_source`) and from how confident that computation is (`confidence`).
 #:
@@ -2401,6 +2531,10 @@ def compute_draft_board(
     # branch entirely, and the stamp below would then reference a name that was never bound --
     # an absence-shaped bug inside the fix for an absence-shaped bug.
     _pool_truncated: set = set()
+    # Bound outside the branch for the same reason as _pool_truncated: the displacement term
+    # (#216) reads the points levels after the branch, and a board with no projected rows has
+    # none -- an empty dict, not an unbound name.
+    point_replacement: dict[str, float] = {}
     if has_proj.any():
         proj_pool = pool[has_proj].copy()
         point_replacement = replacement_levels(
@@ -2579,6 +2713,20 @@ def compute_draft_board(
     # board, rather than per row. Computed here beside the roster it reads because that is the
     # only thing it depends on; the candidate does not enter it at all.
     depth_by_position = lo.depth_exposure(my_roster_players, roster_positions)
+    # The fourth team-specific term (#216), also per POSITION and also computed once beside the
+    # roster it reads. Priced in PROJECTED POINTS, not trade_value: it compares my starters
+    # against the points replacement levels above, and the two currencies do not mix (see
+    # roster_points_lookup). Only positions with a points level get an entry; a row at any
+    # other position carries 0.0 with a basis that says why.
+    _roster_points = roster_points_lookup(
+        merger, players_db, usable_positions, roster_positions, num_teams,
+        sleeper_projections=sleeper_projections, scoring_settings=scoring_settings,
+        pool_scope=pool_scope, sleeper_basis=sleeper_basis,
+    ) if my_roster_id is not None else {}
+    _my_points_players, _my_unpriced = _team_roster_points_players(
+        picks, players_db, my_roster_id, _roster_points)
+    displacement_by_position = displacement_adjustments(
+        _my_points_players, roster_positions, point_replacement, _my_unpriced)
 
     def score_row(row: pd.Series) -> pd.Series:
         position = row["position"]
@@ -2698,8 +2846,21 @@ def compute_draft_board(
         else:
             depth_exposure_value = 0.0
 
+        # The fourth team-specific term (#216): the league anchor's over-credit for a slot THIS
+        # roster cannot offer him -- see displacement_adjustments. Non-positive by
+        # construction. 0.0 with a basis that is not `measured` means "no points anchor to
+        # correct at this position", never "this roster has room for him".
+        displacement = displacement_by_position.get(position)
+        if displacement is None:
+            displacement_adj = 0.0
+            displacement_basis = lo.DISPLACEMENT_NO_POINTS_ANCHOR
+        else:
+            displacement_adj = float(displacement["adjustment"])
+            displacement_basis = displacement["basis"]
+
         team_acquisition_value = round(
-            universal_value + need_bonus + eligibility_bonus_value + depth_exposure_value, 2)
+            universal_value + need_bonus + eligibility_bonus_value + depth_exposure_value
+            + displacement_adj, 2)
 
         return pd.Series({
             "time_horizon_adj": round(time_horizon_adj, 2),
@@ -2711,6 +2872,8 @@ def compute_draft_board(
             # 0.0 means "not measured here", never "this position is safe".
             "depth_basis": depth_basis,
             "eligibility_bonus": eligibility_bonus_value,
+            "displacement_adj": displacement_adj,
+            "displacement_basis": displacement_basis,
             "final_score": team_acquisition_value,
         })
 
@@ -2747,6 +2910,7 @@ def compute_draft_board(
         "player_id", "name", "position", "team", "injury_status", "bpa", "bpa_source",
         "time_horizon_adj", "risk_adj", "universal_value",
         "need_bonus", "eligibility_bonus", "depth_exposure", "depth_basis",
+        "displacement_adj", "displacement_basis",
         "confidence", "final_score", "mode", "projected_points",
         "horizon_floor", "horizon_sensitivity", "waiting_cost", "replacement_basis",
         "horizon_basis", "identity_basis", "availability_basis", "fills_required_slot",

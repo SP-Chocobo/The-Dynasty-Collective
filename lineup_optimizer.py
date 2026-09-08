@@ -314,6 +314,114 @@ def depth_exposure(roster_players: list[dict], roster_positions: list[str]) -> d
     return out
 
 
+#: DISPLACEMENT vocabulary (#216). `displacement_level` answers "what must a player at this
+#: position DISPLACE in my own lineup", and like the exposure vocabulary above it returns a
+#: number in every state, so the basis is what says whether the number is evidence.
+#:
+#: The lineup was solved against this roster's priced players, and the answer is a real
+#: measurement -- whether it came out as a deduction or as exactly zero (an open slot, or one
+#: held below the free alternative, both of which the solve found rather than assumed).
+DISPLACEMENT_MEASURED = "measured"
+#: No starting slot in this league accepts the position, so there is nothing to displace.
+DISPLACEMENT_NOT_APPLICABLE = "not_applicable"
+#: A rostered player who could occupy a slot this position can reach carried no price, so he
+#: was left out of the solve and the lineup was one body emptier than it really is. The number
+#: is then a FLOOR on the deduction, not the deduction: a missing occupant reads as an open
+#: slot, and an open slot deducts nothing.
+DISPLACEMENT_ROSTER_PARTIAL = "roster_partially_priced"
+#: The position carries no replacement level in projected points on this board (priced by
+#: trade_value, or not priced at all), so there is no league anchor to correct. Stamped by the
+#: consumer, not by displacement_level, which is never called for such a position.
+DISPLACEMENT_NO_POINTS_ANCHOR = "no_points_anchor"
+
+#: token -> the words a person reads (#174/#187), the companion depth_exposure crossed the
+#: snapshot boundary without. A 0.0 under `measured` is a solved lineup with room for him; a
+#: 0.0 under any other token is a number that was never produced.
+DISPLACEMENT_BASIS_LABELS = {
+    DISPLACEMENT_MEASURED: "measured against your own starters",
+    DISPLACEMENT_ROSTER_PARTIAL: "a floor -- a player you drafted could not be priced, so a slot he may hold reads as open",
+    DISPLACEMENT_NOT_APPLICABLE: "not measured -- this position has no startable slot in this league",
+    DISPLACEMENT_NO_POINTS_ANCHOR: "not measured -- this position has no replacement level in projected points here",
+}
+
+#: The probe's value. Only needs to exceed any real projection so that the probe is ALWAYS
+#: assigned and the occupant it evicts is the weakest one it can reach; the exact figure never
+#: reaches the answer, which subtracts it back out. Kept far below _INELIGIBLE_COST so an
+#: ineligible pairing is still never chosen over benching the probe.
+_DISPLACEMENT_PROBE_VALUE = 1e6
+
+
+def displacement_level(
+    roster_players: list[dict], roster_positions: list[str], position: str,
+    free_alternative: float, unpriced_eligible: Optional[list[set[str]]] = None,
+) -> dict:
+    """What a player at `position` must out-score to start for THIS roster, in the caller's
+    currency (#216).
+
+    THE QUESTION. Value over replacement prices a player against the league's free alternative
+    at his position. That is the right anchor for a slot this roster has not filled -- the
+    free alternative is what the slot gets otherwise -- and the wrong one for a slot it has
+    filled with someone better than that alternative, because the player then has to displace
+    MY starter, not the league's replacement, to contribute anything. A fourth tight end in a
+    one-TE league is priced 40-60 points above a same-projection receiver by the league anchor
+    (tight ends are scarce league-wide) while adding nothing to a lineup whose TE-eligible slots
+    already hold three better tight ends. Measured on the real rulebook: with the legality
+    backstop switched off the board drafted ELEVEN tight ends and no receiver.
+
+    THE CONSTRUCTION, which invents no constant. Every starting slot is pre-filled with a
+    phantom worth exactly `free_alternative` (the league replacement level for `position`,
+    which the board already computes), eligible wherever that slot is. The roster is solved
+    against those phantoms, so a real player holds a slot only where he beats the free
+    alternative. Then a probe at `position` with an overwhelming value is added and the lineup
+    re-solved: the probe is always assigned, and the total rises by the probe's value MINUS the
+    value of whoever it evicted -- a phantom (the slot was effectively open: displaced ==
+    free_alternative) or one of my own starters (displaced > free_alternative). Chains through
+    multi-eligible players are handled by the solve itself rather than by a rule.
+
+        displaced >= free_alternative  always, by construction
+        displaced == free_alternative  when any slot the position can reach is open, or held by
+                                       someone the league alternative would beat
+        displaced  > free_alternative  when every reachable slot is held by one of my players
+                                       who beats the league alternative
+
+    Reduces to the league anchor exactly on an empty roster, and for every position with an
+    open slot -- so the board is unchanged wherever it was right, and changes only where the
+    league anchor was crediting a player for a slot he could not reach.
+
+    unpriced_eligible: the eligibility sets of rostered players the caller could NOT price.
+    They are absent from `roster_players` and therefore from the solve; if any of them could
+    occupy a slot this position can reach, the answer is reported with
+    DISPLACEMENT_ROSTER_PARTIAL rather than as a measurement, because a missing occupant reads
+    as an open slot and an open slot deducts nothing (the number is then a floor).
+
+    Returns {"displaced", "adjustment", "basis"}: `adjustment` is free_alternative - displaced
+    (<= 0.0), the amount the league anchor over-credits a player at this position for THIS
+    roster; `basis` says whether that is a measurement.
+    """
+    slots = slots_from_roster_positions(roster_positions)
+    reachable = [s for s in slots if position in s["eligible"]]
+    if not reachable:
+        return {"displaced": None, "adjustment": 0.0, "basis": DISPLACEMENT_NOT_APPLICABLE}
+    free = float(free_alternative)
+    phantoms = [{"id": f"__free_{s['slot_id']}", "value": free, "eligible": set(s["eligible"])}
+                for s in slots]
+    base = optimize_lineup(list(roster_players) + phantoms, slots)
+    probe = {"id": "__displacement_probe", "value": _DISPLACEMENT_PROBE_VALUE, "eligible": {position}}
+    with_probe = optimize_lineup(list(roster_players) + phantoms + [probe], slots)
+    displaced = round(base["total_value"] + _DISPLACEMENT_PROBE_VALUE - with_probe["total_value"], 2)
+    # Never below the free alternative: a phantom sits in every slot, so the weakest thing the
+    # probe can evict is worth at least that. Float error across a 1e6 probe is the only way
+    # this max() ever binds, and it binds by a rounding unit, not by a claim.
+    displaced = max(displaced, free)
+    basis = DISPLACEMENT_MEASURED
+    reachable_eligible = set().union(*(s["eligible"] for s in reachable))
+    for eligible in unpriced_eligible or ():
+        if set(eligible) & reachable_eligible:
+            basis = DISPLACEMENT_ROSTER_PARTIAL
+            break
+    return {"displaced": displaced, "adjustment": round(free - displaced, 2), "basis": basis}
+
+
 #: What `bye_collision` reports for a week when some rostered players carry no known bye. The
 #: solve still runs over the ones that do, but the answer is a FLOOR rather than the cost: a
 #: player whose bye is unknown might also be out that week, and treating unknown as "available"
