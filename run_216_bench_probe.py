@@ -68,17 +68,49 @@ def coverage(my_ids, cand_id, cand_points, cand_elig, points, players_db, slots)
     return covered, len(starters), (sum(gains) / len(gains) if gains else 0.0)
 
 
-def pure_bench(priced):
-    return bool(priced) and max((r["bpa"] or 0.0) + (r.get("displacement_adj") or 0.0) for r in priced) <= 0.0
+def pure_bench(priced, my_ids, points, players_db, slots):
+    """No priced row would START today: the raw optimizer (no phantoms), so a candidate who
+    fills an EMPTY slot is starter-capable even when the league anchor prices him at 0.00 (the
+    QB collapse -- the first version of this detector used bpa + displacement_adj <= 0 and
+    classified the open-QB state as bench, which pushed the QB out of round 8)."""
+    roster = _entries(my_ids, points, players_db)
+    base = lo.optimize_lineup(roster, slots)["total_value"]
+    for r in priced:
+        pid = str(r["player_id"])
+        cand = {"id": pid, "value": float(r["projected_points"]), "eligible": set(player_eligible_positions(players_db.get(pid) or {}))}
+        if lo.optimize_lineup(roster + [cand], slots)["total_value"] > base + 1e-9:
+            return False
+    return bool(priced)
 
 
-def choose(arm, live, priced, my_ids, points, players_db, slots):
+def usage_deficits(mine, seat, points, players_db, slots, roster_size):
+    """target_total_p - my_count_p from the league's CURRENT fielded load (every roster's
+    optimal lineup on its holdings so far). Derived; no literal."""
+    league_load, total = collections.Counter(), 0
+    for s, ids in mine.items():
+        load, n = fielded_load(ids, points, players_db, slots)
+        league_load.update(load)
+        total += n
+    mine_count = collections.Counter(_pos(players_db, p) for p in mine[seat])
+    return {p: roster_size * league_load[p] / total - mine_count.get(p, 0) for p in league_load} if total else {}
+
+
+def choose(arm, live, priced, my_ids, points, players_db, slots, mine=None, seat=None, roster_size=None):
     """The arm's pick in a pure-bench state; returns (row, note)."""
     scored = []
+    deficits = usage_deficits(mine, seat, points, players_db, slots, roster_size) if arm == "B4" else {}
     for r in priced:
         pid = str(r["player_id"])
         key = None
-        if arm == "B1":
+        if arm == "B4":
+            d = deficits.get(r["position"], -roster_size)
+            key = (-round(d, 6), priced.index(r))
+            note = f"deficit {d:+.2f} {dict((p, round(v, 2)) for p, v in deficits.items())}"
+        elif arm == "B1G":
+            cov, n, mean_gain = coverage(my_ids, pid, r["projected_points"], player_eligible_positions(players_db.get(pid) or {}), points, players_db, slots)
+            key = (-round(cov * mean_gain, 2), priced.index(r))
+            note = f"cov {cov}/{n} gain_sum {cov * mean_gain:.1f}"
+        elif arm == "B1":
             cov, n, _ = coverage(my_ids, pid, r["projected_points"], player_eligible_positions(players_db.get(pid) or {}), points, players_db, slots)
             key = (-cov, -r["projected_points"], pid)
             note = f"cov {cov}/{n}"
@@ -149,10 +181,11 @@ def draft_one(arm, merger, players_db, league, pick_order, seat, points, season,
             live = [r for r in board if str(r["player_id"]) in points and str(r["player_id"]) not in taken]
             ordered = sorted(live, key=ps._board_order)
             priced = [r for r in ordered if r.get("final_score") is not None]
-            bench = pure_bench(priced)
+            bench = pure_bench(priced, mine[seat], points, players_db, slots)
             note = ""
             if bench and arm != "B0":
-                chosen_row, note = choose(arm, live, priced, mine[seat], points, players_db, slots)
+                chosen_row, note = choose(arm, live, priced, mine[seat], points, players_db, slots,
+                                          mine=mine, seat=seat, roster_size=rounds)
             else:
                 chosen_row = ordered[0]
             chosen = str(chosen_row["player_id"])
