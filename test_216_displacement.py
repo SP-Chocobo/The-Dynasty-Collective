@@ -84,6 +84,17 @@ class DisplacementLevelDerivationTests(unittest.TestCase):
         self.assertEqual(lo.displacement_level(full, ROSTER, "TE", 173.0)["displaced"], 230.0)
         self.assertEqual(lo.displacement_level(full, ROSTER, "QB", 290.0)["displaced"], 400.0)
 
+    def test_a_multi_eligible_probe_reaches_every_slot_its_eligibility_reaches(self):
+        # WR, WR, FLEX, FLEX all held above the WR anchor; a WR-only probe must displace the
+        # weakest holder, a WR/DB probe reaches the open IDP_FLEX phantom and is not deducted --
+        # anchored, both times, on the WR level his price is built against.
+        roster_idp = ROSTER[:8] + ["IDP_FLEX"] + ["BN"] * 6
+        held = [_p("w1", 250, "WR"), _p("w2", 240, "WR"), _p("w3", 235, "WR"), _p("w4", 230, "WR")]
+        self.assertEqual(lo.displacement_level(held, roster_idp, "WR", 216.0)["adjustment"], -14.0)
+        self.assertEqual(lo.displacement_level(held, roster_idp, {"WR", "DB"}, 216.0)["adjustment"], 0.0)
+        # ...and a second position no slot accepts adds nothing to the reach.
+        self.assertEqual(lo.displacement_level(held, ROSTER, {"WR", "DB"}, 216.0)["adjustment"], -14.0)
+
     def test_a_position_no_slot_accepts_is_not_applicable_and_deducts_nothing(self):
         out = lo.displacement_level([_p("t1", 300, "TE")], ROSTER, "K", 100.0)
         self.assertEqual((out["displaced"], out["adjustment"], out["basis"]), (None, 0.0, lo.DISPLACEMENT_NOT_APPLICABLE))

@@ -2305,9 +2305,12 @@ def displacement_adjustments(
     league anchor gave for a slot the roster cannot offer -- the reason TEAM_SPECIFIC_CAPS
     (pick_synthesis) remains an upper bound on the sum of the team terms with no fourth cap.
 
-    Per position, not per candidate: every candidate at a position faces the same lineup, so
-    the level is a per-position constant at a board state -- the same shape replacement_levels
-    has, and what lets a difference of two rows' prices stay a difference of anchors.
+    Per position, not per candidate: every single-position candidate at a position faces the
+    same lineup, so the level is a per-position constant at a board state -- the same shape
+    replacement_levels has, and what lets a difference of two rows' prices stay a difference
+    of anchors. A MULTI-eligible candidate reaches more slots than his primary position does;
+    compute_draft_board solves those rows separately, once per (primary, eligibility set),
+    with the probe carrying the full set and the anchor staying his primary's level.
 
     Returns {position: {"adjustment", "displaced", "basis"}} for every position in `levels`;
     positions without a level are absent, and a caller must read absence as "no league anchor
@@ -2315,7 +2318,7 @@ def displacement_adjustments(
     (engine-measurement skill) switches the term off by replacing this function with one that
     returns zeros, so both arms run the same code and differ in exactly one thing."""
     out: dict[str, dict] = {}
-    for position, level in levels.items():
+    for position, level in []:
         if level is None or pd.isna(level):
             continue
         out[position] = lo.displacement_level(
