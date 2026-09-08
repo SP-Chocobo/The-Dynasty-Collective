@@ -352,7 +352,7 @@ _DISPLACEMENT_PROBE_VALUE = 1e6
 
 
 def displacement_level(
-    roster_players: list[dict], roster_positions: list[str], position: str,
+    roster_players: list[dict], roster_positions: list[str], position,
     free_alternative: float, unpriced_eligible: Optional[list[set[str]]] = None,
 ) -> dict:
     """What a player at `position` must out-score to start for THIS roster, in the caller's
@@ -388,6 +388,15 @@ def displacement_level(
     open slot -- so the board is unchanged wherever it was right, and changes only where the
     league anchor was crediting a player for a slot he could not reach.
 
+    `position` may be a single position or a SET of them -- a multi-eligible candidate's full
+    eligibility. The probe then reaches every slot any of those positions can fill, while the
+    free alternative stays the one his price is anchored on (his primary position's level):
+    the question is still "does a slot he can reach hold someone below the alternative his VOR
+    already credits him against", and the answer is the weakest occupant across all of them. A
+    WR/DB with WR, WR and FLEX held and IDP_FLEX open evicts the IDP_FLEX phantom, so he is
+    not deducted; the WR-only player beside him is. For a single position this is exactly the
+    per-position level.
+
     unpriced_eligible: the eligibility sets of rostered players the caller could NOT price.
     They are absent from `roster_players` and therefore from the solve; if any of them could
     occupy a slot this position can reach, the answer is reported with
@@ -398,15 +407,16 @@ def displacement_level(
     (<= 0.0), the amount the league anchor over-credits a player at this position for THIS
     roster; `basis` says whether that is a measurement.
     """
+    probe_eligible = {position} if isinstance(position, str) else set(position)
     slots = slots_from_roster_positions(roster_positions)
-    reachable = [s for s in slots if position in s["eligible"]]
+    reachable = [s for s in slots if probe_eligible & s["eligible"]]
     if not reachable:
         return {"displaced": None, "adjustment": 0.0, "basis": DISPLACEMENT_NOT_APPLICABLE}
     free = float(free_alternative)
     phantoms = [{"id": f"__free_{s['slot_id']}", "value": free, "eligible": set(s["eligible"])}
                 for s in slots]
     base = optimize_lineup(list(roster_players) + phantoms, slots)
-    probe = {"id": "__displacement_probe", "value": _DISPLACEMENT_PROBE_VALUE, "eligible": {position}}
+    probe = {"id": "__displacement_probe", "value": _DISPLACEMENT_PROBE_VALUE, "eligible": probe_eligible}
     with_probe = optimize_lineup(list(roster_players) + phantoms + [probe], slots)
     displaced = round(base["total_value"] + _DISPLACEMENT_PROBE_VALUE - with_probe["total_value"], 2)
     # Never below the free alternative: a phantom sits in every slot, so the weakest thing the

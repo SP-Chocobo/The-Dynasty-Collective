@@ -2765,6 +2765,8 @@ def compute_draft_board(
         picks, players_db, my_roster_id, _roster_points)
     displacement_by_position = displacement_adjustments(
         _my_points_players, roster_positions, point_replacement, _my_unpriced)
+    # Multi-eligible rows solve once per (primary position, eligibility set) -- see score_row.
+    _displacement_by_eligibility: dict = {}
 
     def score_row(row: pd.Series) -> pd.Series:
         position = row["position"]
@@ -2889,24 +2891,28 @@ def compute_draft_board(
         # construction. 0.0 with a basis that is not `measured` means "no points anchor to
         # correct at this position", never "this roster has room for him".
         #
-        # A multi-eligible candidate reaches every slot his FULL eligibility reaches, so he is
-        # deducted only by the LEAST of his positions' deductions: a WR/DB with WR, WR, FLEX
-        # held and IDP_FLEX open is not surplus -- the open slot is his (eligibility_bonus
-        # prices what that flexibility GAINS him; this term must not take it away). Positions
-        # no slot accepts are not "open" for this purpose, so a WR/DB in a league with no IDP
-        # slot is still priced as the WR he is there.
-        reachable = [
-            displacement_by_position[p]
-            for p in [position] + sorted(player_eligible_positions(players_db.get(str(row["player_id"])) or {}) - {position})
-            if p in displacement_by_position and displacement_by_position[p]["displaced"] is not None
-        ]
-        if not reachable:
+        # A multi-eligible candidate reaches every slot his FULL eligibility reaches, and the
+        # probe is given that whole set, anchored on his primary position's level (the one his
+        # VOR is priced against): a WR/DB with WR, WR, FLEX held and IDP_FLEX open evicts the
+        # IDP_FLEX phantom and is not deducted -- the open slot is his, and eligibility_bonus
+        # prices what that flexibility GAINS him; this term must not take it away. A position
+        # no slot accepts adds nothing to the probe's reach, so a WR/DB in a league without an
+        # IDP slot is still priced as the WR he is there. Solved once per (primary, eligibility
+        # set) rather than per row: single-position rows share the per-position entry.
+        displacement = displacement_by_position.get(position)
+        if displacement is None:
             displacement_adj = 0.0
-            primary = displacement_by_position.get(position)
-            displacement_basis = (primary["basis"] if primary is not None
-                                  else lo.DISPLACEMENT_NO_POINTS_ANCHOR)
+            displacement_basis = lo.DISPLACEMENT_NO_POINTS_ANCHOR
         else:
-            displacement = max(reachable, key=lambda d: d["adjustment"])
+            eligible = player_eligible_positions(players_db.get(str(row["player_id"])) or {})
+            if eligible - {position}:
+                key = (position, frozenset(eligible))
+                if key not in _displacement_by_eligibility:
+                    _displacement_by_eligibility[key] = lo.displacement_level(
+                        _my_points_players, roster_positions, eligible | {position},
+                        float(point_replacement[position]), _my_unpriced,
+                    )
+                displacement = _displacement_by_eligibility[key]
             displacement_adj = float(displacement["adjustment"])
             displacement_basis = displacement["basis"]
 

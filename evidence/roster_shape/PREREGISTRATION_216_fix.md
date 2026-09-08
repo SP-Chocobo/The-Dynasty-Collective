@@ -63,6 +63,30 @@ ruler); scaling need_bonus (no derivation; the cap does not bind); a lexicograph
 - **G8 -- suite green** (~2650 tests). Every test whose PREMISE the fix changes is listed with
   the premise and the reason it no longer holds; none is deleted silently.
 
+## G9 -- ADDED BY THE OWNER MID-RUN, before it was measured
+
+Added after G1-G8 had been measured (the tables in FIX_216_fable.md §2 existed) and BEFORE any
+asset, age or horizon number was read. The concern: a lineup fix that sells off the dynasty
+asset character. A SIGN TEST plus a reported delta; no threshold is derived or chosen.
+
+- **G9a -- the asset ruler must survive.** `run_roster_proof`'s `cdme` ruler
+  (`total_value` = sum of the pre-draft board's `universal_value` over the finished roster --
+  what the roster is worth to OWN, the engine's own objective; #205 reports the engine winning
+  it 68/68 against the control), per seat, both formats, term ON vs OFF, engine vs the same
+  control seat. **A REVERSAL is rejection**: any seat the engine won before and loses after fails
+  G9 outright, whatever the lineup gained. Magnitudes are reported for the owner (#50 holds the
+  exchange rate); I do not resolve a lineup-vs-asset trade myself.
+- **G9b -- age and horizon character.** Mean age (Sleeper's `age`, 5949 of 6595 players carry
+  one) and mean `time_horizon_adj` (read off the chosen row at the state it was chosen) of the
+  drafted roster, ON vs OFF, per seat. Systematically older or lower-horizon rosters under the
+  fix are reported as win-now creep even if every other gate passes.
+- Stated expectation, to be contradicted by the measurement if it disagrees: the term is <= 0,
+  fires only on displacement, and leaves `universal_value` (which carries `time_horizon_adj`)
+  untouched, so the asset result should be largely preserved. If it is not, that is the finding.
+- The control's known defect (once its starting slots are covered it drafts best projection
+  regardless of position -- three QBs in a 1QB league, five TEs on one seat) does not
+  invalidate the asset COMPARISON, and is stated rather than presented as a sound control.
+
 ## What makes me reject my own fix
 
 - G1 fails in any seat: the backstop still binds -> the fix did not fix the board. Reported as

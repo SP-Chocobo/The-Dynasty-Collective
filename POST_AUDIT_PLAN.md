@@ -6308,3 +6308,103 @@ This supersedes the "owner decision" line above and the #164 triage, which liste
 family (#154/#155/#114) — all three of those are closed, and #216 is now the blocker in their
 place. #53 does not proceed while the board is inert for WR and QB and `feasibility_first` is
 the only thing making a roster legal.
+
+## #216 ADDRESSED — A FOURTH TEAM TERM PRICES THE SLOT THE ROSTER CANNOT OFFER; THE BACKSTOP NO LONGER BINDS; THE QUARTERBACK'S OWN PRICE IS STILL 0.00
+
+Implementer: Fable, on `worktree-agent-ab5e1af412aeb9182` (branched from 2f5f304). Full report
+`evidence/roster_shape/FIX_216_fable.md`; pre-registration written before any measurement at
+`evidence/roster_shape/PREREGISTRATION_216_fix.md`; instrument `run_216_fix_probe.py`; result
+sets `evidence/roster_shape/fix_216/`. The adversary's blind battery (b66c051) taken verbatim.
+
+### The change
+
+    displacement_adj(position) = replacement_level(position) − displacement_level(position)  ≤ 0
+    team_acquisition_value = universal_value + need_bonus + eligibility_bonus + depth_exposure
+                             + displacement_adj
+
+`displacement_level` (lineup_optimizer): every starting slot pre-filled with a phantom at the
+league replacement level for the position, the roster solved against them, a probe at the
+position added and the lineup re-solved; what the probe evicts is the level. Equal to the
+league level wherever a slot the position can reach is open (so the board is byte-identical to
+today's there — an empty roster, every open slot, the E-class guards' own fixtures), equal to my
+weakest reachable starter otherwise. No constant, no cap (its magnitude is the measured
+over-credit), non-positive by construction (so `TEAM_SPECIFIC_CAPS` keeps bounding the sum),
+per position at a board state, `universal_value` untouched. Rostered players are priced in
+projected points through a cached full-pool lookup (`roster_points_lookup`) — the lookup #84
+said was missing.
+
+### Measured, one process, one code version (6 seats × 2 formats; BASE = term switched off)
+
+| | BASE, backstop ON | BASE, backstop OFF | FIX, backstop ON | FIX, backstop OFF |
+|---|---|---|---|---|
+| 1QB seat 1 | TE8 RB3 WR2 QB1 · 1987 · forced 3 | TE11 RB3 · 1528 · illegal | WR7 TE3 RB2 QB2 · 2296 · forced 0 | same · 2296 |
+| 1QB seat 6 | TE8 RB3 WR2 QB1 · 1899 · forced 3 | TE11 RB3 · 1465 · illegal | WR8 TE3 RB2 QB1 · 2239 · forced 0 | same · 2239 |
+| 1QB seat 12 | RB9 TE2 WR2 QB1 · 1884 · forced 3 | RB9 TE3 WR1 QB1 · 1704 · illegal | WR8 RB4 TE1 QB1 · 2209 · forced 0 | same · 2209 |
+| SF seat 1 | TE6 QB4 RB3 WR2 · 2469 · forced 1 | TE7 QB4 RB3 WR1 · 2335 · illegal | WR8 RB3 TE2 QB2 · 2592 · forced 0 | same · 2592 |
+| SF seat 6 | TE7 QB4 RB2 WR2 · 2357 · forced 2 | TE9 QB4 RB2 · 2097 · illegal | WR8 TE3 RB2 QB2 · 2520 · forced 0 | same · 2520 |
+| SF seat 12 | TE5 QB5 RB3 WR2 · 2277 · forced 1 | TE6 QB5 RB3 WR1 · 2158 · illegal | WR7 RB4 TE2 QB2 · 2442 · forced 0 | same · 2442 |
+
+Replay gate: the term-off arm reproduces the recorded #216 sequences pick-for-pick, 6/6; the
+instrument's pick equals `compute_draft_board`'s first row after `_board_order` at every one
+of 348 states. Lineup points up in 6/6 seats (+123 … +340); pure-argmax overridden 0 times;
+`fills_required_slot` True on 0 picks; OFF == ON in 6/6. The QB arrives at r8 unforced in 3/3
+1QB seats (r6/r7, r6/r7, r2/r6 in SF). Battery: `test_216_value_board_falsification` 19/19,
+`test_216_room_integrity` 20/20 executed in Chromium, `test_216_displacement` 17/17.
+
+### The six invariants
+
+1. backstop never binds — 0/6 seats. 2. QB priced > 0 while open, ≤ 0 once filled — on
+`final_score`, every turn, 3/3 seats (caveat below). 3. unusable never outranks an open slot —
+battery C 2/2, D 6/6 pairs (LaPorta −35.6 under Adams 21.0). 4. my bench picks never improve my
+signal — the ledger gap (`universal_value + displacement_adj`, WR−TE) is FLAT across every
+bench pick in every seat (−28.02 × 6 in seat 1) while the league gap the old board ordered on
+widens 53.6 → 94.0; one bounded residual on `final_score` from `depth_exposure` (+3.72 at the
+pick a bench first exists), pinned as a residual. 5. below. 6. 6/6 and 348/348.
+
+### What this rules out
+
+- A bigger `need_bonus`: not derivable and not needed — the bias was on the tight end's side
+  of the ledger, and pricing him against MY starter removes it without a scale.
+- The lexicographic sort key the review measured as RFMLV_LEX: a key that is not a number would
+  make the room display one order and rank another (the C-class guard names this).
+- Replacing `bpa` with a lineup marginal: eight consumers read `universal_value` as
+  team-agnostic; the roster-relative half belongs in the team layer, and that is where it is.
+
+### What is NOT fixed
+
+- **(b) the quarterback's OWN price.** Taken at r8 unforced — because every surplus row is now
+  priced below `need_bonus`'s 4.0, not because he is priced: his bpa is 0.00 at every open turn
+  from r2/r3 (rank 1 = himself). In a room with a positive late upgrade at RB/WR he waits, and
+  the backstop can still bind at the last pick. The quantity that would price him is
+  `horizon_replacement`'s floor (observable-only, #48) or an off-by-one replacement (rank
+  demand+1; moves every level for QB1−QB2 ≈ 11 here). Both with #50. `replacement_levels`'
+  docstring now states the limitation rather than the cancellation claim.
+- **The bench.** Starters fixed; the bench is ordered by "nearest to cracking my lineup", and
+  on this pool that is receivers: bench picks backstop-OFF went TE6 / RB3 TE1 WR1 QB1 / TE4 QB1
+  WR1 → WR5 QB1 / WR6 / WR5 RB1. A hoard the board reinforced became a hoard it does not
+  (invariant 5's observable: count rises, the ledger it orders on is flat) — not a balanced
+  bench. A bench ruler is #62/#115, open.
+- A second QB in 1QB seat 1 at r9 (Love, −11.2): the exhausted-demand pre-draft anchor
+  (#165/#155), not this term.
+- `depth_exposure`'s direction (the adversary's B-class finding): ≤ 12 at a stacked position,
+  0 where vacant, survives at its bounded size.
+
+### Corrections to the published record
+
+- `replacement_levels`' docstring: "rank shrinkage and pool drain cancel exactly … 19 of 19"
+  holds for STARTER-FILLING picks only; bench picks move the level (43.6 → 59.3 with seven
+  TEs; 43.6 → −2.3 on an RB hoard). Corrected in place.
+- #84's ruling ("correctly stranded — in the displacement regime it agrees with the ranking the
+  engine already produces"): withdrawn in `test_lineup_marginal_contract`'s docstring and
+  CDME_CONTRACTS' H2 appendix; the premise expired with the roster it was measured on.
+- The "scaled against the largest gap left in the pool" prose (metric help, legend tooltip,
+  design_system, draft_room's ARCHITECTURE): the pricing layer is the identity; corrected.
+- `cliff_protection` "fires 73.6% of the time": 35.4% (17/48) on the same states after the
+  top six rows stopped being a hoarded position's tail; the constant is as borrowed as before.
+- The adversary's `test_the_board_is_not_the_projection_control`, reported FAILING on unfixed
+  code: it PASSES on the unfixed engine (zero engine changes between f580c11 and 2f5f304) and
+  after the fix; the report belonged to one of the two vacuous earlier drafts its own
+  docstring records. An over-correction guard, correctly in class E.
+
+**Freeze status: the board is no longer inert for WR and QB and the backstop never binds on
+the measured seats. Whether (b)'s open half and the bench ruler block #53 is the owner's call.**

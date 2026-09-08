@@ -40,9 +40,27 @@ from player_universe import player_eligible_positions
 
 ARMS = ("BASE_ON", "BASE_OFF", "FIX_ON", "FIX_OFF")
 RECORDED = Path("evidence/roster_shape/ROSTER_SHAPE_2026-09-08_bfc3d47.json")
-DECOMP = ("name", "position", "projected_points", "bpa", "universal_value", "need_bonus",
-          "eligibility_bonus", "depth_exposure", "displacement_adj", "displacement_basis",
-          "final_score", "fills_required_slot")
+DECOMP = ("player_id", "name", "position", "projected_points", "bpa", "time_horizon_adj",
+          "universal_value", "need_bonus", "eligibility_bonus", "depth_exposure",
+          "displacement_adj", "displacement_basis", "final_score", "fills_required_slot")
+
+
+def _mean(values):
+    vals = [v for v in values if v is not None]
+    return (round(sum(vals) / len(vals), 2), len(vals)) if vals else (None, 0)
+
+
+def asset_and_character(picks, seat, players_db, rulers, slots, horizon_map):
+    """G9 (owner's gate): the #205 asset ruler on the finished roster (run_roster_proof's own
+    score_roster, both rulers), plus mean age and mean pre-draft time_horizon_adj."""
+    mine = [p["player_id"] for p in picks if str(p["roster_id"]) == str(seat)]
+    scored = rp.score_roster(picks, seat, players_db, rulers, slots)
+    age, n_age = _mean((players_db.get(pid) or {}).get("age") for pid in mine)
+    horizon, n_h = _mean(horizon_map.get(pid) for pid in mine)
+    return {"cdme_total_value": scored["cdme"]["total_value"], "cdme_starter_value": scored["cdme"]["starter_value"],
+            "cdme_unpriced": scored["cdme"]["unpriced"], "points_starter_value": scored["points"]["starter_value"],
+            "mean_age": age, "age_n": n_age, "mean_predraft_horizon_adj": horizon, "horizon_n": n_h,
+            "players": len(mine)}
 
 
 def _name(players_db, pid):
@@ -97,7 +115,8 @@ def lineup_points(ids, points, players_db, slots):
     return lo.optimize_lineup(players, slots)["total_value"]
 
 
-def draft_one(arm, merger, players_db, league, pick_order, seat, points, season, rounds, slots, log):
+def draft_one(arm, merger, players_db, league, pick_order, seat, points, season, rounds, slots, log,
+              rulers=None, horizon_map=None):
     roster_positions = league["roster_positions"]
     num_teams = len(set(str(r) for r in pick_order))
     superflex = "SUPER_FLEX" in roster_positions
@@ -175,6 +194,13 @@ def draft_one(arm, merger, players_db, league, pick_order, seat, points, season,
         "control_lineup_points": lineup_points(mine[control_seat], points, players_db, slots),
         "all_seats_lineup_points": {s: lineup_points(ids, points, players_db, slots) for s, ids in mine.items()},
         "qb_rounds": [s["round"] for s in seq if s["position"] == "QB"],
+        # G9 (owner's gate): the asset ruler and the roster's age/horizon character, for the
+        # engine seat and for the same control seat, so a reversal can be read per seat.
+        "g9_engine": (asset_and_character(picks, seat, players_db, rulers, slots, horizon_map)
+                      if rulers is not None else None),
+        "g9_control": (asset_and_character(picks, control_seat, players_db, rulers, slots, horizon_map)
+                       if rulers is not None else None),
+        "engine_mean_at_pick_horizon_adj": _mean(s["chosen"].get("time_horizon_adj") for s in states)[0],
     }
 
 
@@ -205,6 +231,14 @@ def main(argv=None):
                                       te_premium=spec["te_premium"], dynasty=True, base_scoring=scoring)
         merger.set_league_format(db.league_format_hint(league))          # NEVER SKIP
         points = rp.scoreable_pool(merger, players_db, league, season)
+        # G9: the #205 asset ruler (pre-draft board universal_value, run_roster_proof's own
+        # `values`) and the pre-draft horizon adjustment per player, roster-independent.
+        values = db.reference_values(merger, players_db, league, sleeper_projections=season,
+                                     sleeper_basis=dr.SLEEPER_BASIS_SEASON_SUM)
+        rulers = {"cdme": values, "points": points}
+        predraft = dr.compute_draft_board(merger, players_db, [], None, league, mode="balanced",
+                                          sleeper_projections=season, sleeper_basis=dr.SLEEPER_BASIS_SEASON_SUM)
+        horizon_map = {str(r["player_id"]): r.get("time_horizon_adj") for r in predraft}
         seats = [str(i) for i in range(1, spec["teams"] + 1)]
         rounds = len(league["roster_positions"])
         slots = lo.slots_from_roster_positions(league["roster_positions"])
@@ -224,7 +258,8 @@ def main(argv=None):
         for seat in args.seats.split(","):
             for arm in args.arms.split(","):
                 t0 = time.time()
-                d = draft_one(arm, merger, players_db, league, pick_order, seat, points, season, rounds, slots, log)
+                d = draft_one(arm, merger, players_db, league, pick_order, seat, points, season, rounds, slots, log,
+                              rulers=rulers, horizon_map=horizon_map)
                 if arm == "BASE_ON" and seat in rec_seq:
                     mine = [r["player"] for r in d["sequence"]]
                     d["replay_matches_recorded"] = mine == rec_seq[seat]
