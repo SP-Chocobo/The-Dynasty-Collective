@@ -89,3 +89,67 @@ four reached further than intended, and that is a finding rather than a footnote
 A clean run is the #150 gate and nothing more. It says the engine does not break its league's
 rules on the path production runs. It says NOTHING about whether the engine drafts WELL -- that
 is #205's control-vs-engine proof -- and nothing about #206 or #184.
+
+### RESULT: BATTERY_2026-09-08_scoring_aware_5a53057
+
+33 formats, **32 independent** (was 24), 5,340 picks, **15 structural findings** (was 18),
+14,512s. `universe.priced_from = "vendor+sleeper"`, `sleeper_basis = "season_sum"`,
+`season_projections_supplied = 5346`.
+
+Scored against the five predictions **as written**, including the two that failed.
+
+**1. Unpriced-player findings drop — PARTIALLY CONFIRMED, 3 of 4.**
+
+    14T_half_ppr_SF   1 -> 0
+    14T_ppr_SF        1 -> 0
+    4WR_TE_PREMIUM    1 -> 0
+    14T_standard      1 -> 1     <-- did NOT drop
+
+The prediction's own falsifier applies to the survivor: "if they DON'T, the scoring path is not
+reaching the players it was supposed to reach." For 14T_standard it did not. One player, in the
+standard-scoring 14-team arm, is still unpriced with 5,346 Sleeper season projections supplied.
+That is a residual with a named location, not a rounding error. Registered as **#209**.
+
+**2. HEAVY_IDP shrinks but does not vanish — FAILED. It did not shrink at all.**
+
+14 findings before, 14 after. Unpriced candidates REACHING a decision rose 164 -> 189. So
+Sleeper prices no additional IDP player in this arm: the coverage gap is not vendor-specific,
+it is in both sources. #51's conclusion (a SUPPLY defect, remedied by an input) survives — the
+findings did not vanish, which was the condition that would have reopened it — but the specific
+quantitative claim I registered was wrong, and #49's input gap is BROADER than assumed: it is
+not "the vendor lacks IDP", it is "nothing we ingest prices these players." Registered as **#210**.
+
+**3. Trajectories are not byte-identical — CONFIRMED, strongly.** Every scoring-sensitive arm
+moved, several enormously (8T_half_ppr starters 327.9–377.02 -> 42.36–137.94). The scoring path
+is live in simulation; #204 bought exactly what it was meant to.
+
+**4. priced_from / season_projections_supplied — CONFIRMED exactly.** Both fields present with
+the predicted values; the baseline has neither.
+
+**5. The 9 duplicate arms stay duplicated — FAILED, 9 -> 1, and my falsifier was wrong too.**
+
+I predicted the duplicates would persist because "half-PPR and PPR resolve to the same rankings
+export — a vendor-side property the Sleeper path does not touch", and stated that a change in
+the count would mean "the duplicate detector is measuring something other than what it claims."
+
+Both halves were wrong. The detector is fine. **Scoring propagates by TWO routes, not one:**
+FILE SELECTION (`set_league_format` picks a rankings export) *and* `score_projection` applying
+the league's own scoring settings to Sleeper stat lines. Post-#204 the second route is live, so
+PPR and half-PPR now price differently even off one shared export. The only surviving duplicate
+is `12T_ppr_mode_balanced ≡ 12T_ppr`, which is correct — balanced *is* the default mode.
+
+This corrects a claim in the `engine-measurement` skill, which states scoring propagates by file
+selection. That was true before #204 and is now half the story.
+
+**AN UNPREDICTED FINDING: a NEGATIVE starter value.** `12T_ppr_mode_upside` reports starters
+**−205.4** to 127.46. This is the same category error found independently in #205's roster
+proof: `roster_strength` sums `universal_value` across a STARTING LINEUP, 83.8% of pool values
+are negative, and `lineup_optimizer` has no "leave the slot empty" move — so a thin roster is
+forced to start deep negatives and the lineup total goes negative. `universal_value` is an asset
+LEVEL, not a rate a lineup realises. This does **not** affect the battery's FINDINGS, which are
+legality checks and never read `starter_value` — but the "starters X–Y (spread Z)" line is not a
+roster-quality measure and must not be read as one. Registered as **#211**.
+
+**What this licenses.** The #150 legality gate is clean apart from two named, understood arms
+(14T_standard's single unpriced player, HEAVY_IDP's supply exhaustion). It says nothing about
+whether the engine drafts WELL — that is #205 — and nothing about #206 or #184.
