@@ -87,6 +87,80 @@ asset character. A SIGN TEST plus a reported delta; no threshold is derived or c
   regardless of position -- three QBs in a 1QB league, five TEs on one seat) does not
   invalidate the asset COMPARISON, and is stated rather than presented as a sound control.
 
+## SECOND PASS — roster shape. Pre-registered before any bench-ruler arm was measured
+
+The owner's criterion, as relayed: the ordering `WR >= RB > TE`, a QB ceiling, a per-league
+BAND derived from bench width, starting requirements, league size and pool depth, computed on
+FIELDED LOAD (dedicated slots plus the flex share a position actually wins, read off the
+optimizer) — a tendency over the roster as a whole, not a quota; at shallow bench depth
+`RB == TE` is acceptable.
+
+**What is scored, stated.** The FULL ROSTER (14 picks in 1QB, 15 in SF), because the owner's
+own examples are full rosters and a 14-man roster carrying WR7 RB2 is thin at running back
+whichever way it is counted. Scored a second way — bench only — where it changes a verdict.
+
+**The band, derived (no literal enters it).** At the end of a draft every roster's optimal
+lineup on the season projections is solved (`lineup_optimizer`, the flex assignments observed
+rather than assumed). `share_p` = the league's fielded load at position p / the league's total
+fielded starters. A seat's target total at p is `roster_size x share_p`; its bench target is
+that minus its OWN fielded load at p (so a seat whose flexes are receivers is asked for fewer
+bench receivers — the owner's refinement). The band is the integer neighbourhood of the
+target (floor..ceil), and the ordering check compares targets, so `WR >= RB > TE` is DERIVED
+per format from what the league actually fields and may disagree with the owner's ordering —
+if it does, that is reported, not forced. The QB ceiling is the same quantity at QB: with one
+QB slot per team `share_QB` is 1/8 of fielded load in this format, target 14 x 1/8 = 1.75, so
+"at most one benched QB" falls out; superflex derives its own from how many SUPER_FLEX slots
+quarterbacks actually win. Pool depth enters through the flexes: which positions win them is a
+property of this pool's supply at those ranks. This band is an EVALUATION instrument; the
+engine never reads it (a quota would be the over-correction the owner named).
+
+**The regime the engine can detect exactly.** A board state is PURE-BENCH when no priced row
+can crack my lineup: `max(bpa + displacement_adj) <= 0` over priced rows. In that state every
+candidate is a bench candidate, so an ordering among them needs no exchange rate against
+lineup points (there is nothing to exchange against) and the number shown can be a bench
+number with its own basis. In any MIXED state the board stays as it is (lineup first). This is
+a fact about the assignment, like #84's regimes, not a constant.
+
+**Why a bench PRICE is not derivable, recorded before measuring so it is not re-derived.** A
+bench body's expected contribution is (probability a starter he covers is out) x (his points
+over what would otherwise fill in). The engine's own uniform "any one starter out" model
+(depth_exposure) gives the second factor exactly via the optimizer and puts the first at
+1/|starters| per starter — summed over the 5 of 8 fielded slots an RB can cover that is ~5/8
+of his projection, starter-sized: measured on paper at 1QB seat 1 round 6 it prices a 200-point
+bench RB at +125 against a 40-point lineup upgrade at +55, which is the raw-points regime the
+E-guards forbid. Any smaller weight is an injury rate this repository does not have (#56). So
+the second pass looks for an ORDERING inside the pure-bench regime, not a price across regimes.
+
+**Arms (measured post hoc on the FIX_ON trajectories, one process; only an arm that passes is
+implemented):**
+- B0 today: distance to my lineup (`final_score` as shipped).
+- B1 coverage: rank by the number of my fielded starters whose absence opens a slot the
+  candidate can fill (optimizer, one-out, after re-optimisation), then points. Derived; encodes
+  "bench follows fielded load" directly.
+- B2 horizon: rank by `projected_points − horizon_floor(position)` (`waiting_cost`, already on
+  every row) — value over the end-of-draft free alternative, the pool's own consumption model
+  and the only quantity here that encodes "fewer useful running backs exist". CROSSES #48's
+  observable-only ruling for this regime; if it wins, that is said loudly and the owner decides.
+- B3 coverage x horizon: B1's coverable-load share times B2's margin.
+
+**Enforcement constraint (owner, the handcuff).** No arm may cap a position's count: every arm
+above is an ORDERING among bench candidates, and the band is an evaluation instrument the
+engine never reads. A rule that made a correlated backup (a handcuff to a starter I own)
+unbuyable for being the fourth running back would be a new defect; whether any arm can
+suppress one, and under what roster conditions, is reported. Term inventory, answered from
+code before measuring: no existing term can raise a player's value on the basis of a specific
+teammate -- `team` is read only for identity resolution and emitted as a column; lineup rows
+carry id/value/eligibility only; `eligibility_bonus` and `depth_exposure` are keyed to the
+candidate's own eligibility and to positions, never to who else is owned.
+
+**Gates.** The arm must (a) pass the ordering on the FULL roster in more seats than today
+(3/6) with `WR >= RB` regressing nowhere; (b) leave G1, G3 (starters are untouched by
+construction in the pure-bench regime — asserted, not assumed), G4, G6 and G7 intact; (c) add
+no constant; (d) not collapse compositions to one template (report the spread across seats).
+The QB's own 0.00 bpa is NOT touched by any arm (a bench ruler runs only after the QB slot is
+filled); stated in the report either way. If no arm passes, the finding is "the bench shape is
+not derivable without an exchange rate" and I stop.
+
 ## What makes me reject my own fix
 
 - G1 fails in any seat: the backstop still binds -> the fix did not fix the board. Reported as
