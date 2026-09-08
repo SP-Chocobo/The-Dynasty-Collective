@@ -6206,3 +6206,99 @@ Three rules, now recorded in `resume_join.py` beside the code they nearly destro
   2. Verify the pattern is PRESENT before mutating and the file BYTE-IDENTICAL after restoring.
   3. Never run two mutation batches at once, and read the batch's FULL output -- grepping only
      for OK/FAILED hides the SyntaxError that means nothing was tested.
+
+## #216 — THE ENGINE CANNOT DRAFT A RECEIVER OR A QUARTERBACK; THE BACKSTOP HAS BEEN DOING IT
+
+Freeze-blocker candidate. Traced but NOT repaired, and deliberately not patched: no weights
+tuned, no constants introduced, nothing merged. Evidence: `evidence/roster_shape/`, reviewer's
+report at `REVIEW_216_fable.md` (authoritative), instruments `run_roster_shape_probe.py` and
+`run_216_review_probe.py`.
+
+### What it is
+
+Six seats, two formats, real rulebook: every engine seat ends with exactly two wide receivers;
+two end with EIGHT tight ends in a one-TE league. Confounds killed first — the pool is WR-RICH
+(WR 197 of 481, the deepest position), the passed-over receivers were better (WR#24 at 245
+against TE#24 at 148), and the probe reads the real engine (`build_snapshot`'s top candidate
+matched `compute_draft_board`'s first row in 6/6 seats, 87/87 picks under a replay gate).
+
+**The receivers and the quarterback are not the board's choice at all.** `feasibility_first` is
+a 0/1 sort key (`_feasible` -> `fills_required_slot`) leading the sort in `compute_draft_board`
+and `_board_order`. It filters and substitutes nothing — it PARTITIONS, and binds only when
+`picks_remaining <= unfilled dedicated slots`: pick 12 of a 14-round roster, exactly where every
+published roster's receivers appear. Disabled, seats 1 and 6 end **TE11 RB3 — zero WR, zero
+QB**. Unforced at pick 14 the board still takes Dulcich (TE, 124.3) over Concepcion (WR, 165.1).
+The board is INERT for those positions; nothing "falls through".
+
+### Two distinct defects, not one
+
+**(a) The stack.** `bpa = projected_points - replacement_level(position)`, with no normalisation
+(`_scale_vor_to_bpa` is identity; #75's 72x drift was the removed max-scaler). Replacement is
+constant per position at a board state. A tight end therefore starts 43.5 bpa ahead of an
+identically-projected receiver — Kittle (TE, 224 proj) scores 55.53 where Coker (WR, 223) scores
+11.24. **Multiple legitimate-looking terms push the same way**: `depth_exposure` (a fourth term
+in `final_score`, draft_room.py:2698) adds +6.24 to a FOURTH tight end and is 0.0 wherever the
+roster is vacant. No single-term patch can fix this.
+
+**(b) The quarterback, which is a different failure.** `remaining_starter_demand` collapses to
+1.0 — the drafter's own unfilled slot — once the other seats have taken theirs. Rank 1 makes
+replacement THE BEST REMAINING QB HIMSELF, so bpa is EXACTLY 0.00 for thirteen consecutive
+rounds and every other quarterback prices negative. This is **cannot value**, not under-value,
+and no roster-relative term downstream repairs it: the marginal-lineup arms still take Penix at
+r14 under force, because their phantom quarterback IS the best remaining quarterback.
+
+### The historical finding, which is the cleanest part
+
+#84 stranded `marginal_lineup_value` on the claim that *"in the displacement regime it agrees
+with the ranking the engine already produces"*. **Measured false on the roster this engine
+actually builds**: at CURRENT's own states the top row agrees in only 4/14, 5/14 and 6/14 states
+(1QB) and 5-7/15 (SF), with 8-10 of the top ten reordering through rounds 5-11. That ruling was
+taken against a SANE roster; the engine subsequently drifted into a regime where its premise
+stopped holding. This is not "somebody forgot to wire a feature" — it is an assumption that
+expired without anyone noticing.
+
+### Options, measured, none complete
+
+- **Replacement-filled MLV** (phantoms at each slot's replacement level; an empty slot reduces
+  exactly to VOR): fixes STARTERS, +137..+165 lineup points in 6/6 seats. Does NOT fix roster
+  shape — once eight starters clear replacement every marginal is 0 and the fallback is
+  `universal_value`, the same ordering that hoards (bench ends RB9/RB10/TE9). Does NOT fix QB.
+  Blast radius: breaks the `TAV = UV + need + elig + depth` identity and ~115 test references,
+  `test_need_bonus_cannot_flip_*` by design, `TEAM_SPECIFIC_CAPS` in pick_synthesis, and
+  `rival_premium`'s meaning.
+- **RAW-MLV (#84 as built)**: best lineup totals of any arm, for an ACCIDENTAL reason — with an
+  empty roster a player's marginal lineup value is just his own points, so its early order is
+  raw points (Purdy at r1), the only route past a replacement pricing QBs at 0.00. Bench still
+  TE7/TE9/TE7. **An instructive control, not a fix.**
+- **Scaling the roster term**: no derivation exists, and the derivable proxy does nothing.
+- Horizon-floor replacement, and a bench ruler (#62/#115): both belong with #50.
+
+### Three corrections I published and then had to withdraw
+
+Recorded because the pattern matters more than any one of them.
+1. "Exactly the WR slot count — a need signal saturating." Wrong; receivers arrive at r12-13.
+2. "Receivers arrive once every other tail falls through." Wrong; they are the backstop firing.
+3. "`NEED_BONUS_MAX = 12` caps the roster term below the bias." Wrong, and refuted by direct
+   ablation: setting the cap to 1e9 is PICK-FOR-PICK IDENTICAL in 6/6 seats, and zero rows sit
+   at the cap across 87 states. The cap never binds; `need_bonus`'s own formula tops out at 8.67.
+   The conclusion (the roster term is too small) survives; the named mechanism does not.
+
+Also corrected: "pool-derived and roster-blind" is wrong — replacement ranks by
+`remaining_starter_demand` across every roster and moves only on BENCH picks. Seat 12 hoards
+running backs and the TE gap SHRINKS 43.6 -> -2.3. Same arithmetic as #60, opposite regime.
+
+### Post-fix invariants, for whoever repairs this
+
+1. With `feasibility_first` disabled, compositions equal those with it enabled;
+   `fills_required_slot` True on ZERO picks.
+2. While the QB slot is unfilled in 1QB, the best remaining QB carries a POSITIVE price, falling
+   to <=0 once filled.
+3. A candidate the lineup cannot use never outranks one filling an empty slot at positive VOR.
+4. A drafter's own bench picks never improve their selection signal at that position.
+5. The most-drafted bench position count, backstop off, reported against that position's
+   replacement gap — today they move together under every arm.
+6. Replay gate at every state.
+
+**Freeze status: OWNER DECISION.** My reading is that an engine which cannot draft a receiver or
+a quarterback without a legality backstop is not shippable, whatever the dynasty philosophy. The
+call is #53's and the owner's.
