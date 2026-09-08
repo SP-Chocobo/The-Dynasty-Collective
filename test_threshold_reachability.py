@@ -231,9 +231,20 @@ class KnownUnreachableThresholdsTests(_RealBoards):
         self.assertTrue(forfeits, "no forfeits measured; this test observed nothing")
         share = sum(1 for f in forfeits
                     if f >= ps.NECESSITY_STANDOUT_REFERENCE_GAP) / len(forfeits)
-        self.assertGreater(share, 0.5,
-                           "cliff_protection has stopped firing for most candidates -- the "
-                           "measurement in CDME_CONTRACTS.md is stale, revisit the decision")
+        # RE-MEASURED AFTER #216. This pinned `share > 0.5` ("fires for most candidates", 73.6%
+        # in CDME_CONTRACTS.md), and the #216 term moved it: the top six rows of these boards
+        # are no longer dominated by a hoarded position's steep tail, and the forfeit of the
+        # receivers that replaced them clears the reference gap less often -- measured 17 of 48
+        # (35.4%) on the same states. The threshold is exactly as borrowed as it was (the
+        # constant did not change; the population it is compared against did), so the pin is
+        # restated, not repaired: the flag is neither near-universal nor rare, and the
+        # product decision about what SHOULD light it remains open. Both bounds below are the
+        # measured value's neighbourhood, recorded so the next drift is noticed here as this
+        # one was; neither is a claim about what the rate should be.
+        self.assertGreater(share, 0.0, "cliff_protection never fires -- revisit the decision")
+        self.assertLess(share, 0.5,
+                        "cliff_protection is back to firing for most candidates -- the "
+                        "measurement in CDME_CONTRACTS.md is stale, revisit the decision")
 
 
 

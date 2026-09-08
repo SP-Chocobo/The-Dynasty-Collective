@@ -1554,9 +1554,9 @@ def _render_pick_metrics(rec) -> None:
     # number rather than passing as a measurement.
     displacement_basis = getattr(rec, "displacement_basis", None)
     displacement = getattr(rec, "displacement_adj", None)
-    if displacement is None or displacement_basis == "measured":
+    if displacement is None or displacement_basis == pick_synthesis.DISPLACEMENT_MEASURED:
         displacement_text = f"{displacement:+.1f}" if displacement is not None else "—"
-    elif displacement_basis == "roster_partially_priced":
+    elif displacement_basis == pick_synthesis.DISPLACEMENT_ROSTER_PARTIAL:
         displacement_text = f"{displacement:+.1f} (floor)"
     else:
         displacement_text = "—"

@@ -184,6 +184,7 @@ EXPOSURE_MEASURED = lo.EXPOSURE_MEASURED
 #: way (draft_board_ui carries the table to the JS; pick_debate qualifies the clause).
 DISPLACEMENT_BASIS_LABELS = lo.DISPLACEMENT_BASIS_LABELS
 DISPLACEMENT_MEASURED = lo.DISPLACEMENT_MEASURED
+DISPLACEMENT_ROSTER_PARTIAL = lo.DISPLACEMENT_ROSTER_PARTIAL
 
 # Position-view depth ceiling (see narrow_candidates' own docstring): the board's real,
 # league-aware replacement rank per position (draft_room.replacement_ranks) is the right

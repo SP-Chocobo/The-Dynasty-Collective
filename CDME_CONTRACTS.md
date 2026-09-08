@@ -5617,8 +5617,12 @@ assert the measured state, so the numbers here cannot silently rot:
    decision about what should light this badge remains open.** What is now pinned, in
    `ContextElevatedBecameReachableTests`, is that neither failure mode is currently present —
    the rule is asserted to fire, and asserted not to fire for most candidates.
-2. `cliff_protection` (`positional_forfeit >= NECESSITY_STANDOUT_REFERENCE_GAP`). Fires 73.6% of
-   the time against a quantity whose median is 3.6× the threshold.
+2. `cliff_protection` (`positional_forfeit >= NECESSITY_STANDOUT_REFERENCE_GAP`). Fired 73.6% of
+   the time against a quantity whose median was 3.6× the threshold. **Re-measured after #216:
+   35.4% (17 of 48) on the same board states.** The constant did not move; the population did
+   -- the top six rows are no longer a hoarded position's steep tail, and the receivers that
+   replaced them forfeit less. The threshold is exactly as borrowed as before; the pin in
+   `test_threshold_reachability` now records the new neighbourhood rather than "fires for most".
 
 ## Two corrections to the constants' own documented basis
 
@@ -5950,6 +5954,18 @@ rare rather than systemic.
 # Appendix — H2 settled: the contract for `marginal_lineup_value`
 
 **Conclusion: category 2 — represented, stranded, and *correctly* stranded.**
+
+> **CORRECTION (#216).** The "correctly" above rested on the claim that in the displacement
+> regime the quantity "never disagrees with team_acquisition_value". That was measured on sane
+> rosters and stopped holding once the engine drifted into building rosters that were not: at
+> the states the engine actually reaches, the board's own top row agreed with a
+> replacement-filled lineup marginal in only 4-7 of 14-15 states per seat, with 8-10 of the top
+> ten reordering through rounds 5-11 (`evidence/roster_shape/REVIEW_216_fable.md` §3). The
+> premise expired; the ruling is withdrawn. What was wired (#216) is not the raw marginal but its
+> displacement half, phrased as a per-position LEVEL -- `lineup_optimizer.displacement_level` ->
+> `draft_room.displacement_adj`, the fourth team-specific term -- so it invents no constant and
+> stays a per-position constant at a board state. The empty-slot half of the original reasoning
+> (raw points) still stands and is still not wired.
 
 Nothing is wired. `lineup_optimizer.py` is untouched. The deliverable of this pass is the
 contract itself, pinned by `test_lineup_marginal_contract.py` (7 tests), so the conclusion can be
