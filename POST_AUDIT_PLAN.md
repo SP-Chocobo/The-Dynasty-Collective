@@ -6308,3 +6308,66 @@ This supersedes the "owner decision" line above and the #164 triage, which liste
 family (#154/#155/#114) — all three of those are closed, and #216 is now the blocker in their
 place. #53 does not proceed while the board is inert for WR and QB and `feasibility_first` is
 the only thing making a roster legal.
+
+## #217 — THE OBJECTIVE, STATED BY THE OWNER, AND THE INPUT IT NEEDS THAT DOES NOT EXIST
+
+### The ruling (owner, verbatim in effect)
+
+Superseding the looser "winning this season is the whole point" earlier in the same session:
+
+> Unless you are actively in a rebuild, there shouldn't be a reason that you are not a strong
+> contender to win. It's okay to not be the strongest in the field, as long as we are within a
+> competitive band of who is. The point is winning now, but it is also to be able to win over
+> several years as things progress, so there is a balance factor of when-now vs longevity that
+> needs to be met. Variance is understood; everybody is trying to build a competitive roster.
+
+**This is the first testable statement of the engine's objective this project has had**, and it
+changes three things.
+
+### 1. It changes what #205's deficit MEANS
+
+#205 measured the engine 5-11% behind a control that drafts nothing but the highest projected
+points at an unfilled slot. That control is the CEILING on that ruler by construction, not a
+competitor. "Within a competitive band of the field leader" and "equal to the theoretical
+maximum" are different criteria, and only the first is the owner's. **The existing number does
+not answer the question the owner is actually asking.** It is not evidence of failure against
+this objective; it is evidence against a benchmark nobody plays.
+
+### 2. It names the measurement that WOULD answer it
+
+Engine against an ADP-drafting field — a league that drafts the way the market does — scored by
+simulated head-to-head win rate rather than by draft-day projected-points sums. Acceptance is
+"inside a competitive band of the strongest roster in the room", NOT "beats the ceiling".
+Prerequisite check already done: `adp_dd_ppr` covers 469 of the 481 shared pool, and although it
+correlates -0.975 with projection overall, it re-orders POSITIONALLY in exactly the way
+projection cannot (QB1 sits at projection-rank 7 but market-rank 42; QB13-24 are demoted 77
+places on average). So the market ordering carries real information the points ruler does not.
+
+### 3. IT NAMES A MISSING ENGINE INPUT — the gap this item exists to record
+
+**The valuation engine has no contend/rebuild input at all.** Searched: the words appear only in
+`llm_engine.py`, where they are standing PROSE CONTEXT handed to the debate chairs, and in the
+mockups — one of which already documents the gap in as many words:
+
+> "No store in this system holds what the team is optimising. league_prefs holds display order;
+> the draft engine's contend/rebuild mode is a per-view control, not a stored target. The engine
+> chain has no objective link and the UI chain's is filled by something else."
+
+So the balance factor the owner requires **has nothing to balance with**. `time_horizon_adj`
+exists as a per-player component summed into value, but there is no team-level target that says
+how much present season to trade for future seasons, and no way for a user in a rebuild to say
+so. The chairs can be told; the board cannot.
+
+This is NOT the same defect as #216. #216 is the board being unable to draft a legal roster.
+#217 is the board having no representation of what the roster is FOR. A perfectly repaired #216
+still leaves #217 open.
+
+### Status and ownership
+
+SURFACED, not designed. The remedy is an input and a contract, not a constant, and its shape is
+#50's — the exchange rate between present points and future value is exactly the thing a
+contend/rebuild target would parameterise. **Do not implement a knob before #50 is ruled**, or
+the knob's units will be invented rather than derived (#56).
+
+Sequenced AFTER #216: an objective input is meaningless while the board cannot execute any
+objective.
