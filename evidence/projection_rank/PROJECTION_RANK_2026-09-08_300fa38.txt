@@ -1,0 +1,9 @@
+commit 300fa38 | universe 6595 players
+12T_ppr        seat   1  ENGINE median  16 worst  41 top5  4/14 forgone/pick   54.52   |   CONTROL median   1 worst  38 top5  9/14 forgone/pick   35.89     52.2s
+12T_ppr        seat   7  ENGINE median  20 worst  35 top5  2/14 forgone/pick   60.96   |   CONTROL median   8 worst  21 top5  7/14 forgone/pick   37.34     50.4s
+12T_ppr        seat  12  ENGINE median  21 worst  38 top5  2/14 forgone/pick   63.70   |   CONTROL median   1 worst  22 top5  9/14 forgone/pick   34.40     49.8s
+12T_ppr_SF     seat   1  ENGINE median   2 worst  12 top5 10/15 forgone/pick    7.13   |   CONTROL median   1 worst  16 top5 11/15 forgone/pick   16.01     57.0s
+12T_ppr_SF     seat   7  ENGINE median   4 worst  17 top5  9/15 forgone/pick    8.55   |   CONTROL median   1 worst   9 top5 11/15 forgone/pick   13.91     61.9s
+12T_ppr_SF     seat  12  ENGINE median   2 worst  21 top5 11/15 forgone/pick   10.91   |   CONTROL median   1 worst  17 top5 11/15 forgone/pick   12.64     65.7s
+
+-> /tmp/claude-0/-home-user-The-Dynasty-Collective/90289f87-1d2a-5009-8163-038c3cedfc5f/scratchpad/PROJECTION_RANK.json

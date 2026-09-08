@@ -5,14 +5,27 @@ THE QUESTION THIS ANSWERS, and the one it does not. #205 established that the en
 about the ACCUMULATED total. It says nothing about the SHAPE of the individual decisions, and
 two very different engines produce it:
 
-  (a) an engine that routinely takes the 12th-best available scorer -- projection is effectively
-      not consulted, and the deficit is arbitrary;
-  (b) an engine that usually takes the 1st or 2nd-best available scorer and occasionally the
-      4th -- the deficit is the accumulated cost of many small deliberate trades.
+  (a) an engine that routinely takes a far worse available scorer than a sane drafter would --
+      projection is effectively not consulted, and the deficit is arbitrary;
+  (b) an engine that lands close to where a sane drafter lands and occasionally trades down a
+      little -- the deficit is the accumulated cost of many small deliberate choices.
 
 Both fit "-10% on points". Only (a) is a defect. This measures which one it is, by recording,
 for every pick the engine makes, that player's RANK BY PROJECTED POINTS among the players still
 available at that moment.
+
+THE RANK IS USELESS WITHOUT A CONTROL RANK, and reporting it alone would be exactly the
+"plausible number about something else" this repo keeps catching. RAW PROJECTED POINTS ARE NOT
+COMPARABLE ACROSS POSITIONS: in most scoring a quarterback projects far more points than a
+running back, so a list of "available, ordered by projected points" is quarterback-heavy at the
+top, and a drafter who correctly takes the best WIDE RECEIVER can sit at rank 16 while doing
+nothing wrong at all. Measured on the first seat before this note was written: the engine's
+median rank was 16 -- a number that reads damning and means nothing on its own.
+
+So the CONTROL's rank is recorded at the control's own picks, on the identical measure. The
+control is `run_roster_proof.control_pick`: best projected points at an UNFILLED STARTING SLOT,
+which is position-aware and therefore also does not sit at rank 1. The comparison of the two
+distributions is the finding; either one alone is not.
 
 WHAT MAKES THE RANK MEANINGFUL: the population is the SHARED POOL (rule 2 of the proof) -- the
 players BOTH arms can price. A rank against a pool one arm cannot see would not be a rank.
@@ -52,7 +65,7 @@ SEATS_PER_FORMAT = 3
 
 def ranks_for_one_draft(merger, players_db, league, pick_order, seat, points, season,
                         rounds, slots) -> list[dict]:
-    """Re-draft the seat and record each engine pick's projection rank among the AVAILABLE.
+    """Re-draft the seat; return (engine rows, control rows), each a projection rank per pick.
 
     Deliberately re-implements run_one's loop rather than post-processing its output: the rank
     has to be taken against the pool as it stood AT THAT PICK, and a finished pick list cannot
@@ -64,6 +77,10 @@ def ranks_for_one_draft(merger, players_db, league, pick_order, seat, points, se
     taken: set[str] = set()
     mine: dict[str, list[str]] = {}
     out: list[dict] = []
+    control_rows: list[dict] = []
+    seat_order = [str(s) for s in pick_order[:len(set(str(r) for r in pick_order))]]
+    here = seat_order.index(str(seat))
+    control_seat = seat_order[(here + 1) % len(seat_order)]
     num_teams = len(set(str(r) for r in pick_order))
 
     for idx in range(min(len(pick_order), rounds * num_teams)):
@@ -102,13 +119,30 @@ def ranks_for_one_draft(merger, players_db, league, pick_order, seat, points, se
             free_ids = [pid for pid in points if pid not in taken]
             chosen = (rp.control_pick(free_ids, points, mine.get(who, []), players_db, slots)
                       if free_ids else None)
+            # THE CONTROL'S OWN RANK, on the identical measure. Only ONE control seat is
+            # recorded (the seat immediately after the engine's), so the two populations are
+            # the same size and one is not an average over eleven drafters while the other is
+            # a single one.
+            if chosen is not None and who == control_seat:
+                free = sorted((pid for pid in points if pid not in taken),
+                              key=lambda p: (-points[p], p))
+                control_rows.append({
+                    "round": round_no,
+                    "pick_no": idx + 1,
+                    "player_id": str(chosen),
+                    "projection_rank_among_available": free.index(str(chosen)) + 1,
+                    "available": len(free),
+                    "projected_points": round(points[str(chosen)], 2),
+                    "best_available_points": round(points[free[0]], 2),
+                    "points_forgone": round(points[free[0]] - points[str(chosen)], 2),
+                })
         if chosen is None:
             break
         taken.add(str(chosen))
         mine.setdefault(who, []).append(str(chosen))
         picks.append({"pick_no": idx + 1, "round": round_no, "roster_id": who,
                       "player_id": str(chosen)})
-    return out
+    return out, control_rows
 
 
 def summarise(rows: list[dict]) -> dict:
@@ -165,30 +199,41 @@ def main(argv=None) -> int:
         per_seat = []
         for seat in chosen_seats:
             t0 = time.time()
-            rows = ranks_for_one_draft(merger, players_db, league, pick_order, seat,
-                                       points, season, rounds, slots)
-            per_seat.append({"seat": seat, "summary": summarise(rows), "picks": rows,
+            rows, ctl_rows = ranks_for_one_draft(merger, players_db, league, pick_order, seat,
+                                                 points, season, rounds, slots)
+            per_seat.append({"seat": seat,
+                             "engine_summary": summarise(rows),
+                             "control_summary": summarise(ctl_rows),
+                             "engine_picks": rows, "control_picks": ctl_rows,
                              "seconds": round(time.time() - t0, 1)})
-            s = per_seat[-1]["summary"]
+            e = per_seat[-1]["engine_summary"]
+            c = per_seat[-1]["control_summary"]
+            # BOTH ARMS ON ONE LINE, always. A line showing only the engine's rank invites
+            # exactly the misreading this probe exists to prevent.
             print(f"{spec['label']:14s} seat {seat:>3s}  "
-                  f"top1 {s['rank_1']:2d}/{s['picks']:2d}  "
-                  f"top3 {s['rank_1_to_3']:2d}  top5 {s['rank_1_to_5']:2d}  "
-                  f"11+ {s['rank_11_plus']:2d}  median {s['median_rank']:3d}  "
-                  f"worst {s['worst_rank']:3d}  forgone/pick {s['mean_points_forgone']:7.2f}  "
-                  f"{per_seat[-1]['seconds']:6.1f}s", flush=True)
+                  f"ENGINE median {e['median_rank']:3d} worst {e['worst_rank']:3d} "
+                  f"top5 {e['rank_1_to_5']:2d}/{e['picks']:2d} forgone/pick {e['mean_points_forgone']:7.2f}"
+                  f"   |   CONTROL median {c['median_rank']:3d} worst {c['worst_rank']:3d} "
+                  f"top5 {c['rank_1_to_5']:2d}/{c['picks']:2d} forgone/pick {c['mean_points_forgone']:7.2f}"
+                  f"   {per_seat[-1]['seconds']:6.1f}s", flush=True)
 
-        pooled = [r for entry in per_seat for r in entry["picks"]]
+        pooled_eng = [r for entry in per_seat for r in entry["engine_picks"]]
+        pooled_ctl = [r for entry in per_seat for r in entry["control_picks"]]
         results.append({resume_join.PRODUCED_AT: commit, resume_join.CARRIED: False,
                         "label": spec["label"], "pool": len(points), "rounds": rounds,
                         "seats_measured": chosen_seats,
-                        "pooled_summary": summarise(pooled), "per_seat": per_seat})
+                        "pooled_engine": summarise(pooled_eng),
+                        "pooled_control": summarise(pooled_ctl),
+                        "per_seat": per_seat})
         # #213b/#215: after every format, never only on the last line.
         Path(args.out).write_text(json.dumps({
             "commit": commit,
             "commits_present": resume_join.commits_present(results),
             "universe": universe,
-            "question": "for each engine pick, its rank by projected points among players "
-                        "still available in the shared pool at that moment",
+            "question": "for each pick, its rank by projected points among players still "
+                        "available in the shared pool at that moment -- reported for the ENGINE "
+                        "and for the CONTROL, because raw projection rank is not comparable "
+                        "across positions and neither arm's number means anything alone",
             "seconds_this_process": round(time.time() - started, 1),
             "formats": results,
         }, indent=2, default=str), encoding="utf-8")

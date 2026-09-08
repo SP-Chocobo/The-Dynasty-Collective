@@ -1,0 +1,2199 @@
+{
+  "commit": "300fa38",
+  "commits_present": [
+    "300fa38"
+  ],
+  "universe": {
+    "source": "data/fixtures/sleeper_capture.json",
+    "captured_at": "2026-09-07T08:14:10.990206+00:00",
+    "season": "2026",
+    "players_in_capture": 6595,
+    "players_in_pool": 6595,
+    "injury_statuses_present": [
+      "DNR",
+      "IR",
+      "NA",
+      "Out",
+      "PUP",
+      "Questionable",
+      "Sus"
+    ]
+  },
+  "question": "for each pick, its rank by projected points among players still available in the shared pool at that moment -- reported for the ENGINE and for the CONTROL, because raw projection rank is not comparable across positions and neither arm's number means anything alone",
+  "seconds_this_process": 363.5,
+  "formats": [
+    {
+      "produced_at_commit": "300fa38",
+      "carried_forward": false,
+      "label": "12T_ppr",
+      "pool": 481,
+      "rounds": 14,
+      "seats_measured": [
+        "1",
+        "7",
+        "12"
+      ],
+      "pooled_engine": {
+        "picks": 42,
+        "rank_1": 1,
+        "rank_1_to_3": 5,
+        "rank_1_to_5": 8,
+        "rank_11_plus": 30,
+        "median_rank": 16,
+        "worst_rank": 41,
+        "mean_points_forgone": 59.73,
+        "max_points_forgone": 154.25,
+        "total_points_forgone": 2508.55,
+        "rank_histogram": {
+          "1": 1,
+          "2": 3,
+          "3": 1,
+          "4": 2,
+          "5": 1,
+          "6": 1,
+          "8": 1,
+          "9": 1,
+          "10": 1,
+          "12": 1,
+          "14": 1,
+          "15": 4,
+          "16": 4,
+          "17": 1,
+          "20": 2,
+          "21": 17
+        }
+      },
+      "pooled_control": {
+        "picks": 42,
+        "rank_1": 23,
+        "rank_1_to_3": 23,
+        "rank_1_to_5": 25,
+        "rank_11_plus": 16,
+        "median_rank": 1,
+        "worst_rank": 38,
+        "mean_points_forgone": 35.88,
+        "max_points_forgone": 145.51,
+        "total_points_forgone": 1506.92,
+        "rank_histogram": {
+          "1": 23,
+          "4": 2,
+          "8": 1,
+          "12": 1,
+          "15": 1,
+          "17": 4,
+          "19": 1,
+          "20": 4,
+          "21": 5
+        }
+      },
+      "per_seat": [
+        {
+          "seat": "1",
+          "engine_summary": {
+            "picks": 14,
+            "rank_1": 1,
+            "rank_1_to_3": 3,
+            "rank_1_to_5": 4,
+            "rank_11_plus": 9,
+            "median_rank": 16,
+            "worst_rank": 41,
+            "mean_points_forgone": 54.52,
+            "max_points_forgone": 154.25,
+            "total_points_forgone": 763.33,
+            "rank_histogram": {
+              "1": 1,
+              "2": 2,
+              "4": 1,
+              "9": 1,
+              "15": 1,
+              "16": 2,
+              "17": 1,
+              "20": 1,
+              "21": 4
+            }
+          },
+          "control_summary": {
+            "picks": 14,
+            "rank_1": 8,
+            "rank_1_to_3": 8,
+            "rank_1_to_5": 9,
+            "rank_11_plus": 5,
+            "median_rank": 1,
+            "worst_rank": 38,
+            "mean_points_forgone": 35.89,
+            "max_points_forgone": 145.51,
+            "total_points_forgone": 502.48,
+            "rank_histogram": {
+              "1": 8,
+              "4": 1,
+              "17": 2,
+              "20": 2,
+              "21": 1
+            }
+          },
+          "engine_picks": [
+            {
+              "round": 1,
+              "pick_no": 1,
+              "player_id": "9221",
+              "projection_rank_among_available": 2,
+              "available": 481,
+              "projected_points": 411.89,
+              "best_available_points": 413.24,
+              "points_forgone": 1.35
+            },
+            {
+              "round": 2,
+              "pick_no": 24,
+              "player_id": "11604",
+              "projection_rank_among_available": 9,
+              "available": 458,
+              "projected_points": 310.18,
+              "best_available_points": 328.6,
+              "points_forgone": 18.42
+            },
+            {
+              "round": 3,
+              "pick_no": 25,
+              "player_id": "8130",
+              "projection_rank_among_available": 15,
+              "available": 457,
+              "projected_points": 300.85,
+              "best_available_points": 328.6,
+              "points_forgone": 27.75
+            },
+            {
+              "round": 4,
+              "pick_no": 48,
+              "player_id": "7588",
+              "projection_rank_among_available": 17,
+              "available": 434,
+              "projected_points": 259.99,
+              "best_available_points": 328.6,
+              "points_forgone": 68.61
+            },
+            {
+              "round": 5,
+              "pick_no": 49,
+              "player_id": "12518",
+              "projection_rank_among_available": 28,
+              "available": 433,
+              "projected_points": 245.07,
+              "best_available_points": 328.6,
+              "points_forgone": 83.53
+            },
+            {
+              "round": 6,
+              "pick_no": 72,
+              "player_id": "4217",
+              "projection_rank_among_available": 20,
+              "available": 410,
+              "projected_points": 224.49,
+              "best_available_points": 328.6,
+              "points_forgone": 104.11
+            },
+            {
+              "round": 7,
+              "pick_no": 73,
+              "player_id": "7553",
+              "projection_rank_among_available": 23,
+              "available": 409,
+              "projected_points": 216.6,
+              "best_available_points": 328.6,
+              "points_forgone": 112.0
+            },
+            {
+              "round": 8,
+              "pick_no": 96,
+              "player_id": "12489",
+              "projection_rank_among_available": 32,
+              "available": 386,
+              "projected_points": 192.68,
+              "best_available_points": 328.6,
+              "points_forgone": 135.92
+            },
+            {
+              "round": 9,
+              "pick_no": 97,
+              "player_id": "10236",
+              "projection_rank_among_available": 41,
+              "available": 385,
+              "projected_points": 174.35,
+              "best_available_points": 328.6,
+              "points_forgone": 154.25
+            },
+            {
+              "round": 10,
+              "pick_no": 120,
+              "player_id": "11603",
+              "projection_rank_among_available": 16,
+              "available": 362,
+              "projected_points": 179.46,
+              "best_available_points": 204.37,
+              "points_forgone": 24.91
+            },
+            {
+              "round": 11,
+              "pick_no": 121,
+              "player_id": "8210",
+              "projection_rank_among_available": 16,
+              "available": 361,
+              "projected_points": 177.58,
+              "best_available_points": 204.37,
+              "points_forgone": 26.79
+            },
+            {
+              "round": 12,
+              "pick_no": 144,
+              "player_id": "11834",
+              "projection_rank_among_available": 2,
+              "available": 338,
+              "projected_points": 165.01,
+              "best_available_points": 165.07,
+              "points_forgone": 0.06
+            },
+            {
+              "round": 13,
+              "pick_no": 145,
+              "player_id": "13298",
+              "projection_rank_among_available": 1,
+              "available": 337,
+              "projected_points": 165.07,
+              "best_available_points": 165.07,
+              "points_forgone": 0.0
+            },
+            {
+              "round": 14,
+              "pick_no": 168,
+              "player_id": "11559",
+              "projection_rank_among_available": 4,
+              "available": 314,
+              "projected_points": 129.0,
+              "best_available_points": 134.63,
+              "points_forgone": 5.63
+            }
+          ],
+          "control_picks": [
+            {
+              "round": 1,
+              "pick_no": 2,
+              "player_id": "4034",
+              "projection_rank_among_available": 1,
+              "available": 480,
+              "projected_points": 413.24,
+              "best_available_points": 413.24,
+              "points_forgone": 0.0
+            },
+            {
+              "round": 2,
+              "pick_no": 23,
+              "player_id": "12508",
+              "projection_rank_among_available": 1,
+              "available": 459,
+              "projected_points": 329.01,
+              "best_available_points": 329.01,
+              "points_forgone": 0.0
+            },
+            {
+              "round": 3,
+              "pick_no": 26,
+              "player_id": "9224",
+              "projection_rank_among_available": 4,
+              "available": 456,
+              "projected_points": 315.98,
+              "best_available_points": 328.6,
+              "points_forgone": 12.62
+            },
+            {
+              "round": 4,
+              "pick_no": 47,
+              "player_id": "5927",
+              "projection_rank_among_available": 17,
+              "available": 435,
+              "projected_points": 261.09,
+              "best_available_points": 328.6,
+              "points_forgone": 67.51
+            },
+            {
+              "round": 5,
+              "pick_no": 50,
+              "player_id": "5892",
+              "projection_rank_among_available": 17,
+              "available": 432,
+              "projected_points": 259.92,
+              "best_available_points": 328.6,
+              "points_forgone": 68.68
+            },
+            {
+              "round": 6,
+              "pick_no": 71,
+              "player_id": "8142",
+              "projection_rank_among_available": 20,
+              "available": 411,
+              "projected_points": 225.49,
+              "best_available_points": 328.6,
+              "points_forgone": 103.11
+            },
+            {
+              "round": 7,
+              "pick_no": 74,
+              "player_id": "11584",
+              "projection_rank_among_available": 20,
+              "available": 408,
+              "projected_points": 223.55,
+              "best_available_points": 328.6,
+              "points_forgone": 105.05
+            },
+            {
+              "round": 8,
+              "pick_no": 95,
+              "player_id": "5022",
+              "projection_rank_among_available": 38,
+              "available": 387,
+              "projected_points": 183.09,
+              "best_available_points": 328.6,
+              "points_forgone": 145.51
+            },
+            {
+              "round": 9,
+              "pick_no": 98,
+              "player_id": "4046",
+              "projection_rank_among_available": 1,
+              "available": 384,
+              "projected_points": 328.6,
+              "best_available_points": 328.6,
+              "points_forgone": 0.0
+            },
+            {
+              "round": 10,
+              "pick_no": 119,
+              "player_id": "4037",
+              "projection_rank_among_available": 1,
+              "available": 363,
+              "projected_points": 206.7,
+              "best_available_points": 206.7,
+              "points_forgone": 0.0
+            },
+            {
+              "round": 11,
+              "pick_no": 122,
+              "player_id": "9754",
+              "projection_rank_among_available": 1,
+              "available": 360,
+              "projected_points": 204.37,
+              "best_available_points": 204.37,
+              "points_forgone": 0.0
+            },
+            {
+              "round": 12,
+              "pick_no": 143,
+              "player_id": "8408",
+              "projection_rank_among_available": 1,
+              "available": 339,
+              "projected_points": 165.82,
+              "best_available_points": 165.82,
+              "points_forgone": 0.0
+            },
+            {
+              "round": 13,
+              "pick_no": 146,
+              "player_id": "12533",
+              "projection_rank_among_available": 1,
+              "available": 336,
+              "projected_points": 163.82,
+              "best_available_points": 163.82,
+              "points_forgone": 0.0
+            },
+            {
+              "round": 14,
+              "pick_no": 167,
+              "player_id": "7571",
+              "projection_rank_among_available": 1,
+              "available": 315,
+              "projected_points": 134.81,
+              "best_available_points": 134.81,
+              "points_forgone": 0.0
+            }
+          ],
+          "seconds": 52.2
+        },
+        {
+          "seat": "7",
+          "engine_summary": {
+            "picks": 14,
+            "rank_1": 0,
+            "rank_1_to_3": 0,
+            "rank_1_to_5": 2,
+            "rank_11_plus": 10,
+            "median_rank": 20,
+            "worst_rank": 35,
+            "mean_points_forgone": 60.96,
+            "max_points_forgone": 132.86,
+            "total_points_forgone": 853.44,
+            "rank_histogram": {
+              "4": 1,
+              "5": 1,
+              "8": 1,
+              "10": 1,
+              "15": 2,
+              "16": 1,
+              "20": 1,
+              "21": 6
+            }
+          },
+          "control_summary": {
+            "picks": 14,
+            "rank_1": 7,
+            "rank_1_to_3": 7,
+            "rank_1_to_5": 7,
+            "rank_11_plus": 6,
+            "median_rank": 8,
+            "worst_rank": 21,
+            "mean_points_forgone": 37.34,
+            "max_points_forgone": 116.22,
+            "total_points_forgone": 522.78,
+            "rank_histogram": {
+              "1": 7,
+              "8": 1,
+              "12": 1,
+              "15": 1,
+              "19": 1,
+              "20": 1,
+              "21": 2
+            }
+          },
+          "engine_picks": [
+            {
+              "round": 1,
+              "pick_no": 7,
+              "player_id": "6813",
+              "projection_rank_among_available": 5,
+              "available": 475,
+              "projected_points": 355.92,
+              "best_available_points": 372.46,
+              "points_forgone": 16.54
+            },
+            {
+              "round": 2,
+              "pick_no": 18,
+              "player_id": "11604",
+              "projection_rank_among_available": 15,
+              "available": 464,
+              "projected_points": 310.18,
+              "best_available_points": 344.52,
+              "points_forgone": 34.34
+            },
+            {
+              "round": 3,
+              "pick_no": 31,
+              "player_id": "13287",
+              "projection_rank_among_available": 15,
+              "available": 451,
+              "projected_points": 288.47,
+              "best_available_points": 328.6,
+              "points_forgone": 40.13
+            },
+            {
+              "round": 4,
+              "pick_no": 42,
+              "player_id": "12517",
+              "projection_rank_among_available": 16,
+              "available": 440,
+              "projected_points": 265.23,
+              "best_available_points": 328.6,
+              "points_forgone": 63.37
+            },
+            {
+              "round": 5,
+              "pick_no": 55,
+              "player_id": "12518",
+              "projection_rank_among_available": 22,
+              "available": 427,
+              "projected_points": 245.07,
+              "best_available_points": 328.6,
+              "points_forgone": 83.53
+            },
+            {
+              "round": 6,
+              "pick_no": 66,
+              "player_id": "10859",
+              "projection_rank_among_available": 20,
+              "available": 416,
+              "projected_points": 230.85,
+              "best_available_points": 328.6,
+              "points_forgone": 97.75
+            },
+            {
+              "round": 7,
+              "pick_no": 79,
+              "player_id": "12506",
+              "projection_rank_among_available": 35,
+              "available": 403,
+              "projected_points": 201.22,
+              "best_available_points": 328.6,
+              "points_forgone": 127.38
+            },
+            {
+              "round": 8,
+              "pick_no": 90,
+              "player_id": "12490",
+              "projection_rank_among_available": 28,
+              "available": 392,
+              "projected_points": 201.41,
+              "best_available_points": 328.6,
+              "points_forgone": 127.19
+            },
+            {
+              "round": 9,
+              "pick_no": 103,
+              "player_id": "10236",
+              "projection_rank_among_available": 35,
+              "available": 379,
+              "projected_points": 174.35,
+              "best_available_points": 307.21,
+              "points_forgone": 132.86
+            },
+            {
+              "round": 10,
+              "pick_no": 114,
+              "player_id": "11603",
+              "projection_rank_among_available": 22,
+              "available": 368,
+              "projected_points": 179.46,
+              "best_available_points": 256.47,
+              "points_forgone": 77.01
+            },
+            {
+              "round": 11,
+              "pick_no": 127,
+              "player_id": "8210",
+              "projection_rank_among_available": 10,
+              "available": 355,
+              "projected_points": 177.58,
+              "best_available_points": 194.53,
+              "points_forgone": 16.95
+            },
+            {
+              "round": 12,
+              "pick_no": 138,
+              "player_id": "8676",
+              "projection_rank_among_available": 4,
+              "available": 344,
+              "projected_points": 170.24,
+              "best_available_points": 173.0,
+              "points_forgone": 2.76
+            },
+            {
+              "round": 13,
+              "pick_no": 151,
+              "player_id": "11559",
+              "projection_rank_among_available": 21,
+              "available": 331,
+              "projected_points": 129.0,
+              "best_available_points": 155.76,
+              "points_forgone": 26.76
+            },
+            {
+              "round": 14,
+              "pick_no": 162,
+              "player_id": "13417",
+              "projection_rank_among_available": 8,
+              "available": 320,
+              "projected_points": 134.63,
+              "best_available_points": 141.5,
+              "points_forgone": 6.87
+            }
+          ],
+          "control_picks": [
+            {
+              "round": 1,
+              "pick_no": 8,
+              "player_id": "4984",
+              "projection_rank_among_available": 1,
+              "available": 474,
+              "projected_points": 372.46,
+              "best_available_points": 372.46,
+              "points_forgone": 0.0
+            },
+            {
+              "round": 2,
+              "pick_no": 17,
+              "player_id": "8138",
+              "projection_rank_among_available": 8,
+              "available": 465,
+              "projected_points": 317.88,
+              "best_available_points": 344.52,
+              "points_forgone": 26.64
+            },
+            {
+              "round": 3,
+              "pick_no": 32,
+              "player_id": "10229",
+              "projection_rank_among_available": 12,
+              "available": 450,
+              "projected_points": 295.51,
+              "best_available_points": 328.6,
+              "points_forgone": 33.09
+            },
+            {
+              "round": 4,
+              "pick_no": 41,
+              "player_id": "4866",
+              "projection_rank_among_available": 15,
+              "available": 441,
+              "projected_points": 274.62,
+              "best_available_points": 328.6,
+              "points_forgone": 53.98
+            },
+            {
+              "round": 5,
+              "pick_no": 56,
+              "player_id": "2216",
+              "projection_rank_among_available": 19,
+              "available": 426,
+              "projected_points": 246.73,
+              "best_available_points": 328.6,
+              "points_forgone": 81.87
+            },
+            {
+              "round": 6,
+              "pick_no": 65,
+              "player_id": "9484",
+              "projection_rank_among_available": 20,
+              "available": 417,
+              "projected_points": 231.17,
+              "best_available_points": 328.6,
+              "points_forgone": 97.43
+            },
+            {
+              "round": 7,
+              "pick_no": 80,
+              "player_id": "9487",
+              "projection_rank_among_available": 21,
+              "available": 402,
+              "projected_points": 215.05,
+              "best_available_points": 328.6,
+              "points_forgone": 113.55
+            },
+            {
+              "round": 8,
+              "pick_no": 89,
+              "player_id": "11620",
+              "projection_rank_among_available": 21,
+              "available": 393,
+              "projected_points": 212.38,
+              "best_available_points": 328.6,
+              "points_forgone": 116.22
+            },
+            {
+              "round": 9,
+              "pick_no": 104,
+              "player_id": "4943",
+              "projection_rank_among_available": 1,
+              "available": 378,
+              "projected_points": 307.21,
+              "best_available_points": 307.21,
+              "points_forgone": 0.0
+            },
+            {
+              "round": 10,
+              "pick_no": 113,
+              "player_id": "96",
+              "projection_rank_among_available": 1,
+              "available": 369,
+              "projected_points": 262.49,
+              "best_available_points": 262.49,
+              "points_forgone": 0.0
+            },
+            {
+              "round": 11,
+              "pick_no": 128,
+              "player_id": "5947",
+              "projection_rank_among_available": 1,
+              "available": 354,
+              "projected_points": 194.53,
+              "best_available_points": 194.53,
+              "points_forgone": 0.0
+            },
+            {
+              "round": 12,
+              "pick_no": 137,
+              "player_id": "7567",
+              "projection_rank_among_available": 1,
+              "available": 345,
+              "projected_points": 176.98,
+              "best_available_points": 176.98,
+              "points_forgone": 0.0
+            },
+            {
+              "round": 13,
+              "pick_no": 152,
+              "player_id": "8180",
+              "projection_rank_among_available": 1,
+              "available": 330,
+              "projected_points": 155.76,
+              "best_available_points": 155.76,
+              "points_forgone": 0.0
+            },
+            {
+              "round": 14,
+              "pick_no": 161,
+              "player_id": "9508",
+              "projection_rank_among_available": 1,
+              "available": 321,
+              "projected_points": 142.25,
+              "best_available_points": 142.25,
+              "points_forgone": 0.0
+            }
+          ],
+          "seconds": 50.4
+        },
+        {
+          "seat": "12",
+          "engine_summary": {
+            "picks": 14,
+            "rank_1": 0,
+            "rank_1_to_3": 2,
+            "rank_1_to_5": 2,
+            "rank_11_plus": 11,
+            "median_rank": 21,
+            "worst_rank": 38,
+            "mean_points_forgone": 63.7,
+            "max_points_forgone": 135.92,
+            "total_points_forgone": 891.78,
+            "rank_histogram": {
+              "2": 1,
+              "3": 1,
+              "6": 1,
+              "12": 1,
+              "14": 1,
+              "15": 1,
+              "16": 1,
+              "21": 7
+            }
+          },
+          "control_summary": {
+            "picks": 14,
+            "rank_1": 8,
+            "rank_1_to_3": 8,
+            "rank_1_to_5": 9,
+            "rank_11_plus": 5,
+            "median_rank": 1,
+            "worst_rank": 22,
+            "mean_points_forgone": 34.4,
+            "max_points_forgone": 121.9,
+            "total_points_forgone": 481.66,
+            "rank_histogram": {
+              "1": 8,
+              "4": 1,
+              "17": 2,
+              "20": 1,
+              "21": 2
+            }
+          },
+          "engine_picks": [
+            {
+              "round": 1,
+              "pick_no": 12,
+              "player_id": "11604",
+              "projection_rank_among_available": 21,
+              "available": 470,
+              "projected_points": 310.18,
+              "best_available_points": 352.94,
+              "points_forgone": 42.76
+            },
+            {
+              "round": 2,
+              "pick_no": 13,
+              "player_id": "9226",
+              "projection_rank_among_available": 12,
+              "available": 469,
+              "projected_points": 318.16,
+              "best_available_points": 352.94,
+              "points_forgone": 34.78
+            },
+            {
+              "round": 3,
+              "pick_no": 36,
+              "player_id": "8151",
+              "projection_rank_among_available": 14,
+              "available": 446,
+              "projected_points": 283.51,
+              "best_available_points": 328.6,
+              "points_forgone": 45.09
+            },
+            {
+              "round": 4,
+              "pick_no": 37,
+              "player_id": "12507",
+              "projection_rank_among_available": 16,
+              "available": 445,
+              "projected_points": 280.46,
+              "best_available_points": 328.6,
+              "points_forgone": 48.14
+            },
+            {
+              "round": 5,
+              "pick_no": 60,
+              "player_id": "12512",
+              "projection_rank_among_available": 22,
+              "available": 422,
+              "projected_points": 233.19,
+              "best_available_points": 328.6,
+              "points_forgone": 95.41
+            },
+            {
+              "round": 6,
+              "pick_no": 61,
+              "player_id": "7543",
+              "projection_rank_among_available": 22,
+              "available": 421,
+              "projected_points": 231.91,
+              "best_available_points": 328.6,
+              "points_forgone": 96.69
+            },
+            {
+              "round": 7,
+              "pick_no": 84,
+              "player_id": "12506",
+              "projection_rank_among_available": 30,
+              "available": 398,
+              "projected_points": 201.22,
+              "best_available_points": 328.6,
+              "points_forgone": 127.38
+            },
+            {
+              "round": 8,
+              "pick_no": 85,
+              "player_id": "12489",
+              "projection_rank_among_available": 38,
+              "available": 397,
+              "projected_points": 192.68,
+              "best_available_points": 328.6,
+              "points_forgone": 135.92
+            },
+            {
+              "round": 9,
+              "pick_no": 108,
+              "player_id": "7594",
+              "projection_rank_among_available": 22,
+              "available": 374,
+              "projected_points": 185.64,
+              "best_available_points": 294.46,
+              "points_forgone": 108.82
+            },
+            {
+              "round": 10,
+              "pick_no": 109,
+              "player_id": "13286",
+              "projection_rank_among_available": 32,
+              "available": 373,
+              "projected_points": 171.04,
+              "best_available_points": 294.46,
+              "points_forgone": 123.42
+            },
+            {
+              "round": 11,
+              "pick_no": 132,
+              "player_id": "7567",
+              "projection_rank_among_available": 6,
+              "available": 350,
+              "projected_points": 176.98,
+              "best_available_points": 184.32,
+              "points_forgone": 7.34
+            },
+            {
+              "round": 12,
+              "pick_no": 133,
+              "player_id": "10213",
+              "projection_rank_among_available": 3,
+              "available": 349,
+              "projected_points": 180.19,
+              "best_available_points": 184.32,
+              "points_forgone": 4.13
+            },
+            {
+              "round": 13,
+              "pick_no": 156,
+              "player_id": "4039",
+              "projection_rank_among_available": 2,
+              "available": 326,
+              "projected_points": 149.1,
+              "best_available_points": 150.0,
+              "points_forgone": 0.9
+            },
+            {
+              "round": 14,
+              "pick_no": 157,
+              "player_id": "11559",
+              "projection_rank_among_available": 15,
+              "available": 325,
+              "projected_points": 129.0,
+              "best_available_points": 150.0,
+              "points_forgone": 21.0
+            }
+          ],
+          "control_picks": [
+            {
+              "round": 1,
+              "pick_no": 1,
+              "player_id": "4034",
+              "projection_rank_among_available": 1,
+              "available": 481,
+              "projected_points": 413.24,
+              "best_available_points": 413.24,
+              "points_forgone": 0.0
+            },
+            {
+              "round": 2,
+              "pick_no": 24,
+              "player_id": "12508",
+              "projection_rank_among_available": 1,
+              "available": 458,
+              "projected_points": 329.01,
+              "best_available_points": 329.01,
+              "points_forgone": 0.0
+            },
+            {
+              "round": 3,
+              "pick_no": 25,
+              "player_id": "9224",
+              "projection_rank_among_available": 4,
+              "available": 457,
+              "projected_points": 315.98,
+              "best_available_points": 328.6,
+              "points_forgone": 12.62
+            },
+            {
+              "round": 4,
+              "pick_no": 48,
+              "player_id": "7588",
+              "projection_rank_among_available": 17,
+              "available": 434,
+              "projected_points": 259.99,
+              "best_available_points": 328.6,
+              "points_forgone": 68.61
+            },
+            {
+              "round": 5,
+              "pick_no": 49,
+              "player_id": "5892",
+              "projection_rank_among_available": 17,
+              "available": 433,
+              "projected_points": 259.92,
+              "best_available_points": 328.6,
+              "points_forgone": 68.68
+            },
+            {
+              "round": 6,
+              "pick_no": 72,
+              "player_id": "4217",
+              "projection_rank_among_available": 20,
+              "available": 410,
+              "projected_points": 224.49,
+              "best_available_points": 328.6,
+              "points_forgone": 104.11
+            },
+            {
+              "round": 7,
+              "pick_no": 73,
+              "player_id": "11646",
+              "projection_rank_among_available": 21,
+              "available": 409,
+              "projected_points": 222.86,
+              "best_available_points": 328.6,
+              "points_forgone": 105.74
+            },
+            {
+              "round": 8,
+              "pick_no": 96,
+              "player_id": "4037",
+              "projection_rank_among_available": 22,
+              "available": 386,
+              "projected_points": 206.7,
+              "best_available_points": 328.6,
+              "points_forgone": 121.9
+            },
+            {
+              "round": 9,
+              "pick_no": 97,
+              "player_id": "4046",
+              "projection_rank_among_available": 1,
+              "available": 385,
+              "projected_points": 328.6,
+              "best_available_points": 328.6,
+              "points_forgone": 0.0
+            },
+            {
+              "round": 10,
+              "pick_no": 120,
+              "player_id": "9754",
+              "projection_rank_among_available": 1,
+              "available": 362,
+              "projected_points": 204.37,
+              "best_available_points": 204.37,
+              "points_forgone": 0.0
+            },
+            {
+              "round": 11,
+              "pick_no": 121,
+              "player_id": "11631",
+              "projection_rank_among_available": 1,
+              "available": 361,
+              "projected_points": 201.64,
+              "best_available_points": 201.64,
+              "points_forgone": 0.0
+            },
+            {
+              "round": 12,
+              "pick_no": 144,
+              "player_id": "13298",
+              "projection_rank_among_available": 1,
+              "available": 338,
+              "projected_points": 165.07,
+              "best_available_points": 165.07,
+              "points_forgone": 0.0
+            },
+            {
+              "round": 13,
+              "pick_no": 145,
+              "player_id": "11834",
+              "projection_rank_among_available": 1,
+              "available": 337,
+              "projected_points": 165.01,
+              "best_available_points": 165.01,
+              "points_forgone": 0.0
+            },
+            {
+              "round": 14,
+              "pick_no": 168,
+              "player_id": "7571",
+              "projection_rank_among_available": 1,
+              "available": 314,
+              "projected_points": 134.81,
+              "best_available_points": 134.81,
+              "points_forgone": 0.0
+            }
+          ],
+          "seconds": 49.8
+        }
+      ]
+    },
+    {
+      "produced_at_commit": "300fa38",
+      "carried_forward": false,
+      "label": "12T_ppr_SF",
+      "pool": 481,
+      "rounds": 15,
+      "seats_measured": [
+        "1",
+        "7",
+        "12"
+      ],
+      "pooled_engine": {
+        "picks": 45,
+        "rank_1": 18,
+        "rank_1_to_3": 25,
+        "rank_1_to_5": 30,
+        "rank_11_plus": 7,
+        "median_rank": 2,
+        "worst_rank": 21,
+        "mean_points_forgone": 8.86,
+        "max_points_forgone": 42.76,
+        "total_points_forgone": 398.92,
+        "rank_histogram": {
+          "1": 18,
+          "2": 5,
+          "3": 2,
+          "4": 1,
+          "5": 4,
+          "6": 1,
+          "7": 2,
+          "9": 4,
+          "10": 1,
+          "11": 2,
+          "12": 1,
+          "13": 1,
+          "15": 1,
+          "17": 1,
+          "21": 1
+        }
+      },
+      "pooled_control": {
+        "picks": 45,
+        "rank_1": 29,
+        "rank_1_to_3": 30,
+        "rank_1_to_5": 33,
+        "rank_11_plus": 2,
+        "median_rank": 1,
+        "worst_rank": 17,
+        "mean_points_forgone": 14.18,
+        "max_points_forgone": 68.24,
+        "total_points_forgone": 638.19,
+        "rank_histogram": {
+          "1": 29,
+          "2": 1,
+          "4": 1,
+          "5": 2,
+          "6": 5,
+          "7": 2,
+          "8": 2,
+          "9": 1,
+          "16": 1,
+          "17": 1
+        }
+      },
+      "per_seat": [
+        {
+          "seat": "1",
+          "engine_summary": {
+            "picks": 15,
+            "rank_1": 6,
+            "rank_1_to_3": 9,
+            "rank_1_to_5": 10,
+            "rank_11_plus": 2,
+            "median_rank": 2,
+            "worst_rank": 12,
+            "mean_points_forgone": 7.13,
+            "max_points_forgone": 34.44,
+            "total_points_forgone": 106.96,
+            "rank_histogram": {
+              "1": 6,
+              "2": 2,
+              "3": 1,
+              "5": 1,
+              "9": 3,
+              "11": 1,
+              "12": 1
+            }
+          },
+          "control_summary": {
+            "picks": 15,
+            "rank_1": 10,
+            "rank_1_to_3": 10,
+            "rank_1_to_5": 11,
+            "rank_11_plus": 1,
+            "median_rank": 1,
+            "worst_rank": 16,
+            "mean_points_forgone": 16.01,
+            "max_points_forgone": 68.24,
+            "total_points_forgone": 240.08,
+            "rank_histogram": {
+              "1": 10,
+              "5": 1,
+              "6": 1,
+              "8": 2,
+              "16": 1
+            }
+          },
+          "engine_picks": [
+            {
+              "round": 1,
+              "pick_no": 1,
+              "player_id": "9221",
+              "projection_rank_among_available": 2,
+              "available": 481,
+              "projected_points": 411.89,
+              "best_available_points": 413.24,
+              "points_forgone": 1.35
+            },
+            {
+              "round": 2,
+              "pick_no": 24,
+              "player_id": "11604",
+              "projection_rank_among_available": 9,
+              "available": 458,
+              "projected_points": 310.18,
+              "best_available_points": 317.88,
+              "points_forgone": 7.7
+            },
+            {
+              "round": 3,
+              "pick_no": 25,
+              "player_id": "8138",
+              "projection_rank_among_available": 1,
+              "available": 457,
+              "projected_points": 317.88,
+              "best_available_points": 317.88,
+              "points_forgone": 0.0
+            },
+            {
+              "round": 4,
+              "pick_no": 48,
+              "player_id": "12507",
+              "projection_rank_among_available": 5,
+              "available": 434,
+              "projected_points": 280.46,
+              "best_available_points": 299.67,
+              "points_forgone": 19.21
+            },
+            {
+              "round": 5,
+              "pick_no": 49,
+              "player_id": "12517",
+              "projection_rank_among_available": 9,
+              "available": 433,
+              "projected_points": 265.23,
+              "best_available_points": 299.67,
+              "points_forgone": 34.44
+            },
+            {
+              "round": 6,
+              "pick_no": 72,
+              "player_id": "9758",
+              "projection_rank_among_available": 1,
+              "available": 410,
+              "projected_points": 294.46,
+              "best_available_points": 294.46,
+              "points_forgone": 0.0
+            },
+            {
+              "round": 7,
+              "pick_no": 73,
+              "player_id": "8161",
+              "projection_rank_among_available": 1,
+              "available": 409,
+              "projected_points": 289.64,
+              "best_available_points": 289.64,
+              "points_forgone": 0.0
+            },
+            {
+              "round": 8,
+              "pick_no": 96,
+              "player_id": "5870",
+              "projection_rank_among_available": 1,
+              "available": 386,
+              "projected_points": 281.89,
+              "best_available_points": 281.89,
+              "points_forgone": 0.0
+            },
+            {
+              "round": 9,
+              "pick_no": 97,
+              "player_id": "9228",
+              "projection_rank_among_available": 1,
+              "available": 385,
+              "projected_points": 265.02,
+              "best_available_points": 265.02,
+              "points_forgone": 0.0
+            },
+            {
+              "round": 10,
+              "pick_no": 120,
+              "player_id": "8131",
+              "projection_rank_among_available": 11,
+              "available": 362,
+              "projected_points": 184.73,
+              "best_available_points": 199.65,
+              "points_forgone": 14.92
+            },
+            {
+              "round": 11,
+              "pick_no": 121,
+              "player_id": "5022",
+              "projection_rank_among_available": 12,
+              "available": 361,
+              "projected_points": 183.09,
+              "best_available_points": 199.65,
+              "points_forgone": 16.56
+            },
+            {
+              "round": 12,
+              "pick_no": 144,
+              "player_id": "11834",
+              "projection_rank_among_available": 2,
+              "available": 338,
+              "projected_points": 165.01,
+              "best_available_points": 165.07,
+              "points_forgone": 0.06
+            },
+            {
+              "round": 13,
+              "pick_no": 145,
+              "player_id": "5844",
+              "projection_rank_among_available": 3,
+              "available": 337,
+              "projected_points": 162.65,
+              "best_available_points": 165.07,
+              "points_forgone": 2.42
+            },
+            {
+              "round": 14,
+              "pick_no": 168,
+              "player_id": "8172",
+              "projection_rank_among_available": 9,
+              "available": 314,
+              "projected_points": 124.33,
+              "best_available_points": 134.63,
+              "points_forgone": 10.3
+            },
+            {
+              "round": 15,
+              "pick_no": 169,
+              "player_id": "13417",
+              "projection_rank_among_available": 1,
+              "available": 313,
+              "projected_points": 134.63,
+              "best_available_points": 134.63,
+              "points_forgone": 0.0
+            }
+          ],
+          "control_picks": [
+            {
+              "round": 1,
+              "pick_no": 2,
+              "player_id": "4034",
+              "projection_rank_among_available": 1,
+              "available": 480,
+              "projected_points": 413.24,
+              "best_available_points": 413.24,
+              "points_forgone": 0.0
+            },
+            {
+              "round": 2,
+              "pick_no": 23,
+              "player_id": "9226",
+              "projection_rank_among_available": 1,
+              "available": 459,
+              "projected_points": 318.16,
+              "best_available_points": 318.16,
+              "points_forgone": 0.0
+            },
+            {
+              "round": 3,
+              "pick_no": 26,
+              "player_id": "6804",
+              "projection_rank_among_available": 1,
+              "available": 456,
+              "projected_points": 317.36,
+              "best_available_points": 317.36,
+              "points_forgone": 0.0
+            },
+            {
+              "round": 4,
+              "pick_no": 47,
+              "player_id": "4892",
+              "projection_rank_among_available": 1,
+              "available": 435,
+              "projected_points": 301.24,
+              "best_available_points": 301.24,
+              "points_forgone": 0.0
+            },
+            {
+              "round": 5,
+              "pick_no": 50,
+              "player_id": "7526",
+              "projection_rank_among_available": 5,
+              "available": 432,
+              "projected_points": 278.41,
+              "best_available_points": 299.67,
+              "points_forgone": 21.26
+            },
+            {
+              "round": 6,
+              "pick_no": 71,
+              "player_id": "11635",
+              "projection_rank_among_available": 8,
+              "available": 411,
+              "projected_points": 244.27,
+              "best_available_points": 294.46,
+              "points_forgone": 50.19
+            },
+            {
+              "round": 7,
+              "pick_no": 74,
+              "player_id": "11632",
+              "projection_rank_among_available": 6,
+              "available": 408,
+              "projected_points": 242.77,
+              "best_available_points": 281.89,
+              "points_forgone": 39.12
+            },
+            {
+              "round": 8,
+              "pick_no": 95,
+              "player_id": "10232",
+              "projection_rank_among_available": 8,
+              "available": 387,
+              "projected_points": 213.65,
+              "best_available_points": 281.89,
+              "points_forgone": 68.24
+            },
+            {
+              "round": 9,
+              "pick_no": 98,
+              "player_id": "12506",
+              "projection_rank_among_available": 16,
+              "available": 384,
+              "projected_points": 201.22,
+              "best_available_points": 262.49,
+              "points_forgone": 61.27
+            },
+            {
+              "round": 10,
+              "pick_no": 119,
+              "player_id": "6819",
+              "projection_rank_among_available": 1,
+              "available": 363,
+              "projected_points": 200.64,
+              "best_available_points": 200.64,
+              "points_forgone": 0.0
+            },
+            {
+              "round": 11,
+              "pick_no": 122,
+              "player_id": "5045",
+              "projection_rank_among_available": 1,
+              "available": 360,
+              "projected_points": 199.65,
+              "best_available_points": 199.65,
+              "points_forgone": 0.0
+            },
+            {
+              "round": 12,
+              "pick_no": 143,
+              "player_id": "8408",
+              "projection_rank_among_available": 1,
+              "available": 339,
+              "projected_points": 165.82,
+              "best_available_points": 165.82,
+              "points_forgone": 0.0
+            },
+            {
+              "round": 13,
+              "pick_no": 146,
+              "player_id": "13298",
+              "projection_rank_among_available": 1,
+              "available": 336,
+              "projected_points": 165.07,
+              "best_available_points": 165.07,
+              "points_forgone": 0.0
+            },
+            {
+              "round": 14,
+              "pick_no": 167,
+              "player_id": "7571",
+              "projection_rank_among_available": 1,
+              "available": 315,
+              "projected_points": 134.81,
+              "best_available_points": 134.81,
+              "points_forgone": 0.0
+            },
+            {
+              "round": 15,
+              "pick_no": 170,
+              "player_id": "13294",
+              "projection_rank_among_available": 1,
+              "available": 312,
+              "projected_points": 129.65,
+              "best_available_points": 129.65,
+              "points_forgone": 0.0
+            }
+          ],
+          "seconds": 57.0
+        },
+        {
+          "seat": "7",
+          "engine_summary": {
+            "picks": 15,
+            "rank_1": 5,
+            "rank_1_to_3": 7,
+            "rank_1_to_5": 9,
+            "rank_11_plus": 3,
+            "median_rank": 4,
+            "worst_rank": 17,
+            "mean_points_forgone": 8.55,
+            "max_points_forgone": 27.69,
+            "total_points_forgone": 128.28,
+            "rank_histogram": {
+              "1": 5,
+              "2": 1,
+              "3": 1,
+              "4": 1,
+              "5": 1,
+              "6": 1,
+              "7": 1,
+              "9": 1,
+              "11": 1,
+              "15": 1,
+              "17": 1
+            }
+          },
+          "control_summary": {
+            "picks": 15,
+            "rank_1": 8,
+            "rank_1_to_3": 9,
+            "rank_1_to_5": 11,
+            "rank_11_plus": 0,
+            "median_rank": 1,
+            "worst_rank": 9,
+            "mean_points_forgone": 13.91,
+            "max_points_forgone": 42.41,
+            "total_points_forgone": 208.58,
+            "rank_histogram": {
+              "1": 8,
+              "2": 1,
+              "4": 1,
+              "5": 1,
+              "6": 2,
+              "7": 1,
+              "9": 1
+            }
+          },
+          "engine_picks": [
+            {
+              "round": 1,
+              "pick_no": 7,
+              "player_id": "6813",
+              "projection_rank_among_available": 5,
+              "available": 475,
+              "projected_points": 355.92,
+              "best_available_points": 372.46,
+              "points_forgone": 16.54
+            },
+            {
+              "round": 2,
+              "pick_no": 18,
+              "player_id": "11604",
+              "projection_rank_among_available": 15,
+              "available": 464,
+              "projected_points": 310.18,
+              "best_available_points": 334.48,
+              "points_forgone": 24.3
+            },
+            {
+              "round": 3,
+              "pick_no": 31,
+              "player_id": "8130",
+              "projection_rank_among_available": 9,
+              "available": 451,
+              "projected_points": 300.85,
+              "best_available_points": 311.15,
+              "points_forgone": 10.3
+            },
+            {
+              "round": 4,
+              "pick_no": 42,
+              "player_id": "12507",
+              "projection_rank_among_available": 11,
+              "available": 440,
+              "projected_points": 280.46,
+              "best_available_points": 308.15,
+              "points_forgone": 27.69
+            },
+            {
+              "round": 5,
+              "pick_no": 55,
+              "player_id": "9758",
+              "projection_rank_among_available": 1,
+              "available": 427,
+              "projected_points": 294.46,
+              "best_available_points": 294.46,
+              "points_forgone": 0.0
+            },
+            {
+              "round": 6,
+              "pick_no": 66,
+              "player_id": "8161",
+              "projection_rank_among_available": 1,
+              "available": 416,
+              "projected_points": 289.64,
+              "best_available_points": 289.64,
+              "points_forgone": 0.0
+            },
+            {
+              "round": 7,
+              "pick_no": 79,
+              "player_id": "5870",
+              "projection_rank_among_available": 1,
+              "available": 403,
+              "projected_points": 281.89,
+              "best_available_points": 281.89,
+              "points_forgone": 0.0
+            },
+            {
+              "round": 8,
+              "pick_no": 90,
+              "player_id": "9228",
+              "projection_rank_among_available": 1,
+              "available": 392,
+              "projected_points": 265.02,
+              "best_available_points": 265.02,
+              "points_forgone": 0.0
+            },
+            {
+              "round": 9,
+              "pick_no": 103,
+              "player_id": "96",
+              "projection_rank_among_available": 1,
+              "available": 379,
+              "projected_points": 262.49,
+              "best_available_points": 262.49,
+              "points_forgone": 0.0
+            },
+            {
+              "round": 10,
+              "pick_no": 114,
+              "player_id": "7594",
+              "projection_rank_among_available": 17,
+              "available": 368,
+              "projected_points": 185.64,
+              "best_available_points": 210.72,
+              "points_forgone": 25.08
+            },
+            {
+              "round": 11,
+              "pick_no": 127,
+              "player_id": "5022",
+              "projection_rank_among_available": 6,
+              "available": 355,
+              "projected_points": 183.09,
+              "best_available_points": 194.53,
+              "points_forgone": 11.44
+            },
+            {
+              "round": 12,
+              "pick_no": 138,
+              "player_id": "3214",
+              "projection_rank_among_available": 2,
+              "available": 344,
+              "projected_points": 172.69,
+              "best_available_points": 173.0,
+              "points_forgone": 0.31
+            },
+            {
+              "round": 13,
+              "pick_no": 151,
+              "player_id": "12502",
+              "projection_rank_among_available": 4,
+              "available": 331,
+              "projected_points": 151.44,
+              "best_available_points": 155.76,
+              "points_forgone": 4.32
+            },
+            {
+              "round": 14,
+              "pick_no": 162,
+              "player_id": "13417",
+              "projection_rank_among_available": 7,
+              "available": 320,
+              "projected_points": 134.63,
+              "best_available_points": 141.3,
+              "points_forgone": 6.67
+            },
+            {
+              "round": 15,
+              "pick_no": 175,
+              "player_id": "4981",
+              "projection_rank_among_available": 3,
+              "available": 307,
+              "projected_points": 123.14,
+              "best_available_points": 124.77,
+              "points_forgone": 1.63
+            }
+          ],
+          "control_picks": [
+            {
+              "round": 1,
+              "pick_no": 8,
+              "player_id": "4984",
+              "projection_rank_among_available": 1,
+              "available": 474,
+              "projected_points": 372.46,
+              "best_available_points": 372.46,
+              "points_forgone": 0.0
+            },
+            {
+              "round": 2,
+              "pick_no": 17,
+              "player_id": "11564",
+              "projection_rank_among_available": 1,
+              "available": 465,
+              "projected_points": 335.48,
+              "best_available_points": 335.48,
+              "points_forgone": 0.0
+            },
+            {
+              "round": 3,
+              "pick_no": 32,
+              "player_id": "8112",
+              "projection_rank_among_available": 2,
+              "available": 450,
+              "projected_points": 310.95,
+              "best_available_points": 311.15,
+              "points_forgone": 0.2
+            },
+            {
+              "round": 4,
+              "pick_no": 41,
+              "player_id": "8151",
+              "projection_rank_among_available": 9,
+              "available": 441,
+              "projected_points": 283.51,
+              "best_available_points": 308.15,
+              "points_forgone": 24.64
+            },
+            {
+              "round": 5,
+              "pick_no": 56,
+              "player_id": "12526",
+              "projection_rank_among_available": 4,
+              "available": 426,
+              "projected_points": 264.33,
+              "best_available_points": 289.64,
+              "points_forgone": 25.31
+            },
+            {
+              "round": 6,
+              "pick_no": 65,
+              "player_id": "12481",
+              "projection_rank_among_available": 7,
+              "available": 417,
+              "projected_points": 249.95,
+              "best_available_points": 289.64,
+              "points_forgone": 39.69
+            },
+            {
+              "round": 7,
+              "pick_no": 80,
+              "player_id": "10859",
+              "projection_rank_among_available": 6,
+              "available": 402,
+              "projected_points": 230.85,
+              "best_available_points": 265.02,
+              "points_forgone": 34.17
+            },
+            {
+              "round": 8,
+              "pick_no": 89,
+              "player_id": "11646",
+              "projection_rank_among_available": 6,
+              "available": 393,
+              "projected_points": 222.86,
+              "best_available_points": 265.02,
+              "points_forgone": 42.16
+            },
+            {
+              "round": 9,
+              "pick_no": 104,
+              "player_id": "2449",
+              "projection_rank_among_available": 5,
+              "available": 378,
+              "projected_points": 214.06,
+              "best_available_points": 256.47,
+              "points_forgone": 42.41
+            },
+            {
+              "round": 10,
+              "pick_no": 113,
+              "player_id": "11620",
+              "projection_rank_among_available": 1,
+              "available": 369,
+              "projected_points": 212.38,
+              "best_available_points": 212.38,
+              "points_forgone": 0.0
+            },
+            {
+              "round": 11,
+              "pick_no": 128,
+              "player_id": "5947",
+              "projection_rank_among_available": 1,
+              "available": 354,
+              "projected_points": 194.53,
+              "best_available_points": 194.53,
+              "points_forgone": 0.0
+            },
+            {
+              "round": 12,
+              "pick_no": 137,
+              "player_id": "10236",
+              "projection_rank_among_available": 1,
+              "available": 345,
+              "projected_points": 174.35,
+              "best_available_points": 174.35,
+              "points_forgone": 0.0
+            },
+            {
+              "round": 13,
+              "pick_no": 152,
+              "player_id": "8180",
+              "projection_rank_among_available": 1,
+              "available": 330,
+              "projected_points": 155.76,
+              "best_available_points": 155.76,
+              "points_forgone": 0.0
+            },
+            {
+              "round": 14,
+              "pick_no": 161,
+              "player_id": "10219",
+              "projection_rank_among_available": 1,
+              "available": 321,
+              "projected_points": 141.5,
+              "best_available_points": 141.5,
+              "points_forgone": 0.0
+            },
+            {
+              "round": 15,
+              "pick_no": 176,
+              "player_id": "12469",
+              "projection_rank_among_available": 1,
+              "available": 306,
+              "projected_points": 124.77,
+              "best_available_points": 124.77,
+              "points_forgone": 0.0
+            }
+          ],
+          "seconds": 61.9
+        },
+        {
+          "seat": "12",
+          "engine_summary": {
+            "picks": 15,
+            "rank_1": 7,
+            "rank_1_to_3": 9,
+            "rank_1_to_5": 11,
+            "rank_11_plus": 2,
+            "median_rank": 2,
+            "worst_rank": 21,
+            "mean_points_forgone": 10.91,
+            "max_points_forgone": 42.76,
+            "total_points_forgone": 163.68,
+            "rank_histogram": {
+              "1": 7,
+              "2": 2,
+              "5": 2,
+              "7": 1,
+              "10": 1,
+              "13": 1,
+              "21": 1
+            }
+          },
+          "control_summary": {
+            "picks": 15,
+            "rank_1": 11,
+            "rank_1_to_3": 11,
+            "rank_1_to_5": 11,
+            "rank_11_plus": 1,
+            "median_rank": 1,
+            "worst_rank": 17,
+            "mean_points_forgone": 12.64,
+            "max_points_forgone": 63.8,
+            "total_points_forgone": 189.53,
+            "rank_histogram": {
+              "1": 11,
+              "6": 2,
+              "7": 1,
+              "17": 1
+            }
+          },
+          "engine_picks": [
+            {
+              "round": 1,
+              "pick_no": 12,
+              "player_id": "11604",
+              "projection_rank_among_available": 21,
+              "available": 470,
+              "projected_points": 310.18,
+              "best_available_points": 352.94,
+              "points_forgone": 42.76
+            },
+            {
+              "round": 2,
+              "pick_no": 13,
+              "player_id": "8183",
+              "projection_rank_among_available": 1,
+              "available": 469,
+              "projected_points": 352.94,
+              "best_available_points": 352.94,
+              "points_forgone": 0.0
+            },
+            {
+              "round": 3,
+              "pick_no": 36,
+              "player_id": "13287",
+              "projection_rank_among_available": 10,
+              "available": 446,
+              "projected_points": 288.47,
+              "best_available_points": 307.21,
+              "points_forgone": 18.74
+            },
+            {
+              "round": 4,
+              "pick_no": 37,
+              "player_id": "8151",
+              "projection_rank_among_available": 13,
+              "available": 445,
+              "projected_points": 283.51,
+              "best_available_points": 307.21,
+              "points_forgone": 23.7
+            },
+            {
+              "round": 5,
+              "pick_no": 60,
+              "player_id": "7588",
+              "projection_rank_among_available": 5,
+              "available": 422,
+              "projected_points": 259.99,
+              "best_available_points": 289.64,
+              "points_forgone": 29.65
+            },
+            {
+              "round": 6,
+              "pick_no": 61,
+              "player_id": "8161",
+              "projection_rank_among_available": 1,
+              "available": 421,
+              "projected_points": 289.64,
+              "best_available_points": 289.64,
+              "points_forgone": 0.0
+            },
+            {
+              "round": 7,
+              "pick_no": 84,
+              "player_id": "5870",
+              "projection_rank_among_available": 1,
+              "available": 398,
+              "projected_points": 281.89,
+              "best_available_points": 281.89,
+              "points_forgone": 0.0
+            },
+            {
+              "round": 8,
+              "pick_no": 85,
+              "player_id": "4217",
+              "projection_rank_among_available": 7,
+              "available": 397,
+              "projected_points": 224.49,
+              "best_available_points": 265.02,
+              "points_forgone": 40.53
+            },
+            {
+              "round": 9,
+              "pick_no": 108,
+              "player_id": "9228",
+              "projection_rank_among_available": 1,
+              "available": 374,
+              "projected_points": 265.02,
+              "best_available_points": 265.02,
+              "points_forgone": 0.0
+            },
+            {
+              "round": 10,
+              "pick_no": 109,
+              "player_id": "96",
+              "projection_rank_among_available": 1,
+              "available": 373,
+              "projected_points": 262.49,
+              "best_available_points": 262.49,
+              "points_forgone": 0.0
+            },
+            {
+              "round": 11,
+              "pick_no": 132,
+              "player_id": "5022",
+              "projection_rank_among_available": 1,
+              "available": 350,
+              "projected_points": 183.09,
+              "best_available_points": 183.09,
+              "points_forgone": 0.0
+            },
+            {
+              "round": 12,
+              "pick_no": 133,
+              "player_id": "10236",
+              "projection_rank_among_available": 5,
+              "available": 349,
+              "projected_points": 174.35,
+              "best_available_points": 180.19,
+              "points_forgone": 5.84
+            },
+            {
+              "round": 13,
+              "pick_no": 156,
+              "player_id": "4039",
+              "projection_rank_among_available": 2,
+              "available": 326,
+              "projected_points": 149.1,
+              "best_available_points": 150.0,
+              "points_forgone": 0.9
+            },
+            {
+              "round": 14,
+              "pick_no": 157,
+              "player_id": "2505",
+              "projection_rank_among_available": 2,
+              "available": 325,
+              "projected_points": 148.44,
+              "best_available_points": 150.0,
+              "points_forgone": 1.56
+            },
+            {
+              "round": 15,
+              "pick_no": 180,
+              "player_id": "9486",
+              "projection_rank_among_available": 1,
+              "available": 302,
+              "projected_points": 118.6,
+              "best_available_points": 118.6,
+              "points_forgone": 0.0
+            }
+          ],
+          "control_picks": [
+            {
+              "round": 1,
+              "pick_no": 1,
+              "player_id": "4034",
+              "projection_rank_among_available": 1,
+              "available": 481,
+              "projected_points": 413.24,
+              "best_available_points": 413.24,
+              "points_forgone": 0.0
+            },
+            {
+              "round": 2,
+              "pick_no": 24,
+              "player_id": "9226",
+              "projection_rank_among_available": 1,
+              "available": 458,
+              "projected_points": 318.16,
+              "best_available_points": 318.16,
+              "points_forgone": 0.0
+            },
+            {
+              "round": 3,
+              "pick_no": 25,
+              "player_id": "8138",
+              "projection_rank_among_available": 1,
+              "available": 457,
+              "projected_points": 317.88,
+              "best_available_points": 317.88,
+              "points_forgone": 0.0
+            },
+            {
+              "round": 4,
+              "pick_no": 48,
+              "player_id": "12545",
+              "projection_rank_among_available": 1,
+              "available": 434,
+              "projected_points": 299.67,
+              "best_available_points": 299.67,
+              "points_forgone": 0.0
+            },
+            {
+              "round": 5,
+              "pick_no": 49,
+              "player_id": "9758",
+              "projection_rank_among_available": 1,
+              "available": 433,
+              "projected_points": 294.46,
+              "best_available_points": 294.46,
+              "points_forgone": 0.0
+            },
+            {
+              "round": 6,
+              "pick_no": 72,
+              "player_id": "8146",
+              "projection_rank_among_available": 6,
+              "available": 410,
+              "projected_points": 244.74,
+              "best_available_points": 281.89,
+              "points_forgone": 37.15
+            },
+            {
+              "round": 7,
+              "pick_no": 73,
+              "player_id": "11635",
+              "projection_rank_among_available": 6,
+              "available": 409,
+              "projected_points": 244.27,
+              "best_available_points": 281.89,
+              "points_forgone": 37.62
+            },
+            {
+              "round": 8,
+              "pick_no": 96,
+              "player_id": "2449",
+              "projection_rank_among_available": 7,
+              "available": 386,
+              "projected_points": 214.06,
+              "best_available_points": 265.02,
+              "points_forgone": 50.96
+            },
+            {
+              "round": 9,
+              "pick_no": 97,
+              "player_id": "12506",
+              "projection_rank_among_available": 17,
+              "available": 385,
+              "projected_points": 201.22,
+              "best_available_points": 265.02,
+              "points_forgone": 63.8
+            },
+            {
+              "round": 10,
+              "pick_no": 120,
+              "player_id": "6819",
+              "projection_rank_among_available": 1,
+              "available": 362,
+              "projected_points": 200.64,
+              "best_available_points": 200.64,
+              "points_forgone": 0.0
+            },
+            {
+              "round": 11,
+              "pick_no": 121,
+              "player_id": "5045",
+              "projection_rank_among_available": 1,
+              "available": 361,
+              "projected_points": 199.65,
+              "best_available_points": 199.65,
+              "points_forgone": 0.0
+            },
+            {
+              "round": 12,
+              "pick_no": 144,
+              "player_id": "13298",
+              "projection_rank_among_available": 1,
+              "available": 338,
+              "projected_points": 165.07,
+              "best_available_points": 165.07,
+              "points_forgone": 0.0
+            },
+            {
+              "round": 13,
+              "pick_no": 145,
+              "player_id": "11834",
+              "projection_rank_among_available": 1,
+              "available": 337,
+              "projected_points": 165.01,
+              "best_available_points": 165.01,
+              "points_forgone": 0.0
+            },
+            {
+              "round": 14,
+              "pick_no": 168,
+              "player_id": "13417",
+              "projection_rank_among_available": 1,
+              "available": 314,
+              "projected_points": 134.63,
+              "best_available_points": 134.63,
+              "points_forgone": 0.0
+            },
+            {
+              "round": 15,
+              "pick_no": 169,
+              "player_id": "13294",
+              "projection_rank_among_available": 1,
+              "available": 313,
+              "projected_points": 129.65,
+              "best_available_points": 129.65,
+              "points_forgone": 0.0
+            }
+          ],
+          "seconds": 65.7
+        }
+      ]
+    }
+  ]
+}
