@@ -2318,7 +2318,7 @@ def displacement_adjustments(
     (engine-measurement skill) switches the term off by replacing this function with one that
     returns zeros, so both arms run the same code and differ in exactly one thing."""
     out: dict[str, dict] = {}
-    for position, level in []:
+    for position, level in levels.items():
         if level is None or pd.isna(level):
             continue
         out[position] = lo.displacement_level(

@@ -66,6 +66,7 @@ BASE_OFF, FIX_ON, FIX_OFF. Every non-engine seat is `run_roster_proof.control_pi
 | G6 replay gate | **PASS.** BASE_ON reproduces the recorded #216 sequences pick-for-pick, 6/6 seats; at every state of every arm the instrument's pick is `compute_draft_board`'s first row after `_board_order` (0 order-gate failures in 24 drafts) |
 | G7 the room | **PASS.** Identity closes with the fifth term on every priced row; the term and its basis reach `CandidateSnapshot`, `serialize_candidate`, the JS sentence, `DISPLAY_CONTRACT` and a fourth metric card; room-integrity battery executed in Chromium — see §6 |
 | G8 suite | see §7 |
+| G9 (owner's, added mid-run) the asset result must survive | **FAILS in superflex (2 reversals; −281 … −320 owned-asset points, all on the bench), passes in 1QB; no horizon creep, <1 year of age creep in 1QB.** §2.3. Not resolved here — the exchange rate is #50's |
 
 ### 2.1 Compositions and lineup points, backstop OFF and ON
 
@@ -111,6 +112,79 @@ engine trailed the control in 6/6 (−224 to −271). Not a gate; recorded.
 
 Three tight ends START in this format (TE, FLEX, FLEX), and by projected points they should:
 the lineup total says so. The fourth never comes.
+
+### 2.3 G9 — the owner's gate, added mid-run: THE ASSET RESULT DOES NOT SURVIVE IN SUPERFLEX
+
+Added by the owner after G1-G8 were measured and before any asset number was read (the
+pre-registration records the order). Sign test on `run_roster_proof`'s `cdme` ruler (pre-draft
+`universal_value` summed over the finished roster — what the roster is worth to OWN; the
+control's known defect — best projection regardless of position once its slots are covered —
+is stated, not excused) plus reported deltas for age and horizon. **The measurement contradicts
+the stated expectation, and the measurement wins.**
+
+| format | seat | arm | engine cdme total (OWN) | control | engine wins asset? | engine cdme STARTERS (FIELD, asset ruler) | mean age | mean pre-draft horizon adj | lineup pts |
+|---|---|---|---|---|---|---|---|---|---|
+| 12T_ppr | 1 | BASE | 408.7 | 310.6 | WIN +98 | 333.7 | 25.43 | −3.14 | 1987 |
+| 12T_ppr | 1 | FIX | 392.1 | 276.7 | WIN +115 | 632.4 | 25.50 | −1.44 | 2296 |
+| 12T_ppr | 6 | BASE | 307.6 | 156.8 | WIN +151 | 238.9 | 25.07 | −3.34 | 1899 |
+| 12T_ppr | 6 | FIX | 317.0 | 182.5 | WIN +135 | 578.9 | 25.93 | −1.43 | 2239 |
+| 12T_ppr | 12 | BASE | 209.7 | 287.8 | LOSS −78 | 191.1 | 25.07 | −4.03 | 1884 |
+| 12T_ppr | 12 | FIX | 244.2 | 256.9 | LOSS −13 | 521.8 | 25.79 | −1.83 | 2209 |
+| 12T_ppr_SF | 1 | BASE | 858.0 | 445.8 | WIN +412 | 757.2 | 25.73 | −3.08 | 2469 |
+| 12T_ppr_SF | 1 | FIX | 576.5 | 461.3 | WIN +115 | 877.6 | 24.33 | −1.15 | 2592 |
+| 12T_ppr_SF | 6 | BASE | 809.4 | 438.2 | WIN +371 | 663.5 | 25.87 | −2.63 | 2357 |
+| 12T_ppr_SF | 6 | FIX | 497.3 | 512.6 | **LOSS −15 — REVERSAL** | 823.0 | 25.07 | −1.10 | 2520 |
+| 12T_ppr_SF | 12 | BASE | 738.9 | 472.8 | WIN +266 | 557.7 | 28.27 | −2.76 | 2277 |
+| 12T_ppr_SF | 12 | FIX | 418.8 | 475.4 | **LOSS −57 — REVERSAL** | 724.2 | 26.33 | −2.95 | 2442 |
+
+**G9a: FAILS in superflex, passes in 1QB.** Two reversals (SF seats 6 and 12: the engine won
+the asset ruler against its control before and loses it after). Engine asset total −281, −312,
+−320 in the three SF seats; −17, +9, +35 in 1QB (seat 12 was already a loss and narrows).
+By the pre-registered rule a reversal is rejection; the owner reserved the exchange rate, so
+this is reported as a failed gate with both numbers and the trade, not resolved here.
+
+**Where the asset went.** Decomposed per player on the pre-draft ruler (bench = picks after
+the starting slots, by draft order):
+
+| format | seat | arm | positive-UV players (sum) | negative-UV players (sum) | bench UV | bench, by pick |
+|---|---|---|---|---|---|---|
+| SF | 1 | BASE | 11 (+1047) | 4 (−189) | −161 | TE+15 TE+13 WR−50 TE−10 TE−48 WR−81 |
+| SF | 1 | FIX | 7 (+889) | 8 (−312) | −301 | WR−17 WR−18 WR−50 WR−51 WR−81 WR−83 |
+| SF | 6 | BASE | 12 (+990) | 3 (−181) | −154 | TE+13 TE+13 TE+2 TE−12 WR−81 WR−88 |
+| SF | 6 | FIX | 7 (+833) | 8 (−335) | −326 | WR−16 WR−27 WR−48 WR−66 WR−81 WR−88 |
+| SF | 12 | BASE | 12 (+931) | 3 (−192) | −117 | QB+55 TE+13 TE+7 WR−66 TE−24 WR−101 |
+| SF | 12 | FIX | 8 (+733) | 7 (−314) | −305 | WR−12 WR−41 WR−48 WR−66 RB−37 WR−101 |
+| 1QB | 1 | BASE | 7 (+720) | 7 (−311) | −310 | TE−3 TE−2 TE−4 WR−51 WR−52 QB−197 |
+| 1QB | 1 | FIX | 7 (+635) | 7 (−243) | −240 | QB−11 WR−20 WR−24 WR−51 WR−52 WR−83 |
+
+The lineup the engine FIELDS is worth more on the asset ruler in 6/6 seats (`cdme starters`
++299, +340, +331, +120, +160, +167). The total falls because the BENCH changed character: the
+pre-fix superflex bench was surplus quarterbacks and tight ends whose pre-draft `universal_value`
+is positive (QB4 +55, TE +13 — scarce positions league-wide), and the fixed bench is receivers
+priced "nearest to my lineup", every one of them below the league WR anchor (−12 … −101). In
+1QB the pre-fix bench was already negative (the eighth TE at −4, the r14 QB at −197), so nothing
+reverses there. So the trade the owner has to price: **in superflex, +123 … +165 lineup points
+and +120 … +167 fielded-asset points, for −281 … −320 owned-asset points, all of it on the
+bench** — a bench of tradeable QB4/TE backups exchanged for a bench of below-anchor receivers.
+The `cdme` total sums negatives as liabilities (`CDME_TOTAL_CONTAMINATION`, #155/#165 reserved),
+which is why the same bench that costs −300 on this ruler is worth exactly 0 on a floored one;
+I do not floor it, because that is the reserved question.
+
+**G9b: no win-now creep on horizon; a small age creep in 1QB only.** Mean pre-draft
+`time_horizon_adj` of the roster is HIGHER (less negative) under the fix in 5/6 seats (+1.5 …
++2.2; SF seat 12 −0.19), i.e. the fixed rosters carry BETTER multi-year trajectories, not worse —
+the receivers the bench regime takes are younger prospects. Mean age: 1QB +0.07, +0.86, +0.72
+years (older); SF −1.40, −0.80, −1.94 (younger). The 1QB age creep is under one year in every
+seat and comes with a horizon improvement of +1.7 … +2.2; reported as measured.
+
+**Why the expectation was wrong, stated so nobody re-derives it.** `universal_value` is
+untouched, so every player's asset price is the same in both arms; what changed is WHICH
+players the bench holds. The term deducts a surplus QB/TE to (points − my starter) while the
+league anchor still credits him as an asset; the bench regime then takes whoever is nearest
+to cracking my lineup, which on this pool is a receiver below the WR anchor. The asset ruler
+counts that receiver as a liability and the surplus TE as an asset. The fix repaired what the
+engine FIELDS at the cost of what it OWNS on the bench, and the ruler that detects it is the
+one the owner added.
 
 ## 3. The invariants
 
@@ -159,7 +233,7 @@ sat beside is gone.
 
 ## 5. Tests
 
-New: `test_216_displacement.py` (17 tests: the derivation on hand-built rosters, the no-constant
+New: `test_216_displacement.py` (18 tests: the derivation on hand-built rosters, the no-constant
 AST check, the wiring on the real rulebook, and reviewer invariants 2, 4 and 6's in-process
 toggle). Battery: `test_216_value_board_falsification.py` 19/19 and `test_216_room_integrity.py`
 20/20 (executed in Chromium), unedited except where instructed (§6).
@@ -199,7 +273,26 @@ its basis like depth.
 
 ## 8. Mutation results
 
-(filled in after the run — see the bottom of this file)
+Nine mutations, applied one at a time by a runner that verifies the pattern is present exactly
+once before, keeps one backup per target, restores and checks the file byte-identical after,
+and reads the full unittest output (a SyntaxError is recorded as NOT TESTED, never as a
+survivor). Runner and per-mutation output in `fix_216/mutations/`. **9 applied, 9 killed, 0
+survivors, 9/9 restored byte-identical.**
+
+| mutation | what it breaks | tests run | verdict |
+|---|---|---|---|
+| M1 the level never exceeds the anchor (`displaced = free`) — the term is always 0 | the derivation, B/C/D | 24 | KILLED, 14 failures |
+| M2 the term dropped from the `team_acquisition_value` sum | the identity, D | 32 | KILLED, 36 failures |
+| M3 `displacement_adjustments` never computes an entry | wiring, C, room identity | 24 | KILLED, 8 failures |
+| M4 a multi-eligible probe carries only its primary position | the IDP-flex wiring test | 6 | KILLED, 1 failure |
+| M5 sign flipped (`displaced − free`) — the term LIFTS a surplus | non-positivity, B | 24 | KILLED, 15 failures |
+| M6 the partial basis never stamped | the derivation's basis test | 11 | KILLED, 1 failure |
+| M7 the room's displacement sentence removed | the executed Chromium panel test | 7 | KILLED, 1 failure |
+| M8 a literal constant (`level * 1.5`) in the value path | the AST no-constant guard | 2 | KILLED, 1 failure |
+| M9 the term not serialized to the JS payload | the payload-carries-every-term test | 7 | KILLED, 2 failures |
+
+The watchdog snapshots that landed on this branch during the mutation window (18:19-18:35Z)
+were checked for mutated content: none carries one.
 
 ## 9. The loose thread: `test_the_board_is_not_the_projection_control`
 

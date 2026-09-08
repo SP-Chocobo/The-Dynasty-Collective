@@ -6309,7 +6309,12 @@ family (#154/#155/#114) — all three of those are closed, and #216 is now the b
 place. #53 does not proceed while the board is inert for WR and QB and `feasibility_first` is
 the only thing making a roster legal.
 
-## #216 ADDRESSED — A FOURTH TEAM TERM PRICES THE SLOT THE ROSTER CANNOT OFFER; THE BACKSTOP NO LONGER BINDS; THE QUARTERBACK'S OWN PRICE IS STILL 0.00
+## #216 FIX BUILT AND MEASURED — THE BACKSTOP NO LONGER BINDS AND THE LINEUP IMPROVES 6/6; THE OWNER'S ASSET GATE FAILS IN SUPERFLEX (2 REVERSALS, ALL ON THE BENCH); THE QUARTERBACK'S OWN PRICE IS STILL 0.00 — NOT CLOSED, OWNER'S CALL ON #50
+
+**Status: NOT CLOSED.** G1-G8 pass. G9 — added by the owner mid-run, before it was measured —
+fails in superflex on the pre-registered sign test. The code is on the implementer's branch
+with both numbers and the trade stated (§ "G9" below); it is not merged and the exchange rate
+between lineup points and owned-asset points is #50's, not mine.
 
 Implementer: Fable, on `worktree-agent-ab5e1af412aeb9182` (branched from 2f5f304). Full report
 `evidence/roster_shape/FIX_216_fable.md`; pre-registration written before any measurement at
@@ -6349,7 +6354,11 @@ instrument's pick equals `compute_draft_board`'s first row after `_board_order` 
 of 348 states. Lineup points up in 6/6 seats (+123 … +340); pure-argmax overridden 0 times;
 `fills_required_slot` True on 0 picks; OFF == ON in 6/6. The QB arrives at r8 unforced in 3/3
 1QB seats (r6/r7, r6/r7, r2/r6 in SF). Battery: `test_216_value_board_falsification` 19/19,
-`test_216_room_integrity` 20/20 executed in Chromium, `test_216_displacement` 17/17.
+`test_216_room_integrity` 20/20 executed in Chromium, `test_216_displacement` 18/18. Mutations:
+9 applied (term always zero; term dropped from the sum; adjustments never computed;
+multi-eligible probe stripped to its primary; sign flipped; partial basis never stamped; room
+sentence removed; a literal constant in the value path; term not serialized), **9 killed, 0
+survivors**, every file restored byte-identical — `evidence/roster_shape/fix_216/mutations/`.
 
 ### The six invariants
 
@@ -6360,6 +6369,36 @@ signal — the ledger gap (`universal_value + displacement_adj`, WR−TE) is FLA
 bench pick in every seat (−28.02 × 6 in seat 1) while the league gap the old board ordered on
 widens 53.6 → 94.0; one bounded residual on `final_score` from `depth_exposure` (+3.72 at the
 pick a bench first exists), pinned as a residual. 5. below. 6. 6/6 and 348/348.
+
+### G9 — the owner's gate: the asset result does NOT survive in superflex
+
+Sign test on `run_roster_proof`'s `cdme` ruler (pre-draft `universal_value` summed over the
+finished roster, the engine's own objective; the control's known bench defect stated, not
+excused) plus reported age/horizon deltas, term ON vs OFF, engine vs the same control seat:
+
+| | engine cdme total BASE → FIX | vs control BASE → FIX | cdme STARTERS BASE → FIX | mean age | pre-draft horizon adj |
+|---|---|---|---|---|---|
+| 1QB seat 1 | 408.7 → 392.1 | WIN +98 → WIN +115 | 334 → 632 | 25.4 → 25.5 | −3.14 → −1.44 |
+| 1QB seat 6 | 307.6 → 317.0 | WIN +151 → WIN +135 | 239 → 579 | 25.1 → 25.9 | −3.34 → −1.43 |
+| 1QB seat 12 | 209.7 → 244.2 | LOSS −78 → LOSS −13 | 191 → 522 | 25.1 → 25.8 | −4.03 → −1.83 |
+| SF seat 1 | 858.0 → 576.5 | WIN +412 → WIN +115 | 757 → 878 | 25.7 → 24.3 | −3.08 → −1.15 |
+| SF seat 6 | 809.4 → 497.3 | WIN +371 → **LOSS −15 (REVERSAL)** | 663 → 823 | 25.9 → 25.1 | −2.63 → −1.10 |
+| SF seat 12 | 738.9 → 418.8 | WIN +266 → **LOSS −57 (REVERSAL)** | 558 → 724 | 28.3 → 26.3 | −2.76 → −2.95 |
+
+Two reversals → G9a fails as pre-registered. Every point of the loss is on the BENCH: what the
+engine FIELDS is worth more on the asset ruler in 6/6 seats (+120 … +340); the pre-fix
+superflex bench was surplus QB/TE backups with POSITIVE pre-draft `universal_value` (QB4 +55,
+TE +13 — scarce league-wide), the fixed bench is receivers priced "nearest to my lineup", every
+one below the WR anchor (−12 … −101), summed as liabilities by a ruler whose negatives are
+#155/#165-reserved (`CDME_TOTAL_CONTAMINATION`). In 1QB the pre-fix bench was already negative
+(TE8 at −4, the r14 QB at −197), so nothing reverses. **The trade for the owner (#50): in
+superflex, +123 … +165 lineup points and +120 … +167 fielded-asset points against −281 … −320
+owned-asset points, all on the bench.** G9b: horizon adj is BETTER (less negative) under the fix
+in 5/6 seats (+1.5 … +2.2); age is +0.1 … +0.9 years older in 1QB and 0.8 … 1.9 years younger
+in SF — no win-now creep on horizon, under a year of age creep in 1QB. The stated expectation
+("largely preserved, the term is ≤ 0 and `universal_value` is untouched") was wrong: the prices
+did not move, the bench's membership did. Decomposition per player in
+`evidence/roster_shape/FIX_216_fable.md` §2.3.
 
 ### What this rules out
 
@@ -6407,4 +6446,6 @@ pick a bench first exists), pinned as a residual. 5. below. 6. 6/6 and 348/348.
   docstring records. An over-correction guard, correctly in class E.
 
 **Freeze status: the board is no longer inert for WR and QB and the backstop never binds on
-the measured seats. Whether (b)'s open half and the bench ruler block #53 is the owner's call.**
+the measured seats — and the fix fails the owner's asset gate in superflex. Three things are
+the owner's call, not mine: the #50 exchange rate G9 exposes, (b)'s open half, and whether a
+bench ruler (#62/#115) must land before #53. The branch is not merged.**

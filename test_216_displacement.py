@@ -273,7 +273,16 @@ class WiringOnTheRealRulebookTests(unittest.TestCase):
         self.assertLess(best_filled["displacement_adj"], 0.0, "my QB#1 must be what a second QB has to displace")
 
 
-# MUTATION RESULTS (applied by hand, one at a time, file restored byte-identical after each):
-#   see the bottom of this file in the committed version.
+# MUTATION RESULTS (evidence/roster_shape/fix_216/mutations/, one at a time, each file restored
+# byte-identical after each; a SyntaxError would have been recorded as NOT TESTED, none was):
+#   M1 level never exceeds the anchor (term always 0)      KILLED  14 failures (this file, B/C/D)
+#   M2 term dropped from the team_acquisition_value sum     KILLED  36 failures (identity tests, D)
+#   M3 displacement_adjustments never computes an entry     KILLED   8 failures (wiring, C, room)
+#   M4 multi-eligible probe stripped to its primary         KILLED   1 failure  (IDP-flex wiring)
+#   M5 sign flipped (the term LIFTS a surplus)              KILLED  15 failures (non-positivity, B)
+#   M6 partial basis never stamped                          KILLED   1 failure  (derivation)
+#   M7 the room's displacement sentence removed             KILLED   1 failure  (Chromium panel)
+#   M8 a literal constant (level * 1.5) in the value path   KILLED   1 failure  (AST guard)
+#   M9 term not serialized to the JS payload                KILLED   2 failures (payload test)
 if __name__ == "__main__":
     unittest.main()

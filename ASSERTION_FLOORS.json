@@ -1,6 +1,45 @@
 {
   "_comment": "Per-module assertion FLOORS -- see assertion_floors.py. These are minimums, not a fingerprint: adding tests needs no regeneration, and only a DROP fails. Regenerate with `python3 assertion_floors.py --write` and commit the result in the same commit as the test change that lowered a number, so the drop is reviewable rather than incidental.",
   "modules": {
+    "test_216_displacement.py": {
+      "test_methods": 18,
+      "asserts": {
+        "assertAlmostEqual": 2,
+        "assertEqual": 24,
+        "assertGreater": 4,
+        "assertGreaterEqual": 1,
+        "assertIn": 1,
+        "assertLess": 2,
+        "assertLessEqual": 6
+      }
+    },
+    "test_216_room_integrity.py": {
+      "test_methods": 20,
+      "asserts": {
+        "assertAlmostEqual": 2,
+        "assertEqual": 21,
+        "assertFalse": 1,
+        "assertGreater": 1,
+        "assertGreaterEqual": 1,
+        "assertIn": 13,
+        "assertIsNotNone": 1,
+        "assertLess": 1,
+        "assertNotIn": 8,
+        "assertTrue": 4
+      }
+    },
+    "test_216_value_board_falsification.py": {
+      "test_methods": 19,
+      "asserts": {
+        "assertEqual": 17,
+        "assertGreater": 7,
+        "assertGreaterEqual": 2,
+        "assertIn": 1,
+        "assertLess": 2,
+        "assertLessEqual": 3,
+        "assertTrue": 1
+      }
+    },
     "test_absence_survives_consumers.py": {
       "test_methods": 32,
       "asserts": {
@@ -8,11 +47,22 @@
         "assertIn": 2,
         "assertIs": 1,
         "assertIsInstance": 2,
-        "assertIsNone": 9,
+        "assertIsNone": 11,
         "assertIsNotNone": 2,
         "assertLess": 1,
         "assertNotIn": 2,
         "assertTrue": 6
+      }
+    },
+    "test_arm_rulebook.py": {
+      "test_methods": 12,
+      "asserts": {
+        "assertEqual": 8,
+        "assertGreater": 2,
+        "assertIn": 10,
+        "assertNotIn": 1,
+        "assertRaises": 1,
+        "assertTrue": 1
       }
     },
     "test_assertion_floors.py": {
@@ -43,16 +93,16 @@
       }
     },
     "test_availability_haircut.py": {
-      "test_methods": 22,
+      "test_methods": 24,
       "asserts": {
         "assertAlmostEqual": 7,
-        "assertEqual": 19,
+        "assertEqual": 20,
         "assertGreater": 3,
         "assertIn": 2,
-        "assertIsNone": 1,
+        "assertIsNone": 2,
         "assertNotEqual": 1,
         "assertNotIn": 1,
-        "assertTrue": 1
+        "assertTrue": 2
       }
     },
     "test_baseline_manifest.py": {
@@ -84,6 +134,20 @@
         "assertTrue": 1
       }
     },
+    "test_battery_pricing_path.py": {
+      "test_methods": 13,
+      "asserts": {
+        "assertEqual": 5,
+        "assertGreater": 1,
+        "assertIn": 12,
+        "assertIsInstance": 1,
+        "assertIsNone": 1,
+        "assertLessEqual": 1,
+        "assertNotEqual": 1,
+        "assertRaises": 1,
+        "assertTrue": 1
+      }
+    },
     "test_battery_universe_boundary.py": {
       "test_methods": 9,
       "asserts": {
@@ -93,7 +157,7 @@
         "assertIsNotNone": 1,
         "assertNotIn": 1,
         "assertRaises": 1,
-        "assertTrue": 1
+        "assertTrue": 2
       }
     },
     "test_benchmark_contract_coverage.py": {
@@ -106,6 +170,16 @@
         "assertNotEqual": 2,
         "assertNotIn": 8,
         "assertTrue": 9
+      }
+    },
+    "test_board_renders_absence.py": {
+      "test_methods": 8,
+      "asserts": {
+        "assertEqual": 4,
+        "assertIn": 6,
+        "assertIsNone": 1,
+        "assertNotEqual": 1,
+        "assertRegex": 1
       }
     },
     "test_bot_benchmark.py": {
@@ -359,11 +433,32 @@
         "assertEqual": 6
       }
     },
+    "test_denial_basis.py": {
+      "test_methods": 11,
+      "asserts": {
+        "assertEqual": 2,
+        "assertGreater": 1,
+        "assertIn": 6,
+        "assertIs": 1,
+        "assertIsNone": 1,
+        "assertNotIn": 3,
+        "assertTrue": 1
+      }
+    },
     "test_dependency_audit.py": {
       "test_methods": 5,
       "asserts": {
         "assertAlmostEqual": 3,
         "assertEqual": 3
+      }
+    },
+    "test_depth_basis_boundary.py": {
+      "test_methods": 11,
+      "asserts": {
+        "assertEqual": 3,
+        "assertIn": 10,
+        "assertIs": 1,
+        "assertNotIn": 4
       }
     },
     "test_depth_exposure.py": {
@@ -503,7 +598,7 @@
       "test_methods": 102,
       "asserts": {
         "assertAlmostEqual": 22,
-        "assertEqual": 63,
+        "assertEqual": 64,
         "assertFalse": 3,
         "assertGreater": 47,
         "assertGreaterEqual": 5,
@@ -511,7 +606,7 @@
         "assertIs": 2,
         "assertIsNone": 8,
         "assertIsNotNone": 6,
-        "assertLess": 9,
+        "assertLess": 10,
         "assertLessEqual": 6,
         "assertNotAlmostEqual": 1,
         "assertNotEqual": 4,
@@ -779,6 +874,24 @@
         "assertTrue": 3
       }
     },
+    "test_one_identity_one_answer.py": {
+      "test_methods": 10,
+      "asserts": {
+        "assertEqual": 4,
+        "assertIn": 7,
+        "assertIs": 1,
+        "assertIsInstance": 1,
+        "assertNotIn": 3
+      }
+    },
+    "test_one_pricing_universe.py": {
+      "test_methods": 6,
+      "asserts": {
+        "assertEqual": 2,
+        "assertIn": 10,
+        "assertIsNone": 1
+      }
+    },
     "test_option_set_analysis.py": {
       "test_methods": 10,
       "asserts": {
@@ -896,6 +1009,16 @@
         "assertTrue": 13
       }
     },
+    "test_positional_depth_coverage.py": {
+      "test_methods": 10,
+      "asserts": {
+        "assertEqual": 10,
+        "assertIn": 3,
+        "assertIsNone": 2,
+        "assertLessEqual": 1,
+        "assertNotEqual": 1
+      }
+    },
     "test_prediction_record.py": {
       "test_methods": 18,
       "asserts": {
@@ -907,6 +1030,14 @@
         "assertLessEqual": 1,
         "assertRaises": 2,
         "assertTrue": 1
+      }
+    },
+    "test_priceable_projection_count.py": {
+      "test_methods": 9,
+      "asserts": {
+        "assertEqual": 11,
+        "assertGreater": 2,
+        "assertIn": 2
       }
     },
     "test_pricing_exhaustion_boundary.py": {
@@ -1023,6 +1154,25 @@
         "assertTrue": 10
       }
     },
+    "test_replacement_basis_vocabulary.py": {
+      "test_methods": 19,
+      "asserts": {
+        "assertEqual": 10,
+        "assertGreater": 3,
+        "assertIn": 4,
+        "assertIsNotNone": 1,
+        "assertNotIn": 7,
+        "assertTrue": 2
+      }
+    },
+    "test_report_survives_restart.py": {
+      "test_methods": 6,
+      "asserts": {
+        "assertEqual": 1,
+        "assertIn": 6,
+        "assertIs": 1
+      }
+    },
     "test_research_authority_boundary.py": {
       "test_methods": 21,
       "asserts": {
@@ -1064,6 +1214,30 @@
         "assertTrue": 2
       }
     },
+    "test_resume_join.py": {
+      "test_methods": 29,
+      "asserts": {
+        "assertEqual": 19,
+        "assertFalse": 1,
+        "assertGreaterEqual": 2,
+        "assertIn": 9,
+        "assertIs": 1,
+        "assertLess": 2,
+        "assertNotEqual": 1,
+        "assertRaises": 2,
+        "assertTrue": 1
+      }
+    },
+    "test_risk_adj_absence.py": {
+      "test_methods": 12,
+      "asserts": {
+        "assertEqual": 7,
+        "assertGreater": 2,
+        "assertIsNotNone": 1,
+        "assertLess": 1,
+        "assertTrue": 4
+      }
+    },
     "test_rookie_draft.py": {
       "test_methods": 13,
       "asserts": {
@@ -1091,6 +1265,21 @@
         "assertNotRegex": 3
       }
     },
+    "test_roster_proof_instrument.py": {
+      "test_methods": 25,
+      "asserts": {
+        "assertAlmostEqual": 1,
+        "assertEqual": 26,
+        "assertFalse": 1,
+        "assertGreater": 1,
+        "assertIn": 13,
+        "assertIsNone": 2,
+        "assertIsNotNone": 1,
+        "assertNotEqual": 3,
+        "assertNotIn": 2,
+        "assertTrue": 2
+      }
+    },
     "test_roster_state_ladder.py": {
       "test_methods": 7,
       "asserts": {
@@ -1100,6 +1289,16 @@
         "assertGreaterEqual": 2,
         "assertIsNotNone": 1,
         "assertLessEqual": 2
+      }
+    },
+    "test_roster_worth_basis.py": {
+      "test_methods": 10,
+      "asserts": {
+        "assertEqual": 13,
+        "assertGreater": 1,
+        "assertIn": 11,
+        "assertLess": 2,
+        "assertNotIn": 1
       }
     },
     "test_run_out_of_sample_validation.py": {
@@ -1258,7 +1457,7 @@
         "assertEqual": 6,
         "assertGreater": 8,
         "assertIn": 2,
-        "assertLess": 1,
+        "assertLess": 2,
         "assertTrue": 3
       }
     },

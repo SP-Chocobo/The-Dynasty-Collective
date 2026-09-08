@@ -1,0 +1,51 @@
+=====
+FAIL: test_the_layer_identity_holds (test_depth_exposure.WiredIntoTeamAcquisitionValueTests.test_the_layer_identity_holds) (player='G Dulcich')
+team_acquisition_value is a SUM of named parts, and a reader must be able to
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/user/The-Dynasty-Collective/.claude/worktrees/agent-ab5e1af412aeb9182/test_depth_exposure.py", line 269, in test_the_layer_identity_holds
+    self.assertAlmostEqual(parts, row["final_score"], places=1)
+AssertionError: -109.68 != -14.68 within 1 places (95.0 difference)
+
+======================================================================
+FAIL: test_the_layer_identity_holds (test_depth_exposure.WiredIntoTeamAcquisitionValueTests.test_the_layer_identity_holds) (player='R Shaheed')
+team_acquisition_value is a SUM of named parts, and a reader must be able to
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/user/The-Dynasty-Collective/.claude/worktrees/agent-ab5e1af412aeb9182/test_depth_exposure.py", line 269, in test_the_layer_identity_holds
+    self.assertAlmostEqual(parts, row["final_score"], places=1)
+AssertionError: -40.86 != -14.86 within 1 places (26.0 difference)
+
+======================================================================
+FAIL: test_the_layer_identity_holds (test_depth_exposure.WiredIntoTeamAcquisitionValueTests.test_the_layer_identity_holds) (player='C Parkinson')
+team_acquisition_value is a SUM of named parts, and a reader must be able to
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/user/The-Dynasty-Collective/.claude/worktrees/agent-ab5e1af412aeb9182/test_depth_exposure.py", line 269, in test_the_layer_identity_holds
+    self.assertAlmostEqual(parts, row["final_score"], places=1)
+AssertionError: -111.27 != -16.27 within 1 places (95.0 difference)
+
+======================================================================
+FAIL: test_1QB_a_receiver_at_an_empty_slot_outranks_a_benched_tight_end_of_equal_projection (test_216_value_board_falsification.D_SamePointsPairTests.test_1QB_a_receiver_at_an_empty_slot_outranks_a_benched_tight_end_of_equal_projection)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/user/The-Dynasty-Collective/.claude/worktrees/agent-ab5e1af412aeb9182/test_216_value_board_falsification.py", line 430, in test_1QB_a_receiver_at_an_empty_slot_outranks_a_benched_tight_end_of_equal_projection
+    self.assertEqual(losses, [], f"{len(losses)} of {len(pairs)} pairs: " + "; ".join(losses))
+AssertionError: Lists differ: ['Sam LaPorta TE 230.85 -> 71.86 outranks [404 chars]5.3'] != []
+
+First list contains 6 additional elements.
+First extra element 0:
+'Sam LaPorta TE 230.85 -> 71.86 outranks Davante Adams WR 230.5 -> 20.98'
+
++ []
+- ['Sam LaPorta TE 230.85 -> 71.86 outranks Davante Adams WR 230.5 -> 20.98',
+-  'George Kittle TE 224.49 -> 64.2 outranks Alec Pierce WR 225.49 -> 15.14',
+-  'Travis Kelce TE 226.19 -> 62.87 outranks Alec Pierce WR 225.49 -> 15.14',
+-  'Kyle Pitts TE 216.6 -> 58.47 outranks Emeka Egbuka WR 214.71 -> 7.21',
+-  'Harold Fannin TE 201.22 -> 45.84 outranks Brian Thomas WR 201.64 -> -8.14',
+-  'Mark Andrews TE 196.79 -> 33.81 outranks Xavier Worthy WR 195.02 -> -15.3'] : 6 of 6 pairs: Sam LaPorta TE 230.85 -> 71.86 outranks Davante Adams WR 230.5 -> 20.98; George Kittle TE 224.49 -> 64.2 outranks Alec Pierce WR 225.49 -> 15.14; Travis Kelce TE 226.19 -> 62.87 outranks Alec Pierce WR 225.49 -> 15.14; Kyle Pitts TE 216.6 -> 58.47 outranks Emeka Egbuka WR 214.71 -> 7.21; Harold Fannin TE 201.22 -> 45.84 outranks Brian Thomas WR 201.64 -> -8.14; Mark Andrews TE 196.79 -> 33.81 outranks Xavier Worthy WR 195.02 -> -15.3
+
+----------------------------------------------------------------------
+Ran 32 tests in 64.161s
+
+FAILED (failures=36)
