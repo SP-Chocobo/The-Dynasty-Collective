@@ -53,7 +53,7 @@ def _candidate(pid: str, name: str, *, priced: bool) -> ps.CandidateSnapshot:
         survival_probability=(0.5 if priced else None),
         intervening_picks=(11 if priced else None),
         opportunity_cost=None, expected_value_of_waiting=None,
-        denial_value=None, denial_basis="no_rival_priced", denial_team=None,
+        denial_value=None, rival_premium_basis=None, denial_basis="no_rival_priced", denial_team=None,
         rival_premium=None, positional_forfeit=None, position_expected_taken=None,
         positional_cliff=None, position_run_detected=False,
         pick_necessity=50.0, necessity_label="CLOSE CALL", near_tie_with_leader=None,

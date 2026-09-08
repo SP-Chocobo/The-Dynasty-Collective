@@ -570,7 +570,15 @@ def compute_pick_necessity(raw_candidates: list[dict], round_num: int) -> list[t
         # NOT what it claimed to be; see NECESSITY_DENIAL_SATURATION above for the numbers.
         # Saturating against the quantity's real bound while holding the calibrated rate
         # changes exactly the rows that were being flattened and nothing else.
-        rival_premium = c.get("rival_premium") or 0.0
+        # #207: rival_premium is now three-state. An ABSENT premium contributes NOTHING to
+        # necessity -- which is the same arithmetic as before -- but it is no longer the same
+        # CLAIM: `or 0.0` on a bare number said "no rival wanted him more", and this says "no
+        # rival premium was measurable, so this component adds nothing". necessity carries no
+        # selection authority (#55, owner's ruling), so leaving the arithmetic alone here is
+        # deliberate; what changes is that the absence is now visible in rival_premium_basis
+        # rather than laundered into a measured zero on the way in.
+        measured_premium = c.get("rival_premium")
+        rival_premium = measured_premium if measured_premium is not None else 0.0
         denial_component = (
             min(rival_premium / NECESSITY_DENIAL_SATURATION, 1.0) * NECESSITY_DENIAL_CEILING
         ) if rival_premium > 0 else 0.0
@@ -1120,6 +1128,11 @@ class CandidateSnapshot:
     # The companion that makes denial_value readable (#187). Three states, never inferred from
     # the number: no_intervening_rival / no_rival_priced / measured.
     denial_basis: Optional[str]
+    #: #207. Which of the three states rival_premium is in -- same vocabulary as denial_basis,
+    #: because it is the same question about the same rivals. Without it a None premium reaches
+    #: the card with no way to say whether nobody was there or nobody could be priced.
+    #: REQUIRED, like denial_basis: a defaulted companion is one a new call site can forget.
+    rival_premium_basis: Optional[str]
     denial_team: Optional[str]
     rival_premium: Optional[float]
     positional_forfeit: Optional[float]
@@ -1300,9 +1313,14 @@ def build_snapshot(
 
     analysis_by_id: dict[str, dict] = {}
     if candidate_ids:
+        # #214/F2: THE SAME PRICES THIS SNAPSHOT'S OWN BOARD WAS BUILT WITH. Without these two
+        # arguments pick_analysis rebuilt every board vendor-only, and the snapshot then
+        # packaged survival/opportunity_cost/denial/rival_premium from one pricing universe
+        # beside a universal_value from another -- as a single decomposition of one candidate.
         analysis = ds.pick_analysis(
             merger, players_db, picks, pick_order, current_index=current_index, my_roster_id=my_roster_id,
             league=league, candidate_player_ids=candidate_ids, mode=mode, pool_scope=pool_scope,
+            sleeper_projections=sleeper_projections, sleeper_basis=sleeper_basis,
         )
         analysis_by_id = {str(a["player_id"]): a for a in analysis}
 
@@ -1344,6 +1362,7 @@ def build_snapshot(
             # #187: read this BEFORE denial_value. A 0.0 means "measured, nothing to keep from
             # anyone"; None means no rival board could price him and nothing was measured.
             "denial_basis": a.get("denial_basis"),
+            "rival_premium_basis": a.get("rival_premium_basis"),
             "denial_team": a.get("denial_team"),
             "rival_premium": a.get("rival_premium"),
             "rival_premium_take_probability": a.get("rival_premium_take_probability"),

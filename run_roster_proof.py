@@ -328,7 +328,7 @@ def compare(runs, ruler):
     }
 
 
-def _write_report(args, commit, universe, season, results, started, *, complete):
+def _write_report(args, commit, universe, season, scoring, results, started, *, complete):
     """One report shape for the mid-run and end-of-run writes, so a partial file is never a
     different document from a finished one -- `complete` says which it is, and a reader who
     finds `complete: false` knows the run did not reach its last format."""
@@ -451,7 +451,7 @@ def main(argv=None) -> int:
         # (#177's harness, the battery reports before evidence/batteries/) reproduced one layer
         # in: a crash, a kill, or an unreadable intermediate result and there is nothing to
         # inspect. Each write is a complete, self-describing report of the formats done so far.
-        _write_report(args, commit, universe, season, results, started, complete=False)
+        _write_report(args, commit, universe, season, scoring, results, started, complete=False)
         # ABSOLUTES FIRST. A percentage against a near-zero denominator is exactly the
         # "plausible number about something else" this project keeps catching, so eng/ctl are
         # printed on every line and the ratio is shown only where one could be computed.
@@ -466,7 +466,7 @@ def main(argv=None) -> int:
                   for name in RULERS)
               + f"  {block['seconds']:7.1f}s", flush=True)
 
-    _write_report(args, commit, universe, season, results, started, complete=True)
+    _write_report(args, commit, universe, season, scoring, results, started, complete=True)
     print("", flush=True)
     for name in RULERS:
         ahead = sum(1 for b in results if (b["by_ruler"][name]["win_rate"] or 0) > 0.5)

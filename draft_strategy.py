@@ -55,7 +55,7 @@ from collections import Counter
 from typing import Optional
 
 from data_merger import DataMerger
-from draft_room import compute_draft_board
+from draft_room import SLEEPER_BASIS_WEEKLY, compute_draft_board
 from player_universe import player_position
 
 # How likely a team is to take the player sitting at a given rank on THEIR OWN board (not the
@@ -339,6 +339,8 @@ def _is_absent(value) -> bool:
 def _build_opponent_boards(
     merger: DataMerger, players_db: dict[str, dict], picks: list[dict], league: dict,
     roster_ids: list, *, mode: str = "auto", pool_scope: str = "all",
+    sleeper_projections: Optional[dict[str, dict]] = None,
+    sleeper_basis: str = SLEEPER_BASIS_WEEKLY,
 ) -> dict:
     """One compute_draft_board call per UNIQUE roster_id, off the actual current pool -- see
     module docstring's PERFORMANCE section for why this replaced per-pick-position,
@@ -346,9 +348,13 @@ def _build_opponent_boards(
     pass, never recomputed twice for the same roster."""
     boards = {}
     for roster_id in set(str(r) for r in roster_ids):
+        # #214/F2: PRICED THE SAME WAY MY OWN BOARD IS. A rival board built vendor-only while
+        # the snapshot beside it is scoring-aware makes survival, denial and rival_premium
+        # answers about a different set of prices than the universal_value they sit next to.
         board_list = compute_draft_board(
             merger, players_db, picks, my_roster_id=roster_id, league=league,
             mode=mode, pool_scope=pool_scope,
+            sleeper_projections=sleeper_projections, sleeper_basis=sleeper_basis,
         )
         # rank_by_id is a VALUATION ordinal and is built over priced rows only. Both consumers
         # of it -- estimate_survival and expected_positional_forfeit -- read the number through
@@ -568,6 +574,8 @@ def pick_analysis(
     *,
     mode: str = "auto",
     pool_scope: str = "all",
+    sleeper_projections: Optional[dict[str, dict]] = None,
+    sleeper_basis: str = SLEEPER_BASIS_WEEKLY,
 ) -> list[dict]:
     """The actual "should I take him now" answer for a shortlist of candidates (typically the
     top few from draft_room.compute_draft_board) -- team_acquisition_value plus the three
@@ -594,13 +602,22 @@ def pick_analysis(
     Every opponent board needed is computed exactly once (see _build_opponent_boards) and
     shared across every candidate here, not recomputed per candidate -- see module docstring's
     PERFORMANCE section for the real slowdown this replaced."""
+    # #214/F2: THE SAME PRICES THE CALLER'S OWN BOARD USED. build_snapshot computes a
+    # scoring-aware board and then called this function, which rebuilt one vendor-only and
+    # returned strategic numbers derived from it -- the snapshot then presented both as one
+    # decomposition of a single candidate. Measured before the repair, 47 of 48 round-one
+    # candidates carried a different team_acquisition_value inside this function than the one
+    # displayed beside it, and 35 of 48 a different bpa_source.
     my_board = {r["player_id"]: r for r in compute_draft_board(
-        merger, players_db, picks, my_roster_id=my_roster_id, league=league, mode=mode, pool_scope=pool_scope,
+        merger, players_db, picks, my_roster_id=my_roster_id, league=league, mode=mode,
+        pool_scope=pool_scope,
+        sleeper_projections=sleeper_projections, sleeper_basis=sleeper_basis,
     )}
     my_next_index = find_next_pick_index(pick_order, my_roster_id, current_index)
     intervening = intervening_roster_ids(pick_order, current_index, my_next_index)
     opponent_boards = _build_opponent_boards(
         merger, players_db, picks, league, intervening, mode=mode, pool_scope=pool_scope,
+        sleeper_projections=sleeper_projections, sleeper_basis=sleeper_basis,
     )
 
     # Position-level cost of delaying each position entirely (see positional_forfeits' own
@@ -633,7 +650,13 @@ def pick_analysis(
 
         denial_value = 0.0
         denial_team = None
-        rival_premium = 0.0
+        # #207: rival_premium starts ABSENT, not at zero. It is the same quantity-with-no-
+        # evidence that denial_value was: if no intervening rival exists, or no rival board
+        # could price him, nothing was measured -- and 0.0 asserts "no rival wants him more",
+        # which is the strongest of the three readings off the weakest evidence. #187 repaired
+        # denial_value and left its sibling in the SAME LOOP untouched. It matters more here
+        # than there, because rival_premium FEEDS pick_necessity.
+        rival_premium = None
         rival_premium_take_probability = None
         # #187. THREE different facts used to leave denial_value at exactly 0.0, and the UI
         # promised, verbatim, that "a measured 0 means no rival was positioned to gain".
@@ -686,7 +709,7 @@ def pick_analysis(
             # missing one. rival_premium stays 0.0 either way, so dropping the old
             # `if "universal_value" in opp_row` guard changes no behavior.
             premium = opp_row["final_score"] - opp_row["universal_value"]
-            if premium > rival_premium:
+            if rival_premium is None or premium > rival_premium:
                 rival_premium = premium
                 # THIS specific rival's own real take_probability -- kept alongside the
                 # premium (not folded into it) so a downstream human-facing "denies a rival"
@@ -730,7 +753,10 @@ def pick_analysis(
             # anyone", never "not checked" (#187).
             "denial_basis": denial_basis,
             "denial_team": denial_team,
-            "rival_premium": round(rival_premium, 2),
+            "rival_premium": None if rival_premium is None else round(rival_premium, 2),
+            # The companion, same vocabulary denial_basis uses -- a reader can tell "no rival
+            # wanted him more" from "nobody was there to want him".
+            "rival_premium_basis": denial_basis,
             "rival_premium_take_probability": rival_premium_take_probability,
             "positional_forfeit": (forfeits.get(my_row.get("position")) or {}).get("forfeit"),
             "position_expected_taken": (forfeits.get(my_row.get("position")) or {}).get("expected_taken"),

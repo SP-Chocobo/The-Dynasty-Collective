@@ -1684,7 +1684,26 @@ def _team_roster_players(
         if not info:
             continue
         name = player_name(info, player_id)
-        match = merger.merge_player(name, position=player_position(info), team=info.get("team"))
+        # #214/F5: THE SAME RESOLUTION THE POOL USED. This called merge_player directly --
+        # primary bucket only, and `team=None` where the pool says NO_NFL_TEAM -- so the two
+        # layers could disagree about whether a player is priceable AT ALL. Measured on the
+        # capture: 3 of 181 dual-eligible players diverged, Travis Hunter (DB/WR) among them.
+        # The pool prices him; this path did not, so once he was DRAFTED he vanished from his
+        # own roster's eligibility_bonus and depth_exposure -- the roster solved against a
+        # team one player emptier than it really was. #172 repaired the pool side and stopped
+        # there, which is the pattern rather than the incident.
+        #
+        # The two players who move the OTHER way (the roster priced them, the pool declined)
+        # lose their roster price here, and that is the point: a player the pool will not
+        # price is one this engine has decided it cannot identify, and the roster does not get
+        # a second, looser opinion about who he is.
+        match = _merge_across_eligibility(
+            merger, name,
+            set(info.get("fantasy_positions") or ([player_position(info)]
+                                                  if player_position(info) else [])),
+            player_position(info),
+            info.get("team") or NO_NFL_TEAM,
+        )
         value = match.get("trade_value")
         if value is None:
             # He is on the roster and he occupies a slot; we simply cannot PRICE him. Those

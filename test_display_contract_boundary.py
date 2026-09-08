@@ -350,7 +350,7 @@ class TheScaleIsNotAPointsTotalTests(unittest.TestCase):
             bpa=-10.0, bpa_source="s", confidence=50.0,
             universal_value=-12.5, need_bonus=0.0, eligibility_bonus=0.0,
             team_acquisition_value=-12.5, survival_probability=None, intervening_picks=None,
-            opportunity_cost=None, expected_value_of_waiting=None, denial_value=None, denial_basis="no_rival_priced",
+            opportunity_cost=None, expected_value_of_waiting=None, denial_value=None, rival_premium_basis=None, denial_basis="no_rival_priced",
             denial_team=None, rival_premium=None, positional_forfeit=None,
             position_expected_taken=None, positional_cliff=None, position_run_detected=False,
             pick_necessity=0.0, necessity_label="HOLD", near_tie_with_leader=False,
@@ -445,8 +445,21 @@ class TheScaleIsNotAPointsTotalTests(unittest.TestCase):
         #   board's own depth chip and the chair prose both now state whether the value was
         #   measured. What made this field necessary was not display, it was that the snapshot
         #   DROPPED it -- so every consumer past this boundary saw a 0.0 it could not read.
+        #   rival_premium_basis (#207), field 45. DOES IT IMPLY A SCALE? No -- the same closed
+        #   three-value vocabulary denial_basis already uses, deliberately reused rather than
+        #   invented so there is one home for the question "what did we learn about the rivals"
+        #   (#126). SHOULD THE CARD RENDER IT? NOT YET, and the reason is specific rather than
+        #   a deferral: `rival_premium` ITSELF has no card line and appears nowhere in
+        #   pick_debate -- it reaches a person only through pick_necessity, which consumes it.
+        #   A basis rendered beside a number nobody sees would be a label for nothing. The
+        #   binding rule is that the two travel together: if rival_premium ever earns a line,
+        #   this field renders with it, exactly as denial_basis does beside denial_value today.
+        #   What made the field necessary was the same thing that made depth_basis necessary --
+        #   the quantity was becoming 0.0 where nothing had been measured, and #187 had already
+        #   repaired its sibling in the SAME LOOP while leaving this one asserting the strongest
+        #   available claim off no evidence.
         self.assertEqual(
-            len(dataclasses.fields(ps.CandidateSnapshot)), 44,
+            len(dataclasses.fields(ps.CandidateSnapshot)), 45,
             "CandidateSnapshot's field count changed. That is fine and often correct -- but "
             "confirm the new field does not imply a scale the card cannot support, decide "
             "whether the card should render it, then update this number.")
