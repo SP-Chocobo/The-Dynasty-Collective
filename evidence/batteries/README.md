@@ -90,6 +90,49 @@ A clean run is the #150 gate and nothing more. It says the engine does not break
 rules on the path production runs. It says NOTHING about whether the engine drafts WELL -- that
 is #205's control-vs-engine proof -- and nothing about #206 or #184.
 
+### ⛔ WITHDRAWN — BOTH RUNS BELOW PREDATE #213
+
+**Read nothing below as a measurement of this engine until it is re-run.**
+
+`build_mock_league` emitted a ONE-KEY scoring dict, `{"rec": <0.0|0.5|1.0>}`. That was inert
+while scoring propagated only by file selection; #204 made the battery pass
+`sleeper_projections`, and from that moment `score_projection` scored every stat line against
+that single key. The real league carries **64** scoring keys.
+
+| player | real rulebook | `{"rec": 1.0}` | `{"rec": 0.0}` |
+|---|---|---|---|
+| Josh Allen (QB) | 372.46 | **0.0** | 0.0 |
+| Christian McCaffrey (RB) | 413.24 | **86.22** — his reception count | 0.0 |
+| Jaxon Smith-Njigba (WR) | 395.69 | **123.88** — his reception count | 0.0 |
+| Jack Campbell (LB) | 171.88 | **0.0** | 0.0 |
+| **players priced** | **835** | 431 | **0** |
+| **IDP priced** | **299** | 1 | 0 |
+
+So 27 of 33 arms drafted a league in which quarterbacks score nothing and receivers are paid one
+point per catch — RB/WR/TE priced in RECEPTION COUNTS while QB/K/DEF stayed in vendor fantasy
+points, on one shared replacement number line. The standard arms priced nobody at all.
+
+**The baseline (vendor-only) run is NOT affected by the mechanism** — it never passed
+`sleeper_projections`, so nothing scored stat lines. It is superseded only because the engine
+has moved on.
+
+**Withdrawn specifically:** #209's reading ("the scoring path is not reaching that player" — in
+the standard arm it reached nobody), #210's conclusion ("nothing we ingest prices these players"
+— false; 299 IDP lines price), prediction 3's "CONFIRMED, strongly" (the 8T_half_ppr collapse
+327→42 I read as the path working was the unit error arriving), and the "What this licenses"
+paragraph at the end of the RESULT section.
+
+**Not withdrawn:** the duplicate-arm collapse 9→1 is real but its *explanation* is now partly
+wrong — I attributed it to `score_projection` differentiating PPR from half-PPR, which is true,
+but under a rulebook where that differentiation was reception-counting. It must be re-derived.
+
+Found by an advisory review, verified independently before acting. Fixed in `028b574`: every
+arm now carries the capture's real `scoring_settings` with its own rec/TE-premium overlaid, and
+`run_draft_battery` **refuses to start** when a position holds stat lines its rulebook prices
+none of. Re-run in flight.
+
+---
+
 ### RESULT: BATTERY_2026-09-08_scoring_aware_5a53057
 
 33 formats, **32 independent** (was 24), 5,340 picks, **15 structural findings** (was 18),

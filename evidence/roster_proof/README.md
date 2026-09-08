@@ -16,6 +16,21 @@ The commit is the one the run STARTED at.
 
 ## Runs
 
+### ⛔ WITHDRAWN — THE RUN BELOW PREDATES #213
+
+`run_roster_proof` builds its six boards with `build_mock_league`, which until `028b574` emitted
+a ONE-KEY scoring dict. Both arms were therefore compared inside a league in which quarterbacks
+score nothing and receivers are paid one point per catch.
+
+**Both arms were equally affected, so this is not a broken comparison — it is a comparison of a
+different question.** Worse for this instrument specifically: the CONTROL ranks by
+`projected_points`, which under that rulebook is reception counts for RB/WR/TE and vendor points
+for QB. The control's own ruler was a mixed unit, so the `points` column cannot be read at all.
+
+The 44/44 vs 0/44 split below must NOT be quoted. Re-run in flight on the real rulebook.
+
+---
+
 ### ROSTER_PROOF_2026-09-08_partial_4of6_3198a9e — PARTIAL, 4 of 6 formats
 
 `complete: false`, `formats_done: 4`, 1,586s. **The process was killed at 04:13** — no error, no
