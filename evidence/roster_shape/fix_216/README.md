@@ -26,6 +26,13 @@ measurement: `../PREREGISTRATION_216_fix.md`.
   set-eligibility refinement; the one failure it shows is the IDP-flex wiring test that
   refinement was made for, green in the full suite.
 
+`second_pass/` — the roster-shape pass (report §10): `run_216_bench_probe.py` output for the
+two in-sample formats and the owner's out-of-sample league (`BENCH_*.json`, arms BASE / B0 /
+B4), the three probe logs (first detector B0-B3; corrected detector B0/B1G/B4; the final
+BASE/B0/B4 run), `TABLES_shape_handcuffs_band.md` (raw and independent-depth shape, identified
+conditional picks, the derived band per seat, lineup, forced, G9) and `shape_summary.py`, the
+identification instrument. Nothing from this pass is wired into the engine.
+
 Every arm: one process, one code version, the named thing toggled; non-engine seats on
 `run_roster_proof.control_pick`; `set_league_format(league_format_hint(league))` per format;
 `build_players_db_from_capture()`; shared pool of 481.

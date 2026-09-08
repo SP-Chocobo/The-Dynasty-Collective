@@ -304,6 +304,144 @@ survivors, 9/9 restored byte-identical.**
 The watchdog snapshots that landed on this branch during the mutation window (18:19-18:35Z)
 were checked for mutated content: none carries one.
 
+## 10. SECOND PASS — roster shape. Measured, not shipped.
+
+Pre-registered before measuring (PREREGISTRATION §"SECOND PASS"). Instrument
+`run_216_bench_probe.py`; result sets `fix_216/second_pass/`; the shape/handcuff/band table is
+`TABLES_shape_handcuffs_band.md` there. Every arm: term ON, backstop as shipped, one process.
+
+### 10.1 What is scored, and the derived band
+
+Scored on the FULL ROSTER (the owner's examples are full rosters; a 14-man roster carrying
+WR7 RB2 is thin at running back whichever way it is counted); the bench-only reading is in the
+table and never changed a verdict in the direction that matters. The band is DERIVED per
+league and per seat: every roster's optimal lineup on the season projections at the end of the
+draft gives the league's fielded load by position (flex assignments observed, not assumed);
+`share_p` = that load / all fielded starters; target total = roster size × share_p; a seat's
+bench target = target − its own fielded load. No literal enters it.
+
+| format | derived target totals (14/15-man roster) | derived ordering | owner's ordering |
+|---|---|---|---|
+| 12T_ppr (2 FLEX, 1QB) | WR 6.12 · RB 4.08 · TE 2.04 · QB 1.75 | WR > RB > TE > QB; QB ≤ 2 | agrees |
+| 12T_ppr_SF | WR 5.6-5.8 · RB 3.9-4.2 · QB 3.33 · TE 1.8-1.9 | WR > RB > QB > TE; QB ≤ 4 | agrees; QB ceiling derived at 3.3 |
+| owner's league (no TE slot, 3 flex, SF, 5 bench, 3RR) | WR 5.2-5.4 · RB 3.5-3.8 · QB 3.11 · TE 1.8-2.1 | WR > RB > QB > TE | agrees |
+
+The owner's oracle roster, independent depth (two conditional RBs stripped): WR4 RB3 QB3 TE2 —
+inside the derived band's integer neighbourhood at RB (3.5-3.8), QB (3.1) and TE (1.8-2.1), one
+below it at WR. The band reproduces a roster the owner is happy with from the room's fielded
+usage alone.
+
+### 10.2 The mechanism, corrected by measurement
+
+The coordinator's hypothesis was that the bench regime "goes flat and falls back to raw VOR,
+which favours tight ends". Measured: it does not go flat — the bench regime is ordered by
+`points − max(league level, my weakest reachable starter)`, i.e. distance to my lineup, and on
+this pool that is RECEIVERS (every 1QB bench in §2 is WR5-6, zero bench TEs). The `RB2 < TE3`
+failures are STARTER picks: the third tight end fills the second FLEX at rounds 3-5 because
+Warren (245) out-projects the best receiver (222) there, and by lineup points that is correct
+(G3). The shape rule therefore has to be met on the bench — two bench running backs over two
+bench receivers — and nothing in the lineup objective prefers that: coverage under the engine's
+own one-starter-out model is symmetric between RB and WR (an RB or a WR each cover five of eight
+fielded slots through the FLEX chain); only "fewer useful running backs exist late" (the horizon
+floor) breaks the tie, and its price needs an injury rate (#56).
+
+### 10.3 Arms, and the result against the criterion (strict `WR ≥ RB > TE`, QB ceiling; raw / independent depth)
+
+| arm | 1QB s1 | 1QB s6 | 1QB s12 | SF s1 | SF s6 | SF s12 | owner's league s1/s6/s12 |
+|---|---|---|---|---|---|---|---|
+| B0 shipped fix | WR7 TE3 RB2 QB2 ✗/✗ | WR8 TE3 RB2 QB1 ✗/✗ | WR8 RB4 TE1 QB1 ✓/✓ | WR8 RB3 TE2 QB2 ✓/✓ | WR8 TE3 RB2 QB2 ✗/✗ | WR7 RB4 TE2 QB2 ✓/✓ | RB6 WR6 QB2 ✓/✓ ×3 (TE0) |
+| B1 coverage count | 4/6 raw; TE4-5 in seat 6 both formats; reverses G9 in 1QB s1, s6 | | | | | | not run |
+| B2 horizon (`waiting_cost`) | RB6-9 WR2 everywhere; 0/6 | | | | | | not run |
+| B1G coverage gain-sum | RB3 TE3 ✗/… tendency 6/6, strict 2/6 | | | | | | not run |
+| B4 usage deficits | WR6 RB4 TE3 QB1 ✓/✗ | WR6 RB4 TE3 QB1 ✓/✗ (tendency ✓/✓) | WR6 RB4 TE2 QB2 ✓/✓ | WR6 RB5 TE2 QB2 ✓/✓ | WR6 RB4 TE3 QB2 ✓/✗ (tendency ✓/✓) | WR6 RB5 TE2 QB2 ✓/✓ | RB6 WR5 QB2 TE1 ✗/✗ ×3 |
+
+(The first run of the arms used a regime detector on `bpa + displacement_adj ≤ 0`, which
+classified the open-QB state as bench and pushed the quarterback out of round 8 — lineup −200
+in the B2 arm. Corrected to the raw optimizer ("no priced row would start today"); the
+corrected run is the one reported. That mistake is itself defect (b) surfacing: a row that
+fills an empty slot at bpa 0.00.)
+
+**B4** — rank bench candidates by `target_total_p − my_count_p` (the derived band, live: the
+league's fielded load at the current state), ties by the board's own order, only in the
+exactly-detected pure-bench regime — is the one derivable ordering that meets the letter of
+the rule in-sample: 6/6 strict on raw counts, G1 intact (0 forced), G3 intact by construction
+(starters untouched, lineup identical to B0 in 6/6), G9 improved in 5/6 seats (one superflex
+reversal undone: SF s6 566 vs 513). **It is not shipped**, for three measured reasons:
+
+1. **It meets the letter by buying conditional pieces.** Identified by the derivable rule
+   (§10.4), the bench running backs B4 adds in 1QB s1 (Croskey-Merritt behind R. White,
+   K. Mitchell behind Hampton), 1QB s6 (Marks behind Montgomery) and SF s6 (Marks) are workload
+   lotteries behind OTHER managers' starters. On independent depth B4 is 3/6 strict — the same
+   3/6 as the shipped fix. The one real handcuff it bought (SF s1: K. Mitchell behind Hampton,
+   whom I own) is self-insurance the rule exempts.
+2. **It fails the owner's own league 3/3** (RB6 WR5 QB2 TE1: it trades a receiver for a tight
+   end because the room fields ~1.9 TEs per roster and I field none), where the shipped fix
+   passes 3/3 on the ordering.
+3. It is a usage-proportional filler — derived, per seat and per league, not a template, but
+   the owner has to sanction that shape of mechanism, and the exchange rate it implies against
+   the asset ruler is #50's.
+
+No arm meets the rule on independent depth in more seats than the shipped fix. **Finding: the
+roster-shape half is not derivable as a price, and the one derivable ordering satisfies the
+rule's letter with conditional pieces the rule exempts. I stop here rather than tune.**
+
+### 10.4 Handcuffs — the term inventory (answered from code) and the identification
+
+**Is there ANY existing term that can raise a player's value on the basis of a specific
+teammate? No.** Checked in code, not asserted: `team` is read in `draft_room` only for identity
+resolution (`_merge_across_eligibility`, lines 844/1072/1765) and emitted as a column; lineup
+rows carry `id`/`value`/`eligible` only, so `eligibility_bonus`, `depth_exposure` and
+`displacement_level` cannot see a teammate; `need_bonus` reads position counts; `universal_value`
+is team-agnostic by contract; `draft_strategy`'s rival terms read other rosters' BOARDS, not
+mine. Every team-specific term is agnostic, positional, or a deduction. The engine has no
+trades-enabled input either (0 hits; `league_format.py:9` names it in a comment).
+
+**Identification is derivable and is now an observable** (`shape_summary.py`, #55's pattern):
+same NFL team, same position, the team's top-projected player at that position is owned — by
+me (self-insurance) or by another manager (workload lottery). Restricted to RB and QB, the
+positions where a team's workload is exclusive: applied to WR the same rule labels every NFL
+WR2 a conditional piece (Coker behind McMillan), which is not the concept. Across the 27
+drafts it finds 0-2 conditional picks per roster, one self-insurance case (SF s1 under B4).
+
+**Could a band suppress a handcuff?** The shipped fix cannot: it caps nothing (the bench is
+ordered by lineup distance; a fourth RB is taken whenever he is nearest). B4 would, whenever
+RB's usage deficit is below another position's — in 1QB s12 (RB target 4.23, four owned) a
+handcuff to my own RB1 ranks behind any receiver. The minimal exemption shape, NOT built: a
+complementarity term ≥ 0 conditional on owning the starter, entering the bench ordering ahead
+of the deficit; its magnitude is the starter's workload times a probability the repository
+does not have — #50.
+
+### 10.5 The owner's league, out of sample (seat 12 is the 3RR turn slot; also seats 1 and 6)
+
+| seat | arm | roster | fielded load | forced | lineup | cdme total eng vs ctl |
+|---|---|---|---|---|---|---|
+| 12 | BASE (pre-fix) | RB10 QB2 WR2 | RB5 QB2 WR2 | 2 | 2445 | 1089 vs 886 |
+| 12 | FIX | RB6 WR6 QB2 | RB5 QB2 WR2 | 0 | 2564 (+119) | 886 vs 738 |
+| 1 | BASE / FIX | RB8 QB4 WR2 / RB6 WR6 QB2 | RB5 QB2 WR2 | 2 / 0 | 2451 / 2562 (+111) | 1157 vs 648 / 899 vs 726 |
+| 6 | BASE / FIX | RB9 QB3 WR2 / RB6 WR6 QB2 | RB5 QB2 WR2 | 2 / 0 | 2404 / 2525 (+121) | 1050 vs 450 / 852 vs 615 |
+
+The fix generalises on legality (backstop bound 2 → 0 in 3/3), lineup (+111 … +121) and the
+ordering (WR6 ≥ RB6 > TE, QB2 ≤ 3.1 derived; 3/3). It does NOT reproduce the oracle's shape:
+the engine fills all three flexes with running backs and carries **no tight end**, where the
+human carries two (Pitts, Kincaid). Structurally: with no dedicated TE slot `replacement_levels`
+still anchors tight ends at TE-rank 8 (12 × 2/3 of a flex) and running backs at RB-rank ~39, and
+at an OPEN flex both are priced against their own position's anchor rather than against the
+flex's real alternative (the best remaining flex-eligible player). The displacement term is not
+blind to the no-TE-slot format — once a flex is held it prices a TE against the RB holding it —
+but it does not re-anchor open flexes, by the E-class guard's design (no deduction on a
+startable row). Whether TE0 is a defect here is the owner's call; the mechanism is named.
+G9 in this league: the engine wins the asset ruler in 3/3 before and after (no reversal; totals
+fall 1089 → 886 because a ten-RB roster sums positive RB VOR). With trades disabled the
+owned-asset ruler has no realisation mechanism except this manager's lineup — reported as the
+conditional the owner named, not resolved.
+
+### 10.6 Carried forward, unchanged
+
+The quarterback's own bpa is still 0.00 while his slot is the last open. No arm touches it: a
+bench ordering runs only after the QB slot is filled, and the corrected regime detector had
+to be taught that a 0.00-bpa row filling an empty slot is a starter — which is that defect
+seen from the other side.
+
 ## 9. The loose thread: `test_the_board_is_not_the_projection_control`
 
 Classified **(b′)**: not a bug in the guard and not a finding about the engine — the reported

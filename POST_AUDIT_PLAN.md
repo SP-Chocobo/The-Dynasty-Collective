@@ -6445,6 +6445,50 @@ did not move, the bench's membership did. Decomposition per player in
   after the fix; the report belonged to one of the two vacuous earlier drafts its own
   docstring records. An over-correction guard, correctly in class E.
 
+### Second pass — roster shape: measured against the owner's criterion, NOT shipped
+
+Criterion (owner): `WR >= RB > TE` as a tendency over the full roster, a QB ceiling, and a
+per-league band derived from bench width, starting requirements, league size and pool depth,
+computed on FIELDED load. The band was derived (roster size × the league's fielded-load share
+from every roster's optimal lineup, minus the seat's own load; no literal) and it AGREES with
+the owner's ordering in all three formats: 1QB `WR 6.1 RB 4.1 TE 2.0 QB 1.75`, SF
+`WR 5.7 RB 4.1 QB 3.3 TE 1.9`, the owner's league `WR 5.3 RB 3.6 QB 3.1 TE 1.9` — and it
+reproduces the owner's oracle roster's independent depth (WR4 RB3 QB3 TE2) within one at WR.
+
+The mechanism hypothesis ("the bench falls back to raw VOR, favouring TE") is refuted: the
+shipped bench regime orders by distance to my lineup and takes RECEIVERS (zero bench TEs in
+6/6); the `RB2 < TE3` failures are STARTER picks (a third TE at the second FLEX out-projects the
+best receiver by 23, correct by lineup points). Meeting the rule needs two bench RBs over two
+bench WRs, and the lineup objective is symmetric between them (coverage 5/8 each); only late
+RB scarcity breaks it, and its price is an injury rate (#56).
+
+Arms measured (`run_216_bench_probe.py`, pure-bench regime detected exactly by the raw
+optimizer): coverage count 4/6 but TE4-5 in seat 6 and two G9 reversals; horizon
+(`waiting_cost`) RB6-9 everywhere; coverage gain-sum strict 2/6; **usage deficits (the derived
+band, live) 6/6 strict on raw counts, G1/G3 intact, G9 improved 5/6 — and 3/6 on INDEPENDENT
+depth, the same as the shipped fix, because the running backs it adds are workload lotteries
+behind other managers' starters (Croskey-Merritt, Mitchell, Marks); and it fails the owner's
+own league 3/3 (trades a WR for a TE by usage) where the shipped fix passes 3/3.** Not shipped.
+The roster-shape half is not derivable as a price; the one derivable ordering meets the letter
+with conditional pieces the rule exempts.
+
+Handcuffs: **no existing term can raise a player's value on the basis of a specific teammate**
+(checked in code: `team` is read for identity only; lineup rows carry no team; every
+team-specific term is agnostic, positional or a deduction). Identification is derivable and is
+now an observable (same NFL team + position + the team's top-projected player owned; RB/QB
+only — on WR it labels every NFL WR2). The shipped fix caps nothing and cannot suppress one;
+the usage-deficit ordering would whenever RB's deficit trails another position's. The engine
+has no trades-enabled input (0 hits; `league_format.py:9`).
+
+Out of sample — the owner's league (no TE slot, 3 flex, SF, 5 bench, 3RR, seat 12): backstop
+bound 2 → 0, lineup +119 (+111, +121 in seats 1, 6), ordering passes 3/3, asset ruler won
+before and after (no reversal) — and **zero tight ends** against the oracle's two: the engine
+fills all three flexes with RBs; at an open flex each position is priced against its own
+anchor (TE-rank 8, RB-rank ~39), not the flex's real alternative — not blind to the format,
+but not re-anchored either, by the E-guards' design. The QB's own 0.00 bpa is untouched by
+any of this. Report: `evidence/roster_shape/FIX_216_fable.md` §10; sets in
+`evidence/roster_shape/fix_216/second_pass/`.
+
 **Freeze status: the board is no longer inert for WR and QB and the backstop never binds on
 the measured seats — and the fix fails the owner's asset gate in superflex. Three things are
 the owner's call, not mine: the #50 exchange rate G9 exposes, (b)'s open half, and whether a
