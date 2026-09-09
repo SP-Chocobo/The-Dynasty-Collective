@@ -34,8 +34,13 @@ which is the supply-side capture the `roster_shape` work has been missing.
 typed pick orders. That transcription is INDEPENDENT of these images and should be used to
 check any read taken off them, in that direction only -- the images are the primary record.
 
-## Known discrepancy, unresolved
+## Dates, resolved by the owner
 
-The owner dated the Fourth and Forever startup **9 August**; the message at line 26873 dates
-the veteran draft it followed to **14 August**. One of the two is misremembered. It does not
-affect any tally here, and it is recorded rather than silently reconciled.
+Fourth and Forever's **veteran startup opened 9 August** and the **rookie draft ran 14 August**.
+The startup is a slow-clock draft, so it took days to complete -- which is why the line-26873
+caption reads "immediately after the veteran draft" while the owner separately dated the startup
+to the 9th. Both are right; the gap is the startup's own duration.
+
+The five-day gap is not cosmetic. Picks were traded between the two boards (the rookie board
+carries "-> <manager>" annotations), so the rookie draft is a SEPARATE decision environment
+downstream of the startup, not a continuation of the same sitting.

@@ -7,9 +7,11 @@ a mid-season roster that had been traded, waivered and IR'd since.
 ## Provenance
 
 - 12 teams, dynasty, superflex, half-PPR, TE premium. 26 rounds.
-- **Startup draft, 9 August 2026**, followed immediately by a **4-round rookie draft**
-  (board also captured, below). Both are from-zero builds with no in-season churn.
-  That is the population the engine actually models.
+- **Veteran startup opened 9 August 2026** (slow clock, ran several days), followed by a
+  **4-round rookie draft on 14 August** (board also captured, below). Both are from-zero
+  builds with no games played and no in-season churn -- the population the engine models.
+  Picks were traded between the two boards, so the rookie draft is a separate decision
+  environment downstream of the startup, not a continuation of the same sitting.
 - Supplied by the owner, one manager per message, in pick order. Owner's own seat
   (SPChocobo) came from the board rather than a typed pick order, so it carries
   no sequence and is excluded from the order-sensitive cuts below.
