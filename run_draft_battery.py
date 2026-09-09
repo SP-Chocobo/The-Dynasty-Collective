@@ -38,7 +38,9 @@ BATTERY_POSITIONS = ("QB", "RB", "WR", "TE", "K", "DEF", "DL", "LB", "DB")
 CAPTURE_PATH = Path("data/fixtures/sleeper_capture.json")
 
 
-def build_players_db(merger: dm.DataMerger, positions=BATTERY_POSITIONS) -> dict[str, dict]:
+def build_players_db(merger: dm.DataMerger, positions=BATTERY_POSITIONS, *,
+                     recorded_universe: bool = False,
+                     capture_path: Path = CAPTURE_PATH) -> dict[str, dict]:
     """Every real baseline player as a Sleeper-SHAPED row, reconstructed from the vendor table.
 
     CARRIES NO injury_status, AND THAT IS THE POINT OF ITS NAME NOW (#201). The vendor export
@@ -53,7 +55,27 @@ def build_players_db(merger: dm.DataMerger, positions=BATTERY_POSITIONS) -> dict
     a different universe would make a recorded experiment describe something else under the same
     name -- the hazard test_measurement_script_boundary now enforces. New work uses
     build_players_db_from_capture below.
+
+    SO IT NOW REFUSES TO BE THE DEFAULT (#222). While a capture exists on disk this RAISES,
+    unless the caller passes `recorded_universe=True` -- which means "I am one of the recorded
+    measurements whose published results are stated against this pool", not "I checked and it
+    is fine". #201 made the battery raise on a MISSING capture and test_battery_universe_boundary
+    pins main() statically; neither reaches a hand-written probe, and a probe is what went
+    wrong. In #222 the board probe called this function while the draft called the capture
+    builder: two populations whose id spaces collide on 373 ids COINCIDENTALLY, so nothing
+    crashed and nothing looked empty. It surfaced only when 311 of a draft's 312 picks turned
+    out not to be on the board being analysed -- four written findings later. The guard belongs
+    at the call, because that is the last place the mistake is visible before it becomes a
+    number.
     """
+    if not recorded_universe and capture_path.exists():
+        raise RuntimeError(
+            "build_players_db is the VENDOR RECONSTRUCTION (764 rows, no injury_status, no "
+            f"years_exp, id space that only coincidentally overlaps the real one) and "
+            f"{capture_path} exists -- new work uses build_players_db_from_capture() together "
+            "with season_projections_from_capture() (#201/#204/#222). Pass "
+            "recorded_universe=True ONLY to re-run a measurement whose published results are "
+            "already stated against the reconstruction.")
     proj = merger.projections
     out: dict[str, dict] = {}
     pid = 0

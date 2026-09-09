@@ -167,7 +167,10 @@ def compare(label, fmt, a, b):
 
 def main():
     merger = dm.DataMerger()
-    players_db = rdb.build_players_db(merger)
+    # recorded_universe=True: this audit's published numbers are stated against the vendor
+    # reconstruction, and re-pointing it at the capture would make a recorded experiment
+    # describe something else under the same name (#201, #222's guard).
+    players_db = rdb.build_players_db(merger, recorded_universe=True)
     matrix = {m["label"]: m for m in db.league_matrix()}
     report = {}
 

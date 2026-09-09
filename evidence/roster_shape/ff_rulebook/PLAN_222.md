@@ -114,13 +114,20 @@ documented recipe measures the wrong population and produces plausible numbers a
 Sequenced so each phase can fail cheaply and stop the next. Standing order applies:
 evidence before repair, repair before freeze, freeze before blind audit.
 
-### Phase 0 -- Make the instrument trustworthy (half a day, no engine change)
-0.1 Update the engine-measurement skill's fixture to the #201/#204 recipe. (B5)
+### Phase 0 -- Make the instrument trustworthy (half a day, no engine change) -- **DONE**
+0.1 Update the engine-measurement skill's fixture to the #201/#204 recipe. (B5) **DONE**
 0.2 Add a probe-level assertion that fails loudly if a board is built from the vendor
-    reconstruction while a capture exists.
+    reconstruction while a capture exists. **DONE** -- `build_players_db` raises while a
+    capture exists unless the caller passes `recorded_universe=True`; 4 tests, all four
+    mutations caught.
 0.3 Register B4 and make every existing probe that reads board rank state whether it means
-    rank or pick.
+    rank or pick. **DONE** -- named section in the skill, three ordinals, three names.
+Plus: both instrumentation clauses promoted into the skill (the thing the owner asked be
+preserved from this episode).
 **Gate:** the skill's recipe reproduces FINDING_05's draft exactly.
+**Gate status: PARTIALLY MET, stated as such.** The recipe is character-for-character the one
+that produced FINDING_05, and that draft is determinism-checked; the 312-pick re-run was NOT
+spent to re-derive a saved number. See PHASE0_COMPLETE.md.
 
 ### Phase 1 -- Isolate B1 (one day, no engine change yet)
 1.1 Instrument `displacement_level` to return `displaced`, the slot it came from, and

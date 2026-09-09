@@ -31,6 +31,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
+import data_merger as dm
 import run_draft_battery as rdb
 
 _HERE = os.path.dirname(os.path.abspath(__file__))
@@ -72,8 +73,7 @@ class TheOldBuilderIsTheContrastNotTheDefaultTests(unittest.TestCase):
     is decoration."""
 
     def test_the_vendor_reconstruction_still_has_no_health_signal(self):
-        import data_merger as dm
-        players = rdb.build_players_db(dm.DataMerger())
+        players = rdb.build_players_db(dm.DataMerger(), recorded_universe=True)
         statuses = {info.get("injury_status") for info in players.values()}
         self.assertEqual(statuses - {None}, set(),
                          "if the old builder now carries status, this test's premise is stale")
@@ -90,6 +90,46 @@ class TheOldBuilderIsTheContrastNotTheDefaultTests(unittest.TestCase):
                   if isinstance(n, ast.Call) and isinstance(n.func, ast.Name)}
         self.assertIn("build_players_db_from_capture", called)
         self.assertNotIn("build_players_db", called)
+
+
+class TheReconstructionRefusesToBeTheDefaultTests(unittest.TestCase):
+    """#222. #201 closed this at the BATTERY's entry point; a hand-written probe walked around
+    it. The board probe called build_players_db while the draft called the capture builder --
+    two populations whose id spaces overlap on 373 ids coincidentally, so neither crashed and
+    neither looked empty. It surfaced when 311 of 312 picks were not on the board, four
+    findings later. The guard is a runtime raise at the call, not another static scan, because
+    the caller that needs stopping has not been written yet."""
+
+    def test_it_raises_while_a_capture_exists(self):
+        with self.assertRaises(RuntimeError) as caught:
+            rdb.build_players_db(dm.DataMerger())
+        self.assertIn("build_players_db_from_capture", str(caught.exception),
+                      "the error must name the function to use instead")
+
+    def test_a_recorded_measurement_may_still_have_its_pool(self):
+        """Non-vacuity, and the reason the guard is a flag rather than a deletion:
+        run_demand_reach_audit.py's published numbers are stated against this pool."""
+        players = rdb.build_players_db(dm.DataMerger(), recorded_universe=True)
+        self.assertGreater(len(players), 0)
+
+    def test_with_no_capture_present_there_is_nothing_to_prefer(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            players = rdb.build_players_db(dm.DataMerger(),
+                                           capture_path=Path(tmp) / "absent.json")
+        self.assertGreater(len(players), 0)
+
+    def test_the_recorded_consumer_declares_itself(self):
+        """Statically: if run_demand_reach_audit ever drops the flag the guard will raise and
+        someone will 'fix' it by silently re-pointing the audit at the capture, which is the
+        one thing #201 said not to do. Pin the intent where it is expressed."""
+        with open(os.path.join(_HERE, "run_demand_reach_audit.py"), encoding="utf-8") as handle:
+            tree = ast.parse(handle.read())
+        calls = [n for n in ast.walk(tree)
+                 if isinstance(n, ast.Call) and isinstance(n.func, ast.Attribute)
+                 and n.func.attr == "build_players_db"]
+        self.assertTrue(calls, "the recorded consumer no longer calls the reconstruction")
+        for call in calls:
+            self.assertIn("recorded_universe", {k.arg for k in call.keywords})
 
 
 class AMissingCaptureIsLoudTests(unittest.TestCase):
@@ -149,5 +189,21 @@ class TheRunRecordsWhichUniverseItUsedTests(unittest.TestCase):
 #        -> TheRunRecordsWhichUniverseItUsed.test_the_report_carries_the_universe_block FAILED
 #   5. build_players_db (old) given a synthetic injury_status
 #        -> TheOldBuilderIsTheContrastNotTheDefault.test_the_vendor_reconstruction_still... FAILED
+#   6. the #222 guard's condition inverted to `if recorded_universe and capture_path.exists()`
+#        -> TheReconstructionRefusesToBeTheDefault.test_it_raises_while_a_capture_exists FAILED,
+#           test_a_recorded_measurement_may_still_have_its_pool ERRORED (RuntimeError), and
+#           TheOldBuilderIsTheContrast.test_the_vendor_reconstruction_still_has_no_health_signal
+#           ERRORED too -- not predicted, and the right answer: it is the OTHER caller that
+#           legitimately asks for the reconstruction, so it moves with this flag by construction
+#   7. the guard's message reworded to drop the name of the replacement function
+#        -> ...test_it_raises_while_a_capture_exists FAILED (an error that does not say what to
+#           use instead is how a caller ends up passing recorded_universe=True to shut it up)
+#   8. the guard made unconditional (`if not recorded_universe:`, ignoring capture_path)
+#        -> ...test_with_no_capture_present_there_is_nothing_to_prefer ERRORED (RuntimeError).
+#           This is the non-vacuity of the OTHER direction: there is nothing to prefer when no
+#           capture exists, and a guard that raises anyway is a different rule than the one #201
+#           and #222 argue for
+#   9. recorded_universe=True dropped from run_demand_reach_audit.py's call
+#        -> ...test_the_recorded_consumer_declares_itself FAILED
 if __name__ == "__main__":
     unittest.main()

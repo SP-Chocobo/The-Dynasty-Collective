@@ -1,6 +1,6 @@
 ---
 name: engine-measurement
-description: Stand up a correct real-data measurement against the CDME engine — boards, drafts, batteries, before/after comparisons. Use before writing ANY probe, ablation, A/B, or instrument that reads draft_room / pick_synthesis / draft_battery output, and before claiming any measured result. Encodes the fixture setup that six separate measurement errors in this repo came from getting wrong.
+description: Stand up a correct real-data measurement against the CDME engine — boards, drafts, batteries, before/after comparisons. Use before writing ANY probe, ablation, A/B, or instrument that reads draft_room / pick_synthesis / draft_battery output, and before claiming any measured result. Encodes the fixture setup that six separate measurement errors in this repo came from getting wrong, plus the two instrumentation rules earned by withdrawing published findings in #222.
 ---
 
 # Measuring this engine without fooling yourself
@@ -11,14 +11,24 @@ This file is the checklist that would have caught them.
 
 **The failure mode to fear is not a crash. It is a plausible number about something else.**
 
-## The five-line fixture, and why each line is there
+#222 added a second family with the same shape but a different cause: the fixture was right and
+the INSTRUMENT was wrong — it recomputed a quantity production already computes, and it captured
+one of three calls to a function without recording which. Two published findings had to be
+withdrawn. Those rules are in "Instrument the production quantity" below; read them before
+writing any spy, wrapper or ablation.
+
+## The fixture, and why each line is there
 
 ```python
 import data_merger as dm, draft_room as dr, draft_battery as db, run_draft_battery as rdb
 
-merger = dm.DataMerger()                                  # 1. from the REPO ROOT
-players_db = rdb.build_players_db(merger)                 # 2. full pool, IDP included
-merger.set_league_format(db.league_format_hint(league))   # 3. NEVER SKIP THIS
+merger = dm.DataMerger()                                    # 1. from the REPO ROOT
+players_db, prov = rdb.build_players_db_from_capture()      # 2. the REAL universe, 6,595
+season = rdb.season_projections_from_capture()              # 3. price the way production does
+merger.set_league_format(db.league_format_hint(league))     # 4. NEVER SKIP THIS
+
+snap = dr.build_snapshot(..., sleeper_projections=season,
+                         sleeper_basis=dr.SLEEPER_BASIS_SEASON_SUM)   # 3, cont.
 ```
 
 1. **Run from the repo root. Never `cd` first.** `DataMerger()` resolves its baseline paths
@@ -26,11 +36,34 @@ merger.set_league_format(db.league_format_hint(league))   # 3. NEVER SKIP THIS
    produced an empty frame and `KeyError: 'position'` — the merger loaded nothing and said so
    only by crashing three calls later. Put the probe file wherever you like; run it from root.
 
-2. **`rdb.build_players_db`, not a hand-rolled loop.** It reconstructs every baseline player
-   Sleeper-shaped, including IDP. A hand-rolled `("QB","RB","WR","TE")` loop silently excludes
-   IDP and makes any IDP-format claim vacuous.
+2. **`build_players_db_from_capture`, NOT `build_players_db`.** These are two different
+   populations and the names do not warn you. `build_players_db` is the VENDOR
+   RECONSTRUCTION: 764 rows, id space `"16"`/`"291"`, no `injury_status`, no
+   `fantasy_positions`. `build_players_db_from_capture` is what production actually receives:
+   6,595 rows, id space `"13384"`, health and eligibility present. Only 373 ids collide
+   between them and **the collisions are coincidental** — an id that exists in both is a
+   different player. #201 made the reconstruction raise-on-missing for the battery precisely
+   so nothing would fall back to it silently; a hand-written probe bypasses that.
+   `build_players_db` is kept only as the universe of measurements already recorded against
+   it (`run_demand_reach_audit.py`), never for new work.
 
-3. **`set_league_format` before every format you draft.** THIS IS THE BIG ONE. `rec` and
+   This is the sixth fixture error of this class in this repo, and it is the one that is
+   hardest to see, because the wrong universe produces a complete, plausible board. It
+   surfaced in #222 only because **311 of a draft's 312 picks were not on the board being
+   analysed** — four findings had already been written on it. If a probe builds a board and a
+   draft separately, assert they share a universe before comparing them:
+
+   ```python
+   assert set(board["player_id"]) >= {p.chosen_player_id for p in traj.picks}
+   ```
+
+3. **Season projections, or the league's own scoring never reaches a price.** A board built
+   without `sleeper_projections` + `SLEEPER_BASIS_SEASON_SUM` is priced off the vendor's
+   static pre-computed number, so every claim about `rec`, `bonus_rec_te`, `rush_fd` or any
+   other rulebook category is vacuous (#180/#192/#204). Both halves of the universe must come
+   from the SAME capture.
+
+4. **`set_league_format` before every format you draft.** THIS IS THE BIG ONE. `rec` and
    `bonus_rec_te` do NOT propagate through `scoring_settings` into offensive valuation — Draft
    Sharks' season projection is a static pre-computed number. They propagate by FILE SELECTION:
    `set_league_format` picks a different rankings export. `app.py` calls it every rerun.
@@ -78,6 +111,67 @@ that everywhere, and a reporting function broke it: an upside pick that legitima
 `growth_signal == 0.0` was counted as "no growth measured". Count `is not None` and `> 0`
 **separately**, always.
 
+## Instrument the production quantity, and name WHICH CALL you captured
+
+Two rules, both earned by withdrawing a published finding in #222. They are cheap to obey and
+each one cost a full investigation to learn.
+
+**1. If the system already computes the quantity under test, OBSERVE that production quantity.
+Never reconstruct it from downstream artifacts.**
+
+Three separate probes "measured" the tight-end replacement level by recomputing it from
+`compute_draft_board`'s OUTPUT ROWS — sorting the returned frame and reading off the row at the
+demand rank. That is not the number production used. Production's number is
+`replacement_levels`' own return value, which reaches the board through a cache, a fill-from-
+anchor step and a displacement term, any of which can change it. The reconstruction agreed with
+the real value at some board states and not others, which is exactly why it read as a defect
+("the brake releases at 7 TEs") and survived three rounds of checking. The published finding B1
+was wrong and had to be withdrawn.
+
+The instrument for this is a wrapper, not a recomputation:
+
+```python
+real = dr.replacement_levels
+captured = []
+def spy(*a, **k):
+    out = real(*a, **k)
+    captured.append((tag_of(a, k), copy.deepcopy(out)))
+    return out
+dr.replacement_levels = spy
+```
+
+If the quantity is not reachable that way, say so and measure something else. A reconstruction
+that "should" match is a second implementation, and a second implementation is a second source
+of truth (#126).
+
+**2. When a function is called more than once per operation, the instrument must identify WHICH
+CALL it captured — not merely that it captured one.**
+
+`replacement_levels` is called at least three times per board build: once inside
+`predraft_replacement_anchor` (with `remaining_demand=None`, over the full pool), once live
+against the remaining pool on `_points`, and once on `trade_value`. A spy that appends every
+call and then reads `captured[0]` is sampling an arbitrary one of the three. Phase 2 of #222
+reported a receiver "rank 37 of 198 REMAINING receivers" on exactly that mistake; the word
+"remaining" had to be withdrawn, because the captured call was the pre-draft anchor over the
+FULL pool.
+
+Derive the tag from the ARGUMENTS, never from call order — order is an implementation detail
+that a cache can silently change:
+
+```python
+def tag_of(args, kw):
+    if kw.get("remaining_demand") is None and kw.get("flex_occupancy") is not None:
+        return "ANCHOR(predraft, full pool)"
+    if kw.get("value_col") == "trade_value":
+        return "LIVE(trade_value)"
+    return "LIVE(points, remaining pool)"
+```
+
+Then report the tag alongside the number, every time. "I observed X from function Y" is not
+provenance when Y runs three times with three different meanings. And check the caching layer:
+a cached call (`_ANCHOR_CACHE`) may not fire at all on the build you are watching, so a spy that
+sees two calls where you expected three has told you something, not failed.
+
 ## Runtime budgets — set timeouts from these, not from hope
 
 | what | cost |
@@ -85,6 +179,7 @@ that everywhere, and a reporting function broke it: an upside pick that legitima
 | one board build | ~0.3-1.4s |
 | full test suite | **~800-870s** (2100+ tests) |
 | one 12-team draft (168 picks) | ~300s |
+| one 12-team STARTUP (312 picks, 26 rounds) | **~640-1125s** |
 | full 32-format battery | **~2.9 hours** |
 
 A `timeout 580` on the suite kills it mid-run and tells you nothing. Background anything over a
@@ -97,6 +192,40 @@ couple of minutes and read the file.
   match itself: `pkill -f "run_draft_batter[y]"`.
 - **`unittest` buffers to a file.** `2>&1 | tail -N` discards the failure body. Redirect the
   whole run to a file and grep it: `> suite.txt 2>&1`, then `grep -n "^FAIL:" -A 25 suite.txt`.
+
+## Board rank is not pick order — say which one you mean
+
+`simulate_full_draft` does not pick `board.iloc[0]`. It goes through
+`pick_synthesis.build_snapshot`, whose `narrow_candidates` re-sorts every row through its own
+`_board_order` key, and takes `candidates[0]` from THAT. So the board's `final_score` ordering
+and the sequence of players actually taken are two different orderings, and several #222 probe
+readings quietly assumed they were one.
+
+Consequences worth stating out loud, because each one has been read the wrong way here:
+
+- "the Nth row on the board" is not "the Nth player off the board".
+- A rank measured on the FULL pool is not a rank among the REMAINING players — and "remaining"
+  is the word that silently converts one into the other.
+- A change that only reorders rows changes nothing, because `_board_order` re-sorts anyway.
+
+So label every ordinal at the point you print it: `rank_on_board(full pool)`,
+`rank_among_remaining`, `pick_number`. Three names, never one word doing all three jobs (#70,
+#126). If a probe cannot say which of the three it computed, it has not measured an ordinal.
+
+## Save the raw result before you derive anything from it
+
+`simulate_full_draft` returning is the expensive part; everything after it is arithmetic. An
+`AttributeError` in a reporting block — `DraftTrajectory` is not iterable, its picks live in
+`.picks` as `PickRecord` with `.chosen_player_id` — destroyed a complete 312-pick draft and
+1,125 seconds of engine time. Dump the raw object to JSON on the line after the call, before
+computing a single percentage (#215):
+
+```python
+traj = dr.simulate_full_draft(...)
+json.dump([{"pick": i, "roster": p.roster_id, "player": p.chosen_player_id}
+           for i, p in enumerate(traj.picks, 1)], open(RAW, "w"))
+print("RAW SAVED:", len(traj.picks), "picks", flush=True)
+```
 
 ## Before you report a number
 
