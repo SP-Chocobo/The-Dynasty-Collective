@@ -6448,6 +6448,61 @@ one-sided ("the TE count must not rise") for a defect that runs in both directio
 
 **#216 remains NOT CLOSED and still blocks the freeze.**
 
+### #221 — ONE SLOT, ONE ALTERNATIVE: the chain runs all the way down, and it ends at #50
+
+Branch `worktree-agent-ab5e1af412aeb9182`. Evidence `evidence/roster_shape/shared_slot/`. Suite
+green (2752 tests, OK). Nothing merged; the shipped board is unchanged.
+
+**The defect, and it is the sharpest statement of #216 yet.** `displacement_level` pre-fills every
+starting slot with a phantom worth the CANDIDATE'S OWN positional replacement level. Right for a
+dedicated slot. Wrong for a FLEX, where the free alternative is the best free player among the
+positions the slot admits. So at ONE open flex the engine priced a tight end against a top-10
+tight end and a running back against RB39 — which is the zero-tight-ends result in the owner's
+league and the surviving half of the tight-end bias in the lab, in one sentence and both
+directions.
+
+**The repair does what it should.** An open dedicated slot still deducts exactly nothing (unit
+proven). The owner's league goes from **ZERO tight ends to 1 / 2 / 1** with no seat above the band
+ceiling — the only change in this entire pass to clear that two-sided gate. With `depth_exposure`
+demoted alongside it, band distance goes **47.45 → 37.33**, strict ordering **6/9 → 8/9**, the
+owner's own reading **6/9 → 8/9**, legality **9/9**.
+
+**It costs 0.53% of expected season points, and that is NOT a defect.** Ablating each of the three
+capped team terms leaves the lineup total unchanged to the point — 7571.9 in all of SHARED,
+SHARED-no-depth and SHARED-no-eligibility — so no double count exists. The cost is what pricing
+every flex candidate against one alternative buys the shape. That is #217's question, the
+objective, stated in its own units at last.
+
+**Two findings fell out of the ablation:**
+
+1. **`depth_exposure` carries selection authority it is not paying for.** Zeroing it moves which
+   players are taken and does not move what the roster is worth by a single point, while gaining
+   two seats of the owner's ordering. That is #55's ruling shape — observable, not authority —
+   applied to #139.
+2. **The four-quarterback seat is diagnosed, and it is PRE-EXISTING.** Every quarterback that seat
+   takes prices at exactly `projection − 207.5`: Jones 281.89 → 74.39 with two already rostered,
+   Young 265.02 → 57.52 with three. 207.5 is the **startable floor**, independently measured as
+   the QB level at every round of that format. Every other position's anchor is a demand rank that
+   moves as slots fill; QB's is a count of quarterbacks above a threshold, and with 32 of 42 above
+   it, drafting a few barely moves it. The shipped engine hides this because every other position
+   keeps its inflated own-anchor `bpa` and outranks the quarterbacks. Remove that inflation — which
+   is what the repair correctly does — and the quarterback anchor is left standing on a more
+   generous scale than everything it is compared against.
+
+**So the chain ends where it had to.** #216's roster shape is a pricing defect; the pricing defect
+is one slot with three different alternatives; correcting that exposes **two anchor models on one
+board** — the same thing #185/#186 recorded from the labelling side — and reconciling a
+startable-floor level with a demand-rank level is **#50**, an exchange rate nothing in this engine
+has ever had to state because until now nothing forced the comparison.
+
+**Disposition: MEASURED, NOT WIRED.** `board_slot_alternatives` returns `{}`; every board is
+byte-identical to the shipped one. It is not shipped for one reason that is not an aggregate: it
+produces a four-quarterback roster in a league with two quarterback-capable slots, and that is the
+same standard that rejected the flex share's four-tight-end seat. Applying that standard to
+someone else's change and not to my own is the failure this pass exists to avoid.
+
+**#216 remains NOT CLOSED and still blocks the freeze.**
+
 ## #217 — THE OBJECTIVE, STATED BY THE OWNER, AND THE INPUT IT NEEDS THAT DOES NOT EXIST
 
 ### The ruling (owner, verbatim in effect)
