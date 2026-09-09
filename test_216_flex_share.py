@@ -109,6 +109,25 @@ class FieldedFlexOccupancyTests(unittest.TestCase):
         self.assertEqual(occupancy, {"WR": {"WR": 1}})
 
 
+class TheArmBoundaryDropsBothCachesTests(unittest.TestCase):
+    """`reset_anchor_caches` exists because an ABLATION defeats a fingerprinted cache from
+    outside: patching a function changes the answer without changing any input the key names, so
+    an arm that runs second reads the first arm's remembered levels. That is not hypothetical --
+    it put 9.25 where 14.29 belonged in the first rival_premium attribution.
+
+    Both caches, not one. `_ANCHOR_CACHE` holds replacement LEVELS and `_ROSTER_POINTS_CACHE`
+    holds the points map the measurement is computed FROM; leaving either behind leaks the
+    previous arm across the boundary. A mutation that dropped the second clear survived until
+    this test existed."""
+
+    def test_both_fingerprinted_caches_are_dropped(self):
+        dr._ANCHOR_CACHE["k"] = {"WR": 1.0}
+        dr._ROSTER_POINTS_CACHE["k"] = {"p1": 1.0}
+        dr.reset_anchor_caches()
+        self.assertEqual(dict(dr._ANCHOR_CACHE), {})
+        self.assertEqual(dict(dr._ROSTER_POINTS_CACHE), {})
+
+
 class SlotCountsFromMeasuredOccupancyTests(unittest.TestCase):
     LEAGUE = ["QB", "WR", "WR", "RB", "RB", "FLEX", "FLEX", "WRRB_FLEX", "SUPER_FLEX"]
 
@@ -265,6 +284,31 @@ class TheMeasurementIsStrandedOnPurposeTests(unittest.TestCase):
 
 
 # ---------------------------------------------------------------------------------------
-# MUTATION RESULTS -- recorded, including survivors.
+# MUTATION RESULTS -- 10 of 10 CAUGHT. Harness and patterns:
+# evidence/roster_shape/flex_share/mutations/ (one backup path per target, pattern verified
+# present before and the file proven byte-identical after, one batch at a time).
 # ---------------------------------------------------------------------------------------
-# Filled in by the mutation pass; see evidence/roster_shape/flex_share/mutations.md.
+# F1  accept a PARTIAL league fielding as a measurement                        CAUGHT
+# F2  drop the appearance divisor (double-count a repeated flex type)          CAUGHT
+# F3  never consult a supplied occupancy                                       CAUGHT
+# F4  treat an occupancy with no num_teams as measured                         CAUGHT
+# F5  a zero-team league returns an empty occupancy instead of refusing        CAUGHT
+# F6  the basis always claims it measured                                      CAUGHT
+# F7  the stranded seam quietly wires itself in                                CAUGHT
+# F8  field on the PRIMARY bucket instead of full eligibility (#172)           CAUGHT
+# F9  the arm boundary forgets the roster-points cache                         CAUGHT
+# F10 a dedicated slot reads the occupancy too                                 CAUGHT
+#
+# TWO SURVIVORS WERE FOUND AND ARE GONE FROM THE SOURCE RATHER THAN FROM THIS LIST.
+# The first pass had F5 as "field an EMPTY pool rather than refusing" and it SURVIVED; so did a
+# follow-up targeting "no player survived eligibility". Neither was a missing test. Both guards
+# were REDUNDANT -- an empty pool yields no entries, no entries fill no slot, and the
+# completeness check refuses any fielding that leaves a slot empty. Three statements of one
+# rule, two of which could not fail. They were deleted, and F5 was re-pointed at the guard that
+# genuinely carries its own case (num_teams = 0). A guard that cannot fail is not protection;
+# it is a second home for a rule that already has one (#126), and the mutation pass is how you
+# find out which one you wrote.
+#
+# F9 was a real gap and was closed by TheArmBoundaryDropsBothCachesTests: dropping
+# _ROSTER_POINTS_CACHE.clear() left no test unhappy until that test existed, and it is exactly
+# the leak that put 9.25 where 14.29 belonged in the first rival_premium attribution.

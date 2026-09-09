@@ -647,8 +647,13 @@ def fielded_flex_occupancy(
     already carried by remaining_starter_demand; recomputing the share as the pool empties would
     count the same drain twice."""
     slots = lo.slots_from_roster_positions(roster_positions)
-    if not slots or not points_by_id:
+    if not slots:
         return None
+    # No separate "is the pool empty" guard: an empty pool produces no ENTRIES, and the entries
+    # check below is the one that has to hold anyway, because a pool full of unpositionable rows
+    # is just as unfieldable as an empty one. A mutation pass caught the two as duplicates --
+    # deleting the pool check changed nothing, which is what a second home for one guard looks
+    # like from the outside (#126).
     entries = []
     for player_id, value in points_by_id.items():
         info = players_db.get(str(player_id)) or {}
@@ -656,8 +661,11 @@ def fielded_flex_occupancy(
         if not eligible:
             continue
         entries.append({"id": str(player_id), "value": float(value), "eligible": eligible})
-    if not entries:
-        return None
+    # No "did any player survive" guard either, and for the same reason as the pool check above:
+    # with no entries the solve fills no slot, and the completeness check below already refuses
+    # a fielding that leaves one empty. Both guards were written, both were measured redundant by
+    # the mutation pass, and both are gone -- a guard that cannot fail is not protection, it is a
+    # second statement of a rule that already has one home.
     league_slots, slot_type = [], {}
     for team in range(max(int(num_teams), 0)):
         for slot in slots:

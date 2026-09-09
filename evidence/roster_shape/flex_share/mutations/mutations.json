@@ -1,32 +1,72 @@
 [
- {"id":"F1","file":"draft_room.py","what":"accept a PARTIAL league fielding as a measurement",
-  "old":"    if len(solved[\"assignments\"]) != len(league_slots):\n        return None          # partial fielding -- see this function's docstring",
-  "new":"    if False:\n        return None"},
- {"id":"F2","file":"draft_room.py","what":"drop the appearance divisor (double-count a repeated flex type)",
-  "old":"                    counts[pos] += n / (num_teams * appearances)",
-  "new":"                    counts[pos] += n / num_teams"},
- {"id":"F3","file":"draft_room.py","what":"never consult a supplied occupancy",
-  "old":"        won = (measured or {}).get(slot)",
-  "new":"        won = None"},
- {"id":"F4","file":"draft_room.py","what":"treat an occupancy with no num_teams as measured",
-  "old":"    measured = flex_occupancy if (flex_occupancy and num_teams) else None",
-  "new":"    measured = flex_occupancy or None"},
- {"id":"F5","file":"draft_room.py","what":"field an EMPTY pool rather than refusing",
-  "old":"    if not slots or not points_by_id:\n        return None",
-  "new":"    if not slots:\n        return None"},
- {"id":"F6","file":"draft_room.py","what":"the basis always claims it measured",
-  "old":"    return SLOT_SHARE_FIELDED if (flex_occupancy and num_teams) else SLOT_SHARE_EVEN_SPLIT",
-  "new":"    return SLOT_SHARE_FIELDED"},
- {"id":"F7","file":"draft_room.py","what":"the stranded seam quietly wires itself in",
-  "old":"    roster_positions: list[str], num_teams: int,\n) -> Optional[dict[str, dict[str, int]]]:\n    return None",
-  "new":"    roster_positions: list[str], num_teams: int,\n) -> Optional[dict[str, dict[str, int]]]:\n    return fielded_flex_occupancy(points_by_id, players_db, roster_positions, num_teams)"},
- {"id":"F8","file":"draft_room.py","what":"field on the PRIMARY bucket instead of full eligibility (#172)",
-  "old":"        eligible = player_eligible_positions(info)\n        if not eligible:\n            continue",
-  "new":"        eligible = {player_position(info)} - {None}\n        if not eligible:\n            continue"},
- {"id":"F9","file":"draft_room.py","what":"the arm boundary forgets the roster-points cache",
-  "old":"    _ANCHOR_CACHE.clear()\n    _ROSTER_POINTS_CACHE.clear()",
-  "new":"    _ANCHOR_CACHE.clear()"},
- {"id":"F10","file":"draft_room.py","what":"a dedicated slot reads the occupancy too",
-  "old":"        if slot in FANTASY_POSITIONS:\n            counts[slot] += 1.0\n            continue\n        if slot not in FLEX_SLOT_POSITIONS:\n            continue",
-  "new":"        if slot in FANTASY_POSITIONS and not measured:\n            counts[slot] += 1.0\n            continue\n        if slot not in FLEX_SLOT_POSITIONS:\n            continue"}
+ {
+  "id": "F1",
+  "file": "draft_room.py",
+  "what": "accept a PARTIAL league fielding as a measurement",
+  "old": "    if len(solved[\"assignments\"]) != len(league_slots):\n        return None          # partial fielding -- see this function's docstring",
+  "new": "    if False:\n        return None"
+ },
+ {
+  "id": "F2",
+  "file": "draft_room.py",
+  "what": "drop the appearance divisor (double-count a repeated flex type)",
+  "old": "                    counts[pos] += n / (num_teams * appearances)",
+  "new": "                    counts[pos] += n / num_teams"
+ },
+ {
+  "id": "F3",
+  "file": "draft_room.py",
+  "what": "never consult a supplied occupancy",
+  "old": "        won = (measured or {}).get(slot)",
+  "new": "        won = None"
+ },
+ {
+  "id": "F4",
+  "file": "draft_room.py",
+  "what": "treat an occupancy with no num_teams as measured",
+  "old": "    measured = flex_occupancy if (flex_occupancy and num_teams) else None",
+  "new": "    measured = flex_occupancy or None"
+ },
+ {
+  "id": "F5",
+  "file": "draft_room.py",
+  "what": "a zero-team league returns an empty occupancy instead of refusing",
+  "old": "    if not league_slots:\n        return None",
+  "new": "    if False:\n        return None"
+ },
+ {
+  "id": "F6",
+  "file": "draft_room.py",
+  "what": "the basis always claims it measured",
+  "old": "    return SLOT_SHARE_FIELDED if (flex_occupancy and num_teams) else SLOT_SHARE_EVEN_SPLIT",
+  "new": "    return SLOT_SHARE_FIELDED"
+ },
+ {
+  "id": "F7",
+  "file": "draft_room.py",
+  "what": "the stranded seam quietly wires itself in",
+  "old": "    roster_positions: list[str], num_teams: int,\n) -> Optional[dict[str, dict[str, int]]]:\n    return None",
+  "new": "    roster_positions: list[str], num_teams: int,\n) -> Optional[dict[str, dict[str, int]]]:\n    return fielded_flex_occupancy(points_by_id, players_db, roster_positions, num_teams)"
+ },
+ {
+  "id": "F8",
+  "file": "draft_room.py",
+  "what": "field on the PRIMARY bucket instead of full eligibility (#172)",
+  "old": "        eligible = player_eligible_positions(info)\n        if not eligible:\n            continue",
+  "new": "        eligible = {player_position(info)} - {None}\n        if not eligible:\n            continue"
+ },
+ {
+  "id": "F9",
+  "file": "draft_room.py",
+  "what": "the arm boundary forgets the roster-points cache",
+  "old": "    _ANCHOR_CACHE.clear()\n    _ROSTER_POINTS_CACHE.clear()",
+  "new": "    _ANCHOR_CACHE.clear()"
+ },
+ {
+  "id": "F10",
+  "file": "draft_room.py",
+  "what": "a dedicated slot reads the occupancy too",
+  "old": "        if slot in FANTASY_POSITIONS:\n            counts[slot] += 1.0\n            continue\n        if slot not in FLEX_SLOT_POSITIONS:\n            continue",
+  "new": "        if slot in FANTASY_POSITIONS and not measured:\n            counts[slot] += 1.0\n            continue\n        if slot not in FLEX_SLOT_POSITIONS:\n            continue"
+ }
 ]
