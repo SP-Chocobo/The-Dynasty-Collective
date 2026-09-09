@@ -4,9 +4,13 @@ One process, one code version, one thing toggled -- the discipline the engine-me
 checklist demands. The only difference between the two arms is whether
 `draft_room.fielded_flex_occupancy` is allowed to return its measurement:
 
-    EVEN     -- patched to return None, so starter_slot_counts falls back to the even split
-                that shipped before this change. This is the DISPLACEMENT-ONLY engine.
-    FIELDED  -- untouched: the flex share is measured from the pool.
+    EVEN     -- untouched, so `board_flex_share` returns None and starter_slot_counts falls back
+                to the even split. This is the SHIPPED engine (displacement term only).
+    FIELDED  -- `board_flex_share` patched to return fielded_flex_occupancy's measurement.
+
+`board_flex_share` exists as exactly this seam: the measurement is built and tested but NOT
+WIRED (see its own comment and #50), so the shipped board is the EVEN arm and this probe is what
+re-enables the other one, by patching one function and nothing else.
 
 Everything else -- the drafting loop, the control, the rulers, the band, the ordering verdict,
 the G9 asset numbers -- is `run_216_bench_probe`'s, imported rather than restated (#126). Arm
@@ -116,8 +120,8 @@ def main(argv=None) -> int:
                 # contamination produced a 5-point error in the first rival_premium attribution
                 # before it was caught; see draft_room.reset_anchor_caches.
                 dr.reset_anchor_caches()
-                if arm == "EVEN":
-                    with mock.patch.object(dr, "fielded_flex_occupancy", lambda *a, **k: None):
+                if arm == "FIELDED":
+                    with mock.patch.object(dr, "board_flex_share", dr.fielded_flex_occupancy):
                         d = bench.draft_one("B0", merger, players_db, league, pick_order, seat,
                                             points, season, rounds, slots, log, rulers, horizon_map)
                 else:

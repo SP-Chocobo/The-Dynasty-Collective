@@ -568,6 +568,31 @@ SLOT_SHARE_LABELS = {
 }
 
 
+#: MEASURED, NOT WIRED -- pending #50, the same standing #84 gives marginal_lineup_value.
+#:
+#: fielded_flex_occupancy below measures who actually wins each flex slot, and the even split it
+#: replaces is FALSE in every format tried (evidence/roster_shape/flex_share). But routing the
+#: measurement into the replacement anchor was run against nine pre-registered gates over 18
+#: drafts and FAILED FOUR of them, including the two-sided one: it made the owner's league field
+#: tight ends for the first time (0 -> 2/4/1 against his own roster's 2) and produced a
+#: FOUR-tight-end seat, which the pre-registration named as an over-correction and a failure.
+#: It also cost lineup points in 4 of 9 seats and created one new asset reversal.
+#:
+#: So the board keeps the even split, and the measurement stays an instrument. The reason is not
+#: that the even split is right -- it is measurably wrong -- but that what the anchor SHOULD be
+#: is #50, and swapping one unvalidated answer for another that fails its own gates is not a
+#: repair. Everything needed to wire it is here, tested, and one function away.
+#:
+#: THIS FUNCTION IS THE SEAM. It returns None, so every board is byte-identical to the even
+#: split; run_216_flexshare_draft_probe re-enables the measurement by patching exactly this and
+#: nothing else, which is what makes the ablation a single-variable one.
+def board_flex_share(
+    points_by_id: dict[str, float], players_db: dict[str, dict],
+    roster_positions: list[str], num_teams: int,
+) -> Optional[dict[str, dict[str, int]]]:
+    return None
+
+
 def fielded_flex_occupancy(
     points_by_id: dict[str, float], players_db: dict[str, dict],
     roster_positions: list[str], num_teams: int,
@@ -2319,7 +2344,7 @@ def predraft_replacement_anchor(
     # Measured off the PRICED rows for the same reason replacement_levels ranks over them: a row
     # with no number cannot occupy a slot in a points-maximising fielding.
     priced = full_pool[has_proj]
-    flex_occupancy = fielded_flex_occupancy(
+    flex_occupancy = board_flex_share(
         {str(pid): float(v) for pid, v in zip(priced["player_id"], priced["_points"])},
         players_db, roster_positions, num_teams,
     )
@@ -2694,7 +2719,7 @@ def compute_draft_board(
     # None when it cannot be measured; starter_slot_counts then falls back to the even split
     # and slot_share_basis says so, rather than handing anyone a number they cannot tell from
     # a measured one.
-    flex_occupancy = fielded_flex_occupancy(
+    flex_occupancy = board_flex_share(
         roster_points_lookup(
             merger, players_db, usable_positions, roster_positions, num_teams,
             sleeper_projections=sleeper_projections, scoring_settings=scoring_settings,
