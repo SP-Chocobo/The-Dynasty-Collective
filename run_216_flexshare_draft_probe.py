@@ -109,6 +109,13 @@ def main(argv=None) -> int:
                 if (arm, str(seat)) in done:
                     continue
                 t0 = time.time()
+                # THE ARM BOUNDARY. Both fingerprinted anchor caches are dropped here, because
+                # the ablation changes the answer without changing any input the cache key
+                # names -- so without this the EVEN arm reads the FIELDED arm's remembered
+                # levels and the whole comparison is a measurement of nothing. This exact
+                # contamination produced a 5-point error in the first rival_premium attribution
+                # before it was caught; see draft_room.reset_anchor_caches.
+                dr.reset_anchor_caches()
                 if arm == "EVEN":
                     with mock.patch.object(dr, "fielded_flex_occupancy", lambda *a, **k: None):
                         d = bench.draft_one("B0", merger, players_db, league, pick_order, seat,
@@ -116,6 +123,7 @@ def main(argv=None) -> int:
                 else:
                     d = bench.draft_one("B0", merger, players_db, league, pick_order, seat,
                                         points, season, rounds, slots, log, rulers, horizon_map)
+                dr.reset_anchor_caches()
                 d["arm"] = arm
                 d["seconds"] = round(time.time() - t0, 1)
                 results["drafts"].append(d)

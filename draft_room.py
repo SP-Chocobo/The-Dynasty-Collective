@@ -2329,6 +2329,23 @@ def predraft_replacement_anchor(
     ))
 
 
+def reset_anchor_caches() -> None:
+    """Drop both fingerprinted caches. FOR INSTRUMENTS THAT ABLATE, and for nothing else.
+
+    Both caches are keyed on `anchor_cache_key`, which names every INPUT the levels depend on --
+    which is why a board never depends on which boards came before it in production. An
+    ABLATION breaks that guarantee from outside: patching `fielded_flex_occupancy` or
+    `displacement_adjustments` changes the answer without changing any input the key names, so
+    an arm that runs second silently reads the first arm's cached levels.
+
+    That is not hypothetical. The first attribution run for #216's flex share reported the
+    even-split arm at max rival_premium 9.25 when the same code at the same commit gives 14.29;
+    the whole 5-point gap was one board built before the patch went on. An ablation that has to
+    be right about which half caused what cannot afford that, so every arm boundary calls this."""
+    _ANCHOR_CACHE.clear()
+    _ROSTER_POINTS_CACHE.clear()
+
+
 def _remember_anchor(key: str, levels: dict[str, float]) -> dict[str, float]:
     """Bounded, so a long-lived process cannot accumulate one entry per data reload."""
     _ANCHOR_CACHE[key] = dict(levels)
