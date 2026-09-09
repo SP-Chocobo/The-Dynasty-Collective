@@ -1,5 +1,25 @@
 # #50 RULING INPUT: live vs PRE-DRAFT anchor — the four questions, answered
 
+> **PARTIALLY CORRECTED by `PHASE3_D3_GATE_FAILED.md`. Read that first.**
+>
+> Everything measured in this document stands. One CONCLUSION does not. This document says
+> the anchor is "WRONG" at `displacement_level`'s `free_alternative` on that parameter's own
+> contract, and recommends replacing it. The parameter does receive a stale value — but the
+> D3 gate then measured that `bpa = points − level` exactly (`_scale_vor_to_bpa` is the
+> identity), so `bpa + displacement_adj = points − displaced` and **the level cancels**. The
+> term's output is invariant to the staleness wherever the term is non-zero, and replacing
+> `free_alternative` alone would inject that staleness (−86.36 at TE, pick 205) as a real
+> price. The parameter is MISNAMED, not mis-fed.
+>
+> The two-consumer split is still an accurate description of the code, and the owner's ruling
+> on it stands. What changed is the consequence: consumer 2 does not consume the staleness.
+> The one place it does reach a price is a position with an OPEN reachable slot, through
+> `bpa` alone — consumer 1.
+>
+> This document was explicit that it claimed no net effect on price. It was right not to.
+> It was wrong to conclude "legitimate modelling defect" from the contract alone without
+> measuring the term's consumed effect first.
+
 Method: every number below is a production return value, captured at the call. Every
 `replacement_levels` observation is tagged by CALL IDENTITY derived from the arguments, never
 from call order (the anchor is cached and does not fire on every build). All 312 picks are
