@@ -1,4 +1,4 @@
-"""The flex share is MEASURED, and the assumed one cannot pass for it.
+"""The flex share is MEASURED, and the assumed one cannot pass for it (#216, #219).
 
 `starter_slot_counts` used to split a flex slot evenly across the positions it admits, and
 defended that in its own docstring with a claim about the world. `fielded_flex_occupancy` asks

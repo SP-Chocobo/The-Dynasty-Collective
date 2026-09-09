@@ -1,4 +1,4 @@
-"""The ordering verdict must not prefer a roster nobody would build.
+"""The ordering verdict must not prefer a roster nobody would build (#216, #219).
 
 `WR >= RB > TE` is the owner's rule, and it is trivially satisfied at TE 0. In his real league --
 no dedicated TE slot, three flexes -- that is not a technicality: the unfixed engine scores 3/3
