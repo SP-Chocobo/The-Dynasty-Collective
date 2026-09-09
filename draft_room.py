@@ -2530,7 +2530,7 @@ def displacement_adjustments(
     to correct", never as zero. MODULE-LEVEL AND PATCHABLE ON PURPOSE: an in-process A/B
     (engine-measurement skill) switches the term off by replacing this function with one that
     returns zeros, so both arms run the same code and differ in exactly one thing."""
-    alternatives = shared_slot_alternatives(levels, roster_positions)
+    alternatives = board_slot_alternatives(levels, roster_positions)
     out: dict[str, dict] = {}
     for position, level in levels.items():
         if level is None or pd.isna(level):
@@ -2540,6 +2540,33 @@ def displacement_adjustments(
             slot_alternatives=alternatives,
         )
     return out
+
+
+#: MEASURED, NOT WIRED -- the same standing #84 gives marginal_lineup_value and #219 gives the
+#: fielded flex share. `shared_slot_alternatives` below is correct and tested; routing it into the
+#: board was measured over 18 drafts against ten gates pre-registered before it existed
+#: (evidence/roster_shape/shared_slot/) and it is the pre-registration's own "partial success"
+#: case: RIGHT ABOUT THE SLOT, WRONG ABOUT THE MAGNITUDE.
+#:
+#: It PASSES what says the construction is right -- an open dedicated slot still deducts exactly
+#: nothing, the owner's league goes from ZERO tight ends to 1/2/1 with no seat above the band
+#: ceiling (the only change in this pass to clear that two-sided gate), 7 of 9 rosters move closer
+#: to the derived band, and the owner's ordering reaches 3/3 in both lab formats. It FAILS what
+#: says the magnitude is right: lineup points rise in only 2 of 9 seats, total -118, and two seats
+#: newly reverse on the asset ruler.
+#:
+#: A change that only corrects a mis-stated alternative should not cost points in seven of nine
+#: seats, and the mechanism of that cost is NOT known -- see the RESULT memo, including the
+#: hypothesis about need_bonus that its own arithmetic killed. Shipping before naming it would be
+#: shipping a trade nobody can describe.
+#:
+#: THIS FUNCTION IS THE SEAM. It returns {}, so every phantom is worth the candidate's own
+#: positional level and every board is byte-identical to the shipped one;
+#: run_216_shared_slot_probe re-enables the measurement by patching exactly this.
+def board_slot_alternatives(
+    levels: dict[str, float], roster_positions: list[str],
+) -> dict[str, float]:
+    return {}
 
 
 def shared_slot_alternatives(

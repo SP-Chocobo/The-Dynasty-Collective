@@ -46,20 +46,34 @@ rosters move toward the band. In both lab formats the owner's ordering goes to 3
 mis-stated alternative should not cost points in seven of nine seats. **Something downstream is
 now double-counting**, and shipping before finding it would be shipping a trade I cannot name.
 
-**So it is NOT wired.** `shared_slot_alternatives` stays as the seam — patchable, tested,
-measured — and the decision waits on the one measurement below.
+**So it is NOT wired.** `board_slot_alternatives` is the seam and returns `{}`, so every
+phantom keeps the candidate's own positional level and every board is byte-identical to the
+shipped one. `shared_slot_alternatives` stays beside it — correct, tested, measured — and the
+decision waits on the measurement named below.
 
-## The named next step, POST HOC and unmeasured
+## The mechanism of the −118 is NOT known, and my first hypothesis is already dead
 
-`need_bonus` still awards a per-flex-SHARE bonus keyed to the candidate's OWN position, and
-`depth_exposure` is likewise per-position. Under the shared alternative the flex's competition is
-already priced INTO `displacement_adj`. If those two are now paying twice for the same slot, the
-lineup cost and the reversals would both follow — and it would be the same missing-companion shape
-this repository keeps finding: a term's meaning changed and its companions did not travel with it.
+I reached for one immediately: `need_bonus` still awards a per-flex-SHARE bonus keyed to the
+candidate's OWN position, so under the shared alternative it would be paying twice for a slot
+`displacement_adj` now prices. **Its own arithmetic kills it before any measurement.** That term is
+`NEED_BONUS_PER_FLEX_SHARE * min(flex_remaining, 1)` with the constant at **1.0** — at most a
+single point, against a 118-point swing. It cannot be the cause. Recorded rather than deleted,
+because reaching for a mechanism before checking its magnitude is the same move that produced five
+withdrawn diagnoses on this item, and this time the check happened first.
 
-**That is a hypothesis with a mechanism, not a diagnosis.** Five confident single-sentence
-diagnoses on #216 have already been withdrawn. Nothing about it belongs in a report until an
-ablation has produced the number.
+What IS visible in the identity, stated as structure and not as a diagnosis:
+
+    final_score = universal_value + need_bonus + eligibility_bonus + depth_exposure + displacement_adj
+
+The three older team-specific terms are each capped at 12.0. `displacement_adj` is uncapped, and
+the shared alternative makes it far larger — −140 on a running back in the worked example in
+`test_216_shared_slot`, against a ±12 ceiling on everything else. So the change does not merely
+correct the term, it **changes which term decides the ordering**. Whether that is the cause of the
+lineup cost, and whether it is right, is the open question. It is NOT answered here and no claim
+about it belongs anywhere until an ablation produces the number.
+
+The measurement that would settle it: hold the shared alternative on and ablate the three capped
+terms one at a time, against the same 18 drafts. That is the named next step.
 
 ## A probe defect in the PREVIOUS pass, found while reading these numbers
 

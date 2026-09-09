@@ -3,10 +3,14 @@
 One process, one code version, one thing toggled -- `draft_room.shared_slot_alternatives`, which
 exists as a module-level function for exactly this reason:
 
-    SELF    -- patched to return {}, so every phantom is worth the CANDIDATE'S OWN positional
-               level. That is the engine as Fable shipped it (displacement term only).
-    SHARED  -- untouched: a flex slot's phantom is worth the best free player among the positions
-               it admits.
+    SELF    -- untouched, so `board_slot_alternatives` returns {} and every phantom is worth the
+               CANDIDATE'S OWN positional level. That is the SHIPPED engine.
+    SHARED  -- `board_slot_alternatives` patched to `shared_slot_alternatives`, so a flex slot's
+               phantom is worth the best free player among the positions it admits.
+
+`board_slot_alternatives` exists as exactly this seam: the construction is built and tested but
+NOT WIRED (see its own comment), so the shipped board is the SELF arm and this probe re-enables
+the other one by patching one function and nothing else.
 
 Everything else -- the drafting loop, the control, the rulers, the derived band, the ordering
 verdict, the G9 asset numbers -- is `run_216_bench_probe`'s, imported rather than restated (#126).
@@ -90,8 +94,9 @@ def main(argv=None) -> int:
                     continue
                 t0 = time.time()
                 dr.reset_anchor_caches()
-                if arm == "SELF":
-                    with mock.patch.object(dr, "shared_slot_alternatives", lambda *a, **k: {}):
+                if arm == "SHARED":
+                    with mock.patch.object(dr, "board_slot_alternatives",
+                                           dr.shared_slot_alternatives):
                         d = bench.draft_one("B0", merger, players_db, league, pick_order, seat,
                                             points, season, rounds, slots, log, rulers, horizon_map)
                 else:

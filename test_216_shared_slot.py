@@ -132,16 +132,36 @@ class TheTwoDirectionsTests(unittest.TestCase):
                          250.0 - levels["WR"] + wr_new["adjustment"])
 
 
-class TheBoardAsksForItTests(unittest.TestCase):
-    def test_displacement_adjustments_passes_the_shared_alternative_through(self):
+class TheConstructionIsStrandedOnPurposeTests(unittest.TestCase):
+    """MEASURED, NOT WIRED. Two things must hold at once and they pull opposite ways: the board
+    must be byte-identical to the shipped one, so nothing ships that failed its gates; and the
+    wiring must be LIVE, so this is stranded code rather than dead code and the ablation that
+    judged it measured what it claims."""
+
+    def test_the_seam_returns_nothing_so_every_phantom_keeps_its_own_positional_level(self):
+        self.assertEqual(dr.board_slot_alternatives(LEVELS, TE_SLOT), {})
+
+    def test_displacement_adjustments_asks_the_SEAM_and_not_the_construction_directly(self):
         import ast
         import inspect
         tree = ast.parse(inspect.getsource(dr.displacement_adjustments).lstrip())
         called = {n.func.id for n in ast.walk(tree)
                   if isinstance(n, ast.Call) and isinstance(n.func, ast.Name)}
-        self.assertIn("shared_slot_alternatives", called)
+        self.assertIn("board_slot_alternatives", called)
+        self.assertNotIn("shared_slot_alternatives", called)
         kwargs = {kw.arg for n in ast.walk(tree) if isinstance(n, ast.Call) for kw in n.keywords}
         self.assertIn("slot_alternatives", kwargs)
+
+    def test_patching_the_seam_actually_moves_the_deduction(self):
+        """Stranded, not dead."""
+        from unittest import mock
+        roster = [_p(1, 260.0, "RB"), _p(2, 240.0, "RB"), _p(3, 300.0, "QB"),
+                  _p(4, 280.0, "WR"), _p(5, 270.0, "WR")]
+        shipped = dr.displacement_adjustments(roster, NO_TE_SLOT, LEVELS)
+        with mock.patch.object(dr, "board_slot_alternatives", dr.shared_slot_alternatives):
+            measured = dr.displacement_adjustments(roster, NO_TE_SLOT, LEVELS)
+        self.assertEqual(shipped["RB"]["adjustment"], 0.0)
+        self.assertLess(measured["RB"]["adjustment"], -100.0)
 
 
 # ---------------------------------------------------------------------------------------
