@@ -31,13 +31,24 @@ impossible, so I checked rather than reported. The explanation is the actual fin
 **Two starting slots are filled by PHANTOMS at every state, including with eighteen real
 players rostered.** `__free_WR_3` and `__free_FLEX_8`, each worth **217.75**.
 
-217.75 is this league's WR replacement level. It is higher than **nine of the ten starters**
-on a real, 18-player, mid-draft roster. So the engine's model of "a freely available
-receiver" out-starts almost everything a chair has actually drafted, in two slots, all
-draft long. The lineup does not change from 9 players to 18 because nothing acquired ever
-beats the phantom.
+**CORRECTED — my first statement of this was wrong and inverted.** I wrote that 217.75 is
+"higher than nine of the ten starters". It is not. Of the ten lineup entries, two ARE the
+phantoms; the eight real starters are 376.7, 372.2, 357.8, 331.1, 280.2, 258.5, 251.1 and
+200.9, and **seven of those eight are ABOVE 217.75**. Only the tight end at 200.9 is below.
+
+The accurate statement is narrower and is still the finding: **eight real players fill eight
+slots, and two slots stay with phantoms because no remaining rostered player beats 217.75.**
+`WR_3` needs a receiver and this chair has no third receiver worth 217.75; `FLEX_8` could
+take a tight end, and the second- and third-best tight ends held (196 and 195) lose to the
+phantom. The lineup does not change from 9 rostered players to 18 because everything
+acquired in between is worth less than a freely available receiver AT THOSE TWO SLOTS.
 
 That is why `displaced` never moves, and it is a fact about the LEVELS, not the optimizer.
+
+It is also NOT yet a defect. A replacement level of 217.75 out-competing a chair's ninth
+and tenth-best players may be a correct statement about a very deep receiver pool. Whether
+it is correct depends on the rank that level lands on and the player sitting there, which
+is exactly the next read.
 
 ## Second observation, recorded without interpretation
 
