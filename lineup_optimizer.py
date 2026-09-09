@@ -354,6 +354,11 @@ _DISPLACEMENT_PROBE_VALUE = 1e6
 def displacement_level(
     roster_players: list[dict], roster_positions: list[str], position,
     free_alternative: float, unpriced_eligible: Optional[list[set[str]]] = None,
+    #: #216. {slot_id: what a FREE player is worth IN THAT SLOT}. See "ONE SLOT, ONE
+    #: ALTERNATIVE" below. Omitted, or missing a slot, means that slot's phantom is worth
+    #: `free_alternative` -- exactly the behaviour that shipped before, for every caller that
+    #: does not supply this.
+    slot_alternatives: Optional[dict[str, float]] = None,
 ) -> dict:
     """What a player at `position` must out-score to start for THIS roster, in the caller's
     currency (#216).
@@ -384,9 +389,34 @@ def displacement_level(
         displaced  > free_alternative  when every reachable slot is held by one of my players
                                        who beats the league alternative
 
-    Reduces to the league anchor exactly on an empty roster, and for every position with an
-    open slot -- so the board is unchanged wherever it was right, and changes only where the
-    league anchor was crediting a player for a slot he could not reach.
+    ONE SLOT, ONE ALTERNATIVE (#216, the second half). A phantom stands for "what this slot gets
+    for free if I pass". For a DEDICATED slot that is a free player at its one position, and
+    `free_alternative` is exactly right. For a FLEX it is the best free player among every
+    position the slot admits -- one slot, one alternative, whoever is competing for it. Filling
+    a flex phantom with the CANDIDATE'S OWN positional level instead prices two players against
+    two different alternatives for the same slot, and that is measurable in both directions:
+
+      * No dedicated TE slot (the owner's league, three flexes). TE's own level sits at rank 9
+        and RB's at rank 39, so at one open flex a tight end is priced against a top-10 tight end
+        and a running back against RB39. Running backs take all three flexes and the seat fields
+        ZERO tight ends where the owner's own roster carries two.
+      * One dedicated TE slot (12T_ppr). TE's level is rank 20, WR's rank 32. A fourth tight end
+        competing for a flex is priced against TE20 while the receiver beside him is priced
+        against WR32 -- the ~30-point half of the tight-end bias that survives this term today,
+        because the term reports exactly 0.0 whenever a slot is merely OPEN.
+
+    `slot_alternatives` carries the per-slot value; every number in it is a replacement level the
+    board already computes (draft_room.shared_slot_alternatives builds it), so this introduces no
+    quantity and no constant. `free_alternative` keeps its own meaning -- what the candidate's
+    `bpa` was anchored on -- so `adjustment` goes NEGATIVE exactly when a position can only reach
+    slots whose real alternative beats its own positional anchor.
+
+    THE INVARIANT, RESTATED. The older wording was "reduces to the league anchor exactly on an
+    empty roster". That is no longer true for a position with NO dedicated slot -- a tight end in
+    a TE-less league reaches only shared slots, so his alternative is the shared one from the
+    first pick, which is the whole point. What holds instead, and is tested: **the term is exactly
+    0.0 for any position with an OPEN DEDICATED slot, on any roster.** For every caller that
+    passes no `slot_alternatives`, the old wording still holds verbatim.
 
     `position` may be a single position or a SET of them -- a multi-eligible candidate's full
     eligibility. The probe then reaches every slot any of those positions can fill, while the
@@ -413,16 +443,21 @@ def displacement_level(
     if not reachable:
         return {"displaced": None, "adjustment": 0.0, "basis": DISPLACEMENT_NOT_APPLICABLE}
     free = float(free_alternative)
-    phantoms = [{"id": f"__free_{s['slot_id']}", "value": free, "eligible": set(s["eligible"])}
-                for s in slots]
+    alt_of = {s["slot_id"]: float((slot_alternatives or {}).get(s["slot_id"], free)) for s in slots}
+    phantoms = [{"id": f"__free_{s['slot_id']}", "value": alt_of[s["slot_id"]],
+                 "eligible": set(s["eligible"])} for s in slots]
     base = optimize_lineup(list(roster_players) + phantoms, slots)
     probe = {"id": "__displacement_probe", "value": _DISPLACEMENT_PROBE_VALUE, "eligible": probe_eligible}
     with_probe = optimize_lineup(list(roster_players) + phantoms + [probe], slots)
     displaced = round(base["total_value"] + _DISPLACEMENT_PROBE_VALUE - with_probe["total_value"], 2)
-    # Never below the free alternative: a phantom sits in every slot, so the weakest thing the
-    # probe can evict is worth at least that. Float error across a 1e6 probe is the only way
-    # this max() ever binds, and it binds by a rounding unit, not by a claim.
-    displaced = max(displaced, free)
+    # Never below the cheapest phantom the probe can REACH: one sits in every slot, so that is
+    # the weakest thing it can evict. With uniform phantoms this is exactly `free_alternative`
+    # and the clamp binds only on float error across a 1e6 probe, by a rounding unit and not by
+    # a claim -- which is what it was before per-slot alternatives existed. With them it stays
+    # the true floor rather than a number that happens to coincide with it, so a multi-eligible
+    # probe reaching a slot whose alternative is BELOW his own anchor is not silently clamped up
+    # to that anchor and reported as "nothing displaced".
+    displaced = max(displaced, min(alt_of[s["slot_id"]] for s in reachable))
     basis = DISPLACEMENT_MEASURED
     reachable_eligible = set().union(*(s["eligible"] for s in reachable))
     for eligible in unpriced_eligible or ():

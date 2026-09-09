@@ -2530,13 +2530,51 @@ def displacement_adjustments(
     to correct", never as zero. MODULE-LEVEL AND PATCHABLE ON PURPOSE: an in-process A/B
     (engine-measurement skill) switches the term off by replacing this function with one that
     returns zeros, so both arms run the same code and differ in exactly one thing."""
+    alternatives = shared_slot_alternatives(levels, roster_positions)
     out: dict[str, dict] = {}
     for position, level in levels.items():
         if level is None or pd.isna(level):
             continue
         out[position] = lo.displacement_level(
             roster_players, roster_positions, position, float(level), unpriced_eligible,
+            slot_alternatives=alternatives,
         )
+    return out
+
+
+def shared_slot_alternatives(
+    levels: dict[str, float], roster_positions: list[str],
+) -> dict[str, float]:
+    """{slot_id: what a FREE player is worth IN THAT SLOT} (#216, the second half).
+
+    A phantom in `displacement_level` stands for what a slot gets if I pass on the candidate.
+    For a DEDICATED slot that is a free player at its one position. For a FLEX it is the best
+    free player among every position the slot admits -- ONE SLOT, ONE ALTERNATIVE -- because a
+    tight end and a running back competing for the same flex are competing against the same
+    thing, and pricing them against two different alternatives is #216 in both of its directions
+    (see displacement_level's own docstring for the two measurements).
+
+    So the value of a slot is `max(level(p) for p in slot.eligible)`. `max`, not `min` or a
+    blend: the alternative to taking this candidate is the BEST thing still freely available for
+    the slot, and any other choice would be a claim about which free player I would settle for.
+    Every number here is a replacement level `compute_draft_board` already computed -- nothing is
+    derived, chosen or tuned, which is why this introduces no constant.
+
+    A slot whose eligible positions carry NO level is OMITTED rather than given a number.
+    `displacement_level` then falls back to the candidate's own `free_alternative` for it, which
+    is the pre-#216 behaviour and the only honest answer when nothing at that slot can be
+    priced -- an invented value there would be exactly the absence-read-as-a-value defect this
+    module keeps repairing. Absence travels; it is not filled in.
+
+    MODULE-LEVEL AND PATCHABLE ON PURPOSE, for the same reason `displacement_adjustments` is: an
+    in-process A/B switches the shared alternative off by replacing this with one that returns
+    `{}`, so both arms run the same code and differ in exactly one thing."""
+    priced = {p: float(v) for p, v in levels.items() if v is not None and not pd.isna(v)}
+    out: dict[str, float] = {}
+    for slot in lo.slots_from_roster_positions(roster_positions):
+        candidates = [priced[p] for p in slot["eligible"] if p in priced]
+        if candidates:
+            out[slot["slot_id"]] = max(candidates)
     return out
 
 
