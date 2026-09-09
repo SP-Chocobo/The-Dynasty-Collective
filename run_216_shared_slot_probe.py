@@ -3,14 +3,17 @@
 One process, one code version, one thing toggled -- `draft_room.shared_slot_alternatives`, which
 exists as a module-level function for exactly this reason:
 
-    SELF    -- untouched, so `board_slot_alternatives` returns {} and every phantom is worth the
-               CANDIDATE'S OWN positional level. That is the SHIPPED engine.
-    SHARED  -- `board_slot_alternatives` patched to `shared_slot_alternatives`, so a flex slot's
-               phantom is worth the best free player among the positions it admits.
+    SELF    -- `board_slot_alternatives` patched to return {}, so every phantom is worth the
+               CANDIDATE'S OWN positional level. That was the shipped engine BEFORE #221.
+    SHARED  -- untouched: a flex slot's phantom is worth the best free player among the positions
+               it admits. That is the SHIPPED engine from #221 onward.
 
-`board_slot_alternatives` exists as exactly this seam: the construction is built and tested but
-NOT WIRED (see its own comment), so the shipped board is the SELF arm and this probe re-enables
-the other one by patching one function and nothing else.
+**THE ARMS SWAPPED AT #221, WHEN THE CONSTRUCTION WAS WIRED.** Until then SELF was "untouched"
+and SHARED was the patched arm; leaving it that way after wiring would have made both arms run
+the identical code and every number in this file a null result that looked like a measurement
+(engine-measurement skill: "if ON and OFF are identical, it did not fire"). `board_slot_alternatives`
+is still exactly the seam -- one function, patched or not -- so the ablation is unchanged in kind,
+only in which side carries the patch.
 
 Everything else -- the drafting loop, the control, the rulers, the derived band, the ordering
 verdict, the G9 asset numbers -- is `run_216_bench_probe`'s, imported rather than restated (#126).
@@ -94,9 +97,11 @@ def main(argv=None) -> int:
                     continue
                 t0 = time.time()
                 dr.reset_anchor_caches()
-                if arm == "SHARED":
-                    with mock.patch.object(dr, "board_slot_alternatives",
-                                           dr.shared_slot_alternatives):
+                # #221: SELF is now the PATCHED arm. See the module docstring -- the seam was
+                # wired, so "untouched" is the shared alternative and it is SELF that has to be
+                # switched back off to exist at all.
+                if arm == "SELF":
+                    with mock.patch.object(dr, "board_slot_alternatives", lambda *a, **k: {}):
                         d = bench.draft_one("B0", merger, players_db, league, pick_order, seat,
                                             points, season, rounds, slots, log, rulers, horizon_map)
                 else:

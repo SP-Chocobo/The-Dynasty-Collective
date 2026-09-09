@@ -293,7 +293,17 @@ def build_league(spec_label, scoring):
         league = {"roster_positions": list(OWNER_LEAGUE["roster_positions"]), "scoring_settings": settings,
                   "total_rosters": OWNER_LEAGUE["teams"], "settings": {"type": 2 if OWNER_LEAGUE["dynasty"] else 0}}
         return league, OWNER_LEAGUE["draft_type"]
-    spec = next(s for s in rp.PROOF_FORMATS if s["label"] == spec_label)
+    spec = next((s for s in rp.PROOF_FORMATS if s["label"] == spec_label), None)
+    if spec is None:
+        # #221 WAVES. Any of the 33 arms draft_battery already defines, so the shared-slot
+        # ablation can be widened past the six proof formats without a second source of truth
+        # about what a format IS (#126): the matrix is the battery's, not a copy of it.
+        arm = next((a for a in db.league_matrix(scoring) if a["label"] == spec_label), None)
+        if arm is None:
+            raise KeyError(f"no such format: {spec_label} "
+                           f"(proof: {[s['label'] for s in rp.PROOF_FORMATS]}; "
+                           f"battery: {[a['label'] for a in db.league_matrix(scoring)]})")
+        return arm["league"], "snake"
     league = dr.build_mock_league(teams=spec["teams"], superflex=spec["superflex"], scoring=spec["scoring"],
                                   te_premium=spec["te_premium"], dynasty=True, base_scoring=scoring)
     return league, "snake"
