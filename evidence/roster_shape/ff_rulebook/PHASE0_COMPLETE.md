@@ -1,5 +1,9 @@
 # Phase 0 -- the instrument, made trustworthy
 
+**Status: work items 0.1-0.3 complete. The phase GATE is partially evidenced with the
+reproduction deferred -- see the Gate section. Do not read this file as "Phase 0 is
+done" without that qualifier.**
+
 PLAN_222 Phase 0. **No engine source changed.** `draft_room.py`, `lineup_optimizer.py` and
 `pick_synthesis.py` are byte-identical to where #222 started. What changed is the harness
 that measures them, and the written recipe that tells the next probe how.
@@ -105,14 +109,22 @@ the INSTRUMENT was wrong.
 
 PLAN_222's gate for this phase is *"the skill's recipe reproduces FINDING_05's draft exactly."*
 
-**Partially met, and I am saying which part.** The recipe now written in the skill is
-character-for-character the recipe `run_ff_draft.py` used to produce FINDING_05, and that
-draft is determinism-checked (the 3RR arm reproduced identical totals from a different pick
-order; a rerun of the same arm was byte-identical). What I have NOT done is spend another
-~1,125 seconds re-running the 312-pick draft purely to re-derive a number already saved in
-`ff_draft.json`. That is a real gap in the gate as written, not a redefinition of it: if the
-next phase touches anything on the pricing path, the re-run becomes mandatory rather than
-redundant.
+**GATE PARTIALLY EVIDENCED / REPRODUCTION DEFERRED** -- because the exact artifact already
+exists and the recipe is byte-equivalent to the producing recipe.
+
+That is the whole claim, and it is deliberately weaker than the gate. The gate says the
+corrected recipe must REPRODUCE the draft. What is established is that the recipe now written
+in the skill is character-for-character the one `run_ff_draft.py` used to produce
+FINDING_05, and that the draft is determinism-checked (the 3RR arm reproduced identical
+totals from a different pick order; a rerun of the same arm was byte-identical).
+
+**"We know this recipe produced the artifact" is not "we freshly demonstrated that it
+reproduces the artifact."** The second is what the gate asks for and it has not been done. The
+~1,125-second re-run was not spent, because it would have been ceremony against a number
+already saved in `ff_draft.json`.
+
+This gap stays OPEN and visible until the first change to the pricing path, at which point the
+re-run stops being redundant and becomes mandatory. It is not closed by this document.
 
 ## What this phase deliberately did NOT do
 

@@ -1,5 +1,13 @@
 # #50 RULING INPUT: what is discarded when a replacement level switches live → PRE-DRAFT
 
+> **SUPERSEDED by `PHASE2_RULING_INPUT_50.md`.** That document answers the
+> same question at every pick rather than at four sampled ones, locates the exact
+> crossing pick per position, reads production's own selection decision out of
+> `_fill_omitted_from_anchor`, and reaches a ruling recommendation. The gaps quoted
+> below (+13.97 / +40.53 / +44.84 / +68.81) are correct but were measured at sampled
+> picks AFTER the crossing, which mixes the jump at the switch together with how far
+> the position had drained since. Read the superseding document instead.
+
 Measured, not argued. `phase3_live_vs_anchor.py`, real rulebook, real universe. Every
 capture is TAGGED by which invocation of `replacement_levels` it came from, identified from
 the arguments — the instrument rule earned by the sixteenth withdrawal.

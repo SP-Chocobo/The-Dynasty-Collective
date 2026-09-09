@@ -114,7 +114,8 @@ documented recipe measures the wrong population and produces plausible numbers a
 Sequenced so each phase can fail cheaply and stop the next. Standing order applies:
 evidence before repair, repair before freeze, freeze before blind audit.
 
-### Phase 0 -- Make the instrument trustworthy (half a day, no engine change) -- **DONE**
+### Phase 0 -- Make the instrument trustworthy (half a day, no engine change)
+**Work items 0.1-0.3 DONE. Gate PARTIALLY EVIDENCED, reproduction deferred -- see below.**
 0.1 Update the engine-measurement skill's fixture to the #201/#204 recipe. (B5) **DONE**
 0.2 Add a probe-level assertion that fails loudly if a board is built from the vendor
     reconstruction while a capture exists. **DONE** -- `build_players_db` raises while a
@@ -125,9 +126,11 @@ evidence before repair, repair before freeze, freeze before blind audit.
 Plus: both instrumentation clauses promoted into the skill (the thing the owner asked be
 preserved from this episode).
 **Gate:** the skill's recipe reproduces FINDING_05's draft exactly.
-**Gate status: PARTIALLY MET, stated as such.** The recipe is character-for-character the one
-that produced FINDING_05, and that draft is determinism-checked; the 312-pick re-run was NOT
-spent to re-derive a saved number. See PHASE0_COMPLETE.md.
+**Gate status: PARTIALLY EVIDENCED / REPRODUCTION DEFERRED** -- the exact artifact already
+exists and the recipe is byte-equivalent to the producing recipe, but no fresh reproduction was
+run. "We know this recipe produced the artifact" is not "we freshly demonstrated that it
+reproduces the artifact." The gap stays OPEN until the first pricing-path change makes the
+re-run non-redundant. See PHASE0_COMPLETE.md.
 
 ### Phase 1 -- Isolate B1 (one day, no engine change yet)
 1.1 Instrument `displacement_level` to return `displaced`, the slot it came from, and

@@ -34,10 +34,18 @@ Roster fully priced at every state (0 unpriced), so no absence path is involved.
    ladder.** It does not move from two held to eight held. Every variation in the
    adjustment comes from the league level; **my own saturation contributes nothing at all.**
 2. **`level_TE` returns to exactly 149.17 at eight held, the identical value it had at
-   two held.** It falls 149.17 → 80.36 over picks 109–182 and then jumps back. An exact
-   return to the hundredth is a rank landing on the same player: as tight ends are taken
-   league-wide, remaining demand shrinks, the rank walks UP the thinning list, and it
-   arrives back at the player who sat at that rank when the pool was full.
+   two held.** It falls 149.17 → 80.36 over picks 109–182 and then jumps back.
+
+   > **CORRECTED by PHASE2_RULING_INPUT_50.md — the mechanism offered here was WRONG.**
+   > This paragraph originally read: *"An exact return to the hundredth is a rank landing on
+   > the same player: as tight ends are taken league-wide, remaining demand shrinks, the rank
+   > walks UP the thinning list, and it arrives back at the player who sat at that rank when
+   > the pool was full."* No rank walks anywhere. At seven and eight held TE demand is 0.10
+   > and 0.00, the live call OMITS the position entirely, and 149.17 arrives from
+   > `_fill_omitted_from_anchor` — the pre-draft anchor, stamped `predraft_anchor` on the
+   > board. The two 149.17s are the same constant reached by two different BASES, not one
+   > rank landing twice. This document itself listed "the level's round trip ... not yet read
+   > out" as an open candidate; it is now read out, and the plausible story did not survive.
 
 So the "reset" is real, and it lives in **`replacement_levels`**, not `displacement_level`.
 
