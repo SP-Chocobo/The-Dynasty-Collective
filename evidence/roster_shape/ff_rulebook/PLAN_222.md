@@ -91,13 +91,21 @@ documented recipe measures the wrong population and produces plausible numbers a
 
 ## PART 3 -- WHAT I CANNOT YET SAY
 
-- **Whether B1/B2 generalise beyond this rulebook.** One league, one draft. A 3RR arm is
-  running; other formats have never been drafted on the real universe.
+- **Whether B1/B2 generalise beyond this rulebook.** One league. Other formats have never
+  been drafted on the real universe.
+
+  **REPLICATED within this rulebook.** A 3RR arm -- a genuinely different pick sequence,
+  since third-round reversal gives turn seats back-to-back pairs rather than a plain snake
+  -- produced IDENTICAL totals: QB 32, RB 84, WR 95, TE 101. The quarter-by-quarter drift
+  does shift (Q1 RB 30.8% against 29.5%, TE 12.8% against 14.1%), confirming the pick
+  ORDER really did change while the composition did not. So the shape is a property of the
+  engine, the rulebook and the pool -- not of the draw. `ff_draft_3rr.txt`.
 - **Whether -51.73 is a bug or a surprising-but-correct consequence** of the non-positive
   rule. It has to be read out of `displacement_level` directly, not inferred.
 - **A reversed-seat-order arm proved nothing.** Reversing `roster_ids` in a snake only
   relabels seats, so the aggregate must match, and it did -- byte for byte. Recorded as my
-  error rather than as a replication.
+  error rather than as a replication; the 3RR arm above is the real one.
+  `ff_draft_revseat.txt` is kept so the null result is auditable.
 
 ---
 
