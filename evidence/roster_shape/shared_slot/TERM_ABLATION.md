@@ -103,3 +103,39 @@ Three things are now measured rather than argued:
 2. **`depth_exposure` has selection authority it is not paying for** — same lineup value to the
    point, two seats of ordering worse. That is #55's ruling shape applied to #139.
 3. **The four-quarterback seat blocks it**, and its mechanism is not known.
+
+## The four quarterbacks: diagnosed, and it is not the shared alternative's defect
+
+Owner's league, seat 1, `SHARED_ND`, the picks the engine actually made:
+
+| rnd | pick | my QBs before | best-row `bpa` |
+|---|---|---|---|
+| 3 | QB Sam Darnold 307.21 | 0 | 99.71 |
+| 5 | QB Malik Willis 289.64 | 1 | 82.14 |
+| 9 | QB Daniel Jones 281.89 | **2** | **74.39** |
+| 10 | QB Bryce Young 265.02 | **3** | **57.52** |
+
+**Every one of those is `projection − 207.5`, exactly.** 281.89 − 207.5 = 74.39. 265.02 − 207.5 =
+57.52. That 207.5 is the **startable floor** — `qb_startable_floor`'s cliff-anchored count — and
+`run_216_qb_price_probe` already measured it as the QB level at EVERY round of this format.
+
+That is the whole mechanism. Every other position's anchor is a demand rank that moves as the
+league's starting slots fill; **QB's is a count of quarterbacks still above a projection
+threshold, and with 32 of 42 above it, drafting a few barely moves it.** So a fourth quarterback
+still prices at +57 of raw `bpa` while a fourth running back's anchor has long since caught up
+with him. `displacement_adj` deducts −82 for having to displace my own QB2, which lands him near
+zero — close enough that ±36 of capped team terms decides the pick.
+
+**This is not a defect the shared alternative introduces.** The shipped engine takes only two
+quarterbacks in that seat because every OTHER position keeps its inflated own-anchor `bpa` and
+outranks them. Remove that inflation — which is what the shared alternative correctly does — and
+what is left standing is the quarterback anchor, on a different and more generous scale than
+everything it is being compared against.
+
+**So the blocker is a pre-existing one the repair exposed: two anchor models, one board.** That is
+the same finding #185/#186 recorded from the labelling side, and it is #50 — the exchange rate
+between a startable-floor level and a demand-rank level, which nothing in this engine has ever
+had to state because until now nothing forced the comparison.
+
+Arithmetically verified, not inferred: the four `bpa` values above are `projection − 207.5` to the
+cent, and 207.5 is the level `run_216_qb_price_probe` independently measured for this format.
