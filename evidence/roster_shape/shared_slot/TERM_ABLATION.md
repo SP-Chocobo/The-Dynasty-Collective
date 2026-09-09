@@ -47,13 +47,23 @@ ablation result holds: it is a positional GATE, not a nudge.
 
 ## 4. What does NOT come out of this
 
-Seat 1's **four quarterbacks** survive every arm — SHARED, ND and NE are byte-identical there. So
-the QB over-accumulation is not any of the three capped terms either. It is the SUPER_FLEX
-phantom: `max` over the positions that slot admits, where QB's level comes from the startable-floor
-model and every other position's from the demand-rank model. **Mixing two anchor models inside one
-`max` is not comparing like with like** — the same two-homes-for-one-vocabulary shape this
-repository keeps finding. Named as the next thing to measure; NOT diagnosed, and nothing is wired
-on it.
+Seat 1's **four quarterbacks** are byte-identical under SHARED, SHARED_ND and SHARED_NE, so
+neither `depth_exposure` nor `eligibility_bonus` explains them.
+
+**CORRECTION, made before this file was read by anyone.** My first draft of this paragraph went on
+to assert "it is the SUPER_FLEX phantom", on the reasoning that `max` over that slot mixes QB's
+startable-floor level with everyone else's demand-rank level. **The table on this page contradicts
+that in the very next row**: SHARED_NN — `need_bonus` zeroed — comes back with **QB 2**, so
+`need_bonus` is implicated somewhere in the sequence and "not any of the three capped terms" was
+false as I wrote it. Zeroing `need_bonus` is not a remedy either: the same arm gives RB 7 / WR 2
+and costs a further 29 lineup points, which is #87's gate result holding.
+
+**So the mechanism behind the fourth quarterback is NOT established.** Two facts are: it is
+untouched by two of the three capped terms, and it disappears when the third is removed at a price
+that is worse elsewhere. The mixed-anchor observation about SUPER_FLEX remains worth measuring —
+`max` really does compare a startable-floor level against demand-rank levels — but it is a
+hypothesis with a mechanism, not a diagnosis, and it now has a measurement standing against the
+sentence I nearly published. Sixth withdrawal on this item; recorded, not deleted.
 
 ## A probe defect caught before it became a finding
 
@@ -64,3 +74,32 @@ mutation reads exactly like a survivor. The `eligibility_bonus` patch returned a
 the caller subscripts a dict, so that arm crashed instead of lying — the luckier of the two
 failures. Both were found by reading what `draft_room` actually subscripts before trusting either
 arm.
+
+## All three formats, all nine seats (`term_ablation_all_formats/`)
+
+| arm | lineup total | band distance | strict ordering | owner's reading | legal | new asset reversals |
+|---|---|---|---|---|---|---|
+| SELF (shipped) | 21949.5 | 47.45 | 6/9 | 6/9 | **9/9** | — |
+| SHARED | 21832.0 (−0.53%) | 39.41 | 6/9 | 7/9 | **9/9** | **2** |
+| SHARED + `depth_exposure` demoted | 21832.0 (−0.53%) | **37.33** | **8/9** | **8/9** | **9/9** | **2** |
+
+`SHARED_ND` is the best configuration measured in this whole pass on every shape ruler there is,
+at an identical lineup cost to `SHARED` — the demotion is free in points and worth two seats of
+ordering. It is **still not shipped**, for one reason that is not about aggregates:
+
+**it produces a four-quarterback roster in a league with two quarterback-capable slots.** That is
+a bad roster, not a trade, and it is the same standard that rejected the flex share's
+four-tight-end seat. Applying that standard to somebody else's change and not to my own is the one
+failure mode this whole pass exists to avoid.
+
+## Where this leaves the decision
+
+Three things are now measured rather than argued:
+
+1. **The shape costs 0.53% of expected season points.** Not a defect, not a double count — the
+   price of pricing every flex candidate against one alternative. The owner's stated objective is
+   "within a competitive band", not point-maximal, and 0.53% is inside any band; but the engine
+   does not encode an objective at all, which is #217.
+2. **`depth_exposure` has selection authority it is not paying for** — same lineup value to the
+   point, two seats of ordering worse. That is #55's ruling shape applied to #139.
+3. **The four-quarterback seat blocks it**, and its mechanism is not known.
