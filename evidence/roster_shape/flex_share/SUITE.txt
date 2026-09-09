@@ -1,0 +1,19 @@
+Ran 2741 tests in 1245.659s
+OK (skipped=1)
+
+Clean run at 8dd2d51, nothing edited while it ran.
+
+The PREVIOUS run reported 4 failures and 1 error and every one of them was mine: I edited
+pick_synthesis.py (a comment) and ran two mutation batches over draft_room.py and
+run_216_bench_probe.py while the suite was in flight. Each of those failures was a
+source-scanning test slicing the wrong function -- test_one_pricing_universe could not find
+"ds.pick_analysis(" at all, and test_depth_basis_boundary was handed PickSnapshot's dataclass
+body where build_snapshot's should have been. That is what reading a file that changed on disk
+after import looks like, and the engine-measurement rule it breaks is the oldest one there:
+do not edit the tree during a measurement.
+
+The 5th failure was real and is fixed: test_suite_taxonomy noticed that two new test modules
+answered to nothing. Both docstrings now cite #216/#219.
+
+test_the_premium_still_exceeds_one_terms_cap is GREEN here, which is the confirmation that
+#220's canary is conditional on the fielded anchor and not on anything shipped.
