@@ -40,7 +40,7 @@ returns None, so every board is byte-identical to the even split. See that funct
 | **H2** owner's league fields a tight end, and does not hoard one | **FAIL** | The first half passes outright: 0 tight ends becomes **2, 4, 1** where his own roster carries 2. The second half fails: **seat 6 comes back with FOUR**, and the pre-registration names a four-tight-end seat as an over-correction and a failure. |
 | **H3** lineup does not fall in any seat | **FAIL** | Falls in 4 of 9: 12T_ppr s12 −11, SF s1 −27, SF s6 −30, owner s12 −38. |
 | **H4** legality survives | PASS | `forced` 0 and `unfillable` empty in 18 of 18 drafts, both arms. |
-| **H5** ordering passes in no fewer seats | **FAIL as written**, see below | 12T_ppr 1/3 → 3/3; SF 2/3 → 1/3; owner's 3/3 → 1/3. |
+| **H5** ordering passes in no fewer seats | **FAIL, and smaller than it first read** | 12T_ppr 1/3 → 3/3; 12T_ppr_SF 2/3 → 1/3; owner's league 3/3 → 1/3 on the bare rule but **3/3 → 3/3 under the reading he himself gave** (below). So the only real regression is 12T_ppr_SF. |
 | **H6** no new constant | PASS | The diff adds no numeric literal to the value path; `SUPER_FLEX_QB_SHARE` loses a consumer and gains no sibling. |
 | **H7** no silent change to callers passing nothing | PASS | The even-split branch is byte-identical; 22 tests. |
 | **H8** suite green | one RED canary | `test_the_premium_still_exceeds_one_terms_cap` — attributed in `rival_premium_attribution.md`, its cause is #216's fourth term, not repaired here, not edited. |
@@ -55,8 +55,27 @@ but flex that can field them, the TE act as de-facto WR."* The optimal fielding 
 uses 1.5 tight ends per team. So in a TE-slotless league the verdict as implemented cannot tell
 a good roster from a roster with no tight ends at all, and it prefers the second.
 
-That is a defect in the INSTRUMENT, recorded as one. It does not rescue the change: H2's ceiling
-and H3 fail on their own terms.
+That is a defect in the INSTRUMENT, and it is now repaired rather than only recorded.
+`ordering_verdict` takes the league's `roster_positions` and, when `dedicated_slot_counts["TE"]`
+is zero -- **the rulebook decides, nothing is invented here** -- adds a second reading in which
+tight ends count on the receiving side: `(WR + TE) >= RB`, with the QB ceiling still binding and
+the question of HOW MANY tight ends left to the derived band, where it belongs. The original
+`pass_strict` and `pass_tendency` keys are untouched, so every verdict already recorded stays
+comparable; 7 tests, 4 of 4 mutations caught.
+
+Re-scoring the same 18 recorded rosters under it:
+
+| owner's league | bare rule | de-facto-receiver reading |
+|---|---|---|
+| EVEN (zero tight ends in all three seats) | 3/3 | 3/3 |
+| FIELDED | 1/3 | **3/3** |
+
+**H5's failure in the owner's league was entirely the instrument.** What remains of H5 is
+12T_ppr_SF, where tight ends DO have a dedicated slot, the second reading does not apply, and the
+regression 2/3 → 1/3 is real.
+
+None of this rescues the change: **H2's ceiling and H3 fail on their own terms**, and a
+four-tight-end seat is a four-tight-end seat under either reading.
 
 ## The derived band tells a different story, and both belong in the record
 

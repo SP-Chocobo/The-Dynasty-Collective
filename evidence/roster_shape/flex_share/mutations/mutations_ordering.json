@@ -1,0 +1,14 @@
+[
+ {"id":"O1","file":"run_216_bench_probe.py","what":"fold TE into the receiving side in EVERY league",
+  "old":"    de_facto = dr.dedicated_slot_counts(roster_positions).get(\"TE\", 0) == 0",
+  "new":"    de_facto = True"},
+ {"id":"O2","file":"run_216_bench_probe.py","what":"drop the QB ceiling from pass_flex_te",
+  "old":"        verdict[\"pass_flex_te\"] = (wr + te) >= rb and qb <= 4",
+  "new":"        verdict[\"pass_flex_te\"] = (wr + te) >= rb"},
+ {"id":"O3","file":"run_216_bench_probe.py","what":"report te_is_de_facto_receiver as False instead of omitting it",
+  "old":"    if roster_positions is None:\n        return verdict",
+  "new":"    if roster_positions is None:\n        verdict[\"te_is_de_facto_receiver\"] = False\n        return verdict"},
+ {"id":"O4","file":"run_216_bench_probe.py","what":"let the second reading overwrite pass_strict",
+  "old":"        verdict[\"WR+TE>=RB\"] = (wr + te) >= rb",
+  "new":"        verdict[\"WR+TE>=RB\"] = (wr + te) >= rb\n        verdict[\"pass_strict\"] = (wr + te) >= rb"}
+]

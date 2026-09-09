@@ -6541,11 +6541,17 @@ in for a derivable quantity, which is what #56 exists to prevent.
 
 **Two instrument defects the run exposed, both recorded:**
 
-1. **The ordering verdict prefers a roster with no tight ends.** `WR >= RB > TE` is trivially
-   satisfied at TE 0, so in the owner's TE-slotless league the unfixed arm scores 3/3 by drafting
-   none -- against his own roster's two, and against an optimal fielding that uses 1.5 per team.
-   He said why before any of this was measured: *"with no TE slot, but flex that can field them,
-   the TE act as de-facto WR."* The verdict cannot express that.
+1. **The ordering verdict preferred a roster with no tight ends -- REPAIRED.** `WR >= RB > TE`
+   is trivially satisfied at TE 0, so in the owner's TE-slotless league the unfixed arm scored
+   3/3 by drafting none -- against his own roster's two, and against an optimal fielding that
+   uses 1.5 per team. He gave the rule for that case himself, before any of this was measured:
+   *"with no TE slot, but flex that can field them, the TE act as de-facto WR."*
+   `ordering_verdict` now takes the league's `roster_positions` and, when the rulebook says there
+   is no dedicated TE slot, adds `(WR + TE) >= RB` beside the original keys rather than replacing
+   them (so recorded verdicts stay comparable). 7 tests, 4 of 4 mutations caught. Re-scored: the
+   owner's league goes 1/3 -> **3/3** under the reading he described, and the EVEN arm's 3/3 is
+   revealed as the artifact it was. **H5's failure there was the instrument; what survives of H5
+   is 12T_ppr_SF alone**, where tight ends do have a dedicated slot.
 2. **My H3 was one-sided for a two-sided defect.** It required the TE count never to RISE; in
    12T_ppr seat 12 it rose 1 -> 2, toward a band target of 1.90. That is my error at
    pre-registration time, not a result.

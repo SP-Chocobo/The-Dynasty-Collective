@@ -156,10 +156,42 @@ def derived_band(mine, seat, points, players_db, slots, roster_size):
             "derived_ordering": sorted(share, key=lambda p: -share[p])}
 
 
-def ordering_verdict(comp):
+def ordering_verdict(comp, roster_positions=None):
+    """The owner's ordering rule on a finished roster -- and, in a league with no dedicated TE
+    slot, a SECOND reading of it, because the first one rewards the defect.
+
+    `WR >= RB > TE` is trivially satisfied at TE 0. In the owner's real league that is not a
+    technicality: the unfixed engine scores 3/3 there BY DRAFTING NO TIGHT ENDS, against his own
+    roster which carries two, and against an optimal fielding of that league which uses about
+    1.5 per team. So the verdict as written prefers a roster nobody would build to the one he
+    actually built.
+
+    He said why before any of this was measured: *"with no TE slot, but flex that can field them,
+    the TE act as de-facto WR."* That is the rule, and the LEAGUE'S OWN RULEBOOK decides when it
+    applies -- `dedicated_slot_counts["TE"] == 0`, nothing invented here. When it does, tight ends
+    count on the receiving side and the ordering reads `(WR + TE) >= RB`; the ceiling on how many
+    of them belong is not an ordering question at all, it is the derived band's.
+
+    ADDITIVE, NEVER A REPLACEMENT. `pass_strict` and `pass_tendency` keep their exact meanings so
+    every verdict already recorded stays comparable; the new keys sit beside them. A verdict that
+    changed under your feet would make two runs of this probe incomparable, which is the failure
+    the resume work exists to prevent.
+
+    `roster_positions` is optional so existing callers keep working; without it only the original
+    keys are returned, and `te_is_de_facto_receiver` is absent rather than False -- "not asked"
+    and "asked, and no" are different answers."""
     wr, rb, te, qb = comp.get("WR", 0), comp.get("RB", 0), comp.get("TE", 0), comp.get("QB", 0)
-    return {"WR>=RB": wr >= rb, "RB>TE": rb > te, "RB>=TE": rb >= te, "QB<=4": qb <= 4,
-            "pass_strict": wr >= rb and rb > te and qb <= 4, "pass_tendency": wr >= rb and rb >= te and qb <= 4}
+    verdict = {"WR>=RB": wr >= rb, "RB>TE": rb > te, "RB>=TE": rb >= te, "QB<=4": qb <= 4,
+               "pass_strict": wr >= rb and rb > te and qb <= 4,
+               "pass_tendency": wr >= rb and rb >= te and qb <= 4}
+    if roster_positions is None:
+        return verdict
+    de_facto = dr.dedicated_slot_counts(roster_positions).get("TE", 0) == 0
+    verdict["te_is_de_facto_receiver"] = de_facto
+    if de_facto:
+        verdict["WR+TE>=RB"] = (wr + te) >= rb
+        verdict["pass_flex_te"] = (wr + te) >= rb and qb <= 4
+    return verdict
 
 
 def draft_one(arm, merger, players_db, league, pick_order, seat, points, season, rounds, slots, log, rulers, horizon_map):
@@ -216,11 +248,14 @@ def draft_one(arm, merger, players_db, league, pick_order, seat, points, season,
     n_start = sum(1 for s in roster_positions if s != "BN")
     bench_comp = dict(collections.Counter(r["position"] for r in seq[n_start:]))
     band = derived_band(mine, seat, points, players_db, slots, rounds)
+    # roster_positions passed so a TE-slotless league also gets the de-facto-receiver reading;
+    # see ordering_verdict for why the bare rule prefers a roster with no tight ends at all.
     dedicated = dr.dedicated_slot_counts(roster_positions)
     return {
         "arm": arm, "seat": seat, "sequence": seq, "states": states, "composition": composition,
         "bench_composition_by_pick_order": bench_comp,
-        "verdict_full_roster": ordering_verdict(composition), "verdict_bench": ordering_verdict(bench_comp),
+        "verdict_full_roster": ordering_verdict(composition, roster_positions),
+        "verdict_bench": ordering_verdict(bench_comp, roster_positions),
         "band": band,
         "missing_dedicated": {p: dedicated[p] - composition.get(p, 0) for p in dedicated if dedicated[p] > composition.get(p, 0)},
         "unfillable_starting_slots": sorted(rp.unmet_slot_positions(mine[seat], players_db, slots)),
