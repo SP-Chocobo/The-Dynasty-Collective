@@ -123,3 +123,25 @@ Full record: `POST_AUDIT_PLAN.md` -> #216 -> "THE IMPLEMENTATION PASS". Evidence
 **A fourth withdrawn explanation, added to the three above:** "the bench regime falls back to raw
 VOR." It does not. It orders by distance to my lineup and takes receivers (zero bench TEs in
 6/6); the `RB2 < TE3` failures are STARTER picks, and correct by lineup points.
+
+## THE ANCHOR PASS (Opus), on the same branch — read this before touching replacement levels
+
+`worktree-agent-ab5e1af412aeb9182` now also carries the flex-share work. Fetch it. The one thing
+to know before doing anything to `replacement_levels` or `starter_slot_counts`:
+
+**The even flex split is measured FALSE.** 24 FLEX slots go WR 20 / RB 4 / TE 0 with a dedicated
+TE slot and TE 18 / WR 5 / RB 1 without; SUPER_FLEX goes to a quarterback 12 of 12 against a
+hand-set 0.85. One derivation explains #216 in both of its observed directions. Instruments:
+`run_216_flex_share_probe.py` (no drafting) and `run_216_flexshare_draft_probe.py` (18 drafts).
+
+**And correcting it naively is NOT the repair.** It failed four of nine pre-registered gates,
+including a four-tight-end seat in the owner's league, and it is therefore STRANDED behind
+`draft_room.board_flex_share`, which returns None. Every board is byte-identical to the even
+split. Do not wire it without the owner: the anchor is #50.
+
+**A fifth withdrawn-or-corrected claim, and a process rule that cost real work.** An ABLATION
+defeats a fingerprinted cache from outside — patching a function changes the answer without
+changing any input `anchor_cache_key` names, so an arm that runs second reads the first arm's
+remembered levels. That put 9.25 where 14.29 belonged in the first rival_premium attribution.
+`draft_room.reset_anchor_caches()` exists for this; every A/B that patches a function inside the
+board must call it at each arm boundary.

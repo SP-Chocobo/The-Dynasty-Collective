@@ -6404,6 +6404,50 @@ conditional; a snake control in the owner's format; battery/room checks against 
 is two owner rulings on #50: the lineup-vs-asset exchange rate that G9's superflex reversals
 turn on, and whether a flex slot should re-anchor the positions competing for it.
 
+### THE ANCHOR PASS — Opus took over implementation, and the answer is EVIDENCE, not a repair
+
+Branch `worktree-agent-ab5e1af412aeb9182`. Full write-up lives THERE, in that branch's
+`POST_AUDIT_PLAN.md` as **#219** and **#220**, with the evidence under
+`evidence/roster_shape/flex_share/`. Nothing is merged here and the shipped board is unchanged.
+
+**The finding, and it is the strongest single piece of evidence yet about #216's cause.**
+`starter_slot_counts` splits a flex slot EVENLY across the positions it admits, and defended
+that in its own docstring with a claim about the world. Asked of the data -- field the whole
+league optimally out of the whole pool through the lineup optimizer, which never looks at a
+drafter and so cannot be circular -- the claim is FALSE in every format tried. 24 FLEX slots go
+**WR 20 / RB 4 / TE 0** in a league with a dedicated TE slot and **TE 18 / WR 5 / RB 1** in one
+without; SUPER_FLEX goes to a quarterback **12 times out of 12** against a hand-set 0.85.
+
+Those counts set every replacement RANK, and the rank picks the LEVEL `bpa` subtracts, so **one
+derivation explains #216 in BOTH of its observed directions**: with a TE slot the even split
+pushes TE's anchor from TE12 out to TE20 and prices tight ends far too high (the 43.5-point
+bias); without one it hands TE 0.717 of a slot at rank 9, prices them at nothing, and hands RB
+rank 39 and enough price to take all three flexes (the zero-tight-ends result). A knob tuned to
+fix the first would have made the second worse. `SUPER_FLEX_QB_SHARE = 0.85` is a hand-set
+constant standing in for a quantity that measures 1.00 at every league size from 8 to 16 -- what
+#56 exists to prevent.
+
+**The repair failed four of nine gates that were pre-registered before it existed**, over 18
+drafts with one variable toggled. It made the owner's league field tight ends for the first time
+(0 -> 2 / 4 / 1 against his own roster's two) and produced a FOUR-tight-end seat, which the
+pre-registration had already named as the over-correction and a failure. Lineup fell in 4 of 9
+seats; one new asset reversal. Against Fable's derived band it is CLOSER in 7 of 9 seats. So it
+is neither nothing nor a fix.
+
+**Disposition: MEASURED, NOT WIRED**, the standing #84 gives `marginal_lineup_value`.
+`board_flex_share` is the seam and returns None, so every board is byte-identical to the even
+split; 23 tests, 10 of 10 mutations caught. The measurement's counterfactual is a league that
+fields perfectly and the draft it has to price is one where rivals do not -- which is the most
+plausible reading of the four-tight-end seat, and is why **the anchor is #50 and the owner's**,
+not an implementer's.
+
+**Two instrument defects this exposed**, both recorded on the branch: the `WR >= RB > TE`
+ordering verdict is trivially satisfied at TE 0, so in the owner's TE-slotless league it PREFERS
+a roster with no tight ends to the one he actually built; and my own H3 gate was written
+one-sided ("the TE count must not rise") for a defect that runs in both directions.
+
+**#216 remains NOT CLOSED and still blocks the freeze.**
+
 ## #217 — THE OBJECTIVE, STATED BY THE OWNER, AND THE INPUT IT NEEDS THAT DOES NOT EXIST
 
 ### The ruling (owner, verbatim in effect)
