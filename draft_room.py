@@ -2940,12 +2940,13 @@ def compute_draft_board(
     # theirs. Feeding the league-wide occupancy in here would tell my roster it has no flex slot
     # for a position that simply tends to lose those slots elsewhere.
     #
-    # Measured, not reasoned into place after the fact: routing the occupancy here moved
+    # Measured, not reasoned into place after the fact. Routing the occupancy here moved
     # need_bonus's flex component (TE 0.667 -> 0.0, WR 0.667 -> 1.667 in 12T_ppr) and tripped
-    # two independent guards -- rival_premium stopped clearing one team-term's cap (10.04
-    # against NEED_BONUS_MAX 12.0), which is #144's non-vacuity canary, and cliff_protection's
-    # firing share went 0.42 -> 0.58. Both are downstream of need_bonus, neither is downstream
-    # of the anchor, and both come back when this line asks its own question again.
+    # cliff_protection's reachability guard, whose firing share went 0.42 -> 0.58; asking the
+    # own-slots question here brings that back inside its bound. It did NOT explain the other
+    # guard that went red in the same run -- rival_premium ceasing to clear one team-term's cap
+    # -- which moved the WRONG WAY under this revert (10.04 -> 9.25) and is therefore downstream
+    # of the ANCHOR, not of need_bonus. That one is its own finding and is not repaired here.
     slot_counts = starter_slot_counts(roster_positions)
     dedicated_counts = dedicated_slot_counts(roster_positions)
     my_roster_players = _team_roster_players(picks, players_db, my_roster_id, merger)
