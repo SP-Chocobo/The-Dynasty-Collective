@@ -14,6 +14,7 @@ the data instead. These tests pin the three things that can go wrong:
 MUTATION SURVIVORS ARE RECORDED AT THE BOTTOM OF THIS FILE.
 """
 import unittest
+from unittest import mock
 
 import draft_room as dr
 
@@ -204,6 +205,49 @@ class DemandReadsTheMeasuredShareTests(unittest.TestCase):
         with_occ = dr.replacement_levels(pool, "v", ["WR", "FLEX"], 12, given,
                                          flex_occupancy={"FLEX": {"WR": 12}})
         self.assertAlmostEqual(with_occ["WR"], 100.0 - 4)
+
+
+class TheMeasurementIsStrandedOnPurposeTests(unittest.TestCase):
+    """MEASURED, NOT WIRED (#50), the standing #84 gives marginal_lineup_value.
+
+    Two things have to stay true at once and they pull in opposite directions, which is why both
+    are pinned here. The board must be byte-identical to the even split, so nothing ships that
+    failed its gates. And the wiring must be LIVE -- reachable, and able to change the answer --
+    so this is stranded code rather than dead code, and so the ablation that judged it is
+    measuring the thing it claims to.
+    """
+
+    def test_the_seam_returns_nothing_so_every_board_keeps_the_even_split(self):
+        self.assertIsNone(dr.board_flex_share({"w1": 1.0}, _db([("w1", "WR")]), ["WR", "FLEX"], 1))
+
+    def test_the_board_asks_the_seam_and_not_the_measurement_directly(self):
+        """The ablation patches ONE function. If compute_draft_board called
+        fielded_flex_occupancy itself, patching the seam would silently do nothing and the
+        FIELDED arm would be a second copy of the EVEN arm -- a probe that measures nothing while
+        looking like it measures something, which is this repository's most expensive failure
+        mode."""
+        import ast
+        import inspect
+        for func in (dr.compute_draft_board, dr.predraft_replacement_anchor):
+            tree = ast.parse(inspect.getsource(func).lstrip())
+            called = {n.func.id for n in ast.walk(tree)
+                      if isinstance(n, ast.Call) and isinstance(n.func, ast.Name)}
+            self.assertIn("board_flex_share", called, msg=func.__name__)
+            self.assertNotIn("fielded_flex_occupancy", called, msg=func.__name__)
+
+    def test_patching_the_seam_actually_moves_the_demand(self):
+        """Stranded, not dead. Swap the seam for the measurement and the starter demand that sets
+        every replacement rank has to change -- otherwise the whole ablation was vacuous."""
+        db = _db([("w1", "WR"), ("w2", "WR"), ("t1", "TE")])
+        points = {"w1": 300.0, "w2": 280.0, "t1": 100.0}
+        rpos = ["WR", "FLEX"]
+        even = dr.remaining_starter_demand(
+            rpos, 1, [], db, dr.board_flex_share(points, db, rpos, 1))
+        with mock.patch.object(dr, "board_flex_share", dr.fielded_flex_occupancy):
+            measured = dr.remaining_starter_demand(
+                rpos, 1, [], db, dr.board_flex_share(points, db, rpos, 1))
+        self.assertAlmostEqual(even["TE"], 1.0 / 3)
+        self.assertEqual(measured["TE"], 0.0)
 
 
 # ---------------------------------------------------------------------------------------
