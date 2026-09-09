@@ -41,6 +41,17 @@ roster"). Two reasons it stays out of the pricing path rather than being quietly
   * It is a property of a WEEK, not of a roster. The draft-time question ("what is this player
     worth to this roster") does not change because a Monday game lets you swap later.
 
-Registered as its own item rather than as a silence: **the flex-as-late-slate-insurance
-preference is a LINEUP surface concern (start/sit), and belongs wherever weekly lineups are set,
-never in `displacement_level`.**
+A third statement in the same exchange belongs to the same item, and he scoped it himself:
+
+> "also, injured or questionable players usually you want on your flex slots instead of dedicated
+> ones, due to the same flexibility, just in case, for things like game-day decisions"
+> "but you're right, thats a non-factor on drafting, so irrelevant to this"
+
+Same shape, same verdict, and confirmed by the owner rather than assumed by me. Note that this one
+would have been the more tempting of the two to absorb, because the engine DOES carry injury status
+(`risk_adj`, #191/#202) and so a wiring for it exists. It is still a WEEKLY placement preference
+among players already rostered, not a statement about what a player is worth to acquire.
+
+Registered as one item rather than as a silence: **preferring late-slate and questionable players
+on flex slots is a LINEUP surface concern (start/sit), belongs wherever weekly lineups are set, and
+never in `displacement_level` or any draft-time price.**
