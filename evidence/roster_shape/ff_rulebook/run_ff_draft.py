@@ -32,18 +32,20 @@ def main():
         merger, players_db, LEAGUE, order, config_label="FOURTH_AND_FOREVER",
         sleeper_projections=season, sleeper_basis=dr.SLEEPER_BASIS_SEASON_SUM)
 
-    recs = traj.records if hasattr(traj, "records") else traj
+    # SAVE THE RAW RESULT BEFORE ANY ANALYSIS (#215). The first run of this script
+    # completed all 312 picks and then threw in the reporting block, losing ~15 minutes
+    # of engine time to a one-line attribute error. Nothing is derived above this line.
     picks = []
-    for i, r in enumerate(recs):
-        pid = str(getattr(r, "player_id", None) or (r.get("player_id") if isinstance(r, dict) else None))
+    for i, r in enumerate(traj.picks):
+        pid = str(r.chosen_player_id)
         info = players_db.get(pid) or {}
-        picks.append({"overall": i + 1, "round": i // 12 + 1,
-                      "roster_id": str(getattr(r, "roster_id", None) or (r.get("roster_id") if isinstance(r, dict) else "")),
+        picks.append({"overall": i + 1, "round": i // 12 + 1, "roster_id": str(r.roster_id),
                       "player_id": pid, "position": info.get("position"),
                       "name": info.get("full_name")})
     json.dump({"league": "Fourth and Forever", "picks": picks,
                "universe": prov, "elapsed_s": round(time.time() - t0, 1)},
               open(OUT / "ff_draft.json", "w"), indent=1)
+    print("RAW SAVED:", len(picks), "picks", flush=True)
 
     c = collections.Counter(p["position"] for p in picks)
     N = sum(c.values())
