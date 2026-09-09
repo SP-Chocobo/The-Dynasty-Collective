@@ -2,14 +2,49 @@
   "league": "Fourth and Forever",
   "captured": "2026-09-09",
   "capture_method": "transcribed from Sleeper Scoring Settings screenshots supplied by the owner",
-  "tabs_captured": ["PASSING", "RUSHING", "RECEIVING", "MISC"],
+  "tabs_captured": [
+    "PASSING",
+    "RUSHING",
+    "RECEIVING",
+    "MISC"
+  ],
   "tabs_outstanding": [
     "KICKING -- not captured. Believed irrelevant: no K appears on the startup board.",
     "TEAM DEFENSE -- not captured. Believed irrelevant: no DST appears on the startup board.",
     "IDP -- tab existence unconfirmed; no IDP on the board."
   ],
-  "roster_positions": null,
-  "roster_positions_note": "NOT CAPTURED. The starting lineup is still unknown for this league. Every free-alternative and replacement-level quantity depends on it, so no surplus measure can be computed here until it is supplied.",
+  "roster_positions": [
+    "QB",
+    "RB",
+    "RB",
+    "WR",
+    "WR",
+    "TE",
+    "FLEX",
+    "FLEX",
+    "FLEX",
+    "SUPER_FLEX",
+    "BN",
+    "BN",
+    "BN",
+    "BN",
+    "BN",
+    "BN",
+    "BN",
+    "BN",
+    "BN",
+    "BN",
+    "BN",
+    "IR",
+    "IR",
+    "IR",
+    "TAXI",
+    "TAXI",
+    "TAXI",
+    "TAXI",
+    "TAXI"
+  ],
+  "roster_positions_note": "Supplied by the owner 2026-09-09: QB, 2 RB, 2 WR, 1 TE, 3 W-R-T flex, 1 SUPER_FLEX = 10 starters; 11 BN, 3 IR, 5 TAXI. 29 slots total.",
   "total_rosters": 12,
   "league_type": "dynasty",
   "draft": {
@@ -26,36 +61,156 @@
     "completion_bonus": "YES -- pass_cmp 0.1"
   },
   "scoring_settings_observed": {
-    "pass_yd":      {"label": "Passing Yards (1 per 25, +0.04/yd)", "value": 0.04, "key_confirmed": true},
-    "pass_td":      {"label": "Passing TD", "value": 4, "key_confirmed": true},
-    "pass_2pt":     {"label": "2-Pt Conversion (passing)", "value": 2, "key_confirmed": true},
-    "pass_int":     {"label": "Pass Intercepted", "value": -2, "key_confirmed": true},
-    "pass_int_td":  {"label": "Pick 6 Thrown (INT returned for TD)", "value": -4, "key_confirmed": true},
-    "pass_cmp":     {"label": "Pass Completed", "value": 0.1, "key_confirmed": true},
-    "pass_cmp_40p": {"label": "40+ Yard Completion Bonus", "value": 2, "key_confirmed": true},
-    "pass_td_40p":  {"label": "40+ Yard Pass TD Bonus", "value": 4, "key_confirmed": true},
-    "pass_td_50p":  {"label": "50+ Yard Pass TD Bonus", "value": 5, "key_confirmed": false},
-    "rush_yd":      {"label": "Rushing Yards (1 per 10, +0.1/yd)", "value": 0.1, "key_confirmed": true},
-    "rush_td":      {"label": "Rushing TD", "value": 6, "key_confirmed": true},
-    "rush_fd":      {"label": "Rushing 1st Down", "value": 0.25, "key_confirmed": true},
-    "rush_2pt":     {"label": "2-Pt Conversion (rushing)", "value": 2, "key_confirmed": true},
-    "rush_40p":     {"label": "40+ Yard Rush Bonus", "value": 2, "key_confirmed": true},
-    "rush_td_40p":  {"label": "40+ Yard Rush TD Bonus", "value": 4, "key_confirmed": true},
-    "rush_td_50p":  {"label": "50+ Yard Rush TD Bonus", "value": 5, "key_confirmed": false},
-    "rec":          {"label": "Reception", "value": 0.5, "key_confirmed": true},
-    "rec_yd":       {"label": "Receiving Yards (1 per 10, +0.1/yd)", "value": 0.1, "key_confirmed": true},
-    "rec_td":       {"label": "Receiving TD", "value": 6, "key_confirmed": true},
-    "rec_fd":       {"label": "Receiving 1st Down", "value": 0.5, "key_confirmed": true},
-    "rec_2pt":      {"label": "2-Pt Conversion (receiving)", "value": 2, "key_confirmed": true},
-    "rec_40p":      {"label": "40+ Yard Reception Bonus", "value": 2, "key_confirmed": true},
-    "rec_td_40p":   {"label": "40+ Yard Reception TD Bonus", "value": 4, "key_confirmed": true},
-    "rec_td_50p":   {"label": "50+ Yard Reception TD Bonus", "value": 5, "key_confirmed": false},
-    "bonus_rec_te": {"label": "Reception Bonus - TE", "value": 0.25, "key_confirmed": true},
-    "fum_lost":     {"label": "Fumble Lost", "value": -2, "key_confirmed": true},
-    "fum_rec_td":   {"label": "Fumble Recovery TD", "value": 6, "key_confirmed": true},
-    "st_td_player": {"label": "Special teams player td", "value": 6, "key_confirmed": false},
-    "st_ff_player": {"label": "Special Teams Player Forced Fumble", "value": 1, "key_confirmed": false},
-    "st_fum_rec_player": {"label": "Special Teams Player Fumble Recovery", "value": 1, "key_confirmed": false}
+    "pass_yd": {
+      "label": "Passing Yards (1 per 25, +0.04/yd)",
+      "value": 0.04,
+      "key_confirmed": true
+    },
+    "pass_td": {
+      "label": "Passing TD",
+      "value": 4,
+      "key_confirmed": true
+    },
+    "pass_2pt": {
+      "label": "2-Pt Conversion (passing)",
+      "value": 2,
+      "key_confirmed": true
+    },
+    "pass_int": {
+      "label": "Pass Intercepted",
+      "value": -2,
+      "key_confirmed": true
+    },
+    "pass_int_td": {
+      "label": "Pick 6 Thrown (INT returned for TD)",
+      "value": -4,
+      "key_confirmed": true
+    },
+    "pass_cmp": {
+      "label": "Pass Completed",
+      "value": 0.1,
+      "key_confirmed": true
+    },
+    "pass_cmp_40p": {
+      "label": "40+ Yard Completion Bonus",
+      "value": 2,
+      "key_confirmed": true
+    },
+    "pass_td_40p": {
+      "label": "40+ Yard Pass TD Bonus",
+      "value": 4,
+      "key_confirmed": true
+    },
+    "pass_td_50p": {
+      "label": "50+ Yard Pass TD Bonus",
+      "value": 5,
+      "key_confirmed": false
+    },
+    "rush_yd": {
+      "label": "Rushing Yards (1 per 10, +0.1/yd)",
+      "value": 0.1,
+      "key_confirmed": true
+    },
+    "rush_td": {
+      "label": "Rushing TD",
+      "value": 6,
+      "key_confirmed": true
+    },
+    "rush_fd": {
+      "label": "Rushing 1st Down",
+      "value": 0.25,
+      "key_confirmed": true
+    },
+    "rush_2pt": {
+      "label": "2-Pt Conversion (rushing)",
+      "value": 2,
+      "key_confirmed": true
+    },
+    "rush_40p": {
+      "label": "40+ Yard Rush Bonus",
+      "value": 2,
+      "key_confirmed": true
+    },
+    "rush_td_40p": {
+      "label": "40+ Yard Rush TD Bonus",
+      "value": 4,
+      "key_confirmed": true
+    },
+    "rush_td_50p": {
+      "label": "50+ Yard Rush TD Bonus",
+      "value": 5,
+      "key_confirmed": false
+    },
+    "rec": {
+      "label": "Reception",
+      "value": 0.5,
+      "key_confirmed": true
+    },
+    "rec_yd": {
+      "label": "Receiving Yards (1 per 10, +0.1/yd)",
+      "value": 0.1,
+      "key_confirmed": true
+    },
+    "rec_td": {
+      "label": "Receiving TD",
+      "value": 6,
+      "key_confirmed": true
+    },
+    "rec_fd": {
+      "label": "Receiving 1st Down",
+      "value": 0.5,
+      "key_confirmed": true
+    },
+    "rec_2pt": {
+      "label": "2-Pt Conversion (receiving)",
+      "value": 2,
+      "key_confirmed": true
+    },
+    "rec_40p": {
+      "label": "40+ Yard Reception Bonus",
+      "value": 2,
+      "key_confirmed": true
+    },
+    "rec_td_40p": {
+      "label": "40+ Yard Reception TD Bonus",
+      "value": 4,
+      "key_confirmed": true
+    },
+    "rec_td_50p": {
+      "label": "50+ Yard Reception TD Bonus",
+      "value": 5,
+      "key_confirmed": false
+    },
+    "bonus_rec_te": {
+      "label": "Reception Bonus - TE",
+      "value": 0.25,
+      "key_confirmed": true
+    },
+    "fum_lost": {
+      "label": "Fumble Lost",
+      "value": -2,
+      "key_confirmed": true
+    },
+    "fum_rec_td": {
+      "label": "Fumble Recovery TD",
+      "value": 6,
+      "key_confirmed": true
+    },
+    "st_td_player": {
+      "label": "Special teams player td",
+      "value": 6,
+      "key_confirmed": false
+    },
+    "st_ff_player": {
+      "label": "Special Teams Player Forced Fumble",
+      "value": 1,
+      "key_confirmed": false
+    },
+    "st_fum_rec_player": {
+      "label": "Special Teams Player Fumble Recovery",
+      "value": 1,
+      "key_confirmed": false
+    }
   },
   "key_confirmation_method": "key_confirmed=true means a stat category of that exact name is PRESENT in data/fixtures/sleeper_capture.json, so the category has data behind it. false means the label was read off the screenshot but no such stat key exists in the fixture -- the category is in the rulebook and will score as zero.",
   "categories_with_no_stat_data": {
@@ -87,5 +242,29 @@
     "NEW_DISCREPANCY_pass_int": "the capture records pass_int = -1. The free fit returns -1.47 to -1.50 across both specifications. Recorded as unresolved, NOT corrected: int is collinear with passing volume in 49 rows and a missing volume-correlated negative term would bias it the same way.",
     "residual_is_NOT_rounding": "the capture explains its +3.96 median QB residual as 'fumbles-lost plus rounding'. The free fit closes it to 0.80 median absolute residual by pulling BOTH yardage coefficients below nominal (pass_yd 0.0394 vs 0.04, rush_yd 0.0961 vs 0.10). Coefficients biased low on both volume terms is the signature of a missing negative that scales with volume -- consistent with the fumbles guess in direction, but systematic rather than rounding noise. The stat CSV carries no fumble column, so it cannot be closed from the data in hand."
   },
-  "LIMITS": "ONE league. The owner's standing caveat applies: league settings vary enormously and this is a data point for testing, NOT a benchmark. No engine constant may be calibrated to it. roster_positions is still missing, which blocks every replacement-level and surplus quantity for this league."
+  "LIMITS": "ONE league. The owner's standing caveat applies: league settings vary enormously and this is a data point for testing, NOT a benchmark. No engine constant may be calibrated to it. roster_positions is still missing, which blocks every replacement-level and surplus quantity for this league.",
+  "draft_math": {
+    "draftable_slots_per_team": 26,
+    "total_picks_if_startup": 312,
+    "ROUND_COUNT_CHECK": "10 starters + 11 BN + 5 TAXI = 26, and the startup ran exactly 26 rounds. The roster reproduces the draft length with no slack, which is independent confirmation of both.",
+    "starter_slot_counts": {
+      "QB": 1.85,
+      "RB": 3.05,
+      "WR": 3.05,
+      "TE": 2.05
+    },
+    "league_starters": {
+      "QB": 22.2,
+      "RB": 36.6,
+      "WR": 36.6,
+      "TE": 24.6
+    },
+    "derivation": "draft_room.starter_slot_counts(roster_positions), not hand-allocated",
+    "TALLY_DISCREPANCY": "312 picks are available; the hand tally of the board in evidence/roster_shape/real_drafts totals 310. Two picks unaccounted for -- either a transcription miss or forfeited/expired picks. Recorded, not reconciled."
+  },
+  "IDENTICAL_STARTER_DEMAND_TO_THE_OTHER_CAPTURE": {
+    "fact": "Greatest Show on Paper 2 has the SAME ten starting slots -- QB/RB/RB/WR/WR/TE/FLEX x3/SUPER_FLEX -- so draft_room.starter_slot_counts returns identical values for both leagues (QB 1.85, RB 3.05, WR 3.05, TE 2.05) and identical league_starters at 12 teams.",
+    "what_differs": "depth (26 draftable slots here vs 29 there) and scoring (see how_this_differs_from...).",
+    "WHY_THIS_IS_USEFUL": "The two captured leagues are a natural experiment with STARTER DEMAND HELD FIXED. Any difference in drafted shape between them isolates scoring and depth, because the demand term the engine reads is literally the same number in both. That is a cleaner contrast than anything in the 33-format battery, where every format varies demand as well."
+  }
 }
