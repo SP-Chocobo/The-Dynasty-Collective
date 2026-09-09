@@ -10,42 +10,46 @@ because what the gate found is not what B1 claimed.
 > **returns to −51.7 at seven and sticks**. The saturation brake releases exactly when it
 > is needed.
 
-## What the production path actually shows
+## What production actually does — INTERCEPTED, not reconstructed
 
-Both earlier probes made the same mistake: they recomputed the replacement level from
-`compute_draft_board`'s **output rows** rather than reading the `point_replacement`
-production actually uses. Walking the real path — `roster_points_lookup` →
-`_team_roster_points_players` → live `point_replacement` → `displacement_adjustments`:
+Three probes in a row got this wrong the same way, by rebuilding a quantity production
+computes internally. The authoritative method is to wrap `draft_room.displacement_adjustments`
+and record the arguments production hands it. `phase1_intercept.py`:
 
 | TE held | pick | level_TE | displaced | adjustment |
 |---|---|---|---|---|
-| 3 | 110 | 139.44 | 195.36 | −55.92 |
-| 4 | 133 | 128.80 | 195.36 | −66.56 |
-| 5 | 157 | 103.10 | 195.36 | −92.26 |
-| 6 | 181 | 74.99 | 195.36 | −120.37 |
-| 7 | 182 | 74.82 | 195.36 | −120.54 |
-| 8 | 206 | **143.63** | 195.36 | **−51.73** |
+| 2 | 109 | **149.17** | 200.90 | −51.73 |
+| 3 | 110 | 144.98 | 200.90 | −55.92 |
+| 4 | 133 | 134.34 | 200.90 | −66.56 |
+| 5 | 157 | 108.64 | 200.90 | −92.26 |
+| 6 | 181 | 80.53 | 200.90 | −120.37 |
+| 7 | 182 | 80.36 | 200.90 | −120.54 |
+| 8 | 206 | **149.17** | 200.90 | **−51.73** |
 
-(The 2-held row is omitted: my method recovers `displaced` with a zero-level probe, which
-degenerates there. It is an artifact of the recovery, not a measurement.)
+Roster fully priced at every state (0 unpriced), so no absence path is involved.
 
-**The brake does not release.** The adjustment falls at 8 held because **`level_TE` nearly
-doubles**, 74.82 → 143.63, between picks 182 and 206. `displaced` never moves. The
-anomaly is in `replacement_levels`, not in `displacement_level`, and a rising level as a
-position drains league-wide is the documented, intended behaviour.
+**Two facts, both read rather than inferred:**
 
-## The mechanism, in one sentence — which is the gate's actual deliverable
+1. **`displaced` is CONSTANT at 200.90 — my single best tight end — across the whole
+   ladder.** It does not move from two held to eight held. Every variation in the
+   adjustment comes from the league level; **my own saturation contributes nothing at all.**
+2. **`level_TE` returns to exactly 149.17 at eight held, the identical value it had at
+   two held.** It falls 149.17 → 80.36 over picks 109–182 and then jumps back. An exact
+   return to the hundredth is a rank landing on the same player: as tight ends are taken
+   league-wide, remaining demand shrinks, the rank walks UP the thinning list, and it
+   arrives back at the player who sat at that rank when the pool was full.
 
-`displaced` is **pinned at 195.36 from three tight ends held onward** — the weakest
-occupant of any slot a tight end can reach — and because the league anchor cancels
-(`bpa + displacement_adj = projection − displaced`), **every tight end is priced against
-my own third-best tight end, forever, no matter how many I already hold.**
+So the "reset" is real, and it lives in **`replacement_levels`**, not `displacement_level`.
 
-A ninth tight end projecting 120 and a third tight end projecting 120 receive the
-identical net price. The engine cannot distinguish them. That is a genuine saturation
-failure — the eviction target stops responding once my starters are set — but it is the
-opposite shape from what B1 described, and it lives in what `displaced` MEANS rather than
-in a brake that releases.
+## Two candidate sites, neither yet confirmed
+
+- **The level's round trip.** Rising replacement as a position drains is documented and
+  intended; returning to its starting value mid-draft may still be correct. Not yet read out.
+- **`displaced` = my BEST tight end, not my weakest startable one.** `displacement_level`
+  is documented to measure what the probe EVICTS, and an overwhelming probe should evict
+  the weakest occupant of a reachable slot, with the cascade handled by the solve. Getting
+  the strongest instead suggests the cascade is not happening. **This is the more suspicious
+  of the two and is where Phase 1 resumes.**
 
 ## Status
 
