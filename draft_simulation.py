@@ -84,6 +84,22 @@ class DraftTrajectory:
         return rosters
 
 
+def _picks_by_mode(mode: str, total_picks: int, num_teams: int) -> dict[str, int]:
+    """How many picks of this trajectory each valuation actually produced (#222).
+
+    Reported rather than assumed: mode="auto" flips at UPSIDE_MODE_DEFAULT_ROUND, which is a
+    fixed ROUND INDEX, so the same setting buys a different FRACTION of every draft -- 26% of a
+    19-round draft and 46% of a 26-round one. A reader of the artifact should not have to
+    recompute that from a constant to know what they are comparing.
+    """
+    if mode == "upside":
+        return {"balanced": 0, "upside": total_picks}
+    if mode != "auto":
+        return {"balanced": total_picks, "upside": 0}
+    balanced = min(max((dr.UPSIDE_MODE_DEFAULT_ROUND - 1) * num_teams, 0), total_picks)
+    return {"balanced": balanced, "upside": total_picks - balanced}
+
+
 def simulate_full_draft(
     merger: DataMerger, players_db: dict[str, dict], league: dict, pick_order: list,
     *, mode: str = "auto", pool_scope: str = "all", config_label: str = "",
@@ -143,7 +159,18 @@ def simulate_full_draft(
                 # drafted off different point sources are not comparable, and without this the
                 # difference is invisible in the record (#204).
                 "sleeper_basis": (sleeper_basis if sleeper_projections else None),
-                "priced_from": ("vendor+sleeper" if sleeper_projections else "vendor_only")},
+                "priced_from": ("vendor+sleeper" if sleeper_projections else "vendor_only"),
+                # WHICH VALUATION produced each pick, for the same reason priced_from exists
+                # (#222). mode="auto" is not one valuation: compute_draft_board's upside branch
+                # zeroes every team-specific term, so a trajectory can be half roster-aware and
+                # half roster-blind with nothing in the record saying so. Measured on a 26-round
+                # startup, that split is 168 balanced picks and 144 upside ones -- 46% of the
+                # draft -- and two trajectories drafted under different splits are no more
+                # comparable than two drafted off different point sources. Derived from the
+                # rounds actually run, never from an assumed draft length.
+                "upside_from_round": (dr.UPSIDE_MODE_DEFAULT_ROUND if mode == "auto"
+                                      else (1 if mode == "upside" else None)),
+                "picks_by_mode": _picks_by_mode(mode, len(pick_order), num_teams)},
         picks=tuple(records),
     )
 

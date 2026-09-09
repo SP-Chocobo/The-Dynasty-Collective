@@ -219,6 +219,28 @@ not from what the function appears to read. And when a probe and production disa
 same board, suspect the INPUT before the instrument — this is the same family as measuring the
 wrong universe (#201) and capturing the wrong call (above).
 
+**The rule that generalises: BEHAVIOURAL inputs need SCHEMA validation, not value validation.**
+Checking that every pick has a plausible `player_id` and `roster_id` says nothing here. `round`
+is not a value this code reads and reports — it is a field that SELECTS A BEHAVIOURAL MODE, and
+a record missing it is not "the same record with one field absent", it is a semantically
+different record. So, for any input that steers behaviour rather than being consumed as data:
+
+```python
+REQUIRED_PICK_FIELDS = {"pick_no", "round", "roster_id", "player_id"}
+missing = REQUIRED_PICK_FIELDS - set(picks[0])
+assert not missing, f"pick records are missing {missing}; mode='auto' reads `round`"
+```
+
+A harness has two honest options and no third: **reject the incomplete shape**, or **make the
+derived behaviour explicit in its artifact** so a reader can tell which valuation produced the
+numbers. `simulate_full_draft`'s trajectory config does the second — it records
+`upside_from_round` and `picks_by_mode` alongside `priced_from`, for exactly the reason #204
+records the pricing path: two runs made under different modes are not comparable, and without
+the record the difference is invisible.
+
+Ask of every hand-built input: **does any field of this steer a branch?** If yes, that field is
+part of the input's identity, and omitting it is a silent A/B against yourself.
+
 ## Board rank is not pick order — say which one you mean
 
 `simulate_full_draft` does not pick `board.iloc[0]`. It goes through
