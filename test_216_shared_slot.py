@@ -132,16 +132,23 @@ class TheTwoDirectionsTests(unittest.TestCase):
                          250.0 - levels["WR"] + wr_new["adjustment"])
 
 
-class TheConstructionIsStrandedOnPurposeTests(unittest.TestCase):
-    """MEASURED, NOT WIRED. Two things must hold at once and they pull opposite ways: the board
-    must be byte-identical to the shipped one, so nothing ships that failed its gates; and the
-    wiring must be LIVE, so this is stranded code rather than dead code and the ablation that
-    judged it measured what it claims."""
+class TheConstructionIsWiredTests(unittest.TestCase):
+    """WIRED at #221. This class was `TheConstructionIsStrandedOnPurposeTests` and asserted the
+    exact opposite -- that the seam returned `{}` and every board was byte-identical to the
+    shipped one. It is inverted here rather than deleted, because the pair of assertions is the
+    record of what changed: the seam still exists as a separate patchable name (the A/B needs it,
+    and #126 wants one home for the vocabulary), but it now returns the construction."""
 
-    def test_the_seam_returns_nothing_so_every_phantom_keeps_its_own_positional_level(self):
-        self.assertEqual(dr.board_slot_alternatives(LEVELS, TE_SLOT), {})
+    def test_the_seam_returns_the_construction_and_not_an_empty_mapping(self):
+        self.assertEqual(dr.board_slot_alternatives(LEVELS, TE_SLOT),
+                         dr.shared_slot_alternatives(LEVELS, TE_SLOT))
+        self.assertNotEqual(dr.board_slot_alternatives(LEVELS, TE_SLOT), {})
 
     def test_displacement_adjustments_asks_the_SEAM_and_not_the_construction_directly(self):
+        """Unchanged from the stranded era, and still load-bearing: the A/B in
+        run_216_shared_slot_probe switches the construction off by patching the SEAM, so a caller
+        that reached past it into `shared_slot_alternatives` would make both arms identical and
+        every measurement in evidence/roster_shape/shared_slot/ vacuous."""
         import ast
         import inspect
         tree = ast.parse(inspect.getsource(dr.displacement_adjustments).lstrip())
@@ -152,16 +159,24 @@ class TheConstructionIsStrandedOnPurposeTests(unittest.TestCase):
         kwargs = {kw.arg for n in ast.walk(tree) if isinstance(n, ast.Call) for kw in n.keywords}
         self.assertIn("slot_alternatives", kwargs)
 
-    def test_patching_the_seam_actually_moves_the_deduction(self):
-        """Stranded, not dead."""
+    def test_the_board_now_deducts_where_the_shipped_engine_deducted_nothing(self):
+        """The live half of the same fact the stranded version tested by patching. A running back
+        on a roster whose flexes are held, in a league with NO dedicated RB slot to fall back on,
+        is deducted by the production call path -- no mock anywhere in this test."""
+        roster = [_p(1, 260.0, "RB"), _p(2, 240.0, "RB"), _p(3, 300.0, "QB"),
+                  _p(4, 280.0, "WR"), _p(5, 270.0, "WR")]
+        live = dr.displacement_adjustments(roster, NO_TE_SLOT, LEVELS)
+        self.assertLess(live["RB"]["adjustment"], -100.0)
+
+    def test_switching_the_seam_OFF_restores_the_shipped_behaviour_exactly(self):
+        """The ablation still has something to ablate: patching the seam back to `{}` must
+        reproduce the pre-#221 answer, or the A/B arms are not what they claim to be."""
         from unittest import mock
         roster = [_p(1, 260.0, "RB"), _p(2, 240.0, "RB"), _p(3, 300.0, "QB"),
                   _p(4, 280.0, "WR"), _p(5, 270.0, "WR")]
-        shipped = dr.displacement_adjustments(roster, NO_TE_SLOT, LEVELS)
-        with mock.patch.object(dr, "board_slot_alternatives", dr.shared_slot_alternatives):
-            measured = dr.displacement_adjustments(roster, NO_TE_SLOT, LEVELS)
+        with mock.patch.object(dr, "board_slot_alternatives", lambda *a, **k: {}):
+            shipped = dr.displacement_adjustments(roster, NO_TE_SLOT, LEVELS)
         self.assertEqual(shipped["RB"]["adjustment"], 0.0)
-        self.assertLess(measured["RB"]["adjustment"], -100.0)
 
 
 # ---------------------------------------------------------------------------------------

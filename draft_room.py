@@ -2542,31 +2542,45 @@ def displacement_adjustments(
     return out
 
 
-#: MEASURED, NOT WIRED -- the same standing #84 gives marginal_lineup_value and #219 gives the
-#: fielded flex share. `shared_slot_alternatives` below is correct and tested; routing it into the
-#: board was measured over 18 drafts against ten gates pre-registered before it existed
-#: (evidence/roster_shape/shared_slot/) and it is the pre-registration's own "partial success"
-#: case: RIGHT ABOUT THE SLOT, WRONG ABOUT THE MAGNITUDE.
+#: WIRED at #221, after the cost it was stranded for was named. This function is the one home the
+#: board asks for per-slot alternatives (#126); it exists as a separate, patchable name so an
+#: in-process A/B can switch the construction off and both arms still run the same code
+#: (run_216_shared_slot_probe patches exactly this).
 #:
-#: It PASSES what says the construction is right -- an open dedicated slot still deducts exactly
-#: nothing, the owner's league goes from ZERO tight ends to 1/2/1 with no seat above the band
-#: ceiling (the only change in this pass to clear that two-sided gate), 7 of 9 rosters move closer
-#: to the derived band, and the owner's ordering reaches 3/3 in both lab formats. It FAILS what
-#: says the magnitude is right: lineup points rise in only 2 of 9 seats, total -118, and two seats
-#: newly reverse on the asset ruler.
+#: WHY IT WAS STRANDED, AND WHAT CHANGED. The pre-registered pass over 18 drafts called it the
+#: "partial success" case -- RIGHT ABOUT THE SLOT, WRONG ABOUT THE MAGNITUDE -- because lineup
+#: points rose in only 2 of 9 seats and "the mechanism of that cost is NOT known". It is now
+#: measured, on the live board, at the state where roster shape is decided
+#: (evidence/roster_shape/shared_slot/bench/MECHANISM.md):
 #:
-#: A change that only corrects a mis-stated alternative should not cost points in seven of nine
-#: seats, and the mechanism of that cost is NOT known -- see the RESULT memo, including the
-#: hypothesis about need_bonus that its own arithmetic killed. Shipping before naming it would be
-#: shipping a trade nobody can describe.
+#:   * WITH this, the anchor CANCELS. A tight end nets bpa 26.7 - 52.4 and a receiver -15.4 + 0.0,
+#:     a gap of 10.3 against a raw projection gap of 10.4. The league anchor enters through `bpa`
+#:     and leaves through this term, and projection is what remains -- which is what "one slot,
+#:     one alternative" means arithmetically.
+#:   * WITHOUT it the anchor DOUBLE-COUNTS. The same two candidates sit 70.2 apart for the same
+#:     15-point projection gap. `bpa` prices the candidate against his own positional level, and
+#:     the per-position phantom then prices the SLOT against that same level again, so a position
+#:     whose rostered starters sit far above its own low league level is charged for its own
+#:     quality twice. The position whose level is the MAXIMUM escapes this entirely: its phantom
+#:     still outranks the players actually rostered, so it is barely deducted at any roster state.
 #:
-#: THIS FUNCTION IS THE SEAM. It returns {}, so every phantom is worth the candidate's own
-#: positional level and every board is byte-identical to the shipped one;
-#: run_216_shared_slot_probe re-enables the measurement by patching exactly this.
+#: That asymmetry is the whole of the shipped bench: 46 of 48 pure-bench picks across three
+#: formats are receivers, and in the owner's own league 12 of 12, at all three seats, leaving two
+#: dedicated RB slots with no insurance behind them (evidence/.../bench/BENCH_MONOCULTURE.md).
+#: With this wired that inverts to 2 of 11. It is #216's own defect -- a position hoarded past any
+#: slot that could field it -- with the positions exchanged.
+#:
+#: THE COST, STATED RATHER THAN HIDDEN. Injury-free optimal lineup points fall 0.53% in aggregate.
+#: The points ruler solves one season's best lineup with no absences, so it cannot see insurance
+#: by construction; the asset ruler cannot arbitrate either, for #211/#155's reason (it sums a
+#: per-position VOR LEVEL across a roster, so a roster of low-anchor players scores higher at
+#: equal projections -- the exact head start this change exists to stop chasing). The trade is
+#: 0.53% of absence-free points for depth the rulers cannot price, in a no-trade waivers-only
+#: league. That is #217's objective question, and it is recorded as a trade, not as a win.
 def board_slot_alternatives(
     levels: dict[str, float], roster_positions: list[str],
 ) -> dict[str, float]:
-    return {}
+    return shared_slot_alternatives(levels, roster_positions)
 
 
 def shared_slot_alternatives(
