@@ -2570,13 +2570,36 @@ def displacement_adjustments(
 #: With this wired that inverts to 2 of 11. It is #216's own defect -- a position hoarded past any
 #: slot that could field it -- with the positions exchanged.
 #:
-#: THE COST, STATED RATHER THAN HIDDEN. Injury-free optimal lineup points fall 0.53% in aggregate.
-#: The points ruler solves one season's best lineup with no absences, so it cannot see insurance
-#: by construction; the asset ruler cannot arbitrate either, for #211/#155's reason (it sums a
-#: per-position VOR LEVEL across a roster, so a roster of low-anchor players scores higher at
-#: equal projections -- the exact head start this change exists to stop chasing). The trade is
-#: 0.53% of absence-free points for depth the rulers cannot price, in a no-trade waivers-only
-#: league. That is #217's objective question, and it is recorded as a trade, not as a win.
+#: WHAT IT COSTS: NOTHING. Measured across all 33 battery formats, 49 format/seat pairs, 98
+#: drafts, both arms (evidence/roster_shape/shared_slot/waves/waves_all.txt):
+#:
+#:                        band breaches   band distance   ordering passes
+#:     without this            114            156.0            29/49
+#:     with this                92            138.0            45/49
+#:
+#:     lineup points with - without: +654.3 over 115,748  (+0.57%)
+#:     illegal or forced rosters: the same two in BOTH arms (12T_ppr_SHORT_DRAFT, an eight-round
+#:     draft that cannot fill its starters -- a property of the format, not of either arm)
+#:
+#: THIS COMMENT PREVIOUSLY SAID THE OPPOSITE: "injury-free optimal lineup points fall 0.53% in
+#: aggregate... recorded as a trade, not as a win." That figure was measured before the two
+#: defects below came out, and both were suppressing the result:
+#:
+#:   * phantoms carried their SLOT's eligibility, so a flex phantom worth the shared alternative
+#:     migrated into a dedicated slot and repriced it (see displacement_level's pinning comment);
+#:   * score_row's multi-eligible branch called displacement_level WITHOUT slot_alternatives, so
+#:     multi-position candidates were priced on the per-position ruler while every single-position
+#:     row beside them used the shared one.
+#:
+#: Repaired, the change is better on shape AND better on points, and it is not a trade. The
+#: withdrawal is recorded here rather than left to the diff, because the "0.53% cost" number was
+#: quoted in this file, in commit messages, and to the owner.
+#:
+#: Both rulers still have the limits that made the earlier reading hard to interpret, and those
+#: stand: the points ruler solves one season's best lineup with NO ABSENCES, so it cannot see
+#: insurance by construction, and the asset ruler cannot arbitrate at all for #211/#155's reason
+#: (it sums a per-position VOR LEVEL across a roster, so a roster of low-anchor players scores
+#: higher at equal projections -- the exact head start this change exists to stop chasing).
 def board_slot_alternatives(
     levels: dict[str, float], roster_positions: list[str],
 ) -> dict[str, float]:
