@@ -6493,3 +6493,113 @@ any of this. Report: `evidence/roster_shape/FIX_216_fable.md` §10; sets in
 the measured seats — and the fix fails the owner's asset gate in superflex. Three things are
 the owner's call, not mine: the #50 exchange rate G9 exposes, (b)'s open half, and whether a
 bench ruler (#62/#115) must land before #53. The branch is not merged.**
+
+
+## #219 — THE EVEN FLEX SPLIT IS FALSE, AND CORRECTING IT NAIVELY IS NOT THE REPAIR
+
+Opus, taking over implementation from Fable at the owner's instruction. Branch
+`worktree-agent-ab5e1af412aeb9182`. Evidence: `evidence/roster_shape/flex_share/` (README,
+PREREGISTRATION, RESULT, rival_premium_attribution, `drafts/`), instruments
+`run_216_flex_share_probe.py` and `run_216_flexshare_draft_probe.py`. This entry lives on the
+branch; `ui-authority-pass` carries a pointer to it.
+
+**The finding, and it is solid.** `starter_slot_counts` splits a flex slot's capacity EVENLY
+across the positions it admits and defended that in its own docstring with a claim about the
+world: those slots "genuinely do get filled by whichever eligible position is best roughly
+interchangeably in real drafting behavior". Asked of the data -- field the whole league optimally
+out of the whole pool through the existing lineup optimizer, which never looks at a drafter and
+so cannot be circular -- the claim is FALSE in every format tried:
+
+| format | FLEX (24 slots) | even split assumes | SUPER_FLEX | assumes |
+|---|---|---|---|---|
+| 12T_ppr / 12T_ppr_SF | **WR 20, RB 4, TE 0** | 8 / 8 / 8 | **QB 12 of 12** | 3 each |
+| owner's league | **TE 18, WR 5, RB 1** | 8 / 8 / 8 | **QB 12 of 12** | 3 each |
+
+Those counts set every replacement RANK, and the rank picks the LEVEL `bpa` subtracts. So the
+error lands on every price, in a direction the FORMAT decides -- and ONE derivation explains #216
+in BOTH of its observed directions. With a dedicated TE slot the even split inflates TE demand to
+1.667 and pushes the rank from TE12 out to TE20: a far worse free alternative, a far lower level,
+tight ends priced far too high. That is the 43.5-point bias. Without one, tight ends are
+unconsumed inventory that WIN the flexes (TE18 211.6 beats WR44 200.6), yet the even split hands
+TE 0.717 of a slot at rank 9 and prices them at nothing while handing RB rank 39 and enough price
+to take all three flexes. That is the zero-tight-ends result. **A knob tuned to fix the first
+would have made the second worse.** Direction stable at every league size 8-16; the solve costs
+0.007s. `SUPER_FLEX_QB_SHARE = 0.85` measures 1.00 at every size -- a hand-set constant standing
+in for a derivable quantity, which is what #56 exists to prevent.
+
+**The repair was measured against nine gates pre-registered before it existed, and FAILED four.**
+18 drafts, one variable toggled, both anchor caches dropped at every arm boundary:
+
+- **PASS** H4 legality (backstop binds 0 picks, no unfillable starting slot, 18 of 18), H1, H6, H7.
+- **FAIL H2's ceiling.** The owner's league goes from ZERO tight ends to 2 / 4 / 1 where his own
+  roster carries two -- and one seat with FOUR is what the pre-registration named as the
+  over-correction and a failure. The gate was written two-sided on purpose and caught what it was
+  written to catch.
+- **FAIL H3.** Lineup falls in 4 of 9 seats (-11, -27, -30, -38).
+- **FAIL H9.** One new asset reversal (12T_ppr seat 12, +2.9 -> -27.8).
+- **FAIL H5 as written**, on an instrument that rewards the defect -- see below.
+
+**Two instrument defects the run exposed, both recorded:**
+
+1. **The ordering verdict prefers a roster with no tight ends.** `WR >= RB > TE` is trivially
+   satisfied at TE 0, so in the owner's TE-slotless league the unfixed arm scores 3/3 by drafting
+   none -- against his own roster's two, and against an optimal fielding that uses 1.5 per team.
+   He said why before any of this was measured: *"with no TE slot, but flex that can field them,
+   the TE act as de-facto WR."* The verdict cannot express that.
+2. **My H3 was one-sided for a two-sided defect.** It required the TE count never to RISE; in
+   12T_ppr seat 12 it rose 1 -> 2, toward a band target of 1.90. That is my error at
+   pre-registration time, not a result.
+
+**Fable's derived band, the better instrument, says the opposite of the ordering verdict:** the
+fielded arm is CLOSER to the band in **7 of 9 seats**, both misses in 12T_ppr_SF.
+
+**Disposition: MEASURED, NOT WIRED**, the standing #84 gives `marginal_lineup_value`.
+`fielded_flex_occupancy` and `starter_slot_counts`' measured branch ship as tested code;
+`board_flex_share` is the seam and returns None, so every board is byte-identical to the even
+split. Three tests pin it: that it returns nothing, that the two consumers ask IT and never the
+measurement directly (or the ablation would silently be one arm twice), and that patching it moves
+the demand -- stranded code, not dead code.
+
+**Why not just ship the better-looking arm.** The measurement's counterfactual is a league that
+fields perfectly; the draft it has to price is one where rivals do not, so it can over-state how
+deep a position will really be consumed -- the most plausible reading of the four-tight-end seat.
+Choosing between two unvalidated anchors after seeing which flatters the result is the move #56
+forbids. **The anchor is #50 and the owner's.**
+
+**POST HOC, unmeasured, for whoever continues:** every seat that got worse is superflex, and
+superflex is the one format where the measurement also overrides `SUPER_FLEX_QB_SHARE`. Whether
+the non-SUPER_FLEX half passes on its own has NOT been run and would need its own pre-registration
+written first.
+
+## #220 — rival_premium's bound stopped enumerating its own terms
+
+`test_the_premium_still_exceeds_one_terms_cap` -- #144's non-vacuity canary, whose docstring says
+failing is the point -- goes RED under the fielded anchor and is NOT edited. Attribution, four
+arms, one process each (`rival_premium_attribution.md`): even split + displacement reproduces the
+pre-change commit exactly at 14.29; measured share + displacement gives 9.25; either arm without
+displacement gives 16.21.
+
+Underneath: `rival_premium` is `rival TAV - rival UV`, the sum of the team-specific terms. #216's
+fix added a FOURTH, `displacement_adj`, uncapped and never positive, while
+`pick_synthesis.TEAM_SPECIFIC_CAPS` still names three and derives `NECESSITY_DENIAL_SATURATION` as
+their sum, in a comment whose words are "the SUM of draft_room's team-specific terms". That
+sentence is now false. The sum of three caps remains a valid UPPER bound, so nothing is
+mis-clipped and `test_the_flat_spot_is_gone` still holds; what is gone is the tightness. This is
+the missing-companion shape (#166/#174/#185/#187/#190/#207) again -- a quantity gained a term and
+its bound did not travel with it. It belongs to #216's fix, not to the flex share; the flex share
+only pushed it across a line a canary was watching. **With the flex share stranded the canary is
+green again, so this is latent rather than live -- but it is latent, not absent.**
+
+**Open decision, the owner's:** widen the canary's fixture to states where the ramp is actually
+stressed, re-derive the saturation point over four terms, or accept #144's repair as dormant.
+
+## A process note: an ablation defeats a fingerprinted cache from outside
+
+The first attribution table was WRONG and reported the even-split arm at 9.25 instead of 14.29.
+`predraft_replacement_anchor` remembers levels under `anchor_cache_key`, which names every INPUT
+they depend on -- precisely why a board never depends on which boards came before it in
+production, and precisely why an ablation defeats it: patching a function changes the answer
+without changing any input the key names, and the fixture built a board before the patch went on.
+Five points of a five-point finding were one board built in the wrong order.
+`draft_room.reset_anchor_caches()` exists now and every arm boundary calls it. Any future A/B in
+this repository that patches a function inside the board must do the same.

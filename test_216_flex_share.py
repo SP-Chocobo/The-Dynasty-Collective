@@ -51,6 +51,20 @@ class FieldedFlexOccupancyTests(unittest.TestCase):
         self.assertEqual(occupancy["WR"], {"WR": 3})
         self.assertEqual(occupancy["FLEX"], {"WR": 3})
 
+    def test_a_multi_eligible_player_is_fielded_on_his_full_eligibility(self):
+        """#172. A WR/TE listed player can occupy a TE slot; collapsing him to one bucket would
+        leave that slot to somebody worse and mis-state who wins the flex behind it. He is
+        COUNTED under his primary bucket, deliberately, because that is the population
+        replacement_levels ranks over -- eligibility decides where he can go, `position` decides
+        whose demand he is."""
+        db = _db([("w1", "WR"), ("t1", "TE")])
+        db["h1"] = {"player_id": "h1", "position": "WR", "fantasy_positions": ["WR", "TE"],
+                    "first_name": "h", "last_name": "1"}
+        points = {"h1": 300.0, "w1": 250.0, "t1": 10.0}
+        occupancy = dr.fielded_flex_occupancy(points, db, ["WR", "TE"], 1)
+        self.assertEqual(occupancy["WR"], {"WR": 1})
+        self.assertEqual(occupancy["TE"], {"WR": 1})     # h1 fills the TE slot, counted as a WR
+
     def test_it_refuses_when_the_league_cannot_be_fully_fielded(self):
         # Four league slots, three players. A PARTIAL fielding would under-count exactly the
         # position that ran out, so it is not returned as a measurement at all.
