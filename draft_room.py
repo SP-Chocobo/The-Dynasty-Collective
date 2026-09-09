@@ -2930,11 +2930,23 @@ def compute_draft_board(
             "availability_basis")
 
     my_filled = _team_starters_filled(picks, players_db, my_roster_id)
-    # The SAME measured share the demand model above used (#216/#126). Two answers to "how many
-    # starting slots does this league offer at this position" inside one board build would be
-    # two homes for one vocabulary, and the one need_bonus reads would silently disagree with
-    # the one bpa is anchored on.
-    slot_counts = starter_slot_counts(roster_positions, flex_occupancy, num_teams)
+    # DELIBERATELY THE EVEN SPLIT, not the measured share the demand model above uses, because
+    # this answers a DIFFERENT QUESTION and I got that wrong once already.
+    #
+    # replacement_levels asks "what does the LEAGUE'S SUPPLY hand me for free at a slot of this
+    # kind" -- a question about who wins these slots league-wide, which fielded_flex_occupancy
+    # measures. need_bonus asks "how many of MY OWN starting slots can this player fill", and a
+    # WR/RB/TE flex genuinely is open to my tight end whatever the rest of the league does with
+    # theirs. Feeding the league-wide occupancy in here would tell my roster it has no flex slot
+    # for a position that simply tends to lose those slots elsewhere.
+    #
+    # Measured, not reasoned into place after the fact: routing the occupancy here moved
+    # need_bonus's flex component (TE 0.667 -> 0.0, WR 0.667 -> 1.667 in 12T_ppr) and tripped
+    # two independent guards -- rival_premium stopped clearing one team-term's cap (10.04
+    # against NEED_BONUS_MAX 12.0), which is #144's non-vacuity canary, and cliff_protection's
+    # firing share went 0.42 -> 0.58. Both are downstream of need_bonus, neither is downstream
+    # of the anchor, and both come back when this line asks its own question again.
+    slot_counts = starter_slot_counts(roster_positions)
     dedicated_counts = dedicated_slot_counts(roster_positions)
     my_roster_players = _team_roster_players(picks, players_db, my_roster_id, merger)
     # Per POSITION, not per candidate -- one lineup solve per rostered starter for the whole

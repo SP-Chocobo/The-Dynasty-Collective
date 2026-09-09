@@ -478,9 +478,19 @@ class DemandPicksSplitTests(unittest.TestCase):
         lower_tier = [r for r in board if r["player_id"] not in exclude_ids][20:]
         picks = []
         pick_no = 1
-        wr_rb = [r for r in lower_tier if r["position"] in ("WR", "RB")][:80]
+        # WR AND RB TAKEN SEPARATELY, in counts that MAKE the premise rather than hoping the
+        # board's own ordering happens to supply it. This used to slice the top 80 WR/RB rows in
+        # board order, so which of the two positions the history exhausted was a property of how
+        # the board happened to rank them -- and when the flex share stopped being an even split
+        # (#216) the mix shifted and WR stopped being exhausted, failing a test whose SUBJECT
+        # (demand_picks' scope) had not changed at all. 60 receivers round-robin over 12 rosters
+        # is 5 each, past any team's WR starting demand; 20 running backs is at most 2 each,
+        # inside it. The consuming test asserts both, so a future ordering change cannot quietly
+        # take the premise away again.
+        wr = [r for r in lower_tier if r["position"] == "WR"][:60]
+        rb = [r for r in lower_tier if r["position"] == "RB"][:20]
         qb = [r for r in lower_tier if r["position"] == "QB"][:1]
-        for row in wr_rb + qb:
+        for row in wr + rb + qb:
             roster_id = str((pick_no - 1) % 12 + 1)
             picks.append({"pick_no": pick_no, "round": 1, "roster_id": roster_id, "player_id": row["player_id"]})
             pick_no += 1
@@ -518,6 +528,21 @@ class DemandPicksSplitTests(unittest.TestCase):
         wr_rb_drafted = sum(1 for p in history if self.players_db[p["player_id"]]["position"] in ("WR", "RB"))
         self.assertLessEqual(qb_drafted, 1, "fixture must leave QB demand essentially untouched")
         self.assertGreater(wr_rb_drafted, 60, "fixture must genuinely exceed real WR/RB league-wide demand")
+        # THE PREMISE, asserted rather than assumed. Every roster must be past its WR starting
+        # demand (so WR is DECLINED below) and short of its RB demand (so RB stays priced at a
+        # shallower rank). Without this the test can fail for a reason that has nothing to do
+        # with demand_picks -- which is exactly how it failed once.
+        per_team = collections.Counter()
+        for p in history:
+            per_team[(p["roster_id"], self.players_db[p["player_id"]]["position"])] += 1
+        rosters = {p["roster_id"] for p in history}
+        wr_slots = dr.starter_slot_counts(self.league["roster_positions"])["WR"]
+        rb_slots = dr.starter_slot_counts(self.league["roster_positions"])["RB"]
+        for roster_id in rosters:
+            self.assertGreaterEqual(per_team[(roster_id, "WR")], wr_slots,
+                                    f"roster {roster_id} must be past its WR starting demand")
+            self.assertLess(per_team[(roster_id, "RB")], rb_slots,
+                            f"roster {roster_id} must still be short of its RB starting demand")
 
         pool = dr.build_available_pool(
             self.merger, self.players_db, set(), {"QB", "RB", "WR"},
