@@ -463,52 +463,164 @@ class E_OverCorrectionGuards(unittest.TestCase):
         self.assertEqual(penalised, [], f"{len(penalised)} of {len(rows)} startable rows penalised: "
                                         + "; ".join(penalised[:5]))
 
-    def test_a_startable_player_outranks_anyone_whose_talent_plus_roster_lift_is_lower(self):
-        """I own one TE (Bowers); FLEX is open, so a second TE can still start. For every
-        startable row i and every row j: if uv_i - uv_j exceeds j's ENTIRE roster lift
-        (final_j - uv_j), i must be ordered above j. This is what "drafts strictly to slot
-        counts" breaks: it would drop Trey McBride (uv 128) below receivers worth 20."""
+    # ------------------------------------------------------------------------------------
+    # RULING (#221): the two guards below were PRE-REGISTERED WITH A RULER THAT IS THE DEFECT.
+    #
+    # Both ranked candidates by `universal_value` across positions and required the board's
+    # order to agree. `universal_value` contains `bpa` -- each player's surplus over HIS OWN
+    # position's replacement level -- so it is not commensurable between positions (#211/#155,
+    # and #216's own reason for existing). The five pairs the first version named as violations
+    # settle it, measured on the real capture with one tight end owned (Bowers) and a FLEX open:
+    #
+    #   Trey McBride     TE  projects 300.85   reaches FLEX only        alternative 216.25
+    #   CeeDee Lamb      WR  projects 327.93   reaches an open WR slot  alternative 216.25
+    #   Nico Collins     WR  projects 325.61   open WR                  alternative 216.25
+    #   Justin Jefferson WR  projects 315.69   open WR                  alternative 216.25
+    #   Jeremiyah Love   RB  projects 288.47   open RB                  alternative 185.64
+    #   Kenneth Walker   RB  projects 283.51   open RB                  alternative 185.64
+    #
+    # Three of the five simply OUTPROJECT McBride by 15-27 points. The other two project LESS
+    # and are still worth more to this roster, because they fill an open DEDICATED slot whose
+    # free alternative is 30 points cheaper than the flex McBride would take. The board is right
+    # on all five, and the guard's ordering was the tight-end bias restated as a criterion.
+    #
+    # WHAT REPLACES IT, and what it can and cannot falsify. The quantity these guards need --
+    # what a player adds over what his slot would get free -- IS the quantity under test, so no
+    # fully independent re-derivation exists; a test that re-implemented it would be a second
+    # home for the vocabulary (#126). Two things are still worth pinning and are pinned below:
+    # that the BOARD applies the term faithfully (no double application, no cap, no sign error,
+    # no extra positional penalty on top), and the fully independent within-position ordering,
+    # which is where "refuses a second tight end" would actually show up.
+    #
+    # marginal_lineup_value was considered as the ruler and REJECTED: with a near-empty roster
+    # it reduces to raw projection, which is precisely the projection control that
+    # test_the_board_is_not_the_projection_control below exists to reject.
+    # ------------------------------------------------------------------------------------
+
+    def _surplus(self, league, picks, board):
+        """Projection minus the free alternative at the cheapest slot each position can still
+        reach on THIS roster -- one call into the shipped term, never a reimplementation."""
+        levels = {}
+        for r in board:
+            if r.get("bpa") is not None and r.get("projected_points") is not None:
+                levels.setdefault(r["position"], round(r["projected_points"] - r["bpa"], 4))
+        rpos = league["roster_positions"]
+        alts = dr.shared_slot_alternatives(levels, rpos)
+        pdb = _rulebook()["players_db"]
+        by_id = {str(r["player_id"]): r for r in board}
+        roster = [{"id": str(p["player_id"]), "value": float(by_id[str(p["player_id"])]["projected_points"]),
+                   "eligible": {by_id[str(p["player_id"])]["position"]}}
+                  for p in picks if str(p["roster_id"]) == "1" and str(p["player_id"]) in by_id]
+        if not roster:
+            # A drafted player is off the board, so his projection comes from the pool both arms
+            # can price -- the same source _points uses everywhere else in this file.
+            pool = _points(league)
+            roster = [{"id": str(p["player_id"]), "value": float(pool[str(p["player_id"])]),
+                       "eligible": {dr.player_position(pdb[str(p["player_id"])])}}
+                      for p in picks if str(p["roster_id"]) == "1"
+                      and str(p["player_id"]) in pool]
+        displaced = {}
+        for pos, level in levels.items():
+            d = lo.displacement_level(roster, rpos, pos, level, slot_alternatives=alts)
+            displaced[pos] = d["displaced"]
+        return {str(r["player_id"]): r["projected_points"] - displaced[r["position"]]
+                for r in board if r["position"] in displaced}
+
+    def test_a_startable_player_outranks_anyone_who_adds_less_at_the_slot_he_can_reach(self):
+        """The replacement for the universal_value ordering, on the corrected ruler: what a
+        player adds over what the cheapest slot he can still reach would get for free.
+
+        This falsifies a board that applies the anchor correction twice, caps it, gets its sign
+        wrong, or adds a positional penalty on top of it -- every one of which would break the
+        agreement between the board's order and the term the board says it is applying. It
+        cannot falsify the choice of alternative itself; that was settled by measurement
+        (evidence/roster_shape/shared_slot/), not here."""
         league = _league(False)
         te = _ranked(_points(league), "TE")
         picks = [_pick(te[0], "1", 1, 1)]
         startable = _startable_positions(league, [te[0]])
         self.assertIn("TE", startable, f"fixture: FLEX should leave TE startable; got {startable}")
         board = _priced(_board(league, picks, "1"))
-        # Ranks off the FULL board; the population chosen by TALENT, never by board order. The
-        # first draft sliced the board's top 150 and passed vacuously under the always-bind
-        # mutation, which had pushed every tight end past rank 150 -- the very rows it existed
-        # to examine were never in the population.
+        surplus = self._surplus(league, picks, board)
         index = {str(r["player_id"]): i for i, r in enumerate(board)}
         priced = sorted(board, key=lambda r: -r["universal_value"])[:150]
         pairs = violations = 0
         examples = []
         for i in (r for r in priced if r["position"] in startable):
+            si = surplus.get(str(i["player_id"]))
+            if si is None:
+                continue
             for j in priced:
-                lift_j = j["final_score"] - j["universal_value"]
-                if i["universal_value"] - j["universal_value"] > lift_j:
-                    pairs += 1
-                    if index[str(i["player_id"])] > index[str(j["player_id"])]:
-                        violations += 1
-                        if len(examples) < 5:
-                            examples.append(f"{i['name']} {i['position']} uv {i['universal_value']} "
-                                            f"below {j['name']} {j['position']} uv {j['universal_value']} lift {lift_j:.2f}")
+                sj = surplus.get(str(j["player_id"]))
+                # Guarded only where the surplus gap exceeds every OTHER term's whole reach, so
+                # a legitimate need_bonus or depth_exposure reordering is not counted a defect.
+                if sj is None or si - sj <= dr.NEED_BONUS_MAX + dr.DEPTH_EXPOSURE_MAX:
+                    continue
+                pairs += 1
+                if index[str(i["player_id"])] > index[str(j["player_id"])]:
+                    violations += 1
+                    if len(examples) < 5:
+                        examples.append(f"{i['name']} {i['position']} surplus {si:.1f} "
+                                        f"below {j['name']} {j['position']} surplus {sj:.1f}")
         self.assertGreater(pairs, 100, f"only {pairs} guarded pairs -- fixture too flat")
         self.assertEqual(violations, 0, f"{violations} of {pairs} pairs inverted: " + "; ".join(examples))
 
-    def test_a_second_tight_end_is_still_taken_when_he_is_the_best_value_left(self):
-        """The refusal case, stated on one player. With Bowers owned, Trey McBride's rank must
-        not exceed the count of rows whose uv + lift is at least his uv. On f580c11 he is 11th."""
+    def test_every_ROSTER_term_is_identical_for_two_players_at_the_same_position(self):
+        """FULLY INDEPENDENT of everything above, and the place a refusal would really show.
+
+        need_bonus, depth_exposure and displacement_adj are per-POSITION by construction: they
+        read my roster and the league's slots, and the candidate does not enter them at all. So
+        their SUM must be one number per position, identical for the tight end who would start
+        and the tight end who would sit. An engine that "drafts strictly to slot counts" --
+        refusing a second tight end because one TE slot is filled -- has to break this to do it.
+
+        Deliberately NOT "the board's order matches projection order within a position": that is
+        false and should be, because risk_adj, the time horizon and the growth signal are
+        per-PLAYER and legitimately reorder same-position rows (measured: Jaxson Dart 329.01
+        ranks below Patrick Mahomes 328.6). Asserting it would have pinned a claim this engine
+        does not make. eligibility_bonus is likewise excluded -- it is the one roster term that
+        is per-CANDIDATE, since it prices a multi-position player's extra reach."""
         league = _league(False)
         te = _ranked(_points(league), "TE")
-        priced = _priced(_board(league, [_pick(te[0], "1", 1, 1)], "1"))
-        mcbride = next(r for r in priced if str(r["player_id"]) == te[1])
-        allowed_above = [r for r in priced if r["final_score"] >= mcbride["universal_value"]
-                         and str(r["player_id"]) != te[1]]
-        rank = priced.index(mcbride)
-        self.assertLessEqual(rank, len(allowed_above),
-                             f"{mcbride['name']} uv {mcbride['universal_value']} final "
-                             f"{mcbride['final_score']} ranked {rank}; only {len(allowed_above)} rows "
-                             f"carry a final at or above his talent")
+        board = _priced(_board(league, [_pick(te[0], "1", 1, 1)], "1"))
+        checked = 0
+        for position in ("QB", "RB", "WR", "TE"):
+            rows = [r for r in board if r["position"] == position]
+            self.assertGreater(len(rows), 5, f"too few {position} rows")
+            sums = {round((r.get("need_bonus") or 0.0) + (r.get("depth_exposure") or 0.0)
+                          + (r.get("displacement_adj") or 0.0), 6) for r in rows}
+            checked += len(rows)
+            self.assertEqual(len(sums), 1,
+                             f"{position}: roster terms differ between same-position rows: {sorted(sums)}")
+        self.assertGreater(checked, 200, "population too small")
+
+    def test_a_second_tight_end_is_still_taken_when_he_is_the_best_value_left(self):
+        """The refusal case, still stated on one player, on the corrected ruler. With Bowers
+        owned and a FLEX open, Trey McBride's rank must not exceed the count of players who
+        actually add MORE than he does at the slot each can reach."""
+        league = _league(False)
+        te = _ranked(_points(league), "TE")
+        picks = [_pick(te[0], "1", 1, 1)]
+        board = _priced(_board(league, picks, "1"))
+        surplus = self._surplus(league, picks, board)
+        mcbride = next(r for r in board if str(r["player_id"]) == te[1])
+        mine = surplus[str(mcbride["player_id"])]
+        # Contenders: everyone who adds more than he does, plus everyone within the ROSTER
+        # terms' whole reach of him -- the same bound the pair guard above uses, taken from the
+        # engine's own constants rather than chosen to fit. The slack is needed and is not a
+        # fudge: risk_adj, the time horizon and the growth signal are per-PLAYER and legitimately
+        # move a row a place or two (measured here, Chris Olave adds 82.1 against McBride's 84.6
+        # and sits two rows above him). Without the slack this would pin per-player noise as if
+        # it were the refusal the test is looking for.
+        reach = dr.NEED_BONUS_MAX + dr.DEPTH_EXPOSURE_MAX
+        contenders = [r for r in board if str(r["player_id"]) != te[1]
+                      and surplus.get(str(r["player_id"]), float("-inf")) > mine - reach]
+        rank = board.index(mcbride)
+        self.assertGreater(mine, 0.0, f"{mcbride['name']} must still be worth starting: {mine}")
+        self.assertLessEqual(rank, len(contenders),
+                             f"{mcbride['name']} projects {mcbride['projected_points']}, surplus "
+                             f"{mine:.1f}, ranked {rank}; only {len(contenders)} players are within "
+                             f"the roster terms' reach of him")
 
     def test_the_board_is_not_the_projection_control(self):
         """A fix that flattens replacement toward zero turns the board into "best projected
