@@ -33,24 +33,27 @@ Two things came out of that: the patch now goes on before any board is built, an
 `run_216_flexshare_draft_probe` drops both caches. An ablation that has to be right about which
 half caused what cannot afford to skip this.
 
-## What is actually behind it, stated as a finding and not repaired here
+## CORRECTION -- my first reading of the cause was wrong
 
-`rival_premium` is `rival team_acquisition_value - rival universal_value`, i.e. the sum of the
-team-specific terms on a rival's board. #216's fix added a FOURTH such term, `displacement_adj`,
-which is uncapped and never positive. `pick_synthesis.TEAM_SPECIFIC_CAPS` still names three:
+I first wrote that `pick_synthesis.TEAM_SPECIFIC_CAPS` had silently stopped enumerating the terms
+it names, and filed it as an unhandled missing-companion defect. **Withdrawn.** Fable handled it
+explicitly, in a note attached to the tuple: #216's fourth term is deliberately excluded because
+`displacement_adj` is non-positive by construction and cannot raise the sum the caps bound, so
+`sum(TEAM_SPECIFIC_CAPS)` remains the correct UPPER bound; the LOWER bound is now open, and both
+consumers already guard one-sidedly. I read one stale half-sentence three paragraphs above that
+note and diagnosed from it.
 
-    TEAM_SPECIFIC_CAPS = (dr.NEED_BONUS_MAX, dr.ELIGIBILITY_BONUS_MAX, dr.DEPTH_EXPOSURE_MAX)
-    NECESSITY_DENIAL_SATURATION = sum(TEAM_SPECIFIC_CAPS)          # 36.0
+## What actually remains
 
-and its comment derives the saturation point as "the SUM of draft_room's team-specific terms,
-each independently capped -- so its own bound is their SUM". **That sentence is now false.** The
-sum of the caps is still a valid UPPER bound (adding a non-positive term can only lower the
-maximum), so `test_the_flat_spot_is_gone` still holds and nothing is mis-clipped. What is gone
-is the TIGHTNESS: the tuple no longer enumerates the terms it claims to enumerate.
+`rival_premium` is `rival team_acquisition_value - rival universal_value`, the sum of the
+team-specific terms on a rival's board. #216's fix added a fourth, `displacement_adj`, uncapped
+and never positive -- so the sum's LOWER end moved while its upper bound did not, which is
+precisely what that note records. `TEAM_SPECIFIC_CAPS` names the three CAPPED terms, correctly
+and on purpose, and `NECESSITY_DENIAL_SATURATION` is still a sound upper bound.
 
-This is the missing-companion shape (#166/#174/#185/#187/#190/#207) one more time — a quantity
-gained a term and its bound did not travel with it — and it belongs to #216's fix, not to the
-flex share. The flex share only made it cross a line where a canary was watching.
+The only prose defect was one half-sentence of #144's older comment still claiming the terms were
+"each independently capped". It is repaired in place, with the correction beside it rather than
+three paragraphs below.
 
 ## What I am NOT doing
 

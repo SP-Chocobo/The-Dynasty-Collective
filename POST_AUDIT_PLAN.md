@@ -6571,7 +6571,7 @@ superflex is the one format where the measurement also overrides `SUPER_FLEX_QB_
 the non-SUPER_FLEX half passes on its own has NOT been run and would need its own pre-registration
 written first.
 
-## #220 — rival_premium's bound stopped enumerating its own terms
+## #220 — the rival_premium canary is CONDITIONAL on the anchor, and my first diagnosis of it was wrong
 
 `test_the_premium_still_exceeds_one_terms_cap` -- #144's non-vacuity canary, whose docstring says
 failing is the point -- goes RED under the fielded anchor and is NOT edited. Attribution, four
@@ -6579,19 +6579,28 @@ arms, one process each (`rival_premium_attribution.md`): even split + displaceme
 pre-change commit exactly at 14.29; measured share + displacement gives 9.25; either arm without
 displacement gives 16.21.
 
-Underneath: `rival_premium` is `rival TAV - rival UV`, the sum of the team-specific terms. #216's
-fix added a FOURTH, `displacement_adj`, uncapped and never positive, while
-`pick_synthesis.TEAM_SPECIFIC_CAPS` still names three and derives `NECESSITY_DENIAL_SATURATION` as
-their sum, in a comment whose words are "the SUM of draft_room's team-specific terms". That
-sentence is now false. The sum of three caps remains a valid UPPER bound, so nothing is
-mis-clipped and `test_the_flat_spot_is_gone` still holds; what is gone is the tightness. This is
-the missing-companion shape (#166/#174/#185/#187/#190/#207) again -- a quantity gained a term and
-its bound did not travel with it. It belongs to #216's fix, not to the flex share; the flex share
-only pushed it across a line a canary was watching. **With the flex share stranded the canary is
-green again, so this is latent rather than live -- but it is latent, not absent.**
+**CORRECTION, published before I had read far enough.** My first write-up said
+`pick_synthesis.TEAM_SPECIFIC_CAPS` "no longer enumerates the terms it claims to" and filed it as
+an unhandled missing-companion defect. **That was wrong and I withdraw it.** Fable handled it
+explicitly, in a note attached to the tuple: #216's fourth term is deliberately excluded because
+`displacement_adj` is non-positive by construction and so cannot raise the sum the caps bound,
+`sum(TEAM_SPECIFIC_CAPS)` therefore remains the correct UPPER bound, and the LOWER bound is now
+open -- with both consumers named and their one-sided guards checked. I read one stale
+half-sentence three paragraphs ABOVE that note and diagnosed from it without reading on. That is
+the fifth confident single-sentence diagnosis on this item to be withdrawn, and it is recorded
+rather than deleted for exactly that reason.
 
-**Open decision, the owner's:** widen the canary's fixture to states where the ramp is actually
-stressed, re-derive the saturation point over four terms, or accept #144's repair as dormant.
+**What actually remained, which is much smaller.** One sentence of #144's prose still said the
+team-specific terms were "each independently capped", which stopped being true when the fourth
+arrived. Repaired in place: the correction now sits with the sentence instead of three paragraphs
+below it. Nothing on the value path changes; `sum(TEAM_SPECIFIC_CAPS)` was and remains right.
+
+**The canary is real but conditional.** It is red ONLY under the fielded anchor. With the flex
+share stranded behind `board_flex_share` it is green and #144's ramp is exercised exactly as
+before. If the owner ever wires the anchor it comes back, and the decision then is: widen the
+fixture to states where the ramp is actually stressed, re-derive the saturation point over four
+terms, or accept #144's repair as dormant. Not a decision to make while the anchor is unwired,
+and not one to make by choosing whichever answer flatters the anchor.
 
 ## A process note: an ablation defeats a fingerprinted cache from outside
 
