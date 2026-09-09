@@ -694,5 +694,22 @@ class E_OverCorrectionGuards(unittest.TestCase):
 
 # MEASURED STATUS ON UNFIXED CODE (f580c11) and MUTATION RESULTS -- filled in by the adversary
 # after running this file; see the bottom of the file in the committed version.
+#
+# MUTATIONS (#221, the rewritten E_OverCorrectionGuards) -- five, one at a time, all CAUGHT.
+# Harness, patterns and the no-op post-mortem: evidence/roster_shape/shared_slot/mutations/
+#   M1  blanket anti-TE rule                 -> surplus ordering + the named McBride case
+#   M2b depth_exposure made per-CANDIDATE    -> same-position roster terms (38 sums at QB, must be 1)
+#   M2c need_bonus made per-CANDIDATE        -> same-position roster terms
+#   M3  refuse when dedicated slots are full -> all three, plus the pre-existing elite-flex guard
+#   M4  correction switched OFF              -> surplus ordering, in the OPPOSITE direction:
+#       CeeDee Lamb (surplus 111.7) below Trey McBride (84.6), which is #216's original defect.
+#       A guard that failed in only one direction would be a positional rule wearing a test.
+#
+# TWO OF THESE FIRST SURVIVED, AS NO-OPS, and that is recorded rather than quietly fixed: inside
+# score_row the projection column is `_points`; `projected_points` is assigned to `scored` AFTER
+# pool.apply(score_row) returns. `float(None or 0.0) % 7.0` is 0.0, so both mutations added
+# exactly nothing and reported OK. A mutation that does not change the answer proves nothing
+# about the test and does not announce itself -- what caught it was dumping the board's own
+# values under the mutation and finding them identical to the clean run.
 if __name__ == "__main__":
     unittest.main()

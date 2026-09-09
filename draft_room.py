@@ -3097,6 +3097,10 @@ def compute_draft_board(
         picks, players_db, my_roster_id, _roster_points)
     displacement_by_position = displacement_adjustments(
         _my_points_players, roster_positions, point_replacement, _my_unpriced)
+    # ONE HOME, read by BOTH displacement call sites (#126). score_row solves multi-eligible
+    # candidates itself and must use exactly what displacement_adjustments used, so the seam is
+    # consulted once here rather than twice with a chance of disagreeing.
+    _displacement_alternatives = board_slot_alternatives(point_replacement, roster_positions)
     # Multi-eligible rows solve once per (primary position, eligibility set) -- see score_row.
     _displacement_by_eligibility: dict = {}
 
@@ -3243,6 +3247,14 @@ def compute_draft_board(
                     _displacement_by_eligibility[key] = lo.displacement_level(
                         _my_points_players, roster_positions, eligible | {position},
                         float(point_replacement[position]), _my_unpriced,
+                        # #221. THE SAME ALTERNATIVES THE PER-POSITION SOLVE USED. Omitted here
+                        # while the shared alternative was stranded, which was harmless then and
+                        # a defect the moment it was wired: a multi-eligible candidate would be
+                        # priced against his OWN positional level at every slot while every
+                        # single-position row beside him was priced against the shared one --
+                        # one slot carrying two alternatives, which is #216 itself, reappearing
+                        # at the one seam that does not go through displacement_adjustments.
+                        slot_alternatives=_displacement_alternatives,
                     )
                 displacement = _displacement_by_eligibility[key]
             displacement_adj = float(displacement["adjustment"])
