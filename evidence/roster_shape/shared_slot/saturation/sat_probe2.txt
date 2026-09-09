@@ -1,0 +1,21 @@
+
+flexes held by WR
+  pos     level  displaced  adjustment   proj-displaced for a 250.0 player
+  QB     207.50     300.00      -92.50       -50.00
+  RB     177.00     270.00      -93.00       -20.00
+  WR     215.10     270.00      -54.90       -20.00
+  TE     162.70     270.00     -107.30       -20.00
+
+flexes held by RB
+  pos     level  displaced  adjustment   proj-displaced for a 250.0 player
+  QB     207.50     300.00      -92.50       -50.00
+  RB     177.00     268.00      -91.00       -18.00
+  WR     215.10     268.00      -52.90       -18.00
+  TE     162.70     268.00     -105.30       -18.00
+
+flexes held by TE
+  pos     level  displaced  adjustment   proj-displaced for a 250.0 player
+  QB     207.50     300.00      -92.50       -50.00
+  RB     177.00     272.00      -95.00       -22.00
+  WR     215.10     272.00      -56.90       -22.00
+  TE     162.70     272.00     -109.30       -22.00
