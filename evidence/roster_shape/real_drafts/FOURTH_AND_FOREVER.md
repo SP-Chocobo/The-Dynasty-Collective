@@ -75,22 +75,41 @@ alamosplash with 2).
 | TE | 15.5% | 16.7% | 12.8% |
 | WR:RB | 1.35 | **2.00** | **1.95** |
 
-**On the rookie board these managers allocate almost exactly the way the engine does.**
-That reframes the whole finding. The engine's shape is not "wrong about receivers" as a
-general matter — the same shape is what twelve humans produce when the pool is a rookie
-class. What the engine appears to be doing is applying rookie-draft allocation to a
-startup draft.
+**WITHDRAWN, same day, by the control that was sitting in this repo.**
 
-The obvious confound is stated and NOT corrected here: the rookie POOL's own position
-mix is unknown to this measurement. If the 2026 class is WR-dense, 45.8% is a supply
-fact and not a choice. Separating those needs the rookie board's available-pool
-composition, which is the next capture to take. Until then this is a hypothesis with
-one supporting table, not a result.
+I read the rookie table as "these managers allocate almost exactly the way the engine
+does", and proposed that the engine applies rookie-draft allocation to a startup draft.
+That lead is dead. `data/league_captures/greatest_show_on_paper_2_rookie_draft.csv` holds
+a SECOND 12-team rookie draft, different league, different managers, same 2026 class --
+and the two drafts **share 41 of their 48 players**.
 
-What differs between the two boards is exactly what a startup has and a rookie draft
-does not: an established veteran supply, where quarterback and running back scarcity
-is immediate rather than speculative. That is also where the engine's two largest gaps
-sit (QB -5.4 points of share, RB -2.4 against the startup board).
+When 85% of the personnel is identical, the position split is not reading anyone's
+preference. It is reading the CLASS. The union of both drafts (55 distinct players) is
+QB 14.5% / RB 23.6% / WR 43.6% / TE 18.2% -- the top tier of this rookie class simply
+has that shape, and any 12-team four-round draft taking roughly consensus will reproduce
+it. So the engine's 48.9% WR resembling the rookie board's 45.8% is a resemblance to a
+SUPPLY ARTIFACT, and carries no information about the engine's allocation rule.
+
+**A second caution, because I nearly published the stronger version.** The two drafts
+first came out byte-identical -- QB 7 / RB 11 / WR 22 / TE 8 in both -- which reads as
+overwhelming. It is partly coincidence. Two players are labelled differently by the two
+sources (Adam Randall and Eli Heidenreich: WR in the January-sourced CSV, RB on Sleeper's
+own August board; both are genuinely position-ambiguous college converts), and the
+mismatch happens to offset. Harmonising the labels separates them:
+
+| labelling | GSoP2 WR:RB | F&F WR:RB |
+|---|---|---|
+| as each source recorded it | 2.00 | 2.00 |
+| both WR (the CSV's call) | 2.00 | 2.67 |
+| both RB (Sleeper's call) | 1.54 | 2.00 |
+
+The range across both leagues and both labellings is **1.54-2.67**. Every value sits far
+above the startup's 1.35, and none of it is evidence about allocation.
+
+**What survives untouched** is the startup comparison below: 37.0% human WR share against
+the engine's 48.9%, on a number stable across every cut of the data. That was always the
+load-bearing half. The rookie half was a hypothesis with one uncontrolled table, said so
+at the time, and did not survive its first control.
 
 ### Combined, startup + rookie (final post-draft rosters, 358 picks)
 
@@ -158,8 +177,8 @@ Every human seat carries 3-9, and by pick fifteen already averages 2.9.
 
 ## Next, in order
 
-0. Capture the rookie board's AVAILABLE POOL composition. The rookie-vs-startup split
-   above is the sharpest lead in this file and it rests on one uncontrolled table.
+0. DONE, and it falsified the lead -- see the withdrawal above. The control was already
+   in this repo at `data/league_captures/`; it did not need capturing.
 1. Capture the Fourth and Forever rulebook the way `greatest_show_on_paper_2.json`
    was captured. The exact starting lineup is not yet known here, and the free
    alternative — hence any surplus measure — depends on it.
