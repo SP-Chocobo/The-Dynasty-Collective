@@ -6309,6 +6309,101 @@ family (#154/#155/#114) — all three of those are closed, and #216 is now the b
 place. #53 does not proceed while the board is inert for WR and QB and `feasibility_first` is
 the only thing making a roster legal.
 
+### THE IMPLEMENTATION PASS — measured, NOT merged (branch `worktree-agent-ab5e1af412aeb9182` @ `7efb423`)
+
+Fable implemented against a pre-registration written before any measurement
+(`evidence/roster_shape/PREREGISTRATION_216_fix.md`, on her branch) and against a falsification
+battery + room-integrity guards written BLIND by a separate adversary (`b66c051`), taken
+verbatim. Nothing is merged to `ui-authority-pass`. **#216 remains NOT CLOSED.**
+
+**What she built.** `displacement_adj` — a fourth team-specific term,
+`replacement_level - displacement_level`, always `<= 0`, derived from the shipped lineup
+optimizer with phantoms at the league replacement level. No new constant, no cap.
+`universal_value` is untouched, so the asset ruler's basis is unchanged. Carried to
+`CandidateSnapshot`, the serializer, the JS, `DISPLAY_CONTRACT`, a metric card, `pick_debate`
+and `term_lifetimes`. Suite 2710 OK (1 skipped) three times; assertion floors held; 9/9
+mutations killed. The SECOND pass changed nothing in the value path — verified here by diffing
+`5a2cab1..7efb423` over `draft_room.py`, `lineup_optimizer.py`, `pick_debate.py`,
+`pick_synthesis.py`, `app.py`: **empty**. It added only `run_216_bench_probe.py` and evidence.
+
+**What the fix does, measured.** In 12T_ppr and 12T_ppr_SF the feasibility backstop stops
+binding and the lineup improves in 6/6 seats (+123..+340). Out of sample in the OWNER'S league
+(no TE slot, 3 flex, SF, 5 bench, 3RR; seats 1/6/12): backstop bound 2 -> 0 in 3/3; lineup
++111/+121/+119; the `WR >= RB > TE` ordering passes 3/3 (`RB6 WR6 QB2`); the asset ruler wins
+before and after with no reversal.
+
+**What it does NOT do, and the two open halves that are the owner's:**
+
+1. **G9 superflex reversals (first pass).** In 12T_ppr_SF two seats the engine won on the asset
+   ruler before the term, it loses after — both on bench rows. That is a lineup-vs-asset trade
+   and its exchange rate is **#50**. Not resolved by an implementer.
+2. **The roster shape half is not derivable as a price, and the finding is recorded rather than
+   worked around.** A bench body's worth is (probability a starter he covers is out) x (his
+   points over the fill-in). The second factor the optimizer gives exactly; the FIRST is an
+   injury rate this repository does not have, and the engine's own uniform "any one starter out"
+   model prices a 200-point bench RB at ~+125 against a +55 lineup upgrade — the raw-points
+   regime the E-guards forbid (#56: a bound is not a threshold). So the pass looked for an
+   ORDERING inside the pure-bench regime instead of a price, and none survived:
+   - coverage-count: 4/6, produced TE4-TE5 on one seat and two more G9 reversals;
+   - `waiting_cost`/horizon: RB6-RB9 everywhere;
+   - usage-deficit (the derived band, live): 6/6 strict on raw counts with G1/G3 intact and G9
+     improved 5/6 — **but 3/6 on independent depth and 0/3 in the owner's league**, because the
+     running backs it adds are workload lotteries behind other managers' starters. It meets the
+     rule's letter with pieces the rule exempts. **Not shipped.**
+
+**The derived band, which is the durable product of the second pass.** Roster size x the
+league's fielded-load share (read off every roster's optimal lineup at draft end), minus the
+seat's own fielded load. No literal enters it. 1QB `WR 6.1 RB 4.1 TE 2.0 QB 1.75`; SF
+`WR 5.7 RB 4.1 QB 3.3 TE 1.9`; owner's league `WR 5.3 RB 3.6 QB 3.1 TE 1.9`. It agrees with the
+owner's stated ordering AND his QB ceilings in all three formats, and it reproduces his own
+oracle roster's independent depth (WR4 RB3 QB3 TE2) within one at WR. It is an EVALUATION
+instrument; the engine never reads it (a quota would be the over-correction).
+
+**The one place the fixed engine still disagrees with the owner's own roster.** His league has
+no TE slot and three flexes. The oracle roster carries two tight ends as de-facto receivers; the
+fixed engine carries ZERO and fills all three flexes with running backs. Cause, measured: at an
+OPEN flex each position is priced against its own positional anchor (TE-rank 8 vs RB-rank ~39),
+never against the flex's real alternative. The displacement term only fires once a slot is held,
+so it does not reach this. **This is the same class as #216 (a positional anchor standing in for
+the real alternative) one layer up, and it is #50's territory.**
+
+**Term inventory — SETTLED FROM CODE, correcting three unverified assertions of mine.** NO
+existing term can raise a player's value on the basis of a specific teammate. `team` is read in
+`draft_room` only for identity resolution and emitted as a column; lineup rows carry
+`id`/`value`/`eligible` only, so `eligibility_bonus`, `depth_exposure` and `displacement_level`
+cannot see a teammate; `need_bonus` reads position counts; `universal_value` is team-agnostic;
+the rival terms read other rosters' boards. Every team-specific term is agnostic, positional, or
+a deduction. No trades-enabled input exists (0 hits; `league_format.py:9` is a comment). A
+handcuff exemption would therefore be a NEW term — a complementarity value `>= 0` conditional on
+owning the starter — and its magnitude is #50. Handcuff IDENTIFICATION was built as an
+observable in `shape_summary.py` (same NFL team + position + that team's top-projected player
+owned; RB/QB only, because on WR it labels every NFL WR2). The shipped fix caps nothing and
+cannot suppress a handcuff; the usage-deficit ordering WOULD, whenever RB's deficit trails
+another position's — which is one more reason it is not shipped.
+
+**A mechanism claim of mine, corrected for the second time.** The bench regime does NOT fall
+back to raw VOR. It orders by distance to my lineup, and it takes receivers (zero bench TEs in
+6/6). The `RB2 < TE3` failures I attributed to the bench are STARTER picks: a third tight end at
+the second FLEX out-projects the best available receiver by 23 points and is correct by lineup
+points (G3). Recorded because this is the fourth published-then-withdrawn mechanism on this item
+and the pattern is the finding.
+
+**Still untouched:** the quarterback's own `bpa` is 0.00 while his slot is the last one open. No
+arm reaches it — the corrected pure-bench detector had to treat a 0.00-bpa row filling an empty
+slot as a starter, which is the same defect seen from the other side.
+
+**Inferred, not measured (stated as such):** that a bench price needs an injury rate (derived on
+paper, not run as an engine arm); that 3RR vs snake changed nothing material in the owner's
+league (the runs used 3RR; no snake control was run).
+
+**Not reached:** wiring any bench ruler; the no-trade re-reading of G9 beyond stating it as a
+conditional; a snake control in the owner's format; battery/room checks against a bench ordering
+(moot — none shipped).
+
+**Status: NOT CLOSED, still blocking the freeze.** What remains is not implementation work. It
+is two owner rulings on #50: the lineup-vs-asset exchange rate that G9's superflex reversals
+turn on, and whether a flex slot should re-anchor the positions competing for it.
+
 ## #217 — THE OBJECTIVE, STATED BY THE OWNER, AND THE INPUT IT NEEDS THAT DOES NOT EXIST
 
 ### The ruling (owner, verbatim in effect)

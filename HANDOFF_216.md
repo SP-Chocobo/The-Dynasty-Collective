@@ -100,3 +100,26 @@ a need signal saturating"; (2) "receivers arrive once every other tail falls thr
 "`NEED_BONUS_MAX` caps the roster term below the bias". All three were measured false. Treat any
 confident single-sentence explanation of #216 — including one of mine — as a hypothesis until
 an instrument says otherwise.
+
+## WHERE THE WORK ACTUALLY IS, as of the implementation pass
+
+**Branch `worktree-agent-ab5e1af412aeb9182` @ `7efb423`. NOT merged.** It carries
+`displacement_adj` (a fourth team-specific term, `replacement_level - displacement_level <= 0`,
+no new constant), the blind falsification battery and room-integrity guards taken verbatim from
+`b66c051`, and the second-pass shape instruments. Suite 2710 OK; 9/9 mutations killed. Fetch it
+before doing anything on this item — re-deriving it would waste a full pass.
+
+Full record: `POST_AUDIT_PLAN.md` -> #216 -> "THE IMPLEMENTATION PASS". Evidence on that branch:
+`evidence/roster_shape/FIX_216_fable.md`, `PREREGISTRATION_216_fix.md`,
+`evidence/roster_shape/fix_216/second_pass/`.
+
+**Two open halves, both #50 and both the OWNER'S, not an implementer's:**
+1. Two superflex seats reverse on the asset ruler under the term (both on bench rows) — a
+   lineup-vs-asset exchange rate.
+2. At an open FLEX every position is priced against its own positional anchor, never against the
+   flex's real alternative. This is why the fixed engine fields zero tight ends in the owner's
+   no-TE-slot league where his own roster carries two. Same class as #216, one layer up.
+
+**A fourth withdrawn explanation, added to the three above:** "the bench regime falls back to raw
+VOR." It does not. It orders by distance to my lineup and takes receivers (zero bench TEs in
+6/6); the `RB2 < TE3` failures are STARTER picks, and correct by lineup points.
