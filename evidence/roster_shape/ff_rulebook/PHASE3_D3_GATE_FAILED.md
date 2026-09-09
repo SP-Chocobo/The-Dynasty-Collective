@@ -1,5 +1,18 @@
 # D3 GATE: the derivation proof holds — but it disconfirmed D3's PREMISE. Not implemented.
 
+> **PARTIAL WITHDRAWAL — see `PHASE4_WITHDRAWAL_AND_THE_MODE_BOUNDARY.md`.**
+>
+> The D3 sections of this document STAND: the derivation works, the anchor-reuse check fired,
+> `pick_order` is not threaded, and the level cancels (`bpa + displacement_adj = points −
+> displaced`, verified in balanced mode with production-shaped picks).
+>
+> The FINAL SECTION — "AND THE PHENOMENON IS SOMEWHERE ELSE ENTIRELY", claiming the board's top
+> rows were WR while production took TE, and that the narrowing selects the tight ends — **is
+> withdrawn.** It was a fixture artifact: the probe passed picks as `{player_id, roster_id}`
+> without `round`, so `mode="auto"` silently ran BALANCED while production ran UPSIDE. In
+> production's real mode the board's top row IS the tight end, `candidates[0]` equals it, and
+> `narrow_candidates` is exonerated along with `_board_order` and the feasibility backstop.
+
 The owner authorised D3 "subject to the production-state derivation proof above." The proof
 ran. It passed on its own terms and then, in the course of passing, falsified the reason for
 doing the fix at all. **No engine source has been changed.**

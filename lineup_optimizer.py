@@ -363,6 +363,33 @@ def displacement_level(
     """What a player at `position` must out-score to start for THIS roster, in the caller's
     currency (#216).
 
+    WHAT `free_alternative` ACTUALLY IS, and what it is not (#222). It is the caller's
+    replacement LEVEL for `position` -- in production, draft_room's `point_replacement`, which
+    below a position's demand domain is the PRE-DRAFT anchor rather than a live pool reading.
+    It is therefore NOT a claim that a player at that value is available right now: measured on
+    a real 26-round startup, by the final pick the level said a free tight end was worth 149.17
+    while the best one left in the pool was worth 6.49.
+
+    THAT STALENESS DOES NOT REACH THE PRICE WHEREVER THIS TERM IS NON-ZERO, and the reason is
+    worth stating because it is not obvious. The board's bpa is `points - level` and
+    displacement_adj is `level - displacement_level`, the SAME level, so for a candidate whose
+    reachable slots are all held the two cancel exactly:
+
+        bpa + displacement_adj = (points - L) + (L - displaced) = points - displaced
+
+    Measured across a seven-rung saturation ladder in balanced mode: the sum falls monotonically
+    (-5.25, -32.18, -50.29 ...) with no discontinuity where the level's basis switches from live
+    to the pre-draft anchor and the level jumps back by 85 points. (_scale_vor_to_bpa is the
+    identity, so this is structural rather than a coincidence of scale -- see its docstring.)
+    A fix that made this parameter "live" WITHOUT changing bpa would therefore not correct a
+    price; it would inject the level's staleness as one, ~86 points per surplus tight end on
+    that ladder. That was proposed, measured and rejected.
+
+    Where the level's basis DOES reach the price is the opposite case: a position with an OPEN
+    reachable slot, where this function returns `free_alternative` unchanged, the adjustment is
+    exactly 0.0, and the price is `points - level` with nothing to cancel it. That is bpa's
+    business, not this term's.
+
     THE QUESTION. Value over replacement prices a player against the league's free alternative
     at his position. That is the right anchor for a slot this roster has not filled -- the
     free alternative is what the slot gets otherwise -- and the wrong one for a slot it has

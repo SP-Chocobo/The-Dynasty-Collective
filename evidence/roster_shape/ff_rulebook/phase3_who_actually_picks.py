@@ -1,3 +1,11 @@
+"""WITHDRAWN FIXTURE (#222, 17th withdrawal). This probe passes picks as
+{player_id, roster_id}; production passes {pick_no, round, roster_id, player_id}, and
+compute_draft_board(mode="auto") reads the round off the picks to choose upside vs
+balanced scoring. So every board this file built ran in the WRONG MODE, and its
+"the board's top row is a WR" reading is an artifact. See
+PHASE4_WITHDRAWAL_AND_THE_MODE_BOUNDARY.md and phase4_picks_shape_check.py.
+KEPT, NOT DELETED, as the record of the error. DO NOT REUSE THE FIXTURE.
+"""
 """B4, live: the board's top row is NOT what gets drafted. WHERE is the tight end chosen?
 
 simulate_full_draft takes pick_synthesis.build_snapshot(...).candidates[0], NOT

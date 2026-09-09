@@ -41,8 +41,12 @@ print(f"{'held':>5}{'pick':>6}{'level':>9}{'proj_pts':>10}{'bpa':>9}{'disp_adj':
 for n in sorted(seen):
     AT, me, prior = seen[n]
     STATE.clear()
+    # PRODUCTION-SHAPED PICKS. mode="auto" resolves upside-vs-balanced from the picks' own
+    # `round` field; a thin {player_id, roster_id} dict silently lands in the OTHER mode
+    # (measured in phase4_picks_shape_check.py). Build inputs in production's shape.
     rows = dr.compute_draft_board(m, players_db,
-        [{"player_id": q["player_id"], "roster_id": q["roster_id"]} for q in prior], me, L,
+        [{"pick_no": j + 1, "round": j // 12 + 1, "roster_id": q["roster_id"],
+          "player_id": q["player_id"]} for j, q in enumerate(prior)], me, L,
         sleeper_projections=season, sleeper_basis=dr.SLEEPER_BASIS_SEASON_SUM)
     rows = [r for r in rows if f(r.get("final_score")) is not None]
     rows.sort(key=lambda r: -f(r["final_score"]))

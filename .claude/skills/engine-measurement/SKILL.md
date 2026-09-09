@@ -193,6 +193,32 @@ couple of minutes and read the file.
 - **`unittest` buffers to a file.** `2>&1 | tail -N` discards the failure body. Redirect the
   whole run to a file and grep it: `> suite.txt 2>&1`, then `grep -n "^FAIL:" -A 25 suite.txt`.
 
+## Build production's inputs in production's SHAPE, not just with its values
+
+A probe that hand-builds an input must build it the way production builds it. A missing key is
+not a missing value — it can silently select a different code path.
+
+The one that cost a published finding (#222): `compute_draft_board(mode="auto")` resolves
+upside-vs-balanced scoring from the CURRENT ROUND, and the round is read off the picks. Passing
+picks as `{player_id, roster_id}` instead of production's
+`{pick_no, round, roster_id, player_id}` therefore ran the whole probe in **balanced** mode
+while production was in **upside** mode — two different valuations, no error, no warning, and a
+completely different top of the board:
+
+```
+picks {player_id, roster_id}                 top 5:  WR WR WR WR WR   (balanced)
+picks {pick_no, round, roster_id, player_id} top 5:  TE WR WR TE WR   (upside)
+```
+
+Same 915 rows, same 267 priced, same code, same process. Forcing `mode=` explicitly gives
+identical results from both shapes — which is how you prove the shape mattered only through
+round detection, and is the check to run when two of your own probes disagree.
+
+So: copy the shape from the production caller (here `draft_simulation.simulate_full_draft`),
+not from what the function appears to read. And when a probe and production disagree about the
+same board, suspect the INPUT before the instrument — this is the same family as measuring the
+wrong universe (#201) and capturing the wrong call (above).
+
 ## Board rank is not pick order — say which one you mean
 
 `simulate_full_draft` does not pick `board.iloc[0]`. It goes through
