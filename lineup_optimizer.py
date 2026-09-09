@@ -444,11 +444,27 @@ def displacement_level(
         return {"displaced": None, "adjustment": 0.0, "basis": DISPLACEMENT_NOT_APPLICABLE}
     free = float(free_alternative)
     alt_of = {s["slot_id"]: float((slot_alternatives or {}).get(s["slot_id"], free)) for s in slots}
+    # A PHANTOM IS PINNED TO ITS OWN SLOT (#221). It stands for "what THIS slot gets for free if
+    # I pass", which is a property of the slot -- not a free agent who may sign anywhere he is
+    # eligible. Given the slot's own eligibility set instead, a phantom MIGRATES: measured on the
+    # real board, a FLEX phantom worth the shared alternative (216.25) took both dedicated RB
+    # slots and benched their own phantoms (185.64), because the solve maximises the total and
+    # 216.25 in an RB slot beats 185.64. The dedicated RB slot's alternative was then reported as
+    # the flex's, and a running back with TWO OPEN RB SLOTS was deducted 30.61 -- breaking the
+    # invariant this function's own docstring states, and caught by #216's pre-registered
+    # over-correction guard rather than by me.
+    #
+    # With uniform phantoms migration is value-neutral (every phantom is worth `free`), so this
+    # pinning is a no-op for every caller that passes no `slot_alternatives` -- which is why the
+    # defect could not exist before per-slot values did, and why it does not change the answer
+    # for anyone who does not use them.
+    pin_of = {s["slot_id"]: f"__pin_{s['slot_id']}" for s in slots}
+    solve_slots = [{**s, "eligible": set(s["eligible"]) | {pin_of[s["slot_id"]]}} for s in slots]
     phantoms = [{"id": f"__free_{s['slot_id']}", "value": alt_of[s["slot_id"]],
-                 "eligible": set(s["eligible"])} for s in slots]
-    base = optimize_lineup(list(roster_players) + phantoms, slots)
+                 "eligible": {pin_of[s["slot_id"]]}} for s in slots]
+    base = optimize_lineup(list(roster_players) + phantoms, solve_slots)
     probe = {"id": "__displacement_probe", "value": _DISPLACEMENT_PROBE_VALUE, "eligible": probe_eligible}
-    with_probe = optimize_lineup(list(roster_players) + phantoms + [probe], slots)
+    with_probe = optimize_lineup(list(roster_players) + phantoms + [probe], solve_slots)
     displaced = round(base["total_value"] + _DISPLACEMENT_PROBE_VALUE - with_probe["total_value"], 2)
     # Never below the cheapest phantom the probe can REACH: one sits in every slot, so that is
     # the weakest thing it can evict. With uniform phantoms this is exactly `free_alternative`

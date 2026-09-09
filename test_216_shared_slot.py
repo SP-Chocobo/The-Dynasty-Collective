@@ -109,10 +109,29 @@ class TheTwoDirectionsTests(unittest.TestCase):
         # the tight end, at a slot all three are competing for.
         self.assertGreater(priced["RB"][0] - priced["WR"][0], 100.0)
         self.assertGreater(priced["RB"][0] - priced["TE"][0], 150.0)
-        # Under the shared alternative they are within a tight end's own scarcity of each other,
-        # and the running back's advantage is gone entirely.
+        # Under the shared alternative the running back's advantage over the RECEIVER is gone
+        # entirely -- they reach the same cheapest slot, so they carry the identical price.
         self.assertEqual(priced["RB"][1], priced["WR"][1])
-        self.assertLess(priced["RB"][1] - priced["TE"][1], 20.0)
+        # The tight end keeps a gap, and it is not a residual bias: this rulebook's WRRB_FLEX
+        # admits RB and WR and NOT TE, so a tight end's cheapest reachable slot is a FLEX while
+        # theirs is the WRRB_FLEX. The gap is exactly that difference of alternatives, DERIVED
+        # from the rulebook rather than bounded by a number chosen to fit (#56).
+        #
+        # This assertion read `< 20.0` until #221. That was calibrated against a defect: phantoms
+        # carried their slot's eligibility, so the cheap RB-slot phantom MIGRATED into a flex and
+        # erased the distinction between a slot a tight end can enter and one he cannot. Pinning
+        # each phantom to its own slot restores it, and the number stops being approximate.
+        # Both dedicated RB slots are held, so the comparison is between the SHARED slots each
+        # can reach: the running back's cheapest is the WRRB_FLEX, the tight end's is a FLEX.
+        alts_by_slot = dr.shared_slot_alternatives(LEVELS, NO_TE_SLOT)
+        slots = lo.slots_from_roster_positions(NO_TE_SLOT)
+        cheapest_shared = {
+            pos: min(alts_by_slot[s["slot_id"]] for s in slots
+                     if pos in s["eligible"] and len(s["eligible"]) > 1)
+            for pos in ("RB", "TE")
+        }
+        self.assertEqual(round(priced["RB"][1] - priced["TE"][1], 2),
+                         round(cheapest_shared["TE"] - cheapest_shared["RB"], 2))
 
     def test_one_TE_slot_the_surplus_tight_end_stops_being_cheap_at_the_flex(self):
         """12T_ppr. The TE slot is held by a better tight end, so a further tight end can only
@@ -130,6 +149,44 @@ class TheTwoDirectionsTests(unittest.TestCase):
         # the identical price. That equality IS the repair.
         self.assertEqual(250.0 - levels["TE"] + te_new["adjustment"],
                          250.0 - levels["WR"] + wr_new["adjustment"])
+
+
+class ThePhantomIsPinnedToItsOwnSlotTests(unittest.TestCase):
+    """#221. A phantom stands for what THIS slot gets free if I pass. Given the slot's own
+    eligibility set it is instead a free agent who may sign anywhere -- and with per-slot values
+    it does, upward: a FLEX phantom worth the shared alternative takes a DEDICATED slot and
+    benches that slot's own cheaper phantom, because the solve maximises the total.
+
+    Found by #216's pre-registered over-correction guard, not by the implementer: a running back
+    with TWO OPEN RB SLOTS was deducted 30.61."""
+
+    def test_an_open_dedicated_slot_is_not_repriced_by_a_flex_phantom(self):
+        """The exact shape of the defect, on the fixture that caught it: four tight ends, both
+        RB slots empty. RB's alternative is RB's own level, never the flex's."""
+        levels = {"QB": 328.6, "RB": 185.64, "WR": 216.25, "TE": 157.78}
+        rpos = ["QB", "RB", "RB", "WR", "WR", "TE", "FLEX", "FLEX"]
+        roster = [_p(1, 310.18, "TE"), _p(2, 300.85, "TE"), _p(3, 265.23, "TE"), _p(4, 245.07, "TE")]
+        out = dr.displacement_adjustments(roster, rpos, levels)
+        self.assertEqual(out["RB"]["displaced"], 185.64)
+        self.assertEqual(out["RB"]["adjustment"], 0.0)
+        # ... and the tight end, whose every reachable slot IS held, still is deducted. The pin
+        # must not have simply switched the term off.
+        self.assertLess(out["TE"]["adjustment"], -100.0)
+
+    def test_pinning_changes_nothing_when_every_phantom_is_worth_the_same(self):
+        """Migration is value-neutral under uniform phantoms, so every caller that passes no
+        `slot_alternatives` is unaffected. Without this, the repair could have silently moved
+        the shipped answer as well."""
+        rpos = ["QB", "RB", "RB", "WR", "WR", "TE", "FLEX", "FLEX"]
+        roster = [_p(1, 310.18, "TE"), _p(2, 300.85, "TE"), _p(3, 265.23, "TE")]
+        for pos, level in (("QB", 328.6), ("RB", 185.64), ("WR", 216.25), ("TE", 157.78)):
+            with self.subTest(pos=pos):
+                self.assertEqual(
+                    lo.displacement_level(roster, rpos, pos, level, slot_alternatives=None),
+                    lo.displacement_level(roster, rpos, pos, level,
+                                          slot_alternatives={s["slot_id"]: level
+                                                             for s in lo.slots_from_roster_positions(rpos)}),
+                )
 
 
 class TheConstructionIsWiredTests(unittest.TestCase):
