@@ -303,10 +303,15 @@ NECESSITY_DENIAL_WEIGHT = 10.0       # the denial contribution at ONE team-term'
                                      # own ceiling is derived from it below (#144).
 
 # #144, closed by measurement. rival_premium is (rival TAV - rival UV) -- the SUM of
-# draft_room's team-specific terms, each independently capped -- so its own bound is their SUM,
-# and that is what a saturation point for it has to be. It used to be NEED_BONUS_MAX, the cap
-# on ONE of them, which was an upper bound on the quantity right up until #139 added a third
-# term and stopped being one.
+# draft_room's team-specific terms, so a saturation point for it has to be a bound on that sum.
+# It used to be NEED_BONUS_MAX, the cap on ONE of them, which was an upper bound on the quantity
+# right up until #139 added a third term and stopped being one.
+#
+# "each independently capped" USED TO BE PART OF THAT SENTENCE and is not true any more: #216
+# added a fourth term that has no cap. The note below says why the sum of the capped three is
+# still the right UPPER bound, and this line no longer states the stronger thing three
+# paragraphs above the correction. (Recorded rather than quietly edited: I read this stale half
+# as an unhandled defect and wrote it up as one before reading on. It was handled. See #220.)
 #
 # Derived from draft_room's own caps rather than written as 36.0, so a fourth team-specific
 # term moves it automatically instead of silently re-flattening the ramp the way the third did.
