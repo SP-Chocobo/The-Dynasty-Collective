@@ -82,3 +82,42 @@ comes from the startable floor — it would have reported 299.7 where the engine
 superflex half of this finding would have been nonsense. The column now recovers the level from
 the row itself (`level = projected_points - bpa`), which is true on both branches because it is
 read from the answer rather than from a model of the answer.
+
+## The obvious remedy, REJECTED ON DERIVATION before spending a measurement on it
+
+Superflex avoids defect (b) because `startable_floors` sets the QB level. So: extend the startable
+floor to 1QB. It is the natural next move, the mechanism already exists, and its constants were
+derived by stability basin rather than invented (#56-clean). **It is still wrong, and the
+arithmetic says so without a draft:**
+
+| format | QB pool | floor (0.5 x QB12 = 164.3) | QBs ABOVE floor | league QB demand | level under the FLOOR rule | level under the DEMAND rule | QB1 bpa: floor vs demand |
+|---|---|---|---|---|---|---|---|
+| 12T_ppr | 42 | 164.3 | **32** | **12.00** | 207.5 | 328.6 | **164.96** vs 43.86 |
+| 12T_ppr_SF | 42 | 164.3 | **32** | **22.20** | 207.5 | 299.7 | 164.96 vs 72.79 |
+
+The startable floor answers **"how many quarterbacks in this pool are startable at all"** — 32, a
+property of the projection curve. That is the right question in superflex, where 22 of them are
+actually started and the two numbers are close. In a 1QB league only **12** are started, and the
+floor would price every quarterback against QB32 instead of QB12: Josh Allen's `bpa` goes
+**43.86 -> 164.96, a 3.8x inflation**, in a format that fields one quarterback per team. The
+engine would open the draft with a quarterback. That is the over-correction, the same shape as
+#219's four-tight-end seat, and it is visible on paper.
+
+## So what defect (b) actually is
+
+Not a badly chosen replacement level. **VOR is a model of a market for N starting slots, and at
+N = 1 with only me still bidding there is no market to model.** The rank-1 level resolving to the
+best remaining player is not a bug in the arithmetic; it is the arithmetic correctly reporting
+that a competitive-alternative model has nothing left to say.
+
+What prices the last slot is not a better alternative — it is the **cost of waiting**, and this
+engine already computes two of those: `waiting_cost` (against the end-of-draft free alternative,
+34-64 points at exactly the states where `bpa` reads 0.00) and `positional_forfeit` (against the
+next turn). `replacement_levels`' own docstring reaches the same conclusion from the other
+direction: "the quantity that would price it is horizon_replacement's floor, observable-only by
+#48's ruling."
+
+**Defect (b) is therefore not an implementation gap. It is #48's ruling meeting a state where the
+observable-only quantity is the ONLY quantity with anything to say**, and admitting it into
+selection is #50 and the owner's. Recorded here so the next pass does not spend itself
+re-deriving a better anchor for a slot that does not have one.
