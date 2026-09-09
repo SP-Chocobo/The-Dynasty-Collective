@@ -1,3 +1,8 @@
+> **CORRECTED -- DO NOT QUOTE THE NUMBERS IN THIS FILE.** Every figure here was
+> computed over the 764-row VENDOR RECONSTRUCTION, not the 6,595-player real
+> capture the engine actually drafts from. See CORRECTION_wrong_universe.md.
+> The described mechanism may survive re-measurement; none of these numbers do.
+
 # The engine's WR share is a deviation FROM the pool, not a copy of it
 
 First board ever built on Fourth and Forever's real rulebook (half PPR, TE 0.75/rec,
