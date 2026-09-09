@@ -557,39 +557,179 @@ NO_PRICEABLE_INPUT = "no_priceable_input"
 KDST_SEEDED_SOURCE_FILES = {"sleeper_kicker_projections.csv", "sleeper_dst_projections.csv"}
 
 
-def starter_slot_counts(roster_positions: list[str]) -> dict[str, float]:
-    """How many starting slots this league's roster_positions actually offers per fantasy
-    position, expanding flex slots proportionally across whatever they're eligible for
-    (e.g. a FLEX slot counts as +1/3 toward each of RB/WR/TE's own total) rather than
-    ignoring flex capacity entirely -- a league heavy on flex slots genuinely has more
-    starting demand at those positions than its named slots alone would suggest. This is
-    also what makes replacement level genuinely league-specific rather than a generic
-    positional constant: a 2-TE league's second TE slot inflates TE's count automatically,
-    etc. -- no separate per-format branching needed for most flex types, it falls out of
-    actually reading this league's own roster_positions.
+#: WHERE A FLEX SLOT'S CAPACITY WENT -- the vocabulary, with ONE home, same discipline as
+#: REPLACEMENT_BASIS_* above. A share that was MEASURED and a share that was ASSUMED are
+#: different facts, and the assumed one must never be able to pass for the measured one.
+SLOT_SHARE_FIELDED = "fielded_flex_share"
+SLOT_SHARE_EVEN_SPLIT = "even_flex_split"
+SLOT_SHARE_LABELS = {
+    SLOT_SHARE_FIELDED: "measured from this pool",
+    SLOT_SHARE_EVEN_SPLIT: "assumed even split",
+}
 
-    SUPER_FLEX is the one deliberate exception to "split evenly across every eligible
-    position": see SUPER_FLEX_QB_SHARE's own comment for why an even split badly understates
-    real superflex QB scarcity. Every other flex type (FLEX, WRRB_FLEX, REC_FLEX, IDP_FLEX)
-    keeps the even split -- those genuinely do get filled by whichever eligible position is
-    best roughly interchangeably in real drafting behavior, unlike SUPER_FLEX's real-world QB
-    dominance."""
+
+def fielded_flex_occupancy(
+    points_by_id: dict[str, float], players_db: dict[str, dict],
+    roster_positions: list[str], num_teams: int,
+) -> Optional[dict[str, dict[str, int]]]:
+    """Which POSITION actually occupies each starting slot TYPE when this whole league is
+    fielded optimally out of this whole pool. {slot_type: {position: slots won}}, or None when
+    it cannot be measured.
+
+    WHY THIS EXISTS. starter_slot_counts splits a flex slot's capacity EVENLY across the
+    positions it admits, and used to defend that in its own docstring with a claim about the
+    world: those slots "genuinely do get filled by whichever eligible position is best roughly
+    interchangeably in real drafting behavior". That claim is measured FALSE in every format
+    tried (evidence/roster_shape/flex_share). It is not a small error, because those counts are
+    the demand that sets every replacement RANK, and the rank picks the LEVEL that bpa
+    subtracts -- so the error lands on every price at every position, in a direction the FORMAT
+    decides:
+
+      * one dedicated TE slot (12T_ppr): the top 12 tight ends are consumed by those slots and
+        TE13 down loses every flex to WR25-WR48. TE wins 0 of 24 flexes. The even split hands
+        TE 1.667 slots anyway, pushing its replacement rank from TE12 out to TE20 -- a far worse
+        free alternative, a far lower level, and every tight end priced far too high. That is
+        #216's ~43.5-point tight-end bias.
+      * NO dedicated TE slot (the owner's league, three flexes, a TE premium): nothing consumes
+        tight ends, so they are unconsumed inventory and they WIN the flexes, 18 of 24. The even
+        split hands TE 0.717 of a slot -- rank 9, the 9th-best tight end as the free alternative
+        -- and prices tight ends at nearly nothing while handing RB rank 39 and enough price to
+        take all three flexes. That is the zero-tight-ends result.
+
+    ONE DERIVATION MOVES THE ANCHOR IN OPPOSITE DIRECTIONS IN THE TWO FORMATS, each time toward
+    the roster a person would actually build. A knob tuned to fix the first would have made the
+    second worse.
+
+    WHY IT IS NOT CIRCULAR. Reading occupancy off FINISHED ROSTERS would be worthless: they were
+    drafted by the very anchor under test, so a board that prices tight ends high produces
+    tight-end-heavy rosters which then "confirm" a high tight-end share. This never looks at a
+    drafter. Who wins a flex is a property of the PROJECTION CURVE and the RULEBOOK: num_teams
+    copies of every starting slot, one exact maximum-total-points assignment through the lineup
+    optimizer this module already uses (#126 -- no second solver), eligibility from
+    player_eligible_positions (#172).
+
+    WHAT IT IS NOT. It is not a claim that real managers achieve an optimal league-wide
+    fielding. They do not. It is the counterfactual the replacement level is DEFINED against --
+    "the freely available alternative for a starting slot" -- stated instead of assumed.
+
+    REFUSES RATHER THAN GUESSES. None when there is no pool, no starting slot, or when the solve
+    could not fill every league starting slot. A PARTIAL fielding would under-count exactly the
+    positions that ran out, which is the direction that would make a thin position look thinner
+    still; the caller falls back to the even split and SAYS SO (SLOT_SHARE_EVEN_SPLIT) rather
+    than being handed a number it cannot tell from a measured one.
+
+    STRUCTURAL, NOT LIVE. Callers pass the FULL pool, not the remaining one. The draft's drain is
+    already carried by remaining_starter_demand; recomputing the share as the pool empties would
+    count the same drain twice."""
+    slots = lo.slots_from_roster_positions(roster_positions)
+    if not slots or not points_by_id:
+        return None
+    entries = []
+    for player_id, value in points_by_id.items():
+        info = players_db.get(str(player_id)) or {}
+        eligible = player_eligible_positions(info)
+        if not eligible:
+            continue
+        entries.append({"id": str(player_id), "value": float(value), "eligible": eligible})
+    if not entries:
+        return None
+    league_slots, slot_type = [], {}
+    for team in range(max(int(num_teams), 0)):
+        for slot in slots:
+            slot_id = f"t{team}:{slot['slot_id']}"
+            league_slots.append({"slot_id": slot_id, "eligible": slot["eligible"]})
+            slot_type[slot_id] = slot["label"]
+    if not league_slots:
+        return None
+    solved = lo.optimize_lineup(entries, league_slots)
+    if len(solved["assignments"]) != len(league_slots):
+        return None          # partial fielding -- see this function's docstring
+    position_of = {e["id"]: player_position(players_db.get(e["id"]) or {}) for e in entries}
+    occupancy: dict[str, dict[str, int]] = {}
+    for assignment in solved["assignments"]:
+        position = position_of.get(assignment["player_id"])
+        if position is None:
+            return None      # a fielded player with no position is not a measurement
+        bucket = occupancy.setdefault(slot_type[assignment["slot_id"]], {})
+        bucket[position] = bucket.get(position, 0) + 1
+    return occupancy
+
+
+def starter_slot_counts(
+    roster_positions: list[str],
+    flex_occupancy: Optional[dict[str, dict[str, int]]] = None,
+    num_teams: Optional[int] = None,
+) -> dict[str, float]:
+    """How many starting slots this league's roster_positions actually offers per fantasy
+    position, expanding flex slots across whatever they're eligible for rather than ignoring
+    flex capacity entirely -- a league heavy on flex slots genuinely has more starting demand at
+    those positions than its named slots alone would suggest. This is what makes replacement
+    level genuinely league-specific rather than a generic positional constant: a 2-TE league's
+    second TE slot inflates TE's count automatically, no per-format branching needed, it falls
+    out of actually reading this league's own roster_positions.
+
+    HOW A FLEX SLOT IS SPLIT -- two answers, and the caller decides which it is entitled to.
+
+    MEASURED (flex_occupancy + num_teams supplied, basis SLOT_SHARE_FIELDED). Each flex slot's
+    capacity goes to the positions that actually WIN it, read off fielded_flex_occupancy. This
+    is the answer whenever a pool exists, and compute_draft_board always supplies it.
+
+    ASSUMED (nothing supplied, basis SLOT_SHARE_EVEN_SPLIT). An even split across the eligible
+    positions -- a WR/RB/TE FLEX counting +1/3 toward each. THIS IS A FALLBACK, NOT A MODEL. It
+    used to be the only behaviour, and it used to be defended here with a claim about the world:
+    that those slots "genuinely do get filled by whichever eligible position is best roughly
+    interchangeably in real drafting behavior". Measured, that claim is false in every format
+    tried -- 24 FLEX slots go WR 20 / RB 4 / TE 0 in a league with a dedicated TE slot, and
+    TE 18 / WR 5 / RB 1 in one without. The even split survives only for callers that have no
+    pool to measure from, and it is the reason SLOT_SHARE_EVEN_SPLIT exists to mark them.
+
+    SUPER_FLEX_QB_SHARE is part of the ASSUMED half only. It was the one place this function
+    already admitted the even split was wrong, and it admitted it with a hand-set 0.85; the
+    measurement returns QB 1.00 of every SUPER_FLEX at every league size from 8 to 16. Under the
+    measured branch the constant is not consulted at all -- the same measurement that covers
+    every other flex type covers this one. It may lose callers; it must never gain a sibling.
+
+    Positions absent from a measured occupancy get 0.0 THERE, which is a measurement ("nothing
+    at this position wins one of these slots"), not an absence. A slot type missing from the
+    occupancy entirely is a different thing and falls back to the even split for that slot
+    alone, because an unmeasured slot type is not an empty one."""
     counts: dict[str, float] = {p: 0.0 for p in FANTASY_POSITIONS}
+    measured = flex_occupancy if (flex_occupancy and num_teams) else None
     for slot in roster_positions or []:
         if slot in FANTASY_POSITIONS:
             counts[slot] += 1.0
-        elif slot == "SUPER_FLEX" and "QB" in FLEX_SLOT_POSITIONS[slot]:
-            eligible = FLEX_SLOT_POSITIONS[slot]
+            continue
+        if slot not in FLEX_SLOT_POSITIONS:
+            continue
+        won = (measured or {}).get(slot)
+        if won is not None:
+            # Per-team share of THIS slot type. The occupancy counts every copy of the slot
+            # across the league; this league has one copy per team per appearance in
+            # roster_positions, so dividing by num_teams gives the per-team share of ONE
+            # appearance -- which is what a per-team slot count is.
+            appearances = sum(1 for s in roster_positions if s == slot) or 1
+            for pos, n in won.items():
+                if pos in counts:
+                    counts[pos] += n / (num_teams * appearances)
+            continue
+        eligible = FLEX_SLOT_POSITIONS[slot]
+        if slot == "SUPER_FLEX" and "QB" in eligible:
             non_qb = [pos for pos in eligible if pos != "QB"]
             counts["QB"] += SUPER_FLEX_QB_SHARE
             remaining_share = (1.0 - SUPER_FLEX_QB_SHARE) / len(non_qb) if non_qb else 0.0
             for pos in non_qb:
                 counts[pos] += remaining_share
-        elif slot in FLEX_SLOT_POSITIONS:
-            eligible = FLEX_SLOT_POSITIONS[slot]
-            for pos in eligible:
-                counts[pos] += 1.0 / len(eligible)
+            continue
+        for pos in eligible:
+            counts[pos] += 1.0 / len(eligible)
     return counts
+
+
+def slot_share_basis(flex_occupancy, num_teams) -> str:
+    """Which of starter_slot_counts' two answers a caller with these inputs will get. ONE home,
+    so no consumer has to restate the condition and get it subtly different -- the failure #186
+    recorded, where a second statement of one vocabulary drifted toward the stronger claim."""
+    return SLOT_SHARE_FIELDED if (flex_occupancy and num_teams) else SLOT_SHARE_EVEN_SPLIT
 
 
 def dedicated_slot_counts(roster_positions: list[str]) -> dict[str, int]:
@@ -651,6 +791,7 @@ def team_filled_by_position(
 
 def remaining_starter_demand(
     roster_positions: list[str], num_teams: int, picks: list[dict], players_db: dict[str, dict],
+    flex_occupancy: Optional[dict[str, dict[str, int]]] = None,
 ) -> dict[str, float]:
     """How many starting slots at each position are STILL UNFILLED across the league --
     summed per team, never subtracted league-wide.
@@ -684,7 +825,7 @@ def remaining_starter_demand(
     modelled -- the league-wide form could not detect that at all, since it only ever summed a
     count. See compute_draft_board's `demand_picks` for the one caller that supplies a
     separate history, and why an EMPTY one is well defined while a foreign one is not."""
-    slot_counts = starter_slot_counts(roster_positions)
+    slot_counts = starter_slot_counts(roster_positions, flex_occupancy, num_teams)
     filled = team_filled_by_position(picks, players_db)
     if len(filled) > max(num_teams, 0):
         raise ValueError(
@@ -1208,6 +1349,10 @@ def replacement_levels(
     #: untouched and the one caller that wants to label its rows can ask. Positions added here
     #: had their demand rank fall past the end of the priced list.
     truncated_out: Optional[set] = None,
+    #: #216. Who actually wins this league's flex slots, from fielded_flex_occupancy. Reaches
+    #: only the DEFAULT (nobody-drafted) demand below; a caller supplying remaining_demand has
+    #: already applied it there, and applying it twice would be two sources of one truth.
+    flex_occupancy: Optional[dict[str, dict[str, int]]] = None,
 ) -> dict[str, float]:
     """Per position, this pool's value_col at the player sitting at replacement rank within
     the REMAINING pool. The rank target is remaining_starter_demand -- how many starting slots
@@ -1288,7 +1433,8 @@ def replacement_levels(
     picks."""
     demand = (
         remaining_demand if remaining_demand is not None
-        else {p: num_teams * starter_slot_counts(roster_positions).get(p, 0.0)
+        else {p: num_teams * starter_slot_counts(
+                  roster_positions, flex_occupancy, num_teams).get(p, 0.0)
               for p in FANTASY_POSITIONS}
     )
     levels: dict[str, float] = {}
@@ -2161,8 +2307,18 @@ def predraft_replacement_anchor(
     group = full_pool[has_proj] if value_col == "_points" else full_pool[~has_proj]
     if group.empty:
         return _remember_anchor(key, {})
+    # #216: the same measured flex share the live board uses, from THIS full pool, so the
+    # pre-draft anchor and the live level are two readings of one model rather than two models.
+    # Measured off the PRICED rows for the same reason replacement_levels ranks over them: a row
+    # with no number cannot occupy a slot in a points-maximising fielding.
+    priced = full_pool[has_proj]
+    flex_occupancy = fielded_flex_occupancy(
+        {str(pid): float(v) for pid, v in zip(priced["player_id"], priced["_points"])},
+        players_db, roster_positions, num_teams,
+    )
     return _remember_anchor(key, replacement_levels(
         group, value_col, roster_positions, num_teams, None, startable_floors=startable_floors,
+        flex_occupancy=flex_occupancy,
     ))
 
 
@@ -2504,10 +2660,30 @@ def compute_draft_board(
     # the live path, and the test that used to prove demand_picks reaches the accounting now
     # proves it against that path instead of against the dead one.
     #
+    # WHO ACTUALLY WINS THIS LEAGUE'S FLEX SLOTS (#216), measured once per board from the FULL
+    # pool -- roster_points_lookup's map, which is every player this pool can price whether
+    # drafted or not, remembered under the same fingerprint as the pre-draft anchor. The full
+    # pool, not the remaining one, deliberately: the share is a STRUCTURAL property of the
+    # league and its player universe, and the draft's drain is already carried by
+    # remaining_starter_demand below. Measuring it live would count the same drain twice.
+    #
+    # None when it cannot be measured; starter_slot_counts then falls back to the even split
+    # and slot_share_basis says so, rather than handing anyone a number they cannot tell from
+    # a measured one.
+    flex_occupancy = fielded_flex_occupancy(
+        roster_points_lookup(
+            merger, players_db, usable_positions, roster_positions, num_teams,
+            sleeper_projections=sleeper_projections, scoring_settings=scoring_settings,
+            pool_scope=pool_scope, sleeper_basis=sleeper_basis,
+        ),
+        players_db, roster_positions, num_teams,
+    )
+
     # The EXACT half, computed once per board and shared by both replacement anchors below.
     # Per-team, bounded, order-invariant, and able to reach exactly zero -- see
     # remaining_starter_demand. Nothing inferred is mixed in here.
-    starter_demand = remaining_starter_demand(roster_positions, num_teams, demand_source, players_db)
+    starter_demand = remaining_starter_demand(
+        roster_positions, num_teams, demand_source, players_db, flex_occupancy)
 
     # bpa anchor -- see module docstring's ARCHITECTURE section in full for why this is VOR
     # in raw projected POINTS (never Draft Sharks' trade_value/composite scale directly),
@@ -2747,7 +2923,11 @@ def compute_draft_board(
             "availability_basis")
 
     my_filled = _team_starters_filled(picks, players_db, my_roster_id)
-    slot_counts = starter_slot_counts(roster_positions)
+    # The SAME measured share the demand model above used (#216/#126). Two answers to "how many
+    # starting slots does this league offer at this position" inside one board build would be
+    # two homes for one vocabulary, and the one need_bonus reads would silently disagree with
+    # the one bpa is anchored on.
+    slot_counts = starter_slot_counts(roster_positions, flex_occupancy, num_teams)
     dedicated_counts = dedicated_slot_counts(roster_positions)
     my_roster_players = _team_roster_players(picks, players_db, my_roster_id, merger)
     # Per POSITION, not per candidate -- one lineup solve per rostered starter for the whole
