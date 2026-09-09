@@ -649,7 +649,14 @@ def fielded_flex_occupancy(
     for assignment in solved["assignments"]:
         position = position_of.get(assignment["player_id"])
         if position is None:
-            return None      # a fielded player with no position is not a measurement
+            # UNREACHABLE today, and kept deliberately. Only players with non-empty
+            # player_eligible_positions reach the solve, and non-empty eligibility implies a
+            # non-None player_position (proved directly in test_216_flex_share). It stays a
+            # REFUSAL rather than a bucket keyed by None because what it prevents -- a phantom
+            # position quietly becoming a share of somebody's starter demand -- is the
+            # absence-read-as-a-value defect this module keeps having to repair. Recorded as a
+            # mutation survivor rather than left as an untested path nobody noticed.
+            return None
         bucket = occupancy.setdefault(slot_type[assignment["slot_id"]], {})
         bucket[position] = bucket.get(position, 0) + 1
     return occupancy
