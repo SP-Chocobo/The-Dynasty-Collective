@@ -1,0 +1,1252 @@
+{
+  "commit": "e8a3b50",
+  "universe": {
+    "source": "data/fixtures/sleeper_capture.json",
+    "captured_at": "2026-09-07T08:14:10.990206+00:00",
+    "season": "2026",
+    "players_in_capture": 6595,
+    "players_in_pool": 6595,
+    "injury_statuses_present": [
+      "DNR",
+      "IR",
+      "NA",
+      "Out",
+      "PUP",
+      "Questionable",
+      "Sus"
+    ]
+  },
+  "formats": [
+    {
+      "format": "12T_ppr",
+      "seat": "1",
+      "roster_positions": [
+        "QB",
+        "RB",
+        "RB",
+        "WR",
+        "WR",
+        "TE",
+        "FLEX",
+        "FLEX",
+        "BN",
+        "BN",
+        "BN",
+        "BN",
+        "BN",
+        "BN"
+      ],
+      "seconds": 8.4,
+      "states": [
+        {
+          "round": 1,
+          "my_qbs": 0,
+          "qb_demand": 12.0,
+          "qb_rank": 12,
+          "qbs_available": 42,
+          "qb_replacement_projection": 328.6,
+          "best_qb": {
+            "name": "Josh Allen",
+            "projected_points": 372.46,
+            "bpa": 43.85999999999996,
+            "universal_value": 44.11,
+            "need_bonus": 4.0,
+            "displacement_adj": 0.0,
+            "final_score": 48.11,
+            "waiting_cost": 57.31,
+            "horizon_floor": 315.15,
+            "fills_required_slot": false,
+            "replacement_basis": "live_starter_demand"
+          },
+          "chosen": {
+            "name": "Jahmyr Gibbs",
+            "position": "RB",
+            "final_score": 232.93,
+            "fills_required_slot": false
+          }
+        },
+        {
+          "round": 2,
+          "my_qbs": 0,
+          "qb_demand": 1.0,
+          "qb_rank": 1,
+          "qbs_available": 31,
+          "qb_replacement_projection": 328.6,
+          "best_qb": {
+            "name": "Patrick Mahomes",
+            "projected_points": 328.6,
+            "bpa": 0.0,
+            "universal_value": 0.0,
+            "need_bonus": 4.0,
+            "displacement_adj": 0.0,
+            "final_score": 4.0,
+            "waiting_cost": 46.71,
+            "horizon_floor": 281.89,
+            "fills_required_slot": false,
+            "replacement_basis": "live_starter_demand"
+          },
+          "chosen": {
+            "name": "Brock Bowers",
+            "position": "TE",
+            "final_score": 142.0,
+            "fills_required_slot": false
+          }
+        },
+        {
+          "round": 3,
+          "my_qbs": 0,
+          "qb_demand": 1.0,
+          "qb_rank": 1,
+          "qbs_available": 31,
+          "qb_replacement_projection": 328.6,
+          "best_qb": {
+            "name": "Patrick Mahomes",
+            "projected_points": 328.6,
+            "bpa": 0.0,
+            "universal_value": 0.0,
+            "need_bonus": 4.0,
+            "displacement_adj": 0.0,
+            "final_score": 4.0,
+            "waiting_cost": 63.58,
+            "horizon_floor": 265.02,
+            "fills_required_slot": false,
+            "replacement_basis": "live_starter_demand"
+          },
+          "chosen": {
+            "name": "Trey McBride",
+            "position": "TE",
+            "final_score": 129.02,
+            "fills_required_slot": false
+          }
+        },
+        {
+          "round": 4,
+          "my_qbs": 0,
+          "qb_demand": 1.0,
+          "qb_rank": 1,
+          "qbs_available": 31,
+          "qb_replacement_projection": 328.6,
+          "best_qb": {
+            "name": "Patrick Mahomes",
+            "projected_points": 328.6,
+            "bpa": 0.0,
+            "universal_value": 0.0,
+            "need_bonus": 4.0,
+            "displacement_adj": 0.0,
+            "final_score": 4.0,
+            "waiting_cost": 46.71,
+            "horizon_floor": 281.89,
+            "fills_required_slot": false,
+            "replacement_basis": "live_starter_demand"
+          },
+          "chosen": {
+            "name": "Javonte Williams",
+            "position": "RB",
+            "final_score": 79.02,
+            "fills_required_slot": false
+          }
+        },
+        {
+          "round": 5,
+          "my_qbs": 0,
+          "qb_demand": 1.0,
+          "qb_rank": 1,
+          "qbs_available": 31,
+          "qb_replacement_projection": 328.6,
+          "best_qb": {
+            "name": "Patrick Mahomes",
+            "projected_points": 328.6,
+            "bpa": 0.0,
+            "universal_value": 0.0,
+            "need_bonus": 4.0,
+            "displacement_adj": 0.0,
+            "final_score": 4.0,
+            "waiting_cost": 46.71,
+            "horizon_floor": 281.89,
+            "fills_required_slot": false,
+            "replacement_basis": "live_starter_demand"
+          },
+          "chosen": {
+            "name": "Tyler Warren",
+            "position": "TE",
+            "final_score": 70.64,
+            "fills_required_slot": false
+          }
+        },
+        {
+          "round": 6,
+          "my_qbs": 0,
+          "qb_demand": 1.0,
+          "qb_rank": 1,
+          "qbs_available": 31,
+          "qb_replacement_projection": 328.6,
+          "best_qb": {
+            "name": "Patrick Mahomes",
+            "projected_points": 328.6,
+            "bpa": 0.0,
+            "universal_value": 0.0,
+            "need_bonus": 4.0,
+            "displacement_adj": 0.0,
+            "final_score": 4.0,
+            "waiting_cost": 38.96,
+            "horizon_floor": 289.64,
+            "fills_required_slot": false,
+            "replacement_basis": "live_starter_demand"
+          },
+          "chosen": {
+            "name": "Jalen Coker",
+            "position": "WR",
+            "final_score": 11.24,
+            "fills_required_slot": false
+          }
+        },
+        {
+          "round": 7,
+          "my_qbs": 0,
+          "qb_demand": 1.0,
+          "qb_rank": 1,
+          "qbs_available": 31,
+          "qb_replacement_projection": 328.6,
+          "best_qb": {
+            "name": "Patrick Mahomes",
+            "projected_points": 328.6,
+            "bpa": 0.0,
+            "universal_value": 0.0,
+            "need_bonus": 4.0,
+            "displacement_adj": 0.0,
+            "final_score": 4.0,
+            "waiting_cost": 38.96,
+            "horizon_floor": 289.64,
+            "fills_required_slot": false,
+            "replacement_basis": "live_starter_demand"
+          },
+          "chosen": {
+            "name": "DK Metcalf",
+            "position": "WR",
+            "final_score": 5.46,
+            "fills_required_slot": false
+          }
+        },
+        {
+          "round": 8,
+          "my_qbs": 0,
+          "qb_demand": 1.0,
+          "qb_rank": 1,
+          "qbs_available": 31,
+          "qb_replacement_projection": 328.6,
+          "best_qb": {
+            "name": "Patrick Mahomes",
+            "projected_points": 328.6,
+            "bpa": 0.0,
+            "universal_value": 0.0,
+            "need_bonus": 4.0,
+            "displacement_adj": 0.0,
+            "final_score": 4.0,
+            "waiting_cost": 34.14,
+            "horizon_floor": 294.46,
+            "fills_required_slot": false,
+            "replacement_basis": "live_starter_demand"
+          },
+          "chosen": {
+            "name": "Patrick Mahomes",
+            "position": "QB",
+            "final_score": 4.0,
+            "fills_required_slot": false
+          }
+        },
+        {
+          "round": 9,
+          "my_qbs": 1,
+          "qb_demand": 0.0,
+          "qb_rank": null,
+          "qbs_available": 30,
+          "qb_replacement_projection": null,
+          "best_qb": {
+            "name": "Jordan Love",
+            "projected_points": 317.36,
+            "bpa": -11.240000000000009,
+            "universal_value": -11.24,
+            "need_bonus": 0.0,
+            "displacement_adj": 0.0,
+            "final_score": -11.24,
+            "waiting_cost": 22.9,
+            "horizon_floor": 294.46,
+            "fills_required_slot": false,
+            "replacement_basis": "predraft_anchor"
+          },
+          "chosen": {
+            "name": "Jordan Love",
+            "position": "QB",
+            "final_score": -11.24,
+            "fills_required_slot": false
+          }
+        },
+        {
+          "round": 10,
+          "my_qbs": 2,
+          "qb_demand": 0.0,
+          "qb_rank": null,
+          "qbs_available": 10,
+          "qb_replacement_projection": null,
+          "best_qb": {
+            "name": "Michael Penix",
+            "projected_points": 129.0,
+            "bpa": -199.60000000000002,
+            "universal_value": -197.35,
+            "need_bonus": 0.0,
+            "displacement_adj": 0.0,
+            "final_score": -197.35,
+            "waiting_cost": 97.68,
+            "horizon_floor": 31.32,
+            "fills_required_slot": false,
+            "replacement_basis": "predraft_anchor"
+          },
+          "chosen": {
+            "name": "Marvin Harrison",
+            "position": "WR",
+            "final_score": -18.54,
+            "fills_required_slot": false
+          }
+        },
+        {
+          "round": 11,
+          "my_qbs": 2,
+          "qb_demand": 0.0,
+          "qb_rank": null,
+          "qbs_available": 10,
+          "qb_replacement_projection": null,
+          "best_qb": {
+            "name": "Michael Penix",
+            "projected_points": 129.0,
+            "bpa": -199.60000000000002,
+            "universal_value": -197.4,
+            "need_bonus": 0.0,
+            "displacement_adj": 0.0,
+            "final_score": -194.04,
+            "waiting_cost": 97.68,
+            "horizon_floor": 31.32,
+            "fills_required_slot": false,
+            "replacement_basis": "predraft_anchor"
+          },
+          "chosen": {
+            "name": "Jakobi Meyers",
+            "position": "WR",
+            "final_score": -22.34,
+            "fills_required_slot": false
+          }
+        },
+        {
+          "round": 12,
+          "my_qbs": 2,
+          "qb_demand": 0.0,
+          "qb_rank": null,
+          "qbs_available": 10,
+          "qb_replacement_projection": null,
+          "best_qb": {
+            "name": "Michael Penix",
+            "projected_points": 129.0,
+            "bpa": -199.60000000000002,
+            "universal_value": -198.67,
+            "need_bonus": 0.0,
+            "displacement_adj": 0.0,
+            "final_score": -195.31,
+            "waiting_cost": 73.0,
+            "horizon_floor": 56.0,
+            "fills_required_slot": false,
+            "replacement_basis": "predraft_anchor"
+          },
+          "chosen": {
+            "name": "Devaughn Vele",
+            "position": "WR",
+            "final_score": -51.32,
+            "fills_required_slot": false
+          }
+        },
+        {
+          "round": 13,
+          "my_qbs": 2,
+          "qb_demand": 0.0,
+          "qb_rank": null,
+          "qbs_available": 10,
+          "qb_replacement_projection": null,
+          "best_qb": {
+            "name": "Michael Penix",
+            "projected_points": 129.0,
+            "bpa": -199.60000000000002,
+            "universal_value": -198.73,
+            "need_bonus": 0.0,
+            "displacement_adj": 0.0,
+            "final_score": -195.37,
+            "waiting_cost": 73.0,
+            "horizon_floor": 56.0,
+            "fills_required_slot": false,
+            "replacement_basis": "predraft_anchor"
+          },
+          "chosen": {
+            "name": "KC Concepcion",
+            "position": "WR",
+            "final_score": -52.44,
+            "fills_required_slot": false
+          }
+        },
+        {
+          "round": 14,
+          "my_qbs": 2,
+          "qb_demand": 0.0,
+          "qb_rank": null,
+          "qbs_available": 10,
+          "qb_replacement_projection": null,
+          "best_qb": {
+            "name": "Michael Penix",
+            "projected_points": 129.0,
+            "bpa": -199.60000000000002,
+            "universal_value": -200.23,
+            "need_bonus": 0.0,
+            "displacement_adj": 0.0,
+            "final_score": -196.87,
+            "waiting_cost": 0.0,
+            "horizon_floor": 129.0,
+            "fills_required_slot": false,
+            "replacement_basis": "predraft_anchor"
+          },
+          "chosen": {
+            "name": "De'Zhaun Stribling",
+            "position": "WR",
+            "final_score": -83.9,
+            "fills_required_slot": false
+          }
+        }
+      ]
+    },
+    {
+      "format": "12T_ppr_SF",
+      "seat": "1",
+      "roster_positions": [
+        "QB",
+        "RB",
+        "RB",
+        "WR",
+        "WR",
+        "TE",
+        "FLEX",
+        "FLEX",
+        "SUPER_FLEX",
+        "BN",
+        "BN",
+        "BN",
+        "BN",
+        "BN",
+        "BN"
+      ],
+      "seconds": 9.5,
+      "states": [
+        {
+          "round": 1,
+          "my_qbs": 0,
+          "qb_demand": 22.2,
+          "qb_rank": 22,
+          "qbs_available": 42,
+          "qb_replacement_projection": 299.7,
+          "best_qb": {
+            "name": "Josh Allen",
+            "projected_points": 372.46,
+            "bpa": 164.95999999999998,
+            "universal_value": 165.17,
+            "need_bonus": 4.85,
+            "displacement_adj": 0.0,
+            "final_score": 170.02,
+            "waiting_cost": 342.46,
+            "horizon_floor": 30.0,
+            "fills_required_slot": false,
+            "replacement_basis": "startable_floor"
+          },
+          "chosen": {
+            "name": "Jahmyr Gibbs",
+            "position": "RB",
+            "final_score": 241.72,
+            "fills_required_slot": false
+          }
+        },
+        {
+          "round": 2,
+          "my_qbs": 0,
+          "qb_demand": 10.8,
+          "qb_rank": 11,
+          "qbs_available": 30,
+          "qb_replacement_projection": 294.5,
+          "best_qb": {
+            "name": "Jordan Love",
+            "projected_points": 317.36,
+            "bpa": 109.86000000000001,
+            "universal_value": 109.86,
+            "need_bonus": 4.85,
+            "displacement_adj": 0.0,
+            "final_score": 114.71,
+            "waiting_cost": 287.36,
+            "horizon_floor": 30.0,
+            "fills_required_slot": false,
+            "replacement_basis": "startable_floor"
+          },
+          "chosen": {
+            "name": "Brock Bowers",
+            "position": "TE",
+            "final_score": 151.92,
+            "fills_required_slot": false
+          }
+        },
+        {
+          "round": 3,
+          "my_qbs": 0,
+          "qb_demand": 10.8,
+          "qb_rank": 11,
+          "qbs_available": 30,
+          "qb_replacement_projection": 294.5,
+          "best_qb": {
+            "name": "Jordan Love",
+            "projected_points": 317.36,
+            "bpa": 109.86000000000001,
+            "universal_value": 109.86,
+            "need_bonus": 4.85,
+            "displacement_adj": 0.0,
+            "final_score": 114.71,
+            "waiting_cost": 287.36,
+            "horizon_floor": 30.0,
+            "fills_required_slot": false,
+            "replacement_basis": "startable_floor"
+          },
+          "chosen": {
+            "name": "James Cook",
+            "position": "RB",
+            "final_score": 142.2,
+            "fills_required_slot": false
+          }
+        },
+        {
+          "round": 4,
+          "my_qbs": 0,
+          "qb_demand": 2.7,
+          "qb_rank": 3,
+          "qbs_available": 21,
+          "qb_replacement_projection": 289.6,
+          "best_qb": {
+            "name": "Tyler Shough",
+            "projected_points": 299.67,
+            "bpa": 92.17000000000002,
+            "universal_value": 91.7,
+            "need_bonus": 4.85,
+            "displacement_adj": 0.0,
+            "final_score": 96.55,
+            "waiting_cost": 271.67,
+            "horizon_floor": 28.0,
+            "fills_required_slot": false,
+            "replacement_basis": "startable_floor"
+          },
+          "chosen": {
+            "name": "Omarion Hampton",
+            "position": "RB",
+            "final_score": 103.16,
+            "fills_required_slot": false
+          }
+        },
+        {
+          "round": 5,
+          "my_qbs": 0,
+          "qb_demand": 2.7,
+          "qb_rank": 3,
+          "qbs_available": 21,
+          "qb_replacement_projection": 289.6,
+          "best_qb": {
+            "name": "Tyler Shough",
+            "projected_points": 299.67,
+            "bpa": 92.17000000000002,
+            "universal_value": 91.7,
+            "need_bonus": 4.85,
+            "displacement_adj": 0.0,
+            "final_score": 96.55,
+            "waiting_cost": 271.67,
+            "horizon_floor": 28.0,
+            "fills_required_slot": false,
+            "replacement_basis": "startable_floor"
+          },
+          "chosen": {
+            "name": "Colston Loveland",
+            "position": "TE",
+            "final_score": 102.63,
+            "fills_required_slot": false
+          }
+        },
+        {
+          "round": 6,
+          "my_qbs": 0,
+          "qb_demand": 1.85,
+          "qb_rank": 2,
+          "qbs_available": 20,
+          "qb_replacement_projection": 289.6,
+          "best_qb": {
+            "name": "C.J. Stroud",
+            "projected_points": 294.46,
+            "bpa": 86.95999999999998,
+            "universal_value": 86.54,
+            "need_bonus": 4.85,
+            "displacement_adj": 0.0,
+            "final_score": 91.39,
+            "waiting_cost": 266.46,
+            "horizon_floor": 28.0,
+            "fills_required_slot": false,
+            "replacement_basis": "startable_floor"
+          },
+          "chosen": {
+            "name": "C.J. Stroud",
+            "position": "QB",
+            "final_score": 91.39,
+            "fills_required_slot": false
+          }
+        },
+        {
+          "round": 7,
+          "my_qbs": 1,
+          "qb_demand": 0.85,
+          "qb_rank": null,
+          "qbs_available": 19,
+          "qb_replacement_projection": null,
+          "best_qb": {
+            "name": "Malik Willis",
+            "projected_points": 289.64,
+            "bpa": 82.13999999999999,
+            "universal_value": 81.93,
+            "need_bonus": 0.85,
+            "displacement_adj": 0.0,
+            "final_score": 82.78,
+            "waiting_cost": 261.64,
+            "horizon_floor": 28.0,
+            "fills_required_slot": false,
+            "replacement_basis": "startable_floor"
+          },
+          "chosen": {
+            "name": "Malik Willis",
+            "position": "QB",
+            "final_score": 82.78,
+            "fills_required_slot": false
+          }
+        },
+        {
+          "round": 8,
+          "my_qbs": 2,
+          "qb_demand": 0.0,
+          "qb_rank": null,
+          "qbs_available": 18,
+          "qb_replacement_projection": null,
+          "best_qb": {
+            "name": "Daniel Jones",
+            "projected_points": 281.89,
+            "bpa": 74.38999999999999,
+            "universal_value": 73.78,
+            "need_bonus": 0.0,
+            "displacement_adj": -82.14,
+            "final_score": -8.36,
+            "waiting_cost": 250.57,
+            "horizon_floor": 31.32,
+            "fills_required_slot": false,
+            "replacement_basis": "startable_floor"
+          },
+          "chosen": {
+            "name": "Rome Odunze",
+            "position": "WR",
+            "final_score": 13.43,
+            "fills_required_slot": false
+          }
+        },
+        {
+          "round": 9,
+          "my_qbs": 2,
+          "qb_demand": 0.0,
+          "qb_rank": null,
+          "qbs_available": 18,
+          "qb_replacement_projection": null,
+          "best_qb": {
+            "name": "Daniel Jones",
+            "projected_points": 281.89,
+            "bpa": 74.38999999999999,
+            "universal_value": 73.78,
+            "need_bonus": 0.0,
+            "displacement_adj": -82.14,
+            "final_score": -8.36,
+            "waiting_cost": 250.57,
+            "horizon_floor": 31.32,
+            "fills_required_slot": false,
+            "replacement_basis": "startable_floor"
+          },
+          "chosen": {
+            "name": "Jordan Addison",
+            "position": "WR",
+            "final_score": 6.52,
+            "fills_required_slot": false
+          }
+        },
+        {
+          "round": 10,
+          "my_qbs": 2,
+          "qb_demand": 0.0,
+          "qb_rank": null,
+          "qbs_available": 10,
+          "qb_replacement_projection": null,
+          "best_qb": {
+            "name": "Michael Penix",
+            "projected_points": 129.0,
+            "bpa": null,
+            "universal_value": null,
+            "need_bonus": 0.0,
+            "displacement_adj": 0.0,
+            "final_score": null,
+            "waiting_cost": 129.0,
+            "horizon_floor": 0.0,
+            "fills_required_slot": false,
+            "replacement_basis": null
+          },
+          "chosen": {
+            "name": "Courtland Sutton",
+            "position": "WR",
+            "final_score": -10.53,
+            "fills_required_slot": false
+          }
+        },
+        {
+          "round": 11,
+          "my_qbs": 2,
+          "qb_demand": 0.0,
+          "qb_rank": null,
+          "qbs_available": 10,
+          "qb_replacement_projection": null,
+          "best_qb": {
+            "name": "Michael Penix",
+            "projected_points": 129.0,
+            "bpa": null,
+            "universal_value": null,
+            "need_bonus": 0.0,
+            "displacement_adj": 0.0,
+            "final_score": null,
+            "waiting_cost": 129.0,
+            "horizon_floor": 0.0,
+            "fills_required_slot": false,
+            "replacement_basis": null
+          },
+          "chosen": {
+            "name": "Marvin Harrison",
+            "position": "WR",
+            "final_score": -15.95,
+            "fills_required_slot": false
+          }
+        },
+        {
+          "round": 12,
+          "my_qbs": 2,
+          "qb_demand": 0.0,
+          "qb_rank": null,
+          "qbs_available": 10,
+          "qb_replacement_projection": null,
+          "best_qb": {
+            "name": "Michael Penix",
+            "projected_points": 129.0,
+            "bpa": null,
+            "universal_value": null,
+            "need_bonus": 0.0,
+            "displacement_adj": 0.0,
+            "final_score": null,
+            "waiting_cost": 101.0,
+            "horizon_floor": 28.0,
+            "fills_required_slot": false,
+            "replacement_basis": null
+          },
+          "chosen": {
+            "name": "Devaughn Vele",
+            "position": "WR",
+            "final_score": -49.08,
+            "fills_required_slot": false
+          }
+        },
+        {
+          "round": 13,
+          "my_qbs": 2,
+          "qb_demand": 0.0,
+          "qb_rank": null,
+          "qbs_available": 10,
+          "qb_replacement_projection": null,
+          "best_qb": {
+            "name": "Michael Penix",
+            "projected_points": 129.0,
+            "bpa": null,
+            "universal_value": null,
+            "need_bonus": 0.0,
+            "displacement_adj": 0.0,
+            "final_score": null,
+            "waiting_cost": 101.0,
+            "horizon_floor": 28.0,
+            "fills_required_slot": false,
+            "replacement_basis": null
+          },
+          "chosen": {
+            "name": "KC Concepcion",
+            "position": "WR",
+            "final_score": -50.2,
+            "fills_required_slot": false
+          }
+        },
+        {
+          "round": 14,
+          "my_qbs": 2,
+          "qb_demand": 0.0,
+          "qb_rank": null,
+          "qbs_available": 10,
+          "qb_replacement_projection": null,
+          "best_qb": {
+            "name": "Michael Penix",
+            "projected_points": 129.0,
+            "bpa": null,
+            "universal_value": null,
+            "need_bonus": 0.0,
+            "displacement_adj": 0.0,
+            "final_score": null,
+            "waiting_cost": 73.0,
+            "horizon_floor": 56.0,
+            "fills_required_slot": false,
+            "replacement_basis": null
+          },
+          "chosen": {
+            "name": "De'Zhaun Stribling",
+            "position": "WR",
+            "final_score": -81.42,
+            "fills_required_slot": false
+          }
+        },
+        {
+          "round": 15,
+          "my_qbs": 2,
+          "qb_demand": 0.0,
+          "qb_rank": null,
+          "qbs_available": 10,
+          "qb_replacement_projection": null,
+          "best_qb": {
+            "name": "Michael Penix",
+            "projected_points": 129.0,
+            "bpa": null,
+            "universal_value": null,
+            "need_bonus": 0.0,
+            "displacement_adj": 0.0,
+            "final_score": null,
+            "waiting_cost": 73.0,
+            "horizon_floor": 56.0,
+            "fills_required_slot": false,
+            "replacement_basis": null
+          },
+          "chosen": {
+            "name": "Makai Lemon",
+            "position": "WR",
+            "final_score": -85.59,
+            "fills_required_slot": false
+          }
+        }
+      ]
+    },
+    {
+      "format": "OWNER_3RR_SF_noTE",
+      "seat": "1",
+      "roster_positions": [
+        "QB",
+        "WR",
+        "WR",
+        "RB",
+        "RB",
+        "FLEX",
+        "FLEX",
+        "WRRB_FLEX",
+        "SUPER_FLEX",
+        "BN",
+        "BN",
+        "BN",
+        "BN",
+        "BN"
+      ],
+      "seconds": 8.9,
+      "states": [
+        {
+          "round": 1,
+          "my_qbs": 0,
+          "qb_demand": 22.2,
+          "qb_rank": 22,
+          "qbs_available": 42,
+          "qb_replacement_projection": 299.7,
+          "best_qb": {
+            "name": "Josh Allen",
+            "projected_points": 372.46,
+            "bpa": 164.95999999999998,
+            "universal_value": 164.96,
+            "need_bonus": 4.85,
+            "displacement_adj": 0.0,
+            "final_score": 169.81,
+            "waiting_cost": 245.46,
+            "horizon_floor": 127.0,
+            "fills_required_slot": false,
+            "replacement_basis": "startable_floor"
+          },
+          "chosen": {
+            "name": "Christian McCaffrey",
+            "position": "RB",
+            "final_score": 267.54,
+            "fills_required_slot": false
+          }
+        },
+        {
+          "round": 2,
+          "my_qbs": 0,
+          "qb_demand": 10.65,
+          "qb_rank": 11,
+          "qbs_available": 30,
+          "qb_replacement_projection": 294.5,
+          "best_qb": {
+            "name": "Jordan Love",
+            "projected_points": 317.36,
+            "bpa": 109.86000000000001,
+            "universal_value": 109.86,
+            "need_bonus": 4.85,
+            "displacement_adj": 0.0,
+            "final_score": 114.71,
+            "waiting_cost": 222.17,
+            "horizon_floor": 95.19,
+            "fills_required_slot": false,
+            "replacement_basis": "startable_floor"
+          },
+          "chosen": {
+            "name": "De'Von Achane",
+            "position": "RB",
+            "final_score": 168.46,
+            "fills_required_slot": false
+          }
+        },
+        {
+          "round": 3,
+          "my_qbs": 0,
+          "qb_demand": 6.25,
+          "qb_rank": 6,
+          "qbs_available": 25,
+          "qb_replacement_projection": 294.5,
+          "best_qb": {
+            "name": "Sam Darnold",
+            "projected_points": 307.21,
+            "bpa": 99.70999999999998,
+            "universal_value": 99.71,
+            "need_bonus": 4.85,
+            "displacement_adj": 0.0,
+            "final_score": 104.56,
+            "waiting_cost": 212.02,
+            "horizon_floor": 95.19,
+            "fills_required_slot": false,
+            "replacement_basis": "startable_floor"
+          },
+          "chosen": {
+            "name": "Jeremiyah Love",
+            "position": "RB",
+            "final_score": 134.77,
+            "fills_required_slot": false
+          }
+        },
+        {
+          "round": 4,
+          "my_qbs": 0,
+          "qb_demand": 6.25,
+          "qb_rank": 6,
+          "qbs_available": 25,
+          "qb_replacement_projection": 294.5,
+          "best_qb": {
+            "name": "Sam Darnold",
+            "projected_points": 307.21,
+            "bpa": 99.70999999999998,
+            "universal_value": 99.71,
+            "need_bonus": 4.85,
+            "displacement_adj": 0.0,
+            "final_score": 104.56,
+            "waiting_cost": 212.02,
+            "horizon_floor": 95.19,
+            "fills_required_slot": false,
+            "replacement_basis": "startable_floor"
+          },
+          "chosen": {
+            "name": "Kenneth Walker",
+            "position": "RB",
+            "final_score": 129.03,
+            "fills_required_slot": false
+          }
+        },
+        {
+          "round": 5,
+          "my_qbs": 0,
+          "qb_demand": 1.85,
+          "qb_rank": 2,
+          "qbs_available": 20,
+          "qb_replacement_projection": 289.6,
+          "best_qb": {
+            "name": "C.J. Stroud",
+            "projected_points": 294.46,
+            "bpa": 86.95999999999998,
+            "universal_value": 86.96,
+            "need_bonus": 4.85,
+            "displacement_adj": 0.0,
+            "final_score": 91.81,
+            "waiting_cost": 199.27,
+            "horizon_floor": 95.19,
+            "fills_required_slot": false,
+            "replacement_basis": "startable_floor"
+          },
+          "chosen": {
+            "name": "Kyren Williams",
+            "position": "RB",
+            "final_score": 108.96,
+            "fills_required_slot": false
+          }
+        },
+        {
+          "round": 6,
+          "my_qbs": 0,
+          "qb_demand": 1.85,
+          "qb_rank": 2,
+          "qbs_available": 20,
+          "qb_replacement_projection": 289.6,
+          "best_qb": {
+            "name": "C.J. Stroud",
+            "projected_points": 294.46,
+            "bpa": 86.95999999999998,
+            "universal_value": 86.96,
+            "need_bonus": 4.85,
+            "displacement_adj": 0.0,
+            "final_score": 91.81,
+            "waiting_cost": 199.27,
+            "horizon_floor": 95.19,
+            "fills_required_slot": false,
+            "replacement_basis": "startable_floor"
+          },
+          "chosen": {
+            "name": "Breece Hall",
+            "position": "RB",
+            "final_score": 111.35,
+            "fills_required_slot": false
+          }
+        },
+        {
+          "round": 7,
+          "my_qbs": 0,
+          "qb_demand": 1.85,
+          "qb_rank": 2,
+          "qbs_available": 20,
+          "qb_replacement_projection": 289.6,
+          "best_qb": {
+            "name": "C.J. Stroud",
+            "projected_points": 294.46,
+            "bpa": 86.95999999999998,
+            "universal_value": 86.96,
+            "need_bonus": 4.85,
+            "displacement_adj": 0.0,
+            "final_score": 91.81,
+            "waiting_cost": 199.27,
+            "horizon_floor": 95.19,
+            "fills_required_slot": false,
+            "replacement_basis": "startable_floor"
+          },
+          "chosen": {
+            "name": "C.J. Stroud",
+            "position": "QB",
+            "final_score": 91.81,
+            "fills_required_slot": false
+          }
+        },
+        {
+          "round": 8,
+          "my_qbs": 1,
+          "qb_demand": 0.85,
+          "qb_rank": null,
+          "qbs_available": 19,
+          "qb_replacement_projection": null,
+          "best_qb": {
+            "name": "Malik Willis",
+            "projected_points": 289.64,
+            "bpa": 82.13999999999999,
+            "universal_value": 82.14,
+            "need_bonus": 0.85,
+            "displacement_adj": -53.85,
+            "final_score": 29.14,
+            "waiting_cost": 194.45,
+            "horizon_floor": 95.19,
+            "fills_required_slot": false,
+            "replacement_basis": "startable_floor"
+          },
+          "chosen": {
+            "name": "Malik Willis",
+            "position": "QB",
+            "final_score": 29.14,
+            "fills_required_slot": false
+          }
+        },
+        {
+          "round": 9,
+          "my_qbs": 2,
+          "qb_demand": 0.0,
+          "qb_rank": null,
+          "qbs_available": 18,
+          "qb_replacement_projection": null,
+          "best_qb": {
+            "name": "Daniel Jones",
+            "projected_points": 281.89,
+            "bpa": 74.38999999999999,
+            "universal_value": 74.39,
+            "need_bonus": 0.0,
+            "displacement_adj": -82.14,
+            "final_score": -6.79,
+            "waiting_cost": 154.89,
+            "horizon_floor": 127.0,
+            "fills_required_slot": false,
+            "replacement_basis": "startable_floor"
+          },
+          "chosen": {
+            "name": "Chris Godwin",
+            "position": "WR",
+            "final_score": 15.06,
+            "fills_required_slot": false
+          }
+        },
+        {
+          "round": 10,
+          "my_qbs": 2,
+          "qb_demand": 0.0,
+          "qb_rank": null,
+          "qbs_available": 18,
+          "qb_replacement_projection": null,
+          "best_qb": {
+            "name": "Daniel Jones",
+            "projected_points": 281.89,
+            "bpa": 74.38999999999999,
+            "universal_value": 74.39,
+            "need_bonus": 0.0,
+            "displacement_adj": -82.14,
+            "final_score": -6.79,
+            "waiting_cost": 154.89,
+            "horizon_floor": 127.0,
+            "fills_required_slot": false,
+            "replacement_basis": "startable_floor"
+          },
+          "chosen": {
+            "name": "Quentin Johnston",
+            "position": "WR",
+            "final_score": 10.29,
+            "fills_required_slot": false
+          }
+        },
+        {
+          "round": 11,
+          "my_qbs": 2,
+          "qb_demand": 0.0,
+          "qb_rank": null,
+          "qbs_available": 10,
+          "qb_replacement_projection": null,
+          "best_qb": {
+            "name": "Michael Penix",
+            "projected_points": 127.0,
+            "bpa": null,
+            "universal_value": null,
+            "need_bonus": 0.0,
+            "displacement_adj": 0.0,
+            "final_score": null,
+            "waiting_cost": 95.68,
+            "horizon_floor": 31.32,
+            "fills_required_slot": false,
+            "replacement_basis": null
+          },
+          "chosen": {
+            "name": "Wan'Dale Robinson",
+            "position": "WR",
+            "final_score": -11.8,
+            "fills_required_slot": false
+          }
+        },
+        {
+          "round": 12,
+          "my_qbs": 2,
+          "qb_demand": 0.0,
+          "qb_rank": null,
+          "qbs_available": 10,
+          "qb_replacement_projection": null,
+          "best_qb": {
+            "name": "Michael Penix",
+            "projected_points": 127.0,
+            "bpa": null,
+            "universal_value": null,
+            "need_bonus": 0.0,
+            "displacement_adj": 0.0,
+            "final_score": null,
+            "waiting_cost": 95.68,
+            "horizon_floor": 31.32,
+            "fills_required_slot": false,
+            "replacement_basis": null
+          },
+          "chosen": {
+            "name": "Matthew Golden",
+            "position": "WR",
+            "final_score": -21.04,
+            "fills_required_slot": false
+          }
+        },
+        {
+          "round": 13,
+          "my_qbs": 2,
+          "qb_demand": 0.0,
+          "qb_rank": null,
+          "qbs_available": 10,
+          "qb_replacement_projection": null,
+          "best_qb": {
+            "name": "Michael Penix",
+            "projected_points": 127.0,
+            "bpa": null,
+            "universal_value": null,
+            "need_bonus": 0.0,
+            "displacement_adj": 0.0,
+            "final_score": null,
+            "waiting_cost": 31.81,
+            "horizon_floor": 95.19,
+            "fills_required_slot": false,
+            "replacement_basis": null
+          },
+          "chosen": {
+            "name": "Jauan Jennings",
+            "position": "WR",
+            "final_score": -58.44,
+            "fills_required_slot": false
+          }
+        },
+        {
+          "round": 14,
+          "my_qbs": 2,
+          "qb_demand": 0.0,
+          "qb_rank": null,
+          "qbs_available": 10,
+          "qb_replacement_projection": null,
+          "best_qb": {
+            "name": "Michael Penix",
+            "projected_points": 127.0,
+            "bpa": null,
+            "universal_value": null,
+            "need_bonus": 0.0,
+            "displacement_adj": 0.0,
+            "final_score": null,
+            "waiting_cost": 31.81,
+            "horizon_floor": 95.19,
+            "fills_required_slot": false,
+            "replacement_basis": null
+          },
+          "chosen": {
+            "name": "Cooper Kupp",
+            "position": "WR",
+            "final_score": -60.33,
+            "fills_required_slot": false
+          }
+        }
+      ]
+    }
+  ]
+}
