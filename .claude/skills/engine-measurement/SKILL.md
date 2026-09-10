@@ -289,6 +289,31 @@ json.dump([{"pick": i, "roster": p.roster_id, "player": p.chosen_player_id}
 print("RAW SAVED:", len(traj.picks), "picks", flush=True)
 ```
 
+## An empty roster is not a neutral roster — it switches half the valuation off
+
+The opening board looks like the cleanest possible measurement state: no picks, no roster, nothing
+to confound. It is the opposite. **`displacement_adj` is 0.00 on all 481 priced rows of a board
+built with an empty roster**, and structurally so: with every dedicated slot open, each position's
+probe evicts its own position's phantom, `displaced == level`, and the term is identically zero for
+every position at once.
+
+So an opening board is not a preview of the draft. It is the one state in which the counterweight
+to the replacement-level subtraction does not exist. A #222 result was published reading the
+opening sort as though it governed the draft, and had to be withdrawn (the 19th) when a
+mid-draft state showed the same term running at −60 to −89 on tight ends and 0.00 on receivers.
+
+**Before measuring at a board state, ask which terms are structurally zero there** — and say so in
+the write-up. `displacement_adj` is zero on an empty roster; `depth_exposure` is only `measured`
+once a bench exists (round 9); the upside branch zeroes every team-specific term at once. A term
+reading 0.00 because the state cannot produce it is not evidence that it does not matter.
+
+Related fixture trap, from writing the tests for the same finding: **filling every slot with a
+strong player does NOT produce the flex-phantom case.** A probe evicts the CHEAPEST thing it can
+reach, so a roster whose flexes are all held by 370+ players evicts one of those — the first draft
+of that test got `displaced == 360.0`, its own weakest starter, not the 217.75 phantom, and three
+assertions failed for a fixture reason that looked like an engine finding. The phantom case needs a
+reachable flex that is **open or weakly held**, which is the ordinary mid-draft state.
+
 ## Never name a production column from memory — take the row's own keys
 
 `compute_draft_board` computes `_points` and `replacement_level` internally and emits NEITHER.
