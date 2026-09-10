@@ -1,78 +1,101 @@
-# #222 -- the engine's roster shape, measured against twelve real managers
+# #222 / #216 — where this stands
 
-Overnight pass, 2026-09-09. **No engine source was changed.** `git diff --name-only`
-against the session start shows evidence and league captures only. Nothing can have
-regressed; the full suite was not re-run because nothing it covers moved.
+Last updated 2026-09-10. **No engine source has been changed in this entire investigation.**
+`draft_room.py`, `lineup_optimizer.py` and `pick_synthesis.py` are byte-identical to where it
+started. Everything below is measurement, evidence, doctrine, and prose.
 
-## The finding
+Read this before touching anything. Six suspects have been cleared here, four of them after a
+published finding of mine had to be withdrawn.
 
-A complete 12x26 startup on Fourth and Forever's real rulebook -- production engine on
-every chair, real Sleeper universe (6,595), real season projections (5,346) scored under
-this league's own settings -- against the same league's twelve real managers.
+---
+
+## The observation that started it
+
+A complete 12×26 startup on Fourth and Forever's real rulebook — production engine on every
+chair, real Sleeper universe (6,595), real season projections (5,346) scored under this
+league's own settings — against that league's twelve real managers.
 
 | | QB | RB | WR | **TE** |
 |---|---|---|---|---|
 | twelve real managers | 20.0% | 27.4% | 37.1% | **15.5%** |
-| **the engine** | **10.3%** | **26.9%** | **30.4%** | **32.4%** |
+| the engine | **10.3%** | 26.9% | 30.4% | **32.4%** |
 
-**Two defects, and they are the same defect wearing two faces.**
+## THE SCOREBOARD
 
-1. **The engine drafts 101 tight ends out of 312 picks** -- more than double what a human
-   takes. Every seat finishes with 5 to 12; humans took 3 to 6. The back half of the draft
-   is half tight ends (50.0% and 47.4% in the third and fourth quarters).
-2. **Nine of twelve seats finish with exactly two quarterbacks**, in a SUPERFLEX league
-   where QB and SUPER_FLEX both start every week. Two is the starting requirement with zero
-   backup. 10.3% against the humans' 20.0%.
+| component | verdict |
+|---|---|
+| `replacement_levels` | ✅ correct — level lands at the demand rank on a real named player |
+| `displacement_level` / the optimizer | ✅ correct — `displaced` constant at 200.90, basis "measured", 7/7 rungs |
+| the pre-draft anchor + its provenance | ✅ correct and load-bearing — without the fill, a late board prices NOTHING |
+| `narrow_candidates` / `_board_order` / `feasibility_first` | ✅ exonerated — additive, overrode nothing, backstop never bound |
+| the measurement framework | ✅ can now distinguish valuation trajectories (`upside_from_round`, `picks_by_mode`) |
+| flex-share candidate | ❌ FROZEN — do not revive |
+| D3 live-alternative fix | ❌ KILLED by its own gate |
+| **mode transition (round 15)** | **⚠ real, causally consequential, and UNDEFINED — owner decision** |
+| **residual TE + B2 (backup QB)** | **⚠ OPEN, unattributed, no suspect** |
 
-Running backs are correct (26.9% against 27.4%). Receivers are UNDER-drafted, not over.
+## What is actually established
 
-The unifying cause: **a body that cannot improve today's optimal lineup is priced at
-nothing.** For quarterbacks that produces too few (a third QB can never be promoted, so it
-is never worth taking). For tight ends it produces too many -- TE's own replacement level
-collapses early, VOR measured against a collapsed level stays positive for every remaining
-body, and the displacement correction is bounded by my own roster so it cannot claw the
-credit back. This is #155 ("a replacement-level player prices at 0.00 tautologically")
-surfacing as a live selection defect rather than a pricing curiosity.
+**1. The B1 ladder is explained, and it is not a defect.** `displacement_adj` returning to
+−51.73 at 7 and 8 tight ends held is the LEVEL returning to 149.17 by changing basis (live →
+pre-draft anchor). One constant reached twice. The optimizer never moves.
 
-## What I got wrong, and it matters for whoever picks this up
+**2. The level CANCELS.** `bpa = points − L` and `displacement_adj = L − displaced`, same L, and
+`_scale_vor_to_bpa` is the identity — so `bpa + adj = points − displaced` and the basis is
+irrelevant wherever the term is non-zero. Measured monotonic across the ladder. This is why D3
+died: a "live" `free_alternative` with `bpa` unchanged would have injected the anchor's
+staleness as an ~86-point penalty per surplus tight end. **A derived-looking fix that would have
+made the engine worse.**
 
-- **The WR over-allocation does not exist on the real rulebook.** I chased it all night
-  because the 49-seat battery produced 48.9% WR. Those are mostly 1QB formats with other
-  rosters and other scoring. Thirteenth withdrawal of the session.
-- **FINDING_01 through FINDING_04 measured the wrong player universe** -- the 764-row vendor
-  reconstruction rather than the 6,595-player capture. See `CORRECTION_wrong_universe.md`.
-  All four are marked at the top; their mechanisms may survive re-measurement, none of
-  their numbers may be quoted. Sixth fixture error of this class in this repo.
-- **There is no supply shortfall.** The real board carries 1,119 priced rows against 312
-  picks. My "32 picks with no priced player" was the wrong universe too.
+**3. The mode boundary is causally active — 63% of the excess, and NOT the whole cause.**
+`UPSIDE_MODE_DEFAULT_ROUND = 15`; the upside branch zeroes every team-specific term ("no roster
+awareness of any kind", its own comment). Ablation, `mode="balanced"` forced for 26 rounds,
+control clean (rounds 1–14 identical 168/168, diverging at exactly pick 169):
 
-## What is trustworthy
+| rounds 15–26 | TE |
+|---|---|
+| AUTO (upside) | 52.1% |
+| ABLATION (balanced) | **29.2%** |
 
-`FINDING_05_it_is_tight_ends.md` and `ff_draft.json` / `ff_draft.txt`. One draft, one
-league, one seat order -- but measured end to end on the universe production uses, against
-twelve real managers in that same league.
+**Do not ship "force balanced".** It is measured and rejected: whole-draft WR goes 30.4% → 42.0%
+(human 37.1%), largest single-position pile 12 → 19, seats with ≥12 at one position 3 → 7.
 
-`data/league_captures/fourth_and_forever.json` -- scoring (4 of 6 tabs; K and DST are
-uncaptured and this league rosters neither), the real 29-slot roster, starter demand
-derived with the engine's own function, and six rulebook categories flagged as having no
-stat data behind them.
+**4. The transition is UNDEFINED, not merely mis-set.** Five existing observables, none equal to
+15, spanning sixteen rounds: dedicated slots full → round 7; complete legal lineup fieldable →
+rounds 10–11; **the constant → 15**; positions leave the replacement domain → ~17–20; league
+starter demand reaches zero → round 23. They disagree because they answer different questions.
+The concept has no definition in the engine. **Design gap, not a bad number.**
 
-## Next, in order
+**Do not pick one.** Lineup-completion fires EARLIER than 15 → more upside picks → *more* tight
+ends. Demand-exhaustion fires later. The choice of observable decides the direction, so choosing
+now is selection on the outcome. The owner defines the concept first — and note the current
+switch is GLOBAL while "this seat is safe" would be per-seat, so even the scope is undefined.
 
-1. **Re-run FINDING_02/03/04's probes on the capture universe.** The mechanism they describe
-   is the best lead on the TE half; their numbers are void. `build_ff_board.py` is already
-   corrected and is the template.
-2. **A second draft at a different seat order**, to separate "the engine does this" from
-   "this seat order does this". One draft cannot.
-3. **Only then** design the repair. The standing order is evidence before repair, and the
-   evidence now names a target that is not the one this session started with.
-4. Do NOT fit a tight-end penalty. The 15.5% belongs to twelve managers in one league and
-   #56 forbids calibrating to it. The repair has to come from what a bench body is worth
-   when no slot is at stake -- a question the engine currently answers with a number
-   computed for a different question.
+## What was WITHDRAWN (read these before reusing any of it)
 
-## Cost
+- **B1 as published** — mechanism wrong, and `PHASE1_B1_WITHDRAWN.md`'s own replacement
+  explanation ("the rank walks back up the thinning list") was also wrong; corrected in place.
+- **FINDING_01–04** — measured the 764-row vendor reconstruction, not the 6,595 capture.
+- **Phase 2's "rank 37 of 198 REMAINING"** — sampled one of three `replacement_levels` calls.
+- **"the narrowing selects the tight ends"** — a picks-SHAPE artifact: no `round` key meant
+  `mode="auto"` ran balanced while production ran upside.
+- **"the zero QBs are the same fact as the TE shape"** — killed by the ablation. QB is 0.0% in
+  rounds 15–26 in BOTH arms. **B2 is independent and remains unexplained.**
 
-Roughly two hours of engine time: two 312-pick drafts (the first was lost to an attribute
-error in the reporting block after all 312 picks had run, which is #215 restated and is now
-prevented by saving raw before any analysis), plus board builds and probes.
+## Doctrine earned here (all now in `.claude/skills/engine-measurement/`)
+
+1. Observe the PRODUCTION quantity; never reconstruct it from downstream artifacts.
+2. When a function is called more than once per operation, the instrument must say WHICH call —
+   tagged from the ARGUMENTS, never call order.
+3. Build production's inputs in production's SHAPE. **Behavioural inputs need SCHEMA validation,
+   not value validation**: if an omitted field can change derived behaviour, the fixture must
+   supply the production schema or fail explicitly.
+4. Board rank is not pick order — three ordinals, three names.
+5. Save the raw result before deriving anything from it.
+
+## The next two questions, both open, neither owed a fix yet
+
+- **What state should govern the mode transition?** A definition, not an observable.
+- **What accounts for the residual?** 29.2% TE survived the ablation, against a human 15.5%.
+  Do not let the mode effect become the gravitational centre that explains everything merely
+  because it explains a lot — the ablation already showed it does not.

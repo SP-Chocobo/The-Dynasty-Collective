@@ -241,6 +241,14 @@ the record the difference is invisible.
 Ask of every hand-built input: **does any field of this steer a branch?** If yes, that field is
 part of the input's identity, and omitting it is a silent A/B against yourself.
 
+The same family, one layer down: **key-name mismatches across an interface.** `optimize_lineup`
+takes players keyed `id` and returns assignments keyed `player_id`. A probe that hands it
+`player_id` gets no crash and no warning — it gets an empty lineup, and "no seat can ever field
+a complete lineup" reads exactly like a finding. Neither of these poisons the run loudly; both
+poison it quietly. When a measurement comes back all-zeros, all-never, or all-identical, check
+the interface before you believe it (the skill's own rule: if ON and OFF are identical, find out
+why before concluding).
+
 ## Board rank is not pick order — say which one you mean
 
 `simulate_full_draft` does not pick `board.iloc[0]`. It goes through
