@@ -1,3 +1,16 @@
+> **FRAMING WITHDRAWN (20th) — see CONTRACT_what_upside_mode_is_meant_to_drop.md.**
+> The facts below are correct and stand: upside mode zeroes every team-specific term, retains
+> `bpa` at full weight as the base of `upside_score`, and the constant's comment names two things
+> as no longer mattering. **The FRAMING — "half the stated intent is implemented and the other
+> half inverted" — is withdrawn.** It weighed one uncommitted comment against the founding
+> architecture (`universal_value` is team-agnostic and explicitly includes "league-wide scarcity"),
+> four contract statements, and a pinned test, all of which say retaining the anchor is deliberate.
+> The contract DOES answer the semantic question and the answer is "roster fit only". The code is
+> not violating an intent; one comment describes the code wrongly. The real gap is narrower and
+> sharper: `displacement_adj` is classified BOTH as a team-specific term (so upside zeroes it) AND
+> as a correction to the universal anchor (so it alone carries no cap), and nothing reconciles the
+> two.
+
 # Upside mode drops half its stated intent and inverts the other half
 
 Documentary. **No engine source changed, no probe run for this document.** Every quotation is
