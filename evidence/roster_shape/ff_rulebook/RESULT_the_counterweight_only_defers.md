@@ -85,3 +85,26 @@ whether the normalization is desirable.** It is an account of what the current o
 
 And one honest limit: this is one draft, one league, one pool. The deferral is exact here (8 of 8);
 it is not shown to be a law.
+
+---
+
+## Addendum — the regime split survives a pick-order permutation
+
+The "balanced rounds look human" result rests on one draft, which is thin. `ff_draft_3rr.json` is
+the same league and pool under **third-round reversal** — a genuine perturbation that changes 129
+of 312 overall picks and scrambles ~90% of seat assignments (RESIDUAL5).
+
+| arm | | QB | RB | WR | **TE** |
+|---|---|---|---|---|---|
+| base | rounds 1–14 | 32 (19.0%) | 44 (26.2%) | 66 (39.3%) | **26 (15.5%)** |
+| **3RR** | rounds 1–14 | 31 (18.5%) | 43 (25.6%) | 68 (40.5%) | **26 (15.5%)** |
+| base | rounds 15–26 | 0 | 40 (27.8%) | 29 (20.1%) | **75 (52.1%)** |
+| **3RR** | rounds 15–26 | 1 (0.7%) | 41 (28.5%) | 27 (18.8%) | **75 (52.1%)** |
+| twelve real managers | whole draft | (20.0%) | (27.4%) | (37.1%) | **(15.5%)** |
+
+**Identical tight-end counts in both regimes — 26 and 75 — under a permutation that changes who
+picks when from round 3 onward.** Every other position moves by at most 2. So the regime split is
+a property of the two valuations, not of this particular pick order, and the balanced half's
+agreement with the humans is not an artifact of one draft's sequence.
+
+Still one league, one rulebook, one pool. Two arms is not a population.
