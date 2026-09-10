@@ -6618,3 +6618,79 @@ without changing any input the key names, and the fixture built a board before t
 Five points of a five-point finding were one board built in the wrong order.
 `draft_room.reset_anchor_caches()` exists now and every arm boundary calls it. Any future A/B in
 this repository that patches a function inside the board must do the same.
+
+### #222: the engine drafts like a human until round 15, and the chain from constant to outcome is now arithmetic
+
+**THE PHENOMENON.** On the owner's real rulebook the engine takes 32.4% tight ends against twelve
+real managers' 15.5%, and 10.3% quarterbacks against 20.0%, in a superflex league. Measured on the
+real capture universe on both sides (#201/#204), 312 picks, 1,125s.
+
+**THE ANSWER, in five steps.**
+
+1. **The engine drafts like a human until round 15.** Rounds 1–14: QB 19.0 / RB 26.2 / WR 39.3 /
+   **TE 15.5**. Twelve real managers, whole draft: QB 20.0 / RB 27.4 / WR 37.1 / **TE 15.5**. The
+   entire divergence is the 144 upside picks, which run TE 52.1%.
+
+2. **Why balanced works.** At a flex slot the phantom is `max(level over admitted positions)`, so
+   for a candidate whose reachable slots are held,
+   `bpa + displacement_adj = (points − level) + (level − phantom) = points − phantom`. **The
+   positional level cancels exactly** and every flex-reachable candidate is compared on raw points
+   against one common bar. "One slot, one alternative" doing what its contract says.
+
+3. **Why upside does not.** The upside branch zeroes every team-specific term, which removes
+   `displacement_adj`. The level stops cancelling and each position gains exactly
+   `phantom − level_pos` — **WR +0.00, RB +46.94, TE +68.58**, derived differences of this league's
+   own replacement levels, nothing fitted. Cross-checked three ways: RESIDUAL2's measured −68.58 at
+   every seat; `displaced == 217.75` on 103 of 144 tight-end observations; `displacement_adj ==
+   0.00` on 160/160 and 139/139 receiver rows at two board states.
+
+4. **Why nobody had stated it.** `UPSIDE_MODE_DEFAULT_ROUND`'s comment says upside mode stops
+   "filling a need **or** respecting positional scarcity". It implements the first and keeps the
+   second at full weight as the base of `upside_score` (`bpa + 0.5·growth`). **Half the stated
+   intent is implemented, and the retained half is the one the dropped half was holding in check.**
+
+5. **Why no contract catches it.** `replacement_levels` has an explicit domain of validity and the
+   doctrine rules that VOR must be DECLINED outside it — but the domain is keyed on **the anchor**
+   ("does this position still have an unfilled league starter slot?"), never on **the candidate**
+   ("is this player a plausible starter?"). At the opening board demand is maximal so the rule
+   cannot fire, and 192 of 312 picks in this league are bench/IR/taxi seats priced against a bar
+   whose stated meaning is *"the player a team is guaranteed to be able to start"*.
+
+**AND THE COUNTERWEIGHT ONLY DEFERS.** Of the players in `bpa` ranks 1–168 that rounds 1–14
+declined — TE 6, RB 2 — **all eight were taken in rounds 15–26. None went undrafted.** The term
+changes WHEN a tight end is taken, not WHETHER; composition is conserved because 312 of 481 priced
+rows are consumed, so a deferred player is still inside the draft's reach. This is why PHASE4's
+"force balanced" did not reproduce the human numbers either (TE 21.8%, not 15.5%): a term that
+defers is not a term that fixes.
+
+**NOT A DEFECT FINDING, and deliberately so.** Every citation says the current behaviour follows
+the design. `points − level` IS value over replacement; cross-position comparison is explicitly
+authorized and evidenced (94–100% agreement against 69–82% for raw points); zeroing team terms is
+upside mode's documented behaviour. What is established is LOCATION and MECHANISM, not fault.
+
+**THE OWNER'S QUESTION, now askable against an exact number.** *Should a tight end receive +68.58
+points over an otherwise identical receiver for a deep-bench flex seat?* Not "is 32.4% too many" —
+that was never the right question. Two sub-questions, neither taken here: is upside mode meant to
+drop roster fit ONLY, or roster fit AND the positional anchor; and should the domain of validity be
+keyed on the candidate as well as the anchor.
+
+**PINNED.** `test_222_cancellation_and_the_mode_asymmetry.py` — 12 tests over the cancellation
+identity, the exact handicap, and the mode asymmetry, mutation-checked 5/5. Also pins the latent
+hazard in `upside_score`'s `row.get("bpa") or 0.0`: safe only because absence in a float column is
+`NaN` and `bool(NaN)` is `True`, so a literal `None` there would rank an unpriced player above most
+of the priced board.
+
+**THREE WITHDRAWALS this pass**, the third mine. 17th: `narrow_candidates`, a picks-shape fixture
+artifact. 18th: RESIDUAL3's zero-rate, an arithmetically unreachable predicate. 19th: *"the
+aggregate is set by one subtraction before any pick"* — every number stands, the causal reading
+does not, and it was caught by a pre-registered test of my own flagged inference.
+
+**STILL SEPARATE, deliberately not merged.** The 1-vs-15 tight-end allocation across seats is a
+roster-DISTRIBUTION phenomenon: under third-round reversal the engine drafts the identical 312
+players with identical positional totals while only 32 of 312 land on the same seat. It cannot be
+the cause of the aggregate, and nothing above depends on it.
+
+**FIVE DOCTRINE CLAUSES** added to the engine-measurement skill this pass: behavioural inputs need
+schema validation, not value validation; a rate of exactly zero needs its detector's firing
+condition shown reachable; never name a production column from memory; a board ROW count is not a
+PRICED count; and an empty roster is not a neutral roster — it switches half the valuation off.
