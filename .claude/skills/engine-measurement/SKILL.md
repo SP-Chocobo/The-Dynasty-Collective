@@ -190,6 +190,12 @@ couple of minutes and read the file.
 - **`pkill -f "run_draft_battery"` matches its own launching shell.** The `bash -c` wrapper
   contains the pattern, so it kills the job it is starting. Use a character class that does not
   match itself: `pkill -f "run_draft_batter[y]"`.
+- **Backticks inside `git commit -m "..."` are COMMAND SUBSTITUTION.** A double-quoted message
+  quoting a docstring (`` `adjustment` ``, `` `0.0` ``) silently loses everything from the first
+  backtick onward, and the commit still succeeds — so the log carries a truncated record while
+  the working tree looks perfect. It cost a real commit here. Always pass a message on stdin
+  with a quoted heredoc: `git commit -F - <<'EOF' … EOF`. The quoted `'EOF'` is the half that
+  matters; an unquoted one substitutes too.
 - **`unittest` buffers to a file.** `2>&1 | tail -N` discards the failure body. Redirect the
   whole run to a file and grep it: `> suite.txt 2>&1`, then `grep -n "^FAIL:" -A 25 suite.txt`.
 
