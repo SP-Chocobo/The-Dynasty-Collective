@@ -79,3 +79,58 @@ ends highly is this league's actual rulebook (0.75/reception TE premium, first-d
 If FORK A lands, the finding is "the aggregate is the pool's ordering" — an explanation, not
 a verdict. Whether a superflex league with a TE premium SHOULD yield 101 tight ends is the
 owner's question, not a measurement's.
+
+---
+
+# ADDENDUM — pre-registration for the open inference in RESULT_aggregate_selection.md
+
+Written before the probe exists. Testing MY OWN published claim, which I explicitly marked as
+an inference rather than a measurement.
+
+## The claim under test
+
+`RESULT_aggregate_selection.md` states, and flags as unmeasured:
+
+> The cancellation identity says `bpa + displacement_adj = points - displaced`, so mid-draft, on
+> a filled roster, the level cancels and the decision is `points - displaced`. Yet the final
+> composition matches the *opening* bpa ranking, where the level does not cancel, to within three
+> players. Those two facts are compatible — `displaced >= level` always, so the displacement term
+> can only lower a candidate below his bpa, and the ordering survives if it lowers each position
+> by a similar amount — **but that compatibility is an inference and has not been measured.**
+
+If that inference is wrong, the "one subtraction decides it" account is incomplete: something
+mid-draft would have to be restoring an ordering that displacement had disturbed.
+
+## The experiment
+
+Two mid-draft board states from the production draft already on disk (`ff_draft.json`), rebuilt
+with the #201/#204 recipe: **pick 100 and pick 150**. Both are in rounds 1–14, so `mode="auto"`
+is BALANCED there and the displacement term is live — this is production, not a forced arm.
+The board is built for the seat actually on the clock, from that seat's actual accumulated
+roster. Raw saved first; emitted columns asserted.
+
+**Observable.** At each state, take K = the number of picks remaining in the draft, and compare
+the positional composition of the top K by `bpa` against the top K by
+`bpa + displacement_adj` (= `points - displaced`, the mid-draft decision quantity), over the
+priced rows still available.
+
+**Forks, stated now.** Let D = (TE count in the top-K by `points - displaced`) − (TE count in
+the top-K by `bpa`), at each state.
+
+- **FORK N — order-neutral, my inference holds.** |D| <= 3 at both states, and no position moves
+  by more than 5. Displacement lowers positions comparably; the opening-board ordering survives
+  it; the published account stands as written.
+- **FORK P — displacement AMPLIFIES the TE lead.** D >= +4 at either state. Then the opening
+  subtraction is not the whole story: a second, roster-side effect pushes the same way, and the
+  RESULT document understates the mechanism.
+- **FORK Q — displacement OPPOSES the TE lead.** D <= −4 at either state. Then mid-draft
+  valuation partially corrects what the opening board did, and something not yet identified
+  restores the 101. The published account would need a correction, and this fork is the one that
+  would reopen the aggregate question.
+
+**Reported regardless of fork:** the per-position mean and median `displacement_adj`, the count
+of rows where it is exactly 0.0, and the reconciliation `bpa + displacement_adj` against
+`points - displaced` computed independently.
+
+**This does not license a repair whatever it returns**, and it does not bear on whether the
+contract is desirable — it only checks whether a sentence I published is true.
