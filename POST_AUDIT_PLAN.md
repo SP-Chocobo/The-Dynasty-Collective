@@ -6675,7 +6675,8 @@ drop roster fit ONLY, or roster fit AND the positional anchor; and should the do
 keyed on the candidate as well as the anchor.
 
 **PINNED.** `test_222_cancellation_and_the_mode_asymmetry.py` — 12 tests over the cancellation
-identity, the exact handicap, and the mode asymmetry, mutation-checked 5/5. Also pins the latent
+identity, the exact handicap, and the mode asymmetry, mutation-checked 5/5. **Full suite green:
+2,772 tests in 729.5s, OK (skipped=1).** Also pins the latent
 hazard in `upside_score`'s `row.get("bpa") or 0.0`: safe only because absence in a float column is
 `NaN` and `bool(NaN)` is `True`, so a literal `None` there would rank an unpriced player above most
 of the priced board.
@@ -6694,3 +6695,44 @@ the cause of the aggregate, and nothing above depends on it.
 schema validation, not value validation; a rate of exactly zero needs its detector's firing
 condition shown reachable; never name a production column from memory; a board ROW count is not a
 PRICED count; and an empty roster is not a neutral roster — it switches half the valuation off.
+
+#### #222 addendum — the semantic question, answered from the contract
+
+**Is upside mode meant to remove roster-fit pressure only, or roster fit AND positional scarcity?**
+**The contract answers it: roster fit only, and the positional anchor is retained by design.**
+The founding architecture (module docstring, commit `44ef3c6`) splits the score on
+team-agnostic vs team-specific and defines `universal_value` as *"what any manager at the draft
+would compute — **league-wide scarcity**, market read, …"*. Scarcity is in the team-agnostic half
+by definition, so upside mode retaining it is the architecture working. Corroborated by
+`CDME_CONTRACTS` measuring upside against *"pure-`bpa` order"* and ruling `UPSIDE_GROWTH_WEIGHT`
+closed, by `growth_signal` being called *"upside mode's whole distinguishing output"*, by a pinned
+identity in `test_decision_qualifiers`, and by the repo's own phrase *"upside mode has no positional
+**gate**"* — the gate being `need_bonus` (#87), never the anchor. `git log -S` shows `upside_score`
+and `UPSIDE_GROWTH_WEIGHT` touched by exactly one commit ever: the founding engine.
+
+**20th withdrawal, mine.** `FINDING_upside_intent_inversion.md`'s framing — *"half the stated
+intent implemented, the other half inverted"* — is withdrawn. Its facts stand; the framing weighed
+one uncommitted comment against the founding architecture, four contract statements and a pinned
+test. The code is not violating an intent; `UPSIDE_MODE_DEFAULT_ROUND`'s comment describes the code
+wrongly.
+
+**THE MISSING DESIGN DECISION, and it is narrower and sharper.** `displacement_adj` is classified
+two ways in the same docstring: as *"the FOURTH team-specific term"* — which puts it under upside
+mode's zeroing rule — and as a correction to the universal anchor, *"only ever removes credit the
+league anchor gave for a slot the roster cannot offer — the reason `TEAM_SPECIFIC_CAPS` remains an
+upper bound … with **no fourth cap**"* — which is why it alone is uncapped. **The cap exemption is
+granted on the second reading; the exposure to upside's rule follows from the first, and nothing
+reconciles them.** The founding commit records `need_bonus` as *"the ONLY team-specific term,
+capped low enough to nudge a close call but never flip a large universal-value gap"* — so *"zero
+every team-specific term"* was authored when that class held one capped nudge. The class grew to
+four across #139 and #216; the fourth is by its own docstring not a nudge; the rule was never
+re-examined.
+
+**Two invariants are stale and this is where it shows.** Invariant 1 still states the three-term
+`team_acquisition_value` identity, annotating #139's expansion and missing #216's, while
+`draft_room.py`'s own docstring carries `+ displacement_adj`. Invariant 4 — *"none of the **three**
+team-specific terms may flip a large `universal_value` gap; each is capped"* — names a class that
+now has four members, the fourth uncapped by design and existing precisely because *"no bounded
+nudge could span the 43-60 point bias"*. The capping mechanism still bounds what it was built to
+bound; the invariant's statement is false of the class it names. Restating, not enforcing, is what
+that needs — #216's derivation for having no cap is on the record and is not reopened here.
