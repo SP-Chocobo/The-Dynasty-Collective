@@ -4,6 +4,10 @@ Last updated 2026-09-10. **No engine source has been changed in this entire inve
 `draft_room.py`, `lineup_optimizer.py` and `pick_synthesis.py` are byte-identical to where it
 started. Everything below is measurement, evidence, doctrine, and prose.
 
+**The next session has a written brief: `BRIEF_NEXT_SESSION.md`. Read it after this
+file and follow it — it defines the one question that is in scope and the four things
+that are explicitly not.**
+
 Read this before touching anything. Six suspects have been cleared here, four of them after a
 published finding of mine had to be withdrawn.
 
