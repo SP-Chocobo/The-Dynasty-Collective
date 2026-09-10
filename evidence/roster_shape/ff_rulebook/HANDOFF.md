@@ -4,7 +4,11 @@ Last updated 2026-09-10. **No engine source has been changed in this entire inve
 `draft_room.py`, `lineup_optimizer.py` and `pick_synthesis.py` are byte-identical to where it
 started. Everything below is measurement, evidence, doctrine, and prose.
 
-**The next session has a written brief: `BRIEF_NEXT_SESSION.md`. Read it after this
+**`BRIEF_NEXT_SESSION.md` is COMPLETE (`f67ec5b`) — do not re-run it; read
+`STEP1_WHAT_UPSIDE_MODE_IS_FOR.md` and `STEP2-4_THE_ANSWER.md` for what it found.
+The open work is now the RESIDUAL and B2, at the bottom of this file.**
+
+**The original brief: `BRIEF_NEXT_SESSION.md`. Read it after this
 file and follow it — it defines the one question that is in scope and the four things
 that are explicitly not.**
 
@@ -35,7 +39,7 @@ league's own settings — against that league's twelve real managers.
 | the measurement framework | ✅ can now distinguish valuation trajectories (`upside_from_round`, `picks_by_mode`) |
 | flex-share candidate | ❌ FROZEN — do not revive |
 | D3 live-alternative fix | ❌ KILLED by its own gate |
-| **mode transition (round 15)** | **⚠ real, causally consequential, and UNDEFINED — owner decision** |
+| **mode transition (round 15)** | **⚠ ANSWERED as a design gap (`f67ec5b`) — the concept is missing for lack of a DECISION, not material. Escalated: what is upside mode FOR?** |
 | **residual TE + B2 (backup QB)** | **⚠ OPEN, unattributed, no suspect** |
 
 ## What is actually established

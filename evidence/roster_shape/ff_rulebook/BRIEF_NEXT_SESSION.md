@@ -1,5 +1,13 @@
 # INVESTIGATION BRIEF — the next #216 session
 
+> **STATUS: COMPLETE at `f67ec5b`. Do not re-run this brief.**
+> Steps 1–4 done; the deliverable is answered in `STEP2-4_THE_ANSWER.md`:
+> **the transition concept is GENUINELY MISSING — for lack of a decision, not material.**
+> The baton has moved one level up, to a question this brief cannot answer and no engineering
+> pass should attempt: **what is upside mode actually intended to accomplish?** Until that
+> decision exists, there is nothing to code here.
+> Kept below as the record of what was asked and what the prohibitions were.
+
 Owner-written, 2026-09-10. Reproduced close to verbatim; the operational notes at the bottom
 are mine. **This is a brief, not a task to "fix #216."** Inherit the epistemic state, then earn
 the next move.
