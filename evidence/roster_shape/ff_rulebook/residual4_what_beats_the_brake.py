@@ -49,7 +49,13 @@ def prod_picks(upto):
              "player_id": q["player_id"]} for i, q in enumerate(D[:upto])]
 assert not ({"pick_no", "round", "roster_id", "player_id"} - set(prod_picks(5)[0]))
 
-TERMS = ("bpa", "need_bonus", "eligibility_bonus", "depth_exposure", "displacement_adj")
+# CORRECTED. The first version of this probe omitted time_horizon_adj and risk_adj, which are
+# real terms of the BALANCED composition (see draft_room.score_row). Fork B was therefore tested
+# against an incomplete list, and the term sums did not reconcile to final_score -- in one
+# observation by 8.9 points, larger than the deciding margin. The reconciliation check below is
+# what the first version lacked; it is the non-vacuity test for the decomposition itself.
+TERMS = ("bpa", "time_horizon_adj", "risk_adj", "need_bonus", "eligibility_bonus",
+         "depth_exposure", "displacement_adj")
 rows = []
 for seat in sorted(GROUP, key=int):
     idxs = [i for i, q in enumerate(D) if q["roster_id"] == seat]
@@ -68,7 +74,11 @@ for seat in sorted(GROUP, key=int):
         alt = next((r for r in priced if r["position"] != "TE"), None)
         if te is None or alt is None: continue
         chosen_is_top = priced[0]["player_id"] == D[at]["player_id"]
+        _te_sum = sum(f(te.get(k)) or 0.0 for k in TERMS)
+        _alt_sum = sum(f(alt.get(k)) or 0.0 for k in TERMS)
         rows.append({"seat": seat, "n": n, "top_pos": priced[0]["position"],
+                     "te_recon": round(_te_sum - f(te["final_score"]), 2),
+                     "alt_recon": round(_alt_sum - f(alt["final_score"]), 2),
                      "chosen_is_top_row": chosen_is_top,
                      "te": {k: f(te.get(k)) or 0.0 for k in TERMS},
                      "te_pts": f(te.get("projected_points")), "te_final": f(te["final_score"]),
@@ -79,17 +89,23 @@ json.dump(rows, open(("evidence/roster_shape/ff_rulebook/residual4_raw.json" if 
 _arm = "HOARD took TE" if WANT_TE else "STARVE did NOT take TE"
 print(f"RAW SAVED: {len(rows)} picks ({_arm})\n")
 
+worst = max((abs(r["te_recon"]) for r in rows), default=0)
+worst_a = max((abs(r["alt_recon"]) for r in rows), default=0)
+print(f"RECONCILIATION -- sum(terms) minus final_score, worst |gap|: "
+      f"chosen TE {worst:.2f}, alternative {worst_a:.2f}")
+print("  (a non-zero gap means the decomposition is STILL incomplete and the margins below "
+      "do not account for the whole decision)\n")
 print(f"FORK C check -- was the chosen player the board's TOP ROW by final_score?")
 print(f"  yes in {sum(1 for r in rows if r['chosen_is_top_row'])} of {len(rows)}"
       f"   top row was a TE in {sum(1 for r in rows if r['top_pos'] == 'TE')} of {len(rows)}\n")
 
 print("per-term margin, chosen TE minus the best NON-TE row on the same board")
-print(f"  {'':4}" + "".join(f"{t[:13]:>15}" for t in TERMS) + f"{'final':>10}{'TE pts':>9}{'alt':>6}")
+print(f"  {'':4}" + "".join(f"{t[:11]:>13}" for t in TERMS) + f"{'final':>10}{'TE pts':>9}{'alt':>6}")
 mar = {t: [] for t in TERMS}
 for r in rows:
     d = {t: r["te"][t] - r["alt"][t] for t in TERMS}
     for t in TERMS: mar[t].append(d[t])
-    print(f"  s{r['seat']:<3}" + "".join(f"{d[t]:>+15.2f}" for t in TERMS)
+    print(f"  s{r['seat']:<3}" + "".join(f"{d[t]:>+13.2f}" for t in TERMS)
           + f"{r['te_final'] - r['alt_final']:>+10.2f}{(r['te_pts'] or 0):>9.1f}{r['alt_pos']:>6}")
-print(f"\n  {'MEAN':4}" + "".join(f"{st.mean(mar[t]):>+15.2f}" for t in TERMS))
+print(f"\n  {'MEAN':4}" + "".join(f"{st.mean(mar[t]):>+13.2f}" for t in TERMS))
 print(f"\n  reading: a POSITIVE margin means that term favoured the tight end.")

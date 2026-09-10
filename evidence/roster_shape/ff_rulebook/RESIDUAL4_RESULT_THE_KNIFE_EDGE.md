@@ -1,4 +1,36 @@
-# RESIDUAL4 — **FORK A**, and the decision is a difference of two nearly-cancelling quantities
+# RESIDUAL4 — **FORK A**, corrected twice by an adversarial pass
+
+> **TWO CORRECTIONS, both found by attacking this document's own claims. Read them first.**
+>
+> **(1) The decomposition was INCOMPLETE.** The first run measured five terms and omitted
+> `time_horizon_adj` and `risk_adj`, which are real terms of the balanced composition (see
+> `draft_room.score_row`). The term sums did not reconcile to `final_score` — in one
+> observation by **8.9 points, larger than the deciding margin**, and in another the sum's sign
+> disagreed with the outcome. Re-run with all seven terms, reconciliation is now **exact
+> (worst |gap| 0.00 on both arms)**. Fork B's verdict survives at the mean — no unexamined term
+> is systematically responsible — but the original probe could not have known that, because it
+> never measured them. Individual `time_horizon_adj` margins reach **−9.30, +10.00, +8.81**,
+> comparable to the deciding margins, so it is volatile per-pick even though it means out near
+> zero.
+>
+> **(2) The "two nearly-cancelling quantities" framing is WITHDRAWN.** `bpa = points − level`
+> and `displacement_adj = level − displaced`, so **`bpa + displacement_adj = points − displaced`
+> and the level cancels inside each player.** The +76.21 bpa margin and the −71.40 deduction
+> margin are not two independent forces — they are the same level counted twice with opposite
+> signs. Calling it catastrophic cancellation implied a numerical fragility that is not there.
+>
+> **What is actually true:** the decision quantity is **(points − displaced)** per candidate.
+> Measured on the first observation, the tight end scores **−21.37** and the receiver **−21.01**
+> — two moderate quantities differing by **0.36**. The near-tie is real and the sub-point
+> margins are real, but they are a genuine near-tie between two candidates, not an artifact of
+> large terms annihilating.
+>
+> Everything below is the original text. The measured numbers stand; the five-term table is
+> superseded by the seven-term one, and the framing above replaces the framing below.
+
+---
+
+# (original) RESIDUAL4 — FORK A, and the decision is a difference of two nearly-cancelling quantities
 
 Forks fixed and committed before the run. Both arms read production board rows. **No engine
 source changed.**
