@@ -1,3 +1,14 @@
+> **HEADLINE WITHDRAWN (19th) — see RESULT_displacement_is_the_counterweight.md.**
+> Every NUMBER in this file stands and is reproducible. The CAUSAL READING does not: the opening
+> `bpa` sort does not cause the finished draft. A pre-registered test of this document's own
+> flagged inference returned FORK Q — mid-draft `displacement_adj` is 0.00 on every receiver row
+> and −60 to −89 on tight ends, so it runs hard AGAINST the tight-end lead, not neutrally with
+> it. The draft's first 168 picks follow `points − displaced` and land on TE 15.5%, the humans'
+> own number; the opening `bpa` ordering describes what UPSIDE mode implements, over 144 of 312
+> picks. The finished 101 is a two-regime mixture whose match to the opening sort is now
+> UNEXPLAINED, not causal. Also corrected: the 310/312 set overlap is reported below without its
+> chance baseline, which is 202/312.
+
 # RESULT — the aggregate composition is set by one subtraction, before any pick
 
 Pre-registered in `PREREG_aggregate_selection.md`. One opening board, #201/#204 recipe, real

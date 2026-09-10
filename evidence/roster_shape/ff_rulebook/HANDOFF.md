@@ -196,3 +196,50 @@ but that compatibility is an inference and is NOT measured.
 **Butterfly test: still not run, as instructed.** The bifurcation stays parked as a separate
 roster-distribution phenomenon; nothing here shows it feeding back into aggregate selection —
 in fact the opposite.
+
+---
+
+# UPDATE — displacement is the counterweight, and my own headline is withdrawn (19th)
+
+Pre-registered at d1bda52, result in `RESULT_displacement_is_the_counterweight.md`. Two real
+mid-draft board states, production shape, no engine change, 17s. **FORK Q** — the fork I
+registered as the one that would reopen the aggregate question.
+
+**`displacement_adj` is the most position-differentiated quantity in the engine, and it runs
+AGAINST the tight-end lead.** At pick 100/150: WR **0.00 on every row** (160 of 160, 139 of 139),
+TE −60.03 / −89.14, RB −41 / −59, QB −92 / −86. Top-K by `bpa` versus by `points − displaced`
+moves TE **−29 and −41** while WR moves **+33 and +44**. Identity reconciliation 0.0000.
+
+WR pays nothing because the shared flex alternative is `max(levels)`, which IS WR's level here —
+FINDING_03's mechanism, measured on the real universe.
+
+**Independent confirmation, from an artifact already on disk.** Split the production draft at the
+mode boundary:
+
+| | QB | RB | WR | **TE** |
+|---|---|---|---|---|
+| engine, rounds 1–14 (BALANCED) | 19.0% | 26.2% | 39.3% | **15.5%** |
+| twelve real managers, whole draft | 20.0% | 27.4% | 37.1% | **15.5%** |
+| engine, rounds 15–26 (UPSIDE) | 0.0% | 27.8% | 20.1% | **52.1%** |
+
+**In balanced mode the engine drafts like the twelve humans, on every position, and on tight ends
+exactly.** The whole divergence is the 144 upside picks.
+
+**The synthesis.** The two positional anchors are a MATCHED PAIR: `bpa = points − level` favours
+TE (lowest anchor), `displacement_adj = level − displaced` charges TE and charges WR nothing.
+Composed, they give the human numbers. Upside mode zeroes team-specific terms, which **deletes
+the charge and keeps the subtraction** — it removes the counterweight and keeps the weight. This
+is the first MECHANISM for PHASE4's measured 63%; PHASE4 established the boundary was causal and
+had no account of why.
+
+**Withdrawn (19th): my headline "the aggregate composition is set by one subtraction, before any
+pick."** Every number in `RESULT_aggregate_selection.md` stands. The causal reading does not —
+the first 168 picks demonstrably do not follow that ordering. The opening `bpa` sort describes
+UPSIDE mode. The finished 101 is a mixture (26 balanced + 75 upside) whose match to the opening
+sort is now **unexplained, not causal**. Second correction in the same document: the 310/312 set
+overlap was reported without its chance baseline, which is **202/312**.
+
+**Not established:** not that upside mode is defective (zeroing team terms is its documented
+behaviour; what is new is that it breaks a matched pair); not that the level subtraction is
+wrong (76b17b3's contract finding is untouched); not "force balanced", which PHASE4 already
+measured and rejected.
