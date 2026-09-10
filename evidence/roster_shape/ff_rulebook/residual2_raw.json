@@ -1,0 +1,362 @@
+[
+ {
+  "seat": "1",
+  "n": 5,
+  "te_held": 1,
+  "adj": -68.58,
+  "disp": 217.75,
+  "level": 149.17,
+  "basis": "measured",
+  "group": "STARVE"
+ },
+ {
+  "seat": "1",
+  "n": 7,
+  "te_held": 1,
+  "adj": -68.58,
+  "disp": 217.75,
+  "level": 149.17,
+  "basis": "measured",
+  "group": "STARVE"
+ },
+ {
+  "seat": "1",
+  "n": 9,
+  "te_held": 1,
+  "adj": -68.58,
+  "disp": 217.75,
+  "level": 149.17,
+  "basis": "measured",
+  "group": "STARVE"
+ },
+ {
+  "seat": "2",
+  "n": 5,
+  "te_held": 0,
+  "adj": 0.0,
+  "disp": 149.17,
+  "level": 149.17,
+  "basis": "measured",
+  "group": "HOARD"
+ },
+ {
+  "seat": "2",
+  "n": 7,
+  "te_held": 1,
+  "adj": -64.76,
+  "disp": 213.93,
+  "level": 149.17,
+  "basis": "measured",
+  "group": "HOARD"
+ },
+ {
+  "seat": "2",
+  "n": 9,
+  "te_held": 1,
+  "adj": -64.76,
+  "disp": 213.93,
+  "level": 149.17,
+  "basis": "measured",
+  "group": "HOARD"
+ },
+ {
+  "seat": "3",
+  "n": 5,
+  "te_held": 0,
+  "adj": 0.0,
+  "disp": 149.17,
+  "level": 149.17,
+  "basis": "measured",
+  "group": "STARVE"
+ },
+ {
+  "seat": "3",
+  "n": 7,
+  "te_held": 1,
+  "adj": -68.58,
+  "disp": 217.75,
+  "level": 149.17,
+  "basis": "measured",
+  "group": "STARVE"
+ },
+ {
+  "seat": "3",
+  "n": 9,
+  "te_held": 1,
+  "adj": -62.86,
+  "disp": 212.03,
+  "level": 149.17,
+  "basis": "measured",
+  "group": "STARVE"
+ },
+ {
+  "seat": "4",
+  "n": 5,
+  "te_held": 1,
+  "adj": -68.58,
+  "disp": 217.75,
+  "level": 149.17,
+  "basis": "measured",
+  "group": "mid"
+ },
+ {
+  "seat": "4",
+  "n": 7,
+  "te_held": 1,
+  "adj": -68.58,
+  "disp": 217.75,
+  "level": 149.17,
+  "basis": "measured",
+  "group": "mid"
+ },
+ {
+  "seat": "4",
+  "n": 9,
+  "te_held": 1,
+  "adj": -62.86,
+  "disp": 212.03,
+  "level": 149.17,
+  "basis": "measured",
+  "group": "mid"
+ },
+ {
+  "seat": "5",
+  "n": 5,
+  "te_held": 0,
+  "adj": 0.0,
+  "disp": 149.17,
+  "level": 149.17,
+  "basis": "measured",
+  "group": "HOARD"
+ },
+ {
+  "seat": "5",
+  "n": 7,
+  "te_held": 0,
+  "adj": 0.0,
+  "disp": 149.17,
+  "level": 149.17,
+  "basis": "measured",
+  "group": "HOARD"
+ },
+ {
+  "seat": "5",
+  "n": 9,
+  "te_held": 1,
+  "adj": -60.03,
+  "disp": 209.2,
+  "level": 149.17,
+  "basis": "measured",
+  "group": "HOARD"
+ },
+ {
+  "seat": "6",
+  "n": 5,
+  "te_held": 1,
+  "adj": -68.58,
+  "disp": 217.75,
+  "level": 149.17,
+  "basis": "measured",
+  "group": "mid"
+ },
+ {
+  "seat": "6",
+  "n": 7,
+  "te_held": 1,
+  "adj": -68.58,
+  "disp": 217.75,
+  "level": 149.17,
+  "basis": "measured",
+  "group": "mid"
+ },
+ {
+  "seat": "6",
+  "n": 9,
+  "te_held": 1,
+  "adj": -62.86,
+  "disp": 212.03,
+  "level": 149.17,
+  "basis": "measured",
+  "group": "mid"
+ },
+ {
+  "seat": "7",
+  "n": 5,
+  "te_held": 1,
+  "adj": -68.58,
+  "disp": 217.75,
+  "level": 149.17,
+  "basis": "measured",
+  "group": "mid"
+ },
+ {
+  "seat": "7",
+  "n": 7,
+  "te_held": 1,
+  "adj": -68.58,
+  "disp": 217.75,
+  "level": 149.17,
+  "basis": "measured",
+  "group": "mid"
+ },
+ {
+  "seat": "7",
+  "n": 9,
+  "te_held": 1,
+  "adj": -62.86,
+  "disp": 212.03,
+  "level": 149.17,
+  "basis": "measured",
+  "group": "mid"
+ },
+ {
+  "seat": "8",
+  "n": 5,
+  "te_held": 0,
+  "adj": 0.0,
+  "disp": 149.17,
+  "level": 149.17,
+  "basis": "measured",
+  "group": "STARVE"
+ },
+ {
+  "seat": "8",
+  "n": 7,
+  "te_held": 1,
+  "adj": -68.58,
+  "disp": 217.75,
+  "level": 149.17,
+  "basis": "measured",
+  "group": "STARVE"
+ },
+ {
+  "seat": "8",
+  "n": 9,
+  "te_held": 1,
+  "adj": -62.48,
+  "disp": 211.65,
+  "level": 149.17,
+  "basis": "measured",
+  "group": "STARVE"
+ },
+ {
+  "seat": "9",
+  "n": 5,
+  "te_held": 1,
+  "adj": -68.58,
+  "disp": 217.75,
+  "level": 149.17,
+  "basis": "measured",
+  "group": "HOARD"
+ },
+ {
+  "seat": "9",
+  "n": 7,
+  "te_held": 1,
+  "adj": -68.58,
+  "disp": 217.75,
+  "level": 149.17,
+  "basis": "measured",
+  "group": "HOARD"
+ },
+ {
+  "seat": "9",
+  "n": 9,
+  "te_held": 1,
+  "adj": -68.58,
+  "disp": 217.75,
+  "level": 149.17,
+  "basis": "measured",
+  "group": "HOARD"
+ },
+ {
+  "seat": "10",
+  "n": 5,
+  "te_held": 1,
+  "adj": -68.58,
+  "disp": 217.75,
+  "level": 149.17,
+  "basis": "measured",
+  "group": "STARVE"
+ },
+ {
+  "seat": "10",
+  "n": 7,
+  "te_held": 1,
+  "adj": -68.58,
+  "disp": 217.75,
+  "level": 149.17,
+  "basis": "measured",
+  "group": "STARVE"
+ },
+ {
+  "seat": "10",
+  "n": 9,
+  "te_held": 1,
+  "adj": -68.58,
+  "disp": 217.75,
+  "level": 149.17,
+  "basis": "measured",
+  "group": "STARVE"
+ },
+ {
+  "seat": "11",
+  "n": 5,
+  "te_held": 0,
+  "adj": 0.0,
+  "disp": 149.17,
+  "level": 149.17,
+  "basis": "measured",
+  "group": "STARVE"
+ },
+ {
+  "seat": "11",
+  "n": 7,
+  "te_held": 1,
+  "adj": -68.58,
+  "disp": 217.75,
+  "level": 149.17,
+  "basis": "measured",
+  "group": "STARVE"
+ },
+ {
+  "seat": "11",
+  "n": 9,
+  "te_held": 1,
+  "adj": -68.58,
+  "disp": 217.75,
+  "level": 149.17,
+  "basis": "measured",
+  "group": "STARVE"
+ },
+ {
+  "seat": "12",
+  "n": 5,
+  "te_held": 0,
+  "adj": 0.0,
+  "disp": 149.17,
+  "level": 149.17,
+  "basis": "measured",
+  "group": "HOARD"
+ },
+ {
+  "seat": "12",
+  "n": 7,
+  "te_held": 0,
+  "adj": 0.0,
+  "disp": 149.17,
+  "level": 149.17,
+  "basis": "measured",
+  "group": "HOARD"
+ },
+ {
+  "seat": "12",
+  "n": 9,
+  "te_held": 1,
+  "adj": -51.73,
+  "disp": 200.9,
+  "level": 149.17,
+  "basis": "measured",
+  "group": "HOARD"
+ }
+]
