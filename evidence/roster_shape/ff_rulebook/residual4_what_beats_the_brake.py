@@ -37,6 +37,10 @@ D = json.load(open("evidence/roster_shape/ff_rulebook/ff_draft_balanced.json"))[
 m = dm.DataMerger(); players_db, _ = rdb.build_players_db_from_capture()
 m.set_league_format(db.league_format_hint(L)); season = rdb.season_projections_from_capture()
 HOARD = {"2", "5", "9", "12"}
+STARVE = {"1", "3", "8", "10", "11"}
+import sys
+GROUP = STARVE if "--starve" in sys.argv else HOARD
+WANT_TE = "--starve" not in sys.argv
 def f(x):
     try: return float(x)
     except: return None
@@ -47,12 +51,13 @@ assert not ({"pick_no", "round", "roster_id", "player_id"} - set(prod_picks(5)[0
 
 TERMS = ("bpa", "need_bonus", "eligibility_bonus", "depth_exposure", "displacement_adj")
 rows = []
-for seat in sorted(HOARD, key=int):
+for seat in sorted(GROUP, key=int):
     idxs = [i for i, q in enumerate(D) if q["roster_id"] == seat]
     for n in range(9, 21):
         if n > len(idxs): continue
         at = idxs[n - 1]
-        if D[at]["position"] != "TE":      # only picks where this seat actually took a TE
+        # CONTROL ARM: for starvers, take the picks where they did NOT take a TE.
+        if WANT_TE != (D[at]["position"] == "TE"):
             continue
         board = dr.compute_draft_board(m, players_db, prod_picks(at), seat, L, mode="balanced",
                                        sleeper_projections=season,
@@ -70,8 +75,9 @@ for seat in sorted(HOARD, key=int):
                      "alt_pos": alt["position"],
                      "alt": {k: f(alt.get(k)) or 0.0 for k in TERMS},
                      "alt_pts": f(alt.get("projected_points")), "alt_final": f(alt["final_score"])})
-json.dump(rows, open("evidence/roster_shape/ff_rulebook/residual4_raw.json", "w"), indent=1)
-print(f"RAW SAVED: {len(rows)} hoarder picks where a tight end was taken\n")
+json.dump(rows, open(("evidence/roster_shape/ff_rulebook/residual4_raw.json" if WANT_TE else "evidence/roster_shape/ff_rulebook/residual4_raw_control.json"), "w"), indent=1)
+_arm = "HOARD took TE" if WANT_TE else "STARVE did NOT take TE"
+print(f"RAW SAVED: {len(rows)} picks ({_arm})\n")
 
 print(f"FORK C check -- was the chosen player the board's TOP ROW by final_score?")
 print(f"  yes in {sum(1 for r in rows if r['chosen_is_top_row'])} of {len(rows)}"

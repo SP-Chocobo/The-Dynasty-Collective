@@ -1,0 +1,1452 @@
+[
+ {
+  "seat": "1",
+  "n": 9,
+  "top_pos": "WR",
+  "chosen_is_top_row": true,
+  "te": {
+   "bpa": 46.190000000000026,
+   "need_bonus": 1.0,
+   "eligibility_bonus": 0.0,
+   "depth_exposure": 0.0,
+   "displacement_adj": -68.58
+  },
+  "te_pts": 195.36,
+  "te_final": -22.03,
+  "alt_pos": "WR",
+  "alt": {
+   "bpa": 2.6100000000000136,
+   "need_bonus": 0.05,
+   "eligibility_bonus": 0.0,
+   "depth_exposure": 0.0,
+   "displacement_adj": 0.0
+  },
+  "alt_pts": 220.36,
+  "alt_final": 1.73
+ },
+ {
+  "seat": "1",
+  "n": 10,
+  "top_pos": "WR",
+  "chosen_is_top_row": true,
+  "te": {
+   "bpa": 41.620000000000005,
+   "need_bonus": 1.0,
+   "eligibility_bonus": 0.0,
+   "depth_exposure": 0.0,
+   "displacement_adj": -72.77
+  },
+  "te_pts": 186.6,
+  "te_final": -30.9,
+  "alt_pos": "WR",
+  "alt": {
+   "bpa": -21.00999999999999,
+   "need_bonus": 0.0,
+   "eligibility_bonus": 0.0,
+   "depth_exposure": 0.0,
+   "displacement_adj": 0.0
+  },
+  "alt_pts": 196.74,
+  "alt_final": -23.66
+ },
+ {
+  "seat": "1",
+  "n": 11,
+  "top_pos": "QB",
+  "chosen_is_top_row": true,
+  "te": {
+   "bpa": 41.620000000000005,
+   "need_bonus": 1.0,
+   "eligibility_bonus": 0.0,
+   "depth_exposure": 0.0,
+   "displacement_adj": -72.77
+  },
+  "te_pts": 186.6,
+  "te_final": -30.96,
+  "alt_pos": "QB",
+  "alt": {
+   "bpa": 59.46000000000001,
+   "need_bonus": 0.0,
+   "eligibility_bonus": 0.0,
+   "depth_exposure": 0.0,
+   "displacement_adj": -85.27
+  },
+  "alt_pts": 302.75,
+  "alt_final": -26.1
+ },
+ {
+  "seat": "1",
+  "n": 12,
+  "top_pos": "RB",
+  "chosen_is_top_row": true,
+  "te": {
+   "bpa": 23.69999999999999,
+   "need_bonus": 1.0,
+   "eligibility_bonus": 0.0,
+   "depth_exposure": 4.08,
+   "displacement_adj": -83.41
+  },
+  "te_pts": 158.04,
+  "te_final": -59.59,
+  "alt_pos": "RB",
+  "alt": {
+   "bpa": 13.019999999999982,
+   "need_bonus": 1.0,
+   "eligibility_bonus": 0.0,
+   "depth_exposure": 9.6,
+   "displacement_adj": -56.04
+  },
+  "alt_pts": 174.73,
+  "alt_final": -42.42
+ },
+ {
+  "seat": "1",
+  "n": 13,
+  "top_pos": "WR",
+  "chosen_is_top_row": true,
+  "te": {
+   "bpa": 23.69999999999999,
+   "need_bonus": 1.0,
+   "eligibility_bonus": 0.0,
+   "depth_exposure": 4.08,
+   "displacement_adj": -83.41
+  },
+  "te_pts": 158.04,
+  "te_final": -59.69,
+  "alt_pos": "WR",
+  "alt": {
+   "bpa": -52.58000000000001,
+   "need_bonus": 0.0,
+   "eligibility_bonus": 0.0,
+   "depth_exposure": 5.28,
+   "displacement_adj": 0.0
+  },
+  "alt_pts": 165.17,
+  "alt_final": -47.3
+ },
+ {
+  "seat": "1",
+  "n": 14,
+  "top_pos": "QB",
+  "chosen_is_top_row": true,
+  "te": {
+   "bpa": 33.67,
+   "need_bonus": 1.0,
+   "eligibility_bonus": 0.0,
+   "depth_exposure": 4.08,
+   "displacement_adj": -117.08
+  },
+  "te_pts": 134.34,
+  "te_final": -88.33,
+  "alt_pos": "QB",
+  "alt": {
+   "bpa": 0.0,
+   "need_bonus": 0.0,
+   "eligibility_bonus": 0.0,
+   "depth_exposure": 9.24,
+   "displacement_adj": -79.15
+  },
+  "alt_pts": 249.41,
+  "alt_final": -79.3
+ },
+ {
+  "seat": "1",
+  "n": 15,
+  "top_pos": "WR",
+  "chosen_is_top_row": true,
+  "te": {
+   "bpa": 33.67,
+   "need_bonus": 1.0,
+   "eligibility_bonus": 0.0,
+   "depth_exposure": 4.08,
+   "displacement_adj": -117.08
+  },
+  "te_pts": 134.34,
+  "te_final": -88.33,
+  "alt_pos": "WR",
+  "alt": {
+   "bpa": -86.66999999999999,
+   "need_bonus": 0.0,
+   "eligibility_bonus": 0.0,
+   "depth_exposure": 5.28,
+   "displacement_adj": 0.0
+  },
+  "alt_pts": 131.08,
+  "alt_final": -81.39
+ },
+ {
+  "seat": "1",
+  "n": 16,
+  "top_pos": "RB",
+  "chosen_is_top_row": true,
+  "te": {
+   "bpa": 8.179999999999993,
+   "need_bonus": 1.0,
+   "eligibility_bonus": 0.0,
+   "depth_exposure": 4.08,
+   "displacement_adj": -126.57
+  },
+  "te_pts": 99.36,
+  "te_final": -114.67,
+  "alt_pos": "RB",
+  "alt": {
+   "bpa": 0.0,
+   "need_bonus": 0.05,
+   "eligibility_bonus": 0.0,
+   "depth_exposure": 7.92,
+   "displacement_adj": -119.25
+  },
+  "alt_pts": 98.5,
+  "alt_final": -111.28
+ },
+ {
+  "seat": "1",
+  "n": 17,
+  "top_pos": "RB",
+  "chosen_is_top_row": true,
+  "te": {
+   "bpa": 8.179999999999993,
+   "need_bonus": 1.0,
+   "eligibility_bonus": 0.0,
+   "depth_exposure": 4.08,
+   "displacement_adj": -126.57
+  },
+  "te_pts": 99.36,
+  "te_final": -114.67,
+  "alt_pos": "RB",
+  "alt": {
+   "bpa": 0.0,
+   "need_bonus": 0.0,
+   "eligibility_bonus": 0.0,
+   "depth_exposure": 7.92,
+   "displacement_adj": -122.9
+  },
+  "alt_pts": 94.85,
+  "alt_final": -114.29
+ },
+ {
+  "seat": "1",
+  "n": 18,
+  "top_pos": "RB",
+  "chosen_is_top_row": true,
+  "te": {
+   "bpa": 0.6700000000000017,
+   "need_bonus": 1.0,
+   "eligibility_bonus": 0.0,
+   "depth_exposure": 4.08,
+   "displacement_adj": -138.06
+  },
+  "te_pts": 80.36,
+  "te_final": -136.01,
+  "alt_pos": "RB",
+  "alt": {
+   "bpa": 1.7299999999999898,
+   "need_bonus": 0.0,
+   "eligibility_bonus": 0.0,
+   "depth_exposure": 8.28,
+   "displacement_adj": -143.99
+  },
+  "alt_pts": 75.49,
+  "alt_final": -133.98
+ },
+ {
+  "seat": "1",
+  "n": 19,
+  "top_pos": "WR",
+  "chosen_is_top_row": true,
+  "te": {
+   "bpa": 0.6700000000000017,
+   "need_bonus": 1.0,
+   "eligibility_bonus": 0.0,
+   "depth_exposure": 4.08,
+   "displacement_adj": -138.06
+  },
+  "te_pts": 80.36,
+  "te_final": -136.01,
+  "alt_pos": "WR",
+  "alt": {
+   "bpa": -140.76,
+   "need_bonus": 0.0,
+   "eligibility_bonus": 0.0,
+   "depth_exposure": 5.28,
+   "displacement_adj": 0.0
+  },
+  "alt_pts": 76.99,
+  "alt_final": -135.48
+ },
+ {
+  "seat": "1",
+  "n": 20,
+  "top_pos": "WR",
+  "chosen_is_top_row": true,
+  "te": {
+   "bpa": 3.710000000000001,
+   "need_bonus": 1.0,
+   "eligibility_bonus": 0.0,
+   "depth_exposure": 4.08,
+   "displacement_adj": -161.27
+  },
+  "te_pts": 60.19,
+  "te_final": -152.48,
+  "alt_pos": "WR",
+  "alt": {
+   "bpa": -154.74,
+   "need_bonus": 0.0,
+   "eligibility_bonus": 0.0,
+   "depth_exposure": 5.28,
+   "displacement_adj": 0.0
+  },
+  "alt_pts": 63.01,
+  "alt_final": -149.46
+ },
+ {
+  "seat": "3",
+  "n": 9,
+  "top_pos": "WR",
+  "chosen_is_top_row": true,
+  "te": {
+   "bpa": 46.190000000000026,
+   "need_bonus": 1.0,
+   "eligibility_bonus": 0.0,
+   "depth_exposure": 0.0,
+   "displacement_adj": -62.86
+  },
+  "te_pts": 195.36,
+  "te_final": -16.18,
+  "alt_pos": "WR",
+  "alt": {
+   "bpa": 5.719999999999999,
+   "need_bonus": 0.05,
+   "eligibility_bonus": 0.0,
+   "depth_exposure": 0.0,
+   "displacement_adj": 0.0
+  },
+  "alt_pts": 217.75,
+  "alt_final": 3.97
+ },
+ {
+  "seat": "3",
+  "n": 10,
+  "top_pos": "WR",
+  "chosen_is_top_row": true,
+  "te": {
+   "bpa": 47.58000000000001,
+   "need_bonus": 1.0,
+   "eligibility_bonus": 0.0,
+   "depth_exposure": 0.0,
+   "displacement_adj": -72.77
+  },
+  "te_pts": 192.56,
+  "te_final": -27.45,
+  "alt_pos": "WR",
+  "alt": {
+   "bpa": -20.659999999999997,
+   "need_bonus": 0.0,
+   "eligibility_bonus": 0.0,
+   "depth_exposure": 0.0,
+   "displacement_adj": 0.0
+  },
+  "alt_pts": 197.09,
+  "alt_final": -22.15
+ },
+ {
+  "seat": "3",
+  "n": 11,
+  "top_pos": "RB",
+  "chosen_is_top_row": true,
+  "te": {
+   "bpa": 41.620000000000005,
+   "need_bonus": 1.0,
+   "eligibility_bonus": 0.0,
+   "depth_exposure": 0.0,
+   "displacement_adj": -72.77
+  },
+  "te_pts": 186.6,
+  "te_final": -30.95,
+  "alt_pos": "RB",
+  "alt": {
+   "bpa": 25.579999999999984,
+   "need_bonus": 1.0,
+   "eligibility_bonus": 0.0,
+   "depth_exposure": 0.0,
+   "displacement_adj": -46.94
+  },
+  "alt_pts": 196.39,
+  "alt_final": -30.36
+ },
+ {
+  "seat": "3",
+  "n": 12,
+  "top_pos": "WR",
+  "chosen_is_top_row": true,
+  "te": {
+   "bpa": 23.69999999999999,
+   "need_bonus": 1.0,
+   "eligibility_bonus": 0.0,
+   "depth_exposure": 0.0,
+   "displacement_adj": -83.41
+  },
+  "te_pts": 158.04,
+  "te_final": -63.51,
+  "alt_pos": "WR",
+  "alt": {
+   "bpa": -50.78,
+   "need_bonus": 0.0,
+   "eligibility_bonus": 0.0,
+   "depth_exposure": 0.0,
+   "displacement_adj": 0.0
+  },
+  "alt_pts": 166.97,
+  "alt_final": -50.78
+ },
+ {
+  "seat": "3",
+  "n": 13,
+  "top_pos": "RB",
+  "chosen_is_top_row": true,
+  "te": {
+   "bpa": 23.69999999999999,
+   "need_bonus": 1.0,
+   "eligibility_bonus": 0.0,
+   "depth_exposure": 0.0,
+   "displacement_adj": -83.41
+  },
+  "te_pts": 158.04,
+  "te_final": -63.94,
+  "alt_pos": "RB",
+  "alt": {
+   "bpa": 4.590000000000003,
+   "need_bonus": 0.05,
+   "eligibility_bonus": 0.0,
+   "depth_exposure": 0.0,
+   "displacement_adj": -57.55
+  },
+  "alt_pts": 164.79,
+  "alt_final": -62.91
+ },
+ {
+  "seat": "3",
+  "n": 14,
+  "top_pos": "WR",
+  "chosen_is_top_row": true,
+  "te": {
+   "bpa": 33.67,
+   "need_bonus": 1.0,
+   "eligibility_bonus": 0.0,
+   "depth_exposure": 2.52,
+   "displacement_adj": -117.08
+  },
+  "te_pts": 134.34,
+  "te_final": -89.89,
+  "alt_pos": "WR",
+  "alt": {
+   "bpa": -76.63999999999999,
+   "need_bonus": 0.0,
+   "eligibility_bonus": 0.0,
+   "depth_exposure": 6.96,
+   "displacement_adj": 0.0
+  },
+  "alt_pts": 141.11,
+  "alt_final": -79.68
+ },
+ {
+  "seat": "3",
+  "n": 15,
+  "top_pos": "WR",
+  "chosen_is_top_row": true,
+  "te": {
+   "bpa": 29.250000000000014,
+   "need_bonus": 1.0,
+   "eligibility_bonus": 0.0,
+   "depth_exposure": 2.52,
+   "displacement_adj": -118.39
+  },
+  "te_pts": 128.61,
+  "te_final": -95.62,
+  "alt_pos": "WR",
+  "alt": {
+   "bpa": -86.57,
+   "need_bonus": 0.0,
+   "eligibility_bonus": 0.0,
+   "depth_exposure": 6.96,
+   "displacement_adj": 0.0
+  },
+  "alt_pts": 131.18,
+  "alt_final": -80.38
+ },
+ {
+  "seat": "3",
+  "n": 16,
+  "top_pos": "WR",
+  "chosen_is_top_row": true,
+  "te": {
+   "bpa": 15.829999999999998,
+   "need_bonus": 1.0,
+   "eligibility_bonus": 0.0,
+   "depth_exposure": 2.52,
+   "displacement_adj": -124.6
+  },
+  "te_pts": 108.98,
+  "te_final": -115.25,
+  "alt_pos": "WR",
+  "alt": {
+   "bpa": -116.98,
+   "need_bonus": 0.0,
+   "eligibility_bonus": 0.0,
+   "depth_exposure": 6.6,
+   "displacement_adj": 0.0
+  },
+  "alt_pts": 100.77,
+  "alt_final": -113.0
+ },
+ {
+  "seat": "3",
+  "n": 17,
+  "top_pos": "WR",
+  "chosen_is_top_row": true,
+  "te": {
+   "bpa": 15.980000000000004,
+   "need_bonus": 1.0,
+   "eligibility_bonus": 0.0,
+   "depth_exposure": 2.52,
+   "displacement_adj": -136.26
+  },
+  "te_pts": 97.47,
+  "te_final": -116.76,
+  "alt_pos": "WR",
+  "alt": {
+   "bpa": -117.94,
+   "need_bonus": 0.0,
+   "eligibility_bonus": 0.0,
+   "depth_exposure": 6.6,
+   "displacement_adj": 0.0
+  },
+  "alt_pts": 99.81,
+  "alt_final": -113.33
+ },
+ {
+  "seat": "3",
+  "n": 18,
+  "top_pos": "WR",
+  "chosen_is_top_row": true,
+  "te": {
+   "bpa": -2.230000000000004,
+   "need_bonus": 1.0,
+   "eligibility_bonus": 0.0,
+   "depth_exposure": 2.52,
+   "displacement_adj": -138.06
+  },
+  "te_pts": 77.46,
+  "te_final": -136.99,
+  "alt_pos": "WR",
+  "alt": {
+   "bpa": -137.92000000000002,
+   "need_bonus": 0.0,
+   "eligibility_bonus": 0.0,
+   "depth_exposure": 6.6,
+   "displacement_adj": 0.0
+  },
+  "alt_pts": 79.83,
+  "alt_final": -133.86
+ },
+ {
+  "seat": "3",
+  "n": 19,
+  "top_pos": "WR",
+  "chosen_is_top_row": true,
+  "te": {
+   "bpa": 0.0,
+   "need_bonus": 1.0,
+   "eligibility_bonus": 0.0,
+   "depth_exposure": 2.52,
+   "displacement_adj": -138.88
+  },
+  "te_pts": 78.87,
+  "te_final": -140.22,
+  "alt_pos": "WR",
+  "alt": {
+   "bpa": -141.86,
+   "need_bonus": 0.0,
+   "eligibility_bonus": 0.0,
+   "depth_exposure": 6.6,
+   "displacement_adj": 0.0
+  },
+  "alt_pts": 75.89,
+  "alt_final": -135.26
+ },
+ {
+  "seat": "3",
+  "n": 20,
+  "top_pos": "WR",
+  "chosen_is_top_row": true,
+  "te": {
+   "bpa": 3.710000000000001,
+   "need_bonus": 1.0,
+   "eligibility_bonus": 0.0,
+   "depth_exposure": 2.52,
+   "displacement_adj": -161.27
+  },
+  "te_pts": 60.19,
+  "te_final": -154.04,
+  "alt_pos": "WR",
+  "alt": {
+   "bpa": -146.93,
+   "need_bonus": 0.0,
+   "eligibility_bonus": 0.0,
+   "depth_exposure": 6.6,
+   "displacement_adj": 0.0
+  },
+  "alt_pts": 70.82,
+  "alt_final": -147.31
+ },
+ {
+  "seat": "8",
+  "n": 9,
+  "top_pos": "WR",
+  "chosen_is_top_row": true,
+  "te": {
+   "bpa": 46.190000000000026,
+   "need_bonus": 1.0,
+   "eligibility_bonus": 0.0,
+   "depth_exposure": 0.0,
+   "displacement_adj": -62.48
+  },
+  "te_pts": 195.36,
+  "te_final": -15.98,
+  "alt_pos": "WR",
+  "alt": {
+   "bpa": 0.0,
+   "need_bonus": 1.0,
+   "eligibility_bonus": 0.0,
+   "depth_exposure": 0.0,
+   "displacement_adj": 0.0
+  },
+  "alt_pts": 211.65,
+  "alt_final": -3.49
+ },
+ {
+  "seat": "8",
+  "n": 10,
+  "top_pos": "WR",
+  "chosen_is_top_row": true,
+  "te": {
+   "bpa": 50.400000000000006,
+   "need_bonus": 1.0,
+   "eligibility_bonus": 0.0,
+   "depth_exposure": 0.0,
+   "displacement_adj": -72.77
+  },
+  "te_pts": 195.38,
+  "te_final": -26.89,
+  "alt_pos": "WR",
+  "alt": {
+   "bpa": -17.72,
+   "need_bonus": 0.05,
+   "eligibility_bonus": 0.0,
+   "depth_exposure": 0.0,
+   "displacement_adj": 0.0
+  },
+  "alt_pts": 200.03,
+  "alt_final": -19.21
+ },
+ {
+  "seat": "8",
+  "n": 11,
+  "top_pos": "RB",
+  "chosen_is_top_row": true,
+  "te": {
+   "bpa": 42.0,
+   "need_bonus": 1.0,
+   "eligibility_bonus": 0.0,
+   "depth_exposure": 0.0,
+   "displacement_adj": -72.77
+  },
+  "te_pts": 186.98,
+  "te_final": -35.31,
+  "alt_pos": "RB",
+  "alt": {
+   "bpa": 28.460000000000008,
+   "need_bonus": 0.05,
+   "eligibility_bonus": 0.0,
+   "depth_exposure": 0.0,
+   "displacement_adj": -52.96
+  },
+  "alt_pts": 193.25,
+  "alt_final": -34.45
+ },
+ {
+  "seat": "8",
+  "n": 12,
+  "top_pos": "WR",
+  "chosen_is_top_row": true,
+  "te": {
+   "bpa": 23.69999999999999,
+   "need_bonus": 1.0,
+   "eligibility_bonus": 0.0,
+   "depth_exposure": 1.56,
+   "displacement_adj": -83.41
+  },
+  "te_pts": 158.04,
+  "te_final": -61.86,
+  "alt_pos": "WR",
+  "alt": {
+   "bpa": -47.21000000000001,
+   "need_bonus": 0.0,
+   "eligibility_bonus": 0.0,
+   "depth_exposure": 7.44,
+   "displacement_adj": 0.0
+  },
+  "alt_pts": 170.54,
+  "alt_final": -40.8
+ },
+ {
+  "seat": "8",
+  "n": 13,
+  "top_pos": "WR",
+  "chosen_is_top_row": true,
+  "te": {
+   "bpa": 29.22,
+   "need_bonus": 1.0,
+   "eligibility_bonus": 0.0,
+   "depth_exposure": 1.56,
+   "displacement_adj": -89.14
+  },
+  "te_pts": 157.83,
+  "te_final": -67.36,
+  "alt_pos": "WR",
+  "alt": {
+   "bpa": -54.71000000000001,
+   "need_bonus": 0.0,
+   "eligibility_bonus": 0.0,
+   "depth_exposure": 6.96,
+   "displacement_adj": 0.0
+  },
+  "alt_pts": 163.04,
+  "alt_final": -57.75
+ },
+ {
+  "seat": "8",
+  "n": 14,
+  "top_pos": "WR",
+  "chosen_is_top_row": true,
+  "te": {
+   "bpa": 33.67,
+   "need_bonus": 1.0,
+   "eligibility_bonus": 0.0,
+   "depth_exposure": 1.56,
+   "displacement_adj": -117.08
+  },
+  "te_pts": 134.34,
+  "te_final": -90.85,
+  "alt_pos": "WR",
+  "alt": {
+   "bpa": -79.43,
+   "need_bonus": 0.0,
+   "eligibility_bonus": 0.0,
+   "depth_exposure": 6.96,
+   "displacement_adj": 0.0
+  },
+  "alt_pts": 138.32,
+  "alt_final": -74.0
+ },
+ {
+  "seat": "8",
+  "n": 15,
+  "top_pos": "WR",
+  "chosen_is_top_row": true,
+  "te": {
+   "bpa": 29.250000000000014,
+   "need_bonus": 1.0,
+   "eligibility_bonus": 0.0,
+   "depth_exposure": 1.56,
+   "displacement_adj": -118.39
+  },
+  "te_pts": 128.61,
+  "te_final": -96.58,
+  "alt_pos": "WR",
+  "alt": {
+   "bpa": -92.31,
+   "need_bonus": 0.0,
+   "eligibility_bonus": 0.0,
+   "depth_exposure": 6.6,
+   "displacement_adj": 0.0
+  },
+  "alt_pts": 125.44,
+  "alt_final": -89.91
+ },
+ {
+  "seat": "8",
+  "n": 16,
+  "top_pos": "WR",
+  "chosen_is_top_row": true,
+  "te": {
+   "bpa": 15.829999999999998,
+   "need_bonus": 1.0,
+   "eligibility_bonus": 0.0,
+   "depth_exposure": 1.56,
+   "displacement_adj": -124.6
+  },
+  "te_pts": 108.98,
+  "te_final": -116.21,
+  "alt_pos": "WR",
+  "alt": {
+   "bpa": -112.9,
+   "need_bonus": 0.0,
+   "eligibility_bonus": 0.0,
+   "depth_exposure": 6.6,
+   "displacement_adj": 0.0
+  },
+  "alt_pts": 104.85,
+  "alt_final": -106.3
+ },
+ {
+  "seat": "8",
+  "n": 17,
+  "top_pos": "WR",
+  "chosen_is_top_row": true,
+  "te": {
+   "bpa": 12.620000000000005,
+   "need_bonus": 1.0,
+   "eligibility_bonus": 0.0,
+   "depth_exposure": 1.56,
+   "displacement_adj": -137.22
+  },
+  "te_pts": 93.15,
+  "te_final": -132.04,
+  "alt_pos": "WR",
+  "alt": {
+   "bpa": -117.25,
+   "need_bonus": 0.0,
+   "eligibility_bonus": 0.0,
+   "depth_exposure": 6.6,
+   "displacement_adj": 0.0
+  },
+  "alt_pts": 100.5,
+  "alt_final": -116.42
+ },
+ {
+  "seat": "8",
+  "n": 18,
+  "top_pos": "WR",
+  "chosen_is_top_row": true,
+  "te": {
+   "bpa": 0.4399999999999977,
+   "need_bonus": 1.0,
+   "eligibility_bonus": 0.0,
+   "depth_exposure": 1.56,
+   "displacement_adj": -137.66
+  },
+  "te_pts": 80.53,
+  "te_final": -137.36,
+  "alt_pos": "WR",
+  "alt": {
+   "bpa": -133.42000000000002,
+   "need_bonus": 0.0,
+   "eligibility_bonus": 0.0,
+   "depth_exposure": 6.6,
+   "displacement_adj": 0.0
+  },
+  "alt_pts": 84.33,
+  "alt_final": -131.74
+ },
+ {
+  "seat": "8",
+  "n": 19,
+  "top_pos": "WR",
+  "chosen_is_top_row": true,
+  "te": {
+   "bpa": 5.52000000000001,
+   "need_bonus": 1.0,
+   "eligibility_bonus": 0.0,
+   "depth_exposure": 1.56,
+   "displacement_adj": -143.18
+  },
+  "te_pts": 80.09,
+  "te_final": -145.1,
+  "alt_pos": "WR",
+  "alt": {
+   "bpa": -144.01,
+   "need_bonus": 0.0,
+   "eligibility_bonus": 0.0,
+   "depth_exposure": 6.6,
+   "displacement_adj": 0.0
+  },
+  "alt_pts": 73.74,
+  "alt_final": -137.41
+ },
+ {
+  "seat": "8",
+  "n": 20,
+  "top_pos": "WR",
+  "chosen_is_top_row": true,
+  "te": {
+   "bpa": 3.6600000000000037,
+   "need_bonus": 1.0,
+   "eligibility_bonus": 0.0,
+   "depth_exposure": 1.56,
+   "displacement_adj": -157.56
+  },
+  "te_pts": 63.85,
+  "te_final": -151.34,
+  "alt_pos": "WR",
+  "alt": {
+   "bpa": -153.51999999999998,
+   "need_bonus": 0.0,
+   "eligibility_bonus": 0.0,
+   "depth_exposure": 6.6,
+   "displacement_adj": 0.0
+  },
+  "alt_pts": 64.23,
+  "alt_final": -146.92
+ },
+ {
+  "seat": "10",
+  "n": 9,
+  "top_pos": "WR",
+  "chosen_is_top_row": true,
+  "te": {
+   "bpa": 46.190000000000026,
+   "need_bonus": 1.0,
+   "eligibility_bonus": 0.0,
+   "depth_exposure": 0.0,
+   "displacement_adj": -68.58
+  },
+  "te_pts": 195.36,
+  "te_final": -22.21,
+  "alt_pos": "WR",
+  "alt": {
+   "bpa": -11.22999999999999,
+   "need_bonus": 0.05,
+   "eligibility_bonus": 0.0,
+   "depth_exposure": 0.0,
+   "displacement_adj": 0.0
+  },
+  "alt_pts": 206.52,
+  "alt_final": -12.33
+ },
+ {
+  "seat": "10",
+  "n": 10,
+  "top_pos": "RB",
+  "chosen_is_top_row": true,
+  "te": {
+   "bpa": 50.400000000000006,
+   "need_bonus": 1.0,
+   "eligibility_bonus": 0.0,
+   "depth_exposure": 0.0,
+   "displacement_adj": -72.77
+  },
+  "te_pts": 195.38,
+  "te_final": -26.84,
+  "alt_pos": "RB",
+  "alt": {
+   "bpa": 39.78,
+   "need_bonus": 1.0,
+   "eligibility_bonus": 0.0,
+   "depth_exposure": 0.0,
+   "displacement_adj": -46.94
+  },
+  "alt_pts": 210.59,
+  "alt_final": -16.16
+ },
+ {
+  "seat": "10",
+  "n": 12,
+  "top_pos": "WR",
+  "chosen_is_top_row": true,
+  "te": {
+   "bpa": 36.150000000000006,
+   "need_bonus": 0.05,
+   "eligibility_bonus": 0.0,
+   "depth_exposure": 4.68,
+   "displacement_adj": -83.41
+  },
+  "te_pts": 170.49,
+  "te_final": -50.41,
+  "alt_pos": "WR",
+  "alt": {
+   "bpa": -39.52000000000001,
+   "need_bonus": 0.0,
+   "eligibility_bonus": 0.0,
+   "depth_exposure": 6.84,
+   "displacement_adj": 0.0
+  },
+  "alt_pts": 178.23,
+  "alt_final": -35.43
+ },
+ {
+  "seat": "10",
+  "n": 13,
+  "top_pos": "WR",
+  "chosen_is_top_row": true,
+  "te": {
+   "bpa": 40.18999999999998,
+   "need_bonus": 0.05,
+   "eligibility_bonus": 0.0,
+   "depth_exposure": 4.68,
+   "displacement_adj": -108.77
+  },
+  "te_pts": 149.17,
+  "te_final": -71.08,
+  "alt_pos": "WR",
+  "alt": {
+   "bpa": -66.22999999999999,
+   "need_bonus": 0.0,
+   "eligibility_bonus": 0.0,
+   "depth_exposure": 6.72,
+   "displacement_adj": 0.0
+  },
+  "alt_pts": 151.52,
+  "alt_final": -59.51
+ },
+ {
+  "seat": "10",
+  "n": 14,
+  "top_pos": "RB",
+  "chosen_is_top_row": true,
+  "te": {
+   "bpa": 36.33999999999999,
+   "need_bonus": 0.05,
+   "eligibility_bonus": 0.0,
+   "depth_exposure": 4.68,
+   "displacement_adj": -109.11
+  },
+  "te_pts": 144.98,
+  "te_final": -74.77,
+  "alt_pos": "RB",
+  "alt": {
+   "bpa": 15.409999999999997,
+   "need_bonus": 0.05,
+   "eligibility_bonus": 0.0,
+   "depth_exposure": 6.12,
+   "displacement_adj": -76.32
+  },
+  "alt_pts": 156.84,
+  "alt_final": -64.74
+ },
+ {
+  "seat": "10",
+  "n": 15,
+  "top_pos": "RB",
+  "chosen_is_top_row": true,
+  "te": {
+   "bpa": 11.170000000000002,
+   "need_bonus": 0.05,
+   "eligibility_bonus": 0.0,
+   "depth_exposure": 4.68,
+   "displacement_adj": -120.28
+  },
+  "te_pts": 108.64,
+  "te_final": -104.38,
+  "alt_pos": "RB",
+  "alt": {
+   "bpa": 14.329999999999998,
+   "need_bonus": 0.0,
+   "eligibility_bonus": 0.0,
+   "depth_exposure": 6.12,
+   "displacement_adj": -106.11
+  },
+  "alt_pts": 125.97,
+  "alt_final": -95.66
+ },
+ {
+  "seat": "10",
+  "n": 16,
+  "top_pos": "WR",
+  "chosen_is_top_row": true,
+  "te": {
+   "bpa": 6.290000000000006,
+   "need_bonus": 0.05,
+   "eligibility_bonus": 0.0,
+   "depth_exposure": 4.68,
+   "displacement_adj": -123.37
+  },
+  "te_pts": 100.67,
+  "te_final": -112.35,
+  "alt_pos": "WR",
+  "alt": {
+   "bpa": -106.08,
+   "need_bonus": 0.0,
+   "eligibility_bonus": 0.0,
+   "depth_exposure": 6.72,
+   "displacement_adj": 0.0
+  },
+  "alt_pts": 111.67,
+  "alt_final": -102.82
+ },
+ {
+  "seat": "10",
+  "n": 17,
+  "top_pos": "WR",
+  "chosen_is_top_row": true,
+  "te": {
+   "bpa": 12.620000000000005,
+   "need_bonus": 0.05,
+   "eligibility_bonus": 0.0,
+   "depth_exposure": 4.68,
+   "displacement_adj": -137.22
+  },
+  "te_pts": 93.15,
+  "te_final": -129.87,
+  "alt_pos": "WR",
+  "alt": {
+   "bpa": -114.03,
+   "need_bonus": 0.0,
+   "eligibility_bonus": 0.0,
+   "depth_exposure": 6.72,
+   "displacement_adj": 0.0
+  },
+  "alt_pts": 103.72,
+  "alt_final": -117.31
+ },
+ {
+  "seat": "10",
+  "n": 18,
+  "top_pos": "RB",
+  "chosen_is_top_row": true,
+  "te": {
+   "bpa": 1.1299999999999955,
+   "need_bonus": 0.05,
+   "eligibility_bonus": 0.0,
+   "depth_exposure": 4.68,
+   "displacement_adj": -137.39
+  },
+  "te_pts": 81.49,
+  "te_final": -131.53,
+  "alt_pos": "RB",
+  "alt": {
+   "bpa": 0.0,
+   "need_bonus": 0.0,
+   "eligibility_bonus": 0.0,
+   "depth_exposure": 6.12,
+   "displacement_adj": -129.51
+  },
+  "alt_pts": 88.24,
+  "alt_final": -123.39
+ },
+ {
+  "seat": "10",
+  "n": 19,
+  "top_pos": "WR",
+  "chosen_is_top_row": true,
+  "te": {
+   "bpa": 12.370000000000005,
+   "need_bonus": 0.05,
+   "eligibility_bonus": 0.0,
+   "depth_exposure": 4.68,
+   "displacement_adj": -150.43
+  },
+  "te_pts": 79.69,
+  "te_final": -143.33,
+  "alt_pos": "WR",
+  "alt": {
+   "bpa": -145.5,
+   "need_bonus": 0.0,
+   "eligibility_bonus": 0.0,
+   "depth_exposure": 6.72,
+   "displacement_adj": 0.0
+  },
+  "alt_pts": 72.25,
+  "alt_final": -138.78
+ },
+ {
+  "seat": "10",
+  "n": 20,
+  "top_pos": "WR",
+  "chosen_is_top_row": true,
+  "te": {
+   "bpa": 11.759999999999991,
+   "need_bonus": 0.05,
+   "eligibility_bonus": 0.0,
+   "depth_exposure": 4.68,
+   "displacement_adj": -154.94
+  },
+  "te_pts": 74.57,
+  "te_final": -148.21,
+  "alt_pos": "WR",
+  "alt": {
+   "bpa": -143.04000000000002,
+   "need_bonus": 0.0,
+   "eligibility_bonus": 0.0,
+   "depth_exposure": 6.72,
+   "displacement_adj": 0.0
+  },
+  "alt_pts": 74.71,
+  "alt_final": -145.13
+ },
+ {
+  "seat": "11",
+  "n": 9,
+  "top_pos": "RB",
+  "chosen_is_top_row": true,
+  "te": {
+   "bpa": 46.190000000000026,
+   "need_bonus": 1.0,
+   "eligibility_bonus": 0.0,
+   "depth_exposure": 0.0,
+   "displacement_adj": -68.58
+  },
+  "te_pts": 195.36,
+  "te_final": -22.14,
+  "alt_pos": "RB",
+  "alt": {
+   "bpa": 43.579999999999984,
+   "need_bonus": 1.0,
+   "eligibility_bonus": 0.0,
+   "depth_exposure": 0.0,
+   "displacement_adj": -46.94
+  },
+  "alt_pts": 214.39,
+  "alt_final": -12.36
+ },
+ {
+  "seat": "11",
+  "n": 10,
+  "top_pos": "WR",
+  "chosen_is_top_row": true,
+  "te": {
+   "bpa": 50.400000000000006,
+   "need_bonus": 1.0,
+   "eligibility_bonus": 0.0,
+   "depth_exposure": 0.0,
+   "displacement_adj": -72.77
+  },
+  "te_pts": 195.38,
+  "te_final": -26.88,
+  "alt_pos": "WR",
+  "alt": {
+   "bpa": -11.509999999999991,
+   "need_bonus": 0.05,
+   "eligibility_bonus": 0.0,
+   "depth_exposure": 0.0,
+   "displacement_adj": 0.0
+  },
+  "alt_pts": 206.24,
+  "alt_final": -14.02
+ },
+ {
+  "seat": "11",
+  "n": 12,
+  "top_pos": "RB",
+  "chosen_is_top_row": true,
+  "te": {
+   "bpa": 36.150000000000006,
+   "need_bonus": 0.05,
+   "eligibility_bonus": 0.0,
+   "depth_exposure": 3.12,
+   "displacement_adj": -83.41
+  },
+  "te_pts": 170.49,
+  "te_final": -51.85,
+  "alt_pos": "RB",
+  "alt": {
+   "bpa": 26.060000000000002,
+   "need_bonus": 0.05,
+   "eligibility_bonus": 0.0,
+   "depth_exposure": 6.72,
+   "displacement_adj": -56.04
+  },
+  "alt_pts": 187.77,
+  "alt_final": -33.21
+ },
+ {
+  "seat": "11",
+  "n": 13,
+  "top_pos": "RB",
+  "chosen_is_top_row": true,
+  "te": {
+   "bpa": 40.18999999999998,
+   "need_bonus": 0.05,
+   "eligibility_bonus": 0.0,
+   "depth_exposure": 3.12,
+   "displacement_adj": -108.77
+  },
+  "te_pts": 149.17,
+  "te_final": -72.7,
+  "alt_pos": "RB",
+  "alt": {
+   "bpa": 1.4599999999999795,
+   "need_bonus": 0.0,
+   "eligibility_bonus": 0.0,
+   "depth_exposure": 6.72,
+   "displacement_adj": -59.01
+  },
+  "alt_pts": 160.2,
+  "alt_final": -60.83
+ },
+ {
+  "seat": "11",
+  "n": 14,
+  "top_pos": "RB",
+  "chosen_is_top_row": true,
+  "te": {
+   "bpa": 36.33999999999999,
+   "need_bonus": 0.05,
+   "eligibility_bonus": 0.0,
+   "depth_exposure": 3.12,
+   "displacement_adj": -109.11
+  },
+  "te_pts": 144.98,
+  "te_final": -76.2,
+  "alt_pos": "RB",
+  "alt": {
+   "bpa": 1.9000000000000057,
+   "need_bonus": 0.0,
+   "eligibility_bonus": 0.0,
+   "depth_exposure": 6.72,
+   "displacement_adj": -60.91
+  },
+  "alt_pts": 158.74,
+  "alt_final": -62.29
+ },
+ {
+  "seat": "11",
+  "n": 15,
+  "top_pos": "WR",
+  "chosen_is_top_row": true,
+  "te": {
+   "bpa": 11.170000000000002,
+   "need_bonus": 0.05,
+   "eligibility_bonus": 0.0,
+   "depth_exposure": 3.12,
+   "displacement_adj": -120.28
+  },
+  "te_pts": 108.64,
+  "te_final": -105.94,
+  "alt_pos": "WR",
+  "alt": {
+   "bpa": -98.23,
+   "need_bonus": 0.0,
+   "eligibility_bonus": 0.0,
+   "depth_exposure": 5.88,
+   "displacement_adj": 0.0
+  },
+  "alt_pts": 119.52,
+  "alt_final": -96.7
+ },
+ {
+  "seat": "11",
+  "n": 16,
+  "top_pos": "WR",
+  "chosen_is_top_row": true,
+  "te": {
+   "bpa": 6.290000000000006,
+   "need_bonus": 0.05,
+   "eligibility_bonus": 0.0,
+   "depth_exposure": 3.12,
+   "displacement_adj": -123.37
+  },
+  "te_pts": 100.67,
+  "te_final": -113.91,
+  "alt_pos": "WR",
+  "alt": {
+   "bpa": -96.97,
+   "need_bonus": 0.0,
+   "eligibility_bonus": 0.0,
+   "depth_exposure": 5.88,
+   "displacement_adj": 0.0
+  },
+  "alt_pts": 120.78,
+  "alt_final": -99.4
+ },
+ {
+  "seat": "11",
+  "n": 17,
+  "top_pos": "RB",
+  "chosen_is_top_row": true,
+  "te": {
+   "bpa": 12.620000000000005,
+   "need_bonus": 0.05,
+   "eligibility_bonus": 0.0,
+   "depth_exposure": 3.12,
+   "displacement_adj": -137.22
+  },
+  "te_pts": 93.15,
+  "te_final": -131.43,
+  "alt_pos": "RB",
+  "alt": {
+   "bpa": 13.230000000000004,
+   "need_bonus": 0.0,
+   "eligibility_bonus": 0.0,
+   "depth_exposure": 6.6,
+   "displacement_adj": -127.53
+  },
+  "alt_pts": 103.45,
+  "alt_final": -117.7
+ },
+ {
+  "seat": "11",
+  "n": 18,
+  "top_pos": "WR",
+  "chosen_is_top_row": true,
+  "te": {
+   "bpa": 1.1299999999999955,
+   "need_bonus": 0.05,
+   "eligibility_bonus": 0.0,
+   "depth_exposure": 3.12,
+   "displacement_adj": -137.39
+  },
+  "te_pts": 81.49,
+  "te_final": -133.09,
+  "alt_pos": "WR",
+  "alt": {
+   "bpa": -126.22,
+   "need_bonus": 0.0,
+   "eligibility_bonus": 0.0,
+   "depth_exposure": 5.88,
+   "displacement_adj": 0.0
+  },
+  "alt_pts": 91.53,
+  "alt_final": -122.45
+ },
+ {
+  "seat": "11",
+  "n": 19,
+  "top_pos": "WR",
+  "chosen_is_top_row": true,
+  "te": {
+   "bpa": 12.370000000000005,
+   "need_bonus": 0.05,
+   "eligibility_bonus": 0.0,
+   "depth_exposure": 3.12,
+   "displacement_adj": -150.43
+  },
+  "te_pts": 79.69,
+  "te_final": -144.89,
+  "alt_pos": "WR",
+  "alt": {
+   "bpa": -136.64,
+   "need_bonus": 0.0,
+   "eligibility_bonus": 0.0,
+   "depth_exposure": 5.88,
+   "displacement_adj": 0.0
+  },
+  "alt_pts": 81.11,
+  "alt_final": -139.94
+ },
+ {
+  "seat": "11",
+  "n": 20,
+  "top_pos": "RB",
+  "chosen_is_top_row": true,
+  "te": {
+   "bpa": 11.759999999999991,
+   "need_bonus": 0.05,
+   "eligibility_bonus": 0.0,
+   "depth_exposure": 3.12,
+   "displacement_adj": -154.94
+  },
+  "te_pts": 74.57,
+  "te_final": -149.77,
+  "alt_pos": "RB",
+  "alt": {
+   "bpa": -6.739999999999995,
+   "need_bonus": 0.0,
+   "eligibility_bonus": 0.0,
+   "depth_exposure": 6.6,
+   "displacement_adj": -145.33
+  },
+  "alt_pts": 65.68,
+  "alt_final": -145.47
+ }
+]
