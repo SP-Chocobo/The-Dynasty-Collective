@@ -279,6 +279,19 @@ doctrine rules that VOR must be DECLINED outside it — but the domain is keyed 
 cannot fire; and 192 of 312 picks in this league are bench/IR/taxi seats priced against a bar
 whose stated meaning is "guaranteed startable".
 
+**6. And the counterweight only DEFERS.** Of the players in `bpa` ranks 1–168 that rounds 1–14
+declined — TE 6, RB 2 — **all eight were taken in rounds 15–26; none went undrafted.** The term
+changes WHEN a tight end is taken, not WHETHER, because 312 of 481 priced rows are consumed and a
+deferred player is still inside the draft's reach. That is why "force balanced" did not reproduce
+the human numbers either (TE 21.8%, not 15.5%): a term that defers is not a term that fixes. And
+`displacement_adj` is 0.00 on all 481 rows of the OPENING board by construction — an empty roster
+leaves every dedicated slot open, so the counterweight cannot exist there. That is the mechanical
+reason the 19th withdrawal was necessary.
+
+**Robustness:** the regime split is identical under third-round reversal — TE 26 in rounds 1–14 and
+75 in rounds 15–26 in BOTH arms, under a permutation that scrambles ~90% of seat assignments. Two
+arms is not a population, but it is not one pick order's accident either.
+
 ## The owner's question, now askable against an exact number
 
 **Should a tight end receive +68.58 points over an otherwise identical receiver for a deep-bench
