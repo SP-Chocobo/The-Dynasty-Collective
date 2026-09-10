@@ -22,14 +22,19 @@ opening line is that every measurement error here was a fixture error, not a rea
 | | QB | RB | WR | TE | rows |
 |---|---|---|---|---|---|
 | WRONG board (vendor, 764) | 14.3% | 28.2% | 38.9% | 18.6% | 280 |
-| **REAL board (capture, 6,595)** | **13.9%** | **22.9%** | **40.4%** | **22.9%** | **1,119** |
+| REAL board, ADMITTED rows | 13.9% | 22.9% | 40.4% | 22.9% | 1,119 |
+| **REAL board, PRICED rows** | **8.7%** | **26.2%** | **41.2%** | **23.9%** | **481** |
 
 ## What is WITHDRAWN
 
 **FINDING_01's headline is withdrawn twice over.**
 
-1. "280 priced rows for a 312-pick startup, 32 picks with no priced player." **False.** The
-   real board carries **1,119 priced rows**. There is no supply shortfall in this league.
+1. "280 priced rows for a 312-pick startup, 32 picks with no priced player." **False**, but
+   this correction OVERSTATED the other way and is itself corrected in
+   RESULT_aggregate_selection.md: **1,119 is the board's ROW count, not its priced count.**
+   `bpa_source` is `no_priceable_input` on 638 of them; the real board carries **481 priced
+   rows**. The conclusion survives — 481 > 312, so there is no supply shortfall — but the
+   margin is 481 against 312 picks, not 1,119 against 312.
 2. "The humans drafted approximately the pool (37.1% vs 38.9%), the engine deviates."
    **False.** Against the real pool the humans deviate too -- they take 15.5% TE where the
    pool offers 22.9%, and 20.0% QB where it offers 13.9%. The tidy "humans track the pool"

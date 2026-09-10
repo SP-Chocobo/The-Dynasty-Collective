@@ -1,3 +1,13 @@
+> **PARTIALLY CORRECTED — see RESULT_aggregate_selection.md.** Two things in this file are
+> withdrawn. (1) The "priced pool offers" row of the table below is the 764-row VENDOR board,
+> retracted by CORRECTION_wrong_universe.md; the real priced pool is QB 8.7 / RB 26.2 /
+> WR 41.2 / TE 23.9 over 481 priced rows, so the engine's 32.4% is **1.36x** the pool's TE
+> share, not the 1.74x claimed here. (2) The MECHANISM paragraph ("VOR measured against a
+> collapsed level stays positive for every remaining body") is superseded: the level cancels
+> wherever displacement is non-zero, and the tight ends being taken are overwhelmingly
+> NEGATIVE-bpa (the 312 cut sits at bpa ≈ −142). The engine-vs-human comparison — 32.4%
+> against 15.5%, both on the real universe — is UNAFFECTED and stands.
+
 # THE DEFECT IS TIGHT ENDS, NOT RECEIVERS
 
 A complete 12x26 startup on Fourth and Forever's real rulebook, all twelve chairs driven by

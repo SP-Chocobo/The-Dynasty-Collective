@@ -146,3 +146,53 @@ clause added to the skill.
 way, re-run untouched, read three counts. Contention predicts the perturbed seat moves by
 several AND both neighbours move opposite. Signs on record before any reading. ~1,016s, not
 authorized.
+
+---
+
+# UPDATE — the aggregate is set by one subtraction, before any pick
+
+Pre-registered in `PREREG_aggregate_selection.md`; result in `RESULT_aggregate_selection.md`.
+One opening board, no draft, no engine change.
+
+**The upstream evidence audit the owner asked for.** FINDING_01: **retracted** (vendor
+universe), unusable. FINDING_02/03/04: numbers withdrawn, mechanisms unverified. FINDING_05:
+engine-vs-human comparison valid and standing; its own pool row quotes the withdrawn vendor
+board (corrected in place — 1.36x, not 1.74x) and its stated MECHANISM is superseded.
+PHASE4: valid, but identifies a scope mechanism, not an aggregate-selection one.
+**Verdict: the existing evidence did NOT resolve the aggregate-selection mechanism.**
+
+**What resolves it.** Ranking the opening priced board (481 rows) and cutting at 312:
+
+| ranked by | QB | RB | WR | **TE** | overlap w/ drafted |
+|---|---|---|---|---|---|
+| raw projected_points | 35 | 79 | 131 | **67** | 273/312 |
+| **bpa = points − level** | 34 | 83 | 94 | **101** | **310/312** |
+| full final_score | 34 | 84 | 96 | 98 | 309/312 |
+| ACTUALLY DRAFTED | 32 | 84 | 95 | **101** | — |
+
+**The 312-pick draft reproduces a single pre-draft board sort to within three players, and the
+entire positional movement happens at ONE step: subtracting the replacement level takes TE from
+67 to 101.** The six other score terms move TE by −3. Twelve rosters, 26 rounds of state, the
+mode boundary and `narrow_candidates` move it by +3.
+
+**The mechanism, in production quantities.** Levels: QB 243.29, RB 170.81, WR 217.75,
+**TE 149.17** — a 94-point spread. The 312 cut is one global bpa threshold (≈ −141.7 at every
+position), so it admits a completely different raw player per position: **a TE projecting 7.4
+clears it; a WR needs 75.9.** The engine takes 101 of 115 priced tight ends (88% of the pool)
+against 94 of 198 receivers (47%).
+
+**This is location, not fault.** `points − level` is value over replacement — the intended
+design, correctly implemented, one constant per position derived from this league's own demand
+and pool. What is established is that cross-position comparability of VOR in the deep-bench
+regime determines the aggregate and essentially nothing else does. That is #155's reserved
+question, now measured on the real universe. **Whether a 7.4-point TE should outrank a
+75.9-point WR for a bench seat is a design question and it is the owner's.**
+
+**Open, stated as open:** the level cancels mid-draft (`bpa + displacement_adj = points −
+displaced`) yet the final composition matches the opening bpa ranking, where it does not
+cancel. Compatible — `displaced >= level` always, so displacement can only lower a candidate —
+but that compatibility is an inference and is NOT measured.
+
+**Butterfly test: still not run, as instructed.** The bifurcation stays parked as a separate
+roster-distribution phenomenon; nothing here shows it feeding back into aggregate selection —
+in fact the opposite.

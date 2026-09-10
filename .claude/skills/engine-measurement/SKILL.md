@@ -289,6 +289,40 @@ json.dump([{"pick": i, "roster": p.roster_id, "player": p.chosen_player_id}
 print("RAW SAVED:", len(traj.picks), "picks", flush=True)
 ```
 
+## Never name a production column from memory — take the row's own keys
+
+`compute_draft_board` computes `_points` and `replacement_level` internally and emits NEITHER.
+It emits `projected_points`; the level is not emitted at all (derive it as
+`projected_points - bpa`, both of which are). A probe that asked for the internal names got
+`None` on all 1,119 rows — which would have read as "no player in this league has a
+projection" — because a `dict.get` on a missing key is indistinguishable from a measured
+absence.
+
+Print the emitted key set once, and assert on the column you need:
+
+```python
+df = pd.DataFrame(board)
+print("EMITTED COLUMNS:", sorted(df.columns.tolist()))
+PTS = "projected_points"
+if PTS not in df.columns:
+    raise RuntimeError(f"{PTS} absent; emitted columns are {sorted(df.columns)}")
+```
+
+The board's emitted set, for reference: `availability_basis bpa bpa_source confidence
+depth_basis depth_exposure displacement_adj displacement_basis eligibility_bonus
+fills_required_slot final_score horizon_basis horizon_floor horizon_sensitivity
+identity_basis injury_status mode name need_bonus player_id position projected_points
+replacement_basis risk_adj team time_horizon_adj universal_value waiting_cost`.
+
+Seventh fixture error of this family. Reading the internal name in `draft_room.py` and
+assuming it survives to the board is the same category as assuming the vendor pool is the real
+pool: a plausible number about something else.
+
+**Related: a board ROW count is not a PRICED count.** The F&F board is 1,119 rows of which
+**481** carry `final_score`; 638 have `bpa_source == "no_priceable_input"`. A published
+correction in this repo quoted 1,119 as the priced pool. Count `final_score.notna()`, and say
+which of the two you mean.
+
 ## A rate of exactly zero: prove the detector could have fired
 
 `if value:` conflating `None` with `0.0` is the version of this the file already covers. Here is
