@@ -107,3 +107,42 @@ switch is GLOBAL while "this seat is safe" would be per-seat, so even the scope 
 - **What accounts for the residual?** 29.2% TE survived the ablation, against a human 15.5%.
   Do not let the mode effect become the gravitational centre that explains everything merely
   because it explains a lot — the ablation already showed it does not.
+
+---
+
+# UPDATE — the symmetry break redistributes, it does not create (RESIDUAL5)
+
+Two results, both from artifacts already on disk, no engine run. Basis: ARTIFACT-READ.
+The #218 reproduction gate is untouched.
+
+**1. Composition is conserved under pick-order permutation.** base vs 3RR: the SET of 312
+drafted players is identical, positional totals identical (QB 32, RB 84, TE 101, WR 95), yet
+only 32 of 312 land on the same seat and only 7 of 101 tight ends do. base vs revseat: the
+same player at 312 of 312 overalls — the seat LABEL is inert, so every hypothesis reading
+`roster_id` is dead; it is slot 9, not roster 9. Only the mode ablation moves composition
+(TE 101 → 68, WR 95 → 131, first divergence at overall 171).
+
+**Consequence for the scoreboard:** the hoarder/starver bifurcation has ZERO aggregate
+authority. All four team-specific terms together decide who receives a player, never whether
+the league takes him. The 32.4%-vs-15.5% gap therefore cannot be explained by finding the
+symmetry-breaking variable — permuting it leaves the number at 32.4%. The bifurcation is
+demoted from *the culprit* to a second, smaller roster-quality defect. The culprit for the
+total sits upstream, where FINDING_01 and PHASE4 already pointed.
+
+**2. Neighbours anti-correlate in the arm that bifurcates.** Statistic and direction specified
+by the Fable advisory before it was computed. Lag-1 on the snake lattice, seat-label
+permutation null, 200k draws: balanced r = −0.487 (P = 0.0495); base +0.110 (0.762); 3rr
++0.178 (0.840). Independent flips and a fixed per-seat trait both predict ~0; only between-seat
+pool contention predicts negative. Marginal at n = 12 in one draft — suggestive, not
+established — but it converges with (1), which contention independently predicts.
+
+**18th withdrawal:** RESIDUAL3's "the open-slot mechanism fires 0 times in 144 observations"
+is a detector artifact. `adjustment == 0.0` needs `displaced == the TE level`; under
+`slot_alternatives` the flex phantom is `max(levels)` = 217.75, above every TE level observed,
+so the predicate was arithmetically unreachable. 0 of 144 measured the detector. Doctrine
+clause added to the skill.
+
+**Registered and NOT run:** the butterfly test — force one hoarder's +0.01 near-tie the other
+way, re-run untouched, read three counts. Contention predicts the perturbed seat moves by
+several AND both neighbours move opposite. Signs on record before any reading. ~1,016s, not
+authorized.

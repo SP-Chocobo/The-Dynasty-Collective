@@ -289,6 +289,33 @@ json.dump([{"pick": i, "roster": p.roster_id, "player": p.chosen_player_id}
 print("RAW SAVED:", len(traj.picks), "picks", flush=True)
 ```
 
+## A rate of exactly zero: prove the detector could have fired
+
+`if value:` conflating `None` with `0.0` is the version of this the file already covers. Here is
+the harder version, and it survived a correct pre-registration.
+
+RESIDUAL3 (#222) pre-registered three forks on the rate at which a term returns `adjustment ==
+0.0` — its documented open-slot case — and reported "0.0 for every seat, in 144 observations."
+That was Fork B, cleanly selected, and it was an artifact. `adjustment` is
+`free_alternative - displaced`, so the predicate needs `displaced` to equal the candidate's own
+replacement level; but under `slot_alternatives` a FLEX phantom is worth `max(levels)` across
+every position the slot admits, which is above the candidate's level for every position but one.
+In that population the predicate was **arithmetically unreachable**. 0 of 144 measured the
+detector.
+
+**Before you read a rate of exactly zero as a finding, state the condition under which your
+detector fires and show it is reachable in the population you measured.** An unreachable
+predicate returns 0.0 for every input and is indistinguishable, in the output, from a clean
+null result.
+
+The cheap version of this check: print the distribution of the quantity your predicate tests,
+not just the count of hits. RESIDUAL3's own raw file had it — `displaced` took six distinct
+values and none of them was the level — and nothing looked.
+
+Note that RESIDUAL3's docstring named the hazard ("0.0 is a CONSTRUCTION, not a measured zero,
+which is exactly why its RATE is the quantity") and then walked into it. Naming a hazard is not
+checking for it.
+
 ## Before you report a number
 
 - Is the population non-vacuous? Print `n`. A rate over an empty set is not a rate.
