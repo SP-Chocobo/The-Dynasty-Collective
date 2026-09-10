@@ -243,3 +243,62 @@ overlap was reported without its chance baseline, which is **202/312**.
 behaviour; what is new is that it breaks a matched pair); not that the level subtraction is
 wrong (76b17b3's contract finding is untouched); not "force balanced", which PHASE4 already
 measured and rejected.
+
+---
+
+# THE CHAIN IS CLOSED — read this section first
+
+Four commits (`42ecbac` → `20f5b53`) turned #222 from a hunt into an arithmetic account. Stated
+end to end, with what is settled and what is still the owner's:
+
+**1. The engine drafts like a human until round 15.** Rounds 1–14: QB 19.0 / RB 26.2 / WR 39.3 /
+**TE 15.5**. Twelve real managers, whole draft: QB 20.0 / RB 27.4 / WR 37.1 / **TE 15.5**. The
+entire divergence is the 144 upside picks (TE 52.1%).
+
+**2. Why balanced works.** At a flex slot the phantom is `max(level over admitted positions)`, so
+for a candidate whose reachable slots are held:
+`bpa + displacement_adj = (points − level) + (level − phantom) = points − phantom`. **The
+positional level cancels exactly.** Every flex-reachable candidate is compared on raw points
+against one common bar.
+
+**3. Why upside doesn't.** The upside branch zeroes every team-specific term, which removes
+`displacement_adj`. The level stops cancelling and each position gains exactly
+`phantom − level_pos`: **WR +0.00, RB +46.94, TE +68.58.** Derived, not fitted. Independently
+cross-checked three ways (RESIDUAL2's measured −68.58; `displaced == 217.75` on 103 of 144 TE
+rows; `displacement_adj == 0.00` on 160/160 and 139/139 WR rows).
+
+**4. Why nobody had stated it.** `UPSIDE_MODE_DEFAULT_ROUND`'s comment says upside mode stops
+"filling a need **or** respecting positional scarcity". It implements the first and retains the
+second at full weight as the base of `upside_score` (`bpa + 0.5·growth`). Half the stated intent
+is implemented; the retained half is the one the dropped half was holding in check.
+
+**5. Why no contract catches it.** `replacement_levels` has an explicit domain of validity and the
+doctrine rules that VOR must be DECLINED outside it — but the domain is keyed on **the anchor**
+("does this position still have an unfilled league starter slot?"), never on **the candidate**
+("is this player a plausible starter?"). At the opening board demand is maximal, so the rule
+cannot fire; and 192 of 312 picks in this league are bench/IR/taxi seats priced against a bar
+whose stated meaning is "guaranteed startable".
+
+## The owner's question, now askable against an exact number
+
+**Should a tight end receive +68.58 points over an otherwise identical receiver for a deep-bench
+flex seat?** Not "is 32.4% too many tight ends" — that was never the right question and the
+standing prohibition rules it out as evidence. This one is answerable, and it is the same question
+the contract investigation found unanswered.
+
+Two sub-questions, both owner-level, neither taken here:
+- Is upside mode meant to drop roster fit ONLY, or roster fit AND the positional anchor?
+- Should the domain of validity be keyed on the candidate as well as the anchor?
+
+## Standing prohibitions, still in force
+
+No engine source modified anywhere in #222. Do not tune `UPSIDE_MODE_DEFAULT_ROUND`. Do not add a
+TE penalty, move a threshold, or alter cross-position normalization. "Force balanced" is measured
+and rejected (PHASE4). The 1-vs-15 allocation phenomenon stays a separate open question (#226) and
+nothing above depends on it.
+
+## Withdrawals this session — 17th, 18th, 19th
+
+17th `narrow_candidates` (picks-shape fixture artifact) · 18th RESIDUAL3's zero-rate (unreachable
+predicate) · 19th **mine**, "the aggregate is set by one subtraction before any pick" (numbers
+stand, causal reading withdrawn, caught by a pre-registered test of my own flagged inference).
