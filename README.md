@@ -80,16 +80,31 @@ so far in the current draft.
   `universal_value` (team-agnostic: BPA + time-horizon + risk adjustments)
   and **Team Acquisition Value (TAV)**, CDME's principal quantitative
   output — `universal_value + need_bonus + eligibility_bonus +
-  depth_exposure`, this roster's own fit layered on top of the
-  team-agnostic number. All four terms are unit-matched to the same
-  bpa-anchored scale and individually
-  bounded (`need_bonus` capped at `NEED_BONUS_MAX`; `eligibility_bonus` —
-  the value a candidate's multi-position flexibility unlocks, computed by
-  `lineup_optimizer.py`'s real assignment-problem solver — is rescaled from
-  its native Draft-Sharks-`trade_value` currency into that same bpa scale
-  and capped at `ELIGIBILITY_BONUS_MAX`) specifically so neither roster-fit
-  term can override a genuine talent gap on its own; see "Known Limitations
-  & Audit History" below for the real defect this bound was added to close.
+  depth_exposure + displacement_adj`, this roster's own fit layered on top
+  of the team-agnostic number. All five terms are unit-matched to the same
+  bpa-anchored scale, but they are **two classes of term, not one**, and
+  the difference is deliberate:
+
+  - **Three bounded nudges** — `need_bonus`, `eligibility_bonus` and
+    `depth_exposure` — are individually capped (`NEED_BONUS_MAX`,
+    `ELIGIBILITY_BONUS_MAX`, `DEPTH_EXPOSURE_MAX`; the same number three
+    times, because they are one class and ranking them would invent an
+    ordering no measurement supports) specifically so that **no roster-fit
+    nudge can override a genuine talent gap on its own**. `eligibility_bonus`
+    — the value a candidate's multi-position flexibility unlocks, computed by
+    `lineup_optimizer.py`'s real assignment-problem solver — is additionally
+    rescaled from its native Draft-Sharks-`trade_value` currency into the
+    bpa scale first. See "Known Limitations & Audit History" below for the
+    real defect these bounds were added to close.
+  - **`displacement_adj` is uncapped, and that is its purpose.** It is
+    non-positive by construction, so it can only ever *remove* credit from a
+    candidate this roster cannot actually start, never add it — which is why
+    it needs no cap and why it is absent from `TEAM_SPECIFIC_CAPS`. It
+    exists because no bounded nudge could span the 43–60 point bias a
+    surplus tight end was being handed in a one-TE league. So it **may**
+    move a large gap, downward only. Reading the bound in the bullet above
+    as covering all five terms is the specific misreading this split exists
+    to prevent; `CDME_CONTRACTS.md` invariant 4a/4b is the authority.
 - `pick_synthesis.py` adds the contextual signals that don't answer "how
   good is this player" but "how badly do I need to make THIS selection
   right now": positional cliff, survival probability, denial/rival
@@ -821,9 +836,11 @@ value a candidate's multi-position flexibility unlocks — is computed by
 `lineup_optimizer.py` as a real assignment-problem answer, correctly
 returned in whatever currency its caller supplies (Draft Sharks
 `trade_value`, a 0–100 scale). It was being added directly into
-`team_acquisition_value`, a sum whose other two terms live on a different,
-non-interchangeable 0–100 scale (bpa-anchored `universal_value` and
-`need_bonus`, which is capped at `NEED_BONUS_MAX` for exactly this reason).
+`team_acquisition_value`, whose other terms **at that time** — bpa-anchored
+`universal_value` and `need_bonus`, capped at `NEED_BONUS_MAX` for exactly
+this reason — lived on a different, non-interchangeable 0–100 scale. (TAV
+has since grown to five terms; this paragraph describes the sum as it stood
+when the defect was found, not as it stands now.)
 Measured on the committed baseline, the two scales diverge by a mean of
 11.7 points and up to 63.0 — and because `eligibility_bonus` was the one
 contextual term with no equivalent cap, it could, on real data, produce a

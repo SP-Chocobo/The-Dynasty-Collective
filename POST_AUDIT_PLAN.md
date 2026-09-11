@@ -7168,3 +7168,32 @@ modules first, so a rename cannot make the invariant pass by emptying it.
 **Deliberately does NOT merge the five into one constant.** Whether the vocabulary gets a single
 shared home is #188's live question, and collapsing them here would decide it. This makes drift
 loud and leaves the naming decision where it belongs.
+
+## #182 (prose audit): the README stated the TAV identity with four terms and claimed all were bounded
+
+The front-door document was three days behind the engine, and the gap was substantive rather
+than cosmetic.
+
+**What it said.** TAV = `universal_value + need_bonus + eligibility_bonus + depth_exposure`, and
+"**All four terms** are unit-matched to the same bpa-anchored scale and individually **bounded**
+… specifically so neither roster-fit term can override a genuine talent gap on its own."
+
+**What the code says.** Five terms — the identity in `draft_room.py`'s own module docstring adds
+`+ displacement_adj` — and the fifth is **uncapped by design**. It is non-positive by
+construction, so it can only remove credit, which is exactly why it needs no cap and is absent
+from `TEAM_SPECIFIC_CAPS`; it exists because *no bounded nudge could span* the 43–60 point bias
+a surplus tight end was handed in a one-TE league.
+
+**So the README's reassurance was false in the direction that matters**: it told a reader no
+roster-fit term can override a talent gap, while the term added precisely to move large gaps
+went unmentioned. This is the same defect corrected in `CDME_CONTRACTS.md` earlier this session
+(Invariant 1's three-term identity, and Invariant 4 split into 4a/4b) — the README simply never
+got the same pass.
+
+**Repaired** to state the five-term identity and the two classes explicitly, mirroring 4a/4b so
+the two documents use one vocabulary (#126) and naming `CDME_CONTRACTS.md` as the authority. A
+second passage describing the historical eligibility-bonus unit defect said "a sum whose other
+**two** terms live on a different scale" — accurate when written, a false present-tense arity
+now; it is re-scoped to "at that time" with a note that TAV has since grown to five.
+
+Documentation only; no code touched, and no test reads README.md (checked).
