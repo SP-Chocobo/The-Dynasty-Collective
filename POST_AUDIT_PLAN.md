@@ -7374,3 +7374,62 @@ framing built on the wrong column — the detector works on `bpa`, with a *trimm
 directly, which is the only version that measures the engine rather than my model of it.
 
 Detail at `evidence/roster_shape/ff_rulebook/FINDING_175_the_ratio_selects_a_quantile_not_a_cliff.md`.
+
+## #188 RULED AND EXECUTED: `basis_semantics.py` — one place to ask "is this a bound?", two classes
+
+**The ruling (owner):** adopt `partial` as the shared concept; keep `rule_floor` distinct;
+`provider_meter.TRUNCATED` stays out because it describes a payload, not the epistemic status of
+a computed quantity. **The condition:** enumerate the actual emitters and make sure the shared
+state is *reachable* in each intended vocabulary — do not turn the cleanup into another
+unreachable-predicate exercise.
+
+### Reachability, established by EXERCISE rather than by reading
+
+| token | value | how established |
+|---|---|---|
+| `lineup_optimizer.BYE_PARTIAL` | `partial` | **exercised** — one unknown bye → `partial`; control (all byes known) → `measured` |
+| `lineup_optimizer.DISPLACEMENT_ROSTER_PARTIAL` | `roster_partially_priced` | **exercised** — unpriced eligible → that token; control → `measured` |
+| `player_universe.RULE_FLOOR` | `rule_floor` | **exercised** — `availability_factor("IR", 17)` → factor 0.7647, basis `rule_floor`; three controls → the absence states |
+| `draft_room.REPLACEMENT_BASIS_POOL_TRUNCATED` | `pool_truncated` | **dormant by design** — see below |
+
+**`pool_truncated` is dormant, not dead, and the distinction is the point.** Its clamp binds at
+no position on the real rulebook (86 DL, 85 LB, 130 DB price in an IDP league), so behaviour
+cannot reach it — and `test_replacement_basis_vocabulary` already guards its wiring **on the
+call node**, asserting the `truncated_out` collector is handed over, precisely because no
+behavioural test can. A guard that reads as dead is exactly what someone later "cleans up", so
+the new test requires that guard to still exist; if it goes, the state becomes genuinely
+unreachable and must leave the vocabulary.
+
+### Implemented as a READER, not a rename — and why that is the ruling, not a softening
+
+"Adopt `partial`" could have meant making every bounded-input basis emit the literal string.
+**Rejected**, for the reason #187 exists: its repair was *more* tokens, not fewer, because
+`denial_value`'s single `0.0` had been three different facts. `roster_partially_priced` and
+`pool_truncated` each say **which input** was incomplete; collapsing them to `partial` destroys
+exactly what #187 was built to preserve. A rename is also a data-format change — these tokens
+are keys in the label maps crossing the Python/JS boundary (#186) and they participate in
+snapshot identity (#92) — for no gain a classification cannot deliver.
+
+So `basis_semantics.py` declares no string and moves no constant. It reads the vocabularies that
+already exist and answers the one question none of them could alone.
+
+### The axis is behavioural, not taxonomic: *would more evidence sharpen this number?*
+
+- **`BOUNDED_INPUT`** — incomplete inputs, so the result is a bound; more evidence **would**
+  sharpen it. A consumer may re-check it; a surface may honestly say "still resolving".
+- **`BOUNDED_BY_RULE`** — evidence complete, the *rulebook* yields a bound; more evidence would
+  **not** sharpen it. Never re-check hoping for better; the honest surface text is "this is the
+  limit of what is knowable".
+
+An IR designation is not partially known. We know it exactly, and the rule says *at least* four
+games — a different fact from "some byes are unknown, so this week is a floor", and it changes
+what a consumer should **do**.
+
+`would_more_evidence_sharpen()` is **three-state on purpose**: `None` for a non-bound, because
+returning `False` there would assert a measured number cannot be improved, which is a stronger
+claim than the one being made.
+
+**11 tests, mutation-checked 5/5** — folding `rule_floor` into the partial class, admitting the
+payload token, dropping a classified token's reachability record, deleting the dormant member's
+wiring guard in `draft_room`, and collapsing the three-state answer to two. No engine source
+modified; both files restored byte-identical after the pass.
