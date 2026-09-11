@@ -7304,3 +7304,17 @@ that under-counted, the raw-text marker matcher defeated by line wrapping, and t
 stdlib set. Each was caught by the result looking *too uniform* or *too clean* rather than by
 the code looking wrong. That is worth stating as a rule: **when a scan returns the same answer
 for every arm, or nothing at all, suspect the scan before believing the result.**
+
+### Second suite gate for this stretch
+
+**2,789 tests, 882.6s, OK (skipped=1), 0 failures, 0 errors** — clean under
+`PYTHONDONTWRITEBYTECODE=1` with `__pycache__` cleared first.
+
+Arithmetic checks out rather than merely looking plausible: **2,783 + 3 + 3**, being
+`test_basis_vocabulary_is_one_word` and `test_tav_identity_is_stated_once`. Every commit since
+the run launched (`d2788c3..HEAD`) touches markdown only — `git diff --name-only` returns no
+`.py` — so the run describes the current code exactly.
+
+Cumulative for the stretch: **14 new tests across three files, mutation-checked 6/6, 3/3 and
+2/2**, and no engine source modified anywhere in it. The only non-test, non-documentation edits
+were to `README.md`, `ARCHITECTURE_AUDIT.md` and `CDME_CONTRACTS.md` prose.
