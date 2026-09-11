@@ -7146,3 +7146,25 @@ same shape. **In a codebase this disciplined, "X is missing" is the claim most l
 wrong, and cheap to check before it is expensive to publish.**
 
 Detail at `evidence/roster_shape/ff_rulebook/FINDING_188_the_fifth_state_exists_five_times.md`.
+
+### #126 at the vocabulary layer, guarded: five constants, one word
+
+Five modules each define their own "this number was really measured" token and all five are the
+string `'measured'` — `draft_room.APPETITE_MEASURED`, `draft_strategy.DENIAL_MEASURED`,
+`lineup_optimizer.EXPOSURE_MEASURED` / `DISPLACEMENT_MEASURED` / `BYE_MEASURED`. That they agree
+is a coincidence of five separate typings, not a property anything enforced.
+
+**The hazard is concrete, not hypothetical.** `pick_synthesis` binds
+`HORIZON_BASIS_MEASURED = dr.APPETITE_MEASURED` and reasons with it about a *different*
+quantity's basis. The day one module renames its token, every cross-quantity comparison silently
+starts answering "these bases differ" for two numbers that were both measured. Nothing fails.
+
+`test_basis_vocabulary_is_one_word.py` pins it — **3 tests, mutation-checked 3/3** (drift one
+value, drift another, rename a token out of the population). The set is **derived by suffix at
+runtime**, so a sixth `*_MEASURED` token joins the invariant automatically rather than sitting
+outside a hand-list. A non-vacuity test asserts the population is non-empty and spans all three
+modules first, so a rename cannot make the invariant pass by emptying it.
+
+**Deliberately does NOT merge the five into one constant.** Whether the vocabulary gets a single
+shared home is #188's live question, and collapsing them here would decide it. This makes drift
+loud and leaves the naming decision where it belongs.
