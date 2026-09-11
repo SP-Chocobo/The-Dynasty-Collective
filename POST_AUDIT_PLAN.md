@@ -6810,3 +6810,43 @@ right moment to retire the record rather than loosen the assertion. Mutation-che
 
 Result at `evidence/roster_shape/ff_rulebook/RESULT_148_the_parser_is_exonerated.md`.
 Classification unchanged: KNOWN-OPEN-ACCEPTABLE, blocker now confirmed external.
+
+## THE REGISTER LAGGED THE REPAIRS — six items were closed and still filed open
+
+Found by nearly redoing closed work. #187 (`denial_value` emits an unmeasured 0.0 while the
+tooltip promises it was measured) was picked off the open list; the first grep found the repair
+already shipped — the derived `DENIAL_MEASURED` / `DENIAL_NO_INTERVENING_RIVAL` /
+`DENIAL_NO_RIVAL_PRICED` vocabulary, `denial_value = None` where nothing was measured, and a
+`test_denial_basis.py` that additionally forbids reconstructing the basis from
+`denial_value == 0`. Same for #190 and #207. All green. All filed open.
+
+**Nothing fails when this happens.** The item reads open, the investigation starts, and the only
+thing that stops it is a grep landing on the repair.
+
+**Screened all 52 open items** for a test naming them: **30 have one.** That is a screen, not a
+verdict — and the counterexample was made this session. `TheTrendSignSurvivesTheParserTests`
+names #148 and is green, and **#148 is open and stays open**: the test is a *guard on an open
+condition*, pinning the export as all-non-negative so it fails the day a signed capture lands.
+A green test naming an item means "repaired and pinned" OR "open and guarded", and only the
+item's own verdict separates them.
+
+**Flipped to done — six, each confirmed three ways** (repair visible in source, dedicated test
+green, verdict in the register or the task's own title): **#185** (superflex QB rows say
+`startable_floor`, confirmed at `735c972` at line 6096 above), **#187**, **#190**, **#192** (also
+independently confirmed by #180 closing as ALREADY REPAIRED *by* #192's work), **#193**, **#207**.
+120 tests green across the verification runs.
+
+**NOT flipped: #208, #209, #210, #211** — each has a green dedicated test and **no recorded
+verdict anywhere in this register**; their status lives only in task titles and evidence files.
+Two are supply gaps, the shape most likely to be open-with-a-guard. They need adjudication
+against their own evidence, not a status flip on a grep.
+
+**The structural defect, in this repo's own terms.** Completion state lives in three places that
+can disagree — the task status field, the task's title prose, and this file's verdict sections —
+and for items above ~205 the section here was never written, leaving title prose as the only
+record. Three sources of truth for one fact is what #126 exists to forbid.
+
+**The operating rule that follows:** before opening an investigation into any item filed open,
+grep for its repair first. One command; it would have saved this session an entire investigation.
+
+Detail at `evidence/roster_shape/ff_rulebook/FINDING_the_register_lagged_the_repairs.md`.
