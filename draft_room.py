@@ -222,8 +222,26 @@ SLEEPER_WEEKLY_TO_SEASON_FACTOR = 17
 
 # Round at which the engine switches from the balanced formula to upside-only scoring,
 # absent an explicit override -- matches the "War Room" idea this was modeled on. A deep
-# bench/waiver-fringe pick is about finding a league-winning outlier, not filling a need or
-# respecting positional scarcity that barely matters by then.
+# bench/waiver-fringe pick is about finding a league-winning outlier, not filling a need that
+# barely matters by then.
+#
+# CORRECTED (#222). This comment used to end "not filling a need OR RESPECTING POSITIONAL
+# SCARCITY that barely matters by then", and the second half was never true of the code. Upside
+# mode zeroes the team-specific terms and keeps `universal_value`'s content, and league-wide
+# scarcity is IN universal_value by the module docstring's own split -- see this file's opening
+# section, and the founding commit's "universal_value (what any manager at the draft would
+# compute -- league-wide scarcity, market read, ...)". `upside_score` is `bpa + 0.5 * growth`,
+# so the positional anchor is not merely present in upside mode, it is the BASE of the score.
+# Dropping roster fit is what this switch does; dropping the anchor is what it never did.
+#
+# WHAT IS ACTUALLY OPEN, recorded here because this comment is where a reader looks first:
+# `displacement_adj` is the fourth team-specific term, so this switch zeroes it -- and that term
+# is what makes the positional level CANCEL for a flex-reachable candidate
+# (bpa + displacement_adj = points - phantom). Zeroing it therefore does not only remove roster
+# awareness; it changes what the retained universal number means. Whether that is intended is an
+# open owner decision (see CONTRACT_what_upside_mode_is_meant_to_drop.md); it is NOT a licence
+# to move this number, which is a calibration decision in its own right and is pinned by
+# test_auto_mode_switches_to_upside_exactly_at_the_documented_round.
 UPSIDE_MODE_DEFAULT_ROUND = 15
 
 # In real competitive superflex play, the SUPER_FLEX slot is filled by a second (or third) QB

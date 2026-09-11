@@ -59,36 +59,61 @@ of the current architecture, not a bug in this quantity, and is tracked separate
 consumer asking a team-agnostic question: `draft_counterfactual.bpa_row`'s BPA argmax,
 `roster_diagnostics`' replacement levels, `draft_strategy`'s opponent-board ranking.
 
-**Must NEVER influence, or be influenced by** — anything roster-specific. `need_bonus` and
-`eligibility_bonus` are added *on top of* it to make `team_acquisition_value`; they must never
-be folded *into* it. This split is the engine's central architectural commitment: conflating
+**Must NEVER influence, or be influenced by** — anything roster-specific. The four
+team-specific terms — `need_bonus`, `eligibility_bonus`, `depth_exposure` (#139) and
+`displacement_adj` (#216) — are added *on top of* it to make `team_acquisition_value`; they must
+never be folded *into* it. (This sentence named only the first two until #222 audited it; the
+class has grown twice since it was written.) This split is the engine's central architectural commitment: conflating
 "how good is this player" with "how good is this player for this roster" is the specific
 failure the additive layering exists to prevent.
 
 **Invariants**
 1. `team_acquisition_value == universal_value + need_bonus + eligibility_bonus +
-   depth_exposure`, in every mode. (`depth_exposure` joined the sum in #139; every earlier
-   measurement in this document that states the two-term form was correct when taken and is
-   marked where it is load-bearing.)
+   depth_exposure + displacement_adj`, in every mode. (`depth_exposure` joined the sum in #139
+   and `displacement_adj` in #216; every earlier measurement in this document that states the
+   two- or three-term form was correct when taken and is marked where it is load-bearing.
+   **CORRECTED in #222:** this invariant recorded the #139 expansion and missed #216's, so it
+   stated the three-term identity while `draft_room.py`'s own module docstring already carried
+   the four-term one. The code was never wrong; this line was.)
 2. Identical for a given player across every roster on the same board, by construction.
 3. In upside mode it equals `final_score` — the *role* is filled, but by a different formula.
    **Cross-mode comparison of this number is meaningless** and must never be done. Upside mode
    never computes `depth_exposure` at all, and emits no column for it rather than emitting
    `0.0`, which would fabricate a measurement.
-4. None of the three team-specific terms may flip a large `universal_value` gap; each is capped
-   for exactly this reason (`NEED_BONUS_MAX`, `ELIGIBILITY_BONUS_MAX`, `DEPTH_EXPOSURE_MAX` —
-   the same number three times, deliberately: they are one class of term, and giving them
-   different magnitudes would be inventing a ranking among them that no measurement supports).
+4. **RESTATED in #222, because as written this was false of the class it named.** The original
+   read *"none of the three team-specific terms may flip a large `universal_value` gap; each is
+   capped for exactly this reason."* There are four, and the fourth is uncapped **by design**.
+   The accurate statement is two statements:
+
+   **4a. The three BOUNDED NUDGES may not flip a large `universal_value` gap**, and each is
+   capped for exactly this reason (`NEED_BONUS_MAX`, `ELIGIBILITY_BONUS_MAX`,
+   `DEPTH_EXPOSURE_MAX` — the same number three times, deliberately: they are one class of term,
+   and giving them different magnitudes would be inventing a ranking among them that no
+   measurement supports). `TEAM_SPECIFIC_CAPS` remains a correct upper bound on their sum.
+
+   **4b. `displacement_adj` MAY move a large gap, downward only, and that is its purpose.**
+   #216 exists because *"no bounded nudge could span the 43-60 point bias"* — with the legality
+   backstop off, the board drafted eleven tight ends and no receiver in a one-TE league. It is
+   non-positive by construction, so it can only ever remove credit, never add it; that is why
+   `TEAM_SPECIFIC_CAPS` needs no fourth entry and why `displacement_adj` needs no cap. See
+   `displacement_adjustments` for the derivation.
+
+   **The two halves of this invariant are not the same kind of claim**, and #222 recorded the
+   consequence: `displacement_adj` is classified both as a team-specific term (which places it
+   under upside mode's "zero every team-specific term" rule) and as a correction to the
+   universal anchor (which is the stated reason it carries no cap). Those readings are not
+   reconciled anywhere, and the reconciliation is an open owner decision — see
+   `evidence/roster_shape/ff_rulebook/CONTRACT_what_upside_mode_is_meant_to_drop.md`.
 5. **A quantity may enter a dynasty valuation only if its lifetime is at least as long as the
    asset's horizon.** This is a category rule, not a magnitude rule: it disqualifies a term
    regardless of how large its effect measures.
 
-   The distinction that makes it usable, since the three team-specific terms are all transient
+   The distinction that makes it usable, since all four team-specific terms are transient
    in some sense:
 
    | transient in | example | admissible? |
    |---|---|---|
-   | **roster state** | `need_bonus`, `eligibility_bonus`, `depth_exposure` | **yes** — TAV is a *decision* number, priced in the state the decision is made in |
+   | **roster state** | `need_bonus`, `eligibility_bonus`, `depth_exposure`, `displacement_adj` | **yes** — TAV is a *decision* number, priced in the state the decision is made in |
    | **the calendar** | bye-week collision | **no** — it expires on a schedule unrelated to the roster or the player, and the asset outlives it |
 
    Worked case (#142). Bye overlap is real, measurable, and was measured: worst-week losses of
