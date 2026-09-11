@@ -553,3 +553,51 @@ hazard on this page, and trades a loud error for a silent empty frame.
 real engine, which means it imports the probe. The probe's first version read the league capture
 and built eight mock leagues at module level, so every one of those tests paid for board setup
 and leaked a file handle. Put the fixture behind a function; keep module scope to definitions.
+
+## The fixture rule covers the RULEBOOK too, not just the pool
+
+Line 2 of the five-line fixture says `rdb.build_players_db`, not a hand-rolled loop — because a
+hand-rolled pool silently excludes IDP. **The same rule governs the SCORING SETTINGS, and #241
+is what it costs to learn that separately.**
+
+There are two captured leagues in this repo and they are different scoring environments:
+
+| file | who reads it | `rec` | `bonus_rec_te` | first downs |
+|---|---|---|---|---|
+| `data/fixtures/sleeper_capture.json` | **`run_draft_battery`**, **`run_roster_proof`** | 1.0 | absent | none |
+| `data/league_captures/fourth_and_forever.json` | the `evidence/roster_shape/ff_rulebook/` probes | 0.5 | 0.25 | `rec_fd 0.5`, `rush_fd 0.25` |
+
+`run_draft_battery.scoring_settings_from_capture()` reads the **fixture**, from
+`league_shape.scoring_settings`. A probe that wants to say anything about the battery's matrix
+must call that function. Building the matrix from the other file instead produced a clean,
+plausible, completely false finding: every arm hinted `te_premium=True` and an entire coverage
+hole was written up, guarded and committed before the instrument itself falsified it.
+
+**The rule: to measure a thing, construct its inputs with the FUNCTIONS THAT THING CALLS.** Not
+an equivalent-looking dict, not the file with the more official-sounding name. If you cannot
+point at the production call site your fixture reproduces, you do not have a fixture — you have
+a second source of truth, and #126 already says what those are worth.
+
+Corollary that would have caught it in seconds: **print which file your fixture actually opened**
+next to the answer. `CAPTURE_PATH` is a module constant three lines from the function; nothing
+about the wrong league announced itself in any number.
+
+## An external check is worth more than any number of internal ones
+
+Every scoring test in this repo asserted that `compute_points_from_stats` returns what the repo
+BELIEVES the rules to be. None of them could catch a mis-transcribed rulebook, because the
+rulebook was the thing being asserted — a closed loop, however many assertions it contains.
+
+`fourth_and_forever.json` records its own `capture_method` as *"transcribed from Sleeper Scoring
+Settings screenshots supplied by the owner."* Hand entry, into a file every `ff_rulebook`
+measurement depends on, never once compared against a number the vendor computed.
+
+Four box scores read off the live app — itemised by Sleeper, with Sleeper's own totals beside
+them — reproduce to the cent through the production scorer, and sum to the team total the app
+displayed. That is a different KIND of evidence from the other 2,800 tests, and it took one
+screenshot to obtain.
+
+**When a measurement depends on transcribed input, find one case where the source system
+publishes its own answer and check against that.** It is usually cheap, it is the only test that
+can catch a faithful implementation of the wrong rules, and it is worth more than a hundred
+assertions written from the same assumption as the code.
