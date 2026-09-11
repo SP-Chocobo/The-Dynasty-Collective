@@ -7108,3 +7108,41 @@ docstring promise holds. Unaffected, and still worth having measured.
 
 **#122 is therefore CLOSED, not open** — and the register's own description of it ("the
 per-position mean_rate imputation is unmarked") was already stale before I started.
+
+## #188 DESIGN EVIDENCE: the "bounded/partial" state is not missing — it was invented FIVE times
+
+#188 records the absence vocabulary as needing a fifth state, "bounded/partial", and two places
+in the code point at it in those words. **The framing is inverted.** A complete AST derivation
+(all 144 module-level UPPER string constants in non-test modules, grouped into families, each
+candidate's definition then read) finds the state already implemented independently five times:
+
+| module | token | value | declares |
+|---|---|---|---|
+| `lineup_optimizer` | `BYE_PARTIAL` | `'partial'` | byes unknown → the week's numbers are **a FLOOR, not the cost** |
+| `lineup_optimizer` | `DISPLACEMENT_ROSTER_PARTIAL` | `'roster_partially_priced'` | roster only partly priced |
+| `player_universe` | `RULE_FLOOR` | `'rule_floor'` | a rulebook **floor**, not a point estimate |
+| `draft_room` | `REPLACEMENT_BASIS_POOL_TRUNCATED` | `'pool_truncated'` | pool ran out before the anchor |
+| `provider_meter` | `TRUNCATED` | `'truncated'` | output cut short |
+
+Excluded after checking rather than pattern-matched in: `REPLACEMENT_BASIS_STARTABLE_FLOOR`
+names **which anchor** was used, not that the value is a bound; `INCOMPLETE_PLAYER_PROFILE` is a
+UI display string.
+
+**Every independent author reached for the same semantics** — some evidence existed, the
+computation ran on it, the result is a bound rather than the quantity — and invented a different
+**name**. So the owner's decision is not "should a fifth state exist" (the corpus settled that
+empirically) but **"which name becomes shared, and which vocabularies adopt it"**: a refactor
+rather than a design commitment.
+
+**#126's landmine at the vocabulary layer**, and the same shape as the five separate constants
+all equal to `'measured'` (`APPETITE_`/`DENIAL_`/`EXPOSURE_`/`DISPLACEMENT_`/`BYE_MEASURED` —
+verified identical, five definition sites, nothing enforcing they stay so).
+
+**Method note.** A first scan used a hint regex of guessed keywords, returned 25 tokens, and
+under-counted — it caught `APPETITE_MEASURED` and missed `APPETITE_IMPUTED`/`UNAVAILABLE`. It
+was discarded, not reported. This was written straight after my #122 finding was withdrawn in
+full for asserting a missing repair that existed; #188's own premise is a third instance of the
+same shape. **In a codebase this disciplined, "X is missing" is the claim most likely to be
+wrong, and cheap to check before it is expensive to publish.**
+
+Detail at `evidence/roster_shape/ff_rulebook/FINDING_188_the_fifth_state_exists_five_times.md`.
