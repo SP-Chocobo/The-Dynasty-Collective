@@ -64,6 +64,7 @@ from pathlib import Path
 
 import data_merger as dm
 import draft_battery as db
+import league_config as lc
 import draft_room as dr
 import draft_strategy as ds
 import lineup_optimizer as lo
@@ -434,7 +435,7 @@ def main(argv=None) -> int:
                                      sleeper_projections=season,
                                      sleeper_basis=dr.SLEEPER_BASIS_SEASON_SUM)
         seats = [str(i) for i in range(1, spec["teams"] + 1)]
-        rounds = args.rounds or len(league.get("roster_positions") or [])
+        rounds = args.rounds or len(lc.draftable_slots(league.get("roster_positions")))
         pick_order = ds.generate_pick_order(seats, rounds, "snake")
         # Built ONCE per format and handed to both arms. Solving the same league's lineup from
         # two separately-built slot lists is how two arms end up judged by different rulers.

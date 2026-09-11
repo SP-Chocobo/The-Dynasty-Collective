@@ -40,17 +40,18 @@ import collections
 from typing import Any, Optional
 
 import draft_room as dr
+import league_config as lc
 import draft_simulation
 import draft_strategy as ds
 import lineup_optimizer as lo
 from player_universe import FANTASY_POSITIONS
 
-#: Slot labels that hold a player but are not a startable position.
-NON_STARTING_SLOTS = {"BN", "IR", "TAXI"}
-
-
-def _starting_slots(roster_positions: list[str]) -> list[str]:
-    return [s for s in (roster_positions or []) if s not in NON_STARTING_SLOTS]
+#: Q1 of the slot vocabulary, imported rather than restated. This module used to carry its own
+#: identical copy under this same name; league_config is the one home (#126), and it also
+#: answers the SECOND question -- which slots a startup draft fills -- that this copy's
+#: existence made look already-answered. See league_config.draftable_slots.
+NON_STARTING_SLOTS = lc.NON_STARTING_SLOTS
+_starting_slots = lc.starting_slots
 
 
 def league_matrix(base_scoring: dict | None = None) -> list[dict]:
@@ -78,7 +79,7 @@ def league_matrix(base_scoring: dict | None = None) -> list[dict]:
                 league = dr.build_mock_league(teams=teams, superflex=superflex,
                                               scoring=scoring, te_premium=False, dynasty=True,
                                               base_scoring=base)
-                rounds = len(league["roster_positions"])
+                rounds = len(lc.draftable_slots(league["roster_positions"]))
                 # The engine cannot know the round count unless the league says so (#161).
                 # Carrying it here is what makes the battery measure the repaired path.
                 league["draft_rounds"] = rounds
@@ -91,7 +92,7 @@ def league_matrix(base_scoring: dict | None = None) -> list[dict]:
     for te_premium, dynasty in ((True, True), (False, False), (True, False)):
         league = dr.build_mock_league(teams=12, superflex=False, scoring="ppr",
                                       te_premium=te_premium, dynasty=dynasty, base_scoring=base)
-        rounds = len(league["roster_positions"])
+        rounds = len(lc.draftable_slots(league["roster_positions"]))
         league["draft_rounds"] = rounds
         out.append({
             "label": f"12T_ppr{'_TEP' if te_premium else ''}{'_dynasty' if dynasty else '_redraft'}",

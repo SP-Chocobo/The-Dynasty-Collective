@@ -49,8 +49,56 @@ from typing import Optional
 
 from player_universe import FANTASY_POSITIONS, FLEX_SLOT_POSITIONS
 
-#: Slot codes that are real and hold nobody startable. Sleeper's own vocabulary.
-NON_PLAYING_SLOTS = frozenset({"BN", "TAXI", "IR"})
+#: THE SLOT VOCABULARY, AND THE TWO QUESTIONS IT ANSWERS.
+#:
+#: A roster_positions label is asked two different questions by two different parts of this app,
+#: and until this block existed only the first one had an answer -- in two places, under two
+#: names ("NON_STARTING_SLOTS" in draft_battery, "NON_PLAYING_SLOTS" here) holding IDENTICAL
+#: membership. Two homes for one vocabulary is exactly what #126 forbids, and the cost was not
+#: the duplication: it was that the SECOND question looked answered when it had never been asked.
+#:
+#:   Q1  Does this slot START a player in a given week?   -> NON_STARTING_SLOTS says no.
+#:   Q2  Is this slot FILLED BY THE STARTUP DRAFT?        -> UNDRAFTED_SLOTS says no.
+#:
+#: The two are NOT the same question. BN and TAXI never start anybody and are both drafted; IR
+#: is the only label that answers no to both. Every instrument in this repository used
+#: `len(roster_positions)` for the draft's round count, which is Q2 answered with Q1's silence.
+#:
+#: WHY {"IR"} AND NOT A LARGER SET -- this is a vocabulary observation, not a derived magnitude,
+#: so the evidence is stated rather than assumed. Two captured Sleeper leagues, both with IR and
+#: TAXI, and in both the recorded draftable count is exactly len(roster_positions) - IR count:
+#:
+#:   fourth_and_forever     29 slots - 3 IR = 26,  and the real startup ran EXACTLY 26 rounds
+#:   greatest_show_on_paper 33 slots - 4 IR = 29
+#:
+#: The first is an exact external confirmation, not a restatement: the board's own round count
+#: was observed independently of the roster shape. test_slot_vocabulary re-derives both numbers
+#: from the captures themselves, so a third league that contradicts the rule FAILS rather than
+#: being quietly absorbed.
+NON_STARTING_SLOTS = frozenset({"BN", "TAXI", "IR"})
+
+#: Q2's answer. Kept separate from Q1's rather than expressed as a subset relation, because the
+#: two sets happen to nest today and nothing guarantees they always will.
+UNDRAFTED_SLOTS = frozenset({"IR"})
+
+#: The pre-#126 name for Q1's set, kept so existing readers do not have to move at once. It is
+#: an alias, not a second definition -- there is one object here, and `is` proves it.
+NON_PLAYING_SLOTS = NON_STARTING_SLOTS
+
+
+def starting_slots(roster_positions: Optional[list[str]]) -> list[str]:
+    """The slots that start a player, in order. Q1 applied to a whole roster shape."""
+    return [s for s in (roster_positions or []) if s not in NON_STARTING_SLOTS]
+
+
+def draftable_slots(roster_positions: Optional[list[str]]) -> list[str]:
+    """The slots a startup draft fills, in order. Q2 applied to a whole roster shape.
+
+    `len(draftable_slots(rp))` is the round count of a startup draft, and it is NOT
+    `len(rp)` -- see the vocabulary block above for the two leagues that establish the
+    difference and the one that confirms it against a real board.
+    """
+    return [s for s in (roster_positions or []) if s not in UNDRAFTED_SLOTS]
 
 #: The full set of roster_positions labels this app understands, derived from the two
 #: vocabularies the engine actually reads plus the non-playing slots. A label outside this set
