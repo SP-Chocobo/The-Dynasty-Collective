@@ -78,3 +78,24 @@ alongside the second half above.
 
 Reproduce: the probe is arithmetic over `RANK_TAKE_PROBABILITY`, `RANK_TAKE_PROBABILITY_FLOOR`
 and one board's rank count. `test_take_model_coherence.py` re-derives it without building a board.
+
+## What would close the second half — checked, and it is a small ask
+
+The second half needs one thing: a real draft where each pick's **player** is known, so the
+engine's board rank for that player can be compared against the pick number he actually went at.
+`survival_probability` is a claim about a named player, so a positional summary cannot test it.
+
+The repository already has a real, complete, twelve-seat F&F startup
+(`evidence/roster_shape/real_drafts/`) — **and it records positions only**, `Q/R/W/T` in pick
+order, because that is how it was supplied. It is the right draft and the wrong resolution:
+
+```
+"TDjer6": "QRRWWTRWTQWQTRWRRWWWRRWQQQ"     26 picks, 26 positions, 0 names
+```
+
+So the measurement is **blocked on an input, not on analysis** — the same shape as `#49`. The
+board exists; the owner has already seen it. What would close it is the same 12 sequences with
+names instead of letters, or a Sleeper draft export for that league.
+
+Until then the second half stays OPEN and UNMEASURED, and must not be reported as explained by
+the floor. That is what the scope tests in `test_take_model_coherence.py` exist to prevent.
