@@ -7279,3 +7279,28 @@ So the item is NEEDS-OWNER, not undone work: its own test states the reason — 
 means deciding what would ever set it"* — and adding it changes the `PickSnapshot` candidate
 schema, the same frozen boundary #107 is parked on. Nothing here to build; recorded so the next
 pass does not re-derive it.
+
+### #169-family self-audit: every commit in this stretch stands on its own
+
+#169 records a broken intermediate commit as a process defect — *"staging by filename is not
+staging by ownership."* Rather than assert my own stretch is clean, I checked it: all **17
+commits** from B2's close to here, at their own trees.
+
+- **Parse-level:** every `.py` at every commit parses. 238→241 files, no syntax break anywhere.
+- **#169's actual shape** — a test staged ahead of the module it tests: every `test_*.py`'s
+  imports resolve against the modules present *at that same commit*. No test arrived early.
+
+**And the check caught its own instrument error first, which is the third instance of one
+pattern this stretch.** My first version hand-listed the standard library, mis-classified
+`glob`, `csv`, `tokenize`, `threading`, `multiprocessing` and `tomllib` as unresolved, and
+reported the **identical eight "gaps" at all seventeen commits** — including ones whose trees I
+never touched. A uniform result across every arm is the signature of a broken instrument, not a
+finding, and this repo's own doctrine says so. Rebuilt deriving the set from
+`sys.stdlib_module_names` (305 names) instead of guessing it — #126's rule, which I had just
+applied to two other problems and then failed to apply to my own tool.
+
+**Three instrument errors in one stretch, all the same shape:** the hint-regex vocabulary scan
+that under-counted, the raw-text marker matcher defeated by line wrapping, and this hand-listed
+stdlib set. Each was caught by the result looking *too uniform* or *too clean* rather than by
+the code looking wrong. That is worth stating as a rule: **when a scan returns the same answer
+for every arm, or nothing at all, suspect the scan before believing the result.**
