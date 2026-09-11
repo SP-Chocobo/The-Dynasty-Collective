@@ -45,11 +45,25 @@ Forever, the league actually being played, is half-PPR with a TE premium and pay
 **double** what backs get for the same first down, plus a `pass_cmp 0.1` completion bonus in
 superflex.
 
-**Why this matters to the ruling in Gate 2.** The points-vs-asset trade is being judged against
-a scoring environment that weights positions differently from the owner's. A rulebook that pays
-receivers more per first down, and QBs more per completion, changes which roster *is* the
-higher-scoring one — so the size, and possibly the sign, of that 5–11% points deficit is not
-established for F&F. **Neither is it refuted.** It is simply unmeasured.
+**Why this matters to the ruling in Gate 2, now with a measured number rather than an argument.**
+Four of the owner's real week-1 starters, itemised by the Sleeper app, scored through the
+production function against both rulebooks:
+
+| | F&F (played) | fixture (measured) |
+|---|---|---|
+| McCaffrey | 11.80 | 13.80 |
+| Smith-Njigba | 30.20 | 34.20 |
+| Stevenson | 13.00 | 14.50 |
+| Purdy | 24.60 | 29.60 |
+| **total** | **79.60** | **92.10  (+15.7%)** |
+
+The F&F column reproduces the live app **to the cent, 4 of 4**, and its total is the number the
+app displayed — so this is ground truth, not a model. Purdy alone swings 5.00.
+
+**The freeze's headline deficit is 5–11%. The rulebook difference is ~16%, and it runs the other
+way.** That is larger than the effect being ruled on, so the size and possibly the *sign* of the
+points deficit is not established for F&F. **Neither is it refuted.** It is unmeasured.
+Evidence: `evidence/rulebook_ground_truth/README.md`.
 
 **This does not invalidate any existing result.** The battery and the roster proof agree with
 each other because they use the same fixture, and the `ff_rulebook/` probes are honestly named
