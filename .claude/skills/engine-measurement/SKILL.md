@@ -412,3 +412,38 @@ object than the one asked about. Before fast-forwarding a branch that has drifte
 is nothing to lose rather than assuming it — `git merge-base --is-ancestor <target> HEAD` and
 `git log --oneline <target> ^HEAD` (must be empty). If either fails, it is not a fast-forward
 and `--force` is not the remedy.
+
+## A stale .pyc can serve you MUTATED code after you restore the source
+
+The mutation-testing loop in this repo is: edit a source line, run the tests, `cp` the backup
+back, repeat. That loop has a hole, and it was found the hard way.
+
+CPython validates a cached `.pyc` against the source's **mtime and size**. A mutation that
+preserves byte length — `0.0` → `1.0`, `>` → `<`, `+` → `-`, swapping two same-length
+identifiers — and a mutate/restore cycle that completes inside **one mtime second** leaves a
+`.pyc` that still looks valid. Every later `import` in that second gets the **mutated**
+bytecode, from a source file that reads correctly on disk and shows a clean `git diff`.
+
+How it presented: `estimated_bench_demand` returned a total of **1.0** in a board state where
+`bench_capacity` provably floors to `0.0`, and `0.0 * anything` cannot be `0.97`. `git status`
+was clean, `git diff` was empty, the line read `max(..., 0.0)`, and `inspect.getsource` on the
+**bound function** showed the correct body — because `inspect` reads the source file, not the
+bytecode actually executing. Four separate checks all confirmed innocent source while the
+process ran the mutant. Deleting `__pycache__` produced `0.0` immediately.
+
+**This is the project's named failure mode aimed at the instrument that exists to catch it.** A
+mutation pass corrupted this way reports whatever the stale cache holds — a mutation can read as
+"caught" when the tests never saw it, or as "survived" when they did.
+
+- **Run every mutation arm under `PYTHONDONTWRITEBYTECODE=1`.** No `.pyc` is written, so no
+  stale one can be served. This is the fix; use it by default for the whole loop, control arm
+  included.
+- Belt and braces for a long pass: `find . -name __pycache__ -type d -prune -exec rm -rf {} +`
+  between arms.
+- **When a measured number contradicts arithmetic you can do on paper, suspect the instrument
+  before the arithmetic.** Re-deriving the same wrong number from the same poisoned process
+  confirms nothing. `git diff` and `inspect.getsource` do NOT prove what is executing; only a
+  cleared cache does.
+- Never run a full background suite across a tree you are mutating. The suite imports at its own
+  start and any source-reading test sees whatever the file held mid-cycle, so the result
+  describes neither the clean tree nor the mutant. Re-run it clean afterwards.

@@ -6909,3 +6909,62 @@ source prices them. #147 is still NOT the binding constraint.
 **The generalized rule.** The register-lag finding said: before investigating an item filed open,
 grep for its repair. B2 was never filed as an item, which is how it slipped that rule. So:
 **before investigating a mechanism, grep for the mechanism** — not just for its number.
+
+## #224 PINNED — and the mutation pass found a hole in mutation testing itself
+
+### #224: two `bench_capacity` quantities, neither wrong
+
+The register said "names two different quantities" and parked it. What they are:
+
+| | `lineup_optimizer.bench_capacity(roster_positions)` | `draft_room.estimated_bench_demand`'s local |
+|---|---|---|
+| what | BN slots this league gives **each team** | further **picks** the draft can still spend on bench |
+| unit / scope | slots, per-team | picks, league-wide |
+| type | `int` | `float` |
+| in time | **static** — takes no `picks`, so it cannot change mid-draft | **draining** — falls to 0.0 as picks land |
+| on the fixture | **3** | **36.0** at the opening board |
+
+**No live crossed wire:** `draft_room` imports `lineup_optimizer as lo`, so the function is only
+reachable as `lo.bench_capacity` and the local never shadows it. Both correct where they stand;
+renaming either is cosmetic and touches constrained source, so neither was renamed.
+
+Built instead: `test_224_bench_capacity_vocabulary.py`, **8 tests, mutation-checked 6/6**,
+pinning the two properties that make the tempting deduplication impossible to do quietly — the
+magnitudes differ, and only the demand quantity responds to the draft.
+
+Two things found on the way: **`estimated_bench_demand` had ZERO direct tests**, and its
+`max(…, 0.0)` floor is **load-bearing and reachable** — at 64+ picks the raw difference goes to
+−4, −8, −12 (capacity exhausts while another position's starters are still owed), and without
+the floor every position's share goes negative, since shares are `budget × appetite / total`.
+
+### The hole: a stale `.pyc` served mutated code after the source was restored
+
+The first pass reported M2 (drop the floor) as SURVIVED — **a vacuous test of mine**, asserting
+through the test file's own `_bench_budget` helper, which re-implements the floor.
+
+Repairing it exposed worse. `estimated_bench_demand` returned a total of **1.0** where
+`bench_capacity` provably floors to **0.0**, and `0.0 × anything` cannot be `0.97`. Four checks
+said the source was innocent: `git status` clean, `git diff` empty, the line read `max(…, 0.0)`,
+and `inspect.getsourcelines` **on the bound function** showed the correct body. Deleting
+`__pycache__` produced `0.0` immediately.
+
+**Mechanism.** CPython validates a `.pyc` against the source's **mtime and size**. The mutation
+was `0.0` → `1.0` — byte-identical in length — and mutate/run/restore completed inside one mtime
+second, so the cache still looked valid and every later import got the **mutant**. `inspect`
+reads the source file, not the executing bytecode, so it cannot see this.
+
+**Why it matters beyond one test.** It is aimed at the instrument this project relies on to know
+its tests are not vacuous: a corrupted pass reports whatever the stale cache holds — a mutation
+reading as "caught" when the tests never saw it, or "survived" when they did. Every same-length
+mutation in this repo's history is in scope (`>`/`<`, `+`/`-`, `0.0`/`1.0`, identifier swaps).
+
+**Fix, now doctrine in the engine-measurement skill:** run every mutation arm under
+`PYTHONDONTWRITEBYTECODE=1`, control included. The pass was redone that way from scratch; M4
+(floor at 1.0) was confirmed a **genuine** survivor rather than a cache artifact, and a test
+added for it — a finished draft must report exactly `0.0`, which is #59's whole point.
+
+**Generalized rule:** when a measured number contradicts arithmetic you can do on paper, suspect
+the instrument before the arithmetic. Re-deriving the same wrong number from the same poisoned
+process confirms nothing.
+
+Detail at `evidence/roster_shape/ff_rulebook/FINDING_224_two_bench_capacities_and_a_poisoned_cache.md`.
