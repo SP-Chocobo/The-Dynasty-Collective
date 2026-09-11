@@ -263,7 +263,9 @@ against one common bar.
 
 **3. Why upside doesn't.** The upside branch zeroes every team-specific term, which removes
 `displacement_adj`. The level stops cancelling and each position gains exactly
-`phantom − level_pos`: **WR +0.00, RB +46.94, TE +68.58.** Derived, not fitted. Independently
+`phantom − level_pos`, **recomputed at every board state as the levels drain**: WR **+0.00 at
+every state measured** (WR's live level defines the FLEX phantom), TE **+68.58 opening / +60.03 at
+pick 100 / +89.14 at pick 150**. Derived, not fitted — and not flat (corrected, 21st). Independently
 cross-checked three ways (RESIDUAL2's measured −68.58; `displaced == 217.75` on 103 of 144 TE
 rows; `displacement_adj == 0.00` on 160/160 and 139/139 WR rows).
 

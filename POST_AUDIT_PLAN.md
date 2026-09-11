@@ -6639,8 +6639,10 @@ real capture universe on both sides (#201/#204), 312 picks, 1,125s.
 
 3. **Why upside does not.** The upside branch zeroes every team-specific term, which removes
    `displacement_adj`. The level stops cancelling and each position gains exactly
-   `phantom − level_pos` — **WR +0.00, RB +46.94, TE +68.58**, derived differences of this league's
-   own replacement levels, nothing fitted. Cross-checked three ways: RESIDUAL2's measured −68.58 at
+   `phantom − level_pos` — derived differences of this league's own replacement levels, nothing
+   fitted, and **recomputed at each board state because the levels drain**: WR **0.00 at every
+   state measured**, TE **68.58 opening / 60.03 at pick 100 / 89.14 at pick 150**. (The single
+   flat figure first recorded here was the opening-board value; corrected, 21st withdrawal.) Cross-checked three ways: RESIDUAL2's measured −68.58 at
    every seat; `displaced == 217.75` on 103 of 144 tight-end observations; `displacement_adj ==
    0.00` on 160/160 and 139/139 receiver rows at two board states.
 

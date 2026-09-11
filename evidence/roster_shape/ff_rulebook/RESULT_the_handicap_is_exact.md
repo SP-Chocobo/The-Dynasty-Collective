@@ -1,3 +1,28 @@
+> **PARTIALLY CORRECTED (21st) — the handicap is EXACT AT A BOARD STATE, but it is NOT FLAT
+> across the draft.** This file says upside mode "hands every tight end a flat +68.58". The word
+> *flat* and the single number are withdrawn: **the replacement levels drain as the draft runs**,
+> so `phantom − level_pos` is recomputed at every board state. Measured straight off the board:
+>
+> | state | QB | RB | WR | TE | FLEX phantom | TE charge | WR charge |
+> |---|---|---|---|---|---|---|---|
+> | opening | 243.29 | 170.81 | 217.75 | 149.17 | 217.75 | **68.58** (derived) | 0.00 |
+> | pick 100 | 243.29 | 170.81 | **212.03** | 149.17 | **212.03** | **60.03** (measured) | 0.00 |
+> | pick 150 | 243.29 | **158.74** | 217.75 | **128.61** | 217.75 | **89.14** (measured) | 0.00 |
+>
+> **68.58 is the OPENING-BOARD value** — which is why RESIDUAL2 measured exactly it at each seat's
+> 5th pick, where the levels have barely moved. By the mode boundary the charge is larger.
+>
+> **What survives unchanged:** the identity `bpa + displacement_adj = points − displaced`; the
+> derivation `charge = phantom − level_pos` at a phantom eviction; that WR pays **0.00 at every
+> state measured**, because WR's LIVE level defines the FLEX phantom at every one of them (now
+> three states, measured, not asserted); that TE carries the largest charge of any position at
+> every state; and the whole mechanism and direction.
+>
+> **How I got it wrong:** I computed the levels once, from the opening board, and then read two
+> mid-draft states against those constants. `replacement_levels`' own docstring says a BENCH pick
+> drains the pool without reducing starter demand and therefore moves the level — the drift was
+> documented and I used a static value anyway.
+
 # The mechanism, closed: upside mode hands each position an exact, derived handicap
 
 Derived from production's own quantities. **No constant chosen, no threshold tuned, no engine
