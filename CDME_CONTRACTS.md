@@ -1678,8 +1678,11 @@ measured on the real 12x20 board.
 ## The finding that makes a coherent policy possible
 
 CDME's central commitment is `team_acquisition_value = universal_value + need_bonus +
-eligibility_bonus` — team-agnostic value plus roster-specific context. Measured across the whole
-draft:
+eligibility_bonus` — team-agnostic value plus roster-specific context. **Stated in the three-term
+form this measurement was taken against**; the live invariant is §1's five-term form
+(`+ depth_exposure` from #139, `+ displacement_adj` from #216). The table below measures the
+three columns that existed then, and the identity result it reports is unaffected by the later
+terms. Measured across the whole draft:
 
 | round | rows | `universal_value` live | `need_bonus` live | `eligibility_bonus` live | identity holds | max error |
 |---|---|---|---|---|---|---|

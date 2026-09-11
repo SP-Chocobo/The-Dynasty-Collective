@@ -7197,3 +7197,33 @@ second passage describing the historical eligibility-bonus unit defect said "a s
 now; it is re-scoped to "at that time" with a note that TAV has since grown to five.
 
 Documentation only; no code touched, and no test reads README.md (checked).
+
+### #182 continued: the identity is one fact with nine homes, and two of them were load-bearing-stale
+
+Grepping every `.md` for the TAV identity found it stated **nine times**. Most are legitimate
+historical narrative — a measurement or a landing record stating the arity correct at its own
+date — which Invariant 1 explicitly permits ("every earlier measurement in this document that
+states the two- or three-term form was correct when taken and is marked where it is
+load-bearing"). Two were not covered by that:
+
+- **`ARCHITECTURE_AUDIT.md:266`** stated the three-term form **and cited `CDME_CONTRACTS.md §1`
+  as its authority**. §1 now states five terms, so the citation misrepresented its source — the
+  sharpest kind of prose rot, because a reader checking the reference finds a different claim.
+  Scoped to "§1 **as it read when this was written**", with the later terms named and a note
+  that the surrounding reasoning is unaffected (it concerns whether the browser can see the
+  additive structure at all, not the arity).
+- **`CDME_CONTRACTS.md:1680`** opened "CDME's **central commitment** is …" with the three-term
+  form — normative phrasing, present tense, unmarked, immediately above a three-column
+  measurement table. Marked as the form that measurement was taken against, pointing at §1 for
+  the live invariant.
+
+Left alone deliberately: `CDME_CONTRACTS.md:4797` and `:7232` (both inside dated measurement
+narratives, past tense), and `ENGINE_WIRING_PASS.md:223` ("the term landed as ruled" — a record
+of #139's landing, correct at that moment).
+
+**The structural point, which is #126 again:** one fact, nine homes, and no mechanism to notice
+when the fact changes. Invariant 1 was corrected in #222 and eight other statements did not
+move; two of them drifted into misstatement. A derived check — the identity's arity read from
+`draft_room.py` and compared against every doc that states it — would make this self-policing,
+and is the same shape as the `'measured'` guard added above. Not built here; recorded as the
+natural next step for #182.

@@ -264,8 +264,11 @@ leaves the process.
 **LOCATION:** `draft_board_ui.serialize_candidate`.
 **EVIDENCE — what ships:** `uv`, `tav`, `needBonus`, `eligBonus` per candidate, per pick. Since
 `team_acquisition_value = universal_value + need_bonus + eligibility_bonus`
-(`CDME_CONTRACTS.md` §1), the browser receives enough to confirm the **additive structure of the
-equation** and to read the **`need_bonus` ladder** directly off observed values (the discrete
+(`CDME_CONTRACTS.md` §1 **as it read when this was written** — the invariant has since grown to
+five terms with `depth_exposure` (#139) and `displacement_adj` (#216), and §1 now states that
+form; the reasoning below is unaffected because it concerns whether the browser can see the
+additive structure at all, not how many terms the sum has), the browser receives enough to
+confirm the **additive structure of the equation** and to read the **`need_bonus` ladder** directly off observed values (the discrete
 `8.33 / 4.33 / 4.00 / 0.33 / 0.00` set measured in the H1/B appendix).
 **EVIDENCE — what does NOT ship:** `bpa`, `bpa_source`, `confidence`, `projected_points`,
 `time_horizon_adj`, `risk_adj`. Verified by AST read of `serialize_candidate` in D, not by
