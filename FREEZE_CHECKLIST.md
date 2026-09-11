@@ -1,7 +1,7 @@
 # What is left before "how it drafts" is done, and before v1 can freeze
 
 Derived from the register and the evidence on disk, not from memory. Every claim below names
-where it comes from. Written against HEAD `3d63c36`.
+where it comes from. Written against HEAD `3d63c36`; corrections since are dated inline.
 
 ---
 
@@ -90,6 +90,24 @@ missing is this note.
       environment and records F&F as out of scope. Either is defensible; the current state
       picks neither and says nothing, which is the part that is not defensible.
 
+      **IN FLIGHT — this is being answered by measurement rather than by decision.**
+      `run_roster_proof_ff.py` runs the #205 harness unchanged (same `scoreable_pool`,
+      `run_one`, `score_roster`, `RULERS`, `COMPARE_ON`) and supplies only the league: F&F's own
+      29-slot roster, its 30 observed scoring keys, 26 draftable rounds, 12 seats. It writes
+      after every seat, so a container suspend costs one seat rather than the run (an earlier
+      attempt was killed at 8/12 and lost everything — the exact defect #213b exists to close,
+      rebuilt by me and then closed again).
+
+      **Pre-registered before the result was seen, so it cannot be fitted afterwards:**
+      - engine wins or ties `points` on F&F -> the strong claim holds in the league actually
+        being played, and Gate 2's ruling drops from *blocking* to *documentation*.
+      - engine still loses `points` -> the strong claim genuinely fails, and it must be named in
+        the freeze record rather than buried under the 68/68 tautology.
+
+      Either way the result is **one league**, and a reversal between two rulebooks would itself
+      be the finding — it would mean the deficit is a property of the scoring environment, not
+      of the engine.
+
 ## GATE 1 — Evidence that does not currently exist
 
 - [ ] **#150 — re-run the mass battery. Both committed runs are WITHDRAWN.**
@@ -98,15 +116,28 @@ missing is this note.
       priced 329→371), #201 (real universe) and #204 (production pricing path). **There is
       currently no valid cross-format behavioural evidence for the engine as it stands.**
       Cost ~2.9h. Nothing below can be called verified across formats until this exists.
-- [ ] **#241 — before that run, make the battery report the hint distribution it exercises.**
-      All 33 arms currently resolve `te_premium=True`, so one of the four advertised axes is
-      constant and nothing notices. Derived, next to `independent_formats`, the way
-      `duplicate_arms` already works.
+- [x] **#241 — the disclosure is BUILT; the finding that motivated it is WITHDRAWN (26th).**
+      The claim recorded here — "all 33 arms resolve `te_premium=True`" — was false. I built the
+      matrix from `fourth_and_forever.json` while the battery reads `fixtures/sleeper_capture.json`.
+      Against the real source the axis IS varied: `te_premium {False: 30, True: 3}`, and
+      `constant_axes = []`. Caught by the instrument built for the finding, on its first real run.
+      The disclosure (`format_axes`, derived from `league_format_hint`'s own keys, reported next
+      to `independent_formats`) ships anyway, because the run should state the axes it exercised
+      whether or not one of them is currently constant.
 - [ ] **Do not count 33 arms as 33 independent ones.** Measured this session: league size and
       superflex cannot move a gap-based quantity at all (0 of 41/125/197/114 gaps change while
       the top QB price moves 48.51 → 163.06), because `bpa` is points minus a per-position
       constant. Check which axes the quantity under study can actually see before sizing a run.
 - [ ] **#218 — the #222 Phase 0 reproduction was deferred and never re-run** (312 picks).
+- [x] **#242 — the round count every instrument used was the wrong question, fixed before the
+      re-run.** `len(roster_positions)` is "how many slots are there", not "how many rounds does
+      the startup draft run". The two differ by the IR slots, which are never drafted. It was
+      invisible because `fixtures/sleeper_capture.json` — the league the battery and the roster
+      proof both draft — has no IR at all, so the two agree there. Two real captures disagree:
+      F&F 29 slots − 3 IR = 26 (and the real startup ran exactly 26 rounds), GSOP 33 − 4 = 29.
+      `league_config.draftable_slots` now answers it, in the one home that already answered
+      "does this slot start anybody". **No battery arm's round count changes** — no mock league
+      carries IR — and a test pins that rather than my having checked once.
 
 ## GATE 2 — The objective ruling (owner; #50 / Phase 3)
 

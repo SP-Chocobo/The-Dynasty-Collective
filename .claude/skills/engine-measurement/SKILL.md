@@ -601,3 +601,26 @@ screenshot to obtain.
 publishes its own answer and check against that.** It is usually cheap, it is the only test that
 can catch a faithful implementation of the wrong rules, and it is worth more than a hundred
 assertions written from the same assumption as the code.
+
+## Never mutate a source file while a long measurement is in flight
+
+A mutation pass writes a broken version of a module, runs a test, and restores it. That is safe
+only when nothing else is running. Two long runs (a battery, a roster proof) were in flight
+during one such pass in this session, and the pass rewrote `draft_room.py` underneath them.
+
+Nothing was corrupted, and the reason is narrower than it looks: CPython caches modules in
+`sys.modules`, so a module ALREADY IMPORTED is never re-read from disk. The exposure is a module
+the running process has NOT yet imported — a function-local `import`, a lazy backend, an
+`importlib` call on a path not yet taken. Those read the mutated file and the run silently
+measures broken code, with no crash and no marker in the output.
+
+So the rule is not "be careful", it is ordering:
+
+  - While a long run is in flight, do only NON-MUTATING work: reading, analysis, new files,
+    documents, tests that do not patch source.
+  - Queue the mutation passes and run them when the machine is idle.
+  - `__pycache__` clearing is harmless to a running process and is still required around any
+    mutation (#240).
+
+A new test file is safe to add and run. A new module is safe. Editing a module a running
+instrument imports is not, even when it currently happens to get away with it.
