@@ -105,6 +105,34 @@ def main() -> int:
     print(f"shared pool: {len(points)} players both arms can price | "
           f"{len(slots)} startable slots | {len(pick_order)} picks\n")
 
+    out = Path("evidence/roster_proof/ROSTER_PROOF_FF_fourth_and_forever.json")
+    out.parent.mkdir(parents=True, exist_ok=True)
+
+    def _write(complete: bool, runs, seconds):
+        # #213b, and I rebuilt the defect it exists to close: the first version of this file
+        # wrote only on its last line, and a container suspend at seat 8 of 12 destroyed all
+        # eight. Written after EVERY seat now, with `complete` saying which kind of file a
+        # reader is holding.
+        store_io.write(out, {
+            "league": "Fourth and Forever", "rulebook": str(CAPTURE), "complete": complete,
+            "teams": teams, "rounds": rounds, "draft_type": "snake (ASSUMED)",
+            "shared_pool": len(points), "seats_done": len(runs), "seats_total": len(seats),
+            "summary": _summary(runs), "seats": runs, "seconds": round(seconds, 1)})
+
+    def _summary(runs):
+        if not runs:
+            return {}
+        out_ = {}
+        for ruler in rp.RULERS:
+            q = rp.COMPARE_ON[ruler]
+            wins = sum(1 for r in runs if r["engine"][ruler][q] > r["control_mean"][ruler][q])
+            eng = sum(r["engine"][ruler][q] for r in runs) / len(runs)
+            ctl = sum(r["control_mean"][ruler][q] for r in runs) / len(runs)
+            out_[ruler] = {"wins": wins, "of": len(runs), "engine_mean": round(eng, 2),
+                           "control_mean": round(ctl, 2),
+                           "pct": round((eng / ctl - 1) * 100, 2) if ctl else None}
+        return out_
+
     runs, t0 = [], time.time()
     for seat in seats:                                                 # seat control, rule 8
         picks = rp.run_one(merger, players_db, league, pick_order, seat,
@@ -120,28 +148,18 @@ def main() -> int:
             f"{r}: eng {engine[r][rp.COMPARE_ON[r]]:8.2f} vs ctl "
             f"{row['control_mean'][r][rp.COMPARE_ON[r]]:8.2f}" for r in rp.RULERS)
         print(f"seat {seat:>2}  {line}", flush=True)
+        _write(complete=False, runs=runs, seconds=time.time() - t0)    # every seat, #213b
 
     print()
-    summary = {}
+    summary = _summary(runs)
     for ruler in rp.RULERS:
-        q = rp.COMPARE_ON[ruler]
-        wins = sum(1 for r in runs if r["engine"][ruler][q] > r["control_mean"][ruler][q])
-        eng = sum(r["engine"][ruler][q] for r in runs) / len(runs)
-        ctl = sum(r["control_mean"][ruler][q] for r in runs) / len(runs)
-        summary[ruler] = {"wins": wins, "of": len(runs), "engine_mean": round(eng, 2),
-                          "control_mean": round(ctl, 2),
-                          "pct": round((eng / ctl - 1) * 100, 1) if ctl else None}
         note = ("TAUTOLOGY -- the engine's own objective" if ruler == "cdme"
                 else "THE STRONG CLAIM -- the control's own game")
-        print(f"  ruler {ruler:7} on {q:13}: engine ahead in {wins} of {len(runs)} seats"
-              f"   eng {eng:9.2f} vs ctl {ctl:9.2f}  ({summary[ruler]['pct']:+.1f}%)   {note}")
-
-    out = Path("evidence/roster_proof/ROSTER_PROOF_FF_fourth_and_forever.json")
-    out.parent.mkdir(parents=True, exist_ok=True)
-    store_io.write(out, {"league": "Fourth and Forever", "rulebook": str(CAPTURE),
-                         "teams": teams, "rounds": rounds, "draft_type": "snake (ASSUMED)",
-                         "shared_pool": len(points), "summary": summary, "seats": runs,
-                         "seconds": round(time.time() - t0, 1)})
+        srow = summary[ruler]
+        print(f"  ruler {ruler:7} on {rp.COMPARE_ON[ruler]:13}: engine ahead in "
+              f"{srow['wins']} of {srow['of']} seats   eng {srow['engine_mean']:9.2f} vs ctl "
+              f"{srow['control_mean']:9.2f}  ({srow['pct']:+.2f}%)   {note}")
+    _write(complete=True, runs=runs, seconds=time.time() - t0)
     print(f"\n-> {out}")
     return 0
 
