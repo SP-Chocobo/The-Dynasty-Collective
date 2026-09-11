@@ -7069,3 +7069,42 @@ And the run describes the **current** code: every commit since it launched (`68a
 touches markdown only — `git diff --name-only` returns no `.py` at all. The first attempt at this
 suite was discarded rather than quoted, because it was launched across a tree that was being
 mutated underneath it.
+
+## #122 WITHDRAWN IN FULL (24th correction, mine) — the repair was already built
+
+**The #122 section above is wrong and should not be cited.**
+`draft_room.positional_bench_appetite_basis()` exists, ships the derived vocabulary
+`APPETITE_MEASURED` / `APPETITE_IMPUTED` / `APPETITE_UNAVAILABLE`, is read by `pick_synthesis`
+(`HORIZON_BASIS_MEASURED = dr.APPETITE_MEASURED`), and is pinned by tests in `test_draft_horizon`
+and `test_draft_room`. Measured directly:
+
+```
+K DEEP  (measurable)   appetite 1.0360   basis 'measured'
+K SHORT (6 players)    appetite 8.0527   basis 'imputed'
+K EMPTY (no rows)      appetite 8.0527   basis 'imputed'
+```
+
+**The sub-claim is wrong too.** I called short-pool vs empty-pool a third collapsed state. It is
+not a state: the basis names the **rule applied** ("no evidence this one decays differently from
+average"), and that rule is identical whether the evidence was six players or none — so the same
+token and the same number are **correct**, not a loss of information. Two epistemic states exist
+here, measurable and not, and the basis separates them exactly.
+
+The existing docstring already states everything I thought I was finding, including an
+adversarial bound I never computed: truncating only RB below 2x demand moved it from 20.29
+measured to 3.37 imputed (−83%), and its bench-capacity share from 63.5% to 22.5%; it names the
+silent window as rounds 3–15.
+
+**Root cause, and it is not subtle.** The rule *"before investigating a mechanism, grep for the
+mechanism, not just its number"* was written into this register an hour earlier, by me, after B2.
+I then investigated #122 by grepping `#122` and `bench_capacity`, never `appetite_basis` — and
+wrote "the established pattern is a companion basis, applied four times over" without checking
+whether the companion existed here. Enumerating the pattern's four other instances and still not
+looking for the fifth makes this worse, not better.
+
+**What survives:** only the #62 half. Not-rostered returns `0.0` (a real measured zero — you
+cannot bench a position you cannot start) while a short pool returns the imputed value, so #62's
+docstring promise holds. Unaffected, and still worth having measured.
+
+**#122 is therefore CLOSED, not open** — and the register's own description of it ("the
+per-position mean_rate imputation is unmarked") was already stale before I started.

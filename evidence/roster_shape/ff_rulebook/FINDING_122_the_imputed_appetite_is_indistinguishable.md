@@ -1,3 +1,43 @@
+# WITHDRAWN IN FULL (24th correction, mine) — the repair was already built, and better than I specified
+
+**Do not cite this finding.** Its headline claim is false. `draft_room.positional_bench_appetite_basis()`
+exists, ships the derived vocabulary `APPETITE_MEASURED` / `APPETITE_IMPUTED` /
+`APPETITE_UNAVAILABLE`, and is read by `pick_synthesis` (`HORIZON_BASIS_MEASURED =
+dr.APPETITE_MEASURED`) and pinned by tests in `test_draft_horizon` and `test_draft_room`.
+Measured directly:
+
+```
+K DEEP  (measurable)   appetite 1.0360   basis 'measured'
+K SHORT (6 players)    appetite 8.0527   basis 'imputed'
+K EMPTY (no rows)      appetite 8.0527   basis 'imputed'
+```
+
+**The sub-claim is wrong too.** I called short-pool vs empty-pool a third collapsed state. It is
+not a state: the basis names the RULE APPLIED ("no evidence this one decays differently from
+average"), and that rule is the same whether the evidence was six players or none, so the same
+token and the same number are **correct**, not a loss of information. There are two epistemic
+states here — measurable and not — and the basis separates them exactly.
+
+**The existing docstring already says everything I thought I was finding**, including the
+adversarial bound I did not compute: truncating only RB below 2x demand moved it from 20.29
+measured to 3.37 imputed (−83%) and its bench-capacity share from 63.5% to 22.5%, and it names
+the silent window as rounds 3–15.
+
+**Root cause, and it is not subtle.** I wrote the rule *"before investigating a mechanism, grep
+for the mechanism, not just its number"* in this same session, an hour earlier, after B2. Then I
+investigated #122 by grepping `#122` and `bench_capacity` — and never `appetite_basis`. I even
+wrote the sentence "the established pattern is a companion basis, applied four times over"
+while failing to check whether the companion existed here. Knowing the pattern and enumerating
+its four other instances made the omission worse, not better.
+
+**What survives**, and only this: the #62 half. Not-rostered returns `0.0` (a real measured zero
+— you cannot bench a position you cannot start) while a short pool returns the imputed value, so
+#62's docstring promise holds. That was worth measuring and is unaffected.
+
+The original text is kept below unaltered, as the record of what I claimed.
+
+---
+
 # #122 confirmed, and it is a THREE-way collapse, not a two-way one
 
 The register records #122 as "`positional_bench_appetite`'s per-position mean_rate imputation is
