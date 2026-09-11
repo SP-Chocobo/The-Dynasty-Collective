@@ -7174,7 +7174,8 @@ loud and leaves the naming decision where it belongs.
 The front-door document was three days behind the engine, and the gap was substantive rather
 than cosmetic.
 
-**What it said.** TAV = `universal_value + need_bonus + eligibility_bonus + depth_exposure`, and
+**What it said** (quoting the README **as it read** before this repair, not a live claim).
+TAV = `universal_value + need_bonus + eligibility_bonus + depth_exposure`, and
 "**All four terms** are unit-matched to the same bpa-anchored scale and individually **bounded**
 … specifically so neither roster-fit term can override a genuine talent gap on its own."
 
@@ -7227,3 +7228,31 @@ move; two of them drifted into misstatement. A derived check — the identity's 
 `draft_room.py` and compared against every doc that states it — would make this self-policing,
 and is the same shape as the `'measured'` guard added above. Not built here; recorded as the
 natural next step for #182.
+
+### #182 made self-policing for the identity: `test_tav_identity_is_stated_once.py`
+
+The natural next step named above is now built. The expected term list is **parsed out of
+`draft_room.py`'s own module docstring at runtime** (#126 — derived, never hand-listed), and
+every statement of the identity across every `.md` must either match it or carry a scope marker
+saying which moment it describes.
+
+**The rule is deliberately not "every statement must list five terms."** Rewriting a dated
+measurement to match the present is worse than leaving it, and Invariant 1 already says so. What
+the test forbids is an **unscoped** statement of a superseded arity — a present-tense claim that
+is no longer true, with nothing telling the reader it is history.
+
+**It failed on its first run, correctly, and on me.** Four unscoped mismatches: the two
+`CDME_CONTRACTS` passages I had judged "left alone deliberately, dated measurement narratives"
+— right about their nature, wrong that they needed no marker — and my own register quotation of
+the README's superseded text. All four now carry markers.
+
+**It also found a defect in itself.** The first matcher compared markers against raw text, and
+these documents are hard-wrapped, so `**as\nit stood**` straddled a line break and a correctly
+marked statement was reported as a misstatement. Fixed by whitespace-normalising the window
+before matching — a marker split by a line break is still a marker.
+
+**Mutation-checked 2/2**, and the first mutation is the scenario this exists for: adding a sixth
+term to the identity in `draft_room.py` now fails everywhere the docs still say five. That is
+precisely the notification that was missing both times the sum actually grew (#139, #216).
+Non-vacuity is asserted first — if the regex ever stops matching, the population test fails
+rather than every assertion passing trivially.

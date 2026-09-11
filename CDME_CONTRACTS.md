@@ -4797,7 +4797,8 @@ data without them would give kickers a systematically negative dynasty adjustmen
 
 The downstream repair phase opened here because every other downstream quantity is denominated
 in this one. `universal_value = bpa + time_horizon_adj + risk_adj`;
-`team_acquisition_value = universal_value + need_bonus + eligibility_bonus`. If `bpa` has no
+`team_acquisition_value = universal_value + need_bonus + eligibility_bonus` (the identity **as
+it stood** when this repair ran; §1 carries the live five-term form). If `bpa` has no
 fixed unit, none of the additive constants in those two lines has a fixed meaning either.
 
 ## What the code did
@@ -7233,7 +7234,9 @@ rather than asserted by docstring.**
 ## Part 2 — what actually decides
 
 `TAV = universal_value + need_bonus + eligibility_bonus`, and
-`universal_value = bpa + time_horizon_adj + risk_adj`. Ablated at board level:
+`universal_value = bpa + time_horizon_adj + risk_adj` — the identity **as it stood** when this
+ablation was run; §1 carries the live five-term form, and the later terms were not present to
+ablate. Ablated at board level:
 
 | component removed | leader changed | top-3 set changed | leader changed, near-tie states |
 |---|---:|---:|---:|
