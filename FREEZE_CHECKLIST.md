@@ -19,11 +19,26 @@ formats and 68 chairs, the engine:
 - wins the **asset** ruler **68 of 68 chairs**, roughly doubling the control, and
 - loses the **projected-points** ruler **67 of 68**, by **5–11%**.
 
-Every lineup is full, so this is not a failure to field a team — it is fielding a different one
-on purpose. **There is no established exchange rate between present-season points and dynasty
-asset value in this system**, so "correct dynasty construction" and "systematic mispricing" both
-fit these numbers equally well. That is the one thing that has to be ruled before anyone can say
-the engine drafts *well* rather than merely *consistently*.
+**CORRECTION — these two are NOT symmetric, and presenting them as a pair was the most
+misleading thing in this document.** The proof's own design note settles their status:
+
+> *"A win on `cdme` alone is a tautology and must be reported as one. A win on `points` too is
+> the strong claim: the engine beat the control at the control's own game."*
+> — `run_roster_proof.py`, RULERS
+
+`cdme` is the engine's own objective, so **68/68 there carries no information by construction**.
+`points` is the control's objective, and beating a control someone would actually play is the
+only informative test in this repo. Measured, the two rulers correlate at **r = 0.241** — they
+are different questions, not two views of one, so a win on either does not imply the other.
+
+**So the honest statement of the result is: the engine has been tested once against a fair
+control, and did not pass.** 1 of 68 seats. Every lineup is full, so this is not a failure to
+field a team — it is fielding a different one on purpose, and losing on the ruler that says
+whether that was worth it.
+
+**There is no established exchange rate between present-season points and dynasty asset value in
+this system**, so "correct dynasty construction" and "systematic mispricing" both still fit. But
+the burden has moved: the one test that could have discharged it was run and not passed.
 
 Source: `evidence/roster_proof/README.md`, `ROSTER_PROOF_2026-09-08_realrules_COMPLETE_6of6`.
 
@@ -39,7 +54,7 @@ same scoring environment:**
 | `data/fixtures/sleeper_capture.json` | **`run_draft_battery`**, **`run_roster_proof`** | 1.0 | absent | none |
 | `data/league_captures/fourth_and_forever.json` | the `evidence/roster_shape/ff_rulebook/` probes | 0.5 | 0.25 | `rec_fd 0.5`, `rush_fd 0.25` |
 
-The headline result this checklist leans on — **asset 68/68, points 67/68, every lineup full** —
+The headline result this checklist leans on — the tautology won 68/68, **the strong claim lost 67/68** —
 was measured on the **fixture**: full PPR, no TE premium, no first-down scoring. Fourth and
 Forever, the league actually being played, is half-PPR with a TE premium and pays receivers
 **double** what backs get for the same first down, plus a `pass_cmp 0.1` completion bonus in
