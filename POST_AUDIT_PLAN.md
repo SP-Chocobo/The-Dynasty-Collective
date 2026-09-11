@@ -6968,3 +6968,49 @@ the instrument before the arithmetic. Re-deriving the same wrong number from the
 process confirms nothing.
 
 Detail at `evidence/roster_shape/ff_rulebook/FINDING_224_two_bench_capacities_and_a_poisoned_cache.md`.
+
+## #122 CONFIRMED — the imputed appetite is a THREE-way collapse, and #62 is cleanly closed
+
+Measured on one league (`["QB","RB","RB","WR","WR","TE","K","BN","BN","BN"]`, 12 teams), one
+pool, three K scenarios:
+
+| K's situation | returned |
+|---|---|
+| deep pool — decay **measurable** | `1.0359…` |
+| 6-player pool — too short to read, **imputed** | `8.0526…` |
+| **no K rows at all** — nothing to read, imputed | `8.0526…` |
+| control: K not in `roster_positions` at all | `0.0` |
+
+**#62 is genuinely closed and its docstring promise holds.** The promise — a position whose pool
+cannot reach 2x starter demand "does NOT get 0.0 ... that would assert 'this position is never
+benched', which is a claim, not an absence" — is kept: the short pool returns `8.05`. The `0.0`s
+appear only for positions the league does not roster, where zero bench appetite is a **real
+measured zero**. Correct, and not to be changed.
+
+**#122 is real and worse than one line suggests.** The imputed `8.05` comes back in exactly the
+same shape as the measured `1.0359` — a bare float — so a consumer cannot separate (1) measured,
+(2) imputed from six players of evidence, (3) imputed from none. States 2 and 3 are not merely
+the same shape, they are **the same number**: the mean rate is supplied identically whether the
+position had partial evidence or no evidence at all. Here the imputed value is ~**8x** the
+measured one, so the collapse is not cosmetic.
+
+Same family as #166 (`horizon_basis`), #174 (`depth_basis`), #187 (`denial_basis`), #207
+(`rival_premium_basis`): a number right to produce, produced without saying what kind it is.
+
+**Repair specified, deliberately NOT built.** The established pattern is a companion basis with a
+derived vocabulary (#126) — here `appetite_basis` over at least `measured` /
+`imputed_short_pool` / `imputed_no_pool` / `not_rostered`. **#188's open question, whether the
+vocabulary needs a fifth "bounded/partial" state, lands exactly on states 2 vs 3** — this
+measurement makes that abstract question concrete.
+
+Not built because it changes `draft_room.py` beyond prose while the #222 constraint on that file
+is in force, and it widens a contract two callers read (`estimated_bench_demand`,
+`horizon_replacement`). #122 is KNOWN-OPEN-ACCEPTABLE, nothing is failing, and no measurement in
+flight depends on it — so the owner gets a specified repair rather than a boundary taken down on
+my judgment.
+
+**NOT concluded:** whether the mean rate is the right *value*. That is the docstring's own
+reserved question and #56 territory. This finding is about **disclosure** only — the number's
+provenance, not its size.
+
+Detail at `evidence/roster_shape/ff_rulebook/FINDING_122_the_imputed_appetite_is_indistinguishable.md`.
