@@ -1,3 +1,11 @@
+> **NARROWED — see FINDING_the_split_buys_nothing_behavioural.md.** The exact decomposition, the
+> three regimes and the naming below all stand. What is narrowed is the claim that
+> `shared_slot_adj` "contains no information about who is on my roster": that holds *given which
+> phantom is reached*, and which phantom is reached is entirely roster-determined. **Measured: with
+> an empty roster the charge is 0.00 for every position — 0 of 481 rows on the production opening
+> board.** So a roster-blind mode has nothing to keep, the split buys no behavioural change, and
+> its value is descriptive (an observable) rather than a route to fixing upside mode.
+
 # The two displacement charges — vocabulary, defined and not wired
 
 **RULING (owner, this session): SPLIT IT — vocabulary first.** `displacement_adj` carries two
