@@ -1,3 +1,27 @@
+> **CORRECTED (22nd) — "remedy is an input" is WRONG, and a fresh Sleeper pull would not help.**
+> The coverage numbers below all stand. The *verdict* does not. The capture is COMPLETE, not
+> partial: `season_projection_coverage` records **18 weeks requested, 18 answered, 0 failed**, and
+> the capture's own README says it is *"trimmed … to NON-ZERO stat categories."* So a row carrying
+> only `adp_dd_ppr` is a player **Sleeper answered for and projected ZERO**, not a player the
+> capture missed. 90 of the 113 unpriced quarterbacks are in the file exactly that way; only 23 are
+> absent from it.
+>
+> And they are real NFL backups, not phantoms: **76 of 113 are on an NFL roster**, mean
+> `years_exp` **3.0** against **5.4** for the 42 priced ones. QB2s and QB3s, projected zero because
+> they are not expected to start.
+>
+> **So the input is not missing — the projection is genuinely zero, and pulling it again returns
+> the same zeros.** This is not a supply defect and it is not #193/#209/#210. It is **#147**: *the
+> valuation anchor has a one-season lifetime in a dynasty engine*. Humans in a superflex DYNASTY
+> startup draft young backup quarterbacks for future seasons; `bpa` prices this season's points,
+> where those players correctly score nothing.
+>
+> **NOT established, and I tried:** whether dynasty material (`proj_3yr`, `trade_value`) exists for
+> these 113. I reached for `DataMerger` with a guessed API, got 0 of 155 records back, and stopped
+> rather than keep guessing — that is the fixture error the measurement doctrine exists to prevent.
+> **It is the next measurement**, and it decides whether #147 is a wiring problem (material exists,
+> does not reach the anchor) or a sourcing one (no material either).
+
 # B2 is not a valuation defect. The engine runs out of quarterbacks it can price.
 
 Four artifact reads plus one capture read. No engine run, no engine source changed. This
