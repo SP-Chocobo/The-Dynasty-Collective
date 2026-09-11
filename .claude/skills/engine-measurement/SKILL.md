@@ -556,7 +556,7 @@ and leaked a file handle. Put the fixture behind a function; keep module scope t
 
 ## The fixture rule covers the RULEBOOK too, not just the pool
 
-Line 2 of the five-line fixture says `rdb.build_players_db`, not a hand-rolled loop — because a
+Line 2 of the five-line fixture says `rdb.build_players_db_from_capture`, not a hand-rolled loop — because a
 hand-rolled pool silently excludes IDP. **The same rule governs the SCORING SETTINGS, and #241
 is what it costs to learn that separately.**
 
