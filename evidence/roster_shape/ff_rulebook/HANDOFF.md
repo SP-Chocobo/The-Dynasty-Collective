@@ -352,3 +352,79 @@ overshoot for a WR overshoot of nearly the same size and costs roster shape both
 32.4% TE and the roster-aware arms' 42.0% WR are two faces of one pricing fact, and the mode
 boundary only chooses which face you see. **That points back to #229 and away from the mode
 switch.**
+
+---
+
+# UPDATE — the register was stale, and most of this stretch was finding out how much
+
+Work done after #222's B2 closed, under the standing order to work the register in whatever
+order is constructive.
+
+## The thing that reframed the rest
+
+Picking **#187** off the open list, the first grep found the repair already shipped. Same for
+**#190** and **#207**. All green. All filed open. **Nothing fails when this happens** — the item
+reads open, the investigation starts, and only luck stops it.
+
+Screened all 52 open items for a test naming them: **30 have one**. That is a screen, not a
+verdict, and the counterexample was made in the same stretch — `TheTrendSignSurvivesTheParserTests`
+names #148, is green, and **#148 stays OPEN**, because it is a *guard on an open condition* rather
+than a pin on a repair.
+
+**Closed on verified evidence (repair in source + dedicated test green + a verdict somewhere):**
+#94 · #116 · #185 · #186 · #187 · #190 · #192 · #193 · #194 · #207 · #208 · #209.
+**Adjudicated without flipping:** #210 (mechanism explained, supply gap stays open) · #211
+(known-open-acceptable, pinned — "a reported line, not a verdict", per its own tests).
+
+## Work that produced new evidence
+
+**#148 NARROWED.** The parser is exonerated: `_KTC_ROW_RE` captures `(-?\d+)` and that exact regex
+is present at **both** commits that produced the committed CSV; pypdf round-trips a minus through
+a hand-built PDF; and no row was silently skipped (499 consecutive ranks, no gaps). 471 positive /
+28 zero / **0 negative** — `P = 2^-471` at an even split. The sign was never in the extracted text
+and nothing here removed it. Still open, still blocked, now on a measurement rather than a guess.
+
+**B2 CORRECTED (23rd, mine).** I wrote that Sleeper "answers and says zero." It does not — all
+eight named backups have an entry holding **one key**, `adp_dd_ppr = 18000.0`. "Says zero" vs
+"has no stat line" is exactly the measured-0.0 / never-computed-None distinction, conflated by me
+in a finding about absence. And B2 is not its own finding: it is the **#212** ADP-only population,
+which already folds in #209 and #210. Four items, one mechanism.
+
+**#224 PINNED.** `lineup_optimizer.bench_capacity` is a per-team count of BN **slots** (int,
+static); `draft_room`'s local is a league-wide budget of **picks** (float, draining). On the
+fixture: **3 vs 36.0**. No live crossed wire, so nothing renamed — 8 tests, mutation-checked 6/6,
+guarding the substitution a future "cleanup" would make. Found on the way: `estimated_bench_demand`
+had **zero** direct tests, and its `max(…, 0.0)` floor is reachable by ordinary means.
+
+## Two instrument defects, both mine, both now doctrine
+
+**A stale `.pyc` served MUTATED code after the source was restored.** `0.0` → `1.0` is
+byte-identical in length, and mutate/run/restore finished inside one mtime second, so CPython's
+mtime+size check kept the cache valid. `git status` clean, `git diff` empty, the line read
+`max(…, 0.0)`, and `inspect.getsourcelines` **on the bound function** showed the correct body —
+`inspect` reads the source, not the executing bytecode. Caught only because a returned `1.0`
+contradicted arithmetic doable on paper. **This is aimed at the instrument that exists to prove
+tests are not vacuous**; every same-length mutation in this repo's history is in scope. Fix:
+`PYTHONDONTWRITEBYTECODE=1` on every arm, control included.
+
+**Pushes were landing on the wrong branch.** `git push -u origin <name>` pushes the **local branch
+of that name**, not HEAD — and in this worktree a stale local `claude/…` sat 164 commits behind
+while every push printed a reassuring branch-tracking line. Fixed as a pure fast-forward (proved
+with `merge-base --is-ancestor` and an empty `log <target> ^HEAD` first). Verify pushes by the
+`old..new` ref line, never the tracking line.
+
+## The rules that came out of it
+
+- Before investigating an item filed open, **grep for its repair**.
+- B2 was never filed as an item, which is how it evaded that — so: **before investigating a
+  mechanism, grep for the mechanism**.
+- When a measured number contradicts arithmetic you can do on paper, **suspect the instrument
+  before the arithmetic**. Re-deriving the same wrong number from the same poisoned process
+  confirms nothing.
+
+## Left deliberately, with reasons
+
+**#206** — mechanism read (`survival = Π(1 − p_take)`, then `round(…, 3)`), but whether a 0.000
+is model calibration or a rounding collapse needs a real measurement pass; half-doing it would be
+worse than leaving it. **#175** (CLIFF_HIGH_RATIO needs a derivation, not a tightening — #56),
+**#105**, **#112**, **#96/#97/#100** — flagged by the screen, no verdict read, not swept.
