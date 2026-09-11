@@ -260,7 +260,27 @@
       "TE": 24.6
     },
     "derivation": "draft_room.starter_slot_counts(roster_positions), not hand-allocated",
-    "TALLY_DISCREPANCY": "312 picks are available; the hand tally of the board in evidence/roster_shape/real_drafts totals 310. Two picks unaccounted for -- either a transcription miss or forfeited/expired picks. Recorded, not reconciled."
+    "TALLY_DISCREPANCY": "312 picks are available; the hand tally of the board in evidence/roster_shape/real_drafts totals 310. Two picks unaccounted for -- either a transcription miss or forfeited/expired picks. Recorded, not reconciled.",
+    "PROVENANCE": {
+      "_WHAT_THIS_IS": "Every draft_math field classified by WHERE ITS NUMBER CAME FROM. A capture file reads as observation; two of these fields are not observation, and without this block an instrument that validates the engine against this file would be validating the engine against itself.",
+      "_CLASSES": {
+        "derived_cached": "recomputable from this file's own primary fields (roster_positions, total_rosters). Cached for readability; can go stale.",
+        "engine_derived": "produced by running this repository's OWN code. NOT an observation of this league. Carries engine assumptions -- here, SUPER_FLEX_QB_SHARE.",
+        "observed": "transcribed from Sleeper or from a real draft board.",
+        "note": "prose for a human reader; no number to check."
+      },
+      "_IF_THE_GUARD_FAILS": "test_capture_provenance re-derives these rather than trusting the labels. If the engine_derived rows stop matching the engine, the CORRECT fix is to DELETE them from the capture -- not to update them. Updating them re-entrenches an engine constant inside a file whose stated capture_method is transcription from screenshots.",
+      "fields": {
+        "draftable_slots_per_team": "derived_cached",
+        "total_picks_if_startup": "derived_cached",
+        "starter_slot_counts": "engine_derived",
+        "league_starters": "engine_derived",
+        "ROUND_COUNT_CHECK": "note",
+        "TALLY_DISCREPANCY": "note",
+        "derivation": "note",
+        "PROVENANCE": "note"
+      }
+    }
   },
   "IDENTICAL_STARTER_DEMAND_TO_THE_OTHER_CAPTURE": {
     "fact": "Greatest Show on Paper 2 has the SAME ten starting slots -- QB/RB/RB/WR/WR/TE/FLEX x3/SUPER_FLEX -- so draft_room.starter_slot_counts returns identical values for both leagues (QB 1.85, RB 3.05, WR 3.05, TE 2.05) and identical league_starters at 12 teams.",
