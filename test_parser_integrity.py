@@ -21,7 +21,9 @@ of mis-assigning it. R4 gives the two Draft Sharks parsers the same ability to k
 lost. R5 stops _sniff_pdf_kind handing an unrecognised file to a parser by default.
 """
 import unittest
+from pathlib import Path
 
+import pandas as pd
 import pypdf
 
 import data_merger as dm
@@ -182,6 +184,59 @@ class UnrecognisedFormatIsRefusedTests(unittest.TestCase):
             with self.subTest(expected):
                 self.assertEqual(dm._sniff_pdf_kind_from_text(text), expected)
 
+
+class TheTrendSignSurvivesTheParserTests(unittest.TestCase):
+    """#148. The committed KeepTradeCut export carries 471 positive trends, 28 zeros and NOT
+    ONE negative, and direction is the entire information content of a trend. `term_lifetimes`
+    records the cause as a hypothesis about the source page. These tests pin the half of that
+    hypothesis this repo controls: the parser is SIGN-CAPABLE, so it is not the thing losing
+    the sign, and it must not silently become the thing that loses it later.
+
+    The live hazard is a plausible-looking simplification. `(-?\\d+)` -> `(\\d+)` reads as
+    tidying, changes no current test's outcome (no negative trend exists in any committed
+    fixture), and would silently discard the sign on the first re-scrape that finally carries
+    one -- turning a repaired input back into the defect it was repaired for.
+    """
+
+    ROW = "Sample Player WR7 T3 45671 {trend}"
+
+    def test_the_row_pattern_captures_a_negative_trend(self):
+        match = dm._KTC_ROW_RE.match(self.ROW.format(trend="-12"))
+        self.assertIsNotNone(match, "a negative trend must still match a KTC row")
+        self.assertEqual(match.groups()[5], "-12")
+
+    def test_a_negative_trend_reaches_the_record_as_a_negative_number(self):
+        rows = self._parse(["-12", "0", "7"])
+        self.assertEqual([r["trend_30d"] for r in rows], [-12, 0, 7],
+                         "sign and magnitude must both survive into the parsed record")
+
+    def test_the_committed_export_is_all_non_negative_despite_that(self):
+        """The measurement #148 rests on, pinned so it cannot drift unnoticed. If a future
+        re-scrape lands, this test fails and #148's remedy is what changed the data."""
+        path = Path("data/baseline/external/keeptradecut/dynasty_superflex_halfppr.csv")
+        if not path.exists():  # pragma: no cover - the export is committed
+            self.skipTest("the KeepTradeCut export is not present")
+        trend = pd.read_csv(path)["trend_30d"]
+        self.assertEqual(int((trend < 0).sum()), 0,
+                         "if this export now carries negatives, #148's input defect is fixed "
+                         "-- retire the record rather than loosening this assertion")
+
+    def _parse(self, trends):
+        """Drive the real parse_keeptradecut_pdf over synthetic page text."""
+        lines = ["Superflex / .5 PPR Values updated", "1 - 3"]
+        for i, trend in enumerate(trends, start=1):
+            # KTC prints VALUE and RANK back-to-back with no separator; the parser splits them
+            # using the expected rank, so each row's blob must end in its own rank.
+            lines.append(f"Player {i} WR{i} T1 {900 - i}{i} {trend}")
+        _StubReader.pages = [_StubPage("\n".join(lines))]
+        real = pypdf.PdfReader
+        pypdf.PdfReader = _StubReader
+        try:
+            frame, _ = dm.parse_keeptradecut_pdf("stub.pdf")
+        finally:
+            pypdf.PdfReader = real
+        self.assertEqual(len(frame), len(trends), "every synthetic row must parse")
+        return frame.to_dict("records")
 
 if __name__ == "__main__":
     unittest.main()

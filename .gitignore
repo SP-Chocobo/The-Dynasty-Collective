@@ -34,3 +34,4 @@ BATTERY_REPORT.json
 # rename away. Committing either would ship one machine's transient state as source.
 *.json.lock
 *.json.tmp-*
+evidence/roster_shape/ff_rulebook/ktc_sign_probe.pdf

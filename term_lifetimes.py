@@ -205,16 +205,42 @@ CANDIDATE_INPUTS: dict[str, dict] = {
 #: information content of a trend -- at +401 a player is either breaking out or collapsing, and
 #: the column cannot say which -- so it is unusable as ingested.
 #:
-#: MOST LIKELY CAUSE, stated as a hypothesis because it cannot be confirmed from here: the
-#: export is PDF text extraction of KTC's paginated web view (see that source's ATTRIBUTION.md),
-#: and the site renders direction as a coloured arrow glyph rather than a "-" character, so the
-#: magnitude survives extraction and the sign does not. That is the same failure family as the
-#: value/rank concatenation the same attribution already documents. KTC's API is blocked from
-#: this environment (403), so it cannot be checked against the live source.
+#: THE CAUSE IS UPSTREAM OF THIS REPO -- narrowed from a hypothesis to a measurement, see
+#: evidence/roster_shape/ff_rulebook/RESULT_148_the_parser_is_exonerated.md. Two things could
+#: each have produced the observed column: the instrument dropping a "-" that WAS present, or
+#: no "-" ever being present. The first is now falsified, twice over:
 #:
-#: EITHER WAY IT IS AN INPUT DEFECT, NOT A PRINCIPLE -- which makes it the one #145 candidate
-#: that is fixable rather than ruled out. A re-scrape that preserves sign makes the field
-#: immediately admissible on both axes.
+#:   * The parser is sign-capable, and was when this data was ingested -- `_KTC_ROW_RE` captures
+#:     the trend as `(-?\d+)` and `parse_keeptradecut_pdf` converts with a bare `int()`. Exactly
+#:     one commit has ever touched that pattern, and the identical regex is present at BOTH
+#:     commits that produced the committed CSV (32e6991, 98e2df1). There is no window in this
+#:     repo's history in which a sign-blind parser read these PDFs.
+#:   * pypdf round-trips a minus sign through a hand-built PDF at the version the parser uses
+#:     (ktc_sign_probe.py, prediction pre-registered in its own docstring before running).
+#:
+#: Nor was any row silently skipped: the parser anchors the trend at end-of-line and advances
+#: `expected_rank` only on an accepted row, so one unmatched tail would cascade every later row
+#: into rejection. The CSV holds 499 rows at ranks 1-499 with no gaps. Every row ended in a bare
+#: integer in the extracted text.
+#:
+#: How far from a real trend this is: 471 positive, 28 zero, 0 negative. At an even split that
+#: is P = 2^-471; for it to be plausible at 1-in-20 the 30-day market would have to have risen
+#: for 99.37% of assets. That is a magnitude with its direction stripped, not a rising market.
+#:
+#: What stays a guess is the vendor's own rendering -- ATTRIBUTION.md suspects a coloured arrow
+#: glyph, by analogy with the value/rank concatenation it documents, and KTC's API is blocked
+#: from this environment (403) so the live page cannot be checked. What is established is that
+#: the character never reached the extracted text and nothing here removed it.
+#:
+#: THE REGRESSION THIS INVITES, guarded: `(-?\d+)` -> `(\d+)` reads as tidying, breaks no
+#: existing test (no committed fixture carries a negative trend), and would silently discard the
+#: sign on the first re-scrape that finally carries one. TheTrendSignSurvivesTheParserTests in
+#: test_parser_integrity.py pins the capability and the current all-non-negative state together;
+#: the latter fails the day a signed capture lands, which is when to retire this record.
+#:
+#: IT IS AN INPUT DEFECT, NOT A PRINCIPLE -- which makes it the one #145 candidate that is
+#: fixable rather than ruled out. A re-scrape that preserves sign makes the field immediately
+#: admissible on both axes, and is now the ONLY remedy rather than the likelier of two.
 #:
 #: Worth recording alongside: run_asset_character_measurement.py already wrote trend_30d off as
 #: "always NaN, not usable today" -- but it checked the FANTASYPROS file, where the column is

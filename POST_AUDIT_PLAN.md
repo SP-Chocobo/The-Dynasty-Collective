@@ -6765,3 +6765,48 @@ both roster-aware arms overshoot WR to 42.0 against a human 37.1. **The TE exces
 by restoring roster awareness in the back half.** AUTO's TE overshoot and the roster-aware arms'
 WR overshoot are two faces of one pricing fact; the mode boundary chooses which. The live question
 is #229's — cross-position comparability below starter depth — not the mode switch.
+
+## #148 NARROWED — the whole in-repo chain is sign-capable, and it still produced 499 unsigned rows
+
+`term_lifetimes.UNSIGNED_TREND` recorded the missing sign's cause as a hypothesis, stated as one
+because it "cannot be confirmed from here." Half of it can be, and now is. #148 does not close;
+what changes is that it is blocked on a measured finding rather than an untested guess.
+
+Two candidates could each produce the observed all-positive column: the instrument dropping a
+`-` that WAS present, or no `-` ever being present. They have different remedies — the first is
+an in-repo bug, re-parseable today from PDFs the owner still holds. **The first is falsified,
+twice over, and a third fact rules out the remaining in-repo path.**
+
+- **The parser was sign-capable AT INGEST, not merely today.** `_KTC_ROW_RE` captures the trend
+  as `(-?\d+)`; `parse_keeptradecut_pdf` converts with a bare `int()`. Exactly one commit has
+  ever touched that pattern, and the identical regex sits at **both** commits that produced the
+  committed CSV (`32e6991`, `98e2df1`). No window exists in which a sign-blind parser read these
+  PDFs.
+- **pypdf round-trips the minus** at the version the parser uses, through a hand-assembled PDF
+  (`ktc_sign_probe.py`; reportlab is absent here, so the content stream is written out in the
+  probe and nothing is trusted to a generator). Prediction pre-registered in its own docstring,
+  with its falsifier, before running.
+- **No row was silently skipped.** The parser anchors the trend at `$` and advances
+  `expected_rank` only on an accepted row, so a single unmatched tail cascades every later row
+  into rejection. The CSV holds 499 rows at ranks 1–499, consecutive, no gaps; the one absent
+  row (rank 500) is ATTRIBUTION.md's documented digit-splitting ambiguity. Every row ended in a
+  bare integer in the extracted text.
+
+**How far from a real trend this is, quantified rather than asserted.** 471 positive, 28 zero,
+**0 negative**. At an even split that is `P = 2^-471 ≈ 10^-142`; for the column to be plausible
+at even 1-in-20, KTC's 30-day market would have to have risen for **≥99.37%** of assets — fewer
+than 3 expected decliners in 471. A magnitude with its direction stripped, not a rising market.
+
+**What stays a guess** is the vendor's own rendering (ATTRIBUTION.md suspects a coloured arrow
+glyph; KTC's API is 403 from here). What is established is that the character never reached the
+extracted text and **nothing in this repo removed it**.
+
+**The regression this invites, guarded.** `(-?\d+)` → `(\d+)` reads as tidying, breaks no
+existing test — no committed fixture carries a negative trend — and would silently discard the
+sign on the first re-scrape that finally carries one, restoring the defect with no failure
+anywhere. `TheTrendSignSurvivesTheParserTests` pins the capability and the current
+all-non-negative state *together*; the second fails the day a signed capture lands, which is the
+right moment to retire the record rather than loosen the assertion. Mutation-checked 3/3.
+
+Result at `evidence/roster_shape/ff_rulebook/RESULT_148_the_parser_is_exonerated.md`.
+Classification unchanged: KNOWN-OPEN-ACCEPTABLE, blocker now confirmed external.
