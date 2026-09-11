@@ -190,6 +190,11 @@ couple of minutes and read the file.
 - **`pkill -f "run_draft_battery"` matches its own launching shell.** The `bash -c` wrapper
   contains the pattern, so it kills the job it is starting. Use a character class that does not
   match itself: `pkill -f "run_draft_batter[y]"`.
+  The character class protects the PATTERN, not the whole command line. `pkill -f
+  "unittest discove[r]"` still killed its own shell, because the same one-liner went on to
+  launch `python3 -m unittest discover` — and that plain spelling, elsewhere in the same
+  `bash -c` string, is what the regex matched. Never put a kill and the relaunch it precedes in
+  one command; run them as two, and confirm with `pgrep` between.
 - **Backticks inside `git commit -m "..."` are COMMAND SUBSTITUTION.** A double-quoted message
   quoting a docstring (`` `adjustment` ``, `` `0.0` ``) silently loses everything from the first
   backtick onward, and the commit still succeeds — so the log carries a truncated record while
