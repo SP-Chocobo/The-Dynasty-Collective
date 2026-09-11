@@ -383,3 +383,32 @@ checking for it.
   `_board_order` key, so a decision expressed only as ROW ORDER is discarded before the pick.)
 - Could this number be about a different question than the one asked? Say what would have to be
   true for it to be an artifact, then check that.
+
+## A third shell hazard: `git push -u origin <name>` does not push HEAD
+
+`git push -u origin my-branch` pushes the **local branch named `my-branch`**, not the commit you
+are sitting on. In a worktree — where the checked-out branch routinely has a *different* name
+from the branch you were told to deliver to — a stale local branch of the target name silently
+absorbs every push. Git reports success and prints the branch-tracking line either way:
+
+```
+Everything up-to-date
+branch 'claude/...' set up to track 'origin/claude/...'.
+```
+
+That second line is what makes it dangerous. It reads as confirmation, it appears on every
+push, and it says nothing about whether a commit moved. An entire session's work went to the
+worktree branch this way while the designated branch sat 164 commits behind, each push looking
+clean.
+
+- **Push an explicit refspec**: `git push origin HEAD:refs/heads/<target>`. It cannot resolve to
+  something other than what you have.
+- **Verify by the ref-update line, never the tracking line.** A real push prints
+  `9fb5102..a020840  HEAD -> <target>`. No `old..new` pair means nothing moved.
+- **`Everything up-to-date` right after a commit is a failure**, not a no-op.
+
+Same shape as the fixture errors above: the instrument answered confidently about a different
+object than the one asked about. Before fast-forwarding a branch that has drifted, prove there
+is nothing to lose rather than assuming it — `git merge-base --is-ancestor <target> HEAD` and
+`git log --oneline <target> ^HEAD` (must be empty). If either fails, it is not a fast-forward
+and `--force` is not the remedy.
