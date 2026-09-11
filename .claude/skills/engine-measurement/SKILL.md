@@ -486,3 +486,70 @@ rule to the subject matter minutes earlier and then failed to apply it to the to
 Corollary, learned the expensive way: **when a measured number contradicts arithmetic you can do
 on paper, suspect the instrument before the arithmetic.** Re-deriving the same wrong number from
 the same poisoned process confirms nothing.
+
+## The null belongs to the ESTIMATOR, not to a closed form
+
+The #175 pass compared the engine's cliff ratios against `P(X >= r*median) = 2^-r`, and both
+conclusions it drew were wrong — in opposite directions — because the engine does not divide by
+a plain median. `detect_positional_cliff`'s yardstick drops zero gaps, drops the target's own
+gap, and TRIMS the largest ~10%. Those inflate every ratio, and worst in the tail.
+
+Run on memoryless data, the engine's own estimator returns **0.223** at r=2.5, not 0.177, and
+**0.092** at r=4.0, not 0.062. A published "0.83× — rarer than the null" was really 1.26×
+enriched, and a published "1.21× at 4×, real structure" was really 2.4×.
+
+**If you are comparing an engine quantity against a theoretical baseline, generate the baseline
+by running the ENGINE'S OWN CODE PATH over synthetic data with the property you are nulling.**
+Do not look up the closed form for the textbook estimator that your code resembles. The closed
+form is a statement about an estimator, and yours is a different one.
+
+The tell was absent, as usual: both numbers were plausible. What exposed it was asking what the
+trim does to the denominator and then simulating it — four minutes of work that would have
+saved the whole first pass.
+
+## Before you build N arms, check whether the quantity can see what the arms vary
+
+Eight format arms were drafted for #175 before anyone checked whether the measured quantity
+could move. It could not. `bpa` is points minus a **per-position replacement level**, and the
+cliff detector reads only DIFFERENCES between adjacent bpa values — so the level cancels
+exactly. Superflex moved the top QB price from 48.51 to 163.06 and changed **0 of 41 QB gaps**.
+10-team and 14-team, likewise: 0 of 125 RB, 0 of 197 WR, 0 of 114 TE.
+
+Of eight arms, three were independent. The other five were the same evidence recounted, which
+is the `duplicate_arms` failure (#159) in a form `duplicate_arms` cannot detect — those arms are
+not byte-identical overall, only identical *in the quantity under study*.
+
+**The check is cheap and it is arithmetic, not a run.** Ask what the quantity is a function of,
+then ask whether the axis you are varying appears in it:
+
+- a quantity built from **differences** cannot see any per-group additive constant
+  (replacement level, any re-basing, any anchor);
+- a quantity built from **ratios** cannot see a per-group scale factor;
+- a quantity **normalized** before you read it cannot see anything the normalizer absorbs.
+
+Run the one-line version first — vary the axis, diff the raw inputs, count how many changed —
+before spending an hour of board builds on arms that are copies.
+
+And the flip side, which is the same rule: **an axis that fails to vary is also a coverage
+hole.** All 33 `league_matrix` arms hint `te_premium=True`, because #213 correctly made the real
+(TE-premium) rulebook every arm's base and `build_mock_league(te_premium=False)` can add a bonus
+but not remove one. A correct repair silently flattened an advertised axis, and nothing checked.
+Report the DISTRIBUTION of the hints your arms actually exercise, derived, next to
+`independent_formats` — a constant axis should announce itself the way a duplicate arm does.
+
+## `python3 path/to/script.py` does not put the repo root on `sys.path`
+
+Python puts the **script's own directory** on `sys.path`, not the working directory. A probe in
+`evidence/roster_shape/ff_rulebook/` run from the repo root — exactly as the five-line fixture
+above demands — dies on `ModuleNotFoundError: No module named 'data_merger'`.
+
+Run it as `PYTHONPATH=. python3 evidence/.../probe.py`. Do not "fix" it by `cd`-ing to the
+script's directory: that breaks `DataMerger`'s baseline path resolution, which is the first
+hazard on this page, and trades a loud error for a silent empty frame.
+
+## A probe that a test imports must do nothing at import time
+
+`test_cliff_null_estimator.py` drives the probe's private copy of an engine rule against the
+real engine, which means it imports the probe. The probe's first version read the league capture
+and built eight mock leagues at module level, so every one of those tests paid for board setup
+and leaked a file handle. Put the fixture behind a function; keep module scope to definitions.

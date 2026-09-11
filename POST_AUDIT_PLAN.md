@@ -7319,61 +7319,74 @@ Cumulative for the stretch: **14 new tests across three files, mutation-checked 
 2/2**, and no engine source modified anywhere in it. The only non-test, non-documentation edits
 were to `README.md`, `ARCHITECTURE_AUDIT.md` and `CDME_CONTRACTS.md` prose.
 
-## #175 DERIVATION BASIS: the ratio selects a quantile, it does not detect structure
+## #175 REJECTED — no derivable threshold, and the "derivation basis" above it is WITHDRAWN
 
-#175 asks for a derivation, not a tightening, and #56 forbids calibrating to an outcome. This
-supplies the basis without proposing a value.
+> **This section replaces one that stood here and was wrong.** It claimed the flagged population
+> at 2.5× was *rarer* than a no-cliff null (0.83×), and that real structure lived past 3×,
+> reaching 1.21× at 4×. **Both claims are withdrawn** — the 25th correction, mine. The record of
+> the error is kept here deliberately rather than quietly overwritten.
 
-**The null, stated before looking at data.** If adjacent `bpa` gaps were memoryless — the
-position has no cliffs, just smooth decay — then `P(gap >= r x median) = 2^-r`. So
-`CLIFF_HIGH_RATIO = 2.5` is, before any measurement, **the ~82nd percentile of a smooth decay**:
-a fixed multiple of a median is a quantile selector, not a rarity test.
+**The error was one substitution.** The withdrawn section compared the engine's cliff ratios
+against the closed form `P(X >= r × median) = 2^-r`. That is the null for a **plain median of
+adjacent gaps**, and `detect_positional_cliff` does not divide by one: its yardstick drops the
+zero gaps, drops the target's own gap, and **trims away the largest ~10%**. Each shrinks the
+denominator and inflates every ratio, worst in the tail. Simulated on memoryless data, the
+engine's **own** estimator gives 0.223 at r=2.5 (not 0.177) and 0.092 at r=4.0 (not 0.062) — a
+1.26× and 1.48× understatement, concentrated exactly where the tail claim was made.
 
-**Measured with the engine's own `detect_positional_cliff`** (not a reimplementation) over a
-12T_standard opening board, 256 bpa-priced rows of the real capture universe:
+Corrected, against the engine's own estimator's null, on `12T_ppr`:
 
-| tier | share |
-|---|---|
-| HIGH | **14.5%** |
-| MEDIUM | 15.2% |
-| LOW | 68.8% |
+| pos | n | r=1.0 | r=1.5 | r=2.0 | **r=2.5** | r=3.0 | r=4.0 |
+|---|---|---|---|---|---|---|---|
+| QB | 41 | 0.99 | 1.01 | 0.92 | **1.23** | 1.18 | 1.28 |
+| RB | 125 | 1.00 | 1.15 | 1.34 | **1.55** | 1.70 | 2.37 |
+| TE | 114 | 1.01 | 1.09 | 1.32 | **1.63** | 1.82 | 2.61 |
+| WR | 197 | 1.00 | 1.10 | 1.34 | **1.60** | 1.88 | 2.55 |
 
-**HIGH + MEDIUM = 29.7%, which broadly reproduces #175's 34%** — that figure appears to be the
-union of both tiers. And the ratio distribution (n = 252):
+The flagged population at 2.5× is **enriched, not rare**, and the enrichment is above 1.0 from
+r=1.0 and climbs monotonically with **no inflection anywhere** — so there is no crossing, and
+the "null-crossing" derivation basis the withdrawn section offered does not exist. (A heavier
+tail than exponential is a goodness-of-fit result; a smooth power-law decay with no tiers at all
+would produce it identically.)
 
-| r | 1.0 | 1.5 | **2.5** | 3.0 | 4.0 |
-|---|---|---|---|---|---|
-| empirical | 47.2% | 30.2% | **14.7%** | 12.3% | 7.5% |
-| exponential null | 50.0% | 35.4% | **17.7%** | 12.5% | 6.2% |
-| empirical ÷ null | 0.94× | 0.85× | **0.83×** | 0.98× | **1.21×** |
+**The owner's three questions, answered:**
 
-**At 2.5x the flagged population is slightly RARER than a no-cliff null predicts.** The detector
-is not finding structure there; it returns roughly the top sixth of an ordinary decay curve,
-which is what a fixed multiple of a median does by construction. Real structure exists but lives
-further out — the enrichment crosses 1.0 only past 3x and reaches 1.21x at 4x, and that crossing
-is a **derived** feature of the distribution rather than a chosen number.
+1. **Stability across formats — structural, and the question partly dissolves.** `bpa` is points
+   minus a **per-position replacement level**, and the detector reads only *differences*, so the
+   level cancels. Superflex moves the top QB price 48.51 → 163.06 and changes **0 of 41 QB
+   gaps**; 10T and 14T likewise, 0 of 125 RB / 197 WR / 114 TE. Only `rec` and `bonus_rec_te`,
+   which reshape the curve, move gaps. **Of the eight arms run, three are independent.**
+2. **Power — most cells cannot call a departure.** The sizing formula was validated by
+   simulating the test it sizes (0.78–0.84 against a 0.80 target), then corrected for the
+   **measured design effect** of the shared gap pool, D = 1.22–1.58. WR/TE/RB can reject
+   memorylessness; **QB (41 gaps) and every IDP position (12–41) cannot.**
+3. **Human recognizability — mixed, and the mixture is the finding.** The largest ratios mix real
+   tier breaks (RB3→RB4 McCaffrey→Taylor, WR4→WR5, TE2→TE3) with deep-pool artifacts that score
+   **higher** (QB32→QB33 at 30.5×), because a median-gap yardstick collapses where the pool is
+   compressed. **The measure is systematically largest where it means least.**
 
-**So #175 is confirmed and sharpened.** "A third of the population cannot all be cliffs" is
-right, and the reason is not that 2.5 is loose: **a multiple of a median cannot express rarity at
-all.** Moving it to 3.5 would shift the quantile, not fix the category error.
+**VERDICT: REJECT.** Per the owner's sequencing — *derive or reject* — no value for
+`CLIFF_HIGH_RATIO` is derivable here, and **no constant is changed**. The fallback
+("runtime-derived per position") is not thereby recommended: it would inherit the depth artifact
+unchanged, so the missing concept is a **depth bound** — *where in the pool the rule applies* —
+not a better multiple.
 
-**Two derivation bases are now available**, neither a tuned constant: (1) flag at a stated
-exceedance probability against the position's own empirical gap distribution — the bound comes
-from the data and the stated probability is the honest design decision; (2) flag where the
-empirical distribution first departs from the memoryless null by a stated margin, which on this
-board is past 3x. **No value is proposed and none should be read in** — which basis, and what
-counts as "unusual", is the owner's.
+**Not urgent.** `CLIFF_HIGH_RATIO` feeds `NECESSITY_CLIFF_POINTS` → `pick_necessity`, which #55
+ruled **OBSERVABLE with no selection authority**. Changing it cannot change a pick today.
 
-**Scope, stated rather than implied:** one board, one format, opening state, 252 ratios. The
-curve's *shape* is the claim; the crossing point is not established across formats or mid-draft
-states. Reproducing it across the battery's arms is the obvious next step and was not done.
+**Guards:** `test_cliff_null_estimator.py`, 7 tests, mutation-checked 6 of 7. The survivor
+(`CLIFF_HIGH_RATIO` 2.5 → 3.5) survives **by design and must keep surviving** — pinning the
+constant would prejudge the ruling #175 asks for, so the tier assertions recompute the boundary
+from `ps.CLIFF_HIGH_RATIO` rather than from a literal.
 
-**Method note:** the first pass measured `universal_value` gaps and would have published a
-framing built on the wrong column — the detector works on `bpa`, with a *trimmed* median and a
-`CLIFF_MIN_MATERIAL_GAP` floor. The rewritten measurement calls the production detector
-directly, which is the only version that measures the engine rather than my model of it.
+**Also surfaced, not looked for (#241):** all 33 `league_matrix` arms hint `te_premium=True`,
+including `12T_ppr_redraft`, which exists to be the non-TEP control — because #213 correctly made
+the real (TE-premium) F&F rulebook every arm's base, and `build_mock_league` can add a bonus but
+not remove one. The TE-premium *scoring* axis is exercised; the TE-premium *export-selection*
+branch never is.
 
-Detail at `evidence/roster_shape/ff_rulebook/FINDING_175_the_ratio_selects_a_quantile_not_a_cliff.md`.
+Detail at `evidence/roster_shape/ff_rulebook/FINDING_175_the_ratio_selects_a_quantile_not_a_cliff.md`
+and `.../FINDING_the_battery_never_varies_te_premium.md`.
 
 ## #188 RULED AND EXECUTED: `basis_semantics.py` — one place to ask "is this a bound?", two classes
 

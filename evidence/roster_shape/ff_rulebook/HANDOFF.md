@@ -453,14 +453,33 @@ override a talent gap while omitting `displacement_adj`, which is uncapped preci
 says five — a citation that misrepresents its source. Nine statements of one fact across the
 docs; two were load-bearing-stale, four more needed scope markers.
 
-## #175 given a derivation basis
+## #175 REJECTED — and the "derivation basis" this entry used to claim is WITHDRAWN (25th)
 
-`CLIFF_HIGH_RATIO = 2.5` is, before any data, **the ~82nd percentile of a memoryless decay**
-(`P = 2^-r`). Measured with the engine's own detector: **HIGH 14.5%**, HIGH+MEDIUM 29.7%
-(reproducing #175's 34%), and at 2.5× the flagged population is **0.83× the no-cliff null** —
-rarer than chance. A multiple of a median cannot express rarity; moving the number shifts the
-quantile without fixing the category error. Enrichment crosses 1.0 past 3× and hits 1.21× at 4×.
-Two derived bases offered, **no value proposed** — that is the owner's.
+**What stood here was wrong.** It said `2.5` sits at the ~82nd percentile of a memoryless decay
+(`P = 2^-r`), that the flagged population is **0.83×** the no-cliff null, and that structure
+lives past 3×, hitting 1.21× at 4×. All of it rested on the closed form `2^-r`, which is the
+null for a **plain median**. `detect_positional_cliff` divides by a median with the zero gaps
+dropped, the target's own gap dropped, and the **largest ~10% trimmed** — so its true null is
+**0.223** at r=2.5 and **0.092** at r=4.0. Corrected, the flagged population is **enriched
+1.23×–1.63×**, not rare, and the tail reaches **2.4×**, not 1.21×.
+
+**There is no crossing.** Enrichment is above 1.0 from r=1.0 and climbs monotonically with no
+inflection, so the "null-crossing" basis this entry offered does not exist. **VERDICT: REJECT**;
+no value is derivable and none is proposed.
+
+Three further results, each answering one of the owner's questions:
+- **Structural:** `bpa` is points minus a per-position replacement level and the detector reads
+  only *differences*, so league size and superflex **cannot change one gap** — measured, 0 of
+  41/125/197/114 while the top QB price moved 48.51 → 163.06. Only `rec` and `bonus_rec_te` move
+  gaps. Of eight arms, three are independent.
+- **Power:** corrected for the measured design effect (D = 1.22–1.58) of the shared gap pool,
+  WR/TE/RB can reject memorylessness; **QB (41 gaps) and every IDP position cannot.**
+- **Recognition:** the largest ratios mix real tier breaks (RB3→RB4, WR4→WR5, TE2→TE3) with
+  deep-pool artifacts that score **higher** (QB32→QB33 at 30.5×). The measure is largest where
+  it means least, so the missing concept is a **depth bound**, not a better multiple.
+
+Guarded by `test_cliff_null_estimator.py` (7 tests, mutation-checked 6/7 — the survivor is
+deliberate: pinning `CLIFF_HIGH_RATIO` would prejudge the ruling #175 asks for).
 
 ## Corrections and instrument errors, all mine
 
