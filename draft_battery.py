@@ -597,6 +597,56 @@ def audit_trajectory(trajectory, league: dict, players_db: dict,
 _FINGERPRINT_EXCLUDES = frozenset({"label", "seconds"})
 
 
+def format_axes_exercised(matrix: list[dict], labels=None) -> dict:
+    """Which value of each format axis the arms ACTUALLY exercise, and which axes are CONSTANT.
+
+    THE SIBLING OF duplicate_arms, AND IT CATCHES WHAT duplicate_arms CANNOT. That detector
+    finds arms whose measured content is byte-identical. It cannot see an axis that varies the
+    arms' *scoring values* while never varying the thing those values are supposed to select --
+    the arms differ, so nothing is flagged, and the matrix goes on advertising a dimension it
+    stopped having.
+
+    #241 WAS FILED AS EXACTLY THAT AND WAS WRONG, which is worth keeping here rather than
+    deleting. The claim was that all 33 arms resolve `te_premium=True`, because #213 made the
+    real Fourth & Forever rulebook (`bonus_rec_te = 0.25`) every arm's base and
+    `build_mock_league(te_premium=False)` can add a bonus but not remove one. The measurement
+    behind it built the matrix from `data/league_captures/fourth_and_forever.json` -- a
+    DIFFERENT captured league from the one `run_draft_battery` actually drafts, which is
+    `data/fixtures/sleeper_capture.json` (full PPR, no TE bonus). Against the battery's own
+    source the axis varies: 30 arms `False`, 3 `True`, and no axis is constant. The finding is
+    withdrawn; this function is kept because it is what caught it, on its first real run.
+
+    So the hole it guards against is real in KIND even though that instance was not: an axis can
+    stop varying without any arm becoming a duplicate, and nothing else in the report would say
+    so. It now says so, and a witness test pins that no axis is constant TODAY.
+
+    DERIVED, NEVER HAND-LISTED, twice over: the axis NAMES come from league_format_hint's own
+    return keys, so adding an axis there makes it appear here without anyone editing a list;
+    and the values come from the arms' own leagues rather than from the labels, which is the
+    #126 rule and also the reason a label saying "redraft" cannot lie to this function.
+
+    `labels` scopes the answer to the arms actually being reported (a --only run, or the arms a
+    resumed report has so far), so the disclosure always describes THAT report rather than the
+    matrix a fuller run would have had.
+    """
+    entries = [e for e in matrix
+               if labels is None or e.get("label") in labels]
+    axes: dict[str, dict[str, int]] = {}
+    for entry in entries:
+        for axis, value in league_format_hint(entry["league"]).items():
+            # str() because JSON object keys are strings: True would round-trip as "true"
+            # anyway, and a dict keyed half by bool and half by str sorts unstably.
+            seen = axes.setdefault(axis, {})
+            seen[str(value)] = seen.get(str(value), 0) + 1
+    return {
+        "arms": len(entries),
+        "axes": {a: dict(sorted(v.items())) for a, v in sorted(axes.items())},
+        # An axis with one observed value across >1 arm is advertised but not exercised. With a
+        # single arm every axis is trivially constant and saying so would be noise, not news.
+        "constant_axes": sorted(a for a, v in axes.items() if len(v) == 1) if len(entries) > 1 else [],
+    }
+
+
 def duplicate_arms(results: list[dict]) -> list[dict]:
     """Arms of the matrix whose ENTIRE measured content is identical to another arm's.
 

@@ -136,7 +136,8 @@ def positions_the_rulebook_cannot_price(census: dict[str, dict]) -> list[str]:
     return sorted(p for p, r in census.items() if r["stat_lines"] and not r["priced"])
 
 
-def _battery_report(universe: dict, results: list, started: float, *, complete: bool) -> dict:
+def _battery_report(universe: dict, results: list, started: float, *, complete: bool,
+                    matrix: list[dict]) -> dict:
     """One report shape for the mid-run and end-of-run writes.
 
     #213b: WRITTEN AFTER EVERY ARM. This run is ~4 hours and wrote only on its last line, so a
@@ -157,6 +158,12 @@ def _battery_report(universe: dict, results: list, started: float, *, complete: 
         "carried_forward": [r["label"] for r in results if r.get(resume_join.CARRIED)],
         "formats": len(results),
         "independent_formats": len(results) - len(dupes),
+        # #241: WHICH AXES THESE ARMS ACTUALLY EXERCISE. duplicate_arms catches arms that are
+        # byte-identical; it cannot catch an axis whose arms differ in scoring VALUE while never
+        # varying the export selection that value is supposed to drive. Scoped to the labels in
+        # `results`, so a partial or resumed report describes itself rather than a fuller run.
+        "format_axes": draft_battery.format_axes_exercised(
+            matrix, {r["label"] for r in results}),
         "duplicate_arms": dupes,
         "picks": sum(r["picks"] for r in results),
         "total_findings": sum(len(r["findings"]) for r in results),
@@ -424,7 +431,8 @@ def main(argv: list[str] | None = None) -> int:
         results.append(audited)
         print(_arm_line(audited), flush=True)
         # #213b: every arm, not just the last one. A four-hour run must survive a restart.
-        store_io.write(Path(args.out), _battery_report(universe, results, started, complete=False))
+        store_io.write(Path(args.out), _battery_report(universe, results, started,
+                                                       complete=False, matrix=matrix))
 
     total_findings = sum(len(r["findings"]) for r in results)
     # The instrument states its own coverage. `formats` is how many arms RAN;
@@ -433,7 +441,7 @@ def main(argv: list[str] | None = None) -> int:
     # WHICH UNIVERSE THIS RUN DRAFTED FROM. A battery is a dated measurement against a dated
     # pool, and #201 is what happens when that goes unrecorded: every arm was certified against
     # a reconstruction with no health signal and nothing said so.
-    report = _battery_report(universe, results, started, complete=True)
+    report = _battery_report(universe, results, started, complete=True, matrix=matrix)
     dupes = report["duplicate_arms"]
     store_io.write(Path(args.out), report)
     print(f"\n{report['formats']} formats ({report['independent_formats']} independent), "
@@ -442,6 +450,12 @@ def main(argv: list[str] | None = None) -> int:
     for dupe in dupes:
         print(f"  DUPLICATE ARM: {dupe['label']} reproduces {dupe['duplicates']} exactly "
               f"-- same rankings export, so it is not independent evidence")
+    # #241: an axis the matrix advertises but never varies is a coverage hole, and it is
+    # invisible to duplicate_arms. Say it here, next to the duplicates, for the same reason.
+    for axis in report["format_axes"]["constant_axes"]:
+        only = ", ".join(report["format_axes"]["axes"][axis])
+        print(f"  CONSTANT AXIS: every arm resolves {axis}={only} -- this run varies that axis "
+              f"in NAME only, so it is not evidence about the {axis} branch")
     return 1 if total_findings else 0
 
 

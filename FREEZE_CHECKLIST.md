@@ -29,6 +29,38 @@ Source: `evidence/roster_proof/README.md`, `ROSTER_PROOF_2026-09-08_realrules_CO
 
 ---
 
+## SCOPE LIMIT ON EVERYTHING BELOW — the evidence measures a different league than the owner's
+
+Added after #241's withdrawal exposed it. **Two captured leagues exist and they are not the
+same scoring environment:**
+
+| file | read by | `rec` | `bonus_rec_te` | first downs |
+|---|---|---|---|---|
+| `data/fixtures/sleeper_capture.json` | **`run_draft_battery`**, **`run_roster_proof`** | 1.0 | absent | none |
+| `data/league_captures/fourth_and_forever.json` | the `evidence/roster_shape/ff_rulebook/` probes | 0.5 | 0.25 | `rec_fd 0.5`, `rush_fd 0.25` |
+
+The headline result this checklist leans on — **asset 68/68, points 67/68, every lineup full** —
+was measured on the **fixture**: full PPR, no TE premium, no first-down scoring. Fourth and
+Forever, the league actually being played, is half-PPR with a TE premium and pays receivers
+**double** what backs get for the same first down, plus a `pass_cmp 0.1` completion bonus in
+superflex.
+
+**Why this matters to the ruling in Gate 2.** The points-vs-asset trade is being judged against
+a scoring environment that weights positions differently from the owner's. A rulebook that pays
+receivers more per first down, and QBs more per completion, changes which roster *is* the
+higher-scoring one — so the size, and possibly the sign, of that 5–11% points deficit is not
+established for F&F. **Neither is it refuted.** It is simply unmeasured.
+
+**This does not invalidate any existing result.** The battery and the roster proof agree with
+each other because they use the same fixture, and the `ff_rulebook/` probes are honestly named
+and scoped (#175's scope statement states F&F's `rec` and `bonus_rec_te` explicitly). What was
+missing is this note.
+
+- [ ] **Decide whether the freeze's evidence should be re-measured on F&F's rulebook**, or
+      whether the freeze deliberately certifies the engine against a generic full-PPR
+      environment and records F&F as out of scope. Either is defensible; the current state
+      picks neither and says nothing, which is the part that is not defensible.
+
 ## GATE 1 — Evidence that does not currently exist
 
 - [ ] **#150 — re-run the mass battery. Both committed runs are WITHDRAWN.**

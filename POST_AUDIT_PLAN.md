@@ -7388,6 +7388,67 @@ branch never is.
 Detail at `evidence/roster_shape/ff_rulebook/FINDING_175_the_ratio_selects_a_quantile_not_a_cliff.md`
 and `.../FINDING_the_battery_never_varies_te_premium.md`.
 
+## #241 WITHDRAWN — THE AXIS IS VARIED; I BUILT THE MATRIX FROM THE WRONG LEAGUE (26th)
+
+**The claim, now withdrawn.** That all 33 `league_matrix` arms resolve `te_premium=True` —
+including `12T_ppr_redraft`, which exists to be the non-TEP control — because #213 correctly made
+the real Fourth & Forever rulebook (`bonus_rec_te = 0.25`) every arm's `base_scoring`, and
+`build_mock_league(te_premium=False)` can add a bonus but cannot remove one. It followed that the
+TE-premium export-selection branch was never exercised.
+
+**Why it is false.** There are two captured leagues in this repo, and I measured the wrong one:
+
+| file | read by | `rec` | `bonus_rec_te` | roster |
+|---|---|---|---|---|
+| `data/fixtures/sleeper_capture.json` | **`run_draft_battery`**, `run_roster_proof`, ~10 tests | 1.0 | absent | 12T, SUPER_FLEX, K, 2x IDP_FLEX |
+| `data/league_captures/fourth_and_forever.json` | the `evidence/roster_shape/ff_rulebook/` probes | 0.5 | 0.25 | 3x FLEX + SUPER_FLEX, no K, no IDP, IR/TAXI |
+
+`run_draft_battery.scoring_settings_from_capture()` reads the **fixture**. My probe hand-built a
+dict from **Fourth & Forever**'s `scoring_settings_observed`. Against the battery's own source:
+
+```
+te_premium  {'False': 30, 'True': 3}      constant_axes = []
+```
+
+**The axis is varied. No advertised axis is constant.** Measured end-to-end: a real two-arm
+battery run printed `CONSTANT AXIS: every arm resolves te_premium=False` for two non-TEP arms —
+correct for those two, and the opposite of the filed claim.
+
+**What this rules out, so nobody re-opens it.** The two rulebooks are not a contradiction and
+neither is stale. The battery and the roster proof both use the fixture, so they agree with each
+other. The `ff_rulebook` probe family deliberately measures the owner's own league and is named
+for it; #175's scope statement already says so explicitly (`bonus_rec_te = 0.25, rec = 0.5`).
+Nothing else is affected — the error was applying one league's rulebook to a claim about the
+other's matrix.
+
+**The error class, and it is one I had already written down.** The engine-measurement doctrine's
+first rule is to call the production function rather than hand-roll the fixture
+(`rdb.build_players_db`, not a loop). I hand-rolled `base_scoring` instead of calling
+`rdb.scoring_settings_from_capture()`, and got a plausible number about a different league —
+which is the failure that doctrine exists to prevent, committed by the person who extended it
+four rules earlier in this same session.
+
+**WHAT IS KEPT, and why.** `draft_battery.format_axes_exercised` stays, with its docstring
+corrected to carry the withdrawal. It is the instrument that **falsified the finding that
+motivated it, on its first real run** — the report said `constant_axes` against the true source
+and the claim died. The hole it guards is real in KIND even though this instance was not: an
+axis can stop varying without any arm becoming a duplicate, and `duplicate_arms` cannot see that
+by construction, because it fingerprints measured content and content that differs is never
+flagged however constant the axis behind it.
+
+**GUARDS.** `test_241_format_axes.py`, 9 tests, **mutation-checked 7/7** (hand-listed axis
+names, `constant_axes` always-empty, names-everything, `labels` ignored, single-arm case, report
+drops the disclosure, report uses the whole matrix instead of its own results). Its fixture now
+calls `rdb.scoring_settings_from_capture()`, and its witness asserts **no axis is constant
+today** — so an axis that later goes constant fails loudly instead of passing in silence.
+
+**A SECOND PROCESS GAP, recorded rather than quietly fixed.** Regenerating `ASSERTION_FLOORS`
+for this close added **ten** modules, five of them from earlier closes in this same session
+(#188, #175, #224 and the #175 vocabulary tests) — closed without running
+`assertion_floors.py --write`, so ten test modules had no floor protecting them. The file
+drifted 137 -> 147. No count DROPPED (verified per-module, not just from `--check`'s summary),
+so nothing was weakened, but the ratchet was not covering what it was supposed to cover.
+
 ## #188 RULED AND EXECUTED: `basis_semantics.py` — one place to ask "is this a bound?", two classes
 
 **The ruling (owner):** adopt `partial` as the shared concept; keep `rule_floor` distinct;

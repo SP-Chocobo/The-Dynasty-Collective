@@ -43,7 +43,11 @@ class BothLongRunningInstrumentsWriteIncrementallyTests(unittest.TestCase):
         dict. Second time today a substring check was satisfied by the subject's own prose.
         """
         for complete in (False, True):
-            report = rdb._battery_report({"x": 1}, [], 0.0, complete=complete)
+            # #241: `matrix` is REQUIRED, not defaulted. A default would let a change that
+            # drops the format-axes disclosure pass silently -- which is exactly the
+            # mutation test_241_format_axes exists to catch. An empty matrix here is
+            # honest: this report holds no results, so it exercises no axes.
+            report = rdb._battery_report({"x": 1}, [], 0.0, complete=complete, matrix=[])
             self.assertIn("complete", report,
                           "a reader must tell a partial file from a finished one without "
                           "counting rows")

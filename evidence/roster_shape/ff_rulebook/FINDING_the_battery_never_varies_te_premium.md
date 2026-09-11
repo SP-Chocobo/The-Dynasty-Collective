@@ -1,3 +1,54 @@
+# ⛔ WITHDRAWN IN FULL — the axis IS varied. I built the matrix from the wrong league.
+
+**Do not cite anything below this banner.** It is kept, unedited, beneath the withdrawal because
+the repo's rule is that a wrong published claim is restated and corrected, never quietly deleted.
+
+## What was claimed, and why it is false
+
+The claim: all 33 `league_matrix` arms resolve `te_premium=True`, so the TE-premium
+export-selection branch is never exercised.
+
+The measurement behind it built the matrix from **`data/league_captures/fourth_and_forever.json`**
+(`rec = 0.5`, `bonus_rec_te = 0.25`). `run_draft_battery` does not read that file. It reads
+**`data/fixtures/sleeper_capture.json`** via `scoring_settings_from_capture()` — a different
+captured league, `rec = 1.0`, no TE bonus at all. Against the battery's own source:
+
+```
+te_premium  {'False': 30, 'True': 3}      constant_axes = []
+```
+
+The axis is varied. No advertised axis is constant. Confirmed end-to-end by a real two-arm
+battery run, whose report printed `CONSTANT AXIS: every arm resolves te_premium=False` for two
+non-TEP arms — correct for those two, and the opposite of the claim.
+
+## Both leagues are legitimate; only my cross-application was not
+
+| file | read by | rec | bonus_rec_te |
+|---|---|---|---|
+| `data/fixtures/sleeper_capture.json` | `run_draft_battery`, `run_roster_proof`, ~10 tests | 1.0 | absent |
+| `data/league_captures/fourth_and_forever.json` | the probes in this directory | 0.5 | 0.25 |
+
+The battery and the roster proof use the same fixture, so they agree with each other. The
+probes in `ff_rulebook/` deliberately measure the owner's own league — the directory is named
+for it, and #175's scope statement says so explicitly. Nothing else is affected.
+
+## The error class
+
+The engine-measurement doctrine's first rule is to call the production function rather than
+hand-roll the fixture. I hand-rolled `base_scoring` instead of calling
+`rdb.scoring_settings_from_capture()`, and got a plausible number about a different league.
+
+## What survives
+
+`draft_battery.format_axes_exercised` — the instrument built for this finding, which then
+falsified it on its first real run. The hole it guards is real in kind (an axis can go constant
+without any arm becoming a duplicate, which `duplicate_arms` cannot see) even though this
+instance was not. Pinned by `test_241_format_axes.py`, whose witness now asserts that **no axis
+is constant today**.
+
+---
+---
+
 # The battery's TE-premium axis is not exercised: all 33 arms hint `te_premium=True`
 
 Found while answering #175's Q1, not looked for. Registering it separately because it is about
