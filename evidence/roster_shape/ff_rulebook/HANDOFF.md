@@ -428,3 +428,55 @@ with `merge-base --is-ancestor` and an empty `log <target> ^HEAD` first). Verify
 is model calibration or a rounding collapse needs a real measurement pass; half-doing it would be
 worse than leaving it. **#175** (CLIFF_HIGH_RATIO needs a derivation, not a tightening — #56),
 **#105**, **#112**, **#96/#97/#100** — flagged by the screen, no verdict read, not swept.
+
+---
+
+# UPDATE 2 — guards built, prose repaired, and one constant given a derivation basis
+
+## Built (all mutation-checked, no engine source touched)
+
+- **`test_224_bench_capacity_vocabulary`** (8 tests, 6/6) — two quantities under one name,
+  **3 vs 36.0** on the shared fixture, only one of which drains.
+- **`test_basis_vocabulary_is_one_word`** (3 tests, 3/3) — five modules each define their own
+  `*_MEASURED` token and all five are the string `'measured'`; nothing enforced it, and
+  `pick_synthesis` compares bases *across* quantities.
+- **`test_tav_identity_is_stated_once`** (3 tests, 2/2) — **#182 made self-policing.** The term
+  list is parsed from `draft_room.py` at runtime; every doc statement must match it or carry a
+  scope marker. Adding a sixth term now fails everywhere the docs still say five.
+
+## Prose repaired (#182)
+
+The **README** stated a four-term TAV identity and claimed all terms individually bounded —
+false in the direction that matters, since it reassured readers that no roster-fit term can
+override a talent gap while omitting `displacement_adj`, which is uncapped precisely so it can.
+**`ARCHITECTURE_AUDIT`** stated the three-term form *while citing `CDME_CONTRACTS §1`*, which now
+says five — a citation that misrepresents its source. Nine statements of one fact across the
+docs; two were load-bearing-stale, four more needed scope markers.
+
+## #175 given a derivation basis
+
+`CLIFF_HIGH_RATIO = 2.5` is, before any data, **the ~82nd percentile of a memoryless decay**
+(`P = 2^-r`). Measured with the engine's own detector: **HIGH 14.5%**, HIGH+MEDIUM 29.7%
+(reproducing #175's 34%), and at 2.5× the flagged population is **0.83× the no-cliff null** —
+rarer than chance. A multiple of a median cannot express rarity; moving the number shifts the
+quantile without fixing the category error. Enrichment crosses 1.0 past 3× and hits 1.21× at 4×.
+Two derived bases offered, **no value proposed** — that is the owner's.
+
+## Corrections and instrument errors, all mine
+
+- **#122 WITHDRAWN IN FULL (24th).** I claimed a missing basis companion;
+  `positional_bench_appetite_basis()` already existed with a better vocabulary than I specified.
+  I had written *"grep for the mechanism, not just the number"* an hour earlier.
+- **#188's premise is inverted the same way** — the "bounded/partial" state was invented **five
+  times** under five names. The decision is which name wins: a refactor, not a design commitment.
+- **Four instrument errors**, each caught by the result's *shape*, not by reading code: a
+  hint-regex scan that under-counted; a raw-text marker matcher defeated by line wrapping; a
+  hand-listed stdlib set that reported identical gaps at all 17 commits; and measuring
+  `universal_value` where the detector uses `bpa`. All now doctrine: **when a scan answers the
+  same for every arm, or nothing at all, suspect the scan.**
+
+## Verified
+
+**2,789 tests, 882.6s, OK, 0 failures**, clean cache, and `git diff --name-only` proves no `.py`
+changed since the run launched. All 17 commits of the previous stretch audited: every tree
+parses, and no test was staged ahead of the module it tests (#169's shape, absent).
