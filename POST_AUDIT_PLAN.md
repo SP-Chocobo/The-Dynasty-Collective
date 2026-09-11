@@ -7014,3 +7014,44 @@ reserved question and #56 territory. This finding is about **disclosure** only �
 provenance, not its size.
 
 Detail at `evidence/roster_shape/ff_rulebook/FINDING_122_the_imputed_appetite_is_indistinguishable.md`.
+
+## #153 SHARPENED — two clamps, not one, and the register names the wrong one
+
+`need_bonus = round(min(4.0*dedicated_needed + 1.0*min(flex_remaining, 1), NEED_BONUS_MAX), 2)`.
+
+**Clamp A — `min(flex_remaining, 1)`.** With `dedicated_needed = 0`: flex_remaining of 1, 1.5, 2,
+3 and 5 all return **1.00**. **This is the 4WR case** — a 4WR format gives WR four dedicated slots
+*plus* a large share of the FLEX slots, so `flex_remaining` routinely exceeds 1 and every roster
+above that threshold is priced identically. It is a clamp on the flex **share**, not the cap.
+
+**Clamp B — `NEED_BONUS_MAX = 12.0`.** With `flex_remaining = 0`: dedicated_needed of 3, 4, 5 and
+8 all return **12.00**. The register does not mention this one, and a 4WR roster reaches
+`dedicated_needed = 4` from empty — so it saturates in round one of exactly the format #153 names.
+
+**The qualification that resolves the item.** `estimated_bench_demand`'s docstring says "the whole
+reachable need_bonus is 8.67 and its cap never binds (NEED_BONUS_MAX at 1e9 is pick-for-pick
+identical)." That is **not** contradicted here, because the two statements are about different
+things: arithmetically the cap binds (`need_bonus(3, 0) = 12.00` exactly), while behaviourally
+raising it changed no pick. Both are true — the states collapse, and the other terms dominate by
+enough that un-collapsing them moves nothing in the arms measured. **That is why
+KNOWN-OPEN-ACCEPTABLE is the right classification**: a real loss of distinction with measured-zero
+decision authority, which is #55's OBSERVABLE-vs-AUTHORITY line in different dress.
+
+**NOT established, and not to be assumed:** whether that ablation covered `4WR_TE_PREMIUM`. The
+8.67 figure is quoted while discussing a **one-TE league**, and `4.0x2 + 1.0x0.67 = 8.67` — i.e.
+`dedicated_needed = 2`, a two-slot position. A 4WR format reaches 4 and saturates where that
+measurement never went. So the cap's inertness is **evidenced for the arms measured and assumed
+for 4WR**, which is the arm #153 exists to question. Settling it is one battery arm — the `1e9`
+ablation re-run on `4WR_TE_PREMIUM` — not a full battery.
+
+**No constant changed and none should be.** Widening either clamp is calibration against an
+observed regime, which #56 forbids without a derivation. The open question is a measurement, not
+a tuning.
+
+**Prose note (#182 family):** "its cap never binds" is true behaviourally and false
+arithmetically, and the sentence does not say which. A reader checking the formula will find the
+cap binding at `dedicated_needed >= 3` and reasonably call the comment stale. One qualifying
+clause when that file is next open for prose — not touched here, `draft_room.py` being under the
+#222 constraint.
+
+Detail at `evidence/roster_shape/ff_rulebook/FINDING_153_two_clamps_not_one.md`.
