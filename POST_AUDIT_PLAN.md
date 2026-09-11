@@ -6850,3 +6850,62 @@ record. Three sources of truth for one fact is what #126 exists to forbid.
 grep for its repair first. One command; it would have saved this session an entire investigation.
 
 Detail at `evidence/roster_shape/ff_rulebook/FINDING_the_register_lagged_the_repairs.md`.
+
+## #212 IS THE PARENT — B2, #209 and #210 are three populations of ONE mechanism (23rd correction, mine)
+
+B2's supply verdict stands: **no ingested source prices these quarterbacks**, remedy is a source,
+not a wire. Two things in how I described it were wrong, and the second matters more.
+
+**1. The mechanism.** I wrote that Sleeper "answers and says zero." It does not. Measured through
+`season_projections_from_capture()` against the real capture, all eight named backups have an
+entry and every entry holds **one key** — `adp_dd_ppr`, the "undrafted" sentinel (`18000.0`):
+
+```
+Haener / Bennett / O'Connell / Clifford / Bagent / DeVito / Milton / Hartman
+ADP-only 8 | stat-bearing 0 | no entry 0
+```
+
+ADP says where the market drafted a player, not what he is projected to **do**. There is no stat
+line, so the scoring path reaches him and finds no quantity — hence
+`bpa_source='no_priceable_input'`. **"Says zero" and "has no stat line" are precisely the
+distinction the absence contract exists to enforce**, and I conflated them in a finding whose
+whole subject is absence. Population-wide: of 474 QBs, 355 carry an entry and **321 (90.4%) are
+ADP-only**; 34 carry stats.
+
+**2. B2 is not a separate finding.** `test_priceable_projection_count.py` had already measured
+and named this: of 5,346 capture entries, **4,506 are ADP-only**, so the priceable count is 840
+— a 6.4x coverage overstatement — and it already folds in #209 (Jake Haener, `tav=None`, entry
+`{'adp_dd_ppr': 18000.0}`) and #210 (1,817 ADP-only entries are IDP: LB 852, DB 723, DL 242).
+B2's quarterbacks are that same population, and **Haener is the worked example in both.**
+
+| item | population | mechanism |
+|---|---|---|
+| #209 | one QB in 14T_standard | ADP-only entry |
+| #210 | HEAVY_IDP's 1,817 defenders | ADP-only entry |
+| B2 | the league pool's deep QBs | ADP-only entry |
+| **#212** | **all 4,506** | **the mechanism itself** |
+
+**What survives unchanged:** the vendor-baseline half, measured through production's own
+`merge_player` and independent of the capture — 39 of 42 priced QBs carry `proj_3yr` (92.9%)
+versus 0 of 113 unpriced (0.0%), and the named backups have no baseline row at all. Neither
+source prices them. #147 is still NOT the binding constraint.
+
+**Adjudicating the four items I declined to flip on a grep, now that their verdicts are read:**
+
+- **#209 — CLOSED.** Explained by #212; the absence contract worked (`no_priceable_input`). Its
+  own test records a correction: the pre-registered falsifier said the scoring path had not
+  reached him, and was wrong.
+- **#210 — EXPLAINED, still OPEN as supply.** HEAVY_IDP did not shrink because Sleeper supplies
+  those players without stats, not because it lacks them. Mechanism answered; the input gap is
+  the #49 family and stays open.
+- **#211 — KNOWN-OPEN-ACCEPTABLE, pinned.** Its own tests say it plainly: "No finding changes.
+  This is a reported line, not a verdict." `starter_value` sums an asset LEVEL across a starting
+  lineup and so ranks positional breadth, not roster quality — a reported number, not a
+  selection authority.
+- **#208 — CLOSED.** The #205 instrument now carries mutation-checked guards against both of its
+  first draft's defects (a control that took 24 consecutive QBs; a ruler that was the engine's
+  own objective). #177's harness had neither tests nor a commit, so its result stays undefended.
+
+**The generalized rule.** The register-lag finding said: before investigating an item filed open,
+grep for its repair. B2 was never filed as an item, which is how it slipped that rule. So:
+**before investigating a mechanism, grep for the mechanism** — not just for its number.

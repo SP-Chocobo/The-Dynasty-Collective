@@ -65,3 +65,79 @@ The first attempt at this used a guessed `DataMerger` API (`load_baseline`), ret
 BOTH populations, and was discarded rather than reported — a uniform zero is the signature of a
 broken instrument, not a finding. The measurement above uses `merge_player`, which is what
 production calls, and the 92.9%-vs-0.9% split is what a working instrument looks like.
+
+---
+
+# CORRECTION (23rd, mine): "Sleeper answers and says zero" is the wrong description — and B2 is not its own finding
+
+The verdict above stands: **no ingested source prices these quarterbacks**, and the remedy is a
+source, not a wire. Two things in how I described it were wrong, and the second is the important
+one.
+
+## 1. The mechanism, stated precisely
+
+I wrote that Sleeper "answers and says zero." It does not. Measured against the real capture
+through `season_projections_from_capture()` and `build_players_db_from_capture()`:
+
+```
+Jake Haener      QB  entry: ['adp_dd_ppr']   <-- ADP-ONLY
+Stetson Bennett  QB  entry: ['adp_dd_ppr']   <-- ADP-ONLY
+Aidan O'Connell  QB  entry: ['adp_dd_ppr']   <-- ADP-ONLY
+Sean Clifford    QB  entry: ['adp_dd_ppr']   <-- ADP-ONLY
+Tyson Bagent     QB  entry: ['adp_dd_ppr']   <-- ADP-ONLY
+Tommy DeVito     QB  entry: ['adp_dd_ppr']   <-- ADP-ONLY
+Joe Milton       QB  entry: ['adp_dd_ppr']   <-- ADP-ONLY
+Sam Hartman      QB  entry: ['adp_dd_ppr']   <-- ADP-ONLY
+
+ADP-only 8 | stat-bearing 0 | no entry 0
+```
+
+All eight have an entry, and every entry holds **one key**: `adp_dd_ppr`, the "undrafted"
+sentinel (`18000.0`). ADP says where the market drafted a player, not what he is projected to
+**do**. There is no stat line, so there is nothing to score — the scoring path reaches him and
+finds no quantity, which is why the board says `bpa_source='no_priceable_input'`.
+
+**"Says zero" and "has no stat line" are exactly the distinction this repo's absence contract
+exists to enforce** — a measured 0.0 versus a `None` that was never computed. I conflated them in
+a finding whose entire subject is absence. That is the error, and it is mine.
+
+Population-wide, the same shape: of 474 QBs in the universe, **355 carry a capture entry and 321
+of those (90.4%) are ADP-only**; 34 carry stats.
+
+## 2. B2 is not a separate finding — it is the #212 population
+
+`test_priceable_projection_count.py` already measured and named this mechanism: of 5,346 capture
+entries, **4,506 carry only an ADP field and no stat line**, so the real priceable count is 840,
+not 5,346 — a 6.4x coverage overstatement. It already folds #209 (Jake Haener, taken at 14.02
+with `tav=None`, entry `{'adp_dd_ppr': 18000.0}`) and #210 (1,817 ADP-only entries are IDP — LB
+852, DB 723, DL 242) into one finding.
+
+**B2's quarterbacks are that same population**, and Jake Haener is literally the worked example
+in both. So the register carries four items for one mechanism:
+
+| item | population | mechanism |
+|---|---|---|
+| #209 | one QB in 14T_standard | ADP-only entry |
+| #210 | HEAVY_IDP's 1,817 defenders | ADP-only entry |
+| **B2** | the league pool's deep QBs | **ADP-only entry** |
+| #212 | all 4,506 | the mechanism itself |
+
+**One finding, three populations.** The supply verdict is unchanged and the #49/#210 family is
+still the right home — what changes is that B2 needed no separate investigation, and the answer
+was already committed in a test docstring before I started.
+
+## What survives unchanged
+
+The vendor-baseline half, which is independent of the capture and was measured through
+production's own `merge_player`: **39 of 42 priced QBs carry `proj_3yr` (92.9%) against 0 of 113
+unpriced (0.0%)**, and the named backups have no baseline row at all. Neither source prices them
+— Sleeper because the entry holds no stat line, the vendor because there is no row. #147 is still
+**not** the binding constraint: a perfect dynasty anchor would have nothing to anchor on.
+
+## The lesson, which is the same one as the register lag
+
+The answer to B2 was sitting in a test docstring. The reconciliation finding written an hour
+earlier says: *before opening an investigation into any item filed open, grep for its repair
+first.* B2 was not filed as an item at all, which is how it evaded that rule — so the rule
+generalizes: **before investigating a mechanism, grep for the mechanism**, not just the item
+number.
