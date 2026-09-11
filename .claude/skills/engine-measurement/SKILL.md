@@ -452,3 +452,37 @@ mutation pass corrupted this way reports whatever the stale cache holds — a mu
 - Never run a full background suite across a tree you are mutating. The suite imports at its own
   start and any source-reading test sees whatever the file held mid-cycle, so the result
   describes neither the clean tree nor the mutant. Re-run it clean afterwards.
+
+## When a scan answers the same for every arm, suspect the scan
+
+Three instrument errors in a single stretch, all the same shape, none caught by reading the code:
+
+- A **hint-regex** scan for basis vocabularies filtered constants through guessed keywords
+  (`_BASIS`, `MEASURED`, `NO_*`). It returned 25 tokens and under-counted: it caught
+  `APPETITE_MEASURED` and missed `APPETITE_IMPUTED` / `APPETITE_UNAVAILABLE`, which match no
+  guessed word. The conclusion drawn from it would have been wrong.
+- A **raw-text matcher** looked for scope markers in hard-wrapped Markdown. `**as\nit stood**`
+  straddles a line break, so a correctly-marked statement was reported as a misstatement.
+- A **hand-listed stdlib set** in a commit auditor mis-classified `glob`, `csv`, `tokenize`,
+  `threading`, `multiprocessing` and `tomllib` as unresolved imports, reporting the identical
+  eight "gaps" at all seventeen commits — **including trees the audit had never touched.**
+
+Each was caught by the SHAPE of the result, not by inspecting the code:
+
+- **The same answer at every arm** is almost never a finding. Real defects are uneven. Seventeen
+  commits with the identical eight problems is a constant, and a constant comes from the
+  instrument.
+- **Nothing at all** is the mirror image, and just as suspicious — an empty result set usually
+  means the predicate never matched, not that the population is clean. (`unittest` reporting a
+  rate over an empty population is the same bug wearing a different hat.)
+- **Too clean** deserves the same suspicion as too alarming.
+
+**The rule, which is #126 turned on your own tooling: derive the reference set, never hand-list
+it.** `sys.stdlib_module_names` exists; a guessed list of keywords does not. Every one of the
+three above came from typing a set by hand that the runtime could have produced exactly — and
+in two of the three, the hand-list was written by someone who had applied the derive-don't-list
+rule to the subject matter minutes earlier and then failed to apply it to the tool.
+
+Corollary, learned the expensive way: **when a measured number contradicts arithmetic you can do
+on paper, suspect the instrument before the arithmetic.** Re-deriving the same wrong number from
+the same poisoned process confirms nothing.
