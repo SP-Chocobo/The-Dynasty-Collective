@@ -7318,3 +7318,59 @@ the run launched (`d2788c3..HEAD`) touches markdown only — `git diff --name-on
 Cumulative for the stretch: **14 new tests across three files, mutation-checked 6/6, 3/3 and
 2/2**, and no engine source modified anywhere in it. The only non-test, non-documentation edits
 were to `README.md`, `ARCHITECTURE_AUDIT.md` and `CDME_CONTRACTS.md` prose.
+
+## #175 DERIVATION BASIS: the ratio selects a quantile, it does not detect structure
+
+#175 asks for a derivation, not a tightening, and #56 forbids calibrating to an outcome. This
+supplies the basis without proposing a value.
+
+**The null, stated before looking at data.** If adjacent `bpa` gaps were memoryless — the
+position has no cliffs, just smooth decay — then `P(gap >= r x median) = 2^-r`. So
+`CLIFF_HIGH_RATIO = 2.5` is, before any measurement, **the ~82nd percentile of a smooth decay**:
+a fixed multiple of a median is a quantile selector, not a rarity test.
+
+**Measured with the engine's own `detect_positional_cliff`** (not a reimplementation) over a
+12T_standard opening board, 256 bpa-priced rows of the real capture universe:
+
+| tier | share |
+|---|---|
+| HIGH | **14.5%** |
+| MEDIUM | 15.2% |
+| LOW | 68.8% |
+
+**HIGH + MEDIUM = 29.7%, which broadly reproduces #175's 34%** — that figure appears to be the
+union of both tiers. And the ratio distribution (n = 252):
+
+| r | 1.0 | 1.5 | **2.5** | 3.0 | 4.0 |
+|---|---|---|---|---|---|
+| empirical | 47.2% | 30.2% | **14.7%** | 12.3% | 7.5% |
+| exponential null | 50.0% | 35.4% | **17.7%** | 12.5% | 6.2% |
+| empirical ÷ null | 0.94× | 0.85× | **0.83×** | 0.98× | **1.21×** |
+
+**At 2.5x the flagged population is slightly RARER than a no-cliff null predicts.** The detector
+is not finding structure there; it returns roughly the top sixth of an ordinary decay curve,
+which is what a fixed multiple of a median does by construction. Real structure exists but lives
+further out — the enrichment crosses 1.0 only past 3x and reaches 1.21x at 4x, and that crossing
+is a **derived** feature of the distribution rather than a chosen number.
+
+**So #175 is confirmed and sharpened.** "A third of the population cannot all be cliffs" is
+right, and the reason is not that 2.5 is loose: **a multiple of a median cannot express rarity at
+all.** Moving it to 3.5 would shift the quantile, not fix the category error.
+
+**Two derivation bases are now available**, neither a tuned constant: (1) flag at a stated
+exceedance probability against the position's own empirical gap distribution — the bound comes
+from the data and the stated probability is the honest design decision; (2) flag where the
+empirical distribution first departs from the memoryless null by a stated margin, which on this
+board is past 3x. **No value is proposed and none should be read in** — which basis, and what
+counts as "unusual", is the owner's.
+
+**Scope, stated rather than implied:** one board, one format, opening state, 252 ratios. The
+curve's *shape* is the claim; the crossing point is not established across formats or mid-draft
+states. Reproducing it across the battery's arms is the obvious next step and was not done.
+
+**Method note:** the first pass measured `universal_value` gaps and would have published a
+framing built on the wrong column — the detector works on `bpa`, with a *trimmed* median and a
+`CLIFF_MIN_MATERIAL_GAP` floor. The rewritten measurement calls the production detector
+directly, which is the only version that measures the engine rather than my model of it.
+
+Detail at `evidence/roster_shape/ff_rulebook/FINDING_175_the_ratio_selects_a_quantile_not_a_cliff.md`.
