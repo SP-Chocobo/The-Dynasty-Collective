@@ -6738,3 +6738,30 @@ now has four members, the fourth uncapped by design and existing precisely becau
 nudge could span the 43-60 point bias"*. The capping mechanism still bounds what it was built to
 bound; the invariant's statement is false of the class it names. Restating, not enforcing, is what
 that needs — #216's derivation for having no cap is on the record and is not reopened here.
+
+#### #222 addendum — the narrow ablation, and both candidate repairs rejected
+
+**FORK B.** Pre-registered at `086939f`, run at `11fdd59`, control 168/168, no engine source
+modified. Upside mode keeping `displacement_adj` and nothing else: TE rounds 15–26 fell 52.1% →
+29.9% and **all four pre-registered guardrails breached** — whole-draft WR 42.0% (bar < 40.0),
+largest pile 17 (≤12), seats holding ≥12 at one position **11** (≤3), thin pairs 4 (≤0).
+
+**What the arm isolates, which is the yield.** Restoring the counterweight alone reproduces
+force-balanced's positional composition almost exactly (WR 42.0 vs 42.0, TE within 0.3). The only
+difference between those arms is `need_bonus`, `eligibility_bonus`, `depth_exposure` — so those
+three contribute **essentially nothing to composition**, and `displacement_adj` carries the whole
+mode-boundary effect on its own.
+
+**A second matched pair.** The three terms carry the SHAPE protection instead: without them, seats
+with a 12-plus pile go 3 → 11 and per-seat TE reaches 17. That is **#87's positional-gate ruling
+confirmed from the opposite direction** — leaving `need_bonus` out while restoring a large
+positional push reproduces the failure mode that removing it produced. `displacement_adj` and
+`need_bonus` are a pair, as `bpa` and `displacement_adj` are; restoring either member of either
+pair alone makes the engine worse.
+
+**Both candidate repairs are now measured and rejected**, and no configuration tested reaches the
+human distribution: humans take 15.5% TE against AUTO 32.4, force-balanced 21.8, narrow 22.1, and
+both roster-aware arms overshoot WR to 42.0 against a human 37.1. **The TE excess is not removable
+by restoring roster awareness in the back half.** AUTO's TE overshoot and the roster-aware arms'
+WR overshoot are two faces of one pricing fact; the mode boundary chooses which. The live question
+is #229's — cross-position comparability below starter depth — not the mode switch.

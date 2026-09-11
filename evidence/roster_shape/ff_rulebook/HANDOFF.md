@@ -317,3 +317,38 @@ nothing above depends on it.
 17th `narrow_candidates` (picks-shape fixture artifact) · 18th RESIDUAL3's zero-rate (unreachable
 predicate) · 19th **mine**, "the aggregate is set by one subtraction before any pick" (numbers
 stand, causal reading withdrawn, caught by a pre-registered test of my own flagged inference).
+
+---
+
+# UPDATE — the narrow ablation: FORK B, and both candidate repairs are now measured and rejected
+
+Pre-registered at `086939f`, result at `11fdd59`. One 312-pick draft, 891s, no engine source
+modified. **Control passed 168/168.**
+
+| arm | QB | RB | WR | TE | TE r15–26 | pile | ≥12 | thin |
+|---|---|---|---|---|---|---|---|---|
+| AUTO baseline | 10.3 | 26.9 | 30.4 | **32.4** | 52.1 | 12 | 3 | 0 |
+| **NARROW (displacement only)** | 10.3 | 25.3 | **42.0** | 22.1 | 29.9 | **17** | **11** | **4** |
+| force balanced (rejected) | 10.3 | 25.6 | **42.0** | 21.8 | 29.2 | 19 | 7 | 7 |
+| twelve real managers | 20.0 | 27.4 | 37.1 | **15.5** | — | — | — | — |
+
+TE fell as Fork A required and **all four pre-registered guardrails breached.**
+
+**What it isolates.** Restoring `displacement_adj` alone reproduces force-balanced's composition
+almost exactly — WR identical to the first decimal, TE within 0.3. So `need_bonus`,
+`eligibility_bonus` and `depth_exposure` contribute **essentially nothing** to the back half's
+positional composition; the counterweight carries all of it.
+
+**The second matched pair.** Those three do nothing for composition and a great deal for shape:
+without them, seats holding ≥12 at one position go **3 → 11**, and per-seat TE reaches **17**.
+That is #87's ruling ("need_bonus is a POSITIONAL GATE, load-bearing") confirmed from the opposite
+side. **`displacement_adj` and `need_bonus` are a pair**, as `bpa` and `displacement_adj` are.
+Restoring either member of either pair alone makes the engine worse.
+
+**The bottom line.** Both roster-aware arms land on WR 42.0% against a human 37.1%, and **no
+configuration measured reaches the human TE number** (15.5% vs 32.4 / 21.8 / 22.1). The TE excess
+is **not removable by restoring roster awareness in the back half** — turning it on trades a TE
+overshoot for a WR overshoot of nearly the same size and costs roster shape both times. AUTO's
+32.4% TE and the roster-aware arms' 42.0% WR are two faces of one pricing fact, and the mode
+boundary only chooses which face you see. **That points back to #229 and away from the mode
+switch.**
