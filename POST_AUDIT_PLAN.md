@@ -7256,3 +7256,26 @@ term to the identity in `draft_room.py` now fails everywhere the docs still say 
 precisely the notification that was missing both times the sum actually grew (#139, #216).
 Non-vacuity is asserted first — if the regex ever stops matching, the population test fails
 rather than every assertion passing trivially.
+
+### #112 checked and left alone — correctly parked, already guarded
+
+Applying the rule earned from #122 and #188 (*before asserting something is missing, grep for
+the mechanism*), #112 was checked rather than investigated. It is **genuinely open, precisely
+scoped, and already defended** — no work was warranted.
+
+The kind-of-absence distinction **does** exist upstream: `bot_research.py` carries the
+never-checked-versus-checked-and-absent distinction through `_finding_origin_note`, the provider
+boundary carries "this provider does not report it" (`test_providers`), and the UI renders it
+with a tooltip that states the distinction in words ("never checked, which is not the same as
+checked and found none"). What it does **not** do is reach the board: `compute_draft_board`
+emits `bpa_source` and `confidence` — where a number came from — and no reason for anything it
+did not have.
+
+**Two characterization tests already pin exactly that**, both saying "Pinned, not endorsed …
+Delete this test when #112 is settled; do not loosen it", and one of them is an AST scan over
+every production module for `unchecked`/`not_checked`/`never_checked` that asserts **zero** hits.
+
+So the item is NEEDS-OWNER, not undone work: its own test states the reason — *"introducing it
+means deciding what would ever set it"* — and adding it changes the `PickSnapshot` candidate
+schema, the same frozen boundary #107 is parked on. Nothing here to build; recorded so the next
+pass does not re-derive it.
