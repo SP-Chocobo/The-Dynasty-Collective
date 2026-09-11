@@ -7055,3 +7055,17 @@ clause when that file is next open for prose — not touched here, `draft_room.p
 #222 constraint.
 
 Detail at `evidence/roster_shape/ff_rulebook/FINDING_153_two_clamps_not_one.md`.
+
+### Suite gate for this stretch
+
+**2,783 tests, 890.6s, OK (skipped=1), 0 failures, 0 errors** — run clean under
+`PYTHONDONTWRITEBYTECODE=1` with `__pycache__` cleared first, after the stale-bytecode hazard
+above made the earlier run untrustworthy.
+
+The count checks out rather than merely looking plausible: **2,772 + 11**, being the 8 new
+`test_224_bench_capacity_vocabulary` tests and the 3 new `TheTrendSignSurvivesTheParserTests`.
+
+And the run describes the **current** code: every commit since it launched (`68a93df..HEAD`)
+touches markdown only — `git diff --name-only` returns no `.py` at all. The first attempt at this
+suite was discarded rather than quoted, because it was launched across a tree that was being
+mutated underneath it.
