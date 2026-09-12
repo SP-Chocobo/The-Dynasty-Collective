@@ -1,5 +1,7 @@
 """The slot vocabulary's two questions, pinned against the captures that establish them.
 
+Register: #242 (the two questions), #126 (one home for a vocabulary).
+
 WHAT THIS FILE DEFENDS. `len(roster_positions)` was used as a startup draft's round count by
 every instrument in this repository. It is right only for a league with no IR slot -- which is
 exactly what data/fixtures/sleeper_capture.json is, which is why nothing noticed. The rule that

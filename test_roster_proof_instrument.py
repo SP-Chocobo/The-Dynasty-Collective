@@ -250,10 +250,20 @@ class RoundCountIsDerivedTests(unittest.TestCase):
 
     def test_the_round_count_defaults_to_derivation_not_a_hand_set_number(self):
         """A hand-set count is a second source of truth about roster size. The old default of
-        15 drafted a 15th player into this repo's 14-slot mock roster."""
+        15 drafted a 15th player into this repo's 14-slot mock roster.
+
+        #242 CHANGED WHAT "DERIVED" MEANS HERE, and this ratchet caught the change, which is
+        what it is for. The derivation used to be `len(roster_positions)` -- how many SLOTS
+        there are. The round count is how many slots the DRAFT FILLS, and those differ by the
+        IR slots, which are never drafted. The assertion now pins `draftable_slots`, so
+        reverting to the plain length fails here rather than silently drafting a 29-round
+        startup in a 26-round league.
+        """
         src = inspect.getsource(rp.main)
         self.assertIn('ap.add_argument("--rounds", type=int, default=0)', src)
-        self.assertIn('args.rounds or len(league.get("roster_positions")', src)
+        self.assertIn('args.rounds or len(lc.draftable_slots(', src)
+        self.assertNotIn('args.rounds or len(league.get("roster_positions")', src,
+                         "roster size is not round count -- see #242")
 
     def test_the_report_records_which_depth_was_actually_drafted(self):
         src = inspect.getsource(rp.main)
