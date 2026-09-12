@@ -35,3 +35,12 @@ BATTERY_REPORT.json
 *.json.lock
 *.json.tmp-*
 evidence/roster_shape/ff_rulebook/ktc_sign_probe.pdf
+
+# invariant_confirmation.py's restore copy. The harness writes
+# `path.with_suffix(path.suffix + ".confirm_backup")` before rewriting a source file with a
+# deliberate break, then restores from it. While a run is in flight the ORIGINAL sits here and
+# the tracked file is a mutant, so an untracked `draft_room.py.confirm_backup` showing as `??`
+# is one `git add -A` away from being committed alongside a knowingly broken engine -- the #169
+# staging family with a new cause. Same class as the store_io sidecars above: a runtime artifact
+# of a discipline, never content.
+*.py.confirm_backup
