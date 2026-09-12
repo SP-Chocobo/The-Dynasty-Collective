@@ -8022,3 +8022,102 @@ They are now released for Phase 3 work, each on its own merits rather than again
   codebase in a real configuration. They describe a different commit and a different league.
 - **Not that configuration-dependent means unmeasurable.** Each cell's number is a fact about
   that cell, and `config_space` exists so the cells are chosen deliberately.
+
+## #253 WITHDRAWN (29th, mine): the horizon does NOT go dark for the last six rounds — one of four live call sites is unpriced
+
+Gate 4 was ruled "horizon layer goes dark for the last 6 rounds — repair before freeze" on a
+measurement I published and got wrong. **The blackout is not a property of the engine's endgame.
+It is a property of the Mock Draft's pricing path.** Evidence:
+`evidence/horizon_dark/README_HORIZON_DARK.md`, artifact `CARRIED_RATE_PROBE.json`.
+
+### The cut
+
+Three cells, one process, one code version, **the same league and the same 180-pick control
+board in all three** — the pick stream is held fixed so the pricing path is the single variable.
+
+```
+12T_ppr_SF  DRAFT ROOM pricing  priced 481 -> 301   3 positions measurable at EVERY sample
+                                                    floors placed 4/9 at every sample
+12T_ppr_SF  MOCK DRAFT pricing  priced 256 ->  86   measurable 3 -> 2 -> 1 -> 0 by pick 108
+                                                    floors placed 0/9 from pick 108 on
+```
+
+Pick 108 of 180 is round 10 of 15. **My published "dark after round 10, last six rounds"
+reproduces to the pick — and only on the Mock Draft's pricing.**
+
+### The cause
+
+`sleeper_projections` is what `#180`/`#192` wired in so the league's own scoring reaches a price.
+Production builds a board at four live sites and passes it at one:
+
+| site | passes `sleeper_projections` |
+|---|---|
+| `app.py:5365` — the live Draft Room | **yes** |
+| `app.py:5014` — the Mock Draft | no |
+| `app.py:4959` — editing an earlier pick | no |
+| `draft_room.py:3491` — `simulate_opponent_picks` | no |
+
+`build_snapshot`'s own comment says passing None "keeps the previous behaviour exactly, which is
+what every offline caller and every test does." Three of those four are not offline callers.
+
+The estimator needs `2 × demand` **priced** rows at a position. 481 priced clears that bar for
+RB/TE/WR all draft; 256 does not survive ten rounds of drain. No arithmetic in the estimator is
+involved, and no carried curve would have addressed the actual cause.
+
+`sleeper_client.get_season_projections(season)` returns `player_id -> {stat: season total}` and
+takes no league — scoring is applied separately from `scoring_settings`. So the dict the Draft
+Room already holds is valid unchanged at all four sites. **The repair is wiring, not a quantity.**
+
+### What rules OUT
+
+- **A carried/locked appetite curve as the repair.** It was designed for a regime that the
+  wiring fix removes. Nobody should re-derive it.
+- **"The engine can't compute once the board fills."** On the Draft Room path the fixture board
+  never loses a measurable position across a full 15-round draft.
+
+### What SURVIVES
+
+- **Superflex QB is dark from pick 0**, on the live path, in every cell: demand 22 needs 44
+  priced rows, the board has 42 (Draft Room) / 39 (Mock). QB's bench appetite is imputed from
+  the RB/TE/WR mean for the whole draft, in production, and nothing records that it was. This is
+  the finding the owner already ruled "register now, repair with the horizon fix," and it is
+  untouched by the withdrawal.
+- **A real dark regime, one sample wide.** Fourth and Forever (26 rounds, 312 picks) on Draft
+  Room pricing degrades 3 → 2 measurable at pick 216 and goes fully dark at pick **312, the
+  final pick**. That is the honest scope.
+- **The all-or-nothing collapse is still wrong.** `positional_bench_appetite` returns all-`None`
+  when NO position is measurable, so one measurable position cannot place its own floor. At
+  F&F pick 216–300 two positions are measurable and the layer still reports per-position
+  absence globally. Per-position degradation needs no new number.
+
+### The owner's objection, answered on measurement
+
+> *"a locked curve feels like raw BPA with a different name"*
+
+Right about the thing it names, and it does not describe the hybrid. Arms: **A** live-only
+(status quo), **B** live-where-measurable + carried-where-dark, **C** opening rates always.
+`|B − C|` over position-samples where live measurement exists:
+
+| cell | samples | differ | mean | max |
+|---|---|---|---|---|
+| 12T_ppr_SF Draft Room | 64 | 56% | 2.59 | **19.73** |
+| Fourth and Forever | 80 | 89% | 4.57 | **15.73** |
+| 12T_ppr_SF Mock Draft | 36 | 50% | 4.22 | **33.00** |
+
+B and C differ in half to nine-tenths of samples by up to 33 points of horizon floor, so the
+hybrid is provably not the locked curve. **The stronger answer is that the carry is nearly
+unreachable once the wiring is fixed.**
+
+### What is NOT fixed — owner's call
+
+The wiring repair is **not applied**. Gate 4 was ruled on a premise I have now withdrawn, so
+the repair the owner authorized is not the repair the evidence supports. Reshaped decision goes
+back to them rather than being swapped in unilaterally.
+
+### The instrument's own limit, stated
+
+The probe's `residual` block compares observed positional picks against the **bench**-appetite
+share, and most early picks are **starter** picks, so it conflates the two halves of remaining
+demand. Its numbers are recorded and must not be read as a trending signal. The instrument that
+would answer the trending question compares observed picks against `remaining_starter_demand`
+and `estimated_bench_demand` together.
