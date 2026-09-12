@@ -80,12 +80,47 @@ than the `−5%` to `−11%` it contradicts, so "the engine wins" is much weaker
 loses" was. Nothing here says the engine is better; it says the sign of the difference depends on
 the draft, and the fixture's 14-round drafts were not the owner's.
 
-## The one-variable cut that settles it
+## THE LENGTH HYPOTHESIS IS REFUTED — the cut was run and my explanation was wrong
 
-Re-run **this exact league and rulebook at 15 rounds**. Everything else is held: same roster
-shape, same 30 scoring keys, same pool, same seats, same harness. If the advantage evaporates,
-the deficit is DRAFT LENGTH and the fixture result was an artifact of short drafts. If it
-survives, the rulebook or the SF×TE-premium interaction owns it, and the fixture's evidence needs
-re-measuring on F&F's scoring.
+Everything above from "It is almost certainly NOT the rulebook" down was a hypothesis with a
+mechanism, labelled as such. It has now been measured and **it is wrong.**
+
+Same league, same 30 scoring keys, same pool, same seats, same harness, `--rounds 15`, with the
+engine's own horizon set to 15 as well (see `#246` — the first attempt set only the pick order,
+and returning identical numbers is how the omission was caught):
+
+```
+26 rounds :  points  10 of 12   2860.82 vs 2831.39   +1.04%
+15 rounds :  points  10 of 12   2860.82 vs 2831.39   +1.04%      IDENTICAL, to the cent
+```
+
+`starter_value` scores the best legal lineup, and both arms settle their ten starters well
+inside the first fifteen rounds. Rounds 16–26 add only bench, which that ruler does not read.
+So draft length cannot be the explanation — and the comparison it enables is decisive:
+
+| at **15 rounds** | points wins | margin |
+|---|---:|---:|
+| fixture, 12T_ppr_SF | 1 of 12 | **−5.03%** |
+| **Fourth and Forever** | **10 of 12** | **+1.04%** |
+
+**Same round count. Opposite verdict.** The reversal belongs to the LEAGUE, not the schedule:
+the rulebook, the roster shape, or the superflex × TE-premium combination that no fixture format
+carries. Those three are still crossed and still need separating.
+
+(`cdme` does move with length — 12/12 at 26 rounds, 7/12 at 15 — because `total_value` sums
+bench too, and a shorter draft has less bench to sum. That is the tautological ruler behaving
+tautologically, and it is the control that shows `points` was genuinely unmoved rather than
+accidentally unchanged.)
+
+## The next one-variable cut
+
+With length eliminated, three candidates remain crossed. Separate them by running the FIXTURE
+league (12T_ppr_SF, 15 rounds) with F&F's 30 scoring keys substituted and nothing else changed.
+That moves the rulebook alone.
+
+  - advantage appears -> the RULEBOOK owns the reversal, and every fixture-measured result in
+    the freeze record needs re-measuring on F&F's scoring.
+  - advantage does not appear -> the roster shape or the superflex x TE-premium combination owns
+    it, and the next cut is F&F's roster with the fixture's scoring.
 
 Pre-registered, so neither outcome can be fitted afterwards.
