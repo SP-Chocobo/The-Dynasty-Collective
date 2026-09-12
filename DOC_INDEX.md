@@ -1,20 +1,21 @@
 # Document index — derived, not curated
 
-`python3 doc_index.py` regenerates this. 113 markdown documents.
+`python3 doc_index.py` regenerates this. 115 markdown documents.
 
 Classified by what each file says about ITSELF in its first 12 lines. Nothing here is a judgement about whether a document is *good* — only about whether it tells a cold reader what it is before it starts making claims.
 
 | class | count | meaning |
 |---|---:|---|
-| WITHDRAWN | 21 | a published claim taken back. Kept, unedited, beneath its banner. |
-| SUPERSEDED | 13 | still valid or partly valid, but something later changed what it means. |
+| WITHDRAWN | 22 | a published claim taken back. Kept, unedited, beneath its banner. |
+| SUPERSEDED | 12 | still valid or partly valid, but something later changed what it means. |
 | DECLARED | 15 | says what kind of document it is before making claims. |
-| UNDECLARED | 64 | no status banner in its opening. Not necessarily wrong — most are simply current — but a reader cannot tell without reading it all. |
+| UNDECLARED | 66 | no status banner in its opening. Not necessarily wrong — most are simply current — but a reader cannot tell without reading it all. |
 
 ## WITHDRAWN
 
 - `.claude/skills/engine-measurement/SKILL.md`
 - `DOC_INDEX.md`
+- `FREEZE_CHECKLIST.md`
 - `evidence/roster_proof/README.md`
 - `evidence/roster_shape/OWNER_LEAGUE_FIXTURE_WITHDRAWAL.md`
 - `evidence/roster_shape/ff_rulebook/ADVISORY_fable_symmetry_break.md`
@@ -37,7 +38,6 @@ Classified by what each file says about ITSELF in its first 12 lines. Nothing he
 
 ## SUPERSEDED
 
-- `FREEZE_CHECKLIST.md`
 - `evidence/roster_shape/ff_rulebook/CORRECTION_wrong_universe.md`
 - `evidence/roster_shape/ff_rulebook/FINDING_01_the_pool_is_the_shape.md`
 - `evidence/roster_shape/ff_rulebook/FINDING_02_vor_measures_linearity.md`
@@ -82,9 +82,11 @@ Classified by what each file says about ITSELF in its first 12 lines. Nothing he
 - `data/league_captures/README.md`
 - `evidence/batteries/README.md`
 - `evidence/capture_provenance/README.md`
+- `evidence/flex_feasibility/README.md`
 - `evidence/projection_rank/README.md`
 - `evidence/real_drafts/README.md`
 - `evidence/roster_proof/README_FF.md`
+- `evidence/roster_proof/README_RULEBOOK_CUT.md`
 - `evidence/roster_shape/DISTRIBUTION_THEORY_fable.md`
 - `evidence/roster_shape/PREREGISTRATION_216_fix.md`
 - `evidence/roster_shape/PREREGISTRATION_shared_slot_alternative.md`

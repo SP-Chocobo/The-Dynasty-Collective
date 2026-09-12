@@ -1,5 +1,70 @@
 # What is left before "how it drafts" is done, and before v1 can freeze
 
+> # STATE AS OF 2026-09-12 — read this first; everything below it predates these runs
+>
+> Three measurements landed together and they move the picture in both directions.
+>
+> ## 1. Gate 1 is DELIVERED, and it found a blocker
+>
+> `BATTERY_2026-09-12_scoring_aware_full_99f9f76`: **33 formats, 32 independent, 5,340 picks,
+> complete**, postdating #213/#196/#201/#204/#242. The first battery here that is not withdrawn.
+> `constant_axes: []` — nothing advertised is inert.
+>
+> **Two structural findings, both a chair unable to field a legal lineup** (`8T_standard` seat 5,
+> `14T_standard` seat 4 — empty FLEX, full 14-man roster). That is the family #164 called the
+> only blocker and this document called dissolved. **It is not dissolved.**
+>
+> Root cause, exact (`#247`): `feasibility_first` protects DEDICATED slots only, never flex, on
+> the stated premise that *"a flex slot is fillable from several positions, so it is not at
+> risk"*. True until the roster owns no spare of ANY of them. Seat 5 drafted **eight
+> quarterbacks in a one-QB league**; every named slot was filled, so `unfilled == 0` and the
+> backstop was a no-op for the entire draft.
+>
+> **The two findings are a lower bound, not a count.** Measured across all four 1QB standard
+> arms, longest same-position run per seat: `8T [8,7,3,3,3,2,2,2]`, `10T [7,6,5,5,4,4,3,3,3,2]`,
+> `12T [7,7,5,5,4,4,4,4,3,3,3,2]` — and **10T/12T are flagged zero times**. The hoarding is
+> universal; only the flagging is rare, because the audit fires only when the hoarded position is
+> flex-INELIGIBLE. A seat taking eight TEs is invisible to it.
+>
+> ## 2. The headline deficit this document was built around is STALE EVIDENCE
+>
+> `#205`'s 1-of-68 at −5% to −11% was produced at commit `8cee942` — **190 commits back**,
+> including `#216 WIRED: one slot, one alternative reaches the board`. Re-measured on today's
+> code, same format, same harness: **4 of 12, −0.28%** (`#248` arm A).
+>
+> It was never wrong. It describes a different codebase. **Across every shape tested today,
+> engine and control sit within ~1% of each other.**
+>
+> ## 3. The F&F reversal is the ROSTER SHAPE — one flex slot — not the rulebook
+>
+> Pre-registered three-arm cut, one process, one code version, rounds matched (`#248`):
+>
+> ```
+> A  fixture roster + fixture scoring     4 of 12   -0.28%
+> B  fixture roster + F&F scoring         4 of 12   -0.61%   <- rulebook moved alone: NO EFFECT
+> C  F&F roster     + F&F scoring        10 of 12   +1.04%   <- reproduces #245 to the cent
+> ```
+>
+> The two rosters differ in one startable slot: **FLEX 2 vs FLEX 3.** Everything else identical.
+> So the rulebook work (`evidence/rulebook_ground_truth/`, the real +15.7% scoring difference)
+> stands as measurement and is **not** what drives the verdict.
+>
+> ## What this does to the gates
+>
+> - **Gate 1** — done. Re-run required after any repair.
+> - **Gate 2 (the objective ruling)** — substantially DEFUSED as posed. It was framed around a
+>   5–11% trade that no longer reproduces. The underlying question (present points vs dynasty
+>   asset value) is still unratified, but it is no longer being decided against a large measured
+>   deficit.
+> - **NEW BLOCKER `#247`** — the flex feasibility gap. This is now the only measured drafting
+>   failure, and it is the one thing here that genuinely blocks a freeze.
+>
+> Sources: `evidence/batteries/README.md`, `evidence/flex_feasibility/README.md`,
+> `evidence/roster_proof/README_RULEBOOK_CUT.md`, `evidence/roster_proof/README_FF.md`.
+
+---
+
+
 Derived from the register and the evidence on disk, not from memory. Every claim below names
 where it comes from. Written against HEAD `3d63c36`; corrections since are dated inline.
 
