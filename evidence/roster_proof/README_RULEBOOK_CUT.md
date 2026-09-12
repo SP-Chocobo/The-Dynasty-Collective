@@ -1,4 +1,20 @@
-# #248: it is not the rulebook. ~~It is ONE FLEX SLOT.~~
+# ~~#248: it is not the rulebook. It is ONE FLEX SLOT.~~ — BOTH HALVES WITHDRAWN
+
+> ⛔⛔ **IT IS THE RULEBOOK. 28th withdrawal, 2026-09-12.** Arm B never moved `rec` (see the
+> correction under the arm table below), so the one cut that was supposed to isolate the rulebook
+> left the largest lever at PPR and read the PPR export. Supplied directly, F&F's rulebook
+> inverts the verdict on the FIXTURE roster:
+>
+> ```
+> fixture roster, FLEX 3, fixture PPR      3/12  -0.84%
+> fixture roster, FLEX 3, TRUE F&F rules  10/12  +1.04%   <- IDENTICAL to arm C, 0 differing values
+> fixture roster, FLEX 2, TRUE F&F rules   9/12  +0.84%   <- IDENTICAL to the flex cut's arm E
+> ```
+>
+> **The 15-slot fixture roster reproduces the 29-slot F&F roster BIT-FOR-BIT once the rulebook
+> matches.** The roster was never the cause of anything. Evidence:
+> `README_MISSING_CELL.md`.
+
 
 > ⛔ **THE FLEX READING IS WITHDRAWN (27th), 2026-09-12.** The closing section below named the cut
 > that would settle it — "the fixture roster with a third FLEX added and nothing else changed."

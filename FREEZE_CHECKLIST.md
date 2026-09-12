@@ -35,7 +35,15 @@
 > It was never wrong. It describes a different codebase. **Across every shape tested today,
 > engine and control sit within ~1% of each other.**
 >
-> ## 3. The F&F reversal is the ROSTER SHAPE — one flex slot — not the rulebook
+> ## 3. ~~The F&F reversal is the ROSTER SHAPE — one flex slot — not the rulebook~~
+>
+> > ⛔⛔ **WHOLLY WITHDRAWN, 2026-09-12 (28th). IT IS THE RULEBOOK, AND THE ROSTER IS INERT.**
+> > Arm B never moved `rec` — `build_mock_league` overwrote it — so the cut that "moved the
+> > rulebook alone" left the largest lever at PPR and read the PPR rankings export. Supplied
+> > directly, the rulebook inverts the verdict on the FIXTURE roster (3/12 −0.84% → 10/12
+> > +1.04%), and the 15-slot fixture roster reproduces the 29-slot F&F roster BIT-FOR-BIT.
+> > See `evidence/roster_proof/README_MISSING_CELL.md`. The heading and text below are kept
+> > unedited as the record of what was believed.
 >
 > Pre-registered three-arm cut, one process, one code version, rounds matched (`#248`):
 >
@@ -185,8 +193,25 @@ app displayed — so this is ground truth, not a model. Purdy alone swings 5.00.
 
 **The freeze's headline deficit is 5–11%. The rulebook difference is ~16%, and it runs the other
 way.** That is larger than the effect being ruled on, so the size and possibly the *sign* of the
-points deficit is not established for F&F. **Neither is it refuted.** It is unmeasured.
+points deficit is not established for F&F. ~~**Neither is it refuted.** It is unmeasured.~~
 Evidence: `evidence/rulebook_ground_truth/README.md`.
+
+> ✅ **IT IS NOW MEASURED, 2026-09-12, and the suspicion above was right.** Same roster, same
+> pool, same rounds, same code, same harness — only the rulebook swapped:
+>
+> ```
+> fixture roster, fixture PPR rulebook      3 of 12   -0.84%   engine BEHIND
+> fixture roster, F&F rulebook (the owner's) 10 of 12  +1.04%   engine AHEAD
+> ```
+>
+> **The sign of the verdict is a property of the scoring environment**, and the 15-slot fixture
+> roster under F&F's rulebook reproduces the 29-slot F&F roster bit-for-bit — 0 differing values
+> across 12 seats × every metric, at both flex counts. The roster shape was never the cause.
+>
+> So every fixture-measured claim in this document — `#205`'s deficit, all 33 battery arms — was
+> taken in a full-PPR environment the owner does not play in. The checkbox below is no longer a
+> choice between two defensible unknowns; it is a choice with a measured number attached.
+> Evidence: `evidence/roster_proof/README_MISSING_CELL.md`.
 
 **This does not invalidate any existing result.** The battery and the roster proof agree with
 each other because they use the same fixture, and the `ff_rulebook/` probes are honestly named

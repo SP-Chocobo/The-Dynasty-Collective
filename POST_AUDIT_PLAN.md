@@ -7817,3 +7817,81 @@ large negative bench term, and the engine's bench prices below the control's on 
 in every arm (−65.85, −106.08, −57.14, −29.68). **A tautological ruler that loses is its own
 question.** It is not this one, it reproduces `#248`'s arm A exactly, and nothing above is
 claimed from it — but it is written down here rather than left in a JSON nobody opens.
+
+## #250 MEASURED: IT IS THE RULEBOOK. The roster was never the cause of anything (28th withdrawal)
+
+The missing cell of a 2×2×2 nobody built on purpose, run with F&F's scoring supplied DIRECTLY
+rather than through `build_mock_league`'s overlay. Pre-registered at `18be63b`.
+
+```
+D2  fixture roster, FLEX 3, fixture PPR        3/12  -0.84%  margin -22.53   CONTROL
+B3  fixture roster, FLEX 2, TRUE F&F scoring   9/12  +0.84%  margin +22.08
+G   fixture roster, FLEX 3, TRUE F&F scoring  10/12  +1.04%  margin +29.43
+```
+
+**The 15-slot fixture roster under F&F's rulebook reproduces the 29-slot F&F roster
+BIT-FOR-BIT.**
+
+| new arm | matched against | differing values, 12 seats × every metric |
+|---|---|---:|
+| `D2` fixture, FLEX 3, PPR | flex cut `D` | **0** |
+| `B3` fixture, FLEX 2, F&F | flex cut `E` — *the F&F roster* | **0** |
+| `G` fixture, FLEX 3, F&F | flex cut `C2` — *the F&F roster* | **0** |
+
+A roster with 6 BN, no TAXI and no IR produces the same draft as one with 11 BN, 5 TAXI and 3 IR,
+seat for seat, to the last decimal — once the rulebook matches.
+
+### Why the whole thread went the wrong way
+
+`#248`'s only rulebook arm never moved the rulebook. `build_mock_league` overwrites `rec` from
+its own `scoring` argument, so arm B ran at `rec = 1.0` and resolved to `hint = ppr` while arm C
+resolved to `half_ppr`. `rec` reaches offensive valuation by FILE SELECTION — it picks the
+rankings export — so the two arms read **different exports**, and the cut that was supposed to
+isolate the rulebook changed everything about it except the part that matters.
+
+Every later cut then inherited the conclusion and searched the roster, which is inert.
+
+### What each factor is worth, now that all four are measured
+
+| factor | effect on the verdict | evidence |
+|---|---|---|
+| **rulebook** (PPR ↔ half-PPR + TE premium + first downs, and its export) | **3/12 → 10/12; −0.84% → +1.04%** | `D2` → `G` |
+| flex / startable count | 9/12 → 10/12; +0.84% → +1.04% | `B3` → `G` |
+| roster beyond startable slots (bench, taxi, IR, size) | **nothing** | `B3`≡`E`, `G`≡`C2` |
+| draft length | nothing | `#245` |
+| roster capacity | nothing — fenced off the pick path | `#249` |
+
+It is coherent rather than surprising: startable structure reaches the pick, `#249` proved
+nothing else about the roster does, and the rulebook selects the export. Identical drafts are the
+PREDICTION of those two facts.
+
+### What it does to the freeze — the largest consequence in this whole thread
+
+`FREEZE_CHECKLIST.md`'s scope-limit section had the suspicion right and said so honestly:
+*"the size and possibly the SIGN of the points deficit is not established for F&F. Neither is it
+refuted. It is unmeasured."*
+
+**It is now measured, and the sign really does flip.** Same roster, same pool, same rounds, same
+code — only the rulebook:
+
+```
+fixture PPR rulebook        3 of 12   -0.84%   engine BEHIND
+F&F rulebook (the owner's) 10 of 12   +1.04%   engine AHEAD
+```
+
+Every fixture-measured claim in the freeze record — `#205`'s headline deficit, all 33 battery
+arms — was taken in a full-PPR environment the owner does not play in. The long-open checkbox
+("re-measure the freeze evidence on F&F's rulebook, or certify against a generic environment and
+record F&F as out of scope") is no longer a choice between two unknowns. **It is the owner's
+call, and it now has a number.**
+
+### What is NOT established
+
+- **That the engine is good.** Every arm sits within ~1% of its control. `+1.04%` is small; it is
+  simply no longer negative in the league being played.
+- **WHICH PART of the rulebook does it.** `rec` 1.0→0.5, the TE premium, first downs, the
+  completion bonus and the export all moved together. `#248` arm B is now useful precisely
+  because of its defect: it shows first downs + completion bonus + TE premium, **at PPR reception
+  value on the PPR export**, change the verdict by nothing. So the live suspects are `rec` and
+  the export it selects, and separating those two is the next cut — a question about one input
+  rather than about a league.
