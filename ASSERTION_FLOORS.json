@@ -326,6 +326,16 @@
         "assertTrue": 4
       }
     },
+    "test_capture_provenance.py": {
+      "test_methods": 10,
+      "asserts": {
+        "assertAlmostEqual": 3,
+        "assertEqual": 3,
+        "assertGreater": 1,
+        "assertGreaterEqual": 2,
+        "assertIn": 3
+      }
+    },
     "test_capture_reproduces_the_live_app.py": {
       "test_methods": 4,
       "asserts": {
@@ -625,6 +635,16 @@
         "assertNotRegex": 1
       }
     },
+    "test_doc_index.py": {
+      "test_methods": 10,
+      "asserts": {
+        "assertEqual": 6,
+        "assertGreater": 3,
+        "assertIn": 3,
+        "assertNotIn": 3,
+        "assertTrue": 2
+      }
+    },
     "test_downstream_contracts.py": {
       "test_methods": 21,
       "asserts": {
@@ -760,9 +780,9 @@
       }
     },
     "test_feasibility_backstop.py": {
-      "test_methods": 17,
+      "test_methods": 22,
       "asserts": {
-        "assertEqual": 18
+        "assertEqual": 23
       }
     },
     "test_harness_league_format_hygiene.py": {
@@ -1386,7 +1406,7 @@
         "assertIsNone": 2,
         "assertIsNotNone": 1,
         "assertNotEqual": 3,
-        "assertNotIn": 2,
+        "assertNotIn": 3,
         "assertTrue": 2
       }
     },
@@ -1461,6 +1481,17 @@
         "assertTrue": 3
       }
     },
+    "test_slot_vocabulary.py": {
+      "test_methods": 15,
+      "asserts": {
+        "assertEqual": 9,
+        "assertGreater": 1,
+        "assertIn": 4,
+        "assertIs": 3,
+        "assertNotEqual": 3,
+        "assertNotIn": 2
+      }
+    },
     "test_snapshot_identity_boundary.py": {
       "test_methods": 32,
       "asserts": {
@@ -1525,6 +1556,15 @@
         "assertIsNotNone": 2,
         "assertLess": 1,
         "assertTrue": 9
+      }
+    },
+    "test_take_model_coherence.py": {
+      "test_methods": 8,
+      "asserts": {
+        "assertAlmostEqual": 3,
+        "assertEqual": 4,
+        "assertGreater": 4,
+        "assertLess": 2
       }
     },
     "test_tav_identity_is_stated_once.py": {
