@@ -37,6 +37,7 @@ from __future__ import annotations
 import json
 
 import collections
+from pathlib import Path
 from typing import Any, Optional
 
 import draft_room as dr
@@ -145,6 +146,41 @@ def league_matrix(base_scoring: dict | None = None) -> list[dict]:
     for mode in ("balanced", "upside"):
         out.append({"label": f"12T_ppr_mode_{mode}", "league": mode_base, "teams": 12,
                     "rounds": len(mode_base["roster_positions"]), "mode": mode})
+
+    # A REAL CAPTURED LEAGUE, AS A CONFIGURATION POINT -- NOT AS THE CANONICAL ONE (#251).
+    #
+    # Every arm above is built from `fixtures/sleeper_capture.json` with a rec/te-premium
+    # overlay, so the matrix covers exactly the region its own base rulebook occupies:
+    # `config_space.coverage` measures it at 16 varied axes of 91, and reports ZERO uncovered
+    # coordinates for the fixture -- a tautology, since the matrix is built from it.
+    #
+    # Fourth and Forever carries 21 coordinates no arm here produces, including `rec_fd`,
+    # `rush_fd`, `bonus_rec_te 0.25`, `pass_td 4` (every other arm scores 6) and TAXI slots.
+    # `#250` measured what that costs: the same roster under the two rulebooks inverts the
+    # verdict, 3/12 -0.84% against 10/12 +1.04%. A 33-arm run was never universal evidence
+    # about the engine; it was evidence about one region.
+    #
+    # SUPPLIED DIRECTLY, never through build_mock_league. That function overwrites `rec` from
+    # its own `scoring` argument, which is precisely how #248's arm B came to run at rec 1.0
+    # while claiming to carry F&F's rulebook -- and `rec` selects the rankings EXPORT, so the
+    # arm read a different file than it reported. A captured league enters as itself or not at
+    # all.
+    #
+    # NEITHER LEAGUE IS CANONICAL. This is one more coordinate, and the point of adding it is
+    # that the invariants must hold here too -- not that its outcomes are the right ones.
+    capture_path = Path("data/league_captures/fourth_and_forever.json")
+    if capture_path.exists():
+        cap = json.loads(capture_path.read_text(encoding="utf-8"))
+        ff = {
+            "roster_positions": cap["roster_positions"],
+            "scoring_settings": {k: v["value"] for k, v in cap["scoring_settings_observed"].items()},
+            "total_rosters": 12,
+            "settings": {"type": 2},
+        }
+        ff_rounds = len(lc.draftable_slots(ff["roster_positions"]))
+        ff["draft_rounds"] = ff_rounds
+        out.append({"label": "CAPTURE_fourth_and_forever", "league": ff, "teams": 12,
+                    "rounds": ff_rounds})
 
     # THE ARM THAT MAKES #161 FALSIFIABLE, and the reason it did not exist before is the
     # finding. Every format above sets rounds = len(roster_positions), which is precisely the

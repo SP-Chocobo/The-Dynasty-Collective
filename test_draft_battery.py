@@ -15,6 +15,7 @@ regressed" -- the same measurement/production separation the rest of this repo h
 import unittest
 
 import draft_battery as batt
+import league_config as lc
 import draft_simulation
 
 
@@ -262,23 +263,62 @@ class TheMatrixIsWideAndCarriesItsNamedFormatsTests(unittest.TestCase):
         what the instrument could ever measure.
 
         Narrowed rather than deleted: the audit's own precondition is preserved where it runs,
-        and the format that exists to break the assumption is exempted from that audit alone."""
+        and the format that exists to break the assumption is exempted from that audit alone.
+
+        CORRECTED (#251), and the correction is #242 one layer up. This asserted
+        `rounds == len(roster_positions)`, which is STRICTER than the audit needs and was
+        indistinguishable from the real precondition for as long as every arm was a mock league
+        with no IR. `unfilled_starting_slots` asks whether the STARTING lineup can be filled, so
+        what it requires is `rounds >= startable slots` -- nothing about the bench. The first
+        real captured league in the matrix has 29 roster positions, 26 draftable (3 IR) and 10
+        startable: the old equality failed it, while every starting slot is comfortably
+        fillable. An equality standing in for an inequality is exactly the defect #242 found in
+        the slot vocabulary, and it hid here for the same reason -- no arm could tell them
+        apart."""
         for entry in batt.league_matrix():
             if not entry.get("audit_roster_fill", True):
                 continue
             with self.subTest(label=entry["label"]):
-                self.assertEqual(entry["rounds"], len(entry["league"]["roster_positions"]))
+                startable = len(lc.starting_slots(entry["league"]["roster_positions"]))
+                self.assertGreaterEqual(
+                    entry["rounds"], startable,
+                    "the fill audit runs here, so the draft must be long enough to fill the "
+                    "STARTING lineup -- the bench is not what the audit asks about")
 
-    def test_the_matrix_carries_a_format_where_rounds_differ_from_slots(self):
+    def test_the_matrix_carries_a_format_that_cannot_fill_its_starters(self):
         """Without this arm the repair to #161 is correct and untestable at scale. Pinned as a
-        requirement so the battery cannot quietly return to measuring one relationship."""
-        differing = [e["label"] for e in batt.league_matrix()
+        requirement so the battery cannot quietly return to measuring one relationship.
+
+        CORRECTED (#251) alongside the test above. This looked for any arm whose rounds differ
+        from its TOTAL slots and demanded it opt out of the fill audit. A real captured league
+        satisfies that description while being perfectly able to fill its starters, so the
+        assertion was about the wrong quantity. What must exist is an arm the audit genuinely
+        cannot apply to."""
+        matrix = batt.league_matrix()
+        short = [e for e in matrix
+                 if e["rounds"] < len(lc.starting_slots(e["league"]["roster_positions"]))
+                 or not e.get("audit_roster_fill", True)]
+        self.assertTrue(short, "the battery can no longer falsify #161")
+        for entry in short:
+            with self.subTest(label=entry["label"]):
+                self.assertFalse(entry.get("audit_roster_fill", True),
+                                 "an arm the fill audit cannot apply to must opt out of it, "
+                                 "not fail it")
+
+    def test_rounds_and_total_slots_are_allowed_to_differ(self):
+        """The property the two corrections above exist to permit, stated on its own so it
+        cannot be re-forbidden by accident. A real league drafts its draftable slots, not its
+        roster size: IR is never drafted onto (#242)."""
+        matrix = batt.league_matrix()
+        differing = [e["label"] for e in matrix
                      if e["rounds"] != len(e["league"]["roster_positions"])]
-        self.assertTrue(differing, "the battery can no longer falsify #161")
-        for label in differing:
-            entry = next(e for e in batt.league_matrix() if e["label"] == label)
-            self.assertFalse(entry.get("audit_roster_fill", True),
-                             "a short draft must opt out of the fill audit, not fail it")
+        self.assertTrue(differing, "no arm exercises rounds != total slots")
+        audited = [e["label"] for e in matrix
+                   if e["rounds"] != len(e["league"]["roster_positions"])
+                   and e.get("audit_roster_fill", True)]
+        self.assertTrue(audited,
+                        "an arm must exist where rounds differ from total slots AND the fill "
+                        "audit still runs -- otherwise the equality is back by another route")
 
     def test_every_league_tells_the_engine_its_round_count(self):
         """#161: the engine cannot know the round count unless the league says so, and a

@@ -430,6 +430,19 @@
         "assertTrue": 6
       }
     },
+    "test_config_space.py": {
+      "test_methods": 14,
+      "asserts": {
+        "assertEqual": 7,
+        "assertGreater": 5,
+        "assertGreaterEqual": 3,
+        "assertIn": 6,
+        "assertIsNone": 1,
+        "assertLess": 2,
+        "assertNotEqual": 1,
+        "assertTrue": 2
+      }
+    },
     "test_context_budget_boundary.py": {
       "test_methods": 16,
       "asserts": {
@@ -660,17 +673,18 @@
       }
     },
     "test_draft_battery.py": {
-      "test_methods": 36,
+      "test_methods": 37,
       "asserts": {
         "assertAlmostEqual": 1,
-        "assertEqual": 45,
+        "assertEqual": 44,
         "assertFalse": 1,
         "assertGreater": 3,
+        "assertGreaterEqual": 1,
         "assertIn": 6,
         "assertIsInstance": 2,
         "assertIsNone": 1,
         "assertNotIn": 1,
-        "assertTrue": 7
+        "assertTrue": 9
       }
     },
     "test_draft_board_ui.py": {

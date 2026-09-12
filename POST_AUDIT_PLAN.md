@@ -7895,3 +7895,79 @@ call, and it now has a number.**
   value on the PPR export**, change the verdict by nothing. So the live suspects are `rec` and
   the export it selects, and separating those two is the next cut — a question about one input
   rather than about a league.
+
+## #251 RULED (owner) + EXECUTED: certify invariants across a configuration space, not a league
+
+**The ruling.** PPR, half-PPR, TE premium, first downs, completion bonuses, roster sizes, flex
+counts and superflex are **configuration dimensions, not foundational assumptions**. `#250`
+showed a 33-arm PPR battery cannot be universal evidence — the same roster under two rulebooks
+reverses the sign of the deficit — but the correction is not to crown F&F. What gets frozen is:
+
+> the engine's behaviour is correctly governed by league configuration, and the core invariants
+> survive across the supported configuration space.
+
+Stated so the trap is explicit: **do not replace "PPR is representative" with "F&F is canonical."**
+
+### 1. The split, DERIVED rather than declared
+
+`config_space.py` reads it out of `draft_battery`'s own structure — whatever
+`structural_findings` aggregates is invariant (*"a finding here is a DEFECT, not an
+observation"*), whatever else `audit_trajectory` emits is configuration-dependent (*"no verdict,
+because a verdict would need a number I chose"*).
+
+| INVARIANT | domain |
+|---|---|
+| `duplicate_picks` | every configuration, no precondition |
+| `unpriced_picks` | every configuration, no precondition |
+| `undraftable_positions` | every configuration, no precondition |
+| `unfilled_starting_slots` | every configuration where `rounds >= startable slots` |
+
+Configuration-dependent, reported and never asserted: `shape`, `margins`, `qualifiers`,
+`regimes`, `strength`, `unpriced_at_decision`. They all share one shape: **the assertion is
+configuration-free while its REFERENT is configuration-derived.**
+
+### 2. Coverage, measured
+
+| matrix | arms | axes | varied | F&F coordinates no arm produces |
+|---|---:|---:|---:|---:|
+| before | 33 | 91 | **16** | **21** |
+| after one capture added | 34 | 91 | **77** | **0** |
+
+One real captured league moves more axes than the other 33 combined, because all 33 are built
+from one base rulebook with a `rec`/TE overlay. The fixture's own uncovered count is **0 by
+construction** — the matrix is built from it, which is exactly why its coverage was never
+evidence about anything else. `CAPTURE_fourth_and_forever` is supplied DIRECTLY, never through
+`build_mock_league` — the function whose `rec` overwrite caused `#250`.
+
+### 3. The configuration layer is demonstrated to work, with no new run
+
+Across `#250`'s seven arms — two rulebooks, two flex counts, two roster sizes, 84 seats — **every
+invariant held** (every lineup filled, every pick priced) while **the dependent outcome reversed
+sign** (margin −22.53 against +29.43). Pinned by
+`test_config_space.TheConfigurationLayerIsDemonstratedToWork`, reading committed artifacts.
+
+### 4. What executing the ruling CORRECTED — #242's defect, one layer up
+
+Adding one real league immediately failed two committed tests, both rightly.
+`unfilled_starting_slots`' precondition was written and enforced as
+`rounds == len(roster_positions)`. The audit asks whether the STARTING lineup can be fielded, so
+what it needs is `rounds >= startable slots` — nothing about the bench. Indistinguishable for as
+long as every arm was a mock league with no IR; the first real league (29 slots, 26 draftable,
+10 startable) failed the equality while satisfying the property comfortably.
+
+**An equality standing in for the question actually being asked** — `#242` exactly, and hidden
+for the same reason: no configuration in the matrix could tell the two apart.
+
+### 5. Parked deliberately
+
+`rec` versus export selection. `#248`'s arm B is useful *because* of its defect: first downs +
+completion bonus + TE premium, at PPR reception value on the PPR export, change the verdict by
+nothing — so the live suspects are `rec` and the export it selects. A question about ONE INPUT,
+not about a league. Recorded, not pursued.
+
+### What is NOT done
+
+The certification RUN itself. Which axes deserve coverage at their extremes is a design decision
+with a cost attached and it is the owner's. What changed is that a proposed matrix can now be
+measured for coverage **before** the hours are spent. Full statement:
+`evidence/CERTIFICATION_DESIGN.md`.

@@ -243,6 +243,33 @@ missing is this note.
 
 ## GATE 1 — Evidence that does not currently exist
 
+> ## ⚖️ GATE 1 IS REDEFINED BY THE OWNER'S RULING (`#251`), 2026-09-12
+>
+> **Do not re-run the 33-arm PPR battery as-is.** `#250` established that a battery in one
+> scoring region cannot serve as universal evidence: the same roster under two rulebooks
+> reverses the sign of the measured deficit. The correction is NOT to certify F&F instead.
+> PPR, half-PPR, TE premium, first downs, roster size, flex count and superflex are
+> **configuration dimensions, not foundational assumptions**, and neither captured league is
+> canonical.
+>
+> **What is frozen is not "the engine works for F&F". It is "the engine's behaviour is correctly
+> governed by league configuration, and the core invariants survive across the supported
+> configuration space."**
+>
+> Gate 1 therefore becomes: certify **invariants** across **representative configuration
+> coverage**, reporting configuration-dependent outcomes per cell without a pass/fail.
+>
+> - The invariant / configuration-dependent split is DERIVED from the battery's own structure by
+>   `config_space.py` and pinned by `test_config_space.py`.
+> - Coverage is now MEASURABLE BEFORE A RUN IS SPENT: the committed matrix went from **16 of 91
+>   axes varied to 77** by adding one real captured league, which moved more axes than the other
+>   33 arms combined.
+> - The configuration layer is already DEMONSTRATED to work: across `#250`'s seven arms every
+>   invariant held while the dependent outcome reversed sign.
+>
+> Full statement, with the corrections it produced: `evidence/CERTIFICATION_DESIGN.md`.
+> The bullet below is kept unedited as the record of what Gate 1 used to mean.
+
 - [ ] **#150 — re-run the mass battery. Both committed runs are WITHDRAWN.**
       `evidence/batteries/README.md:93` marks both 33-format runs withdrawn: they predate #213
       (every arm scored against a one-key rulebook). They also predate #196 (pool 2041→2105,
