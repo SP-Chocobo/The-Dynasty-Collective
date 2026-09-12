@@ -624,3 +624,26 @@ So the rule is not "be careful", it is ordering:
 
 A new test file is safe to add and run. A new module is safe. Editing a module a running
 instrument imports is not, even when it currently happens to get away with it.
+
+### The escape hatch: mutate IN MEMORY, not on disk
+
+A mutation pass does not actually need the file to change. When what you are mutating is a
+module-level constant or a module-level function -- which is most of what these tests pin --
+patch the ATTRIBUTE and re-run the test module in-process:
+
+```python
+import draft_strategy as ds, test_take_model_coherence as t
+ORIG = dict(ds.RANK_TAKE_PROBABILITY)
+ds.RANK_TAKE_PROBABILITY = {1: 0.55}          # the mutation
+unittest.TextTestRunner().run(unittest.TestLoader().loadTestsFromModule(t))
+ds.RANK_TAKE_PROBABILITY = ORIG                # restore
+```
+
+This is a REAL mutation, not a weaker one: the code under test reads the module global at call
+time, so it sees exactly what a file edit would have produced. It touches no disk, so a
+three-hour run in another process cannot be affected, and there is no `__pycache__` hazard
+(#240) and no restore-failure window where the repo sits mutated.
+
+It does not cover everything -- a mutation inside a function BODY still needs the file. Queue
+those. But the ones that reach for a constant, a table, a threshold or a whole function are the
+common case, and they no longer have to wait for the machine to go idle.

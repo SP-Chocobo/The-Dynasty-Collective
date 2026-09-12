@@ -99,3 +99,24 @@ names instead of letters, or a Sleeper draft export for that league.
 
 Until then the second half stays OPEN and UNMEASURED, and must not be reported as explained by
 the floor. That is what the scope tests in `test_take_model_coherence.py` exist to prevent.
+
+## Mutation pass (8 of 8 as designed)
+
+`mutation_pass.py`, run IN MEMORY against `draft_strategy`'s module attributes rather than by
+editing the file — a real mutation, since the code reads those globals at call time, and safe to
+run while a long measurement holds the module in another process.
+
+| mutation | outcome |
+|---|---|
+| M1 floor -> 0.0 (model becomes near-coherent) | fails, as designed |
+| M2 floor -> 0.004 (excess shrinks 5x) | fails |
+| M3 table truncated to rank 1 only | fails |
+| M4 table inflated 1.21 -> 3.0 | fails |
+| M5 floor -> 0.5 (the floor WOULD then explain `#206`) | fails |
+| M6 rank-1 take 0.55 -> 0.05 | fails |
+| M7 deep ranks decay instead of flooring | fails |
+| M8 domain limit: rank > 5 contributes nothing (**a real fix**) | fails |
+
+M8 is the one to read carefully. It is a plausible REPAIR, and it fails — which is correct for a
+characterization test and is the whole reason this file says so in its own docstring. A green
+suite after M8 would mean the tests had stopped describing the defect.
