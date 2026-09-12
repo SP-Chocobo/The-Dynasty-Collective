@@ -1,20 +1,18 @@
 # Document index — derived, not curated
 
-`python3 doc_index.py` regenerates this. 115 markdown documents.
+`python3 doc_index.py` regenerates this. 114 markdown documents.
 
 Classified by what each file says about ITSELF in its first 12 lines. Nothing here is a judgement about whether a document is *good* — only about whether it tells a cold reader what it is before it starts making claims.
 
 | class | count | meaning |
 |---|---:|---|
-| WITHDRAWN | 22 | a published claim taken back. Kept, unedited, beneath its banner. |
+| WITHDRAWN | 20 | a published claim taken back. Kept, unedited, beneath its banner. |
 | SUPERSEDED | 12 | still valid or partly valid, but something later changed what it means. |
-| DECLARED | 15 | says what kind of document it is before making claims. |
-| UNDECLARED | 66 | no status banner in its opening. Not necessarily wrong — most are simply current — but a reader cannot tell without reading it all. |
+| DECLARED | 17 | says what kind of document it is before making claims. |
+| UNDECLARED | 65 | no status banner in its opening. Not necessarily wrong — most are simply current — but a reader cannot tell without reading it all. |
 
 ## WITHDRAWN
 
-- `.claude/skills/engine-measurement/SKILL.md`
-- `DOC_INDEX.md`
 - `FREEZE_CHECKLIST.md`
 - `evidence/roster_proof/README.md`
 - `evidence/roster_shape/OWNER_LEAGUE_FIXTURE_WITHDRAWAL.md`
@@ -53,7 +51,9 @@ Classified by what each file says about ITSELF in its first 12 lines. Nothing he
 
 ## DECLARED
 
+- `.claude/skills/engine-measurement/SKILL.md`
 - `ARCHITECTURE_AUDIT.md`
+- `CDME_CONTRACTS.md`
 - `ENGINEERING_DOCTRINE.md`
 - `ENGINE_WIRING_PASS.md`
 - `POST_AUDIT_PLAN.md`
@@ -72,7 +72,6 @@ Classified by what each file says about ITSELF in its first 12 lines. Nothing he
 ## UNDECLARED
 
 - `.claude/skills/close-register-item/SKILL.md`
-- `CDME_CONTRACTS.md`
 - `README.md`
 - `WARPATH.md`
 - `data/baseline/external/dynastyprocess/ATTRIBUTION.md`

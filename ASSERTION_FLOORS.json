@@ -1544,6 +1544,15 @@
         "assertTrue": 1
       }
     },
+    "test_superseded_proposals.py": {
+      "test_methods": 7,
+      "asserts": {
+        "assertEqual": 1,
+        "assertIn": 8,
+        "assertNotIn": 1,
+        "assertTrue": 1
+      }
+    },
     "test_survival_evidence.py": {
       "test_methods": 16,
       "asserts": {

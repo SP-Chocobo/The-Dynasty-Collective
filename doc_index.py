@@ -64,12 +64,36 @@ CLASSES: list[tuple[str, str, str]] = [
 TRACKED_DOCS = ["git", "ls-files", "-z", "*.md"]
 
 
+#: YAML FRONTMATTER IS METADATA ABOUT A FILE, NOT PROSE THE FILE ASSERTS.
+#:
+#: A skill file opens with a `---` fenced block whose `description:` is one long sentence
+#: summarising everything the file covers. `engine-measurement/SKILL.md` says it encodes rules
+#: "earned by withdrawing published findings in #222" -- an accurate description of a LIVE
+#: checklist, and the classifier read the word "withdrawing" and filed the checklist itself as a
+#: retracted claim. Frontmatter also eats most of the header budget, so the real opening line
+#: ("This file is the checklist that would have caught them") never got looked at.
+FRONTMATTER_FENCE = "---"
+
+
+def body(text: str) -> list[str]:
+    """The document's own lines, with a leading YAML frontmatter block removed. An unterminated
+    fence is not frontmatter -- a document that happens to open with a horizontal rule keeps all
+    of its lines rather than silently losing the rest of the file."""
+    lines = text.splitlines()
+    if not lines or lines[0].strip() != FRONTMATTER_FENCE:
+        return lines
+    for i in range(1, len(lines)):
+        if lines[i].strip() == FRONTMATTER_FENCE:
+            return lines[i + 1:]
+    return lines
+
+
 def header(path: Path) -> str:
     try:
-        lines = path.read_text(encoding="utf-8", errors="replace").splitlines()
+        text = path.read_text(encoding="utf-8", errors="replace")
     except OSError:
         return ""
-    return "\n".join(lines[:HEADER_LINES])
+    return "\n".join(body(text)[:HEADER_LINES])
 
 
 def classify(path: Path) -> str:
@@ -90,10 +114,21 @@ def docs(root: Path = Path(".")) -> list[Path]:
     return sorted(Path(name) for name in proc.stdout.split("\0") if name)
 
 
+#: The file this tool writes. It is excluded from its own input -- not as a curated exception
+#: but because a tool classifying its own output is a loop, and this one closed badly: the
+#: rendered legend ("| WITHDRAWN | 22 | a published claim taken back...") sits inside the first
+#: twelve lines, so the index read its own vocabulary table as a status banner and listed itself
+#: among the retracted findings. The index is not a document of the record; it is a view OF the
+#: record.
+OUTPUT = Path("DOC_INDEX.md")
+
+
 def index(root: Path = Path(".")) -> dict[str, list[Path]]:
     buckets: dict[str, list[Path]] = {name: [] for name, _, _ in CLASSES}
     buckets["UNDECLARED"] = []
     for p in docs(root):
+        if p == OUTPUT:
+            continue
         buckets[classify(p)].append(p)
     return buckets
 

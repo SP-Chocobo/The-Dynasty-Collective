@@ -7662,3 +7662,85 @@ A seat enters an absorbing state and does not leave it.
   is no longer being decided against a large measured deficit.
 - **`#247` is now the only measured drafting failure**, and the only thing here that blocks a
   freeze on the evidence.
+
+## #247 SHIPPED at `3e9c074` — the line above is superseded
+
+"`#247` is now the only measured drafting failure, and the only thing here that blocks a freeze
+on the evidence" was true when written and is not now. `feasibility_first` was rewritten to
+solve the WHOLE starting lineup through `lineup_optimizer.optimize_lineup` rather than counting
+dedicated slots, so a hole that only a flex can fill now binds.
+
+Measured before shipping (`evidence/flex_feasibility/`), both failures fixed, no collateral:
+
+| arm | unfillable rosters | bind rate | seats whose picks changed |
+|---|---:|---:|---:|
+| `8T_standard` | 1 → **0** | 2 of 112 (1.8%) | 2 of 8 |
+| `14T_standard` | 1 → **0** | 2 of 196 (1.0%) | 2 of 14 |
+| `12T_standard` | 0 → 0 | 0 of 168 (0.0%) | 0 of 12 |
+| `12T_ppr` | 0 → 0 | 0 of 168 (0.0%) | 0 of 12 |
+
+73 existing tests passed unchanged; 5 added (22 in `test_feasibility_backstop.py`), each with a
+non-vacuity companion; mutation pass 4/4 in memory (revert-to-dedicated-only,
+solver-fills-everything, solver-fills-nothing, ignore-eligibility). Full suite 2862 tests.
+
+**What is NOT done:** one more 33-arm battery before the freeze. That is the gate, not a
+per-repair regression test, and it is the owner's call when to spend it.
+
+**Independently confirmed inert on the reversal question.** The `#248` follow-up re-ran the
+fixture arm on post-`#247` code as a reproduction control and it came back **byte-identical to
+`#248`'s arm A, seat for seat** (seat 1 `2549.12` vs `2486.24`, `+2.53%`, …). The 0.0% bind rate
+measured on 12T formats is not an artifact of the battery's fixtures — nothing about that format
+reaches the backstop at all.
+
+## #182 (standing order, prose audit): four stale statements, each of which could have cost a session
+
+A mechanical pass over `README.md`, `CDME_CONTRACTS.md` and `WARPATH.md` — every backticked
+filename and identifier checked against the tree and against `git ls-files`.
+
+**`README.md` is clean.** 0 identifiers naming nothing; its 6 unfound files
+(`data/last_session.json`, `data/league_prefs.json`, `data/player_aliases.json`,
+`data/league_formats.json`, `bot_research.json`, `bot_comparisons.json`) are runtime-written and
+correctly described as such. Nothing to fix — recorded so nobody re-runs it.
+
+**The four that were wrong:**
+
+1. **`close-register-item` named a dead branch.** "Branch is `ui-authority-pass`, not the
+   harness-designated one." Measured 2026-09-12: `ui-authority-pass` is **191 commits behind**
+   and 7 ahead, last touched 2026-09-09 at `70e380c`. A session following that line literally
+   would have pushed finished work where nobody reads it — `#239`'s failure mode by a different
+   route. Replaced with `git rev-parse --abbrev-ref HEAD`: derived (`#126`), cannot go stale.
+
+2. **The same skill's suite budget said "~800-870s" with no commit attached.** It is 2862 tests
+   in ~1170-1210s at `3e9c074`. A figure that grows stale without anything failing is how a
+   `timeout` gets set too low and kills a run that was fine.
+
+3. **`CDME_CONTRACTS.md` proposed an interface that was measured and rejected.** "Proposed Phase
+   2 interface — for sign-off, not yet implemented" derives
+   `WAITING_PRESSURE_REFERENCE = 3.0 × 17 = 51.0` to wire `waiting_cost` into `pick_necessity`.
+   `#48`/`#71` measured that and went the other way — **the item named the wrong cost**.
+   Necessity reads `positional_forfeit`: the horizon matches (next turn, not end of draft),
+   `r(waiting_cost, bpa) = +0.847` would re-add the standout component under a new name against
+   `positional_forfeit`'s `+0.364`, and coverage is 100% vs partial. Verifiable today: **neither
+   `WAITING_PRESSURE_REFERENCE` nor `NECESSITY_WAITING_WEIGHT` exists anywhere in the codebase.**
+   Banner added, section left unedited beneath it.
+
+4. **The same document read as one live contract when it is two things.** §1–§3 are the live
+   contracts and are cited as authority; everything from "Appendix — the decision-path
+   investigation" (line ~535 of ~9500) is history kept in place, including conclusions later
+   refuted. A top banner now says which is which. The original **DRAFT — awaiting sign-off**
+   gate is preserved verbatim and **not** lifted: that is the owner's to open, and a test pins
+   the exact wording so annotating around it can never look like lifting it.
+
+`test_superseded_proposals.py` (7 tests) makes all of this fail loudly rather than rot: the
+absence of both constants, the rejection comment still standing at its site in
+`pick_synthesis.py`, the shape banner in the opening lines, and the DRAFT banner unedited. Each
+carries a non-vacuity companion — including one that points the same search at
+`NECESSITY_SURVIVAL_WEIGHT` to prove the search can find something.
+
+**And the index that was supposed to catch this had three blind spots of its own** (`doc_index`,
+`#126`): it counted pytest's generated `.pytest_cache/README.md` as a document of this repo;
+it read a skill file's YAML `description:` as the document's own claim, filing a **live**
+checklist among the retracted findings for the word "withdrawing"; and it classified **its own
+output** as withdrawn, because its rendered legend sits in its own first twelve lines. The
+document set is now `git ls-files` — the question git already answers — and the classifier reads
+past frontmatter and skips its own output. 5 mutations, 5 caught.

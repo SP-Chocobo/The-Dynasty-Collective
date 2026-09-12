@@ -72,10 +72,47 @@ class TheClassifierIsNotVacuous(unittest.TestCase):
         finally:
             shutil.rmtree(intruder.parent, ignore_errors=True)
 
+class TheHeaderIsTheDocumentsOwnProse(unittest.TestCase):
+    """Two ways the classifier read something that was not a claim by the document."""
+
+    def test_yaml_frontmatter_is_not_the_documents_opening(self):
+        """A skill file's `description:` is one long sentence summarising what the file covers.
+        engine-measurement's says it encodes rules "earned by withdrawing published findings in
+        #222" -- an accurate description of a LIVE checklist. The classifier read "withdrawing"
+        and filed the checklist itself among the retracted claims, while the real opening line,
+        "This file is the checklist that would have caught them", sat outside the header budget."""
+        skill = Path(".claude/skills/engine-measurement/SKILL.md")
+        self.assertTrue(skill.exists(), "the file this guard is about must still be here")
+        raw = skill.read_text(encoding="utf-8")
+        self.assertIn("withdrawing", raw.split("---")[1],
+                      "non-vacuity: the trigger word must still be in the frontmatter")
+        self.assertEqual(doc_index.classify(skill), "DECLARED")
+
+    def test_an_unterminated_fence_is_not_frontmatter(self):
+        """A document opening with a horizontal rule keeps every line. Dropping the rest of the
+        file on a missing closing fence would silently classify it UNDECLARED."""
+        text = "---\n# Status: withdrawn\nbody\n"
+        self.assertEqual(doc_index.body(text), ["---", "# Status: withdrawn", "body"])
+
+    def test_the_index_does_not_classify_its_own_output(self):
+        """A tool classifying its own output is a loop, and this one closed badly: the rendered
+        legend ("| WITHDRAWN | 22 | a published claim taken back...") sits inside the first twelve
+        lines, so the index read its own vocabulary table as a status banner and listed itself
+        among the retracted findings."""
+        self.assertIn(doc_index.OUTPUT, doc_index.docs(),
+                      "non-vacuity: the file is tracked, so only index() may exclude it")
+        self.assertEqual(doc_index.classify(doc_index.OUTPUT), "WITHDRAWN",
+                         "non-vacuity: it is exactly the self-match that made the exclusion necessary")
+        for bucket in doc_index.index().values():
+            self.assertNotIn(doc_index.OUTPUT, bucket)
+
+
+class TheClassifierIsNotVacuousPart2(unittest.TestCase):
     def test_every_document_lands_in_exactly_one_bucket(self):
         buckets = doc_index.index()
         counted = sum(len(v) for v in buckets.values())
-        self.assertEqual(counted, len(doc_index.docs()))
+        self.assertEqual(counted, len(doc_index.docs()) - 1,
+                         "every tracked document except the index's own output")
 
 
 if __name__ == "__main__":

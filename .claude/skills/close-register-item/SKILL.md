@@ -23,7 +23,13 @@ open, because the next reader believes it.
 **Step 4 is where the one real process failure happened.** `#144` was committed and pushed after
 verifying six targeted modules (183 tests, all green). The full suite then failed on
 `test_assertion_floors` — a file I had not thought to run. Targeted runs are for iterating;
-**the full suite is what licenses a push.** ~800-870s. Background it and wait.
+**the full suite is what licenses a push.** Background it and wait.
+
+**Budget it from a measurement that carries its own date.** The last one: **2862 tests in
+~1170-1210s** at `3e9c074` (2026-09-12). This file previously said "~800-870s" with no commit
+attached; the suite grew past it and the figure went stale without anything failing, which is
+how a `timeout` gets set too low and kills a run that was fine. If the number here is older than
+your work, re-measure it rather than trusting it — and write the new one down with its commit.
 
 ## The two ratchets, and why they fire
 
@@ -69,11 +75,51 @@ Never put a model identifier anywhere else in a pushed artifact.
 
 ## Push
 
+Push the branch you are ON. Do not name one here.
+
 ```bash
-for i in 1 2 3 4; do git push -u origin ui-authority-pass && break || sleep $((2**i)); done
+BR=$(git rev-parse --abbrev-ref HEAD)
+for i in 1 2 3 4; do git push -u origin "$BR" && break || sleep $((2**i)); done
 ```
 
-Branch is **`ui-authority-pass`**, not the harness-designated one. No PRs unless asked.
+No PRs unless asked.
+
+**This file used to say "Branch is `ui-authority-pass`, not the harness-designated one."** That
+was true when it was written and is now wrong, which is exactly why no branch name belongs in a
+skill file. Measured 2026-09-12: `ui-authority-pass` is **191 commits behind** the harness's
+designated branch and 7 ahead of it, last touched 2026-09-09 at `70e380c`. A session that had
+followed the old line literally would have pushed finished work onto a branch nobody reads —
+the `#239` failure mode with a different cause.
+
+The harness names the branch for a session in its own instructions, and the session is already
+standing on it. `git rev-parse --abbrev-ref HEAD` is that name, derived rather than restated
+(`#126`), and it cannot go stale. If the harness's branch and your intent ever disagree, that is
+a question for the owner, not a default to hardcode.
+
+## Staging: never name files, and never silence `git add`
+
+This has now produced a broken commit **three times** (`#169`, twice, and again on 2026-09-12).
+The shape is always the same: `git add a.py b.py c.json` with one name wrong — a case-mismatched
+`assertion_floors.json` against the real `ASSERTION_FLOORS.json`. **`git add` fails the WHOLE
+command on a pathspec that matches nothing and stages nothing at all.** With `2>/dev/null` on the
+line, it fails in silence, and the commit that follows carries a message describing work it does
+not contain.
+
+```bash
+git add -A                 # or: git add -u, for tracked files only
+git status --short         # READ IT. staged entries are column 1; ` M` is NOT staged
+git commit -F - <<'EOF'
+...
+EOF
+git show --stat HEAD       # the file list must match what the message claims
+```
+
+Never redirect `git add`'s stderr. Never trust `git add`'s exit status by inference — read
+`git status --short`, where an unstaged modification (` M`, space first) looks almost exactly
+like a staged one (`M `), which is how it gets past you.
+
+A broken commit that is already pushed is not amended into silence. Add the missing files in a
+NEW commit whose message opens by saying what happened — the record is the point.
 
 ## What a close may NOT do
 

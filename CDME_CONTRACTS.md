@@ -1,5 +1,19 @@
 # CDME Semantic Contracts
 
+> **Status: PART LIVE CONTRACT, PART ARCHIVED INVESTIGATION. Read the section you are in.**
+> Annotated 2026-09-12; nothing below has been edited or removed.
+>
+> - **§1–§3 (`universal_value`, `waiting_cost`, `pick_necessity`) are the live contracts** and
+>   are cited as authority elsewhere in the record.
+> - **Everything from "Appendix — the decision-path investigation" onward is history kept in
+>   place**: investigations, forks and rulings recorded as they happened. Several reach
+>   conclusions that were later measured and changed. They are correct as a record of what was
+>   thought and when; they are not a description of today's engine.
+> - **"Proposed Phase 2 interface" was measured and REJECTED.** It carries its own note. Do not
+>   implement from it.
+> - The original DRAFT banner below **has not been lifted by the owner** and stands as written.
+>   It is preserved because the gate it names is the owner's to open, not this document's.
+
 What each load-bearing quantity in the Contextual Decision Matrix Engine **means** — stated
 before it is read, combined, or wired into anything new.
 
@@ -457,6 +471,30 @@ timing fix it cannot deliver.
 ---
 
 ## Proposed Phase 2 interface — for sign-off, not yet implemented
+
+> ⛔ **SUPERSEDED BY MEASUREMENT (#48 / #71). NOT IMPLEMENTED, AND NOT TO BE IMPLEMENTED FROM
+> HERE.** Left unedited beneath this banner, as the record requires.
+>
+> This section proposes wiring `waiting_cost` into `pick_necessity`. That was measured and the
+> answer went the other way: **the item named the wrong cost.** `pick_necessity` reads
+> `positional_forfeit` instead, and `pick_synthesis.py` records why at the site
+> (search `WHY THIS TERM AND NOT waiting_cost`):
+>
+> - **Horizon.** Necessity asks "act now, or next turn?". `positional_forfeit` is exactly the
+>   next-turn cost. `waiting_cost` prices deferral to the END OF THE DRAFT — a different
+>   question.
+> - **Double-count.** `r(waiting_cost, bpa) = +0.847`. Necessity's standout component is already
+>   bpa-anchored, so wiring `waiting_cost` would re-add it under another name.
+>   `r(positional_forfeit, bpa) = +0.364`.
+> - **Coverage.** `positional_forfeit` is present on 100% of candidates; `waiting_cost` is not.
+>
+> Verifiable today: **neither `WAITING_PRESSURE_REFERENCE` nor `NECESSITY_WAITING_WEIGHT` exists
+> anywhere in this codebase.** The `51.0` derivation below was never wrong as arithmetic — it
+> prices a term nothing decided to admit.
+>
+> The three sub-questions this section raises (`LO`'s sign, the TE-coherence prerequisite,
+> late-draft authority) did not go away with it; they belong to whatever term is actually wired,
+> and `#50`/Phase 3 owns them.
 
 ```text
 ELIGIBILITY  (per position P, evaluated per board)
