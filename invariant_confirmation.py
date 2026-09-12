@@ -10,19 +10,42 @@ the suite as it stands catches the break.
 
 WHY EACH TARGET IS HERE, rather than a broad sweep:
 
+BUILT (both in MUTATIONS below):
+
   feasibility_first   The #164 blocker family (#154/#155/#114) was DISSOLVED on the evidence
                       that every seat of every format now fills its lineup. That backstop is
                       what makes it true. If it can be silently disabled, the dissolution is
                       undefended and the freeze rests on nothing.
   _board_order        Sorts on ["_feasible", "final_score", "player_id"]. It decides every
                       pick. Dropping _feasible makes feasibility advisory.
+
+NAMED BUT NOT BUILT -- stated here rather than left as an implied claim:
+
   narrow_candidates   #55 declined to give pick_necessity selection authority partly BECAUSE
                       narrow_candidates already includes the best remaining player at every
                       position, so a scarce-position leader is never invisible. That argument
-                      is only as good as the guarantee.
+                      is only as good as the guarantee. NO MUTATION EXISTS FOR IT HERE.
   absence contract    The repo's central rule (#61/#187/#190/#203): unpriced carries None,
                       never 0.0. A basis asserted where no price exists is the failure mode
-                      every absence item in the register exists to prevent.
+                      every absence item in the register exists to prevent. NO MUTATION EXISTS
+                      FOR IT HERE either; the contract is defended by its own test modules, not
+                      by this harness.
+
+  This list used to read as four covered targets. It was two. An unexecuted harness whose
+  docstring overclaims its own coverage is the #133 defect in a new file.
+
+THIS HARNESS HAS NEVER PRODUCED A MEASUREMENT, AND UNTIL 2026-09-12 IT COULD NOT.
+
+Both anchors occur TWICE in draft_room.py -- once in the upside-mode branch of
+compute_draft_board and once in the balanced branch -- and the runner refused any anchor whose
+count was not exactly 1, so every arm reported ANCHOR FAILED and nothing was ever mutated.
+Checked against `e89201a`, the commit that introduced this file: it matched twice there too.
+It was born broken, and nothing said so because nothing ran it.
+
+The count is now the point rather than an obstacle: a mutation is applied to EVERY occurrence
+and the number replaced is recorded. Breaking one of two branches is not breaking the invariant
+-- the other branch still defends it, and a "caught" verdict would be about half the engine.
+`test_invariant_confirmation_anchors.py` pins the anchors so they cannot rot again in silence.
 
 HOW IT RUNS, and the two hazards it is built around:
 
@@ -38,6 +61,7 @@ a crashed arm cannot leave a mutant in the tree.
 
 Run:  PYTHONPATH=. python3 invariant_confirmation.py
 """
+import ast
 import json
 import pathlib
 import shutil
@@ -47,18 +71,44 @@ import sys
 import store_io
 import time
 
-# (name, file, exact anchor, replacement, what breaking it would mean)
+# (name, file, anchor, replacement, what breaking it would mean)
+#
+# ANCHORS AND REPLACEMENTS ARE WRITTEN UNINDENTED, and applied LINE-WISE at each site's own
+# indentation. The two sites differ: compute_draft_board's upside-mode branch sits inside an
+# `if`, four spaces deeper than the balanced branch. A replacement carrying its own hard-coded
+# indent lands a statement at the wrong block level at one of them -- at best an IndentationError,
+# at worst a mutation that silently applies OUTSIDE the branch it was written for.
+# `{indent}` is substituted with the matched line's own leading whitespace.
 MUTATIONS = [
     ("feasibility_first never binds", "draft_room.py",
      'scored["fills_required_slot"] = scored["_feasible"] == 0',
-     'scored["fills_required_slot"] = scored["_feasible"] == 0\n    scored["_feasible"] = 1',
+     'scored["fills_required_slot"] = scored["_feasible"] == 0\n{indent}scored["_feasible"] = 1',
      "a chair could finish unable to field a legal lineup and nothing would say so"),
 
     ("board order ignores feasibility", "draft_room.py",
-     '    results = scored.sort_values(["_feasible", "final_score", "player_id"],',
-     '    results = scored.sort_values(["final_score", "player_id"],',
+     'results = scored.sort_values(["_feasible", "final_score", "player_id"],',
+     'results = scored.sort_values(["final_score", "player_id"],',
      "feasibility becomes advisory -- the #154 backstop stops reaching the pick"),
 ]
+
+
+def apply_mutation(source: str, anchor: str, replacement: str) -> tuple[str, int]:
+    """Replace `anchor` at EVERY line that contains it, preserving that line's indentation.
+    Returns the mutated source and the number of sites changed.
+
+    Every occurrence, not the first: both anchors live in `compute_draft_board` twice, and a
+    mutation that leaves one branch intact has not broken the invariant -- the other branch goes
+    on defending it, and a "caught" verdict would be about half the engine.
+    """
+    out, sites = [], 0
+    for line in source.splitlines(keepends=True):
+        if anchor in line:
+            indent = line[:len(line) - len(line.lstrip())]
+            out.append(line.replace(anchor, replacement.format(indent=indent)))
+            sites += 1
+        else:
+            out.append(line)
+    return "".join(out), sites
 
 
 def _run_suite(failfast=True):
@@ -80,23 +130,37 @@ def main():
     for name, filename, anchor, replacement, consequence in MUTATIONS:
         path = pathlib.Path(filename)
         original = path.read_text()
-        count = original.count(anchor)
-        if count != 1:
+        # EVERY occurrence, not the first. Both anchors live in compute_draft_board twice --
+        # the upside-mode branch and the balanced branch -- and a mutation that leaves one of
+        # them intact has not broken the invariant, it has broken half the engine while the
+        # other half goes on defending it.
+        mutated, count = apply_mutation(original, anchor, replacement)
+        if count < 1:
             results.append({"invariant": name, "verdict": "ANCHOR FAILED",
-                            "detail": f"anchor appears {count} times, expected 1"})
-            print(f"{name}: ANCHOR FAILED ({count} matches) -- the harness is broken, not the engine")
+                            "detail": "anchor does not appear; the source moved under this harness"})
+            print(f"{name}: ANCHOR FAILED (0 matches) -- the harness is broken, not the engine")
+            continue
+        # A MUTANT THAT DOES NOT COMPILE FAILS EVERY TEST, AND `rc != 0` WOULD CALL THAT
+        # "caught". That is the harness reporting the invariant defended when nothing about the
+        # invariant was exercised at all -- the worst outcome available to it. Parse first.
+        try:
+            ast.parse(mutated, filename=filename)
+        except SyntaxError as exc:
+            results.append({"invariant": name, "verdict": "MUTANT DOES NOT PARSE",
+                            "detail": f"{exc}", "sites_mutated": count})
+            print(f"{name}: MUTANT DOES NOT PARSE ({exc}) -- the harness is broken, not the engine")
             continue
         backup = path.with_suffix(path.suffix + ".confirm_backup")
         shutil.copy2(path, backup)
         try:
-            path.write_text(original.replace(anchor, replacement))
+            path.write_text(mutated)
             rc, secs, tail = _run_suite(failfast=True)
             caught = rc != 0
             verdict = "caught" if caught else "*** SURVIVED ***"
             results.append({"invariant": name, "file": filename, "verdict": verdict,
-                            "seconds": secs, "consequence": consequence,
+                            "sites_mutated": count, "seconds": secs, "consequence": consequence,
                             "evidence": tail[-600:] if caught else "full suite passed"})
-            print(f"{name}: {verdict}  ({secs}s)")
+            print(f"{name}: {verdict}  ({secs}s, {count} site(s) mutated)")
             if not caught:
                 print(f"    NOTHING DEFENDS THIS. Consequence: {consequence}")
         finally:

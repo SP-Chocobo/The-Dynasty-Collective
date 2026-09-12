@@ -846,6 +846,15 @@
         "assertTrue": 1
       }
     },
+    "test_invariant_confirmation_anchors.py": {
+      "test_methods": 8,
+      "asserts": {
+        "assertEqual": 5,
+        "assertGreaterEqual": 2,
+        "assertIn": 4,
+        "assertNotEqual": 1
+      }
+    },
     "test_kdst_integration.py": {
       "test_methods": 52,
       "asserts": {
