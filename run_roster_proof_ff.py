@@ -47,6 +47,7 @@ Run from the repo root:  PYTHONPATH=. python3 run_roster_proof_ff.py
 """
 from __future__ import annotations
 
+import argparse
 import json
 import time
 from pathlib import Path
@@ -73,11 +74,38 @@ def ff_league() -> tuple[dict, int]:
         "settings": {"type": 2},                      # dynasty, per league_type
     }
     rounds = cap["draft_math"]["draftable_slots_per_team"]
+    # THE ENGINE MUST BE TOLD. draft_room falls back to len(roster_positions) when a league
+    # carries no draft_rounds, and its own comment says why that is wrong ("ROSTER SIZE IS NOT
+    # ROUND COUNT"). For every fixture league the two agree, so the omission was invisible; for
+    # F&F they are 29 and 26, and the first run of this proof drafted 26 rounds while the engine
+    # planned for 29. Set it from the SAME derivation the pick order uses, so the two cannot
+    # drift apart.
+    league["draft_rounds"] = rounds
     return league, rounds
 
 
-def main() -> int:
+def main(argv: list[str] | None = None) -> int:
+    # #245 ONE-VARIABLE CUT. The F&F run won `points` 10/12 where the fixture lost 67/68, and
+    # F&F differs on three axes at once -- rulebook, superflex x TE-premium, and DRAFT LENGTH
+    # (26 rounds vs the fixture's 14-15). Length is the largest gap and the only one with a
+    # mechanism: `points` scores the best legal lineup, so a short draft punishes buying asset
+    # value early. This flag holds EVERYTHING else -- same league, same 30 scoring keys, same
+    # pool, same seats, same harness -- and moves only the round count.
+    parser = argparse.ArgumentParser(description=__doc__.split("\n")[0])
+    parser.add_argument("--rounds", type=int, default=None,
+                        help="override the draftable round count (the #245 length cut)")
+    parser.add_argument("--out", default=None)
+    args = parser.parse_args(argv)
+
     league, rounds = ff_league()
+    if args.rounds is not None:
+        print(f"ROUNDS OVERRIDDEN: {rounds} -> {args.rounds}  (#245 length cut; league unchanged)")
+        rounds = args.rounds
+        # Both halves, or the cut is vacuous. The first attempt moved only the pick order and
+        # left the engine's horizon at 29, so both arms made the SAME first-15-round picks and
+        # `points` came back identical to the cent across all 12 seats. Identical output was the
+        # only reason the omission was caught.
+        league["draft_rounds"] = rounds
     teams = league["total_rosters"]
     # DOCTRINE (this session): print which files the fixture actually opened, next to the
     # answer. #241 was a wrong finding produced by reading the wrong capture, and nothing about
@@ -105,7 +133,7 @@ def main() -> int:
     print(f"shared pool: {len(points)} players both arms can price | "
           f"{len(slots)} startable slots | {len(pick_order)} picks\n")
 
-    out = Path("evidence/roster_proof/ROSTER_PROOF_FF_fourth_and_forever.json")
+    out = Path(args.out or "evidence/roster_proof/ROSTER_PROOF_FF_fourth_and_forever.json")
     out.parent.mkdir(parents=True, exist_ok=True)
 
     def _write(complete: bool, runs, seconds):
