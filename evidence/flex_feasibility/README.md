@@ -73,11 +73,39 @@ surplus tight ends keep filling the flex. **The audit fires when the hoarded pos
 be flex-INELIGIBLE.** Counting findings therefore counts the intersection of two things —
 hoarding, and hoarding the one position that cannot backfill a flex — not the behaviour itself.
 
+## MEASURED: the hoarding is universal, the flagging is rare
+
+All four 1QB standard arms, longest run of consecutive same-position picks per seat:
+
+```
+8T_standard    [8, 7, 3, 3, 3, 2, 2, 2]                    flagged: seat 5
+10T_standard   [7, 6, 5, 5, 4, 4, 3, 3, 3, 2]              flagged: none
+12T_standard   [7, 7, 5, 5, 4, 4, 4, 4, 3, 3, 3, 2]        flagged: none
+14T_standard   [8, 7, 6, 6, 6, 6, 5, 5, 4, 3, 3, 3, 1, 1]  flagged: seat 4
+```
+
+| | |
+|---|---:|
+| seats measured | 44 |
+| seats ending with a run of **5 or more** consecutive same-position picks | **18 (41%)** |
+| seats the audit flagged | **2** |
+
+**10T and 12T hoard exactly as hard as the arms that were flagged and are flagged zero times.**
+14T has eight seats with a run of five or more and flags one. The audit fires only where hoarding
+coincides with the hoarded position being flex-INELIGIBLE, so it reports the intersection of two
+independent things and is read as a count of one of them.
+
+Every long run begins immediately after the seat's dedicated starters fill — pick 7 or 8 in a
+14-round draft. The behaviour is not gradual drift; a seat enters an absorbing state and does not
+leave it.
+
+**This is why the two structural findings must never be quoted as "two rosters were affected".**
+Two rosters were *unable to field a lineup*. Eighteen drafted a monoculture.
+
 ## What is NOT established
 
-- **Why 10T_standard and 12T_standard are clean.** A mechanism this general should have reached
-  them. Either they hoard onto a flex-eligible position (silent, like seat 7) or the sizes
-  genuinely differ. `hoard_probe` measures this; until it reports, this is open.
+- ~~Why 10T_standard and 12T_standard are clean.~~ **MEASURED — they are not clean, they are
+  unflagged.** See below.
 - **The proposed repair.** The narrow fix that preserves the #56 admissibility argument is to ask
   the same feasibility question of a flex slot rather than treating it as never-at-risk: a flex
   slot is at risk exactly when the roster's flex-eligible surplus is zero. That stays arithmetic,
