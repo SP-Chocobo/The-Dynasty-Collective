@@ -8085,10 +8085,28 @@ Room already holds is valid unchanged at all four sites. **The repair is wiring,
 - **A real dark regime, one sample wide.** Fourth and Forever (26 rounds, 312 picks) on Draft
   Room pricing degrades 3 → 2 measurable at pick 216 and goes fully dark at pick **312, the
   final pick**. That is the honest scope.
-- **The all-or-nothing collapse is still wrong.** `positional_bench_appetite` returns all-`None`
-  when NO position is measurable, so one measurable position cannot place its own floor. At
-  F&F pick 216–300 two positions are measurable and the layer still reports per-position
-  absence globally. Per-position degradation needs no new number.
+- **~~The all-or-nothing collapse is still wrong.~~ CORRECTED SAME DAY, BEFORE ANY CODE — the
+  claim was false and it is mine.** I wrote that one measurable position cannot place a floor.
+  The probe's own artifact says otherwise:
+
+  ```
+  F&F picks 216   live-measurable [TE, WR]   floors placed: RB, TE, WR
+  F&F picks 240   live-measurable [TE, WR]   floors placed: RB, TE, WR
+  F&F picks 300   live-measurable [TE, WR]   floors placed: QB, RB, TE, WR
+  F&F picks 312   live-measurable []         floors placed: none
+  ```
+
+  `positional_bench_appetite` ALREADY degrades per position: an unmeasurable position takes the
+  mean rate of the measurable ones. The only full collapse is the `if not rates` branch, which
+  fires when ZERO positions are measurable — and that branch is `#62`'s deliberate fix, because
+  with nothing measured there is no mean to impute FROM, and its predecessor returned `0.0`,
+  asserting "no position is ever benched." **There is nothing to repair on this half.**
+
+  The owner ruled "wiring + per-position degrade" on the false description. With the second half
+  dissolved, Gate 4 reduces to the wiring fix, which is unaffected. The one true collapse state
+  is the final pick of a 26-round draft, and the only thing that would place a floor there is
+  the carried curve. Owner's follow-up ruling: measure what a person actually sees at that pick
+  before deciding.
 
 ### The owner's objection, answered on measurement
 

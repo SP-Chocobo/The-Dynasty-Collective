@@ -59,6 +59,28 @@ picks) on Draft Room pricing degrades from 3 measurable positions to 2 at pick 2
 fully dark at pick **312 — the final pick of the draft**. That is the honest scope of "the
 horizon goes dark": the last pick of a 26-round league, not the last six rounds of a 15-round one.
 
+**3. What does NOT survive — a claim I made in `93aca83`'s commit message and corrected the
+same day, before any code was written.** That message says *"the all-or-nothing collapse: one
+measurable position still cannot place its own floor."* **That is false**, and this document's
+own artifact is what refutes it:
+
+```
+F&F picks 216   live-measurable [TE, WR]   floors placed: RB, TE, WR
+F&F picks 240   live-measurable [TE, WR]   floors placed: RB, TE, WR
+F&F picks 300   live-measurable [TE, WR]   floors placed: QB, RB, TE, WR
+F&F picks 312   live-measurable []         floors placed: none
+```
+
+`positional_bench_appetite` already degrades per position: a position that has fallen under its
+own bar takes the mean rate of the ones still measurable. The only full collapse is the
+`if not rates` branch, which requires ZERO measurable positions — and that branch is `#62`'s
+deliberate fix, because with nothing measured there is no mean to impute FROM, and its
+predecessor returned `0.0`, asserting "no position is ever benched."
+
+The owner ruled "wiring + per-position degrade" on that false description. With the second half
+dissolved, the repair is the wiring alone. The one true collapse state is the final pick of a
+26-round draft, and the only thing that would place a floor there is the carried curve.
+
 ## The owner's objection, answered on measurement
 
 > *"a locked curve feels like raw BPA with a different name"*
