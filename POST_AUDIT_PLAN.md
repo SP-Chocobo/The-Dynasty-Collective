@@ -7971,3 +7971,54 @@ The certification RUN itself. Which axes deserve coverage at their extremes is a
 with a cost attached and it is the owner's. What changed is that a proposed matrix can now be
 measured for coverage **before** the hours are spent. Full statement:
 `evidence/CERTIFICATION_DESIGN.md`.
+
+## #252 RULED (owner): Gate 2 answered — the exchange rate is configuration-dependent, and there is no canonical one
+
+**The ruling.** Present-season points versus dynasty asset value has **no single exchange rate
+across the configuration space**. Outcomes are reported per configuration cell, and **no cell's
+number is the engine's verdict**.
+
+### Why this was answerable now and was not before
+
+Gate 2 was framed around a measured 5–11% deficit, and the question was "is that trade worth
+it?". Three measurements dissolved the framing rather than answering it:
+
+- `#248` arm A re-measured the deficit on today's code at **−0.28%**, not −5.03%. The headline
+  was stale evidence from 190 commits back.
+- `#250` swapped only the rulebook on a fixed roster: **−0.84% → +1.04%**. The SIGN is a
+  property of the scoring environment.
+- `#251` established that such outcomes are configuration-dependent BY CONSTRUCTION — they are
+  measured against `reference_values`, which is built from the league's own scoring settings.
+  Comparing them across configurations compares two rulers.
+
+So the question "is this trade worth it" had no configuration-free answer to find. Asking for
+one was the error, and `#250`'s reversal is what made that visible.
+
+### What the ruling settles
+
+| | |
+|---|---|
+| **Is there a canonical exchange rate?** | No. Not PPR's, not F&F's. |
+| **What does a cell's outcome mean?** | Evidence about THAT configuration. Reported, never asserted against a fixed value. |
+| **What does certification assert?** | The invariants (`config_space.classification()`), which hold in every cell. |
+| **Is the engine "ahead" or "behind"?** | Neither, as a configuration-free claim. It is ahead in some cells and behind in others, all within ~1% of control. |
+
+### What it unblocks
+
+`#164` recorded these as downstream of the Gate 2 ruling and not to be repaired independently.
+They are now released for Phase 3 work, each on its own merits rather than against a deficit:
+
+- `#74` / `#76` — the bpa unit drifts 72× and bundles six quantities
+- `#147` — the valuation anchor has a one-season lifetime in a dynasty engine
+- `#152` — the `trade_value` fallback's ceiling is a unit artifact
+- `#165` (reserved half) — contextualizing an unpriced player
+- `#229` — cross-position VOR authorized; the DEEP-BENCH case undefined
+
+### What it does NOT say
+
+- **Not that the engine is good.** Every arm measured sits within ~1% of its control. The
+  ruling removes a false question; it does not answer the open one about quality.
+- **Not that the deficit never existed.** `#205`'s numbers were real measurements of a real
+  codebase in a real configuration. They describe a different commit and a different league.
+- **Not that configuration-dependent means unmeasurable.** Each cell's number is a fact about
+  that cell, and `config_space` exists so the cells are chosen deliberately.

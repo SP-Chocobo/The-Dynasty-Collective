@@ -306,7 +306,22 @@ missing is this note.
       "does this slot start anybody". **No battery arm's round count changes** — no mock league
       carries IR — and a test pins that rather than my having checked once.
 
-## GATE 2 — The objective ruling (owner; #50 / Phase 3)
+## GATE 2 — ✅ RULED 2026-09-12 (#252, owner)
+
+> **The exchange rate is CONFIGURATION-DEPENDENT and there is no canonical one.** Present-season
+> points versus dynasty asset value has no single rate across the configuration space; outcomes
+> are reported per cell and no cell's number is the engine's verdict.
+>
+> Answerable now because the framing dissolved rather than the question being answered: `#248`
+> re-measured the headline deficit at −0.28% (the −5.03% was 190 commits stale), `#250` swapped
+> only the rulebook and the sign flipped (−0.84% → +1.04%), and `#251` established such outcomes
+> are configuration-dependent by construction — they are measured against a ruler built from the
+> league's own scoring settings.
+>
+> **This releases the cluster below.** Each item is now worked on its own merits rather than
+> against a deficit. Full ruling: `POST_AUDIT_PLAN.md` (#252).
+
+## GATE 2 — the cluster it released (#50 / Phase 3)
 
 This is the decision the points-vs-asset result above forces. It is not code work, and
 **everything in this cluster is downstream of it** — none should be repaired independently:
