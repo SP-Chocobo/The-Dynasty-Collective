@@ -18,6 +18,57 @@ error this project has made.
 
 ## Runs
 
+### ✅ BATTERY_2026-09-12_scoring_aware_full_99f9f76 — THE VALID RUN (#150 gate)
+
+**33 formats (32 independent), 5,340 picks, 23,556s, `complete: true`.** The first battery in
+this repository that is not withdrawn: it postdates #213 (real rulebook per arm), #196 (identity
+partition), #201 (real universe), #204 (production pricing path) and #242 (round count). Both
+runs below it remain WITHDRAWN and are kept only as history.
+
+Universe: `data/fixtures/sleeper_capture.json`, captured 2026-09-07, 6,595 players.
+Axes actually exercised (`format_axes`, derived — #241):
+`scoring {ppr 17, standard 8, half_ppr 8}`, `superflex {False 21, True 12}`,
+`te_premium {False 30, True 3}`, **`constant_axes: []`** — no advertised axis is inert.
+One duplicate arm named by the detector: `12T_ppr_mode_balanced` reproduces `12T_ppr` exactly.
+
+**2 STRUCTURAL FINDINGS, AND THEY REOPEN #154.**
+
+```
+8T_standard    roster 5   filled 7 of 8   empty FLEX   roster_size 14
+14T_standard   roster 4   filled 7 of 8   empty FLEX   roster_size 14
+```
+
+A chair finishing unable to field a legal starting lineup is the single blocker family #164
+named, and the one `FREEZE_CHECKLIST` opened by calling dissolved. It is not dissolved.
+
+**Diagnosed by reproduction** (the report stores `rosters` as a COUNT, so the finding names a
+seat and nothing about why — #177's lesson one layer down, and a gap worth closing in the
+instrument). Seat 5 of `8T_standard`, in pick order:
+
+```
+1. WR  2. TE  3. RB  4. WR  5. RB  6. RB
+7. QB  8. QB  9. QB 10. QB 11. QB 12. QB 13. QB 14. QB
+```
+
+**Eight quarterbacks in a one-QB league.** That is the #87 failure mode verbatim — the one
+`unfilled_starting_slots` names in its own docstring as what ablating `need_bonus` produced
+("four QBs in a one-QB league"). Here it is eight, with `need_bonus` NOT ablated, on the
+production path.
+
+It is not confined to the failing seat. In the same draft, seat 7 took **eight TEs** and seats
+1 and 4 took four QBs each. So the behaviour is general: once a seat's startable needs are met
+the positional brake stops binding and it takes the highest-priced remaining player regardless
+of whether it can ever play them. The audit catches it only when the hoarded position is
+FLEX-INELIGIBLE, which is why QB hoarding trips it and TE hoarding does not — **the two findings
+are a lower bound on the behaviour, not a count of it.**
+
+Why these arms and no others: with no reception points, QB raw projections tower over the field,
+and in a one-QB league rivals never consume the supply, so the top of the board stays a
+quarterback forever. Superflex eats the supply; PPR keeps receivers competitive. Consistent with
+all 12 superflex arms and all 25 PPR/half-PPR arms coming back clean — and with 10T_standard and
+12T_standard also clean, which is NOT yet explained and should be.
+
+
 ### BATTERY_2026-09-08_baseline_vendor_only_1e869ce
 
 33 formats, 24 independent, 5,340 picks, 18 structural findings, 14,081s.
