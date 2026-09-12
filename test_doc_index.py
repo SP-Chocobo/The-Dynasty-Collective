@@ -7,7 +7,11 @@ because it looks authoritative.
 
 from __future__ import annotations
 
+import shutil
+import subprocess
+import tempfile
 import unittest
+from pathlib import Path
 
 import doc_index
 
@@ -44,6 +48,29 @@ class TheClassifierIsNotVacuous(unittest.TestCase):
         for path in doc_index.docs():
             self.assertNotIn("worktrees", path.parts,
                              f"{path} is a worktree copy, not a document of this repo")
+
+    def test_the_document_set_is_exactly_what_git_tracks(self):
+        """The rule, stated where it can fail. `docs()` asks git rather than walking and
+        subtracting a hand-kept skip list -- the list needed a new entry every time a tool
+        invented a new cache directory, and the fourth one it missed (pytest's own generated
+        `.pytest_cache/README.md`) had been sitting in the UNDECLARED bucket, counted as a
+        document of this repository."""
+        tracked = subprocess.run(["git", "ls-files", "-z", "*.md"],
+                                 capture_output=True, text=True, check=True)
+        expected = sorted(Path(name) for name in tracked.stdout.split("\0") if name)
+        self.assertEqual(doc_index.docs(), expected)
+
+    def test_an_untracked_markdown_file_is_not_a_document(self):
+        """Non-vacuity for the rule above: prove the exclusion by creating the case. Without
+        this, `docs()` could return every .md file in the tree and the equality test would still
+        pass on a clean checkout that happens to have no untracked ones."""
+        intruder = Path(tempfile.mkdtemp(dir=".", prefix=".doc_index_probe_")) / "README.md"
+        try:
+            intruder.write_text("# not a document of this repository\n", encoding="utf-8")
+            self.assertTrue(intruder.exists())
+            self.assertNotIn(intruder, doc_index.docs())
+        finally:
+            shutil.rmtree(intruder.parent, ignore_errors=True)
 
     def test_every_document_lands_in_exactly_one_bucket(self):
         buckets = doc_index.index()

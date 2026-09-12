@@ -18,6 +18,7 @@ whatever the status says. A document with none is asking every reader to work it
 from __future__ import annotations
 
 import re
+import subprocess
 import sys
 from pathlib import Path
 
@@ -43,13 +44,24 @@ CLASSES: list[tuple[str, str, str]] = [
      "says what kind of document it is before making claims."),
 ]
 
-#: `worktrees` is here for a reason the first version of this file missed, and its own staleness
-#: guard caught: a git worktree under `.claude/worktrees/` is a CHECKOUT of this repository, not
-#: a set of documents belonging to it. Walking them counts every file two or three times and
-#: makes the index depend on which directory the tool happens to run from -- the index was built
-#: in a worktree, where they are absent, and went red the first time it ran from the main
-#: checkout. A derived artifact that disagrees with itself by location is worse than none.
-SKIP_DIRS = {".git", "node_modules", "__pycache__", "worktrees"}
+#: WHICH FILES ARE DOCUMENTS OF THIS REPOSITORY -- asked of git, not of a hand-kept skip list.
+#:
+#: The first version walked the tree and subtracted a literal set, {".git", "node_modules",
+#: "__pycache__", "worktrees"}. Every entry in that set was added after something went wrong:
+#: a git worktree under `.claude/worktrees/` is a CHECKOUT of this repository rather than a set
+#: of documents belonging to it, so walking them counted every file two or three times and made
+#: the index depend on which directory the tool ran from -- it was built inside a worktree, where
+#: they are absent, and went red the first time it ran from the main checkout. Then pytest's own
+#: generated `.pytest_cache/README.md` appeared in the UNDECLARED bucket, and the list needed a
+#: fifth entry it had no way to anticipate.
+#:
+#: That is a hand-maintained vocabulary standing in for a question something else already answers
+#: (#126). `git ls-files` IS the answer: a file this repository tracks is a document of this
+#: repository, and a file it does not track is not. Caches, vendored trees, build output and
+#: worktree checkouts all fall out of scope without being named, including the ones nobody has
+#: created yet. Run this from the repository root; it is a repo-level tool and writes a repo-level
+#: artifact.
+TRACKED_DOCS = ["git", "ls-files", "-z", "*.md"]
 
 
 def header(path: Path) -> str:
@@ -69,12 +81,13 @@ def classify(path: Path) -> str:
 
 
 def docs(root: Path = Path(".")) -> list[Path]:
-    out = []
-    for p in sorted(root.rglob("*.md")):
-        if any(part in SKIP_DIRS for part in p.parts):
-            continue
-        out.append(p)
-    return out
+    """Every markdown file this repository tracks, sorted. Raises rather than degrading: if git
+    cannot answer, an index built from a tree walk would be a DIFFERENT index wearing the same
+    filename, and the staleness guard would then fail for a reason that has nothing to do with
+    the documents."""
+    proc = subprocess.run(TRACKED_DOCS[:1] + ["-C", str(root)] + TRACKED_DOCS[1:],
+                          capture_output=True, text=True, check=True)
+    return sorted(Path(name) for name in proc.stdout.split("\0") if name)
 
 
 def index(root: Path = Path(".")) -> dict[str, list[Path]]:
