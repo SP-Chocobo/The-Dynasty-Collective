@@ -18,8 +18,18 @@ outside all of them. It is evidence, not a source.
 |---|---|
 | `fourth_and_forever.json` | four of six scoring tabs (PASSING/RUSHING/RECEIVING/MISC), each category marked for whether stat data exists behind it |
 
-**Starting lineup NOT captured.** Every replacement-level and free-alternative quantity
-depends on it, so nothing surplus-shaped can be measured for this league yet.
+~~**Starting lineup NOT captured.** Every replacement-level and free-alternative quantity
+depends on it, so nothing surplus-shaped can be measured for this league yet.~~
+
+**STALE — struck, not deleted.** The lineup IS captured and has been for some time:
+`roster_positions` carries all 29 slots, of which ten start (QB, RB×2, WR×2, TE, FLEX×3,
+SUPER_FLEX). The paragraph above was true when written and then quietly stopped being true when
+the roster was added, which is precisely the failure mode this strike exists to make visible.
+
+The consequence it predicted did not hold either. `#245` ran the full control-vs-engine roster
+proof on this league — twelve seats, 26 rounds, every seat filling 10 of 10 starting slots — and
+it is the run that reversed the committed fixture result
+(`evidence/roster_proof/README_FF.md`).
 
 ### What makes it different from the other capture
 
@@ -91,3 +101,23 @@ constant should be calibrated to it without replication.
 
 Manager handles from the rookie board were stripped; `pick_was_traded` preserves the
 finding (42 of 48 picks changed hands) without publishing anyone's name.
+
+
+## Provenance: not every field here is an observation (`#243`)
+
+`draft_math` in both capture files now carries a `PROVENANCE` block classifying every field as
+`observed` / `derived_cached` / `engine_derived` / `note`, because two of them are **not
+transcription**: `starter_slot_counts` and `league_starters` are this repository's own
+`draft_room.starter_slot_counts()` output, carrying the hand-set `SUPER_FLEX_QB_SHARE = 0.85`
+into a file whose stated `capture_method` is screenshots. Left unmarked, an instrument validating
+the engine against this capture would have been validating the engine against itself.
+
+`test_capture_provenance.py` re-derives the labels rather than trusting them — `derived_cached`
+fields are recomputed from the primary fields, `engine_derived` fields are reproduced by CALLING
+the engine — so the labels cannot drift from the data and cannot be demoted to hide a failure.
+
+**If that guard goes red, delete the offending field. Do not refresh it.** Refreshing
+re-entrenches an engine constant inside evidence. That instruction is stored in the capture files
+themselves so it reaches whoever meets the red test.
+
+Full write-up: `evidence/capture_provenance/README.md`.

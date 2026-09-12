@@ -52,6 +52,29 @@ environment that pays this roster about 16% differently from the league being pl
 deficit could shrink, vanish, or invert under the real rulebook. **Unmeasured, not refuted.**
 FREEZE_CHECKLIST carries that as a named decision.
 
+### MEASURED SINCE (`#245`) — it inverted
+
+The sentence above was a prediction with three named outcomes. It has now been run, and the
+third one happened:
+
+```
+fixture, 6 formats :  points  1 of 68   -5% to -11%
+Fourth and Forever :  points 10 of 12   +1.04%
+```
+
+Same harness, only the league swapped — `evidence/roster_proof/README_FF.md`.
+
+**But this file should not claim the credit.** The prediction was that the RULEBOOK might do it,
+and that is not yet established. F&F differs from every fixture format on three axes at once —
+scoring, roster shape, and a superflex × TE-premium combination no fixture format carries. Draft
+length was the fourth candidate and is already refuted by measurement (F&F at a matched 15 rounds
+returns `points` identical to the cent). Separating the remaining three is
+`run_roster_proof_rulebook_cut.py`, pre-registered.
+
+What this file DID establish stands and is load-bearing for all of it: the two rulebooks really
+do pay the same four players 15.7% differently, confirmed to the cent against the live app. That
+is why the F&F run was worth building at all.
+
 ## Guard
 
 `test_capture_reproduces_the_live_app.py`, 4 tests, mutation-checked **6/6**: `rec_fd`

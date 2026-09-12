@@ -1,5 +1,26 @@
 # Roster-proof evidence — #205
 
+> ## ⚠️ STILL VALID, BUT NO LONGER THE WHOLE ANSWER — read `README_FF.md` beside it
+>
+> Nothing in this file is withdrawn. Every number below was correctly measured and reproduces.
+> What changed is that it is now **one of two** control-vs-engine results, and the other one
+> disagrees:
+>
+> | run | league | rounds | seats | `points` wins | margin |
+> |---|---|---:|---:|---:|---:|
+> | **this file** (`#205`) | fixture, 6 formats | 14–15 | 68 | 1 of 68 | −5% to −11% |
+> | `README_FF.md` (`#245`) | Fourth and Forever | 26 | 12 | 10 of 12 | +1.04% |
+>
+> Same harness — same `scoreable_pool`, `run_one`, `score_roster`, `RULERS`, `COMPARE_ON` — with
+> only the LEAGUE swapped. The sign of the `points` difference is therefore a property of the
+> league, not of the engine, and `#245`'s length cut proves it is not the round count either
+> (F&F at a matched 15 rounds returns `points` identical to the cent).
+>
+> **So the deficit recorded below must not be cited as a property of the engine.** It is a
+> property of the engine *in these six fixture formats*, none of which is the league the owner
+> plays. Cite it that way, or cite both.
+
+
 The control-vs-engine proof: does the engine build BETTER ROSTERS than a competent projection
 ranking? Distinct from the #150 battery, which asks only whether the engine breaks its league's
 rules. An engine that always drafts the highest-projected player available is perfectly legal
