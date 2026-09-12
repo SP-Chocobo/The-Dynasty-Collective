@@ -14,10 +14,20 @@ Two postures, kept separate:
   ENFORCEMENT. The dampeners, the qualitative/numeric split, and the "comparisons never reach
   the composite" rule are guarantees. They must always hold.
 
-  CHARACTERIZATION. `ResearchFrameIsNotNameInjectiveTests` and `ValidatedFlagIsUnconditional`
-  record KNOWN GAPS -- today's behavior, deliberately asserted. **Invert them when repaired,
-  do not delete them**, same posture as test_draft_strategy.py's round-boundary
-  characterization and test_benchmark_contract_coverage.py's moderator gap.
+  CHARACTERIZATION. `ResearchFrameIsNotNameInjectiveTests` and the still-absent-lifecycle half
+  of `NoLifecycleAndNoValidationQueueTests` record KNOWN GAPS -- today's behavior, deliberately
+  asserted. **Invert them when repaired, do not delete them**, same posture as
+  test_draft_strategy.py's round-boundary characterization and
+  test_benchmark_contract_coverage.py's moderator gap.
+
+  CORRECTED 2026-09-12. This line named `ValidatedFlagIsUnconditional` as the second
+  characterization. NO SUCH CLASS HAS EVER EXISTED -- the name was introduced with this file at
+  `4136118` and never written. The behaviour it described is real and is now covered by
+  `test_a_comparison_records_what_the_moderator_asserted_not_a_verification`, which is no longer
+  a characterization at all: the field was `"validated": True`, hard-coded on every write, and
+  #89 renamed it to `panel_undisputed` because a stored field may not claim a certainty its
+  writing path cannot establish. A docstring naming a guard that does not exist is worse than
+  one naming none: it tells the next reader the gap is watched.
 
 Every test that touches the on-disk store redirects it to a temp file and restores the module
 attribute afterwards, so no test can leave a research store behind in data/baseline/.

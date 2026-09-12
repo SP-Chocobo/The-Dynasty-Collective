@@ -1197,6 +1197,16 @@
         "assertTrue": 3
       }
     },
+    "test_prose_names.py": {
+      "test_methods": 6,
+      "asserts": {
+        "assertEqual": 1,
+        "assertGreater": 2,
+        "assertIn": 3,
+        "assertNotIn": 1,
+        "assertTrue": 2
+      }
+    },
     "test_provenance_boundary.py": {
       "test_methods": 16,
       "asserts": {
