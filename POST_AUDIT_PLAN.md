@@ -7507,3 +7507,90 @@ claim than the one being made.
 payload token, dropping a classified token's reachability record, deleting the dormant member's
 wiring guard in `draft_room`, and collapsing the three-state answer to two. No engine source
 modified; both files restored byte-identical after the pass.
+
+---
+
+# #242–#246 — the slot vocabulary, the capture leak, the take model, and a reversal
+
+Five items from one pass. They are recorded together because three of them are the same shape:
+**a question nobody had asked, sitting behind a question that had been answered.**
+
+## #242 — the slot vocabulary had two questions and one answer
+
+`draft_battery.NON_STARTING_SLOTS` and `league_config.NON_PLAYING_SLOTS` held identical
+membership under two names — the duplication #126 forbids. The duplication was not the cost.
+The cost was that a SECOND question looked answered when it had never been asked:
+
+| | question | answer |
+|---|---|---|
+| Q1 | does this slot START a player? | BN, TAXI, IR say no |
+| Q2 | is this slot FILLED BY THE DRAFT? | only IR says no |
+
+Every instrument used `len(roster_positions)` as a startup draft's round count. That is Q2
+answered with Q1's silence, and it is wrong for any league carrying an IR slot. Invisible
+because `data/fixtures/sleeper_capture.json` — the league the battery and roster proof both
+draft — has no IR at all, so there the two agree.
+
+Evidence, stated because `{"IR"}` is a vocabulary observation and not a derived magnitude:
+F&F 29 slots − 3 IR = 26 **and the real startup ran exactly 26 rounds**; GSOP 33 − 4 = 29.
+TAXI is drafted in both, which is what makes the two questions genuinely distinct.
+No behaviour changes today (no mock league carries IR) and a test pins that rather than a memory.
+
+## #243 — an engine constant was sitting inside a league capture
+
+`starter_slot_counts` and `league_starters` in both captures are `draft_room.starter_slot_counts()`
+output, carrying the hand-set `SUPER_FLEX_QB_SHARE = 0.85`, inside files whose stated
+`capture_method` is transcription from screenshots. An instrument validating the engine against
+a capture would have been validating the engine against itself, silently.
+
+`draft_math.PROVENANCE` now classifies every field, and `test_capture_provenance` RE-DERIVES the
+labels rather than trusting them — `engine_derived` fields are reproduced by calling the engine.
+**The sanctioned repair is to DELETE a leaked field, never to refresh it**, and that instruction
+is stored in the capture so it reaches whoever meets the red test.
+
+## #244 — the take model says a team drafts 6.23 players
+
+One real opponent board, 256 ranked rows, summed through `_take_probability`: ranks 1–5 give
+1.21, the `0.02` floor over the remaining 251 gives 5.02. **6.23 expected picks for a team that
+makes one.** 96% of the excess is the FLOOR, not the table — `.get(rank, FLOOR)` has no domain
+limit, so row 251 and row 6 are priced identically.
+
+It explains a second symptom already in this document: `survival_probability`'s **d=1** collapse
+at exhaustion, "worse than absent: it looks like signal and is not". Same floor, other end.
+
+It does **not** explain #206's 0.00 — floored survival is 0.30 over 60 picks. That needs a high
+table rank, which is #206's second half (the boards rank by CDME; rivals do not), and that half
+is blocked on an INPUT: the real F&F startup board exists at position-only resolution, no names.
+Not repaired — choosing a coherent replacement is a #50 decision, and #56 forbids calibrating
+one to this sample.
+
+## #245 — the strong claim WINS on the league actually being played
+
+Same harness as #205, only the league swapped:
+
+| run | league | rounds | seats | `points` wins | margin |
+|---|---|---:|---:|---:|---:|
+| #205 | fixture, 6 formats | 14–15 | 68 | 1 of 68 | −5% to −11% |
+| #245 | Fourth and Forever | 26 | 12 | **10 of 12** | **+1.04%** |
+
+Pre-registered before the numbers existed. **The sign belongs to the LEAGUE, not the engine.**
+
+My explanation for it — draft length — was measured and **refuted**: F&F at 15 rounds returns
+`points` identical to the cent, because `starter_value` is settled inside the first fifteen
+rounds. At a matched round count the fixture loses 1/12 and F&F wins 10/12. Rulebook, roster
+shape and superflex × TE-premium remain crossed; `run_roster_proof_rulebook_cut.py` separates
+them, pre-registered.
+
+Scope: one league, and +1.04% is an order of magnitude smaller than the deficit it contradicts.
+
+## #246 — the process finding, and the one worth keeping
+
+The F&F proof never set `league["draft_rounds"]`, so the engine planned for 29 picks while
+drafting 26. **It was caught because an experiment returned numbers identical to the cent** —
+identical output is a broken instrument, not a result. Re-run correctly: identical, so the flaw
+was immaterial, *demonstrated* rather than assumed, which is the only reason #245 stands rather
+than being withdrawn.
+
+I also suspected this was a live app defect and **was wrong**: `app.py` sets `draft_rounds` from
+Sleeper's own `settings.rounds`, which is better than any derivation from roster shape. Recorded
+because a wrong suspicion is worth as much as a right one to whoever retraces this.
