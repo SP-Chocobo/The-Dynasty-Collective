@@ -61,6 +61,13 @@ CLASSES: list[tuple[str, str, str]] = [
 #: worktree checkouts all fall out of scope without being named, including the ones nobody has
 #: created yet. Run this from the repository root; it is a repo-level tool and writes a repo-level
 #: artifact.
+#:
+#: ONE CONSEQUENCE, AND IT BITES ONCE: a brand-new document is INVISIBLE HERE UNTIL IT IS
+#: STAGED, because git does not track it yet. Regenerate AFTER `git add`, not before -- the
+#: staleness guard caught exactly this on the commit that added
+#: `evidence/CERTIFICATION_DESIGN.md`, which had been written and the index regenerated in the
+#: other order. That is the derivation being honest rather than a defect: an untracked file is
+#: not yet a document of this repository, and the guard says so.
 TRACKED_DOCS = ["git", "ls-files", "-z", "*.md"]
 
 

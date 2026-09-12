@@ -90,23 +90,50 @@ class TheFixtureLeagueIsWhyNobodyNoticed(unittest.TestCase):
         self.assertEqual(len(lc.draftable_slots(rp)), len(rp))
 
 
-class TheRoundCountSwitchIsANoOpOnEveryBatteryArm(unittest.TestCase):
-    """The switch from len(roster_positions) to draftable_slots must not silently restate the
-    battery. No mock league carries IR, so the two agree on every arm -- and this test is what
-    says so rather than my having checked once. If build_mock_league ever gains an IR slot, the
-    battery's round count changes, and that must be a deliberate visible event, not a surprise.
+class TheRoundCountSwitchIsNoLongerANoOpOnEveryBatteryArm(unittest.TestCase):
+    """INVERTED (#251), and the inversion is the finding.
+
+    This class asserted that the #242 switch from `len(roster_positions)` to `draftable_slots`
+    was a NO-OP on every battery arm, because no mock league carries IR. Its own docstring named
+    the condition under which that would end: *"If build_mock_league ever gains an IR slot, the
+    battery's round count changes, and that must be a deliberate visible event, not a surprise."*
+
+    This is that event, arriving by a better route than an IR slot bolted onto a mock league: a
+    REAL captured league entered the matrix as a configuration point. Fourth and Forever has 29
+    roster positions, 3 of them IR, so it drafts 26 rounds.
+
+    **#242's repair was correct and, at battery scale, UNEXERCISED until now.** Every arm agreed
+    with the defect it fixed. That is the same shape as #161's SHORT_DRAFT arm -- a harness that
+    fixes a variable cannot falsify a defect in that variable -- and it is the third time in one
+    day that adding one real configuration falsified an assumption invisible while the matrix was
+    synthetic-only.
     """
 
-    def test_no_battery_arm_carries_an_undrafted_slot(self):
-        """The no-op is a property of the ROSTER SHAPES, not of any arm's round count -- one arm
-        (SHORT_DRAFT) sets its rounds deliberately short and never derived them at all. Asserting
-        the round count here instead was my first version of this test, and it failed on that arm,
-        which is the distinction being recorded."""
-        matrix = db.league_matrix()
-        self.assertGreater(len(matrix), 0)
+    def test_the_synthetic_arms_still_carry_no_undrafted_slot(self):
+        """The original property, narrowed to the population it was ever about. Mock leagues have
+        no IR, so the switch remains a no-op for them -- and if `build_mock_league` ever gains an
+        IR slot, this still says so."""
+        matrix = [a for a in db.league_matrix() if not a["label"].startswith("CAPTURE_")]
+        self.assertGreater(len(matrix), 25)
         for arm in matrix:
             rp = arm["league"]["roster_positions"]
             self.assertEqual(len(lc.draftable_slots(rp)), len(rp), arm["label"])
+
+    def test_a_captured_arm_makes_the_switch_load_bearing(self):
+        """The inversion. At least one arm must now DISAGREE, or #242's repair is back to being
+        untested at battery scale."""
+        captured = [a for a in db.league_matrix() if a["label"].startswith("CAPTURE_")]
+        self.assertTrue(captured, "no captured league is in the matrix; #242 is unexercised again")
+        disagreeing = [a["label"] for a in captured
+                       if len(lc.draftable_slots(a["league"]["roster_positions"]))
+                       != len(a["league"]["roster_positions"])]
+        self.assertTrue(disagreeing,
+                        "a captured arm must exercise the draftable/total distinction")
+        for arm in captured:
+            rp = arm["league"]["roster_positions"]
+            with self.subTest(arm["label"]):
+                self.assertEqual(arm["rounds"], len(lc.draftable_slots(rp)),
+                                 "the arm's round count must come from draftable_slots, not len")
 
     def test_a_real_league_is_where_the_two_disagree(self):
         """Non-vacuity for the test above: the equality is a property of mock leagues, not of

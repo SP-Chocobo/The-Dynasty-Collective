@@ -68,7 +68,12 @@ class TheOverlayIsTheOnlyThingThatVariesTests(unittest.TestCase):
     def test_every_battery_arm_carries_the_real_rulebook(self):
         real = rdb.scoring_settings_from_capture()
         matrix = db.league_matrix(real)
-        self.assertEqual(len(matrix), 33)
+        # CORRECTED (#251). This was `assertEqual(len(matrix), 33)`. The count is here for
+        # non-vacuity -- so the loop below cannot pass over an empty matrix -- and an EQUALITY
+        # made it something else: a standing prohibition on adding configuration coverage, which
+        # is exactly what the owner's ruling requires. A floor does the non-vacuity job without
+        # forbidding the thing the battery exists to grow.
+        self.assertGreaterEqual(len(matrix), 33)
         for arm in matrix:
             sc = arm["league"]["scoring_settings"]
             self.assertGreater(len(sc), 10,

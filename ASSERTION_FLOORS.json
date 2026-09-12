@@ -125,8 +125,9 @@
     "test_arm_rulebook.py": {
       "test_methods": 12,
       "asserts": {
-        "assertEqual": 8,
+        "assertEqual": 7,
         "assertGreater": 2,
+        "assertGreaterEqual": 1,
         "assertIn": 10,
         "assertNotIn": 1,
         "assertRaises": 1,
@@ -1515,14 +1516,15 @@
       }
     },
     "test_slot_vocabulary.py": {
-      "test_methods": 15,
+      "test_methods": 16,
       "asserts": {
-        "assertEqual": 9,
+        "assertEqual": 10,
         "assertGreater": 1,
         "assertIn": 4,
         "assertIs": 3,
         "assertNotEqual": 3,
-        "assertNotIn": 2
+        "assertNotIn": 2,
+        "assertTrue": 2
       }
     },
     "test_snapshot_identity_boundary.py": {
