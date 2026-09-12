@@ -204,6 +204,13 @@ missing is this note.
       priced 329→371), #201 (real universe) and #204 (production pricing path). **There is
       currently no valid cross-format behavioural evidence for the engine as it stands.**
       Cost ~2.9h. Nothing below can be called verified across formats until this exists.
+
+      **DATED 2026-09-12 — both halves of this bullet are now wrong, in opposite directions.**
+      The evidence DOES exist: `BATTERY_2026-09-12_scoring_aware_full_99f9f76`, 33 formats,
+      5,340 picks, complete and not withdrawn (see the banner at the top of this file). And the
+      cost is not ~2.9h — the scoring-aware battery measured **≈6.5h**. Budget the re-run from
+      the larger figure; the ~2.9h above predates `#213`/`#201`/`#204`, which is most of what
+      made it slower.
 - [x] **#241 — the disclosure is BUILT; the finding that motivated it is WITHDRAWN (26th).**
       The claim recorded here — "all 33 arms resolve `te_premium=True`" — was false. I built the
       matrix from `fourth_and_forever.json` while the battery reads `fixtures/sleeper_capture.json`.
@@ -328,7 +335,13 @@ bill of health is the gate, not the calendar.
 
 **One ruling and one battery run stand between here and a defensible v1 freeze.**
 
-The battery (Gate 1) is mechanical — about three hours, and **it is running now**.
+The battery (Gate 1) is mechanical — ~~about three hours, and **it is running now**~~.
+
+**DATED 2026-09-12: that run FINISHED**, and nothing is running now. It is the
+`BATTERY_2026-09-12_scoring_aware_full_99f9f76` in the banner above, it found `#247`, and `#247`
+was repaired at `3e9c074` — so **one more run is owed**, against the repaired engine, at ≈6.5h.
+A present-tense "it is running now" left in a checklist is the kind of sentence a reader acts
+on; it is struck rather than deleted, per this file's own convention.
 
 Gate 2 is still the real gate, but `#245` narrowed it rather than removing it. The trade the
 ruling is about — current-season points for dynasty asset value — is real and still unratified;
