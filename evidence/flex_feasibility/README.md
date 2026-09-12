@@ -157,8 +157,15 @@ backstop by the only test that matters — whether it binds when the roster is n
 It also stays admissible under `#56`: still pure arithmetic over slots, picks and eligibility,
 inventing no constant and expressing no opinion about what a positional hole is worth.
 
-## NOT SHIPPED
+## SHIPPED at `3e9c074` — owner ruled ship
 
-This is a behavioural change to the SELECTION path. It is measured, not ratified. Two seats in
-each failing arm draft differently, and that is a real change to what the engine does — the kind
-this repository rules on rather than merges on a green probe.
+Wired into `draft_room.feasibility_first`. 5 new tests in `test_feasibility_backstop` (22 total),
+each with a non-vacuity companion; mutation pass 4/4 in memory — reverting to dedicated-only
+fails, a solver that fills everything fails, one that fills nothing fails, ignoring eligibility
+fails. Full suite 2862 tests, one failure, unrelated (`DOC_INDEX` staleness, fixed in the same
+commit).
+
+**The 33-arm battery was deliberately NOT re-run.** The owner's standing call is one more full
+run before the freeze — a 6.5-hour gate is not a per-repair regression test. Until that run,
+`evidence/batteries/BATTERY_2026-09-12_scoring_aware_full_99f9f76` describes the engine
+**before** this repair, and its two structural findings are the ones this fixes.

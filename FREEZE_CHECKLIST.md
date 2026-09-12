@@ -56,8 +56,12 @@
 >   5–11% trade that no longer reproduces. The underlying question (present points vs dynasty
 >   asset value) is still unratified, but it is no longer being decided against a large measured
 >   deficit.
-> - **NEW BLOCKER `#247`** — the flex feasibility gap. This is now the only measured drafting
->   failure, and it is the one thing here that genuinely blocks a freeze.
+> - **`#247` — REPAIRED at `3e9c074`.** `feasibility_first` now asks the whole starting lineup
+>   instead of dedicated slots only. Measured before shipping: both failures fixed, binds 4 times
+>   in 644 picks, zero effect on either clean arm. It was the only measured drafting failure.
+> - **Gate 1 now needs ONE more run.** The committed battery describes the engine *before* this
+>   repair. That re-run is the freeze gate, not a per-repair regression test — deliberately not
+>   done per repair.
 >
 > Sources: `evidence/batteries/README.md`, `evidence/flex_feasibility/README.md`,
 > `evidence/roster_proof/README_RULEBOOK_CUT.md`, `evidence/roster_proof/README_FF.md`.
