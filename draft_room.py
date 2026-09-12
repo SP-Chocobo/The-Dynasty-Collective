@@ -259,7 +259,7 @@ UPSIDE_MODE_DEFAULT_ROUND = 15
 # to an exact percentage -- a principled, bounded starting point". It is now DERIVED, and the
 # derived answer is 1.0. Method: build the league's entire starting requirement (num_teams
 # copies of every starting slot) and assign the projection pool to it with this repo's own
-# exact optimizer (lineup_optimizer.optimize_lineup, Hungarian); whatever lands in the
+# exact optimizer (lo.optimize_lineup, Hungarian); whatever lands in the
 # SUPER_FLEX slots IS the share. Dedicated slots compete for the same players in the same
 # solve, so the flex share cannot double-count a player a named slot was always going to take.
 # NOT CIRCULAR: only projections and roster_positions enter -- no engine valuation and no
@@ -2719,10 +2719,38 @@ def feasibility_first(scored, picks, players_db, my_roster_id, roster_positions,
     a roster with zero TEs applied the identical 4.72 nudge in round 1 and in round 15 with one
     pick left. Nothing in team_acquisition_value knew the draft was ending.
 
-    Deliberately DEDICATED slots only, never flex. A flex slot is fillable from several
-    positions, so it is not at risk in the way a named slot is, and counting it would let this
-    bind on a roster that was never actually in danger -- turning a backstop into a preference,
-    which is exactly what this must not become.
+    THE WHOLE STARTING LINEUP, flex included -- and #247 is why that sentence replaced the one
+    it used to say. This counted DEDICATED slots only, on the stated premise that "a flex slot
+    is fillable from several positions, so it is not at risk in the way a named slot is". True,
+    until the roster owns no spare of ANY of those positions. The 2026-09-12 battery reached that
+    state twice in 5,340 picks: two chairs finished with an empty FLEX and a full roster, every
+    NAMED slot filled -- so `unfilled` was 0 and this function was a no-op for the entire draft.
+    One of them had drafted eight quarterbacks in a one-QB league.
+
+    So the question is now asked of the lineup rather than a subset of it: solve the roster into
+    its slots exactly as `draft_battery.unfilled_starting_slots` does, and let `unfilled` be
+    every slot the solver could not fill. A flex slot is then at risk precisely when the roster
+    owns no spare eligible body, which is the real condition and the one the old scope could not
+    express.
+
+    THE OLD SCOPE'S WARNING STILL GOVERNS, and it was measured before this changed rather than
+    argued away: "counting it would let this bind on a roster that was never actually in danger
+    -- turning a backstop into a preference, which is exactly what this must not become."
+    Measured over four arms and 644 picks (evidence/flex_feasibility/):
+
+        8T_standard    1 unfillable roster -> 0    binds 2 of 112 picks
+        14T_standard   1 unfillable roster -> 0    binds 2 of 196 picks
+        12T_standard   0 -> 0                      binds 0 of 168 picks
+        12T_ppr        0 -> 0                      binds 0 of 168 picks
+
+    It fires 4 times in 644 picks, NEVER on an arm with nothing wrong, and moves one player when
+    it fires. It remains a backstop by the only test that matters -- whether it binds on a roster
+    that was not in danger.
+
+    Solved via lineup_optimizer rather than by counting positions, for the same reason the audit
+    is: counting gets FLEX chains wrong, because a spare RB legitimately fills a FLEX and frees a
+    WR upward. Counting would report a hole where the solver finds none, which is the mirror of
+    the defect being fixed.
 
     Deliberately NOT a value term. Adding it to team_acquisition_value would make a player's
     worth depend on who happens to be drafting, which is the one thing universal_value exists
@@ -2731,13 +2759,33 @@ def feasibility_first(scored, picks, players_db, my_roster_id, roster_positions,
     default = pd.Series(1, index=scored.index, dtype=int)
     if my_roster_id is None or not roster_positions or scored.empty:
         return default
-    filled = _team_starters_filled(picks, players_db, my_roster_id)
-    dedicated = dedicated_slot_counts(roster_positions)
-    needed = {p: max(dedicated.get(p, 0) - filled.get(p, 0), 0) for p in dedicated}
-    unfilled = sum(needed.values())
+    slots = lo.slots_from_roster_positions(roster_positions)
+    if not slots:
+        return default
+    mine_ids = [str(pick.get("player_id")) for pick in picks
+                if str(pick.get("roster_id")) == str(my_roster_id)]
+    roster = []
+    for player_id in mine_ids:
+        info = players_db.get(str(player_id)) or {}
+        roster.append({"id": str(player_id), "value": 1.0,
+                       "eligible": set(info.get("fantasy_positions")
+                                       or ([info["position"]] if info.get("position") else []))})
+    solved = lo.optimize_lineup(roster, slots)
+    # optimize_lineup returns only the pairs it actually made, so the holes are the DIFFERENCE
+    # against the slot list -- never a scan of the assignments for a missing id. Same reading
+    # draft_battery.unfilled_starting_slots takes, and it has to stay the same one: this exists
+    # to prevent exactly the state that audit reports.
+    assigned = {a["slot_id"] for a in solved["assignments"] if a.get("player_id")}
+    unfilled_slots = [slot for slot in slots if slot["slot_id"] not in assigned]
+    unfilled = len(unfilled_slots)
     if unfilled <= 0:
         return default
-    mine = sum(1 for pick in picks if str(pick.get("roster_id")) == str(my_roster_id))
+    # Every position that could fill ANY still-open slot. A candidate earns priority for being
+    # able to close a hole, whichever hole that is.
+    needed_positions = set()
+    for slot in unfilled_slots:
+        needed_positions |= set(slot.get("eligible") or ())
+    mine = len(mine_ids)
     # ROSTER SIZE IS NOT ROUND COUNT. A 14-slot roster drafted for 10 rounds leaves 1 pick at
     # 9 made, not 5, and that difference decides whether the backstop binds at all. Use the
     # real count when the caller knows it; otherwise fall back to the old assumption -- but
@@ -2750,7 +2798,8 @@ def feasibility_first(scored, picks, players_db, my_roster_id, roster_positions,
     # fill later, which is the whole point of not making this a preference.
     if picks_remaining > unfilled:
         return default
-    return scored["position"].map(lambda position: 0 if needed.get(position, 0) > 0 else 1).astype(int)
+    return scored["position"].map(
+        lambda position: 0 if position in needed_positions else 1).astype(int)
 
 
 def compute_draft_board(

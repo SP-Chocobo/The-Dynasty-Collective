@@ -185,5 +185,73 @@ class TheDraftIsNotAsLongAsTheRosterTests(unittest.TestCase):
         self.assertEqual(list(out), [1, 1])
 
 
+class TheFlexHoleTests(unittest.TestCase):
+    """#247. This is the case the backstop could not see, and the reason it could not.
+
+    It counted DEDICATED slots only, on the premise that a flex slot is fillable from several
+    positions and so is never the one at risk. The 2026-09-12 battery reached the exception
+    twice in 5,340 picks: a full roster, every NAMED slot filled, and an empty FLEX -- because
+    the roster owned no spare of ANY flex-eligible position. One chair had drafted eight
+    quarterbacks in a one-QB league.
+    """
+
+    #: A one-QB league with a flex. Deliberately the shape the failures had.
+    ROSTER = ["QB", "RB", "WR", "TE", "FLEX", "BN"]
+    PLAYERS = {
+        "qb1": {"position": "QB"}, "qb2": {"position": "QB"}, "qb3": {"position": "QB"},
+        "rb1": {"position": "RB"}, "wr1": {"position": "WR"}, "te1": {"position": "TE"},
+    }
+    BOARD = pd.DataFrame({"position": ["QB", "RB"], "final_score": [99.0, 1.0]})
+
+    def test_a_flex_hole_binds_when_no_eligible_body_is_spare(self):
+        """Every named slot filled, one pick left, and the FLEX unfillable from what is owned.
+        Before #247 this returned all 1s -- a no-op -- and the roster finished unfieldable."""
+        picks = _picks("qb1", "rb1", "wr1", "te1", "qb2")      # 5 made of 6
+        out = dr.feasibility_first(self.BOARD, picks, self.PLAYERS, "1", self.ROSTER,
+                                   draft_rounds=6)
+        # The RB can fill the flex; a third QB cannot.
+        self.assertEqual([1, 0], list(out))
+
+    def test_a_spare_flex_body_means_no_hole_and_no_bind(self):
+        """Non-vacuity for the test above. Same slots, same count of picks made -- the only
+        difference is that one of them is flex-eligible, so the lineup solves and this must be
+        a no-op. Without this, the test above would also pass if the function simply always
+        bound once the roster was nearly full."""
+        picks = _picks("qb1", "rb1", "wr1", "te1", "rb2")      # rb2 fills the FLEX
+        players = dict(self.PLAYERS, rb2={"position": "RB"})
+        out = dr.feasibility_first(self.BOARD, picks, players, "1", self.ROSTER,
+                                   draft_rounds=6)
+        self.assertEqual([1, 1], list(out))
+
+    def test_it_does_not_bind_while_picks_remain_to_spare(self):
+        """The backstop half: the same unfillable flex, but three picks left for one hole. A
+        roster with room to take value now and fill later is not in danger, and this must stay
+        out of the way -- the exact failure mode the old scope was drawn to avoid."""
+        picks = _picks("qb1", "rb1", "wr1")                    # 3 made of 8
+        out = dr.feasibility_first(self.BOARD, picks, self.PLAYERS, "1", self.ROSTER,
+                                   draft_rounds=8)
+        self.assertEqual([1, 1], list(out))
+
+    def test_a_flex_chain_is_solved_not_counted(self):
+        """Counting positions gets this wrong where the solver does not: the spare RB fills the
+        FLEX and frees nothing, but a naive per-position tally would see two RBs against one RB
+        slot and report a hole that does not exist."""
+        picks = _picks("qb1", "rb1", "rb2", "wr1", "te1")
+        players = dict(self.PLAYERS, rb2={"position": "RB"})
+        out = dr.feasibility_first(self.BOARD, picks, players, "1", self.ROSTER,
+                                   draft_rounds=6)
+        self.assertEqual([1, 1], list(out))
+
+    def test_multi_position_eligibility_is_honoured(self):
+        """fantasy_positions, not position, decides what can fill a slot (#172). A player listed
+        WR/RB fills the flex even though his primary position slot is already taken."""
+        players = dict(self.PLAYERS,
+                       hybrid={"position": "WR", "fantasy_positions": ["WR", "RB"]})
+        picks = _picks("qb1", "rb1", "wr1", "te1", "hybrid")
+        out = dr.feasibility_first(self.BOARD, picks, players, "1", self.ROSTER,
+                                   draft_rounds=6)
+        self.assertEqual([1, 1], list(out))
+
+
 if __name__ == "__main__":
     unittest.main()

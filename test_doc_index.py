@@ -35,6 +35,16 @@ class TheClassifierIsNotVacuous(unittest.TestCase):
             self.assertIn(expected, names,
                           f"{expected} announces its status in its own H1 and must not read as undeclared")
 
+    def test_worktree_checkouts_are_not_counted_as_documents(self):
+        """The defect its own staleness guard caught. A git worktree under `.claude/worktrees/`
+        is a CHECKOUT of this repository, not documents belonging to it. Walking them counts
+        every file two or three times and makes the index depend on where the tool runs from --
+        it was built inside a worktree, where they are absent, and went red the first time the
+        full suite ran from the main checkout."""
+        for path in doc_index.docs():
+            self.assertNotIn("worktrees", path.parts,
+                             f"{path} is a worktree copy, not a document of this repo")
+
     def test_every_document_lands_in_exactly_one_bucket(self):
         buckets = doc_index.index()
         counted = sum(len(v) for v in buckets.values())

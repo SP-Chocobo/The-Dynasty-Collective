@@ -43,7 +43,13 @@ CLASSES: list[tuple[str, str, str]] = [
      "says what kind of document it is before making claims."),
 ]
 
-SKIP_DIRS = {".git", "node_modules", "__pycache__"}
+#: `worktrees` is here for a reason the first version of this file missed, and its own staleness
+#: guard caught: a git worktree under `.claude/worktrees/` is a CHECKOUT of this repository, not
+#: a set of documents belonging to it. Walking them counts every file two or three times and
+#: makes the index depend on which directory the tool happens to run from -- the index was built
+#: in a worktree, where they are absent, and went red the first time it ran from the main
+#: checkout. A derived artifact that disagrees with itself by location is worse than none.
+SKIP_DIRS = {".git", "node_modules", "__pycache__", "worktrees"}
 
 
 def header(path: Path) -> str:
