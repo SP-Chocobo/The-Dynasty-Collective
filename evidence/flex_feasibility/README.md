@@ -112,3 +112,53 @@ Two rosters were *unable to field a lineup*. Eighteen drafted a monoculture.
   invents no constant, and binds only when the slot is genuinely unfillable. **Not implemented.**
   It changes the selection path, and the docstring's warning — that counting flex naively turns a
   backstop into a preference — is the thing any implementation has to keep being true.
+
+---
+
+# The candidate repair, MEASURED (not shipped)
+
+`repair_probe.py`, run in memory against `draft_room.feasibility_first` — never the file, so it
+was safe beside other runs.
+
+**The change.** Stop asking about DEDICATED slots and ask the same feasibility question of the
+whole starting lineup: solve the roster into its slots exactly as the audit does, and let
+`unfilled` be every slot the solver could not fill, flex included. A flex slot then counts as at
+risk precisely when the roster owns no spare eligible body — the case the current scope was drawn
+to exclude, and the one that fails. Everything else is untouched: same `picks_remaining > unfilled`
+test, same sort-key shape, no constant invented, no value term added.
+
+| arm | picks | findings now | repaired | binds | seats changed |
+|---|---:|---:|---:|---:|---:|
+| `8T_standard` | 112 | **1** (FLEX) | **0** | 2 (1.8%) | 2 of 8 |
+| `14T_standard` | 196 | **1** (FLEX) | **0** | 2 (1.0%) | 2 of 14 |
+| `12T_standard` | 168 | 0 | 0 | **0 (0.0%)** | **0 of 12** |
+| `12T_ppr` | 168 | 0 | 0 | **0 (0.0%)** | **0 of 12** |
+
+**Both failures fixed. Both clean arms untouched — zero binds, zero changed rosters.**
+
+And the collateral where it does fire is one player:
+
+```
+8T seat 5 (the failing seat):  QB 8 -> 7,  WR 2 -> 3
+8T seat 4:                     QB 4 -> 5,  WR 5 -> 4
+14T seat 4 (the failing seat): QB 8 -> 7,  WR 3 -> 4
+14T seat 2:                    QB 6 -> 7,  RB 4 -> 3
+```
+
+## The docstring's warning is the thing this had to disprove, and it does
+
+> *"counting it would let this bind on a roster that was never actually in danger — turning a
+> backstop into a preference, which is exactly what this must not become."*
+
+A preference would fire routinely and reshape rosters. This fires **4 times in 644 picks (0.6%)**,
+never once on an arm with nothing wrong, and moves one player when it fires. It remains a
+backstop by the only test that matters — whether it binds when the roster is not in danger.
+
+It also stays admissible under `#56`: still pure arithmetic over slots, picks and eligibility,
+inventing no constant and expressing no opinion about what a positional hole is worth.
+
+## NOT SHIPPED
+
+This is a behavioural change to the SELECTION path. It is measured, not ratified. Two seats in
+each failing arm draft differently, and that is a real change to what the engine does — the kind
+this repository rules on rather than merges on a green probe.
