@@ -31,16 +31,35 @@ misleading thing in this document.** The proof's own design note settles their s
 only informative test in this repo. Measured, the two rulers correlate at **r = 0.241** — they
 are different questions, not two views of one, so a win on either does not imply the other.
 
-**So the honest statement of the result is: the engine has been tested once against a fair
-control, and did not pass.** 1 of 68 seats. Every lineup is full, so this is not a failure to
-field a team — it is fielding a different one on purpose, and losing on the ruler that says
-whether that was worth it.
+**SUPERSEDED — the engine has now been tested TWICE against a fair control, and the two tests
+disagree.** The paragraph this replaces read "tested once, and did not pass". That was true when
+written and is now half the evidence.
 
-**There is no established exchange rate between present-season points and dynasty asset value in
-this system**, so "correct dynasty construction" and "systematic mispricing" both still fit. But
-the burden has moved: the one test that could have discharged it was run and not passed.
+| run | league | rounds | seats | `points` wins | margin |
+|---|---|---:|---:|---:|---:|
+| `#205` | fixture, 6 formats | 14–15 | 68 | 1 of 68 | −5% to −11% |
+| **`#245`** | **Fourth and Forever** | **26** | **12** | **10 of 12** | **+1.04%** |
 
-Source: `evidence/roster_proof/README.md`, `ROSTER_PROOF_2026-09-08_realrules_COMPLETE_6of6`.
+Same harness, only the league swapped. Every seat filled 10/10 starting slots in both.
+
+**The sign of the difference is a property of the LEAGUE, not of the engine** — measured, not
+inferred. The pre-registered length cut re-ran F&F at 15 rounds and returned `points` identical
+to the cent (10 of 12, +1.04%), so at a MATCHED round count the fixture's `12T_ppr_SF` loses
+1 of 12 at −5.03% while F&F wins 10 of 12 at +1.04%. Draft length is refuted. Still crossed: the
+rulebook, the roster shape, and the superflex × TE-premium combination no fixture format carries.
+
+**What this does NOT say.** `+1.04%` is an order of magnitude smaller than the deficit it
+contradicts, and it is one league. "The engine wins" is a much weaker claim than "the engine
+loses" was. There is still no established exchange rate between present-season points and dynasty
+asset value, so both "correct dynasty construction" and "systematic mispricing" still fit the
+fixture result.
+
+**What it does say, for the freeze:** the strong claim holds in the league the owner actually
+plays, so the deficit can no longer be stated unqualified as a property of the engine.
+
+Sources: `evidence/roster_proof/README.md` (#205), `evidence/roster_proof/README_FF.md` (#245,
+with the length refutation and the next pre-registered cut), and `#246` for the horizon flaw
+found in the F&F harness and demonstrated immaterial.
 
 ---
 
@@ -240,10 +259,15 @@ bill of health is the gate, not the calendar.
 
 **One ruling and one battery run stand between here and a defensible v1 freeze.**
 
-The battery (Gate 1) is mechanical — about three hours, and it can start now. The ruling
-(Gate 2) is the real gate: the engine is trading 5–11% of current-season points for roughly
-double the asset value, deliberately, in every seat of every format, and **that trade has never
-been ratified or rejected**. Until it is, "does it draft well?" has no defined answer — only
-"it drafts consistently, and here is what it optimizes."
+The battery (Gate 1) is mechanical — about three hours, and **it is running now**.
+
+Gate 2 is still the real gate, but `#245` narrowed it rather than removing it. The trade the
+ruling is about — current-season points for dynasty asset value — is real and still unratified;
+what changed is that its PRICE is not a single number. It costs 5–11% on the fixture's formats
+and *earns* 1.04% on Fourth and Forever, at a matched round count. So the question is no longer
+"is this trade worth it", which had one answer, but "is this trade worth it IN THIS LEAGUE" —
+and the engine already comes out on the right side of it in the owner's. Until the next cut
+separates rulebook from roster shape, "does it draft well?" answers: **yes, narrowly, in the
+league you actually play — and no, in the generic ones we had been certifying against.**
 
 Everything in Gate 3 is either downstream of that ruling or small enough to land in a day.
