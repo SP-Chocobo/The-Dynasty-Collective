@@ -1,4 +1,21 @@
-# #248: it is not the rulebook. It is ONE FLEX SLOT.
+# #248: it is not the rulebook. ~~It is ONE FLEX SLOT.~~
+
+> ⛔ **THE FLEX READING IS WITHDRAWN (27th), 2026-09-12.** The closing section below named the cut
+> that would settle it — "the fixture roster with a third FLEX added and nothing else changed."
+> That cut was run in BOTH directions and the reading did not survive it: adding a flex to the
+> fixture moved the engine−control margin from −6.99 to **−22.53**, and removing one from F&F
+> moved it from +29.43 to **+22.08**. Both cuts hurt. A slot with no consistent sign is not the
+> thing separating the two leagues.
+>
+> **What is withdrawn is exactly one paragraph: the mechanism reading.** Arms A, B and C below
+> are measurements and they REPRODUCE — A and C were re-run and came back with zero differing
+> values across 12 seats × every metric. The rulebook result stands. So does the dating of #205.
+>
+> Nothing below is edited. See `README_FLEX_CUT.md` for the four arms, and for the one structural
+> difference still standing: at 15 rounds the fixture roster has ZERO spare draftable slots and
+> F&F has ELEVEN — which this document dismissed as unable to enter, and which
+> `draftable_slots_per_team` feeds straight into `remaining_league_picks`.
+
 
 Three arms, one process, one code version, matched at 15 rounds — the only honest A/B this
 repository allows. `run_roster_proof_rulebook_cut.py`, pre-registered at `1c6611c` before any

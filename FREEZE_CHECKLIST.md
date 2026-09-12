@@ -49,6 +49,26 @@
 > So the rulebook work (`evidence/rulebook_ground_truth/`, the real +15.7% scoring difference)
 > stands as measurement and is **not** what drives the verdict.
 >
+> > ⛔ **THE FLEX HALF OF THIS IS WITHDRAWN (27th), later the same day.** The rulebook half stands
+> > and A/B/C reproduce exactly. But the flex reading was a reading, and the cut it named was run
+> > in both directions:
+> >
+> > ```
+> > A2  fixture, FLEX 2   4/12  -0.28%   CONTROL, reproduces arm A with ZERO differing values
+> > D   fixture, FLEX 3   3/12  -0.84%   one flex ADDED    -> engine margin -6.99 -> -22.53
+> > C2  F&F,     FLEX 3  10/12  +1.04%   CONTROL, reproduces arm C with ZERO differing values
+> > E   F&F,     FLEX 2   9/12  +0.84%   one flex REMOVED  -> engine margin +29.43 -> +22.08
+> > ```
+> >
+> > Both cuts hurt, so the slot has no consistent sign. `A2` and `E` have the **same 9 startable
+> > slots** and opposite verdicts, so it is not the startable count either. Draft length,
+> > rulebook and flex count are now all refuted by measurement.
+> >
+> > **What remains:** at 15 rounds the fixture roster has **0** spare draftable slots and F&F has
+> > **11**. `draftable_slots_per_team` feeds `remaining_league_picks`, so roster capacity reaches
+> > the engine independently of flex count and round count. That is the next pre-registered cut.
+> > Evidence: `evidence/roster_proof/README_FLEX_CUT.md`.
+>
 > ## What this does to the gates
 >
 > - **Gate 1** — done. Re-run required after any repair.

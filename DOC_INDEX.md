@@ -6,15 +6,16 @@ Classified by what each file says about ITSELF in its first 12 lines. Nothing he
 
 | class | count | meaning |
 |---|---:|---|
-| WITHDRAWN | 20 | a published claim taken back. Kept, unedited, beneath its banner. |
+| WITHDRAWN | 21 | a published claim taken back. Kept, unedited, beneath its banner. |
 | SUPERSEDED | 12 | still valid or partly valid, but something later changed what it means. |
 | DECLARED | 17 | says what kind of document it is before making claims. |
-| UNDECLARED | 65 | no status banner in its opening. Not necessarily wrong — most are simply current — but a reader cannot tell without reading it all. |
+| UNDECLARED | 64 | no status banner in its opening. Not necessarily wrong — most are simply current — but a reader cannot tell without reading it all. |
 
 ## WITHDRAWN
 
 - `FREEZE_CHECKLIST.md`
 - `evidence/roster_proof/README.md`
+- `evidence/roster_proof/README_RULEBOOK_CUT.md`
 - `evidence/roster_shape/OWNER_LEAGUE_FIXTURE_WITHDRAWAL.md`
 - `evidence/roster_shape/ff_rulebook/ADVISORY_fable_symmetry_break.md`
 - `evidence/roster_shape/ff_rulebook/FINDING_05_it_is_tight_ends.md`
@@ -85,7 +86,6 @@ Classified by what each file says about ITSELF in its first 12 lines. Nothing he
 - `evidence/projection_rank/README.md`
 - `evidence/real_drafts/README.md`
 - `evidence/roster_proof/README_FF.md`
-- `evidence/roster_proof/README_RULEBOOK_CUT.md`
 - `evidence/roster_shape/DISTRIBUTION_THEORY_fable.md`
 - `evidence/roster_shape/PREREGISTRATION_216_fix.md`
 - `evidence/roster_shape/PREREGISTRATION_shared_slot_alternative.md`

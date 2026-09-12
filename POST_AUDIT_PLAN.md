@@ -7744,3 +7744,76 @@ checklist among the retracted findings for the word "withdrawing"; and it classi
 output** as withdrawn, because its rendered legend sits in its own first twelve lines. The
 document set is now `git ls-files` — the question git already answers — and the classifier reads
 past frontmatter and skips its own output. 5 mutations, 5 caught.
+
+## #248 FOLLOW-UP: it is not one flex slot either — the 27th withdrawal, and it is mine
+
+`evidence/roster_proof/README_RULEBOOK_CUT.md` closed by naming what it had not established —
+*"why one flex slot is worth this much; the mechanism above is a reading, not a measurement"* —
+and named the cut that would settle it. That cut was pre-registered at `5936b53` before any
+number existed, run in **both directions**, and the reading did not survive it.
+
+```
+                                       points          engine − control (points.starter_value)
+A2  fixture roster, FLEX 2  start  9   4/12  -0.28%      -6.99      CONTROL
+D   fixture roster, FLEX 3  start 10   3/12  -0.84%     -22.53      one flex ADDED
+C2  F&F roster,     FLEX 3  start 10  10/12  +1.04%     +29.43      CONTROL
+E   F&F roster,     FLEX 2  start  9   9/12  +0.84%     +22.08      one flex REMOVED
+```
+
+**Adding a flex to the loser made it worse. Removing one from the winner also made it worse.** A
+slot that hurts in both directions is not what separates the two leagues — it is movement of
+about the size of the effect it was meant to explain, with the wrong sign twice.
+
+### The controls reproduced bit-for-bit, which is the only reason the cuts are readable
+
+`A2` vs `#248` arm A and `C2` vs arm C: **0 differing values across 12 seats × every metric** —
+both rulers, starter / bench / total, `starters_filled`, `unpriced`. Not "to the cent".
+
+That also closes something `#247` could not close about itself. Its 0.0% bind rate on 12-team
+formats was a rate over a battery population; this is the same seats and the same totals across
+a repair that rewrote `feasibility_first`. **`#247` is provably inert on this format.**
+
+### The comparison that leaves no room for the startable count either
+
+`A2` and `E` have the **same 9 startable slots**, the same rounds, the same pool, the same
+harness — and opposite verdicts, **−6.99** against **+22.08**.
+
+### Three candidates entered; two were already refuted, and this refutes the third
+
+| candidate | verdict | evidence |
+|---|---|---|
+| draft length | REFUTED | `#245` — identical to the cent at 15 and 26 rounds |
+| scoring rulebook | REFUTED | `#248` arm A→B — 4/12 either way, in an environment measured as paying four real starters 15.7% differently |
+| flex / startable count | **REFUTED** | this run, both directions, no consistent sign |
+
+### What is NOT fixed, and what is next
+
+The structural difference still standing, and the one `#248` dismissed as unable to enter:
+
+```
+fixture   15 slots   9 startable   15 draftable  ->  15 picks fill it EXACTLY.   0 spare
+F&F       29 slots  10 startable   26 draftable  ->  15 picks fill 15 of 26.    11 spare
+```
+
+`draft_room.draftable_slots_per_team` counts every slot except IR and feeds
+`remaining_league_picks` — its own docstring: *"how many draft picks the league still has to
+spend, summed per team… EXACT and BOUNDED, reaching exactly zero when every roster is full"* —
+which feeds the bench-appetite rates. On the fixture that quantity is driven to zero; on F&F it
+never falls below 11 per team. **Roster capacity reaches the engine independently of flex count
+and round count.** Both cuts in this run held it fixed by construction (BN ↔ FLEX preserves the
+total), so nothing here tests it.
+
+**Next pre-registered cut:** the fixture roster with bench padded to F&F's 26 draftable slots,
+nothing else changed — same 9 startable, same PPR rulebook, same 15 rounds, same pool. If the
+engine moves toward `+1.04%`, capacity is the mechanism. If it stays near `−0.28%`, all three
+structural candidates are gone and what remains is TAXI, which the fixture has none of and F&F
+has five.
+
+### One observation recorded, not claimed
+
+`cdme` — the tautological ruler — **loses 0 of 12 on both fixture arms** (−14.78%, −17.65%) while
+winning on both F&F arms (7/12, 8/12). `COMPARE_ON["cdme"]` is `total_value`, which carries a
+large negative bench term, and the engine's bench prices below the control's on the asset ruler
+in every arm (−65.85, −106.08, −57.14, −29.68). **A tautological ruler that loses is its own
+question.** It is not this one, it reproduces `#248`'s arm A exactly, and nothing above is
+claimed from it — but it is written down here rather than left in a JSON nobody opens.
