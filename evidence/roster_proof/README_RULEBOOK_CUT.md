@@ -27,6 +27,26 @@ B  fixture roster + F&F scoring        points  4 of 12   -0.61%     <- THE CUT
 C  F&F roster     + F&F scoring        points 10 of 12   +1.04%
 ```
 
+> ⛔ **ARM B IS NOT IN THE CELL IT IS LABELLED WITH. CORRECTED 2026-09-12, before any follow-up
+> run was read.** Arm B was built as `build_mock_league(scoring="ppr", te_premium=False,
+> base_scoring=<F&F's 30 observed keys>)`. `build_mock_league` OVERWRITES `rec` from its own
+> `scoring` argument — that is its documented job — so **arm B ran at `rec = 1.0`, not F&F's
+> 0.5**. And `te_premium=False` does not REMOVE a `bonus_rec_te` already present in
+> `base_scoring`, so the arm carried a TE premium it was told not to have. Measured from the
+> committed arm: `rec 1.0, bonus_rec_te 0.25, rec_fd 0.5, pass_cmp 0.1`, resolving to
+> `hint = {"scoring": "ppr", "te_premium": True}` — **a format that exists in neither league.**
+>
+> This is not a mislabel only. `rec` does not reach offensive valuation through
+> `scoring_settings`; it reaches it by FILE SELECTION, because `set_league_format` picks a
+> different rankings export per hint. Arm B's hint says `ppr` and arm C's says `half_ppr`, so
+> **the two arms drew from different exports.**
+>
+> **What arm B actually establishes:** first downs + completion bonus + TE premium, at PPR
+> reception value and on the PPR export, change the verdict by nothing. That is a real result
+> about PART of the rulebook. It is not a result about the rulebook, and the line below
+> overstates it. The fixture-roster-with-true-F&F-scoring cell was never occupied at either
+> flex count; `run_roster_proof_missing_cell.py` runs both.
+
 **C reproduces `#245` to the cent** (10/12, +1.04%), which is what licenses reading A and B at
 all. The control validated the harness before the cut was interpreted.
 
