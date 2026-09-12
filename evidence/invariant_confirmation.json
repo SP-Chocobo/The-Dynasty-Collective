@@ -1,0 +1,23 @@
+{
+  "results": [
+    {
+      "invariant": "feasibility_first never binds",
+      "file": "draft_room.py",
+      "verdict": "*** SURVIVED ***",
+      "sites_mutated": 2,
+      "seconds": 1202.6,
+      "consequence": "a chair could finish unable to field a legal lineup and nothing would say so",
+      "evidence": "full suite passed"
+    },
+    {
+      "invariant": "board order ignores feasibility",
+      "file": "draft_room.py",
+      "verdict": "caught",
+      "sites_mutated": 2,
+      "seconds": 16.1,
+      "consequence": "feasibility becomes advisory -- the #154 backstop stops reaching the pick",
+      "evidence": ", in scoreable_pool\n    board = dr.compute_draft_board(\n            ^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/home/user/The-Dynasty-Collective/draft_room.py\", line 3399, in compute_draft_board\n    results = scored.sort_values([\"final_score\", \"player_id\"],\n              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/usr/local/lib/python3.11/dist-packages/pandas/core/frame.py\", line 8337, in sort_values\n    raise ValueError(\nValueError: Length of ascending (3) != length of by (2)\n\n----------------------------------------------------------------------\nRan 14 tests in 13.618s\n\nFAILED (errors=1)\n"
+    }
+  ],
+  "sources_dirty_after": ""
+}

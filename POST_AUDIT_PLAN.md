@@ -8139,3 +8139,95 @@ share, and most early picks are **starter** picks, so it conflates the two halve
 demand. Its numbers are recorded and must not be read as a trending signal. The instrument that
 would answer the trending question compares observed picks against `remaining_starter_demand`
 and `estimated_bench_demand` together.
+
+## #254: `invariant_confirmation`'s first execution produced TWO results and NEITHER is usable — plus the final-pick measurement
+
+The harness ran for the first time (`evidence/invariant_confirmation.json`). It reported one
+SURVIVED and one caught. Checked before either was believed, **both verdicts are artifacts.**
+
+### `board order ignores feasibility: caught` — it is a CRASH, not a catch
+
+The recorded evidence is the failure itself:
+
+```
+ValueError: Length of ascending (3) != length of by (2)
+Ran 14 tests in 13.618s
+FAILED (errors=1)
+```
+
+The mutation removes `"_feasible"` from `sort_values`' `by` list and leaves `ascending` at three
+entries. Pandas rejects its own arguments before any board is built, so **every** test touching
+the board errors. That is not the suite detecting a behavioural regression; it is the mutant
+being unable to run.
+
+This is the exact false-pass class this file already recorded — *"a non-compiling mutant fails
+every test and `rc != 0` would report it as caught"* — and the repair I made for it,
+`ast.parse(mutated)` before writing, **does not cover this case**: the mutant is syntactically
+valid Python whose defect is argument arity at runtime. The guard was necessary and not
+sufficient, and I recorded it as if it were sufficient.
+
+### `feasibility_first never binds: SURVIVED` — the mutated path is INERT on this league
+
+The mutation injects `scored["_feasible"] = 1` at both sites. Whether that changes anything
+depends on what `_feasible` already holds. Measured on a full 312-pick Fourth and Forever board,
+8 samples spanning the draft:
+
+```
+ picks  seat   rows  _feasible==0    ==1   BINDS?
+     0     1   1119             0   1119   no (uniform column)
+    60    12   1059             0   1059   no (uniform column)
+   120     1    999             0    999   no (uniform column)
+   180    12    939             0    939   no (uniform column)
+   240     1    879             0    879   no (uniform column)
+   288     1    831             0    831   no (uniform column)
+   300    12    819             0    819   no (uniform column)
+   311     1    808             0    808   no (uniform column)
+```
+
+**`_feasible == 0` occurs zero times.** The mutation sets a column to the value it already had,
+and sorting by a uniform column is a no-op with or without it. The suite did not fail to catch a
+change; there was no change. `#245`'s rule is what caught this — an instrument reporting
+"NOTHING DEFENDS THIS" about a code path that never executes is a broken instrument.
+
+`fills_required_slot` is defined as `_feasible == 0`, so on this league that observable is
+never True either.
+
+### What this actually says, and what it does NOT
+
+- **NOT** that `feasibility_first` is undefended. The mutation never tested it.
+- **NOT** that `feasibility_first` never binds anywhere. ONE league, ONE control-driven board.
+  F&F is 26 rounds against 10 startable slots plus taxi and IR — enormous slack, and a backstop
+  that never binds there is plausibly correct rather than broken. The place it would bind is a
+  SHORT draft with tight slots, which this measurement does not cover.
+- **It does** mean `#164`'s dissolution of the `#154`/`#155`/`#114` family — which rests on every
+  seat filling its lineup — is not evidenced by this backstop on this league. Lineups fill here
+  for some other reason. Whether the backstop carries that claim anywhere is unmeasured.
+
+### The repair the harness needs before it is run again
+
+A mutation is only a test of the suite if the mutated path EXECUTES and its output CHANGES.
+Neither was checked. The harness must, per mutation: (1) verify the mutant imports and builds a
+board without raising, so an arity or type error cannot be scored as a catch; (2) verify the
+mutated quantity is non-uniform on the fixture, so an inert path cannot be scored as a survival.
+Until both hold, a verdict means nothing.
+
+### The final-pick measurement (owner's ruling), which DID land
+
+`evidence/horizon_dark/final_pick_board.py`, Fourth and Forever, Draft Room pricing:
+
+```
+OPENING BOARD    picks made=0    seat 1    1119 rows   floors: RB, TE, WR      basis measured/unavailable
+pick 301 of 312  picks made=300  seat 12    819 rows   floors: QB, RB, TE, WR  basis imputed/measured
+pick 312 of 312  picks made=311  seat 1     808 rows   floors: NONE            basis unavailable
+after the draft  picks made=312  nobody     807 rows   floors: NONE            basis unavailable
+```
+
+**The dark state is a REAL TURN, not a phantom.** Pick 312 has seat 1 on the clock and 808 rows
+on the board, and `waiting_cost` is absent on every one of them (against 181 of 819 one round
+earlier). So it is not the case that darkness only arrives once the draft is over.
+
+It is also exactly ONE pick in 312, in the last round — the owner's reading, that carrying a
+curve at round 26 is a far smaller sin than at round 11, is supported: the affected pick is a
+handcuff-or-dart slot, and it is one of them. The absence contract is working correctly there
+(`basis: unavailable`, `#166`'s conditioning holding); the question is only whether a labelled
+carried floor beats an honest absence on that single turn.
