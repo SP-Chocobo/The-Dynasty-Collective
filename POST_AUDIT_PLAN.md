@@ -7594,3 +7594,71 @@ than being withdrawn.
 I also suspected this was a live app defect and **was wrong**: `app.py` sets `draft_rounds` from
 Sleeper's own `settings.rounds`, which is better than any derivation from roster shape. Recorded
 because a wrong suspicion is worth as much as a right one to whoever retraces this.
+
+---
+
+# #247 / #248 — the freeze picture, re-measured
+
+Two runs landed together and they move the picture in opposite directions. Recorded together
+because reading either alone gives the wrong impression of where this engine stands.
+
+## #248 — the deficit that framed everything is STALE, and the reversal is one flex slot
+
+Pre-registered three-arm cut, one process, one code version, rounds matched:
+
+```
+A  fixture roster + fixture scoring     4 of 12   -0.28%
+B  fixture roster + F&F scoring         4 of 12   -0.61%     rulebook moved alone
+C  F&F roster     + F&F scoring        10 of 12   +1.04%     reproduces #245 to the cent
+```
+
+**A → B: the rulebook does nothing.** That is the environment `evidence/rulebook_ground_truth/`
+measured as paying four real starters 15.7% differently, confirmed to the cent against the live
+app. It is a real difference and it does not drive this verdict.
+
+**B → C: the roster shape does all of it.** And the two shapes differ by one startable slot —
+`FLEX 2` vs `FLEX 3`, identical at every named position and at superflex. A flex slot is where
+surplus positional depth becomes startable, and depth is what the engine buys and the control
+does not.
+
+**`#205`'s headline is stale evidence.** Its 1-of-68 at −5% to −11% came from commit `8cee942`,
+190 commits back, including `#216` — which changed how flex capacity reaches the board. Arm A is
+that same format today: **4 of 12, −0.28%**. It was never wrong; it describes a different
+codebase. Across every shape tested, engine and control now sit within ~1%.
+
+My own `expect` string on arm A predicted it would reproduce `1/12, −5.03%`. That expectation was
+misconceived before the run started, and the skill rule it violates — *never compare a fresh run
+against a saved baseline from different code* — is exactly why arm A was built as a control
+rather than trusted as a memory.
+
+## #247 — and the blocker that was called dissolved is not
+
+`BATTERY_2026-09-12_scoring_aware_full_99f9f76` returned two chairs unable to field a legal
+lineup. Root cause is exact and is not a bug in the backstop: `feasibility_first` protects
+DEDICATED slots only, on the stated premise that *"a flex slot is fillable from several
+positions, so it is not at risk"*. True until the roster owns no spare of **any** of them.
+
+Seat 5 of `8T_standard` drafted **eight quarterbacks in a one-QB league**. Every named slot was
+filled, so `unfilled == 0` and the backstop was a no-op for the whole draft; then the flex solve
+ran out of eligible bodies.
+
+**And the audit is a lower bound by a factor of nine.** Across all four 1QB standard arms:
+
+| | |
+|---|---:|
+| seats measured | 44 |
+| ending with a run of 5+ consecutive same-position picks | **18 (41%)** |
+| flagged by the audit | **2** |
+
+10T and 12T hoard as hard as the flagged arms and are flagged zero times, because their seats
+hoard onto a flex-ELIGIBLE position. Every run begins the pick after dedicated starters fill.
+A seat enters an absorbing state and does not leave it.
+
+## Net effect on the gates
+
+- **Gate 1** — delivered.
+- **Gate 2** — substantially defused *as posed*. It was framed around a 5–11% trade that no longer
+  reproduces. The underlying question is unchanged and still unratified; what changed is that it
+  is no longer being decided against a large measured deficit.
+- **`#247` is now the only measured drafting failure**, and the only thing here that blocks a
+  freeze on the evidence.
