@@ -8231,3 +8231,72 @@ curve at round 26 is a far smaller sin than at round 11, is supported: the affec
 handcuff-or-dart slot, and it is one of them. The absence contract is working correctly there
 (`basis: unavailable`, `#166`'s conditioning holding); the question is only whether a labelled
 carried floor beats an honest absence on that single turn.
+
+## #255 MEASURED: the unpriced carry NO observed dimension — the bracketing question does not apply, and ORDER LAST is correct here
+
+The owner's framing, by example: players grading `70/112/26` and `68/107/24` bracket a third at
+`69/109/???`, so the missing metric is constrained rather than unknown — and the engine should
+place him on evidence rather than sorting him last because `_priced == False`. The plan was a
+bracketing holdout to test whether that generalises across the population.
+
+**Measured first, and it changes the question.** F&F board, Draft Room pricing, 1119 rows:
+
+```
+metric            priced (481)   UNPRICED (638)
+proj_3yr                   256                0
+trade_value                256                0
+projection                 256                0
+sleeper_points             469                0
+
+unpriced carrying at least one correlate: 0 of 638
+```
+
+An unpriced player here is not `69/109/???`. He is `???/???/???`. "Unpriced" in this pool means
+**no vendor row AND no Sleeper stat line** — the only two things that can produce any number —
+so there is no observed dimension to bracket on. A holdout run on the priced population would
+have produced a confident coverage figure about a question the unpriced population cannot ask.
+
+### What this settles
+
+- **ORDER LAST is not an arbitrary 404 for these rows.** The engine is not declining to use
+  information it holds; it holds none. The owner's standard — an informed placement rather than
+  an error-404 one — is *met* for tier 3, because "no evidence exists" IS the informed answer.
+- **What is still wrong is only that the board cannot say so.** "No evidence of any kind exists
+  for this player" and "sorts last" are different claims, and only the first points at a remedy.
+  That is a vocabulary gap of the `#187`/`#190` family, not an ordering defect.
+- **The bracketing holdout is not worth building as designed** and should not be re-proposed.
+
+### The pool is THREE tiers, not two — and the middle one is new
+
+```
+256  vendor projection + proj_3yr + trade_value + sleeper_points   fully covered
+225  sleeper_points ONLY                                           priced by the league's own scoring
+638  nothing                                                       no evidence of any kind
+```
+
+The middle tier exists *because of* `#253`'s wiring: those are players the vendor does not cover
+whom the league's own scoring can still price. Before the repair they were tier 3 on three of
+four live surfaces.
+
+### The actionable remainder: a join gap, not an ordering problem
+
+```
+UNPRICED players findable by name in the KeepTradeCut frame:  50 of 638
+priced   players findable by name in the KeepTradeCut frame: 379 of 481
+KTC rows available: 499
+```
+
+**50 of the 638 have material that exists and is not joined** — rank, tier, age, positional rank
+sitting in `merger.external_values`. For those 50, and only those, the owner's question becomes
+answerable: a single monotone correlate is enough for a *relative* placement even though it is
+not a price, which is `#165`'s ordering-vs-pricing distinction applied to a named population.
+That is SUPPLY work of the `#210`/`#49` family.
+
+### What this does NOT establish
+
+- **Not that 588 players are worthless.** It establishes that this repository holds no evidence
+  about them. A source that covered them would change the answer entirely.
+- **Not that the 50 can be placed.** Only that material exists for them. Whether one correlate
+  orders them reliably against the priced tail is unmeasured, and is the narrow live question.
+- **Nothing about other leagues.** One league, one board. The tier sizes are league-specific;
+  the mechanism (no vendor row and no stat line ⇒ no dimensions) is not.

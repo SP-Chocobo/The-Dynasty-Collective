@@ -25,8 +25,10 @@ verifying six targeted modules (183 tests, all green). The full suite then faile
 `test_assertion_floors` — a file I had not thought to run. Targeted runs are for iterating;
 **the full suite is what licenses a push.** Background it and wait.
 
-**Budget it from a measurement that carries its own date.** The last one: **2862 tests in
-~1170-1210s** at `3e9c074` (2026-09-12). This file previously said "~800-870s" with no commit
+**Budget it from a measurement that carries its own date.** The last one: **2918 tests in
+921.6s** at `be84fee` (2026-09-13) — the previous entry said 2862 tests in ~1170-1210s at
+`3e9c074` (2026-09-12), so the suite GREW and got FASTER in a day. Neither direction is safe to
+extrapolate; re-measure rather than scaling the old figure. This file previously said "~800-870s" with no commit
 attached; the suite grew past it and the figure went stale without anything failing, which is
 how a `timeout` gets set too low and kills a run that was fine. If the number here is older than
 your work, re-measure it rather than trusting it — and write the new one down with its commit.
