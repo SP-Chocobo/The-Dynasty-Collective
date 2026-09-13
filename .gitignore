@@ -44,3 +44,9 @@ evidence/roster_shape/ff_rulebook/ktc_sign_probe.pdf
 # staging family with a new cause. Same class as the store_io sidecars above: a runtime artifact
 # of a discipline, never content.
 *.py.confirm_backup
+
+# Local working directory for background-run logs (battery stdout, probe scratch). Transient
+# machine state in the same class as the lock sidecars above -- never content. The session
+# scratchpad is preferred, but a long background run holds an open fd here, so the directory
+# has to survive the run it is logging.
+scratchpad/
