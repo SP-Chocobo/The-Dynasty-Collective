@@ -8300,3 +8300,67 @@ That is SUPPLY work of the `#210`/`#49` family.
   orders them reliably against the priced tail is unmeasured, and is the narrow live question.
 - **Nothing about other leagues.** One league, one board. The tier sizes are league-specific;
   the mechanism (no vendor row and no stat line ⇒ no dimensions) is not.
+
+## #256 (step 4): the sweep for findings measured against a board that no longer exists — FOUR, named
+
+`#253` moved the live board from **256 priced rows to 481** on three of four surfaces. A finding
+measured against the 256-row board is not wrong; it describes a board this repository no longer
+builds, which is the same species as `#248`'s stale `#205` deficit. Found the way that one was:
+by asking the instruments, not by remembering. `evidence/pricing_sweep/unpriced_instrument_sweep.py`.
+
+### The result
+
+```
+tracked .py files building a board                       86
+live surface, DERIVED from app.py's own imports          35 modules
+
+PRODUCTION with an unpriced board                         0     <- #253 closed it
+UNIT TESTS with unpriced boards                          22 files, 194 calls   (not step-4 work)
+INSTRUMENTS that may rest on the old board               15
+  ...of those the register actually CITES                 4
+```
+
+**The four to re-measure or annotate:**
+
+| instrument | unpriced calls |
+|---|---|
+| `run_216_review_probe.py` | 3 of 3 |
+| `run_need_bonus_ablation.py` | 2 of 2 |
+| `run_risk_adj_softening_measurement.py` | 2 of 2 |
+| `run_216_fix_probe.py` | 1 of 2 |
+
+The other 11 suspects are uncited — no published finding rests on them, so there is nothing to
+re-measure until one does.
+
+**`PRODUCTION = 0` is an INDEPENDENT confirmation of `#253`.** This sweep and
+`test_live_board_pricing` reach the same conclusion by different routes: the test reads `app.py`
+for a fixed pair of builder names, this walks every tracked file and derives the live set from
+`app.py`'s import list. Two instruments agreeing is worth more than either alone.
+
+### Two defects in this sweep's own first draft, both caught before any number was reported
+
+1. **It hand-listed the live surface and got it wrong** — naming `draft_counterfactual`,
+   `roster_diagnostics` and `prediction_record` as production when `app.py` imports none of
+   them. That is `#126`'s failure (one home for a vocabulary, derived, never hand-listed)
+   committed *inside* an instrument written to audit `#126`-shaped problems. Now derived from
+   `app.py`'s own import list, which cannot go stale.
+2. **It counted unit tests as suspect findings**, reporting **34** candidates where the real
+   number is **15**. A unit test building an unpriced board is usually correct — it exercises a
+   function against a synthetic fixture and publishes nothing.
+
+### What this sweep CANNOT see, stated because it bounds every number above
+
+It detects whether `sleeper_projections` is **passed**, not whether the value is non-`None`. A
+caller threading a nullable variable reads as priced. Verified: **zero** board-building calls
+pass a literal `None`, so the production count is sound today. But a probe whose unpriced arm is
+its own experiment (`carried_rate_probe.py`) is invisible to a syntax-tree scan by construction.
+An exemption list for that case was written and then **removed** — it stayed empty, and an
+exemption nobody needs rots into a false claim about coverage.
+
+### What this does NOT establish
+
+- **Not that the four findings are wrong.** Only that their evidence predates the pricing repair.
+  Each needs a re-run or a dated annotation; which, is per finding.
+- **Not that the 11 uncited instruments are safe to run.** They are safe to *ignore* until
+  something cites them.
+- **Nothing about the 194 unpriced test calls.** They were classified, not audited.
