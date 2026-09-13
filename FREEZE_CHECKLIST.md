@@ -341,10 +341,27 @@ This is the decision the points-vs-asset result above forces. It is not code wor
 
 These reach `final_score` or the candidate set, so they are drafting behaviour proper.
 
-- [ ] **#231 / #232 / #222 — upside mode implements half its stated intent and inverts the other
-      half.** The mode boundary causes 63% of the TE excess, measured and causally active. The
-      positional handicap is exact and derived (TE +68.58 at the flex). This is the largest
-      unactioned behavioural finding in the register.
+- [ ] **#231 / #232 / #222 — the mode boundary re-prices the flex, and what a repair would buy is
+      SMALLER than this line used to claim.** Three corrections, all from POST_AUDIT_PLAN, all of
+      which this line carried in their superseded form until `#260` checked it:
+      - ~~"upside mode implements half its stated intent and inverts the other half"~~ — **20th
+        withdrawal** (`POST_AUDIT_PLAN` §6714). The facts stand; the framing weighed one
+        uncommitted comment against the founding architecture, four contract statements and a
+        pinned test. The code was not violating an intent — the constant's comment described the
+        code wrongly, and the comment has since been corrected in place.
+      - ~~"TE +68.58 at the flex"~~ as a flat figure — **21st withdrawal** (§6644). The charge is
+        recomputed at every board state because the levels drain: TE **68.58 opening / 60.03 at
+        pick 100 / 89.14 at pick 150**; WR **0.00 at every state measured**. 68.58 was the
+        opening-board value, and the boundary sits nowhere near the opening board.
+      - ~~"the largest unactioned behavioural finding"~~ — §6764 rules the opposite: **"The TE
+        excess is not removable by restoring roster awareness in the back half."** `#233` measured
+        that the counterweight only DEFERS — 8 of 8 players it defers are harvested by the upside
+        half, composition conserved 101 = 101. Both roster-aware arms overshoot WR to 42.0 against
+        a human 37.1. **"The live question is #229's — cross-position comparability below starter
+        depth — not the mode switch."**
+      What remains genuinely open is the DECISION beneath it, not the repair: the transition
+      concept is undefined (`#223`/`#225` below), and round 15 is a global calendar index standing
+      in for a per-seat roster state the engine can measure and never has.
 - [ ] **#223 / #225** — the mode transition concept is genuinely missing, for lack of a decision.
       The TE decision at the boundary is a real near-tie on (points − displaced).
 - [ ] **#153** — two clamps, not one: the 4WR collapse is the flex-share clamp, not `NEED_BONUS_MAX`.
