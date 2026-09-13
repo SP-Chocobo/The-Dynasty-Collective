@@ -85,9 +85,14 @@ MUTATIONS = [
      'scored["fills_required_slot"] = scored["_feasible"] == 0\n{indent}scored["_feasible"] = 1',
      "a chair could finish unable to field a legal lineup and nothing would say so"),
 
+    # ARITY-PRESERVING BY CONSTRUCTION. The first version of this dropped "_feasible" from `by`
+    # and left `ascending` at three entries, so pandas raised before a board existed and every
+    # board-touching test errored -- scored "caught" while testing nothing (#254). Substituting a
+    # CONSTANT column keeps three keys and three directions, changes nothing but whether
+    # feasibility participates in the ordering, and leaves final_score's own direction alone.
     ("board order ignores feasibility", "draft_room.py",
      'results = scored.sort_values(["_feasible", "final_score", "player_id"],',
-     'results = scored.sort_values(["final_score", "player_id"],',
+     'results = scored.assign(_nofeas=1).sort_values(["_nofeas", "final_score", "player_id"],',
      "feasibility becomes advisory -- the #154 backstop stops reaching the pick"),
 ]
 
@@ -136,14 +141,30 @@ import data_merger as dm, draft_room as dr, draft_battery as db, run_draft_batte
 merger = dm.DataMerger()
 players_db, _ = rdb.build_players_db_from_capture()
 season = rdb.season_projections_from_capture()
-league = dr.build_mock_league(teams=12, superflex=True, scoring="ppr", te_premium=False,
-                              dynasty=True, base_scoring=rdb.scoring_settings_from_capture())
-league["draft_rounds"] = len(league["roster_positions"])
+# A SHORT draft with NO SLACK: rounds == startable slots. feasibility_first binds when
+# `picks_remaining <= unfilled`, which is a property of a ROSTER STATE, not of a league -- so
+# the fixture starves one.
+ROSTER = ["QB", "RB", "RB", "WR", "WR", "TE", "FLEX"]
+league = {"roster_positions": ROSTER, "total_rosters": 12, "settings": {"type": 2},
+          "scoring_settings": rdb.scoring_settings_from_capture(), "draft_rounds": len(ROSTER)}
 merger.set_league_format(db.league_format_hint(league))
-board = dr.compute_draft_board(merger, players_db, [], my_roster_id="1", league=league,
+pool = dr.build_available_pool(merger, players_db, set(), dr.league_usable_positions(ROSTER),
+                               sleeper_projections=season,
+                               scoring_settings=league["scoring_settings"],
+                               pool_scope="all", sleeper_basis=dr.SLEEPER_BASIS_SEASON_SUM)
+dr._derive_points_and_source(pool)
+# SIX RUNNING BACKS AND ONE PICK LEFT: four slots the solver cannot fill, so the backstop is
+# live and the board reorders around it.
+rbs = [str(x) for x in pool.loc[pool["position"] == "RB", "player_id"].head(6)]
+picks = [{"pick_no": i + 1, "round": i + 1, "roster_id": "1", "player_id": pid}
+         for i, pid in enumerate(rbs)]
+left = pool[~pool["player_id"].astype(str).isin({p["player_id"] for p in picks})].copy()
+f = dr.feasibility_first(left, picks, players_db, "1", ROSTER, draft_rounds=len(ROSTER))
+board = dr.compute_draft_board(merger, players_db, picks, my_roster_id="1", league=league,
                                sleeper_projections=season,
                                sleeper_basis=dr.SLEEPER_BASIS_SEASON_SUM)
-print(hashlib.sha256(json.dumps(board, sort_keys=True, default=str).encode()).hexdigest())
+digest = hashlib.sha256(json.dumps(board, sort_keys=True, default=str).encode()).hexdigest()
+print(f"{digest} {int((f == 0).sum())} {len(f)}")
 """
 
 
@@ -202,7 +223,16 @@ def main():
     if not ref_ok:
         print(f"REFERENCE BOARD FAILED TO BUILD -- the harness cannot run:\n{ref_err}")
         return 2
-    print(f"reference board fingerprint: {ref_fp[:16]}\n")
+    # THE FIXTURE MUST ACTUALLY EXERCISE THE INVARIANT. The fingerprint line carries the
+    # feasibility census; if it is uniform, feasibility_first is a no-op on this board and every
+    # mutation of it would read INERT forever -- the harness passing itself while testing
+    # nothing, one level up from #254. Fail loudly rather than drift back into that.
+    _digest, zeros, total = ref_fp.split()
+    if not 0 < int(zeros) < int(total):
+        print(f"FIXTURE NO LONGER BINDS: _feasible == 0 on {zeros} of {total} rows. "
+              f"feasibility_first is a no-op here, so no mutation of it can be judged.")
+        return 2
+    print(f"reference board: {_digest[:16]}  backstop binds on {zeros} of {total} rows\n")
 
     for name, filename, anchor, replacement, consequence in MUTATIONS:
         path = pathlib.Path(filename)

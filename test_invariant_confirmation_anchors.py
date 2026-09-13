@@ -138,7 +138,19 @@ class AVerdictIsOnlyAFactAboutTheSuiteWhenTheMutantRanAndChangedSomething(unitte
         would compare against an empty string and every mutation would read as INERT."""
         ok, fingerprint, err = ic._board_fingerprint()
         self.assertTrue(ok, f"reference board failed to build: {err}")
-        self.assertRegex(fingerprint, r"^[0-9a-f]{64}$")
+        self.assertRegex(fingerprint, r"^[0-9a-f]{64} \d+ \d+$")
+
+    def test_the_fixture_actually_exercises_the_invariant(self):
+        """The guard that stops the harness passing itself while testing nothing. The fixture
+        starves a roster -- six RBs, one pick left, four slots the solver cannot fill -- so
+        feasibility_first BINDS and a mutation of it has something to change. Before this, the
+        fixture was an opening board where `_feasible` was uniformly 1 and every mutation of it
+        read INERT forever (#254)."""
+        ok, fingerprint, _ = ic._board_fingerprint()
+        self.assertTrue(ok)
+        _digest, zeros, total = fingerprint.split()
+        self.assertGreater(int(zeros), 0, "the backstop does not bind; no mutation can be judged")
+        self.assertLess(int(zeros), int(total), "every row prioritised is not a reordering")
 
     def test_the_fingerprint_is_stable_across_calls(self):
         """The comparison is only meaningful if an UNCHANGED tree fingerprints identically.
