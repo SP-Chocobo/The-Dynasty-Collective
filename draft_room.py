@@ -3471,6 +3471,8 @@ def build_mock_league(*, teams: int, superflex: bool, scoring: str, te_premium: 
 def simulate_opponent_picks(
     picks: list[dict], pick_order: list, my_roster_id, num_teams: int,
     merger: DataMerger, players_db: dict[str, dict], league: dict, *, pool_scope: str = "all",
+    sleeper_projections: Optional[dict[str, dict]] = None,
+    sleeper_basis: str = SLEEPER_BASIS_WEEKLY,
 ) -> list[dict]:
     """Auto-draft every pick between the current spot and the user's next turn (or the end of
     the draft) -- each one takes that roster's own top team_acquisition_value board pick, the
@@ -3488,7 +3490,16 @@ def simulate_opponent_picks(
         on_clock = str(pick_order[idx])
         if on_clock == str(my_roster_id):
             break
-        board = compute_draft_board(merger, players_db, picks, on_clock, league, pool_scope=pool_scope)
+        # #253: PRICED THE WAY THE PICKER'S OWN BOARD IS. Omitting sleeper_projections here
+        # left every auto-drafted rival choosing from a vendor-only board while the human's
+        # board beside it was scoring-aware -- 256 priced rows against 481 on the same league,
+        # measured. That is not a smaller board, it is a DIFFERENT ranking, so the rivals were
+        # drafting against a rulebook nobody in the league plays under. Same reasoning as
+        # draft_strategy's rival boards (#214/F2), which already price this way.
+        board = compute_draft_board(merger, players_db, picks, on_clock, league,
+                                    pool_scope=pool_scope,
+                                    sleeper_projections=sleeper_projections,
+                                    sleeper_basis=sleeper_basis)
         if not board:
             break
         picks.append({

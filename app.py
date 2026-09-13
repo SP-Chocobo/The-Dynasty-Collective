@@ -4886,6 +4886,11 @@ elif main_view == DRAFT_VIEW:
                     md["picks"] = draft_room.simulate_opponent_picks(
                         md["picks"], md["pick_order"], md["my_roster_id"], settings["teams"],
                         merger, players_db, md["league"], pool_scope=st.session_state.mock_draft_pool_scope,
+                        # #253: the mock's rivals price the way the live Draft Room does.
+                        # season_projections is per-player and carries no league, so the synced
+                        # dict is valid against the mock's own scoring_settings unchanged.
+                        sleeper_projections=(snapshot.get("season_projections") or None),
+                        sleeper_basis=draft_room.SLEEPER_BASIS_SEASON_SUM,
                     )
 
             if md["picks"]:
@@ -4960,6 +4965,11 @@ elif main_view == DRAFT_VIEW:
                         merger, players_db, md["picks"][:editing_index], md["pick_order"], editing_index,
                         md["my_roster_id"], md["league"], pick_label=edit_pick_label,
                         pool_scope=st.session_state.mock_draft_pool_scope,
+                        # #253: rebuilding an earlier board must price it the same way the board
+                        # being corrected was priced, or the correction is against a different
+                        # ranking than the pick it is revisiting.
+                        sleeper_projections=(snapshot.get("season_projections") or None),
+                        sleeper_basis=draft_room.SLEEPER_BASIS_SEASON_SUM,
                     )
                 except Exception as exc:  # noqa: BLE001 -- surface, never crash the whole dashboard
                     edit_snap = None
@@ -5014,6 +5024,12 @@ elif main_view == DRAFT_VIEW:
                         mock_snap = pick_synthesis.build_snapshot(
                             merger, players_db, md["picks"], md["pick_order"], current_index, md["my_roster_id"],
                             md["league"], pick_label=mock_pick_label, pool_scope=st.session_state.mock_draft_pool_scope,
+                            # #253: the Mock Draft is a live surface a person drafts against,
+                            # not an offline caller. Without this it built a 256-priced board
+                            # where the Draft Room builds 481 on the same league, and the
+                            # draft-horizon layer went dark from round 10 of 15 as a result.
+                            sleeper_projections=(snapshot.get("season_projections") or None),
+                            sleeper_basis=draft_room.SLEEPER_BASIS_SEASON_SUM,
                         )
                     except Exception as exc:  # noqa: BLE001 -- surface, never crash the whole dashboard
                         mock_snap = None
