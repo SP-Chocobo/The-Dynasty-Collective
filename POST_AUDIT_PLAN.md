@@ -8485,3 +8485,47 @@ given what it was told.
   its own figure rather than inheriting this one.
 - **Not that 77 of 91 axes is sufficient coverage.** The 14 uncovered axes are unexamined; no
   argument has been made that any of them is load-bearing.
+
+## #259 (`#158` verification): eight rulings, not ten — and one was carried incompletely
+
+`#158` asked whether the ratified decisions are carried verbatim into the freeze record. Checked
+rather than assumed, and it earned its place — the answer is no, in three separate ways.
+
+### 1. There are EIGHT, not ten
+
+`FREEZE_CHECKLIST` said *"the ten ratified decisions"*. This document says **"The eight freeze
+rulings"** and lists eight docket cards, ruled 2026-09-06 16:12–16:21 UTC and *"read back from the
+artifact store rather than paraphrased from memory"*. Eight is the sourced figure; ten had no
+basis. Corrected.
+
+### 2. One ruling lost a clause on the way into the record
+
+```
+docket:     #161/#52   Run #52 blind and unbriefed, but UNSCORED
+checklist:  #52 — the blind adversarial pass runs after the freeze and stays unbriefed.
+```
+
+**`UNSCORED` is absent from `FREEZE_CHECKLIST` entirely** — the word appears nowhere in it. Seven
+of eight rulings are carried faithfully; this one is carried two-thirds.
+
+It is not a cosmetic loss. A *scored* blind pass invites tuning toward its rubric, which destroys
+the only unbiased read available — the precise reason `#52` is run last and unbriefed at all.
+Restored, with the reasoning attached so it cannot be dropped again as redundant.
+
+### 3. `#158` is a number collision, the same defect `#160` exists to void
+
+| where | what `#158` means |
+|---|---|
+| `POST_AUDIT_PLAN` §3959 | *"an unpriced leader crashes the Draft Room"* — a repaired defect, cited by `#173` |
+| `FREEZE_CHECKLIST` / task tracker | *"confirm the ratified decisions are carried verbatim"* |
+
+Two unrelated items under one number, exactly as `CONST-A1/A2/A3` collided with `BLIND-A1`. Both
+are recorded rather than renumbered: renumbering breaks every existing citation, and `#173`
+already cites the first meaning by number.
+
+### What this does NOT establish
+
+- **Not that the other seven are carried *verbatim*.** They are carried *faithfully* — same
+  substance, checklist phrasing. Only `#52`'s was materially incomplete.
+- **Not that the docket is the only source of rulings.** Rulings made in session since
+  2026-09-06 (`#251`, `#252`, `#257`, `#258`) are recorded here, not on that docket.

@@ -393,7 +393,12 @@ only. The items below feed observables and the debate layer, so they degrade wha
       engine — uploads reach no price and no pick.
 - [x] **#98** — RATIFIED (b): allowlist what feeds the composite, prose stays free.
       `source_policy.py` already implements it (`#132`); the ruling is recorded, not built. (`#257`)
-- [ ] **#158** — confirm the ten ratified decisions are carried verbatim into the freeze record.
+- [x] **#158** — DONE (`#259`), and it found a dropped ruling. There are **EIGHT** docket
+      rulings, not ten (POST_AUDIT_PLAN: *"The eight freeze rulings"*, read back from the
+      artifact store). Seven were carried; `#161/#52`'s **UNSCORED** was not, and is now
+      restored above. **This item's number also COLLIDES**: POST_AUDIT_PLAN's `#158` is
+      *"an unpriced leader crashes the Draft Room"*, a repaired defect cited by `#173` —
+      the same two-namespaces-one-number defect `#160` exists to void.
 
 ## GATE 6 — Blocked external: accept at freeze, or the freeze waits
 
@@ -416,7 +421,11 @@ Carried so nobody re-litigates them at freeze time: the UI track (**#181**, **#3
 3. Gates 3 and 4 — repair what the ruling licenses.
 4. Re-run Gate 1 once more; suite green; **#53** reconciliation, owner's sole authority.
 5. Cut the freeze marker (a branch — tag refs are 403 here, per #135).
-6. **#52** — the blind adversarial pass runs **after** the freeze and **stays unbriefed**.
+6. **#52** — the blind adversarial pass runs **after** the freeze, **stays unbriefed**, and
+   is **UNSCORED**. The docket ruled all three (`#161/#52`, 2026-09-06); this line carried
+   only the first two until `#259` checked it. Unscored is not a detail: a scored blind
+   pass invites tuning toward its rubric, which is the one thing an unbiased read cannot
+   survive.
    Briefing it destroys the only unbiased read available.
 
 Per **#162**: evidence before repair, repair before freeze, freeze before blind audit. A clean
