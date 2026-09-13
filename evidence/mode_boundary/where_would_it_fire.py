@@ -98,16 +98,19 @@ def main() -> int:
             board = dr.compute_draft_board(
                 merger, players_db, picks[:i], my_roster_id=SEAT, league=league,
                 sleeper_projections=season, sleeper_basis=dr.SLEEPER_BASIS_SEASON_SUM)
-            if board is None or board.empty or "bpa" not in board.columns:
-                turns.append({"round": p["round"], "max_bpa": None, "n_above": None})
-                continue
-            bpa = board["bpa"].dropna()
+            # compute_draft_board returns a LIST OF RECORDS (draft_room.py:3401
+            # `_records_with_normalized_nan`), not a DataFrame. The first draft of this probe
+            # called .empty/.columns on it and crashed -- assumed shape, did not check.
+            rows = board or []
+            bpa = [r["bpa"] for r in rows
+                   if isinstance(r, dict) and r.get("bpa") is not None]
             # #240/skill: count `is not None` and `> 0` SEPARATELY. "nothing measurable" and
             # "measured at or below zero" are different facts and must not collapse.
             turns.append({"round": p["round"],
-                          "max_bpa": round(float(bpa.max()), 2) if len(bpa) else None,
-                          "n_priced": int(len(bpa)),
-                          "n_above": int((bpa > 0).sum()) if len(bpa) else 0})
+                          "max_bpa": round(float(max(bpa)), 2) if bpa else None,
+                          "n_rows": len(rows),
+                          "n_priced": len(bpa),
+                          "n_above": sum(1 for v in bpa if v > 0)})
 
         report[label] = {"teams": teams, "rounds": rounds, "turns": turns}
         crossing = next((t["round"] for t in turns
