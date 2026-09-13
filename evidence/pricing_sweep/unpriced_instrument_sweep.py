@@ -34,6 +34,16 @@ arm IS its experiment) is invisible to a syntax-tree scan by construction. An ex
 such cases was written and then removed: it stayed empty, and an exemption nobody needs is an
 exemption that rots into a lie about coverage.
 
+SECOND BLIND SPOT, undisclosed until `#260` and responsible for two of `#256`'s four named
+instruments. A call that splats a pre-built dict -- `compute_draft_board(m, db, picks, **kw)` --
+carries `kw.arg is None` for that entry, so the old `if kw.arg` filter dropped it and the call
+reported an EMPTY kwarg set. Empty read as unpriced. `run_216_review_probe.py` (3 calls) and
+`run_216_fix_probe.py` (1 call) both build `kw = dict(..., sleeper_projections=season, ...)` and
+splat it; both were published as resting on the old board while passing pricing on every call.
+The scan still cannot follow a dict into a splat -- that limit is real and unfixable statically
+-- but such calls now report INDETERMINATE in their own section instead of being counted as
+absent. A blind spot stated is a bound; a blind spot scored as a measurement is a false finding.
+
 Static only: reads syntax trees, runs no engine, changes nothing.
 """
 
@@ -78,8 +88,28 @@ def tracked_python() -> list[Path]:
     return [ROOT / p for p in out.split("\0") if p]
 
 
-def board_calls(path: Path) -> list[tuple[str, int, bool]]:
-    """(builder, line, passes_pricing) for every board-building call in this file."""
+PRICED = "priced"
+UNPRICED = "unpriced"
+INDETERMINATE = "indeterminate"
+
+
+def board_calls(path: Path) -> list[tuple[str, int, str]]:
+    """(builder, line, verdict) for every board-building call in this file.
+
+    THREE-STATE, and the third state is the whole point. This returned a bool until #260,
+    and the bool was a lie of exactly the kind this repo forbids everywhere else: a call
+    site that splats a pre-built dict (`dr.compute_draft_board(m, db, picks, **kw)`) has
+    `kw.arg is None` for that entry, the `if kw.arg` filter drops it, and the call read as
+    an EMPTY kwarg set -- indistinguishable from a caller that genuinely omitted pricing.
+    Two of #256's four named findings were that artifact: `run_216_review_probe.py` and
+    `run_216_fix_probe.py` both build `kw = dict(..., sleeper_projections=season, ...)` and
+    splat it, and both were reported unpriced while passing the argument on every call.
+
+    A syntax-tree scan cannot follow a dict into a splat. That is a real limit, and the
+    honest report of a real limit is INDETERMINATE -- never `unpriced`. The absence
+    contract the engine obeys (EXCLUDE / PROPAGATE / ORDER LAST, and never 0.0 for
+    unmeasured) applies to the instrument that polices it.
+    """
     try:
         tree = ast.parse(path.read_text(encoding="utf-8"))
     except (SyntaxError, UnicodeDecodeError):
@@ -90,23 +120,36 @@ def board_calls(path: Path) -> list[tuple[str, int, bool]]:
             continue
         func = node.func
         name = func.attr if isinstance(func, ast.Attribute) else getattr(func, "id", None)
-        if name in BUILDERS:
-            kwargs = {kw.arg for kw in node.keywords if kw.arg}
-            found.append((name, node.lineno, PRICING in kwargs))
+        if name not in BUILDERS:
+            continue
+        named = {kw.arg for kw in node.keywords if kw.arg}
+        splatted = any(kw.arg is None for kw in node.keywords)
+        if PRICING in named:
+            verdict = PRICED
+        elif splatted:
+            verdict = INDETERMINATE      # a dict went in; this scan cannot see inside it
+        else:
+            verdict = UNPRICED
+        found.append((name, node.lineno, verdict))
     return found
 
 
 def main() -> int:
     live = live_modules()
     prod_hits, instrument_hits, test_hits, clean = [], [], [], []
+    indeterminate: list[tuple[str, int, list]] = []
     for path in tracked_python():
         rel = path.relative_to(ROOT).as_posix()
         calls = board_calls(path)
         if not calls:
             continue
-        unpriced = [(b, ln) for b, ln, ok in calls if not ok]
+        unpriced = [(b, ln) for b, ln, v in calls if v == UNPRICED]
+        unknown = [(b, ln) for b, ln, v in calls if v == INDETERMINATE]
+        if unknown:
+            indeterminate.append((rel, len(calls), unknown))
         if not unpriced:
-            clean.append((rel, len(calls)))
+            if not unknown:
+                clean.append((rel, len(calls)))
             continue
         row = (rel, len(calls), unpriced)
         if path.name in live:
@@ -140,6 +183,15 @@ def main() -> int:
     print("    expected and usually correct -- synthetic fixtures, not published findings")
     print(f"    {sum(len(u) for _, _, u in test_hits)} unpriced calls across "
           f"{len(test_hits)} files; not step-4 work")
+
+    print(f"\n=== INDETERMINATE: pricing passed via **kwargs, unreadable by a syntax scan  "
+          f"({len(indeterminate)}) ===")
+    print("    NOT a finding. A dict splat hides its keys from ast; reporting these as")
+    print("    `unpriced` is what produced 2 of #256's 4 named instruments (#260).")
+    for rel, total, unknown in sorted(indeterminate):
+        print(f"  {rel}: {len(unknown)} of {total} indeterminate -> {unknown}")
+    if not indeterminate:
+        print("  (none)")
 
     print(f"\n=== files ALREADY fully scoring-aware  ({len(clean)}) ===")
     for rel, total in sorted(clean):
