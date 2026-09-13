@@ -58,8 +58,8 @@
       }
     }
   },
-  "complete": false,
-  "commit": "c22db7e",
+  "complete": true,
+  "commit": "760c49f",
   "commits_present": [
     "1770ef2",
     "466c010"
@@ -68,23 +68,23 @@
     "8T_standard",
     "8T_standard_SF"
   ],
-  "formats": 32,
-  "independent_formats": 31,
+  "formats": 34,
+  "independent_formats": 33,
   "format_axes": {
-    "arms": 32,
+    "arms": 34,
     "axes": {
       "scoring": {
-        "half_ppr": 8,
-        "ppr": 16,
+        "half_ppr": 9,
+        "ppr": 17,
         "standard": 8
       },
       "superflex": {
-        "False": 20,
-        "True": 12
+        "False": 21,
+        "True": 13
       },
       "te_premium": {
-        "False": 29,
-        "True": 3
+        "False": 30,
+        "True": 4
       }
     },
     "constant_axes": []
@@ -95,9 +95,9 @@
       "duplicates": "12T_ppr"
     }
   ],
-  "picks": 5244,
+  "picks": 5652,
   "total_findings": 0,
-  "seconds": 17997.3,
+  "seconds": 19220.8,
   "results": [
     {
       "label": "8T_standard",
@@ -7822,6 +7822,515 @@
       "teams": 12,
       "rounds": 14,
       "seconds": 216.3,
+      "produced_at_commit": "466c010",
+      "carried_forward": false
+    },
+    {
+      "label": "CAPTURE_fourth_and_forever",
+      "picks": 312,
+      "rosters": 12,
+      "findings": [],
+      "shape": {
+        "1": {
+          "RB": 5,
+          "WR": 12,
+          "QB": 4,
+          "TE": 5
+        },
+        "2": {
+          "RB": 8,
+          "QB": 2,
+          "WR": 8,
+          "TE": 8
+        },
+        "3": {
+          "RB": 7,
+          "QB": 2,
+          "WR": 10,
+          "TE": 7
+        },
+        "4": {
+          "RB": 7,
+          "QB": 6,
+          "TE": 9,
+          "WR": 4
+        },
+        "5": {
+          "WR": 5,
+          "QB": 2,
+          "RB": 9,
+          "TE": 10
+        },
+        "6": {
+          "WR": 12,
+          "TE": 7,
+          "RB": 5,
+          "QB": 2
+        },
+        "7": {
+          "TE": 8,
+          "QB": 4,
+          "RB": 7,
+          "WR": 7
+        },
+        "8": {
+          "RB": 8,
+          "QB": 2,
+          "WR": 10,
+          "TE": 6
+        },
+        "9": {
+          "TE": 10,
+          "RB": 8,
+          "QB": 2,
+          "WR": 6
+        },
+        "10": {
+          "RB": 7,
+          "QB": 2,
+          "TE": 8,
+          "WR": 9
+        },
+        "11": {
+          "QB": 2,
+          "RB": 8,
+          "WR": 5,
+          "TE": 11
+        },
+        "12": {
+          "WR": 7,
+          "QB": 2,
+          "RB": 5,
+          "TE": 12
+        }
+      },
+      "margins": {
+        "picks_measured": 312,
+        "zero_margin_picks": 7,
+        "zero_margin_share": 0.022435897435897436,
+        "zero_margin_by_round": {
+          "8": 1,
+          "16": 5,
+          "23": 1
+        },
+        "picks_by_round": {
+          "1": 12,
+          "2": 12,
+          "3": 12,
+          "4": 12,
+          "5": 12,
+          "6": 12,
+          "7": 12,
+          "8": 12,
+          "9": 12,
+          "10": 12,
+          "11": 12,
+          "12": 12,
+          "13": 12,
+          "14": 12,
+          "15": 12,
+          "16": 12,
+          "17": 12,
+          "18": 12,
+          "19": 12,
+          "20": 12,
+          "21": 12,
+          "22": 12,
+          "23": 12,
+          "24": 12,
+          "25": 12,
+          "26": 12
+        },
+        "median_margin": 1.04
+      },
+      "qualifiers": {
+        "replacement_basis": {
+          "live_starter_demand": 147,
+          "predraft_anchor": 133,
+          "startable_floor": 32
+        },
+        "picks_with_growth_measured": 143,
+        "picks_with_growth_above_zero": 4,
+        "max_growth": 15.7
+      },
+      "regimes": {
+        "decisive": 72,
+        "contested": 240
+      },
+      "strength": {
+        "per_roster": {
+          "1": {
+            "starter_value": 830.82,
+            "total_value": -538.49,
+            "bench_value": -1369.31,
+            "unpriced_players": 0,
+            "forced_negative_starters": 1,
+            "slots_filled": 10,
+            "starting_slots": 10
+          },
+          "10": {
+            "starter_value": 798.15,
+            "total_value": -669.22,
+            "bench_value": -1467.37,
+            "unpriced_players": 0,
+            "forced_negative_starters": 0,
+            "slots_filled": 10,
+            "starting_slots": 10
+          },
+          "11": {
+            "starter_value": 833.17,
+            "total_value": -543.4,
+            "bench_value": -1376.57,
+            "unpriced_players": 0,
+            "forced_negative_starters": 0,
+            "slots_filled": 10,
+            "starting_slots": 10
+          },
+          "12": {
+            "starter_value": 858.26,
+            "total_value": -565.28,
+            "bench_value": -1423.54,
+            "unpriced_players": 0,
+            "forced_negative_starters": 0,
+            "slots_filled": 10,
+            "starting_slots": 10
+          },
+          "2": {
+            "starter_value": 859.9,
+            "total_value": -483.85,
+            "bench_value": -1343.75,
+            "unpriced_players": 0,
+            "forced_negative_starters": 1,
+            "slots_filled": 10,
+            "starting_slots": 10
+          },
+          "3": {
+            "starter_value": 815.98,
+            "total_value": -648.31,
+            "bench_value": -1464.29,
+            "unpriced_players": 0,
+            "forced_negative_starters": 1,
+            "slots_filled": 10,
+            "starting_slots": 10
+          },
+          "4": {
+            "starter_value": 837.73,
+            "total_value": -357.62,
+            "bench_value": -1195.35,
+            "unpriced_players": 0,
+            "forced_negative_starters": 1,
+            "slots_filled": 10,
+            "starting_slots": 10
+          },
+          "5": {
+            "starter_value": 839.01,
+            "total_value": -469.07,
+            "bench_value": -1308.08,
+            "unpriced_players": 0,
+            "forced_negative_starters": 0,
+            "slots_filled": 10,
+            "starting_slots": 10
+          },
+          "6": {
+            "starter_value": 730.75,
+            "total_value": -799.2,
+            "bench_value": -1529.95,
+            "unpriced_players": 0,
+            "forced_negative_starters": 2,
+            "slots_filled": 10,
+            "starting_slots": 10
+          },
+          "7": {
+            "starter_value": 773.11,
+            "total_value": -512.06,
+            "bench_value": -1285.17,
+            "unpriced_players": 0,
+            "forced_negative_starters": 1,
+            "slots_filled": 10,
+            "starting_slots": 10
+          },
+          "8": {
+            "starter_value": 779.38,
+            "total_value": -742.74,
+            "bench_value": -1522.12,
+            "unpriced_players": 0,
+            "forced_negative_starters": 1,
+            "slots_filled": 10,
+            "starting_slots": 10
+          },
+          "9": {
+            "starter_value": 765.63,
+            "total_value": -619.08,
+            "bench_value": -1384.71,
+            "unpriced_players": 0,
+            "forced_negative_starters": 0,
+            "slots_filled": 10,
+            "starting_slots": 10
+          }
+        },
+        "roster_worth_basis": "total_value: universal_value is an asset LEVEL, so roster worth is what the chair OWNS; starter_value sums that level over a starting lineup and measures positional breadth instead (#211)",
+        "total_value_min": -799.2,
+        "total_value_median": -543.4,
+        "total_value_max": -357.62,
+        "total_value_spread": 441.58,
+        "starter_value_min": 730.75,
+        "starter_value_median": 830.82,
+        "starter_value_max": 859.9,
+        "starter_value_spread": 129.15,
+        "forced_negative_starters": 8
+      },
+      "unpriced_at_decision": {
+        "picks_examined": 312,
+        "picks_with_an_unpriced_candidate": 144,
+        "picks_that_took_an_unpriced_candidate": 0,
+        "candidate_rows_missing_the_uv_key": 0
+      },
+      "teams": 12,
+      "rounds": 26,
+      "seconds": 886.5,
+      "produced_at_commit": "466c010",
+      "carried_forward": false
+    },
+    {
+      "label": "12T_ppr_SHORT_DRAFT",
+      "picks": 96,
+      "rosters": 12,
+      "findings": [],
+      "shape": {
+        "1": {
+          "RB": 2,
+          "WR": 4,
+          "TE": 1,
+          "QB": 1
+        },
+        "2": {
+          "RB": 3,
+          "WR": 2,
+          "QB": 1,
+          "TE": 2
+        },
+        "3": {
+          "RB": 2,
+          "TE": 1,
+          "WR": 4,
+          "QB": 1
+        },
+        "4": {
+          "WR": 4,
+          "RB": 2,
+          "TE": 1,
+          "QB": 1
+        },
+        "5": {
+          "WR": 4,
+          "RB": 2,
+          "TE": 1,
+          "QB": 1
+        },
+        "6": {
+          "RB": 2,
+          "WR": 4,
+          "TE": 1,
+          "QB": 1
+        },
+        "7": {
+          "WR": 4,
+          "RB": 2,
+          "TE": 1,
+          "QB": 1
+        },
+        "8": {
+          "WR": 3,
+          "TE": 1,
+          "RB": 3,
+          "QB": 1
+        },
+        "9": {
+          "TE": 1,
+          "RB": 2,
+          "WR": 4,
+          "QB": 1
+        },
+        "10": {
+          "RB": 2,
+          "WR": 4,
+          "TE": 1,
+          "QB": 1
+        },
+        "11": {
+          "RB": 2,
+          "WR": 4,
+          "TE": 1,
+          "QB": 1
+        },
+        "12": {
+          "TE": 1,
+          "RB": 2,
+          "WR": 4,
+          "QB": 1
+        }
+      },
+      "margins": {
+        "picks_measured": 96,
+        "zero_margin_picks": 0,
+        "zero_margin_share": 0.0,
+        "zero_margin_by_round": {},
+        "picks_by_round": {
+          "1": 12,
+          "2": 12,
+          "3": 12,
+          "4": 12,
+          "5": 12,
+          "6": 12,
+          "7": 12,
+          "8": 12
+        },
+        "median_margin": 1.99
+      },
+      "qualifiers": {
+        "replacement_basis": {
+          "live_starter_demand": 90,
+          "predraft_anchor": 6
+        },
+        "picks_with_growth_measured": 0,
+        "picks_with_growth_above_zero": 0,
+        "max_growth": null
+      },
+      "regimes": {
+        "decisive": 37,
+        "contested": 59
+      },
+      "strength": {
+        "per_roster": {
+          "1": {
+            "starter_value": 469.07,
+            "total_value": 469.07,
+            "bench_value": 0.0,
+            "unpriced_players": 0,
+            "forced_negative_starters": 1,
+            "slots_filled": 8,
+            "starting_slots": 8
+          },
+          "10": {
+            "starter_value": 415.12,
+            "total_value": 415.12,
+            "bench_value": 0.0,
+            "unpriced_players": 0,
+            "forced_negative_starters": 1,
+            "slots_filled": 8,
+            "starting_slots": 8
+          },
+          "11": {
+            "starter_value": 410.51,
+            "total_value": 410.51,
+            "bench_value": 0.0,
+            "unpriced_players": 0,
+            "forced_negative_starters": 1,
+            "slots_filled": 8,
+            "starting_slots": 8
+          },
+          "12": {
+            "starter_value": 430.69,
+            "total_value": 430.69,
+            "bench_value": 0.0,
+            "unpriced_players": 0,
+            "forced_negative_starters": 2,
+            "slots_filled": 8,
+            "starting_slots": 8
+          },
+          "2": {
+            "starter_value": 526.04,
+            "total_value": 526.04,
+            "bench_value": 0.0,
+            "unpriced_players": 0,
+            "forced_negative_starters": 0,
+            "slots_filled": 8,
+            "starting_slots": 8
+          },
+          "3": {
+            "starter_value": 462.75,
+            "total_value": 462.75,
+            "bench_value": 0.0,
+            "unpriced_players": 0,
+            "forced_negative_starters": 1,
+            "slots_filled": 8,
+            "starting_slots": 8
+          },
+          "4": {
+            "starter_value": 415.56,
+            "total_value": 415.56,
+            "bench_value": 0.0,
+            "unpriced_players": 0,
+            "forced_negative_starters": 2,
+            "slots_filled": 8,
+            "starting_slots": 8
+          },
+          "5": {
+            "starter_value": 412.4,
+            "total_value": 412.4,
+            "bench_value": 0.0,
+            "unpriced_players": 0,
+            "forced_negative_starters": 2,
+            "slots_filled": 8,
+            "starting_slots": 8
+          },
+          "6": {
+            "starter_value": 423.8,
+            "total_value": 423.8,
+            "bench_value": 0.0,
+            "unpriced_players": 0,
+            "forced_negative_starters": 1,
+            "slots_filled": 8,
+            "starting_slots": 8
+          },
+          "7": {
+            "starter_value": 419.16,
+            "total_value": 419.16,
+            "bench_value": 0.0,
+            "unpriced_players": 0,
+            "forced_negative_starters": 2,
+            "slots_filled": 8,
+            "starting_slots": 8
+          },
+          "8": {
+            "starter_value": 440.87,
+            "total_value": 440.87,
+            "bench_value": 0.0,
+            "unpriced_players": 0,
+            "forced_negative_starters": 1,
+            "slots_filled": 8,
+            "starting_slots": 8
+          },
+          "9": {
+            "starter_value": 400.1,
+            "total_value": 400.1,
+            "bench_value": 0.0,
+            "unpriced_players": 0,
+            "forced_negative_starters": 2,
+            "slots_filled": 8,
+            "starting_slots": 8
+          }
+        },
+        "roster_worth_basis": "total_value: universal_value is an asset LEVEL, so roster worth is what the chair OWNS; starter_value sums that level over a starting lineup and measures positional breadth instead (#211)",
+        "total_value_min": 400.1,
+        "total_value_median": 423.8,
+        "total_value_max": 526.04,
+        "total_value_spread": 125.94,
+        "starter_value_min": 400.1,
+        "starter_value_median": 423.8,
+        "starter_value_max": 526.04,
+        "starter_value_spread": 125.94,
+        "forced_negative_starters": 16
+      },
+      "unpriced_at_decision": {
+        "picks_examined": 96,
+        "picks_with_an_unpriced_candidate": 0,
+        "picks_that_took_an_unpriced_candidate": 0,
+        "candidate_rows_missing_the_uv_key": 0
+      },
+      "teams": 12,
+      "rounds": 8,
+      "seconds": 337.0,
       "produced_at_commit": "466c010",
       "carried_forward": false
     }
