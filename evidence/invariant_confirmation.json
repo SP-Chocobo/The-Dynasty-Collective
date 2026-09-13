@@ -3,16 +3,20 @@
     {
       "invariant": "feasibility_first never binds",
       "file": "draft_room.py",
-      "verdict": "MUTATION IS INERT",
+      "verdict": "caught",
       "sites_mutated": 2,
-      "detail": "the mutated source produces a byte-identical board; the suite has nothing to catch and a SURVIVED verdict would say nothing about it"
+      "seconds": 550.1,
+      "consequence": "a chair could finish unable to field a legal lineup and nothing would say so",
+      "evidence": "---------------------------\nTraceback (most recent call last):\n  File \"/home/user/The-Dynasty-Collective/test_invariant_confirmation_anchors.py\", line 141, in test_the_fingerprint_builds_a_board_on_the_clean_tree\n    self.assertRegex(fingerprint, r\"^[0-9a-f]{64} \\d+ \\d+$\")\n    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nAssertionError: Regex didn't match: '^[0-9a-f]{64}$' not found in 'c035f298b19e8d17fa53dfea2753fdaadb15c1f1b67251d64e59a2e2d65f3f48 863 1113'\n\n----------------------------------------------------------------------\nRan 1414 tests in 540.648s\n\nFAILED (failures=1, skipped=5)\n"
     },
     {
       "invariant": "board order ignores feasibility",
       "file": "draft_room.py",
-      "verdict": "MUTANT CANNOT BUILD A BOARD",
+      "verdict": "caught",
       "sites_mutated": 2,
-      "detail": "Traceback (most recent call last):\n  File \"<string>\", line 12, in <module>\n  File \"/home/user/The-Dynasty-Collective/draft_room.py\", line 3399, in compute_draft_board\n    results = scored.sort_values([\"final_score\", \"player_id\"],\n              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/usr/local/lib/python3.11/dist-packages/pandas/core/frame.py\", line 8337, in sort_values\n    raise ValueError(\nValueError: Length of ascending (3) != length of by (2)\n"
+      "seconds": 571.5,
+      "consequence": "feasibility becomes advisory -- the #154 backstop stops reaching the pick",
+      "evidence": "----------------------\nTraceback (most recent call last):\n  File \"/home/user/The-Dynasty-Collective/test_invariant_confirmation_anchors.py\", line 57, in test_both_branches_of_compute_draft_board_are_covered\n    self.assertEqual(source.count(anchor), 2,\nAssertionError: 0 != 2 : board order ignores feasibility: expected the upside-mode and balanced branches. If compute_draft_board was refactored, re-derive this number from the source rather than editing it to match.\n\n----------------------------------------------------------------------\nRan 1418 tests in 568.836s\n\nFAILED (failures=1, skipped=5)\n"
     }
   ],
   "sources_dirty_after": ""

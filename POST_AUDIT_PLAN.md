@@ -8364,3 +8364,72 @@ exemption nobody needs rots into a false claim about coverage.
 - **Not that the 11 uncited instruments are safe to run.** They are safe to *ignore* until
   something cites them.
 - **Nothing about the 194 unpriced test calls.** They were classified, not audited.
+
+## #257 RULED (owner): four Gate-5 answers, and one of them exposed an item with no written basis
+
+### `#98` — RATIFIED (b), as built
+
+Cited sources are allowlisted for **anything that feeds the composite price**; prose citation
+stays free. The recorded reasoning holds: *"a rank changes a price, a narrative does not."*
+`source_policy.py` already implements this (`#132`), so this ruling records a decision rather
+than authorising work. Gate 5 item closed.
+
+### `#146` — RULED admissible in REDRAFT ONLY
+
+A bye week is a real cost when you own the player for one season and meaningless when the asset
+outlives the schedule. `bye_week` is currently team-derived at 99.1% coverage, built as an
+observable, and read by `roster_diagnostics` — it reaches no price (`#142`).
+
+**The ruling is Gate 5; the wiring is Gate 3 and is NOT done.** It needs the redraft/dynasty
+boundary (`league["settings"]["type"]`) to gate admission, a test that fails on the old
+behaviour in each mode, and the absence contract honoured for the 0.9% with no bye week — a
+missing bye is not a zero cost. Registered as open work, not claimed as complete.
+
+### `#150` matrix — TRIM TO INDEPENDENT FORMATS
+
+The Gate 1 re-run certifies a matrix derived from `config_space` rather than inherited from the
+withdrawn runs. The checklist's own warning is the reason: *"do not count 33 arms as 33
+independent ones"* — league size and superflex cannot move a gap-based quantity at all (0 of
+41/125/197/114 gaps change while the top QB price moves 48.51 → 163.06). Keep both real captured
+leagues as anchors, keep every arm that closes a distinct axis, drop arms that can only
+re-measure something structurally identical. This executes `#251`'s ruling — representative
+coverage plus cross-configuration invariants — instead of re-running a matrix nobody chose.
+
+**Not yet derived.** The trimmed set and its cost are the next work item; the 34-arm figure
+(≈6.5h, 77 of 91 axes) is what it will be measured against.
+
+### `#149` — THE ITEM HAS NO WRITTEN BASIS. That is the finding.
+
+Asked to re-read `#149` before ruling, I could not, because there is nothing to read. The
+complete record is two lines:
+
+```
+FREEZE_CHECKLIST.md:388   - [ ] #149 — upload storage custody.
+POST_AUDIT_PLAN.md:4813   ... - #149 (upload storage custody) - ...
+```
+
+No section, no measurement, no recommendation. The four sub-decisions I put to the owner
+earlier — *client-side custody, extract-vs-artifact, search, use-derived retention* — came from
+the task tracker's **title line**, which turns out to be the entire specification. I presented
+them as if they were a summary of an entry. They were not.
+
+This is `#37`'s family — a freeze-gating item whose basis cannot be located — and it is worse
+here, because `#37` at least knows its evidence is missing while `#149` reads as settled.
+
+**What IS known, from the code rather than the register.** `attachments.py` documents the built
+behaviour, and it is narrower than the item's name suggests:
+
+| property | current behaviour |
+|---|---|
+| where | one shared server-side `data/attachments/`, gitignored |
+| parsing | **none** — nothing is parsed or auto-matched to player records |
+| what reaches the LLM | the **user-written caption** only; the raw file is stored for viewing |
+| scope | chosen by the user at upload, **never inferred**; files never move when scope changes |
+| retention | **none — nothing expires anything** |
+
+Uploads are reference material. They reach no price and no pick. So this gates the freeze
+RECORD, not the engine.
+
+**Owner's ruling: write the missing entry first, then rule.** The entry must measure what is
+actually stored, how much of it, and who can read it — then bring options backed by that rather
+than by a title line.

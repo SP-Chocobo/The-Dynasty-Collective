@@ -383,10 +383,16 @@ only. The items below feed observables and the debate layer, so they degrade wha
 - [x] **#184** — documented as a bounded limitation; does not hold the freeze. Ruled.
 - [x] **#188** — vocabulary ruling executed and closed.
 - [x] **#175** — REJECTED: no derivable threshold; `CLIFF_HIGH_RATIO` unchanged.
-- [ ] **#146** — bye week is admissible when the asset horizon is one season (redraft only).
+- [x] **#146** — RULED admissible in REDRAFT ONLY (`#257`). **The wiring is Gate 3 and is
+      NOT done**: it needs the dynasty/redraft boundary, a test that fails on the old
+      behaviour in each mode, and absence honoured for the 0.9% with no bye week.
 - [ ] **#160** — Decision A, reopened from zero; no constant to be tuned.
-- [ ] **#149** — upload storage custody.
-- [ ] **#98** — the §7.4 allowlist decision (§7.10 already declined as the owner's).
+- [ ] **#149** — **THE ITEM HAS NO WRITTEN BASIS** (`#257`). Its complete record is this
+      line and one mention in POST_AUDIT_PLAN's NEEDS-OWNER list. Owner ruled: write the
+      missing entry from measurement first, then rule. Gates the freeze RECORD, not the
+      engine — uploads reach no price and no pick.
+- [x] **#98** — RATIFIED (b): allowlist what feeds the composite, prose stays free.
+      `source_policy.py` already implements it (`#132`); the ruling is recorded, not built. (`#257`)
 - [ ] **#158** — confirm the ten ratified decisions are carried verbatim into the freeze record.
 
 ## GATE 6 — Blocked external: accept at freeze, or the freeze waits
