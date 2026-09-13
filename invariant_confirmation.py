@@ -92,6 +92,20 @@ MUTATIONS = [
 ]
 
 
+#: Verdicts that are facts about THE HARNESS rather than about the suite. A run containing any
+#: of them confirms nothing, and must not exit 0 -- silently passing on them is how `#254`'s two
+#: useless verdicts came to be believed on this harness's first execution.
+INCONCLUSIVE = frozenset({
+    "ANCHOR FAILED",                 # the source moved; the mutation never applied
+    "MUTANT DOES NOT PARSE",         # syntactically broken; every test fails for the wrong reason
+    "MUTANT CANNOT BUILD A BOARD",   # runs as Python, raises before a board exists
+    "MUTATION IS INERT",             # runs and changes nothing; there is nothing to catch
+})
+
+#: The two verdicts that ARE facts about the suite.
+CONCLUSIVE = frozenset({"caught", "*** SURVIVED ***"})
+
+
 def apply_mutation(source: str, anchor: str, replacement: str) -> tuple[str, int]:
     """Replace `anchor` at EVERY line that contains it, preserving that line's indentation.
     Returns the mutated source and the number of sites changed.
@@ -111,6 +125,60 @@ def apply_mutation(source: str, anchor: str, replacement: str) -> tuple[str, int
     return "".join(out), sites
 
 
+#: A board built under whatever source is currently on disk, reduced to one hash. Run in a
+#: SUBPROCESS so the engine is imported fresh: this harness has already imported draft_room, and
+#: a mutant written to disk after that import would otherwise be measured through the module
+#: object already in memory (#240's stale-bytecode hazard, one layer up).
+_FINGERPRINT_SCRIPT = """
+import hashlib, json, sys
+sys.path.insert(0, ".")
+import data_merger as dm, draft_room as dr, draft_battery as db, run_draft_battery as rdb
+merger = dm.DataMerger()
+players_db, _ = rdb.build_players_db_from_capture()
+season = rdb.season_projections_from_capture()
+league = dr.build_mock_league(teams=12, superflex=True, scoring="ppr", te_premium=False,
+                              dynasty=True, base_scoring=rdb.scoring_settings_from_capture())
+league["draft_rounds"] = len(league["roster_positions"])
+merger.set_league_format(db.league_format_hint(league))
+board = dr.compute_draft_board(merger, players_db, [], my_roster_id="1", league=league,
+                               sleeper_projections=season,
+                               sleeper_basis=dr.SLEEPER_BASIS_SEASON_SUM)
+print(hashlib.sha256(json.dumps(board, sort_keys=True, default=str).encode()).hexdigest())
+"""
+
+
+def _board_fingerprint() -> tuple[bool, str, str]:
+    """(built_ok, sha256 of the board, stderr tail) for the source currently on disk.
+
+    THE TWO THINGS A VERDICT REQUIRES, AND NEITHER WAS CHECKED BEFORE `#254`.
+
+    1. THE MUTANT MUST RUN. `board order ignores feasibility` was scored "caught" on this:
+       `ValueError: Length of ascending (3) != length of by (2)` -- the mutation dropped one
+       entry from `sort_values`' `by` and left `ascending` at three, so pandas rejected its own
+       arguments before a board existed and EVERY board-touching test errored. That is the
+       mutant being unable to run, not the suite detecting anything. `ast.parse` above does not
+       catch it: the mutant is valid Python whose defect is argument arity at runtime. A
+       necessary guard, recorded as though it were sufficient.
+
+    2. THE MUTATION MUST CHANGE SOMETHING. `feasibility_first never binds` was scored
+       "SURVIVED" -- a full 1202.6s suite passed -- on a mutation that writes
+       `scored["_feasible"] = 1` into a column measured to be uniformly 1 already: zero rows
+       held 0 at any of 8 samples across a full 312-pick board. Sorting by a uniform column is
+       a no-op with or without it. The suite did not fail to catch a change; there was no
+       change. `#245`: identical numbers are a broken instrument until proven otherwise.
+
+    Comparing whole boards rather than the targeted quantity is deliberate -- it needs no
+    per-mutation knowledge, so a mutation added later inherits the guard instead of needing its
+    own bespoke check (`#126`).
+    """
+    env = {"PYTHONDONTWRITEBYTECODE": "1", "PYTHONPATH": ".", "PATH": "/usr/bin:/bin"}
+    proc = subprocess.run([sys.executable, "-c", _FINGERPRINT_SCRIPT],
+                          capture_output=True, text=True, env=env)
+    if proc.returncode != 0:
+        return False, "", (proc.stdout + proc.stderr)[-800:]
+    return True, proc.stdout.strip().splitlines()[-1], ""
+
+
 def _run_suite(failfast=True):
     subprocess.run(["bash", "-c", "find . -name __pycache__ -type d -exec rm -rf {} + 2>/dev/null"],
                    check=False)
@@ -127,6 +195,15 @@ def _run_suite(failfast=True):
 
 def main():
     results = []
+    # The reference board, built ONCE from the unmutated tree. Every mutant is compared against
+    # this; without it "the board changed" cannot be distinguished from "the board is what it
+    # always was".
+    ref_ok, ref_fp, ref_err = _board_fingerprint()
+    if not ref_ok:
+        print(f"REFERENCE BOARD FAILED TO BUILD -- the harness cannot run:\n{ref_err}")
+        return 2
+    print(f"reference board fingerprint: {ref_fp[:16]}\n")
+
     for name, filename, anchor, replacement, consequence in MUTATIONS:
         path = pathlib.Path(filename)
         original = path.read_text()
@@ -154,6 +231,26 @@ def main():
         shutil.copy2(path, backup)
         try:
             path.write_text(mutated)
+            # PREFLIGHT. A verdict is only a fact about the SUITE when the mutant runs and
+            # changes the board; otherwise it is a fact about the harness. See
+            # _board_fingerprint -- both failure modes are real and both were scored as
+            # verdicts on this harness's first execution (#254).
+            mut_ok, mut_fp, mut_err = _board_fingerprint()
+            if not mut_ok:
+                results.append({"invariant": name, "file": filename,
+                                "verdict": "MUTANT CANNOT BUILD A BOARD", "sites_mutated": count,
+                                "detail": mut_err})
+                print(f"{name}: MUTANT CANNOT BUILD A BOARD -- no verdict; the harness is "
+                      f"broken, not the engine")
+                continue
+            if mut_fp == ref_fp:
+                results.append({"invariant": name, "file": filename,
+                                "verdict": "MUTATION IS INERT", "sites_mutated": count,
+                                "detail": "the mutated source produces a byte-identical board; "
+                                          "the suite has nothing to catch and a SURVIVED "
+                                          "verdict would say nothing about it"})
+                print(f"{name}: MUTATION IS INERT (board unchanged) -- no verdict possible")
+                continue
             rc, secs, tail = _run_suite(failfast=True)
             caught = rc != 0
             verdict = "caught" if caught else "*** SURVIVED ***"
@@ -180,6 +277,12 @@ def main():
     out.parent.mkdir(parents=True, exist_ok=True)
     store_io.write(out, {"results": results, "sources_dirty_after": dirty})
     print(f"-> {out}")
+    # A run containing any non-verdict is not a clean run. SURVIVED means the suite failed to
+    # defend something; the three harness-broken states mean the harness proved nothing at all,
+    # and silently exiting 0 on them is how #254's two useless verdicts were first believed.
+    if any(r["verdict"] in INCONCLUSIVE for r in results):
+        print("\nAT LEAST ONE MUTATION PRODUCED NO VERDICT -- this run does not confirm anything")
+        return 2
     return 1 if any(r["verdict"].startswith("***") for r in results) else 0
 
 

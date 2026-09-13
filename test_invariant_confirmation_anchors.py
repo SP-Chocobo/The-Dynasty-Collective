@@ -16,6 +16,7 @@ without paying the harness's own ~1200s-per-arm cost.
 from __future__ import annotations
 
 import ast
+import types
 import unittest
 from pathlib import Path
 
@@ -98,3 +99,63 @@ class TheDocstringDoesNotOverclaimItsCoverage(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class AVerdictIsOnlyAFactAboutTheSuiteWhenTheMutantRanAndChangedSomething(unittest.TestCase):
+    """`#254`. The harness's first execution produced two verdicts and NEITHER was usable.
+
+    `board order ignores feasibility` was scored "caught" because pandas raised
+    `ValueError: Length of ascending (3) != length of by (2)` before any board was built -- the
+    mutant could not RUN, so every board-touching test errored for a reason that has nothing to
+    do with the suite defending the invariant. `ast.parse` does not catch it; the mutant is
+    valid Python whose defect is argument arity at runtime.
+
+    `feasibility_first never binds` was scored "SURVIVED" after a full 1202.6s suite passed,
+    on a mutation writing `scored["_feasible"] = 1` into a column measured uniformly 1 already
+    (0 rows held 0 at any of 8 samples across a 312-pick board). The mutation changed nothing,
+    so there was nothing to catch. `#245`: identical numbers are a broken instrument until
+    proven otherwise.
+
+    These tests hold the repair: both states are NAMED, and a run containing either refuses to
+    report success."""
+
+    def test_the_two_first_run_failure_modes_are_both_named(self):
+        self.assertIn("MUTANT CANNOT BUILD A BOARD", ic.INCONCLUSIVE)
+        self.assertIn("MUTATION IS INERT", ic.INCONCLUSIVE)
+
+    def test_conclusive_and_inconclusive_do_not_overlap(self):
+        """A verdict is about the suite or about the harness, never both."""
+        self.assertEqual(ic.CONCLUSIVE & ic.INCONCLUSIVE, frozenset())
+
+    def test_survived_is_conclusive_not_inconclusive(self):
+        """The one verdict that must still fail the build. Folding it into INCONCLUSIVE would
+        turn 'nothing defends this' into 'nothing to see here'."""
+        self.assertIn("*** SURVIVED ***", ic.CONCLUSIVE)
+        self.assertNotIn("*** SURVIVED ***", ic.INCONCLUSIVE)
+
+    def test_the_fingerprint_builds_a_board_on_the_clean_tree(self):
+        """Non-vacuity for the inertness guard: if the reference could not build, every mutant
+        would compare against an empty string and every mutation would read as INERT."""
+        ok, fingerprint, err = ic._board_fingerprint()
+        self.assertTrue(ok, f"reference board failed to build: {err}")
+        self.assertRegex(fingerprint, r"^[0-9a-f]{64}$")
+
+    def test_the_fingerprint_is_stable_across_calls(self):
+        """The comparison is only meaningful if an UNCHANGED tree fingerprints identically.
+        A nondeterministic board would make every mutation look like a real change."""
+        first = ic._board_fingerprint()
+        second = ic._board_fingerprint()
+        self.assertEqual(first[1], second[1])
+
+    def test_a_subprocess_failure_is_reported_as_not_built(self):
+        """The viability guard's own branch, exercised without breaking the tree."""
+        real = ic.subprocess.run
+        ic.subprocess.run = lambda *a, **k: types.SimpleNamespace(
+            returncode=1, stdout="", stderr="ValueError: Length of ascending (3) != length of by (2)")
+        try:
+            ok, fingerprint, err = ic._board_fingerprint()
+        finally:
+            ic.subprocess.run = real
+        self.assertFalse(ok)
+        self.assertEqual(fingerprint, "")
+        self.assertIn("Length of ascending", err)
