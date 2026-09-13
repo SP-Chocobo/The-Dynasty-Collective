@@ -8433,3 +8433,55 @@ RECORD, not the engine.
 **Owner's ruling: write the missing entry first, then rule.** The entry must measure what is
 actually stored, how much of it, and who can read it — then bring options backed by that rather
 than by a title line.
+
+## #258 CORRECTED: the matrix trim was ruled on a stale number — there is almost nothing to trim
+
+`#257` recorded the owner's ruling to TRIM the Gate 1 matrix to independent formats. I put that
+option forward citing `duplicate_arms`' own docstring: *"8 of them reproduce another arm byte for
+byte."* Measured on the last complete run before deriving anything:
+
+```
+BATTERY_2026-09-12_scoring_aware_full_99f9f76
+formats: 33    independent: 32    picks: 5340    seconds: 23556.4  (6.54h)
+
+DUPLICATE ARMS: 1
+  12T_ppr_mode_balanced   duplicates   12T_ppr
+
+constant axes: []
+```
+
+**One duplicate, not eight.** Trimming removes a single arm and saves ~12 minutes of a 6.5-hour
+run. The ruling's premise was mine and it was wrong.
+
+### Why the docstring went stale, which is the useful part
+
+The figure was measured when the battery was **vendor-priced**: no half-PPR export exists in the
+baseline, so half_ppr leagues drew PPR values and collapsed onto the PPR arms byte for byte.
+`#213`/`#201`/`#204` made the battery scoring-aware, and scoring now reaches a price through the
+league's own **stat lines** rather than only through export selection — so those arms stopped
+being duplicates. **The redundancy the trim existed to remove had already been eliminated by the
+scoring repair.** The docstring is corrected in place and no longer carries a count the detector
+reports for itself.
+
+### The other warning is a DIFFERENT claim, and I conflated them
+
+`FREEZE_CHECKLIST`'s *"do not count 33 arms as 33 independent ones"* is about what a **particular
+quantity** can see: league size and superflex cannot move a gap-based quantity at all (0 of
+41/125/197/114 gaps change while the top QB price moves 48.51 → 163.06). Those arms still produce
+**different boards** — they are not duplicates. The warning says a gap-based finding must not be
+read as independently corroborated across them. It does not license dropping them, and I used it
+as though it did.
+
+### Owner's ruling, reversed on the measurement: RUN 34
+
+33 fixture arms + `CAPTURE_fourth_and_forever`, ≈6.5h, 77 of 91 axes, directly comparable to the
+withdrawn runs and to `#247`. `#257`'s trim ruling is SUPERSEDED, not deleted — it was correct
+given what it was told.
+
+### What this does NOT establish
+
+- **Not that the 32/33 independence figure still holds.** It was measured at `99f9f76`, before
+  `#247`'s repair and before `#253`. Independence is reported BY the run, so the next run states
+  its own figure rather than inheriting this one.
+- **Not that 77 of 91 axes is sufficient coverage.** The 14 uncovered axes are unexamined; no
+  argument has been made that any of them is load-bearing.

@@ -693,10 +693,23 @@ def duplicate_arms(results: list[dict]) -> list[dict]:
     Rankings export, and no HALF-PPR export exists in the baseline -- so a half_ppr league
     legitimately draws PPR values (scored 0.5 rather than 1.0 by
     data_merger._rankings_format_match_score, and disclosed to the user in app.py). That is
-    CORRECT handling of a real data limitation. What is not correct is a report claiming 33
-    formats of coverage when 8 of them reproduce another arm byte for byte, which inflates the
-    denominator under every rate this battery produces and makes a duplicated finding look like
-    independent corroboration.
+    CORRECT handling of a real data limitation. What is not correct is a report claiming N
+    formats of coverage when some of them reproduce another arm byte for byte, which inflates
+    the denominator under every rate this battery produces and makes a duplicated finding look
+    like independent corroboration.
+
+    THE COUNT THIS PARAGRAPH USED TO CARRY IS STALE, AND ITS STALENESS COST A DECISION. It said
+    "8 of them reproduce another arm byte for byte", measured when the battery was VENDOR-priced
+    -- half_ppr leagues drew the PPR export and genuinely collapsed onto the PPR arms. Once
+    `#213`/`#201`/`#204` made the battery scoring-aware, scoring reaches a price through the
+    league's own STAT LINES rather than only through export selection, and those arms stopped
+    duplicating. Measured on `BATTERY_2026-09-12_scoring_aware_full_99f9f76`: **33 formats, 32
+    independent, ONE duplicate** (`12T_ppr_mode_balanced` duplicates `12T_ppr`).
+
+    A trim of the Gate 1 matrix was proposed and ruled on the strength of the stale figure; the
+    measurement showed it would remove one arm and save ~12 minutes of a 6.5-hour run, and the
+    ruling was reversed (`#258`). No number belongs in this prose that the detector can report
+    for itself -- which is the whole reason the detector is derived.
 
     DERIVED, NEVER HAND-LISTED, for the reason league_config.ambiguities() is derived: a list
     naming half_ppr would go stale the first time a half-PPR export is added, or miss a
