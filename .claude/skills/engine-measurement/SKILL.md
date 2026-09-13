@@ -178,9 +178,23 @@ sees two calls where you expected three has told you something, not failed.
 |---|---|
 | one board build | ~0.3-1.4s |
 | full test suite | **~800-870s** (2100+ tests) |
-| one 12-team draft (168 picks) | ~300s |
-| one 12-team STARTUP (312 picks, 26 rounds) | **~640-1125s** |
-| full 32-format battery | **~2.9 hours** |
+| one 12-team draft (168 picks) | **216-956s** (measured across 9 such arms, 2026-09-13) |
+| one 12-team STARTUP (312 picks, 26 rounds) | **~887s** (the F&F capture arm, 2026-09-13) |
+| full 34-format battery | **5.34 hours** (19220.8s, 34 arms, 2026-09-13) |
+
+The battery line said "32 formats, ~2.9 hours" until it was measured against the current matrix:
+34 arms at 19220.8s. Under-budgeting it by 2.4x is how a run gets started without a survival
+plan. Per-arm cost varies 5x at the SAME pick count (216.3s for `12T_ppr_mode_upside` vs 956.1s
+for another 168-pick arm), so an average is not a schedule — size from the slowest arm.
+
+**A multi-hour run needs a survival plan, not just a background job.** This container is
+reclaimed on session idleness, and CPU does not count as activity — a battery pegged at 100% on
+a core was reclaimed anyway, 13 minutes in, losing everything but one arm. What worked: run with
+`--resume` against a gitignored output path so the tree stays clean between arms, copy that file
+to a tracked path every N arms and push (the git remote is the only store that outlives the
+container), and keep the session non-idle with a watcher that emits one event per completed unit.
+Never point `--out` at a tracked path for the live run: the report checkpoints after every arm,
+so the tree goes dirty every turn and the branch fills with checkpoint commits.
 
 A `timeout 580` on the suite kills it mid-run and tells you nothing. Background anything over a
 couple of minutes and read the file.
@@ -195,6 +209,18 @@ couple of minutes and read the file.
   launch `python3 -m unittest discover` — and that plain spelling, elsewhere in the same
   `bash -c` string, is what the regex matched. Never put a kill and the relaunch it precedes in
   one command; run them as two, and confirm with `pgrep` between.
+- **`pgrep -f` READING a job matches the launching wrapper too, and the character class does
+  not save you here.** The kill-side note above is about the pattern matching itself. This is the
+  read side, and it produces a false verdict instead of a dead job: `pgrep -af "run_draft_batter[y]"`
+  returns the `bash -c` wrapper AND the python process, because the wrapper's command line
+  contains the real spelling `run_draft_battery.py` from the launch command it is running. Read
+  the first PID and you are reading a shell sitting at 0% CPU. Measured cost: a running 34-arm
+  battery was reported to the owner as having "died immediately" — PID 7711 was the wrapper,
+  7717 was python at 100%. **Anchor on the interpreter instead:**
+  `pgrep -af "^python3 -u run_draft_battery"` — the wrapper's line starts with `/bin/bash`, so
+  `^python3` excludes it by construction rather than by luck. Confirmed live: the anchored form
+  returned exactly one PID where the unanchored form returned three (the job, its launcher, and
+  the shell running the check).
 - **Backticks inside `git commit -m "..."` are COMMAND SUBSTITUTION.** A double-quoted message
   quoting a docstring (`` `adjustment` ``, `` `0.0` ``) silently loses everything from the first
   backtick onward, and the commit still succeeds — so the log carries a truncated record while
