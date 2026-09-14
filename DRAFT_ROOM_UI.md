@@ -288,13 +288,52 @@ every Sleeper call is a `/v1/` GET.** The hedge was correct.
 Three consequences, and the third is a correction to this document.
 
 **Stage two of the two-stage commit (§4) only spends a pick in MOCK DRAFT.** In a live draft
-synced from Sleeper, our surface cannot draft anybody. Its terminal action is *"I have decided"*,
-not *"he is mine"* — and the pick is then made by a person, in Sleeper.
+synced from Sleeper, our surface cannot draft anybody.
 
-**So the two modes need different terminal vocabulary.** A "Draft him" control that works in mock
-and silently means something weaker in a live draft is the kind of same-word-two-meanings defect
-this repository keeps finding in its own quantities (`#187`, `#174`). Mock locks a pick; live
-marks a decision and starts the clock on the user going elsewhere to execute it.
+**AND THE LIVE SURFACE GETS NO TERMINAL ACTION AT ALL (owner, this session).** My first answer
+here was that live-mode's terminal action becomes *"I have decided"* — a state the app records
+before the user goes off to execute it. The owner cut that: *"honestly i dont even think the 'I've
+decided' functionality is worth incorporating. just go to sleeper or wherever, make the pick, and
+it updates with your pick in place. refresh button."*
+
+That is the better answer and it removes a whole concept rather than renaming one. A decided-but-
+not-yet-made state is a **fourth source of truth about who owns a player** — beside Sleeper, our
+board, and the roster — and it can go stale the instant the user changes their mind in the other
+tab. The app never has to reconcile a state it never records. **Sleeper stays the only authority
+on what happened; we read it back.**
+
+### What this collapses
+
+**The two-stage commit is Mock-only, entirely.** Hold-to-lock (U8) is a Mock Draft affordance. In
+a live draft there is no stage two, so there is no gesture to design and no misclick to protect
+against — the card's click still opens the ledger (U7), and that is the end of our interaction.
+
+**The round-trip rule (§4) splits by mode**, and the live side is smaller than what I wrote there:
+
+| mode | what round-trips |
+|---|---|
+| **Mock Draft** | making a pick · calling Debate/Insight |
+| **Live (Sleeper-synced)** | calling Debate/Insight · **refreshing the board** |
+
+**The advisory surface has no button at its end.** If we never make the pick, the card's job ends
+at *being read and carried to another application*. That is a real design consequence worth
+stating before anyone builds the card: the last thing the user does with our recommendation is
+take a NAME somewhere else and find it in a list. Legibility of the name, and getting it out of
+our app cleanly, matter more than any action affordance we could put on the card.
+
+**And it sharpens §9's case for the plug-in.** The website has a two-screen problem by
+construction — read here, act there. The plug-in does not: it draws on top of the page where the
+act happens. That is no longer just a convenience argument; it is the only configuration where
+reading and acting are the same screen.
+
+### One question this leaves open (U13)
+
+The RULED constraint in §1 is *"no automatic API pings, ever — calling out is an explicit user
+decision."* That was said about **paid LLM debate/insight calls**, where an unrequested ping costs
+the user money. **Sleeper reads are free**, and a draft board that only updates when you press a
+button is a worse board. The owner's word here was "refresh button", which answers it for now —
+manual. Whether the live board may ALSO poll Sleeper on a timer is a separate question the
+original ruling should not be read as having settled by accident. Flagged rather than assumed.
 
 **CORRECTION to §9.** That section said the freeze timer *"is least necessary in the surface it
 was conceived for and most necessary in the one pinned for later,"* on the reasoning that only
@@ -339,6 +378,7 @@ later.** Worth knowing before either is built.
 | U10 | Slowest vs average for the recommendation | **WORKING: show both, user picks.** Settles the §5 a-bis contradiction by not settling it — the spread is visible and the user chooses. |
 | U11 | Does the wait band carry the forfeit? | **WORKING: no.** The band states pick-order facts anyone can verify from the board; an engine projection alongside them would blend a certainty with an estimate. Forfeit stays on the cards. |
 | U12 | "Since your last pick" digest | **WORKING: no** — the rail already shows it when you scroll back. A second surface for the same information is duplication. |
+| U13 | May the live board poll Sleeper on a timer, or is refresh strictly manual? | **OPEN.** §1's no-auto-pings ruling was about paid calls; Sleeper reads are free. "Refresh button" answers it for now. See §8b. |
 
 ### On U6, because it settles something §2 left open
 
