@@ -1302,6 +1302,10 @@ def build_snapshot(
     user_selected_player_id: Optional[str] = None,
     sleeper_projections: Optional[dict[str, dict]] = None,
     sleeper_basis: str = dr.SLEEPER_BASIS_WEEKLY,
+    #: #261. Forwarded untouched to compute_draft_board, which owns the vocabulary and the
+    #: default. Nothing here interprets it -- a second reading of the mode rule in this module
+    #: would be the #126 failure (one home for a vocabulary) in the file that consumes it.
+    upside_rule: str = dr.UPSIDE_RULE_ROUND,
 ) -> PickSnapshot:
     """Build one frozen PickSnapshot: compute the real board, narrow to the live candidates,
     layer on survival/opportunity-cost/denial (draft_strategy.pick_analysis) and positional
@@ -1317,7 +1321,7 @@ def build_snapshot(
     board = dr.compute_draft_board(
         merger, players_db, picks, my_roster_id=my_roster_id, league=league, mode=mode,
         pool_scope=pool_scope, sleeper_projections=sleeper_projections,
-        sleeper_basis=sleeper_basis,
+        sleeper_basis=sleeper_basis, upside_rule=upside_rule,
     )
     # Real per-league positional depth for narrow_candidates' position_depth -- the same
     # remaining-demand rank replacement_levels itself uses for VOR (num_teams matches

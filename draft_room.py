@@ -244,6 +244,17 @@ SLEEPER_WEEKLY_TO_SEASON_FACTOR = 17
 # test_auto_mode_switches_to_upside_exactly_at_the_documented_round.
 UPSIDE_MODE_DEFAULT_ROUND = 15
 
+#: WHICH QUESTION DECIDES THE MODE. "round" is the shipped behaviour and the default, so every
+#: existing caller is byte-identical; "crossing" is #261's alternative, measured but NOT ruled.
+#: The two differ in what they are a function of: "round" reads the calendar, "crossing" reads
+#: the board. A rule keyed on the board needs no invented magnitude, because #261 measured the
+#: zero as ATTAINABLE -- candidates-above-replacement reaches exactly 0 in a deep draft and
+#: stays there. Carried as an option rather than a switch-over because the behavioural half
+#: (what the rosters look like when you draft under it) is the open measurement.
+UPSIDE_RULE_ROUND = "round"
+UPSIDE_RULE_CROSSING = "crossing"
+UPSIDE_RULES = (UPSIDE_RULE_ROUND, UPSIDE_RULE_CROSSING)
+
 # In real competitive superflex play, the SUPER_FLEX slot is filled by a second (or third) QB
 # the vast majority of the time -- there isn't enough non-QB flex-caliber value to make
 # starting an extra RB/WR/TE correct over a bench-caliber QB once a team already has one
@@ -2811,6 +2822,7 @@ def compute_draft_board(
     *,
     mode: str = "auto",
     upside_round: int = UPSIDE_MODE_DEFAULT_ROUND,
+    upside_rule: str = UPSIDE_RULE_ROUND,
     sleeper_projections: Optional[dict[str, dict]] = None,
     pool_scope: str = "all",
     demand_picks: Optional[list[dict]] = None,
@@ -3081,6 +3093,26 @@ def compute_draft_board(
     # priceable input at all, so the unpriced case went from a rarity to a routine state.
     pool.loc[pool["_vor"].isna(), "replacement_basis"] = None
     pool["bpa"] = _scale_vor_to_bpa(pool["_vor"])
+
+    if upside_rule == UPSIDE_RULE_CROSSING:
+        # #261. Deliberately decided HERE and not beside the round rule at the top: `_vor` does
+        # not exist until the line above, and this rule is a function of it.
+        #
+        # THE TWO ZEROS, and the bug the first draft of this branch shipped. `not (_vor > 0).any()`
+        # is True in two different worlds: every measurable candidate priced at or below its
+        # replacement level (the board is EXHAUSTED -- what this rule means), and no candidate
+        # was measurable at all (the board is UNPRICEABLE -- which says nothing about depth).
+        # `> 0` yields False for NaN, so the two collapse. The first draft's own comment named
+        # that hazard in as many words and the code underneath it did exactly what the comment
+        # forbade, which is how #187's and #203's defects read before they were found.
+        #
+        # So exhaustion is asserted only where there is something to see. With nothing
+        # measurable the round rule's answer stands untouched: an absent measurement may not
+        # move the mode, in either direction.
+        measurable = pool["_vor"].notna()
+        if bool(measurable.any()):
+            use_upside = mode == "upside" or (
+                mode == "auto" and not bool((pool.loc[measurable, "_vor"] > 0).any()))
 
     if use_upside:
         scored = pool.join(pd.DataFrame(list(pool.apply(upside_score, axis=1))))

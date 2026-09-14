@@ -105,6 +105,10 @@ def simulate_full_draft(
     *, mode: str = "auto", pool_scope: str = "all", config_label: str = "",
     sleeper_projections: Optional[dict[str, dict]] = None,
     sleeper_basis: str = dr.SLEEPER_BASIS_WEEKLY,
+    #: #261. Which question decides upside mode -- the calendar or the board. Forwarded to
+    #: build_snapshot and interpreted only by compute_draft_board. Defaulted to the shipped
+    #: rule so every existing caller drafts exactly as before.
+    upside_rule: str = dr.UPSIDE_RULE_ROUND,
 ) -> DraftTrajectory:
     """Run one complete draft, every chair using the real production engine -- never a
     simulation-specific valuation or decision heuristic.
@@ -132,6 +136,7 @@ def simulate_full_draft(
         snap = pick_synthesis.build_snapshot(
             merger, players_db, picks, pick_order, idx, roster_id, league,
             pick_label=pick_label, mode=mode, pool_scope=pool_scope,
+            upside_rule=upside_rule,
             # #204: production (app.py's Draft Room) passes BOTH of these, so a simulated
             # draft that omits them is not drafting from the production pricing path -- every
             # row comes back with sleeper_points/sleeper_basis/availability_basis all None,
