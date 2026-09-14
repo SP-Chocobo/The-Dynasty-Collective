@@ -5174,11 +5174,11 @@ elif main_view == DRAFT_VIEW:
                                         f'{mock_rec.pick_necessity:.0f}/100 — {mock_rec.necessity_label}</span>',
                                         unsafe_allow_html=True,
                                     )
-                                if mock_rec.reach_label is not None:
+                                if mock_rec.consensus_rank is not None:
                                     with mock_market_col:
                                         st.caption(
                                             f"Market consensus (KeepTradeCut, trade-value not literal ADP): "
-                                            f"rank {mock_rec.consensus_rank}, tier {mock_rec.consensus_tier} — **{mock_rec.reach_label}**"
+                                            f"rank **{mock_rec.consensus_rank}**, tier **{mock_rec.consensus_tier}**"
                                         )
 
                                 _render_pick_metrics(mock_rec)
@@ -5543,11 +5543,11 @@ elif main_view == DRAFT_VIEW:
                                                 f'{rec.pick_necessity:.0f}/100 — {rec.necessity_label}</span>',
                                                 unsafe_allow_html=True,
                                             )
-                                        if rec.reach_label is not None:
+                                        if rec.consensus_rank is not None:
                                             with market_col:
                                                 st.caption(
                                                     f"Market consensus (KeepTradeCut, trade-value not literal ADP): "
-                                                    f"rank {rec.consensus_rank}, tier {rec.consensus_tier} — **{rec.reach_label}**"
+                                                    f"rank **{rec.consensus_rank}**, tier **{rec.consensus_tier}**"
                                                 )
 
                                         _render_pick_metrics(rec)

@@ -862,12 +862,18 @@
       }
     },
     "test_invariant_confirmation_anchors.py": {
-      "test_methods": 8,
+      "test_methods": 15,
       "asserts": {
-        "assertEqual": 5,
+        "assertEqual": 8,
+        "assertFalse": 1,
+        "assertGreater": 1,
         "assertGreaterEqual": 2,
-        "assertIn": 4,
-        "assertNotEqual": 1
+        "assertIn": 8,
+        "assertLess": 1,
+        "assertNotEqual": 1,
+        "assertNotIn": 1,
+        "assertRegex": 1,
+        "assertTrue": 2
       }
     },
     "test_kdst_integration.py": {
@@ -955,6 +961,16 @@
       "asserts": {
         "assertEqual": 14,
         "assertFalse": 2
+      }
+    },
+    "test_live_board_pricing.py": {
+      "test_methods": 8,
+      "asserts": {
+        "assertEqual": 10,
+        "assertGreaterEqual": 1,
+        "assertIn": 1,
+        "assertIsNone": 1,
+        "assertNotIn": 1
       }
     },
     "test_llm_engine.py": {
@@ -1120,20 +1136,20 @@
       }
     },
     "test_pick_synthesis.py": {
-      "test_methods": 116,
+      "test_methods": 115,
       "asserts": {
         "assertAlmostEqual": 17,
-        "assertEqual": 81,
+        "assertEqual": 75,
         "assertFalse": 19,
         "assertGreater": 11,
         "assertGreaterEqual": 7,
-        "assertIn": 17,
-        "assertIsInstance": 2,
-        "assertIsNone": 10,
+        "assertIn": 16,
+        "assertIsInstance": 4,
+        "assertIsNone": 11,
         "assertIsNotNone": 8,
         "assertLess": 5,
         "assertLessEqual": 4,
-        "assertNotIn": 9,
+        "assertNotIn": 11,
         "assertRaises": 2,
         "assertTrue": 20
       }

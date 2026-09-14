@@ -79,7 +79,7 @@ _CANDIDATE_EVIDENCE_FIELDS = (
     "positional_forfeit", "rival_premium", "denial_team",
     "positional_cliff", "position_run_detected",
     "near_tie_with_leader", "cliff_protection", "block_opportunity", "pure_value",
-    "context_elevated", "reach_label", "projected_points", "waiting_cost",
+    "context_elevated", "projected_points", "waiting_cost",
 )
 
 _SAFE_SCOPE = re.compile(r"[^A-Za-z0-9_.-]")

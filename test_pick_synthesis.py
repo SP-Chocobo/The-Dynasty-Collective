@@ -1113,7 +1113,7 @@ class ConsensusLookupTests(unittest.TestCase):
         self.assertLess(entry["rank"], 50, "expected Bijan Robinson's much better rank to win the collision")
 
 
-class ConsensusReachFreshnessBlindSpotTests(unittest.TestCase):
+class ConsensusStandingFreshnessBlindSpotTests(unittest.TestCase):
     """FLAGGED FINDING from the priority-7 information-freshness audit, not an asserted-correct
     invariant -- pins down a real gap so it doesn't get lost, exactly like the risk_adj
     calibration finding earlier in this same audit.
@@ -1126,15 +1126,15 @@ class ConsensusReachFreshnessBlindSpotTests(unittest.TestCase):
     change since this snapshot was frozen," not "is this data too old to trust." Nothing in
     this app changes VALUATION behavior based on staleness, for any source.
 
-    consensus_reach's reach_label/consensus_tier/consensus_rank are different in kind: they are
-    real decision-support fields that reach CandidateSnapshot directly (every real "Debate My
-    Pick" run sees them), sourced entirely from KeepTradeCut's external_values rows -- which
-    have NO freshness tracking anywhere, not even the cosmetic kind Draft Sharks gets. The one
+    consensus_standing's consensus_tier/consensus_rank are different in kind: they are real
+    decision-support fields that reach CandidateSnapshot directly (every real "Debate My Pick"
+    run sees them), sourced entirely from KeepTradeCut's external_values rows -- which have NO
+    freshness tracking anywhere, not even the cosmetic kind Draft Sharks gets. The one
     freshness-aware code path that DOES touch external_values (composite_player_score's
     _recency_weight, a continuous per-row decay) is a completely separate call path that
-    consensus_reach never touches. So a stale KTC export could silently feed a real per-pick
-    "REACH"/"WITHIN CONSENSUS BAND" label with zero signal anywhere -- no is_stale flag, no UI
-    pill, no debate-context mention -- that anything is out of date."""
+    consensus_standing never touches. So a stale KTC export could silently feed a real per-pick
+    market rank and tier to the debate layer with zero signal anywhere -- no is_stale flag, no
+    UI pill, no debate-context mention -- that anything is out of date."""
 
     def test_data_merger_has_no_freshness_property_for_external_values(self):
         merger = dm.DataMerger()
@@ -1145,66 +1145,63 @@ class ConsensusReachFreshnessBlindSpotTests(unittest.TestCase):
         self.assertFalse(hasattr(merger, "external_values_is_stale"))
         self.assertFalse(hasattr(merger, "external_values_staleness_days"))
 
-    def test_consensus_reach_result_carries_no_date_or_freshness_field(self):
+    def test_consensus_standing_result_carries_no_date_or_freshness_field(self):
         by_key = {
             ("a", "player"): {"rank": 30, "tier": 3, "value": 5000},
             ("b", "here"): {"rank": 28, "tier": 3, "value": 5100},
         }
-        result = ps.consensus_reach("A Player", 28, by_key)
+        result = ps.consensus_standing("A Player", by_key)
         self.assertIsNotNone(result)
         self.assertNotIn("source_date", result)
         self.assertNotIn("is_stale", result)
         self.assertNotIn("staleness_days", result)
 
 
-class ConsensusReachTests(unittest.TestCase):
+class ConsensusStandingTests(unittest.TestCase):
+    """What the market says about this player, and nothing more.
+
+    #167 removed the `reach_label`/`tier_gap` half of this function after an ablation measured
+    the label changing 0 of 36 engine decisions while tagging 85% of candidates as some flavour
+    of reach -- an artifact of how wide KTC's early tiers are, not a property of the candidate.
+    The last test here is what keeps that removal removed: a verdict is easy to re-add by
+    reflex, and re-adding one would put a judgment back in front of the debate layer that
+    nothing has re-measured."""
+
     def test_none_when_no_consensus_data_is_loaded(self):
-        self.assertIsNone(ps.consensus_reach("Anyone", 10, {}))
+        self.assertIsNone(ps.consensus_standing("Anyone", {}))
 
     def test_none_when_the_player_is_not_in_the_loaded_consensus_data(self):
         by_key = {("a", "known"): {"rank": 5, "tier": 1, "value": 9000}}
-        self.assertIsNone(ps.consensus_reach("Unknown Player", 10, by_key))
+        self.assertIsNone(ps.consensus_standing("Unknown Player", by_key))
 
-    def test_within_consensus_band_when_tiers_match(self):
-        by_key = {
-            ("a", "player"): {"rank": 30, "tier": 3, "value": 5000},
-            ("b", "here"): {"rank": 28, "tier": 3, "value": 5100},
-        }
-        result = ps.consensus_reach("A Player", 28, by_key)
-        self.assertEqual(result["reach_label"], "WITHIN CONSENSUS BAND")
-        self.assertEqual(result["tier_gap"], 0)
+    def test_the_market_rank_and_tier_come_back_as_ints(self):
+        by_key = {("a", "player"): {"rank": 30.0, "tier": 3.0, "value": 5000}}
+        result = ps.consensus_standing("A Player", by_key)
+        self.assertEqual(result, {"consensus_rank": 30, "consensus_tier": 3})
+        self.assertIsInstance(result["consensus_rank"], int)
+        self.assertIsInstance(result["consensus_tier"], int)
 
-    def test_a_better_tier_than_normal_here_is_also_within_band_never_a_reach(self):
-        # Taking a player from a BETTER tier than what's normally happening at this pick isn't
-        # a reach at all -- great value, not a violation of consensus.
-        by_key = {
-            ("a", "elite"): {"rank": 5, "tier": 1, "value": 9500},
-            ("b", "here"): {"rank": 28, "tier": 3, "value": 5100},
-        }
-        result = ps.consensus_reach("A Elite", 28, by_key)
-        self.assertEqual(result["tier_gap"], 0)
-        self.assertEqual(result["reach_label"], "WITHIN CONSENSUS BAND")
+    def test_a_consensus_entry_with_no_tier_yields_nothing_rather_than_a_partial_row(self):
+        """The surviving guard, pinned now that its sibling is gone. KTC's committed export
+        carries a tier on all 463 rows, so this is defensive -- but a row with a rank and no
+        tier must not reach a consumer as a half-populated standing."""
+        by_key = {("a", "player"): {"rank": 30, "tier": None, "value": 5000}}
+        self.assertIsNone(ps.consensus_standing("A Player", by_key))
 
-    def test_one_tier_worse_than_normal_here_is_a_modest_reach(self):
-        by_key = {
-            ("a", "player"): {"rank": 60, "tier": 4, "value": 3000},
-            ("b", "here"): {"rank": 28, "tier": 3, "value": 5100},
-        }
-        result = ps.consensus_reach("A Player", 28, by_key)
-        self.assertEqual(result["tier_gap"], 1)
-        self.assertEqual(result["reach_label"], "MODEST REACH")
-
-    def test_a_big_tier_gap_is_a_significant_reach(self):
+    def test_no_verdict_is_returned_alongside_the_numbers(self):
         by_key = {
             ("a", "player"): {"rank": 200, "tier": 9, "value": 500},
             ("b", "here"): {"rank": 28, "tier": 3, "value": 5100},
         }
-        result = ps.consensus_reach("A Player", 28, by_key)
-        self.assertEqual(result["tier_gap"], 6)
-        self.assertEqual(result["reach_label"], "SIGNIFICANT REACH")
+        # A candidate six tiers below what the market puts at this point in a draft -- the case
+        # that used to come back tagged SIGNIFICANT REACH. It comes back as two numbers.
+        result = ps.consensus_standing("A Player", by_key)
+        self.assertEqual(set(result), {"consensus_rank", "consensus_tier"})
+        self.assertNotIn("reach_label", result)
+        self.assertNotIn("tier_gap", result)
 
 
-class ConsensusReachEndToEndTests(unittest.TestCase):
+class ConsensusStandingEndToEndTests(unittest.TestCase):
     """Real KTC data, real board -- confirms the wiring, not just the isolated functions."""
 
     @classmethod
@@ -1231,7 +1228,7 @@ class ConsensusReachEndToEndTests(unittest.TestCase):
         )
         for c in snap.candidates:
             self.assertIsNone(c.consensus_rank)
-            self.assertIsNone(c.reach_label)
+            self.assertIsNone(c.consensus_tier)
 
     def test_a_superflex_league_gets_real_consensus_data_for_a_known_player(self):
         snap = ps.build_snapshot(
@@ -1242,7 +1239,6 @@ class ConsensusReachEndToEndTests(unittest.TestCase):
         self.assertIsNotNone(gibbs, "expected Gibbs to be a top-5 candidate at 1.01")
         self.assertEqual(gibbs.consensus_rank, 1)
         self.assertEqual(gibbs.consensus_tier, 1)
-        self.assertIn(gibbs.reach_label, ("WITHIN CONSENSUS BAND",))
 
 
 class DecisionBoundaryIsClosedTests(unittest.TestCase):
@@ -1352,7 +1348,7 @@ class ContextualSignalsCannotReachTheRankingTests(unittest.TestCase):
         "near_tie_with_leader": True, "cliff_protection": True, "block_opportunity": True,
         "pure_value": True, "context_elevated": True, "waiting_cost": 99.0,
         "horizon_floor": 99.0, "horizon_sensitivity": 99.0, "consensus_rank": 1,
-        "consensus_tier": 1, "reach_label": "REACH", "projected_points": 999.0,
+        "consensus_tier": 1, "projected_points": 999.0,
     }
 
     def test_the_sort_key_ignores_every_contextual_signal(self):
@@ -1492,7 +1488,7 @@ class DepthExposureStopsAtTheValueLayerTests(unittest.TestCase):
             position_expected_taken=None, positional_cliff=None, position_run_detected=False,
             pick_necessity=50.0, necessity_label="CLOSE CALL", near_tie_with_leader=None,
             cliff_protection=False, block_opportunity=False, pure_value=False,
-            context_elevated=False, consensus_rank=None, consensus_tier=None, reach_label=None,
+            context_elevated=False, consensus_rank=None, consensus_tier=None,
             projected_points=None, depth_exposure=7.5)
         self.assertEqual(snapshot.depth_exposure, 7.5)
 

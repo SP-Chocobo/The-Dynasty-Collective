@@ -1,6 +1,6 @@
 """Adversarial ingestion-boundary audit: can output from an LLM (a Prytaneum role's finding,
 surfaced via bot_research.py) ever reach CDME's own computation inputs (universal_value, Team
-Acquisition Value, need_bonus, eligibility_bonus, positional cliff, consensus_reach, rookie
+Acquisition Value, need_bonus, eligibility_bonus, positional cliff, consensus_standing, rookie
 flagging)?
 
 Mapped end-to-end (see README.md's "The Draft Engine" and "The Prytaneum" sections for the
@@ -256,7 +256,7 @@ class CascadeInjectionTests(unittest.TestCase):
         veteran_ids_after = {r["player_id"] for r in board_after}
         self.assertEqual(veteran_ids_before, veteran_ids_after)
 
-    def test_consensus_reach_unaffected_by_adversarial_injection(self):
+    def test_consensus_standing_unaffected_by_adversarial_injection(self):
         from pick_synthesis import _consensus_lookup
 
         merger_before = dm.DataMerger()

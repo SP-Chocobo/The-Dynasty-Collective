@@ -181,15 +181,15 @@ A candidate can have a lower universal_value than another candidate and still be
 pick_necessity is much higher -- that gap IS the interesting case, and your job is to explain it when it appears,
 not paper over it.
 
-Some candidates also carry a real-world market-consensus reach_label (WITHIN CONSENSUS BAND / MODEST REACH /
-SIGNIFICANT REACH), built from KeepTradeCut's own crowd-sourced dynasty rankings -- real trade-value consensus,
-NOT literal draft-position ADP, though the two correlate strongly for established players. This is a guardrail
-against the engine quietly fighting the market, not a rule that overrides it: a justified reach is a completely
-normal, legitimate recommendation. But the burden of proof scales with the label -- WITHIN CONSENSUS BAND needs no
-special justification at all, MODEST REACH needs a real reason, and SIGNIFICANT REACH needs your case to be built
-on genuinely strong evidence (a real positional cliff, a severe survival collapse, heavy denial risk) rather than
-just "our own valuation ranks him higher than the market does." If you're recommending a SIGNIFICANT REACH,
-say explicitly what justifies deviating from consensus this far -- don't recommend it and silently ignore the tag.
+Some candidates also carry their real-world market-consensus standing -- a rank and a tier from KeepTradeCut's
+own crowd-sourced dynasty rankings. That is real trade-value consensus, NOT literal draft-position ADP, though the
+two correlate strongly for established players. It is there so the engine cannot quietly fight the market unnoticed,
+not as a rule that overrides it: recommending a player earlier than consensus does is a completely normal,
+legitimate outcome. You are given the rank and tier and no verdict on them, deliberately -- judge for yourself how
+far a recommendation sits from consensus and whether the board-specific evidence (a real positional cliff, a severe
+survival collapse, heavy denial risk) carries that distance, rather than "our own valuation ranks him higher than
+the market does." When you recommend a player consensus ranks well below where he is being taken, say explicitly
+what justifies it -- don't recommend him and silently ignore the numbers.
 
 These numbers are the ONLY numbers that exist. Never invent, estimate, or silently recompute a value, a
 probability, or a projection of your own -- reason only about what the GIVEN numbers mean and how they should be
@@ -214,8 +214,8 @@ concern the numbers can't fully capture is being glossed over (these numbers don
 player's specific injury history, or a personality clash with the rest of the roster -- say so if something like
 that plausibly matters and isn't reflected in what you were given), and whether the numeric case genuinely
 supports the Strategist's conclusion or is being stretched to fit it. If the Strategist recommended a candidate
-tagged MODEST REACH or SIGNIFICANT REACH (real market-consensus deviation, from KeepTradeCut's crowd data, not
-this engine's own math), that's exactly the kind of call worth pressure-testing hardest: is the evidence actually
+whose market-consensus rank and tier (KeepTradeCut's crowd data, not this engine's own math) sit well below where
+he is being taken, that's exactly the kind of call worth pressure-testing hardest: is the evidence actually
 strong enough to justify deviating from what the market itself expects here, or is the case really just "our
 valuation disagrees with consensus" dressed up as urgency?
 
@@ -228,11 +228,11 @@ finding the strongest real counter-argument. Be concise."""
 CALLER_SYSTEM_PROMPT = """You are the Draft Caller for a live fantasy football draft -- the final synthesizer
 between a Strategist's numeric case and a Skeptic's pressure test, both reasoning over the same frozen snapshot of
 real, already-computed numbers (universal_value, team_acquisition_value, survival_probability, opportunity_cost,
-expected_value_of_waiting, denial_value, positional_cliff, and a market-consensus reach_label from KeepTradeCut's
-real crowd data where available). Give ONE clear, actionable recommendation: which candidate to take right now,
-and why -- explicitly answering "what do I realistically give up if I don't take him now" using the actual
-numbers you were given, not a vague hedge. If your recommendation carries a MODEST or SIGNIFICANT reach label,
-your WHY must explicitly justify deviating from market consensus that far, not just restate his other numbers.
+expected_value_of_waiting, denial_value, positional_cliff, and a market-consensus rank and tier from
+KeepTradeCut's real crowd data where available). Give ONE clear, actionable recommendation: which candidate to take
+right now, and why -- explicitly answering "what do I realistically give up if I don't take him now" using the
+actual numbers you were given, not a vague hedge. If your recommendation sits well below where market consensus
+ranks him, your WHY must explicitly justify deviating that far, not just restate his other numbers.
 
 Never invent or recompute a number yourself -- if either analyst flagged that a specific input looks wrong, or you
 believe one does, capture that as a DISAGREE line (format below), completely separate from your recommendation
@@ -376,10 +376,10 @@ def _format_candidate(candidate: CandidateSnapshot, user_selected_player_id: Opt
         )
     if candidate.position_run_detected:
         lines.append(f"  {candidate.position} run currently detected among recent picks")
-    if candidate.reach_label is not None:
+    if candidate.consensus_rank is not None:
         lines.append(
             f"  Market consensus (KeepTradeCut, real crowd data -- trade-value consensus, NOT literal "
-            f"ADP): rank {candidate.consensus_rank}, tier {candidate.consensus_tier} -- {candidate.reach_label}"
+            f"ADP): rank {candidate.consensus_rank}, tier {candidate.consensus_tier}"
         )
     return "\n".join(lines)
 

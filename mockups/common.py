@@ -44,7 +44,7 @@ UNPRICED_FIXTURE = {
     "horizon_sensitivity": None, "depth_exposure": None, "pick_necessity": 50.0,
     "opportunity_cost": None, "expected_value_of_waiting": None, "denial_value": None,
     "positional_forfeit": None, "consensus_rank": None, "consensus_tier": None,
-    "reach_label": None, "bpa_source": None, "confidence": None,
+    "bpa_source": None, "confidence": None,
     "source": "fixture: unpriced position-best, every Optional field absent, promoted by the feasibility backstop",
 }
 ZEROS_FIXTURE = {
@@ -61,7 +61,7 @@ ZEROS_FIXTURE = {
     "horizon_sensitivity": 0.0, "depth_exposure": 0.0, "pick_necessity": 0.0,
     "opportunity_cost": 0.0, "expected_value_of_waiting": 0.0, "denial_value": 0.0,
     "positional_forfeit": 0.0, "consensus_rank": None, "consensus_tier": None,
-    "reach_label": None, "bpa_source": "weekly projection, seeded", "confidence": 50.0,
+    "bpa_source": "weekly projection, seeded", "confidence": 50.0,
     "source": "fixture: every quantity a measured 0.0 -- each must render as a number",
 }
 

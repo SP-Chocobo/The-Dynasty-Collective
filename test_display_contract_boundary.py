@@ -356,7 +356,7 @@ class TheScaleIsNotAPointsTotalTests(unittest.TestCase):
             pick_necessity=0.0, necessity_label="HOLD", near_tie_with_leader=False,
             cliff_protection=False, block_opportunity=False, pure_value=False,
             context_elevated=False, consensus_rank=None, consensus_tier=None,
-            reach_label=None, projected_points=None,
+            projected_points=None,
         )
         self.assertLess(candidate.team_acquisition_value, 0)
 
@@ -466,7 +466,7 @@ class TheScaleIsNotAPointsTotalTests(unittest.TestCase):
         #   DISPLAY_CONTRACT like every other card. The basis travels beside the number from
         #   the first commit, which is the lesson depth_basis (field 44) taught.
         self.assertEqual(
-            len(dataclasses.fields(ps.CandidateSnapshot)), 47,
+            len(dataclasses.fields(ps.CandidateSnapshot)), 46,
             "CandidateSnapshot's field count changed. That is fine and often correct -- but "
             "confirm the new field does not imply a scale the card cannot support, decide "
             "whether the card should render it, then update this number.")

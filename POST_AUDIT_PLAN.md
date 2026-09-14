@@ -9491,3 +9491,86 @@ here. Process-level detachment is not one.**
 4. **Relaunch is free; re-running is not.** A run that cannot skip finished units turns every
    collapse into a full restart, which for the 5.34-hour battery would mean it never completes at
    all.
+
+---
+
+## #167 EXECUTED: `reach_label` removed everywhere, and the numbers it was derived from kept
+
+The ruling was *"Everywhere"*. This is what "everywhere" turned out to include, and the two
+judgment calls inside it that were not in the ruling.
+
+### What went
+
+`consensus_reach` bucketed a **tier gap** — the candidate's KTC tier minus whichever tier the
+market normally occupies at the current overall pick — into a three-way verdict: WITHIN
+CONSENSUS BAND / MODEST REACH / SIGNIFICANT REACH. The measurement that condemned it: the label
+changed **0 of 36 engine decisions** under ablation, while tagging **85%** of candidates as some
+flavour of reach. The 85% was not a property of the candidates. It is an artifact of how wide
+KTC's early tiers are — the committed export puts its median tier at **18 of 19**, so almost
+every candidate sits several tiers below whoever is ranked near an early pick number.
+
+Removed: the two label constants, the `reach_label` field on `CandidateSnapshot` (47 fields →
+46), its entry in `draft_history._CANDIDATE_EVIDENCE_FIELDS`, the gated evidence line in
+`pick_debate`, three prompt passages that instructed chairs to scale burden of proof by the
+label, and both `app.py` render sites.
+
+### Judgment call 1: `tier_gap` went too, and it is not the same kind of removal
+
+`tier_gap` was computed in the same dict and its **only** production reader was the label's own
+derivation. It is NOT in `quantity_readers`' closed set — that set is board columns, the two
+snapshot dataclasses, `pick_analysis`, `lineup_optimizer`'s dicts and `TeamDiagnostics`, and a
+function's own return dict is none of those — so removing the label would NOT have tripped the
+write-only pin. It would have left a quantity computed, returned, and read by nothing, sitting
+just below the scanner's floor. That is `#138` exactly, and the fact that the guard could not
+see it is the interesting half: **the write-only scanner's closed set has a blind spot for
+return dicts, and this is the first case to land in it.**
+
+### Judgment call 2: one guard was dropped, and it was MEASURED before it was dropped
+
+`consensus_reach` had two `tier is None` guards. The candidate's own still protects
+`int(candidate["tier"])` and stays. The second — *return nothing if the player NEAREST the
+current pick has no tier* — existed only to protect the `tier_gap` subtraction, and with the
+subtraction gone it would have meant "withhold this player's market data because some other
+player's tier is missing," which is unexplainable. Before removing it: **0 of 463 KTC rows lack
+a tier**, so the branch is unreachable on the committed baseline and its removal is a no-op on
+real data. Measured, not assumed.
+
+### The rename, and why it is part of the same commit
+
+`consensus_reach` no longer computes a reach. Leaving that name is the `#126` failure — a
+vocabulary with a second, stale home. It is now `consensus_standing`, and it **no longer takes a
+pick number at all**: where the market ranks a player does not depend on where in the draft you
+ask. That dropped an unused `current_overall_pick` local in `pick_synthesis` and an unused
+parameter from `draft_counterfactual._adp_pick`.
+
+### What deliberately stayed
+
+`consensus_rank` and `consensus_tier` — real sourced KTC data, not a derived verdict. Both
+render sites now gate on `consensus_rank is not None` where they gated on the label. The chairs
+still see the market's own placement; what they no longer see is this engine's opinion about it.
+A test pins the removal (`test_no_verdict_is_returned_alongside_the_numbers`) because a verdict
+is easy to re-add by reflex, and a re-added one would put a judgment in front of the debate
+layer that nothing has re-measured.
+
+---
+
+## #268 FOUND WHILE EXECUTING #167: the generated mockups had drifted from their generators
+
+`mockups/build.py` regenerates eight pages from their generator modules. Running it after
+editing `r_variants.py` and `common.py` rewrote **more than `#167` touched**: the embedded
+payload picked up `displacement_adj` (`#216`), and the reworded `universal_value`,
+`team_acquisition_value` and `rival_premium` help text (`#187`, `#207`). None of that is
+`reach_label`.
+
+So those pages had been stale since those items landed, because **nothing runs `build.py`** — not
+a test, not CI, not a hook. A generated artifact that no process regenerates is a generated
+artifact that silently becomes a lie about its own source, and these are the pages the owner
+reads when judging a design. The `#167` commit carries the catch-up rather than deliberately
+re-staling files the build says should be current.
+
+Not fixed here, because the fix is a decision: either a test that regenerates into a temp dir and
+diffs against the committed pages (fails the suite when someone edits a generator without
+rebuilding), or an explicit ruling that these pages are frozen records like the nine round-1
+pages already are, in which case `build.py` should stop rebuilding them. **The nine round-1 pages
+are already handled correctly** — `build.py`'s own docstring exempts them as the scored record —
+so the precedent for the second answer exists. This is the owner's call.

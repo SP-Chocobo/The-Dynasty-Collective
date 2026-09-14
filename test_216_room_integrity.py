@@ -128,7 +128,7 @@ def _candidate(**overrides) -> CandidateSnapshot:
         position_run_detected=False, pick_necessity=88.0, necessity_label="STRONG ACTION",
         near_tie_with_leader=False, cliff_protection=False, block_opportunity=False,
         pure_value=False, context_elevated=False,
-        consensus_rank=None, consensus_tier=None, reach_label=None, projected_points=250.0,
+        consensus_rank=None, consensus_tier=None, projected_points=250.0,
         replacement_basis=dr.REPLACEMENT_BASIS_LIVE_DEMAND,
     )
     base.update(overrides)

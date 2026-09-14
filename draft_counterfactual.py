@@ -14,8 +14,8 @@ picks-so-far state immediately before that pick and re-evaluates that identical 
     position" inclusion is TAV-based (see narrow_candidates' own docstring), not UV-based, so
     the true UV-argmax across the whole pool is not guaranteed to appear in a stored
     PickRecord's snapshot at all -- this recomputes the full board specifically to get it right.
-  - real market consensus (KeepTradeCut) via pick_synthesis._consensus_lookup / consensus_reach
-    -- the same, already-shipped lookup the live engine itself uses for reach_label, not a new
+  - real market consensus (KeepTradeCut) via pick_synthesis._consensus_lookup / consensus_standing
+    -- the same, already-shipped lookup the live engine itself uses for consensus standing, not a new
     ADP model. That lookup is empty for a non-superflex league BY DESIGN (its own docstring:
     "this app's committed baseline only carries KTC's superflex-format export, and using
     superflex-inflated QB consensus for a 1QB league would silently misrepresent that league's
@@ -113,7 +113,7 @@ def bpa_row(board: list[dict]) -> Optional[dict]:
     return max(priced, key=lambda r: r["universal_value"])
 
 
-def _adp_pick(board: list[dict], merger: DataMerger, is_superflex: bool, current_overall_pick: int) -> tuple[Optional[dict], Optional[str]]:
+def _adp_pick(board: list[dict], merger: DataMerger, is_superflex: bool) -> tuple[Optional[dict], Optional[str]]:
     """(row, unavailable_reason). row is the board row with the best (lowest) real KTC
     consensus rank -- None with a reason string when no consensus data applies to this node."""
     if not is_superflex:
@@ -123,10 +123,10 @@ def _adp_pick(board: list[dict], merger: DataMerger, is_superflex: bool, current
         return None, "Superflex league, but no KTC consensus data is loaded in this merger instance."
     best_row, best_rank = None, None
     for row in board:
-        reach = ps.consensus_reach(row["name"], current_overall_pick, consensus_by_key)
-        if reach is None:
+        standing = ps.consensus_standing(row["name"], consensus_by_key)
+        if standing is None:
             continue
-        rank = reach["consensus_rank"]
+        rank = standing["consensus_rank"]
         if best_rank is None or rank < best_rank:
             best_rank, best_row = rank, {**row, "_consensus_rank": rank}
     if best_row is None:
@@ -165,8 +165,7 @@ def compare_trajectory(
             picks_so_far.append({"pick_no": rec.pick_no, "round": rec.round,
                                  "roster_id": rec.roster_id, "player_id": rec.chosen_player_id})
             continue
-        current_overall_pick = rec.pick_no
-        adp_row, adp_reason = _adp_pick(board, merger, is_superflex, current_overall_pick)
+        adp_row, adp_reason = _adp_pick(board, merger, is_superflex)
 
         engine_tav = engine_cand["tav"]
         bpa_tav = float(bpa_row_["final_score"])

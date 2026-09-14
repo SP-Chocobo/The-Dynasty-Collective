@@ -108,21 +108,18 @@ Five real signals this module adds that didn't exist anywhere in the engine befo
         identical survival risk should score the identical necessity contribution from that
         risk, not a bigger one for the pricier player).
 
-  * consensus_reach -- how far this candidate's real-world MARKET CONSENSUS standing sits from
-    where he's being taken right now, and whether that's a normal deviation or a real reach.
+  * consensus_standing -- where the real-world MARKET CONSENSUS itself places this candidate.
     Built from KeepTradeCut's own crowd-sourced dynasty rankings (already loaded elsewhere in
     this app -- see draft_room.py's _rookie_lookup for the same source used a different way):
     real rank + real tier, not this engine's own VOR math validating itself. This exists
-    specifically to guard against the engine "fighting the market" -- recommending a player
-    nobody drafts this early without a real, board-specific reason (a genuine survival/cliff/
-    denial case), versus quietly assuming its own valuation should just override established
-    consensus. Deliberately does NOT block or penalize a deviation -- it's informational
-    evidence for the debate layer, not a hard rule (a justified reach is a normal, legitimate
-    outcome; the point is making the debate account for it explicitly, not suppressing it).
-    Uses KTC's own TIER boundaries to size how big a deviation is, not a raw rank-number gap --
-    a tight cluster of similarly-valued players tolerates a big rank swing with no real
-    justification needed, while crossing an actual tier line the market itself drew is a bigger
-    deal regardless of the raw rank distance. IMPORTANT DISTINCTION worth stating plainly:
+    specifically so the engine cannot quietly "fight the market" unobserved -- a debate that
+    can see where consensus puts a player can account for recommending him earlier; one that
+    cannot, can't. Deliberately does NOT block or penalize a deviation, and deliberately does
+    not GRADE one either: it reports the two sourced numbers and stops. It used to also bucket
+    the tier distance into a three-way reach verdict; #167 measured that verdict changing no
+    engine decision and tagging 85% of candidates purely because KTC's early tiers are wide,
+    so the verdict was removed and the numbers it was derived from kept (see
+    consensus_standing's own docstring). IMPORTANT DISTINCTION worth stating plainly:
     KTC's rank/tier reflect dynasty TRADE-VALUE consensus, not literal startup-draft ADP --
     those correlate strongly for established players but are not the same measurement, so this
     is a real, sourced, useful PROXY for draft-position expectation, never presented as an
@@ -647,14 +644,6 @@ def compute_pick_necessity(raw_candidates: list[dict], round_num: int) -> list[t
     return results
 
 
-# Reach labels by TIER GAP (candidate's own KTC tier minus whichever tier is normally occupied
-# at the current overall pick) -- see consensus_reach's own docstring for why tier gap, not a
-# raw rank-number gap, is the right unit here (a market-drawn tier boundary is a real signal;
-# an arbitrary rank-count threshold isn't).
-CONSENSUS_REACH_LABELS = {0: "WITHIN CONSENSUS BAND", 1: "MODEST REACH"}
-CONSENSUS_REACH_LABEL_DEFAULT = "SIGNIFICANT REACH"
-
-
 def _consensus_lookup(merger: DataMerger, is_superflex: bool) -> dict[tuple[str, str], dict]:
     """name_key -> {"rank", "tier", "value"} from KeepTradeCut's own crowd-sourced dynasty
     rankings -- real market consensus, never this engine's own VOR math. Real players only
@@ -673,7 +662,7 @@ def _consensus_lookup(merger: DataMerger, is_superflex: bool) -> dict[tuple[str,
     CDME's ingestion trust boundary, made explicit: merger.external_values also carries
     bot_research.json's own LLM-originated findings (source_name == "bot_research", see
     data_merger.load_bot_research_as_external), sharing this same DataFrame. The
-    source_name == "keeptradecut" filter below is what keeps that data out of consensus_reach
+    source_name == "keeptradecut" filter below is what keeps that data out of consensus_standing
     -- proven, not just asserted, by test_cdme_ingestion_boundary.py's adversarial injection
     tests. Loosening this filter would reopen that boundary."""
     if not is_superflex:
@@ -695,33 +684,34 @@ def _consensus_lookup(merger: DataMerger, is_superflex: bool) -> dict[tuple[str,
     return lookup
 
 
-def consensus_reach(
-    player_name: str, current_overall_pick: int, consensus_by_key: dict[tuple[str, str], dict],
+def consensus_standing(
+    player_name: str, consensus_by_key: dict[tuple[str, str], dict],
 ) -> Optional[dict]:
-    """{"consensus_rank", "consensus_tier", "tier_gap", "reach_label"} for this candidate, or
-    None when he isn't in the loaded consensus data at all (a real player KTC doesn't cover --
-    common for deep bench/practice-squad-tier players -- gets no reach signal rather than a
-    guessed one). tier_gap is the candidate's own KTC tier MINUS whichever tier is normally
-    occupied at current_overall_pick (found by nearest consensus rank to that pick number) --
-    0 or negative (his tier is the same as or BETTER than what's normally happening here) means
-    no reach at all; the bigger the positive gap, the more this pick deviates from what the
-    market itself would consider a comparable-tier player at this spot. See module docstring
-    for why this is a real, sourced PROXY for draft-position expectation (KTC's own rank/tier
-    reflect trade-value consensus, not literal ADP) and why it's informational evidence for the
-    debate layer, never a block or a penalty applied here."""
+    """{"consensus_rank", "consensus_tier"} -- where the real-world market itself places this
+    candidate -- or None when he isn't in the loaded consensus data at all (a real player KTC
+    doesn't cover -- common for deep bench/practice-squad-tier players -- gets no consensus
+    signal rather than a guessed one). See module docstring for why KTC rank/tier is a real,
+    sourced PROXY for draft-position expectation (it reflects trade-value consensus, not
+    literal ADP) and why it's informational evidence for the debate layer, never a block or a
+    penalty applied here.
+
+    WHAT THIS DELIBERATELY NO LONGER RETURNS (#167). It used to also derive `tier_gap` -- this
+    candidate's tier minus the tier normally occupied at the current overall pick -- and bucket
+    that into a `reach_label` (WITHIN CONSENSUS BAND / MODEST REACH / SIGNIFICANT REACH).
+    Ablation measured that label changing 0 of 36 engine decisions, and the 85% of candidates
+    it tagged as some kind of reach turned out to be an artifact of how wide KTC's early tiers
+    are, not a property of the candidate. A three-way verdict that reads as a judgment while
+    carrying none is worse than no verdict, so the judgment is gone and the sourced numbers it
+    was derived from stay. This function therefore takes no pick number: the market's own
+    ranking of a player does not depend on where in the draft you ask."""
     if not consensus_by_key:
         return None
     key = name_key(normalize_name(player_name))
     candidate = consensus_by_key.get(key)
     if candidate is None or candidate.get("tier") is None:
         return None
-    nearest = min(consensus_by_key.values(), key=lambda c: abs(c["rank"] - current_overall_pick))
-    if nearest.get("tier") is None:
-        return None
-    tier_gap = max(int(candidate["tier"] - nearest["tier"]), 0)
     return {
         "consensus_rank": int(candidate["rank"]), "consensus_tier": int(candidate["tier"]),
-        "tier_gap": tier_gap, "reach_label": CONSENSUS_REACH_LABELS.get(tier_gap, CONSENSUS_REACH_LABEL_DEFAULT),
     }
 
 
@@ -1168,7 +1158,6 @@ class CandidateSnapshot:
     context_elevated: bool
     consensus_rank: Optional[int]
     consensus_tier: Optional[int]
-    reach_label: Optional[str]
     projected_points: Optional[float]
     # The premium-driving rival's own real take_probability -- see CREDIBLE_RIVAL_PATH_
     # THRESHOLD and decision_path_flags' block_opportunity, the one consumer. Defaulted so
@@ -1355,10 +1344,9 @@ def build_snapshot(
         analysis_by_id = {str(a["player_id"]): a for a in analysis}
 
     # Real market-consensus data (KeepTradeCut), not this engine's own valuation -- see
-    # consensus_reach's own docstring for why this only ever applies to a superflex league.
+    # consensus_standing's own docstring for why this only ever applies to a superflex league.
     is_superflex = "SUPER_FLEX" in (league.get("roster_positions") or [])
     consensus_by_key = _consensus_lookup(merger, is_superflex)
-    current_overall_pick = current_index + 1
 
     # First pass: gather every real per-candidate number EXCEPT pick_necessity, which needs the
     # whole narrowed set as context (a standout only means something relative to the field) --
@@ -1374,7 +1362,7 @@ def build_snapshot(
         # every consumer quietly deciding for itself what an absent column meant -- and would
         # swallow a genuinely new third shape instead of failing where it was introduced.
         universal_value = row["universal_value"]
-        reach = consensus_reach(row["name"], current_overall_pick, consensus_by_key)
+        standing = consensus_standing(row["name"], consensus_by_key)
         raw_candidates.append({
             "player_id": pid, "name": row["name"], "position": row["position"], "team": row.get("team"),
             "bpa": row["bpa"], "bpa_source": row["bpa_source"], "confidence": row["confidence"],
@@ -1403,9 +1391,8 @@ def build_snapshot(
             "position_expected_taken": a.get("position_expected_taken"),
             "positional_cliff": detect_positional_cliff(board, pid),
             "position_run_detected": (run_position is not None and row["position"] == run_position),
-            "consensus_rank": reach["consensus_rank"] if reach else None,
-            "consensus_tier": reach["consensus_tier"] if reach else None,
-            "reach_label": reach["reach_label"] if reach else None,
+            "consensus_rank": standing["consensus_rank"] if standing else None,
+            "consensus_tier": standing["consensus_tier"] if standing else None,
             "projected_points": row.get("projected_points"),
             # Straight off the board row -- computed once per board in draft_room, not
             # recomputed per candidate here (see _attach_waiting_cost).

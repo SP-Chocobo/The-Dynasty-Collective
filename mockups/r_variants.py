@@ -5,7 +5,7 @@
             two engine inputs that make the regime what it is (margin over the second priced
             candidate against the noise band; survival against the decisive bar), then at
             most four sentences each about a fact that is present and non-obvious for HIM --
-            a consensus reach, the roster terms that lift his price above his raw value, the
+            where market consensus ranks him, the roster terms that lift his price above his raw value, the
             forces that fired with their sizes. Nothing about an absent number, nothing true
             of every row.
     BAND 2  the rest of the engine's CONTIGUOUS decide tier. Derived, never hard-coded: the
@@ -43,7 +43,6 @@ from s_variants import CARD_JS, H1_BODY, MATERIAL_CSS, S1_CSS, SPINE_CSS, SPINE_
 
 BAND_JS = SPINE_JS + CARD_JS + r"""
 const BAND = PAYLOAD.nearTieBand, DECISIVE_SURV = PAYLOAD.decisiveSurvival, CLIFF_MIN = PAYLOAD.cliffMinGap;
-function titleCase(s) { return String(s).toLowerCase().replace(/^\w/, ch => ch.toUpperCase()); }
 function survWord(c) { const p = c.survival * 100; return p > 0 && p < 0.5 ? "under 1%" : `${Math.round(p)}%`; }
 
 // THE CLIFF IS A NUMBER (#175). The engine's cliff entry from earned() led with the forfeit;
@@ -110,8 +109,8 @@ function verdict3(L, cands) {
 // and not true of every row; the receipt carries the rest.
 function plateProse(L, cands) {
   const s = [];
-  if (L.reach_label && L.reach_label !== "WITHIN CONSENSUS BAND" && num(L.consensus_rank))
-    s.push(`<b>${titleCase(L.reach_label)}.</b> Consensus ranks him #${L.consensus_rank}${num(L.consensus_tier) ? `, tier ${L.consensus_tier}` : ""}.`);
+  if (num(L.consensus_rank))
+    s.push(`<b>Market consensus.</b> Ranks him #${L.consensus_rank}${num(L.consensus_tier) ? `, tier ${L.consensus_tier}` : ""}.`);
   const terms = [["need", L.needBonus], ["flexibility", L.eligBonus], ["depth insurance", L.depth_exposure]].filter(([, x]) => num(x) && x > 0);
   if (terms.length && num(L.uv)) s.push(`Your roster adds <b>+${terms.reduce((a, [, x]) => a + x, 0).toFixed(1)} ${U}</b> to his raw ${L.uv.toFixed(1)}: ${terms.map(([k, x]) => `${k} ${x.toFixed(1)}`).join(", ")}.`);
   for (const e of earned3(L, 0, cands)) if (e.t) s.push(e.t);
@@ -331,7 +330,7 @@ SHARED_ASSERTS = ("Band 2 is DERIVED from the engine's contiguous decide tier an
                   "the tier holds seven more after the leader, so the label reads how many are cards and how many continue as "
                   "full-weight rows. The plate's description is fuller and still earned: the verdict quotes the two engine inputs "
                   "that make the regime (margin against the noise band, survival against the decisive bar), then at most four "
-                  "sentences about facts present for HIM — the consensus reach, the roster terms that lift his price, the forces with "
+                  "sentences about facts present for HIM — where consensus ranks him, the roster terms that lift his price, the forces with "
                   "their sizes. The cliff is drawn as its size, never as a coloured mark.")
 
 VARIANTS = [
