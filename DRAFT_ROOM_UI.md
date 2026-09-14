@@ -711,3 +711,106 @@ correction. What remains untested is IDP: every league measured is offence-only,
 league adds three positions with their own demand shapes, each a candidate holdout. The
 instrument runs in ~20s per league on a recorded draft; this is named as the next measurement,
 not assumed.
+
+---
+
+## 14. The pool gauge — the surface, and what it is allowed to say
+
+**This section supersedes §11's toggle and §12's per-position mode arming.** Owner's ruling:
+*"So there will be no upside mode. Just this visual to give the drafter information on the pool.
+Still available."* §11's reasoning about notices is kept — a setting reachable only through its own
+evidence is the right shape for any future switch — but no switch is being built, so there is no
+mode divergence, and the lane-splitting rule §11 derived from it has nothing left to trigger it.
+The gauge changes no valuation and gates no candidate. `#55` exactly: the engine shows, the human
+decides. Evidence and full derivation: `POST_AUDIT_PLAN.md` `#282`.
+
+### What it is
+
+One tank per position, drawn as a row of segments. Full at that position's own opening pool;
+drains as players above its opening replacement bar are taken. It cannot rebound — that is a
+property of how the quantity is defined, not a behaviour to test for.
+
+**Self-normalised per position, and this is load-bearing.** Each tank is full at ITS OWN opening
+count, so a QB bar never claims to equal a WR bar in value — the cross-position comparison `#75`/
+`#76` found `bpa`'s unit could not support and `#229` left undefined for the deep-bench case.
+**Positions draining at different rates is the signal, not an artifact**, and a shared scale would
+destroy exactly that.
+
+### The display contract — narrower than what the engine computes
+
+| | |
+|---|---|
+| **SHOW** | segments; the band marks; optionally a percentage of the position's own full pool |
+| **NEVER** | raw counts, point values, band sizes, or any engine-internal population |
+
+A count is needed to compute the fraction and is never surfaced. Two reasons, and the second is
+the one that generalises: the owner's *"2 left above replacement feels obscure to someone who
+hasn't spent the last month chatting with you"*, and — a count invites the reader to reason about
+WHICH two players, which a gauge has no standing to imply.
+
+### The bands, and how they must be drawn
+
+Three marks cut each tank into **ELITE / MID / DEPTH / MEH**. A mark says WHERE a boundary sits and
+never how far the drop is; magnitude stays behind the contract with the counts and the points.
+
+**A band edge is a HAIRLINE BETWEEN SEGMENTS, never a segment.** This is a real finding from the
+ASCII prototype, recorded so it is not rediscovered in CSS: with three marks drawn *as* cells in a
+six-cell tank, the marks eat half the dial and `[:#:##.]` reads as noise rather than as three
+boundaries. Drawn as rules between segments they cost no pool width at all, and three of them in a
+rendered bar are not crowded. The prototype cannot show this; the built surface must.
+
+**The marks TRAVEL, and that is the point.** They are fixed at the opening board — same discipline
+as the bar, and for the same reason a re-read yardstick drifts (`#74`/`#76`, and fatally in
+`#271`-`#280`). So a boundary is a property of a PLAYER: it keeps its place among the players and
+only its distance from the front changes as those ahead of him leave. The mark does not wander, it
+**approaches**; passing it removes it, because you went over it.
+
+**Do not build a fixed-zone dial.** The obvious alternative — paint the bands as permanent zones
+and let the fill edge move through them, like a tachometer redline — is WRONG HERE and would lie
+in the case that matters most. The fill is a COUNT of survivors; the zones would be RANKS. Late in
+a draft the three players left may all be MEH-band, and a fixed-zone needle would sit in ELITE and
+say so. The travelling mark tracks the actual surviving players and cannot make that claim.
+
+### Sizing, and the two states
+
+Owner's requirement: *"It will need to be large enough that the data it is trying to show is clear
+and intuitive. However. We can contemplate, if you want to expand it to get a little more
+information and collapse it back into the default visual."*
+
+**DEFAULT (collapsed).** Four rows, one per position, each a full-width tank with its band
+hairlines and an optional percentage of that position's own pool. Sized so the fill level and the
+mark positions are both readable without looking twice — this is the whole surface most of the
+time, so it gets the width, not a corner.
+
+**EXPANDED.** The rule for what expansion may add: **it may add TIME, never VALUE.** A pick number
+is a draft coordinate the reader already has on screen; a point total is a valuation the contract
+excludes. So the expanded state may carry the drain history as a shape, the pick at which a band
+edge was passed, and the pick at which the tank emptied. It may not carry counts, points, band
+sizes, or player names. Collapsing returns to the default with nothing lost, because everything
+expansion showed was a coordinate, not a quantity.
+
+### THE QB TANK IS GOING TO LOOK WRONG, AND IT IS NOT
+
+Above the replacement bar, **QB is the flattest position, not the steepest** — the opposite of the
+intuition most drafters (and the owner, in the exchange that produced this) bring to it. In a
+12-team 1QB league the eleven quarterbacks clearing replacement run 369 / 350 / 343 / 334: a 10%
+spread, against RB's 426 → 194. Banding beats arbitrary equal slices there by **+0.1 points** —
+the honest null.
+
+So the QB tank's marks will sit near even thirds and will look like they mean nothing. They mean
+exactly one true thing: *this position is evenly graded, there is no elite tier to miss.* **No
+suppression rule was added** — "hide the marks when the margin is small" is a threshold, and a
+bound is not a threshold (`#56`). The gauge draws what is there and the prose carries the warning.
+
+### What the gauge lets a drafter infer, and the one inference it does NOT support
+
+When a tank is empty and you take a player at that position, nothing measured remained above the
+opening bar — the owner's *"random shots in the dark"*. That state is counted (`#282`: 59% of
+Fourth and Forever's gauged picks) and it is honest.
+
+**It does not follow that such a pick is wrong.** Taking a player below the bar while the tank
+still holds someone above it is a different state entirely — a CHOICE, made for reasons the gauge
+cannot see, and in the measured drafts it happened exactly once in 312 picks. The two must never
+render the same way. Collapsing a choice into an absence is the defect that had to be corrected
+twice already (§13's holdout banner, `#277a`, `#280`), and this is the third surface where the
+same mistake is available.

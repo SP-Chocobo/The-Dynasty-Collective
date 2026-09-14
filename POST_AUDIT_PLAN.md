@@ -10647,3 +10647,114 @@ scale, entirely below the starting lineup. In FFCL Group A — no trading, where
 09-08 record says a player who never starts is worth zero permanently — that substitution is a
 cost rather than a wash. That is a Phase 3 question about `replacement_levels` (`#50`, `#147`),
 not a mode-switch patch.
+
+---
+
+## `#282` THE POOL GAUGE — a per-position tank that only ever drains, banded ELITE/MID/DEPTH/MEH
+
+**OWNER'S RULING, and it closes a thread rather than opening one: THERE WILL BE NO UPSIDE MODE.**
+Verbatim — *"So there will be no upside mode. Just this visual to give the drafter information on
+the pool. Still available."* This supersedes the toggle half of `DRAFT_ROOM_UI.md` §11 (the
+depletion notice carrying a default-on per-position switch) and §12's per-position mode arming.
+The notice pattern's reasoning survives and is worth keeping — a setting reachable only through
+the evidence that produced it is still the right shape for any future switch — but no switch is
+being built. `#230`-`#233` measured what upside mode actually does; `#280` recommended against the
+rule that would have armed it; this closes the question by removing the mode, not by tuning it.
+
+The gauge is therefore the WHOLE deliverable, and it has no functionality side: it changes no
+valuation, gates no candidate, and arms nothing. `#55`'s precedent exactly — the engine shows,
+the human decides.
+
+### The quantity, and why it depletes where the crossing rule did not
+
+Fix the bar ONCE, at draft open, at each position's own replacement level; count the survivors
+above it. Players only ever leave the pool, so the gauge is **monotone non-increasing by
+construction** — a property of the definition, not a hope about the data. Asserted anyway, and
+green on every position in both leagues.
+
+This is the whole reason it exists. The crossing rule's quantity was top-minus-replacement, where
+BOTH ends move, and `#276`/`#277` measured a tight end's headroom **rebounding 137 → 24 → 17 → 22
+→ 30** as the pool emptied — bench picks lower the replacement faster than they lower the best
+remaining. A gauge built on that number would read *refilling* at the exact moment the position
+ran dry.
+
+The bar is read back out of the engine's own two columns (`projected_points - bpa`), exact and
+unique per position. Nothing here picks a cutoff (`#56`).
+
+### The bands, and TWO REJECTED DEFINITIONS — both mine, both measured
+
+The owner's vocabulary: **ELITE / MID / DEPTH / MEH**, at most three marks per tank, because
+*"if we're only using 2 or 3 of these per position, they need to be significant signals of the
+strength of the players above and below them."* That criterion IS the placement rule — marks go
+where they most divide strength. Two other rules were built first and both lost, graded on
+**projected points, a column that did not place the cuts**:
+
+| rule | result |
+|---|---|
+| biggest raw gap (`detect_positional_cliff`'s notion) | 66-96%; behind banding in all 8 position/league cells, by 25 points at superflex QB |
+| steepest slope change | **returned nothing at all** for TE and WR in both leagues; 32-38% at RB |
+
+The second failure is the informative one, and it corrects a shared mental model. The owner's
+framing was *"when the production begins to dip faster, that is a cliff."* Above the replacement
+bar these curves are **CONCAVE** — they fall fastest at the very top and flatten from there — so
+*where does the decline accelerate* has no answer, because it never does. The bands are real; the
+bend that was supposed to find them is not.
+
+### THE EVIDENCE IS THE MARGIN, NEVER THE LEVEL (`#245`)
+
+Banding scores 91.0-96.5% on points. **That number alone proves nothing**: any monotone cut of an
+already-sorted list explains most of its own variance, and arbitrary equal quarters already score
+82-96%. Only the margin over that control is earned.
+
+| | bands | equal slices | margin |
+|---|---|---|---|
+| TE (F&F) | 95.3% | 83.2% | **+12.1** |
+| RB (F&F) | 92.8% | 84.0% | **+8.8** |
+| QB (F&F) | 91.0% | 84.7% | +6.3 |
+| WR (F&F) | 93.9% | 88.2% | +5.7 |
+| TE (12T) | 96.5% | 81.7% | **+14.8** |
+| RB (12T) | 94.2% | 82.0% | **+12.2** |
+| WR (12T) | 94.2% | 86.5% | +7.7 |
+| **QB (12T)** | 96.0% | 95.9% | **+0.1** |
+
+**QB in the 12-team 1QB league is the honest null, and it inverts an intuition stated in the same
+exchange** (*"a slow decline in every position except for maybe qb"*). Above the bar, QB is the
+FLATTEST position, not the steepest: the 11 quarterbacks clearing replacement run 369 / 350 / 343
+/ 334, a 10% spread, against RB's 426 → 194. There is no elite/meh structure there to draw. The
+gauge draws the marks anyway and does not pretend — bands sitting near even thirds is itself the
+true statement that the position is evenly graded. **No suppression rule was added**, because
+"suppress when the margin is small" is a threshold, and a bound is not a threshold (`#56`).
+
+### The DARK pick — the owner's inference, measured
+
+*"When you are pulling a player from beneath that already having been depleted, then you're in,
+these are just random shots in the dark mode."* Now a counted state, and kept strictly apart from
+its neighbour:
+
+- **ABOVE** — still above the opening bar. Measured production, taken.
+- **REACH** — below the bar while the tank still held someone above it. A CHOICE, and the gauge is
+  not entitled to call it wrong.
+- **DARK** — below the bar with the tank ALREADY EMPTY. Nothing measured remained to pass over.
+
+REACH and DARK are the same observable pick and opposite epistemic situations. Merging them is
+precisely the defect `#277a`/`#280` cost us twice — a choice rendered as an absence. The gauge
+reports DARK only, because DARK is the state the tank actually knows.
+
+Fourth and Forever: **184 of 312 gauged picks are dark (59%)**, 127 above the bar, and exactly
+**one** reach in the entire draft. WR goes dark at pick 99 of 312; QB never does.
+
+### The display contract, tightened
+
+| | |
+|---|---|
+| **SHOW** | segments; the band marks; optionally a percentage of the position's own full pool |
+| **NEVER** | raw counts, point values, band sizes, or any engine-internal population |
+
+Counts are required to compute the fraction and are never surfaced — the owner's standing
+objection (*"2 left above replacement feels obscure... too technical"*) plus a second reason: a
+count invites reasoning about WHICH two players, which a gauge is not entitled to imply. A mark
+says WHERE a boundary is, never how far the drop is. `pool_gauge.py` prints what a reader would
+SEE, so the evidence and the surface cannot drift; the JSON keeps the counts for audit only.
+
+**Instrument:** `evidence/mode_boundary/pool_gauge.py` → `pool_gauge.json`. **Surface spec:**
+`DRAFT_ROOM_UI.md` §14.
