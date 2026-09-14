@@ -10,9 +10,19 @@ they answer to.
 
 ---
 
-## 1. The rulings, as given
+## 1. The decisions, as given
 
-These are the owner's, recorded verbatim in effect:
+**TWO TIERS, and do not confuse them.** The owner's words on the second tier: *"this is just
+spitballing, not to be all chiseled into stone as law."*
+
+- **RULED** — stated as a decision, binding until the owner changes it.
+- **WORKING** — chosen in a rapid option-picking pass to give the build a direction. Real
+  preferences, not law. Revisit freely; a later contradiction is a change of mind, not a defect,
+  and nothing here needs a withdrawal ceremony to move.
+
+Everything in §1 below is RULED. The §10 table marks each entry's tier.
+
+Recorded verbatim in effect:
 
 - **Game-like.** Clean and functional, MOBA/LoL draft-selector flavour taken as *flavour*.
 - **A rail across the top**, panning as players are taken, carrying the next on the clock. It
@@ -129,10 +139,35 @@ click on the player."*
 
 **Three things follow.**
 
-**a. The first term has a prerequisite this repo already recorded as open.** `#100` says nothing
-meters what a call costs — *"one gap presenting as three."* "Your slowest recorded call" cannot be
-computed until a per-function duration history exists. Either `#100` closes first, or the freeze
-timer ships with its own narrow duration log. That is a real dependency, not a detail.
+**a. CORRECTED — the first term is ALREADY MEASURED, and I said otherwise.** This section
+originally claimed the measured half was blocked behind `#100` and needed a new duration log. The
+owner said *"wasn't this already going to be tracked via optimization of the models for the
+chairs? dig into this, this may already be solved."* It is, and they were right:
+
+`provider_meter.py` records **`latency_ms` on every real provider call**, taken with
+`perf_counter` around the invocation, written on the success path AND the failure path, and
+wired into `pick_debate.py`'s actual call sites through `metered()`. It is scoped **per provider
+and per ROLE** — the chairs — which is exactly the shape the owner remembered. Absence is `None`,
+never `0`, by the same rule the board applies to an unpriced row.
+
+So no new logging is needed. What the freeze timer still needs is smaller, and it is three
+specific things rather than one big one:
+
+| gap | what exists today | what the timer needs |
+|---|---|---|
+| **durability** | a 500-entry in-memory ring buffer, gone on restart | survive a session, or the recommendation resets to "no recordings" every launch. `recent()`'s own docstring already anticipates *"a stored run record"* — the hook is there, the store is not |
+| **the statistic** | `totals()` reports latency as a **SUM** | a **max** (or a percentile). Total time spent across calls is the wrong statistic for "how long does one call take" — this one is a real trap, because the field is present and named plausibly |
+| **end-to-end vs per-call** | per-call records, per chair | the user waits on a WHOLE DEBATE, not one chair's call. Derivable today: `mark()` before and `since()` after bracket the entire multi-chair run |
+
+`#100`'s cost/token/limit half stays open and is untouched by this. The duration half was never
+part of the blockage.
+
+**a-bis. AN UNSETTLED DETAIL IN THE OWNER'S OWN TWO STATEMENTS.** Earlier: *"10 or 15 seconds
+longer than your slowest recorded call."* Later: *"based on the avg call time + X time."*
+**Slowest and average are different recommendations** and will differ by a lot on a
+heavy-tailed latency distribution. Not resolved here; flagged so whichever is chosen is chosen
+deliberately. (A defensible third answer exists — a high percentile — but nothing has measured
+the spread yet, so proposing one now would be inventing a constant, which `#56` forbids.)
 
 **b. The two terms should not be blended into one number in the UI.** Showing a single
 recommended value hides that half of it is measured from this user's own calls and half is a
@@ -155,7 +190,39 @@ would be the exact defect this codebase keeps finding. It should decline to reco
 
 ---
 
-## 6. The emblem's absence is three-state
+## 6. The emblem — WORKING direction, and it is richer than three states
+
+**Where it lives (working).** A star/emblem sits on the **rail box** and on that player **in your
+roster**. Clicking either expands the debate or insight; it collapses with a close button or a
+click outside. The verdict travels with the player to both places a person looks for him.
+
+**What the marks are (working).** Not one "has a verdict" glyph — the two call types are
+*different questions* and read differently:
+
+| state | mark |
+|---|---|
+| insight call | one symbol (eye? star? — glyph choice open) |
+| full debate | a different symbol (scales?) |
+| call failed for a real reason | a symbol, so a genuine failure is visible |
+| **no API call on that pick** | **blank** |
+| **denied — refused by settings, no result worth showing** | **blank, same as no call** |
+
+**The sharp edge of this one, and why it holds up.** A denial that produced nothing renders
+*identically* to never having called. That looks like it violates the absence contract and does
+not: the contract forbids presenting an unmeasured thing as a measured zero. It does not demand
+that every reason-for-absence get its own board glyph. A denial the user themselves configured
+is not a fact about the player, so it does not belong on the player.
+
+**Where the denial DOES get said (working).** In a clean message on the call itself — *per
+settings* — not on the board. The message links to the settings so a vexed user can edit the
+rule that just denied them. The owner's own note on why this stays calm: the user sets the
+delay/lock timer themselves, or accepts one derived from call time, so a denial is their own
+rule firing, not the app refusing them.
+
+**Still open (U2a):** the actual glyphs. Eye vs star for insight, scales for debate, and what a
+failure looks like without reading as alarm.
+
+## 6b. The original three-state framing, kept for the reasoning
 
 The emblem attaches a Debate/Insight verdict to a drafted player. The interesting question is not
 the emblem; it is what **no emblem** means, and today it would mean three different things at once:
@@ -211,7 +278,35 @@ second independent countdown.
 
 ---
 
-## 9. The browser plug-in, and why the freeze timer matters MORE there
+## 8b. WE CANNOT PUSH A PICK INTO SLEEPER, and that moves the terminal action
+
+Raised by the owner while ruling on the lock gesture — *"only really usable in mock, since
+there's no push from our end into the sleeper api to select in the real draft (i think)."*
+**Verified rather than assumed: there is not one `POST` or `PUT` anywhere in this codebase, and
+every Sleeper call is a `/v1/` GET.** The hedge was correct.
+
+Three consequences, and the third is a correction to this document.
+
+**Stage two of the two-stage commit (§4) only spends a pick in MOCK DRAFT.** In a live draft
+synced from Sleeper, our surface cannot draft anybody. Its terminal action is *"I have decided"*,
+not *"he is mine"* — and the pick is then made by a person, in Sleeper.
+
+**So the two modes need different terminal vocabulary.** A "Draft him" control that works in mock
+and silently means something weaker in a live draft is the kind of same-word-two-meanings defect
+this repository keeps finding in its own quantities (`#187`, `#174`). Mock locks a pick; live
+marks a decision and starts the clock on the user going elsewhere to execute it.
+
+**CORRECTION to §9.** That section said the freeze timer *"is least necessary in the surface it
+was conceived for and most necessary in the one pinned for later,"* on the reasoning that only
+the plug-in forces the user across an application boundary to act. **That is wrong, and this is
+why:** if no surface of ours can push a pick, then the user crosses an application boundary in
+*every* configuration, website included. The freeze timer is therefore load-bearing in the
+website too, on exactly the same grounds. What remains true from §9 is narrower and still worth
+keeping: the plug-in is read-only advice by construction, so it never has a stage two at all.
+
+---
+
+## 9. The browser plug-in, and its one structural constraint
 
 Pinned by the owner as the next UI/UX step after the website: a DraftSharks-style overlay that
 detects a Sleeper draft board and opens a collapsible sidebar of recommendations over it.
@@ -231,11 +326,27 @@ later.** Worth knowing before either is built.
 
 | # | question | owner |
 |---|---|---|
-| U1 | Does the rail mark my next turn, making the wait span visible? (§2 argues yes) | owner |
+| U1 | Does the rail mark my next turn, making the wait span visible? | **RULED: yes** — built, `mockups/draft_rail.html` |
 | U2 | Emblem visual vocabulary, and the "never offered" rendering | owner |
 | U3 | Freeze timer: close `#100` first, or ship a narrow duration log? | Opus, then owner sign-off |
-| U4 | Does the full-board tab replace the rail, or overlay it? | owner |
-| U5 | Website vs plug-in — pinned as sequential, website first | **RULED: website first** |
+| U4 | Does the full-board tab replace the rail, or overlay it? | **WORKING: overlay, the rail stays pinned** |
+| U5 | Website vs plug-in — pinned as sequential | **RULED: website first** |
+| U6 | Rail compression at 27 boxes | **WORKING: no shrink.** Every box stays full size; explicit ◀ ▶ pan controls move **5 picks per click, or jump to your last / next pick**. Legibility is not traded for fit. |
+| U7 | Card zoom target | **WORKING: side-panel takeover** — the card expands into the context ledger that is already there. No new surface invented. |
+| U8 | The gesture that spends the pick | **WORKING: hold to lock**, with a small rising bar showing how much hold remains. See §8b: this is a real pick only in Mock Draft. |
+
+| U9 | Latency persistence shape | **WORKING: rolling summary per function** — count/max/mean, not the raw ledger. One home, ~200 bytes, exactly what the recommendation reads. |
+| U10 | Slowest vs average for the recommendation | **WORKING: show both, user picks.** Settles the §5 a-bis contradiction by not settling it — the spread is visible and the user chooses. |
+| U11 | Does the wait band carry the forfeit? | **WORKING: no.** The band states pick-order facts anyone can verify from the board; an engine projection alongside them would blend a certainty with an estimate. Forfeit stays on the cards. |
+| U12 | "Since your last pick" digest | **WORKING: no** — the rail already shows it when you scroll back. A second surface for the same information is duplication. |
+
+### On U6, because it settles something §2 left open
+
+The owner's ruling adds what the derived window could not supply on its own: the window says how
+WIDE the span is, but a 27-box span still needs a way to travel. Two pan steps, both derived
+rather than chosen — **five picks** (a readable stride) and **jump to my last / next pick** (the
+window's own two endpoints, which are exactly what §2 says the rail is about). The re-center
+button remains the third: back to the current pick.
 
 Nothing above changes engine behaviour. Every quantity named here already exists; what is being
 decided is which of them a person can see, and what the blanks mean.
