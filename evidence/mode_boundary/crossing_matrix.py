@@ -61,7 +61,47 @@ from crossing_mechanism import probe_board
 OUT = Path("evidence/mode_boundary/crossing_matrix.json")
 STRIDE = 5
 ARMS = ("12T_ppr", "12T_ppr_SF", "12T_ppr_TEP_dynasty", "4WR_TE_PREMIUM",
-        "LIGHT_IDP", "HEAVY_IDP")
+        "LIGHT_IDP", "HEAVY_IDP", "12T_ppr_NO_TE_SLOT")
+
+
+#: #277 named its own weakness: the TE-slot attribution was reached by ELIMINATION across five
+#: axes, never by removing the slot and watching. This is that direct test, and it is the only
+#: arm here the battery matrix cannot supply.
+#:
+#: THE SWAP IS TE -> FLEX, NOT TE -> NOTHING. Deleting the slot would change the starter count
+#: (8 -> 7) and therefore the round count, the pick total, and every other position's share of
+#: the draft -- four axes moving to test one, which is the confound #277 was written to escape.
+#: Replacing TE with a FLEX holds slot count, round count and pick total EXACTLY fixed and moves
+#: only where tight-end demand lives: from a dedicated slot into the shared pool. That is also
+#: precisely what FFCL Group A does (FLEX FLEX WRRB_FLEX SUPER_FLEX, no TE), so the arm is the
+#: real league's distinguishing feature in isolation rather than an invented shape.
+#:
+#: PREDICTION, pre-registered: if the dedicated TE slot is the operative axis, TE STOPS being a
+#: holdout here and crosses at a finite pick, while the control (identical but for that one
+#: slot) keeps TE as holdout forever. If TE remains a holdout, the TE slot is NOT sufficient,
+#: #277's conclusion is wrong, and whatever inverts FFCL is still unidentified.
+CONSTRUCTED = {
+    "12T_ppr_NO_TE_SLOT": {
+        "from": "12T_ppr",
+        "swap": ("TE", "FLEX"),
+    },
+}
+
+
+def constructed_league(spec: dict, matrix: dict) -> tuple[dict, int, int]:
+    """Build the arm by EDITING the control's own league, so nothing else can drift.
+
+    Derived from the matrix entry rather than restated (#126): if build_mock_league's starters
+    change, this arm changes with them instead of silently testing a stale shape.
+    """
+    base_arm = matrix[spec["from"]]
+    league = json.loads(json.dumps(base_arm["league"]))          # deep copy, no shared state
+    old_slot, new_slot = spec["swap"]
+    rp = league["roster_positions"]
+    assert old_slot in rp, f"{spec['from']} has no {old_slot} slot to swap"
+    rp[rp.index(old_slot)] = new_slot                            # ONE slot, first occurrence
+    league["roster_positions"] = rp
+    return league, base_arm["teams"], base_arm["rounds"]
 
 
 def main() -> int:
@@ -79,8 +119,11 @@ def main() -> int:
         if label in report["arms"]:
             print(f"[skip] {label}", flush=True)
             continue
-        arm = matrix[label]
-        league, teams, rounds = arm["league"], arm["teams"], arm["rounds"]
+        if label in CONSTRUCTED:
+            league, teams, rounds = constructed_league(CONSTRUCTED[label], matrix)
+        else:
+            arm = matrix[label]
+            league, teams, rounds = arm["league"], arm["teams"], arm["rounds"]
         rp = league["roster_positions"]
         t1 = time.time()
         print(f"\n== {label}  teams={teams} rounds={rounds} picks={teams*rounds}  "
