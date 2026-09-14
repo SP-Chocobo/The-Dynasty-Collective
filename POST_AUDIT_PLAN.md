@@ -10574,3 +10574,76 @@ only available number is an uncorroborated projection, and a backup's projection
 an assumption about playing time he does not have — so a knockout scored on static projections
 systematically understates exactly the thing it is meant to measure. Named as needing a
 different input (usage/depth-chart data, `#49`/`#88`), not as answered.
+
+---
+
+## `#280` COMPLETE — the full permutation grid, and the TE slot is the only switch
+
+Nine arms, each with predictions committed BEFORE the run (`45bcbeb`, `d69cd11`). All self-check
+ok against the engine's own `growth_signal` detector.
+
+| league shape | TE slot | superflex | TE premium | **global rule** |
+|---|---|---|---|---|
+| `12T_ppr` (control) | yes | — | — | **NEVER** |
+| `12T_ppr_SF` | yes | yes | — | **NEVER** |
+| `12T_ppr_TEP_dynasty` | yes | — | 0.5 | **NEVER** |
+| `4WR_TE_PREMIUM` | yes | — | 0.5 | **NEVER** |
+| `LIGHT_IDP` / `HEAVY_IDP` | yes | — | — | **NEVER** |
+| `12T_ppr_NO_TE_SLOT` | **no** | — | — | **FIRES 155/168** |
+| `12T_ppr_TEP_NO_TE_SLOT` | **no** | — | 0.5 | **FIRES 165/168** |
+| `12T_ppr_SF_NO_TE_SLOT` | **no** | yes | — | **FIRES 175/180** |
+
+**One binary decides it: does the league have a dedicated TE slot.** Six shapes with one never
+fire; three shapes without one always do. Superflex, a TE premium, a fourth WR slot, light IDP
+and heavy IDP all fail to move that binary — they only shift WHERE inside the tail it lands.
+
+### The three pre-registered predictions, settled
+
+**1 — REFUTED then RESOLVED.** Superflex alone does NOT flip the holdout to QB (`#277`); the fork
+committed for `SF_NO_TE_SLOT` resolves to its first branch — TE-slot removal dominates, and
+superflex does not defeat it.
+
+**2 — CONFIRMED, with an honest qualification.** A TE premium does not rescue a position that has
+lost its slot: `TEP_NO_TE_SLOT` still fires, holdout none. But it is **not perfectly inert** — it
+delays firing 155 → 165. `#277`'s "scoring does not set the crossing order" holds in the sense
+that matters (it never converts NEVER into FIRES, or the reverse) and is **too absolute as
+phrased**: scoring moves the firing pick by ~10, slots decide whether there is one at all.
+
+**3 — REFUTED.** IDP rows are priceable in both IDP arms; the `#210` supply defect does not
+surface as unpriceable rows here. Does NOT close `#210`.
+
+### The recommendation this evidence supports — NOT WORTH INCORPORATING AS DESIGNED
+
+Recorded as a recommendation to the owner, not a ruling.
+
+1. **It is not a transition rule, it is an accidental off-switch.** 16 of 16 TE-slot leagues never
+   fire. Adopting it silently means *upside mode is disabled* in most leagues — a large
+   behavioural change delivered as a subtle one. If that is the right outcome it should be a
+   stated decision, not an emergent property of a VOR comparison.
+
+2. **Its trigger is an accident of roster shape.** `#278` flipped it with one slot swap. No
+   account makes "does this league have a TE slot" the right criterion for "has the draft reached
+   its upside phase". That is `#56`'s concern in a worse form — an unintended dependency rather
+   than a calibrated constant.
+
+3. **Where it fires, it fires too late to be a phase.** 155/168, 165/168, 175/180 — 92-97%
+   through. And `#280`'s FFCL correction shows it is sensitive to DRAFT LENGTH as well: FFCL
+   matches the firing cell exactly but ends at 168, before RB crosses. A rule whose answer depends
+   on whether the league runs 14 or 15 rounds is reading the roster sheet, not the draft.
+
+4. **The measured benefit is zero where it can be measured.** `#281`: up to 58% of picks change,
+   starting-lineup points change by 0.00 in 10 of 10. The whole effect is bench composition, and
+   the bench question is blocked on inputs this repo does not have.
+
+**WHAT IS WORTH INCORPORATING, on the same evidence:** the per-position levels as a DISPLAYED
+OBSERVABLE (`DRAFT_ROOM_UI.md` §13). The engine computes them and `.any()` discards them. They
+would tell a drafter something true and checkable mid-draft — *quarterbacks and receivers ran dry
+at pick 85* — with no selection authority, which is exactly the `#55` precedent for
+`pick_necessity`.
+
+**AND THE FINDING WORTH MORE THAN EITHER RULE:** upside mode is a **bench-composition policy**
+that has been argued about as a valuation policy. It buys tight ends and sells receivers at
+scale, entirely below the starting lineup. In FFCL Group A — no trading, where the owner's own
+09-08 record says a player who never starts is worth zero permanently — that substitution is a
+cost rather than a wash. That is a Phase 3 question about `replacement_levels` (`#50`, `#147`),
+not a mode-switch patch.
