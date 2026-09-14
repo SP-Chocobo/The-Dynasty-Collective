@@ -8698,3 +8698,158 @@ chair's own roster, and that is a different build, not a parameter on this one.
 The transition rule is the owner's call and is not changed here. `UPSIDE_MODE_DEFAULT_ROUND`
 stays at 15; nothing in this entry touches engine behaviour. What changed is that the `#56`
 objection to replacing it no longer stands: the zero is natural.
+
+---
+
+## #262 RULED (owner, this session) — THE DRAFT-TIME SURFACE: DECISIONS, AND THE ONE MEASUREMENT THAT CANNOT BE TAKEN
+
+Recorded because these are OWNER RULINGS made in conversation and would otherwise survive only
+in scrollback. Nothing here is measured unless it says so; nothing here is built yet.
+
+### The stack question, answered by a measurement rather than a preference
+
+Coupling, measured 2026-09-14 by import scan:
+
+```
+draft_room.py  pick_synthesis.py  data_merger.py  draft_strategy.py
+lineup_optimizer.py  llm_engine.py  pick_debate.py  draft_battery.py
+design_system.py  draft_board_ui.py        -> streamlit imports: 0, all ten
+```
+
+**No engine module imports Streamlit.** `app.py` is 6822 lines, 898 of which touch `st.`, with 48
+distinct `session_state` keys and **77 `st.rerun()` calls** — a hand-wired state machine
+compensating for a framework that re-executes the whole script on every interaction. The engine
+already returns JSON-able records and `design_system.py` already emits portable CSS text.
+
+So replacing the shell costs nothing in engine terms, and **the freeze is unaffected either way**.
+
+`draft_board_ui.py` had already escaped into `st.components.v1.html` and recorded the wall it hit:
+*"st.components.v1.html remounts a fresh iframe on every Streamlit rerun... Worth a real component
+(not st.components.v1.html) later if that continuity turns out to matter."* It matters. An iframe
+cannot paint outside itself, so a slide-in drawer, a modal that dims the page behind it, page
+transitions and global opacity are **structurally impossible** in any Streamlit configuration —
+not merely awkward. That is the class of effect the owner asked for.
+
+### RULED: the visual brief
+
+- **Game-like UI** — clean, dense, functional. Every state change animated, because the player
+  must see what changed.
+- **MOBA draft/champ-select is the structural reference, not a flavour one.** It is the same
+  problem with different nouns: timed, turn-based, alternating picks from a shared exhausting
+  pool, with rivals' picks visible and changing your evaluation.
+- **What is stolen:** the clock as the organising element rather than a corner widget; roster
+  needs as SLOTS THAT FILL rather than a table column; rivals on the same screen always;
+  hover/inspect and commit as two distinct acts; state-change motion as the primary language.
+- **What is NOT stolen:** the esports skin (hexagons, bevels, filigree, particles), and the 5v5
+  mirror symmetry — a fantasy draft is asymmetric, one seat against 7-13.
+- **The limit that breaks a naive copy:** champ select renders 10 picks. A startup draft is 312.
+  The pick MOMENT ports; the draft HISTORY does not.
+
+### RULED: the layout
+
+- **A pick rail across the top**, panning as picks land, dimmed at both edges so only the last few
+  and next few are legible. The rail's pan IS the clock tick — on-the-clock is a position, not a
+  separate timer. Full history lives behind a tab.
+- **The snake turn is the thing champ select never had to solve.** "I pick 3.12 and 4.01 back to
+  back" versus "23 picks until I'm up" is the single most valuable fact on that rail, and it is
+  what `positional_forfeit` is computed over. It gets a strong accent.
+- **Candidates are CARDS.** Click to zoom, opening the context window. Depth lives in the zoom,
+  not the row, which is what lets the collapsed board stay dense.
+- **The zoom does NOT replace the board** — it sits over a DIMMED board, so "who else was close"
+  stays in the periphery. One dimming grammar, two jobs.
+- **The clock stays lit above the dim.** A modal that hides the timer during a timed pick is
+  actively dangerous.
+- Comparison ("these two are tied, which one") is NOT solved by zoom, which is one-at-a-time. A
+  pin/compare action is a later step, not the default.
+
+### RULED: the debate layer
+
+1. **The draft room must function fully with NO API.** Verified structurally: zero engine modules
+   import `llm_engine`, `pick_debate` or any provider — only `app.py` (the shell being replaced),
+   `pick_debate.py` itself, the bot benchmarks and tests. So this is a UI-and-defaults question,
+   not a refactor.
+2. **Build API-absent FIRST, wire the debate in after.** Building with the panel present designs
+   around a region most customers will not have.
+3. **The no-API state must not look deprived** — no empty debate pane, no configure-a-key nag in
+   the card. Which makes `#119` (universal_value's decomposition reaches no consumer) and `#183`
+   (absence contract broken in the live Debate Dock) LOAD-BEARING rather than polish: for most
+   customers the engine's own evidence is the whole explanation.
+4. **NO AUTOMATIC PINGS, EVER.** Explicit user action only. This voids the author's own
+   "auto-start at freeze" proposal in full.
+5. **A debate may only be initiated while on the clock** — owner's reason, and it is a
+   CORRECTNESS argument rather than a cost one: *"so state change doesn't sweep the rug out from
+   the debate context."* It also aligns the debate's lifetime with a window the engine already
+   defines, since `PickSnapshot` is frozen at the turn. Gives `#92` a consumer: a transcript
+   pinned to a snapshot id is reproducible.
+6. **One snapshot, two renderers.** The card renders it for a person; the prompt fences it
+   (`#125`) for a model. Never two derivations, or the chairs argue about numbers the human
+   cannot see.
+7. **Freeze the initiate button when remaining time drops below what a debate needs.**
+
+### The constant NOT invented, and the term that cannot be measured
+
+The owner's first form was *"estimate + 15sec or something"* and flagged its own arbitrariness.
+Per `#56` (a bound is not a threshold) the recorded form is: **freeze on the SLOWEST DEBATE
+OBSERVED for that configuration** — a real measurement carrying earned margin, self-correcting as
+the provider changes, keyed per (chairs x model) so it is not an average over debates nobody runs.
+Cold start has no bound and says so; it is not given an invented first estimate. `provider_meter`
+exists and `#100` (nothing meters what a call costs) is the blocker.
+
+Three honest outcomes, not two: **arrived and useful / cancelled on expiry / arrived-but-stale.**
+A debate must be CANCELLED when the clock expires rather than completing and billing for a dead
+verdict, and anything that slips through renders as stale, never as live advice.
+
+**THE TERM THAT CANNOT BE DERIVED.** The owner's sharpest point: the time to switch to Sleeper,
+find the player and click is real, and **this application is structurally blind to it** — it
+happens outside the app and no instrumentation on our side will ever observe it. It is therefore
+the one term a user SETS rather than one we derive; a value the owner declares is an input, not an
+invented constant. The better move is to SHRINK it rather than budget for it: carry the player's
+name **spelled exactly as Sleeper spells it** (we hold the record), one-click copy, deep link
+where one exists.
+
+That reframes the product: **this is a co-pilot beside the draft, not the draft.** The success
+metric is time from recommendation to the pick landing in Sleeper — not board density. Analysis
+earns its keep only if it survives the handoff.
+
+### MEASURED: player headshots ARE available
+
+Run by the owner on a machine that can reach the CDN; artifact at
+`evidence/imagery/headshot_probe_result.json`. Six players x two URL patterns, **12/12 `200
+image/jpeg`**, at `sleepercdn.com/content/nfl/players/{id}.jpg` and `.../thumb/{id}.jpg`.
+
+- Attempted from this environment first and it is **BLOCKED-EXTERNAL, not a null result**: 403 at
+  CONNECT, 12 fetch_errors and 0 non-200s. The probe's refusal to merge "no headshot" with "fetch
+  failed" is what kept that from reading as an answer.
+- **Retired players resolve** (Roethlisberger, id 138, 49KB) — relevant for a dynasty app.
+- **A WITHDRAWAL, the 27th.** Stafford (id 421) returned byte-identical sizes for full and thumb
+  (23994/23994) where every other player differed, and this author called it a likely silhouette
+  placeholder, cautioning that `200 image/jpeg` does not prove a real photo. The owner opened both
+  URLs: it is a real photo of Stafford, and `thumb` simply falls back to the full asset when no
+  thumbnail exists. The hypothesis is WRONG and withdrawn. The narrow true residue: `thumb` is not
+  guaranteed smaller, so do not rely on it for bandwidth.
+- **The design constraint the image actually revealed**, which is the useful part: the photos are
+  ~4:3 landscape, cropped mid-chest, on a **light grey background** — not transparent cutouts. A
+  grid of those fights a dark palette. Options are a tight circular crop (what Sleeper does), a
+  gradient mask dissolving the grey into the card ground, or OWNING it: the portrait sits on a
+  deliberately light PLATE, treated as a physical object on a dark table. The third suits the
+  slot-filling rail, where each pick lands as a plate in a slot.
+
+### PINNED, not started: the browser plug-in
+
+DraftSharks ships an extension that injects a collapsible right-side sidebar over the live Sleeper
+draft board. That **deletes** the handoff term rather than budgeting for it.
+
+**RULED: the website surface first, the plug-in pinned as the next UI/UX step.** They are two
+displays, and the second requires an install.
+
+Notes for when it is picked up:
+- **Read draft state from Sleeper's API, never from the DOM.** Take the draft id from the URL and
+  poll `/v1/draft/{id}/picks`. Sleeper is a React app with generated class names; DOM scraping
+  breaks on any front-end deploy. Inject UI into the DOM; never read state from it.
+- An extension cannot run Python, so CDME sits behind a thin server it talks to. **That is the
+  same thing a web front end wants** — one server, two clients, not two products. It strengthens
+  the engine-behind-an-API step rather than competing with it.
+- Scope: draft-time only. Trade calculator, roster diagnostics, matchup and the debate still need
+  the main surface.
+- Two risks to settle BEFORE building on the assumption: Sleeper's terms of service (a competitor
+  doing it is evidence of tolerance, not permission), and Chrome Web Store review plus Manifest V3.
