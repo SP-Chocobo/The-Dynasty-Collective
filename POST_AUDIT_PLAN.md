@@ -9721,3 +9721,92 @@ smaller blast radius.
 
 **Measure it against NOISY opponents.** Per `#270`, a variant judged against all-engine seats
 would look inert for the same reason the global crossing looked inert.
+
+---
+
+## #272 CAPTURED — FFCL Group A, the first real league that is not a near-twin of the other two
+
+`data/league_captures/ffcl_group_a.json`. Rulebook only, no draft board — the rulebook is the
+half that carries the coverage.
+
+### It breaks five axes that were constant across both existing captures
+
+| axis | Fourth and Forever | Greatest Show on Paper 2 | **FFCL Group A** |
+|---|---|---|---|
+| horizon | dynasty | dynasty | **redraft** |
+| bench | 11 | 14 | **5** |
+| taxi | 5 | 5 | **none** |
+| dedicated TE slot | yes | yes | **NONE** |
+| offbrand flex | no | no | **WRRB_FLEX** |
+| trading | yes | yes (82/360 picks moved) | **FORBIDDEN by rule** |
+
+**The two prior captures were near-twins.** Identical starters —
+`QB/RB/RB/WR/WR/TE/FLEX×3/SUPER_FLEX` — differing only in bench and IR depth. As evidence about
+roster STRUCTURE they were closer to one data point than two. This is the first genuinely
+different shape, and it lands on `#261`'s bench-depth concern and `#265`'s draft-type concern
+from a direction neither anticipated.
+
+**It also makes `#146` actionable.** That item — *bye week IS admissible when the asset horizon
+is one season* — has sat REDRAFT-ONLY with no redraft league to apply it to. Now there is one.
+
+### The no-TE-slot case, which is why it was captured
+
+Starters: `QB · RB · RB · WR · WR · FLEX · FLEX · WRRB_FLEX · SUPER_FLEX`. K Pitts (TE) is
+started **in a FLEX**; D Kincaid (TE) sits on the bench. **A startable position with no slot of
+its own.** Sleeper's filter-tag rule generates a FLEX tag and no TE tag here; ours
+(`position_view_options`) would offer a standalone TE view, because our test is *is this position
+present among the candidates* rather than *does this league have a slot for it*. First real
+instance of that divergence.
+
+### THE TRADING BAN IS THE FINDING I DID NOT EXPECT
+
+Forbidden for fairness across the six pods. Three consequences:
+
+**It is the control case for a real measurement.** GSOP2: 82 of 360 picks (22.8%) made by
+someone other than the slot owner. Here: zero, by rule.
+
+**Pick order is REGULAR.** In GSOP2 one manager's gaps between consecutive picks ran
+`16, 10, 2, 24, 7, 17, 7, 10, 9, 1, 21, 7, 1` — chaotic *because picks moved*. A no-trade
+12-team snake gives clean alternating ~2 / ~22. **`intervening_picks` is predictable here and
+unpredictable there**, and that bounds a UI claim: `DRAFT_ROOM_UI.md` §2 argued the rail's
+next-turn marker is load-bearing partly because a person cannot know when their next pick is.
+True in a trading league, much weaker here. §2 now carries that bound.
+
+**THE SIMULATOR MATCHES THIS LEAGUE EXACTLY.** `simulate_full_draft` does not trade picks.
+Against F&F and GSOP2 that has always been an unstated approximation — both allow trading.
+Against FFCL Group A it is not an approximation, it is the rule. **This is the first captured
+league the draft simulator represents without that caveat**, which makes it the best available
+target for any claim the battery wants to make about a real league.
+
+### What is read, what is inferred, and the one thing that stays unverified
+
+**Read:** all 42 scoring labels and values, across five screenshots with deliberate overlap; the
+slot badges and their occupants; the header `2026 12-Team SF PPR TEP`.
+
+**Inferred and then CONFIRMED by the owner:** bench = 5, IR = 2. The screenshot reasoning agreed
+independently — Sleeper's TEAM view renders empty slots (both IR rows read "Empty"), so a sixth
+bench slot would have shown as an empty BN row, and none does.
+
+**Recorded as absence, not dropped:** `pts_allow_21_27` never appears — the band jumps 14-20 (+1)
+to 28-34 (-1). Sleeper omits zero-valued settings from that screen, so it is presumed 0. GSOP2's
+capture has the identical gap.
+
+**UNVERIFIED, and flagged in the file:** the mapping from each DISPLAY LABEL to its Sleeper
+`scoring_settings` KEY. Keys follow GSOP2's convention. The authoritative source is the league's
+own JSON from the API, which this environment cannot reach (`#143`). `#212`/`#213` is the
+standing warning — a key-mapping error has already scored an entire battery against a one-key
+rulebook.
+
+### A caution about treating these captures as independent
+
+Against GSOP2, this league differs in **exactly two scoring values** — `pass_td` (4 vs 5) and
+`bonus_rec_te` (0.50 vs 0.75). The other ~30 are byte-identical, because they are Sleeper's
+defaults. **The captures carry almost no independent information about that default block, and
+agreement there must never be read as corroboration.** They differ where a commissioner actually
+chooses and agree everywhere a commissioner does not.
+
+### Not wired
+
+This is DATA. The battery reads `fixtures/sleeper_capture.json` (`#241`), not
+`data/league_captures/`. Adding an arm from this shape is a separate decision, and `#265` already
+records that whether to add roster-shape axes to `league_matrix` is the owner's call.

@@ -79,6 +79,13 @@ is padding for visual balance and can be whatever fits. This matters because a h
 chrome competing with the cards for the fold. A rail that shows the user the shape of their own
 wait is load-bearing. Design it as the latter.
 
+**BOUNDED, after FFCL Group A was captured.** Part of the argument above — that a person cannot
+know when their next pick is without being told — rests on the gap being irregular, and it is
+irregular *because picks move*. FFCL Group A forbids trading outright (fairness across its six
+pods), so its gap is just the snake's arithmetic and a drafter could count it on their fingers.
+The next-turn marker is still useful there; the NECESSITY argument holds only where picks can be
+traded. Stated so the claim is not carried further than the evidence for it.
+
 ---
 
 ## 3. Scale is the thing the MOBA reference does not carry

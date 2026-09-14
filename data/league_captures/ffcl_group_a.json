@@ -1,0 +1,266 @@
+{
+ "league": "F.F.C.L. Group A",
+ "captured": "2026-09-14",
+ "capture_method": "transcribed from Sleeper Scoring Settings screenshots (5, with deliberate overlap between consecutive shots) plus the TEAM lineup view for roster shape",
+ "tabs_captured": [
+  "PASSING",
+  "RUSHING",
+  "RECEIVING",
+  "KICKING",
+  "TEAM DEFENSE",
+  "SPECIAL TEAMS DEFENSE",
+  "SPECIAL TEAMS PLAYER",
+  "MISC"
+ ],
+ "tabs_outstanding": [
+  "IDP (no IDP section appeared; league has no IDP slots, so likely absent rather than unseen)"
+ ],
+ "roster_positions": [
+  "QB",
+  "RB",
+  "RB",
+  "WR",
+  "WR",
+  "FLEX",
+  "FLEX",
+  "WRRB_FLEX",
+  "SUPER_FLEX",
+  "BN",
+  "BN",
+  "BN",
+  "BN",
+  "BN",
+  "IR",
+  "IR"
+ ],
+ "total_rosters": 12,
+ "league_type": "REDRAFT -- stated by the owner, and corroborated by ZERO taxi slots (both other captures carry 5)",
+ "league_structure": "one pod of a 72-manager points-focused league split into 6 pods of 12; this capture is Group A only",
+ "roster_shape_provenance": {
+  "source": "TEAM tab lineup view, starters + bench + IR",
+  "why_bench_count_is_trusted": "CONFIRMED BY THE OWNER: 5 bench, 2 IR. The screenshot inference agreed -- Sleeper's TEAM view renders empty slots (both IR rows read 'Empty'), so a sixth bench slot would have appeared as an empty BN row between D Kincaid and INJURED RESERVE, and none does.",
+  "slot_badges_as_read": {
+   "QB": "single QB slot",
+   "RB x2": "two dedicated RB slots",
+   "WR x2": "two dedicated WR slots",
+   "W R T x2": "two FLEX slots -- D Swift (RB) and K Pitts (TE) occupy them",
+   "W R": "ONE WRRB_FLEX -- S Diggs (WR) occupies it. WR/RB only, no TE.",
+   "W R T Q": "one SUPER_FLEX -- P Mahomes (QB) occupies it"
+  },
+  "THE POINT OF THIS CAPTURE": "THERE IS NO DEDICATED TE SLOT. K Pitts, a TE, is startable only through a FLEX, and D Kincaid (TE) sits on the bench. This is the first captured league where a startable position has no slot of its own -- the case Sleeper's own filter-tag rule handles by generating a FLEX tag and NO TE tag."
+ },
+ "headline_format": {
+  "ppr": "FULL (rec = 1)",
+  "te_premium": "YES (bonus_rec_te = 0.50, so TE reception = 1.50) -- Sleeper highlighted this as the league's one non-standard setting",
+  "passing_td": "4 (the common value; Greatest Show on Paper 2 uses 5)",
+  "fg_distance_bands": "split at 50-59 and 60+",
+  "superflex": "YES -- 1 SUPER_FLEX slot",
+  "flex": "2 x FLEX (WR/RB/TE) + 1 x WRRB_FLEX (WR/RB only)",
+  "dedicated_te_slot": "NONE"
+ },
+ "scoring_settings_observed": {
+  "pass_yd": {
+   "label": "Passing Yards (1 per 25, +0.04/yd)",
+   "value": 0.04
+  },
+  "pass_td": {
+   "label": "Passing TD",
+   "value": 4
+  },
+  "pass_2pt": {
+   "label": "2-Pt Conversion (passing)",
+   "value": 2
+  },
+  "pass_int": {
+   "label": "Pass Intercepted",
+   "value": -1
+  },
+  "rush_yd": {
+   "label": "Rushing Yards (1 per 10, +0.1/yd)",
+   "value": 0.1
+  },
+  "rush_td": {
+   "label": "Rushing TD",
+   "value": 6
+  },
+  "rush_2pt": {
+   "label": "2-Pt Conversion (rushing)",
+   "value": 2
+  },
+  "rec": {
+   "label": "Reception",
+   "value": 1
+  },
+  "rec_yd": {
+   "label": "Receiving Yards (1 per 10, +0.1/yd)",
+   "value": 0.1
+  },
+  "rec_td": {
+   "label": "Receiving TD",
+   "value": 6
+  },
+  "rec_2pt": {
+   "label": "2-Pt Conversion (receiving)",
+   "value": 2
+  },
+  "bonus_rec_te": {
+   "label": "Reception Bonus - TE",
+   "value": 0.5
+  },
+  "fgm_0_19": {
+   "label": "FG Made (0-19)",
+   "value": 3
+  },
+  "fgm_20_29": {
+   "label": "FG Made (20-29)",
+   "value": 3
+  },
+  "fgm_30_39": {
+   "label": "FG Made (30-39)",
+   "value": 3
+  },
+  "fgm_40_49": {
+   "label": "FG Made (40-49)",
+   "value": 4
+  },
+  "fgm_50_59": {
+   "label": "FG Made (50-59)",
+   "value": 5
+  },
+  "fgm_60p": {
+   "label": "FG Made (60+)",
+   "value": 6
+  },
+  "xpm": {
+   "label": "PAT Made",
+   "value": 1
+  },
+  "fgmiss": {
+   "label": "FG Missed",
+   "value": -1
+  },
+  "xpmiss": {
+   "label": "PAT Missed",
+   "value": -1
+  },
+  "def_td": {
+   "label": "Defense TD",
+   "value": 6
+  },
+  "pts_allow_0": {
+   "label": "Points Allowed 0",
+   "value": 10
+  },
+  "pts_allow_1_6": {
+   "label": "Points Allowed 1-6",
+   "value": 7
+  },
+  "pts_allow_7_13": {
+   "label": "Points Allowed 7-13",
+   "value": 4
+  },
+  "pts_allow_14_20": {
+   "label": "Points Allowed 14-20",
+   "value": 1
+  },
+  "pts_allow_28_34": {
+   "label": "Points Allowed 28-34",
+   "value": -1
+  },
+  "pts_allow_35p": {
+   "label": "Points Allowed 35+",
+   "value": -4
+  },
+  "sack": {
+   "label": "Sacks",
+   "value": 1
+  },
+  "int": {
+   "label": "Interceptions",
+   "value": 2
+  },
+  "fum_rec": {
+   "label": "Fumble Recovery",
+   "value": 2
+  },
+  "safe": {
+   "label": "Safety",
+   "value": 2
+  },
+  "ff": {
+   "label": "Forced Fumble",
+   "value": 1
+  },
+  "blk_kick": {
+   "label": "Blocked Kick",
+   "value": 2
+  },
+  "st_td": {
+   "label": "Special teams td",
+   "value": 6
+  },
+  "st_ff": {
+   "label": "Special Teams Forced Fumble",
+   "value": 1
+  },
+  "st_fum_rec": {
+   "label": "Special Teams Fumble Recovery",
+   "value": 1
+  },
+  "st_td_player": {
+   "label": "Special teams player td",
+   "value": 6
+  },
+  "st_ff_player": {
+   "label": "Special Teams Player Forced Fumble",
+   "value": 1
+  },
+  "st_fum_rec_player": {
+   "label": "Special Teams Player Fumble Recovery",
+   "value": 1
+  },
+  "fum_lost": {
+   "label": "Fumble Lost",
+   "value": -2
+  },
+  "fum_rec_td": {
+   "label": "Fumble Recovery TD",
+   "value": 6
+  }
+ },
+ "absences_recorded_as_absences": {
+  "pts_allow_21_27": "NOT SHOWN in the screenshots -- the band jumps 14-20 (+1) straight to 28-34 (-1). Sleeper omits zero-valued settings from this screen, so this is PRESUMED 0, not unknown-and-dropped. Greatest Show on Paper 2's capture has the identical gap.",
+  "idp": "No IDP section appeared and the roster carries no IDP slots.",
+  "kicker_and_defense": "Scoring for K and DEF is fully specified, but the roster has NO K and NO DEF slot. Scoring settings existing is not the same as slots existing -- same situation as Greatest Show on Paper 2."
+ },
+ "what_is_read_vs_inferred": {
+  "READ": "every label and every value in scoring_settings_observed; the slot badges and their occupants in the TEAM view; the header '2026 12-Team SF PPR TEP'",
+  "INFERRED_BUT_JUSTIFIED": "BN = 5 exactly (empty slots render, see roster_shape_provenance); pts_allow_21_27 = 0 (Sleeper hides zeroes); WRRB_FLEX is the Sleeper slot code for the 'W R' badge",
+  "INFERRED_AND_UNVERIFIED": "the mapping from each DISPLAY LABEL to its Sleeper scoring_settings KEY. Keys follow Greatest Show on Paper 2's capture convention. The authoritative source is the league's own scoring_settings JSON from the API, which this environment cannot reach (#143). #212/#213 is the standing warning: a key-mapping error has already produced a whole battery scored against a one-key rulebook.",
+  "NOT_CAPTURED": "the draft board. This capture is the RULEBOOK only, which is the half that carries the new coverage."
+ },
+ "why_this_league_matters": {
+  "axes_it_varies_that_no_other_capture_does": [
+   "REDRAFT horizon -- both other captures are dynasty. Makes #146 (bye week IS admissible when the asset horizon is one season) actionable for the first time.",
+   "BENCH = 5 -- against 11 (F&F) and 14 (GSOP2). Shallowest by a wide margin; #261's depth ladder starts at 6.",
+   "NO TAXI -- both others carry 5.",
+   "NO DEDICATED TE SLOT -- a startable position reachable only through flex.",
+   "WRRB_FLEX -- an offbrand flex, alongside ordinary FLEX, never previously captured.",
+   "NO TRADING, by league rule -- the first captured league where pick ownership cannot move, and therefore the first one the no-trade draft simulator represents exactly rather than approximately."
+  ],
+  "the_two_captures_were_near_twins": "F&F and GSOP2 share identical starters (QB/RB/RB/WR/WR/TE/FLEX x3/SUPER_FLEX) and differ only in bench and IR depth, so as evidence about roster STRUCTURE they were closer to one data point than two. This is the first genuinely different shape.",
+  "SCORING_IS_NOT_INDEPENDENT_EVIDENCE_THOUGH": "Compared against Greatest Show on Paper 2, this league differs in EXACTLY TWO values -- pass_td (4 vs 5) and bonus_rec_te (0.50 vs 0.75). All ~30 remaining settings are byte-identical, because they are Sleeper's defaults. The captures therefore carry almost no independent information about the default block, and agreement there must never be read as corroboration."
+ },
+ "not_yet_wired": "This file is DATA. Adding a battery arm from it is a separate decision -- the battery reads fixtures/sleeper_capture.json (#241), not data/league_captures/. See #265: whether to add roster-shape axes to league_matrix is the owner's call.",
+ "trading": {
+  "allowed": false,
+  "stated_by": "owner",
+  "reason": "fairness across the 6 pods of the 72-manager league -- trades inside one pod would distort standings compared with the others",
+  "WHY THIS IS NOT A FOOTNOTE": {
+   "it_is_the_control_case_for_a_real_finding": "Greatest Show on Paper 2 had 82 of 360 picks (22.8%) made by someone OTHER than the slot owner. Here that number is ZERO BY RULE. picked_by always equals team.",
+   "pick_order_is_regular_here": "No traded picks means the gap to your next turn is the snake's own arithmetic. In GSOP2 one manager's gaps between consecutive picks ran 16, 10, 2, 24, 7, 17, 7, 10, 9, 1, 21, 7, 1 -- chaotic because picks moved. A 12-team no-trade snake gives clean alternating ~2 / ~22. intervening_picks is PREDICTABLE in this league and unpredictable in the other.",
+   "it_bounds_a_UI_claim_of_ours": "DRAFT_ROOM_UI.md \u00a72 argues the rail's next-turn marker is load-bearing partly because a person cannot know when their next pick is. That is TRUE IN A TRADING LEAGUE and much weaker here. The marker is still useful; the necessity argument is bounded to leagues where picks move.",
+   "THE SIMULATOR MATCHES THIS LEAGUE EXACTLY": "simulate_full_draft does not trade picks. Against F&F and GSOP2 that has always been an unstated approximation -- both are trading leagues. Against FFCL Group A it is not an approximation at all, it is the rule. This is the first captured league the draft simulator models without that caveat."
+  }
+ }
+}
