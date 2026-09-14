@@ -35,7 +35,10 @@ Recorded verbatim in effect:
   ledger to the side**. **Click a card to zoom it and open the context window.**
 - **Debate/Insight results attach to the drafted player as an emblem**, readable later from the
   rail or the full board.
-- **No automatic API pings, ever.** Calling out is an explicit user decision.
+- **No automatic PAID API calls, ever.** Calling out to a billed provider is an explicit user
+  decision. *(Qualified by the owner this session: the constraint is about **cost**, not about
+  network traffic. Free reads — Sleeper — are not covered and may happen on their own. This
+  closes U13.)*
 - **The draft must function fully with no API at all** — that is a supported configuration, not
   a degraded one.
 - **Debate is callable only while on the clock.**
@@ -326,14 +329,25 @@ construction — read here, act there. The plug-in does not: it draws on top of 
 act happens. That is no longer just a convenience argument; it is the only configuration where
 reading and acting are the same screen.
 
-### One question this leaves open (U13)
+### U13, RAISED AND CLOSED IN ONE EXCHANGE
 
-The RULED constraint in §1 is *"no automatic API pings, ever — calling out is an explicit user
-decision."* That was said about **paid LLM debate/insight calls**, where an unrequested ping costs
-the user money. **Sleeper reads are free**, and a draft board that only updates when you press a
-button is a worse board. The owner's word here was "refresh button", which answers it for now —
-manual. Whether the live board may ALSO poll Sleeper on a timer is a separate question the
-original ruling should not be read as having settled by accident. Flagged rather than assumed.
+I flagged that §1's *"no automatic API pings, ever"* had been said about **paid** LLM calls, and
+should not be read as having settled — by accident of wording — whether the live board may poll
+Sleeper, whose reads are free. The owner qualified it immediately: **"no *paid* api calls
+automatic."**
+
+So the constraint is about **cost, not network traffic**, and the live board may update itself.
+That is the better rule, because the thing being protected was never the request — it was the
+user's money and the choice to spend it.
+
+**And it matters more than a settings detail.** A board that only moves when someone presses a
+button cannot feel live, and "game-like" (§1) is not reachable without motion that the user did
+not have to ask for. The rail advancing on its own as picks land IS the game feel; the refresh
+button becomes an immediate-update override for the impatient, not the only mechanism. Under the
+literal reading I flagged, the whole surface would have been stuck waiting to be poked.
+
+Poll cadence is left as a practical default rather than pinned here — it is a UX comfort choice,
+not an engine constant, so `#56` does not reach it.
 
 **CORRECTION to §9.** That section said the freeze timer *"is least necessary in the surface it
 was conceived for and most necessary in the one pinned for later,"* on the reasoning that only
@@ -378,7 +392,7 @@ later.** Worth knowing before either is built.
 | U10 | Slowest vs average for the recommendation | **WORKING: show both, user picks.** Settles the §5 a-bis contradiction by not settling it — the spread is visible and the user chooses. |
 | U11 | Does the wait band carry the forfeit? | **WORKING: no.** The band states pick-order facts anyone can verify from the board; an engine projection alongside them would blend a certainty with an estimate. Forfeit stays on the cards. |
 | U12 | "Since your last pick" digest | **WORKING: no** — the rail already shows it when you scroll back. A second surface for the same information is duplication. |
-| U13 | May the live board poll Sleeper on a timer, or is refresh strictly manual? | **OPEN.** §1's no-auto-pings ruling was about paid calls; Sleeper reads are free. "Refresh button" answers it for now. See §8b. |
+| U13 | May the live board poll Sleeper on a timer, or is refresh strictly manual? | **RULED: polling is allowed.** The constraint is *no automatic **paid** API calls*. Sleeper reads are free and uncovered. The refresh button becomes an immediate-update override, not the only mechanism. |
 
 ### On U6, because it settles something §2 left open
 
