@@ -9835,3 +9835,129 @@ convention. Consistent with the same fairness concern that bans trading across t
 `generate_pick_order(round_1_order, total_rounds, draft_type="snake"|"linear"|"3rr")` already
 implements it and Sleeper exposes it as `settings.reversal_round == 3`, so the capability is not
 the gap — the matrix simply never uses it.
+
+### `#272` CORRECTION — the owner had already given me this league, six days ago
+
+The owner said, of the FFCL Group A material: *"i cant help but think i'd have given this to
+you before, though."* **They are right, and I should have checked before writing the entry
+above rather than after.**
+
+**Where it was.** `evidence/reference_rosters/OWNER_REDRAFT_2026-09-08.md`, committed
+2026-09-08 at `d79ea96` — *"Reference roster: a human-drafted roster the owner is happy with,
+and the inputs it proves missing."* The commit message itself reads: *"no dedicated TE slot,
+W-R-only flex, superflex, 5-bench, 3RR, seat 12, redraft, NO TRADING."* Every axis the entry
+above presents as newly captured.
+
+**Why I did not find it.** That commit is on `ui-authority-pass`. It is **not an ancestor of
+this branch and not an ancestor of `main`** (`git merge-base --is-ancestor` says NO to both),
+so the file does not exist in this working tree. Every search I ran — the working tree, the
+git object grep for "ffcl", the board corpus — was run against a tree the evidence is not in.
+The 09-08 document is now restored to this branch with an identification block appended.
+
+**It was never anonymous to the instruments, only to me.** The league is already an arm:
+`run_216_bench_probe.py:280`, `OWNER_LEAGUE` / label `OWNER_3RR_SF_noTE`, and
+`OWNER_LEAGUE_FIXTURE_WITHDRAWAL.md` — the *twelfth* withdrawal of that session — is the
+record of me declaring that same fixture broken by comparing it against the wrong league.
+**This is the same error twice, six days apart, on the same artifact.** There: a correct
+fixture matched against the wrong reference. Here: the right reference searched for in the
+wrong tree. Both times the artifact's own label carried the answer (`OWNER_3RR_SF_noTE`
+states three of the eight fields outright).
+
+#### What actually survives, and what does not
+
+**The eight format fields agree exactly** — starters, bench, teams, `rec`, `bonus_rec_te`,
+horizon, `draft_type`, trading. Zero conflicts. The capture is corroborated, not contradicted.
+
+**The comparison table above stands as written**, because every claim in it is scoped to
+`data/league_captures/` — "no other *capture*", "the first *captured* league". That scoping
+happens to be literally true. It was not deliberate, and it reads as a novelty claim about the
+repo, which it is not.
+
+**These three claims in the entry above are WITHDRAWN or corrected:**
+
+1. **"THE TRADING BAN IS THE FINDING I DID NOT EXPECT" — withdrawn.** The 09-08 document
+   contains a longer and better version of it, under its own heading *"NO TRADING — and what
+   it does to the engine's objective"*, including the bench-taxonomy consequence, the
+   inert-surplus consequence, the conditional-G9 consequence, handcuffs being worth more,
+   replacement level becoming literally true, **and** the codebase finding that
+   `league_format.py:9` flagged the missing trades-enabled input in a comment and it never
+   became one. I re-derived it and presented it as a surprise. It is a **re-finding**, and the
+   09-08 write-up is the better of the two.
+
+2. **"Rulebook only, no draft board" — stale.** The owner supplied the FFCL Group A draft
+   board the same day. The 09-08 document additionally carries all fourteen of the owner's own
+   picks with round-by-round notes, which no capture has for any league.
+
+3. **The `#146` claim needs one qualifier.** *"has sat REDRAFT-ONLY with no redraft league to
+   apply it to"* — there has been a documented redraft league since 09-08. What was missing
+   was its **scoring rulebook**, without which bye-week admissibility cannot be evaluated
+   against real point values. The capture supplies that; it does not supply the league.
+
+#### `#265` is sharper than the addendum said, in the engine's favour
+
+The addendum wrote *"all 34 battery arms run plain snake"*, which is true, and left the
+impression that nothing in the repo exercises 3RR. **One instrument does.**
+`run_216_bench_probe.py` drafts this league with `draft_type="3rr"` — `build_league` returns
+`OWNER_LEAGUE["draft_type"]` on that branch and the literal `"snake"` on both others. So the
+gap is narrower and more specific than recorded: **the 34-arm battery is 3RR-naive; the
+flex-share and shared-slot instruments are not.** That also means `OWNER_3RR_SF_noTE`'s
+existing results are results about a real, named league drafted under its real draft type —
+which raises their standing, not lowers it.
+
+---
+
+## `#273` PROCESS DEFECT — evidence pinned to a branch that never merged is evidence the next session cannot find
+
+`#272`'s correction is not a one-off. It is the failure mode `evidence/real_drafts/README.md`
+was written to prevent, in a different medium: *"161 images had been pasted into this session
+and were living only inside a 591 MB conversation transcript... Nothing pointed at them."*
+Here nothing pointed at a committed, pushed file either, because it was committed to a branch
+that never reached `main` or the working branch.
+
+### Measured, not assumed — the orphan set is exactly two files
+
+Swept every branch (`origin/main`, `origin/ui-authority-pass`, `origin/pre-blind-audit`,
+`origin/pre-hull-extraction`, `adversary-216-falsification`, both `origin/worktree-agent-*`)
+for paths absent from `HEAD`, excluding `.claude/worktrees/`:
+
+| branch | files absent from HEAD |
+|---|---|
+| `origin/main` | 0 |
+| `origin/pre-blind-audit` | 0 |
+| `origin/pre-hull-extraction` | 0 |
+| `adversary-216-falsification` | 0 |
+| `origin/worktree-agent-a0a78a88e2d0163fe` | 0 |
+| `origin/worktree-agent-ab5e1af412aeb9182` | 0 |
+| **`origin/ui-authority-pass`** | **2** |
+
+The two: `evidence/reference_rosters/OWNER_REDRAFT_2026-09-08.md` and `HANDOFF_216.md`.
+
+**This is a bounded problem, and it is now one file.** The reference roster is restored to
+this branch by this commit. `HANDOFF_216.md` is deliberately NOT restored: it is a
+present-tense status document from 09-08 (*"#216 BLOCKS THE FREEZE"*, a branch table naming
+worktrees that have since been absorbed), and dropping it at the repo root would put stale
+current-tense state where a reader would take it as live. It is recorded here instead —
+`git show origin/ui-authority-pass:HANDOFF_216.md` — which is the whole point of the entry.
+
+Its opening line, for the record, is *"Everything named here is committed and pushed. Nothing
+important lives only in a container."* Both sentences were true. Neither was sufficient.
+
+### The rule this yields
+
+**"Committed and pushed" is not the durability bar. "Reachable from the branch the next
+session checks out" is.** A branch that is not an ancestor of `main` is a container with a
+longer lifetime, not a different kind of thing. Evidence intended to outlive a session belongs
+on a merged line, or it belongs nowhere.
+
+The mechanical check is one command and is cheap enough to run before declaring any search
+exhaustive:
+
+```
+comm -13 <(git ls-tree -r --name-only HEAD | sort) \
+         <(git ls-tree -r --name-only <branch> | sort)
+```
+
+**`#161` is the near neighbour**, not a duplicate: there I searched full history and correctly
+found that no `BLIND-A1` existed. Here I searched one tree and incorrectly concluded no FFCL
+material existed. The difference is entirely which of the two I searched, and I did not notice
+I had chosen.
