@@ -10787,6 +10787,1329 @@
      "would_fire": true
     }
    ]
+  },
+  "12T_ppr_SF_NO_TE_SLOT": {
+   "teams": 12,
+   "rounds": 15,
+   "total_picks": 180,
+   "superflex": 1,
+   "te_slot": false,
+   "te_premium": 0,
+   "engine_detector_fire": {
+    "round": 15,
+    "pick_no": 172
+   },
+   "reconstructed_first_fire": 175,
+   "selfcheck": "ok (within stride)",
+   "per_position_first_cross": {
+    "QB": null,
+    "RB": 165,
+    "TE": 130,
+    "WR": 100
+   },
+   "never_measurable": {
+    "QB": false,
+    "RB": false,
+    "TE": false,
+    "WR": false
+   },
+   "samples": [
+    {
+     "after_picks": 0,
+     "by_pos": {
+      "RB": {
+       "measurable": 126,
+       "unpriced": 130,
+       "top": 251.12,
+       "demand": 36.6,
+       "positive": true
+      },
+      "WR": {
+       "measurable": 198,
+       "unpriced": 254,
+       "top": 183.31,
+       "demand": 36.6,
+       "positive": true
+      },
+      "QB": {
+       "measurable": 42,
+       "unpriced": 113,
+       "top": 164.95999999999998,
+       "demand": 22.200000000000003,
+       "positive": true
+      },
+      "TE": {
+       "measurable": 115,
+       "unpriced": 141,
+       "top": 120.87,
+       "demand": 12.600000000000003,
+       "positive": true
+      }
+     },
+     "any_measurable": true,
+     "would_fire": false
+    },
+    {
+     "after_picks": 5,
+     "by_pos": {
+      "WR": {
+       "measurable": 197,
+       "unpriced": 254,
+       "top": 177.07,
+       "demand": 35.6,
+       "positive": true
+      },
+      "QB": {
+       "measurable": 42,
+       "unpriced": 113,
+       "top": 164.95999999999998,
+       "demand": 22.200000000000003,
+       "positive": true
+      },
+      "RB": {
+       "measurable": 122,
+       "unpriced": 130,
+       "top": 156.04000000000002,
+       "demand": 32.6,
+       "positive": true
+      },
+      "TE": {
+       "measurable": 115,
+       "unpriced": 141,
+       "top": 120.87,
+       "demand": 12.600000000000003,
+       "positive": true
+      }
+     },
+     "any_measurable": true,
+     "would_fire": false
+    },
+    {
+     "after_picks": 10,
+     "by_pos": {
+      "QB": {
+       "measurable": 40,
+       "unpriced": 113,
+       "top": 157.8,
+       "demand": 20.200000000000003,
+       "positive": true
+      },
+      "RB": {
+       "measurable": 122,
+       "unpriced": 130,
+       "top": 156.04000000000002,
+       "demand": 32.6,
+       "positive": true
+      },
+      "WR": {
+       "measurable": 194,
+       "unpriced": 254,
+       "top": 115.55000000000001,
+       "demand": 32.6,
+       "positive": true
+      },
+      "TE": {
+       "measurable": 115,
+       "unpriced": 141,
+       "top": 120.87,
+       "demand": 12.600000000000003,
+       "positive": true
+      }
+     },
+     "any_measurable": true,
+     "would_fire": false
+    },
+    {
+     "after_picks": 15,
+     "by_pos": {
+      "QB": {
+       "measurable": 38,
+       "unpriced": 113,
+       "top": 140.32,
+       "demand": 18.2,
+       "positive": true
+      },
+      "RB": {
+       "measurable": 119,
+       "unpriced": 130,
+       "top": 126.35000000000002,
+       "demand": 29.600000000000005,
+       "positive": true
+      },
+      "WR": {
+       "measurable": 194,
+       "unpriced": 254,
+       "top": 115.55000000000001,
+       "demand": 32.6,
+       "positive": true
+      },
+      "TE": {
+       "measurable": 115,
+       "unpriced": 141,
+       "top": 120.87,
+       "demand": 12.600000000000003,
+       "positive": true
+      }
+     },
+     "any_measurable": true,
+     "would_fire": false
+    },
+    {
+     "after_picks": 20,
+     "by_pos": {
+      "QB": {
+       "measurable": 34,
+       "unpriced": 113,
+       "top": 127.98000000000002,
+       "demand": 14.349999999999998,
+       "positive": true
+      },
+      "WR": {
+       "measurable": 194,
+       "unpriced": 254,
+       "top": 115.55000000000001,
+       "demand": 32.6,
+       "positive": true
+      },
+      "RB": {
+       "measurable": 118,
+       "unpriced": 130,
+       "top": 121.38999999999999,
+       "demand": 28.600000000000005,
+       "positive": true
+      },
+      "TE": {
+       "measurable": 115,
+       "unpriced": 141,
+       "top": 120.87,
+       "demand": 12.600000000000003,
+       "positive": true
+      }
+     },
+     "any_measurable": true,
+     "would_fire": false
+    },
+    {
+     "after_picks": 25,
+     "by_pos": {
+      "RB": {
+       "measurable": 118,
+       "unpriced": 130,
+       "top": 121.38999999999999,
+       "demand": 28.600000000000005,
+       "positive": true
+      },
+      "WR": {
+       "measurable": 193,
+       "unpriced": 254,
+       "top": 113.23000000000002,
+       "demand": 31.600000000000005,
+       "positive": true
+      },
+      "QB": {
+       "measurable": 30,
+       "unpriced": 113,
+       "top": 109.86000000000001,
+       "demand": 10.349999999999998,
+       "positive": true
+      },
+      "TE": {
+       "measurable": 115,
+       "unpriced": 141,
+       "top": 120.87,
+       "demand": 12.600000000000003,
+       "positive": true
+      }
+     },
+     "any_measurable": true,
+     "would_fire": false
+    },
+    {
+     "after_picks": 30,
+     "by_pos": {
+      "WR": {
+       "measurable": 192,
+       "unpriced": 254,
+       "top": 103.31,
+       "demand": 30.600000000000005,
+       "positive": true
+      },
+      "RB": {
+       "measurable": 114,
+       "unpriced": 130,
+       "top": 111.95999999999998,
+       "demand": 24.600000000000005,
+       "positive": true
+      },
+      "QB": {
+       "measurable": 30,
+       "unpriced": 113,
+       "top": 109.86000000000001,
+       "demand": 10.349999999999998,
+       "positive": true
+      },
+      "TE": {
+       "measurable": 115,
+       "unpriced": 141,
+       "top": 120.87,
+       "demand": 12.600000000000003,
+       "positive": true
+      }
+     },
+     "any_measurable": true,
+     "would_fire": false
+    },
+    {
+     "after_picks": 35,
+     "by_pos": {
+      "QB": {
+       "measurable": 28,
+       "unpriced": 113,
+       "top": 107.64999999999998,
+       "demand": 8.499999999999998,
+       "positive": true
+      },
+      "WR": {
+       "measurable": 191,
+       "unpriced": 254,
+       "top": 98.57,
+       "demand": 29.600000000000005,
+       "positive": true
+      },
+      "RB": {
+       "measurable": 112,
+       "unpriced": 130,
+       "top": 101.54000000000002,
+       "demand": 22.600000000000005,
+       "positive": true
+      },
+      "TE": {
+       "measurable": 115,
+       "unpriced": 141,
+       "top": 120.87,
+       "demand": 12.600000000000003,
+       "positive": true
+      }
+     },
+     "any_measurable": true,
+     "would_fire": false
+    },
+    {
+     "after_picks": 40,
+     "by_pos": {
+      "TE": {
+       "measurable": 115,
+       "unpriced": 141,
+       "top": 120.87,
+       "demand": 12.600000000000003,
+       "positive": true
+      },
+      "QB": {
+       "measurable": 26,
+       "unpriced": 113,
+       "top": 100.64999999999998,
+       "demand": 6.799999999999999,
+       "positive": true
+      },
+      "WR": {
+       "measurable": 190,
+       "unpriced": 254,
+       "top": 91.32999999999998,
+       "demand": 28.600000000000005,
+       "positive": true
+      },
+      "RB": {
+       "measurable": 110,
+       "unpriced": 130,
+       "top": 97.80000000000001,
+       "demand": 20.600000000000005,
+       "positive": true
+      }
+     },
+     "any_measurable": true,
+     "would_fire": false
+    },
+    {
+     "after_picks": 45,
+     "by_pos": {
+      "RB": {
+       "measurable": 110,
+       "unpriced": 130,
+       "top": 97.80000000000001,
+       "demand": 20.600000000000005,
+       "positive": true
+      },
+      "QB": {
+       "measurable": 23,
+       "unpriced": 113,
+       "top": 97.07,
+       "demand": 4.25,
+       "positive": true
+      },
+      "WR": {
+       "measurable": 189,
+       "unpriced": 254,
+       "top": 85.95999999999998,
+       "demand": 27.600000000000005,
+       "positive": true
+      },
+      "TE": {
+       "measurable": 114,
+       "unpriced": 141,
+       "top": 111.54000000000002,
+       "demand": 11.600000000000001,
+       "positive": true
+      }
+     },
+     "any_measurable": true,
+     "would_fire": false
+    },
+    {
+     "after_picks": 50,
+     "by_pos": {
+      "TE": {
+       "measurable": 114,
+       "unpriced": 141,
+       "top": 111.54000000000002,
+       "demand": 11.600000000000001,
+       "positive": true
+      },
+      "WR": {
+       "measurable": 187,
+       "unpriced": 254,
+       "top": 75.99000000000001,
+       "demand": 25.600000000000005,
+       "positive": true
+      },
+      "RB": {
+       "measurable": 109,
+       "unpriced": 130,
+       "top": 87.82999999999998,
+       "demand": 19.600000000000005,
+       "positive": true
+      },
+      "QB": {
+       "measurable": 21,
+       "unpriced": 113,
+       "top": 92.17000000000002,
+       "demand": 2.5500000000000003,
+       "positive": true
+      }
+     },
+     "any_measurable": true,
+     "would_fire": false
+    },
+    {
+     "after_picks": 55,
+     "by_pos": {
+      "WR": {
+       "measurable": 186,
+       "unpriced": 254,
+       "top": 74.76999999999998,
+       "demand": 24.600000000000005,
+       "positive": true
+      },
+      "TE": {
+       "measurable": 113,
+       "unpriced": 141,
+       "top": 75.92000000000002,
+       "demand": 10.600000000000001,
+       "positive": true
+      },
+      "RB": {
+       "measurable": 107,
+       "unpriced": 130,
+       "top": 83.82999999999998,
+       "demand": 17.600000000000005,
+       "positive": true
+      },
+      "QB": {
+       "measurable": 20,
+       "unpriced": 113,
+       "top": 86.95999999999998,
+       "demand": 1.7000000000000002,
+       "positive": true
+      }
+     },
+     "any_measurable": true,
+     "would_fire": false
+    },
+    {
+     "after_picks": 60,
+     "by_pos": {
+      "WR": {
+       "measurable": 183,
+       "unpriced": 254,
+       "top": 66.03000000000003,
+       "demand": 21.600000000000005,
+       "positive": true
+      },
+      "TE": {
+       "measurable": 113,
+       "unpriced": 141,
+       "top": 75.92000000000002,
+       "demand": 10.600000000000001,
+       "positive": true
+      },
+      "RB": {
+       "measurable": 106,
+       "unpriced": 130,
+       "top": 71.07,
+       "demand": 16.600000000000005,
+       "positive": true
+      },
+      "QB": {
+       "measurable": 19,
+       "unpriced": 113,
+       "top": 82.13999999999999,
+       "demand": 0.8500000000000001,
+       "positive": true
+      }
+     },
+     "any_measurable": true,
+     "would_fire": false
+    },
+    {
+     "after_picks": 65,
+     "by_pos": {
+      "WR": {
+       "measurable": 181,
+       "unpriced": 254,
+       "top": 48.70999999999998,
+       "demand": 19.600000000000005,
+       "positive": true
+      },
+      "TE": {
+       "measurable": 112,
+       "unpriced": 141,
+       "top": 55.75999999999999,
+       "demand": 9.6,
+       "positive": true
+      },
+      "RB": {
+       "measurable": 104,
+       "unpriced": 130,
+       "top": 66.72999999999999,
+       "demand": 14.600000000000007,
+       "positive": true
+      },
+      "QB": {
+       "measurable": 19,
+       "unpriced": 113,
+       "top": 82.13999999999999,
+       "demand": 0.8500000000000001,
+       "positive": true
+      }
+     },
+     "any_measurable": true,
+     "would_fire": false
+    },
+    {
+     "after_picks": 70,
+     "by_pos": {
+      "WR": {
+       "measurable": 179,
+       "unpriced": 254,
+       "top": 41.920000000000016,
+       "demand": 17.600000000000005,
+       "positive": true
+      },
+      "TE": {
+       "measurable": 112,
+       "unpriced": 141,
+       "top": 55.75999999999999,
+       "demand": 9.6,
+       "positive": true
+      },
+      "RB": {
+       "measurable": 102,
+       "unpriced": 130,
+       "top": 65.31,
+       "demand": 12.600000000000007,
+       "positive": true
+      },
+      "QB": {
+       "measurable": 18,
+       "unpriced": 113,
+       "top": 74.38999999999999,
+       "demand": 0.0,
+       "positive": true
+      }
+     },
+     "any_measurable": true,
+     "would_fire": false
+    },
+    {
+     "after_picks": 75,
+     "by_pos": {
+      "TE": {
+       "measurable": 112,
+       "unpriced": 141,
+       "top": 55.75999999999999,
+       "demand": 9.6,
+       "positive": true
+      },
+      "WR": {
+       "measurable": 174,
+       "unpriced": 254,
+       "top": 31.890000000000015,
+       "demand": 12.600000000000005,
+       "positive": true
+      },
+      "RB": {
+       "measurable": 102,
+       "unpriced": 130,
+       "top": 65.31,
+       "demand": 12.600000000000007,
+       "positive": true
+      },
+      "QB": {
+       "measurable": 18,
+       "unpriced": 113,
+       "top": 74.38999999999999,
+       "demand": 0.0,
+       "positive": true
+      }
+     },
+     "any_measurable": true,
+     "would_fire": false
+    },
+    {
+     "after_picks": 80,
+     "by_pos": {
+      "TE": {
+       "measurable": 110,
+       "unpriced": 141,
+       "top": 41.53999999999999,
+       "demand": 7.599999999999999,
+       "positive": true
+      },
+      "WR": {
+       "measurable": 171,
+       "unpriced": 254,
+       "top": 19.310000000000002,
+       "demand": 9.600000000000005,
+       "positive": true
+      },
+      "RB": {
+       "measurable": 102,
+       "unpriced": 130,
+       "top": 65.31,
+       "demand": 12.600000000000007,
+       "positive": true
+      },
+      "QB": {
+       "measurable": 18,
+       "unpriced": 113,
+       "top": 74.38999999999999,
+       "demand": 0.0,
+       "positive": true
+      }
+     },
+     "any_measurable": true,
+     "would_fire": false
+    },
+    {
+     "after_picks": 85,
+     "by_pos": {
+      "TE": {
+       "measurable": 108,
+       "unpriced": 141,
+       "top": 36.879999999999995,
+       "demand": 5.599999999999999,
+       "positive": true
+      },
+      "WR": {
+       "measurable": 169,
+       "unpriced": 254,
+       "top": 10.480000000000018,
+       "demand": 7.600000000000005,
+       "positive": true
+      },
+      "RB": {
+       "measurable": 101,
+       "unpriced": 130,
+       "top": 52.47999999999999,
+       "demand": 11.600000000000007,
+       "positive": true
+      },
+      "QB": {
+       "measurable": 18,
+       "unpriced": 113,
+       "top": 74.38999999999999,
+       "demand": 0.0,
+       "positive": true
+      }
+     },
+     "any_measurable": true,
+     "would_fire": false
+    },
+    {
+     "after_picks": 90,
+     "by_pos": {
+      "RB": {
+       "measurable": 101,
+       "unpriced": 130,
+       "top": 52.47999999999999,
+       "demand": 11.600000000000007,
+       "positive": true
+      },
+      "TE": {
+       "measurable": 107,
+       "unpriced": 141,
+       "top": 27.289999999999992,
+       "demand": 4.599999999999999,
+       "positive": true
+      },
+      "WR": {
+       "measurable": 165,
+       "unpriced": 254,
+       "top": 2.670000000000016,
+       "demand": 3.600000000000003,
+       "positive": true
+      },
+      "QB": {
+       "measurable": 18,
+       "unpriced": 113,
+       "top": 74.38999999999999,
+       "demand": 0.0,
+       "positive": true
+      }
+     },
+     "any_measurable": true,
+     "would_fire": false
+    },
+    {
+     "after_picks": 95,
+     "by_pos": {
+      "WR": {
+       "measurable": 162,
+       "unpriced": 254,
+       "top": 3.3400000000000034,
+       "demand": 1.550000000000003,
+       "positive": true
+      },
+      "TE": {
+       "measurable": 106,
+       "unpriced": 141,
+       "top": 11.909999999999997,
+       "demand": 3.5999999999999988,
+       "positive": true
+      },
+      "RB": {
+       "measurable": 100,
+       "unpriced": 130,
+       "top": 40.24000000000001,
+       "demand": 10.600000000000007,
+       "positive": true
+      },
+      "QB": {
+       "measurable": 18,
+       "unpriced": 113,
+       "top": 74.38999999999999,
+       "demand": 0.0,
+       "positive": true
+      }
+     },
+     "any_measurable": true,
+     "would_fire": false
+    },
+    {
+     "after_picks": 100,
+     "by_pos": {
+      "TE": {
+       "measurable": 106,
+       "unpriced": 141,
+       "top": 11.909999999999997,
+       "demand": 3.5999999999999988,
+       "positive": true
+      },
+      "WR": {
+       "measurable": 157,
+       "unpriced": 254,
+       "top": 0.0,
+       "demand": 1.4000000000000021,
+       "positive": false
+      },
+      "RB": {
+       "measurable": 100,
+       "unpriced": 130,
+       "top": 40.24000000000001,
+       "demand": 10.600000000000007,
+       "positive": true
+      },
+      "QB": {
+       "measurable": 18,
+       "unpriced": 113,
+       "top": 74.38999999999999,
+       "demand": 0.0,
+       "positive": true
+      }
+     },
+     "any_measurable": true,
+     "would_fire": false
+    },
+    {
+     "after_picks": 105,
+     "by_pos": {
+      "WR": {
+       "measurable": 153,
+       "unpriced": 254,
+       "top": 0.0,
+       "demand": 1.200000000000001,
+       "positive": false
+      },
+      "RB": {
+       "measurable": 100,
+       "unpriced": 130,
+       "top": 40.24000000000001,
+       "demand": 10.600000000000007,
+       "positive": true
+      },
+      "QB": {
+       "measurable": 18,
+       "unpriced": 113,
+       "top": 74.38999999999999,
+       "demand": 0.0,
+       "positive": true
+      },
+      "TE": {
+       "measurable": 105,
+       "unpriced": 141,
+       "top": 12.060000000000002,
+       "demand": 3.549999999999999,
+       "positive": true
+      }
+     },
+     "any_measurable": true,
+     "would_fire": false
+    },
+    {
+     "after_picks": 110,
+     "by_pos": {
+      "QB": {
+       "measurable": 18,
+       "unpriced": 113,
+       "top": 74.38999999999999,
+       "demand": 0.0,
+       "positive": true
+      },
+      "WR": {
+       "measurable": 150,
+       "unpriced": 254,
+       "top": -14.579999999999984,
+       "demand": 0.10000000000000053,
+       "positive": false
+      },
+      "TE": {
+       "measurable": 105,
+       "unpriced": 141,
+       "top": 12.060000000000002,
+       "demand": 3.549999999999999,
+       "positive": true
+      },
+      "RB": {
+       "measurable": 98,
+       "unpriced": 130,
+       "top": 37.96000000000001,
+       "demand": 9.550000000000006,
+       "positive": true
+      }
+     },
+     "any_measurable": true,
+     "would_fire": false
+    },
+    {
+     "after_picks": 115,
+     "by_pos": {
+      "TE": {
+       "measurable": 104,
+       "unpriced": 141,
+       "top": 5.5400000000000205,
+       "demand": 2.549999999999999,
+       "positive": true
+      },
+      "WR": {
+       "measurable": 147,
+       "unpriced": 254,
+       "top": -24.210000000000008,
+       "demand": 0.10000000000000053,
+       "positive": false
+      },
+      "RB": {
+       "measurable": 98,
+       "unpriced": 130,
+       "top": 37.96000000000001,
+       "demand": 9.550000000000006,
+       "positive": true
+      },
+      "QB": {
+       "measurable": 17,
+       "unpriced": 113,
+       "top": 57.51999999999998,
+       "demand": 0.0,
+       "positive": true
+      }
+     },
+     "any_measurable": true,
+     "would_fire": false
+    },
+    {
+     "after_picks": 120,
+     "by_pos": {
+      "RB": {
+       "measurable": 97,
+       "unpriced": 130,
+       "top": 37.25999999999999,
+       "demand": 8.550000000000006,
+       "positive": true
+      },
+      "WR": {
+       "measurable": 146,
+       "unpriced": 254,
+       "top": -32.19,
+       "demand": 0.10000000000000053,
+       "positive": false
+      },
+      "QB": {
+       "measurable": 16,
+       "unpriced": 113,
+       "top": 54.99000000000001,
+       "demand": 0.0,
+       "positive": true
+      },
+      "TE": {
+       "measurable": 102,
+       "unpriced": 141,
+       "top": 0.4099999999999966,
+       "demand": 1.5500000000000005,
+       "positive": true
+      }
+     },
+     "any_measurable": true,
+     "would_fire": false
+    },
+    {
+     "after_picks": 125,
+     "by_pos": {
+      "RB": {
+       "measurable": 94,
+       "unpriced": 130,
+       "top": 22.28,
+       "demand": 6.5000000000000036,
+       "positive": true
+      },
+      "TE": {
+       "measurable": 102,
+       "unpriced": 141,
+       "top": 0.4099999999999966,
+       "demand": 1.5500000000000005,
+       "positive": true
+      },
+      "WR": {
+       "measurable": 145,
+       "unpriced": 254,
+       "top": -39.379999999999995,
+       "demand": 0.050000000000000266,
+       "positive": false
+      },
+      "QB": {
+       "measurable": 15,
+       "unpriced": 113,
+       "top": 48.97000000000003,
+       "demand": 0.0,
+       "positive": true
+      }
+     },
+     "any_measurable": true,
+     "would_fire": false
+    },
+    {
+     "after_picks": 130,
+     "by_pos": {
+      "RB": {
+       "measurable": 94,
+       "unpriced": 130,
+       "top": 22.28,
+       "demand": 6.5000000000000036,
+       "positive": true
+      },
+      "WR": {
+       "measurable": 145,
+       "unpriced": 254,
+       "top": -39.379999999999995,
+       "demand": 0.050000000000000266,
+       "positive": false
+      },
+      "TE": {
+       "measurable": 98,
+       "unpriced": 141,
+       "top": 0.0,
+       "demand": 1.3500000000000003,
+       "positive": false
+      },
+      "QB": {
+       "measurable": 14,
+       "unpriced": 113,
+       "top": 44.77000000000001,
+       "demand": 0.0,
+       "positive": true
+      }
+     },
+     "any_measurable": true,
+     "would_fire": false
+    },
+    {
+     "after_picks": 135,
+     "by_pos": {
+      "WR": {
+       "measurable": 142,
+       "unpriced": 254,
+       "top": -39.379999999999995,
+       "demand": 0.0,
+       "positive": false
+      },
+      "TE": {
+       "measurable": 98,
+       "unpriced": 141,
+       "top": 0.0,
+       "demand": 1.3500000000000003,
+       "positive": false
+      },
+      "QB": {
+       "measurable": 14,
+       "unpriced": 113,
+       "top": 44.77000000000001,
+       "demand": 0.0,
+       "positive": true
+      },
+      "RB": {
+       "measurable": 92,
+       "unpriced": 130,
+       "top": 15.819999999999993,
+       "demand": 6.450000000000003,
+       "positive": true
+      }
+     },
+     "any_measurable": true,
+     "would_fire": false
+    },
+    {
+     "after_picks": 140,
+     "by_pos": {
+      "RB": {
+       "measurable": 92,
+       "unpriced": 130,
+       "top": 15.819999999999993,
+       "demand": 6.450000000000003,
+       "positive": true
+      },
+      "TE": {
+       "measurable": 96,
+       "unpriced": 141,
+       "top": 0.0,
+       "demand": 1.3500000000000003,
+       "positive": false
+      },
+      "WR": {
+       "measurable": 140,
+       "unpriced": 254,
+       "top": -39.379999999999995,
+       "demand": 0.0,
+       "positive": false
+      },
+      "QB": {
+       "measurable": 13,
+       "unpriced": 113,
+       "top": 31.599999999999994,
+       "demand": 0.0,
+       "positive": true
+      }
+     },
+     "any_measurable": true,
+     "would_fire": false
+    },
+    {
+     "after_picks": 145,
+     "by_pos": {
+      "WR": {
+       "measurable": 139,
+       "unpriced": 254,
+       "top": -56.620000000000005,
+       "demand": 0.0,
+       "positive": false
+      },
+      "TE": {
+       "measurable": 95,
+       "unpriced": 141,
+       "top": 0.0,
+       "demand": 1.3000000000000003,
+       "positive": false
+      },
+      "RB": {
+       "measurable": 89,
+       "unpriced": 130,
+       "top": 12.469999999999999,
+       "demand": 5.400000000000002,
+       "positive": true
+      },
+      "QB": {
+       "measurable": 13,
+       "unpriced": 113,
+       "top": 31.599999999999994,
+       "demand": 0.0,
+       "positive": true
+      }
+     },
+     "any_measurable": true,
+     "would_fire": false
+    },
+    {
+     "after_picks": 150,
+     "by_pos": {
+      "RB": {
+       "measurable": 89,
+       "unpriced": 130,
+       "top": 12.469999999999999,
+       "demand": 5.400000000000002,
+       "positive": true
+      },
+      "TE": {
+       "measurable": 94,
+       "unpriced": 141,
+       "top": -31.53,
+       "demand": 0.30000000000000027,
+       "positive": false
+      },
+      "WR": {
+       "measurable": 136,
+       "unpriced": 254,
+       "top": -73.41,
+       "demand": 0.0,
+       "positive": false
+      },
+      "QB": {
+       "measurable": 12,
+       "unpriced": 113,
+       "top": 7.8700000000000045,
+       "demand": 0.0,
+       "positive": true
+      }
+     },
+     "any_measurable": true,
+     "would_fire": false
+    },
+    {
+     "after_picks": 155,
+     "by_pos": {
+      "TE": {
+       "measurable": 93,
+       "unpriced": 141,
+       "top": -37.870000000000005,
+       "demand": 0.30000000000000027,
+       "positive": false
+      },
+      "RB": {
+       "measurable": 85,
+       "unpriced": 130,
+       "top": 0.75,
+       "demand": 2.400000000000002,
+       "positive": true
+      },
+      "WR": {
+       "measurable": 136,
+       "unpriced": 254,
+       "top": -73.41,
+       "demand": 0.0,
+       "positive": false
+      },
+      "QB": {
+       "measurable": 12,
+       "unpriced": 113,
+       "top": 7.8700000000000045,
+       "demand": 0.0,
+       "positive": true
+      }
+     },
+     "any_measurable": true,
+     "would_fire": false
+    },
+    {
+     "after_picks": 160,
+     "by_pos": {
+      "RB": {
+       "measurable": 84,
+       "unpriced": 130,
+       "top": 6.180000000000007,
+       "demand": 2.350000000000002,
+       "positive": true
+      },
+      "WR": {
+       "measurable": 134,
+       "unpriced": 254,
+       "top": -76.88999999999999,
+       "demand": 0.0,
+       "positive": false
+      },
+      "TE": {
+       "measurable": 91,
+       "unpriced": 141,
+       "top": -48.00999999999999,
+       "demand": 0.20000000000000018,
+       "positive": false
+      },
+      "QB": {
+       "measurable": 12,
+       "unpriced": 113,
+       "top": 7.8700000000000045,
+       "demand": 0.0,
+       "positive": true
+      }
+     },
+     "any_measurable": true,
+     "would_fire": false
+    },
+    {
+     "after_picks": 165,
+     "by_pos": {
+      "WR": {
+       "measurable": 132,
+       "unpriced": 254,
+       "top": -77.57,
+       "demand": 0.0,
+       "positive": false
+      },
+      "TE": {
+       "measurable": 90,
+       "unpriced": 141,
+       "top": -51.58000000000001,
+       "demand": 0.15000000000000013,
+       "positive": false
+      },
+      "RB": {
+       "measurable": 82,
+       "unpriced": 130,
+       "top": 0.0,
+       "demand": 1.3000000000000016,
+       "positive": false
+      },
+      "QB": {
+       "measurable": 12,
+       "unpriced": 113,
+       "top": 7.8700000000000045,
+       "demand": 0.0,
+       "positive": true
+      }
+     },
+     "any_measurable": true,
+     "would_fire": false
+    },
+    {
+     "after_picks": 170,
+     "by_pos": {
+      "WR": {
+       "measurable": 128,
+       "unpriced": 254,
+       "top": -89.24,
+       "demand": 0.0,
+       "positive": false
+      },
+      "RB": {
+       "measurable": 82,
+       "unpriced": 130,
+       "top": 0.0,
+       "demand": 1.3000000000000016,
+       "positive": false
+      },
+      "QB": {
+       "measurable": 12,
+       "unpriced": 113,
+       "top": 7.8700000000000045,
+       "demand": 0.0,
+       "positive": true
+      },
+      "TE": {
+       "measurable": 89,
+       "unpriced": 141,
+       "top": -64.98,
+       "demand": 0.15000000000000013,
+       "positive": false
+      }
+     },
+     "any_measurable": true,
+     "would_fire": false
+    },
+    {
+     "after_picks": 175,
+     "by_pos": {
+      "RB": {
+       "measurable": 79,
+       "unpriced": 130,
+       "top": -57.120000000000005,
+       "demand": 0.20000000000000107,
+       "positive": false
+      },
+      "TE": {
+       "measurable": 89,
+       "unpriced": 141,
+       "top": -64.98,
+       "demand": 0.15000000000000013,
+       "positive": false
+      },
+      "WR": {
+       "measurable": 128,
+       "unpriced": 254,
+       "top": -89.24,
+       "demand": 0.0,
+       "positive": false
+      },
+      "QB": {
+       "measurable": 0,
+       "unpriced": 123,
+       "top": null,
+       "demand": 0.0,
+       "positive": null
+      }
+     },
+     "any_measurable": true,
+     "would_fire": true
+    },
+    {
+     "after_picks": 180,
+     "by_pos": {
+      "RB": {
+       "measurable": 76,
+       "unpriced": 130,
+       "top": -72.71000000000001,
+       "demand": 0.1500000000000008,
+       "positive": false
+      },
+      "TE": {
+       "measurable": 87,
+       "unpriced": 141,
+       "top": -85.13,
+       "demand": 0.15000000000000013,
+       "positive": false
+      },
+      "WR": {
+       "measurable": 128,
+       "unpriced": 254,
+       "top": -89.24,
+       "demand": 0.0,
+       "positive": false
+      },
+      "QB": {
+       "measurable": 0,
+       "unpriced": 123,
+       "top": null,
+       "demand": 0.0,
+       "positive": null
+      }
+     },
+     "any_measurable": true,
+     "would_fire": true
+    }
+   ]
   }
  },
  "stride": 5
