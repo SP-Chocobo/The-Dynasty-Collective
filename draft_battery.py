@@ -729,6 +729,59 @@ def duplicate_arms(results: list[dict]) -> list[dict]:
     return dupes
 
 
+def prefix_arms(sequences: dict[str, list]) -> list[dict]:
+    """Arms whose ENTIRE pick sequence is a prefix of another arm's. The third detector.
+
+    WHY A THIRD ONE EXISTS, and the published entry that earned it. `#276`: the depth battery's
+    six-arm bench ladder (BN 6/10/14/18/22/26, 12 teams, everything else held) turned out to be
+    ONE 408-pick draft sampled at six lengths -- BN6's 168 picks are a strict prefix of BN10's
+    216, and so on. `#271` had already published that ladder as "the crossing fires in none of
+    the six", which overstates one observation as six, and a prediction resting on those six
+    arms agreeing could not have failed.
+
+    NEITHER SIBLING CAN SEE IT, and that is the point:
+      - `duplicate_arms` compares each arm's ENTIRE measured body for byte identity. Prefix-
+        nested arms have different lengths and different totals, so nothing is flagged.
+      - `format_axes_exercised` catches an axis that stops varying. The bench axis genuinely
+        varies 6 -> 26, so nothing is flagged.
+    An axis varies, no arm is a duplicate, and the arms are still not independent evidence.
+
+    WHY PREFIX AND NOT "SHARES A LONG OPENING". Every snake draft of the same league shares its
+    first pick, and most share several; a similarity threshold here would be a calibrated
+    constant with no derivation behind it, which `#56` forbids (a bound is not a threshold).
+    STRICT PREFIX is a structural fact, not a judgement: arm A adds no observation that arm B
+    does not already contain, because B replays A exactly and then continues. That is decidable
+    with no constant at all, which is the only reason this detector is allowed to exist.
+
+    Equal-length identical sequences are NOT reported here -- that is `duplicate_arms`' job, and
+    reporting the same collapse from two detectors would double-count one problem.
+
+    Returns one row per nested arm naming its container, longest container first so the report
+    reads as "this arm is contained by that one".
+    """
+    items = [(label, list(seq)) for label, seq in sequences.items()]
+    nested: list[dict] = []
+    for label, seq in items:
+        container = None
+        for other_label, other in items:
+            # `other_label == label` is UNREACHABLE BY CONSTRUCTION and kept as a guard rather
+            # than a live branch: the length test below already excludes self, because no
+            # sequence is STRICTLY longer than itself. A mutation pass confirmed it -- deleting
+            # this clause leaves every test passing, an EQUIVALENT MUTANT rather than a gap in
+            # the tests, and it is recorded here so the next reader does not go hunting for the
+            # missing case. It stays because it makes the length test's `<=` load-bearing for
+            # one thing only (equal-length arms belong to duplicate_arms) instead of two.
+            if other_label == label or len(other) <= len(seq):
+                continue
+            if other[:len(seq)] == seq:
+                if container is None or len(sequences[container]) < len(other):
+                    container = other_label
+        if container is not None:
+            nested.append({"label": label, "prefix_of": container,
+                           "picks": len(seq), "container_picks": len(sequences[container])})
+    return nested
+
+
 def run_battery(merger, players_db: dict, matrix: Optional[list[dict]] = None,
                 *, mode: str = "auto",
                 sleeper_projections: Optional[dict[str, dict]] = None,

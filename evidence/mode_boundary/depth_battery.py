@@ -200,6 +200,34 @@ def main() -> int:
                   f"{res['elapsed_s']}s", flush=True)
             OUT.write_text(json.dumps(report, indent=1))       # checkpoint EVERY arm (#215)
 
+    # #276. THIS BATTERY PUBLISHED SIX ARMS THAT WERE ONE DRAFT SAMPLED AT SIX LENGTHS, and
+    # nothing here said so. `draft_battery` already carried two derived self-checks and this
+    # instrument called neither -- which is the proximate reason a prefix-nested ladder reached
+    # a published entry as "none of the six". The report now names its own nested arms, so the
+    # next reader sees the dependence without having to suspect it.
+    #
+    # Read from the report the battery just wrote rather than from the trajectories, so the
+    # check applies to the EVIDENCE a reader will actually have, including on a resumed run
+    # whose earlier arms this process never simulated.
+    sequences = {}
+    for label, entry in report["arms"].items():
+        rule = entry["rules"].get(dr.UPSIDE_RULE_CROSSING)
+        if rule is None:
+            continue
+        flat = [(e["pick_no"], e["pid"]) for picks in rule["per_seat"].values() for e in picks]
+        flat.sort()
+        sequences[label] = [pid for _, pid in flat]
+    report["nested_arms"] = db.prefix_arms(sequences)
+    report["independent_arms"] = len(sequences) - len(report["nested_arms"])
+    if report["nested_arms"]:
+        print("\n!! NESTED ARMS -- these add no observation the container does not already hold:",
+              flush=True)
+        for row in report["nested_arms"]:
+            print(f"   {row['label']:<26} is the first {row['picks']} picks of "
+                  f"{row['prefix_of']} ({row['container_picks']})", flush=True)
+        print(f"   {report['independent_arms']} of {len(sequences)} arms are independent "
+              f"evidence.", flush=True)
+
     report["elapsed_s"] = round(time.time() - t0, 1)
     OUT.write_text(json.dumps(report, indent=1))
     print(f"\nwrote {OUT}  ({report['elapsed_s']}s)", flush=True)
