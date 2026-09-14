@@ -9438,3 +9438,56 @@ the noise arm currently running. Queued behind them.
 reads as a stated scope rather than a claim of completeness. Whether to ADD those axes to the
 matrix is a separate and larger question — it would multiply the arm count and lengthen a battery
 that already runs 5.34 hours — and it is the owner's call, not a docstring fix.
+
+---
+
+## #267 MEASURED — `setsid` DOES NOT survive a session collapse here; only the checkpoint does
+
+Both background runs died silently during a session collapse. Discovered by an explicit health
+check rather than by noticing missing output, which is the point of recording it.
+
+```
+processes:        NONE ALIVE
+exit-code files:  ABSENT     <- the bash wrapper never reached its `echo $? > ...`
+last log writes:  2628s and 2840s ago
+tracebacks:       0
+```
+
+**The absent `.rc` file is the diagnostic.** Each job was launched as
+`setsid nohup bash -c '<python> ...; echo $? > <rc>'`. A python crash would still let the wrapper
+write the exit code. No `.rc` at all means **the whole process group was killed**, wrapper
+included — reclamation, not failure. `setsid` detaches from the controlling terminal; it does not
+survive the container suspending the session.
+
+**This corrects a belief I was operating on.** I launched both runs with `setsid` specifically
+"so they survive", said so, and was wrong.
+
+### What actually saved the work
+
+Both instruments checkpoint after every unit and skip completed units on restart. On relaunch:
+
+```
+depth battery:  7 [skip] lines -- all seven finished drafts honoured, resumed at arm 4
+noise arm:      [skip] k1_seed0 -- resumed at k=3
+```
+
+Cost of the collapse: the two drafts that were in flight, nothing else. `#215` is the standing
+item — *"the instruments could survive a restart but could not FINISH one"* — and this is the
+same lesson from the other side: **the checkpoint is the only survival mechanism that works
+here. Process-level detachment is not one.**
+
+### Operating consequence, for every long run after this
+
+1. **Never assume a background job is alive.** Check at the top of every turn:
+   `pgrep -af "^python3 -u <script>"` — anchored, and with `-f`, because `pgrep` without `-f`
+   matches the process NAME (`python3`) and cannot see arguments at all. That variant cost a
+   false "the suite died" call earlier today and a duplicate suite spawned on top of a healthy
+   run.
+2. **An absent `.rc` with a stale log means KILLED, not running.** A live job advances its log; a
+   finished one writes `.rc`. Neither is true for a reclaimed one, and that third state is the
+   one that looks like "still going" if only the process list is checked.
+3. **Checkpoint every unit, and make resume the default path**, not a `--resume` flag someone has
+   to remember. Both of today's instruments did this and both survived intact.
+4. **Relaunch is free; re-running is not.** A run that cannot skip finished units turns every
+   collapse into a full restart, which for the 5.34-hour battery would mean it never completes at
+   all.
