@@ -8853,3 +8853,41 @@ Notes for when it is picked up:
   the main surface.
 - Two risks to settle BEFORE building on the assumption: Sleeper's terms of service (a competitor
   doing it is evidence of tolerance, not permission), and Chrome Web Store review plus Manifest V3.
+
+### #262 AMENDED — RULED (owner): the freeze is a USER SETTING with a DERIVED RECOMMENDATION
+
+Supersedes the form recorded above. The owner's final shape, verbatim in effect:
+
+- **The user selects their own freeze timer.** The app does not choose it.
+- **A note explains the variance**: different models and internet speeds change how fast results
+  come back, so no single number fits everyone.
+- **A note explains the stake**: a debate or Insight call that lands later than you can use it is
+  wasted money, and the lock exists to prevent that — stated as a preventative measure, not a
+  restriction.
+- **The RECOMMENDATION is 10-15 seconds longer than the slowest recorded call OF THAT FUNCTION.**
+- **Manually editable.**
+- **Able to be disabled entirely.**
+
+**WHY THIS SATISFIES `#56` WHERE THE EARLIER FORM DID NOT.** The rule forbids the ENGINE acting on
+a magnitude nobody argued for. Here the acting authority is the user's own setting; the `10-15s`
+is advice displayed beside it, visible and overridable. A recommendation a person accepts is not a
+constant the system invented — the difference is who holds the pen, and it is the user.
+
+Two requirements that follow, recorded so they are not lost as nice-to-haves:
+
+1. **COLD START HAS NO RECOMMENDATION.** The suggestion is *slowest recorded + margin*, so it
+   cannot exist before that function has been observed. On a fresh install the lock is OFF and the
+   setting says it will offer a recommendation once it has seen the call run. It is NOT pre-filled
+   with a guess — that would be the invented constant re-entering through the default.
+2. **THE VALUE MUST BE VISIBLE, NOT SILENT.** A recommendation that pre-fills and is never looked
+   at is functionally a constant this application chose. The owner's "manually editable, or able
+   to be disabled" already implies this; it is written here as a requirement.
+
+**PER FUNCTION, not global** — the owner's "of that function". A three-chair debate and a single
+Insight ping have different cost and latency profiles; one bound over both describes a call nobody
+makes. Same reasoning as the per-(chairs x model) keying above.
+
+Still required regardless of the setting, because the lock is preventative and not a guarantee:
+cancel an in-flight call when the clock expires rather than completing and billing for a dead
+verdict, and render anything that slips through as **stale**, never as live advice. `provider_meter`
+is the instrument; `#100` (nothing meters what a call costs) is the blocker on all of it.
