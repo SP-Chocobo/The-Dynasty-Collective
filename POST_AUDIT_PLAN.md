@@ -8985,3 +8985,88 @@ as annotated entities in their own right.
 Everything else in the emblem ruling stands: it persists a paid-for call, it is the first visible
 consumer of `#92`'s snapshot identity, and it is the frame that makes a stale verdict legitimate
 as a timestamped record rather than dangerous as live advice.
+
+---
+
+## #263 MEASURED — THE MODE SWITCH FIRES ONE PICK LATE, AND THE TEST THAT PINS IT CANNOT SEE THAT
+
+Surfaced by the `#261` depth battery: `12T_ppr_BN10` under the round rule reported its first
+upside pick at **round 15, pick 170**. With 12 teams, round 14 ends at pick 168 and round 15
+spans picks **169-180**. So the switch fired at the SECOND pick of round 15, not the first.
+
+### Measured, not inferred
+
+```
+pick 168 (last of r14)     picks_seen=167   current_round=14   board = balanced
+pick 169 (FIRST of r15)    picks_seen=168   current_round=14   board = balanced   <-- here
+pick 170 (second of r15)   picks_seen=169   current_round=15   board = upside
+```
+
+### The mechanism, and a misnomer
+
+```python
+current_round = (max((p.get("round") or 1) for p in demand_source) if demand_source else 1)
+use_upside = mode == "upside" or (mode == "auto" and current_round >= upside_round)
+```
+(`draft_room.py:2890-2891`)
+
+`demand_source` is the picks ALREADY MADE. At the opening pick of any round, the most recent
+pick belongs to the PREVIOUS round. **`current_round` is therefore the round of the last
+COMPLETED pick, not the round of the pick being made** — the two differ by exactly one at every
+round boundary. The name says the second thing and the code does the first, which is the `#70`
+ordinal-vocabulary family in a new place.
+
+The module docstring states the intent plainly: *"'auto' switches to upside scoring once the
+current round reaches upside_round."* The first pick of round 15 is in round 15.
+
+### Impact: bounded and small
+
+One seat per draft — whoever picks first in round 15 — receives a balanced board on a turn the
+documentation says is upside. Every other seat in that round, and every round after, is
+unaffected. It is a knife-edge of the `#86` family (`round(expected_taken)`), not a systemic
+mis-scoring.
+
+### THE PART THAT MATTERS MORE: the guard is blind at the boundary it guards
+
+`test_auto_mode_switches_to_upside_exactly_at_the_documented_round` (`test_draft_room.py:2108`)
+builds its fixture as:
+
+```python
+picks = [... for i, pid in enumerate(list(db)[:8 * round_no])]
+```
+
+`8 * round_no` picks is **every round COMPLETE**. The test therefore only ever samples
+round-boundary-complete states, and asserts `board_mode(14) == "balanced"` and
+`board_mode(15) == "upside"` — both of which hold under the off-by-one, because after round 15 is
+finished `max(round)` really is 15.
+
+**The test cannot distinguish "fires at the first pick of round 15" from "fires at the second."**
+Its own comment says the thing that must not happen is the boundary "moving without anyone
+noticing" — and the boundary is already one pick from where the prose puts it, unnoticed, with
+the test green. A guard that cannot see the edge it guards is the `#157`/`#203` shape: it passes
+for a reason unrelated to what it claims.
+
+### NOT FIXED, and why
+
+`UPSIDE_MODE_DEFAULT_ROUND`'s own comment calls the boundary a calibration decision, and moving
+when the mode turns over changes drafted rosters. Evidence before repair (`#162`): this is
+recorded, not changed. Three coherent resolutions exist and the choice is the owner's:
+
+1. **Derive `current_round` from the pick BEING MADE** rather than the last one made, so the
+   switch matches the documentation. Changes one seat's board per draft.
+2. **Leave the behaviour and fix the PROSE** to say the rule reads completed picks — the honest
+   description of what ships today.
+3. **Moot it.** `#261`'s crossing rule reads the board rather than the calendar and has no round
+   boundary to be off by one at. If the crossing is adopted this defect disappears rather than
+   being repaired.
+
+Either way the TEST gap should close independently of the ruling: the fixture must be able to
+express a partial round, or it cannot guard this boundary under any rule.
+
+### How it was found, which is the reusable part
+
+Not by reading the code — the code had been read several times. The `#261` depth battery is the
+first instrument to run a REAL draft deep enough for the round rule to fire AND to report the
+exact `pick_no` it fired at. The finding fell out of a number printed beside an expectation.
+Instruments that report WHERE something happened, not merely THAT it happened, find defects that
+assertions of the form "it happened" cannot.
