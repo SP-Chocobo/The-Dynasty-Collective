@@ -10837,3 +10837,73 @@ there is no reason to approximate. Still parameter-free; still no constant anywh
 **The margins all held or improved** under the exact cuts, and QB in `12T_ppr_BN18` remains the
 honest null at +0.3 over arbitrary equal slices. Every band table published in `#282b` and
 `DRAFT_ROOM_UI.md` §14 was regenerated — the first printing of them carried greedy's numbers.
+
+### `#282d` THE TANK SPANS THE WHOLE POOL — and `#282`'s "dark" wording is CORRECTED
+
+**OWNER'S OBJECTION, and it was right:** *"that leaves no room for anything outside of starters."*
+
+`#282` gated tank membership on `bpa > 0`, so the tank held only players above replacement:
+**92 of 312 picks** in `12T_ppr_BN18`, **127 of 312** in Fourth and Forever. That population is
+the league's STARTING SLOTS almost exactly — 8 starters × 12 = **96** against 92 above the bar;
+10 × 12 = **120** against 127 — which is not a coincidence, because replacement level IS the last
+startable player. The gauge therefore went fully dark at pick 130 of 312 and said nothing about
+the half of the draft where the calls are hardest.
+
+**AND THE BAR WAS NEVER FORCED — that boundary was mine, not the engine's.** Below it the
+projection keeps falling hard:
+
+- WR `216 → 204 → 188 → 149 → 98 → 62 → 35 → 0`
+- RB `186 → 142 → 89 → 64 → 32 → 9 → 0`
+
+Several of those steps are steeper than the ones just above the bar. The deep pool is cleanly
+ordered, so it is gradeable.
+
+**CORRECTION TO A PUBLISHED CLAIM (`#282`, and I stated it twice in conversation).** That entry
+said a pick below the bar had *"no measured production remaining to pass over"* and called the
+region DARK. **Wrong as stated.** What is absent below the line is **surplus over replacement**,
+not production. Production separates those players cleanly; VOR merely cannot express it, being
+defined against the level they sit under. The census vocabulary is now STARTER / BENCH, and the
+bar survives as a **marker inside the tank** rather than its edge — it still answers "where do
+the starters end", which is worth drawing.
+
+Result: **every one of the 312 picks now lands in a band**, 131 at or above the starter line and
+181 below it, all graded. The owner's estimate that roughly two thirds of the draft should be at
+least depth-grade is borne out.
+
+### `#282e` THE QB SHAPE DOES NOT FALL OUT OF THE MATH, AND IS NOT BEING SET BY HAND
+
+The owner sketched a QB shape (*"top6ish, next 10ish, next 12ish, fluff"*) while stating the
+governing constraint plainly: *"this isn't supposed to me just manually setting the levels
+arbitrarily."* Correct, and `#56` says the same. The sketch was tested, not fitted.
+
+**The QB curve is flat and then falls off a table.** 12-team, season points:
+`QB1 372 · QB7 341 · QB13 317 · QB19 306 · QB22 300 · QB25 282 · QB28 256 · QB31 215` — then
+`QB34 95 · QB37 31 · QB40 15`. A **19% spread across the top 22 players**, then a cliff at ~QB32.
+There is no six-player elite tier to find. This is the same null measured three ways now: QB bands
+beat arbitrary equal slices by **+0.1** (above-bar, 12T), **+1.0** and **+1.2** (full pool) — the
+weakest margin of any position in either league.
+
+**Two derived alternatives were built and both rejected:**
+
+| | QB | RB | TE | WR |
+|---|---|---|---|---|
+| linear points (kept) | 24/8/2/8 | 7/21/25/73 | 9/17/26/63 | 16/44/46/92 |
+| log points | 32/3/5/2 | 46/37/21/22 | 36/43/29/7 | 76/65/39/18 |
+| roster-capacity trim | 12/13/7/3 | 4/22/20/33 | 9/17/19/20 | 16/38/32/47 |
+
+*Log* is an unmotivated transform and is worse at QB. *Roster-capacity* is genuinely derived —
+league capacity is 12 × 26 = 312, exactly the draft size — and its QB shape is much the closest to
+the sketch, **which is precisely why it must be rejected**: ranking across positions by raw points
+over-retains QBs because QBs score more, keeping **83% of the QB pool against 63% of RB and 67% of
+WR**. That is the cross-position unit problem `#75`/`#76` found in `bpa` and `#229` left undefined
+below replacement. Adopting it would smuggle an invalid comparison in as a pool boundary.
+
+**Best hypothesis for the disagreement, offered as a hypothesis and NOT measured:** the sketch is
+dynasty- and superflex-flavoured, where a young franchise quarterback's value is longevity and
+scarcity. The ruler is one season of points, which prices a 30-year-old and a 23-year-old with the
+same projection identically. `#147`, and the dynasty columns reach **0 of 36** board rows, so the
+gauge structurally cannot see it.
+
+What the marker does give QB: **the starter line sits inside the ELITE band** (rank 12 of 42 in
+the 1QB arm). The tank says "this band already holds more quarterbacks than the league starts",
+which is the honest form of the flatness rather than an invented tier break.

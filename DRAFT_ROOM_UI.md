@@ -726,8 +726,11 @@ decides. Evidence and full derivation: `POST_AUDIT_PLAN.md` `#282`.
 
 ### What it is
 
-One tank per position, drawn as a row of segments. Full at that position's own opening pool;
-drains as players above its opening replacement bar are taken. It cannot rebound — that is a
+One tank per position, drawn as a row of segments. **It spans that position's whole priced pool**,
+not only its starters — an earlier version stopped at the replacement bar and so covered just 92
+of 312 picks, going fully dark by pick 130 (`#282d`). The replacement bar survives as a **marker
+drawn inside the tank**, showing where the position stops producing starters and begins producing
+bench. Every pick in the draft now lands in a band. It cannot rebound — that is a
 property of how the quantity is defined, not a behaviour to test for.
 
 **Self-normalised per position, and this is load-bearing.** Each tank is full at ITS OWN opening
@@ -827,9 +830,11 @@ bound is not a threshold (`#56`). The gauge draws what is there and the prose ca
 
 ### What the gauge lets a drafter infer, and the one inference it does NOT support
 
-When a tank is empty and you take a player at that position, nothing measured remained above the
-opening bar — the owner's *"random shots in the dark"*. That state is counted (`#282`: 59% of
-Fourth and Forever's gauged picks) and it is honest.
+When you take a player from below the starter line, the league's starting slots had no room for
+him at the opening board — 181 of 312 picks in Fourth and Forever. **He is still a graded player**:
+`#282d` corrected `#282`'s claim that nothing measured remained down there. What is absent below
+the line is surplus over replacement, not production, and production separates those players
+cleanly.
 
 **It does not follow that such a pick is wrong.** Taking a player below the bar while the tank
 still holds someone above it is a different state entirely — a CHOICE, made for reasons the gauge
