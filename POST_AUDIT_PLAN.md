@@ -9113,3 +9113,55 @@ uniformly from their top-k rather than top-1, k as the noise dial. Two cautions 
 applied inside a REAL simulated draft, never by synthesising a picks array; and the noise model is
 itself a constant nobody has derived, so `k` is a swept axis to report across, never a single
 chosen value (`#56`).
+
+---
+
+## #264 QUEUED (owner) — HEAD-TO-HEAD TABLES: 6 engine seats against 6 baseline seats
+
+Owner's request: more of the mixed-table draft trials, to see whether the engine is actually
+better. This is `#177`'s family — *"roster proof, valid harness: engine ahead in 7 of 8 arms;
+superflex-projection is the one loss"* — and `#208` recorded the uncomfortable half: **that
+result stays UNDEFENDED.** A published claim with no guard on it.
+
+**MACHINERY MOSTLY EXISTS.** `#263b` added `opponent_noise` to `simulate_full_draft`, which
+already carries `sharp_seats`, so per-seat behaviour is plumbed. A head-to-head generalises that
+from *sharp vs noisy* to *strategy per seat*.
+
+### THE REQUIREMENT WITHOUT WHICH THE RESULT IS WORTHLESS: counterbalance the seats
+
+A snake does not treat draft slots equally. If the engine holds seats 1-6 and the baseline holds
+7-12, **engine advantage and slot advantage are perfectly confounded** and the number means
+nothing. Every matchup therefore runs at minimum TWICE with the assignment mirrored (engine on
+1-6, then engine on 7-12), and preferably also interleaved (odds vs evens).
+
+> If the engine wins BOTH halves, it is the engine. If it wins whichever half holds seats 1-6,
+> it is the snake.
+
+This is the same class as the `#150` battery's `set_league_format` omission: a harness that
+silently varies something other than the thing under test, and produces plausible numbers about
+it.
+
+### WHAT A MIXED TABLE CAN AND CANNOT CLAIM
+
+Winning 6v6 shows the engine is **better than those opponents at that table** — partly because
+the baseline seats leave value on the board that the engine seats then collect. It does NOT show
+the engine is better in a league where everyone drafts well. Both are legitimate questions; they
+are different, and `#177`'s claim was never pinned to either. Whichever is measured, the entry
+must say which.
+
+### DESIGN NOTES for when it is picked up
+
+- **Baselines to run against, each a real alternative rather than a strawman:** raw projected
+  points (no VOR), `trade_value` rank, ADP order, and `opponent_noise` at swept `top_k` as a
+  "competent but imperfect human" arm.
+- **The scoring question is separate from the drafting question.** "Better" needs a yardstick
+  that is not the engine's own objective, or the test is circular — an engine that maximises TAV
+  will win a comparison scored on TAV by construction. `#205`'s roster proof (lineup filled,
+  asset totals) and season-points-of-optimal-lineup are the two candidates, and they disagree:
+  `#177` measured the engine ahead on 7 of 8 arms with superflex-PROJECTION the single loss.
+- **Seat-position counterbalancing as above, reported per half**, never pooled into one win rate.
+- Every arm keeps `#204`'s pricing path and `#150`'s `set_league_format`, or it measures a
+  different engine than the one that ships.
+
+QUEUED behind the `#261` depth battery and the `#263b` noise arm — three simultaneous draft
+harnesses on four cores would make all three slower and none sooner.
