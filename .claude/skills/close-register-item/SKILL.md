@@ -25,8 +25,13 @@ verifying six targeted modules (183 tests, all green). The full suite then faile
 `test_assertion_floors` — a file I had not thought to run. Targeted runs are for iterating;
 **the full suite is what licenses a push.** Background it and wait.
 
-**Budget it from a measurement that carries its own date.** The last one: **2918 tests in
-921.6s** at `be84fee` (2026-09-13) — the previous entry said 2862 tests in ~1170-1210s at
+**Budget it from a measurement that carries its own date.** The last one: **2925 tests in
+670.0s** at `3599422` (2026-09-14), measured with `__pycache__` cleared first per `#240`. The
+entry before it said 2918 tests in 921.6s at `be84fee` (2026-09-13) — so in one day the suite
+GREW by 7 tests and got 27% FASTER. That speedup is not noise and not this skill's doing: it is
+`#201`'s resolution memo, the same repair that took the `#218` reproduction from 1125.0s to
+562.4s on byte-identical output. A budget that only ever ratchets upward would have hidden it.
+The entry before THAT said 2862 tests in ~1170-1210s at
 `3e9c074` (2026-09-12), so the suite GREW and got FASTER in a day. Neither direction is safe to
 extrapolate; re-measure rather than scaling the old figure. This file previously said "~800-870s" with no commit
 attached; the suite grew past it and the figure went stale without anything failing, which is
