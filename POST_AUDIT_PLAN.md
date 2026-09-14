@@ -8957,3 +8957,31 @@ Two constraints recorded because they are easy to get wrong:
 
 No new data source: the league's rosters already carry owner display names and team names from
 Sleeper.
+
+### #262 CORRECTED — 28TH WITHDRAWAL: the emblem has ONE state, not three
+
+The entry above recorded three emblem outcomes — debated and TAKEN, debated and PASSED, debated
+and SNIPED. **That was mine and it is wrong in both halves.** Owner's correction, and the
+reasoning is decisive.
+
+**SNIPED IS UNREACHABLE BY CONSTRUCTION.** A debate may only be initiated while on the clock
+(ruled above, in this same entry). While you are on the clock nobody else picks. There is
+therefore NO WINDOW between debating a player and taking him in which a rival could take him
+first. I imported "snipe" from ordinary draft language without checking it against a constraint
+set minutes earlier in the same conversation — the same failure shape as several others today:
+reasoning from a remembered pattern instead of from the constraints actually in force.
+
+**AND PASSED IS A CATEGORY ERROR.** A debate is not an opinion ABOUT A PLAYER. It is the
+reasoning behind ONE PICK, and the snapshot it rests on is only meaningful in the context of who
+was actually taken. Hanging a fragment of it on a player who was passed misrepresents what it
+was: it would read as *"here is what the chairs thought of this player"* when it was in fact
+*"here is a comparison that resolved in favour of someone else."* Same text, false claim — which
+is the species of defect this register exists to catch.
+
+**THE CORRECTED FORM.** One emblem, on the player TAKEN, carrying the whole debate including the
+alternatives it weighed. Passed candidates appear INSIDE that record as what was considered, not
+as annotated entities in their own right.
+
+Everything else in the emblem ruling stands: it persists a paid-for call, it is the first visible
+consumer of `#92`'s snapshot identity, and it is the frame that makes a stale verdict legitimate
+as a timestamped record rather than dangerous as live advice.
