@@ -10066,7 +10066,17 @@ no dedicated TE slot**, 3RR. Self-check passes: engine `growth_signal` NEVER, pr
 | league | QB | RB | WR | TE | global |
 |---|---|---|---|---|---|
 | 12T, dedicated TE slot, 1QB (control) | 85 | 185 | 85 | **never** | never |
-| **FFCL Group A**, no TE slot, superflex | **never** | **never** | 115 | **90** | never |
+| **FFCL Group A**, no TE slot, superflex | **never**\* | **never** | 115 | **90** | never |
+
+> **\* CORRECTED by `#277` (29th withdrawal) — FFCL's QB is NOT a holdout.** It is
+> DEMAND-EXHAUSTED: by the final pick QB has `measurable=0`, `top=None`,
+> `remaining_starter_demand=0.0`. Once all 24 QB slots (12 teams x QB + SUPER_FLEX) are filled,
+> the position leaves `replacement_levels`' domain, no VOR is computed, and its rows drop out of
+> the `measurable` mask entirely. RB is FFCL's only genuine holdout (`measurable=82`,
+> `top=20.9`, `demand=3.08`). **Rendering both as "never" collapsed two different absences into
+> one token — the exact failure this engine's absence contract exists to prevent, committed by
+> me in the correction that was supposed to be the careful one.** The sentence below overstates
+> it the same way and is left standing with this banner rather than edited away.
 
 **The holdout position inverts completely.** In the control TE is the one position that never
 crosses. In FFCL tight end is the FIRST to cross — at pick 90 of 168, barely past halfway — and
@@ -10221,3 +10231,98 @@ DRAFT gets longer while every scoring input stays fixed. Whether that is correct
 question — a 26-slot bench plausibly SHOULD change how a manager values depth, and `#224`
 characterised two `bench_capacity` quantities that exist. Whether either reaches a pick is not
 measured here and is not claimed.
+
+---
+
+## `#277` AXIS DECOMPOSITION — the dedicated TE slot is the whole story, and slots beat scoring
+
+`evidence/mode_boundary/crossing_matrix.py`, six arms simulated and probed under the crossing
+rule, against the pre-registered predictions committed at `45bcbeb` BEFORE the run finished.
+All six self-check ok (engine `growth_signal` and probe agree).
+
+| arm | picks | SF | TE slot | tep | QB | RB | WR | TE | holdout(s) | global |
+|---|---|---|---|---|---|---|---|---|---|---|
+| `12T_ppr` (control) | 168 | 0 | yes | 0 | 85 | never | 85 | never | RB, TE | NEVER |
+| `12T_ppr_SF` | 180 | 1 | yes | 0 | **160** | 165 | 95 | never | TE | NEVER |
+| `12T_ppr_TEP_dynasty` | 168 | 0 | yes | 0.5 | 85 | never | 90 | never | RB, TE | NEVER |
+| `4WR_TE_PREMIUM` | 192 | 0 | yes | 0.5 | 110 | 125 | **135** | never | TE | NEVER |
+| `LIGHT_IDP` | 168 | 0 | yes | 0 | 75 | never | 90 | never | DB, DL, RB, TE | NEVER |
+| `HEAVY_IDP` | 216 | 0 | yes | 0 | 135 | never | 155 | never | RB, TE | NEVER |
+
+### TE is the holdout in 16 of 16 leagues that have a TE slot
+
+Six arms here plus the ten in `crossing_mechanism.json`. **Every one.** And every "never" was
+audited to distinguish a real holdout from an absent measurement — all sixteen are genuine
+(measurable rows, positive top, demand above 1). **The only league where TE is not the holdout
+is FFCL Group A, the only one with no dedicated TE slot**, where TE crosses FIRST at pick 90.
+
+Five axes were tested against it and **none moves TE off holdout**: superflex, TE premium, a
+fourth WR slot, light IDP, heavy IDP — and bench depth from `#276`. `#274`'s "roster shape"
+account is therefore correct but far too broad. The operative axis is one thing: **whether the
+league has a dedicated TE slot.**
+
+### THE MECHANISM, now isolated: STARTER SLOTS set the crossing order; SCORING does not
+
+Each slot change moves its own position later and the others earlier, exactly as league starter
+demand predicts:
+
+- **+SUPER_FLEX** (QB demand x2): QB `85 -> 160`, nearly doubled.
+- **+a fourth WR slot**: WR `85 -> 135`.
+- **+0.5 TE premium** (scoring only, no slot change): QB `85 -> 85`, WR `85 -> 90`. **Inert.**
+
+A scoring bonus raises a position's points AND its replacement's points together, so the gap
+barely moves. A slot raises demand, which pushes the replacement RANK deeper down the curve,
+which is what actually holds the gap open. That is why a TE slot — 12 units of demand against a
+"two players and a cliff" supply curve — keeps TE above replacement for an entire draft, and why
+removing it collapses TE immediately.
+
+### The three pre-registered predictions: 1 REFUTED, 1 CONFIRMED WEAKLY, 1 REFUTED
+
+**1. REFUTED.** *"12T_ppr_SF's holdout is QB; if superflex alone flips it, the no-TE-slot axis is
+not needed to explain FFCL."* It does not flip. QB moves 85 -> 160 — the predicted direction, and
+a large effect — but still crosses. Superflex is a large contributor and NOT a sufficient cause.
+
+**2. CONFIRMED, but weaker than stated.** TE stays the holdout under a premium. The prediction
+added "possibly harder"; the measurement shows the premium does essentially nothing to any
+crossing. Recorded as near-inert rather than dressed up as a confirmation.
+
+**3. REFUTED, and this is good news.** I predicted IDP rows might be UNPRICEABLE rather than
+above replacement, on the strength of `#210` (Sleeper supplies IDP without stat lines). Both IDP
+arms report **`never-priceable (none)`** — every IDP position is priced, and DB/DL/LB cross
+normally (140/145/145 in HEAVY, LB at 90 in LIGHT). **This does NOT close `#210`**: it says the
+supply defect does not manifest as unpriceable rows in these arms, not that it is gone.
+
+### `#277a` (29th withdrawal) — FFCL's QB is DEMAND-EXHAUSTED, not a holdout
+
+Auditing every "never" for the difference between *held above replacement* and *no measurement
+exists* caught my own `#274` correction rendering two different absences as one token:
+
+```
+FFCL final state   QB: measurable=0   top=None   demand=0.0     <- left the domain
+                   RB: measurable=82  top=20.9   demand=3.08    <- genuine holdout
+```
+
+Once all 24 QB slots (12 teams x QB + SUPER_FLEX) fill, QB's remaining starter demand reaches
+zero, the position is OMITTED from `replacement_levels` by its documented domain rule, no VOR is
+computed, and its rows leave the `measurable` mask. **FFCL has one holdout, not two.** The
+`#274` table and `DRAFT_ROOM_UI` §13 are both corrected in place with banners rather than edited
+away. This is the absence contract — EXCLUDE / PROPAGATE / ORDER LAST, `None` never `0.0` —
+broken by me in the entry that existed to be the careful correction.
+
+**It also explains FFCL's QB without appeal to superflex holding out**: superflex does not keep
+QB above replacement forever, it fills QB demand twice as fast and the position simply runs out.
+
+### `#277b` — the matrix CONTROL duplicates a depth arm, caught by `#276`'s own lesson
+
+`12T_ppr` (matrix) and `12T_ppr_BN6` (depth) are the same league: 168 picks, identical crossings,
+and **all 34 sampled boards byte-identical**. So this run has **5 independent arms, not 6**, and
+the control is a re-derivation rather than a new observation. It costs nothing here — the control
+is meant to reproduce the baseline and did — but it is the same class `#276` registered, found
+one run later, and it is named rather than left for a reader to notice.
+
+### What this leaves open
+
+The FFCL inversion is now attributed to the TE slot by ELIMINATION across five other axes, not by
+a direct test. The direct test is a mock league identical to the control with the TE slot removed
+and nothing else changed. `build_mock_league` does not expose that, so it needs a small arm of its
+own — named as the next measurement, not assumed.

@@ -645,7 +645,13 @@ never crosses. In FFCL Group A (superflex, NO dedicated TE slot, 0.5 TEP) it inv
 | league | QB | RB | WR | TE | global |
 |---|---|---|---|---|---|
 | 12 teams, TE slot, 1QB | 85 | 185 | 85 | **never** | never |
-| **FFCL Group A**, no TE slot, superflex | **never** | **never** | 115 | **90** | never |
+| **FFCL Group A**, no TE slot, superflex | *demand-exhausted* | **never** | 115 | **90** | never |
+
+**FFCL's QB cell is not a holdout and the panel must not draw it as one** (`#277`). Its starter
+demand reaches 0.0 — every QB slot in the league filled — so the position leaves the measurable
+set entirely. On a channel strip that is a DARK channel, not a hot one: nothing left to measure,
+as opposed to RB's meter still reading above the line. Two absences, two renderings, or the
+panel repeats the mistake this table originally made.
 
 Same mechanism, opposite sign: superflex doubles QB starter demand so QB's replacement sits far
 deeper and its headroom stays large; no TE slot leaves TE demand arriving only through the flex,
