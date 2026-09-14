@@ -8602,3 +8602,99 @@ the third clause of the item's title, does not exist to be evaluated; it is a pr
 
 Gates the freeze RECORD, not the engine: uploads reach no price and no pick, and the only text
 that reaches a model is a caption the user typed, fenced as untrusted.
+
+---
+
+## #261 MEASURED — THE NATURAL ZERO EXISTS, AND IT IS SEAT-INDEPENDENT
+
+The owner's rule for when upside mode should begin, in their own words: *"if a league never
+pulls from the deep reserves, then I dont necessarily mind it not reaching for upside mode. if
+you're still pulling valid decent depth, who cares."* That is a rule about the MARGINAL PICK,
+not the calendar. `UPSIDE_MODE_DEFAULT_ROUND = 15` (`draft_room.py:245`) is a calendar.
+
+The standing objection to replacing it was `#56`: any replacement needs a bound nobody invented.
+If the candidate observable only ever decays to a handful before the draft ends, the rule needs a
+THRESHOLD on that handful — and a threshold is exactly the invented constant `#56` charges
+against round 15. So the deciding question was pre-registered before the run: **does the count of
+candidates above replacement ever actually reach zero?**
+
+### It reaches zero, exactly, and stays there for eleven rounds
+
+`evidence/mode_boundary/where_would_it_fire.py`, four formats spanning the measured bench-depth
+range, seat 1, real simulated drafts (not a synthetic picks array — `#221` was withdrawn because
+a fixture-shaped picks list faked the drain). The board is rebuilt from `picks[:i]` at each of
+that seat's turns, so board state matches the turn.
+
+```
+CAPTURE_fourth_and_forever   rounds=26   round15->15   replacement-crossing->16
+    r14  max_bpa=  33.67   above_replacement=  5 of 314
+    r15  max_bpa=  33.67   above_replacement=  5 of 303
+    r16  max_bpa=    0.0   above_replacement=  0 of 280
+    r17  max_bpa=    0.0   above_replacement=  0 of 279
+    r18  max_bpa= -96.56   above_replacement=  0 of 256
+    r26  max_bpa=-142.65   above_replacement=  0 of 160
+```
+
+**"No candidate above replacement" is an attainable state, not a limit the draft never reaches.**
+A rule keyed on it therefore carries no invented magnitude.
+
+### Two checks, because 5 -> 0 is a hard edge and `#245` says identical numbers are broken until proven otherwise
+
+- **`bpa` is real points, unscaled.** `_scale_vor_to_bpa` (`draft_room.py:2065`) returns
+  `vor.astype(float)` — no reference, no rescale, no clip, per `#74`/`#76`. So `bpa > 0` means
+  literally "projected above this position's live replacement level," and `n_above` is a genuine
+  observable rather than an artifact of a moving ruler.
+- **The two exact `0.0` readings are the `#155` tautology, firing where predicted.** The
+  replacement-level player prices at 0.00 by construction; at r16/r17 he IS the best thing left.
+  He is then drafted and the reading drops to −96.56. The probe's own docstring pre-registered
+  this as the caveat it could not escape, which is why `n_above` was printed separately from
+  `max_bpa` — so "nothing above replacement" and "something at exactly 0.00" stay distinguishable.
+
+### The rule is STRICTLY MORE CONSERVATIVE than round 15 — 1 of 4 arms, not 2
+
+| format | rounds | round 15 | replacement-crossing | ends with n_above |
+|---|---|---|---|---|
+| `8T_standard_SF` | 15 | fires r15 | **never** | 8 |
+| `12T_ppr` | 14 | never | never | 5 |
+| `14T_ppr` | 14 | never | never | 6 |
+| `CAPTURE_fourth_and_forever` | 26 | fires r15 | fires **r16** | 0 |
+
+Adopting it would REMOVE upside mode from `8T_standard_SF` and DELAY it one round in F&F. Under
+the owner's stated rule that is correct rather than a miss: `8T_standard_SF` ends with eight
+candidates still above replacement, which is "still pulling valid decent depth."
+
+What it buys is the removal of a measured artifact. Across the 34-arm Gate 1 battery, arms where
+round 15 fires average **−27.0** bench value per bench seat and arms where it never fires average
+**−33.4** — the leagues entering upside mode have SHALLOWER reserves than the ones that do not,
+because superflex rosters carry one more starting slot, run 15 rounds where 1QB run 14, and so
+round 15 is close to a superflex detector. The crossing has no such coupling: it fires on board
+exhaustion, which is the quantity the mode is about.
+
+### CONSEQUENCE THAT CLOSES A SEPARATE OPEN QUESTION: the crossing cannot diverge per seat
+
+The owner authorized pricing per-seat mode divergence: *"I dont think two seats being on
+different levels is inherently wrong, as long as the logic guiding if they are or not is sound
+for both."* Under THIS observable there is nothing to price.
+
+`replacement_levels(pool, value_col, roster_positions, num_teams, remaining_demand,
+startable_floors, truncated_out, flex_occupancy)` (`draft_room.py:1402`) takes no roster
+identity, and neither live call site (`:2983`, `:3023`) supplies one — `starter_demand` is
+league-wide. **`bpa` is seat-independent, so a crossing rule flips every chair at the same
+moment.** It is as global as round 15 is. Per-seat divergence needs an observable keyed on the
+chair's own roster, and that is a different build, not a parameter on this one.
+
+### WHAT THIS DOES NOT ESTABLISH
+
+- **n = 4 formats, seat 1 only.** This is a probe, not the battery.
+- **Nobody has drafted with the rule in place.** This measures WHERE a boundary would fire, not
+  what changes if it moves. `#222` found the mode boundary causes 63% of the TE excess; that
+  composition effect is UNMEASURED under the crossing.
+- **`max_bpa` is dead as an observable** and is reported only to bound `n_above`. It is
+  non-monotonic in every arm (`12T_ppr`: 25.38 -> 28.02 -> 31.35 across r8-r14), because the
+  level falls as a position empties. `n_above` is clean and monotone in all four.
+
+### NOT RULED
+
+The transition rule is the owner's call and is not changed here. `UPSIDE_MODE_DEFAULT_ROUND`
+stays at 15; nothing in this entry touches engine behaviour. What changed is that the `#56`
+objection to replacing it no longer stands: the zero is natural.
