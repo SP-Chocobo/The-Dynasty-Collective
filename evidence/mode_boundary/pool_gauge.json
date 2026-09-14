@@ -15,6 +15,32 @@
     "TE": 172.69,
     "QB": 328.6
    },
+   "band_sizes": {
+    "QB": {
+     "ELITE": 3,
+     "MID": 2,
+     "DEPTH": 3,
+     "MEH": 3
+    },
+    "RB": {
+     "ELITE": 3,
+     "MID": 4,
+     "DEPTH": 13,
+     "MEH": 11
+    },
+    "TE": {
+     "ELITE": 2,
+     "MID": 2,
+     "DEPTH": 5,
+     "MEH": 10
+    },
+    "WR": {
+     "ELITE": 4,
+     "MID": 4,
+     "DEPTH": 8,
+     "MEH": 15
+    }
+   },
    "samples": [
     {
      "after_picks": 0,
@@ -36,26 +62,30 @@
       "TE": 19,
       "WR": 31
      },
-     "cliffs": {
+     "_band_left": {
       "QB": {
-       "1": "HIGH",
-       "2": "MEDIUM",
-       "3": "MEDIUM"
+       "ELITE": 3,
+       "MID": 2,
+       "DEPTH": 3,
+       "MEH": 3
       },
       "RB": {
-       "0": "HIGH",
-       "1": "MEDIUM",
-       "3": "MEDIUM"
+       "ELITE": 3,
+       "MID": 4,
+       "DEPTH": 13,
+       "MEH": 11
       },
       "TE": {
-       "0": "HIGH",
-       "1": "MEDIUM",
-       "2": "MEDIUM"
+       "ELITE": 2,
+       "MID": 2,
+       "DEPTH": 5,
+       "MEH": 10
       },
       "WR": {
-       "0": "HIGH",
-       "1": "MEDIUM",
-       "3": "MEDIUM"
+       "ELITE": 4,
+       "MID": 4,
+       "DEPTH": 8,
+       "MEH": 15
       }
      }
     },
@@ -79,25 +109,30 @@
       "TE": 18,
       "WR": 27
      },
-     "cliffs": {
+     "_band_left": {
       "QB": {
-       "1": "HIGH",
-       "2": "MEDIUM",
-       "3": "MEDIUM"
+       "ELITE": 3,
+       "MID": 2,
+       "DEPTH": 3,
+       "MEH": 3
       },
       "RB": {
-       "0": "MEDIUM",
-       "3": "MEDIUM"
+       "ELITE": 0,
+       "MID": 2,
+       "DEPTH": 13,
+       "MEH": 11
       },
       "TE": {
-       "0": "HIGH",
-       "1": "MEDIUM",
-       "2": "MEDIUM"
+       "ELITE": 1,
+       "MID": 2,
+       "DEPTH": 5,
+       "MEH": 10
       },
       "WR": {
-       "0": "HIGH",
-       "1": "MEDIUM",
-       "2": "MEDIUM"
+       "ELITE": 0,
+       "MID": 4,
+       "DEPTH": 8,
+       "MEH": 15
       }
      }
     },
@@ -121,22 +156,30 @@
       "TE": 17,
       "WR": 23
      },
-     "cliffs": {
+     "_band_left": {
       "QB": {
-       "1": "HIGH",
-       "2": "MEDIUM",
-       "3": "MEDIUM"
+       "ELITE": 3,
+       "MID": 2,
+       "DEPTH": 3,
+       "MEH": 3
       },
       "RB": {
-       "2": "MEDIUM"
+       "ELITE": 0,
+       "MID": 0,
+       "DEPTH": 10,
+       "MEH": 11
       },
       "TE": {
-       "0": "HIGH",
-       "2": "MEDIUM"
+       "ELITE": 0,
+       "MID": 2,
+       "DEPTH": 5,
+       "MEH": 10
       },
       "WR": {
-       "0": "MEDIUM",
-       "1": "MEDIUM"
+       "ELITE": 0,
+       "MID": 0,
+       "DEPTH": 8,
+       "MEH": 15
       }
      }
     },
@@ -160,21 +203,30 @@
       "TE": 16,
       "WR": 20
      },
-     "cliffs": {
+     "_band_left": {
       "QB": {
-       "1": "HIGH",
-       "2": "MEDIUM",
-       "3": "MEDIUM"
+       "ELITE": 3,
+       "MID": 2,
+       "DEPTH": 3,
+       "MEH": 3
       },
       "RB": {
-       "0": "MEDIUM"
+       "ELITE": 0,
+       "MID": 0,
+       "DEPTH": 4,
+       "MEH": 11
       },
       "TE": {
-       "0": "MEDIUM",
-       "2": "MEDIUM"
+       "ELITE": 0,
+       "MID": 1,
+       "DEPTH": 5,
+       "MEH": 10
       },
       "WR": {
-       "1": "MEDIUM"
+       "ELITE": 0,
+       "MID": 0,
+       "DEPTH": 5,
+       "MEH": 15
       }
      }
     },
@@ -198,20 +250,30 @@
       "TE": 14,
       "WR": 15
      },
-     "cliffs": {
+     "_band_left": {
       "QB": {
-       "1": "HIGH",
-       "2": "MEDIUM",
-       "3": "MEDIUM"
+       "ELITE": 3,
+       "MID": 2,
+       "DEPTH": 3,
+       "MEH": 3
       },
       "RB": {
-       "0": "MEDIUM"
+       "ELITE": 0,
+       "MID": 0,
+       "DEPTH": 1,
+       "MEH": 11
       },
       "TE": {
-       "1": "MEDIUM"
+       "ELITE": 0,
+       "MID": 0,
+       "DEPTH": 4,
+       "MEH": 10
       },
       "WR": {
-       "0": "MEDIUM"
+       "ELITE": 0,
+       "MID": 0,
+       "DEPTH": 0,
+       "MEH": 15
       }
      }
     },
@@ -235,17 +297,31 @@
       "TE": 10,
       "WR": 12
      },
-     "cliffs": {
+     "_band_left": {
       "QB": {
-       "1": "HIGH",
-       "2": "MEDIUM",
-       "3": "MEDIUM"
+       "ELITE": 2,
+       "MID": 2,
+       "DEPTH": 3,
+       "MEH": 3
       },
-      "RB": {},
+      "RB": {
+       "ELITE": 0,
+       "MID": 0,
+       "DEPTH": 0,
+       "MEH": 10
+      },
       "TE": {
-       "0": "MEDIUM"
+       "ELITE": 0,
+       "MID": 0,
+       "DEPTH": 0,
+       "MEH": 10
       },
-      "WR": {}
+      "WR": {
+       "ELITE": 0,
+       "MID": 0,
+       "DEPTH": 0,
+       "MEH": 12
+      }
      }
     },
     {
@@ -268,15 +344,31 @@
       "TE": 9,
       "WR": 8
      },
-     "cliffs": {
+     "_band_left": {
       "QB": {
-       "0": "HIGH",
-       "1": "MEDIUM",
-       "2": "MEDIUM"
+       "ELITE": 0,
+       "MID": 2,
+       "DEPTH": 3,
+       "MEH": 3
       },
-      "RB": {},
-      "TE": {},
-      "WR": {}
+      "RB": {
+       "ELITE": 0,
+       "MID": 0,
+       "DEPTH": 0,
+       "MEH": 7
+      },
+      "TE": {
+       "ELITE": 0,
+       "MID": 0,
+       "DEPTH": 0,
+       "MEH": 9
+      },
+      "WR": {
+       "ELITE": 0,
+       "MID": 0,
+       "DEPTH": 0,
+       "MEH": 8
+      }
      }
     },
     {
@@ -299,13 +391,31 @@
       "TE": 8,
       "WR": 3
      },
-     "cliffs": {
+     "_band_left": {
       "QB": {
-       "0": "MEDIUM"
+       "ELITE": 0,
+       "MID": 0,
+       "DEPTH": 1,
+       "MEH": 3
       },
-      "RB": {},
-      "TE": {},
-      "WR": {}
+      "RB": {
+       "ELITE": 0,
+       "MID": 0,
+       "DEPTH": 0,
+       "MEH": 7
+      },
+      "TE": {
+       "ELITE": 0,
+       "MID": 0,
+       "DEPTH": 0,
+       "MEH": 8
+      },
+      "WR": {
+       "ELITE": 0,
+       "MID": 0,
+       "DEPTH": 0,
+       "MEH": 3
+      }
      }
     },
     {
@@ -328,11 +438,31 @@
       "TE": 7,
       "WR": 0
      },
-     "cliffs": {
-      "QB": {},
-      "RB": {},
-      "TE": {},
-      "WR": {}
+     "_band_left": {
+      "QB": {
+       "ELITE": 0,
+       "MID": 0,
+       "DEPTH": 0,
+       "MEH": 2
+      },
+      "RB": {
+       "ELITE": 0,
+       "MID": 0,
+       "DEPTH": 0,
+       "MEH": 5
+      },
+      "TE": {
+       "ELITE": 0,
+       "MID": 0,
+       "DEPTH": 0,
+       "MEH": 7
+      },
+      "WR": {
+       "ELITE": 0,
+       "MID": 0,
+       "DEPTH": 0,
+       "MEH": 0
+      }
      }
     },
     {
@@ -355,11 +485,31 @@
       "TE": 7,
       "WR": 0
      },
-     "cliffs": {
-      "QB": {},
-      "RB": {},
-      "TE": {},
-      "WR": {}
+     "_band_left": {
+      "QB": {
+       "ELITE": 0,
+       "MID": 0,
+       "DEPTH": 0,
+       "MEH": 0
+      },
+      "RB": {
+       "ELITE": 0,
+       "MID": 0,
+       "DEPTH": 0,
+       "MEH": 5
+      },
+      "TE": {
+       "ELITE": 0,
+       "MID": 0,
+       "DEPTH": 0,
+       "MEH": 7
+      },
+      "WR": {
+       "ELITE": 0,
+       "MID": 0,
+       "DEPTH": 0,
+       "MEH": 0
+      }
      }
     },
     {
@@ -382,11 +532,31 @@
       "TE": 5,
       "WR": 0
      },
-     "cliffs": {
-      "QB": {},
-      "RB": {},
-      "TE": {},
-      "WR": {}
+     "_band_left": {
+      "QB": {
+       "ELITE": 0,
+       "MID": 0,
+       "DEPTH": 0,
+       "MEH": 0
+      },
+      "RB": {
+       "ELITE": 0,
+       "MID": 0,
+       "DEPTH": 0,
+       "MEH": 4
+      },
+      "TE": {
+       "ELITE": 0,
+       "MID": 0,
+       "DEPTH": 0,
+       "MEH": 5
+      },
+      "WR": {
+       "ELITE": 0,
+       "MID": 0,
+       "DEPTH": 0,
+       "MEH": 0
+      }
      }
     },
     {
@@ -409,11 +579,31 @@
       "TE": 5,
       "WR": 0
      },
-     "cliffs": {
-      "QB": {},
-      "RB": {},
-      "TE": {},
-      "WR": {}
+     "_band_left": {
+      "QB": {
+       "ELITE": 0,
+       "MID": 0,
+       "DEPTH": 0,
+       "MEH": 0
+      },
+      "RB": {
+       "ELITE": 0,
+       "MID": 0,
+       "DEPTH": 0,
+       "MEH": 3
+      },
+      "TE": {
+       "ELITE": 0,
+       "MID": 0,
+       "DEPTH": 0,
+       "MEH": 5
+      },
+      "WR": {
+       "ELITE": 0,
+       "MID": 0,
+       "DEPTH": 0,
+       "MEH": 0
+      }
      }
     },
     {
@@ -436,11 +626,31 @@
       "TE": 2,
       "WR": 0
      },
-     "cliffs": {
-      "QB": {},
-      "RB": {},
-      "TE": {},
-      "WR": {}
+     "_band_left": {
+      "QB": {
+       "ELITE": 0,
+       "MID": 0,
+       "DEPTH": 0,
+       "MEH": 0
+      },
+      "RB": {
+       "ELITE": 0,
+       "MID": 0,
+       "DEPTH": 0,
+       "MEH": 0
+      },
+      "TE": {
+       "ELITE": 0,
+       "MID": 0,
+       "DEPTH": 0,
+       "MEH": 2
+      },
+      "WR": {
+       "ELITE": 0,
+       "MID": 0,
+       "DEPTH": 0,
+       "MEH": 0
+      }
      }
     },
     {
@@ -463,11 +673,31 @@
       "TE": 0,
       "WR": 0
      },
-     "cliffs": {
-      "QB": {},
-      "RB": {},
-      "TE": {},
-      "WR": {}
+     "_band_left": {
+      "QB": {
+       "ELITE": 0,
+       "MID": 0,
+       "DEPTH": 0,
+       "MEH": 0
+      },
+      "RB": {
+       "ELITE": 0,
+       "MID": 0,
+       "DEPTH": 0,
+       "MEH": 0
+      },
+      "TE": {
+       "ELITE": 0,
+       "MID": 0,
+       "DEPTH": 0,
+       "MEH": 0
+      },
+      "WR": {
+       "ELITE": 0,
+       "MID": 0,
+       "DEPTH": 0,
+       "MEH": 0
+      }
      }
     },
     {
@@ -490,11 +720,31 @@
       "TE": 0,
       "WR": 0
      },
-     "cliffs": {
-      "QB": {},
-      "RB": {},
-      "TE": {},
-      "WR": {}
+     "_band_left": {
+      "QB": {
+       "ELITE": 0,
+       "MID": 0,
+       "DEPTH": 0,
+       "MEH": 0
+      },
+      "RB": {
+       "ELITE": 0,
+       "MID": 0,
+       "DEPTH": 0,
+       "MEH": 0
+      },
+      "TE": {
+       "ELITE": 0,
+       "MID": 0,
+       "DEPTH": 0,
+       "MEH": 0
+      },
+      "WR": {
+       "ELITE": 0,
+       "MID": 0,
+       "DEPTH": 0,
+       "MEH": 0
+      }
      }
     },
     {
@@ -517,11 +767,31 @@
       "TE": 0,
       "WR": 0
      },
-     "cliffs": {
-      "QB": {},
-      "RB": {},
-      "TE": {},
-      "WR": {}
+     "_band_left": {
+      "QB": {
+       "ELITE": 0,
+       "MID": 0,
+       "DEPTH": 0,
+       "MEH": 0
+      },
+      "RB": {
+       "ELITE": 0,
+       "MID": 0,
+       "DEPTH": 0,
+       "MEH": 0
+      },
+      "TE": {
+       "ELITE": 0,
+       "MID": 0,
+       "DEPTH": 0,
+       "MEH": 0
+      },
+      "WR": {
+       "ELITE": 0,
+       "MID": 0,
+       "DEPTH": 0,
+       "MEH": 0
+      }
      }
     },
     {
@@ -544,11 +814,31 @@
       "TE": 0,
       "WR": 0
      },
-     "cliffs": {
-      "QB": {},
-      "RB": {},
-      "TE": {},
-      "WR": {}
+     "_band_left": {
+      "QB": {
+       "ELITE": 0,
+       "MID": 0,
+       "DEPTH": 0,
+       "MEH": 0
+      },
+      "RB": {
+       "ELITE": 0,
+       "MID": 0,
+       "DEPTH": 0,
+       "MEH": 0
+      },
+      "TE": {
+       "ELITE": 0,
+       "MID": 0,
+       "DEPTH": 0,
+       "MEH": 0
+      },
+      "WR": {
+       "ELITE": 0,
+       "MID": 0,
+       "DEPTH": 0,
+       "MEH": 0
+      }
      }
     },
     {
@@ -571,11 +861,31 @@
       "TE": 0,
       "WR": 0
      },
-     "cliffs": {
-      "QB": {},
-      "RB": {},
-      "TE": {},
-      "WR": {}
+     "_band_left": {
+      "QB": {
+       "ELITE": 0,
+       "MID": 0,
+       "DEPTH": 0,
+       "MEH": 0
+      },
+      "RB": {
+       "ELITE": 0,
+       "MID": 0,
+       "DEPTH": 0,
+       "MEH": 0
+      },
+      "TE": {
+       "ELITE": 0,
+       "MID": 0,
+       "DEPTH": 0,
+       "MEH": 0
+      },
+      "WR": {
+       "ELITE": 0,
+       "MID": 0,
+       "DEPTH": 0,
+       "MEH": 0
+      }
      }
     },
     {
@@ -598,11 +908,31 @@
       "TE": 0,
       "WR": 0
      },
-     "cliffs": {
-      "QB": {},
-      "RB": {},
-      "TE": {},
-      "WR": {}
+     "_band_left": {
+      "QB": {
+       "ELITE": 0,
+       "MID": 0,
+       "DEPTH": 0,
+       "MEH": 0
+      },
+      "RB": {
+       "ELITE": 0,
+       "MID": 0,
+       "DEPTH": 0,
+       "MEH": 0
+      },
+      "TE": {
+       "ELITE": 0,
+       "MID": 0,
+       "DEPTH": 0,
+       "MEH": 0
+      },
+      "WR": {
+       "ELITE": 0,
+       "MID": 0,
+       "DEPTH": 0,
+       "MEH": 0
+      }
      }
     },
     {
@@ -625,11 +955,31 @@
       "TE": 0,
       "WR": 0
      },
-     "cliffs": {
-      "QB": {},
-      "RB": {},
-      "TE": {},
-      "WR": {}
+     "_band_left": {
+      "QB": {
+       "ELITE": 0,
+       "MID": 0,
+       "DEPTH": 0,
+       "MEH": 0
+      },
+      "RB": {
+       "ELITE": 0,
+       "MID": 0,
+       "DEPTH": 0,
+       "MEH": 0
+      },
+      "TE": {
+       "ELITE": 0,
+       "MID": 0,
+       "DEPTH": 0,
+       "MEH": 0
+      },
+      "WR": {
+       "ELITE": 0,
+       "MID": 0,
+       "DEPTH": 0,
+       "MEH": 0
+      }
      }
     },
     {
@@ -652,11 +1002,31 @@
       "TE": 0,
       "WR": 0
      },
-     "cliffs": {
-      "QB": {},
-      "RB": {},
-      "TE": {},
-      "WR": {}
+     "_band_left": {
+      "QB": {
+       "ELITE": 0,
+       "MID": 0,
+       "DEPTH": 0,
+       "MEH": 0
+      },
+      "RB": {
+       "ELITE": 0,
+       "MID": 0,
+       "DEPTH": 0,
+       "MEH": 0
+      },
+      "TE": {
+       "ELITE": 0,
+       "MID": 0,
+       "DEPTH": 0,
+       "MEH": 0
+      },
+      "WR": {
+       "ELITE": 0,
+       "MID": 0,
+       "DEPTH": 0,
+       "MEH": 0
+      }
      }
     },
     {
@@ -679,11 +1049,31 @@
       "TE": 0,
       "WR": 0
      },
-     "cliffs": {
-      "QB": {},
-      "RB": {},
-      "TE": {},
-      "WR": {}
+     "_band_left": {
+      "QB": {
+       "ELITE": 0,
+       "MID": 0,
+       "DEPTH": 0,
+       "MEH": 0
+      },
+      "RB": {
+       "ELITE": 0,
+       "MID": 0,
+       "DEPTH": 0,
+       "MEH": 0
+      },
+      "TE": {
+       "ELITE": 0,
+       "MID": 0,
+       "DEPTH": 0,
+       "MEH": 0
+      },
+      "WR": {
+       "ELITE": 0,
+       "MID": 0,
+       "DEPTH": 0,
+       "MEH": 0
+      }
      }
     },
     {
@@ -706,11 +1096,31 @@
       "TE": 0,
       "WR": 0
      },
-     "cliffs": {
-      "QB": {},
-      "RB": {},
-      "TE": {},
-      "WR": {}
+     "_band_left": {
+      "QB": {
+       "ELITE": 0,
+       "MID": 0,
+       "DEPTH": 0,
+       "MEH": 0
+      },
+      "RB": {
+       "ELITE": 0,
+       "MID": 0,
+       "DEPTH": 0,
+       "MEH": 0
+      },
+      "TE": {
+       "ELITE": 0,
+       "MID": 0,
+       "DEPTH": 0,
+       "MEH": 0
+      },
+      "WR": {
+       "ELITE": 0,
+       "MID": 0,
+       "DEPTH": 0,
+       "MEH": 0
+      }
      }
     },
     {
@@ -733,11 +1143,31 @@
       "TE": 0,
       "WR": 0
      },
-     "cliffs": {
-      "QB": {},
-      "RB": {},
-      "TE": {},
-      "WR": {}
+     "_band_left": {
+      "QB": {
+       "ELITE": 0,
+       "MID": 0,
+       "DEPTH": 0,
+       "MEH": 0
+      },
+      "RB": {
+       "ELITE": 0,
+       "MID": 0,
+       "DEPTH": 0,
+       "MEH": 0
+      },
+      "TE": {
+       "ELITE": 0,
+       "MID": 0,
+       "DEPTH": 0,
+       "MEH": 0
+      },
+      "WR": {
+       "ELITE": 0,
+       "MID": 0,
+       "DEPTH": 0,
+       "MEH": 0
+      }
      }
     },
     {
@@ -760,11 +1190,31 @@
       "TE": 0,
       "WR": 0
      },
-     "cliffs": {
-      "QB": {},
-      "RB": {},
-      "TE": {},
-      "WR": {}
+     "_band_left": {
+      "QB": {
+       "ELITE": 0,
+       "MID": 0,
+       "DEPTH": 0,
+       "MEH": 0
+      },
+      "RB": {
+       "ELITE": 0,
+       "MID": 0,
+       "DEPTH": 0,
+       "MEH": 0
+      },
+      "TE": {
+       "ELITE": 0,
+       "MID": 0,
+       "DEPTH": 0,
+       "MEH": 0
+      },
+      "WR": {
+       "ELITE": 0,
+       "MID": 0,
+       "DEPTH": 0,
+       "MEH": 0
+      }
      }
     },
     {
@@ -787,11 +1237,31 @@
       "TE": 0,
       "WR": 0
      },
-     "cliffs": {
-      "QB": {},
-      "RB": {},
-      "TE": {},
-      "WR": {}
+     "_band_left": {
+      "QB": {
+       "ELITE": 0,
+       "MID": 0,
+       "DEPTH": 0,
+       "MEH": 0
+      },
+      "RB": {
+       "ELITE": 0,
+       "MID": 0,
+       "DEPTH": 0,
+       "MEH": 0
+      },
+      "TE": {
+       "ELITE": 0,
+       "MID": 0,
+       "DEPTH": 0,
+       "MEH": 0
+      },
+      "WR": {
+       "ELITE": 0,
+       "MID": 0,
+       "DEPTH": 0,
+       "MEH": 0
+      }
      }
     },
     {
@@ -814,11 +1284,31 @@
       "TE": 0,
       "WR": 0
      },
-     "cliffs": {
-      "QB": {},
-      "RB": {},
-      "TE": {},
-      "WR": {}
+     "_band_left": {
+      "QB": {
+       "ELITE": 0,
+       "MID": 0,
+       "DEPTH": 0,
+       "MEH": 0
+      },
+      "RB": {
+       "ELITE": 0,
+       "MID": 0,
+       "DEPTH": 0,
+       "MEH": 0
+      },
+      "TE": {
+       "ELITE": 0,
+       "MID": 0,
+       "DEPTH": 0,
+       "MEH": 0
+      },
+      "WR": {
+       "ELITE": 0,
+       "MID": 0,
+       "DEPTH": 0,
+       "MEH": 0
+      }
      }
     },
     {
@@ -841,11 +1331,31 @@
       "TE": 0,
       "WR": 0
      },
-     "cliffs": {
-      "QB": {},
-      "RB": {},
-      "TE": {},
-      "WR": {}
+     "_band_left": {
+      "QB": {
+       "ELITE": 0,
+       "MID": 0,
+       "DEPTH": 0,
+       "MEH": 0
+      },
+      "RB": {
+       "ELITE": 0,
+       "MID": 0,
+       "DEPTH": 0,
+       "MEH": 0
+      },
+      "TE": {
+       "ELITE": 0,
+       "MID": 0,
+       "DEPTH": 0,
+       "MEH": 0
+      },
+      "WR": {
+       "ELITE": 0,
+       "MID": 0,
+       "DEPTH": 0,
+       "MEH": 0
+      }
      }
     },
     {
@@ -868,11 +1378,31 @@
       "TE": 0,
       "WR": 0
      },
-     "cliffs": {
-      "QB": {},
-      "RB": {},
-      "TE": {},
-      "WR": {}
+     "_band_left": {
+      "QB": {
+       "ELITE": 0,
+       "MID": 0,
+       "DEPTH": 0,
+       "MEH": 0
+      },
+      "RB": {
+       "ELITE": 0,
+       "MID": 0,
+       "DEPTH": 0,
+       "MEH": 0
+      },
+      "TE": {
+       "ELITE": 0,
+       "MID": 0,
+       "DEPTH": 0,
+       "MEH": 0
+      },
+      "WR": {
+       "ELITE": 0,
+       "MID": 0,
+       "DEPTH": 0,
+       "MEH": 0
+      }
      }
     },
     {
@@ -895,11 +1425,31 @@
       "TE": 0,
       "WR": 0
      },
-     "cliffs": {
-      "QB": {},
-      "RB": {},
-      "TE": {},
-      "WR": {}
+     "_band_left": {
+      "QB": {
+       "ELITE": 0,
+       "MID": 0,
+       "DEPTH": 0,
+       "MEH": 0
+      },
+      "RB": {
+       "ELITE": 0,
+       "MID": 0,
+       "DEPTH": 0,
+       "MEH": 0
+      },
+      "TE": {
+       "ELITE": 0,
+       "MID": 0,
+       "DEPTH": 0,
+       "MEH": 0
+      },
+      "WR": {
+       "ELITE": 0,
+       "MID": 0,
+       "DEPTH": 0,
+       "MEH": 0
+      }
      }
     },
     {
@@ -922,11 +1472,31 @@
       "TE": 0,
       "WR": 0
      },
-     "cliffs": {
-      "QB": {},
-      "RB": {},
-      "TE": {},
-      "WR": {}
+     "_band_left": {
+      "QB": {
+       "ELITE": 0,
+       "MID": 0,
+       "DEPTH": 0,
+       "MEH": 0
+      },
+      "RB": {
+       "ELITE": 0,
+       "MID": 0,
+       "DEPTH": 0,
+       "MEH": 0
+      },
+      "TE": {
+       "ELITE": 0,
+       "MID": 0,
+       "DEPTH": 0,
+       "MEH": 0
+      },
+      "WR": {
+       "ELITE": 0,
+       "MID": 0,
+       "DEPTH": 0,
+       "MEH": 0
+      }
      }
     },
     {
@@ -949,11 +1519,31 @@
       "TE": 0,
       "WR": 0
      },
-     "cliffs": {
-      "QB": {},
-      "RB": {},
-      "TE": {},
-      "WR": {}
+     "_band_left": {
+      "QB": {
+       "ELITE": 0,
+       "MID": 0,
+       "DEPTH": 0,
+       "MEH": 0
+      },
+      "RB": {
+       "ELITE": 0,
+       "MID": 0,
+       "DEPTH": 0,
+       "MEH": 0
+      },
+      "TE": {
+       "ELITE": 0,
+       "MID": 0,
+       "DEPTH": 0,
+       "MEH": 0
+      },
+      "WR": {
+       "ELITE": 0,
+       "MID": 0,
+       "DEPTH": 0,
+       "MEH": 0
+      }
      }
     }
    ],
@@ -1024,15 +1614,15 @@
       "pid": "6786",
       "rank": 4,
       "band_below": "MID",
-      "size": 5,
-      "mean_points": 316.8
+      "size": 4,
+      "mean_points": 320.0
      },
      {
-      "pid": "8144",
-      "rank": 9,
+      "pid": "5859",
+      "rank": 8,
       "band_below": "DEPTH",
-      "size": 7,
-      "mean_points": 288.2
+      "size": 8,
+      "mean_points": 290.1
      },
      {
       "pid": "12526",
@@ -1077,15 +1667,15 @@
       "pid": "3294",
       "rank": 5,
       "band_below": "DEPTH",
-      "size": 2,
-      "mean_points": 342.9
+      "size": 3,
+      "mean_points": 341.3
      },
      {
-      "pid": "11566",
-      "rank": 7,
+      "pid": "11564",
+      "rank": 8,
       "band_below": "MEH",
-      "size": 4,
-      "mean_points": 334.3
+      "size": 3,
+      "mean_points": 333.0
      }
     ]
    },
@@ -1115,7 +1705,7 @@
      }
     },
     "QB": {
-     "bands_on_points": 96.0,
+     "bands_on_points": 96.2,
      "even_slices_on_points": 95.9,
      "top_band": {
       "size": 3,
@@ -1136,6 +1726,32 @@
     "WR": 217.75,
     "TE": 149.17,
     "QB": 243.29
+   },
+   "band_sizes": {
+    "QB": {
+     "ELITE": 9,
+     "MID": 9,
+     "DEPTH": 9,
+     "MEH": 4
+    },
+    "RB": {
+     "ELITE": 4,
+     "MID": 13,
+     "DEPTH": 9,
+     "MEH": 10
+    },
+    "TE": {
+     "ELITE": 3,
+     "MID": 6,
+     "DEPTH": 11,
+     "MEH": 4
+    },
+    "WR": {
+     "ELITE": 4,
+     "MID": 6,
+     "DEPTH": 11,
+     "MEH": 15
+    }
    },
    "samples": [
     {
@@ -1158,26 +1774,30 @@
       "TE": 24,
       "WR": 36
      },
-     "cliffs": {
+     "_band_left": {
       "QB": {
-       "1": "HIGH",
-       "3": "MEDIUM",
-       "5": "MEDIUM"
+       "ELITE": 9,
+       "MID": 9,
+       "DEPTH": 9,
+       "MEH": 4
       },
       "RB": {
-       "0": "HIGH",
-       "1": "MEDIUM",
-       "4": "MEDIUM"
+       "ELITE": 4,
+       "MID": 13,
+       "DEPTH": 9,
+       "MEH": 10
       },
       "TE": {
-       "0": "HIGH",
-       "2": "MEDIUM",
-       "5": "MEDIUM"
+       "ELITE": 3,
+       "MID": 6,
+       "DEPTH": 11,
+       "MEH": 4
       },
       "WR": {
-       "0": "HIGH",
-       "1": "MEDIUM",
-       "3": "MEDIUM"
+       "ELITE": 4,
+       "MID": 6,
+       "DEPTH": 11,
+       "MEH": 15
       }
      }
     },
@@ -1201,25 +1821,30 @@
       "TE": 22,
       "WR": 34
      },
-     "cliffs": {
+     "_band_left": {
       "QB": {
-       "1": "HIGH",
-       "3": "MEDIUM",
-       "5": "MEDIUM"
+       "ELITE": 9,
+       "MID": 9,
+       "DEPTH": 9,
+       "MEH": 4
       },
       "RB": {
-       "0": "MEDIUM",
-       "3": "MEDIUM"
+       "ELITE": 0,
+       "MID": 11,
+       "DEPTH": 9,
+       "MEH": 10
       },
       "TE": {
-       "0": "HIGH",
-       "1": "MEDIUM",
-       "4": "MEDIUM"
+       "ELITE": 1,
+       "MID": 6,
+       "DEPTH": 11,
+       "MEH": 4
       },
       "WR": {
-       "0": "HIGH",
-       "1": "MEDIUM",
-       "3": "MEDIUM"
+       "ELITE": 2,
+       "MID": 6,
+       "DEPTH": 11,
+       "MEH": 15
       }
      }
     },
@@ -1243,25 +1868,30 @@
       "TE": 21,
       "WR": 32
      },
-     "cliffs": {
+     "_band_left": {
       "QB": {
-       "0": "HIGH",
-       "2": "MEDIUM",
-       "4": "MEDIUM"
+       "ELITE": 3,
+       "MID": 9,
+       "DEPTH": 9,
+       "MEH": 4
       },
       "RB": {
-       "0": "MEDIUM",
-       "3": "MEDIUM"
+       "ELITE": 0,
+       "MID": 10,
+       "DEPTH": 9,
+       "MEH": 10
       },
       "TE": {
-       "0": "HIGH",
-       "1": "MEDIUM",
-       "4": "MEDIUM"
+       "ELITE": 0,
+       "MID": 6,
+       "DEPTH": 11,
+       "MEH": 4
       },
       "WR": {
-       "0": "HIGH",
-       "1": "MEDIUM",
-       "3": "MEDIUM"
+       "ELITE": 0,
+       "MID": 6,
+       "DEPTH": 11,
+       "MEH": 15
       }
      }
     },
@@ -1285,22 +1915,30 @@
       "TE": 21,
       "WR": 30
      },
-     "cliffs": {
+     "_band_left": {
       "QB": {
-       "1": "MEDIUM",
-       "4": "MEDIUM"
+       "ELITE": 0,
+       "MID": 8,
+       "DEPTH": 9,
+       "MEH": 4
       },
       "RB": {
-       "2": "MEDIUM"
+       "ELITE": 0,
+       "MID": 6,
+       "DEPTH": 9,
+       "MEH": 10
       },
       "TE": {
-       "0": "HIGH",
-       "1": "MEDIUM",
-       "4": "MEDIUM"
+       "ELITE": 0,
+       "MID": 6,
+       "DEPTH": 11,
+       "MEH": 4
       },
       "WR": {
-       "0": "MEDIUM",
-       "2": "MEDIUM"
+       "ELITE": 0,
+       "MID": 4,
+       "DEPTH": 11,
+       "MEH": 15
       }
      }
     },
@@ -1324,21 +1962,30 @@
       "TE": 20,
       "WR": 28
      },
-     "cliffs": {
+     "_band_left": {
       "QB": {
-       "0": "MEDIUM",
-       "3": "MEDIUM"
+       "ELITE": 0,
+       "MID": 4,
+       "DEPTH": 9,
+       "MEH": 4
       },
       "RB": {
-       "2": "MEDIUM"
+       "ELITE": 0,
+       "MID": 3,
+       "DEPTH": 9,
+       "MEH": 10
       },
       "TE": {
-       "1": "MEDIUM",
-       "4": "MEDIUM"
+       "ELITE": 0,
+       "MID": 5,
+       "DEPTH": 11,
+       "MEH": 4
       },
       "WR": {
-       "0": "MEDIUM",
-       "2": "MEDIUM"
+       "ELITE": 0,
+       "MID": 2,
+       "DEPTH": 11,
+       "MEH": 15
       }
      }
     },
@@ -1362,21 +2009,30 @@
       "TE": 18,
       "WR": 27
      },
-     "cliffs": {
+     "_band_left": {
       "QB": {
-       "0": "MEDIUM",
-       "2": "MEDIUM"
+       "ELITE": 0,
+       "MID": 0,
+       "DEPTH": 9,
+       "MEH": 4
       },
       "RB": {
-       "1": "MEDIUM"
+       "ELITE": 0,
+       "MID": 0,
+       "DEPTH": 9,
+       "MEH": 10
       },
       "TE": {
-       "0": "MEDIUM",
-       "3": "MEDIUM"
+       "ELITE": 0,
+       "MID": 3,
+       "DEPTH": 11,
+       "MEH": 4
       },
       "WR": {
-       "0": "MEDIUM",
-       "2": "MEDIUM"
+       "ELITE": 0,
+       "MID": 1,
+       "DEPTH": 11,
+       "MEH": 15
       }
      }
     },
@@ -1400,19 +2056,30 @@
       "TE": 15,
       "WR": 24
      },
-     "cliffs": {
+     "_band_left": {
       "QB": {
-       "1": "MEDIUM"
+       "ELITE": 0,
+       "MID": 0,
+       "DEPTH": 6,
+       "MEH": 4
       },
       "RB": {
-       "1": "MEDIUM"
+       "ELITE": 0,
+       "MID": 0,
+       "DEPTH": 8,
+       "MEH": 10
       },
       "TE": {
-       "0": "MEDIUM",
-       "2": "MEDIUM"
+       "ELITE": 0,
+       "MID": 0,
+       "DEPTH": 11,
+       "MEH": 4
       },
       "WR": {
-       "1": "MEDIUM"
+       "ELITE": 0,
+       "MID": 0,
+       "DEPTH": 9,
+       "MEH": 15
       }
      }
     },
@@ -1436,19 +2103,30 @@
       "TE": 15,
       "WR": 20
      },
-     "cliffs": {
+     "_band_left": {
       "QB": {
-       "1": "MEDIUM"
+       "ELITE": 0,
+       "MID": 0,
+       "DEPTH": 4,
+       "MEH": 4
       },
       "RB": {
-       "0": "MEDIUM"
+       "ELITE": 0,
+       "MID": 0,
+       "DEPTH": 4,
+       "MEH": 10
       },
       "TE": {
-       "0": "MEDIUM",
-       "2": "MEDIUM"
+       "ELITE": 0,
+       "MID": 0,
+       "DEPTH": 11,
+       "MEH": 4
       },
       "WR": {
-       "1": "MEDIUM"
+       "ELITE": 0,
+       "MID": 0,
+       "DEPTH": 5,
+       "MEH": 15
       }
      }
     },
@@ -1472,17 +2150,31 @@
       "TE": 13,
       "WR": 14
      },
-     "cliffs": {
+     "_band_left": {
       "QB": {
-       "0": "MEDIUM"
+       "ELITE": 0,
+       "MID": 0,
+       "DEPTH": 3,
+       "MEH": 4
       },
       "RB": {
-       "0": "MEDIUM"
+       "ELITE": 0,
+       "MID": 0,
+       "DEPTH": 3,
+       "MEH": 10
       },
       "TE": {
-       "2": "MEDIUM"
+       "ELITE": 0,
+       "MID": 0,
+       "DEPTH": 9,
+       "MEH": 4
       },
-      "WR": {}
+      "WR": {
+       "ELITE": 0,
+       "MID": 0,
+       "DEPTH": 0,
+       "MEH": 14
+      }
      }
     },
     {
@@ -1505,17 +2197,31 @@
       "TE": 12,
       "WR": 7
      },
-     "cliffs": {
+     "_band_left": {
       "QB": {
-       "0": "MEDIUM"
+       "ELITE": 0,
+       "MID": 0,
+       "DEPTH": 3,
+       "MEH": 4
       },
       "RB": {
-       "0": "MEDIUM"
+       "ELITE": 0,
+       "MID": 0,
+       "DEPTH": 1,
+       "MEH": 10
       },
       "TE": {
-       "2": "MEDIUM"
+       "ELITE": 0,
+       "MID": 0,
+       "DEPTH": 8,
+       "MEH": 4
       },
-      "WR": {}
+      "WR": {
+       "ELITE": 0,
+       "MID": 0,
+       "DEPTH": 0,
+       "MEH": 7
+      }
      }
     },
     {
@@ -1538,15 +2244,31 @@
       "TE": 12,
       "WR": 0
      },
-     "cliffs": {
+     "_band_left": {
       "QB": {
-       "0": "MEDIUM"
+       "ELITE": 0,
+       "MID": 0,
+       "DEPTH": 3,
+       "MEH": 4
       },
-      "RB": {},
+      "RB": {
+       "ELITE": 0,
+       "MID": 0,
+       "DEPTH": 0,
+       "MEH": 10
+      },
       "TE": {
-       "2": "MEDIUM"
+       "ELITE": 0,
+       "MID": 0,
+       "DEPTH": 8,
+       "MEH": 4
       },
-      "WR": {}
+      "WR": {
+       "ELITE": 0,
+       "MID": 0,
+       "DEPTH": 0,
+       "MEH": 0
+      }
      }
     },
     {
@@ -1569,15 +2291,31 @@
       "TE": 10,
       "WR": 0
      },
-     "cliffs": {
+     "_band_left": {
       "QB": {
-       "0": "MEDIUM"
+       "ELITE": 0,
+       "MID": 0,
+       "DEPTH": 3,
+       "MEH": 4
       },
-      "RB": {},
+      "RB": {
+       "ELITE": 0,
+       "MID": 0,
+       "DEPTH": 0,
+       "MEH": 9
+      },
       "TE": {
-       "1": "MEDIUM"
+       "ELITE": 0,
+       "MID": 0,
+       "DEPTH": 6,
+       "MEH": 4
       },
-      "WR": {}
+      "WR": {
+       "ELITE": 0,
+       "MID": 0,
+       "DEPTH": 0,
+       "MEH": 0
+      }
      }
     },
     {
@@ -1600,15 +2338,31 @@
       "TE": 8,
       "WR": 0
      },
-     "cliffs": {
+     "_band_left": {
       "QB": {
-       "0": "MEDIUM"
+       "ELITE": 0,
+       "MID": 0,
+       "DEPTH": 1,
+       "MEH": 4
       },
-      "RB": {},
+      "RB": {
+       "ELITE": 0,
+       "MID": 0,
+       "DEPTH": 0,
+       "MEH": 8
+      },
       "TE": {
-       "1": "MEDIUM"
+       "ELITE": 0,
+       "MID": 0,
+       "DEPTH": 4,
+       "MEH": 4
       },
-      "WR": {}
+      "WR": {
+       "ELITE": 0,
+       "MID": 0,
+       "DEPTH": 0,
+       "MEH": 0
+      }
      }
     },
     {
@@ -1631,15 +2385,31 @@
       "TE": 5,
       "WR": 0
      },
-     "cliffs": {
+     "_band_left": {
       "QB": {
-       "0": "MEDIUM"
+       "ELITE": 0,
+       "MID": 0,
+       "DEPTH": 0,
+       "MEH": 4
       },
-      "RB": {},
+      "RB": {
+       "ELITE": 0,
+       "MID": 0,
+       "DEPTH": 0,
+       "MEH": 4
+      },
       "TE": {
-       "0": "MEDIUM"
+       "ELITE": 0,
+       "MID": 0,
+       "DEPTH": 1,
+       "MEH": 4
       },
-      "WR": {}
+      "WR": {
+       "ELITE": 0,
+       "MID": 0,
+       "DEPTH": 0,
+       "MEH": 0
+      }
      }
     },
     {
@@ -1662,11 +2432,31 @@
       "TE": 2,
       "WR": 0
      },
-     "cliffs": {
-      "QB": {},
-      "RB": {},
-      "TE": {},
-      "WR": {}
+     "_band_left": {
+      "QB": {
+       "ELITE": 0,
+       "MID": 0,
+       "DEPTH": 0,
+       "MEH": 3
+      },
+      "RB": {
+       "ELITE": 0,
+       "MID": 0,
+       "DEPTH": 0,
+       "MEH": 2
+      },
+      "TE": {
+       "ELITE": 0,
+       "MID": 0,
+       "DEPTH": 0,
+       "MEH": 2
+      },
+      "WR": {
+       "ELITE": 0,
+       "MID": 0,
+       "DEPTH": 0,
+       "MEH": 0
+      }
      }
     },
     {
@@ -1689,11 +2479,31 @@
       "TE": 1,
       "WR": 0
      },
-     "cliffs": {
-      "QB": {},
-      "RB": {},
-      "TE": {},
-      "WR": {}
+     "_band_left": {
+      "QB": {
+       "ELITE": 0,
+       "MID": 0,
+       "DEPTH": 0,
+       "MEH": 1
+      },
+      "RB": {
+       "ELITE": 0,
+       "MID": 0,
+       "DEPTH": 0,
+       "MEH": 0
+      },
+      "TE": {
+       "ELITE": 0,
+       "MID": 0,
+       "DEPTH": 0,
+       "MEH": 1
+      },
+      "WR": {
+       "ELITE": 0,
+       "MID": 0,
+       "DEPTH": 0,
+       "MEH": 0
+      }
      }
     },
     {
@@ -1716,11 +2526,31 @@
       "TE": 0,
       "WR": 0
      },
-     "cliffs": {
-      "QB": {},
-      "RB": {},
-      "TE": {},
-      "WR": {}
+     "_band_left": {
+      "QB": {
+       "ELITE": 0,
+       "MID": 0,
+       "DEPTH": 0,
+       "MEH": 1
+      },
+      "RB": {
+       "ELITE": 0,
+       "MID": 0,
+       "DEPTH": 0,
+       "MEH": 0
+      },
+      "TE": {
+       "ELITE": 0,
+       "MID": 0,
+       "DEPTH": 0,
+       "MEH": 0
+      },
+      "WR": {
+       "ELITE": 0,
+       "MID": 0,
+       "DEPTH": 0,
+       "MEH": 0
+      }
      }
     },
     {
@@ -1743,11 +2573,31 @@
       "TE": 0,
       "WR": 0
      },
-     "cliffs": {
-      "QB": {},
-      "RB": {},
-      "TE": {},
-      "WR": {}
+     "_band_left": {
+      "QB": {
+       "ELITE": 0,
+       "MID": 0,
+       "DEPTH": 0,
+       "MEH": 0
+      },
+      "RB": {
+       "ELITE": 0,
+       "MID": 0,
+       "DEPTH": 0,
+       "MEH": 0
+      },
+      "TE": {
+       "ELITE": 0,
+       "MID": 0,
+       "DEPTH": 0,
+       "MEH": 0
+      },
+      "WR": {
+       "ELITE": 0,
+       "MID": 0,
+       "DEPTH": 0,
+       "MEH": 0
+      }
      }
     },
     {
@@ -1770,11 +2620,31 @@
       "TE": 0,
       "WR": 0
      },
-     "cliffs": {
-      "QB": {},
-      "RB": {},
-      "TE": {},
-      "WR": {}
+     "_band_left": {
+      "QB": {
+       "ELITE": 0,
+       "MID": 0,
+       "DEPTH": 0,
+       "MEH": 0
+      },
+      "RB": {
+       "ELITE": 0,
+       "MID": 0,
+       "DEPTH": 0,
+       "MEH": 0
+      },
+      "TE": {
+       "ELITE": 0,
+       "MID": 0,
+       "DEPTH": 0,
+       "MEH": 0
+      },
+      "WR": {
+       "ELITE": 0,
+       "MID": 0,
+       "DEPTH": 0,
+       "MEH": 0
+      }
      }
     },
     {
@@ -1797,11 +2667,31 @@
       "TE": 0,
       "WR": 0
      },
-     "cliffs": {
-      "QB": {},
-      "RB": {},
-      "TE": {},
-      "WR": {}
+     "_band_left": {
+      "QB": {
+       "ELITE": 0,
+       "MID": 0,
+       "DEPTH": 0,
+       "MEH": 0
+      },
+      "RB": {
+       "ELITE": 0,
+       "MID": 0,
+       "DEPTH": 0,
+       "MEH": 0
+      },
+      "TE": {
+       "ELITE": 0,
+       "MID": 0,
+       "DEPTH": 0,
+       "MEH": 0
+      },
+      "WR": {
+       "ELITE": 0,
+       "MID": 0,
+       "DEPTH": 0,
+       "MEH": 0
+      }
      }
     },
     {
@@ -1824,11 +2714,31 @@
       "TE": 0,
       "WR": 0
      },
-     "cliffs": {
-      "QB": {},
-      "RB": {},
-      "TE": {},
-      "WR": {}
+     "_band_left": {
+      "QB": {
+       "ELITE": 0,
+       "MID": 0,
+       "DEPTH": 0,
+       "MEH": 0
+      },
+      "RB": {
+       "ELITE": 0,
+       "MID": 0,
+       "DEPTH": 0,
+       "MEH": 0
+      },
+      "TE": {
+       "ELITE": 0,
+       "MID": 0,
+       "DEPTH": 0,
+       "MEH": 0
+      },
+      "WR": {
+       "ELITE": 0,
+       "MID": 0,
+       "DEPTH": 0,
+       "MEH": 0
+      }
      }
     },
     {
@@ -1851,11 +2761,31 @@
       "TE": 0,
       "WR": 0
      },
-     "cliffs": {
-      "QB": {},
-      "RB": {},
-      "TE": {},
-      "WR": {}
+     "_band_left": {
+      "QB": {
+       "ELITE": 0,
+       "MID": 0,
+       "DEPTH": 0,
+       "MEH": 0
+      },
+      "RB": {
+       "ELITE": 0,
+       "MID": 0,
+       "DEPTH": 0,
+       "MEH": 0
+      },
+      "TE": {
+       "ELITE": 0,
+       "MID": 0,
+       "DEPTH": 0,
+       "MEH": 0
+      },
+      "WR": {
+       "ELITE": 0,
+       "MID": 0,
+       "DEPTH": 0,
+       "MEH": 0
+      }
      }
     },
     {
@@ -1878,11 +2808,31 @@
       "TE": 0,
       "WR": 0
      },
-     "cliffs": {
-      "QB": {},
-      "RB": {},
-      "TE": {},
-      "WR": {}
+     "_band_left": {
+      "QB": {
+       "ELITE": 0,
+       "MID": 0,
+       "DEPTH": 0,
+       "MEH": 0
+      },
+      "RB": {
+       "ELITE": 0,
+       "MID": 0,
+       "DEPTH": 0,
+       "MEH": 0
+      },
+      "TE": {
+       "ELITE": 0,
+       "MID": 0,
+       "DEPTH": 0,
+       "MEH": 0
+      },
+      "WR": {
+       "ELITE": 0,
+       "MID": 0,
+       "DEPTH": 0,
+       "MEH": 0
+      }
      }
     },
     {
@@ -1905,11 +2855,31 @@
       "TE": 0,
       "WR": 0
      },
-     "cliffs": {
-      "QB": {},
-      "RB": {},
-      "TE": {},
-      "WR": {}
+     "_band_left": {
+      "QB": {
+       "ELITE": 0,
+       "MID": 0,
+       "DEPTH": 0,
+       "MEH": 0
+      },
+      "RB": {
+       "ELITE": 0,
+       "MID": 0,
+       "DEPTH": 0,
+       "MEH": 0
+      },
+      "TE": {
+       "ELITE": 0,
+       "MID": 0,
+       "DEPTH": 0,
+       "MEH": 0
+      },
+      "WR": {
+       "ELITE": 0,
+       "MID": 0,
+       "DEPTH": 0,
+       "MEH": 0
+      }
      }
     },
     {
@@ -1932,11 +2902,31 @@
       "TE": 0,
       "WR": 0
      },
-     "cliffs": {
-      "QB": {},
-      "RB": {},
-      "TE": {},
-      "WR": {}
+     "_band_left": {
+      "QB": {
+       "ELITE": 0,
+       "MID": 0,
+       "DEPTH": 0,
+       "MEH": 0
+      },
+      "RB": {
+       "ELITE": 0,
+       "MID": 0,
+       "DEPTH": 0,
+       "MEH": 0
+      },
+      "TE": {
+       "ELITE": 0,
+       "MID": 0,
+       "DEPTH": 0,
+       "MEH": 0
+      },
+      "WR": {
+       "ELITE": 0,
+       "MID": 0,
+       "DEPTH": 0,
+       "MEH": 0
+      }
      }
     },
     {
@@ -1959,11 +2949,31 @@
       "TE": 0,
       "WR": 0
      },
-     "cliffs": {
-      "QB": {},
-      "RB": {},
-      "TE": {},
-      "WR": {}
+     "_band_left": {
+      "QB": {
+       "ELITE": 0,
+       "MID": 0,
+       "DEPTH": 0,
+       "MEH": 0
+      },
+      "RB": {
+       "ELITE": 0,
+       "MID": 0,
+       "DEPTH": 0,
+       "MEH": 0
+      },
+      "TE": {
+       "ELITE": 0,
+       "MID": 0,
+       "DEPTH": 0,
+       "MEH": 0
+      },
+      "WR": {
+       "ELITE": 0,
+       "MID": 0,
+       "DEPTH": 0,
+       "MEH": 0
+      }
      }
     },
     {
@@ -1986,11 +2996,31 @@
       "TE": 0,
       "WR": 0
      },
-     "cliffs": {
-      "QB": {},
-      "RB": {},
-      "TE": {},
-      "WR": {}
+     "_band_left": {
+      "QB": {
+       "ELITE": 0,
+       "MID": 0,
+       "DEPTH": 0,
+       "MEH": 0
+      },
+      "RB": {
+       "ELITE": 0,
+       "MID": 0,
+       "DEPTH": 0,
+       "MEH": 0
+      },
+      "TE": {
+       "ELITE": 0,
+       "MID": 0,
+       "DEPTH": 0,
+       "MEH": 0
+      },
+      "WR": {
+       "ELITE": 0,
+       "MID": 0,
+       "DEPTH": 0,
+       "MEH": 0
+      }
      }
     },
     {
@@ -2013,11 +3043,31 @@
       "TE": 0,
       "WR": 0
      },
-     "cliffs": {
-      "QB": {},
-      "RB": {},
-      "TE": {},
-      "WR": {}
+     "_band_left": {
+      "QB": {
+       "ELITE": 0,
+       "MID": 0,
+       "DEPTH": 0,
+       "MEH": 0
+      },
+      "RB": {
+       "ELITE": 0,
+       "MID": 0,
+       "DEPTH": 0,
+       "MEH": 0
+      },
+      "TE": {
+       "ELITE": 0,
+       "MID": 0,
+       "DEPTH": 0,
+       "MEH": 0
+      },
+      "WR": {
+       "ELITE": 0,
+       "MID": 0,
+       "DEPTH": 0,
+       "MEH": 0
+      }
      }
     },
     {
@@ -2040,11 +3090,31 @@
       "TE": 0,
       "WR": 0
      },
-     "cliffs": {
-      "QB": {},
-      "RB": {},
-      "TE": {},
-      "WR": {}
+     "_band_left": {
+      "QB": {
+       "ELITE": 0,
+       "MID": 0,
+       "DEPTH": 0,
+       "MEH": 0
+      },
+      "RB": {
+       "ELITE": 0,
+       "MID": 0,
+       "DEPTH": 0,
+       "MEH": 0
+      },
+      "TE": {
+       "ELITE": 0,
+       "MID": 0,
+       "DEPTH": 0,
+       "MEH": 0
+      },
+      "WR": {
+       "ELITE": 0,
+       "MID": 0,
+       "DEPTH": 0,
+       "MEH": 0
+      }
      }
     },
     {
@@ -2067,11 +3137,31 @@
       "TE": 0,
       "WR": 0
      },
-     "cliffs": {
-      "QB": {},
-      "RB": {},
-      "TE": {},
-      "WR": {}
+     "_band_left": {
+      "QB": {
+       "ELITE": 0,
+       "MID": 0,
+       "DEPTH": 0,
+       "MEH": 0
+      },
+      "RB": {
+       "ELITE": 0,
+       "MID": 0,
+       "DEPTH": 0,
+       "MEH": 0
+      },
+      "TE": {
+       "ELITE": 0,
+       "MID": 0,
+       "DEPTH": 0,
+       "MEH": 0
+      },
+      "WR": {
+       "ELITE": 0,
+       "MID": 0,
+       "DEPTH": 0,
+       "MEH": 0
+      }
      }
     },
     {
@@ -2094,11 +3184,31 @@
       "TE": 0,
       "WR": 0
      },
-     "cliffs": {
-      "QB": {},
-      "RB": {},
-      "TE": {},
-      "WR": {}
+     "_band_left": {
+      "QB": {
+       "ELITE": 0,
+       "MID": 0,
+       "DEPTH": 0,
+       "MEH": 0
+      },
+      "RB": {
+       "ELITE": 0,
+       "MID": 0,
+       "DEPTH": 0,
+       "MEH": 0
+      },
+      "TE": {
+       "ELITE": 0,
+       "MID": 0,
+       "DEPTH": 0,
+       "MEH": 0
+      },
+      "WR": {
+       "ELITE": 0,
+       "MID": 0,
+       "DEPTH": 0,
+       "MEH": 0
+      }
      }
     },
     {
@@ -2121,11 +3231,31 @@
       "TE": 0,
       "WR": 0
      },
-     "cliffs": {
-      "QB": {},
-      "RB": {},
-      "TE": {},
-      "WR": {}
+     "_band_left": {
+      "QB": {
+       "ELITE": 0,
+       "MID": 0,
+       "DEPTH": 0,
+       "MEH": 0
+      },
+      "RB": {
+       "ELITE": 0,
+       "MID": 0,
+       "DEPTH": 0,
+       "MEH": 0
+      },
+      "TE": {
+       "ELITE": 0,
+       "MID": 0,
+       "DEPTH": 0,
+       "MEH": 0
+      },
+      "WR": {
+       "ELITE": 0,
+       "MID": 0,
+       "DEPTH": 0,
+       "MEH": 0
+      }
      }
     }
    ],
@@ -2170,25 +3300,25 @@
    "marks": {
     "RB": [
      {
-      "pid": "6813",
-      "rank": 3,
+      "pid": "8138",
+      "rank": 4,
       "band_below": "MID",
-      "size": 4,
-      "mean_points": 342.1
+      "size": 13,
+      "mean_points": 295.7
      },
      {
-      "pid": "3198",
-      "rank": 7,
+      "pid": "5850",
+      "rank": 17,
       "band_below": "DEPTH",
-      "size": 18,
-      "mean_points": 268.4
+      "size": 9,
+      "mean_points": 244.7
      },
      {
-      "pid": "12529",
-      "rank": 25,
+      "pid": "7611",
+      "rank": 26,
       "band_below": "MEH",
-      "size": 11,
-      "mean_points": 194.4
+      "size": 10,
+      "mean_points": 191.5
      }
     ],
     "WR": [
@@ -2196,15 +3326,15 @@
       "pid": "7569",
       "rank": 4,
       "band_below": "MID",
-      "size": 7,
-      "mean_points": 321.8
+      "size": 6,
+      "mean_points": 325.0
      },
      {
-      "pid": "6801",
-      "rank": 11,
+      "pid": "8144",
+      "rank": 10,
       "band_below": "DEPTH",
-      "size": 10,
-      "mean_points": 281.6
+      "size": 11,
+      "mean_points": 283.5
      },
      {
       "pid": "2216",
@@ -2263,11 +3393,11 @@
    },
    "grades": {
     "RB": {
-     "bands_on_points": 92.8,
+     "bands_on_points": 93.7,
      "even_slices_on_points": 84.0,
      "top_band": {
-      "size": 3,
-      "mean_points": 425.5
+      "size": 4,
+      "mean_points": 413.1
      }
     },
     "WR": {

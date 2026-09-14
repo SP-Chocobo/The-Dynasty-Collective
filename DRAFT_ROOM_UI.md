@@ -748,28 +748,51 @@ the one that generalises: the owner's *"2 left above replacement feels obscure t
 hasn't spent the last month chatting with you"*, and — a count invites the reader to reason about
 WHICH two players, which a gauge has no standing to imply.
 
-### The bands, and how they must be drawn
+### The bands — MEMBERSHIP IS DERIVED, WIDTH IS NOT A CLAIM ABOUT IT
 
-Three marks cut each tank into **ELITE / MID / DEPTH / MEH**. A mark says WHERE a boundary sits and
-never how far the drop is; magnitude stays behind the contract with the counts and the points.
+Three cuts per position give four bands: **ELITE / MID / DEPTH / MEH**. Every player is assigned
+to one **once, at pool build**, from that league's own scoring settings applied through `bpa`.
 
-**A band edge is a HAIRLINE BETWEEN SEGMENTS, never a segment.** This is a real finding from the
-ASCII prototype, recorded so it is not rediscovered in CSS: with three marks drawn *as* cells in a
-six-cell tank, the marks eat half the dial and `[:#:##.]` reads as noise rather than as three
-boundaries. Drawn as rules between segments they cost no pool width at all, and three of them in a
-rendered bar are not crowded. The prototype cannot show this; the built surface must.
+**No band is a fixed percentage or a fixed count**, and the measured sizes prove it — the same
+position changes shape entirely when the scoring changes:
 
-**The marks TRAVEL, and that is the point.** They are fixed at the opening board — same discipline
-as the bar, and for the same reason a re-read yardstick drifts (`#74`/`#76`, and fatally in
-`#271`-`#280`). So a boundary is a property of a PLAYER: it keeps its place among the players and
-only its distance from the front changes as those ahead of him leave. The mark does not wander, it
-**approaches**; passing it removes it, because you went over it.
+| | ELITE / MID / DEPTH / MEH | share of that pool |
+|---|---|---|
+| TE, 12-team PPR | 2/2/5/10 | 11/11/26/53 |
+| TE, Fourth and Forever | 3/6/11/4 | 12/25/46/17 |
+| RB, Fourth and Forever | 4/13/9/10 | 11/36/25/28 |
+| QB, Fourth and Forever | 9/9/9/4 | 29/29/29/13 |
 
-**Do not build a fixed-zone dial.** The obvious alternative — paint the bands as permanent zones
-and let the fill edge move through them, like a tachometer redline — is WRONG HERE and would lie
-in the case that matters most. The fill is a COUNT of survivors; the zones would be RANKS. Late in
-a draft the three players left may all be MEH-band, and a fixed-zone needle would sit in ELITE and
-say so. The travelling mark tracks the actual surviving players and cannot make that claim.
+ELITE runs from 11% to 29% across eight position/league cells. A position with only two or three
+elite players is a true statement about that position under that rulebook, not a rendering floor.
+
+**The assignment is STATIC, and that is required rather than merely allowed.** The cuts are made
+on opening `bpa` — the league's scoring applied to the projection, minus that position's opening
+replacement level. Re-banding mid-draft would re-read the yardstick against a shrinking pool,
+which is the defect `#74`/`#76` cut out of `bpa` (the ruler carried 94.5% of its movement) and the
+one that made the crossing rule useless in `#271`-`#280`. One case makes a static band go stale
+and is named rather than hidden: a mid-draft IR or PUP designation moves a projection under
+`#191`'s haircut after the cut was made.
+
+**EACH BAND DRAINS INSIDE ITS OWN SLICE.** Taking a mid-grade player shortens the MID slice; the
+ELITE slice does not move. The total still shortens by that player — the loss just comes from
+where it actually happened. An aggregate fill edge over a *count* of survivors silently assumes
+the players who left were the ones at the front; drawn per band, nothing has to be assumed,
+because each departure is recorded in the band it came from and the display cannot make a claim
+that could be wrong.
+
+**WIDTH IS A DRAWING DECISION AND SAYS NOTHING ABOUT POPULATION.** Each band gets an equal slice
+of the bar. Proportional width was built first and lost on the rendering: a four-player ELITE band
+in a 36-player pool draws about two segments, which is two or three states in total and cannot
+express *"two of the four elite are left"* — the most decision-relevant fact at the position —
+while the bands a drafter cares least about take the most room. It inverts attention toward the band that matters
+least, in every position measured. Equal slices give every band the resolution to show partial
+drain, which is the job.
+
+**The cost, stated because it can be misread:** equal slices do not show how many players a band
+holds, and a reader could take four equal slices as a claim of four equal groups. They are not,
+and the table above is why. If that misread matters more than ELITE's resolution does, the call
+reverses — but it cannot be had both ways in one bar.
 
 ### Sizing, and the two states
 
@@ -777,8 +800,8 @@ Owner's requirement: *"It will need to be large enough that the data it is tryin
 and intuitive. However. We can contemplate, if you want to expand it to get a little more
 information and collapse it back into the default visual."*
 
-**DEFAULT (collapsed).** Four rows, one per position, each a full-width tank with its band
-hairlines and an optional percentage of that position's own pool. Sized so the fill level and the
+**DEFAULT (collapsed).** Four rows, one per position, each a full-width tank divided into its
+four band slices, with an optional percentage of that position's own pool. Sized so the fill level and the
 mark positions are both readable without looking twice — this is the whole surface most of the
 time, so it gets the width, not a corner.
 

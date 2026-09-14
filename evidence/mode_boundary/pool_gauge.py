@@ -65,7 +65,8 @@ import run_draft_battery as rdb
 
 IN = Path("evidence/mode_boundary/depth_battery.json")
 OUT = Path("evidence/mode_boundary/pool_gauge.json")
-BARS = 6                    # a display choice only: how many segments to draw.
+BARS = 6                    # a display choice only: how many segments the WHOLE tank draws.
+SPAN = 16                   # display width across all bands (4 bands x 4 parts each).
 STRIDE = 10
 
 
@@ -116,36 +117,63 @@ def separation(vals: list[float], cuts: list[int]) -> float:
 
 
 def band_cuts(vals: list[float], k: int) -> list[int]:
-    """The k cuts that best separate strong players from weak ones. Greedy, parameter-free.
+    """The k cuts that best separate strong players from weak ones. EXACT, and parameter-free.
 
     THE OWNER'S CRITERION IS THE RULE, not a proxy for it: "if we're only using 2 or 3 of these
     per position, they need to be significant signals of the strength of the players above and
     below them", and then the vocabulary -- "these are the elite, these are the mid grade, these
-    are the ones that are just meh". A mark is therefore placed where it MOST DIVIDES STRENGTH,
-    which is what `separation` measures. Nothing is compared against a constant.
+    are the ones that are just meh". Cuts go where they most divide strength. Nothing is compared
+    against a constant, and no band is a fixed share or count -- ELITE measures anywhere from 8%
+    to 29% of a pool depending on the position and the league's scoring.
 
-    TWO EARLIER RULES WERE BUILT AND BOTH LOST, ON MEASUREMENT (evidence/mode_boundary):
+    A GREEDY VERSION SHIPPED FIRST AND WAS WRONG AT RB, caught by the owner reading the sizes:
+    "is it really 3 and 4 only for elite and decent rb? I'd think solid would be deeper than
+    that." It is. Greedy adds one cut at a time and never revisits, so a steep head captures its
+    first cut and the second is then stranded inside a flat run. Fourth and Forever RB drops 47.2
+    points from RB3 to RB4 and then runs shallow -- 15, 9, 3, 0.6, 5, 4 -- all the way to RB17.
+    Greedy answered 3/4/18/11, cutting at RB7 in the middle of that run; exact answers
+    4/13/9/10, cutting at RB17 where the next real step is, and scores HIGHER on projected points
+    (93.7% vs 92.8%) which is the column that placed neither. WR and TE were unaffected, and that
+    is the tell: the defect only bites where the head is steep enough to capture the first cut.
 
-    * BIGGEST RAW GAP -- `detect_positional_cliff`'s notion. Graded on projected points it
-      separates 66-96%, behind banding in all 8 position/league cells and by 25 points at
-      superflex QB. A single wide gap is a standout, which is not the same thing as a boundary.
-    * STEEPEST SLOPE CHANGE -- "when the production begins to dip faster, that is a cliff",
-      implemented as greatest departure from the chord. It returned NOTHING AT ALL for TE and
-      WR in both leagues and 32-38% for RB. The reason is a fact about the shape worth keeping:
-      above the replacement bar these curves are CONCAVE -- they fall fastest at the very top
-      and flatten from there -- so "where does it start falling faster" has no answer, because
-      it never does. The bands the owner wants are real; the bend that was supposed to find
-      them is not.
-
-    `k` is display capacity (the owner's "at most 2 or 3"), never a cutoff on what counts.
+    Exact via the Fisher/Jenks dynamic program -- minimum total within-band squared deviation for
+    exactly k+1 bands. O(k*n^2) on a pool of at most a few dozen, so there is no reason to
+    approximate. `k` is display capacity (the owner's "at most 2 or 3"), never a cutoff on what
+    counts.
     """
-    cuts: list[int] = []
-    for _ in range(k):
-        best = max(((separation(vals, cuts + [i]), i)
-                    for i in range(1, len(vals)) if i not in cuts), default=(0.0, None))
-        if best[1] is None:
-            break
-        cuts.append(best[1])
+    n = len(vals)
+    if k <= 0 or n <= k:
+        return []
+    pre = [0.0] * (n + 1)
+    pre2 = [0.0] * (n + 1)
+    for i, v in enumerate(vals):
+        pre[i + 1] = pre[i] + v
+        pre2[i + 1] = pre2[i] + v * v
+
+    def sse(a: int, b: int) -> float:
+        m = b - a
+        if m <= 0:
+            return 0.0
+        tot = pre[b] - pre[a]
+        return (pre2[b] - pre2[a]) - tot * tot / m
+
+    inf = float("inf")
+    cost = [[inf] * (n + 1) for _ in range(k + 2)]
+    back = [[0] * (n + 1) for _ in range(k + 2)]
+    for j in range(n + 1):
+        cost[1][j] = sse(0, j)
+    for bands in range(2, k + 2):
+        for j in range(bands, n + 1):
+            best, arg = inf, bands - 1
+            for t in range(bands - 1, j):
+                c = cost[bands - 1][t] + sse(t, j)
+                if c < best:
+                    best, arg = c, t
+            cost[bands][j], back[bands][j] = best, arg
+    cuts, j = [], n
+    for bands in range(k + 1, 1, -1):
+        j = back[bands][j]
+        cuts.append(j)
     return sorted(cuts)
 
 
@@ -202,44 +230,97 @@ def band_marks(board: list[dict], above: dict) -> dict:
     return marks, grades
 
 
-def band_segments(remaining_order: list[str], marked: dict, bars: int) -> dict:
-    """{segment index: tier} -- where each surviving cliff falls across the drawn segments.
+def assign_bands(board: list[dict], above: dict, marks: dict) -> tuple[dict, dict]:
+    """(pid -> (position, band), position -> {band: [pid ordered]}) -- assigned ONCE, at build.
 
-    A cliff belongs to the player ABOVE it, so it is still ahead of you exactly while he is.
-    Its depth is his rank among the players LEFT, which is why the mark slides toward the front
-    of the tank as the drop approaches instead of sitting at a fixed place on the dial.
+    THE OWNER'S SPEC, and it is the one the evidence already forced: "let the bands be static,
+    almost assigning each player a spot in the spectrum upon build of the roster pool, based on
+    the scoring settings. each league's scoring may result in varying placements inside those
+    bands, but their valuation is fairly representative of their strength regardless of roster
+    state and others being pulled."
+
+    That is exactly right, and static is REQUIRED here rather than merely permitted. The cuts are
+    made on opening `bpa`, which is the league's own scoring settings applied to the projection
+    minus that position's opening replacement level. Re-banding mid-draft would re-read the
+    yardstick against a shrinking pool -- the defect #74/#76 cut out of `bpa` (the ruler carried
+    94.5% of its movement) and the one that made the crossing rule useless in #271-#280.
+
+    THE ONE CASE WHERE A STATIC BAND GOES STALE, named rather than hidden: a mid-draft status
+    change. An IR or PUP designation moves a player's projection under #191's haircut, and his
+    band was cut before it. Small, real, and the only reason this assignment would ever need to
+    be re-read.
     """
-    if bars <= 0 or not remaining_order:
-        return {}
-    seen = {}
-    for i, pid in enumerate(remaining_order):
-        tier = marked.get(pid)
-        if tier is None:
+    band_of, members = {}, {}
+    for pos in sorted(above):
+        rows = sorted((r for r in board if str(r["player_id"]) in above[pos]
+                       and r.get("bpa") is not None),
+                      key=lambda r: r["bpa"], reverse=True)
+        edges = [0] + [m["rank"] for m in marks[pos]] + [len(rows)]
+        members[pos] = {}
+        for name, (a, b) in zip(BANDS, zip(edges, edges[1:])):
+            ids = [str(r["player_id"]) for r in rows[a:b]]
+            members[pos][name] = ids
+            for pid in ids:
+                band_of[pid] = (pos, name)
+    return band_of, members
+
+
+def band_widths(sizes: dict) -> dict:
+    """Segments per band: EQUAL, one slice each, not proportional to how many players it holds.
+
+    PROPORTIONAL WAS BUILT FIRST, AND IT LOST ON THE RENDERING (both arms, side by side). RB
+    opens 3/4/18/11, so proportional widths come out 1/2/8/5: the three elite backs who decide
+    the position get ONE segment and eleven replacement-grade backs get five. Two failures, and
+    the first is fatal:
+
+      * A one-segment band has exactly two states, full and empty. "Two of the three elite are
+        left" -- the single most decision-relevant fact at RB -- cannot be drawn at all.
+      * Attention is inverted. The most display area goes to the band a drafter cares least
+        about, in every position measured.
+
+    Equal slices give every band enough resolution to show partial depletion, which is the whole
+    job. What is given up is the sense of how MANY players a band holds -- but the owner already
+    ruled this scale arbitrary and unitless ("each position is going to be arbitrary of the
+    entire length is the entire production pool"), and the display contract forbids the counts
+    that would state it precisely anyway. A band's size is not a thing this gauge ever promised
+    to show; what is left inside each band is.
+
+    Every non-empty band gets at least one segment, the same promise the whole-tank gauge makes.
+    """
+    live = [n for n in BANDS if sizes.get(n, 0) > 0]
+    if not live:
+        return {n: 0 for n in BANDS}
+    base, extra = divmod(SPAN, len(live))
+    width = {n: 0 for n in BANDS}
+    for i, n in enumerate(live):
+        width[n] = max(1, base + (1 if i < extra else 0))
+    return width
+
+
+def render_bands(sizes: dict, left: dict) -> str:
+    """The spectrum: each band drains INSIDE ITS OWN SLICE, never from the front of the tank.
+
+    This is the whole point of the owner's spec. The aggregate gauge drew one fill edge over a
+    COUNT of survivors, which silently assumes the players who left were the ones at the front.
+    For an engine draft that is true -- it takes the best available at a position by
+    construction, which is why the out-of-order rate measured 0 of 219 and why that zero is the
+    ENGINE's signature and not evidence about drafters. For the human this gauge is built for it
+    is false: take a mid-grade tight end early for roster reasons and the aggregate bar drains
+    its front, showing the elite gone when the elite is still sitting there.
+
+    Drawn per band, nothing has to be assumed about who left. Each departure is recorded in the
+    band it came from, so the display cannot make a claim that could be wrong.
+    """
+    width = band_widths(sizes)
+    out = []
+    for n in BANDS:
+        w = width[n]
+        if w <= 0:
             continue
-        seg = min(bars - 1, i * bars // len(remaining_order))
-        if seen.get(seg) != "HIGH":                 # HIGH wins a shared segment
-            seen[seg] = tier
-    return seen
-
-
-def render(bars: int, cliffs: dict | None = None) -> str:
-    """What a reader SEES: segments, and which of them a drop-off sits in. Never a number.
-
-    A highlighted segment says WHERE the fall is, not how far it falls -- the magnitude stays
-    behind the display contract with the counts and the points.
-    """
-    cliffs = cliffs or {}
-    cells = []
-    for i in range(BARS):
-        if i >= bars:
-            cells.append(".")
-        elif cliffs.get(i) == "HIGH":
-            cells.append("!")
-        elif cliffs.get(i) == "MEDIUM":
-            cells.append(":")
-        else:
-            cells.append("#")
-    return "[" + "".join(cells) + "]"
+        rem = left.get(n, 0)
+        fill = 0 if rem <= 0 else max(1, math.ceil(w * rem / sizes[n]))
+        out.append("#" * fill + "." * (w - fill))
+    return "[" + "|".join(out) + "]"
 
 
 def classify(order, pos_of, above):
@@ -288,7 +369,9 @@ def main() -> int:
     print(f"universe {prov['players_in_pool']}  season {len(season)}  gauge = {BARS} bars",
           flush=True)
     print("display = segments (+ optional %); counts are internal and NOT shown", flush=True)
-    print("  #  pool    !  the drop out of ELITE    :  a lesser band edge    .  gone\n",
+    print("  each tank is four bands -- ELITE | MID | DEPTH | MEH -- draining INDEPENDENTLY.",
+          flush=True)
+    print("  taking a mid-grade player shortens the MID slice; the elite slice does not move.\n",
           flush=True)
 
     for label in ("12T_ppr_BN18", "CAPTURE_fourth_and_forever"):
@@ -311,44 +394,38 @@ def main() -> int:
         pos_of = {str(r["player_id"]): r.get("position") for r in board0}
         positions = sorted(opening)
         marks, grades = band_marks(board0, above)
-        # A mark is drawn by the band it OPENS. The first drop out of the top band is the one
-        # that costs most, so it draws hardest; the rest are lesser boundaries of the same kind.
-        tier_of = {p: {m["pid"]: ("HIGH" if i == 0 else "MEDIUM")
-                       for i, m in enumerate(marks[p])} for p in positions}
-        # Opening order INSIDE each tank, fixed like the bar: a cliff keeps its place among the
-        # players, and only its distance from the front changes as they are taken.
-        tank_order = {p: [str(r["player_id"]) for r in
-                          sorted((r for r in board0 if str(r["player_id"]) in above[p]),
-                                 key=lambda r: r["bpa"], reverse=True)]
-                      for p in positions}
+        band_of, members = assign_bands(board0, above, marks)
+        sizes = {p: {n: len(members[p][n]) for n in BANDS} for p in positions}
 
         print(f"== {label}", flush=True)
-        print(f"   {'pick':>5}   " + "   ".join(f"{p:<13}" for p in positions), flush=True)
+        width = {p: len(render_bands(sizes[p], sizes[p])) for p in positions}
+        print(f"   {'pick':>5}  " + "  ".join(
+            f"{p + ' ' + '/'.join(str(sizes[p][n]) for n in BANDS):<{width[p]}}"
+            for p in positions), flush=True)
 
         series, rows = {p: [] for p in positions}, []
         for n in range(0, len(order) + 1, STRIDE):
             taken = {pid for _, pid in order[:n]}
-            row = {"after_picks": n, "bars": {}, "pct": {}, "_left": {}}
-            row["cliffs"] = {}
+            row = {"after_picks": n, "bars": {}, "pct": {}, "_left": {}, "_band_left": {}}
             for p in positions:
                 left = len(above[p] - taken)
                 row["_left"][p] = left                      # internal, audit only
                 row["bars"][p] = segments(left, opening[p])
                 row["pct"][p] = round(100.0 * left / opening[p]) if opening[p] else 0
-                alive = [pid for pid in tank_order[p] if pid not in taken]
-                row["cliffs"][p] = {str(k): v for k, v in
-                                    band_segments(alive, tier_of[p], row["bars"][p]).items()}
+                # PER BAND, so nothing is assumed about WHICH players left (owner's spec).
+                row["_band_left"][p] = {nm: sum(1 for pid in members[p][nm] if pid not in taken)
+                                        for nm in BANDS}
                 series[p].append(row["bars"][p])
             rows.append(row)
-            print(f"   {n:>5}   " + "   ".join(
-                f"{render(row['bars'][p], {int(k): v for k, v in row['cliffs'][p].items()})}"
-                f"{row['pct'][p]:>4}%" for p in positions), flush=True)
+            print(f"   {n:>5}  " + "  ".join(
+                f"{render_bands(sizes[p], row['_band_left'][p])}" for p in positions), flush=True)
 
         mono = {p: all(b <= a for a, b in zip(series[p], series[p][1:])) for p in positions}
         tapped = {p: next((r["after_picks"] for r in rows if r["_left"][p] == 0), None)
                   for p in positions}
         census = classify(order, pos_of, above)
         report["arms"][label] = {"opening_count": opening, "bar_points": level,
+                                 "band_sizes": sizes,
                                  "samples": rows, "monotone": mono, "tapped_at": tapped,
                                  "census": census, "marks": marks,
                                  "grades": grades}

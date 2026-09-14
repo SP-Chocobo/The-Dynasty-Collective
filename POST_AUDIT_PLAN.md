@@ -10758,3 +10758,82 @@ SEE, so the evidence and the surface cannot drift; the JSON keeps the counts for
 
 **Instrument:** `evidence/mode_boundary/pool_gauge.py` → `pool_gauge.json`. **Surface spec:**
 `DRAFT_ROOM_UI.md` §14.
+
+### `#282b` THE TANK IS FOUR TANKS — per-band draining, and two of my own recommendations reversed
+
+**OWNER'S BUILD SPEC**, and it corrects a defect in `#282`'s rendering rather than adding a
+feature: *"if a player takes someone that is in say, the mid grade while an elite is still there,
+I want it to shrink that mid band, not from the top... let the bands be static, almost assigning
+each player a spot in the spectrum upon build of the roster pool, based on the scoring settings"*
+— and *"if someone else takes an inferior player, that doesn't diminish the upper range's pool. so
+shouldn't on our gas tank. granted, I'd still want the total strength showed to dip by the player
+being taken, just change where in the total representation that lessening comes from."*
+
+**THE DEFECT THIS FIXES.** `#282` drew one fill edge over a COUNT of survivors, which silently
+assumes the players who left were the ones at the front of the pool. Drawn per band, nothing has
+to be assumed: each departure is recorded in the band it came from, so the display cannot make a
+claim that could be false. The total still shortens by exactly one player — only the location of
+the loss changes.
+
+**A VACUOUS MEASUREMENT, CAUGHT BY `#245`.** Asked whether picks actually come out of band order,
+the instrument returned **0 of 219, every position, both leagues** — identical, which `#245` says
+is a broken instrument until proven otherwise. It is. Every recorded draft in this repo was made
+by the ENGINE, which takes the best available within a position by construction, so a zero
+out-of-order rate is the engine's own signature and says nothing about drafters. The one real
+human draft on hand (`OWNER_REDRAFT_2026-09-08.md`) is a single seat's 14 picks, so availability
+at each pick cannot be reconstructed. **No data in this repo can validate or refute the case.**
+The design is adopted on the argument, not on a measurement, and that is recorded as such: the
+per-band rendering is strictly safer because it makes no ordering claim at all.
+
+**MEMBERSHIP IS DERIVED FROM THE SCORING SYSTEM, never a set share** (owner: *"do not have each
+band be a static percentage, or count of players... TE may only have like 4-6 elite. that's
+valid"*). Measured, the same position changes shape entirely with the rulebook:
+
+| | ELITE / MID / DEPTH / MEH | share |
+|---|---|---|
+| TE, 12-team PPR | 2/2/5/10 | 11/11/26/53 |
+| TE, Fourth and Forever | 3/6/11/4 | 12/25/46/17 |
+| RB, Fourth and Forever | 4/13/9/10 | 11/36/25/28 |
+| QB, Fourth and Forever | 9/9/9/4 | 29/29/29/13 |
+
+ELITE spans 11%-29% across eight position/league cells. Nothing is set.
+
+**TWO OF MY OWN RECOMMENDATIONS REVERSED IN THIS PASS, both on the rendering:**
+
+1. **Travelling marks — withdrawn.** `#282` drew three band edges that slid toward the front of
+   the tank as players ahead of them left. Per-band slices supersede the whole mechanism; the
+   code is deleted rather than left as a second way to draw the same thing (`#126`).
+2. **Proportional band width — withdrawn, one hour after I recommended it.** I argued the band
+   sizes were the most useful un-numbered fact the gauge could carry. Rendered side by side, it
+   fails: a small ELITE band draws one or two segments — two or three states in total, unable to
+   express *"two of the four elite remain"*, the most decision-relevant fact at the position —
+   while the widest band takes the most room. It inverts attention toward the band that matters
+   least, in every position measured. **Equal slices**, with the cost stated in
+   `DRAFT_ROOM_UI.md` §14: they do not show how many players a band holds, and a reader could
+   take four equal slices as four equal groups. The table above is why they are not.
+
+**`#282c` THE GREEDY SPLITTER WAS WRONG AT RB — caught by the owner reading the sizes.**
+
+*"is it really 3 and 4 only for elite and decent rb? I'd think solid would be deeper than that."*
+It is, and the objection located a real defect in the algorithm rather than in the data.
+
+Greedy adds one cut at a time and never revisits. A steep head captures its first cut, and the
+second is then stranded inside a flat run. Fourth and Forever RB drops **47.2 points from RB3 to
+RB4** and then runs shallow — 15, 9, 3, 0.6, 5, 4, 1, 2, 3 — all the way to RB17, where it steps
+14.6 again. Greedy answered **3/4/18/11**, cutting at RB7 in the middle of that shallow run. The
+exact partition answers **4/13/9/10**, cutting at RB17 where the next real step is.
+
+| | greedy (shipped in `#282`) | exact | separation on points |
+|---|---|---|---|
+| RB | 3 / **4** / 18 / 11 | 4 / **13** / 9 / 10 | 92.8% → **93.7%** |
+| WR | 4 / 7 / 10 / 15 | 4 / 6 / 11 / 15 | 93.9% → 93.9% |
+| TE | 3 / 6 / 11 / 4 | 3 / 6 / 11 / 4 | identical |
+
+WR and TE were unaffected, and that is the tell: the defect only bites where the head is steep
+enough to capture the first cut. `band_cuts` is now the Fisher/Jenks dynamic program — minimum
+total within-band squared deviation for exactly k+1 bands, O(k·n²) on a pool of a few dozen, so
+there is no reason to approximate. Still parameter-free; still no constant anywhere.
+
+**The margins all held or improved** under the exact cuts, and QB in `12T_ppr_BN18` remains the
+honest null at +0.3 over arbitrary equal slices. Every band table published in `#282b` and
+`DRAFT_ROOM_UI.md` §14 was regenerated — the first printing of them carried greedy's numbers.
