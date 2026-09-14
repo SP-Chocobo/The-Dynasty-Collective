@@ -66,6 +66,23 @@
      "1"
     ]
    }
+  },
+  "k10_seed11": {
+   "top_k": 10,
+   "seed": 11,
+   "n_picks": 312,
+   "first_upside_pick": {
+    "round": 16,
+    "pick_no": 187
+   },
+   "elapsed_s": 578.1,
+   "opponent_noise": {
+    "top_k": 10,
+    "seed": 11,
+    "sharp_seats": [
+     "1"
+    ]
+   }
   }
  }
 }

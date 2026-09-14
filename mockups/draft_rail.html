@@ -72,10 +72,31 @@ h1{font-family:Cinzel,Georgia,serif;font-weight:600;letter-spacing:.08em;
 .spanbar{position:absolute;bottom:2px;height:3px;border-radius:2px;
   background:linear-gradient(90deg,var(--gold-b),var(--cliff-b));opacity:.75}
 
-/* the dim: the side UI eats the right edge */
+/* the dim: the side UI eats the right edge. Scoped to the TRACK, so it never reaches the
+   wait band below it -- the band is a statement, not something that fades out. */
+.railwrap{position:relative}
 .fade{position:absolute;top:0;bottom:0;width:112px;pointer-events:none;z-index:3}
 .fade.l{left:0;background:linear-gradient(90deg,var(--surface) 12%,transparent)}
 .fade.r{right:0;background:linear-gradient(270deg,var(--surface) 12%,transparent)}
+
+/* the wait band -- the rail's own sentence about the gap it draws */
+.waitband{display:flex;align-items:center;justify-content:space-between;gap:1rem;
+  flex-wrap:wrap;padding:.7rem .9rem;border-top:1px solid var(--line);
+  background:linear-gradient(90deg,rgba(58,217,200,.07),transparent 62%)}
+.waitband.none{background:linear-gradient(90deg,rgba(123,112,89,.10),transparent 62%)}
+.wb-main{display:flex;align-items:baseline;gap:.5rem;min-width:0}
+.wb-n{font-family:"JetBrains Mono",ui-monospace,Consolas,monospace;
+  font-size:1.85rem;font-weight:700;line-height:1;color:var(--cliff-b);
+  font-variant-numeric:tabular-nums}
+.waitband.none .wb-n{font-size:1.05rem;color:var(--dim);letter-spacing:.02em}
+.wb-t{font-size:.95rem;color:var(--ink)}
+.wb-t em{font-style:normal;color:var(--muted)}
+.wb-side{display:flex;align-items:center;gap:.9rem;flex-wrap:wrap;
+  font-size:.72rem;color:var(--muted)}
+.wb-side span b{color:var(--ink);font-weight:600}
+.wb-side .k{font-size:.56rem;letter-spacing:.13em;text-transform:uppercase;color:var(--dim);
+  display:block}
+@media (max-width:560px){ .wb-n{font-size:1.45rem} .wb-t{font-size:.86rem} }
 
 .readout{display:flex;gap:.4rem;flex-wrap:wrap;margin-top:.9rem}
 .chip{border:1px solid var(--line-2);border-radius:6px;padding:.4rem .6rem;
@@ -111,10 +132,13 @@ span the engine's waiting-cost numbers are already about.</p>
     </div>
     <button class="recenter" id="rc" disabled>&#9678; Re-center</button>
   </div>
-  <div class="railview" id="view">
-    <div class="railtrack" id="track"></div>
+  <div class="railwrap">
+    <div class="railview" id="view">
+      <div class="railtrack" id="track"></div>
+    </div>
+    <div class="fade l"></div><div class="fade r"></div>
   </div>
-  <div class="fade l"></div><div class="fade r"></div>
+  <div class="waitband" id="wb"></div>
 </div>
 
 <div class="readout" id="readout"></div>
@@ -124,6 +148,12 @@ span the engine's waiting-cost numbers are already about.</p>
   <p>It runs <b>my previous turn &rarr; my next turn</b>, straight out of the pick order. Nobody picked
   &ldquo;show 6 ahead.&rdquo; Here that is <b>27 boxes</b>; at this manager's next turn it is <b>2</b>. A fixed
   count would be wrong at both.</p></div>
+
+  <div class="note"><h3>The band says it in words</h3>
+  <p>&ldquo;<b>23 picks until you are back on the clock</b>&rdquo; &mdash; read off the pick order, never typed
+  in. Three states, not one: a number, <b>back-to-back</b> when the gap is zero (this manager has two
+  of those), and <b>no further turns</b> at the end &mdash; which must never render as &ldquo;0 picks
+  away.&rdquo;</p></div>
 
   <div class="note"><h3>The gap is the engine's own quantity</h3>
   <p><b>23 intervening picks.</b> That is the exact span <span class="mono">survival_probability</span>,
@@ -216,10 +246,37 @@ view.addEventListener('scroll', () => {
   }, 90);
 });
 
+// THE WAIT BAND. Every figure is read off the window; none is typed in. Three states, because
+// "no next turn" is not zero picks away -- the same absence rule the engine holds everywhere.
+(function(){
+  const wb = document.getElementById('wb');
+  const cur = D.boxes.find(b => b.pick_no === D.current);
+  const nxt = D.boxes.find(b => b.pick_no === D.nextOwn);
+  if (!nxt) {                                    // no further turn -- never a 0
+    wb.classList.add('none');
+    wb.innerHTML = '<div class="wb-main"><span class="wb-n">\u2014</span>' +
+      '<span class="wb-t">That was your last pick. <em>No further turns this draft.</em></span></div>';
+    return;
+  }
+  const n = D.intervening, rounds = nxt.round - cur.round;
+  const phrase = n === 0
+    ? '<span class="wb-n">\u21ba</span><span class="wb-t">You are up again <b>immediately</b> \u2014 ' +
+      '<em>back-to-back picks.</em></span>'
+    : '<span class="wb-n">' + n + '</span><span class="wb-t">pick' + (n === 1 ? '' : 's') +
+      ' until you are back on the clock' +
+      (n === 1 ? ' \u2014 <em>one away.</em>' : '') + '</span>';
+  wb.innerHTML =
+    '<div class="wb-main">' + phrase + '</div>' +
+    '<div class="wb-side">' +
+      '<span><span class="k">Your next</span><b>' + nxt.label + '</b> \u00b7 #' + nxt.pick_no + '</span>' +
+      '<span><span class="k">Rounds away</span><b>' + (rounds === 0 ? 'same round' : rounds) + '</b></span>' +
+      '<span><span class="k">Taken meanwhile</span><b>' + n + '</b> off the board</span>' +
+    '</div>';
+})();
+
 // readout: every figure here is counted from the window, never typed in
 const inWindow = D.boxes.length, tradedHere = D.boxes.filter(b => b.traded).length;
 const chips = [
-  ['Intervening picks', D.intervening, 'before your next turn'],
   ['Window', inWindow + ' boxes', 'pick ' + D.prevOwn + ' \u2192 ' + D.nextOwn],
   ['Traded in window', tradedHere + ' of ' + inWindow, 'picker \u2260 slot owner'],
   ['Rounds spanned', D.boxes[0].round + '\u2013' + D.boxes[inWindow-1].round, 'one wait'],
