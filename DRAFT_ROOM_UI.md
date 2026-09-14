@@ -392,6 +392,8 @@ later.** Worth knowing before either is built.
 | U10 | Slowest vs average for the recommendation | **WORKING: show both, user picks.** Settles the §5 a-bis contradiction by not settling it — the spread is visible and the user chooses. |
 | U11 | Does the wait band carry the forfeit? | **WORKING: no.** The band states pick-order facts anyone can verify from the board; an engine projection alongside them would blend a certainty with an estimate. Forfeit stays on the cards. |
 | U12 | "Since your last pick" digest | **WORKING: no** — the rail already shows it when you scroll back. A second surface for the same information is duplication. |
+| U14 | Per-position upside: engine-decided, user-toggled, or notice-plus-toggle? | **WORKING: notice-plus-toggle** (§11) — derived trigger, user's action, toggle default-on inside the notice. |
+| U15 | One ranked list vs per-position lanes | **WORKING: derived from mode state** (§11) — shared mode → one list; diverged modes → lanes. Folds the R3 swing into U14. |
 | U13 | May the live board poll Sleeper on a timer, or is refresh strictly manual? | **RULED: polling is allowed.** The constraint is *no automatic **paid** API calls*. Sleeper reads are free and uncovered. The refresh button becomes an immediate-update override, not the only mechanism. |
 
 ### On U6, because it settles something §2 left open
@@ -404,3 +406,104 @@ button remains the third: back to the current pick.
 
 Nothing above changes engine behaviour. Every quantity named here already exists; what is being
 decided is which of them a person can see, and what the blanks mean.
+
+---
+
+## 11. The depletion notice, and why it is the best answer we have found to the mode switch
+
+**The owner's pattern**, from a spitballing pass: when a position's pool runs dry, raise a notice
+that *recommends* upside grading for that position, and put the toggle **in the notice, already
+on, selectable off**.
+
+This is better than anything either of us proposed before it, for reasons worth writing down.
+
+### The notice and the toggle are ONE OBJECT, which kills the footgun
+
+I had argued against a bare per-position toggle because `#232` measured upside mode handing TE
+**+68.58 at the flex**: a user who flips TE to upside sees TE climb and reads it as *"the engine
+likes this TE"* when they caused it — a setting wearing a finding's clothes, the exact defect
+class this repo keeps finding. **That failure needs the switch to be reachable without its
+reason.** Here it is not. The toggle only exists attached to the evidence that produced it.
+
+### It threads `#56` and `#55` at once, which those two usually will not allow
+
+- The **trigger** stays derived — the per-position crossing, no invented constant (`#56`).
+- The **action** is the user's — the engine proposes, the human disposes (`#55`'s philosophy,
+  which kept `pick_necessity` observable).
+
+And it dissolves `#223` (*"the transition concept is GENUINELY MISSING — for lack of a decision,
+not material"*) without anyone inventing a transition. It stops being an engine rule and becomes
+a conversation.
+
+**Default ON, opt off.** Default-off means the detection never does anything for anyone who does
+not go looking, which is most people. Default-on means it works out of the box and the veto
+exists.
+
+### MODE DIVERGENCE IS THE TRIGGER FOR LANE DISPLAY
+
+The one problem a per-position mode does not solve by itself: an upside-scored WR and a
+balanced-scored RB in a single ranked list are two differently-produced numbers pretending to be
+comparable. The notice pattern answers it, because the notice is per-position:
+
+> While **every position shares a mode**, one ranked list is meaningful — `#229` authorizes
+> cross-position VOR. The moment **modes diverge**, the board splits into per-position lanes,
+> because no single function is producing the numbers any more.
+
+That is derived from mode state, not chosen, and it collapses two open questions into one: the
+per-position toggle and the R3 lanes swing from the mockup round are the same decision.
+
+### The wording — OWNER'S CORRECTION TO ME
+
+My first draft said *"WR — 2 left above replacement, from 41 at the opening board."* The owner:
+**"2left above replacement feels obscure to someone who hasnt spent the last month chatting with
+you. too technical."** Correct. That is this repository's vocabulary, not a drafter's.
+
+What survives the rewrite is the **before/after pair**, which explains itself without defining
+anything:
+
+> **The WR pool is thinning out.**
+> 41 receivers were worth taking when this draft opened. **2 are now.**
+> From here, ranking them by upside makes more sense than by proven value.
+> `[x] Rank WR by upside`
+
+Nobody needs to know what a replacement level is; 41 → 2 does the work. *"Worth taking"* is a
+fair plain gloss on above-replacement — and a better one than *"worth starting"*, which would
+name a genuinely different quantity (`startable_floor`, `#185`).
+
+Two alternates kept for the build:
+
+- *"**WR is picked over.** After the next 2, they're all much of a muchness."* — says what it
+  means for the DECISION: below the line the choice stops mattering, which is precisely why the
+  mode should change.
+- *"**41 WRs were worth taking at the open. 2 are left.** Rank by upside now?"* — shortest, and
+  poses it as a question rather than a recommendation.
+
+**The toggle label carries as much weight as the notice.** "Rank WR by upside" says what it does;
+"upside grading" is half our word.
+
+### Details that follow
+
+**Dismissal is three-state and must stick.** never-offered / accepted / declined. Re-prompting a
+declined position every pick is nagging, and a drained pool cannot un-drain, so there is no
+honest reason to ask twice. Declined stays declined for that position for the draft.
+
+**No inverse notice.** A position still deep when a round rule would have flipped it — the
+owner's original complaint — gets no popup. Notices are for actions. That case is the indicator
+sitting quietly: `RB · balanced · plenty left`.
+
+### Two things that will bite during the build, recorded now
+
+**REPLACEMENT LEVEL MOVES.** It is computed from remaining demand and RISES as good players
+leave, so "41 at the open" and "2 now" are counted against DIFFERENT lines. Each statement is
+true as of its moment, and arguably the moving bar is the better signal because it captures both
+the drain and the rising floor — but **the count will fall faster than players are actually
+taken**, and if nobody expects that, the first sighting will read as a bug.
+
+**It needs state that does not exist.** One integer per position, captured at the opening board
+and carried. Cheap, but new.
+
+**And per `#270`, these notices fire on the POOL, not the calendar.** Against sharp opponents the
+crossing may never fire and no notice ever appears; against noisy ones they land around r12–r17.
+That is correct rather than broken — tracking the real pool is the whole reason to prefer this to
+"round 15" — but it means *"how often will I see this?"* has the honest answer **"depends who you
+are drafting against."**
