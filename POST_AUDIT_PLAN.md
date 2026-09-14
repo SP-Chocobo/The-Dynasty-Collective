@@ -9617,3 +9617,107 @@ answer the same question and record different things about it. An instrument tha
 outcome but not the state that produced the outcome can only ever confirm or deny — it can never
 explain, and the explaining is what a surprising result needs. Record parity between instruments
 aimed at one question should be checked when the second one is written, not when it surprises you.
+
+---
+
+## #270 COMPLETE — the crossing rule fires or not depending on OPPONENT QUALITY, and the depth battery could never have seen it
+
+The noise arm finished. `12T_ppr_BN18` held fixed — the same config the depth battery runs — with
+`opponent_noise` making every non-sharp seat pick uniformly from its own top `k` candidates.
+
+```
+run          top_k  seed   crossing fires
+k1_seed0         1     0   NEVER      <- control: no noise, all seats sharp
+k3_seed11        3    11   NEVER
+k3_seed22        3    22   NEVER
+k5_seed11        5    11   r17 p195
+k5_seed22        5    22   NEVER
+k10_seed11      10    11   r16 p187
+k10_seed22      10    22   r12 p142
+```
+
+**Seven runs, not eight, and the count is the instrument being right rather than short.** `k=1`
+is the control and is DETERMINISTIC — drawing uniformly from the top 1 is the top 1 whatever the
+seed — so a second seed at `k=1` would be a byte-identical re-run, exactly the duplicated arm
+`#159` built a detector for. I reported "of 8" repeatedly during the run. That was my arithmetic,
+not the script's.
+
+### The result
+
+**A monotone dose-response.** k=1 never; k=3 never in both seeds; k=5 fires in one of two; k=10
+fires in both, and earlier. `k10_seed22` at **r12** beats the round rule's r15 — the crossing is
+not merely reachable under noise, it can arrive *before* the fixed-round switch it was proposed
+to replace.
+
+Set beside the depth battery, which never fires the crossing anywhere from 168 to 360 picks with
+every seat sharp, the reading is:
+
+> **The crossing rule's behaviour is a property of the OPPONENTS, not of the league's depth.**
+
+That is a hard limit on what a battery whose every seat is the engine can establish about this
+rule, and the depth ladder's five straight `NEVER`s should be read in that light rather than as
+"the crossing does not fire."
+
+### CORRECTION — `#263b` has the sign backwards for the crossing
+
+`#263b` recorded that every battery fire-round is a LOWER BOUND, reasoning that all-engine seats
+drain the pool maximally efficiently and so would reach exhaustion soonest. **For the crossing
+rule that is exactly wrong, and this data refutes it.** Sharp play is the case where the crossing
+is LEAST likely, not most: efficient drafting concentrates on the most valuable players and
+leaves whole positions still stocked above their own replacement levels, and `n_above` counts
+across every position. All-engine is the conservative extreme in the opposite direction from the
+one recorded.
+
+`#263b` stands as written for the ROUND rule, which is a pick-count and cannot care how anyone
+drafts.
+
+### The mechanism is CONSISTENT with the spread account, and still NOT TESTED
+
+`#269`'s proposal — noise spreads consumption across positions and walks several toward their
+floors at once, where sharp play concentrates — predicts exactly this monotone shape. Seven runs
+agreeing with a mechanism is not the mechanism measured. The noise arm still records no
+`positional_composition` (`#269`), so the direct test remains a targeted re-run of the fired
+seeds with composition captured. Cheap now: the arm is done and the question is two drafts wide.
+
+---
+
+## #271 OWNER-RAISED — one global upside switch over pools that drain at different rates
+
+*"would it make more sense to have displayed pools be relative of upside modes specific to each
+position, relative to their respective drain rates? not one universal that starts to modulate
+some pools that are still deep. or at least separate out offensive upside mode and defensive."*
+
+**The premise checks out in the code.** `use_upside` is a single boolean and `if use_upside:`
+(`draft_room.py:3117`) transforms every row at once. But `_vor` is already measured against
+PER-POSITION replacement levels, and the crossing test collapses all of it:
+
+```python
+not bool((pool.loc[measurable, "_vor"] > 0).any())
+```
+
+That `.any()` is a global OR. **One deep pool holds the entire board in balanced mode** — in a
+12-team PPR, WR alone can keep QB, TE and the IDP tail balanced long after those are picked over.
+The round rule errs from the other end, flipping pools that are still fat. Both current rules are
+the same category of mistake: one switch for populations with very different drain rates.
+
+**The per-position form is DERIVED, not invented** — group the `.any()` by position instead of
+collapsing it. No new constant, no new threshold, nothing calibrated: it stops discarding
+information the engine already computes, which is the `#56`-clean shape.
+
+### Two things to establish before believing it
+
+**It may change what the mode MEANS.** Upside mode is not a display choice: `#231`/`#232` found
+it removes the displacement counterweight and hands TE a **+68.58 handicap at the flex**. Per
+position, an upside-scored QB and a balanced-scored WR would sit in ONE ranked list — a
+cross-mode comparison `universal_value`'s contract has never had to answer, adjacent to `#229`'s
+domain ruling (cross-position VOR authorized; the anchor keys the domain). Possibly sound,
+possibly a unit collision. Not assumable either way.
+
+**Offence/defence is the safer first cut, on grounds beyond drain rate.** IDP and K/DEF differ
+from offence in DATA SUPPLY, not only depth — `#210` (Sleeper supplies IDP with no stat lines),
+`#80` (K loses `proj_3yr` entirely). Those pools behave differently because less is known about
+them, which justifies a split without first settling the per-position math, and with a far
+smaller blast radius.
+
+**Measure it against NOISY opponents.** Per `#270`, a variant judged against all-engine seats
+would look inert for the same reason the global crossing looked inert.
