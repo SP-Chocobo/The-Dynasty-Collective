@@ -9961,3 +9961,95 @@ comm -13 <(git ls-tree -r --name-only HEAD | sort) \
 found that no `BLIND-A1` existed. Here I searched one tree and incorrectly concluded no FFCL
 material existed. The difference is entirely which of the two I searched, and I did not notice
 I had chosen.
+
+---
+
+## `#274` MECHANISM CLOSED — the global crossing rule is a TIGHT END DETECTOR
+
+`#271` left two things unexplained: bench depth moves the crossing not at all, and team count
+moves it non-monotonically. `evidence/mode_boundary/crossing_mechanism.py` replays the exact
+pick sequences `#271` recorded and rebuilds the board at every 5th prefix, reading the rule's
+own quantity off the exported column.
+
+**Why `bpa` is the rule's quantity and not a proxy for it:** the rule tests
+`not (pool.loc[measurable, "_vor"] > 0).any()` (`draft_room.py:3115`) on an internal column,
+but `_scale_vor_to_bpa` is the IDENTITY (`return vor.astype(float)`, `draft_room.py:2105`) since
+`#74`/`#76` removed the moving ruler. Same values, NaN passed through. Read from source.
+
+**The probe checks itself.** It restates the rule on an exported column; `#271` detected firing
+from the engine's own `growth_signal`. They must agree or the probe is wrong:
+
+| arm | `#271` | probe | verdict |
+|---|---|---|---|
+| 8T_ppr_BN18 | NEVER | NEVER | ok |
+| 10T_ppr_BN18 | 231 | 230 | ok (stride 5) |
+| 12T_ppr_BN18 | NEVER | NEVER | ok |
+| 14T_ppr_BN18 | NEVER | NEVER | ok |
+
+4 of 4. No new drafts were simulated — deliberately, because a fresh simulation is a DIFFERENT
+draft (the engine's picks depend on the board it is shown), and "why did THIS draft not fire"
+cannot be answered on a draft that is not that one.
+
+### The answer: every position crosses zero early except TE, and the global rule waits for TE
+
+First pick at which each position's own best remaining player falls to or below its replacement
+level:
+
+| arm | picks | QB | RB | WR | **TE** | global rule |
+|---|---|---|---|---|---|---|
+| 8T_ppr_BN18 | 208 | 55 | 75 | 55 | **NEVER** | NEVER |
+| 10T_ppr_BN18 | 260 | 70 | 135 | 70 | **230** | **230** |
+| 12T_ppr_BN18 | 312 | 85 | 185 | 85 | **NEVER** | NEVER |
+| 14T_ppr_BN18 | 364 | 85 | NEVER | 100 | **NEVER** | NEVER |
+
+**The global column is the TE column.** In the one arm that fires, it fires at the pick TE
+crosses and not one sample earlier. In the three that never fire, TE is the position that never
+crosses. QB and WR were below replacement from picks 55-100 in every arm — a third of the way
+in — and the board stayed in balanced mode for the remaining two hundred picks.
+
+So `not (_vor > 0).any()` does not mean *the board is exhausted*. It means **even tight end is
+exhausted**, and the whole rule is hostage to the single most anomalous position on it.
+
+### TE's VOR does not decay toward zero. It REBOUNDS, repeatedly
+
+Top remaining TE VOR, sampled every 40 picks:
+
+```
+  8T   121 → 27 → 12 →  5 → 18 → 11
+ 12T   137 → 58 → 17 → 28 → 30 → 13 → 15 →  8
+ 14T   159 → 75 → 33 → 35 → 47 → 11 → 19 → 11 →  6 → 13
+```
+
+It approaches zero and then climbs back, more than once per draft. This is not noise and it is
+not a surprise — `replacement_levels`' own docstring predicts it: *"a BENCH pick at a position
+drains the pool without reducing any team's starter demand, so it moves the level."* Every
+bench-depth TE taken lowers the replacement TE faster than it lowers the best remaining TE, so
+the gap between them WIDENS. `#216` measured the same effect from the other side (the WR-TE
+level gap opening 43.6 → 59.3 on a TE-hoarding seat).
+
+### Which inverts `#261`'s premise rather than merely nulling it
+
+`#261` reasoned that a deeper bench would reach the crossing. **Extra bench rounds are extra
+bench picks, and bench picks are the exact mechanism that pushes TE's VOR back UP.** Depth does
+not fail to approach the crossing; it actively defers it. `#271`'s six-arm null had the right
+sign all along and nobody could read it.
+
+The non-monotonic team-count result needs no separate explanation once this is in hand: the rule
+demands four positions be simultaneously non-positive, one of which oscillates across zero. That
+is an alignment coincidence, not a threshold, and coincidences are not ordered in team count. 10T
+caught TE on a downswing at pick 230 while the other three had been negative for 95 picks.
+
+### What this does and does not license
+
+**It does NOT license "fix the crossing rule."** The rule faithfully reports the quantity it was
+asked about; the quantity is the problem, and repairing it is Phase 3 territory (`#50`,
+`#147`), not a mode-switch patch.
+
+**It DOES settle the per-position question the owner raised independently** — see
+`DRAFT_ROOM_UI.md` §13. Per-position upside grading is not a refinement of the global switch.
+The global switch is a defect, and per-position grading is the repair.
+
+**One thing to test before anyone builds on the TE account:** every arm here is `te_premium=False`
+1QB PPR. TE's behaviour is exactly what a TE-premium or no-TE-slot league would change most, and
+FFCL Group A is both (0.5 TEP, no dedicated TE slot). That arm is cheap now — the instrument
+takes 20s per league — and it is the obvious next measurement, NOT a claim this entry makes.

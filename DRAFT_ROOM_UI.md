@@ -592,3 +592,84 @@ for all-toggles-on.
 ordinals, three names"*). If WR-only shows rows 1, 2, 3, that is a FOURTH ordinal wearing the
 engine's rank as a disguise. Filtered rows keep their real standing — 3rd, 7th, 12th — or the
 filter silently becomes a re-recommendation.
+
+---
+
+## 13. The per-position question, now MEASURED — and why the mixer's meters are the honest view
+
+§11 and §12 were designed from the owner's instinct: *"would it make more sense to have
+displayed pools be relative of upside modes specific to each position, relative to their
+respective drain rates? not one universal that starts to modulate some pools that are still
+deep."* That instinct is now measured (`#274`), and it is stronger than it was proposed as.
+
+### The one number that settles it
+
+First pick at which each position's own best remaining player falls to or below its replacement
+level, against the pick at which the GLOBAL rule fires:
+
+| league | picks | QB | RB | WR | TE | **global rule** |
+|---|---|---|---|---|---|---|
+| 8 teams | 208 | 55 | 75 | 55 | never | **never** |
+| 10 teams | 260 | 70 | 135 | 70 | 230 | **230** |
+| 12 teams | 312 | 85 | 185 | 85 | never | **never** |
+| 14 teams | 364 | 85 | never | 100 | never | **never** |
+
+**Quarterback and receiver run dry around pick 55-100 in every league, and the board goes on
+recommending them in balanced mode for another two hundred picks.** The global switch is not a
+universal that "starts to modulate pools that are still deep" — it is a switch that never fires
+at all, because it waits for the one position that never runs dry.
+
+The owner's framing was that one universal mode wrongly modulates deep pools. The measurement
+says the failure runs the other direction as well, and harder: the universal mode wrongly
+withholds from DRAINED pools, for most of the draft, in three leagues out of four.
+
+### The meter is not a metaphor. It is the missing instrument
+
+§12 called the mixer meter "the depletion countdown in its natural visual grammar." That was an
+aesthetic argument. Here is the functional one: **the engine already computes this quantity per
+position and then throws the per-position part away.** `replacement_levels` returns a dict keyed
+by position; the mode switch collapses it with `.any()` into one boolean for the whole board.
+
+A channel strip per position, each showing its own headroom above replacement, is not a
+decorative rendering of a global number — it is the only display that does not destroy what was
+measured. Four meters at 8 teams, pick 120, would read: QB clipped, WR clipped, RB clipped, TE
+still nodding along. One master meter reads: fine.
+
+### THE TE CHANNEL IS GOING TO LOOK BROKEN, AND IT IS NOT
+
+TE's headroom does not fall monotonically — it drops toward zero and climbs back, several times
+per draft (8 teams: 121 → 27 → 12 → 5 → 18 → 11). A meter that rises late in a draft will read
+as a bug to anyone watching, so the UI has to be built knowing it is real.
+
+The cause is in `replacement_levels`' own docstring: a BENCH pick drains the pool without
+reducing any team's starter demand, so it moves the level — and at TE it moves the replacement
+down faster than it moves the best-remaining down, widening the gap. **Deep benches do not drain
+tight end toward the crossing. They push it away from it.** Which is also why §11's depletion
+notice must be worded as a LEVEL, never as a countdown that only goes one way: "2 left worth
+taking" can go back up to 5, and a countdown that reverses destroys trust in everything near it.
+
+### What this changes in §11 and §12, concretely
+
+**§11's depletion notice stops being a nicety.** It was proposed as a gentler alternative to a
+hard mode flip. It is now the only surface that would tell a drafter something true at pick 85 —
+*receivers are done, quarterbacks are done, the board is still pricing them as if they are not.*
+
+**§12's per-position toggles inherit a default that is no longer arbitrary.** A position's own
+crossing is the natural arm-point for its own channel, and unlike the global rule it actually
+occurs. `auto` per channel is a rule that fires; `auto` globally is a rule that did not fire in
+three of the four leagues measured.
+
+**The ALL / EVERYTHING naming problem (U17) gains a third member, and it matters more now.**
+There are three different boards: `OVERVIEW` (the curated lens — top overall plus each
+position's best), `EVERYTHING` (all toggles on — every position's full depth), and now the
+implied fourth question of WHICH channels are armed. Arming is orthogonal to display: a muted
+channel can still be armed, and it should be, or the drafter loses the warning for the position
+they stopped looking at. **Mute must not imply disarm.** That is the single most likely wiring
+error in this panel and it is the one that loses information silently.
+
+### STILL OPEN, and not answered by this measurement
+
+Every league measured is 1QB, PPR, `te_premium=False`, with a dedicated TE slot. **TE is exactly
+the position a TE premium or a missing TE slot would change most**, and FFCL Group A is both —
+0.5 TEP and no dedicated TE slot, where a tight end is a flex body. The instrument runs in ~20s
+per league, so this is cheap; it is named here as the next measurement, not assumed.
