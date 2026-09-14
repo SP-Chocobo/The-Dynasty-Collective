@@ -1,0 +1,12 @@
+{
+ "runs": {
+  "k1_seed0": {
+   "top_k": 1,
+   "seed": 0,
+   "n_picks": 312,
+   "first_upside_pick": null,
+   "elapsed_s": 607.6,
+   "opponent_noise": null
+  }
+ }
+}

@@ -9322,3 +9322,84 @@ boards rather than guessed at here.
 
 Consistent with the ruling above: the set is PRE-REGISTERED per phase, seats are CLASSIFIED
 against it rather than clustered, and "fits none of these" stays a reportable finding.
+
+---
+
+## #265 EXTRACTED — A REAL 360-PICK BOARD, AND IT USES A DRAFT FORMAT THE BATTERY NEVER RUNS
+
+Greatest Show on Paper 2 transcribed from 21 screenshots into
+`evidence/real_drafts/extracted/greatest_show_on_paper_2_board.json`. 12-team PPR superflex
+TE-premium, rulebook already captured at `data/league_captures/greatest_show_on_paper_2.json`.
+Extraction done by a background agent restricted to transcription; **every self-reported check
+was re-verified here against the file rather than taken on the agent's word:**
+
+```
+1. pick_no 1..360 unique & complete    True
+2. 12 per round, 30 rounds             PASS
+3. round shapes r1-r6: asc desc desc asc desc asc
+   naive snake: False    third-round-reversal: True
+4. duplicate player names              0
+6. placeholders 48, sequential 1.01 -> 4.12, complete
+   illegible 7 (1.9%), 0 names invented
+positions excluding placeholders: WR 116, RB 90, QB 54, TE 52
+```
+
+### THE FINDING: this league is THIRD-ROUND REVERSAL, and no battery arm ever is
+
+Rounds run `1->12, 12->1, 12->1`, then alternate. `generate_pick_order` has supported `"3rr"`
+since M2 and its docstring notes Sleeper exposes it as `settings.reversal_round == 3`. But
+**`run_draft_battery.py` and `draft_battery.py` contain zero references to `draft_type`, `3rr` or
+`reversal`** — every one of the 34 arms drafts pure snake. Grep across the tree finds exactly one
+caller that varies it (`run_216_shared_slot_probe.py:82`); every other instrument passes the
+literal `"snake"` or takes the default.
+
+So a REAL captured league uses a format the FINAL GATE (`#150`, which claims coverage across
+"sizes/modes/rules") never exercises. This is the second unvaried battery axis found today — the
+first was bench depth (`{5:1, 6:32, 11:1}`, `#261`) — and both were found the same way: by
+looking at real data rather than at the harness.
+
+**It also nearly corrupted this extraction.** Sleeper prints the `R.P` pick label in each cell.
+The agent read pick order off those labels rather than inferring it from column position; an
+extractor that assumed snake would have mis-assigned every pick from round 3 onward to the wrong
+seat, and nothing downstream would have caught it. Recorded because the profile work in `#264`
+depends entirely on picks being attributed to the right seat.
+
+### Two data-shape facts worth carrying
+
+**A traded pick ERASES its own cell contents.** Sleeper renders `->{acquirer}` IN PLACE of
+`POS - TEAM (BYE) R.P`, so 84 of 360 board cells carry no position, team, bye or pick label. 82
+were recovered from the acquirer's own roster tab; the 2 that were not belong to the single
+manager whose roster view was not captured, and are recorded with position (from cell colour) and
+`illegible` team/bye. Any future read of a Sleeper board screenshot must expect this.
+
+**The rulebook's `total_picks_if_startup = 348` does not hold.** The board is 360 picks over 30
+rounds. It reconciles once placeholders are removed: 360 - 48 kickers = 312 real players = 26 per
+team. The rulebook's figure assumes all 29 roster slots are filled with players; the capture's own
+`draft_board_observations` already said "~30 rounds". Not a defect in the extraction — a stale
+assumption in the rulebook.
+
+The 48 kicker placeholders are confirmed as the 4x12 rookie draft the capture describes, sequential
+`1.01 -> 4.12` with no gaps (first K Brandon Aubrey at 2.12 -> rookie 1.01; 13th K Sam Ficken at
+10.7 -> 2.01, matching the corpus README). Recording them as literal kicker picks would have made
+this league appear to draft kickers from round 3 — exactly the artifact that would have wrecked the
+positional-timing signal `#264` needs.
+
+### THE ADP THREAD IS CLOSED, ON EVIDENCE
+
+`evidence/real_drafts/extracted/f_and_f_rookie_adp_panel.json`. The panel exists and is legible,
+and it is **three rows**:
+
+```
+B. Lance    WR NO   adp 265.2
+K. Coleman  WR MIA  adp 275.8
+J. Taylor   RB JAX  adp 278.7
+```
+
+Sleeper's filter chips read `ALL 3/4` — the entire undrafted pool at capture time was four
+players. This is the tail of a finished rookie draft, not a ranking. `projected_points` is clipped
+by the screen edge in all three shots and is recorded illegible rather than guessed.
+
+So the corpus README's claim is **accurate in kind and wrong in scale**, and my earlier proposal to
+derive opponent archetypes from ADP is dead for a second, stronger reason: not merely that ADP is
+absent from the player pool, but that the corpus's ADP is three deep-undrafted values. `#264`'s
+`trade_value` route stands as the only market signal available.
