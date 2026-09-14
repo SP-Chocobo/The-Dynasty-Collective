@@ -26,7 +26,11 @@ foreach ($id in $ids) {
     }
     $row = [ordered]@{ player_id = $id; kind = $kind; url = $url }
     try {
-      $r = Invoke-WebRequest -Uri $url -Method Head -TimeoutSec 20 -ErrorAction Stop
+      # -UseBasicParsing: without it PowerShell hands the response to the Internet Explorer
+      # HTML engine and prompts 'Script Execution Risk' on every single request. Harmless
+      # here -- these are HEAD requests for .jpg, so there is no markup to parse -- but a
+      # probe that stops twelve times to ask permission is a probe nobody finishes running.
+      $r = Invoke-WebRequest -Uri $url -Method Head -TimeoutSec 20 -UseBasicParsing -ErrorAction Stop
       $row.outcome      = 'http'
       $row.status       = $r.StatusCode
       $row.content_type = $r.Headers['Content-Type']
