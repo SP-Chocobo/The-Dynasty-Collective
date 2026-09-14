@@ -9403,3 +9403,38 @@ So the corpus README's claim is **accurate in kind and wrong in scale**, and my 
 derive opponent archetypes from ADP is dead for a second, stronger reason: not merely that ADP is
 absent from the player pool, but that the corpus's ADP is three deep-undrafted values. `#264`'s
 `trade_value` route stands as the only market signal available.
+
+---
+
+## #266 PROSE DEFECT — `league_matrix`'s docstring claims coverage the matrix does not have
+
+Found under `#182` (audit the prose when the queue idles), with today's two findings giving it a
+test. `draft_battery.league_matrix`'s docstring opens:
+
+> *"Every format the battery drafts, as {label, league, teams, rounds}. **Chosen to span the axes
+> a real league varies on** — size, scoring, superflex, TE premium, dynasty vs redraft..."*
+
+**That list is incomplete by its own standard, and two REAL captured leagues prove it:**
+
+| axis | matrix | a real league in this repo |
+|---|---|---|
+| bench depth | **constant** — `MOCK_BENCH_SLOTS = 6` in 32 of 34 arms (`#261`) | Fourth and Forever: 11 BN + 3 IR + 5 TAXI |
+| draft type | **constant** — every arm passes `"snake"`; zero references to `draft_type`/`3rr`/`reversal` in `run_draft_battery.py` or `draft_battery.py` (`#265`) | Greatest Show on Paper 2: **third-round reversal**, measured off its own printed pick labels |
+
+Both are unambiguously "axes a real league varies on" — the docstring's own test — and the repo
+holds a captured league varying on each. `generate_pick_order` has supported `"3rr"` since M2, so
+the draft-type gap is a matrix omission rather than a missing capability.
+
+**This is the `#133`/`#157` shape: a docstring asserting a property the code does not have.** It
+is more than cosmetic here, because `#150` is the FINAL GATE and this docstring is where a reader
+goes to learn what the gate covers. Someone trusting it would conclude bench depth and draft type
+were exercised.
+
+**NOT EDITED YET, deliberately.** `#162` is evidence before repair, and a docstring is still a
+source change that requires its own full suite — which would contend with the depth battery and
+the noise arm currently running. Queued behind them.
+
+**The repair is prose, not code**: name the axes the matrix does NOT vary, and why, so the list
+reads as a stated scope rather than a claim of completeness. Whether to ADD those axes to the
+matrix is a separate and larger question — it would multiply the arm count and lengthen a battery
+that already runs 5.34 hours — and it is the owner's call, not a docstring fix.
