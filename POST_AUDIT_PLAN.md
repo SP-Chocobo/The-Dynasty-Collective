@@ -8924,3 +8924,36 @@ across turns are separate records with the most recent surfaced.
   timeline infuriating.
 - **Auto-recentre when it becomes the user's turn**, regardless of scroll position. That is the
   one moment where losing your place is correct, because *now* is the only thing that matters.
+
+### #262 EXTENDED — RULED (owner): rail boxes name the drafting seat, and your own picks are marked
+
+**Every box on the pick rail carries the drafting user's name / team name.** The reason this
+matters more than it looks: **a snake reverses seat order every round**, so "whose pick is 4.07"
+cannot be read off position — it requires arithmetic, mid-draft, on a clock. A label removes the
+ambiguity outright. Champ select solves the same problem with team colour, which works for two
+sides and does not for eight to fourteen seats.
+
+**The user's own picks are marked** (owner's word: glowing).
+
+Two constraints recorded because they are easy to get wrong:
+
+1. **DO NOT SPEND GLOW TWICE.** The obvious treatment for "on the clock right now" is also glow.
+   If the user's seats glow AND the live pick glows, they collide at precisely the moment the user
+   must distinguish *it is my turn* from *that one is mine*. Two facts, two channels: the live
+   pick takes the clock treatment (it is already privileged — it is the rail's centre and what the
+   pan tracks), and the user's seat takes a persistent ownership marker (band, border, accent)
+   that reads as MINE rather than NOW.
+2. **MARK UPCOMING PICKS, not only past ones.** This is where it pays. With future turns marked,
+   *"I pick 3.12 and 4.01 back to back"* versus *"23 picks until I am up"* becomes something the
+   user SEES rather than computes — which is the snake-turn accent called for above, delivered by
+   a mechanism that costs nothing extra.
+
+**Two box states, designed separately:**
+
+- **FILLED** — the pick has landed. Portrait and player name lead; the owner is secondary (colour
+  band or small label).
+- **PENDING** — no player yet, so the owner label IS the content and is the only thing that
+  matters.
+
+No new data source: the league's rosters already carry owner display names and team names from
+Sleeper.
