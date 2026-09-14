@@ -8529,3 +8529,76 @@ already cites the first meaning by number.
   substance, checklist phrasing. Only `#52`'s was materially incomplete.
 - **Not that the docket is the only source of rulings.** Rulings made in session since
   2026-09-06 (`#251`, `#252`, `#257`, `#258`) are recorded here, not on that docket.
+
+## `#149` — THE MISSING ENTRY, WRITTEN FROM MEASUREMENT. Two upload surfaces, opposite custody, neither named as a policy
+
+`#257` found the item had no written basis: a title line and one clause in a NEEDS-OWNER list.
+The owner ruled **write the entry from measurement first, then rule** — "what is actually
+stored, how much of it, and who can read it." This is that entry. **It rules nothing.** Every
+line below was read out of the code in this session, not carried from the earlier audit.
+
+### The finding: the app already contains BOTH answers to "extract vs artifact"
+
+The item's own title names `extract-vs-artifact` as an open question. It is already decided
+twice, in opposite directions, in two places, and neither decision is written down as a policy:
+
+| surface | `app.py` | the FILE | what persists |
+|---|---|---|---|
+| Reference material | `:2795` — `pdf csv json png jpg jpeg webp gif txt` | **kept forever**, raw | the artifact itself; nothing is extracted from it |
+| Credentials | `:2341` — `txt env pdf` | **discarded**, never written to disk | only the parsed keys, into `.env` |
+
+`attachments.py:1-6` states the first as a deliberate choice — *"Nothing here is parsed or
+auto-matched to player records… the raw file itself is just stored for the user to view."* The
+credentials path does the exact inverse at `app.py:2343-2352`: `creds_file.read()` into memory,
+`parse_credentials_blob`, then `save_parsed_keys_to_env` (`:770`) writes only `KEY=` lines into
+`.env` (gitignored, `.gitignore:1`). **The uploaded credentials file is never persisted.** That
+is the stronger custody posture of the two, and it is the one that is undocumented.
+
+### What is actually stored
+
+- `ATTACHMENTS_DIR = Path("data/attachments")` (`attachments.py:33`) — **one flat directory,
+  not per-league and not per-user.** Created unconditionally at import (`app.py:103`), whether
+  or not anything is ever uploaded.
+- `dest.write_bytes(data)` (`attachments.py:58`) — the raw bytes, as uploaded. Name collisions
+  rename rather than overwrite. Metadata (caption, `uploaded_at`, `league_ids`) goes to
+  `captions.json` through `store_io`'s atomic/locked path (`#102`).
+- Gitignored: `data/attachments/*` (`.gitignore:19`).
+- **How much, measured on this checkout: zero.** `data/attachments/` holds one file —
+  `captions.json.lock`, 0 bytes. There is no `captions.json`. That is a fact about this
+  container, not about any deployed instance, because the path is gitignored and cannot be
+  observed from the repository.
+
+### Retention: there is none
+
+`grep -niE "retention|expire|ttl|prune|max_age|purge"` across `attachments.py` and `store_io.py`
+returns **nothing**. No expiry, no TTL, no size cap, no scheduled cleanup, no age-based
+pruning. Deletion happens only on explicit human action — `delete_attachment`
+(`attachments.py:116-120`) unlinks the file and drops its caption. "Use-derived retention",
+the third clause of the item's title, does not exist to be evaluated; it is a proposal.
+
+### Who can read it
+
+- **There is no authentication.** The whole app greps once for `password|authenticate|login|
+  session_token`, and the single hit is a docstring at `app.py:744` explaining why: *"Sleeper
+  needs no password, just a username."* Identity is a remembered username string.
+- The management view calls `list_attachments()` **unfiltered** (`app.py:4622`), with the
+  in-code comment *"this is a management view, show everything regardless of scope"*. Every
+  stored file from every league scope is visible, and deletable, to whoever has the app open.
+- **The model never receives a file.** `app.py:2184` filters to the selected league, keeps only
+  captioned items, caps at 20, and fences them as `untrusted`. The prompt says so in as many
+  words: *"you're only given the caption text, not the actual file, so treat it as a claim to
+  weigh, not verified fact."* Pinned by `test_tenant_scope_boundary.py:83-92`.
+
+### What the owner is now in a position to rule
+
+1. **Name the extract-vs-artifact policy that already exists in two forms**, and say which
+   surface each belongs to — rather than leaving two opposite behaviours undocumented.
+2. **Per-league or per-user directories**, or the flat store as intended. The unfiltered
+   management view is only defensible under the single-local-user assumption `app.py:775`
+   states for `.env` and nothing states for attachments.
+3. **Retention**, if any. Today the honest description is "forever, until a human deletes it."
+4. **Client-side custody**, the item's first clause, is a change of architecture rather than a
+   setting: storage is server-side on the machine running Streamlit.
+
+Gates the freeze RECORD, not the engine: uploads reach no price and no pick, and the only text
+that reaches a model is a caption the user typed, fenced as untrusted.
