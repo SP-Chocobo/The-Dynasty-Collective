@@ -9165,3 +9165,65 @@ must say which.
 
 QUEUED behind the `#261` depth battery and the `#263b` noise arm — three simultaneous draft
 harnesses on four cores would make all three slower and none sooner.
+
+### #263 PRIORITY RULED (owner): the one-pick boundary error is LOW, and probably moot
+
+> *"I'm not overly concerned on rd 15.2 vs 15.1. It's not static."*
+
+Accepted. The behavioural impact is one seat, one turn, per draft, and if `#261`'s crossing is
+adopted the round boundary disappears entirely — `#263`'s option 3 (moot it) rather than a repair.
+The entry stays recorded at this priority; it is not queued for work.
+
+The residue is smaller than the original entry framed it: not the one-pick error, but that the
+guard **could not see it**. That matters only while a round boundary exists. If the boundary
+retires, the test gap retires with it.
+
+### #264 EXTENDED — the baselines are a FACTORIAL, not a ladder, and ADP is not available
+
+**FIRST, A CORRECTION OF MY OWN, made minutes after proposing it.** I proposed deriving opponent
+archetypes (QB-early, RB-zero, TE-lean, K/DST-early) from ADP rather than inventing their
+constants. **There is no ADP in this system.** This document already said so at the §"ADP is
+evidence, never authority" entry — *"Measured: there is no ADP in this system at all"* — and a
+live check confirms it: `adp`, `ktc_value` and `rank` are all ABSENT from the pool frame
+(`trade_value` 23%, `projection` 26%, `proj_3yr` 21% of 1206 rows). I proposed a solution whose
+blocker was already written down, which is the same failure shape as the snipe emblem state and
+the `snapshot.mode` detector: reaching for a remembered pattern instead of reading what is here.
+
+**WHAT SURVIVES, and it is better than invented profiles.** `trade_value` is a MARKET signal
+that disagrees with points-VOR **positionally**, and that disagreement is measured rather than
+chosen. A seat anchored on it produces real positional runs for free — which is the mechanism
+archetypes were wanted for — with zero invented constants. Uniform `top_k` noise cannot do this:
+it is symmetric, and real drafts are not.
+
+**THE OWNER'S CORRECTION THAT RESHAPES THE BASELINES.**
+
+> *"As real people draft, they're still using context to the player pool as a filter on their
+> decisions. So it's not entirely agnostic."*
+
+A seat reading `trade_value` top-to-bottom is not a human — it is a robot with a list, and it
+will draft eight WRs. A real drafter using market rankings still notices *"I have no RBs"* and
+*"QBs are going."* They carry roster and scarcity awareness; only the VALUATION underneath
+differs.
+
+**So a list-reader baseline CONFOUNDS the two things this item exists to separate.** Beating a
+robot with a list demonstrates only that roster awareness helps — which nobody disputes and which
+is not the claim worth defending. Therefore:
+
+| arm | machinery | valuation | isolates |
+|---|---|---|---|
+| **value-swap** | full engine | `trade_value` | **the valuation** — a sharp manager on market consensus |
+| **awareness-ablation** | `need_bonus`/`depth_exposure`/`displacement_adj` zeroed | points-VOR | **the roster awareness** |
+| **naive list** | none | rank order | the FLOOR — included to price it, explicitly NOT a win to claim |
+
+That answers *why* the engine is better rather than only *whether*, and **if the value-swap arm
+wins, that is a finding wanted BEFORE the freeze rather than after.**
+
+Encouraging for cost: the machinery may already exist. `replacement_levels` takes a `value_col`,
+and `draft_room.py:3023` already calls `replacement_levels(no_proj_pool, "trade_value", ...)` on
+the unpriced fallback path — so trade-value-as-anchor is an existing route, not a new one.
+
+**THE ONE HAND-MADE PROFILE THAT IS STILL WORTH IT: kicker and DST taken early.** Nothing in this
+system predicts it, it is unmistakably real human behaviour, and it specifically drains positions
+the engine barely values — so its effect on `n_above` is not reproducible by any derived
+alternative. If it is built it must be labelled an OWNER-DECLARED ASSUMPTION, never presented as
+derived.
