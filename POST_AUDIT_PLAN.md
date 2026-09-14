@@ -9227,3 +9227,65 @@ system predicts it, it is unmistakably real human behaviour, and it specifically
 the engine barely values — so its effect on `n_above` is not reproducible by any derived
 alternative. If it is built it must be labelled an OWNER-DECLARED ASSUMPTION, never presented as
 derived.
+
+### #264 EXTENDED — RULED (owner): the opponent profiles are a PRE-REGISTERED hypothesis set, not a clustering
+
+The corpus is real — `evidence/real_drafts/` holds 108 board images recovered from screenshots
+of actual human drafts, confirmed by the owner: *"any that show full boards are with real
+people."* Two have a KNOWN format and are complete: Fourth and Forever (already hand-transcribed
+independently by the owner at `evidence/roster_shape/real_drafts/`) and Greatest Show on Paper 2
+(21 images, rulebook captured at `data/league_captures/greatest_show_on_paper_2.json`).
+
+**THE METHOD, and why the owner's framing is stronger than mine.** I proposed deriving profiles
+from the boards and worried that ~24 seats — correlated, since twelve people in one league watch
+each other — could not support five classes. Unsupervised clustering on that sample would indeed
+be unreliable, and the CLUSTER COUNT would itself be a constant nobody derived.
+
+The owner instead NAMED THE PROFILES BEFORE SEEING THE DATA. That converts the task from
+discovery to **classification against a pre-registered hypothesis set**, which 24 seats can
+support: each seat is assigned to its nearest named profile, the counts per profile are reported,
+and **"fits none of them" is a real finding** rather than a modelling failure.
+
+**THE SET IS A 2x3 FACTORIAL ON THE AXES SUPERFLEX ACTUALLY HAS**, not six arbitrary labels:
+
+|  | RB lean | WR lean | BPA |
+|---|---|---|---|
+| **QB early** | x | x | x |
+| **QB not-early** | x | x | x |
+
+In superflex, QB timing IS the strategic axis; after it, which skill position is favoured. The
+decomposition is produced by the format rather than chosen, which is the `#56` distinction.
+
+Plus an optional **TE modifier**, probed by where Brock Bowers and Trey McBride go.
+
+**THE CONFOUND ON THE TE MODIFIER, and it may kill it.** GSOP2 is **TE-PREMIUM**. In a TEP
+league, taking Bowers or McBride early is the SCORING RULES WORKING, not a personality. TE-lean
+is therefore only establishable as a preference in a NON-TEP league. Fourth and Forever's TE
+premium status must be checked before that probe means anything there. **If both complete boards
+carry a TE premium, the TE profile is unresolvable with this corpus and must be DROPPED rather
+than kept on weak evidence.**
+
+**EACH PROFILE IS CHARACTERISED BY PHASE** — positional counts in rounds 1-4, 5-10, 11+ — which
+reads directly off a board with no inference. That is also the axis that perturbs `n_above`
+differently from uniform `top_k` noise, which is symmetric and cannot produce positional runs.
+
+**WHAT THIS CORPUS CANNOT ANSWER: whether behaviour varies by rules/settings.** Both complete
+boards are SUPERFLEX. There is no 1QB board with a verified format — the corpus README says of
+the assorted eight that *"format and competition level unverified for most."* So superflex
+behaviour can be characterised and cannot be compared against 1QB behaviour. A limit of the
+sample, not the method; it closes if 1QB boards with known formats are supplied.
+
+**AND WHY THE MATRIX FRAMING LOWERS THE BAR.** If profiles exist to ASSIGN ROLES ACROSS SEATS,
+no single profile needs to be an accurate portrait of a real person — the set needs to SPAN the
+observed range. Publishing *"these are the five archetypes of dynasty drafters"* would be
+indefensible on this sample; *"these roles cover the observed range, and seats are matrixed
+across them"* is fine.
+
+DEFERRED, a design choice to be recorded as one when reached: five roles across twelve seats
+cannot run every combination, so the matrix needs a DESIGNED set — homogeneous leagues (one role
+in all twelve seats), a balanced mix, and adversarial mixes. That is a choice, never a
+derivation.
+
+**Extraction is running now (Fable, background, image reading only — no local CPU).** It was
+deliberately NOT told this hypothesis set: a transcription job handed a named expectation is a
+transcription that starts finding what it was told to expect.
