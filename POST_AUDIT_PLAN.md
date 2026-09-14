@@ -9574,3 +9574,46 @@ rebuilding), or an explicit ruling that these pages are frozen records like the 
 pages already are, in which case `build.py` should stop rebuilding them. **The nine round-1 pages
 are already handled correctly** — `build.py`'s own docstring exempts them as the scored record —
 so the precedent for the second answer exists. This is the owner's call.
+
+---
+
+## #269 INSTRUMENT GAP, found while the noise arm was still running
+
+`noise_arm.py` records **whether** the crossing fired and nothing about **why**. Its per-run
+record is `{top_k, seed, n_picks, first_upside_pick, elapsed_s, opponent_noise}` — no
+`positional_composition`, which the depth battery on the same question DOES record.
+
+That matters now, because at 5 of 8 runs one arm fired and its twin did not:
+
+```
+k1_seed0   NEVER      (control -- no noise, same config as 12T_ppr_BN18)
+k3_seed11  NEVER
+k3_seed22  NEVER
+k5_seed11  r17 p195   <- the only crossing this question has produced outside F&F
+k5_seed22  NEVER
+```
+
+**n = 1 with its matched seed disagreeing, so this is an observation, not a result.** It is
+recorded because the direction is counter-intuitive and worth a designed test rather than a
+remembered anecdote: noisy opponents take WORSE players, which should leave the pool richer and
+DELAY a crossing, not cause one.
+
+A mechanism that would explain the inversion, stated so it can be refuted: replacement level is
+**per-position**. Sharp opponents concentrate on whatever is most valuable and leave whole
+positions untouched and still stocked above their floors; noisy ones spread consumption across
+positions and walk several toward their floors at once. Under that account the crossing does not
+detect "the pool is exhausted" at all — it detects **"consumption got spread out"**, which is a
+materially different claim about what the rule means and would change whether it should be the
+mode switch.
+
+**Not tested here, and deliberately not tested by editing a live instrument.** The run was
+mid-flight; changing its record shape would have produced two incompatible record formats in one
+checkpoint and risked its resume path (`#215`, `#267`). The measurement is a targeted re-run of
+the two `k5` seeds with `positional_composition` recorded, after the arm completes — cheap,
+because it is 2 drafts and not 8.
+
+**The general lesson, which is the part worth keeping:** the depth battery and the noise arm
+answer the same question and record different things about it. An instrument that captures its
+outcome but not the state that produced the outcome can only ever confirm or deny — it can never
+explain, and the explaining is what a surprising result needs. Record parity between instruments
+aimed at one question should be checked when the second one is written, not when it surprises you.

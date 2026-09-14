@@ -7,6 +7,65 @@
    "first_upside_pick": null,
    "elapsed_s": 607.6,
    "opponent_noise": null
+  },
+  "k3_seed11": {
+   "top_k": 3,
+   "seed": 11,
+   "n_picks": 312,
+   "first_upside_pick": null,
+   "elapsed_s": 592.8,
+   "opponent_noise": {
+    "top_k": 3,
+    "seed": 11,
+    "sharp_seats": [
+     "1"
+    ]
+   }
+  },
+  "k3_seed22": {
+   "top_k": 3,
+   "seed": 22,
+   "n_picks": 312,
+   "first_upside_pick": null,
+   "elapsed_s": 606.9,
+   "opponent_noise": {
+    "top_k": 3,
+    "seed": 22,
+    "sharp_seats": [
+     "1"
+    ]
+   }
+  },
+  "k5_seed11": {
+   "top_k": 5,
+   "seed": 11,
+   "n_picks": 312,
+   "first_upside_pick": {
+    "round": 17,
+    "pick_no": 195
+   },
+   "elapsed_s": 587.0,
+   "opponent_noise": {
+    "top_k": 5,
+    "seed": 11,
+    "sharp_seats": [
+     "1"
+    ]
+   }
+  },
+  "k5_seed22": {
+   "top_k": 5,
+   "seed": 22,
+   "n_picks": 312,
+   "first_upside_pick": null,
+   "elapsed_s": 611.3,
+   "opponent_noise": {
+    "top_k": 5,
+    "seed": 22,
+    "sharp_seats": [
+     "1"
+    ]
+   }
   }
  }
 }
