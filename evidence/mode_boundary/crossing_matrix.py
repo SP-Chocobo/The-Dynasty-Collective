@@ -61,7 +61,8 @@ from crossing_mechanism import probe_board
 OUT = Path("evidence/mode_boundary/crossing_matrix.json")
 STRIDE = 5
 ARMS = ("12T_ppr", "12T_ppr_SF", "12T_ppr_TEP_dynasty", "4WR_TE_PREMIUM",
-        "LIGHT_IDP", "HEAVY_IDP", "12T_ppr_NO_TE_SLOT")
+        "LIGHT_IDP", "HEAVY_IDP", "12T_ppr_NO_TE_SLOT",
+        "12T_ppr_SF_NO_TE_SLOT", "12T_ppr_TEP_NO_TE_SLOT")
 
 
 #: #277 named its own weakness: the TE-slot attribution was reached by ELIMINATION across five
@@ -80,9 +81,39 @@ ARMS = ("12T_ppr", "12T_ppr_SF", "12T_ppr_TEP_dynasty", "4WR_TE_PREMIUM",
 #: holdout here and crosses at a finite pick, while the control (identical but for that one
 #: slot) keeps TE as holdout forever. If TE remains a holdout, the TE slot is NOT sufficient,
 #: #277's conclusion is wrong, and whatever inverts FFCL is still unidentified.
+#: #280. THE 2x2 THIS INVESTIGATION NEVER CLOSED. #278 tested the TE slot at 1QB only; #277
+#: tested superflex with a TE slot. The cell FFCL GROUP A ACTUALLY OCCUPIES -- superflex AND no
+#: TE slot -- has never been run, and elimination arguments fail exactly on interactions.
+#:
+#:      TE slot     1QB                      superflex
+#:      yes         12T_ppr        NEVER     12T_ppr_SF          NEVER
+#:      no          ..NO_TE_SLOT   FIRES 155 ..SF_NO_TE_SLOT     <- the missing cell
+#:
+#: PREDICTION for 12T_ppr_SF_NO_TE_SLOT, and it is a FORK, not a guess:
+#:   - Removing the TE slot collapses TE (measured: crosses at 120). That part should hold.
+#:   - Superflex doubles QB demand, which #277a showed drives QB to demand-exhaust in FFCL
+#:     (measurable=0, demand=0.0) rather than hold out.
+#:   So EITHER the rule fires (QB crosses before exhausting, TE-slot removal dominates) OR it
+#:   does NOT (QB leaves the measurable set first, exactly as FFCL did). The second outcome
+#:   would mean #278's "the TE slot is the single reason the rule never fires" is TOO STRONG --
+#:   true at 1QB, defeated by superflex -- and #277a's exhaustion path is the real second
+#:   mechanism. Either way the 2x2 closes and one of my two published claims narrows.
+#:
+#: PREDICTION for 12T_ppr_TEP_NO_TE_SLOT: fires at ~155, like NO_TE_SLOT. #277 measured the TE
+#: premium as near-inert (QB 85->85, WR 85->90), so a premium should not rescue a position that
+#: has lost its slot. If it DOES rescue TE, the premium is not inert after all and #277's
+#: "scoring does not set the crossing order" needs qualifying.
 CONSTRUCTED = {
     "12T_ppr_NO_TE_SLOT": {
         "from": "12T_ppr",
+        "swap": ("TE", "FLEX"),
+    },
+    "12T_ppr_SF_NO_TE_SLOT": {
+        "from": "12T_ppr_SF",
+        "swap": ("TE", "FLEX"),
+    },
+    "12T_ppr_TEP_NO_TE_SLOT": {
+        "from": "12T_ppr_TEP_dynasty",
         "swap": ("TE", "FLEX"),
     },
 }

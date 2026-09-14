@@ -10419,3 +10419,158 @@ would have destroyed 820 seconds of compute and I would have had no checkpoint f
 **The rule:** do not `pkill` by pattern from a shell whose own command line contains the pattern.
 Kill by PID read from a separate `pgrep`, or do not kill at all — a finished process needs no
 killing, and checking `ps -o etime=` first would have shown it had already exited.
+
+---
+
+## `#281` THE RAMIFICATION — the mode rule re-composes 45% of the draft and changes the starting lineup by ZERO
+
+`#261` asked it in as many words — *"nobody has drafted with the rule in place"* — and `#271`,
+`#274`, `#276`, `#277`, `#278` all measured WHEN the rule fires without ever asking what the
+teams look like afterwards. The depth battery drafted all ten arms under BOTH rules and recorded
+every pick; the comparison was simply never run.
+`evidence/mode_boundary/mode_outcomes.py`. No new drafts.
+
+### First: the rule changes an enormous number of picks
+
+| arm | picks | round fires | crossing fires | picks differing | first divergence |
+|---|---|---|---|---|---|
+| 12T_ppr_BN6 | 168 | NEVER | NEVER | **0** | — |
+| 12T_ppr_BN18 | 312 | 170 | NEVER | 141 (45%) | 171 |
+| 12T_ppr_BN26 | 408 | 170 | NEVER | 237 (58%) | 171 |
+| 8T_ppr_BN18 | 208 | 114 | NEVER | 93 | 115 |
+| 10T_ppr_BN18 | 260 | 142 | 231 | 116 | 142 |
+| 14T_ppr_BN18 | 364 | 198 | NEVER | 167 | 198 |
+| F&F capture | 312 | 170 | NEVER | 142 | 171 |
+
+Divergence begins on the pick AFTER the round rule fires, and never recovers — the switch
+changes every subsequent pick. `12T_ppr_BN6` is a natural control: 14 rounds, so neither rule
+fires, and **0 picks differ.**
+
+**The substitution has a signature.** Composition shift (crossing minus round) — i.e. what
+turning upside mode OFF does:
+
+```
+ F&F capture   WR +36  TE −33  RB −4   QB +0
+ 14T_ppr_BN18  WR +38  TE −24  RB −14  QB +0
+ 12T_ppr_BN22  WR +33  TE −30  RB −3   QB +0
+```
+
+**Upside mode buys tight ends and sells receivers, at scale, and leaves QB untouched.** That is
+`#222`'s TE excess as a draft-wide outcome rather than a per-pick effect.
+
+### Then: it changes the starting lineup by exactly nothing
+
+Optimal legal lineup by season PROJECTED POINTS — not `starter_value`, which `#211` established
+is a category error (asset levels summed over a started subset rank positional breadth, and 83.8%
+of pool values are negative so thin rosters are forced to start deep negatives).
+
+| arm | round pts | crossing pts | delta | latest starter pick | first divergence |
+|---|---|---|---|---|---|
+| 12T_ppr_BN18 | 26250.1 | 26250.1 | **+0.00** | 99 | 171 |
+| 8T_ppr_BN18 | 18960.8 | 18960.8 | **+0.00** | 85 | 115 |
+| 10T_ppr_BN18 | 22732.5 | 22732.5 | **+0.00** | 82 | 142 |
+| 14T_ppr_BN18 | 29492.3 | 29492.3 | **+0.00** | 170 | 198 |
+| F&F capture | 33998.7 | 33998.7 | **+0.00** | 127 | 171 |
+
+**`#245` says identical numbers are a broken instrument until proven otherwise, so the zero was
+interrogated rather than reported.** The explanation is in the last two columns and is now
+computed BY the instrument: in all ten arms the latest pick that reaches any starting lineup is
+EARLIER than the first pick on which the rules disagree. **The mode switch only ever touches
+bench picks.** `switch_touches_a_starter` is False in 10 of 10.
+
+So the TE-for-WR substitution is real, large, and **entirely a bench phenomenon.** It changes who
+sits, never who plays.
+
+### WHAT THIS DOES AND DOES NOT LICENSE
+
+**It does NOT say the bench is irrelevant.** The measure is a static, healthy, full-season
+projection. A bench exists for option value — injury, bye, breakout — and none of that is visible
+to this number. The finding is *no first-order starting-lineup effect*, NOT *the bench does not
+matter*. Anyone quoting this as "the mode rule has no consequences" is quoting it wrong.
+
+**It DOES sharpen the no-trading case, and it is the owner's own league.** The 2026-09-08
+reference roster (`#272`) records that with trades disabled *"a player who never starts is worth
+zero here, permanently"*. Under that rule a bench full of surplus tight ends is inert by
+construction — so in FFCL Group A specifically, the substitution is not neutral, it is a cost.
+
+**It reframes the whole crossing investigation's stakes.** `#278` showed one roster slot decides
+whether the rule ever fires. `#281` shows that decision reaches no starter in any measured arm.
+Both are true, and together they say the mode boundary is a **bench-composition policy** that has
+been discussed as though it were a valuation policy.
+
+### Two instrument failures caught on the way, both worth keeping
+
+**1. The first run reported `+0.00` across all ten arms with the control PASSING — while measuring
+nothing.** `season` maps a player to Sleeper's raw SEASON STAT LINE; there is no precomputed
+`pts` field. `season[pid].get("pts")` returned `None` for all 2,872 picks, every roster scored
+0.0, and the control self-check said "ok" because zero equals zero. Points are now scored against
+each league's own rulebook via `score_projection` (`#213`).
+
+**2. The control could not catch it, so a NON-VACUITY GATE now runs first.** A control comparing
+0.0 to 0.0 is vacuous. The instrument now refuses to report at all — `VOID` — if no arm scored
+points or if more than half of picks are unpriced. The population line (`picks=2872 unpriced=0
+(0.0%)`) prints unconditionally so a reader sees the denominator before the result.
+
+### `#281b` CROSS-CHECK AT THE OWNER'S PROMPT — are the swapped picks real players, by a basis other than projection?
+
+The owner raised two objections to `#281` in sequence, and both changed the answer.
+
+**First: "third string players and rookies that aren't touching the field really wouldn't have
+much by way of projection."** Measured on the picks the switch actually changes:
+
+| arm | divergent picks | zero proj | under 10 pts | median |
+|---|---|---|---|---|
+| 12T ladder @ BN10 | 92 | 0 | 0 | 96.4 |
+| 12T ladder @ BN18 | 284 | 2 | 2 | 63.2 |
+| 12T ladder @ BN26 | 476 | 3 | 80 | 40.0 |
+| 8T_ppr_BN18 | 188 | 2 | 2 | 141.4 |
+| 14T_ppr_BN18 | 334 | 2 | 32 | 41.4 |
+| CAPTURE_f&f | 284 | 2 | 11 | 62.8 |
+
+Not scrubs in the shallow arms (median 63-141, almost no sub-10 bodies); the concern bites in
+the deepest, where a sixth of divergent picks fall under 10 points. **The BN10-BN26 rows are one
+prefix-nested draft (`#276`) sampled at five depths, not five observations.**
+
+**Second: "check them against ranking, listings or other established valuations that don't relate
+to projections."** The right check, and running it caught a confound in my own first answer.
+
+**A CORRECTION I MADE BEFORE PUBLISHING, recorded because I reported the wrong version in
+conversation first.** My first pass said roughly half the swapped picks have no independent
+valuation. That counted the vendor table's 745 indexed rows as the relevant denominator. It is
+not: the table includes KICKERS, TEAM DEFENCES and IDP, which these leagues have no slots for and
+correctly never draft — and its `rank` column is POSITIONAL, not overall, which is why the
+"never taken" list led with four different `#1`s (`B Aubrey` K, `P Eagles` DEF, `C Schwesinger`
+LB). Restricted to positions the league can actually start, derived from its own slots:
+
+**264 ranked startable players. The draft takes 312 picks.**
+
+| pick block | ranked | unranked |
+|---|---|---|
+| 1-100 | 100 | **0** |
+| 101-150 | 48 | 2 |
+| 151-200 | 40 | 10 |
+| 201-250 | 30 | 20 |
+| 251-300 | 24 | 26 |
+| 301-312 | 2 | 10 |
+
+**The draft is DEEPER THAN THE RANKED UNIVERSE.** Running past the end of the list is arithmetic,
+not a defect. And the engine is not passing over good players to get there: only **27 of 264**
+ranked startable players go undrafted, the best being `QB99 S Sanders`, `QB114 M Penix Jr.`,
+`WR159 R Pearsall` — marginal by the vendor's own positional rank.
+
+The owner's framing — *"this should be firing well before the 760 players deep mark"* — is
+CORRECT: at the pick the switch fires (170), 40 of every 50 picks are still vendor-ranked.
+Coverage only collapses past ~250, where the ranked list has run out.
+
+**What survives, in its honest size:** in deep-bench formats the last ~15% of picks necessarily
+happen past the end of any established ranking, and some of the mode switch's work lands there.
+That bounds how much ANY bench-quality comparison could prove — a real limit, and a much smaller
+one than the figure I first reported.
+
+**The knockout test is therefore NOT RUN.** The owner proposed simulating the whole first string
+unavailable and re-optimising from the bench, which is the right shape for measuring option
+value. It is declined on the instrument, not on the idea: for the tail of the population the
+only available number is an uncorroborated projection, and a backup's projection already embeds
+an assumption about playing time he does not have — so a knockout scored on static projections
+systematically understates exactly the thing it is meant to measure. Named as needing a
+different input (usage/depth-chart data, `#49`/`#88`), not as answered.
