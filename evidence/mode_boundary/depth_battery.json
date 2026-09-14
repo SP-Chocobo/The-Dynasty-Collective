@@ -31414,6 +31414,2608 @@
      "elapsed_s": 442.1
     }
    }
+  },
+  "14T_ppr_BN18": {
+   "ladder": "B",
+   "teams": 14,
+   "rounds": 26,
+   "total_picks": 364,
+   "rules": {
+    "round": {
+     "n_picks": 364,
+     "first_upside_pick": {
+      "round": 15,
+      "pick_no": 198
+     },
+     "positional_composition": {
+      "DB": 1,
+      "QB": 32,
+      "RB": 107,
+      "TE": 115,
+      "WR": 109
+     },
+     "per_seat": {
+      "1": [
+       {
+        "round": 1,
+        "pick_no": 1,
+        "pid": "9221",
+        "pos": "RB",
+        "regime": "decisive"
+       },
+       {
+        "round": 2,
+        "pick_no": 28,
+        "pid": "5859",
+        "pos": "WR",
+        "regime": "contested"
+       },
+       {
+        "round": 3,
+        "pick_no": 29,
+        "pid": "12518",
+        "pos": "TE",
+        "regime": "decisive"
+       },
+       {
+        "round": 4,
+        "pick_no": 56,
+        "pid": "12529",
+        "pos": "RB",
+        "regime": "contested"
+       },
+       {
+        "round": 5,
+        "pick_no": 57,
+        "pid": "5927",
+        "pos": "WR",
+        "regime": "contested"
+       },
+       {
+        "round": 6,
+        "pick_no": 84,
+        "pid": "11646",
+        "pos": "WR",
+        "regime": "contested"
+       },
+       {
+        "round": 7,
+        "pick_no": 85,
+        "pid": "6804",
+        "pos": "QB",
+        "regime": "contested"
+       },
+       {
+        "round": 8,
+        "pick_no": 112,
+        "pid": "5849",
+        "pos": "QB",
+        "regime": "contested"
+       },
+       {
+        "round": 9,
+        "pick_no": 113,
+        "pid": "6768",
+        "pos": "QB",
+        "regime": "decisive"
+       },
+       {
+        "round": 10,
+        "pick_no": 140,
+        "pid": "8408",
+        "pos": "RB",
+        "regime": "contested"
+       },
+       {
+        "round": 11,
+        "pick_no": 141,
+        "pid": "12533",
+        "pos": "RB",
+        "regime": "contested"
+       },
+       {
+        "round": 12,
+        "pick_no": 168,
+        "pid": "1373",
+        "pos": "QB",
+        "regime": "contested"
+       },
+       {
+        "round": 13,
+        "pick_no": 169,
+        "pid": "11610",
+        "pos": "WR",
+        "regime": "contested"
+       },
+       {
+        "round": 14,
+        "pick_no": 196,
+        "pid": "13269",
+        "pos": "QB",
+        "regime": "contested"
+       },
+       {
+        "round": 15,
+        "pick_no": 197,
+        "pid": "8154",
+        "pos": "RB",
+        "regime": "contested"
+       },
+       {
+        "round": 16,
+        "pick_no": 224,
+        "pid": "13400",
+        "pos": "TE",
+        "regime": "contested"
+       },
+       {
+        "round": 17,
+        "pick_no": 225,
+        "pid": "8205",
+        "pos": "RB",
+        "regime": "decisive"
+       },
+       {
+        "round": 18,
+        "pick_no": 252,
+        "pid": "11435",
+        "pos": "RB",
+        "regime": "contested"
+       },
+       {
+        "round": 19,
+        "pick_no": 253,
+        "pid": "13435",
+        "pos": "TE",
+        "regime": "contested"
+       },
+       {
+        "round": 20,
+        "pick_no": 280,
+        "pid": "12483",
+        "pos": "WR",
+        "regime": "contested"
+       },
+       {
+        "round": 21,
+        "pick_no": 281,
+        "pid": "13278",
+        "pos": "TE",
+        "regime": "contested"
+       },
+       {
+        "round": 22,
+        "pick_no": 308,
+        "pid": "10227",
+        "pos": "TE",
+        "regime": "contested"
+       },
+       {
+        "round": 23,
+        "pick_no": 309,
+        "pid": "13320",
+        "pos": "WR",
+        "regime": "contested"
+       },
+       {
+        "round": 24,
+        "pick_no": 336,
+        "pid": "8041",
+        "pos": "TE",
+        "regime": "contested"
+       },
+       {
+        "round": 25,
+        "pick_no": 337,
+        "pid": "8230",
+        "pos": "RB",
+        "regime": "contested"
+       },
+       {
+        "round": 26,
+        "pick_no": 364,
+        "pid": "12499",
+        "pos": "WR",
+        "regime": "contested"
+       }
+      ],
+      "2": [
+       {
+        "round": 1,
+        "pick_no": 2,
+        "pid": "4034",
+        "pos": "RB",
+        "regime": "decisive"
+       },
+       {
+        "round": 2,
+        "pick_no": 27,
+        "pid": "8150",
+        "pos": "RB",
+        "regime": "contested"
+       },
+       {
+        "round": 3,
+        "pick_no": 30,
+        "pid": "8144",
+        "pos": "WR",
+        "regime": "decisive"
+       },
+       {
+        "round": 4,
+        "pick_no": 55,
+        "pid": "12506",
+        "pos": "TE",
+        "regime": "contested"
+       },
+       {
+        "round": 5,
+        "pick_no": 58,
+        "pid": "8148",
+        "pos": "WR",
+        "regime": "decisive"
+       },
+       {
+        "round": 6,
+        "pick_no": 83,
+        "pid": "8142",
+        "pos": "WR",
+        "regime": "contested"
+       },
+       {
+        "round": 7,
+        "pick_no": 86,
+        "pid": "11563",
+        "pos": "QB",
+        "regime": "contested"
+       },
+       {
+        "round": 8,
+        "pick_no": 111,
+        "pid": "4943",
+        "pos": "QB",
+        "regime": "contested"
+       },
+       {
+        "round": 9,
+        "pick_no": 114,
+        "pid": "4892",
+        "pos": "QB",
+        "regime": "contested"
+       },
+       {
+        "round": 10,
+        "pick_no": 139,
+        "pid": "5870",
+        "pos": "QB",
+        "regime": "contested"
+       },
+       {
+        "round": 11,
+        "pick_no": 142,
+        "pid": "9228",
+        "pos": "QB",
+        "regime": "contested"
+       },
+       {
+        "round": 12,
+        "pick_no": 167,
+        "pid": "3257",
+        "pos": "QB",
+        "regime": "contested"
+       },
+       {
+        "round": 13,
+        "pick_no": 170,
+        "pid": "7571",
+        "pos": "WR",
+        "regime": "contested"
+       },
+       {
+        "round": 14,
+        "pick_no": 195,
+        "pid": "4017",
+        "pos": "QB",
+        "regime": "contested"
+       },
+       {
+        "round": 15,
+        "pick_no": 198,
+        "pid": "12493",
+        "pos": "TE",
+        "regime": "decisive"
+       },
+       {
+        "round": 16,
+        "pick_no": 223,
+        "pid": "5857",
+        "pos": "TE",
+        "regime": "contested"
+       },
+       {
+        "round": 17,
+        "pick_no": 226,
+        "pid": "11643",
+        "pos": "RB",
+        "regime": "contested"
+       },
+       {
+        "round": 18,
+        "pick_no": 251,
+        "pid": "12536",
+        "pos": "WR",
+        "regime": "contested"
+       },
+       {
+        "round": 19,
+        "pick_no": 254,
+        "pid": "11599",
+        "pos": "TE",
+        "regime": "contested"
+       },
+       {
+        "round": 20,
+        "pick_no": 279,
+        "pid": "12467",
+        "pos": "RB",
+        "regime": "contested"
+       },
+       {
+        "round": 21,
+        "pick_no": 282,
+        "pid": "13424",
+        "pos": "RB",
+        "regime": "contested"
+       },
+       {
+        "round": 22,
+        "pick_no": 307,
+        "pid": "10218",
+        "pos": "WR",
+        "regime": "contested"
+       },
+       {
+        "round": 23,
+        "pick_no": 310,
+        "pid": "7536",
+        "pos": "TE",
+        "regime": "contested"
+       },
+       {
+        "round": 24,
+        "pick_no": 335,
+        "pid": "3634",
+        "pos": "WR",
+        "regime": "contested"
+       },
+       {
+        "round": 25,
+        "pick_no": 338,
+        "pid": "7602",
+        "pos": "TE",
+        "regime": "contested"
+       },
+       {
+        "round": 26,
+        "pick_no": 363,
+        "pid": "8254",
+        "pos": "RB",
+        "regime": "contested"
+       }
+      ],
+      "3": [
+       {
+        "round": 1,
+        "pick_no": 3,
+        "pid": "9509",
+        "pos": "RB",
+        "regime": "decisive"
+       },
+       {
+        "round": 2,
+        "pick_no": 26,
+        "pid": "8155",
+        "pos": "RB",
+        "regime": "contested"
+       },
+       {
+        "round": 3,
+        "pick_no": 31,
+        "pid": "10229",
+        "pos": "WR",
+        "regime": "decisive"
+       },
+       {
+        "round": 4,
+        "pick_no": 54,
+        "pid": "4881",
+        "pos": "QB",
+        "regime": "contested"
+       },
+       {
+        "round": 5,
+        "pick_no": 59,
+        "pid": "8167",
+        "pos": "WR",
+        "regime": "contested"
+       },
+       {
+        "round": 6,
+        "pick_no": 82,
+        "pid": "8131",
+        "pos": "TE",
+        "regime": "contested"
+       },
+       {
+        "round": 7,
+        "pick_no": 87,
+        "pid": "5846",
+        "pos": "WR",
+        "regime": "contested"
+       },
+       {
+        "round": 8,
+        "pick_no": 110,
+        "pid": "10236",
+        "pos": "TE",
+        "regime": "contested"
+       },
+       {
+        "round": 9,
+        "pick_no": 115,
+        "pid": "11603",
+        "pos": "TE",
+        "regime": "contested"
+       },
+       {
+        "round": 10,
+        "pick_no": 138,
+        "pid": "9480",
+        "pos": "TE",
+        "regime": "contested"
+       },
+       {
+        "round": 11,
+        "pick_no": 143,
+        "pid": "12502",
+        "pos": "TE",
+        "regime": "decisive"
+       },
+       {
+        "round": 12,
+        "pick_no": 166,
+        "pid": "4993",
+        "pos": "TE",
+        "regime": "contested"
+       },
+       {
+        "round": 13,
+        "pick_no": 171,
+        "pid": "12498",
+        "pos": "TE",
+        "regime": "contested"
+       },
+       {
+        "round": 14,
+        "pick_no": 194,
+        "pid": "6826",
+        "pos": "TE",
+        "regime": "contested"
+       },
+       {
+        "round": 15,
+        "pick_no": 199,
+        "pid": "9479",
+        "pos": "TE",
+        "regime": "decisive"
+       },
+       {
+        "round": 16,
+        "pick_no": 222,
+        "pid": "11597",
+        "pos": "TE",
+        "regime": "contested"
+       },
+       {
+        "round": 17,
+        "pick_no": 227,
+        "pid": "10231",
+        "pos": "TE",
+        "regime": "decisive"
+       },
+       {
+        "round": 18,
+        "pick_no": 250,
+        "pid": "4144",
+        "pos": "TE",
+        "regime": "contested"
+       },
+       {
+        "round": 19,
+        "pick_no": 255,
+        "pid": "8119",
+        "pos": "WR",
+        "regime": "contested"
+       },
+       {
+        "round": 20,
+        "pick_no": 278,
+        "pid": "9494",
+        "pos": "WR",
+        "regime": "contested"
+       },
+       {
+        "round": 21,
+        "pick_no": 283,
+        "pid": "12473",
+        "pos": "TE",
+        "regime": "contested"
+       },
+       {
+        "round": 22,
+        "pick_no": 306,
+        "pid": "6149",
+        "pos": "WR",
+        "regime": "contested"
+       },
+       {
+        "round": 23,
+        "pick_no": 311,
+        "pid": "11820",
+        "pos": "TE",
+        "regime": "contested"
+       },
+       {
+        "round": 24,
+        "pick_no": 334,
+        "pid": "11439",
+        "pos": "RB",
+        "regime": "contested"
+       },
+       {
+        "round": 25,
+        "pick_no": 339,
+        "pid": "7568",
+        "pos": "TE",
+        "regime": "contested"
+       },
+       {
+        "round": 26,
+        "pick_no": 362,
+        "pid": "5970",
+        "pos": "WR",
+        "regime": "contested"
+       }
+      ],
+      "4": [
+       {
+        "round": 1,
+        "pick_no": 4,
+        "pid": "6813",
+        "pos": "RB",
+        "regime": "decisive"
+       },
+       {
+        "round": 2,
+        "pick_no": 25,
+        "pid": "8112",
+        "pos": "WR",
+        "regime": "decisive"
+       },
+       {
+        "round": 3,
+        "pick_no": 32,
+        "pid": "5892",
+        "pos": "RB",
+        "regime": "decisive"
+       },
+       {
+        "round": 4,
+        "pick_no": 53,
+        "pid": "12526",
+        "pos": "WR",
+        "regime": "contested"
+       },
+       {
+        "round": 5,
+        "pick_no": 60,
+        "pid": "5012",
+        "pos": "TE",
+        "regime": "contested"
+       },
+       {
+        "round": 6,
+        "pick_no": 81,
+        "pid": "12508",
+        "pos": "QB",
+        "regime": "decisive"
+       },
+       {
+        "round": 7,
+        "pick_no": 88,
+        "pid": "4983",
+        "pos": "WR",
+        "regime": "contested"
+       },
+       {
+        "round": 8,
+        "pick_no": 109,
+        "pid": "7523",
+        "pos": "QB",
+        "regime": "contested"
+       },
+       {
+        "round": 9,
+        "pick_no": 116,
+        "pid": "5872",
+        "pos": "WR",
+        "regime": "contested"
+       },
+       {
+        "round": 10,
+        "pick_no": 137,
+        "pid": "9504",
+        "pos": "WR",
+        "regime": "contested"
+       },
+       {
+        "round": 11,
+        "pick_no": 144,
+        "pid": "12484",
+        "pos": "WR",
+        "regime": "contested"
+       },
+       {
+        "round": 12,
+        "pick_no": 165,
+        "pid": "12474",
+        "pos": "RB",
+        "regime": "contested"
+       },
+       {
+        "round": 13,
+        "pick_no": 172,
+        "pid": "13281",
+        "pos": "WR",
+        "regime": "contested"
+       },
+       {
+        "round": 14,
+        "pick_no": 193,
+        "pid": "7828",
+        "pos": "TE",
+        "regime": "decisive"
+       },
+       {
+        "round": 15,
+        "pick_no": 200,
+        "pid": "11655",
+        "pos": "RB",
+        "regime": "decisive"
+       },
+       {
+        "round": 16,
+        "pick_no": 221,
+        "pid": "12487",
+        "pos": "TE",
+        "regime": "contested"
+       },
+       {
+        "round": 17,
+        "pick_no": 228,
+        "pid": "11592",
+        "pos": "TE",
+        "regime": "decisive"
+       },
+       {
+        "round": 18,
+        "pick_no": 249,
+        "pid": "9753",
+        "pos": "RB",
+        "regime": "contested"
+       },
+       {
+        "round": 19,
+        "pick_no": 256,
+        "pid": "4137",
+        "pos": "RB",
+        "regime": "contested"
+       },
+       {
+        "round": 20,
+        "pick_no": 277,
+        "pid": "7528",
+        "pos": "RB",
+        "regime": "contested"
+       },
+       {
+        "round": 21,
+        "pick_no": 284,
+        "pid": "13301",
+        "pos": "WR",
+        "regime": "contested"
+       },
+       {
+        "round": 22,
+        "pick_no": 305,
+        "pid": "12535",
+        "pos": "WR",
+        "regime": "contested"
+       },
+       {
+        "round": 23,
+        "pick_no": 312,
+        "pid": "8208",
+        "pos": "RB",
+        "regime": "contested"
+       },
+       {
+        "round": 24,
+        "pick_no": 333,
+        "pid": "13846",
+        "pos": "TE",
+        "regime": "contested"
+       },
+       {
+        "round": 25,
+        "pick_no": 340,
+        "pid": "10210",
+        "pos": "TE",
+        "regime": "contested"
+       },
+       {
+        "round": 26,
+        "pick_no": 361,
+        "pid": "8147",
+        "pos": "WR",
+        "regime": "contested"
+       }
+      ],
+      "5": [
+       {
+        "round": 1,
+        "pick_no": 5,
+        "pid": "9488",
+        "pos": "WR",
+        "regime": "decisive"
+       },
+       {
+        "round": 2,
+        "pick_no": 24,
+        "pid": "7588",
+        "pos": "RB",
+        "regime": "contested"
+       },
+       {
+        "round": 3,
+        "pick_no": 33,
+        "pid": "5850",
+        "pos": "RB",
+        "regime": "decisive"
+       },
+       {
+        "round": 4,
+        "pick_no": 52,
+        "pid": "6770",
+        "pos": "QB",
+        "regime": "contested"
+       },
+       {
+        "round": 5,
+        "pick_no": 61,
+        "pid": "12519",
+        "pos": "WR",
+        "regime": "decisive"
+       },
+       {
+        "round": 6,
+        "pick_no": 80,
+        "pid": "7002",
+        "pos": "TE",
+        "regime": "contested"
+       },
+       {
+        "round": 7,
+        "pick_no": 89,
+        "pid": "12514",
+        "pos": "WR",
+        "regime": "contested"
+       },
+       {
+        "round": 8,
+        "pick_no": 108,
+        "pid": "5001",
+        "pos": "TE",
+        "regime": "decisive"
+       },
+       {
+        "round": 9,
+        "pick_no": 117,
+        "pid": "8210",
+        "pos": "TE",
+        "regime": "contested"
+       },
+       {
+        "round": 10,
+        "pick_no": 136,
+        "pid": "5844",
+        "pos": "TE",
+        "regime": "decisive"
+       },
+       {
+        "round": 11,
+        "pick_no": 145,
+        "pid": "2505",
+        "pos": "TE",
+        "regime": "contested"
+       },
+       {
+        "round": 12,
+        "pick_no": 164,
+        "pid": "8172",
+        "pos": "TE",
+        "regime": "contested"
+       },
+       {
+        "round": 13,
+        "pick_no": 173,
+        "pid": "13285",
+        "pos": "WR",
+        "regime": "contested"
+       },
+       {
+        "round": 14,
+        "pick_no": 192,
+        "pid": "5906",
+        "pos": "TE",
+        "regime": "contested"
+       },
+       {
+        "round": 15,
+        "pick_no": 201,
+        "pid": "5995",
+        "pos": "RB",
+        "regime": "contested"
+       },
+       {
+        "round": 16,
+        "pick_no": 220,
+        "pid": "13330",
+        "pos": "TE",
+        "regime": "contested"
+       },
+       {
+        "round": 17,
+        "pick_no": 229,
+        "pid": "13307",
+        "pos": "TE",
+        "regime": "contested"
+       },
+       {
+        "round": 18,
+        "pick_no": 248,
+        "pid": "13347",
+        "pos": "RB",
+        "regime": "contested"
+       },
+       {
+        "round": 19,
+        "pick_no": 257,
+        "pid": "3271",
+        "pos": "TE",
+        "regime": "contested"
+       },
+       {
+        "round": 20,
+        "pick_no": 276,
+        "pid": "11596",
+        "pos": "TE",
+        "regime": "contested"
+       },
+       {
+        "round": 21,
+        "pick_no": 285,
+        "pid": "9757",
+        "pos": "RB",
+        "regime": "contested"
+       },
+       {
+        "round": 22,
+        "pick_no": 304,
+        "pid": "5409",
+        "pos": "TE",
+        "regime": "contested"
+       },
+       {
+        "round": 23,
+        "pick_no": 313,
+        "pid": "11579",
+        "pos": "RB",
+        "regime": "contested"
+       },
+       {
+        "round": 24,
+        "pick_no": 332,
+        "pid": "13121",
+        "pos": "TE",
+        "regime": "contested"
+       },
+       {
+        "round": 25,
+        "pick_no": 341,
+        "pid": "12497",
+        "pos": "WR",
+        "regime": "contested"
+       },
+       {
+        "round": 26,
+        "pick_no": 360,
+        "pid": "13946",
+        "pos": "RB",
+        "regime": "contested"
+       }
+      ],
+      "6": [
+       {
+        "round": 1,
+        "pick_no": 6,
+        "pid": "9493",
+        "pos": "WR",
+        "regime": "decisive"
+       },
+       {
+        "round": 2,
+        "pick_no": 23,
+        "pid": "6794",
+        "pos": "WR",
+        "regime": "contested"
+       },
+       {
+        "round": 3,
+        "pick_no": 34,
+        "pid": "12481",
+        "pos": "RB",
+        "regime": "decisive"
+       },
+       {
+        "round": 4,
+        "pick_no": 51,
+        "pid": "4984",
+        "pos": "QB",
+        "regime": "decisive"
+       },
+       {
+        "round": 5,
+        "pick_no": 62,
+        "pid": "8110",
+        "pos": "TE",
+        "regime": "contested"
+       },
+       {
+        "round": 6,
+        "pick_no": 79,
+        "pid": "12490",
+        "pos": "RB",
+        "regime": "contested"
+       },
+       {
+        "round": 7,
+        "pick_no": 90,
+        "pid": "9487",
+        "pos": "WR",
+        "regime": "contested"
+       },
+       {
+        "round": 8,
+        "pick_no": 107,
+        "pid": "5022",
+        "pos": "TE",
+        "regime": "contested"
+       },
+       {
+        "round": 9,
+        "pick_no": 118,
+        "pid": "12489",
+        "pos": "RB",
+        "regime": "contested"
+       },
+       {
+        "round": 10,
+        "pick_no": 135,
+        "pid": "3214",
+        "pos": "TE",
+        "regime": "decisive"
+       },
+       {
+        "round": 11,
+        "pick_no": 146,
+        "pid": "11583",
+        "pos": "RB",
+        "regime": "decisive"
+       },
+       {
+        "round": 12,
+        "pick_no": 163,
+        "pid": "7600",
+        "pos": "TE",
+        "regime": "decisive"
+       },
+       {
+        "round": 13,
+        "pick_no": 174,
+        "pid": "4981",
+        "pos": "WR",
+        "regime": "decisive"
+       },
+       {
+        "round": 14,
+        "pick_no": 191,
+        "pid": "6865",
+        "pos": "TE",
+        "regime": "decisive"
+       },
+       {
+        "round": 15,
+        "pick_no": 202,
+        "pid": "11581",
+        "pos": "RB",
+        "regime": "decisive"
+       },
+       {
+        "round": 16,
+        "pick_no": 219,
+        "pid": "12521",
+        "pos": "TE",
+        "regime": "contested"
+       },
+       {
+        "round": 17,
+        "pick_no": 230,
+        "pid": "3202",
+        "pos": "TE",
+        "regime": "decisive"
+       },
+       {
+        "round": 18,
+        "pick_no": 247,
+        "pid": "13322",
+        "pos": "TE",
+        "regime": "contested"
+       },
+       {
+        "round": 19,
+        "pick_no": 258,
+        "pid": "11199",
+        "pos": "RB",
+        "regime": "contested"
+       },
+       {
+        "round": 20,
+        "pick_no": 275,
+        "pid": "13408",
+        "pos": "TE",
+        "regime": "contested"
+       },
+       {
+        "round": 21,
+        "pick_no": 286,
+        "pid": "12471",
+        "pos": "RB",
+        "regime": "contested"
+       },
+       {
+        "round": 22,
+        "pick_no": 303,
+        "pid": "13282",
+        "pos": "TE",
+        "regime": "contested"
+       },
+       {
+        "round": 23,
+        "pick_no": 314,
+        "pid": "12531",
+        "pos": "RB",
+        "regime": "contested"
+       },
+       {
+        "round": 24,
+        "pick_no": 331,
+        "pid": "12455",
+        "pos": "RB",
+        "regime": "contested"
+       },
+       {
+        "round": 25,
+        "pick_no": 342,
+        "pid": "4314",
+        "pos": "TE",
+        "regime": "contested"
+       },
+       {
+        "round": 26,
+        "pick_no": 359,
+        "pid": "2359",
+        "pos": "RB",
+        "regime": "contested"
+       }
+      ],
+      "7": [
+       {
+        "round": 1,
+        "pick_no": 7,
+        "pid": "7547",
+        "pos": "WR",
+        "regime": "decisive"
+       },
+       {
+        "round": 2,
+        "pick_no": 22,
+        "pid": "3198",
+        "pos": "RB",
+        "regime": "decisive"
+       },
+       {
+        "round": 3,
+        "pick_no": 35,
+        "pid": "9484",
+        "pos": "TE",
+        "regime": "decisive"
+       },
+       {
+        "round": 4,
+        "pick_no": 50,
+        "pid": "6790",
+        "pos": "RB",
+        "regime": "contested"
+       },
+       {
+        "round": 5,
+        "pick_no": 63,
+        "pid": "8183",
+        "pos": "QB",
+        "regime": "decisive"
+       },
+       {
+        "round": 6,
+        "pick_no": 78,
+        "pid": "9500",
+        "pos": "WR",
+        "regime": "decisive"
+       },
+       {
+        "round": 7,
+        "pick_no": 91,
+        "pid": "10232",
+        "pos": "WR",
+        "regime": "contested"
+       },
+       {
+        "round": 8,
+        "pick_no": 106,
+        "pid": "11624",
+        "pos": "WR",
+        "regime": "contested"
+       },
+       {
+        "round": 9,
+        "pick_no": 119,
+        "pid": "8121",
+        "pos": "WR",
+        "regime": "contested"
+       },
+       {
+        "round": 10,
+        "pick_no": 134,
+        "pid": "13298",
+        "pos": "WR",
+        "regime": "decisive"
+       },
+       {
+        "round": 11,
+        "pick_no": 147,
+        "pid": "4039",
+        "pos": "WR",
+        "regime": "decisive"
+       },
+       {
+        "round": 12,
+        "pick_no": 162,
+        "pid": "13294",
+        "pos": "WR",
+        "regime": "decisive"
+       },
+       {
+        "round": 13,
+        "pick_no": 175,
+        "pid": "13346",
+        "pos": "WR",
+        "regime": "decisive"
+       },
+       {
+        "round": 14,
+        "pick_no": 190,
+        "pid": "12492",
+        "pos": "WR",
+        "regime": "contested"
+       },
+       {
+        "round": 15,
+        "pick_no": 203,
+        "pid": "13434",
+        "pos": "TE",
+        "regime": "contested"
+       },
+       {
+        "round": 16,
+        "pick_no": 218,
+        "pid": "13305",
+        "pos": "RB",
+        "regime": "decisive"
+       },
+       {
+        "round": 17,
+        "pick_no": 231,
+        "pid": "7891",
+        "pos": "TE",
+        "regime": "decisive"
+       },
+       {
+        "round": 18,
+        "pick_no": 246,
+        "pid": "12495",
+        "pos": "RB",
+        "regime": "contested"
+       },
+       {
+        "round": 19,
+        "pick_no": 259,
+        "pid": "13324",
+        "pos": "TE",
+        "regime": "contested"
+       },
+       {
+        "round": 20,
+        "pick_no": 274,
+        "pid": "4054",
+        "pos": "TE",
+        "regime": "contested"
+       },
+       {
+        "round": 21,
+        "pick_no": 287,
+        "pid": "11637",
+        "pos": "WR",
+        "regime": "contested"
+       },
+       {
+        "round": 22,
+        "pick_no": 302,
+        "pid": "7842",
+        "pos": "TE",
+        "regime": "contested"
+       },
+       {
+        "round": 23,
+        "pick_no": 315,
+        "pid": "11201",
+        "pos": "TE",
+        "regime": "contested"
+       },
+       {
+        "round": 24,
+        "pick_no": 330,
+        "pid": "6130",
+        "pos": "RB",
+        "regime": "contested"
+       },
+       {
+        "round": 25,
+        "pick_no": 343,
+        "pid": "4602",
+        "pos": "TE",
+        "regime": "contested"
+       },
+       {
+        "round": 26,
+        "pick_no": 358,
+        "pid": "12504",
+        "pos": "RB",
+        "regime": "contested"
+       }
+      ],
+      "8": [
+       {
+        "round": 1,
+        "pick_no": 8,
+        "pid": "11604",
+        "pos": "TE",
+        "regime": "contested"
+       },
+       {
+        "round": 2,
+        "pick_no": 21,
+        "pid": "4866",
+        "pos": "RB",
+        "regime": "decisive"
+       },
+       {
+        "round": 3,
+        "pick_no": 36,
+        "pid": "8137",
+        "pos": "WR",
+        "regime": "contested"
+       },
+       {
+        "round": 4,
+        "pick_no": 49,
+        "pid": "11584",
+        "pos": "RB",
+        "regime": "contested"
+       },
+       {
+        "round": 5,
+        "pick_no": 64,
+        "pid": "2216",
+        "pos": "WR",
+        "regime": "contested"
+       },
+       {
+        "round": 6,
+        "pick_no": 77,
+        "pid": "4046",
+        "pos": "QB",
+        "regime": "contested"
+       },
+       {
+        "round": 7,
+        "pick_no": 92,
+        "pid": "11620",
+        "pos": "WR",
+        "regime": "contested"
+       },
+       {
+        "round": 8,
+        "pick_no": 105,
+        "pid": "421",
+        "pos": "QB",
+        "regime": "decisive"
+       },
+       {
+        "round": 9,
+        "pick_no": 120,
+        "pid": "8126",
+        "pos": "WR",
+        "regime": "decisive"
+       },
+       {
+        "round": 10,
+        "pick_no": 133,
+        "pid": "8161",
+        "pos": "QB",
+        "regime": "decisive"
+       },
+       {
+        "round": 11,
+        "pick_no": 148,
+        "pid": "8180",
+        "pos": "WR",
+        "regime": "contested"
+       },
+       {
+        "round": 12,
+        "pick_no": 161,
+        "pid": "12522",
+        "pos": "QB",
+        "regime": "decisive"
+       },
+       {
+        "round": 13,
+        "pick_no": 176,
+        "pid": "9511",
+        "pos": "RB",
+        "regime": "contested"
+       },
+       {
+        "round": 14,
+        "pick_no": 189,
+        "pid": "8225",
+        "pos": "TE",
+        "regime": "contested"
+       },
+       {
+        "round": 15,
+        "pick_no": 204,
+        "pid": "6039",
+        "pos": "RB",
+        "regime": "contested"
+       },
+       {
+        "round": 16,
+        "pick_no": 217,
+        "pid": "12048",
+        "pos": "RB",
+        "regime": "contested"
+       },
+       {
+        "round": 17,
+        "pick_no": 232,
+        "pid": "13349",
+        "pos": "TE",
+        "regime": "contested"
+       },
+       {
+        "round": 18,
+        "pick_no": 245,
+        "pid": "13311",
+        "pos": "WR",
+        "regime": "contested"
+       },
+       {
+        "round": 19,
+        "pick_no": 260,
+        "pid": "12543",
+        "pos": "RB",
+        "regime": "contested"
+       },
+       {
+        "round": 20,
+        "pick_no": 273,
+        "pid": "11593",
+        "pos": "TE",
+        "regime": "contested"
+       },
+       {
+        "round": 21,
+        "pick_no": 288,
+        "pid": "8145",
+        "pos": "TE",
+        "regime": "contested"
+       },
+       {
+        "round": 22,
+        "pick_no": 301,
+        "pid": "11647",
+        "pos": "RB",
+        "regime": "contested"
+       },
+       {
+        "round": 23,
+        "pick_no": 316,
+        "pid": "8489",
+        "pos": "TE",
+        "regime": "contested"
+       },
+       {
+        "round": 24,
+        "pick_no": 329,
+        "pid": "5133",
+        "pos": "TE",
+        "regime": "contested"
+       },
+       {
+        "round": 25,
+        "pick_no": 344,
+        "pid": "7531",
+        "pos": "TE",
+        "regime": "contested"
+       },
+       {
+        "round": 26,
+        "pick_no": 357,
+        "pid": "13317",
+        "pos": "WR",
+        "regime": "contested"
+       }
+      ],
+      "9": [
+       {
+        "round": 1,
+        "pick_no": 9,
+        "pid": "9226",
+        "pos": "RB",
+        "regime": "contested"
+       },
+       {
+        "round": 2,
+        "pick_no": 20,
+        "pid": "12517",
+        "pos": "TE",
+        "regime": "decisive"
+       },
+       {
+        "round": 3,
+        "pick_no": 37,
+        "pid": "9997",
+        "pos": "WR",
+        "regime": "contested"
+       },
+       {
+        "round": 4,
+        "pick_no": 48,
+        "pid": "7021",
+        "pos": "RB",
+        "regime": "contested"
+       },
+       {
+        "round": 5,
+        "pick_no": 65,
+        "pid": "10222",
+        "pos": "WR",
+        "regime": "contested"
+       },
+       {
+        "round": 6,
+        "pick_no": 76,
+        "pid": "3163",
+        "pos": "QB",
+        "regime": "decisive"
+       },
+       {
+        "round": 7,
+        "pick_no": 93,
+        "pid": "2449",
+        "pos": "WR",
+        "regime": "contested"
+       },
+       {
+        "round": 8,
+        "pick_no": 104,
+        "pid": "6797",
+        "pos": "QB",
+        "regime": "contested"
+       },
+       {
+        "round": 9,
+        "pick_no": 121,
+        "pid": "12501",
+        "pos": "WR",
+        "regime": "contested"
+       },
+       {
+        "round": 10,
+        "pick_no": 132,
+        "pid": "11834",
+        "pos": "WR",
+        "regime": "contested"
+       },
+       {
+        "round": 11,
+        "pick_no": 149,
+        "pid": "4199",
+        "pos": "RB",
+        "regime": "contested"
+       },
+       {
+        "round": 12,
+        "pick_no": 160,
+        "pid": "8111",
+        "pos": "TE",
+        "regime": "decisive"
+       },
+       {
+        "round": 13,
+        "pick_no": 177,
+        "pid": "12469",
+        "pos": "RB",
+        "regime": "decisive"
+       },
+       {
+        "round": 14,
+        "pick_no": 188,
+        "pid": "13274",
+        "pos": "WR",
+        "regime": "contested"
+       },
+       {
+        "round": 15,
+        "pick_no": 205,
+        "pid": "11575",
+        "pos": "RB",
+        "regime": "decisive"
+       },
+       {
+        "round": 16,
+        "pick_no": 216,
+        "pid": "11576",
+        "pos": "RB",
+        "regime": "decisive"
+       },
+       {
+        "round": 17,
+        "pick_no": 233,
+        "pid": "5973",
+        "pos": "TE",
+        "regime": "decisive"
+       },
+       {
+        "round": 18,
+        "pick_no": 244,
+        "pid": "6001",
+        "pos": "TE",
+        "regime": "contested"
+       },
+       {
+        "round": 19,
+        "pick_no": 261,
+        "pid": "13288",
+        "pos": "RB",
+        "regime": "contested"
+       },
+       {
+        "round": 20,
+        "pick_no": 272,
+        "pid": "13276",
+        "pos": "WR",
+        "regime": "contested"
+       },
+       {
+        "round": 21,
+        "pick_no": 289,
+        "pid": "6271",
+        "pos": "WR",
+        "regime": "contested"
+       },
+       {
+        "round": 22,
+        "pick_no": 300,
+        "pid": "13405",
+        "pos": "RB",
+        "regime": "contested"
+       },
+       {
+        "round": 23,
+        "pick_no": 317,
+        "pid": "13433",
+        "pos": "TE",
+        "regime": "contested"
+       },
+       {
+        "round": 24,
+        "pick_no": 328,
+        "pid": "12738",
+        "pos": "RB",
+        "regime": "contested"
+       },
+       {
+        "round": 25,
+        "pick_no": 345,
+        "pid": "8484",
+        "pos": "TE",
+        "regime": "contested"
+       },
+       {
+        "round": 26,
+        "pick_no": 356,
+        "pid": "12969",
+        "pos": "RB",
+        "regime": "contested"
+       }
+      ],
+      "10": [
+       {
+        "round": 1,
+        "pick_no": 10,
+        "pid": "7564",
+        "pos": "WR",
+        "regime": "contested"
+       },
+       {
+        "round": 2,
+        "pick_no": 19,
+        "pid": "12527",
+        "pos": "RB",
+        "regime": "decisive"
+       },
+       {
+        "round": 3,
+        "pick_no": 38,
+        "pid": "10859",
+        "pos": "TE",
+        "regime": "contested"
+       },
+       {
+        "round": 4,
+        "pick_no": 47,
+        "pid": "7543",
+        "pos": "RB",
+        "regime": "decisive"
+       },
+       {
+        "round": 5,
+        "pick_no": 66,
+        "pid": "6904",
+        "pos": "QB",
+        "regime": "contested"
+       },
+       {
+        "round": 6,
+        "pick_no": 75,
+        "pid": "2133",
+        "pos": "WR",
+        "regime": "decisive"
+       },
+       {
+        "round": 7,
+        "pick_no": 94,
+        "pid": "8134",
+        "pos": "WR",
+        "regime": "contested"
+       },
+       {
+        "round": 8,
+        "pick_no": 103,
+        "pid": "5947",
+        "pos": "WR",
+        "regime": "contested"
+       },
+       {
+        "round": 9,
+        "pick_no": 122,
+        "pid": "8136",
+        "pos": "RB",
+        "regime": "decisive"
+       },
+       {
+        "round": 10,
+        "pick_no": 131,
+        "pid": "1479",
+        "pos": "WR",
+        "regime": "decisive"
+       },
+       {
+        "round": 11,
+        "pick_no": 150,
+        "pid": "7049",
+        "pos": "WR",
+        "regime": "decisive"
+       },
+       {
+        "round": 12,
+        "pick_no": 159,
+        "pid": "10219",
+        "pos": "RB",
+        "regime": "contested"
+       },
+       {
+        "round": 13,
+        "pick_no": 178,
+        "pid": "9486",
+        "pos": "WR",
+        "regime": "contested"
+       },
+       {
+        "round": 14,
+        "pick_no": 187,
+        "pid": "7090",
+        "pos": "WR",
+        "regime": "contested"
+       },
+       {
+        "round": 15,
+        "pick_no": 206,
+        "pid": "4066",
+        "pos": "TE",
+        "regime": "contested"
+       },
+       {
+        "round": 16,
+        "pick_no": 215,
+        "pid": "11589",
+        "pos": "RB",
+        "regime": "contested"
+       },
+       {
+        "round": 17,
+        "pick_no": 234,
+        "pid": "13319",
+        "pos": "TE",
+        "regime": "contested"
+       },
+       {
+        "round": 18,
+        "pick_no": 243,
+        "pid": "12544",
+        "pos": "RB",
+        "regime": "contested"
+       },
+       {
+        "round": 19,
+        "pick_no": 262,
+        "pid": "4454",
+        "pos": "WR",
+        "regime": "contested"
+       },
+       {
+        "round": 20,
+        "pick_no": 271,
+        "pid": "13401",
+        "pos": "TE",
+        "regime": "contested"
+       },
+       {
+        "round": 21,
+        "pick_no": 290,
+        "pid": "13273",
+        "pos": "TE",
+        "regime": "contested"
+       },
+       {
+        "round": 22,
+        "pick_no": 299,
+        "pid": "5985",
+        "pos": "TE",
+        "regime": "contested"
+       },
+       {
+        "round": 23,
+        "pick_no": 318,
+        "pid": "4189",
+        "pos": "TE",
+        "regime": "contested"
+       },
+       {
+        "round": 24,
+        "pick_no": 327,
+        "pid": "4995",
+        "pos": "TE",
+        "regime": "contested"
+       },
+       {
+        "round": 25,
+        "pick_no": 346,
+        "pid": "8117",
+        "pos": "WR",
+        "regime": "contested"
+       },
+       {
+        "round": 26,
+        "pick_no": 355,
+        "pid": "8207",
+        "pos": "RB",
+        "regime": "contested"
+       }
+      ],
+      "11": [
+       {
+        "round": 1,
+        "pick_no": 11,
+        "pid": "8138",
+        "pos": "RB",
+        "regime": "decisive"
+       },
+       {
+        "round": 2,
+        "pick_no": 18,
+        "pid": "7569",
+        "pos": "WR",
+        "regime": "decisive"
+       },
+       {
+        "round": 3,
+        "pick_no": 39,
+        "pid": "8228",
+        "pos": "RB",
+        "regime": "contested"
+       },
+       {
+        "round": 4,
+        "pick_no": 46,
+        "pid": "7553",
+        "pos": "TE",
+        "regime": "decisive"
+       },
+       {
+        "round": 5,
+        "pick_no": 67,
+        "pid": "11632",
+        "pos": "WR",
+        "regime": "contested"
+       },
+       {
+        "round": 6,
+        "pick_no": 74,
+        "pid": "11564",
+        "pos": "QB",
+        "regime": "contested"
+       },
+       {
+        "round": 7,
+        "pick_no": 95,
+        "pid": "9756",
+        "pos": "WR",
+        "regime": "contested"
+       },
+       {
+        "round": 8,
+        "pick_no": 102,
+        "pid": "11628",
+        "pos": "WR",
+        "regime": "decisive"
+       },
+       {
+        "round": 9,
+        "pick_no": 123,
+        "pid": "5967",
+        "pos": "RB",
+        "regime": "contested"
+       },
+       {
+        "round": 10,
+        "pick_no": 130,
+        "pid": "8676",
+        "pos": "WR",
+        "regime": "contested"
+       },
+       {
+        "round": 11,
+        "pick_no": 151,
+        "pid": "11586",
+        "pos": "RB",
+        "regime": "decisive"
+       },
+       {
+        "round": 12,
+        "pick_no": 158,
+        "pid": "11618",
+        "pos": "WR",
+        "regime": "contested"
+       },
+       {
+        "round": 13,
+        "pick_no": 179,
+        "pid": "6783",
+        "pos": "WR",
+        "regime": "decisive"
+       },
+       {
+        "round": 14,
+        "pick_no": 186,
+        "pid": "8188",
+        "pos": "WR",
+        "regime": "contested"
+       },
+       {
+        "round": 15,
+        "pick_no": 207,
+        "pid": "9482",
+        "pos": "TE",
+        "regime": "contested"
+       },
+       {
+        "round": 16,
+        "pick_no": 214,
+        "pid": "13345",
+        "pos": "RB",
+        "regime": "contested"
+       },
+       {
+        "round": 17,
+        "pick_no": 235,
+        "pid": "13421",
+        "pos": "TE",
+        "regime": "contested"
+       },
+       {
+        "round": 18,
+        "pick_no": 242,
+        "pid": "6869",
+        "pos": "TE",
+        "regime": "contested"
+       },
+       {
+        "round": 19,
+        "pick_no": 263,
+        "pid": "10871",
+        "pos": "TE",
+        "regime": "contested"
+       },
+       {
+        "round": 20,
+        "pick_no": 270,
+        "pid": "8177",
+        "pos": "TE",
+        "regime": "contested"
+       },
+       {
+        "round": 21,
+        "pick_no": 291,
+        "pid": "11577",
+        "pos": "RB",
+        "regime": "contested"
+       },
+       {
+        "round": 22,
+        "pick_no": 298,
+        "pid": "10226",
+        "pos": "WR",
+        "regime": "contested"
+       },
+       {
+        "round": 23,
+        "pick_no": 319,
+        "pid": "10212",
+        "pos": "TE",
+        "regime": "contested"
+       },
+       {
+        "round": 24,
+        "pick_no": 326,
+        "pid": "3048",
+        "pos": "TE",
+        "regime": "contested"
+       },
+       {
+        "round": 25,
+        "pick_no": 347,
+        "pid": "12540",
+        "pos": "WR",
+        "regime": "contested"
+       },
+       {
+        "round": 26,
+        "pick_no": 354,
+        "pid": "11574",
+        "pos": "RB",
+        "regime": "contested"
+       }
+      ],
+      "12": [
+       {
+        "round": 1,
+        "pick_no": 12,
+        "pid": "9224",
+        "pos": "RB",
+        "regime": "contested"
+       },
+       {
+        "round": 2,
+        "pick_no": 17,
+        "pid": "12507",
+        "pos": "RB",
+        "regime": "contested"
+       },
+       {
+        "round": 3,
+        "pick_no": 40,
+        "pid": "6801",
+        "pos": "WR",
+        "regime": "decisive"
+       },
+       {
+        "round": 4,
+        "pick_no": 45,
+        "pid": "1466",
+        "pos": "TE",
+        "regime": "decisive"
+       },
+       {
+        "round": 5,
+        "pick_no": 68,
+        "pid": "8146",
+        "pos": "WR",
+        "regime": "contested"
+       },
+       {
+        "round": 6,
+        "pick_no": 73,
+        "pid": "11566",
+        "pos": "QB",
+        "regime": "decisive"
+       },
+       {
+        "round": 7,
+        "pick_no": 96,
+        "pid": "13279",
+        "pos": "WR",
+        "regime": "decisive"
+       },
+       {
+        "round": 8,
+        "pick_no": 101,
+        "pid": "5045",
+        "pos": "WR",
+        "regime": "contested"
+       },
+       {
+        "round": 9,
+        "pick_no": 124,
+        "pid": "7594",
+        "pos": "RB",
+        "regime": "decisive"
+       },
+       {
+        "round": 10,
+        "pick_no": 129,
+        "pid": "9758",
+        "pos": "QB",
+        "regime": "decisive"
+       },
+       {
+        "round": 11,
+        "pick_no": 152,
+        "pid": "6806",
+        "pos": "RB",
+        "regime": "decisive"
+       },
+       {
+        "round": 12,
+        "pick_no": 157,
+        "pid": "96",
+        "pos": "QB",
+        "regime": "contested"
+       },
+       {
+        "round": 13,
+        "pick_no": 180,
+        "pid": "12509",
+        "pos": "WR",
+        "regime": "contested"
+       },
+       {
+        "round": 14,
+        "pick_no": 185,
+        "pid": "8132",
+        "pos": "RB",
+        "regime": "contested"
+       },
+       {
+        "round": 15,
+        "pick_no": 208,
+        "pid": "8127",
+        "pos": "TE",
+        "regime": "contested"
+       },
+       {
+        "round": 16,
+        "pick_no": 213,
+        "pid": "13337",
+        "pos": "RB",
+        "regime": "contested"
+       },
+       {
+        "round": 17,
+        "pick_no": 236,
+        "pid": "9481",
+        "pos": "TE",
+        "regime": "contested"
+       },
+       {
+        "round": 18,
+        "pick_no": 241,
+        "pid": "12658",
+        "pos": "TE",
+        "regime": "contested"
+       },
+       {
+        "round": 19,
+        "pick_no": 264,
+        "pid": "11600",
+        "pos": "TE",
+        "regime": "contested"
+       },
+       {
+        "round": 20,
+        "pick_no": 269,
+        "pid": "13414",
+        "pos": "RB",
+        "regime": "contested"
+       },
+       {
+        "round": 21,
+        "pick_no": 292,
+        "pid": "13429",
+        "pos": "TE",
+        "regime": "contested"
+       },
+       {
+        "round": 22,
+        "pick_no": 297,
+        "pid": "13338",
+        "pos": "WR",
+        "regime": "contested"
+       },
+       {
+        "round": 23,
+        "pick_no": 320,
+        "pid": "8249",
+        "pos": "TE",
+        "regime": "contested"
+       },
+       {
+        "round": 24,
+        "pick_no": 325,
+        "pid": "11433",
+        "pos": "TE",
+        "regime": "contested"
+       },
+       {
+        "round": 25,
+        "pick_no": 348,
+        "pid": "13403",
+        "pos": "RB",
+        "regime": "contested"
+       },
+       {
+        "round": 26,
+        "pick_no": 353,
+        "pid": "13268",
+        "pos": "WR",
+        "regime": "contested"
+       }
+      ],
+      "13": [
+       {
+        "round": 1,
+        "pick_no": 13,
+        "pid": "8130",
+        "pos": "TE",
+        "regime": "contested"
+       },
+       {
+        "round": 2,
+        "pick_no": 16,
+        "pid": "8151",
+        "pos": "RB",
+        "regime": "contested"
+       },
+       {
+        "round": 3,
+        "pick_no": 41,
+        "pid": "7525",
+        "pos": "WR",
+        "regime": "contested"
+       },
+       {
+        "round": 4,
+        "pick_no": 44,
+        "pid": "7526",
+        "pos": "WR",
+        "regime": "contested"
+       },
+       {
+        "round": 5,
+        "pick_no": 69,
+        "pid": "7611",
+        "pos": "RB",
+        "regime": "contested"
+       },
+       {
+        "round": 6,
+        "pick_no": 72,
+        "pid": "11560",
+        "pos": "QB",
+        "regime": "decisive"
+       },
+       {
+        "round": 7,
+        "pick_no": 97,
+        "pid": "4037",
+        "pos": "WR",
+        "regime": "decisive"
+       },
+       {
+        "round": 8,
+        "pick_no": 100,
+        "pid": "6819",
+        "pos": "WR",
+        "regime": "contested"
+       },
+       {
+        "round": 9,
+        "pick_no": 125,
+        "pid": "13286",
+        "pos": "RB",
+        "regime": "contested"
+       },
+       {
+        "round": 10,
+        "pick_no": 128,
+        "pid": "12545",
+        "pos": "QB",
+        "regime": "decisive"
+       },
+       {
+        "round": 11,
+        "pick_no": 153,
+        "pid": "12534",
+        "pos": "RB",
+        "regime": "decisive"
+       },
+       {
+        "round": 12,
+        "pick_no": 156,
+        "pid": "9508",
+        "pos": "RB",
+        "regime": "contested"
+       },
+       {
+        "round": 13,
+        "pick_no": 181,
+        "pid": "4035",
+        "pos": "RB",
+        "regime": "contested"
+       },
+       {
+        "round": 14,
+        "pick_no": 184,
+        "pid": "11571",
+        "pos": "RB",
+        "regime": "contested"
+       },
+       {
+        "round": 15,
+        "pick_no": 209,
+        "pid": "9225",
+        "pos": "RB",
+        "regime": "contested"
+       },
+       {
+        "round": 16,
+        "pick_no": 212,
+        "pid": "4147",
+        "pos": "RB",
+        "regime": "contested"
+       },
+       {
+        "round": 17,
+        "pick_no": 237,
+        "pid": "8698",
+        "pos": "TE",
+        "regime": "contested"
+       },
+       {
+        "round": 18,
+        "pick_no": 240,
+        "pid": "7694",
+        "pos": "TE",
+        "regime": "contested"
+       },
+       {
+        "round": 19,
+        "pick_no": 265,
+        "pid": "8800",
+        "pos": "RB",
+        "regime": "contested"
+       },
+       {
+        "round": 20,
+        "pick_no": 268,
+        "pid": "12457",
+        "pos": "RB",
+        "regime": "contested"
+       },
+       {
+        "round": 21,
+        "pick_no": 293,
+        "pid": "11716",
+        "pos": "TE",
+        "regime": "contested"
+       },
+       {
+        "round": 22,
+        "pick_no": 296,
+        "pid": "10214",
+        "pos": "TE",
+        "regime": "contested"
+       },
+       {
+        "round": 23,
+        "pick_no": 321,
+        "pid": "12530",
+        "pos": "DB",
+        "regime": "contested"
+       },
+       {
+        "round": 24,
+        "pick_no": 324,
+        "pid": "8181",
+        "pos": "RB",
+        "regime": "contested"
+       },
+       {
+        "round": 25,
+        "pick_no": 349,
+        "pid": "4219",
+        "pos": "RB",
+        "regime": "contested"
+       },
+       {
+        "round": 26,
+        "pick_no": 352,
+        "pid": "13348",
+        "pos": "RB",
+        "regime": "contested"
+       }
+      ],
+      "14": [
+       {
+        "round": 1,
+        "pick_no": 14,
+        "pid": "13287",
+        "pos": "RB",
+        "regime": "contested"
+       },
+       {
+        "round": 2,
+        "pick_no": 15,
+        "pid": "6786",
+        "pos": "WR",
+        "regime": "contested"
+       },
+       {
+        "round": 3,
+        "pick_no": 42,
+        "pid": "12512",
+        "pos": "RB",
+        "regime": "contested"
+       },
+       {
+        "round": 4,
+        "pick_no": 43,
+        "pid": "4217",
+        "pos": "TE",
+        "regime": "contested"
+       },
+       {
+        "round": 5,
+        "pick_no": 70,
+        "pid": "11635",
+        "pos": "WR",
+        "regime": "contested"
+       },
+       {
+        "round": 6,
+        "pick_no": 71,
+        "pid": "3294",
+        "pos": "QB",
+        "regime": "decisive"
+       },
+       {
+        "round": 7,
+        "pick_no": 98,
+        "pid": "9754",
+        "pos": "WR",
+        "regime": "contested"
+       },
+       {
+        "round": 8,
+        "pick_no": 99,
+        "pid": "11631",
+        "pos": "WR",
+        "regime": "contested"
+       },
+       {
+        "round": 9,
+        "pick_no": 126,
+        "pid": "10213",
+        "pos": "WR",
+        "regime": "contested"
+       },
+       {
+        "round": 10,
+        "pick_no": 127,
+        "pid": "7567",
+        "pos": "RB",
+        "regime": "contested"
+       },
+       {
+        "round": 11,
+        "pick_no": 154,
+        "pid": "13417",
+        "pos": "WR",
+        "regime": "contested"
+       },
+       {
+        "round": 12,
+        "pick_no": 155,
+        "pid": "11783",
+        "pos": "WR",
+        "regime": "contested"
+       },
+       {
+        "round": 13,
+        "pick_no": 182,
+        "pid": "11625",
+        "pos": "WR",
+        "regime": "contested"
+       },
+       {
+        "round": 14,
+        "pick_no": 183,
+        "pid": "13296",
+        "pos": "WR",
+        "regime": "contested"
+       },
+       {
+        "round": 15,
+        "pick_no": 210,
+        "pid": "4033",
+        "pos": "TE",
+        "regime": "contested"
+       },
+       {
+        "round": 16,
+        "pick_no": 211,
+        "pid": "9506",
+        "pos": "RB",
+        "regime": "contested"
+       },
+       {
+        "round": 17,
+        "pick_no": 238,
+        "pid": "9501",
+        "pos": "WR",
+        "regime": "contested"
+       },
+       {
+        "round": 18,
+        "pick_no": 239,
+        "pid": "7716",
+        "pos": "TE",
+        "regime": "contested"
+       },
+       {
+        "round": 19,
+        "pick_no": 266,
+        "pid": "11370",
+        "pos": "RB",
+        "regime": "contested"
+       },
+       {
+        "round": 20,
+        "pick_no": 267,
+        "pid": "13299",
+        "pos": "TE",
+        "regime": "contested"
+       },
+       {
+        "round": 21,
+        "pick_no": 294,
+        "pid": "7075",
+        "pos": "TE",
+        "regime": "contested"
+       },
+       {
+        "round": 22,
+        "pick_no": 295,
+        "pid": "5008",
+        "pos": "TE",
+        "regime": "contested"
+       },
+       {
+        "round": 23,
+        "pick_no": 322,
+        "pid": "8917",
+        "pos": "WR",
+        "regime": "contested"
+       },
+       {
+        "round": 24,
+        "pick_no": 323,
+        "pid": "8583",
+        "pos": "TE",
+        "regime": "contested"
+       },
+       {
+        "round": 25,
+        "pick_no": 350,
+        "pid": "11588",
+        "pos": "RB",
+        "regime": "contested"
+       },
+       {
+        "round": 26,
+        "pick_no": 351,
+        "pid": "13293",
+        "pos": "WR",
+        "regime": "contested"
+       }
+      ]
+     },
+     "elapsed_s": 750.1,
+     "detector_selfcheck": "ok"
+    }
+   }
   }
  }
 }

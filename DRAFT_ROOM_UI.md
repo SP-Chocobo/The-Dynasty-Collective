@@ -394,6 +394,8 @@ later.** Worth knowing before either is built.
 | U12 | "Since your last pick" digest | **WORKING: no** — the rail already shows it when you scroll back. A second surface for the same information is duplication. |
 | U14 | Per-position upside: engine-decided, user-toggled, or notice-plus-toggle? | **WORKING: notice-plus-toggle** (§11) — derived trigger, user's action, toggle default-on inside the notice. |
 | U15 | One ranked list vs per-position lanes | **WORKING: derived from mode state** (§11) — shared mode → one list; diverged modes → lanes. Folds the R3 swing into U14. |
+| U16 | Multi-select position filter with slot presets | **WORKING: yes** (§12) — the single-select view, its derivation and its ranking firewall already exist; multi-select is the extension. |
+| U17 | What to call all-toggles-on, given "ALL" is taken by the curated lens | **OPEN** — §12 proposes OVERVIEW / EVERYTHING. Needs a decision before the toggles ship or the two will be confused. |
 | U13 | May the live board poll Sleeper on a timer, or is refresh strictly manual? | **RULED: polling is allowed.** The constraint is *no automatic **paid** API calls*. Sleeper reads are free and uncovered. The refresh button becomes an immediate-update override, not the only mechanism. |
 
 ### On U6, because it settles something §2 left open
@@ -507,3 +509,79 @@ crossing may never fire and no notice ever appears; against noisy ones they land
 That is correct rather than broken — tracking the real pool is the whole reason to prefer this to
 "round 15" — but it means *"how often will I see this?"* has the honest answer **"depends who you
 are drafting against."**
+
+---
+
+## 12. The mixer — and how much of it already exists
+
+The owner arrived here from the DAW metaphor: *"i cant help but have FL studio, DAW controls come
+to mind"*, then *"off/on toggles for each position, with default combinations. ALL / FLEX / SUPER
+FLEX / IDP. so you can display any one position, any combination you decide to have toggled on,
+or can insta-switch to established mappings."*
+
+### What the metaphor earns
+
+**The meter is the real find.** A mixer shows eight channels' levels at a glance without anyone
+reading a number, and the level FALLS. That is the depletion countdown (§11) in its natural
+visual grammar, and the clip light is the notice firing. Not a metaphor stretched over a feature
+— the same information problem.
+
+**Arm = auto.** A channel armed to act without asking is exactly §11's per-position `auto`.
+**Master strip = deny-for-all.** **Mute** arrives free and nobody had proposed it: *stop showing
+me kickers*. **Solo** is lane-focus.
+
+**And FLEX is literally a BUS.** RB/WR/TE send into it; SUPER_FLEX is a second bus QB also sends
+into. That is not an analogy, it is the shape of `roster_positions`. `displacement_adj`
+(`#216`/`#235`) — *how much of his value your lineup cannot use because the slot he would fill is
+already held* — is **bus contention**: the flex is full, his signal has nowhere to go.
+
+### THE TRAP IN THE METAPHOR, recorded because it would be fatal
+
+A mixer's grammar says **everything is adjustable to taste** — faders, EQ, sends. This engine's
+entire claim is the opposite: it MEASURES, and its integrity depends on nobody being able to tune
+it until it agrees with them. A fader labelled RB means someone boosts RB until the board
+recommends RBs, and the recommendation becomes their own prior with a number painted on it.
+
+> **Borrow the display grammar. Firewall the control grammar.** Strips, meters, at-a-glance
+> parallel state, mute, arm — yes. Anything continuous that touches valuation — never.
+>
+> **The naming rule that falls out of it:** if a control on that panel cannot be described as a
+> CHOICE, and only as an AMOUNT, it does not belong there.
+
+### MOST OF THE FILTER ALREADY EXISTS — checked, not assumed
+
+`draft_board_ui.filter_candidates_by_view(candidates, view)` already filters the board, and its
+docstring states both firewalls this conversation independently re-derived:
+
+- *"Never touches ranking/scoring, only which already-computed candidates are shown."*
+- *"a flex-slot view reuses that slot's own real eligible-position set (`FLEX_SLOT_POSITIONS`),
+  the same semantics `draft_room.py`'s own need_bonus math already keys off of, **never a
+  display-only reinterpretation of what "FLEX" means**."* `lineup_optimizer` builds real lineup
+  slots from that same map.
+
+`position_view_options(positions_present, roster_positions)` already DERIVES the option list per
+league: a non-superflex league is never offered SUPER_FLEX, an IDP-less league never IDP_FLEX,
+and a slot whose eligible set has no candidates left yields no empty view. **The owner's ALL /
+FLEX / SUPER FLEX / IDP presets are not a list anyone must maintain** — they fall out of
+`roster_positions` intersected with what is actually on the board.
+
+**What is genuinely new is MULTI-SELECT.** Today the view is single-select: ALL, or WR, or FLEX.
+Independent per-position toggles with the slot names as one-click shortcuts is a real extension,
+and a cheap one, because the expensive parts — derivation, the ranking firewall, and
+`POSITION_VIEW_DEPTH_CAP` giving each position real depth to show — are built.
+
+### Two hazards for the multi-select build
+
+**"ALL" IS ALREADY TAKEN, AND MEANS SOMETHING ELSE.** Its docstring: *"ALL is one particular LENS
+over that same, now-larger candidate universe, not 'show every row in it': it reconstructs the
+original curated overview (top overall by value, plus each position's own single best)... the
+depth lives in the position views, not in ALL."* So **every-toggle-on is NOT the ALL view** — it
+would be every position's full depth, a far bigger board. If both are called ALL, a user flips
+every switch, gets a different and much longer list than the ALL button gives, and reasonably
+concludes it is broken. They need separate words: `OVERVIEW` for the curated lens, `EVERYTHING`
+for all-toggles-on.
+
+**A FILTERED VIEW MUST NOT RENUMBER** (`#216` B4: *"board rank is not pick order — three
+ordinals, three names"*). If WR-only shows rows 1, 2, 3, that is a FOURTH ordinal wearing the
+engine's rank as a disguise. Filtered rows keep their real standing — 3rd, 7th, 12th — or the
+filter silently becomes a re-recommendation.
