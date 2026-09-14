@@ -9070,3 +9070,46 @@ first instrument to run a REAL draft deep enough for the round rule to fire AND 
 exact `pick_no` it fired at. The finding fell out of a number printed beside an expectation.
 Instruments that report WHERE something happened, not merely THAT it happened, find defects that
 assertions of the form "it happened" cannot.
+
+### #263b BOUND ON `#261`'s WHOLE MEASUREMENT — every seat is the engine, so every fire-round is a LOWER BOUND
+
+Owner's question: how does rivals taking sub-optimal, below-threshold players affect when the
+crossing fires? It bounds the entire depth battery, so it is recorded before any ruling rests on
+those numbers.
+
+**FIRST ORDER — sloppiness DELAYS the crossing.** A rival who reaches, or takes a kicker in round
+8, leaves an above-replacement player on the board. `n_above` decays more slowly and "nothing left
+above replacement" arrives later, or never. That is arguably correct behaviour rather than a
+flaw: if the league is leaving value on the table there IS still depth to take, and reaching for
+upside would be wrong. **The crossing self-adjusts to the quality of the league.** Round 15
+cannot — it fires on the calendar whatever the board looks like, which is the same insensitivity
+that produced the measured anti-correlation with bench depth.
+
+**SECOND ORDER — and it cuts the other way.** The replacement level is not fixed. It is the value
+of the Nth-best remaining at a position, N being remaining demand. If good players are NOT being
+taken, the Nth-best remaining is BETTER, so the level RISES, and a higher level is a higher bar to
+clear. Sloppy drafting therefore leaves more good players available AND raises the threshold they
+must beat.
+
+**WHICH DOMINATES IS NOT DERIVABLE.** It depends where in the distribution the sloppiness lands.
+Demand drains at a fixed rate (one roster slot per pick) while the pool does not, which argues for
+first-order winning — but that is a guess and is recorded as one, not as a finding.
+
+**THE BOUND THIS PLACES ON THE RUNNING BATTERY.** Every seat in `simulate_full_draft` is the
+production engine taking its own top candidate. That is the MAXIMALLY EFFICIENT drain: the fastest
+the board can possibly empty of above-replacement players. Therefore:
+
+> **Every fire-round the depth battery reports is a LOWER BOUND, not an estimate.** A real draft
+> containing human noise fires LATER than these numbers, by an amount nobody has measured.
+
+This does not invalidate the battery — a lower bound is exactly what is needed to answer "can the
+zero be reached at all," which was `#261`'s question. It DOES mean the numbers may not be quoted
+as "the crossing fires at round N in this format." The honest form is "no earlier than round N,
+against opponents who never err."
+
+**MEASURABLE, NOT YET MEASURED.** A noisy-opponent arm would settle it: rival seats select
+uniformly from their top-k rather than top-1, k as the noise dial. Two cautions if it is built:
+`#221` was WITHDRAWN because a fixture-shaped picks list faked the drain, so the noise must be
+applied inside a REAL simulated draft, never by synthesising a picks array; and the noise model is
+itself a constant nobody has derived, so `k` is a swept axis to report across, never a single
+chosen value (`#56`).
