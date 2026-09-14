@@ -10326,3 +10326,96 @@ The FFCL inversion is now attributed to the TE slot by ELIMINATION across five o
 a direct test. The direct test is a mock league identical to the control with the TE slot removed
 and nothing else changed. `build_mock_league` does not expose that, so it needs a small arm of its
 own — named as the next measurement, not assumed.
+
+---
+
+## `#278` DIRECT TEST — remove the TE slot and the crossing rule FIRES. `#277` survives its own strongest test
+
+`#277` closed by naming its own weakness: the TE-slot attribution came from ELIMINATING five
+axes, never from removing the slot and watching. `evidence/mode_boundary/crossing_matrix.py`
+arm `12T_ppr_NO_TE_SLOT`, with the prediction committed at `d69cd11` BEFORE the run finished.
+
+### The arm: one slot changed, everything else held byte-identical
+
+```
+control : QB RB RB WR WR TE   FLEX FLEX
+arm     : QB RB RB WR WR FLEX FLEX FLEX
+verified before running: rounds 14 = 14 · bench identical · scoring identical · slot count identical
+```
+
+**TE → FLEX, not TE → nothing.** Deleting the slot would move the starter count 8 → 7 and with
+it rounds, pick total, and every other position's share — four axes to test one, the exact
+confound `#277` existed to escape. The swap moves only where tight-end demand LIVES: out of a
+dedicated slot and into the shared pool. It is also not an invented shape; FFCL Group A is
+`FLEX FLEX WRRB_FLEX SUPER_FLEX` with no TE, so this is that league's distinguishing feature in
+isolation.
+
+### The result
+
+| arm | picks | QB | RB | WR | TE | holdout | **global rule** |
+|---|---|---|---|---|---|---|---|
+| `12T_ppr` (TE slot) | 168 | 85 | never | 85 | never | RB, TE | **NEVER** |
+| `12T_ppr_NO_TE_SLOT` | 168 | 80 | 155 | 85 | **120** | **none** | **FIRES at 155** |
+
+**Prediction confirmed, and more strongly than it was stated.** TE stops holding out — it crosses
+at 120. So does RB. **No position holds out at all, and the global crossing rule fires at pick
+155 of 168.** Self-check agrees independently: the engine's own `growth_signal` detector reports
+round 13 / pick 152 against the probe's 155 on a stride of 5.
+
+### The mechanism, visible in one trajectory
+
+Top remaining TE VOR, every 20 picks:
+
+```
+with TE slot   137 → 93 → 58 → 24 → 17 → 22 → 28 → 20 → 30     bottoms out, REBOUNDS, never dies
+no TE slot     120 → 120 → 75 → 41 → 26 →  7 →  0 →  0 →  0     decays to zero and PINS there
+```
+
+With a dedicated slot, TE's headroom bottoms near 17 and climbs back — the bench-pick effect
+`#276` identified, where a bench TE drops the replacement faster than the best-remaining and
+WIDENS the gap. Move that demand into the shared flex pool and the rebound vanishes entirely.
+
+### What this upgrades
+
+**`#277`'s conclusion is no longer by elimination.** The dedicated TE slot is now directly
+demonstrated as the operative axis, on a controlled A/B rather than a five-way exclusion.
+
+**And it is bigger than `#277` claimed.** `#277` said the TE slot decides WHICH position holds
+out. This says the TE slot is **the single reason the crossing rule never fires at all**. This is
+the first SYNTHETIC arm in the whole investigation to fire other than `10T_ppr_BN18` (pick 231),
+and unlike that one it is a controlled comparison, not an unexplained coincidence.
+
+**It also retro-explains FFCL without a second story.** FFCL has no TE slot and its TE crossed
+first, at 90 — the same signature. Its global rule still did not fire, but now for an IDENTIFIED
+reason (`#277a`: QB demand-exhausting out of the measurable set), not an unexplained holdout.
+
+### What it does NOT establish
+
+The arm is 12-team, 1QB, PPR, no premium. It shows the TE slot is SUFFICIENT to prevent firing
+in that shape; it does not show it is the only such mechanism, and the interaction with superflex
+(which moved QB 85 → 160 on its own) is untested in combination. Named, not assumed.
+
+**Nothing here licenses changing the rule.** The crossing test faithfully reports the quantity it
+is given; that the quantity is hostage to one roster slot is a property of `replacement_levels`'
+starter-demand model, and repairing it is Phase 3 (`#50`, `#147`).
+
+---
+
+## `#279` PROCESS NOTE — I killed my own analysis with a self-matching `pkill`
+
+Running `pkill -f "crossing_matri[x]"` to clear what I thought was a stale process killed the
+shell running the command, because the pattern appears in that shell's own command line. The
+character class defeats a `pgrep` self-match, NOT a `pkill` whose pattern is IN the argument
+being matched.
+
+**This is documented in the engine-measurement skill in as many words** — *"`pkill -f
+"run_draft_battery"` matches its own launching shell"* — and I hit it anyway, one turn after
+hitting the `pgrep`-in-an-`until`-loop version of the same thing.
+
+No data was lost: the run had already completed and written its file; only my analysis command
+died. Recorded because the near-miss is the useful part — had the run still been going, that
+would have destroyed 820 seconds of compute and I would have had no checkpoint for the final arm.
+
+**The rule:** do not `pkill` by pattern from a shell whose own command line contains the pattern.
+Kill by PID read from a separate `pgrep`, or do not kill at all — a finished process needs no
+killing, and checking `ps -o etime=` first would have shown it had already exited.

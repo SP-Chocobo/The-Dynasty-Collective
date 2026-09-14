@@ -660,6 +660,20 @@ this league's roster shape starves of demand relative to supply.** Which one tha
 hardcoded — it is a per-league fact, and that is precisely why the panel must read the levels
 rather than special-case a position.
 
+**DIRECTLY TESTED (`#278`), not inferred.** A control league and a copy differing in ONE slot —
+`TE` swapped for a `FLEX`, rounds/bench/scoring/teams held identical:
+
+| arm | QB | RB | WR | TE | holdout | global rule |
+|---|---|---|---|---|---|---|
+| with TE slot | 85 | never | 85 | never | RB, TE | **never fires** |
+| TE slot → FLEX | 80 | 155 | 85 | **120** | **none** | **fires at 155** |
+
+TE's headroom goes from `137 → 93 → 58 → 24 → 17 → 22 → 28 → 20 → 30` (rebounding, immortal) to
+`120 → 120 → 75 → 41 → 26 → 7 → 0 → 0 → 0` (decays and pins). **One roster slot is the difference
+between a mode switch that never fires and one that fires with a sixth of the draft left.** For
+the panel this means the holdout channel is not a quirk to annotate — it is the thing the whole
+global switch is hostage to, and the per-position meters are what make that visible at all.
+
 The holdout's headroom does not fall monotonically — it drops toward zero and climbs back,
 several times per draft (8 teams, TE: 121 → 27 → 12 → 5 → 18 → 11). A meter that rises late in a
 draft will read as a bug to anyone watching, so the UI has to be built knowing it is real.
