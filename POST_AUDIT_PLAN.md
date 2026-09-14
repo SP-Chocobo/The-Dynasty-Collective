@@ -8891,3 +8891,36 @@ Still required regardless of the setting, because the lock is preventative and n
 cancel an in-flight call when the clock expires rather than completing and billing for a dead
 verdict, and render anything that slips through as **stale**, never as live advice. `provider_meter`
 is the instrument; `#100` (nothing meters what a call costs) is the blocker on all of it.
+
+### #262 EXTENDED — RULED (owner): a debate is an EMBLEM ON A PLAYER, and the rail re-centers
+
+**The emblem.** A debate or Insight result attaches to the player it was about, and is reachable
+afterwards from the pick rail, the full draft board, and the roster view.
+
+Two things this fixes that were left open above:
+
+1. **A paid-for debate stops evaporating.** Today its whole life is the seconds you are on the
+   clock. As an annotation it becomes a record, which is also the first VISIBLE consumer `#92`
+   (persist and uniquely identify the snapshot) has ever had — the emblem is a pointer to a
+   stored snapshot id.
+2. **It dissolves the staleness problem** recorded above. The rule stands that a late result may
+   never render as LIVE ADVICE. But as a timestamped annotation it is entirely legitimate: *what
+   the chairs said at 3.05, about the board as it was at 3.05.* Same content, different frame, and
+   the emblem is the frame that makes a stale verdict useful instead of dangerous.
+
+**THREE OUTCOMES, distinguishable on the emblem** — debated and TAKEN, debated and PASSED,
+debated and SNIPED (passed, then taken by a rival). The third is the one most worth reviewing
+afterwards, and together they make a finished draft something a manager can learn from rather
+than a list of picks. A debate is scoped per (player, turn), so repeated debates on one player
+across turns are separate records with the most recent surfaced.
+
+**The rail re-centers, and the behaviour matters more than the button.**
+
+- The re-center control **appears only when the rail is off-centre**. A permanently visible one is
+  dead chrome at every moment you have not scrolled.
+- **A pick landing while the user has scrolled away must NOT yank the view back.** Stay put and
+  BADGE the control with what was missed ("3 picks since"), the way a chat client handles new
+  messages below the fold. Snatching the viewport is the single thing that makes a scrollable
+  timeline infuriating.
+- **Auto-recentre when it becomes the user's turn**, regardless of scroll position. That is the
+  one moment where losing your place is correct, because *now* is the only thing that matters.
