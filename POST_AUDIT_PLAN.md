@@ -9289,3 +9289,36 @@ derivation.
 **Extraction is running now (Fable, background, image reading only — no local CPU).** It was
 deliberately NOT told this hypothesis set: a transcription job handed a named expectation is a
 transcription that starts finding what it was told to expect.
+
+### #264 EXTENDED — RULED (owner): a profile is a PHASE-VECTOR, and the profile COUNT is an output
+
+> *"then mid could focus on laying a position, or balancing roster slots, or securing qb a bit
+> earlier on 2nd slot, or... etc"*
+
+A profile is not one label applied across a whole draft. It is a **triple** — what a seat does
+EARLY, then MID, then LATE — and the phases have different vocabularies because they face
+different decisions.
+
+**THIS REMOVES THE PROFILE COUNT FROM `#56`'s REACH, which the flat six-label version did not.**
+Enumerating the space (roughly 4 early x 4 mid x 4 late) gives ~64 paths and no principled way to
+select five. But the space is not enumerated: **the occupied paths are OBSERVED.** Twenty-four
+seats will land on perhaps eight to ten distinct triples, several of them repeatedly, and the
+profiles are whichever paths are actually occupied. The count is therefore an OUTPUT of the
+corpus rather than a number anyone chose — which is exactly the distinction that made round 15
+objectionable.
+
+**MID-PHASE VOCABULARY, each measurable off a board with no interpretation:**
+
+- **lay a position** — a third-or-later player at one position while a required starting slot
+  elsewhere is still empty.
+- **balance slots** — remaining required starters filled before any positional depth is added.
+- **QB2 early** — the pick number of the seat's SECOND quarterback. A superflex-specific
+  decision, and the cleanest measurable in the whole set: one integer per seat, nothing to judge.
+- **BPA** — no positional pattern separable from value order.
+
+`QB2` is the sharpest of the four and is the axis superflex itself creates, the same way QB1
+timing is the early-phase axis. Late-phase vocabulary is not yet named and should be read off the
+boards rather than guessed at here.
+
+Consistent with the ruling above: the set is PRE-REGISTERED per phase, seats are CLASSIFIED
+against it rather than clustered, and "fits none of these" stays a reportable finding.
