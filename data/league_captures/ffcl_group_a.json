@@ -246,7 +246,8 @@
    "NO TAXI -- both others carry 5.",
    "NO DEDICATED TE SLOT -- a startable position reachable only through flex.",
    "WRRB_FLEX -- an offbrand flex, alongside ordinary FLEX, never previously captured.",
-   "NO TRADING, by league rule -- the first captured league where pick ownership cannot move, and therefore the first one the no-trade draft simulator represents exactly rather than approximately."
+   "NO TRADING, by league rule -- the first captured league where pick ownership cannot move, and therefore the first one the no-trade draft simulator represents exactly rather than approximately.",
+   "3RR recorded IN THE RULEBOOK -- the first capture to carry draft_type as a field at all. GSOP2 is also 3RR but only its board extract says so; F&F's type is unrecorded."
   ],
   "the_two_captures_were_near_twins": "F&F and GSOP2 share identical starters (QB/RB/RB/WR/WR/TE/FLEX x3/SUPER_FLEX) and differ only in bench and IR depth, so as evidence about roster STRUCTURE they were closer to one data point than two. This is the first genuinely different shape.",
   "SCORING_IS_NOT_INDEPENDENT_EVIDENCE_THOUGH": "Compared against Greatest Show on Paper 2, this league differs in EXACTLY TWO values -- pass_td (4 vs 5) and bonus_rec_te (0.50 vs 0.75). All ~30 remaining settings are byte-identical, because they are Sleeper's defaults. The captures therefore carry almost no independent information about the default block, and agreement there must never be read as corroboration."
@@ -261,6 +262,17 @@
    "pick_order_is_regular_here": "No traded picks means the gap to your next turn is the snake's own arithmetic. In GSOP2 one manager's gaps between consecutive picks ran 16, 10, 2, 24, 7, 17, 7, 10, 9, 1, 21, 7, 1 -- chaotic because picks moved. A 12-team no-trade snake gives clean alternating ~2 / ~22. intervening_picks is PREDICTABLE in this league and unpredictable in the other.",
    "it_bounds_a_UI_claim_of_ours": "DRAFT_ROOM_UI.md \u00a72 argues the rail's next-turn marker is load-bearing partly because a person cannot know when their next pick is. That is TRUE IN A TRADING LEAGUE and much weaker here. The marker is still useful; the necessity argument is bounded to leagues where picks move.",
    "THE SIMULATOR MATCHES THIS LEAGUE EXACTLY": "simulate_full_draft does not trade picks. Against F&F and GSOP2 that has always been an unstated approximation -- both are trading leagues. Against FFCL Group A it is not an approximation at all, it is the rule. This is the first captured league the draft simulator models without that caveat."
+  }
+ },
+ "draft_type": {
+  "type": "3rr",
+  "meaning": "third-round reversal snake -- rounds 1-2 snake normally, then round 3 repeats round 2's direction, so the round-1 last pick gets 2.01 AND 3.01",
+  "stated_by": "owner",
+  "engine_support": "generate_pick_order(round_1_order, total_rounds, draft_type='snake'|'linear'|'3rr') already implements it; Sleeper exposes it as settings.reversal_round == 3",
+  "WHY IT IS WORTH RECORDING": {
+   "two_of_two_known_real_leagues_use_it": "Greatest Show on Paper 2 is also 3RR (verified against its transcribed board: round shapes r1-r6 run asc/desc/desc/asc/desc/asc, which naive snake fails and third-round-reversal passes). Fourth and Forever's draft type is NOT RECORDED ANYWHERE. So of the real leagues whose draft type we actually know, 3RR is 2 of 2 -- while every one of the battery's 34 arms runs plain snake (#265).",
+   "and_this_one_is_a_REDRAFT": "3RR is normally a startup/dynasty convention for balancing a snake. Seeing it in a redraft is worth noting, and fits this league's stated ethos -- the same fairness concern that bans trading across the six pods.",
+   "the_capture_format_was_missing_this_field": "NEITHER existing capture records draft_type. GSOP2's 3RR is recorded in its BOARD EXTRACT (evidence/real_drafts/extracted/...) rather than its rulebook, and F&F's is absent entirely. A rulebook that does not carry the draft type cannot answer the question #265 raises, which is why this field exists here."
   }
  }
 }

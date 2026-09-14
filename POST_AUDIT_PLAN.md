@@ -9810,3 +9810,28 @@ chooses and agree everywhere a commissioner does not.
 This is DATA. The battery reads `fixtures/sleeper_capture.json` (`#241`), not
 `data/league_captures/`. Adding an arm from this shape is a separate decision, and `#265` already
 records that whether to add roster-shape axes to `league_matrix` is the owner's call.
+
+### `#272` addendum — it is 3RR, and that makes `#265` sharper than it was
+
+The owner added the draft type after the capture was written: **third-round reversal.**
+
+**`#265` recorded that the 34-arm battery never varies draft type, on the strength of one real
+3RR league. It is now two of two.** Greatest Show on Paper 2 is 3RR (verified against its
+transcribed board — round shapes r1-r6 run asc/desc/desc/asc/desc/asc, which naive snake fails
+and third-round-reversal passes). FFCL Group A is 3RR by the owner's statement. Fourth and
+Forever's draft type is **not recorded anywhere**. So of the real leagues whose draft type we
+actually know, **3RR is 2 of 2, while all 34 battery arms run plain snake.**
+
+**A second, smaller finding underneath it: the capture FORMAT was missing the field.** Neither
+existing rulebook capture records `draft_type`. GSOP2's 3RR lives in its BOARD EXTRACT, not its
+rulebook; F&F's is absent entirely. A rulebook that cannot state its own draft type cannot answer
+the question `#265` asks, so `ffcl_group_a.json` is the first capture to carry `draft_type` as a
+field — and backfilling the other two is a small, obvious follow-up (GSOP2's answer is already
+known; F&F's would need looking up).
+
+**And this one is a REDRAFT using 3RR**, where 3RR is normally a startup/dynasty balancing
+convention. Consistent with the same fairness concern that bans trading across the six pods.
+
+`generate_pick_order(round_1_order, total_rounds, draft_type="snake"|"linear"|"3rr")` already
+implements it and Sleeper exposes it as `settings.reversal_round == 3`, so the capability is not
+the gap — the matrix simply never uses it.
