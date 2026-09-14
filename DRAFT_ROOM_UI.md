@@ -635,16 +635,33 @@ decorative rendering of a global number — it is the only display that does not
 measured. Four meters at 8 teams, pick 120, would read: QB clipped, WR clipped, RB clipped, TE
 still nodding along. One master meter reads: fine.
 
-### THE TE CHANNEL IS GOING TO LOOK BROKEN, AND IT IS NOT
+### THE HOLDOUT CHANNEL IS GOING TO LOOK BROKEN, AND IT IS NOT
 
-TE's headroom does not fall monotonically — it drops toward zero and climbs back, several times
-per draft (8 teams: 121 → 27 → 12 → 5 → 18 → 11). A meter that rises late in a draft will read
-as a bug to anyone watching, so the UI has to be built knowing it is real.
+**CORRECTED after the FFCL Group A arm — the holdout is not always TE, and the table above is
+one roster shape.** In the four leagues above (1QB, dedicated TE slot) TE is the position that
+never crosses. In FFCL Group A (superflex, NO dedicated TE slot, 0.5 TEP) it inverts completely:
+**tight end crosses FIRST, at pick 90 of 168, and quarterback and running back never cross.**
+
+| league | QB | RB | WR | TE | global |
+|---|---|---|---|---|---|
+| 12 teams, TE slot, 1QB | 85 | 185 | 85 | **never** | never |
+| **FFCL Group A**, no TE slot, superflex | **never** | **never** | 115 | **90** | never |
+
+Same mechanism, opposite sign: superflex doubles QB starter demand so QB's replacement sits far
+deeper and its headroom stays large; no TE slot leaves TE demand arriving only through the flex,
+so TE's replacement is shallow and its headroom closes early. **The holdout is whichever position
+this league's roster shape starves of demand relative to supply.** Which one that is cannot be
+hardcoded — it is a per-league fact, and that is precisely why the panel must read the levels
+rather than special-case a position.
+
+The holdout's headroom does not fall monotonically — it drops toward zero and climbs back,
+several times per draft (8 teams, TE: 121 → 27 → 12 → 5 → 18 → 11). A meter that rises late in a
+draft will read as a bug to anyone watching, so the UI has to be built knowing it is real.
 
 The cause is in `replacement_levels`' own docstring: a BENCH pick drains the pool without
 reducing any team's starter demand, so it moves the level — and at TE it moves the replacement
 down faster than it moves the best-remaining down, widening the gap. **Deep benches do not drain
-tight end toward the crossing. They push it away from it.** Which is also why §11's depletion
+the holdout position toward the crossing. They push it away from it.** Which is also why §11's depletion
 notice must be worded as a LEVEL, never as a countdown that only goes one way: "2 left worth
 taking" can go back up to 5, and a countdown that reverses destroys trust in everything near it.
 
@@ -669,7 +686,8 @@ error in this panel and it is the one that loses information silently.
 
 ### STILL OPEN, and not answered by this measurement
 
-Every league measured is 1QB, PPR, `te_premium=False`, with a dedicated TE slot. **TE is exactly
-the position a TE premium or a missing TE slot would change most**, and FFCL Group A is both —
-0.5 TEP and no dedicated TE slot, where a tight end is a flex body. The instrument runs in ~20s
-per league, so this is cheap; it is named here as the next measurement, not assumed.
+**RESOLVED, and it inverted the attribution** — see the correction above and `#274`'s scope
+correction. What remains untested is IDP: every league measured is offence-only, and an IDP
+league adds three positions with their own demand shapes, each a candidate holdout. The
+instrument runs in ~20s per league on a recorded draft; this is named as the next measurement,
+not assumed.

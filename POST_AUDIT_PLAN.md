@@ -10053,3 +10053,87 @@ The global switch is a defect, and per-position grading is the repair.
 1QB PPR. TE's behaviour is exactly what a TE-premium or no-TE-slot league would change most, and
 FFCL Group A is both (0.5 TEP, no dedicated TE slot). That arm is cheap now — the instrument
 takes 20s per league — and it is the obvious next measurement, NOT a claim this entry makes.
+
+### `#274` SCOPE CORRECTION (27th withdrawal) — "tight end detector" is WRONG as a general claim
+
+The FFCL Group A arm was named in `#274` as the case that could scope the finding. It did. The
+structural half survives; **the attribution to tight end does not, and I am withdrawing it.**
+
+`evidence/mode_boundary/crossing_ffcl.py` — FFCL Group A's real rulebook (12 teams, 9 starters
++ 5 bench = 14 rounds = 168 picks, matching the real board exactly), superflex, **0.5 TE premium,
+no dedicated TE slot**, 3RR. Self-check passes: engine `growth_signal` NEVER, probe NEVER.
+
+| league | QB | RB | WR | TE | global |
+|---|---|---|---|---|---|
+| 12T, dedicated TE slot, 1QB (control) | 85 | 185 | 85 | **never** | never |
+| **FFCL Group A**, no TE slot, superflex | **never** | **never** | 115 | **90** | never |
+
+**The holdout position inverts completely.** In the control TE is the one position that never
+crosses. In FFCL tight end is the FIRST to cross — at pick 90 of 168, barely past halfway — and
+**quarterback and running back are the positions that never cross at all.**
+
+Trajectories, every 20 picks:
+
+```
+ QB  148 → 123 →  98 →  91 →  80 →  63 →  39 →   8 →   --
+ TE  113 → 113 →  54 →  32 →   9 → -30 → -39 → -68 → -108
+```
+
+QB never goes negative; TE is deeply negative from pick 100 on. That is the mirror image of the
+four arms `#274` was written from.
+
+**Why, and it is the same mechanism pointing the other way.** The rank target is league starter
+demand. Superflex doubles QB demand, so QB's replacement sits far deeper down the curve and the
+gap above it stays large. No dedicated TE slot means TE demand arrives only through the flex, so
+TE's replacement is shallow and the gap closes early. **The holdout is whichever position the
+ROSTER SHAPE starves of demand relative to its supply — and roster shape decides which one.**
+The four arms that produced the TE account all shared one roster shape; TE was a property of
+that shape, not of the position.
+
+#### What survives, and is stronger for the correction
+
+**The structural finding is confirmed twice, on opposite shapes.** Per-position crossings are
+widely separated, the global `.any()` collapses them into one bit, and the board stays in
+balanced mode long after most positions are drained. In the control, QB and WR were done at 85 of
+312. In FFCL, TE was done at 90 and WR at 115 of 168 — and the global rule never fired in either.
+
+**The `#261` inversion survives.** Bench picks still move the level in the hoarded position's
+favour; that is a property of `replacement_levels`, not of TE.
+
+**The per-position case (`DRAFT_ROOM_UI.md` §13) gets STRONGER, not weaker.** If the holdout
+were always TE, a single special case would do. It is not: **which position is starved is a
+per-league fact**, so nothing short of reading the per-position levels can tell a drafter what is
+actually exhausted. The mixer's channel strips are not a nicer rendering of a global number —
+they are the only correct instrument, and the §13 TE-meter warning must be reworded as *the
+holdout channel*, whichever it is in this league.
+
+**One observation NOT claimed as a finding:** FFCL's QB column reads `--` (nothing measurable) by
+pick 160 — every remaining QB unpriced rather than below replacement. That is the `#171`
+floor-clearing regime and it is why the rule's two-zeros guard exists. Noted, not interpreted.
+
+---
+
+## `#275` PROCESS DEFECT — I pushed `9ae95a1` citing a suite that finished BEFORE the file it added
+
+`test_doc_index_is_not_stale` failed in this pass. The stale entry was
+`evidence/reference_rosters/OWNER_REDRAFT_2026-09-08.md`, restored in `9ae95a1` — **two commits
+before the work that surfaced the failure.** `DOC_INDEX.md` indexes markdown, so adding a `.md`
+file is a change the suite covers, and adding one invalidates the index.
+
+`9ae95a1`'s message says *"Docs only, no code touched. Full suite green at this code state: 2924
+tests, OK (skipped=1)."* Both halves are individually true and the conclusion is still wrong:
+**that suite finished before the commit added its file.** I treated "no code touched" as meaning
+"the suite cannot be affected", and `doc_index` is the counterexample sitting in the suite for
+exactly this reason.
+
+So `9ae95a1` was pushed red and nobody would have known until the next full run. The standing
+rule — *the full suite licenses a push* — was followed in letter and broken in substance, because
+the suite I cited was not a suite OF that commit.
+
+**The rule this sharpens:** a green suite licenses the tree that PRODUCED it, not the tree as it
+stands when you push. If the working tree changed after the run — including by adding a markdown
+file — the licence has lapsed. "Docs only" is not an exemption; this repository deliberately has
+tests that read documents (`doc_index`, `assertion_floors`, the no-reader guards).
+
+Related to `#169`, and the same family: both are cases of a commit being blessed by a check that
+was not actually about it.
