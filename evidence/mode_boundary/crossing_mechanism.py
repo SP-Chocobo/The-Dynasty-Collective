@@ -60,7 +60,14 @@ import run_draft_battery as rdb
 IN = Path("evidence/mode_boundary/depth_battery.json")
 OUT = Path("evidence/mode_boundary/crossing_mechanism.json")
 STRIDE = 5          # sample every Nth pick; board build is ~0.5s, a full 260-pick walk is ~4min
-ARMS = ("8T_ppr_BN18", "10T_ppr_BN18", "12T_ppr_BN18", "14T_ppr_BN18")
+#: Ladder B (teams) first because it produced #274, then ladder A (bench depth) and the real
+#: capture. All ten have recorded drafts in depth_battery.json, so the six added after #274 cost
+#: nothing to simulate -- they only need reading. The bench ladder is the interesting addition:
+#: if the HOLDOUT position is a property of roster SHAPE (#274's scope correction), six leagues
+#: that differ only in bench depth must all share one holdout, and that is a real prediction.
+ARMS = ("8T_ppr_BN18", "10T_ppr_BN18", "12T_ppr_BN18", "14T_ppr_BN18",
+        "12T_ppr_BN6", "12T_ppr_BN10", "12T_ppr_BN14", "12T_ppr_BN22", "12T_ppr_BN26",
+        "CAPTURE_fourth_and_forever")
 
 
 def pick_sequence(entry: dict, rule: str) -> list[dict]:
@@ -84,6 +91,28 @@ def league_for(teams: int, bench: int, base_scoring: dict) -> dict:
     lg["roster_positions"] = starters + ["BN"] * bench
     lg["draft_rounds"] = len(lc.draftable_slots(lg["roster_positions"]))
     return lg
+
+
+def league_for_arm(label: str, entry: dict, base_scoring: dict, matrix: dict) -> dict:
+    """The league THIS arm was drafted under -- derived from the arm, never assumed.
+
+    The first version of this probe hardcoded bench 18, which was correct for the four ladder-B
+    arms it was written for and silently WRONG for every other arm. A league rebuilt at the wrong
+    depth still produces a full board and a plausible per-position table; it is the
+    engine-measurement failure mode exactly ("a plausible number about something else"), so the
+    depth now comes from the arm's own recorded round count rather than from a constant here.
+
+    CAPTURE_fourth_and_forever is not a mock league at all and must come from the battery's own
+    matrix, which is where depth_battery got it (#126: one home, derived).
+    """
+    if label in matrix:
+        return matrix[label]["league"]
+    starters = len(lc.draftable_slots(
+        [s for s in dr.build_mock_league(
+            teams=entry["teams"], superflex=False, scoring="ppr", te_premium=False,
+            dynasty=True, base_scoring=base_scoring)["roster_positions"] if s != "BN"]))
+    bench = entry["rounds"] - starters
+    return league_for(entry["teams"], bench, base_scoring)
 
 
 def probe_board(rows: list[dict], league: dict, teams: int,
@@ -123,6 +152,7 @@ def main() -> int:
     players_db, prov = rdb.build_players_db_from_capture()
     season = rdb.season_projections_from_capture()
     base = rdb.scoring_settings_from_capture()
+    matrix = {e["label"]: e for e in db.league_matrix(base)}
     print(f"universe {prov['players_in_pool']}  season {len(season)}", flush=True)
 
     for label in ARMS:
@@ -132,7 +162,7 @@ def main() -> int:
         entry = battery[label]
         teams = entry["teams"]
         order = pick_sequence(entry, dr.UPSIDE_RULE_CROSSING)
-        league = league_for(teams, 18, base)
+        league = league_for_arm(label, entry, base, matrix)
         merger.set_league_format(db.league_format_hint(league))      # NEVER SKIP
         recorded = entry["rules"][dr.UPSIDE_RULE_CROSSING]["first_upside_pick"]
         print(f"\n== {label}  teams={teams}  picks={len(order)}  "

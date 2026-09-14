@@ -10137,3 +10137,87 @@ tests that read documents (`doc_index`, `assertion_floors`, the no-reader guards
 
 Related to `#169`, and the same family: both are cases of a commit being blessed by a check that
 was not actually about it.
+
+---
+
+## `#276` CORRECTION TO `#271` (28th withdrawal) — ladder A is ONE draft truncated six ways, not six arms
+
+Extending `#274`'s probe to all ten recorded drafts produced a result that looked like a clean
+confirmation and is actually a deflation of the evidence underneath it. Caught before it was
+published, which is the only reason it is a withdrawn PREDICTION rather than a withdrawn claim.
+
+### What it looked like
+
+Six 12-team leagues differing only in bench depth, probed per position:
+
+| arm | picks | QB | RB | WR | TE |
+|---|---|---|---|---|---|
+| 12T_ppr_BN6 | 168 | 85 | never | 85 | never |
+| 12T_ppr_BN10 | 216 | 85 | 185 | 85 | never |
+| 12T_ppr_BN14 | 264 | 85 | 185 | 85 | never |
+| 12T_ppr_BN18 | 312 | 85 | 185 | 85 | never |
+| 12T_ppr_BN22 | 360 | 85 | 185 | 85 | never |
+| 12T_ppr_BN26 | 408 | 85 | 185 | 85 | never |
+
+QB at 85 and WR at 85 in all six; TE never in all six; RB at 185 in five. I had pre-registered
+this in `crossing_mechanism.py`: *"six leagues that differ only in bench depth must all share
+one holdout, and that is a real prediction."*
+
+### `#245` says identical numbers are a broken instrument until proven otherwise, so I checked
+
+**The six drafts are byte-identical over their entire overlap.** BN6's 168 picks are a strict
+prefix of BN10's 216, which is a prefix of BN14's, and so on to BN26's 408. Divergence pick:
+**none, in any pair.** Verified separately that the six leagues differ ONLY in `BN` count —
+identical starters (`QB RB RB WR WR TE FLEX FLEX`), scoring, team count and every other key.
+
+So the six arms are **one 408-pick draft, sampled at six lengths.**
+
+### Three consequences, in increasing order of importance
+
+**1. My prediction was untestable.** On nested prefixes it cannot fail — the arms are reading
+the same draft. A confirmation that could not have come out any other way is not evidence, and
+I would have reported it as the decisive one. WITHDRAWN before publication.
+
+**2. `#271`'s ladder-A null is ONE observation, not six.** That entry says *"Bench 6 to bench 26
+— 168 to 408 picks, a 2.4x span on the one axis `#261` predicted would matter — and the crossing
+fires in none of the six."* The span is real; **"none of the six" overstates the evidence
+sixfold.** It is one draft that never fires, checked at six lengths. `#271`'s CONCLUSION survives
+— bench depth does not move the crossing — but it rests on one arm, and the entry should be read
+that way. The `#274` mechanism is unaffected: it rests on ladder B (four genuinely different
+leagues) and FFCL, none of which are prefix-nested.
+
+**3. THE POSITIVE FINDING, which is bigger than the correction.** Adding twenty bench slots
+changed **zero of 408 picks**. Not "little": zero. That is a direct empirical confirmation of
+`#115` — *bench capacity is not an engine input* — which `#115` recorded as a behavioural
+coverage gap with no measurement behind it. There is now one, on real drafts, and it is total.
+It also explains `#271`'s null completely and trivially: bench depth cannot move the crossing
+because bench depth moves nothing at all.
+
+### A THIRD HOLE IN THE DUPLICATE-ARM DETECTOR FAMILY, and it is the same kind
+
+`draft_battery` already carries two derived self-checks, and this slipped past both:
+
+- `duplicate_arms` compares each arm's ENTIRE measured body for byte identity. These arms have
+  different lengths and different totals, so **nothing is flagged.**
+- `format_axes_exercised` catches an axis that stops varying. The bench axis genuinely varies
+  (6→26), so **nothing is flagged.**
+
+**Neither can see NESTED PREFIXES** — an arm whose entire measured content is a prefix of
+another's. That is `#159`'s defect class in a shape its detector cannot express, and
+`format_axes_exercised`' own docstring already frames the family correctly: *"an axis can stop
+varying without any arm becoming a duplicate, and nothing else in the report would say so."*
+Here an axis varies, no arm is a duplicate, and the arms are still not independent evidence.
+
+`depth_battery.py` does not call either detector, which is the proximate reason this reached a
+published entry. The remedy is a prefix detector in the same derived style — compare recorded
+pick sequences, flag any arm that is a prefix of another — plus having the depth battery run the
+detectors it already has. Filed as work, not done in this entry: **evidence before repair**
+(`#162`).
+
+### Why bench depth changes nothing, stated as a question rather than an answer
+
+`build_mock_league` appends `BN` slots and `draftable_slots` turns them into rounds, so the
+DRAFT gets longer while every scoring input stays fixed. Whether that is correct is a real
+question — a 26-slot bench plausibly SHOULD change how a manager values depth, and `#224`
+characterised two `bench_capacity` quantities that exist. Whether either reaches a pick is not
+measured here and is not claimed.
