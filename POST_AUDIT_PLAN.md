@@ -11040,3 +11040,75 @@ position — the only way to settle whether IDP production is noisier than offen
 asserting it. But **one prior season measures BIAS, not variance**: a single observation per
 player. True week-to-week variance needs the weekly rows kept unaggregated, which
 `get_weekly_stats` supplies and this summing deliberately discards.
+
+---
+
+## #206 — the 0.00 is 2.3e-8, and the two causes are not two routes to one answer
+
+`survival_probability` reports 0.00 for a player who then survives sixty straight picks. #244
+ruled out the floor as the explanation and left the rest as a hypothesis in one clause: *"the
+boards rank by CDME; rivals do not."* Both halves are now measured
+(`evidence/survival_mechanism/`), and the second one is not what I expected it to be.
+
+**THE MECHANISM, CONFIRMED.** Every opponent board is built by the same valuation, so the
+player the engine likes best is rank 1 on all of them simultaneously. Of the top ten on one
+board, **ten carry an identical rank on all twelve**; across the twelve boards there is
+**exactly one distinct rank-1 player**. Through `estimate_survival` itself at seat 1's opening
+turn — 22 intervening picks — `take_probability` is **0.55 on 22 of 22**, one distinct value,
+no spread anywhere.
+
+**IT IS NOT A ROUNDING ARTIFACT.** Reported 0.0; unrounded **2.3e-8**, log10 −7.63. Seven
+orders below the 0.0005 that would round there. "0.00" reads as *small but measured*; this is
+the model being unable to express anything else.
+
+**THE MASS FIGURE IS NOT A CONSTANT — IT SCALES WITH THE POOL.** #244 measured 6.23 expected
+picks for a team that makes one, on a 256-row board. Fourth and Forever's own board holds **481
+priced rows → 10.73**. Neither number is wrong; the total is a *function of the pool*
+(2.11 / 3.67 / 6.23 / 11.11 at 50 / 128 / 256 / 500), because `.get(rank, FLOOR)` has no domain
+limit. A repair aimed at "the 6.23" would be aimed at a sample, not at the defect.
+
+**THE TWO CANDIDATE REPAIRS, ON ONE SCALE.** Renormalising by the realised sum is arithmetic
+forced by *one team, one pick* — no constant is chosen, so it is a bound and not a threshold
+(#56). On this turn it lifts survival to **0.314** in a single step. Agreement cannot be moved
+to the same place from either side:
+
+| rivals ranking him first (of 11) | picks affected | survival |
+|---:|---:|---:|
+| 0 | 0 | 0.641 |
+| 1 | 2 | 0.135 |
+| 2 | 4 | 0.029 |
+| 3 | 6 | 0.006 |
+| 11 | 22 | 0.000 |
+
+**27th WITHDRAWAL, and it is mine.** Commit `4ffafb3`'s message states that *"letting a SINGLE
+rival disagree gives 0.294."* **That is wrong and is withdrawn.** I read my own probe's `k` —
+boards ranking him *first* — as its complement. One dissenter does not move the reported number
+off 0.0; reaching 0.294 would need nineteen of twenty-two, which the shipped granularity cannot
+even produce. The test that now pins this is the test that caught it: I wrote the assertion from
+the false reading and it went red. The corrected statement is *sharper*, not softer — agreement
+is **superlinear**, so a single shared valuation supplies far more of it than the collapse
+requires, and three agreeing rivals already force 0.006.
+
+**WHAT THAT CHANGES ABOUT THE REPAIR.** #244 ruled the fix a #50 decision and that stands, with
+a better reason than "choose a coherent table". The two causes are **independent defects with
+different remedies**, and only one of them is arithmetic:
+
+- The **mass** half is a bound the model already violates and could be made to respect without
+  choosing anything. It is the cheaper half and it is not blocked on an input.
+- The **agreement** half is not repairable by consulting fewer boards or by trimming the table.
+  It is the statement that twelve rivals share one opinion because they share one valuation, and
+  giving them different opinions means modelling rival behaviour — which needs the real startup
+  board that exists here only at position-only resolution (#49/#88).
+
+**NOT REPAIRED, AND DELIBERATELY SO.** Wiring the mass half alone would move every consumer of
+`survival_probability` — `opportunity_cost`, `pick_necessity`, `rival_premium` — on the eve of a
+freeze, on the strength of one turn in one league. Evidence before repair, repair before freeze
+(#162); this pass is the evidence, and the register now says what a repair would have to be
+rather than leaving a mystery.
+
+**PINNED, NOT LEFT TO PROSE.** `test_take_model_coherence.py` gains the agreement half beside
+the mass half it already held (#126 — one home for the subject). 14 tests, mutation-checked
+4/4. Its fixture keys boards **per distinct rival, never per pick**: a snake turn is 22 picks
+but only 11 rivals, each consulted twice, and a per-pick fixture would build boards under ids
+nobody looks up and answer a different question — which is exactly the error my first draft of
+it made.

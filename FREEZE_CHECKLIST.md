@@ -385,6 +385,14 @@ only. The items below feed observables and the debate layer, so they degrade wha
       It feeds `opportunity_cost`, `pick_necessity` and `rival_premium`. It is also the stated
       reason the #55 necessity wiring was declined ("a signal is not promoted to decision-maker
       while one of its main inputs is under investigation"). Highest-value item in this gate.
+      **MEASURED, NOT REPAIRED** (register entry + `evidence/survival_mechanism/`). The 0.00 is
+      2.3e-8, not a rounding artifact, and it has TWO independent causes with different
+      remedies: take-probability mass (a bound the model violates, repairable as arithmetic,
+      lifts survival to 0.314 in one step) and rival agreement (every board built by one
+      valuation, so the engine's own #1 is rank 1 on all of them — needs rival modelling, and
+      that is blocked on #49/#88). Both halves pinned by `test_take_model_coherence.py`.
+      **What this gate still needs is the OWNER's call on whether the arithmetic half is wired
+      before the freeze or deferred to #50** — the measurement no longer blocks the decision.
 - [ ] **#183** — six defects in the live Debate Dock, including the absence contract broken
       exactly where a person actually reads it.
 - [ ] **#112** — kind-of-absence stops at the board; "never checked" has no representation.
