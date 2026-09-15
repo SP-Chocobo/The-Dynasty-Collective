@@ -10981,3 +10981,62 @@ over arbitrary equal slices, against +4.6 to +6.9 for the skill positions — be
 decline almost linearly (DB 117/94/68/43). Tackle accumulation is smooth, so there is no tier
 structure to find. **Recommendation: do not band IDP until the supply gap is closed** (`#210`,
 `#49`); banding an unpriced two-thirds would dress a supply defect as a grade.
+
+### `#282h` THE REALIZED SEASON — built, tested, and still uncaptured
+
+**IDP HAS NO VENDOR PRICING AT ALL.** Not thin — absent. The valuation table carries **0 of 91
+LB, 0 of 153 DB, 0 of 171 DL** with a projection or a `proj_3yr`, against 39/40 QB, 72/79 RB,
+105/109 WR, 48/52 TE. Every IDP number in this session came from Sleeper stat lines scored
+through the rulebook, with nothing to check them against. Offence carries two independent
+sources; **IDP carries one**, in a system whose stated first principle is that no single source
+is ground truth.
+
+That is the real case against banding IDP, and it is firmer than either argument offered before
+it: not that the curve is linear (it is — DB means run 117/94/68/43) and not that production is
+volatile (**believed, and NOT measurable here** — no week-level data, no `std_dev` column
+anywhere). Fine-grained grades published off one unverified source is the objection that stands.
+
+**WHAT IS ALREADY BUILT, AND WHAT HAS NEVER RUN:**
+
+| piece | state |
+|---|---|
+| `sleeper_client.get_weekly_stats()` | built, tested, used by `outcome_record` |
+| `outcome_record.capture()` — the store writer | built, tested |
+| `data/…/outcomes_*_wk*.json` | **no file exists** |
+| `data/fixtures/sleeper_capture.json` | projections only, 5,346 rows, no actuals |
+
+Everything is plumbed; nothing has flowed through it (`#97`: *"BLOCKED on real findings — store
+empty"*). **This entry closes the last missing piece rather than the blocker.**
+
+**ADDED HERE:** `get_season_stats()`, the realized counterpart to `get_season_projections()`,
+sharing one summing construction via `_sum_weeks` (`#126` — a copied loop means two places to fix
+the next time one of its properties is wrong). And `write_fixture(..., prior_season=)`, which
+captures a completed season's production **beside** the projections under **its own year label**.
+
+Three properties, each mutation-checked:
+
+- **THE YEAR IS EXPLICIT.** A projection for 2026 and what happened in 2025 are different years
+  by definition; `#79` is what it cost when a canonical record did not carry its own season. The
+  fixture now stores `prior_season_production: {season, totals, coverage, error}`.
+- **AN ABSENT PRIOR SEASON IS NOT A ZERO.** **Every rookie lands here**, as does anyone who
+  missed the year. A zero row would make each incoming rookie the worst player at his position
+  instantly — the defect class `#174` and `#187` were opened for. No key, never zeros.
+- **A FAILED STATS FETCH DOES NOT COST THE CAPTURE.** The projections still write and the
+  failure is recorded, so a reader can tell *"we did not ask"* from *"we asked and got nothing"*.
+
+**PROVENANCE IS CLEANER THAN THE PROJECTIONS', not a new exception.** What a player actually did
+is a public NFL fact, the same class as his name, team and position — all admitted verbatim under
+the standing input policy, which excludes a vendor's own model output, layout and branding.
+
+**STILL BLOCKED, and the blocker is unchanged:** `api.sleeper.app` is denied by this environment
+(403 at CONNECT, `#143`/`#88`). One run on a Sleeper-reachable machine fills it.
+
+**NO READER WAS BUILT.** Nothing consumes `prior_season_production` yet, and adding a reader for
+data that does not exist would create exactly the write-only quantity `#138`/`#141` spent a pass
+eliminating. The consumer arrives with the data.
+
+**WHAT IT WILL BUY, AND THE LIMIT.** A second independent anchor for IDP, and projection error by
+position — the only way to settle whether IDP production is noisier than offence rather than
+asserting it. But **one prior season measures BIAS, not variance**: a single observation per
+player. True week-to-week variance needs the weekly rows kept unaggregated, which
+`get_weekly_stats` supplies and this summing deliberately discards.

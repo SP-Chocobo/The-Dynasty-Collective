@@ -319,13 +319,31 @@ class SleeperClient:
         response should not cost the other seventeen -- but it is never silently treated as a
         week of zeros, which would understate every player in the league by exactly that week.
         """
+        return self._sum_weeks(self.get_weekly_projections, season, season_type, weeks)
+
+    def _sum_weeks(self, fetch, season: str, season_type: str, weeks: Optional[int]):
+        """The week-summing construction, shared by the projected and the realized season.
+
+        ONE HOME FOR THIS, not two (`#126`). `get_season_projections` and `get_season_stats` ask
+        different endpoints the same question -- "what does a whole season of this look like, per
+        stat category, so a league can score it under its own rules" -- and every property that
+        makes the answer trustworthy lives here: a failed week is recorded rather than summed as
+        zeros, a non-numeric category is skipped rather than coerced, and the coverage record
+        travels with the totals so a partial season cannot be mistaken for a weak one. Copying
+        this loop would mean two places to fix the next time one of those is wrong.
+
+        THE COVERAGE RECORD CARRIES ITS OWN SEASON, and that is load-bearing rather than tidy:
+        the projected season and a realized season are different years by definition, and `#79`
+        is the entry recording what it cost when a canonical record did not carry the season it
+        came from.
+        """
         wanted = int(weeks or self.REGULAR_SEASON_WEEKS)
         totals: dict[str, dict] = {}
         weeks_present: dict[str, int] = {}
         answered: list[int] = []
         failed: list[int] = []
         for week in range(1, wanted + 1):
-            rows = self.get_weekly_projections(season, week, season_type)
+            rows = fetch(season, week, season_type)
             if not rows:
                 failed.append(week)
                 continue
@@ -351,6 +369,48 @@ class SleeperClient:
             "weeks_present_by_player": weeks_present,
         }
         return totals, coverage
+
+    def get_season_stats(
+        self, season: str, season_type: str = "regular", weeks: Optional[int] = None,
+    ) -> tuple[dict[str, dict], dict]:
+        """player_id -> {stat_category: SEASON TOTAL ACTUAL} for `season`, plus its coverage.
+
+        THE REALIZED COUNTERPART TO `get_season_projections`, and the half this engine has never
+        had. Everything validating it so far compares the engine to itself; a completed season's
+        production is the only number available here that came from outside.
+
+        `season` IS THE YEAR BEING ASKED FOR, and it is never the projection's year. A caller
+        wanting last season's production passes last season. The returned coverage record
+        carries that year, so a consumer holding both a projection total and a realized total
+        can always say which is which -- `#79` is what it cost when a record did not.
+
+        AN ABSENT PRIOR SEASON IS NOT A ZERO, and this is the trap worth naming loudly. Every
+        rookie has no prior year at all; so does a player who missed the season, and anyone
+        Sleeper had no rows for. A consumer that reads a missing entry as "produced nothing"
+        makes every incoming rookie the worst player in his position instantly -- the exact
+        defect class `#174` and `#187` were opened for. This returns a dict with NO KEY for such
+        a player, never a key with zeros, and any reader must keep those apart
+        (EXCLUDE / PROPAGATE / ORDER LAST, never `0.0`).
+
+        PRIOR-SEASON PRODUCTION IS A PUBLIC FACT, which is why it may be captured and committed
+        where a vendor's projection may not. What a player actually did is the same class of
+        thing as his name, team and position, all of which this repo's input policy already
+        admits verbatim while excluding a vendor's own model output, layout and branding. This
+        sits on the cleaner side of that line rather than testing it.
+
+        RAW STATS, NEVER POINTS -- see `get_weekly_stats`. Fantasy points are a function of
+        (stats, a league's scoring settings), so storing points would bake in one rulebook and
+        be useless for every other. One fetch, every scoring format.
+
+        WHAT IT BUYS, AND THE LIMIT. Two things currently impossible here: a second independent
+        anchor for IDP, which has one source and zero vendor coverage (0 of 91 LB, 0 of 153 DB,
+        0 of 171 DL); and projection error by position, the only way to settle whether IDP
+        production is noisier than offence rather than asserting it. But ONE prior season
+        measures BIAS, not variance -- it is a single observation per player. Week-to-week
+        variance needs the weekly rows kept unaggregated, which `get_weekly_stats` supplies and
+        this summing deliberately discards.
+        """
+        return self._sum_weeks(self.get_weekly_stats, season, season_type, weeks)
 
     def get_weekly_stats(self, season: str, week: int, season_type: str = "regular") -> dict[str, dict]:
         """player_id -> {stat_category: ACTUAL_value, ...} for one completed week.

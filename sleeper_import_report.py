@@ -645,7 +645,8 @@ def _resolve_league_id(client, username: Optional[str], league_id: Optional[str]
     return str(leagues[0].get("league_id")) if leagues else None
 
 
-def write_fixture(client, league_id: Optional[str], path: str) -> dict:
+def write_fixture(client, league_id: Optional[str], path: str,
+                  prior_season: Optional[str] = None) -> dict:
     """Capture a REAL player universe and season projection set, trimmed to what the engine
     reads, for measurement against live data instead of a three-week-old committed snapshot.
 
@@ -678,8 +679,27 @@ def write_fixture(client, league_id: Optional[str], path: str) -> dict:
     db = client.get_players()
     totals, coverage = client.get_season_projections(season) if season else ({}, {})
 
+    # PRIOR SEASON PRODUCTION -- the realized half. Defaults to the year before the projection
+    # season, and is stored under ITS OWN season label rather than the fixture's: a projection
+    # for 2026 and what actually happened in 2025 are different years by definition, and #79 is
+    # the entry recording what it cost when a canonical record did not carry the season it came
+    # from. An explicit `prior_season` overrides the default for a caller fishing for a
+    # particular year.
+    prior = str(prior_season) if prior_season else (str(int(season) - 1) if season.isdigit()
+                                                    else "")
+    prior_totals, prior_cov, prior_error = {}, {}, None
+    if prior:
+        try:
+            prior_totals, prior_cov = client.get_season_stats(prior)
+        except Exception as exc:                 # DEGRADE, NEVER ABORT
+            # An unreachable stats endpoint must not cost the projections half. The failure is
+            # RECORDED so a reader can tell "we did not ask" from "we asked and got nothing" --
+            # a fixture that silently lacks the realized season is the absence defect this repo
+            # keeps finding, one layer earlier.
+            prior_error = f"{type(exc).__name__}: {exc}"
+
     keep = set(FANTASY)
-    players, projections = {}, {}
+    players, projections, prior_production = {}, {}, {}
     for pid, info in (db or {}).items():
         info = info or {}
         if info.get("position") not in keep:
@@ -692,6 +712,14 @@ def write_fixture(client, league_id: Optional[str], path: str) -> dict:
         trimmed = {k: v for k, v in stats.items() if isinstance(v, (int, float)) and v}
         if trimmed:
             projections[pid] = trimmed
+        # A player with NO prior-season row gets NO ENTRY, never one full of zeros. Every rookie
+        # lands here, as does anyone who missed the year. A zero row would make each of them the
+        # worst player at his position instantly (#174, #187): absent is not zero.
+        prior_stats = prior_totals.get(pid) or {}
+        prior_trimmed = {k: v for k, v in prior_stats.items()
+                         if isinstance(v, (int, float)) and v}
+        if prior_trimmed:
+            prior_production[pid] = prior_trimmed
 
     league = {}
     if league_id:
@@ -707,7 +735,9 @@ def write_fixture(client, league_id: Optional[str], path: str) -> dict:
             "A CAPTURE, not a truth. Read captured_at before using any number here. Trimmed to "
             "the fields the engine reads and to non-zero stat categories. Player names/teams "
             "are public NFL facts and are verbatim; no league id, user name or team name is "
-            "captured. Produced by sleeper_import_report.py --fixture."
+            "captured. prior_season_production carries ITS OWN season, which is NOT the "
+            "projection season; a player absent from it has no entry rather than zeros, which "
+            "is every rookie. Produced by sleeper_import_report.py --fixture."
         ),
         "captured_at": __import__("datetime").datetime.now(
             __import__("datetime").timezone.utc).isoformat(),
@@ -720,6 +750,18 @@ def write_fixture(client, league_id: Optional[str], path: str) -> dict:
         "league_shape": league,
         "players": players,
         "season_projections": projections,
+        # Keyed by its OWN year, beside the projections rather than mixed into them.
+        "prior_season_production": {
+            "season": prior,
+            "totals": prior_production,
+            "coverage": {
+                "weeks_requested": prior_cov.get("weeks_requested"),
+                "weeks_answered": prior_cov.get("weeks_answered"),
+                "weeks_failed": prior_cov.get("weeks_failed"),
+            },
+            "error": prior_error,       # None when the fetch was not attempted or succeeded
+            "players_with_production": len(prior_production),
+        },
     }
     with open(path, "w", encoding="utf-8") as fh:
         json.dump(fixture, fh, separators=(",", ":"), sort_keys=True)
@@ -731,6 +773,9 @@ def write_fixture(client, league_id: Optional[str], path: str) -> dict:
         "players_with_projections": len(projections),
         "weeks_answered": len(coverage.get("weeks_answered") or []),
         "weeks_failed": coverage.get("weeks_failed") or [],
+        "prior_season": prior,
+        "players_with_prior_production": len(prior_production),
+        "prior_season_error": prior_error,
     }
 
 
