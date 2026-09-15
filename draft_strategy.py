@@ -260,6 +260,37 @@ def _pace_based_take_probability(
 FORFEIT_OPPONENT_BOARD_DEPTH = 5
 
 
+def _curve_at(curve: list[float], taken: float) -> float:
+    """The value of a position's curve after `taken` players have gone, read at a FRACTIONAL
+    index instead of a rounded one (#86).
+
+    WHAT THIS REPLACES, AND WHY IT IS NOT A CALIBRATION. The previous form was
+    `curve[min(round(expected_taken), len(curve) - 1)]`. `expected_taken` is continuous -- a sum
+    of per-opponent probabilities -- so rounding quantised it to a whole player and two
+    indistinguishable inputs named different players. Measured on Fourth and Forever's own board
+    (evidence/forfeit_knife_edge/): at WR, `expected_taken` of 0.48 reported a forfeit of 0.00
+    and 0.60 reported 9.44. Interpolating INTRODUCES NO CONSTANT -- it removes the arbitrary
+    choice already present (why round-half-even, rather than floor or ceil?) -- so #56's bar is
+    not engaged. A bound is not a threshold, and this is neither.
+
+    THE DEFECT IT ACTUALLY FIXES IS AN ABSENCE-CONTRACT ONE, not an aesthetic one. Rounding down
+    manufactured a forfeit of exactly 0.00 for a position the model expected to lose a fraction
+    of a player -- 4 of 44 measured observations, every one at WR. 0.00 in this engine reads as
+    "measured, and the cost is nothing"; the true statement was "about half a receiver goes,
+    which costs about 4.5 points". That is the `#187` defect class, reached by arithmetic rather
+    than by a substituted default.
+
+    Clamped to the curve's own ends: a position cannot lose more players than it has, and the
+    last entry is the worst player actually priced there. No extrapolation past the data."""
+    if not curve:
+        return 0.0
+    last = len(curve) - 1
+    t = max(0.0, min(float(taken), float(last)))
+    lo = int(math.floor(t))
+    hi = min(lo + 1, last)
+    return curve[lo] + (curve[hi] - curve[lo]) * (t - lo)
+
+
 def positional_forfeits(
     position_curves: dict[str, list[float]], opponent_boards: dict, intervening: list,
 ) -> dict[str, dict]:
@@ -282,7 +313,8 @@ def positional_forfeits(
          summed across every intervening pick.
       2. forfeit: walk position P's own remaining curve (universal_value, deliberately
          team-agnostic -- this measures the POSITION's market decay, not the user's fit)
-         down by round(expected_taken) players: best-now minus expected-best-at-next-turn.
+         down by expected_taken players -- read at a FRACTIONAL index, see _curve_at -- and
+         report best-now minus expected-best-at-next-turn.
 
     SURFACED SIGNAL ONLY -- deliberately NOT an input to pick_necessity: expected_taken is
     built from the same per-opponent take tendencies that drive survival_probability, and
@@ -314,10 +346,9 @@ def positional_forfeits(
                 if row is not None and row.get("position") == position:
                     p_position += RANK_TAKE_PROBABILITY.get(rank, 0.0)
             expected_taken += min(p_position, RUN_TAKE_PROBABILITY_CAP)
-        drop = min(round(expected_taken), len(curve) - 1)
         results[position] = {
             "expected_taken": round(expected_taken, 2),
-            "forfeit": round(curve[0] - curve[drop], 2),
+            "forfeit": round(curve[0] - _curve_at(curve, expected_taken), 2),
             "best_now": round(curve[0], 2),
         }
     return results
