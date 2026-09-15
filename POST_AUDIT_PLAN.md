@@ -10907,3 +10907,77 @@ gauge structurally cannot see it.
 What the marker does give QB: **the starter line sits inside the ELITE band** (rank 12 of 42 in
 the 1QB arm). The tank says "this band already holds more quarterbacks than the league starts",
 which is the honest form of the flatness rather than an invented tier break.
+
+### `#282f` THE DEAD TAIL EATS THE CUT BUDGET — and at exactly one position it eats all of it
+
+Squared-deviation cutting chases the largest gulf, which in every pool is the drop from real
+players to roster filler projecting ~20 points. Where the live portion is large relative to that
+tail the cuts still land inside it. **QB is the position where it does not.**
+
+| | top band | as % of pool | cliffs hidden inside it |
+|---|---|---|---|
+| **QB** | **24** | **57%** | **QB3 (12.4 pts, 3.8x median) and QB12 (11.2, 3.5x)** |
+| RB | 7 | 6% | ranks 3, 4 |
+| TE | 9 | 8% | rank 2 |
+| WR | 16 | 8% | rank 4 |
+
+One-stage cutting answers QB **24/8/2/8** — two cuts spent on tail structure, and a **two-player
+band drawn across four segments**. Inside the 24 it never looked at, `pick_synthesis.
+detect_positional_cliff` independently calls exactly QB3 and QB12 HIGH, by an unrelated rule.
+
+**TWO-STAGE WAS TESTED AS A GENERAL REPLACEMENT AND LOST**, which is the useful half of this:
+
+| | one-stage | two-stage |
+|---|---|---|
+| TE | 94.3% | **87.4%** |
+| WR | 93.9% | **87.2%** |
+| RB | 93.7% | **91.7%** |
+| QB | 96.5% | 96.3% *(wash — but shape 24/8/2/8 → **12/13/7/10**)* |
+
+So it is **not** the default. It is a fallback, reached by a rule with **no valuation threshold in
+it**: take the two-stage cutting when one-stage produces a band holding fewer players than the
+segments allotted to draw it. A band that cannot show partial drain is a DISPLAY CAPACITY defect,
+the same class as `SPAN` and the mark cap, and this repo already treats display capacity as a
+legitimate non-threshold (`#56`). On every arm measured the rule fires for QB and only QB —
+`staged_cuts` reports which positions took it, so the claim cannot rot silently.
+
+Two-stage's first QB cut lands on **QB12**, which in a 12-team 1QB league is also the starter
+line. That coincidence is a property of this league's size, not of quarterbacks — projections do
+not know how many teams you have — and it is not being read as more than that.
+
+**AND THE SHAPE IS NOT A CONSTANT.** The same 42 quarterbacks under Fourth and Forever's rulebook
+cut at [9, 17], not [4, 12]. Scoring-derived bands moving with scoring is the design working; it
+also means no QB tier shape may ever be published as a fact about the position.
+
+### `#282g` THE GAUGE PRICES A MINORITY OF THE BOARD, AND NOW SAYS SO
+
+| board | rows shown | rows priced | |
+|---|---|---|---|
+| QB (12-team) | 155 | 42 | **27%** |
+| WR | 452 | 198 | 44% |
+| TE | 256 | 115 | 45% |
+| RB | 256 | 126 | 49% |
+| DB (HEAVY_IDP) | 394 | 130 | 33% |
+| LB | 298 | 83 | 28% |
+| DL | 219 | 86 | 39% |
+
+**STRUCTURALLY CERTAIN:** the tank is assembled from priced players only, so it reaches EMPTY when
+the priced ones are gone, however many unpriced rows sit beside them. An empty tank is therefore
+the statement *"nothing priced remains here"* and never *"nothing remains here"* — and without
+disclosure a reader cannot tell those apart. That is the absence contract at the one place a
+person actually reads it, and `coverage()` now reports the fraction per position.
+
+**NOT ESTABLISHED, and recorded as such rather than asserted:** whether any real draft reaches
+that point. Unpriced offensive rows are overwhelmingly third-stringers the absence contract
+correctly excludes and orders last, and no draft measured here has exhausted a position's priced
+pool. **My first framing of this was wrong in two ways** — I called it an IDP problem when it is
+universal, and I described a DB tank draining "while 264 defensive backs sit on the board
+untouched", which is a hypothetical I have not demonstrated.
+
+**IDP is the case to WATCH, not the case proven.** An IDP league starts six defenders per team, so
+demand sits far closer to priced supply than offence does. No IDP draft has been run to check.
+Separately, IDP bands are near-vacuous where they can be computed — DB **+0.5**, LB +1.8, DL +2.0
+over arbitrary equal slices, against +4.6 to +6.9 for the skill positions — because the band means
+decline almost linearly (DB 117/94/68/43). Tackle accumulation is smooth, so there is no tier
+structure to find. **Recommendation: do not band IDP until the supply gap is closed** (`#210`,
+`#49`); banding an unpriced two-thirds would dress a supply defect as a grade.

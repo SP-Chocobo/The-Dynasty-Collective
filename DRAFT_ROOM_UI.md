@@ -815,6 +815,32 @@ edge was passed, and the pick at which the tank emptied. It may not carry counts
 sizes, or player names. Collapsing returns to the default with nothing lost, because everything
 expansion showed was a coordinate, not a quantity.
 
+### QB IS CUT DIFFERENTLY, AND THE RULE THAT DOES IT CARRIES NO THRESHOLD
+
+QB is the one position whose top band swallows the pool — **24 of 42 players, 57%**, against 6-8%
+for RB, TE and WR — because its dead tail is proportionally the largest and the cutting chases the
+biggest gulf. One-stage cutting leaves QB at 24/8/2/8, a **two-player band drawn across four
+segments**, while hiding two clean cliffs inside the 24 (QB3 and QB12, both 3.5x+ the median
+adjacent gap, both independently flagged by the engine's own cliff detector).
+
+So the gauge falls back to cutting the live portion first when — and only when — one-stage produces
+**a band holding fewer players than the segments allotted to draw it**. That is a display-capacity
+rule, the same class as `SPAN`, not a judgment about value (`#56`). It fires for QB and only QB on
+every arm measured, and the report names which positions took it so the claim cannot rot.
+
+Two-stage was tested as the general rule and **lost everywhere else** — TE 94.3% → 87.4%, WR 93.9%
+→ 87.2%, RB 93.7% → 91.7%. It is a fallback, never the default. Full evidence: `#282f`.
+
+### COVERAGE: AN EMPTY TANK MEANS "NOTHING PRICED", NOT "NOTHING LEFT"
+
+The gauge prices a minority of the rows a drafter can see — **QB 42 of 155, WR 198 of 452, TE 115
+of 256, RB 126 of 256**, and on an IDP board roughly a third of each defensive position. The tank
+is built from the priced players, so it reaches empty when those are gone regardless of how many
+unpriced rows remain. **The surface must show the coverage fraction**, or an empty tank reads as
+exhaustion when the true statement is that the engine stopped having opinions. Whether a real
+draft ever reaches that point is **not established** — IDP is the case to watch, not a proven
+failure. See `#282g`.
+
 ### THE QB TANK IS GOING TO LOOK WRONG, AND IT IS NOT
 
 Above the replacement bar, **QB is the flattest position, not the steepest** — the opposite of the

@@ -70,8 +70,8 @@ SPAN = 16                   # display width across all bands (4 bands x 4 parts 
 STRIDE = 10
 
 
-def opening_state(rows: list[dict]) -> tuple[dict, dict, dict]:
-    """(starter-bar points per position, the FULL priced pool per position, its size).
+def opening_state(rows: list[dict]) -> tuple[dict, dict, dict, dict]:
+    """(starter-bar points, the FULL priced pool ordered, its size, EVERY board row per position).
 
     THE TANK SPANS THE WHOLE PRICED POOL, NOT ONLY THE STARTERS -- owner's ruling, and it
     corrects a defect in #282 that was mine rather than the engine's. That version gated tank
@@ -98,17 +98,45 @@ def opening_state(rows: list[dict]) -> tuple[dict, dict, dict]:
     end", which is worth drawing, and it is still derived exactly (`projected_points - bpa`,
     read off a row that has a positive bpa so the subtraction is in its own domain).
     """
-    level, pool = {}, {}
+    level, pool, on_board = {}, {}, {}
     for r in rows:
         pos, bpa, pts = r.get("position"), r.get("bpa"), r.get("projected_points")
-        if pos is None or pts is None:
+        if pos is None:
+            continue
+        on_board[pos] = on_board.get(pos, 0) + 1          # EVERY row a drafter can see
+        if pts is None:
             continue
         if bpa is not None and bpa > 0:
             level.setdefault(pos, round(pts - bpa, 6))
         pool.setdefault(pos, []).append((float(pts), str(r["player_id"])))
     for pos in pool:
         pool[pos].sort(key=lambda t: -t[0])
-    return level, {p: [pid for _, pid in v] for p, v in pool.items()}, {p: len(v) for p, v in pool.items()}
+    ordered = {p: [pid for _, pid in v] for p, v in pool.items()}
+    return level, ordered, {p: len(v) for p, v in ordered.items()}, on_board
+
+
+def coverage(priced: dict, on_board: dict) -> dict:
+    """{position: fraction of the rows a drafter can SEE that this gauge can price}.
+
+    THE GAUGE MUST DISCLOSE WHAT IT CANNOT SEE, and it cannot see most of the board. Measured:
+    the 12-team offensive board carries 155 QB rows and prices 42 (27%); WR 198 of 452 (44%);
+    TE 115 of 256 (45%); RB 126 of 256 (49%). On the HEAVY_IDP arm the board carries 394 DB rows
+    and prices 130, 298 LB and prices 83, 219 DL and prices 86 -- roughly a third each.
+
+    STRUCTURALLY CERTAIN: the tank is assembled from priced players only, so it reaches EMPTY
+    when the priced ones are gone, whatever number of unpriced rows remain beside them. A tank
+    reading empty is therefore the statement "nothing priced remains here", never "nothing
+    remains here", and without this disclosure a reader cannot tell those apart.
+
+    NOT ESTABLISHED, and recorded as such rather than asserted: whether any real draft reaches
+    that point. Unpriced offensive rows are overwhelmingly third-stringers the absence contract
+    correctly excludes and orders last, and no draft measured here has run out of priced players
+    at a position. The IDP case is the one to WATCH rather than the one proven -- an IDP league
+    requires six defensive starters per team, so its demand sits much closer to its priced supply
+    than offence does -- but no IDP draft has been run to check. `#210` is the supply defect
+    behind the thin IDP pricing; this function is only the disclosure, not a claim about impact.
+    """
+    return {p: (priced.get(p, 0) / on_board[p] if on_board.get(p) else 0.0) for p in on_board}
 
 
 def starter_bar_rank(ordered_points: list[float], bar: float | None) -> int | None:
@@ -212,6 +240,53 @@ def band_cuts(vals: list[float], k: int) -> list[int]:
     return sorted(cuts)
 
 
+def drawable(cuts: list[int], n: int, k: int) -> bool:
+    """Can every band this cutting produces actually show partial drain?
+
+    A band drawn across `w` segments but holding fewer than `w` players cannot render a partial
+    state -- it jumps from full to empty with nothing in between. That is a DISPLAY CAPACITY
+    fact, not a judgment about value, and this repo already treats display capacity as a
+    legitimate non-threshold (`SPAN`, the mark cap). Nothing here compares a valuation against a
+    constant.
+    """
+    edges = [0] + list(cuts) + [n]
+    per = max(1, SPAN // max(1, k + 1))
+    return all((b - a) >= per for a, b in zip(edges, edges[1:]))
+
+
+def staged_cuts(vals: list[float], k: int) -> tuple[list[int], bool]:
+    """(cuts, recursed). One-stage cutting, falling back to two-stage when it cannot be drawn.
+
+    THE DEAD TAIL EATS THE CUT BUDGET, and at one position it eats all of it. Squared-deviation
+    cutting chases the largest gulf, which in every pool is the drop from real players to roster
+    filler projecting ~20 points. Where the live portion is large relative to that tail the cuts
+    still land inside it; where the tail dominates they do not.
+
+    QB is the position where it does. Its top band holds 24 of 42 players -- 57% of the pool,
+    against 6-8% for RB, TE and WR -- and one-stage cutting answers 24/8/2/8, spending two cuts
+    on tail structure and leaving a TWO-PLAYER band drawn across four segments. Inside that
+    24-player band there is real structure it never looked at: gaps of 12.4 and 11.2 points at
+    QB3 and QB12, both 3.5x+ the median adjacent gap, and both independently called HIGH by
+    `pick_synthesis.detect_positional_cliff`, which uses an unrelated rule.
+
+    TWO-STAGE WAS TESTED AS A GENERAL REPLACEMENT AND LOST. Splitting live/dead first and banding
+    the live portion costs separation at every skill position -- TE 94.3% -> 87.4%, WR 93.9% ->
+    87.2%, RB 93.7% -> 91.7% -- while at QB it is a wash (96.5% -> 96.3%) and transforms the
+    shape from 24/8/2/8 into 12/13/7/10, with its first cut landing exactly on the QB12 cliff. So
+    it is NOT the default. It is the fallback, and it is reached only when one-stage produces a
+    band too small to draw, which on every arm measured means QB and only QB.
+    """
+    cuts = band_cuts(vals, k)
+    if drawable(cuts, len(vals), k):
+        return cuts, False
+    split = band_cuts(vals, 1)
+    if not split:
+        return cuts, False
+    inner = band_cuts(vals[:split[0]], k - 1)
+    staged = sorted(set(inner + split))
+    return (staged, True) if drawable(staged, len(vals), k) else (cuts, False)
+
+
 def even_cuts(n: int, k: int) -> list[int]:
     """Equal slices -- the CONTROL the bands must beat, not a display option.
 
@@ -241,7 +316,7 @@ def band_marks(board: list[dict], pool: dict) -> tuple[dict, dict]:
         if len(vals) < len(BANDS):
             marks[pos], grades[pos] = [], {}
             continue
-        cuts = band_cuts(vals, len(BANDS) - 1)
+        cuts, recursed = staged_cuts(vals, len(BANDS) - 1)
         edges = [0] + cuts + [len(vals)]
         out = []
         for name, cut, (a, b) in zip(BANDS[1:], cuts, list(zip(edges, edges[1:]))[1:]):
@@ -249,6 +324,7 @@ def band_marks(board: list[dict], pool: dict) -> tuple[dict, dict]:
                         "mean_points": round(sum(vals[a:b]) / (b - a), 1)})
         marks[pos] = out
         grades[pos] = {
+            "staged": recursed,
             "bands_on_points": round(separation(vals, cuts) * 100, 1),
             "even_slices_on_points": round(
                 separation(vals, even_cuts(len(vals), len(BANDS) - 1)) * 100, 1),
@@ -393,7 +469,8 @@ def main() -> int:
         board0 = dr.compute_draft_board(merger, players_db, [], "1", league,
                                         sleeper_projections=season,
                                         sleeper_basis=dr.SLEEPER_BASIS_SEASON_SUM)
-        level, pool, opening = opening_state(board0)
+        level, pool, opening, on_board = opening_state(board0)
+        seen = coverage(opening, on_board)
         by_id = {str(r["player_id"]): r for r in board0}
         pos_of = {pid: p for p, ids in pool.items() for pid in ids}
         positions = sorted(p for p in opening if opening[p] >= len(BANDS))
@@ -436,6 +513,7 @@ def main() -> int:
 
         census = classify(order, pos_of, pool, starters)
         report["arms"][label] = {"pool_size": opening, "band_sizes": sizes, "bar_points": level,
+                                 "rows_on_board": on_board, "coverage": seen,
                                  "starter_line_rank": starters, "marks": marks, "grades": grades,
                                  "samples": rows, "census": census}
         print("   BANDS graded on their own points vs arbitrary equal slices:", flush=True)
@@ -444,7 +522,20 @@ def main() -> int:
             print(f"      {p}: bands {g['bands_on_points']:5.1f}%  vs equal "
                   f"{g['even_slices_on_points']:5.1f}%   "
                   f"margin {g['bands_on_points'] - g['even_slices_on_points']:+5.1f}   "
-                  f"starter line at rank {starters[p]} of {opening[p]}", flush=True)
+                  f"starter line at rank {starters[p]} of {opening[p]}"
+                  f"{'   [STAGED: one-stage band was undrawable]' if g.get('staged') else ''}",
+                  flush=True)
+        # WHAT THE GAUGE CANNOT SEE, said out loud. A tank drawn over a fraction of the rows a
+        # drafter is looking at must disclose the fraction or it will read as exhaustion.
+        partial = {p: seen[p] for p in sorted(on_board) if seen.get(p, 0) < 1.0}
+        if partial:
+            print("   COVERAGE -- positions where the board shows more than this gauge prices:",
+                  flush=True)
+            for p, frac in sorted(partial.items(), key=lambda t: t[1]):
+                print(f"      {p}: prices {opening.get(p, 0):4d} of {on_board[p]:4d} board rows "
+                      f"({frac * 100:4.0f}%)"
+                      f"{'   <-- DO NOT DRAW A TANK' if frac < 1.0 and p not in positions else ''}",
+                  flush=True)
         tot = sum(c["starter"] + c["bench"] for c in census.values())
         st_ = sum(c["starter"] for c in census.values())
         print(f"   PICKS in banded positions: {tot}   at/above the starter line {st_}   "

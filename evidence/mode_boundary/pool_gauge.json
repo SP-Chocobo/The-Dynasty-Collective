@@ -17,10 +17,10 @@
    },
    "band_sizes": {
     "QB": {
-     "ELITE": 24,
-     "MID": 8,
-     "DEPTH": 2,
-     "MEH": 8
+     "ELITE": 12,
+     "MID": 13,
+     "DEPTH": 7,
+     "MEH": 10
     },
     "RB": {
      "ELITE": 7,
@@ -46,6 +46,18 @@
     "WR": 216.25,
     "TE": 172.69,
     "QB": 328.6
+   },
+   "rows_on_board": {
+    "RB": 256,
+    "WR": 452,
+    "TE": 256,
+    "QB": 155
+   },
+   "coverage": {
+    "RB": 0.4921875,
+    "WR": 0.43805309734513276,
+    "TE": 0.44921875,
+    "QB": 0.2709677419354839
    },
    "starter_line_rank": {
     "QB": 12,
@@ -125,30 +137,31 @@
     ],
     "QB": [
      {
-      "pid": "5870",
-      "rank": 24,
+      "pid": "6804",
+      "rank": 12,
       "band_below": "MID",
-      "size": 8,
-      "mean_points": 247.5
+      "size": 13,
+      "mean_points": 304.0
+     },
+     {
+      "pid": "9228",
+      "rank": 25,
+      "band_below": "DEPTH",
+      "size": 7,
+      "mean_points": 242.6
      },
      {
       "pid": "11559",
       "rank": 32,
-      "band_below": "DEPTH",
-      "size": 2,
-      "mean_points": 112.1
-     },
-     {
-      "pid": "13272",
-      "rank": 34,
       "band_below": "MEH",
-      "size": 8,
-      "mean_points": 24.3
+      "size": 10,
+      "mean_points": 41.9
      }
     ]
    },
    "grades": {
     "RB": {
+     "staged": false,
      "bands_on_points": 93.7,
      "even_slices_on_points": 88.1,
      "top_band": {
@@ -157,6 +170,7 @@
      }
     },
     "WR": {
+     "staged": false,
      "bands_on_points": 93.9,
      "even_slices_on_points": 89.4,
      "top_band": {
@@ -165,6 +179,7 @@
      }
     },
     "TE": {
+     "staged": false,
      "bands_on_points": 94.3,
      "even_slices_on_points": 87.9,
      "top_band": {
@@ -173,11 +188,12 @@
      }
     },
     "QB": {
-     "bands_on_points": 96.5,
+     "staged": true,
+     "bands_on_points": 96.3,
      "even_slices_on_points": 95.5,
      "top_band": {
-      "size": 24,
-      "mean_points": 326.2
+      "size": 12,
+      "mean_points": 346.6
      }
     }
    },
@@ -186,10 +202,10 @@
      "after_picks": 0,
      "_band_left": {
       "QB": {
-       "ELITE": 24,
-       "MID": 8,
-       "DEPTH": 2,
-       "MEH": 8
+       "ELITE": 12,
+       "MID": 13,
+       "DEPTH": 7,
+       "MEH": 10
       },
       "RB": {
        "ELITE": 7,
@@ -215,10 +231,10 @@
      "after_picks": 20,
      "_band_left": {
       "QB": {
-       "ELITE": 24,
-       "MID": 8,
-       "DEPTH": 2,
-       "MEH": 8
+       "ELITE": 12,
+       "MID": 13,
+       "DEPTH": 7,
+       "MEH": 10
       },
       "RB": {
        "ELITE": 0,
@@ -244,10 +260,10 @@
      "after_picks": 40,
      "_band_left": {
       "QB": {
-       "ELITE": 24,
-       "MID": 8,
-       "DEPTH": 2,
-       "MEH": 8
+       "ELITE": 12,
+       "MID": 13,
+       "DEPTH": 7,
+       "MEH": 10
       },
       "RB": {
        "ELITE": 0,
@@ -273,10 +289,10 @@
      "after_picks": 60,
      "_band_left": {
       "QB": {
-       "ELITE": 21,
-       "MID": 8,
-       "DEPTH": 2,
-       "MEH": 8
+       "ELITE": 9,
+       "MID": 13,
+       "DEPTH": 7,
+       "MEH": 10
       },
       "RB": {
        "ELITE": 0,
@@ -302,10 +318,10 @@
      "after_picks": 80,
      "_band_left": {
       "QB": {
-       "ELITE": 15,
-       "MID": 8,
-       "DEPTH": 2,
-       "MEH": 8
+       "ELITE": 3,
+       "MID": 13,
+       "DEPTH": 7,
+       "MEH": 10
       },
       "RB": {
        "ELITE": 0,
@@ -331,10 +347,10 @@
      "after_picks": 100,
      "_band_left": {
       "QB": {
-       "ELITE": 12,
-       "MID": 8,
-       "DEPTH": 2,
-       "MEH": 8
+       "ELITE": 0,
+       "MID": 13,
+       "DEPTH": 7,
+       "MEH": 10
       },
       "RB": {
        "ELITE": 0,
@@ -360,10 +376,10 @@
      "after_picks": 120,
      "_band_left": {
       "QB": {
-       "ELITE": 6,
-       "MID": 8,
-       "DEPTH": 2,
-       "MEH": 8
+       "ELITE": 0,
+       "MID": 7,
+       "DEPTH": 7,
+       "MEH": 10
       },
       "RB": {
        "ELITE": 0,
@@ -390,9 +406,9 @@
      "_band_left": {
       "QB": {
        "ELITE": 0,
-       "MID": 8,
-       "DEPTH": 2,
-       "MEH": 8
+       "MID": 1,
+       "DEPTH": 7,
+       "MEH": 10
       },
       "RB": {
        "ELITE": 0,
@@ -419,9 +435,9 @@
      "_band_left": {
       "QB": {
        "ELITE": 0,
-       "MID": 4,
-       "DEPTH": 2,
-       "MEH": 8
+       "MID": 0,
+       "DEPTH": 4,
+       "MEH": 10
       },
       "RB": {
        "ELITE": 0,
@@ -448,9 +464,9 @@
      "_band_left": {
       "QB": {
        "ELITE": 0,
-       "MID": 2,
+       "MID": 0,
        "DEPTH": 2,
-       "MEH": 8
+       "MEH": 10
       },
       "RB": {
        "ELITE": 0,
@@ -477,9 +493,9 @@
      "_band_left": {
       "QB": {
        "ELITE": 0,
-       "MID": 2,
+       "MID": 0,
        "DEPTH": 2,
-       "MEH": 8
+       "MEH": 10
       },
       "RB": {
        "ELITE": 0,
@@ -507,8 +523,8 @@
       "QB": {
        "ELITE": 0,
        "MID": 0,
-       "DEPTH": 2,
-       "MEH": 8
+       "DEPTH": 0,
+       "MEH": 10
       },
       "RB": {
        "ELITE": 0,
@@ -536,8 +552,8 @@
       "QB": {
        "ELITE": 0,
        "MID": 0,
-       "DEPTH": 2,
-       "MEH": 8
+       "DEPTH": 0,
+       "MEH": 10
       },
       "RB": {
        "ELITE": 0,
@@ -565,8 +581,8 @@
       "QB": {
        "ELITE": 0,
        "MID": 0,
-       "DEPTH": 2,
-       "MEH": 8
+       "DEPTH": 0,
+       "MEH": 10
       },
       "RB": {
        "ELITE": 0,
@@ -594,8 +610,8 @@
       "QB": {
        "ELITE": 0,
        "MID": 0,
-       "DEPTH": 2,
-       "MEH": 8
+       "DEPTH": 0,
+       "MEH": 10
       },
       "RB": {
        "ELITE": 0,
@@ -623,8 +639,8 @@
       "QB": {
        "ELITE": 0,
        "MID": 0,
-       "DEPTH": 2,
-       "MEH": 8
+       "DEPTH": 0,
+       "MEH": 10
       },
       "RB": {
        "ELITE": 0,
@@ -679,10 +695,10 @@
    },
    "band_sizes": {
     "QB": {
-     "ELITE": 25,
-     "MID": 7,
-     "DEPTH": 2,
-     "MEH": 8
+     "ELITE": 10,
+     "MID": 15,
+     "DEPTH": 7,
+     "MEH": 10
     },
     "RB": {
      "ELITE": 6,
@@ -708,6 +724,18 @@
     "WR": 217.75,
     "TE": 149.17,
     "QB": 243.29
+   },
+   "rows_on_board": {
+    "RB": 256,
+    "WR": 452,
+    "TE": 256,
+    "QB": 155
+   },
+   "coverage": {
+    "RB": 0.4921875,
+    "WR": 0.43805309734513276,
+    "TE": 0.44921875,
+    "QB": 0.2709677419354839
    },
    "starter_line_rank": {
     "QB": 32,
@@ -787,30 +815,31 @@
     ],
     "QB": [
      {
+      "pid": "4046",
+      "rank": 10,
+      "band_below": "MID",
+      "size": 15,
+      "mean_points": 341.4
+     },
+     {
       "pid": "9228",
       "rank": 25,
-      "band_below": "MID",
+      "band_below": "DEPTH",
       "size": 7,
       "mean_points": 280.2
      },
      {
       "pid": "11559",
       "rank": 32,
-      "band_below": "DEPTH",
-      "size": 2,
-      "mean_points": 119.0
-     },
-     {
-      "pid": "13272",
-      "rank": 34,
       "band_below": "MEH",
-      "size": 8,
-      "mean_points": 24.4
+      "size": 10,
+      "mean_points": 43.3
      }
     ]
    },
    "grades": {
     "RB": {
+     "staged": false,
      "bands_on_points": 93.8,
      "even_slices_on_points": 88.0,
      "top_band": {
@@ -819,6 +848,7 @@
      }
     },
     "WR": {
+     "staged": false,
      "bands_on_points": 94.1,
      "even_slices_on_points": 89.5,
      "top_band": {
@@ -827,6 +857,7 @@
      }
     },
     "TE": {
+     "staged": false,
      "bands_on_points": 94.5,
      "even_slices_on_points": 87.6,
      "top_band": {
@@ -835,11 +866,12 @@
      }
     },
     "QB": {
-     "bands_on_points": 97.3,
+     "staged": true,
+     "bands_on_points": 96.7,
      "even_slices_on_points": 96.1,
      "top_band": {
-      "size": 25,
-      "mean_points": 358.0
+      "size": 10,
+      "mean_points": 382.9
      }
     }
    },
@@ -848,10 +880,10 @@
      "after_picks": 0,
      "_band_left": {
       "QB": {
-       "ELITE": 25,
-       "MID": 7,
-       "DEPTH": 2,
-       "MEH": 8
+       "ELITE": 10,
+       "MID": 15,
+       "DEPTH": 7,
+       "MEH": 10
       },
       "RB": {
        "ELITE": 6,
@@ -877,10 +909,10 @@
      "after_picks": 20,
      "_band_left": {
       "QB": {
-       "ELITE": 19,
-       "MID": 7,
-       "DEPTH": 2,
-       "MEH": 8
+       "ELITE": 4,
+       "MID": 15,
+       "DEPTH": 7,
+       "MEH": 10
       },
       "RB": {
        "ELITE": 0,
@@ -906,10 +938,10 @@
      "after_picks": 40,
      "_band_left": {
       "QB": {
-       "ELITE": 11,
-       "MID": 7,
-       "DEPTH": 2,
-       "MEH": 8
+       "ELITE": 0,
+       "MID": 11,
+       "DEPTH": 7,
+       "MEH": 10
       },
       "RB": {
        "ELITE": 0,
@@ -935,10 +967,10 @@
      "after_picks": 60,
      "_band_left": {
       "QB": {
-       "ELITE": 4,
-       "MID": 7,
-       "DEPTH": 2,
-       "MEH": 8
+       "ELITE": 0,
+       "MID": 4,
+       "DEPTH": 7,
+       "MEH": 10
       },
       "RB": {
        "ELITE": 0,
@@ -964,10 +996,10 @@
      "after_picks": 80,
      "_band_left": {
       "QB": {
-       "ELITE": 1,
-       "MID": 7,
-       "DEPTH": 2,
-       "MEH": 8
+       "ELITE": 0,
+       "MID": 1,
+       "DEPTH": 7,
+       "MEH": 10
       },
       "RB": {
        "ELITE": 0,
@@ -993,10 +1025,10 @@
      "after_picks": 100,
      "_band_left": {
       "QB": {
-       "ELITE": 1,
-       "MID": 7,
-       "DEPTH": 2,
-       "MEH": 8
+       "ELITE": 0,
+       "MID": 1,
+       "DEPTH": 7,
+       "MEH": 10
       },
       "RB": {
        "ELITE": 0,
@@ -1023,9 +1055,9 @@
      "_band_left": {
       "QB": {
        "ELITE": 0,
-       "MID": 6,
-       "DEPTH": 2,
-       "MEH": 8
+       "MID": 0,
+       "DEPTH": 6,
+       "MEH": 10
       },
       "RB": {
        "ELITE": 0,
@@ -1052,9 +1084,9 @@
      "_band_left": {
       "QB": {
        "ELITE": 0,
-       "MID": 4,
-       "DEPTH": 2,
-       "MEH": 8
+       "MID": 0,
+       "DEPTH": 4,
+       "MEH": 10
       },
       "RB": {
        "ELITE": 0,
@@ -1081,9 +1113,9 @@
      "_band_left": {
       "QB": {
        "ELITE": 0,
-       "MID": 2,
+       "MID": 0,
        "DEPTH": 2,
-       "MEH": 8
+       "MEH": 10
       },
       "RB": {
        "ELITE": 0,
@@ -1111,8 +1143,8 @@
       "QB": {
        "ELITE": 0,
        "MID": 0,
-       "DEPTH": 2,
-       "MEH": 8
+       "DEPTH": 0,
+       "MEH": 10
       },
       "RB": {
        "ELITE": 0,
@@ -1140,8 +1172,8 @@
       "QB": {
        "ELITE": 0,
        "MID": 0,
-       "DEPTH": 2,
-       "MEH": 8
+       "DEPTH": 0,
+       "MEH": 10
       },
       "RB": {
        "ELITE": 0,
@@ -1169,8 +1201,8 @@
       "QB": {
        "ELITE": 0,
        "MID": 0,
-       "DEPTH": 2,
-       "MEH": 8
+       "DEPTH": 0,
+       "MEH": 10
       },
       "RB": {
        "ELITE": 0,
@@ -1198,8 +1230,8 @@
       "QB": {
        "ELITE": 0,
        "MID": 0,
-       "DEPTH": 2,
-       "MEH": 8
+       "DEPTH": 0,
+       "MEH": 10
       },
       "RB": {
        "ELITE": 0,
@@ -1227,8 +1259,8 @@
       "QB": {
        "ELITE": 0,
        "MID": 0,
-       "DEPTH": 2,
-       "MEH": 8
+       "DEPTH": 0,
+       "MEH": 10
       },
       "RB": {
        "ELITE": 0,
@@ -1256,8 +1288,8 @@
       "QB": {
        "ELITE": 0,
        "MID": 0,
-       "DEPTH": 2,
-       "MEH": 8
+       "DEPTH": 0,
+       "MEH": 10
       },
       "RB": {
        "ELITE": 0,
@@ -1285,8 +1317,8 @@
       "QB": {
        "ELITE": 0,
        "MID": 0,
-       "DEPTH": 2,
-       "MEH": 8
+       "DEPTH": 0,
+       "MEH": 10
       },
       "RB": {
        "ELITE": 0,
