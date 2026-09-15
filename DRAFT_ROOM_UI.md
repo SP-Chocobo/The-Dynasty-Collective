@@ -389,7 +389,7 @@ later.** Worth knowing before either is built.
 | U1 | Does the rail mark my next turn, making the wait span visible? | **RULED: yes** — built, `mockups/draft_rail.html` |
 | U2 | Emblem visual vocabulary, and the "never offered" rendering | owner |
 | U3 | Freeze timer: close `#100` first, or ship a narrow duration log? | Opus, then owner sign-off |
-| U4 | Does the full-board tab replace the rail, or overlay it? | **WORKING: overlay, the rail stays pinned** |
+| U4 | Does the full-board tab replace the rail, or overlay it? | **SUPERSEDED by §15 — neither; there is no tab.** A button under the clock bar expands the board over the centre, and the left sidebar has its own pullout for rosters. Prior answer kept: *overlay, the rail stays pinned.* |
 | U5 | Website vs plug-in — pinned as sequential | **RULED: website first** |
 | U6 | Rail compression at 27 boxes | **WORKING: no shrink.** Every box stays full size; explicit ◀ ▶ pan controls move **5 picks per click, or jump to your last / next pick**. Legibility is not traded for fit. |
 | U7 | Card zoom target | **WORKING: side-panel takeover** — the card expands into the context ledger that is already there. No new surface invented. |
@@ -401,8 +401,12 @@ later.** Worth knowing before either is built.
 | U12 | "Since your last pick" digest | **WORKING: no** — the rail already shows it when you scroll back. A second surface for the same information is duplication. |
 | U14 | Per-position upside: engine-decided, user-toggled, or notice-plus-toggle? | **SUPERSEDED by §14 — there is no toggle.** Prior answer, kept because its reasoning still applies to any future switch: *notice-plus-toggle (§11), derived trigger, user's action, toggle default-on inside the notice.* |
 | U15 | One ranked list vs per-position lanes | **SUPERSEDED by §14 — the trigger cannot fire.** Prior answer: *derived from mode state (§11), shared mode → one list, diverged modes → lanes.* With no upside mode there is no mode divergence, so nothing splits the lanes. **The question of whether lanes are wanted for their OWN sake is now unasked, not answered.** |
-| U16 | Multi-select position filter with slot presets | **WORKING: yes** (§12) — the single-select view, its derivation and its ranking firewall already exist; multi-select is the extension. |
-| U17 | What to call all-toggles-on, given "ALL" is taken by the curated lens | **OPEN, AND CONTINGENT** — §12 proposes OVERVIEW / EVERYTHING. §14 supersedes §12's *per-position mode arming* but NOT §12's multi-select filter, so the mixer and this naming collision probably survive. Whether they do has not actually been ruled; do not treat this row as dead without ruling it. |
+| U16 | Multi-select position filter with slot presets | **SUPERSEDED by §15 — single-select.** Click-expand, pick one option, collapse to that category. Presets survive as single options (FLEX / SUPERFLEX / IDP_FLEX each cover several positions); only arbitrary combinations are lost. Prior answer kept: *multi-select is the extension.* |
+| U17 | What to call all-toggles-on, given "ALL" is taken by the curated lens | **DISSOLVED by §15 — the state does not exist.** A single-select filter has no all-toggles-on condition to name; it is a list of options, one of which is ALL. The contingency flagged in the previous revision is resolved: the mixer survives, its naming collision does not. |
+| U18 | Where does the debate squad expand to? | **WORKING: over the depth rows only** (§15) — the three recommendation cards stay visible, because they are what the debate is about. |
+| U19 | Does the insight panel take typed input? | **WORKING: no** (§15) — read-only output; discussion happens in the debate. Keeps every typed character away from valuation, so `#107`/`#108` do not arise here. |
+| U20 | What does "clear" do to the log? | **WORKING: snap-to-latest, never delete** (§15) — the same gesture as the rail's re-center. `forget_decisions` stays out of the log panel entirely. |
+| U21 | Where do the freeze-timer controls live? | **WORKING: a settings button beside the Insight eye** (§15). Placement only; U3's substance is still open. |
 | U13 | May the live board poll Sleeper on a timer, or is refresh strictly manual? | **RULED: polling is allowed.** The constraint is *no automatic **paid** API calls*. Sleeper reads are free and uncovered. The refresh button becomes an immediate-update override, not the only mechanism. |
 
 ### THE UPSIDE-MODE ROWS ARE SUPERSEDED — read §14 before acting on this table
@@ -817,9 +821,10 @@ and intuitive. However. We can contemplate, if you want to expand it to get a li
 information and collapse it back into the default visual."*
 
 **DEFAULT (collapsed).** Four rows, one per position, each a full-width tank divided into its
-four band slices, with an optional percentage of that position's own pool. Sized so the fill level and the
-mark positions are both readable without looking twice — this is the whole surface most of the
-time, so it gets the width, not a corner.
+four band slices, with an optional percentage of that position's own pool. Sized so the fill level
+and the mark positions are both readable without looking twice — it needs WIDTH, and §15's layout
+gives it a bottom strip rather than a sidebar corner. The constraint is real and was nearly missed:
+measured against the same pools, a 260px sidebar resolves the RB tank at 7.2px per player.
 
 **EXPANDED.** The rule for what expansion may add: **it may add TIME, never VALUE.** A pick number
 is a draft coordinate the reader already has on screen; a point total is a valuation the contract
@@ -910,3 +915,137 @@ cannot see, and in the measured drafts it happened exactly once in 312 picks. Th
 render the same way. Collapsing a choice into an absence is the defect that had to be corrected
 twice already (§13's holdout banner, `#277a`, `#280`), and this is the third surface where the
 same mistake is available.
+
+---
+
+## 15. The layout pass — WORKING, all of it
+
+**TIER: WORKING, in full.** The owner's framing, recorded because it governs how this section is
+read: *"this is not law. This is inspiration. Ideas brainstorming. This may suck as a design."*
+Nothing here is RULED. It exists so the build has a direction and so the next pass starts from
+where this one stopped instead of reconstructing it. Contradict it freely — that is a change of
+mind, not a defect, and it needs no withdrawal ceremony (§1's two-tier rule).
+
+Source: an owner prose description, a hand sketch, and four rounds of notes on top of it.
+
+### The frame
+
+| region | holds |
+|---|---|
+| **header** | league name, scoring settings, format — e.g. *SF 12-man TEP Dynasty*. Logo, roster label, menu. |
+| **top** | the pick rail (§2). Clock bar beneath it: time remaining, `Pick 3.07 — USER NAME IS UP`, and the on-the-clock card (pic, name, team, position, drafter). |
+| **left sidebar** | your roster filling as you draft, scrollable. A **right-pullout expands it to ALL rosters**. |
+| **centre** | three recommendation cards across the top; depth rows beneath; the positional filter control along the bottom. |
+| **right sidebar** | Insight (eye) button and a settings button; the insight output panel; the chronological log; the pool gauges at the bottom. |
+
+**THE FORMAT IS ON SCREEN AT ALL TIMES, and that is not decoration.** §14's bands are derived
+from the league's own scoring, so the same position draws a different shape in a different
+league. A user comparing two leagues needs the rulebook visible to know why.
+
+### The three expansions, and what each one covers
+
+Three surfaces slide out. **None of them replaces another panel's content** — each covers a
+region and retreats:
+
+- **The draft board.** A button under the clock bar, above the cards, expands the full board over
+  the centre. The rail is what grows; there is no separate tab.
+- **All rosters.** The left sidebar's pullout. This answers what §1 promised as "full rosters"
+  and the earlier layouts had nowhere to put.
+- **The debate squad.** The right sidebar's left arrow slides it over **the depth rows only,
+  leaving the three recommendation cards visible.** That was the point: the cards are what the
+  debate is *about*, so covering them would hide the subject while you read the argument.
+
+**This supersedes U4.** The old question was *"does the full-board tab replace the rail or
+overlay it?"* — the answer is neither. It also supersedes §1's RULED *"a tab opens the full
+rosters / draft board"*: two different pullouts, two different regions, no tab.
+
+### Insight is READ-ONLY; discussion lives in the debate
+
+An earlier draft of this pass put a text input under the insight panel. **Removed.** The owner's
+rule: *"Only the text generated from insight, no volley. You want to discuss? open the debate
+slider."*
+
+Two things fall out, and both are improvements:
+
+- **The cost shape is bounded and already counted.** `run_debate` is **4** provider calls (one
+  per chair), `debate_pick` is **3**, and `ask_moderator_followup` is **1**. The shipped default
+  matches the owner's stated intent exactly: the first hit is the full squad, follow-ups are
+  Moderator-only. So the total is `3or4 + 1×N`, and N is the only part a user controls. The
+  panel should show the running follow-up count for the current pick — one number, no new
+  machinery.
+- **No typed text goes anywhere near a valuation.** `#107` and `#108` (overrides reaching
+  valuation unattributed; no chair channel for *"this rests on your own override"*) simply do not
+  arise on this screen. **Keep it that way.** The moment typed text can move a recommendation, it
+  needs provenance, and that is a larger build than the box looks.
+
+The Insight button still needs **on-clock gating** — §1 RULED debate is callable only while on
+the clock, and an insight call is the same class of billed action.
+
+### The log — a VIEW, never a store
+
+Chronological, scrollable, carrying **both** Moderator verdicts and a notification on each pick
+selection, so the picks act as chapter breaks in a long scroll.
+
+**It persists nothing of its own.** It is a merged view over `decision_log.py` (per-league
+verdicts) and the draft record (picks). Nothing new to write.
+
+**"CLEAR" MEANS SNAP-TO-LATEST, NOT DELETE**, and the distinction is load-bearing rather than
+pedantic. `decision_log.py` is an audit trail built to be read back much later: `set_outcome`
+tags each verdict *Worked / Didn't Work / Mixed / Too Early To Tell*, and
+`search_decisions_with_outcomes` reads them months on. That is the front office's track record.
+`forget_decisions(league_id)` exists and wipes a league's log entirely. **A "Clear" button wired
+to that would destroy the record the grading feature exists to read, and nobody would notice
+until they went looking for a track record that was not there.**
+
+So: snap-to-latest resets the *scroll*, not the data — and it is the same gesture as §1's
+RULED re-center button on the rail. Make them look and behave identically; a user who learns one
+has learned the other. A real deletion, if ever wanted, belongs in settings behind a
+confirmation. A display choice is not a data operation.
+
+### The positional filter — SINGLE-SELECT, which changes two prior rulings
+
+Owner's description: *"Click to expand the full range, select the display option you want, it
+collapses showing that new filter category only."*
+
+- **U16 is SUPERSEDED.** It stands on the record as *"multi-select position filter with slot
+  presets — WORKING: yes."* This is single-select.
+- **U17 DISSOLVES.** It asked what to call all-toggles-on given ALL was taken by the curated
+  lens. **There is no toggles-on state to name.** It is a list of options, one of which is ALL.
+
+Nothing of value is lost: FLEX, SUPERFLEX and IDP_FLEX are each ONE option covering several
+positions, so the presets survive intact. What goes is arbitrary combinations — "QB and TE only"
+— which nobody asked for.
+
+**The tanks are NOT the filter.** This was floated and the owner rejected it: *"i dont think I
+want the tanks to operate as the display filters."* They sit near each other and share four
+labels, which is what invited the idea; they stay separate controls.
+
+**#216 B4 still binds:** a filtered view must not renumber. Filtered rows keep their real
+standing.
+
+### The gauges sit in a bottom strip — which dissolves a width worry
+
+§14 said the gauge *"gets the width, not a corner."* The sketch puts the four tanks in a strip
+under the sidebar, labelled **"Available Player Pool Strength"** — a better name than anything
+previously written here, because it says *strength*, not *count*, which is exactly what §14's
+display contract allows.
+
+A strip is wide, so the corner-resolution problem never arises. **Recorded because it was nearly
+a defect:** in a 260px sidebar the RB tank resolves at 7.2px per player and would have been
+unreadable with segment rendering.
+
+**The sketch drew variable-width bands before the reversal was implemented** — hatched blocks of
+visibly different sizes, which is proportional banding arrived at independently of the
+arithmetic in §14's width note.
+
+### Parked, with the reasoning attached
+
+Not dropped. Each needs a decision before the region it belongs to can be built:
+
+| question | why it is still open |
+|---|---|
+| Does the log span the whole draft or reset per pick? | Whole-draft reads better *if* pick notifications are the dividers; untested either way. |
+| Does the Moderator thread close when the pick lands? | §1 gates debate to the clock, which argues for closing it. The transcript would then persist onto the drafted player's emblem — a surface that already exists for exactly this. |
+| Where is the commit gesture? | U8 ruled hold-to-lock with a rising bar. Nothing in this layout holds it. |
+| One clock or two? | The sketch shows one (`1:27 remains`). §8 describes two — Sleeper's and the user's freeze timer. |
+| Where does the coverage fraction go? | §14 requires it (an empty tank means *nothing priced*, not *nothing left*). A thin strip has no room for a caption per tank. The freed space under the read-only insight panel is the obvious candidate. |
