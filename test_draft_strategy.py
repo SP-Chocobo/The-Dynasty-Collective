@@ -400,23 +400,18 @@ class PositionalForfeitsTests(unittest.TestCase):
         self.assertEqual(len(results), 1,
                          "permuting rank_by_id's insertion order changed the forfeit output")
 
-    def test_KNOWN_SENSITIVITY_the_round_boundary_is_decided_by_float_noise(self):
-        """CHARACTERIZATION, not approval. `drop = min(round(expected_taken), ...)` is a hard
-        boundary at x.5, and expected_taken reaches it exactly. Across intervening picks the
-        accumulation IS order-sensitive (unlike within one pick, above), so the same three
-        opponent boards in a different order land on either side of the boundary -- while
-        expected_taken, rounded to 2dp for display, reports 1.5 either way.
+    def test_the_round_boundary_IS_GONE_and_float_noise_no_longer_decides(self):
+        """REPLACES `test_KNOWN_SENSITIVITY_the_round_boundary_is_decided_by_float_noise`, which
+        pinned the rounding as a KNOWN, DEFERRED sensitivity and instructed whoever fixed the
+        rule to rewrite it here rather than delete it quietly. #86 fixed the rule.
 
-        MEASURED IMPACT ON REAL DATA: zero. Over 627 forfeit computations on real 12x20 board
-        states, 2 (0.3%) land exactly on a boundary, and at both the curve is flat enough there
-        that a one-step change in `drop` leaves `forfeit` and cliff_protection unchanged. The
-        mechanism is real and latent, not a live defect.
-
-        This test pins the mechanism so a future change to the rounding rule, the curve shapes,
-        or the take-probability table is a deliberate, visible decision rather than a silent
-        one. If it fails, read the appendix note before 'fixing' it -- the correct contract
-        (half-up, floor, or fractional interpolation of the curve) is an open product question,
-        not an obvious repair."""
+        The old test's adversarial fixture is KEPT EXACTLY -- three boards contributing
+        0.24 + 0.60 + 0.66, whose sum is 1.5 in one order and 1.5 - 1ulp in the other. That was
+        the sharpest construction anyone found for this mechanism and it stays the probe; only
+        the expectation moves. Under `round()` the two orders returned 20.0 and 10.0 while both
+        REPORTED `expected_taken` as 1.5, so the surfaced explanation could not distinguish them.
+        Reading the curve at a fractional index makes the two orders agree to within a float
+        ulp, because a 1ulp difference in the input can now only move the output by ~1ulp."""
         table = ds.RANK_TAKE_PROBABILITY
 
         def board_with_qb_at(target_ranks):
@@ -433,21 +428,49 @@ class PositionalForfeitsTests(unittest.TestCase):
         self.assertAlmostEqual(sum(sum(table[r] for r in v) for v in want.values()), 1.5,
                                places=9, msg="fixture no longer sums to the round() boundary")
         boards = {k: board_with_qb_at(v) for k, v in want.items()}
-        # A curve with a real step between index 1 and 2, straddling the cliff_protection
-        # threshold this value feeds (pick_synthesis.NECESSITY_STANDOUT_REFERENCE_GAP).
         curves = {"QB": [80.0, 70.0, 60.0, 55.0]}
-        forfeits = set()
-        reported = set()
+        forfeits, reported = set(), set()
         for order in (["A", "B", "C"], ["C", "B", "A"]):
             d = ds.positional_forfeits(curves, boards, order)["QB"]
             forfeits.add(d["forfeit"])
             reported.add(d["expected_taken"])
-        self.assertEqual(reported, {1.5},
-                         "expected_taken should report the same 1.5 in both orders -- that is "
-                         "what makes this invisible downstream")
-        self.assertEqual(forfeits, {10.0, 20.0},
-                         "the boundary sensitivity has changed; if the rounding rule was fixed "
-                         "deliberately, delete this test and update the appendix note")
+        self.assertEqual(reported, {1.5})
+        self.assertEqual(len(forfeits), 1,
+                         f"accumulation order still changes the forfeit: {sorted(forfeits)}")
+        # Halfway between curve[1]=70 and curve[2]=60, so 80 - 65 = 15.0. Stated as arithmetic
+        # rather than as a recorded output, so the test would catch a curve read that happened
+        # to be stable but wrong.
+        self.assertEqual(forfeits, {15.0})
+
+    def test_a_fractional_expectation_never_reports_a_forfeit_of_zero(self):
+        """THE DEFECT #86 ACTUALLY FIXED, and it is not the float-noise one the appendix led
+        with. `round()` sent every `expected_taken` below 0.5 to drop=0, so the forfeit came
+        back as EXACTLY 0.00 while the model expected a fraction of a player to go. Measured on
+        Fourth and Forever: 4 of 44 observations, every one at WR, where 0.48 reported 0.00 and
+        0.60 reported 9.44.
+
+        0.00 in this engine means "measured, and the cost is nothing". The true statement was
+        "about half a receiver goes, which costs about 4.5 points". That is an absence-contract
+        breach reached by arithmetic rather than by a substituted default -- the #187 class --
+        and it is why the repair is not merely a preference among rounding rules."""
+        curve = [100.0, 90.0, 80.0]
+        for taken in (0.12, 0.24, 0.36, 0.48):
+            got = ds._curve_at(curve, taken)
+            self.assertLess(got, curve[0],
+                            f"expected_taken={taken} left the best player untouched")
+            self.assertAlmostEqual(curve[0] - got, 10.0 * taken, places=9)
+
+    def test_the_curve_read_is_monotone_and_clamped_to_real_players(self):
+        """Two properties the rounded form did not have. MONOTONE: more players expected gone
+        can never mean a smaller forfeit, which `round()` satisfied only in steps. CLAMPED: a
+        position cannot lose more players than it has, so no extrapolation past the data -- the
+        last entry is the worst player actually priced there."""
+        curve = [100.0, 90.0, 80.0, 75.0]
+        vals = [ds._curve_at(curve, t / 10) for t in range(0, 31)]
+        self.assertEqual(vals, sorted(vals, reverse=True))
+        self.assertEqual(ds._curve_at(curve, 99.0), curve[-1])
+        self.assertEqual(ds._curve_at(curve, -5.0), curve[0])
+        self.assertEqual(ds._curve_at([], 1.0), 0.0)
 
     def test_the_forfeit_depth_and_the_take_probability_table_stay_coupled(self):
         """positional_forfeits reads RANK_TAKE_PROBABILITY.get(rank, 0.0) while

@@ -6987,16 +6987,48 @@ At both real boundary states the curve is flat enough around that index that a o
 `drop` leaves the forfeit — and the flag — untouched. **The mechanism is real and demonstrable;
 it is not currently a live defect.**
 
-### Why this is DEFERRED and not fixed
+### RESOLVED (#86) — fractional interpolation, and this deferral's own reasoning was partly stale
 
-The correct contract is **not clear**, and inventing one would change live behaviour:
+**The deferral said, and it was reasonable at the time:** half-up, floor and fractional
+interpolation are three different product answers; whichever is chosen moves 0.3% of forfeit
+computations by a whole curve step; choosing a rounding rule or an epsilon is the constant-tuning
+this phase excludes. The mechanism was pinned by a characterization test rather than repaired.
 
-* half-up, floor, or fractional interpolation of the curve are three different product answers;
-* whichever is chosen moves 0.3% of forfeit computations by a whole curve step;
-* choosing a rounding rule or an epsilon here is exactly the constant-tuning this phase excludes.
+**TWO OF THIS PART'S CLAIMS HAVE SINCE GONE STALE, and both are corrected here rather than left
+to mislead the next reader:**
 
-Pinned by a characterization test instead, so a future change to the rounding rule, the curve
-shapes, or the take-probability table is deliberate and visible.
+1. **`cliff_protection` no longer flips.** The paragraph above says the flag is read as
+   `forfeit >= NECESSITY_STANDOUT_REFERENCE_GAP`. `#160` moved `cliff_protection` onto the cliff
+   machinery, and `pick_synthesis` now reads `(positional_cliff or {}).get("tier")`. The
+   "worse, a decision-path flag flips" escalation no longer holds. The freeze checklist repeats
+   the same stale dependency.
+2. **The zero-impact sweep answered a NARROWER QUESTION than the defect.** Those 627
+   computations measured *exact* boundary landings — does float noise flip the rounding at x.5 —
+   and found 2, both immaterial. That result stands and is not contradicted. It simply never
+   asked the general question: does quantising a continuous expectation to a whole player
+   misreport the forfeit at all? Re-measured on Fourth and Forever, **14 of 44 observations move
+   by more than 1.0 point, the largest by 14.72**.
+
+**WHAT DECIDED IT WAS NOT A PREFERENCE AMONG THE THREE ANSWERS.** `round()` sent every
+`expected_taken` below 0.5 to `drop=0`, so the forfeit came back as **exactly 0.00 while the
+model expected a fraction of a player to go** — 4 of 44 observations, all at WR, with 0.48
+reporting 0.00 and 0.60 reporting 9.44. In this engine 0.00 means *measured, and the cost is
+nothing*. That is an absence-contract breach reached by arithmetic rather than by a substituted
+default (the `#187` class). **Of the three candidate contracts only interpolation removes it** —
+floor makes it worse and half-up keeps it for every value under 0.5 — so the choice is forced by
+the contract rather than picked on taste. Interpolation also introduces **no constant**, which is
+why `#56` is not engaged: it removes the arbitrary rule already present (nothing justified
+banker's rounding for a "how many will be taken" quantity — `round(0.5)=0`, `round(1.5)=2`,
+`round(2.5)=2`) instead of adding a new one.
+
+**THE OWNER SHOULD KNOW THIS OVERRODE A STANDING DEFERRAL.** This part, the freeze checklist and
+the characterization test all said *deferred, open product question*. The evidence above is why
+it was taken anyway; reverting is a one-line change to `_curve_at`'s caller if the ruling goes the
+other way.
+
+The characterization test is **rewritten, not deleted** — it keeps the same adversarial fixture
+(0.24 + 0.60 + 0.66, summing to 1.5 in one order and 1.5 − 1ulp in the other) and now asserts the
+two orders agree, plus that a fractional expectation never reports a forfeit of zero.
 
 ## Part 4 — `RANK_TAKE_PROBABILITY.get(rank, 0.0)` vs `RANK_TAKE_PROBABILITY_FLOOR`
 
@@ -7033,7 +7065,7 @@ boundary incidence, and should not be cited as the latter.
 | unpriced influence on survival, rank, probability mass, ordering | **already fixed** — no contamination measurable |
 | pace / take-probability for unpriced players | **already fixed** — intentionally excluded, `None` not zero |
 | insertion order at `draft_strategy.py:310`, within a pick | **not an issue** — one realizable order, and order-immune anyway |
-| `round(expected_taken)` boundary across picks | **latent** — demonstrable, 0 of 627 real impact, **deferred** |
+| `round(expected_taken)` boundary across picks | **RESOLVED (#86)** — fractional interpolation; the 0-of-627 sweep measured exact boundary landings, not the quantisation error (14 of 44 move >1.0) |
 | `RANK_TAKE_PROBABILITY.get(rank, 0.0)` | **latent/unreachable** — correct default, coupling now enforced |
 | my "8.2% one step from crossing" figure | **measurement artifact** — withdrawn above |
 

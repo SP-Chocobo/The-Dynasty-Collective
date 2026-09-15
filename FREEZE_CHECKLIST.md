@@ -366,7 +366,14 @@ These reach `final_score` or the candidate set, so they are drafting behaviour p
       The TE decision at the boundary is a real near-tie on (points − displaced).
 - [ ] **#153** — two clamps, not one: the 4WR collapse is the flex-share clamp, not `NEED_BONUS_MAX`.
       Measured and understood; not repaired.
-- [ ] **#86** — `round(expected_taken)` is a knife-edge feeding `cliff_protection`.
+- [x] **#86** — `round(expected_taken)` **REPAIRED**: the curve is read at a fractional index.
+      This item's own wording was **stale** — `cliff_protection` stopped reading
+      `positional_forfeit` at `#160`, so the knife-edge never reached that flag. The real defect
+      was an absence-contract one: rounding sent every expectation below 0.5 to `drop=0`, so the
+      forfeit read **exactly 0.00 while a fraction of a player was expected to go** (4 of 44
+      observations, all WR; 0.48 → 0.00 and 0.60 → 9.44). **NOTE FOR THE OWNER: this overrode a
+      standing deferral** (CDME_CONTRACTS Part 3 and the characterization test both said *open
+      product question*); the evidence is recorded there and reverting is a one-line change.
 - [ ] **#216 (B4)** — board rank is not pick order: three ordinals, three names. Cross-register
       ordinal confusion has already produced a defect family here (#70).
 - [ ] **#167** — `reach_label` changes **0 of 36** engine decisions under ablation. Demote/remove
