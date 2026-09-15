@@ -399,11 +399,23 @@ later.** Worth knowing before either is built.
 | U10 | Slowest vs average for the recommendation | **WORKING: show both, user picks.** Settles the §5 a-bis contradiction by not settling it — the spread is visible and the user chooses. |
 | U11 | Does the wait band carry the forfeit? | **WORKING: no.** The band states pick-order facts anyone can verify from the board; an engine projection alongside them would blend a certainty with an estimate. Forfeit stays on the cards. |
 | U12 | "Since your last pick" digest | **WORKING: no** — the rail already shows it when you scroll back. A second surface for the same information is duplication. |
-| U14 | Per-position upside: engine-decided, user-toggled, or notice-plus-toggle? | **WORKING: notice-plus-toggle** (§11) — derived trigger, user's action, toggle default-on inside the notice. |
-| U15 | One ranked list vs per-position lanes | **WORKING: derived from mode state** (§11) — shared mode → one list; diverged modes → lanes. Folds the R3 swing into U14. |
+| U14 | Per-position upside: engine-decided, user-toggled, or notice-plus-toggle? | **SUPERSEDED by §14 — there is no toggle.** Prior answer, kept because its reasoning still applies to any future switch: *notice-plus-toggle (§11), derived trigger, user's action, toggle default-on inside the notice.* |
+| U15 | One ranked list vs per-position lanes | **SUPERSEDED by §14 — the trigger cannot fire.** Prior answer: *derived from mode state (§11), shared mode → one list, diverged modes → lanes.* With no upside mode there is no mode divergence, so nothing splits the lanes. **The question of whether lanes are wanted for their OWN sake is now unasked, not answered.** |
 | U16 | Multi-select position filter with slot presets | **WORKING: yes** (§12) — the single-select view, its derivation and its ranking firewall already exist; multi-select is the extension. |
-| U17 | What to call all-toggles-on, given "ALL" is taken by the curated lens | **OPEN** — §12 proposes OVERVIEW / EVERYTHING. Needs a decision before the toggles ship or the two will be confused. |
+| U17 | What to call all-toggles-on, given "ALL" is taken by the curated lens | **OPEN, AND CONTINGENT** — §12 proposes OVERVIEW / EVERYTHING. §14 supersedes §12's *per-position mode arming* but NOT §12's multi-select filter, so the mixer and this naming collision probably survive. Whether they do has not actually been ruled; do not treat this row as dead without ruling it. |
 | U13 | May the live board poll Sleeper on a timer, or is refresh strictly manual? | **RULED: polling is allowed.** The constraint is *no automatic **paid** API calls*. Sleeper reads are free and uncovered. The refresh button becomes an immediate-update override, not the only mechanism. |
+
+### THE UPSIDE-MODE ROWS ARE SUPERSEDED — read §14 before acting on this table
+
+U14 and U15 were ruled when a per-position upside MODE was still being built. §14 records the
+owner's ruling that there is no upside mode at all, which removes the toggle U14 chose the shape
+of and the mode divergence U15 keyed on. Their prior answers are kept above rather than deleted,
+under the same discipline `CDME_CONTRACTS.md` applies to its own superseded proposal: the
+reasoning outlived the thing it was reasoning about, and deleting it would cost the next person
+the argument while saving them nothing.
+
+**This table is the first thing a reader consults for "what did we decide?", which is exactly why
+a stale row here is worse than a stale paragraph.** Anything §14 touches must be marked here too.
 
 ### On U6, because it settles something §2 left open
 
@@ -726,7 +738,8 @@ decides. Evidence and full derivation: `POST_AUDIT_PLAN.md` `#282`.
 
 ### What it is
 
-One tank per position, drawn as a row of segments. **It spans that position's whole priced pool**,
+One tank per **offensive** position — IDP is excluded, and for a supply reason given below, not a
+shape one. Each is drawn as a row of segments. **It spans that position's whole priced pool**,
 not only its starters — an earlier version stopped at the replacement bar and so covered just 92
 of 312 picks, going fully dark by pick 130 (`#282d`). The replacement bar survives as a **marker
 drawn inside the tank**, showing where the position stops producing starters and begins producing
@@ -840,6 +853,35 @@ unpriced rows remain. **The surface must show the coverage fraction**, or an emp
 exhaustion when the true statement is that the engine stopped having opinions. Whether a real
 draft ever reaches that point is **not established** — IDP is the case to watch, not a proven
 failure. See `#282g`.
+
+### IDP GETS NO TANK — and the reason is supply, not shape
+
+**Offence only. Do not draw a gauge for LB, DB or DL**, and do not band them, until the supply
+gap closes (`#210`, `#49`). This is a ruling the register carried and this document did not, which
+is how it reads as "one tank per position" above — that sentence means one tank per OFFENSIVE
+position.
+
+**The case is the SOURCE, not the curve.** Two weaker arguments were offered first and neither is
+the reason:
+
+- *"The curve is linear."* It is — DB band means run 117 / 94 / 68 / 43, and margins over
+  arbitrary equal slices are near-vacuous at **DB +0.5, LB +1.8, DL +2.0**, against +4.6 to +6.9
+  for the skill positions. Tackle accumulation is smooth, so there is no tier structure to find.
+  True, but it argues the bands would be uninformative, not that they would be wrong.
+- *"IDP production is more volatile."* **Believed, and NOT measurable here** — there is no
+  week-level data and no `std_dev` column anywhere in this repository. Stating it as fact would be
+  asserting what we cannot check.
+
+**The argument that actually stands: IDP has no vendor pricing at all.** Not thin — absent. The
+valuation table carries **0 of 91 LB, 0 of 153 DB, 0 of 171 DL** with a projection or a
+`proj_3yr`, against 39/40 QB, 72/79 RB, 105/109 WR, 48/52 TE. Every IDP number here comes from
+Sleeper stat lines scored through the rulebook, with nothing to check them against. Offence
+carries two independent sources; **IDP carries one**, in a system whose first principle is that no
+single source is ground truth. Publishing four-grade bands off that would dress a supply defect as
+a grade — and the gauge's whole claim is that its bands are derived.
+
+**The trigger to revisit is an INPUT, not a rewrite:** a second IDP source, or the real board
+`#49` names. Nothing about the banding math needs to change when it arrives.
 
 ### THE QB TANK IS GOING TO LOOK WRONG, AND IT IS NOT
 
