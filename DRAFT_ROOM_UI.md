@@ -801,18 +801,30 @@ the players who left were the ones at the front; drawn per band, nothing has to 
 because each departure is recorded in the band it came from and the display cannot make a claim
 that could be wrong.
 
-**WIDTH IS A DRAWING DECISION AND SAYS NOTHING ABOUT POPULATION.** Each band gets an equal slice
-of the bar. Proportional width was built first and lost on the rendering: a four-player ELITE band
-in a 36-player pool draws about two segments, which is two or three states in total and cannot
-express *"two of the four elite are left"* — the most decision-relevant fact at the position —
-while the bands a drafter cares least about take the most room. It inverts attention toward the band that matters
-least, in every position measured. Equal slices give every band the resolution to show partial
-drain, which is the job.
+**WIDTH IS PROPORTIONAL TO POPULATION — REVERSED, on the owner's question and against my own
+earlier answer.** This document previously specified equal slices, justified as *"equal slices
+give every band the resolution to show partial drain"*. **That justification was false.** Four
+segments give five fill states; across the sixteen position/league cells measured, **thirteen hold
+more players than that** — RB's MID band holds 13 and needs 14. Equal slices did not solve the
+resolution problem, they redistributed it, and perversely: one player moved a 2-player ELITE band
+by 50% and a 13-player MID band by 7.7% in the same bar.
 
-**The cost, stated because it can be misread:** equal slices do not show how many players a band
-holds, and a reader could take four equal slices as a claim of four equal groups. They are not,
-and the table above is why. If that misread matters more than ELITE's resolution does, the call
-reverses — but it cannot be had both ways in one bar.
+**Proportional width makes per-player resolution CONSTANT by construction.** If width tracks
+population, every band spends the same room per player — measured at 47 / 38 / 25 / 29 px per
+player on a 900px bar, identical within each position. So it wins on the very criterion equal
+slices were chosen for, as well as on honesty about population.
+
+**The fill is CONTINUOUS, not segmented, and that distinction is what made the original answer
+look right.** The evidence instrument (`evidence/mode_boundary/pool_gauge.py`) renders ASCII, so
+characters are its quantum and a 2-segment band really does hold three states. A drawn surface has
+no such cap: the fill edge moves in sub-segment steps. **The earlier reasoning took the text
+instrument's limit and applied it to the drawn surface** — two independent choices collapsed into
+one, then argued from the wrong one.
+
+**The cost, stated because it is real:** proportional width lets a reader eyeball *relative*
+population ("MID is three times ELITE"). It discloses no counts — you cannot read 13 off the bar
+— so it stays inside the display contract above, and relative distribution is information worth
+having rather than leakage.
 
 ### Sizing, and the two states
 

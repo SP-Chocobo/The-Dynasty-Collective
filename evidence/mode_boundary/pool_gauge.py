@@ -354,26 +354,55 @@ def assign_bands(pool: dict, marks: dict) -> dict:
 
 
 def band_widths(sizes: dict) -> dict:
-    """Segments per band: EQUAL, one slice each, not proportional to how many players it holds.
+    """Segments per band: PROPORTIONAL to how many players the band holds.
 
-    PROPORTIONAL WAS BUILT FIRST AND LOST ON THE RENDERING. A small ELITE band draws one or two
-    segments -- two or three states in total, unable to express "two of the four elite remain",
-    the most decision-relevant fact at the position -- while the band a drafter cares least about
-    takes the most room. That inverted attention in every position measured. Equal slices give
-    every band the resolution to show partial drain, which is the job.
+    REVERSED FROM EQUAL SLICES, and the reversal is the owner's question answered by arithmetic
+    rather than by preference. Equal slices were justified here as the option that "gives every
+    band the resolution to show partial drain". THAT JUSTIFICATION WAS FALSE: four segments give
+    five fill states, and across the sixteen position/league cells measured, thirteen hold more
+    players than that. RB's MID band holds 13 and needs 14 states. Equal slices did not solve the
+    resolution problem, they redistributed it -- and perversely, since one player moved a 2-player
+    ELITE band by 50% and a 13-player MID band by 7.7% in the same bar.
 
-    The cost, stated because it can be misread: equal slices do not show how many players a band
-    holds, and a reader could take four equal slices as four equal groups. They are not -- ELITE
-    measures anywhere from 11% to 29% of a pool -- and the display contract forbids the counts
-    that would state it precisely anyway.
-    """
+    Proportional width makes PER-PLAYER RESOLUTION CONSTANT across bands by construction: if width
+    tracks population, every band spends the same room per player. On the real pools that is 47 /
+    38 / 25 / 29 px per player at 900px, identical within each position. So proportional wins on
+    the criterion equal slices were chosen for, as well as on honesty about population.
+
+    THE TEXT QUANTUM IS THIS FILE'S OWN LIMIT, NOT THE DESIGN'S. Segments are characters here, so
+    a 2-segment band really does hold only three states -- which is what made equal slices look
+    right when the question was first asked. The surface this instrument informs draws a
+    CONTINUOUS fill, where the edge moves in sub-segment steps and no such cap exists
+    (DRAFT_ROOM_UI §14). Do not carry this file's quantisation back into that spec.
+
+    LARGEST REMAINDER, so the widths sum to exactly SPAN and no live band vanishes. A band with
+    players in it always draws at least one segment -- that is not a rendering floor smuggling in
+    a threshold (#56), it is the statement that a band which exists must be visible, and it is
+    taken out of the largest band rather than added to the total."""
     live = [n for n in BANDS if sizes.get(n, 0) > 0]
     if not live:
         return {n: 0 for n in BANDS}
-    base, extra = divmod(SPAN, len(live))
+    total = sum(sizes[n] for n in live)
+    exact = {n: SPAN * sizes[n] / total for n in live}
     width = {n: 0 for n in BANDS}
-    for i, n in enumerate(live):
-        width[n] = max(1, base + (1 if i < extra else 0))
+    for n in live:
+        width[n] = max(1, int(exact[n]))
+    # Hand out what flooring left over, largest fractional part first.
+    spare = SPAN - sum(width[n] for n in live)
+    order = sorted(live, key=lambda n: exact[n] - int(exact[n]), reverse=True)
+    i = 0
+    while spare > 0 and order:
+        width[order[i % len(order)]] += 1
+        spare -= 1
+        i += 1
+    # If the min-1 floors overran SPAN, take it back from the widest band, never from a band
+    # that is already at its minimum.
+    while spare < 0:
+        widest = max((n for n in live if width[n] > 1), key=lambda n: width[n], default=None)
+        if widest is None:
+            break
+        width[widest] -= 1
+        spare += 1
     return width
 
 
