@@ -11112,3 +11112,57 @@ the mass half it already held (#126 — one home for the subject). 14 tests, mut
 but only 11 rivals, each consulted twice, and a per-pick fixture would build boards under ids
 nobody looks up and answer a different question — which is exactly the error my first draft of
 it made.
+
+---
+
+## #183 — six absence breaks in the Dock, found by rendering rather than by reading
+
+The freeze checklist carries `#183` as *"six defects in the live Debate Dock"* and **never
+enumerated them**. Like `B4`, the substance had to be re-derived. The method matters: a sweep of
+absent-field scenarios through `_format_candidate` itself, not a reading of the source. Six broke.
+**No claim is made that these are the original six** — that list is lost, and inventing a
+correspondence would be the kind of tidy story this register exists to prevent.
+
+**WHY THIS IS LOAD-BEARING AND NOT POLISH.** The owner ruled the Draft Room must work fully with
+no API, and that the no-API state must not look deprived. For a customer without a key, the
+engine's own evidence **is the whole explanation**. A `None` rendered there is not a cosmetic
+blemish; it is the entire account of a pick, with a hole in it, in the one place nobody can check
+it against the board.
+
+| # | state | what the reader saw |
+|---|---|---|
+| 1 | unpriced row | `Universal value: None` |
+| 2 | unpriced row | `(universal_value None + need_bonus +6.0 …)` — a sum with a hole |
+| 3 | survival measured, price absent | `Opportunity cost of waiting: None` |
+| 4 | survival measured, count absent | `(None intervening pick(s))` |
+| 5 | cliff tier real, magnitudes absent | `gap to next at position: None` |
+| 6 | `need_bonus` None | **TypeError — the Dock does not misreport, it dies** |
+
+**REACHABILITY IS PART OF THE FINDING**, because this codebase does not spend repairs on
+hypotheticals. Five are reachable by declared type *and* by path: the board's absence convention
+gives an unpriced row `final_score = None`, which becomes a `None` team-acquisition value, while
+`estimate_survival` **deliberately still answers for that player** — he is on a rival's board and
+can be taken, so he receives the module's floor. That combination is what produced the worst of
+them: a real percentage on one line and the literal string `None` on the next, where it reads as a
+quantity. `#168` already established that unpriced rows occur.
+
+**The sixth is a CALLER CONTRACT VIOLATION, guarded but not claimed live.** `need_bonus` and
+`eligibility_bonus` are typed non-Optional and reach the snapshot through `.get(key, 0.0)` — which
+substitutes the default for a *missing* key but passes an explicit `None` straight through, where
+the `:+` format raises. It is guarded defensively and labelled as such rather than dressed up as a
+live defect.
+
+**THE REPAIR PRESERVES THE OTHER HALF OF THE CONTRACT.** Not leaking `None` is the floor, not the
+goal: a chair that reads a missing line as *"the engine had nothing to say"* reaches the same
+false conclusion by a quieter route. So each absence states what was not measured and denies the
+reading it invites — *"NOT PRICED … never as low"*, *"UNKNOWN, never zero"*, *"Not 'waiting is
+free'"*. And a **measured 0.0 is still reported as a measurement**, which is the property a
+careless absence fix destroys; `test_a_measured_zero_is_still_reported_as_a_measurement` exists
+precisely to fail if the repair ever starts swallowing real zeros.
+
+One judgment worth naming: when a term of the team-value sum is absent, the **whole is still
+reported** — it is a real number — but the arithmetic sentence is withheld. A sum missing an
+addend, shown to a model instructed never to recompute, is worse than no sum at all.
+
+**PINNED:** `test_dock_absence_contract.py`, 9 tests, mutation-checked 4/4. Full suite **2972,
+OK**.

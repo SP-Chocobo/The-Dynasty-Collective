@@ -400,8 +400,14 @@ only. The items below feed observables and the debate layer, so they degrade wha
       that is blocked on #49/#88). Both halves pinned by `test_take_model_coherence.py`.
       **What this gate still needs is the OWNER's call on whether the arithmetic half is wired
       before the freeze or deferred to #50** — the measurement no longer blocks the decision.
-- [ ] **#183** — six defects in the live Debate Dock, including the absence contract broken
-      exactly where a person actually reads it.
+- [x] **#183** — **REPAIRED**: six absence breaks in the Dock, found by rendering absent-field
+      scenarios through `_format_candidate` rather than by reading it. Five reachable (an unpriced
+      row carries no price while `estimate_survival` still answers for him, so a real percentage
+      sat above the literal string `None`); the sixth, a `need_bonus` of None, raised TypeError —
+      the Dock died rather than misreported. Each absence now denies the reading it invites, and a
+      measured 0.0 is still reported as a measurement. **The original six were never enumerated,
+      so no claim is made that these are the same six.** `test_dock_absence_contract.py`, 9 tests,
+      mutation-checked 4/4.
 - [ ] **#112** — kind-of-absence stops at the board; "never checked" has no representation.
 - [ ] **#119** — `universal_value`'s decomposition reaches no consumer, so causal reconstruction
       breaks at the valuation leaf.

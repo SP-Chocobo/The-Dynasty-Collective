@@ -308,18 +308,49 @@ def _format_candidate(candidate: CandidateSnapshot, user_selected_player_id: Opt
     lines = [
         f"CANDIDATE: {candidate.name} ({candidate.position}{', ' + candidate.team if candidate.team else ''}){flag}",
         f"  Pick necessity: {candidate.pick_necessity}/100 -- {candidate.necessity_label} (NOT a value score -- see below for value)",
-        f"  Universal value: {candidate.universal_value} (source: {candidate.bpa_source}, confidence: {candidate.confidence})"
-        + (f" -- {candidate.projected_points} projected season points" if candidate.projected_points is not None else ""),
-        # ALL THREE team terms or none. depth_exposure joined this sum when it was wired into
-        # team_acquisition_value, and this line was not updated -- so the panel was handed a
-        # whole and two of its three parts, an arithmetic contradiction shown to a model that
-        # is instructed never to recompute. A measured 0.0 depth term is stated as 0.0; an
-        # absent one says it was not computed, because those are different claims.
-        f"  Team acquisition value: {candidate.team_acquisition_value} "
-        f"(universal_value {candidate.universal_value} + need_bonus {candidate.need_bonus:+}"
-        f" + eligibility_bonus {candidate.eligibility_bonus:+}"
-        + _depth_term(candidate) + _displacement_term(candidate) + ")",
     ]
+    # #183. AN UNPRICED ROW REACHES THIS FORMATTER. `universal_value` and
+    # `team_acquisition_value` are both Optional, and the board's absence convention gives an
+    # unpriced row `final_score = None`, which becomes a None TAV here. Printed straight into an
+    # f-string that reads "Universal value: None" and, worse, "(universal_value None + need_bonus
+    # +6.0 ...)" -- an arithmetic sentence with a hole in it, shown to a model instructed never to
+    # recompute. Said plainly instead, in the same register the rest of this function uses.
+    if candidate.universal_value is None:
+        lines.append("  Universal value: NOT PRICED -- the engine could not value this player at "
+                     "all. Read every value comparison below as unavailable, never as low.")
+    else:
+        lines.append(
+            f"  Universal value: {candidate.universal_value} "
+            f"(source: {candidate.bpa_source}, confidence: {candidate.confidence})"
+            + (f" -- {candidate.projected_points} projected season points"
+               if candidate.projected_points is not None else ""))
+
+    # ALL THREE team terms or none. depth_exposure joined this sum when it was wired into
+    # team_acquisition_value, and this line was not updated -- so the panel was handed a whole
+    # and two of its three parts, an arithmetic contradiction shown to a model that is instructed
+    # never to recompute. A measured 0.0 depth term is stated as 0.0; an absent one says it was
+    # not computed, because those are different claims.
+    #
+    # #183 EXTENDS THAT RULE TO THE WHOLE AND THE FIRST THREE TERMS. The decomposition is only
+    # rendered as arithmetic when every piece of it is a number. need_bonus and eligibility_bonus
+    # are typed non-Optional and reach this via `.get(key, 0.0)` -- which returns the default for
+    # a MISSING key but passes an explicit None straight through, and a None there raised
+    # TypeError on the `:+` format. That is a contract violation rather than a live path, so it
+    # is guarded rather than repaired upstream, and saying so is the point of this note.
+    _sum_terms = (candidate.team_acquisition_value, candidate.universal_value,
+                  candidate.need_bonus, candidate.eligibility_bonus)
+    if all(t is not None for t in _sum_terms):
+        lines.append(
+            f"  Team acquisition value: {candidate.team_acquisition_value} "
+            f"(universal_value {candidate.universal_value} + need_bonus {candidate.need_bonus:+}"
+            f" + eligibility_bonus {candidate.eligibility_bonus:+}"
+            + _depth_term(candidate) + _displacement_term(candidate) + ")")
+    elif candidate.team_acquisition_value is not None:
+        lines.append(f"  Team acquisition value: {candidate.team_acquisition_value} "
+                     "(decomposition unavailable -- one of its terms was not measured)")
+    else:
+        lines.append("  Team acquisition value: NOT MEASURED -- this row carries no price, so it "
+                     "has no team-adjusted value either. UNKNOWN, never zero.")
     if candidate.near_tie_with_leader:
         lines.append(
             "  NEAR-TIE: within the measured noise band of the top candidate -- the value "
@@ -336,12 +367,25 @@ def _format_candidate(candidate: CandidateSnapshot, user_selected_player_id: Opt
             "distance from the top candidate was never measured. Read that as UNKNOWN, never as "
             "'far enough behind the leader to rank below him safely'."
         )
+    # #183. THREE QUANTITIES, ONE GUARD -- and they do not share a precondition. Both
+    # `opportunity_cost` and `expected_value_of_waiting` need a PRICE as well as a survival
+    # probability (opportunity_cost is team_acquisition_value x (1 - survival), so an absent TAV
+    # makes it None), and `estimate_survival` deliberately still answers for an unpriced player:
+    # he is on a rival's board, he can be taken, so he gets the module's floor. So the reachable
+    # state is survival measured, cost not -- which printed the literal string "None" twice,
+    # directly beneath a real percentage, where it reads as a number rather than as an absence.
     if candidate.survival_probability is not None:
+        picks = (f" ({candidate.intervening_picks} intervening pick(s))"
+                 if candidate.intervening_picks is not None else "")
         lines.append(
-            f"  Survival probability to your next pick: {_format_probability(candidate.survival_probability)} "
-            f"({candidate.intervening_picks} intervening pick(s))"
-        )
+            f"  Survival probability to your next pick: "
+            f"{_format_probability(candidate.survival_probability)}{picks}")
+    if candidate.opportunity_cost is not None:
         lines.append(f"  Opportunity cost of waiting: {candidate.opportunity_cost}")
+    elif candidate.survival_probability is not None:
+        lines.append("  Opportunity cost of waiting: NOT MEASURED -- it needs a price for this "
+                     "player and there is none. Not 'waiting is free'.")
+    if candidate.expected_value_of_waiting is not None:
         lines.append(f"  Expected value if you wait: {candidate.expected_value_of_waiting}")
     # `if candidate.denial_value:` swallowed a MEASURED 0.0 -- "no rival gains anything from
     # him" is a real finding and an argument for waiting, and it read to the panel exactly like
@@ -359,7 +403,14 @@ def _format_candidate(candidate: CandidateSnapshot, user_selected_player_id: Opt
         lines.append(f"  Denial value: {candidate.denial_value} (would go to roster {candidate.denial_team})")
     if candidate.positional_cliff:
         cliff = candidate.positional_cliff
-        lines.append(f"  Positional cliff: {cliff['tier']} (gap to next at position: {cliff['gap']}, typical gap: {cliff['typical_gap']})")
+        # #183: the tier can be real while the two magnitudes behind it are not, and printing
+        # "gap to next at position: None" hands a chair a measurement that was never taken.
+        if cliff.get("gap") is not None and cliff.get("typical_gap") is not None:
+            lines.append(f"  Positional cliff: {cliff['tier']} (gap to next at position: "
+                         f"{cliff['gap']}, typical gap: {cliff['typical_gap']})")
+        else:
+            lines.append(f"  Positional cliff: {cliff['tier']} (the gap behind this tier was not "
+                         f"measured -- tier only)")
     # Same shape as denial_value: the `is not None` was here, but `> 0` still dropped a
     # measured zero -- the case where waiting at this position costs nothing, which is the
     # strongest evidence FOR waiting and was the one thing never said.
@@ -371,8 +422,11 @@ def _format_candidate(candidate: CandidateSnapshot, user_selected_player_id: Opt
     elif candidate.positional_forfeit is not None and candidate.positional_forfeit > 0:
         lines.append(
             f"  Cost of delaying {candidate.position} entirely: best remaining {candidate.position} at your next "
-            f"pick expected ~{candidate.positional_forfeit} universal-value points worse than now "
-            f"(~{candidate.position_expected_taken} {candidate.position} pick(s) expected before then)"
+            f"pick expected ~{candidate.positional_forfeit} universal-value points worse than now"
+            # #183: the parenthetical is dropped rather than printed as "~None pick(s)". The
+            # forfeit stands on its own; a count nobody measured does not belong beside it.
+            + (f" (~{candidate.position_expected_taken} {candidate.position} pick(s) expected "
+               f"before then)" if candidate.position_expected_taken is not None else "")
         )
     if candidate.position_run_detected:
         lines.append(f"  {candidate.position} run currently detected among recent picks")
