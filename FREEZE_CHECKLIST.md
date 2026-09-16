@@ -409,8 +409,12 @@ only. The items below feed observables and the debate layer, so they degrade wha
       so no claim is made that these are the same six.** `test_dock_absence_contract.py`, 9 tests,
       mutation-checked 4/4.
 - [ ] **#112** — kind-of-absence stops at the board; "never checked" has no representation.
-- [ ] **#119** — `universal_value`'s decomposition reaches no consumer, so causal reconstruction
-      breaks at the valuation leaf.
+- [x] **#119** — **REPAIRED**: `time_horizon_adj` and `risk_adj` are carried to the snapshot and
+      rendered beside the team-value decomposition, so `universal_value = bpa + horizon + risk` is
+      explained where a person reads it. `quantity_readers` independently confirms both moved from
+      `decomposition` (zero readers) to `observable`, `scoring_readers` still empty — it discloses,
+      it does not wire. **This item's second clause was stale**: the board does NOT drop
+      `bpa_source`/`confidence`; both reach `pick_debate`. 12 tests, mutation-checked 4/4.
 - [ ] **#211** — `starter_value` ranks positional breadth, not roster quality. Pinned as
       KNOWN-OPEN-ACCEPTABLE; worth re-reading once Gate 2 is ruled, since it is the metric the
       roster proof's asset ruler leans on.

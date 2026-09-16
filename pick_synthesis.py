@@ -1169,6 +1169,13 @@ class CandidateSnapshot:
     # fixtures predate it. None means "not measured", which is what depth_basis says in words
     # on the board row this is read from -- never "this roster's depth here is safe".
     depth_exposure: Optional[float] = None
+    #: #119. universal_value's own two addends, carried so the price can be explained rather
+    #: than only asserted. Defaulted for the same reason depth_exposure is: upside-mode boards
+    #: never compute them, and hand-built CandidateSnapshot fixtures predate the fields. None
+    #: means NOT COMPUTED FOR THIS BOARD -- never "this player carries no horizon or risk
+    #: adjustment", which is a different and much stronger claim.
+    time_horizon_adj: Optional[float] = None
+    risk_adj: Optional[float] = None
     # THE COMPANION THAT WAS DROPPED HERE (#174). The board emits it beside depth_exposure and
     # the snapshot did not carry it, so every consumer past this boundary -- the chair prose,
     # the board UI, screen_context -- saw a 0.0 and could not tell "measured, no exposure" from
@@ -1367,6 +1374,14 @@ def build_snapshot(
             "player_id": pid, "name": row["name"], "position": row["position"], "team": row.get("team"),
             "bpa": row["bpa"], "bpa_source": row["bpa_source"], "confidence": row["confidence"],
             "universal_value": universal_value, "need_bonus": row.get("need_bonus", 0.0),
+            # #119: the two terms that MAKE universal_value (bpa + time_horizon_adj + risk_adj).
+            # The board computes both and, until now, nothing downstream read either -- so the
+            # price crossed this boundary as a bare number and "why is he worth that?" had no
+            # answer past the valuation leaf. Carried, never defaulted: upside mode genuinely
+            # does not compute them and a 0.0 here would fabricate a measurement (draft_room
+            # says so at the emission site, and this mirrors it rather than restating it).
+            "time_horizon_adj": row.get("time_horizon_adj"),
+            "risk_adj": row.get("risk_adj"),
             "eligibility_bonus": row.get("eligibility_bonus", 0.0),
             "depth_exposure": row.get("depth_exposure"),
             # Read this BEFORE depth_exposure: a 0.0 whose basis is not `measured` is an

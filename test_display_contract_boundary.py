@@ -465,8 +465,26 @@ class TheScaleIsNotAPointsTotalTests(unittest.TestCase):
         #   unmeasured zero is a dash, a floor says "(floor)"), label and help from
         #   DISPLAY_CONTRACT like every other card. The basis travels beside the number from
         #   the first commit, which is the lesson depth_basis (field 44) taught.
+        # 46 -> 48 (2026-09-16): time_horizon_adj and risk_adj, #119's two addends. They are
+        # universal_value's OWN decomposition (universal_value = bpa + time_horizon_adj +
+        # risk_adj), and until now the board computed both and nothing downstream read either --
+        # so the price crossed this boundary as a bare number. The two questions:
+        #
+        #   SCALE. Both sit on exactly the bpa-anchored scale this file already measures, because
+        #   they are literally addends of it. Neither introduces a unit, and unlike growth_signal
+        #   neither is a percentile wearing a value's clothes. risk_adj is SIGNED and always <= 0
+        #   (a haircut); time_horizon_adj is signed both ways. Measured on a full real board: 256
+        #   rows carry risk_adj, 249 at 0.0 and 7 nonzero, all IR, spanning -5.4 to -18.0.
+        #
+        #   SHOULD THE CARD RENDER THEM? Not the metric row -- same answer as need_bonus and
+        #   eligibility_bonus, and for the same reason: the row shows headline quantities, and a
+        #   decomposition belongs in the explanation. They render in the PRYTANEUM's evidence
+        #   block, beside the team_acquisition_value decomposition that already sits there, which
+        #   is where a person asking "why is he worth that?" is actually looking. The ruling that
+        #   the Draft Room must work with no API is what makes that surface the right one: for a
+        #   keyless customer it is the whole explanation.
         self.assertEqual(
-            len(dataclasses.fields(ps.CandidateSnapshot)), 46,
+            len(dataclasses.fields(ps.CandidateSnapshot)), 48,
             "CandidateSnapshot's field count changed. That is fine and often correct -- but "
             "confirm the new field does not imply a scale the card cannot support, decide "
             "whether the card should render it, then update this number.")

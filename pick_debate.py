@@ -319,11 +319,40 @@ def _format_candidate(candidate: CandidateSnapshot, user_selected_player_id: Opt
         lines.append("  Universal value: NOT PRICED -- the engine could not value this player at "
                      "all. Read every value comparison below as unavailable, never as low.")
     else:
+        # #119: THE PRICE IS NOW EXPLAINED, not merely asserted. `universal_value` is
+        # `bpa + time_horizon_adj + risk_adj`, and until now the two addends were computed by
+        # the board and read by nobody -- so a chair asking "why is he worth that?" hit a bare
+        # number and stopped. That is the causal reconstruction break at the valuation leaf.
+        #
+        # SAME RULE AS THE TEAM-VALUE SUM ABOVE (#183), deliberately and not by coincidence: the
+        # arithmetic sentence is rendered only when every term is a number, because a sum missing
+        # an addend shown to a model instructed never to recompute is worse than no sum. Upside
+        # mode is the reachable absent case -- `upside_score` genuinely never computes these two,
+        # and the board omits rather than zeroes them.
+        # A TERNARY, whose test NAMES ALL THREE FIELDS -- and both of those are deliberate.
+        # test_display_contract_boundary walks the AST for f-strings that apply a format spec to
+        # an Optional field, and it recognises exactly two guard shapes: an early-`return` at a
+        # function's top level, or an IfExp whose test mentions the attribute. This was first
+        # written as `all(t is not None for t in uv_terms)`, which is correct Python and
+        # INVISIBLE to that scan -- the test mentions a tuple, not the fields. It was then
+        # written as a plain `if/else`, also correct and also invisible, because the scan wants a
+        # return. Both were flagged, both times rightly: a guard an instrument cannot see is a
+        # guard that silently stops protecting the moment someone edits near it.
+        decomposed = (f" = bpa {candidate.bpa} + horizon {candidate.time_horizon_adj:+}"
+                      f" + risk {candidate.risk_adj:+}"
+                      if (candidate.bpa is not None
+                          and candidate.time_horizon_adj is not None
+                          and candidate.risk_adj is not None) else "")
         lines.append(
-            f"  Universal value: {candidate.universal_value} "
+            f"  Universal value: {candidate.universal_value}{decomposed} "
             f"(source: {candidate.bpa_source}, confidence: {candidate.confidence})"
             + (f" -- {candidate.projected_points} projected season points"
                if candidate.projected_points is not None else ""))
+        if not decomposed:
+            # Named rather than left as silence, for the same reason every other absence here is:
+            # a chair that sees no decomposition must not read it as "no adjustments applied".
+            lines.append("  (universal value decomposition not computed for this board -- read "
+                         "that as UNKNOWN, never as 'no horizon or risk adjustment applied')")
 
     # ALL THREE team terms or none. depth_exposure joined this sum when it was wired into
     # team_acquisition_value, and this line was not updated -- so the panel was handed a whole

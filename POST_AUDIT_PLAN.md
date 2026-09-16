@@ -11166,3 +11166,64 @@ addend, shown to a model instructed never to recompute, is worse than no sum at 
 
 **PINNED:** `test_dock_absence_contract.py`, 9 tests, mutation-checked 4/4. Full suite **2972,
 OK**.
+
+---
+
+## #119 — the price is explained now, and half the item was stale
+
+`universal_value` **is** `bpa + time_horizon_adj + risk_adj` — draft_room's own header line. The
+board computed all three, and `quantity_readers.scan()` classified the two adjustments as
+`decomposition` with **empty scoring_readers, empty observing_readers and empty carriers**.
+Nothing read either. So the price crossed into the snapshot as a bare number, and a chair asking
+*why is he worth that* hit a dead end at the exact leaf where the answer lives.
+
+**HALF THE ITEM WAS ALREADY STALE**, which is now the third time this pass (`#86`, `#183`, this).
+`#119` reads *"`time_horizon_adj`/`risk_adj` reach no production consumer; **board drops
+`bpa_source`/`confidence`**"*. The second clause is false: `bpa_source` reaches `draft_room` and
+`pick_debate`, `confidence` reaches `app.py` and `pick_debate`. Only the first clause was live.
+
+**The repair DISCLOSES; it does not wire.** Both terms are carried to `CandidateSnapshot` and
+rendered beside the team-value decomposition that already sat there. `quantity_readers` — an
+AST-derived instrument, not a hand list — independently confirms the move from `decomposition`
+to **`observable`**, with `scoring_readers` still empty. Promoting a decomposition term into a
+scoring input would be a valuation change and a `#50` decision; a test asserts it has not
+happened.
+
+**Absence semantics were already correct upstream and are preserved.** Upside mode genuinely
+never computes these two and the board omits rather than zeroes them, so the sum is withheld and
+**named** — *"read that as UNKNOWN, never as 'no horizon or risk adjustment applied'"*. Same rule
+`#183` set for the team-value sum: a sum missing an addend, shown to a model instructed never to
+recompute, is worse than no sum.
+
+**MY OWN FIRST DRAFT OF THE GUARDS WAS VACUOUS, and mutation found it.** Severing the carry —
+`row.get("time_horizon_adj")` → literal `None` — left every test green, because they all built
+`CandidateSnapshot` by hand and the `quantity_readers` checks still saw the NAME in the source.
+An AST reference is not a value. A real merger, board and snapshot now exercise the wire, and
+that mutation fails 48 tests.
+
+**A SECOND MUTATION SURVIVES, CORRECTLY, and the reason is a finding.** Faking `risk_adj` as
+`0.0` is undetectable on the fixture population — every top-20-by-trade-value player is healthy,
+so the true value **is** 0.0 for all 48. Measured on a full board: **256 rows carry the term, 249
+at 0.0 and 7 nonzero, every one an IR player, spanning −5.4 to −18.0.** The term does vary; that
+population simply has none of it. Recorded rather than papered over, and a board-level test now
+covers the variation the snapshot fixture cannot.
+
+**THREE RATCHETS FIRED AND WERE UPDATED DELIBERATELY, not silenced:** the snapshot schema pin
+(46 → 48, with both of its questions answered), `test_quantity_readers`' independently-established
+verdicts (`decomposition` → `observable` — changed by hand, because a table that followed the
+scanner automatically would make the check circular), and the display-contract AST scan.
+
+**That last one is worth its own note.** The scan flagged my guard twice, and was right twice. It
+recognises two shapes — an early-`return`, or a ternary whose test names the attribute. I first
+wrote `all(t is not None for t in uv_terms)` (correct Python, invisible: the test names a tuple),
+then a plain `if/else` (also correct, also invisible: no return). **A guard an instrument cannot
+see is a guard that silently stops protecting the moment someone edits near it.** The shipped form
+is a ternary naming all three fields.
+
+**One stale term of my own**, caught by `test_prytaneum_terminology`: I wrote *"Debate Dock"* in a
+comment. It is retired vocabulary — the surface is the **Prytaneum**. The freeze checklist and
+this register still carry it in prose, where only `#182`'s audit will reach them, because the
+terminology guard scans `*.py` only.
+
+**PINNED:** `test_valuation_leaf_explains_itself.py`, 12 tests, mutation-checked 4/4. Full suite
+**2984, OK**.

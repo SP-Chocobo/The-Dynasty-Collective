@@ -35,8 +35,13 @@ KNOWN = {
     # DIFFERENCE is consumed, so the absolute is genuinely read by nothing.
     "without_candidate": qr.WRITE_ONLY,
     # The term does real work as a local; its published column is unread (#119).
-    "time_horizon_adj": qr.DECOMPOSITION,
-    "risk_adj": qr.DECOMPOSITION,
+    # #119: both were DECOMPOSITION -- computed by the board, read by nobody, which is what made
+    # "why is he worth that?" unanswerable past the valuation leaf. They now reach pick_debate,
+    # so the established answer moves to OBSERVABLE. Changed deliberately here rather than
+    # loosened: this table is the independent answer the scanner is checked AGAINST, so an entry
+    # that follows the scanner automatically would make the check circular.
+    "time_horizon_adj": qr.OBSERVABLE,
+    "risk_adj": qr.OBSERVABLE,
 }
 
 #: The write-only set as it stands. This is a CHARACTERIZATION, not an approval -- most entries
