@@ -1,0 +1,83 @@
+{
+ "population": 305,
+ "arms": {
+  "strict": {
+   "resolved": 188,
+   "rate": 0.6164
+  },
+  "no_team": {
+   "resolved": 224,
+   "rate": 0.7344
+  },
+  "relaxed": {
+   "resolved": 224,
+   "rate": 0.7344
+  }
+ },
+ "recovered_by_dropping_team": [
+  "A.J. Brown",
+  "Isaiah Likely",
+  "Kenneth Walker",
+  "Travis Etienne",
+  "Jaylen Waddle",
+  "Kyler Murray",
+  "Wan'Dale Robinson",
+  "Malik Willis",
+  "DJ Moore",
+  "Michael Pittman",
+  "Tyler Allgeier",
+  "Mike Evans",
+  "Romeo Doubs",
+  "Kenneth Gainwell",
+  "Brian Robinson",
+  "Tua Tagovailoa",
+  "Jauan Jennings",
+  "David Montgomery",
+  "Rico Dowdle",
+  "Brandon Aiyuk",
+  "David Njoku",
+  "Stefon Diggs",
+  "Rachaad White",
+  "Deebo Samuel",
+  "Isiah Pacheco",
+  "Chig Okonkwo",
+  "Chris Rodriguez",
+  "Tahj Brooks",
+  "Keaton Mitchell",
+  "Marquise Brown",
+  "Emanuel Wilson",
+  "Dontayvion Wicks",
+  "Trevor Etienne",
+  "Geno Smith",
+  "Jaylin Lane",
+  "Jalen Nailor"
+ ],
+ "recovered_by_spelling": [],
+ "still_unresolved": 81,
+ "still_by_round": {
+  "4": 1,
+  "8": 1,
+  "14": 1,
+  "15": 1,
+  "16": 3,
+  "18": 2,
+  "19": 4,
+  "20": 7,
+  "21": 3,
+  "22": 4,
+  "23": 7,
+  "24": 3,
+  "25": 8,
+  "26": 6,
+  "27": 5,
+  "28": 6,
+  "29": 8,
+  "30": 11
+ },
+ "still_absent_from_resolver": 72,
+ "still_position_mismatch": 9,
+ "absence_check_control": {
+  "passed": 59,
+  "of": 59
+ }
+}

@@ -1,0 +1,954 @@
+{
+ "board": "Greatest Show on Paper 2",
+ "picks_total": 360,
+ "real_legible": 305,
+ "resolved": 188,
+ "rate": 0.6164,
+ "round_1_control": {
+  "resolved": 12,
+  "of": 12
+ },
+ "by_round": {
+  "1": {
+   "resolved": 12,
+   "of": 12
+  },
+  "2": {
+   "resolved": 11,
+   "of": 11
+  },
+  "3": {
+   "resolved": 11,
+   "of": 11
+  },
+  "4": {
+   "resolved": 8,
+   "of": 10
+  },
+  "5": {
+   "resolved": 10,
+   "of": 10
+  },
+  "6": {
+   "resolved": 10,
+   "of": 11
+  },
+  "7": {
+   "resolved": 8,
+   "of": 10
+  },
+  "8": {
+   "resolved": 8,
+   "of": 11
+  },
+  "9": {
+   "resolved": 10,
+   "of": 10
+  },
+  "10": {
+   "resolved": 6,
+   "of": 8
+  },
+  "11": {
+   "resolved": 9,
+   "of": 11
+  },
+  "12": {
+   "resolved": 8,
+   "of": 11
+  },
+  "13": {
+   "resolved": 5,
+   "of": 11
+  },
+  "14": {
+   "resolved": 9,
+   "of": 10
+  },
+  "15": {
+   "resolved": 8,
+   "of": 12
+  },
+  "16": {
+   "resolved": 7,
+   "of": 10
+  },
+  "17": {
+   "resolved": 10,
+   "of": 12
+  },
+  "18": {
+   "resolved": 6,
+   "of": 9
+  },
+  "19": {
+   "resolved": 7,
+   "of": 11
+  },
+  "20": {
+   "resolved": 2,
+   "of": 9
+  },
+  "21": {
+   "resolved": 5,
+   "of": 9
+  },
+  "22": {
+   "resolved": 5,
+   "of": 11
+  },
+  "23": {
+   "resolved": 3,
+   "of": 11
+  },
+  "24": {
+   "resolved": 4,
+   "of": 9
+  },
+  "25": {
+   "resolved": 1,
+   "of": 11
+  },
+  "26": {
+   "resolved": 1,
+   "of": 8
+  },
+  "27": {
+   "resolved": 0,
+   "of": 6
+  },
+  "28": {
+   "resolved": 1,
+   "of": 7
+  },
+  "29": {
+   "resolved": 3,
+   "of": 12
+  },
+  "30": {
+   "resolved": 0,
+   "of": 11
+  }
+ },
+ "unresolved": [
+  {
+   "pick_no": 43,
+   "name": "A.J. Brown",
+   "position": "WR",
+   "nfl_team": "PHI",
+   "round": 4
+  },
+  {
+   "pick_no": 44,
+   "name": "Jordan Love",
+   "position": "QB",
+   "nfl_team": "GB",
+   "round": 4
+  },
+  {
+   "pick_no": 67,
+   "name": "Isaiah Likely",
+   "position": "TE",
+   "nfl_team": "BAL",
+   "round": 6
+  },
+  {
+   "pick_no": 74,
+   "name": "Kenneth Walker",
+   "position": "RB",
+   "nfl_team": "SEA",
+   "round": 7
+  },
+  {
+   "pick_no": 76,
+   "name": "Travis Etienne",
+   "position": "RB",
+   "nfl_team": "JAX",
+   "round": 7
+  },
+  {
+   "pick_no": 86,
+   "name": "Javonte Williams",
+   "position": "RB",
+   "nfl_team": "DAL",
+   "round": 8
+  },
+  {
+   "pick_no": 93,
+   "name": "Jaylen Waddle",
+   "position": "WR",
+   "nfl_team": "MIA",
+   "round": 8
+  },
+  {
+   "pick_no": 96,
+   "name": "Kyler Murray",
+   "position": "QB",
+   "nfl_team": "ARI",
+   "round": 8
+  },
+  {
+   "pick_no": 113,
+   "name": "Wan'Dale Robinson",
+   "position": "WR",
+   "nfl_team": "NYG",
+   "round": 10
+  },
+  {
+   "pick_no": 119,
+   "name": "Malik Willis",
+   "position": "QB",
+   "nfl_team": "GB",
+   "round": 10
+  },
+  {
+   "pick_no": 121,
+   "name": "DJ Moore",
+   "position": "WR",
+   "nfl_team": "CHI",
+   "round": 11
+  },
+  {
+   "pick_no": 132,
+   "name": "Michael Pittman",
+   "position": "WR",
+   "nfl_team": "IND",
+   "round": 11
+  },
+  {
+   "pick_no": 136,
+   "name": "Tyler Allgeier",
+   "position": "RB",
+   "nfl_team": "ATL",
+   "round": 12
+  },
+  {
+   "pick_no": 139,
+   "name": "Mike Evans",
+   "position": "WR",
+   "nfl_team": "TB",
+   "round": 12
+  },
+  {
+   "pick_no": 143,
+   "name": "Romeo Doubs",
+   "position": "WR",
+   "nfl_team": "GB",
+   "round": 12
+  },
+  {
+   "pick_no": 149,
+   "name": "Kenneth Gainwell",
+   "position": "RB",
+   "nfl_team": "PIT",
+   "round": 13
+  },
+  {
+   "pick_no": 150,
+   "name": "Brian Robinson",
+   "position": "RB",
+   "nfl_team": "SF",
+   "round": 13
+  },
+  {
+   "pick_no": 151,
+   "name": "Tua Tagovailoa",
+   "position": "QB",
+   "nfl_team": "MIA",
+   "round": 13
+  },
+  {
+   "pick_no": 152,
+   "name": "Jauan Jennings",
+   "position": "WR",
+   "nfl_team": "SF",
+   "round": 13
+  },
+  {
+   "pick_no": 153,
+   "name": "David Montgomery",
+   "position": "RB",
+   "nfl_team": "DET",
+   "round": 13
+  },
+  {
+   "pick_no": 156,
+   "name": "Rico Dowdle",
+   "position": "RB",
+   "nfl_team": "CAR",
+   "round": 13
+  },
+  {
+   "pick_no": 165,
+   "name": "Mac Jones",
+   "position": "QB",
+   "nfl_team": "SF",
+   "round": 14
+  },
+  {
+   "pick_no": 169,
+   "name": "Brandon Aiyuk",
+   "position": "WR",
+   "nfl_team": "SF",
+   "round": 15
+  },
+  {
+   "pick_no": 176,
+   "name": "Quinn Ewers",
+   "position": "QB",
+   "nfl_team": "MIA",
+   "round": 15
+  },
+  {
+   "pick_no": 179,
+   "name": "David Njoku",
+   "position": "TE",
+   "nfl_team": "CLE",
+   "round": 15
+  },
+  {
+   "pick_no": 180,
+   "name": "Stefon Diggs",
+   "position": "WR",
+   "nfl_team": "NE",
+   "round": 15
+  },
+  {
+   "pick_no": 185,
+   "name": "Jake Tonges",
+   "position": "TE",
+   "nfl_team": "SF",
+   "round": 16
+  },
+  {
+   "pick_no": 187,
+   "name": "Joe Mixon",
+   "position": "RB",
+   "nfl_team": "HOU",
+   "round": 16
+  },
+  {
+   "pick_no": 188,
+   "name": "Tyreek Hill",
+   "position": "WR",
+   "nfl_team": "MIA",
+   "round": 16
+  },
+  {
+   "pick_no": 197,
+   "name": "Rachaad White",
+   "position": "RB",
+   "nfl_team": "TB",
+   "round": 17
+  },
+  {
+   "pick_no": 203,
+   "name": "Deebo Samuel",
+   "position": "WR",
+   "nfl_team": "WAS",
+   "round": 17
+  },
+  {
+   "pick_no": 209,
+   "name": "Tank Dell",
+   "position": "WR",
+   "nfl_team": "HOU",
+   "round": 18
+  },
+  {
+   "pick_no": 211,
+   "name": "Isiah Pacheco",
+   "position": "RB",
+   "nfl_team": "KC",
+   "round": 18
+  },
+  {
+   "pick_no": 212,
+   "name": "Kyle Williams",
+   "position": "WR",
+   "nfl_team": "NE",
+   "round": 18
+  },
+  {
+   "pick_no": 221,
+   "name": "Calvin Ridley",
+   "position": "WR",
+   "nfl_team": "TEN",
+   "round": 19
+  },
+  {
+   "pick_no": 222,
+   "name": "Christian Kirk",
+   "position": "WR",
+   "nfl_team": "HOU",
+   "round": 19
+  },
+  {
+   "pick_no": 226,
+   "name": "Andrei Iosivas",
+   "position": "WR",
+   "nfl_team": "CIN",
+   "round": 19
+  },
+  {
+   "pick_no": 228,
+   "name": "John Metchie",
+   "position": "WR",
+   "nfl_team": "NYJ",
+   "round": 19
+  },
+  {
+   "pick_no": 229,
+   "name": "Ben Sinnott",
+   "position": "TE",
+   "nfl_team": "WAS",
+   "round": 20
+  },
+  {
+   "pick_no": 231,
+   "name": "Will Howard",
+   "position": "QB",
+   "nfl_team": "PIT",
+   "round": 20
+  },
+  {
+   "pick_no": 232,
+   "name": "Aaron Rodgers",
+   "position": "QB",
+   "nfl_team": "PIT",
+   "round": 20
+  },
+  {
+   "pick_no": 233,
+   "name": "Joe Milton",
+   "position": "QB",
+   "nfl_team": "DAL",
+   "round": 20
+  },
+  {
+   "pick_no": 234,
+   "name": "Xavier Legette",
+   "position": "WR",
+   "nfl_team": "CAR",
+   "round": 20
+  },
+  {
+   "pick_no": 235,
+   "name": "Kareem Hunt",
+   "position": "RB",
+   "nfl_team": "KC",
+   "round": 20
+  },
+  {
+   "pick_no": 236,
+   "name": "Calvin Austin",
+   "position": "WR",
+   "nfl_team": "PIT",
+   "round": 20
+  },
+  {
+   "pick_no": 244,
+   "name": "Tez Johnson",
+   "position": "WR",
+   "nfl_team": "TB",
+   "round": 21
+  },
+  {
+   "pick_no": 246,
+   "name": "Chig Okonkwo",
+   "position": "TE",
+   "nfl_team": "TEN",
+   "round": 21
+  },
+  {
+   "pick_no": 251,
+   "name": "Riley Leonard",
+   "position": "QB",
+   "nfl_team": "IND",
+   "round": 21
+  },
+  {
+   "pick_no": 252,
+   "name": "Justin Fields",
+   "position": "QB",
+   "nfl_team": "NYJ",
+   "round": 21
+  },
+  {
+   "pick_no": 255,
+   "name": "Isaac Guerendo",
+   "position": "RB",
+   "nfl_team": "SF",
+   "round": 22
+  },
+  {
+   "pick_no": 259,
+   "name": "Darnell Mooney",
+   "position": "WR",
+   "nfl_team": "ATL",
+   "round": 22
+  },
+  {
+   "pick_no": 260,
+   "name": "Chris Rodriguez",
+   "position": "RB",
+   "nfl_team": "WAS",
+   "round": 22
+  },
+  {
+   "pick_no": 261,
+   "name": "Najee Harris",
+   "position": "RB",
+   "nfl_team": "LAC",
+   "round": 22
+  },
+  {
+   "pick_no": 263,
+   "name": "Kirk Cousins",
+   "position": "QB",
+   "nfl_team": "ATL",
+   "round": 22
+  },
+  {
+   "pick_no": 264,
+   "name": "Tahj Brooks",
+   "position": "RB",
+   "nfl_team": "CIN",
+   "round": 22
+  },
+  {
+   "pick_no": 265,
+   "name": "Jarquez Hunter",
+   "position": "RB",
+   "nfl_team": "LAR",
+   "round": 23
+  },
+  {
+   "pick_no": 266,
+   "name": "Keaton Mitchell",
+   "position": "RB",
+   "nfl_team": "BAL",
+   "round": 23
+  },
+  {
+   "pick_no": 268,
+   "name": "Darius Cooper",
+   "position": "WR",
+   "nfl_team": "PHI",
+   "round": 23
+  },
+  {
+   "pick_no": 270,
+   "name": "Austin Ekeler",
+   "position": "RB",
+   "nfl_team": "WAS",
+   "round": 23
+  },
+  {
+   "pick_no": 272,
+   "name": "Luke McCaffrey",
+   "position": "WR",
+   "nfl_team": "WAS",
+   "round": 23
+  },
+  {
+   "pick_no": 274,
+   "name": "Jerome Ford",
+   "position": "RB",
+   "nfl_team": "CLE",
+   "round": 23
+  },
+  {
+   "pick_no": 275,
+   "name": "Will Shipley",
+   "position": "RB",
+   "nfl_team": "PHI",
+   "round": 23
+  },
+  {
+   "pick_no": 276,
+   "name": "Dont'e Thornton",
+   "position": "WR",
+   "nfl_team": "LV",
+   "round": 23
+  },
+  {
+   "pick_no": 277,
+   "name": "Jameis Winston",
+   "position": "QB",
+   "nfl_team": "NYG",
+   "round": 24
+  },
+  {
+   "pick_no": 278,
+   "name": "Marquise Brown",
+   "position": "WR",
+   "nfl_team": "KC",
+   "round": 24
+  },
+  {
+   "pick_no": 279,
+   "name": "Emanuel Wilson",
+   "position": "RB",
+   "nfl_team": "GB",
+   "round": 24
+  },
+  {
+   "pick_no": 281,
+   "name": "Marcus Mariota",
+   "position": "QB",
+   "nfl_team": "WAS",
+   "round": 24
+  },
+  {
+   "pick_no": 283,
+   "name": "Audric Estime",
+   "position": "RB",
+   "nfl_team": "NO",
+   "round": 24
+  },
+  {
+   "pick_no": 290,
+   "name": "Ja'Lynn Polk",
+   "position": "WR",
+   "nfl_team": "NO",
+   "round": 25
+  },
+  {
+   "pick_no": 291,
+   "name": "Luke Musgrave",
+   "position": "TE",
+   "nfl_team": "GB",
+   "round": 25
+  },
+  {
+   "pick_no": 292,
+   "name": "Noah Gray",
+   "position": "TE",
+   "nfl_team": "KC",
+   "round": 25
+  },
+  {
+   "pick_no": 293,
+   "name": "Dontayvion Wicks",
+   "position": "WR",
+   "nfl_team": "GB",
+   "round": 25
+  },
+  {
+   "pick_no": 294,
+   "name": "Jake Bobo",
+   "position": "WR",
+   "nfl_team": "SEA",
+   "round": 25
+  },
+  {
+   "pick_no": 295,
+   "name": "Cooper Kupp",
+   "position": "WR",
+   "nfl_team": "SEA",
+   "round": 25
+  },
+  {
+   "pick_no": 296,
+   "name": "Trevor Etienne",
+   "position": "RB",
+   "nfl_team": "CAR",
+   "round": 25
+  },
+  {
+   "pick_no": 298,
+   "name": "Jonnu Smith",
+   "position": "TE",
+   "nfl_team": "PIT",
+   "round": 25
+  },
+  {
+   "pick_no": 299,
+   "name": "Tyson Bagent",
+   "position": "QB",
+   "nfl_team": "CHI",
+   "round": 25
+  },
+  {
+   "pick_no": 300,
+   "name": "Cade Stover",
+   "position": "TE",
+   "nfl_team": "HOU",
+   "round": 25
+  },
+  {
+   "pick_no": 301,
+   "name": "KeAndre Lambert-Smith",
+   "position": "WR",
+   "nfl_team": "LAC",
+   "round": 26
+  },
+  {
+   "pick_no": 302,
+   "name": "KaVontae Turpin",
+   "position": "WR",
+   "nfl_team": "DAL",
+   "round": 26
+  },
+  {
+   "pick_no": 303,
+   "name": "Geno Smith",
+   "position": "QB",
+   "nfl_team": "LV",
+   "round": 26
+  },
+  {
+   "pick_no": 305,
+   "name": "Dawson Knox",
+   "position": "TE",
+   "nfl_team": "BUF",
+   "round": 26
+  },
+  {
+   "pick_no": 307,
+   "name": "Keenan Allen",
+   "position": "WR",
+   "nfl_team": "LAC",
+   "round": 26
+  },
+  {
+   "pick_no": 308,
+   "name": "Phil Mafah",
+   "position": "RB",
+   "nfl_team": "DAL",
+   "round": 26
+  },
+  {
+   "pick_no": 311,
+   "name": "Raheim Sanders",
+   "position": "RB",
+   "nfl_team": "CLE",
+   "round": 26
+  },
+  {
+   "pick_no": 315,
+   "name": "Jaylin Lane",
+   "position": "WR",
+   "nfl_team": "WAS",
+   "round": 27
+  },
+  {
+   "pick_no": 316,
+   "name": "Tanner McKee",
+   "position": "QB",
+   "nfl_team": "PHI",
+   "round": 27
+  },
+  {
+   "pick_no": 318,
+   "name": "Dameon Pierce",
+   "position": "RB",
+   "nfl_team": "KC",
+   "round": 27
+  },
+  {
+   "pick_no": 321,
+   "name": "Spencer Rattler",
+   "position": "QB",
+   "nfl_team": "NO",
+   "round": 27
+  },
+  {
+   "pick_no": 323,
+   "name": "Sam Howell",
+   "position": "QB",
+   "nfl_team": "PHI",
+   "round": 27
+  },
+  {
+   "pick_no": 324,
+   "name": "Mitchell Evans",
+   "position": "TE",
+   "nfl_team": "CAR",
+   "round": 27
+  },
+  {
+   "pick_no": 325,
+   "name": "Jordan Whittington",
+   "position": "WR",
+   "nfl_team": "LAR",
+   "round": 28
+  },
+  {
+   "pick_no": 326,
+   "name": "Luke Schoonmaker",
+   "position": "TE",
+   "nfl_team": "DAL",
+   "round": 28
+  },
+  {
+   "pick_no": 331,
+   "name": "Zach Ertz",
+   "position": "TE",
+   "nfl_team": "WAS",
+   "round": 28
+  },
+  {
+   "pick_no": 332,
+   "name": "Erick All",
+   "position": "TE",
+   "nfl_team": "CIN",
+   "round": 28
+  },
+  {
+   "pick_no": 334,
+   "name": "Xavier Hutchinson",
+   "position": "WR",
+   "nfl_team": "HOU",
+   "round": 28
+  },
+  {
+   "pick_no": 335,
+   "name": "Devaughn Vele",
+   "position": "WR",
+   "nfl_team": "NO",
+   "round": 28
+  },
+  {
+   "pick_no": 337,
+   "name": "Russell Wilson",
+   "position": "QB",
+   "nfl_team": "NYG",
+   "round": 29
+  },
+  {
+   "pick_no": 338,
+   "name": "Bruce Miller",
+   "position": "RB",
+   "nfl_team": null,
+   "round": 29
+  },
+  {
+   "pick_no": 340,
+   "name": "Will Levis",
+   "position": "QB",
+   "nfl_team": "TEN",
+   "round": 29
+  },
+  {
+   "pick_no": 342,
+   "name": "Jalen Nailor",
+   "position": "WR",
+   "nfl_team": "MIN",
+   "round": 29
+  },
+  {
+   "pick_no": 344,
+   "name": "Xavier Restrepo",
+   "position": "WR",
+   "nfl_team": "TEN",
+   "round": 29
+  },
+  {
+   "pick_no": 345,
+   "name": "Efton Chism",
+   "position": "WR",
+   "nfl_team": "NE",
+   "round": 29
+  },
+  {
+   "pick_no": 346,
+   "name": "Dillon Gabriel",
+   "position": "QB",
+   "nfl_team": "CLE",
+   "round": 29
+  },
+  {
+   "pick_no": 347,
+   "name": "Malachi Corley",
+   "position": "WR",
+   "nfl_team": "CLE",
+   "round": 29
+  },
+  {
+   "pick_no": 348,
+   "name": "Roman Wilson",
+   "position": "WR",
+   "nfl_team": "PIT",
+   "round": 29
+  },
+  {
+   "pick_no": 349,
+   "name": "Jimmy Horn",
+   "position": "WR",
+   "nfl_team": "CAR",
+   "round": 30
+  },
+  {
+   "pick_no": 350,
+   "name": "Trey Lance",
+   "position": "QB",
+   "nfl_team": "LAC",
+   "round": 30
+  },
+  {
+   "pick_no": 351,
+   "name": "Emari Demercado",
+   "position": "RB",
+   "nfl_team": "ARI",
+   "round": 30
+  },
+  {
+   "pick_no": 352,
+   "name": "Jake Browning",
+   "position": "QB",
+   "nfl_team": "CIN",
+   "round": 30
+  },
+  {
+   "pick_no": 353,
+   "name": "Tai Felton",
+   "position": "WR",
+   "nfl_team": "MIN",
+   "round": 30
+  },
+  {
+   "pick_no": 354,
+   "name": "Tommy Tremble",
+   "position": "TE",
+   "nfl_team": "CAR",
+   "round": 30
+  },
+  {
+   "pick_no": 355,
+   "name": "Joshua Palmer",
+   "position": "WR",
+   "nfl_team": "BUF",
+   "round": 30
+  },
+  {
+   "pick_no": 356,
+   "name": "Kalel Mullings",
+   "position": "RB",
+   "nfl_team": "TEN",
+   "round": 30
+  },
+  {
+   "pick_no": 357,
+   "name": "Treylon Burks",
+   "position": "WR",
+   "nfl_team": "WAS",
+   "round": 30
+  },
+  {
+   "pick_no": 358,
+   "name": "Zonovan Knight",
+   "position": "RB",
+   "nfl_team": "ARI",
+   "round": 30
+  },
+  {
+   "pick_no": 359,
+   "name": "Jahan Dotson",
+   "position": "WR",
+   "nfl_team": "PHI",
+   "round": 30
+  }
+ ]
+}
