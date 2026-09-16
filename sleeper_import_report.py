@@ -162,10 +162,15 @@ def _coverage(rows, field: str, by: str = "position") -> dict:
 def _headshot_probe(client) -> dict:
     """Can we put a face in a player box? MEASURED, not remembered.
 
-    The owner asked whether player photos are available to fill the player boxes. The URL
-    pattern is a thing this codebase does not currently use anywhere -- no reference to
-    sleepercdn exists in any shipping module -- so the honest answer is not a pattern recited
-    from memory but an HTTP status from the real CDN. This fetches headers for a handful of
+    The owner asked whether player photos are available to fill the player boxes, so the honest
+    answer is not a pattern recited from memory but an HTTP status from the real CDN.
+
+    THIS PARAGRAPH USED TO SAY "no reference to sleepercdn exists in any shipping module", and
+    that stopped being true the moment this function was written three lines below it -- it
+    builds sleepercdn URLs and fetches them. Corrected 2026-09-16. The host is now DECLARED in
+    test_research_authority_boundary._DECLARED_OUTBOUND with its reason, because the guard that
+    was supposed to notice a second outbound host could not see an f-string URL and so never
+    fired on these. This fetches headers for a handful of
     real, currently-rostered-calibre players and reports what came back.
 
     ABSENCE, deliberately not flattened: "this player has no photo" and "the fetch failed" are

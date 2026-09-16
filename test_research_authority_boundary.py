@@ -30,6 +30,7 @@ No provider is called anywhere in this file.
 import ast
 import inspect
 import json
+import re
 import tempfile
 import unittest
 from pathlib import Path
@@ -43,6 +44,60 @@ import untrusted
 import ui_source
 
 _HERE = Path(__file__).parent
+
+#: Every host production code may reach, and WHY. An entry here is a declaration that a person
+#: can audit, not a silent allowance -- `test_the_declared_set_is_not_a_rubber_stamp` fails an
+#: entry with no real reason, and fails one no longer fetched.
+#:
+#: NOTE FOR THE OWNER (2026-09-16): `sleepercdn.com` was NOT declared before today. It was
+#: already being fetched, and the guard's detector could not see it (see
+#: `test_every_outbound_host_is_declared`). Recording it here makes the existing behaviour
+#: visible; it does not approve it. Whether the app should reach a vendor CDN at all is a policy
+#: question left open for a ruling -- removing those two `urlopen` calls would also satisfy this
+#: test, and is the other available answer.
+_DECLARED_OUTBOUND = {
+    "api.sleeper.app": (
+        "The league provider's own API -- rosters, players, drafts. The app is a client of this "
+        "service by design, and every call is to data the user's own league already exposes."
+    ),
+    "sleepercdn.com": (
+        "The same vendor's asset CDN, reached by HEAD only from sleeper_import_report's photo "
+        "availability probe (:191) and avatar probe (:372-373). It answers 'can we put a face "
+        "in a player box', which the owner asked; it retrieves no analytical content and feeds "
+        "no valuation. Not research -- a capability check against the vendor already in use."
+    ),
+}
+
+_URL_IN_TEXT = re.compile(r"https?://([^/\s\"'{}]+)")
+
+
+def _hosts_in_source(source: str) -> set:
+    """Every outbound host named by a string literal anywhere in `source`.
+
+    OVER THE AST, NOT OVER TOKENS. An f-string's literal chunks are `ast.Constant` nodes inside
+    a `JoinedStr`, so one `ast.walk` sees plain strings, f-strings and any prefix form alike.
+    The previous whitespace scan missed every f-string, which is the ordinary way a URL with an
+    id in it gets written here -- and three were already live when that was found."""
+    hosts = set()
+    try:
+        tree = ast.parse(source)
+    except SyntaxError:
+        return hosts
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Constant) and isinstance(node.value, str):
+            for match in _URL_IN_TEXT.finditer(node.value):
+                hosts.add(match.group(1))
+    return hosts
+
+
+def _outbound_hosts() -> set:
+    """Hosts named by production modules -- the same population the old guard scanned."""
+    hosts = set()
+    for path in sorted(_HERE.glob("*.py")):
+        if path.name.startswith(("test_", "run_")):
+            continue
+        hosts |= _hosts_in_source(path.read_text())
+    return hosts
 _SENTINEL_KEY = "sk-ant-SENTINEL-must-never-appear-000"
 
 
@@ -364,19 +419,56 @@ class UnvalidatedCitationAndSharedChannelTests(unittest.TestCase):
         for prompt in ("STRATEGIST_SYSTEM_PROMPT", "SKEPTIC_SYSTEM_PROMPT", "CALLER_SYSTEM_PROMPT"):
             self.assertNotIn(untrusted.CONTRACT, getattr(pick_debate, prompt))
 
-    def test_the_app_has_no_url_fetcher_of_its_own(self):
-        """Not a gap -- a structural property worth pinning. All web research runs provider-side,
-        so robots/paywall/authentication boundaries are the provider's to honour and this app
-        cannot bypass one. A new fetcher would change that, and should not arrive unnoticed."""
-        hosts = set()
-        for path in _HERE.glob("*.py"):
-            if path.name.startswith(("test_", "run_")):
-                continue
-            for token in path.read_text().split():
-                stripped = token.strip("\"'(),")
-                if stripped.startswith(("http://", "https://")):
-                    hosts.add(stripped.split("/")[2])
-        self.assertEqual(hosts, {"api.sleeper.app"}, f"A new outbound host appeared: {hosts}")
+    def test_every_outbound_host_is_declared(self):
+        """WHAT THIS USED TO CLAIM, AND WHY IT WAS FALSE. This assertion read
+        `hosts == {"api.sleeper.app"}` under a docstring saying the app "has no URL fetcher of
+        its own", so "robots/paywall/authentication boundaries are the provider's to honour and
+        this app cannot bypass one". Both halves were wrong by 2026-09-16, and the reason is the
+        detector, not the population it scanned.
+
+        THE EVASION WAS THE ORDINARY WAY TO WRITE A URL. The old scan split each file on
+        whitespace and did `token.strip("\"\'(),")`. An f-string literal tokenizes as
+        `f"https://..."`, and `f` is not in the strip set, so the token never started with
+        `https://` and was never seen. Three of them were already live --
+        `sleeper_import_report.py:191`, `:372`, `:373` -- and two `urllib.request.urlopen` calls
+        at `:195` and `:376` really fetch them. That module is imported by `app.py:5911`, and its
+        name carries no `test_`/`run_` prefix, so it was inside the scanned set the whole time.
+        The guard could fire; nothing it could see was ever going to make it.
+
+        SO THE PROPERTY IS RESTATED AS ONE THE CODE CAN ACTUALLY HOLD: every outbound host is
+        DECLARED, with a reason, and a new one fails this test. That is weaker than "no fetcher
+        exists" and it is true, which the stronger claim was not.
+
+        Detection is now over the AST rather than over whitespace, so quoting style cannot hide
+        a URL: f-string literal chunks are `ast.Constant` nodes inside `JoinedStr`, so one walk
+        catches both spellings and any prefix (`r`, `b`, `rf`, ...) a future edit might use."""
+        hosts = _outbound_hosts()
+        undeclared = hosts - set(_DECLARED_OUTBOUND)
+        self.assertEqual(undeclared, set(),
+                         f"Undeclared outbound host(s): {sorted(undeclared)}. Add an entry to "
+                         "_DECLARED_OUTBOUND naming WHY the app reaches it, or remove the fetch.")
+
+    def test_the_detector_cannot_be_evaded_by_an_f_string(self):
+        """The control for the repair above, and the specific mutation that was live. Without
+        it, widening `_DECLARED_OUTBOUND` and re-running would pass for the wrong reason."""
+        import textwrap
+        src = textwrap.dedent('''
+            pid = "1234"
+            a = "https://plain.example.com/x"
+            b = f"https://fstring.example.com/{pid}.jpg"
+            c = rf"https://prefixed.example.com/{pid}"
+        ''')
+        self.assertEqual(_hosts_in_source(src),
+                         {"plain.example.com", "fstring.example.com", "prefixed.example.com"})
+
+    def test_the_declared_set_is_not_a_rubber_stamp(self):
+        """Every declared host must carry a non-empty reason, and must actually be reached by
+        production code -- a declaration for a host nobody fetches is an allowlist entry that
+        outlives its purpose, which is how an allowlist becomes a formality."""
+        for host, reason in _DECLARED_OUTBOUND.items():
+            self.assertTrue(reason and len(reason) > 20, f"{host} carries no real reason")
+        self.assertEqual(set(_DECLARED_OUTBOUND) - _outbound_hosts(), set(),
+                         "a declared host is no longer fetched anywhere -- drop the entry")
 
 
 if __name__ == "__main__":
