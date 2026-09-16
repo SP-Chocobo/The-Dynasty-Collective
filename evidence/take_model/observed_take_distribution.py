@@ -52,34 +52,23 @@ OUT = Path("evidence/take_model/observed_take_distribution.json")
 SUFFIX = re.compile(r"\s+(jr|sr|ii|iii|iv|v)\.?$", re.IGNORECASE)
 
 
-def main() -> int:
-    board = json.loads(BOARD.read_text())
-    rules = json.loads(RULEBOOK.read_text())
-    picks_all = sorted(board["picks"], key=lambda p: p["pick_no"])
+def resolve_picks(picks_all: list, players_db: dict) -> tuple[dict, int, list]:
+    """Resolve every real pick to a players_db id ONCE, up front, so a draft loop does no
+    matching. Returns (resolved {pick_no: player_id}, ambiguous_count, unmatched_names).
 
-    merger = dm.DataMerger()
-    players_db, universe = rdb.build_players_db_from_capture()
-    season = rdb.season_projections_from_capture()
-    base = rdb.scoring_settings_from_capture()
+    Extracted for #206's REAL calibration arm (evidence/survival_calibration/calibrate.py), which
+    must resolve the SAME picks the SAME way -- a second resolver would be a second source of
+    truth for which player each real pick was (#126). Placeholders, illegible picks and picks
+    with no raw name are skipped, exactly as before.
 
-    league = dr.build_mock_league(teams=rules["total_rosters"], superflex=True, scoring="ppr",
-                                 te_premium=True, dynasty=True, base_scoring=base)
-    league["roster_positions"] = list(rules["roster_positions"])
-    merger.set_league_format(db.league_format_hint(league))          # NEVER SKIP
-    print(f"league {rules['league']}  teams {rules['total_rosters']}  "
-          f"slots {len(rules['roster_positions'])}  universe {universe['players_in_pool']}",
-          flush=True)
+    INDEXED OVER players_db, NOT over merger.projections, and the difference is 77 picks. The
+    first version resolved through `_find_match`, whose rows come from the 764-row VENDOR table
+    and carry no Sleeper `player_id` at all -- it resolved 0, which is the kind of zero that
+    looks like a finding. The board's ids live in players_db (6,595 rows, the capture's whole
+    universe), so that is what the index is built from.
 
-    # Resolve every pick ONCE, up front, so the draft loop does no matching.
-    #
-    # INDEXED OVER players_db, NOT over merger.projections, and the difference is 77 picks. The
-    # first version resolved through `_find_match`, whose rows come from the 764-row VENDOR table
-    # and carry no Sleeper `player_id` at all -- it resolved 0, which is the kind of zero that
-    # looks like a finding. The board's ids live in players_db (6,595 rows, the capture's whole
-    # universe), so that is what the index is built from.
-    #
-    # AMBIGUITY IS A REJECTION (#82): a (name, position) key holding more than one id resolves
-    # nothing rather than picking the first.
+    AMBIGUITY IS A REJECTION (#82): a (name, position) key holding more than one id resolves
+    nothing rather than picking the first."""
     index: dict[tuple, list] = {}
     for pid, info in players_db.items():
         nm = dm.normalize_name(f"{info.get('first_name', '')} {info.get('last_name', '')}".strip())
@@ -100,6 +89,28 @@ def main() -> int:
             ambiguous += 1
         else:
             resolved[p["pick_no"]] = str(cand[0])
+    return resolved, ambiguous, unmatched
+
+
+def main() -> int:
+    board = json.loads(BOARD.read_text())
+    rules = json.loads(RULEBOOK.read_text())
+    picks_all = sorted(board["picks"], key=lambda p: p["pick_no"])
+
+    merger = dm.DataMerger()
+    players_db, universe = rdb.build_players_db_from_capture()
+    season = rdb.season_projections_from_capture()
+    base = rdb.scoring_settings_from_capture()
+
+    league = dr.build_mock_league(teams=rules["total_rosters"], superflex=True, scoring="ppr",
+                                 te_premium=True, dynasty=True, base_scoring=base)
+    league["roster_positions"] = list(rules["roster_positions"])
+    merger.set_league_format(db.league_format_hint(league))          # NEVER SKIP
+    print(f"league {rules['league']}  teams {rules['total_rosters']}  "
+          f"slots {len(rules['roster_positions'])}  universe {universe['players_in_pool']}",
+          flush=True)
+
+    resolved, ambiguous, unmatched = resolve_picks(picks_all, players_db)
 
     r1 = [p for p in picks_all if p["round"] == 1 and p["pick_no"] in resolved]
     print(f"resolved {len(resolved)} picks to player ids "
