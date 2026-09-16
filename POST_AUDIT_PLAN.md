@@ -11298,6 +11298,19 @@ LAST is right for a population that is entirely *unknown, not bad* — is a `#50
 decision, not a disclosure one. The repair makes that question askable at the surface where it
 would be answered.
 
+**THE SCHEMA RATCHET FIRED, and its second question got a SPLIT answer.** `CandidateSnapshot`
+went 48 → 49, and the pin refuses a bare number bump: it demands whether the field implies a
+scale the card cannot support, and whether the card should render it. Scale: no — a categorical
+token from a closed vocabulary, the same answer `denial_basis` and `depth_basis` got, and it is
+spelled as a string precisely so nothing can order by it. Render: **the Prytaneum yes and it
+does; the board card NOT SETTLED BY THIS PASS.** That half is named rather than quietly closed,
+because this field differs from its three predecessors in a way that matters — they qualify a
+number the card either shows or does not show at all, while this one qualifies an **absence the
+card already displays as a dash**, and an unexplained dash invites exactly the "he's bad" reading
+the item exists to refuse. The case for a marker is real; I did not build or measure one, and a
+ruling I did not do the work for is worse than an open question with its reasoning attached. It
+routes to the UI passes (`#181`, `#36`) with a binding condition recorded at the pin.
+
 **PINNED:** `test_absence_kind.py`, 23 tests, **mutation-checked 7/7** — collapse two kinds to one
 phrase; sever the snapshot carry; remove the prose lookup; classify every row (the latent breach
 made live); drop the field from one of the two serializations; re-import `draft_room` into

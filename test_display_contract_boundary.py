@@ -483,8 +483,35 @@ class TheScaleIsNotAPointsTotalTests(unittest.TestCase):
         #   is where a person asking "why is he worth that?" is actually looking. The ruling that
         #   the Draft Room must work with no API is what makes that surface the right one: for a
         #   keyless customer it is the whole explanation.
+        # 48 -> 49 (2026-09-16): absence_kind, #112. It says WHICH of three absences left a row
+        # unpriced, where one token previously covered all three and so asserted the strongest
+        # of them -- "below every source's cutoff", the only one that is evidence of low value --
+        # about every unpriced row.
+        #
+        #   SCALE. No, and for the third time the same answer as denial_basis (43) and
+        #   depth_basis (44): a categorical token from a closed vocabulary, never a quantity, so
+        #   there is no unit for it to borrow from the metric row. It is deliberately spelled as
+        #   a string for that reason -- a numeric kind would be orderable, and something would
+        #   eventually order by it.
+        #
+        #   SHOULD THE CARD RENDER IT? SPLIT ANSWER, and the split is the honest part.
+        #   The Prytaneum: YES, and it does. The NOT PRICED line now names the kind, and the
+        #   coverage-gap phrasing denies the inference the blank invites -- "a COVERAGE GAP, not
+        #   a low grade". That is where a person asking "why is there no number?" is looking,
+        #   and it is the same surface #119's decomposition answers "why is he worth that?" on.
+        #   The board card: NOT SETTLED BY THIS PASS, and named rather than quietly closed.
+        #   This field differs from 43/44/45 in a way that matters. Those qualify a number the
+        #   card either shows (depth_exposure) or does not show at all (rival_premium). This one
+        #   qualifies an ABSENCE that the card already displays as a dash -- and an unexplained
+        #   dash invites exactly the "he's bad" reading the whole item exists to refuse. So the
+        #   case for a marker is real and I am not dismissing it; I simply did not build or
+        #   measure one, and asserting a ruling I did not do the work for is worse than leaving
+        #   the question open with its reasoning attached. It belongs to the UI passes (#181,
+        #   #36), and the binding condition is stated so it cannot evaporate: if the card keeps
+        #   rendering unpriced rows as a bare dash, it is showing an absence without its kind,
+        #   which is the #174 shape one layer out.
         self.assertEqual(
-            len(dataclasses.fields(ps.CandidateSnapshot)), 48,
+            len(dataclasses.fields(ps.CandidateSnapshot)), 49,
             "CandidateSnapshot's field count changed. That is fine and often correct -- but "
             "confirm the new field does not imply a scale the card cannot support, decide "
             "whether the card should render it, then update this number.")
