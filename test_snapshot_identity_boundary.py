@@ -43,7 +43,7 @@ def _candidate(player_id="p1", **overrides) -> CandidateSnapshot:
         player_id=player_id, name="A Player", position="RB", team="SF",
         bpa=30.0, bpa_source="points_vor_draftsharks", confidence=90.0,
         universal_value=37.23, need_bonus=4.33, eligibility_bonus=0.0,
-        team_acquisition_value=41.56, survival_probability=0.25, intervening_picks=11,
+        team_acquisition_value=41.56, survival_probability=0.25, survival_basis=None, intervening_picks=11,
         opportunity_cost=3.1, expected_value_of_waiting=30.0, denial_value=2.0, rival_premium_basis=None, denial_basis="measured",
         denial_team="11", rival_premium=4.33, positional_forfeit=25.38,
         position_expected_taken=4.4, positional_cliff={"tier": "HIGH", "gap": 12.0, "typical_gap": 2.0},

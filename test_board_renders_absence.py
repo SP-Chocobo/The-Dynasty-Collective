@@ -51,6 +51,7 @@ def _candidate(pid: str, name: str, *, priced: bool) -> ps.CandidateSnapshot:
         universal_value=(12.0 if priced else None), need_bonus=0.0, eligibility_bonus=0.0,
         team_acquisition_value=(12.0 if priced else None),
         survival_probability=(0.5 if priced else None),
+        survival_basis=None,
         intervening_picks=(11 if priced else None),
         opportunity_cost=None, expected_value_of_waiting=None,
         denial_value=None, rival_premium_basis=None, denial_basis="no_rival_priced", denial_team=None,

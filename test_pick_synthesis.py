@@ -620,10 +620,34 @@ class DecisionRegimeTests(unittest.TestCase):
     def _cand(self, tav, survival=0.5):
         return {"team_acquisition_value": tav, "survival_probability": survival}
 
+    def _regime_with_gate_lifted(self, candidates):
+        """decision_regime's ARITHMETIC, with the #206 calibration gate lifted.
+
+        Production returns "contested" unconditionally while SURVIVAL_IS_CALIBRATED is False.
+        A test asserting "decisive" against the live function would therefore have to be
+        deleted or inverted -- and both would lose the predicate this class exists to pin.
+        Lifting the gate here keeps these tests about margin-and-survival, which is what their
+        names claim. test_threshold_reachability owns the question of what production does."""
+        original = ps.SURVIVAL_IS_CALIBRATED
+        try:
+            ps.SURVIVAL_IS_CALIBRATED = True
+            return ps.decision_regime(candidates)
+        finally:
+            ps.SURVIVAL_IS_CALIBRATED = original
+
+    def test_the_calibration_gate_overrides_the_arithmetic_in_production(self):
+        """The companion to the two tests below: the predicate says decisive, production says
+        contested, and neither fact is allowed to drift without the other failing."""
+        leader = self._cand(100.0, survival=0.05)
+        second = self._cand(100.0 - ps.NECESSITY_STANDOUT_REFERENCE_GAP, survival=0.5)
+        self.assertFalse(ps.SURVIVAL_IS_CALIBRATED)
+        self.assertEqual(self._regime_with_gate_lifted([leader, second]), "decisive")
+        self.assertEqual(ps.decision_regime([leader, second]), "contested")
+
     def test_decisive_requires_both_a_real_margin_and_low_survival(self):
         leader = self._cand(100.0, survival=0.05)
         second = self._cand(100.0 - ps.NECESSITY_STANDOUT_REFERENCE_GAP, survival=0.5)
-        self.assertEqual(ps.decision_regime([leader, second]), "decisive")
+        self.assertEqual(self._regime_with_gate_lifted([leader, second]), "decisive")
 
     def test_big_margin_alone_is_not_enough_if_survival_is_high(self):
         # A commanding lead that's still likely to survive isn't genuinely urgent --
@@ -662,7 +686,7 @@ class DecisionRegimeTests(unittest.TestCase):
     def test_does_its_own_ranking_regardless_of_input_order(self):
         leader = self._cand(100.0, survival=0.05)
         second = self._cand(100.0 - ps.NECESSITY_STANDOUT_REFERENCE_GAP, survival=0.5)
-        self.assertEqual(ps.decision_regime([second, leader]), "decisive")
+        self.assertEqual(self._regime_with_gate_lifted([second, leader]), "decisive")
 
 
 class SnapshotIsCurrentTests(unittest.TestCase):
@@ -1483,6 +1507,7 @@ class DepthExposureStopsAtTheValueLayerTests(unittest.TestCase):
             player_id="1", name="A", position="RB", team="X", bpa=1.0, bpa_source="s",
             confidence=1.0, universal_value=10.0, need_bonus=0.0, eligibility_bonus=0.0,
             team_acquisition_value=10.0, survival_probability=None, intervening_picks=None,
+            survival_basis=None,
             opportunity_cost=None, expected_value_of_waiting=None, denial_value=None, rival_premium_basis=None, denial_basis="no_rival_priced",
             denial_team=None, rival_premium=None, positional_forfeit=None,
             position_expected_taken=None, positional_cliff=None, position_run_detected=False,

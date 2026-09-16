@@ -120,7 +120,7 @@ def _candidate(**overrides) -> CandidateSnapshot:
         player_id="123", name="J. Gibbs", position="RB", team="DET",
         bpa=88.5, bpa_source="points_vor_draftsharks", confidence=80.0,
         universal_value=88.5, need_bonus=6.0, eligibility_bonus=2.9,
-        team_acquisition_value=97.4, survival_probability=0.31, intervening_picks=11,
+        team_acquisition_value=97.4, survival_probability=0.31, survival_basis=None, intervening_picks=11,
         opportunity_cost=67.2, expected_value_of_waiting=27.4,
         denial_value=8.4, rival_premium_basis=None, denial_basis="measured", denial_team="Roster 9",
         rival_premium=8.4, positional_forfeit=77.9, position_expected_taken=2.4,
@@ -369,7 +369,7 @@ class TheAbsenceContractAtTheScreenTests(unittest.TestCase):
         `null`, `NaN` or `undefined`, and the template may not throw."""
         c = _candidate(universal_value=None, team_acquisition_value=None, bpa=None,
                        need_bonus=None, eligibility_bonus=None, projected_points=None,
-                       survival_probability=None, intervening_picks=None, positional_forfeit=None,
+                       survival_probability=None, survival_basis=None, intervening_picks=None, positional_forfeit=None,
                        rival_premium=None, positional_cliff=None, denial_value=None,
                        replacement_basis=None, near_tie_with_leader=None)
         out = _execute(_payload([c, _candidate(player_id="9", name="B. Robinson")]))

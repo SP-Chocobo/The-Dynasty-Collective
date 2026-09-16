@@ -350,6 +350,7 @@ class TheScaleIsNotAPointsTotalTests(unittest.TestCase):
             bpa=-10.0, bpa_source="s", confidence=50.0,
             universal_value=-12.5, need_bonus=0.0, eligibility_bonus=0.0,
             team_acquisition_value=-12.5, survival_probability=None, intervening_picks=None,
+            survival_basis=None,
             opportunity_cost=None, expected_value_of_waiting=None, denial_value=None, rival_premium_basis=None, denial_basis="no_rival_priced",
             denial_team=None, rival_premium=None, positional_forfeit=None,
             position_expected_taken=None, positional_cliff=None, position_run_detected=False,

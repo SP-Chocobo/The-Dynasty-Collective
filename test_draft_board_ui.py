@@ -19,7 +19,7 @@ def _candidate(**overrides) -> CandidateSnapshot:
         player_id="123", name="J. Gibbs", position="RB", team="DET",
         bpa=88.5, bpa_source="points_vor_draftsharks", confidence=80.0,
         universal_value=88.5, need_bonus=6.0, eligibility_bonus=2.9,
-        team_acquisition_value=97.4, survival_probability=0.31, intervening_picks=11,
+        team_acquisition_value=97.4, survival_probability=0.31, survival_basis=None, intervening_picks=11,
         opportunity_cost=67.2, expected_value_of_waiting=27.4,
         denial_value=8.4, rival_premium_basis=None, denial_basis="measured", denial_team="Roster 9", rival_premium=8.4,
         positional_forfeit=77.9, position_expected_taken=2.4,
@@ -419,7 +419,7 @@ globalThis.document = {
         priced = _candidate(player_id="p", name="Priced Leader", team_acquisition_value=97.4)
         unpriced = _candidate(
             player_id="u", name="Unpriced Best", position="K", bpa=None, universal_value=None,
-            team_acquisition_value=None, survival_probability=None, intervening_picks=None,
+            team_acquisition_value=None, survival_probability=None, survival_basis=None, intervening_picks=None,
             opportunity_cost=None, expected_value_of_waiting=None, denial_value=None, rival_premium_basis=None, denial_basis="no_rival_priced",
             denial_team=None, rival_premium=None, positional_forfeit=None,
             position_expected_taken=None, positional_cliff=None, near_tie_with_leader=None,

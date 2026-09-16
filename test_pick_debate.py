@@ -25,6 +25,7 @@ def _candidate(player_id, name, position="QB", universal_value=90.0, team_acquis
         universal_value=universal_value, need_bonus=6.0, eligibility_bonus=4.0,
         team_acquisition_value=team_acquisition_value,
         survival_probability=survival_probability, intervening_picks=2,
+        survival_basis=None,
         opportunity_cost=round(universal_value * (1 - survival_probability), 2),
         expected_value_of_waiting=round(universal_value * survival_probability, 2),
         denial_value=30.0, rival_premium_basis=None, denial_basis="measured", denial_team="4", rival_premium=6.0,

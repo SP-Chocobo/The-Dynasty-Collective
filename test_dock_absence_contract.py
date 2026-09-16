@@ -39,7 +39,7 @@ def candidate(**over) -> CandidateSnapshot:
         player_id="9221", name="Test Player", position="RB", team="SF", bpa=50.0,
         bpa_source="points_vor_draftsharks", confidence=80.0, universal_value=50.0,
         need_bonus=6.0, eligibility_bonus=4.0, team_acquisition_value=60.0,
-        survival_probability=0.4, intervening_picks=2, opportunity_cost=30.0,
+        survival_probability=0.4, survival_basis=None, intervening_picks=2, opportunity_cost=30.0,
         expected_value_of_waiting=20.0, denial_value=30.0, denial_basis="measured",
         rival_premium_basis=None, denial_team="4", rival_premium=6.0,
         positional_forfeit=None, position_expected_taken=None, positional_cliff=None,
