@@ -8,23 +8,34 @@
 > place. Nothing in production changed on either account.
 
 Produced by `evidence/survival_calibration/value_model_arm.py` on the real Greatest Show on
-Paper 2 board (360 real picks, 301 resolved). **6,277 pairs, identical population in all three
+Paper 2 board (360 real picks, **307 resolved**). **6,616 pairs, identical population in all three
 arms** — same turns, same exclusions, same boards. Only the take model differs.
 
-Engine at measurement time: `1ac8a63` + the `_board_take_probability` seam
-(`draft_strategy.py` sha256_12 `f33dc549932a`). Each report carries its own source hash.
+Engine at measurement time: `d062770` (`draft_strategy.py` sha256_12 `f33dc549932a`,
+`draft_room.py` `258a0d1f4511`). Each report carries its own source hash.
+
+> **RE-RUN UNDER `#274`.** The figures first published here were computed with a resolver that
+> discarded six legible picks — Mahomes, Irving, Andrews, Conner, Giddens, Waller — because their
+> board cells were flagged `illegible`, a flag that marks a missing BYE WEEK. Those six then sat
+> on every later board as phantoms, inflating the board ranks these arms are scored on.
+> **Every number below is the re-run.** The repair was not cosmetic: pairs 6,277 → 6,616, and the
+> harness's `unknowable` exclusions fell from 226 *by turn 144* to 152 across all 360 turns.
+> Superseded figures, kept so the change is auditable rather than silent:
+> rank 0.16127 / floor 0.15050 / zero 0.13755, constant 0.14224.
 
 ## Headline
 
 | arm | engine Brier | constant | oracle | ceiling | beats constant | vs constant |
 |---|---|---|---|---|---|---|
-| `rank` (production) | 0.16127 | 0.14224 | 0.0 | holds | **no** | −13.4% |
-| `value_floor` | 0.15050 | 0.14224 | 0.0 | holds | **no** | −5.8% |
-| `value_zero` *(bound)* | **0.13755** | 0.14224 | 0.0 | holds | **yes** | **+3.3%** |
+| `rank` (production) | 0.16079 | 0.14489 | 0.0 | holds | **no** | −11.0% |
+| `value_floor` | 0.14939 | 0.14489 | 0.0 | holds | **no** | **−3.1%** |
+| `value_zero` *(bound)* | **0.13842** | 0.14489 | 0.0 | holds | **yes** | **+4.5%** |
 
-The `rank` arm reproduces the previously published 0.16127 **digit for digit**, which is what
-licenses the other two: the seam is inert when it is not substituted, so the difference between
-arms is the take model and nothing else.
+**The repair moved the value model CLOSER, not further.** `value_floor`'s gap to the constant
+halved (−5.8% → −3.1%). That direction is the point: phantoms inflate board rank, and board rank
+is the register the value model is scored on, so the contamination was suppressing exactly the
+quantity under test. Controls: oracle 0.0, both the loose and the tight arithmetic ceiling hold
+348/348, `turns_no_next` = 12 — one per seat, as it must be.
 
 ## Reliability by board rank — where the model actually changed
 
@@ -64,7 +75,7 @@ it still LOSES to a constant predictor. The whole remaining gap is the unpriced 
   is a coverage fact about the export, not a fact about the draft. That is the artifact.
 
 **`value_zero` is a bound, not a candidate.** It wins only by asserting "unpriced means safe",
-which the owner ruled against and which the real drafts refute: 31 of 301 resolved picks took a
+which the owner ruled against and which the real drafts refute: 31 of 276 measured picks took a
 player who was not on the picking team's priced board at all. It is reported so the floor's cost
 is measurable rather than argued — it says the value model has ~3.3% of headroom over the
 constant available, and the floor is currently spending all of it and more.
@@ -76,7 +87,7 @@ unpriced block's share from roster state, because unpriced rows sit at positions
 demand is met, so a rival takes one when their pick is a depth pick. It is testable, it is
 computable from `remaining_starter_demand`, and it is wrong.
 
-`evidence/take_model/unpriced_pick_drivers.py` tested it against the 301 resolved real picks
+`evidence/take_model/unpriced_pick_drivers.py` tested it against the then-301 resolved real picks
 before any of it was built:
 
 | stratum (rounds 14–30) | n | unpriced | mean demand diff | permutation p |

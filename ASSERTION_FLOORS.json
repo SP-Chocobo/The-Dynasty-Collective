@@ -1169,6 +1169,16 @@
         "fail": 1
       }
     },
+    "test_pick_resolution_flags.py": {
+      "test_methods": 6,
+      "asserts": {
+        "assertEqual": 1,
+        "assertGreaterEqual": 1,
+        "assertIn": 2,
+        "assertNotIn": 2,
+        "assertTrue": 6
+      }
+    },
     "test_pick_synthesis.py": {
       "test_methods": 116,
       "asserts": {

@@ -11972,3 +11972,136 @@ over-reaching shape rule are each caught.
 **Register hygiene:** first drafted as `#246`, which is already in use (`run_roster_proof_*.py`)
 with the register running to `#272`. Renumbered before commit — `#160` is the standing record of
 what a collided namespace costs.
+
+---
+
+## #274 — A PICK WAS DISCARDED OVER A FIELD ITS RESOLVER NEVER READS, AND SIX FAMOUS PLAYERS HAUNTED EVERY LATER BOARD
+
+`observed_take_distribution.resolve_picks` skipped any pick flagged `illegible`. The board's own
+provenance says what that flag means:
+
+> "All illegible cells are in slot 12 (MatttyyIce), the one column with no roster view. **Names
+> are legible in all but one** (10.12, UI-truncated 'Jacory Croskey-M…'); what is missing is
+> **nfl_team/bye**."
+
+It marks a missing BYE WEEK. The resolver matches on `(normalized name, position)` and reads
+neither field. So it discarded six legible picks — **Patrick Mahomes, Bucky Irving, Mark Andrews,
+James Conner, DJ Giddens, Darren Waller** — and because an unresolved pick never reaches
+`engine_picks`, each of those players then sat on **every later board as a phantom**.
+
+### The contamination was not slight, and the prose is why nobody checked
+
+| round | measured picks | max phantoms ahead | mean |
+|---|---|---|---|
+| 1 | 12 | 0 | 0.0 |
+| 10 | 8 | 3 | 3.0 |
+| 20 | 9 | 9 | 9.0 |
+| 30 | 11 | 10 | 10.0 |
+
+Mean rank inflation **5.56**, max **10**, against a priced pool falling to ~160 rows by round 30.
+The instrument's own docstring described this as the board being *"very slightly too full"* — an
+adjective where a measurement belonged, wrong by an order of magnitude, and the reason a material
+defect read as a rounding note. That sentence is now replaced by the numbers.
+
+### What moved
+
+| figure | contaminated | repaired |
+|---|---|---|
+| resolved picks | 301 | **307** |
+| picks measured (take distribution) | 270 | **276** |
+| **top-5 share** | 11.5% | **14.9%** |
+| rank-1 share | 2.2% | 2.2% |
+| calibration pairs | 6,277 | **6,616** |
+| `unknowable` exclusions | 226 *by turn 144* | **152 across all 360** |
+
+Rank-1 is unchanged because rank-1 picks happen early, where no phantom is yet ahead — the
+bias was strictly a late-draft effect, exactly as the inflation table predicts.
+
+**All three calibration arms were re-run**; `VALUE_MODEL_RESULT.md` carries the restated figures
+with the superseded ones kept beside them. `value_floor`'s gap to the constant HALVED
+(−5.8% → −3.1%): phantoms inflate board rank, and board rank is the register the value model is
+scored on, so the contamination was suppressing the very quantity under test.
+
+### Three sites, not one — and one of them stated the wrong reason
+
+`join_decomposition.py` and `identity_join.py` carried the same filter. `identity_join`'s comment
+asserted the cells *"carry no name to resolve"*, a claim about the data the data denies. Both
+repaired and re-derived. Zero `not p.get("illegible")` filters remain in `evidence/take_model/`.
+
+`calibrate.py`'s report also listed every flagged cell under `picks_unresolved.illegible`; with
+six of seven now resolving, that would have the report contradict its own `picks_resolved` count.
+Fixed to report the outcome, not the flag. **Deliberately held until the arms finished** — editing
+the module three arms import, mid-sequence, would have meant they ran different code.
+
+### RULED OUT
+
+`#245` on the identical `unknowable == ghost == 152`: the non-ghost branch is **live**, proven by
+the previous run's 226 vs 203 on the same code path. A non-ghost needs the unresolved pick to fall
+in the narrow gap between a turn and that seat's next turn AND the player to be nominated at
+exactly that turn; with the earliest survivor now at pick 72, that window never lands. Explicable,
+not collapsed.
+
+`test_pick_resolution_flags`: 6 tests, mutation-checked 4/4 — restoring the skip, dropping the
+placeholder skip, resolving truncated names by prefix (the guessing `#82` forbids), and dropping
+the `unmatched` accounting are each caught.
+
+---
+
+## #275 — THE RANK TABLE'S ERROR IS ITS PEAKEDNESS, AND THE TOP OF THE BOARD IS INDISTINGUISHABLE FROM UNIFORM
+
+Visible only once `#274`'s phantoms were removed. Over the 276 measured real picks:
+
+```
+rank  1:  6      rank  5: 11
+rank  2:  8      rank  6: 10
+rank  3:  8      rank  7:  8
+rank  4:  8      rank  8:  9
+```
+
+χ² = **1.88** on 7 df, permutation **p = 0.966**. Ranks 1–8 are indistinguishable from uniform —
+rank 1 is not even the mode.
+
+**NOT a pooling artifact**, which is the check that matters after this session already produced one
+Simpson's-paradox withdrawal:
+
+| band | n | χ² | p |
+|---|---|---|---|
+| rounds 1–5 | 29 | 6.03 | 0.556 |
+| rounds 6–12 | 18 | 7.78 | 0.374 |
+| rounds 13–20 | 14 | 4.29 | 0.843 |
+
+No stratum is peaked. Small n each, so individually weak — but the pooled uniformity is not being
+manufactured by mixing, which is what would have voided it.
+
+### The error is monotone in how much the table peaks
+
+| rank | model | observed | overstated |
+|---|---|---|---|
+| 1 | 0.55 | 0.0217 | **25×** |
+| 2 | 0.20 | 0.0290 | 7× |
+| 3 | 0.12 | 0.0290 | 4× |
+| 4 | 0.08 | 0.0290 | 3× |
+| 5 | 0.05 | 0.0399 | **1× (right)** |
+
+At rank 5, where the table is nearly flat, it is correct. **Its error IS its peak.**
+
+And rank-1 taking decays to exactly zero:
+
+| rounds | rank-1 takes | share |
+|---|---|---|
+| 1–5 | 5/56 | 0.089 |
+| 6–12 | 1/71 | 0.014 |
+| 13–20 | **0/75** | 0.000 |
+| 21–30 | **0/74** | 0.000 |
+
+**Zero of 149 picks after round 12 took the picking team's own top-ranked player.**
+
+### What this establishes, and what it does not
+
+It corroborates the value-share model's shape from independent data: that model measured 6.6–10.6
+effective contenders per board; the real picks say the taken player is uniform across roughly the
+top 8. Two different measurements, same answer, and neither was tuned to the other.
+
+It does NOT set a constant (LIMITS: one league, n=68 in the head). It does NOT establish a link
+between rank-1 hitting zero at round 12 and `#273`'s QB pricing dying at round 12 — the
+coincidence is noted and untested. Nobody should read one into the other without measuring it.

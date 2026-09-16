@@ -1,9 +1,9 @@
 {
  "board": "Greatest Show on Paper 2",
  "picks_total": 360,
- "real_legible": 305,
- "resolved": 188,
- "rate": 0.6164,
+ "real_legible": 312,
+ "resolved": 192,
+ "rate": 0.6154,
  "round_1_control": {
   "resolved": 12,
   "of": 12
@@ -18,16 +18,16 @@
    "of": 11
   },
   "3": {
-   "resolved": 11,
-   "of": 11
+   "resolved": 12,
+   "of": 12
   },
   "4": {
    "resolved": 8,
    "of": 10
   },
   "5": {
-   "resolved": 10,
-   "of": 10
+   "resolved": 11,
+   "of": 11
   },
   "6": {
    "resolved": 10,
@@ -47,7 +47,7 @@
   },
   "10": {
    "resolved": 6,
-   "of": 8
+   "of": 9
   },
   "11": {
    "resolved": 9,
@@ -62,16 +62,16 @@
    "of": 11
   },
   "14": {
-   "resolved": 9,
-   "of": 10
+   "resolved": 10,
+   "of": 11
   },
   "15": {
    "resolved": 8,
    "of": 12
   },
   "16": {
-   "resolved": 7,
-   "of": 10
+   "resolved": 8,
+   "of": 11
   },
   "17": {
    "resolved": 10,
@@ -79,7 +79,7 @@
   },
   "18": {
    "resolved": 6,
-   "of": 9
+   "of": 10
   },
   "19": {
    "resolved": 7,
@@ -127,7 +127,7 @@
   },
   "30": {
    "resolved": 0,
-   "of": 11
+   "of": 12
   }
  },
  "unresolved": [
@@ -199,6 +199,13 @@
    "name": "Malik Willis",
    "position": "QB",
    "nfl_team": "GB",
+   "round": 10
+  },
+  {
+   "pick_no": 120,
+   "name": "Jacory Croskey-M\u2026",
+   "position": "RB",
+   "nfl_team": "WAS",
    "round": 10
   },
   {
@@ -367,6 +374,13 @@
    "name": "Kyle Williams",
    "position": "WR",
    "nfl_team": "NE",
+   "round": 18
+  },
+  {
+   "pick_no": 216,
+   "name": "DJ Giddens",
+   "position": "RB",
+   "nfl_team": "IND",
    "round": 18
   },
   {
@@ -948,6 +962,13 @@
    "name": "Jahan Dotson",
    "position": "WR",
    "nfl_team": "PHI",
+   "round": 30
+  },
+  {
+   "pick_no": 360,
+   "name": "Darren Waller",
+   "position": "TE",
+   "nfl_team": "MIA",
    "round": 30
   }
  ]

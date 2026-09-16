@@ -41,9 +41,14 @@ def loosen(name: str) -> str:
 
 def main() -> int:
     board = json.loads(BOARD.read_text())
+    # `illegible` IS A MISSING BYE WEEK, NOT A MISSING NAME (#274). The board's own provenance:
+    # "All illegible cells are in slot 12 (MatttyyIce), the one column with no roster view.
+    # Names are legible in all but one (10.12, UI-truncated 'Jacory Croskey-M...'); what is
+    # missing is nfl_team/bye." This join reads the NAME, so excluding on that flag threw away
+    # six legible picks -- Mahomes, Irving, Andrews, Conner, Giddens, Waller. The truncated one
+    # is still rejected, by failing to match rather than by a flag about a different field.
     real = [p for p in board["picks"]
-            if not p.get("is_rookie_pick_placeholder") and not p.get("illegible")
-            and p.get("raw_player")]
+            if not p.get("is_rookie_pick_placeholder") and p.get("raw_player")]
     merger = dm.DataMerger()
     proj = merger.projections
 

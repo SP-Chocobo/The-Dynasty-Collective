@@ -1,17 +1,17 @@
 {
- "population": 305,
+ "population": 312,
  "arms": {
   "strict": {
-   "resolved": 188,
-   "rate": 0.6164
+   "resolved": 192,
+   "rate": 0.6154
   },
   "no_team": {
-   "resolved": 224,
-   "rate": 0.7344
+   "resolved": 229,
+   "rate": 0.734
   },
   "relaxed": {
-   "resolved": 224,
-   "rate": 0.7344
+   "resolved": 229,
+   "rate": 0.734
   }
  },
  "recovered_by_dropping_team": [
@@ -50,17 +50,19 @@
   "Trevor Etienne",
   "Geno Smith",
   "Jaylin Lane",
-  "Jalen Nailor"
+  "Jalen Nailor",
+  "Darren Waller"
  ],
  "recovered_by_spelling": [],
- "still_unresolved": 81,
+ "still_unresolved": 83,
  "still_by_round": {
   "4": 1,
   "8": 1,
+  "10": 1,
   "14": 1,
   "15": 1,
   "16": 3,
-  "18": 2,
+  "18": 3,
   "19": 4,
   "20": 7,
   "21": 3,
@@ -74,7 +76,7 @@
   "29": 8,
   "30": 11
  },
- "still_absent_from_resolver": 72,
+ "still_absent_from_resolver": 74,
  "still_position_mismatch": 9,
  "absence_check_control": {
   "passed": 59,

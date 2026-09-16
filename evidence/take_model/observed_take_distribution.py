@@ -23,11 +23,22 @@ the five constants and show a DIRECTION; it may not set them. The output is evid
 not a patch.
 
 KNOWN POPULATION LIMITS, stated before the numbers so they cannot be read past:
-  * 224 of 305 real picks resolve to the engine's universe (`join_decomposition.py`). The failures
-    are 72 players absent from the resolver and 9 position mismatches, concentrated R15-R30 --
-    a 30-round superflex draft outruns the vendor universe. R1-R3 resolve 34 of 34.
-  * Unresolved picks still REMOVE the player from later boards where they can be identified; where
-    they cannot, that pick is invisible and the board is very slightly too full. Counted, reported.
+  * Most real picks resolve to the engine's universe; the failures are players absent from the
+    resolver and position mismatches, concentrated R15-R30 -- a 30-round superflex draft outruns
+    the vendor universe. R1-R3 resolve 34 of 34. THE EXACT COUNTS THAT STOOD HERE ("224 of 305",
+    "72 absent", "9 position mismatches") WERE MEASURED OVER A POPULATION THIS FILE NO LONGER
+    USES: it excluded `illegible` cells, and `#274` established that the flag marks a missing bye
+    week rather than a missing name. Re-derive from `join_decomposition.py` rather than trusting
+    a number whose population changed under it.
+  * A pick that does not resolve is never added to `engine_picks`, so its player is NEVER removed
+    from later boards and haunts every one of them.
+    THIS BULLET USED TO SAY THE BOARD WAS "very slightly too full", AND THAT PHRASE IS WHY THE
+    DEFECT SAT UNEXAMINED. Measured under `#274`, before the repair: up to 10 phantoms ahead of a
+    measured pick, mean 5.56, against a priced pool falling to ~160 rows by round 30. Every rank
+    recorded after a phantom was inflated by however many sat above the player actually taken,
+    which moved the published top-5 share from 14.9% down to 11.5%. Not slight.
+    Recovering the six legible `illegible` picks takes the phantom count from 11 to 5; the
+    remainder are genuinely unresolvable names and are counted, not hidden.
   * The board is a January draft; vendor rows are the 2026 season, so team is not a join key here
     (it rejects 36 real players who changed clubs).
 
@@ -77,7 +88,29 @@ def resolve_picks(picks_all: list, players_db: dict) -> tuple[dict, int, list]:
     resolved: dict[int, str] = {}
     ambiguous, unmatched = 0, []
     for p in picks_all:
-        if p.get("is_rookie_pick_placeholder") or p.get("illegible") or not p.get("raw_player"):
+        # SKIP ON WHAT THIS RESOLVER ACTUALLY NEEDS -- the NAME -- not on `illegible` (#274).
+        #
+        # `illegible` does not mean "the name could not be read". The board's own provenance
+        # says what it means: "All illegible cells are in slot 12 (MatttyyIce), the one column
+        # with no roster view. Names are legible in all but one (10.12, UI-truncated 'Jacory
+        # Croskey-M...'); what is missing is nfl_team/bye." So the flag marks a missing BYE
+        # WEEK, and this function resolves on (normalized name, position) and reads neither
+        # nfl_team nor bye.
+        #
+        # Skipping on it discarded six perfectly legible picks -- Patrick Mahomes, Bucky
+        # Irving, Mark Andrews, James Conner, DJ Giddens, Darren Waller -- and because an
+        # unresolved pick never reaches `engine_picks`, each of those players then sat on
+        # EVERY LATER BOARD as a phantom. Measured before the repair: up to 10 phantoms ahead
+        # of a measured pick, mean 5.56, against a priced pool falling to ~160 rows by round
+        # 30. Every rank recorded after them was inflated by however many sat above the player
+        # actually taken, which is a contamination of the published histogram, not a rounding
+        # detail.
+        #
+        # THE TRUNCATED ONE IS STILL REJECTED, and by the mechanism that should reject it:
+        # "Jacory Croskey-M..." normalises to something no index key equals, so it falls out
+        # as `unmatched` and is counted. That is #82's rule doing the work -- ambiguity is a
+        # rejection -- rather than a flag about a different field standing in for it.
+        if p.get("is_rookie_pick_placeholder") or not p.get("raw_player"):
             continue
         pos = (p.get("position") or "").upper()
         cand = (index.get((dm.normalize_name(p["raw_player"]), pos))

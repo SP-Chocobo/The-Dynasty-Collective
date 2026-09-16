@@ -583,8 +583,14 @@ def main_real():
 
     resolved, ambiguous, unmatched = otd.resolve_picks(picks_all, players_db)
     placeholders = sum(1 for p in picks_all if p.get("is_rookie_pick_placeholder"))
+    # THE FLAG IS NOT THE OUTCOME (#274). This listed every `illegible` cell under the report's
+    # `picks_unresolved` breakdown. Since the resolver stopped skipping on that flag -- it marks
+    # a missing BYE WEEK, not a missing name -- six of the seven flagged picks RESOLVE, and
+    # listing them as unresolved would have the report contradict its own `picks_resolved` count.
+    # Report what actually happened to each pick, not what a flag on a different field says.
     illegible = [p["raw_player"] for p in picks_all
-                 if p.get("illegible") and not p.get("is_rookie_pick_placeholder")]
+                 if p.get("illegible") and not p.get("is_rookie_pick_placeholder")
+                 and p["pick_no"] not in resolved]
     slot_team = {p["slot"]: p["team"] for p in picks_all}
     report = {
         "arm": "REAL", "league_rulebook": rules["league"], "rulebook_path": str(REAL_RULEBOOK),

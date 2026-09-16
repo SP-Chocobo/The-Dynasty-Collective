@@ -1,130 +1,126 @@
 {
  "league": "Greatest Show on Paper 2",
- "picks_measured": 270,
+ "picks_measured": 276,
  "not_on_priced_board": 31,
  "rank_histogram": {
   "1": 6,
-  "2": 6,
-  "3": 6,
-  "4": 6,
-  "5": 7,
-  "6": 7,
-  "7": 7,
-  "8": 11,
-  "9": 8,
-  "10": 2,
-  "11": 5,
-  "12": 4,
-  "13": 6,
-  "14": 4,
-  "15": 8,
-  "16": 1,
-  "17": 5,
+  "2": 8,
+  "3": 8,
+  "4": 8,
+  "5": 11,
+  "6": 10,
+  "7": 8,
+  "8": 9,
+  "9": 4,
+  "10": 4,
+  "11": 6,
+  "12": 5,
+  "13": 3,
+  "14": 6,
+  "15": 3,
+  "16": 3,
+  "17": 3,
+  "18": 3,
   "19": 3,
   "20": 3,
   "21": 4,
-  "22": 5,
-  "23": 1,
+  "22": 7,
+  "23": 6,
   "24": 4,
-  "25": 4,
-  "26": 5,
-  "28": 2,
-  "29": 4,
-  "30": 2,
-  "31": 2,
+  "26": 2,
+  "27": 4,
+  "28": 1,
+  "30": 3,
+  "31": 1,
   "32": 1,
-  "33": 2,
-  "34": 2,
-  "35": 2,
-  "36": 4,
-  "37": 2,
-  "38": 2,
+  "33": 1,
+  "34": 5,
+  "35": 1,
+  "36": 1,
+  "38": 1,
   "40": 1,
-  "42": 1,
-  "44": 2,
-  "45": 4,
+  "42": 2,
+  "43": 2,
+  "44": 3,
   "46": 1,
-  "47": 1,
-  "48": 1,
-  "50": 1,
-  "51": 2,
-  "52": 3,
-  "53": 2,
+  "47": 2,
+  "48": 2,
+  "49": 5,
+  "51": 3,
+  "53": 1,
   "54": 1,
-  "56": 4,
+  "55": 4,
   "57": 2,
   "58": 1,
   "59": 2,
-  "61": 2,
-  "62": 1,
   "64": 1,
-  "65": 1,
-  "67": 1,
-  "71": 3,
+  "65": 2,
+  "69": 1,
+  "70": 1,
+  "71": 1,
+  "72": 3,
+  "73": 1,
   "74": 1,
   "75": 3,
-  "76": 1,
-  "77": 2,
-  "78": 1,
-  "79": 3,
-  "80": 2,
-  "81": 2,
-  "83": 1,
-  "87": 1,
-  "88": 1,
-  "89": 1,
-  "91": 1,
-  "93": 1,
-  "98": 1,
-  "99": 1,
+  "76": 2,
+  "77": 1,
+  "78": 2,
+  "79": 1,
+  "80": 1,
+  "81": 1,
+  "84": 1,
+  "86": 1,
+  "91": 2,
+  "92": 1,
+  "94": 2,
+  "97": 2,
   "100": 1,
-  "101": 1,
+  "102": 1,
   "103": 1,
-  "106": 2,
-  "108": 1,
+  "105": 1,
+  "109": 1,
+  "111": 1,
   "112": 1,
   "113": 1,
+  "114": 3,
   "115": 1,
-  "116": 3,
-  "117": 1,
-  "119": 2,
+  "116": 1,
+  "117": 2,
+  "118": 3,
   "120": 1,
-  "121": 1,
-  "122": 2,
-  "123": 2,
-  "125": 1,
-  "126": 1,
-  "131": 1,
+  "122": 1,
+  "123": 1,
+  "127": 2,
+  "129": 2,
+  "130": 1,
   "132": 1,
-  "133": 1,
+  "134": 2,
   "135": 1,
-  "136": 2,
-  "139": 1,
-  "140": 1,
-  "142": 1,
+  "138": 1,
+  "144": 1,
   "150": 1,
-  "152": 1,
   "155": 2,
-  "158": 1,
+  "157": 1,
+  "162": 1,
   "164": 1,
-  "169": 1,
-  "170": 2,
+  "165": 2,
+  "166": 1,
+  "167": 2,
+  "171": 1,
   "172": 1,
-  "176": 3,
-  "187": 1,
-  "192": 1,
-  "216": 1,
-  "233": 1,
-  "235": 1,
-  "251": 1,
-  "267": 1,
-  "318": 1,
-  "320": 1,
-  "322": 1,
-  "323": 1
+  "182": 1,
+  "184": 1,
+  "186": 1,
+  "230": 1,
+  "231": 1,
+  "246": 1,
+  "262": 1,
+  "298": 1,
+  "316": 2,
+  "320": 2
  },
- "rank1_share": 0.0222,
- "top5_share": 0.1148,
+ "rank1_share": 0.0217,
+ "top5_share": 0.1486,
  "model_rank1": 0.55,
  "full_mass_rank1": 0.051,
  "head_only_rank1": 0.455,
@@ -392,13 +388,22 @@
    "priced_pool": 453
   },
   {
+   "pick_no": 31,
+   "round": 3,
+   "seat": "MatttyyIce",
+   "player": "Patrick Mahomes",
+   "position": "QB",
+   "rank": 6,
+   "priced_pool": 452
+  },
+  {
    "pick_no": 32,
    "round": 3,
    "seat": "SPChocobo",
    "player": "Nico Collins",
    "position": "WR",
-   "rank": 9,
-   "priced_pool": 452
+   "rank": 8,
+   "priced_pool": 451
   },
   {
    "pick_no": 33,
@@ -406,8 +411,8 @@
    "seat": "LFG1298",
    "player": "Tetairoa McMillan",
    "position": "WR",
-   "rank": 56,
-   "priced_pool": 451
+   "rank": 55,
+   "priced_pool": 450
   },
   {
    "pick_no": 34,
@@ -415,8 +420,8 @@
    "seat": "SPChocobo",
    "player": "TreVeyon Henderson",
    "position": "RB",
-   "rank": 52,
-   "priced_pool": 450
+   "rank": 51,
+   "priced_pool": 449
   },
   {
    "pick_no": 35,
@@ -424,8 +429,8 @@
    "seat": "TitleTown4",
    "player": "Josh Jacobs",
    "position": "RB",
-   "rank": 31,
-   "priced_pool": 449
+   "rank": 30,
+   "priced_pool": 448
   },
   {
    "pick_no": 36,
@@ -433,8 +438,8 @@
    "seat": "Pepper1991",
    "player": "Bo Nix",
    "position": "QB",
-   "rank": 9,
-   "priced_pool": 448
+   "rank": 8,
+   "priced_pool": 447
   },
   {
    "pick_no": 37,
@@ -443,7 +448,7 @@
    "player": "Chase Brown",
    "position": "RB",
    "rank": 3,
-   "priced_pool": 447
+   "priced_pool": 446
   },
   {
    "pick_no": 38,
@@ -451,8 +456,8 @@
    "seat": "TitleTown4",
    "player": "Trevor Lawrence",
    "position": "QB",
-   "rank": 8,
-   "priced_pool": 446
+   "rank": 7,
+   "priced_pool": 445
   },
   {
    "pick_no": 39,
@@ -460,8 +465,8 @@
    "seat": "WillyMo11",
    "player": "Rashee Rice",
    "position": "WR",
-   "rank": 29,
-   "priced_pool": 445
+   "rank": 28,
+   "priced_pool": 444
   },
   {
    "pick_no": 40,
@@ -470,7 +475,7 @@
    "player": "Brock Purdy",
    "position": "QB",
    "rank": 2,
-   "priced_pool": 444
+   "priced_pool": 443
   },
   {
    "pick_no": 41,
@@ -478,8 +483,8 @@
    "seat": "WillyMo11",
    "player": "George Pickens",
    "position": "WR",
-   "rank": 31,
-   "priced_pool": 443
+   "rank": 30,
+   "priced_pool": 442
   },
   {
    "pick_no": 42,
@@ -487,8 +492,8 @@
    "seat": "Snoopking51",
    "player": "Cam Skattebo",
    "position": "RB",
-   "rank": 28,
-   "priced_pool": 442
+   "rank": 27,
+   "priced_pool": 441
   },
   {
    "pick_no": 43,
@@ -496,8 +501,8 @@
    "seat": "BIGDADDYTRUMP08",
    "player": "A.J. Brown",
    "position": "WR",
-   "rank": 15,
-   "priced_pool": 441
+   "rank": 14,
+   "priced_pool": 440
   },
   {
    "pick_no": 44,
@@ -505,8 +510,8 @@
    "seat": "TAmedic27",
    "player": "Jordan Love",
    "position": "QB",
-   "rank": 7,
-   "priced_pool": 440
+   "rank": 6,
+   "priced_pool": 439
   },
   {
    "pick_no": 45,
@@ -514,8 +519,8 @@
    "seat": "KobeLulu",
    "player": "Garrett Wilson",
    "position": "WR",
-   "rank": 50,
-   "priced_pool": 439
+   "rank": 49,
+   "priced_pool": 438
   },
   {
    "pick_no": 47,
@@ -524,7 +529,7 @@
    "player": "Colston Loveland",
    "position": "TE",
    "rank": 1,
-   "priced_pool": 438
+   "priced_pool": 437
   },
   {
    "pick_no": 49,
@@ -532,8 +537,8 @@
    "seat": "MatttyyIce",
    "player": "Emeka Egbuka",
    "position": "WR",
-   "rank": 65,
-   "priced_pool": 437
+   "rank": 49,
+   "priced_pool": 436
   },
   {
    "pick_no": 50,
@@ -542,7 +547,7 @@
    "player": "Chris Olave",
    "position": "WR",
    "rank": 8,
-   "priced_pool": 436
+   "priced_pool": 435
   },
   {
    "pick_no": 52,
@@ -550,8 +555,8 @@
    "seat": "KobeLulu",
    "player": "Tucker Kraft",
    "position": "TE",
-   "rank": 7,
-   "priced_pool": 435
+   "rank": 6,
+   "priced_pool": 434
   },
   {
    "pick_no": 53,
@@ -559,8 +564,8 @@
    "seat": "TAmedic27",
    "player": "Ladd McConkey",
    "position": "WR",
-   "rank": 45,
-   "priced_pool": 434
+   "rank": 44,
+   "priced_pool": 433
   },
   {
    "pick_no": 54,
@@ -569,7 +574,16 @@
    "player": "Dak Prescott",
    "position": "QB",
    "rank": 1,
-   "priced_pool": 433
+   "priced_pool": 432
+  },
+  {
+   "pick_no": 55,
+   "round": 5,
+   "seat": "MatttyyIce",
+   "player": "Bucky Irving",
+   "position": "RB",
+   "rank": 18,
+   "priced_pool": 431
   },
   {
    "pick_no": 56,
@@ -577,8 +591,8 @@
    "seat": "WillyMo11",
    "player": "Quinshon Judkins",
    "position": "RB",
-   "rank": 24,
-   "priced_pool": 432
+   "rank": 23,
+   "priced_pool": 430
   },
   {
    "pick_no": 57,
@@ -586,8 +600,8 @@
    "seat": "LFG1298",
    "player": "Breece Hall",
    "position": "RB",
-   "rank": 9,
-   "priced_pool": 431
+   "rank": 8,
+   "priced_pool": 429
   },
   {
    "pick_no": 58,
@@ -595,8 +609,8 @@
    "seat": "SPChocobo",
    "player": "C.J. Stroud",
    "position": "QB",
-   "rank": 13,
-   "priced_pool": 430
+   "rank": 12,
+   "priced_pool": 428
   },
   {
    "pick_no": 59,
@@ -605,7 +619,7 @@
    "player": "Sam LaPorta",
    "position": "TE",
    "rank": 1,
-   "priced_pool": 429
+   "priced_pool": 427
   },
   {
    "pick_no": 60,
@@ -613,8 +627,8 @@
    "seat": "WillyMo11",
    "player": "Harold Fannin",
    "position": "TE",
-   "rank": 20,
-   "priced_pool": 428
+   "rank": 19,
+   "priced_pool": 426
   },
   {
    "pick_no": 61,
@@ -622,8 +636,8 @@
    "seat": "WillyMo11",
    "player": "Luther Burden",
    "position": "WR",
-   "rank": 36,
-   "priced_pool": 427
+   "rank": 34,
+   "priced_pool": 425
   },
   {
    "pick_no": 62,
@@ -631,8 +645,8 @@
    "seat": "TitleTown4",
    "player": "Marvin Harrison",
    "position": "WR",
-   "rank": 53,
-   "priced_pool": 426
+   "rank": 51,
+   "priced_pool": 424
   },
   {
    "pick_no": 63,
@@ -640,8 +654,8 @@
    "seat": "Pepper1991",
    "player": "Kyle Pitts",
    "position": "TE",
-   "rank": 11,
-   "priced_pool": 425
+   "rank": 10,
+   "priced_pool": 423
   },
   {
    "pick_no": 65,
@@ -650,7 +664,7 @@
    "player": "Tee Higgins",
    "position": "WR",
    "rank": 3,
-   "priced_pool": 424
+   "priced_pool": 422
   },
   {
    "pick_no": 66,
@@ -658,8 +672,8 @@
    "seat": "Snoopking51",
    "player": "Kyren Williams",
    "position": "RB",
-   "rank": 28,
-   "priced_pool": 423
+   "rank": 27,
+   "priced_pool": 421
   },
   {
    "pick_no": 67,
@@ -668,7 +682,7 @@
    "player": "Isaiah Likely",
    "position": "TE",
    "rank": 12,
-   "priced_pool": 422
+   "priced_pool": 420
   },
   {
    "pick_no": 68,
@@ -676,8 +690,8 @@
    "seat": "TAmedic27",
    "player": "Derrick Henry",
    "position": "RB",
-   "rank": 5,
-   "priced_pool": 421
+   "rank": 4,
+   "priced_pool": 419
   },
   {
    "pick_no": 69,
@@ -685,8 +699,8 @@
    "seat": "KobeLulu",
    "player": "Baker Mayfield",
    "position": "QB",
-   "rank": 7,
-   "priced_pool": 420
+   "rank": 6,
+   "priced_pool": 418
   },
   {
    "pick_no": 70,
@@ -694,8 +708,8 @@
    "seat": "sam51087",
    "player": "Rome Odunze",
    "position": "WR",
-   "rank": 57,
-   "priced_pool": 419
+   "rank": 55,
+   "priced_pool": 417
   },
   {
    "pick_no": 71,
@@ -703,8 +717,8 @@
    "seat": "CP3015",
    "player": "Brian Thomas",
    "position": "WR",
-   "rank": 59,
-   "priced_pool": 418
+   "rank": 57,
+   "priced_pool": 416
   },
   {
    "pick_no": 73,
@@ -712,8 +726,8 @@
    "seat": "MatttyyIce",
    "player": "RJ Harvey",
    "position": "RB",
-   "rank": 35,
-   "priced_pool": 417
+   "rank": 23,
+   "priced_pool": 415
   },
   {
    "pick_no": 74,
@@ -722,7 +736,7 @@
    "player": "Kenneth Walker",
    "position": "RB",
    "rank": 2,
-   "priced_pool": 416
+   "priced_pool": 414
   },
   {
    "pick_no": 76,
@@ -730,8 +744,8 @@
    "seat": "KobeLulu",
    "player": "Travis Etienne",
    "position": "RB",
-   "rank": 36,
-   "priced_pool": 415
+   "rank": 35,
+   "priced_pool": 413
   },
   {
    "pick_no": 77,
@@ -739,8 +753,8 @@
    "seat": "TAmedic27",
    "player": "Oronde Gadsden",
    "position": "TE",
-   "rank": 116,
-   "priced_pool": 414
+   "rank": 114,
+   "priced_pool": 412
   },
   {
    "pick_no": 79,
@@ -749,7 +763,7 @@
    "player": "Jared Goff",
    "position": "QB",
    "rank": 1,
-   "priced_pool": 413
+   "priced_pool": 411
   },
   {
    "pick_no": 80,
@@ -757,8 +771,8 @@
    "seat": "WillyMo11",
    "player": "Jameson Williams",
    "position": "WR",
-   "rank": 25,
-   "priced_pool": 412
+   "rank": 23,
+   "priced_pool": 410
   },
   {
    "pick_no": 81,
@@ -766,8 +780,8 @@
    "seat": "LFG1298",
    "player": "Zay Flowers",
    "position": "WR",
-   "rank": 15,
-   "priced_pool": 411
+   "rank": 14,
+   "priced_pool": 409
   },
   {
    "pick_no": 82,
@@ -776,7 +790,7 @@
    "player": "Dalton Kincaid",
    "position": "TE",
    "rank": 17,
-   "priced_pool": 410
+   "priced_pool": 408
   },
   {
    "pick_no": 83,
@@ -784,8 +798,8 @@
    "seat": "TitleTown4",
    "player": "DK Metcalf",
    "position": "WR",
-   "rank": 23,
-   "priced_pool": 409
+   "rank": 22,
+   "priced_pool": 407
   },
   {
    "pick_no": 84,
@@ -793,8 +807,8 @@
    "seat": "WillyMo11",
    "player": "DeVonta Smith",
    "position": "WR",
-   "rank": 15,
-   "priced_pool": 408
+   "rank": 14,
+   "priced_pool": 406
   },
   {
    "pick_no": 85,
@@ -802,8 +816,8 @@
    "seat": "WillyMo11",
    "player": "Cam Ward",
    "position": "QB",
-   "rank": 17,
-   "priced_pool": 407
+   "rank": 14,
+   "priced_pool": 405
   },
   {
    "pick_no": 86,
@@ -812,7 +826,7 @@
    "player": "Javonte Williams",
    "position": "RB",
    "rank": 5,
-   "priced_pool": 406
+   "priced_pool": 404
   },
   {
    "pick_no": 87,
@@ -820,8 +834,8 @@
    "seat": "Pepper1991",
    "player": "Bryce Young",
    "position": "QB",
-   "rank": 13,
-   "priced_pool": 405
+   "rank": 12,
+   "priced_pool": 403
   },
   {
    "pick_no": 88,
@@ -829,8 +843,8 @@
    "seat": "LFG1298",
    "player": "Tyler Shough",
    "position": "QB",
-   "rank": 6,
-   "priced_pool": 404
+   "rank": 5,
+   "priced_pool": 402
   },
   {
    "pick_no": 89,
@@ -838,8 +852,8 @@
    "seat": "SPChocobo",
    "player": "Sam Darnold",
    "position": "QB",
-   "rank": 22,
-   "priced_pool": 403
+   "rank": 21,
+   "priced_pool": 401
   },
   {
    "pick_no": 90,
@@ -848,7 +862,7 @@
    "player": "George Kittle",
    "position": "TE",
    "rank": 2,
-   "priced_pool": 402
+   "priced_pool": 400
   },
   {
    "pick_no": 91,
@@ -857,7 +871,7 @@
    "player": "Terry McLaurin",
    "position": "WR",
    "rank": 4,
-   "priced_pool": 401
+   "priced_pool": 399
   },
   {
    "pick_no": 92,
@@ -865,8 +879,8 @@
    "seat": "TAmedic27",
    "player": "Daniel Jones",
    "position": "QB",
-   "rank": 6,
-   "priced_pool": 400
+   "rank": 5,
+   "priced_pool": 398
   },
   {
    "pick_no": 93,
@@ -874,8 +888,8 @@
    "seat": "KobeLulu",
    "player": "Jaylen Waddle",
    "position": "WR",
-   "rank": 8,
-   "priced_pool": 399
+   "rank": 7,
+   "priced_pool": 397
   },
   {
    "pick_no": 95,
@@ -883,8 +897,8 @@
    "seat": "CP3015",
    "player": "Xavier Worthy",
    "position": "WR",
-   "rank": 51,
-   "priced_pool": 398
+   "rank": 49,
+   "priced_pool": 396
   },
   {
    "pick_no": 96,
@@ -892,8 +906,8 @@
    "seat": "MatttyyIce",
    "player": "Kyler Murray",
    "position": "QB",
-   "rank": 4,
-   "priced_pool": 397
+   "rank": 48,
+   "priced_pool": 395
   },
   {
    "pick_no": 97,
@@ -901,8 +915,8 @@
    "seat": "MatttyyIce",
    "player": "D'Andre Swift",
    "position": "RB",
-   "rank": 6,
-   "priced_pool": 396
+   "rank": 11,
+   "priced_pool": 394
   },
   {
    "pick_no": 98,
@@ -910,8 +924,8 @@
    "seat": "CP3015",
    "player": "Christian Watson",
    "position": "WR",
-   "rank": 7,
-   "priced_pool": 395
+   "rank": 6,
+   "priced_pool": 393
   },
   {
    "pick_no": 99,
@@ -919,8 +933,8 @@
    "seat": "SPChocobo",
    "player": "Woody Marks",
    "position": "RB",
-   "rank": 83,
-   "priced_pool": 394
+   "rank": 81,
+   "priced_pool": 392
   },
   {
    "pick_no": 100,
@@ -928,8 +942,8 @@
    "seat": "KobeLulu",
    "player": "J.J. McCarthy",
    "position": "QB",
-   "rank": 318,
-   "priced_pool": 393
+   "rank": 316,
+   "priced_pool": 391
   },
   {
    "pick_no": 101,
@@ -937,8 +951,8 @@
    "seat": "TAmedic27",
    "player": "Kyle Monangai",
    "position": "RB",
-   "rank": 75,
-   "priced_pool": 392
+   "rank": 73,
+   "priced_pool": 390
   },
   {
    "pick_no": 102,
@@ -946,8 +960,8 @@
    "seat": "BIGDADDYTRUMP08",
    "player": "Chuba Hubbard",
    "position": "RB",
-   "rank": 45,
-   "priced_pool": 391
+   "rank": 43,
+   "priced_pool": 389
   },
   {
    "pick_no": 103,
@@ -956,7 +970,7 @@
    "player": "Jake Ferguson",
    "position": "TE",
    "rank": 6,
-   "priced_pool": 390
+   "priced_pool": 388
   },
   {
    "pick_no": 104,
@@ -964,8 +978,8 @@
    "seat": "Pepper1991",
    "player": "Matthew Golden",
    "position": "WR",
-   "rank": 45,
-   "priced_pool": 389
+   "rank": 43,
+   "priced_pool": 387
   },
   {
    "pick_no": 105,
@@ -973,8 +987,8 @@
    "seat": "LFG1298",
    "player": "Davante Adams",
    "position": "WR",
-   "rank": 19,
-   "priced_pool": 388
+   "rank": 17,
+   "priced_pool": 386
   },
   {
    "pick_no": 108,
@@ -982,8 +996,8 @@
    "seat": "SPChocobo",
    "player": "Jordan Addison",
    "position": "WR",
-   "rank": 22,
-   "priced_pool": 387
+   "rank": 20,
+   "priced_pool": 385
   },
   {
    "pick_no": 109,
@@ -991,8 +1005,8 @@
    "seat": "SPChocobo",
    "player": "Jayden Higgins",
    "position": "WR",
-   "rank": 48,
-   "priced_pool": 386
+   "rank": 46,
+   "priced_pool": 384
   },
   {
    "pick_no": 110,
@@ -1000,8 +1014,8 @@
    "seat": "TitleTown4",
    "player": "Ricky Pearsall",
    "position": "WR",
-   "rank": 322,
-   "priced_pool": 385
+   "rank": 320,
+   "priced_pool": 383
   },
   {
    "pick_no": 111,
@@ -1010,7 +1024,7 @@
    "player": "Jayden Reed",
    "position": "WR",
    "rank": 5,
-   "priced_pool": 384
+   "priced_pool": 382
   },
   {
    "pick_no": 113,
@@ -1018,8 +1032,8 @@
    "seat": "TAmedic27",
    "player": "Wan'Dale Robinson",
    "position": "WR",
-   "rank": 40,
-   "priced_pool": 383
+   "rank": 38,
+   "priced_pool": 381
   },
   {
    "pick_no": 116,
@@ -1027,8 +1041,8 @@
    "seat": "TAmedic27",
    "player": "Jakobi Meyers",
    "position": "WR",
-   "rank": 36,
-   "priced_pool": 382
+   "rank": 34,
+   "priced_pool": 380
   },
   {
    "pick_no": 117,
@@ -1036,8 +1050,8 @@
    "seat": "KobeLulu",
    "player": "Alec Pierce",
    "position": "WR",
-   "rank": 17,
-   "priced_pool": 381
+   "rank": 16,
+   "priced_pool": 379
   },
   {
    "pick_no": 118,
@@ -1045,8 +1059,8 @@
    "seat": "sam51087",
    "player": "Michael Wilson",
    "position": "WR",
-   "rank": 33,
-   "priced_pool": 380
+   "rank": 31,
+   "priced_pool": 378
   },
   {
    "pick_no": 119,
@@ -1054,8 +1068,8 @@
    "seat": "CP3015",
    "player": "Malik Willis",
    "position": "QB",
-   "rank": 56,
-   "priced_pool": 379
+   "rank": 54,
+   "priced_pool": 377
   },
   {
    "pick_no": 121,
@@ -1063,8 +1077,8 @@
    "seat": "MatttyyIce",
    "player": "DJ Moore",
    "position": "WR",
-   "rank": 17,
-   "priced_pool": 378
+   "rank": 14,
+   "priced_pool": 376
   },
   {
    "pick_no": 122,
@@ -1072,8 +1086,8 @@
    "seat": "CP3015",
    "player": "Trey Benson",
    "position": "RB",
-   "rank": 131,
-   "priced_pool": 377
+   "rank": 129,
+   "priced_pool": 375
   },
   {
    "pick_no": 124,
@@ -1081,8 +1095,8 @@
    "seat": "KobeLulu",
    "player": "Shedeur Sanders",
    "position": "QB",
-   "rank": 93,
-   "priced_pool": 376
+   "rank": 91,
+   "priced_pool": 374
   },
   {
    "pick_no": 125,
@@ -1090,8 +1104,8 @@
    "seat": "TAmedic27",
    "player": "Michael Penix",
    "position": "QB",
-   "rank": 233,
-   "priced_pool": 375
+   "rank": 231,
+   "priced_pool": 373
   },
   {
    "pick_no": 126,
@@ -1099,8 +1113,8 @@
    "seat": "BIGDADDYTRUMP08",
    "player": "Matthew Stafford",
    "position": "QB",
-   "rank": 36,
-   "priced_pool": 374
+   "rank": 34,
+   "priced_pool": 372
   },
   {
    "pick_no": 127,
@@ -1108,8 +1122,8 @@
    "seat": "TAmedic27",
    "player": "Jaylen Warren",
    "position": "RB",
-   "rank": 8,
-   "priced_pool": 373
+   "rank": 7,
+   "priced_pool": 371
   },
   {
    "pick_no": 128,
@@ -1117,8 +1131,8 @@
    "seat": "Snoopking51",
    "player": "Brenton Strange",
    "position": "TE",
-   "rank": 25,
-   "priced_pool": 372
+   "rank": 23,
+   "priced_pool": 370
   },
   {
    "pick_no": 129,
@@ -1126,8 +1140,8 @@
    "seat": "LFG1298",
    "player": "Courtland Sutton",
    "position": "WR",
-   "rank": 44,
-   "priced_pool": 371
+   "rank": 42,
+   "priced_pool": 369
   },
   {
    "pick_no": 130,
@@ -1135,8 +1149,8 @@
    "seat": "SPChocobo",
    "player": "Mason Taylor",
    "position": "TE",
-   "rank": 61,
-   "priced_pool": 370
+   "rank": 59,
+   "priced_pool": 368
   },
   {
    "pick_no": 131,
@@ -1144,8 +1158,8 @@
    "seat": "Snoopking51",
    "player": "Quentin Johnston",
    "position": "WR",
-   "rank": 21,
-   "priced_pool": 369
+   "rank": 19,
+   "priced_pool": 367
   },
   {
    "pick_no": 132,
@@ -1153,8 +1167,8 @@
    "seat": "TAmedic27",
    "player": "Michael Pittman",
    "position": "WR",
-   "rank": 24,
-   "priced_pool": 368
+   "rank": 22,
+   "priced_pool": 366
   },
   {
    "pick_no": 133,
@@ -1162,8 +1176,8 @@
    "seat": "WillyMo11",
    "player": "Bhayshul Tuten",
    "position": "RB",
-   "rank": 9,
-   "priced_pool": 367
+   "rank": 7,
+   "priced_pool": 365
   },
   {
    "pick_no": 134,
@@ -1171,8 +1185,8 @@
    "seat": "TitleTown4",
    "player": "Rhamondre Stevenson",
    "position": "RB",
-   "rank": 24,
-   "priced_pool": 366
+   "rank": 22,
+   "priced_pool": 364
   },
   {
    "pick_no": 135,
@@ -1180,8 +1194,8 @@
    "seat": "Pepper1991",
    "player": "Zach Charbonnet",
    "position": "RB",
-   "rank": 164,
-   "priced_pool": 365
+   "rank": 162,
+   "priced_pool": 363
   },
   {
    "pick_no": 136,
@@ -1189,8 +1203,8 @@
    "seat": "LFG1298",
    "player": "Tyler Allgeier",
    "position": "RB",
-   "rank": 59,
-   "priced_pool": 364
+   "rank": 57,
+   "priced_pool": 362
   },
   {
    "pick_no": 137,
@@ -1198,8 +1212,8 @@
    "seat": "SPChocobo",
    "player": "Chris Godwin",
    "position": "WR",
-   "rank": 22,
-   "priced_pool": 363
+   "rank": 20,
+   "priced_pool": 361
   },
   {
    "pick_no": 138,
@@ -1207,8 +1221,8 @@
    "seat": "SPChocobo",
    "player": "Tyjae Spears",
    "position": "RB",
-   "rank": 57,
-   "priced_pool": 362
+   "rank": 55,
+   "priced_pool": 360
   },
   {
    "pick_no": 139,
@@ -1217,7 +1231,7 @@
    "player": "Mike Evans",
    "position": "WR",
    "rank": 4,
-   "priced_pool": 361
+   "priced_pool": 359
   },
   {
    "pick_no": 140,
@@ -1225,8 +1239,8 @@
    "seat": "TAmedic27",
    "player": "Juwan Johnson",
    "position": "TE",
-   "rank": 6,
-   "priced_pool": 360
+   "rank": 5,
+   "priced_pool": 358
   },
   {
    "pick_no": 141,
@@ -1234,8 +1248,8 @@
    "seat": "KobeLulu",
    "player": "Parker Washington",
    "position": "WR",
-   "rank": 20,
-   "priced_pool": 359
+   "rank": 18,
+   "priced_pool": 357
   },
   {
    "pick_no": 143,
@@ -1243,8 +1257,8 @@
    "seat": "CP3015",
    "player": "Romeo Doubs",
    "position": "WR",
-   "rank": 26,
-   "priced_pool": 358
+   "rank": 24,
+   "priced_pool": 356
   },
   {
    "pick_no": 144,
@@ -1252,8 +1266,8 @@
    "seat": "MatttyyIce",
    "player": "Kaleb Johnson",
    "position": "RB",
-   "rank": 216,
-   "priced_pool": 357
+   "rank": 298,
+   "priced_pool": 355
   },
   {
    "pick_no": 145,
@@ -1261,8 +1275,8 @@
    "seat": "MatttyyIce",
    "player": "Alvin Kamara",
    "position": "RB",
-   "rank": 53,
-   "priced_pool": 356
+   "rank": 71,
+   "priced_pool": 354
   },
   {
    "pick_no": 146,
@@ -1270,8 +1284,8 @@
    "seat": "CP3015",
    "player": "Blake Corum",
    "position": "RB",
-   "rank": 29,
-   "priced_pool": 355
+   "rank": 24,
+   "priced_pool": 353
   },
   {
    "pick_no": 148,
@@ -1279,8 +1293,8 @@
    "seat": "Snoopking51",
    "player": "AJ Barner",
    "position": "TE",
-   "rank": 13,
-   "priced_pool": 354
+   "rank": 10,
+   "priced_pool": 352
   },
   {
    "pick_no": 150,
@@ -1288,8 +1302,8 @@
    "seat": "BIGDADDYTRUMP08",
    "player": "Brian Robinson",
    "position": "RB",
-   "rank": 71,
-   "priced_pool": 353
+   "rank": 69,
+   "priced_pool": 351
   },
   {
    "pick_no": 151,
@@ -1297,8 +1311,8 @@
    "seat": "TitleTown4",
    "player": "Tua Tagovailoa",
    "position": "QB",
-   "rank": 15,
-   "priced_pool": 352
+   "rank": 13,
+   "priced_pool": 350
   },
   {
    "pick_no": 152,
@@ -1306,8 +1320,8 @@
    "seat": "TAmedic27",
    "player": "Jauan Jennings",
    "position": "WR",
-   "rank": 42,
-   "priced_pool": 351
+   "rank": 40,
+   "priced_pool": 349
   },
   {
    "pick_no": 153,
@@ -1316,7 +1330,7 @@
    "player": "David Montgomery",
    "position": "RB",
    "rank": 3,
-   "priced_pool": 350
+   "priced_pool": 348
   },
   {
    "pick_no": 154,
@@ -1324,8 +1338,8 @@
    "seat": "SPChocobo",
    "player": "Khalil Shakir",
    "position": "WR",
-   "rank": 15,
-   "priced_pool": 349
+   "rank": 13,
+   "priced_pool": 347
   },
   {
    "pick_no": 155,
@@ -1333,8 +1347,8 @@
    "seat": "KobeLulu",
    "player": "Jonathon Brooks",
    "position": "RB",
-   "rank": 38,
-   "priced_pool": 348
+   "rank": 36,
+   "priced_pool": 346
   },
   {
    "pick_no": 156,
@@ -1342,8 +1356,8 @@
    "seat": "TAmedic27",
    "player": "Rico Dowdle",
    "position": "RB",
-   "rank": 10,
-   "priced_pool": 347
+   "rank": 8,
+   "priced_pool": 345
   },
   {
    "pick_no": 157,
@@ -1351,8 +1365,8 @@
    "seat": "SPChocobo",
    "player": "Elijah Arroyo",
    "position": "TE",
-   "rank": 81,
-   "priced_pool": 346
+   "rank": 79,
+   "priced_pool": 344
   },
   {
    "pick_no": 158,
@@ -1360,8 +1374,8 @@
    "seat": "Snoopking51",
    "player": "Jacoby Brissett",
    "position": "QB",
-   "rank": 32,
-   "priced_pool": 345
+   "rank": 30,
+   "priced_pool": 343
   },
   {
    "pick_no": 160,
@@ -1369,8 +1383,8 @@
    "seat": "LFG1298",
    "player": "Tre' Harris",
    "position": "WR",
-   "rank": 77,
-   "priced_pool": 344
+   "rank": 75,
+   "priced_pool": 342
   },
   {
    "pick_no": 161,
@@ -1379,7 +1393,7 @@
    "player": "Devin Neal",
    "position": "RB",
    "rank": null,
-   "priced_pool": 343
+   "priced_pool": 341
   },
   {
    "pick_no": 162,
@@ -1387,8 +1401,8 @@
    "seat": "KobeLulu",
    "player": "Dallas Goedert",
    "position": "TE",
-   "rank": 8,
-   "priced_pool": 343
+   "rank": 7,
+   "priced_pool": 341
   },
   {
    "pick_no": 163,
@@ -1396,8 +1410,8 @@
    "seat": "TAmedic27",
    "player": "Dalton Schultz",
    "position": "TE",
-   "rank": 5,
-   "priced_pool": 342
+   "rank": 4,
+   "priced_pool": 340
   },
   {
    "pick_no": 164,
@@ -1405,8 +1419,8 @@
    "seat": "KobeLulu",
    "player": "Chimere Dike",
    "position": "WR",
-   "rank": 136,
-   "priced_pool": 341
+   "rank": 134,
+   "priced_pool": 339
   },
   {
    "pick_no": 165,
@@ -1415,7 +1429,7 @@
    "player": "Mac Jones",
    "position": "QB",
    "rank": null,
-   "priced_pool": 340
+   "priced_pool": 338
   },
   {
    "pick_no": 166,
@@ -1423,8 +1437,8 @@
    "seat": "WillyMo11",
    "player": "Terrance Ferguson",
    "position": "TE",
-   "rank": 99,
-   "priced_pool": 340
+   "rank": 97,
+   "priced_pool": 338
   },
   {
    "pick_no": 167,
@@ -1432,8 +1446,17 @@
    "seat": "CP3015",
    "player": "Pat Bryant",
    "position": "WR",
-   "rank": 71,
-   "priced_pool": 339
+   "rank": 76,
+   "priced_pool": 337
+  },
+  {
+   "pick_no": 168,
+   "round": 14,
+   "seat": "MatttyyIce",
+   "player": "Mark Andrews",
+   "position": "TE",
+   "rank": 3,
+   "priced_pool": 336
   },
   {
    "pick_no": 169,
@@ -1442,7 +1465,7 @@
    "player": "Brandon Aiyuk",
    "position": "WR",
    "rank": null,
-   "priced_pool": 338
+   "priced_pool": 335
   },
   {
    "pick_no": 170,
@@ -1450,8 +1473,8 @@
    "seat": "CP3015",
    "player": "Sean Tucker",
    "position": "RB",
-   "rank": 79,
-   "priced_pool": 338
+   "rank": 64,
+   "priced_pool": 335
   },
   {
    "pick_no": 171,
@@ -1459,8 +1482,8 @@
    "seat": "TAmedic27",
    "player": "Jordan Mason",
    "position": "RB",
-   "rank": 30,
-   "priced_pool": 337
+   "rank": 27,
+   "priced_pool": 334
   },
   {
    "pick_no": 172,
@@ -1468,8 +1491,8 @@
    "seat": "KobeLulu",
    "player": "Jack Bech",
    "position": "WR",
-   "rank": 80,
-   "priced_pool": 336
+   "rank": 77,
+   "priced_pool": 333
   },
   {
    "pick_no": 173,
@@ -1477,8 +1500,8 @@
    "seat": "Pepper1991",
    "player": "Jalen Coker",
    "position": "WR",
-   "rank": 9,
-   "priced_pool": 335
+   "rank": 6,
+   "priced_pool": 332
   },
   {
    "pick_no": 174,
@@ -1486,8 +1509,8 @@
    "seat": "BIGDADDYTRUMP08",
    "player": "Hunter Henry",
    "position": "TE",
-   "rank": 7,
-   "priced_pool": 334
+   "rank": 5,
+   "priced_pool": 331
   },
   {
    "pick_no": 175,
@@ -1495,8 +1518,8 @@
    "seat": "Snoopking51",
    "player": "Tory Horton",
    "position": "WR",
-   "rank": 106,
-   "priced_pool": 333
+   "rank": 103,
+   "priced_pool": 330
   },
   {
    "pick_no": 176,
@@ -1505,7 +1528,7 @@
    "player": "Quinn Ewers",
    "position": "QB",
    "rank": null,
-   "priced_pool": 332
+   "priced_pool": 329
   },
   {
    "pick_no": 177,
@@ -1513,8 +1536,8 @@
    "seat": "LFG1298",
    "player": "T.J. Hockenson",
    "position": "TE",
-   "rank": 6,
-   "priced_pool": 332
+   "rank": 4,
+   "priced_pool": 329
   },
   {
    "pick_no": 178,
@@ -1522,8 +1545,8 @@
    "seat": "SPChocobo",
    "player": "Braelon Allen",
    "position": "RB",
-   "rank": 108,
-   "priced_pool": 331
+   "rank": 105,
+   "priced_pool": 328
   },
   {
    "pick_no": 179,
@@ -1531,8 +1554,8 @@
    "seat": "TitleTown4",
    "player": "David Njoku",
    "position": "TE",
-   "rank": 67,
-   "priced_pool": 330
+   "rank": 65,
+   "priced_pool": 327
   },
   {
    "pick_no": 180,
@@ -1540,8 +1563,8 @@
    "seat": "SPChocobo",
    "player": "Stefon Diggs",
    "position": "WR",
-   "rank": 8,
-   "priced_pool": 329
+   "rank": 5,
+   "priced_pool": 326
   },
   {
    "pick_no": 181,
@@ -1549,8 +1572,8 @@
    "seat": "WillyMo11",
    "player": "Theo Johnson",
    "position": "TE",
-   "rank": 100,
-   "priced_pool": 328
+   "rank": 97,
+   "priced_pool": 325
   },
   {
    "pick_no": 182,
@@ -1558,8 +1581,8 @@
    "seat": "TitleTown4",
    "player": "Tony Pollard",
    "position": "RB",
-   "rank": 12,
-   "priced_pool": 327
+   "rank": 9,
+   "priced_pool": 324
   },
   {
    "pick_no": 184,
@@ -1567,8 +1590,8 @@
    "seat": "LFG1298",
    "player": "Tyrone Tracy",
    "position": "RB",
-   "rank": 77,
-   "priced_pool": 326
+   "rank": 74,
+   "priced_pool": 323
   },
   {
    "pick_no": 185,
@@ -1576,8 +1599,8 @@
    "seat": "TAmedic27",
    "player": "Jake Tonges",
    "position": "TE",
-   "rank": 115,
-   "priced_pool": 325
+   "rank": 112,
+   "priced_pool": 322
   },
   {
    "pick_no": 186,
@@ -1585,8 +1608,8 @@
    "seat": "Snoopking51",
    "player": "Jalen Milroe",
    "position": "QB",
-   "rank": 323,
-   "priced_pool": 324
+   "rank": 320,
+   "priced_pool": 321
   },
   {
    "pick_no": 187,
@@ -1595,7 +1618,7 @@
    "player": "Joe Mixon",
    "position": "RB",
    "rank": null,
-   "priced_pool": 323
+   "priced_pool": 320
   },
   {
    "pick_no": 188,
@@ -1604,7 +1627,7 @@
    "player": "Tyreek Hill",
    "position": "WR",
    "rank": null,
-   "priced_pool": 323
+   "priced_pool": 320
   },
   {
    "pick_no": 189,
@@ -1612,8 +1635,8 @@
    "seat": "KobeLulu",
    "player": "Gunnar Helm",
    "position": "TE",
-   "rank": 14,
-   "priced_pool": 323
+   "rank": 11,
+   "priced_pool": 320
   },
   {
    "pick_no": 190,
@@ -1621,8 +1644,8 @@
    "seat": "SPChocobo",
    "player": "Cade Otton",
    "position": "TE",
-   "rank": 14,
-   "priced_pool": 322
+   "rank": 11,
+   "priced_pool": 319
   },
   {
    "pick_no": 191,
@@ -1630,8 +1653,17 @@
    "seat": "CP3015",
    "player": "Elic Ayomanor",
    "position": "WR",
-   "rank": 133,
-   "priced_pool": 321
+   "rank": 129,
+   "priced_pool": 318
+  },
+  {
+   "pick_no": 192,
+   "round": 16,
+   "seat": "MatttyyIce",
+   "player": "James Conner",
+   "position": "RB",
+   "rank": 127,
+   "priced_pool": 317
   },
   {
    "pick_no": 193,
@@ -1639,8 +1671,8 @@
    "seat": "MatttyyIce",
    "player": "Anthony Richardson",
    "position": "QB",
-   "rank": 320,
-   "priced_pool": 320
+   "rank": 316,
+   "priced_pool": 316
   },
   {
    "pick_no": 194,
@@ -1648,8 +1680,8 @@
    "seat": "CP3015",
    "player": "Kimani Vidal",
    "position": "RB",
-   "rank": 140,
-   "priced_pool": 319
+   "rank": 135,
+   "priced_pool": 315
   },
   {
    "pick_no": 195,
@@ -1657,8 +1689,8 @@
    "seat": "sam51087",
    "player": "Isaac TeSlaa",
    "position": "WR",
-   "rank": 117,
-   "priced_pool": 318
+   "rank": 113,
+   "priced_pool": 314
   },
   {
    "pick_no": 196,
@@ -1666,8 +1698,8 @@
    "seat": "KobeLulu",
    "player": "Jaydon Blue",
    "position": "RB",
-   "rank": 142,
-   "priced_pool": 317
+   "rank": 138,
+   "priced_pool": 313
   },
   {
    "pick_no": 197,
@@ -1675,8 +1707,8 @@
    "seat": "BIGDADDYTRUMP08",
    "player": "Rachaad White",
    "position": "RB",
-   "rank": 10,
-   "priced_pool": 316
+   "rank": 7,
+   "priced_pool": 312
   },
   {
    "pick_no": 198,
@@ -1684,8 +1716,8 @@
    "seat": "BIGDADDYTRUMP08",
    "player": "Josh Downs",
    "position": "WR",
-   "rank": 5,
-   "priced_pool": 315
+   "rank": 3,
+   "priced_pool": 311
   },
   {
    "pick_no": 199,
@@ -1693,8 +1725,8 @@
    "seat": "TAmedic27",
    "player": "Marvin Mims",
    "position": "WR",
-   "rank": 79,
-   "priced_pool": 314
+   "rank": 75,
+   "priced_pool": 310
   },
   {
    "pick_no": 200,
@@ -1702,8 +1734,8 @@
    "seat": "TAmedic27",
    "player": "Rashid Shaheed",
    "position": "WR",
-   "rank": 14,
-   "priced_pool": 313
+   "rank": 11,
+   "priced_pool": 309
   },
   {
    "pick_no": 201,
@@ -1711,8 +1743,8 @@
    "seat": "LFG1298",
    "player": "Dylan Sampson",
    "position": "RB",
-   "rank": 52,
-   "priced_pool": 312
+   "rank": 49,
+   "priced_pool": 308
   },
   {
    "pick_no": 202,
@@ -1720,8 +1752,8 @@
    "seat": "sam51087",
    "player": "Troy Franklin",
    "position": "WR",
-   "rank": 152,
-   "priced_pool": 311
+   "rank": 165,
+   "priced_pool": 307
   },
   {
    "pick_no": 203,
@@ -1729,8 +1761,8 @@
    "seat": "TitleTown4",
    "player": "Deebo Samuel",
    "position": "WR",
-   "rank": 8,
-   "priced_pool": 310
+   "rank": 5,
+   "priced_pool": 306
   },
   {
    "pick_no": 204,
@@ -1738,8 +1770,8 @@
    "seat": "WillyMo11",
    "player": "Kayshon Boutte",
    "position": "WR",
-   "rank": 25,
-   "priced_pool": 309
+   "rank": 22,
+   "priced_pool": 305
   },
   {
    "pick_no": 205,
@@ -1747,8 +1779,8 @@
    "seat": "WillyMo11",
    "player": "Jerry Jeudy",
    "position": "WR",
-   "rank": 51,
-   "priced_pool": 308
+   "rank": 48,
+   "priced_pool": 304
   },
   {
    "pick_no": 207,
@@ -1756,8 +1788,8 @@
    "seat": "WillyMo11",
    "player": "Adonai Mitchell",
    "position": "WR",
-   "rank": 52,
-   "priced_pool": 307
+   "rank": 49,
+   "priced_pool": 303
   },
   {
    "pick_no": 208,
@@ -1765,8 +1797,8 @@
    "seat": "LFG1298",
    "player": "Jalen McMillan",
    "position": "WR",
-   "rank": 30,
-   "priced_pool": 306
+   "rank": 26,
+   "priced_pool": 302
   },
   {
    "pick_no": 209,
@@ -1774,8 +1806,8 @@
    "seat": "Snoopking51",
    "player": "Tank Dell",
    "position": "WR",
-   "rank": 176,
-   "priced_pool": 305
+   "rank": 172,
+   "priced_pool": 301
   },
   {
    "pick_no": 211,
@@ -1783,8 +1815,8 @@
    "seat": "BIGDADDYTRUMP08",
    "player": "Isiah Pacheco",
    "position": "RB",
-   "rank": 103,
-   "priced_pool": 304
+   "rank": 100,
+   "priced_pool": 300
   },
   {
    "pick_no": 213,
@@ -1792,8 +1824,8 @@
    "seat": "Snoopking51",
    "player": "Keon Coleman",
    "position": "WR",
-   "rank": 74,
-   "priced_pool": 303
+   "rank": 70,
+   "priced_pool": 299
   },
   {
    "pick_no": 214,
@@ -1801,8 +1833,8 @@
    "seat": "sam51087",
    "player": "Jaylin Noel",
    "position": "WR",
-   "rank": 64,
-   "priced_pool": 302
+   "rank": 65,
+   "priced_pool": 298
   },
   {
    "pick_no": 215,
@@ -1810,8 +1842,17 @@
    "seat": "CP3015",
    "player": "Tank Bigsby",
    "position": "RB",
-   "rank": 58,
-   "priced_pool": 301
+   "rank": 47,
+   "priced_pool": 297
+  },
+  {
+   "pick_no": 216,
+   "round": 18,
+   "seat": "MatttyyIce",
+   "player": "DJ Giddens",
+   "position": "RB",
+   "rank": 155,
+   "priced_pool": 296
   },
   {
    "pick_no": 217,
@@ -1819,8 +1860,8 @@
    "seat": "MatttyyIce",
    "player": "Ollie Gordon",
    "position": "RB",
-   "rank": 101,
-   "priced_pool": 300
+   "rank": 118,
+   "priced_pool": 295
   },
   {
    "pick_no": 218,
@@ -1828,8 +1869,8 @@
    "seat": "CP3015",
    "player": "J.K. Dobbins",
    "position": "RB",
-   "rank": 13,
-   "priced_pool": 299
+   "rank": 9,
+   "priced_pool": 294
   },
   {
    "pick_no": 219,
@@ -1837,8 +1878,8 @@
    "seat": "sam51087",
    "player": "Travis Kelce",
    "position": "TE",
-   "rank": 3,
-   "priced_pool": 298
+   "rank": 2,
+   "priced_pool": 293
   },
   {
    "pick_no": 221,
@@ -1846,8 +1887,8 @@
    "seat": "BIGDADDYTRUMP08",
    "player": "Calvin Ridley",
    "position": "WR",
-   "rank": 29,
-   "priced_pool": 297
+   "rank": 26,
+   "priced_pool": 292
   },
   {
    "pick_no": 222,
@@ -1855,8 +1896,8 @@
    "seat": "BIGDADDYTRUMP08",
    "player": "Christian Kirk",
    "position": "WR",
-   "rank": 172,
-   "priced_pool": 296
+   "rank": 167,
+   "priced_pool": 291
   },
   {
    "pick_no": 223,
@@ -1864,8 +1905,8 @@
    "seat": "Snoopking51",
    "player": "LeQuint Allen",
    "position": "RB",
-   "rank": 119,
-   "priced_pool": 295
+   "rank": 114,
+   "priced_pool": 290
   },
   {
    "pick_no": 224,
@@ -1873,8 +1914,8 @@
    "seat": "sam51087",
    "player": "Michael Mayer",
    "position": "TE",
-   "rank": 54,
-   "priced_pool": 294
+   "rank": 55,
+   "priced_pool": 289
   },
   {
    "pick_no": 225,
@@ -1882,8 +1923,8 @@
    "seat": "LFG1298",
    "player": "Ray Davis",
    "position": "RB",
-   "rank": 75,
-   "priced_pool": 293
+   "rank": 72,
+   "priced_pool": 288
   },
   {
    "pick_no": 226,
@@ -1891,8 +1932,8 @@
    "seat": "Pepper1991",
    "player": "Andrei Iosivas",
    "position": "WR",
-   "rank": 62,
-   "priced_pool": 292
+   "rank": 59,
+   "priced_pool": 287
   },
   {
    "pick_no": 227,
@@ -1900,8 +1941,8 @@
    "seat": "TitleTown4",
    "player": "Isaiah Bond",
    "position": "WR",
-   "rank": 126,
-   "priced_pool": 291
+   "rank": 123,
+   "priced_pool": 286
   },
   {
    "pick_no": 228,
@@ -1909,8 +1950,8 @@
    "seat": "WillyMo11",
    "player": "John Metchie",
    "position": "WR",
-   "rank": 122,
-   "priced_pool": 290
+   "rank": 117,
+   "priced_pool": 285
   },
   {
    "pick_no": 229,
@@ -1918,8 +1959,8 @@
    "seat": "WillyMo11",
    "player": "Ben Sinnott",
    "position": "TE",
-   "rank": 187,
-   "priced_pool": 289
+   "rank": 182,
+   "priced_pool": 284
   },
   {
    "pick_no": 231,
@@ -1928,7 +1969,7 @@
    "player": "Will Howard",
    "position": "QB",
    "rank": null,
-   "priced_pool": 288
+   "priced_pool": 283
   },
   {
    "pick_no": 232,
@@ -1936,8 +1977,8 @@
    "seat": "LFG1298",
    "player": "Aaron Rodgers",
    "position": "QB",
-   "rank": 9,
-   "priced_pool": 288
+   "rank": 6,
+   "priced_pool": 283
   },
   {
    "pick_no": 233,
@@ -1946,7 +1987,7 @@
    "player": "Joe Milton",
    "position": "QB",
    "rank": null,
-   "priced_pool": 287
+   "priced_pool": 282
   },
   {
    "pick_no": 234,
@@ -1954,8 +1995,8 @@
    "seat": "Pepper1991",
    "player": "Xavier Legette",
    "position": "WR",
-   "rank": 87,
-   "priced_pool": 287
+   "rank": 84,
+   "priced_pool": 282
   },
   {
    "pick_no": 235,
@@ -1964,7 +2005,7 @@
    "player": "Kareem Hunt",
    "position": "RB",
    "rank": null,
-   "priced_pool": 286
+   "priced_pool": 281
   },
   {
    "pick_no": 236,
@@ -1973,7 +2014,7 @@
    "player": "Calvin Austin",
    "position": "WR",
    "rank": null,
-   "priced_pool": 286
+   "priced_pool": 281
   },
   {
    "pick_no": 239,
@@ -1981,8 +2022,8 @@
    "seat": "CP3015",
    "player": "Isaiah Davis",
    "position": "RB",
-   "rank": 26,
-   "priced_pool": 286
+   "rank": 20,
+   "priced_pool": 281
   },
   {
    "pick_no": 240,
@@ -1990,8 +2031,8 @@
    "seat": "MatttyyIce",
    "player": "Brashard Smith",
    "position": "RB",
-   "rank": 155,
-   "priced_pool": 285
+   "rank": 184,
+   "priced_pool": 280
   },
   {
    "pick_no": 243,
@@ -1999,8 +2040,8 @@
    "seat": "sam51087",
    "player": "Tre Tucker",
    "position": "WR",
-   "rank": 16,
-   "priced_pool": 284
+   "rank": 13,
+   "priced_pool": 279
   },
   {
    "pick_no": 244,
@@ -2008,8 +2049,8 @@
    "seat": "KobeLulu",
    "player": "Tez Johnson",
    "position": "WR",
-   "rank": 89,
-   "priced_pool": 283
+   "rank": 86,
+   "priced_pool": 278
   },
   {
    "pick_no": 245,
@@ -2017,8 +2058,8 @@
    "seat": "sam51087",
    "player": "Ja'Tavion Sanders",
    "position": "TE",
-   "rank": 158,
-   "priced_pool": 282
+   "rank": 157,
+   "priced_pool": 277
   },
   {
    "pick_no": 246,
@@ -2026,8 +2067,8 @@
    "seat": "BIGDADDYTRUMP08",
    "player": "Chig Okonkwo",
    "position": "TE",
-   "rank": 4,
-   "priced_pool": 281
+   "rank": 2,
+   "priced_pool": 276
   },
   {
    "pick_no": 248,
@@ -2035,8 +2076,8 @@
    "seat": "Pepper1991",
    "player": "Kendre Miller",
    "position": "RB",
-   "rank": 136,
-   "priced_pool": 280
+   "rank": 132,
+   "priced_pool": 275
   },
   {
    "pick_no": 249,
@@ -2044,8 +2085,8 @@
    "seat": "LFG1298",
    "player": "Aaron Jones",
    "position": "RB",
-   "rank": 19,
-   "priced_pool": 279
+   "rank": 16,
+   "priced_pool": 274
   },
   {
    "pick_no": 250,
@@ -2054,7 +2095,7 @@
    "player": "Cedric Tillman",
    "position": "WR",
    "rank": null,
-   "priced_pool": 278
+   "priced_pool": 273
   },
   {
    "pick_no": 251,
@@ -2063,7 +2104,7 @@
    "player": "Riley Leonard",
    "position": "QB",
    "rank": null,
-   "priced_pool": 278
+   "priced_pool": 273
   },
   {
    "pick_no": 252,
@@ -2072,7 +2113,7 @@
    "player": "Justin Fields",
    "position": "QB",
    "rank": null,
-   "priced_pool": 278
+   "priced_pool": 273
   },
   {
    "pick_no": 253,
@@ -2080,8 +2121,8 @@
    "seat": "WillyMo11",
    "player": "DeMario Douglas",
    "position": "WR",
-   "rank": 56,
-   "priced_pool": 278
+   "rank": 51,
+   "priced_pool": 273
   },
   {
    "pick_no": 254,
@@ -2089,8 +2130,8 @@
    "seat": "TitleTown4",
    "player": "Rashod Bateman",
    "position": "WR",
-   "rank": 24,
-   "priced_pool": 277
+   "rank": 21,
+   "priced_pool": 272
   },
   {
    "pick_no": 255,
@@ -2098,8 +2139,8 @@
    "seat": "SPChocobo",
    "player": "Isaac Guerendo",
    "position": "RB",
-   "rank": 235,
-   "priced_pool": 276
+   "rank": 230,
+   "priced_pool": 271
   },
   {
    "pick_no": 256,
@@ -2107,8 +2148,8 @@
    "seat": "LFG1298",
    "player": "Pat Freiermuth",
    "position": "TE",
-   "rank": 7,
-   "priced_pool": 275
+   "rank": 4,
+   "priced_pool": 270
   },
   {
    "pick_no": 257,
@@ -2116,8 +2157,8 @@
    "seat": "TAmedic27",
    "player": "Evan Engram",
    "position": "TE",
-   "rank": 46,
-   "priced_pool": 274
+   "rank": 44,
+   "priced_pool": 269
   },
   {
    "pick_no": 259,
@@ -2125,8 +2166,8 @@
    "seat": "BIGDADDYTRUMP08",
    "player": "Darnell Mooney",
    "position": "WR",
-   "rank": 37,
-   "priced_pool": 273
+   "rank": 34,
+   "priced_pool": 268
   },
   {
    "pick_no": 260,
@@ -2134,8 +2175,8 @@
    "seat": "TAmedic27",
    "player": "Chris Rodriguez",
    "position": "RB",
-   "rank": 20,
-   "priced_pool": 272
+   "rank": 17,
+   "priced_pool": 267
   },
   {
    "pick_no": 261,
@@ -2143,8 +2184,8 @@
    "seat": "KobeLulu",
    "player": "Najee Harris",
    "position": "RB",
-   "rank": 122,
-   "priced_pool": 271
+   "rank": 118,
+   "priced_pool": 266
   },
   {
    "pick_no": 262,
@@ -2152,8 +2193,8 @@
    "seat": "sam51087",
    "player": "Cole Kmet",
    "position": "TE",
-   "rank": 34,
-   "priced_pool": 270
+   "rank": 32,
+   "priced_pool": 265
   },
   {
    "pick_no": 263,
@@ -2161,8 +2202,8 @@
    "seat": "CP3015",
    "player": "Kirk Cousins",
    "position": "QB",
-   "rank": 267,
-   "priced_pool": 269
+   "rank": 262,
+   "priced_pool": 264
   },
   {
    "pick_no": 264,
@@ -2170,8 +2211,8 @@
    "seat": "MatttyyIce",
    "player": "Tahj Brooks",
    "position": "RB",
-   "rank": 78,
-   "priced_pool": 268
+   "rank": 92,
+   "priced_pool": 263
   },
   {
    "pick_no": 265,
@@ -2180,7 +2221,7 @@
    "player": "Jarquez Hunter",
    "position": "RB",
    "rank": null,
-   "priced_pool": 267
+   "priced_pool": 262
   },
   {
    "pick_no": 266,
@@ -2188,8 +2229,8 @@
    "seat": "CP3015",
    "player": "Keaton Mitchell",
    "position": "RB",
-   "rank": 13,
-   "priced_pool": 267
+   "rank": 10,
+   "priced_pool": 262
   },
   {
    "pick_no": 267,
@@ -2197,8 +2238,8 @@
    "seat": "sam51087",
    "player": "Colby Parkinson",
    "position": "TE",
-   "rank": 26,
-   "priced_pool": 266
+   "rank": 24,
+   "priced_pool": 261
   },
   {
    "pick_no": 268,
@@ -2206,8 +2247,8 @@
    "seat": "KobeLulu",
    "player": "Darius Cooper",
    "position": "WR",
-   "rank": 176,
-   "priced_pool": 265
+   "rank": 171,
+   "priced_pool": 260
   },
   {
    "pick_no": 269,
@@ -2215,8 +2256,8 @@
    "seat": "TAmedic27",
    "player": "Deshaun Watson",
    "position": "QB",
-   "rank": 19,
-   "priced_pool": 264
+   "rank": 16,
+   "priced_pool": 259
   },
   {
    "pick_no": 270,
@@ -2225,7 +2266,7 @@
    "player": "Austin Ekeler",
    "position": "RB",
    "rank": null,
-   "priced_pool": 263
+   "priced_pool": 258
   },
   {
    "pick_no": 272,
@@ -2233,8 +2274,8 @@
    "seat": "TAmedic27",
    "player": "Luke McCaffrey",
    "position": "WR",
-   "rank": 170,
-   "priced_pool": 263
+   "rank": 166,
+   "priced_pool": 258
   },
   {
    "pick_no": 273,
@@ -2242,8 +2283,8 @@
    "seat": "LFG1298",
    "player": "Jaylen Wright",
    "position": "RB",
-   "rank": 106,
-   "priced_pool": 262
+   "rank": 102,
+   "priced_pool": 257
   },
   {
    "pick_no": 274,
@@ -2252,7 +2293,7 @@
    "player": "Jerome Ford",
    "position": "RB",
    "rank": null,
-   "priced_pool": 261
+   "priced_pool": 256
   },
   {
    "pick_no": 275,
@@ -2260,8 +2301,8 @@
    "seat": "TitleTown4",
    "player": "Will Shipley",
    "position": "RB",
-   "rank": 125,
-   "priced_pool": 261
+   "rank": 120,
+   "priced_pool": 256
   },
   {
    "pick_no": 276,
@@ -2269,8 +2310,8 @@
    "seat": "WillyMo11",
    "player": "Dont'e Thornton",
    "position": "WR",
-   "rank": 251,
-   "priced_pool": 260
+   "rank": 246,
+   "priced_pool": 255
   },
   {
    "pick_no": 277,
@@ -2279,7 +2320,7 @@
    "player": "Jameis Winston",
    "position": "QB",
    "rank": null,
-   "priced_pool": 259
+   "priced_pool": 254
   },
   {
    "pick_no": 278,
@@ -2287,8 +2328,8 @@
    "seat": "TitleTown4",
    "player": "Marquise Brown",
    "position": "WR",
-   "rank": 81,
-   "priced_pool": 259
+   "rank": 78,
+   "priced_pool": 254
   },
   {
    "pick_no": 279,
@@ -2296,8 +2337,8 @@
    "seat": "SPChocobo",
    "player": "Emanuel Wilson",
    "position": "RB",
-   "rank": 98,
-   "priced_pool": 258
+   "rank": 94,
+   "priced_pool": 253
   },
   {
    "pick_no": 280,
@@ -2305,8 +2346,8 @@
    "seat": "LFG1298",
    "player": "Jordan James",
    "position": "RB",
-   "rank": 150,
-   "priced_pool": 257
+   "rank": 144,
+   "priced_pool": 252
   },
   {
    "pick_no": 281,
@@ -2315,7 +2356,7 @@
    "player": "Marcus Mariota",
    "position": "QB",
    "rank": null,
-   "priced_pool": 256
+   "priced_pool": 251
   },
   {
    "pick_no": 283,
@@ -2323,8 +2364,8 @@
    "seat": "BIGDADDYTRUMP08",
    "player": "Audric Estime",
    "position": "RB",
-   "rank": 123,
-   "priced_pool": 256
+   "rank": 118,
+   "priced_pool": 251
   },
   {
    "pick_no": 285,
@@ -2332,8 +2373,8 @@
    "seat": "KobeLulu",
    "player": "Greg Dulcich",
    "position": "TE",
-   "rank": 17,
-   "priced_pool": 255
+   "rank": 14,
+   "priced_pool": 250
   },
   {
    "pick_no": 286,
@@ -2341,8 +2382,8 @@
    "seat": "sam51087",
    "player": "Malik Washington",
    "position": "WR",
-   "rank": 25,
-   "priced_pool": 254
+   "rank": 22,
+   "priced_pool": 249
   },
   {
    "pick_no": 287,
@@ -2350,8 +2391,8 @@
    "seat": "CP3015",
    "player": "Darnell Washington",
    "position": "TE",
-   "rank": 29,
-   "priced_pool": 253
+   "rank": 27,
+   "priced_pool": 248
   },
   {
    "pick_no": 290,
@@ -2360,7 +2401,7 @@
    "player": "Ja'Lynn Polk",
    "position": "WR",
    "rank": null,
-   "priced_pool": 252
+   "priced_pool": 247
   },
   {
    "pick_no": 291,
@@ -2368,8 +2409,8 @@
    "seat": "sam51087",
    "player": "Luke Musgrave",
    "position": "TE",
-   "rank": 75,
-   "priced_pool": 252
+   "rank": 78,
+   "priced_pool": 247
   },
   {
    "pick_no": 292,
@@ -2377,8 +2418,8 @@
    "seat": "KobeLulu",
    "player": "Noah Gray",
    "position": "TE",
-   "rank": 26,
-   "priced_pool": 251
+   "rank": 23,
+   "priced_pool": 246
   },
   {
    "pick_no": 293,
@@ -2386,8 +2427,8 @@
    "seat": "TAmedic27",
    "player": "Dontayvion Wicks",
    "position": "WR",
-   "rank": 26,
-   "priced_pool": 250
+   "rank": 23,
+   "priced_pool": 245
   },
   {
    "pick_no": 294,
@@ -2396,7 +2437,7 @@
    "player": "Jake Bobo",
    "position": "WR",
    "rank": null,
-   "priced_pool": 249
+   "priced_pool": 244
   },
   {
    "pick_no": 295,
@@ -2404,8 +2445,8 @@
    "seat": "SPChocobo",
    "player": "Cooper Kupp",
    "position": "WR",
-   "rank": 13,
-   "priced_pool": 249
+   "rank": 10,
+   "priced_pool": 244
   },
   {
    "pick_no": 296,
@@ -2413,8 +2454,8 @@
    "seat": "Pepper1991",
    "player": "Trevor Etienne",
    "position": "RB",
-   "rank": 132,
-   "priced_pool": 248
+   "rank": 127,
+   "priced_pool": 243
   },
   {
    "pick_no": 297,
@@ -2422,8 +2463,8 @@
    "seat": "LFG1298",
    "player": "Mike Gesicki",
    "position": "TE",
-   "rank": 12,
-   "priced_pool": 247
+   "rank": 9,
+   "priced_pool": 242
   },
   {
    "pick_no": 298,
@@ -2431,8 +2472,8 @@
    "seat": "SPChocobo",
    "player": "Jonnu Smith",
    "position": "TE",
-   "rank": 76,
-   "priced_pool": 246
+   "rank": 72,
+   "priced_pool": 241
   },
   {
    "pick_no": 299,
@@ -2441,7 +2482,7 @@
    "player": "Tyson Bagent",
    "position": "QB",
    "rank": null,
-   "priced_pool": 245
+   "priced_pool": 240
   },
   {
    "pick_no": 300,
@@ -2449,8 +2490,8 @@
    "seat": "WillyMo11",
    "player": "Cade Stover",
    "position": "TE",
-   "rank": 119,
-   "priced_pool": 245
+   "rank": 114,
+   "priced_pool": 240
   },
   {
    "pick_no": 301,
@@ -2458,8 +2499,8 @@
    "seat": "WillyMo11",
    "player": "KeAndre Lambert-Smith",
    "position": "WR",
-   "rank": 170,
-   "priced_pool": 244
+   "rank": 165,
+   "priced_pool": 239
   },
   {
    "pick_no": 302,
@@ -2467,8 +2508,8 @@
    "seat": "TitleTown4",
    "player": "KaVontae Turpin",
    "position": "WR",
-   "rank": 47,
-   "priced_pool": 243
+   "rank": 44,
+   "priced_pool": 238
   },
   {
    "pick_no": 303,
@@ -2476,8 +2517,8 @@
    "seat": "TAmedic27",
    "player": "Geno Smith",
    "position": "QB",
-   "rank": 8,
-   "priced_pool": 242
+   "rank": 5,
+   "priced_pool": 237
   },
   {
    "pick_no": 304,
@@ -2485,8 +2526,8 @@
    "seat": "LFG1298",
    "player": "MarShawn Lloyd",
    "position": "RB",
-   "rank": 45,
-   "priced_pool": 241
+   "rank": 42,
+   "priced_pool": 236
   },
   {
    "pick_no": 305,
@@ -2494,8 +2535,8 @@
    "seat": "SPChocobo",
    "player": "Dawson Knox",
    "position": "TE",
-   "rank": 21,
-   "priced_pool": 240
+   "rank": 18,
+   "priced_pool": 235
   },
   {
    "pick_no": 307,
@@ -2503,8 +2544,8 @@
    "seat": "BIGDADDYTRUMP08",
    "player": "Keenan Allen",
    "position": "WR",
-   "rank": 9,
-   "priced_pool": 239
+   "rank": 6,
+   "priced_pool": 234
   },
   {
    "pick_no": 308,
@@ -2512,8 +2553,8 @@
    "seat": "TAmedic27",
    "player": "Phil Mafah",
    "position": "RB",
-   "rank": 121,
-   "priced_pool": 238
+   "rank": 116,
+   "priced_pool": 233
   },
   {
    "pick_no": 311,
@@ -2521,8 +2562,8 @@
    "seat": "CP3015",
    "player": "Raheim Sanders",
    "position": "RB",
-   "rank": 113,
-   "priced_pool": 237
+   "rank": 94,
+   "priced_pool": 232
   },
   {
    "pick_no": 315,
@@ -2530,8 +2571,8 @@
    "seat": "sam51087",
    "player": "Jaylin Lane",
    "position": "WR",
-   "rank": 135,
-   "priced_pool": 236
+   "rank": 130,
+   "priced_pool": 231
   },
   {
    "pick_no": 316,
@@ -2540,7 +2581,7 @@
    "player": "Tanner McKee",
    "position": "QB",
    "rank": null,
-   "priced_pool": 235
+   "priced_pool": 230
   },
   {
    "pick_no": 318,
@@ -2548,8 +2589,8 @@
    "seat": "BIGDADDYTRUMP08",
    "player": "Dameon Pierce",
    "position": "RB",
-   "rank": 155,
-   "priced_pool": 235
+   "rank": 150,
+   "priced_pool": 230
   },
   {
    "pick_no": 321,
@@ -2558,7 +2599,7 @@
    "player": "Spencer Rattler",
    "position": "QB",
    "rank": null,
-   "priced_pool": 234
+   "priced_pool": 229
   },
   {
    "pick_no": 323,
@@ -2567,7 +2608,7 @@
    "player": "Sam Howell",
    "position": "QB",
    "rank": null,
-   "priced_pool": 234
+   "priced_pool": 229
   },
   {
    "pick_no": 324,
@@ -2575,8 +2616,8 @@
    "seat": "WillyMo11",
    "player": "Mitchell Evans",
    "position": "TE",
-   "rank": 139,
-   "priced_pool": 234
+   "rank": 134,
+   "priced_pool": 229
   },
   {
    "pick_no": 325,
@@ -2584,8 +2625,8 @@
    "seat": "WillyMo11",
    "player": "Jordan Whittington",
    "position": "WR",
-   "rank": 169,
-   "priced_pool": 233
+   "rank": 164,
+   "priced_pool": 228
   },
   {
    "pick_no": 326,
@@ -2593,8 +2634,8 @@
    "seat": "TitleTown4",
    "player": "Luke Schoonmaker",
    "position": "TE",
-   "rank": 79,
-   "priced_pool": 232
+   "rank": 75,
+   "priced_pool": 227
   },
   {
    "pick_no": 331,
@@ -2603,7 +2644,7 @@
    "player": "Zach Ertz",
    "position": "TE",
    "rank": null,
-   "priced_pool": 231
+   "priced_pool": 226
   },
   {
    "pick_no": 332,
@@ -2611,8 +2652,8 @@
    "seat": "Pepper1991",
    "player": "Erick All",
    "position": "TE",
-   "rank": 37,
-   "priced_pool": 231
+   "rank": 34,
+   "priced_pool": 226
   },
   {
    "pick_no": 334,
@@ -2620,8 +2661,8 @@
    "seat": "sam51087",
    "player": "Xavier Hutchinson",
    "position": "WR",
-   "rank": 44,
-   "priced_pool": 230
+   "rank": 47,
+   "priced_pool": 225
   },
   {
    "pick_no": 335,
@@ -2629,8 +2670,8 @@
    "seat": "CP3015",
    "player": "Devaughn Vele",
    "position": "WR",
-   "rank": 11,
-   "priced_pool": 229
+   "rank": 7,
+   "priced_pool": 224
   },
   {
    "pick_no": 336,
@@ -2638,8 +2679,8 @@
    "seat": "MatttyyIce",
    "player": "Jalen Royals",
    "position": "WR",
-   "rank": 116,
-   "priced_pool": 228
+   "rank": 109,
+   "priced_pool": 223
   },
   {
    "pick_no": 337,
@@ -2648,7 +2689,7 @@
    "player": "Russell Wilson",
    "position": "QB",
    "rank": null,
-   "priced_pool": 227
+   "priced_pool": 222
   },
   {
    "pick_no": 339,
@@ -2656,8 +2697,8 @@
    "seat": "sam51087",
    "player": "Ryan Flournoy",
    "position": "WR",
-   "rank": 14,
-   "priced_pool": 227
+   "rank": 12,
+   "priced_pool": 222
   },
   {
    "pick_no": 340,
@@ -2666,7 +2707,7 @@
    "player": "Will Levis",
    "position": "QB",
    "rank": null,
-   "priced_pool": 226
+   "priced_pool": 221
   },
   {
    "pick_no": 341,
@@ -2674,8 +2715,8 @@
    "seat": "Pepper1991",
    "player": "Justice Hill",
    "position": "RB",
-   "rank": 35,
-   "priced_pool": 226
+   "rank": 24,
+   "priced_pool": 221
   },
   {
    "pick_no": 342,
@@ -2683,8 +2724,8 @@
    "seat": "BIGDADDYTRUMP08",
    "player": "Jalen Nailor",
    "position": "WR",
-   "rank": 11,
-   "priced_pool": 225
+   "rank": 8,
+   "priced_pool": 220
   },
   {
    "pick_no": 343,
@@ -2692,8 +2733,8 @@
    "seat": "Snoopking51",
    "player": "Devin Singletary",
    "position": "RB",
-   "rank": 123,
-   "priced_pool": 224
+   "rank": 117,
+   "priced_pool": 219
   },
   {
    "pick_no": 344,
@@ -2701,8 +2742,8 @@
    "seat": "Pepper1991",
    "player": "Xavier Restrepo",
    "position": "WR",
-   "rank": 112,
-   "priced_pool": 223
+   "rank": 155,
+   "priced_pool": 218
   },
   {
    "pick_no": 345,
@@ -2710,8 +2751,8 @@
    "seat": "LFG1298",
    "player": "Efton Chism",
    "position": "WR",
-   "rank": 176,
-   "priced_pool": 222
+   "rank": 186,
+   "priced_pool": 217
   },
   {
    "pick_no": 346,
@@ -2720,7 +2761,7 @@
    "player": "Dillon Gabriel",
    "position": "QB",
    "rank": null,
-   "priced_pool": 221
+   "priced_pool": 216
   },
   {
    "pick_no": 347,
@@ -2728,8 +2769,8 @@
    "seat": "TitleTown4",
    "player": "Malachi Corley",
    "position": "WR",
-   "rank": 88,
-   "priced_pool": 221
+   "rank": 122,
+   "priced_pool": 216
   },
   {
    "pick_no": 348,
@@ -2737,8 +2778,8 @@
    "seat": "WillyMo11",
    "player": "Roman Wilson",
    "position": "WR",
-   "rank": 116,
-   "priced_pool": 220
+   "rank": 111,
+   "priced_pool": 215
   },
   {
    "pick_no": 349,
@@ -2746,8 +2787,8 @@
    "seat": "WillyMo11",
    "player": "Jimmy Horn",
    "position": "WR",
-   "rank": 120,
-   "priced_pool": 219
+   "rank": 115,
+   "priced_pool": 214
   },
   {
    "pick_no": 350,
@@ -2756,7 +2797,7 @@
    "player": "Trey Lance",
    "position": "QB",
    "rank": null,
-   "priced_pool": 218
+   "priced_pool": 213
   },
   {
    "pick_no": 351,
@@ -2764,8 +2805,8 @@
    "seat": "SPChocobo",
    "player": "Emari Demercado",
    "position": "RB",
-   "rank": 38,
-   "priced_pool": 218
+   "rank": 58,
+   "priced_pool": 213
   },
   {
    "pick_no": 352,
@@ -2774,7 +2815,7 @@
    "player": "Jake Browning",
    "position": "QB",
    "rank": null,
-   "priced_pool": 217
+   "priced_pool": 212
   },
   {
    "pick_no": 353,
@@ -2782,8 +2823,8 @@
    "seat": "Pepper1991",
    "player": "Tai Felton",
    "position": "WR",
-   "rank": 61,
-   "priced_pool": 217
+   "rank": 80,
+   "priced_pool": 212
   },
   {
    "pick_no": 354,
@@ -2791,8 +2832,8 @@
    "seat": "Snoopking51",
    "player": "Tommy Tremble",
    "position": "TE",
-   "rank": 56,
-   "priced_pool": 216
+   "rank": 53,
+   "priced_pool": 211
   },
   {
    "pick_no": 355,
@@ -2800,8 +2841,8 @@
    "seat": "BIGDADDYTRUMP08",
    "player": "Joshua Palmer",
    "position": "WR",
-   "rank": 80,
-   "priced_pool": 215
+   "rank": 76,
+   "priced_pool": 210
   },
   {
    "pick_no": 356,
@@ -2809,8 +2850,8 @@
    "seat": "Pepper1991",
    "player": "Kalel Mullings",
    "position": "RB",
-   "rank": 192,
-   "priced_pool": 214
+   "rank": 167,
+   "priced_pool": 209
   },
   {
    "pick_no": 357,
@@ -2818,8 +2859,8 @@
    "seat": "KobeLulu",
    "player": "Treylon Burks",
    "position": "WR",
-   "rank": 71,
-   "priced_pool": 213
+   "rank": 72,
+   "priced_pool": 208
   },
   {
    "pick_no": 358,
@@ -2828,7 +2869,7 @@
    "player": "Zonovan Knight",
    "position": "RB",
    "rank": null,
-   "priced_pool": 212
+   "priced_pool": 207
   },
   {
    "pick_no": 359,
@@ -2836,8 +2877,17 @@
    "seat": "CP3015",
    "player": "Jahan Dotson",
    "position": "WR",
-   "rank": 34,
-   "priced_pool": 212
+   "rank": 19,
+   "priced_pool": 207
+  },
+  {
+   "pick_no": 360,
+   "round": 30,
+   "seat": "MatttyyIce",
+   "player": "Darren Waller",
+   "position": "TE",
+   "rank": 3,
+   "priced_pool": 206
   }
  ]
 }

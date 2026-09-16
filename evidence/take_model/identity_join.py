@@ -39,10 +39,15 @@ def main() -> int:
     print(f"board: {prov['league']}   picks {len(picks)}   counts {prov['counts']}", flush=True)
 
     # The population under test is REAL PLAYER picks: kicker placeholders stand for rookie picks
-    # and are not players, and illegible cells carry no name to resolve.
+    # and are not players.
+    #
+    # CORRECTED (#274). This used to also exclude `illegible` cells, on the stated reasoning that
+    # they "carry no name to resolve". The board's provenance says otherwise: "Names are legible
+    # in all but one (10.12, UI-truncated 'Jacory Croskey-M...'); what is missing is nfl_team/bye."
+    # The comment asserted something about the data that the data denies, and the filter acted on
+    # it -- dropping six resolvable picks from the population this file reports coverage over.
     real = [p for p in picks
-            if not p.get("is_rookie_pick_placeholder") and not p.get("illegible")
-            and p.get("raw_player")]
+            if not p.get("is_rookie_pick_placeholder") and p.get("raw_player")]
     print(f"real player picks with a legible name: {len(real)}", flush=True)
 
     merger = dm.DataMerger()
