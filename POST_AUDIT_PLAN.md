@@ -11672,3 +11672,97 @@ carries no depth_arm key yet."* **That is false about its own content.** The dep
 moments before staging, so the committed JSON does carry `depth_arm` with all four rows. The
 evidence is correct; the sentence describing it is not. Recorded here rather than by rewriting a
 pushed commit.
+
+## #206 CALIBRATION: `survival_probability` fails the owner's contract, measured
+
+The owner stated the contract on 2026-09-16: *"survival percentage needs to be a mathematical
+representation of what are the chances this player makes it back to my next selection."* That
+makes the quantity falsifiable, and `evidence/survival_calibration/calibrate.py` falsifies it.
+
+SMOKE arm, Fourth and Forever rulebook, 12 seats, 10 rounds, 120 picks, **4,503 scored pairs**,
+**0 excluded as unmeasured**. Twelve seats drafting under five different but sane policies
+(`cdme`, `bpa`, `need_first`, `run_follower`, `mild_reach`), all reading the engine's own
+valuations and differing only in the CHOICE rule — the owner's request for variety in selection
+that is still good draft behaviour.
+
+```
+base rate (actually survived) : 0.7377
+engine Brier                  : 0.22480
+constant-predictor Brier      : 0.19348   <- the score to beat
+oracle Brier                  : 0.00000   <- scorer proven sound
+BEATS CONSTANT                : NO
+```
+
+**The engine carries less information than predicting the base rate for every player.** This is
+not "miscalibrated but directionally useful". It loses to a constant.
+
+### The failure is FLATNESS, on both axes — not the inversion first reported
+
+| gap | predicted | observed | | board rank | n | predicted | observed |
+|---|---|---|---|---|---|---|---|
+| 0 | 1.000 | 1.000 | | 0 | 55 | 0.842 | **0.091** |
+| 4 | 0.977 | 0.903 | | 1-2 | 193 | 0.877 | 0.202 |
+| 8 | 0.951 | 0.808 | | 3-4 | 215 | 0.888 | 0.279 |
+| 12 | 0.922 | 0.714 | | 5-9 | 532 | 0.919 | 0.457 |
+| 16 | 0.908 | 0.618 | | 10-19 | 1070 | 0.912 | 0.706 |
+| 22 | 0.885 | **0.491** | | 20+ | 2438 | 0.961 | 0.911 |
+
+Across the full gap range the model moves 1.00 -> 0.89 while reality moves 1.00 -> 0.49. Across
+the full rank range it moves 0.84 -> 0.96 while reality moves 0.09 -> 0.91. **Sign right
+everywhere, magnitude wrong everywhere.** That is the signature of normalising by a board mass
+that is 94.8% unpriced floor: it crushes rank-1's per-opponent take probability to 0.064, and
+0.936^22 = 0.23 where the answer needs to be near zero.
+
+The pooled reliability curve first reported a mid-range INVERSION (0.8-0.9 predicting 0.855 and
+observing 0.143). Decomposing by gap shows every bucket is monotone, so that inversion was
+largely a mixture of short-gap and long-gap turns — a Simpson's-paradox artifact of pooling two
+different questions. The claim was held back pending that split, and the split retired it.
+
+### Two controls, one of which caught a real defect in the instrument
+
+**ARITHMETIC CEILING.** At most `gap` of a turn's scored candidates can be taken, because
+exactly `gap` picks intervene. On its first run it failed **102 of 108 turns, every one by
+exactly +1** — the drafter's own pick. The collector snapshotted seat S's candidates, S took one
+of them, and S's own player was then scored as having failed to survive. He never had to survive;
+he is S's. The confound landed almost entirely on `board[0]`, which `cdme`, `run_follower` and a
+third of `mild_reach` all take, and so on the top rank band the whole result turns on. Excluding
+the drafter's own pick moved `rank 0-0` from 0.046 to 0.091 over n=55 rather than n=108, and the
+ceiling now holds 108/108. **The pooled curve gave no hint of this.** Write the
+impossible-by-arithmetic check before trusting a plausible number.
+
+**gap=0 arrives free and exact.** A turn with no intervening picks must have every candidate
+survive. It reports predicted 1.000, observed 1.000, Brier 0.000 — a degenerate case the
+instrument now gets exactly right, which it did not before the own-pick fix.
+
+### The LIMITS hold (#56, and the capture's own caveat)
+
+Every number here is a DIAGNOSTIC. None may be written back into the engine as a constant. The
+prohibition is not softened by the error being measured rather than guessed: deriving a mechanism
+from constraints and reporting how far it lands from reality is validation; picking whichever
+mechanism fits one league best is what the LIMITS forbid.
+
+### Consequences
+
+1. **`DECISIVE_SURVIVAL_THRESHOLD` must not be set now**, at 0.5 or any value. A threshold on a
+   quantity that loses to a constant is a threshold on noise. The 0.5 recommendation stays
+   WITHDRAWN (31st).
+2. **The cluster-consumption redesign is strengthened.** The current model asks "what is the
+   chance each individual rival takes this specific player" and demonstrably cannot tell. The
+   owner's framing — three equally-valued players into a curve, seat 11, at worst 1/3 each — is a
+   CLUSTER question, and this is what a model that never asks it looks like.
+3. **Freeze scope is now a real decision**, not a formality: v1 either freezes with survival
+   mass-correct and shape-wrong and says so in the freeze record, or the redesign lands first.
+
+### Draft Sharks' next-pick odds: verified absent from every input we hold
+
+The owner noted that Draft Sharks models next-pick odds. Checked against every CSV header under
+`data/baseline`: **no ingested export carries availability odds, and none carries ADP.** The
+columns we hold are rank / projection / proj_3yr / trade_value / ecr / value / tier / std_dev.
+Their odds live in the live draft war room, not the ranking exports taken here, so the number
+cannot enter the harness as a third scored comparator arm. Supply gap, #49/#88/#143 family.
+
+The structural point survives the absence, and it is the same one the cluster argument makes: an
+odds model of that kind rests on a PER-PLAYER empirical distribution of when that player actually
+goes. Ours is a RANK CURVE — identical for every player who lands at that rank. FantasyPros'
+`best` / `worst` / `std_dev` columns are the shape of the missing input; they are ingested and
+read by nothing. Recorded as a candidate input for the redesign, NOT wired.
