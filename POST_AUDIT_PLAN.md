@@ -11822,3 +11822,84 @@ BUILT AND UNWIRED. It fixes the cluster shape the owner specified and does not f
 magnitude, both measured. Wiring it is a Phase 3 decision that needs a rerun of both arms
 against the post-wiring engine — the current evidence records the pre-repair file hashes
 precisely so the two cannot be confused.
+
+---
+
+## #206 / #168 — THE UNPRICED BLOCK IS 82% VENDOR COVERAGE, AND THE ENGINE PRICES NO QB AFTER ROUND 12 OF 30
+
+Two findings from one measurement, plus a correction to a claim published earlier the same day.
+
+### The value-share model was measured, and is NOT wired
+
+Three arms on the real Greatest Show on Paper 2 board, **6,277 pairs, identical population**,
+only the take model differing (`evidence/survival_calibration/value_model_arm.py`):
+
+| arm | engine Brier | constant | beats constant |
+|---|---|---|---|
+| `rank` (production) | 0.16127 | 0.14224 | no (−13.4%) |
+| `value_floor` | 0.15050 | 0.14224 | no (−5.8%) |
+| `value_zero` *(bound, not a candidate)* | 0.13755 | 0.14224 | yes (+3.3%) |
+
+The `rank` arm reproduces the published 0.16127 **digit for digit**, which is what licenses the
+other two — the `_board_take_probability` seam is inert when not substituted. n-weighted mean
+reliability error across board-rank bands: 0.1162 → 0.0954 → 0.0448. Production's worst band is
+its own top candidate: 0.809 predicted against 0.451 observed.
+
+`value_floor` is the honest straight wiring and still loses, so **nothing was wired**.
+
+### RULED OUT: the unpriced share cannot be derived from roster state (27th withdrawal)
+
+The recommendation — unpriced rows sit at positions whose starter demand is met, so a rival
+takes one when drafting depth — was tested before being built and is **withdrawn**
+(`evidence/take_model/unpriced_pick_drivers.py`, 301 resolved picks):
+
+| stratum (rounds 14–30) | n | unpriced | mean demand diff | permutation p |
+|---|---|---|---|---|
+| all positions | 166 | 31 | −0.474 | **0.0158** |
+| QB only | 24 | 17 | −0.207 | 0.1310 |
+| non-QB only | 142 | 14 | −0.349 | 0.1759 |
+
+Simpson's paradox: the pooled effect is the position mix. Building on it would have put a
+derived-*looking* constant into the engine on an artifact. **Nobody needs to re-run this.**
+
+### CORRECTION IN FULL: "the block is the shadow of a pricing gap" was too strong
+
+`VALUE_MODEL_RESULT.md` concluded that from the 31 picks — evidence about which unpriced players
+are TAKEN, used to characterise what the block IS. Measured directly
+(`evidence/take_model/unpriced_block_composition.py`), the block is **two** populations:
+
+| depth | priced | unpriced | WR | TE | RB | QB |
+|---|---|---|---|---|---|---|
+| round 0 | 481 | 638 | 254 | 141 | 130 | 113 |
+| round 14 | 303 | 648 | 254 | 141 | 130 | 123 |
+| round 26 | 161 | 646 | 254 | 141 | 130 | 121 |
+
+The non-QB core (525 rows) is **constant at every depth** — never-priced, a vendor COVERAGE gap
+the startable floor never touches, and **82% of the block**. The block's SIZE is coverage; its
+TAKE RATE is QB (~5× per row). Both true, different facts, and the original sentence merged them.
+The take-model conclusion is unaffected; the attribution was wrong.
+
+### #168 SHARPENED: "bounded to superflex QB tails" understates it
+
+| round | picks | QB priced | QB unpriced | QB drafted |
+|---|---|---|---|---|
+| 0 | 0 | 42 | 113 | 0 |
+| 10 | 120 | 12 | 113 | 30 |
+| **12** | 144 | **0** | 123 | 32 |
+| 26 | 312 | 0 | 121 | 34 |
+
+**From round 12 of 30, the engine can price ZERO quarterbacks** — 60% of a superflex draft, at
+the position the format makes most valuable, and it never recovers. The mechanism is exact: 39
+projected QBs, 28 clear the floor (0.5 × QB12 = 162.00), 32 drafted by round 12. Every priced QB
+carries `startable_floor` as its basis throughout; **no row is mislabelled** and #185 holds.
+
+### NOT FIXED, and why
+
+The floor's constant is **not** under suspicion — `QB_STARTABLE_FLOOR_FRACTION` has a documented
+stability-basin derivation and #56 is not engaged. The open question is a DESIGN one: the floor
+asks *"is this QB startable AS A QB"*, while the slot that makes a superflex QB draftable is
+SUPER_FLEX, whose occupant competes against flex-eligible non-QBs. That is the cross-position
+comparison #229 authorises in principle and #50 owns. **Owner's call, Phase 3.** Sizing a repair
+here without that decision would mean inventing a magnitude nobody has argued for (#56).
+
+Production unchanged throughout. `SURVIVAL_IS_CALIBRATED` stays False.

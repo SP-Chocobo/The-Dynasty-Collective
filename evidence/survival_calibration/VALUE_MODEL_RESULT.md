@@ -104,10 +104,22 @@ times as often as a late non-QB pick. That is exactly the population `#168` and 
 QBs past the startable floor, which the engine deliberately declines to price because none clears
 the threshold — while the SUPER_FLEX slot means a rival can still start one.
 
-**So the unpriced block's take share is not a take-model parameter awaiting a derivation. It is
-the shadow of a pricing gap.** Putting a number on it would price the consequence and leave the
-cause in place, and on this evidence any such number could only come from this one capture, which
-the LIMITS forbid. The repair belongs upstream, in the startable-floor question, not here.
+**So the unpriced block's take share is not a take-model parameter awaiting a derivation.**
+Putting a number on it would price a consequence and leave the cause in place, and on this
+evidence any such number could only come from this one capture, which the LIMITS forbid.
+
+> **CORRECTION (measured after this section was first written).** The sentence that stood here
+> said the block "is the shadow of a pricing gap". **That was too strong, and it rested on the
+> wrong population** — the 31 picks say which unpriced players get TAKEN, not what the block is
+> made of. Measured directly (`evidence/take_model/unpriced_block_composition.py`), the block is
+> **two** populations: a never-priced non-QB core of 525 rows — 254 WR, 141 TE, 130 RB, constant
+> at every draft depth, a vendor COVERAGE gap that the startable floor never touches — and a QB
+> population that collapses from 42 priced to 0. The core is **82% of the block**. So: the
+> block's SIZE is mostly vendor coverage; its TAKE RATE is mostly QB (a QB row was taken about
+> five times as often as a non-QB row). Both are true, they are different facts, and the original
+> sentence merged them. The take-model conclusion above is unaffected — it never depended on
+> which gap the block came from — but the attribution was wrong and is corrected here rather
+> than edited away.
 
 Until that moves, production is unchanged, `SURVIVAL_IS_CALIBRATED` stays False, and
 `value_floor` / `value_zero` stand as the honest bracket around the truth: the block's real share

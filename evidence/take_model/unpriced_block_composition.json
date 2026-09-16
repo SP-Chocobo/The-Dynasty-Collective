@@ -1,0 +1,147 @@
+{
+ "league": "Greatest Show on Paper 2",
+ "LIMITS": "ONE league's capture. Composition and the cliff round are properties of this board and baseline. Sets nothing.",
+ "qb_startable_floor": 162.0,
+ "qb_anchor_rank": 12,
+ "qb_floor_fraction": 0.5,
+ "qbs_with_a_projection": 39,
+ "qbs_clearing_the_floor": 28,
+ "composition": {
+  "0": {
+   "priced": 481,
+   "unpriced": 638,
+   "unpriced_by_position": {
+    "QB": 113,
+    "RB": 130,
+    "TE": 141,
+    "WR": 254
+   },
+   "non_qb_unpriced": 525
+  },
+  "14": {
+   "priced": 303,
+   "unpriced": 648,
+   "unpriced_by_position": {
+    "QB": 123,
+    "RB": 130,
+    "TE": 141,
+    "WR": 254
+   },
+   "non_qb_unpriced": 525
+  },
+  "26": {
+   "priced": 161,
+   "unpriced": 646,
+   "unpriced_by_position": {
+    "QB": 121,
+    "RB": 130,
+    "TE": 141,
+    "WR": 254
+   },
+   "non_qb_unpriced": 525
+  }
+ },
+ "qb_cliff": [
+  {
+   "round": 0,
+   "picks": 0,
+   "qb_priced": 42,
+   "qb_unpriced": 113,
+   "qb_drafted": 0
+  },
+  {
+   "round": 2,
+   "picks": 24,
+   "qb_priced": 32,
+   "qb_unpriced": 113,
+   "qb_drafted": 10
+  },
+  {
+   "round": 4,
+   "picks": 48,
+   "qb_priced": 24,
+   "qb_unpriced": 113,
+   "qb_drafted": 18
+  },
+  {
+   "round": 6,
+   "picks": 72,
+   "qb_priced": 17,
+   "qb_unpriced": 113,
+   "qb_drafted": 25
+  },
+  {
+   "round": 8,
+   "picks": 96,
+   "qb_priced": 13,
+   "qb_unpriced": 113,
+   "qb_drafted": 29
+  },
+  {
+   "round": 10,
+   "picks": 120,
+   "qb_priced": 12,
+   "qb_unpriced": 113,
+   "qb_drafted": 30
+  },
+  {
+   "round": 12,
+   "picks": 144,
+   "qb_priced": 0,
+   "qb_unpriced": 123,
+   "qb_drafted": 32
+  },
+  {
+   "round": 14,
+   "picks": 168,
+   "qb_priced": 0,
+   "qb_unpriced": 123,
+   "qb_drafted": 32
+  },
+  {
+   "round": 16,
+   "picks": 192,
+   "qb_priced": 0,
+   "qb_unpriced": 123,
+   "qb_drafted": 32
+  },
+  {
+   "round": 18,
+   "picks": 216,
+   "qb_priced": 0,
+   "qb_unpriced": 123,
+   "qb_drafted": 32
+  },
+  {
+   "round": 20,
+   "picks": 240,
+   "qb_priced": 0,
+   "qb_unpriced": 122,
+   "qb_drafted": 33
+  },
+  {
+   "round": 22,
+   "picks": 264,
+   "qb_priced": 0,
+   "qb_unpriced": 121,
+   "qb_drafted": 34
+  },
+  {
+   "round": 24,
+   "picks": 288,
+   "qb_priced": 0,
+   "qb_unpriced": 121,
+   "qb_drafted": 34
+  },
+  {
+   "round": 26,
+   "picks": 312,
+   "qb_priced": 0,
+   "qb_unpriced": 121,
+   "qb_drafted": 34
+  }
+ ],
+ "first_round_with_no_priceable_qb": 12,
+ "draft_rounds": 30,
+ "VERDICT": "Zero QBs are priceable from round 12 of 30. '#168: bounded to superflex QB tails' understates it -- the engine is blind to QB for the majority of a superflex draft. Separately, 82% of the unpriced block is a never-priced non-QB core (vendor coverage), NOT the startable floor."
+}

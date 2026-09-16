@@ -1342,6 +1342,17 @@
         "assertTrue": 4
       }
     },
+    "test_qb_pricing_cliff.py": {
+      "test_methods": 9,
+      "asserts": {
+        "assertAlmostEqual": 1,
+        "assertEqual": 4,
+        "assertGreater": 3,
+        "assertIsNotNone": 2,
+        "assertLess": 2,
+        "assertTrue": 1
+      }
+    },
     "test_quantity_readers.py": {
       "test_methods": 11,
       "asserts": {
@@ -1812,6 +1823,19 @@
         "assertLess": 1,
         "assertNotIn": 5,
         "assertRaises": 3
+      }
+    },
+    "test_unpriced_driver_instrument.py": {
+      "test_methods": 6,
+      "asserts": {
+        "assertEqual": 1,
+        "assertGreater": 4,
+        "assertGreaterEqual": 3,
+        "assertIn": 1,
+        "assertIsInstance": 1,
+        "assertIsNone": 2,
+        "assertLess": 3,
+        "assertTrue": 1
       }
     },
     "test_untrusted_fence.py": {
