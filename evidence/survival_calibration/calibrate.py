@@ -138,10 +138,12 @@ def bucket_of(p):
 
 
 def calibration(pairs):
-    """Reliability curve plus Brier. `pairs` is [(predicted, observed_bool), ...]."""
+    """Reliability curve plus Brier. `pairs` is [(predicted, observed_bool, ...), ...] -- extra
+    trailing fields (gap, rank) are carried along by the collector and ignored here, so the
+    scorer stays one function no matter how the decomposition grows."""
     rows = []
     for lo, hi in BUCKETS:
-        members = [(p, o) for p, o in pairs if lo <= p < hi]
+        members = [(r[0], r[1]) for r in pairs if lo <= r[0] < hi]
         if not members:
             rows.append({"bucket": f"{lo:.1f}-{hi:.1f}", "n": 0,
                          "predicted_mean": None, "observed_rate": None})
@@ -152,9 +154,43 @@ def calibration(pairs):
             "predicted_mean": round(sum(p for p, _ in members) / len(members), 4),
             "observed_rate": round(sum(1 for _, o in members if o) / len(members), 4),
         })
-    brier = round(sum((p - (1.0 if o else 0.0)) ** 2 for p, o in pairs) / len(pairs), 5) if pairs else None
-    base = round(sum(1 for _, o in pairs if o) / len(pairs), 4) if pairs else None
+    brier = round(sum((r[0] - (1.0 if r[1] else 0.0)) ** 2 for r in pairs) / len(pairs), 5) if pairs else None
+    base = round(sum(1 for r in pairs if r[1]) / len(pairs), 4) if pairs else None
     return {"n": len(pairs), "base_rate": base, "brier": brier, "curve": rows}
+
+
+RANK_BANDS = [(0, 1), (1, 3), (3, 5), (5, 10), (10, 20), (20, 10 ** 6)]
+
+
+def _group(pairs, key, label, order=None):
+    """Aggregate predicted-vs-observed over any grouping of the pairs.
+
+    A single reliability curve pools every turn together, and that pooling can INVERT the
+    relationship it is meant to display: survival depends on how many picks intervene, so a
+    bucket of predictions drawn from short-gap and long-gap turns at once is a mixture of two
+    different questions. Decomposing by gap, and by board rank, is what separates "the model is
+    miscalibrated" from "the curve is a Simpson's-paradox artifact of pooling"."""
+    groups = {}
+    for r in pairs:
+        groups.setdefault(key(r), []).append(r)
+    out = []
+    for k in (sorted(groups, key=order) if order else sorted(groups)):
+        members = groups[k]
+        out.append({
+            label: k,
+            "n": len(members),
+            "predicted_mean": round(sum(r[0] for r in members) / len(members), 4),
+            "observed_rate": round(sum(1 for r in members if r[1]) / len(members), 4),
+            "brier": round(sum((r[0] - (1.0 if r[1] else 0.0)) ** 2 for r in members) / len(members), 5),
+        })
+    return out
+
+
+def _rank_band(rank):
+    for lo, hi in RANK_BANDS:
+        if lo <= rank < hi:
+            return f"{lo}-{hi - 1}" if hi < 10 ** 6 else f"{lo}+"
+    return "?"
 
 
 def simulate_and_collect(merger, players_db, league, pick_order, policy_by_seat,
@@ -177,8 +213,9 @@ def simulate_and_collect(merger, players_db, league, pick_order, policy_by_seat,
     is EXCLUDED from the pairs, counted separately. Scoring None as 0.0 would manufacture a
     confident prediction the engine never made (#187)."""
     picks = []
-    pending = {}          # seat -> [(player_id, predicted)]
+    pending = {}          # seat -> (gap, [(player_id, predicted, rank), ...])
     pairs = []
+    turns = []            # one row per resolved turn, for the arithmetic ceiling below
     unmeasured = 0
     last_position = None
     reach_counter = {}
@@ -196,20 +233,28 @@ def simulate_and_collect(merger, players_db, league, pick_order, policy_by_seat,
 
         # Resolve anything this seat was promised last time round.
         taken = {str(p["player_id"]) for p in picks}
-        for player_id, predicted in pending.pop(seat, []):
-            pairs.append((predicted, player_id not in taken))
+        promised = pending.pop(seat, None)
+        if promised is not None:
+            gap, rows_ = promised
+            survived = 0
+            for player_id, predicted, rank in rows_:
+                alive = player_id not in taken
+                survived += 1 if alive else 0
+                pairs.append((predicted, alive, gap, rank))
+            turns.append({"gap": gap, "candidates": len(rows_),
+                          "taken": len(rows_) - survived})
 
         # Record this turn's predictions, if this seat gets another turn.
         nxt = ds.find_next_pick_index(pick_order, seat, i)
         if nxt is not None and nxt < limit:
             fresh = []
-            for c in cands:
+            for rank, c in enumerate(cands):
                 p = c.survival_probability
                 if p is None:
                     unmeasured += 1
                     continue
-                fresh.append((str(c.player_id), p))
-            pending[seat] = fresh
+                fresh.append((str(c.player_id), p, rank))
+            pending[seat] = (nxt - i - 1, fresh)
 
         # Choose, by this seat's own policy.
         policy = policy_by_seat[seat]
@@ -228,7 +273,7 @@ def simulate_and_collect(merger, players_db, league, pick_order, policy_by_seat,
                       "position": chosen.get("position")})
         last_position = chosen.get("position")
 
-    return pairs, unmeasured, picks
+    return pairs, unmeasured, picks, turns
 
 
 def main():
@@ -260,7 +305,7 @@ def main():
                          "back into the engine as a constant (#56, and the capture's LIMITS).")}
     OUT.write_text(json.dumps(report, indent=2) + "\n")
 
-    pairs, unmeasured, picks = simulate_and_collect(
+    pairs, unmeasured, picks, turns = simulate_and_collect(
         merger, players_db, league, pick_order, policy_by_seat, projections)
 
     report["picks_simulated"] = len(picks)
@@ -268,10 +313,30 @@ def main():
     report["unmeasured_excluded"] = unmeasured
     report["engine"] = calibration(pairs)
     # CONTROLS.
-    report["control_oracle"] = calibration([(1.0 if o else 0.0, o) for _, o in pairs])
+    report["control_oracle"] = calibration([(1.0 if r[1] else 0.0, r[1]) for r in pairs])
     base = report["engine"]["base_rate"] or 0.0
-    report["control_constant_base_rate"] = calibration([(base, o) for _, o in pairs])
+    report["control_constant_base_rate"] = calibration([(base, r[1]) for r in pairs])
     report["control_oracle_is_perfect"] = report["control_oracle"]["brier"] == 0.0
+    # ARITHMETIC CEILING. Between a turn and the same seat's next turn exactly `gap` players
+    # leave the pool, so at most `gap` of that turn's candidates can be taken. A turn reporting
+    # more taken than that is impossible, and would mean the collector is resolving predictions
+    # against the wrong turn -- the one failure that would make every other number here fiction.
+    violations = [t for t in turns if t["taken"] > t["gap"]]
+    report["control_arithmetic_ceiling"] = {
+        "turns_resolved": len(turns),
+        "violations": len(violations),
+        # Named for what it is when the control PASSES: the turn with the least headroom, not a
+        # violation. Reporting the margin is what makes a clean pass informative rather than
+        # merely silent -- a ceiling with 20 picks of slack never tests anything.
+        "closest_to_ceiling": max((t for t in turns), key=lambda t: t["taken"] - t["gap"],
+                                  default=None),
+        "holds": not violations,
+    }
+    report["by_gap"] = _group(pairs, lambda r: r[2], "intervening_picks")
+    _band_order = {f"{lo}-{hi - 1}" if hi < 10 ** 6 else f"{lo}+": i
+                   for i, (lo, hi) in enumerate(RANK_BANDS)}
+    report["by_rank_band"] = _group(pairs, lambda r: _rank_band(r[3]), "board_rank",
+                                    order=lambda k: _band_order.get(k, 99))
     report["beats_constant"] = (report["engine"]["brier"] is not None
                                 and report["engine"]["brier"] < report["control_constant_base_rate"]["brier"])
     report["complete"] = True
@@ -289,6 +354,17 @@ def main():
     for row in e["curve"]:
         if row["n"]:
             print(f"     {row['bucket']}  n={row['n']:<5} predicted={row['predicted_mean']:<7} observed={row['observed_rate']}")
+    ceil = report["control_arithmetic_ceiling"]
+    print(f"  arithmetic ceiling holds: {ceil['holds']}  "
+          f"({ceil['turns_resolved']} turns, {ceil['violations']} impossible)")
+    print("  BY GAP (how many picks intervene before this seat's next turn):")
+    for row in report["by_gap"]:
+        print(f"     gap={row['intervening_picks']:<3} n={row['n']:<5} "
+              f"predicted={row['predicted_mean']:<7} observed={row['observed_rate']:<7} brier={row['brier']}")
+    print("  BY BOARD RANK:")
+    for row in report["by_rank_band"]:
+        print(f"     rank {row['board_rank']:<5} n={row['n']:<5} "
+              f"predicted={row['predicted_mean']:<7} observed={row['observed_rate']:<7} brier={row['brier']}")
     print(f"wrote {OUT}")
     return 0
 
