@@ -448,6 +448,88 @@ def board_take_mass(board: dict, run_position: Optional[str] = None) -> dict:
     }
 
 
+#: The take model's shape is a VALUE SHARE over the opponent's own board, not a lookup on the
+#: candidate's ordinal. `#206` measured why: the rank table cannot express the difference
+#: between an opponent scoring their top two 265.11 / 262.54 (a coin flip) and 265.11 / 199.00
+#: (a lock), because both are "rank 1 and rank 2". Calibration showed the consequence -- across
+#: the whole board-rank range the model moved 0.84 -> 0.96 while reality moved 0.09 -> 0.91.
+#: Sign right everywhere, magnitude wrong everywhere.
+#:
+#: The opponent's own `final_score` already carries what the owner asked this to represent:
+#: their roster's needs (measured -- an RB-loaded seat marks every RB down by 9.00 while a
+#: WR-loaded seat marks WRs down by the same, on boards that are otherwise identical), and pool
+#: depletion, since the board is rebuilt off the live pool. None of it reached survival before,
+#: because `estimate_survival` read `rank_by_id` and discarded the valuations that produced it.
+
+
+def board_contention_scale(board: dict, contention_size: int) -> Optional[float]:
+    """The value distance at which two rows on THIS board are meaningfully different, derived
+    from the board being read rather than imported from elsewhere.
+
+    WHY THIS IS NOT `NEAR_TIE_BAND`, WHICH IS THE OBVIOUS THING TO REACH FOR. That constant is
+    2.0, derived from adjacent `team_acquisition_value` gaps in the top 40 of ONE board, and
+    `#160` already caught it being applied to populations it was never measured on -- its own
+    comment records that working on them "was, until #160, luck this comment was claiming as
+    design". An opponent's full board in `final_score` units is a FIFTH population. Importing
+    2.0 here would repeat the documented mistake rather than learn from it.
+
+    WHY A RUNTIME STATISTIC AND NOT A CONSTANT (`#56`, and the capture's LIMITS). Concentration
+    differs by format, by round and by board -- a fresh superflex board and a round-14 board are
+    not the same distribution. A single number could only be right for one of them, and picking
+    the one that makes calibration look best against a single league is exactly what the LIMITS
+    forbid. Derived per board, this introduces no constant at all.
+
+    THE STATISTIC, CHOSEN A PRIORI AND THEN MEASURED -- never searched for. The scale is the
+    dispersion among the players actually IN CONTENTION for the next pick, and "in contention"
+    is one round's worth of picks: `contention_size`, the league's team count. That is a league
+    fact, not a tuned number. Standard deviation over that set answers "how far apart are the
+    players who could plausibly go next", which is precisely the question a concentration scale
+    asks. It was fixed before any calibration was run against it, and `#206`'s harness measures
+    it rather than tuning it -- if it calibrates badly, that is reported, not adjusted away.
+
+    None -- not a substituted default -- when the board cannot support the statistic: fewer than
+    two priced rows in contention leaves nothing to measure a spread over, and a zero spread
+    (every contender identical) has no scale either. `#187`: absence is not zero."""
+    priced = board.get("rank_by_id") or {}
+    by_id = board.get("by_id") or {}
+    if contention_size < 2:
+        return None
+    scores = []
+    for player_id, rank in priced.items():
+        if rank <= contention_size:
+            row = by_id.get(player_id)
+            if row is not None and not _is_absent(row.get("final_score")):
+                scores.append(float(row["final_score"]))
+    if len(scores) < 2:
+        return None
+    mean = sum(scores) / len(scores)
+    var = sum((x - mean) ** 2 for x in scores) / (len(scores) - 1)
+    scale = var ** 0.5
+    return scale if scale > 0 else None
+
+
+def _value_take_weight(score: Optional[float], leader: float, scale: float,
+                       is_run_position: bool) -> float:
+    """One priced row's UNNORMALISED take weight, from its value distance behind the leader.
+
+    exp((score - leader) / scale): the leader weighs 1.0, a row one scale behind weighs 1/e, and
+    rows inside a scale of each other are near-equals -- which is the owner's own statement of
+    the case this exists to get right ("if there are 3 equally valued players going into a curve
+    and you're in seat 11, then at worst all 3 should have a 1/3 chance"). Three rows inside one
+    scale split the mass roughly evenly; a leader a long way clear takes nearly all of it. The
+    rank table could express neither.
+
+    The run boost multiplies the WEIGHT, before normalisation, for the reason
+    `board_take_mass` already records: boosting an already-normalised probability would
+    re-break the mass it was just made to respect."""
+    if score is None:
+        return RANK_TAKE_PROBABILITY_FLOOR
+    w = math.exp((float(score) - leader) / scale)
+    if is_run_position:
+        w = w * RUN_TAKE_PROBABILITY_BOOST
+    return w
+
+
 def _board_take_mass_cached(board: dict, run_position: Optional[str]) -> dict:
     """`board_take_mass` memoised ON THE BOARD ITSELF, keyed by run position.
 
