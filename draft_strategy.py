@@ -645,13 +645,39 @@ def estimate_survival(
     a low-ranked QB shares the pace probability across many peers). Worth fixing with a real
     tier detector later; not pretending it's already handled.
 
-    Returns {"survival_probability", "intervening_picks", "risk_by_team": [...]}. An empty
-    risk_by_team with survival_probability=1.0 means either no one picks before the user's
-    next turn (back-to-back picks) or the user has no more picks left to wait for."""
+    Returns {"survival_probability", "survival_basis", "intervening_picks", "risk_by_team"}.
+
+    THREE STATES, and they used to be two (owner's ruling, 2026-09-16). This docstring
+    previously said an empty risk_by_team with survival_probability=1.0 meant "either no one
+    picks before the user's next turn (back-to-back picks) or the user has no more picks left
+    to wait for" -- two different facts sharing one number, which is the #187 breach. Now:
+
+      None  + SURVIVAL_NO_NEXT_PICK         no further pick exists, so the question does not
+                                            arise. NOT 1.0: a forced 1.0 made opportunity_cost
+                                            render 0.00, "waiting costs you nothing", at the
+                                            one moment waiting costs you the player forever.
+      1.0   + SURVIVAL_NO_INTERVENING_PICKS back-to-back; survives by arithmetic, not estimate.
+      p     + SURVIVAL_MEASURED             estimated against every intervening rival's board.
+
+    `intervening_picks` is None in the first state for the same reason -- there is no gap to
+    count. Consumers already guarded it as Optional; the producer was the only thing here
+    manufacturing certainty."""
     my_next_index = find_next_pick_index(pick_order, my_roster_id, current_index)
+    #: NO NEXT SELECTION IS NOT CERTAINTY. Owner's ruling, 2026-09-16: when there is physically
+    #: no further pick, saying so is the valid answer -- not a probability. None, with a basis,
+    #: exactly as every other unmeasurable quantity in this engine (#187).
+    if my_next_index is None:
+        return {"survival_probability": None,
+                "survival_basis": SURVIVAL_NO_NEXT_PICK,
+                "intervening_picks": None, "risk_by_team": [],
+                "unevidenced_picks": 0, "unpriced_mass_share": None}
     intervening = intervening_roster_ids(pick_order, current_index, my_next_index)
     if not intervening:
-        return {"survival_probability": 1.0, "intervening_picks": 0, "risk_by_team": [],
+        # A REAL 1.0, and the only one: this seat picks again with nobody in between, so every
+        # candidate survives by arithmetic rather than by estimate.
+        return {"survival_probability": 1.0,
+                "survival_basis": SURVIVAL_NO_INTERVENING_PICKS,
+                "intervening_picks": 0, "risk_by_team": [],
                 "unevidenced_picks": 0, "unpriced_mass_share": None}
 
     run_position = detect_positional_run(picks, players_db)
@@ -734,6 +760,7 @@ def estimate_survival(
     measured_shares = [s for s in unpriced_shares if s is not None]
     return {
         "survival_probability": round(survival, 3),
+        "survival_basis": SURVIVAL_MEASURED,
         "intervening_picks": len(intervening),
         "risk_by_team": risk_by_team,
         "unevidenced_picks": sum(1 for r in risk_by_team if not r["evidenced"]),
@@ -791,6 +818,37 @@ def _opportunity_cost_order(row: dict) -> tuple:
     as a number, and the result does not depend on the order the rows arrived in."""
     cost = row.get("opportunity_cost")
     return (cost is None, -cost if cost is not None else 0.0, str(row.get("player_id")))
+
+
+#: WHY survival_probability is what it is -- the vocabulary, with one home (#187/#126).
+#:
+#: `estimate_survival` returned 1.0 for TWO DIFFERENT FACTS, and its own docstring said so:
+#: "either no one picks before the user's next turn (back-to-back picks) OR the user has no
+#: more picks left to wait for". The first genuinely is 1.0. The second has NO ANSWER -- the
+#: question "does he make it back to my next selection" does not arise when there is no next
+#: selection -- and 1.0 is the most wrong value available for it, because every consumer reads
+#: it as "certain to be there".
+#:
+#: The downstream reading INVERTS: opportunity_cost is team_acquisition_value * (1 - survival),
+#: so a forced 1.0 renders 0.00 -- "waiting costs you nothing" -- at the one moment waiting
+#: costs you the player permanently.
+#:
+#: NOT A RARE EDGE. Measured on the real Greatest Show on Paper 2 board: every team reaches it
+#: at its own final pick (12 turns minimum), and a team that trades its late picks away reaches
+#: it far earlier -- TAmedic27 stops picking at 308 of 360, so 52 picks of falsely-free waiting.
+#: Traded picks are what make it common, which is why it surfaced when the owner asked whether
+#: nonstandard orders and traded picks still compute the gap correctly.
+SURVIVAL_NO_NEXT_PICK = "no_next_pick"
+SURVIVAL_NO_INTERVENING_PICKS = "no_intervening_picks"
+SURVIVAL_MEASURED = "measured"
+
+#: token -> the words a person reads. Every return from estimate_survival carries one.
+SURVIVAL_BASIS_LABELS = {
+    SURVIVAL_NO_NEXT_PICK: ("you have no further pick in this draft, so there is no next "
+                            "selection for him to survive to"),
+    SURVIVAL_NO_INTERVENING_PICKS: "you pick again immediately -- nobody picks in between",
+    SURVIVAL_MEASURED: "measured against every rival board that picks before your next turn",
+}
 
 
 #: WHY denial_value is what it is -- the vocabulary, with one home (#187). The UI used to
@@ -992,6 +1050,7 @@ def pick_analysis(
             "position": my_row.get("position"),
             "team_acquisition_value": team_acquisition_value,
             "survival_probability": survival["survival_probability"],
+            "survival_basis": survival["survival_basis"],
             "intervening_picks": survival["intervening_picks"],
             "opportunity_cost": opportunity_cost,
             "denial_value": (None if denial_value is None else round(denial_value, 2)),
