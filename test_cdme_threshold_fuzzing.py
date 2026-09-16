@@ -27,6 +27,23 @@ import pick_synthesis as ps
 EPS = 0.01
 
 
+def _regime_gate_lifted(candidates):
+    """decision_regime's ARITHMETIC, with #206's calibration gate lifted.
+
+    Production returns "contested" unconditionally while SURVIVAL_IS_CALIBRATED is False --
+    two arms measured survival_probability losing to a constant predictor. The predicate
+    underneath is unchanged and is what these tests are about, so the gate is lifted here
+    EXPLICITLY: a test left asserting "decisive" against the live function would pass for the
+    gate's reason and stop exercising the thing its name claims.
+    test_threshold_reachability owns the separate question of what production does."""
+    original = ps.SURVIVAL_IS_CALIBRATED
+    try:
+        ps.SURVIVAL_IS_CALIBRATED = True
+        return ps.decision_regime(candidates)
+    finally:
+        ps.SURVIVAL_IS_CALIBRATED = original
+
+
 class NecessityLabelBoundaryTests(unittest.TestCase):
     """NECESSITY_LABEL_THRESHOLDS is a checked-top-down, first-match list -- must behave as a
     clean step function with no gaps or overlaps at any of its five internal boundaries."""
@@ -82,37 +99,37 @@ class DecisionRegimeBoundaryTests(unittest.TestCase):
         ]
 
     def test_both_conditions_cleared_is_decisive(self):
-        regime = ps.decision_regime(self._candidates(
+        regime = _regime_gate_lifted(self._candidates(
             ps.NEAR_TIE_BAND + EPS, ps.DECISIVE_SURVIVAL_THRESHOLD,
         ))
         self.assertEqual(regime, "decisive")
 
     def test_a_margin_exactly_at_the_band_is_a_tie_and_stays_contested(self):
-        regime = ps.decision_regime(self._candidates(
+        regime = _regime_gate_lifted(self._candidates(
             ps.NEAR_TIE_BAND, ps.DECISIVE_SURVIVAL_THRESHOLD,
         ))
         self.assertEqual(regime, "contested")
 
     def test_margin_just_short_stays_contested_even_with_survival_cleared(self):
-        regime = ps.decision_regime(self._candidates(
+        regime = _regime_gate_lifted(self._candidates(
             ps.NEAR_TIE_BAND - EPS, ps.DECISIVE_SURVIVAL_THRESHOLD,
         ))
         self.assertEqual(regime, "contested")
 
     def test_survival_just_over_stays_contested_even_with_margin_cleared(self):
-        regime = ps.decision_regime(self._candidates(
+        regime = _regime_gate_lifted(self._candidates(
             ps.NEAR_TIE_BAND + EPS, ps.DECISIVE_SURVIVAL_THRESHOLD + EPS,
         ))
         self.assertEqual(regime, "contested")
 
     def test_both_conditions_just_short_stays_contested(self):
-        regime = ps.decision_regime(self._candidates(
+        regime = _regime_gate_lifted(self._candidates(
             ps.NEAR_TIE_BAND - EPS, ps.DECISIVE_SURVIVAL_THRESHOLD + EPS,
         ))
         self.assertEqual(regime, "contested")
 
     def test_both_conditions_cleared_with_room_to_spare_is_decisive(self):
-        regime = ps.decision_regime(self._candidates(
+        regime = _regime_gate_lifted(self._candidates(
             ps.NEAR_TIE_BAND + 10.0, ps.DECISIVE_SURVIVAL_THRESHOLD - 0.10,
         ))
         self.assertEqual(regime, "decisive")

@@ -190,6 +190,9 @@ class EveryFiringThresholdIsReachableTests(_RealBoards):
                 seen.add(snapshot.decision_regime)
         finally:
             ps.SURVIVAL_IS_CALIBRATED = original
+        self.assertIn("contested", seen,
+                      "with the gate lifted the regime produces neither of its states, so "
+                      "this probe is measuring nothing")
         self.assertNotIn(
             "decisive", seen,
             "'decisive' now fires with the gate lifted, so the threshold is no longer below "

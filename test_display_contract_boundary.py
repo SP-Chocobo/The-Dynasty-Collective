@@ -512,7 +512,7 @@ class TheScaleIsNotAPointsTotalTests(unittest.TestCase):
         #   rendering unpriced rows as a bare dash, it is showing an absence without its kind,
         #   which is the #174 shape one layer out.
         self.assertEqual(
-            len(dataclasses.fields(ps.CandidateSnapshot)), 49,
+            len(dataclasses.fields(ps.CandidateSnapshot)), 50,
             "CandidateSnapshot's field count changed. That is fine and often correct -- but "
             "confirm the new field does not imply a scale the card cannot support, decide "
             "whether the card should render it, then update this number.")

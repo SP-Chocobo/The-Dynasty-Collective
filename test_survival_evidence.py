@@ -190,10 +190,22 @@ class UnevidencedRiskTests(_LateBoardFixture):
         self.assertLess(only, ds.RANK_TAKE_PROBABILITY_FLOOR,
                         "the floor is a weight now -- normalising can only shrink it")
         self.assertGreater(only, 0.0, "but an unpriced player can still be drafted (#206/#187)")
-        # And it really is the floor's share, not some other number that happens to be small.
+        # AND IT REALLY IS THE FLOOR'S SHARE, not some other number that happens to be small.
+        # The first version of this update asserted only that the number was small and
+        # unevidenced, while its own prose claimed the assertion was "expressed against the
+        # floor's share" -- a test weaker than its docstring, which `assertion_floors` caught
+        # as `assertAlmostEqual 3 -> 2` rather than letting it pass as a wash. The share is
+        # recomputed here from the same public function the engine uses, against each
+        # consulted board rather than one of them, so a change to the floor OR to the
+        # normalising denominator moves this assertion.
         for risk in result["risk_by_team"]:
             self.assertIsNone(risk["rank_on_their_board"])
             self.assertFalse(risk["evidenced"])
+            board = self.boards[str(risk["roster_id"])]
+            total = ds.board_take_mass(board, None)["total_weight"]
+            self.assertAlmostEqual(risk["take_probability"],
+                                   round(ds.RANK_TAKE_PROBABILITY_FLOOR / total, 6), places=6,
+                                   msg="an unpriced row is not carrying the floor's share")
 
     def test_the_unevidenced_rows_say_so_instead_of_reporting_a_rank(self):
         result = self._survival(self._an_unpriced_target()["player_id"])

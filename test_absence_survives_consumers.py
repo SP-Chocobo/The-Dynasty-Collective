@@ -74,6 +74,23 @@ def _row(player_id, position, value, name=None):
 
 # --------------------------------------------------------------- unit-level, hand-built --
 
+def _regime_gate_lifted(candidates):
+    """decision_regime's ARITHMETIC, with #206's calibration gate lifted.
+
+    Production returns "contested" unconditionally while SURVIVAL_IS_CALIBRATED is False --
+    two arms measured survival_probability losing to a constant predictor. The predicate
+    underneath is unchanged and is what these tests are about, so the gate is lifted here
+    EXPLICITLY: a test left asserting "decisive" against the live function would pass for the
+    gate's reason and stop exercising the thing its name claims.
+    test_threshold_reachability owns the separate question of what production does."""
+    original = ps.SURVIVAL_IS_CALIBRATED
+    try:
+        ps.SURVIVAL_IS_CALIBRATED = True
+        return ps.decision_regime(candidates)
+    finally:
+        ps.SURVIVAL_IS_CALIBRATED = original
+
+
 class PositionCurveExcludesUnpricedTests(unittest.TestCase):
     """Rule 1. pick_analysis walks each position's remaining value curve to size the cost of
     delaying that position. A row with no value has no place on a value curve -- and sorting a
@@ -179,8 +196,8 @@ class DecisionRegimeExcludesUnpricedTests(unittest.TestCase):
 
     def test_a_decisive_field_stays_decisive_when_an_unpriced_row_is_added(self):
         priced = [self._c(200.0), self._c(100.0)]
-        self.assertEqual(ps.decision_regime(priced), "decisive")
-        self.assertEqual(ps.decision_regime(priced + [self._c(None)]), "decisive")
+        self.assertEqual(_regime_gate_lifted(priced), "decisive")
+        self.assertEqual(_regime_gate_lifted(priced + [self._c(None)]), "decisive")
 
     def test_one_priced_candidate_among_unpriced_ones_is_contested(self):
         self.assertEqual(ps.decision_regime([self._c(200.0), self._c(None), self._c(None)]),
@@ -202,7 +219,7 @@ class DecisionRegimeExcludesUnpricedTests(unittest.TestCase):
         self.assertIn("leader_in_tie_group is False", source)
         self.assertNotIn("not leader_in_tie_group", source)
         # And the behaviour the guard protects, driven directly.
-        self.assertEqual(ps.decision_regime([self._c(200.0), self._c(100.0)]), "decisive")
+        self.assertEqual(_regime_gate_lifted([self._c(200.0), self._c(100.0)]), "decisive")
 
 
 class NecessityExcludesUnpricedFromTheFieldTests(unittest.TestCase):
