@@ -218,7 +218,13 @@ each other because they use the same fixture, and the `ff_rulebook/` probes are 
 and scoped (#175's scope statement states F&F's `rec` and `bonus_rec_te` explicitly). What was
 missing is this note.
 
-- [ ] **Decide whether the freeze's evidence should be re-measured on F&F's rulebook**, or
+- [x] **RULED 2026-09-16 (owner): GENERIC IS THE CERTIFICATION BASIS; F&F IS RECORDED AS
+      CORROBORATION.** The engine ships to many leagues, so certifying against one owner's
+      rulebook would overfit the freeze record. F&F's complete 12-seat proof agrees with the
+      generic result (points 10 of 12, +1.04%) and is therefore carried in the record as
+      named, evidenced corroboration — not as the basis. This answers the item's own
+      complaint that the previous state *"picks neither and says nothing"*.
+- [x] ~~**Decide whether the freeze's evidence should be re-measured on F&F's rulebook**~~, or
       whether the freeze deliberately certifies the engine against a generic full-PPR
       environment and records F&F as out of scope. Either is defensible; the current state
       picks neither and says nothing, which is the part that is not defensible.
@@ -281,6 +287,17 @@ missing is this note.
 > Full statement, with the corrections it produced: `evidence/CERTIFICATION_DESIGN.md`.
 > The bullet below is kept unedited as the record of what Gate 1 used to mean.
 
+- [ ] **#150 — RULED 2026-09-16 (owner): THE FULL 34-ARM RUN IS THE FINAL PRE-FREEZE
+      GREENLIGHT, AND IS NOT TO BE SPENT ON INTERMEDIATE STEPS** *("just not wantonly in
+      intermediate steps before we think its ready for the freeze unless there is a very
+      good reason")*. This SUPERSEDES my recommendation to widen the carry-forward to five
+      axis-spanning arms now — that was exactly the intermediate spend the ruling forbids.
+      The 3-arm carry-forward therefore STANDS as the interim position, with its scope
+      stated rather than dressed up. **The binding consequence: the full run certifies the
+      tree that produced it, so every behaviour-changing change must land BEFORE it, and
+      only prose and tests may follow it.** Ruling `#251` (do not re-run the 33-arm battery
+      as-is) is not reversed — a deliberate final greenlight is a different act from a
+      re-run, and the freeze record should say which one it is.
 - [ ] **#150 — THE HEADLINE BELOW IS FALSE AND IS KEPT ONLY AS THE RECORD.** Two runs exist and
       neither is withdrawn: `BATTERY_2026-09-12_scoring_aware_full_99f9f76` (33 formats, 5,340
       picks) and `BATTERY_2026-09-13_gate1_1770ef2` (**34 formats, 5,652 picks, complete,
@@ -392,7 +409,16 @@ These reach `final_score` or the candidate set, so they are drafting behaviour p
       What remains genuinely open is the DECISION beneath it, not the repair: the transition
       concept is undefined (`#223`/`#225` below), and round 15 is a global calendar index standing
       in for a per-seat roster state the engine can measure and never has.
-- [ ] **#223 / #225** — the mode transition concept is genuinely missing, for lack of a decision.
+- [x] **#223 / #225 — RULED 2026-09-16 (owner): DOCUMENTED AS KNOWN-OPEN, NOT WIRED.**
+      Wiring an undefined transition concept before freeze would invent a decision rather
+      than repair a defect, and the measurement says the repair buys little: `#233` found the
+      counterweight only DEFERS (8 of 8 deferred players harvested by the upside half,
+      composition conserved 101 = 101), and POST_AUDIT_PLAN §6764 rules the TE excess is not
+      removable by restoring roster awareness. **No behaviour change, so this does not gate
+      the greenlight battery.** The live question stays `#229`'s cross-position
+      comparability, not the mode switch. Round 15 remaining a global calendar index where a
+      per-seat roster state is measurable is carried as a named limitation.
+- [ ] ~~**#223 / #225** — the mode transition concept is genuinely missing, for lack of a decision.~~
       The TE decision at the boundary is a real near-tie on (points − displaced).
 - [ ] **#153** — two clamps, not one: the 4WR collapse is the flex-share clamp, not `NEED_BONUS_MAX`.
       Measured and understood; not repaired. **Located on re-verification (2026-09-16)**: the
@@ -505,8 +531,26 @@ only. The items below feed observables and the debate layer, so they degrade wha
 - [x] **#146** — RULED admissible in REDRAFT ONLY (`#257`). **The wiring is Gate 3 and is
       NOT done**: it needs the dynasty/redraft boundary, a test that fails on the old
       behaviour in each mode, and absence honoured for the 0.9% with no bye week.
-- [ ] **#160** — Decision A, reopened from zero; no constant to be tuned.
-- [ ] **#149** — **THE PREREQUISITE IS DISCHARGED; ONLY THE RULING IS OPEN.** ~~THE ITEM HAS
+- [x] **#160 — RULED 2026-09-16 (owner): VOID THE `CONST-A*` PREFIX ENTIRELY.** The collision
+      was with a ghost: `#161`'s full-history search established that **no `BLIND-A1` has ever
+      existed**, and `CONST-A1/A2/A3` appear only in POST_AUDIT_PLAN prose with no constant
+      behind them. So there is nothing to rename around. The prefix is retired and each
+      constants question is referred to by the item that owns it (`#56`'s constants
+      contract). Prose only, no code. A numbering scheme whose only job was to disambiguate
+      from something that does not exist is worse than no scheme.
+- [x] **#149 — RULED 2026-09-16 (owner): WRITE DOWN WHAT ALREADY EXISTS; DECLINE THE
+      ARCHITECTURE CHANGE.** The policy is now stated where the store lives
+      (`attachments.py`'s module docstring) rather than inferred from a neighbouring module:
+      reference material keeps the **artifact**, credentials **extract and discard**, and the
+      rule separating them is whether a human will look at the thing again (a secret has no
+      viewing value). Retention stays *"until a human deletes it"* but as a **choice** —
+      curated reference material has no natural expiry, so a timer would delete what the user
+      still wants. The **single-local-user assumption is now stated for attachments**, which
+      is the only thing that makes the unfiltered management view defensible; `app.py:775`
+      had stated it for `.env` and nothing had stated it here. **Client-side custody is
+      DECLINED** as an architecture change, not a freeze setting. Gates the freeze RECORD
+      only — uploads reach no price and no pick.
+- [x] ~~**#149** — **THE PREREQUISITE IS DISCHARGED; ONLY THE RULING IS OPEN.**~~ ~~THE ITEM HAS
       NO WRITTEN BASIS~~ — that headline (`#257`) was true when written and is now false. The
       owner's ruling was *write the missing entry from measurement first, then rule*, and
       `498884b` wrote it: `POST_AUDIT_PLAN.md:8540+`, every fact read out of the code rather

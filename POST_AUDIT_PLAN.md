@@ -11516,3 +11516,75 @@ part of The Prytaneum). The bare word *Dock* survives as working shorthand — `
 line and `test_dock_absence_contract.py` both use it. A guard that flagged the shorthand would be
 switched off within a day, so the distinction is now asserted rather than left to whoever edits
 `_STALE_TERMS` next.
+
+---
+
+## OWNER RULINGS, 2026-09-16 — the freeze decision set
+
+Eight rulings taken in one sitting, ordered so that anything modifying a later decision was
+answered first. The ordering was the point, so it is recorded rather than just the answers:
+**what could change engine behaviour was settled before what certifies engine behaviour.** Two
+rulings below are recorded as PENDING WORK rather than done, and say so.
+
+### The dependency, stated before the questions were asked
+
+`#150` (what battery evidence the freeze needs) sits downstream of everything that could change
+drafting behaviour or change which rulebook must be covered. So `#206`, `#223`/`#225`, the F&F
+scope question and `#86` were put first, and `#150` second. `#149` and `#160` are record-only and
+depend on nothing, so they came last.
+
+One fact reshaped the first batch and is worth repeating because it was VERIFIED rather than
+assumed: `survival_probability` reaches observables, not the pick. `draft_strategy.pick_analysis`
+does sort by `opportunity_cost`, but `pick_synthesis` iterates `for row in narrowed` and uses the
+analysis only as a lookup keyed by `player_id`, so that sort order is discarded before any
+consumer sees it. A `#206` repair therefore does NOT invalidate the existing battery.
+
+### The rulings
+
+1. **`#206` — fix the MASS violation only; the rate is deferred to `#50`.** The five keys of
+   `RANK_TAKE_PROBABILITY` sum to 1.21 of a mass that must be ≤ 1.00, which is provable from
+   arithmetic alone and so satisfies `#56` (derived, never calibrated). The RATE — model 55% at
+   rank 1 against a measured 3.0% over 270 real human picks — is calibration, and the capture's
+   LIMITS forbid setting a constant from one league. My own head-only repair stays withdrawn
+   (30th). *Pending work at time of writing.*
+2. **`#223` / `#225` — documented as known-open, not wired.** No behaviour change.
+3. **F&F scope — generic is the certification basis; F&F is corroboration.** Certifying against
+   one owner's rulebook would overfit a record for an engine that ships to many leagues; the
+   complete 12-seat F&F proof (points 10 of 12, +1.04%) is carried as named evidence beside it.
+4. **`#86` — RATIFIED, subject to independent review.** The owner ratified the fractional-curve
+   repair and additionally directed a Fable review of it, with anything it finds to be fixed. The
+   procedural fault is recorded rather than excused: the repair overrode a standing deferral
+   (CDME_CONTRACTS Part 3 and the characterization test both said *open product question*) and
+   should have been asked first. *Review pending at time of writing.*
+5. **`#150` — the full 34-arm run is the FINAL PRE-FREEZE GREENLIGHT, not an intermediate
+   spend.** In the owner's words: *"as the final greenlight before freeze i don't mind a full-arm
+   run. just not wantonly in intermediate steps before we think its ready."* This SUPERSEDES my
+   recommendation to widen the carry-forward to five axis-spanning arms now — that was precisely
+   the intermediate spend being forbidden, and the recommendation is withdrawn. **The binding
+   consequence: the run certifies the tree that produced it, so every behaviour-changing change
+   must land BEFORE it and only prose and tests may follow.**
+6. **`#149` — write down what exists; decline the architecture change.** Executed in
+   `attachments.py`'s module docstring, which is where the store lives.
+7. **`#160` — VOID the `CONST-A*` prefix entirely.** See below.
+8. **Tonight's sequencing — land the work, then run the battery, gated.** Abort conditions
+   accepted in advance: if the `#86` review finds anything substantive, or the full suite is not
+   green, the battery is HELD and reported rather than run.
+
+### `#160` executed: the prefix is void
+
+The collision was with a ghost. `#161` established by full-history search that **no `BLIND-A1`
+has ever existed** — the phrase entered the record once and propagated through seven appendix
+headers by copy-paste, each instance drawing authority from the previous one. And `CONST-A1/A2/A3`
+appear only in this document's prose, with no constant behind them; the one constant ever named,
+`NEAR_TIE_BAND`, belongs to `#56`'s constants contract and is untouched because Decision A is
+reopened with nothing to tune.
+
+So there is nothing to rename around, and the prefix is retired rather than re-scoped. **Each
+constants question is referred to by the item that owns it.** A numbering scheme whose only
+purpose was to disambiguate itself from something that does not exist is worse than no scheme at
+all — it implies a second namespace a reader will go looking for.
+
+The prose above that uses `CONST-A1` is NOT rewritten. It is the record of how the collision was
+found, and editing the old wording out would destroy the evidence for the ruling — the same
+principle FREEZE_CHECKLIST follows when it strikes through its own false headlines instead of
+deleting them.
