@@ -566,6 +566,32 @@ def _is_absent(value) -> bool:
     return value is None or (isinstance(value, float) and math.isnan(value))
 
 
+def _board_take_probability(board: dict, target_key: str, rank: Optional[int],
+                            unpriced: bool, is_run: bool,
+                            run_position: Optional[str]) -> tuple:
+    """P(this opponent takes THIS row with their single next pick), and the board's unpriced
+    mass share. Returns `(p_take, unpriced_share)`.
+
+    THIS IS A SEAM, NOT A SWITCH, and the distinction is the whole reason it exists. There is
+    exactly ONE take model in production and this is its only home (`#126`) -- the body below
+    is what `estimate_survival` did inline before, moved without a behaviour change. What the
+    seam buys is that an ALTERNATIVE model can be substituted for the duration of one
+    measurement process, so a calibration arm scores the real `estimate_survival` against a
+    different take model instead of re-implementing survival beside it. The engine-measurement
+    rule is that both arms must run the same code and toggle one thing; without a seam the
+    only toggle available was a hundred-line copy of this function, which is a second source
+    of truth for what survival means.
+
+    A substitution that OUTLIVES a measurement process is the defect this docstring exists to
+    forbid. Nothing in production may patch it, and nothing may read a module flag to decide
+    which model to be -- when a model wins, it REPLACES this body rather than joining it."""
+    mass = _board_take_mass_cached(board, run_position)
+    total_weight = mass["total_weight"]
+    if unpriced:
+        return _take_probability(None, False, total_weight), mass["unpriced_share"]
+    return _take_probability(rank, is_run, total_weight), mass["unpriced_share"]
+
+
 def _build_opponent_boards(
     merger: DataMerger, players_db: dict[str, dict], picks: list[dict], league: dict,
     roster_ids: list, *, mode: str = "auto", pool_scope: str = "all",
@@ -716,11 +742,11 @@ def estimate_survival(
         # are mutually exclusive and must sum to <= 1.0 across the board. Unnormalised they
         # summed to 23.49 on a real board. Computed once per (board, run position) and cached
         # on the board -- see _board_take_mass_cached for why that is safe here.
-        mass = _board_take_mass_cached(board, run_position)
-        total_weight = mass["total_weight"]
-        unpriced_shares.append(mass["unpriced_share"])
+        p_seam, unpriced_share = _board_take_probability(
+            board, target_key, rank, unpriced, is_run, run_position)
+        unpriced_shares.append(unpriced_share)
         if unpriced:
-            p_unpriced = _take_probability(None, False, total_weight)
+            p_unpriced = p_seam
             survival *= (1 - p_unpriced)
             risk_by_team.append({
                 "roster_id": roster_id, "rank_on_their_board": None,
@@ -728,7 +754,7 @@ def estimate_survival(
                 "pace_driven": False, "evidenced": False,
             })
             continue
-        rank_based_p_take = _take_probability(rank, is_run, total_weight)
+        rank_based_p_take = p_seam
 
         # i (this pick's position within THIS survival computation, not the real, current pick
         # count alone) is what makes hazard rise the deeper we go without a resolution: the
