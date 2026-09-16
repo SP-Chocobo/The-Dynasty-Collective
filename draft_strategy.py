@@ -387,11 +387,95 @@ def positional_forfeits(
     return results
 
 
-def _take_probability(rank: int, is_run_position: bool) -> float:
-    p = RANK_TAKE_PROBABILITY.get(rank, RANK_TAKE_PROBABILITY_FLOOR)
+def _take_weight(rank: Optional[int], is_run_position: bool) -> float:
+    """The RELATIVE weight of one board row, before normalisation. `rank=None` is an unpriced
+    row, which carries the floor and no run boost -- the boost is a rank-relative notion and
+    there is no rank to relate it to."""
+    if rank is None:
+        return RANK_TAKE_PROBABILITY_FLOOR
+    w = RANK_TAKE_PROBABILITY.get(rank, RANK_TAKE_PROBABILITY_FLOOR)
     if is_run_position:
-        p = min(p * RUN_TAKE_PROBABILITY_BOOST, RUN_TAKE_PROBABILITY_CAP)
-    return p
+        w = min(w * RUN_TAKE_PROBABILITY_BOOST, RUN_TAKE_PROBABILITY_CAP)
+    return w
+
+
+def board_take_mass(board: dict, run_position: Optional[str] = None) -> dict:
+    """The total take-weight of one opponent board, and where that weight sits (`#206`).
+
+    WHY NORMALISATION IS REQUIRED, AND WHY IT IS NOT A CALIBRATION. `estimate_survival` asks,
+    per intervening opponent, "what is the chance THIS team takes THIS player at their next
+    pick?" A team makes exactly ONE pick, so across their board the events are MUTUALLY
+    EXCLUSIVE and the probabilities must sum to <= 1.0. That needs no league data to state,
+    which is why `#56` is not engaged: the constraint is arithmetic, not a tuned number.
+
+    MEASURED BEFORE REPAIR (`evidence/take_mass/`): on Fourth and Forever's real captured
+    universe the total was **23.49**, against a constraint of 1.0 -- the model said one opponent
+    takes 23 players with one pick. `#244` reached the same defect from the other end. And 95%
+    of it was the FLOOR, not the five named keys: named 1.21, tail 9.52, unpriced 12.76. So
+    renormalising the five keys -- the obvious reading of "make them sum to 1" -- would have
+    moved 1.21 to 1.00 and left 22.28 in place.
+
+    THE RUN BOOST IS APPLIED TO THE WEIGHT, BEFORE NORMALISING, and that is forced rather than
+    chosen: boosting an already-normalised probability would re-break the mass it was just made
+    to respect. Applied here it REDISTRIBUTES mass toward the running position, which is what a
+    run means -- rivals are likelier to take that position and correspondingly less likely to
+    take anything else.
+
+    THE UNPRICED SHARE IS REPORTED, not silently folded in (owner ruling 2026-09-16). Unpriced
+    rows keep the floor weight rather than dropping to zero, because zeroing them would assert
+    "unpriced means safe" and the real-draft measurement refutes that: 31 of 301 resolved picks
+    took a player who was not on the picking team's priced board at all. Substituting a number
+    for an absence is the `#187` breach this engine forbids everywhere else. But over half the
+    mass then sits on rows the engine could not value, so a consumer is told how much."""
+    priced = board.get("rank_by_id") or {}
+    by_id = board.get("by_id") or {}
+    unpriced_ids = board.get("unpriced_ids") or ()
+
+    priced_weight = 0.0
+    for player_id, rank in priced.items():
+        row = by_id.get(player_id)
+        is_run = bool(run_position and row is not None and row.get("position") == run_position)
+        priced_weight += _take_weight(rank, is_run)
+    unpriced_weight = len(unpriced_ids) * RANK_TAKE_PROBABILITY_FLOOR
+    total = priced_weight + unpriced_weight
+    return {
+        "total_weight": total,
+        "priced_weight": priced_weight,
+        "unpriced_weight": unpriced_weight,
+        "unpriced_share": (unpriced_weight / total) if total > 0 else None,
+        "priced_rows": len(priced),
+        "unpriced_rows": len(unpriced_ids),
+    }
+
+
+def _board_take_mass_cached(board: dict, run_position: Optional[str]) -> dict:
+    """`board_take_mass` memoised ON THE BOARD ITSELF, keyed by run position.
+
+    The normaliser is a property of the whole board, so computing it per candidate would turn
+    survival from a handful of dict lookups into a full pass over ~1,100 rows per opponent per
+    candidate. `_build_opponent_boards` already builds each board exactly once per analysis and
+    the same dict is passed to every `estimate_survival` call, so caching here is computed once
+    per (board, run position) and dies with the analysis -- no module-level state to invalidate,
+    and a fresh board is a fresh dict."""
+    cache = board.setdefault("_take_mass_by_run", {})
+    key = run_position or ""
+    if key not in cache:
+        cache[key] = board_take_mass(board, run_position)
+    return cache[key]
+
+
+def _take_probability(rank: Optional[int], is_run_position: bool,
+                      total_weight: Optional[float] = None) -> float:
+    """P(this opponent takes the row at `rank` with their single next pick).
+
+    With `total_weight` this is a genuine probability from a distribution that sums to 1.0 over
+    the board. Without it -- the pre-`#206` form, kept only so a caller that has no board still
+    gets the raw shape -- it returns an unnormalised WEIGHT, which is what made the mass 23.49.
+    Production passes the total; nothing should call this without one."""
+    w = _take_weight(rank, is_run_position)
+    if total_weight is None or total_weight <= 0:
+        return w
+    return w / total_weight
 
 
 def _is_absent(value) -> bool:
@@ -486,7 +570,7 @@ def estimate_survival(
     intervening = intervening_roster_ids(pick_order, current_index, my_next_index)
     if not intervening:
         return {"survival_probability": 1.0, "intervening_picks": 0, "risk_by_team": [],
-                "unevidenced_picks": 0}
+                "unevidenced_picks": 0, "unpriced_mass_share": None}
 
     run_position = detect_positional_run(picks, players_db)
     info = players_db.get(str(target_player_id))
@@ -494,6 +578,10 @@ def estimate_survival(
 
     survival = 1.0
     risk_by_team: list[dict] = []
+    #: How much of each consulted board's take-mass sits on rows the engine could not price.
+    #: Reported rather than folded in silently -- see board_take_mass's docstring for why the
+    #: floor is kept at all (owner ruling 2026-09-16).
+    unpriced_shares: list = []
     for i, roster_id in enumerate(intervening):
         board = opponent_boards.get(str(roster_id))
         if not board:
@@ -516,15 +604,23 @@ def estimate_survival(
         if rank is None and not unpriced:
             continue  # not even in this team's usable-position pool -- no risk from them
         is_run = bool(run_position and target_position == run_position)
+        # #206: NORMALISE OVER THE BOARD. A team makes one pick, so their take probabilities
+        # are mutually exclusive and must sum to <= 1.0 across the board. Unnormalised they
+        # summed to 23.49 on a real board. Computed once per (board, run position) and cached
+        # on the board -- see _board_take_mass_cached for why that is safe here.
+        mass = _board_take_mass_cached(board, run_position)
+        total_weight = mass["total_weight"]
+        unpriced_shares.append(mass["unpriced_share"])
         if unpriced:
-            survival *= (1 - RANK_TAKE_PROBABILITY_FLOOR)
+            p_unpriced = _take_probability(None, False, total_weight)
+            survival *= (1 - p_unpriced)
             risk_by_team.append({
                 "roster_id": roster_id, "rank_on_their_board": None,
-                "take_probability": RANK_TAKE_PROBABILITY_FLOOR, "run_boosted": is_run,
+                "take_probability": round(p_unpriced, 6), "run_boosted": is_run,
                 "pace_driven": False, "evidenced": False,
             })
             continue
-        rank_based_p_take = _take_probability(rank, is_run)
+        rank_based_p_take = _take_probability(rank, is_run, total_weight)
 
         # i (this pick's position within THIS survival computation, not the real, current pick
         # count alone) is what makes hazard rise the deeper we go without a resolution: the
@@ -553,11 +649,16 @@ def estimate_survival(
             "pace_driven": pace_driven, "evidenced": True,
         })
 
+    measured_shares = [s for s in unpriced_shares if s is not None]
     return {
         "survival_probability": round(survival, 3),
         "intervening_picks": len(intervening),
         "risk_by_team": risk_by_team,
         "unevidenced_picks": sum(1 for r in risk_by_team if not r["evidenced"]),
+        # #206 disclosure: how much of the take-mass this answer rests on sat on rows the
+        # engine could not price. None when no board was consulted -- absent, not zero.
+        "unpriced_mass_share": (round(sum(measured_shares) / len(measured_shares), 4)
+                                if measured_shares else None),
     }
 
 

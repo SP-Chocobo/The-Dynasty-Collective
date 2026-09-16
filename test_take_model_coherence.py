@@ -108,6 +108,12 @@ class WhatTheFloorCanAndCannotExplain(unittest.TestCase):
         self.assertEqual(len(set(deep)), 1)
 
 
+#: Other priced rows on each synthetic rival board. Chosen to sit inside the real measured
+#: range (481 priced rows at the opening board, draining to 361 by pick 120 --
+#: evidence/take_mass/mass_per_opponent.json), not tuned to produce any particular survival.
+POOL = 400
+
+
 def _boards(rivals, target: str, agreeing: int, rank: int = 1) -> dict:
     """One board per DISTINCT intervening roster, shaped the way `_build_opponent_boards`
     returns them. The first `agreeing` of them rank `target` at `rank`; the rest bury him past
@@ -119,13 +125,33 @@ def _boards(rivals, target: str, agreeing: int, rank: int = 1) -> dict:
     agreement cannot be varied one pick at a time. Keying this fixture by pick would build
     boards under ids nobody looks up and quietly answer a different question.
 
-    NO REAL BOARD IS BUILT: the property under test is what `estimate_survival` does with a set
-    of ranks. That these ranks are what the real boards produce is measured separately and not
-    assumed here (evidence/survival_mechanism/rank_agreement.json)."""
+    THE BOARD NOW CARRIES A REALISTIC POOL, AND THAT IS A CONSEQUENCE OF THE #206 REPAIR rather
+    than a cosmetic change. This fixture used to build a board holding exactly ONE row -- the
+    target -- on the stated premise that "the property under test is what estimate_survival does
+    with a set of ranks". That premise held only while take probability was read off the rank
+    alone. Normalising the take mass makes it a DISTRIBUTION over the board, so board SIZE is
+    now load-bearing: on a one-row board the rival's only option is the target, so the repaired
+    model correctly says they take him with probability 1.0, and every number below would be
+    about a board nobody ever faces. A rival with three players left really is likelier to take
+    your man than one with four hundred, and the old model could not express that at all.
+
+    `POOL` is the count of OTHER priced rows on each rival's board. Ranks past the table's last
+    key carry the floor, which is what the real deep pool contributes (measured at 476 priced
+    tail rows plus 638 unpriced on the real board -- evidence/take_mass/).
+
+    That these ranks are what the real boards produce is measured separately and not assumed
+    here (evidence/survival_mechanism/rank_agreement.json)."""
     deep = max(ds.RANK_TAKE_PROBABILITY) + 500
-    return {str(r): {"by_id": {target: {}}, "rank_by_id": {target: rank if i < agreeing else deep},
-                     "unpriced_ids": set()}
-            for i, r in enumerate(rivals)}
+    boards = {}
+    for i, r in enumerate(rivals):
+        rank_by_id = {target: rank if i < agreeing else deep}
+        by_id = {target: {}}
+        for k in range(POOL):
+            other = f"filler_{k}"
+            rank_by_id[other] = deep + 1 + k
+            by_id[other] = {}
+        boards[str(r)] = {"by_id": by_id, "rank_by_id": rank_by_id, "unpriced_ids": set()}
+    return boards
 
 
 class EveryRivalHoldsTheSameOpinion(unittest.TestCase):
@@ -156,52 +182,151 @@ class EveryRivalHoldsTheSameOpinion(unittest.TestCase):
         self.assertTrue(all(self.picks.count(r) == 2 for r in self.rivals))
 
     def test_one_distinct_take_probability_across_every_intervening_pick(self):
+        """The structural half still holds after the repair: one shared valuation still means
+        one number, applied 22 times. What CHANGED is the number -- it is no longer the raw
+        table key, because the key is now a weight in a distribution rather than a probability
+        on its own."""
         boards = _boards(self.rivals, self.TARGET, len(self.rivals))
         rows = ds.estimate_survival([], {}, self.order, 0, "1", self.TARGET,
                                     boards, league=None)["risk_by_team"]
         self.assertEqual(len(rows), 22)
-        self.assertEqual({r["take_probability"] for r in rows}, {ds.RANK_TAKE_PROBABILITY[1]})
+        distinct = {r["take_probability"] for r in rows}
+        self.assertEqual(len(distinct), 1, "agreement should still collapse to one number")
+        only = distinct.pop()
+        self.assertAlmostEqual(only, 0.064, places=3)
+        self.assertLess(only, ds.RANK_TAKE_PROBABILITY[1],
+                        "the raw table key is a weight now, not a probability")
 
-    def test_the_reported_zero_is_not_a_rounding_artifact(self):
-        """0.00 invites the reading "small, but measured". It is seven orders below the 0.0005
-        that would round there -- the difference between a low probability and an impossibility
-        the model has no way to express."""
-        self.assertEqual(self._survival(len(self.rivals)), 0.0)
-        exact = (1 - ds.RANK_TAKE_PROBABILITY[1]) ** 22
-        self.assertLess(exact, 1e-7)
-        self.assertLess(exact * 1000, 0.0005)
+    def test_the_reported_zero_is_GONE(self):
+        """INVERTED ON REPAIR (#206, 2026-09-16). This test used to assert
+        `self._survival(len(self.rivals)) == 0.0` and then prove the zero was real rather than
+        rounded -- 2.3e-8, seven orders below the 0.0005 that would round there. That WAS the
+        defect: an impossibility the model had no way to express, for a player the draft then
+        let survive.
 
-    def test_a_single_agreeing_rival_already_costs_an_order_of_magnitude(self):
-        """Agreement is superlinear, and this is the asymmetry that makes this half of #206 the
-        hard one. ONE rival holding the top opinion -- 2 of the 22 picks -- takes survival from
-        0.641 to 0.135; three take it to 0.006. A shared valuation supplies far more agreement
-        than the collapse needs, so the collapse cannot be repaired by consulting fewer boards."""
-        self.assertAlmostEqual(self._survival(0), 0.641, places=3)
-        self.assertAlmostEqual(self._survival(1), 0.135, places=3)
-        self.assertAlmostEqual(self._survival(2), 0.029, places=3)
-        self.assertAlmostEqual(self._survival(3), 0.006, places=3)
+        Unanimous agreement across all 11 rivals over 22 intervening picks now leaves **0.232**.
+        The player survives, which is what the real draft did. Kept as an inversion rather than
+        deleted, because the number it used to assert is the record of what was wrong."""
+        survival = self._survival(len(self.rivals))
+        self.assertGreater(survival, 0.2)
+        self.assertAlmostEqual(survival, 0.232, places=3)
+        self.assertGreater(survival, 0.0005,
+                           "above the rounding floor -- a low probability, not an impossibility")
 
-    def test_no_amount_of_disagreement_reproduces_the_mass_normalised_answer(self):
-        """The two candidate repairs on ONE scale, which is the whole point of measuring both.
-        Renormalising the take mass -- arithmetic forced by "one team, one pick", a bound rather
-        than a threshold (#56) -- gives 0.314 on this turn. Varying agreement cannot land there
-        from either side: total disagreement overshoots at 0.641, and a single agreeing rival
-        undershoots at 0.135, because a rival's opinion moves two picks at once. 0.314 is not a
-        target to tune toward; it is the yardstick that shows these are different repairs, not
-        two routes to one answer."""
+    def test_agreement_still_costs_but_no_longer_annihilates(self):
+        """INVERTED ON REPAIR. The old numbers were 0.641 / 0.135 / 0.029 / 0.006 -- one
+        agreeing rival cost an order of magnitude and three effectively ended it. Agreement is
+        still monotone and still expensive, but it now DEGRADES instead of collapsing: no amount
+        of agreement reachable on this turn drives survival below 0.2.
+
+        The mechanism of the old collapse is worth keeping in view: a rival's opinion applies to
+        TWO picks, so agreement compounded superlinearly against a per-pick probability that was
+        already ~9x too large."""
+        self.assertAlmostEqual(self._survival(0), 0.947, places=3)
+        self.assertAlmostEqual(self._survival(1), 0.833, places=3)
+        self.assertAlmostEqual(self._survival(2), 0.733, places=3)
+        self.assertAlmostEqual(self._survival(3), 0.645, places=3)
         reachable = [self._survival(a) for a in range(len(self.rivals) + 1)]
-        self.assertEqual(reachable, sorted(reachable, reverse=True))
-        self.assertFalse(any(abs(v - 0.314) < 0.05 for v in reachable))
-        above = [v for v in reachable if v > 0.314]
-        self.assertEqual(above, [0.641])
+        self.assertEqual(reachable, sorted(reachable, reverse=True), "must stay monotone")
+        self.assertGreater(min(reachable), 0.2)
 
-    def test_the_collapse_needs_the_top_of_the_table_not_merely_a_ranked_row(self):
-        """Rank 5 is still inside the table and still agreed on by everyone, and it does NOT
-        reach zero. So "every board ranks him" is not sufficient on its own -- the defect is
-        every board ranking him AT THE TOP, which is exactly what one shared valuation
-        guarantees for the player the engine itself likes best."""
+    def test_the_repaired_rate_lands_near_the_rate_real_drafters_showed(self):
+        """THE POINT OF THE WHOLE REPAIR, and the reason it satisfies #56.
+
+        Nothing here was fitted to a league. The constraint is arithmetic -- one team makes one
+        pick, so their take probabilities are mutually exclusive and must sum to <= 1.0 over
+        their board. Applying only that puts the rank-1 take probability at **6.4%** on this
+        fixture, against **3.0%** measured from 270 real human picks (evidence/take_model/) and
+        **55%** in the unrepaired model.
+
+        Same order of magnitude as reality, from a constraint rather than a calibration. My own
+        recommended head-only repair, which WAS shaped toward the measurement, was off by 15x
+        and is withdrawn (30th). That contrast is the whole argument for deriving over tuning,
+        so it is asserted rather than left in prose."""
+        boards = _boards(self.rivals, self.TARGET, len(self.rivals))
+        rows = ds.estimate_survival([], {}, self.order, 0, "1", self.TARGET,
+                                    boards, league=None)["risk_by_team"]
+        p = rows[0]["take_probability"]
+        self.assertLess(p, 0.15, "nowhere near the unrepaired 0.55")
+        self.assertGreater(p, 0.01, "and not driven to nothing either")
+        self.assertLess(abs(p - 0.030), 0.05, "within a few points of the measured rate")
+
+    def test_a_ranked_row_deep_in_the_table_is_safer_than_the_top_of_it(self):
+        """Rank 5 is inside the table and agreed on by everyone, and it stays far safer than
+        rank 1 -- 0.848 against 0.232. The ORDERING property the old test asserted survives the
+        repair; only the magnitudes moved."""
         deepest = max(ds.RANK_TAKE_PROBABILITY)
-        self.assertGreater(self._survival(len(self.rivals), rank=deepest), 0.0)
+        deep_survival = self._survival(len(self.rivals), rank=deepest)
+        self.assertAlmostEqual(deep_survival, 0.848, places=3)
+        self.assertGreater(deep_survival, self._survival(len(self.rivals), rank=1))
+
+    def test_a_positional_run_REDISTRIBUTES_mass_it_does_not_manufacture_it(self):
+        """THE GAP MY OWN MUTATION PASS FOUND. Two mutations survived the first round -- removing
+        the run boost from the weight entirely, and keying the per-board cache on "" so a run
+        query gets the no-run answer. Both survived because every other test here runs with
+        `league=None` and no picks, so no run is ever detected and the boosted branch was
+        unexercised. A repair whose boost path no test reaches is a repair half-checked.
+
+        THE PROPERTY, and it is the reason the boost is applied to the WEIGHT rather than to the
+        finished probability: a run means rivals are likelier to take THAT position and
+        correspondingly less likely to take anything else. So the run player's share rises, every
+        other share falls, and the total is still exactly 1.0. Boosting an already-normalised
+        probability would instead re-break the mass the normalisation just imposed."""
+        target, other = self.TARGET, "filler_0"
+        board = _boards(self.rivals, target, 1)[self.rivals[0]]
+        board["by_id"][target] = {"position": "WR"}
+
+        plain = ds.board_take_mass(board)
+        boosted = ds.board_take_mass(board, "WR")
+        self.assertGreater(boosted["total_weight"], plain["total_weight"],
+                           "the run raises the running position's WEIGHT")
+
+        def share(mass, run):
+            return ds._take_probability(board["rank_by_id"][target], run, mass["total_weight"])
+
+        self.assertGreater(share(boosted, True), share(plain, False),
+                           "a run makes the running position's player likelier to be taken")
+        self.assertLess(
+            ds._take_probability(board["rank_by_id"][other], False, boosted["total_weight"]),
+            ds._take_probability(board["rank_by_id"][other], False, plain["total_weight"]),
+            "and correspondingly makes everyone else LESS likely -- redistribution, not inflation")
+
+        # Mass still exactly 1.0 under the run, which is what "redistributes" has to mean.
+        total = 0.0
+        for pid, rank in board["rank_by_id"].items():
+            is_run = board["by_id"].get(pid, {}).get("position") == "WR"
+            total += ds._take_probability(rank, is_run, boosted["total_weight"])
+        self.assertAlmostEqual(total, 1.0, places=9)
+
+    def test_the_per_board_cache_does_not_serve_one_run_positions_answer_to_another(self):
+        """The other survivor. The normaliser is memoised ON the board dict for speed, so a cache
+        keyed on anything less than the run position hands a WR-run answer to a QB-run query --
+        silently, and only under a run, which is exactly when the number matters most."""
+        board = _boards(self.rivals, self.TARGET, 1)[self.rivals[0]]
+        board["by_id"][self.TARGET] = {"position": "WR"}
+        no_run = ds._board_take_mass_cached(board, None)["total_weight"]
+        wr_run = ds._board_take_mass_cached(board, "WR")["total_weight"]
+        qb_run = ds._board_take_mass_cached(board, "QB")["total_weight"]
+        self.assertNotAlmostEqual(wr_run, no_run, msg="a WR run must change the WR board's mass")
+        self.assertAlmostEqual(qb_run, no_run, places=9,
+                               msg="a QB run must not, on a board whose only positioned row is WR")
+        # And re-asking must still give each its own answer, not whichever was cached first.
+        self.assertAlmostEqual(ds._board_take_mass_cached(board, "WR")["total_weight"], wr_run)
+        self.assertAlmostEqual(ds._board_take_mass_cached(board, None)["total_weight"], no_run)
+
+    def test_the_mass_sums_to_one_which_is_the_invariant_the_repair_exists_for(self):
+        """THE CONSTRAINT ITSELF, asserted directly rather than inferred from survival numbers.
+
+        Measured before repair on a real board: 23.49 (evidence/take_mass/). A team that makes
+        one pick cannot take 23 players."""
+        board = _boards(self.rivals, self.TARGET, 1)[self.rivals[0]]
+        mass = ds.board_take_mass(board)
+        total_p = sum(
+            ds._take_probability(rank, False, mass["total_weight"])
+            for rank in board["rank_by_id"].values()
+        )
+        self.assertAlmostEqual(total_p, 1.0, places=9)
+        self.assertGreater(mass["priced_rows"], 100, "a realistic board, not a degenerate one")
 
 
 if __name__ == "__main__":

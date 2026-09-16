@@ -185,14 +185,36 @@ class SurvivalAndPickAnalysisTests(unittest.TestCase):
         self.assertEqual(result["survival_probability"], 1.0)
         self.assertEqual(result["intervening_picks"], 0)
 
-    def test_the_consensus_top_player_has_near_zero_survival_across_a_long_gap(self):
+    def test_the_consensus_top_player_is_unlikely_to_survive_a_long_gap_but_not_impossible(self):
+        """INVERTED ON REPAIR (#206, 2026-09-16), on a REAL board rather than a fixture.
+
+        This asserted `survival < 0.05` for the #1 overall across 22 intervening picks, and the
+        engine delivered ~2.3e-8 -- not a low probability but an impossibility the model had no
+        way to express, for a player the real draft then let survive 60 straight picks. That
+        assertion WAS the defect, written down as intent.
+
+        Normalising the take mass (one team, one pick, so the probabilities are mutually
+        exclusive and sum to 1.0 across the board) leaves **0.092**. Still unlikely -- the #1
+        overall usually does go -- but now a number a person can reason about, and one that can
+        be wrong in a way the old answer could not."""
         board = dr.compute_draft_board(self.merger, self.players_db, [], my_roster_id="1", league=LEAGUE, mode="balanced")
         top_player_id = board[0]["player_id"]
         my_next = ds.find_next_pick_index(self.pick_order, "1", after_index=0)
         intervening = ds.intervening_roster_ids(self.pick_order, 0, my_next)
         opponent_boards = ds._build_opponent_boards(self.merger, self.players_db, [], LEAGUE, intervening)
         result = ds.estimate_survival([], self.players_db, self.pick_order, 0, "1", top_player_id, opponent_boards)
-        self.assertLess(result["survival_probability"], 0.05, "the #1 overall player should not likely survive a 22-pick gap")
+        survival = result["survival_probability"]
+        self.assertLess(survival, 0.25, "the #1 overall still should not be expected to survive")
+        self.assertGreater(survival, 0.01, "but it is a probability now, not an impossibility")
+
+        # THE INVARIANT THE REPAIR EXISTS FOR, checked on this real board rather than assumed.
+        one_board = opponent_boards[intervening[0]]
+        mass = ds.board_take_mass(one_board)
+        total = sum(ds._take_probability(rank, False, mass["total_weight"])
+                    for rank in one_board["rank_by_id"].values())
+        total += mass["unpriced_rows"] * ds._take_probability(None, False, mass["total_weight"])
+        self.assertAlmostEqual(total, 1.0, places=9,
+                               msg="a team makes one pick; its take mass must sum to 1.0")
 
     def test_more_intervening_picks_means_lower_or_equal_survival(self):
         board = dr.compute_draft_board(self.merger, self.players_db, [], my_roster_id="6", league=LEAGUE, mode="balanced")
