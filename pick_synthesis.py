@@ -182,6 +182,14 @@ EXPOSURE_MEASURED = lo.EXPOSURE_MEASURED
 DISPLACEMENT_BASIS_LABELS = lo.DISPLACEMENT_BASIS_LABELS
 DISPLACEMENT_MEASURED = lo.DISPLACEMENT_MEASURED
 DISPLACEMENT_ROSTER_PARTIAL = lo.DISPLACEMENT_ROSTER_PARTIAL
+#: #112: the fifth re-export, and the first whose forbidden module is draft_room itself. A
+#: consumer that imported draft_room for these two names would acquire compute_draft_board with
+#: them -- the debate layer could then re-price the candidate it was told not to recompute, and
+#: `DecisionBoundaryIsClosedTests` fails on exactly that, as it did to my first attempt here.
+#: The vocabulary keeps ONE home (draft_room, #126) and crosses the boundary the way the other
+#: four do: through the snapshot module, which is the boundary rather than a consumer of it.
+ABSENCE_KINDS = dr.ABSENCE_KINDS
+ABSENCE_KIND_LABELS = dr.ABSENCE_KIND_LABELS
 
 # Position-view depth ceiling (see narrow_candidates' own docstring): the board's real,
 # league-aware replacement rank per position (draft_room.replacement_ranks) is the right
@@ -1176,6 +1184,11 @@ class CandidateSnapshot:
     #: adjustment", which is a different and much stronger claim.
     time_horizon_adj: Optional[float] = None
     risk_adj: Optional[float] = None
+    #: #112. Which KIND of absence left this row unpriced -- see draft_room.ABSENCE_KINDS. None
+    #: on a priced row. The register names three kinds with three different answers to the
+    #: ordering question, and only one of them ("below every source's cutoff") is evidence of
+    #: low value; carrying one token for all three asserted the strongest of them about all.
+    absence_kind: Optional[str] = None
     # THE COMPANION THAT WAS DROPPED HERE (#174). The board emits it beside depth_exposure and
     # the snapshot did not carry it, so every consumer past this boundary -- the chair prose,
     # the board UI, screen_context -- saw a 0.0 and could not tell "measured, no exposure" from
@@ -1382,6 +1395,9 @@ def build_snapshot(
             # says so at the emission site, and this mirrors it rather than restating it).
             "time_horizon_adj": row.get("time_horizon_adj"),
             "risk_adj": row.get("risk_adj"),
+            # #112: WHY this row is unpriced, if it is. None on a priced row -- there is no
+            # absence to classify -- so this is not a three-state flag wearing two states.
+            "absence_kind": row.get("absence_kind"),
             "eligibility_bonus": row.get("eligibility_bonus", 0.0),
             "depth_exposure": row.get("depth_exposure"),
             # Read this BEFORE depth_exposure: a 0.0 whose basis is not `measured` is an

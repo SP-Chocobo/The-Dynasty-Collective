@@ -61,7 +61,8 @@ from llm_engine import (
     CLAUDE_MODEL, GEMINI_MODEL, OPENAI_MODEL, MAX_TOKENS,
     UNAVAILABLE_REPORT, _report_for_handoff,
 )
-from pick_synthesis import (CandidateSnapshot, PickSnapshot, DENIAL_BASIS_LABELS,
+from pick_synthesis import (ABSENCE_KIND_LABELS,
+                            CandidateSnapshot, PickSnapshot, DENIAL_BASIS_LABELS,
                             DISPLACEMENT_BASIS_LABELS, DISPLACEMENT_MEASURED,
                             EXPOSURE_BASIS_LABELS, EXPOSURE_MEASURED,
                             diff_snapshots, stamp_is_current)
@@ -316,8 +317,14 @@ def _format_candidate(candidate: CandidateSnapshot, user_selected_player_id: Opt
     # +6.0 ...)" -- an arithmetic sentence with a hole in it, shown to a model instructed never to
     # recompute. Said plainly instead, in the same register the rest of this function uses.
     if candidate.universal_value is None:
+        # #112: WHICH KIND of absence, not merely that there is one. "No source carried him" and
+        # "sources carried him and none priced him" are different claims about the same blank,
+        # and only the second is even weak evidence of low value. The kind is stated when the
+        # board recorded one and omitted when it did not -- never guessed here.
+        why = ABSENCE_KIND_LABELS.get(candidate.absence_kind)
         lines.append("  Universal value: NOT PRICED -- the engine could not value this player at "
-                     "all. Read every value comparison below as unavailable, never as low.")
+                     "all. Read every value comparison below as unavailable, never as low."
+                     + (f" ({why})" if why else ""))
     else:
         # #119: THE PRICE IS NOW EXPLAINED, not merely asserted. `universal_value` is
         # `bpa + time_horizon_adj + risk_adj`, and until now the two addends were computed by

@@ -567,6 +567,61 @@ CONFIDENCE_BY_SOURCE = {
 #: the label would have turned a small false claim into the dominant one.
 NO_PRICEABLE_INPUT = "no_priceable_input"
 
+# #112: WHY a row is unpriced, which `NO_PRICEABLE_INPUT` alone cannot say. The register names
+# three kinds and gives them DIFFERENT answers to the ordering question, because only one of them
+# is evidence of low value:
+#
+#   ABSENCE_NO_INPUT            no projection and no trade value from any source. A COVERAGE GAP.
+#                               Unknown, NOT bad -- the engine never formed an opinion.
+#   ABSENCE_BELOW_SOURCE_CUTOFF some source carries the player but none priced him. Weak evidence
+#                               of genuinely low value, and the only kind that justifies ORDER
+#                               LAST on its own merits.
+#   ABSENCE_NO_REPLACEMENT      the position has no replacement level to price against. A
+#                               STRUCTURAL absence; unknown, not bad.
+#
+# Collapsing them is the defect: `unknown` and `known-weak` were the same None, so ORDER LAST
+# asserted the strongest of the three about all of them. None of these is a threshold -- each is
+# a statement about which inputs EXIST, so #56 is not engaged.
+#
+# ONLY THE FIRST IS PRODUCED TODAY, and a reader who misses that will misread every board. On a
+# real board of 1,119 rows, 638 are unpriced and ALL 638 are ABSENCE_NO_INPUT. The other two are
+# named here and assigned by `_derive_points_and_source` to nobody -- see its own comment for
+# why each needs evidence this pool does not carry. They are kept rather than deleted because a
+# vocabulary trimmed to its current population describes the dataset instead of the domain, and
+# the next league with an unpriceable position would have nowhere to land.
+#
+# SO THE FINDING OUTLIVES THE REPAIR: ORDER LAST is applied to a population that is entirely
+# "unknown, not bad", containing none of the evidence that would justify it. Whether that is the
+# right ordering is a valuation question (#50), not a disclosure one; this vocabulary only makes
+# it askable at the surface where it would be answered.
+ABSENCE_NO_INPUT = "no_input"
+ABSENCE_BELOW_SOURCE_CUTOFF = "below_source_cutoff"
+ABSENCE_NO_REPLACEMENT = "no_replacement_level"
+
+#: Priced rows carry None -- there is no absence to classify. Derived, never hand-listed (#126).
+ABSENCE_KINDS = (ABSENCE_NO_INPUT, ABSENCE_BELOW_SOURCE_CUTOFF, ABSENCE_NO_REPLACEMENT)
+
+#: What each kind says to a PERSON, in the register `DENIAL_BASIS_LABELS` established: one
+#: clause that answers "so what does the blank mean", not a re-spelling of the token. It lives
+#: here, beside the vocabulary it labels, for the reason #186 records -- the alternative is a
+#: consumer keeping its own copy, and the copy defaults every unrecognised token to the
+#: strongest claim available. `pick_synthesis` re-exports both names across the decision
+#: boundary; no consumer imports this module (`test_pick_synthesis.DecisionBoundaryIsClosed`).
+#:
+#: ONLY THE SECOND CLAUSE CALLS THE ABSENCE EVIDENCE. That asymmetry is the whole point of
+#: splitting the kinds, so it is written into the prose rather than left for a reader to infer.
+ABSENCE_KIND_LABELS = {
+    ABSENCE_NO_INPUT:
+        "no source carried a projection or a trade value for him -- a COVERAGE GAP, not a low "
+        "grade",
+    ABSENCE_BELOW_SOURCE_CUTOFF:
+        "a source carries him but none priced him -- weak evidence of genuinely low value, and "
+        "the only absence here that is evidence at all",
+    ABSENCE_NO_REPLACEMENT:
+        "his position has no replacement level to price against -- a STRUCTURAL absence, not a "
+        "judgment about him",
+}
+
 # The committed baseline CSVs whose points are a season total TRANSCRIBED from a specific
 # league's own Sleeper display (see sleeper_client.build_baseline_projection_rows and
 # data/baseline/sleeper_projection_provenance.json) -- not Draft Sharks' season-long
@@ -2241,6 +2296,34 @@ def _derive_points_and_source(pool: pd.DataFrame) -> pd.Series:
     no_points = ~has_proj
     pool.loc[no_points & pool["trade_value"].notna(), "bpa_source"] = "position_relative_trade_value_vor"
     pool.loc[no_points & pool["trade_value"].isna(), "bpa_source"] = NO_PRICEABLE_INPUT
+
+    # #112: the KIND of absence -- DERIVED FROM THE SOURCE LABEL, not from a second reading of
+    # the same two columns. A row is unpriced exactly when its source is NO_PRICEABLE_INPUT;
+    # every other source in CONFIDENCE_BY_SOURCE carries a confidence NUMBER, which is what
+    # "this anchor produced something" means here. Keying off the label rather than restating
+    # `no_points & trade_value.isna()` keeps one home for the question (#126) and makes the
+    # invariant checkable in one line: a kind is present iff the row has no price.
+    #
+    # MY FIRST VERSION OF THIS GOT IT WRONG, and it is recorded rather than quietly fixed. It
+    # assigned ABSENCE_BELOW_SOURCE_CUTOFF on `no_points & trade_value.notna()` -- which is the
+    # TRADE-VALUE FALLBACK branch, `position_relative_trade_value_vor`, confidence 35.0. Those
+    # rows ARE priced. The field would have carried an absence kind on a row that has a number,
+    # contradicting its own contract, and the error was invisible on every board measured
+    # because that branch currently has zero rows (0 of 1,119). A latent breach, not a live one
+    # -- which is exactly the kind that survives a green suite.
+    #
+    # SO ONLY ONE KIND IS PRODUCED HERE. The other two are named in the vocabulary and assigned
+    # by nobody:
+    #   ABSENCE_BELOW_SOURCE_CUTOFF needs evidence this pool does not carry -- that a source
+    #     LISTS the player while declining to price him. Admission (#193) and pricing are
+    #     separate questions here, but the pool records only the outcome, not which sources
+    #     were consulted, so the two cannot be told apart from a board row.
+    #   ABSENCE_NO_REPLACEMENT is not a property of this pool at all: whether a position has a
+    #     replacement level is decided later against the league's own demand.
+    # Guessing either from what is available here would be precisely the substitution this
+    # field exists to prevent, so neither is guessed.
+    pool["absence_kind"] = None
+    pool.loc[pool["bpa_source"].eq(NO_PRICEABLE_INPUT), "absence_kind"] = ABSENCE_NO_INPUT
     return has_proj
 
 
@@ -3175,6 +3258,10 @@ def compute_draft_board(
             "growth_signal", "universal_value", "confidence", "final_score", "mode",
             "projected_points", "horizon_floor", "horizon_sensitivity", "waiting_cost",
             "replacement_basis", "horizon_basis", "identity_basis", "availability_basis",
+            # #112: the KIND of absence travels with the row, on BOTH serializations. A
+            # companion that reaches only the balanced board would be exactly the #174 defect
+            # (the number crossed the boundary, its basis did not).
+            "absence_kind",
             "fills_required_slot",
         ]], "projected_points", "horizon_floor", "horizon_sensitivity", "waiting_cost",
             "bpa", "universal_value", "final_score", "confidence", "replacement_basis",
@@ -3437,7 +3524,8 @@ def compute_draft_board(
         "displacement_adj", "displacement_basis",
         "confidence", "final_score", "mode", "projected_points",
         "horizon_floor", "horizon_sensitivity", "waiting_cost", "replacement_basis",
-        "horizon_basis", "identity_basis", "availability_basis", "fills_required_slot",
+        "horizon_basis", "identity_basis", "availability_basis", "absence_kind",
+        "fills_required_slot",
     ]], "projected_points", "horizon_floor", "horizon_sensitivity", "waiting_cost",
         "bpa", "universal_value", "final_score", "confidence", "replacement_basis",
         "availability_basis", "risk_adj")

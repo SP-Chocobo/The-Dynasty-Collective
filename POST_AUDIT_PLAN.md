@@ -11227,3 +11227,106 @@ terminology guard scans `*.py` only.
 
 **PINNED:** `test_valuation_leaf_explains_itself.py`, 12 tests, mutation-checked 4/4. Full suite
 **2984, OK**.
+
+## #112 — the kinds are three, the population is one, and my first fix broke the contract it wrote
+
+`#112` says a row's absence carried ONE token, `bpa_source = "no_priceable_input"`, for three
+situations the register gives three different answers to: no replacement level (structural,
+*unknown not bad*), no projection from any source (a coverage gap, *unknown not bad*), and below
+every source's cutoff (*weak evidence of genuinely low value*). **Only the third justifies ORDER
+LAST on its own merits**, and one token for all three asserts the strongest of them about every
+unpriced row.
+
+**THE GAP IS REAL AND THE POPULATION IS NOT.** Measured on a real board built from the capture
+(12-team PPR dynasty, 1,119 rows): **638 unpriced, every one of them the coverage gap** — no
+source put a number on him at all. Zero rows of the one kind that would justify the ordering the
+engine applies. That is the finding, and it is sharper than the item: ORDER LAST is currently
+applied to a population containing **none** of the evidence for it.
+
+**TWO OF THE THREE KINDS ARE NAMED AND PRODUCED BY NOBODY, deliberately.** "Below every source's
+cutoff" needs evidence the pool does not carry — that a source *lists* a player while declining
+to price him. Admission and pricing are separate questions here (`#193`), but a board row records
+only the outcome, not which sources were consulted, so the two cannot be told apart from it.
+Producing that kind needs a new **input**, not a new predicate. "No replacement level" is not a
+property of the pool at all. Both are kept in the vocabulary: deleting an unpopulated kind makes
+the vocabulary describe this dataset rather than the domain, and the next league with an
+unpriceable position has nowhere to land — which is how the collapse happened the first time.
+
+**MY FIRST IMPLEMENTATION PUT AN ABSENCE KIND ON PRICED ROWS.** It assigned the cutoff kind on
+`no_points & trade_value.notna()`, reading that as *carried but unpriced*. That predicate is the
+**trade-value fallback** — `position_relative_trade_value_vor`, confidence **35.0** in
+`CONFIDENCE_BY_SOURCE`, a pricing source. Only `no_priceable_input` has confidence `None`. The
+field would have contradicted its own stated contract on every such row.
+
+**No test could have caught it, and no measurement did.** That branch has **zero rows** on every
+board measured (0 of 1,119), so the cross-tab I ran to look for exactly this breach came back
+`0 breaches, 0 unclassified` — a clean result about an unreachable branch. Only reading the
+branch found it. **A latent contract breach is the shape that survives a green suite**, and it
+survives a green measurement too when the population cannot reach it. The classification is now
+derived from the **source label** rather than from a second reading of the same two columns, so
+*has a kind* and *has no price* are one question asked once (`#126`).
+
+**THE DECISION BOUNDARY CAUGHT MY SECOND MISTAKE, as a red control rather than a surviving
+mutant.** To render the kinds I first wrote `import draft_room as dr` into `pick_debate` —
+and `test_pick_synthesis.DecisionBoundaryIsClosedTests` failed immediately, correctly. A snapshot
+consumer that can import `draft_room` acquires `compute_draft_board` along with the vocabulary,
+and the debate's own instruction to the models — *do not recompute* — stops being structural.
+The guard's docstring had predicted this exact slip: *"naming it here means a future import of
+the board builder itself fails this test instead of slipping in beside it."* The vocabulary now
+crosses the way the other four do (`DENIAL_BASIS_LABELS`, `EXPOSURE_BASIS_LABELS`,
+`EXPOSURE_MEASURED`, `DISPLACEMENT_BASIS_LABELS`): **re-exported by `pick_synthesis`, which IS
+the boundary rather than a consumer of it.** One home in `draft_room`, one crossing, no copy.
+
+**THE KIND HAS A READER, because the suite refused the version where it did not.** Recording it
+on the board and stopping there made it a write-only quantity, and
+`test_quantity_readers.TheWriteOnlySetMustNotGrowTests` failed on it inside the same pass —
+`#119`'s lesson arriving one item later. It is carried to `CandidateSnapshot` and rendered in the
+one place a person reads it: the NOT PRICED line now says *which* absence, and the coverage-gap
+phrasing denies the inference it invites — *"a COVERAGE GAP, not a low grade"*. A board that
+recorded no kind renders **nothing**; the kind is never guessed downstream.
+
+**A `#245` NEAR-MISS, kept because the control is the whole lesson.** The first version of the
+population measurement matched board names against the projections table with a hand-rolled
+normaliser and reported **0 of 643** rows present — clean, tidy, completely false. The control
+caught it: the same matcher found **0 of 475 PRICED** rows too, because `norm_name` abbreviates
+first names (`a adebawore`) while board rows carry full ones. The measurement above uses only
+fields the row already carries, so no matcher is involved at all.
+
+**WHAT THIS DOES NOT DO.** It does not change any ordering. `absence_kind` is an **observable**:
+nothing sorts, scores or ranks by it, and the question the finding actually raises — whether ORDER
+LAST is right for a population that is entirely *unknown, not bad* — is a `#50` valuation
+decision, not a disclosure one. The repair makes that question askable at the surface where it
+would be answered.
+
+**PINNED:** `test_absence_kind.py`, 23 tests, **mutation-checked 7/7** — collapse two kinds to one
+phrase; sever the snapshot carry; remove the prose lookup; classify every row (the latent breach
+made live); drop the field from one of the two serializations; re-import `draft_room` into
+`pick_debate`; re-derive the predicate instead of reading the source label. The board and
+boundary tests run against a **real 81-row board containing one genuinely unpriced row**, not a
+hand-built snapshot — that distinction is why two of these seven are caught at all. Evidence:
+`evidence/absence_kind/kind_vs_priced.py`.
+
+## #211 — the re-read trigger fired, and Gate 2's ruling reinforces the pin
+
+`#211` was pinned **KNOWN-OPEN-ACCEPTABLE** with a stated trigger: *worth re-reading once Gate 2
+is ruled, since it is the metric the roster proof's asset ruler leans on.* Gate 2 was ruled
+(`#252`, 2026-09-12). The trigger has fired; this is the discharge.
+
+**The finding stands, unchanged.** `starter_value` sums an asset LEVEL over a starting lineup, so
+what it ranks is **positional breadth** — who is forced to start the shallowest player — not
+roster quality. `draft_battery.py` says so in its own docstring rather than in a comment
+elsewhere.
+
+**Gate 2's ruling does not reopen it; it reinforces the pin.** `#252` holds that the exchange
+rate is CONFIGURATION-DEPENDENT and that **no cell's number is the engine's verdict**. A metric
+that is reported rather than asserted is exactly what that ruling authorises. The two agree.
+
+**Re-verified, not recalled: `starter_value` has no production reader.** It reaches
+`draft_battery.py` (where it is defined and documented), `run_draft_battery.py`'s status line, and
+seven `run_*` probes. Nothing in the engine sorts, ranks, maximises or gates on it. The one
+production module that could be confused for a reader, `roster_diagnostics.py`, computes its own
+`starting_lineup_value` through `lineup_optimizer.optimize_lineup` and merely *cites* the
+battery's quantity to explain that both make the same exclusion — a cross-reference, not a wire.
+
+**Verdict: KNOWN-OPEN-ACCEPTABLE, pin retained, trigger discharged.** No code change. It is a
+reported line in an instrument, and both the instrument and the ruling say so.

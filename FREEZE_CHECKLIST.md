@@ -408,16 +408,32 @@ only. The items below feed observables and the debate layer, so they degrade wha
       measured 0.0 is still reported as a measurement. **The original six were never enumerated,
       so no claim is made that these are the same six.** `test_dock_absence_contract.py`, 9 tests,
       mutation-checked 4/4.
-- [ ] **#112** — kind-of-absence stops at the board; "never checked" has no representation.
+- [x] **#112** — **REPAIRED**: `absence_kind` names WHICH absence left a row unpriced, carried on
+      both board serializations, into `CandidateSnapshot`, and rendered on the NOT PRICED line
+      where a person reads it. **Measured: of 1,119 rows, 638 are unpriced and every one is the
+      coverage gap** — zero rows of the one kind that would justify ORDER LAST. The gap is real;
+      the population is not. **My first implementation put an absence kind on PRICED rows** (it
+      keyed on the trade-value fallback branch, confidence 35.0) — a latent breach invisible to
+      every test and to the cross-tab written to find it, because that branch has zero rows; the
+      classification is now derived from the source label. **The decision boundary caught my
+      second mistake**: importing `draft_room` into `pick_debate` would hand the debate layer
+      `compute_draft_board`, so the vocabulary crosses via `pick_synthesis`' re-export like the
+      four before it. Whether ORDER LAST is right for an entirely *unknown-not-bad* population is
+      a **#50** question this makes askable, not one it answers. `test_absence_kind.py`, 23 tests,
+      mutation-checked 7/7.
 - [x] **#119** — **REPAIRED**: `time_horizon_adj` and `risk_adj` are carried to the snapshot and
       rendered beside the team-value decomposition, so `universal_value = bpa + horizon + risk` is
       explained where a person reads it. `quantity_readers` independently confirms both moved from
       `decomposition` (zero readers) to `observable`, `scoring_readers` still empty — it discloses,
       it does not wire. **This item's second clause was stale**: the board does NOT drop
       `bpa_source`/`confidence`; both reach `pick_debate`. 12 tests, mutation-checked 4/4.
-- [ ] **#211** — `starter_value` ranks positional breadth, not roster quality. Pinned as
-      KNOWN-OPEN-ACCEPTABLE; worth re-reading once Gate 2 is ruled, since it is the metric the
-      roster proof's asset ruler leans on.
+- [x] **#211** — **TRIGGER DISCHARGED, pin retained.** Gate 2 was ruled (`#252`), which is the
+      re-read condition this item carried. The finding stands — `starter_value` sums an asset
+      LEVEL over a lineup, so it ranks positional breadth — and Gate 2's ruling *reinforces* the
+      pin rather than reopening it: "no cell's number is the engine's verdict" is exactly the
+      status a reported metric has. Re-verified rather than recalled: no production module reads
+      it (`roster_diagnostics` computes its own `starting_lineup_value` and merely cites this one
+      to explain a shared exclusion). Stays **KNOWN-OPEN-ACCEPTABLE**. No code change.
 
 ## GATE 5 — Owner decisions for the freeze record (no code)
 

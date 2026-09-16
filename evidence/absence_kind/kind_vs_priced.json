@@ -1,0 +1,15 @@
+{
+ "board_rows": 1119,
+ "universe": 6595,
+ "kind_by_priced": {
+  "None|True": 481,
+  "no_input|False": 638
+ },
+ "kind_by_source": {
+  "None|points_vor_sleeper_season_scored": 469,
+  "None|points_vor_draftsharks": 12,
+  "no_input|no_priceable_input": 638
+ },
+ "contract_breaches_kind_on_priced_row": 0,
+ "unclassified_unpriced_rows": 0
+}
