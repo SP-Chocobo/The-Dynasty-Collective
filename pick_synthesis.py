@@ -480,6 +480,49 @@ CLIFF_MIN_MATERIAL_GAP = NEAR_TIE_BAND
 # marginal lead that's still probably safe) stays in the ordinary tiebreaker-prose regime.
 DECISIVE_SURVIVAL_THRESHOLD = 0.15
 
+#: THE THRESHOLD IS NOT SET, AND "decisive" IS UNREACHABLE BY DESIGN (#206, owner delegated).
+#:
+#: `decision_regime` needs survival <= DECISIVE_SURVIVAL_THRESHOLD to call a board "decisive".
+#: `evidence/survival_calibration/` measured whether survival can carry that weight, against the
+#: owner's own contract for it -- "a mathematical representation of what are the chances this
+#: player makes it back to my next selection" -- and it cannot:
+#:
+#:   SMOKE  120 sim picks, 5 selection policies   engine Brier 0.22480 vs constant 0.19348
+#:   REAL   360 real picks, Greatest Show 2       engine Brier 0.16127 vs constant 0.14224
+#:   Both arms: oracle 0.0, ceilings hold, and the engine LOSES TO PREDICTING THE BASE RATE.
+#:
+#: And it loses WORST exactly where this threshold reads. The 0.0-0.1 bucket on real picks:
+#: n=74, predicted 0.028, observed 0.500. A "he will not last" call was right about half the
+#: time, which is a coin flip wearing an alarm's clothing. No value of this constant is
+#: defensible against that distribution -- not 0.15, not 0.5, not any number -- so none is
+#: chosen. Choosing one to make the state fire would be fitting a threshold to noise, which is
+#: what `#56` forbids and what the capture's LIMITS forbid doing against a single league.
+#:
+#: THE GATE IS NOT WHY "decisive" STOPPED FIRING, and saying so was my own error, caught by
+#: this file's vacuity check. Lift the gate and the state STILL never fires on a real board.
+#: The load-bearing cause is arithmetic and it came from #206's OWN mass-conservation repair
+#: (364042a): survival used to be far too low -- 0.00 for a player who survived 60 picks, the
+#: symptom that opened #206 -- and normalising each opponent's take mass to 1.0 raised it past
+#: the threshold. Measured across 8 real board states: the leader's survival floor is 0.212
+#: against a threshold of 0.15, and 0 of 8 boards clear it (the tie-band half clears on 2 of
+#: 8, so it is not the blocker). test_the_threshold_sits_below_the_leader_survival_floor pins
+#: that, and the freeze record must not claim calibration is the reason the state is dark.
+#:
+#: The refusal is still ENFORCED rather than documented: decision_regime will not return
+#: "decisive" while this is False, so the constant above is inert and cannot quietly start
+#: deciding if the arithmetic ever changes underneath it.
+#: test_threshold_reachability pins the unreachability AND FAILS IF CALIBRATION EVER PASSES --
+#: it is a trigger to revisit this, not a silencer. The numbers here are checked against the
+#: committed evidence by test_survival_calibration_declaration, so this block cannot drift
+#: away from the files it cites.
+SURVIVAL_IS_CALIBRATED = False
+
+#: Where the claim above comes from, so a reader can check it rather than trust it.
+SURVIVAL_CALIBRATION_EVIDENCE = {
+    "smoke": "evidence/survival_calibration/calibration.json",
+    "real": "evidence/survival_calibration/calibration_real.json",
+}
+
 # Checked top-down; the first threshold this score meets or exceeds wins.
 NECESSITY_LABEL_THRESHOLDS = [
     (98.0, "MUST TAKE"),
@@ -914,6 +957,15 @@ def decision_regime(candidates: list[dict]) -> str:
     # falls through to "contested" instead of being read as "measured, and not close", which is
     # what `not None` would have done. That is #61's invariant 8: decision_regime never returns
     # "decisive" from an unknown margin.
+    # THE CALIBRATION GATE (#206). "decisive" is a claim that the leader is both clear of the
+    # field AND unlikely to survive -- and the second half rests entirely on a quantity that
+    # was measured, on two independent arms, to carry less information than predicting the base
+    # rate. It is worst precisely in the band this threshold reads: predicted 0.028, observed
+    # 0.500 over 74 real pairs. Gating here rather than at the constant is deliberate -- it
+    # leaves the threshold visible and inert instead of deleting a decision the evidence may
+    # later support, and it means no future caller can reach "decisive" by tuning a number.
+    if not SURVIVAL_IS_CALIBRATED:
+        return "contested"
     if (leader_in_tie_group is False
             and survival is not None and survival <= DECISIVE_SURVIVAL_THRESHOLD):
         return "decisive"
@@ -1137,6 +1189,17 @@ class CandidateSnapshot:
     eligibility_bonus: float
     team_acquisition_value: Optional[float]
     survival_probability: Optional[float]
+    #: The companion that makes survival_probability readable (#206/#187), same pattern as
+    #: denial_basis below. THREE states, never inferred from the number:
+    #:   no_next_pick          -- there is no next selection, so the question does not arise.
+    #:                            survival is None here, NOT 1.0: the old 1.0 made
+    #:                            opportunity_cost render 0.00, "waiting costs you nothing",
+    #:                            at the one moment waiting costs you the player permanently.
+    #:   no_intervening_picks  -- back-to-back; survives by ARITHMETIC, not by estimate.
+    #:   measured              -- estimated against every intervening rival's board.
+    #: REQUIRED, not defaulted, for the reason denial_basis is: a defaulted companion is one a
+    #: new call site can forget, and then the absence travels unlabelled.
+    survival_basis: Optional[str]
     intervening_picks: Optional[int]
     opportunity_cost: Optional[float]
     expected_value_of_waiting: Optional[float]

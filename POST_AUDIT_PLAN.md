@@ -11766,3 +11766,59 @@ odds model of that kind rests on a PER-PLAYER empirical distribution of when tha
 goes. Ours is a RANK CURVE — identical for every player who lands at that rank. FantasyPros'
 `best` / `worst` / `std_dev` columns are the shape of the missing input; they are ingested and
 read by nothing. Recorded as a candidate input for the redesign, NOT wired.
+
+## #206 RULINGS EXECUTED (owner delegated: "Whatever you need/decide, just make it work")
+
+### DECISIVE_SURVIVAL_THRESHOLD: no value chosen, and the state is dark for a reason that is
+### NOT the one I first wrote down
+
+The threshold stays at its declared 0.15 and is now INERT. `SURVIVAL_IS_CALIBRATED = False`
+gates `decision_regime` so "decisive" cannot be returned, and the flag is checked against the
+committed calibration evidence by `test_survival_calibration_declaration` — the prose cannot
+drift from the files it cites, and flipping the flag without the evidence fails the suite.
+
+**Why no value**: both arms measured the engine losing to a constant predictor (SMOKE 0.22480
+vs 0.19348; REAL 0.16127 vs 0.14224, oracle 0.0 on both), and it loses WORST in exactly the
+band this threshold reads — the 0.0-0.1 bucket on real picks is n=74, predicted 0.028, observed
+0.500. Any value there wires a UI state to a coin flip. #56 and the capture's LIMITS forbid
+fitting one.
+
+**THE CORRECTION THAT MATTERS, and I nearly shipped the wrong story.** I wrote that the
+calibration gate was why "decisive" is unreachable. My own vacuity check — the one this
+repo keeps learning to write — disproved it: lift the gate and the state STILL never fires on a
+real board. Measured across 8 real board states:
+
+    leader survival            min 0.212, max 0.925
+    DECISIVE_SURVIVAL_THRESHOLD              0.15
+    boards clearing the tie band             2 of 8    <- not the blocker
+    boards with survival <= threshold        0 of 8    <- THE blocker
+
+The real cause is **#206's own mass-conservation repair** (`364042a`). Survival used to be far
+too LOW — the symptom that opened #206 was 0.00 for a player who then survived 60 picks —
+and normalising each opponent's take mass to 1.0 raised the leader's floor above the threshold.
+The test that failed was not reporting a calibration problem; it was reporting the downstream
+consequence of an earlier fix. The freeze record must not say calibration darkened the state.
+
+The characterization was INVERTED, not deleted (repo doctrine): the reachability test now pins
+unreachability AND FAILS if either cause goes away, so a future repair is forced to re-answer
+the question instead of inheriting a threshold nobody re-examined.
+
+### The unpriced floor: DECLINED, with the arithmetic for why
+
+"One block instead of 340 rows" is the obvious structural fix and it OVERCORRECTS badly: one
+floor weight (0.02) against a priced mass of 5.27 gives the unpriced block ~0.4% of take mass,
+against a measured real rate of 10.3%. That turns a 6.9x overshoot into a ~25x undershoot —
+trading a wrong number for a differently wrong number and calling it structure.
+
+The aggregate needs a number we do not have. The only number available is 10.3% from ONE
+league, which the LIMITS bar from setting an engine constant. So it stays open, and the
+`unpriced_mass_share` disclosure already added to `estimate_survival` keeps it visible rather
+than silent. This is a decision NOT to act, recorded as one.
+
+### Carried forward, unchanged by any of this
+
+The value-share take model (`board_contention_scale` / `_value_take_weight`, `ebdbc12`) remains
+BUILT AND UNWIRED. It fixes the cluster shape the owner specified and does not fix the
+magnitude, both measured. Wiring it is a Phase 3 decision that needs a rerun of both arms
+against the post-wiring engine — the current evidence records the pre-repair file hashes
+precisely so the two cannot be confused.

@@ -121,10 +121,20 @@ class EveryFiringThresholdIsReachableTests(_RealBoards):
         self.assertGreater(inside, 0, "NEAR_TIE_BAND never calls anything a tie")
         self.assertGreater(outside, 0, "NEAR_TIE_BAND calls everything a tie")
 
-    def test_the_decisive_regime_is_reachable_on_a_real_board(self):
-        # The defect this pins: the margin half used to be NECESSITY_STANDOUT_REFERENCE_GAP,
-        # a normalizer reference placed above the observed maximum on purpose, so "decisive"
-        # was produced at 0 of 24 measured board states.
+    def test_decisive_is_unreachable_while_survival_is_uncalibrated(self):
+        """INVERTED, not deleted (#206). This asserted that "decisive" is REACHABLE, because an
+        unreachable state carries no information. That reasoning still stands -- but the
+        calibration evidence says the state's second condition rests on a quantity that loses
+        to predicting the base rate, and loses WORST in exactly the band the threshold reads
+        (0.0-0.1: predicted 0.028, observed 0.500 over 74 real pairs).
+
+        So "decisive" is now unreachable ON PURPOSE, gated on SURVIVAL_IS_CALIBRATED, and this
+        test pins the refusal.
+
+        IT IS A TRIGGER, NOT A SILENCER. Flip SURVIVAL_IS_CALIBRATED to True and this test
+        FAILS, which forces the reachability question to be re-answered against whatever
+        evidence justified the flip -- rather than letting a repaired model quietly inherit a
+        threshold nobody re-examined. Deleting the test would have lost that."""
         seen = set()
         for rounds, picks, _ in self._boards():
             index = next((i for i in range(rounds * NUM_TEAMS, len(self.pick_order))
@@ -134,11 +144,57 @@ class EveryFiringThresholdIsReachableTests(_RealBoards):
             snapshot = ps.build_snapshot(self.merger, self.players_db, picks, self.pick_order,
                                          index, "1", DYNASTY, pick_label=f"R{rounds + 1}")
             seen.add(snapshot.decision_regime)
-        self.assertIn("decisive", seen,
-                      "decision_regime never produces 'decisive' on any real board state -- "
-                      "one of its two states is unreachable, so the signal carries no "
-                      "information")
-        self.assertIn("contested", seen, "decision_regime never produces 'contested' either")
+        self.assertIn("contested", seen, "decision_regime produces neither of its states")
+        self.assertFalse(
+            ps.SURVIVAL_IS_CALIBRATED,
+            "SURVIVAL_IS_CALIBRATED is True, so 'decisive' should be reachable again -- "
+            "re-answer the reachability question against the evidence that justified the "
+            "flip, and restore the reachability assertion below instead of this one")
+        self.assertNotIn(
+            "decisive", seen,
+            "'decisive' fired while SURVIVAL_IS_CALIBRATED is False -- the calibration gate "
+            "in decision_regime has been bypassed, and a UI state is now being driven by a "
+            "survival estimate measured to lose to a constant predictor")
+
+    def test_the_threshold_sits_below_the_leader_survival_floor(self):
+        """WHY "decisive" is unreachable, measured rather than assumed -- and it is NOT the
+        calibration gate.
+
+        I added that gate and wrote that it was the cause. The vacuity check in this file
+        disproved it: lift the gate and "decisive" STILL never fires on a real board. The
+        actual cause is arithmetic, and it is a consequence of #206's own mass-conservation
+        repair (364042a). Survival used to be far too LOW -- the symptom that opened #206 was
+        0.00 for a player who then survived 60 picks. Normalising each opponent's take mass to
+        sum to 1.0 raised it, and the leader's survival floor now sits ABOVE the threshold:
+
+            leader survival across 8 real board states : min 0.212, max 0.925
+            DECISIVE_SURVIVAL_THRESHOLD                : 0.15
+            boards clearing the tie band               : 2 of 8   (not the blocker)
+            boards with survival <= threshold          : 0 of 8   (the blocker)
+
+        So the gate is belt-and-braces, and this is the load-bearing fact. Recorded here
+        because a future reader who repairs calibration will flip the flag, find "decisive"
+        still dead, and need to know the threshold was already below the distribution."""
+        original = ps.SURVIVAL_IS_CALIBRATED
+        try:
+            ps.SURVIVAL_IS_CALIBRATED = True
+            seen = set()
+            for rounds, picks, _ in self._boards():
+                index = next((i for i in range(rounds * NUM_TEAMS, len(self.pick_order))
+                              if self.pick_order[i] == "1"), None)
+                if index is None:
+                    continue
+                snapshot = ps.build_snapshot(self.merger, self.players_db, picks,
+                                             self.pick_order, index, "1", DYNASTY,
+                                             pick_label=f"R{rounds + 1}")
+                seen.add(snapshot.decision_regime)
+        finally:
+            ps.SURVIVAL_IS_CALIBRATED = original
+        self.assertNotIn(
+            "decisive", seen,
+            "'decisive' now fires with the gate lifted, so the threshold is no longer below "
+            "the leader survival floor -- the arithmetic reason recorded in this docstring "
+            "has gone stale and the reachability question is live again")
 
 
 class DecisiveIsTheComplementOfANearTieTests(_RealBoards):
@@ -158,11 +214,30 @@ class DecisiveIsTheComplementOfANearTieTests(_RealBoards):
                        "survival_probability": 0.5}]
         self.assertEqual(ps.decision_regime(candidates), "contested")
 
+    #: A leader clear of the band with low survival. Used by both tests below, which ask two
+    #: different questions of it: is the ARITHMETIC still right, and does the GATE still win.
+    DECISIVE_SHAPED = [{"team_acquisition_value": 100.0, "survival_probability": 0.0},
+                       {"team_acquisition_value": 100.0 - ps.NEAR_TIE_BAND * 2,
+                        "survival_probability": 0.5}]
+
     def test_a_leader_clear_of_the_band_with_low_survival_is_decisive(self):
-        candidates = [{"team_acquisition_value": 100.0, "survival_probability": 0.0},
-                      {"team_acquisition_value": 100.0 - ps.NEAR_TIE_BAND * 2,
-                       "survival_probability": 0.5}]
-        self.assertEqual(ps.decision_regime(candidates), "decisive")
+        """The ARITHMETIC, unchanged (#206). The calibration gate now short-circuits
+        decision_regime before this logic runs, so the gate is lifted here deliberately --
+        otherwise this test would pass for the gate's reason and stop testing the predicate it
+        was written for, which is how a test quietly becomes a decoration."""
+        original = ps.SURVIVAL_IS_CALIBRATED
+        try:
+            ps.SURVIVAL_IS_CALIBRATED = True
+            self.assertEqual(ps.decision_regime(self.DECISIVE_SHAPED), "decisive")
+        finally:
+            ps.SURVIVAL_IS_CALIBRATED = original
+
+    def test_the_calibration_gate_overrides_a_decisive_shaped_board(self):
+        """And the gate wins over that same board while survival is uncalibrated. Paired with
+        the test above so the two facts cannot drift: the predicate still says decisive, and
+        production still refuses to."""
+        self.assertFalse(ps.SURVIVAL_IS_CALIBRATED)
+        self.assertEqual(ps.decision_regime(self.DECISIVE_SHAPED), "contested")
 
     def test_exactly_at_the_band_is_a_tie_and_therefore_contested(self):
         # near_tie_flags is inclusive at the band, so the two agree at the boundary too.
