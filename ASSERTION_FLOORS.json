@@ -1196,6 +1196,15 @@
         "assertTrue": 1
       }
     },
+    "test_placeholder_admission.py": {
+      "test_methods": 9,
+      "asserts": {
+        "assertEqual": 2,
+        "assertFalse": 5,
+        "assertIsInstance": 1,
+        "assertTrue": 5
+      }
+    },
     "test_player_universe.py": {
       "test_methods": 5,
       "asserts": {

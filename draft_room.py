@@ -1028,6 +1028,33 @@ ROOKIE_YEARS_EXP = 0
 #: silent-meaning-change path.
 NOT_CURRENTLY_PLAYING = ("Inactive", "Retired")
 
+#: SLEEPER'S OWN PLACEHOLDER, rejected before any admission clause can claim it (#273).
+#:
+#: The captured universe contains 59 rows whose first and last name are literally
+#: "Player Invalid" -- Sleeper's sentinel for an id it will not resolve. They carry
+#: status=Inactive, team=None, age=None and no season projection at all, and 53 of them
+#: reached the draft board, because `_admits_to_pool` checks ROOKIE (years_exp == 0) BEFORE
+#: it checks status, and 56 of the 59 carry years_exp == 0. The rookie clause is an
+#: unconditional early return by design -- "a rookie cut to a practice squad has no NFL team
+#: listed and no projection, and in a dynasty league he is one of the most taxi-relevant
+#: players on the board" -- so a placeholder that happens to look like a rookie walks
+#: straight past the status gate that would otherwise have caught it.
+#:
+#: WHY A NAME AND NOT A STRUCTURAL RULE, since this repo prefers derived tests to literals.
+#: There is no structural discriminator in this capture, and that was measured rather than
+#: assumed: `active` and `search_rank` are None on ALL 6,595 rows, so neither separates
+#: anything; and "years_exp == 0 AND Inactive AND no team AND no projection" -- the obvious
+#: derived rule -- matches 146 rows of which 90 are ordinarily-named players like
+#: "Tony Johnson (K), age 25". A rule that removes 90 real rows to catch 56 placeholders is
+#: worse than the defect.
+#:
+#: So this reads the FEED'S OWN VOCABULARY, which is the same thing `#202` did for
+#: PUP/NA/Sus/DNR: the sentinel is Sleeper's, present verbatim in the raw capture, not a
+#: list of players this engine has decided it dislikes. If Sleeper changes the sentinel the
+#: rows come back and the guard test says so, which is the correct failure direction --
+#: admitting a placeholder is visible, silently dropping real players would not be.
+PLACEHOLDER_NAME = ("Player", "Invalid")
+
 
 def _admits_to_pool(info: dict, sleeper_points, match: dict) -> bool:
     """Does this player get a row in the draft pool at all? Owner-ruled 2026-09-07.
@@ -1102,6 +1129,10 @@ def _admits_to_pool(info: dict, sleeper_points, match: dict) -> bool:
     no K/DST/IDP special case here, and there must not be one -- a position with thin
     vendor coverage is admitted by the same five clauses as every other position.
     """
+    # BEFORE every admission clause, including the unconditional rookie one: a placeholder is
+    # not a player, and no signal about it can be evidence that it is (see PLACEHOLDER_NAME).
+    if (info.get("first_name"), info.get("last_name")) == PLACEHOLDER_NAME:
+        return False
     if sleeper_points is not None:
         return True
     if info.get("years_exp") == ROOKIE_YEARS_EXP:

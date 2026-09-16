@@ -11903,3 +11903,72 @@ comparison #229 authorises in principle and #50 owns. **Owner's call, Phase 3.**
 here without that decision would mean inventing a magnitude nobody has argued for (#56).
 
 Production unchanged throughout. `SURVIVAL_IS_CALIBRATED` stays False.
+
+---
+
+## #273 — SLEEPER'S OWN PLACEHOLDER ROWS REACHED THE DRAFT BOARD, ADMITTED BY THE ROOKIE CLAUSE
+
+The captured universe carries **59 rows named literally "Player Invalid"** — Sleeper's sentinel
+for an id it will not resolve — with `status=Inactive`, `team=None`, `age=None` and no season
+projection. **53 of them were on the board.**
+
+### The cause is ORDER, not a missing rule
+
+`_admits_to_pool` is a union, and its ROOKIE clause returns True *unconditionally*:
+
+```
+if sleeper_points is not None:     return True
+if years_exp == ROOKIE_YEARS_EXP:  return True     <-- 56 of the 59 exit here
+if team:                           return True
+if status in NOT_CURRENTLY_PLAYING: return False   <-- never reached
+```
+
+56 of 59 carry `years_exp == 0`, so they exit before the status gate that would have rejected
+them. The other **3 are correctly rejected** — which is what shows the gate itself is sound.
+The rookie clause is unconditional by design ("a rookie cut to a practice squad has no NFL team
+listed and no projection"), so a placeholder passes by resembling exactly the case it exists to
+admit.
+
+### RULED OUT: there is no structural discriminator in this capture
+
+| candidate signal | rows it matches | verdict |
+|---|---|---|
+| `active is None` | 6595 of 6595 | separates nothing |
+| `search_rank is None` | 6595 of 6595 | separates nothing |
+| `active` + `search_rank` + `age` + `team` all None | 564 | catches real players |
+| rookie + Inactive + no team + no projection | 146, **90 ordinarily named** | would delete 90 real rows |
+
+The 90 include "Tony Johnson (K), age 25". **A rule that removes 90 real players to catch 56
+placeholders is worse than the defect.** Nobody needs to re-derive this.
+
+So the check reads the FEED'S OWN VOCABULARY — the same move `#202` made for PUP/NA/Sus/DNR.
+The sentinel is Sleeper's, verbatim in the raw capture, not a list of players this engine
+dislikes. If Sleeper changes it, the rows return and the guard says so: the correct failure
+direction, since admitting a placeholder is visible while silently dropping real players is not.
+
+### BLAST RADIUS, measured (both arms one process, toggling only this rule)
+
+```
+board rows    1119 -> 1066   (53 removed, ALL placeholders)
+rows ADDED                0
+priced rows    481 ->  481   (unchanged)
+surviving rows whose final_score MOVED:  0
+```
+
+Surgical. Pool composition feeds replacement levels, so "no price moved" was measured, not
+assumed.
+
+### Bounded honestly: this was never a decision defect
+
+`narrow_candidates` was checked at rounds 0/14/22/28 — **zero placeholders ever reached a
+candidate list**, because they always sort behind something real. The harm was a human scrolling
+the board seeing "Player Invalid" as a draftable row, plus 8.3% of the unpriced block being junk.
+Cosmetic and mass-inflating, not a recommendation error.
+
+`test_placeholder_admission`: 9 tests, mutation-checked 4/4 — reverting the rejection, moving it
+after the rookie clause (the original bug), matching on surname only, and substituting the
+over-reaching shape rule are each caught.
+
+**Register hygiene:** first drafted as `#246`, which is already in use (`run_roster_proof_*.py`)
+with the register running to `#272`. Renumbered before commit — `#160` is the standing record of
+what a collided namespace costs.
