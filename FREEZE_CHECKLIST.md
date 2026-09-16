@@ -223,7 +223,18 @@ missing is this note.
       environment and records F&F as out of scope. Either is defensible; the current state
       picks neither and says nothing, which is the part that is not defensible.
 
-      **IN FLIGHT — this is being answered by measurement rather than by decision.**
+      **ANSWERED BY MEASUREMENT, AND THE RUN IS COMPLETE (reconciled 2026-09-16).** This
+      line said *"IN FLIGHT"* for two days after the run finished, while the same document
+      reported its result four times (the headline table, the `#245` row, arm `C`, arm `C2`).
+      `evidence/roster_proof/ROSTER_PROOF_FF_fourth_and_forever.json` is `complete: true`,
+      12 of 12 seats: **points 10 of 12, +1.04%** (engine mean 2860.82 against control
+      2831.39), asset 12 of 12. **The first pre-registered branch below is the one that
+      fired**, so on the evidence the strong claim holds in the league actually being
+      played. What remains open is only the SCOPE half of this item's own question — whether
+      the freeze record certifies against F&F's rulebook or names it out of scope — and that
+      is an owner's call, not a missing measurement.
+
+      ~~**IN FLIGHT — this is being answered by measurement rather than by decision.**~~
       `run_roster_proof_ff.py` runs the #205 harness unchanged (same `scoreable_pool`,
       `run_one`, `score_roster`, `RULERS`, `COMPARE_ON`) and supplies only the league: F&F's own
       29-slot roster, its 30 observed scoring keys, 26 draftable rounds, 12 seats. It writes
@@ -384,7 +395,10 @@ These reach `final_score` or the candidate set, so they are drafting behaviour p
 - [ ] **#223 / #225** — the mode transition concept is genuinely missing, for lack of a decision.
       The TE decision at the boundary is a real near-tie on (points − displaced).
 - [ ] **#153** — two clamps, not one: the 4WR collapse is the flex-share clamp, not `NEED_BONUS_MAX`.
-      Measured and understood; not repaired.
+      Measured and understood; not repaired. **Located on re-verification (2026-09-16)**: the
+      clamp is `NEED_BONUS_PER_FLEX_SHARE * min(flex_remaining, 1)` at `draft_room.py:3380`, so
+      a position owed three flex shares is charged for one. Still live, still unrepaired — the
+      line is open for the right reason.
 - [x] **#86** — `round(expected_taken)` **REPAIRED**: the curve is read at a fractional index.
       This item's own wording was **stale** — `cliff_protection` stopped reading
       `positional_forfeit` at `#160`, so the knife-edge never reached that flag. The real defect
@@ -492,10 +506,17 @@ only. The items below feed observables and the debate layer, so they degrade wha
       NOT done**: it needs the dynasty/redraft boundary, a test that fails on the old
       behaviour in each mode, and absence honoured for the 0.9% with no bye week.
 - [ ] **#160** — Decision A, reopened from zero; no constant to be tuned.
-- [ ] **#149** — **THE ITEM HAS NO WRITTEN BASIS** (`#257`). Its complete record is this
-      line and one mention in POST_AUDIT_PLAN's NEEDS-OWNER list. Owner ruled: write the
-      missing entry from measurement first, then rule. Gates the freeze RECORD, not the
-      engine — uploads reach no price and no pick.
+- [ ] **#149** — **THE PREREQUISITE IS DISCHARGED; ONLY THE RULING IS OPEN.** ~~THE ITEM HAS
+      NO WRITTEN BASIS~~ — that headline (`#257`) was true when written and is now false. The
+      owner's ruling was *write the missing entry from measurement first, then rule*, and
+      `498884b` wrote it: `POST_AUDIT_PLAN.md:8540+`, every fact read out of the code rather
+      than carried from an earlier audit, with **four ruling questions named at `:8594`**. The
+      entry's own finding is one the item's title did not anticipate: the app already answers
+      *extract vs artifact* TWICE in opposite directions (reference material keeps the raw file
+      forever and extracts nothing; credentials parse in memory and never persist the upload),
+      and neither is written down as a policy. So what blocks this item is a decision, not a
+      missing basis. Gates the freeze RECORD, not the engine — uploads reach no price and no
+      pick.
 - [x] **#98** — RATIFIED (b): allowlist what feeds the composite, prose stays free.
       `source_policy.py` already implements it (`#132`); the ruling is recorded, not built. (`#257`)
 - [x] **#158** — DONE (`#259`), and it found a dropped ruling. There are **EIGHT** docket
