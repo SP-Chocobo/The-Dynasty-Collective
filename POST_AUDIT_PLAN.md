@@ -11453,3 +11453,66 @@ agreement". The mass half now has a measured answer and it is bigger than a reno
 take model's PREMISE — that a rival's board rank predicts their pick — is weakly supported at
 best on the one real draft available. Whether to keep a rank-keyed model at all is a `#50`
 question this measurement now puts on the table.
+
+---
+
+## `#182` (prose audit, first pass): the terminology guard's protected population was ZERO
+
+The standing order is to audit the prose whenever the queue goes idle. After the checklist
+reconciliation the queue *is* idle of anything that is mine — everything still open in Gates 1–6
+is either an owner's ruling or blocked on something this machine cannot reach — so this is that
+pass. Its first finding is not prose. It is the guard that is supposed to protect the prose.
+
+**WHAT IT CLAIMED.** `test_prytaneum_terminology.py`'s module docstring says it exists to catch
+*"a future edit that reintroduces stale pre-Prytaneum product terminology"* — Debate Slab, Debate
+Dock, Full Squad Debate, and the rest of `_STALE_TERMS`.
+
+**WHAT IT LOOKED AT.** `Path(__file__).parent.glob("*.py")`. Top level only, non-recursive,
+Python only. Not `mockups/`, not any `.html`, not any `.md` but the README.
+
+**THE MEASUREMENT.** Sixteen committed files carry a retired term. **Exactly one is inside that
+scan, and it is the guard's own definition file, which the guard explicitly exempts.** So the
+live population it protected was **zero**: fifteen of fifteen real occurrences were out of range.
+
+**IT WAS NOT VACUOUS, AND THAT DISTINCTION IS THE POINT.** Control: appending `# Debate Slab` to
+`screen_context.py` fails the old test. The guard could fire perfectly well — there was simply
+nothing in front of it. This is a different defect from a test that asserts its own fixture
+(`#216 B4`), and it fails differently: that one is caught by mutating the producer, this one only
+by asking *what population does this actually range over*, and counting it.
+
+**THE REPAIR, AND THE TWO THINGS IT DELIBERATELY DOES NOT DO.**
+One scanner (`_stale_carriers`) over the whole repository, across the file types that carry copy
+a person reads (`.py .md .html .js .css`); data files are out by rule, because a retired name
+inside a captured league is a fact about that capture, not a use of the name.
+
+1. **It does not rewrite the record.** Audit documents and everything under `evidence/` are
+   exempt **by rule**, not by a filename list that would quietly grow. These files record what
+   was believed when they were written — `FREEZE_CHECKLIST.md` strikes through its own false
+   headlines rather than deleting them for exactly this reason. Editing "Debate Dock" out of a
+   finding written when the surface was called that would be destroying evidence to satisfy a
+   linter.
+2. **It does not rename the product.** All thirteen remaining carriers are under `mockups/` — the
+   design workspace for the very surface that was renamed. That copy belongs to `#181`, the
+   owner's standing UI pass, not to a test. It is pinned as `_MOCKUP_DEBT`, a **count**, so it
+   cannot grow unanswered and falls on its own as `#181` works through it.
+
+**A DEFECT IN MY OWN RATCHET, CAUGHT BY MUTATING IT.** The count was first written over FILES.
+M1 — appending `Debate Slab` to `mockups/dock_index.html`, which already said `Debate Dock` —
+**survived**: the file was already counted, so the total stayed 13 and the guard said nothing. A
+term reintroduced into an already-dirty file was invisible, which is most of what a reintroduction
+looks like. The ratchet now counts distinct **(file, term) pairs**: reintroduction moves it, a
+second copy of a term the file already carries does not. Same population today (13 files × 1 term
+each), strictly more sensitive.
+
+**MUTATIONS, 6 of 6 caught after that repair, plus a control.** New term in an already-dirty
+mockup (the one that survived) · stale term in a clean mockup · stale term in live product copy
+outside `mockups/` · scanner narrowed back to top-level · exemption widened to everything · bare
+`"dock"` added to the stale list. CONTROL: a stale term appended to an `evidence/` record leaves
+the suite green, which is the exemption working rather than the guard sleeping.
+
+**ONE NAMING FACT THE GUARD NOW PINS.** `"Debate Dock"` is retired; the surface it named is now
+**"Debate My Pick"** (README, and `pick_debate.py`'s Strategist/Skeptic/Caller are explicitly NOT
+part of The Prytaneum). The bare word *Dock* survives as working shorthand — `#183`'s checklist
+line and `test_dock_absence_contract.py` both use it. A guard that flagged the shorthand would be
+switched off within a day, so the distinction is now asserted rather than left to whoever edits
+`_STALE_TERMS` next.
