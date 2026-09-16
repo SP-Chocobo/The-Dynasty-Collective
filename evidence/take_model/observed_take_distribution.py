@@ -102,9 +102,17 @@ def main() -> int:
     season = rdb.season_projections_from_capture()
     base = rdb.scoring_settings_from_capture()
 
-    league = dr.build_mock_league(teams=rules["total_rosters"], superflex=True, scoring="ppr",
-                                 te_premium=True, dynasty=True, base_scoring=base)
-    league["roster_positions"] = list(rules["roster_positions"])
+    # THE LEAGUE IS BUILT FROM THE CAPTURE, the way draft_battery's own CAPTURE arm builds it.
+    # It previously came from `build_mock_league`, which is the #248 hazard: that helper
+    # overwrites `rec`, and `rec` is what selects the rankings EXPORT -- so an arm can silently
+    # read a different file than it reports. The capture's observed settings are the rulebook;
+    # nothing here should be asserting a format the league did not actually use.
+    league = {
+        "roster_positions": list(rules["roster_positions"]),
+        "scoring_settings": {k: v["value"] for k, v in rules["scoring_settings_observed"].items()},
+        "total_rosters": rules["total_rosters"],
+        "settings": {"type": 2},
+    }
     merger.set_league_format(db.league_format_hint(league))          # NEVER SKIP
     print(f"league {rules['league']}  teams {rules['total_rosters']}  "
           f"slots {len(rules['roster_positions'])}  universe {universe['players_in_pool']}",
@@ -118,14 +126,43 @@ def main() -> int:
     print(f"   CONTROL round 1: {len(r1)}/12 -- the twelve most famous players in a superflex "
           f"draft; short of twelve means the INDEX is broken, not the data\n", flush=True)
 
-    seats = sorted({str(p["slot"]) for p in picks_all})
+    # THE SEAT IS THE TEAM THAT ACTUALLY PICKED, NOT THE SLOT.
+    #
+    # This read `str(p["slot"])`, which is the slot's ORIGINAL owner. In a league with traded
+    # picks those are different teams, and the whole measurement is "how did the PICKING team's
+    # own board rank the player they took" -- so keying on the slot evaluated the wrong team's
+    # roster, the wrong needs and the wrong board. Measured on this draft: the picker differs
+    # from the round-1 owner of that slot on 135 of 360 picks, 37.5%. Every rank in the
+    # published histogram drew on that population, which is why the figures it produced
+    # (rank-1 share 3.0%, top-5 13.7%, 31/301 unpriced) were withdrawn rather than adjusted.
+    #
+    # THE SEAT IS THE TEAM NAME ITSELF. `picked_by` is already a unique, stable identifier and
+    # the engine only needs roster ids to be consistent, so there is nothing to map.
+    #
+    # The first version of this repair derived seat numbers from round one, on the reasoning
+    # that every team picks from its own slot exactly once there. IT DOES NOT: a round-1 pick
+    # was itself traded, so Snoopking51 picks twice in round 1 and one team not at all, and the
+    # derivation produced 11 seats for 12 rosters. The guard below caught that rather than
+    # silently collapsing two teams onto one roster -- which is the same class of defect this
+    # whole repair exists to remove, reached by a different route. Derived from the data, never
+    # hand-listed (#126), and now derived from a property that actually holds.
+    seats_seen = {p["picked_by"] for p in picks_all}
+    if len(seats_seen) != int(rules["total_rosters"]):
+        raise RuntimeError(
+            f"board names {len(seats_seen)} distinct teams for {rules['total_rosters']} rosters "
+            "-- seat identity is not derivable from this board, and guessing it is what this "
+            "repair exists to stop")
+    unseated = 0
     ranks: list[dict] = []
     engine_picks: list[dict] = []
     not_on_board = 0
 
     for p in picks_all:
         pid = resolved.get(p["pick_no"])
-        seat = str(p["slot"])
+        seat = p.get("picked_by")
+        if not seat:
+            unseated += 1
+            continue
         if pid is not None:
             rows = dr.compute_draft_board(merger, players_db, engine_picks, my_roster_id=seat,
                                           league=league, mode="balanced",
