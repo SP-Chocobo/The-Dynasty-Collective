@@ -65,7 +65,8 @@ from pick_synthesis import (ABSENCE_KIND_LABELS,
                             CandidateSnapshot, PickSnapshot, DENIAL_BASIS_LABELS,
                             DISPLACEMENT_BASIS_LABELS, DISPLACEMENT_MEASURED,
                             EXPOSURE_BASIS_LABELS, EXPOSURE_MEASURED,
-                            diff_snapshots, stamp_is_current)
+                            diff_snapshots, stamp_is_current,
+                            survival_is_presentable, SURVIVAL_NO_NEXT_PICK)
 
 import bot_config
 import provider_meter
@@ -410,19 +411,42 @@ def _format_candidate(candidate: CandidateSnapshot, user_selected_player_id: Opt
     # he is on a rival's board, he can be taken, so he gets the module's floor. So the reachable
     # state is survival measured, cost not -- which printed the literal string "None" twice,
     # directly beneath a real percentage, where it reads as a number rather than as an absence.
-    if candidate.survival_probability is not None:
+    # #206: THE SURVIVAL FAMILY IS WITHHELD WHILE IT IS UNCALIBRATED, and what replaces it is
+    # the fact. Two arms measured survival_probability losing to a constant predictor (SMOKE
+    # 0.22480 vs 0.19348; REAL 0.16127 vs 0.14224 over 6,277 real-draft pairs), and it is worst
+    # where it matters most -- the engine's own top candidate is predicted 0.810 and observed
+    # 0.451. Handing a chair "Survival probability: 81%" invites it to reason from a number
+    # that is wrong by a factor that changes the answer, and the chair has no way to know.
+    #
+    # opportunity_cost and expected_value_of_waiting go WITH it, not after it: both are
+    # survival in different units, so keeping them would be suppression in name only.
+    #
+    # intervening_picks STAYS and is promoted to the line survival used to occupy. It is a
+    # count, not an estimate -- verified against the engine at all 5,567 REAL-arm candidates on
+    # a draft with 135 traded seats, zero mismatches. A chair reasoning "sixteen picks before
+    # you choose again" is reasoning from something true.
+    if survival_is_presentable() and candidate.survival_probability is not None:
         picks = (f" ({candidate.intervening_picks} intervening pick(s))"
                  if candidate.intervening_picks is not None else "")
         lines.append(
             f"  Survival probability to your next pick: "
             f"{_format_probability(candidate.survival_probability)}{picks}")
-    if candidate.opportunity_cost is not None:
-        lines.append(f"  Opportunity cost of waiting: {candidate.opportunity_cost}")
-    elif candidate.survival_probability is not None:
-        lines.append("  Opportunity cost of waiting: NOT MEASURED -- it needs a price for this "
-                     "player and there is none. Not 'waiting is free'.")
-    if candidate.expected_value_of_waiting is not None:
-        lines.append(f"  Expected value if you wait: {candidate.expected_value_of_waiting}")
+        if candidate.opportunity_cost is not None:
+            lines.append(f"  Opportunity cost of waiting: {candidate.opportunity_cost}")
+        else:
+            lines.append("  Opportunity cost of waiting: NOT MEASURED -- it needs a price for "
+                         "this player and there is none. Not 'waiting is free'.")
+        if candidate.expected_value_of_waiting is not None:
+            lines.append(f"  Expected value if you wait: {candidate.expected_value_of_waiting}")
+    elif candidate.intervening_picks is not None:
+        lines.append(
+            f"  Picks before your next selection: {candidate.intervening_picks}. "
+            "The survival probability is WITHHELD, not missing: it is computed, and it failed "
+            "its calibration check against real drafts, so do not estimate one yourself from "
+            "this count.")
+    elif candidate.survival_basis == SURVIVAL_NO_NEXT_PICK:
+        lines.append("  You have no further pick in this draft -- there is no next selection "
+                     "for him to survive to, so waiting is not an option to weigh.")
     # `if candidate.denial_value:` swallowed a MEASURED 0.0 -- "no rival gains anything from
     # him" is a real finding and an argument for waiting, and it read to the panel exactly like
     # "never computed". Absence is not a value, and a zero is not an absence.

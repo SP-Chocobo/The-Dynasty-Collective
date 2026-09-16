@@ -161,10 +161,15 @@ class TheRenderedBoardShowsNoMachineWordsTests(unittest.TestCase):
         second = self._text[self._text.index("Priced Second"):]
         self.assertIn("12", second)
         self.assertIn("180", second)
-        self.assertIn("50%", second)
+        # INVERTED (#206): the priced row's survival is WITHHELD now, so the chip reads the
+        # absent mark and the sentence says why. Its other real numbers are untouched, which
+        # is the half of this test that still matters -- the gate must suppress survival
+        # ALONE, not quietly take the rest of the row with it.
+        self.assertNotIn("50%", second)
+        self.assertIn("withheld, not missing", second)
 
     def test_the_prose_declines_rather_than_inventing_a_survival(self):
-        self.assertIn("isn't estimable right now", self._text)
+        self.assertIn("withheld, not missing", self._text)
 
 
 if __name__ == "__main__":

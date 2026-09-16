@@ -54,7 +54,12 @@ class FormatSnapshotForLLMTests(unittest.TestCase):
         self.assertIn("Brock Purdy", text)
         self.assertIn("Universal value: 90.0", text)
         self.assertIn("Team acquisition value: 100.0", text)
-        self.assertIn("Survival probability to your next pick: 50%", text)
+        # INVERTED (#206): the chairs no longer receive the survival estimate -- it lost to a
+        # constant predictor on two arms. They receive the pick COUNT, which is measured,
+        # plus an explicit instruction not to reconstruct a probability from it.
+        self.assertNotIn("Survival probability", text)
+        self.assertIn("Picks before your next selection: 2", text)
+        self.assertIn("%s" % "WITHHELD, not missing", text)
 
     def test_flags_the_user_selected_player(self):
         snap = _snapshot([_candidate("1", "Brock Purdy"), _candidate("2", "Backup Guy")], user_selected_player_id="2")

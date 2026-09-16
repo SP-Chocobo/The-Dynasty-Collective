@@ -45,6 +45,7 @@ from draft_room import SLEEPER_WEEKLY_TO_SEASON_FACTOR, REPLACEMENT_BASIS_LABELS
 # #216: the two lineup-solved vocabularies, through the snapshot boundary (pick_synthesis
 # re-exports them), never from lineup_optimizer -- a snapshot consumer must not be able to
 # reach a valuation module (test_pick_synthesis.DecisionBoundaryIsClosedTests).
+import pick_synthesis as ps
 from pick_synthesis import DISPLACEMENT_BASIS_LABELS, EXPOSURE_BASIS_LABELS
 from player_universe import FLEX_SLOT_POSITIONS
 from pick_synthesis import (
@@ -228,7 +229,30 @@ def serialize_candidate(c: CandidateSnapshot) -> dict:
         "proj": c.projected_points,
         "necessity": c.necessity_label,
         "necClass": _NECESSITY_CLASS.get(c.necessity_label, "badge-necessity-low"),
+        # #206: WITHHELD, not absent. survival_probability is computed and exists; it failed
+        # its calibration check on two independent arms (SMOKE 0.22480 vs a 0.19348 constant;
+        # REAL 0.16127 vs 0.14224 over 6,277 real-draft pairs) and is worst where a person
+        # would lean on it hardest -- the board's own top row is predicted 0.810 and observed
+        # 0.451. A panel rendering "81%" gives a reader no way to know that.
+        #
+        # `survivalWithheld` is the reason travelling WITH the null, so the renderer can say
+        # "not shown" rather than the absence contract's "not measured" -- those are different
+        # facts and #187 is about not conflating them.
+        #
+        # The whole family goes together (SURVIVAL_DERIVED_FIELDS): opportunity_cost and
+        # expected_value_of_waiting are survival in other units.
+        #
+        # `intervening` STAYS, and it is the replacement rather than a consolation. It is a
+        # COUNT of picks before your next turn, cross-checked against the engine at all 5,567
+        # REAL-arm candidates on a draft with 135 traded seats, zero mismatches.
         "survival": c.survival_probability,
+        #: #206: the RENDERER suppresses, not this serializer. test_every_field_is_a_direct_
+        #: unmodified_read pins that the payload is a faithful read of the snapshot, and it is
+        #: right to: a payload that quietly transforms is a second place for the UI and the
+        #: engine to disagree. So the number crosses unchanged and the POLICY crosses beside
+        #: it, one flag, read in one place in the JS below.
+        "survivalWithheld": not ps.survival_is_presentable(),
+        "survivalBasis": c.survival_basis,
         "intervening": c.intervening_picks,
         "cliffTier": cliff.get("tier"),
         "cliffGap": cliff.get("gap"),
@@ -759,9 +783,25 @@ function focusSentences(c) {
     return s.join("");
   }
 
-  const survivalBit = num(c.survival)
-    ? `${Math.round(c.survival * 100)}% survival to your next turn${num(c.intervening) ? ` across ${c.intervening} intervening pick(s)` : ''}`
-    : `survival to your next turn isn't estimable right now`;
+  // #206. THREE STATES, and the middle one is new. "Withheld" and "not estimable" are
+  // DIFFERENT FACTS and #187 is about never collapsing them: the first says we have a number
+  // and do not trust it, the second says there is no number. A reader who is told "not
+  // estimable" about a withheld figure will assume the data was missing and reason around it.
+  //
+  // What the withheld line shows instead is the intervening-pick COUNT, which is a fact --
+  // cross-checked against the engine at all 5,567 REAL-arm candidates, zero mismatches.
+  // FOUR states, not three: "no next pick" outranks the withholding policy. Telling someone
+  // their survival estimate is withheld, when the real fact is that they have no further pick
+  // in the draft, answers a question they are not in a position to ask.
+  const survivalBit = c.survivalBasis === "no_next_pick"
+    ? `you have no further pick in this draft, so there is no next turn for him to last until`
+    : c.survivalWithheld
+    ? (num(c.intervening)
+        ? `${c.intervening} pick(s) come before your next turn — the survival estimate is withheld, not missing: it failed its calibration check against real drafts`
+        : `the survival estimate is withheld, not missing: it failed its calibration check against real drafts`)
+    : num(c.survival)
+      ? `${Math.round(c.survival * 100)}% survival to your next turn${num(c.intervening) ? ` across ${c.intervening} intervening pick(s)` : ''}`
+      : `survival to your next turn isn't estimable right now`;
   s.push(`<p class="focus-sentence">This is <b>${NEC_TEXT[c.necessity] || c.necessity.toLowerCase()}</b> pick — ${survivalBit}.</p>`);
 
   if (c.forces.includes("cliff")) {
@@ -861,7 +901,12 @@ function render() {
           <span title="Universal value, in universal-value points">UV <b>${fmt(c.uv, 0)}</b><span class="unit">${PAYLOAD.valueUnitShort}</span></span>
           <span title="Acquisition value for this roster, in universal-value points">ACQ <b>${fmt(c.tav, 0)}</b><span class="unit">${PAYLOAD.valueUnitShort}</span></span>
           <span title="Projected season fantasy points -- a different unit from the two values before it">PROJ <b>${fmt(c.proj, 0)}</b><span class="unit">season pts</span></span>
-          <span title="Chance he is still on the board at your next turn">SURV <b>${num(c.survival) ? Math.round(c.survival * 100) + '%' : ABSENT}</b></span>
+          <!-- #206: the chip obeys the same gate as the sentence above it. Suppressing the
+               prose while this still printed "SURV 50%" would be worse than showing neither --
+               the reader sees a number and a paragraph disclaiming it, and believes the
+               number. The tooltip changes with it, because a tooltip promising a "chance" over
+               a withheld figure is the same claim in smaller type. -->
+          <span title="${c.survivalWithheld ? 'Withheld: this estimate failed its calibration check against real drafts. The pick count beside it is measured.' : 'Chance he is still on the board at your next turn'}">SURV <b>${(!c.survivalWithheld && num(c.survival)) ? Math.round(c.survival * 100) + '%' : ABSENT}</b></span>
           <span>CLIFF <b>${c.cliffTier || '—'}</b></span>
           ${c.replacementBasis ? `<span class="basis-note">PRICED VS <b>${basisLabel(c.replacementBasis)}</b></span>` : ''}
           ${num(c.growthSignal) ? `<span class="basis-note">GROWTH <b>${c.growthSignal.toFixed(1)}</b></span>` : ''}

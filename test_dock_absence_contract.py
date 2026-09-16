@@ -112,8 +112,18 @@ class AnAbsenceSaysWhichKindItIs(unittest.TestCase):
         where a measured 0.0 would, and 0.0 there is an argument FOR waiting."""
         out = rendered(team_acquisition_value=None, opportunity_cost=None,
                        expected_value_of_waiting=None)
-        self.assertIn("Opportunity cost of waiting: NOT MEASURED", out)
-        self.assertIn("waiting is free", out)
+        # INVERTED (#206). opportunity_cost is team_acquisition_value x (1 - survival), so it
+        # travels with the withheld survival family rather than reporting its own absence.
+        # The INFERENCE this test exists to deny -- "waiting is free" -- is still denied, now
+        # by the withholding sentence. That is what must not regress; the wording is not.
+        self.assertNotIn("Opportunity cost of waiting", out)
+        self.assertIn("WITHHELD, not missing", out)
+        # The denial USED to be a sentence ("Not 'waiting is free'") sitting where a 0.0 would
+        # have been. It is now structural instead: no cost line is rendered at all, so there is
+        # no number for a reader to misread as free. Assert the stronger form -- that nothing
+        # in the output could be read as a zero cost of waiting -- rather than the old wording.
+        self.assertNotIn("cost of waiting: 0", out.lower())
+        self.assertNotIn("Expected value if you wait", out)
 
     def test_a_measured_zero_is_still_reported_as_a_measurement(self):
         """The other half of the contract, and the one a careless absence fix breaks: 0.0 is a
@@ -138,9 +148,9 @@ class TheFullyMeasuredCaseIsUnCHANGED(unittest.TestCase):
                        positional_cliff={"tier": "HIGH", "gap": 12.0, "typical_gap": 2.0})
         for expected in ("Universal value: 50.0", "Team acquisition value: 60.0",
                          "universal_value 50.0 + need_bonus +6.0", "eligibility_bonus +4.0",
-                         "Survival probability", "2 intervening pick(s)",
-                         "Opportunity cost of waiting: 30.0",
-                         "Expected value if you wait: 20.0",
+                         # INVERTED (#206): the survival family is withheld from the chairs,
+                         # and the measured pick COUNT takes its place in the same line.
+                         "Picks before your next selection: 2",
                          "gap to next at position: 12.0", "~3.0 RB pick(s)"):
             self.assertIn(expected, out)
 

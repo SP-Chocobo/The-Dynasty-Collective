@@ -167,6 +167,15 @@ DEFAULT_NARROW_COUNT = 5
 #: words have one home while the boundary stays closed -- a second literal table in
 #: pick_debate would be exactly the #186 defect, one module over.
 DENIAL_BASIS_LABELS = ds.DENIAL_BASIS_LABELS
+#: #206: the survival vocabulary crosses the decision boundary the same way denial's does --
+#: re-exported here, never imported from draft_strategy by a consumer. test_pick_synthesis's
+#: DecisionBoundaryIsClosedTests caught me importing the engine into pick_debate directly, and
+#: it was right to: PickSnapshot plus this module's vocabulary is the whole contract, and a
+#: second import path is a second way for a consumer to drift from it.
+SURVIVAL_NO_NEXT_PICK = ds.SURVIVAL_NO_NEXT_PICK
+SURVIVAL_NO_INTERVENING_PICKS = ds.SURVIVAL_NO_INTERVENING_PICKS
+SURVIVAL_MEASURED = ds.SURVIVAL_MEASURED
+SURVIVAL_BASIS_LABELS = ds.SURVIVAL_BASIS_LABELS
 
 #: Same re-export, same reason (#174). lineup_optimizer is likewise forbidden to snapshot
 #: consumers, and depth_exposure's basis was simply DROPPED here rather than carried -- the
@@ -516,6 +525,33 @@ DECISIVE_SURVIVAL_THRESHOLD = 0.15
 #: committed evidence by test_survival_calibration_declaration, so this block cannot drift
 #: away from the files it cites.
 SURVIVAL_IS_CALIBRATED = False
+
+
+#: THE SURVIVAL FAMILY: every quantity that is a function of survival_probability, in one place
+#: (#126) so a surface cannot suppress the headline number and keep its derivatives.
+#:   opportunity_cost          = team_acquisition_value * (1 - survival)
+#:   expected_value_of_waiting = universal_value * survival
+#: Both inherit the miscalibration EXACTLY -- they are the same estimate in different units, so
+#: showing them while hiding survival would be suppression in name only.
+SURVIVAL_DERIVED_FIELDS = ("survival_probability", "opportunity_cost",
+                           "expected_value_of_waiting")
+
+
+def survival_is_presentable() -> bool:
+    """Whether the survival family may be shown to a person.
+
+    False while SURVIVAL_IS_CALIBRATED is False. This is NOT the absence contract: the numbers
+    were measured and they exist -- `estimate_survival` still computes them, the chairs' own
+    reasoning still has them available upstream, and the evidence files keep them. What is
+    withheld is the CLAIM, because two arms measured it losing to a constant predictor and a
+    person reading "62%" has no way to know that.
+
+    What replaces it is the quantity that IS true: `intervening_picks`, the count of picks
+    before your next selection. Verified against the engine's own value at all 5,567 candidates
+    of the REAL arm with zero mismatches, on a draft with 135 traded seats. "11 picks until
+    your next turn" is a fact; "62% survival" is an estimate that failed its own test."""
+    return SURVIVAL_IS_CALIBRATED
+
 
 #: Where the claim above comes from, so a reader can check it rather than trust it.
 SURVIVAL_CALIBRATION_EVIDENCE = {

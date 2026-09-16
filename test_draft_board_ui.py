@@ -487,7 +487,13 @@ globalThis.document = {
         self.assertIn('class="tav mono"', row)
         self.assertNotIn("absent", row)
         self.assertIn(">0<", row, "a measured 0 acquisition value is a number")
-        self.assertIn("SURV <b>0%</b>", row)
+        # INVERTED (#206). A measured survival of 0.0 IS a number and the JS still renders it
+        # as one -- that is what this test defends and the `num()` guard is unchanged. But the
+        # chip is gated ahead of that check now, so while survival is uncalibrated even a
+        # measured 0.0 is withheld. The zero-is-not-absent contract is re-asserted on the
+        # quantities that are still shown (tav, cliff typical) two lines below.
+        self.assertIn("SURV <b>\u2014</b>", row)
+        self.assertIn("Withheld: this estimate failed its calibration check", row)
         self.assertIn("against a typical 0.0", row, "a measured flat position renders its 0.0")
 
     def test_a_negative_value_keeps_its_sign(self):
