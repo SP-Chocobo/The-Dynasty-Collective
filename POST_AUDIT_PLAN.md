@@ -11588,3 +11588,87 @@ The prose above that uses `CONST-A1` is NOT rewritten. It is the record of how t
 found, and editing the old wording out would destroy the evidence for the ruling — the same
 principle FREEZE_CHECKLIST follows when it strikes through its own false headlines instead of
 deleting them.
+
+---
+
+## `#206` MASS HALF — MEASURED: one opponent's one pick carries 23.49 of probability mass
+
+The owner ruled (2026-09-16) that `#206`'s MASS half is repaired before freeze and its RATE half
+deferred to `#50`. Evidence before repair (`#162`), so this is the measurement; the repair is a
+separate commit and is not claimed here.
+
+### The constraint needs no league data
+
+`estimate_survival` asks, for each intervening opponent, *"what is the chance THIS team takes
+THIS player at their next pick?"* and answers `_take_probability(rank_on_their_board)`. **A team
+makes exactly one pick.** "They take the rank-1 player", "they take the rank-2 player", … are
+therefore MUTUALLY EXCLUSIVE, so summed over that team's whole board the probabilities must be
+≤ 1.0. Nothing about any league is needed to say that, which is why the repair satisfies `#56`:
+it is derived, not calibrated.
+
+### Measured on Fourth and Forever's real captured universe, 12 opponent boards
+
+```
+total mass per opponent pick = 23.49          the constraint says <= 1.0
+
+   named keys (ranks 1-5)      1.21     5%
+   tail       (476 priced)     9.52    41%
+   unpriced floor (638 rows)  12.76    54%
+```
+
+**95% of the violation is the FLOOR, not the head — and that reframes the repair.** The obvious
+reading of "make the keys sum to 1.0" is to renormalise the five named keys; that moves 1.21 to
+1.00 and leaves **22.28 of the 23.49 untouched**. The actual defect is that every one of ~1,100
+rows carries a floor probability, so modelled mass grows with the size of the pool. This is
+`#244`'s finding reached from the other end: *"the per-opponent take model says a team drafts
+6.23 players; a team drafts 1."*
+
+### Two controls, because a confident number here would otherwise be unfalsifiable
+
+**Construction control.** A synthetic board of exactly five priced rows and no tail must report
+exactly the sum of the named keys. It reports **1.2100 against an expected 1.2100**. An
+instrument that could not reproduce that is summing something other than what it claims.
+
+**Depth control, which exists because all 12 boards report the SAME total** — and `#245` says
+identical numbers are a broken instrument until proven otherwise. Here it is derivable: mass
+depends only on row COUNTS, and at an empty board every opponent draws from the same pool, so
+counts coincide while their ORDERINGS differ by roster need. The proof that the instrument is
+live is that draining the pool moves it, by exactly the predicted amount:
+
+```
+    0 picks -> priced 481  unpriced 638  mass 23.49
+   40 picks -> priced 441  unpriced 638  mass 22.69      40 x 0.02 = 0.80   observed 0.80
+   80 picks -> priced 401  unpriced 638  mass 21.89                        observed 0.80
+  120 picks -> priced 361  unpriced 638  mass 21.09                        observed 0.80
+```
+
+**`unpriced` holds at 638 for the whole drain.** Unpriced rows sort last and are never taken, so
+the 12.76 of floor mass they carry NEVER DECAYS. The violation does not wash out as a draft
+progresses — it asymptotes toward the unpriced floor, so even at the end of a draft the model
+still says one opponent takes about thirteen players with one pick. That is an argument about the
+SHAPE of the repair: a fix keyed on the priced board alone would leave the term that does not
+move.
+
+### What the derived form predicts, recorded BEFORE it is built
+
+Normalising `P(rank r) = w(r) / Σw` over the board actually present conserves mass by
+construction at any depth and introduces no constant. On this board it puts rank-1 at
+`0.55 / 23.49 = 2.3%`, against the **3.0% measured from 270 real human picks**. The derived
+constraint lands near the measurement WITHOUT being fitted to it — the opposite of my withdrawn
+head-only patch (30th), which was off by 15x.
+
+### Two entry-point guards caught me writing the probe against the wrong universe
+
+`build_players_db` refused outright (`#201`: it is the 764-row vendor reconstruction and the real
+capture exists), and the F&F league is built exactly as `draft_battery` builds its own CAPTURE arm
+rather than reconstructed by hand — `#248` is what happens when a capture is rebuilt:
+`build_mock_league` overwrote `rec`, and `rec` selects the rankings EXPORT, so an arm silently read
+a different file than it reported.
+
+### CORRECTION to commit `0018729`'s own message
+
+That commit says *"A depth arm … is in flight; this commit does not claim it, and the JSON
+carries no depth_arm key yet."* **That is false about its own content.** The depth run finished
+moments before staging, so the committed JSON does carry `depth_arm` with all four rows. The
+evidence is correct; the sentence describing it is not. Recorded here rather than by rewriting a
+pushed commit.
