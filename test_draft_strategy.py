@@ -318,10 +318,14 @@ class SurvivalAndPickAnalysisTests(unittest.TestCase):
 
 
 class PositionalForfeitsTests(unittest.TestCase):
-    """positional_forfeits is a SURFACED signal (never an input to necessity -- see its own
-    docstring on the double-count that rule prevents), so what gets tested is the math and
-    its two load-bearing properties: a steeper position curve costs more to delay, and more
-    opponent appetite for a position raises its expected_taken."""
+    """positional_forfeits IS a pick_necessity input (weight 10 of 100) and reaches the debate
+    prompt; it has no selection authority, because the pick sorts on final_score alone. This
+    docstring previously said "never an input to necessity", which was false from `7655fb1`
+    onward -- corrected 2026-09-16 after an independent review traced the dataflow.
+
+    What gets tested is the math and its load-bearing properties: a steeper position curve
+    costs more to delay, more opponent appetite raises expected_taken, and a fractional
+    expectation is no longer quantised to a whole player."""
 
     def _opp_board(self, rows):
         # rows: list of (player_id, position, universal_value) already in rank order
@@ -442,17 +446,32 @@ class PositionalForfeitsTests(unittest.TestCase):
         # to be stable but wrong.
         self.assertEqual(forfeits, {15.0})
 
-    def test_a_fractional_expectation_never_reports_a_forfeit_of_zero(self):
+    def test_a_fractional_expectation_is_not_quantised_to_a_whole_player(self):
         """THE DEFECT #86 ACTUALLY FIXED, and it is not the float-noise one the appendix led
         with. `round()` sent every `expected_taken` below 0.5 to drop=0, so the forfeit came
         back as EXACTLY 0.00 while the model expected a fraction of a player to go. Measured on
         Fourth and Forever: 4 of 44 observations, every one at WR, where 0.48 reported 0.00 and
         0.60 reported 9.44.
 
-        0.00 in this engine means "measured, and the cost is nothing". The true statement was
-        "about half a receiver goes, which costs about 4.5 points". That is an absence-contract
-        breach reached by arithmetic rather than by a substituted default -- the #187 class --
-        and it is why the repair is not merely a preference among rounding rules."""
+        0.00 in this engine means "measured, and the cost is nothing", so reporting it while a
+        fraction of a receiver was expected to go is an absence-contract breach reached by
+        arithmetic rather than by a substituted default -- the #187 class.
+
+        THIS NAME WAS "never reports a forfeit of zero" AND THAT WAS FALSE OF THE SHIPPED
+        FUNCTION (corrected 2026-09-16, independent review). `positional_forfeits` rounds its
+        output to 2dp, so a near-flat curve still returns exactly 0.0 for a fractional
+        expectation -- `positional_forfeits({'WR': [100.0, 99.95, 80.0]}, ...)` gives
+        `expected_taken=0.06, forfeit=0.0`. That is harmless, because the cost really is under
+        half a cent, but "never" was a universal this code does not deliver. The property it
+        DOES deliver is the one now in the name, and it is the one the defect was about.
+
+        TWO MORE CORRECTIONS TO THIS TEST'S OWN EVIDENCE. The 44 observations are ONE pre-draft
+        board state read at 11 gap lengths, not 44 independent data points -- every nonzero
+        `expected_taken` there is 0.06n or 0.9n. And "the true statement was about 4.5 points"
+        overstates: linear interpolation reads the curve at the MEAN count, curve[E[N]], while
+        the honest expectation is E[curve[N]]. On that same row the exact Poisson-binomial is
+        5.48, not 4.53, with P(no WR taken) = 0.61. Interpolation is a better approximation
+        than 0.00, not the truth."""
         curve = [100.0, 90.0, 80.0]
         for taken in (0.12, 0.24, 0.36, 0.48):
             got = ds._curve_at(curve, taken)

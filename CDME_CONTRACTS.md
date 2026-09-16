@@ -7014,12 +7014,46 @@ to mislead the next reader:**
 model expected a fraction of a player to go** — 4 of 44 observations, all at WR, with 0.48
 reporting 0.00 and 0.60 reporting 9.44. In this engine 0.00 means *measured, and the cost is
 nothing*. That is an absence-contract breach reached by arithmetic rather than by a substituted
-default (the `#187` class). **Of the three candidate contracts only interpolation removes it** —
-floor makes it worse and half-up keeps it for every value under 0.5 — so the choice is forced by
-the contract rather than picked on taste. Interpolation also introduces **no constant**, which is
-why `#56` is not engaged: it removes the arbitrary rule already present (nothing justified
-banker's rounding for a "how many will be taken" quantity — `round(0.5)=0`, `round(1.5)=2`,
-`round(2.5)=2`) instead of adding a new one.
+default (the `#187` class). Interpolation introduces **no constant**, which is why `#56` is not
+engaged: it removes the arbitrary rule already present (nothing justified banker's rounding for a
+"how many will be taken" quantity — `round(0.5)=0`, `round(1.5)=2`, `round(2.5)=2`) instead of
+adding a new one.
+
+**RATIFIED 2026-09-16 (owner), SUBJECT TO AN INDEPENDENT REVIEW WHICH CORRECTED FOUR CLAIMS
+ABOVE.** The repair stands — the reviewer found no reachable defect in `_curve_at` and killed 9
+of 9 mutants against its tests. What did not survive is some of the prose around it:
+
+1. ~~"Of the three candidate contracts only interpolation removes it, so the choice is forced by
+   the contract rather than picked on taste."~~ **Overclaimed.** Ceil also removes every
+   manufactured zero and adds no constant; so does the exact expectation. The candidate set was
+   narrowed to the three the old deferral happened to list. What the contract forces is that a
+   fractional expectation must not report a *measured* zero; which rule satisfies that is a
+   modelling choice, and interpolation was CHOSEN.
+2. ~~"the true statement was about 4.5 points"~~ **Not the true statement.** Interpolation reads
+   the curve at the MEAN count, `curve[E[N]]`; the honest quantity is `E[curve[N]]`, and on a
+   non-linear curve they differ. Exact Poisson-binomial on the same fixture gives **5.48 against
+   the shipped 4.53**, max divergence 3.55 over 44 rows, with P(no WR taken) = 0.61. The repair
+   is a better approximation than 0.00, not the truth. The exact expectation is equally
+   constant-free and stays available.
+3. **"4 of 44 observations" is ONE pre-draft board state** read at 11 gap lengths, not 44
+   independent observations — every nonzero `expected_taken` there is `0.06n` or `0.9n`, so "4 of
+   44, all WR" is arithmetic (`0.06n < 0.5` for `n <= 8`). True, but its evidentiary weight was
+   overstated.
+4. **"a fractional expectation never reports a forfeit of zero"** is false of the shipped
+   function: `positional_forfeits` rounds to 2dp, so a near-flat curve returns exactly `0.0` for
+   `expected_taken=0.06`. Harmless — the cost really is under half a cent — but the universal is
+   not delivered. The property that IS delivered is *not quantised to a whole player*, and the
+   test now carries that name.
+
+**AND THE LARGEST CORRECTION, which is about where this quantity goes.** `positional_forfeits`'
+own docstring said it was *"deliberately NOT an input to pick_necessity"*. That has been **false
+since `7655fb1`**: `compute_pick_necessity` reads `positional_forfeit` and folds
+`forfeit_component` into `raw_score` at weight 10 of 100, which reaches `necessity_label`, the
+Draft Room display, and the debate prompt — where an exactly-zero forfeit is rendered as the
+STRONGEST EVIDENCE FOR WAITING. So the manufactured zero was being handed to the debate as an
+affirmative claim, which is the concrete harm this repair removes. It still has **no selection
+authority** (`_board_order` sorts on `final_score` alone, computed before forfeits exist; `#55`
+ruled necessity observable), so the repair changes what the app SAYS, not which player it PICKS.
 
 **THE OWNER SHOULD KNOW THIS OVERRODE A STANDING DEFERRAL.** This part, the freeze checklist and
 the characterization test all said *deferred, open product question*. The evidence above is why
@@ -7028,7 +7062,7 @@ other way.
 
 The characterization test is **rewritten, not deleted** — it keeps the same adversarial fixture
 (0.24 + 0.60 + 0.66, summing to 1.5 in one order and 1.5 − 1ulp in the other) and now asserts the
-two orders agree, plus that a fractional expectation never reports a forfeit of zero.
+two orders agree, plus that a fractional expectation is not quantised to a whole player.
 
 ## Part 4 — `RANK_TAKE_PROBABILITY.get(rank, 0.0)` vs `RANK_TAKE_PROBABILITY_FLOOR`
 

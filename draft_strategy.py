@@ -275,10 +275,30 @@ def _curve_at(curve: list[float], taken: float) -> float:
 
     THE DEFECT IT ACTUALLY FIXES IS AN ABSENCE-CONTRACT ONE, not an aesthetic one. Rounding down
     manufactured a forfeit of exactly 0.00 for a position the model expected to lose a fraction
-    of a player -- 4 of 44 measured observations, every one at WR. 0.00 in this engine reads as
-    "measured, and the cost is nothing"; the true statement was "about half a receiver goes,
-    which costs about 4.5 points". That is the `#187` defect class, reached by arithmetic rather
-    than by a substituted default.
+    of a player. 0.00 in this engine reads as "measured, and the cost is nothing", so that is
+    the `#187` defect class, reached by arithmetic rather than by a substituted default. It has
+    a named downstream victim: `pick_debate` renders an exactly-zero forfeit as the STRONGEST
+    EVIDENCE FOR WAITING, so the manufactured zero was handed to the debate as an affirmative
+    claim.
+
+    THREE CORRECTIONS TO THE EVIDENCE THIS DOCSTRING USED TO CITE (2026-09-16, after an
+    independent review):
+
+      * "4 of 44 measured observations" is ONE pre-draft board state read at 11 gap lengths,
+        not 44 independent observations. Every nonzero `expected_taken` on it is 0.06n or 0.9n,
+        so "4 of 44, all WR" is arithmetic (0.06n < 0.5 for n <= 8). The claim is true; its
+        evidentiary weight was overstated.
+      * "the true statement was about 4.5 points" is NOT the true statement. Interpolation reads
+        the curve at the MEAN count, curve[E[N]]; the honest expectation is E[curve[N]], and on a
+        non-linear curve those differ. Exact Poisson-binomial on the same fixture: 5.48 against
+        the shipped 4.53, max divergence 3.55 across 44 rows, P(no WR taken) = 0.61. This is a
+        better approximation than 0.00, not the truth. The exact expectation is equally
+        constant-free and remains available if the approximation ever needs to go.
+      * Interpolation is CHOSEN, not forced. Ceil would also remove every manufactured zero
+        without adding a constant, and so would the exact expectation. What the contract forces
+        is that a fractional expectation must not report a measured zero; which of the three
+        satisfies that is a modelling choice, and this one was made for monotonicity and for
+        not inventing a player who was not expected to go.
 
     Clamped to the curve's own ends: a position cannot lose more players than it has, and the
     last entry is the worst player actually priced there. No extrapolation past the data."""
@@ -316,11 +336,24 @@ def positional_forfeits(
          down by expected_taken players -- read at a FRACTIONAL index, see _curve_at -- and
          report best-now minus expected-best-at-next-turn.
 
-    SURFACED SIGNAL ONLY -- deliberately NOT an input to pick_necessity: expected_taken is
-    built from the same per-opponent take tendencies that drive survival_probability, and
-    summing it into necessity would recreate exactly the double-count class the rival_premium
-    split just removed (see pick_analysis's own comment there). The debate layer gets it as
-    labeled evidence; nothing deterministic re-ranks on it.
+    WHERE THIS NUMBER ACTUALLY GOES (corrected 2026-09-16 -- this paragraph used to say
+    "deliberately NOT an input to pick_necessity", and that has been FALSE since `7655fb1`).
+
+    It IS a pick_necessity input. `pick_analysis` emits it, `build_snapshot` carries it, and
+    `compute_pick_necessity` reads `positional_forfeit` and folds `forfeit_component` into
+    `raw_score` (weight 10 of a 100-point scale). From there it reaches `necessity_label`, the
+    Draft Room display, and the debate prompt, where an exactly-zero forfeit is rendered as the
+    STRONGEST EVIDENCE FOR WAITING. `quantity_readers.scan()` has been reporting this correctly
+    the whole time -- verdict `decision`, `scoring_readers=['pick_synthesis.py']` -- while this
+    docstring said the opposite. The original double-count concern is real and is handled where
+    it belongs (necessity's denial component, `#M3`); it was never a reason this quantity did
+    not reach necessity.
+
+    WHAT REMAINS TRUE, and is the part that matters: it has NO SELECTION AUTHORITY. The pick is
+    `_board_order`, which sorts on `(fills_required_slot, final_score, player_id)` only, and
+    `final_score` is computed by `compute_draft_board` BEFORE forfeits exist. `#55` ruled
+    necessity observable. So this changes what the app SAYS and what the LLM is told -- not
+    which player the engine picks.
 
     Empty dict when there are no intervening picks (back-to-back turn, or no next pick at
     all) -- a forfeit of 0 everywhere is real information the caller can state, but per-pick

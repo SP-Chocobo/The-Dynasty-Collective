@@ -94,6 +94,15 @@ def main() -> int:
         for pos, r in got.items():
             taken = r["expected_taken"]
             curve = curves[pos]
+            # LIMIT OF THIS ARM, stated rather than papered over (found 2026-09-16 by an
+            # independent review). `taken` is already round(x, 2) from the producer, so this is
+            # round(round(x, 2)), not round(x). The two disagree exactly on x in
+            # [k+0.495, k+0.5) -- which is the knife-edge population this probe exists to study.
+            # It does not affect any number in this report, because every expected_taken here is
+            # a multiple of 0.06 or 0.9 and none lands in that window; but the arm is not a
+            # faithful reconstruction of the old code in general, and reporting it as one would
+            # be the same overclaim this probe was written to catch. Recomputing the unrounded
+            # sum would require positional_forfeits to expose it, which it does not.
             drop_r = min(round(taken), len(curve) - 1)
             lo = min(math.floor(taken), len(curve) - 1)
             hi = min(lo + 1, len(curve) - 1)

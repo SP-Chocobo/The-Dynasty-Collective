@@ -427,12 +427,25 @@ These reach `final_score` or the candidate set, so they are drafting behaviour p
       line is open for the right reason.
 - [x] **#86** — `round(expected_taken)` **REPAIRED**: the curve is read at a fractional index.
       This item's own wording was **stale** — `cliff_protection` stopped reading
-      `positional_forfeit` at `#160`, so the knife-edge never reached that flag. The real defect
+      `positional_forfeit` at `#160`, so the knife-edge **no longer reaches** that flag. (This
+      line said *"never reached"*; that is historically false — it DID read it before `#160`.) The real defect
       was an absence-contract one: rounding sent every expectation below 0.5 to `drop=0`, so the
       forfeit read **exactly 0.00 while a fraction of a player was expected to go** (4 of 44
       observations, all WR; 0.48 → 0.00 and 0.60 → 9.44). **NOTE FOR THE OWNER: this overrode a
       standing deferral** (CDME_CONTRACTS Part 3 and the characterization test both said *open
       product question*); the evidence is recorded there and reverting is a one-line change.
+      **RATIFIED 2026-09-16 (owner), after an independent review** that found NO reachable defect
+      in `_curve_at` (9 of 9 mutants killed by its tests) but corrected five claims around it,
+      recorded in CDME Part 3. **The largest: `positional_forfeits`' own docstring said it was
+      "deliberately NOT an input to `pick_necessity`", and that has been FALSE since `7655fb1`.**
+      It IS a necessity input at weight 10 of 100, and reaches `necessity_label`, the Draft Room
+      display and the debate prompt — where an exactly-zero forfeit is rendered as the strongest
+      evidence FOR waiting, which is the concrete harm this repair removes. It still has **no
+      selection authority** (`_board_order` sorts on `final_score` alone, computed before
+      forfeits exist), so the PICK is unchanged. **AND THE CARRY-FORWARD COULD NOT HAVE SEEN ANY
+      OF THIS**: the battery records no `positional_forfeit`, `pick_necessity` or `expected_taken`
+      field, so "identical on all eleven comparable fields" certifies the **pick path only** and
+      is silent about the quantities `#86` actually moves.
 - [x] **#216 (B4)** — **PINNED, and NOT a live defect.** `#70` found and repaired the eleven real
       crossings by reading; this pass found no twelfth. What was missing is that nothing held the
       distinction afterwards. `ordinals.py` gives the three registers one home —
