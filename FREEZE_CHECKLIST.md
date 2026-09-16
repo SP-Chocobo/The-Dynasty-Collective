@@ -270,7 +270,20 @@ missing is this note.
 > Full statement, with the corrections it produced: `evidence/CERTIFICATION_DESIGN.md`.
 > The bullet below is kept unedited as the record of what Gate 1 used to mean.
 
-- [ ] **#150 — re-run the mass battery. Both committed runs are WITHDRAWN.**
+- [ ] **#150 — THE HEADLINE BELOW IS FALSE AND IS KEPT ONLY AS THE RECORD.** Two runs exist and
+      neither is withdrawn: `BATTERY_2026-09-12_scoring_aware_full_99f9f76` (33 formats, 5,340
+      picks) and `BATTERY_2026-09-13_gate1_1770ef2` (**34 formats, 5,652 picks, complete,
+      `total_findings: 0`, `constant_axes: []`**). Both certification columns are satisfied: zero
+      invariant findings in all 34 cells, and all six dependent sections present per cell.
+      **Measured 2026-09-16: that evidence CARRIES FORWARD to the current tree.** Three arms
+      re-drafted on `db3cecb` — `8T_standard` (112), `8T_standard_SF` (120),
+      `CAPTURE_fourth_and_forever` (312), 544 picks — are identical on all eleven comparable
+      fields, so the five post-battery engine commits (**#86 included**) move nothing. Comparator
+      validated first: 8/11, 9/11, 10/11 differences against other arms, 0 against itself. Scope
+      stated: **3 of 34 arms**, chosen for the regimes most likely to expose `#86`, not a claim
+      about all 34. What remains genuinely open here is the owner's call on whether a further run
+      is wanted before freeze — the evidence itself is not missing.
+- [ ] ~~**#150 — re-run the mass battery. Both committed runs are WITHDRAWN.**~~
       `evidence/batteries/README.md:93` marks both 33-format runs withdrawn: they predate #213
       (every arm scored against a one-key rulebook). They also predate #196 (pool 2041→2105,
       priced 329→371), #201 (real universe) and #204 (production pricing path). **There is
@@ -295,7 +308,13 @@ missing is this note.
       superflex cannot move a gap-based quantity at all (0 of 41/125/197/114 gaps change while
       the top QB price moves 48.51 → 163.06), because `bpa` is points minus a per-position
       constant. Check which axes the quantity under study can actually see before sizing a run.
-- [ ] **#218 — the #222 Phase 0 reproduction was deferred and never re-run** (312 picks).
+- [x] **#218 — CLOSED at `35ac788`, and this line was stale for two days.** The reproduction ran
+      and is EXACT: **312 of 312 picks match** the committed baseline (`9b01a52`) on
+      (overall, roster_id, player_id) — the same players in the same slots, not merely the same
+      composition. Discriminating, not a coincidence any draft would produce: the other `#222`
+      arms differ from this draft in 36-37 of 48 per-seat composition cells. It also fired under
+      the condition that made it mandatory (`PHASE0_COMPLETE.md:126` deferred it *"until the first
+      change to the pricing path"*).
 - [x] **#242 — the round count every instrument used was the wrong question, fixed before the
       re-run.** `len(roster_positions)` is "how many slots are there", not "how many rounds does
       the startup draft run". The two differ by the IR slots, which are never drafted. It was
@@ -386,9 +405,16 @@ These reach `final_score` or the candidate set, so they are drafting behaviour p
       driven by `_build_opponent_boards` on a real pool; 13 tests, mutation-checked 3/3
       (zero-based, gapped, empty). Python still permits any int anywhere — this narrows the next
       crossing's blast radius, it does not abolish it, and the pin says so.
-- [ ] **#167** — `reach_label` changes **0 of 36** engine decisions under ablation. Demote/remove
-      is supported for the engine and the recommendation is ready; **ratification is the owner's**.
-      (The LLM-debate effect was NOT established either way.)
+- [x] **#167 — CLOSED at `0bc75a9` + `574db9c`; this line was stale, and its framing was wrong
+      twice over.** The ruling already existed (*"out of engine math, stays in the debate prompt"*),
+      and establishing what engine math `reach_label` was in turned out to be the whole answer:
+      **none**. `quantity_readers.scan()` gave it `verdict=observable, scoring_readers=[]`, and all
+      eleven non-test references were docstrings, display f-strings, a dataclass field, a snapshot
+      carrier or a history column. `574db9c` then removed it everywhere; today only a historical
+      docstring mention and a test asserting its ABSENCE remain. **The "0 of 36" phrasing is also
+      withdrawn** — it reads as an effect too small to matter, when there was never a wire: the
+      ablation toggled a quantity no scoring path reads. A null about a wire that does not exist
+      closes the question; a weak null about one that does invites a re-measurement.
 - [ ] **#235 / #236** — `shared_slot_adj` vs `displacement_adj`: exact decomposition executed as
       vocabulary, deliberately **not wired**. Wiring it is a Gate-2 decision, not a repair.
 
