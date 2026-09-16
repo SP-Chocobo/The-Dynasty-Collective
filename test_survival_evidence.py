@@ -171,10 +171,29 @@ class UnevidencedRiskTests(_LateBoardFixture):
         self.assertTrue(result["risk_by_team"], "an unpriced target drew no risk at all")
         self.assertLess(result["survival_probability"], 1.0)
 
-    def test_every_take_probability_for_an_unpriced_target_is_the_floor(self):
+    def test_every_take_probability_for_an_unpriced_target_is_the_NORMALISED_floor(self):
+        """UPDATED BY #206 (2026-09-16). This asserted the raw `RANK_TAKE_PROBABILITY_FLOOR`
+        (0.02) came back unchanged as a probability. After the mass repair the floor is a
+        WEIGHT: every row's weight is divided by the board's total, so an unpriced target now
+        reports floor/total -- about 0.0047 on this board -- and the board's probabilities sum
+        to exactly 1.0 instead of 23.49.
+
+        The PROPERTY the test was written for is unchanged and still asserted: every unpriced
+        row gets the same number as every other unpriced row, and it is the smallest weight in
+        the table, because there is no rank to read and no evidence of elevated risk. Only the
+        scale moved, so the assertion is expressed against the floor's share rather than against
+        a literal."""
         result = self._survival(self._an_unpriced_target()["player_id"])
+        probabilities = {risk["take_probability"] for risk in result["risk_by_team"]}
+        self.assertEqual(len(probabilities), 1, "unpriced rows must all get the same number")
+        only = probabilities.pop()
+        self.assertLess(only, ds.RANK_TAKE_PROBABILITY_FLOOR,
+                        "the floor is a weight now -- normalising can only shrink it")
+        self.assertGreater(only, 0.0, "but an unpriced player can still be drafted (#206/#187)")
+        # And it really is the floor's share, not some other number that happens to be small.
         for risk in result["risk_by_team"]:
-            self.assertAlmostEqual(risk["take_probability"], ds.RANK_TAKE_PROBABILITY_FLOOR)
+            self.assertIsNone(risk["rank_on_their_board"])
+            self.assertFalse(risk["evidenced"])
 
     def test_the_unevidenced_rows_say_so_instead_of_reporting_a_rank(self):
         result = self._survival(self._an_unpriced_target()["player_id"])
