@@ -409,6 +409,8 @@ later.** Worth knowing before either is built.
 | U21 | Where do the freeze-timer controls live? | **WORKING: a settings button beside the Insight eye** (§15). Placement only; U3's substance is still open. |
 | U13 | May the live board poll Sleeper on a timer, or is refresh strictly manual? | **RULED: polling is allowed.** The constraint is *no automatic **paid** API calls*. Sleeper reads are free and uncovered. The refresh button becomes an immediate-update override, not the only mechanism. |
 
+| U22 | Should the tank lock to whole numbers on each band? | **ANSWERED by §14 (owner asked 2026-09-16).** It needs no lock: every player is assigned a band at generation, so allocate the bar to PLAYERS and let bands inherit. The edge then lands on a player boundary by construction and one pick moves it exactly one unit. **Ticks are still forbidden** — drawing per-player marks would hand the reader band sizes, which §14's expansion rule excludes. Holds while `span >= N`; RB resolves at both 260px and 900px. |
+
 ### THE UPSIDE-MODE ROWS ARE SUPERSEDED — read §14 before acting on this table
 
 U14 and U15 were ruled when a per-position upside MODE was still being built. §14 records the
@@ -837,6 +839,46 @@ four band slices, with an optional percentage of that position's own pool. Sized
 and the mark positions are both readable without looking twice — it needs WIDTH, and §15's layout
 gives it a bottom strip rather than a sidebar corner. The constraint is real and was nearly missed:
 measured against the same pools, a 260px sidebar resolves the RB tank at 7.2px per player.
+
+### THE BAR IS ALLOCATED TO PLAYERS, AND THE BANDS INHERIT
+
+**Owner's question, 2026-09-16: should the tank lock to whole numbers on each band?** It does not
+need locking, and the reason dissolves the question rather than answering it. **Every player is
+assigned exactly one band at board generation**, so a band's population is already an integer.
+The correct move is therefore to stop allocating the bar to BANDS at all:
+
+> each of the N opening players owns `span / N` of the bar; a band spans its own members; the fill
+> edge sits at `remaining` player-widths.
+
+**What this buys, none of it a preference:**
+
+- **The edge lands on a player boundary because a player IS the unit.** Nothing is "locked" — one
+  pick moves the edge exactly one unit. That makes the gauge **checkable by eye**, which it is not
+  today: a pick currently moves the RB edge 7.2px, and no reader can verify that against reality.
+- **Per-player resolution becomes an identity, not a measurement.** §14's proportional widths were
+  chosen to make resolution constant across bands; they make it constant only up to a rounding
+  perturbation. Per-player it is exact — at `span == N` a band's width EQUALS its player count.
+- **"A band that exists is visible" becomes a theorem** while `span >= N`, so the rendering floor
+  that currently guarantees it (and had to argue it was not a `#56` threshold) is not needed.
+
+**WHAT IT DOES NOT BUY, corrected after the claim was written down and then falsified.** It does
+NOT escape the apportionment paradoxes. Dividing an integer bar among groups is the apportionment
+problem and Balinski-Young (1982) proves no method satisfies both quota and freedom from the
+population paradox; discretising cumulative player positions is still an apportionment, so it
+binds here too. Measured counterexample: QB `{24, 6, 6, 6}`, widen 395 → 396 and MID goes 57 → 56.
+**The paradoxes are out of scope for a different reason** — the bar is apportioned ONCE from
+opening sizes and drains inside fixed slices, so nothing is re-apportioned while a draft runs.
+They are reachable only by resizing, at one unit, invisibly.
+
+**THE LIMIT IS DERIVED, NOT CHOSEN: this holds while `span >= N`.** Below one unit per player the
+edge cannot move on every pick, and a still edge reads as "nothing was taken" — a different
+falsehood from the one this replaces. Measured: RB is 36 players, so **7.2px each in a 260px rail
+and 25px at 900px**; both resolve. The ASCII instrument's `SPAN = 16` does **not** (0.44 units per
+player), which is why `pool_gauge.band_widths` keeps largest remainder and why that file's warning
+against carrying its text quantum into this spec runs in both directions.
+
+`player_widths` / `player_fill` / `resolvable` in `evidence/mode_boundary/pool_gauge.py`, pinned by
+`test_pool_gauge.py` — 13 tests, mutation-checked 4/4.
 
 **EXPANDED.** The rule for what expansion may add: **it may add TIME, never VALUE.** A pick number
 is a draft coordinate the reader already has on screen; a point total is a valuation the contract

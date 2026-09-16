@@ -353,6 +353,106 @@ def assign_bands(pool: dict, marks: dict) -> dict:
     return members
 
 
+def player_widths(sizes: dict, span: int) -> dict:
+    """Band widths when the bar is allocated to PLAYERS and bands merely INHERIT.
+
+    THE OWNER'S QUESTION, ANSWERED BY ARITHMETIC RATHER THAN BY PREFERENCE. "Should the tank lock
+    to whole numbers on each band?" Every player is assigned exactly one band at board generation,
+    so a band's population is an integer by construction -- and that observation dissolves the
+    problem rather than answering it.
+
+    WHY `band_widths` HAS NO CORRECT ANSWER. Dividing a fixed integer resource (segments, pixels)
+    among GROUPS in proportion to integer populations is the apportionment problem -- the same
+    mathematics as allocating legislative seats to states. Balinski-Young (1982) proves no method
+    satisfies both quota (every band gets floor or ceil of its exact share) and freedom from the
+    population paradox (a band losing members must not gain width). Largest remainder, which
+    `band_widths` uses, takes quota and accepts the paradox. There is no third option to find.
+
+    THIS FUNCTION DOES NOT ESCAPE THE THEOREM, AND MY FIRST DOCSTRING CLAIMED IT DID. The claim
+    was "Alabama and population effects are not avoided here, they are structurally impossible."
+    It is FALSE, and `test_pool_gauge` falsified it on the first run by searching instead of
+    assuming: QB {24, 6, 6, 6}, widen the bar from 395 to 396, and MID goes 57 -> 56. Discretising
+    cumulative positions IS an apportionment, so Balinski-Young binds here exactly as it binds
+    largest remainder. There is no method to find, and this one is not it.
+
+    WHAT IS ACTUALLY TRUE, and it is enough. The paradoxes are properties of RE-allocation, and
+    this gauge allocates ONCE: `render_bands` calls the width function with the position's OPENING
+    band sizes and then drains inside those fixed slices (`fill = f(remaining, opening)`). Nothing
+    is re-apportioned while a draft runs, so during the only thing this surface exists to show,
+    neither paradox can occur -- for either method. They are reachable only by RESIZING the bar,
+    where the effect is one unit and invisible.
+
+    SO PER-PLAYER IS NOT CHOSEN FOR PARADOX-FREEDOM. It is chosen for what it does give, each of
+    which `test_pool_gauge` pins:
+
+      * PER-PLAYER RESOLUTION IS EXACT, not approximate. `band_widths`' docstring argues
+        proportional width because it makes resolution constant across bands; it makes it constant
+        only up to the largest-remainder perturbation. Here it is an identity.
+      * THE EDGE LANDS ON A PLAYER BOUNDARY because a player IS the unit. Nothing is "locked" to
+        whole numbers -- one pick moves the edge exactly one unit, always.
+      * "A BAND THAT EXISTS IS VISIBLE" BECOMES A THEOREM. While `span >= N` every player advances
+        the cumulative floor by at least one, so a band holding n >= 1 players draws at least n.
+        `band_widths` needs a `max(1, ...)` floor and then claws it back out of the widest band;
+        this needs neither, so the question of whether that floor smuggled in a threshold (#56)
+        stops being askable.
+      * WIDTHS SUM TO `span` BY TELESCOPING, not by a spare-distribution loop.
+
+    THE LIMIT IS DERIVED, NOT CHOSEN. All of the above holds while `span >= N`. Below it a player
+    is worth less than one unit, the edge cannot move on every pick, and a still edge would read
+    as "nothing happened" -- a different falsehood from the one this replaces. `resolvable()`
+    answers that question rather than leaving a caller to assume it. Measured on the real pools:
+    RB is 36 players, so 7.2px each in a 260px rail and 25px at 900px. Both resolve; SPAN=16 in
+    this file does not, which is why `band_widths` still exists (see its own docstring).
+    """
+    order = [n for n in BANDS if sizes.get(n, 0) > 0]
+    total = sum(sizes[n] for n in order)
+    if not order or total <= 0 or span <= 0:
+        return {n: 0 for n in BANDS}
+    width, cum = {n: 0 for n in BANDS}, 0
+    prev_edge = 0
+    for n in order:
+        cum += sizes[n]
+        edge = (cum * span) // total          # this band's right-hand boundary, in units
+        width[n] = edge - prev_edge
+        prev_edge = edge
+    return width
+
+
+def player_fill(sizes: dict, left: dict, span: int) -> dict:
+    """Units filled per band, in the SAME coordinate system `player_widths` lays out.
+
+    Each band drains inside its own slice (see `render_bands`), so the fill is measured from that
+    band's own left boundary rather than from the front of the tank. Computed through the same
+    cumulative floor, so `player_fill <= player_widths` holds without a clamp -- a clamp would be
+    a place for the two to disagree, which is the defect `#186` records one layer out.
+
+    A band with survivors always shows at least one unit while the bar resolves, for the same
+    reason its width is at least one: the unit IS a player. A band with none shows zero, and that
+    zero is a measurement -- the band is empty -- not an absence."""
+    order = [n for n in BANDS if sizes.get(n, 0) > 0]
+    total = sum(sizes[n] for n in order)
+    if not order or total <= 0 or span <= 0:
+        return {n: 0 for n in BANDS}
+    fill, cum = {n: 0 for n in BANDS}, 0
+    for n in order:
+        base = (cum * span) // total
+        rem = max(0, min(int(left.get(n, 0)), sizes[n]))
+        fill[n] = ((cum + rem) * span) // total - base
+        cum += sizes[n]
+    return fill
+
+
+def resolvable(sizes: dict, span: int) -> bool:
+    """Can this bar move on every pick? True exactly when every opening player owns a whole unit.
+
+    Stated as its own question because the honest failure is not a wrong number, it is a STILL
+    EDGE: below one unit per player several picks in a row leave the bar unchanged, and a reader
+    cannot tell that from a draft where nothing was taken. A surface that cannot resolve must say
+    so rather than render a bar that looks live."""
+    total = sum(sizes.get(n, 0) for n in BANDS)
+    return total > 0 and span >= total
+
+
 def band_widths(sizes: dict) -> dict:
     """Segments per band: PROPORTIONAL to how many players the band holds.
 
