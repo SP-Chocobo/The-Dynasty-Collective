@@ -11388,3 +11388,68 @@ was meant to observe. Two of the three were my own work from earlier the same da
 distinguishing question is cheap and should be asked of every new guard: **does a mutation to the
 PRODUCER fail this test?** If the test never calls the producer, the answer is no, and the green
 run is measuring the fixture.
+
+## #206 MEASURED AGAINST REAL DRAFTERS — and my own recommendation is the 30th withdrawal
+
+The owner ruled the take model should be DERIVED from real drafts rather than chosen between two
+normalisations. It now has been, and the answer is not the one I argued for.
+
+**THE FORK, as I put it to the owner.** A team picks once, so the take-probability mass over its
+board must be 1. It measures **10.73**, and grows with pool size. Two repairs:
+
+| repair | rank-1 `p_take` | survival over 22 picks |
+|---|---:|---|
+| normalise the FULL mass (head 1.21 + floor tail 9.52) | 0.051 | 0.314 |
+| drop the floor, normalise the head only | 0.455 | ≈ 0.00 |
+
+I recommended the second and warned against the first, on the grounds that a model asserting a
+team takes its own best player 5% of the time and a tail player 89% of the time is *"arguably a
+worse model of drafting than the one it replaces"*.
+
+**MEASURED ON 270 REAL HUMAN PICKS, and the warning was wrong.**
+
+| | rank-1 take |
+|---|---:|
+| the model today | 0.550 |
+| head-only (my recommendation) | 0.455 |
+| full mass (what I warned against) | 0.051 |
+| **OBSERVED** | **0.030** |
+
+Full-mass lands within two points of reality. **My recommendation is off by a factor of fifteen,
+and it is withdrawn in full — the 30th.** The reasoning that produced it ("teams take good
+players, so rank-1 must be high") sounds obvious and is simply false about this engine's ranking.
+
+**THE DISTRIBUTION IS NEARLY FLAT, which is the larger finding.** Share of real picks by the rank
+the taken player held on the picking team's engine board: **1–5: 13.7% · 6–20: 24.8% · 21–50:
+22.6% · 51–100: 18.5% · 101+: 20.4%.** The **median rank taken is 32**; the maximum is 327. So
+86% of real picks land outside the five keys `RANK_TAKE_PROBABILITY` is defined over, and the
+table's shape — a steep 0.55 → 0.06 decay — describes almost nothing that happens.
+
+**THIS EXPLAINS `#206`'s SYMPTOM EXACTLY, with no constant touched.** Survival multiplies
+`(1 − p_take)` over intervening picks. At the model's 0.55 that is 2.3e-8 over 22 picks — the
+0.00 the item was filed for. **At the observed 0.030 it is 0.512.** The player survives, which is
+what the draft actually did. The defect was never the arithmetic of the mass; it is that the
+model's per-pick probability is ~18× too high at rank 1.
+
+**THE INSTRUMENT IS CONTROLLED, because "rank carries no signal" is what a broken rank lookup
+also reports.** A synthetic seat that always takes the 3rd-best priced player comes back as
+**48 of 48 at rank 3** (`instrument_control.py`). Not circular: taking `board[0]` and asserting
+rank 1 would only prove a list can be indexed; rank 3 forces the lookup to agree with the
+producer on the order AND on the priced-only filter `rank_by_id` uses.
+
+**THE JOIN IS EVIDENCED SEPARATELY** (`join_decomposition.py`): 301 of 305 real picks resolve,
+round-1 control 12/12, ambiguity rejected rather than guessed (`#82`). 31 taken players were not
+on the picking team's priced board at all and are excluded from the 270 — reported, not silently
+dropped.
+
+**WHAT THIS MAY NOT DO.** The capture's own LIMITS bind: *"ONE league … a data point for testing,
+NOT a benchmark. No engine constant may be calibrated to it."* So this does **not** set
+`RANK_TAKE_PROBABILITY`. It establishes a DIRECTION with a controlled measurement behind it, and
+it is evidence for `#50`, not a patch. A second real board would make it a claim; one makes it a
+finding.
+
+**WHAT IT CHANGES ABOUT THE ITEM.** `#206`'s two causes were "take-probability mass" and "rival
+agreement". The mass half now has a measured answer and it is bigger than a renormalisation: the
+take model's PREMISE — that a rival's board rank predicts their pick — is weakly supported at
+best on the one real draft available. Whether to keep a rank-keyed model at all is a `#50`
+question this measurement now puts on the table.

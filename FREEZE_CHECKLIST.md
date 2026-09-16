@@ -408,6 +408,17 @@ only. The items below feed observables and the debate layer, so they degrade wha
       lifts survival to 0.314 in one step) and rival agreement (every board built by one
       valuation, so the engine's own #1 is rank 1 on all of them — needs rival modelling, and
       that is blocked on #49/#88). Both halves pinned by `test_take_model_coherence.py`.
+      **MEASURED AGAINST REAL DRAFTERS (owner-ruled, 2026-09-16).** 270 human picks from a
+      complete 12-team superflex startup: the rank-1 player on the picking team's engine board is
+      taken **3.0%** of the time against the model's **55%**. Median rank taken is **32**; 86% of
+      picks fall outside the table's five keys. At the observed rate survival over this item's 22
+      intervening picks is **0.512** — the player survives, which is what the draft did. So the
+      0.00 is not mass arithmetic; the per-pick probability is ~18x too high at rank 1. Instrument
+      controlled: a synthetic rank-3 drafter recovers **48/48**. **My own recommended repair
+      (head-only normalisation, rank-1 0.455) is WITHDRAWN — 30th — off by 15x, while the
+      full-mass answer I warned against lands within two points of reality.** **NOT CALIBRATED**:
+      the capture's LIMITS forbid setting a constant from one league, so this is a direction and
+      evidence for **#50**, not a patch. `evidence/take_model/`.
       **What this gate still needs is the OWNER's call on whether the arithmetic half is wired
       before the freeze or deferred to #50** — the measurement no longer blocks the decision.
 - [x] **#183** — **REPAIRED**: six absence breaks in the Dock, found by rendering absent-field
