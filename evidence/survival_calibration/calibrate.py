@@ -273,6 +273,18 @@ def simulate_and_collect(merger, players_db, league, pick_order, policy_by_seat,
                       "position": chosen.get("position")})
         last_position = chosen.get("position")
 
+        # MY OWN PICK IS NOT A SURVIVAL FAILURE. The contract asks what the chances are that a
+        # player "makes it back to my next selection". The player I take at THIS turn never had
+        # to make it back -- he is mine. Leaving him in the pairs scores the engine wrong for a
+        # removal the engine did not predict and could not have: it is the drafter's own choice.
+        # This lands almost entirely on board[0], which cdme, run_follower and a third of
+        # mild_reach all take, so it biases exactly the rank band the result turns on.
+        # Found by the arithmetic ceiling, which failed 102 of 108 turns by exactly +1.
+        if seat in pending:
+            gap_, rows_ = pending[seat]
+            mine = str(chosen["player_id"])
+            pending[seat] = (gap_, [r for r in rows_ if r[0] != mine])
+
     return pairs, unmeasured, picks, turns
 
 
@@ -317,10 +329,15 @@ def main():
     base = report["engine"]["base_rate"] or 0.0
     report["control_constant_base_rate"] = calibration([(base, r[1]) for r in pairs])
     report["control_oracle_is_perfect"] = report["control_oracle"]["brier"] == 0.0
-    # ARITHMETIC CEILING. Between a turn and the same seat's next turn exactly `gap` players
-    # leave the pool, so at most `gap` of that turn's candidates can be taken. A turn reporting
-    # more taken than that is impossible, and would mean the collector is resolving predictions
-    # against the wrong turn -- the one failure that would make every other number here fiction.
+    # ARITHMETIC CEILING. `gap` counts the picks made by OTHER seats between this turn and this
+    # seat's next one, and this seat's own pick is excluded from the pairs above, so at most
+    # `gap` of a turn's scored candidates can be taken. A turn reporting more than that is
+    # impossible, and would mean the collector is resolving predictions against the wrong turn
+    # -- the one failure that would make every other number here fiction.
+    #
+    # This control has already earned its place: on the first decomposed run it failed 102 of
+    # 108 turns, all by exactly +1, and the +1 was the drafter's own pick being scored as a
+    # survival failure. The pooled reliability curve gave no hint of it.
     violations = [t for t in turns if t["taken"] > t["gap"]]
     report["control_arithmetic_ceiling"] = {
         "turns_resolved": len(turns),
