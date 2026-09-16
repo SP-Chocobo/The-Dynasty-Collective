@@ -11343,3 +11343,48 @@ battery's quantity to explain that both make the same exclusion — a cross-refe
 
 **Verdict: KNOWN-OPEN-ACCEPTABLE, pin retained, trigger discharged.** No code change. It is a
 reported line in an instrument, and both the instrument and the ruling say so.
+
+## #216 B4 — the register test called itself "a real producer" and tested a dict literal
+
+`ordinals.py` and `test_ordinal_registers.py` were built earlier this session to give B4's three
+registers — `VALUATION_RANK` (the pool), `DRAFT_POSITION` (the clock), `VENDOR_RANK` (the vendor)
+— one home instead of eleven docstrings. Returning to close the checklist entry, the artifact did
+not survive its own re-reading.
+
+**THE CLASS NAMED `ARealProducerMatchesItsDeclaredDomain` BUILT `rank_by_id` FROM A DICT
+LITERAL.** Its fixture enumerated `i + 1` and then asserted the result was one-based and
+contiguous — so it tested the fixture's own arithmetic and nothing whatever about the engine.
+`rank_by_id` is produced by `draft_strategy._build_opponent_boards`, and the test never called
+it. The name is what made this hard to see: a class that says *a real producer* reads as already
+having answered the question.
+
+**THE CONTROL, because the claim is otherwise just my reading.** With the producer mutated to
+emit **0-based** ranks — precisely the category error the register exists to forbid — the old
+test passes **11 of 11**. The rewritten test fails **6**. That is the whole difference between a
+guard and a decoration, measured rather than argued.
+
+**The repair is the one #119 and #112 already taught twice this session**: drive the check with a
+real value. `setUpClass` now builds a small real pool through the real merger (top-20 by trade
+value at four positions) and boards it for three rosters through `_build_opponent_boards`, then
+holds what the engine actually emits to the declared domain. Cost: 0.8s, which is cheaper than
+the fixture version deserved to be.
+
+**Three tests, three properties, deliberately separate.** A vacuity guard (the producer really
+emitted ranks — a domain check over an empty set passes and means nothing); the domain check
+itself; and **contiguity, which the domain check does NOT imply** — the domain only rejects
+`< 1`, so a producer that skipped or repeated a rank would still price everyone and would simply
+stop meaning "the Nth best available", which is what every consumer reads it as.
+Mutation-checked 3/3: zero-based, gapped, and empty are each caught by the test written for them.
+
+**WHAT B4 IS, AND IS NOT.** It was never a live defect: `#70` found and repaired the eleven real
+crossings by READING, and this pass found no twelfth. What was missing is that nothing held the
+distinction in place afterwards. It does now — for one producer, which is stated at the pin
+rather than implied. Python still permits any int anywhere; this narrows the blast radius of the
+next crossing, it does not abolish it.
+
+**A STANDING NOTE ON THIS SESSION'S PATTERN.** Three items in a row — `#119`, `#112`, `#216 B4` —
+had guards that passed while constraining nothing, each because the test constructed the value it
+was meant to observe. Two of the three were my own work from earlier the same day. The
+distinguishing question is cheap and should be asked of every new guard: **does a mutation to the
+PRODUCER fail this test?** If the test never calls the producer, the answer is no, and the green
+run is measuring the fixture.

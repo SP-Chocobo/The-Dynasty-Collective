@@ -17,6 +17,8 @@ import subprocess
 import unittest
 from pathlib import Path
 
+import data_merger as dm
+import draft_room as dr
 import draft_strategy as ds
 import ordinals
 
@@ -92,19 +94,58 @@ class DomainsAreCheckedNotAssumed(unittest.TestCase):
 class ARealProducerMatchesItsDeclaredDomain(unittest.TestCase):
     """The registry is only worth something if a real emitter is held to it. `rank_by_id` is
     built by `_build_opponent_boards` and is the carrier every take-probability read goes
-    through, so it is the one to pin."""
+    through, so it is the one to pin.
 
-    def _board(self, priced: int) -> dict:
-        rows = [{"player_id": str(i), "final_score": float(100 - i), "position": "RB"}
-                for i in range(priced)]
-        return {"by_id": {r["player_id"]: r for r in rows},
-                "rank_by_id": {r["player_id"]: i + 1 for i, r in enumerate(rows)},
-                "unpriced_ids": set()}
+    THIS CLASS USED TO BUILD `rank_by_id` FROM A DICT LITERAL while calling itself "a real
+    producer", which is the overclaim its own name made hardest to notice: a fixture that
+    enumerates `i + 1` cannot fail a one-based check, so the assertion tested the fixture's
+    arithmetic and nothing about the engine. It now calls `_build_opponent_boards` and reads
+    what the engine actually emits, which is the only version that can fail when the producer
+    changes shape. The cost is a real board build (~8s); the alternative is a green test that
+    constrains nothing (`#119`, `#112`)."""
 
-    def test_rank_by_id_is_one_based_and_contiguous(self):
-        ranks = sorted(self._board(25)["rank_by_id"].values())
-        self.assertEqual(ranks, list(range(1, 26)))
-        self.assertEqual(ordinals.domain_violations("VALUATION_RANK", ranks), [])
+    @classmethod
+    def setUpClass(cls):
+        """A small real pool -- top-20 by trade value at four positions -- built through the
+        real merger, then boarded for three rosters by the real producer."""
+        merger = dm.DataMerger()
+        proj = merger.projections
+        players_db, pid = {}, 0
+        for pos in ("QB", "RB", "WR", "TE"):
+            sub = proj[proj["position"] == pos].sort_values("trade_value", ascending=False).head(20)
+            for _, row in sub.iterrows():
+                pid += 1
+                parts = row["norm_name"].split()
+                players_db[str(pid)] = {
+                    "first_name": parts[0].upper(), "last_name": " ".join(parts[1:]).title(),
+                    "position": pos, "fantasy_positions": [pos], "team": row.get("team")}
+        league = dr.build_mock_league(teams=12, superflex=False, scoring="ppr",
+                                      te_premium=False, dynasty=True)
+        cls.boards = ds._build_opponent_boards(merger, players_db, [], league, ["1", "2", "3"])
+
+    def test_the_producer_actually_emitted_ranks_so_this_cannot_pass_vacuously(self):
+        """A domain check over an empty set passes and means nothing. Print the population."""
+        self.assertEqual(len(self.boards), 3, "the producer did not build three boards")
+        for rid, board in self.boards.items():
+            with self.subTest(rid):
+                self.assertTrue(board.get("rank_by_id"), f"roster {rid} emitted no ranks")
+
+    def test_every_rank_the_real_producer_emits_is_in_the_declared_domain(self):
+        for rid, board in self.boards.items():
+            with self.subTest(rid):
+                bad = ordinals.domain_violations(
+                    "VALUATION_RANK", list(board["rank_by_id"].values()))
+                self.assertEqual(bad, [], f"roster {rid} emitted {bad} as VALUATION_RANK")
+
+    def test_the_real_ranks_are_one_based_and_contiguous(self):
+        """Contiguity is not implied by the domain check -- the domain only rejects < 1. A
+        producer that skipped or repeated a rank would still price players; it would just no
+        longer mean "the Nth best available", which is what every consumer reads it as."""
+        for rid, board in self.boards.items():
+            with self.subTest(rid):
+                ranks = sorted(board["rank_by_id"].values())
+                self.assertEqual(ranks, list(range(1, len(ranks) + 1)),
+                                 f"roster {rid}'s ranks are not 1..N without gaps")
 
     def test_the_take_table_is_read_with_a_VALUATION_RANK_and_nothing_else(self):
         """`RANK_TAKE_PROBABILITY`'s keys mean "the best available, the second best, ...". Feeding

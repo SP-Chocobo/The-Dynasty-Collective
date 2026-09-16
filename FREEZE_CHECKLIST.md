@@ -374,8 +374,18 @@ These reach `final_score` or the candidate set, so they are drafting behaviour p
       observations, all WR; 0.48 → 0.00 and 0.60 → 9.44). **NOTE FOR THE OWNER: this overrode a
       standing deferral** (CDME_CONTRACTS Part 3 and the characterization test both said *open
       product question*); the evidence is recorded there and reverting is a one-line change.
-- [ ] **#216 (B4)** — board rank is not pick order: three ordinals, three names. Cross-register
-      ordinal confusion has already produced a defect family here (#70).
+- [x] **#216 (B4)** — **PINNED, and NOT a live defect.** `#70` found and repaired the eleven real
+      crossings by reading; this pass found no twelfth. What was missing is that nothing held the
+      distinction afterwards. `ordinals.py` gives the three registers one home —
+      `VALUATION_RANK` (the pool), `DRAFT_POSITION` (the clock), `VENDOR_RANK` (the vendor),
+      separated by what RECOMPUTES them — and `test_ordinal_registers.py` holds the registry to
+      the codebase and one real producer to its declared domain. **The first version of that test
+      was a decoration**: a class named `ARealProducerMatchesItsDeclaredDomain` built `rank_by_id`
+      from a dict literal, so it tested its own fixture's arithmetic. Control: against a producer
+      mutated to emit 0-based ranks, the old test passed 11/11 and the rewritten one fails 6. Now
+      driven by `_build_opponent_boards` on a real pool; 13 tests, mutation-checked 3/3
+      (zero-based, gapped, empty). Python still permits any int anywhere — this narrows the next
+      crossing's blast radius, it does not abolish it, and the pin says so.
 - [ ] **#167** — `reach_label` changes **0 of 36** engine decisions under ablation. Demote/remove
       is supported for the engine and the recommendation is ready; **ratification is the owner's**.
       (The LLM-debate effect was NOT established either way.)
