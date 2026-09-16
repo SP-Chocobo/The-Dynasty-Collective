@@ -1,0 +1,38 @@
+{
+  "arm": "SMOKE",
+  "league_rulebook": "Fourth and Forever",
+  "universe_provenance": {
+    "source": "data/fixtures/sleeper_capture.json",
+    "captured_at": "2026-09-07T08:14:10.990206+00:00",
+    "season": "2026",
+    "players_in_capture": 6595,
+    "players_in_pool": 6595,
+    "injury_statuses_present": [
+      "DNR",
+      "IR",
+      "NA",
+      "Out",
+      "PUP",
+      "Questionable",
+      "Sus"
+    ]
+  },
+  "teams": 12,
+  "rounds": 10,
+  "policy_by_seat": {
+    "1": "cdme",
+    "2": "bpa",
+    "3": "need_first",
+    "4": "run_follower",
+    "5": "mild_reach",
+    "6": "cdme",
+    "7": "bpa",
+    "8": "need_first",
+    "9": "run_follower",
+    "10": "mild_reach",
+    "11": "cdme",
+    "12": "bpa"
+  },
+  "complete": false,
+  "LIMITS": "Measures calibration as a DIAGNOSTIC. No number here may be written back into the engine as a constant (#56, and the capture's LIMITS)."
+}
