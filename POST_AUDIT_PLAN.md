@@ -12380,6 +12380,36 @@ would not play. That is RULE 6 in a subtler form than the one it was written for
 as crude as 24 consecutive QBs — every admitted style fields a legal lineup — but `adp` is the
 only style encoding what humans actually do, and it is the only one the engine cannot beat.
 
+### The round-one attribution settles the strawman question with data
+
+`composition_by_style` was added mid-item because the pooled counter could not answer it, and the
+run was repeated (all six formats **byte-identical** on both rulers — deterministic instrument,
+recording-only change). Round-one QB rate by style:
+
+| format | `adp` | ENGINE | `need_first` | `points_need` |
+|---|---|---|---|---|
+| `12T_ppr` | 0% | 0% | 50% | 47% |
+| `12T_ppr_SF` | 0% | 8% | 50% | 44% |
+| `10T_ppr` | 0% | 0% | 33% | 50% |
+| `10T_ppr_SF` | 0% | **60%** | 33% | 47% |
+| `12T_standard` | 0% | 0% | **100%** | **100%** |
+| `12T_ppr_TEP` | 0% | 0% | 38% | 33% |
+
+**`12T_standard` is a proven strawman, not a suspected one.** `need_first` opens QB 48/48 and
+`points_need` 36/36 — 100%, in a **one-QB league**, which is RULE 6's original failure mode
+reproduced by two of three styles. The engine opens RB 12/12. Its margins there measure the gap
+between a sane drafter and a broken one.
+
+**`adp` has no superflex variant.** It takes 0% round-one QB in every format including both SF
+arms, while the engine goes 6/10 in `10T_ppr_SF` — **the engine responds to superflex and the
+control does not.** The SF losses to `adp` stand as results but against a mis-specified control.
+
+**That leaves three clean comparisons** — the 1QB PPR formats: 5/12 (−0.35%), 2/10 (−0.63%),
+7/12 (+0.51%). Against market consensus on its own ground the engine is **at parity**, neither
+ahead nor behind by a margin this run resolves. That is the honest answer to *is it good at
+drafting*, and it is weaker than the pooled table implies and stronger than the standard-scoring
+arm would flatter.
+
 ### Two results that cut against the engine
 
 **`12T_standard`'s +5.15% is the weakest number in the set, not the strongest.** Its field

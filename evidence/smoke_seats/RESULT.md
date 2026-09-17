@@ -7,6 +7,11 @@ Produced by `run_smoke_seats.py` at commit `9273a2c`. Universe 6,595 players, pr
 ADP table 840 ranked (4,506 undrafted-sentinel rows excluded). **6 formats, 68 seat runs**, one
 draft per seat per format, 2,720.3s.
 
+**Reproduced.** The run was repeated after `composition_by_style` was added to the report, and all
+six formats returned **byte-identical** `by_ruler` results on both rulers. The instrument is
+deterministic and the added recording changed nothing about the drafting — which is what makes
+identical numbers the expected outcome here rather than the `#245` alarm.
+
 | format | teams | superflex | scoring | TE premium | rounds | seat runs |
 |---|---|---|---|---|---|---|
 | `12T_ppr` | 12 | no | ppr | no | 14 | 12 |
@@ -64,15 +69,50 @@ that crude happens here — every admitted style fills a legal lineup, which is 
 for. But `adp` is the only style in the field that encodes what humans actually do, and it is
 the only one the engine cannot beat.
 
+## The round-one attribution — who actually took those QBs
+
+Recorded per style (`composition_by_style`), pooled over every seat run. The pooled counter used
+to say only *"7 of 12 round-one picks were QBs"*, which cannot distinguish a finding about the
+engine from a strawman field:
+
+| format | `adp` | ENGINE | `need_first` | `points_need` |
+|---|---|---|---|---|
+| `12T_ppr` | 0% QB | 0% QB | 50% | 47% |
+| `12T_ppr_SF` | 0% QB | 8% | 50% | 44% |
+| `10T_ppr` | 0% QB | 0% QB | 33% | 50% |
+| `10T_ppr_SF` | 0% QB | **60%** | 33% | 47% |
+| `12T_standard` | 0% QB | 0% QB | **100%** | **100%** |
+| `12T_ppr_TEP` | 0% QB | 0% QB | 38% | 33% |
+
+Two things fall out of it, and both change how the numbers above should be read.
+
+**`12T_standard` is a strawman and now it is proven, not inferred.** `need_first` opens with a QB
+**48 times out of 48** and `points_need` **36 out of 36** — 100% of round-one picks, in a **one-QB
+league**. That is RULE 6's original failure mode exactly, reproduced by two of the three styles.
+The engine opens RB 12/12 there, which is sane. Its +7.09% and +7.28% margins over those two
+styles measure the gap between a sane drafter and a broken one, and nothing else.
+
+**`adp` has no superflex variant, which weakens the two SF comparisons.** It takes **0% QB in
+round one in every format, superflex included** — a single static consensus table applied
+unchanged to a format where the real human market moves QBs sharply up. In `10T_ppr_SF` the
+engine goes QB 6/10 in round one, so **the engine responds to superflex and the control does
+not**. The engine still loses to it 0/10 on `points` there, which is a real result, but against a
+control that is mis-specified for the format.
+
+**This leaves three clean comparisons**, the 1QB PPR formats where `adp` is on its home ground:
+`12T_ppr` (5/12, −0.35%), `10T_ppr` (2/10, −0.63%), `12T_ppr_TEP` (7/12, +0.51%). Against
+market consensus on its own terms the engine is **at parity — neither ahead nor behind by a
+margin this run can resolve.**
+
 ## Two qualifications that cut AGAINST the engine
 
 **1. `12T_standard`'s +5.15% is the weakest result in the set, not the strongest.** Its field
 collapses: `need_first` averages 10.94 on `cdme` and `points_need` averages **−2.90** — a
 negative asset total. Standard scoring inverts the projection-led styles' ordering (raw QB
-projections dominate when receptions score nothing) and they draft accordingly. The league takes
-**7 QBs in round one of a one-QB league**. The engine's largest margin is measured against the
-most broken field, which is the definition of the strawman this pre-registration set out to
-avoid. Treat `12T_standard` as uninformative about quality.
+projections dominate when receptions score nothing) and they draft accordingly, at a 100%
+round-one rate as the attribution table above shows. The engine's largest margin is measured
+against the most broken field, which is the definition of the strawman this pre-registration set
+out to avoid. Treat `12T_standard` as uninformative about quality.
 
 **2. The engine loses on `cdme` — its own objective — in both superflex formats.** `4/12` at
 −3.56% and `1/10` at −18.75%. A `cdme` win is a tautology because the engine approximately
@@ -98,6 +138,7 @@ bounded limitation — where the startable floor overrides the demand model — 
   applies: league settings vary enormously, and **no engine constant may be calibrated to this
   result.** Nothing here is a tuning target — that refusal was pre-registered and is kept.
 - **Not a verdict on the market.** `adp` here is a static consensus table, not live human
-  drafters reacting to a board.
+  drafters reacting to a board — and it carries no superflex variant, so it is a valid control
+  only in the 1QB formats.
 - **Not a replacement for Gate 1 (`#284`)**, which answered legality across 34 formats. This
   answers quality across 6.
