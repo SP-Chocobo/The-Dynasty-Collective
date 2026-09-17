@@ -12666,6 +12666,37 @@ strengthens the case for restating `#184`'s bound at its measured size.
 Owner asked whether the remote tree could be reduced to main plus the UI branch. It cannot, and
 the reason is worth recording because **two of the branches that look like cruft are not**.
 
+### ~~Deleted~~ ~~BLOCKED-EXTERNAL~~ **DONE BY THE OWNER — both branches deleted, verified gone**
+
+**FINAL STATE (third disposition on this entry, and the last).** The owner deleted both from the
+GitHub branches page. Verified from this side by `git fetch --all --prune`: `origin` now carries
+exactly five refs — `main`, the working branch, `ui-authority-pass`, and the two freeze markers.
+Neither worktree branch resolves any more.
+
+**The `#239` footgun is retired**, not merely documented: there is no longer a worktree-shaped
+remote branch for a local worktree of the same name to bind to.
+
+**The ordering lesson from the correction below was applied here** — the deletion was verified
+against the remote BEFORE this line was written, rather than the other way round.
+
+The two subsections that follow are kept as the reasoning that licensed the deletion, and as the
+record of how the entry got its disposition wrong in between.
+
+### ~~Deleted~~ ~~BLOCKED-EXTERNAL~~ **DONE BY THE OWNER — verified gone**
+
+**FINAL STATE, third and last disposition on this entry.** The owner deleted both from the GitHub
+branches page. Verified from this side with `git fetch --all --prune` **before this line was
+written**: `origin` now carries exactly five refs — `main`, the working branch,
+`ui-authority-pass`, `pre-blind-audit`, `pre-hull-extraction`. Neither worktree branch resolves.
+
+**The `#239` footgun is retired rather than merely documented**: no worktree-shaped remote branch
+survives for a local worktree of the same name to bind to.
+
+The ordering lesson from the correction below was applied here — the outcome was confirmed
+against the remote first, then recorded. The two subsections that follow are kept as the
+reasoning that licensed the deletion, and as the record of how this entry's disposition was
+wrong in between.
+
 ### ~~Deleted~~ **BLOCKED-EXTERNAL — identified as deletable, and the delete is REFUSED**
 
 **CORRECTION (28th, mine), struck in place rather than edited away.** This section as first
