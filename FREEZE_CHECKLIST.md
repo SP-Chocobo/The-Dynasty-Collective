@@ -91,6 +91,22 @@
 >   repair. That re-run is the freeze gate, not a per-repair regression test — deliberately not
 >   done per repair.
 >
+> ## GATE 1 RE-RUN DELIVERED, 2026-09-17 (`#284`) — the instruction above is DISCHARGED
+>
+> `BATTERY_2026-09-17_gate1_15fcf2c.json`: **34 arms (33 independent), 5,652 picks, 0 structural
+> findings, 14,460.7s**, at `15fcf2c` — **one commit, zero carried arms**, where the run this
+> replaces spanned two commits and carried two arms forward from an earlier one.
+>
+> **No measured drafting failure remains, and that is now current rather than 120 commits stale.**
+> Compared field by field against the committed run, **34 of 34 arms are identical** on picks,
+> findings, margins, rosters, shape, strength, qualifiers, rounds, teams and unpriced-at-decision,
+> with no arm label added or dropped. Drafting behaviour did not move across those 120 commits.
+>
+> **One thing changed, everywhere: `decisive` went 1,654 calls -> 0.** That is `#206`'s enforced
+> refusal, which landed at `364042a` (2026-09-16) — three days AFTER the committed battery ran.
+> It is the gate catching exactly what it exists to catch: the old battery advertises a decision
+> regime this engine no longer produces.
+>
 > Sources: `evidence/batteries/README.md`, `evidence/flex_feasibility/README.md`,
 > `evidence/roster_proof/README_RULEBOOK_CUT.md`, `evidence/roster_proof/README_FF.md`.
 

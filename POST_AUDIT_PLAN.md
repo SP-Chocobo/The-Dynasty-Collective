@@ -12263,3 +12263,85 @@ pass and still clean); the live half of `CDME_CONTRACTS.md` (§1–§572 — eve
 sits in the appendix its own banner marks as history); `engine-measurement`'s five-line fixture,
 including the `build_players_db_from_capture` pool size, which measures **6,595** exactly as
 written; and every other row of that runtime table, all of which carry the date they were taken.
+
+## `#284` — GATE 1 RE-RUN COMPLETE AND CLEAN: 34 ARMS, 5,652 PICKS, **0 STRUCTURAL FINDINGS**
+
+`FREEZE_CHECKLIST.md` carried one unambiguous open instruction: *"**Gate 1 now needs ONE more
+run.** The committed battery describes the engine BEFORE this repair. That re-run is the freeze
+gate."* That was written about `#247`. By the time it was picked up, the committed battery
+(`1770ef2`/`466c010`, 2026-09-13) was **120 commits** behind HEAD, including `draft_strategy.py`
++374 lines, `pick_synthesis.py` +218 and `draft_room.py` +153. Its clean verdict described a
+materially different engine.
+
+### The result
+
+| | committed run | this run |
+|---|---|---|
+| arms | 34 (33 independent) | 34 (33 independent) |
+| picks | 5,652 | **5,652** |
+| structural findings | 0 | **0** |
+| wall clock | 19,220.8s | **14,460.7s** |
+| `commits_present` | `1770ef2`, `466c010` | **`15fcf2c` only** |
+| `carried_forward` | `8T_standard`, `8T_standard_SF` | **none** |
+
+The last two rows are the provenance improvement and they matter more than the speed. The
+committed run **spans two commits and carries two arms forward** from an earlier one, so two of
+its 34 arms were never drafted by the engine it claims to measure. This run is **one commit, zero
+carried arms** — every arm drafted fresh by `15fcf2c`.
+
+### What the re-run establishes, stated as a measurement
+
+**Drafting behaviour did not change across 120 commits. At all.** Compared field by field —
+`picks`, `findings`, `margins`, `rosters`, `shape`, `strength`, `qualifiers`, `rounds`, `teams`,
+`unpriced_at_decision` — **34 of 34 arms are identical to the committed run**, and no arm label
+appeared or disappeared, so the format matrix itself has not drifted either.
+
+**Exactly one thing changed, and it changed everywhere: `decisive` is gone.**
+
+```
+decisive calls   1,654  ->  0      across all 34 arms
+```
+
+This is not a regression, and chasing it at arm 1 rather than hour 5 is what established that.
+`#206` measured that survival cannot carry the weight `decision_regime` puts on it — engine Brier
+0.16127 against a constant predictor's 0.14224 on real picks, worst exactly where the 0.15
+threshold reads (predicted 0.028, observed 0.500) — and the refusal is **enforced in code**, not
+merely documented: `decision_regime` will not return `"decisive"` while `SURVIVAL_IS_CALIBRATED`
+is False. That enforcement landed at `364042a` on **2026-09-16**; the committed battery ran at
+`1770ef2` on **2026-09-13**, three days earlier. So the old run's 1,654 `decisive` calls come from
+an engine that could still produce the state, and this run's zero is the refusal working.
+
+**That is also the re-run justifying itself.** The committed Gate 1 battery advertises a decision
+regime the engine no longer produces — precisely the staleness the gate exists to catch, and now
+demonstrated rather than argued.
+
+### Three things the run confirms without contradicting
+
+- **The unpriced regime stays bounded and never wins.** Only superflex arms reach it at all
+  (`12T_half_ppr_SF` 1/180, `12T_ppr_SF` 2/180, `14T_standard_SF` 43/210, `14T_half_ppr_SF`
+  42/210, `14T_ppr_SF` 47/210, and the real league 144/312), and **an unpriced candidate won 0
+  picks in 0 of 34 arms.** Consistent with `#168`'s KNOWN-OPEN-ACCEPTABLE bound, reproducing the
+  committed run's counters exactly.
+- **`HEAVY_IDP` and `4WR_TE_PREMIUM` are clean in both runs**, with identical rosters — so
+  `#154`'s old "chair cannot field a legal lineup" failure on `HEAVY_IDP` was fixed before the
+  committed battery, not by anything since.
+- **The real-league arm's negative worth values are `#155`'s tautology, not a defect.** Values are
+  measured against the pre-draft replacement ruler and a 26-round draft goes far below it. The
+  arm reproduces to the cent: 7 zero-margin picks in rounds 8, 16 and 23, median margin 1.04.
+
+### How it survived a 4-hour run in a container reclaimed on idleness
+
+`BATTERY_REPORT.json` is gitignored and dies with the machine, so it is not a survival plan by
+itself. The live report was checkpointed to a tracked path and **pushed** on a timer — eleven
+checkpoints, 3/34 through 32/34 — because the git remote is the only store that outlives the
+container. Each checkpoint was **validated as parseable JSON before being committed** (the runner
+rewrites the report between arms; a mid-write copy is truncated, and a corrupt checkpoint is worse
+than none because it looks like protection). The restore procedure was committed BEFORE the first
+checkpoint, at `c74efa9`, so it too would survive. No force-push and no amend at any point:
+unattended history rewriting on the working branch could drop a real commit, and a dozen
+checkpoint commits is the cheaper failure.
+
+**The stale report was moved aside before launch rather than resumed onto.** `--resume` against a
+report written by the pre-repair engine is the exact hazard the runner's own comment names — a
+run whose arms come from two engines measures neither. That discipline is why `commits_present` is
+a single commit.
