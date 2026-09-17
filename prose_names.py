@@ -266,6 +266,23 @@ def haystack() -> str:
         parts.append(path.read_text(encoding="utf-8", errors="replace"))
     for path in _tracked("*.md"):
         parts.append(markdown_split(path)[1])       # FENCED CODE ONLY -- see the docstring
+
+    # A TRACKED MODULE'S OWN STEM IS A NAME IN THE SYSTEM, and nothing above guarantees it
+    # appears. A module is only spelled out in code where something imports it, so a module
+    # whose importers are all comments, all markdown prose, or all excluded reads as dead
+    # while its file sits right there in the tree.
+    #
+    # This module was the proof. Its single code-level importer is its own test module, which
+    # NOT_ITS_OWN_CORPUS removes from the corpus -- so the exclusion that stops the checker
+    # vouching for itself also erased its own name, and the first comment anywhere to cite it
+    # was reported as naming something that exists nowhere. 72 other stems were in the same
+    # state, every one of them a one-shot probe script, every one of them a latent false
+    # positive waiting for the first sentence to mention it.
+    #
+    # Derived from git, not listed here: the set of importable module names in this repository
+    # has one home (the tree), and a stem drops out of the universe the moment its file is
+    # deleted -- which is exactly when prose still naming it SHOULD go red.
+    parts.extend(path.stem for path in _tracked("*.py"))
     return "\n".join(parts)
 
 

@@ -1302,14 +1302,14 @@
       }
     },
     "test_prose_names.py": {
-      "test_methods": 22,
+      "test_methods": 25,
       "asserts": {
-        "assertEqual": 4,
+        "assertEqual": 5,
         "assertFalse": 3,
         "assertGreater": 11,
-        "assertIn": 7,
-        "assertNotIn": 2,
-        "assertTrue": 12
+        "assertIn": 8,
+        "assertNotIn": 3,
+        "assertTrue": 13
       }
     },
     "test_provenance_boundary.py": {
@@ -1643,6 +1643,15 @@
         "assertNotEqual": 3,
         "assertNotIn": 2,
         "assertTrue": 2
+      }
+    },
+    "test_smoke_seats.py": {
+      "test_methods": 17,
+      "asserts": {
+        "assertEqual": 20,
+        "assertIn": 4,
+        "assertNotIn": 6,
+        "assertRaises": 1
       }
     },
     "test_snapshot_identity_boundary.py": {

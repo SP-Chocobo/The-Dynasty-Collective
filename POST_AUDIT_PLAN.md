@@ -12345,3 +12345,91 @@ checkpoint commits is the cheaper failure.
 report written by the pre-repair engine is the exact hazard the runner's own comment names — a
 run whose arms come from two engines measures neither. That discipline is why `commits_present` is
 a single commit.
+
+## `#285` — SMOKE SEATS: THE ENGINE BEATS THE NAIVE DRAFTERS AND **DOES NOT BEAT THE MARKET**
+
+The owner asked for a quality pass distinct from Gate 1's legality pass — *"a pass over with
+smoke seats, to determine if it's **good** at drafting"* — against *"several non-engine seats for
+variety of various styles"*. Pre-registered at `9273a2c` in
+`evidence/smoke_seats/PREREGISTRATION.md`, **before the runner existed**; full numbers in
+`evidence/smoke_seats/RESULT.md`.
+
+6 formats, 68 seat runs, pool 481, 2,720.3s. `run_follower` failed the mechanical admission gate
+(could not fill 100% of its starting slots) in all six formats and never sat; the field was
+`adp`, `need_first` and `points_need`.
+
+### The aggregate says one thing and the per-style breakdown says the opposite
+
+Pooled, the engine wins the `points` ruler in five of six formats (+0.51% to +5.15%). Split by
+style — which criterion 4 required **in advance**, on the grounds that *"an aggregate that hides
+a loss to one style is the result hiding its own most interesting part"*:
+
+| format | vs `adp` (market) | vs `need_first` | vs `points_need` |
+|---|---|---|---|
+| `12T_ppr` | **5/12, −0.35%** | 12/12, +3.63% | 12/12, +3.56% |
+| `12T_ppr_SF` | **4/12, −1.13%** | 11/12, +1.66% | 9/12, +1.19% |
+| `10T_ppr` | **2/10, −0.63%** | 10/10, +3.31% | 10/10, +3.48% |
+| `10T_ppr_SF` | **0/10, −2.42%** | 6/10, −0.19% | 5/10, −0.06% |
+| `12T_standard` | 12/12, +1.79% | 12/12, +7.09% | 12/12, +7.28% |
+| `12T_ppr_TEP` | 7/12, +0.51% | 12/12, +3.73% | 12/12, +4.08% |
+
+**Against market-consensus ADP the engine is behind in four of six formats, level in a fifth, and
+ahead only in standard scoring.** It beats both projection-led styles nearly everywhere. Eight of
+eleven field seats are projection-led, so the pooled margin is carried by the styles a human
+would not play. That is RULE 6 in a subtler form than the one it was written for: nothing here is
+as crude as 24 consecutive QBs — every admitted style fields a legal lineup — but `adp` is the
+only style encoding what humans actually do, and it is the only one the engine cannot beat.
+
+### Two results that cut against the engine
+
+**`12T_standard`'s +5.15% is the weakest number in the set, not the strongest.** Its field
+collapses — `need_first` averages 10.94 on `cdme`, `points_need` averages **−2.90** — because
+standard scoring inverts the projection-led ordering, and the league takes **7 QBs in round one
+of a one-QB league**. The largest margin is measured against the most broken field. Uninformative.
+
+**The engine loses on `cdme`, its own objective, in both superflex formats** — 4/12 at −3.56% and
+1/10 at −18.75%, including 0/10 against `need_first` (−26.91%) and 0/10 against `points_need`
+(−30.39%) in `10T_ppr_SF`. A `cdme` win is a tautology; a `cdme` **loss** is not. This is the
+region `#184` documents as a bounded limitation and where `#177`'s single loss lived — **and this
+run makes it larger and better evidenced than `#184` currently records.**
+
+### Instrument defects found and repaired during the run
+
+1. **The admission gate was computed and not enforced.** `style_by_seat` dealt from the full
+   `STYLES` table, so `run_follower` — excluded for failing to field a lineup — sat in the field
+   anyway. A measured 8/12 was really 11/12. Fixed with an `admitted` parameter and a refusal to
+   run on an empty field.
+2. **Two guards scanned raw text and matched their own docstrings** — the exact `#200` mistake,
+   repeated. Rewritten to walk the AST.
+3. **A mutation escaped**: `test_the_floor_never_empties_the_pool` passed `slots=[]`, so the early
+   return fired and the guarded line never executed. Replaced with a non-empty unfillable slot
+   list plus a companion asserting the floor DOES restrict.
+4. **The report recorded a pooled round-one counter and no attribution**, so *"7 QBs in round one"*
+   could not be resolved into engine-versus-field — the one question that separates a real win
+   from a strawman. `composition_by_style` now records what each style drafted; 5 tests,
+   mutation-checked 3/3.
+
+### Pre-registered refusal, kept
+
+**No engine constant is calibrated to this result.** One capture, simulated fields, and the
+owner's standing caveat applies: league settings vary enormously and this is a data point, not a
+benchmark. `adp` is a static consensus table, not live drafters reacting to a board — the loss to
+it is evidence about the engine, not a measurement of the market.
+
+## `#286` — THE PROSE CHECKER COULD NOT SEE ITS OWN MODULE NAME
+
+`prose_names` was reported as a backticked name existing nowhere, cited from a comment in
+`run_smoke_seats.py` that was explaining the checker. The name is real; the instrument was blind.
+
+`NOT_ITS_OWN_CORPUS` removes `test_prose_names.py` from the haystack so the checker cannot vouch
+for names it mentions only in order to prove them absent. That test module is also the **only**
+code-level importer of `prose_names`, so the exclusion that protects the checker erased the
+checker's own name from the universe. **72 other tracked module stems were in the same state** —
+every one a one-shot probe script, every one a latent false positive waiting for the first
+sentence to mention it.
+
+Repaired by deriving the stems from `git ls-files`: a tracked `.py` file's stem is an importable
+name in the system whether or not any code spells it out, and it drops out of the universe the
+moment the file is deleted — exactly when prose still naming it should go red. Three tests,
+mutation-checked 2/2 on the real guards with a negative control that rejects a module-**shaped**
+word no file provides.

@@ -308,5 +308,34 @@ class TheConstantCheckReadsTheDocumentsToo(unittest.TestCase):
                          "a markdown site reached the dead-name report")
 
 
+class AModuleIsANameEvenWhenNothingImportsIt(unittest.TestCase):
+    """#285: the exclusion that stops this checker vouching for itself also erased its own
+    module name, and the first comment to cite `prose_names` was reported as dead."""
+
+    def test_this_checkers_own_module_name_is_in_the_universe(self):
+        """The regression case exactly. `prose_names` is imported by one file in the tree --
+        test_prose_names.py -- and NOT_ITS_OWN_CORPUS removes that file, so nothing but the
+        stem can put this name in the universe."""
+        universe = prose_names.words(prose_names.haystack())
+        self.assertIn("prose_names", universe,
+                      "the checker cannot see its own module name")
+
+    def test_a_module_nothing_imports_is_still_a_name(self):
+        """Not a special case for this module: every tracked .py stem is importable, so every
+        one of them is a name in the system whether or not any code spells it out."""
+        stems = {path.stem for path in prose_names._tracked("*.py")}
+        self.assertTrue(stems, "no tracked Python files -- the corpus is empty")
+        universe = prose_names.words(prose_names.haystack())
+        self.assertEqual(sorted(stems - universe), [],
+                         "a tracked module's own name is missing from the universe")
+
+    def test_a_stem_that_is_not_tracked_is_not_forgiven(self):
+        """The widening is derived from the tree, so it must not forgive a name shaped like a
+        module that no file provides. Without this, 'add every stem' could quietly become
+        'add every word that looks like one'."""
+        universe = prose_names.words(prose_names.haystack())
+        self.assertNotIn("prose_names_that_never_existed", universe)
+
+
 if __name__ == "__main__":
     unittest.main()
