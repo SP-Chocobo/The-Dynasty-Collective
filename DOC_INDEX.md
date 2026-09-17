@@ -6,14 +6,13 @@ Classified by what each file says about ITSELF in its first 12 lines. Nothing he
 
 | class | count | meaning |
 |---|---:|---|
-| WITHDRAWN | 25 | a published claim taken back. Kept, unedited, beneath its banner. |
-| SUPERSEDED | 13 | still valid or partly valid, but something later changed what it means. |
-| DECLARED | 20 | says what kind of document it is before making claims. |
+| WITHDRAWN | 24 | a published claim taken back. Kept, unedited, beneath its banner. |
+| SUPERSEDED | 19 | still valid or partly valid, but something later changed what it means. |
+| DECLARED | 15 | says what kind of document it is before making claims. |
 | UNDECLARED | 66 | no status banner in its opening. Not necessarily wrong — most are simply current — but a reader cannot tell without reading it all. |
 
 ## WITHDRAWN
 
-- `FREEZE_CHECKLIST.md`
 - `evidence/horizon_dark/README_HORIZON_DARK.md`
 - `evidence/roster_proof/README.md`
 - `evidence/roster_proof/README_FLEX_CUT.md`
@@ -41,6 +40,12 @@ Classified by what each file says about ITSELF in its first 12 lines. Nothing he
 
 ## SUPERSEDED
 
+- `ARCHITECTURE_AUDIT.md`
+- `CDME_CONTRACTS.md`
+- `DRAFT_ROOM_UI.md`
+- `ENGINEERING_DOCTRINE.md`
+- `ENGINE_WIRING_PASS.md`
+- `FREEZE_CHECKLIST.md`
 - `evidence/CERTIFICATION_DESIGN.md`
 - `evidence/roster_shape/ff_rulebook/CORRECTION_wrong_universe.md`
 - `evidence/roster_shape/ff_rulebook/FINDING_01_the_pool_is_the_shape.md`
@@ -58,11 +63,6 @@ Classified by what each file says about ITSELF in its first 12 lines. Nothing he
 ## DECLARED
 
 - `.claude/skills/engine-measurement/SKILL.md`
-- `ARCHITECTURE_AUDIT.md`
-- `CDME_CONTRACTS.md`
-- `DRAFT_ROOM_UI.md`
-- `ENGINEERING_DOCTRINE.md`
-- `ENGINE_WIRING_PASS.md`
 - `POST_AUDIT_PLAN.md`
 - `ROADMAP.md`
 - `evidence/roster_proof/PRE_REGISTRATION_205.md`

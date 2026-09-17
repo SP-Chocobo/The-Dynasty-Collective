@@ -12823,6 +12823,22 @@ The regeneration is repairing a fixture that was wrong, not moving a goalpost to
 and the distinction is checkable, because the new number was predicted from CI's logs before the
 file was rewritten.
 
+### The FULL suite has now run in CI, with a network, for the first time
+
+Fixing the fast tier exposed a second hole rather than closing the question. The `full` job is
+gated `if: github.event_name != 'push'`, so **only 845 of 3,111 tests ever run on a push** — and
+with `needs: fast` failing, the full tier had been skipped entirely for as long as the fast tier
+was red. **Every full-suite run this project has on record was executed in a network-DENIED
+environment**, which is precisely the condition that hid this defect.
+
+That is a bad thing to discover during a freeze merge, so it was flushed out deliberately:
+`workflow_dispatch` on `2da0b0e` (run 539), which is not a push and therefore runs both tiers.
+
+**Both jobs green. The whole suite — 3,111 tests — passed in CI with network reachable**, in 9m
+49s. No further network-dependent behaviour exists in the suite; this defect was the only one of
+its kind. `#53` can state that the full suite is verified in both conditions rather than only the
+denied one.
+
 ## `#292` — THE TASK LIST IS NOT THE RECORD, AND SAYS SO BEFORE THE BLIND PASS READS BOTH
 
 The session task list and this register disagree, in ways that are obvious on inspection and

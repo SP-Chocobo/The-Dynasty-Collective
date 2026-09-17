@@ -1,6 +1,83 @@
 # What is left before "how it drafts" is done, and before v1 can freeze
 
-> # STATE AS OF 2026-09-12 — read this first; everything below it predates these runs
+> # STATE AS OF 2026-09-17 — read this first. It supersedes the 2026-09-12 block below, which is kept as the record.
+>
+> **One item stands between here and the freeze: `#53` itself.** Gate 1 is delivered and clean,
+> the quality question is answered as far as this repository's data can answer it, the one open
+> contradiction is resolved, and CI is guarding again. What follows is the live path.
+>
+> ## Gate 1 is DELIVERED AND CLEAN — the blocker did not reproduce (`#284`)
+>
+> `BATTERY_2026-09-17_gate1_15fcf2c`: **34 arms (33 independent), 5,652 picks, 0 structural
+> findings**, 14,460.7s. One commit, **zero carried-forward arms** — every arm drafted fresh by
+> the engine it claims to measure, which the committed predecessor could not say.
+>
+> Compared field by field, **34 of 34 arms are identical to the committed run**. `#247`'s
+> unfillable-flex family does not reproduce. The 09-12 banner below calls that family "not
+> dissolved"; **as of this run it is**, and the "one more run is owed" line at the foot of this
+> document is discharged.
+>
+> ## The quality question is ANSWERED, and the answer is narrower than the pooled numbers
+>
+> `#285`/`#289`, six formats, 68 seat runs, pre-registered before the runner existed:
+>
+> - Against **market-consensus ADP**, on the three formats where that control is correctly
+>   specified: **−0.35%, −0.63%, +0.51%. Parity.** Two of the three are statistically
+>   indistinguishable from zero under a paired test.
+> - Against the two **projection-led** styles: wins by **3.3–4.1%**, nearly everywhere.
+> - `adp` is a genuinely strong opponent, not a baseline — first of all styles in all six
+>   formats, and it **beats the greedy points-maximiser on that maximiser's own ruler** by
+>   2.34–5.39%. The owner's freeze condition was that losses only count if the opponent is
+>   strong; it is, and the losses are ~0.6%.
+>
+> ## The ceiling on all of it (`#288`) — this is the sentence the freeze record must carry
+>
+> **The engine has no demonstrated edge on any ruler independent of its own objective, and the
+> data in this repository cannot establish one.** `points` is where the tie sits; `cdme` is the
+> engine's own objective, where a win is a tautology. No third ruler can be built —
+> `proj_3yr` already feeds `time_horizon_adj`, `trade_value` is already a `bpa_source`, `rank` is
+> collinear with both. Resolving it needs realized subsequent-season outcomes: external, `#49`
+> class. **More formats and more leagues cannot close this.**
+>
+> ## The `#205`/`#245` contradiction is RESOLVED (`#287`)
+>
+> `#205`'s own design, re-run at HEAD, has the engine winning **12/12 at +3.67%** where `#205`
+> lost 67 of 68. Field homogeneity is not the explanation. **`#205`'s deficit is a property of
+> commit `8cee942` and does not reproduce.** The table further down this document resolves in
+> `#245`'s direction.
+>
+> ## `#184`'s bound is RESTATED LARGER, disposition unchanged (owner-ruled)
+>
+> The engine loses `cdme`, its own objective, to both projection-led styles in both superflex
+> arms — 0/10 at −26.91% and −30.39% in `10T_ppr_SF` — and that half is **not** confounded by the
+> `adp` mis-specification. The `#206` "twelve straight QBs" escape hatch is closed by measurement.
+> Still documented rather than repaired; repair is Phase 3 (`#50`, gated on `#49`).
+>
+> ## CI WAS NOT GUARDING, AND IS NOW (`#291`) — read before quoting any green run below
+>
+> Every branch showed `0/2` red, including two-week-old markers. `render_trace.py --check`
+> compared against a fixture recorded where `api.sleeper.app` is 403, so it could never be
+> reproduced by a runner that has network. **`#113` listed CI as a shipped guarantee while it
+> guarded nothing, since at least 2026-09-02.** Repaired at `2da0b0e` by seeding the player
+> database the trace was silently fetching. **The gate was restored tonight; it was not
+> continuous.** `#53` must say that rather than imply unbroken coverage.
+>
+> ## Bookkeeping precedence (`#292`)
+>
+> `POST_AUDIT_PLAN.md` is the record. The session task list is a working view, has drifted, and
+> is **not** authoritative. A commit SHA in a register entry beats any status flag anywhere.
+>
+> ## THE LIVE PATH, in order
+>
+> 1. **`#53`** — reconciliation and freeze candidate. Owner's sole authority. **The only thing
+>    outstanding.** It must carry `#288`'s ceiling sentence and `#291`'s CI-restoration date.
+> 2. Cut the freeze marker. See the correction at mechanics step 5 — the owner can now cut a real
+>    **tag**; only the agent's credential could not.
+> 3. **`#52`** — the blind adversarial pass. After the freeze, unbriefed, unscored.
+>
+> Everything else open is either BLOCKED-EXTERNAL (`#49`/`#88`/`#143`/`#120`) or Phase 3.
+
+> # STATE AS OF 2026-09-12 — SUPERSEDED by the block above; kept as the record
 >
 > Three measurements landed together and they move the picture in both directions.
 >
@@ -672,7 +749,13 @@ Carried so nobody re-litigates them at freeze time: the UI track (**#181**, **#3
 2. Gate 2 (objective ruling) — owner. Unblocks Gate 3's biggest items.
 3. Gates 3 and 4 — repair what the ruling licenses.
 4. Re-run Gate 1 once more; suite green; **#53** reconciliation, owner's sole authority.
-5. Cut the freeze marker (a branch — tag refs are 403 here, per #135).
+5. Cut the freeze marker. ~~A branch — tag refs are 403 here, per #135.~~ **CORRECTED
+   2026-09-17 (`#290`): the 403 is the AGENT's GitHub credential scope, not the repository and
+   not the network.** The proxy logged no rejection, and it does log them. The owner's own access
+   can cut a real tag and delete a branch — both were demonstrated the same night. So the marker
+   SHOULD be a tag; it was a branch only because the agent could not make one. `pre-blind-audit`
+   and `pre-hull-extraction` remain branches for that historical reason and must not be deleted
+   until they are re-cut as tags.
 6. **#52** — the blind adversarial pass runs **after** the freeze, **stays unbriefed**, and
    is **UNSCORED**. The docket ruled all three (`#161/#52`, 2026-09-06); this line carried
    only the first two until `#259` checked it. Unscored is not a detail: a scored blind
@@ -687,13 +770,23 @@ bill of health is the gate, not the calendar.
 
 ## The shortest honest answer
 
-**One ruling and one battery run stand between here and a defensible v1 freeze.**
+~~**One ruling and one battery run stand between here and a defensible v1 freeze.**~~
+**SUPERSEDED 2026-09-17: both are spent. `#53` is the only item left** — see the state block at
+the top of this file.
 
 The battery (Gate 1) is mechanical — ~~about three hours, and **it is running now**~~.
 
 **DATED 2026-09-12: that run FINISHED**, and nothing is running now. It is the
 `BATTERY_2026-09-12_scoring_aware_full_99f9f76` in the banner above, it found `#247`, and `#247`
-was repaired at `3e9c074` — so **one more run is owed**, against the repaired engine, at ≈6.5h.
+was repaired at `3e9c074` — so ~~**one more run is owed**, against the repaired engine, at
+≈6.5h.~~
+
+**DISCHARGED 2026-09-17 (`#284`).** That owed run is
+`BATTERY_2026-09-17_gate1_15fcf2c` — 34 arms, 5,652 picks, **0 structural findings**, 14,460.7s,
+one commit, zero carried arms. `#247`'s family did not reproduce. **No battery run is owed, and
+`#288` establishes that no further run can change the quality verdict.** The ruling named below
+is also spent: Gate 2 was ruled 2026-09-12 (`#252`). **What stands between here and the freeze is
+`#53` alone.**
 A present-tense "it is running now" left in a checklist is the kind of sentence a reader acts
 on; it is struck rather than deleted, per this file's own convention.
 

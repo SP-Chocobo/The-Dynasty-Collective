@@ -1,5 +1,11 @@
 # Engineering Doctrine — semantic integrity
 
+> **WHERE CURRENT STATE LIVES — not in this file.** This document is long-lived and does
+> not track the live path. `FREEZE_CHECKLIST.md`'s top block carries the current state and
+> what is outstanding; `POST_AUDIT_PLAN.md` is the numbered record and wins over any status
+> flag anywhere, including the session task list (`#292`). A pointer rather than a copied
+> status, deliberately: a copy goes stale silently, a pointer cannot (`#126`).
+
 Standing doctrine for this repository. It governs how audits are conducted and how changes are
 justified. It was written after an audit that found a class of defect the previous audit could
 not have found, and it exists so that class is looked for deliberately rather than stumbled into.

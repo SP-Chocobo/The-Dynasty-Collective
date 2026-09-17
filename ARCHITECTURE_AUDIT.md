@@ -1,5 +1,11 @@
 # CDME + AI Orchestration — Architecture Audit
 
+> **WHERE CURRENT STATE LIVES — not in this file.** This document is long-lived and does
+> not track the live path. `FREEZE_CHECKLIST.md`'s top block carries the current state and
+> what is outstanding; `POST_AUDIT_PLAN.md` is the numbered record and wins over any status
+> flag anywhere, including the session task list (`#292`). A pointer rather than a copied
+> status, deliberately: a copy goes stale silently, a pointer cannot (`#126`).
+
 Structured inventory per the Build Guide v2 §25, kept **revision-comparable**: every item carries
 STATUS / LOCATION / EVIDENCE / BOUNDARY / RISK / DEPENDENCIES so a later pass can be diffed
 against this one rather than re-argued.

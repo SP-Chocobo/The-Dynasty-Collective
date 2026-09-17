@@ -1,5 +1,11 @@
 # Draft Room UI — the compass
 
+> **WHERE CURRENT STATE LIVES — not in this file.** This document is long-lived and does
+> not track the live path. `FREEZE_CHECKLIST.md`'s top block carries the current state and
+> what is outstanding; `POST_AUDIT_PLAN.md` is the numbered record and wins over any status
+> flag anywhere, including the session task list (`#292`). A pointer rather than a copied
+> status, deliberately: a copy goes stale silently, a pointer cannot (`#126`).
+
 **What this document is.** A vision document for the live Draft Room surface, and the place the
 owner's UI rulings persist so they stop living only in chat. It states decisions that are MADE,
 decisions that are OPEN and who owns them, and — the part worth the most — the hazards that will

@@ -1,5 +1,11 @@
 # CDME Semantic Contracts
 
+> **WHERE CURRENT STATE LIVES — not in this file.** This document is long-lived and does
+> not track the live path. `FREEZE_CHECKLIST.md`'s top block carries the current state and
+> what is outstanding; `POST_AUDIT_PLAN.md` is the numbered record and wins over any status
+> flag anywhere, including the session task list (`#292`). A pointer rather than a copied
+> status, deliberately: a copy goes stale silently, a pointer cannot (`#126`).
+
 > **Status: PART LIVE CONTRACT, PART ARCHIVED INVESTIGATION. Read the section you are in.**
 > Annotated 2026-09-12; nothing below has been edited or removed.
 >
