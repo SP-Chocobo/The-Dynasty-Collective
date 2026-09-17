@@ -12562,3 +12562,57 @@ thing to freeze against, and `#284` (legality, 34 arms, 0 findings) is unaffecte
 the freeze record must say it plainly rather than resting on the `cdme` margins, which are
 tautological, or on the pooled `points` margins, which `#285` showed are carried by beating
 styles nobody would play.
+
+## `#289` — THE FREEZE CONDITION, TESTED: `adp` IS THE STRONGEST SEAT, AND THE CLEAN LOSSES ARE ~0.6%
+
+**OWNER'S CONDITION (this session), verbatim in effect:** *"If you can support the position that
+adp-smoke draft a strong board as well, so some losses, as long as not aggregious, still reflect
+us drafting strongly, then freeze, option 1. Otherwise, option 3."*
+
+Tested rather than asserted, against the committed `#285` artifact.
+
+### `adp` is a strong board, on four independent grounds
+
+1. **It ranks first of all styles in all six formats**, on the `points` ruler.
+2. **It beats the greedy points-maximiser on that maximiser's own ruler**, by +2.34% to +5.39%.
+   `points_need` takes the highest-projected player at a position it still needs to start — greedy
+   maximisation of exactly what `points` scores — and `adp` beats it anyway, in every format. A
+   market ordering therefore carries real information about scarcity and lineup shape that the
+   projection sheet does not. **This is the load-bearing fact: `adp` is not a baseline, it is a
+   good strategy.**
+3. **Its behaviour is realistic** — 0% round-one QB in the 1QB formats, WR/RB-heavy (`WR`:29 /
+   `RB`:19 in `12T_ppr`), which is what human drafts look like.
+4. **It fills 100% of starting slots**, so it clears the same admission gate every style faced.
+
+### The clean losses are small, and two of three are not distinguishable from zero
+
+Seat control makes this a PAIRED comparison — in each run the engine and the `adp` seats draft the
+same board from the same pool, differing only in chair — so the per-run difference is the unit and
+its own spread is the noise scale.
+
+| clean format | engine − `adp` | t | reading |
+|---|---|---:|---|
+| `12T_ppr` | −7.73 (−0.35%) | −0.74 | indistinguishable from zero |
+| `10T_ppr` | −14.64 (−0.63%) | **−2.45** | small but systematic |
+| `12T_ppr_TEP` | +11.70 (+0.51%) | +1.31 | indistinguishable, leaning ahead |
+
+The single genuine deficit is **−0.63%**, roughly 0.9 points per week across a season, while the
+engine beats both other styles by 3.3–4.1% in the same arms.
+
+### Verdict, and what it does NOT say
+
+**The condition is met.** The engine drafts at the level of the strongest realistic opponent in
+the field and clearly above the projection-led ones. Losses at this magnitude reflect drafting
+strongly. **Freeze proceeds (`#53`).**
+
+This does **not** overturn `#288`. "Drafts as well as the market" and "has no demonstrated edge
+over the market" are the same result read from two sides, and the freeze record states the second
+one. Nothing here is an edge claim.
+
+### Carried to `#184`: the superflex deficits are NOT borderline
+
+The same paired test, run on the superflex arms, returns `12T_ppr_SF` t = **−2.74** and
+`10T_ppr_SF` t = **−5.86** at 0/10. Those are against the PPR-only, mis-specified `adp` control
+(`#288`), so they are confounded and cannot be read as clean magnitudes — but they are
+systematic, not chair luck, and they sit on top of the `cdme` losses in the same two arms. This
+strengthens the case for restating `#184`'s bound at its measured size.
