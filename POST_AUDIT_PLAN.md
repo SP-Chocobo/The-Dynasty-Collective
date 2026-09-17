@@ -12463,3 +12463,34 @@ name in the system whether or not any code spells it out, and it drops out of th
 moment the file is deleted — exactly when prose still naming it should go red. Three tests,
 mutation-checked 2/2 on the real guards with a negative control that rejects a module-**shaped**
 word no file provides.
+
+## `#287` — THE `#205`/`#245` DISAGREEMENT IS THE ENGINE, AND `#205`'s DESIGN NO LONGER REPRODUCES IT
+
+`FREEZE_CHECKLIST.md` carried the two quality results as an open contradiction: `#205` had the
+engine losing **67 of 68** seats on `points` against `rp.control_pick`; `#245` had it winning
+10 of 12 on the owner's own league. `#285` made this settleable, because its `points_need` style
+**delegates to `rp.control_pick`** rather than reimplementing it — so the engine had just been
+measured against `#205`'s exact control and had **won**.
+
+Two differences were confounded in that comparison: the field around the control was mixed rather
+than uniform, and ~190 commits of engine change sat between the runs. Separated by running
+`#205`'s own design at HEAD — one process, one code version, toggling only the field:
+
+| arm on `12T_ppr` | whole field, `points` | vs `control_pick` alone |
+|---|---|---|
+| **UNIFORM `control_pick`** = `#205`'s design | **12/12, +3.67%** | 12/12, +3.67% |
+| MIXED field = `#285`'s design | 11/12, +2.13% | 12/12, +3.56% |
+
+**The engine wins the uniform arm 12 of 12.** Field homogeneity is not the explanation: +3.67%
+uniform against +3.56% mixed is the same number. **`#205`'s deficit is a property of commit
+`8cee942` and does not reproduce at HEAD.** The contradiction resolves in `#245`'s direction, by
+measurement on `#205`'s own terms rather than by argument.
+
+The mixed field is the harder of the two — 11/12 against 12/12 — because it contains `adp`. That
+is `#285`'s finding restated from the other side: what the engine cannot beat is the market, not
+the incumbent control.
+
+**Scope, stated so it is not over-read.** One format, 12 seats, uniform arm only. The other five
+`PROOF_FORMATS` were not re-run uniform. `#285` covers all six mixed, where the engine wins
+`points` in five; `10T_ppr_SF` is the exception under both designs and remains the live question
+alongside the `cdme` superflex losses.

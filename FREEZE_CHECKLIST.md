@@ -170,9 +170,36 @@ fixture result.
 **What it does say, for the freeze:** the strong claim holds in the league the owner actually
 plays, so the deficit can no longer be stated unqualified as a property of the engine.
 
+### `#287` RESOLVED: the disagreement is the ENGINE, and `#205`'s design no longer reproduces it
+
+`#285` supplied the instrument to settle this by re-running `#205`'s **own design** at HEAD
+rather than arguing about it. `#285`'s `points_need` style delegates to `rp.control_pick` — the
+identical control, not a reimplementation — so the only uncontrolled differences between the two
+results were **field homogeneity** and **~190 commits of engine change**. One process, one code
+version, toggling only the field:
+
+| arm on `12T_ppr` | whole field, `points` | vs `control_pick` alone |
+|---|---|---|
+| **UNIFORM `control_pick`** (`#205`'s design, at HEAD) | **12/12, +3.67%** | 12/12, +3.67% |
+| MIXED field (`#285`'s design) | 11/12, +2.13% | 12/12, +3.56% |
+
+**The engine WINS the uniform arm 12 of 12.** `#205` ran that design and the engine lost 67 of
+68. Field homogeneity is therefore **not** the explanation — the margin against `control_pick` is
++3.67% uniform against +3.56% mixed, statistically the same number. What changed is the engine.
+
+**`#205`'s deficit is a property of commit `8cee942` and does not reproduce at HEAD.** The
+disagreement in the table above resolves in `#245`'s direction, and it resolves by measurement on
+`#205`'s own terms. The mixed field is the *harder* of the two (11/12 vs 12/12) because it
+contains `adp`, which is consistent with `#285`'s main finding.
+
+**Scope.** One format (`12T_ppr`), 12 seats, uniform arm. The other five `PROOF_FORMATS` were not
+re-run uniform; `#285` covers all six in mixed-field form, where the engine wins `points` in five.
+`10T_ppr_SF` remains the exception under both designs.
+
 Sources: `evidence/roster_proof/README.md` (#205), `evidence/roster_proof/README_FF.md` (#245,
-with the length refutation and the next pre-registered cut), and `#246` for the horizon flaw
-found in the F&F harness and demonstrated immaterial.
+with the length refutation and the next pre-registered cut), `#246` for the horizon flaw
+found in the F&F harness and demonstrated immaterial, and `evidence/smoke_seats/RESULT.md`
+(`#285`/`#287`).
 
 ---
 
