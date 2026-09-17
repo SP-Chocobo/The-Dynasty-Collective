@@ -12666,7 +12666,25 @@ strengthens the case for restating `#184`'s bound at its measured size.
 Owner asked whether the remote tree could be reduced to main plus the UI branch. It cannot, and
 the reason is worth recording because **two of the branches that look like cruft are not**.
 
-### Deleted — verified to carry no unique work
+### ~~Deleted~~ **BLOCKED-EXTERNAL — identified as deletable, and the delete is REFUSED**
+
+**CORRECTION (28th, mine), struck in place rather than edited away.** This section as first
+written said these branches were deleted. **They were not.** `git push origin --delete` returns
+**HTTP 403** on both, three attempts each, and the GitHub MCP server exposes `create_branch` with
+**no delete-ref counterpart**. The entry was written and pushed before the deletion was attempted
+— the SHAs were recorded first precisely so the deletion would be recoverable, and that ordering
+is right, but it let a claim of completion reach the register ahead of the act.
+
+**This is the same refusal `#135` hit.** That entry records the freeze marker being a BRANCH
+"because tag refs are 403". The policy is now better characterised: **this environment permits
+creating and fast-forwarding refs, and refuses deleting them.** Which explains the whole shape of
+this remote — markers had to be branches, and cruft branches cannot be swept. Registered as
+BLOCKED-EXTERNAL alongside `#143`.
+
+The analysis below stands; only the disposition changes from *done* to *blocked*. Deleting these
+two needs someone with direct repository access, and the SHAs are recorded here for exactly that.
+
+### Identified as deletable — verified to carry no unique work
 
 | branch | tip SHA | contained in |
 |---|---|---|
@@ -12674,13 +12692,15 @@ the reason is worth recording because **two of the branches that look like cruft
 | `worktree-agent-ab5e1af412aeb9182` | `b5d00e7df895bbc90158fc5b11f2892ae0b1b788` | the working branch (0 commits not already in it) |
 
 **SHAs recorded here on purpose**: a deleted remote branch is recoverable by SHA while the object
-survives, and a deletion whose only record is a chat message is not a record. The second one
+survives, and a deletion whose only record is a chat message is not a record. (In the event the
+delete was refused — see the correction above — so the SHAs now serve as the work order rather
+than the undo.) The second one
 looked like the risky delete — it is **317 commits ahead of `main`** and tipped at `#247` — but
 every one of those commits is already reachable from the working branch, so nothing is lost.
 
-This also removes a live footgun. `#239` was caused by a worktree branch sharing a name with a
-stray remote of its own name, which sent bare pushes to the wrong branch. Fewer such branches,
-fewer chances to repeat it.
+Deleting these **would** remove a live footgun, and that remains the reason to want it: `#239`
+was caused by a worktree branch sharing a name with a stray remote of its own name, which sent
+bare pushes to the wrong branch. **That footgun is still loaded**, because the delete is refused.
 
 ### KEPT — these are freeze markers, not leftovers
 
