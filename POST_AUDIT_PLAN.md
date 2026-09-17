@@ -12822,3 +12822,28 @@ by the twelve real calls, no other view touched. Two consecutive checks agree at
 The regeneration is repairing a fixture that was wrong, not moving a goalpost to meet a result —
 and the distinction is checkable, because the new number was predicted from CI's logs before the
 file was rewritten.
+
+## `#292` — THE TASK LIST IS NOT THE RECORD, AND SAYS SO BEFORE THE BLIND PASS READS BOTH
+
+The session task list and this register disagree, in ways that are obvious on inspection and
+would be actively misleading to a reader who did not know which one to trust:
+
+- entries sitting at `in_progress` whose own text records a completed outcome (`#173`, `#215`);
+- entries sitting at `pending` whose text begins "DONE at `<sha>`" (`#242`, `#243`, and others);
+- **numbering drift** — one entry reads literally *"task id 212 — ids drifted, code/commits say
+  213"*, so the same item has two numbers depending on where it is read.
+
+**RULING: `POST_AUDIT_PLAN.md` is the record. The task list is a working view and is not
+authoritative.** Where they disagree, this file wins, and a commit SHA in an entry beats any
+status flag anywhere.
+
+**Why this is written down rather than fixed.** Reconciling ~245 task entries against the
+register would mean inferring the state of items nobody is presently working on, and a
+wrong-but-confident status is worse than a visibly stale one — that is `#37`'s whole lesson, an
+item reopened purely because its completion evidence could not be located. Guessing at those
+states to make two lists agree would manufacture exactly that class of defect at scale.
+
+**The trigger for writing it now is `#52`.** The blind adversarial pass reads this repository
+without the conversation around it. A reader encountering both artifacts would either waste the
+pass reconciling bookkeeping, or file findings against statuses that were never the record. This
+paragraph is what stops that, and it costs nothing but its own honesty about the drift.
