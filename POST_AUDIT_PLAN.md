@@ -12859,6 +12859,14 @@ wrong-but-confident status is worse than a visibly stale one — that is `#37`'s
 item reopened purely because its completion evidence could not be located. Guessing at those
 states to make two lists agree would manufacture exactly that class of defect at scale.
 
+**CONFIRMED THE HARD WAY, hours after this was written.** The container was reclaimed and the
+session task list came back **empty** — the next task created was numbered 1. The ~245 entries
+were never in the repository at all; they lived in session state and did not survive it. This
+register did, because it is committed. The precedence ruling above was argued on consistency
+grounds and turns out to rest on something blunter: **one of these two artifacts is durable and
+the other is not.** The live path was re-created as three dependency-linked tasks (`#53` → cut
+the marker → `#52`); everything else that mattered was already here.
+
 **The trigger for writing it now is `#52`.** The blind adversarial pass reads this repository
 without the conversation around it. A reader encountering both artifacts would either waste the
 pass reconciling bookkeeping, or file findings against statuses that were never the record. This
