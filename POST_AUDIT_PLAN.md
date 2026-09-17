@@ -12759,3 +12759,66 @@ byte-identical to the working branch's own tree (`336f865635a85c2df7a1f5c3273286
 `main` contributes no content; the working branch's "50 behind" is history shape from the PR #2
 merge commit, not missing work. **Merging is lossless whenever it is wanted** — deferred until
 `#53` is written, per the owner, so the evidence and the conclusion land together.
+
+## `#291` — CI HAS BEEN STRUCTURALLY RED FOR WEEKS, AND THE RENDER TRACE WAS BLIND TO THE VIEW IT GUARDED
+
+Found while tidying the branch list, not by looking for it: every branch on the GitHub branches
+page showed `0/2` checks with a red X, **including freeze markers two weeks old**. A failure that
+old and that uniform is not a commit's fault.
+
+### It never reached the tests
+
+The `fast` tier dies at step 5 of 7, on `render_trace.py --check`:
+
+```
+render trace CHANGED (607 -> 619 calls)
+```
+
+### The mechanism, established by contradiction rather than guessed
+
+The same commit **passed locally and failed in CI**. That rules out a code change outright, and
+the UI being flagged (`fa_sort_header`) landed 2026-09-01, six days BEFORE the trace was last
+recorded — so it was never an un-regenerated change either.
+
+The variable is the network, reached through a second seed nobody seeded:
+
+| | `api.sleeper.app` | `get_players()` | free-agent view | calls |
+|---|---|---|---|---|
+| this sandbox | **403** (`#143`) | **0 players** | empty — falls to the "no free agents" caption | **607** |
+| GitHub Actions | reachable | the real player database | sort header + debate chip render | **619** |
+
+Measured, not inferred: `get_players()` returns 0 here, `curl` to Sleeper gives
+`CONNECT tunnel failed, response 403`, and no player cache is committed.
+
+`_seeded_session()` seeds `league_snapshot`, which gets the trace past the sync screen. It did not
+seed `st.session_state.sleeper_client`, and app.py builds its player universe from that client
+independently. **So the fixture only ever matched the environment that recorded it.**
+
+### Two failures, and the quieter one is worse
+
+1. **CI could not pass.** A fixture recorded without a network cannot be reproduced by a runner
+   that has one. `#113` records CI as a shipped guarantee at `850b8b5`; it has been guarding
+   nothing since at least `main`'s own run on 2026-09-02. **Every push in that window, including
+   all of this session's, went unverified by the automated gate.**
+2. **The instrument was blind to the view it exists to protect.** The recording was made with an
+   EMPTY free-agent pool, so the twelve calls that render the sort header and its debate chip
+   were never covered. A UI refactor could have deleted that whole block and the trace would
+   have stayed green. That is this repository's recurring failure shape — coverage that looks
+   like coverage — inside the instrument built to catch it.
+
+### The repair
+
+`_seeded_session()` now seeds the client, overriding **only** `get_players`, from
+`rdb.build_players_db_from_capture()` — the same committed universe the draft battery certifies
+against (`#126`: one home, derived rather than a second hand-built pool). That builder **raises**
+on a missing capture instead of falling back, so the seed cannot silently revert to a live call.
+Everything else on the client stays real, because app.py also reads `cache_dir` off it.
+
+**Verified by reproducing CI's failure locally first.** With the seed in place this sandbox
+produces 619 calls — CI's number, not its own — and the same twelve lines in the same order. Only
+then was the fixture regenerated: **13 insertions, 1 deletion**, the empty-state caption replaced
+by the twelve real calls, no other view touched. Two consecutive checks agree at 619.
+
+The regeneration is repairing a fixture that was wrong, not moving a goalpost to meet a result —
+and the distinction is checkable, because the new number was predicted from CI's logs before the
+file was rewritten.

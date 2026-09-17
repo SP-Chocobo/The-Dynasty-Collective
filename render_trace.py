@@ -255,6 +255,8 @@ def _seeded_session() -> _SessionState:
     is to exercise the RENDER PATH, not to be a realistic league.
     """
     import draft_room
+    import run_draft_battery as rdb
+    import sleeper_client as sc
 
     league = draft_room.build_mock_league(teams=12, superflex=False, scoring="ppr",
                                           te_premium=False, dynasty=True)
@@ -268,6 +270,37 @@ def _seeded_session() -> _SessionState:
         "projection_attempts": [], "projections": {}, "matchups": [],
     }
     state["selected_league_id"] = "trace"
+
+    # THE SEED WAS INCOMPLETE, AND THAT MADE THIS INSTRUMENT NETWORK-DEPENDENT.
+    #
+    # Seeding `league_snapshot` gets past the sync screen, but app.py builds its player
+    # universe from a SECOND source it reaches independently:
+    #
+    #     players_db = st.session_state.sleeper_client.get_players()
+    #
+    # Left unseeded, that is a live call. Where Sleeper is reachable it returns thousands of
+    # players and the free-agent table renders its sort header; where Sleeper is refused it
+    # returns nothing and the view falls to "No Sleeper free agents match that filter". Same
+    # commit, two different traces -- so the recorded fixture only ever matched whichever
+    # environment happened to record it, and CI (which has network) could not pass against a
+    # fixture recorded without one. Every push went unchecked while the check looked present.
+    #
+    # Worse than the red: the recording was made with an EMPTY pool, so the twelve calls that
+    # render the free-agent sort header and its debate chip were not covered at all. This
+    # instrument exists to notice UI that moved. It was blind to that view.
+    #
+    # Seeded from the committed capture, which is the same universe the draft battery certifies
+    # against (#126 -- one home for this fact, derived rather than a second hand-built pool).
+    # `build_players_db_from_capture` RAISES on a missing capture rather than falling back, so
+    # this cannot silently return to being a live call.
+    #
+    # Only `get_players` is overridden. Everything else on the client stays real, because
+    # app.py also reads `cache_dir` off it and a hand-rolled double would have to keep pace
+    # with every such use.
+    players_db, _ = rdb.build_players_db_from_capture()
+    client = sc.SleeperClient()
+    client.get_players = lambda: players_db
+    state["sleeper_client"] = client
     return state
 
 
