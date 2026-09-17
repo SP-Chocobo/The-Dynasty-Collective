@@ -12105,3 +12105,161 @@ top 8. Two different measurements, same answer, and neither was tuned to the oth
 It does NOT set a constant (LIMITS: one league, n=68 in the head). It does NOT establish a link
 between rank-1 hitting zero at round 12 and `#273`'s QB pricing dying at round 12 — the
 coincidence is noted and untested. Nobody should read one into the other without measuring it.
+
+## `#283` (`#182` prose sweep) — THE SHIELD OPENED ON THE SPELLING OF "SPEARMAN", AND THE DOCUMENTS WERE NEVER CHECKED FOR CONSTANTS AT ALL
+
+`#182` is a standing order to audit the prose when the queue idles. Most of the code half is
+already mechanised: `prose_names.py` reads every comment and docstring, asks whether each
+backticked name still exists, and checks every place the prose states a constant's value. It was
+green. **Two things it was doing were wrong, and one thing it was not doing was the larger half
+of the job.**
+
+### 1. A HISTORICAL MARKER WAS MATCHED AS A BARE SUBSTRING
+
+The vocabulary that lets prose say *"this is history, not a claim about the current code"* was
+tested with `marker in text.lower()`. `arm` is in that vocabulary — for ablation arms — and `arm`
+is also spelled inside **Spearman, harmless, harmonize, harmful, alarming** and **disarmed**;
+`were` is spelled inside **lowered** and **powered**. Seven blocks across the tree were shielded
+by the letters of unrelated words, which means seven blocks of prose were silently exempt from
+the check and nothing said which. One was in the live Python corpus
+(`test_kdst_integration.py:908`, via *harmless*).
+
+The obvious repair, `\bmarker\b`, breaks it the other way and by more: it stops shielding
+`staleness` (49 blocks), `ablations`, `probes`, `counterfactuals`, and identifier-shaped mentions
+like `noise_arm`, where `_` is a word character and leaves no boundary at all.
+
+**A marker must BEGIN a word** — `(?<![A-Za-z])` — which keeps all of the morphology and drops
+all six leaks, because every leak carries the marker inside a word and every real form carries it
+at the front. The hand-kept trailing spaces on `"was "` / `"were "` were the same instinct done
+by hand and are now gone; the boundary does that job for all 23 markers from one place (`#126`).
+
+| | shielded, python | shielded, markdown | dead names exposed |
+|---|---|---|---|
+| substring (as shipped) | 293 | 950 | — |
+| word-start (now) | 295 | 966 | **0** |
+
+It moves in both directions, which is the point: this is a repair, not a loosening. **No verdict
+changes.** The instrument simply stops being wrong about why it is green.
+
+### 2. MARKDOWN PROSE WAS IN THE HAYSTACK, SO A DOCUMENT COULD VOUCH FOR A NAME
+
+`haystack()` read `*.md` **whole**. The module is built around the rule that prose must not
+vouch for itself — it strips comments and docstrings out of the Python for exactly that reason —
+and then read every memo in full. The hole that leaves is one this repository is precisely the
+shape to fall into: rename a constant, leave one document still naming the old one, and that
+document puts the old name in the universe, so **every docstring that also still names it goes on
+passing**.
+
+Markdown now contributes its **fenced code** and nothing else, which is the same rule already
+applied to Python: code vouches, prose does not. Measured before closing it, the hole was costing
+nothing — **0** names in Python prose were vouched for by markdown alone — and the universe falls
+31,714 words to 25,189 with no change of verdict. Closed while it was free to close.
+
+### 3. THE CONSTANT CHECK NEVER READ THE DOCUMENTS — WHERE 85% OF THE QUOTATIONS LIVE
+
+`#56` says a constant is derived, never calibrated, and this repository explains its constants at
+length in prose sitting beside them. The check for *"the prose states this constant's value and
+the code disagrees"* ran over Python comments and docstrings only, which offer **6** quotations of
+a known constant. The tracked markdown offers **40**, over 14 distinct constants — 34 in
+paragraphs and 6 in headings. The check was reading the smaller population and skipping the
+larger one.
+
+Extended. It comes back **0 wrong over 100 single-homed constants**, from 12,762 comments and
+docstrings and 7,122 markdown paragraphs — but only after one addition to the vocabulary, and
+that addition is load-bearing rather than decorative:
+
+> `POST_AUDIT_PLAN.md:5518` — *"I first registered the acceptance test for
+> `SUPER_FLEX_QB_SHARE = 1.0`"*. The constant is **0.85**. The prose is correct and the check
+> was right to look: this is `#178`'s pre-registration, a value the constant would have been
+> MOVED to had its gate passed. It did not pass; 1.000 was committed at `605e0cb` and reverted.
+
+That is the same speech act as the `NEED_BONUS_MAX = 1e9` ablation arm the vocabulary already
+covers — a value named for an experiment, not asserted as current — so `registered` joins the
+PROBES half. `doc_index` already carries `pre-?registrat` as one of its own vocabulary words, so
+this is a gap in a vocabulary the repository already writes, not a marker invented to make one
+site pass. Mutation M6 confirms it: remove `registered` and that site goes red.
+
+### 4. THE DEAD-NAME CHECK WAS MEASURED OVER THE MARKDOWN AND **DECLINED**
+
+`#182` says *every document*, so this was run before being turned down, and the numbers are in a
+comment beside `dead_names()` so nobody re-runs it:
+
+```
+3,416 backticked-name occurrences (979 distinct) survive the marker filter and are tested
+   69 exist nowhere -- but only once markdown prose is out of the haystack, which it now is;
+      against the old haystack the answer was a self-vouching 0
+   50 survive a shape filter for names shaped like this system's (an underscore, or ALL_CAPS)
+    0 of the 50, read at their sites, are defects
+```
+
+Every one is a legitimate speech act that Python prose does not perform. A **proposal** naming
+words that do not exist yet (`DRAFT_ROOM_UI.md` argues that the curated lens and the full board
+need separate names, and names them). An **asserted absence** — `ARCHITECTURE_AUDIT.md` §4.5 is
+headed **STATUS: MISSING** and its evidence line is *"no `CONTRACT_VERSION`, `PROMPT_VERSION`, or
+equivalent exists anywhere in the tree"*, which **is** the finding. An **experiment label** in a
+results table (`kdst_1qb_slot1`, `kdst_deep18` — trial names, never identifiers). Or a register
+entry about something long dead.
+
+Making those pass means growing the marker vocabulary until the report reaches zero, which is
+calibration to this corpus rather than derivation from it — and this module's own docstring
+already records that an instrument at a high false-positive rate is worse than none. **Declined,
+with the measurement kept.** A test pins the reasoning in place so the corpus cannot be widened
+silently.
+
+### The live documents are clean, and that is now checked rather than asserted
+
+The live half of `CDME_CONTRACTS.md` is §1–§572; every dead name it carries is in the appendix,
+which the document's own banner marks as history. `README.md` was already clean from `#182`'s
+first pass. The two hits in genuinely live documents were both read at their sites and both are
+correct prose.
+
+**AND THE CHECKER CAUGHT ME WHILE I WAS WRITING THIS.** The first draft of the comment explaining
+finding 4 quoted its examples properly — `` `httpx` ``, `` `pkill` ``, `` `CONTRACT_VERSION` `` —
+and `prose_names.py` reported nine dead names, all mine. A backtick here means *"this is a name
+in the system"*, and every one of those is cited **precisely because it is not**. The names in
+that comment are now unquoted. It is the smallest possible demonstration that the instrument is
+live rather than decorative.
+
+**AND THE MARKDOWN WALK EXEMPTED SIX QUOTATIONS ON ITS FIRST DRAFT.** Deciding that a heading
+TERMINATES a paragraph was right — letting it supply marker context to what follows costs 4 of 35
+checkable quotations and does not shield the case that motivated trying it. Discarding the
+heading was not. Six real quotations live inside one: `NEAR_TIE_BAND = 2.0`,
+`NECESSITY_STANDOUT_REFERENCE_GAP = 15.0` and `NEED_BONUS_MAX = 12.0`, each written into an
+`### A1`/`A2`/`A3` heading in both `CDME_CONTRACTS.md` and this register. **All six agree with the
+code, which is exactly why dropping them would never have been noticed** — a silent exemption in
+a brand-new check, found only by asking what the walk was throwing away. A heading is now its own
+one-line block: it governs itself, joins nothing, and is checked like any other claim.
+
+**22 tests** (was 11), **7 mutations, 7 caught**, source restored byte-identical each time.
+Production behaviour is unchanged — nothing here is on the engine path.
+
+### 5. THREE UNDATED COUNTS, STATED IN THE PRESENT TENSE, ALL DRIFTED
+
+Neither instrument reaches a number written as English rather than as `NAME = value`, so the rest
+of the sweep was done by hand against the things this repository can count. Three sites stated a
+figure as a current fact with no date and no commit — the shape `#182` already named as *"a figure
+that grows stale without anything failing"*:
+
+| site | said | actual | |
+|---|---|---|---|
+| `engine-measurement/SKILL.md` runtime table | full suite **~800-870s (2100+ tests)** | ~840s, **3,080 tests** | the only row in that table with no date |
+| `ENGINEERING_DOCTRINE.md` §the instrument standard | *"the engine is held to **2267 tests**"* | **3,081** ratcheted methods | present tense, undated, in a doctrine |
+| `engine-measurement/SKILL.md` §transcribed input | *"the other **2,800 tests**"* | — | a bare count used comparatively |
+
+**The first one is the sharp one, because `#182` had already fixed it once.** The same figure —
+literally "~800-870s" — was found stale in `close-register-item` and corrected there, and that
+file now says *"This file previously said ~800-870s"* while its sibling went on saying it. One
+fact, two homes, and the corrected home was not the one a reader reaches first (`#126`).
+
+Repaired by removing the second home rather than updating it. The runtime table's suite row now
+points at `close-register-item`, which keeps a dated history with commits attached; the doctrine
+sentence no longer states a count at all, because `ASSERTION_FLOORS.json` is that count's one
+home, is regenerated on every close, and has a test that fails when it is stale; the third is
+reworded to say what it actually meant — that a box score checked against Sleeper's own published
+total is a different KIND of evidence from a suite that checks this repository against itself.
+
+**Checked and CORRECT, recorded so nobody re-runs them:** `README.md` (clean on `#182`'s first
+pass and still clean); the live half of `CDME_CONTRACTS.md` (§1–§572 — every dead name it carries
+sits in the appendix its own banner marks as history); `engine-measurement`'s five-line fixture,
+including the `build_players_db_from_capture` pool size, which measures **6,595** exactly as
+written; and every other row of that runtime table, all of which carry the date they were taken.

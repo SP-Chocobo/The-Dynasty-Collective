@@ -177,10 +177,17 @@ sees two calls where you expected three has told you something, not failed.
 | what | cost |
 |---|---|
 | one board build | ~0.3-1.4s |
-| full test suite | **~800-870s** (2100+ tests) |
+| full test suite | **one home — see `close-register-item`**, which keeps it dated |
 | one 12-team draft (168 picks) | **216-956s** (measured across 9 such arms, 2026-09-13) |
 | one 12-team STARTUP (312 picks, 26 rounds) | **~887s** (the F&F capture arm, 2026-09-13) |
 | full 34-format battery | **5.34 hours** (19220.8s, 34 arms, 2026-09-13) |
+
+**THE SUITE ROW POINTS SOMEWHERE ELSE ON PURPOSE (`#126`).** It used to carry "~800-870s
+(2100+ tests)", alone in this table in carrying no date and no commit, and it was the only figure
+here that went stale. `#182` found and corrected that same figure in `close-register-item`, which
+now keeps a dated history of it — and then this file went on stating the superseded number, so
+the fact had two homes and the wrong one was easier to reach. One home. Ask that skill, or
+re-measure; every other row here carries the date it was measured on.
 
 The battery line said "32 formats, ~2.9 hours" until it was measured against the current matrix:
 34 arms at 19220.8s. Under-budgeting it by 2.4x is how a run gets started without a survival
@@ -620,8 +627,9 @@ measurement depends on, never once compared against a number the vendor computed
 
 Four box scores read off the live app — itemised by Sleeper, with Sleeper's own totals beside
 them — reproduce to the cent through the production scorer, and sum to the team total the app
-displayed. That is a different KIND of evidence from the other 2,800 tests, and it took one
-screenshot to obtain.
+displayed. That is a different KIND of evidence from every other test in the suite — those check
+this repository against itself; this one checks it against the system whose rules it implements —
+and it took one screenshot to obtain.
 
 **When a measurement depends on transcribed input, find one case where the source system
 publishes its own answer and check against that.** It is usually cheap, it is the only test that

@@ -1302,13 +1302,14 @@
       }
     },
     "test_prose_names.py": {
-      "test_methods": 11,
+      "test_methods": 22,
       "asserts": {
         "assertEqual": 4,
-        "assertGreater": 4,
-        "assertIn": 4,
-        "assertNotIn": 1,
-        "assertTrue": 3
+        "assertFalse": 3,
+        "assertGreater": 11,
+        "assertIn": 7,
+        "assertNotIn": 2,
+        "assertTrue": 12
       }
     },
     "test_provenance_boundary.py": {

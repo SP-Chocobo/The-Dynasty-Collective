@@ -23,6 +23,7 @@ correction this repository has ever written.
 
 from __future__ import annotations
 
+import pathlib
 import unittest
 
 import prose_names
@@ -67,10 +68,14 @@ class TheCheckerIsNotVacuous(unittest.TestCase):
 
     def test_a_name_marked_as_history_is_allowed(self):
         """The case that makes a naive absence check useless here. Proven by exercising the same
-        allowance the repository's own correction style relies on."""
+        allowance the repository's own correction style relies on -- through is_history, not by
+        reading the tuple, because how a marker is MATCHED is the half that was wrong."""
         self.assertTrue(prose_names.HISTORICAL_MARKERS)
-        for marker in ("was ", "renamed", "no longer"):
+        for marker in ("was", "renamed", "no longer"):
             self.assertIn(marker, prose_names.HISTORICAL_MARKERS)
+        self.assertTrue(prose_names.is_history("This class was `SomethingElse`."))
+        self.assertTrue(prose_names.is_history("`Foo` was renamed to `Bar`"))
+        self.assertFalse(prose_names.is_history("`Foo` is the current name"))
 
     def test_the_historical_allowance_is_load_bearing_right_now(self):
         """Not a hypothetical: with the allowance removed, a name this repository deliberately
@@ -109,8 +114,9 @@ class NoConstantIsQuotedWrongly(unittest.TestCase):
         def quotations_checked():
             names = set(prose_names.numeric_constants())
             n = 0
-            for _, _, text in prose_names.prose_blocks():
-                if any(m in text.lower() for m in prose_names.HISTORICAL_MARKERS):
+            for _, _, text in (tuple(prose_names.prose_blocks())
+                               + tuple(prose_names.markdown_blocks())):
+                if prose_names.is_history(text):
                     continue
                 for m in prose_names.QUOTED_VALUE.finditer(text):
                     if (m.group(1) or m.group(3)) in names:
@@ -149,6 +155,157 @@ class NoConstantIsQuotedWrongly(unittest.TestCase):
             prose_names.HISTORICAL_MARKERS = real
         self.assertTrue(any(name == "NEED_BONUS_MAX" for _, name, _, _ in wrong),
                         "the NEEDCAP ablation arm is the case this allowance exists for")
+
+
+class AMarkerHasToBeginAWord(unittest.TestCase):
+    """The shield was matched as a bare substring, so it opened on the spelling of unrelated
+    words. `arm` fired inside Spearman, harmless, harmonize, harmful, alarming and disarmed;
+    `were` fired inside lowered and powered. Seven real blocks across the two corpora were
+    shielded by letters, which means seven blocks of prose were never checked and nobody could
+    have known which."""
+
+    def test_a_marker_buried_inside_another_word_does_not_shield(self):
+        for sentence in ("Spearman r = +0.62 between `waiting_cost` and `positional_cliff`",
+                         "the join is harmless here",
+                         "we harmonize `FLOOR` across the two registers",
+                         "a harmful reading of `Questionable`",
+                         "an alarming drop in `starter_value`",
+                         "the guard is disarmed at this site",
+                         "the value is lowered by the clamp",
+                         "a powered-down chair"):
+            self.assertFalse(prose_names.is_history(sentence),
+                             f"a marker's letters inside another word shielded: {sentence!r}")
+
+    def test_the_morphology_this_repository_writes_still_shields(self):
+        """The opposite failure, which \\bword\\b would have caused: `staleness` alone accounts
+        for 49 blocks, and an identifier-shaped mention like noise_arm has no word boundary at
+        all because `_` is a word character."""
+        for sentence in ("staleness is why this is recorded",
+                         "both ablations agree",
+                         "the probes disagree",
+                         "two counterfactuals were run",
+                         "the noise_arm forces it to 1e9",
+                         "the arms were run in both directions"):
+            self.assertTrue(prose_names.is_history(sentence),
+                            f"a real history/probe marker stopped shielding: {sentence!r}")
+
+    def test_the_word_start_rule_is_what_is_actually_running(self):
+        """Non-vacuity: prove the two rules genuinely disagree on this repository's own prose,
+        so the tests above are not describing a distinction with no instances."""
+        substring = [b for b in prose_names.prose_blocks() + prose_names.markdown_blocks()
+                     if any(m in b[2].lower() for m in prose_names.HISTORICAL_MARKERS)
+                     and not prose_names.is_history(b[2])]
+        self.assertGreater(len(substring), 0,
+                           "no block in the tree distinguishes the rules -- if this is ever true, "
+                           "the leak is gone from the prose and this guard can be retired")
+
+
+class MarkdownProseDoesNotVouchForItself(unittest.TestCase):
+    """haystack() read *.md whole, so a name written only in a memo was in the universe BECAUSE
+    of that memo. Rename a constant, leave one document naming the old one, and every docstring
+    still naming it goes on passing. Markdown now contributes its fenced code and nothing else,
+    the same rule already applied to Python."""
+
+    def test_a_name_living_only_in_markdown_prose_is_not_in_the_universe(self):
+        """Derived rather than named, so it cannot rot: the set of words that appear in markdown
+        PROSE and in no fenced block and in no other kind of file must be non-empty, and must be
+        disjoint from the haystack."""
+        prose = set()
+        fenced = set()
+        for path in prose_names._tracked("*.md"):
+            blocks, code = prose_names.markdown_split(path)
+            for _, _, text in blocks:
+                prose |= prose_names.words(text)
+            fenced |= prose_names.words(code)
+        universe = prose_names.words(prose_names.haystack())
+        prose_only = prose - fenced
+        self.assertGreater(len(prose_only), 100, "the markdown prose/code split collapsed")
+        self.assertTrue(prose_only - universe,
+                        "every word of markdown prose is in the haystack -- the strip is inert")
+
+    def test_a_name_inside_a_fenced_block_still_vouches(self):
+        """The other direction. A fenced block is a QUOTATION of code, not a claim, so it belongs
+        in the haystack -- and if it stopped arriving, real names would start reading dead."""
+        fenced = set()
+        for path in prose_names._tracked("*.md"):
+            fenced |= prose_names.words(prose_names.markdown_split(path)[1])
+        universe = prose_names.words(prose_names.haystack())
+        self.assertGreater(len(fenced), 500, "no markdown fenced code reached the haystack")
+        self.assertTrue(fenced <= universe)
+
+
+class TheConstantCheckReadsTheDocumentsToo(unittest.TestCase):
+    """#182 says audit every document. The dead-name half was measured over the markdown and
+    declined on its false-positive rate; the constant half was measured and taken, because
+    `NAME = 12.0` means one thing wherever it is written and the documents are where this
+    repository explains its constants at length."""
+
+    def test_the_markdown_walk_is_substantial(self):
+        blocks = prose_names.markdown_blocks()
+        self.assertGreater(len(blocks), 5000, "the markdown paragraph walk collapsed")
+        self.assertTrue(any(str(path).endswith("CDME_CONTRACTS.md") for path, _, _ in blocks))
+
+    def test_the_markdown_carries_most_of_the_checkable_quotations(self):
+        """The number that justified the change: Python prose offers a handful, the documents
+        offer several times as many. If this ever inverts, the asymmetry recorded in the module
+        is no longer true and the reasoning beside it should be re-read."""
+        def quotations(blocks):
+            names = set(prose_names.numeric_constants())
+            return sum(1 for _, _, text in blocks if not prose_names.is_history(text)
+                       for m in prose_names.QUOTED_VALUE.finditer(text)
+                       if (m.group(1) or m.group(3)) in names)
+
+        in_python = quotations(prose_names.prose_blocks())
+        in_markdown = quotations(prose_names.markdown_blocks())
+        self.assertGreater(in_python, 0, "non-vacuity: Python still contributes")
+        self.assertGreater(in_markdown, in_python,
+                           "the documents were the larger population -- that was the whole point")
+
+    def test_fenced_code_is_not_read_as_prose(self):
+        """A fenced block quotes output and transcripts. Reading one as a claim would report
+        every printed constant in every saved run as the prose contradicting the code."""
+        blocks, code = prose_names.markdown_split(pathlib.Path("CDME_CONTRACTS.md"))
+        self.assertTrue(code, "CDME_CONTRACTS.md has fenced blocks; none were separated")
+        joined = "\n".join(text for _, _, text in blocks)
+        self.assertNotIn(code.strip().splitlines()[0].strip(), joined,
+                         "a fenced line reached the prose corpus")
+
+    def test_a_heading_is_a_block_and_not_a_divider(self):
+        """Six real quotations live inside a markdown heading — `NEAR_TIE_BAND = 2.0`,
+        `NECESSITY_STANDOUT_REFERENCE_GAP = 15.0`, `NEED_BONUS_MAX = 12.0`, each written into an
+        `### A1`/`A2`/`A3` heading twice over. The first draft of the walk DISCARDED headings,
+        which exempted all six; all six agree with the code, so nothing would have said so."""
+        names = set(prose_names.numeric_constants())
+        headings = [b for b in prose_names.markdown_blocks() if b[2].startswith("#")]
+        self.assertGreater(len(headings), 1000, "headings are not reaching the corpus at all")
+        quoted = {m.group(1) or m.group(3)
+                  for _, _, text in headings if not prose_names.is_history(text)
+                  for m in prose_names.QUOTED_VALUE.finditer(text)
+                  if (m.group(1) or m.group(3)) in names}
+        self.assertTrue(quoted, "no heading carries a checkable constant quotation")
+        self.assertIn("NEED_BONUS_MAX", quoted)
+
+    def test_a_heading_does_not_shield_the_paragraph_beneath_it(self):
+        """The other half of the same decision, measured and rejected: letting a heading supply
+        marker context to what follows costs 4 of 35 checkable quotations and does not shield
+        the case that motivated trying it. A heading governs itself only."""
+        blocks = prose_names.markdown_blocks()
+        index = {(str(path), line): text for path, line, text in blocks}
+        self.assertIn(("POST_AUDIT_PLAN.md", 5518), index,
+                      "the #178 pre-registration paragraph is the worked case; if this moves, "
+                      "re-point it rather than deleting the guard")
+        self.assertTrue(prose_names.is_history(index[("POST_AUDIT_PLAN.md", 5518)]),
+                        "it shields on its own word 'registered', not on its heading")
+
+    def test_the_markdown_is_deliberately_absent_from_the_dead_name_check(self):
+        """Pinned so it cannot be added silently. It was measured -- 3,416 occurrences tested,
+        50 system-shaped names reported, 0 of them defects -- and declined, and that reasoning
+        lives in a comment beside dead_names() which this asserts is still there."""
+        source = pathlib.Path("prose_names.py").read_text(encoding="utf-8")
+        self.assertIn("THE DEAD-NAME CORPUS IS PYTHON PROSE", source)
+        sites = [site for sites in prose_names.dead_names().values() for site in sites]
+        self.assertFalse([s for s in sites if s.endswith(".md") or ".md:" in s],
+                         "a markdown site reached the dead-name report")
 
 
 if __name__ == "__main__":

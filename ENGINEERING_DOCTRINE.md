@@ -300,8 +300,12 @@ that gets believed, and it is the one that cannot run anything.
 
 ## The instrument standard
 
-The engine is held to 2267 tests, per-name assertion floors, mutation checks and a full-suite
-push gate. The code that MEASURES the engine has had none of that -- and on 2026-09-06 a single
+The engine is held to a full test suite, per-name assertion floors, mutation checks and a
+full-suite push gate. (This sentence used to state a test COUNT -- 2267 -- in the present tense
+with no date attached. The suite passed 3,000 and the sentence went on reading as current, which
+is the `#182` failure mode exactly. `ASSERTION_FLOORS.json` is the count's one home; it is
+regenerated on every close and a test fails when it is stale, so nothing here needs to restate
+it.) The code that MEASURES the engine has had none of that -- and on 2026-09-06 a single
 experiment produced three separate measurement failures, two of which were caught only because
 someone went looking. Every headline number that day came from an instrument written the same
 day. The freeze decision was resting on the least-tested code in the repository.
