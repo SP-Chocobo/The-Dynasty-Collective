@@ -54,8 +54,9 @@ to one style is the result hiding its own most interesting part."* It does.
 | `12T_ppr_TEP` | 7/12, +0.51% | 12/12, +3.73% | 12/12, +4.08% |
 
 **Against market-consensus ADP the engine is behind in four of six formats, level in a fifth,
-and ahead only in standard scoring.** Against the two projection-led styles it wins almost
-everywhere, by three to seven percent.
+and ahead only in standard scoring — and that one win is against a mis-specified control (see
+below).** Against the two projection-led styles it wins almost everywhere, by three to seven
+percent.
 
 The aggregate is arithmetic over a field in which eight of eleven seats are projection-led. It
 is not wrong; it is answering *"does the engine beat this particular mixture"*, and the mixture
@@ -92,17 +93,36 @@ league**. That is RULE 6's original failure mode exactly, reproduced by two of t
 The engine opens RB 12/12 there, which is sane. Its +7.09% and +7.28% margins over those two
 styles measure the gap between a sane drafter and a broken one, and nothing else.
 
-**`adp` has no superflex variant, which weakens the two SF comparisons.** It takes **0% QB in
+**CORRECTION — `adp` IS PPR-ONLY, AND THAT REACHES FURTHER THAN FIRST REPORTED.** The table is
+built from a single field, `adp_dd_ppr`. There is no superflex variant and **no standard
+variant**. The first version of this section flagged only the two superflex arms; it should also
+have flagged `12T_standard`, where the market control drafts a **PPR-ordered board in a standard
+league** and over-weights receptions that score nothing. That is the one format in which the
+engine beats `adp`, so **that win is against a mis-specified control too**.
+
+Stated plainly, because it is the load-bearing consequence: **the engine does not cleanly beat a
+correctly-specified market control in any format measured here.**
+
+**The superflex half of the same gap.** It takes **0% QB in
 round one in every format, superflex included** — a single static consensus table applied
 unchanged to a format where the real human market moves QBs sharply up. In `10T_ppr_SF` the
 engine goes QB 6/10 in round one, so **the engine responds to superflex and the control does
 not**. The engine still loses to it 0/10 on `points` there, which is a real result, but against a
 control that is mis-specified for the format.
 
-**This leaves three clean comparisons**, the 1QB PPR formats where `adp` is on its home ground:
-`12T_ppr` (5/12, −0.35%), `10T_ppr` (2/10, −0.63%), `12T_ppr_TEP` (7/12, +0.51%). Against
-market consensus on its own terms the engine is **at parity — neither ahead nor behind by a
-margin this run can resolve.**
+**This leaves three clean comparisons** — the 1QB PPR formats, the only ones where `adp` is on
+its home ground: `12T_ppr` (5/12, −0.35%), `10T_ppr` (2/10, −0.63%), `12T_ppr_TEP` (7/12,
++0.51%). Against market consensus on its own terms the engine is **at parity — neither ahead nor
+behind by a margin this run can resolve.**
+
+**And parity on `points` is not a null result that further sampling will resolve.** It is
+ambiguous between two readings this instrument cannot separate: the engine correctly trading
+present-season points for future asset value, which is what a dynasty engine *should* do, and the
+engine having no edge. The only other ruler available is `cdme`, where a win is a tautology by
+construction. `FREEZE_CHECKLIST.md` already states the reason — there is no established exchange
+rate between present-season points and dynasty asset value. **Separating the two readings needs a
+ruler on a dynasty horizon, which `#288` establishes cannot be built from anything in this
+repository; it is not a matter of more formats or more leagues.**
 
 ## Two qualifications that cut AGAINST the engine
 

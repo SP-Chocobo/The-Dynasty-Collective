@@ -170,6 +170,26 @@ fixture result.
 **What it does say, for the freeze:** the strong claim holds in the league the owner actually
 plays, so the deficit can no longer be stated unqualified as a property of the engine.
 
+### `#288` THE CEILING ON WHAT ANY OF THIS CAN SHOW — read before the rows above are quoted
+
+`#285` measured the engine at **parity with market-consensus ADP** on `points` in the three
+formats where ADP is correctly specified (−0.35%, −0.63%, +0.51%), while beating both
+projection-led styles by 3–7%. Eight of eleven field seats are projection-led, so every pooled
+margin in this document is carried by the styles a human would not play.
+
+**That parity cannot be resolved into a verdict.** It is ambiguous between the engine correctly
+trading present-season points for future asset value and the engine having no edge, and the two
+rulers cannot separate them — `points` is where the tie sits, `cdme` is the engine's own
+objective where a win is a tautology. `#288` establishes that **no third ruler can be built**:
+`proj_3yr` already feeds `time_horizon_adj`, `trade_value` is already a `bpa_source`, and `rank`
+is collinear with both (`#165`). Any ruler made from them scores the engine on a transformation
+of its own input.
+
+**So the freeze record states this, rather than resting on margins that cannot bear it: the
+engine has no demonstrated edge on any ruler independent of its own objective, and the data in
+this repository cannot establish one.** Resolving it needs realized subsequent-season outcomes —
+an external input, same blocker class as `#49`. `#284`'s legality result is unaffected.
+
 ### `#287` RESOLVED: the disagreement is the ENGINE, and `#205`'s design no longer reproduces it
 
 `#285` supplied the instrument to settle this by re-running `#205`'s **own design** at HEAD

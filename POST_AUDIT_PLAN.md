@@ -12400,15 +12400,32 @@ recording-only change). Round-one QB rate by style:
 reproduced by two of three styles. The engine opens RB 12/12. Its margins there measure the gap
 between a sane drafter and a broken one.
 
-**`adp` has no superflex variant.** It takes 0% round-one QB in every format including both SF
-arms, while the engine goes 6/10 in `10T_ppr_SF` — **the engine responds to superflex and the
-control does not.** The SF losses to `adp` stand as results but against a mis-specified control.
+**`adp` IS PPR-ONLY — CORRECTION, 27th, MINE.** The table is built from one field,
+`adp_dd_ppr`. No superflex variant and **no standard variant**. This entry as first written
+flagged only the superflex arms; it should also have flagged `12T_standard`, where the control
+drafts a PPR-ordered board in a standard league and over-weights receptions worth nothing there.
+That is the sole format where the engine beats `adp`, so **that win is against a mis-specified
+control too**. The consequence, stated plainly: **the engine does not cleanly beat a
+correctly-specified market control in any format measured here.**
+
+On the superflex half: `adp` takes 0% round-one QB in every format including both SF arms, while
+the engine goes 6/10 in `10T_ppr_SF` — **the engine responds to superflex and the control does
+not.** The SF losses stand as results but against a mis-specified control.
 
 **That leaves three clean comparisons** — the 1QB PPR formats: 5/12 (−0.35%), 2/10 (−0.63%),
 7/12 (+0.51%). Against market consensus on its own ground the engine is **at parity**, neither
 ahead nor behind by a margin this run resolves. That is the honest answer to *is it good at
 drafting*, and it is weaker than the pooled table implies and stronger than the standard-scoring
 arm would flatter.
+
+**AND PARITY HERE IS NOT A NULL RESULT THAT MORE SAMPLING FIXES.** It is ambiguous between the
+engine correctly trading present-season points for future asset value — what a dynasty engine is
+*supposed* to do — and the engine having no edge. The two rulers cannot separate them: `points`
+is where the tie sits, and `cdme` is the engine's own objective, where a win is a tautology.
+`FREEZE_CHECKLIST.md` already names the reason — no established exchange rate between
+present-season points and dynasty asset value. Running more formats or more leagues produces more
+samples of the same ambiguous quantity. **Separating the readings requires a ruler on a dynasty
+horizon; see `#288`.**
 
 ### Two results that cut against the engine
 
@@ -12494,3 +12511,54 @@ the incumbent control.
 `PROOF_FORMATS` were not re-run uniform. `#285` covers all six mixed, where the engine wins
 `points` in five; `10T_ppr_SF` is the exception under both designs and remains the live question
 alongside the `cdme` superflex losses.
+
+## `#288` — THERE IS NO RULER LEFT TO BUILD: EVERY DYNASTY QUANTITY IS ALREADY AN ENGINE INPUT
+
+`#285` left the headline finding unresolvable rather than merely unresolved: the engine ties
+market consensus on `points`, and that tie is ambiguous between *correctly trading present-season
+points for future asset value* — what a dynasty engine is supposed to do — and *having no edge*.
+The two existing rulers cannot separate those. `points` is where the tie sits. `cdme` is the
+engine's own objective, where a win is a tautology by construction.
+
+The obvious remedy is a **third ruler on a dynasty horizon**. This entry establishes that it
+**cannot be built from anything currently in the tree**, so that nobody spends a week discovering
+it the hard way.
+
+### Every multi-season quantity is already an input to `cdme`
+
+| quantity | already read by the engine? | where |
+|---|---|---|
+| `proj_3yr` | **yes** | `time_horizon_adj` is computed purely from `proj_3yr`/points percentiles, and scales `RISK_ADJ` per player |
+| `trade_value` | **yes** | it is a `bpa_source` — `position_relative_trade_value_vor` |
+| `rank` | **collinear** | `#165` measured rho of .92 to .99 in magnitude across `proj_3yr`, `trade_value` and `rank` |
+
+A ruler built from any of them is not independent of the thing it would be judging. It
+**recreates the tautology** rather than escaping it — the engine would be scored on a
+transformation of its own input. That is on top of the defects already registered against the
+material: `#147` (the anchor has a one-season lifetime and fails invariant 5) and `#179`
+(`proj_3yr`'s RB penalty is age-conditioned and the engine sees only the collapsed point
+estimate).
+
+### What an independent ruler would actually require
+
+**Realized outcomes the engine has never seen** — actual subsequent-season results for the
+drafted players, scored under each league's rulebook. That is not a code change and not a
+modelling choice; it is an input the repository does not have. **Same blocker class as `#49`.**
+
+A second, smaller input is needed for the same finding: **a correctly-specified market control.**
+The ADP table is built from one field, `adp_dd_ppr` — PPR only, no superflex variant and no
+standard variant — so the only market-like style in the field is mis-specified in three of the
+six formats measured (both superflex arms and `12T_standard`). Also external data.
+
+### The consequence for the freeze, stated so it cannot be softened later
+
+**The engine has no demonstrated edge on any ruler independent of its own objective, and that
+cannot be resolved with the data in this repository.** This is not a gap that more formats, more
+leagues, or a better harness closes. `#285` and `#287` are the end of what the current inputs can
+say about draft quality.
+
+This does not by itself decide the freeze — a documented "no demonstrated edge" is a legitimate
+thing to freeze against, and `#284` (legality, 34 arms, 0 findings) is unaffected. It does mean
+the freeze record must say it plainly rather than resting on the `cdme` margins, which are
+tautological, or on the pooled `points` margins, which `#285` showed are carried by beating
+styles nobody would play.
