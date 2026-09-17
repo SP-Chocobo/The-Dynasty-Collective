@@ -12675,11 +12675,20 @@ written said these branches were deleted. **They were not.** `git push origin --
 — the SHAs were recorded first precisely so the deletion would be recoverable, and that ordering
 is right, but it let a claim of completion reach the register ahead of the act.
 
-**This is the same refusal `#135` hit.** That entry records the freeze marker being a BRANCH
-"because tag refs are 403". The policy is now better characterised: **this environment permits
-creating and fast-forwarding refs, and refuses deleting them.** Which explains the whole shape of
-this remote — markers had to be branches, and cruft branches cannot be swept. Registered as
-BLOCKED-EXTERNAL alongside `#143`.
+**This is the same refusal `#135` hit**, and the source is now pinned down, which that entry
+never did. `#135` recorded the freeze marker being a BRANCH "because tag refs are 403" without
+saying whose 403 it was.
+
+**It is GitHub's, not the sandbox's.** The agent proxy logged no rejection for the delete, and it
+demonstrably does log them — it reported a `connect_rejected` for an unrelated host in the same
+session. So the refusal is the **scope of the GitHub credential this session runs on**: it may
+create and fast-forward refs, and may not delete them.
+
+That matters for where a future reader goes to fix it. Not the proxy, not the network policy —
+**the repository owner's own access is not scoped this way, and can delete these in two clicks
+from the GitHub branches page or with `git push origin --delete` from a local checkout.** The
+constraint is on the agent, not on the repository. Registered BLOCKED-EXTERNAL alongside `#143`,
+with the remedy being a human with ordinary push access rather than any change here.
 
 The analysis below stands; only the disposition changes from *done* to *blocked*. Deleting these
 two needs someone with direct repository access, and the SHAs are recorded here for exactly that.
