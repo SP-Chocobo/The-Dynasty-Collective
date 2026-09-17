@@ -602,6 +602,12 @@ only. The items below feed observables and the debate layer, so they degrade wha
 
 - [x] **#55** — `pick_necessity` stays OBSERVABLE, no selection authority. Ruled.
 - [x] **#184** — documented as a bounded limitation; does not hold the freeze. Ruled.
+      **Bound RESTATED at its measured size (`#285`/`#289`, owner-ruled):** the engine loses
+      `cdme`, its own objective, to both projection-led styles in both superflex arms —
+      0/10 at −26.91% and −30.39% in `10T_ppr_SF` — and that half is NOT confounded by the
+      `adp` mis-specification. The `points` half stays mild. The `#206` "twelve straight QBs"
+      escape hatch is closed: round-one QB rates are 0–60% by style, and the engine still
+      loses. Disposition unchanged — repair is Phase 3 (`#50`, gated on `#49`).
 - [x] **#188** — vocabulary ruling executed and closed.
 - [x] **#175** — REJECTED: no derivable threshold; `CLIFF_HIGH_RATIO` unchanged.
 - [x] **#146** — RULED admissible in REDRAFT ONLY (`#257`). **The wiring is Gate 3 and is

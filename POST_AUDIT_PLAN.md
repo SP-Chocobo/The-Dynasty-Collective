@@ -6114,6 +6114,50 @@ now would be tuning against a benchmark whose validity is currently under questi
 **Reopen triggers, explicit:** Phase 3 (#50) running, OR #206 resolving in a way that changes
 #177's numbers.
 
+### AMENDMENT (`#285`/`#289`, owner-ruled this session): THE BOUND WAS UNDERSTATED, AND THE ESCAPE HATCH IS CLOSED
+
+**The ruling is UNCHANGED — documented, not repaired, does not hold the freeze, repair is Phase
+3.** What changes is the size of the bound this entry commits to, and one of its two defences.
+
+**1. "THE COST IS MEASURED AND SMALL" was understated.** That line rests on `#177`: −1.83% to
+−1.97% on one arm of eight. The smoke-seat field measures larger, and the `cdme` half is
+**not** confounded by the `adp` mis-specification `#288` records, because `need_first` and
+`points_need` never read an ADP table at all:
+
+| arm | ruler | vs `need_first` | vs `points_need` | vs `adp` |
+|---|---|---|---|---|
+| `12T_ppr_SF` | `cdme` | 2/12, −10.27% (t −2.58) | 1/12, −17.50% (t −4.47) | 11/12, +20.02% |
+| `10T_ppr_SF` | `cdme` | **0/10, −26.91% (t −6.92)** | **0/10, −30.39% (t −6.60)** | 6/10, +11.50% |
+| `12T_ppr_SF` | `points` | 11/12, +1.66% | 9/12, +1.19% | 4/12, −1.13% (t −2.74) |
+| `10T_ppr_SF` | `points` | 6/10, −0.19% | 5/10, −0.06% | 0/10, −2.42% (t −5.86) |
+
+**The engine loses its own objective to the projection-led styles in superflex, decisively and
+cleanly** — while beating `adp` on that same ruler. On `points` the picture is milder: it beats
+or ties both projection-led styles and loses only to `adp`, which is the mis-specified control.
+
+The shape is coherent with this entry's own mechanism. The projection-led styles open QB at
+44–50% in superflex; the engine opens QB at 8% (`12T_ppr_SF`) and 60% (`10T_ppr_SF`). The
+startable floor sets the superflex QB level from the cliff without consulting demand, so the
+engine underprices QBs as ASSETS while still fielding a comparable lineup. **Asset total suffers,
+starting lineup does not.** That is exactly the defect described above, now measured on a field
+rather than one arm.
+
+**2. THE `#206` DEPENDENCY NO LONGER OFFERS THIS ITEM COVER.** The clause above says `#177`'s
+deficit may be partly a simulation artifact because the simulated chairs "produce twelve straight
+QBs in round one." `#285` recorded round-one composition per style and **that premise does not
+hold for this field**: `adp` 0% QB, ENGINE 8% / 60%, `need_first` 50% / 33%, `points_need` 44% /
+47%. Nothing resembling twelve straight QBs. The field is realistic and **the engine still loses
+the asset ruler in it.** The "documenting rather than fixing because the benchmark is under
+question" argument is therefore weaker than when written — the benchmark improved and the result
+got worse, not better.
+
+**Why the ruling still stands anyway.** The repair still changes what replacement level MEANS in
+a superflex league, which is `#50`, which the owner holds, and which is gated on `#49`. Nothing
+in `#285` makes that a smaller or differently-owned change. The `points` half — what you actually
+field — remains mild. And `#288` establishes that no ruler independent of the engine's own
+objective exists here, so a `cdme` deficit cannot be converted into a claim about real-world
+cost. **Bound restated at its measured size; disposition unchanged.**
+
 ## #205 ANSWERED, AND #215 -- THE INSTRUMENTS COULD SURVIVE A RESTART BUT COULD NOT FINISH ONE
 
 ### #205, complete: six boards, 68 seats, on the real rulebook
