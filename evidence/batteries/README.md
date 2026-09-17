@@ -270,3 +270,45 @@ produced by the code as it stood; they are left exactly as generated. What this 
 READING — where those files say `starters X-Y`, that is a lineup total contaminated by forced
 below-replacement assignment, not a roster-worth measure. `12T_ppr_mode_upside starters -205.4`
 is the clearest case and is now explicable rather than alarming.
+
+---
+
+## Surviving a reclaimed container: how to resume the Gate 1 run
+
+A full battery is ~5.3 hours and **this container is reclaimed on session idleness — CPU does not
+count as activity.** A run pegged at 100% on a core was reclaimed anyway, 13 minutes in, losing
+everything but one arm. `BATTERY_REPORT.json` is gitignored and lives only in the container, so
+on its own it is not a survival plan: it dies with the machine.
+
+**The git remote is the only store that outlives the container.** So a live run checkpoints to a
+TRACKED path here, periodically, and that is what a later session restores from.
+
+### If you are a fresh session and a Gate 1 run was in flight
+
+```sh
+# 1. Is there a checkpoint, and how far did it get?
+python3 -c "import json;d=json.load(open('evidence/batteries/BATTERY_2026-09-17_gate1_15fcf2c.json'));print('complete',d['complete'],'| arms',len(d['results']),'| picks',d['picks'],'| findings',d['total_findings'])"
+
+# 2. complete=true  -> the run FINISHED. Nothing to resume; read the verdict.
+# 3. complete=false -> restore it as the live report and continue:
+cp evidence/batteries/BATTERY_2026-09-17_gate1_15fcf2c.json BATTERY_REPORT.json
+PYTHONDONTWRITEBYTECODE=1 nohup python3 -u run_draft_battery.py --resume > scratchpad/gate1.log 2>&1 &
+```
+
+**THE FILE'S OWN `complete` FLAG IS THE STATUS — the filename never claims one.** A checkpoint and
+a finished run share the same path deliberately: a `.partial` suffix that has to be renamed at the
+end is a second source of truth that goes stale the moment the rename is forgotten.
+
+### The three rules this arrangement exists to obey
+
+1. **Never point `--out` at a tracked path for the live run.** The report checkpoints after every
+   arm, so the tree would go dirty every turn and the branch would fill with checkpoint commits.
+   The live report is gitignored; a separate loop copies it to the tracked path on a timer.
+2. **Never `--resume` onto a report written by different code.** `--resume` is OFF by default for
+   exactly this reason — a silent resume lets a stale file masquerade as a fresh measurement. Check
+   the report's `commit` and `commits_present` against the engine you are measuring BEFORE
+   resuming, and if they disagree, move the file aside and start clean. A run whose arms come from
+   two engines measures neither.
+3. **Validate the JSON before committing a checkpoint.** The runner rewrites the report between
+   arms; a copy taken mid-write can be truncated, and a corrupt checkpoint is worse than none
+   because it looks like protection.
