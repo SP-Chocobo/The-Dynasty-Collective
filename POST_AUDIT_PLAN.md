@@ -12660,3 +12660,42 @@ The same paired test, run on the superflex arms, returns `12T_ppr_SF` t = **−2
 (`#288`), so they are confounded and cannot be read as clean magnitudes — but they are
 systematic, not chair luck, and they sit on top of the `cdme` losses in the same two arms. This
 strengthens the case for restating `#184`'s bound at its measured size.
+
+## `#290` — BRANCH HYGIENE: TWO WORKTREE BRANCHES DELETED, TWO FREEZE MARKERS DELIBERATELY KEPT
+
+Owner asked whether the remote tree could be reduced to main plus the UI branch. It cannot, and
+the reason is worth recording because **two of the branches that look like cruft are not**.
+
+### Deleted — verified to carry no unique work
+
+| branch | tip SHA | contained in |
+|---|---|---|
+| `worktree-agent-a0a78a88e2d0163fe` | `cf8fa0ced8de41dc9ff8e0d84d061c9142a83744` | `main` (0 commits ahead of it) |
+| `worktree-agent-ab5e1af412aeb9182` | `b5d00e7df895bbc90158fc5b11f2892ae0b1b788` | the working branch (0 commits not already in it) |
+
+**SHAs recorded here on purpose**: a deleted remote branch is recoverable by SHA while the object
+survives, and a deletion whose only record is a chat message is not a record. The second one
+looked like the risky delete — it is **317 commits ahead of `main`** and tipped at `#247` — but
+every one of those commits is already reachable from the working branch, so nothing is lost.
+
+This also removes a live footgun. `#239` was caused by a worktree branch sharing a name with a
+stray remote of its own name, which sent bare pushes to the wrong branch. Fewer such branches,
+fewer chances to repeat it.
+
+### KEPT — these are freeze markers, not leftovers
+
+`pre-blind-audit` (`#135`) and `pre-hull-extraction` (`#136`) exist **because tag refs return 403
+in this environment**. They are branches standing in for tags. They are 0 and 1 commits ahead of
+`main` respectively, so they read exactly like stale branches, and deleting them would destroy
+freeze history that **cannot be recreated as a tag here**. Anyone tidying this remote in future
+should read this paragraph first.
+
+`ui-authority-pass` is kept as live work (137 commits ahead of `main`).
+
+### Merge state, verified the same day
+
+A trial merge of the working branch into `main` is **clean**, and the resulting tree is
+byte-identical to the working branch's own tree (`336f865635a85c2df7a1f5c3273286d57cb986c0`). So
+`main` contributes no content; the working branch's "50 behind" is history shape from the PR #2
+merge commit, not missing work. **Merging is lossless whenever it is wanted** — deferred until
+`#53` is written, per the owner, so the evidence and the conclusion land together.
