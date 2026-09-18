@@ -84,9 +84,55 @@ for ordering, which is exactly what a one-at-a-time repair pass would miss.**
 and **W1-10** (two take models, one of which manufactures the zeros `#187` forbids). `#206` chose
 an enforced refusal; the refusal covers the number and not its consequences.
 
-## What this ledger does NOT yet contain
+## Wave 2 — NOT clean, and not close
 
-Wave 2 is running. Its findings will be added with the same verdict vocabulary before anything is
-repaired. The stopping condition is **three consecutive waves producing no NEW finding that
-survives verification** — not three waves producing no findings, which a pass could satisfy by
-re-reporting known items.
+Eight new findings, plus convergence on Wave 1's core at a rate that settles those beyond doubt.
+
+| id | finding | verdict | novelty |
+|---|---|---|---|
+| **W2-01** | Contested-identity guard is a function of the REMAINING pool — drafting one twin hands the survivor the vendor record (`trade_value 99.0`, `proj_3yr 840.0`, `identity_basis "matched"`); the roster side never applies the rule at all | CORROBORATED (measured) | **NEW** |
+| **W2-02** | `qb_startable_floor` is in VENDOR units, compared against league-scored points. Holds on the fixture by coincidence; on a 4-pt-pass-TD rulebook, QBs in the overall top-24 go **11 → 0** | CORROBORATED (measured) | **NEW** |
+| **W2-03** | Superflex: once the startable QB tier is drafted, all 116 remaining QBs are unpriced, sorted below every priced row, and **10 carry `absence_kind=None`** against a stated invariant | CORROBORATED (measured) | **NEW** |
+| **W2-04** | `block_opportunity` is **unreachable in production** — 0 fires across 10 board states / 460 candidates; docstring claims ~28% | CORROBORATED (measured) | **NEW** |
+| **W2-05** | `trade_value` branch omits `truncated_out=`, clamps to the bottom of a 2-row list, stamps `live_starter_demand`. **Binds on the owner's own league**, on the branch the `#155` fix never reached | CORROBORATED (measured) | **NEW** |
+| **W2-06** | QB floor + shared-slot alternative compose into −17.99 on every second QB; **DL −32.87 / DB −28.28 on an EMPTY roster**; 246 of 796 priced rows have TAV < UV against "structurally impossible" | CORROBORATED (measured) | **NEW** |
+| **W2-07** | **Thirteen test modules, including `test_cdme_certification`, run on the fixture the repo declares non-production** — its own docstring says "never a synthetic fixture" | CORROBORATED | **NEW** |
+| **W2-08** | `CDME_CONTRACTS.md` §1–§3, banner-marked the live authority, false in four places (domain −9.12..97.90 vs measured −319..+220; "never None" vs None on 60% of rows) | CORROBORATED | **NEW** |
+| **W2-09** | `round` is the round of the last pick MADE, not the pick being decided; the test pins the off-by-one | UNVERIFIED | **NEW** |
+| W2-10 | `remaining_starter_demand` treats `roster_id=None` as a phantom 13th team and raises on the whole board | UNVERIFIED | **NEW** |
+
+### Convergence across all four passes
+
+| finding | A | B | C | D |
+|---|---|---|---|---|
+| `time_horizon_adj` population mismatch (W1-02) | ✓ | ✓ | ✓ | ✓ |
+| survival leaks through `pick_necessity` (W1-07) | ✓ | ✓ | ✓ | ✓ |
+| anchor cache key incomplete (W1-03) | ✓ | ✓ | ✓ | — |
+| two take models (W1-10) | ✓ | — | ✓ | ✓ |
+| `prose_names` shield (W1-05) | ✓ | ✓ | ✓ | — |
+| `need_bonus` test is a tautology (W1-04) | — | ✓ | — | ✓ (mutant survived) |
+
+**Four independent passes, four hits on the same two defects.** Those are not opinions any more.
+
+### What Wave 2 changes about the diagnosis
+
+**Cluster 2 grew teeth.** W2-07 is the explanation the first wave was missing: thirteen modules
+including the *certification battery* run on a universe with no IDP rows, no unpriced rows, and
+`proj_3yr` on every priced row. That is precisely the universe in which W1-02, W2-06 and D-2
+**cannot be observed**. The suite is not failing to catch these; it is structurally incapable of
+seeing them.
+
+**A new cluster: invariants pinned on the shape where they cannot fail.** W1-01
+(`superflex=False`, no IDP slot), W2-06 (`test_an_empty_roster...` on a roster with a dedicated
+TE slot and no `slot_alternatives`), W1-04 (algebraically trivial), W2-09 (the test asserts the
+off-by-one). Four separate invariants, four pins that cannot fail. That is a *pattern*, not four
+accidents, and it is the strongest argument in this ledger against repairing findings one at a
+time.
+
+## Stopping condition — status
+
+**Wave 2: NOT clean.** Eight new, several measured on the owner's own league. The counter resets.
+
+Three consecutive waves producing **no NEW finding that survives verification** — not three waves
+producing no findings, which a pass could satisfy by re-reporting known items. **Current streak:
+0.**
