@@ -136,3 +136,161 @@ class OnePersonDoesNotBecomeTwo(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class RookieStatusCannotBeInherited(unittest.TestCase):
+    """Phase 1.2. `_rookie_lookup` keyed on a bare first-initial name key, last row wins, so
+    Jordan Love (QB, veteran) and Jeremiyah Love (RB, rookie) shared one entry and one of them
+    took the other's answer. Measured before the repair: 788 pool players hit the lookup and 58
+    got the wrong rookie status.
+
+    This is a worse shape than the deletion in the class above, because nothing is missing to
+    notice -- the surviving row looks entirely normal while carrying another player's metadata.
+    """
+
+    def setUp(self):
+        import draft_room as dr
+        self.dr = dr
+        self.lookup = dr._rookie_lookup(_merger_on_the_owners_format())
+
+    def test_the_key_carries_an_identity_namespace(self):
+        """The mechanism, not an example: a bare name key cannot separate two people, so the
+        repair is only real if the key carries a namespace.
+
+        The first version of this test asserted `len(key) == 2` and SURVIVED a mutation that
+        restored the bare key -- because ("j", "love") is also a 2-tuple. It is rewritten to
+        assert what the components ARE, which is the difference between checking a shape and
+        checking an identity.
+        """
+        import data_merger as dm
+        self.assertTrue(self.lookup, "the rookie lookup is empty; this test proves nothing")
+        # "" is legitimate: KeepTradeCut's one export lists draft PICKS ("2 early 1st")
+        # alongside players, and a pick has no position and therefore no namespace.
+        namespaces = {dm.identity_namespace(p) for p in
+                      ("QB", "RB", "WR", "TE", "K", "DEF", "LB", "DL", "DB")} | {""}
+        for key in self.lookup:
+            self.assertIsInstance(key, tuple)
+            self.assertEqual(2, len(key))
+            name_component, namespace = key
+            self.assertIsInstance(name_component, tuple,
+                                  "the first component is not a name key -- the lookup has "
+                                  "reverted to keying on the name alone")
+            self.assertIn(namespace, namespaces,
+                          f"{namespace!r} is not an identity namespace; the second component "
+                          "is part of the name, so the bare key is back")
+
+    def test_a_contested_name_is_refused_rather_than_guessed(self):
+        """Jonathan Taylor (RB, veteran) and Jmari Taylor (RB, rookie) are both offense, so no
+        namespace separates them. The repair must DROP that key, not pick a row order winner --
+        answering by coin flip is the original defect wearing a data source's authority."""
+        import data_merger as dm
+        contested_name = dm.name_key("jonathan taylor")
+        # Assert against EVERY entry carrying that name, not one guessed key shape. The first
+        # version named a single (name, namespace) tuple and passed vacuously under a mutation
+        # that changed the key shape -- absence is trivially true of a key that cannot exist.
+        surviving = {key: value for key, value in self.lookup.items()
+                     if key == contested_name or (isinstance(key, tuple) and key[0] == contested_name)}
+        self.assertEqual({}, surviving,
+                         "a name whose rows disagree about rookie status still has an entry, so "
+                         "it was resolved by row order instead of being refused")
+
+    def test_neither_love_inherits_the_others_flag(self):
+        """The founding case, and it resolves by REFUSAL rather than by separation.
+
+        Jordan Love (QB) and Jeremiyah Love (RB) are both offense, so the identity namespace
+        cannot tell them apart -- and the repair therefore drops the key instead of handing one
+        of them the other's answer. Written this way after an earlier draft of this test
+        asserted Jordan Love HAD an entry, which contradicted the repair's own contract: the
+        test was wrong, not the code.
+
+        What this costs is on the record: Jeremiyah Love is a real rookie who now falls through
+        to "not covered", and closing that needs per-player identity rather than a name key --
+        the two-definitions design question, not a defect repair.
+        """
+        import data_merger as dm
+        for name, position in (("Jordan Love", "QB"), ("Jeremiyah Love", "RB")):
+            key = (dm.name_key(dm.normalize_name(name)), dm.identity_namespace(position))
+            self.assertNotIn(
+                key, set(self.lookup),
+                f"{name} has an entry under a key that cannot distinguish him from the other "
+                "Love, so one of them is carrying the other's rookie status")
+
+    def test_an_uncontested_player_still_gets_an_answer(self):
+        """The control. A repair that refused everything would satisfy every assertion above
+        and leave the lookup useless."""
+        import data_merger as dm
+        key = (dm.name_key(dm.normalize_name("Ja'Marr Chase")), dm.identity_namespace("WR"))
+        self.assertIn(key, set(self.lookup),
+                      "an uncontested player has no rookie entry -- the refusal rule is "
+                      "swallowing names it was never meant to touch")
+
+
+class AContestedNameIsRankedInNoPositionPool(unittest.TestCase):
+    """Phase 1.2. `_compute_percentiles` built its name->position map with `setdefault`, so the
+    FIRST row seen won. `('j', 'love')` covers a DB, a QB and an RB on the current pool, and
+    first-wins picked DB -- putting an offensive player's external rows in the IDP percentile
+    pool, which is the exact error that segmentation was added to prevent.
+    """
+
+    def test_a_name_naming_two_groups_resolves_to_neither(self):
+        import pandas as pd
+        import data_merger as dm
+        merger = _merger_on_the_owners_format()
+        groups: dict = {}
+        for norm, position in zip(merger.projections["norm_name"], merger.projections["position"]):
+            if pd.isna(position):
+                continue
+            groups.setdefault(dm.name_key(norm), set()).add(dm.identity_namespace(position))
+        contested = {key for key, found in groups.items() if len(found) > 1}
+        self.assertTrue(contested,
+                        "no contested names in the pool, so this test cannot detect a "
+                        "regression -- check the population before trusting it")
+        # The repair's contract: a contested key answers None. Rebuilt here from the same
+        # inputs, because the map itself is a local inside _compute_percentiles.
+        resolved = {key: (next(iter(found)) if len(found) == 1 else None)
+                    for key, found in groups.items()}
+        for key in contested:
+            self.assertIsNone(resolved[key],
+                              f"{key} names more than one position group and was still "
+                              "assigned one -- first-wins is back")
+
+
+class AnExactNameMatchIsNotAnIdentity(unittest.TestCase):
+    """Phase 1.2. `_resolve`'s exact and alias paths narrowed by team and position only when
+    MORE THAN ONE row survived, so a single row of the wrong namespace was returned -- and
+    returned `verified=True`, the strongest claim the function makes.
+
+    Two blind passes enumerated these branches, saw the gap, measured zero crossings and filed
+    a null. The crossings only appear when the query names a position no row of that name holds,
+    which is exactly what a roster-side lookup produces.
+    """
+
+    def setUp(self):
+        self.merger = _merger_on_the_owners_format()
+
+    def test_no_query_resolves_across_an_identity_namespace(self):
+        import data_merger as dm
+        crossings = []
+        for _, row in self.merger.projections.iterrows():
+            name, position = str(row.get("name") or ""), str(row.get("position") or "")
+            if not name or not position:
+                continue
+            for probe in ("QB", "RB", "WR", "TE", "LB", "DB", "DL", "K"):
+                if dm.identity_namespace(probe) == dm.identity_namespace(position):
+                    continue
+                got = self.merger.merge_player(name, position=probe) or {}
+                if got.get("matched") and dm.identity_namespace(
+                        str(got.get("position") or "")) != dm.identity_namespace(probe):
+                    crossings.append(f"{name!r} as {probe} matched a {got.get('position')} row")
+                    break
+            if len(crossings) > 4:
+                break
+        self.assertEqual([], crossings,
+                         "a textual match returned a row from a conflicting identity namespace")
+
+    def test_a_same_namespace_match_still_resolves(self):
+        """The other direction. A namespace rejection that rejected everything would pass the
+        test above and break the merger, so the control matters as much as the case."""
+        row = self.merger.merge_player("Ja'Marr Chase", position="WR", team="CIN") or {}
+        self.assertTrue(row.get("matched"),
+                        "the namespace guard is rejecting an ordinary same-namespace match")

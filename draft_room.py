@@ -192,7 +192,7 @@ import pandas as pd
 
 import content_hash
 import lineup_optimizer as lo
-from data_merger import NO_NFL_TEAM, DataMerger, name_key, normalize_name
+from data_merger import NO_NFL_TEAM, DataMerger, identity_namespace, name_key, normalize_name
 import player_universe as pu
 from player_universe import (FLEX_SLOT_POSITIONS, FANTASY_POSITIONS, league_usable_positions,
                              player_eligible_positions, player_name, player_position,
@@ -1006,7 +1006,39 @@ def _rookie_lookup(merger: DataMerger) -> dict[tuple[str, str], bool]:
     ktc = ev[(ev["source_name"] == "keeptradecut") & ev["rookie"].notna()]
     if ktc.empty:
         return {}
-    return dict(zip(ktc["_name_key"], ktc["rookie"]))
+
+    # KEYED ON IDENTITY, AND SILENT WHERE IDENTITY IS STILL CONTESTED.
+    #
+    # This was `dict(zip(ktc["_name_key"], ktc["rookie"]))` -- a bare first-initial name key,
+    # last row wins. `_name_key` is ("j", "love") for BOTH Jordan Love (QB, veteran) and
+    # Jeremiyah Love (RB, rookie), so one of them inherited the other's rookie status
+    # depending on row order. Measured on the capture: 788 pool players hit this lookup and
+    # **58 got the wrong answer**, including Keon Coleman (years_exp 2) flagged a rookie and
+    # Bryce Brown (years_exp 8) flagged a rookie.
+    #
+    # That is worse than the deletion K-01 caused, because nothing is missing to notice: the
+    # wrong surviving player inherits the other's metadata and reads as a normal row.
+    #
+    # Two changes, and the second matters as much as the first:
+    #
+    #   1. the key carries `identity_namespace`, the same namespace the merger's own
+    #      dedup and reconciliation use -- not a second identity mechanism invented here;
+    #   2. a key whose rows still DISAGREE after that is dropped rather than resolved by row
+    #      order. Jonathan Taylor and Jmari Taylor are both RB, so no namespace separates
+    #      them, and picking one is a coin flip wearing a data source's authority. An absent
+    #      key falls through to this function's documented contract for a player KTC does not
+    #      cover, which is a stated rule rather than an accident.
+    #
+    # NOT CHANGED HERE, deliberately: `_admits_to_pool` answers the same question from
+    # `years_exp == ROOKIE_YEARS_EXP`, which is per-player and cannot collide at all. Two
+    # definitions of "rookie" is a real finding, but preferring that one moves 654 players
+    # into the rookie pool and 31 out of it -- a sevenfold change in what a rookie draft
+    # contains. That is an engine-design decision, not a defect repair, and it is recorded
+    # for the owner rather than smuggled in beside a collision fix.
+    grouped: dict[tuple, set] = {}
+    for key, position, flag in zip(ktc["_name_key"], ktc.get("position", ""), ktc["rookie"]):
+        grouped.setdefault((key, identity_namespace(position)), set()).add(bool(flag))
+    return {key: next(iter(flags)) for key, flags in grouped.items() if len(flags) == 1}
 
 
 #: A player with zero completed NFL seasons -- this year's rookie class. Sleeper reports it
@@ -1319,7 +1351,10 @@ def build_available_pool(
         primary = player_position(info)
         name = player_name(info, player_id)
         if pool_scope != "all":
-            is_rookie = rookie_by_key.get(name_key(normalize_name(name)), False)
+            # The lookup is keyed on (name, position group) since #52 phase 1.2; passing the
+            # bare name key again would miss every entry and silently empty a rookie draft.
+            is_rookie = rookie_by_key.get(
+                (name_key(normalize_name(name)), identity_namespace(primary)), False)
             if pool_scope == "rookies_only" and not is_rookie:
                 continue
             if pool_scope == "veterans_only" and is_rookie:

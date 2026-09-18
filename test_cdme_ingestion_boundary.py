@@ -146,7 +146,12 @@ class ExternalValuesFilterTests(unittest.TestCase):
         # None of the keys in the rookie lookup can have come from the bot_research row --
         # the lookup must be built exclusively from keeptradecut rows.
         ktc_only = merger.external_values[merger.external_values["source_name"] == "keeptradecut"]
-        self.assertEqual(set(lookup.keys()) - set(ktc_only.get("_name_key", [])), set())
+        # The lookup is keyed on (name_key, identity_namespace) since #52 phase 1.2 -- Jordan
+        # Love and Jeremiyah Love share a _name_key, and last-row-wins let one inherit the
+        # other's rookie status. The BOUNDARY this test guards is unchanged, so the assertion
+        # is unchanged too; only the projection onto the key's name component is new.
+        self.assertEqual(
+            {key[0] for key in lookup} - set(ktc_only.get("_name_key", [])), set())
 
     def test_consensus_lookup_ignores_a_bot_research_only_row(self):
         _inject("Zzz Fabricated Player", "top consensus rank")

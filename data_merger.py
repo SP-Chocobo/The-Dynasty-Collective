@@ -312,6 +312,19 @@ _POSITION_SYNONYMS = {
 }
 
 
+def identity_namespace(position) -> str:
+    """The public name for the dedup IDENTITY namespace -- "are these two rows the same person".
+
+    `_position_group` is this module's own, and other modules need the same answer: draft_room's
+    rookie lookup keys on it so that Jordan Love (QB) cannot inherit Jeremiyah Love's (RB) rookie
+    status. Exposed as a named function rather than letting callers import the private one,
+    because the comparison key next to it (`position_family`) answers a DIFFERENT question --
+    "is this the same kind of player" -- and the two are not interchangeable in either direction.
+    One home for the vocabulary, so a caller cannot pick the wrong one by accident.
+    """
+    return _position_group(position)
+
+
 def position_family(position) -> Optional[str]:
     """The role a position names, with vendor synonyms collapsed -- or None when the position
     is unknown. None means "no opinion", never "no match": an absent position is not evidence
@@ -1945,12 +1958,28 @@ class DataMerger:
         # see _find_match's docstring), so a plain norm_name-to-norm_name join against it would
         # silently miss almost everyone. Key on name_key(), the same shared key _find_match
         # uses to bridge that abbreviation, rather than exact-string equality.
-        position_by_key: dict[tuple[str, str], str] = {}
+        # AMBIGUOUS IS NOT "THE FIRST ONE I SAW". This was `.setdefault(name_key(norm), pos)`,
+        # first row wins -- and `name_key` is a first-initial key, so ("j", "love") maps to a DB,
+        # a QB and an RB on the current pool. First-wins picked DB, which put Jordan Love's
+        # bot_research rows in the IDP percentile pool. Measured after phase 1.1: 27 keys map to
+        # more than one raw position and **19 cross a position GROUP**, which is the boundary
+        # this segmentation exists to respect.
+        #
+        # A key that names two groups does not name a pool, so it answers None and the rows it
+        # covers are ranked in neither -- the absence contract, applied to a grouping decision
+        # rather than a value. Silently ranking an offensive player against defenders is the
+        # error this segmentation was added to prevent, and doing it by coin flip is that same
+        # error with a tidier face.
+        groups_by_key: dict[tuple[str, str], set] = {}
         if "position" in self.projections.columns:
             for norm, pos in zip(self.projections["norm_name"], self.projections["position"]):
                 if pd.isna(pos):
                     continue
-                position_by_key.setdefault(name_key(norm), pos)
+                groups_by_key.setdefault(name_key(norm), set()).add(_position_group(pos))
+        position_by_key: dict[tuple[str, str], Optional[str]] = {
+            key: (next(iter(groups)) if len(groups) == 1 else None)
+            for key, groups in groups_by_key.items()
+        }
         for (source, source_file), (field, higher_is_better) in _EXTERNAL_PERCENTILE_RULES.items():
             mask = (
                 (self.external_values["source_name"] == source)
@@ -1976,7 +2005,10 @@ class DataMerger:
             # covers both), same distinction _position_group draws for the dedup collision fix.
             if source == "bot_research" and position_by_key:
                 row_groups = self.external_values["norm_name"].map(
-                    lambda n: _position_group(position_by_key.get(name_key(n)))
+                    # position_by_key already holds a GROUP (or None where the name is
+                    # contested); re-grouping it would turn None into the empty-string bucket
+                    # and quietly pool every ambiguous row together.
+                    lambda n: position_by_key.get(name_key(n))
                 )
                 for group_value in row_groups[mask].unique():
                     group_mask = mask & (row_groups == group_value)
@@ -2192,7 +2224,15 @@ class DataMerger:
                 # behind, so a manual alias onto a colliding name reported an arbitrary
                 # iloc[0] pick as verified. The row still returns (same as the automatic
                 # paths do when ambiguous); only the certainty claim is corrected.
-                return exact.iloc[0], "alias", len(exact), len(exact) == 1
+                alias_candidate = exact.iloc[0]
+                # Same namespace rejection as the exact and key paths. An alias is
+                # hand-maintained, so a crossing here is a curation error rather than a lossy
+                # hash -- which is a reason to SURFACE it as a miss, not a reason to trust it:
+                # a hand-written mapping is exactly the kind of thing that goes stale when a
+                # player it names retires and a defender inherits the name.
+                if position and self._different_identity_namespace(alias_candidate, position):
+                    return None, None, len(exact), False
+                return alias_candidate, "alias", len(exact), len(exact) == 1
             # alias didn't resolve in this particular table (e.g. player isn't in
             # the free-agent table) — fall through to normal matching below
 
@@ -2221,7 +2261,28 @@ class DataMerger:
                 narrowed = exact_matches[exact_matches["position"] == position]
                 if not narrowed.empty:
                     exact_matches = narrowed
-            return exact_matches.iloc[0], "exact", len(exact_matches), len(exact_matches) == 1
+            exact_candidate = exact_matches.iloc[0]
+            # A TEXTUAL MATCH IS NOT AN IDENTITY. The narrowing above only runs when more than
+            # one row survives, so a SINGLE exact row was returned whatever namespace it sat in
+            # -- and returned `verified=True`, which is the strongest thing this function can
+            # say. Measured after phase 1.1: querying "C Conner" as QB, RB, WR, TE or K each
+            # matched the same DB row, and "A Winfield Jr." as a QB matched a DB.
+            #
+            # The key path below already rejects this; it was simply never applied here. Both
+            # waves that examined `_resolve` enumerated the branches, saw the gap, measured 0
+            # crossings on their probes and filed a null -- the crossings only appear when the
+            # query names a position no row of that name holds, which is exactly the shape a
+            # roster-side lookup produces.
+            #
+            # Deliberately the NAMESPACE check and NOT the team one: the key path's own comment
+            # explains that a team mismatch on an exact full-name match is more likely stale
+            # roster data than a different person, and that reasoning is sound and untouched.
+            # It does not carry over to identity namespace. The Bills' Josh Allen and the
+            # defensive lineman Josh Allen are this module's founding example of two people,
+            # and no amount of roster staleness turns one into the other.
+            if position and self._different_identity_namespace(exact_candidate, position):
+                return None, None, len(exact_matches), False
+            return exact_candidate, "exact", len(exact_matches), len(exact_matches) == 1
 
         key = name_key(norm_name)
         # Use the precomputed column when this table has one (every table _load() builds
