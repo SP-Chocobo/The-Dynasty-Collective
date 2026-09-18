@@ -22,15 +22,26 @@ import quantity_readers as qr
 #: Answers established elsewhere, by measurement rather than by this scanner. The scanner is
 #: only as good as its agreement with these.
 KNOWN = {
-    # Wired into team_acquisition_value (#139) and pick_necessity (#48) respectively.
-    "depth_exposure": qr.DECISION,
+    # CORRECTED #52 phase 4. This read DECISION, and the scanner agreed -- for the wrong
+    # reason. Its only evidence was `lo.depth_exposure(` in draft_room: a FUNCTION CALL on a
+    # module, counted as a read because `_reads_in` credited every attribute load. No scoring
+    # module subscripts the board column; pick_synthesis relays it and the UI displays it. The
+    # term IS wired into team_acquisition_value (#139) -- as a local, from the function's return
+    # value, which is not the same as the published column being read, and that distinction is
+    # the whole point of this scanner.
+    "depth_exposure": qr.OBSERVABLE,
     "positional_forfeit": qr.DECISION,
     "need_bonus": qr.DECISION,
     "eligibility_bonus": qr.DECISION,
     "universal_value": qr.DECISION,
     # Deliberately observable: computed, displayed, never scored.
     "waiting_cost": qr.OBSERVABLE,
-    "bye_collision": qr.OBSERVABLE,
+    # CORRECTED #52 phase 4, and this one is a finding rather than a bookkeeping fix.
+    # bye_collision read OBSERVABLE on the same false evidence, and with the collisions removed
+    # it is WRITE_ONLY: it is a field on roster_diagnostics.TeamDiagnostics that NO production
+    # code outside the producing modules reads. Neither does bye_concentration. app.py does not
+    # mention either one. See KNOWN_WRITE_ONLY below.
+    "bye_collision": qr.WRITE_ONLY,
     # #84's known case: marginal_lineup_value returns both lineup totals and only their
     # DIFFERENCE is consumed, so the absolute is genuinely read by nothing.
     "without_candidate": qr.WRITE_ONLY,
@@ -48,6 +59,18 @@ KNOWN = {
 #: are deliberate (sub-keys of dicts a caller stores whole, aggregates documented as returned
 #: in pairs), and two are real gaps recorded below. Its job is to fail when the set GROWS.
 KNOWN_WRITE_ONLY = {
+    # ADDED #52 phase 4, AND THESE TWO ARE A REAL GAP, not a deliberate sub-key.
+    #
+    # The scanner graded both as read until `_reads_in` stopped counting every attribute load as
+    # a read of a quantity. With that removed: `bye_collision` and `bye_concentration` are fields
+    # on roster_diagnostics.TeamDiagnostics that NO production code outside the producing modules
+    # reads. app.py does not mention either. The sub-keys below were already recorded as awaiting
+    # a reader on the grounds that "roster_diagnostics stores those dicts whole" -- and the thing
+    # storing them whole is itself unread, so the whole branch is computed for nobody.
+    #
+    # Recorded, not repaired. Wiring a diagnostic to a surface or deleting it is product work,
+    # and this phase repairs the instrument that was concealing the question.
+    "bye_collision", "bye_concentration",
     # bye_collision / bye_concentration sub-keys. roster_diagnostics stores those dicts whole,
     # so the individual keys await a reader rather than being dropped (#142).
     "bench_used", "bench_value_used", "players_out", "starters_out",

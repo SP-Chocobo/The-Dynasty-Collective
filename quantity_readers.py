@@ -241,6 +241,25 @@ def _reads_in(path: Path) -> set[str]:
         tree = ast.parse(path.read_text())
     except SyntaxError:
         return set()
+    # WHICH NAMES ARE MODULES, so `lo.depth_exposure(...)` is not mistaken for reading a
+    # quantity called depth_exposure. Collected from this file's own imports rather than
+    # guessed, and rebuilt per file so an alias means what it means HERE.
+    module_aliases = set()
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Import):
+            for alias in node.names:
+                module_aliases.add(alias.asname or alias.name.split(".")[0])
+        elif isinstance(node, ast.ImportFrom) and node.module and node.level == 0:
+            for alias in node.names:
+                if alias.asname:
+                    module_aliases.add(alias.asname)
+
+    # Attribute nodes that are the callee of a Call: `x.foo()` INVOKES foo, it does not read a
+    # quantity named foo. Collected first because ast.walk visits the Call and the Attribute
+    # separately and the Attribute arrives with no memory of its parent.
+    called_attributes = {id(node.func) for node in ast.walk(tree)
+                         if isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute)}
+
     names = set()
     for node in ast.walk(tree):
         # LOAD CONTEXT ONLY, and this is the correction that made the scanner work.
@@ -260,6 +279,24 @@ def _reads_in(path: Path) -> set[str]:
                 and isinstance(node.args[0].value, str):
             names.add(node.args[0].value)
         elif isinstance(node, ast.Attribute) and isinstance(node.ctx, ast.Load):
+            # A BARE ATTRIBUTE NAME IS NOT A READ OF A QUANTITY BY ITSELF. This counted every
+            # `.attr` load anywhere in a production module, so the scanner's verdicts rested on
+            # name collisions: `depth_exposure` was graded DECISION on the strength of
+            # `lo.depth_exposure(` -- a function call -- while no scoring module read the board
+            # column at all; and `name`, `round`, `basis`, `mode`, `team` and `value` were graded
+            # off `.name` on a Path, `.round(` on a Series and `settings.get("starters")`.
+            #
+            # Two exclusions, both derived from the file's own syntax rather than a list of
+            # known false positives:
+            #   * the callee of a Call -- invoking something is not reading a quantity;
+            #   * an attribute of an imported MODULE -- `lo.depth_exposure` is a function in
+            #     another module, not a column on a row.
+            # A subscript and a .get() are untouched: those are unambiguous mapping reads, and
+            # they are what this scanner was built on.
+            if id(node) in called_attributes:
+                continue
+            if isinstance(node.value, ast.Name) and node.value.id in module_aliases:
+                continue
             names.add(node.attr)
     return names
 
