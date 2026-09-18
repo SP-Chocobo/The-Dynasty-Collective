@@ -164,13 +164,12 @@ This also explains a Wave 1 puzzle. Cluster 1 said this repository has no mechan
 re-checks an invariant when the population changes. W3-01 is the same disease one level up:
 **no mechanism checks that the test matrix covers the league the owner actually plays.**
 
-## Wave 4 — pass G only so far; NOT clean, and the passes are now hitting derived constants
+## Wave 4 — NOT clean, by a distance: 29 new, and the audit turned on itself
 
-> **This wave is INCOMPLETE.** Pass H was launched from the wrong mandate and killed
-> (`MANDATE.md` §4), relaunched, and its relaunch died on an account rate limit mid-run. It has
-> been launched a third time. **Wave 4 does not count toward the stopping condition until two
-> independent passes have reported**, because a one-pass wave cannot produce the corroboration
-> the protocol is built on.
+> **Both passes have now reported.** Pass H took three launches — the first carried the Wave 1
+> mandate with no SETUP block and audited a 508-commit-divergent tree before being killed, the
+> second died on an account rate limit mid-run. Nothing from either enters this ledger
+> (`MANDATE.md` §4). **29 new findings across the two passes**, the most of any wave.
 
 Verdicts below are mine. `wave4/MY_VERIFICATION.md` is what I re-measured, including one
 correction to pass G.
@@ -197,6 +196,55 @@ correction to pass G.
 **Upgraded by this wave:** W2-09 (round off-by-one) UNVERIFIED → CONFIRMED with measured
 consequences; W1-13 (mock `draft_rounds`) UNVERIFIED → CONFIRMED at both call sites; W1-08 and
 W1-14 confirmed a second time.
+
+### Wave 4, pass H — fifteen more, and two of them where pass G reported a NULL
+
+| id | finding | verdict | novelty |
+|---|---|---|---|
+| **W4-16** | **`diff_snapshots` leaks the whole withheld survival family, to the chairs AND to the person.** `_DIFF_FIELDS` includes all three; `format_snapshot_for_llm` prints the deltas into "WHAT CHANGED", `app.py` passes `previous_snapshot` on both surfaces, and the Draft Room's own diff drawer labels them "Survival probability" / "Opportunity cost" / "Value of waiting". Measured 1.01→1.02: `survival_probability: -0.08, opportunity_cost: +17.22` printed directly beneath a block saying the estimate is WITHHELD | CORROBORATED (measured) | **NEW** — the numbers themselves, not a derivative |
+| **W4-17** | **The suite pins the leak.** `test_pick_debate.py:57-62` asserts survival is absent from the candidate block; `:88-90` and `:234-239` assert a survival-only delta **does** reach the chair prompt. Two contradictory contracts in one file, and production implements the second | CORROBORATED | **NEW** |
+| **W4-18** | **The instrument cannot see slot coverage at all.** `format_axes_exercised` derives its axes from `league_format_hint`'s keys — `scoring`, `superflex`, `te_premium`. Roster-slot composition is not an axis, so the coverage instrument reports "no constant axis" over a matrix with no kicker in it | CORROBORATED | **NEW** — this is *why* W3-01 was invisible |
+| **W4-19** | **W3-01 is narrower than the defect.** 51 LB, 51 DB, 16 DL drafted for **24** IDP_FLEX slots; **round 21 was twelve consecutive DBs**; roster 7 spent 15 of 25 picks on K/IDP. Kickers are the visible instance of "positions with a small displacement deduction float up a drained board" | CORROBORATED (measured) | **NEW** — reframes W3-01/W4-01 |
+| **W4-20** | **44% of the draft is valued by `bpa` alone.** `growth_signal > 0` on **0 of 131** upside picks; rounds 15–25 run with every team term zeroed and the growth term inert. Round 15 drafted 6 QBs into rosters already holding 2–4 | CORROBORATED (measured) | **NEW** |
+| **W4-21** | `upside_score` returns `growth_signal: 0.0` for rows with **no 3-year source at all** (1,996 of 2,028), indistinguishable from a measured flat trajectory, and `draft_board_ui` renders it as `GROWTH 0.0`. `bpa = row.get("bpa") or 0.0` on the same line is a latent None→0.0 | CORROBORATED | **NEW** — `#187` shape, second site this wave |
+| **W4-22** | **The necessity pill mostly tells you what round it is.** Every component is non-negative on a baseline of 50, so **no candidate can read below CLOSE CALL before round 15**; the ×0.3 late cap makes anything above LOW URGENCY unreachable after. Measured: round 17 → **17/17 "DOESN'T MATTER MUCH"**. Two of six labels unreachable early, four unreachable late | CORROBORATED (measured) | **NEW** |
+| **W4-23** | `--resume` admits a prior arm on `label` alone while capture provenance is stamped at **report level** from the capture on disk *now* — six arms from one universe reported under another's `captured_at` and census, with `commits_present` never firing the reader's only cue | CORROBORATED | **NEW** |
+| **W4-24** | **`store_io` drops every subsequent write after ANY `OSError` on read.** `_parse`'s docstring: `readable` is False "only when the file exists, is NOT empty, and does not parse". The code: bare `except OSError: return default, False`. One transient `EACCES`/`EIO` marks the path and `write()` returns silently for the rest of the process | **CONFIRMED — I read it** | **NEW**, and **pass G returned this area as a NULL** |
+| **W4-25** | **`pick_debate` has no untrusted fence and no contract**, while `llm_engine` has 11 `untrusted.` call sites. `debate_pick` concatenates the Strategist's and Skeptic's raw prose into the next chair's prompt. The app's own contract text says model-written prior verdicts are exactly what must be fenced | **CONFIRMED — `grep untrusted\|CONTRACT\|fence pick_debate.py` returns nothing** | **NEW**, and **pass G returned this area as a NULL** |
+| **W4-26** | The evidence block is **84 candidates / 90,514 characters / ~22.6k tokens**, sent three times per debate. `test_context_budget_boundary.py` — "stays small enough to never be the problem" — asserts on `DEFAULT_NARROW_COUNT = 5 ≤ 30`. The operative count is 84 | CORROBORATED (measured) | **NEW** — vacuous budget test |
+| **W4-27** | The decomposition prints an unrounded addend against a rounded sum — `Universal value: 12.57 = bpa 12.569999999999993 + …` — an arithmetic sentence whose two sides visibly differ, handed to a model told never to recompute | CORROBORATED | **NEW** |
+| **W4-28** | `parse_caller_verdict` strips the leading `**` but not the closer, so `**CONFIDENCE:** Lean` parses to `'** Lean'` and `app.py` renders "Confidence: ** Lean" verbatim | CORROBORATED (measured) | **NEW** |
+| **W4-29** | `settings.get("num_teams", len(league.get("roster_positions", []) and []))` — the default is always `len([])` = 0 | UNVERIFIED | **NEW** (trivial) |
+| **W4-30** | `draft_history._atomic_write` is a second, **lock-free** write implementation beside `store_io._write_unlocked` | UNVERIFIED | **NEW** (`#126` class) |
+
+**Corroborated by both passes independently:** the prompt boundary (W4-04), `_match_candidate`
+(W4-10), the round off-by-one (W2-09 — both measured 131 actual against 132 recorded), the dead
+`league_config` gate (W1-08), the survival leak through `pick_necessity` (W1-07), the fractional-PPR
+branch (W4-14), and the kicker result itself.
+
+**One dispute, left open.** G reported 18 players' vendor `projection` and 15 winning rows coming
+from a "standard"-tagged export in a PPR league (W4-15). H measured cross-format mixing and called
+it a **null** — 0 rows with `projection_source ≠ proj_3yr_source`, and the 34 offence rows from
+non-matching exports all tail players. They measured adjacent things and reached opposite
+conclusions about hazard. **W4-15 is DISPUTED** and neither pass settles it.
+
+### THE FINDING ABOUT THE AUDIT ITSELF: a pass's null results are not reliable
+
+Pass G examined `store_io` and the untrusted-fence boundary and reported both as null — "atomic
+replace, sidecar lock, refuse-to-overwrite-damaged-store, lock depth counting all hold up" and
+"`untrusted.fence`/`_report_for_handoff`/`annotate_if_incomplete`: consistent". Pass H found a real
+defect in each, and **I confirmed both by reading the code**: `_parse` catches bare `OSError`
+against a docstring that says otherwise, and `pick_debate.py` contains not one reference to
+`untrusted`, `CONTRACT` or `fence`.
+
+Two of pass G's five null results were wrong.
+
+**This bears directly on the stopping condition.** A wave is declared clean partly on the strength
+of its passes' null results, and we now have direct evidence that a pass can examine an area
+carefully, report nothing, and be wrong. "Three consecutive waves with no new finding" therefore
+cannot mean "three waves that found nothing" — it can only mean "three waves whose *positive*
+claims contained nothing new." A null is a report of where a pass looked, not a warrant that
+nothing is there, and this ledger should never again treat one as evidence of absence.
 
 ### What Wave 4 changes about the diagnosis
 
@@ -225,8 +273,7 @@ of them the most serious of the audit). **Wave 4: NOT clean** (14 new from one p
 **incomplete** — see the Wave 4 banner; its second pass has not reported).
 
 Three consecutive waves producing **no NEW finding that survives verification** — not three waves
-producing no findings, which a pass could satisfy by re-reporting known items. **Current streak:
-0**, after four waves, and Wave 4 cannot even be scored until its second pass lands.
+producing no findings, which a pass could satisfy by re-reporting known items. **Current streak: 0**, after four waves.
 
 Waves are still finding new, measured, previously unseen defects, and the *kind* is getting worse
 rather than better: Wave 1 found broken invariants, Wave 3 found a test matrix that never drafted
