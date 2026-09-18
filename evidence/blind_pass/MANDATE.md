@@ -101,45 +101,98 @@ single uninterrupted pass where there were two attempts.
 
 ---
 
-## Mandate drift across waves — what each wave actually received
+## What the waves were ACTUALLY sent, and what the shield ACTUALLY was
 
-The header above says a re-run must use "the mandate above, unchanged." That is the rule for
-**repeating** a wave. It is not what happened **between** waves, and the difference has to be on
-the record or this file overstates the comparability of the six passes.
+**This section replaces an earlier one that was wrong.** That earlier text was written from memory
+rather than from the transcripts, and it got three things wrong: it said `evidence/blind_pass/`
+was added to the forbidden list at Wave 4 (it has been excluded since Wave 2), it said Waves 2
+and 3 ran before that directory was committed (they did not — `MANDATE.md` landed at 01:46 and
+Wave 1's two reports at 02:12, and Wave 2 launched at 02:12), and it described the isolation as
+structural when it is not. What follows was read off the six agent transcripts, not recalled.
 
-Waves 2, 3 and 4 are not repeats of Wave 1. They are successive experiments against the same
-frozen target, and each one was given a slightly different instruction because the previous wave
-had changed what "unexplored" means. Two things drifted:
+### 1. The mandate above is Wave 1's, not every wave's
 
-**1. The forbidden-path list grew, because the cheat-sheet grew.** Every wave's own report and
-this ledger become, the moment they are committed, exactly the kind of conclusions document the
-`#52` access control exists to keep out of a pass's hands. A pass that reads Wave 2's findings is
-not an independent confirmation of them.
+From Wave 2 onward the passes received a **rewritten prompt**, not the text in the code block
+above. The differences are substantive, not cosmetic:
 
-| Added at | Path | Why it became forbidden |
+- a **`## SETUP` block** (see §2) telling the pass which tree to audit and how to build it;
+- a pointer to the real-data probe entry points (`build_players_db_from_capture`,
+  `season_projections_from_capture`, `set_league_format(league_format_hint(league))`);
+- a sixth mandate category, **end-to-end behaviour** — "drafting a full roster on a real league
+  shape and looking at what the engine actually produces has been more revealing here than
+  reading any single function";
+- sharper wording in category 2 (invariants pinned where they cannot fail, a test matrix that
+  omits the shape the system is actually used on);
+- from Wave 4, a **steering paragraph** naming four saturated areas and pushing effort elsewhere.
+
+So "identical mandates" holds **within** a wave — both passes in a wave get the same text — and
+does not hold **between** waves. That is the correct reading of the `#52` protocol, but this file
+previously implied the stronger one.
+
+### 2. The target was a MOVING BRANCH HEAD, not the `v1-freeze` tag
+
+The Conditions block above says the target is `v1-freeze`, `6599b1e`. **No wave ever audited that
+tag.** Every pass was pointed at `origin/claude/fantasy-football-control-center-ff6qlu`, fetched
+fresh, whose head advanced between waves as each wave's evidence was committed.
+
+**This turned out not to matter, and that is a measured claim, not a hope.** Everything committed
+between the freeze and now is markdown, `.gitignore`, and the evidence tree:
+
+```
+$ git diff --stat 6599b1e..HEAD -- '*.py' '*.json' 'data/'
+(empty)
+```
+
+Not one line of Python, fixture, or test changed after the freeze. The audited code was
+byte-identical across all four waves, so the waves really were attacking the same artifact. The
+defect is in this document's description of the target, not in the experiment.
+
+### 3. The isolation is INSTRUCTED, not structural — the worktree shields nothing
+
+The Conditions block says worktree isolation "makes read-only structural rather than instructed."
+That is false in a way worth stating precisely, because it is the kind of claim this project
+exists to catch.
+
+The worktree an agent is given sits on `main` (`cf8fa0c`, 2026-09-02) — **508 commits divergent
+and not an ancestor of the branch**. It is not a stale copy of the work; it is a different line.
+It does not contain most of the system, and it contains `POST_AUDIT_PLAN.md`. What it does *not*
+contain — `FREEZE_RECORD.md`, `FREEZE_CHECKLIST.md`, `evidence/` — is absent only because those
+files **did not exist yet in September**. That is an accident of staleness, not a shield.
+
+So every pass has to leave the worktree to audit anything real, and the SETUP block tells it how:
+
+```
+git archive origin/claude/fantasy-football-control-center-ff6qlu | tar -x -C /tmp/audit_tree \
+  --exclude='FREEZE_RECORD.md' --exclude='FREEZE_CHECKLIST.md' --exclude='POST_AUDIT_PLAN.md' \
+  --exclude='evidence/smoke_seats/*' --exclude='evidence/batteries/*' --exclude='evidence/blind_pass/*'
+```
+
+**The pass builds its own shield.** The exclusion is real once applied — but it is applied by the
+audited party's own hand, on instruction, which is exactly what "structural rather than
+instructed" denies.
+
+| Wave | How the pass reached the real tree | Forbidden paths present in it? |
 |---|---|---|
-| Wave 1 | `FREEZE_RECORD.md`, `FREEZE_CHECKLIST.md`, `POST_AUDIT_PLAN.md`, `evidence/smoke_seats/`, `evidence/batteries/` | The original `#52` list — prior-audit conclusions |
-| Wave 4 | `evidence/blind_pass/` (all of it, including this file) | Waves 1–3's reports and the triage ledger now live here |
-| Wave 4 | `.claude/skills/close-register-item/`, `.claude/blind-pass.settings.json` | The register skill names findings by number; the settings file enumerates the forbidden paths, which is itself a map to the answers |
+| 1, pass A | `git archive <branch>` with **no `--exclude` flags at all** | **All of them, readable** |
+| 1, pass B | `git checkout` of the branch head (`64f0830`) — never used an archive | **All of them, readable** |
+| 2, 3, 4 | the `--exclude` recipe above | The six excluded paths absent; `.claude/` paths present |
 
-Waves 2 and 3 ran before `evidence/blind_pass/` was committed, so their smaller list was not a
-weaker shield — there was nothing yet at those paths to shield. All six passes declared no
-contamination, and passes C–F additionally verified the worktree exclusions before reading.
+Wave 1 therefore ran with **no structural shield whatsoever** — instruction only. Both passes
+declared clean, and their transcripts support it: pass B's mentions of the forbidden files are its
+own mandate, a `git log` line, two `ls` listings that merely show the files exist, and its
+contamination statement. Visible is not the same as opened. But Wave 1's independence rests
+entirely on two agents' compliance and their own word for it.
 
-**2. Wave 4 added a steering paragraph, and Waves 1–3 had none.** By the end of Wave 3, four areas
-had been examined by six independent passes: `time_horizon_adj`'s percentile populations, the
-anchor cache key's completeness, `prose_names`' history shield, and the `need_bonus` invariant
-test. A seventh look at those returns a re-report, not a finding — and a re-report cannot advance
-the stopping condition, which counts NEW verified findings. So Wave 4's passes were told those
-four are known and to spend their effort on the comparatively unexplored surface instead: the UI
-and debate layers, `pick_debate.py`, `draft_board_ui.py`, `data_merger.py`'s ingestion and
-reconciliation, `store_io`, the LLM prompt boundary, `league_config`, and end-to-end drafted
-rosters.
+`.claude/skills/close-register-item/` and `.claude/blind-pass.settings.json` have **never** been
+excluded, in any wave. They are named in the Wave 4 prompt's prose and nothing more. And
+`blind-pass.settings.json` is, by its own commit message, "an inert file rather than the project
+default" — it enforces nothing. The `#52` access control is, and has always been, a request.
 
-**What that costs, stated plainly.** Steering makes Wave 4 a weaker test of "is the engine clean"
-than Waves 1–3 were, because a steered pass is no longer sampling the whole codebase uniformly —
-it has been pushed away from the area that has produced the most convergence. A quiet Wave 4 is
-therefore evidence about the *unexplored* surface, not about the engine as a whole, and the
-stopping condition must not be read as though it were the latter. The saturated four are not
-closed by silence in Wave 4; they are closed, if at all, by the six passes that already examined
-them and by the repairs that follow the waves.
+### 4. One pass was launched against the stale tree, and was killed for it
+
+Wave 4's first pass H launch was sent the Wave 1 mandate from the code block above — the SETUP
+block was omitted. It ran ~14 minutes inside the worktree, auditing `cf8fa0c`: the 2026-09-02
+divergent line, not the system. It was stopped and relaunched with pass G's prompt, verbatim, so
+that Wave 4's two passes are mandate-identical as the protocol requires. **Nothing from the first
+launch enters the ledger.** The lesson is the one this section exists for: the mandate that
+matters is the one actually sent, and the only record of that is the transcript.
