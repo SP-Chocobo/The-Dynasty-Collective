@@ -74,8 +74,9 @@
 >    opening line, `#291`'s CI-restoration date in the section that licenses the freeze, and a
 >    nine-row reconciliation table. **Read that file for what the freeze rests on; read this one
 >    for what was left before it.**
-> 2. Cut the freeze marker. See the correction at mechanics step 5 — the owner can now cut a real
->    **tag**; only the agent's credential could not.
+> 2. ~~Cut the freeze marker.~~ **DONE 2026-09-18: tag `v1-freeze` at `6599b1e`**, published as
+>    a GitHub pre-release. The first real tag this repository has had — every earlier marker is a
+>    branch because the agent credential cannot create tags (`#290`), and the owner's can.
 > 3. **`#52`** — the blind adversarial pass. After the freeze, unbriefed, unscored.
 >
 > Everything else open is either BLOCKED-EXTERNAL (`#49`/`#88`/`#143`/`#120`) or Phase 3.

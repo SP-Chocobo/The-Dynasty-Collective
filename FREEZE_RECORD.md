@@ -10,6 +10,23 @@
 
 **Candidate commit:** `b6748f8` on `claude/fantasy-football-control-center-ff6qlu`.
 
+**FROZEN AND MARKED 2026-09-18: tag `v1-freeze` at `6599b1e`**, published as a GitHub
+**pre-release** — deliberately, because `#52` has not run and `#162`'s order is *freeze before
+blind audit*; labelling this production-ready before the adversarial pass would invert the
+sequence, and the repository is public.
+
+The tag is three commits past the candidate named above. **No engine or test code differs
+between them** — `git diff --name-only b6748f8 v1-freeze` returns no `.py` file at all, only this
+record, `FREEZE_CHECKLIST.md`, `POST_AUDIT_PLAN.md`, `DOC_INDEX.md` and one inert config
+(`.claude/blind-pass.settings.json`). So the tree frozen is the tree measured; the extra commits
+are the act of writing this down. **Quote `6599b1e` as the freeze, and `b6748f8` as the commit
+every measurement in §2 was taken against.**
+
+**This is the first real tag this repository has ever had.** Every prior freeze marker is a
+BRANCH, because the agent credential cannot create tags — re-verified this session, a tag push
+fails the same way a branch delete does. The owner's access has no such limit, which `#290`
+established and this tag demonstrates.
+
 ---
 
 ## 1. The one sentence this record exists to prevent anyone skipping

@@ -12913,3 +12913,43 @@ the UI track; or pre-empting `#52`, which stays unbriefed and unscored.
 
 **Next: cut the marker as a TAG (`#290` — the 403 was the agent's credential, not the
 repository), then `#52`.**
+
+## `#293` — THE FREEZE IS CUT: tag `v1-freeze` at `6599b1e`, and it is this repository's FIRST TAG
+
+Published by the owner as a GitHub **pre-release**, deliberately rather than as a normal release.
+Three reasons, and the third is the load-bearing one: the repository is public and a normal
+release is auto-labelled "latest", which reads as production-ready; `FREEZE_RECORD.md` declines
+to license an edge claim and carries `#184` un-repaired; and **`#52` has not run.** `#162`'s
+order is *freeze before blind audit*, so this marker exists precisely to be audited — calling it
+production before that inverts the sequence it was built to respect.
+
+### The marker is a TAG, which has never happened here before
+
+Every prior freeze marker is a BRANCH — `pre-blind-audit` (`#135`), `pre-hull-extraction`
+(`#136`) — and `#135` recorded the reason as *"tag refs are 403"* without ever establishing whose
+403 it was. `#290` established it: **the agent credential, not the repository and not the network.
+Re-verified this session** — a tag push fails the same way a branch delete does. The owner's
+access has no such limit, and this tag is the demonstration.
+
+**Consequence for `#135` and `#136`:** their markers can now be re-cut as real tags and the
+branches retired. Not done, and not urgent — recorded so the next reader knows it is possible
+rather than inheriting the old "tags are impossible here" belief, which was never true of the
+repository itself.
+
+### The tag is three commits past the commit the record names, and that is fine
+
+`FREEZE_RECORD.md` names `b6748f8` as the candidate; the tag sits at `6599b1e`. **No engine or
+test code differs between them** — `git diff --name-only b6748f8 v1-freeze` returns no `.py` file,
+only the record itself, `FREEZE_CHECKLIST.md`, this register, `DOC_INDEX.md`, and one inert
+config (`.claude/blind-pass.settings.json`). The tree frozen is the tree measured; the extra
+commits are the act of writing the freeze down.
+
+Both numbers are kept rather than one being quietly rewritten to match the other: **`6599b1e` is
+the freeze, `b6748f8` is what every measurement was taken against.** Collapsing them would lose
+the distinction, and this register's whole habit is that a dated measurement keeps its own commit.
+
+### What remains
+
+**`#52` alone.** Deny rules are committed at `.claude/blind-pass.settings.json`, inert until
+copied over `.claude/settings.local.json`, with the verification step written into the file
+because a denial that silently failed to apply would be believed.
