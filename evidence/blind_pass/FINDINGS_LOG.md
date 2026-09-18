@@ -314,8 +314,111 @@ Two things survive it, and only these:
    was cut off. Its output was never reported and is not logged.
 
 **Relaunched** with the corrected mandate, otherwise unchanged, after the limit reset. The
-relaunch is Wave 6.
+relaunch is Wave 6. Pass L has reported; pass K is still running.
 
 ---
+
+### Pass L — reported 2026-09-18. Verbatim: `wave6/PASS_L.md`
+
+*Logged as stated by the pass. No verdicts, no novelty calls, no merging.*
+
+**L-01.** `pick_analysis` reports a **measured** zero denial where nothing was measured. The
+2026-09-16 ruling gave survival a third state (no next pick → `survival_probability=None,
+risk_by_team=[]`); `pick_analysis` derives `rivals_considered` from `risk_by_team`, and an empty
+list selects `DENIAL_NO_INTERVENING_RIVAL` — whose own comment says "0.0 is a measurement" and
+which renders as *"no rival had a pick before your next turn"*. At a no-next-pick node there is no
+next turn. Measured at index 299: `survival_basis='no_next_pick', denial_value=0.0,
+denial_basis='no_intervening_rival'`. Hits every seat's final pick (12 of 300) and far earlier for
+any seat that traded late picks. **Survival got a fourth token; denial did not.**
+
+**L-02.** `pick_analysis` computes positional forfeits off **upside-mode curves** under
+`mode="auto"`: the guard is `{} if mode == "upside"`, testing the *requested* string, while
+`draft_room` resolves `"auto"` → upside at round ≥ 15 and whenever no measurable VOR > 0. Measured
+on a 169-pick drain with `mode="auto"`: `AJ Barner TE forfeit=85.71`, `RJ Harvey RB forfeit=37.98`;
+`mode="upside"` at the identical state yields `None` for all. 85.71 becomes 8.6 necessity points.
+Upside-score curves fed to a normaliser calibrated on VOR-scale curves. Affects every `"auto"`
+trajectory from round 15 pick 2 on; the live UI is unaffected because it defaults to balanced.
+
+**L-03.** `draft_counterfactual.compare_trajectory` prices BPA on a different board than the engine
+priced its pick on — `_full_board` calls `compute_draft_board` **vendor-only** while `engine_tav`
+comes from a scoring-aware snapshot, so `regret_vs_bpa` subtracts a vendor-only TAV from a
+vendor+Sleeper one. `config["priced_from"]` is recorded and never checked. Two "by construction"
+claims are also false: `regret_vs_bpa >= 0` fails when the feasibility backstop binds (recorded
+binding 2 of 112 and 2 of 196 picks in real arms), and `upside_rule` is not forwarded, so a
+CROSSING-rule trajectory is compared against ROUND-rule boards.
+
+**L-04.** A CSV with a `source_date` column that is **blank** is dated `NaN`, labelled **declared**,
+and outranks genuinely undated rows. Measured: `source_date repr np.float64(nan) | basis declared`;
+`_negated_date('nan') < _negated_date('')` → True. `upload_batches.parse_as_of` protects only the
+*stated* path; the *declared* path is unvalidated.
+
+**L-05.** `outcome_record.load` collapses "damaged" into "absent" — `except (JSONDecodeError,
+OSError): return None` — so `capture` sees `existing=None` and writes `revisions=[]`, wiping the
+trail. Measured on a truncated record: `weeks()` still lists the week,
+`store_io.unreadable_stores()` is `{}` because `load` bypasses `store_io.read` so the damage guard
+never arms, and `main --list` raises `TypeError: 'NoneType' object is not subscriptable`. The
+module's own guarantee is that "a correction is VISIBLE rather than silent". No test exercises a
+damaged file.
+
+**L-06.** Draft Room session state leaks **across leagues**. `activate_league` resets chat, snapshot
+and merger but none of the `draft_room_*` keys, and nothing ever sets `draft_room_debate_result`,
+`draft_room_last_snapshot` or `draft_room_snapshot_cache` back to `None`. `stamp_is_current`
+compares only `picks_consumed` and `merger.freshest_date` — no league or draft identity. Scenario:
+league A at `2.03` with 14 picks, run the debate, switch to league B also at `2.03` with 14 picks →
+**A's debate renders under B's board with no staleness note**, and A's snapshot feeds B's next diff.
+Read, not measured (needs Streamlit).
+
+**L-07.** The snapshot cache key omits pick **contents** (a commissioner undo + re-pick keeps `len`
+constant), `season_projections` (a re-sync does not invalidate), and any upload dated ≤ the current
+max or blank.
+
+**L-08.** **Mutation testing: three live valuation constants survive their own test corpus at absurd
+values.**
+
+| mutation | tests run | outcome |
+|---|---|---|
+| `NEED_BONUS_PER_FLEX_SHARE = 0.0` | 307 | **all pass** |
+| `NECESSITY_RUN_BONUS = 500.0` | 275 | **all pass** |
+| `TIME_HORIZON_SLOPE = 0.0` | 277 | 1 unrelated `StopIteration` in a fixture search; no assertion about the adjustment fired |
+
+And the flex-share constant is **not dead**: on the real league RB `need_bonus` goes 0.38 → 0.00
+after two RB picks, and **every IDP position's need (0.67) comes entirely from it** — IDP_FLEX is
+flex-only — so zeroing it removes the whole positional-need signal for LB/DL/DB and nothing notices.
+No test file names any of the three constants.
+
+**L-09.** `need_bonus`'s formula contradicts two prose claims: the docstring says "flex demand only
+counts once a team's dedicated slots are already filled", but `flex_remaining = flex_share -
+max(filled - dedicated, 0)` is positive at `filled=0`. Measured on an empty roster: RB 8.38, WR
+8.38, QB 4.85, TE 4.38 against a dedicated-only 8.00/8.00/4.00/4.00.
+
+**L-10.** The reconciliation conflict ledger names the wrong rule: `reason` is computed against
+`ordered[0]`, but `chosen_value` may come from a lower-ranked row when the winner's field is null —
+which is the point of the field-level merge. Measured: ledger records `reason='format_match'` for
+two files with identical format scores, where recency actually decided.
+
+**L-11.** `upload_batches.record` returns a batch id for a batch that was never persisted, because
+`store_io.write` returns silently for a store marked unreadable. The user's **stated as-of date is
+dropped** while the UI reports success, degrading "stated > declared" to "undated loses every tie".
+
+**L-12.** `doc_index` files a document reading *"Nothing in this file is withdrawn"* under
+**WITHDRAWN** — the stem regex `withdraw|retract|⛔` over the first 12 lines, first match wins.
+Measured: 25 WITHDRAWN, with false positives including `evidence/roster_proof/README.md` and a file
+that says its numbers "are current". No negative-phrasing case in the test.
+
+**L-13.** `_recency_weight` prices "no date" as exactly "60 days old" (0.5), so an 89-day-old source
+at 0.36 loses to an undated upload. Pass labelled this opinion-level.
+
+**L-14 (minor/prose).** Stale mtime-fallback prose in two places; `bye_collision`'s `BYE_UNKNOWN`
+claim vs a loop that never emits it, and one token carrying three facts; `depth_ratings.depth_label`
+returning `None` when every peer measures 0.0; `test_term_lifetimes` matching `"bpa"` and
+`"risk_adj"` trivially in raw text; `measurement.counted` treating `NaN` as present; `app.py:1109`
+swallowing every `sync_league`/`get_players` exception with a bare `pass` and no notification.
+
+**Nulls filed by pass L, with method (logged as filed, not adjudicated):** `DataMerger._resolve`
+identity namespaces — **branches enumerated, the exact and alias paths confirmed unguarded**, and a
+real-data measurement of **0 of 1,626** offense queries resolving onto an IDP row, with the pass
+stating plainly it is *"not confident it stays null under a different vendor file"*; `_merge_memo`
+invalidation; `bye_concentration` ratio bounds via the Hungarian solve; `draft_counterfactual.bpa_row`
+`#193` crash genuinely fixed.
 
 <!-- APPEND POINT: each pass's findings go below, in arrival order, unedited afterwards. -->
