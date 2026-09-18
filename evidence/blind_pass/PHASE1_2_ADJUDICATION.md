@@ -6,7 +6,7 @@
 
 | # | invariant | before | after |
 |---|---|---|---|
-| 1 | A player's rookie status cannot be inherited from a namesake | 788 pool players hit the lookup, **58 wrong** | **22 wrong**, all same-namespace; the rest refused rather than guessed |
+| 1 | A player's rookie status cannot be inherited from a namesake | 788 pool players hit the lookup, **58 wrong** | **22 wrong**, all same-namespace; the rest refused rather than guessed. **Residual left open by ruling** |
 | 2 | A normalized name that names two position groups is ranked in **neither** pool | 19 cross-group keys silently collapsed to the first row's group | 19 keys answer `None`; ranked in neither |
 | 3 | A textual match is not an identity | **7 cross-namespace resolutions** returned `matched` and `verified=True` | **0** |
 
@@ -17,23 +17,33 @@ namespace, exposed as a public `identity_namespace()` rather than importing the 
 `_position_group`, so the two position keys in this codebase keep one home each. A key whose rows
 still **disagree** is dropped, not resolved by row order.
 
-**The residual 22 are honest and structural.** Jonathan Taylor and Jmari Taylor are both RB;
-Jordan Love and Jeremiyah Love are both offense. No namespace separates them, so the repair refuses
-them, and refusal falls through to this function's documented rule for a player KTC does not cover.
-Closing the last 22 requires per-player identity — which `years_exp == ROOKIE_YEARS_EXP` already
-provides in `_admits_to_pool`.
+**The residual 22 are honest and structural, and they stay open.** Jonathan Taylor and Jmari
+Taylor are both RB; Jordan Love and Jeremiyah Love are both offense. No namespace separates them,
+so the repair **refuses** them rather than guessing, and refusal falls through to this function's
+documented rule for a player KTC does not cover.
 
-> **DESIGN QUESTION — RULED, 2026-09-18.** There were two definitions of "rookie". The owner ruled
-> for the per-player one: **`years_exp` is authoritative, and the identity-safe KTC flag survives
-> only where Sleeper reports nothing** (42 of 6,595 players carry `years_exp` None).
+**Registered as an explicit open identity issue, not a closed one.** Closing it requires per-player
+identity, which is the design question below. Until that is ruled, 22 pool players have no correct
+rookie answer available and the engine says so by declining rather than by inventing one.
+
+> **OPEN DESIGN QUESTION — explicitly carried forward, NOT resolved here.** There are two
+> definitions of "rookie" in this engine, and the owner has ruled that the choice between them is
+> **not** to be settled inside an identity repair.
 >
-> Measured after the ruling: **718 rookies**, 6,553 players answered by `years_exp`, 42 by the KTC
-> fallback, and **0 answers contradicting `years_exp`**. A rookie draft goes from 95 players to
-> 718 — that is the ruling, not a side effect. A real rookie KeepTradeCut never ranked is still a
-> rookie, and the old behaviour excluded him for no reason beyond a vendor's coverage.
+> The distinction that decides it: *"can this field identify the player without collisions?"* and
+> *"does this field define rookie eligibility correctly?"* are two different questions.
+> `years_exp` answers the first — it is per-player-id and cannot be inherited by a namesake. It
+> does **not** thereby answer the second for every league and use case.
 >
-> This closes the residual 22. The identity class is now complete on this axis: a namesake cannot
-> change a per-player-id fact, so inheritance is impossible by construction rather than by care.
+> **Measured consequence of promoting `years_exp`, recorded so the decision can be made on
+> numbers rather than on which primitive is tidier: 654 players enter the rookie pool and 31
+> leave. A rookie draft goes from 95 players to 718.**
+>
+> That population change is **not implemented**. It was implemented once, briefly, and reverted:
+> a sevenfold change in what a rookie draft contains is precisely the semantic blast radius that
+> needs its own ruling, and bundling it into a collision fix is the boundary violation this audit
+> exists to catch. I conflated the two questions the moment the cleaner primitive was in front of
+> me; the revert is on the record rather than the history being tidied.
 
 **2. Percentiles (`_compute_percentiles`).** `setdefault` → first-row-wins became a set of groups
 per key, resolving to `None` when a key names more than one. A key that names two groups does not
@@ -96,17 +106,25 @@ Marked `@unittest.expectedFailure` with the decomposition in place, because this
 invariant phase and a fix landed here would be measured against a pool that Phases 2–3 are about to
 change again. Editing the assertion to pass is the exact move this audit exists to catch.
 
-## Frozen and adjudicated
+## Frozen — as an identity repair, not as a semantic resolution
 
-Phase 1.2 is closed, and the one open question in it has been ruled (above). Phase 1 as a whole is
-complete: the identity class is repaired at ingestion (1.1) and at every consumer the audit found
-(1.2), with mutation evidence for each.
+**Phase 1.2 is closed as an IDENTITY repair. It is not a final resolution of what "rookie" means.**
+That distinction is the whole adjudication:
 
-**Two owner rulings also taken for the phases ahead**, recorded here so they are not re-litigated:
+- the `58 → 22` reduction is **accepted** as the identity fix;
+- the 22 residual same-namespace collisions are **accepted as unresolved** — refused rather than
+  guessed, and carried as an open identity issue;
+- the `7 → 0` `_resolve` repair is **accepted**;
+- the newly exposed W4-02 displacement inversion stays **marked and deferred** to the invariant
+  phase, repaired nowhere near here;
+- the rookie *population definition* is **carried forward as an explicit open design decision**.
+
+**Two further owner rulings, recorded so they are not re-litigated:**
 
 - **Advance to Phase 2 (provenance)** — the league-upload override boundary and declared-date
-  validation.
+  validation, with the rookie-definition question carried forward rather than silently resolved by
+  implementation.
 - **Absence does not compete on recency.** `_recency_weight` prices an undated source as exactly
   60 days old, so an honestly-dated 89-day-old file loses to an undated upload. Ruled: **a dated
   source always outranks an undated one**, whatever its age, consistent with this codebase's
-  absence contract that "unmeasured" is not a value and must not be assigned one.
+  contract that "unmeasured" is not a value and must not be assigned one.
