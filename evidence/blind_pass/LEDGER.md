@@ -129,10 +129,47 @@ off-by-one). Four separate invariants, four pins that cannot fail. That is a *pa
 accidents, and it is the strongest argument in this ledger against repairing findings one at a
 time.
 
+## Wave 3 — NOT clean, and it found the biggest one
+
+| id | finding | verdict | novelty |
+|---|---|---|---|
+| **W3-01** | **The engine drafts 4–5 KICKERS per roster on the owner's own league.** Found independently by both passes on full multi-round drafts. Every roster legal, so no structural audit fires | **REPRODUCED** (structural cause verified by this session) | **NEW — most serious in the audit** |
+| **W3-02** | Live level → pre-draft anchor is a **discontinuity**: WR drifts 225.49 → 214.06, then snaps back to 225.49 when demand hits 0; top bpa moves 0.00 → −11.43 in one pick | CORROBORATED | **NEW** |
+| **W3-03** | `remaining_starter_demand` **does not reach zero** when every slot is filled — 25.2 phantom slots remain, and which positions flip to the anchor depends on the flex fill mix | CORROBORATED | **NEW** |
+| **W3-04** | `waiting_cost` is `None` for **all 148 QB rows** in superflex — the scarcest position has no waiting cost | CORROBORATED | **NEW** |
+| **W3-05** | `waiting_cost` for K swings 7.27 → 116.75 across adjacent picks, on the position the docstring says it estimates best | CORROBORATED | **NEW** |
+| **W3-06** | Vendor projection `0.0` admitted as measured while Sleeper `0` becomes `None` — same fact, two contracts | CORROBORATED | **NEW** |
+| **W3-07** | SF pace prior yields `survival 0.000` for Josh Allen → **+20 necessity** from a number measured as losing to a constant predictor | CORROBORATED | **NEW** |
+| **W3-08** | `test_cdme_certification.test_tav_never_falls_below_universal_value` says "structurally impossible"; **216 priced rows violate it** on the owner's league | CORROBORATED | **NEW** |
+
+### W3-01 is the finding that reframes the freeze
+
+Verified independently by this session, not taken on the passes' word:
+
+```
+battery arms: 34 | arms with a K slot: 0 | arms with SUPER_FLEX *and* IDP: 0
+owner league:  K True | SUPER_FLEX True | IDP_FLEX 2 | BN 14
+```
+
+`#284` — *34 arms, 5,652 picks, **0 structural findings*** — is the result that licensed the
+freeze. **It never drafted the owner's roster shape on any of three axes.** `run_roster_proof.py`
+and `run_smoke_seats.py` use `build_mock_league` too, which has no K. So `#285`'s quality pass and
+`#289`'s freeze condition were measured on shapes the owner does not play either.
+
+The Gate 1 result is not *wrong* — it is true of what it tested. **Its scope is narrower than
+every document in this repository implies**, and `FREEZE_RECORD.md` §2 needs that qualification
+before it is quoted again.
+
+This also explains a Wave 1 puzzle. Cluster 1 said this repository has no mechanism that
+re-checks an invariant when the population changes. W3-01 is the same disease one level up:
+**no mechanism checks that the test matrix covers the league the owner actually plays.**
+
 ## Stopping condition — status
 
-**Wave 2: NOT clean.** Eight new, several measured on the owner's own league. The counter resets.
+**Wave 1: NOT clean** (9 new). **Wave 2: NOT clean** (8 new). **Wave 3: NOT clean** (8 new, one
+of them the most serious of the audit).
 
 Three consecutive waves producing **no NEW finding that survives verification** — not three waves
-producing no findings, which a pass could satisfy by re-reporting known items. **Current streak:
-0.**
+producing no findings, which a pass could satisfy by re-reporting known items. **Current streak: 0**, after three waves. Waves are still finding new, measured, previously
+unseen defects — and Wave 3's headline was found by both of its passes independently. The process
+is nowhere near convergence, which is itself the most useful thing it has established.
