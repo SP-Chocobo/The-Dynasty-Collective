@@ -831,6 +831,15 @@
         "assertTrue": 1
       }
     },
+    "test_identity_before_dedup.py": {
+      "test_methods": 5,
+      "asserts": {
+        "assertEqual": 3,
+        "assertIsNotNone": 1,
+        "assertNotEqual": 1,
+        "assertTrue": 2
+      }
+    },
     "test_identity_boundary.py": {
       "test_methods": 29,
       "asserts": {

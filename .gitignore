@@ -55,3 +55,4 @@ scratchpad/
 # inside a git repo, which clones cannot resolve. Related to #239: worktree artefacts
 # have caused ref trouble here before.
 .claude/worktrees/
+CDME_v1_adversarial_findings.pdf

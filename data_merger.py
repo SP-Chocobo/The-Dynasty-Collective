@@ -1182,10 +1182,56 @@ def load_all(
         # page listing both "B Robinson" ATL RB1 and an unrelated "B Robinson
         # Jr." far down the board). Within a single file, prefer the better
         # (lower) rank rather than an arbitrary row-order tiebreak.
-        if "rank" in df.columns:
-            df = df.sort_values("rank", na_position="last").drop_duplicates(subset="norm_name", keep="first")
+        #
+        # IDENTITY IS ESTABLISHED BEFORE DEDUPLICATION, NOT RECOVERED AFTER IT. This key was
+        # `norm_name` alone, and a first-initial export collides across positions constantly:
+        # every offense file carries "J Love" RB ARI *and* "J Love" QB GB. The lower-ranked
+        # namesake was deleted from every file, and because that happened HERE -- one stage
+        # before _reconcile_rows builds its position-aware key -- the two guards written for
+        # exactly this (_dedup_by_name_and_position, _drop_contested_identities) never got a
+        # second row to protect. Measured on the committed baseline, 12 files:
+        #
+        #     same norm_name, SAME position                 22   the Jr./Sr. case above
+        #     same norm_name, diff position, DIFFERENT team 31   two different people
+        #     same norm_name, diff position, SAME team       0   (see below)
+        #
+        # Ten real players were deleted from the pool, including Jordan Love -- a startable
+        # QB in a SUPERFLEX league priced at no projection, no trade_value and no rank.
+        #
+        # The key is the RAW position, not _position_group: that namespace is deliberately
+        # coarse (QB and RB are both "offense"), which separates the six IDP casualties and
+        # none of the four offensive ones. And the finer key is safe precisely because that
+        # third row measures zero -- no file lists one multi-eligible person twice at two
+        # positions, so nothing here can split a single player into two rows.
+        if "position" in df.columns:
+            df = df.assign(_ident=df["norm_name"].astype(str) + "|"
+                           + df["position"].astype(str).str.strip().str.upper())
         else:
-            df = df.drop_duplicates(subset="norm_name", keep="first")
+            df = df.assign(_ident=df["norm_name"].astype(str))
+        if "rank" in df.columns:
+            df = df.sort_values("rank", na_position="last").drop_duplicates(subset="_ident", keep="first")
+        else:
+            df = df.drop_duplicates(subset="_ident", keep="first")
+        df = df.drop(columns="_ident")
+
+        # CARRY THE DISTINCTNESS FORWARD, because the stage that merges files cannot re-derive it.
+        #
+        # _dedup_by_name_and_position and _reconcile_rows both key on _position_group, which is
+        # coarse ON PURPOSE -- their own docstrings say so -- precisely so that a genuine RB->WR
+        # reclassification collapses onto one row, and they deliberately exclude team because a
+        # trade is still one person. Both of those are right, and both mean that once the files
+        # are concatenated, "J Love QB GB" and "J Love RB ARI" are indistinguishable from one
+        # reclassified player. Recovering the QB above only to lose the RB below is not a fix.
+        #
+        # What separates the two cases is not position and not team, it is SIMULTANEITY: one
+        # source listing both rows at once is asserting two people, while a reclassification or
+        # a trade only ever yields one row per file. That fact exists here and nowhere later, so
+        # it is stamped here. Empty for every ordinary row, so the coarse key is unchanged for
+        # everyone except the names a source has already told us are contested.
+        if "position" in df.columns and len(df):
+            contested = df["norm_name"].duplicated(keep=False)
+            df = df.assign(_identity_hint=df["position"].astype(str).str.strip().str.upper()
+                           .where(contested, ""))
 
         # The dedup tiebreak below is decided by (source_date, filename), NOT filesystem
         # mtime as this used to read. Every loaded file already carries a source_date -- real,
@@ -1390,9 +1436,26 @@ def _conflict_reason(winner, loser) -> str:
     return "filename"
 
 
-_RECONCILED_IDENTITY_COLUMNS = {"norm_name", "_name_key", "_dedup_key"}
+_RECONCILED_IDENTITY_COLUMNS = {"norm_name", "_name_key", "_dedup_key", "_identity_hint"}
 # The fields worth recording a disagreement about -- the numbers that become a valuation.
 _CONFLICT_TRACKED_FIELDS = {"projection", "proj_3yr", "trade_value", "rank"}
+
+
+def _identity_hint_of(frame: "pd.DataFrame") -> "pd.Series":
+    """The contested-identity discriminator, or an empty string for every ordinary row.
+
+    Stamped in load_all, where a single source listing two same-named rows at two positions is
+    asserting two different people -- the one place that fact is observable. Read here so the
+    coarse _position_group key keeps doing its job (a reclassification still collapses, a trade
+    still collapses) for everyone it was designed for, and stops silently merging the handful of
+    names a source has already flagged as two people.
+
+    Missing column, older frame, or a fixture built by hand: empty, and the key is exactly what
+    it was before this existed.
+    """
+    if "_identity_hint" not in frame.columns:
+        return pd.Series([""] * len(frame), index=frame.index)
+    return frame["_identity_hint"].fillna("").astype(str)
 
 
 def _reconcile_rows(frames: list[pd.DataFrame], conflicts: Optional[list] = None) -> pd.DataFrame:
@@ -1452,7 +1515,9 @@ def _reconcile_rows(frames: list[pd.DataFrame], conflicts: Optional[list] = None
 
     # 2. field-level merge within the chosen basis
     if "position" in combined.columns:
-        combined["_dedup_key"] = combined["norm_name"] + "|" + combined["position"].map(_position_group)
+        combined["_dedup_key"] = (combined["norm_name"] + "|"
+                                  + combined["position"].map(_position_group)
+                                  + "|" + _identity_hint_of(combined))
     else:
         combined["_dedup_key"] = combined["norm_name"]
     value_columns = [c for c in combined.columns if c not in _RECONCILED_IDENTITY_COLUMNS]
@@ -1467,7 +1532,12 @@ def _reconcile_rows(frames: list[pd.DataFrame], conflicts: Optional[list] = None
     for _key, group in grouped.items():
         ordered = _order_by_precedence(group)
         winner = ordered[0]
-        row = {"norm_name": winner["norm_name"]}
+        # _identity_hint rides through on the merged row rather than being consumed here.
+        # _dedup_by_name_and_position runs AFTER this on the reconciled frame and keys on the
+        # same coarse group, so dropping the discriminator at this boundary would hand the two
+        # people straight back to it -- which is exactly what it did on the first attempt.
+        row = {"norm_name": winner["norm_name"],
+               "_identity_hint": str(winner.get("_identity_hint") or "")}
         for column in value_columns:
             chosen_value, chosen_source = None, None
             for candidate in ordered:
@@ -1593,7 +1663,8 @@ def _dedup_by_name_and_position(frames: list[pd.DataFrame], empty: pd.DataFrame)
         return empty.copy()
     combined = pd.concat(frames, ignore_index=True, sort=False)
     if "position" in combined.columns:
-        dedup_key = combined["norm_name"] + "|" + combined["position"].map(_position_group)
+        dedup_key = (combined["norm_name"] + "|" + combined["position"].map(_position_group)
+                     + "|" + _identity_hint_of(combined))
     else:
         dedup_key = combined["norm_name"]
     return combined.assign(_dedup_key=dedup_key).drop_duplicates(
