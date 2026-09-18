@@ -11,6 +11,8 @@ only totals reports green on it.
 """
 
 import json
+import os
+import shutil
 import tempfile
 import unittest
 from pathlib import Path
@@ -61,13 +63,20 @@ class ALooseningIsCaughtTests(_Sandbox):
         after = assertion_floors.scan_module(self.root / "test_thing.py")
         self.assertEqual(before["test_methods"], after["test_methods"])
         self.assertEqual(sum(before["asserts"].values()), sum(after["asserts"].values()))
-        self.assertEqual(self.check(), ["test_thing.py: self.assertEqual 2 -> 1"])
+        found = self.check()
+        self.assertIn("test_thing.py: self.assertEqual 2 -> 1", found)
+        self.assertIn("test_thing.py: test_a self.assertEqual 1 -> 0", found)
 
     def test_a_deleted_assertion_is_caught(self):
         self.given(_STRONG)
         self.record()
         self.given(_STRONG.replace('        self.assertIn("x", "xy")\n', ""))
-        self.assertEqual(self.check(), ["test_thing.py: self.assertIn 1 -> 0"])
+        # Two lines now: the module-level drop and the method-level one that #52 phase 4
+        # added. Asserting BOTH rather than relaxing to a substring -- the finer line is
+        # the repair, and a test that stopped requiring it would let the repair rot.
+        found = self.check()
+        self.assertIn("test_thing.py: self.assertIn 1 -> 0", found)
+        self.assertIn("test_thing.py: test_b self.assertIn 1 -> 0", found)
 
     def test_a_deleted_test_method_is_caught(self):
         self.given(_STRONG)
@@ -128,7 +137,9 @@ class LegitimateChangesDoNotDemandARegenerationTests(_Sandbox):
         self.given(_STRONG.replace("self.assertEqual(other(), 7)", "self.assertIsNotNone(other())"))
         self.record()
         self.given(_STRONG)
-        self.assertEqual(self.check(), ["test_thing.py: self.assertIsNotNone 1 -> 0"])
+        found = self.check()
+        self.assertIn("test_thing.py: self.assertIsNotNone 1 -> 0", found)
+        self.assertIn("test_thing.py: test_b self.assertIsNotNone 1 -> 0", found)
 
 
 class WhatIsCountedTests(_Sandbox):
@@ -172,3 +183,74 @@ class TheRepositorysOwnFloorsAreCurrentTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class ThePromisedGuaranteeIsActuallyKept(unittest.TestCase):
+    """#52 phase 4. This module's docstring promises, without qualification, that "any
+    substitution -- one assertion name swapped for another -- FAILS, either way", and separately
+    states its own limits. An adversarial pass claimed four ways past it; two were the stated
+    limits and two were real. These are the two real ones, each planted rather than described.
+    """
+
+    def setUp(self):
+        self.temp = Path(tempfile.mkdtemp(prefix="floors_"))
+        self.floors = self.temp / "FLOORS.json"
+        self.addCleanup(shutil.rmtree, self.temp, True)
+
+    def _write_module(self, body):
+        (self.temp / "test_planted.py").write_text(body)
+
+    def test_a_substitution_that_nets_out_is_still_caught(self):
+        """THE PLANTED DEFECT. Weaken one assertion and add another of the same name elsewhere
+        in the same edit: every module-level count is unchanged, and the check used to return
+        []. The guarantee was stated absolutely and could not be kept at module granularity."""
+        self._write_module(
+            "import unittest\n"
+            "class T(unittest.TestCase):\n"
+            "    def test_one(self):\n"
+            "        self.assertEqual(1, 1)\n"
+            "    def test_two(self):\n"
+            "        self.assertTrue(True)\n")
+        assertion_floors.write(root=self.temp, path=self.floors)
+        self.assertEqual([], assertion_floors.drops(root=self.temp, path=self.floors),
+                         "the freshly written floors already report a drop")
+        self._write_module(
+            "import unittest\n"
+            "class T(unittest.TestCase):\n"
+            "    def test_one(self):\n"
+            "        self.assertIsNotNone(1)\n"          # weakened here
+            "    def test_two(self):\n"
+            "        self.assertTrue(True)\n"
+            "    def test_three(self):\n"
+            "        self.assertEqual(2, 2)\n")          # replaced here, netting to zero
+        found = assertion_floors.drops(root=self.temp, path=self.floors)
+        self.assertTrue(found,
+                        "a weakened assertion offset by an addition elsewhere passed unseen -- "
+                        "the module's own 'any substitution FAILS' promise is not kept")
+        self.assertTrue(any("test_one" in line for line in found),
+                        f"the drop was reported without naming the method it happened in: {found}")
+
+    def test_a_check_holding_no_floors_does_not_report_success(self):
+        """THE PLANTED DEFECT. `load()` returns {} for a missing or damaged file, deliberately,
+        so `--write` can repair one. That is right for `load` and meant `--check` printed "no
+        guarantee has shrunk (0 modules held to a floor)" and exited 0 while holding nothing."""
+        (self.temp / "ASSERTION_FLOORS.json").write_text("{ this is not json")
+        previous = os.getcwd()
+        os.chdir(self.temp)
+        try:
+            exit_code = assertion_floors.main(["--check"])
+        finally:
+            os.chdir(previous)
+        self.assertEqual(1, exit_code,
+                         "--check exited 0 over a damaged floors file, reporting success while "
+                         "enforcing nothing")
+
+    def test_an_intact_check_still_passes(self):
+        """The control. A check that failed unconditionally would satisfy the test above."""
+        self._write_module(
+            "import unittest\n"
+            "class T(unittest.TestCase):\n"
+            "    def test_one(self):\n"
+            "        self.assertEqual(1, 1)\n")
+        assertion_floors.write(root=self.temp, path=self.floors)
+        self.assertEqual([], assertion_floors.drops(root=self.temp, path=self.floors))

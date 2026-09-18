@@ -111,7 +111,32 @@ def scan_module(path: Path) -> dict:
         name = _is_assertion(node)
         if name:
             asserts[name] += 1
-    return {"test_methods": methods, "asserts": dict(sorted(asserts.items()))}
+
+    # PER-METHOD COUNTS, because the module-level ones cannot see a substitution that nets out.
+    #
+    # The docstring above promises "any substitution -- one assertion name swapped for another --
+    # FAILS, either way". Measured against that promise, it did not: weakening assertEqual to
+    # assertIsNotNone in one test while adding an assertEqual to another test IN THE SAME EDIT
+    # leaves every module-level count unchanged, and `drops()` returned []. The guarantee was
+    # stated without qualification and the check could not keep it.
+    #
+    # A method rename now surfaces as a drop, and that is the intended behaviour rather than a
+    # side effect: a rename IS a substitution of names, the remedy is `--write`, and this
+    # module's stated stance is that a floor moving is deliberate and visible in the diff.
+    by_method: dict[str, dict[str, int]] = {}
+    for node in ast.walk(tree):
+        if not (isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef))
+                and node.name.startswith("test")):
+            continue
+        inner: Counter[str] = Counter()
+        for child in ast.walk(node):
+            name = _is_assertion(child)
+            if name:
+                inner[name] += 1
+        if inner:
+            by_method[node.name] = dict(sorted(inner.items()))
+    return {"test_methods": methods, "asserts": dict(sorted(asserts.items())),
+            "by_method": {k: by_method[k] for k in sorted(by_method)}}
 
 
 def scan(root: Path = Path(".")) -> dict[str, dict]:
@@ -168,6 +193,16 @@ def drops(root: Path = Path("."), path: Path = FLOORS_PATH) -> list[str]:
             have = now.get("asserts", {}).get(name, 0)
             if have < count:
                 lines.append(f"{module}: self.{name} {count} -> {have}")
+        # The same comparison one level down, which is where a netting-out substitution shows.
+        present_methods = now.get("by_method", {})
+        for method, recorded_asserts in sorted(floor.get("by_method", {}).items()):
+            if method not in present_methods:
+                lines.append(f"{module}: test method {method} is gone")
+                continue
+            for name, count in sorted(recorded_asserts.items()):
+                have = present_methods[method].get(name, 0)
+                if have < count:
+                    lines.append(f"{module}: {method} self.{name} {count} -> {have}")
     return lines
 
 
@@ -184,8 +219,18 @@ def main(argv: list[str] | None = None) -> int:
         print(f"wrote {FLOORS_PATH} -- {len(modules)} modules, {total} assertions")
         return 0
     shrank = drops()
+    recorded = load()
+    if not recorded:
+        # AN INTEGRITY CHECK HOLDING NOTHING MUST NOT REPORT SUCCESS. `load()` returns {} for a
+        # missing OR DAMAGED floors file -- deliberately, so `--write` can repair one without
+        # store_io's do-not-overwrite guard blocking the recovery. That is right for `load`, and
+        # it meant `--check` printed "no guarantee has shrunk (0 modules held to a floor)" and
+        # exited 0 over an empty file and an empty tree. Green, holding nothing.
+        print(f"{FLOORS_PATH} records no floors (missing or damaged). This check is holding "
+              "NOTHING, which is not the same as nothing having shrunk. Run --write to "
+              "record the current guarantees.")
+        return 1
     if not shrank:
-        recorded = load()
         print(f"no guarantee has shrunk ({len(recorded)} modules held to a floor)")
         return 0
     print("A guarantee got smaller. If that is deliberate, say why in the commit and rerun with "
