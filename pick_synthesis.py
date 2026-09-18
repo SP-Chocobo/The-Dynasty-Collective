@@ -335,11 +335,35 @@ NECESSITY_DENIAL_WEIGHT = 10.0       # the denial contribution at ONE team-term'
 #: #216 added a FOURTH term, displacement_adj, and it is deliberately NOT here: it is
 #: non-positive by construction (draft_room.displacement_adjustments -- it only ever removes
 #: credit the league anchor gave for a slot the roster cannot offer), so it cannot raise the
-#: sum these caps bound. sum(TEAM_SPECIFIC_CAPS) remains the UPPER bound on
-#: team_acquisition_value - universal_value; the LOWER bound is now open, which matters to the
-#: two consumers below only in that rival_premium can be negative, and both already treat a
-#: non-positive premium as "no premium" (see the `if rival_premium > 0` guard in
-#: compute_pick_necessity and the elevated-context flag's one-sided test).
+#: sum these caps bound.
+#:
+#: THAT PREMISE IS FALSE, AND TWO CONSTANTS BELOW WERE DERIVED FROM IT (#52 phase 6).
+#:
+#: displacement_adj is NOT non-positive. Measured on the owner's own league, pre-draft:
+#: Travis Hunter (WR primary, WR/DB eligible) carries displacement_adj = +79.44, and his
+#: team_acquisition_value - universal_value is 87.82 against a claimed upper bound of 36.0.
+#: The mechanism is a multi-eligible player whose primary-position level exceeds the shared
+#: IDP_FLEX alternative, which lifts rather than removes credit -- the uncapped
+#: multi-eligibility lift ELIGIBILITY_BONUS_MAX was introduced to prevent, arriving through
+#: the fourth term instead.
+#:
+#: So sum(TEAM_SPECIFIC_CAPS) is NOT the upper bound on team_acquisition_value -
+#: universal_value. It is the upper bound on the sum of the THREE CAPPED TERMS, which is a
+#: different and much weaker statement, and the difference is exactly the fourth term's range.
+#: Measured across eight sampled board states: the three capped terms reach 11.73; the full
+#: four-term gap runs -55.27 to 8.33 there, and 87.82 on the pre-draft board where the
+#: multi-eligible case lives. Neither direction is bounded by this tuple.
+#:
+#: WHAT IS AND IS NOT CHANGED HERE. The claim is corrected; the VALUES are not. Re-deriving
+#: NECESSITY_DENIAL_SATURATION or CONTEXT_ELEVATED_THRESHOLD means choosing a new saturation
+#: point and a new threshold for a distribution nobody has argued for -- #56's exact
+#: prohibition, and a valuation change rather than a repair. The honest position is that both
+#: constants are now known to rest on a false premise, the engine's behaviour is unchanged
+#: until someone rules on what should replace them, and the falsity is written down where the
+#: next reader meets the constants rather than in a document they may not open.
+#:
+#: The lower bound was always open, which the original text said, and that matters more than
+#: it appears: at -67.00 the fourth term can subtract five times what any capped term can add.
 TEAM_SPECIFIC_CAPS = (dr.NEED_BONUS_MAX, dr.ELIGIBILITY_BONUS_MAX, dr.DEPTH_EXPOSURE_MAX)
 
 NECESSITY_DENIAL_SATURATION = sum(TEAM_SPECIFIC_CAPS)

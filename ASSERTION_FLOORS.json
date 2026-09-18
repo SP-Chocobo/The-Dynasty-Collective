@@ -8667,10 +8667,10 @@
       }
     },
     "test_probability_bounds.py": {
-      "test_methods": 13,
+      "test_methods": 16,
       "asserts": {
-        "assertAlmostEqual": 2,
-        "assertEqual": 2,
+        "assertAlmostEqual": 3,
+        "assertEqual": 6,
         "assertFalse": 1,
         "assertGreater": 2,
         "assertGreaterEqual": 2,
@@ -8706,6 +8706,16 @@
           "assertEqual": 1,
           "assertGreater": 1,
           "assertIn": 2
+        },
+        "test_the_derived_constants_still_derive_from_the_tuple": {
+          "assertAlmostEqual": 1,
+          "assertEqual": 1
+        },
+        "test_the_fourth_team_term_is_not_in_the_tuple": {
+          "assertEqual": 2
+        },
+        "test_the_fourth_term_has_no_cap_to_be_bounded_by": {
+          "assertEqual": 1
         },
         "test_the_growth_term_cannot_exceed_the_bound_the_other_reader_uses": {
           "assertLessEqual": 1

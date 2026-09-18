@@ -214,3 +214,49 @@ class OnePercentilePairHasOneConversionRate(unittest.TestCase):
         row = pd.Series({"bpa": 0.0, "_has_3yr": True, "_season_proj_pct": 0.0,
                          "_proj3yr_pct": 100.0, "bpa_source": "points_vor_draftsharks"})
         self.assertAlmostEqual(100.0, dr.upside_score(row)["growth_signal"], places=1)
+
+
+class TheCapsTupleBoundsWhatItActuallyBounds(unittest.TestCase):
+    """#52 phase 6 (W4-02). `sum(TEAM_SPECIFIC_CAPS)` was documented as "the UPPER bound on
+    team_acquisition_value - universal_value", and two shipped constants -- the denial
+    saturation point and the elevated-context threshold -- derive from it.
+
+    The premise behind that claim was that `displacement_adj`, the fourth team term, "is
+    non-positive by construction ... so it cannot raise the sum these caps bound". It is not
+    non-positive: a multi-eligible player whose primary-position level exceeds his shared
+    IDP_FLEX alternative gets LIFTED, measured at +79.44 with a gap of 87.82 against a claimed
+    bound of 36.0.
+
+    These tests pin the structural facts, not the values. Re-deriving the two constants means
+    choosing a saturation point and a threshold for a distribution nobody has argued for, which
+    is #56's prohibition and a valuation change rather than a repair.
+    """
+
+    def test_the_fourth_team_term_is_not_in_the_tuple(self):
+        """The structural fact the claim rested on. If displacement_adj is ever added to
+        TEAM_SPECIFIC_CAPS it will need a cap first, and this test should be the thing that
+        makes someone notice."""
+        import pick_synthesis as ps
+        import draft_room as dr
+        self.assertEqual(3, len(ps.TEAM_SPECIFIC_CAPS),
+                         "the caps tuple changed size; the constants derived from it assume "
+                         "three capped terms and the fourth has no cap to contribute")
+        self.assertEqual({dr.NEED_BONUS_MAX, dr.ELIGIBILITY_BONUS_MAX, dr.DEPTH_EXPOSURE_MAX},
+                         set(ps.TEAM_SPECIFIC_CAPS))
+
+    def test_the_fourth_term_has_no_cap_to_be_bounded_by(self):
+        """Why the tuple cannot bound the gap: there is no DISPLACEMENT_*_MAX to add to it."""
+        import draft_room as dr
+        capped = [name for name in dir(dr)
+                  if name.startswith("DISPLACEMENT") and name.endswith("MAX")]
+        self.assertEqual([], capped,
+                         f"displacement_adj now has a cap ({capped}) -- if it is bounded, the "
+                         "caps tuple and everything derived from it should be revisited")
+
+    def test_the_derived_constants_still_derive_from_the_tuple(self):
+        """Not a value assertion -- a wiring assertion. If someone hard-codes 36.0 or 12.0 to
+        make a badge light again, the derivation that makes the falsity traceable is gone."""
+        import pick_synthesis as ps
+        self.assertEqual(sum(ps.TEAM_SPECIFIC_CAPS), ps.NECESSITY_DENIAL_SATURATION)
+        self.assertAlmostEqual(sum(ps.TEAM_SPECIFIC_CAPS) / len(ps.TEAM_SPECIFIC_CAPS),
+                               ps.CONTEXT_ELEVATED_THRESHOLD)
