@@ -3052,7 +3052,20 @@ def compute_draft_board(
 
     num_teams = league.get("total_rosters") or len({p.get("roster_id") for p in picks}) or 1
     demand_source = picks if demand_picks is None else demand_picks
-    current_round = (max((p.get("round") or 1) for p in demand_source) if demand_source else 1)
+    # THE ROUND BEING DRAFTED, not the one already finished (#52 phase 6). This was
+    # `max(round of completed picks)`, which lags by one at every round boundary: with 168 picks
+    # complete in a 12-team draft the next pick is 15.01, and this said 14. That is what decides
+    # `use_upside` below, so mode="auto" switched to upside scoring one pick LATE -- the first
+    # pick of every round after the switch was valued under the other regime, and
+    # draft_simulation._picks_by_mode reported a split (168/132) that the trajectory did not
+    # produce (169/131).
+    #
+    # `n` completed picks means the next is n // teams + 1. num_teams is derived just above from
+    # the league itself, and falls back to the old reading if it cannot be determined at all.
+    current_round = (
+        (len(demand_source) // num_teams + 1) if (demand_source and num_teams)
+        else (max((p.get("round") or 1) for p in demand_source) if demand_source else 1)
+    )
     use_upside = mode == "upside" or (mode == "auto" and current_round >= upside_round)
     # NOTE: a `drafted_counts = _drafted_counts_by_position(demand_source, players_db)` line
     # sat here until an audit sweep for computed-and-discarded locals found it. Commit 05a4abb

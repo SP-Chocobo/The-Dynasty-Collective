@@ -635,6 +635,30 @@ def _forfeit_scale(raw_candidates: list[dict]) -> float:
     return spread if spread > 0 else FORFEIT_SCALE_MAX
 
 
+def _round_being_decided(pick_label, picks: list, league: Optional[dict] = None) -> int:
+    """Which round the pick under consideration is in -- not the one behind it.
+
+    A pick label is "<round>.<pick>", so its first field answers this directly and exactly.
+    Without one, fall back to counting: `n` completed picks means the next is n // teams + 1.
+    Both beat `max(round of completed picks)`, which is off by one at every round boundary and
+    correct everywhere else, which is why it survived.
+    """
+    if isinstance(pick_label, str) and "." in pick_label:
+        head = pick_label.split(".", 1)[0].strip()
+        if head.isdigit() and int(head) > 0:
+            return int(head)
+    if not picks:
+        return 1
+    teams = 0
+    if league:
+        teams = int(league.get("total_rosters") or 0)
+    if not teams:
+        teams = len({p.get("roster_id") for p in picks if p.get("roster_id") is not None})
+    if not teams:
+        return max((p.get("round") or 1) for p in picks)
+    return len(picks) // teams + 1
+
+
 def compute_pick_necessity(raw_candidates: list[dict], round_num: int) -> list[tuple[float, str]]:
     """(pick_necessity, necessity_label) per candidate, in the same order as raw_candidates --
     see the module docstring for the full reasoning behind every term. Each entry in
@@ -1600,7 +1624,20 @@ def build_snapshot(
             "fills_required_slot": bool(row.get("fills_required_slot", False)),
         })
 
-    round_num = (max((p.get("round") or 1) for p in picks) if picks else 1)
+    # THE ROUND OF THE PICK BEING DECIDED, not of the last pick already made (#52 phase 6).
+    #
+    # This was `max(p["round"] for p in picks)`, which is the round of the pick BEHIND you. At
+    # the first pick of round 15 the 168 completed picks top out at round 14, so the snapshot
+    # said 14: `format_snapshot_for_llm` printed "PICK 15.01 (round 14)" to the chairs, and
+    # LATE_ROUND_NECESSITY_CAP -- which applies from LATE_ROUND_THRESHOLD -- skipped the first
+    # pick of every late round. Measured: necessity 68.5 "PREFERRED" at 15.01, capped to 21.0
+    # one pick later at 15.02, with nothing changing in between but the arithmetic.
+    #
+    # `pick_label` is the caller's own statement of which pick this is ("15.01"), so it is the
+    # authority rather than a count that has to be reconstructed. The pick-count fallback is
+    # for a caller that supplies no label, and it is the same question asked a different way:
+    # with `n` picks complete the next one is n // teams + 1.
+    round_num = _round_being_decided(pick_label, picks, league)
     necessity_by_candidate = compute_pick_necessity(raw_candidates, round_num)
     tie_flags = near_tie_flags([c["team_acquisition_value"] for c in raw_candidates])
     path_flags = decision_path_flags(raw_candidates)

@@ -5085,15 +5085,23 @@
       }
     },
     "test_draft_simulation.py": {
-      "test_methods": 14,
+      "test_methods": 17,
       "asserts": {
-        "assertEqual": 17,
-        "assertGreater": 1,
+        "assertEqual": 22,
+        "assertGreater": 3,
         "assertIn": 2,
+        "assertLess": 1,
         "assertNotEqual": 2,
-        "assertRaises": 2
+        "assertRaises": 2,
+        "assertTrue": 1
       },
       "by_method": {
+        "test_a_draft_too_short_to_reach_the_boundary_is_reported_as_all_balanced": {
+          "assertEqual": 1
+        },
+        "test_a_non_auto_mode_is_reported_as_wholly_one_regime": {
+          "assertEqual": 2
+        },
         "test_different_league_format_changes_the_trajectory": {
           "assertNotEqual": 1
         },
@@ -5133,6 +5141,11 @@
         },
         "test_run_trials_reflects_each_configs_own_inputs": {
           "assertEqual": 4
+        },
+        "test_the_reported_balanced_count_is_where_the_board_actually_flips": {
+          "assertEqual": 2,
+          "assertGreater": 2,
+          "assertLess": 1
         },
         "test_twelve_distinct_chairs_all_pick": {
           "assertEqual": 2

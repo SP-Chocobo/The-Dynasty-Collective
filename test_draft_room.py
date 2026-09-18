@@ -2138,9 +2138,15 @@ class CalibrationConstantsDoNotDriftSilentlyTests(unittest.TestCase):
         }
 
         def board_mode(round_no):
+            # round_no is the round BEING DECIDED, so the board it is given has the
+            # PRECEDING rounds complete -- round 15 is decided off 14 finished rounds, not
+            # 15. This fixture used to build 8 * round_no picks and call that round_no,
+            # which is the same off-by-one the board itself carried: reading the count of
+            # completed rounds as the current round. Both are corrected together; the claim
+            # the two assertions below make is unchanged.
             picks = [
                 {"pick_no": i + 1, "round": i // 8 + 1, "roster_id": str(i % 8 + 1), "player_id": pid}
-                for i, pid in enumerate(list(db)[:8 * round_no])
+                for i, pid in enumerate(list(db)[:8 * (round_no - 1)])
             ]
             rows = dr.compute_draft_board(
                 merger, db, picks, my_roster_id="1", league=league, mode="auto",

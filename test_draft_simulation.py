@@ -24,7 +24,9 @@ import unittest
 import data_merger as dm
 import draft_room as dr
 import draft_strategy as ds
-from draft_simulation import DraftTrajectory, PickRecord, run_trials, simulate_full_draft
+from draft_simulation import (
+    DraftTrajectory, PickRecord, _picks_by_mode, run_trials, simulate_full_draft,
+)
 
 
 def _build_pool_players_db(positions=("QB", "RB", "WR", "TE")):
@@ -178,6 +180,81 @@ class NoMutationTests(unittest.TestCase):
 
     def test_does_not_mutate_players_db(self):
         self.assertEqual(self.players_db, self.players_db_before)
+
+
+class ReportedModeSplitMatchesTheBoardTests(unittest.TestCase):
+    """_picks_by_mode and compute_draft_board must locate the SAME upside boundary.
+
+    This harness reports `picks_by_mode` into the artifact a reader uses to know what they are
+    comparing, but it does not observe the boundary -- it recomputes it from
+    UPSIDE_MODE_DEFAULT_ROUND independently of the board that actually applies it. Two
+    derivations of one number is two chances to be wrong, and for the whole life of the
+    off-by-one they WERE wrong relative to each other: the board treated the count of COMPLETED
+    rounds as the current round, so it stayed balanced for one pick longer than reported
+    (169/131 against a reported 168/132 on a 12x25). Neither side's own tests could see it,
+    because nothing asked them the same question.
+
+    So ask it here. The boundary is the only thing worth pinning -- given `balanced` completed
+    picks the board must already be in upside, and one pick earlier it must not be.
+    """
+
+    @classmethod
+    def setUpClass(cls):
+        cls.merger, cls.players_db = _build_pool_players_db(("QB", "RB", "WR", "TE"))
+        cls.teams = 8
+        cls.league = dr.build_mock_league(
+            teams=cls.teams, superflex=False, scoring="ppr", te_premium=False, dynasty=True,
+        )
+
+    def _board_mode_after(self, completed: int):
+        picks = [
+            {"pick_no": i + 1, "round": i // self.teams + 1,
+             "roster_id": str(i % self.teams + 1), "player_id": pid}
+            for i, pid in enumerate(list(self.players_db)[:completed])
+        ]
+        rows = dr.compute_draft_board(
+            self.merger, self.players_db, picks,
+            my_roster_id="1", league=self.league, mode="auto",
+        )
+        self.assertTrue(rows, "empty board -- the fixture ran out of players, not a result")
+        return rows[0]["mode"]
+
+    def test_the_reported_balanced_count_is_where_the_board_actually_flips(self):
+        total = self.teams * (dr.UPSIDE_MODE_DEFAULT_ROUND + 2)
+        split = _picks_by_mode("auto", total, self.teams)
+        balanced = split["balanced"]
+        # Non-vacuous on both sides, or the two assertions below prove nothing.
+        self.assertGreater(balanced, 0)
+        self.assertGreater(split["upside"], 0)
+        self.assertLess(balanced, len(self.players_db))
+
+        self.assertEqual(
+            self._board_mode_after(balanced - 1), "balanced",
+            f"the board was already in upside with {balanced - 1} picks complete, but "
+            f"picks_by_mode reports {balanced} balanced picks -- the artifact is describing a "
+            f"split the draft did not produce",
+        )
+        self.assertEqual(
+            self._board_mode_after(balanced), "upside",
+            f"the board was still balanced with {balanced} picks complete, so it produced "
+            f"{balanced + 1} or more balanced picks against a reported {balanced}",
+        )
+
+    def test_a_non_auto_mode_is_reported_as_wholly_one_regime(self):
+        # The auto boundary is the interesting case, but the degenerate ones are what make the
+        # reported numbers add up, and an off-by-one here would be invisible in the artifact.
+        for mode, expected in (("upside", "upside"), ("balanced", "balanced")):
+            with self.subTest(mode=mode):
+                split = _picks_by_mode(mode, 96, 8)
+                self.assertEqual(split[expected], 96)
+                self.assertEqual(sum(split.values()), 96)
+
+    def test_a_draft_too_short_to_reach_the_boundary_is_reported_as_all_balanced(self):
+        # (UPSIDE_MODE_DEFAULT_ROUND - 1) * num_teams exceeds total_picks here, and the clamp is
+        # the only thing keeping the reported balanced count from exceeding the draft itself.
+        short = 8 * (dr.UPSIDE_MODE_DEFAULT_ROUND - 3)
+        split = _picks_by_mode("auto", short, 8)
+        self.assertEqual(split, {"balanced": short, "upside": 0})
 
 
 class DraftTrajectoryShapeTests(unittest.TestCase):
