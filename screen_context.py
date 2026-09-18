@@ -27,6 +27,7 @@ from typing import Optional, Sequence
 
 import design_system
 import player_universe
+import pick_synthesis as ps
 from pick_synthesis import PickSnapshot
 
 # The two Debate-labeled controls that can appear on the same screen (Draft Room) must never
@@ -117,8 +118,22 @@ def build_draft_room_context(snap: PickSnapshot) -> ScreenContext:
     shown = snap.candidates[:_MAX_CANDIDATES_IN_CONTEXT]
     lines = []
     for c in shown:
-        survival = f"{round(c.survival_probability * 100)}%" if c.survival_probability is not None else "unknown"
-        # Guarded for the same reason `survival` is on the line above: an unpriced candidate
+        # THE PROPAGATION RULE (#52 phase 7.1). This seeds a question box A PERSON READS, so it
+        # is a presentation boundary and asks the one question every such boundary asks. It used
+        # to print "survival 31%" unconditionally -- the withheld estimate, in the surface
+        # furthest from the gate that withholds it.
+        #
+        # What replaces it is the quantity that IS true, which is the same substitution the
+        # Draft Room and the chair prompts make: the COUNT of picks before the next turn.
+        # "11 picks until your turn" is a fact; "62% survival" is an estimate that lost to a
+        # constant predictor on two arms.
+        if "survival_probability" in ps.withheld_fields():
+            survival = (f"{c.intervening_picks} picks until your turn"
+                        if c.intervening_picks is not None else "pick count unknown")
+        else:
+            survival = (f"survival {round(c.survival_probability * 100)}%"
+                        if c.survival_probability is not None else "survival unknown")
+        # Guarded for the same reason the line above is: an unpriced candidate
         # reaches the TOP of this list, not the bottom -- #154's feasibility backstop sorts a
         # required-slot candidate ahead of final_score, and this builder formats the first
         # _MAX_CANDIDATES_IN_CONTEXT of them.
@@ -127,7 +142,7 @@ def build_draft_room_context(snap: PickSnapshot) -> ScreenContext:
         tav = (f"{c.team_acquisition_value:.0f} {design_system.VALUE_UNIT_SHORT}"
                if c.team_acquisition_value is not None else "unpriced")
         lines.append(f"{c.name} ({c.position}) — {c.necessity_label}, acquisition value {tav}, "
-                     f"survival {survival}")
+                     f"{survival}")
     remaining = len(snap.candidates) - len(shown)
     if remaining > 0:
         lines.append(f"...and {remaining} more candidate(s) in the current pool/scope.")

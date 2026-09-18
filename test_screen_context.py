@@ -3,7 +3,9 @@ reshaping of already-computed arguments, and that to_prompt_seed never drops or 
 evidence a surface handed over."""
 
 import unittest
+from unittest import mock
 
+import pick_synthesis as ps
 from pick_synthesis import CandidateSnapshot, PickSnapshot
 from screen_context import (
     DRAFT_ROOM_PICK_DEBATE_HELP, UNIVERSAL_DEBATE_HELP,
@@ -174,14 +176,41 @@ class BuildDraftRoomContextTests(unittest.TestCase):
         self.assertIn("MUST TAKE", ctx.evidence)
         self.assertIn("97", ctx.evidence)
 
-    def test_survival_probability_rendered_as_a_percent(self):
+    def test_the_withheld_survival_estimate_does_not_reach_the_seed(self):
+        """INVERTED (#52 phase 7.1). This asserted `31%` appears in the seed, and it did --
+        unconditionally, in the surface furthest from the gate that withholds it. The seed feeds
+        a question box A PERSON READS, so it is a presentation boundary like any other, and it
+        was the one that never asked.
+
+        The claim this test makes -- the seed carries a real availability signal per candidate --
+        is right and is kept. What changed is WHICH signal: the measured count of picks before
+        the next turn, which is the same substitution the Draft Room and the chair prompts
+        already make. "11 picks until your turn" is a fact; "31% survival" is an estimate that
+        lost to a constant predictor on two arms."""
         c = _candidate(survival_probability=0.31)
         ctx = build_draft_room_context(_snapshot([c]))
+        self.assertNotIn("31%", ctx.evidence)
+        self.assertIn("picks until your turn", ctx.evidence)
+
+    def test_the_estimate_DOES_reach_the_seed_once_it_is_presentable(self):
+        """Non-vacuity, and the forward check: the seed reads the policy rather than having the
+        number removed from it, so the day calibration passes it comes back with no edit here."""
+        c = _candidate(survival_probability=0.31)
+        with mock.patch.object(ps, "SURVIVAL_IS_CALIBRATED", True):
+            ctx = build_draft_room_context(_snapshot([c]))
         self.assertIn("31%", ctx.evidence)
 
-    def test_missing_survival_probability_reads_as_unknown_not_a_crash(self):
-        c = _candidate(survival_probability=None)
+    def test_a_missing_pick_count_reads_as_unknown_not_a_crash(self):
+        """The absence contract on the quantity that replaced it (#187): a candidate with no
+        intervening_picks says so, rather than rendering a bare number or blowing up."""
+        c = _candidate(survival_probability=None, intervening_picks=None)
         ctx = build_draft_room_context(_snapshot([c]))
+        self.assertIn("unknown", ctx.evidence)
+
+    def test_a_missing_survival_estimate_is_still_not_a_crash_when_presentable(self):
+        c = _candidate(survival_probability=None)
+        with mock.patch.object(ps, "SURVIVAL_IS_CALIBRATED", True):
+            ctx = build_draft_room_context(_snapshot([c]))
         self.assertIn("unknown", ctx.evidence)
 
     def test_empty_candidates_reads_as_none_available_not_blank(self):

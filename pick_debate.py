@@ -61,6 +61,7 @@ from llm_engine import (
     CLAUDE_MODEL, GEMINI_MODEL, OPENAI_MODEL, MAX_TOKENS,
     UNAVAILABLE_REPORT, _report_for_handoff,
 )
+import pick_synthesis as ps
 from pick_synthesis import (ABSENCE_KIND_LABELS,
                             CandidateSnapshot, PickSnapshot, DENIAL_BASIS_LABELS,
                             DISPLACEMENT_BASIS_LABELS, DISPLACEMENT_MEASURED,
@@ -170,12 +171,51 @@ def _call_openai(system_prompt: str, user_prompt: str, api_key: Optional[str] = 
 PROVIDER_CALLERS = {"claude": _call_claude, "gemini": _call_gemini, "openai": _call_openai}
 
 
+#: THE SURVIVAL CLAUSE THESE PROMPTS CARRY, DERIVED FROM THE POLICY (#52 phase 7.1).
+#:
+#: All three prompts listed survival_probability, opportunity_cost and expected_value_of_waiting
+#: among "real, already-computed numbers", and the Caller's own output template offered
+#: "19% survival with a QB run detected" as a worked KEY FACTOR -- while the evidence block
+#: beneath tells the same model the estimate is WITHHELD and not to reconstruct one. A prompt
+#: that names a number, demonstrates citing it, and then refuses to supply it is not a guard; it
+#: is an invitation to fabricate, aimed at the one participant that cannot check.
+#:
+#: Built from withheld_fields() rather than edited, for the reason everything else in this repair
+#: is: the day SURVIVAL_IS_CALIBRATED flips, a hand-edited prompt goes stale silently and this
+#: one does not. Interpolated at import, so the three constants stay constants and every caller
+#: and test that reads them is unaffected.
+def _survival_clause() -> str:
+    if "survival_probability" not in ps.withheld_fields():
+        return ("survival_probability (the odds this player is still available at the user's "
+                "next pick), opportunity_cost (expected value lost if he doesn't survive), "
+                "expected_value_of_waiting (the flip side -- what you'd expect to keep if you "
+                "pass and gamble)")
+    return ("intervening_picks (the COUNT of picks before the user's next selection -- a "
+            "measured fact, and the only availability quantity you are given: no survival "
+            "probability, opportunity cost or expected-value-of-waiting figure is supplied for "
+            "any candidate, they are WITHHELD because the estimate lost to a constant predictor "
+            "on two independent arms, and you must not reconstruct or estimate one)")
+
+
+#: The KEY FACTOR example the Caller is shown. It demonstrated citing the withheld number.
+def _disagree_example() -> str:
+    """The term the Caller is shown as an example of something to DISAGREE with. Naming a
+    withheld field here is the same invitation in a quieter place."""
+    if "survival_probability" not in ps.withheld_fields():
+        return "survival_probability"
+    return "team_acquisition_value"
+
+
+def _key_factor_example() -> str:
+    if "survival_probability" not in ps.withheld_fields():
+        return "19% survival with a QB run detected and a HIGH positional cliff"
+    return "only 2 picks until your next turn with a QB run detected and a HIGH positional cliff"
+
+
 STRATEGIST_SYSTEM_PROMPT = """You are the Draft Strategist for a live fantasy football draft, arguing for the
 correct action THIS PICK. You are given a frozen snapshot of real, already-computed numbers -- universal_value
 (position-agnostic player quality), team_acquisition_value (universal_value plus this specific roster's own need,
-lineup-eligibility and depth-exposure terms), survival_probability (the odds this player is still available at the user's next
-pick), opportunity_cost (expected value lost if he doesn't survive), expected_value_of_waiting (the flip side --
-what you'd expect to keep if you pass and gamble), denial_value (what the likeliest intervening opponent would
+lineup-eligibility and depth-exposure terms), {survival_clause}, denial_value (what the likeliest intervening opponent would
 gain from him), positional_cliff (whether a real, computed gap sits between this player and the next-best
 remaining player at his position), and pick_necessity (0-100, NOT another value score -- it answers "how badly do
 I need to make this selection right now," and 100 means "no reasonable alternative exists," not "best player").
@@ -210,7 +250,7 @@ SKEPTIC_SYSTEM_PROMPT = """You are the Draft Skeptic for a live fantasy football
 frozen snapshot of real numbers the Strategist saw, plus the Strategist's own case built from them. Your job is to
 pressure-test that case, not restate it.
 
-Look specifically for: whether the survival model's own assumptions actually hold here (a detected positional run
+Look specifically for: whether the availability assumptions you were actually given hold here (a detected positional run
 is a real signal from recent picks, not a certainty -- would this read differ without it?), whether a roster-fit
 concern the numbers can't fully capture is being glossed over (these numbers don't know about bye weeks, a
 player's specific injury history, or a personality clash with the rest of the roster -- say so if something like
@@ -229,8 +269,8 @@ finding the strongest real counter-argument. Be concise."""
 
 CALLER_SYSTEM_PROMPT = """You are the Draft Caller for a live fantasy football draft -- the final synthesizer
 between a Strategist's numeric case and a Skeptic's pressure test, both reasoning over the same frozen snapshot of
-real, already-computed numbers (universal_value, team_acquisition_value, survival_probability, opportunity_cost,
-expected_value_of_waiting, denial_value, positional_cliff, and a market-consensus rank and tier from
+real, already-computed numbers (universal_value, team_acquisition_value, {survival_clause}, denial_value,
+positional_cliff, and a market-consensus rank and tier from
 KeepTradeCut's real crowd data where available). Give ONE clear, actionable recommendation: which candidate to take
 right now, and why -- explicitly answering "what do I realistically give up if I don't take him now" using the
 actual numbers you were given, not a vague hedge. If your recommendation sits well below where market consensus
@@ -249,8 +289,7 @@ WHY: <the deciding case for this pick, one to three sentences, referencing the a
 "here's why X is right even though he isn't the top-ranked player" reasoning the Strategist built>
 DISSENT: <the strongest real counter-argument still standing after the debate -- omit only if there is genuinely
 none>
-KEY FACTOR: <the single number or combination that most drove this call, e.g. "19% survival with a QB run
-detected and a HIGH positional cliff">
+KEY FACTOR: <the single number or combination that most drove this call, e.g. "{key_factor_example}">
 
 CONFIDENCE is never a percentage -- percentages from an LLM are fake precision. Unanimous means the Strategist and
 Skeptic substantively agree; Lean means the Skeptic raised a real concern but the Strategist's case still holds;
@@ -259,10 +298,31 @@ Split means there's a genuine, unresolved disagreement between them and the user
 If either analyst flagged (or you believe) that a specific input number looks wrong, add one line per such flag
 (after the block above):
 
-DISAGREE: <the specific term, e.g. "survival_probability for Player X"> | <why you think it's wrong, one line>
+DISAGREE: <the specific term, e.g. "{disagree_example} for Player X"> | <why you think it's wrong, one line>
 
 Never invent a disagreement that wasn't actually raised or reasoned through in the debate -- omit this entirely
 when there's nothing to flag. Be decisive."""
+
+
+#: INTERPOLATED ONCE, AT IMPORT. `.replace` and not `.format`, because these prompt bodies carry
+#: literal braces of their own and a format call would either choke on them or silently consume
+#: them. The constants stay constants, so every caller and test that reads them is untouched.
+for _name in ("STRATEGIST_SYSTEM_PROMPT", "SKEPTIC_SYSTEM_PROMPT", "CALLER_SYSTEM_PROMPT"):
+    globals()[_name] = (
+        globals()[_name]
+        .replace("{survival_clause}", _survival_clause())
+        .replace("{key_factor_example}", _key_factor_example())
+        .replace("{disagree_example}", _disagree_example())
+    )
+del _name
+
+#: Non-vacuity, checked at import rather than left to a test: an unreplaced placeholder would
+#: ship a literal "{survival_clause}" to a model, and a renamed token would silently stop being
+#: substituted while the prompt still read plausibly.
+for _prompt in (STRATEGIST_SYSTEM_PROMPT, SKEPTIC_SYSTEM_PROMPT, CALLER_SYSTEM_PROMPT):
+    assert "{survival_clause}" not in _prompt and "{key_factor_example}" not in _prompt \
+        and "{disagree_example}" not in _prompt, "a prompt placeholder was not substituted"
+del _prompt
 
 
 def _format_probability(value: Optional[float]) -> str:

@@ -117,6 +117,40 @@ def _python_rendered_figure_sites() -> list[str]:
     )
 
 
+def _surfaces_consulting_the_withholding_policy() -> list[str]:
+    """Call sites of `withheld_fields()` / `survival_is_presentable()` -- the surfaces that ASK
+    whether a quantity may be shown.
+
+    Counted in BOTH directions and each means something different. A DROP is a surface that
+    stopped asking, which is the regression this phase repaired four times over. A RISE is a new
+    surface wired correctly, and it needs a case in test_withheld_propagation.py -- the census
+    is what prompts that, since a new boundary with no test is a guard that silently stops
+    covering the thing it names.
+
+    It cannot, by construction, see a surface that never asks at all. That is what the guard
+    file's own boundary tests are for; this counts the wiring, they count the behaviour.
+    """
+    import ast
+    import pathlib
+    names = {"withheld_fields", "survival_is_presentable"}
+    out = []
+    for path in sorted(pathlib.Path(".").glob("*.py")):
+        if path.name.startswith("test_"):
+            continue
+        try:
+            tree = ast.parse(path.read_text(encoding="utf-8"))
+        except (SyntaxError, UnicodeDecodeError):
+            continue
+        for node in ast.walk(tree):
+            if not isinstance(node, ast.Call):
+                continue
+            func = node.func
+            name = func.attr if isinstance(func, ast.Attribute) else getattr(func, "id", None)
+            if name in names:
+                out.append(f"{path.name}:{node.lineno}:{name}")
+    return out
+
+
 REGISTRY: tuple[Invariant, ...] = (
     Invariant(
         name="team_acquisition_value is universal_value plus the team-specific terms",
@@ -196,6 +230,26 @@ REGISTRY: tuple[Invariant, ...] = (
             ".test_python_and_the_browser_round_the_boundary_class_identically",
             "test_display_contract_boundary.TheTwoUnitsAreToldApartTests"
             ".test_the_format_specs_are_still_identical_which_is_now_fine",
+        ),
+    ),
+    Invariant(
+        name="a withheld quantity does not reach a person on any surface",
+        claim="pick_synthesis.withheld_fields() names what may not be presented; every "
+              "presentation boundary filters through it, including deltas -- a delta of a "
+              "withheld quantity gives a reader its direction and its size.",
+        population="Surfaces that CONSULT the policy. Four did not and each leaked the whole "
+                   "family: the diff, the chair prompt, the three system prompts (which named "
+                   "it among 'real, already-computed numbers' and demonstrated citing it), and "
+                   "the Prytaneum seed. A drop here is a surface that stopped asking; a rise is "
+                   "a new one that needs a case in test_withheld_propagation.py.",
+        members=_surfaces_consulting_the_withholding_policy,
+        census=8,
+        pinned_by=(
+            "test_withheld_propagation.TheDiffDoesNotReportAWithheldDeltaTests",
+            "test_withheld_propagation.TheChairPromptDoesNotCarryItTests",
+            "test_withheld_propagation.TheSystemPromptsDoNotInviteItTests",
+            "test_withheld_propagation.ThePrytaneumSeedDoesNotCarryItTests",
+            "test_withheld_propagation.TheBoardPayloadShipsThePolicyWithTheValueTests",
         ),
     ),
 )

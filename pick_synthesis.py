@@ -585,6 +585,39 @@ def survival_is_presentable() -> bool:
     return SURVIVAL_IS_CALIBRATED
 
 
+def withheld_fields() -> frozenset:
+    """Every field a surface must NOT present right now -- the one question every presentation
+    boundary asks, and the whole of the propagation rule (#52 phase 7.1).
+
+    THE RULE. A quantity withheld from presentation must not reach a person, on any surface,
+    under any name, as itself or as a delta of itself. `SURVIVAL_DERIVED_FIELDS` has always been
+    the vocabulary, and its own docstring already said it exists "so a surface cannot suppress
+    the headline number and keep its derivatives" -- but nothing made a surface ASK. Four did
+    not, and each leaked the whole family:
+
+      * `diff_snapshots` listed all three in `_DIFF_FIELDS` and emitted their deltas;
+      * `format_snapshot_for_llm` printed those deltas into WHAT CHANGED, under their human
+        labels, directly beneath the block telling the model the estimate is WITHHELD;
+      * the three system prompts named the family among "real, already-computed numbers" and
+        offered "19% survival with a QB run detected" as a worked example of a KEY FACTOR;
+      * `screen_context` printed "survival NN%" into the Prytaneum seed.
+
+    `draft_board_ui` is the surface that got it right and is the model for this: it asks, keeps
+    the family together, ships the POLICY beside the value so the renderer can say "not shown"
+    rather than the absence contract's "not measured", and redacts at render. A boundary that
+    calls this function is doing what that one does by hand.
+
+    EMPTY, NOT ABSENT, when the numbers are presentable: callers filter against this set, so the
+    calibrated case is the empty set and every call site keeps exactly one shape.
+
+    NOT a secrecy boundary and not the absence contract. The numbers are real and still computed
+    -- `estimate_survival` produces them, the engine still reasons with them upstream, and the
+    evidence files keep them. What is withheld is the CLAIM, because two arms measured it losing
+    to a constant predictor and a person reading "62%" has no way to know that.
+    """
+    return frozenset() if survival_is_presentable() else frozenset(SURVIVAL_DERIVED_FIELDS)
+
+
 #: Where the claim above comes from, so a reader can check it rather than trust it.
 SURVIVAL_CALIBRATION_EVIDENCE = {
     "smoke": "evidence/survival_calibration/calibration.json",
@@ -1771,11 +1804,21 @@ def snapshot_is_current(snapshot: PickSnapshot, picks: list[dict], merger: DataM
         snapshot.picks_consumed, snapshot.data_freshest_date, picks, merger)
 
 
+#: Every per-candidate quantity a diff can report a delta for. The team-specific terms come from
+#: draft_room's own tuple rather than being repeated here (#126) -- this list had all four spelled
+#: out, which is a second statement of what they are, and the audit's sharpest finding was a
+#: fourth term arriving without the places that enumerate them noticing.
+#:
+#: WITHHELD FIELDS ARE NOT REMOVED FROM THIS LIST, they are filtered at diff time by
+#: withheld_fields(). The distinction matters: this names what a diff CAN report, which does not
+#: change when a calibration verdict does, and the filter is read once per diff so the day
+#: SURVIVAL_IS_CALIBRATED flips the deltas come back with no edit here.
 _DIFF_FIELDS = (
-    "universal_value", "need_bonus", "eligibility_bonus", "depth_exposure", "displacement_adj",
-    "team_acquisition_value",
-    "survival_probability", "opportunity_cost", "expected_value_of_waiting", "denial_value",
-    "rival_premium", "positional_forfeit", "pick_necessity",
+    ("universal_value",) + tuple(dr.TEAM_SPECIFIC_TERMS) + (
+        "team_acquisition_value",
+        "survival_probability", "opportunity_cost", "expected_value_of_waiting", "denial_value",
+        "rival_premium", "positional_forfeit", "pick_necessity",
+    )
 )
 
 
@@ -1806,7 +1849,14 @@ def diff_snapshots(previous: PickSnapshot, current: PickSnapshot) -> list[dict]:
             diffs.append({"player_id": player_id, "name": prev_c.name, "entered": False, "rank": prev_rank[player_id]})
             continue
         deltas = {}
-        for attr in _DIFF_FIELDS:
+        # THE PROPAGATION RULE, applied (#52 phase 7.1). A delta of a withheld quantity IS that
+        # quantity -- `survival_probability: -0.08` printed beneath a block saying the estimate
+        # is withheld tells a reader both the direction and the size of the thing being refused.
+        # Measured before this line: a 1.01 -> 1.02 diff emitted survival_probability -0.08 and
+        # opportunity_cost +17.22 into the chairs' WHAT CHANGED section and the Draft Room's own
+        # diff drawer, which labels them "Survival probability" and "Opportunity cost".
+        reportable = [attr for attr in _DIFF_FIELDS if attr not in withheld_fields()]
+        for attr in reportable:
             prev_val, curr_val = getattr(prev_c, attr), getattr(curr_c, attr)
             if prev_val is None or curr_val is None:
                 continue

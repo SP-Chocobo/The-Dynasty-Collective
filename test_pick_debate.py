@@ -8,10 +8,12 @@ numbers, never parsed out of the LLM's own prose, even when that prose is wrong.
 
 import unittest
 from pathlib import Path
+from unittest import mock
 
 _HERE = Path(__file__).parent
 
 import pick_debate as pd
+import pick_synthesis as ps
 from pick_synthesis import CandidateSnapshot, PickSnapshot
 
 
@@ -231,12 +233,54 @@ class DebatePickOrchestrationTests(unittest.TestCase):
             return "report"
 
         pd.PROVIDER_CALLERS.update({"claude": _caller, "gemini": _caller, "openai": _caller})
-        before = _snapshot([_candidate("1", "Brock Purdy", survival_probability=0.8)])
-        after = _snapshot([_candidate("1", "Brock Purdy", survival_probability=0.2)])
+        # THE CARRIER WAS THE WITHHELD FIELD, AND THAT WAS THE DEFECT (#52 phase 7.1, W4-17).
+        #
+        # This built two snapshots differing ONLY in survival_probability (0.8 -> 0.2) and
+        # asserted the delta reached the chair prompt -- while `test_includes_every_candidates_
+        # real_numbers` fifty lines above asserts survival is ABSENT from the candidate block.
+        # Two contradictory contracts in one file, and production implemented the second: a
+        # delta of a withheld quantity gives a reader its direction and its size, printed
+        # directly beneath the block saying the estimate is withheld.
+        #
+        # The CLAIM this test makes -- a real change between snapshots propagates into the
+        # evidence the chairs see -- is correct and untouched. Only the carrier changes, to a
+        # field that may actually be presented. The withheld case is pinned as its own contract
+        # in test_withheld_propagation.py, where it belongs.
+        before = _snapshot([_candidate("1", "Brock Purdy", team_acquisition_value=100.0)])
+        after = _snapshot([_candidate("1", "Brock Purdy", team_acquisition_value=88.0)])
         result = pd.debate_pick(after, previous_snapshot=before, api_keys={"claude": "x", "openai": "x", "gemini": "x"})
 
-        self.assertTrue(result.diff, "expected a real delta between the two survival probabilities")
+        self.assertTrue(result.diff, "expected a real delta between the two acquisition values")
+        self.assertEqual(result.diff[0]["deltas"].get("team_acquisition_value"), -12.0)
         self.assertIn("WHAT CHANGED", seen_prompts[0])
+
+    def test_a_survival_only_change_reaches_the_chairs_as_NOTHING(self):
+        """The contract the test above used to contradict, stated where it was contradicted."""
+        seen_prompts = []
+
+        def _caller(system_prompt, user_prompt, api_key, model):
+            seen_prompts.append(user_prompt)
+            if system_prompt == pd.CALLER_SYSTEM_PROMPT:
+                return "RECOMMENDATION: Brock Purdy\nCONFIDENCE: Unanimous\n"
+            return "report"
+
+        pd.PROVIDER_CALLERS.update({"claude": _caller, "gemini": _caller, "openai": _caller})
+        before = _snapshot([_candidate("1", "Brock Purdy", survival_probability=0.8)])
+        after = _snapshot([_candidate("1", "Brock Purdy", survival_probability=0.2)])
+        result = pd.debate_pick(after, previous_snapshot=before,
+                                api_keys={"claude": "x", "openai": "x", "gemini": "x"})
+        # Asserted on the diff DIRECTLY, not through a comprehension over it: the first version
+        # filtered `result.diff` for withheld keys, which on an empty diff never evaluates its
+        # own condition -- so it passed while `ps` was not even imported, and would have passed
+        # just as happily if the rule were removed and the diff came back full.
+        self.assertEqual(result.diff, [],
+                         "a change confined to the withheld family produced a reportable delta")
+        self.assertNotIn("0.6", seen_prompts[0], "the size of the withheld change reached the prompt")
+        self.assertNotIn("survival_probability", seen_prompts[0])
+        # Non-vacuity: the same two snapshots DO diff once the family is presentable, so the
+        # emptiness above is the rule and not a broken fixture.
+        with mock.patch.object(ps, "SURVIVAL_IS_CALIBRATED", True):
+            self.assertTrue(ps.diff_snapshots(before, after))
 
 
 class AIOutputCannotBecomeANumberTests(unittest.TestCase):

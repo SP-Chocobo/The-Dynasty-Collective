@@ -7730,17 +7730,17 @@
       }
     },
     "test_pick_debate.py": {
-      "test_methods": 42,
+      "test_methods": 43,
       "asserts": {
-        "assertEqual": 26,
+        "assertEqual": 28,
         "assertGreaterEqual": 1,
         "assertIn": 29,
         "assertIsInstance": 4,
         "assertIsNone": 6,
         "assertIsNotNone": 4,
         "assertNotEqual": 1,
-        "assertNotIn": 10,
-        "assertTrue": 2,
+        "assertNotIn": 12,
+        "assertTrue": 3,
         "fail": 1
       },
       "by_method": {
@@ -7771,6 +7771,11 @@
           "assertEqual": 2,
           "assertIsNotNone": 1
         },
+        "test_a_survival_only_change_reaches_the_chairs_as_NOTHING": {
+          "assertEqual": 1,
+          "assertNotIn": 2,
+          "assertTrue": 1
+        },
         "test_an_unmeasured_comparison_is_named_rather_than_left_silent": {
           "assertIn": 3,
           "assertNotIn": 1
@@ -7791,6 +7796,7 @@
           "assertIsNotNone": 1
         },
         "test_diff_against_a_previous_snapshot_is_included_in_the_evidence": {
+          "assertEqual": 1,
           "assertIn": 1,
           "assertTrue": 1
         },
@@ -10697,13 +10703,13 @@
       }
     },
     "test_screen_context.py": {
-      "test_methods": 64,
+      "test_methods": 66,
       "asserts": {
         "assertEqual": 16,
-        "assertIn": 66,
+        "assertIn": 68,
         "assertIsNone": 1,
         "assertNotEqual": 1,
-        "assertNotIn": 13,
+        "assertNotIn": 14,
         "assertTrue": 1
       },
       "by_method": {
@@ -10711,6 +10717,12 @@
           "assertNotIn": 1
         },
         "test_a_material_injury_status_is_included": {
+          "assertIn": 1
+        },
+        "test_a_missing_pick_count_reads_as_unknown_not_a_crash": {
+          "assertIn": 1
+        },
+        "test_a_missing_survival_estimate_is_still_not_a_crash_when_presentable": {
           "assertIn": 1
         },
         "test_all_positions_filter_omitted_from_looking_at": {
@@ -10811,9 +10823,6 @@
         "test_missing_slot_defaults_to_bench_in_evidence": {
           "assertIn": 1
         },
-        "test_missing_survival_probability_reads_as_unknown_not_a_crash": {
-          "assertIn": 1
-        },
         "test_never_computes_a_strength_score": {
           "assertNotIn": 2
         },
@@ -10881,8 +10890,12 @@
         "test_surface_is_always_trade_calculator": {
           "assertEqual": 1
         },
-        "test_survival_probability_rendered_as_a_percent": {
+        "test_the_estimate_DOES_reach_the_seed_once_it_is_presentable": {
           "assertIn": 1
+        },
+        "test_the_withheld_survival_estimate_does_not_reach_the_seed": {
+          "assertIn": 1,
+          "assertNotIn": 1
         },
         "test_to_prompt_seed_reads_naturally": {
           "assertIn": 4
@@ -12908,6 +12921,62 @@
         "test_upload_targets_are_derived_from_the_rules_not_a_second_copy": {
           "assertIn": 1,
           "assertNotIn": 1
+        }
+      }
+    },
+    "test_withheld_propagation.py": {
+      "test_methods": 14,
+      "asserts": {
+        "assertEqual": 3,
+        "assertFalse": 2,
+        "assertIn": 9,
+        "assertNotIn": 4,
+        "assertTrue": 3,
+        "assert_honours_the_rule": 2
+      },
+      "by_method": {
+        "test_a_presentable_field_still_diffs_while_the_family_is_withheld": {
+          "assertEqual": 1
+        },
+        "test_a_survival_only_change_produces_no_reportable_delta": {
+          "assertEqual": 1
+        },
+        "test_no_placeholder_survived_substitution": {
+          "assertNotIn": 1
+        },
+        "test_no_prompt_presents_a_withheld_field_as_a_number_it_is_given": {
+          "assertNotIn": 2
+        },
+        "test_the_flag_follows_the_policy_rather_than_being_hardcoded": {
+          "assertFalse": 1
+        },
+        "test_the_measured_pick_count_takes_its_place": {
+          "assertIn": 1
+        },
+        "test_the_payload_carries_the_withheld_flag": {
+          "assertTrue": 2
+        },
+        "test_the_prompts_name_the_measured_substitute_instead": {
+          "assertIn": 1
+        },
+        "test_the_refusal_ITSELF_still_reaches_the_chair": {
+          "assertIn": 3
+        },
+        "test_the_renderer_gates_on_the_flag_and_not_on_the_value": {
+          "assertIn": 2
+        },
+        "test_the_same_change_IS_reported_when_the_family_is_presentable": {
+          "assertIn": 1
+        },
+        "test_the_skeptic_is_not_told_to_pressure_test_a_model_it_cannot_see": {
+          "assertIn": 1,
+          "assertNotIn": 1
+        },
+        "test_the_withheld_estimate_never_reaches_a_chair": {
+          "assert_honours_the_rule": 1
+        },
+        "test_the_withheld_estimate_never_reaches_the_seed": {
+          "assert_honours_the_rule": 1
         }
       }
     }
