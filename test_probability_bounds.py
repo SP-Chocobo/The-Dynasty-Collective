@@ -148,3 +148,69 @@ class TheTierDetectorDetectsRatherThanGreps(unittest.TestCase):
     # text-scan-where-a-parse-exists pattern this audit spent six waves flagging. Deleted
     # rather than made cleverer: `tier_census()` existing, and the test above asserting it
     # accounts for every module, is what actually stops a number rotting in prose.
+
+
+class AScaleIsMeasuredFromThePoolItScales(unittest.TestCase):
+    """#52 phase 5, owner ruling. `FORFEIT_SCALE_MAX = 100.0` sat under a comment saying the
+    scale "is CONSTRUCTED so 100 is the largest real VOR gap in the remaining pool". That
+    construction was real until `_scale_vor_to_bpa` became the identity; the divisor was then
+    calibrated against a band nothing produces. Measured on the owner's league, the largest real
+    VOR gap is 446.05, so the forfeit term saturated for every scarce position.
+
+    No number is chosen by the repair -- the scale is read off the same candidates the forfeit is
+    computed for, which is the derivation the comment always claimed.
+    """
+
+    def test_the_scale_is_the_pools_own_spread(self):
+        import pick_synthesis as ps
+        pool = [{"team_acquisition_value": 220.56}, {"team_acquisition_value": -225.49}]
+        self.assertAlmostEqual(446.05, ps._forfeit_scale(pool), places=2)
+
+    def test_a_pool_that_cannot_answer_falls_back_rather_than_dividing_by_nothing(self):
+        """Absence of a spread is not a spread of zero. Fewer than two priced candidates, or a
+        flat pool, must not produce a divide-by-zero or a scale of 0."""
+        import pick_synthesis as ps
+        for pool in ([], [{"team_acquisition_value": 50.0}],
+                     [{"team_acquisition_value": 7.0}] * 3,
+                     [{"team_acquisition_value": None}, {"team_acquisition_value": None}]):
+            with self.subTest(pool=pool):
+                self.assertEqual(ps.FORFEIT_SCALE_MAX, ps._forfeit_scale(pool))
+
+    def test_the_scale_is_not_the_literal_it_replaced(self):
+        """Non-vacuity: if the derivation silently returned the fallback on a real pool, every
+        test above would still pass while the defect stayed."""
+        import pick_synthesis as ps
+        real_pool = [{"team_acquisition_value": v} for v in (220.5, 100.0, 12.0, -225.4)]
+        self.assertNotEqual(ps.FORFEIT_SCALE_MAX, ps._forfeit_scale(real_pool))
+
+
+class OnePercentilePairHasOneConversionRate(unittest.TestCase):
+    """#52 phase 5, owner ruling. `upside_score` added `0.5 x (proj3yr_pct - season_pct)` to raw
+    points, UNCLAMPED -- up to 50 points -- while `time_horizon_adj` reads the same two columns
+    and clamps to TIME_HORIZON_CLAMP (+/-10). Two readers of one input pair, five times apart.
+
+    Clamped to the bound the other reader already uses rather than to a new number: #56 forbids
+    calibrating a constant, and this one is not invented here.
+    """
+
+    def test_the_growth_term_cannot_exceed_the_bound_the_other_reader_uses(self):
+        import draft_room as dr
+        import pandas as pd
+        ceiling = max(dr.TIME_HORIZON_CLAMP)
+        # A maximal growth signal: bottom-percentile this season, top-percentile over three.
+        row = pd.Series({"bpa": 0.0, "_has_3yr": True, "_season_proj_pct": 0.0,
+                         "_proj3yr_pct": 100.0, "bpa_source": "points_vor_draftsharks"})
+        scored = dr.upside_score(row)
+        self.assertLessEqual(scored["final_score"], ceiling + 1e-9,
+                             f"a percentile difference moved the score by "
+                             f"{scored['final_score']}, past the {ceiling} bound this engine "
+                             "already applies to the same percentile pair")
+
+    def test_the_raw_growth_signal_is_still_reported_unclamped(self):
+        """The clamp is on the CONVERSION, not on the measurement. growth_signal is an observed
+        quantity and must keep saying what was observed."""
+        import draft_room as dr
+        import pandas as pd
+        row = pd.Series({"bpa": 0.0, "_has_3yr": True, "_season_proj_pct": 0.0,
+                         "_proj3yr_pct": 100.0, "bpa_source": "points_vor_draftsharks"})
+        self.assertAlmostEqual(100.0, dr.upside_score(row)["growth_signal"], places=1)

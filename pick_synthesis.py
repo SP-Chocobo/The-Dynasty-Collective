@@ -392,6 +392,10 @@ NECESSITY_FORFEIT_WEIGHT = 10.0
 # TRADE_VALUE_SCALE_MAX. Measured on real boards: forfeit p50 23.47, p90 95.82, max 117.39, so
 # this is a real gradient rather than a near-constant, and the min() below is a defensive clip
 # at the scale's documented top, not the mechanism doing the work.
+#: FALLBACK ONLY since #52 phase 5. The operative scale is now measured from the pool the
+#: candidates came from -- see _forfeit_scale below. This value survives for a caller that
+#: supplies no usable spread (a single candidate, or a board where every value is None), where
+#: dividing by a measured nothing is worse than dividing by a stated something.
 FORFEIT_SCALE_MAX = 100.0
 NECESSITY_ROSTER_FIT_WEIGHT = 0.8    # applied to (need_bonus + eligibility_bonus) -- NOT
                                      # depth_exposure; see the component for why that
@@ -577,6 +581,36 @@ def _necessity_label(score: float) -> str:
     return NECESSITY_LABEL_THRESHOLDS[-1][1]
 
 
+def _forfeit_scale(raw_candidates: list[dict]) -> float:
+    """The largest real VOR gap in this pool -- measured, which is what the prose always said.
+
+    THE DEFECT THIS REPLACES. `FORFEIT_SCALE_MAX = 100.0` sat under a comment stating the scale
+    "is CONSTRUCTED so 100 is the largest real VOR gap in the remaining pool". That construction
+    was real once: `draft_room._scale_vor_to_bpa` used to normalise VOR onto a 0-100 band. It is
+    now the identity -- "No reference, no rescale, no clip" -- so nothing produces that band, and
+    the divisor was left calibrated against a scale that had been removed. Measured on the
+    owner's league: the largest real VOR gap is 446.05, not 100, so the term saturated at its
+    ceiling for any scarce position and `positional_forfeit` stopped discriminating between them.
+
+    WHY THIS IS NOT A NEW CONSTANT, which #56 would forbid. No number is chosen here. The scale
+    is read off the same candidates the forfeit is being computed for, which is precisely the
+    derivation the original comment claimed and the code stopped performing. A different league,
+    a different round or a drained board each get their own spread, and none of them get a
+    hand-set one.
+
+    Falls back to FORFEIT_SCALE_MAX when the pool cannot answer -- fewer than two priced
+    candidates, or a spread of zero -- because dividing by a measured nothing is worse than
+    dividing by a stated something, and that case is an absent measurement rather than a scale
+    of zero.
+    """
+    values = [c.get("team_acquisition_value") for c in raw_candidates]
+    priced = [v for v in values if isinstance(v, (int, float)) and v == v]
+    if len(priced) < 2:
+        return FORFEIT_SCALE_MAX
+    spread = max(priced) - min(priced)
+    return spread if spread > 0 else FORFEIT_SCALE_MAX
+
+
 def compute_pick_necessity(raw_candidates: list[dict], round_num: int) -> list[tuple[float, str]]:
     """(pick_necessity, necessity_label) per candidate, in the same order as raw_candidates --
     see the module docstring for the full reasoning behind every term. Each entry in
@@ -584,6 +618,7 @@ def compute_pick_necessity(raw_candidates: list[dict], round_num: int) -> list[t
     survival_probability (or None), positional_cliff (dict or None), position_run_detected,
     rival_premium (or None/0)."""
     values = [c["team_acquisition_value"] for c in raw_candidates]
+    forfeit_scale = _forfeit_scale(raw_candidates)
 
     results = []
     for i, c in enumerate(raw_candidates):
@@ -654,7 +689,7 @@ def compute_pick_necessity(raw_candidates: list[dict], round_num: int) -> list[t
         # and means "no wait to pay for", which is why absence and zero coincide for once.
         forfeit = c.get("positional_forfeit")
         forfeit_component = (
-            min(max(forfeit, 0.0) / FORFEIT_SCALE_MAX, 1.0) * NECESSITY_FORFEIT_WEIGHT
+            min(max(forfeit, 0.0) / forfeit_scale, 1.0) * NECESSITY_FORFEIT_WEIGHT
             if forfeit is not None else 0.0
         )
 

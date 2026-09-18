@@ -8667,15 +8667,17 @@
       }
     },
     "test_probability_bounds.py": {
-      "test_methods": 8,
+      "test_methods": 13,
       "asserts": {
-        "assertEqual": 1,
+        "assertAlmostEqual": 2,
+        "assertEqual": 2,
         "assertFalse": 1,
         "assertGreater": 2,
         "assertGreaterEqual": 2,
         "assertIn": 2,
         "assertLess": 1,
-        "assertLessEqual": 4,
+        "assertLessEqual": 5,
+        "assertNotEqual": 1,
         "assertTrue": 2
       },
       "by_method": {
@@ -8687,6 +8689,9 @@
         },
         "test_a_mere_mention_is_not_a_construction": {
           "assertFalse": 1
+        },
+        "test_a_pool_that_cannot_answer_falls_back_rather_than_dividing_by_nothing": {
+          "assertEqual": 1
         },
         "test_every_discovered_probability_constant_is_between_zero_and_one": {
           "assertGreaterEqual": 1,
@@ -8702,12 +8707,24 @@
           "assertGreater": 1,
           "assertIn": 2
         },
+        "test_the_growth_term_cannot_exceed_the_bound_the_other_reader_uses": {
+          "assertLessEqual": 1
+        },
         "test_the_module_actually_has_some_to_check": {
           "assertGreaterEqual": 1
         },
         "test_the_rank_table_is_monotone_and_bounded": {
           "assertLessEqual": 1,
           "assertTrue": 1
+        },
+        "test_the_raw_growth_signal_is_still_reported_unclamped": {
+          "assertAlmostEqual": 1
+        },
+        "test_the_scale_is_not_the_literal_it_replaced": {
+          "assertNotEqual": 1
+        },
+        "test_the_scale_is_the_pools_own_spread": {
+          "assertAlmostEqual": 1
         }
       }
     },

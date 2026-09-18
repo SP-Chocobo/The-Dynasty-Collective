@@ -2190,7 +2190,23 @@ def upside_score(row: pd.Series) -> dict:
     # Sleeper projections, which publish points but no multi-year outlook.
     if row.get("_has_3yr", False) and season_pct is not None and proj3yr_pct is not None:
         growth = max(0.0, proj3yr_pct - season_pct)
-    value = round(bpa + UPSIDE_GROWTH_WEIGHT * growth, 2)
+    # ONE PERCENTILE PAIR, ONE CONVERSION RATE (#52 phase 5, owner ruling).
+    #
+    # `growth` is a difference of two percentiles -- 0 to 100 -- and `bpa` is raw projected
+    # points, whose span on the owner's league is 446. This line added the former to the latter
+    # at 0.5 per percentile point and UNCLAMPED, so the growth term could move a candidate by up
+    # to 50 points. `time_horizon_adj` reads THE SAME TWO COLUMNS (`_season_proj_pct` and
+    # `_proj3yr_pct`) and clamps their contribution to TIME_HORIZON_CLAMP, +/-10. Two readers of
+    # one input pair, converting it at rates five times apart, and only one of them admitting a
+    # percentile is not a point.
+    #
+    # Clamped to the bound the other reader already uses rather than to a new number: #56
+    # forbids calibrating a constant, and TIME_HORIZON_CLAMP is not invented here -- it is the
+    # rate this engine already applies to this exact quantity. Deriving a per-percentile worth
+    # in points is real work and is not this.
+    growth_points = max(TIME_HORIZON_CLAMP[0],
+                        min(UPSIDE_GROWTH_WEIGHT * growth, TIME_HORIZON_CLAMP[1]))
+    value = round(bpa + growth_points, 2)
     return {"final_score": value, "growth_signal": round(growth, 1), "confidence": _confidence(row.get("bpa_source"))}
 
 
