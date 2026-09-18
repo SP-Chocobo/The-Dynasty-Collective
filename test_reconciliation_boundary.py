@@ -22,7 +22,9 @@ instead would drop K from 37 players to 13 and re-break the supply defect that w
 overstate the best K/DEF's VOR by ~45%. A missing horizon nudge is the smaller loss, and it is
 recorded rather than silent.
 """
+import tempfile
 import unittest
+from pathlib import Path
 
 import pandas as pd
 
@@ -236,3 +238,75 @@ class ReconciliationIsScopedToRankingsTests(unittest.TestCase):
         leaked = [c for c in self.merger.trade_values.columns
                   if c.startswith("proj_3yr") or c == "measurement_basis"]
         self.assertEqual(leaked, [])
+
+
+class APositionlessRowIsNotADuplicateOfEveryOtherOneTests(unittest.TestCase):
+    """#52 phase 6. The within-file identity key NA-collapsed every row that has no position.
+
+    load_all deduplicates inside each file on `norm_name + "|" + position`. `position` arrives
+    as pandas' `str` dtype, where `astype(str)` leaves a missing value as NA rather than turning
+    it into the string "nan" -- and NA propagates through `+`, so every positionless row got the
+    SAME null key. `drop_duplicates` treats nulls as equal to one another, so they all collapsed
+    onto one row.
+
+    The trade-value chart is exactly that table: 48 rookie pick slots and 10 future picks carry
+    no position at all. All 58 became 1. `pick_value("1.01")` kept working only because the one
+    surviving row happened to be a rookie slot, and every future-pick price in the rookie draft
+    tool returned None -- the same damage the class above documents from an earlier cause, which
+    is why that class's tests did not catch this one: they assert the ASSET TYPES survive, and
+    one row of each type did.
+
+    It reproduces only through the real loader. Reading the same CSV with a bare pd.read_csv
+    gives an object-dtype column, where astype(str) does produce "nan" and the keys stay
+    distinct -- a probe built that way reports the code is fine. So these build through
+    load_all, and one asserts the dtype directly so the premise cannot rot silently.
+    """
+
+    def _load(self, rows: str):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "chart.csv"
+            path.write_text(
+                "asset_type,name,position,value,source_league_type,source_scoring,source_date\n" + rows)
+            _, _, tvc = dm.load_all(Path(tmp), default_kind="trade_value_chart")
+            return tvc
+
+    def test_positionless_rows_with_distinct_names_all_survive(self):
+        tvc = self._load(
+            "rookie_pick_slot,1.01,,83,Dynasty,PPR,2026-08-20\n"
+            "rookie_pick_slot,1.02,,40,Dynasty,PPR,2026-08-20\n"
+            "rookie_pick_slot,1.03,,35,Dynasty,PPR,2026-08-20\n"
+            "future_pick,2027 Random Rd 1,,29,Dynasty,PPR,2026-08-20\n"
+            "future_pick,2028 Random Rd 1,,27,Dynasty,PPR,2026-08-20\n")
+        self.assertEqual(len(tvc), 5, "positionless rows collapsed onto one another")
+        self.assertEqual(sorted(tvc["name"]),
+                         ["1.01", "1.02", "1.03", "2027 Random Rd 1", "2028 Random Rd 1"])
+
+    def test_the_premise_holds_a_missing_position_really_is_NA_not_the_string_nan(self):
+        # If this ever fails, the defect above became unreproducible for a reason worth knowing
+        # about rather than because the key was fixed -- so it is asserted, not assumed.
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "chart.csv"
+            path.write_text(
+                "asset_type,name,position,value,source_league_type,source_scoring,source_date\n"
+                "rookie_pick_slot,1.01,,83,Dynasty,PPR,2026-08-20\n")
+            df, _ = dm.load_projection_file(path, default_kind="trade_value_chart")
+        self.assertTrue(df["position"].isna().all())
+        self.assertTrue(pd.isna(df["position"].astype(str).iloc[0]),
+                        "astype(str) now yields a real string; the NA-propagation premise moved")
+
+    def test_a_genuine_within_file_duplicate_still_collapses(self):
+        # The key was made null-SAFE, not null-blind: two rows that really are the same asset
+        # still collapse, or the repair would have traded one defect for its opposite.
+        tvc = self._load(
+            "rookie_pick_slot,1.01,,83,Dynasty,PPR,2026-08-20\n"
+            "rookie_pick_slot,1.01,,84,Dynasty,PPR,2026-08-20\n"
+            "future_pick,2027 Random Rd 1,,29,Dynasty,PPR,2026-08-20\n")
+        self.assertEqual(len(tvc), 2)
+
+    def test_the_committed_chart_keeps_every_asset_its_own_file_declares(self):
+        # Derived from the file rather than pinned as a census number, so it tracks the data.
+        raw = pd.read_csv("data/baseline/trade_value/dynasty_ppr_trade_value_chart.csv")
+        loaded = dm.DataMerger().trade_values
+        for kind, expected in raw["asset_type"].value_counts().items():
+            with self.subTest(asset_type=kind):
+                self.assertEqual(int((loaded["asset_type"] == kind).sum()), int(expected))

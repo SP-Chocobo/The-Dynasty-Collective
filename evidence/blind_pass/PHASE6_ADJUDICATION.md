@@ -181,6 +181,82 @@ and `mutant` does not share the `mutat-` stem.
 
 ---
 
+## 6.2 — THE FULL SUITE, and seventeen failures it had been hiding
+
+**Running the full suite for the first time since Phase 1 found 20 failures. Three belonged to
+that day's work. Seventeen were mine, from Phases 1–5, and had been red for five phases.** They
+reproduce at `HEAD` with the day's work stashed and are **green at `v1-freeze`**, verified in a
+clean worktree — so they were introduced by the repairs, not inherited.
+
+The cause is not subtle: between phases I ran the modules I judged affected. That is the same
+mistake the audit's own record shows me making once before, and it hid seventeen failures across
+nine modules.
+
+### The root defect behind most of them
+
+`merge_player`'s canonical key was `(norm_name, position GROUP)`. `draft_room`'s contested-identity
+guard reads that key as *"these two rows were priced off ONE vendor record"* and withholds the
+price from both — which is right, and is what stops Bijan and Brian Robinson (both RB ATL, one
+published row between them) from each claiming a value belonging to one of them.
+
+But the group is **coarse**: QB and RB are both `offense`. So two players `_resolve` had correctly
+matched to two *different* vendor rows collided anyway, and both were refused. Phase 1.1 recovered
+those players from the loader and this key threw four of them straight back out — which is exactly
+why the damage looked like a *consequence* of the recovery.
+
+Keying on the **raw position** repairs it. The Robinson case is untouched: same name, same
+position, same single record, so they still collide and are still both refused.
+
+| | |
+|---|---|
+| **Recovered** | J Love (the GB QB *and* the ARI RB), J Williams, M Washington — 6 pool rows, priced again |
+| **Still refused** | K Williams — two rows at the **same** position on the **same** club, which no name/position/team test can split. Correct. |
+
+### Three `@unittest.expectedFailure` marks, withdrawn
+
+I had marked three tests expected-to-fail with a confident decomposition of why the population had
+legitimately changed. **The decomposition was real and the diagnosis was wrong** — it described the
+wrong cause. I bisected to the Phase 1 commit and stopped, which found the commit and not the
+defect inside it. All three pass untouched once the key names the record.
+
+> The lesson: *"a repair changed the population, so the invariant legitimately stopped holding"*
+> and *"a repair broke something"* are the same shape, and this audit exists because the two are
+> hard to tell apart. Marking a test `expectedFailure` resolves that ambiguity **by assertion**.
+> What was missing was one check: were the players the repair recovered still priced afterwards?
+
+### The other three genuine defects
+
+1. **58 positionless assets collapsed to one.** The within-file identity key is
+   `norm_name + "|" + position`; `position` arrives as pandas' `str` dtype, where `astype(str)`
+   leaves a missing value as NA rather than `"nan"`. NA propagates through `+`, and
+   `drop_duplicates` treats nulls as **equal** — so 48 rookie pick slots and 10 future picks got
+   one identical null key. `pick_value("1.01")` survived only because the single surviving row
+   happened to be a rookie slot; every future-pick price returned `None`. It reproduces *only*
+   through the real loader — a bare `pd.read_csv` gives object dtype and the keys stay distinct,
+   so a probe built that way reports the code is fine.
+2. **The absence contract broken by the container.** `identity_basis` returns a real `None` for a
+   row whose provenance was never recorded, and the column handed it back as `nan`. Cause:
+   `_records_with_normalized_nan` took its columns as arguments, and the two callers between them
+   selected 29 columns while naming 11. Now derived from the values (`#126`).
+3. **A refusal that does not propagate** *(pinned, not repaired)*. `_drop_contested_identities`
+   withholds a contested price from the **pool**; `_team_roster_players` re-resolves each rostered
+   player through the **merger**, where that price still sits. Of 45 projection-only rows, 43 drop
+   and 2 do not — and those 2 are exactly the contested pair. This belongs with the other
+   refusal-propagation paths in Phase 7.1, which is a propagation *rule*, not five patches.
+
+### Re-baselined, each with its reason
+
+IDP universe 415 → **421** and matched-but-numberless 339 → **345** (the six recovered IDP
+namesakes); offense supply 264 → **266** (+4 recovered, −2 correctly refused); QB counts 39 → **40**
+and 28 → **29**, with `qb_startable_floor` **unchanged** at 162.0. `has_defense` is genuinely
+constant across all 35 arms, so it is now **registered** in `draft_battery.UNCOVERED_AXES` with what
+would close it — a ratchet that fails both when an unregistered axis goes constant *and* when a
+registered one starts varying.
+
+**Full suite: 3174 tests, green.** First clean run since before Phase 1.
+
+---
+
 ## Still open in Phase 6
 
 - **6.1c** `need_bonus`'s bound and its flex-before-dedicated formula

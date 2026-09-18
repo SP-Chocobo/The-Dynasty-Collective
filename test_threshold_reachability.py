@@ -354,35 +354,32 @@ class ContextElevatedBecameReachableTests(_RealBoards):
                      and row.get("universal_value") is not None]
         return gaps
 
-    # EXPECTED FAILURE (#52 phase 1). The tests are the correct party; the badge is dead again.
+    # WITHDRAWN (#52 phase 6). This carried an expectedFailure and a confident account of why,
+    # and the account was WRONG. Both are removed rather than amended, because the mistake is
+    # instructive and the assertions were right the whole time.
     #
-    # Repairing player identity recovered ten real players -- including a startable superflex QB
-    # who had no price at all -- and on that corrected pool the gap no longer reaches the
-    # threshold. Measured across these same eight board states, before and after:
+    # What it said: repairing player identity recovered ten real players, and on that corrected
+    # pool the gap stopped reaching the threshold -- so the reachability had been "a property of
+    # which players happened to be in the pool, not of the design". The decomposition offered in
+    # support was real (no term shrank; what vanished was the CO-OCCURRENCE of need_bonus and
+    # depth_exposure without a negative displacement_adj), and it was a decomposition of the
+    # WRONG CAUSE. I bisected the change to the phase 1 commit and stopped there, which found
+    # the commit and not the defect inside it.
     #
-    #                        pre-repair   post-repair
-    #     gap max              13.21          8.33
-    #     share >= 12          7.78%          0.00%
-    #     need_bonus max        8.33          8.33   (unchanged)
-    #     depth_exposure max    9.24         11.40   (HIGHER)
-    #     displacement_adj min -90.00        -67.00  (LESS negative)
+    # The actual cause: merge_player's canonical key was (norm_name, position GROUP), and the
+    # group is coarse enough that a QB and an RB of the same name shared one key. The contested-
+    # identity guard reads that key as "these two were priced off ONE vendor record" and
+    # withholds the price from both -- so the eight pool rows behind J Love, J Williams,
+    # K Williams and M Washington went unpriced, and it was their absence that flattened the gap
+    # distribution. Phase 1 recovered those players from the loader and the key then threw four
+    # of them away again, which is why the damage looked like a consequence of the recovery.
+    # Keying on the raw position fixed it and these assertions passed again untouched.
     #
-    # Note what that says: no term shrank. Two of them improved. What disappeared is the
-    # CO-OCCURRENCE -- rows carrying need_bonus and depth_exposure together without a negative
-    # displacement_adj pulling the sum back down. The reachability was a property of which
-    # players happened to be in the pool, not of the design.
-    #
-    # The docstring above records the pre-#139 state as "measured at 0.0% firing, max gap 8.67,
-    # and recorded in CDME_CONTRACTS.md as dead". Post-repair: 0.0% firing, max gap 8.33. The
-    # badge is back within a tenth of a point of where #139 found it, and this class's own
-    # warning -- "a number that became a discriminator because the quantity underneath it grew
-    # is still a bound being read as a threshold (#56)" -- turns out to have been exactly right.
-    #
-    # NOT repaired here. What SHOULD light this badge is the open product decision this class
-    # already names, and it is now unavoidable rather than deferred. Marked rather than edited,
-    # because editing these assertions to pass would erase the only evidence that the pool was
-    # ever wrong.
-    @unittest.expectedFailure
+    # The lesson worth keeping: "a repair changed the population, so the invariant legitimately
+    # stopped holding" is the same shape as "a repair broke something", and this audit exists
+    # because the two are hard to tell apart. Marking a test expectedFailure resolves that
+    # ambiguity by assertion. It should not have been done on a bisect alone -- what was missing
+    # was a check that the players the repair recovered were still priced afterwards.
     def test_it_fires_and_fires_selectively(self):
         gaps = self._gaps()
         self.assertTrue(gaps, "no priced rows measured; this test observed nothing")
@@ -400,7 +397,6 @@ class ContextElevatedBecameReachableTests(_RealBoards):
                         "cliff_protection has, in the other direction: a flag that is almost "
                         "always on carries almost no information")
 
-    @unittest.expectedFailure  # see test_it_fires_and_fires_selectively: max gap 13.21 -> 8.33
     def test_the_cap_no_longer_caps_the_quantity_it_is_compared_against(self):
         """The structural fact underneath the change, asserted rather than narrated: three
         additive team-specific terms now feed the gap, so a cap on one of them is no longer an
@@ -455,7 +451,14 @@ class TheDenialNormalizerSaturatesAtItsOwnBoundTests(_RealBoards):
             out += [a.get("rival_premium") or 0.0 for a in analysis]
         return out
 
-    @unittest.expectedFailure  # max(rival_premium) 11.85 vs NEED_BONUS_MAX 12.0 on the corrected pool
+    # STILL AN EXPECTED FAILURE, and unlike the two above this one is genuine: the premium
+    # really does not clear one term's cap on the corrected pool, so #144's premise is gone and
+    # this class has lost its subject. Re-measured at #52 phase 6 after the canonical-key repair
+    # put four withheld players back in the pool: max(rival_premium) = 10.57 against
+    # NEED_BONUS_MAX 12.0, over 96 measured premiums. It was recorded here as 11.85, which was
+    # measured before that repair -- the mark was right and its number had rotted, which is the
+    # same decay the misquoted-constant guard exists to catch one file over.
+    @unittest.expectedFailure
     def test_the_premium_still_exceeds_one_terms_cap(self):
         """Non-vacuity for the whole class. If rival_premium stopped clearing NEED_BONUS_MAX,
         the old divisor would be an upper bound again and none of this would be load-bearing --

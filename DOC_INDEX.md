@@ -1,15 +1,15 @@
 # Document index — derived, not curated
 
-`python3 doc_index.py` regenerates this. 131 markdown documents.
+`python3 doc_index.py` regenerates this. 146 markdown documents.
 
 Classified by what each file says about ITSELF in its first 12 lines. Nothing here is a judgement about whether a document is *good* — only about whether it tells a cold reader what it is before it starts making claims.
 
 | class | count | meaning |
 |---|---:|---|
 | WITHDRAWN | 24 | a published claim taken back. Kept, unedited, beneath its banner. |
-| SUPERSEDED | 19 | still valid or partly valid, but something later changed what it means. |
-| DECLARED | 16 | says what kind of document it is before making claims. |
-| UNDECLARED | 72 | no status banner in its opening. Not necessarily wrong — most are simply current — but a reader cannot tell without reading it all. |
+| SUPERSEDED | 21 | still valid or partly valid, but something later changed what it means. |
+| DECLARED | 17 | says what kind of document it is before making claims. |
+| UNDECLARED | 84 | no status banner in its opening. Not necessarily wrong — most are simply current — but a reader cannot tell without reading it all. |
 
 ## WITHDRAWN
 
@@ -47,6 +47,8 @@ Classified by what each file says about ITSELF in its first 12 lines. Nothing he
 - `ENGINE_WIRING_PASS.md`
 - `FREEZE_CHECKLIST.md`
 - `evidence/CERTIFICATION_DESIGN.md`
+- `evidence/blind_pass/REPAIR_MANDATE.md`
+- `evidence/blind_pass/SYNTHESIS.md`
 - `evidence/roster_shape/ff_rulebook/CORRECTION_wrong_universe.md`
 - `evidence/roster_shape/ff_rulebook/FINDING_01_the_pool_is_the_shape.md`
 - `evidence/roster_shape/ff_rulebook/FINDING_02_vor_measures_linearity.md`
@@ -66,6 +68,7 @@ Classified by what each file says about ITSELF in its first 12 lines. Nothing he
 - `POST_AUDIT_PLAN.md`
 - `ROADMAP.md`
 - `evidence/blind_pass/MANDATE.md`
+- `evidence/blind_pass/wave4/MY_VERIFICATION.md`
 - `evidence/roster_proof/PRE_REGISTRATION_205.md`
 - `evidence/roster_shape/FIX_216_fable.md`
 - `evidence/roster_shape/ff_rulebook/BRIEF_NEXT_SESSION.md`
@@ -91,11 +94,23 @@ Classified by what each file says about ITSELF in its first 12 lines. Nothing he
 - `data/baseline/external/keeptradecut/ATTRIBUTION.md`
 - `data/league_captures/README.md`
 - `evidence/batteries/README.md`
+- `evidence/blind_pass/FINDINGS_LOG.md`
 - `evidence/blind_pass/LEDGER.md`
+- `evidence/blind_pass/PHASE0_ADJUDICATIONS.md`
+- `evidence/blind_pass/PHASE1_2_ADJUDICATION.md`
+- `evidence/blind_pass/PHASE1_POPULATION_EFFECT.md`
+- `evidence/blind_pass/PHASE5_UNITS_SWEEP.md`
+- `evidence/blind_pass/PHASE6_ADJUDICATION.md`
 - `evidence/blind_pass/wave1/PASS_A.md`
 - `evidence/blind_pass/wave1/PASS_B.md`
 - `evidence/blind_pass/wave2/PASSES_C_AND_D.md`
 - `evidence/blind_pass/wave3/PASSES_E_AND_F.md`
+- `evidence/blind_pass/wave4/PASS_G.md`
+- `evidence/blind_pass/wave4/PASS_H.md`
+- `evidence/blind_pass/wave5/PASS_I.md`
+- `evidence/blind_pass/wave5/PASS_J.md`
+- `evidence/blind_pass/wave6/PASS_K.md`
+- `evidence/blind_pass/wave6/PASS_L.md`
 - `evidence/capture_provenance/README.md`
 - `evidence/flex_feasibility/README.md`
 - `evidence/projection_rank/README.md`

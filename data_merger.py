@@ -1238,11 +1238,27 @@ def load_all(
         # none of the four offensive ones. And the finer key is safe precisely because that
         # third row measures zero -- no file lists one multi-eligible person twice at two
         # positions, so nothing here can split a single player into two rows.
+        # EVERY PART OF THIS KEY IS MADE NULL-SAFE BEFORE IT IS CONCATENATED, and that is not
+        # defensive habit -- it is the repair for a defect this exact line shipped (#52 phase 6).
+        #
+        # `position` arrives as pandas' `str` dtype here, where `astype(str)` leaves a missing
+        # value as NA rather than turning it into the string "nan". NA propagates through `+`,
+        # so every row with no position got the SAME null key -- and `drop_duplicates` treats
+        # nulls as equal to one another. The trade-value chart is exactly that table: 48 rookie
+        # pick slots and 10 future picks carry no position at all, and all 58 collapsed onto one
+        # surviving row. pick_value() survived only because the single row left happened to be a
+        # rookie slot; every future-pick price in the rookie draft tool returned None.
+        #
+        # It reproduced ONLY through load_projection_file. Reading the same CSV with a bare
+        # pd.read_csv gives an object-dtype column, where astype(str) does produce "nan" and the
+        # keys stay distinct -- so a probe built that way says the code is fine. The dtype is the
+        # bug, which is why the regression test builds its frame through the real loader.
+        norm = df["norm_name"].astype(str).fillna("")
         if "position" in df.columns:
-            df = df.assign(_ident=df["norm_name"].astype(str) + "|"
-                           + df["position"].astype(str).str.strip().str.upper())
+            df = df.assign(_ident=norm + "|"
+                           + df["position"].astype(str).str.strip().str.upper().fillna(""))
         else:
-            df = df.assign(_ident=df["norm_name"].astype(str))
+            df = df.assign(_ident=norm)
         if "rank" in df.columns:
             df = df.sort_values("rank", na_position="last").drop_duplicates(subset="_ident", keep="first")
         else:
@@ -2476,8 +2492,26 @@ class DataMerger:
         # row.update()s this straight onto a Sleeper-derived row).
         row = {"matched": True, "match_path": path,
                "match_candidates": candidates, "match_verified": verified,
+               # THE KEY NAMES THE VENDOR RECORD, NOT THE IDENTITY NAMESPACE (#52 phase 6).
+               #
+               # This was (norm_name, _position_group(position)). draft_room's
+               # _drop_contested_identities treats two pool rows sharing this key as being
+               # priced off ONE record, and refuses to price either -- which is right, and is
+               # what keeps Bijan and Brian Robinson (both RB ATL, one published 'B Robinson'
+               # row between them) from each claiming a trade value that belongs to one of them.
+               #
+               # But _position_group is the coarse namespace: QB and RB are both "offense". So
+               # two pool rows that _resolve had CORRECTLY matched to two DIFFERENT vendor rows
+               # still collided here, and both were refused. Measured on the IDP board once the
+               # identity repair stopped deleting one of each pair: J Love (the GB QB and the
+               # ARI RB), J Williams, K Williams and M Washington -- eight pool rows, four
+               # distinct vendor records, all eight unpriced.
+               #
+               # The raw position is what makes this key answer the question it is asked. The
+               # Robinson case is untouched: same name, same position, same single record, so
+               # they still collide and are still both refused.
                "match_canonical_key": (str(match.get("norm_name")),
-                                       _position_group(match.get("position")))}
+                                       str(match.get("position")))}
         for field in ("projection", "vorp", "tier", "trade_value", "rank",
                        "position", "team", "pos_rank", "proj_3yr",
                        # WHY the multi-year figure is absent, not just that it is. These two

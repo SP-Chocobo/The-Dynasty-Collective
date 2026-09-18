@@ -27,6 +27,8 @@ from __future__ import annotations
 
 import unittest
 
+import pandas as pd
+
 import data_merger as dm
 import draft_room as dr
 import draft_strategy as ds
@@ -868,8 +870,31 @@ class ProjectionOnlyRosterVisibilityTests(unittest.TestCase):
     def _projection_only_rows(self):
         return self.pool[self.pool["trade_value"].isna()]
 
+    def _blind_spot_row(self):
+        """A projection-only row that actually EXERCISES the blind spot.
+
+        `_projection_only_rows().iloc[0]` is not that row, and assuming it was cost a real
+        investigation (#52 phase 6). Both tests below took whatever sorted first and asserted
+        the player was dropped; after the identity repairs the first row became one of exactly
+        two anomalies in a slice of 45 -- a contested K Williams, whose pool price was withheld
+        by the contested-identity guard but whom _team_roster_players then re-prices from the
+        merger directly (see the leak pinned below). So the tests went red while the defect they
+        pin was untouched: 43 of the 45 rows still drop.
+
+        Selecting on the BEHAVIOUR rather than on row order, so the fixture cannot drift onto an
+        exception again, and asserting the population so it cannot quietly become empty.
+        """
+        rows = self._projection_only_rows()
+        self.assertGreater(len(rows), 10, "the projection-only slice collapsed")
+        for _, row in rows.iterrows():
+            picks = [{"player_id": row["player_id"], "round": 14, "roster_id": "1"}]
+            if len(dr._team_roster_players(picks, self.db, "1", self.merger)) == 0:
+                return row
+        self.fail("no projection-only row is dropped any more -- the blind spot this class "
+                  "exists to pin is GONE, which is good news and makes this class stale")
+
     def test_the_two_team_specific_terms_disagree_about_a_filled_slot(self):
-        row = self._projection_only_rows().iloc[0]
+        row = self._blind_spot_row()
         picks = [{"player_id": row["player_id"], "round": 14, "roster_id": "1"}]
         self.assertEqual(dr._team_starters_filled(picks, self.db, "1").get(row["position"]), 1,
                          "need_bonus must see the slot filled")
@@ -892,7 +917,7 @@ class ProjectionOnlyRosterVisibilityTests(unittest.TestCase):
         eligibility_bonus exists to price -- is invisible to the optimizer.
         """
         from player_universe import player_eligible_positions
-        row = self._projection_only_rows().iloc[0]
+        row = self._blind_spot_row()
         player_id = str(row["player_id"])
         db = dict(self.db)
         info = dict(db[player_id])
@@ -904,6 +929,41 @@ class ProjectionOnlyRosterVisibilityTests(unittest.TestCase):
         self.assertEqual(
             len(dr._team_roster_players(picks, db, "1", self.merger)), 0,
             "a projection-only player is dropped no matter how eligible he is")
+
+    def test_a_withheld_contested_price_comes_back_through_the_roster_lookup(self):
+        """A SECOND leak, found while repairing the fixture above (#52 phase 6). Pinned here
+        rather than repaired, because the repair belongs with the other refusal-propagation
+        paths and is a propagation RULE, not five separate patches.
+
+        _drop_contested_identities withholds the one price two same-named, same-position players
+        cannot both claim -- it nulls trade_value on the POOL rows. But _team_roster_players does
+        not read the pool: it resolves each rostered player through the merger again, where that
+        same trade_value is still sitting. So the number the board refuses to show is used to
+        build the lineup the board reasons about.
+
+        Measured on the committed baseline in the K/DST league: of 45 projection-only pool rows,
+        43 drop as this class describes and 2 do not -- and those 2 are exactly the contested
+        K Williams pair, retained because the lookup re-priced them from the merger.
+
+        This test states the leak so it is visible and so that closing it is a visible change.
+        """
+        contested = [
+            row for _, row in self._projection_only_rows().iterrows()
+            if len(dr._team_roster_players(
+                [{"player_id": row["player_id"], "round": 14, "roster_id": "1"}],
+                self.db, "1", self.merger)) > 0
+        ]
+        if not contested:
+            self.skipTest("no contested row is in the projection-only slice on this baseline")
+        for row in contested:
+            with self.subTest(player=row["name"]):
+                # The pool says it has no price for him...
+                self.assertTrue(pd.isna(row["trade_value"]))
+                # ...and the roster lookup prices him anyway.
+                priced = self.merger.merge_player(
+                    row["name"], position=row["position"], team=row.get("team"))
+                self.assertIsNotNone(priced.get("trade_value"),
+                                     "the leak closed -- update this test, it is now stale")
 
     def test_offline_eligibility_cannot_prove_the_blind_spot_is_dormant(self):
         """Why there is no "it's currently harmless" assertion here any more.

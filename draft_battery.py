@@ -695,6 +695,44 @@ def roster_shape_axes(league: dict) -> dict:
     }
 
 
+#: ONE HOME FOR THE AXIS VOCABULARY THE MATRIX ADVERTISES (#126, #52 phase 6).
+#:
+#: There are two derived vocabularies here and they answer different questions: which rankings
+#: EXPORT fits a league (league_format_hint -- scoring, superflex, te_premium) and what SHAPE the
+#: league is (roster_shape_axes -- kicker, defense, IDP, superflex slot, draftable rounds). Both
+#: are real coverage dimensions, and format_axes_exercised unions them.
+#:
+#: The union used to be spelled out inside that function, which made it a SECOND home: the
+#: report knew about both vocabularies and every test that checked the report knew about only
+#: one, so the tests tracked league_format_hint's keys by hand and went red the moment the shape
+#: axes were added. That is the hand-list defect one layer up from the one #126 names. The union
+#: lives here, and the report and its tests both read it.
+def advertised_format_axes(league: dict) -> dict:
+    """{axis name: this league's value} across every dimension the matrix claims to cross."""
+    axes = dict(league_format_hint(league))
+    axes.update(roster_shape_axes(league))
+    return axes
+
+
+#: Axes the matrix ADVERTISES but does not currently VARY, each with why and what would close it.
+#:
+#: Registering a hole is not silencing it -- it is the difference between a coverage gap someone
+#: decided to carry and one nobody noticed. The guard reads this both ways: an unregistered
+#: constant axis fails (a gap appeared), and a registered axis that starts varying ALSO fails
+#: (the registration went stale and should be deleted). Neither direction can drift quietly.
+UNCOVERED_AXES: dict[str, str] = {
+    "has_defense": (
+        "No arm carries a DEF slot. build_mock_league emits no K, DEF or IDP slot, and neither "
+        "captured league in the fixtures has a team-defense slot -- the owner's own league has a "
+        "kicker but no DEF, which is what makes has_kicker vary at exactly one arm while this "
+        "one does not vary at all. Closing it needs a DEF-bearing arm in the matrix, which "
+        "belongs with the rest of the fixture-universe work (#52 phase 3) rather than here: it "
+        "is a new coordinate to measure, not a number to adjust. Until then the battery's "
+        "results are not evidence about team-defense drafting, and this says so."
+    ),
+}
+
+
 def format_axes_exercised(matrix: list[dict], labels=None) -> dict:
     """Which value of each format axis the arms ACTUALLY exercise, and which axes are CONSTANT.
 
@@ -731,10 +769,9 @@ def format_axes_exercised(matrix: list[dict], labels=None) -> dict:
                if labels is None or e.get("label") in labels]
     axes: dict[str, dict[str, int]] = {}
     for entry in entries:
-        # Two derived vocabularies, unioned: which EXPORT fits the league, and what SHAPE the
-        # league is. An axis that is constant in either sense is a matrix not covering something.
-        axis_values = dict(league_format_hint(entry["league"]))
-        axis_values.update(roster_shape_axes(entry["league"]))
+        # Both derived vocabularies, from their one home. An axis that is constant in either
+        # sense is a matrix not covering something.
+        axis_values = advertised_format_axes(entry["league"])
         for axis, value in axis_values.items():
             # str() because JSON object keys are strings: True would round-trip as "true"
             # anyway, and a dict keyed half by bool and half by str sorts unstably.

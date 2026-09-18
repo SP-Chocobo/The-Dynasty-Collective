@@ -237,17 +237,17 @@ class TheGuardDeclinesThePriceNotThePlayerTests(unittest.TestCase):
             {"player_id": "1", "name": "Bijan Robinson", "position": "RB", "team": "ATL",
              "sleeper_points": 405.25, "trade_value": 99.0, "projection": 346.0,
              "proj_3yr": 1000.0, "source_file": "vendor.csv",
-             "_canonical_key": ("b robinson", "offense"), "_match_verified": True,
+             "_canonical_key": ("b robinson", "RB"), "_match_verified": True,
              "_match_path": "key"},
             {"player_id": "2", "name": "Brian Robinson", "position": "RB", "team": "ATL",
              "sleeper_points": 89.41, "trade_value": 99.0, "projection": 346.0,
              "proj_3yr": 1000.0, "source_file": "vendor.csv",
-             "_canonical_key": ("b robinson", "offense"), "_match_verified": True,
+             "_canonical_key": ("b robinson", "RB"), "_match_verified": True,
              "_match_path": "key"},
             {"player_id": "3", "name": "Someone Else", "position": "WR", "team": "KC",
              "sleeper_points": 210.0, "trade_value": 40.0, "projection": 200.0,
              "proj_3yr": 600.0, "source_file": "vendor.csv",
-             "_canonical_key": ("s else", "offense"), "_match_verified": True,
+             "_canonical_key": ("s else", "WR"), "_match_verified": True,
              "_match_path": "key"},
         ])
 
@@ -288,7 +288,83 @@ class TheGuardDeclinesThePriceNotThePlayerTests(unittest.TestCase):
         out = dr._drop_contested_identities(self._contested_pool()).set_index("player_id")
         self.assertEqual(out.loc["3", "trade_value"], 40.0)
         self.assertEqual(out.loc["3", "projection"], 200.0)
-        self.assertEqual(out.loc["3", "_canonical_key"], ("s else", "offense"))
+        self.assertEqual(out.loc["3", "_canonical_key"], ("s else", "WR"))
+
+    def test_the_fixture_above_carries_the_key_shape_merge_player_really_emits(self):
+        """The hand-built pool above states its own `_canonical_key`, which means it cannot
+        notice the real key changing shape underneath it -- and the real key DID change (#52
+        phase 6): it was (norm_name, position GROUP) and is now (norm_name, position), because
+        the group is coarse enough that a QB and an RB of the same name shared one key and were
+        refused as though they had shared one vendor record. This ties the fixture to the
+        producer so the two cannot drift apart silently."""
+        merger = dm.DataMerger()
+        priced = merger.projections[merger.projections["trade_value"].notna()]
+        row = priced.iloc[0]
+        emitted = merger.merge_player(row["name"], position=row["position"],
+                                      team=row.get("team"))["match_canonical_key"]
+        self.assertIsInstance(emitted, tuple)
+        self.assertEqual(len(emitted), 2)
+        fixture_key = self._contested_pool()["_canonical_key"].iloc[0]
+        self.assertEqual(len(fixture_key), len(emitted))
+        # The second element is the RAW position, not the coarse identity namespace.
+        self.assertEqual(emitted[1], str(row["position"]))
+        self.assertNotEqual(emitted[1], dm.identity_namespace(row["position"]),
+                            "the key fell back to the coarse namespace, which is what made a "
+                            "QB and an RB of the same name look like one vendor record")
+
+    def test_two_namesakes_at_different_positions_are_two_records_not_one(self):
+        """The defect the key shape caused, on real data. A first-initial export lists 'J Love'
+        three times -- the GB quarterback, the ARI running back and a SEA defensive back -- and
+        _resolve matches each to his own row, verified, exactly as it should. The canonical key
+        then collapsed the QB and the RB onto ONE key, because both are `offense`, so the guard
+        declared them contested and withdrew BOTH prices: a refusal invented by the key, not by
+        the data. Measured on the IDP board: J Love, J Williams, K Williams and M Washington --
+        eight pool rows, four distinct vendor records, all eight unpriced.
+        """
+        merger = dm.DataMerger()
+        keys = {}
+        for position, team in (("QB", "GB"), ("RB", "ARI")):
+            match = merger.merge_player("J Love", position=position, team=team)
+            if not match.get("matched"):
+                self.skipTest("the committed baseline no longer carries both J Loves")
+            keys[position] = match["match_canonical_key"]
+            self.assertEqual(match["match_path"], "exact")
+            self.assertTrue(match["match_verified"])
+        self.assertNotEqual(keys["QB"], keys["RB"],
+                            "two players matched to two different vendor rows still share one "
+                            "canonical key, so the contested guard will refuse both")
+
+    def test_one_vendor_record_behind_two_players_still_yields_ONE_key(self):
+        """The other half, and the half that must not be traded away: the key is narrower now,
+        so the case it exists for has to be shown still colliding. Two pool rows at the SAME
+        position resolving to the same single row share a key, stay contested, and are still
+        both refused -- which is what keeps Bijan and Brian Robinson from each claiming a trade
+        value that belongs to exactly one of them."""
+        merger = dm.DataMerger()
+        first = merger.merge_player("Bijan Robinson", position="RB", team="ATL")
+        second = merger.merge_player("Brian Robinson", position="RB", team="ATL")
+        if not (first.get("matched") and second.get("matched")):
+            self.skipTest("the committed baseline no longer carries the Robinson pair")
+        self.assertEqual(first["match_canonical_key"], second["match_canonical_key"])
+        pool = pd.DataFrame([
+            {"player_id": "1", "name": "Bijan Robinson", "position": "RB", "team": "ATL",
+             "sleeper_points": 405.25, "trade_value": 99.0, "projection": 346.0,
+             "proj_3yr": 1000.0, "source_file": "vendor.csv",
+             "_canonical_key": first["match_canonical_key"], "_match_verified": True,
+             "_match_path": "key"},
+            {"player_id": "2", "name": "Brian Robinson", "position": "RB", "team": "ATL",
+             "sleeper_points": 89.41, "trade_value": 99.0, "projection": 346.0,
+             "proj_3yr": 1000.0, "source_file": "vendor.csv",
+             "_canonical_key": second["match_canonical_key"], "_match_verified": True,
+             "_match_path": "key"},
+        ])
+        out = dr._drop_contested_identities(pool).set_index("player_id")
+        for pid in ("1", "2"):
+            with self.subTest(player=pid):
+                self.assertTrue(pd.isna(out.loc[pid, "trade_value"]),
+                                "a borrowed price survived the narrower key")
+                self.assertAlmostEqual(out.loc[pid, "sleeper_points"],
+                                       405.25 if pid == "1" else 89.41)
 
     def test_a_pool_with_no_dispute_passes_through_unchanged(self):
         pool = self._contested_pool().iloc[[2]].reset_index(drop=True)

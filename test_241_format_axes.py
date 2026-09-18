@@ -36,12 +36,21 @@ class TheAxisNamesAreDerivedNotListed(unittest.TestCase):
     def test_every_axis_league_format_hint_returns_is_reported(self):
         base = _base_scoring()
         matrix = db.league_matrix(base)
-        hint_keys = set(db.league_format_hint(matrix[0]["league"]))
-        self.assertTrue(hint_keys, "league_format_hint returned nothing -- fixture is broken")
+        # advertised_format_axes, not league_format_hint (#52 phase 6). There are TWO derived
+        # vocabularies -- which export fits the league, and what shape the league is -- and the
+        # report has always unioned them. This assertion named only the first, so it was itself
+        # the hand-list it exists to forbid, one layer up: adding the roster-shape axes upstream
+        # turned it red without anything going stale. Both now read the same single home.
+        axis_keys = set(db.advertised_format_axes(matrix[0]["league"]))
+        self.assertTrue(axis_keys, "advertised_format_axes returned nothing -- fixture is broken")
         reported = set(db.format_axes_exercised(matrix)["axes"])
-        self.assertEqual(reported, hint_keys,
-                         "the reported axes are not exactly league_format_hint's own keys, so "
-                         "this report is a hand-list that will go stale")
+        self.assertEqual(reported, axis_keys,
+                         "the reported axes are not exactly the advertised ones, so this report "
+                         "is a hand-list that will go stale")
+        # ...and the union really does carry both vocabularies, or the check above would pass
+        # against either one alone.
+        self.assertTrue(set(db.league_format_hint(matrix[0]["league"])) < axis_keys)
+        self.assertTrue(set(db.roster_shape_axes(matrix[0]["league"])) < axis_keys)
 
     def test_a_new_axis_appears_without_editing_this_module(self):
         """Drives the derivation rather than asserting it: patch the hint to emit one more axis
@@ -113,7 +122,7 @@ class TheReportCarriesIt(unittest.TestCase):
         self.assertEqual(report["format_axes"]["arms"], 2,
                          "the report described more arms than it holds results for")
         self.assertEqual(set(report["format_axes"]["axes"]),
-                         set(db.league_format_hint(matrix[0]["league"])))
+                         set(db.advertised_format_axes(matrix[0]["league"])))
 
 
 class WhatTheMatrixActuallyExercises(unittest.TestCase):
@@ -121,15 +130,39 @@ class WhatTheMatrixActuallyExercises(unittest.TestCase):
     is not, and the claim is withdrawn. What is pinned now is the true state, so that an axis
     which LATER goes constant announces itself instead of passing silently."""
 
-    def test_no_advertised_axis_is_currently_constant(self):
+    def test_every_constant_axis_is_a_REGISTERED_one(self):
+        """The guard, now that an axis really is constant and the honest answer is to say so.
+
+        It used to demand that NO axis be constant. That was right while the only axes were the
+        export-selection ones, all of which vary. The roster-shape axes added in #52 phase 3
+        brought a real hole with them: `has_defense` is False on all 35 arms, because
+        build_mock_league emits no DEF slot and neither captured league has one. The test's own
+        message said what to do about that -- "Register it before silencing it" -- and there was
+        nowhere to register it, so this adds the register and reads it.
+
+        It ratchets in BOTH directions: an unregistered constant axis fails because a gap
+        appeared, and a REGISTERED axis that starts varying fails too, because the registration
+        is now a false statement about the matrix and should be deleted.
+        """
         out = db.format_axes_exercised(db.league_matrix(_base_scoring()))
         self.assertEqual(
-            out["constant_axes"], [],
-            "An advertised format axis has stopped varying.\n"
-            "  That is a coverage hole: the matrix crosses it in NAME while every arm resolves "
-            "to one value, so the run is not evidence about that branch.\n"
-            "  Register it before silencing it.\n"
+            out["constant_axes"], sorted(db.UNCOVERED_AXES),
+            "An advertised format axis changed coverage.\n"
+            "  Constant and unregistered = a new coverage hole: the matrix crosses it in NAME "
+            "while every arm resolves to one value, so the run is not evidence about that "
+            "branch. Register it in draft_battery.UNCOVERED_AXES, with what would close it.\n"
+            "  Registered but no longer constant = good news, and the registration is now false; "
+            "delete the entry.\n"
             f"  observed: {out['axes']}")
+
+    def test_every_registered_hole_says_what_would_close_it(self):
+        """A register whose entries are bare names is a silencer with extra steps."""
+        self.assertTrue(db.UNCOVERED_AXES, "nothing registered -- delete the register instead")
+        advertised = set(db.advertised_format_axes(db.league_matrix(_base_scoring())[0]["league"]))
+        for axis, reason in db.UNCOVERED_AXES.items():
+            with self.subTest(axis=axis):
+                self.assertIn(axis, advertised, "a register entry names no advertised axis")
+                self.assertGreater(len(reason), 120, "the reason is too short to be one")
 
     def test_te_premium_is_varied_which_is_what_withdrew_241(self):
         """The specific claim #241 made, now measured against the right source."""

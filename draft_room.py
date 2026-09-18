@@ -2243,15 +2243,35 @@ def _scale_vor_to_bpa(vor: pd.Series) -> pd.Series:
 
 
 def _records_with_normalized_nan(df: pd.DataFrame, *columns: str) -> list[dict]:
-    """.to_dict("records") with the named columns' NaN normalized to real None -- pandas
-    leaves a missing float as NaN (a non-None float, `nan is not None`), not the "missing"
-    convention every consumer of this board (pick_synthesis.py, the Draft Room UI) actually
-    expects. Fixed here, once, at the source, rather than every downstream caller re-guarding
-    against NaN on its own."""
+    """.to_dict("records") with missing values normalized to real None -- pandas leaves a
+    missing float as NaN (a non-None float, `nan is not None`) and a missing entry in a `str`
+    column as pd.NA, neither of which is the "missing" convention every consumer of this board
+    (pick_synthesis.py, the Draft Room UI) actually expects. Fixed here, once, at the source,
+    rather than every downstream caller re-guarding on its own.
+
+    EVERY COLUMN, NOT A NAMED LIST (#126, repaired in #52 phase 6). This took `*columns` and
+    normalized only those, and the two callers between them selected 29 columns while naming 11.
+    `identity_basis` was one of the eighteen left out: it returns a real None for a row whose
+    provenance was never recorded -- deliberately, as its own docstring insists -- and the
+    column then handed that None back as `nan`, so the FOURTH state arrived downstream as a
+    float. Measured on the committed baseline: 6 of 160 board rows. `displacement_adj` and
+    `time_horizon_adj` were left out the same way.
+
+    A hand-list of "the columns that can be absent" is a second, quieter claim about which
+    quantities are optional, maintained by hand and consulted by nobody -- and every quantity
+    added since has been added to the selection and forgotten here. Absence is a property of
+    the VALUE, so it is read off the value. `columns` is still accepted and still narrows, for
+    a caller that wants it; no caller does.
+    """
     records = df.to_dict("records")
     for record in records:
-        for column in columns:
-            if pd.isna(record.get(column)):
+        for column in (columns or record.keys()):
+            value = record.get(column)
+            # pd.isna over a list/array/dict cell returns an array, whose truth is ambiguous.
+            # Those are never absent anyway -- a container that exists is a value.
+            if isinstance(value, (list, tuple, set, dict, pd.Series)) or hasattr(value, "shape"):
+                continue
+            if pd.isna(value):
                 record[column] = None
     return records
 
@@ -3374,9 +3394,7 @@ def compute_draft_board(
             # (the number crossed the boundary, its basis did not).
             "absence_kind",
             "fills_required_slot",
-        ]], "projected_points", "horizon_floor", "horizon_sensitivity", "waiting_cost",
-            "bpa", "universal_value", "final_score", "confidence", "replacement_basis",
-            "availability_basis")
+        ]])
 
     my_filled = _team_starters_filled(picks, players_db, my_roster_id)
     # DELIBERATELY THE EVEN SPLIT, not the measured share the demand model above uses, because
@@ -3637,9 +3655,7 @@ def compute_draft_board(
         "horizon_floor", "horizon_sensitivity", "waiting_cost", "replacement_basis",
         "horizon_basis", "identity_basis", "availability_basis", "absence_kind",
         "fills_required_slot",
-    ]], "projected_points", "horizon_floor", "horizon_sensitivity", "waiting_cost",
-        "bpa", "universal_value", "final_score", "confidence", "replacement_basis",
-        "availability_basis", "risk_adj")
+    ]])
 
 
 # -- in-app Mock Draft sandbox (see app.py's Draft Room view) -------------------------------

@@ -4,8 +4,8 @@
  "qb_startable_floor": 162.0,
  "qb_anchor_rank": 12,
  "qb_floor_fraction": 0.5,
- "qbs_with_a_projection": 39,
- "qbs_clearing_the_floor": 28,
+ "qbs_with_a_projection": 40,
+ "qbs_clearing_the_floor": 29,
  "composition": {
   "0": {
    "priced": 481,
@@ -143,5 +143,6 @@
  ],
  "first_round_with_no_priceable_qb": 12,
  "draft_rounds": 30,
- "VERDICT": "Zero QBs are priceable from round 12 of 30. '#168: bounded to superflex QB tails' understates it -- the engine is blind to QB for the majority of a superflex draft. Separately, 82% of the unpriced block is a never-priced non-QB core (vendor coverage), NOT the startable floor."
+ "VERDICT": "Zero QBs are priceable from round 12 of 30. '#168: bounded to superflex QB tails' understates it -- the engine is blind to QB for the majority of a superflex draft. Separately, 82% of the unpriced block is a never-priced non-QB core (vendor coverage), NOT the startable floor.",
+ "REMEASURED": "#52 phase 6: re-measured after the phase 1.1 identity repair. The within-file dedup keyed on norm_name alone, so a first-initial export collided across positions and deleted the lower-ranked namesake -- Jordan Love among them, a startable superflex QB the pool was carrying no projection, no trade value and no rank for. He is back, so both QB counts rise by exactly one. qb_startable_floor is UNCHANGED at 162.0 and so is the cliff round: the recovered QB clears the floor, which moves supply on both sides of it equally and leaves the finding this record exists to support exactly where it was."
 }

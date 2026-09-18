@@ -1883,11 +1883,13 @@ class EligibilityBonusWiringTests(unittest.TestCase):
     # bound". That premise bounds only how far team_acquisition_value can rise ABOVE
     # universal_value. Nothing bounds how far it FALLS BELOW, and this is what that costs.
     #
-    # Repairing it belongs to the invariant phase, not to an identity commit, and the ordering
-    # is deliberate: a fix landed here would be measured against a pool that phases 2 and 3 are
-    # about to change again. Marked rather than edited, because editing the assertion to pass is
-    # the exact move this audit exists to catch.
-    @unittest.expectedFailure
+    # WITHDRAWN (#52 phase 6). The expectedFailure above it was wrong, and so was the reasoning
+    # that put it there ("repairing it belongs to the invariant phase"). Nothing needed repairing
+    # in this invariant: merge_player's canonical key used the coarse position GROUP, so a QB and
+    # an RB of the same name looked like two players priced off one vendor record, and the
+    # contested-identity guard withheld both prices. The scenario below runs on a full real pool,
+    # and the rows it was reasoning about were the ones being withheld. With the key naming the
+    # record instead of the namespace, this assertion passes untouched.
     def test_eligibility_bonus_cannot_flip_a_large_universal_value_gap(self):
         """The missing mirror of test_need_bonus_cannot_flip_a_large_universal_value_gap. Both
         terms answer "how good is this player FOR THIS ROSTER"; the architecture bounds that

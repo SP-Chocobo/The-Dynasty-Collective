@@ -570,13 +570,13 @@
       }
     },
     "test_241_format_axes.py": {
-      "test_methods": 9,
+      "test_methods": 10,
       "asserts": {
         "assertEqual": 9,
-        "assertGreater": 3,
-        "assertIn": 4,
+        "assertGreater": 4,
+        "assertIn": 5,
         "assertNotIn": 3,
-        "assertTrue": 1
+        "assertTrue": 4
       },
       "by_method": {
         "test_a_new_axis_appears_without_editing_this_module": {
@@ -596,15 +596,20 @@
         },
         "test_every_axis_league_format_hint_returns_is_reported": {
           "assertEqual": 1,
+          "assertTrue": 3
+        },
+        "test_every_constant_axis_is_a_REGISTERED_one": {
+          "assertEqual": 1
+        },
+        "test_every_registered_hole_says_what_would_close_it": {
+          "assertGreater": 1,
+          "assertIn": 1,
           "assertTrue": 1
         },
         "test_labels_scope_the_answer_to_the_arms_being_reported": {
           "assertEqual": 2,
           "assertIn": 1,
           "assertNotIn": 1
-        },
-        "test_no_advertised_axis_is_currently_constant": {
-          "assertEqual": 1
         },
         "test_one_arm_reports_no_constant_axes": {
           "assertEqual": 2
@@ -3092,17 +3097,17 @@
       }
     },
     "test_data_semantics_boundary.py": {
-      "test_methods": 33,
+      "test_methods": 34,
       "asserts": {
         "assertEqual": 14,
         "assertFalse": 1,
         "assertGreater": 1,
-        "assertIn": 21,
+        "assertIn": 22,
         "assertIsNone": 3,
         "assertIsNotNone": 1,
         "assertLess": 1,
         "assertNotEqual": 1,
-        "assertNotIn": 7,
+        "assertNotIn": 8,
         "assertTrue": 9
       },
       "by_method": {
@@ -3112,6 +3117,10 @@
         },
         "test_CHARACTERIZATION_unchecked_has_no_representation_anywhere": {
           "assertEqual": 1
+        },
+        "test_a_claim_about_an_ambiguously_keyed_player_is_ranked_in_neither_pool": {
+          "assertIn": 1,
+          "assertNotIn": 1
         },
         "test_a_failed_chair_report_is_relabelled_as_missing_for_the_next_chair": {
           "assertEqual": 2,
@@ -5785,13 +5794,15 @@
       }
     },
     "test_identity_partition_boundary.py": {
-      "test_methods": 28,
+      "test_methods": 31,
       "asserts": {
-        "assertAlmostEqual": 2,
-        "assertEqual": 12,
+        "assertAlmostEqual": 3,
+        "assertEqual": 17,
         "assertFalse": 17,
+        "assertIsInstance": 1,
         "assertIsNone": 2,
-        "assertTrue": 15
+        "assertNotEqual": 2,
+        "assertTrue": 17
       },
       "by_method": {
         "test_a_cross_group_pair_is_left_to_the_coarse_rejection": {
@@ -5832,9 +5843,19 @@
           "assertFalse": 1,
           "assertTrue": 1
         },
+        "test_one_vendor_record_behind_two_players_still_yields_ONE_key": {
+          "assertAlmostEqual": 1,
+          "assertEqual": 1,
+          "assertTrue": 1
+        },
         "test_that_same_key_resolves_when_the_position_agrees": {
           "assertEqual": 1,
           "assertTrue": 1
+        },
+        "test_the_fixture_above_carries_the_key_shape_merge_player_really_emits": {
+          "assertEqual": 3,
+          "assertIsInstance": 1,
+          "assertNotEqual": 1
         },
         "test_the_key_path_rejects_a_club_disagreement": {
           "assertFalse": 1,
@@ -5882,20 +5903,26 @@
         "test_two_known_and_disagreeing_teams_still_reject": {
           "assertTrue": 1
         },
+        "test_two_namesakes_at_different_positions_are_two_records_not_one": {
+          "assertEqual": 1,
+          "assertNotEqual": 1,
+          "assertTrue": 1
+        },
         "test_two_unrostered_sides_agree": {
           "assertFalse": 1
         }
       }
     },
     "test_identity_provenance.py": {
-      "test_methods": 12,
+      "test_methods": 14,
       "asserts": {
-        "assertEqual": 6,
+        "assertEqual": 7,
+        "assertFalse": 1,
         "assertIn": 3,
         "assertIsNone": 3,
         "assertIsNotNone": 1,
         "assertNotEqual": 1,
-        "assertTrue": 3
+        "assertTrue": 5
       },
       "by_method": {
         "test_a_nan_path_is_also_None_because_pandas_will_produce_one": {
@@ -5931,12 +5958,19 @@
           "assertIn": 1,
           "assertTrue": 1
         },
+        "test_no_emitted_value_on_the_board_is_a_nan": {
+          "assertEqual": 1
+        },
         "test_the_board_is_the_reader_the_match_fields_never_had": {
           "assertIn": 1
         },
         "test_the_committed_baseline_resolves_to_the_states_this_module_declares": {
           "assertEqual": 1,
           "assertTrue": 1
+        },
+        "test_the_fourth_state_arrives_as_None_and_not_as_a_float": {
+          "assertFalse": 1,
+          "assertTrue": 2
         }
       }
     },
@@ -6092,19 +6126,21 @@
       }
     },
     "test_kdst_integration.py": {
-      "test_methods": 52,
+      "test_methods": 53,
       "asserts": {
         "assertAlmostEqual": 3,
         "assertEqual": 29,
         "assertFalse": 2,
-        "assertGreater": 14,
+        "assertGreater": 15,
         "assertGreaterEqual": 2,
         "assertIn": 1,
         "assertIsNone": 4,
+        "assertIsNotNone": 1,
         "assertLess": 8,
         "assertLessEqual": 2,
         "assertNotIn": 3,
-        "assertTrue": 27
+        "assertTrue": 28,
+        "fail": 1
       },
       "by_method": {
         "test_a_dual_eligible_projection_only_player_is_dropped_from_the_roster": {
@@ -6144,6 +6180,10 @@
           "assertEqual": 1,
           "assertGreater": 1,
           "assertIsNone": 4,
+          "assertTrue": 1
+        },
+        "test_a_withheld_contested_price_comes_back_through_the_roster_lookup": {
+          "assertIsNotNone": 1,
           "assertTrue": 1
         },
         "test_admitted_kickers_and_defenses_are_points_anchored_not_trade_value_fallbacks": {
@@ -9377,9 +9417,9 @@
       }
     },
     "test_reconciliation_boundary.py": {
-      "test_methods": 23,
+      "test_methods": 27,
       "asserts": {
-        "assertEqual": 14,
+        "assertEqual": 18,
         "assertFalse": 4,
         "assertGreater": 2,
         "assertGreaterEqual": 1,
@@ -9387,7 +9427,7 @@
         "assertIsInstance": 1,
         "assertIsNotNone": 1,
         "assertLessEqual": 1,
-        "assertTrue": 5
+        "assertTrue": 7
       },
       "by_method": {
         "test_a_field_the_winner_lacks_is_taken_from_a_same_basis_row": {
@@ -9395,6 +9435,9 @@
         },
         "test_a_filename_tiebreak_is_recorded_as_arbitrary_when_it_decides": {
           "assertIn": 1
+        },
+        "test_a_genuine_within_file_duplicate_still_collapses": {
+          "assertEqual": 1
         },
         "test_a_kicker_is_unknown_not_not_applicable": {
           "assertEqual": 1,
@@ -9442,6 +9485,9 @@
         "test_non_player_assets_survive_the_load": {
           "assertIn": 2
         },
+        "test_positionless_rows_with_distinct_names_all_survive": {
+          "assertEqual": 2
+        },
         "test_projection_and_proj_3yr_always_share_a_basis": {
           "assertEqual": 1,
           "assertFalse": 1
@@ -9455,9 +9501,15 @@
         "test_the_chosen_basis_for_kicker_is_the_one_that_covers_it": {
           "assertEqual": 1
         },
+        "test_the_committed_chart_keeps_every_asset_its_own_file_declares": {
+          "assertEqual": 1
+        },
         "test_the_merger_exposes_what_it_resolved": {
           "assertIsInstance": 1,
           "assertTrue": 1
+        },
+        "test_the_premise_holds_a_missing_position_really_is_NA_not_the_string_nan": {
+          "assertTrue": 2
         },
         "test_the_transcribed_files_are_labelled_as_such": {
           "assertEqual": 1

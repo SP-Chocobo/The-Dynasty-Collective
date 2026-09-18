@@ -85,8 +85,15 @@ class IDPSourceCoverageTests(unittest.TestCase):
         return self.proj[self.proj["position"].isin(positions)]
 
     def test_no_committed_source_projects_a_single_idp_player(self):
+        # RE-BASELINED AFTER THE #52 PHASE 1.1 IDENTITY REPAIR, which is the whole reason these
+        # are exact numbers rather than inequalities: the within-file dedup keyed on norm_name
+        # alone, so a first-initial export collided across positions and the lower-ranked
+        # namesake was deleted from every file. Ten real players were being deleted, six of them
+        # IDP -- so the IDP universe was understated by exactly six, and so was the count of
+        # matched-but-numberless rows, since none of the six has a number either. The FINDING is
+        # untouched: no committed source projects a single IDP player, before or after.
         idp = self._slice(IDP)
-        self.assertEqual(len(idp), 415, "the IDP universe moved; re-read this whole module")
+        self.assertEqual(len(idp), 421, "the IDP universe moved; re-read this whole module")
         self.assertEqual(idp["projection"].notna().sum(), 0)
         self.assertEqual(idp["proj_3yr"].notna().sum(), 0)
 
@@ -144,7 +151,10 @@ class IDPPoolAdmissionTests(unittest.TestCase):
                 tally["admitted"] += 1
         self.assertEqual(tally["unmatched"], 0,
                          "an identity failure appeared -- that is a DIFFERENT defect from this one")
-        self.assertEqual(tally["matched_but_numberless"], 339)
+        # 339 before #52 phase 1.1; the six recovered IDP namesakes are matched and numberless
+        # like every other IDP row, so they land here. `admitted` is unchanged at 76, which is
+        # the check that the recovery added rows to the pool without inventing numbers for them.
+        self.assertEqual(tally["matched_but_numberless"], 345)
         self.assertEqual(tally["admitted"], 76)
 
 
@@ -198,7 +208,15 @@ class IDPSupplyCannotFillTheLeagueTests(unittest.TestCase):
         offense_supply = sum(1 for row in self.priced if row["position"] in OFFENSE)
         slots = collections.Counter(p for p in IDP_LEAGUE["roster_positions"] if p != "BN")
         offense_demand = (sum(slots[p] for p in OFFENSE) + slots["FLEX"]) * IDP_LEAGUE["total_rosters"]
-        self.assertEqual((offense_supply, offense_demand), (264, 96))
+        # 264 before #52 phase 1.1 and 2 MORE after it, which is a net of two opposite effects
+        # and worth stating because the number alone hides both. Four offensive players came
+        # back (Jordan Love among them, a startable superflex QB the loader had been deleting
+        # outright). Two did not: the pool carries two K Williams rows at the SAME position on
+        # the SAME club, which no name, position or team test can split, so the contested-
+        # identity guard withholds the one price that belongs to exactly one of them -- and
+        # that refusal is the engine working, not a shortfall. The ratio claim below is what
+        # this test is actually about and it is untouched either way.
+        self.assertEqual((offense_supply, offense_demand), (266, 96))
         offense_ratio = offense_supply / offense_demand
         idp_ratio = sum(self.supply.values()) / self.total_demand
         self.assertGreater(offense_ratio, 2.0)
