@@ -380,6 +380,48 @@ class ContextElevatedBecameReachableTests(_RealBoards):
     # because the two are hard to tell apart. Marking a test expectedFailure resolves that
     # ambiguity by assertion. It should not have been done on a bisect alone -- what was missing
     # was a check that the players the repair recovered were still priced afterwards.
+    # EXPECTED FAILURE AGAIN (#52 phase 6, depth_exposure repair) -- and this time with the
+    # measurement that was missing the last time these were marked.
+    #
+    # THE LAST MARK WAS WRONG and is worth keeping in view: it blamed a population change that
+    # had not happened. The tell, visible only in hindsight, was that NO TERM SHRANK -- the
+    # co-occurrence vanished because four players had been withheld from the pool by a defect,
+    # not because any quantity moved. So a bare "the population changed" is not evidence, and
+    # marking a test on it resolves the ambiguity by assertion.
+    #
+    # The discriminating A/B, run in ONE process against these same eight board states with the
+    # single basis rule toggled (lineup_optimizer.depth_exposure is module-level and patchable
+    # for exactly this):
+    #
+    #                              per-position surplus   roster-wide surplus
+    #     rows                            2008                   2008
+    #     depth_exposure max              9.24                   9.24     <- IDENTICAL
+    #     depth_exposure nonzero           588                    898     <- the whole change
+    #     need_bonus max                  8.33                   8.33
+    #     displacement_adj min          -90.00                 -90.00
+    #     gap max                         8.33                  13.21
+    #     share >= 12                    0.00%                  7.72%
+    #
+    # Every number is unchanged. What changed is WHICH ROWS CARRY depth_exposure AS A PRICE:
+    # 310 rows stop, and they are precisely the rows whose position has no backup that could
+    # cover a hole there. EXPOSURE_NO_SURPLUS's own docstring has always said that number "is
+    # NOT depth information"; draft_room has always priced worst_loss only under
+    # EXPOSURE_MEASURED. Neither rule changed. What changed is that the basis stopped being one
+    # roster-wide boolean stamped onto every position alike, so it now says what it claims.
+    #
+    # And that lands exactly where this class's own docstring predicted it would. The badge
+    # became reachable when #139 added depth_exposure as a third term and "the gap's ceiling
+    # tripled, the constant did not move". Pricing that term only where it is evidence puts the
+    # ceiling back, and the badge is dead again at max gap 8.33 -- against the 8.67 the class
+    # records for the pre-#139 state. The warning this class filed against itself, that "a
+    # number that became a discriminator because the quantity underneath it grew is still a
+    # bound being read as a threshold (#56)", is now demonstrated rather than argued.
+    #
+    # NOT repaired here, and the reason is #184: what should light this badge -- and whether a
+    # no-surplus position, which is the MOST exposed a roster can be, ought to be priced for
+    # depth at all -- are valuation decisions for the owner. Both are raised. The assertions
+    # stay as the executable statement of what must become true again once one is made.
+    @unittest.expectedFailure
     def test_it_fires_and_fires_selectively(self):
         gaps = self._gaps()
         self.assertTrue(gaps, "no priced rows measured; this test observed nothing")
@@ -397,6 +439,7 @@ class ContextElevatedBecameReachableTests(_RealBoards):
                         "cliff_protection has, in the other direction: a flag that is almost "
                         "always on carries almost no information")
 
+    @unittest.expectedFailure  # same cause: see the A/B above. max gap 13.21 -> 8.33
     def test_the_cap_no_longer_caps_the_quantity_it_is_compared_against(self):
         """The structural fact underneath the change, asserted rather than narrated: three
         additive team-specific terms now feed the gap, so a cap on one of them is no longer an

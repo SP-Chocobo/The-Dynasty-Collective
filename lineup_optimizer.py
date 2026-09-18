@@ -286,12 +286,40 @@ def depth_exposure(roster_players: list[dict], roster_positions: list[str]) -> d
     baseline = optimize_lineup(roster_players, slots)
     starting_ids = {a["player_id"] for a in baseline["assignments"]}
     by_id = {p["id"]: p for p in roster_players}
-    # Depth cannot exist while every body is needed on the field. Compared against the players
-    # who actually START, not len(roster_players), so a roster carrying someone ineligible for
-    # every slot is not mistaken for having depth it cannot use.
-    has_surplus = len(roster_players) > len(starting_ids)
+    # SURPLUS IS A PER-POSITION QUESTION, WHICH IS WHAT THE SENTINEL ALREADY CLAIMED TO ANSWER
+    # (#52 phase 6; found independently by two passes as I-06 and J-06).
+    #
+    # This was one roster-wide boolean, `len(roster_players) > len(starting_ids)`, stamped onto
+    # every position alike -- while EXPOSURE_NO_SURPLUS's own label says "you hold no backup
+    # HERE, so there is no surplus to value". Those are different claims, and the gap between
+    # them is not academic: draft_room prices `worst_loss` ONLY under EXPOSURE_MEASURED, so one
+    # irrelevant bench body switched pricing on for every position at once.
+    #
+    # Measured: 8 starters and no bench -> every position `no_surplus`, correctly. Add ONE BENCH
+    # KICKER and QB/RB/WR/TE all flip to `measured` with identical arithmetic -- and the number
+    # they are now stamped as measuring is the lone starter's own whole value, which is not
+    # depth information, it is "this player is good". On a real draft at pick 141 that read
+    # K ('measured', 14.0), TE ('measured', 8.0), QB ('measured', 82.0).
+    #
+    # ASKED OF THE SOLVE, NOT OF A RULE, for the reason this function gives about everything
+    # else it computes: substitutability is discovered, not asserted. A first attempt here did
+    # state it as a rule -- "a bench player who can occupy a slot this position can reach" --
+    # and it was WRONG in a way worth recording, because it looks right: a bench RB can play
+    # FLEX, and a tight end can also reach FLEX, so the rule called TE covered. It is not. If
+    # the tight end is starting in the dedicated TE slot, losing him empties a slot no running
+    # back may fill, and the measured loss came back as his entire value -- the number saying
+    # plainly that nothing covered him while the basis claimed depth.
+    #
+    # The re-solve below already answers this exactly: cover existed for a starter if removing
+    # him drew a NON-STARTING player into the lineup. That is the definition, and it needs no
+    # eligibility reasoning of its own.
 
     losses: dict[str, list[float]] = {}
+    #: Per position: did EVERY starter there have somebody who could actually step in? `worst_loss`
+    #: is documented as "what ONE backup would have to cover", so a position where some hole goes
+    #: uncovered is not reporting a backup's job -- it is reporting a starter's whole value, and
+    #: that uncovered loss is also the one that wins the max.
+    covered: dict[str, list[bool]] = {}
     for player_id in starting_ids:
         player = by_id[player_id]
         # The player's OWN eligibility decides which position bears this exposure. A WR
@@ -301,15 +329,19 @@ def depth_exposure(roster_players: list[dict], roster_positions: list[str]) -> d
         # actually fill, because a hole at any of them is a hole this player was covering.
         without = optimize_lineup([p for p in roster_players if p["id"] != player_id], slots)
         loss = round(baseline["total_value"] - without["total_value"], 2)
+        drew_in_a_bench_body = any(
+            a["player_id"] not in starting_ids for a in without["assignments"])
         for position in player["eligible"] & slot_positions:
             losses.setdefault(position, []).append(loss)
+            covered.setdefault(position, []).append(drew_in_a_bench_body)
 
     for position, values in losses.items():
         out[position] = {
             "exposure": round(sum(values), 2),
             "worst_loss": round(max(values), 2),
             "starters": len(values),
-            "basis": EXPOSURE_MEASURED if has_surplus else EXPOSURE_NO_SURPLUS,
+            "basis": (EXPOSURE_MEASURED if all(covered.get(position, []))
+                      else EXPOSURE_NO_SURPLUS),
         }
     return out
 

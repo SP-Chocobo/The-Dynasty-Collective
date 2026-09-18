@@ -3659,18 +3659,19 @@
       }
     },
     "test_depth_exposure.py": {
-      "test_methods": 31,
+      "test_methods": 33,
       "asserts": {
         "assertAlmostEqual": 1,
-        "assertEqual": 25,
-        "assertGreater": 4,
+        "assertEqual": 34,
+        "assertFalse": 1,
+        "assertGreater": 5,
         "assertGreaterEqual": 2,
         "assertIn": 2,
         "assertIsNone": 3,
         "assertLess": 4,
         "assertLessEqual": 1,
         "assertNotIn": 3,
-        "assertTrue": 2
+        "assertTrue": 3
       },
       "by_method": {
         "test_a_BAD_backup_does_not_insure": {
@@ -3691,8 +3692,13 @@
           "assertEqual": 1,
           "assertIsNone": 2
         },
-        "test_a_real_bench_reports_measured": {
-          "assertEqual": 1
+        "test_a_position_with_ONE_uncoverable_starter_is_not_depth_evidence": {
+          "assertEqual": 3,
+          "assertFalse": 1,
+          "assertTrue": 1
+        },
+        "test_a_real_bench_reports_measured_AT_THE_POSITIONS_THAT_HAVE_ONE": {
+          "assertEqual": 3
         },
         "test_a_roster_with_no_bench_reports_no_surplus": {
           "assertEqual": 1
@@ -3758,6 +3764,10 @@
         },
         "test_the_three_absent_states_are_distinguishable_from_each_other": {
           "assertEqual": 1
+        },
+        "test_the_uncoverable_loss_is_the_SAME_NUMBER_bench_or_no_bench": {
+          "assertEqual": 4,
+          "assertGreater": 1
         },
         "test_two_positions_with_identical_shape_get_identical_exposure": {
           "assertEqual": 1

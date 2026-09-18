@@ -140,9 +140,99 @@ class TheFourStatesOfKnowingTests(unittest.TestCase):
         self.assertEqual(_worst(SHALLOW)["TE"],
                          _worst(SHALLOW + [_p("te2", 13, "TE")])["TE"])
 
-    def test_a_real_bench_reports_measured(self):
+    def test_a_real_bench_reports_measured_AT_THE_POSITIONS_THAT_HAVE_ONE(self):
+        """#52 phase 6 (found independently as I-06 and J-06). This asserted that DEEP reports
+        `measured` at TE -- and DEEP carries exactly ONE tight end against a TE-only slot, so TE
+        is the single position on that roster with no backup at all. It passed because the flag
+        being read was `len(roster_players) > len(starting_ids)`: one boolean for the WHOLE
+        roster, stamped onto every position alike, while EXPOSURE_NO_SURPLUS's own label says
+        "you hold no backup HERE". draft_room prices `worst_loss` only under `measured`, so any
+        irrelevant bench body switched pricing on everywhere.
+
+        DEEP is now the cleanest possible demonstration of the difference, so it is asserted in
+        full: one roster, three positions with real depth and one without.
+        """
         result = lo.depth_exposure(DEEP, LEAGUE)
-        self.assertEqual(result["TE"]["basis"], "measured")
+        for position in ("QB", "RB", "WR"):
+            with self.subTest(position=position):
+                self.assertEqual(result[position]["basis"], lo.EXPOSURE_MEASURED,
+                                 "this position carries a genuine backup")
+        self.assertEqual([p["id"] for p in DEEP if p["eligible"] == {"TE"}], ["te1"],
+                         "the fixture gained a second tight end; this test is about having one")
+        self.assertEqual(result["TE"]["basis"], lo.EXPOSURE_NO_SURPLUS,
+                         "one tight end and a TE-only slot is not depth, whatever the bench "
+                         "holds at other positions")
+
+    def test_a_position_with_ONE_uncoverable_starter_is_not_depth_evidence(self):
+        """`all`, not `any`, and the difference is reachable rather than theoretical.
+
+        A position can have several starters -- a tight end in the TE slot and another in a
+        FLEX -- and the re-solve can find cover for some of them and not others. Searching 4000
+        random roster/league shapes turned up 3 such positions, every one of them involving a
+        multi-eligible player; the fixture below is one of them, reproduced deterministically.
+        TE starts three players here: removing two draws a bench body in, removing the third
+        does not.
+
+        THE CHOICE, stated because it IS a choice and not a derivation: the position is stamped
+        `no_surplus` when ANY of its starters cannot be covered. `exposure` sums every loss at
+        the position and so mixes covered with uncovered ones, and `worst_loss` is documented as
+        "what ONE backup would have to cover" -- neither is honest depth evidence while some
+        hole here has no backup at all. The conservative reading is also the one that matches
+        EXPOSURE_NO_SURPLUS's own words, and refusing rather than asserting is what this module
+        does everywhere else.
+
+        In THIS instance the max happens to fall on a covered starter, which is exactly why the
+        rule is not "check whether the max is covered": that would be true here and false on the
+        next roster, and the basis would flicker between them for no reason a reader could see.
+        """
+        league = ["QB", "RB", "WR", "FLEX", "FLEX"]
+        roster = [
+            {"id": "p0", "value": 247, "eligible": {"K", "QB"}},
+            {"id": "p1", "value": 243, "eligible": {"TE"}},
+            {"id": "p2", "value": 48, "eligible": {"RB", "TE"}},
+            {"id": "p3", "value": 140, "eligible": {"TE"}},
+            {"id": "p4", "value": 87, "eligible": {"K", "WR"}},
+            {"id": "p5", "value": 80, "eligible": {"K"}},
+            {"id": "p6", "value": 275, "eligible": {"WR"}},
+            {"id": "p7", "value": 51, "eligible": {"WR"}},
+        ]
+        slots = lo.slots_from_roster_positions(league)
+        base = lo.optimize_lineup(roster, slots)
+        starting = {a["player_id"] for a in base["assignments"]}
+        by_id = {p["id"]: p for p in roster}
+        covered = []
+        for pid in sorted(starting):
+            if "TE" not in by_id[pid]["eligible"]:
+                continue
+            without = lo.optimize_lineup([p for p in roster if p["id"] != pid], slots)
+            covered.append(any(a["player_id"] not in starting for a in without["assignments"]))
+        # The premise: TE really is mixed here. Without this the assertion below cannot tell
+        # `all` from `any` and would pass under either.
+        self.assertEqual(len(covered), 3, "the fixture stopped starting three TE-eligible players")
+        self.assertTrue(any(covered), "no TE starter is coverable -- `all` and `any` agree here")
+        self.assertFalse(all(covered), "every TE starter is coverable -- they agree here too")
+
+        result = lo.depth_exposure(roster, league)
+        self.assertEqual(result["TE"]["basis"], lo.EXPOSURE_NO_SURPLUS)
+        # ...and a position whose single starter IS covered still reports measured on the same
+        # roster, so this is the mixed case being refused and not a blanket refusal.
+        self.assertEqual(result["WR"]["basis"], lo.EXPOSURE_MEASURED)
+
+    def test_the_uncoverable_loss_is_the_SAME_NUMBER_bench_or_no_bench(self):
+        """Why the label is the whole of the repair: the arithmetic never moved.
+
+        TE's worst_loss is the tight end's own value on both rosters, because nothing can
+        backfill a TE-only slot in either. A roster-wide surplus flag called one of them depth
+        evidence and the other not, from identical numbers -- which is the shape this codebase
+        keeps repairing: a companion that says a quantity was measured when it was not.
+        """
+        deep, shallow = lo.depth_exposure(DEEP, LEAGUE), lo.depth_exposure(SHALLOW, LEAGUE)
+        self.assertEqual(deep["TE"]["worst_loss"], shallow["TE"]["worst_loss"])
+        self.assertEqual(deep["TE"]["basis"], shallow["TE"]["basis"])
+        # ...and the bench is genuinely there, or this proves nothing about surplus.
+        self.assertGreater(len(DEEP), len(SHALLOW))
+        self.assertEqual(deep["RB"]["basis"], lo.EXPOSURE_MEASURED)
+        self.assertEqual(shallow["RB"]["basis"], lo.EXPOSURE_NO_SURPLUS)
 
     def test_a_position_this_roster_does_not_start_is_vacant_not_zero(self):
         """Absence is not a value. Reporting 0.0 would rank an empty slot as safely covered --

@@ -257,6 +257,76 @@ registered one starts varying.
 
 ---
 
+## 6.1d — `depth_exposure`'s surplus flag was roster-wide *(closed; two owner decisions raised)*
+
+Found independently by two passes (**I-06** and **J-06**), which is the strongest signal in the
+whole log — and both were right.
+
+`EXPOSURE_NO_SURPLUS`'s own label reads *"not measured — you hold no backup **here**, so there is
+no surplus to value"*. That is a per-position claim. The computation was
+`has_surplus = len(roster_players) > len(starting_ids)` — **one boolean for the whole roster**,
+stamped onto every position alike. `draft_room` prices `worst_loss` **only** under
+`EXPOSURE_MEASURED`, so a single irrelevant bench body switched pricing on everywhere.
+
+Reproduced: 8 starters and no bench → every position `no_surplus`, correctly. Add **one bench
+kicker** → QB/RB/WR/TE all flip to `measured` with identical arithmetic, and the number they are
+now stamped as measuring is the lone starter's own whole value.
+
+**Asked of the solve, not of a rule.** A first attempt *did* state it as a rule — "a bench player
+who can occupy a slot this position can reach" — and it was wrong in a way that looks right: a
+bench RB can play FLEX, and a tight end can also reach FLEX, so the rule called TE covered. It is
+not; if the tight end starts in the dedicated TE slot, losing him empties a slot no running back
+may fill, and the measured loss came back as his entire value — the number saying plainly that
+nothing covered him while the basis claimed depth. The re-solve already answers this exactly:
+cover existed for a starter iff removing him drew a **non-starting** player into the lineup.
+
+`all`, not `any`: a position is `no_surplus` when **any** of its starters cannot be covered. The
+distinction is reachable, not theoretical — a search of 4000 random roster/league shapes found 3
+mixed positions, every one involving a multi-eligible player, and one is pinned as a fixture.
+Stated as the judgement it is, not dressed as a derivation.
+
+**Effect, measured on a real 10-round 12-team draft: 22 of 48 (seat, position) cells change from
+`measured` to `no_surplus` — 45.8%**, every one in the direction of refusing to call something
+depth evidence that it is not.
+
+### The consequence, and why it is NOT the mistake of §6.2
+
+Two `ContextElevatedBecameReachableTests` assertions — the very ones §6.2 un-marked — fail again.
+They are re-marked, and this time with the discriminating A/B that was missing before, run in one
+process with the single basis rule toggled:
+
+| | per-position | roster-wide |
+|---|---:|---:|
+| `depth_exposure` max | 9.24 | 9.24 |
+| `depth_exposure` nonzero rows | **588** | **898** |
+| `need_bonus` max | 8.33 | 8.33 |
+| `displacement_adj` min | −90.00 | −90.00 |
+| gap max | 8.33 | 13.21 |
+| share ≥ 12 | 0.00% | 7.72% |
+
+**Every number is unchanged.** What changed is which rows carry the term *as a price*: 310 stop,
+and they are exactly the rows whose position has no backup. Last time the tell was that **no term
+shrank at all** — the co-occurrence vanished because four players had been withheld by a defect.
+That tell is what a bare "the population changed" lacks, and it is why marking a test on that
+alone resolves the ambiguity by assertion rather than by evidence.
+
+It lands where this class's own docstring predicted: the badge became reachable when `#139` added
+`depth_exposure` and *"the gap's ceiling tripled, the constant did not move"*. Pricing that term
+only where it is evidence puts the ceiling back — max gap **8.33**, against the **8.67** the class
+records for the pre-`#139` state.
+
+### OPEN OWNER DECISIONS (`#184`, `#56`)
+
+1. **What should light `context_elevated`.** Its threshold is `NEED_BONUS_MAX`, a cap on one term,
+   read as a threshold on the sum of four. The class filed that warning against itself; it is now
+   demonstrated rather than argued.
+2. **Should a `no_surplus` position be priced for depth at all?** It is the *most* exposed a
+   roster can be, and it is currently priced at nothing. `draft_room`'s rule (price `worst_loss`
+   only under `measured`) predates this repair and is untouched by it — this repair only made the
+   basis truthful. Whether that rule is right is a valuation question.
+
+---
+
 ## Still open in Phase 6
 
 - **6.1c** `need_bonus`'s bound and its flex-before-dedicated formula
