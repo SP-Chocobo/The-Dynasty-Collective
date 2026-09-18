@@ -23,10 +23,17 @@ them, and refusal falls through to this function's documented rule for a player 
 Closing the last 22 requires per-player identity — which `years_exp == ROOKIE_YEARS_EXP` already
 provides in `_admits_to_pool`.
 
-> **DESIGN QUESTION, surfaced not decided.** There are two definitions of "rookie" in this engine.
-> Preferring the per-player one moves **654 players into the rookie pool and 31 out of it** — a
-> sevenfold change in what a rookie draft contains. That is an engine-design decision, and the
-> mandate says those go to the owner rather than into a repair commit.
+> **DESIGN QUESTION — RULED, 2026-09-18.** There were two definitions of "rookie". The owner ruled
+> for the per-player one: **`years_exp` is authoritative, and the identity-safe KTC flag survives
+> only where Sleeper reports nothing** (42 of 6,595 players carry `years_exp` None).
+>
+> Measured after the ruling: **718 rookies**, 6,553 players answered by `years_exp`, 42 by the KTC
+> fallback, and **0 answers contradicting `years_exp`**. A rookie draft goes from 95 players to
+> 718 — that is the ruling, not a side effect. A real rookie KeepTradeCut never ranked is still a
+> rookie, and the old behaviour excluded him for no reason beyond a vendor's coverage.
+>
+> This closes the residual 22. The identity class is now complete on this axis: a namesake cannot
+> change a per-player-id fact, so inheritance is impossible by construction rather than by care.
 
 **2. Percentiles (`_compute_percentiles`).** `setdefault` → first-row-wins became a set of groups
 per key, resolving to `None` when a key names more than one. A key that names two groups does not
@@ -89,8 +96,17 @@ Marked `@unittest.expectedFailure` with the decomposition in place, because this
 invariant phase and a fix landed here would be measured against a pool that Phases 2–3 are about to
 change again. Editing the assertion to pass is the exact move this audit exists to catch.
 
-## Frozen
+## Frozen and adjudicated
 
-Phase 1.2 is closed. **No advance to provenance, fixture-universe repair, or downstream invariant
-repairs until this is adjudicated by the owner** — in particular the rookie two-definitions
-question, which is the only thing standing between 22 wrong answers and zero.
+Phase 1.2 is closed, and the one open question in it has been ruled (above). Phase 1 as a whole is
+complete: the identity class is repaired at ingestion (1.1) and at every consumer the audit found
+(1.2), with mutation evidence for each.
+
+**Two owner rulings also taken for the phases ahead**, recorded here so they are not re-litigated:
+
+- **Advance to Phase 2 (provenance)** — the league-upload override boundary and declared-date
+  validation.
+- **Absence does not compete on recency.** `_recency_weight` prices an undated source as exactly
+  60 days old, so an honestly-dated 89-day-old file loses to an undated upload. Ruled: **a dated
+  source always outranks an undated one**, whatever its age, consistent with this codebase's
+  absence contract that "unmeasured" is not a value and must not be assigned one.

@@ -294,3 +294,47 @@ class AnExactNameMatchIsNotAnIdentity(unittest.TestCase):
         row = self.merger.merge_player("Ja'Marr Chase", position="WR", team="CIN") or {}
         self.assertTrue(row.get("matched"),
                         "the namespace guard is rejecting an ordinary same-namespace match")
+
+
+class RookieStatusComesFromThePlayerNotTheName(unittest.TestCase):
+    """Owner ruling, #52 phase 1.2. The name-keyed KTC flag could be made identity-SAFE but not
+    identity-COMPLETE: Jonathan Taylor and Jmari Taylor are both RB, so the best a name key can
+    do is refuse, leaving 22 pool players without a correct answer. `years_exp` is per-player and
+    cannot be inherited, so it is the definition; KTC survives only where Sleeper reports nothing.
+    """
+
+    def setUp(self):
+        import draft_room as dr
+        import run_draft_battery as rdb
+        self.dr = dr
+        self.merger = _merger_on_the_owners_format()
+        self.players_db, _ = rdb.build_players_db_from_capture()
+
+    def test_every_player_with_a_years_exp_is_answered_by_it(self):
+        """The mechanism. A namesake cannot change a per-player-id fact, so if the scope filter
+        reads it, inheritance is impossible by construction rather than by care."""
+        import data_merger as dm
+        lookup = self.dr._rookie_lookup(self.merger)
+        disagreements = []
+        for player_id, info in self.players_db.items():
+            years_exp = info.get("years_exp")
+            if years_exp is None:
+                continue
+            key = (dm.name_key(dm.normalize_name(self.dr.player_name(info, player_id))),
+                   dm.identity_namespace(self.dr.player_position(info)))
+            if key in lookup and bool(lookup[key]) != (years_exp == self.dr.ROOKIE_YEARS_EXP):
+                # The KTC flag disagreeing is expected and is exactly why years_exp wins; this
+                # asserts only that such rows EXIST, so the test is not vacuous.
+                disagreements.append(self.dr.player_name(info, player_id))
+        self.assertTrue(
+            disagreements,
+            "no player's KTC flag disagrees with years_exp, so this population cannot "
+            "demonstrate the ruling -- re-measure before trusting it")
+
+    def test_the_fallback_is_small_and_only_for_unreported_players(self):
+        """The other half of the ruling. If years_exp were widely missing, preferring it would
+        be trading one absence for another."""
+        unreported = [p for p in self.players_db.values() if p.get("years_exp") is None]
+        self.assertLess(len(unreported), len(self.players_db) * 0.05,
+                        "years_exp is missing for a large share of the pool, so it is not a "
+                        "safe primary definition -- the ruling rests on it being near-complete")

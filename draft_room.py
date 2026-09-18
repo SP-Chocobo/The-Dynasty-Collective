@@ -1330,11 +1330,17 @@ def build_available_pool(
     veteran pool for no real reason) and excluded from rookies_only (no positive evidence
     they belong there).
 
+    SUPERSEDED IN PART (#52 phase 1.2, owner ruling). Who counts as a rookie now comes from
+    Sleeper's own `years_exp`, which is per-player and cannot be inherited by a namesake; the
+    KeepTradeCut flag above survives only for the 42 players Sleeper reports no years_exp for.
+    The paragraph above still describes what happens to a player NEITHER source covers.
+
     No composite/cross-source lookup happens here -- an earlier version called
     composite_player_score per player to feed a market-corroboration adjustment that turned
     out to be both wrong (see module docstring) and, by a wide margin, this module's most
     expensive operation. Only merge_player's own (cheap) lookup remains.
     """
+    # Still built for the years_exp-None fallback below, which is the only caller left.
     rookie_by_key = _rookie_lookup(merger) if pool_scope in ("rookies_only", "veterans_only") else {}
     rows = []
     for player_id, info in players_db.items():
@@ -1351,10 +1357,29 @@ def build_available_pool(
         primary = player_position(info)
         name = player_name(info, player_id)
         if pool_scope != "all":
-            # The lookup is keyed on (name, position group) since #52 phase 1.2; passing the
-            # bare name key again would miss every entry and silently empty a rookie draft.
-            is_rookie = rookie_by_key.get(
-                (name_key(normalize_name(name)), identity_namespace(primary)), False)
+            # ONE DEFINITION OF ROOKIE, and it is the one that cannot collide.
+            #
+            # `years_exp` is per-player-id -- Sleeper's own field, already the definition
+            # `_admits_to_pool` uses -- so no namesake can inherit it. The KeepTradeCut flag is
+            # keyed on a name, and phase 1.2 could only reduce the damage from 58 wrong answers
+            # to 22: Jonathan Taylor and Jmari Taylor are both RB, so no identity namespace
+            # separates them and the safest a name key can do is refuse. Owner ruling: prefer
+            # the per-player fact, and keep KTC only where Sleeper reports nothing at all (42
+            # of 6,595 players carry years_exp None, which is "not reported", not "rookie").
+            #
+            # WHAT THIS CHANGES, stated because it is large and visible: 654 players move INTO
+            # the rookie pool and 31 move out. A rookie draft goes from 95 players to 717. That
+            # is not a side effect to discover later -- it is the ruling. A real rookie KTC
+            # never ranked is still a rookie, and the old behaviour excluded him for no reason
+            # beyond a vendor's coverage.
+            years_exp = info.get("years_exp")
+            if years_exp is not None:
+                is_rookie = years_exp == ROOKIE_YEARS_EXP
+            else:
+                # The lookup is keyed on (name, identity namespace) since phase 1.2; a bare
+                # name key would miss every entry and silently empty a rookie draft.
+                is_rookie = rookie_by_key.get(
+                    (name_key(normalize_name(name)), identity_namespace(primary)), False)
             if pool_scope == "rookies_only" and not is_rookie:
                 continue
             if pool_scope == "veterans_only" and is_rookie:
