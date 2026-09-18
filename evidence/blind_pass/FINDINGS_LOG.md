@@ -72,7 +72,7 @@ null to state how it was established.
 ## Wave 5 — passes I and J
 
 *Mandate adds a null-result evidentiary standard, a state/persistence/process-boundary category,
-and steers toward the self-integrity instruments. Pass I has reported; pass J is still running.*
+and steers toward the self-integrity instruments. Both passes have reported.*
 
 ### Pass I — reported 2026-09-18. Verbatim: `wave5/PASS_I.md`
 
@@ -179,5 +179,121 @@ with no `Path(...).name`. `app.py`'s `.env` rewrite is non-atomic. `len(x and []
 `league_config`, `pick_synthesis` necessity arithmetic, `app.py` beyond cited sites, `depth_ratings`,
 `rookie_draft`, `draft_counterfactual`, `doc_index`, `basis_semantics`, `ordinals`. Ran 12 rounds,
 not a full 25.
+
+### Pass J — reported 2026-09-18. Verbatim: `wave5/PASS_J.md`
+
+*Logged as stated by the pass. No verdicts, no novelty calls, no merging with pass I's overlapping
+entries — where J and I report the same area, both are logged separately and on their own terms.*
+
+**J-01.** The superflex QB pace prior produces **certainty**, which its own docstring says it never
+does. `actual_now` counts only REAL picks while `expected_now` advances with each hypothetical
+intervening pick, so at 0 real picks `expected_position_pace(QB, 12) = 6.0`, deficit 6.0, `6/6 = 1.0`
+— from the 13th intervening pick on, the rank-1 remaining QB has p_take = 1.0, and `pace_driven`
+always wins because the rank-based p is ~0.01. Measured at 1.01, 22 intervening picks: Josh Allen
+`survival=0.0, opportunity_cost=169.92, denial_value=169.92`; Burrow `0.0`; Lamar `0.002`; Purdy
+`0.013`. Docstring `:46-48`: "a confident-sounding single number would misrepresent as certainty".
+`:89-90` claims it is "capped, never treated as certainty" and cites `_pace_deficit_boost`, **a
+function that no longer exists**.
+
+**J-02.** `denial_value = final_score × take_probability` is the withheld take probability in another
+unit, and is rendered to the chairs **unconditionally** — `pick_debate.py:463`: "Denial value: 169.92
+(would go to roster 2)".
+
+**J-03.** Two take models, both feeding `pick_necessity`. `positional_forfeits` sums the **raw**
+`RANK_TAKE_PROBABILITY` over each rival's top-5, capped 0.9 per position per pick;
+`estimate_survival` uses the same table **normalised over the whole board**. `#206` was applied to
+one consumer only. Measured: `expected_taken` RB 19.8, WR 3.52, QB 0.0, TE 0.0 over 22 picks — Σ =
+**23.32 > 22**, arithmetically impossible. RB forfeit 180.71, **QB forfeit 0.0**.
+
+**J-04.** The consequence of J-03 at the chair: `pick_debate.py:477-481` renders *"Cost of delaying
+QB entirely: measured 0 -- the best remaining QB at your next pick is expected to be no worse than
+now"* — while survival (which says the same QBs are gone with certainty) is withheld. The chair is
+told waiting on QB is free, in a superflex league.
+
+**J-05.** Upside mode is inert on the **production** pricing path. Measured on the full 300-pick
+draft: `picks_with_growth_measured: 131, picks_with_growth_above_zero: 0, max_growth: 0.0`. At the
+start of round 15, 38 of 1,860 rows have growth > 0 (12 vendor-priced, 637 Sleeper-priced, 1,208
+`no_priceable_input`). Every seat-1 pick from R16 shows `need=0.0 disp=None depth=None tav==uv`.
+Contradicts `CandidateSnapshot.growth_signal`'s comment ("43-52% of rows carry growth > 0 … by round
+15 it changes which player is taken") — those numbers were measured on the vendor-only path;
+production is vendor+sleeper.
+
+**J-06.** `depth_exposure`'s `no_surplus` sentinel is roster-level. Measured: roster {QB 30, RB 25,
+WR 28, TE 15} → RB `{worst_loss 25, no_surplus}`; add a **bench QB** → RB `{worst_loss 25,
+**measured**}`, identical arithmetic, now worth +3.0 TAV on every RB candidate.
+`EXPOSURE_NO_SURPLUS`'s own docstring says that number "is NOT depth information".
+`test_depth_exposure` pins only the all-no-bench and deep cases, never the mixed shape.
+
+**J-07.** Kicker composition, logged by the pass explicitly as a KNOWN item measured for the record:
+31 kickers for 12 K slots, seats 7/11/12 at five each, 28 K taken in rounds 8-14 **before the first
+DL** (R15), round 21 twelve DBs in a row, `structural_findings` = 0.
+
+**J-08.** `corpus_state` answers the wrong question **in both directions**, measured. Direction one:
+a real per-league upload → state `doctrine_only`, light "🟢 Computing from the shared baseline only —
+no local data in the mix". Direction two: `bot_research.FINDINGS_PATH = data/baseline/bot_research.json`
+is git-tracked but absent from `INPUT_MANIFEST.json`, so planting an empty one → `includes_local`,
+"plus 1 file **you added**. Your uploads change replacement levels…" — LLM-panel output described to
+the user as their own upload — **and `baseline_manifest.py --check` exits 1, turning CI red, the
+first time a SOURCE FINDING is ever written.**
+
+**J-09.** The committed prediction record was priced from the wrong export **and** the wrong pricing
+path. `prediction_record.main()` builds `DataMerger()` with no `set_league_format`, a vendor
+reconstruction of `players_db`, a hardcoded 1QB/non-TEP mock league, and calls `compute_draft_board`
+with **no** `sleeper_projections`. Measured on the committed file: all 264 rows
+`bpa_source == points_vor_draftsharks`; the unformatted merger resolves to
+`te_premium_dynasty_rankings.csv`, so B Bowers is 309 in the record vs 259 under the league it claims,
+McBride 306 vs 253, Loveland 284 vs 241 — TE values ~20% high for its own stated shape. Write-once by
+design, so it cannot be corrected in place.
+
+**J-10.** `quantity_readers` grades by bare key name across unrelated namespaces. `starters` (the
+`depth_exposure` key) is DECISION with readers `player_universe.py, app.py` — both of which are
+`roster.get("starters")`, Sleeper's roster field; no consumer reads depth_exposure's `starters`.
+`value_lost` is DECISION because `bye_concentration` reads it inside the producing module.
+`KNOWN_WRITE_ONLY` guards only names that happen to be unique.
+
+**J-11.** `suite_taxonomy`: measured 123 fast modules, **210 s**, against a docstring claiming "53
+fast modules, 845 tests, 1.5 seconds". `test_invariant_confirmation_anchors` 57.2 s,
+`test_quantity_readers` 32.0 s, `test_board_renders_absence` 11.8 s, `test_render_trace` 10.0 s. The
+cost drivers are the self-integrity instruments — AST walks, importing `app.py` five times,
+Playwright — none of which the substring detector sees.
+
+**J-12.** `draft_history` is **wired to nothing**. Its docstring calls it "the substrate for all
+three (#92)" and "what gives the Prytaneum explicit visibility of which Draft PickSnapshots exist";
+`grep -l draft_history *.py` (non-test) returns only itself. `test_cdme_ingestion_boundary._NEVER_IMPORTED`
+lists it as a store CDME must never read — trivially true of a store nothing writes.
+
+**J-13.** `sleeper_client` uses the exact write pattern `store_io`'s own docstring measured as
+torn-read-prone (91,956 empty reads of 98,405 under one concurrent writer): `write_text` for the
+~10 MB players cache and for `_write_snapshot`. `app.py:3607` calls `get_players()` at top level on
+every rerun. If Sleeper is down at the moment a torn read forces a refetch, `get_players` returns
+`{}` — **an empty player universe indistinguishable from "no players"**.
+
+**J-14.** `_sum_weeks` collapses "week unreachable" with "week empty": `get_weekly_projections`
+returns `{}` on `SleeperAPIError` *and* on an empty payload. And `get_season_stats` claims the same
+failed-week handling via `_sum_weeks`, but `get_weekly_stats` **raises**, so one failed week aborts
+the whole realised-season sum — the two docstrings disagree.
+
+**J-15.** `store_io.write` dropping a write to a marked store has a consequence the disclosure does
+not name: `attachments.save_attachment` writes the file bytes **first**, so a corrupt `captions.json`
+leaves an orphan file with its caption lost while the call returns success.
+
+**J-16 (low/style).** `build_baseline_projection_rows` extrapolates one week × `season_factor` — the
+thing `get_season_projections` argues against — filters on raw `position`, and has no production
+caller. The 0.75-PPR → standard branch, and `len(x and [])`, both reported again.
+
+**Nulls filed by pass J, with method (logged as filed, not adjudicated):** LLM→CDME identity/pricing
+path (injection tests checked and found non-vacuous); `resume_join`; end-to-end structural (300/300
+picks were `candidates[0]`, 0 `tav=None`, `fills_required_slot` never bound, 11 zero-margin picks);
+`lineup_optimizer.optimize_lineup`; `render_trace --check`; `assertion_floors --check` — **filed
+explicitly as a *limit* rather than a defect**, the pass having found the `skipTest` hole and judged
+it inside the docstring's declared scope.
+
+**Declared not confident:** NaN reachability for `need_bonus`, `eligibility_bonus`, `depth_exposure`,
+`displacement_adj`, `time_horizon_adj` — not in `_records_with_normalized_nan`'s list, not
+established either way. `store_io` cross-process locking — medium confidence only.
+
+**Setup artefact the pass flagged itself:** in a non-git extracted tree,
+`test_baseline_manifest`, `test_doc_index`, `test_prose_names`, `test_superseded_proposals` fail on
+`git ls-files` exit 128. Not a defect; those four depend on git being present.
 
 <!-- APPEND POINT: each pass's findings go below, in arrival order, unedited afterwards. -->
