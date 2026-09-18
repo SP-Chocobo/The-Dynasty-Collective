@@ -296,4 +296,26 @@ established either way. `store_io` cross-process locking — medium confidence o
 `test_baseline_manifest`, `test_doc_index`, `test_prose_names`, `test_superseded_proposals` fail on
 `git ls-files` exit 128. Not a defect; those four depend on git being present.
 
+## Wave 6 — passes K and L
+
+**VOID ATTEMPT, logged because the log is append-only and a re-run must not read as a single
+uninterrupted wave.** Both passes were launched and both died on the account session limit
+(resets 14:00 UTC) before either produced a report. **No findings. Nothing from the void attempt
+enters this log or the ledger.**
+
+Two things survive it, and only these:
+
+1. **A mandate error, caught by pass K before it died.** The Wave 6 steering list named
+   `pick_analysis` and `bye_concentration` as modules to examine. They are not modules — they are
+   `draft_strategy.pick_analysis` (line 896) and `lineup_optimizer.bye_concentration` (line 644).
+   Verified directly. The relaunched mandate names them correctly. A pass sent to read files that
+   do not exist spends its opening minutes on my error.
+2. Pass K had a probe (`probe_identity.py`) running against `data_merger`'s identity path when it
+   was cut off. Its output was never reported and is not logged.
+
+**Relaunched** with the corrected mandate, otherwise unchanged, after the limit reset. The
+relaunch is Wave 6.
+
+---
+
 <!-- APPEND POINT: each pass's findings go below, in arrival order, unedited afterwards. -->
