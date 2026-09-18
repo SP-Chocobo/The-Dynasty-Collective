@@ -314,7 +314,7 @@ Two things survive it, and only these:
    was cut off. Its output was never reported and is not logged.
 
 **Relaunched** with the corrected mandate, otherwise unchanged, after the limit reset. The
-relaunch is Wave 6. Pass L has reported; pass K is still running.
+relaunch is Wave 6. Both passes have reported.
 
 ---
 
@@ -420,5 +420,110 @@ real-data measurement of **0 of 1,626** offense queries resolving onto an IDP ro
 stating plainly it is *"not confident it stays null under a different vendor file"*; `_merge_memo`
 invalidation; `bye_concentration` ratio bounds via the Hungarian solve; `draft_counterfactual.bpa_row`
 `#193` crash genuinely fixed.
+
+### Pass K — reported 2026-09-18. Verbatim: `wave6/PASS_K.md`
+
+*Logged as stated by the pass. One verification of mine is marked inline as mine; everything else is
+the pass's own claim, unadjudicated.*
+
+**K-01. `load_all`'s per-file dedup drops real players before the identity model can protect them.**
+`df.sort_values("rank").drop_duplicates(subset="norm_name", keep="first")` runs on every rankings
+file *before* `_reconcile_rows` builds its `norm_name|position_group` key. The comment justifies it
+with the same-position "B Robinson / B Robinson Jr." case, but a first-initial export collides across
+positions constantly. Measured by the pass: all five offense files carry `J Love` (RB ARI) **and**
+`J Love` (QB GB); also `J Williams` WR DET / RB DAL, `M Washington` WR MIA / RB LV, `K Williams` RB
+LAR / WR NE, plus six more in the IDP files. The lower-ranked namesake is dropped from **every** file,
+so `_dedup_by_name_and_position` and `_drop_contested_identities` never get a second row to protect.
+
+> **VERIFIED BY THIS SESSION**, not taken on the pass's word — run from the repo root on the owner's
+> own league format:
+> ```
+> Jordan Love      QB GB   matched=False  proj=None tv=None rank=None
+> Javonte Williams RB DAL  matched=False  proj=None tv=None rank=None
+> Malik Washington RB LV   matched=False  proj=None tv=None rank=None
+> Ja'Marr Chase    WR CIN  matched=True   proj=339.0 tv=84.0 rank=5.0
+> ```
+> A **starting NFL quarterback in a superflex league** has no projection, no trade value and no rank.
+> The control matches normally.
+
+**K-02.** `positional_forfeits` uses the unnormalised take table `#206` repaired only for survival.
+Measured: rival top-5 = 3 RB + 2 WR, assigned P(RB)=0.90 and P(WR)=0.16 → 1.06 players from one pick;
+the same five rows carry **0.029** total mass in the survival model. Over 22 picks `expected_taken` =
+RB 19.8, WR 3.52, QB 0.0 — **23.3 players from 22 picks**, and zero QBs in a superflex league whose
+own pace prior asserts six go in round 1. The RB curve read at index 19.8 yields forfeits of 100+.
+`pick_debate.py:488` renders "~19.8 RB pick(s) expected before then" to the model. And the mutation
+`RUN_TAKE_PROBABILITY_CAP = 9.0` — a probability cap above 1 — **survives all 51 tests**.
+
+**K-03.** A league-specific upload with an untagged filename **loses every field to the stale
+committed baseline**, while `data_merger.py:1768` claims "a league-specific rankings/trade-value
+override … takes priority over the global pool". No such rule exists: precedence is basis →
+format-match → date → filename, and `league_dir` confers nothing. `_detect_rankings_format` tags from
+**filename only**. Measured: a copy of the baseline with every value doubled and
+`source_date=2026-09-15`, dropped in a league dir as `rankings_export.csv` → Chase still returns the
+2026-08-18 baseline's 339/84; renamed with format tokens → 678/168. The app stores uploads under
+`uploaded.name` unchanged.
+
+**K-04.** Declared `source_date` is never validated — `parse_as_of` guards only the user-*stated*
+path. Measured: a frame dated `8/28/26` beats `2026-08-18` on both fields, recorded reason "the newer
+source_date wins", because `_negated_date("8/28/26")` = `1/71/73` sorts below `7973-…`. Which
+malformed dates win is arbitrary (`1/5/26` loses).
+
+**K-05.** Two rookie definitions. `dict(zip(ktc["_name_key"], ktc["rookie"]))` is last-row-wins;
+measured **58 of 787** pool players disagree with `years_exp == 0`. `Jeremiyah Love` (RB ARI,
+years_exp 0 — the "J Love" that *survives* K-01) is flagged **not** a rookie because Jordan Love's row
+wins the key; Keon Coleman (years_exp 2) is flagged a rookie. "Rookies only" excludes the class's RB1;
+"Veterans only" includes him.
+
+**K-06.** `_conflict_reason` is computed against `ordered[0]` even when the chosen value came from a
+later candidate — measured to record `format_match` where recency actually decided.
+
+**K-07.** The mock-draft format override reloads the merger **twice per rerun** and wipes
+`_merge_memo`. Measured: board build **0.87 s warm, 18.0–18.9 s cold**, paid on every button click in
+the mock view.
+
+**K-08.** The Draft Room snapshot cache key omits `season_projections` and `league_format`, and
+nothing pops the cache on sync: sync mid-draft with new projections and no new pick → stale snapshot.
+
+**K-09.** `build_roster_table` overwrites Sleeper's own `position`/`team` with the vendor row's.
+Measured on 43 matched rows: **4 LB→DL** (Nolan Smith, Byron Young, Nick Herbig, Cam Jones), and the
+Matchup view groups by that field, so Sleeper linebackers render under DL. Also two spellings of
+"unrostered" (`"FA"` vs `NO_NFL_TEAM`).
+
+**K-10.** `regret_vs_bpa >= 0 "by construction"` is false — `_board_order` sorts `fills_required_slot`
+before `final_score`, so the engine is not the TAV-argmax when the backstop binds; the test pins it on
+fixtures where the backstop cannot fire.
+
+**K-11.** `FORFEIT_SCALE_MAX = 100` is justified by a scale that no longer exists — the docstring says
+universal_value "is CONSTRUCTED so 100 is the largest real VOR gap"; `_scale_vor_to_bpa` now returns
+raw points.
+
+**K-12.** The late-round necessity label is a **knife-edge on the clamp**: raw can reach ~177, is
+clamped to 100, then ×0.3 from round 15, so exactly 30.0 reads "LOW URGENCY" and anything else reads
+"DOESN'T MATTER MUCH". The label is therefore a function of whether the *pre-clamp* sum exceeded 100 —
+raw 99.9 → "DOESN'T MATTER", raw 140 → "LOW URGENCY".
+
+**K-13 (low/instrument).** `load_all`'s `except Exception: continue` makes a damaged vendor file vanish
+silently; `_compute_percentiles`' `setdefault` gives 19 colliding keys the wrong percentile pool;
+`_bye_week_map` raises `KeyError: 'team'` (reproduced) when an external source carries `bye_week`
+without `team`; `pick_value` collides `1.03` with `10.3`; and the measured-zero-as-unpriced guard is
+recorded as an owner-ruled collapse rather than hidden.
+
+**Mutation battery (K's own, independent of pass L's):** seven constants, one tree copy each.
+`RANK_TAKE_PROBABILITY` all 0.99 → 3/167 fail, none a survival *value* test;
+`FORFEIT_OPPONENT_BOARD_DEPTH = 0` → 5/167; `NECESSITY_BASELINE = 0.0` → 2/166; fuzzy
+`match_cutoff = 0.0` → 2/118; `_STRONG_RATIO = 0.0` → 4/50; `CLIFF_HIGH_RATIO = 1000` → 3/116;
+**`RUN_TAKE_PROBABILITY_CAP = 9.0` → 0/51, survives.** K's own summary: "detection exists but is thin
+(2-5 tests per absurd constant, typically structural rather than behavioural)".
+
+**Nulls filed by pass K, with method (logged as filed, not adjudicated):** `_resolve`'s four branches
+enumerated — exact path applies neither namespace nor offence-position rejection, but no real-data
+case found where a single wrong-position exact row was returned as verified; **"not confident this
+holds for the free-agent table (full names)"**. Also `outcome_record`, `upload_batches.record/forget`,
+`league_prefs`, `decision_log`, `resume_join`, `basis_semantics`, `ordinals`, `measurement` — every
+`except` and early return read, each collapsing absent/damaged only where its docstring says so. And
+`bye_concentration`'s bounds via the Hungarian solve.
+
+*(Note for triage, not a reclassification: pass K filed `outcome_record` as a null on the same day
+pass L filed a measured defect in `outcome_record.load`. Both stand as filed.)*
 
 <!-- APPEND POINT: each pass's findings go below, in arrival order, unedited afterwards. -->
