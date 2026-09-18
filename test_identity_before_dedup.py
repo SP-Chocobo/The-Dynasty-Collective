@@ -1,4 +1,4 @@
-"""Identity is established BEFORE deduplication, and no real player disappears on the way in.
+"""Identity is established BEFORE deduplication, and no real player disappears on the way in (#52).
 
 The defect these tests exist for: `load_all` deduplicated every rankings file on `norm_name`
 alone, one stage before `_reconcile_rows` built its position-aware key. A first-initial export

@@ -99,3 +99,52 @@ class APerPickTakeProbabilityIsAProbability(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TheTierDetectorDetectsRatherThanGreps(unittest.TestCase):
+    """#52 phase 4. `suite_taxonomy.tier_of` was `"DataMerger()" in source` -- a substring, in a
+    module whose own docstring promises detection "never declared ... cannot silently disagree
+    with reality the way a hand-maintained list would". A substring is a grep: it calls a
+    docstring MENTION a construction, and cannot see `DataMerger(league_dir=...)`.
+
+    On today's tree the substring and the parse agree exactly, so this is a hole closed before
+    it opened rather than a live defect -- and these tests plant both failure directions so it
+    stays closed.
+    """
+
+    def setUp(self):
+        import suite_taxonomy as st
+        self.st = st
+
+    def test_a_mere_mention_is_not_a_construction(self):
+        """The false positive: prose naming the class would have been billed as expensive."""
+        mention_only = '"""This module explains why DataMerger() is expensive."""\nx = 1\n'
+        self.assertFalse(self.st._constructs_a_data_merger(mention_only),
+                         "a docstring mentioning DataMerger() is classed as constructing one")
+
+    def test_a_construction_with_arguments_is_still_a_construction(self):
+        """The false negative, and the one that actually matters: the substring required empty
+        parentheses, so every call carrying an argument was billed as cheap."""
+        for source in ('m = DataMerger(league_dir=p)\n',
+                       'm = dm.DataMerger(match_cutoff=0.9)\n',
+                       'm = DataMerger()\n'):
+            with self.subTest(source=source.strip()):
+                self.assertTrue(self.st._constructs_a_data_merger(source),
+                                f"{source.strip()} is not detected as constructing a merger")
+
+    def test_the_census_is_live_rather_than_recited(self):
+        """The stale-number defect. The docstring stated "53 fast modules, 845 tests, 1.5
+        seconds" as measured fact while the suite grew to ~124 fast modules and ~205 seconds.
+        A number worth stating is worth deriving, so it is derived now."""
+        census = self.st.tier_census()
+        self.assertIn("fast", census)
+        self.assertIn("full", census)
+        self.assertEqual(sum(census.values()), len(self.st.modules()),
+                         "the census does not account for every module, so it is not a census")
+        self.assertGreater(census["fast"], 0)
+
+    # A fifth test here scanned the module docstring with a regex for the superseded counts.
+    # It failed on the correction's own QUOTATION of them -- and a regex policing prose is the
+    # text-scan-where-a-parse-exists pattern this audit spent six waves flagging. Deleted
+    # rather than made cleverer: `tier_census()` existing, and the test above asserting it
+    # accounts for every module, is what actually stops a number rotting in prose.

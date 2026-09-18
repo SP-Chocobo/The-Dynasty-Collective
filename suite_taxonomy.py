@@ -3,12 +3,28 @@
 Two independent classifications, deliberately kept apart because they answer different
 questions and have different failure modes if they drift.
 
-TIER -- how expensive is this module?
+TIER -- which tier does this module run in?
     Detected, never declared: a module that constructs a real DataMerger loads and parses the
-    committed source data and costs seconds; everything else costs milliseconds. Detection
-    means the tier cannot silently disagree with reality the way a hand-maintained list would.
-    Measured at the time of writing: 53 fast modules, 845 tests, 1.5 seconds. 27 full modules
-    carry the rest, and the whole suite is ~17 minutes.
+    committed source data and costs seconds. Detection means the tier cannot silently disagree
+    with reality the way a hand-maintained list would.
+
+    TWO CORRECTIONS (#52 phase 4), because the paragraph above used to claim more than it
+    could keep.
+
+    1. "everything else costs milliseconds" IS NO LONGER TRUE, and the tier name should not be
+       read as a cost promise. Constructing a DataMerger is ONE cost driver; it stopped being
+       the only one. Measured across the fast tier, run module by module: the whole tier is
+       ~205 seconds, and the slowest members are the self-integrity instruments -- an AST walk
+       of the tree, importing app.py several times, a Playwright render -- none of which touch
+       a DataMerger and none of which this detector can see. `tier_census()` below reports the
+       live counts so no number in this prose can rot again; the docstring used to carry "53
+       fast modules, 845 tests, 1.5 seconds" against a reality of ~124 and ~205s.
+
+    2. Detection is now an AST walk rather than the substring `"DataMerger()" in source`. That
+       substring called a docstring MENTION a construction, and could not see
+       `DataMerger(league_dir=...)` or one built through a helper. On today's tree the two agree
+       exactly -- 50 full, 124 fast, zero disagreements -- so this changes nothing now and
+       closes the hole before it opens, which is the honest description of it.
 
     The tiers exist so CI can run the fast one on EVERY push. They are NOT a mechanism for
     deciding which tests a given change needs -- that would be a map from touched files to
@@ -93,9 +109,48 @@ def _source(module: str) -> str:
         return handle.read()
 
 
+def _constructs_a_data_merger(source: str) -> bool:
+    """Whether this module actually CALLS DataMerger(...), by parse rather than by substring.
+
+    `"DataMerger()" in source` counted a docstring mention as a construction and missed every
+    call carrying an argument. Parsed, the question is the one the tier means: does this module
+    build one? Both `DataMerger(...)` and `dm.DataMerger(...)` count; a bare name with no call
+    does not.
+    """
+    try:
+        tree = ast.parse(source)
+    except SyntaxError:
+        # A module that will not parse cannot be run, and the expensive tier is where an
+        # unrunnable module is least likely to be missed.
+        return True
+    for node in ast.walk(tree):
+        if not isinstance(node, ast.Call):
+            continue
+        func = node.func
+        if isinstance(func, ast.Name) and func.id == "DataMerger":
+            return True
+        if isinstance(func, ast.Attribute) and func.attr == "DataMerger":
+            return True
+    return False
+
+
 def tier_of(module: str) -> str:
     """Detected, not declared -- see the module docstring."""
-    return TIER_FULL if "DataMerger()" in _source(module) else TIER_FAST
+    return TIER_FULL if _constructs_a_data_merger(_source(module)) else TIER_FAST
+
+
+def tier_census() -> dict[str, int]:
+    """Live counts per tier, so prose never has to carry a number that can rot.
+
+    The docstring above used to state "53 fast modules, 845 tests, 1.5 seconds" as a measured
+    fact. It was measured, once, and then the suite grew to roughly 124 fast modules and ~205
+    seconds while the sentence stayed still. A number worth stating is worth deriving.
+    """
+    counts: dict[str, int] = {}
+    for module in modules():
+        tier = tier_of(module)
+        counts[tier] = counts.get(tier, 0) + 1
+    return counts
 
 
 def subject_of(module: str) -> str | None:
