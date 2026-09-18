@@ -294,3 +294,89 @@ class AnExactNameMatchIsNotAnIdentity(unittest.TestCase):
         row = self.merger.merge_player("Ja'Marr Chase", position="WR", team="CIN") or {}
         self.assertTrue(row.get("matched"),
                         "the namespace guard is rejecting an ordinary same-namespace match")
+
+
+class ProvenanceDecidesBeforeAFilenameDoes(unittest.TestCase):
+    """Phase 2. `league_dir` conferred nothing: precedence was basis, then a format score read
+    off the FILENAME, then date. A league upload of the owner's own file with every value
+    doubled was ignored when named `rankings_export.csv` and honoured when renamed to carry
+    format tokens -- the file's name decided whether the user's own league data counted.
+
+    Contract, ruled: explicit league configuration > uploaded data > inferred metadata >
+    committed baseline.
+    """
+
+    @staticmethod
+    def _price_with_league_upload(filename):
+        import json, os, shutil, tempfile
+        import pandas as pd
+        import data_merger as dm
+        import draft_battery as db
+        doubled = pd.read_csv("data/baseline/rankings/dynasty_ppr_superflex_rankings.csv")
+        for column in ("projection", "proj_3yr", "trade_value"):
+            if column in doubled.columns:
+                doubled[column] = pd.to_numeric(doubled[column], errors="coerce") * 2
+        doubled["source_date"] = "2026-09-15"
+        temp = tempfile.mkdtemp(prefix="provenance_")
+        try:
+            league_dir = os.path.join(temp, "123456789")
+            os.makedirs(league_dir)
+            doubled.to_csv(os.path.join(league_dir, filename), index=False)
+            merger = dm.DataMerger(league_dir=dm.Path(league_dir))
+            with open("data/fixtures/sleeper_capture.json") as handle:
+                capture = json.load(handle)
+            merger.set_league_format(db.league_format_hint(
+                capture.get("league_shape") or capture.get("league")))
+            return (merger.merge_player("Ja'Marr Chase", position="WR", team="CIN") or {}).get("projection")
+        finally:
+            shutil.rmtree(temp, ignore_errors=True)
+
+    def test_an_ordinary_filename_does_not_cost_a_league_its_own_data(self):
+        """The oracle: doubled values are unmistakable, so this cannot pass by coincidence."""
+        for filename in ("rankings_export.csv", "my_league_2026.csv", "export (1).csv"):
+            projection = self._price_with_league_upload(filename)
+            self.assertIsNotNone(projection, f"{filename} produced no price at all")
+            self.assertGreater(projection, 400,
+                               f"a league upload named {filename} lost to the committed "
+                               "baseline -- the filename is deciding precedence again")
+
+    def test_a_format_tagged_name_is_not_required_and_not_penalised(self):
+        """The control. A repair that made ordinary names win by breaking tagged ones would
+        satisfy the test above."""
+        self.assertGreater(self._price_with_league_upload("dynasty_ppr_superflex_rankings.csv"), 400)
+
+
+class AMalformedDateLosesInsteadOfWinning(unittest.TestCase):
+    """Phase 2. `parse_as_of`'s own docstring measures `'8/28/26' -> '1/71/73'`, a key that
+    sorts before every real date -- and that guard was applied to the date a PERSON states and
+    not to the one a CSV column declares, so it sat next to the hole it was written for.
+    """
+
+    def test_an_unparseable_declared_date_is_unknown_not_declared(self):
+        import upload_batches as ub
+        for raw in ("8/28/26", "1/5/26", "not-a-date", "202-08-18"):
+            self.assertIsNone(ub.resolve_source_date(None, raw),
+                              f"{raw!r} was accepted as a source_date")
+            self.assertEqual(ub.DATE_UNKNOWN, ub.date_basis(None, raw),
+                             f"{raw!r} is reported as a declared date, which claims the file "
+                             "said when it was from -- it did not")
+
+    def test_a_blank_column_is_not_a_declared_date(self):
+        """An empty CSV cell arrives as the float NaN, which is truthy."""
+        import numpy as np
+        import upload_batches as ub
+        self.assertIsNone(ub.resolve_source_date(None, np.nan))
+        self.assertEqual(ub.DATE_UNKNOWN, ub.date_basis(None, np.nan))
+
+    def test_a_real_iso_date_still_works(self):
+        import upload_batches as ub
+        self.assertEqual("2026-08-18", ub.resolve_source_date(None, "2026-08-18"))
+        self.assertEqual(ub.DATE_DECLARED, ub.date_basis(None, "2026-08-18"))
+
+    def test_an_undated_source_loses_every_precedence_tie(self):
+        """The owner's ruling, enforced where recency decides which source wins."""
+        import data_merger as dm
+        undated = dm._negated_date("")
+        for real in ("2026-08-18", "2020-01-01", "1999-12-31"):
+            self.assertLess(dm._negated_date(real), undated,
+                            f"an undated source outranks a source dated {real}")

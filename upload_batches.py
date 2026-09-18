@@ -168,6 +168,26 @@ def stated_as_of(relative_path: str) -> Optional[str]:
     return (batch or {}).get("as_of")
 
 
+def valid_declared_date(declared) -> Optional[str]:
+    """A declared source_date that does not parse is NOT a date, and must not be treated as one.
+
+    `parse_as_of` above exists because `_negated_date` turns a malformed date into a key that
+    often sorts FIRST -- its docstring measures '8/28/26' -> '1/71/73', which beats a correct
+    '2026-08-18'. That reasoning was applied to the date a PERSON states and not to the one a
+    CSV column declares, so the guard sat next to the hole it was written for. Measured on the
+    post-phase-1 tree: '8/28/26', '1/5/26' and even 'not-a-date' all arrived as basis
+    "declared", and a blank column arrived as the float NaN, which is truthy, carrying basis
+    "declared" on a value that is not a date in any sense.
+
+    Non-strings (NaN from an empty CSV cell, None, a stray number) are not dates either, and are
+    refused before `parse_as_of` is asked to call `.strip()` on them.
+    """
+    if not isinstance(declared, str):
+        return None
+    iso, error = parse_as_of(declared)
+    return None if error else iso
+
+
 def date_basis(stated: Optional[str], declared: Optional[str]) -> str:
     """Which of the three states a file's source_date is in.
 
@@ -177,8 +197,10 @@ def date_basis(stated: Optional[str], declared: Optional[str]) -> str:
     """
     if stated:
         return DATE_STATED
-    if declared:
+    if valid_declared_date(declared):
         return DATE_DECLARED
+    # A declared value that does not parse is UNKNOWN, not DECLARED. Reporting it as declared
+    # is the claim "this file said when it was from", and an unparseable string did not.
     return DATE_UNKNOWN
 
 
@@ -189,7 +211,7 @@ def resolve_source_date(stated: Optional[str], declared: Optional[str]) -> Optio
     to do with it -- an undated row loses every tie rather than winning one on an accident -- and
     that branch only becomes reachable once something stops inventing a date first.
     """
-    return stated or declared or None
+    return stated or valid_declared_date(declared) or None
 
 
 @store_io.atomic(lambda *a, **k: BATCHES_PATH)

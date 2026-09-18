@@ -167,8 +167,30 @@ def external_upload_targets() -> dict[str, str]:
 
 def _recency_weight(source_date: Optional[str]) -> float:
     """1.0 for a source dated today, halving every COMPOSITE_RECENCY_HALFLIFE_DAYS. An
-    unparsable/missing date gets a fixed middling weight (neither trusted as fresh nor
-    discarded as worthless) rather than crashing or silently dropping that source."""
+    unparsable/missing date gets 0.5.
+
+    WHAT 0.5 ACTUALLY MEANS HERE, because the previous sentence claimed otherwise. It read
+    "neither trusted as fresh nor discarded as worthless", which describes a neutral stance;
+    0.5 is not neutral, it is *exactly one half-life*. This function assigns an undated source
+    the age of 60 days. Measured: an honestly dated 89-day-old file weighs 0.3577 and therefore
+    loses to a file that simply left its date blank.
+
+    THE OWNER'S RULING (#52 phase 2) IS THAT ABSENCE DOES NOT COMPETE ON RECENCY, and it is
+    already enforced where recency decides WHICH SOURCE WINS: `_negated_date` maps an undated
+    row to "~", which sorts after every real date, so an undated file loses every precedence
+    tie. That is the path this ruling governs.
+
+    This weight is a different thing -- a BLENDING coefficient inside composite_player_score,
+    where several sources contribute at once. Making absence lose here too would mean weighting
+    it below the oldest dated source in the blend, and since a dated weight decays continuously
+    toward zero, no constant is below all of them. Replacing 0.5 with another hand-picked number
+    would be inventing a second uncalibrated constant to fix the first, which #56 forbids and
+    which is the defect class this audit spent six waves finding.
+
+    So the number is UNCHANGED and the claim about it is corrected. Deriving a blending weight
+    for an undated source is open work, and it is a valuation change -- it does not belong in a
+    provenance repair.
+    """
     if not source_date:
         return 0.5
     try:
@@ -1382,16 +1404,44 @@ def _basis_for_position(rows: pd.DataFrame) -> Optional[str]:
     return ranked[0][2]
 
 
+#: WHERE A ROW CAME FROM, ranked. The contract this implements, ruled by the owner in #52
+#: phase 2: **explicit league configuration > uploaded data > inferred metadata > committed
+#: baseline**. Before this, `league_dir` conferred NOTHING -- precedence was basis, then a
+#: format score read off the FILENAME, then date. Measured on the committed baseline: a league
+#: upload of the owner's own file with every value doubled and a fresh source_date was ignored
+#: entirely when named `rankings_export.csv` or `my_league_2026.csv`, and won only when renamed
+#: to carry format tokens. The file's NAME decided whether the user's own league data counted.
+#:
+#: Ranked above the format score on purpose, because a filename-derived format IS the "inferred
+#: metadata" the contract puts below uploaded data. A user who uploads a file for their league
+#: has stated something about their league; a token in a filename is a guess about it.
+PROVENANCE_BASELINE = 0   # committed to the repository, shared by every league
+PROVENANCE_GLOBAL = 1     # uploaded, but not to any particular league
+PROVENANCE_LEAGUE = 2     # uploaded FOR this league -- the strongest statement available today
+PROVENANCE_TIER_COLUMN = "_provenance_tier"
+
+
+def _stamped(frame: "pd.DataFrame", tier: int) -> "pd.DataFrame":
+    """Mark every row with where it came from. Empty frames pass through untouched."""
+    if frame is None or frame.empty:
+        return frame
+    return frame.assign(**{PROVENANCE_TIER_COLUMN: tier})
+
+
 def _precedence_sort_key(row) -> tuple:
     """Stated precedence, most significant first:
 
       1. basis confidence  -- a vendor methodology over a transcribed screenshot
-      2. format match      -- how well the file's own format assumptions fit THIS league
+      2. provenance tier   -- a file uploaded FOR this league outranks a shared upload, which
+                              outranks the committed baseline (see PROVENANCE_* above). Sits
+                              ABOVE format match because a filename-derived format is inferred
+                              metadata, and the contract puts uploaded data above inference.
+      3. format match      -- how well the file's own format assumptions fit THIS league
                               (_rankings_format_match_score; higher is better). This was
                               previously expressed by re-ordering whole frames and relying on
                               keep="last", which a field-level merge cannot see, so it is
                               carried on the row instead.
-      3. recency           -- a newer source_date
+      4. recency           -- a newer source_date
     Filename is applied separately, by a stable pre-sort (see _order_by_precedence), because
     it must keep the LAST name winning -- the direction the old keep="last" dedup had. Both
     directions are equally arbitrary, and changing which arbitrary answer is given would move
@@ -1399,11 +1449,15 @@ def _precedence_sort_key(row) -> tuple:
     """
     confidence = BASIS_CONFIDENCE.get(row.get("measurement_basis"), 0.0)
     try:
+        tier = float(row.get(PROVENANCE_TIER_COLUMN) or PROVENANCE_BASELINE)
+    except (TypeError, ValueError):
+        tier = PROVENANCE_BASELINE
+    try:
         format_score = float(row.get("_format_match_score") or 0.0)
     except (TypeError, ValueError):
         format_score = 0.0
     date = str(row.get("source_date") or "")
-    return (-confidence, -format_score, _negated_date(date))
+    return (-confidence, -tier, -format_score, _negated_date(date))
 
 
 def _order_by_precedence(group: list) -> list:
@@ -1450,6 +1504,8 @@ def _conflict_reason(winner, loser) -> str:
 
 
 _RECONCILED_IDENTITY_COLUMNS = {"norm_name", "_name_key", "_dedup_key", "_identity_hint"}
+#: The tier rides through on the merged row so a later merge still knows where the
+#: winning value came from -- the same mistake the identity hint taught in phase 1.1.
 # The fields worth recording a disagreement about -- the numbers that become a valuation.
 _CONFLICT_TRACKED_FIELDS = {"projection", "proj_3yr", "trade_value", "rank"}
 
@@ -1550,7 +1606,8 @@ def _reconcile_rows(frames: list[pd.DataFrame], conflicts: Optional[list] = None
         # same coarse group, so dropping the discriminator at this boundary would hand the two
         # people straight back to it -- which is exactly what it did on the first attempt.
         row = {"norm_name": winner["norm_name"],
-               "_identity_hint": str(winner.get("_identity_hint") or "")}
+               "_identity_hint": str(winner.get("_identity_hint") or ""),
+               PROVENANCE_TIER_COLUMN: winner.get(PROVENANCE_TIER_COLUMN, PROVENANCE_BASELINE)}
         for column in value_columns:
             chosen_value, chosen_source = None, None
             for candidate in ordered:
@@ -1890,6 +1947,12 @@ class DataMerger:
                                                                conflicts=conflicts)
         else:
             league_rankings, league_fa, league_tvc = empty.copy(), empty.copy(), empty.copy()
+        # Stamped here rather than inside load_all, because load_all does not know which of the
+        # three directories it was handed -- the caller does, and this is the only place all
+        # three are named together.
+        baseline_rankings = _stamped(baseline_rankings, PROVENANCE_BASELINE)
+        global_rankings = _stamped(global_rankings, PROVENANCE_GLOBAL)
+        league_rankings = _stamped(league_rankings, PROVENANCE_LEAGUE)
         self.projections = _merge_rankings(
             baseline_rankings, global_rankings, league_rankings, conflicts=conflicts,
         )
