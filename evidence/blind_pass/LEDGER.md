@@ -164,12 +164,79 @@ This also explains a Wave 1 puzzle. Cluster 1 said this repository has no mechan
 re-checks an invariant when the population changes. W3-01 is the same disease one level up:
 **no mechanism checks that the test matrix covers the league the owner actually plays.**
 
+## Wave 4 — pass G only so far; NOT clean, and the passes are now hitting derived constants
+
+> **This wave is INCOMPLETE.** Pass H was launched from the wrong mandate and killed
+> (`MANDATE.md` §4), relaunched, and its relaunch died on an account rate limit mid-run. It has
+> been launched a third time. **Wave 4 does not count toward the stopping condition until two
+> independent passes have reported**, because a one-pass wave cannot produce the corroboration
+> the protocol is built on.
+
+Verdicts below are mine. `wave4/MY_VERIFICATION.md` is what I re-measured, including one
+correction to pass G.
+
+| id | finding | verdict | novelty |
+|---|---|---|---|
+| **W4-01** | **The mechanism of W3-01.** `NEED_BONUS_PER_DEDICATED_SLOT = 4.0` is flat in points and therefore *not* flat in what it buys: 4.00 against the best kicker's 12.57 VOR is **32% of the whole K-to-replacement distance**, and 1.9% of the same distance for Bijan Robinson. Sixteen times steeper for a kicker | **REPRODUCED** (Dicker `bpa 12.57 + need 4.00 = 16.57`, pass G's exact triple) | **NEW** — W3-01 was the symptom, this is the cause |
+| **W4-02** | **Two engine constants are derived from a bound the engine violates by 2.4×.** `NECESSITY_DENIAL_SATURATION` (36) and `CONTEXT_ELEVATED_THRESHOLD` (12) derive from `TEAM_SPECIFIC_CAPS`, whose comment excludes `#216`'s fourth term **"deliberately … it is non-positive by construction … so it cannot raise the sum these caps bound"** — the premise measured at +79.44, TAV − UV at 87.82. The tuple exists *precisely* so a fourth term moves the bound automatically; it was hand-exempted on the false premise | **CONFIRMED** (read the derivation chain) | **NEW** — W1-01 is the sign; this is what was built on it |
+| **W4-03** | `_picks_by_mode` **asserts what its docstring says it reports** — "actually produced … Reported rather than assumed" computes `(UPSIDE_MODE_DEFAULT_ROUND − 1) × num_teams` and never reads a pick, then is stamped into every trajectory config. Wrong by exactly the round off-by-one it therefore cannot see (168/132 asserted, 169/131 actual) | **CONFIRMED** | **NEW** |
+| **W4-04** | **The LLM prompt boundary invites fabrication of the withheld number.** All three system prompts list `survival_probability` / `opportunity_cost` / `expected_value_of_waiting` among "real, already-computed numbers", with the worked example `"19% survival with a QB run detected"`; the evidence block tells the same model it is WITHHELD and "do not estimate one yourself" | **CONFIRMED** | **NEW** — W1-07 is the leak into a score, this is the leak into a prompt |
+| **W4-05** | `SUPER_FLEX_QB_SHARE` 0.85 is live for every superflex league while the measurement its own comment cites returns QB 1.00 | UNVERIFIED | **NEW** |
+| **W4-06** | `upside_score` adds `0.5 × (proj3yr_pct − season_pct)` — a **percentile** difference, up to ±50 — to raw-point `bpa`, **unclamped**, where `time_horizon_adj` reads the same pair and clamps to ±10 | **CONFIRMED** (weights read) | **NEW** — same unit class as W1-02, five times the magnitude |
+| **W4-07** | Unpriced rows carry a `displacement_adj` stamped basis `measured`; `#203` repaired this shape for `risk_adj` and not for the fourth term or `need_bonus` | **REPRODUCED** (DB −28.28 ×393, DL −32.87 ×219 on an **empty** roster) / UNVERIFIED (the `bpa = NaN` pairing) | **NEW** |
+| **W4-08** | Two health models disagree by pricing path: IR + vendor-priced → `risk_adj −18.0`; IR + Sleeper-priced → `risk_adj 0.0`, basis `rule_floor` (≈ −40.7 on a 173-point player) | UNVERIFIED | **NEW** |
+| **W4-09** | **Certification drafts a mode production never runs.** Neither `app.py:5024` (Mock) nor `:5381` (Draft Room) passes `mode`; the battery runs `mode="auto"` → 44% upside picks on the owner's 25-round shape, while the late-round *balanced* rounds production does run are covered by no arm (`12T_ppr_mode_balanced` is 14 rounds) | **CONFIRMED** | **NEW** — W3-01's disease on the mode axis instead of the slot axis |
+| **W4-10** | `pick_debate._match_candidate` substring fallback returns the first candidate in snapshot order whose name is contained in the text; "Josh Allen over Jalen Hurts" resolves to whichever sorts first. Docstring: "never a guess" | UNVERIFIED | **NEW** |
+| **W4-11** | `filter_candidates_by_view` claims candidates are "already sorted by team_acquisition_value descending"; `_board_order` puts `fills_required_slot` first, so the ALL overview's top slice is not the top-N by value when the backstop binds | UNVERIFIED | **NEW** |
+| **W4-12** | `draft_board_ui` interpolates names and tag labels into `innerHTML` with only `<` escaped | UNVERIFIED | **NEW** (boundary) |
+| **W4-13** | `pick_debate`'s system prompts describe TAV as three terms; the evidence sum has four | UNVERIFIED | **NEW** |
+| **W4-14** | `league_format_hint`: `rec ≥ 1` → ppr, `== 0.5` → half, else standard — a 0.75-PPR league silently selects the **standard** export | UNVERIFIED | **NEW** |
+| **W4-15** | Under the capture hint, 18 players' vendor `projection` and 15 winning rows come from `dynasty_superflex_rankings.csv`, which `_detect_rankings_format` tags "standard", in a PPR league | UNVERIFIED | **NEW** |
+| — | Two further text-scan guards (`test_depth_basis_boundary.py:45`, `test_tenant_scope_boundary.py:56`) where an AST walk exists in the same suite | UNVERIFIED | KNOWN-class W1-19 (`#200`), two new instances |
+
+**Upgraded by this wave:** W2-09 (round off-by-one) UNVERIFIED → CONFIRMED with measured
+consequences; W1-13 (mock `draft_rounds`) UNVERIFIED → CONFIRMED at both call sites; W1-08 and
+W1-14 confirmed a second time.
+
+### What Wave 4 changes about the diagnosis
+
+**Cluster 1 has a fourth member, and it is the worst kind.** The ledger's first cluster said this
+repository has no mechanism that re-checks an invariant when the population it ranges over
+changes. W4-02 is that, one turn further: an invariant was not merely left unchecked, it was
+**read, believed, and used to justify excluding a term from a bound** — in a comment whose own
+next sentence explains that the bound is derived rather than written as `36.0` so that a fourth
+term moves it automatically. The author built the guard and then hand-waived it.
+
+**A fourth cluster: the engine's constants are flat in the wrong units.** W4-01 (a per-slot bonus
+flat in points, sixteen-fold in fraction-of-spread), W4-06 (percentiles added to points,
+unclamped), W1-11 (`#75`, constants sized for a scale that no longer exists) and W2-02
+(`qb_startable_floor` in vendor units against league-scored points) are one defect wearing four
+coats. **`#56` forbids a calibrated constant; nothing in this repository forbids an
+*uncalibrated* one applied across incommensurable scales,** and that is what these four are.
+
+**Cluster 3 reaches the prompt.** W4-04 puts the survival leak somewhere `survival_is_presentable`
+structurally cannot reach: a natural-language instruction to an LLM, with a worked example of
+citing the number the next block refuses to supply.
+
 ## Stopping condition — status
 
 **Wave 1: NOT clean** (9 new). **Wave 2: NOT clean** (8 new). **Wave 3: NOT clean** (8 new, one
-of them the most serious of the audit).
+of them the most serious of the audit). **Wave 4: NOT clean** (15 new from one pass, and
+**incomplete** — see the Wave 4 banner; its second pass has not reported).
 
 Three consecutive waves producing **no NEW finding that survives verification** — not three waves
-producing no findings, which a pass could satisfy by re-reporting known items. **Current streak: 0**, after three waves. Waves are still finding new, measured, previously
-unseen defects — and Wave 3's headline was found by both of its passes independently. The process
-is nowhere near convergence, which is itself the most useful thing it has established.
+producing no findings, which a pass could satisfy by re-reporting known items. **Current streak:
+0**, after four waves, and Wave 4 cannot even be scored until its second pass lands.
+
+Waves are still finding new, measured, previously unseen defects, and the *kind* is getting worse
+rather than better: Wave 1 found broken invariants, Wave 3 found a test matrix that never drafted
+the owner's league, and Wave 4 found two shipped constants **derived from** a broken invariant.
+The process is nowhere near convergence, which remains the most useful thing it has established.
+
+### One thing the waves have now established about themselves
+
+`MANDATE.md` §3 records that the isolation these passes run under is **instructed, not
+structural** — each pass builds its own shield with an `archive --exclude` recipe, and Wave 1's
+two passes had no excludes at all. Every pass has self-reported clean and the transcripts support
+them. But the independence this ledger's corroboration rests on is six agents' compliance, not a
+sandbox, and that belongs next to the convergence tables rather than buried in the mandate.
