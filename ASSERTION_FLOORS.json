@@ -832,18 +832,18 @@
       }
     },
     "test_identity_before_dedup.py": {
-      "test_methods": 18,
+      "test_methods": 22,
       "asserts": {
         "assertEqual": 10,
         "assertGreater": 2,
-        "assertIn": 2,
+        "assertIn": 5,
         "assertIsInstance": 2,
         "assertIsNone": 3,
         "assertIsNotNone": 2,
         "assertLess": 1,
         "assertNotEqual": 1,
         "assertNotIn": 1,
-        "assertTrue": 5
+        "assertTrue": 7
       }
     },
     "test_identity_boundary.py": {

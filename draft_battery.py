@@ -40,6 +40,7 @@ import collections
 from pathlib import Path
 from typing import Any, Optional
 
+import data_merger as dm
 import draft_room as dr
 import league_config as lc
 import draft_simulation
@@ -168,6 +169,34 @@ def league_matrix(base_scoring: dict | None = None) -> list[dict]:
     #
     # NEITHER LEAGUE IS CANONICAL. This is one more coordinate, and the point of adding it is
     # that the invariants must hold here too -- not that its outcomes are the right ones.
+    # THE LEAGUE THIS SYSTEM IS ACTUALLY USED ON, which no arm above carries.
+    #
+    # Every arm above is built through build_mock_league, which emits no K, no DEF and no IDP
+    # slot. `format_axes_exercised` now reports the consequence in the battery's own output --
+    # `has_kicker` and `has_defense` constant False across all 34 arms -- but reporting a gap is
+    # not covering it. Measured on this shape by two independent passes: 31 kickers drafted onto
+    # 12 one-K rosters, 102 IDP players into 24 IDP slots, round 21 twelve consecutive DBs, and
+    # `structural_findings` = 0 throughout, because every one of those rosters is LEGAL.
+    #
+    # Supplied directly rather than through build_mock_league, for the reason the F&F block
+    # below gives: that function overwrites `rec` from its own `scoring` argument, and `rec`
+    # selects the rankings export, so an arm built that way reads a different file than it
+    # reports. A captured league enters as itself or not at all.
+    #
+    # NOT CANONICAL, same as F&F. It is one more coordinate -- the point is that the invariants
+    # must hold here too, not that its outcomes are the right ones.
+    owner_path = Path("data/fixtures/sleeper_capture.json")
+    if owner_path.exists():
+        owner_capture = json.loads(owner_path.read_text(encoding="utf-8"))
+        owner_league = owner_capture.get("league_shape") or owner_capture.get("league")
+        if owner_league and owner_league.get("roster_positions"):
+            owner_arm = dict(owner_league)
+            owner_rounds = len(lc.draftable_slots(owner_arm["roster_positions"]))
+            owner_arm["draft_rounds"] = owner_rounds
+            out.append({"label": "CAPTURE_owner_league", "league": owner_arm,
+                        "teams": int(owner_arm.get("total_rosters") or 12),
+                        "rounds": owner_rounds})
+
     capture_path = Path("data/league_captures/fourth_and_forever.json")
     if capture_path.exists():
         cap = json.loads(capture_path.read_text(encoding="utf-8"))
@@ -634,6 +663,38 @@ def audit_trajectory(trajectory, league: dict, players_db: dict,
 _FINGERPRINT_EXCLUDES = frozenset({"label", "seconds"})
 
 
+def roster_shape_axes(league: dict) -> dict:
+    """The ROSTER-SHAPE dimensions of a league, derived from its own `roster_positions`.
+
+    `league_format_hint` answers "which rankings export fits this league" -- scoring, superflex,
+    te_premium. Those are the axes `format_axes_exercised` has always reported, and they are the
+    right ones for FILE SELECTION. They are not the only ways a matrix can fail to cover the
+    league someone actually plays.
+
+    WHY THIS EXISTS, measured: the matrix carried 34 arms, **0 of them with a kicker slot** and
+    **0 combining SUPER_FLEX with any IDP slot**, while the owner's league has both. A full
+    draft on that shape put 31 kickers onto 12 rosters and 102 IDP players into 24 IDP slots, and
+    the battery reported `0 structural findings` -- because `structural_findings` checks legality
+    and the coverage instrument could not see slot composition as a dimension at all. Two
+    independent blind passes found that behaviour; the instrument that exists to notice an
+    unexercised axis reported "no constant axis" over a kicker-free matrix, truthfully, about
+    the three axes it knew about.
+
+    Derived, never hand-listed, exactly as the format axes are: these come from the league's own
+    slots, so a league that adds a slot family appears here without anyone editing a list.
+    """
+    slots = [str(s).upper() for s in (league.get("roster_positions") or [])]
+    return {
+        "has_kicker": "K" in slots,
+        "has_defense": "DEF" in slots or "DST" in slots,
+        # dm.IDP_POSITIONS is the one home for the IDP vocabulary (#126); a league can name
+        # an IDP slot either as a flex ("IDP_FLEX") or as a bare position ("LB").
+        "has_idp_slot": any(s.startswith("IDP") or s in dm.IDP_POSITIONS for s in slots),
+        "has_superflex_slot": "SUPER_FLEX" in slots,
+        "draftable_rounds": len([s for s in slots if s not in ("BN", "IR", "TAXI")]),
+    }
+
+
 def format_axes_exercised(matrix: list[dict], labels=None) -> dict:
     """Which value of each format axis the arms ACTUALLY exercise, and which axes are CONSTANT.
 
@@ -670,7 +731,11 @@ def format_axes_exercised(matrix: list[dict], labels=None) -> dict:
                if labels is None or e.get("label") in labels]
     axes: dict[str, dict[str, int]] = {}
     for entry in entries:
-        for axis, value in league_format_hint(entry["league"]).items():
+        # Two derived vocabularies, unioned: which EXPORT fits the league, and what SHAPE the
+        # league is. An axis that is constant in either sense is a matrix not covering something.
+        axis_values = dict(league_format_hint(entry["league"]))
+        axis_values.update(roster_shape_axes(entry["league"]))
+        for axis, value in axis_values.items():
             # str() because JSON object keys are strings: True would round-trip as "true"
             # anyway, and a dict keyed half by bool and half by str sorts unstably.
             seen = axes.setdefault(axis, {})

@@ -380,3 +380,55 @@ class AMalformedDateLosesInsteadOfWinning(unittest.TestCase):
         for real in ("2026-08-18", "2020-01-01", "1999-12-31"):
             self.assertLess(dm._negated_date(real), undated,
                             f"an undated source outranks a source dated {real}")
+
+
+class TheMatrixCoversTheLeagueTheSystemIsUsedOn(unittest.TestCase):
+    """Phase 3. The battery carried 34 arms, none with a kicker slot and none combining
+    SUPER_FLEX with IDP, while the owner's league has both. A full draft on that shape put 31
+    kickers onto 12 one-K rosters and reported `0 structural findings`, because every one of
+    those rosters is legal.
+
+    Two things are pinned, and the second is the one that keeps this from happening again in a
+    dimension nobody has thought of yet: the shape must be COVERED, and the instrument must be
+    able to SEE shape as a dimension at all.
+    """
+
+    def setUp(self):
+        import draft_battery as db
+        self.db = db
+        self.matrix = db.league_matrix()
+
+    def test_some_arm_carries_a_kicker_slot(self):
+        with_kicker = [e["label"] for e in self.matrix
+                       if self.db.roster_shape_axes(e["league"])["has_kicker"]]
+        self.assertTrue(with_kicker,
+                        "no arm in the matrix drafts a kicker, so no arm can observe what the "
+                        "engine does with one")
+
+    def test_some_arm_combines_superflex_with_idp(self):
+        """The combination, not the axes separately. Both existed independently before and the
+        owner's shape -- which has both at once -- was still uncovered."""
+        both = [e["label"] for e in self.matrix
+                if self.db.roster_shape_axes(e["league"])["has_superflex_slot"]
+                and self.db.roster_shape_axes(e["league"])["has_idp_slot"]]
+        self.assertTrue(both, "no arm combines SUPER_FLEX with an IDP slot")
+
+    def test_the_coverage_instrument_can_see_roster_shape_at_all(self):
+        """The deeper repair. `format_axes_exercised` derived its axes from
+        `league_format_hint`'s three keys, so slot composition was not a dimension it could
+        report on -- it said "no constant axis" over a kicker-free matrix, truthfully, about the
+        axes it knew. An instrument that cannot express a gap cannot report one."""
+        report = self.db.format_axes_exercised(self.matrix)
+        for axis in ("has_kicker", "has_idp_slot", "has_superflex_slot"):
+            self.assertIn(axis, report["axes"],
+                          f"{axis} is not an axis the coverage report can express")
+
+    def test_a_genuinely_unexercised_axis_is_still_reported(self):
+        """The control, and it must not be vacuous: `has_defense` is constant False across every
+        arm today. If this ever goes green by the axis disappearing rather than by a DEF arm
+        being added, the instrument has stopped working."""
+        report = self.db.format_axes_exercised(self.matrix)
+        self.assertIn("has_defense", report["axes"])
+        if len(report["axes"]["has_defense"]) == 1:
+            self.assertIn("has_defense", report["constant_axes"],
+                          "an axis with one observed value is not being reported as constant")
