@@ -12871,3 +12871,45 @@ the marker → `#52`); everything else that mattered was already here.
 without the conversation around it. A reader encountering both artifacts would either waste the
 pass reconciling bookkeeping, or file findings against statuses that were never the record. This
 paragraph is what stops that, and it costs nothing but its own honesty about the drift.
+
+## `#53` — THE FREEZE RECORD IS WRITTEN: `FREEZE_RECORD.md`, candidate `b6748f8`
+
+Reconciliation and freeze candidate, the last item before `#52`. The record is a separate
+document because `FREEZE_CHECKLIST.md` answers a different question — *what is left before the
+freeze* — and conflating the two is how a checklist becomes a claim.
+
+### What it says, in the order it says it
+
+It **opens** with the ceiling rather than burying it: *the engine has no demonstrated edge over
+market consensus on any ruler independent of its own objective, and the data in this repository
+cannot establish one.* Everything else in the document is bounded by that sentence, and it is
+first so that no reader can quote a margin without it.
+
+Then: what IS established (legality across 34 arms, `#284`; quality at parity with a strong
+market control and clearly above naive ones, `#285`/`#289`; the `#205`/`#245` contradiction
+resolved by measurement, `#287`). Then what is NOT (the `#288` ceiling and why no third ruler can
+be built; the ADP control mis-specified in three of six formats; `12T_standard` a proven
+strawman). Then the limitations carried IN — `#184` at its restated size, `#206`'s enforced
+refusal, the undefined mode transition, `#146` un-wired — each with its reason.
+
+### Two things it refuses to round off
+
+**The CI caveat.** `#291` restored the gate at `2da0b0e`; it was not continuous, and the record
+says so in the section that licenses the freeze rather than in a footnote. Every commit between
+2026-09-02 and that repair was verified by local runs only. And until run 539 every full-suite
+execution on record was network-DENIED — the same condition that hid the defect — so that hole
+was closed deliberately before a merge could find it.
+
+**The reconciliation table.** `#53` is a reconciliation, so the nine places the documents
+disagreed are listed with which way each resolved, rather than silently harmonised. Two of the
+rows are my own published errors, struck in place: the 27th (ADP's mis-specification was
+narrower than reported, which weakened the engine's case) and the 28th (a deletion recorded
+before it was attempted).
+
+### What it explicitly does not license
+
+An edge claim; calibrating any constant to this evidence (`#56`); superflex confidence (`#184`);
+the UI track; or pre-empting `#52`, which stays unbriefed and unscored.
+
+**Next: cut the marker as a TAG (`#290` — the 403 was the agent's credential, not the
+repository), then `#52`.**

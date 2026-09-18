@@ -69,8 +69,11 @@
 >
 > ## THE LIVE PATH, in order
 >
-> 1. **`#53`** — reconciliation and freeze candidate. Owner's sole authority. **The only thing
->    outstanding.** It must carry `#288`'s ceiling sentence and `#291`'s CI-restoration date.
+> 1. ~~**`#53`** — reconciliation and freeze candidate.~~ **WRITTEN 2026-09-17:
+>    `FREEZE_RECORD.md`, candidate `b6748f8`.** It carries `#288`'s ceiling sentence as its
+>    opening line, `#291`'s CI-restoration date in the section that licenses the freeze, and a
+>    nine-row reconciliation table. **Read that file for what the freeze rests on; read this one
+>    for what was left before it.**
 > 2. Cut the freeze marker. See the correction at mechanics step 5 — the owner can now cut a real
 >    **tag**; only the agent's credential could not.
 > 3. **`#52`** — the blind adversarial pass. After the freeze, unbriefed, unscored.
