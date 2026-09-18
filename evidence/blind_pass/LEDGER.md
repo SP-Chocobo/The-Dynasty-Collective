@@ -181,7 +181,7 @@ correction to pass G.
 | **W4-02** | **Two engine constants are derived from a bound the engine violates by 2.4×.** `NECESSITY_DENIAL_SATURATION` (36) and `CONTEXT_ELEVATED_THRESHOLD` (12) derive from `TEAM_SPECIFIC_CAPS`, whose comment excludes `#216`'s fourth term **"deliberately … it is non-positive by construction … so it cannot raise the sum these caps bound"** — the premise measured at +79.44, TAV − UV at 87.82. The tuple exists *precisely* so a fourth term moves the bound automatically; it was hand-exempted on the false premise | **CONFIRMED** (read the derivation chain) | **NEW** — W1-01 is the sign; this is what was built on it |
 | **W4-03** | `_picks_by_mode` **asserts what its docstring says it reports** — "actually produced … Reported rather than assumed" computes `(UPSIDE_MODE_DEFAULT_ROUND − 1) × num_teams` and never reads a pick, then is stamped into every trajectory config. Wrong by exactly the round off-by-one it therefore cannot see (168/132 asserted, 169/131 actual) | **CONFIRMED** | **NEW** |
 | **W4-04** | **The LLM prompt boundary invites fabrication of the withheld number.** All three system prompts list `survival_probability` / `opportunity_cost` / `expected_value_of_waiting` among "real, already-computed numbers", with the worked example `"19% survival with a QB run detected"`; the evidence block tells the same model it is WITHHELD and "do not estimate one yourself" | **CONFIRMED** | **NEW** — W1-07 is the leak into a score, this is the leak into a prompt |
-| **W4-05** | `SUPER_FLEX_QB_SHARE` 0.85 is live for every superflex league while the measurement its own comment cites returns QB 1.00 | UNVERIFIED | **NEW** |
+| ~~**W4-05**~~ | ~~`SUPER_FLEX_QB_SHARE` 0.85 live while the measurement its comment cites returns 1.00~~ **Struck — this is `#184`, and the code says so.** The comment at `draft_room.py:323-328` already states *"0.85 is NOT thereby vindicated… Both values are wrong in the same place… held for owner ruling (#184)"*, and the register carries it as **KNOWN-OPEN-ACCEPTABLE, documented not fixed**. Pass G read the constant and not the fourteen lines above it | **CONFIRMED as already-registered** | **KNOWN-`#184`** |
 | **W4-06** | `upside_score` adds `0.5 × (proj3yr_pct − season_pct)` — a **percentile** difference, up to ±50 — to raw-point `bpa`, **unclamped**, where `time_horizon_adj` reads the same pair and clamps to ±10 | **CONFIRMED** (weights read) | **NEW** — same unit class as W1-02, five times the magnitude |
 | **W4-07** | Unpriced rows carry a `displacement_adj` stamped basis `measured`; `#203` repaired this shape for `risk_adj` and not for the fourth term or `need_bonus` | **REPRODUCED** (DB −28.28 ×393, DL −32.87 ×219 on an **empty** roster) / UNVERIFIED (the `bpa = NaN` pairing) | **NEW** |
 | **W4-08** | Two health models disagree by pricing path: IR + vendor-priced → `risk_adj −18.0`; IR + Sleeper-priced → `risk_adj 0.0`, basis `rule_floor` (≈ −40.7 on a 173-point player) | UNVERIFIED | **NEW** |
@@ -190,7 +190,7 @@ correction to pass G.
 | **W4-11** | `filter_candidates_by_view` claims candidates are "already sorted by team_acquisition_value descending"; `_board_order` puts `fills_required_slot` first, so the ALL overview's top slice is not the top-N by value when the backstop binds | UNVERIFIED | **NEW** |
 | **W4-12** | `draft_board_ui` interpolates names and tag labels into `innerHTML` with only `<` escaped | UNVERIFIED | **NEW** (boundary) |
 | **W4-13** | `pick_debate`'s system prompts describe TAV as three terms; the evidence sum has four | UNVERIFIED | **NEW** |
-| **W4-14** | `league_format_hint`: `rec ≥ 1` → ppr, `== 0.5` → half, else standard — a 0.75-PPR league silently selects the **standard** export | UNVERIFIED | **NEW** |
+| **W4-14** | `league_format_hint` (`draft_battery.py:215`): `rec >= 1` → ppr, `rec == 0.5` → half_ppr, **else standard**. Every fractional PPR in (0.5, 1.0) — 0.6, 0.75, 0.9 — is priced as if receptions score **nothing**, though 0.75 sits nearer full PPR than standard. The half-PPR test is exact float equality. Its docstring derives the triple "by the same rules `league_format_summary` uses", and those two do agree — agreement between two copies of one rule is not correctness | **CONFIRMED** (read the branch) | **NEW** |
 | **W4-15** | Under the capture hint, 18 players' vendor `projection` and 15 winning rows come from `dynasty_superflex_rankings.csv`, which `_detect_rankings_format` tags "standard", in a PPR league | UNVERIFIED | **NEW** |
 | — | Two further text-scan guards (`test_depth_basis_boundary.py:45`, `test_tenant_scope_boundary.py:56`) where an AST walk exists in the same suite | UNVERIFIED | KNOWN-class W1-19 (`#200`), two new instances |
 
@@ -221,7 +221,7 @@ citing the number the next block refuses to supply.
 ## Stopping condition — status
 
 **Wave 1: NOT clean** (9 new). **Wave 2: NOT clean** (8 new). **Wave 3: NOT clean** (8 new, one
-of them the most serious of the audit). **Wave 4: NOT clean** (15 new from one pass, and
+of them the most serious of the audit). **Wave 4: NOT clean** (14 new from one pass, one struck on checking, and
 **incomplete** — see the Wave 4 banner; its second pass has not reported).
 
 Three consecutive waves producing **no NEW finding that survives verification** — not three waves
