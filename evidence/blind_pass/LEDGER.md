@@ -233,6 +233,30 @@ rather than better: Wave 1 found broken invariants, Wave 3 found a test matrix t
 the owner's league, and Wave 4 found two shipped constants **derived from** a broken invariant.
 The process is nowhere near convergence, which remains the most useful thing it has established.
 
+### PRE-REGISTERED AMENDMENT to the stopping condition (owner, 2026-09-18)
+
+**Written before any clean wave exists.** That is the whole point of writing it now: an amendment
+added after a streak has started looks like a reaction to the streak, and this one must not be
+readable that way.
+
+Every wave from 2 onward carries a steering paragraph pushing passes away from saturated areas.
+It keeps a wave from spending itself on re-reports, and it costs something: a quiet wave is
+evidence about the **unexplored surface**, not about the engine. "The engine is clean" and
+"steering pushed the passes somewhere nothing lives" produce an identical streak counter.
+
+**The ruling: keep the steering while the streak runs. When three consecutive waves come back
+clean, fire one more wave with the blinders OFF** — the mandate minus the steering paragraph,
+passes free to sample the saturated areas again.
+
+Pre-registering both outcomes, so the confirmation wave can actually fail:
+
+- **It finds NEW verified findings** → the streak was an artifact of the mandate, not a property
+  of the engine. **The count resets to 0** and waves resume, unsteered from then on.
+- **It comes back clean** → the three clean waves meant what they appeared to mean, and the
+  blinders-off wave is the evidence that says so.
+
+A confirmation wave with no failing outcome is a ceremony. This one has one.
+
 ### One thing the waves have now established about themselves
 
 `MANDATE.md` §3 records that the isolation these passes run under is **instructed, not
