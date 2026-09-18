@@ -78,6 +78,31 @@ class TheInvariantThatReplacedTheOldOneTests(unittest.TestCase):
                 self.assertEqual(result["adjustment"], 0.0,
                                  msg=f"{position} with an open dedicated slot, roster {len(roster)}")
 
+    def test_the_replacement_invariant_is_ALSO_a_single_position_statement(self):
+        # #52 phase 6 (W1-01). The test above ranges over single positions only, and that is not
+        # incidental -- an open dedicated slot does NOT buy a multi-eligible candidate immunity,
+        # because the lift does not come from his own slot. It comes from a slot his SECOND
+        # eligibility reaches that is priced below the anchor his bpa was built on.
+        #
+        # This needs no IDP rulebook to show, which is the part worth noticing: on TE_SLOT, with
+        # the owner's own pool shape (TE scarce at 258, RB deep at 100), an RB/TE anchored on TE
+        # is lifted 158.0 with the TE slot standing wide open. Three RB/TE players are in the
+        # real capture.
+        alts = dr.shared_slot_alternatives(LEVELS, TE_SLOT)
+        alone = lo.displacement_level([], TE_SLOT, "TE", LEVELS["TE"], slot_alternatives=alts)
+        self.assertEqual(alone["adjustment"], 0.0)
+        both = lo.displacement_level([], TE_SLOT, {"RB", "TE"}, LEVELS["TE"], slot_alternatives=alts)
+        self.assertEqual((both["displaced"], both["adjustment"]), (100.0, 158.0))
+        # And it scales with how far below the anchor the second eligibility reaches, rather than
+        # being a flat bonus for holding two positions: WR sits at 207, so a TE/WR is lifted 51.
+        te_wr = lo.displacement_level([], TE_SLOT, {"TE", "WR"}, LEVELS["TE"], slot_alternatives=alts)
+        self.assertEqual((te_wr["displaced"], te_wr["adjustment"]), (207.0, 51.0))
+        # The direction that makes it a second-eligibility effect and not an anchor artifact:
+        # anchor the SAME pair on RB instead, and the cheapest slot he reaches IS his own, so
+        # there is nothing to reach past and the lift is exactly zero.
+        as_rb = lo.displacement_level([], TE_SLOT, {"RB", "TE"}, LEVELS["RB"], slot_alternatives=alts)
+        self.assertEqual(as_rb["adjustment"], 0.0)
+
     def test_omitting_slot_alternatives_reproduces_the_shipped_behaviour_exactly(self):
         roster = [_p(1, 260.0, "RB"), _p(2, 240.0, "RB"), _p(3, 300.0, "QB")]
         for rpos in (TE_SLOT, NO_TE_SLOT):

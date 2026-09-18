@@ -2686,7 +2686,7 @@ def displacement_adjustments(
     """The fourth team-specific term (#216), per POSITION: how much the league replacement
     anchor over-credits a player at that position for THIS roster.
 
-        displacement_adj = replacement_level - displacement_level   (<= 0.0, never positive)
+        displacement_adj = replacement_level - displacement_level   (see WHY IT IS NON-POSITIVE)
 
     where displacement_level (lineup_optimizer) is what he must beat to start here -- the
     league's free alternative where a slot he can reach is open, one of my own starters where
@@ -2705,12 +2705,28 @@ def displacement_adjustments(
     end's: he is not worth his league VOR to a roster that cannot start him, and this term says
     by how much.
 
-    WHY IT IS NON-POSITIVE. A slot held by someone BELOW the league alternative deducts nothing
-    rather than lifting the candidate: the league says a free player at that level is coming,
-    and the candidate's VOR already prices him against it. Lifting him again for my own weak
-    starter would be paying twice for one fact. So this term only ever removes credit the
-    league anchor gave for a slot the roster cannot offer -- the reason TEAM_SPECIFIC_CAPS
-    (pick_synthesis) remains an upper bound on the sum of the team terms with no fourth cap.
+    WHY IT IS NON-POSITIVE *FOR A SINGLE-POSITION CANDIDATE*, which is every row this function
+    itself produces. A slot held by someone BELOW the league alternative deducts nothing rather
+    than lifting the candidate: the league says a free player at that level is coming, and the
+    candidate's VOR already prices him against it. Lifting him again for my own weak starter
+    would be paying twice for one fact. Structurally: shared_slot_alternatives prices a slot at
+    the MAX level over the positions it admits, so every slot a single-position probe can reach
+    is priced at or above his own anchor, and the term can only remove credit.
+
+    AND WHY THAT IS NOT THE WHOLE CLAIM (#52 phase 6, W1-01). The paragraph above used to end
+    "-- the reason TEAM_SPECIFIC_CAPS (pick_synthesis) remains an upper bound on the sum of the
+    team terms with no fourth cap." That inference does not hold, because the argument above
+    does not reach the MULTI-eligible rows compute_draft_board solves separately (see the
+    per-position note below). Such a row is anchored on its PRIMARY level but reaches slots
+    through a SECOND eligibility that need not admit the primary at all; priced below the
+    anchor, those slots LIFT. Measured: Travis Hunter (WR primary, WR/DB) carries +79.44 on the
+    owner's IDP board, and his team_acquisition_value - universal_value is 87.82 against a
+    claimed ceiling of 36.0. TEAM_SPECIFIC_CAPS now says so at the tuple itself; the exact
+    two-population bound lives in lineup_optimizer.displacement_level under THE SIGN.
+
+    The engine's behaviour is UNCHANGED by that correction -- whether the lift is the right
+    price is a valuation question under #56, open for the owner, not something to settle by
+    editing a constant.
 
     Per position, not per candidate: every single-position candidate at a position faces the
     same lineup, so the level is a per-position constant at a board state -- the same shape

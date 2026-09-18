@@ -410,11 +410,49 @@ def displacement_level(
     free_alternative) or one of my own starters (displaced > free_alternative). Chains through
     multi-eligible players are handled by the solve itself rather than by a rule.
 
-        displaced >= free_alternative  always, by construction
+        displaced >= free_alternative  for a SINGLE-position probe -- see THE SIGN below
         displaced == free_alternative  when any slot the position can reach is open, or held by
                                        someone the league alternative would beat
         displaced  > free_alternative  when every reachable slot is held by one of my players
                                        who beats the league alternative
+        displaced  < free_alternative  ONLY for a MULTI-eligible probe -- THE SIGN below
+
+    THE SIGN, AND THE POPULATION EACH HALF OF IT HOLDS OVER (#52 phase 6, W1-01 / W4-02). The
+    line above used to read `displaced >= free_alternative always, by construction`, and a great
+    deal was built on it: this function's own Returns line, draft_room.displacement_adjustments,
+    and -- most consequentially -- pick_synthesis.TEAM_SPECIFIC_CAPS, which hand-exempts this
+    term from the bound two shipped constants derive from, citing exactly that premise. It is
+    false as stated, and it became false when `slot_alternatives` arrived. Not through a bug in
+    that change: the change EXPANDED THE POPULATION this function ranges over, and an invariant
+    proven over the old one was never re-checked against the new one.
+
+    What holds instead is DERIVED from shared_slot_alternatives rather than asserted. That
+    function prices a slot at `max(level)` over the positions the slot ADMITS. So every slot a
+    SINGLE-position probe can reach admits that position, every such alternative is therefore at
+    or above his own level, and:
+
+        adjustment <= 0.0                                        eligibility of ONE position
+
+    A MULTI-eligible probe is anchored on his PRIMARY position's level, but reaches slots through
+    his second eligibility that need not admit the primary at all. Such a slot can be priced
+    below the anchor, and the term then LIFTS rather than deducts:
+
+        adjustment <= free_alternative - min(alt of reachable slots)          any eligibility
+
+    The second statement covers the first (that bound IS 0.0 when every reachable slot admits the
+    anchor's position), so it is the one invariant, and the clamp below is what makes it exact.
+    Measured over 960 probes across five rulebooks and three roster depths: 0 of 120
+    single-position probes go positive; 144 of 840 multi-eligible ones do, every one inside the
+    bound. The live case is a WR/DB in an IDP league -- Travis Hunter, +79.44 on the owner's own
+    pre-draft board, where his TAV - UV of 87.82 runs past a claimed ceiling of 36.0.
+
+    WHETHER THE LIFT IS THE RIGHT PRICE IS NOT SETTLED HERE, and deliberately so. It is arguable
+    both ways: the probe really can take the cheap slot while the free alternative still fills his
+    primary's (the phantoms are pinned per slot precisely so that lineup is the one solved), and
+    equally it is arguably paid twice, since `eligibility_bonus` already prices multi-eligibility
+    and is CAPPED for that reason. Choosing between those is a valuation change under #56, not a
+    repair, so the behaviour is unchanged and the question is recorded for the owner. What IS
+    repaired is that the contract now states what the code does.
 
     ONE SLOT, ONE ALTERNATIVE (#216, the second half). A phantom stands for "what this slot gets
     for free if I pass". For a DEDICATED slot that is a free player at its one position, and
@@ -442,7 +480,11 @@ def displacement_level(
     empty roster". That is no longer true for a position with NO dedicated slot -- a tight end in
     a TE-less league reaches only shared slots, so his alternative is the shared one from the
     first pick, which is the whole point. What holds instead, and is tested: **the term is exactly
-    0.0 for any position with an OPEN DEDICATED slot, on any roster.** For every caller that
+    0.0 for any position with an OPEN DEDICATED slot, on any roster.** That too is a
+    SINGLE-position statement: a multi-eligible probe can have an open dedicated slot at his
+    primary and still be lifted, because the lift comes from a slot his SECOND eligibility
+    reaches, not from his own (measured: WR/DB, empty roster, both WR slots open, +50.0). THE
+    SIGN above states the one bound that covers both populations. For every caller that
     passes no `slot_alternatives`, the old wording still holds verbatim.
 
     `position` may be a single position or a SET of them -- a multi-eligible candidate's full
@@ -461,8 +503,11 @@ def displacement_level(
     as an open slot and an open slot deducts nothing (the number is then a floor).
 
     Returns {"displaced", "adjustment", "basis"}: `adjustment` is free_alternative - displaced
-    (<= 0.0), the amount the league anchor over-credits a player at this position for THIS
-    roster; `basis` says whether that is a measurement.
+    -- at or below 0.0 for a single-position probe, and bounded by
+    `free_alternative - min(alt of reachable slots)` for any probe (THE SIGN, above). Negative,
+    it is the amount the league anchor over-credits a player at this position for THIS roster;
+    positive, it is the amount a second eligibility reaches past that anchor. `basis` says
+    whether either is a measurement.
     """
     probe_eligible = {position} if isinstance(position, str) else set(position)
     slots = slots_from_roster_positions(roster_positions)

@@ -2,15 +2,16 @@
   "_comment": "Per-module assertion FLOORS -- see assertion_floors.py. These are minimums, not a fingerprint: adding tests needs no regeneration, and only a DROP fails. Regenerate with `python3 assertion_floors.py --write` and commit the result in the same commit as the test change that lowered a number, so the drop is reviewable rather than incidental.",
   "modules": {
     "test_216_displacement.py": {
-      "test_methods": 18,
+      "test_methods": 21,
       "asserts": {
         "assertAlmostEqual": 2,
-        "assertEqual": 24,
-        "assertGreater": 4,
+        "assertEqual": 32,
+        "assertGreater": 6,
         "assertGreaterEqual": 1,
         "assertIn": 1,
         "assertLess": 2,
-        "assertLessEqual": 6
+        "assertLessEqual": 7,
+        "assertNotIn": 1
       },
       "by_method": {
         "test_a_full_lineup_prices_each_position_against_its_own_weakest_reachable_starter": {
@@ -19,11 +20,19 @@
         "test_a_holder_below_the_anchor_is_not_an_occupant": {
           "assertEqual": 1
         },
+        "test_a_multi_eligible_candidate_is_lifted_to_the_cheapest_slot_he_can_reach": {
+          "assertEqual": 4
+        },
         "test_a_multi_eligible_probe_reaches_every_slot_its_eligibility_reaches": {
           "assertEqual": 3
         },
         "test_a_position_no_slot_accepts_is_not_applicable_and_deducts_nothing": {
           "assertEqual": 1
+        },
+        "test_a_single_position_candidate_is_never_lifted": {
+          "assertEqual": 1,
+          "assertGreaterEqual": 1,
+          "assertLessEqual": 1
         },
         "test_an_empty_roster_reduces_exactly_to_the_league_anchor": {
           "assertEqual": 1
@@ -46,6 +55,10 @@
         "test_every_vocabulary_token_has_words": {
           "assertEqual": 1
         },
+        "test_how_far_the_non_positive_claim_above_actually_reaches": {
+          "assertEqual": 3,
+          "assertNotIn": 1
+        },
         "test_invariant_2_the_quarterback_is_priced_positive_while_open_and_at_or_below_zero_once_filled": {
           "assertEqual": 1,
           "assertGreater": 1,
@@ -61,14 +74,14 @@
           "assertEqual": 2,
           "assertGreater": 1
         },
-        "test_the_adjustment_is_never_positive": {
-          "assertGreaterEqual": 1,
-          "assertLessEqual": 1
-        },
         "test_the_identity_closes_with_the_fourth_term_on_every_priced_row": {
           "assertAlmostEqual": 1,
           "assertGreater": 1,
           "assertIn": 1,
+          "assertLessEqual": 1
+        },
+        "test_the_one_bound_that_covers_both_populations": {
+          "assertGreater": 2,
           "assertLessEqual": 1
         },
         "test_the_probe_value_never_reaches_the_answer": {
@@ -216,14 +229,15 @@
       }
     },
     "test_216_room_integrity.py": {
-      "test_methods": 20,
+      "test_methods": 22,
       "asserts": {
         "assertAlmostEqual": 2,
-        "assertEqual": 21,
+        "assertEqual": 23,
         "assertFalse": 1,
         "assertGreater": 1,
-        "assertGreaterEqual": 1,
+        "assertGreaterEqual": 2,
         "assertIn": 13,
+        "assertIsNone": 1,
         "assertIsNotNone": 1,
         "assertLess": 1,
         "assertNotIn": 8,
@@ -245,6 +259,10 @@
           "assertIn": 1,
           "assertNotIn": 2
         },
+        "test_an_absent_or_non_finite_figure_is_not_rendered_as_one": {
+          "assertEqual": 1,
+          "assertIsNone": 1
+        },
         "test_an_unknown_token_renders_as_itself_never_as_the_strongest_claim": {
           "assertEqual": 1,
           "assertIn": 1,
@@ -264,6 +282,10 @@
         },
         "test_every_vocabulary_name_is_a_key_of_the_label_table": {
           "assertEqual": 1
+        },
+        "test_python_and_the_browser_round_the_boundary_class_identically": {
+          "assertEqual": 1,
+          "assertGreaterEqual": 1
         },
         "test_the_board_legend_does_not_claim_a_rescale_the_code_does_not_perform": {
           "assertEqual": 1
@@ -313,9 +335,9 @@
       }
     },
     "test_216_shared_slot.py": {
-      "test_methods": 14,
+      "test_methods": 15,
       "asserts": {
-        "assertEqual": 20,
+        "assertEqual": 24,
         "assertGreater": 2,
         "assertIn": 2,
         "assertLess": 2,
@@ -365,6 +387,9 @@
         },
         "test_the_board_now_deducts_where_the_shipped_engine_deducted_nothing": {
           "assertLess": 1
+        },
+        "test_the_replacement_invariant_is_ALSO_a_single_position_statement": {
+          "assertEqual": 4
         },
         "test_the_seam_returns_the_construction_and_not_an_empty_mapping": {
           "assertEqual": 1,
@@ -3936,10 +3961,11 @@
     "test_display_contract_boundary.py": {
       "test_methods": 21,
       "asserts": {
-        "assertEqual": 6,
+        "assertEqual": 10,
         "assertGreater": 1,
         "assertGreaterEqual": 1,
-        "assertIn": 35,
+        "assertIn": 33,
+        "assertIsNone": 1,
         "assertLess": 1,
         "assertNotIn": 7,
         "assertNotRegex": 1
@@ -3949,7 +3975,9 @@
           "assertIn": 1
         },
         "test_a_measured_zero_denial_value_is_a_number_not_a_dash": {
+          "assertEqual": 1,
           "assertIn": 1,
+          "assertIsNone": 1,
           "assertNotIn": 1
         },
         "test_both_draft_panels_render_through_one_function": {
@@ -3999,7 +4027,8 @@
           "assertIn": 1
         },
         "test_the_format_specs_are_still_identical_which_is_now_fine": {
-          "assertIn": 3
+          "assertEqual": 3,
+          "assertIn": 1
         },
         "test_the_legend_states_both_scales": {
           "assertIn": 3
@@ -8799,14 +8828,14 @@
       }
     },
     "test_prose_names.py": {
-      "test_methods": 25,
+      "test_methods": 26,
       "asserts": {
         "assertEqual": 5,
-        "assertFalse": 3,
+        "assertFalse": 5,
         "assertGreater": 11,
         "assertIn": 8,
         "assertNotIn": 3,
-        "assertTrue": 13
+        "assertTrue": 17
       },
       "by_method": {
         "test_a_heading_does_not_shield_the_paragraph_beneath_it": {
@@ -8824,6 +8853,10 @@
         "test_a_module_nothing_imports_is_still_a_name": {
           "assertEqual": 1,
           "assertTrue": 1
+        },
+        "test_a_mutation_record_is_not_a_claim_about_the_current_value": {
+          "assertFalse": 2,
+          "assertTrue": 4
         },
         "test_a_name_inside_a_fenced_block_still_vouches": {
           "assertGreater": 1,

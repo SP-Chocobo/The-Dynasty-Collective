@@ -111,12 +111,45 @@ failure the additive layering exists to prevent.
    and giving them different magnitudes would be inventing a ranking among them that no
    measurement supports). `TEAM_SPECIFIC_CAPS` remains a correct upper bound on their sum.
 
-   **4b. `displacement_adj` MAY move a large gap, downward only, and that is its purpose.**
-   #216 exists because *"no bounded nudge could span the 43-60 point bias"* — with the legality
-   backstop off, the board drafted eleven tight ends and no receiver in a one-TE league. It is
-   non-positive by construction, so it can only ever remove credit, never add it; that is why
-   `TEAM_SPECIFIC_CAPS` needs no fourth entry and why `displacement_adj` needs no cap. See
-   `displacement_adjustments` for the derivation.
+   **4b. `displacement_adj` MAY move a large gap, and for a single-position candidate only
+   downward, which is its purpose.** #216 exists because *"no bounded nudge could span the 43-60
+   point bias"* — with the legality backstop off, the board drafted eleven tight ends and no
+   receiver in a one-TE league. See `displacement_adjustments` for the derivation.
+
+   > **CORRECTION (`#52` phase 6, W1-01 / W4-02).** This clause used to read *"It is non-positive
+   > by construction, so it can only ever remove credit, never add it; that is why
+   > `TEAM_SPECIFIC_CAPS` needs no fourth entry and why `displacement_adj` needs no cap."* **The
+   > premise is false**, and it became false when `#216`'s second half added per-slot
+   > alternatives — not through a defect in that change, but because the change expanded the
+   > population the term ranges over and this invariant was never re-checked against the new one.
+   >
+   > What holds is two statements, both derived from `shared_slot_alternatives` pricing a slot at
+   > `max(level)` over the positions it admits:
+   >
+   > - a **single-position** candidate is never lifted, because every slot he can reach is priced
+   >   at or above his own anchor;
+   > - a **multi-eligible** candidate is anchored on his PRIMARY level but reaches slots through a
+   >   second eligibility that need not admit the primary, and those may be priced below the
+   >   anchor. The bound is `free_alternative − min(alternative over reachable slots)`, which is
+   >   `0.0` in the single-position case, so it is one invariant and not two.
+   >
+   > Measured: Travis Hunter (WR primary, WR/DB) carries `+79.44` on the owner's IDP board, with
+   > `team_acquisition_value − universal_value` at `87.82` against a claimed ceiling of `36.0`.
+   > It is not IDP-only — on a plain one-TE rulebook with the owner's pool shape an RB/TE anchored
+   > on TE is lifted `158.0`, and three RB/TE players sit in the real capture.
+   >
+   > **Consequently `TEAM_SPECIFIC_CAPS` is NOT an upper bound on `team_acquisition_value −
+   > universal_value`**; it bounds the sum of the three capped terms, a weaker statement. Two
+   > shipped constants (`NECESSITY_DENIAL_SATURATION`, `CONTEXT_ELEVATED_THRESHOLD`) derive from
+   > that tuple on the exempted premise. **The claim is corrected here; no VALUE is changed.**
+   >
+   > **OPEN OWNER DECISION.** Whether the lift is the right price is genuinely arguable — the
+   > candidate really can occupy the cheap slot while the free alternative still fills his
+   > primary's (the phantoms are pinned per slot so that is the lineup solved), and equally it
+   > may be double payment, since `eligibility_bonus` already prices multi-eligibility and is
+   > CAPPED for that reason. Choosing is a valuation change under `#56`, not a repair, so the
+   > engine's behaviour is unchanged until it is ruled on. Re-deriving the two constants waits on
+   > the same ruling.
 
    **The two halves of this invariant are not the same kind of claim**, and #222 recorded the
    consequence: `displacement_adj` is classified both as a team-specific term (which places it

@@ -45,6 +45,7 @@ IS the artifact. They prove what the app will render, not what a user concludes 
 
 from __future__ import annotations
 
+import ast
 import re
 import unittest
 from pathlib import Path
@@ -53,6 +54,41 @@ import ui_source
 _HERE = Path(__file__).parent
 _APP = ui_source.text()
 _BOARD = (_HERE / "draft_board_ui.py").read_text()
+
+
+#: READ THE CODE, NOT THE TEXT OF IT (#200, applied here in #52 phase 6).
+#:
+#: Three assertions in this file used to check the card's formatting by grepping the renderer's
+#: SOURCE for `rec.universal_value:.0f`. They were right about what they wanted and wrong about
+#: how they asked: the moment those f-strings moved behind a named helper -- because Python and
+#: the browser were found to round half values differently and the rule needed ONE home -- all
+#: three went red while every claim they make stayed true. A guard that cannot survive its
+#: subject being refactored is measuring the spelling, not the behaviour.
+#:
+#: So the figures are read out of the parsed function instead, and the rounding itself is
+#: asserted against design_system.figure, which is the code that now does it.
+def _rendered_figures() -> dict[str, int]:
+    """{field name: digits} for every card in _render_pick_metrics that renders an engine
+    figure through the shared renderer, read from the AST."""
+    tree = ast.parse(_APP)
+    fn = next((n for n in ast.walk(tree)
+               if isinstance(n, ast.FunctionDef) and n.name == "_render_pick_metrics"), None)
+    assert fn is not None, "_render_pick_metrics is gone; this file is about that function"
+    out: dict[str, int] = {}
+    for node in ast.walk(fn):
+        if not (isinstance(node, ast.Call) and isinstance(node.func, ast.Name)
+                and node.func.id == "_figure" and node.args):
+            continue
+        target = node.args[0]
+        name = target.attr if isinstance(target, ast.Attribute) else getattr(target, "id", None)
+        if name is None:
+            continue
+        digits = 0
+        if len(node.args) > 1 and isinstance(node.args[1], ast.Constant):
+            digits = node.args[1].value
+        out[name] = digits
+    return out
+
 
 
 def _scanned_sources():
@@ -117,20 +153,35 @@ class TheTwoUnitsAreToldApartTests(unittest.TestCase):
         self.assertIn("NOT fantasy points", ds.DISPLAY_CONTRACT["universal_value"]["help"])
 
     def test_the_format_specs_are_still_identical_which_is_now_fine(self):
-        """The two numbers are STILL rendered `.0f` side by side. The repair is the label,
-        not the number -- D10 option B (rescaling) waits on #58 and must not be smuggled in."""
-        block = self._renderer()
-        self.assertIn("rec.universal_value:.0f", block)
-        self.assertIn("rec.projected_points:.0f", block)
-        self.assertIn("rec.team_acquisition_value:.0f", block)
+        """The two numbers are STILL rendered to the same precision side by side. The repair is
+        the label, not the number -- D10 option B (rescaling) waits on #58 and must not be
+        smuggled in. Read from the parsed renderer rather than from its source text, so that
+        moving the formatting behind a named helper is not mistaken for rescaling it."""
+        figures = _rendered_figures()
+        for field in ("universal_value", "projected_points", "team_acquisition_value"):
+            with self.subTest(field=field):
+                self.assertIn(field, figures, "this card stopped rendering an engine figure")
+                self.assertEqual(figures[field], 0, "the value cards drifted apart in precision")
+        # And the shared renderer really is a rounding, not a rescaling: a large figure comes
+        # back at its own magnitude. This is the half of the claim a source scan never reached.
+        import design_system as ds
+        self.assertEqual(ds.figure(1234.0), "1234")
+        self.assertEqual(ds.figure(-1234.0), "-1234")
 
     def test_a_measured_zero_denial_value_is_a_number_not_a_dash(self):
         """Found while repairing: `rec.denial_value if rec.denial_value else "—"` rendered a
         real 0.0 -- no rival positioned to gain -- as the same dash an unmeasured value gets.
         The absence contract in the other direction."""
-        block = self._renderer()
-        self.assertIn("if rec.denial_value is not None else", block)
-        self.assertNotIn("if rec.denial_value else", block)
+        import design_system as ds
+        # The claim, asserted where the behaviour now lives: a measured zero is a number and an
+        # absence is not. Truthiness would collapse the two, which is the defect this test was
+        # written for; `design_system.figure` distinguishes them by returning None only for an
+        # absent or non-finite input.
+        self.assertEqual(ds.figure(0.0, 1), "0.0")
+        self.assertIsNone(ds.figure(None, 1))
+        # ...and denial_value is wired through that renderer rather than a truthiness branch.
+        self.assertIn("denial_value", _rendered_figures())
+        self.assertNotIn("if rec.denial_value else", self._renderer())
 
     def test_a_measured_no_run_is_a_word_not_a_dash(self):
         block = self._renderer()
@@ -522,7 +573,11 @@ class TheScaleIsNotAPointsTotalTests(unittest.TestCase):
         the way out, none of the above would matter. It is not -- the card renders the engine's
         own value with a format specifier and nothing else."""
         block = ui_source.block("def _render_pick_metrics(rec)", until="\n\n\ndef ")
-        self.assertIn("rec.universal_value:.0f", block, "non-vacuity: the card is in this block")
+        # Non-vacuity, read from the AST: the card really is in this block. A substring anchor
+        # here pinned the old f-string spelling and went red when the formatting was given one
+        # home, while the clamp check below -- the actual subject -- never stopped holding.
+        self.assertIn("universal_value", _rendered_figures(),
+                      "non-vacuity: the card is in this block")
         self.assertNotRegex(block, r"(min|max|clamp)\(|/ *100")
         self.assertNotIn("normalize_display", _APP)
 

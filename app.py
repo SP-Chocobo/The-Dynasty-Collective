@@ -1481,6 +1481,25 @@ def render_debate_chip(context: "screen_context.ScreenContext", key: str) -> Non
             st.rerun()
 
 
+#: THE SAME FIGURE MUST NOT READ DIFFERENTLY ON TWO SURFACES (#52 phase 6).
+#:
+#: These metric rows and the Draft Room board render the SAME engine numbers. The board rounds
+#: through the browser's `toFixed`; an f-string rounds half-to-EVEN, and the two disagree by a
+#: whole unit on any figure landing exactly on .5 above an even floor. Measured on the real
+#: board: Caleb Williams' team_acquisition_value is exactly 16.5, and the shipped app showed
+#: him as 16 here and 17 there. design_system.figure states the screen's rule once and this
+#: routes every figure on this surface through it; it returns None for an absent or non-finite
+#: value, which is where the dash comes from rather than from a separate `is not None` test.
+ABSENT_FIGURE = "—"
+
+
+def _figure(value, digits: int = 0, *, signed: bool = False) -> str:
+    rendered = design_system.figure(value, digits)
+    if rendered is None:
+        return ABSENT_FIGURE
+    return f"+{rendered}" if signed and not rendered.startswith("-") else rendered
+
+
 def _render_pick_metrics(rec) -> None:
     """The recommendation panel's two metric rows, shared by the live Draft Room and its
     Mock Draft twin. #116 found the two as separate code carrying identical copy, with no
@@ -1502,17 +1521,17 @@ def _render_pick_metrics(rec) -> None:
     metric_row1 = st.columns(6)
     metric_row1[0].metric(
         label("universal_value"),
-        f"{rec.universal_value:.0f}" if rec.universal_value is not None else "—",
+        _figure(rec.universal_value),
         help=note("universal_value"),
     )
     metric_row1[1].metric(
         label("projected_points"),
-        f"{rec.projected_points:.0f}" if rec.projected_points is not None else "—",
+        _figure(rec.projected_points),
         help=note("projected_points"),
     )
     metric_row1[2].metric(
         label("team_acquisition_value"),
-        f"{rec.team_acquisition_value:.0f}" if rec.team_acquisition_value is not None else "—",
+        _figure(rec.team_acquisition_value),
         help=note("team_acquisition_value"),
     )
     metric_row1[3].metric(
@@ -1535,17 +1554,17 @@ def _render_pick_metrics(rec) -> None:
     metric_row2 = st.columns(4)
     metric_row2[0].metric(
         label("opportunity_cost"),
-        f"{rec.opportunity_cost:.1f}" if rec.opportunity_cost is not None else "—",
+        _figure(rec.opportunity_cost, 1),
         help=note("opportunity_cost"),
     )
     metric_row2[1].metric(
         label("expected_value_of_waiting"),
-        f"{rec.expected_value_of_waiting:.1f}" if rec.expected_value_of_waiting is not None else "—",
+        _figure(rec.expected_value_of_waiting, 1),
         help=note("expected_value_of_waiting"),
     )
     metric_row2[2].metric(
         label("denial_value"),
-        f"{rec.denial_value:.1f}" if rec.denial_value is not None else "—",
+        _figure(rec.denial_value, 1),
         help=note("denial_value"),
     )
     # #216: the fourth roster term, rendered ONLY under a measured basis. A 0.0 whose basis
@@ -1555,9 +1574,9 @@ def _render_pick_metrics(rec) -> None:
     displacement_basis = getattr(rec, "displacement_basis", None)
     displacement = getattr(rec, "displacement_adj", None)
     if displacement is None or displacement_basis == pick_synthesis.DISPLACEMENT_MEASURED:
-        displacement_text = f"{displacement:+.1f}" if displacement is not None else "—"
+        displacement_text = _figure(displacement, 1, signed=True)
     elif displacement_basis == pick_synthesis.DISPLACEMENT_ROSTER_PARTIAL:
-        displacement_text = f"{displacement:+.1f} (floor)"
+        displacement_text = f"{_figure(displacement, 1, signed=True)} (floor)"
     else:
         displacement_text = "—"
     metric_row2[3].metric(
@@ -1570,8 +1589,8 @@ def _render_pick_metrics(rec) -> None:
 def _best_alternative_line(alt) -> str:
     """One sentence for the runner-up, its number carrying its unit (#116): the old line said
     "97 acquisition value", which names the quantity and not the scale it is on."""
-    tav = (f"{alt.team_acquisition_value:.0f} {design_system.VALUE_UNIT_SHORT}"
-           if alt.team_acquisition_value is not None else "unpriced")
+    rendered = design_system.figure(alt.team_acquisition_value)
+    tav = f"{rendered} {design_system.VALUE_UNIT_SHORT}" if rendered is not None else "unpriced"
     return f"**Best alternative:** {alt.name} — acquisition value {tav}"
 
 

@@ -342,10 +342,14 @@ NECESSITY_DENIAL_WEIGHT = 10.0       # the denial contribution at ONE team-term'
 #: displacement_adj is NOT non-positive. Measured on the owner's own league, pre-draft:
 #: Travis Hunter (WR primary, WR/DB eligible) carries displacement_adj = +79.44, and his
 #: team_acquisition_value - universal_value is 87.82 against a claimed upper bound of 36.0.
-#: The mechanism is a multi-eligible player whose primary-position level exceeds the shared
-#: IDP_FLEX alternative, which lifts rather than removes credit -- the uncapped
-#: multi-eligibility lift ELIGIBILITY_BONUS_MAX was introduced to prevent, arriving through
-#: the fourth term instead.
+#: The mechanism is a multi-eligible player anchored on his PRIMARY position's level who
+#: reaches, through a SECOND eligibility, a slot priced below that anchor -- which lifts rather
+#: than removes credit: the uncapped multi-eligibility lift ELIGIBILITY_BONUS_MAX was introduced
+#: to prevent, arriving through the fourth term instead. NOT an IDP-only case, though the
+#: measured example is one: on a plain one-TE rulebook with the owner's pool shape (TE scarce at
+#: 258, RB deep at 100) an RB/TE anchored on TE is lifted 158.0 with his own TE slot standing
+#: open, and three RB/TE players are in the real capture. The exact two-population bound lives
+#: at lineup_optimizer.displacement_level under THE SIGN.
 #:
 #: So sum(TEAM_SPECIFIC_CAPS) is NOT the upper bound on team_acquisition_value -
 #: universal_value. It is the upper bound on the sum of the THREE CAPPED TERMS, which is a

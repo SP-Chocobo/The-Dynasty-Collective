@@ -100,6 +100,35 @@ class NoConstantIsQuotedWrongly(unittest.TestCase):
         self.assertEqual(wrong, [],
                          "prose states a constant's value and the code disagrees")
 
+    def test_a_mutation_record_is_not_a_claim_about_the_current_value(self):
+        """#52 phase 6. The marker that was missing, and the reason the check reported 18
+        contradictions where it should have reported none.
+
+        This repository records mutation batteries by standing convention -- at the bottom of
+        test modules, and throughout the preserved `#52` audit log -- and every row of one
+        quotes a value the constant DELIBERATELY does not have. That is the same category as the
+        `ablation`, `probe` and `counterfactual` markers already here, and it was simply absent.
+
+        The danger of widening an allowance is that it shields what it was not meant to, so both
+        halves are pinned: a mutation row is shielded, and the SAME misquote in ordinary
+        explanatory prose is still caught.
+        """
+        name, value = sorted(prose_names.numeric_constants().items())[0]
+        wrong = value + 7.0
+        self.assertTrue(prose_names.is_history(f"| mutation | {name} = {wrong} | 0/51, survives |"))
+        self.assertTrue(prose_names.is_history(f"the mutant {name} = {wrong} survived"))
+        self.assertTrue(prose_names.is_history(f"planted {name} = {wrong}"))
+        # ...and the allowance does not reach prose that merely explains the constant.
+        plain = f"The bound sits at {name} = {wrong} because the ramp needs headroom."
+        self.assertFalse(prose_names.is_history(plain))
+        self.assertTrue(list(prose_names.QUOTED_VALUE.finditer(plain)),
+                        "the planted quotation stopped matching; this test proves nothing")
+        # The marker still anchors to a word start -- these are the substring bugs the pattern
+        # was rewritten to fix, and a new marker must not reintroduce one.
+        for innocent in ("harmless", "alarming", "permanent", "commutative"):
+            with self.subTest(word=innocent):
+                self.assertFalse(prose_names.is_history(f"this is {innocent}"))
+
     def test_there_are_constants_to_check_and_they_are_single_homed(self):
         """Non-vacuity, and a #126 measurement in its own right: a constant defined twice with
         different values is two homes for one fact, and this check declines to guess which the

@@ -71,6 +71,21 @@ HISTORICAL_MARKERS = (
     "never existed", "has ever existed", "deleted", "removed", "withdrawn", "superseded",
     "replaced", "old version", "predates", "stale",
     "ablation", "arm", "probe", "experiment", "counterfactual", "registered",
+    #: MUTATION TESTING IS THE SAME CATEGORY as the five above, and was the one missing from it
+    #: (#52 phase 6). A mutation record's whole subject is a value the constant DOES NOT HAVE:
+    #: a battery row reporting a probability cap at ten times its real value, surviving 51
+    #: tests, is a finding about the TEST SUITE and not a claim about the cap. (Stated without
+    #: quoting the row verbatim: this comment is itself in the corpus, and a checker that
+    #: demonstrates a misquote by committing one reports itself -- measured, it did.) Without
+    #: this marker every mutation table in the
+    #: repository -- and this repository records them at the bottom of test modules by standing
+    #: convention, plus every battery in the preserved `#52` audit log -- reads as a
+    #: contradiction, and the check that exists to catch ONE stale number was reporting 18.
+    #: "mutat" rather than "mutation" so the record may say mutated or mutating -- and "mutant"
+    #: SEPARATELY, because it does not share that stem (mutan-, not mutat-), which the marker's
+    #: own test caught. The pattern anchors a marker to the start of a word, so neither fires
+    #: mid-word.
+    "mutat", "mutant", "planted",
 )
 
 #: A MARKER MUST BEGIN A WORD. Nothing else about how it is matched is a judgement call, and

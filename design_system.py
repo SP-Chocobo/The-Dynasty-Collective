@@ -35,8 +35,11 @@ LEGIBILITY POLICY -- a written design requirement, deliberately not a build gate
 
 from __future__ import annotations
 
+import decimal
+import math
 import re
 import warnings
+from typing import Optional
 
 # One canonical hex value per named token, reused everywhere as a CSS custom property
 # (--<key>). Semantic hues carry the SAME meaning on every surface: emerald = value
@@ -182,6 +185,61 @@ FOCUS_VISIBLE_CSS = (
 #: The long and short spelling of the engine's own value unit. The board's prose already said
 #: "universal-value points" in its one fully qualified phrase; the abbreviation is derived from
 #: it so a reader who hovers a short label finds the long form in the help text.
+#: THE DISPLAY ROUNDING RULE, STATED ONCE (#52 phase 6, #126).
+#:
+#: Two surfaces render the same engine figures: Streamlit, through Python f-strings, and the
+#: Draft Room board, through the browser's `Number.prototype.toFixed`. They round HALF VALUES
+#: DIFFERENTLY. Python's `format` is round-half-to-EVEN; `toFixed` is round-half-AWAY-FROM-ZERO.
+#: So for a figure landing exactly on .5 with an even floor they disagree by a whole unit, in
+#: both signs:
+#:
+#:      16.5  ->  Python "16"   screen "17"
+#:     -16.5  ->  Python "-16"  screen "-17"
+#:      13.5  ->  Python "14"   screen "14"      (odd floor: they agree)
+#:
+#: MEASURED, not hypothesised: Caleb Williams' team_acquisition_value came to exactly 16.5 on
+#: the real board, and the shipped app rendered him as 16 in the Streamlit metric row and 17 in
+#: the Draft Room -- one number, one session, two answers. It was latent at v1-freeze and became
+#: visible when an identity repair moved a value onto the boundary, which is the whole reason it
+#: is written down here instead of patched at one call site: the defect is that the rule had no
+#: home, so the two surfaces each picked their own.
+#:
+#: The screen's rule wins, for two reasons that are not preference. It is what the primary
+#: decision surface already does at dozens of call sites, and it is what a reader means by
+#: rounding. Python is the side that moves.
+_HALF_AWAY_FROM_ZERO = decimal.ROUND_HALF_UP   # decimal's name for it; "UP" here means away from 0
+
+
+def figure(value: Optional[float], digits: int = 0) -> Optional[str]:
+    """`value` as the screen would render it, or None if there is nothing to render.
+
+    None in, None out -- the caller chooses the absence marker (#187). This never substitutes a
+    number for an absent one, and it never renders 0.0 as a dash.
+    """
+    if value is None:
+        return None
+    try:
+        number = float(value)
+    except (TypeError, ValueError):
+        return None
+    #: NaN and inf are not figures. Decimal will happily quantize NaN into the STRING "NaN" and
+    #: put it on screen, which is the absence-read-as-a-value defect wearing a different hat, so
+    #: they are turned away here and the caller's own absence branch renders them (#187).
+    if not math.isfinite(number):
+        return None
+    #: NEGATIVE ZERO carries no sign on screen. `toFixed` prepends "-" only when `x < 0`, and
+    #: `-0 < 0` is false, so the browser renders -0.0 as "0" -- while Decimal preserves the sign
+    #: and would render "-0". Only exactly +-0 compares equal to 0, so this touches nothing else:
+    #: a small negative like -0.004 IS below zero and keeps its sign as "-0.00", same as there.
+    if number == 0:
+        number = 0.0
+    try:
+        quantum = decimal.Decimal(1).scaleb(-digits)
+        return str(decimal.Decimal(number).quantize(quantum, rounding=_HALF_AWAY_FROM_ZERO))
+    except (decimal.InvalidOperation, ValueError, OverflowError):
+        return None
+
+
 VALUE_UNIT = "universal-value points"
 VALUE_UNIT_SHORT = "UV pts"
 SEASON_POINTS_UNIT = "season fantasy points"

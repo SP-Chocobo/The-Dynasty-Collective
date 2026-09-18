@@ -441,6 +441,65 @@ def _real_snapshot() -> PickSnapshot:
 
 
 @unittest.skipUnless(CAPTURE.exists(), "needs the real capture")
+class TheDisplayRoundingRuleTests(unittest.TestCase):
+    """design_system.figure must BE the browser's rule, not merely resemble it (#52 phase 6).
+
+    Two surfaces render the same engine figures -- Streamlit through Python, the Draft Room
+    through `Number.prototype.toFixed` -- and for the whole life of the app neither stated a
+    rounding rule, so each took its language's default. They differ: Python's `format` is
+    round-half-to-EVEN, `toFixed` is round-half-AWAY-FROM-ZERO. On a figure landing exactly on
+    .5 above an EVEN floor they disagree by a whole unit, and the app showed one player's
+    acquisition value as 16 in one panel and 17 in another.
+
+    It was invisible at v1-freeze because no candidate happened to land on a half value, and it
+    surfaced when an identity repair moved one there -- a repair changing the population of
+    VALUES an invariant ranged over, which is the same shape as every other finding in this
+    audit. So the test below does not check the corrected example. It checks the MECHANISM, on
+    the boundary class, against the real engine rather than against the specification.
+    """
+
+    def test_python_and_the_browser_round_the_boundary_class_identically(self):
+        if not (CHROME and HAVE_PLAYWRIGHT):
+            self.skipTest("needs playwright and a Chromium binary")
+        from playwright.sync_api import sync_playwright
+        # Every half value from -20.5 to 20.5 -- both parities of floor, both signs, which is
+        # the entire class in which the two rules can differ -- plus the float-representation
+        # cases that make naive implementations of `toFixed` wrong (1.005, 2.675, 8.575).
+        halves = [n + 0.5 for n in range(-21, 21)]
+        # -0.0 and -0.004 sit either side of the one place `toFixed` drops a sign: it prepends
+        # "-" only when `x < 0`, which negative zero is not, so the browser renders -0.0 as "0"
+        # while -0.004 keeps its sign as "-0.00". Decimal preserves both signs; the helper has
+        # to drop exactly the first. Both are here so neither half can regress unnoticed.
+        awkward = [1.005, 2.675, 8.575, -1.005, -2.675, 0.0, -0.0, -0.004, -0.5, 1e6 + 0.5]
+        values = halves + awkward
+        with sync_playwright() as p:
+            browser = p.chromium.launch(executable_path=CHROME, args=["--no-sandbox"])
+            page = browser.new_page()
+            js0 = page.evaluate("vs => vs.map(v => v.toFixed(0))", values)
+            js1 = page.evaluate("vs => vs.map(v => v.toFixed(1))", values)
+            js2 = page.evaluate("vs => vs.map(v => v.toFixed(2))", values)
+            browser.close()
+        for digits, rendered in ((0, js0), (1, js1), (2, js2)):
+            for value, from_browser in zip(values, rendered):
+                with self.subTest(value=value, digits=digits):
+                    self.assertEqual(design_system.figure(value, digits), from_browser)
+        # Non-vacuous: the grid must actually CONTAIN cases where the old f-string was wrong,
+        # or it is asserting agreement on a population that never disagreed.
+        divergent = [v for v in values if f"{v:.0f}" != design_system.figure(v)]
+        self.assertGreaterEqual(
+            len(divergent), 20,
+            "the boundary class collapsed -- this grid no longer exercises the defect")
+
+    def test_an_absent_or_non_finite_figure_is_not_rendered_as_one(self):
+        # #187 in this corner: Decimal will quantize NaN into the STRING "NaN" quite happily,
+        # and a screen reading "NaN UV pts" is an absence that has been given a value.
+        for value in (None, float("nan"), float("inf"), float("-inf")):
+            with self.subTest(value=value):
+                self.assertIsNone(design_system.figure(value))
+        # ...and a measured zero is NOT absent, which is the same contract's other half.
+        self.assertEqual(design_system.figure(0.0), "0")
+
+
 class TheRealBoardStillRunsTests(unittest.TestCase):
 
     def test_the_snapshot_identity_includes_the_depth_term_where_it_is_measured(self):
@@ -502,8 +561,16 @@ class TheRealBoardStillRunsTests(unittest.TestCase):
         words = set(dr.REPLACEMENT_BASIS_LABELS.values())
         for row, c in zip(out["rows"], snap.candidates):
             with self.subTest(candidate=c.name):
-                expected = "—" if c.team_acquisition_value is None else f"{c.team_acquisition_value:.0f}"
-                self.assertEqual(row["tav"], expected)
+                # design_system.figure, NOT an f-string (#52 phase 6). This assertion used to
+                # re-implement the screen's formatting with `f"{v:.0f}"`, and a test that
+                # re-derives the thing it is checking disagrees with it exactly where the two
+                # implementations differ: Python rounds half-to-even, `toFixed` rounds half away
+                # from zero, so at a tav of exactly 16.5 this read 16 while the board read 17.
+                # That was not the test being wrong about the board -- the SHIPPED app rendered
+                # Caleb Williams as 16 in the Streamlit metric row and 17 here, one number and
+                # two answers. The rule now has one home and both surfaces call it.
+                rendered = design_system.figure(c.team_acquisition_value)
+                self.assertEqual(row["tav"], "—" if rendered is None else rendered)
                 priced_vs = [b for b in row["basis"] if b.startswith("PRICED VS")]
                 if c.replacement_basis is None:
                     self.assertEqual(priced_vs, [])

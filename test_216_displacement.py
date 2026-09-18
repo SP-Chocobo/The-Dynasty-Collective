@@ -29,6 +29,17 @@ import lineup_optimizer as lo
 CAPTURE = Path("data/fixtures/sleeper_capture.json")
 ROSTER = ["QB", "RB", "RB", "WR", "WR", "TE", "FLEX", "FLEX"] + ["BN"] * 6
 
+#: #52 phase 6 (W1-01). A rulebook with IDP slots, because the sign of this term depends on a
+#: slot the candidate's SECOND eligibility can reach and ROSTER above has none -- which is
+#: exactly why "never positive" was pinned for so long over a population that cannot break it.
+IDP_ROSTER = ["QB", "RB", "RB", "WR", "WR", "TE", "FLEX",
+              "DL", "LB", "DB", "IDP_FLEX"] + ["BN"] * 6
+#: Replacement levels the board would compute. Written out so every number below is checkable
+#: by hand against shared_slot_alternatives' own rule (a slot is worth max(level) over what it
+#: admits): DB_9 -> 104, IDP_FLEX_10 -> max(DL, LB, DB) = 131, FLEX_6 -> max(RB, WR, TE) = 216.
+LEVELS = {"QB": 290.0, "RB": 186.0, "WR": 216.0, "TE": 173.0,
+          "DL": 118.0, "LB": 131.0, "DB": 104.0}
+
 
 def _p(pid, value, *positions):
     return {"id": pid, "value": float(value), "eligible": set(positions)}
@@ -62,18 +73,95 @@ class DisplacementLevelDerivationTests(unittest.TestCase):
         out = lo.displacement_level([_p("w", 150, "WR")], ROSTER, "WR", 216.0)
         self.assertEqual((out["displaced"], out["adjustment"]), (216.0, 0.0))
 
-    def test_the_adjustment_is_never_positive(self):
+    # THIS TEST WAS CALLED test_the_adjustment_is_never_positive AND IT WAS WRONG (#52 phase 6,
+    # W1-01). Not wrong in what it asserted -- every case it ran really is non-positive -- but
+    # wrong in what it was taken to prove. Every case passed NO `slot_alternatives` and a
+    # SINGLE-position probe, and the term can only go positive with both: a multi-eligible probe
+    # reaching a per-slot alternative priced below his own anchor. So it pinned "never positive"
+    # over precisely the population in which that cannot fail, while the shipped engine ran a
+    # population in which it does (Travis Hunter, +79.44). The claim is now split in two, and
+    # each half is exercised where it actually lives.
+
+    def test_a_single_position_candidate_is_never_lifted(self):
+        # Half one, and it holds for a reason rather than by observation: shared_slot_alternatives
+        # prices a slot at max(level) over the positions it ADMITS, so every slot a one-position
+        # probe can reach is priced at or above his own anchor. Run WITH slot_alternatives and on
+        # the IDP rulebook as well -- the two things the old version left out.
         rosters = [
             [], [_p("w", 150, "WR")], [_p("t1", 300, "TE"), _p("t2", 250, "TE"), _p("t3", 220, "TE")],
             [_p("q", 400, "QB"), _p("r1", 260, "RB"), _p("r2", 240, "RB"), _p("w1", 250, "WR"),
              _p("w2", 240, "WR"), _p("t", 230, "TE"), _p("f1", 235, "RB"), _p("f2", 233, "WR")],
         ]
-        for roster in rosters:
-            for position, level in (("QB", 290.0), ("RB", 186.0), ("WR", 216.0), ("TE", 173.0)):
-                with self.subTest(roster=len(roster), position=position):
-                    out = lo.displacement_level(roster, ROSTER, position, level)
-                    self.assertLessEqual(out["adjustment"], 0.0)
-                    self.assertGreaterEqual(out["displaced"], level)
+        seen = 0
+        for rpos in (ROSTER, IDP_ROSTER):
+            alts = dr.shared_slot_alternatives(LEVELS, rpos)
+            for roster in rosters:
+                for position, level in LEVELS.items():
+                    for supplied in (None, alts):
+                        with self.subTest(rulebook=len(rpos), roster=len(roster),
+                                          position=position, per_slot=supplied is not None):
+                            out = lo.displacement_level(roster, rpos, position, level,
+                                                        slot_alternatives=supplied)
+                            if out["basis"] == lo.DISPLACEMENT_NOT_APPLICABLE:
+                                continue          # no reachable slot; nothing to claim
+                            seen += 1
+                            self.assertLessEqual(out["adjustment"], 0.0)
+                            self.assertGreaterEqual(out["displaced"], level)
+        # Exactly, not "enough": 2 rulebooks x 4 rosters x 7 positions x 2 (with and without
+        # per-slot alternatives) = 112, less the 24 cases where ROSTER offers no slot at all for
+        # DL/LB/DB (3 positions x 4 rosters x 2). A claim over an unstated population is how this
+        # test's predecessor came to mean nothing, so the population is stated and checked.
+        self.assertEqual(seen, 112 - 24, "the grid changed shape; re-derive it before moving this")
+
+    def test_a_multi_eligible_candidate_is_lifted_to_the_cheapest_slot_he_can_reach(self):
+        # Half two: the branch the old test could not reach. A WR/DB is anchored on the WR level
+        # his bpa was built against (216), but the DB slot he can also fill is worth 104 to this
+        # roster, so passing on him costs 104, not 216 -- and the term says so with a LIFT.
+        alts = dr.shared_slot_alternatives(LEVELS, IDP_ROSTER)
+        out = lo.displacement_level([], IDP_ROSTER, {"WR", "DB"}, LEVELS["WR"], slot_alternatives=alts)
+        self.assertEqual((out["displaced"], out["adjustment"]), (104.0, 112.0))
+        # The lift is the CHEAPEST reachable slot, not any reachable one: a WR/LB reaches LB (131)
+        # and IDP_FLEX (131) but no DB slot, so he is lifted by 85 and not by 112.
+        out = lo.displacement_level([], IDP_ROSTER, {"WR", "LB"}, LEVELS["WR"], slot_alternatives=alts)
+        self.assertEqual((out["displaced"], out["adjustment"]), (131.0, 85.0))
+        # ...and it is the cheapest slot he can still EVICT. Fill DB with a 200 -- above its 104
+        # alternative, so the phantom is gone -- and the WR/DB falls back to the IDP_FLEX phantom
+        # at 131, exactly the WR/LB answer. The lift tracks the lineup, not the eligibility list.
+        held = [_p("w1", 260, "WR"), _p("w2", 250, "WR"), _p("f", 240, "RB"),
+                _p("d", 200, "DB"), _p("lb", 190, "LB"), _p("dl", 180, "DL")]
+        out = lo.displacement_level(held, IDP_ROSTER, {"WR", "DB"}, LEVELS["WR"], slot_alternatives=alts)
+        self.assertEqual((out["displaced"], out["adjustment"]), (131.0, 85.0))
+        # The same roster lifts a WR-ONLY candidate by nothing at all: both WR slots are held
+        # above the anchor, but FLEX is open at 216, which is his anchor. Same board, same
+        # levels, opposite sign -- the eligibility set is the whole of the difference.
+        out = lo.displacement_level(held, IDP_ROSTER, "WR", LEVELS["WR"], slot_alternatives=alts)
+        self.assertEqual(out["adjustment"], 0.0)
+
+    def test_the_one_bound_that_covers_both_populations(self):
+        # What replaced "never positive". Derived, not chosen: the clamp in displacement_level
+        # floors `displaced` at the cheapest alternative among the slots the probe REACHES, so
+        # the lift can never exceed the distance from his anchor down to that floor. For a
+        # single-position probe that bound is exactly 0.0, which is why this is ONE statement.
+        import itertools
+        checked = positive = 0
+        for rpos in (ROSTER, IDP_ROSTER):
+            alts = dr.shared_slot_alternatives(LEVELS, rpos)
+            slots = lo.slots_from_roster_positions(rpos)
+            for a, b in itertools.permutations(LEVELS, 2):
+                probe = {a, b}
+                reach = [s for s in slots if probe & s["eligible"]]
+                if not reach:
+                    continue
+                out = lo.displacement_level([], rpos, probe, LEVELS[a], slot_alternatives=alts)
+                bound = round(LEVELS[a] - min(alts.get(s["slot_id"], LEVELS[a]) for s in reach), 2)
+                checked += 1
+                positive += out["adjustment"] > 0.0
+                with self.subTest(rulebook=len(rpos), probe=f"{a}/{b}"):
+                    self.assertLessEqual(out["adjustment"], bound + 1e-9)
+        self.assertGreater(checked, 40)
+        # Non-vacuous in the direction that matters: if nothing in this grid went positive the
+        # bound above would be asserting nothing, exactly as its predecessor did.
+        self.assertGreater(positive, 0, "no probe was lifted -- this grid re-pins the old vacuity")
 
     def test_a_full_lineup_prices_each_position_against_its_own_weakest_reachable_starter(self):
         full = [_p("q", 400, "QB"), _p("r1", 260, "RB"), _p("r2", 240, "RB"), _p("w1", 250, "WR"),
@@ -189,6 +277,35 @@ class WiringOnTheRealRulebookTests(unittest.TestCase):
                 places=2, msg=r["name"])
             self.assertLessEqual(r["displacement_adj"], 0.0, r["name"])
             self.assertIn(r["displacement_basis"], lo.DISPLACEMENT_BASIS_LABELS, r["name"])
+
+    def test_how_far_the_non_positive_claim_above_actually_reaches(self):
+        # #52 phase 6 (W1-01). The assertion above is TRUE and it is nearly vacuous, which is a
+        # combination worth making visible rather than deleting. _rulebook() builds a
+        # superflex=False, no-IDP league, and the term can only go positive for a MULTI-eligible
+        # candidate whose second eligibility reaches a slot priced below his anchor. Measured on
+        # this exact board: 477 priced rows, of which ONE is multi-eligible -- Travis Hunter,
+        # WR/DB -- and in a league with no IDP slot his DB half reaches nothing, so he reports
+        # exactly +0.00. The claim above therefore ranges over a population in which it cannot
+        # fail, and it was read for years as evidence that the term is non-positive in general.
+        #
+        # This test pins the SHAPE of that population, so the day the fixture gains an IDP slot
+        # or a second dual-eligible row, the reach of the claim above changes visibly instead of
+        # silently. The unit-level tests carry the actual two-population invariant.
+        te = _ranked("TE")
+        rows = [r for r in _board([_pick(te[i], "1", i + 1, i + 1) for i in range(4)])
+                if r["final_score"] is not None]
+        _, players_db, _, league, _ = _RB["v"]
+        self.assertNotIn("IDP_FLEX", league["roster_positions"])
+
+        def eligibility(row):
+            info = players_db.get(str(row.get("player_id"))) or {}
+            return {p for p in (info.get("fantasy_positions") or []) if p}
+
+        multi = [r for r in rows if len(eligibility(r)) > 1]
+        self.assertEqual(len(multi), 1, "the multi-eligible population of this board changed")
+        self.assertEqual(eligibility(multi[0]), {"WR", "DB"})
+        self.assertEqual(multi[0]["displacement_adj"], 0.0,
+                         "a DB eligibility reached a slot in a league that has none")
 
     def test_the_term_is_a_per_position_constant_at_a_board_state(self):
         te = _ranked("TE")
