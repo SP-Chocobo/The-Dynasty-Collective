@@ -6135,6 +6135,50 @@
         }
       }
     },
+    "test_invariant_registry.py": {
+      "test_methods": 9,
+      "asserts": {
+        "assertEqual": 6,
+        "assertGreater": 3,
+        "assertIn": 1,
+        "assertIsNone": 2,
+        "assertIsNotNone": 1,
+        "assertTrue": 3
+      },
+      "by_method": {
+        "test_a_SHRUNK_population_fails_too": {
+          "assertEqual": 1
+        },
+        "test_a_grown_population_fails": {
+          "assertEqual": 2
+        },
+        "test_an_enumerator_that_cannot_run_is_a_finding_not_a_pass": {
+          "assertIn": 1,
+          "assertIsNone": 1,
+          "assertIsNotNone": 1
+        },
+        "test_every_entry_states_a_claim_and_the_population_it_ranges_over": {
+          "assertGreater": 2,
+          "assertTrue": 1
+        },
+        "test_every_named_test_actually_exists": {
+          "assertTrue": 1
+        },
+        "test_every_registered_population_is_the_size_it_was_verified_against": {
+          "assertEqual": 1
+        },
+        "test_main_reports_nonzero_when_something_moved": {
+          "assertEqual": 2
+        },
+        "test_no_population_is_empty": {
+          "assertGreater": 1,
+          "assertIsNone": 1
+        },
+        "test_there_are_invariants_registered": {
+          "assertTrue": 1
+        }
+      }
+    },
     "test_kdst_integration.py": {
       "test_methods": 53,
       "asserts": {
@@ -10466,14 +10510,15 @@
       }
     },
     "test_roster_state_ladder.py": {
-      "test_methods": 7,
+      "test_methods": 10,
       "asserts": {
         "assertAlmostEqual": 1,
-        "assertEqual": 1,
-        "assertGreater": 1,
+        "assertEqual": 2,
+        "assertGreater": 4,
         "assertGreaterEqual": 2,
-        "assertIsNotNone": 1,
-        "assertLessEqual": 2
+        "assertIsNotNone": 2,
+        "assertLess": 1,
+        "assertLessEqual": 3
       },
       "by_method": {
         "test_a_fully_covered_position_earns_no_need_bonus": {
@@ -10482,10 +10527,22 @@
         "test_a_position_with_more_reachable_slots_starts_higher": {
           "assertGreaterEqual": 1
         },
+        "test_a_position_with_no_dedicated_slot_gets_ALL_of_its_need_from_the_flex_share": {
+          "assertEqual": 1,
+          "assertGreater": 1
+        },
         "test_an_empty_position_carries_strictly_more_need_than_a_covered_one": {
           "assertGreater": 1
         },
+        "test_both_terms_fire_on_an_EMPTY_roster_which_the_prose_used_to_deny": {
+          "assertGreater": 1,
+          "assertLess": 1
+        },
         "test_need_never_increases_as_the_position_fills": {
+          "assertLessEqual": 1
+        },
+        "test_one_unfilled_dedicated_slot_outweighs_a_positions_ENTIRE_flex_demand": {
+          "assertGreater": 1,
           "assertLessEqual": 1
         },
         "test_saturation_beyond_coverage_is_the_same_state_as_covered": {

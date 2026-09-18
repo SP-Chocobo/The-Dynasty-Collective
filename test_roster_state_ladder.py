@@ -178,3 +178,85 @@ class TheLadderComesFromLeagueStructureTests(_Rosters):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TheFlexShareTermIsLoadBearingAndWasUnnamedTests(_Rosters):
+    """`NEED_BONUS_PER_FLEX_SHARE` appeared in NO test file (#52 phase 6, W-L09).
+
+    Its sibling `NEED_BONUS_PER_DEDICATED_SLOT` is named in five, and this file's own docstring
+    says its subject is that "a change to NEED_BONUS_PER_DEDICATED_SLOT, to the flex-share
+    arithmetic, or to how coverage is counted could invert the coverage/need relationship... and
+    no test would have failed". The ladder was pinned; the flex share was not, and zeroing it
+    passed the whole suite.
+
+    It is not a rounding term. For any position with NO dedicated slot in a format, it is the
+    ENTIRE positional-need signal -- measured on the real capture, empty roster:
+
+        IDP_FLEX-only league   DL / LB / DB   0.67 -> 0.00 when the constant is zeroed
+        no-TE-slot league      TE             1.00 -> 0.00
+
+    So a league whose tight ends compete only for flex slots, or whose defenders do, loses every
+    scrap of positional need for them and nothing says so.
+    """
+
+    def test_a_position_with_no_dedicated_slot_gets_ALL_of_its_need_from_the_flex_share(self):
+        league = dict(DYNASTY)
+        league["roster_positions"] = ["QB", "RB", "RB", "WR", "WR", "FLEX", "FLEX", "FLEX"] + ["BN"] * 8
+        real = dr.NEED_BONUS_PER_FLEX_SHARE
+        try:
+            with_share = self._need_in(league, "TE")
+            dr.NEED_BONUS_PER_FLEX_SHARE = 0.0
+            without = self._need_in(league, "TE")
+        finally:
+            dr.NEED_BONUS_PER_FLEX_SHARE = real
+        self.assertGreater(with_share, 0.0,
+                           "TE carries no need at all in a league whose flexes admit him")
+        self.assertEqual(without, 0.0,
+                         "zeroing the flex share left TE some need, so this league is not the "
+                         "no-dedicated-slot case this test is about")
+
+    def test_both_terms_fire_on_an_EMPTY_roster_which_the_prose_used_to_deny(self):
+        """The withdrawn claim, pinned as the behaviour it actually is.
+
+        Three comments said "flex demand only counts once dedicated slots are already filled".
+        The terms are additive and both fire at `filled == 0`: a position with two empty
+        dedicated slots AND flex capacity carries more need than one with two empty dedicated
+        slots and no flex eligibility, which is right, and is what a gate would have erased.
+        """
+        rb_empty = self._need_for("RB", {})
+        dedicated_only = dr.NEED_BONUS_PER_DEDICATED_SLOT * 2
+        self.assertGreater(rb_empty, dedicated_only,
+                           "the flex term is not contributing on an empty roster -- the gate the "
+                           "prose described appears to have been implemented")
+        self.assertLess(rb_empty, dedicated_only + dr.NEED_BONUS_PER_FLEX_SHARE + 1e-9)
+
+    def test_one_unfilled_dedicated_slot_outweighs_a_positions_ENTIRE_flex_demand(self):
+        """What the withdrawn prose was reaching for, stated so that it is enforceable.
+
+        Dominance is the RATIO, not an ordering: the flex term is capped at one share, so it can
+        never contribute more than NEED_BONUS_PER_FLEX_SHARE, while one unfilled dedicated slot
+        contributes NEED_BONUS_PER_DEDICATED_SLOT. Derived from the two constants rather than
+        written as a literal, so re-deriving either one is checked here instead of silently
+        inverting "zero QBs" against "wants a fourth bench-eligible WR".
+        """
+        self.assertGreater(dr.NEED_BONUS_PER_DEDICATED_SLOT, dr.NEED_BONUS_PER_FLEX_SHARE)
+        # ...and on real boards, measured rather than argued: no position's need ever exceeds
+        # its dedicated shortfall by more than one flex share.
+        for wanted in ({}, {"RB": 1}, {"RB": 2}, {"WR": 1, "RB": 1}):
+            for position in SKILL:
+                with self.subTest(wanted=tuple(sorted(wanted.items())), position=position):
+                    need = self._need_for(position, wanted)
+                    dedicated = dr.dedicated_slot_counts(ROSTER).get(position, 0)
+                    shortfall = max(dedicated - wanted.get(position, 0), 0)
+                    ceiling = min(
+                        dr.NEED_BONUS_PER_DEDICATED_SLOT * shortfall + dr.NEED_BONUS_PER_FLEX_SHARE,
+                        dr.NEED_BONUS_MAX)
+                    self.assertLessEqual(need, ceiling + 1e-9)
+
+    def _need_in(self, league, position):
+        board = dr.compute_draft_board(self.merger, self.players_db, [], my_roster_id="1",
+                                       league=league, mode="balanced")
+        row = next((r for r in board if r["position"] == position
+                    and r.get("need_bonus") is not None), None)
+        self.assertIsNotNone(row, f"no {position} row carrying a need_bonus")
+        return row["need_bonus"]

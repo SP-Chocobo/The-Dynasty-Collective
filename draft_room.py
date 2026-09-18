@@ -116,9 +116,9 @@ per-slot rate -- also a real fix, not a refinement: a flat rate
 scaled with how many total roster slots a position has, which meant a team with ZERO QBs
 scored a smaller bonus than a team wanting a fourth bench WR, since WR simply has more named/
 flex slots than QB does. An unfilled DEDICATED starting slot (a named position, not a flex
-share) is weighted well above remaining flex-only capacity, and flex demand only counts once
-a team's dedicated slots are already filled -- see dedicated_slot_counts and the need_bonus
-math in compute_draft_board. Still capped low enough that it nudges a close call without
+share) is weighted well above remaining flex-only capacity -- 4.0 against at most 1.0, so a
+single unfilled dedicated slot outweighs the whole of a position's flex demand -- see
+dedicated_slot_counts and the need_bonus math in compute_draft_board. Still capped low enough that it nudges a close call without
 flipping a large universal-value gap (see NEED_BONUS_MAX and test_draft_room.py's invariant
 tests) -- that invariant was true and enforced in the first pass too; only the per-position
 distribution of the bonus itself needed fixing.
@@ -469,9 +469,30 @@ DYNASTY_RISK_ADJ_MIN_SCALE = 0.3  # floor: even max-positive trajectory keeps 30
 # The ONLY team-specific term. Added on top of universal_value, never multiplied into it.
 # Split by urgency, not a flat per-slot rate -- see module docstring's need_bonus section for
 # the real bug this replaced. A dedicated (named, non-flex) unfilled starting slot is weighted
-# far above remaining flex-only capacity, and flex demand only counts once dedicated slots are
-# already filled, so "zero QBs" outweighs "wants a fourth bench-eligible WR" the way real
-# draft urgency actually does.
+# far above remaining flex-only capacity, so "zero QBs" outweighs "wants a fourth bench-eligible
+# WR" the way real draft urgency actually does.
+#
+# THAT DOMINANCE IS THE WEIGHTING, NOT A GATE (#52 phase 6, W-L09). All three places this was
+# explained used to add "and flex demand only counts once dedicated slots are already filled",
+# and the formula has never done that: the two terms are ADDITIVE, and both fire on an empty
+# roster. Measured there, 12-team PPR: RB 8.67 against a dedicated-only 8.00.
+#
+# The claim is withdrawn rather than implemented, because the formula is the better of the two
+# and the prose was describing a design that was never built. A position with two empty
+# dedicated slots AND flex capacity genuinely carries more demand than one with two empty
+# dedicated slots and no flex eligibility, and the additive form says so while a gate would
+# erase the difference. What the prose was really reaching for is delivered by the RATIO, and
+# that IS enforceable: the flex term is capped at one share, so it contributes at most
+# NEED_BONUS_PER_FLEX_SHARE (1.0) against a dedicated slot's 4.0 -- one unfilled dedicated slot
+# outweighs the entire flex demand of any position, in every format. Pinned as an invariant
+# derived from these two constants rather than asserted in prose.
+#: THE TEAM-SPECIFIC TERMS, named once (#52 phase 6.3). team_acquisition_value is
+#: universal_value plus exactly these, and pick_synthesis.TEAM_SPECIFIC_CAPS bounds the sum of
+#: the CAPPED three -- a distinction that cost two shipped constants their premise when #216
+#: added the fourth and hand-exempted it. invariant_registry counts this tuple, so a fifth term
+#: cannot arrive without the bound being re-examined.
+TEAM_SPECIFIC_TERMS = ("need_bonus", "eligibility_bonus", "depth_exposure", "displacement_adj")
+
 NEED_BONUS_PER_DEDICATED_SLOT = 4.0
 NEED_BONUS_PER_FLEX_SHARE = 1.0
 NEED_BONUS_MAX = 12.0
@@ -2242,6 +2263,40 @@ def _scale_vor_to_bpa(vor: pd.Series) -> pd.Series:
     return vor.astype(float)
 
 
+#: WHAT THE BOARD HANDS BACK, named once (#126, #52 phase 6.3). These were two inline lists at
+#: the two return sites, and "the columns the board emits" is a real vocabulary with real
+#: consumers: the absence contract ranges over exactly this set, and was once enforced over a
+#: hand-picked subset of it while the set grew. invariant_registry counts it, so a column added
+#: here announces itself instead of silently widening a claim.
+BALANCED_BOARD_COLUMNS = [
+    "player_id", "name", "position", "team", "injury_status", "bpa", "bpa_source",
+    "growth_signal", "universal_value", "confidence", "final_score", "mode",
+    "projected_points", "horizon_floor", "horizon_sensitivity", "waiting_cost",
+    "replacement_basis", "horizon_basis", "identity_basis", "availability_basis",
+    # #112: the KIND of absence travels with the row, on BOTH serializations. A
+    # companion that reaches only the balanced board would be exactly the #174 defect
+    # (the number crossed the boundary, its basis did not).
+    "absence_kind",
+    "fills_required_slot",
+]
+
+UPSIDE_BOARD_COLUMNS = [
+    "player_id", "name", "position", "team", "injury_status", "bpa", "bpa_source",
+    "time_horizon_adj", "risk_adj", "universal_value",
+    "need_bonus", "eligibility_bonus", "depth_exposure", "depth_basis",
+    "displacement_adj", "displacement_basis",
+    "confidence", "final_score", "mode", "projected_points",
+    "horizon_floor", "horizon_sensitivity", "waiting_cost", "replacement_basis",
+    "horizon_basis", "identity_basis", "availability_basis", "absence_kind",
+    "fills_required_slot",
+]
+
+
+def board_emitted_columns() -> set:
+    """Every column a caller can see on a board, in either mode."""
+    return set(BALANCED_BOARD_COLUMNS) | set(UPSIDE_BOARD_COLUMNS)
+
+
 def _records_with_normalized_nan(df: pd.DataFrame, *columns: str) -> list[dict]:
     """.to_dict("records") with missing values normalized to real None -- pandas leaves a
     missing float as NaN (a non-None float, `nan is not None`) and a missing entry in a `str`
@@ -3384,17 +3439,7 @@ def compute_draft_board(
         scored["fills_required_slot"] = scored["_feasible"] == 0
         results = scored.sort_values(["_feasible", "final_score", "player_id"],
                                      ascending=[True, False, True], kind="stable")
-        return _records_with_normalized_nan(results[[
-            "player_id", "name", "position", "team", "injury_status", "bpa", "bpa_source",
-            "growth_signal", "universal_value", "confidence", "final_score", "mode",
-            "projected_points", "horizon_floor", "horizon_sensitivity", "waiting_cost",
-            "replacement_basis", "horizon_basis", "identity_basis", "availability_basis",
-            # #112: the KIND of absence travels with the row, on BOTH serializations. A
-            # companion that reaches only the balanced board would be exactly the #174 defect
-            # (the number crossed the boundary, its basis did not).
-            "absence_kind",
-            "fills_required_slot",
-        ]])
+        return _records_with_normalized_nan(results[BALANCED_BOARD_COLUMNS])
 
     my_filled = _team_starters_filled(picks, players_db, my_roster_id)
     # DELIBERATELY THE EVEN SPLIT, not the measured share the demand model above uses, because
@@ -3493,8 +3538,10 @@ def compute_draft_board(
         universal_value = round(bpa + time_horizon_adj + risk_adj, 2)
 
         # Need, split by urgency (see module docstring's need_bonus section for the bug this
-        # replaced): an unfilled DEDICATED slot dominates; flex-only demand only counts once
-        # dedicated slots are already covered, and contributes far less even then.
+        # replaced): an unfilled DEDICATED slot dominates because it is weighted 4:1 and the
+        # flex term is capped at one share -- NOT because flex waits for it. The two are
+        # additive and both fire on an empty roster; the older wording here said otherwise and
+        # was withdrawn at #52 phase 6 (see NEED_BONUS_PER_FLEX_SHARE's own comment).
         filled = my_filled.get(position, 0)
         dedicated = dedicated_counts.get(position, 0)
         dedicated_needed = max(dedicated - filled, 0)
@@ -3646,16 +3693,7 @@ def compute_draft_board(
     # above for the full reasoning (input-order-independent tiebreaking among exact ties).
     results = scored.sort_values(["_feasible", "final_score", "player_id"],
                                  ascending=[True, False, True], kind="stable")
-    return _records_with_normalized_nan(results[[
-        "player_id", "name", "position", "team", "injury_status", "bpa", "bpa_source",
-        "time_horizon_adj", "risk_adj", "universal_value",
-        "need_bonus", "eligibility_bonus", "depth_exposure", "depth_basis",
-        "displacement_adj", "displacement_basis",
-        "confidence", "final_score", "mode", "projected_points",
-        "horizon_floor", "horizon_sensitivity", "waiting_cost", "replacement_basis",
-        "horizon_basis", "identity_basis", "availability_basis", "absence_kind",
-        "fills_required_slot",
-    ]])
+    return _records_with_normalized_nan(results[UPSIDE_BOARD_COLUMNS])
 
 
 # -- in-app Mock Draft sandbox (see app.py's Draft Room view) -------------------------------

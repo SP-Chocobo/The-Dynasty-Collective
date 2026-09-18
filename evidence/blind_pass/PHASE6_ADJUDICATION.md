@@ -327,6 +327,83 @@ records for the pre-`#139` state.
 
 ---
 
+## 6.1c — `need_bonus`'s flex share: the prose was wrong, not the formula *(closed)*
+
+**W-L09.** Three comments in `draft_room` said *"flex demand only counts once a team's dedicated
+slots are already filled"*. The formula has never done that — the two terms are **additive**, and
+both fire at `filled == 0`. Measured on an empty roster, 12-team PPR: **RB 8.67** against a
+dedicated-only **8.00**.
+
+**The claim is withdrawn rather than implemented**, because the formula is the better of the two.
+A position with two empty dedicated slots *and* flex capacity genuinely carries more demand than
+one with two empty dedicated slots and no flex eligibility; the additive form says so, and a gate
+would erase the difference. What the prose was reaching for is delivered by the **ratio**, and
+that is enforceable: the flex term is capped at one share, so it contributes at most **1.0**
+against a dedicated slot's **4.0** — one unfilled dedicated slot outweighs the entire flex demand
+of any position, in every format. Now pinned as an invariant derived from the two constants.
+
+**And the constant was load-bearing and completely unnamed.** `NEED_BONUS_PER_DEDICATED_SLOT`
+appears in five test files; `NEED_BONUS_PER_FLEX_SHARE` appeared in **none**, and zeroing it passed
+the entire suite. It is not a rounding term — for any position with **no dedicated slot** in a
+format it is the *whole* positional-need signal:
+
+| format | position | with the term | zeroed |
+|---|---|---:|---:|
+| `IDP_FLEX`-only | DL / LB / DB | 0.67 | **0.00** |
+| no TE slot | TE | 1.00 | **0.00** |
+
+Mutants killed: zeroing the constant (2 failures, previously green across the whole suite), and
+implementing the gate the prose described (1 failure).
+
+---
+
+## 6.3 — the invariant registry *(built)*
+
+The process repair for the failure mode at the top of this file, and this session earned it six
+times over. `invariant_registry.py` records, per invariant: the claim, **the population it was
+proven over**, a callable that enumerates that population, the size it had when last verified, and
+the tests that pin it. `test_invariant_registry.py` re-counts and fails when a number moves.
+
+A failure there is not a bug report — it is the notification this audit never got. The stated
+response is: re-verify the claim over the new population, **then** update the census, in that
+order, because updating the number first is how a registry becomes a rubber stamp.
+
+Seeded with five invariants, all measured in this audit rather than added for completeness:
+
+| invariant | population | census |
+|---|---|---:|
+| `TEAM_SPECIFIC_CAPS` bounds the capped terms, not TAV − UV | team-specific terms | 4 |
+| `displacement_adj ≤ 0` for a single-position candidate | priced positions | 9 |
+| an absent quantity reaches a caller as `None`, never `NaN` | emitted board columns | 30 |
+| depth numbers are evidence only under `EXPOSURE_MEASURED` | basis vocabulary | 4 |
+| one engine figure reads the same on every surface | Python render sites | 8 |
+
+Two vocabularies got a home so they could be counted: `draft_room.TEAM_SPECIFIC_TERMS`, and
+`BALANCED_BOARD_COLUMNS` / `UPSIDE_BOARD_COLUMNS` (previously two inline lists at the two return
+sites, which is how the absence contract came to be enforced over a hand-picked subset).
+
+### The registry caught three things on its first run, two of them mine
+
+1. It named a test class that **does not exist** — I had invented the name. The guard that checks
+   `pinned_by` resolves is there because a registry claiming coverage that is not there is worse
+   than no registry, and it fired immediately.
+2. Two censuses were **guesses** rather than measurements (8 vs 9 positions, 9 vs 8 render sites).
+3. Worst: `_tav_team_specific_terms` **intersected with a hard-coded set**, so a fifth term could
+   arrive and the count could not move. That is the exact tautology this module's own docstring
+   warns against, committed *inside* the guard against it — and a mutation found it, not review.
+
+Mutants killed after the fix: a fifth team-specific term (4→5), a genuinely new board column
+(30→31), a fifth exposure basis token (4→5), and **one Streamlit render site reverted to a bare
+f-string** (8→7) — the last being precisely the regression §6.1e repaired.
+
+Also converted: two `CHARACTERIZATION` tests that AST-walked `compute_draft_board` for a
+`results[[...]]` literal. Giving the columns one home made the slice a `Name`, the walk matched
+nothing, and `emitted` came back an **empty set** — caught by their own non-vacuity guards, doing
+exactly the job they were put there for. Both now read `board_emitted_columns()`, which is simpler
+and stronger than re-deriving names from the syntax that happens to spell them today.
+
+---
+
 ## Still open in Phase 6
 
 - **6.1c** `need_bonus`'s bound and its flex-before-dedicated formula

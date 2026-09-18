@@ -337,17 +337,14 @@ class AliasOverrideReachTests(unittest.TestCase):
         """
         source = Path(__file__).with_name("draft_room.py").read_text()
         tree = ast.parse(source)
-        board = next(
-            n for n in ast.walk(tree)
-            if isinstance(n, ast.FunctionDef) and n.name == "compute_draft_board"
-        )
-        emitted: set[str] = set()
-        for node in ast.walk(board):
-            if isinstance(node, ast.Subscript) and isinstance(node.slice, ast.List):
-                emitted.update(
-                    e.value for e in node.slice.elts
-                    if isinstance(e, ast.Constant) and isinstance(e.value, str)
-                )
+        # dr.board_emitted_columns(), not an AST walk for a `results[[...]]` literal (#52 phase
+        # 6.3). That pattern was the board's column list until the two inline lists were given
+        # one home as BALANCED_BOARD_COLUMNS / UPSIDE_BOARD_COLUMNS -- at which point the slice
+        # became a Name, the walk matched nothing, and `emitted` came back as an empty set. The
+        # non-vacuity guard below is what caught that, doing exactly the job it was put there
+        # for. Reading the names the board actually emits is both simpler and stronger than
+        # re-deriving them from the syntax that happens to spell them today.
+        emitted = draft_room.board_emitted_columns()
         # Non-vacuity: this really is reading the board's own output column lists.
         self.assertIn("bpa_source", emitted)
         self.assertIn("universal_value", emitted)
