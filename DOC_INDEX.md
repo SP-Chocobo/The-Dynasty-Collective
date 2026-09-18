@@ -1,6 +1,6 @@
 # Document index — derived, not curated
 
-`python3 doc_index.py` regenerates this. 130 markdown documents.
+`python3 doc_index.py` regenerates this. 131 markdown documents.
 
 Classified by what each file says about ITSELF in its first 12 lines. Nothing here is a judgement about whether a document is *good* — only about whether it tells a cold reader what it is before it starts making claims.
 
@@ -9,7 +9,7 @@ Classified by what each file says about ITSELF in its first 12 lines. Nothing he
 | WITHDRAWN | 24 | a published claim taken back. Kept, unedited, beneath its banner. |
 | SUPERSEDED | 19 | still valid or partly valid, but something later changed what it means. |
 | DECLARED | 16 | says what kind of document it is before making claims. |
-| UNDECLARED | 71 | no status banner in its opening. Not necessarily wrong — most are simply current — but a reader cannot tell without reading it all. |
+| UNDECLARED | 72 | no status banner in its opening. Not necessarily wrong — most are simply current — but a reader cannot tell without reading it all. |
 
 ## WITHDRAWN
 
@@ -95,6 +95,7 @@ Classified by what each file says about ITSELF in its first 12 lines. Nothing he
 - `evidence/blind_pass/wave1/PASS_A.md`
 - `evidence/blind_pass/wave1/PASS_B.md`
 - `evidence/blind_pass/wave2/PASSES_C_AND_D.md`
+- `evidence/blind_pass/wave3/PASSES_E_AND_F.md`
 - `evidence/capture_provenance/README.md`
 - `evidence/flex_feasibility/README.md`
 - `evidence/projection_rank/README.md`

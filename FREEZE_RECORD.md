@@ -54,6 +54,28 @@ unfillable-flex family, which `FREEZE_CHECKLIST` called the only blocker, **did 
 matrix. **What it does not:** anything about quality. A draft can be perfectly legal and badly
 played, which is why `#285` exists.
 
+> ### SCOPE CORRECTION — added 2026-09-18 after `#52` Wave 3, and it narrows this section sharply
+>
+> **The 34 arms never draft the owner's own roster shape.** Verified:
+>
+> ```
+> battery arms: 34 | arms with a K slot: 0 | arms with SUPER_FLEX *and* IDP: 0
+> owner league:  K True | SUPER_FLEX True | IDP_FLEX 2 | BN 14
+> ```
+>
+> `run_roster_proof.py` and `run_smoke_seats.py` build with `build_mock_league` too, which has no
+> K — so **`#285`'s quality pass and `#289`'s freeze condition were also measured on shapes the
+> owner does not play.**
+>
+> This does not make the Gate 1 result wrong; it is true of what it tested. It makes its **scope
+> narrower than the rest of this document implies.** Read "0 structural findings" as *0 across
+> the 34 shapes tested*, none of which is the owner's.
+>
+> **What that scope hid, found by two independent passes:** on the owner's league the engine
+> drafts **four to five kickers per roster**, with every roster still legal — so
+> `unfilled_starting_slots` and `undraftable_positions` report nothing. See
+> `evidence/blind_pass/LEDGER.md` W3-01.
+
 ### Quality, against a mixed field of named styles (`#285`, `#289`)
 
 `evidence/smoke_seats/` — pre-registered at `9273a2c` **before the runner existed**, so the
