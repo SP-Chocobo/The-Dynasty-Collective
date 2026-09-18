@@ -71,7 +71,113 @@ null to state how it was established.
 
 ## Wave 5 — passes I and J
 
-*Launched. Mandate adds a null-result evidentiary standard, a state/persistence/process-boundary
-category, and steers toward the self-integrity instruments. Neither pass has reported.*
+*Mandate adds a null-result evidentiary standard, a state/persistence/process-boundary category,
+and steers toward the self-integrity instruments. Pass I has reported; pass J is still running.*
+
+### Pass I — reported 2026-09-18. Verbatim: `wave5/PASS_I.md`
+
+*Logged as stated by the pass. No verdicts, no novelty calls, no merging with any other pass.*
+
+**I-01.** Two take models answer "will he survive to my next pick" two orders of magnitude apart.
+`_take_probability` normalises the rank table over the whole board's mass; `_pace_based_take_probability`
+is unnormalised and wins whenever it exceeds the rank estimate. Measured at 1.01 on the real capture:
+`board_take_mass` 41.67, of which 24.16 (58%) is the 0.02 floor on unpriced rows. McCaffrey rank 1 on
+every rival board → per-rival take 0.013, survival across 22 picks **0.747**; a rival's take
+probabilities over their own top 12 sum to **0.032**. Josh Allen rank 7 → rank model survival 0.989;
+with the pace prior, per-pick p_take reaches **1.0 at the 13th intervening pick** and survival is
+**0.0 exactly**. Same snapshot: RB1 75% safe, QB1 0% safe.
+
+**I-02.** The pace prior is internally inconsistent: `actual_now` counts QBs only in the real `picks`
+list, so the deficit grows with `picks_made_now` while zero QBs are assumed taken — it asserts pick
+#13 takes him with certainty on the premise that picks #2–#12, each just assigned 0.08–0.92, took
+none. Reintroduces the exact 0.0 that `#206`'s repair exists to remove, under
+`survival_basis == "measured"`.
+
+**I-03.** The normalised model's magnitude is a fixture artefact. `test_take_model_coherence._boards`
+uses ~505 floor rows → rank-1 p = 0.064, and the test asserts this is "within a few points of the
+measured 3.0%". On the real universe the mass is 41.67 → 1.3%, and the pinned turn survival of 0.232
+becomes 0.747. Pinned on a board a quarter the size of the owner's.
+
+**I-04.** `board_contention_scale` and `_value_take_weight` have **no callers anywhere**, beneath a
+12-line comment stating the take model "is a VALUE SHARE over the opponent's own board, not a lookup
+on the candidate's ordinal". Production is the rank table. The docstring describes a model that never
+runs.
+
+**I-05.** `screen_context.build_draft_room_context` (~118) prints "survival NN%" into the Prytaneum
+seed — the same number `pick_debate` refuses to show the chairs.
+
+**I-06.** `depth_exposure` is stamped `measured` from roster-wide surplus, not reachable surplus.
+`has_surplus = len(roster_players) > len(starting_ids)` is one boolean for the whole roster, and
+`draft_room.py:3457` prices `worst_loss` **only** under that basis. Probe: 8 starters no bench → all
+`no_surplus`; add **one bench kicker** → QB/TE/RB/WR flip to `measured` with identical numbers. Real
+draft pick 141: `K ('measured', 14.0)`, `TE ('measured', 8.0)`, `QB ('measured', 82.0)` — the K/TE
+numbers are the lone starter's own trade_value — and the chosen candidate (a kicker) carries
+`depth_exposure = 1.68` as a priced term. The only test pinning `EXPOSURE_NO_SURPLUS` uses the
+no-bench roster, the one shape where it cannot fail.
+
+**I-07.** `corpus_state` reports "no local data in the mix" while a league-scoped upload moves every
+price. Probe: planted one rankings CSV (projection 9999) in a temp league dir — top RB projection went
+359 → 9999, `corpus_state.assess()` returned `doctrine_only` with the green sentence, and
+`baseline_manifest.diff()` was clean. The module docstring's own argument about uploads moving
+replacement levels is exactly the case it cannot see.
+
+**I-08.** `quantity_readers._reads_in` counts **any** `ast.Attribute` load with a matching `.attr` as
+a read. The DECISION verdict for `depth_exposure` rests solely on `draft_room.py` containing the
+function call `lo.depth_exposure(`; no scoring module subscripts the board column. Same mechanism
+gives DECISION for `name`, `position`, `team`, `value`, `round`, `basis`, `mode`, `starters`,
+`player_id` off unrelated objects (`.name` on a Path, `.round(` on a Series). Every `KNOWN` entry is
+distinctively named, so the collision is never exercised.
+
+**I-09.** `quantity_readers._relayed_in` double-counts reads inside nested dict values:
+`{'a': row['x']}` → relayed `{'x'}`; `{'a': {'b': row['x']}}` → relayed `set()`.
+
+**I-10.** `assertion_floors` claims "a weakening cannot pass unseen"; four ways it does, each probed
+with the module's own API: (a) weaken one assertion and add another of the same name in one edit →
+`drops() == []`; (b) `@unittest.skip` → `[]`; (c) assertion under `if False:` → `[]`; (d) floors file
+`{}` plus an empty test module → `[]`, and `--check` prints "no guarantee has shrunk (0 modules held
+to a floor)" and **exits 0**, because `load()` returns `{}` for a missing or damaged file. Also: two
+test modules use bare `assert`, which the instrument does not count.
+
+**I-11.** `suite_taxonomy.tier_of` is the substring `"DataMerger()" in source`. Three modules that
+load the 6,595-player capture are classed fast. Measured fast tier = **123 modules, 201.5 s**; the
+docstring says "53 fast modules, 845 tests, 1.5 seconds". A module mentioning `DataMerger()` in a
+docstring is "full"; one constructing `DataMerger(league_dir=…)` is "fast".
+
+**I-12.** `#102`'s store-discipline exemption has a false reason. `bot_benchmark` is exempted as
+"developer-run measurement output, never touched by the app"; `app.py:2689–2695` runs
+`run_benchmark` and `save_report` from the Configure Bots UI. `_load_all` swallows `JSONDecodeError
+→ {}` and `save_report` writes back with `write_text` — one torn read wipes every role's 20-run
+history.
+
+**I-13.** `sleeper_client.get_players` writes the ~10 MB players cache with `write_text`
+(truncate-then-write); `_write_snapshot` likewise. A second tab reading mid-write gets `None` →
+re-fetch of `/players/nfl` plus a second full `sync_league`. Exempted on the cost of a lost write;
+the torn *read* is the cost.
+
+**I-14.** Draft Room snapshot cache and `stamp_is_current` both key on
+`(len(picks), merger.freshest_date)`, so a same-date re-upload, an alias override, or a pick
+correction that leaves the count unchanged serves a stale `PickSnapshot` while
+`snapshot_is_current` returns `True`.
+
+**I-15.** Five claims the code no longer supports: `term_lifetimes.py:58` says `bpa` is "scaled
+linearly against the pool's largest VOR gap" (`_scale_vor_to_bpa` is the identity);
+`prediction_record.main()` commits a forward record for a shape the owner does not play, with no
+`set_league_format` call; `roster_diagnostics` solves lineups with primary-position eligibility only
+while `eligibility_bonus` assumes full eligibility; `draft_history.record_snapshot`'s "same bytes"
+claim fails under a race because the payload carries `ts`/`date`; `positional_forfeits` still says
+"same principle as estimate_survival" after `#206` made the two disagree.
+
+**I-16 (low).** `attachments.save_attachment` joins a client-supplied filename onto `ATTACHMENTS_DIR`
+with no `Path(...).name`. `app.py`'s `.env` rewrite is non-atomic. `len(x and [])` is always 0.
+
+**Nulls filed by pass I, with method (logged as filed, not adjudicated):** `store_io`,
+`content_hash`, `resume_join`, `untrusted`, `panel_independence`, `providers`, `bot_config`,
+`bot_research` gating, `llm_engine` handoff, `ui_source`, `render_trace`, `baseline_manifest --check`,
+`draft_history._scope_dir`.
+
+**Declared not confident / not examined:** `data_merger` reconciliation and identity internals,
+`league_config`, `pick_synthesis` necessity arithmetic, `app.py` beyond cited sites, `depth_ratings`,
+`rookie_draft`, `draft_counterfactual`, `doc_index`, `basis_semantics`, `ordinals`. Ran 12 rounds,
+not a full 25.
 
 <!-- APPEND POINT: each pass's findings go below, in arrival order, unedited afterwards. -->
