@@ -50,3 +50,8 @@ evidence/roster_shape/ff_rulebook/ktc_sign_probe.pdf
 # scratchpad is preferred, but a long background run holds an open fd here, so the directory
 # has to survive the run it is logging.
 scratchpad/
+
+# Agent worktrees are ephemeral clones of this repo. Committing them embeds a git repo
+# inside a git repo, which clones cannot resolve. Related to #239: worktree artefacts
+# have caused ref trouble here before.
+.claude/worktrees/
