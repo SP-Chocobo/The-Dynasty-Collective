@@ -12953,3 +12953,58 @@ the distinction, and this register's whole habit is that a dated measurement kee
 **`#52` alone.** Deny rules are committed at `.claude/blind-pass.settings.json`, inert until
 copied over `.claude/settings.local.json`, with the verification step written into the file
 because a denial that silently failed to apply would be believed.
+
+## `#52` PROTOCOL — PRE-REGISTERED BEFORE ANY FINDING ARRIVED
+
+Two blind passes launched concurrently against `v1-freeze` (`6599b1e`), on Fable, each in its own
+isolated git worktree. **This entry was written while they were still running**, so the conditions
+cannot be fitted to whatever comes back — the same discipline `evidence/smoke_seats/PREREGISTRATION.md`
+applied to the quality pass.
+
+### Why TWO, and why IDENTICAL mandates
+
+Splitting the two by territory — one on the engine, one on the instruments — would cover more
+ground. It was **rejected**, because choosing where each one looks is a soft form of steering, and
+because it destroys the property that makes two runs worth more than one:
+
+**With identical open mandates, a finding both reach independently is stronger evidence than
+either reaching it alone.** Convergence becomes signal. Divergence still yields the extra coverage,
+because the search space here is far too large for two passes to land in the same places. Split
+mandates give up the first to buy the second; identical mandates get both.
+
+### The denial is INSTRUCTIONAL, not enforced — stated plainly because it is the weaker option
+
+`.claude/blind-pass.settings.json` denies the cheat-sheet paths at the permission layer, and
+**that is not what is protecting these two passes.** Subagents inherit the launching session's
+tool access, so the deny rules could not be applied to them. The denial is therefore an
+instruction naming each forbidden path, which this register already recorded as the weaker
+mechanism.
+
+Three things compensate, and they are recorded so a reader can discount the result appropriately:
+
+1. **Every forbidden path is named explicitly** — `FREEZE_RECORD.md`, `FREEZE_CHECKLIST.md`,
+   `POST_AUDIT_PLAN.md`, `evidence/smoke_seats/`, `evidence/batteries/`. A vague instruction would
+   have been undone by the first file opened.
+2. **The pointer hazard is named in the mandate itself.** Every long-lived document now carries a
+   banner saying where current state lives, which for a blind reader is a signpost to the answers.
+   Both passes were told the banner exists and to ignore it.
+3. **Contamination is SELF-REPORTING.** Each was told that accidentally reading a forbidden path
+   must be declared prominently, that a contaminated pass which admits it is still useful, and
+   that there is no penalty. This converts the failure mode from silent to visible, which is the
+   only property that actually matters — an undetected contamination would be believed.
+
+### Conditions carried from the docket
+
+UNBRIEFED (no finding, no history, no prior conclusion in the mandate) and **UNSCORED** — both
+were explicitly told not to assign a grade, verdict, or readiness judgement, because a scored
+pass invites tuning toward its rubric. They were also told a well-supported null result is a real
+contribution, so that "found nothing here" is available to them as an honest answer rather than
+something to avoid.
+
+Read-only: neither may modify a file, and the worktree isolation makes that structural rather
+than merely instructed.
+
+### What this entry does NOT do
+
+It does not predict the findings, and it takes no position on whether any will be material. That
+is the point of running it.
