@@ -8666,6 +8666,37 @@
         }
       }
     },
+    "test_probability_bounds.py": {
+      "test_methods": 5,
+      "asserts": {
+        "assertGreater": 1,
+        "assertGreaterEqual": 2,
+        "assertLess": 1,
+        "assertLessEqual": 4,
+        "assertTrue": 1
+      },
+      "by_method": {
+        "test_a_boosted_run_probability_cannot_exceed_certainty": {
+          "assertLessEqual": 1
+        },
+        "test_every_discovered_probability_constant_is_between_zero_and_one": {
+          "assertGreaterEqual": 1,
+          "assertLessEqual": 1
+        },
+        "test_the_boost_exclusion_is_narrow_and_deliberate": {
+          "assertGreater": 1,
+          "assertLess": 1,
+          "assertLessEqual": 1
+        },
+        "test_the_module_actually_has_some_to_check": {
+          "assertGreaterEqual": 1
+        },
+        "test_the_rank_table_is_monotone_and_bounded": {
+          "assertLessEqual": 1,
+          "assertTrue": 1
+        }
+      }
+    },
     "test_prompt_constant_boundary.py": {
       "test_methods": 10,
       "asserts": {
