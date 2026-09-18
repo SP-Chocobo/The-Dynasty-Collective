@@ -98,3 +98,48 @@ null result is a real contribution and will not be treated as failure.
 Re-launch two agents on Fable with worktree isolation and **the mandate above, unchanged**. Then
 record in `POST_AUDIT_PLAN.md` that the pass was re-run and why, so the register does not imply a
 single uninterrupted pass where there were two attempts.
+
+---
+
+## Mandate drift across waves — what each wave actually received
+
+The header above says a re-run must use "the mandate above, unchanged." That is the rule for
+**repeating** a wave. It is not what happened **between** waves, and the difference has to be on
+the record or this file overstates the comparability of the six passes.
+
+Waves 2, 3 and 4 are not repeats of Wave 1. They are successive experiments against the same
+frozen target, and each one was given a slightly different instruction because the previous wave
+had changed what "unexplored" means. Two things drifted:
+
+**1. The forbidden-path list grew, because the cheat-sheet grew.** Every wave's own report and
+this ledger become, the moment they are committed, exactly the kind of conclusions document the
+`#52` access control exists to keep out of a pass's hands. A pass that reads Wave 2's findings is
+not an independent confirmation of them.
+
+| Added at | Path | Why it became forbidden |
+|---|---|---|
+| Wave 1 | `FREEZE_RECORD.md`, `FREEZE_CHECKLIST.md`, `POST_AUDIT_PLAN.md`, `evidence/smoke_seats/`, `evidence/batteries/` | The original `#52` list — prior-audit conclusions |
+| Wave 4 | `evidence/blind_pass/` (all of it, including this file) | Waves 1–3's reports and the triage ledger now live here |
+| Wave 4 | `.claude/skills/close-register-item/`, `.claude/blind-pass.settings.json` | The register skill names findings by number; the settings file enumerates the forbidden paths, which is itself a map to the answers |
+
+Waves 2 and 3 ran before `evidence/blind_pass/` was committed, so their smaller list was not a
+weaker shield — there was nothing yet at those paths to shield. All six passes declared no
+contamination, and passes C–F additionally verified the worktree exclusions before reading.
+
+**2. Wave 4 added a steering paragraph, and Waves 1–3 had none.** By the end of Wave 3, four areas
+had been examined by six independent passes: `time_horizon_adj`'s percentile populations, the
+anchor cache key's completeness, `prose_names`' history shield, and the `need_bonus` invariant
+test. A seventh look at those returns a re-report, not a finding — and a re-report cannot advance
+the stopping condition, which counts NEW verified findings. So Wave 4's passes were told those
+four are known and to spend their effort on the comparatively unexplored surface instead: the UI
+and debate layers, `pick_debate.py`, `draft_board_ui.py`, `data_merger.py`'s ingestion and
+reconciliation, `store_io`, the LLM prompt boundary, `league_config`, and end-to-end drafted
+rosters.
+
+**What that costs, stated plainly.** Steering makes Wave 4 a weaker test of "is the engine clean"
+than Waves 1–3 were, because a steered pass is no longer sampling the whole codebase uniformly —
+it has been pushed away from the area that has produced the most convergence. A quiet Wave 4 is
+therefore evidence about the *unexplored* surface, not about the engine as a whole, and the
+stopping condition must not be read as though it were the latter. The saturated four are not
+closed by silence in Wave 4; they are closed, if at all, by the six passes that already examined
+them and by the repairs that follow the waves.
