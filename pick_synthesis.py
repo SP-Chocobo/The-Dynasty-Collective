@@ -152,6 +152,8 @@ from __future__ import annotations
 from dataclasses import dataclass, fields as dataclass_fields
 from typing import Optional
 
+import inspect
+
 import draft_room as dr
 import draft_strategy as ds
 import lineup_optimizer as lo
@@ -1727,6 +1729,104 @@ def _canonical(value) -> str:
     if isinstance(value, (list, tuple)):
         return "[" + ",".join(_canonical(v) for v in value) + "]"
     return repr(value)
+
+
+#: Inputs with no generic canonical form, fingerprinted by something that knows their shape.
+#: Keyed by PARAMETER NAME, which is the only thing that identifies them: a DataMerger is a bag
+#: of DataFrames and a players_db is 6,595 nested dicts, and neither has a stable repr. Both
+#: fingerprinters are draft_room's own, reused rather than restated (#126) -- they are the
+#: functions anchor_cache_key already trusts for exactly this question, and a second hasher in
+#: this file that is SUPPOSED to agree with those is the drift class content_hash.py exists to
+#: end.
+_INPUT_FINGERPRINTERS = {
+    "merger": lambda value: dr._merger_content_fingerprint(value),
+    "players_db": lambda value: dr._players_db_fingerprint(value),
+}
+
+#: What _canonical can render from content alone. Everything else must be named above or the
+#: key refuses to be computed -- see _refuse_uncanonicalizable.
+_CANONICALIZABLE = (bool, int, float, str, bytes, dict, list, tuple, type(None))
+
+
+def _refuse_uncanonicalizable(name: str, value, path: str = "") -> None:
+    """An input this key cannot honestly describe must stop the key, not be papered over.
+
+    `_canonical` ends in `repr(value)`, which is right for its own population (the dataclass
+    fields of a frozen snapshot, measured to be builtins) and WRONG here. An object with the
+    default repr renders as `<Thing at 0x7f...>`: a memory address. Inside one process that
+    address is stable while the object's CONTENTS change, so the key would go on matching
+    across a real change -- the precise failure this function exists to prevent, arriving
+    through the fallback meant to be harmless.
+
+    Recursive, because a dict of DataFrames passes an `isinstance(value, dict)` check at the
+    top level and then hits the fallback one layer down.
+    """
+    where = f"{name}{path}"
+    if not isinstance(value, _CANONICALIZABLE):
+        raise TypeError(
+            f"snapshot_input_key cannot fingerprint {where} ({type(value).__name__}): it has no "
+            f"content-derived rendering, and repr() would key on a memory address that stays "
+            f"stable while the contents change. Add it to _INPUT_FINGERPRINTERS with a "
+            f"fingerprinter that reads its content.")
+    if isinstance(value, dict):
+        for key, inner in value.items():
+            _refuse_uncanonicalizable(name, inner, f"{path}[{key!r}]")
+    elif isinstance(value, (list, tuple)):
+        for index, inner in enumerate(value):
+            _refuse_uncanonicalizable(name, inner, f"{path}[{index}]")
+
+
+def _input_canonical(name: str, value) -> str:
+    fingerprinter = _INPUT_FINGERPRINTERS.get(name)
+    if fingerprinter is not None:
+        return fingerprinter(value)
+    _refuse_uncanonicalizable(name, value)
+    return _canonical(value)
+
+
+def snapshot_input_key(**inputs) -> str:
+    """The identity of the WORLD a snapshot would be built from -- every input build_snapshot
+    reads, in one fingerprint, for a caller that wants to reuse a snapshot instead of
+    rebuilding it.
+
+    The companion of snapshot_identity below, and its opposite end: that one names the board
+    that came out, this one names the inputs that went in. A cache needs the second. Nothing
+    in the engine reads either.
+
+    DERIVED FROM build_snapshot'S SIGNATURE, never hand-listed, and that is the whole point.
+    The key this replaces was written at its call site in app.py as a six-tuple:
+
+        (draft_id, target_index, my_roster_id, pool_scope, len(draft_picks), freshest_date)
+
+    against a function taking fifteen inputs. Three of those six are proxies, and `len(picks)`
+    is the one that shows what a proxy costs -- it is a count standing in for contents.
+    Measured on the real rulebook, at one constant key:
+
+      * swapping which player the last pick took, count unchanged (a commissioner undo and
+        re-pick): Drake London enters the top five at 93.70, from absent.
+      * turning season_projections on, everything else held (a mid-draft sync): the leader
+        changes from Tyler Warren to Bijan Robinson and universal_value goes 76.32 -> 219.61.
+
+    Both served from cache under a key that could not tell the two worlds apart.
+
+    Because the parameters come from `inspect.signature`, an argument added to build_snapshot
+    is in this key the day it is added, with no second place to remember. `bind` refuses a
+    call it could not make, and `apply_defaults` puts the defaulted arguments in too -- a
+    default is still an input, and a caller that starts passing something else must not
+    collide with one that did not.
+
+    Costed against the board build this exists to skip: 60.4 ms for a full key on the real
+    rulebook (merger 19.0, players_db 3.4, the rest mostly the recursive walk over 5,346
+    nested season-projection dicts), against 870 ms warm and 9.8 s cold. 7% of the warm case
+    and 0.6% of the cold one -- which is the right trade for a cache that was serving the
+    wrong board, but it is a real cost and it is written down rather than assumed.
+    """
+    bound = inspect.signature(build_snapshot).bind(**inputs)
+    bound.apply_defaults()
+    return fingerprint(*(
+        f"{name}={_input_canonical(name, value)}"
+        for name, value in bound.arguments.items()
+    ))
 
 
 def snapshot_identity(snapshot: PickSnapshot) -> str:

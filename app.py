@@ -5378,32 +5378,58 @@ elif main_view == DRAFT_VIEW:
                             # a CSS height) paid that same cost for no reason. Cached in session
                             # state against exactly the inputs that can actually change the result --
                             # not a blanket st.cache_data, since draft_picks/merger/players_db aren't
-                            # cheaply hashable and don't need to be; a plain equality check on a
-                            # small key tuple is enough. picks length + the merger's own freshest
-                            # source date are the same two staleness signals snapshot_is_current
-                            # already uses elsewhere in this module -- reused here, not reinvented.
+                            # cheaply hashable and don't need to be.
+                            #
+                            # ONE DICT, TWO CONSUMERS (#52 phase 7.4). This key used to be a
+                            # hand-written six-tuple standing in front of a fifteen-input call,
+                            # and three of the six were proxies. `len(draft_picks)` is the one
+                            # that shows the cost of a proxy: it is a COUNT standing in for
+                            # CONTENTS, so a commissioner undo plus a re-pick left it unmoved
+                            # and the board still believed the wrong player was gone (measured:
+                            # Drake London enters the top five at 93.70, from absent). The same
+                            # tuple omitted season_projections, so a mid-draft sync served the
+                            # pre-sync board (measured: leader Tyler Warren -> Bijan Robinson,
+                            # universal_value 76.32 -> 219.61).
+                            #
+                            # The arguments are now built ONCE and handed to both the key and
+                            # the call, so the two cannot describe different worlds, and
+                            # snapshot_input_key derives itself from build_snapshot's signature
+                            # -- an argument added here is in the key the moment it is added,
+                            # with nowhere else to remember it.
+                            #
+                            # #180: the league's own scoring reaches the board here or nowhere.
+                            # season_projections is the per-category season sum;
+                            # scoring_settings already rides on league_for_engine. Absent (no
+                            # sync, or the fetch failed) it is None and the board falls back to
+                            # the vendor total exactly as before.
+                            snapshot_inputs = dict(
+                                merger=merger,
+                                players_db=players_db,
+                                picks=draft_picks,
+                                pick_order=pick_order,
+                                current_index=target_index,
+                                my_roster_id=my_roster_id,
+                                league=league_for_engine,
+                                pick_label=pick_label,
+                                pool_scope=st.session_state.draft_room_pool_scope,
+                                sleeper_projections=(snapshot.get("season_projections") or None),
+                                sleeper_basis=draft_room.SLEEPER_BASIS_SEASON_SUM,
+                            )
+                            # draft_id is NOT a build_snapshot input -- two drafts of one league
+                            # standing at the same pick really would produce the same board --
+                            # so it cannot come from the derived key. It is carried alongside
+                            # because this entry lives in SESSION state, which outlives the
+                            # league it was built for (L-06), and a session-scoped cache should
+                            # be scoped by the thing the session switches between.
                             snapshot_cache_key = (
-                                draft_id, target_index, str(my_roster_id),
-                                st.session_state.draft_room_pool_scope,
-                                len(draft_picks), merger.freshest_date,
+                                draft_id, pick_synthesis.snapshot_input_key(**snapshot_inputs),
                             )
                             cached = st.session_state.get("draft_room_snapshot_cache")
                             if cached is not None and cached[0] == snapshot_cache_key:
                                 snap = cached[1]
                             else:
                                 try:
-                                    # #180: the league's own scoring reaches the board here or
-                                    # nowhere. season_projections is the per-category season
-                                    # sum; scoring_settings already rides on league_for_engine.
-                                    # Absent (no sync, or the fetch failed) it is None and the
-                                    # board falls back to the vendor total exactly as before.
-                                    snap = pick_synthesis.build_snapshot(
-                                        merger, players_db, draft_picks, pick_order, target_index, my_roster_id,
-                                        league_for_engine, pick_label=pick_label,
-                                        pool_scope=st.session_state.draft_room_pool_scope,
-                                        sleeper_projections=(snapshot.get("season_projections") or None),
-                                        sleeper_basis=draft_room.SLEEPER_BASIS_SEASON_SUM,
-                                    )
+                                    snap = pick_synthesis.build_snapshot(**snapshot_inputs)
                                     st.session_state.draft_room_snapshot_cache = (snapshot_cache_key, snap)
                                 except Exception as exc:  # noqa: BLE001 -- surface, never crash the whole dashboard
                                     snap = None

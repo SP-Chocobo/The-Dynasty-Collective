@@ -11426,6 +11426,62 @@
         }
       }
     },
+    "test_snapshot_input_key.py": {
+      "test_methods": 13,
+      "asserts": {
+        "assertEqual": 10,
+        "assertIn": 4,
+        "assertNotEqual": 6,
+        "assertRaises": 3
+      },
+      "by_method": {
+        "test_a_fresh_but_equal_merger_keys_the_same_way": {
+          "assertEqual": 1
+        },
+        "test_a_mid_draft_sync_is_a_different_world": {
+          "assertEqual": 1,
+          "assertNotEqual": 2
+        },
+        "test_a_nested_container_of_plain_values_is_still_accepted": {
+          "assertEqual": 1
+        },
+        "test_a_re_pick_at_a_constant_count_is_a_different_world": {
+          "assertEqual": 2,
+          "assertNotEqual": 2
+        },
+        "test_a_value_with_no_content_rendering_is_refused_not_repred": {
+          "assertIn": 1,
+          "assertRaises": 1
+        },
+        "test_an_incomplete_call_has_no_key": {
+          "assertIn": 1,
+          "assertRaises": 1
+        },
+        "test_changing_any_single_input_changes_the_key": {
+          "assertEqual": 1
+        },
+        "test_defaults_are_in_the_key_so_an_omitted_argument_cannot_collide": {
+          "assertEqual": 1,
+          "assertNotEqual": 1
+        },
+        "test_no_two_inputs_are_interchangeable": {
+          "assertEqual": 1
+        },
+        "test_renaming_an_input_changes_the_key": {
+          "assertNotEqual": 1
+        },
+        "test_the_alternates_table_covers_the_signature_exactly": {
+          "assertEqual": 1
+        },
+        "test_the_refusal_reaches_inside_a_container": {
+          "assertIn": 2,
+          "assertRaises": 1
+        },
+        "test_the_same_world_keys_the_same_way_twice": {
+          "assertEqual": 1
+        }
+      }
+    },
     "test_source_policy.py": {
       "test_methods": 13,
       "asserts": {
