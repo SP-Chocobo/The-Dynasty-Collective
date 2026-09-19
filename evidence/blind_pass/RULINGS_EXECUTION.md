@@ -144,3 +144,78 @@ exists to catch, so the tree was restored rather than left half-cut.
 
 Next pass starts from the patch and works the 14 `AssertionError`s first, since those are the
 ones that decide whether the ruling has been implemented or merely applied.
+
+---
+
+## `W1-07` — substitute `intervening_picks` *(implemented, measured, STAGED — the ruling forces a second derivation it did not cover)*
+
+The ruling: replace `NECESSITY_SURVIVAL_WEIGHT`'s withheld input with `intervening_picks`, the
+measured substitute every surface already shows in survival's place.
+
+Implemented faithfully and kept at `evidence/blind_pass/w1_07_substitute.patch` (129 lines).
+The derivation half works. The consequence does not, and it is a consequence the ruling was not
+made against.
+
+### The substitute is a property of the TURN, not of the player
+
+Measured across seven turns of a 12-team superflex snake, counting DISTINCT values across the
+candidates at each turn:
+
+| turn | `intervening_picks` | `survival_probability` |
+|---|---|---|
+| 13 | **1** value (20) | 18 values |
+| 20 | **1** value (6) | 7 values |
+| 24 | **1** value (22) | 7 values |
+| 35 | **1** value (0) | 1 value |
+
+`(1 − survival)` separates the player who will not last from the one who will. `intervening_picks`
+cannot: it is identical for every candidate on the board. So the substitution does not
+re-source the same signal — it **removes a per-candidate discriminator and adds a uniform
+per-turn offset**. Relative order among candidates is untouched; every absolute label moves.
+
+### The scale IS derivable — that half is sound
+
+`max_intervening_gap` reads the largest gap between two of my selections from the **real pick
+order**, not from `2*(teams − 1)`, so a third-round reversal or any other commissioner shape is
+normalised by the order it actually has. For a standard 12-team snake the two agree at **22**,
+which is a check on the derivation rather than its source. No constant was chosen.
+
+### And then the measurement, against the one the ruling was made on
+
+| | ruling's measurement | measured after implementing it |
+|---|---:|---:|
+| label flips | 12 of 384 — **3.1%** | **421 of 679 — 62.0%** |
+| necessity delta, mean | — | **12.09** |
+| necessity delta, max | **8.50** | **19.70** |
+| direction | mixed | **every flip upward** |
+
+`PREFERRED → STRONG ACTION` ×223, `CLOSE CALL → PREFERRED` ×143, `PREFERRED → MUST TAKE` ×46,
+`STRONG ACTION → MUST TAKE` ×9. Distinct necessity values per turn collapse from 13–22 to a flat
+**10**.
+
+**Why**, and it is the whole finding: the two quantities normalise to the same `[0, 1]` but
+occupy **opposite ends of it**. Most candidates survive, so `(1 − survival)` sat near the
+bottom and contributed ~2 of its 20 points. A snake's gaps are bimodal — my probe's turns ran
+20, 6, 22, 0, 22, 0, 22 — so `gap / max_gap` sits near the **top** at most turns and contributes
+the full 20. Keeping the weight at 20.0 to "preserve the term's share" does not preserve it;
+nominal share and realised contribution are different things, and only the first was preserved.
+
+### What that means, stated rather than patched around
+
+The label thresholds (`MUST TAKE` 98, `STRONG ACTION` 85, `PREFERRED` 65, `CLOSE CALL` 50,
+`LOW URGENCY` 30) were set against a score distribution this changes. Implementing W1-07 as
+ruled therefore **forces a re-derivation of the necessity label thresholds** — a second
+`#56` exercise the ruling did not cover, and exactly the dependency shape the displacement lift
+has with `context_elevated`.
+
+Picking a weight that reproduces today's labels instead would be calibration: the thing `#56`
+forbids, and the thing the ruling's own record already warned against — *"the 12 label flips are
+the BEFORE measurement it gets checked against, never the target it is fitted to."*
+
+So the work is staged rather than shipped, and the choice returns to the owner:
+
+1. **Accept the shift** and re-derive the five label thresholds against the new distribution.
+2. **Take reading 1 instead** (remove the term outright) — now knowing that reading 3 costs a
+   discriminator either way, so the difference between them is only the per-turn offset.
+3. **Keep a per-candidate urgency signal** from some quantity that is not withheld and does vary
+   by player — which is a new derivation nobody has proposed, not a choice among the three.
