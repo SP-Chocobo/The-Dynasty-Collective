@@ -13008,3 +13008,133 @@ than merely instructed.
 
 It does not predict the findings, and it takes no position on whether any will be material. That
 is the point of running it.
+
+---
+
+## `#52` PHASE 8 — K AND DST PRICED FIVE ROUNDS EARLY BECAUSE THE BOARD RANKS ON WORTH, NOT ON URGENCY
+
+The defect is not in what K and DST are valued at. It is that the engine computes the quantity
+that answers "take him now or later", renders it to the user, folds it into `pick_necessity` —
+and lets neither ordering authority read it.
+
+### The measurement that names it
+
+The first defense of a 16-round `12T_ppr_K_DEF` draft, pick **5.09**, from the snapshot the
+engine itself stored:
+
+| field | value |
+|---|---:|
+| `tav` | **34.47** |
+| `uv` | 30.47 |
+| `forfeit` | **0.13** |
+| `necessity` | **CLOSE CALL** |
+
+**34.47 of value bought for 0.13 of urgency, in round 5, rendered as a CLOSE CALL.** Both numbers
+sit in the same snapshot on the same board. `positional_forfeit` occurs zero times in
+`draft_room.py`; `pick_synthesis._board_order` keys on `(fills_required_slot, final_score,
+unpriced, player_id)`; `team_acquisition_value` has no forfeit term. Across the draft the board's
+chosen position was not the one forfeit ranked most urgent on **137 of 192 picks**.
+
+### What it rules OUT — four candidates, all killed before the real one
+
+Recorded so nobody re-runs them. Each was a substitute for the number already on the board.
+
+- **A discount multiplier on K/DST `bpa`** needs factor **−1.96**. Zeroing their `bpa` entirely
+  still leaves the top DEF at +4.00, ahead of everything from round 8 on. Scaling a term that
+  measures value cannot express a fact about timing.
+- **Widening the replacement band** moves nothing: −1.05 at DEF (the *wrong* way), +0.89 at K,
+  5.15 at TE at the widest. A symmetric window on a locally straight curve returns its own
+  centre. See the band section below.
+- **`waiting_cost`** points the wrong way (35.90 for the top DEF) because it measures drainage to
+  the end-of-draft floor, not the cost of waiting one turn.
+- **ADP** carries no signal here. Every DEF is `16983` and every K `~18000` — the vendor's
+  *undrafted sentinels*. That is absence, and reading it as "the market takes them late" is the
+  `#187` defect this repo forbids.
+
+### The band question, answered and withdrawn
+
+The owner challenged the claim that three candidate replacements sitting in a six-point band
+proved replacement was well-determined. The challenge was right twice over: the three candidates
+are adjacent ranks on one curve (DEF12, DEF13, ~DEF14-15), and six points is tight only against
+the values at the position that produced it. Converted to the unit the board resolves in, a
+six-point band spans **1.4 ranks at WR, 1.7 at RB, 2.0 at QB, 2.1 at TE — and 5.1 at DEF, 13.4 at
+K.**
+
+Per-position bands were then measured properly, using the closed form of the stability-basin test
+`QB_STARTABLE_FLOOR_FRACTION` already states (the basin of rank r IS the marginal gap
+`s[r-1] - s[r]`; the instrument reproduces the documented QB cliff unpointed). Result: **K and DST
+are not a clean exception class.** By basin/median at each position's own demand rank, RB 3.48 and
+QB 3.44 are cliffs, TE 2.84 and DEF 2.14 are edges, and **WR 0.45 is smoother than DEF**. K at
+0.10 is alone.
+
+**No ruling is requested on band width, because the null check withdrew the question.**
+
+### The repair
+
+`build_snapshot` re-orders its narrowed candidates on
+
+    acting_now_value = team_acquisition_value - position_next_turn_value
+
+the subtrahend being the position's own curve walked down by the same `expected_taken`, through
+the same `_curve_at`, that produces `forfeit`. **No constant is introduced — `#56` is not
+engaged.** Both operands are numbers the engine already computes; what changed is which one the
+order reads.
+
+The first implementation was wrong and the measurement caught it: subtracting forfeit's
+team-AGNOSTIC curve from a team-relative candidate ADDS the team terms instead of cancelling
+them, leaving every K and DEF holding a flat **+4.00 `need_bonus`** for a slot still empty at the
+next turn — the same defect in a different term. Building the alternative on the `final_score`
+curve makes both operands describe a player landing on the same roster, and for the best player
+at a position `acting_now_value` now equals `forfeit` exactly.
+
+### Measured, one process, one code version, toggling only the key
+
+| pos | first rd before | after | median before | after | taken before | after |
+|---|---:|---:|---:|---:|---:|---:|
+| DEF | 5 | **7** | 10.0 | **15.0** | 27 | **13** |
+| K | 7 | **10** | 10.0 | **14.5** | 29 | **14** |
+| TE | 1 | 1 | 13.5 | 10.0 | 28 | 40 |
+| RB | 1 | 1 | 4.5 | 6.0 | 40 | 49 |
+
+Authority disagreement falls from **137 of 192 to 7**. And the cost, on the rosters produced —
+best legal lineup via the engine's own `lineup_optimizer` over projected POINTS (a rate, not the
+asset LEVEL `roster_strength`'s docstring warns against), one shared ruler, 100% coverage checked:
+
+    before   mean 2429.1   median 2418.0
+    after    mean 2417.8   median 2422.7      -11.4 points, -0.5%, 6 of 12 chairs improved
+
+**35 tav a pick surrendered for half a percent of realised starting points.** That is itself
+evidence for the predictiveness thesis: if `tav` differences of that size were real, giving up
+~6,700 of them across a draft would have cost far more than eleven points of lineup.
+
+### What is NOT fixed, and why
+
+- **Turn-ending picks — 15 of 192 (8%) — keep the old behaviour, and must.** At 7.12 there are no
+  intervening picks, so `positional_forfeits` correctly returns nothing and the row falls to the
+  unmeasured block. "What does waiting cost" has no answer when you are not waiting. Whether such
+  a pick should weigh deferral to the round AFTER next is a different quantity; **owner's call**.
+- **Upside mode is untouched.** `draft_strategy` builds no curves there, so every forfeit is
+  legitimately absent and so is this. The open question of whether upside curves should feed
+  forfeits at all stays where that module already records it.
+- **Predictiveness is still unmeasured.** K and DST now draft where they should; nothing here
+  makes their projections more predictive. `measure_projection_accuracy.py` needs a networked run.
+
+### Corrections to published claims
+
+- **"The first defense goes in round 8" was wrong — it is round 5.** The earlier figure came from
+  a `compute_draft_board` + `board[0]` probe; the battery's own path
+  (`build_snapshot` + `candidates[0]`) puts it three rounds earlier. The defect was worse than
+  reported.
+- **A reported mutation "survivor" was a no-op.** The mutation string carried the wrong
+  indentation, so `.replace()` changed nothing and the arm ran against unmutated code.
+- **A reported "regression after restore" was stale bytecode.** A same-length substitution
+  (`1`->`0`) left a `.pyc` outliving its source; `co_consts` still held the mutant while the file
+  matched HEAD. Every arm now purges `__pycache__` and verifies the mutant is loaded.
+- **"The six-point band shows replacement is well-determined" was wrong**, for both reasons above.
+
+### Suite measurement, with its commit
+
+**3333 tests in 1038.7s**, `__pycache__` cleared first per `#240`, at the commit this entry lands
+on. The previous recorded figure was 3091 tests in 860.9s at `#283` (2026-09-17): the suite grew
+by 242 tests and got 21% slower, with per-test cost roughly flat (0.279s -> 0.312s). Growth, not
+regression.

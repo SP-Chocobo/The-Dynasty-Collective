@@ -837,6 +837,69 @@
         }
       }
     },
+    "test_acting_now_ordering.py": {
+      "test_methods": 16,
+      "asserts": {
+        "assertAlmostEqual": 3,
+        "assertEqual": 8,
+        "assertIn": 3,
+        "assertIsNone": 2,
+        "assertIsNotNone": 1,
+        "assertLess": 1,
+        "assertNotIn": 1
+      },
+      "by_method": {
+        "test_a_flat_slot_bonus_on_both_sides_does_not_reach_the_order": {
+          "assertAlmostEqual": 1
+        },
+        "test_a_measured_row_leads_an_unmeasured_one_even_when_it_scores_lower": {
+          "assertEqual": 1
+        },
+        "test_a_measured_zero_survives_as_a_number": {
+          "assertEqual": 1
+        },
+        "test_an_unknown_alternative_is_absent_not_zero": {
+          "assertIsNone": 1
+        },
+        "test_an_unpriced_candidate_is_absent_not_zero": {
+          "assertIsNone": 1
+        },
+        "test_an_unpriced_row_never_outranks_a_priced_one": {
+          "assertEqual": 1
+        },
+        "test_build_snapshot_sorts_its_candidates_on_the_acting_now_key": {
+          "assertEqual": 1
+        },
+        "test_every_candidate_carries_the_two_numbers_the_key_reads": {
+          "assertIn": 2
+        },
+        "test_exact_ties_break_on_player_id_not_on_arrival_order": {
+          "assertEqual": 2
+        },
+        "test_it_is_the_gap_between_the_candidate_and_his_own_next_turn_alternative": {
+          "assertAlmostEqual": 1
+        },
+        "test_that_admission_is_doing_real_work_here": {
+          "assertNotIn": 1
+        },
+        "test_the_best_player_at_a_buried_position_is_in_the_narrowed_set": {
+          "assertIn": 1
+        },
+        "test_the_best_player_at_a_position_is_worth_exactly_his_positions_forfeit": {
+          "assertAlmostEqual": 1
+        },
+        "test_the_feasibility_backstop_still_leads": {
+          "assertEqual": 1
+        },
+        "test_the_key_is_applied_before_necessity_reads_the_list_as_ranked": {
+          "assertIsNotNone": 1,
+          "assertLess": 1
+        },
+        "test_unmeasured_rows_keep_the_previous_key_among_themselves": {
+          "assertEqual": 1
+        }
+      }
+    },
     "test_anchor_cache_key.py": {
       "test_methods": 8,
       "asserts": {
@@ -4595,17 +4658,19 @@
       }
     },
     "test_draft_counterfactual.py": {
-      "test_methods": 16,
+      "test_methods": 20,
       "asserts": {
         "assertAlmostEqual": 1,
-        "assertEqual": 13,
-        "assertFalse": 1,
+        "assertEqual": 18,
+        "assertFalse": 2,
+        "assertGreater": 1,
         "assertGreaterEqual": 1,
         "assertIn": 3,
         "assertIs": 2,
         "assertIsNone": 9,
-        "assertIsNotNone": 1,
-        "assertTrue": 1
+        "assertIsNotNone": 2,
+        "assertNotEqual": 1,
+        "assertTrue": 2
       },
       "by_method": {
         "test_a_candidate_this_harness_cannot_find_reads_unknown": {
@@ -4614,10 +4679,16 @@
         "test_a_flagged_tie_reads_true": {
           "assertIs": 1
         },
+        "test_a_measured_ordering_key_is_its_own_basis": {
+          "assertEqual": 3
+        },
         "test_adp_unavailable_for_1qb_league_with_a_stated_reason": {
           "assertFalse": 1,
           "assertIsNone": 2,
           "assertIsNotNone": 1
+        },
+        "test_an_absent_ordering_key_leaves_the_previous_verdicts_intact": {
+          "assertEqual": 2
         },
         "test_an_unflagged_and_UNPRICED_candidate_reads_unknown": {
           "assertIsNone": 1
@@ -4656,11 +4727,20 @@
         "test_equals_bpa_implies_zero_regret": {
           "assertAlmostEqual": 1
         },
+        "test_every_basis_the_classifier_can_return_is_in_the_published_vocabulary": {
+          "assertGreaterEqual": 1,
+          "assertTrue": 1
+        },
         "test_one_comparison_per_pick": {
           "assertEqual": 1
         },
-        "test_regret_vs_bpa_is_never_negative": {
-          "assertGreaterEqual": 1
+        "test_regret_vs_bpa_may_be_negative_and_every_such_pick_states_why": {
+          "assertFalse": 1,
+          "assertIsNotNone": 1,
+          "assertNotEqual": 1
+        },
+        "test_that_negative_regret_population_is_not_empty": {
+          "assertGreater": 1
         }
       }
     },
@@ -8303,12 +8383,12 @@
       }
     },
     "test_pick_synthesis.py": {
-      "test_methods": 116,
+      "test_methods": 117,
       "asserts": {
         "assertAlmostEqual": 17,
         "assertEqual": 77,
         "assertFalse": 20,
-        "assertGreater": 11,
+        "assertGreater": 12,
         "assertGreaterEqual": 7,
         "assertIn": 16,
         "assertIsInstance": 4,
@@ -8622,7 +8702,7 @@
         "test_snapshot_is_genuinely_frozen": {
           "assertRaises": 2
         },
-        "test_snapshot_is_narrowed_and_ranked_by_team_acquisition_value": {
+        "test_snapshot_is_narrowed_and_ranked_by_what_acting_now_is_worth": {
           "assertEqual": 1,
           "assertGreaterEqual": 1
         },
@@ -8639,6 +8719,9 @@
         },
         "test_takes_the_top_n_by_final_score": {
           "assertEqual": 1
+        },
+        "test_that_ranking_assertion_is_not_vacuous": {
+          "assertGreater": 1
         },
         "test_the_best_remaining_player_at_every_position_is_always_included": {
           "assertIn": 2
