@@ -22,6 +22,7 @@ def _candidate(player_id, name, position="QB", universal_value=90.0, team_acquis
                 pick_necessity=75.0, necessity_label="PREFERRED", near_tie_with_leader=False,
                 consensus_rank=None, consensus_tier=None, projected_points=None):
     return CandidateSnapshot(
+        position_best_now=None, position_next_turn_value=None, acting_now_value=None,
         player_id=player_id, name=name, position=position, team="SF",
         bpa=universal_value, bpa_source="points_vor_draftsharks", confidence=80.0,
         universal_value=universal_value, need_bonus=6.0, eligibility_bonus=4.0,

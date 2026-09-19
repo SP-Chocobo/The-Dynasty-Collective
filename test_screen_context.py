@@ -16,6 +16,7 @@ from screen_context import (
 
 def _candidate(**overrides) -> CandidateSnapshot:
     base = dict(
+        position_best_now=None, position_next_turn_value=None, acting_now_value=None,
         player_id="123", name="J. Gibbs", position="RB", team="DET",
         bpa=88.5, bpa_source="points_vor_draftsharks", confidence=80.0,
         universal_value=88.5, need_bonus=6.0, eligibility_bonus=2.9,

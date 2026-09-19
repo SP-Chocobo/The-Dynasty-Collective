@@ -260,6 +260,7 @@ class TheVocabularyCrossesWithoutOpeningTheBoundary(unittest.TestCase):
 
 def _unpriced(**over) -> CandidateSnapshot:
     base = dict(
+        position_best_now=None, position_next_turn_value=None, acting_now_value=None,
         player_id="1", name="T", position="RB", team="SF", bpa=None,
         bpa_source=dr.NO_PRICEABLE_INPUT, confidence=None, universal_value=None,
         need_bonus=6.0, eligibility_bonus=4.0, team_acquisition_value=None,

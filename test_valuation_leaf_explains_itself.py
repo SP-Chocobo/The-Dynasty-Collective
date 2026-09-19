@@ -32,6 +32,7 @@ from pick_synthesis import CandidateSnapshot
 
 def candidate(**over) -> CandidateSnapshot:
     base = dict(
+        position_best_now=None, position_next_turn_value=None, acting_now_value=None,
         player_id="9221", name="Test Player", position="RB", team="SF", bpa=44.0,
         bpa_source="points_vor_draftsharks", confidence=80.0, universal_value=50.0,
         need_bonus=6.0, eligibility_bonus=4.0, team_acquisition_value=60.0,

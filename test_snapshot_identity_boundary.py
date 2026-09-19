@@ -40,6 +40,7 @@ def _candidate(player_id="p1", **overrides) -> CandidateSnapshot:
     """A fully-populated candidate. Every optional field is given a REAL value rather than
     left at its default, so the per-field coverage test below is actually mutating something."""
     base = dict(
+        position_best_now=None, position_next_turn_value=None, acting_now_value=None,
         player_id=player_id, name="A Player", position="RB", team="SF",
         bpa=30.0, bpa_source="points_vor_draftsharks", confidence=90.0,
         universal_value=37.23, need_bonus=4.33, eligibility_bonus=0.0,

@@ -46,6 +46,7 @@ def _candidate(pid: str, name: str, *, priced: bool) -> ps.CandidateSnapshot:
     """A candidate that is either fully priced or fully unpriced -- no half states, because the
     half states are their own question and this one is about the total absence."""
     return ps.CandidateSnapshot(
+        position_best_now=None, position_next_turn_value=None, acting_now_value=None,
         player_id=pid, name=name, position="RB", team="SF",
         bpa=(12.0 if priced else None), bpa_source="draft_sharks", confidence=80.0,
         universal_value=(12.0 if priced else None), need_bonus=0.0, eligibility_bonus=0.0,
