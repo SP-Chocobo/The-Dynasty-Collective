@@ -36,6 +36,7 @@ import depth_ratings
 import design_system
 import draft_board_ui
 import draft_room
+import draft_state
 import draft_strategy
 import league_standings
 import lineup_optimizer
@@ -1101,6 +1102,10 @@ def activate_league(league_id: str) -> None:
     # format-based (not roster-based) so it's read from the shared global pool too — DataMerger
     # merges both automatically.
     st.session_state.data_merger = DataMerger(league_dir=league_projections_dir(league_id))
+    # L-06: the board, the debate and the picks belong to the league being left, not to the one
+    # being entered. See draft_state.clear_league_derived for the scenario this closes and for
+    # why the rule lives in its own module rather than inline here.
+    draft_state.clear_league_derived(st.session_state)
 
     if st.session_state.league_snapshot is None:
         client: SleeperClient = st.session_state.sleeper_client

@@ -19,6 +19,7 @@ import unittest
 from pathlib import Path
 
 import ui_source
+from test_source_scan import code_text
 
 _HERE = Path(__file__).parent
 
@@ -317,7 +318,53 @@ class NoTestReadsAppPyDirectlyTests(unittest.TestCase):
         "test_ui_source.py": "it demonstrates BOTH readings on purpose -- the old one to show "
                              "the vacuous pass, and app.py directly to prove today's migration "
                              "changed no assertion's meaning",
+        "test_prytaneum_terminology.py": "it names app.py as a SAMPLE PATH handed to "
+                                         "_is_historical_record, never reading its source, so "
+                                         "moving a view out of that file changes nothing it "
+                                         "asserts -- verified by reading the one use",
     }
+
+    @staticmethod
+    def _offends(body: str) -> bool:
+        """The widened rule, run against a synthetic module -- the same expression the scan
+        below uses, so this cannot drift away from what it is checking."""
+        root = Path(tempfile.mkdtemp())
+        path = root / "test_synthetic.py"
+        path.write_text(body)
+        code = code_text(path)
+        return ('"app.py"' in code or "'app.py'" in code) and "ui_source" not in code
+
+    def test_the_widened_rule_catches_the_idiom_the_per_line_scan_missed(self):
+        """The measurement behind the widening, pinned rather than left in a commit message.
+
+        The old scan required "app.py" and "read_text" on ONE line. The idiom that actually
+        appears in this repo puts them on two, thirty lines apart, and test_live_board_pricing
+        read app.py that way for its whole life while this scan reported it clean.
+        """
+        self.assertTrue(self._offends(
+            'from pathlib import Path\n'
+            'APP = Path(__file__).with_name("app.py")\n'
+            'def f():\n    return APP.read_text(encoding="utf-8")\n'))
+
+    def test_the_widened_rule_still_catches_the_single_line_form(self):
+        """Widening must not trade one blind spot for another."""
+        self.assertTrue(self._offends(
+            'from pathlib import Path\n'
+            'def f():\n    return (Path(__file__).parent / "app.py").read_text()\n'))
+
+    def test_a_module_reading_through_ui_source_does_not_offend(self):
+        """The non-vacuity arm. A rule that flagged everything would pass the two tests above
+        while making the ALLOWED list the only way to have a test at all."""
+        self.assertFalse(self._offends(
+            "import ui_source\ndef f():\n    return ui_source.text()\n"))
+
+    def test_prose_naming_app_py_is_not_an_offence(self):
+        """Over CODE, not raw text (#200). Every module here explains itself in prose that
+        names the file, and a scan that read the prose could not be cleared by any repair."""
+        self.assertFalse(self._offends(
+            '"""This module used to read app.py off disk."""\n'
+            "# app.py is the hull\n"
+            "import ui_source\nx = 1\n"))
 
     def test_the_allowance_states_a_reason(self):
         for name, reason in self.ALLOWED.items():
@@ -325,16 +372,32 @@ class NoTestReadsAppPyDirectlyTests(unittest.TestCase):
                 self.assertGreater(len(reason), 25, f"{name}'s exemption needs a real reason")
 
     def test_no_test_module_reads_app_py_off_disk(self):
+        """OVER THE MODULE, NOT PER LINE (#52 phase 7.4).
+
+        This required "app.py" and "read_text" on ONE line, and the idiom that actually appears
+        is two:
+
+            APP = Path(__file__).with_name("app.py")
+            ...
+            cls.calls = live_calls(ast.parse(APP.read_text(encoding="utf-8")))
+
+        test_live_board_pricing read app.py that way for its whole life and this scan reported
+        it clean -- a guard against a specific failure, defeated by a line break. Measured when
+        the rule was widened: exactly two modules named app.py in code without importing
+        ui_source, one a real offender (now migrated) and one a sample path (now allowed, with
+        the reason stated and checked).
+
+        Over CODE, not raw text (#200), so a docstring explaining the rule is not an offence
+        against it -- this file's own prose names app.py repeatedly, and so does the migrated
+        module's.
+        """
         offenders = []
         for path in sorted(_HERE.glob("test_*.py")):
             if path.name in self.ALLOWED:
                 continue
-            for lineno, line in enumerate(path.read_text().splitlines(), 1):
-                stripped = line.strip()
-                if stripped.startswith("#"):
-                    continue
-                if "app.py" in stripped and "read_text" in stripped:
-                    offenders.append(f"{path.name}:{lineno}")
+            code = code_text(path)
+            if ('"app.py"' in code or "'app.py'" in code) and "ui_source" not in code:
+                offenders.append(path.name)
         self.assertEqual(offenders, [],
                          "read the UI surface through ui_source.text() instead -- an app.py "
                          "read stops covering anything the moment a view is extracted")

@@ -326,8 +326,149 @@ measurement this section replaced with three.
 
 ---
 
+## 7.4 — cache keys *(closed)*
+
+Four members: the Draft Room snapshot cache, `stamp_is_current`, the anchor fingerprint, and
+the cross-league session leak. They turned out to be three different states of one question —
+**can this key fall behind the thing it keys?** — and the answer differed per member for
+structural reasons, not because anyone cared more about one than another.
+
+### 7.4a — the snapshot cache key *(repaired)*
+
+The Draft Room cached a built `PickSnapshot` in session state under a key written at the call
+site:
+
+```
+(draft_id, target_index, my_roster_id, pool_scope, len(draft_picks), merger.freshest_date)
+```
+
+`build_snapshot` takes **fifteen** inputs. Three of those six are proxies, and `len(draft_picks)`
+shows what a proxy costs: a COUNT standing in for CONTENTS. Measured on the real rulebook, at
+one constant key:
+
+| omitted dimension | what changed under it |
+|---|---|
+| pick contents at constant `len` (commissioner undo + re-pick) | Drake London enters the top five at **93.70**, from absent |
+| `season_projections` (mid-draft sync) | leader **Tyler Warren → Bijan Robinson**, `universal_value` **76.32 → 219.61** |
+
+Both served from cache as the same world.
+
+The repair is not "add the two missing dimensions" — a hand-written key beside a fifteen-input
+call is a second statement of what that call reads, and it falls behind the next time an
+argument arrives. `snapshot_input_key` derives itself from `build_snapshot`'s signature via
+`inspect.signature().bind()`; `app.py` builds the arguments **once** and hands the same dict to
+both the key and the call. Two refusals rather than a fallback: `bind` raises on an incomplete
+call, and a value with no content-derived rendering is refused **recursively** (a `repr` of a
+plain object is a memory address — stable within a process while the contents change).
+
+Costed rather than assumed: **60.4 ms** per key against **870 ms** warm and **9.8 s** cold.
+
+Five mutants, all killed. The fifth needed a correction: stripping the part NAMES survived the
+whole suite, and the test whose docstring claimed to cover that case did not. Parts are emitted
+in signature order and NUL-separated, so two worlds of one shape cannot collide by losing their
+names — what names buy is a parameter **renamed** while its value stays put.
+
+### 7.4a collateral — two guards proven over the old call shape *(re-derived)*
+
+**I ran five modules I judged affected before pushing 7.4a. The full suite found two failures
+in modules I had not judged affected.** That is the same mistake that hid seventeen failures
+for five phases earlier in this program, and it is recorded rather than quietly fixed. Both
+failures are the audit's own central mechanism aimed back at me.
+
+- **`test_live_board_pricing`** walks the UI's syntax tree and requires every live
+  `build_snapshot` call to pass `sleeper_projections` and `sleeper_basis`. 7.4a moved those
+  into one dict, and `**d` is a keyword whose `arg` is `None`, so a correctly priced site
+  presented as having no kwargs at all. The code is better than it was, so the **scan**
+  re-derived: `live_calls` now follows `**mapping` to its `dict(...)`/`{...}` assignment. The
+  important half is the refusal — an unresolvable mapping yields an `UNRESOLVED` sentinel so
+  the call still fails every check, because treating it as satisfied would make `**anything` a
+  universal bypass of the whole file.
+- **`test_temporal_consistency_boundary`** asserted the literal `len(draft_picks),
+  merger.freshest_date,`. The gap it pins got **wider**: the cache now keys on every input that
+  can move the board while both result guards still compare a pick label.
+
+### 7.4b — `stamp_is_current` *(measured; not the defect the log described)*
+
+The finding treats this as a sibling of the cache key. It is not, and the reason is worth
+recording: **`snapshot_is_current` has no production caller at all**, pinned by a
+characterization test that says *invert on repair, do not delete*. The live path is
+`stamp_is_current` via `pick_debate.staleness_note`, which annotates a kept debate rather than
+gating anything, and the §11 repair — wiring the certifier into the Draft Room's `pick_label`
+guards — is a separate item the mandate did not put in this phase. Left as it stands, with the
+characterization intact. Changing `PickSnapshot`'s stamp would also change
+`snapshot_identity` for every stored record, which is a persistence event that belongs to the
+§11 repair rather than to a cache-key phase.
+
+### 7.4c — the anchor fingerprint *(measured complete; now pinned)*
+
+Compared parameter by parameter against the function it keys, `anchor_cache_key` covers all
+eleven of `predraft_replacement_anchor`'s arguments, nothing missing and nothing extra. So the
+audit's "incomplete" is **closed as measured**, and the work was to make the completeness
+survive: parity in both directions, an alternates table asserted equal to the signature, and
+every input required to move the key.
+
+Two tests that cannot be inferred from each other, because the anchor reads the two arguments
+differently: `usable_positions` is a **set**, so its iteration order is noise and must not
+reach the key; `roster_positions` is a **list**, where order is data (`SUPER_FLEX` placement,
+flex expansion), so sorting it would collapse two real leagues onto one key.
+
+Stated limitation, carried from the key's own docstring: this is derived from **arguments**. A
+module constant that moves the anchor cannot appear — `#184`'s `SUPER_FLEX_QB_SHARE` is the
+cautionary case. A constant needs a different guard.
+
+### 7.4d — the cross-league session leak *(repaired)*
+
+`activate_league` reset chat, the league snapshot and the merger, and left every `draft_room_*`
+key in place. Nothing anywhere set `draft_room_debate_result`, `draft_room_last_snapshot` or
+`draft_room_snapshot_cache` back to `None` — **three keys with no reset path at all**. League A
+at 2.03 with 14 picks, run the debate, switch to league B also at 2.03 with 14 picks: A's
+debate renders under B's board with no staleness note, and A's snapshot feeds B's next diff.
+Nothing downstream catches it — the result guard compares `pick_label`, and the staleness note
+compares a pick count and a data date, both of which two leagues routinely share.
+
+Repaired by **prefix sweep with a preference allowlist**, which is fail-safe by default: a key
+added tomorrow is cleared without anyone remembering the file. A list of keys to *delete* is a
+second statement of what the Draft Room keeps, and that is exactly how three keys came to have
+no reset path. The cost of being wrong now runs the harmless way — a person re-picks a filter,
+rather than league A's board being priced into league B's draft.
+
+The rule lives in `draft_state.py`, dependency-free and taking the state mapping as an
+argument, because `app.py` cannot be imported (it runs into session-dependent state) and a
+source assertion would pass on a clearing function that is never called.
+
+Its own allowlist test caught an error of mine immediately: `draft_room_mode` is a local
+variable in `app.py`, not a session key, so listing it exempted nothing and misdescribed the
+sweep.
+
+Six mutants, five killed. **`list(state)` → `state` survived, and that is recorded rather than
+papered over**: the comprehension is fully materialised before anything is deleted, so nothing
+mutates during iteration today. The line is kept as insurance — the caller passes Streamlit's
+`SessionStateProxy`, and the failure appears the moment someone fuses the two loops — with its
+limits written down instead of claimed as covered.
+
+### Collateral: a guard defeated by a line break
+
+`test_ui_source` forbids a test module from reading `app.py` off disk, because a scan pointed
+at a file the code has left covers nothing. Its scan was **per line** and required `app.py` and
+`read_text` on the same one. The idiom that actually appears puts them on two:
+
+```python
+APP = Path(__file__).with_name("app.py")
+...
+cls.calls = live_calls(ast.parse(APP.read_text(encoding="utf-8")))
+```
+
+`test_live_board_pricing` read `app.py` that way for its whole life and the scan reported it
+clean. Widened to read CODE over the module (`#200`), and measured: exactly two modules named
+`app.py` in code without importing `ui_source` — one a real offender (migrated to `ui_source`,
+and its per-file line numbers preserved by parsing each unit rather than the concatenation),
+one a sample path handed to `_is_historical_record` (allowed, with the reason stated and
+checked). The widening is pinned by four tests including the two-line idiom the old scan
+missed.
+
+---
+
 ## Still open in Phase 7
 
-- **7.4** cache keys — every key must contain every input that can change the result
 - **7.5** state and persistence — `store_io`'s bare `except OSError`, `upload_batches.record`
   returning an id for an unpersisted batch, `outcome_record`'s damaged→absent collapse

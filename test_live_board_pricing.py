@@ -19,21 +19,26 @@ that hand-listed today's sites would pass forever while a fifth surface was adde
 so these read `app.py`'s OWN syntax tree and hold every call they find (`#126`: one home for a
 vocabulary, derived, never hand-listed).
 
-`app.py` is the live surface by construction -- it is the Streamlit script a person interacts
-with. Measurement harnesses (`draft_counterfactual`, `roster_diagnostics`, the `run_*` probes)
+The UI surface is the live surface by construction -- it is what a person interacts with.
+Measurement harnesses (`draft_counterfactual`, `roster_diagnostics`, the `run_*` probes)
 legitimately build unpriced boards for their own purposes and are not scanned, which is why the
-scan is scoped to the file rather than to the function names globally.
+scan is scoped to that surface rather than to the function names globally.
+
+READ THROUGH `ui_source`, NOT OFF `app.py` (#52 phase 7.4). This read `app.py` directly, which
+is the one file the Draft Room lives in today and is slated to move out of by view. A scan
+pointed at a file the code has left covers nothing, and `test_ui_source` exists to stop exactly
+that -- it did not catch this one, because the path and the read sat on two different lines and
+its scan was per-line. Both are fixed: this file asks `ui_source` for the surface, and that scan
+now reads code rather than lines.
 """
 
 from __future__ import annotations
 
 import ast
 import unittest
-from pathlib import Path
 
 import draft_room as dr
-
-APP = Path(__file__).with_name("app.py")
+import ui_source
 
 #: The live board builders. A call to either of these from app.py puts a board in front of a
 #: person, so each one must carry the league's own pricing.
@@ -79,7 +84,7 @@ def _mapping_keys(tree: ast.AST, name: str) -> set[str] | None:
     return found[0] if len(found) == 1 else None
 
 
-def live_calls(tree: ast.AST) -> list[tuple[str, int, set[str]]]:
+def live_calls(tree: ast.AST, unit: str = "app.py") -> list[tuple[str, int, set[str]]]:
     """(builder name, line, kwargs supplied) for every call to a LIVE_BUILDERS function.
 
     FOLLOWS `**mapping` (#52 phase 7.4). The Draft Room's build_snapshot call now passes one
@@ -109,7 +114,7 @@ def live_calls(tree: ast.AST) -> list[tuple[str, int, set[str]]]:
             resolved = (_mapping_keys(tree, keyword.value.id)
                         if isinstance(keyword.value, ast.Name) else None)
             supplied |= resolved if resolved is not None else {UNRESOLVED}
-        out.append((name, node.lineno, supplied))
+        out.append((name, f"{unit}:{node.lineno}", supplied))
     return out
 
 
@@ -119,7 +124,12 @@ class EveryLiveBoardIsPricedByTheLeaguesOwnScoring(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        cls.calls = live_calls(ast.parse(APP.read_text(encoding="utf-8")))
+        # Per UNIT, not over the concatenation: ui_source.text() joins the modules, and a line
+        # number taken from the join names no line in any file a person can open. Each unit is
+        # parsed on its own so a failure says which file and which line.
+        cls.calls = [(name, lineno, kwargs)
+                     for unit, source in sorted(ui_source.units().items())
+                     for name, lineno, kwargs in live_calls(ast.parse(source), unit)]
 
     def test_the_scan_finds_the_live_builders_at_all(self):
         """Non-vacuity. A scan that matched nothing would pass every assertion below while
