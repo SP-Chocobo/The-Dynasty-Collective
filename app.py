@@ -35,6 +35,7 @@ import decision_log
 import depth_ratings
 import design_system
 import draft_board_ui
+import draft_history
 import draft_room
 import draft_state
 import draft_strategy
@@ -5572,6 +5573,35 @@ elif main_view == DRAFT_VIEW:
                                         )
                                     st.session_state.draft_room_last_snapshot = snap
                                     st.session_state.draft_room_debate_result = debate_result
+                                    # J-12, ruled NARROW: draft_history records a snapshot only
+                                    # when a debate actually ran on it. The module calls itself
+                                    # "the substrate for all three (#92)" and had no writer at
+                                    # all, so test_cdme_ingestion_boundary was guarding a store
+                                    # nothing wrote -- a guard that passes because its subject
+                                    # is absent.
+                                    #
+                                    # Here and not at every board build, which was the other
+                                    # option: the Draft Room rebuilds a snapshot on EVERY rerun,
+                                    # including reruns caused by an unrelated button, so
+                                    # recording each one would fill the store with boards nobody
+                                    # looked at. A board someone put to the debate is a
+                                    # decision; a board that merely rendered is not.
+                                    #
+                                    # Never fatal. The module's own contract is that a damaged
+                                    # history file must not take down a live draft, and the same
+                                    # has to hold for a failed write -- a draft in progress is
+                                    # not the place to discover the disk is full.
+                                    try:
+                                        draft_history.record_snapshot(
+                                            st.session_state.selected_league_id,
+                                            snap,
+                                            pick_synthesis.snapshot_identity(snap),
+                                            draft_id=draft_id,
+                                        )
+                                    except Exception as exc:  # noqa: BLE001 -- observational only
+                                        notify("warning",
+                                               f"The debate ran, but this board could not be "
+                                               f"recorded to draft history: {exc}")
                                     if debate_result.errors:
                                         notify("warning", "Debate finished with issues: " + "; ".join(debate_result.errors))
 

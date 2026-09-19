@@ -262,3 +262,54 @@ inheriting the store's refusal.
 
 Full suite: **3,285 tests, 0 failures.**
 
+---
+
+## `J-12` — wire `draft_history` narrowly *(closed)*
+
+The ruling: **wire it narrowly** — record a snapshot only when a debate actually ran on it.
+
+The module called itself *"the substrate for all three (`#92`)"* and had **no writer at all**:
+`grep -l draft_history *.py` over non-test files returned only itself. It also had no test
+module of its own, which is consistent — there was nothing to exercise.
+
+### The part that makes this more than a missing call
+
+`test_cdme_ingestion_boundary._NEVER_IMPORTED` lists this module among those CDME must never
+import, and the reason is sound: a stored record read back into the computation that produced
+it is a feedback loop, and a number acquires authority purely by having been written down. But
+that assertion was **trivially true of a store nothing wrote** — a guard passing because its
+subject is absent, which is the same shape as an absence assertion passing because the quantity
+was never computed. Wiring a writer is what makes that guard a constraint rather than a
+tautology, so the two files are now a pair and each says so.
+
+### Why narrow, in one measurement anyone can repeat
+
+The Draft Room rebuilds a snapshot on **every rerun**, including reruns caused by an unrelated
+button elsewhere on the page — the Prytaneum dock's own Expand/Collapse calls a bare
+`st.rerun()` purely to change a CSS height. Recording each one fills the store with boards
+nobody looked at. A board someone put to the debate is a decision; a board that merely rendered
+is not. The wiring test asserts **exactly one** call site, so the broad rule cannot creep back
+in beside the narrow one.
+
+The write is wrapped, because the module's own contract is that a damaged history file must not
+take down a live draft — and the same has to hold for a failed write. A draft in progress is
+not the place to discover the disk is full.
+
+### Mutants
+
+Three, all killed: the writer unwired again, the board filed under a name nothing else uses
+(`id(snap)` instead of `snapshot_identity`), and the write left unguarded.
+
+**One of them exposed a defect in the test rather than the code.** The unwired mutant first
+died in `setUpClass`, because `ui_source.unit_containing` RAISES when its needle is missing —
+so the test written to say *"no UI surface writes to draft_history"* never ran, and a reader
+got a lookup error instead of the sentence. A guard whose failure does not name the problem is
+half a guard. The suite now parses each UI unit separately, so an absent writer is an empty
+result rather than an exception, and all three affected tests fail with that same sentence.
+
+(The first attempt at that mutant was also wrong in a way worth recording: commenting the call
+out with `if False:` orphaned its `except` clause and produced a **SyntaxError**, so what was
+being tested was the parser, not the wiring. Re-run as a clean removal.)
+
+Full suite: **3,294 tests, 0 failures.**
+

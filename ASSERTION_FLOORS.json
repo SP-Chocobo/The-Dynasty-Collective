@@ -4665,6 +4665,47 @@
         }
       }
     },
+    "test_draft_history_is_wired.py": {
+      "test_methods": 9,
+      "asserts": {
+        "assertEqual": 7,
+        "assertIn": 2,
+        "assertIsNotNone": 1,
+        "assertNotIn": 1,
+        "assertTrue": 3
+      },
+      "by_method": {
+        "test_a_different_board_is_a_different_record": {
+          "assertEqual": 1
+        },
+        "test_a_recorded_snapshot_comes_back_under_its_own_identity": {
+          "assertEqual": 3,
+          "assertIsNotNone": 1
+        },
+        "test_it_is_recorded_exactly_once_and_not_on_every_board_build": {
+          "assertEqual": 1
+        },
+        "test_leagues_do_not_share_a_history": {
+          "assertEqual": 1
+        },
+        "test_recording_the_same_board_twice_adds_nothing": {
+          "assertEqual": 1
+        },
+        "test_the_call_carries_the_snapshot_identity_rather_than_a_new_name": {
+          "assertIn": 1
+        },
+        "test_the_ingestion_guard_is_no_longer_trivially_satisfied": {
+          "assertIn": 1,
+          "assertNotIn": 1
+        },
+        "test_the_record_cannot_take_down_a_live_draft": {
+          "assertTrue": 1
+        },
+        "test_the_ui_records_a_snapshot_at_all": {
+          "assertTrue": 1
+        }
+      }
+    },
     "test_draft_horizon.py": {
       "test_methods": 26,
       "asserts": {
