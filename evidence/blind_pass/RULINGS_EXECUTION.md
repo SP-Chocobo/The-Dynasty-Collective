@@ -93,3 +93,54 @@ retired is its wiring into the board's sum.
 
 Expected effect on today's boards, stated in advance so it can be checked rather than asserted:
 **five rows change by at most 0.84**, and no row changes by more than that.
+
+### The removal was written, measured, and staged rather than shipped
+
+The production-side change is complete and kept at `evidence/blind_pass/6_1b_removal.patch`
+(209 lines, six sites: the computation, the sum, the emitted row, `TEAM_SPECIFIC_TERMS`,
+`TEAM_SPECIFIC_CAPS`, `ELIGIBILITY_BONUS_MAX`, plus the `CandidateSnapshot` field, the necessity
+roster-fit component, the board payload's `eligBonus` and `pick_debate`'s arithmetic line). It
+is staged, not merged, because the measured blast radius says this is its own pass.
+
+**The predicted effect was confirmed exactly** — but only after the A/B was fixed, and the
+first version of it lied:
+
+> Two runs reported **0 of 5,790 rows moved**. Both were the new code measured against itself.
+> The shadow directory holding the old `draft_room.py` was inserted at `sys.path[0]` and then
+> the repo root was inserted at `sys.path[0]` *after* it, putting the real module back in
+> front. `dr.__file__` was identical in both arms. This is the engine-measurement skill's own
+> warning arriving in practice: *the failure mode to fear is not a crash, it is a plausible
+> number about something else* — and "no row moved" is the most comfortable plausible number
+> there is. The arm that caught it was asking each run to print which file it had loaded.
+
+With the path order corrected, on the IDP board state where the term was measured at 0.84:
+
+| | |
+|---|---:|
+| rows compared | 1,889 |
+| rows whose `final_score` moved | **1** |
+| Travis Hunter | −24.63 → **−25.47** (delta **−0.84**) |
+
+Exactly the predicted magnitude, on exactly the row that carried the term.
+
+### Measured blast radius — why this is its own pass
+
+Full suite with the removal applied: **3,263 tests, 275 failures across 26 modules**, and they
+split cleanly:
+
+| kind | count | what it is |
+|---|---:|---|
+| `TypeError: CandidateSnapshot.__init__() got an unexpected keyword argument` | 152 | fixtures constructing the dataclass |
+| `AttributeError: 'CandidateSnapshot' object has no attribute` | 67 | reads off a snapshot |
+| `KeyError: 'eligibility_bonus'` | 39 | dict access on a board row |
+| `AttributeError: module 'draft_room' has no attribute 'ELIGIBILITY_BONUS_MAX'` | 3 | the retired constant |
+| **`AssertionError`** | **14** | **the real ones — assertions that encode the old behaviour** |
+
+261 of 275 are mechanical references to a field that no longer exists; 14 need judgement. The
+mechanical ones are deletions of references rather than weakenings of assertions, so they are
+low-risk — but 26 files of them beside 14 judgement calls is a full pass, and doing it in the
+tail of another one is how a guard gets quietly weakened. That is the failure this programme
+exists to catch, so the tree was restored rather than left half-cut.
+
+Next pass starts from the patch and works the 14 `AssertionError`s first, since those are the
+ones that decide whether the ruling has been implemented or merely applied.
