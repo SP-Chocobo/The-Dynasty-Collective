@@ -6486,6 +6486,41 @@
         }
       }
     },
+    "test_kdst_priced_too_high.py": {
+      "test_methods": 6,
+      "asserts": {
+        "assertEqual": 2,
+        "assertGreater": 2,
+        "assertIn": 2,
+        "assertIsNotNone": 1,
+        "assertLess": 2,
+        "assertNotIn": 1,
+        "assertTrue": 2
+      },
+      "by_method": {
+        "test_a_team_defense_outranks_a_real_starting_receiver": {
+          "assertLess": 1
+        },
+        "test_both_slots_generate_real_starter_demand": {
+          "assertEqual": 2
+        },
+        "test_forfeiture_cannot_be_the_lever": {
+          "assertNotIn": 1
+        },
+        "test_the_arm_exists_and_carries_both_slots": {
+          "assertIn": 2
+        },
+        "test_the_defect_is_the_unnormalised_cross_position_VOR": {
+          "assertGreater": 1,
+          "assertLess": 1,
+          "assertTrue": 1
+        },
+        "test_waiting_cost_points_the_wrong_way": {
+          "assertGreater": 1,
+          "assertIsNotNone": 1
+        }
+      }
+    },
     "test_league_config.py": {
       "test_methods": 19,
       "asserts": {
@@ -7211,6 +7246,42 @@
         },
         "test_total_starting_slots_reuses_lineup_optimizer_not_a_reinvented_count": {
           "assertIn": 1
+        }
+      }
+    },
+    "test_measure_projection_accuracy.py": {
+      "test_methods": 6,
+      "asserts": {
+        "assertEqual": 8,
+        "assertFalse": 1,
+        "assertGreater": 1,
+        "assertIn": 1,
+        "assertIsNone": 1,
+        "assertLess": 2,
+        "assertTrue": 1
+      },
+      "by_method": {
+        "test_a_player_with_no_result_is_excluded_rather_than_scored_zero": {
+          "assertEqual": 2
+        },
+        "test_a_pool_too_small_to_reach_replacement_rank_is_refused": {
+          "assertFalse": 1,
+          "assertIn": 1
+        },
+        "test_a_position_whose_projections_are_noise_keeps_none_of_it": {
+          "assertEqual": 3
+        },
+        "test_a_position_whose_projections_hold_keeps_its_whole_spread": {
+          "assertEqual": 2,
+          "assertTrue": 1
+        },
+        "test_a_zero_projected_gap_yields_None_rather_than_zero": {
+          "assertEqual": 1,
+          "assertIsNone": 1
+        },
+        "test_the_ranks_come_from_the_PROJECTION_and_not_the_result": {
+          "assertGreater": 1,
+          "assertLess": 2
         }
       }
     },
