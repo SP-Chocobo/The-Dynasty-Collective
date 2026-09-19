@@ -7375,6 +7375,43 @@
         }
       }
     },
+    "test_no_empty_player_universe.py": {
+      "test_methods": 8,
+      "asserts": {
+        "assertEqual": 4,
+        "assertIn": 4,
+        "assertNotIn": 1,
+        "assertRaises": 3
+      },
+      "by_method": {
+        "test_a_failed_fetch_falls_back_to_the_cache": {
+          "assertEqual": 1
+        },
+        "test_a_live_fetch_returns_the_players_and_caches_them": {
+          "assertEqual": 2
+        },
+        "test_an_empty_response_from_sleeper_is_not_treated_as_a_universe": {
+          "assertRaises": 1
+        },
+        "test_both_snapshot_writes_are_atomic_too": {
+          "assertEqual": 1,
+          "assertIn": 1
+        },
+        "test_no_fetch_and_a_DAMAGED_cache_raises_too": {
+          "assertRaises": 1
+        },
+        "test_no_fetch_and_no_cache_raises_instead_of_returning_an_empty_universe": {
+          "assertIn": 2,
+          "assertRaises": 1
+        },
+        "test_no_truncating_write_is_left_in_the_client": {
+          "assertNotIn": 1
+        },
+        "test_the_players_cache_never_passes_through_a_truncating_write": {
+          "assertIn": 1
+        }
+      }
+    },
     "test_one_identity_one_answer.py": {
       "test_methods": 10,
       "asserts": {
@@ -11763,13 +11800,14 @@
       }
     },
     "test_store_io.py": {
-      "test_methods": 24,
+      "test_methods": 25,
       "asserts": {
-        "assertEqual": 20,
+        "assertEqual": 22,
         "assertFalse": 3,
         "assertGreater": 1,
         "assertGreaterEqual": 1,
-        "assertIn": 12,
+        "assertIn": 13,
+        "assertIs": 1,
         "assertNotIn": 1,
         "assertTrue": 4
       },
@@ -11825,6 +11863,11 @@
           "assertGreaterEqual": 1,
           "assertIn": 2
         },
+        "test_the_cache_primitive_does_not_inherit_the_store_guard": {
+          "assertEqual": 1,
+          "assertIn": 1,
+          "assertIs": 1
+        },
         "test_the_detector_recognises_both_ways_of_writing_json": {
           "assertFalse": 3,
           "assertTrue": 3
@@ -11846,6 +11889,7 @@
           "assertIn": 1
         },
         "test_the_temp_file_is_written_in_the_same_directory_as_its_target": {
+          "assertEqual": 1,
           "assertIn": 1,
           "assertNotIn": 1
         },

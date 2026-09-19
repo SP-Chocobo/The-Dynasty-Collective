@@ -262,11 +262,36 @@ def write(path: Path, data: Any) -> bool:
         return True
 
 
-def _write_unlocked(path: Path, data: Any) -> None:
+def replace_atomically(path: Path, text: str) -> None:
+    """Replace `path` with `text` so no reader ever sees a prefix. NO STORE SEMANTICS.
+
+    The mechanism this module's docstring measures -- write a sibling temp file, then
+    `os.replace`, which is atomic within one filesystem -- published on its own for callers
+    that need the atomicity and must NOT have the rest.
+
+    THE DISTINCTION IS THE WHOLE REASON THIS IS SEPARATE (#52 phase 7.5 / J-13). `write` above
+    refuses to overwrite a store it has found damaged, because for a STORE the damaged bytes
+    are the only copy and losing them is unrecoverable. A CACHE is the opposite: it is
+    re-fetchable by definition, so a corrupt one SHOULD be replaced by a fresh fetch, and
+    giving it the store's protection would make a corrupt cache permanently un-refreshable --
+    a worse bug than the one being fixed, installed by the fix.
+
+    So this does no locking, keeps no damage mark, and consults none. It is the atomicity and
+    nothing else. A caller holding durable data wants `write` or `mutate`; a caller holding a
+    rebuildable copy of someone else's data wants this.
+
+    Takes TEXT rather than an object on purpose: the ~10 MB players cache is written compact,
+    and routing it through `write`'s `json.dumps(indent=2)` would inflate it by ~30% for a file
+    no person reads.
+    """
     path.parent.mkdir(parents=True, exist_ok=True)
     tmp = path.with_name(f"{path.name}.tmp-{os.getpid()}")
-    tmp.write_text(json.dumps(data, indent=2))
+    tmp.write_text(text)
     os.replace(tmp, path)
+
+
+def _write_unlocked(path: Path, data: Any) -> None:
+    replace_atomically(path, json.dumps(data, indent=2))
 
 
 @contextmanager

@@ -69,10 +69,39 @@ class ReadWriteContractTests(unittest.TestCase):
     def test_the_temp_file_is_written_in_the_same_directory_as_its_target(self):
         """os.replace is only atomic within one filesystem. A temp file in the system temp dir
         would silently degrade the whole mechanism to a copy, on exactly the machines where
-        /tmp is a different mount -- and nothing would report it."""
-        body = inspect.getsource(store_io._write_unlocked)
+        /tmp is a different mount -- and nothing would report it.
+
+        SCANS THE FUNCTION THAT HOLDS THE MECHANISM, found rather than named. This read
+        `_write_unlocked`, and when the mechanism was extracted into `replace_atomically` so a
+        cache could reuse the atomicity without the store semantics, the guard went on scanning
+        a body that no longer contained it -- and said nothing. It failed loudly here only
+        because the extracted body was a one-liner; a larger one would have passed. So the
+        function is now located by the thing being guarded, and asserted to be exactly one: two
+        writers would mean two places this rule has to hold and only one of them checked.
+        """
+        writers = [name for name, fn in vars(store_io).items()
+                   if inspect.isfunction(fn) and "os.replace(" in inspect.getsource(fn)]
+        self.assertEqual(len(writers), 1,
+                         f"expected one function to perform the atomic replace, found {writers}")
+        body = inspect.getsource(getattr(store_io, writers[0]))
         self.assertIn("path.with_name(", body)
         self.assertNotIn("tempfile", body)
+
+    def test_the_cache_primitive_does_not_inherit_the_store_guard(self):
+        """`replace_atomically` exists so a CACHE can have the atomicity without the refusal.
+
+        A cache is re-fetchable by definition, so protecting its damaged bytes the way a store's
+        are protected would make a corrupt cache permanently un-refreshable -- a worse bug than
+        the one the atomicity fixes, installed by the fix. Pinned because the two functions sit
+        next to each other and the wrong one is an easy call to make.
+        """
+        path = self.path.with_name("cache.json")
+        path.write_text("{not json")
+        store_io.read(path, {})                       # arms the damage mark
+        self.assertIn(str(path), store_io.unreadable_stores())
+        self.assertIs(store_io.write(path, {"a": 1}), False)      # the STORE refuses
+        store_io.replace_atomically(path, '{"a": 1}')             # the CACHE does not
+        self.assertEqual(path.read_text(), '{"a": 1}')
 
 
 class DamagedStoreTests(unittest.TestCase):

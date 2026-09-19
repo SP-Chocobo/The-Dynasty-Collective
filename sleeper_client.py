@@ -19,6 +19,8 @@ from typing import Any, Optional
 
 import requests
 
+import store_io
+
 BASE_URL = "https://api.sleeper.app/v1"
 ROOT_URL = "https://api.sleeper.app"  # projections/stats live outside /v1 — see get_weekly_projections
 # Last-resort fallback only -- get_user_leagues derives the real season from Sleeper's own
@@ -34,9 +36,14 @@ PLAYERS_CACHE_FILENAME = "players_nfl.json"
 
 #: #118: the three states the players database can actually be in -- and the fact that they are
 #: indistinguishable to every consumer is the defect. `get_players` falls back to an
-#: ARBITRARILY OLD cache when a live fetch fails (its second `cache_path.exists()` branch) and
-#: returns `{}` when there is no cache at all -- an empty player universe. From the outside both
-#: look exactly like a healthy daily cache.
+#: ARBITRARILY OLD cache when a live fetch fails (its second `cache_path.exists()` branch), so
+#: from the outside a stale copy looks exactly like a healthy daily one, which is what these
+#: three states exist to let a caller tell apart.
+#:
+#: The WORSE half of that sentence is now gone: `get_players` used to return `{}` when there was
+#: no usable cache either -- an empty player universe indistinguishable from a league with no
+#: players. It raises instead (#52 phase 7.5 / J-13, ruled), so only the staleness question
+#: below is left, and staleness is a question these states can actually answer.
 #:
 #: DERIVED from the file's mtime and the window above, never stored: the window is Sleeper's own
 #: documented request rather than a magnitude invented here (#56), and mtime is the one record
@@ -210,14 +217,40 @@ class SleeperClient:
             players = None
 
         if players:
-            cache_path.write_text(json.dumps(players))
+            # ATOMIC (#52 phase 7.5 / J-13). This was `write_text`, the exact pattern store_io's
+            # own docstring measures at 91,956 empty reads of 98,405 under one concurrent
+            # writer -- because write_text TRUNCATES before it writes, so a reader arriving
+            # mid-write sees an empty file. app.py calls get_players() at top level on every
+            # rerun, and Streamlit serves many tabs from one process, so that reader is real.
+            #
+            # store_io.replace_atomically, NOT store_io.write: a cache must stay replaceable.
+            # See that function's own docstring for why giving this file the store's
+            # damaged-bytes protection would be a worse bug than the one being fixed.
+            store_io.replace_atomically(cache_path, json.dumps(players))
             return players
 
         if cache_path.exists():
             cached = self._read_players_cache(cache_path)
             if cached is not None:
                 return cached
-        return {}
+
+        # NO EMPTY UNIVERSE (#52 phase 7.5 / J-13, ruled). This returned {} -- a player
+        # universe indistinguishable from "there are no players". Every caller then built a
+        # board, a roster table or a sync against nothing and reported the result as though it
+        # were an answer. The absence contract this app applies to every other quantity says a
+        # missing measurement is not a measurement; a missing player universe is not an empty
+        # league.
+        #
+        # Raising rather than returning None because there is no useful partial answer here and
+        # no caller could do anything with one: app.py's two call sites already sit inside
+        # handlers that fall back to the "sync a league" empty state, which is the correct
+        # behaviour, and sleeper_import_report is a CLI where a clear error beats silent empty
+        # output.
+        raise SleeperAPIError(
+            "no player universe available: the live fetch failed and the local players cache is "
+            "missing or unreadable. Nothing downstream can be computed from an empty player "
+            "list, so this refuses rather than returning one."
+        )
 
     def players_cache_age_seconds(self, now: Optional[float] = None) -> Optional[float]:
         """This client's players-database age -- the module function, bound to its cache_dir."""
@@ -561,9 +594,13 @@ class SleeperClient:
         return snapshot
 
     def _write_snapshot(self, league_id: str, snapshot: dict) -> None:
+        # Both atomic, same reason as the players cache above: `_latest.json` is read by every
+        # rerun while a sync may be rewriting it, and a torn read of it looks exactly like a
+        # league that has never been synced.
         ts = int(snapshot.get("synced_at", time.time()))
-        (self.cache_dir / f"{league_id}_{ts}.json").write_text(json.dumps(snapshot, indent=2))
-        (self.cache_dir / f"{league_id}_latest.json").write_text(json.dumps(snapshot, indent=2))
+        body = json.dumps(snapshot, indent=2)
+        store_io.replace_atomically(self.cache_dir / f"{league_id}_{ts}.json", body)
+        store_io.replace_atomically(self.cache_dir / f"{league_id}_latest.json", body)
         self._prune_old_snapshots(league_id)
 
     def _prune_old_snapshots(self, league_id: str, keep: int = SNAPSHOT_HISTORY_KEEP) -> None:

@@ -219,3 +219,46 @@ So the work is staged rather than shipped, and the choice returns to the owner:
    discriminator either way, so the difference between them is only the per-turn offset.
 3. **Keep a per-candidate urgency signal** from some quantity that is not withheld and does vary
    by player — which is a new derivation nobody has proposed, not a choice among the three.
+
+---
+
+## `J-13` — raise instead of an empty player universe *(closed)*
+
+The ruling: **raise**. Two defects that compound, repaired together because neither is safe alone.
+
+**The write.** `get_players` cached ~10 MB with `write_text`, the exact pattern `store_io`'s own
+docstring measures at **91,956 empty reads of 98,405** under one concurrent writer — `write_text`
+truncates before it writes. `app.py` calls `get_players()` at top level on every rerun and
+Streamlit serves many tabs from one process, so the concurrent reader is not hypothetical. Both
+snapshot writes had the same shape, and a torn read of `_latest.json` looks exactly like a
+league that was never synced.
+
+**The read.** When the fetch failed *and* the cache was unusable, it returned `{}` — a player
+universe indistinguishable from a league with no players, handed to callers that build boards
+from it. Compounded: a torn read forces a refetch, the refetch fails, and every surface computes
+against nothing and reports the result as an answer.
+
+### The distinction that shaped the repair
+
+The cache does **not** get `store_io.write`'s protection, and that is deliberate. A store's
+damaged bytes are the only copy, so refusing to overwrite them is right. A cache is
+re-fetchable by definition, so the same refusal would make a corrupt cache **permanently
+un-refreshable** — a worse bug than the one being fixed, installed by the fix. So the atomicity
+was published on its own as `store_io.replace_atomically`: the mechanism, none of the semantics.
+Pinned by a test that arms the damage mark and checks the store refuses while the cache does not.
+
+### Collateral: a guard that had stopped pointing at anything
+
+Extracting the mechanism broke `test_the_temp_file_is_written_in_the_same_directory_as_its_target`,
+which read `_write_unlocked`'s source for `path.with_name(`. It **failed loudly only because the
+remaining body was a one-liner** — a larger one would have passed while scanning a function that
+no longer contained the mechanism. Re-derived: the guard now *finds* the function that performs
+the replace and asserts there is exactly one, since two writers would mean two places the rule
+must hold and only one of them checked.
+
+Five mutants, all killed: the empty universe returning, each of the two write sites reverting to
+`write_text`, the temp file moving to the system temp directory, and the cache primitive
+inheriting the store's refusal.
+
+Full suite: **3,285 tests, 0 failures.**
+
