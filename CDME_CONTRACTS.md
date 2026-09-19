@@ -583,6 +583,78 @@ individually testable follow-up once the term's behavior has been observed in re
 
 ---
 
+## Owner rulings — `#52` blind pass, all seven carried decisions
+
+Recorded **2026-09-19**, with the measurement that decided each. These were carried out of
+phases 1-7 deliberately: every one is a judgement about what a number should be, which `#56`
+(derive, never calibrate) and `#184` (engine design belongs to the owner) put outside a repair.
+Ruled via the decision docket built for the purpose.
+
+The rulings are binding on the implementation; the **measurements** below are what they were
+ruled against, so a later reader can tell whether a ruling still applies to a tree that has
+moved.
+
+| # | question | ruling | measured against |
+|---|---|---|---|
+| `6.1b` | the multi-eligible displacement lift | **unify** the two terms into one multi-eligibility price | no value moved by the repair; the reachable-floor clamp binds at 0 of 642 probes |
+| `I-06/J-06` | pricing a `no_surplus` position | **separate basis token with its own scale** | 22 of 48 cells flip, 45.8%; every number unchanged |
+| `6.1d.1` | what lights `context_elevated` | **derive a threshold from the sum's own ceiling** | max gap 8.33 vs 13.21; share >= 12 goes 7.72% -> 0.00% |
+| `W1-07` | `NECESSITY_SURVIVAL_WEIGHT` | **replace with `intervening_picks`** | 12 of 384 labels flip (3.1%), max necessity move 8.50, incl. 2x `MUST TAKE -> STRONG ACTION` |
+| `W4-01` | the rookie population | **promote `years_exp`** | 654 players enter, 31 leave; a rookie draft goes 95 -> 718 |
+| `J-12` | `draft_history` wired to nothing | **wire it narrowly** — record a snapshot only when a debate ran on it | 0 non-test importers; `_NEVER_IMPORTED` guards a store nothing writes |
+| `J-13` | `get_players()` returning `{}` | **raise** | 91,956 empty reads of 98,405 under one concurrent writer |
+
+### Three of these are not simple substitutions, and the difference is recorded here
+
+**`6.1b` UNIFY is a redesign, not a deletion.** It is the largest of the seven. Neither
+`displacement_adj` nor `eligibility_bonus` survives as-is: the ruling is that multi-eligibility
+gets **one** derived price rather than two terms that may each be charging for it. Until that
+derivation exists, `NECESSITY_DENIAL_SATURATION` and `CONTEXT_ELEVATED_THRESHOLD` stay
+un-re-derived — they are known to rest on the false premise, and `6.1d.1` below waits on the
+same work.
+
+**`W1-07` SUBSTITUTE needs a scale that does not yet exist.** Removing the withheld term is the
+easy half. `intervening_picks` is a COUNT, not a probability: it has no natural 0-20 mapping,
+and choosing one by looking at which mapping reproduces today's labels is precisely `#56`'s
+prohibition. The scale must be derived from the quantity's own bounds, and the 12 label flips
+above are the *before* measurement it will be checked against — not the target it is fitted to.
+
+**`I-06/J-06` SEPARATE was ruled with the note *"I don't know what the best option is here. So
+defer to your judgment."*** Recorded verbatim because the ruling is the owner's and the
+reasoning under it is not. The reasoning, for the record:
+
+  The quantity is *not* unmeasurable. Phase 6.1d measured it — with no cover, removing the
+  starter returns **his entire value**, "the number saying plainly that nothing covered him
+  while the basis claimed depth." So the defect was never that it cannot be measured; it is
+  that a starter's whole value is not a DEPTH price. It sits on a different scale, and the old
+  code smuggled it onto the depth scale by calling it `measured`.
+
+  That is why zero is wrong: zero is a NUMBER, not an absence. Under `no_surplus` the term
+  contributes exactly what a position with perfect cover and no marginal loss contributes —
+  `#187`'s shape, a value standing where there is no measurement.
+
+  And it is why the scale cannot be chosen today: picking one now is `#56`'s prohibition with
+  extra steps. So this executes in TWO steps, the same shape as `pool_truncated` (`#52` phase
+  7.3): **introduce the basis token carrying the measured uncovered quantity, price nothing.**
+  The board stops claiming zero depth for its most exposed state; pricing returns as its own
+  decision with its own evidence.
+
+### Implementation order, set by dependency and not by preference
+
+1. `6.1b` unify — two constants wait on it.
+2. `6.1d.1` derive the `context_elevated` threshold — against the distribution (1) produces.
+3. `W1-07` substitute — independent of (1), own derivation.
+4. `W4-01` promote `years_exp` — independent; the 95 -> 718 rookie-draft change is a visible
+   product consequence and lands in its own commit so it can be reverted alone.
+5. `I-06/J-06` the uncovered basis token — independent.
+6. `J-12` wire `draft_history` narrowly, and `J-13` raise — both small, both independent.
+
+Each lands as its own commit with its own mutation battery. A constant that changes is
+**derived** from the ruling and checked against the measurement above; it is never fitted to
+reproduce a result. None of this blocks Phase 8, which certifies the tree as it stands.
+
+---
+
 ## Remaining open decisions
 
 ### B — TE basis incoherence  🚫 **prerequisite to Phase 2**
