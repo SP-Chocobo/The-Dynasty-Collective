@@ -119,6 +119,73 @@ letting the math decide"* — is what stopped it.
 
 ---
 
+## The replacement band is tight in POINTS and loose in RANKS
+
+*Owner challenge: "Could the tightness of the band on replacement value be suspect, relative to
+the values involved?"*
+
+**Yes, and the argument above is the thing it breaks.** Three candidate replacements for DEF
+were reported as sitting inside a six-point band, and that band was read as evidence that which
+player is replacement does not matter. It is not evidence. Two separate defects:
+
+1. The three candidates are not independent constructions. Demand rank is DEF12, best free agent
+   is DEF13, the horizon floor lands around DEF14-15 -- **adjacent ranks on one curve.** Three
+   points a few ranks apart on a flat curve are close for the same reason any three adjacent
+   points are close. That was a measurement of *which player*, reported as though it were a
+   measurement of *what kind of quantity*.
+2. Six points is tight only against values at the position that produced it. The unit the board
+   resolves replacement in is RANK, not points, so the band has to be read in ranks.
+
+Measured on a real `12T_ppr_K_DEF` board (1,153 rows, `projected_points`, probe
+`band_curve.py`):
+
+| pos | r1 | r5 | r12 | r20 | r32 | last | r1-r12 gap | slope r10-r20 |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|
+| RB | 413.2 | 318.2 | 274.6 | 245.7 | 185.6 | 0.2 | 138.6 | 3.48 |
+| WR | 395.7 | 327.9 | 288.4 | 254.3 | 216.2 | 0.0 | 107.3 | 4.40 |
+| TE | 310.2 | 231.2 | 190.3 | 172.7 | 90.9 | 0.7 | 119.9 | 2.85 |
+| QB | 372.5 | 347.8 | 328.6 | 304.6 | 207.5 | 0.0 | 43.9 | 2.99 |
+| K | 134.3 | 130.7 | 121.8 | 119.1 | 61.3 | 7.3 | 12.6 | 0.45 |
+| DEF | 138.4 | 121.8 | 108.0 | 100.3 | 72.5 | 72.5 | 30.5 | 1.17 |
+
+Converting the band into its own unit:
+
+| pos | ranks covered by a 6-point band | pool |
+|---|---:|---:|
+| WR | **1.4** | 197 |
+| RB | **1.7** | 126 |
+| QB | **2.0** | 42 |
+| TE | **2.1** | 115 |
+| DEF | **5.1** | 32 |
+| K | **13.4** | 38 |
+
+**The same six points that pins replacement to within two ranks at every skill position pins it
+to within five at DEF and thirteen at K.** Thirteen ranks is a third of the kicker pool. The
+band was never tight; it was reported in the one unit that made it look tight.
+
+Two consequences that follow directly:
+
+- The band's width is **within the plausible error of the projection it is drawn from.** The
+  whole rosterable DEF pool spans 65.9 points (r1 138.4 to r32 72.5) -- less than half the
+  138.6-point gap between RB1 and RB12 *alone*. At K the startable spread (r1 to r20) is 15.2
+  points. A valuation that resolves a position to within 6 points on a curve that flat is
+  asserting a precision the input does not carry.
+- This **supports** the predictiveness diagnosis rather than competing with it. If ranks 10
+  through 23 at K are indistinguishable within projection error, then K's `bpa` is not measuring
+  a real edge over replacement -- it is measuring where the vendor happened to break a tie. The
+  engine then prices that tie-break at full face value because nothing anywhere measures whether
+  a projected gap at K has ever been realised.
+
+**Not repaired here, and deliberately.** Correcting this means changing what "replacement" means
+per position -- widening the band where the curve is flat, or scaling `bpa` by how determinate
+the position's curve is. Both are engine-design changes under `#184`, and both would be
+calibration under `#56` unless the width is DERIVED from the curve rather than chosen. The
+derivation is available -- slope is measured above and `measure_projection_accuracy.py` supplies
+the realised side -- but it is the owner's ruling to make, not a repair to slip into a
+certification pass. Recorded, with the instrument, so the ruling has numbers under it.
+
+---
+
 # `K-07` — the mock draft reloads the merger twice per rerun *(pinned, not repaired)*
 
 Ruled a `v2-freeze` gate as a **pin**: convert a known defect into a guarded one, rather than
