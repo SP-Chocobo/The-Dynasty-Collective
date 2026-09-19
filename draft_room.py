@@ -1462,9 +1462,12 @@ def build_available_pool(
             "player_id", "name", "position", "team", "injury_status", "trade_value",
             "projection", "proj_3yr", "sleeper_points", "sleeper_basis",
             "availability_basis", "source_file", "bpa",
-            "_canonical_key", "_match_path", "_match_verified",
+            "_canonical_key", "_match_path", "_match_verified", "_contested_key",
         ])
-    return _drop_contested_identities(pd.DataFrame(rows))
+    return _drop_contested_identities(
+        pd.DataFrame(rows),
+        drafted_identity_claims(merger, players_db, drafted_player_ids, usable_positions),
+    )
 
 
 #: Columns on a pool row that came from the VENDOR record the row was matched to, rather than
@@ -1473,7 +1476,52 @@ def build_available_pool(
 VENDOR_DERIVED_COLUMNS = ("trade_value", "projection", "proj_3yr", "source_file")
 
 
-def _drop_contested_identities(pool: pd.DataFrame) -> pd.DataFrame:
+def drafted_identity_claims(
+    merger: DataMerger, players_db: dict[str, dict], drafted_player_ids, usable_positions=None,
+) -> dict:
+    """{canonical_key: {player_id, ...}} for players already OFF the board (#52 phase 7.1b).
+
+    WHY A DRAFTED PLAYER STILL HAS TO BE COUNTED. A contested identity is two different people
+    resolving onto ONE vendor record, and that is a fact about who they are -- it does not stop
+    being true when one of them is selected. `_drop_contested_identities` counted claims among
+    POOL rows only, and drafting removes a row from the pool, so the contest disappeared the
+    moment either player was taken. Measured on the real capture, mid-draft:
+
+        before any pick   Brian Robinson  tv=nan  key=None      both in the pool, guard fires
+                          Bijan Robinson  tv=nan  key=None
+        after Bijan goes  Brian Robinson  tv=99.0 key=(b robinson, RB)   alone in the pool
+                          Bijan Robinson  tv=99.0 (on his roster)
+
+    The one trade value that belongs to exactly one of them ends up claimed by BOTH, and the
+    guard that exists to prevent precisely that reports nothing. Availability was deciding an
+    identity question, which it cannot.
+
+    Costed before it was added: resolving 300 drafted players is ~709ms against a ~9.1s pool
+    build, 7.8%. Scoped to the usable-position universe when one is given, since a player no
+    slot admits cannot contend for anything.
+    """
+    claims: dict = {}
+    for player_id in drafted_player_ids or ():
+        info = players_db.get(str(player_id))
+        if not info:
+            continue
+        positions = set(info.get("fantasy_positions") or ())
+        primary = player_position(info)
+        if primary:
+            positions.add(primary)
+        if usable_positions is not None and not (positions & set(usable_positions)):
+            continue
+        match = _merge_across_eligibility(
+            merger, player_name(info, str(player_id)), positions, primary,
+            info.get("team") or NO_NFL_TEAM,
+        )
+        key = match.get("match_canonical_key")
+        if isinstance(key, tuple):
+            claims.setdefault(key, set()).add(str(player_id))
+    return claims
+
+
+def _drop_contested_identities(pool: pd.DataFrame, also_claimed: Optional[dict] = None) -> pd.DataFrame:
     """Two different players resolving onto ONE canonical record is a contested identity, and
     at least one of them is a misidentification. Nothing here can tell which, so neither may
     keep that record's numbers -- declining is the only honest outcome, the same rule this
@@ -1510,7 +1558,15 @@ def _drop_contested_identities(pool: pd.DataFrame) -> pd.DataFrame:
         return pool
     keyed = pool["_canonical_key"].map(lambda k: k if isinstance(k, tuple) else None)
     counts = keyed.value_counts()
+    # A CLAIM FROM OFF THE BOARD COUNTS (#52 phase 7.1b). `also_claimed` carries the canonical
+    # keys already taken by drafted players, so a pair that began contested stays contested
+    # after one of them is selected -- see drafted_identity_claims for the measurement. Without
+    # it the survivor is alone in the pool, the count falls to one, and he silently inherits the
+    # record both of them were refused.
+    off_board = also_claimed or {}
     contested = {k for k, n in counts.items() if n > 1}
+    contested |= {k for k in counts.index
+                  if isinstance(k, tuple) and off_board.get(k)}
     if not contested:
         return pool
     disputed = keyed.isin(contested)
@@ -1525,6 +1581,17 @@ def _drop_contested_identities(pool: pd.DataFrame) -> pd.DataFrame:
     # exactly: a companion outliving the quantity it explains. Measured before this line: 2
     # board rows (both Robinsons) carried identity_basis="ambiguous" with every vendor field
     # already None.
+    # THE REFUSAL IS RECORDED, NOT ONLY PERFORMED (#52 phase 7.1b). `_canonical_key` is nulled
+    # just below, which is right -- a key that no longer identifies anything must not travel --
+    # but it left nothing downstream could read, and one consumer needs to: _team_roster_players
+    # re-resolves each rostered player through the MERGER, where the contested price still sits,
+    # so a player drafted out of a contested pair kept the very number the pool refused him.
+    #
+    # This is not #166's shape in reverse. That defect was a companion OUTLIVING its quantity --
+    # a `_match_path` still saying "ambiguous" about a match that no longer existed. This column
+    # says the opposite thing: it is the record of a refusal, and it exists so the refusal can
+    # propagate rather than stopping at the frame it was made on.
+    pool["_contested_key"] = keyed.where(disputed)
     pool.loc[disputed, "_canonical_key"] = None
     if "_match_path" in pool.columns:
         pool.loc[disputed, "_match_path"] = None
@@ -2082,6 +2149,7 @@ def _team_starters_filled(picks: list[dict], players_db: dict[str, dict], roster
 
 def _team_roster_players(
     picks: list[dict], players_db: dict[str, dict], roster_id, merger: DataMerger,
+    contested_keys: frozenset = frozenset(),
 ) -> list[dict]:
     """This roster's own drafted players as lineup_optimizer rows ({"id","value","eligible"})
     -- what eligibility_bonus needs to solve "best lineup with/without this candidate" for a
@@ -2122,6 +2190,18 @@ def _team_roster_players(
             info.get("team") or NO_NFL_TEAM,
         )
         value = match.get("trade_value")
+        # A PRICE THE POOL REFUSED IS REFUSED HERE TOO (#52 phase 7.1b). The paragraph above
+        # already states the principle -- "the roster does not get a second, looser opinion
+        # about who he is" -- and this is the case where it was stated and not enforced. The
+        # contested-identity guard withholds the one trade value two same-named, same-position
+        # players cannot both claim; it withholds it from the POOL, and this path went back to
+        # the merger and got it. Measured on the real capture: Bijan Robinson, drafted out of a
+        # contested pair, carried 99.0 into his own roster's lineup solve while the board showed
+        # Brian nothing. He falls through to the unpriced branch below, which is the branch that
+        # already knows how to hold a slot without claiming a value.
+        if isinstance(match.get("match_canonical_key"), tuple) \
+                and match["match_canonical_key"] in contested_keys:
+            value = None
         if value is None:
             # He is on the roster and he occupies a slot; we simply cannot PRICE him. Those
             # are different facts, and dropping him conflates them -- the lineup CONSTRAINT
@@ -3461,7 +3541,16 @@ def compute_draft_board(
     # of the ANCHOR, not of need_bonus. That one is its own finding and is not repaired here.
     slot_counts = starter_slot_counts(roster_positions)
     dedicated_counts = dedicated_slot_counts(roster_positions)
-    my_roster_players = _team_roster_players(picks, players_db, my_roster_id, merger)
+    # Every key the pool refused, plus any claimed by two players who are BOTH already drafted
+    # -- a pair that contested each other does not stop contesting once neither is available.
+    contested_keys = frozenset(
+        k for k in pool.get("_contested_key", pd.Series(dtype=object)) if isinstance(k, tuple))
+    contested_keys |= frozenset(
+        k for k, ids in drafted_identity_claims(
+            merger, players_db, {str(p.get("player_id")) for p in picks},
+            league_usable_positions(roster_positions)).items() if len(ids) > 1)
+    my_roster_players = _team_roster_players(picks, players_db, my_roster_id, merger,
+                                             contested_keys)
     # Per POSITION, not per candidate -- one lineup solve per rostered starter for the whole
     # board, rather than per row. Computed here beside the roster it reads because that is the
     # only thing it depends on; the candidate does not enter it at all.

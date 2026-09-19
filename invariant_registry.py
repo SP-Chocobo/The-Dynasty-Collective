@@ -186,6 +186,36 @@ def _take_model_consumers() -> list[str]:
     return sorted(out)
 
 
+def _vendor_record_resolutions() -> list[str]:
+    """Call sites of `_merge_across_eligibility` -- every place a player is resolved onto a
+    vendor record, and therefore every place that has to decide what a CONTESTED result means.
+
+    Two people resolving onto one record is a contested identity, and the one number neither may
+    claim is withheld. That refusal was made in the pool and nowhere else: the roster path went
+    back to the merger and got the price anyway, and the contest itself evaporated as soon as
+    either player was drafted, because it was counted over available rows. A fourth resolution
+    site is the event to catch -- each one either honours the refusal or quietly reopens it.
+    """
+    import ast
+    import pathlib
+    out = []
+    for path in sorted(pathlib.Path(".").glob("*.py")):
+        if path.name.startswith("test_"):
+            continue
+        try:
+            tree = ast.parse(path.read_text(encoding="utf-8"))
+        except (SyntaxError, UnicodeDecodeError):
+            continue
+        for node in ast.walk(tree):
+            if not isinstance(node, ast.Call):
+                continue
+            func = node.func
+            name = func.attr if isinstance(func, ast.Attribute) else getattr(func, "id", None)
+            if name == "_merge_across_eligibility":
+                out.append(f"{path.name}:{node.lineno}")
+    return sorted(out)
+
+
 REGISTRY: tuple[Invariant, ...] = (
     Invariant(
         name="team_acquisition_value is universal_value plus the team-specific terms",
@@ -305,6 +335,26 @@ REGISTRY: tuple[Invariant, ...] = (
             ".test_on_a_fully_priced_board_the_takes_sum_to_EXACTLY_the_pick_count",
             "test_draft_strategy.PositionalForfeitsTests"
             ".test_both_consumers_of_the_take_table_read_it_through_one_model",
+        ),
+    ),
+    Invariant(
+        name="a contested identity's borrowed price is refused on every path",
+        claim="Two players resolving onto one vendor record may neither claim its numbers. The "
+              "contest is a property of WHO THEY ARE, so it is counted over the identified "
+              "universe rather than the available subset, and the refusal is recorded so it can "
+              "propagate past the frame it was made on.",
+        population="Sites that resolve a player onto a vendor record. Each must decide what a "
+                   "contested result means; the roster path decided differently from the pool "
+                   "and handed a drafted player the very number the board refused him.",
+        members=_vendor_record_resolutions,
+        census=3,
+        pinned_by=(
+            "test_identity_partition_boundary.TheGuardDeclinesThePriceNotThePlayerTests"
+            ".test_the_contest_survives_one_of_the_pair_being_DRAFTED",
+            "test_identity_partition_boundary.TheGuardDeclinesThePriceNotThePlayerTests"
+            ".test_a_player_drafted_out_of_a_contested_pair_is_not_priced_on_his_own_roster",
+            "test_identity_partition_boundary.TheGuardDeclinesThePriceNotThePlayerTests"
+            ".test_an_UNcontested_drafted_player_keeps_his_price",
         ),
     ),
 )

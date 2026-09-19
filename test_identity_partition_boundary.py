@@ -46,6 +46,8 @@ import pandas as pd
 
 import data_merger as dm
 import draft_room as dr
+import run_draft_battery as rdb
+from player_universe import league_usable_positions
 
 
 def _row(**kw):
@@ -365,6 +367,106 @@ class TheGuardDeclinesThePriceNotThePlayerTests(unittest.TestCase):
                                 "a borrowed price survived the narrower key")
                 self.assertAlmostEqual(out.loc[pid, "sleeper_points"],
                                        405.25 if pid == "1" else 89.41)
+
+    #: The league these three read. K/DEF/IDP are deliberately absent: the contested pair this
+    #: class is about are both running backs, and a wider universe only slows the pool build.
+    ROSTER_POSITIONS = ["QB", "RB", "RB", "WR", "WR", "TE", "FLEX"] + ["BN"] * 6
+
+    @classmethod
+    def _capture_players(cls):
+        if not hasattr(cls, "_players"):
+            cls._players, _ = rdb.build_players_db_from_capture()
+        return cls._players
+
+    def test_the_contest_survives_one_of_the_pair_being_DRAFTED(self):
+        """#52 phase 7.1b. The guard counted canonical-key collisions among POOL rows, and
+        drafting removes a row from the pool -- so the contest disappeared the moment either
+        player was taken, which in a live draft is immediately.
+
+        A contested identity is two different people resolving onto ONE vendor record. That is
+        a fact about who they are; availability cannot decide it. Measured on the real capture
+        before the repair: with both Robinsons available the guard fired and neither was priced;
+        with Bijan drafted, Brian was alone in the pool, the count fell to one, and he inherited
+        the 99.0 both of them had been refused -- while Bijan carried the same 99.0 onto his own
+        roster. One value, claimed twice, by the machinery built to stop exactly that.
+        """
+        merger = dm.DataMerger()
+        by_name = {}
+        for pid, info in self._capture_players().items():
+            name = dr.player_name(info, pid)
+            if name in ("Bijan Robinson", "Brian Robinson"):
+                by_name[name] = pid
+        if len(by_name) != 2:
+            self.skipTest("the committed capture no longer carries both Robinsons")
+        bijan = by_name["Bijan Robinson"]
+        usable = league_usable_positions(self.ROSTER_POSITIONS)
+
+        both_available = dr.build_available_pool(
+            merger, self._capture_players(), set(), usable)
+        one_drafted = dr.build_available_pool(
+            merger, self._capture_players(), {bijan}, usable)
+
+        def brian(pool):
+            rows = pool[pool["name"].astype(str) == "Brian Robinson"]
+            self.assertEqual(len(rows), 1, "Brian Robinson is not in the pool")
+            return rows.iloc[0]
+
+        # Non-vacuity: the guard really does fire while both are available.
+        self.assertTrue(pd.isna(brian(both_available)["trade_value"]),
+                        "the contest is not firing even with both players on the board")
+        # ...and it still fires once his twin is off it.
+        self.assertTrue(
+            pd.isna(brian(one_drafted)["trade_value"]),
+            "drafting one of a contested pair handed the survivor the borrowed price")
+        self.assertEqual(brian(one_drafted)["_contested_key"], ("b robinson", "RB"),
+                         "the refusal was performed but not recorded, so nothing can read it")
+
+    def test_a_player_drafted_out_of_a_contested_pair_is_not_priced_on_his_own_roster(self):
+        """The other half of the same leak. _team_roster_players re-resolves each rostered
+        player through the MERGER, where the contested price still sits -- so the number the
+        board refuses to show was being used to solve that roster's own lineup.
+
+        _team_roster_players' own docstring already states the principle it was breaking: "a
+        player the pool will not price is one this engine has decided it cannot identify, and
+        the roster does not get a second, looser opinion about who he is."
+        """
+        merger = dm.DataMerger()
+        players = self._capture_players()
+        bijan = next((pid for pid, info in players.items()
+                      if dr.player_name(info, pid) == "Bijan Robinson"), None)
+        if bijan is None:
+            self.skipTest("the committed capture no longer carries Bijan Robinson")
+        picks = [{"pick_no": 1, "round": 1, "roster_id": "1", "player_id": bijan}]
+        usable = league_usable_positions(self.ROSTER_POSITIONS)
+        pool = dr.build_available_pool(merger, players, {bijan}, usable)
+        contested = frozenset(k for k in pool.get("_contested_key", []) if isinstance(k, tuple))
+        self.assertIn(("b robinson", "RB"), contested, "the pool recorded no contest to honour")
+
+        priced = dr._team_roster_players(picks, players, "1", merger, contested)
+        self.assertEqual([r["id"] for r in priced], [],
+                         "a contested price reached the roster's own lineup solve")
+        # NON-VACUITY, and it is the whole of the check: without the contested set the same
+        # call prices him, so the emptiness above is the refusal and not a broken fixture.
+        unguarded = dr._team_roster_players(picks, players, "1", merger)
+        self.assertEqual([r["id"] for r in unguarded], [bijan])
+        self.assertEqual(unguarded[0]["value"], 99.0)
+
+    def test_an_UNcontested_drafted_player_keeps_his_price(self):
+        """The scope check. The refusal is keyed on the contest, not applied to every rostered
+        player, or eligibility_bonus would solve against an empty roster everywhere."""
+        merger = dm.DataMerger()
+        players = self._capture_players()
+        usable = league_usable_positions(self.ROSTER_POSITIONS)
+        pool = dr.build_available_pool(merger, players, set(), usable)
+        priced_rows = pool[pool["trade_value"].notna()]
+        self.assertTrue(len(priced_rows) > 50, "not enough priced rows to choose from")
+        target = str(priced_rows.iloc[0]["player_id"])
+        picks = [{"pick_no": 1, "round": 1, "roster_id": "1", "player_id": target}]
+        after = dr.build_available_pool(merger, players, {target}, usable)
+        contested = frozenset(k for k in after.get("_contested_key", []) if isinstance(k, tuple))
+        rows = dr._team_roster_players(picks, players, "1", merger, contested)
+        self.assertEqual([r["id"] for r in rows], [target],
+                         "an uncontested player lost his price to the contested-key guard")
 
     def test_a_pool_with_no_dispute_passes_through_unchanged(self):
         pool = self._contested_pool().iloc[[2]].reset_index(drop=True)

@@ -173,11 +173,60 @@ Registered as the seventh invariant, population = take-model call sites (4).
 
 ---
 
+## 7.1b — the contested-price refusal, which did not survive a draft pick *(closed)*
+
+Carried over from Phase 6.2, where it was found and pinned but not repaired. It turned out to be
+worse than "a refusal that does not propagate": **the refusal evaporates.**
+
+A contested identity is two different people resolving onto ONE vendor record, and the single
+number neither may claim is withheld. `_drop_contested_identities` detected that by counting
+canonical-key collisions among **pool** rows — and drafting removes a row from the pool. So the
+contest ended the moment either player was taken, which in a live draft is immediately.
+
+Measured on the real capture:
+
+| | Brian (pool) | Bijan (roster) |
+|---|---|---|
+| both available | `tv=nan`, `key=None` | — guard fires, neither priced |
+| **Bijan drafted** | **`tv=99.0`** | **`tv=99.0`** |
+
+The one trade value that belongs to exactly one of them ends up claimed by **both**, reported by
+the machinery built to prevent exactly that. **Availability was deciding an identity question,**
+which it cannot: who these people are does not change when one of them is selected.
+
+The second half was the one Phase 6.2 pinned: `_team_roster_players` re-resolves each rostered
+player through the **merger**, where the contested price still sits — so the number the board
+refuses to show was being used to solve that roster's own lineup. Its own docstring already
+stated the principle it was breaking: *"a player the pool will not price is one this engine has
+decided it cannot identify, and the roster does not get a second, looser opinion about who he
+is."* Stated, never enforced.
+
+### The repair
+
+- **The contest is counted over the identified universe**, not the available subset:
+  `drafted_identity_claims` resolves players already off the board and their keys count toward
+  the contest. Costed first — 300 drafted players resolve in ~709 ms against a ~9.1 s pool build,
+  **7.8%**.
+- **The refusal is recorded, not only performed.** `_canonical_key` is still nulled (a key that
+  identifies nothing must not travel), and a `_contested_key` column now carries what was
+  refused, so the refusal can propagate past the frame it was made on. This is not `#166`'s shape
+  in reverse: that defect was a companion *outliving* its quantity; this column is the record of
+  a refusal, and exists so a second consumer can honour it.
+- **`_team_roster_players` honours it**, falling through to the unpriced branch that already
+  knows how to hold a slot without claiming a value.
+
+Mutants killed in all three directions: the contest ignoring off-board claims, the roster path
+ignoring the contested set, and — the one worth having — **refusing every rostered price**, which
+is the over-correction that would leave `eligibility_bonus` solving against an empty roster.
+
+Registered as the eighth invariant, population = vendor-record resolution sites (3). Each must
+decide what a contested result means; a fourth arriving is the event to catch.
+
+---
+
 ## Still open in Phase 7
 
 - **7.3** the `trade_value` branch family, compared structurally rather than patched three times
 - **7.4** cache keys — every key must contain every input that can change the result
 - **7.5** state and persistence — `store_io`'s bare `except OSError`, `upload_batches.record`
   returning an id for an unpersisted batch, `outcome_record`'s damaged→absent collapse
-- the sixth leak, pinned in Phase 6.2 and belonging here: `_drop_contested_identities` withholds a
-  contested price from the **pool**, and `_team_roster_players` re-resolves it from the **merger**

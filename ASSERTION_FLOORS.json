@@ -5827,15 +5827,16 @@
       }
     },
     "test_identity_partition_boundary.py": {
-      "test_methods": 31,
+      "test_methods": 34,
       "asserts": {
         "assertAlmostEqual": 3,
-        "assertEqual": 17,
+        "assertEqual": 23,
         "assertFalse": 17,
+        "assertIn": 1,
         "assertIsInstance": 1,
         "assertIsNone": 2,
         "assertNotEqual": 2,
-        "assertTrue": 17
+        "assertTrue": 20
       },
       "by_method": {
         "test_a_cross_group_pair_is_left_to_the_coarse_rejection": {
@@ -5845,11 +5846,19 @@
         "test_a_free_text_lookup_with_no_team_and_no_position_still_resolves": {
           "assertTrue": 1
         },
+        "test_a_player_drafted_out_of_a_contested_pair_is_not_priced_on_his_own_roster": {
+          "assertEqual": 3,
+          "assertIn": 1
+        },
         "test_a_tight_end_does_not_match_a_running_backs_row": {
           "assertTrue": 1
         },
         "test_absence_on_either_side_is_not_a_contradiction": {
           "assertFalse": 2
+        },
+        "test_an_UNcontested_drafted_player_keeps_his_price": {
+          "assertEqual": 1,
+          "assertTrue": 1
         },
         "test_an_offence_position_disagreement_is_rejected_through_the_real_merger": {
           "assertFalse": 1
@@ -5884,6 +5893,10 @@
         "test_that_same_key_resolves_when_the_position_agrees": {
           "assertEqual": 1,
           "assertTrue": 1
+        },
+        "test_the_contest_survives_one_of_the_pair_being_DRAFTED": {
+          "assertEqual": 2,
+          "assertTrue": 2
         },
         "test_the_fixture_above_carries_the_key_shape_merge_player_really_emits": {
           "assertEqual": 3,
