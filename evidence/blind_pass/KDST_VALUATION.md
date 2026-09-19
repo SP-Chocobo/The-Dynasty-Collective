@@ -184,6 +184,110 @@ derivation is available -- slope is measured above and `measure_projection_accur
 the realised side -- but it is the owner's ruling to make, not a repair to slip into a
 certification pass. Recorded, with the instrument, so the ruling has numbers under it.
 
+## What per-position bands actually look like — and why none of them is the lever
+
+*Owner: "We should at least look at what per position bands would look like… I don't
+necessarily think we have to tweak the others if they're functional, considering kickers and
+defenses are kind of their own animal, so it could be exceptions to how we structure them.
+I'm not saying they have to be exceptions, but it's valid if that's what we land on."*
+
+Looked. Three results, and the third cancels the first two.
+
+### The instrument is calibrated against a boundary this repo already accepts
+
+`QB_STARTABLE_FLOOR_FRACTION`'s comment states this repo's own test for a legitimate constant:
+it must sit in a **stability basin** — *"a 48-point-wide band of threshold values all producing
+the same replacement rank"* — as opposed to the reverted flat bench-demand constant, whose
+plausible range straddled the cliff and swung QB1's VOR from 132 to 351.
+
+That test has a closed form. The floor model sets `boundary(t) = #{players ≥ t}`, so
+`boundary(t) == r` exactly when `s[r] < t ≤ s[r-1]`. **The stability basin of rank r IS the
+marginal gap `s[r-1] − s[r]`.** No sweep, no grid, no chosen constant.
+
+Run against the committed baseline it reproduces the documented cliff without being pointed at
+it: the fraction range 0.45–0.60 spans 48.6 points and identifies rank **29 uniquely**; the
+basin at rank 29 is **69.0 points** against neighbouring gaps of 3, 14, 13, 27, 9, 15, 4, 3.
+The instrument finds real boundaries.
+
+### Result 1 — the demand rank is a cliff at some positions and a smooth stretch at others
+
+Live `12T_ppr_K_DEF` board, each position at its own league demand rank (probe
+`band_basins.py`):
+
+| pos | demand | value | basin at demand | median gap | basin / median | reading |
+|---|---:|---:|---:|---:|---:|---|
+| RB | 32 | 185.6 | 8.66 | 2.49 | **3.48** | cliff |
+| QB | 12 | 328.6 | 11.24 | 3.27 | **3.44** | cliff |
+| TE | 20 | 172.7 | 10.04 | 3.54 | 2.84 | edge |
+| DEF | 12 | 108.0 | 2.34 | 1.09 | 2.14 | edge |
+| WR | 32 | 216.2 | 1.20 | 2.67 | **0.45** | smooth — no boundary here |
+| K | 12 | 121.8 | 0.09 | 0.87 | **0.10** | smooth — no boundary here |
+
+**K and DST are not a clean exception class.** WR's replacement rank is *less* determinate than
+DEF's — 0.45 against 2.14 — and WR is a position nobody had flagged. RB and QB sit on genuine
+cliffs, which is real reassurance that those levels are well founded. The honest grouping is
+`{RB, QB}` determinate, `{TE, DEF}` marginal, `{WR, K}` undetermined. DEF travels with the
+skill positions; **K is alone.**
+
+### Result 2 — band width, for any error bar you care to believe
+
+The projection's real error bar is the one number this repo does not have yet
+(`measure_projection_accuracy.py`, pending a networked run), so the band is reported as a
+function of it rather than resting on a number invented here (probe `band_shape.py`):
+
+| pos | demand | SE=1 | SE=2 | SE=5 | SE=10 | SE=15 | SE=20 |
+|---|---:|---:|---:|---:|---:|---:|---:|
+| RB | 32 | 2 | 2 | 2 | 5 | 6 | 9 |
+| TE | 20 | 1 | 2 | 3 | 4 | 9 | 11 |
+| QB | 12 | 2 | 2 | 2 | 5 | 9 | 12 |
+| WR | 32 | 2 | 4 | 7 | 13 | 16 | 21 |
+| DEF | 12 | 2 | 2 | 5 | 16 | 19 | 23 |
+| K | 12 | **8** | **9** | **14** | **22** | 28 | 28 |
+
+K is the outlier at every error bar, including one point: **even a ±1-point error bar leaves
+eight kickers indistinguishable at replacement.** DEF is unremarkable until SE≈10, where it
+joins WR.
+
+### Result 3 — THE NULL CHECK, which kills the lever
+
+If replacement became the band **mean** instead of the band **point**, how far does each
+position's level actually move?
+
+| pos | point | ΔSE=1 | ΔSE=2 | ΔSE=5 | ΔSE=10 | ΔSE=15 | ΔSE=20 |
+|---|---:|---:|---:|---:|---:|---:|---:|
+| RB | 185.6 | +0.32 | +0.32 | +0.32 | +1.07 | −1.54 | +0.38 |
+| WR | 216.2 | +0.40 | −0.48 | −1.51 | −1.94 | −2.34 | −4.26 |
+| TE | 172.7 | +0.00 | +0.83 | +2.18 | +3.33 | +2.49 | +5.15 |
+| QB | 328.6 | +0.20 | +0.20 | +0.20 | +4.55 | −0.21 | +1.32 |
+| K | 121.8 | −0.17 | +0.06 | +0.03 | **+0.89** | −0.12 | −0.12 |
+| DEF | 108.0 | +0.05 | +0.05 | −0.45 | **−1.05** | −1.23 | −2.37 |
+
+**Nothing moves.** The largest shift anywhere is 5.15 points at TE. At K it is **0.89**, and at
+DEF it is **−1.05 — the wrong direction**, making the top defense look *better* by 1.05 VOR.
+
+The reason is arithmetic and should have been obvious before the measurement: a band centred on
+the demand rank is symmetric, and the curve through it is locally straight, so the mean of the
+band is the point at its centre. Widening a symmetric window on a straight line returns the
+same number. **Band width is the wrong lever.** Under `#56` it would also have been a constant
+chosen to produce an outcome, and it does not even produce the outcome.
+
+### What this settles
+
+- **No, the functional positions do not need tweaking** — but not because K and DST are
+  exceptions. Because *no* position moves under this change, including K and DST. There is
+  nothing to make an exception to.
+- **An exception class would have been the wrong shape anyway.** The basin test puts DEF with
+  TE and WR, not with K. A rule keyed on "K and DST" would have been keyed on the position
+  names rather than on any measured property — hand-listing a vocabulary, which is `#126`.
+- **The lever is not where replacement sits. It is whether the points above it are real.** Every
+  path out of this section arrives back at predictiveness: `bpa` at K prices a 12.6-point edge
+  over replacement drawn from a curve whose ranks are indistinguishable within a single point.
+  Whether that edge has ever been realised is what `measure_projection_accuracy.py` answers, and
+  it is the only outstanding input that changes any of these numbers.
+
+Recorded with both probes. No ruling is requested on band width, because the measurement
+withdraws the question.
+
 ---
 
 # `K-07` — the mock draft reloads the merger twice per rerun *(pinned, not repaired)*
