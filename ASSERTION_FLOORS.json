@@ -7357,6 +7357,37 @@
         }
       }
     },
+    "test_mock_draft_reload_cost.py": {
+      "test_methods": 6,
+      "asserts": {
+        "assertEqual": 3,
+        "assertGreater": 1,
+        "assertIs": 1,
+        "assertIsNot": 1,
+        "assertTrue": 1
+      },
+      "by_method": {
+        "test_a_changed_format_reloads": {
+          "assertIsNot": 1
+        },
+        "test_an_unchanged_format_is_a_no_op": {
+          "assertIs": 1
+        },
+        "test_one_of_them_carries_the_mock_drafts_own_settings": {
+          "assertEqual": 1
+        },
+        "test_the_other_is_the_unconditional_top_of_rerun_assertion": {
+          "assertTrue": 1
+        },
+        "test_the_reload_discards_every_merged_row": {
+          "assertEqual": 1,
+          "assertGreater": 1
+        },
+        "test_the_ui_asserts_two_different_formats_per_rerun": {
+          "assertEqual": 1
+        }
+      }
+    },
     "test_mock_draft_wiring.py": {
       "test_methods": 13,
       "asserts": {

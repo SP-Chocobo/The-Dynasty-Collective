@@ -116,3 +116,42 @@ behaviour**, and the battery's output must not be read as endorsing it. Shipping
 would have hidden the defect behind a number nobody derived; `#56` forbids exactly that, and the
 owner's own instinct on the point — *"we're kind of forcing the shape that we want instead of
 letting the math decide"* — is what stopped it.
+
+---
+
+# `K-07` — the mock draft reloads the merger twice per rerun *(pinned, not repaired)*
+
+Ruled a `v2-freeze` gate as a **pin**: convert a known defect into a guarded one, rather than
+repair it blind.
+
+`DataMerger.set_league_format` is a no-op on an unchanged format and a full `reload()` on any
+change. The UI asserts a format at two places — once unconditionally at the top of every rerun
+with the live league's format, and once inside the Mock Draft view with the mock's own. Those
+differ whenever the mock is configured differently from the live league, which is the ordinary
+case, since configuring a different format is what the mock is *for*.
+
+Measured on the committed baseline:
+
+| | |
+|---|---:|
+| unchanged format (the no-op) | **0.0 ms** |
+| format change → `reload()` | 333.2 ms |
+| change back → `reload()` | 319.3 ms |
+| **one mock-view rerun** | **652.5 ms** |
+| the same rerun anywhere else | 0.0 ms |
+
+And the reload is only the visible half. `_load()` reinstates an **empty `_merge_memo`** —
+verified here rather than inferred — so every merged row computed for the previous board is
+discarded and the next board is built cold. The original finding measured that downstream cost
+at **0.87 s warm against 18.0–18.9 s cold**, paid on every button click in the view.
+
+**Why pinned rather than fixed.** It is latency, not a truth defect: no number the engine
+reports is wrong because of it. The fix lives in Streamlit rerun sequencing, which cannot be
+executed or verified from the audit sandbox, and a wrong fix silently breaks the mock draft — a
+real regression traded for a speedup.
+
+`test_mock_draft_reload_cost.py` names its own exit: assert the mock's format once and let the
+top-of-rerun assertion see it (or scope a second merger to the mock view), so a rerun performs
+at most one reload. Four mutants, all killed — including **the repair itself**, which fails the
+characterization and is exactly the signal it exists to give.
+
