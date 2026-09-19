@@ -359,6 +359,55 @@ of value; the board wins, because:
 Forfeit reaches `pick_necessity` (the words shown beside the pick) and the board UI. It never
 reaches the decision. **The engine has been explaining a choice it did not make.**
 
+### The full draft, on the battery's own path — and the smoking gun
+
+Both probes above measure one turn. The authoritative run drafts all 192 picks through
+`simulate_full_draft` (`build_snapshot` + `candidates[0]`, the battery's path) and reads the
+forfeit the engine itself recorded into each stored snapshot (`forfeit_full_draft.py`):
+
+| pos | taken | first round | median | last |
+|---|---:|---:|---:|---:|
+| RB | 40 | 1 | 4.5 | 16 |
+| WR | 51 | 1 | 6.0 | 14 |
+| TE | 28 | 1 | 13.5 | 16 |
+| QB | 17 | 4 | 8.0 | 14 |
+| **DEF** | 27 | **5** | 10.0 | 14 |
+| **K** | 29 | **7** | 10.0 | 13 |
+
+**The first defense goes in round 5**, the first kicker in round 7, median round 10 for both —
+against an owner target of no sooner than ~13, as the last starters taken. A twelve-team league
+needs twelve of each; the engine drafts 27 and 29.
+
+Mean forfeit over rounds 6–12, 84 candidate rows per position, agrees with both single-turn
+probes:
+
+| RB | WR | TE | QB | DEF | K |
+|---:|---:|---:|---:|---:|---:|
+| 8.12 | 4.48 | 4.46 | 0.93 | **0.76** | **0.40** |
+
+And the pick that names the defect exactly — the first defense taken, at **5.09**:
+
+| field | value |
+|---|---:|
+| `tav` | **34.47** |
+| `uv` | 30.47 |
+| `proj` | 138.42 |
+| `forfeit` | **0.13** |
+| `survival` | 89% |
+| `necessity` | **CLOSE CALL** |
+
+**The board paid 34.47 of value for 0.13 of urgency, in round 5, and rendered the result to the
+user as a CLOSE CALL.** Both numbers were computed on the same board, in the same snapshot, and
+only one of them was ranked on. The first kicker (7.01) is the same shape: `tav` 16.57 against
+`forfeit` 1.75, labelled PREFERRED.
+
+Across the whole draft, the position the board chose was not the position forfeit ranked most
+urgent on **137 of 192 picks**. That figure is a measure of how often the two authorities
+DISAGREE, not a count of wrong picks — urgency is not the only legitimate input to a pick, and
+a board that always took the most urgent position would be a different defect. What it
+establishes is scale: the disagreement is the normal case, not an edge case, so whatever ruling
+follows is a change to how this engine drafts generally and not a patch for two positions.
+
 ### Why every earlier candidate failed, in one line each
 
 Each one was an attempt to fix the ordering without letting the deferral cost into it:
