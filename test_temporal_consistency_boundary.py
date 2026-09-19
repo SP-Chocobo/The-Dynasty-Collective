@@ -182,8 +182,29 @@ class StalenessIsDetectableAndNotConsultedTests(unittest.TestCase):
 
     def test_the_snapshot_cache_already_keys_on_the_very_signals_the_guard_ignores(self):
         """The sharpest form of the gap: the board is REBUILT when these change, and the stale
-        recommendation is then displayed beside the rebuilt board."""
-        self.assertIn("len(draft_picks), merger.freshest_date,", _APP)
+        recommendation is then displayed beside the rebuilt board.
+
+        RE-DERIVED (#52 phase 7.4a), and the gap it names got wider rather than narrower. This
+        asserted the literal `len(draft_picks), merger.freshest_date,` -- the six-tuple the
+        Draft Room used to key its snapshot cache by hand. That key is gone: it stood in front
+        of a fifteen-input call and `len` was a count standing in for contents, so it served
+        one cached board for two different drafts. The cache now keys on
+        pick_synthesis.snapshot_input_key, which derives itself from build_snapshot's signature
+        and therefore covers those two signals AND the eleven the old key never saw.
+
+        So the claim is unchanged and stronger: the board is rebuilt on every input that can
+        move it, while both result guards still compare a pick label, which cannot tell two
+        boards at one label apart. Asserted against what the cache keys on today rather than
+        against a string that no longer appears -- a test pinning a gap must track the code it
+        is measuring the gap in, or it starts reporting on nothing.
+        """
+        self.assertIn("pick_synthesis.snapshot_input_key(**snapshot_inputs)", _APP,
+                      "the Draft Room must key its snapshot cache on the derived input key")
+        signature = inspect.signature(ps.build_snapshot).parameters
+        for signal in ("picks", "merger", "sleeper_projections"):
+            self.assertIn(signal, signature,
+                          "the signals this gap is about must still be inputs to the board, "
+                          "or the gap has changed shape and this test must be re-derived again")
 
 
 class ConcurrentWritersNoLongerLoseUpdatesTests(unittest.TestCase):

@@ -6831,13 +6831,13 @@
       }
     },
     "test_live_board_pricing.py": {
-      "test_methods": 8,
+      "test_methods": 12,
       "asserts": {
-        "assertEqual": 10,
+        "assertEqual": 12,
         "assertGreaterEqual": 1,
-        "assertIn": 1,
+        "assertIn": 4,
         "assertIsNone": 1,
-        "assertNotIn": 1
+        "assertNotIn": 3
       },
       "by_method": {
         "test_a_call_with_the_kwarg_is_reported_present": {
@@ -6848,9 +6848,23 @@
           "assertEqual": 1,
           "assertNotIn": 1
         },
+        "test_a_dict_literal_is_read_the_same_way": {
+          "assertIn": 1
+        },
+        "test_a_dict_that_omits_the_pricing_is_still_reported_missing": {
+          "assertNotIn": 1
+        },
+        "test_a_kwarg_forwarded_through_a_dict_is_seen": {
+          "assertEqual": 1,
+          "assertIn": 2
+        },
         "test_absent_projections_stay_absent_rather_than_becoming_a_default": {
           "assertEqual": 1,
           "assertIsNone": 1
+        },
+        "test_an_unreadable_mapping_fails_the_scan_rather_than_passing_it": {
+          "assertEqual": 1,
+          "assertNotIn": 1
         },
         "test_an_unrelated_call_is_not_matched": {
           "assertEqual": 1
@@ -12002,7 +12016,7 @@
       "asserts": {
         "assertEqual": 8,
         "assertFalse": 4,
-        "assertIn": 10,
+        "assertIn": 11,
         "assertIsNone": 3,
         "assertNotEqual": 2,
         "assertNotIn": 2,
@@ -12063,7 +12077,7 @@
           "assertEqual": 2
         },
         "test_the_snapshot_cache_already_keys_on_the_very_signals_the_guard_ignores": {
-          "assertIn": 1
+          "assertIn": 2
         },
         "test_two_materially_different_boards_share_one_pick_label": {
           "assertEqual": 1,

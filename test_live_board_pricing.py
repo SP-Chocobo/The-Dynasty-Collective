@@ -42,16 +42,74 @@ LIVE_BUILDERS = ("build_snapshot", "simulate_opponent_picks")
 PRICING_KWARG = "sleeper_projections"
 
 
+#: The sentinel a call gets when it forwards a **mapping this scan could not read. It is a
+#: NAME no real parameter can have, so it satisfies no assertion below and every check reports
+#: the call as missing whatever it was looking for. Silence would make `**anything` a universal
+#: bypass of this whole file.
+UNRESOLVED = "<unresolved **kwargs>"
+
+
+def _mapping_keys(tree: ast.AST, name: str) -> set[str] | None:
+    """The keys of a dict built as `name = dict(k=v, ...)` or `name = {"k": v, ...}`.
+
+    None when the name has no such assignment in this tree, or has more than one -- two
+    assignments mean the keys at the call depend on which ran, and a scan that picked either
+    would be reporting on a call that may not happen. Unknown is reported as unknown.
+    """
+    found = []
+    for node in ast.walk(tree):
+        if not isinstance(node, ast.Assign):
+            continue
+        if not any(isinstance(t, ast.Name) and t.id == name for t in node.targets):
+            continue
+        value = node.value
+        if isinstance(value, ast.Dict):
+            if not all(isinstance(k, ast.Constant) and isinstance(k.value, str)
+                       for k in value.keys):
+                return None          # a computed key is a key this scan cannot name
+            found.append({k.value for k in value.keys})
+        elif (isinstance(value, ast.Call)
+              and getattr(value.func, "id", None) == "dict"
+              and not value.args):
+            if any(kw.arg is None for kw in value.keywords):
+                return None          # dict(**other) -- one more layer than this reads
+            found.append({kw.arg for kw in value.keywords})
+        else:
+            return None
+    return found[0] if len(found) == 1 else None
+
+
 def live_calls(tree: ast.AST) -> list[tuple[str, int, set[str]]]:
-    """(builder name, line, kwargs supplied) for every call to a LIVE_BUILDERS function."""
+    """(builder name, line, kwargs supplied) for every call to a LIVE_BUILDERS function.
+
+    FOLLOWS `**mapping` (#52 phase 7.4). The Draft Room's build_snapshot call now passes one
+    dict that its cache key is derived from at the same time, so the arguments cannot be
+    described one way for the key and another for the call. That is better code and this scan
+    could not read it: `**d` is a keyword whose `arg` is None, so the call presented as having
+    NO kwargs at all and both assertions below failed on a site that was passing the pricing
+    correctly. A scan that made the code worse to stay green would be worth less than no scan.
+
+    A mapping this cannot resolve yields UNRESOLVED rather than nothing, so the call still
+    fails every check. The alternative -- treating an unreadable `**mapping` as satisfying the
+    scan -- would turn the one shape this file cannot see into the one shape a future unpriced
+    site could hide in.
+    """
     out = []
     for node in ast.walk(tree):
         if not isinstance(node, ast.Call):
             continue
         func = node.func
         name = func.attr if isinstance(func, ast.Attribute) else getattr(func, "id", None)
-        if name in LIVE_BUILDERS:
-            out.append((name, node.lineno, {kw.arg for kw in node.keywords if kw.arg}))
+        if name not in LIVE_BUILDERS:
+            continue
+        supplied = {kw.arg for kw in node.keywords if kw.arg}
+        for keyword in node.keywords:
+            if keyword.arg is not None:
+                continue
+            resolved = (_mapping_keys(tree, keyword.value.id)
+                        if isinstance(keyword.value, ast.Name) else None)
+            supplied |= resolved if resolved is not None else {UNRESOLVED}
+        out.append((name, node.lineno, supplied))
     return out
 
 
@@ -100,6 +158,43 @@ class TheScanWouldActuallyCatchAnUnpricedSite(unittest.TestCase):
 
     def test_an_unrelated_call_is_not_matched(self):
         self.assertEqual(live_calls(ast.parse("compute_draft_board(a, b)")), [])
+
+    def test_a_kwarg_forwarded_through_a_dict_is_seen(self):
+        """The shape app.py actually uses. Without this the real scan reported a correctly
+        priced site as unpriced."""
+        tree = ast.parse("d = dict(league=L, sleeper_projections=p, sleeper_basis=b)\n"
+                         "pick_synthesis.build_snapshot(**d)\n")
+        calls = live_calls(tree)
+        self.assertEqual(len(calls), 1)
+        self.assertIn(PRICING_KWARG, calls[0][2])
+        self.assertIn("sleeper_basis", calls[0][2])
+
+    def test_a_dict_literal_is_read_the_same_way(self):
+        tree = ast.parse('d = {"sleeper_projections": p}\n'
+                         "pick_synthesis.build_snapshot(**d)\n")
+        self.assertIn(PRICING_KWARG, live_calls(tree)[0][2])
+
+    def test_a_dict_that_omits_the_pricing_is_still_reported_missing(self):
+        """The non-vacuity arm. Following the dict must not mean accepting every dict -- a
+        forwarding shape that hid an unpriced call would be worse than the scan's blind spot,
+        because it would look like coverage."""
+        tree = ast.parse("d = dict(league=L)\npick_synthesis.build_snapshot(**d)\n")
+        self.assertNotIn(PRICING_KWARG, live_calls(tree)[0][2])
+
+    def test_an_unreadable_mapping_fails_the_scan_rather_than_passing_it(self):
+        """`**anything` must not become a universal bypass. Each of these is a mapping this
+        scan cannot name the keys of, and each must leave the call failing every assertion."""
+        for source in (
+            "pick_synthesis.build_snapshot(**somewhere_else)",          # no assignment here
+            "d = build_it()\npick_synthesis.build_snapshot(**d)",        # not a literal
+            "d = dict(**base)\npick_synthesis.build_snapshot(**d)",      # one layer deeper
+            "d = {k: v}\npick_synthesis.build_snapshot(**d)",            # computed key
+            "d = dict(sleeper_projections=p)\nd = dict(league=L)\n"
+            "pick_synthesis.build_snapshot(**d)",                       # two assignments
+        ):
+            calls = live_calls(ast.parse(source))
+            self.assertEqual(calls[0][2], {UNRESOLVED}, source)
+            self.assertNotIn(PRICING_KWARG, calls[0][2], source)
 
 
 class SimulateOpponentPicksForwardsThePricing(unittest.TestCase):
