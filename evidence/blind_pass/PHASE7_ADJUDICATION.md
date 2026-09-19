@@ -224,9 +224,110 @@ decide what a contested result means; a fourth arriving is the event to catch.
 
 ---
 
+## 7.3 — the `trade_value` branch family *(closed)*
+
+W2-05 reported three symptoms on the `trade_value` fallback branch of `compute_draft_board`:
+`truncated_out` omitted, a 2-row clamp, and a stale `live_starter_demand` stamp. Compared
+structurally rather than patched three times, they are **one omission**.
+
+`compute_draft_board` calls `replacement_levels` twice — once for the half of the pool that
+carries a projection, once for the half that does not, priced on `trade_value` instead. The
+points call was handed a `truncated_out` collector. The trade_value call was not. So when a
+demand rank ran off the end of that branch's priced list, the clamp fired, the level came back
+as the worst row anyone priced, and the row went out carrying the initial
+`live_starter_demand` — because nothing had recorded that the clamp had bound.
+
+`startable_floors` being omitted on the same call is **legitimate and stays omitted**: the
+floors are a startability threshold in projected points, and the branch ranks a 0–100
+trade-value scale, where a points threshold means nothing. `truncated_out` is not like that.
+It records whether a rank ran off the end of a list — a fact about the list, carrying no units
+at all.
+
+### The finding was live, and had been all along
+
+The class that pinned this was called `ATruncatedPoolSaysSoInsteadOfClaimingDemand`, and its
+docstring said **LATENT, NOT LIVE** on the strength of a real measurement: 86 DL, 85 LB and 130
+DB price on the real rulebook, and the clamp binds at no position. That measurement was
+correct — *for the branch that had the collector.* The other branch was never measured, because
+an unwired collector reports nothing, and nothing is exactly what a passing absence assertion
+looks like.
+
+Measured on the real rulebook, after wiring:
+
+| league | rows the `trade_value` branch prices | league demand | clamp |
+|---|---|---|---|
+| 12T 1QB ppr dynasty | **0** — no remaining row carries a trade value | — | binds nowhere |
+| 12T IDP | **2**, both LB | 24 LB starters | **binds** |
+
+So on an IDP board, **every row that branch prices** rests on the bottom of a two-long list
+against a demand for twenty-four, and every one of them said `live_starter_demand` before the
+repair (confirmed by building the same board against `HEAD`'s `draft_room.py`: *Keyshaun
+Elliott* and *Harold Perkins*, both `live_starter_demand`, both `pool_truncated` after).
+
+### The repair
+
+One argument, and a second stamp scoped to `~has_proj` — the two collectors kept separate for
+the reason the sets exist: each branch may only speak about the rows it priced. Merging them
+would let a position clamped on 2 trade-value rows relabel the 85 points-priced rows at the
+same position.
+
+The test the old measurement left behind instructed its successor: *"If this ever fails, the
+pool has thinned and the finding has become active — re-derive, do not delete."* Re-derived
+into three tests:
+
+- **the invariant** — recompute the clamp condition (`rank - 1 > len(at_pos) - 1`) from the
+  league's own demand and a count of what each branch published, and require the board's stamp
+  to name the same **(position, branch) pairs**. Does not consult `truncated_out`: asking the
+  collector would be asking the defect to report itself.
+- **completeness** — no row priced on a clamped branch may still claim live demand.
+- **the census** — the live measurement above, pinned, so a change in it is a decision.
+
+The wiring test now demands `truncated_out` on **every** `replacement_levels` call in
+`compute_draft_board`, not on at least one. Its original form accepted a single wired call, and
+there were two.
+
+### Mutants
+
+Five, all killed — two only after the tests were strengthened, and both survivors were real
+holes:
+
+| mutant | outcome |
+|---|---|
+| the trade_value call loses `truncated_out` (the original defect) | killed ×4 |
+| the tv stamp scoped to `has_proj` | killed ×2 |
+| the tv stamp block deleted | killed ×3 |
+| `rank - 1 > len - 1` loosened to `>=` | **survived**, then killed |
+| the tv stamp unscoped | **survived**, then killed |
+
+The loosened condition flags a rank landing *exactly* on the last priced row — not a clamp:
+`min()` did not move the index, and that player genuinely is the player at replacement rank.
+Neither real board sits on that boundary, so the mutant produced an identical census and
+survived everything. Killed by a unit-level boundary pair (rank 3 against 3 rows: no flag;
+rank 4 against the same 3: flag).
+
+The unscoped stamp survived because the agreement test compared **position sets**, and the
+unscoped stamp reaches the right position on the wrong branch — relabelling 85 LB rows priced
+against 85 real players as "the bottom of a short priced list" while the set stayed `{LB}`.
+This over-reach was written into the source comment as prose and not asserted anywhere; the
+pair-shaped comparison is what actually holds it.
+
+### Collateral
+
+`test_replacement_basis_vocabulary.py` had an `if __name__ == "__main__"` guard in the
+**middle** of the file, with a whole test class defined after it. Under `python -m unittest`
+the module imports fully and the class runs; run directly as
+`python test_replacement_basis_vocabulary.py`, `unittest.main()` fires before the class is
+defined and all nine of its tests are silently uncollected. Guard moved to the end.
+
+Four assertion-floor drops are deliberate and recorded here: `assertNotIn 7 -> 6` and
+`assertTrue 2 -> 1` are the same assertions rewritten as `assertEqual` on a set and on a list
+of offenders, which is a strengthening, not a loss; the vanished test method is the latency
+measurement this section replaced with three.
+
+---
+
 ## Still open in Phase 7
 
-- **7.3** the `trade_value` branch family, compared structurally rather than patched three times
 - **7.4** cache keys — every key must contain every input that can change the result
 - **7.5** state and persistence — `store_io`'s bare `except OSError`, `upload_batches.record`
   returning an id for an unpersisted batch, `outcome_record`'s damaged→absent collapse

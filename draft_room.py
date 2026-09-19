@@ -369,12 +369,22 @@ REPLACEMENT_BASIS_STARTABLE_FLOOR = "startable_floor"
 #: of a short list would rebuild that same defect one layer up" -- and its sibling here clamped
 #: silently and stamped the strongest basis token on the result.
 #:
-#: LATENT, NOT LIVE, and that distinction is the finding. It was reported as active in HEAVY_IDP
-#: (DL rank 24 against 13 priced), but that measurement was taken under #213's one-key rulebook,
-#: where almost no IDP could price at all. Measured on the REAL rulebook: 86 DL, 85 LB and 130
-#: DB price, and the clamp binds at NO position in either a 1QB or an IDP league. So this token
-#: changes no number today; it exists so that if the pool ever thins to where the clamp does
-#: bind, the board says which claim it is making instead of making the strongest one silently.
+#: LIVE, on the trade_value branch. It was first reported as active in HEAVY_IDP (DL rank 24
+#: against 13 priced) under #213's one-key rulebook, where almost no IDP could price at all;
+#: on the REAL rulebook 86 DL, 85 LB and 130 DB price on the POINTS branch, and the clamp
+#: binds at no position there. It was binding on the other branch the whole time. The
+#: trade_value fallback prices the half of the pool with no projection, and it was calling
+#: replacement_levels WITHOUT a collector (W2-05) -- so a rank that ran off the end of a
+#: two-row list was clamped and the row went out stamped `live_starter_demand`, because
+#: nothing recorded that it had been.
+#:
+#: Measured after the repair, on the real rulebook: in a 1QB league the trade_value branch
+#: prices nothing at all, so no rank can run off any list; in a 12-team IDP league it prices
+#: exactly two rows, both LB, against a league starter demand of 24 -- so every row that
+#: branch prices rests on the bottom of a two-long list, and all of them used to claim this
+#: league's starter demand had set the price. test_the_measured_census_of_the_clamp_on_the_
+#: real_rulebook pins that census; the two tests above it are the invariant and survive a
+#: change in it.
 REPLACEMENT_BASIS_POOL_TRUNCATED = "pool_truncated"
 
 #: token -> the words a person reads. Absence (None) is deliberately NOT a key: a row with no
@@ -3335,6 +3345,19 @@ def compute_draft_board(
     # branch entirely, and the stamp below would then reference a name that was never bound --
     # an absence-shaped bug inside the fix for an absence-shaped bug.
     _pool_truncated: set = set()
+    #: THE SAME RECORDING, ON THE OTHER BRANCH (#52 phase 7.3, W2-05). The trade_value branch
+    #: below ranks its own pool for a replacement level exactly as the points branch does, and
+    #: the clamp in replacement_levels (`idx = min(rank - 1, len(at_pos) - 1)`) fires there for
+    #: the same reason -- but it was called without `truncated_out`, so when the rank ran past
+    #: the end of a short priced list nothing recorded it, and the row went out stamped
+    #: `live_starter_demand`: the bottom of a two-row list presented as a player this league's
+    #: starter demand was measured against.
+    #:
+    #: A SEPARATE SET, not the one above, because the two branches price DISJOINT rows
+    #: (`has_proj` against `~has_proj`). Truncation is a property of the list that was ranked,
+    #: so sharing one set would stamp a position truncated in points onto trade-value rows whose
+    #: own list was fine, and the reverse.
+    _tv_truncated: set = set()
     # Bound outside the branch for the same reason as _pool_truncated: the displacement term
     # (#216) reads the points levels after the branch, and a board with no projected rows has
     # none -- an empty dict, not an unbound name.
@@ -3381,7 +3404,15 @@ def compute_draft_board(
 
     if (~has_proj).any():
         no_proj_pool = pool[~has_proj].copy()
-        tv_replacement = replacement_levels(no_proj_pool, "trade_value", roster_positions, num_teams, starter_demand)
+        # `startable_floors` is deliberately NOT passed and that asymmetry is correct: the floors
+        # are a startability threshold in PROJECTED POINTS, and this branch ranks a 0-100
+        # trade-value scale, where a points threshold means nothing. `truncated_out` is not like
+        # that -- it records whether a rank ran off the end of a list, which is a fact about the
+        # list and carries no units at all.
+        tv_replacement = replacement_levels(
+            no_proj_pool, "trade_value", roster_positions, num_teams, starter_demand,
+            truncated_out=_tv_truncated,
+        )
         # Only positions that actually have a trade value to be priced against can NEED the
         # pre-draft anchor. A position where no remaining row carries one is not "exhausted
         # demand" -- it is a position nothing can price at all, and asking for the anchor there
@@ -3426,11 +3457,26 @@ def compute_draft_board(
                  "replacement_basis"] = REPLACEMENT_BASIS_STARTABLE_FLOOR
     # #214/F3, applied AFTER the floor stamp because it is the WEAKEST claim available and must
     # not be overwritten by a stronger one: this position's replacement is the bottom of a short
-    # priced list, not a player anyone measured demand against. Binds at NO position on the real
-    # rulebook today (86 DL, 85 LB, 130 DB price in an IDP league) -- it exists so the board
-    # cannot make the strong claim silently if the pool ever thins to where the clamp does bind.
+    # priced list, not a player anyone measured demand against. Binds at no position on THIS
+    # branch on the real rulebook today (86 DL, 85 LB, 130 DB price in an IDP league); the
+    # branch below is where it does bind.
     if _pool_truncated:
         pool.loc[has_proj & pool["position"].isin(_pool_truncated),
+                 "replacement_basis"] = REPLACEMENT_BASIS_POOL_TRUNCATED
+    # ...and the same stamp for the branch that prices the other half of the pool. THIS is the
+    # branch the clamp actually binds on (W2-05): the trade_value call above was the one call
+    # in this function that never received a collector, so the two LB rows an IDP board prices
+    # off a two-long list against a demand of 24 went out claiming live starter demand. The
+    # omission was invisible to every behavioural test here, because the branch that HAD the
+    # collector produced the evidence and the branch that lacked it produced silence -- which
+    # is exactly what a passing absence assertion looks like.
+    #
+    # Scoped to `~has_proj`, and the two sets kept separate, for the reason the sets exist:
+    # each branch may only speak about the rows it priced. Merging them would let a position
+    # clamped on trade_value stamp the points-priced rows at the same position, which on an
+    # IDP board is 2 rows' fact relabelling 85 rows' price.
+    if _tv_truncated:
+        pool.loc[(~has_proj) & pool["position"].isin(_tv_truncated),
                  "replacement_basis"] = REPLACEMENT_BASIS_POOL_TRUNCATED
     # replacement_basis EXPLAINS a price. A row that got no price has nothing for it to
     # explain, and saying "live_starter_demand" there asserts that this league's starter

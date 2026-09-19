@@ -9782,22 +9782,28 @@
       }
     },
     "test_replacement_basis_vocabulary.py": {
-      "test_methods": 19,
+      "test_methods": 22,
       "asserts": {
-        "assertEqual": 10,
+        "assertEqual": 17,
         "assertGreater": 3,
         "assertIn": 4,
         "assertIsNotNone": 1,
-        "assertNotIn": 7,
-        "assertTrue": 2
+        "assertNotIn": 6,
+        "assertTrue": 1
       },
       "by_method": {
         "test_a_1QB_league_still_prices_QBs_on_demand_and_says_so": {
           "assertEqual": 1,
           "assertGreater": 1
         },
+        "test_a_clamped_position_never_also_claims_live_demand_on_the_same_branch": {
+          "assertEqual": 1
+        },
         "test_a_deep_pool_is_not_flagged": {
           "assertEqual": 1
+        },
+        "test_a_rank_landing_exactly_on_the_last_priced_row_is_not_a_clamp": {
+          "assertEqual": 3
         },
         "test_absence_is_not_a_key": {
           "assertNotIn": 1
@@ -9816,9 +9822,6 @@
         "test_every_token_the_engine_can_emit_has_words": {
           "assertEqual": 1
         },
-        "test_it_binds_at_no_position_on_the_real_board": {
-          "assertNotIn": 1
-        },
         "test_no_NON_QB_row_is_touched_in_either_league": {
           "assertEqual": 1
         },
@@ -9830,7 +9833,8 @@
           "assertGreater": 1
         },
         "test_the_board_actually_hands_the_collector_to_replacement_levels": {
-          "assertTrue": 2
+          "assertEqual": 1,
+          "assertTrue": 1
         },
         "test_the_clamp_is_recorded_when_it_binds": {
           "assertEqual": 2
@@ -9841,12 +9845,18 @@
         "test_the_hand_written_ternary_is_gone": {
           "assertNotIn": 1
         },
+        "test_the_measured_census_of_the_clamp_on_the_real_rulebook": {
+          "assertEqual": 1
+        },
         "test_the_out_parameter_is_optional_so_no_existing_caller_changed": {
           "assertEqual": 1
         },
         "test_the_payload_carries_the_labels": {
           "assertIn": 1,
           "assertNotIn": 1
+        },
+        "test_the_stamp_agrees_with_an_independent_recomputation_of_the_clamp": {
+          "assertEqual": 1
         },
         "test_the_total_basis_carrying_population_is_unchanged_by_the_relabel": {
           "assertEqual": 1
