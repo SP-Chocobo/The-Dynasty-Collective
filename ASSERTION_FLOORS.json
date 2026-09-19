@@ -10816,6 +10816,33 @@
         }
       }
     },
+    "test_rulings_are_not_silently_dropped.py": {
+      "test_methods": 5,
+      "asserts": {
+        "assertGreater": 2,
+        "assertIn": 4,
+        "assertTrue": 2
+      },
+      "by_method": {
+        "test_every_staged_ruling_is_still_actually_unimplemented": {
+          "assertIn": 1
+        },
+        "test_every_staged_ruling_states_why_it_stopped": {
+          "assertGreater": 1
+        },
+        "test_every_staged_ruling_still_has_its_staged_work": {
+          "assertGreater": 1,
+          "assertTrue": 1
+        },
+        "test_the_rulings_are_recorded_where_a_reader_would_look": {
+          "assertIn": 2,
+          "assertTrue": 1
+        },
+        "test_the_seven_rulings_are_all_accounted_for": {
+          "assertIn": 1
+        }
+      }
+    },
     "test_run_out_of_sample_validation.py": {
       "test_methods": 9,
       "asserts": {
