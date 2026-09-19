@@ -417,6 +417,7 @@ later.** Worth knowing before either is built.
 
 | U23 | Where does `acting_now_value` go on the card — and does it displace `forfeit` there? | owner (see §16) |
 | U24 | The necessity tag: keep, re-scope, or retire? | owner, AFTER `W1-07` (see §16) |
+| U26 | The tag LINEUP itself — how many bands, on what axis, against the channels already on the card | **PINNED** for the UI pass (see §16d) |
 | U25 | Does an unpriced row keep rendering as a bare dash, with no kind? | owner (see §16) |
 
 | U22 | Should the tank lock to whole numbers on each band? | **ANSWERED by §14 (owner asked 2026-09-16).** It needs no lock: every player is assigned a band at generation, so allocate the bar to PLAYERS and let bands inherit. The edge then lands on a player boundary by construction and one pick moves it exactly one unit. **Ticks are still forbidden** — drawing per-player marks would hand the reader band sizes, which §14's expansion rule excludes. Holds while `span >= N`; RB resolves at both 260px and 900px. |
@@ -1176,6 +1177,47 @@ the same `positional_forfeit` at 10 through `acting_now_value`. The recorded pre
 removing the survival term collapses the 24% disagreement. **Re-measure after `W1-07`, then
 decide.** Retuning a threshold so STRONG ACTION fires more often is `#56` with a friendlier face
 — the firing rate is an output of a score whose largest movable term is under review.
+
+### 16d. The tag LINEUP — pinned, with the part already measured
+
+*Owner, 2026-09-19: "worth contemplating is the lineup of tags choices can have." Pinned for
+the UI pass rather than answered now.*
+
+The question is not "design a nicer set." The card is not a blank page: `necClass`, `cliffTier`,
+`waitNote`, `flagged`, `forces` and four `*Basis` fields are all categorical channels already on
+the payload. Any new or reshaped vocabulary has to answer for what those already say, or it is
+`#126` wearing a badge.
+
+**What the census established before it is finished** (probe
+`evidence/blind_pass/tag_vocabulary.py`, 8,399 candidate rows of a real post-repair draft):
+
+| channel | populated | distinct | distribution |
+|---|---:|---:|---|
+| `necClass` | 100% | 5 | 5566 / 2447 / 348 / 28 / 10 — **95.4% in two bands** |
+| `cliffTier` | 100% | 3 | 5042 LOW / 2487 HIGH / 870 MEDIUM |
+
+**The card already carries a well-distributed ordinal tag, and it is not the necessity one.**
+`cliffTier` is 100% populated across three bands at roughly 60/30/10; `necClass` spends five
+bands to put 95.4% of its mass in two. A five-band scale whose resolution is two bands is not a
+five-category signal — it is a two-category signal charging five categories' worth of the
+reader's attention.
+
+That reframes U24. The live question is not only whether to retune necessity's thresholds
+(`#56` says not) but **whether a second ordinal urgency vocabulary earns its place beside
+`cliffTier` at all**, and if it does, whether it should be ordinal or name a REASON — the axis
+`forces` already occupies.
+
+**What is NOT yet measured, and the pin should not be read as though it were:**
+
+- `forces` — the list of what fired, which is the existing reason channel. Its census is the
+  thing that decides whether a reason-shaped tag would duplicate it.
+- Whether `necClass` is predictable FROM `forces` and `cliffTier` together. If it is, the card is
+  long on vocabularies rather than short of them, and the answer is subtraction.
+- `waitNote`, `flagged`, and the four `*Basis` fields.
+
+The probe crashed partway through that census (`waitNote` is a dict, and the counter assumed a
+scalar), so everything after `cliffTier` in the table above is absent rather than empty. Stated
+here because a pinned item that looks measured is worse than one that looks open.
 
 ### 16c. An unpriced row still renders as a bare dash
 
