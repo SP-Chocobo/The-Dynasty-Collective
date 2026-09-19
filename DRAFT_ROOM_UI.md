@@ -415,6 +415,10 @@ later.** Worth knowing before either is built.
 | U21 | Where do the freeze-timer controls live? | **WORKING: a settings button beside the Insight eye** (§15). Placement only; U3's substance is still open. |
 | U13 | May the live board poll Sleeper on a timer, or is refresh strictly manual? | **RULED: polling is allowed.** The constraint is *no automatic **paid** API calls*. Sleeper reads are free and uncovered. The refresh button becomes an immediate-update override, not the only mechanism. |
 
+| U23 | Where does `acting_now_value` go on the card — and does it displace `forfeit` there? | owner (see §16) |
+| U24 | The necessity tag: keep, re-scope, or retire? | owner, AFTER `W1-07` (see §16) |
+| U25 | Does an unpriced row keep rendering as a bare dash, with no kind? | owner (see §16) |
+
 | U22 | Should the tank lock to whole numbers on each band? | **ANSWERED by §14 (owner asked 2026-09-16).** It needs no lock: every player is assigned a band at generation, so allocate the bar to PLAYERS and let bands inherit. The edge then lands on a player boundary by construction and one pick moves it exactly one unit. **Ticks are still forbidden** — drawing per-player marks would hand the reader band sizes, which §14's expansion rule excludes. Holds while `span >= N`; RB resolves at both 260px and 900px. |
 
 ### THE UPSIDE-MODE ROWS ARE SUPERSEDED — read §14 before acting on this table
@@ -1109,3 +1113,80 @@ Not dropped. Each needs a decision before the region it belongs to can be built:
 | Where is the commit gesture? | U8 ruled hold-to-lock with a rising bar. Nothing in this layout holds it. |
 | One clock or two? | The sketch shows one (`1:27 remains`). §8 describes two — Sleeper's and the user's freeze timer. |
 | Where does the coverage fraction go? | §14 requires it (an empty tank means *nothing priced*, not *nothing left*). A thin strip has no room for a caption per tank. The freed space under the read-only insight panel is the obvious candidate. |
+
+
+---
+
+## 16. What the ordering repair put on this surface's plate
+
+`#52` phase 8 changed what the board RANKS ON, and three UI questions fall out of it. They are
+one item, not three, because they all answer the same reader question — *why is this player
+first?* — and a card that answers it three times in three vocabularies is worse than one that
+answers it once.
+
+### 16a. The rank now has a number, and the card does not show it
+
+The board is ordered on `acting_now_value = team_acquisition_value − position_next_turn_value`:
+what taking THIS player NOW is worth over taking his position at the next turn. It reaches the
+payload as `actingNow` (with `nextTurnValue` beside it) and **nothing renders it**. Every input
+to the order is on the card; the order's own number is not.
+
+That is the `#186` shape rather than a missing nicety: a surface showing a rank whose reason it
+does not carry invites the reader to reconstruct the reason from what IS shown — and what is
+shown is `tav`, which no longer decides. A reader who sorts the card's own numbers mentally gets
+the OLD board back.
+
+**Hazard, and it is U11's.** U11 ruled *"Forfeit stays on the cards"*, and for the best player
+at a position `acting_now_value` **equals** `positional_forfeit` exactly (measured: Rams 1.05 /
+1.05, Sutton 7.46 / 7.46 — the team terms cancel by construction). So the two fields agree on
+precisely the rows a reader looks at most, and diverge only further down. Printing both without
+saying which is which would be two names for one number at the top of the card and two different
+numbers below it — the worst of both. **U23 is therefore whether `acting_now_value` DISPLACES
+forfeit on the card rather than joining it.** That is a change to a RULED row (U11) and is the
+owner's, not a layout choice.
+
+### 16b. The necessity tag is degenerate where it is read, and contradictory where it is not
+
+Measured over 8,399 candidate rows of a real post-repair draft
+(`evidence/blind_pass/necessity_label_redundancy.py`):
+
+| label | share |
+|---|---:|
+| CLOSE CALL | 66.3% |
+| PREFERRED | 29.1% |
+| LOW | 4.1% |
+| STRONG ACTION | **0.33%** |
+| MUST TAKE | **0.12%** |
+
+It is **not** redundant with the rank on the information test — board rank explains only 10% of
+the label's variation (H 1.141 → 1.025 bits), 3% across the top six. But:
+
+- **95.4% of rows carry one of two labels.** The two that mean *act* fire on 38 of 8,399 rows.
+  A badge that says the same thing nineteen times in twenty teaches its reader to stop seeing it,
+  which is how the 0.45% gets missed. This is the `#174` failure one layer up: not an absence
+  wearing a number's clothes, but a signal wearing a decision's clothes.
+- **22 of those 38 sit on the top-ranked candidate**, where the badge restates the rank.
+- **On 47 of 192 turns (24%) a LOWER-ranked candidate carries a STRONGER label** — at ranks 22,
+  35, 36, 69, 71. On a card showing the head of a ~70-row list that is a contradiction below the
+  fold, not a second opinion. The surface cannot show it and does not say it is there.
+
+**U24 is sequenced, not open-ended.** The score's largest terms are standout (30) and survival
+(20), and survival is the quantity `W1-07` found sourced from a WITHHELD estimate; the rank reads
+the same `positional_forfeit` at 10 through `acting_now_value`. The recorded prediction is that
+removing the survival term collapses the 24% disagreement. **Re-measure after `W1-07`, then
+decide.** Retuning a threshold so STRONG ACTION fires more often is `#56` with a friendlier face
+— the firing rate is an output of a score whose largest movable term is under review.
+
+### 16c. An unpriced row still renders as a bare dash
+
+Carried here from `test_display_contract_boundary`'s own schema-pin comment rather than left in a
+test file: the card renders an unpriced candidate as a dash with no kind, and an unexplained dash
+invites the "he's bad" reading the absence contract exists to refuse. `absence_kind` is computed
+and carried. **U25 is whether the card says which kind of nothing it is showing.**
+
+### What none of this changes
+
+No engine behaviour. Every quantity named here already exists and is already on the payload;
+what is open is which of them a person sees, and what the blanks mean — the same sentence §10
+ends on, and the reason these belong in this document rather than in a commit message.
+
