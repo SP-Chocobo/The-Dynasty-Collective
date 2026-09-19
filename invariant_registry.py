@@ -151,6 +151,41 @@ def _surfaces_consulting_the_withholding_policy() -> list[str]:
     return out
 
 
+def _take_model_consumers() -> list[str]:
+    """Call sites of the take model (`_take_probability` / `_board_take_probability`).
+
+    ONE PICK TAKES ONE PLAYER, so an opponent's take probabilities are mutually exclusive and
+    must sum to <= 1.0 across their board. `#206` established that and normalised the model --
+    for ONE of its two consumers. `positional_forfeits` went on summing the RAW table over each
+    opponent's top five, capped per position, which conserves nothing: four positions each
+    capped at 0.90 permit 3.6 players from a single pick. It returned 22.80 takes from 20 picks
+    on a real board.
+
+    A THIRD consumer is the event to catch. Each one either goes through this model or
+    reimplements it, and the second took years to notice because the model's own docstring
+    already claimed to be its only home.
+    """
+    import ast
+    import pathlib
+    names = {"_take_probability", "_board_take_probability"}
+    out = []
+    for path in sorted(pathlib.Path(".").glob("*.py")):
+        if path.name.startswith("test_"):
+            continue
+        try:
+            tree = ast.parse(path.read_text(encoding="utf-8"))
+        except (SyntaxError, UnicodeDecodeError):
+            continue
+        for node in ast.walk(tree):
+            if not isinstance(node, ast.Call):
+                continue
+            func = node.func
+            name = func.attr if isinstance(func, ast.Attribute) else getattr(func, "id", None)
+            if name in names:
+                out.append(f"{path.name}:{node.lineno}:{name}")
+    return sorted(out)
+
+
 REGISTRY: tuple[Invariant, ...] = (
     Invariant(
         name="team_acquisition_value is universal_value plus the team-specific terms",
@@ -250,6 +285,26 @@ REGISTRY: tuple[Invariant, ...] = (
             "test_withheld_propagation.TheSystemPromptsDoNotInviteItTests",
             "test_withheld_propagation.ThePrytaneumSeedDoesNotCarryItTests",
             "test_withheld_propagation.TheBoardPayloadShipsThePolicyWithTheValueTests",
+        ),
+    ),
+    Invariant(
+        name="expected takes cannot exceed the picks available to take them",
+        claim="An opponent makes ONE pick, so their take probabilities are mutually exclusive "
+              "and normalise to 1.0 across their board; summed over positions and intervening "
+              "picks, expected_taken cannot exceed the pick count.",
+        population="Call sites of the take model. `#206` normalised it and converted ONE of two "
+                   "consumers; the other summed the raw table over a top-5 window with a "
+                   "per-position cap, and returned 22.80 takes from 20 picks. A third consumer "
+                   "either goes through this model or quietly reimplements it.",
+        members=_take_model_consumers,
+        census=4,
+        pinned_by=(
+            "test_draft_strategy.PositionalForfeitsTests"
+            ".test_expected_taken_cannot_exceed_the_picks_available_to_take_them",
+            "test_draft_strategy.PositionalForfeitsTests"
+            ".test_on_a_fully_priced_board_the_takes_sum_to_EXACTLY_the_pick_count",
+            "test_draft_strategy.PositionalForfeitsTests"
+            ".test_both_consumers_of_the_take_table_read_it_through_one_model",
         ),
     ),
 )

@@ -91,9 +91,90 @@ Three readings, none of them mine to pick:
 
 ---
 
+## 7.2 — one normalised take model, one consumer set *(closed)*
+
+**J-03 and K-02, found independently.** `#206` established the conservation law — an opponent
+makes ONE pick, so their take probabilities are mutually exclusive and must sum to ≤ 1.0 across
+their board — called it *"arithmetic, not a tuned number"*, and normalised the model. **It was
+applied to one of two consumers.**
+
+`positional_forfeits` went on summing the RAW table over each opponent's top five, capped at
+`RUN_TAKE_PROBABILITY_CAP` **per position**. Capping per position conserves nothing: four
+positions each capped at 0.90 permit **3.6 players from a single pick**.
+
+Measured on a real superflex board, five consecutive turns:
+
+| turn | expected takes / picks | |
+|---|---:|---|
+| 0 | 22.00 / 22 | conserves **by coincidence** — RB saturating at 0.90 × 22 = 19.80 |
+| 1 | 22.80 / 20 | **impossible** |
+| 2 | 21.78 / 18 | **impossible** |
+| 3 | 19.36 / 16 | **impossible** |
+| 4 | 16.94 / 14 | **impossible** |
+
+The same run assigned **TE 0.00 on every turn** and QB 0.00 on two, in a superflex league — and
+`pick_debate` renders an exactly-zero forfeit as *"Cost of delaying QB entirely: measured 0"*, the
+strongest evidence for waiting, while survival (which says those QBs are gone) is withheld (J-04).
+
+### Four variants measured, not argued
+
+| | turn 0 | QB | RB | WR | TE |
+|---|---:|---:|---:|---:|---:|
+| **A** raw, top-5, capped *(shipped)* | 22.00 / 22 | 0.00 | 19.80 | 2.20 | 0.00 |
+| **B** normalised, top-5 | 1.19 / 22 | 0.00 | 1.09 | 0.10 | 0.00 |
+| **C** normalised, all priced ✅ | 10.52 / 22 | 0.82 | 3.48 | 3.96 | 2.26 |
+| **D** normalised, all + unpriced | 22.00 / 22 | 2.90 | 5.68 | 8.59 | 4.83 |
+
+**B** is the same defect inverted — `#206` measured the five named keys at 1.21 of a 23.49 board
+total, so the floor-weighted tail *is* the signal, and keeping the cut reports barely one take
+across 22 picks. **D** conserves with equality because it counts every take, but over half a
+board's mass sits on unpriced rows and step 2 walks the **priced** curve; counting an unpriced
+take against it claims a priced player was removed when none was.
+
+**C ships.** The shortfall from the pick count is the expected number of unpriced takes — which is
+information, not error. Verified on the shipped function across **27 turns: zero conservation
+violations, and no zero-take position anywhere** — J-04 closed as a consequence.
+
+`FORFEIT_OPPONENT_BOARD_DEPTH` is **deleted**, not left unreferenced: a constant nothing reads is
+a claim nothing checks.
+
+### The tests that were about the old model
+
+- `test_the_forfeit_depth_and_the_take_probability_table_stay_coupled` guarded a divergence
+  between two `.get()` defaults (`0.0` vs the floor). Unification **removes** that divergence
+  rather than checking it, so the replacement pins the unification — strictly stronger, since
+  there is no second default left to drift.
+- `test_forfeit_board_depth_matches_the_take_probability_table` asserted the cut matches the
+  table's depth, because *"ranks past it carry only the flat floor and would add noise, not
+  signal"*. True of the raw table, false of the normalised one. Inverted to the measurement that
+  made the cut indefensible.
+- The round-boundary test's fixture sat on the raw sum of 1.5; under normalisation it reports
+  1.24. Its **claim** — accumulation order does not move the answer — is untouched and kept, and
+  the ulp-stability property moved onto `_curve_at` directly, where it lives and where it will
+  survive the next model change.
+- `test_survival_evidence`'s depth-window assertion restated without the window: `rank_by_id` is
+  a valuation ordinal over priced rows, so an unpriced row must not appear in it **at all**.
+
+### Two of my own errors, both caught by the tests I was writing
+
+1. A guessed "40-row tail" in the replacement assertion failed — 40 × 0.02 = 0.80 is *less* than
+   the named keys' 1.21. Replaced with the derived **crossover** (`named / floor` ≈ 61 rows),
+   which is checkable and needs no invented row count.
+2. The conservation test failed at `3.01 > 3`. Not the law — the per-position `round(…, 2)`, which
+   over P positions can inflate the sum by `P × 0.005`. The tolerance is now that quantity,
+   derived and stated, rather than a fudge.
+
+Mutants killed: revert to the raw table with the per-position cap, drop the normaliser, and
+**restore the top-5 window**. The third survived the first round — an upper bound is satisfied by
+any model that undercounts — until the **equality** case was added: on a fully priced board the
+takes sum to *exactly* the pick count, which no window can pass.
+
+Registered as the seventh invariant, population = take-model call sites (4).
+
+---
+
 ## Still open in Phase 7
 
-- **7.2** take models — `expected_taken` summing to 23.32 over 22 picks
 - **7.3** the `trade_value` branch family, compared structurally rather than patched three times
 - **7.4** cache keys — every key must contain every input that can change the result
 - **7.5** state and persistence — `store_io`'s bare `except OSError`, `upload_batches.record`

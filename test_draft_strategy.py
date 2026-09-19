@@ -8,6 +8,8 @@ bug is exactly the kind that reappears silently after a future edit if nothing a
 wall-clock time directly.
 """
 
+import inspect
+import math
 import time
 import unittest
 
@@ -397,7 +399,7 @@ class PositionalForfeitsTests(unittest.TestCase):
         import itertools
         ranks_with_target = (1, 2, 4)
         rows = []
-        for r in range(1, ds.FORFEIT_OPPONENT_BOARD_DEPTH + 1):
+        for r in range(1, max(ds.RANK_TAKE_PROBABILITY) + 1):
             rows.append((f"p{r}", "QB" if r in ranks_with_target else "RB", 100.0 - r))
         raw_sums = set()
         for perm in itertools.permutations(ranks_with_target):
@@ -442,7 +444,7 @@ class PositionalForfeitsTests(unittest.TestCase):
 
         def board_with_qb_at(target_ranks):
             rows = []
-            for r in range(1, ds.FORFEIT_OPPONENT_BOARD_DEPTH + 1):
+            for r in range(1, max(ds.RANK_TAKE_PROBABILITY) + 1):
                 pos = "QB" if r in target_ranks else "RB"
                 rows.append({"player_id": f"p{r}", "position": pos,
                              "final_score": 100.0 - r, "universal_value": 100.0 - r})
@@ -460,13 +462,35 @@ class PositionalForfeitsTests(unittest.TestCase):
             d = ds.positional_forfeits(curves, boards, order)["QB"]
             forfeits.add(d["forfeit"])
             reported.add(d["expected_taken"])
-        self.assertEqual(reported, {1.5})
+        # THE CLAIM, UNTOUCHED BY THE MODEL CHANGE (#52 phase 7.2): accumulation order does not
+        # move the answer. Under round() the two orders returned forfeits of 20.0 and 10.0 while
+        # both REPORTED the same expected_taken, so the surfaced explanation could not
+        # distinguish them. That is the defect. The raw fixture still sums to the 1.5 boundary,
+        # which is what makes it adversarial and is asserted above -- but positional_forfeits
+        # now reads the NORMALISED model, so what it reports off this fixture is 1.24, not 1.5.
+        # The exact value is the fixture; the invariance is the claim.
+        self.assertEqual(len(reported), 1,
+                         f"accumulation order changes the reported take: {sorted(reported)}")
         self.assertEqual(len(forfeits), 1,
                          f"accumulation order still changes the forfeit: {sorted(forfeits)}")
-        # Halfway between curve[1]=70 and curve[2]=60, so 80 - 65 = 15.0. Stated as arithmetic
-        # rather than as a recorded output, so the test would catch a curve read that happened
-        # to be stable but wrong.
-        self.assertEqual(forfeits, {15.0})
+
+    def test_the_curve_read_is_stable_across_a_one_ulp_step_at_a_rounding_boundary(self):
+        """The mechanism itself, tested where it lives and independently of the take model.
+
+        The test above can only reach the boundary while the take model happens to put it
+        there, and #52 phase 7.2 moved the model, which moved the fixture off 1.5. The property
+        being defended is a property of the CURVE READ: a 1ulp difference in the index may move
+        the output by about 1ulp, never by a curve step. Asserted directly, so it survives the
+        next model change too."""
+        curve = [80.0, 70.0, 60.0, 55.0]
+        at = ds._curve_at(curve, 1.5)
+        # Halfway between curve[1]=70 and curve[2]=60. Stated as arithmetic rather than as a
+        # recorded output, so this catches a curve read that is stable but wrong.
+        self.assertEqual(at, 65.0)
+        for neighbour in (math.nextafter(1.5, 0.0), math.nextafter(1.5, 2.0)):
+            self.assertLess(abs(ds._curve_at(curve, neighbour) - at), 1e-9,
+                            "a one-ulp step in the index moved the curve read by a real amount "
+                            "-- the round() boundary is back")
 
     def test_a_fractional_expectation_is_not_quantised_to_a_whole_player(self):
         """THE DEFECT #86 ACTUALLY FIXED, and it is not the float-noise one the appendix led
@@ -513,29 +537,134 @@ class PositionalForfeitsTests(unittest.TestCase):
         self.assertEqual(ds._curve_at(curve, -5.0), curve[0])
         self.assertEqual(ds._curve_at([], 1.0), 0.0)
 
-    def test_the_forfeit_depth_and_the_take_probability_table_stay_coupled(self):
-        """positional_forfeits reads RANK_TAKE_PROBABILITY.get(rank, 0.0) while
-        _take_probability reads RANK_TAKE_PROBABILITY.get(rank, RANK_TAKE_PROBABILITY_FLOOR).
-        The two defaults differ, and that is correct -- the forfeit sum deliberately excludes
-        ranks past its depth ('ranks past it carry only the floor probability, which would add
-        noise, not signal, to a position-level estimate'), so 0.0 is the intended value there.
+    def test_expected_taken_cannot_exceed_the_picks_available_to_take_them(self):
+        """THE CONSERVATION LAW, which nothing checked (#52 phase 7.2; J-03 and K-02 found it
+        independently). One pick takes exactly one player, so summed over positions and over
+        intervening picks, expected_taken cannot exceed the number of picks.
 
-        The 0.0 is only unreachable while FORFEIT_OPPONENT_BOARD_DEPTH stays inside the table.
-        Nothing enforced that coupling; this does. Raise the depth without extending the table
-        and ranks past it would pass the filter and contribute a silent 0.0 -- an absent value
-        spelled as a number, which is the one thing this codebase's absence contract forbids."""
-        self.assertLessEqual(
-            ds.FORFEIT_OPPONENT_BOARD_DEPTH, max(ds.RANK_TAKE_PROBABILITY),
-            "FORFEIT_OPPONENT_BOARD_DEPTH now reaches past RANK_TAKE_PROBABILITY's keys; ranks "
-            "beyond the table would silently contribute 0.0 to expected_taken while "
-            "_take_probability gives them RANK_TAKE_PROBABILITY_FLOOR",
-        )
-        # And the ranks that can actually reach the lookup are all real keys, so the default
-        # never fires today. Ranks are assigned as i+1 over priced rows, hence >= 1.
-        reachable = range(1, ds.FORFEIT_OPPONENT_BOARD_DEPTH + 1)
-        missing = [r for r in reachable if r not in ds.RANK_TAKE_PROBABILITY]
-        self.assertEqual(missing, [],
-                         f"ranks {missing} can reach the forfeit sum with no table entry")
+        The old model capped at RUN_TAKE_PROBABILITY_CAP PER POSITION, which conserves nothing:
+        four positions each capped at 0.90 permit 3.6 players from a single pick. Measured on a
+        real superflex board across five consecutive turns it returned 22.80/20, 21.78/18,
+        19.36/16 and 16.94/14 -- arithmetically impossible -- while turn 0's 22.00/22 conserved
+        only by coincidence, RB saturating at 0.90 x 22.
+
+        Built on a hand-made board where the bound is checkable by eye, so this does not depend
+        on a capture; the same law is measured against real boards in the evidence run."""
+        positions = ("QB", "RB", "WR", "TE")
+        rows = []
+        for i in range(40):
+            rows.append({"player_id": f"p{i}", "position": positions[i % 4],
+                         "final_score": 100.0 - i, "universal_value": 100.0 - i})
+        board = {"by_id": {r["player_id"]: r for r in rows},
+                 "rank_by_id": {r["player_id"]: i + 1 for i, r in enumerate(rows)},
+                 "unpriced_ids": set()}
+        curves = {p: [100.0 - j for j in range(10)] for p in positions}
+        for n_picks in (1, 3, 8, 20):
+            intervening = [str(i) for i in range(2, 2 + n_picks)]
+            boards = {r: board for r in intervening}
+            out = ds.positional_forfeits(curves, boards, intervening)
+            total = sum(v["expected_taken"] for v in out.values())
+            # The tolerance is the REPORTING precision, derived rather than chosen: each
+            # position's expected_taken is rounded to 2dp for display, so a sum over P positions
+            # can exceed the true total by up to P x 0.005. Measured at 3 picks: 3.01. The law
+            # holds on the unrounded quantity; this is the most it can be obscured by.
+            slack = 0.005 * len(out)
+            with self.subTest(picks=n_picks):
+                self.assertLessEqual(
+                    total, n_picks + slack,
+                    f"{total:.2f} players expected taken from {n_picks} pick(s) -- beyond what "
+                    f"2dp rounding over {len(out)} positions can account for ({slack:.3f})")
+                # Non-vacuity in the other direction: a model that returns zero everywhere also
+                # satisfies the bound, and that is the failure mode the top-5 cut produced.
+                self.assertGreater(total, 0.0, "nothing is ever expected to be taken")
+
+    def test_on_a_fully_priced_board_the_takes_sum_to_EXACTLY_the_pick_count(self):
+        """The equality case, and the one that catches a window.
+
+        Conservation as an inequality is satisfied by any model that undercounts, including the
+        one this replaced in the other direction: normalising but keeping the old top-5 cut
+        reports **1.19 expected takes across 22 picks**, because `#206` measured the five named
+        keys at 1.21 of a 23.49 board total and the floor-weighted tail carries the rest. An
+        upper bound cannot see that, and a lower bound would be a threshold nobody derived.
+
+        The equality is derived and needs no constant: the model normalises over the WHOLE
+        board, so if every row is priced, the probabilities of one pick sum to exactly 1.0
+        across all positions -- that pick takes somebody. Over N picks the total is N. Any row
+        the sum skips, for any reason, shows up here immediately.
+
+        On a real board the total is strictly less, and the shortfall is the expected number of
+        UNPRICED takes -- which is why this fixture prices everything."""
+        positions = ("QB", "RB", "WR", "TE")
+        rows = [{"player_id": f"p{i}", "position": positions[i % 4],
+                 "final_score": 100.0 - i, "universal_value": 100.0 - i} for i in range(40)]
+        board = {"by_id": {r["player_id"]: r for r in rows},
+                 "rank_by_id": {r["player_id"]: i + 1 for i, r in enumerate(rows)},
+                 "unpriced_ids": set()}
+        self.assertEqual(board["unpriced_ids"], set(), "the equality needs a fully priced board")
+        curves = {p: [100.0 - j for j in range(10)] for p in positions}
+        for n_picks in (1, 4, 11):
+            intervening = [str(i) for i in range(2, 2 + n_picks)]
+            out = ds.positional_forfeits(curves, {r: board for r in intervening}, intervening)
+            total = sum(v["expected_taken"] for v in out.values())
+            with self.subTest(picks=n_picks):
+                self.assertAlmostEqual(
+                    total, float(n_picks), delta=0.005 * len(out),
+                    msg=f"{total:.2f} of {n_picks} pick(s) accounted for -- the sum is skipping "
+                        f"board rows, which is what a depth window does")
+
+    def test_no_position_on_a_full_board_is_expected_to_lose_nobody(self):
+        """The consequence the chairs were shown. With the raw table capped per position, RB
+        saturated and starved the rest: measured on a real superflex board, TE came back 0.00
+        on every one of five turns and QB on two -- and pick_debate renders an exactly-zero
+        forfeit as "Cost of delaying QB entirely: measured 0", the strongest evidence for
+        waiting, while survival (which says those QBs are gone) is withheld."""
+        positions = ("QB", "RB", "WR", "TE")
+        rows = []
+        for i in range(40):
+            rows.append({"player_id": f"p{i}", "position": positions[i % 4],
+                         "final_score": 100.0 - i, "universal_value": 100.0 - i})
+        board = {"by_id": {r["player_id"]: r for r in rows},
+                 "rank_by_id": {r["player_id"]: i + 1 for i, r in enumerate(rows)},
+                 "unpriced_ids": set()}
+        curves = {p: [100.0 - j for j in range(10)] for p in positions}
+        intervening = [str(i) for i in range(2, 12)]
+        out = ds.positional_forfeits(curves, {r: board for r in intervening}, intervening)
+        self.assertEqual(sorted(out), sorted(positions), "a position vanished from the report")
+        for position, data in sorted(out.items()):
+            with self.subTest(position=position):
+                self.assertGreater(
+                    data["expected_taken"], 0.0,
+                    f"{position} is on every rival board and is expected to lose nobody across "
+                    f"{len(intervening)} picks")
+
+    def test_both_consumers_of_the_take_table_read_it_through_one_model(self):
+        """REPLACES `test_the_forfeit_depth_and_the_take_probability_table_stay_coupled`, and
+        the replacement is the point (#52 phase 7.2).
+
+        That test existed because the two consumers read the table with DIFFERENT defaults --
+        `positional_forfeits` took `.get(rank, 0.0)` and `_take_probability` took
+        `.get(rank, RANK_TAKE_PROBABILITY_FLOOR)` -- and it guarded the coupling that kept the
+        0.0 unreachable. The divergence is now REMOVED rather than guarded: both consumers go
+        through `_take_probability`, which is the body of `_board_take_probability`, the home
+        the take model's own docstring already claimed to be ("there is exactly ONE take model
+        in production and this is its only home"). That claim was false for as long as this
+        second consumer existed beside it.
+
+        What is pinned now is the unification, which is stronger than the coupling it replaces:
+        there is no second default left to drift."""
+        self.assertFalse(
+            hasattr(ds, "FORFEIT_OPPONENT_BOARD_DEPTH"),
+            "the depth cut is back -- the forfeit sum is reading a window of the board again")
+        source = inspect.getsource(ds.positional_forfeits)
+        self.assertIn("_take_probability(", source,
+                      "positional_forfeits stopped reading the shared take model")
+        self.assertNotIn("RANK_TAKE_PROBABILITY.get(", source,
+                         "positional_forfeits is reading the raw table directly again")
+        # ...and the shared model's default for an untabulated rank is the floor, never a
+        # silent 0.0, which is an absence spelled as a number.
+        beyond = max(ds.RANK_TAKE_PROBABILITY) + 1
+        self.assertEqual(ds._take_weight(beyond, False), ds.RANK_TAKE_PROBABILITY_FLOOR)
+        self.assertGreater(ds.RANK_TAKE_PROBABILITY_FLOOR, 0.0)
 
     def test_expected_taken_walk_is_clamped_to_the_curves_own_length(self):
         # Ten RB-hungry opponents against a 2-player RB curve: the walk can't fall off the
@@ -748,12 +877,31 @@ class TakeProbabilityTableStructureTests(unittest.TestCase):
         survives_one = 1.0 - ds.RANK_TAKE_PROBABILITY_FLOOR
         self.assertGreater(survives_one ** 11, 0.5)
 
-    def test_forfeit_board_depth_matches_the_take_probability_table(self):
-        # FORFEIT_OPPONENT_BOARD_DEPTH's own comment states this: it consults exactly as many
-        # of an opponent's board ranks as the take-probability table actually distinguishes,
-        # because ranks past it carry only the flat floor and would add noise, not signal.
-        # The two drifting apart is silent -- both remain plausible numbers on their own.
-        self.assertEqual(ds.FORFEIT_OPPONENT_BOARD_DEPTH, max(ds.RANK_TAKE_PROBABILITY))
+    def test_the_tail_past_the_table_is_where_most_of_a_boards_mass_lives(self):
+        """WITHDRAWN AND INVERTED (#52 phase 7.2). This asserted FORFEIT_OPPONENT_BOARD_DEPTH
+        equals the table's depth, on the reasoning that "ranks past it carry only the flat floor
+        and would add noise, not signal".
+
+        That is true of the RAW table and false of the normalised one, which is the only model
+        left. `#206` measured a real board at 23.49 total weight, of which the five named keys
+        were 1.21 -- so the floor-weighted tail is not noise, it is 95% of the signal, and
+        cutting at the table's depth reports 1.19 expected takes across 22 picks. The constant
+        is deleted; what replaces this is the measurement that made the cut indefensible."""
+        # DERIVED, not a guessed row count. The first version of this assertion picked 40 tail
+        # rows out of the air and failed, because 40 x 0.02 = 0.80 is less than the named keys'
+        # 1.21 -- which was my arithmetic being wrong, not the claim. The honest quantity is the
+        # CROSSOVER: how many floor-weighted rows it takes to outweigh the named keys at all.
+        named = sum(ds.RANK_TAKE_PROBABILITY.values())
+        crossover = named / ds.RANK_TAKE_PROBABILITY_FLOOR
+        # A real opponent board carries on the order of a thousand rows (#206 measured 23.49
+        # total weight against named 1.21, tail 9.52 and unpriced 12.76), so a crossover this
+        # low means the tail dominates on every board the engine has ever built.
+        self.assertLess(
+            crossover, 100,
+            f"it now takes {crossover:.0f} floor rows to outweigh the {len(ds.RANK_TAKE_PROBABILITY)} "
+            f"named keys ({named}); the tail may no longer dominate a real board, so the depth "
+            f"cut may be defensible again and this test is the place to re-argue it")
+        self.assertGreater(crossover, 1, "the floor alone outweighs the whole named table")
 
 
 if __name__ == "__main__":

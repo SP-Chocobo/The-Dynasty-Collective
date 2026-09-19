@@ -5201,16 +5201,19 @@
       }
     },
     "test_draft_strategy.py": {
-      "test_methods": 51,
+      "test_methods": 55,
       "asserts": {
-        "assertAlmostEqual": 9,
-        "assertEqual": 48,
-        "assertGreater": 8,
+        "assertAlmostEqual": 10,
+        "assertEqual": 49,
+        "assertFalse": 1,
+        "assertGreater": 12,
         "assertGreaterEqual": 3,
+        "assertIn": 1,
         "assertIsNone": 9,
         "assertIsNotNone": 1,
-        "assertLess": 6,
+        "assertLess": 8,
         "assertLessEqual": 5,
+        "assertNotIn": 1,
         "assertTrue": 1
       },
       "by_method": {
@@ -5237,6 +5240,13 @@
         "test_an_untabulated_rank_is_less_likely_than_the_worst_tabulated_one": {
           "assertLess": 1
         },
+        "test_both_consumers_of_the_take_table_read_it_through_one_model": {
+          "assertEqual": 1,
+          "assertFalse": 1,
+          "assertGreater": 1,
+          "assertIn": 1,
+          "assertNotIn": 1
+        },
         "test_deficit_shrinks_as_actual_drafting_catches_up_to_the_convention": {
           "assertLess": 1
         },
@@ -5249,15 +5259,16 @@
         "test_even_rounds_reverse_for_snake": {
           "assertEqual": 1
         },
+        "test_expected_taken_cannot_exceed_the_picks_available_to_take_them": {
+          "assertGreater": 1,
+          "assertLessEqual": 1
+        },
         "test_expected_taken_walk_is_clamped_to_the_curves_own_length": {
           "assertEqual": 1
         },
         "test_finds_the_next_occurrence_after_the_given_index": {
           "assertEqual": 1,
           "assertGreater": 1
-        },
-        "test_forfeit_board_depth_matches_the_take_probability_table": {
-          "assertEqual": 1
         },
         "test_hazard_rises_across_successive_intervening_picks_within_one_computation": {
           "assertEqual": 1,
@@ -5287,6 +5298,10 @@
         "test_no_intervening_picks_means_no_forfeit_signal_at_all": {
           "assertEqual": 1
         },
+        "test_no_position_on_a_full_board_is_expected_to_lose_nobody": {
+          "assertEqual": 1,
+          "assertGreater": 1
+        },
         "test_no_run_when_positions_are_mixed": {
           "assertIsNone": 1
         },
@@ -5310,6 +5325,10 @@
         },
         "test_odd_rounds_keep_the_given_order": {
           "assertEqual": 2
+        },
+        "test_on_a_fully_priced_board_the_takes_sum_to_EXACTLY_the_pick_count": {
+          "assertAlmostEqual": 1,
+          "assertEqual": 1
         },
         "test_opportunity_cost_is_zero_when_survival_is_certain": {
           "assertEqual": 2
@@ -5359,17 +5378,21 @@
         "test_the_curve_read_is_monotone_and_clamped_to_real_players": {
           "assertEqual": 4
         },
-        "test_the_forfeit_depth_and_the_take_probability_table_stay_coupled": {
+        "test_the_curve_read_is_stable_across_a_one_ulp_step_at_a_rounding_boundary": {
           "assertEqual": 1,
-          "assertLessEqual": 1
+          "assertLess": 1
         },
         "test_the_round_boundary_IS_GONE_and_float_noise_no_longer_decides": {
           "assertAlmostEqual": 1,
-          "assertEqual": 3
+          "assertEqual": 2
         },
         "test_the_table_falls_off_monotonically_by_rank": {
           "assertEqual": 1,
           "assertGreater": 1
+        },
+        "test_the_tail_past_the_table_is_where_most_of_a_boards_mass_lives": {
+          "assertGreater": 1,
+          "assertLess": 1
         },
         "test_three_of_four_same_position_is_a_run": {
           "assertEqual": 1
@@ -11705,7 +11728,7 @@
         "assertIsNone": 3,
         "assertIsNotNone": 2,
         "assertLess": 2,
-        "assertTrue": 9
+        "assertTrue": 11
       },
       "by_method": {
         "test_a_priced_target_still_draws_real_ranks_and_above_floor_risk": {
@@ -11738,7 +11761,8 @@
           "assertLess": 1
         },
         "test_no_unpriced_row_can_contribute_to_expected_taken": {
-          "assertEqual": 1
+          "assertEqual": 1,
+          "assertTrue": 2
         },
         "test_rank_by_id_contains_no_unpriced_row": {
           "assertEqual": 1

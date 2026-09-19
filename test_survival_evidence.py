@@ -352,20 +352,27 @@ class PricedBehaviourIsUnchangedTests(_LateBoardFixture):
 
 
 class ForfeitReadsTheSameRegisterTests(_LateBoardFixture):
-    """The second consumer of rank_by_id. expected_positional_forfeit sums
-    RANK_TAKE_PROBABILITY over every row inside FORFEIT_OPPONENT_BOARD_DEPTH -- the same
-    table, the same register error, and it is fixed by the same change rather than
-    separately."""
+    """The second consumer of rank_by_id -- which, since #52 phase 7.2, reads the SAME take
+    model as the first rather than the raw table over a top-N window."""
 
     def test_no_unpriced_row_can_contribute_to_expected_taken(self):
+        """Stated without the window (#52 phase 7.2). This asked whether an unpriced row sits
+        inside FORFEIT_OPPONENT_BOARD_DEPTH, and that constant is gone -- positional_forfeits
+        now sums the normalised probability over every priced row of the position. The claim
+        underneath never depended on the window: `rank_by_id` is a VALUATION ordinal built over
+        priced rows only, so an unpriced row must not appear in it at ALL. Asserting that
+        directly is both simpler and stronger than asserting it of a prefix."""
         _, unpriced = self._split()
         unpriced_ids = {r["player_id"] for r in unpriced}
+        self.assertTrue(unpriced_ids, "no unpriced rows in this fixture -- nothing is proven")
         for roster_id, board in self.boards.items():
-            inside_depth = {pid for pid, rank in board["rank_by_id"].items()
-                            if rank <= ds.FORFEIT_OPPONENT_BOARD_DEPTH}
-            self.assertEqual(inside_depth & unpriced_ids, set(),
-                             f"roster {roster_id}: an unpriced row sits inside the forfeit "
-                             "window and is being read as a top-of-board valuation")
+            ranked = set(board["rank_by_id"])
+            self.assertEqual(ranked & unpriced_ids, set(),
+                             f"roster {roster_id}: an unpriced row carries a valuation ordinal "
+                             "and is being read as a top-of-board rank")
+            # ...and they are declared separately rather than dropped, so a consumer can still
+            # see them and say they could not be priced.
+            self.assertTrue(unpriced_ids & set(board.get("unpriced_ids", ())))
 
 
 if __name__ == "__main__":

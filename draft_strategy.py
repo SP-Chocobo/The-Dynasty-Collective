@@ -253,11 +253,13 @@ def _pace_based_take_probability(
     return any_pick_probability / target_rank
 
 
-# positional_forfeits: how many of an opponent's top-N board ranks are consulted when
-# estimating "will this opponent's next pick go to position P" -- matches
-# RANK_TAKE_PROBABILITY's own depth (ranks past it carry only the floor probability, which
-# would add noise, not signal, to a position-level estimate).
-FORFEIT_OPPONENT_BOARD_DEPTH = 5
+# FORFEIT_OPPONENT_BOARD_DEPTH WAS HERE AND IS DELETED (#52 phase 7.2), rather than left
+# unreferenced. It bounded how many of an opponent's top ranks positional_forfeits consulted,
+# on the reasoning that "ranks past it carry only the floor probability, which would add noise,
+# not signal". That was true of the RAW table and false of the normalised one: `#206` measured
+# the five named keys at 1.21 of a 23.49 board total, so the tail IS the signal. Keeping the
+# cut under normalisation reports 1.19 expected takes across 22 picks. A constant nothing reads
+# is a claim nothing checks, and this repository has already paid for carrying one.
 
 
 def _curve_at(curve: list[float], taken: float) -> float:
@@ -313,6 +315,7 @@ def _curve_at(curve: list[float], taken: float) -> float:
 
 def positional_forfeits(
     position_curves: dict[str, list[float]], opponent_boards: dict, intervening: list,
+    run_position: Optional[str] = None,
 ) -> dict[str, dict]:
     """Per position: the expected POSITION-LEVEL cost of delaying that position entirely
     until the user's next pick -- {"expected_taken", "forfeit", "best_now"} -- the one
@@ -327,10 +330,47 @@ def positional_forfeits(
 
     Two steps per position P, both from data this module already computes:
       1. expected_taken: for each intervening pick, the probability it goes to position P at
-         all -- the sum of RANK_TAKE_PROBABILITY over the P-players in that opponent's own
-         top FORFEIT_OPPONENT_BOARD_DEPTH board ranks (their board, their needs -- same
-         principle as estimate_survival), capped at RUN_TAKE_PROBABILITY_CAP per pick;
-         summed across every intervening pick.
+         all -- the sum of the NORMALISED take probability over that opponent's own priced
+         P-players (their board, their needs -- the same model estimate_survival uses, through
+         the same seam); summed across every intervening pick.
+
+    ONE NORMALISED MODEL, ONE CONSUMER SET (#52 phase 7.2; found independently as J-03 and
+    K-02). `#206` established that a team makes ONE pick, so their take probabilities are
+    mutually exclusive and must sum to <= 1.0 across their board -- an arithmetic constraint,
+    not a calibration, which is why `#56` is not engaged. It normalised the model and applied
+    it to `estimate_survival`. THIS CONSUMER WAS NOT CONVERTED, and went on summing the RAW
+    table over each opponent's top five, capped per position per pick.
+
+    Capping PER POSITION does not conserve anything: four positions each capped at 0.90 permit
+    3.6 players from one pick. Measured on a real superflex board across five consecutive
+    turns, expected_taken summed against the picks available:
+
+        turn 0   22.00 / 22      turn 1   22.80 / 20      turn 2   21.78 / 18
+        turn 3   19.36 / 16      turn 4   16.94 / 14
+
+    Four of five are arithmetically impossible, and turn 0 conserves by coincidence -- RB
+    saturating the cap at 0.90 x 22 = 19.80. The same run assigned TE **0.00 on every turn**
+    and QB 0.00 on two, in a SUPERFLEX league; `pick_debate` renders that to the chairs as
+    "Cost of delaying QB entirely: measured 0 -- the best remaining QB at your next pick is
+    expected to be no worse than now", while survival (which says those QBs are gone) is
+    withheld. A number that cannot be right was the strongest evidence for waiting.
+
+    WHY ALL PRICED ROWS AND NOT THE TOP FIVE. The depth cut existed because the raw table's
+    tail carried "only the floor probability, which would add noise, not signal". Under
+    normalisation the tail is real mass, and most of it: `#206` measured the named five keys at
+    1.21 of a 23.49 total. Keeping the cut and normalising gives **1.19 expected takes across
+    22 picks** -- the same defect inverted. Measured, the four variants:
+
+        A raw, top-5, capped        22.00 / 22   QB 0.00  RB 19.80  WR 2.20  TE 0.00
+        B normalised, top-5          1.19 / 22   QB 0.00  RB  1.09  WR 0.10  TE 0.00
+        C normalised, all priced    10.52 / 22   QB 0.82  RB  3.48  WR 3.96  TE 2.26
+        D normalised, all + unpriced 22.00 / 22  QB 2.90  RB  5.68  WR 8.59  TE 4.83
+
+    C is what ships, and D is why: D conserves with equality because it counts every take, but
+    over half a board's mass sits on rows the engine could not price, and step 2 walks the
+    PRICED curve. Counting an unpriced take against a priced curve claims a priced player was
+    removed when none was. C counts what the curve can actually lose, and the shortfall from
+    the pick count IS the expected number of unpriced takes -- which is information, not error.
       2. forfeit: walk position P's own remaining curve (universal_value, deliberately
          team-agnostic -- this measures the POSITION's market decay, not the user's fit)
          down by expected_taken players -- read at a FRACTIONAL index, see _curve_at -- and
@@ -371,14 +411,20 @@ def positional_forfeits(
                 continue
             rank_by_id = board["rank_by_id"]
             by_id = board["by_id"]
+            # The normaliser is a property of the whole board and is cached on it, so this is
+            # the same object estimate_survival reads -- one model, computed once.
+            total_weight = _board_take_mass_cached(board, run_position)["total_weight"]
             p_position = 0.0
             for player_id, rank in rank_by_id.items():
-                if rank > FORFEIT_OPPONENT_BOARD_DEPTH:
-                    continue
                 row = by_id.get(player_id)
-                if row is not None and row.get("position") == position:
-                    p_position += RANK_TAKE_PROBABILITY.get(rank, 0.0)
-            expected_taken += min(p_position, RUN_TAKE_PROBABILITY_CAP)
+                if row is None or row.get("position") != position:
+                    continue
+                is_run = bool(run_position and position == run_position)
+                p_position += _take_probability(rank, is_run, total_weight)
+            # No per-position cap: normalisation already makes the positions of a single pick
+            # mutually exclusive, so their probabilities sum to <= 1.0 by construction. A cap
+            # here would be a second, weaker constraint applied to the wrong axis.
+            expected_taken += p_position
         results[position] = {
             "expected_taken": round(expected_taken, 2),
             "forfeit": round(curve[0] - _curve_at(curve, expected_taken), 2),
@@ -964,7 +1010,10 @@ def pick_analysis(
     # signal, so the existing behavior is preserved here explicitly and left open rather than
     # changed as a side effect of a crash fix.
     position_curves = {} if mode == "upside" else _position_curves(my_board)
-    forfeits = positional_forfeits(position_curves, opponent_boards, intervening)
+    # The same run position estimate_survival derives, computed once here and passed to both, so
+    # the two consumers of the take model cannot disagree about which board they are reading.
+    forfeits = positional_forfeits(position_curves, opponent_boards, intervening,
+                                   detect_positional_run(picks, players_db))
 
     results = []
     for player_id in candidate_player_ids:
