@@ -258,6 +258,12 @@ def serialize_candidate(c: CandidateSnapshot) -> dict:
         "cliffGap": cliff.get("gap"),
         "cliffTypical": cliff.get("typical_gap"),
         "forfeit": c.positional_forfeit,
+        #: WHAT THIS ROW'S RANK IS. The board is ordered on acting_now_value, so a payload
+        #: carrying every input to that order but not the order's own number leaves a reader
+        #: unable to check the ranking they are looking at. Absence stays absence: a
+        #: turn-ending pick has no next turn to defer to and this is legitimately null there.
+        "actingNow": c.acting_now_value,
+        "nextTurnValue": c.position_next_turn_value,
         "rivalPremium": c.rival_premium,
         "denialTeam": c.denial_team,
         "needBonus": c.need_bonus,

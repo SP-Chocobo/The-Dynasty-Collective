@@ -397,6 +397,7 @@ class TheScaleIsNotAPointsTotalTests(unittest.TestCase):
         import dataclasses
         import pick_synthesis as ps
         candidate = ps.CandidateSnapshot(
+            position_best_now=None, position_next_turn_value=None, acting_now_value=None,
             player_id="p", name="n", position="RB", team=None,
             bpa=-10.0, bpa_source="s", confidence=50.0,
             universal_value=-12.5, need_bonus=0.0, eligibility_bonus=0.0,
@@ -562,8 +563,23 @@ class TheScaleIsNotAPointsTotalTests(unittest.TestCase):
         #   #36), and the binding condition is stated so it cannot evaporate: if the card keeps
         #   rendering unpriced rows as a bare dash, it is showing an absence without its kind,
         #   which is the #174 shape one layer out.
+        # 50 -> 53 (#52): position_best_now, position_next_turn_value, acting_now_value.
+        #
+        # THE DECISION THIS RATCHET ASKS FOR. acting_now_value is not a fourth decoration on
+        # the card -- it is WHAT THE BOARD IS NOW ORDERED ON, so a card that omits it shows a
+        # rank whose reason is absent from the surface that displays it. It is in
+        # team_acquisition_value's own units (it is a difference of two of them), so it sits
+        # on the scale this test exists to protect and implies no new one.
+        #
+        # It is NOT rendered on the card yet, and that is deliberate rather than overlooked:
+        # the card's value row is already dense, and where this number belongs -- beside the
+        # rank, beside the forfeit, or as the rank's tooltip -- is a UI question (#181, #36)
+        # that deserves the same treatment the absence-marker note above got, not a slot
+        # chosen here to clear a red test. It reaches the payload (draft_board_ui.serialize_
+        # snapshot's "actingNow") so the surface CAN show it the moment that is decided, and
+        # test_withheld_propagation holds the absence contract on it meanwhile.
         self.assertEqual(
-            len(dataclasses.fields(ps.CandidateSnapshot)), 50,
+            len(dataclasses.fields(ps.CandidateSnapshot)), 53,
             "CandidateSnapshot's field count changed. That is fine and often correct -- but "
             "confirm the new field does not imply a scale the card cannot support, decide "
             "whether the card should render it, then update this number.")

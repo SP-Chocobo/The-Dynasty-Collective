@@ -744,7 +744,15 @@ class BuildSnapshotTests(unittest.TestCase):
                 }
         cls.pick_order = ds.generate_pick_order([str(i) for i in range(1, 13)], total_rounds=4)
 
-    def test_snapshot_is_narrowed_and_ranked_by_team_acquisition_value(self):
+    def test_snapshot_is_narrowed_and_ranked_by_what_acting_now_is_worth(self):
+        """Ranked by acting_now_value, NOT by team_acquisition_value (#52).
+
+        This test asserted the tav order until the ordering repair, and it was right to: the
+        board did rank that way. It ranks on acting_now_value now, and the tav order is exactly
+        what that repair removed -- a board that pays for a position whose replacement is
+        nearly free as though it were scarce. Rewritten rather than deleted, because "the
+        candidates come back in a defined order at all" is still the contract worth holding.
+        """
         # At least top_n (can run longer -- narrow_candidates also guarantees the single best
         # remaining player at every position gets a look, even one that didn't crack the raw
         # top_n on value alone -- see narrow_candidates' own docstring for why).
@@ -753,8 +761,25 @@ class BuildSnapshotTests(unittest.TestCase):
             league=LEAGUE, pick_label="1.01", top_n=5,
         )
         self.assertGreaterEqual(len(snap.candidates), 5)
-        values = [c.team_acquisition_value for c in snap.candidates]
-        self.assertEqual(values, sorted(values, reverse=True), "candidates must be ranked by team_acquisition_value")
+        keys = [ps._acting_now_order({
+            "acting_now_value": c.acting_now_value,
+            "team_acquisition_value": c.team_acquisition_value,
+            "fills_required_slot": c.fills_required_slot,
+            "player_id": c.player_id,
+        }) for c in snap.candidates]
+        self.assertEqual(keys, sorted(keys), "candidates must be ranked by _acting_now_order")
+
+    def test_that_ranking_assertion_is_not_vacuous(self):
+        """The check above compares a list to its own sort, which holds trivially on one row
+        and nearly so on rows that all score the same. Pin that the set really is ordered and
+        really does vary."""
+        snap = ps.build_snapshot(
+            self.merger, self.players_db, [], self.pick_order, current_index=0, my_roster_id="1",
+            league=LEAGUE, pick_label="1.01", top_n=5,
+        )
+        leaders = [c.team_acquisition_value for c in snap.candidates
+                   if c.team_acquisition_value is not None]
+        self.assertGreater(len(set(leaders)), 1, "every candidate priced the same -- nothing is ordered")
 
     def test_the_best_remaining_player_at_every_position_is_always_included(self):
         # The real fix this closes: a scarce position's best remaining player used to be
@@ -1504,6 +1529,7 @@ class DepthExposureStopsAtTheValueLayerTests(unittest.TestCase):
         self.assertIn("depth_exposure", dr.compute_draft_board.__doc__ or "",
                       "draft_room's board docstring no longer names the term it emits")
         snapshot = ps.CandidateSnapshot(
+            position_best_now=None, position_next_turn_value=None, acting_now_value=None,
             player_id="1", name="A", position="RB", team="X", bpa=1.0, bpa_source="s",
             confidence=1.0, universal_value=10.0, need_bonus=0.0, eligibility_bonus=0.0,
             team_acquisition_value=10.0, survival_probability=None, intervening_picks=None,
