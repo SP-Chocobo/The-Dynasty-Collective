@@ -14,7 +14,7 @@ and spent three rounds of measurement on a question the category settled either 
 THE DISTINCTION THAT MAKES IT USABLE. Every team-specific term is transient in some sense, so
 "transient" alone would disqualify the whole engine. What matters is transient in WHAT:
 
-  ROSTER_STATE  -- need_bonus, eligibility_bonus, depth_exposure. These change constantly, and
+  ROSTER_STATE  -- need_bonus, depth_exposure. These change constantly, and
                    they are admissible, because team_acquisition_value is a DECISION number
                    priced in the state the decision is made in. The decision is made now; the
                    state is now.
@@ -102,13 +102,6 @@ TERMS: dict[str, dict] = {
         "mitigation": None,
         "register": "#87",
         "what": "A positional gate: does this roster still need a starter here.",
-        "why": "Transient in roster state, which TAV prices by construction.",
-    },
-    "eligibility_bonus": {
-        "lifetime": ROSTER_STATE,
-        "mitigation": None,
-        "register": None,
-        "what": "What this candidate's multi-position flexibility unlocks for THIS lineup.",
         "why": "Transient in roster state, which TAV prices by construction.",
     },
     "depth_exposure": {

@@ -349,7 +349,7 @@ DISPLAY_CONTRACT: dict[str, dict[str, str]] = {
 #: rendered on one line, so a bare "+3.2" beside a "-0.1" would be two units read as one.
 DIFF_UNITS: dict[str, str] = {
     "universal_value": VALUE_UNIT_SHORT, "need_bonus": VALUE_UNIT_SHORT,
-    "eligibility_bonus": VALUE_UNIT_SHORT, "depth_exposure": VALUE_UNIT_SHORT,
+    "depth_exposure": VALUE_UNIT_SHORT,
     "displacement_adj": VALUE_UNIT_SHORT,
     "team_acquisition_value": VALUE_UNIT_SHORT,
     "survival_probability": "probability", "opportunity_cost": VALUE_UNIT_SHORT,

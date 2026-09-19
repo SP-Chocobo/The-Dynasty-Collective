@@ -73,7 +73,7 @@ from sleeper_client import SleeperAPIError, SleeperClient, compute_points_from_s
 # number itself. See the Draft Room view's "What changed?" drawer.
 _DRAFT_ROOM_DIFF_LABELS = {
     "universal_value": "Universal value", "need_bonus": "Roster need",
-    "eligibility_bonus": "Lineup flexibility", "depth_exposure": "Depth exposure",
+    "depth_exposure": "Depth exposure",
     "displacement_adj": "Slot displacement",
     "team_acquisition_value": "Acquisition value",
     "survival_probability": "Survival probability", "opportunity_cost": "Opportunity cost",

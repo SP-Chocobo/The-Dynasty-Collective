@@ -501,7 +501,7 @@ DYNASTY_RISK_ADJ_MIN_SCALE = 0.3  # floor: even max-positive trajectory keeps 30
 #: the CAPPED three -- a distinction that cost two shipped constants their premise when #216
 #: added the fourth and hand-exempted it. invariant_registry counts this tuple, so a fifth term
 #: cannot arrive without the bound being re-examined.
-TEAM_SPECIFIC_TERMS = ("need_bonus", "eligibility_bonus", "depth_exposure", "displacement_adj")
+TEAM_SPECIFIC_TERMS = ("need_bonus", "depth_exposure", "displacement_adj")
 
 NEED_BONUS_PER_DEDICATED_SLOT = 4.0
 NEED_BONUS_PER_FLEX_SHARE = 1.0
@@ -563,7 +563,16 @@ TRADE_VALUE_SCALE_MAX = 100.0  # Draft Sharks' documented trade_value range (ver
 # is strongest rounds 1-8, depth_exposure is only `measured` from round 9, once a bench exists
 # for depth to be a meaningful question about.
 DEPTH_EXPOSURE_MAX = NEED_BONUS_MAX
-ELIGIBILITY_BONUS_MAX = NEED_BONUS_MAX
+#: RETIRED at the 6.1b ruling (#52). `eligibility_bonus` is no longer one of the board's
+#: prices, so the bound it needed is gone with it -- and gone rather than kept at 0.0, because a
+#: constant nothing reads is a claim about a term nothing charges. TRADE_VALUE_SCALE_MAX stays:
+#: depth_exposure uses the same rescale and needs the same documented ratio.
+#:
+#: WHY THE TERM WENT, in one line, with the rest in evidence/blind_pass/RULINGS_EXECUTION.md:
+#: it was pricing the same fact displacement_adj's lift prices, at 0.24% of the magnitude, over
+#: a population that is EMPTY -- every offence-only multi-eligible player in the capture is
+#: retired. invariant_registry counts that population (census 178) so a vendor refresh that
+#: refills it fails loudly instead of leaving this ruling silently out of date.
 
 UPSIDE_GROWTH_WEIGHT = 0.5
 
@@ -2373,7 +2382,7 @@ BALANCED_BOARD_COLUMNS = [
 UPSIDE_BOARD_COLUMNS = [
     "player_id", "name", "position", "team", "injury_status", "bpa", "bpa_source",
     "time_horizon_adj", "risk_adj", "universal_value",
-    "need_bonus", "eligibility_bonus", "depth_exposure", "depth_basis",
+    "need_bonus", "depth_exposure", "depth_basis",
     "displacement_adj", "displacement_basis",
     "confidence", "final_score", "mode", "projected_points",
     "horizon_floor", "horizon_sensitivity", "waiting_cost", "replacement_basis",
@@ -3692,40 +3701,19 @@ def compute_draft_board(
             NEED_BONUS_MAX,
         ), 2)
 
-        # The second (and only other) team-specific term -- what a real multi-position
-        # optimal lineup, computed against THIS roster's actual players, says his flexibility
-        # is worth beyond his raw value. Self-limiting rather than capped like need_bonus (see
-        # eligibility_bonus's own docstring): it can never exceed his own trade_value, since
-        # the best he can ever do is fill a genuinely open slot outright.
+        # `eligibility_bonus` WAS THE SECOND TERM HERE, and is retired at the 6.1b ruling.
+        # It priced what a multi-position optimal lineup says a candidate's flexibility is
+        # worth; displacement_adj's lift prices the same fact as an anchor correction, and
+        # measured across 46,020 rows it does 99.76% of the charging. The two Hungarian solves
+        # per multi-eligible candidate that produced the other 0.24% are gone with it.
         #
-        # A player admitted on a points projection alone carries no trade_value, and this
-        # term is denominated in trade_value units -- so there is nothing to measure and the
-        # honest answer is exactly 0.0, the same "missing information is not information"
-        # rule time_horizon_adj follows for a missing 3yr outlook. Guarded here, where the
-        # meaning of the absence is known, rather than inside the optimizer: passing the NaN
-        # through reaches a Hungarian-algorithm cost matrix and raises outright ("matrix
-        # contains invalid numeric entries"), and a value substituted down there would be a
-        # fabricated flexibility premium rather than a declined one.
-        candidate_value = row["trade_value"]
-        if candidate_value is None or pd.isna(candidate_value):
-            eligibility_bonus_value = 0.0
-        else:
-            eb = lo.eligibility_bonus(
-                my_roster_players, candidate_id=row["player_id"], candidate_value=candidate_value,
-                candidate_full_eligible=player_eligible_positions(players_db.get(str(row["player_id"])) or {}),
-                candidate_primary_position=position, roster_positions=roster_positions,
-            )
-            # Converted from trade_value units into this sum's own bpa scale -- see
-            # TRADE_VALUE_SCALE_MAX/ELIGIBILITY_BONUS_MAX above for the units defect this fixes
-            # and the real-data evidence behind it. min() is a defensive guard for out-of-scale
-            # source data, not the bounding mechanism (the rescale is already bounded by
-            # construction).
-            eligibility_bonus_value = min(
-                round(eb["eligibility_bonus"] * (ELIGIBILITY_BONUS_MAX / TRADE_VALUE_SCALE_MAX), 2),
-                ELIGIBILITY_BONUS_MAX,
-            )
+        # NOT removed because the function was wrong -- lineup_optimizer.eligibility_bonus is
+        # correct and stays, with its own consumer. Removed because on this rulebook its
+        # population is empty: every offence-only multi-eligible player in the capture is
+        # retired and none reaches a board. See RULINGS_EXECUTION.md, and the registry entry
+        # that fails if that ever stops being true.
 
-        # The third team-specific term: what a hole at this position would cost, converted from
+        # The second remaining team-specific term: what a hole at this position would cost, converted from
         # trade_value into this sum's bpa scale by the same documented ratio eligibility_bonus
         # uses. ONLY when the exposure is actually measured -- the other three basis states
         # (no_surplus / vacant / not_applicable) each return a number that is real arithmetic
@@ -3781,8 +3769,7 @@ def compute_draft_board(
             displacement_basis = displacement["basis"]
 
         team_acquisition_value = round(
-            universal_value + need_bonus + eligibility_bonus_value + depth_exposure_value
-            + displacement_adj, 2)
+            universal_value + need_bonus + depth_exposure_value + displacement_adj, 2)
 
         return pd.Series({
             "time_horizon_adj": round(time_horizon_adj, 2),
@@ -3793,7 +3780,6 @@ def compute_draft_board(
             # Which of the four states produced that number. Read it before reading the value:
             # 0.0 means "not measured here", never "this position is safe".
             "depth_basis": depth_basis,
-            "eligibility_bonus": eligibility_bonus_value,
             "displacement_adj": displacement_adj,
             "displacement_basis": displacement_basis,
             "final_score": team_acquisition_value,

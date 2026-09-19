@@ -354,11 +354,33 @@ NECESSITY_DENIAL_WEIGHT = 10.0       # the denial contribution at ONE team-term'
 #: at lineup_optimizer.displacement_level under THE SIGN.
 #:
 #: So sum(TEAM_SPECIFIC_CAPS) is NOT the upper bound on team_acquisition_value -
-#: universal_value. It is the upper bound on the sum of the THREE CAPPED TERMS, which is a
+#: universal_value. It is the upper bound on the sum of the CAPPED TERMS, which is a
 #: different and much weaker statement, and the difference is exactly the fourth term's range.
-#: Measured across eight sampled board states: the three capped terms reach 11.73; the full
-#: four-term gap runs -55.27 to 8.33 there, and 87.82 on the pre-draft board where the
+#: Measured across eight sampled board states: the capped terms reach 11.73; the full
+#: gap runs -55.27 to 8.33 there, and 87.82 on the pre-draft board where the
 #: multi-eligible case lives. Neither direction is bounded by this tuple.
+#:
+#: THE 6.1b RULING MOVES ONE OF THESE CONSTANTS. Retiring `eligibility_bonus` removed its cap
+#: from this tuple, so the tuple goes from three members to two:
+#:
+#:     NECESSITY_DENIAL_SATURATION   36.0 -> 24.0   (the SUM lost a 12.0 member)
+#:     CONTEXT_ELEVATED_THRESHOLD    12.0 -> 12.0   (the MEAN of equal caps is invariant)
+#:
+#: THAT IS A DERIVATION, NOT A CALIBRATION, and the distinction is the whole reason it is
+#: allowed to happen here. #56 forbids CHOOSING a new saturation point for a distribution
+#: nobody has argued for -- and nobody chose one. The formula is untouched; its input lost a
+#: member because a term retired. A constant that moves because its derivation's input moved
+#: is the derivation working; a constant that stays put across such a change would be the
+#: hand-maintained number #56 actually prohibits.
+#:
+#: It is still a live behaviour change: the denial component now saturates at 24.0 of
+#: rival_premium instead of 36.0, so denial reaches its ceiling sooner and the term is
+#: effectively stronger per point of premium below that. Measured, not asserted -- see the
+#: 6.1b entry in POST_AUDIT_PLAN.md.
+#:
+#: What 6.1b does NOT fix is the falsity above: `displacement_adj` is still uncapped and still
+#: reaches +79.44, so sum(TEAM_SPECIFIC_CAPS) is still not a bound on
+#: team_acquisition_value - universal_value. Fewer terms, same false premise.
 #:
 #: WHAT IS AND IS NOT CHANGED HERE. The claim is corrected; the VALUES are not. Re-deriving
 #: NECESSITY_DENIAL_SATURATION or CONTEXT_ELEVATED_THRESHOLD means choosing a new saturation
@@ -370,7 +392,7 @@ NECESSITY_DENIAL_WEIGHT = 10.0       # the denial contribution at ONE team-term'
 #:
 #: The lower bound was always open, which the original text said, and that matters more than
 #: it appears: at -67.00 the fourth term can subtract five times what any capped term can add.
-TEAM_SPECIFIC_CAPS = (dr.NEED_BONUS_MAX, dr.ELIGIBILITY_BONUS_MAX, dr.DEPTH_EXPOSURE_MAX)
+TEAM_SPECIFIC_CAPS = (dr.NEED_BONUS_MAX, dr.DEPTH_EXPOSURE_MAX)
 
 NECESSITY_DENIAL_SATURATION = sum(TEAM_SPECIFIC_CAPS)
 
@@ -427,7 +449,7 @@ NECESSITY_FORFEIT_WEIGHT = 10.0
 #: supplies no usable spread (a single candidate, or a board where every value is None), where
 #: dividing by a measured nothing is worse than dividing by a stated something.
 FORFEIT_SCALE_MAX = 100.0
-NECESSITY_ROSTER_FIT_WEIGHT = 0.8    # applied to (need_bonus + eligibility_bonus) -- NOT
+NECESSITY_ROSTER_FIT_WEIGHT = 0.8    # applied to need_bonus -- NOT
                                      # depth_exposure; see the component for why that
                                      # exclusion is a ruling rather than an omission
 
@@ -836,7 +858,10 @@ def compute_pick_necessity(raw_candidates: list[dict], round_num: int) -> list[t
         # The snapshot carries depth_exposure regardless (see CandidateSnapshot), because
         # "does not score it" and "cannot show it" are different claims and only the first is
         # intended. test_pick_synthesis holds this boundary as an executable assertion.
-        roster_fit_component = (c.get("need_bonus", 0.0) + c.get("eligibility_bonus", 0.0)) * NECESSITY_ROSTER_FIT_WEIGHT
+        # `eligibility_bonus` was summed in here until the 6.1b ruling retired it. Measured
+        # before removal: it reached 0.84 on five of 46,020 rows, so this component moves by at
+        # most 0.67 anywhere, and on 46,015 rows by nothing at all.
+        roster_fit_component = c.get("need_bonus", 0.0) * NECESSITY_ROSTER_FIT_WEIGHT
 
         raw_score = (
             NECESSITY_BASELINE + standout_component + survival_component
@@ -1415,7 +1440,6 @@ class CandidateSnapshot:
     confidence: float
     universal_value: Optional[float]
     need_bonus: float
-    eligibility_bonus: float
     team_acquisition_value: Optional[float]
     survival_probability: Optional[float]
     #: The companion that makes survival_probability readable (#206/#187), same pattern as
@@ -1699,7 +1723,6 @@ def build_snapshot(
             # #112: WHY this row is unpriced, if it is. None on a priced row -- there is no
             # absence to classify -- so this is not a three-state flag wearing two states.
             "absence_kind": row.get("absence_kind"),
-            "eligibility_bonus": row.get("eligibility_bonus", 0.0),
             "depth_exposure": row.get("depth_exposure"),
             # Read this BEFORE depth_exposure: a 0.0 whose basis is not `measured` is an
             # absence wearing a number's clothes (#174).

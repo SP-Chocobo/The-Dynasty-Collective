@@ -429,18 +429,17 @@ def _format_candidate(candidate: CandidateSnapshot, user_selected_player_id: Opt
     # not computed, because those are different claims.
     #
     # #183 EXTENDS THAT RULE TO THE WHOLE AND THE FIRST THREE TERMS. The decomposition is only
-    # rendered as arithmetic when every piece of it is a number. need_bonus and eligibility_bonus
+    # rendered as arithmetic when every piece of it is a number. need_bonus
     # are typed non-Optional and reach this via `.get(key, 0.0)` -- which returns the default for
     # a MISSING key but passes an explicit None straight through, and a None there raised
     # TypeError on the `:+` format. That is a contract violation rather than a live path, so it
     # is guarded rather than repaired upstream, and saying so is the point of this note.
     _sum_terms = (candidate.team_acquisition_value, candidate.universal_value,
-                  candidate.need_bonus, candidate.eligibility_bonus)
+                  candidate.need_bonus)
     if all(t is not None for t in _sum_terms):
         lines.append(
             f"  Team acquisition value: {candidate.team_acquisition_value} "
             f"(universal_value {candidate.universal_value} + need_bonus {candidate.need_bonus:+}"
-            f" + eligibility_bonus {candidate.eligibility_bonus:+}"
             + _depth_term(candidate) + _displacement_term(candidate) + ")")
     elif candidate.team_acquisition_value is not None:
         lines.append(f"  Team acquisition value: {candidate.team_acquisition_value} "

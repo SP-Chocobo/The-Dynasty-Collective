@@ -72,7 +72,7 @@ EVIDENCE_SCHEMA_VERSION = 1
 # fully intelligible without them: bpa_source names the anchor, confidence grades it.
 _CANDIDATE_EVIDENCE_FIELDS = (
     "player_id", "name", "position", "team",
-    "universal_value", "need_bonus", "eligibility_bonus", "team_acquisition_value",
+    "universal_value", "need_bonus", "team_acquisition_value",
     "bpa_source", "confidence",
     "pick_necessity", "necessity_label",
     "survival_probability", "intervening_picks",

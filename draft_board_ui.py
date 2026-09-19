@@ -267,7 +267,6 @@ def serialize_candidate(c: CandidateSnapshot) -> dict:
         "rivalPremium": c.rival_premium,
         "denialTeam": c.denial_team,
         "needBonus": c.need_bonus,
-        "eligBonus": c.eligibility_bonus,
         # #216. The two remaining terms of the identity, each WITH its basis. depth_exposure
         # never reached the JS before this (the room showed ACQ 72 over UV 68 with no sentence
         # for the difference), and the fourth term lands in exactly that gap if it is not
@@ -841,10 +840,9 @@ function focusSentences(c) {
     const theirs = num(ordered[0].uv) ? ` (${ordered[0].uv.toFixed(1)})` : '';
     s.push(`<p class="focus-sentence tie-note">His raw talent${mine} arguably exceeds the board leader's own${theirs} — he trails only because of roster-fit context, not quality.</p>`);
   }
-  if ((num(c.needBonus) && c.needBonus > 0) || (num(c.eligBonus) && c.eligBonus > 0)) {
+  if (num(c.needBonus) && c.needBonus > 0) {
     const bits = [];
     if (num(c.needBonus) && c.needBonus > 0) bits.push(`+${c.needBonus.toFixed(1)} ${PAYLOAD.valueUnitShort} for an unfilled roster need`);
-    if (num(c.eligBonus) && c.eligBonus > 0) bits.push(`+${c.eligBonus.toFixed(1)} ${PAYLOAD.valueUnitShort} for multi-position flexibility`);
     s.push(`<p class="focus-sentence tie-note">Fills a real roster gap: ${bits.join(" and ")}.</p>`);
   }
   // #216. The two lineup-solved terms, stated with their magnitude and their basis, so every

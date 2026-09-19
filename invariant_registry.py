@@ -260,18 +260,30 @@ REGISTRY: tuple[Invariant, ...] = (
         population="One entry per team-specific term. A FIFTH term arriving is the event that "
                    "broke this last time: #216 added a fourth, hand-exempted it on a premise "
                    "measured false, and NECESSITY_DENIAL_SATURATION and "
-                   "CONTEXT_ELEVATED_THRESHOLD still derive from the tuple.",
+                   "CONTEXT_ELEVATED_THRESHOLD still derive from the tuple. "
+                   "4 -> 3 at the 6.1b ruling (#52), which retired eligibility_bonus. Both "
+                   "constants KEPT THEIR VALUES through that removal, and the reason is worth "
+                   "recording here rather than rediscovering: TEAM_SPECIFIC_CAPS never held "
+                   "eligibility_bonus's cap, so the tuple went from a subset of the capped "
+                   "terms to all of them without moving. The census falling is still the event "
+                   "this watches -- a term leaving is as much a change as one arriving, and "
+                   "this registry exists because the shrinking direction is the unwatched one.",
         members=_tav_team_specific_terms,
-        census=4,
+        census=3,
         pinned_by=("test_probability_bounds.TheCapsTupleBoundsWhatItActuallyBounds",),
     ),
     Invariant(
         name="multi-position eligibility has a population to price",
         claim="A term that prices multi-position eligibility is only meaningful while players "
               "carry more than one position. Measured across 36 board states and 46,020 rows, "
-              "eligibility_bonus is nonzero on FIVE, at a maximum of 0.84 against a bound of "
+              "eligibility_bonus WAS nonzero on FIVE, at a maximum of 0.84 against a bound of "
               "12.00 -- and every OFFENCE-ONLY multi-eligible player in the capture is retired, "
-              "so the WR/TE case the term was built for has no living members.",
+              "so the WR/TE case the term was built for had no living members. THE TERM IS GONE "
+              "(6.1b, #52); THIS INVARIANT IS NOT, and that is deliberate. It is the standing "
+              "record of the population the removal was ruled against, so a vendor refresh that "
+              "brings active offence dual-eligibility back moves this census and reopens the "
+              "ruling. Retiring the watch along with the term would delete the only thing that "
+              "can tell anyone the ruling has expired.",
         population="Every player the capture lists at more than one fantasy position. This is "
                    "the registry watching a population SHRINK, which is the direction nobody "
                    "checks: the term did not break, its subject left. A vendor refresh that "
@@ -307,9 +319,14 @@ REGISTRY: tuple[Invariant, ...] = (
         population="Every emitted column. This was enforced over a HAND-LIST of 11 while the "
                    "callers selected 29 -- identity_basis, displacement_adj and time_horizon_adj "
                    "among the eighteen left out -- so the population growing was precisely how "
-                   "the gap opened.",
+                   "the gap opened. 30 -> 29 at the 6.1b ruling (#52): eligibility_bonus was an "
+                   "emitted column and its retirement removed it. NOTHING IS WEAKENED by that "
+                   "-- a column that no longer exists cannot carry a NaN -- but the census is "
+                   "moved deliberately rather than by a --write, because this registry's whole "
+                   "subject is populations moving without anyone noticing, and a shrink nobody "
+                   "signed for is the exact case it was built to catch.",
         members=_board_emitted_columns,
-        census=30,
+        census=29,
         pinned_by=(
             "test_identity_provenance.ItReachesTheBoardInBothModesTests"
             ".test_no_emitted_value_on_the_board_is_a_nan",
