@@ -477,6 +477,28 @@ DST" arrived at by the arithmetic rather than imposed on it.
 Disagreement between the two authorities — how often the board's position was not the one
 forfeit ranked most urgent — falls from **137 of 192 picks to 7**.
 
+### The legality check the repair made urgent
+
+Pushing a position a chair needs exactly one of to median round 15 of a SIXTEEN round draft is
+the precise shape of `#154` — a roster that finishes unable to field a legal lineup, which is
+not "drafted suboptimally" but "drafted something it cannot play". `feasibility_first` survives
+as `_acting_now_order`'s leading term, but it binds only when a roster has as few picks LEFT as
+it has unfillable named slots, so a chair can drift most of the way there before anything fires.
+
+Checked with the battery's own `unfilled_starting_slots` — the real assignment solve, not a
+positional tally, because a naive count gets FLEX chains wrong (probe
+`ordering_legality_check.py`):
+
+| | before | after |
+|---|---:|---:|
+| unfilled starting slots | **0** | **0** |
+| chairs with no defense | 0 | 0 |
+| chairs with no kicker | 0 | 0 |
+| DEF / K drafted (12 chairs) | 27 / 29 | 13 / 14 |
+
+Clean in both arms. The supply that made K and DST cheap to defer in the first place — 32 and 55
+against a demand of 12 — is the same supply that makes deferring them safe.
+
 ### The cost side: 35 tav a pick, for half a percent of points
 
 The repair does not come free on the board's own old ruler, and the size of that is worth
