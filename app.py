@@ -3042,11 +3042,21 @@ with st.sidebar:
                 # file behaves differently in a tiebreak, so that belief would be load-bearing.
                 notify("warning", f"Date not recorded — {_as_of_error}")
             if _batch_files:
-                upload_batches.record(
+                _batch_id = upload_batches.record(
                     name=_batch_name, note=note, as_of=_as_of_clean, files=_batch_files,
                     league_ids=list(scope_league_ids or []),
                 )
-                if _as_of_clean:
+                if _batch_id is None:
+                    # The files are on disk; only the BATCH RECORD is not, because the batch
+                    # store is damaged and store_io will not overwrite it. Said out loud for
+                    # the same reason the date refusal above is: an unrecorded batch means the
+                    # as-of date a user just typed is not dating anything, and precedence acts
+                    # on that. Reporting success here is how the app would look handled.
+                    notify("error",
+                           "Files saved, but this upload could not be recorded — the upload "
+                           "history file is damaged and was left untouched rather than "
+                           "overwritten. Any as-of date you set is not applied.")
+                elif _as_of_clean:
                     notify("info", f"Recorded {len(_batch_files)} file(s) as of {_as_of_clean}.")
                 else:
                     # Said out loud rather than left to be discovered: an undated file is not

@@ -51,12 +51,25 @@ def _fingerprint(stats: dict) -> str:
     return hashlib.sha256(payload.encode()).hexdigest()[:16]
 
 
-def record_path(season: str, week: int, root: Path = RECORD_DIR) -> Path:
-    return root / f"outcomes_{season}_wk{int(week):02d}.json"
+def _record_root(root: Optional[Path]) -> Path:
+    """`root`, or the module's own directory resolved AT CALL TIME.
+
+    These took `root: Path = RECORD_DIR`, which binds the directory when the function is
+    DEFINED. Reassigning `outcome_record.RECORD_DIR` -- the only way a test can point this
+    module at a temp directory -- then changed nothing, so `main --list` could not be exercised
+    at all. That is why its crash on a damaged record (`TypeError: 'NoneType' object is not
+    subscriptable`, which took down the listing of every healthy week with it) shipped with no
+    test: not an oversight in the test suite, an untestable signature (#52 phase 7.5).
+    """
+    return RECORD_DIR if root is None else root
+
+
+def record_path(season: str, week: int, root: Optional[Path] = None) -> Path:
+    return _record_root(root) / f"outcomes_{season}_wk{int(week):02d}.json"
 
 
 def capture(stats: dict[str, dict], season: str, week: int, *,
-            root: Path = RECORD_DIR) -> dict:
+            root: Optional[Path] = None) -> dict:
     """Write (or revise) one week's realized stats.
 
     A re-capture keeps the prior fingerprint in `revisions` rather than replacing it silently,
@@ -70,7 +83,20 @@ def capture(stats: dict[str, dict], season: str, week: int, *,
             f"report the engine as catastrophically wrong about a week that never downloaded."
         )
     path = record_path(season, week, root)
-    existing = load(season, week, root)
+    existing, readable = load_state(season, week, root)
+    if not readable:
+        # REFUSED, in the same voice as the empty-stats refusal above and for the same reason:
+        # the alternative is a silent loss. A damaged record still holds the revision trail in
+        # its bytes; capturing over it would write `revisions=[]` and call the result a
+        # correction. store_io would now decline the write anyway (load_state armed the mark),
+        # so without this the caller would be told nothing at all.
+        raise ValueError(
+            f"refusing to capture over a DAMAGED outcome record for {season} week {week} "
+            f"({path}). It exists and does not parse, so whatever revision history it holds "
+            f"cannot be read -- and writing a fresh record here would report a correction "
+            f"while destroying the trail of every correction before it. Move or repair the "
+            f"file, then capture again."
+        )
     revisions = list((existing or {}).get("revisions", []))
     if existing and existing.get("fingerprint") != _fingerprint(stats):
         revisions.append({
@@ -99,18 +125,49 @@ def capture(stats: dict[str, dict], season: str, week: int, *,
     return record
 
 
-def load(season: str, week: int, root: Path = RECORD_DIR) -> Optional[dict]:
+def load_state(season: str, week: int,
+               root: Optional[Path] = None) -> tuple[Optional[dict], bool]:
+    """(record, readable) -- the three states this week can be in, kept apart.
+
+    ABSENT is (None, True): nobody captured this week, and that is a fact.
+    DAMAGED is (None, False): somebody did, and the bytes will not parse.
+    PRESENT is (record, True).
+
+    Those first two used to be one answer (#52 phase 7.5 / L-05). `load` did its own
+    `json.loads` beside store_io and returned `None` for both, and the cost was not the
+    ambiguity itself -- it was that the hand-rolled read NEVER ARMED THE DAMAGE MARK. store_io
+    refuses to overwrite a store it has found unparseable, but it can only refuse what it has
+    been asked to read, and this module asked nothing. Measured end to end on a truncated
+    record holding one real correction: `load` returned None, `capture` therefore read
+    `existing=None`, wrote `revisions=[]`, and `store_io.write` -- seeing no mark -- replaced
+    the damaged file. The trail went from one revision to zero, under a module whose own
+    guarantee is that "a correction is VISIBLE rather than silent".
+
+    Reading through store_io fixes both halves at once, and that is why this is a re-route
+    rather than a third state bolted onto the old parser.
+    """
     path = record_path(season, week, root)
     if not path.exists():
-        return None
-    try:
-        return json.loads(path.read_text())
-    except (json.JSONDecodeError, OSError):
-        return None
+        return None, True
+    record, readable = store_io.read_state(path, None)
+    return (record if readable else None), readable
 
 
-def weeks(season: Optional[str] = None, root: Path = RECORD_DIR) -> list[tuple[str, int]]:
+def load(season: str, week: int, root: Optional[Path] = None) -> Optional[dict]:
+    """The record, or None for a week that is absent OR damaged.
+
+    Fail-soft on purpose, and unchanged in shape so every reader keeps working. What changed
+    is underneath: the read now goes through store_io, so a damaged record arms the mark that
+    stops the next write destroying it, and shows up in `store_io.unreadable_stores()` instead
+    of being invisible. A caller that must tell the two apart asks `load_state`.
+    """
+    return load_state(season, week, root)[0]
+
+
+def weeks(season: Optional[str] = None,
+          root: Optional[Path] = None) -> list[tuple[str, int]]:
     """(season, week) pairs on disk, in order."""
+    root = _record_root(root)
     if not root.exists():
         return []
     out = []
@@ -126,7 +183,7 @@ def weeks(season: Optional[str] = None, root: Path = RECORD_DIR) -> list[tuple[s
 
 
 def points_for(season: str, week: int, scoring_settings: dict,
-               root: Path = RECORD_DIR) -> dict[str, float]:
+               root: Optional[Path] = None) -> dict[str, float]:
     """player_id -> fantasy points under THIS league's scoring, derived at read time.
 
     The reason the record stores stats: the same captured week answers a 0.5-PPR question and
@@ -152,7 +209,16 @@ def main(argv: Optional[list[str]] = None) -> int:
     if args.list:
         captured = weeks()
         for season, week in captured:
-            record = load(season, week)
+            record, readable = load_state(season, week)
+            if record is None:
+                # Named, not skipped and not crashed. This used to raise
+                # `TypeError: 'NoneType' object is not subscriptable` -- a damaged file took
+                # the whole listing down, including every healthy week after it.
+                print(f"  {season} wk{week:02d}  "
+                      + ("DAMAGED -- exists and does not parse; left untouched"
+                         if not readable else
+                         "listed on disk but could not be read"))
+                continue
             revised = f"  ({len(record['revisions'])} revision(s))" if record.get("revisions") else ""
             print(f"  {season} wk{week:02d}  n={record['n_players']:5}  "
                   f"{record['fingerprint']}{revised}")

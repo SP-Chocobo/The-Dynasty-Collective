@@ -111,8 +111,21 @@ def _load() -> list[dict]:
 @store_io.atomic(lambda *a, **k: BATCHES_PATH)
 def record(*, name: str, note: str = "", as_of: Optional[str] = None,
            files: Optional[list[str]] = None,
-           league_ids: Optional[list[str]] = None) -> str:
-    """Store one upload batch and return its id.
+           league_ids: Optional[list[str]] = None) -> Optional[str]:
+    """Store one upload batch and return its id, or None if it did not reach disk.
+
+    OPTIONAL BECAUSE THE WRITE CAN DECLINE (#52 phase 7.5 / L-11). `store_io.write` refuses to
+    overwrite a store it has found damaged -- correctly, since the alternative replaces
+    whatever was recoverable with a one-element file -- and this function used to return an id
+    regardless. Measured on a truncated batches store: `record` handed back
+    `5c94a18f5606`, nothing changed on disk, `batches()` could not find that id, and the UI
+    said the upload was recorded. The user's STATED as-of date went with it, which is not a
+    cosmetic loss: precedence treats a stated date as beating a declared one, so the file
+    silently dropped from "wins its tiebreaks" to "loses every tie".
+
+    An id names a stored batch. Returning one for a batch that was never stored is the same
+    class of claim as a survival probability for a pick that has no next turn -- a value where
+    there is an absence -- and callers must be able to tell.
 
     `as_of` is the date the DATA is from, not the date it was uploaded -- those are different
     facts and the repo has already been bitten by conflating them (see DynastyProcess's own
@@ -140,7 +153,8 @@ def record(*, name: str, note: str = "", as_of: Optional[str] = None,
         "files": list(files or []),
         "league_ids": list(league_ids or []),
     })
-    store_io.write(BATCHES_PATH, batches)
+    if not store_io.write(BATCHES_PATH, batches):
+        return None
     return batch_id
 
 

@@ -468,7 +468,75 @@ missed.
 
 ---
 
-## Still open in Phase 7
+## 7.5 — state and persistence *(in progress)*
 
-- **7.5** state and persistence — `store_io`'s bare `except OSError`, `upload_batches.record`
-  returning an id for an unpersisted batch, `outcome_record`'s damaged→absent collapse
+Three of the members are one rule: **persistence must not manufacture a success or an
+absence.** `store_io` declines to overwrite a store it has found damaged — which is right, and
+is the repair `#102` made — and it declined **in silence**, so every layer above it was free to
+report something that had not happened. `store_io.unreadable_stores`'s own docstring already
+makes the argument the three of them break: *"a store the app quietly works around is exactly
+the failure that looks handled."*
+
+### 7.5a — a write that did not happen *(repaired)*
+
+`store_io.write` returned `None` whether it wrote or declined, so no caller could tell. Now it
+returns whether the bytes landed — purely additive, since all 29 callers ignore the result.
+
+**L-11**, measured on a truncated batches store: `upload_batches.record` returned
+`5c94a18f5606`, the file did not change, `batches()` could not find that id, and the UI
+reported success. The user's **stated** as-of date went with it — not cosmetic, because
+precedence treats a stated date as beating a declared one, so the file dropped from *wins its
+tiebreaks* to *loses every tie*. `record` now returns `Optional[str]`, and the Draft Room says
+which file is damaged instead of claiming the upload was recorded.
+
+### 7.5b — an absence that was really damage *(repaired)*
+
+**L-05.** `outcome_record.load` did its own `json.loads` beside `store_io` and returned `None`
+for a damaged record and an absent one alike. The ambiguity was not the cost. The cost was that
+**a hand-rolled read never arms the damage mark** — `store_io` can only refuse to overwrite
+what it has been asked to read, and this module asked it nothing. Measured end to end on a
+truncated record holding one real correction:
+
+| | before the repair | after |
+|---|---|---|
+| `load` on damage | `None` — same as never captured | `None`, and the mark is armed |
+| `unreadable_stores()` | `{}` | names the file |
+| `capture` over damage | rewrote the file, `revisions` **1 → 0** | refuses, naming the file; bytes survive |
+| `main --list` | `TypeError: 'NoneType' object is not subscriptable`, taking every healthy week with it | prints `DAMAGED` and lists the rest |
+
+The repair is a **re-route, not a third state bolted on**: reading through `store_io.read_state`
+fixes the ambiguity and the unarmed guard at once, and removes the second parser that was
+supposed to agree with the first.
+
+**A signature made this untestable.** Every function took `root: Path = RECORD_DIR`, which
+binds the directory when the function is *defined* — so reassigning `outcome_record.RECORD_DIR`,
+the only way a test can point the module at a temp directory, changed nothing, and `main --list`
+could not be exercised at all. That is why its crash shipped with no test: not a gap in the
+suite, an untestable signature. Defaults are now late-bound.
+
+Seven mutants, all killed, including the two that restore the original shapes (the hand-rolled
+read, and `record` returning an id regardless).
+
+### Collateral: user data could be committed
+
+`data/outcomes/` was not in `.gitignore`, though every sibling store (`data/chats`,
+`data/decisions`, `data/attachments`) is. A stray record written there by a probe made
+`test_outcome_record`'s *"no outcome has been captured yet"* characterization fail — which is a
+second reason to ignore the directory: a record committed there would flip that test for
+everyone who checked the tree out. `store_io`'s `.lock` sidecars are ignored too.
+
+### Still open in 7.5
+
+- **J-13** `sleeper_client` writes the ~10 MB players cache and both snapshots with `write_text`
+  — the exact pattern `store_io`'s own docstring measured at 91,956 empty reads of 98,405 under
+  one concurrent writer. Note the policy is **not** `store_io`'s: a corrupt cache *should* be
+  replaced by a fresh fetch, so this needs the atomic-write primitive without the store
+  semantics. `get_players` returning `{}` is the same manufactured absence one layer up.
+- **K-07** the mock-draft format override reloads the merger twice per rerun (0.87 s warm,
+  18.0–18.9 s cold, on every button click).
+- **J-12** `draft_history` is wired to nothing — a substrate question for the owner, not a
+  repair.
+
+---
+
+## Still open in Phase 7

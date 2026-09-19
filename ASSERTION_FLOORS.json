@@ -7853,6 +7853,79 @@
         }
       }
     },
+    "test_persistence_discloses.py": {
+      "test_methods": 17,
+      "asserts": {
+        "assertEqual": 16,
+        "assertIn": 9,
+        "assertIs": 4,
+        "assertIsNone": 1,
+        "assertIsNotNone": 1,
+        "assertRaises": 2
+      },
+      "by_method": {
+        "test_a_batch_that_did_not_reach_disk_gets_no_id": {
+          "assertEqual": 1,
+          "assertIsNone": 1
+        },
+        "test_a_batch_that_reached_disk_gets_an_id_that_finds_it": {
+          "assertEqual": 2,
+          "assertIsNotNone": 1
+        },
+        "test_a_correction_on_a_healthy_record_still_leaves_a_trail": {
+          "assertEqual": 1
+        },
+        "test_a_damaged_store_is_not_readable": {
+          "assertEqual": 1
+        },
+        "test_a_damaged_week_is_reported_and_healthy_weeks_still_list": {
+          "assertEqual": 1,
+          "assertIn": 4
+        },
+        "test_a_present_store_is_readable_and_returns_its_contents": {
+          "assertEqual": 1
+        },
+        "test_a_write_to_a_damaged_store_reports_false_and_changes_nothing": {
+          "assertEqual": 1,
+          "assertIs": 1
+        },
+        "test_a_write_to_a_healthy_store_reports_true_and_lands": {
+          "assertEqual": 1,
+          "assertIs": 1
+        },
+        "test_an_absent_store_is_readable": {
+          "assertEqual": 1
+        },
+        "test_an_absent_week_and_a_damaged_week_are_different_answers": {
+          "assertEqual": 2
+        },
+        "test_an_empty_capture_is_still_refused": {
+          "assertIn": 1,
+          "assertRaises": 1
+        },
+        "test_an_empty_store_is_readable": {
+          "assertEqual": 1
+        },
+        "test_capturing_over_damage_is_refused_and_the_bytes_survive": {
+          "assertEqual": 1,
+          "assertIn": 2,
+          "assertRaises": 1
+        },
+        "test_read_and_read_state_cannot_disagree": {
+          "assertEqual": 1
+        },
+        "test_reading_a_damaged_record_arms_the_mark_that_protects_it": {
+          "assertIn": 1
+        },
+        "test_the_damage_is_surfaceable_rather_than_only_returned": {
+          "assertIn": 1
+        },
+        "test_the_refusal_lifts_once_the_file_parses_again": {
+          "assertEqual": 1,
+          "assertIs": 2
+        }
+      }
+    },
     "test_pick_debate.py": {
       "test_methods": 43,
       "asserts": {
