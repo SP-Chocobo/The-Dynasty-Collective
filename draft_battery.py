@@ -221,6 +221,32 @@ def league_matrix(base_scoring: dict | None = None) -> list[dict]:
     # rather than drafted, and this repo's own real league is 33 roster positions against 29
     # draftable. Here a 20-slot roster is drafted for 12 rounds, so eight bench seats are never
     # picked and the backstop's "picks left" is wrong by eight unless it is told the truth.
+    # THE ARM THAT CLOSES has_defense (#52, ruled to block v2-freeze).
+    #
+    # Every arm above resolves `has_defense` to False: build_mock_league emits no DEF slot, and
+    # neither captured league has one -- the owner's own league carries a kicker but no team
+    # defense, which is exactly why `has_kicker` varied at one arm while this axis varied at
+    # none. The matrix advertised a dimension it did not cross, so no battery result was ever
+    # evidence about drafting a defense, and `format_axes_exercised` said so in its own output.
+    #
+    # NOT AN EXOTIC COORDINATE. QB/RB/RB/WR/WR/TE/FLEX/K/DEF is the most ordinary roster in
+    # fantasy football, and the battery did not have it. That is the finding, not the fix.
+    #
+    # EXACTLY ONE THING DIFFERS from the 12T ppr arm above: the two slots. Same base rulebook,
+    # same size, same scoring, same superflex and dynasty settings -- so anything this arm shows
+    # that its sibling does not is attributable to the slots and nothing else. Changing three
+    # coordinates at once would have made it a new format rather than a new measurement.
+    #
+    # Population checked before the arm was added, because an arm with an unfillable slot is a
+    # finding about the capture rather than coverage of the axis: the capture carries all 32
+    # team defenses, and every one of them prices, on `live_starter_demand`.
+    kdef = dr.build_mock_league(base_scoring=base_scoring, teams=12, superflex=False,
+                                scoring="ppr", te_premium=False, dynasty=True)
+    kdef["roster_positions"] = list(kdef["roster_positions"]) + ["K", "DEF"]
+    kdef_rounds = len(lc.draftable_slots(kdef["roster_positions"]))
+    kdef["draft_rounds"] = kdef_rounds
+    out.append({"label": "12T_ppr_K_DEF", "league": kdef, "teams": 12, "rounds": kdef_rounds})
+
     short = dr.build_mock_league(base_scoring=base_scoring, teams=12, superflex=False, scoring="ppr",
                                  te_premium=False, dynasty=True)
     short_rounds = max(len(short["roster_positions"]) - 8, 8)
@@ -720,17 +746,21 @@ def advertised_format_axes(league: dict) -> dict:
 #: decided to carry and one nobody noticed. The guard reads this both ways: an unregistered
 #: constant axis fails (a gap appeared), and a registered axis that starts varying ALSO fails
 #: (the registration went stale and should be deleted). Neither direction can drift quietly.
-UNCOVERED_AXES: dict[str, str] = {
-    "has_defense": (
-        "No arm carries a DEF slot. build_mock_league emits no K, DEF or IDP slot, and neither "
-        "captured league in the fixtures has a team-defense slot -- the owner's own league has a "
-        "kicker but no DEF, which is what makes has_kicker vary at exactly one arm while this "
-        "one does not vary at all. Closing it needs a DEF-bearing arm in the matrix, which "
-        "belongs with the rest of the fixture-universe work (#52 phase 3) rather than here: it "
-        "is a new coordinate to measure, not a number to adjust. Until then the battery's "
-        "results are not evidence about team-defense drafting, and this says so."
-    ),
-}
+#: EMPTY IS THE HEALTHY STATE, not a reason to delete this register.
+#:
+#: `has_defense` lived here until #52: no arm carried a DEF slot, so the matrix advertised a
+#: dimension it did not cross and no run was evidence about drafting a defense. It was closed by
+#: adding `12T_ppr_K_DEF` -- a DEF-bearing arm differing from its sibling in exactly the two
+#: slots -- rather than by adjusting anything, which is what its own entry said closing it would
+#: take.
+#:
+#: The register stays because `test_every_constant_axis_is_a_REGISTERED_one` compares the
+#: matrix's constant axes AGAINST it, in both directions: an unregistered constant axis is a new
+#: coverage hole, and a registered axis that starts varying is a stale registration. Empty means
+#: "every advertised axis is actually crossed", which is the goal state -- and the comparison
+#: still catches the next hole the day it appears. Deleting the register would delete the
+#: mechanism at the moment it first had nothing to report.
+UNCOVERED_AXES: dict[str, str] = {}
 
 
 def format_axes_exercised(matrix: list[dict], labels=None) -> dict:

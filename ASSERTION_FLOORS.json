@@ -576,7 +576,7 @@
         "assertGreater": 4,
         "assertIn": 5,
         "assertNotIn": 3,
-        "assertTrue": 4
+        "assertTrue": 3
       },
       "by_method": {
         "test_a_new_axis_appears_without_editing_this_module": {
@@ -603,8 +603,7 @@
         },
         "test_every_registered_hole_says_what_would_close_it": {
           "assertGreater": 1,
-          "assertIn": 1,
-          "assertTrue": 1
+          "assertIn": 1
         },
         "test_labels_scope_the_answer_to_the_arms_being_reported": {
           "assertEqual": 2,

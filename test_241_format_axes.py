@@ -156,8 +156,21 @@ class WhatTheMatrixActuallyExercises(unittest.TestCase):
             f"  observed: {out['axes']}")
 
     def test_every_registered_hole_says_what_would_close_it(self):
-        """A register whose entries are bare names is a silencer with extra steps."""
-        self.assertTrue(db.UNCOVERED_AXES, "nothing registered -- delete the register instead")
+        """A register whose entries are bare names is a silencer with extra steps.
+
+        EMPTY IS NOW THE HEALTHY STATE, and this used to assert the opposite. It required
+        `UNCOVERED_AXES` to be non-empty, with the message "nothing registered -- delete the
+        register instead" -- written when the register held the only known hole and an empty one
+        was inconceivable. `has_defense` was then closed by adding a DEF-bearing arm, which is
+        what its own entry said closing it would take, and this assertion turned into a demand
+        that the matrix keep a coverage hole so the register would have something to hold.
+
+        Deleting the register instead, as the old message advised, would delete the mechanism at
+        the exact moment it first had nothing to report: the sibling test above compares the
+        matrix's constant axes AGAINST this dict, so an empty one is what makes "no axis is
+        constant" checkable. What is pinned here is the thing that actually matters -- every
+        entry that EXISTS names a real advertised axis and says what would close it.
+        """
         advertised = set(db.advertised_format_axes(db.league_matrix(_base_scoring())[0]["league"]))
         for axis, reason in db.UNCOVERED_AXES.items():
             with self.subTest(axis=axis):
