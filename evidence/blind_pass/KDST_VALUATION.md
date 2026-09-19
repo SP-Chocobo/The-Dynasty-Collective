@@ -589,6 +589,57 @@ position whose replacement is nearly free is no longer paid for as though it wer
 the predictiveness run later shows the K curve is noise, that is an argument about `bpa`, and
 this repair neither anticipates nor forecloses it.
 
+## The necessity label is not redundant — it is degenerate, and where it is not, it contradicts
+
+*Owner: "contemplate if the strong action tag typing is redundant to the other verbiage/signals
+given."*
+
+Measured over the stored snapshots of the post-repair 192-pick draft — 8,399 candidate rows
+(probe `necessity_label_redundancy.py`):
+
+| label | rows | share |
+|---|---:|---:|
+| CLOSE CALL | 5,566 | 66.3% |
+| PREFERRED | 2,447 | 29.1% |
+| LOW | 348 | 4.1% |
+| **STRONG ACTION** | **28** | **0.33%** |
+| **MUST TAKE** | **10** | **0.12%** |
+
+**It is not a restatement of rank.** H(label) is 1.141 bits; H(label | rank) is 1.025 — the
+board rank explains only **10%** of the label's variation, and 3% if you condition on the top six
+alone. On the entropy test the tag passes: it is carrying information the ordering does not.
+
+**But two measurements say that information is not reaching a reader.**
+
+1. **It is nearly constant.** 95.4% of rows are CLOSE CALL or PREFERRED. The two labels that
+   mean *act* fire on **38 of 8,399 rows — 0.45%**. A signal that says the same thing 19 times
+   out of 20 trains its reader to stop looking, which is how the 0.45% gets missed.
+2. **Where it does shout, it mostly shouts at the rank you already read.** 22 of those 38 act-now
+   labels sit on the **top-ranked** candidate. There it IS redundant. The remaining 16 sit at
+   ranks 2, 3, 5, 22, 29, 34 and 39.
+
+And the sharpest one: on **47 of 192 turns (24%)** a LOWER-ranked candidate carries a STRICTLY
+stronger label than the leader — pointing at ranks **22, 35, 36, 69, 71**. On a card that shows
+the top handful of a ~70-row candidate list, that is not corroboration and not a second opinion.
+It is a contradiction below the fold, where nobody sees it.
+
+**Why this is a `W1-07` argument, not a labels argument.** The necessity score's largest terms
+are standout (30) and **survival (20)** — and survival is exactly the quantity `W1-07` found
+being sourced from a WITHHELD estimate. Rank now reads `positional_forfeit` through
+`acting_now_value`; the label reads the same forfeit at weight 10 plus survival at 20. The 24%
+disagreement is very largely the survival term pulling the label away from the order.
+
+That yields a **testable prediction**: removing the survival term per `W1-07` should collapse the
+disagreement rate substantially. If it does not, the label is measuring something else worth
+naming. Either outcome is information, which is what makes it worth doing in that order —
+`W1-07` first, then re-measure this, and only then decide whether the tag vocabulary needs
+changing at all.
+
+**No label change is recommended yet**, and specifically not a threshold nudge to make STRONG
+ACTION fire more often. Retuning a label to fire at a rate someone likes is `#56` with a
+friendlier face; the rate is an output of the score, and the score has a term under review.
+
+
 ---
 
 # `K-07` — the mock draft reloads the merger twice per rerun *(pinned, not repaired)*
