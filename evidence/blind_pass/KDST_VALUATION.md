@@ -451,6 +451,122 @@ Two properties worth stating before any ruling:
 `#184`. The next step that does not require a ruling is an A/B: one process, one code version,
 toggling only the ordering key, reporting where K and DEF land in each arm.
 
+## REPAIRED, and measured: K and DST move to the back of the draft
+
+The ordering change is in (`acting_now_value`, `pick_synthesis`). One process, one code
+version, the same `12T_ppr_K_DEF` arm, the same 192-pick `simulate_full_draft` path, toggling
+only the ordering key:
+
+| pos | first round | | median | | taken | |
+|---|---:|---:|---:|---:|---:|---:|
+| | **before** | **after** | **before** | **after** | **before** | **after** |
+| DEF | 5 | **7** | 10.0 | **15.0** | 27 | **13** |
+| K | 7 | **10** | 10.0 | **14.5** | 29 | **14** |
+| TE | 1 | 1 | 13.5 | 10.0 | 28 | 40 |
+| RB | 1 | 1 | 4.5 | 6.0 | 40 | 49 |
+| WR | 1 | 1 | 6.0 | 7.0 | 51 | 58 |
+| QB | 4 | 4 | 8.0 | 7.5 | 17 | 18 |
+
+**Median defense moves from round 10 to round 15, median kicker from 10 to 14.5** — the
+"no sooner than 13ish, the last starters taken" the owner asked for. The counts land where a
+twelve-team league's demand is: 27 defenses drafted becomes 13, 29 kickers becomes 14, against
+a real need of twelve each. The picks freed go to skill depth — TE 28 to 40, RB 40 to 49,
+WR 51 to 58 — which is "get your starters, get a few insulation depth, then contemplate K and
+DST" arrived at by the arithmetic rather than imposed on it.
+
+Disagreement between the two authorities — how often the board's position was not the one
+forfeit ranked most urgent — falls from **137 of 192 picks to 7**.
+
+### The cost side: 35 tav a pick, for half a percent of points
+
+The repair does not come free on the board's own old ruler, and the size of that is worth
+stating plainly. Measured across both cached 192-pick trajectories:
+
+| | before | after |
+|---|---:|---:|
+| mean `tav` given up per pick vs the tav leader | 0.00 | **−35.11** |
+| worst single pick | 0.00 | **−155.43** |
+| picks giving up more than 20 tav | 0 | **93 of 192** |
+| picks giving up more than 40 tav | 0 | **69 of 192** |
+
+Before is 0.00 by construction: that board ranked on `tav`, so it always took the tav leader.
+After, the engine passes over it constantly, which is what ordering on a different key MEANS
+and not in itself evidence of anything. The question those numbers force is whether the
+sacrifice buys or costs real points.
+
+**It costs half a percent.** Each chair's best legal lineup, solved with the engine's own
+`lineup_optimizer` over projected POINTS — a rate, summable — on one shared pre-draft ruler
+built from the stored snapshots and applied identically to both arms
+(probe `roster_outcome_ab.py`):
+
+| arm | mean starters | median | worst chair | best chair |
+|---|---:|---:|---:|---:|
+| before | 2429.1 | 2418.0 | 2395.1 | 2489.4 |
+| after | 2417.8 | 2422.7 | 2297.6 | 2581.5 |
+
+**−11.4 points, −0.5%**, with 6 of 12 chairs improved. The median is slightly higher after;
+the spread widens at both ends.
+
+Two notes on the instrument, because this number carries the verdict:
+
+- The ruler is **projected points, not `universal_value`**, and deliberately. `roster_strength`'s
+  own docstring records why summing `universal_value` over a lineup cannot answer this: it is
+  an asset LEVEL rather than a rate, 83.8% of a pool's values are negative, and
+  `optimize_lineup` has no "leave the slot empty" move, so what that sum ranks is positional
+  breadth. Using it here would have produced a confident number about a different question.
+- **Coverage is 100%**: every one of the 192 rostered players in each arm carries a projection,
+  so nobody entered the lineup solve at 0.0. Checked rather than assumed, because
+  `values.get(pid, 0.0)` admitting an unpriced player at zero is the exact defect that same
+  docstring flags.
+
+So the trade is: give up 35 tav a pick, lose 0.5% of realised starting points, and get K and
+DST off the front of the draft. **That is itself evidence for the predictiveness thesis** — if
+`tav` differences of that size were real, surrendering 6,700 points of it across a draft would
+have cost far more than eleven points of lineup. What it bought, it bought cheaply; what it
+gave up was largely not there.
+
+### The collateral this broke, and why that was the right kind of break
+
+`draft_counterfactual.classify_deviation` asks "the engine passed over best-player-available —
+was that defensible?", and its whole premise was that the engine IS the tav-argmax. All 93
+high-sacrifice picks came back `(False, "neither")`: the harness reporting unsupported
+deviations on a board doing exactly what it is now built to do. `regret_vs_bpa` carried
+`>= 0 by construction` in its own field comment, and `test_regret_vs_bpa_is_never_negative`
+held that as an invariant.
+
+Both are now corrected rather than suppressed. A measured `acting_now_value` is a basis of its
+own (`"ordering_key"`); where it is absent — turn-ending picks, upside mode — the previous tav
+order really is in force and an unexplained deviation stays unexplained. The test asserts the
+invariant that survives: **not the sign, but that nothing deviates silently.**
+
+This is the audit's own central mechanism running in the direction it is supposed to: a repair
+widened the population, an invariant proven over the old one stopped holding, and the test
+FAILED rather than staying green on a domain it no longer entered.
+
+### The residual, stated rather than smoothed over
+
+The first defense still goes in round 7, at pick **7.12**. That pick's snapshot records
+`forfeit: None` and `survival: 1.0`, because 7.12 and 8.01 are the same seat in a snake: there
+are **no intervening picks**, so there is no next turn to defer to and `positional_forfeits`
+correctly returns nothing. The row falls into the unmeasured block and is ordered by
+`team_acquisition_value` — the previous behaviour, which is exactly what the absence contract
+prescribes and what `_acting_now_order`'s unmeasured block is for.
+
+**15 of 192 picks in a 12x16 snake are turn-ending (8%).** At those picks this repair does not
+apply, and cannot: "what does waiting cost" has no answer when you are not waiting. Whether a
+turn-ending pick should instead weigh the cost of deferring to the round AFTER next is a real
+question and a different quantity from this one. Recorded here, not invented into the repair.
+
+### What this does not claim
+
+The engine now drafts K and DST where the owner wanted them. It does **not** follow that the
+projections those positions are priced from are any more predictive than they were — the
+flatness measured further up this document is untouched, and
+`measure_projection_accuracy.py` remains the outstanding input. What changed is that a
+position whose replacement is nearly free is no longer paid for as though it were scarce. If
+the predictiveness run later shows the K curve is noise, that is an argument about `bpa`, and
+this repair neither anticipates nor forecloses it.
+
 ---
 
 # `K-07` — the mock draft reloads the merger twice per rerun *(pinned, not repaired)*
