@@ -1241,6 +1241,77 @@ def detect_positional_cliff(board: list[dict], player_id) -> Optional[dict]:
     return {"tier": tier, "gap": round(this_gap, 2), "typical_gap": round(typical_gap, 2)}
 
 
+def _acting_now_order(c: dict) -> tuple:
+    """Sort key for a narrowed candidate: the feasibility backstop first, then what acting now
+    is worth, with rows that have no such measurement ordered among themselves by the previous
+    key. Highest first; player_id breaks exact ties, as it does in both other ordering
+    authorities.
+
+    THE THIRD ORDERING AUTHORITY, stated as one (#155). draft_room.compute_draft_board sorts,
+    pick_synthesis._board_order re-sorts, and this re-sorts again. #155's rule is that these
+    must not silently disagree, not that there may only be one: the first two rank what a
+    player is WORTH, and neither can rank what taking him NOW is worth, because forfeits do not
+    exist until after both have run. What this must never do is reverse the backstop or promote
+    an unpriced row, and it does neither -- the leading terms are `_board_order`'s own.
+
+    ABSENCE IS NOT LAST, AND IS NOT ZERO (#187). A row with no acting_now_value is not claiming
+    that acting now gains nothing; nothing was measured. Such rows sort as a block AFTER the
+    measured ones and are ordered among themselves by team_acquisition_value -- the exact order
+    they arrived in. In upside mode, where draft_strategy builds no curves at all and EVERY row
+    is in that block, this key is therefore identical to the one it replaces. That is the
+    intended preservation: this repair changes balanced-mode ordering and leaves upside mode
+    to the open valuation question draft_strategy already records at the curve site."""
+    acting = c.get("acting_now_value")
+    tav = c.get("team_acquisition_value")
+    return (not c.get("fills_required_slot", False),
+            acting is None,
+            -acting if acting is not None else 0.0,
+            tav is None,
+            -tav if tav is not None else 0.0,
+            str(c.get("player_id")))
+
+
+def acting_now_value(team_acquisition_value: Optional[float],
+                     position_next_turn_value: Optional[float]) -> Optional[float]:
+    """What taking THIS player NOW is worth over taking this position at my next turn instead.
+
+        acting_now_value = team_acquisition_value - position_next_turn_value
+
+    Both operands are in final_score's units and both describe a player landing on MY roster,
+    so every team-specific term the candidate carries is carried by his alternative too and
+    cancels. draft_strategy computes the subtrahend by walking the position's own final_score
+    curve down by `expected_taken` -- the same walk, the same index, the same _curve_at that
+    produces positional_forfeit, differing only in which column the curve is built from.
+
+    WHY THIS IS THE ORDERING QUESTION, and team_acquisition_value is not. A draft pick is not
+    "who is best", it is "who must I take NOW rather than later", and the two differ exactly
+    when a position replaces its own best player cheaply. `team_acquisition_value` answers the
+    first. This answers the second, and the gap between them is what put the first defense of a
+    16-round draft in ROUND 5 (evidence/blind_pass/KDST_VALUATION.md): that board recorded
+    tav 34.47 and positional_forfeit 0.13 on the same row of the same snapshot, and ranked on
+    the first.
+
+    WHY THE SUBTRAHEND IS TEAM-RELATIVE, which the first implementation of this got wrong.
+    Subtracting the team-AGNOSTIC forfeit curve instead leaves the team terms ADDED rather than
+    cancelled. Measured on a real round-9 board: every kicker and defense then held a flat
+    +4.00 `need_bonus` for a dedicated slot -- a slot that is still empty at the next turn, so
+    the replacement earns the same +4.00 and the credit belongs to neither. It is the original
+    defect wearing a different term, and it kept K and DEF on top of the board even after the
+    order changed.
+
+    NO CONSTANT IS INTRODUCED, so #56 is not engaged. Both operands are quantities this engine
+    already computes on every board; what changes is which of them the order reads.
+
+    ABSENT, NEVER ZERO (#187). None whenever either operand is missing -- an unpriced row, a
+    back-to-back turn with no intervening picks, or upside mode, where draft_strategy builds no
+    position curves at all and every forfeit is legitimately absent. A 0.0 would read as
+    "measured, and acting now gains exactly nothing", an argument for waiting asserted from an
+    absence. Callers order absent rows by the previous key; see _acting_now_order."""
+    if team_acquisition_value is None or position_next_turn_value is None:
+        return None
+    return team_acquisition_value - position_next_turn_value
+
+
 def expected_value_of_waiting(universal_value: float, survival_probability: Optional[float]) -> Optional[float]:
     """The flip side of draft_strategy.py's opportunity_cost -- what you'd expect to walk away
     with, in universal_value's own units, if you pass on this player now and gamble on him
@@ -1374,6 +1445,15 @@ class CandidateSnapshot:
     rival_premium: Optional[float]
     positional_forfeit: Optional[float]
     position_expected_taken: Optional[float]
+    #: positional_forfeits' third member, carried so a reader can check a forfeit against the
+    #: curve it came from rather than taking it on trust.
+    position_best_now: Optional[float]
+    #: The alternative acting_now_value weighs this candidate against -- what his position is
+    #: expected to still offer at the next turn, in final_score's units.
+    position_next_turn_value: Optional[float]
+    #: WHAT THIS CANDIDATE'S ORDER IS. Optional because it is a measurement, and an absent one
+    #: stays absent (#187) -- see acting_now_value and _acting_now_order.
+    acting_now_value: Optional[float]
     positional_cliff: Optional[dict]
     position_run_detected: bool
     pick_necessity: float
@@ -1642,6 +1722,8 @@ def build_snapshot(
             "rival_premium_take_probability": a.get("rival_premium_take_probability"),
             "positional_forfeit": a.get("positional_forfeit"),
             "position_expected_taken": a.get("position_expected_taken"),
+            "position_best_now": a.get("position_best_now"),
+            "position_next_turn_value": a.get("position_next_turn_value"),
             "positional_cliff": detect_positional_cliff(board, pid),
             "position_run_detected": (run_position is not None and row["position"] == run_position),
             "consensus_rank": standing["consensus_rank"] if standing else None,
@@ -1662,6 +1744,31 @@ def build_snapshot(
             # is a real measured state rather than an absence.
             "fills_required_slot": bool(row.get("fills_required_slot", False)),
         })
+
+    # WHAT ACTING NOW IS WORTH, and then the ORDER THAT READS IT.
+    #
+    # Everything above this line is assembled in `narrowed` order -- pick_synthesis.
+    # narrow_candidates sorting on `_board_order`, which keys on `final_score`. That order is
+    # built BEFORE forfeits exist (they need the opponent boards pick_analysis computes), so
+    # the board cannot rank on what acting now is worth; it ranks on what the player is worth.
+    # Re-ordering HERE, once every candidate carries its forfeit, is the only seam where both
+    # numbers exist at once. See acting_now_value for why this is the ordering question.
+    #
+    # WHY THIS IS NOT DEFEATED BY THE NARROWING ABOVE IT. Re-sorting a top-N chosen by a
+    # different key would be cosmetic if the N were chosen by value alone -- the candidate this
+    # order promotes would already have been cut. It is not: narrow_candidates also admits the
+    # top `position_depth` rows AT EVERY POSITION regardless of board rank, so the best player
+    # at each position is always in the set this re-sorts. Verified by test, because it is the
+    # assumption the whole repair rests on.
+    #
+    # ORDER MATTERS FOR WHAT FOLLOWS. compute_pick_necessity, near_tie_flags ("near tie with
+    # the LEADER") and decision_regime all read this list as ranked, so the re-sort happens
+    # before them rather than on the way out -- otherwise the snapshot would describe one
+    # leader and recommend another.
+    for c in raw_candidates:
+        c["acting_now_value"] = acting_now_value(
+            c["team_acquisition_value"], c["position_next_turn_value"])
+    raw_candidates.sort(key=_acting_now_order)
 
     # THE ROUND OF THE PICK BEING DECIDED, not of the last pick already made (#52 phase 6).
     #

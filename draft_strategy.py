@@ -860,10 +860,25 @@ def _position_curves(my_board: dict) -> dict[str, list[float]]:
     A position with nothing priced left gets no key at all rather than an empty list, which is
     the same absence-not-zero rule the board itself follows: positional_forfeits already skips
     a position it has no curve for."""
+    return _curves_on(my_board, "universal_value")
+
+
+def _curves_on(my_board: dict, value_col: str) -> dict[str, list[float]]:
+    """_position_curves' body, over a NAMED value column.
+
+    Two curves are read off the same board for two different questions, and they must be built
+    by one function or they will drift (#126). `universal_value` answers "how fast does this
+    POSITION decay" -- team-agnostic on purpose, because a forfeit shown to a person is a fact
+    about the market, not about their roster. `final_score` answers "what would I actually get
+    here next turn" -- team-relative on purpose, because the alternative I am weighed against
+    lands on MY roster and carries the same team-specific terms I do.
+
+    Same absence rule in both: an unpriced row has no value and is excluded, and a position
+    with nothing priced left gets no key rather than an empty list."""
     curves: dict[str, list[float]] = {}
     for row in my_board.values():
         position = row.get("position")
-        value = row.get("universal_value")
+        value = row.get(value_col)
         if not position or value is None:
             continue
         curves.setdefault(position, []).append(value)
@@ -1015,6 +1030,29 @@ def pick_analysis(
     forfeits = positional_forfeits(position_curves, opponent_boards, intervening,
                                    detect_positional_run(picks, players_db))
 
+    # WHAT THIS POSITION IS EXPECTED TO STILL OFFER ME AT MY NEXT TURN, in the units a pick is
+    # actually decided in. Same walk as forfeit's second step -- the same expected_taken, read
+    # at the same fractional index through the same _curve_at -- but down the final_score curve
+    # rather than the universal_value one.
+    #
+    # WHY A SECOND CURVE RATHER THAN REUSING forfeit's. "Take him now, or take this position
+    # next turn" is a difference of two things that both land on MY roster, so every
+    # team-specific term the candidate carries is carried by his replacement too and must
+    # CANCEL. Subtracting a team-agnostic curve from a team-relative candidate does not cancel
+    # them, it adds them: measured on a real round-9 board, that left every kicker and defense
+    # holding a flat +4.00 need_bonus for a slot that would still be empty next turn -- the
+    # identical slot, credited once and never debited. The two curves keep forfeit reporting
+    # the market fact a person should read while the ORDER reads the roster-relative one.
+    #
+    # Skipped in upside mode for exactly the reason position_curves above is, and through the
+    # same condition rather than a second reading of it.
+    next_turn_curves = {} if mode == "upside" else _curves_on(my_board, "final_score")
+    next_turn_values = {
+        position: round(_curve_at(curve, (forfeits.get(position) or {}).get("expected_taken", 0.0)), 2)
+        for position, curve in next_turn_curves.items()
+        if position in forfeits
+    }
+
     results = []
     for player_id in candidate_player_ids:
         my_row = my_board.get(str(player_id))
@@ -1141,6 +1179,13 @@ def pick_analysis(
             "rival_premium_take_probability": rival_premium_take_probability,
             "positional_forfeit": (forfeits.get(my_row.get("position")) or {}).get("forfeit"),
             "position_expected_taken": (forfeits.get(my_row.get("position")) or {}).get("expected_taken"),
+            "position_best_now": (forfeits.get(my_row.get("position")) or {}).get("best_now"),
+            #: THE ALTERNATIVE THIS CANDIDATE IS WEIGHED AGAINST: what his position is expected
+            #: to still offer ME at my next turn, in final_score's own units so the team terms
+            #: cancel against his. Absent, never 0.0, wherever forfeits are (upside mode, a
+            #: back-to-back turn, a position with nothing priced left) -- 0.0 would read as
+            #: "measured, and nothing will be left", the strongest possible case for acting now.
+            "position_next_turn_value": next_turn_values.get(my_row.get("position")),
         })
     results.sort(key=_opportunity_cost_order)
     return results
