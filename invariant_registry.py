@@ -186,6 +186,41 @@ def _take_model_consumers() -> list[str]:
     return sorted(out)
 
 
+def _active_multi_eligible_players() -> list[str]:
+    """Every ACTIVE player the current capture lists at more than one fantasy position.
+
+    Registered because a term went inert here without anyone noticing, which is this registry's
+    whole reason to exist running in the direction nobody watches: a population SHRINKING.
+    `eligibility_bonus` prices what a player's multi-position eligibility unlocks, and
+    draft_room's own comment names the case it was built for -- "WR/TE dual eligibility, a
+    common real Sleeper listing", once measured at an 82.00 bonus.
+
+    Measured on the capture (#52, the 6.1b ruling): 178 players carry more than one fantasy
+    position, and every one that is OFFENCE-ONLY is retired -- Kelvin Benjamin, Vince Mayle,
+    the Thigpens. Not one reaches a board. The live population is IDP cross-family (DL/LB 127,
+    DB/LB 37) plus Travis Hunter (DB/WR), and flexibility between two IDP slots at similar
+    levels rarely moves an optimal lineup: measured across 36 board states and 46,020 rows,
+    the term is nonzero on FIVE, with a maximum of 0.84 against a bound of 12.00.
+
+    So a census that moves here is the signal to re-derive. A vendor refresh that reintroduces
+    an active WR/TE listing makes the retired term's population non-empty again, and the
+    ruling that retired it was made against an empty one.
+
+    Counted over the capture rather than a live board on purpose: a board filters by league
+    format, and this question is about who EXISTS, not who a particular rulebook admits.
+    """
+    import player_universe as pu
+    import run_draft_battery as rdb
+
+    players_db, _ = rdb.build_players_db_from_capture()
+    out = []
+    for player_id, info in (players_db or {}).items():
+        eligible = pu.player_eligible_positions(info or {})
+        if len(eligible) > 1:
+            out.append(f"{player_id}|{'/'.join(sorted(eligible))}")
+    return sorted(out)
+
+
 def _vendor_record_resolutions() -> list[str]:
     """Call sites of `_merge_across_eligibility` -- every place a player is resolved onto a
     vendor record, and therefore every place that has to decide what a CONTESTED result means.
@@ -229,6 +264,23 @@ REGISTRY: tuple[Invariant, ...] = (
         members=_tav_team_specific_terms,
         census=4,
         pinned_by=("test_probability_bounds.TheCapsTupleBoundsWhatItActuallyBounds",),
+    ),
+    Invariant(
+        name="multi-position eligibility has a population to price",
+        claim="A term that prices multi-position eligibility is only meaningful while players "
+              "carry more than one position. Measured across 36 board states and 46,020 rows, "
+              "eligibility_bonus is nonzero on FIVE, at a maximum of 0.84 against a bound of "
+              "12.00 -- and every OFFENCE-ONLY multi-eligible player in the capture is retired, "
+              "so the WR/TE case the term was built for has no living members.",
+        population="Every player the capture lists at more than one fantasy position. This is "
+                   "the registry watching a population SHRINK, which is the direction nobody "
+                   "checks: the term did not break, its subject left. A vendor refresh that "
+                   "reintroduces an active offence dual-eligibility listing makes this census "
+                   "move, and the 6.1b ruling that retired the term was made against the "
+                   "population as it stands here.",
+        members=_active_multi_eligible_players,
+        census=178,
+        pinned_by=("test_invariant_registry.TheRegistryIsWellFormedTests",),
     ),
     Invariant(
         name="displacement_adj is non-positive for a single-position candidate",
