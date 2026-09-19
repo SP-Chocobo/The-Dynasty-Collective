@@ -288,6 +288,120 @@ chosen to produce an outcome, and it does not even produce the outcome.
 Recorded with both probes. No ruling is requested on band width, because the measurement
 withdraws the question.
 
+## Located: the engine computes the right number and orders on a different one
+
+*Owner: "So how do we fix their placements?"*
+
+Everything ruled out so far was ruled out because it measured the wrong quantity. The RIGHT
+quantity exists, is computed on every board, is displayed to the user — and reaches neither
+ordering authority.
+
+`positional_forfeits`' own docstring states the question K/DST placement turns on:
+
+> *"if I take the other position now and come back to this one next turn, how much worse is the
+> best player I'll realistically find there?"*
+
+That is precisely the streaming question. Measured at a real round-9 turn with 22 intervening
+picks ahead (probe `forfeit_reaches_nothing.py`):
+
+| pos | forfeit | survival | top candidate |
+|---|---:|---:|---|
+| RB | **21.52** | 96% | TreVeyon Henderson |
+| TE | 6.58 | 98% | Juwan Johnson |
+| WR | 4.40 | 74% | Jalen Coker |
+| DEF | **1.16** | 93% | Pittsburgh Steelers |
+| K | **1.00** | 85% | Cam Little |
+| QB | 0.30 | 89% | Patrick Mahomes |
+
+The board at that same turn ranks **Pittsburgh DEF 4th** (`final_score` −0.10) above TreVeyon
+Henderson (−1.23). Deferring the defense costs 1.16. Deferring the running back costs 21.52.
+The engine takes the defense.
+
+### The circularity check, which the model passes
+
+`estimate_survival` and `positional_forfeits` both read the intervening opponents' **own
+boards, built by this same engine**. If the engine overvalues defenses then every rival board
+does too, the model predicts the defense will be taken, forfeit comes back high, and the
+machinery confirms the error it was meant to correct. The run above cannot rule that out: 11 of
+32 defenses were already gone, so league demand was nearly exhausted and low forfeit might only
+mean "nobody needs one any more."
+
+So the same turn was measured from a state where **no kicker or defense has been taken** — all
+32 defenses on the board, all 12 teams still needing one (probe `forfeit_counterfactual.py`):
+
+| pos | forfeit | survival | top candidate |
+|---|---:|---:|---|
+| WR | **7.46** | 97% | Courtland Sutton |
+| RB | **7.24** | 98% | Rhamondre Stevenson |
+| TE | 4.28 | 98% | Dallas Goedert |
+| DEF | **1.05** | 60% | Los Angeles Rams |
+| K | **0.85** | 98% | Cameron Dicker |
+| QB | 0.80 | 98% | Jordan Love |
+
+**The model is not circular.** With every defense available and every team still needing one, it
+still says deferring the position costs 1.05 points. It gets that right *because* of the
+flatness measured in the section above: `forfeit = best_now − curve_at(expected_taken)`, and on
+a curve where DEF13 ≈ DEF1 the subtraction is small no matter who wants them. The same flatness
+that inflates DEF's VOR deflates DEF's forfeit. One of those two numbers reaches the ordering.
+
+And here is what the ordering does with it — at that turn the **top fourteen candidates are all
+kickers and defenses**, the Rams at `final_score` **+34.47**, with the best running back not in
+the top fourteen at all. Forfeit says the Rams are worth 1.05 of urgency; the board says 34.47
+of value; the board wins, because:
+
+- `positional_forfeit` occurs **zero times** in `draft_room.py`;
+- `pick_synthesis._board_order` — the second ordering authority (`#155`), which re-sorts every
+  board so `compute_draft_board`'s own order never survives to the pick — keys on
+  `(fills_required_slot, final_score, unpriced, player_id)`. No forfeit term;
+- `team_acquisition_value = universal_value + need_bonus + eligibility_bonus + depth_exposure +
+  displacement_adj`. No forfeit term.
+
+Forfeit reaches `pick_necessity` (the words shown beside the pick) and the board UI. It never
+reaches the decision. **The engine has been explaining a choice it did not make.**
+
+### Why every earlier candidate failed, in one line each
+
+Each one was an attempt to fix the ordering without letting the deferral cost into it:
+
+- **A discount multiplier** needed factor −1.96 — because scaling a term that measures value
+  cannot express a fact about timing.
+- **Replacement-band widening** moved nothing (−1.05 at DEF, the wrong way) — because where
+  replacement sits is not what is wrong.
+- **`waiting_cost`** pointed the wrong way (35.90) — because it measures drainage to the
+  end-of-draft floor, not the cost of waiting one turn.
+- **ADP** carries no signal here: every DEF is `16983` and every K `~18000`, the vendor's
+  *undrafted sentinels*. That is absence, and reading a sentinel as "the market drafts them
+  late" is the `#187` defect this repo forbids.
+
+All four were substitutes for the number already on the board.
+
+### The shape of the fix — for owner ruling under `#184`
+
+The classical formulation of "take him now or later" is *value now minus the value of what I
+would get at this position next turn*. Both halves are already computed:
+
+    ordering key  =  final_score  −  curve_at(expected_taken)
+                  =  final_score  −  (best_now − forfeit)
+
+At the counterfactual turn that makes the Rams' advantage-of-acting-now **1.05** against
+Courtland Sutton's **7.46**, and K/DEF sort to the back without a single new constant — the
+term is one the engine already produces, moved from the explanation into the decision.
+
+Two properties worth stating before any ruling:
+
+- **It introduces no constant, so `#56` is not engaged.** It is a re-use of an existing
+  computed quantity, not a calibration.
+- **It self-corrects the obvious objection.** "This would take an urgent mediocre RB over a
+  generational TE" — no: `forfeit` is `best_now − curve_at(expected_taken)`, so a generational
+  TE whose position falls off a cliff behind him carries a *large* forfeit of his own. The rule
+  under-weights elite talent only where the position genuinely replaces him cheaply, which is
+  the case it exists to catch.
+
+**Not implemented here.** It changes what the board ranks on, at both ordering authorities
+(`#155` requires they agree), which is an engine-design change and the owner's call under
+`#184`. The next step that does not require a ruling is an A/B: one process, one code version,
+toggling only the ordering key, reporting where K and DEF land in each arm.
+
 ---
 
 # `K-07` — the mock draft reloads the merger twice per rerun *(pinned, not repaired)*
