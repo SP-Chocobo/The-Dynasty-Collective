@@ -608,8 +608,29 @@ moved.
 
 **`6.1b` UNIFY is a redesign, not a deletion.** It is the largest of the seven. Neither
 `displacement_adj` nor `eligibility_bonus` survives as-is: the ruling is that multi-eligibility
-gets **one** derived price rather than two terms that may each be charging for it. Until that
-derivation exists, `NECESSITY_DENIAL_SATURATION` and `CONTEXT_ELEVATED_THRESHOLD` stay
+gets **one** derived price rather than two terms that may each be charging for it.
+
+> **EXECUTED AS A RETIREMENT, AND THE DIVERGENCE IS RECORDED RATHER THAN SMOOTHED OVER (#52).**
+> Measurement changed the shape of the work before it was done: `eligibility_bonus` turned out
+> to price **0.24%** of the multi-eligibility credit (nonzero on five of 46,020 rows, max 0.84,
+> against `displacement_adj`'s 118.31 on the same lifted rows), and every OFFENCE-ONLY
+> multi-eligible player in the capture is retired — so the term is inert because **its
+> population is empty, not because the term is wrong**. `evidence/blind_pass/RULINGS_EXECUTION.md`
+> records that reasoning and set the retirement as the executable form of "one price, not two".
+> What shipped is therefore the *effect* the ruling asked for — multi-eligibility now has a
+> single price, `displacement_adj` — and **not** the new derived term the wording describes.
+> `displacement_adj` survives as-is. If the owner wanted a fresh derivation rather than the
+> surviving one, that work is still open and this paragraph is where it is recorded.
+>
+> **The line below about the two constants is now OUT OF DATE, and deliberately kept**:
+> `NECESSITY_DENIAL_SATURATION` has moved, 36.0 → 24.0, because `eligibility_bonus`'s cap was a
+> member of `TEAM_SPECIFIC_CAPS` and the SUM lost a 12.0 member. That is the same derivation
+> over a smaller input, not a re-derivation, so `#56` is not engaged — but it is exactly the
+> thing the sentence below said would wait, and striking the sentence would hide that it did
+> not. `CONTEXT_ELEVATED_THRESHOLD` is a MEAN over equal caps and is unchanged at 12.0, so
+> `6.1d.1` still waits as written.
+
+Until that derivation exists, `NECESSITY_DENIAL_SATURATION` and `CONTEXT_ELEVATED_THRESHOLD` stay
 un-re-derived — they are known to rest on the false premise, and `6.1d.1` below waits on the
 same work.
 
