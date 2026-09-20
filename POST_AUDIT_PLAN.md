@@ -13472,3 +13472,84 @@ absence, and matches the posture the rest of the engine takes under `#187`.
 
 **What must not happen** is choosing among A/B/C/D by which best reproduces today's labels. The
 12-of-384 figure is the *before* measurement, not the target.
+
+---
+
+## 6.1d·1 PARTLY EXECUTED — THE CEILING IS `max`, NOT `sum`, AND THE BADGE MEANS "MULTI-ELIGIBLE"
+
+The ruling is *derive a threshold from the sum's own ceiling*. The derivation is done and
+**shipped behaviour-free**; the product half is raised, not closed. Evidence and probes:
+`evidence/context_elevated/`.
+
+### The structural fact the derivation rests on
+
+`context_elevated` fires on `tav − uv` = `need_bonus + depth_exposure + displacement_adj`.
+`need_bonus` is large when a slot is EMPTY; `depth_exposure` requires SURPLUS. Opposite roster
+states. Measured across **4 formats x 8 in-draft board states, 10,887 priced rows**, of which
+**9,793** carry a nonzero value on at least one:
+
+```
+rows where need_bonus AND depth_exposure are both nonzero:   0 of 10,887
+```
+
+So the two capped terms contribute at most ONE cap between them. With
+`displacement_adj <= 0` for a single-position probe (`lineup_optimizer`, THE SIGN, 0 of 120),
+the gap's ceiling over that population is exactly `max(TEAM_SPECIFIC_CAPS)`.
+
+### What shipped
+
+`CONTEXT_ELEVATED_THRESHOLD = max(TEAM_SPECIFIC_CAPS)`, replacing
+`sum(...) / len(...)`. **Still 12.0, so no behaviour changed.** The old comment claimed the mean
+form made the relationship "stop being a coincidence"; it did not — mean equals max here ONLY
+because the two surviving caps are equal, and a change to either would have moved the threshold
+somewhere the quantity cannot reach with nothing to catch it.
+
+Mutation-checked **1/2**:
+
+| mutant | fires |
+|---|---|
+| floor `need_bonus` above zero so the two terms co-occur | 1 — the mutual-exclusion guard |
+| set the caps unequal (12.0, 8.0) AND revert the formula to the mean | 2 — the form guard, plus the guard that exists to announce the coincidence has ended |
+
+The second mutant is the point: with equal caps the form assertion is vacuous, so a third test
+pins that the caps ARE equal and fails loudly the day they stop being.
+
+### The finding: the badge is dead, and a better derivation makes that clearer
+
+```
+ALL 10,887 priced rows:  gap min -122.00, max 8.72, MEAN -3.46
+share >= CONTEXT_ELEVATED_THRESHOLD (12.0): 0.00%
+```
+
+The gap's mean is NEGATIVE, because `displacement_adj` only subtracts over this population — a
+flag meaning "ranked highly substantially because of fit" is reading a quantity that is usually
+a penalty.
+
+Across **all 36 battery formats** it fires on exactly ONE row in the whole corpus:
+
+```
+CAPTURE_owner_league  n=820  max gap 87.82  fired 1 (0.12%)
+    Travis Hunter  gap 87.82  pos WR  fantasy_positions ['DB','WR']  disp +79.44
+```
+
+Every other format, IDP rulebooks included, fires 0.00% with the gap topping out at 8.33–9.00.
+**In practice `context_elevated` means "multi-eligible with a cheap second slot", not "fit".**
+
+### What this rules OUT
+
+- Not fixable by lowering the threshold to the observed max — that is `#56`, fitting a number
+  to make a badge fire.
+- Not fixed by `6.1b`. That moved `NECESSITY_DENIAL_SATURATION` 36.0 -> 24.0, but the gap's
+  ceiling was never the sum, so the deadness is untouched.
+- Not an IDP-supply artifact. Both IDP rulebooks fire 0.00%; the one firing row is a
+  multi-eligible probe in the owner's own capture.
+- Not caused by the `6.1d` roster-wide repair. That pulled max gap 13.21 -> 8.33; even at 13.21
+  the badge fired 7.72%, which the owning test class already warned was a bound read as a
+  threshold.
+
+### NOT fixed, and why — `#184`
+
+A flag that fires on one row of one league across 36 formats needs a different quantity or
+retirement. That is a product/valuation call and it is the owner's. The two `expectedFailure`s
+in `test_threshold_reachability.py` stay as the executable statement of what must become true
+once a ruling lands. `DRAFT_ROOM_UI` U24 is the same shape one flag over.

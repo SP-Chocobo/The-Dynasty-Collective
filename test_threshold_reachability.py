@@ -326,6 +326,58 @@ class KnownUnreachableThresholdsTests(_RealBoards):
 
 
 
+class TheTwoCappedTermsAreMutuallyExclusiveTests(_RealBoards):
+    """6.1d.1. The structural fact CONTEXT_ELEVATED_THRESHOLD's derivation rests on.
+
+    The threshold was `sum(TEAM_SPECIFIC_CAPS) / len(...)`, described in its own comment as
+    "one term's worth of lift on a quantity that can hold three" -- and the comment claimed
+    that expressing it that way made the relationship "stop being a coincidence". It did not:
+    the mean equals the max here ONLY because the surviving caps happen to be equal, so a
+    change to either one would silently move the threshold somewhere the quantity cannot reach.
+
+    What is true is stronger and simpler. `need_bonus` is large when a slot at the position is
+    EMPTY; `depth_exposure` requires SURPLUS there. Opposite roster states, so the two never
+    carry value together -- and the gap's ceiling is therefore max(), not sum() and not mean().
+
+    Measured across 4 formats x 8 in-draft board states, 10,887 priced rows (9,793 carrying a
+    nonzero value on at least one term): ZERO rows carry both. This pins that over the boards
+    this class already builds, so a change that lets them co-occur fails here rather than
+    quietly making the threshold wrong.
+    """
+
+    def test_need_bonus_and_depth_exposure_never_both_carry_value(self):
+        both, either = [], 0
+        for rounds, _picks, board in self._boards():
+            for row in board:
+                nb = row.get("need_bonus") or 0.0
+                de = row.get("depth_exposure") or 0.0
+                if nb > 0 or de > 0:
+                    either += 1
+                if nb > 0 and de > 0:
+                    both.append((rounds, row.get("name"), nb, de))
+        self.assertGreater(either, 0, "no row carries either term; this test observed nothing")
+        self.assertEqual(both[:5], [], (
+            "need_bonus and depth_exposure now co-occur, so the gap's ceiling is no longer "
+            "max(TEAM_SPECIFIC_CAPS) and CONTEXT_ELEVATED_THRESHOLD's derivation is stale"))
+
+    def test_the_threshold_is_the_max_cap_not_their_mean(self):
+        # The two agree at today's values, so this asserts the FORM rather than the number --
+        # otherwise the regression it guards against is invisible until a cap moves.
+        self.assertEqual(ps.CONTEXT_ELEVATED_THRESHOLD, max(ps.TEAM_SPECIFIC_CAPS))
+
+    def test_that_distinction_is_not_vacuous_today_only_by_coincidence(self):
+        # NON-VACUITY, and the whole reason the form matters: with equal caps, mean == max, so
+        # the test above passes under the OLD formula too. Pin that they are equal -- if they
+        # ever stop being, the assertion above starts doing real work and this one fails
+        # loudly to say the coincidence has ended rather than letting it pass unnoticed.
+        caps = ps.TEAM_SPECIFIC_CAPS
+        mean = sum(caps) / len(caps)
+        self.assertEqual(mean, max(caps), (
+            "the caps are no longer equal, so mean and max have diverged. "
+            "CONTEXT_ELEVATED_THRESHOLD must follow max(); confirm it did and update this "
+            "test, which existed to catch exactly this moment"))
+
+
 class ContextElevatedBecameReachableTests(_RealBoards):
     """The one rule that escaped the class above, and NOT because anyone chose a better number.
 

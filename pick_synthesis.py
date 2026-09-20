@@ -410,11 +410,44 @@ NECESSITY_DENIAL_SATURATION = sum(TEAM_SPECIFIC_CAPS)
 # NEED_BONUS_MAX -- the cap on ONE of them -- picked back when it was the cap on nearly all of
 # it. #139 added a third term, the quantity's ceiling grew, the constant did not.
 #
-# Expressed as the MEAN cap, which is "one term's worth of contextual lift on a quantity that
-# can hold three". At today's values that is 12.0, so THIS CHANGES NO BEHAVIOUR TODAY, and that
-# is stated plainly rather than dressed up: what changes is that the relationship stops being a
-# coincidence and starts being maintained.
-CONTEXT_ELEVATED_THRESHOLD = sum(TEAM_SPECIFIC_CAPS) / len(TEAM_SPECIFIC_CAPS)
+# CORRECTED AT 6.1d.1: THE CEILING IS max(), NOT sum() AND NOT THE MEAN, BECAUSE THE TWO CAPPED
+# TERMS ARE MUTUALLY EXCLUSIVE.
+#
+# This read `sum(...) / len(...)` -- "one term's worth of lift on a quantity that can hold
+# three" -- and claimed that expressing it that way made the relationship "stop being a
+# coincidence and start being maintained". It did not. `sum/len` equals `max` here ONLY because
+# the two surviving caps happen to be equal (12.0, 12.0). Let one of them move and the mean
+# lands somewhere the quantity cannot reach, silently, with nothing to catch it. That is the
+# coincidence the old comment believed it had removed.
+#
+# WHAT IS ACTUALLY TRUE, measured. `need_bonus` is large when a slot at the position is EMPTY;
+# `depth_exposure` requires SURPLUS at that position. Those are opposite roster states, so the
+# two terms never carry value at the same time. Measured across 4 formats x 8 in-draft board
+# states, 10,887 priced rows, of which 9,793 carry a nonzero value on at least one term:
+#
+#     rows where need_bonus AND depth_exposure are both nonzero:   0 of 10,887
+#
+# So the two capped terms contribute at most ONE cap between them, not their sum.
+#
+# AND THE THIRD TERM ONLY SUBTRACTS, over the population that matters. `displacement_adj <= 0`
+# for a SINGLE-POSITION probe -- lineup_optimizer.displacement_level, THE SIGN, proven there
+# over 960 probes with 0 of 120 single-position ones going positive. So for every row of a
+# rulebook whose players are single-position, the gap's ceiling is exactly max(TEAM_SPECIFIC_CAPS).
+#
+# THE POPULATION IS NAMED BECAUSE IT HAS AN EXCEPTION. A MULTI-eligible probe can be LIFTED,
+# and there the caps bound nothing: measured across all 36 battery formats, the gap exceeds this
+# threshold on exactly ONE row in the entire corpus -- a WR/DB carrying displacement_adj +79.44
+# for a gap of 87.82 on the owner's own capture league. See evidence/context_elevated/.
+#
+# STILL BEHAVIOUR-FREE TODAY: max(12.0, 12.0) == 12.0 == the mean it replaces. What changes is
+# that the number now tracks a ceiling that is real instead of one that is arithmetic.
+#
+# IT DOES NOT MAKE THE BADGE LIVE, and 6.1d.1 is NOT closed by this. The threshold sits AT the
+# derived ceiling and ABOVE the observed distribution (max gap 8.72 across those 10,887 rows),
+# so the flag fires 0.00% everywhere except that one multi-eligible row. Deriving the threshold
+# more correctly makes that deadness clearer, not smaller -- which is itself the finding, and
+# the product question it raises is the owner's (#184).
+CONTEXT_ELEVATED_THRESHOLD = max(TEAM_SPECIFIC_CAPS)
 
 # THE DIVISOR AND THE WEIGHT ARE ONE SLOPE, NOT TWO KNOBS, and that is the whole of what the
 # measurement found. Below saturation the term is `premium x (WEIGHT / DIVISOR)`, so raising
@@ -1017,18 +1050,19 @@ def decision_path_flags(candidates: list[dict]) -> list[dict]:
         "ranked highly substantially because of fit" -- and a UI is expected to surface them as
         one indicator with two readings, never as competing scores.
 
-        THE THRESHOLD IS NOW DERIVED, AND #160 CLOSED THE PRODUCT DECISION. It reads
-        CONTEXT_ELEVATED_THRESHOLD -- the MEAN of the three team-specific caps, i.e. one term's
-        worth of lift on a quantity that can hold three. It used to read NEED_BONUS_MAX, the cap
-        on ONE of them, chosen back when it was the cap on nearly all of it; #139 added a third
-        term, the ceiling grew, the constant did not. Deriving it from TEAM_SPECIFIC_CAPS means a
-        fourth term moves it automatically instead of silently re-shrinking the bar.
+        THE THRESHOLD IS DERIVED, AND THE PRODUCT DECISION IS NOT CLOSED (6.1d.1). It reads
+        CONTEXT_ELEVATED_THRESHOLD -- max() of the TWO surviving team-specific caps, because the
+        two are MUTUALLY EXCLUSIVE and so contribute at most one cap between them (0 of 10,887
+        priced rows carry both; see the constant's own comment). It used to read NEED_BONUS_MAX,
+        then the MEAN of three caps; #139 added a term, 6.1b retired one, and the arithmetic
+        kept landing on 12.0 by coincidence rather than by derivation.
 
-        AT TODAY'S VALUES THIS IS STILL 12.0, so the change is behaviour-free and is not dressed
-        up as more. The scope of the old "~7.8% of priced rows" note is also corrected here: that
-        was one format. Across five it fires 0.0% on four of them and 4.4% on the fifth.
-        test_threshold_reachability.py holds the live measurement and fails if it drifts to
-        either never-fires or almost-always-fires.
+        THE BADGE IS DEAD, AND SAYING SO IS THE POINT. Across all 36 battery formats it fires on
+        exactly ONE row in the whole corpus -- a WR/DB lifted +79.44 by displacement_adj on the
+        owner's own capture league. Everywhere else the gap tops out at 8.72 against a threshold
+        of 12.0. So in practice this flag does not mean "ranked highly because of fit"; it means
+        "multi-eligible with a cheap second slot". test_threshold_reachability.py carries that
+        as two expected failures, and evidence/context_elevated/ has the measurement.
 
     Classification over existing numbers, never new scoring: nothing here feeds necessity,
     ranking, or any value -- same rule as near_tie_flags below. Expects each candidate dict

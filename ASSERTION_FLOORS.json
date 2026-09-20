@@ -12714,12 +12714,12 @@
       }
     },
     "test_threshold_reachability.py": {
-      "test_methods": 16,
+      "test_methods": 19,
       "asserts": {
         "assertAlmostEqual": 4,
-        "assertEqual": 7,
+        "assertEqual": 10,
         "assertFalse": 2,
-        "assertGreater": 8,
+        "assertGreater": 9,
         "assertIn": 2,
         "assertLess": 2,
         "assertNotIn": 2,
@@ -12750,10 +12750,17 @@
           "assertLess": 1,
           "assertTrue": 1
         },
+        "test_need_bonus_and_depth_exposure_never_both_carry_value": {
+          "assertEqual": 1,
+          "assertGreater": 1
+        },
         "test_removing_the_flat_spot_did_not_re_weight_the_term": {
           "assertAlmostEqual": 1
         },
         "test_survival_still_gates_it_independently": {
+          "assertEqual": 1
+        },
+        "test_that_distinction_is_not_vacuous_today_only_by_coincidence": {
           "assertEqual": 1
         },
         "test_the_calibration_gate_overrides_a_decisive_shaped_board": {
@@ -12778,6 +12785,9 @@
           "assertAlmostEqual": 1,
           "assertGreater": 1,
           "assertTrue": 1
+        },
+        "test_the_threshold_is_the_max_cap_not_their_mean": {
+          "assertEqual": 1
         },
         "test_the_threshold_sits_below_the_leader_survival_floor": {
           "assertIn": 1,
