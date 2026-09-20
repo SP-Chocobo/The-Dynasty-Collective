@@ -225,24 +225,50 @@ class TheCapsTupleBoundsWhatItActuallyBounds(unittest.TestCase):
     non-positive by construction ... so it cannot raise the sum these caps bound". It is not
     non-positive: a multi-eligible player whose primary-position level exceeds his shared
     IDP_FLEX alternative gets LIFTED, measured at +79.44 with a gap of 87.82 against a claimed
-    bound of 36.0.
+    bound of 36.0 (24.0 since 6.1b -- see below; the gap is larger against the smaller bound,
+    so the falsity is not softened by the retirement).
 
     These tests pin the structural facts, not the values. Re-deriving the two constants means
     choosing a saturation point and a threshold for a distribution nobody has argued for, which
     is #56's prohibition and a valuation change rather than a repair.
+
+    6.1b RETIRED eligibility_bonus and its cap left this tuple, taking the SUM from 36.0 to
+    24.0 -- which is not the prohibited re-derivation but the SAME derivation over an input
+    that lost a member, and these tests are written to survive exactly that: they assert the
+    tuple holds the caps of the capped terms and nothing else, deriving both sides, rather than
+    counting members or naming constants that a later ruling can retire.
     """
 
-    def test_the_fourth_team_term_is_not_in_the_tuple(self):
+    def test_the_uncapped_team_term_is_not_in_the_tuple(self):
         """The structural fact the claim rested on. If displacement_adj is ever added to
         TEAM_SPECIFIC_CAPS it will need a cap first, and this test should be the thing that
-        makes someone notice."""
+        makes someone notice.
+
+        DERIVED ON BOTH SIDES, and that is the repair this test needed rather than a new count.
+        It used to assert `3 == len(TEAM_SPECIFIC_CAPS)` and name each cap, so 6.1b retiring one
+        term failed it for the wrong reason -- the tuple had not stopped bounding what it
+        bounds, it had lost a member legitimately. A test that counts a population cannot tell
+        a legitimate removal from a defect. This asks the question that actually matters: does
+        the tuple hold the cap of every capped team term, and nothing else?"""
         import pick_synthesis as ps
         import draft_room as dr
-        self.assertEqual(3, len(ps.TEAM_SPECIFIC_CAPS),
-                         "the caps tuple changed size; the constants derived from it assume "
-                         "three capped terms and the fourth has no cap to contribute")
-        self.assertEqual({dr.NEED_BONUS_MAX, dr.ELIGIBILITY_BONUS_MAX, dr.DEPTH_EXPOSURE_MAX},
-                         set(ps.TEAM_SPECIFIC_CAPS))
+        capped = {name.removesuffix("_MAX").lower(): getattr(dr, name)
+                  for name in dir(dr) if name.endswith("_MAX")}
+        # Only the caps of terms that are actually team-specific -- TRADE_VALUE_SCALE_MAX is a
+        # scale bound on a different quantity and has never belonged here.
+        expected = {v for k, v in capped.items() if k in dr.TEAM_SPECIFIC_TERMS}
+        self.assertEqual(expected, set(ps.TEAM_SPECIFIC_CAPS),
+                         "the caps tuple no longer holds exactly the caps of the capped "
+                         "team-specific terms")
+        self.assertNotIn("displacement_adj", capped,
+                         "displacement_adj acquired a cap; it may now belong in the tuple, and "
+                         "the constants derived from the tuple move if it is added")
+
+    def test_that_derivation_is_not_vacuous(self):
+        """The assertion above compares two derived sets, which would hold trivially if both
+        came back empty -- the shape that let a guard pass while measuring nothing."""
+        import pick_synthesis as ps
+        self.assertGreaterEqual(len(ps.TEAM_SPECIFIC_CAPS), 2)
 
     def test_the_fourth_term_has_no_cap_to_be_bounded_by(self):
         """Why the tuple cannot bound the gap: there is no DISPLACEMENT_*_MAX to add to it."""

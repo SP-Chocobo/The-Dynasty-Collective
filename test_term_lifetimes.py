@@ -105,13 +105,21 @@ class TheRegistryStaysHonestTests(unittest.TestCase):
                     f"{name} outlives neither the horizon nor anyone's memory of it")
 
     def test_the_roster_state_carve_out_is_justified_not_just_asserted(self):
-        """The rule would disqualify the whole engine if 'transient' were enough -- all three
-        team-specific terms change constantly. The carve-out has to be stated where it is
-        used, or the next reader applies the rule too broadly and deletes working terms."""
+        """The rule would disqualify the whole engine if 'transient' were enough -- every
+        team-specific term changes constantly. The carve-out has to be stated where it is
+        used, or the next reader applies the rule too broadly and deletes working terms.
+
+        Reads the term list from draft_room rather than repeating it (#126). The hand-written
+        tuple here named eligibility_bonus, so 6.1b retiring that term raised a KeyError from a
+        test whose subject was the carve-out's JUSTIFICATION, not the roster of terms."""
+        import draft_room as dr
         source = (_HERE / "term_lifetimes.py").read_text()
         self.assertIn("DECISION number", source)
-        for name in ("need_bonus", "eligibility_bonus", "depth_exposure"):
+        self.assertTrue(dr.TEAM_SPECIFIC_TERMS, "no team-specific terms: nothing is asserted")
+        for name in dr.TEAM_SPECIFIC_TERMS:
             with self.subTest(term=name):
+                self.assertIn(name, tl.TERMS,
+                              f"{name} is a team-specific term with no lifetime entry")
                 self.assertEqual(tl.TERMS[name]["lifetime"], tl.ROSTER_STATE)
 
     def test_an_excluded_quantity_records_why_rather_than_only_that(self):
