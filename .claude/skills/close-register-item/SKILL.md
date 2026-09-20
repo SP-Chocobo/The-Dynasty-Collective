@@ -25,8 +25,11 @@ verifying six targeted modules (183 tests, all green). The full suite then faile
 `test_assertion_floors` — a file I had not thought to run. Targeted runs are for iterating;
 **the full suite is what licenses a push.** Background it and wait.
 
-**Budget it from a measurement that carries its own date.** The last one: **3091 tests in
-860.9s** at `#283` (2026-09-17), measured with `__pycache__` cleared first per `#240`. Before it,
+**Budget it from a measurement that carries its own date.** The last one: **3347 tests in
+878.3s** at `3bb81a7` (2026-09-20), measured with `__pycache__` cleared first per `#240`. The
+one before it: **3091 tests in 860.9s** at `#283` (2026-09-17), same method -- so in three days
+the suite grew by 256 tests and got 2% slower, i.e. the per-test cost FELL while the total
+barely moved. Growth, not regression; budget from the total. Before it,
 **2925 tests in 670.0s** at `3599422` (2026-09-14) — so in three days the suite grew by 166 tests
 and got 28% SLOWER, undoing most of `#201`'s speedup in wall-clock terms while the per-test cost
 stayed flat. Growth, not regression; budget from the total, not the trend. The
