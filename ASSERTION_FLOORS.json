@@ -10247,12 +10247,14 @@
       }
     },
     "test_replacement_basis_vocabulary.py": {
-      "test_methods": 22,
+      "test_methods": 24,
       "asserts": {
+        "assertAlmostEqual": 1,
         "assertEqual": 17,
-        "assertGreater": 3,
+        "assertGreater": 4,
         "assertIn": 4,
-        "assertIsNotNone": 1,
+        "assertIsNotNone": 2,
+        "assertNotAlmostEqual": 1,
         "assertNotIn": 6,
         "assertTrue": 1
       },
@@ -10280,6 +10282,10 @@
           "assertIn": 2,
           "assertIsNotNone": 1,
           "assertNotIn": 1
+        },
+        "test_bpa_is_zero_at_the_replacement_rank_WHICHEVER_BRANCH_SET_IT": {
+          "assertAlmostEqual": 1,
+          "assertIsNotNone": 1
         },
         "test_every_basis_on_a_real_board_is_in_the_vocabulary": {
           "assertIn": 1
@@ -10325,6 +10331,10 @@
         },
         "test_the_total_basis_carrying_population_is_unchanged_by_the_relabel": {
           "assertEqual": 1
+        },
+        "test_the_two_arms_really_do_pick_different_ranks": {
+          "assertGreater": 1,
+          "assertNotAlmostEqual": 1
         },
         "test_the_weakest_claim_is_stamped_last_so_nothing_overwrites_it": {
           "assertGreater": 1

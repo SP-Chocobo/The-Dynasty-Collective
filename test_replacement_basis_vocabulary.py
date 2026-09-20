@@ -140,6 +140,64 @@ class OnTheRealBoardTests(unittest.TestCase):
         self.assertGreater(qb[dr.REPLACEMENT_BASIS_LIVE_DEMAND], 0)
         self.assertEqual(qb[dr.REPLACEMENT_BASIS_STARTABLE_FLOOR], 0)
 
+    def test_bpa_is_zero_at_the_replacement_rank_WHICHEVER_BRANCH_SET_IT(self):
+        """#23. The invariant that makes `replacement_basis` load-bearing rather than a label.
+
+        `bpa` is DEFINED as `projected_points - replacement_level(P)`, so the player sitting at
+        a position's replacement rank has a bpa of exactly 0 -- and that must hold whichever
+        arm of `replacement_levels` chose the rank. The two arms pick DIFFERENT ranks for the
+        same position: in this fixture superflex QB is priced by the startability floor at rank
+        28, while the league's own starter demand is 22.2. An instrument that assumes the
+        demand headcount reads the curve six players early and finds a bpa of +79.00 where it
+        expects 0.
+
+        THIS TEST EXISTS BECAUSE THAT HAPPENED. `evidence/smoke_seats/probes/
+        horizon_collapse.py` computed the replacement rank as `teams x slots(P)` for every
+        position and reported superflex QB's +82.28 as an anomaly in the ENGINE. The anomaly
+        was in the probe. Recorded in V2_MECHANISM.md section 5a and in POST_AUDIT_PLAN.
+
+        Asserts nothing about WHICH rank is right -- that is the two arms' business. It asserts
+        that whatever rank an arm picks, the engine's own value scale is anchored there.
+        """
+        for label, board in (("superflex", self.sf), ("1QB", self.one_qb)):
+            for position in ("QB", "RB", "WR", "TE"):
+                rows = [r for r in board if r["position"] == position
+                        and r.get("bpa") is not None
+                        and r.get("projected_points") is not None]
+                if not rows:
+                    continue
+                rows.sort(key=lambda r: -r["projected_points"])
+                k = next((i for i, r in enumerate(rows) if r["bpa"] <= 0), None)
+                with self.subTest(league=label, position=position):
+                    self.assertIsNotNone(
+                        k, f"{label} {position}: bpa never reaches 0, so no rank is anchored")
+                    self.assertAlmostEqual(
+                        rows[k]["bpa"], 0.0, places=2,
+                        msg=(f"{label} {position}: bpa at the replacement rank is "
+                             f"{rows[k]['bpa']:.2f}, not 0 -- the value scale is not anchored "
+                             f"where {rows[k].get('replacement_basis')} says it is"))
+
+    def test_the_two_arms_really_do_pick_different_ranks(self):
+        """NON-VACUITY for the test above, and the specific fact the probe got wrong.
+
+        If the floor and the demand headcount happened to agree, the invariant above would hold
+        for a reason that has nothing to do with `replacement_basis` and the instrument error
+        it guards against could not occur.
+        """
+        qb = [r for r in self.sf if r["position"] == "QB"
+              and r.get("bpa") is not None and r.get("projected_points") is not None]
+        qb.sort(key=lambda r: -r["projected_points"])
+        floor_rank = next(i for i, r in enumerate(qb) if r["bpa"] <= 0)
+        league = dr.build_mock_league(teams=12, superflex=True, scoring="ppr",
+                                      te_premium=False, dynasty=True)
+        demand_rank = 12 * dr.starter_slot_counts(
+            league.get("roster_positions") or [], num_teams=12).get("QB", 0.0)
+        self.assertNotAlmostEqual(
+            float(floor_rank), demand_rank, places=0,
+            msg="the floor and the demand headcount agree here, so the guard above is vacuous")
+        # And the gap is in the direction that makes the demand model read the curve EARLY.
+        self.assertGreater(floor_rank, demand_rank)
+
     def test_no_NON_QB_row_is_touched_in_either_league(self):
         # Blast radius, proven rather than asserted: only the position that was handed a floor
         # may carry the new token.

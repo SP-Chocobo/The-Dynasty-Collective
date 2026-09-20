@@ -13325,3 +13325,94 @@ cannot drift back to proving nothing.
 The wiring guard is the file's real deliverable: it parses the AST and asserts BOTH consumers
 reach the shared step, so a third divergence fails loudly rather than surfacing months later as
 a roster that quietly stopped drafting quarterbacks.
+
+---
+
+## #23 WITHDRAWN — THE SUPERFLEX QB "ANOMALY" WAS MY INSTRUMENT, NOT THE ENGINE
+
+`#23` was raised on the strength of one cell in one table and is closed as NOT A DEFECT. There
+is no engine question here for the owner. The defect was in `evidence/smoke_seats/probes/
+horizon_collapse.py`, which I wrote, and in section 5a of `V2_MECHANISM.md`, which I published.
+
+### What I published, and it is wrong
+
+> `F(k_exhaust) = +82.28` and `U(k_exhaust) = +77.43` for superflex QB -- nowhere near zero,
+> where every other cell is. The superflex QB replacement level does not sit at the
+> starters-exhausted index.
+
+The headline "eleven of twelve cells land within `[-6.61, +4.31]` of zero" was also wrong, and
+wrong in the direction that understates the result.
+
+### What is true
+
+`replacement_levels` has TWO arms. For a position carrying a `startable_floor` -- today only QB
+in a superflex league -- the replacement rank is the count of REMAINING players projecting at or
+above an absolute points threshold, NOT the `teams x slots` demand headcount. The board reports
+which arm priced each row, per row, in `replacement_basis`.
+
+```
+12T_ppr      replacement_basis=live_starter_demand   bpa crosses 0 at rank 11  (demand 12.0)
+12T_ppr_SF   replacement_basis=startable_floor       bpa crosses 0 at rank 28  (demand 22.2)
+             QB startable floor = 163.50 points; 29 QBs clear it
+```
+
+`horizon_collapse.py` computed `teams x slots(P)` for every position and never read
+`replacement_basis`. On superflex QB that reads the curve six players early, where bpa is
+legitimately `+79.00` on a scale anchored at rank 28. The `+82.28` is my probe's error reported
+as the engine's.
+
+Re-measured against each position's OWN basis, 4 formats x 4 positions:
+
+```
+worst |bpa| at any position's own replacement rank: 0.00   (16 of 16 cells, exactly zero)
+```
+
+### What this rules OUT, so nobody re-runs it
+
+- **NOT a disagreement between `SUPER_FLEX_QB_SHARE` and the starter-demand path.** That was
+  the second disjunct of my own guess and it is false. Both paths are consistent; they are
+  simply not both used for this position.
+- **NOT a truncation, a clamp, or a `#214/F3` pool-exhaustion case.** `truncated_out` does not
+  fire here; the floor branch is chosen on purpose and the pool is deep enough.
+- **NOT a `#56` violation.** The flat per-team "bench QB demand" constant WAS the `#56`
+  violation, was tried, and was reverted -- real QB projections have a cliff at rank ~27-30 and
+  a fixed constant either landed short of it or overshot past it (measured: 0.3 vs 0.4 extra
+  demand moved one quarterback from 7th to 4th overall). The floor keys off the projection
+  curve's own discontinuity instead. I flagged the correct repair as the suspected defect.
+
+### What it does NOT change
+
+Section 4 stands unaltered. Superflex reaching the board as a LEVEL shift of +127.14 per
+quarterback against +0.08 of slope is measured on the shipped board with whichever arm priced
+it, and the reverted `acting_now` ordering could not see a level shift either way. `#20`'s
+diagnosis is unaffected.
+
+Section 5's conclusion stands and is STRONGER: the collapse of long-horizon regret onto the
+value key is universal (16/16) rather than 11 of 12. `bpa` is anchored at the replacement rank
+whichever arm chose it, so `F(i) - F(replacement_rank)` is the value key by definition. There is
+no longer-horizon formulation left to look for.
+
+### The guard that would have caught it
+
+`test_replacement_basis_vocabulary.OnTheRealBoardTests.
+test_bpa_is_zero_at_the_replacement_rank_WHICHEVER_BRANCH_SET_IT`, with a non-vacuity companion
+pinning that the two arms really do pick different ranks (28 against 22.2) -- without that, the
+invariant could hold for a reason unrelated to `replacement_basis`.
+
+Mutation-checked **1/10**:
+
+| mutant | fires |
+|---|---|
+| `floor = None` (disable the startable-floor arm) | 1 -- the non-vacuity guard only. The anchoring invariant correctly still holds, because bpa is 0 wherever the level lands regardless of which arm put it there. |
+| `levels[position] = ... - 12.0` (unanchor the scale) | 10, including the invariant on 7 of 8 position-league cells. |
+
+That the first mutant fires ONE test and not the other is the point: the two guards are
+measuring different things and neither is a restatement of the other.
+
+### The lesson, since this is the third instrument error in this lineage
+
+An instrument that RECOMPUTES a quantity the engine already publishes will eventually disagree
+with it, and the disagreement reads as an engine defect. `replacement_basis` was on every row
+the entire time. The probe asked the pool a question instead of asking the board its answer.
+The `engine-measurement` rule this earns: **before recomputing an engine quantity in a probe,
+grep the board row for a field that already states it.**

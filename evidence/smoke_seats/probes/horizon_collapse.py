@@ -1,4 +1,25 @@
-"""Does LONG-HORIZON regret collapse to the v1 value key?
+"""WITHDRAWN 2026-09-20 (#23). Superseded by horizon_collapse2.py. Kept unedited below.
+
+THE DEFECT IS IN THIS PROBE, NOT IN THE ENGINE. It computes the replacement rank as
+`teams x slots(P)` -- the LIVE STARTER DEMAND model -- and applies it to every position. But
+`replacement_levels` has TWO arms, and superflex QB uses the other one: `startable_floors`,
+the count of remaining QBs projecting at or above an absolute threshold. The board says so on
+every row, in `replacement_basis`, and this probe never reads that field.
+
+So the `F(k_exhaust) = +82.28` this reported for superflex QB, and V2_MECHANISM.md section 5a
+recorded as an ENGINE anomaly, is this probe reading the curve six players early: the floor
+puts QB replacement at rank 28, the demand headcount says 22.2, and rank 22 legitimately
+carries bpa +79.00 on a scale anchored at 28.
+
+The CONCLUSION survives and is stronger. Measured against each position's own basis across
+four formats and four positions, bpa is exactly 0.00 at the replacement rank in all sixteen
+cells -- superflex QB included. See horizon_collapse2.py and test_replacement_basis_
+vocabulary.TheRealBoardTests.test_bpa_is_zero_at_the_replacement_rank_WHICHEVER_BRANCH_SET_IT,
+which exists because this probe got it wrong.
+
+--- original docstring, unedited ---
+
+Does LONG-HORIZON regret collapse to the v1 value key?
 
 Reviewer's Option B: baseline at the starters-exhausted index k_exhaust rather than at
 the next turn. But replacement_levels sets the replacement rank to exactly the league's

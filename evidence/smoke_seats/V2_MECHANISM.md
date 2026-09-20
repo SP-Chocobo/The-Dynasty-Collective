@@ -117,49 +117,105 @@ while keeping the engine's dependence on it everywhere else.
 
 ## 5. LONG-HORIZON REGRET COLLAPSES TO v1
 
-The proposed salvage is a longer horizon: baseline at the starters-exhausted index
-`k_exhaust` rather than at the next turn. But `replacement_levels` sets the replacement rank
-to exactly the league's remaining starter demand -- `teams x slots(P)` -- which IS
-`k_exhaust`, and `BPA` is DEFINED as `points - replacement_level(P)`. So `BPA(k_exhaust) = 0`
-by construction and
+**CORRECTED 2026-09-20 (`#23`). The conclusion stands and is STRONGER than first published;
+the evidence offered for it was partly wrong. Both are restated in full below.**
+
+The proposed salvage is a longer horizon: baseline at the point where the position's startable
+supply is exhausted rather than at the next turn. But `bpa` is DEFINED as
+`projected_points - replacement_level(P)`, so `bpa` is exactly 0 at whatever rank the board's
+own replacement sits at, and therefore
 
 ```
-regret_longhorizon(i) = F(i) - F(k_exhaust) ~= F(i) - 0 = F(i)
+regret_longhorizon(i) = F(i) - F(replacement_rank) ~= F(i) - 0 = F(i)
 ```
 
-which is v1's key. Measured -- `F` at the starters-exhausted index:
+which is v1's key. Measured against each position's OWN replacement basis, four formats x four
+positions:
 
 ```
-format        pos   slots/tm  k_exh   F(0)    F(k_exh)   U(k_exh)
-12T_ppr       QB        1.00     12   59.00      -2.50      -6.50
-12T_ppr       RB        2.67     32   60.60       1.43      -7.24
-12T_ppr       WR        2.67     32   87.75       3.94      -4.73
-12T_ppr       TE        1.67     20   59.12      -6.61     -11.28
-12T_ppr_SF    QB        1.85     22  186.81     +82.28     +77.43   <-- EXCEPTION
-12T_ppr_SF    RB        2.72     33   60.84       1.47      -7.25
-12T_ppr_SF    WR        2.72     33   87.99       4.07      -4.65
-12T_ppr_SF    TE        1.72     21   60.79      -5.16      -9.88
-10T_ppr       QB        1.00     10   58.00       2.73      -1.27
-10T_ppr       RB        2.67     27   55.39       4.31      -4.36
-10T_ppr       WR        2.67     27   82.08       1.77      -6.90
-10T_ppr       TE        1.67     17   55.85      -5.25      -9.92
+format      pos  basis                  repl rank  bpa@rank   U@rank   F@rank
+12T_ppr     QB   live_starter_demand           11      0.00    -0.27     3.73
+12T_ppr     RB   live_starter_demand           31      0.00    -7.56     1.11
+12T_ppr     WR   live_starter_demand           31      0.00    -3.71     4.96
+12T_ppr     TE   live_starter_demand           19      0.00    -5.83    -1.16
+12T_ppr_SF  QB   startable_floor               28      0.00    -1.18     3.67
+12T_ppr_SF  RB   live_starter_demand           32      0.00    -7.25     1.47
+12T_ppr_SF  WR   live_starter_demand           32      0.00    -2.55     6.17
+12T_ppr_SF  TE   live_starter_demand           20      0.00    -9.36    -4.64
+10T_ppr     QB   live_starter_demand            9      0.00    -0.95     3.05
+10T_ppr     RB   live_starter_demand           26      0.00     1.03     9.70
+10T_ppr     WR   live_starter_demand           26      0.00    -6.30     2.37
+10T_ppr     TE   live_starter_demand           16      0.00   -10.00    -5.33
+10T_ppr_SF  QB   startable_floor               28      0.00    -1.18     3.67
+10T_ppr_SF  RB   live_starter_demand           26      0.00     1.03     9.75
+10T_ppr_SF  WR   live_starter_demand           26      0.00    -6.49     2.23
+10T_ppr_SF  TE   live_starter_demand           16      0.00   -10.00    -5.28
+
+worst |bpa| at any position's own replacement rank: 0.00
 ```
 
-Eleven of twelve cells land within `[-6.61, +4.31]` of zero. **There is no new formulation to
-find at the long horizon: v1 IS regret evaluated at the full horizon, and v2 is its one-gap
-truncation.** The correct rule is the one that was already shipping.
+**Sixteen of sixteen, exactly 0.00.** `bpa` is anchored at the replacement rank whichever arm
+of `replacement_levels` chose that rank. **There is no new formulation to find at the long
+horizon: v1 IS regret evaluated at the full horizon, and v2 is its one-gap truncation.** The
+correct rule is the one that was already shipping.
 
-### 5a. OPEN QUESTION: superflex QB does not obey this
+### 5a. WITHDRAWN — the "superflex QB anomaly" was MY INSTRUMENT, not the engine
 
-`F(k_exhaust) = +82.28` and `U(k_exhaust) = +77.43` for superflex QB -- nowhere near zero,
-where every other cell is. The superflex QB replacement level does not sit at the
-starters-exhausted index. Either a startability floor truncates the demand rank, or the
-`SUPER_FLEX_QB_SHARE` path and the starter-demand path disagree about how many quarterbacks
-a superflex league starts.
+**What this section published, and it is wrong:**
 
-Not diagnosed here, and NOT repaired here (`#184`: this is engine design, and it goes to the
-owner). Recorded because it is the one position-format cell where the collapse fails, and it
-is the same cell where v2's damage was worst.
+> `F(k_exhaust) = +82.28` and `U(k_exhaust) = +77.43` for superflex QB -- nowhere near zero,
+> where every other cell is. The superflex QB replacement level does not sit at the
+> starters-exhausted index. Either a startability floor truncates the demand rank, or the
+> `SUPER_FLEX_QB_SHARE` path and the starter-demand path disagree about how many quarterbacks
+> a superflex league starts.
+
+It also published the headline "eleven of twelve cells land within `[-6.61, +4.31]` of zero",
+which understated the result: it is sixteen of sixteen at exactly zero.
+
+**What is actually true.** `replacement_levels` has TWO arms, and the first disjunct of that
+guess is the answer -- but it is a DESIGN, not a truncation. For a position carrying a
+`startable_floor` (today only QB in a superflex league), the replacement rank is the count of
+REMAINING players projecting at or above an absolute threshold, NOT the `teams x slots` demand
+headcount. The board reports which arm priced each row, per row, in `replacement_basis`.
+Measured on this fixture:
+
+```
+12T_ppr      replacement_basis=live_starter_demand   bpa crosses 0 at rank 11  (demand 12.0)
+12T_ppr_SF   replacement_basis=startable_floor       bpa crosses 0 at rank 28  (demand 22.2)
+             QB startable floor = 163.50 points; 29 QBs clear it
+```
+
+`probes/horizon_collapse.py` computed `teams x slots(P)` for every position and never read
+`replacement_basis`. On superflex QB that reads the curve six players early, where bpa is
+legitimately `+79.00` on a scale anchored at 28. The +82.28 is the probe's error, reported as
+the engine's.
+
+**Why it is a design and not an oversight**, from `replacement_levels`' own docstring: a flat
+per-team "bench QB demand" constant for superflex was tried and REVERTED, because real QB
+projections have a genuine cliff around rank ~27-30 and any fixed constant either landed short
+of it or overshot past it -- measured, 0.3 vs 0.4 extra demand moved one quarterback from 7th
+to 4th overall. The floor keys off the projection curve's own discontinuity instead, which is
+why it is stable where the constant was not. That is `#56` reasoning applied correctly, and my
+section flagged it as a suspected defect.
+
+**Consequences, stated so nobody has to re-derive them:**
+
+- `#23` is CLOSED as NOT A DEFECT. There is no engine question here for the owner.
+- Section 5's conclusion is unaffected and strengthened: the collapse is universal.
+- It does NOT change section 4. Superflex reaching the board as a LEVEL shift of +127.14 per
+  quarterback against +0.08 of slope is measured on the shipped board with whichever arm
+  priced it, and the reverted ordering could not see it either way.
+- The guard that would have caught this now exists: `test_replacement_basis_vocabulary.
+  OnTheRealBoardTests.test_bpa_is_zero_at_the_replacement_rank_WHICHEVER_BRANCH_SET_IT`,
+  with a non-vacuity companion pinning that the two arms really do pick different ranks.
+  Mutation-checked 1/10: disabling the floor arm fires only the non-vacuity guard (correct --
+  the anchoring still holds), and shifting the level off the replacement rank fires the
+  invariant on 7 of 8 cells.
+
+**The lesson, since it is the third instrument error in this file's lineage.** An instrument
+that recomputes a quantity the engine already publishes will eventually disagree with it, and
+the disagreement will read as an engine defect. `replacement_basis` existed on every row the
+whole time. The probe asked the pool a question instead of asking the board its answer.
 
 ## 6. What this rules out
 
@@ -195,7 +251,9 @@ after the valuation fix, not instead of it.
 
 ## 8. Recommendation
 
-1. **Revert the selection authority.** `pick_synthesis.py:1794` back to `_board_order`.
+**STATUS 2026-09-20: item 1 is DONE (`ea697f7`), item 4 is WITHDRAWN, items 2 and 3 are open.**
+
+1. **DONE.** **Revert the selection authority.** `pick_synthesis.py:1794` back to `_board_order`.
    KEEP computing `acting_now_value` and `position_next_turn_value` as carried observables --
    the `final_score`-curve fix and the `need_bonus` cancellation are correct, and the numbers
    belong on the card and in the debate. Correct the now-false "NO SELECTION AUTHORITY"
@@ -212,4 +270,6 @@ after the valuation fix, not instead of it.
    them. Real, but it cannot rescue v2 -- section 3 -- and after the revert it carries no
    selection authority again.
 
-4. **`5a` goes to the owner** as an engine-design question.
+4. **WITHDRAWN.** This read *"`5a` goes to the owner as an engine-design question."* There is
+   no question: `5a` was an error in my own probe, not a defect in the engine, and `#23` is
+   closed as NOT A DEFECT. See `5a` for the correction and for the guard that now holds it.
