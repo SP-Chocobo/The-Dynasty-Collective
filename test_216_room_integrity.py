@@ -19,8 +19,8 @@ and are findings in their own right, not predictions about a fix:
     still tell the reader the number is "scaled against the largest gap left in the pool".
     #116 counted unqualified units; this is a qualified unit that is wrong.
   - The third roster term never reaches the board. team_acquisition_value = universal_value +
-    need_bonus + eligibility_bonus + depth_exposure, the snapshot carries all three, and
-    serialize_candidate emits needBonus and eligBonus only. On the #216 state where a fifth
+    the team-specific terms, the snapshot carries them, and serialize_candidate emits a
+    subset. On the #216 state where a fifth
     tight end is credited +3.72 of depth_exposure (basis `measured`), the room shows ACQ 72 over
     UV 68 with no sentence accounting for the difference. A fix that adds or changes a roster
     term lands in exactly this gap.
@@ -120,8 +120,7 @@ def _candidate(**overrides) -> CandidateSnapshot:
         position_best_now=None, position_next_turn_value=None, acting_now_value=None,
         player_id="123", name="J. Gibbs", position="RB", team="DET",
         bpa=88.5, bpa_source="points_vor_draftsharks", confidence=80.0,
-        universal_value=88.5, need_bonus=6.0, eligibility_bonus=2.9,
-        team_acquisition_value=97.4, survival_probability=0.31, survival_basis=None, intervening_picks=11,
+        universal_value=88.5, need_bonus=6.0, team_acquisition_value=97.4, survival_probability=0.31, survival_basis=None, intervening_picks=11,
         opportunity_cost=67.2, expected_value_of_waiting=27.4,
         denial_value=8.4, rival_premium_basis=None, denial_basis="measured", denial_team="Roster 9",
         rival_premium=8.4, positional_forfeit=77.9, position_expected_taken=2.4,
@@ -221,8 +220,13 @@ class EveryTermOfTheIdentityReachesTheRoomTests(unittest.TestCase):
         # UPDATED BY THE #216 IMPLEMENTER, as this pin instructs: the fourth term
         # (displacement_adj) is carried to CandidateSnapshot, serialize_candidate, the JS
         # sentence and DISPLAY_CONTRACT in the same commit -- each checked by the tests below.
-        self.assertEqual(set(_identity_terms().values()),
-                         {"need_bonus", "eligibility_bonus", "depth_exposure", "displacement_adj"},
+        # DERIVED from draft_room's own tuple (#126). This set was hand-written, so the 6.1b
+        # retirement failed it for naming a term that had legitimately left rather than for
+        # the identity breaking -- and the pin's whole purpose is to fire when the identity's
+        # MEMBERSHIP changes without the four surfaces being updated together, which it still
+        # does: a term added to or removed from the tuple without _identity_terms following
+        # fails here exactly as before.
+        self.assertEqual(set(_identity_terms().values()), set(dr.TEAM_SPECIFIC_TERMS),
                          f"identity terms now: {_identity_terms()}")
 
     def test_the_snapshot_carries_every_term(self):
@@ -237,10 +241,9 @@ class EveryTermOfTheIdentityReachesTheRoomTests(unittest.TestCase):
         whatever key it travels under."""
         # #216: the fourth term carries a distinct magnitude of its own (negative, as it is
         # by construction) so it too is found by VALUE.
-        magnitudes = {"need_bonus": 1.25, "eligibility_bonus": 2.5, "depth_exposure": 5.0,
+        magnitudes = {"need_bonus": 1.25, "depth_exposure": 5.0,
                       "displacement_adj": -7.75}
-        c = _candidate(universal_value=50.0, need_bonus=1.25, eligibility_bonus=2.5,
-                       depth_exposure=5.0, depth_basis="measured",
+        c = _candidate(universal_value=50.0, need_bonus=1.25, depth_exposure=5.0, depth_basis="measured",
                        displacement_adj=-7.75, displacement_basis="measured",
                        team_acquisition_value=51.0)
         row = ui.serialize_candidate(c)
@@ -263,11 +266,10 @@ class EveryTermOfTheIdentityReachesTheRoomTests(unittest.TestCase):
         panel must state the magnitude AND the basis words from lineup_optimizer's own table,
         and an unknown basis token must render as itself (the #186 rule)."""
         import lineup_optimizer as lo
-        c = _candidate(universal_value=50.0, need_bonus=0.0, eligibility_bonus=0.0,
-                       displacement_adj=-12.5, displacement_basis=lo.DISPLACEMENT_MEASURED,
+        c = _candidate(universal_value=50.0, need_bonus=0.0, displacement_adj=-12.5, displacement_basis=lo.DISPLACEMENT_MEASURED,
                        team_acquisition_value=37.5)
         raw = _candidate(player_id="7", name="R. Token", universal_value=50.0, need_bonus=0.0,
-                         eligibility_bonus=0.0, displacement_adj=-3.0,
+                         displacement_adj=-3.0,
                          displacement_basis="some_future_token", team_acquisition_value=47.0)
         out = _execute(_payload([c, raw]))
         self.assertEqual(out["errors"], [])
@@ -291,8 +293,7 @@ class EveryTermOfTheIdentityReachesTheRoomTests(unittest.TestCase):
         """Executed. A candidate whose whole context lift is depth_exposure. The rendered
         focus panel must state that magnitude somewhere; on f580c11 it shows ACQ 55 over UV 50
         and says nothing about the 5."""
-        c = _candidate(universal_value=50.0, need_bonus=0.0, eligibility_bonus=0.0,
-                       depth_exposure=5.0, depth_basis="measured", team_acquisition_value=55.0)
+        c = _candidate(universal_value=50.0, need_bonus=0.0, depth_exposure=5.0, depth_basis="measured", team_acquisition_value=55.0)
         out = _execute(_payload([c]))
         self.assertEqual(out["errors"], [])
         focus = out["rows"][0]["focus"]
@@ -369,7 +370,7 @@ class TheAbsenceContractAtTheScreenTests(unittest.TestCase):
         fix may well make conditional. The DOM may show the absence mark; it may not show
         `null`, `NaN` or `undefined`, and the template may not throw."""
         c = _candidate(universal_value=None, team_acquisition_value=None, bpa=None,
-                       need_bonus=None, eligibility_bonus=None, projected_points=None,
+                       need_bonus=None, projected_points=None,
                        survival_probability=None, survival_basis=None, intervening_picks=None, positional_forfeit=None,
                        rival_premium=None, positional_cliff=None, denial_value=None,
                        replacement_basis=None, near_tie_with_leader=None)
@@ -385,8 +386,8 @@ class TheAbsenceContractAtTheScreenTests(unittest.TestCase):
     @_EXECUTABLE
     def test_a_measured_zero_need_is_not_described_as_a_gap_and_a_positive_one_is(self):
         """The sentence must follow the data in both directions."""
-        zero = _candidate(player_id="1", need_bonus=0.0, eligibility_bonus=0.0)
-        some = _candidate(player_id="2", name="T. McBride", need_bonus=4.0, eligibility_bonus=0.0)
+        zero = _candidate(player_id="1", need_bonus=0.0)
+        some = _candidate(player_id="2", name="T. McBride", need_bonus=4.0)
         out = _execute(_payload([zero, some]))
         self.assertEqual(out["errors"], [])
         self.assertNotIn("roster gap", out["rows"][0]["focus"])
@@ -401,8 +402,7 @@ class TheAbsenceContractAtTheScreenTests(unittest.TestCase):
         subtract -- a surplus penalty, a slot-aware anchor -- puts ACQ below UV with no sentence
         explaining why, which is #187's shape: a number a person reads with no companion. The
         contract is fix-agnostic: the magnitude of the deduction must appear in the panel."""
-        c = _candidate(universal_value=50.0, need_bonus=-20.0, eligibility_bonus=0.0,
-                       team_acquisition_value=30.0)
+        c = _candidate(universal_value=50.0, need_bonus=-20.0, team_acquisition_value=30.0)
         out = _execute(_payload([c]))
         self.assertEqual(out["errors"], [])
         focus = out["rows"][0]["focus"]
@@ -520,8 +520,8 @@ class TheRealBoardStillRunsTests(unittest.TestCase):
                 continue
             self.assertAlmostEqual(
                 c.team_acquisition_value,
-                c.universal_value + c.need_bonus + c.eligibility_bonus + (c.depth_exposure or 0.0)
-                + (c.displacement_adj or 0.0),
+                c.universal_value + sum((getattr(c, term) or 0.0)
+                                        for term in dr.TEAM_SPECIFIC_TERMS),
                 places=2, msg=c.name)
 
     def test_every_negative_roster_term_on_todays_board_is_a_measured_displacement(self):
@@ -543,7 +543,9 @@ class TheRealBoardStillRunsTests(unittest.TestCase):
                 self.assertIsNotNone(c.displacement_adj)
                 self.assertLess(c.displacement_adj, 0.0)
                 self.assertEqual(c.displacement_basis, "measured")
-                other_terms = c.need_bonus + c.eligibility_bonus + (c.depth_exposure or 0.0)
+                # Derived (#126): every team-specific term except the one under test.
+                other_terms = sum((getattr(c, t) or 0.0) for t in dr.TEAM_SPECIFIC_TERMS
+                                  if t != "displacement_adj")
                 self.assertAlmostEqual(c.universal_value - c.team_acquisition_value,
                                        -c.displacement_adj - other_terms, places=2)
 
@@ -579,16 +581,15 @@ class TheRealBoardStillRunsTests(unittest.TestCase):
                     self.assertEqual(len(priced_vs), 1)
                     self.assertTrue(any(w in priced_vs[0] for w in words), f"raw basis on screen: {priced_vs[0]!r}")
                 # Two sentence sets in the template: the decisive-regime LEADER gets "it fills
-                # a genuine roster gap" (need only); everyone else gets "Fills a real roster
-                # gap: +x ... +y" (need or eligibility). Mirrored exactly, so the claim on
-                # screen is checked against the number that justifies it.
+                # a genuine roster gap"; everyone else gets "Fills a real roster gap: +x".
+                # Mirrored exactly, so the claim on screen is checked against the number that
+                # justifies it. Until 6.1b the non-leader branch read (need OR eligibility);
+                # with the second term retired both branches rest on need alone, and the JS
+                # lost its eligibility clause in the same ruling.
                 need = bool(c.need_bonus and c.need_bonus > 0)
-                elig = bool(c.eligibility_bonus and c.eligibility_bonus > 0)
-                leader = c is snap.candidates[0]
-                expected = need if (leader and snap.decision_regime == "decisive") else (need or elig)
-                self.assertEqual("roster gap" in row["focus"], expected,
-                                 f"roster-gap sentence disagrees with need {c.need_bonus} elig "
-                                 f"{c.eligibility_bonus} (leader={leader}, regime={snap.decision_regime})")
+                self.assertEqual("roster gap" in row["focus"], need,
+                                 f"roster-gap sentence disagrees with need {c.need_bonus} "
+                                 f"(regime={snap.decision_regime})")
 
     @_EXECUTABLE
     def test_the_legend_states_the_unit_from_the_contract(self):

@@ -214,15 +214,14 @@ class PositionViewDepthTests(unittest.TestCase):
 
 def _raw_candidate(team_acquisition_value, survival_probability=1.0, positional_cliff=None,
                     position_run_detected=False, rival_premium=0.0, need_bonus=0.0,
-                    eligibility_bonus=0.0, depth_exposure=None, positional_forfeit=None):
+                    depth_exposure=None, positional_forfeit=None):
     # depth_exposure defaults to None rather than 0.0 so this helper keeps producing the shape
     # a row with no depth measurement actually has -- the distinction the whole basis idiom
     # exists to preserve. Passing 0.0 explicitly would test a different case.
     return {
         "team_acquisition_value": team_acquisition_value, "survival_probability": survival_probability,
         "positional_cliff": positional_cliff, "position_run_detected": position_run_detected,
-        "rival_premium": rival_premium, "need_bonus": need_bonus, "eligibility_bonus": eligibility_bonus,
-        "depth_exposure": depth_exposure,
+        "rival_premium": rival_premium, "need_bonus": need_bonus, "depth_exposure": depth_exposure,
         # None, not 0.0: a back-to-back snake turn has no intervening picks, so there is no
         # wait to price. See DepthExposureStopsAtTheValueLayerTests' sibling below.
         "positional_forfeit": positional_forfeit,
@@ -255,8 +254,7 @@ class ComputePickNecessityTests(unittest.TestCase):
     def test_a_real_standout_with_full_scarcity_pressure_reaches_must_take(self):
         standout = _raw_candidate(
             120.0, survival_probability=0.02, positional_cliff={"tier": "HIGH", "gap": 20, "typical_gap": 2},
-            position_run_detected=True, rival_premium=12.0, need_bonus=10.0, eligibility_bonus=5.0,
-        )
+            position_run_detected=True, rival_premium=12.0, need_bonus=10.0)
         distant_second = _raw_candidate(60.0)
         results = ps.compute_pick_necessity([standout, distant_second], round_num=3)
         self.assertGreaterEqual(results[0][0], 90.0)
@@ -356,8 +354,7 @@ class ComputePickNecessityTests(unittest.TestCase):
     def test_necessity_never_leaves_the_0_to_100_range(self):
         extreme = _raw_candidate(
             1000.0, survival_probability=0.0, positional_cliff={"tier": "HIGH", "gap": 999, "typical_gap": 1},
-            position_run_detected=True, rival_premium=1000.0, need_bonus=50.0, eligibility_bonus=50.0,
-        )
+            position_run_detected=True, rival_premium=1000.0, need_bonus=50.0)
         results = ps.compute_pick_necessity([extreme, _raw_candidate(1.0)], round_num=3)
         for score, _label in results:
             self.assertGreaterEqual(score, 0.0)
@@ -388,7 +385,7 @@ class NecessityComponentIsolationTests(unittest.TestCase):
 
     def test_roster_fit_alone_changes_the_score(self):
         # The other one: an identical player who actually fills a hole on THIS roster is a
-        # more necessary pick than one who does not. need_bonus and eligibility_bonus are the
+        # more necessary pick than one who does not. need_bonus is the
         # only team-specific inputs necessity gets.
         fits = _raw_candidate(100.0, need_bonus=10.0)
         does_not_fit = _raw_candidate(100.0, need_bonus=0.0)
@@ -398,14 +395,12 @@ class NecessityComponentIsolationTests(unittest.TestCase):
             "need_bonus had no effect on necessity -- the roster-fit term is not reaching the score",
         )
 
-    def test_eligibility_flexibility_alone_changes_the_score(self):
-        # eligibility_bonus enters through the same term, and is the half that carries a
-        # multi-position player's lineup flexibility. Pinned separately so zeroing either
-        # input is caught, not just the shared weight.
-        flexible = _raw_candidate(100.0, eligibility_bonus=8.0)
-        rigid = _raw_candidate(100.0, eligibility_bonus=0.0)
-        (flex_score, _), (rigid_score, _) = ps.compute_pick_necessity([flexible, rigid], round_num=3)
-        self.assertGreater(flex_score, rigid_score)
+    # `test_eligibility_flexibility_alone_changes_the_score` WAS HERE, deleted at 6.1b (#52).
+    # It pinned that the eligibility half of roster_fit moved necessity on its own, so that
+    # zeroing EITHER input was caught rather than only the shared weight. With one input left
+    # there is no "either" to protect, and the surviving half is covered by the need_bonus test
+    # above and by test_every_pressure_term_is_individually_reachable, which derives its
+    # variants and therefore needed no edit when the term left.
 
     def test_every_pressure_term_is_individually_reachable(self):
         # The general form of the two tests above, so a future term added to the sum starts
@@ -418,7 +413,6 @@ class NecessityComponentIsolationTests(unittest.TestCase):
             "run": dict(neutral, position_run_detected=True),
             "denial": dict(neutral, rival_premium=12.0),
             "need_bonus": dict(neutral, need_bonus=10.0),
-            "eligibility_bonus": dict(neutral, eligibility_bonus=10.0),
         }
         base = ps.compute_pick_necessity([dict(neutral), dict(neutral)], round_num=3)[0][0]
         for name, variant in variants.items():
@@ -552,12 +546,10 @@ class DecisionPathFlagsTests(unittest.TestCase):
 
         others = [70.0]
         necessity_credible = ps.compute_pick_necessity(
-            [dict(credible, player_id="a", team_acquisition_value=85.0, need_bonus=0.0, eligibility_bonus=0.0,
-                  survival_probability=0.5, positional_cliff=None, position_run_detected=False)], round_num=3,
+            [dict(credible, player_id="a", team_acquisition_value=85.0, need_bonus=0.0, survival_probability=0.5, positional_cliff=None, position_run_detected=False)], round_num=3,
         )
         necessity_not_credible = ps.compute_pick_necessity(
-            [dict(not_credible, player_id="a", team_acquisition_value=85.0, need_bonus=0.0, eligibility_bonus=0.0,
-                  survival_probability=0.5, positional_cliff=None, position_run_detected=False)], round_num=3,
+            [dict(not_credible, player_id="a", team_acquisition_value=85.0, need_bonus=0.0, survival_probability=0.5, positional_cliff=None, position_run_detected=False)], round_num=3,
         )
         self.assertEqual(necessity_credible, necessity_not_credible,
                           "pick_necessity's denial_component must be identical regardless of credible-path status -- "
@@ -844,7 +836,9 @@ class BuildSnapshotTests(unittest.TestCase):
             # test_draft_room.py enforces end-to-end, re-checked here since this module is
             # the one actually handing these numbers to the LLM debate layer.
             self.assertAlmostEqual(
-                c.team_acquisition_value, c.universal_value + c.need_bonus + c.eligibility_bonus, places=2,
+                c.team_acquisition_value,
+                c.universal_value + sum((getattr(c, t) or 0.0) for t in dr.TEAM_SPECIFIC_TERMS),
+                places=2,
             )
             # projected_points is a real number here, never a fabricated one, since these are
             # all real Draft-Sharks-projected top players -- never a stray NaN leaking through
@@ -930,10 +924,10 @@ class BuildSnapshotTests(unittest.TestCase):
         )
         for c in snap.candidates:
             self.assertEqual(c.need_bonus, 0.0, c.name)
-            self.assertEqual(c.eligibility_bonus, 0.0, c.name)
+
             self.assertAlmostEqual(
                 c.team_acquisition_value,
-                c.universal_value + c.need_bonus + c.eligibility_bonus,
+                c.universal_value + sum((getattr(c, t) or 0.0) for t in dr.TEAM_SPECIFIC_TERMS),
                 places=6, msg=c.name,
             )
 
@@ -1451,7 +1445,7 @@ class DepthExposureStopsAtTheValueLayerTests(unittest.TestCase):
     """#139: the term reaches team_acquisition_value and deliberately goes no further.
 
     This class exists because the opposite was built first. depth_exposure is on the same
-    scale as need_bonus and eligibility_bonus and sits in the same sum, so adding it to
+    scale as need_bonus and sits in the same sum, so adding it to
     necessity's roster_fit_component looks like a straightforward consistency fix -- and it
     measures fine (up to 7.39 necessity points, 0 argmax flips on 8 real board states). It was
     written, measured, and reverted, because the measurement was answering the wrong question.
@@ -1481,11 +1475,15 @@ class DepthExposureStopsAtTheValueLayerTests(unittest.TestCase):
                 "prices it; necessity's counterpart is waiting_cost. Counting it in both "
                 "boosts one position twice for one reason -- see ENGINE_WIRING_PASS.md")
 
-    def test_but_the_two_terms_that_ARE_read_still_move_it(self):
+    def test_but_the_term_that_IS_read_still_moves_it(self):
         """Non-vacuity for the test above, and the thing that makes the absence a decision.
         If roster_fit had simply stopped working, the assertion above would pass and mean
-        nothing."""
-        with_fit = _raw_candidate(100.0, need_bonus=6.0, eligibility_bonus=4.0)
+        nothing.
+
+        TWO terms until 6.1b (#52) retired eligibility_bonus; roster_fit now reads need_bonus
+        alone. The non-vacuity claim is unchanged and so is its force -- what shrank is the
+        population it is made over, which is the thing to notice rather than the rename."""
+        with_fit = _raw_candidate(100.0, need_bonus=6.0)
         without = _raw_candidate(100.0)
         (fit_score, _), (plain_score, _) = ps.compute_pick_necessity(
             [with_fit, without], round_num=3)
@@ -1531,8 +1529,7 @@ class DepthExposureStopsAtTheValueLayerTests(unittest.TestCase):
         snapshot = ps.CandidateSnapshot(
             position_best_now=None, position_next_turn_value=None, acting_now_value=None,
             player_id="1", name="A", position="RB", team="X", bpa=1.0, bpa_source="s",
-            confidence=1.0, universal_value=10.0, need_bonus=0.0, eligibility_bonus=0.0,
-            team_acquisition_value=10.0, survival_probability=None, intervening_picks=None,
+            confidence=1.0, universal_value=10.0, need_bonus=0.0, team_acquisition_value=10.0, survival_probability=None, intervening_picks=None,
             survival_basis=None,
             opportunity_cost=None, expected_value_of_waiting=None, denial_value=None, rival_premium_basis=None, denial_basis="no_rival_priced",
             denial_team=None, rival_premium=None, positional_forfeit=None,

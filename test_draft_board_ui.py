@@ -19,8 +19,7 @@ def _candidate(**overrides) -> CandidateSnapshot:
         position_best_now=None, position_next_turn_value=None, acting_now_value=None,
         player_id="123", name="J. Gibbs", position="RB", team="DET",
         bpa=88.5, bpa_source="points_vor_draftsharks", confidence=80.0,
-        universal_value=88.5, need_bonus=6.0, eligibility_bonus=2.9,
-        team_acquisition_value=97.4, survival_probability=0.31, survival_basis=None, intervening_picks=11,
+        universal_value=88.5, need_bonus=6.0, team_acquisition_value=97.4, survival_probability=0.31, survival_basis=None, intervening_picks=11,
         opportunity_cost=67.2, expected_value_of_waiting=27.4,
         denial_value=8.4, rival_premium_basis=None, denial_basis="measured", denial_team="Roster 9", rival_premium=8.4,
         positional_forfeit=77.9, position_expected_taken=2.4,
@@ -54,7 +53,6 @@ class SerializeCandidateTests(unittest.TestCase):
         self.assertEqual(row["rivalPremium"], c.rival_premium)
         self.assertEqual(row["denialTeam"], c.denial_team)
         self.assertEqual(row["needBonus"], c.need_bonus)
-        self.assertEqual(row["eligBonus"], c.eligibility_bonus)
         self.assertEqual(row["fillsRequiredSlot"], c.fills_required_slot)
 
     def test_positional_cliff_fields_unpacked_when_present(self):
@@ -426,11 +424,11 @@ globalThis.document = {
             position_expected_taken=None, positional_cliff=None, near_tie_with_leader=None,
             cliff_protection=True, block_opportunity=True, pure_value=True,
             context_elevated=True, projected_points=None, need_bonus=None,
-            eligibility_bonus=None, necessity_label="CLOSE CALL",
+            necessity_label="CLOSE CALL",
         )
         zeros = _candidate(
             player_id="z", name="Measured Zeros", universal_value=0.0, team_acquisition_value=0.0,
-            need_bonus=0.0, eligibility_bonus=0.0, survival_probability=0.0, denial_value=0.0, rival_premium_basis=None, denial_basis="measured",
+            need_bonus=0.0, survival_probability=0.0, denial_value=0.0, rival_premium_basis=None, denial_basis="measured",
             rival_premium=0.0, positional_forfeit=0.0, projected_points=0.0,
             positional_cliff={"tier": "LOW", "gap": 0.0, "typical_gap": 0.0},
         )

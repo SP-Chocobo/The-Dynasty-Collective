@@ -39,7 +39,7 @@ def candidate(**over) -> CandidateSnapshot:
         position_best_now=None, position_next_turn_value=None, acting_now_value=None,
         player_id="9221", name="Test Player", position="RB", team="SF", bpa=50.0,
         bpa_source="points_vor_draftsharks", confidence=80.0, universal_value=50.0,
-        need_bonus=6.0, eligibility_bonus=4.0, team_acquisition_value=60.0,
+        need_bonus=6.0, team_acquisition_value=60.0,
         survival_probability=0.4, survival_basis=None, intervening_picks=2, opportunity_cost=30.0,
         expected_value_of_waiting=20.0, denial_value=30.0, denial_basis="measured",
         rival_premium_basis=None, denial_team="4", rival_premium=6.0,
@@ -148,7 +148,7 @@ class TheFullyMeasuredCaseIsUnCHANGED(unittest.TestCase):
         out = rendered(positional_forfeit=12.0, position_expected_taken=3.0,
                        positional_cliff={"tier": "HIGH", "gap": 12.0, "typical_gap": 2.0})
         for expected in ("Universal value: 50.0", "Team acquisition value: 60.0",
-                         "universal_value 50.0 + need_bonus +6.0", "eligibility_bonus +4.0",
+                         "universal_value 50.0 + need_bonus +6.0",
                          # INVERTED (#206): the survival family is withheld from the chairs,
                          # and the measured pick COUNT takes its place in the same line.
                          "Picks before your next selection: 2",

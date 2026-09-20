@@ -263,7 +263,7 @@ def _unpriced(**over) -> CandidateSnapshot:
         position_best_now=None, position_next_turn_value=None, acting_now_value=None,
         player_id="1", name="T", position="RB", team="SF", bpa=None,
         bpa_source=dr.NO_PRICEABLE_INPUT, confidence=None, universal_value=None,
-        need_bonus=6.0, eligibility_bonus=4.0, team_acquisition_value=None,
+        need_bonus=6.0, team_acquisition_value=None,
         survival_probability=0.4, survival_basis=None, intervening_picks=2, opportunity_cost=None,
         expected_value_of_waiting=None, denial_value=None, denial_basis=None,
         rival_premium_basis=None, denial_team=None, rival_premium=None,

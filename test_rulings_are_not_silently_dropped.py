@@ -5,8 +5,9 @@ ruled, recorded in `CDME_CONTRACTS.md`, and are being implemented one at a time 
 them stopped partway, each because implementing the ruling faithfully turned out to force a
 SECOND derivation the ruling did not cover:
 
-  * `6.1b` unify -- the removal is written; 275 tests reference the retired field, 14 of them
-    with real assertions, so it is its own pass.
+  * `6.1b` unify -- NOW IMPLEMENTED (see IMPLEMENTED below). It was its own pass, as staged:
+    the retirement moved NECESSITY_DENIAL_SATURATION 36.0 -> 24.0, which is the second
+    derivation that stopped it here in the first place.
   * `W1-07` substitute -- implemented and measured at a 62% label-flip rate against a ruling
     made on a 3.1% one, because `intervening_picks` is a property of the turn and
     `(1 - survival)` was a property of the player. It forces re-deriving five label thresholds.
@@ -33,12 +34,6 @@ _HERE = Path(__file__).parent
 #: away from the tree it describes. `patch` is the staged work; `why` must be non-trivial,
 #: because "staged" without a reason is indistinguishable from "abandoned".
 STAGED = {
-    "6.1b": {
-        "witness": ("draft_room.py", "ELIGIBILITY_BONUS_MAX = NEED_BONUS_MAX"),
-        "patch": "evidence/blind_pass/6_1b_removal.patch",
-        "why": "275 tests reference the retired field -- 261 mechanically, 14 with real "
-               "assertions. Its own pass, not the tail of another.",
-    },
     "W1-07": {
         "witness": ("pick_synthesis.py", "NECESSITY_SURVIVAL_WEIGHT = 20.0"),
         "patch": "evidence/blind_pass/w1_07_substitute.patch",
@@ -46,6 +41,25 @@ STAGED = {
                "substitute is a property of the TURN and the quantity it replaces was a "
                "property of the PLAYER. Forces re-deriving five label thresholds -- a second "
                "#56 exercise the ruling did not cover, and the owner's call.",
+    },
+}
+
+#: One entry per ruling that IS now in the engine. `witness` here is the INVERSE of STAGED's:
+#: a fact about the source that is true only once the ruling has landed. So this table cannot
+#: drift either -- a revert, a bad merge, or a cherry-pick that drops the work fails the test
+#: below instead of leaving a record claiming something the tree does not do.
+IMPLEMENTED = {
+    "6.1b": {
+        "witness": ("draft_room.py", "TEAM_SPECIFIC_TERMS = (\"need_bonus\", \"depth_exposure\""),
+        "landed": "eligibility_bonus retired from the board, the snapshot, the payload and the "
+                  "four vocabulary registries. lineup_optimizer.eligibility_bonus -- the "
+                  "FUNCTION -- is untouched: the ruling retired a board term, not a calculation.",
+        "cost": "NECESSITY_DENIAL_SATURATION moved 36.0 -> 24.0, because eligibility_bonus's cap "
+                "was a member of TEAM_SPECIFIC_CAPS. A derivation over a smaller input, not a "
+                "chosen constant, so #56 is not engaged -- but a live behaviour change: no row "
+                "saturates (max premium 10.32 of 7,595), so what moved is the ramp, and every "
+                "row's denial component scales by exactly 1.5x, worst case +2.87 of 100.",
+        "evidence": "evidence/blind_pass/KDST_VALUATION.md",
     },
 }
 
@@ -80,6 +94,36 @@ class NoRulingIsSilentlyDroppedTests(unittest.TestCase):
                     witness, source,
                     f"{ruling} appears to be IMPLEMENTED -- '{witness}' is gone from {module}. "
                     f"Move it out of STAGED in this file and record where the work landed.")
+
+    def test_every_implemented_ruling_is_still_actually_implemented(self):
+        """The mirror of the STAGED half, and the reason IMPLEMENTED carries a witness at all.
+        A table that only ever gains rows is a changelog; this one has to keep being TRUE. A
+        revert, a bad merge or a cherry-pick that drops the work fails here rather than leaving
+        a record asserting the engine does something it no longer does."""
+        for ruling, entry in IMPLEMENTED.items():
+            module, witness = entry["witness"]
+            with self.subTest(ruling=ruling):
+                source = (_HERE / module).read_text()
+                self.assertIn(
+                    witness, source,
+                    f"{ruling} is recorded as IMPLEMENTED but '{witness}' is missing from "
+                    f"{module} -- the work was reverted, or the record is wrong.")
+
+    def test_no_ruling_is_in_both_tables(self):
+        """The two witnesses are inverses, so an entry in both would make one of them a lie
+        whichever way the tree sits."""
+        self.assertEqual(set(STAGED) & set(IMPLEMENTED), set())
+
+    def test_every_implemented_ruling_records_what_it_cost(self):
+        """An implemented ruling with no cost recorded reads as free, and none of these were.
+        6.1b moved a shipped constant; a reader who meets this table deserves that in the same
+        breath as the word IMPLEMENTED."""
+        for ruling, entry in IMPLEMENTED.items():
+            with self.subTest(ruling=ruling):
+                self.assertGreater(len(entry.get("cost", "")), 60,
+                                   f"{ruling}: say what it cost, or say plainly that it was free")
+                self.assertTrue((_HERE / entry["evidence"]).exists(),
+                                f"{ruling}: evidence path does not exist")
 
     def test_every_staged_ruling_states_why_it_stopped(self):
         """'Staged' with no reason is indistinguishable from 'abandoned' six months later."""

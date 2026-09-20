@@ -43,8 +43,7 @@ def _candidate(player_id="p1", **overrides) -> CandidateSnapshot:
         position_best_now=None, position_next_turn_value=None, acting_now_value=None,
         player_id=player_id, name="A Player", position="RB", team="SF",
         bpa=30.0, bpa_source="points_vor_draftsharks", confidence=90.0,
-        universal_value=37.23, need_bonus=4.33, eligibility_bonus=0.0,
-        team_acquisition_value=41.56, survival_probability=0.25, survival_basis=None, intervening_picks=11,
+        universal_value=37.23, need_bonus=4.33, team_acquisition_value=41.56, survival_probability=0.25, survival_basis=None, intervening_picks=11,
         opportunity_cost=3.1, expected_value_of_waiting=30.0, denial_value=2.0, rival_premium_basis=None, denial_basis="measured",
         denial_team="11", rival_premium=4.33, positional_forfeit=25.38,
         position_expected_taken=4.4, positional_cliff={"tier": "HIGH", "gap": 12.0, "typical_gap": 2.0},
@@ -355,7 +354,12 @@ class EvidenceProjectionTests(unittest.TestCase):
         """
         recorded_floor = frozenset({
             "player_id", "name", "position", "team",
-            "universal_value", "need_bonus", "eligibility_bonus", "team_acquisition_value",
+            # "eligibility_bonus" WAS HERE and is removed at the 6.1b ruling (#52), in the same
+            # commit as the column itself -- which is exactly the motion this floor exists to
+            # force. The term is retired from the board, so no record can carry it and none of
+            # the stored history that already does is rewritten (draft_history is append-only
+            # and never regenerates a record because the engine later changed).
+            "universal_value", "need_bonus", "team_acquisition_value",
             "bpa_source", "confidence",
             "pick_necessity", "necessity_label",
             "survival_probability", "intervening_picks",

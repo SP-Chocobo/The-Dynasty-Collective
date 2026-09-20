@@ -400,8 +400,7 @@ class TheScaleIsNotAPointsTotalTests(unittest.TestCase):
             position_best_now=None, position_next_turn_value=None, acting_now_value=None,
             player_id="p", name="n", position="RB", team=None,
             bpa=-10.0, bpa_source="s", confidence=50.0,
-            universal_value=-12.5, need_bonus=0.0, eligibility_bonus=0.0,
-            team_acquisition_value=-12.5, survival_probability=None, intervening_picks=None,
+            universal_value=-12.5, need_bonus=0.0, team_acquisition_value=-12.5, survival_probability=None, intervening_picks=None,
             survival_basis=None,
             opportunity_cost=None, expected_value_of_waiting=None, denial_value=None, rival_premium_basis=None, denial_basis="no_rival_priced",
             denial_team=None, rival_premium=None, positional_forfeit=None,
@@ -578,8 +577,11 @@ class TheScaleIsNotAPointsTotalTests(unittest.TestCase):
         # chosen here to clear a red test. It reaches the payload (draft_board_ui.serialize_
         # snapshot's "actingNow") so the surface CAN show it the moment that is decided, and
         # test_withheld_propagation holds the absence contract on it meanwhile.
+        # 53 -> 52 (#52, 6.1b): eligibility_bonus retired. A field LEAVING is as much a
+        # schema change as one arriving, and this pin is the only thing that makes a reader
+        # confirm the card no longer needs a slot for it.
         self.assertEqual(
-            len(dataclasses.fields(ps.CandidateSnapshot)), 53,
+            len(dataclasses.fields(ps.CandidateSnapshot)), 52,
             "CandidateSnapshot's field count changed. That is fine and often correct -- but "
             "confirm the new field does not imply a scale the card cannot support, decide "
             "whether the card should render it, then update this number.")

@@ -175,8 +175,11 @@ class ValueIdentityTests(_BoardFixture):
         for row in self.board:
             if _is_absent(row.get("universal_value")):
                 continue
-            expected = (row["universal_value"] + row.get("need_bonus", 0.0)
-                        + row.get("eligibility_bonus", 0.0))
+            # DERIVED from draft_room's tuple (#126). `or 0.0` because a term can be
+            # legitimately absent -- depth_exposure is None with no measured basis -- and an
+            # absent term contributes nothing to the sum without being read as a measured zero.
+            expected = row["universal_value"] + sum(
+                (row.get(term) or 0.0) for term in dr.TEAM_SPECIFIC_TERMS)
             self.assertAlmostEqual(row["final_score"], expected, delta=0.011, msg=row["name"])
 
 

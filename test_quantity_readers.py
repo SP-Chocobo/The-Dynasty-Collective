@@ -32,7 +32,6 @@ KNOWN = {
     "depth_exposure": qr.OBSERVABLE,
     "positional_forfeit": qr.DECISION,
     "need_bonus": qr.DECISION,
-    "eligibility_bonus": qr.DECISION,
     "universal_value": qr.DECISION,
     # Deliberately observable: computed, displayed, never scored.
     "waiting_cost": qr.OBSERVABLE,

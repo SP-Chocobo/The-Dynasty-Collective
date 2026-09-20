@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import unittest
 
+import draft_room as dr
 import lineup_optimizer as lo
 
 #: A conventional 12-team dynasty lineup: one QB, two RB, two WR, one TE, two FLEX, five bench.
@@ -353,9 +354,10 @@ class WiredIntoTeamAcquisitionValueTests(unittest.TestCase):
         reconstruct it. final_score is that sum for a balanced board."""
         for row in self.board[:30]:
             with self.subTest(player=row["name"]):
-                # Five terms since #216: displacement_adj is non-positive and joins the sum.
-                parts = (row["universal_value"] + row["need_bonus"]
-                         + row["eligibility_bonus"] + row["depth_exposure"] + row["displacement_adj"])
+                # DERIVED from draft_room's own tuple, never re-listed here (#126). Listing
+                # the parts is what made this fail when 6.1b retired one of them -- the
+                # identity was intact, the test's private copy of the term list was not.
+                parts = row["universal_value"] + sum(row[t] for t in dr.TEAM_SPECIFIC_TERMS)
                 self.assertAlmostEqual(parts, row["final_score"], places=1)
 
     def test_only_a_measured_basis_contributes(self):

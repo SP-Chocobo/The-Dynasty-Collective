@@ -68,7 +68,7 @@ def _row(player_id, position, value, name=None):
     return {
         "player_id": str(player_id), "name": name or f"P{player_id}", "position": position,
         "team": "XX", "bpa": value, "universal_value": value, "final_score": value,
-        "need_bonus": 0.0, "eligibility_bonus": 0.0, "projected_points": 100.0,
+        "need_bonus": 0.0, "projected_points": 100.0,
     }
 
 
@@ -237,8 +237,7 @@ class NecessityExcludesUnpricedFromTheFieldTests(unittest.TestCase):
     unmeasurable term neutral -- is what the function already does everywhere else."""
 
     def _c(self, tav):
-        return {"team_acquisition_value": tav, "need_bonus": 0.0, "eligibility_bonus": 0.0,
-                "survival_probability": None, "positional_cliff": None,
+        return {"team_acquisition_value": tav, "need_bonus": 0.0, "survival_probability": None, "positional_cliff": None,
                 "position_run_detected": False, "rival_premium": 0.0}
 
     def test_an_unpriced_row_does_not_join_the_field_a_leader_is_measured_against(self):

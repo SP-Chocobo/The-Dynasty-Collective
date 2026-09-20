@@ -273,7 +273,7 @@ class WiringOnTheRealRulebookTests(unittest.TestCase):
         for r in rows:
             self.assertAlmostEqual(
                 r["final_score"],
-                r["universal_value"] + r["need_bonus"] + r["eligibility_bonus"] + r["depth_exposure"] + r["displacement_adj"],
+                r["universal_value"] + sum(r[t] for t in dr.TEAM_SPECIFIC_TERMS),
                 places=2, msg=r["name"])
             self.assertLessEqual(r["displacement_adj"], 0.0, r["name"])
             self.assertIn(r["displacement_basis"], lo.DISPLACEMENT_BASIS_LABELS, r["name"])

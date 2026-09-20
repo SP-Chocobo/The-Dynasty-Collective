@@ -48,8 +48,7 @@ class ReimplementationFidelityTests(unittest.TestCase):
         cls.candidates = [
             {
                 "player_id": c.player_id, "team_acquisition_value": c.team_acquisition_value,
-                "need_bonus": c.need_bonus, "eligibility_bonus": c.eligibility_bonus,
-                "survival_probability": c.survival_probability,
+                "need_bonus": c.need_bonus, "survival_probability": c.survival_probability,
                 "positional_cliff": c.positional_cliff,
                 "position_run_detected": c.position_run_detected,
                 "rival_premium": c.rival_premium,
@@ -78,8 +77,7 @@ class AblationMechanicsTests(unittest.TestCase):
         # A candidate with no survival data, no cliff, no run, no denial -- dropping any of
         # those four should be a strict no-op regardless of round.
         candidate = {
-            "team_acquisition_value": 100.0, "need_bonus": 0.0, "eligibility_bonus": 0.0,
-            "survival_probability": None, "positional_cliff": None,
+            "team_acquisition_value": 100.0, "need_bonus": 0.0, "survival_probability": None, "positional_cliff": None,
             "position_run_detected": False, "rival_premium": 0.0,
         }
         baseline = necessity_score(candidate, [90.0], round_num=1, drop=None)
@@ -98,8 +96,7 @@ class AblationMechanicsTests(unittest.TestCase):
             "candidates": [
                 {
                     "player_id": c.player_id, "team_acquisition_value": c.team_acquisition_value,
-                    "need_bonus": c.need_bonus, "eligibility_bonus": c.eligibility_bonus,
-                    "survival_probability": c.survival_probability,
+                    "need_bonus": c.need_bonus, "survival_probability": c.survival_probability,
                     "positional_cliff": c.positional_cliff,
                     "position_run_detected": c.position_run_detected,
                     "rival_premium": c.rival_premium,
