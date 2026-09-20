@@ -48,6 +48,12 @@ PLAYERS = {
     "t1": {"position": "TE", "fantasy_positions": ["TE"]},
     "q2": {"position": "QB", "fantasy_positions": ["QB"]},
     "k1": {"position": "K", "fantasy_positions": ["K"]},
+    #: #52 phase 8. A real capture row: Travis Hunter is `position: "DB"` with
+    #: `fantasy_positions: ["DB", "WR"]`, and a league starting WR can roster him legitimately.
+    #: The fixture carries the SHAPE, not the name, so the case survives a roster change.
+    "dual": {"position": "DB", "fantasy_positions": ["DB", "WR"]},
+    #: The control: eligible only at a position this league cannot start.
+    "idp_only": {"position": "CB", "fantasy_positions": ["DB"]},
 }
 
 
@@ -102,6 +108,35 @@ class TheOtherStructuralAuditsFireTests(unittest.TestCase):
     def test_a_startable_position_reports_nothing(self):
         self.assertEqual([], batt.undraftable_positions(_trajectory([_record(1, "1", "q1")]),
                                                         LEAGUE, PLAYERS))
+
+    def test_a_player_startable_at_his_SECOND_position_is_not_a_finding(self):
+        """The false positive this audit shipped with (#52 phase 8).
+
+        `build_available_pool` admits on `fantasy_positions`; this guard read ONE primary
+        position and flagged the player if that bucket had no slot. So the guard and the filter
+        it exists to police asked different questions, and on a real capture the guard called a
+        correct roster a leaked filter -- a structural audit reporting a DEFECT where the engine
+        did the right thing, in a module whose docstring promises "a finding here is a DEFECT,
+        not an observation"."""
+        traj = _trajectory([_record(1, "1", "dual")])
+        self.assertEqual([], batt.undraftable_positions(traj, LEAGUE, PLAYERS))
+
+    def test_a_player_startable_at_NEITHER_position_is_still_caught(self):
+        """NON-VACUITY, and the half that keeps the audit worth having. Widening the rule to
+        the eligible SET must not widen it to everything -- a player no slot can start is still
+        a leaked filter."""
+        traj = _trajectory([_record(1, "1", "idp_only")])
+        findings = batt.undraftable_positions(traj, LEAGUE, PLAYERS)
+        self.assertEqual(1, len(findings))
+        self.assertEqual(["DB"], findings[0]["eligible"])
+
+    def test_the_finding_reports_the_eligible_set_not_just_the_primary(self):
+        """A reader who meets this finding needs to see WHY it is one. The primary position
+        alone cannot distinguish "he has no other option" from "the guard only looked at one"."""
+        findings = batt.undraftable_positions(_trajectory([_record(1, "1", "idp_only")]),
+                                              LEAGUE, PLAYERS)
+        self.assertIn("eligible", findings[0])
+        self.assertEqual("CB", findings[0]["position"])
 
     def test_a_duplicate_pick_is_caught(self):
         traj = _trajectory([_record(1, "1", "q1"), _record(2, "2", "q1")])

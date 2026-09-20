@@ -46,7 +46,7 @@ import league_config as lc
 import draft_simulation
 import draft_strategy as ds
 import lineup_optimizer as lo
-from player_universe import FANTASY_POSITIONS
+from player_universe import FANTASY_POSITIONS, player_eligible_positions
 
 #: Q1 of the slot vocabulary, imported rather than restated. This module used to carry its own
 #: identical copy under this same name; league_config is the one home (#126), and it also
@@ -274,6 +274,19 @@ def league_format_hint(league: dict) -> dict:
 
 
 def _position_of(players_db: dict, player_id: str) -> Optional[str]:
+    """The RAW Sleeper position, deliberately -- and that is a latent issue, recorded here
+    rather than changed (#52 phase 8).
+
+    `player_universe.player_position` buckets an IDP sub-position into the slot a league
+    actually offers ("FS" -> "DB"); this returns "FS". `roster_shape` and `first_round_taken`
+    both read it, so every battery report's `shape` counts sub-positions rather than roster
+    buckets in IDP formats.
+
+    NOT changed here because the five committed batteries were produced with this reading, and
+    switching it would make new reports incomparable with them on exactly the axis IDP arms
+    exist to measure. `undraftable_positions` no longer uses it for its verdict -- that guard
+    asks `player_eligible_positions` now -- so the remaining consumers are descriptive rather
+    than judgemental, which is the safe half to leave."""
     info = players_db.get(str(player_id)) or {}
     return info.get("position")
 
@@ -338,17 +351,33 @@ def unpriced_picks(trajectory) -> list[dict]:
 
 
 def undraftable_positions(trajectory, league: dict, players_db: dict) -> list[dict]:
-    """A roster holding a position the league offers no slot for -- not even a flex share.
+    """A roster holding a player NO slot in this league can start -- not even a flex share.
     Structural: the pool is supposed to be filtered to usable positions upstream, so any hit
-    here is a filter that leaked, never a judgement about roster balance."""
+    here is a filter that leaked, never a judgement about roster balance.
+
+    ASKED THROUGH THE SAME RULE THE POOL ADMITS ON (#126), which it was not until now. This
+    read one PRIMARY position per player and flagged it if that bucket had no slot, while
+    `build_available_pool` admits on `fantasy_positions` -- so the guard and the filter it
+    polices were asking different questions, and the guard's was the wrong one.
+
+    It cost a false positive on a real capture: Travis Hunter is `position: "DB"` with
+    `fantasy_positions: ["DB", "WR"]`, and a 12-team league starting QB/RB/WR/TE rostered him
+    legitimately as a WR. The audit called that a leaked filter. A structural audit reporting a
+    DEFECT where the engine did the right thing is worse than one that stays quiet, because
+    this file's own docstring says "a finding here is a DEFECT, not an observation" and a
+    reader is entitled to believe it.
+
+    A player is undraftable only when NONE of his eligible positions can be started."""
     startable = {p for p, n in dr.starter_slot_counts(league.get("roster_positions") or []).items() if n > 0}
     findings = []
     for roster_id, player_ids in sorted(trajectory.final_rosters().items()):
         for pid in player_ids:
-            position = _position_of(players_db, pid)
-            if position and position not in startable:
+            eligible = player_eligible_positions(players_db.get(str(pid)) or {})
+            if eligible and not (eligible & startable):
                 findings.append({"audit": "undraftable_positions", "roster_id": roster_id,
-                                 "player_id": str(pid), "position": position})
+                                 "player_id": str(pid),
+                                 "position": _position_of(players_db, pid),
+                                 "eligible": sorted(eligible)})
     return findings
 
 
