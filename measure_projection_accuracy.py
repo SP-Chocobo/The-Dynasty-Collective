@@ -1,5 +1,13 @@
-"""How well does a position's projection predict what actually happened? Run this on a networked
-machine; the audit sandbox cannot reach Sleeper.
+"""How well does a position's projection predict what actually happened? Needs a host allowed to
+reach `api.sleeper.app`.
+
+WHAT "CANNOT REACH SLEEPER" ACTUALLY MEANS, measured rather than assumed (#52 phase 8). The
+Claude Code remote sandbox HAS outbound HTTPS -- through an agent proxy with a host allowlist --
+and `api.sleeper.app` is not on it: the connection fails at `CONNECT tunnel failed, response
+403`, not at DNS or at a missing route. So this is an ENVIRONMENT NETWORK POLICY setting, not an
+absent capability, and the remedy is either adding that host to the environment's allowlist or
+running this on the owner's own machine. The earlier wording sent a reader looking for a
+different machine when a policy line would do.
 
 WHY THIS EXISTS. The `12T_ppr_K_DEF` arm showed the engine drafting team defenses about five
 rounds too early (evidence/blind_pass/KDST_VALUATION.md). Three candidate levers were measured
