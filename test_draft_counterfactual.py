@@ -55,32 +55,41 @@ class CompareTrajectoryTests(unittest.TestCase):
             self.assertEqual(cmp_.pick_no, rec.pick_no)
             self.assertEqual(cmp_.roster_id, rec.roster_id)
 
-    def test_regret_vs_bpa_may_be_negative_and_every_such_pick_states_why(self):
-        """This asserted regret >= 0 until the ordering repair, on the stated reasoning that
-        "the engine always takes the TAV-argmax on its own board" (#52).
+    def test_the_engine_is_the_tav_argmax_again(self):
+        """This asserted regret >= 0 before the ordering repair, went routinely negative under
+        it, and is restored with the revert (#22).
 
-        That was true of a board ranking on team_acquisition_value and is false of one ranking
-        on acting_now_value: the engine now passes over the tav leader by design. The invariant
-        worth holding is not the sign -- it is that nothing deviates SILENTLY, so every
-        negative-regret pick must carry a basis naming what decided it.
+        MEASURED, NOT ASSUMED: on these fixtures no pick gives up tav at all. Two things could
+        legitimately break it, and they are named so a future failure is diagnosable rather
+        than mysterious -- (1) `_board_order` leads with the feasibility backstop, so a roster
+        with as few picks left as it has unfillable named slots takes a lower-tav player on
+        purpose; (2) `narrow_candidates` admits a top-N by tav, so a BPA argmax that falls
+        outside it is not a candidate at all. Either turns this into a conditional, not a
+        defect. What must never come back is a negative population produced by the ORDER.
         """
         for cmp_ in self.comparisons_1qb + self.comparisons_sf:
-            if cmp_.regret_vs_bpa < -1e-6:
-                self.assertFalse(cmp_.equals_bpa)
-                self.assertIsNotNone(cmp_.deviation_support_basis,
-                                     f"pick {cmp_.pick_no} gave up "
-                                     f"{-cmp_.regret_vs_bpa:.2f} tav and says nothing about why")
-                self.assertNotEqual(
-                    cmp_.deviation_support_basis, "neither",
-                    f"pick {cmp_.pick_no}: the ordering key decided this pick, so reporting it "
-                    "as an unsupported deviation describes the board this repair replaced")
+            self.assertGreaterEqual(
+                cmp_.regret_vs_bpa, -1e-6,
+                f"pick {cmp_.pick_no} gave up {-cmp_.regret_vs_bpa:.2f} tav -- see this test's "
+                "docstring for the two legitimate causes before reading it as a regression")
 
-    def test_that_negative_regret_population_is_not_empty(self):
-        """NON-VACUITY. The test above is trivially true if the engine never deviates, which is
-        exactly what it looked like before the repair -- so the population is pinned."""
-        negative = [c for c in self.comparisons_1qb + self.comparisons_sf
-                    if c.regret_vs_bpa < -1e-6]
-        self.assertGreater(len(negative), 0,
+    def test_nothing_deviates_silently(self):
+        """The invariant that survives whichever way the sign goes: a pick that is not the BPA
+        argmax must carry a basis naming what decided it. Held unconditionally, so it does not
+        become vacuous if the population above ever empties."""
+        for cmp_ in self.comparisons_1qb + self.comparisons_sf:
+            if not cmp_.equals_bpa:
+                self.assertIsNotNone(
+                    cmp_.deviation_support_basis,
+                    f"pick {cmp_.pick_no} is not the BPA argmax and says nothing about why")
+                self.assertIn(cmp_.deviation_support_basis, dc.DEVIATION_BASES)
+
+    def test_that_the_deviation_population_is_not_empty(self):
+        """NON-VACUITY for the test above, which is trivially true if the engine never leaves
+        BPA. It does: the team-specific terms move the tav argmax off the BPA argmax."""
+        deviations = [c for c in self.comparisons_1qb + self.comparisons_sf
+                      if not c.equals_bpa]
+        self.assertGreater(len(deviations), 0,
                            "no pick deviates from BPA -- the assertion above proves nothing")
 
     def test_equals_bpa_implies_zero_regret(self):
@@ -197,28 +206,36 @@ class DeviationSupportCarriesItsBasisTests(unittest.TestCase):
         # The two Nones in the value space are told apart by the basis, never by the value.
         self.assertEqual(len({b for _, b in cases.values()}), 4)
 
-    def test_a_measured_ordering_key_is_its_own_basis(self):
-        """The branch the ordering repair added (#52). A pick the new key decided is supported
-        BY that key -- reporting it as "neither" describes the board this repair replaced."""
-        self.assertEqual(classify_deviation("PREFERRED", False, 7.46), (True, "ordering_key"))
-        # It outranks the unmeasurable-tie branch: when the key decided the pick, how
-        # measurable a tie was does not change what chose the player.
-        self.assertEqual(classify_deviation("PREFERRED", None, 7.46), (True, "ordering_key"))
-        # And it yields to necessity, which the classifier checks first by design.
-        self.assertEqual(classify_deviation("MUST TAKE", False, 7.46), (True, "necessity"))
+    def test_the_ordering_key_basis_is_gone_with_the_ordering_it_described(self):
+        """It was added at #52 and removed at #22 with the sort it excused.
 
-    def test_an_absent_ordering_key_leaves_the_previous_verdicts_intact(self):
-        """A turn-ending pick and upside mode both legitimately carry no acting_now_value, and
-        there the old tav order really is in force -- so an unexplained deviation is still
-        unexplained rather than laundered into support (#187)."""
-        self.assertEqual(classify_deviation("PREFERRED", False, None), (False, "neither"))
-        self.assertEqual(classify_deviation("PREFERRED", None, None), (None, "unmeasurable_tie"))
+        While build_snapshot ordered on acting_now_value, a measured value there was a real
+        basis: the key was live and had ranked the chosen player first. That ordering lost
+        6.090% of starting-lineup points against a fixed field and was reverted, so the basis
+        now names a mechanism the engine does not have. Removed rather than left returning
+        False, because an unused basis is an invitation to wire it back up.
+        """
+        self.assertNotIn("ordering_key", dc.DEVIATION_BASES)
+        # It cannot be reached by passing the number either -- the parameter is gone, so a
+        # caller that still supplies it fails loudly instead of being silently ignored.
+        with self.assertRaises(TypeError):
+            classify_deviation("PREFERRED", False, 7.46)
+
+    def test_an_ordinary_deviation_still_needs_a_basis(self):
+        """Non-BPA picks did not stop at the revert, and the reason is not the ordering key.
+
+        The board ranks on team_acquisition_value, which is BPA plus the team-specific terms,
+        so the tav argmax and the BPA argmax differ whenever those terms differ across the head
+        of the board. That deviation is ordinary and still has to be explained by necessity, a
+        near tie, or neither -- never laundered into support by a fourth thing.
+        """
+        self.assertEqual(classify_deviation("PREFERRED", False), (False, "neither"))
+        self.assertEqual(classify_deviation("PREFERRED", None), (None, "unmeasurable_tie"))
 
     def test_every_basis_the_classifier_can_return_is_in_the_published_vocabulary(self):
-        produced = {classify_deviation(n, t, a)[1]
+        produced = {classify_deviation(n, t)[1]
                     for n in ("MUST TAKE", "PREFERRED")
-                    for t in (True, False, None)
-                    for a in (None, 7.46)}
+                    for t in (True, False, None)}
         self.assertTrue(produced <= set(dc.DEVIATION_BASES), produced - set(dc.DEVIATION_BASES))
         # Non-vacuity: the sweep must actually reach most of the vocabulary, or a basis could
         # be dropped from the classifier without this noticing.

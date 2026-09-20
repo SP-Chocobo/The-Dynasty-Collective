@@ -435,6 +435,23 @@ def positional_forfeits(
     necessity observable. So this changes what the app SAYS and what the LLM is told -- not
     which player the engine picks.
 
+    THAT SENTENCE WAS FALSE FOR ONE INTERVAL AND IS TRUE AGAIN (#22). Between `4640f25` and the
+    revert, `build_snapshot` sorted candidates on `acting_now_value` -- this number, walked down
+    the `final_score` curve instead of the `universal_value` one -- and it therefore held ALL
+    cross-position selection authority. Recorded here rather than deleted, because the interval
+    is what measured the cost: against a fixed field across six formats that ordering lost
+    6.090% of starting-lineup points, winning 10 of 68 seats where the value order won 56.
+
+    The cause is structural and is the reason this paragraph should be hard to overturn a second
+    time. `acting_now(i) = F(i) - F(i + expected_taken)` is a NUMERICAL DERIVATIVE: it carries a
+    curve's local SLOPE and discards its HEIGHT, so at depth 30 of a real board a quarterback
+    worth -208.35 outranked a running back worth +4.68. Fixing the take model cannot repair that
+    -- `expected_taken` is the STEP LENGTH, so it moves where the slope is sampled and never puts
+    height back in the key. And because `SUPER_FLEX_QB_SHARE` reaches the board through
+    `replacement_levels`, superflex is a LEVEL shift (+127.14 per quarterback, +0.08 of slope),
+    which an order reading only differences cannot see at all. See
+    `evidence/smoke_seats/V2_MECHANISM.md`.
+
     Empty dict when there are no intervening picks (back-to-back turn, or no next pick at
     all) -- a forfeit of 0 everywhere is real information the caller can state, but per-pick
     probabilities against zero picks are not."""

@@ -564,9 +564,12 @@ class TheScaleIsNotAPointsTotalTests(unittest.TestCase):
         #   which is the #174 shape one layer out.
         # 50 -> 53 (#52): position_best_now, position_next_turn_value, acting_now_value.
         #
-        # THE DECISION THIS RATCHET ASKS FOR. acting_now_value is not a fourth decoration on
-        # the card -- it is WHAT THE BOARD IS NOW ORDERED ON, so a card that omits it shows a
-        # rank whose reason is absent from the surface that displays it. It is in
+        # THE DECISION THIS RATCHET ASKS FOR, RESTATED AT THE REVERT (#22). This read "it is
+        # WHAT THE BOARD IS NOW ORDERED ON", and that is no longer true -- ordering on it lost
+        # 6.090% of starting-lineup points against a fixed field and was reverted. The field
+        # STAYS, and the case for it is now the narrower one: it answers "does this position
+        # replace itself cheaply if I wait?", which the rank does not and cannot, and which is
+        # what put a defense in round 5 on the board's own evidence. It is in
         # team_acquisition_value's own units (it is a difference of two of them), so it sits
         # on the scale this test exists to protect and implies no new one.
         #

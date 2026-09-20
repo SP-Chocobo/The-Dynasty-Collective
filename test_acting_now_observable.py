@@ -1,9 +1,20 @@
-"""The board orders on what acting NOW is worth, not on what the player is worth (#52).
+"""acting_now_value is COMPUTED and CARRIED, and it does not order the board (#22).
 
-The blind pass found positional_forfeit computed on every candidate of every board, rendered
-to the user, folded into pick_necessity -- and read by neither ordering authority. The first
-defense of a 16-round draft went in round 5 on a row carrying tav 34.47 and forfeit 0.13 in
-the same snapshot. These tests hold the repair, and the load-bearing assumption under it.
+This file used to assert the opposite. The blind pass found positional_forfeit computed on
+every candidate, rendered to the user, folded into pick_necessity -- and read by neither
+ordering authority; the first defense of a 16-round draft went in round 5 on a row carrying
+tav 34.47 and forfeit 0.13 in the same snapshot. The repair made that number the sort key, and
+against a FIXED field of heuristic opponents it cost 6.090% of starting-lineup points across
+six formats, winning 10 of 68 seats where the value order won 56.
+
+The cause is structural, which is why these tests now guard the other direction.
+`acting_now(i) = F(i) - F(i + expected_taken)` is a NUMERICAL DERIVATIVE: it carries a curve's
+local SLOPE and discards its HEIGHT, so at depth 30 of a real board a quarterback worth -208.35
+outranked a running back worth +4.68. See evidence/smoke_seats/V2_MECHANISM.md.
+
+What is held here: the quantity's definition, its absence contract, the cancellation its first
+implementation got wrong, the narrowing that puts a buried position in front of a person -- and
+a guard that the number does not reach the order again.
 """
 
 import ast
@@ -60,48 +71,57 @@ class TheTeamSpecificTermsCancel(unittest.TestCase):
             ps.acting_now_value(best_now, best_now - forfeit), forfeit, places=6)
 
 
-class TheOrderKeepsWhatTheOldOneGuaranteed(unittest.TestCase):
-    """_acting_now_order is a THIRD ordering authority (#155). It may re-rank priced rows; it
-    may not reverse the feasibility backstop or promote an unpriced row."""
+class TheValueOrderRulesTheBoard(unittest.TestCase):
+    """_board_order is the key again, read on the candidate dict's own name for the quantity.
+
+    build_snapshot renames the board's `final_score` to `team_acquisition_value` at the
+    boundary, so the candidate caller passes `value_key` rather than hand-listing a second copy
+    of this tuple (#126). These assert it is the SAME key, not a lookalike.
+    """
 
     @staticmethod
-    def row(pid, acting=None, tav=None, fills=False):
-        return {"player_id": pid, "acting_now_value": acting,
-                "team_acquisition_value": tav, "fills_required_slot": fills}
+    def row(pid, tav=None, acting=None, fills=False):
+        return {"player_id": pid, "team_acquisition_value": tav,
+                "acting_now_value": acting, "fills_required_slot": fills}
 
     def ordered(self, rows):
-        return [r["player_id"] for r in sorted(rows, key=ps._acting_now_order)]
+        return [r["player_id"] for r in
+                sorted(rows, key=lambda c: ps._board_order(c, "team_acquisition_value"))]
 
     def test_the_feasibility_backstop_still_leads(self):
-        rows = [self.row("rich", acting=99.0, tav=99.0),
-                self.row("backstop", acting=-50.0, tav=-50.0, fills=True)]
+        rows = [self.row("rich", tav=99.0), self.row("backstop", tav=-50.0, fills=True)]
         self.assertEqual(self.ordered(rows)[0], "backstop")
 
     def test_an_unpriced_row_never_outranks_a_priced_one(self):
-        rows = [self.row("unpriced"), self.row("priced", acting=-99.0, tav=-99.0)]
+        rows = [self.row("unpriced"), self.row("priced", tav=-99.0)]
         self.assertEqual(self.ordered(rows), ["priced", "unpriced"])
 
-    def test_a_measured_row_leads_an_unmeasured_one_even_when_it_scores_lower(self):
-        # An absent acting_now_value is not a low one. The block that has no measurement sorts
-        # after the block that does, rather than being handed a number to compete with.
-        rows = [self.row("measured", acting=-20.0, tav=-20.0),
-                self.row("unmeasured", acting=None, tav=500.0)]
-        self.assertEqual(self.ordered(rows), ["measured", "unmeasured"])
-
-    def test_unmeasured_rows_keep_the_previous_key_among_themselves(self):
-        # THE UPSIDE-MODE PRESERVATION. draft_strategy builds no curves there, so every row
-        # lands in this block and the order must be exactly the one this repair replaced.
+    def test_highest_value_leads(self):
         rows = [self.row("low", tav=1.0), self.row("high", tav=9.0), self.row("mid", tav=5.0)]
         self.assertEqual(self.ordered(rows), ["high", "mid", "low"])
 
     def test_exact_ties_break_on_player_id_not_on_arrival_order(self):
-        # The same determinism gap _board_order and draft_room's own sort both close.
-        forward = self.ordered([self.row("b", acting=5.0, tav=5.0),
-                                self.row("a", acting=5.0, tav=5.0)])
-        backward = self.ordered([self.row("a", acting=5.0, tav=5.0),
-                                 self.row("b", acting=5.0, tav=5.0)])
+        forward = self.ordered([self.row("b", tav=5.0), self.row("a", tav=5.0)])
+        backward = self.ordered([self.row("a", tav=5.0), self.row("b", tav=5.0)])
         self.assertEqual(forward, backward)
         self.assertEqual(forward, ["a", "b"])
+
+    def test_a_steep_local_slope_does_not_promote_a_worthless_player(self):
+        # THE MEASURED REGRESSION, as a unit. Real numbers from depth 30 of a 12T_ppr board:
+        # the quarterback carries MORE acting_now_value than the running back and is worth 213
+        # points less. Ordering on the derivative took him; ordering on value does not.
+        rows = [self.row("qb_deep", tav=-208.35, acting=3.81),
+                self.row("rb_ok", tav=4.68, acting=3.58)]
+        self.assertEqual(self.ordered(rows)[0], "rb_ok")
+        self.assertGreater(rows[0]["acting_now_value"], rows[1]["acting_now_value"],
+                           "fixture is vacuous unless the worthless row really does carry more")
+
+    def test_it_is_the_same_key_the_board_uses_under_the_other_name(self):
+        # NON-VACUITY for value_key: the default and the override must agree on one row that
+        # carries the quantity under both names, or this is two keys wearing one name.
+        row = {"player_id": "x", "final_score": 7.0, "team_acquisition_value": 7.0}
+        self.assertEqual(ps._board_order(row),
+                         ps._board_order(row, "team_acquisition_value"))
 
 
 class TheAssumptionTheRepairRestsOn(unittest.TestCase):
@@ -139,47 +159,76 @@ class TheAssumptionTheRepairRestsOn(unittest.TestCase):
         self.assertNotIn("wr0", [r["player_id"] for r in by_value])
 
 
-class TheOrderIsActuallyWiredIntoTheSnapshot(unittest.TestCase):
-    """Every test above this one passes with the sort line deleted.
+class TheObservableDoesNotReachTheOrder(unittest.TestCase):
+    """Every test above this one passes with the sort line pointed back at acting_now_value.
 
     The key and the derivation are pure functions; proving them correct proves nothing about
-    whether build_snapshot calls them. That gap is the same shape as the defect this whole
-    repair addresses -- a quantity computed correctly and read by nobody -- so it is closed
-    here rather than assumed.
+    what build_snapshot sorts on. That gap is the same shape as the defect the original repair
+    addressed -- a quantity computed correctly and read by nobody -- so it is closed here in
+    both directions rather than assumed.
 
     Scans the CODE, not the source text (#200): a guard that greps for a string passes on a
-    line inside a comment and fails on an idiom that wraps across two lines.
+    line inside a comment and fails on an idiom that wraps across two lines. This file is full
+    of the phrase `acting_now_value` in prose, so a text guard here would be worse than none.
     """
 
     @staticmethod
-    def _build_snapshot_body():
+    def _build_snapshot():
         tree = ast.parse(pathlib.Path("pick_synthesis.py").read_text())
         fn = next((n for n in ast.walk(tree)
                    if isinstance(n, ast.FunctionDef) and n.name == "build_snapshot"), None)
         assert fn is not None, "build_snapshot is gone -- this guard is measuring nothing"
         return fn
 
-    def test_build_snapshot_sorts_its_candidates_on_the_acting_now_key(self):
-        sorts = [n for n in ast.walk(self._build_snapshot_body())
-                 if isinstance(n, ast.Call)
-                 and isinstance(n.func, ast.Attribute) and n.func.attr == "sort"
-                 and any(kw.arg == "key" and isinstance(kw.value, ast.Name)
-                         and kw.value.id == "_acting_now_order" for kw in n.keywords)]
-        self.assertEqual(len(sorts), 1, (
-            "build_snapshot must order its narrowed candidates on _acting_now_order exactly "
-            "once -- deleting it silently restores the round-5 defense"))
+    @staticmethod
+    def _sort_calls(fn):
+        return [n for n in ast.walk(fn)
+                if isinstance(n, ast.Call)
+                and isinstance(n.func, ast.Attribute) and n.func.attr == "sort"]
 
-    def test_the_key_is_applied_before_necessity_reads_the_list_as_ranked(self):
+    def test_build_snapshot_orders_its_candidates_on_the_value_key(self):
+        calls = self._sort_calls(self._build_snapshot())
+        keyed = [n for n in calls
+                 for kw in n.keywords
+                 if kw.arg == "key"
+                 and any(isinstance(sub, ast.Name) and sub.id == "_board_order"
+                         for sub in ast.walk(kw.value))]
+        self.assertEqual(len(keyed), 1, (
+            "build_snapshot must order its narrowed candidates on _board_order exactly once"))
+
+    def test_no_sort_in_build_snapshot_reads_acting_now_value(self):
+        # THE REGRESSION GUARD. Any sort key in this function that mentions the observable --
+        # by function name or by dict key -- is the reverted ordering coming back.
+        for call in self._sort_calls(self._build_snapshot()):
+            for kw in call.keywords:
+                if kw.arg != "key":
+                    continue
+                names = {sub.id for sub in ast.walk(kw.value) if isinstance(sub, ast.Name)}
+                consts = {sub.value for sub in ast.walk(kw.value)
+                          if isinstance(sub, ast.Constant) and isinstance(sub.value, str)}
+                self.assertNotIn("_acting_now_order", names)
+                self.assertNotIn("acting_now_value", names | consts, (
+                    "a sort key in build_snapshot reads acting_now_value -- that ordering was "
+                    "reverted at #22 and cost 6.090% of starting-lineup points"))
+
+    def test_the_retired_ordering_key_is_gone_rather_than_merely_unused(self):
+        # An unused key is an invitation. It was removed, not left dangling.
+        self.assertFalse(hasattr(ps, "_acting_now_order"))
+
+    def test_the_order_is_settled_before_necessity_reads_the_list_as_ranked(self):
         # compute_pick_necessity, near_tie_flags ("near tie with the LEADER") and
         # decision_regime all read raw_candidates as already ranked. Sorting after any of them
         # leaves the snapshot describing one leader and recommending another.
-        body = self._build_snapshot_body()
+        fn = self._build_snapshot()
         def line_of(pred):
-            return min((n.lineno for n in ast.walk(body) if pred(n)), default=None)
+            return min((n.lineno for n in ast.walk(fn) if pred(n)), default=None)
         sort_line = line_of(lambda n: isinstance(n, ast.Call)
                             and isinstance(n.func, ast.Attribute) and n.func.attr == "sort"
-                            and any(kw.arg == "key" and isinstance(kw.value, ast.Name)
-                                    and kw.value.id == "_acting_now_order" for kw in n.keywords))
+                            and any(kw.arg == "key"
+                                    and any(isinstance(sub, ast.Name) and sub.id == "_board_order"
+                                            for sub in ast.walk(kw.value))
+                                    for kw in n.keywords))
+        self.assertIsNotNone(sort_line, "no _board_order sort found in build_snapshot")
         for reader in ("compute_pick_necessity", "near_tie_flags", "decision_regime"):
             reader_line = line_of(lambda n, r=reader: isinstance(n, ast.Call)
                                   and isinstance(n.func, ast.Name) and n.func.id == r)
@@ -187,9 +236,9 @@ class TheOrderIsActuallyWiredIntoTheSnapshot(unittest.TestCase):
             self.assertLess(sort_line, reader_line,
                             f"{reader} reads the candidate list before it has been ordered")
 
-    def test_every_candidate_carries_the_two_numbers_the_key_reads(self):
-        # A field the dataclass does not carry cannot reach the key, and the failure would be
-        # a silently absent measurement rather than an error.
+    def test_every_candidate_still_carries_the_observable(self):
+        # The revert removed the ordering, NOT the number. A field the dataclass does not carry
+        # cannot reach the card, and the failure would be a silently absent measurement.
         import dataclasses
         names = {f.name for f in dataclasses.fields(ps.CandidateSnapshot)}
         self.assertIn("acting_now_value", names)

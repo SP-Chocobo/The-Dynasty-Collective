@@ -736,14 +736,14 @@ class BuildSnapshotTests(unittest.TestCase):
                 }
         cls.pick_order = ds.generate_pick_order([str(i) for i in range(1, 13)], total_rounds=4)
 
-    def test_snapshot_is_narrowed_and_ranked_by_what_acting_now_is_worth(self):
-        """Ranked by acting_now_value, NOT by team_acquisition_value (#52).
+    def test_snapshot_is_narrowed_and_ranked_by_what_the_player_is_worth(self):
+        """Ranked by team_acquisition_value (#22).
 
-        This test asserted the tav order until the ordering repair, and it was right to: the
-        board did rank that way. It ranks on acting_now_value now, and the tav order is exactly
-        what that repair removed -- a board that pays for a position whose replacement is
-        nearly free as though it were scarce. Rewritten rather than deleted, because "the
-        candidates come back in a defined order at all" is still the contract worth holding.
+        This asserted the tav order, was rewritten to assert the acting_now order when that
+        briefly became the key, and is back. The acting_now ordering lost 6.090% of
+        starting-lineup points against a fixed field -- it carries a curve's local SLOPE and
+        discards its HEIGHT -- so the board ranks on what the player is worth again. See
+        evidence/smoke_seats/V2_MECHANISM.md.
         """
         # At least top_n (can run longer -- narrow_candidates also guarantees the single best
         # remaining player at every position gets a look, even one that didn't crack the raw
@@ -753,13 +753,12 @@ class BuildSnapshotTests(unittest.TestCase):
             league=LEAGUE, pick_label="1.01", top_n=5,
         )
         self.assertGreaterEqual(len(snap.candidates), 5)
-        keys = [ps._acting_now_order({
-            "acting_now_value": c.acting_now_value,
+        keys = [ps._board_order({
             "team_acquisition_value": c.team_acquisition_value,
             "fills_required_slot": c.fills_required_slot,
             "player_id": c.player_id,
-        }) for c in snap.candidates]
-        self.assertEqual(keys, sorted(keys), "candidates must be ranked by _acting_now_order")
+        }, "team_acquisition_value") for c in snap.candidates]
+        self.assertEqual(keys, sorted(keys), "candidates must be ranked by _board_order")
 
     def test_that_ranking_assertion_is_not_vacuous(self):
         """The check above compares a list to its own sort, which holds trivially on one row

@@ -214,9 +214,15 @@ ABSENCE_KIND_LABELS = dr.ABSENCE_KIND_LABELS
 POSITION_VIEW_DEPTH_CAP = 12
 
 
-def _board_order(row: dict) -> tuple:
+def _board_order(row: dict, value_key: str = "final_score") -> tuple:
     """Sort key for a board row: the feasibility backstop first, then highest final_score,
     UNPRICED rows last, player_id as the tiebreak.
+
+    ONE KEY, TWO KEY NAMES, NOT TWO KEYS (#126). The same quantity is called `final_score` on a
+    board row and `team_acquisition_value` on a candidate dict -- `build_snapshot` renames it at
+    the boundary (`"team_acquisition_value": row["final_score"]`). `value_key` lets the candidate
+    caller read it under its own name rather than hand-list a second copy of this tuple, which is
+    how the ordering vocabulary drifted the first time.
 
     THE BACKSTOP LEADS, and it has to be honoured here rather than only in draft_room, because
     this function is a SECOND ORDERING AUTHORITY (#155): it re-sorts every board it is handed,
@@ -238,7 +244,7 @@ def _board_order(row: dict) -> tuple:
     survived only on Python's sort being stable -- while draft_room's own board sort has
     carried an explicit player_id tiebreak for exactly this reason since the players_db
     iteration-order bug."""
-    score = row.get("final_score")
+    score = row.get(value_key)
     return (not row.get("fills_required_slot", False),
             score is None, -score if score is not None else 0.0, str(row.get("player_id")))
 
@@ -1266,36 +1272,6 @@ def detect_positional_cliff(board: list[dict], player_id) -> Optional[dict]:
     return {"tier": tier, "gap": round(this_gap, 2), "typical_gap": round(typical_gap, 2)}
 
 
-def _acting_now_order(c: dict) -> tuple:
-    """Sort key for a narrowed candidate: the feasibility backstop first, then what acting now
-    is worth, with rows that have no such measurement ordered among themselves by the previous
-    key. Highest first; player_id breaks exact ties, as it does in both other ordering
-    authorities.
-
-    THE THIRD ORDERING AUTHORITY, stated as one (#155). draft_room.compute_draft_board sorts,
-    pick_synthesis._board_order re-sorts, and this re-sorts again. #155's rule is that these
-    must not silently disagree, not that there may only be one: the first two rank what a
-    player is WORTH, and neither can rank what taking him NOW is worth, because forfeits do not
-    exist until after both have run. What this must never do is reverse the backstop or promote
-    an unpriced row, and it does neither -- the leading terms are `_board_order`'s own.
-
-    ABSENCE IS NOT LAST, AND IS NOT ZERO (#187). A row with no acting_now_value is not claiming
-    that acting now gains nothing; nothing was measured. Such rows sort as a block AFTER the
-    measured ones and are ordered among themselves by team_acquisition_value -- the exact order
-    they arrived in. In upside mode, where draft_strategy builds no curves at all and EVERY row
-    is in that block, this key is therefore identical to the one it replaces. That is the
-    intended preservation: this repair changes balanced-mode ordering and leaves upside mode
-    to the open valuation question draft_strategy already records at the curve site."""
-    acting = c.get("acting_now_value")
-    tav = c.get("team_acquisition_value")
-    return (not c.get("fills_required_slot", False),
-            acting is None,
-            -acting if acting is not None else 0.0,
-            tav is None,
-            -tav if tav is not None else 0.0,
-            str(c.get("player_id")))
-
-
 def acting_now_value(team_acquisition_value: Optional[float],
                      position_next_turn_value: Optional[float]) -> Optional[float]:
     """What taking THIS player NOW is worth over taking this position at my next turn instead.
@@ -1308,13 +1284,38 @@ def acting_now_value(team_acquisition_value: Optional[float],
     curve down by `expected_taken` -- the same walk, the same index, the same _curve_at that
     produces positional_forfeit, differing only in which column the curve is built from.
 
-    WHY THIS IS THE ORDERING QUESTION, and team_acquisition_value is not. A draft pick is not
-    "who is best", it is "who must I take NOW rather than later", and the two differ exactly
-    when a position replaces its own best player cheaply. `team_acquisition_value` answers the
-    first. This answers the second, and the gap between them is what put the first defense of a
-    16-round draft in ROUND 5 (evidence/blind_pass/KDST_VALUATION.md): that board recorded
-    tav 34.47 and positional_forfeit 0.13 on the same row of the same snapshot, and ranked on
-    the first.
+    WHAT THIS IS FOR, AND WHAT IT IS NOT FOR (#22). It is an OBSERVABLE. It reaches the card,
+    the debate and necessity; it does NOT order the board. That distinction is the whole of #22
+    and was bought expensively, so it is written here rather than left to a commit message.
+
+    THE QUESTION IT ASKS IS REAL. A draft pick is not "who is best", it is "who must I take NOW
+    rather than later", and the two differ exactly when a position replaces its own best player
+    cheaply. That gap is what put the first defense of a 16-round draft in ROUND 5
+    (evidence/blind_pass/KDST_VALUATION.md): that board recorded tav 34.47 and
+    positional_forfeit 0.13 on the same row of the same snapshot, and ranked on the first.
+
+    ORDERING ON IT COST 6.090% OF STARTING-LINEUP POINTS against a fixed field across six
+    formats -- 10 of 68 seats won where the value order won 56 (evidence/smoke_seats/). The
+    cause is structural, not calibration: this is a NUMERICAL DERIVATIVE, so it carries a
+    curve's local SLOPE and discards its HEIGHT. Measured at depth 30 of a real board, a
+    quarterback worth -208.35 carries more of it than a running back worth +4.68. Scarcity goes
+    the same way -- superflex enters through replacement_levels as a LEVEL shift of +127.14 per
+    quarterback, which moves the slope by +0.08, so an order reading only this cannot tell a
+    superflex league from a 1QB one.
+
+    AND THERE IS NO LONGER-HORIZON VERSION THAT ESCAPES IT. replacement_levels sets the
+    replacement rank to the league's remaining starter demand, and bpa is defined as points
+    minus that level, so a baseline taken at the starters-exhausted index is 0 by construction
+    and the difference collapses to team_acquisition_value itself. The value order already IS
+    this quantity at the full horizon; the one-gap form is its truncation. Measured in
+    evidence/smoke_seats/V2_MECHANISM.md.
+
+    THE SWAP ALGEBRA IS STILL CORRECT, which is why the number stays. For "fill P now and Q next
+    turn" against the reverse, the plans differ by exactly acting_now(P) - acting_now(Q). Its
+    PRECONDITION is that the roster is committed to acquiring both positions, and ordering every
+    candidate by it silently dropped that precondition. The defect it was built to work around
+    is a VALUATION one -- 34.47 asserts an unshrunk projection spread is bankable -- and belongs
+    there.
 
     WHY THE SUBTRAHEND IS TEAM-RELATIVE, which the first implementation of this got wrong.
     Subtracting the team-AGNOSTIC forfeit curve instead leaves the team terms ADDED rather than
@@ -1325,13 +1326,14 @@ def acting_now_value(team_acquisition_value: Optional[float],
     order changed.
 
     NO CONSTANT IS INTRODUCED, so #56 is not engaged. Both operands are quantities this engine
-    already computes on every board; what changes is which of them the order reads.
+    already computes on every board.
 
     ABSENT, NEVER ZERO (#187). None whenever either operand is missing -- an unpriced row, a
     back-to-back turn with no intervening picks, or upside mode, where draft_strategy builds no
     position curves at all and every forfeit is legitimately absent. A 0.0 would read as
     "measured, and acting now gains exactly nothing", an argument for waiting asserted from an
-    absence. Callers order absent rows by the previous key; see _acting_now_order."""
+    absence. No caller orders on it, so absence costs a row nothing -- it is displayed as
+    absent, which is the honest thing to show."""
     if team_acquisition_value is None or position_next_turn_value is None:
         return None
     return team_acquisition_value - position_next_turn_value
@@ -1476,7 +1478,7 @@ class CandidateSnapshot:
     #: expected to still offer at the next turn, in final_score's units.
     position_next_turn_value: Optional[float]
     #: WHAT THIS CANDIDATE'S ORDER IS. Optional because it is a measurement, and an absent one
-    #: stays absent (#187) -- see acting_now_value and _acting_now_order.
+    #: stays absent (#187) -- see acting_now_value. Carried, displayed, never ordered on (#22).
     acting_now_value: Optional[float]
     positional_cliff: Optional[dict]
     position_run_detected: bool
@@ -1768,30 +1770,54 @@ def build_snapshot(
             "fills_required_slot": bool(row.get("fills_required_slot", False)),
         })
 
-    # WHAT ACTING NOW IS WORTH, and then the ORDER THAT READS IT.
+    # WHAT ACTING NOW IS WORTH -- COMPUTED, CARRIED, AND DELIBERATELY NOT ORDERED ON (#22).
     #
-    # Everything above this line is assembled in `narrowed` order -- pick_synthesis.
-    # narrow_candidates sorting on `_board_order`, which keys on `final_score`. That order is
-    # built BEFORE forfeits exist (they need the opponent boards pick_analysis computes), so
-    # the board cannot rank on what acting now is worth; it ranks on what the player is worth.
-    # Re-ordering HERE, once every candidate carries its forfeit, is the only seam where both
-    # numbers exist at once. See acting_now_value for why this is the ordering question.
+    # This block briefly sorted on `acting_now_value`, and that ordering is REVERTED here. The
+    # number is still computed and still reaches the card and the debate; what it no longer has
+    # is selection authority.
     #
-    # WHY THIS IS NOT DEFEATED BY THE NARROWING ABOVE IT. Re-sorting a top-N chosen by a
-    # different key would be cosmetic if the N were chosen by value alone -- the candidate this
-    # order promotes would already have been cut. It is not: narrow_candidates also admits the
-    # top `position_depth` rows AT EVERY POSITION regardless of board rank, so the best player
-    # at each position is always in the set this re-sorts. Verified by test, because it is the
-    # assumption the whole repair rests on.
+    # WHY, MEASURED. Against a FIXED field of heuristic opponents -- not self-play -- ordering on
+    # it lost 6.090% of starting-lineup points across six formats, winning 10 of 68 seats where
+    # the value order won 56. `evidence/smoke_seats/V2_REGRESSION.md` has the run;
+    # `evidence/smoke_seats/V2_MECHANISM.md` has the cause, which is structural rather than a
+    # calibration problem:
     #
-    # ORDER MATTERS FOR WHAT FOLLOWS. compute_pick_necessity, near_tie_flags ("near tie with
-    # the LEADER") and decision_regime all read this list as ranked, so the re-sort happens
-    # before them rather than on the way out -- otherwise the snapshot would describe one
-    # leader and recommend another.
+    #   `acting_now(i) = F(i) - F(i + expected_taken)` is a NUMERICAL DERIVATIVE. It reads the
+    #   local SLOPE of a position's curve and discards its HEIGHT. Measured at depth 30 of a real
+    #   12T_ppr board, a quarterback worth -208.35 carries more of it (3.81) than a running back
+    #   worth +4.68 (3.58), and `team_acquisition_value` broke only EXACT float ties, which do not
+    #   occur. `expected_taken` sets the step length, so correcting the take model moves WHERE the
+    #   slope is read and can never put height back into the key -- which is why `#21` cannot
+    #   rescue this ordering and is tracked as its own defect.
+    #
+    #   The same cancellation reaches scarcity. `SUPER_FLEX_QB_SHARE` enters through
+    #   `replacement_levels`, and `bpa` subtracts that level from every player at the position --
+    #   a LEVEL SHIFT, invisible to a difference. Measured across 40 QB rows, superflex moves the
+    #   curve's level by +127.14 and its slope by +0.08, so this key could not tell a superflex
+    #   league from a 1QB one. That is `#20`.
+    #
+    # AND WHY THERE IS NO LONGER-HORIZON VERSION TO REACH FOR. `replacement_levels` sets the
+    # replacement rank to the league's remaining starter demand -- the starters-exhausted index --
+    # and `bpa` is defined as points minus that level, so `F(k_exhaust)` is 0 by construction and
+    # `F(i) - F(k_exhaust)` IS the value key. Measured, eleven of twelve position-format cells
+    # land within [-6.61, +4.31] of zero. The value order already is regret at the full horizon;
+    # this was its one-gap truncation.
+    #
+    # WHAT SURVIVES, and is not a consolation prize. The two-position swap algebra
+    # `positional_forfeits` derives is CORRECT -- its precondition is that the roster is committed
+    # to acquiring both positions, and ordering every candidate by it dropped that precondition.
+    # The number is real, it is what put a defense in round 5 on the board's own evidence, and it
+    # belongs in front of a person. The defect it was built to work around is a VALUATION one (a
+    # defense at 34.47 claims an unshrunk projection spread is bankable) and is tracked there.
     for c in raw_candidates:
         c["acting_now_value"] = acting_now_value(
             c["team_acquisition_value"], c["position_next_turn_value"])
-    raw_candidates.sort(key=_acting_now_order)
+
+    # The candidate dicts arrive in `narrowed` order already, but say it rather than lean on it:
+    # an order this list's readers depend on should not be a property of how it was assembled.
+    # `team_acquisition_value` is the candidate-side name for the board's `final_score` (set at
+    # the top of this loop), so this is `_board_order` itself, not a copy of it.
+    raw_candidates.sort(key=lambda c: _board_order(c, "team_acquisition_value"))
 
     # THE ROUND OF THE PICK BEING DECIDED, not of the last pick already made (#52 phase 6).
     #

@@ -258,10 +258,14 @@ def serialize_candidate(c: CandidateSnapshot) -> dict:
         "cliffGap": cliff.get("gap"),
         "cliffTypical": cliff.get("typical_gap"),
         "forfeit": c.positional_forfeit,
-        #: WHAT THIS ROW'S RANK IS. The board is ordered on acting_now_value, so a payload
-        #: carrying every input to that order but not the order's own number leaves a reader
-        #: unable to check the ranking they are looking at. Absence stays absence: a
-        #: turn-ending pick has no next turn to defer to and this is legitimately null there.
+        #: WHAT WAITING WOULD COST. The board is ordered on team_acquisition_value, NOT on
+        #: this (#22) -- it briefly was, and that ordering lost 6.090% of starting-lineup
+        #: points against a fixed field because a difference of two curve points carries the
+        #: curve's local slope and discards its height. The number stays in the payload because
+        #: it answers a question the rank cannot: "does this position replace itself cheaply if
+        #: I wait?" -- which is what put a defense in round 5 on the board's own evidence, and
+        #: is worth a person seeing next to the rank rather than instead of it. Absence stays
+        #: absence: a turn-ending pick has no next turn to defer to and this is null there.
         "actingNow": c.acting_now_value,
         "nextTurnValue": c.position_next_turn_value,
         "rivalPremium": c.rival_premium,

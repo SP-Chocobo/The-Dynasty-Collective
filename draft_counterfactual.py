@@ -76,12 +76,14 @@ class NodeComparison:
 
     #: engine_tav - bpa_tav. NOT sign-constrained, and the reason is the point.
     #:
-    #: This read ">= 0 by construction (engine always TAV-argmax)" and that was true for as
-    #: long as the board ranked on team_acquisition_value. It no longer does: pick_synthesis
-    #: orders on acting_now_value, so the engine will knowingly take a LOWER-tav player when
-    #: acting on him now is worth more than acting on the tav leader now. A negative regret is
-    #: that choice, recorded -- not an error, and specifically not evidence the engine picked
-    #: badly. Reading it as a defect count is what this comment exists to prevent.
+    #: This read ">= 0 by construction (engine always TAV-argmax)", then became routinely
+    #: negative while pick_synthesis ordered on acting_now_value, and that ordering is reverted
+    #: (#22). It is STILL not sign-constrained, for a narrower reason: `_board_order` leads with
+    #: the feasibility backstop, so a roster with as few picks left as it has unfillable named
+    #: slots will take a lower-tav player on purpose. A negative regret is that choice,
+    #: recorded -- not an error, and specifically not evidence the engine picked badly. What
+    #: changed at the revert is the FREQUENCY, not the contract: it should now be rare rather
+    #: than routine. Reading it as a defect count is what this comment exists to prevent.
     regret_vs_bpa: float
     regret_vs_adp: Optional[float]  # engine_tav - adp_tav; sign is NOT constrained
 
@@ -92,8 +94,10 @@ class NodeComparison:
     #: now covers two genuinely different situations and neither may be read as the other:
     #: "the engine took BPA, there is no deviation to classify" and "the engine deviated and
     #: this harness could not tell whether it was supported". A consumer counting unsupported
-    #: deviations must not count the second as either. Values: None (equals_bpa), "necessity",
-    #: "near_tie", "ordering_key", "neither", "unmeasurable_tie".
+    #: deviations must not count the second as either. The allowed values are None (equals_bpa)
+    #: plus every member of DEVIATION_BASES -- which is the ONE home for that vocabulary (#126),
+    #: read rather than re-listed here, because this copy went stale at #22 while the tuple did
+    #: not.
     deviation_support_basis: Optional[str]
 
 
@@ -184,8 +188,7 @@ def compare_trajectory(
 
         deviation_supported, deviation_support_basis = (None, None) if equals_bpa else (
             classify_deviation(engine_cand["necessity"],
-                               _near_tie(engine_candidates, rec.chosen_player_id),
-                               engine_cand.get("actingNow")))
+                               _near_tie(engine_candidates, rec.chosen_player_id)))
 
         results.append(NodeComparison(
             pick_no=rec.pick_no, pick_label=rec.pick_label, roster_id=rec.roster_id,
@@ -215,31 +218,29 @@ def compare_trajectory(
 #: repair added a basis both copies went stale -- the test failing not because the verdict was
 #: wrong but because its private copy of the vocabulary had not been told. A caller or a test
 #: that wants the set reads it from here.
-DEVIATION_BASES = ("necessity", "near_tie", "ordering_key", "unmeasurable_tie", "neither")
+DEVIATION_BASES = ("necessity", "near_tie", "unmeasurable_tie", "neither")
 
 #: The subset that carries no verdict: deviation_supported is None and the basis says why.
 DEVIATION_BASES_WITHOUT_VERDICT = ("unmeasurable_tie",)
 
 
-def classify_deviation(necessity: str, near_tie: Optional[bool],
-                       acting_now: Optional[float] = None) -> tuple[Optional[bool], str]:
+def classify_deviation(necessity: str, near_tie: Optional[bool]) -> tuple[Optional[bool], str]:
     """Was a deviation from BPA supported, and BY WHAT -- as a pair, never as a bare verdict.
 
-    WHAT "A DEVIATION" MEANS CHANGED, and this function was silently answering the old
-    question (#52). It used to be safe to treat any non-BPA pick as a departure needing an
-    excuse, because the board ranked on team_acquisition_value and BPA's argmax was very
-    nearly the board's own leader. pick_synthesis now orders on acting_now_value, so the
-    engine passes over the tav leader ROUTINELY and by design -- measured on a real 12x16
-    draft, on 93 of 192 picks by more than 20 tav. Every one of those came back
-    (False, "neither"): the harness reporting the engine as deviating without support, on a
-    board doing exactly what it is now built to do.
+    AN "ordering_key" BASIS LIVED HERE AND IS REVERTED WITH THE ORDERING IT DESCRIBED (#22).
+    While `build_snapshot` sorted on `acting_now_value`, the engine passed over the tav leader
+    routinely and by design -- measured on a real 12x16 draft, on 93 of 192 picks by more than
+    20 tav -- so a measured `acting_now_value` was a real basis: the key was live and had
+    ranked the chosen player first on it. That ordering lost 6.090% of starting-lineup points
+    against a fixed field and was reverted, so the basis now describes a mechanism the engine
+    does not have, and a harness that keeps it would excuse deviations on the strength of a key
+    nothing reads. It is removed rather than left returning False, because an unused basis in
+    the vocabulary is an invitation to wire it back up.
 
-    So a measured acting_now_value is a basis, and a real one rather than a rubber stamp: it
-    means the new key was LIVE at this pick and ranked the chosen player first on it. Where it
-    is absent -- a turn-ending pick with no next turn, or upside mode -- the previous tav order
-    genuinely was in force, and an unexplained deviation there is still unexplained. The two
-    regimes are different facts and the vocabulary now distinguishes them rather than
-    flattening both into "neither".
+    WHAT REMAINS TRUE, and is why non-BPA picks still occur: the board ranks on
+    `team_acquisition_value`, which is BPA plus the team-specific terms, so the tav argmax and
+    the BPA argmax differ whenever those terms differ across the head of the board. That is an
+    ordinary deviation and it still needs a basis -- necessity, a near tie, or neither.
 
     Extracted from compare_trajectory so this decision can be tested directly rather than only
     through a full simulated draft. That matters here specifically: the interesting branch is
@@ -262,10 +263,6 @@ def classify_deviation(necessity: str, near_tie: Optional[bool],
         return True, "necessity"
     if near_tie is True:
         return True, "near_tie"
-    # Checked BEFORE the unmeasurable-tie branch: when the ordering key decided this pick, how
-    # measurable a tie was does not change why the engine chose as it did.
-    if acting_now is not None:
-        return True, "ordering_key"
     if near_tie is None:
         return None, "unmeasurable_tie"
     return False, "neither"

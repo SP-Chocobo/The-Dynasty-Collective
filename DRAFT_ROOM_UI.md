@@ -415,7 +415,7 @@ later.** Worth knowing before either is built.
 | U21 | Where do the freeze-timer controls live? | **WORKING: a settings button beside the Insight eye** (§15). Placement only; U3's substance is still open. |
 | U13 | May the live board poll Sleeper on a timer, or is refresh strictly manual? | **RULED: polling is allowed.** The constraint is *no automatic **paid** API calls*. Sleeper reads are free and uncovered. The refresh button becomes an immediate-update override, not the only mechanism. |
 
-| U23 | Where does `acting_now_value` go on the card — and does it displace `forfeit` there? | owner (see §16) |
+| U23 | Does `acting_now_value` go on the card at all — displace `forfeit`, join it, or stay off now that it decides nothing (`#22`)? | owner (see §16) |
 | U24 | The necessity tag: keep, re-scope, or retire? | owner, AFTER `W1-07` (see §16) |
 | U26 | The tag LINEUP itself — how many bands, on what axis, against the channels already on the card | **PINNED** for the UI pass (see §16d) |
 | U25 | Does an unpriced row keep rendering as a bare dash, with no kind? | owner (see §16) |
@@ -1125,26 +1125,35 @@ one item, not three, because they all answer the same reader question — *why i
 first?* — and a card that answers it three times in three vocabularies is worse than one that
 answers it once.
 
-### 16a. The rank now has a number, and the card does not show it
+### 16a. The rank does NOT have this number — and U23 shrank accordingly (`#22`)
 
-The board is ordered on `acting_now_value = team_acquisition_value − position_next_turn_value`:
-what taking THIS player NOW is worth over taking his position at the next turn. It reaches the
-payload as `actingNow` (with `nextTurnValue` beside it) and **nothing renders it**. Every input
-to the order is on the card; the order's own number is not.
+**This section previously read "the board is ordered on `acting_now_value`."** It was, between
+`4640f25` and the revert. It is not any more: ordering on it lost **6.090%** of starting-lineup
+points against a fixed field of heuristic opponents across six formats, winning 10 of 68 seats
+where the value order won 56. The board is ordered on `team_acquisition_value` again. See
+`evidence/smoke_seats/V2_MECHANISM.md` for why the defect is structural rather than a
+calibration problem — a difference of two points on a curve carries the curve's local *slope*
+and discards its *height*, so at depth 30 of a real board a quarterback worth −208.35 outranked
+a running back worth +4.68.
 
-That is the `#186` shape rather than a missing nicety: a surface showing a rank whose reason it
-does not carry invites the reader to reconstruct the reason from what IS shown — and what is
-shown is `tav`, which no longer decides. A reader who sorts the card's own numbers mentally gets
-the OLD board back.
+**What that does to U23.** The `#186` argument for rendering it is GONE: the card shows `tav`,
+and `tav` is once again what decides, so a reader who sorts the card's own numbers mentally now
+gets the RIGHT board rather than the old one. There is no rank-without-its-reason problem left.
 
-**Hazard, and it is U11's.** U11 ruled *"Forfeit stays on the cards"*, and for the best player
-at a position `acting_now_value` **equals** `positional_forfeit` exactly (measured: Rams 1.05 /
-1.05, Sutton 7.46 / 7.46 — the team terms cancel by construction). So the two fields agree on
-precisely the rows a reader looks at most, and diverge only further down. Printing both without
-saying which is which would be two names for one number at the top of the card and two different
-numbers below it — the worst of both. **U23 is therefore whether `acting_now_value` DISPLACES
-forfeit on the card rather than joining it.** That is a change to a RULED row (U11) and is the
-owner's, not a layout choice.
+**What survives is a smaller and genuinely different question.** `acting_now_value` still
+reaches the payload as `actingNow` (with `nextTurnValue` beside it) and still answers something
+the rank cannot: *does this position replace itself cheaply if I wait?* That is the question
+that put the first defense of a 16-round draft in round 5 on the board's own evidence, and it is
+worth a person seeing — but as a decision AID beside the rank, never as the rank's explanation.
+
+**The U11 hazard is unchanged and is now the whole of U23.** U11 ruled *"Forfeit stays on the
+cards"*, and for the best player at a position `acting_now_value` **equals** `positional_forfeit`
+exactly (measured: Rams 1.05 / 1.05, Sutton 7.46 / 7.46 — the team terms cancel by
+construction). The two fields agree on precisely the rows a reader looks at most and diverge
+only further down, so printing both without saying which is which gives two names for one number
+at the top of the card and two different numbers below it. **U23 is therefore whether
+`acting_now_value` DISPLACES forfeit on the card, joins it, or — now that it decides nothing —
+stays off the card entirely.** A change to a RULED row (U11), so still the owner's.
 
 ### 16b. The necessity tag is degenerate where it is read, and contradictory where it is not
 
@@ -1172,9 +1181,12 @@ the label's variation (H 1.141 → 1.025 bits), 3% across the top six. But:
   fold, not a second opinion. The surface cannot show it and does not say it is there.
 
 **U24 is sequenced, not open-ended.** The score's largest terms are standout (30) and survival
-(20), and survival is the quantity `W1-07` found sourced from a WITHHELD estimate; the rank reads
-the same `positional_forfeit` at 10 through `acting_now_value`. The recorded prediction is that
-removing the survival term collapses the 24% disagreement. **Re-measure after `W1-07`, then
+(20), and survival is the quantity `W1-07` found sourced from a WITHHELD estimate. (This
+sentence also said the rank reads the same `positional_forfeit` through `acting_now_value` — it
+did while the board was ordered on that key, and since the `#22` revert the rank reads
+`team_acquisition_value`, so necessity's forfeit term and the rank no longer share an input at
+all. That makes the overlap SMALLER than recorded here, not larger.) The recorded prediction is
+that removing the survival term collapses the 24% disagreement. **Re-measure after `W1-07`, then
 decide.** Retuning a threshold so STRONG ACTION fires more often is `#56` with a friendlier face
 — the firing rate is an output of a score whose largest movable term is under review.
 
