@@ -181,6 +181,43 @@ def expected_position_pace(position: str, picks_made: int, roster_positions: lis
     return None
 
 
+def position_pace_probability(position: str, picks_made_now: int, picks: list[dict],
+                              players_db: dict[str, dict],
+                              roster_positions: list[str]) -> Optional[float]:
+    """P(the NEXT pick goes to this position at all), from the documented market convention.
+
+    Step 1 of `_pace_based_take_probability`, lifted out because it has a SECOND consumer and
+    was reachable from only one (#126). It is a position-level probability -- "some QB gets
+    taken" -- before that function narrows it to "THIS QB gets taken" by dividing through the
+    player's rank among remaining players at his position.
+
+    WHY THE SECOND CONSUMER NEEDS IT (#52 phase 8). `positional_forfeits` asks exactly the
+    position-level question this answers, and was computing it by summing per-row rank
+    probabilities -- the estimate `_pace_based_take_probability`'s own docstring says
+    "structurally cannot handle" an elite QB, because he "can rank outside
+    RANK_TAKE_PROBABILITY's top-5 keys on EVERY intervening team's own board" and the estimate
+    then "floors out at RANK_TAKE_PROBABILITY_FLOOR (0.02) regardless of position".
+
+    Measured before this was wired: in a superflex league with league-wide QB starter demand of
+    18.5 and TEN quarterbacks already gone in the first twenty picks, `expected_taken` for QB
+    across eighteen intervening picks came back **0.84** -- fewer than one -- against RB 2.75
+    and WR 3.20. The rank model had already been corrected for precisely this case; only
+    `estimate_survival` was told.
+
+    None whenever no convention is documented for this position/format, or once `picks_made_now`
+    is past the last documented anchor -- the same domain the rest of this pace machinery keeps,
+    and the reason a caller must treat absence as "no convention here", never as zero."""
+    expected_now = expected_position_pace(position, picks_made_now, roster_positions)
+    if expected_now is None:
+        return None
+    if picks_made_now >= SUPERFLEX_QB_PACE_ANCHORS[-1][0]:
+        return None
+    actual_now = sum(
+        1 for p in picks if player_position(players_db.get(str(p.get("player_id")), {})) == position
+    )
+    return min(max(expected_now - actual_now, 0.0) / PACE_CATCH_UP_WINDOW, 1.0)
+
+
 def _pace_based_take_probability(
     position: str, target_player_id: str, board: dict, picks_made_now: int,
     picks: list[dict], players_db: dict[str, dict], roster_positions: list[str],
@@ -220,16 +257,10 @@ def _pace_based_take_probability(
 
     None whenever no convention is documented for this position/format, or once picks_made_now
     is past the last documented anchor (no real convention to extrapolate a rate from)."""
-    expected_now = expected_position_pace(position, picks_made_now, roster_positions)
-    if expected_now is None:
+    any_pick_probability = position_pace_probability(
+        position, picks_made_now, picks, players_db, roster_positions)
+    if any_pick_probability is None:
         return None
-    if picks_made_now >= SUPERFLEX_QB_PACE_ANCHORS[-1][0]:
-        return None
-    actual_now = sum(
-        1 for p in picks if player_position(players_db.get(str(p.get("player_id")), {})) == position
-    )
-    deficit_now = max(expected_now - actual_now, 0.0)
-    any_pick_probability = min(deficit_now / PACE_CATCH_UP_WINDOW, 1.0)
 
     # Priced rows only, for the same reason rank_by_id is built that way (see
     # _build_opponent_boards): this rank is a VALUATION ordinal -- it narrows "some QB gets
@@ -316,6 +347,15 @@ def _curve_at(curve: list[float], taken: float) -> float:
 def positional_forfeits(
     position_curves: dict[str, list[float]], opponent_boards: dict, intervening: list,
     run_position: Optional[str] = None,
+    #: #52 phase 8. What the PACE convention says, where one is documented -- the correction
+    #: `_pace_based_take_probability` already applies inside estimate_survival, reaching this
+    #: consumer at last. All four are optional together and default to the previous behaviour
+    #: exactly, so a caller that cannot supply them (every test fixture, and any caller outside
+    #: pick_analysis) drafts as before rather than silently losing the rank model.
+    picks: Optional[list[dict]] = None,
+    players_db: Optional[dict[str, dict]] = None,
+    roster_positions: Optional[list[str]] = None,
+    picks_made_now: Optional[int] = None,
 ) -> dict[str, dict]:
     """Per position: the expected POSITION-LEVEL cost of delaying that position entirely
     until the user's next pick -- {"expected_taken", "forfeit", "best_now"} -- the one
@@ -405,7 +445,14 @@ def positional_forfeits(
         if not curve:
             continue
         expected_taken = 0.0
-        for roster_id in intervening:
+        for offset, roster_id in enumerate(intervening):
+            #: Recomputed per intervening pick rather than once, because the deficit this reads
+            #: closes as picks are made -- holding it fixed across the gap would charge the
+            #: whole catch-up to every pick in it.
+            pace_p = None
+            if None not in (picks, players_db, roster_positions, picks_made_now):
+                pace_p = position_pace_probability(
+                    position, picks_made_now + offset, picks, players_db, roster_positions)
             board = opponent_boards.get(str(roster_id))
             if not board:
                 continue
@@ -421,6 +468,17 @@ def positional_forfeits(
                     continue
                 is_run = bool(run_position and position == run_position)
                 p_position += _take_probability(rank, is_run, total_weight)
+            # THE PACE CONVENTION WINS WHERE IT IS HIGHER, exactly as estimate_survival
+            # resolves the same disagreement (`pace_driven = pace_p_take > rank_based_p_take`).
+            # Not an average and not a replacement: the rank model is a real estimate that is
+            # merely BLIND to a position the market takes on convention rather than on this
+            # board's valuation, so the convention can only ever raise it.
+            #
+            # Where no convention is documented -- every position but superflex QB today --
+            # this is None and the rank model stands untouched, which is why wiring it changes
+            # nothing outside the case it was built for.
+            if pace_p is not None and pace_p > p_position:
+                p_position = pace_p
             # No per-position cap: normalisation already makes the positions of a single pick
             # mutually exclusive, so their probabilities sum to <= 1.0 by construction. A cap
             # here would be a second, weaker constraint applied to the wrong axis.
@@ -1028,7 +1086,10 @@ def pick_analysis(
     # The same run position estimate_survival derives, computed once here and passed to both, so
     # the two consumers of the take model cannot disagree about which board they are reading.
     forfeits = positional_forfeits(position_curves, opponent_boards, intervening,
-                                   detect_positional_run(picks, players_db))
+                                   detect_positional_run(picks, players_db),
+                                   picks=picks, players_db=players_db,
+                                   roster_positions=(league.get("roster_positions") or []),
+                                   picks_made_now=len(picks))
 
     # WHAT THIS POSITION IS EXPECTED TO STILL OFFER ME AT MY NEXT TURN, in the units a pick is
     # actually decided in. Same walk as forfeit's second step -- the same expected_taken, read
