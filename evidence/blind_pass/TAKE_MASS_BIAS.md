@@ -80,6 +80,44 @@ the diagnosis is produced by an estimator that would have said "low" regardless.
 That is the difference between a result and a lucky result, and it belongs in the record next to
 the repair rather than in a footnote.
 
+## CALIBRATED AGAINST REALITY — and the bias is GENERAL, not superflex-specific
+
+*This supersedes the narrowing immediately below it, which was written before the model was
+compared against what actually happens. Both are kept: the narrowing was wrong in a way worth
+seeing.*
+
+The section below argued the bias "no longer has a known live victim" once superflex QB was
+corrected. That claim rested on the absence of a measurement, not on one. Here is the
+measurement — the model's own prediction for each position over the gap ahead, against what the
+draft really took over that same gap, in `12T_ppr` where **no pace convention applies**
+(probe `take_calibration.py`, 6 turns, 22 intervening picks each):
+
+| pos | predicted | actual | ratio | rows in pool |
+|---|---:|---:|---:|---:|
+| **QB** | 5.74 | 23 | **4.01** | 42 |
+| RB | 15.23 | 34 | 2.23 | 126 |
+| WR | 25.97 | 54 | 2.08 | 197 |
+| TE | 13.44 | 21 | 1.56 | 115 |
+
+**Every position is under-predicted, and the size of the error tracks row count** — QB, the
+thinnest pool, is wrong by 4x; WR, the deepest, by 2.08x. That is the row-count bias measured in
+outcomes rather than argued from the distribution's shape.
+
+The aggregate is starker than any single row. Across those 6 turns the model expected **60.4**
+priced takes and **132** occurred — it assigns more than half its probability mass to rows that
+are never taken. The design anticipates a shortfall ("the shortfall from the pick count IS the
+expected number of unpriced takes") but not one of this size, and not with the takes that did
+happen all landing on priced players.
+
+**What this changes.** The bias is not a superflex curiosity. It is systematically shrinking
+`positional_forfeit` everywhere, and shrinking it MOST for the scarcest positions — the ones
+where deferring is most dangerous. `acting_now_value` orders on differences between those
+forfeits, so the distortion favours abundant positions over thin ones at every pick, not just at
+superflex QB.
+
+The pace convention corrects one case. **Standard-league QB is under-predicted 4.01x and has no
+convention at all.**
+
 ## RESOLVED FOR THE CASE THAT BIT — and how, which changes the options below
 
 *Added after this document's own conclusion.*
