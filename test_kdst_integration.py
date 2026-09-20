@@ -270,7 +270,7 @@ class ProjectionOnlyAdmissionScoringTests(unittest.TestCase):
         checked = [r for r in self.board if str(r["player_id"]) in no_tv]
         self.assertTrue(checked)
         for row in checked:
-            self.assertEqual(row["eligibility_bonus"], 0.0)
+
             self.assertEqual(row["final_score"],
                              round(row["universal_value"] + row["need_bonus"], 2))
 
@@ -811,7 +811,7 @@ class LateRoundNecessityTests(unittest.TestCase):
     def test_late_round_necessity_is_uniformly_damped_for_every_position(self):
         c = {"team_acquisition_value": 20.0, "universal_value": 18.0, "survival_probability": 0.98,
              "positional_cliff": None, "position_run_detected": False, "rival_premium": 0.0,
-             "need_bonus": 4.0, "eligibility_bonus": 0.0}
+             "need_bonus": 4.0}
         early = ps.compute_pick_necessity([c], round_num=1)[0][0]
         late = ps.compute_pick_necessity([c], round_num=ps.LATE_ROUND_THRESHOLD)[0][0]
         self.assertLess(late, early, "late-round necessity must be damped")

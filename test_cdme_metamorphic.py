@@ -87,7 +87,7 @@ class IrrelevantAdditionTests(unittest.TestCase):
     # asserted the horizon estimator ignores draft depth, which would be the bug, not the fix.
     # Split into the two separate claims so both directions are actually pinned.
     VALUATION_FIELDS = ("player_id", "name", "position", "bpa", "bpa_source", "universal_value",
-                        "need_bonus", "eligibility_bonus", "final_score", "projected_points")
+                        "need_bonus", "final_score", "projected_points")
 
     def test_adding_an_unrelated_bench_slot_does_not_change_universal_value_or_final_score(self):
         before, after = self._boards_with_and_without_an_extra_bench_slot()

@@ -322,7 +322,7 @@ class RealBaselineTests(unittest.TestCase):
         for row in priced:
             self.assertAlmostEqual(
                 row["final_score"],
-                round(row["universal_value"] + row["need_bonus"] + row["eligibility_bonus"], 2),
+                round(row["universal_value"] + row["need_bonus"], 2),
                 places=2,
             )
         for row in self.board:

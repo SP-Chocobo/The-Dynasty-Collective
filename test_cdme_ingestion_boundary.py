@@ -95,7 +95,7 @@ SUPERFLEX_LEAGUE = dr.build_mock_league(teams=12, superflex=True, scoring="ppr",
 CDME_FIELDS = (
     # final_score IS team_acquisition_value (draft_room.py's own board dict aliases it) --
     # see compute_draft_board's score_row: "final_score": team_acquisition_value.
-    "universal_value", "final_score", "need_bonus", "eligibility_bonus",
+    "universal_value", "final_score", "need_bonus",
     "bpa", "bpa_source", "confidence",
 )
 

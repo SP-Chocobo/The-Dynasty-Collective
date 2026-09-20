@@ -447,8 +447,8 @@ class ContextElevatedBecameReachableTests(_RealBoards):
         wobble, and it fails if a term is ever removed without revisiting the threshold."""
         self.assertAlmostEqual(dr.NEED_BONUS_MAX, 3 * dr.NEED_BONUS_PER_DEDICATED_SLOT)
         self.assertGreater(max(self._gaps()), dr.NEED_BONUS_MAX)
-        # The three terms, each independently capped at NEED_BONUS_MAX.
-        self.assertAlmostEqual(dr.ELIGIBILITY_BONUS_MAX, dr.NEED_BONUS_MAX)
+        # Each capped term is capped at NEED_BONUS_MAX. eligibility_bonus was the third and
+        # is retired (6.1b); its cap went with it.
         self.assertAlmostEqual(dr.DEPTH_EXPOSURE_MAX, dr.NEED_BONUS_MAX)
 
 
@@ -528,12 +528,17 @@ class TheDenialNormalizerSaturatesAtItsOwnBoundTests(_RealBoards):
 
     def test_the_saturation_point_is_derived_from_every_term_it_sums(self):
         """Why the flat spot went away, asserted structurally rather than left to the data.
-        rival_premium sums draft_room's three team-specific terms, so its bound is their sum.
-        A FOURTH term added later moves this automatically -- which is exactly what did not
-        happen when #139 added the third, and is the whole mechanism of the original defect."""
-        self.assertAlmostEqual(
-            ps.NECESSITY_DENIAL_SATURATION,
-            dr.NEED_BONUS_MAX + dr.ELIGIBILITY_BONUS_MAX + dr.DEPTH_EXPOSURE_MAX)
+        rival_premium sums draft_room's capped team-specific terms, so its bound is their sum.
+        A term added later moves this automatically -- which is exactly what did not happen
+        when #139 added the third, and is the whole mechanism of the original defect.
+
+        BOTH DIRECTIONS, since 6.1b. This docstring anticipated only ADDITION and the
+        assertion hand-listed the three caps, so a term LEAVING failed it -- the saturation
+        had tracked the removal correctly (36.0 -> 24.0) and the test's private copy of the
+        list had not. Asserted against the tuple the constant is actually derived from, which
+        moves in either direction without anyone editing this line."""
+        self.assertAlmostEqual(ps.NECESSITY_DENIAL_SATURATION, sum(ps.TEAM_SPECIFIC_CAPS))
+        self.assertTrue(ps.TEAM_SPECIFIC_CAPS, "no caps: the sum above asserts nothing")
         self.assertGreater(ps.NECESSITY_DENIAL_SATURATION, max(self._premiums()))
 
     def test_removing_the_flat_spot_did_not_re_weight_the_term(self):

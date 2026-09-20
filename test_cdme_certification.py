@@ -343,7 +343,7 @@ class DenialCredibleGateProductionInvariantTests(unittest.TestCase):
             self.assertEqual(c1.team_acquisition_value, c2.team_acquisition_value, pid)
             self.assertEqual(c1.universal_value, c2.universal_value, pid)
             self.assertEqual(c1.need_bonus, c2.need_bonus, pid)
-            self.assertEqual(c1.eligibility_bonus, c2.eligibility_bonus, pid)
+
             self.assertEqual(c1.rival_premium, c2.rival_premium, pid)
             self.assertEqual(c1.pick_necessity, c2.pick_necessity,
                               f"{pid}: necessity arithmetic must not read rival_premium_take_probability")
