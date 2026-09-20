@@ -640,6 +640,40 @@ ACTION fire more often. Retuning a label to fire at a rate someone likes is `#56
 friendlier face; the rate is an output of the score, and the score has a term under review.
 
 
+## The forfeit number this repair rests on comes from a biased estimator
+
+*Added after the fact, against this document's own conclusion — see
+`evidence/blind_pass/TAKE_MASS_BIAS.md` for the full measurement.*
+
+Everything above turns on `positional_forfeit`: DEF 1.05, K 0.85, against WR 7.46 and RB 7.24.
+Chasing a superflex regression the ordering repair caused, the estimator behind those numbers
+turned out to be **biased by exactly the property K and DEF have**.
+
+`forfeit = best_now − curve_at(expected_taken)`, and `expected_taken` for a position is the sum
+of per-row take probabilities over that position's remaining rows. `RANK_TAKE_PROBABILITY` names
+five ranks and gives every other row a flat, non-decaying floor, so tail mass scales with board
+size (95% of the total at 1,100 rows). The consequence is structural: **a position is weighted
+by how many players it has left, not by how much anyone wants them.**
+
+K and DEF are low-row-count positions. **This estimator would have returned a low forfeit for
+them regardless of whether deferring was actually cheap.**
+
+What survives, and it is not nothing:
+
+- **The flatness is measured independently.** A six-point band spans 13.4 ranks at K and 5.1 at
+  DEF against 1.4–2.1 at skill positions; the basin analysis puts K's demand rank on a smooth
+  stretch at 0.10 of its own median gap. None of that comes from the take model.
+- **The roster outcome was measured, not inferred.** −0.5% of realised starting points across
+  twelve chairs on one shared ruler with 100% coverage.
+- **The counterfactual held.** With all 32 defenses on the board and every team still needing
+  one, forfeit stayed at 1.05 — which the bias explains as easily as the flatness does, so this
+  arm is weaker than it reads above and is marked accordingly.
+
+So the conclusion stands on the first two and **not** on the third. The correction is recorded
+here rather than left in the newer document because a reader who stops at this file would
+otherwise carry away a confidence the evidence no longer supports.
+
+
 ---
 
 # `K-07` — the mock draft reloads the merger twice per rerun *(pinned, not repaired)*
