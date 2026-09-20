@@ -13240,3 +13240,88 @@ rather than left as an assumption.
 30 → 29 (`eligibility_bonus` was an emitted column). Nothing is weakened by the second — a
 column that no longer exists cannot carry a NaN — but unsigned shrinkage is precisely what that
 registry exists to catch, so both moved with their reasoning attached.
+
+---
+
+## `#52` PHASE 8 — THE SUPERFLEX QB REGRESSION WAS A WIRING DEFECT, AND THE SECOND OF ITS KIND
+
+The `acting_now` ordering repair cost **2.4% of lineup points in superflex** against 0.5% in
+standard formats, and left rosters holding **one quarterback in a format that starts two**. The
+cause was not the ordering. It was `expected_taken`, and the correction for it already existed.
+
+### The measurement that found it
+
+Superflex, 18 intervening picks ahead, league-wide QB starter demand **18.5**, and **ten
+quarterbacks already gone in the first twenty picks**:
+
+| pos | `expected_taken` | `forfeit` | `acting_now` |
+|---|---:|---:|---:|
+| **QB** | **0.84** | **0.43** | **0.43** |
+| RB | 2.75 | 23.42 | 23.35 |
+| WR | 3.20 | 19.36 | 19.39 |
+
+The fastest-moving position on the board, predicted to lose fewer than one player in eighteen
+picks.
+
+### The correction was already written, for exactly this case
+
+`_pace_based_take_probability`'s own docstring:
+
+> *"built for exactly the case a rank-based estimate structurally cannot handle. Confirmed
+> directly: an elite QB can rank outside `RANK_TAKE_PROBABILITY`'s top-5 keys on EVERY
+> intervening team's own board … at which point the rank-based estimate floors out at
+> `RANK_TAKE_PROBABILITY_FLOOR` (0.02) regardless of position."*
+
+It had **one** consumer: `estimate_survival`. `positional_forfeits` — which asks the
+position-level question that function answers in its first step — never saw it.
+
+**This is the second divergence between the same two functions.** `positional_forfeits`' own
+docstring records the first, verbatim: `#206` normalised the take model, applied it to
+`estimate_survival`, and *"THIS CONSUMER WAS NOT CONVERTED."* Two occurrences with one shape is
+a structural pull, not bad luck: the functions answer adjacent questions off one model, and the
+position-level half had no name of its own to reach for.
+
+### The repair
+
+Step 1 lifted out as `position_pace_probability`, read by both consumers (`#126`). The
+convention only ever RAISES the rank estimate, resolved exactly as `estimate_survival` resolves
+the same disagreement. **No new constant, so `#56` is not engaged** — `SUPERFLEX_QB_PACE_ANCHORS`
+and `PACE_CATCH_UP_WINDOW` already shipped and were already trusted by survival; what changed is
+which consumers can see them.
+
+| `10T_ppr_SF` | QB mean | QB min | starters | worst chair |
+|---|---:|---:|---:|---:|
+| control (tav order) | 3.20 | 2 | 2583.6 | 2544.1 |
+| before the fix | 2.40 | **1** | 2522.3 | 2404.2 |
+| **after** | **3.20** | **2** | **2555.0** | 2469.7 |
+
+Roster shape recovers **exactly** to the control. The points gap halves, −2.4% → −1.1%, which is
+the same kind of cost the ordering repair pays in standard formats rather than a different
+failure.
+
+**It fires selectively, which is the evidence it is reading something true.** At round 3 it moves
+QB from 0.43 to 10.64. At rounds 5 and 7 it does nothing, because seventeen and twenty QBs are
+gone against a documented pace of ~12.8 — the market is AHEAD of convention and there is no
+catch-up deficit to price.
+
+### What it does NOT fix
+
+The row-count bias behind it is real and untouched for every position with **no documented pace
+convention**, which today is all of them except superflex QB (see
+`evidence/blind_pass/TAKE_MASS_BIAS.md`). What changed is that it no longer has a known live
+victim. A fourth option is now visible that was not before: document pace anchors for a second
+position, rather than reshape the distribution at all — which needs real market data instead of
+a chosen curve.
+
+### A mutant survived the first pass, and the reason generalises
+
+*"The convention REPLACES the rank estimate"* instead of raising it passed every test, because
+the ahead-of-pace assertion ran against an **empty** opponent board: the rank model scored 0.0,
+the convention scored 0.0, and `max()` versus replacement are indistinguishable when the loser is
+zero. **The test was vacuous on precisely the arm it was written for.** Rewritten over a board
+the rank model actually scores, and it now asserts the loser is non-zero first so the fixture
+cannot drift back to proving nothing.
+
+The wiring guard is the file's real deliverable: it parses the AST and asserts BOTH consumers
+reach the shared step, so a third divergence fails loudly rather than surfacing months later as
+a roster that quietly stopped drafting quarterbacks.

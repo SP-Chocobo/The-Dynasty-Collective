@@ -80,6 +80,28 @@ the diagnosis is produced by an estimator that would have said "low" regardless.
 That is the difference between a result and a lucky result, and it belongs in the record next to
 the repair rather than in a footnote.
 
+## RESOLVED FOR THE CASE THAT BIT — and how, which changes the options below
+
+*Added after this document's own conclusion.*
+
+The superflex QB victim is **fixed**, and not by reshaping the distribution. The repo had
+already built a market-convention override (`_pace_based_take_probability`) for exactly this
+failure — its docstring names the 0.02 floor as the thing it exists to bypass — and had wired it
+into `estimate_survival` alone. `positional_forfeits` now reads the same convention through a
+shared `position_pace_probability` (`#52` phase 8, POST_AUDIT_PLAN). QB per roster recovers from
+2.40/min 1 to 3.20/min 2, exactly matching the tav-order control.
+
+So the bias described below is **real, unchanged, and no longer has a known live victim.** It
+still applies to every position with no documented pace convention, which today is all of them
+except superflex QB.
+
+That adds a fourth option the three below did not contain, and it may be the cheapest:
+
+4. **Document pace anchors for a second position.** The repo's own chosen remedy for this defect
+   is a market convention, not a redistributed tail; it simply has anchors for one case. This
+   needs real market data rather than a chosen shape, which is the opposite of `#56` exposure —
+   but it needs data that does not exist in the repository today.
+
 ## Not fixed here, and why
 
 A decaying tail is a new shape for a distribution nobody has argued for — `#56`'s prohibition
