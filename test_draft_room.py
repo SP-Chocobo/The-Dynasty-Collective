@@ -1690,7 +1690,7 @@ class RiskAdjTrajectoryScalingTests(unittest.TestCase):
         self.assertAlmostEqual(self._expected_d_scale(dr.TIME_HORIZON_CLAMP[1]), dr.DYNASTY_RISK_ADJ_MIN_SCALE)
 
 
-# `EligibilityBonusWiringTests` WAS HERE -- 8 tests, DELETED at the 6.1b ruling (#52).
+# `EligibilityBonusWiringTests` WAS HERE -- 6 tests, DELETED at the 6.1b ruling (#52).
 #
 # It covered lineup_optimizer's wiring of eligibility_bonus INTO team_acquisition_value: the
 # bonus is positive when a multi-eligible candidate unlocks an open IDP_FLEX, is expressed in
@@ -1707,6 +1707,15 @@ class RiskAdjTrajectoryScalingTests(unittest.TestCase):
 # WHAT SURVIVES, deliberately: `lineup_optimizer.eligibility_bonus` is untouched and its own
 # suite in `test_lineup_optimizer.py` still covers it. 6.1b retired a BOARD TERM, not the
 # calculation -- so the function keeps its tests and only the wiring lost its own.
+#
+# ONE OF THE SIX WAS NOT A TERM TEST, and it is the one to think about before assuming this
+# deletion is pure subtraction: `test_full_board_stays_fast_even_when_most_candidates_are_
+# multi_eligible` was a PERFORMANCE guard. It existed because pricing the term called
+# lineup_optimizer once per multi-eligible candidate, so a board thick with them got slow.
+# Retiring the term removes those calls entirely, which is why the guard goes with it -- the
+# cost it watched cannot be incurred any more. The retirement should therefore make boards
+# slightly FASTER in IDP-heavy formats, which is a claim nobody has measured and which no
+# longer has a test watching it either way.
 #
 # The invariant registry is what would reopen this: if a vendor refresh restores active
 # offence dual-eligibility, its census moves and the ruling that deleted these tests expires.

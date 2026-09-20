@@ -13138,3 +13138,105 @@ evidence for the predictiveness thesis: if `tav` differences of that size were r
 on. The previous recorded figure was 3091 tests in 860.9s at `#283` (2026-09-17): the suite grew
 by 242 tests and got 21% slower, with per-test cost roughly flat (0.279s -> 0.312s). Growth, not
 regression.
+
+---
+
+## `6.1b` CLOSED — THE TERM WAS INERT, ITS CAP WAS NOT
+
+`eligibility_bonus` is retired from the board. The ruling was made on a measured population:
+across 36 board states and 46,020 rows the term was nonzero on **five**, at a maximum of 0.84
+against a bound of 12.00, while `displacement_adj` on the same lifted rows averaged 118.31 —
+so it was pricing **0.24%** of the multi-eligibility credit it claimed to own. Every
+OFFENCE-ONLY multi-eligible player in the capture is retired, so the WR/TE case the term was
+built for had no living members.
+
+### What it cost, which is not nothing
+
+| | before | after |
+|---|---:|---:|
+| `NECESSITY_DENIAL_SATURATION` | 36.0 | **24.0** |
+| `CONTEXT_ELEVATED_THRESHOLD` | 12.0 | 12.0 |
+
+`eligibility_bonus`'s cap was a member of `TEAM_SPECIFIC_CAPS`, so the SUM lost a 12.0 member
+while the MEAN of equal caps did not move. **This is a derivation, not a calibration, and `#56`
+is not engaged**: nobody chose a new saturation point, the formula is untouched, and its input
+lost a member because a term retired. A constant that held at 36.0 across that change would be
+the hand-maintained number `#56` actually prohibits.
+
+Measured over 7,595 rows carrying a `rival_premium`, the **clamp is a red herring** — the
+maximum premium observed is 10.32 against a mean of 1.77, so no row saturates at either point.
+Saturation is a *divisor*, so what moved is the ramp: every row's denial component scales by
+exactly **1.5×** (mean 0.984 → 1.475, max 5.733 → 8.600), worst single-row shift **+2.87** on a
+100-point necessity score.
+
+### What it rules OUT
+
+- **The blast radius was half what the grep said.** `lineup_optimizer.eligibility_bonus` is a
+  FUNCTION and it survives untouched with its own suite. 6.1b retired a board term, not a
+  calculation, and any future reader grepping the name will over-count the same way.
+- **`CONTEXT_ELEVATED_THRESHOLD` needs no ruling.** It is a mean over equal caps and is
+  invariant to a member leaving.
+
+### THE FINDING, which is about the guards and not about the term
+
+260 suite errors followed the retirement. Roughly 250 were mechanical. The other ten were
+**eight separate guards that failed for the wrong reason**, every one the same shape: each
+hand-listed a population instead of deriving it.
+
+| guard | what it hand-listed |
+|---|---|
+| `test_probability_bounds` | `3 == len(TEAM_SPECIFIC_CAPS)`, then each cap by name |
+| `test_term_lifetimes` | three term names |
+| `test_depth_exposure` | the layer-identity sum |
+| `test_216_displacement` | the layer-identity sum |
+| `test_downstream_contracts` | the layer-identity sum |
+| `test_pick_synthesis` | the layer-identity sum, twice |
+| `test_216_room_integrity` | the identity-term set as a literal |
+| `test_threshold_reachability` | the three caps the saturation sums |
+
+None had stopped being true. Each fired because its private copy of a list went stale. **A test
+that counts a population cannot tell a legitimate removal from a defect** — it fires on both and
+means neither. All eight now derive from `draft_room.TEAM_SPECIFIC_TERMS` or from
+`TEAM_SPECIFIC_CAPS`.
+
+The last one is the sharpest. `test_the_saturation_point_is_derived_from_every_term_it_sums`
+exists *because* `#139` added a third term and the constant did not follow; its docstring calls
+that "the whole mechanism of the original defect". And it hand-listed three caps, so it only
+ever watched the ADDITION direction. A term leaving failed it while the saturation it guards had
+tracked the removal correctly. **The guard was wrong and the engine was right.**
+
+That is the generalisable lesson of this pass: **this repository's guards notice additions and
+are blind to removals**, because a hand-written list grows by hand and shrinks in silence. The
+invariant registry is the one piece of machinery built for the shrinking direction, and it was
+the only thing that caught the absence-contract population going 30 → 29.
+
+### Deletions, recorded because `assertion_floors` must not absorb them silently
+
+`EligibilityBonusWiringTests` (**6 tests**, 267 lines) and
+`test_eligibility_flexibility_alone_changes_the_score`. Their subject no longer exists, so there
+is no weaker version to keep — the same reasoning by which the eligibility INVARIANT is KEPT:
+that invariant is the standing record of the population the removal was ruled against, and a
+vendor refresh restoring active offence dual-eligibility moves its census and reopens the
+ruling. Retiring the watch with the term would delete the only thing that can say the ruling has
+expired.
+
+One of the six was **not** a term test. `test_full_board_stays_fast_even_when_most_candidates_
+are_multi_eligible` was a PERFORMANCE guard, existing because pricing the term called
+`lineup_optimizer` once per multi-eligible candidate. Retiring the term removes those calls, so
+the cost it watched cannot be incurred — which implies 6.1b makes boards slightly FASTER in
+IDP-heavy formats. **That is unmeasured and now untested in either direction**, stated here
+rather than left as an assumption.
+
+### Corrections
+
+- "Both constants are unmoved, the gate resolves" — **WRONG**, stated mid-session. It read the
+  post-stash working tree as though it were the baseline instead of diffing HEAD. The same error
+  class as the stale-`.pyc` earlier the same day: comparing against the wrong "before".
+- "8 tests deleted" — **it is 6.** The AST count included `setUpClass` and a helper.
+
+### Registry censuses moved by hand, not by `--write`
+
+`team-specific terms` 4 → 3, and `an absent quantity reaches a caller as None, never as NaN`
+30 → 29 (`eligibility_bonus` was an emitted column). Nothing is weakened by the second — a
+column that no longer exists cannot carry a NaN — but unsigned shrinkage is precisely what that
+registry exists to catch, so both moved with their reasoning attached.

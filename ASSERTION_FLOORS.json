@@ -2209,7 +2209,7 @@
     "test_cdme_certification.py": {
       "test_methods": 14,
       "asserts": {
-        "assertEqual": 20,
+        "assertEqual": 19,
         "assertFalse": 1,
         "assertGreater": 2,
         "assertGreaterEqual": 1,
@@ -2238,7 +2238,7 @@
           "assertEqual": 1
         },
         "test_credible_gate_leaves_tav_universal_value_and_candidate_order_untouched": {
-          "assertEqual": 9,
+          "assertEqual": 8,
           "assertFalse": 1,
           "assertTrue": 1
         },
@@ -4478,7 +4478,7 @@
     "test_draft_board_ui.py": {
       "test_methods": 50,
       "asserts": {
-        "assertEqual": 40,
+        "assertEqual": 39,
         "assertFalse": 1,
         "assertGreater": 1,
         "assertGreaterEqual": 1,
@@ -4567,7 +4567,7 @@
           "assertIsInstance": 1
         },
         "test_every_field_is_a_direct_unmodified_read": {
-          "assertEqual": 11
+          "assertEqual": 10
         },
         "test_every_flex_slot_has_a_label": {
           "assertLessEqual": 1,
@@ -4901,19 +4901,19 @@
       }
     },
     "test_draft_room.py": {
-      "test_methods": 102,
+      "test_methods": 96,
       "asserts": {
-        "assertAlmostEqual": 22,
-        "assertEqual": 64,
+        "assertAlmostEqual": 20,
+        "assertEqual": 62,
         "assertFalse": 3,
-        "assertGreater": 47,
+        "assertGreater": 41,
         "assertGreaterEqual": 6,
         "assertIn": 4,
         "assertIs": 2,
         "assertIsNone": 8,
-        "assertIsNotNone": 6,
-        "assertLess": 11,
-        "assertLessEqual": 6,
+        "assertIsNotNone": 5,
+        "assertLess": 9,
+        "assertLessEqual": 4,
         "assertNotAlmostEqual": 1,
         "assertNotEqual": 4,
         "assertNotIn": 5,
@@ -5033,21 +5033,6 @@
         "test_dynasty_time_horizon_adjustment_is_neutral_outside_dynasty_leagues": {
           "assertTrue": 1
         },
-        "test_eligibility_bonus_cannot_flip_a_large_universal_value_gap": {
-          "assertGreater": 3,
-          "assertIsNotNone": 1
-        },
-        "test_eligibility_bonus_is_bounded_by_its_own_max": {
-          "assertGreater": 1,
-          "assertLessEqual": 1
-        },
-        "test_eligibility_bonus_is_expressed_in_bpa_units_not_trade_value_units": {
-          "assertAlmostEqual": 1,
-          "assertGreater": 1
-        },
-        "test_eligibility_bonus_never_exceeds_the_candidates_own_trade_value": {
-          "assertLessEqual": 1
-        },
         "test_elite_idp_does_not_outrank_elite_offense_in_a_light_idp_league": {
           "assertGreater": 1
         },
@@ -5064,9 +5049,6 @@
         },
         "test_floor_based_rank_counts_remaining_startables_not_demand": {
           "assertEqual": 1
-        },
-        "test_full_board_stays_fast_even_when_most_candidates_are_multi_eligible": {
-          "assertLess": 1
         },
         "test_half_ppr_and_full_ppr_boards_are_byte_identical_on_the_real_baseline": {
           "assertEqual": 1
@@ -5106,12 +5088,6 @@
         },
         "test_more_starting_slots_at_a_position_raises_the_replacement_rank": {
           "assertLessEqual": 1
-        },
-        "test_multi_eligible_candidate_gets_a_positive_bonus_when_it_unlocks_an_open_idp_flex": {
-          "assertAlmostEqual": 1,
-          "assertEqual": 2,
-          "assertGreater": 1,
-          "assertLess": 1
         },
         "test_need_bonus_cannot_flip_a_large_universal_value_gap": {
           "assertGreater": 2
@@ -6373,7 +6349,7 @@
       "test_methods": 53,
       "asserts": {
         "assertAlmostEqual": 3,
-        "assertEqual": 29,
+        "assertEqual": 28,
         "assertFalse": 2,
         "assertGreater": 15,
         "assertGreaterEqual": 2,
@@ -6410,7 +6386,7 @@
           "assertTrue": 4
         },
         "test_a_missing_trade_value_declines_the_flexibility_premium_rather_than_inventing_one": {
-          "assertEqual": 2,
+          "assertEqual": 1,
           "assertTrue": 2
         },
         "test_a_real_projection_admits_a_player_with_no_vendor_trade_value": {
@@ -8383,12 +8359,12 @@
       }
     },
     "test_pick_synthesis.py": {
-      "test_methods": 117,
+      "test_methods": 116,
       "asserts": {
         "assertAlmostEqual": 17,
-        "assertEqual": 77,
+        "assertEqual": 76,
         "assertFalse": 20,
-        "assertGreater": 12,
+        "assertGreater": 11,
         "assertGreaterEqual": 7,
         "assertIn": 16,
         "assertIsInstance": 4,
@@ -8493,7 +8469,7 @@
         "test_both_modes_carry_every_field_a_consumer_indexes_unguarded": {
           "assertTrue": 2
         },
-        "test_but_the_two_terms_that_ARE_read_still_move_it": {
+        "test_but_the_term_that_IS_read_still_moves_it": {
           "assertGreater": 1
         },
         "test_candidates_within_the_band_of_the_leader_form_a_tie_group": {
@@ -8545,9 +8521,6 @@
         },
         "test_draft_pick_rows_are_excluded_not_just_ignored": {
           "assertNotIn": 1
-        },
-        "test_eligibility_flexibility_alone_changes_the_score": {
-          "assertGreater": 1
         },
         "test_empty_and_singleton_inputs": {
           "assertEqual": 2
@@ -8786,7 +8759,7 @@
         },
         "test_upside_mode_preserves_the_value_layer_identity": {
           "assertAlmostEqual": 1,
-          "assertEqual": 2
+          "assertEqual": 1
         },
         "test_upside_mode_snapshots_build_at_all": {
           "assertTrue": 1
@@ -9268,17 +9241,18 @@
       }
     },
     "test_probability_bounds.py": {
-      "test_methods": 16,
+      "test_methods": 17,
       "asserts": {
         "assertAlmostEqual": 3,
-        "assertEqual": 6,
+        "assertEqual": 5,
         "assertFalse": 1,
         "assertGreater": 2,
-        "assertGreaterEqual": 2,
+        "assertGreaterEqual": 3,
         "assertIn": 2,
         "assertLess": 1,
         "assertLessEqual": 5,
         "assertNotEqual": 1,
+        "assertNotIn": 1,
         "assertTrue": 2
       },
       "by_method": {
@@ -9298,6 +9272,9 @@
           "assertGreaterEqual": 1,
           "assertLessEqual": 1
         },
+        "test_that_derivation_is_not_vacuous": {
+          "assertGreaterEqual": 1
+        },
         "test_the_boost_exclusion_is_narrow_and_deliberate": {
           "assertGreater": 1,
           "assertLess": 1,
@@ -9311,9 +9288,6 @@
         "test_the_derived_constants_still_derive_from_the_tuple": {
           "assertAlmostEqual": 1,
           "assertEqual": 1
-        },
-        "test_the_fourth_team_term_is_not_in_the_tuple": {
-          "assertEqual": 2
         },
         "test_the_fourth_term_has_no_cap_to_be_bounded_by": {
           "assertEqual": 1
@@ -9336,6 +9310,10 @@
         },
         "test_the_scale_is_the_pools_own_spread": {
           "assertAlmostEqual": 1
+        },
+        "test_the_uncapped_team_term_is_not_in_the_tuple": {
+          "assertEqual": 1,
+          "assertNotIn": 1
         }
       }
     },
@@ -11079,13 +11057,21 @@
       }
     },
     "test_rulings_are_not_silently_dropped.py": {
-      "test_methods": 5,
+      "test_methods": 8,
       "asserts": {
-        "assertGreater": 2,
-        "assertIn": 4,
-        "assertTrue": 2
+        "assertEqual": 1,
+        "assertGreater": 3,
+        "assertIn": 5,
+        "assertTrue": 3
       },
       "by_method": {
+        "test_every_implemented_ruling_is_still_actually_implemented": {
+          "assertIn": 1
+        },
+        "test_every_implemented_ruling_records_what_it_cost": {
+          "assertGreater": 1,
+          "assertTrue": 1
+        },
         "test_every_staged_ruling_is_still_actually_unimplemented": {
           "assertIn": 1
         },
@@ -11095,6 +11081,9 @@
         "test_every_staged_ruling_still_has_its_staged_work": {
           "assertGreater": 1,
           "assertTrue": 1
+        },
+        "test_no_ruling_is_in_both_tables": {
+          "assertEqual": 1
         },
         "test_the_rulings_are_recorded_where_a_reader_would_look": {
           "assertIn": 2,
@@ -12594,8 +12583,8 @@
         "assertEqual": 5,
         "assertGreater": 2,
         "assertGreaterEqual": 2,
-        "assertIn": 9,
-        "assertTrue": 3,
+        "assertIn": 10,
+        "assertTrue": 4,
         "fail": 2
       },
       "by_method": {
@@ -12638,7 +12627,8 @@
         },
         "test_the_roster_state_carve_out_is_justified_not_just_asserted": {
           "assertEqual": 1,
-          "assertIn": 1
+          "assertIn": 2,
+          "assertTrue": 1
         },
         "test_the_rule_is_stated_in_the_contracts_not_only_in_code": {
           "assertIn": 1
@@ -12652,14 +12642,14 @@
     "test_threshold_reachability.py": {
       "test_methods": 16,
       "asserts": {
-        "assertAlmostEqual": 5,
+        "assertAlmostEqual": 4,
         "assertEqual": 7,
         "assertFalse": 2,
         "assertGreater": 8,
         "assertIn": 2,
         "assertLess": 2,
         "assertNotIn": 2,
-        "assertTrue": 3
+        "assertTrue": 4
       },
       "by_method": {
         "test_a_leader_clear_of_the_band_with_low_survival_is_decisive": {
@@ -12697,7 +12687,7 @@
           "assertFalse": 1
         },
         "test_the_cap_no_longer_caps_the_quantity_it_is_compared_against": {
-          "assertAlmostEqual": 3,
+          "assertAlmostEqual": 2,
           "assertGreater": 1
         },
         "test_the_flat_spot_is_gone": {
@@ -12712,7 +12702,8 @@
         },
         "test_the_saturation_point_is_derived_from_every_term_it_sums": {
           "assertAlmostEqual": 1,
-          "assertGreater": 1
+          "assertGreater": 1,
+          "assertTrue": 1
         },
         "test_the_threshold_sits_below_the_leader_survival_floor": {
           "assertIn": 1,
