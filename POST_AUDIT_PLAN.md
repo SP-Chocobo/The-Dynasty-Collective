@@ -13416,3 +13416,59 @@ with it, and the disagreement reads as an engine defect. `replacement_basis` was
 the entire time. The probe asked the pool a question instead of asking the board its answer.
 The `engine-measurement` rule this earns: **before recomputing an engine quantity in a probe,
 grep the board row for a field that already states it.**
+
+---
+
+## W1-07 BLOCKED ON A SECOND RULING — `intervening_picks` CARRIES NO USABLE BOUND
+
+`CDME_CONTRACTS.md` rules `NECESSITY_SURVIVAL_WEIGHT` should be replaced with
+`intervening_picks`, and states the blocker exactly: the substitute is a COUNT, so it needs a
+0-20 mapping, and the mapping must be DERIVED from the quantity's own bounds rather than chosen
+to reproduce today's labels (`#56`).
+
+This went looking for those bounds and **they do not exist in a usable form.** Characterized,
+not built. Evidence and probes: `evidence/w1_07/`.
+
+`(1 - survival)` is bounded `[0,1]` BECAUSE IT IS A PROBABILITY. That is the entire source of
+the incumbent's scale, and a count has no equivalent property.
+
+### The three normalisations, measured
+
+| candidate | bounded? | defect |
+|---|---|---|
+| A: `/ (2 x (teams-1))` | **NO** | a snake-shape assumption. On a traded order the gap hits **46** against a "bound" of 22, so the ratio exceeds 1 and the 20-point term pays 41. |
+| B: `/ this seat's longest wait` | yes, any order | informativeness is a function of SEAT. Turn seats swing the full 20 points (B alternates 1.000/0.000); middle seats sit at ~0.92 with sd 0.083 and total range 0.167 -- a 20-point term that moves **3.3**. |
+| C: `/ picks remaining` | yes, any order | the same 11-pick wait scores **0.059 in round 1 and 0.571 in round 15**, so the term is muted (~1.2 of 100) through the rounds that decide the draft, and it rises late against `LATE_ROUND_NECESSITY_CAP`. |
+| D: remove, substitute nothing | n/a | already measured in `CDME_CONTRACTS`: 12 of 384 labels flip (3.1%), max move 8.50, 2x `MUST TAKE -> STRONG ACTION`. |
+
+```
+12T x16 snake        n= 180  min=  0  max= 22   2*(T-1)= 22
+12T x16 traded(135)  n= 180  min=  0  max= 46   2*(T-1)= 22
+```
+
+The traded case is not hypothetical: the `#52` pass that verified `intervening_picks` against
+the engine at 5,567 candidates did so on a real draft with **135 traded seats**.
+
+B's degeneracy is the same shape this repository already flagged on the necessity tag, which
+spends five bands to put 95.4% of its mass in two -- B would reproduce that inside the score
+rather than beside it.
+
+### What this rules OUT
+
+- Not a missing formula; all three normalisations were tried and the problem is the quantity.
+- Not fixable with a different snake constant -- A fails on the very draft shape that validated
+  the substitute.
+- Not resolvable by measuring more drafts. A, B and C are structural properties of the pick
+  order; more seats reproduce them rather than discriminating.
+- Not blocked on `#21`. The take model's calibration is a separate defect; `W1-07` removes the
+  term that reads it, and fixing the model would not supply a bound.
+
+### Not fixed, and why
+
+This is `#184`: the ruling as written is executable only after a SECOND ruling on which
+denominator, and that is an engine-design choice with no derived answer. My recommendation, as a
+recommendation: **D, then C if the term is missed** -- D is measured, is honest about the
+absence, and matches the posture the rest of the engine takes under `#187`.
+
+**What must not happen** is choosing among A/B/C/D by which best reproduces today's labels. The
+12-of-384 figure is the *before* measurement, not the target.
