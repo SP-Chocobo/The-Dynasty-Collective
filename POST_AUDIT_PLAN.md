@@ -13553,3 +13553,88 @@ A flag that fires on one row of one league across 36 formats needs a different q
 retirement. That is a product/valuation call and it is the owner's. The two `expectedFailure`s
 in `test_threshold_reachability.py` stay as the executable statement of what must become true
 once a ruling lands. `DRAFT_ROOM_UI` U24 is the same shape one flag over.
+
+---
+
+## W4-01 MEASURED AND REJECTED — `years_exp == 0` IS NOT THE ROOKIE CLASS
+
+`CDME_CONTRACTS.md` rules the rookie population should **promote `years_exp`**. The ruling
+rests on `ROOKIE_YEARS_EXP`'s own comment — *"a player with zero completed NFL seasons, this
+year's rookie class"* — and that premise is false. Evidence and probes: `evidence/w4_01/`.
+
+`years_exp == 0` means the feed carries no accrued-seasons value. Sleeper's historical rows for
+long-retired players carry exactly that.
+
+### Measured
+
+```
+                             n     age median   age max   >=25    on an NFL team
+years_exp == 0             661         23         62      22.4%       41.6%
+KTC rookie == True          72         23         31      17.4%       79.2%
+```
+
+The rookie BOARD, 12T_ppr offence-only, after `_admits_to_pool` and eligibility:
+
+```
+KTC flag       :  59 rows
+years_exp == 0 : 333 rows      enter 281, leave 7
+
+ENTRANTS n=281  on an NFL team 26%,  carrying a projection  6%,  max age 47
+LEAVERS  n=7    on an NFL team 100%, carrying a projection 71%
+```
+
+It trades 7 rostered, priced players for 281 mostly unrostered, unpriced ones — including
+**Kurt Warner (47), Byron Leftwich (40), Sean Ryan (40), Cedric Benson (37)**, all `team=None`,
+all `status=Inactive`. The ruling as written puts a quarterback who retired in 2010 into a
+rookie draft.
+
+(`CDME_CONTRACTS` records 654/31 and 95 -> 718 on a different rulebook. The figures above are
+12T_ppr offence-only; the entrants are the same people either way.)
+
+### The same premise is already live — and it is a RULING, not a hole
+
+`_admits_to_pool` admits on `years_exp == 0` unconditionally, so 241 board rows are admitted
+ONLY by that clause (no projection, no team), 96 of them `Inactive`, 15 aged 27+, max 47.
+Kurt Warner is on the NORMAL board of a 12-team PPR dynasty league today.
+
+**I implemented the obvious fix and reverted it.** Making the rookie clause yield to
+`NOT_CURRENTLY_PLAYING` removes exactly those 96 rows (board 1065 -> 969; the remaining 145
+clause-only rows all `Active`, max age 34) and preserves the clause's stated purpose, since
+Practice Squad is deliberately outside `NOT_CURRENTLY_PLAYING`.
+
+It also reverses a tested owner ruling. `test_pool_admission_boundary.
+StatusIsAFreshnessRuleNotAGateTests` is titled *"The owner's re-entry case: a retired player
+un-retires and must be able to come back"*, and `test_a_rookie_beats_a_stale_not_playing_status`
+pins the exact behaviour the fix removes. The status check used to run before any evidence was
+read -- the `#180` defect, vetoing 304 players carrying a positive signal -- and `#193` moved it
+on purpose. Reverted under `#184`; no engine code changed by this entry.
+
+### The tension worth ruling on
+
+| row | clause | admitted? |
+|---|---|---|
+| retired RB, `years_exp 11`, `trade_value 9.0`, no team | stale VENDOR number | **rejected** |
+| Kurt Warner, `years_exp 0`, no number, no team | stale YEARS_EXP | **admitted** |
+
+The first is rejected because *"without it losing here, a genuinely retired player would sit in
+the pool forever on the strength of a trade value nobody has revisited."* The second lets a
+genuinely retired player sit in the pool forever on the strength of an accrued-seasons field
+nobody has revisited. And the re-entry case does not need the rookie clause: a player who
+un-retires gets signed, which sets `team`, which the clause below admits on its own.
+
+### What this rules OUT
+
+- Not a name-collision problem. `#52` phase 1.2 already fixed `_rookie_lookup`'s key (58 of 788
+  wrong before). KTC is the ACCURATE definition here; it is merely narrow.
+- Not fixable by promoting `years_exp` with an age filter -- an age cut is a chosen number
+  (`#56`), and 259 of 661 carry no age to filter on.
+- Not an artifact of unpriced rows sorting last. They are unpriced and do sort last, so they
+  distort no valuation -- but a rookie draft FILTERS on this flag rather than ranking by it,
+  which is why the rookie-draft consequence is the severe one.
+
+### Recommendation
+
+**Do not promote `years_exp` as the rookie-draft filter.** If the two-definitions finding still
+deserves a repair, the live question is the narrower one above -- whether the freshness rule
+should treat a stale `years_exp` as it already treats a stale vendor number. One condition,
+measured (1065 -> 969), and the owner's because it reverses `#193`.
