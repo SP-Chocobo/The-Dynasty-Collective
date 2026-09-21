@@ -12,6 +12,13 @@ SECOND derivation the ruling did not cover:
     made on a 3.1% one, because `intervening_picks` is a property of the turn and
     `(1 - survival)` was a property of the player. It forces re-deriving five label thresholds.
 
+    THAT DIFFERENCE IS NOW MEASURED, not just stated (`evidence/w1_07/`). At five real turns,
+    `intervening_picks` takes exactly ONE distinct value across all 46-48 candidates in the
+    snapshot, while `survival_probability` takes 6 to 13. So the substitute cannot
+    differentiate candidates under ANY scaling: it shifts every candidate's necessity by the
+    same amount, which is why labels cross band thresholds in bulk while the ordering is
+    untouched. A denominator question is downstream of that, and this is the prior objection.
+
 A markdown note is not a guard. This file is, and it fires in BOTH directions:
 
   * a staged ruling whose patch has vanished fails here, so the work cannot be quietly dropped;
@@ -27,7 +34,26 @@ from __future__ import annotations
 import unittest
 from pathlib import Path
 
+import ui_source
+
 _HERE = Path(__file__).parent
+
+
+def _source(module: str) -> str:
+    """The text a witness is checked against, from ONE place (#126).
+
+    `app.py` is NOT read off disk. It is a 6,000-line top-level Streamlit script that cannot be
+    imported, and `test_ui_source` forbids test modules from reading it directly so that a
+    source-scanning contract survives the hull extraction -- a guard pointed at `app.py` after
+    its code moves to a view passes forever while guarding nothing. `ui_source.text()` is the
+    sanctioned reader and follows the code across that move.
+
+    Caught by the FULL SUITE rather than by a targeted run: the J-12 witness below named
+    `app.py`, and the first version of this file read it with `(_HERE / module).read_text()`.
+    """
+    if module == "app.py":
+        return ui_source.text()
+    return (_HERE / module).read_text()
 
 #: One entry per ruling that is NOT yet in the engine. `witness` is a fact about the source that
 #: is true while the ruling is unimplemented and false once it is -- so this table cannot drift
@@ -61,6 +87,70 @@ IMPLEMENTED = {
                 "row's denial component scales by exactly 1.5x, worst case +2.87 of 100.",
         "evidence": "evidence/blind_pass/KDST_VALUATION.md",
     },
+    # THESE TWO WERE IMPLEMENTED AND NEVER RECORDED HERE, which is the gap this file exists to
+    # close in the other direction. Both landed with their ruling tag in the source and their
+    # own guard test, and both were still listed as pending work in CDME_CONTRACTS' ruling
+    # table -- so a reader going to the authority saw seven open rulings when two were done.
+    "J-12": {
+        "witness": ("app.py", "draft_history.record_snapshot("),
+        "landed": "wired NARROWLY, as ruled: a snapshot is recorded only when a debate actually "
+                  "ran on that board. Not at every board build -- the Draft Room rebuilds a "
+                  "snapshot on every rerun, including reruns caused by an unrelated button, so "
+                  "recording each one would fill the store with boards nobody looked at.",
+        "cost": "none to any computed value; this only writes. The write is wrapped so a failed "
+                "record cannot take down a live draft, which is the module's own contract for a "
+                "damaged history file applied to the write path too.",
+        "evidence": "test_draft_history_is_wired.py",
+    },
+    "J-13": {
+        "witness": ("sleeper_client.py", "no player universe available"),
+        "landed": "get_players() RAISES SleeperAPIError instead of returning {}. An empty dict "
+                  "was a player universe indistinguishable from 'there are no players', and "
+                  "every caller then built a board, a roster table or a sync against nothing "
+                  "and reported the result as an answer.",
+        "cost": "the same phase also made the cache write atomic via store_io.replace_atomically "
+                "-- write_text TRUNCATES before writing, which is the mechanism behind the "
+                "91,956 empty reads of 98,405 this ruling was measured from.",
+        "evidence": "test_no_empty_player_universe.py",
+    },
+}
+
+#: One entry per ruling that is CHARACTERIZED but blocked on a SECOND owner decision -- neither
+#: implemented nor staged, because there is no patch to stage until the boundary is ruled. This
+#: category did not exist and its absence is what let J-12 and J-13 sit in no table at all while
+#: the census below passed: the census only asked whether a ruling was NAMED in the contracts
+#: file, which every ruling is by construction. `witness` follows STAGED's sense -- true while
+#: the decision is open, false once it lands.
+AWAITING_RULING = {
+    "6.1d.1": {
+        "witness": ("test_threshold_reachability.py", "@unittest.expectedFailure"),
+        "why": "the DERIVATION half shipped (CONTEXT_ELEVATED_THRESHOLD = max(TEAM_SPECIFIC_CAPS), "
+               "behaviour-free, because the two capped terms are mutually exclusive -- 0 "
+               "co-occurrences in 10,887 priced rows). The PRODUCT half is open: the badge fires "
+               "on ONE row across all 36 battery formats, so it needs a different quantity or "
+               "retirement, and picking a threshold that makes the current one fire is #56.",
+        "evidence": "evidence/context_elevated/THE_CEILING_IS_MAX_NOT_SUM.md",
+    },
+    "I-06/J-06": {
+        "witness": ("lineup_optimizer.py", "else EXPOSURE_NO_SURPLUS)"),
+        "why": "step 1 as written -- add a token for the measured-uncovered case -- takes "
+               "EXPOSURE_NO_SURPLUS's ENTIRE population and leaves it unreachable, the "
+               "unreachable-predicate shape basis_semantics.py names as the 18th withdrawal. "
+               "Both boundaries that would keep two tokens reachable are ones this repo already "
+               "rejected: an eligibility rule (measured WRONG in depth_exposure's own docstring) "
+               "and the roster-wide has-any-bench boolean (deleted by this item's own repair).",
+        "evidence": "evidence/i06_j06/STEP_ONE_NEEDS_A_BOUNDARY.md",
+    },
+    "W4-01": {
+        "witness": ("draft_room.py", "rookie_by_key.get("),
+        "why": "MEASURED AND REJECTED. The ruling's premise is false: years_exp == 0 is not "
+               "'this year's rookie class' but 'the feed carries no accrued-seasons value', "
+               "which retired players also carry. Promoting it takes a rookie board from 59 to "
+               "333 rows, trading 7 rostered+priced players for 281 that are 26% rostered and "
+               "6% priced -- including Kurt Warner, age 47. The live question left is narrower "
+               "and reverses #193's tested ruling, so it is the owner's.",
+        "evidence": "evidence/w4_01/THE_PREMISE_IS_FALSE.md",
+    },
 }
 
 #: Where a reader goes for the measurement behind each one. Checked for existence, not parsed:
@@ -89,7 +179,7 @@ class NoRulingIsSilentlyDroppedTests(unittest.TestCase):
         for ruling, entry in STAGED.items():
             module, witness = entry["witness"]
             with self.subTest(ruling=ruling):
-                source = (_HERE / module).read_text()
+                source = _source(module)
                 self.assertIn(
                     witness, source,
                     f"{ruling} appears to be IMPLEMENTED -- '{witness}' is gone from {module}. "
@@ -103,7 +193,7 @@ class NoRulingIsSilentlyDroppedTests(unittest.TestCase):
         for ruling, entry in IMPLEMENTED.items():
             module, witness = entry["witness"]
             with self.subTest(ruling=ruling):
-                source = (_HERE / module).read_text()
+                source = _source(module)
                 self.assertIn(
                     witness, source,
                     f"{ruling} is recorded as IMPLEMENTED but '{witness}' is missing from "
@@ -143,14 +233,68 @@ class NoRulingIsSilentlyDroppedTests(unittest.TestCase):
             self.assertIn(ruling, contracts, f"{ruling} is not in CDME_CONTRACTS.md")
         self.assertTrue((_HERE / EVIDENCE).exists(), f"{EVIDENCE} is missing")
 
-    def test_the_seven_rulings_are_all_accounted_for(self):
-        """Non-vacuity, and the thing that makes this a census rather than a note: all seven are
-        named in the contracts file, and this file knows which are still outstanding. A ruling
-        that appears in neither place is one nobody is tracking."""
+    #: The seven `#52` engine-design decisions, named once so the two tests below cannot
+    #: disagree about the census (#126).
+    SEVEN = ("6.1b", "I-06/J-06", "6.1d.1", "W1-07", "W4-01", "J-12", "J-13")
+
+    def test_the_seven_rulings_are_all_named_in_the_contracts_file(self):
         contracts = (_HERE / "CDME_CONTRACTS.md").read_text()
-        for ruling in ("6.1b", "I-06/J-06", "6.1d.1", "W1-07", "W4-01", "J-12", "J-13"):
+        for ruling in self.SEVEN:
             with self.subTest(ruling=ruling):
                 self.assertIn(ruling, contracts)
+
+    def test_every_ruling_sits_in_EXACTLY_ONE_table_here(self):
+        """THE HOLE THIS CLOSES, and it was a real one. The census above only asked whether a
+        ruling is NAMED in the contracts file -- which every ruling is, by construction, since
+        that file is where they were written down. So J-12 and J-13 were implemented in the
+        tree, carried their ruling tag in the source, had their own guard tests, and appeared in
+        NEITHER table here, while this file's docstring claimed "every owner ruling is either
+        IMPLEMENTED or STAGED WITH ITS REASON. Nothing is just forgotten." The census passed
+        throughout.
+
+        A guard that asserts less than its docstring claims is worse than no guard, because the
+        claim is what a reader trusts. This asserts the claim.
+        """
+        tables = {"STAGED": STAGED, "IMPLEMENTED": IMPLEMENTED,
+                  "AWAITING_RULING": AWAITING_RULING}
+        for ruling in self.SEVEN:
+            with self.subTest(ruling=ruling):
+                holders = [name for name, table in tables.items() if ruling in table]
+                self.assertEqual(
+                    len(holders), 1,
+                    f"{ruling} is in {holders or 'NO table'} -- every ruling must sit in exactly "
+                    f"one of {sorted(tables)}. Two tables means the record contradicts itself; "
+                    f"none means nobody is tracking it, which is what this test exists to catch.")
+
+    def test_no_table_carries_a_ruling_that_is_not_one_of_the_seven(self):
+        """The mirror: a typo'd or invented key would otherwise satisfy the test above for the
+        wrong ruling while leaving a real one untracked."""
+        for name, table in (("STAGED", STAGED), ("IMPLEMENTED", IMPLEMENTED),
+                            ("AWAITING_RULING", AWAITING_RULING)):
+            for ruling in table:
+                with self.subTest(table=name, ruling=ruling):
+                    self.assertIn(ruling, self.SEVEN, f"{name} carries an unknown ruling key")
+
+    def test_every_awaiting_ruling_is_still_actually_awaiting(self):
+        """Same shape as the STAGED half: if someone resolves one of these, its witness leaves
+        the source and this fires, prompting a move to IMPLEMENTED rather than a record that
+        describes a tree which has moved on."""
+        for ruling, entry in AWAITING_RULING.items():
+            module, witness = entry["witness"]
+            with self.subTest(ruling=ruling):
+                source = _source(module)
+                self.assertIn(
+                    witness, source,
+                    f"{ruling} appears to be RESOLVED -- '{witness}' is gone from {module}. "
+                    f"Move it out of AWAITING_RULING and record where the work landed.")
+
+    def test_every_awaiting_ruling_points_at_evidence_that_exists(self):
+        for ruling, entry in AWAITING_RULING.items():
+            with self.subTest(ruling=ruling):
+                path = _HERE / entry["evidence"]
+                self.assertTrue(path.exists(), f"{ruling}: evidence missing ({path})")
+                self.assertGreater(len(path.read_text().splitlines()), 20,
+                                   f"{ruling}: evidence file is a stub")
 
 
 if __name__ == "__main__":

@@ -1,5 +1,46 @@
 # W1-07: the substitute has no clean derivation, and here is the measurement
 
+> **CORRECTED 2026-09-21. THIS FILE ASKED A QUESTION THAT IS DOWNSTREAM OF THE REAL BLOCKER,
+> and did not cite the blocker that was already recorded in the tree.**
+>
+> What this file published: *"the scale must be derived from the quantity's own bounds ... They
+> do not exist in a usable form"*, with three denominators measured and rejected. That analysis
+> is correct as far as it goes. What it MISSED is that `test_rulings_are_not_silently_dropped.py`
+> already carried the prior objection, along with a STAGED PATCH at
+> `evidence/blind_pass/w1_07_substitute.patch`:
+>
+> > implementing it flips **62% of labels** against a ruling made on 3.1%, because
+> > `intervening_picks` is a property of the **TURN** and the quantity it replaces was a property
+> > of the **PLAYER**. Forces re-deriving five label thresholds.
+>
+> That difference is now MEASURED rather than asserted (`w107_per_turn.py`). At five real turns:
+>
+> ```
+>  turn seat  cands   distinct intervening_picks   distinct survival
+>     0    1     48                        [22]                   6
+>     5    6     48                        [12]                   7
+>    13   11     47                        [20]                   9
+>    25    2     47                        [20]                  11
+>    37   11     46                        [20]                  13
+> ```
+>
+> **`intervening_picks` takes exactly ONE value across every candidate in a snapshot.**
+> `survival_probability` takes 6 to 13. So the substitute cannot differentiate candidates under
+> ANY denominator: it shifts every candidate's necessity by the same amount, never reorders
+> them, and the 62% label flip is band-crossing rather than re-ranking.
+>
+> **So "which denominator?" is the wrong first question, and §§2-5 below are downstream of a
+> settled one.** They are kept unedited because they remain the answer IF the term is ever made
+> per-candidate — and because a bound analysis that turns out to be moot is still the record of
+> how it was established. The live question is the one the register already states: whether
+> re-deriving five label thresholds is worth it for a term that cannot re-rank anything.
+>
+> Nothing in §§2-5 is withdrawn as false. What is withdrawn is this file's framing of the
+> decision.
+
+---
+
+
 **CHARACTERIZED, NOT BUILT.** `CDME_CONTRACTS.md` rules `NECESSITY_SURVIVAL_WEIGHT` should be
 **replaced with `intervening_picks`**, and records the blocker precisely:
 

@@ -11131,20 +11131,30 @@
       }
     },
     "test_rulings_are_not_silently_dropped.py": {
-      "test_methods": 8,
+      "test_methods": 12,
       "asserts": {
-        "assertEqual": 1,
-        "assertGreater": 3,
-        "assertIn": 5,
-        "assertTrue": 3
+        "assertEqual": 2,
+        "assertGreater": 4,
+        "assertIn": 7,
+        "assertTrue": 4
       },
       "by_method": {
+        "test_every_awaiting_ruling_is_still_actually_awaiting": {
+          "assertIn": 1
+        },
+        "test_every_awaiting_ruling_points_at_evidence_that_exists": {
+          "assertGreater": 1,
+          "assertTrue": 1
+        },
         "test_every_implemented_ruling_is_still_actually_implemented": {
           "assertIn": 1
         },
         "test_every_implemented_ruling_records_what_it_cost": {
           "assertGreater": 1,
           "assertTrue": 1
+        },
+        "test_every_ruling_sits_in_EXACTLY_ONE_table_here": {
+          "assertEqual": 1
         },
         "test_every_staged_ruling_is_still_actually_unimplemented": {
           "assertIn": 1
@@ -11159,11 +11169,14 @@
         "test_no_ruling_is_in_both_tables": {
           "assertEqual": 1
         },
+        "test_no_table_carries_a_ruling_that_is_not_one_of_the_seven": {
+          "assertIn": 1
+        },
         "test_the_rulings_are_recorded_where_a_reader_would_look": {
           "assertIn": 2,
           "assertTrue": 1
         },
-        "test_the_seven_rulings_are_all_accounted_for": {
+        "test_the_seven_rulings_are_all_named_in_the_contracts_file": {
           "assertIn": 1
         }
       }

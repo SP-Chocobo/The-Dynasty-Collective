@@ -13718,3 +13718,82 @@ The two obvious boundaries are the two this item's repair already removed.
 
 Recommendation: (1) now; (3) only if the second token is wanted badly enough to accept a
 by-construction-dormant member.
+
+---
+
+## J-12 AND J-13 WERE DONE AND UNRECORDED — AND MY OWN W1-07 ENTRY ASKED THE WRONG QUESTION
+
+Two corrections and one guard repair. No engine behaviour changed.
+
+### J-12 and J-13 are IMPLEMENTED, and were in no table
+
+Both landed with their ruling tag in the source and their own guard test, and both were still
+sitting in `CDME_CONTRACTS.md`'s ruling table as pending work:
+
+| ruling | where it landed | guard |
+|---|---|---|
+| `J-12` | `app.py` calls `draft_history.record_snapshot(...)` only when a debate actually ran on the board, wrapped so a failed write cannot take down a live draft | `test_draft_history_is_wired.py` |
+| `J-13` | `sleeper_client.get_players()` RAISES `SleeperAPIError` instead of returning `{}`; the same phase made the cache write atomic via `store_io.replace_atomically`, since `write_text` truncates before writing -- the mechanism behind the 91,956 empty reads of 98,405 | `test_no_empty_player_universe.py` |
+
+So a reader going to the authority saw seven open rulings when two were finished.
+
+### THE GUARD THAT SHOULD HAVE CAUGHT THAT ASSERTED LESS THAN ITS DOCSTRING CLAIMED
+
+`test_rulings_are_not_silently_dropped.py` opens with *"Every owner ruling is either IMPLEMENTED
+or STAGED WITH ITS REASON. Nothing is just forgotten."* Its census only asserted that each of
+the seven is **named in `CDME_CONTRACTS.md`** -- which every ruling is by construction, since
+that file is where they were written down. J-12 and J-13 were in NEITHER table and the census
+passed throughout.
+
+A guard that asserts less than its docstring claims is worse than no guard, because the claim is
+what a reader trusts. Repaired:
+
+- `AWAITING_RULING` added as a third table, for rulings CHARACTERIZED but blocked on a second
+  owner decision -- neither implemented nor staged, because there is no patch to stage until the
+  boundary is ruled. `6.1d.1`, `I-06/J-06` and `W4-01` now sit there with their witness and
+  their evidence path.
+- `test_every_ruling_sits_in_EXACTLY_ONE_table_here` -- the assertion the docstring always
+  claimed. Mutation-checked both ways: removing J-12 from IMPLEMENTED fires it (the exact
+  omission that went unnoticed), and placing J-13 in two tables fires it too.
+- `test_no_table_carries_a_ruling_that_is_not_one_of_the_seven`, so a typo'd key cannot satisfy
+  the census for the wrong ruling.
+- `test_every_awaiting_ruling_is_still_actually_awaiting` and `..._points_at_evidence_that_exists`,
+  mirroring the STAGED half so a resolved item cannot leave a stale record behind.
+
+The seven are now named once in `SEVEN` and read by every census test (`#126`).
+
+### CORRECTION: my W1-07 entry asked a question downstream of the real blocker
+
+The `W1-07` entry above measured three denominators and concluded the quantity has no usable
+bound. That analysis stands, but it **missed the prior objection already recorded in the tree**,
+along with a staged patch at `evidence/blind_pass/w1_07_substitute.patch` (129 lines):
+
+> implementing it flips **62% of labels** against a ruling made on 3.1%, because
+> `intervening_picks` is a property of the **TURN** and the quantity it replaces was a property
+> of the **PLAYER**.
+
+Now measured rather than asserted. At five real turns, `intervening_picks` takes exactly ONE
+distinct value across all 46-48 candidates in the snapshot, while `survival_probability` takes
+6 to 13:
+
+```
+ turn seat  cands   distinct intervening_picks   distinct survival
+    0    1     48                        [22]                   6
+    5    6     48                        [12]                   7
+   13   11     47                        [20]                   9
+   25    2     47                        [20]                  11
+   37   11     46                        [20]                  13
+```
+
+**The substitute cannot differentiate candidates under ANY denominator.** It shifts every
+candidate's necessity by the same amount, so it never re-ranks; the 62% label flip is
+band-crossing, not re-ranking. A denominator question is downstream of that.
+
+Nothing in the denominator analysis is withdrawn as false -- it remains the answer if the term
+is ever made per-candidate. What is withdrawn is my framing of the decision. The live question
+is the register's: whether re-deriving five label thresholds is worth it for a term that cannot
+re-rank anything.
+
+The lesson, and it is the same one twice in two days: **before measuring a quantity, grep the
+tree for what it already says about it.** `#23` was a probe recomputing a value the board
+already published; this was an analysis re-deriving a blocker the register already recorded.

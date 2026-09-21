@@ -7,9 +7,9 @@ Classified by what each file says about ITSELF in its first 12 lines. Nothing he
 | class | count | meaning |
 |---|---:|---|
 | WITHDRAWN | 24 | a published claim taken back. Kept, unedited, beneath its banner. |
-| SUPERSEDED | 21 | still valid or partly valid, but something later changed what it means. |
+| SUPERSEDED | 22 | still valid or partly valid, but something later changed what it means. |
 | DECLARED | 17 | says what kind of document it is before making claims. |
-| UNDECLARED | 95 | no status banner in its opening. Not necessarily wrong — most are simply current — but a reader cannot tell without reading it all. |
+| UNDECLARED | 94 | no status banner in its opening. Not necessarily wrong — most are simply current — but a reader cannot tell without reading it all. |
 
 ## WITHDRAWN
 
@@ -61,6 +61,7 @@ Classified by what each file says about ITSELF in its first 12 lines. Nothing he
 - `evidence/roster_shape/ff_rulebook/VOCABULARY_the_two_displacement_charges.md`
 - `evidence/roster_shape/review_216/README.md`
 - `evidence/roster_shape/shared_slot/mutations/GUARDS_221.md`
+- `evidence/w1_07/SCALE_HAS_NO_CLEAN_DERIVATION.md`
 
 ## DECLARED
 
@@ -177,5 +178,4 @@ Classified by what each file says about ITSELF in its first 12 lines. Nothing he
 - `evidence/smoke_seats/V2_MECHANISM.md`
 - `evidence/smoke_seats/V2_REGRESSION.md`
 - `evidence/take_model/README.md`
-- `evidence/w1_07/SCALE_HAS_NO_CLEAN_DERIVATION.md`
 - `evidence/w4_01/THE_PREMISE_IS_FALSE.md`
