@@ -13638,3 +13638,83 @@ un-retires gets signed, which sets `team`, which the clause below admits on its 
 deserves a repair, the live question is the narrower one above -- whether the freshness rule
 should treat a stale `years_exp` as it already treats a stale vendor number. One condition,
 measured (1065 -> 969), and the owner's because it reverses `#193`.
+
+---
+
+## I-06/J-06 BLOCKED ON A BOUNDARY — STEP 1 RECREATES AN UNREACHABLE PREDICATE
+
+`CDME_CONTRACTS.md` rules **separate basis token with its own scale**, executed as
+*"introduce the basis token carrying the measured uncovered quantity, price nothing."* I went
+to write that token. The obvious form of it recreates a failure mode this repository has
+already ruled against. Characterized, not built. Evidence: `evidence/i06_j06/`.
+
+### The defect is real, and larger than it reads
+
+Measured over 8 in-draft board states, 12T PPR dynasty, real capture, production's own
+`_team_roster_players`:
+
+```
+cells by basis                    worst_loss by basis
+   not_applicable  40 (55.6%)        no_surplus  n=8  min 10.00  median 62.00  max 82.00
+   vacant          18 (25.0%)        measured    n=6  min 27.00  median 42.00  max 61.00
+   no_surplus       8 (11.1%)
+   measured         6 ( 8.3%)
+
+no_surplus cells carrying a NON-ZERO worst_loss: 8 of 8
+```
+
+**The UNPRICED state carries the LARGER measured loss** -- median 62.00 against `measured`'s
+42.00 -- and is priced at exactly what a perfectly covered position with no marginal loss is
+priced at, `0.0`. `#187`'s shape, as the contract already says: "zero is a NUMBER, not an
+absence."
+
+### Why step 1 cannot ship as written
+
+`basis` is returned from ONE site: `MEASURED if all(covered) else NO_SURPLUS`. Adding
+`EXPOSURE_UNCOVERED` for `not all(covered)` therefore takes the ENTIRE current population of
+`NO_SURPLUS`, leaving it unreachable. `basis_semantics.py` rules that out by name:
+
+> REACHABILITY IS PART OF THE DECLARATION... A vocabulary does not get a state it cannot emit;
+> that is the unreachable-predicate shape the 18th withdrawal was.
+
+and `test_depth_exposure.TheFourStatesOfKnowingTests.
+test_a_roster_with_no_bench_reports_no_surplus` pins a live population for it.
+
+### Both available boundaries are ones this repo already rejected
+
+(a) **An eligibility rule.** `depth_exposure`'s own docstring measured and threw it out: "a
+bench RB can play FLEX, and a tight end can also reach FLEX, so the rule called TE covered. It
+is not."
+
+(b) **The roster-wide has-any-bench boolean.** That is precisely the sentinel `#52` phase 6 --
+this item's own repair -- deleted: "one roster-wide boolean stamped onto every position alike...
+one irrelevant bench body switched pricing on for every position at once."
+
+The two obvious boundaries are the two this item's repair already removed.
+
+### What this rules OUT
+
+- Not a renaming exercise. `#188` already rejected collapsing these tokens: a rename is a
+  data-format change, since they are keys in the label maps shipped across the Python/JS
+  boundary (`#186`) and participate in snapshot identity (`#92`). Any new token must also be
+  declared in `basis_semantics.REACHABILITY` with how reachability was established.
+- Not solvable by pricing it -- that is step 2 by the contract's own sequencing and needs a
+  scale nobody has argued for (`#56`).
+- Not a fixture artifact: 8 of 8 cells across 8 board states. (A first attempt at the probe
+  hand-rolled the roster builder and produced n=0; caught by the engine-measurement rule about
+  printing n, and it now calls `dr._team_roster_players`.)
+
+### What the owner has to rule
+
+1. **Accept one token, fix the LABEL.** It is plainly false today -- "not measured -- you hold
+   no backup here, so there is no surplus to value" sits on a cell carrying a measured 82.00.
+   Cheapest and honest; does not deliver the "separate token" the ruling names.
+2. **Ask the solve a second question** -- derived, and with its own evidence that it is not (b)
+   in disguise.
+3. **Declare `no_surplus` `dormant_by_design`** and add the new token, registering it in
+   `basis_semantics.REACHABILITY` as `pool_truncated` already is. The only path that adds a
+   token without an unreachable predicate -- but `pool_truncated` is dormant because today's
+   DATA never reaches it, while `no_surplus` would be dormant BY CONSTRUCTION, a weaker claim.
+
+Recommendation: (1) now; (3) only if the second token is wanted badly enough to accept a
+by-construction-dormant member.
