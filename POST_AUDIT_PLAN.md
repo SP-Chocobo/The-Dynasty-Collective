@@ -13797,3 +13797,35 @@ re-rank anything.
 The lesson, and it is the same one twice in two days: **before measuring a quantity, grep the
 tree for what it already says about it.** `#23` was a probe recomputing a value the board
 already published; this was an analysis re-deriving a blocker the register already recorded.
+
+---
+
+## OWNER RULINGS RECEIVED 2026-09-21 — ALL SIX OPEN ITEMS DECIDED
+
+Recorded before implementation so the decisions are durable, and so each following commit can
+cite the ruling it executes rather than restating it. **No code changed by this entry.**
+
+| item | ruling | shape of the work |
+|---|---|---|
+| `#24` `W1-07` | **Remove the term, substitute nothing.** | Drop necessity's survival component. Measured before: 12 of 384 labels flip (3.1%), max move 8.50, 2x `MUST TAKE -> STRONG ACTION`. The freed 20 of 100 has to be accounted for -- redistribute or shrink the scale -- and that is its own derivation. |
+| `#25` `context_elevated` | **Retire the badge.** | Remove from the flags, the payload and the label registries, as `6.1b` retired `eligibility_bonus`. Its quantity's mean is **-3.46**: "ranked highly because of fit" reads what is usually a penalty. `CONTEXT_ELEVATED_THRESHOLD` and its `max()` derivation go with it. |
+| `#26` `W4-01` | **Yes -- a stale `years_exp` gets the stale-vendor treatment.** | One condition: the rookie clause yields to `NOT_CURRENTLY_PLAYING`. Measured: board 1065 -> 969, the 96 removed all `Inactive`, the 145 clause-only rows that remain all `Active`, max age 34. Practice Squad is outside that tuple so taxi-relevant rookies are untouched. **Reverses `#193`'s tested re-entry case for this clause**, so `test_a_rookie_beats_a_stale_not_playing_status` is rewritten with the ruling as its reason. |
+| `#27` `I-06/J-06` | **One token; fix the false label.** | Keep a single unpriced state. Correct the label, which is false today: *"not measured -- you hold no backup here, so there is no surplus to value"* sits on cells carrying a measured 82.00, median 62.00 against the priced state's 42.00. No new vocabulary member, so no unreachable predicate. |
+| `#21` take model | **Derive the floor, then wire the value-share model.** | `_value_take_weight` / `board_contention_scale` exist and are measured. The blocker is the floor: 638 unpriced rows at `RANK_TAKE_PROBABILITY_FLOOR` outweigh the whole priced mass 2.0-3.4x, and `0.02` was derived against a rank table whose leader was 0.55 while the value model's leader weighs 1.0 (`#75` unit drift). The floor arms in `evidence/survival_calibration/` exist to measure that, not to tune it. |
+| `#17` turn-ending | **Re-measure against the reverted engine first.** | Its evidence cites `_acting_now_order`, deleted at `#22`, and was measured under the v2 ordering. Post-revert every pick uses the tav order, so the *differential* it describes may not exist. Re-run `turn_ending_leak.py` on current HEAD; if the 3x K/DEF clustering survives, the pair-aware mechanism is still live and gets ruled on fresh numbers. |
+
+### Implementation order, by dependency and blast radius
+
+1. `#17` re-measure -- no code change, and it either closes the item or produces the numbers a
+   later ruling needs.
+2. `#27` label -- one string and its test.
+3. `#26` admission -- one condition, already measured; rewrites a `#193` contract test.
+4. `#25` retire -- vocabulary removal across several registries.
+5. `#24` remove the survival term -- changes necessity's 100-point scale, so it lands after the
+   smaller ones and carries the redistribute-or-shrink derivation.
+6. `#21` floor + value model -- largest, and the only one needing a fresh derivation.
+
+Each lands as its own commit with its own mutation battery, per `CDME_CONTRACTS`' standing rule.
+
+**`#18` remains blocked** on `api.sleeper.app` egress and is unaffected by any of the above. It
+is still the only route to the round-5 defense, which none of these six rulings addresses.
