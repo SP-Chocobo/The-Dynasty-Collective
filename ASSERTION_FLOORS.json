@@ -3767,19 +3767,20 @@
       }
     },
     "test_depth_exposure.py": {
-      "test_methods": 33,
+      "test_methods": 37,
       "asserts": {
         "assertAlmostEqual": 1,
-        "assertEqual": 34,
-        "assertFalse": 1,
-        "assertGreater": 5,
+        "assertEqual": 36,
+        "assertFalse": 2,
+        "assertGreater": 6,
         "assertGreaterEqual": 2,
-        "assertIn": 2,
+        "assertIn": 3,
         "assertIsNone": 3,
         "assertLess": 4,
         "assertLessEqual": 1,
-        "assertNotIn": 3,
-        "assertTrue": 3
+        "assertNotEqual": 1,
+        "assertNotIn": 4,
+        "assertTrue": 4
       },
       "by_method": {
         "test_a_BAD_backup_does_not_insure": {
@@ -3858,11 +3859,23 @@
         "test_the_bound_matches_the_other_roster_specific_terms": {
           "assertEqual": 1
         },
+        "test_the_label_no_longer_claims_nothing_was_measured": {
+          "assertFalse": 1,
+          "assertNotIn": 1
+        },
+        "test_the_label_still_says_it_is_not_a_depth_price": {
+          "assertIn": 1,
+          "assertNotEqual": 1
+        },
         "test_the_layer_identity_holds": {
           "assertAlmostEqual": 1
         },
         "test_the_module_states_no_position_specific_risk_constant": {
           "assertNotIn": 1
+        },
+        "test_the_state_it_describes_really_does_carry_a_measurement": {
+          "assertGreater": 1,
+          "assertTrue": 1
         },
         "test_the_term_reaches_the_board": {
           "assertIn": 2
@@ -3876,6 +3889,9 @@
         "test_the_uncoverable_loss_is_the_SAME_NUMBER_bench_or_no_bench": {
           "assertEqual": 4,
           "assertGreater": 1
+        },
+        "test_the_vocabulary_did_NOT_gain_a_member": {
+          "assertEqual": 2
         },
         "test_two_positions_with_identical_shape_get_identical_exposure": {
           "assertEqual": 1
@@ -8892,10 +8908,10 @@
       }
     },
     "test_placeholder_admission.py": {
-      "test_methods": 9,
+      "test_methods": 10,
       "asserts": {
         "assertEqual": 2,
-        "assertFalse": 5,
+        "assertFalse": 6,
         "assertIsInstance": 1,
         "assertTrue": 5
       },
@@ -8930,6 +8946,9 @@
           "assertEqual": 1,
           "assertIsInstance": 1,
           "assertTrue": 1
+        },
+        "test_the_sentinel_still_decides_on_a_row_the_status_gate_would_pass": {
+          "assertFalse": 1
         }
       }
     },
@@ -8963,13 +8982,16 @@
       }
     },
     "test_pool_admission_boundary.py": {
-      "test_methods": 14,
+      "test_methods": 16,
       "asserts": {
-        "assertFalse": 5,
+        "assertFalse": 6,
         "assertIn": 2,
-        "assertTrue": 13
+        "assertTrue": 16
       },
       "by_method": {
+        "test_a_PRACTICE_SQUAD_rookie_is_still_admitted": {
+          "assertTrue": 1
+        },
         "test_a_league_scored_projection_admits": {
           "assertTrue": 1
         },
@@ -8983,8 +9005,8 @@
         "test_a_rookie_admits_with_no_team_and_no_number": {
           "assertTrue": 1
         },
-        "test_a_rookie_beats_a_stale_not_playing_status": {
-          "assertTrue": 1
+        "test_a_rookie_does_NOT_beat_a_stale_not_playing_status": {
+          "assertFalse": 1
         },
         "test_a_stale_vendor_number_does_NOT_beat_it": {
           "assertFalse": 1,
@@ -9014,6 +9036,9 @@
         },
         "test_the_2025_production_clause_is_written_down_where_it_will_attach": {
           "assertIn": 2
+        },
+        "test_the_ruling_did_not_reach_the_clauses_around_it": {
+          "assertTrue": 3
         }
       }
     },

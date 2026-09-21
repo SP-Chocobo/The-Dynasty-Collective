@@ -64,14 +64,31 @@ class TheRuleDoesNotOverReachTests(unittest.TestCase):
     """The 90 real players a shape-based rule would have taken with it."""
 
     def test_a_real_rookie_with_the_same_shape_is_still_admitted(self):
-        """years_exp 0, Inactive, no team, no projection, no age -- indistinguishable from the
-        placeholder on every field EXCEPT the name. This is the population the sentinel check
-        exists to spare, and a shape-based rule would delete it."""
+        """years_exp 0, no team, no projection, no age -- indistinguishable from the placeholder
+        on every field EXCEPT the name. This is the population the sentinel check exists to
+        spare, and a shape-based rule would delete it.
+
+        THE LOOKALIKE IS `Active` RATHER THAN `Inactive` SINCE W4-01 (ruled 2026-09-21), and the
+        change is to the FIXTURE, not to what this test asserts. W4-01 made the rookie clause
+        yield to NOT_CURRENTLY_PLAYING, so an Inactive rookie with no team is now rejected by the
+        STATUS gate -- which would make this test pass or fail for a reason that has nothing to
+        do with the placeholder sentinel. An `Active` lookalike isolates the question this test
+        was written to answer: does the `#273` rule reject on SHAPE or on the NAME? Keeping
+        `Inactive` here would have quietly converted a placeholder guard into a status guard.
+        """
         lookalike = _info(first_name="Tony", last_name="Johnson", position="K",
-                          status="Inactive", team=None, years_exp=0, age=None)
+                          status="Active", team=None, years_exp=0, age=None)
         self.assertTrue(dr._admits_to_pool(lookalike, None, {}),
                         "a real rookie was rejected -- the rule is keyed on shape, not on the "
                         "vendor's sentinel, and it is removing players")
+
+    def test_the_sentinel_still_decides_on_a_row_the_status_gate_would_pass(self):
+        """NON-VACUITY for the fixture change above, and the assertion that keeps this a
+        PLACEHOLDER test. The same Active/no-team/no-number shape, with the sentinel name, must
+        still be rejected -- so the name is doing the work here, not the status."""
+        self.assertFalse(dr._admits_to_pool(
+            dict(PLACEHOLDER, status="Active", team=None, years_exp=0), None, {}),
+            "the sentinel stopped deciding once the status gate could no longer")
 
     def test_an_ordinary_player_is_unaffected(self):
         self.assertTrue(dr._admits_to_pool(_info(), 200.0, {}))

@@ -116,6 +116,59 @@ class SubstitutabilityIsDiscoveredNotEncodedTests(unittest.TestCase):
         self.assertLess(after["TE"], before["TE"] / 5)
 
 
+class TheNoSurplusLabelTellsTheTruthTests(unittest.TestCase):
+    """I-06/J-06, ruled: one token, and the LABEL was the false part.
+
+    It read "not measured -- you hold no backup here, so there is no surplus to value". The
+    first half is untrue: with a starter uncovered, the re-solve returns HIS WHOLE VALUE, and
+    that is the LARGER of the two numbers -- median 62.00 across 8 in-draft board states against
+    EXPOSURE_MEASURED's 42.00. Telling a reader nothing was measured, on the cell carrying the
+    biggest measurement, is #187's shape in prose.
+
+    Two things have to hold together, and neither alone is enough: the label must stop claiming
+    the absence, and the number must stay UNPRICED -- because it is a starter's whole value on a
+    different scale, not a backup's job.
+    """
+
+    def test_the_label_no_longer_claims_nothing_was_measured(self):
+        label = lo.EXPOSURE_BASIS_LABELS[lo.EXPOSURE_NO_SURPLUS]
+        self.assertFalse(
+            label.startswith("not measured"),
+            "the no_surplus label still opens by denying a measurement that exists")
+        self.assertNotIn("no surplus to value", label)
+
+    def test_the_label_still_says_it_is_not_a_depth_price(self):
+        """The other half. Dropping 'not measured' must not leave a label a consumer could read
+        as 'this is priced depth evidence' -- the state is measured AND uncharged, and the label
+        carries both or it has traded one false claim for another."""
+        label = lo.EXPOSURE_BASIS_LABELS[lo.EXPOSURE_NO_SURPLUS]
+        self.assertIn("not a depth price", label)
+        self.assertNotEqual(label, lo.EXPOSURE_BASIS_LABELS[lo.EXPOSURE_MEASURED])
+
+    def test_the_state_it_describes_really_does_carry_a_measurement(self):
+        """NON-VACUITY, and the whole reason the old label was wrong. If this state came back
+        with no number, 'not measured' would have been accurate and there would be nothing to
+        fix."""
+        result = lo.depth_exposure(SHALLOW, LEAGUE)
+        carrying = [(pos, d["worst_loss"]) for pos, d in result.items()
+                    if d.get("basis") == lo.EXPOSURE_NO_SURPLUS and d.get("worst_loss")]
+        self.assertTrue(carrying,
+                        "no no_surplus position carries a worst_loss; this test observed nothing")
+        for pos, worst in carrying:
+            with self.subTest(position=pos):
+                self.assertGreater(worst, 0.0)
+
+    def test_the_vocabulary_did_NOT_gain_a_member(self):
+        """The ruling was ONE token. Splitting the state would take its entire population and
+        leave no_surplus unreachable -- the unreachable-predicate shape basis_semantics.py names
+        as the 18th withdrawal."""
+        self.assertEqual(len(lo.EXPOSURE_BASIS_LABELS), 4)
+        self.assertEqual(
+            set(lo.EXPOSURE_BASIS_LABELS),
+            {lo.EXPOSURE_MEASURED, lo.EXPOSURE_VACANT, lo.EXPOSURE_NO_SURPLUS,
+             lo.EXPOSURE_NOT_APPLICABLE})
+
+
 class TheFourStatesOfKnowingTests(unittest.TestCase):
     """basis is read before the numbers. They are returned in every state and only one state
     makes them evidence."""

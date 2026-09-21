@@ -13829,3 +13829,91 @@ Each lands as its own commit with its own mutation battery, per `CDME_CONTRACTS`
 
 **`#18` remains blocked** on `api.sleeper.app` egress and is unaffected by any of the above. It
 is still the only route to the round-5 defense, which none of these six rulings addresses.
+
+---
+
+## RULINGS EXECUTED: `#27` LABEL, `#26` ADMISSION, `#17` RE-MEASURED
+
+Three of the six rulings of 2026-09-21. Combined into one commit rather than three: one full
+suite licenses all of them, the modules are disjoint (`lineup_optimizer` / `draft_room` /
+evidence only), and `#169` makes path-selective staging the riskier option -- `git add -A` with
+`git status --short` read is the rule that exists because naming files broke three commits.
+
+### `#27` I-06/J-06 — one token, and the label was the false part
+
+`EXPOSURE_NO_SURPLUS`'s label read *"**not measured** -- you hold no backup here, so there is no
+surplus to value."* The first half is untrue: every one of the 8 cells in this state carries a
+non-zero `worst_loss`, median **62.00** against `EXPOSURE_MEASURED`'s **42.00**, max 82.00.
+Telling a reader nothing was measured, on the cell carrying the biggest measurement, is `#187`'s
+shape in prose.
+
+Now: *"measured, but it is a starter's whole value rather than a backup's job -- some starter
+here has no cover, so this is not a depth price and is not charged as one."* Token unchanged, no
+new vocabulary member, four labels still. Pricing is untouched: `draft_room` still charges
+`worst_loss` only under `EXPOSURE_MEASURED`, because the number is a starter's whole value on a
+different scale.
+
+Mutation-checked 1/1: restoring the old label fires two of the four new guards -- one for the
+false "not measured", one for the half that keeps it from reading as priced.
+
+### `#26` W4-01 — a stale `years_exp` gets the stale-vendor treatment
+
+The rookie clause now yields to `NOT_CURRENTLY_PLAYING`. Measured, exactly as predicted:
+
+```
+board rows: 1065 -> 969         retired players still on the board: NONE
+```
+
+Behaviour, asserted in full: Inactive rookie with no team -> **rejected**; Practice Squad,
+IR, PUP and status-None rookies -> admitted (the population the clause exists for, and Practice
+Squad is deliberately outside that tuple); Active rookie with nothing else -> admitted; Inactive
+rookie WITH a team or WITH a projection -> admitted by the clauses below, untouched.
+
+This **reverses `#193`'s tested re-entry case for this one clause**, so
+`test_a_rookie_beats_a_stale_not_playing_status` became
+`test_a_rookie_does_NOT_beat_a_stale_not_playing_status`, carrying the ruling and the reasoning
+rather than being edited away. Re-entry still works without the clause: a player who un-retires
+gets signed, which sets `team`.
+
+**A SECOND CONTRACT TEST HAD TO MOVE, AND THE FULL SUITE IS WHAT FOUND IT.**
+`test_placeholder_admission.test_a_real_rookie_with_the_same_shape_is_still_admitted` used an
+`Inactive` lookalike to prove `#273`'s rule is keyed on the NAME and not on the SHAPE. After this
+ruling that row is rejected by the STATUS gate, so the test would have passed or failed for a
+reason unrelated to the sentinel -- a placeholder guard quietly converted into a status guard.
+The fixture is now `Active`, which isolates the original question, plus a non-vacuity companion
+pinning that the sentinel still decides on a row the status gate would pass.
+
+Mutation-checked 1/1: restoring the unconditional clause fires the ruling's test.
+
+### `#17` turn-ending picks — re-measured, and the mechanism is withdrawn
+
+Ruled: re-measure before ruling. Rulebook `12T_ppr_K_DEF`, 192 picks, self-play on HEAD:
+
+```
+pos     all  turn-ending  expected   ratio        first K   : pick 46 (4.10)
+WR       65            0      5.08    0.00        first DEF : pick 33 (3.09)
+RB       42            4      3.28    1.22
+K        26            1      2.03    0.49        K/DEF by round 12: 37,
+TE       23            3      1.80    1.67        of which turn-ending: 6 (16%)
+DEF      21            6      1.64    3.66
+QB       15            1      1.17    0.85
+```
+
+**The clustering survives for DEF (3.66x, up from 2.95x) and VANISHED for K (0.49x, from
+2.74x).** Not an artifact -- but not the K-and-DEF finding the file described either.
+
+**The proposed mechanism can no longer work.** It was "point `positional_forfeits` at the gap
+after *N+1*", and post-`#22` that quantity has NO selection authority: the board ranks on
+`team_acquisition_value` and the forfeit reaches only necessity's display term. Whatever drives
+the 3.66x is not the forfeit. Mechanism withdrawn.
+
+**And the framing is probably wrong regardless.** The first defense now lands at **round 3.09**,
+two rounds earlier than the 7.12 recorded and earlier than `KDST_VALUATION`'s round 5, because
+`#16` is what `#22` reverted. Arguing where *within a round* defenses cluster is arguing about the
+distribution of an already-wrong behaviour. `#18` is the fix and will likely dissolve the question.
+
+**A FIRST RUN OF THIS RE-MEASUREMENT WAS VACUOUS**, and is recorded rather than discarded: it used
+`build_mock_league`, whose starters carry **no K and no DEF slot**, so it reported "K and DEF never
+taken" -- measuring the format, not the engine, with `n=0` for the population the item is about.
+Caught by the engine-measurement rule on printing `n`. Third instrument error in three days, all
+three caught by that rule.

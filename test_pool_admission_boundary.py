@@ -91,9 +91,56 @@ class StatusIsAFreshnessRuleNotAGateTests(unittest.TestCase):
         info = {"position": "DL", "status": "Inactive", "years_exp": 2, "team": "MIN"}
         self.assertTrue(dr._admits_to_pool(info, None, _match()))
 
-    def test_a_rookie_beats_a_stale_not_playing_status(self):
+    def test_a_rookie_does_NOT_beat_a_stale_not_playing_status(self):
+        """REVERSED BY OWNER RULING, W4-01 (2026-09-21). This asserted `assertTrue`, and the
+        reversal is recorded rather than the old line edited away.
+
+        WHY IT WAS TRUE. The rookie clause is unconditional so a rookie cut to a practice squad
+        -- no team, no projection, and in dynasty one of the most taxi-relevant players on the
+        board -- still reaches it. That reasoning is sound and is PRESERVED: Practice Squad is
+        not in NOT_CURRENTLY_PLAYING, so it is untouched (see the two tests below).
+
+        WHY IT IS NOW FALSE. `years_exp == 0` does not mean "this year's rookie class"; it means
+        the feed carries no accrued-seasons value, which Sleeper's rows for long-retired players
+        also carry. Measured: 241 board rows admitted ONLY by this clause, 96 of them Inactive,
+        15 aged 27+, topping out at Kurt Warner, age 47, on a live 12-team PPR dynasty board.
+
+        AND THE FRESHNESS RULE WAS NOT EVEN. `test_a_stale_vendor_number_does_NOT_beat_it` below
+        rejects a retired player carried by a stale vendor number, reasoning that otherwise "a
+        genuinely retired player would sit in the pool forever on the strength of a trade value
+        nobody has revisited". A stale `years_exp` did exactly that on a different field. Ruled:
+        same treatment. Re-entry still works without this clause -- a player who un-retires gets
+        signed, which sets `team`, which the next clause admits on.
+
+        Evidence: evidence/w4_01/THE_PREMISE_IS_FALSE.md.
+        """
         info = {"position": "WR", "status": "Inactive", "years_exp": 0, "team": None}
-        self.assertTrue(dr._admits_to_pool(info, None, _match()))
+        self.assertFalse(dr._admits_to_pool(info, None, _match()))
+
+    def test_a_PRACTICE_SQUAD_rookie_is_still_admitted(self):
+        """The population the clause exists for, and the thing the ruling had to not break.
+        Practice Squad is deliberately outside NOT_CURRENTLY_PLAYING, so a taxi-relevant rookie
+        with no team and no number still gets a row."""
+        for status in ("Practice Squad", "Injured Reserve",
+                       "Physically Unable to Perform", None):
+            with self.subTest(status=status):
+                info = {"position": "WR", "status": status, "years_exp": 0, "team": None}
+                self.assertTrue(dr._admits_to_pool(info, None, _match()),
+                                f"a rookie with status {status!r} lost his row")
+
+    def test_the_ruling_did_not_reach_the_clauses_around_it(self):
+        """MINIMAL BLAST RADIUS, asserted rather than claimed. The condition was added to the
+        rookie clause ONLY, so an Inactive rookie who still carries a team, or one carrying a
+        live projection, is admitted by those clauses exactly as before."""
+        self.assertTrue(dr._admits_to_pool(
+            {"position": "WR", "status": "Inactive", "years_exp": 0, "team": "PHI"},
+            None, _match()), "the team clause stopped admitting")
+        self.assertTrue(dr._admits_to_pool(
+            {"position": "WR", "status": "Inactive", "years_exp": 0, "team": None},
+            12.5, _match()), "a live projection stopped admitting")
+        self.assertTrue(dr._admits_to_pool(
+            {"position": "WR", "status": "Active", "years_exp": 0, "team": None},
+            None, _match()), "an ACTIVE rookie with nothing else lost his row")
 
     def test_a_stale_vendor_number_does_NOT_beat_it(self):
         """The one clause status wins against, and the reason the rule is FRESHNESS rather than

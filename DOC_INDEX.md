@@ -7,9 +7,9 @@ Classified by what each file says about ITSELF in its first 12 lines. Nothing he
 | class | count | meaning |
 |---|---:|---|
 | WITHDRAWN | 24 | a published claim taken back. Kept, unedited, beneath its banner. |
-| SUPERSEDED | 22 | still valid or partly valid, but something later changed what it means. |
+| SUPERSEDED | 23 | still valid or partly valid, but something later changed what it means. |
 | DECLARED | 17 | says what kind of document it is before making claims. |
-| UNDECLARED | 94 | no status banner in its opening. Not necessarily wrong — most are simply current — but a reader cannot tell without reading it all. |
+| UNDECLARED | 93 | no status banner in its opening. Not necessarily wrong — most are simply current — but a reader cannot tell without reading it all. |
 
 ## WITHDRAWN
 
@@ -49,6 +49,7 @@ Classified by what each file says about ITSELF in its first 12 lines. Nothing he
 - `evidence/CERTIFICATION_DESIGN.md`
 - `evidence/blind_pass/REPAIR_MANDATE.md`
 - `evidence/blind_pass/SYNTHESIS.md`
+- `evidence/blind_pass/TURN_ENDING_PICKS.md`
 - `evidence/roster_shape/ff_rulebook/CORRECTION_wrong_universe.md`
 - `evidence/roster_shape/ff_rulebook/FINDING_01_the_pool_is_the_shape.md`
 - `evidence/roster_shape/ff_rulebook/FINDING_02_vor_measures_linearity.md`
@@ -106,7 +107,6 @@ Classified by what each file says about ITSELF in its first 12 lines. Nothing he
 - `evidence/blind_pass/PHASE7_ADJUDICATION.md`
 - `evidence/blind_pass/RULINGS_EXECUTION.md`
 - `evidence/blind_pass/TAKE_MASS_BIAS.md`
-- `evidence/blind_pass/TURN_ENDING_PICKS.md`
 - `evidence/blind_pass/wave1/PASS_A.md`
 - `evidence/blind_pass/wave1/PASS_B.md`
 - `evidence/blind_pass/wave2/PASSES_C_AND_D.md`

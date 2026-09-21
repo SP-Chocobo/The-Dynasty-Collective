@@ -1207,7 +1207,40 @@ def _admits_to_pool(info: dict, sleeper_points, match: dict) -> bool:
         return False
     if sleeper_points is not None:
         return True
-    if info.get("years_exp") == ROOKIE_YEARS_EXP:
+    # W4-01, RULED: A STALE `years_exp` GETS THE STALE-VENDOR TREATMENT. This was an
+    # unconditional early return -- the same structure `#273` closed one clause above for
+    # placeholders, where a row that merely LOOKED like a rookie walked past the check that
+    # would have rejected it.
+    #
+    # `years_exp == 0` does NOT mean "this year's rookie class", which is what
+    # ROOKIE_YEARS_EXP's own comment asserts. It means the feed carries no accrued-seasons
+    # value, and Sleeper's historical rows for long-retired players carry exactly that.
+    # Measured on the capture: 241 board rows were admitted ONLY by this clause -- no
+    # projection, no team -- 96 carrying status Inactive, 15 aged 27 or older, topping out at
+    # **Kurt Warner, age 47**, on the live board of a 12-team PPR dynasty league.
+    #
+    # THIS REVERSES `#193`'s RE-ENTRY CASE FOR THIS ONE CLAUSE, which is why it is an owner
+    # ruling and not a repair. The freshness rule was not applied evenly: a retired running back
+    # with `years_exp 11` and a vendor `trade_value` is REJECTED below, on the stated reasoning
+    # that "without it losing here, a genuinely retired player would sit in the pool forever on
+    # the strength of a trade value nobody has revisited" -- while a stale `years_exp` let one
+    # sit there forever on a field nobody has revisited either. Ruled: same treatment.
+    #
+    # RE-ENTRY STILL WORKS, and does not need this clause. A player who un-retires gets signed,
+    # which sets `team`, which the clause below admits on its own.
+    #
+    # WHAT THE CLAUSE IS FOR IS PRESERVED EXACTLY. Its documented purpose is the rookie cut to a
+    # practice squad, who "has no NFL team listed and no projection, and in a dynasty league is
+    # one of the most taxi-relevant players on the board". Practice Squad is deliberately NOT in
+    # NOT_CURRENTLY_PLAYING -- see that tuple's own comment on why IR/PUP/PS describe a player a
+    # team still holds -- so that population is untouched.
+    #
+    # MINIMAL BLAST RADIUS: the two clauses below are unchanged, so a rookie who is Inactive but
+    # still carries a team is admitted by the `team` clause exactly as before. Only "rookie AND
+    # not currently playing AND no team" changes. Measured: board 1065 -> 969, the 96 removed
+    # rows all Inactive, the 145 rows still admitted by this clause all Active, max age 34.
+    if (info.get("years_exp") == ROOKIE_YEARS_EXP
+            and info.get("status") not in NOT_CURRENTLY_PLAYING):
         return True
     if info.get("team"):
         return True

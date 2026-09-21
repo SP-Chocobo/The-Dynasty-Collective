@@ -220,7 +220,28 @@ EXPOSURE_MEASURED = "measured"
 EXPOSURE_BASIS_LABELS = {
     EXPOSURE_MEASURED: "measured against your own lineup",
     EXPOSURE_VACANT: "not measured -- you hold no starter at this position to insure",
-    EXPOSURE_NO_SURPLUS: "not measured -- you hold no backup here, so there is no surplus to value",
+    #: I-06/J-06, RULED: one token, and the LABEL is what was false. This read "not measured --
+    #: you hold no backup here, so there is no surplus to value", and the first half of that is
+    #: simply untrue: something WAS measured, and it is the larger of the two numbers. Across 8
+    #: in-draft board states, every one of the 8 cells in this state carried a non-zero
+    #: `worst_loss`, median 62.00 against EXPOSURE_MEASURED's 42.00, max 82.00 -- while the
+    #: priced state is the one at 42.00. Telling a reader nothing was measured, on the cell
+    #: carrying the biggest measurement, is #187's shape in prose.
+    #:
+    #: WHAT IS ACTUALLY TRUE, and why the number still is not priced: with a starter uncovered,
+    #: removing him returns HIS WHOLE VALUE, not what a backup would have to cover. That is a
+    #: real quantity on a DIFFERENT SCALE, and `draft_room` prices `worst_loss` only under
+    #: EXPOSURE_MEASURED for exactly that reason. The label now says which of those two things
+    #: it is, instead of claiming there is nothing to say.
+    #:
+    #: NO NEW TOKEN, deliberately. Splitting this state would take its entire population and
+    #: leave `no_surplus` unreachable -- the unreachable-predicate shape `basis_semantics.py`
+    #: names as the 18th withdrawal -- and both boundaries that would keep two tokens reachable
+    #: are ones this repo already measured and rejected. See
+    #: evidence/i06_j06/STEP_ONE_NEEDS_A_BOUNDARY.md.
+    EXPOSURE_NO_SURPLUS: "measured, but it is a starter's whole value rather than a backup's "
+                         "job -- some starter here has no cover, so this is not a depth price "
+                         "and is not charged as one",
     EXPOSURE_NOT_APPLICABLE: "not measured -- this position has no startable slot in this league",
 }
 
