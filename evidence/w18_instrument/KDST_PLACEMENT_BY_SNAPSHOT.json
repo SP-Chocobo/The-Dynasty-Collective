@@ -1,0 +1,48 @@
+{
+  "_comment": "Where K and DEF land, drafting the same format twice and changing ONLY the projection snapshot. See kdst_placement_by_snapshot.py.",
+  "arm": "12T_ppr_K_DEF",
+  "results": {
+    "app_shaped_2026": {
+      "by_position": {
+        "DEF": 32,
+        "K": 33,
+        "QB": 18,
+        "RB": 33,
+        "TE": 21,
+        "WR": 55
+      },
+      "first_taken": {
+        "DEF": 6.05,
+        "K": 6.08,
+        "QB": 3.07,
+        "RB": 1.0,
+        "TE": 1.07,
+        "WR": 1.02
+      },
+      "kdst_by_round_12": 48,
+      "picks": 192
+    },
+    "battery_capture": {
+      "by_position": {
+        "DEF": 32,
+        "K": 31,
+        "QB": 22,
+        "RB": 33,
+        "TE": 20,
+        "WR": 54
+      },
+      "first_taken": {
+        "DEF": 5.08,
+        "K": 7.0,
+        "QB": 4.09,
+        "RB": 1.0,
+        "TE": 1.08,
+        "WR": 1.03
+      },
+      "kdst_by_round_12": 47,
+      "picks": 192
+    }
+  },
+  "rounds": 16,
+  "teams": 12
+}

@@ -159,3 +159,47 @@ from — which is exactly how two wrong conclusions got published.
 `test_which_call_prices_the_board.py` pins both halves: that the synced configurations price every
 starting-band row from one source, and that the un-synced path really does mix vendors, so the
 withdrawal of `#28` rests on WHERE the mixing happens rather than on a claim that it never does.
+
+---
+
+## The snapshot does NOT drive K/DST placement — hypothesis falsified, and that is the useful result
+
+The obvious next step from the 2.2x price swing above was: if DEF is priced 0.69 of a quarterback
+under the battery snapshot and 0.32 under the app-shaped one, the whole "defenses go five rounds
+too early" complaint might be an artifact of the battery's fixture. Drafted, same format, same
+commit, same process, changing **only** the projection snapshot
+(`kdst_placement_by_snapshot.py`, 12 teams x 16 rounds, self-play):
+
+| | battery capture | app-shaped 2026 |
+|---|---|---|
+| first K | 7.00 | 6.08 |
+| first DEF | **5.08** | **6.05** |
+| first QB | 4.09 | 3.07 |
+| first TE | 1.08 | 1.07 |
+| K+DEF taken by round 12 | **47** | **48** |
+
+**It does not move.** DEF's relative price changes by a factor of 2.2 and its first selection moves
+by less than a round — in the *later* direction for the arm that prices it lower, which is the
+right sign but nowhere near the size of the price change. K+DEF taken by round 12 is 47 against 48.
+
+So the hypothesis is dead, and what it leaves behind is a fifth independent confirmation of the
+thing four other measurements already said: **`bpa` magnitude is not what puts defenses in round
+five.** Halve DEF's price relative to every other position and the draft barely notices.
+`KDST_VALUATION.md` reached the same place by a different route and recorded it plainly —
+*"Zeroing K/DEF `bpa` entirely still leaves them at +4.00"* — and this is that sentence confirmed
+from the outside, by moving the price rather than by removing it.
+
+Which also means the remaining candidates are all downstream of `bpa`: whatever selects a defense
+in round five is reading something other than how many points it is worth.
+
+### And #17's recorded numbers no longer reproduce
+
+`#17`'s re-measurement records `first DEF : pick 33 (3.09)`, `first K : pick 46 (4.10)`, and
+`K/DEF by round 12: 37`. On HEAD, in the same rulebook with the same battery snapshot, it is
+**5.08**, **7.00** and **47**. Placement has moved roughly two rounds later for DEF since that run,
+and one and a half for K, while K/DEF volume by round 12 rose 37 -> 47.
+
+That is not explained by `#24`: necessity has no selection authority (`#55`), the board orders on
+`team_acquisition_value`, and this draft takes `candidates[0]`. Something between the two runs
+moved it and the item's numbers are stale either way — so `#17` cannot be closed on the figures it
+currently carries, and re-running it is a prerequisite to ruling on it rather than a formality.

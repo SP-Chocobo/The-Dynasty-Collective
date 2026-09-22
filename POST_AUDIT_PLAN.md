@@ -14361,3 +14361,46 @@ cannot distinguish them -- a vacuous fixture.
   NEVER IMPLEMENTED, so nothing is unbounded today, but a future proposal needs a new anchor.
 - **NEW, recorded not fixed:** `cdme_force_ablation` has no `forfeit` component, and its fidelity
   test cannot see that because its fixture omits the field.
+
+
+---
+
+## #17 UNPARKED, AND MY OWN HYPOTHESIS ABOUT IT FALSIFIED
+
+`#17` was parked behind `#18` on the reasoning *"#18 is the fix and will likely dissolve the
+question."* `#18`'s premise is falsified and no fix is coming from it, so that parking rationale is
+gone and `#17` has to stand on its own.
+
+**The hypothesis I formed and then killed.** Given that DEF prices at 0.69 of a quarterback under
+the battery snapshot and 0.32 under the app-shaped one, the K/DST complaint looked like it might be
+a battery-fixture artifact. Drafted both, one process, snapshot the only difference:
+
+| | battery capture | app-shaped 2026 |
+|---|---|---|
+| first K | 7.00 | 6.08 |
+| first DEF | 5.08 | 6.05 |
+| K+DEF by round 12 | 47 | 48 |
+
+**Placement does not move.** A 2.2x change in DEF's relative price moves its first selection by
+less than a round. Hypothesis dead.
+
+**What survives is better than what I was looking for:** a FIFTH independent confirmation that
+`bpa` magnitude is not what puts defenses in round five. Four earlier measurements said so from
+inside; this says it from outside, by MOVING the price rather than zeroing it, and the draft barely
+notices. `KDST_VALUATION.md` already recorded the same fact -- *"Zeroing K/DEF bpa entirely still
+leaves them at +4.00"*. Whatever selects a defense in round five is reading something other than
+how many points it is worth.
+
+**And #17's own numbers are stale.** It records `first DEF 3.09`, `first K 4.10`, `K/DEF by round
+12: 37`. On HEAD in the same rulebook with the same snapshot: **5.08**, **7.00**, **47**. Not
+explained by `#24` -- necessity has no selection authority (`#55`) and this draft takes
+`candidates[0]` off a `team_acquisition_value` ordering.
+
+### Register
+
+- **#17 is UNPARKED and NOT closeable on its current figures.** They do not reproduce. Re-running
+  it is a prerequisite to ruling, not a formality.
+- **The mechanism stays withdrawn** -- `positional_forfeits` has no selection authority post-`#22`,
+  which is unchanged.
+- **Standing conclusion across five measurements: `bpa` is not the K/DST driver.** Every remaining
+  candidate is downstream of it.
