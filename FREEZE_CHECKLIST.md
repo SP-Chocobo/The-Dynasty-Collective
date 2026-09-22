@@ -517,7 +517,13 @@ missing is this note.
 This is the decision the points-vs-asset result above forces. It is not code work, and
 **everything in this cluster is downstream of it** — none should be repaired independently:
 
-- [ ] **#50** — VOR / replacement / horizon redefinition. The parent.
+- [ ] **#50** — VOR / replacement / horizon redefinition. The parent. **`#21` IS NOW EXPLICITLY
+      BLOCKED ON THIS** (`27c54ee`): the take model's unpriced floor cannot be derived while the
+      board asserts two incompatible things about the same 489 rows — ORDER LAST says unpriced is
+      WORST (floor ~2e-06, i.e. "unpriced means safe", which the owner ruled against on 31-of-301
+      evidence), while `ABSENCE_NO_INPUT` says unpriced is UNKNOWN-NOT-BAD (floor `P/n_p` =
+      0.0109). `draft_room.py:632-637` already names the ordering as a `#50` question. Picking one
+      by arithmetic is choosing, not deriving (`#56`). See `evidence/take_model/FLOOR_DERIVATION.md`.
 - [ ] **#74 / #76** — the bpa unit drifts 72× and bundles six quantities; the ruler carries 94.5%
       of its own movement. #155 folded into this: cross-position VOR ranks a 0.00 above a
       −3.86, which is what VOR *means*, and whether it is comparable across positions is the
@@ -622,9 +628,22 @@ only. The items below feed observables and the debate layer, so they degrade wha
 *says*, not what it *picks*. They still gate a shippable v1, because a person reads them.
 
 - [ ] **#206 — `survival_probability` says 0.00 for a player who then survives 60 straight picks.**
-      It feeds `opportunity_cost`, `pick_necessity` and `rival_premium`. It is also the stated
-      reason the #55 necessity wiring was declined ("a signal is not promoted to decision-maker
-      while one of its main inputs is under investigation"). Highest-value item in this gate.
+      It fed `opportunity_cost`, `pick_necessity` and `rival_premium`. **ONE OF THOSE THREE IS
+      GONE: `#24`/W1-07 (landed `27c54ee`) retired the survival term from `compute_pick_necessity`
+      entirely** — verified on HEAD, `pick_synthesis` names the field only in prose and in the
+      `SURVIVAL_DERIVED_FIELDS` vocabulary, never in the score. `opportunity_cost` and
+      `rival_premium` still derive from it, so the ITEM IS NOT CLOSED and its measured defect is
+      unrepaired.
+      **But the argument this item was used to support is now void for necessity.** The stated
+      reason the `#55` necessity wiring was declined — "a signal is not promoted to decision-maker
+      while one of its main inputs is under investigation" — no longer applies to necessity,
+      because necessity does not read survival at all. Anyone re-opening `#55` should not be
+      turned away by this line.
+      **And with `SURVIVAL_IS_CALIBRATED = False` plus `withheld_fields()`, the family reaches no
+      shipped number or string in production** (`decision_regime` returns `"contested"`
+      unconditionally). The field is computed, carried, and read by nothing that ships — a
+      `#166`-shaped condition, recorded at `#24` rather than left to be found. Highest-value item
+      in this gate.
       **MEASURED, NOT REPAIRED** (register entry + `evidence/survival_mechanism/`). The 0.00 is
       2.3e-8, not a rounding artifact, and it has TWO independent causes with different
       remedies: take-probability mass (a bound the model violates, repairable as arithmetic,
@@ -737,7 +756,17 @@ only. The items below feed observables and the debate layer, so they degrade wha
 
 None are engine defects. Each needs something this machine cannot reach.
 
-- [ ] **#88 / #143** — `api.sleeper.app` is denied by the network policy (403 at CONNECT, evidenced).
+- [ ] **#88 / #143 — STILL DENIED, BUT ITS PRACTICAL BLOCK IS DISCHARGED.** The host is still
+      refused from the audit container (re-measured 2026-09-22: `connect_rejected`). What changed
+      is that the owner ran the blocked instruments on a networked machine, and the denial turned
+      out to have been HIDING A REAL BUG rather than merely delaying it: the stats endpoint URL put
+      `season_type` in the PATH and had always returned 404, so every consumer of realized stats
+      was fetching nothing. Fixed at `29ab259`; 36 weeks of real actuals now return. Four season
+      captures are committed (`data/fixtures/weekly_*.json.gz`) and
+      `measure_projection_accuracy --from-captures` reproduces the live run on 83 of 84 fields, so
+      **the measurement no longer needs the host.** The lesson is banked: a test that asserts what
+      our own code constructs is not evidence about a system we do not control.
+- [ ] **#88 / #143 (original text)** — `api.sleeper.app` is denied by the network policy (403 at CONNECT, evidenced).
 - [ ] **#120 / #109** — provider metering and served-model identity need live SDKs.
 - [ ] **#49 / #210** — real K/DEF/IDP startup boards, and Sleeper supplying IDP without stat lines.
 

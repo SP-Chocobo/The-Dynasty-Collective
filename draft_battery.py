@@ -979,9 +979,18 @@ def run_battery(merger, players_db: dict, matrix: Optional[list[dict]] = None,
         # availability_basis are None on every row -- so the scoring-aware path and the
         # availability haircut are both absent from the final gate while appearing nowhere in
         # the report as absent.
+        # upside_rule and opponent_noise are forwarded FROM THE ARM, defaulted so every arm that
+        # does not carry them drafts exactly as before -- the format matrix carries neither, so
+        # its trajectories are byte-identical to the runs already committed under it. They exist
+        # because the VDS battery (vds_battery.py) sweeps them: the format matrix varies FORMAT
+        # and holds strategy fixed at mode="auto", which is the gap #20/#22 fell through. One arm
+        # loop, extended -- not a second copy, because two batteries with two copies of one audit
+        # is two homes for one fact (#126) and the copy nobody watches is the one that drifts.
         trajectory = draft_simulation.simulate_full_draft(
             merger, players_db, entry["league"], pick_order,
             mode=entry.get("mode", mode), config_label=entry["label"],
+            upside_rule=entry.get("upside_rule", dr.UPSIDE_RULE_ROUND),
+            opponent_noise=entry.get("opponent_noise"),
             sleeper_projections=sleeper_projections, sleeper_basis=sleeper_basis)
         values = reference_values(merger, players_db, entry["league"],
                                   sleeper_projections=sleeper_projections,
@@ -992,5 +1001,12 @@ def run_battery(merger, players_db: dict, matrix: Optional[list[dict]] = None,
                                    audit_roster_fill=entry.get("audit_roster_fill", True))
         audited["teams"] = entry["teams"]
         audited["rounds"] = entry["rounds"]
+        # THE PICK SEQUENCE, player ids only. Carried so a caller can derive whether two arms
+        # actually drafted differently instead of assuming that a parameter it forwarded had an
+        # effect. The VDS battery uses it to detect INERT arms -- measured before its first run,
+        # two of its six strategies reproduced the control byte-for-byte on an 8-round format,
+        # because `auto` never reaches the upside round there and the crossing rule never fires.
+        # A strategy can be listed, forwarded, and exercise nothing.
+        audited["pick_sequence"] = [str(p.chosen_player_id) for p in trajectory.picks]
         results.append(audited)
     return results
