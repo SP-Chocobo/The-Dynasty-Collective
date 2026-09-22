@@ -14100,10 +14100,52 @@ taken about five rounds early -- is confirmed as a RELATIVE SPREAD error.
 `sd/gap ~ 0.4` is the plainer version: about two fifths of the DEF gap the board is paying for is
 next season's coin flips.
 
+### CORRECTED, same session: the 3.1x was measured against a stale board
+
+The paragraph above quotes QB 43.9 / DEF 30.5 from `KDST_VALUATION.md`. Those predate changes to
+both the seed CSVs and the engine. Measured on the board the code builds TODAY, DEF's overstatement
+relative to QB is **1.3x (2023) and 1.5x (2024)**, not 3.1x -- and on that same board K and DEF are
+the two BEST-scaled positions, while RB, WR and TE are overstated relative to QB by 2.1x to 3.6x.
+
+That table is contaminated too, and so was mine: hindsight inflation is not uniform, and measured
+`sd/gap` runs in three tiers (RB/WR/TE 0.08-0.09, QB 0.17, K/DEF 0.38-0.39, spanning nearly 5x), so
+normalising to QB imports QB's inflation into every row. The clean estimator is the regression
+slope of realized on projected over the whole pool, which never ranks by outcome:
+
+| pos | slope 2023 | slope 2024 |
+|---|---|---|
+| QB | 1.00 | 1.05 |
+| RB | 1.05 | 1.07 |
+| WR | 1.01 | 1.01 |
+| TE | 0.99 | 1.00 |
+| K | 1.00 | 1.03 |
+| DEF | **1.80** | **2.84** |
+
+Five of six positions have nothing to shrink. DEF is COMPRESSED by a factor of nearly three, so the
+ruled shrink would have pushed it the way the data says it is already wrong.
+
+And the structural finding that supersedes all of it: **the board does not price K and DEF from the
+projections this instrument measures.** It prices them from two committed CSVs
+(`draft_room.KDST_SEEDED_SOURCE_FILES`), and `measure_projection_accuracy`'s docstring claims those
+are "exactly the source this reads". Measured, K's CSV pool is 37 players with a top of 116.0
+against the weekly sum's 153 and ~157 -- a different artifact. For one of the two positions #18
+exists to fix, the instrument has been measuring something else the whole time, and a docstring
+asserted otherwise as fact. Same failure as the URL bug in `29ab259`, one level up: there the wrong
+belief was about a system we do not control, here it is about our own data lineage.
+
+Full write-up, both passes and every objection: **`evidence/w18_instrument/INSTRUMENT.md`**, which
+is the authority over this section.
+
 ### Register
 
-- **#18 is not closed.** It was blocked on reaching the API; it is now blocked on the estimator.
-  The live path and the URL repair are verified by 36 non-empty weeks.
+- **#18 is not closed.** It was blocked on reaching the API; then on the estimator; it is now
+  blocked on DATA LINEAGE -- whether the board's K/DEF CSVs are the same artifact as Sleeper's
+  weekly projections. A 2026 capture settles that, since the CSVs are dated 2026-08-25.
+- **NEW OWNER QUESTION (#184: engine design, not a repair).** The board puts
+  `points_vor_draftsharks` (QB/RB/WR/TE) and `points_vor_sleeper_seeded` (K/DEF) on ONE `bpa` scale
+  and compares them directly. Two vendors, one number, and nothing establishes their point scales
+  agree. That is upstream of every reliability question asked so far and is the standing structural
+  candidate for the K/DEF mispricing.
 - **No constant is derived, and none may be** (#56). A floor on a relative overstatement is not a
   shrink factor.
 - The population estimator that could produce one needs the PROJECTIONS arm offline.

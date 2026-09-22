@@ -9,6 +9,7 @@ right, which is the lesson #18 already paid for.
 
 from __future__ import annotations
 
+import json
 import tempfile
 import unittest
 from pathlib import Path
@@ -137,3 +138,59 @@ class ProvenanceTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class OneReaderForEveryCaptureShapeTests(unittest.TestCase):
+    """`load_season` is the single reader, and it exists because this repo holds TWO incompatible
+    capture shapes: what this script writes, and the ad-hoc raw payload that predates it.
+
+    The failure it prevents is silent. A raw record's stat line sits one level deeper
+    (`{"stats": {...}, "player": {...}}`), so reading it as though it were already thinned hands
+    `score_projection` a dict of metadata keys -- `player`, `week`, `game_id` -- none of which
+    appear in any scoring settings, so every player sums to exactly 0.0. A whole season of zeros
+    and no error anywhere.
+    """
+
+    def setUp(self):
+        self.root = Path(tempfile.mkdtemp())
+
+    def test_a_written_capture_is_found(self):
+        client = _client(get_weekly_stats=mock.Mock(return_value=dict(LINES)))
+        record = cwl.capture_season(client, "2024", "stats", log=lambda *a: None, spacing=0.0)
+        cwl.write(record, cwl.capture_path("2024", "stats", self.root))
+        self.assertEqual(cwl.load_season("2024", "stats", self.root)["1"], LINES)
+
+    def test_an_absent_capture_is_empty_rather_than_an_error(self):
+        """Absence is a fact the caller has to be able to act on -- measure_projection_accuracy
+        skips a season it has no capture for rather than reporting it as a season of zeros."""
+        self.assertEqual(cwl.load_season("1999", "projections", self.root), {})
+
+    def test_the_legacy_raw_payload_is_unwrapped_to_the_same_shape(self):
+        """The ad-hoc 2024 actuals. `{week: [record, ...]}` with the stat line nested, which has
+        to come back looking exactly like a thinned capture or every consumer needs two paths."""
+        legacy = self.root / "sleeper_weekly_2031.json"
+        legacy.write_text(json.dumps({"1": [
+            {"player_id": "4034", "stats": {"rush_yd": 88.0}, "player": {"position": "RB"}}]}))
+        with mock.patch.object(cwl, "LEGACY_ACTUALS", str(legacy)):
+            weeks = cwl.load_season("2031", "stats", self.root)
+        self.assertEqual(weeks, {"1": {"4034": {"rush_yd": 88.0}}})
+
+    def test_the_legacy_payload_is_only_consulted_for_stats(self):
+        """It is an ACTUALS capture. Serving it as projections would compare a season against
+        itself and report every projection perfect."""
+        legacy = self.root / "sleeper_weekly_2031.json"
+        legacy.write_text(json.dumps({"1": [{"player_id": "4034", "stats": {"rush_yd": 88.0}}]}))
+        with mock.patch.object(cwl, "LEGACY_ACTUALS", str(legacy)):
+            self.assertEqual(cwl.load_season("2031", "projections", self.root), {})
+
+    def test_a_written_capture_wins_over_the_legacy_file(self):
+        """Non-vacuity on the precedence: once a season is captured properly, the ad-hoc file must
+        stop being read, or a re-capture would have no effect."""
+        client = _client(get_weekly_stats=mock.Mock(
+            side_effect=lambda season, week: {"9": {"rec": 1.0}} if week == 1 else {}))
+        record = cwl.capture_season(client, "2031", "stats", log=lambda *a: None, spacing=0.0)
+        cwl.write(record, cwl.capture_path("2031", "stats", self.root))
+        legacy = self.root / "sleeper_weekly_2031.json"
+        legacy.write_text(json.dumps({"1": [{"player_id": "4034", "stats": {"rush_yd": 88.0}}]}))
+        with mock.patch.object(cwl, "LEGACY_ACTUALS", str(legacy)):
+            self.assertEqual(cwl.load_season("2031", "stats", self.root), {"1": {"9": {"rec": 1.0}}})

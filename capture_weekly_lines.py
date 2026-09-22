@@ -101,6 +101,33 @@ def read(path: Path) -> dict:
     return json.loads(Path(path).read_text())
 
 
+#: The ad-hoc 2024 actuals, captured by a pasted command before this script existed. Raw payload,
+#: uncompressed, {week: [record, ...]} instead of {week: {player_id: stats}}. Kept readable here
+#: rather than re-captured, because it is the file the #18 findings were measured against.
+LEGACY_ACTUALS = "sleeper_weekly_{season}.json"
+
+
+def load_season(season: str, kind: str, root: Path | None = None) -> dict[str, dict]:
+    """{week: {player_id: {stat_category: value}}} for one captured season, or {} if absent.
+
+    ONE READER FOR EVERY CAPTURE SHAPE THIS REPO HOLDS, which is the whole reason it is a function
+    and not three lines at each call site. There are two shapes and they are not compatible: what
+    this script writes, and the ad-hoc raw payload that predates it. A consumer that grew its own
+    adapter for the second would be a second source of truth about what a capture looks like
+    (#126), and the first divergence would be silent -- a raw record's stat line is one nesting
+    level deeper, so reading it as though it were thinned yields a dict of metadata keys that
+    `score_projection` sums to exactly 0.0 for every player. A whole season of zeros, no error.
+    """
+    path = capture_path(season, kind, root)
+    if path.exists():
+        return read(path).get("weeks") or {}
+    legacy = Path(LEGACY_ACTUALS.format(season=season))
+    if kind == "stats" and legacy.exists():
+        return {str(week): thin({r["player_id"]: r for r in rows})
+                for week, rows in json.loads(legacy.read_text()).items()}
+    return {}
+
+
 def capture_season(client: sc.SleeperClient, season: str, kind: str, *, log=print,
                    spacing: float = REQUEST_SPACING_SECONDS) -> dict:
     """One season of one kind. Raises if NOTHING downloaded, rather than writing an empty file.

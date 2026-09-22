@@ -156,3 +156,44 @@ class TheRatioReportsItsOwnResolutionTests(unittest.TestCase):
         self.assertGreater(NEGLIGIBLE_PROJECTED_GAP, 6.7,
                            "the measured DEF 2024 projected gap must fall inside the bound, or "
                            "the bound would not have caught the case it was derived from")
+
+
+class TheModuleDoesNotClaimALineageItHasNotCheckedTests(unittest.TestCase):
+    """#18: the docstring asserted that this reads "exactly the source" the board prices K and DST
+    from. Measured, false -- K's CSV pool is 37 players against the weekly endpoint's 153.
+
+    This is the URL bug's shape one level up. There a guess about a third party was written up as
+    fact and pinned by a test; here a guess about OUR OWN data lineage was written up as fact and
+    pinned by nothing at all, which is worse, because a docstring that states a lineage is the only
+    thing a reader has to go on. So the retraction gets a guard: the claim must not come back
+    without a measurement, and the reader must be told which of the two things the K and DEF numbers
+    are about.
+    """
+
+    def _doc(self):
+        import measure_projection_accuracy as m
+        return m.__doc__
+
+    def test_the_false_identity_claim_is_not_asserted_again(self):
+        doc = self._doc()
+        offending = "which is exactly the source this reads"
+        self.assertNotIn(f"projections\n({offending}", doc.replace("-- ", ""))
+        # The retraction quotes the old sentence, so the string itself legitimately appears. What
+        # must not appear is the claim standing on its own as the module's position.
+        self.assertIn("the last clause is false", doc,
+                      "the identity claim is back without its retraction")
+
+    def test_the_reader_is_told_what_the_K_and_DEF_numbers_are_about(self):
+        """A caveat that does not say which way to read the number is not a caveat."""
+        doc = self._doc()
+        self.assertIn("NOT\nabout the board's input", doc)
+
+    def test_the_measured_comparison_is_in_the_module_and_not_only_in_evidence(self):
+        """The numbers that falsified the claim live next to the claim. An evidence file nobody
+        opens cannot stop the sentence being rewritten."""
+        doc = self._doc()
+        for measured in ("37", "153", "116.0"):
+            self.assertIn(measured, doc, f"the measured K pool figure {measured} is gone")
+
+    def test_it_names_what_would_settle_the_lineage(self):
+        self.assertIn("2026", self._doc())

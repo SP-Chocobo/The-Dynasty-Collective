@@ -25,9 +25,27 @@ between the players projected at rank 1 and at replacement rank, against the PRO
 ratio is how much of a position's projected spread actually materialises. A position whose
 projections hold keeps its VOR; one whose projections are noise does not.
 
-IT IS NOT A PROXY FOR K AND DST. Those two are priced on Sleeper-seeded projections
-(draft_room.KDST_SEEDED_SOURCE_FILES), which is exactly the source this reads -- so for the two
-positions that prompted the work, this measures the actual input the board uses.
+IT MAY WELL BE A PROXY FOR K AND DST, AND THAT IS NOT ESTABLISHED. This claimed the opposite as
+fact: "Those two are priced on Sleeper-seeded projections (draft_room.KDST_SEEDED_SOURCE_FILES),
+which is exactly the source this reads -- so for the two positions that prompted the work, this
+measures the actual input the board uses." Measured, the last clause is false. The board prices K
+and DST from two committed CSVs; this reads /projections/nfl. Both are "Sleeper", and that is the
+whole extent of what was ever checked:
+
+    artifact                    DEF n  DEF r1  DEF gap   K n   K r1  K gap
+    weekly-sum 2023                32   135.3     18.8    153  154.5   20.0
+    weekly-sum 2024                32   121.5      6.7    153  159.9   29.8
+    board CSV (2026-08-25)         32   111.0     13.0     37  116.0   11.0
+
+DEF is plausibly the same artifact for a different season. K plainly is not: 37 curated players
+against 153, and a top kicker 40 points lower. So for one of the two positions this exists to fix,
+it has been measuring something else -- and a docstring said otherwise, which is why nobody looked.
+Same shape as the URL bug this module already paid for, one level up: there the wrong belief was
+about a system we do not control, here about our own data lineage.
+
+SETTLING IT needs a same-season comparison, so a capture of 2026 (the CSVs' own vintage). Until
+then, read every K and DEF number here as a statement about Sleeper's weekly projections and NOT
+about the board's input. See evidence/w18_instrument/INSTRUMENT.md.
 
 NOTHING HERE CHOOSES A CONSTANT. It reports ratios. Turning a ratio into a term in the engine is
 a separate decision with its own derivation (#56: a bound is not a threshold, and a measurement
@@ -83,6 +101,39 @@ REGULAR_SEASON_WEEKS = range(1, 19)
 #: seventeen-game season, the smallest per-game difference this scoring can express at all --
 #: below it there is no signal to be a share OF. It gates a WARNING, never a value.
 NEGLIGIBLE_PROJECTED_GAP = 17.0
+
+
+def _totals_from_captures(season: str, scoring: dict, *, log=print,
+                          root=None) -> tuple[dict[str, float], dict[str, float]]:
+    """The same two dicts as `_season_totals`, from committed captures instead of the API.
+
+    WHY THIS EXISTS. `api.sleeper.app` is denied by the audit sandbox's egress policy, so every
+    live run costs a round trip through the owner's machine. Repairing an estimator takes many
+    passes over one season, and the first live run showed the estimator needs repairing
+    (evidence/w18_instrument/INSTRUMENT.md). A file makes the next fifty passes free.
+
+    IT SHARES accuracy_by_position WITH THE LIVE PATH -- only the fetch differs. An offline
+    reimplementation that scored or summed differently would answer a different question while
+    looking like a reproduction, which is the one thing this must not do: the first thing it was
+    used for was checking that it reproduces the live table row for row.
+    """
+    import capture_weekly_lines as cwl
+
+    projected: dict[str, float] = {}
+    actual: dict[str, float] = {}
+    proj_weeks = cwl.load_season(season, "projections", root)
+    stat_weeks = cwl.load_season(season, "stats", root)
+    for week in REGULAR_SEASON_WEEKS:
+        proj = proj_weeks.get(str(week)) or {}
+        stats = stat_weeks.get(str(week)) or {}
+        if not proj and not stats:
+            continue
+        log(f"  {season} wk{week:02d}: {len(proj):5d} projected, {len(stats):5d} actual")
+        for pid, line in proj.items():
+            projected[pid] = projected.get(pid, 0.0) + pu.score_projection(line, scoring)
+        for pid, line in stats.items():
+            actual[pid] = actual.get(pid, 0.0) + pu.score_projection(line, scoring)
+    return projected, actual
 
 
 def _season_totals(client: sc.SleeperClient, season: str, scoring: dict,
@@ -189,6 +240,9 @@ def main(argv=None) -> int:
                         help="comma-separated, e.g. 2023,2024. More seasons is a better "
                              "measurement; one season is one sample of a noisy process.")
     parser.add_argument("--out", default="PROJECTION_ACCURACY.json")
+    parser.add_argument("--from-captures", action="store_true",
+                        help="read committed captures instead of the API (capture_weekly_lines.py). "
+                             "No network. Same estimator, same scoring, same ranks.")
     args = parser.parse_args(argv)
 
     import draft_battery as dbat
@@ -200,13 +254,14 @@ def main(argv=None) -> int:
     arm = next(a for a in dbat.league_matrix(scoring) if a["label"] == "12T_ppr_K_DEF")
     starters = dr.starter_slot_counts(arm["league"]["roster_positions"], None, arm["teams"])
 
-    client = sc.SleeperClient()
+    client = None if args.from_captures else sc.SleeperClient()
     seasons = [s.strip() for s in args.seasons.split(",") if s.strip()]
     per_season = {}
     for season in seasons:
-        print(f"fetching {season} ...")
+        print(f"{'reading' if args.from_captures else 'fetching'} {season} ...")
         try:
-            projected, actual = _season_totals(client, season, scoring)
+            projected, actual = (_totals_from_captures(season, scoring) if args.from_captures
+                                 else _season_totals(client, season, scoring))
         except sc.SleeperAPIError as exc:
             print(f"  {season}: unreachable -- {exc}", file=sys.stderr)
             continue
@@ -253,6 +308,7 @@ def main(argv=None) -> int:
                      "separate decision with its own derivation (#56)."),
         "seasons": seasons,
         "scoring_source": "data/fixtures/sleeper_capture.json",
+        "read_from": "committed captures" if args.from_captures else "api.sleeper.app",
         "per_season": per_season,
         "median_realised_share": {p: (round(statistics.median(v), 3) if v else None)
                                   for p, v in shares.items()},

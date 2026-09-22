@@ -473,12 +473,33 @@ class TheTwoWeeklyEndpointsShareOneImplementationTests(unittest.TestCase):
 
     def test_the_instrument_calls_the_CLIENT_and_never_hand_rolls_the_url(self):
         """Scans the CODE, not the text (#200). The bug was a raw `_get` with a literal URL in
-        measure_projection_accuracy; this fails if one comes back."""
+        measure_projection_accuracy; this fails if one comes back.
+
+        DOCSTRINGS ARE EXCLUDED, and the exclusion is the point of "scans the CODE". A docstring
+        is not reachable as a URL -- it cannot be passed to `_get` no matter what it says -- so a
+        string constant in documentation position is prose about an endpoint, never a call to one.
+        This was found by tripping it: the module's docstring now carries a measured table naming
+        /projections/nfl, written to retract a false claim about which source the board actually
+        prices K and DST from, and the guard flagged the retraction as a hand-rolled URL. A guard
+        that forbids DESCRIBING the bug it exists to prevent is one people route around.
+
+        The teeth are unchanged. Every other string literal in the module is still scanned, which
+        is where a hand-rolled URL would have to live to be used."""
         import ast
         from pathlib import Path
         tree = ast.parse((Path(__file__).parent / "measure_projection_accuracy.py").read_text())
+        documentation = set()
+        for node in ast.walk(tree):
+            if not isinstance(node, (ast.Module, ast.ClassDef,
+                                     ast.FunctionDef, ast.AsyncFunctionDef)):
+                continue
+            first = (node.body or [None])[0]
+            if (isinstance(first, ast.Expr) and isinstance(first.value, ast.Constant)
+                    and isinstance(first.value.value, str)):
+                documentation.add(id(first.value))
         literals = [n.value for n in ast.walk(tree)
-                    if isinstance(n, ast.Constant) and isinstance(n.value, str)]
+                    if isinstance(n, ast.Constant) and isinstance(n.value, str)
+                    and id(n) not in documentation]
         offenders = [s for s in literals if "/stats/nfl" in s or "/projections/nfl" in s]
         self.assertEqual(offenders, [],
                          "the instrument is building a Sleeper URL itself again; call "
@@ -487,3 +508,47 @@ class TheTwoWeeklyEndpointsShareOneImplementationTests(unittest.TestCase):
                  if isinstance(n, ast.Call) and isinstance(n.func, ast.Attribute)}
         self.assertIn("get_weekly_stats", calls)
         self.assertIn("get_weekly_projections", calls)
+
+
+class TheUrlGuardStillHasTeethTests(unittest.TestCase):
+    """Non-vacuity for the docstring exclusion above. An exclusion that swallowed every literal
+    would make that guard pass forever while guarding nothing -- which is exactly the failure
+    mode #18 was, a check that could not see the thing it was written for."""
+
+    def _offenders(self, source: str) -> list[str]:
+        import ast
+        tree = ast.parse(source)
+        documentation = set()
+        for node in ast.walk(tree):
+            if not isinstance(node, (ast.Module, ast.ClassDef,
+                                     ast.FunctionDef, ast.AsyncFunctionDef)):
+                continue
+            first = (node.body or [None])[0]
+            if (isinstance(first, ast.Expr) and isinstance(first.value, ast.Constant)
+                    and isinstance(first.value.value, str)):
+                documentation.add(id(first.value))
+        return [n.value for n in ast.walk(tree)
+                if isinstance(n, ast.Constant) and isinstance(n.value, str)
+                and id(n) not in documentation
+                and ("/stats/nfl" in n.value or "/projections/nfl" in n.value)]
+
+    def test_a_hand_rolled_url_in_real_code_is_still_caught(self):
+        """THE BUG ITSELF, in the shape it actually shipped in."""
+        source = 'def go(client):\n    return client._get("/stats/nfl/regular/2024/5")\n'
+        self.assertEqual(len(self._offenders(source)), 1)
+
+    def test_a_hand_rolled_url_inside_a_function_that_HAS_a_docstring_is_still_caught(self):
+        """The exclusion must skip the docstring only, not everything in a documented function."""
+        source = ('def go(client):\n    """Fetch a week."""\n'
+                  '    return client._get("/projections/nfl/2024/5")\n')
+        self.assertEqual(len(self._offenders(source)), 1)
+
+    def test_a_url_in_a_module_docstring_is_not_an_offender(self):
+        source = '"""We read /projections/nfl here."""\nX = 1\n'
+        self.assertEqual(self._offenders(source), [])
+
+    def test_a_url_in_a_COMMENT_was_never_an_offender_and_still_is_not(self):
+        """Comments are not Constant nodes at all -- recorded so nobody 'fixes' this by scanning
+        text and reintroduces the thing #200 forbids."""
+        source = "# /stats/nfl/regular/2024/5 is what used to ship\nX = 1\n"
+        self.assertEqual(self._offenders(source), [])
