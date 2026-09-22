@@ -407,7 +407,7 @@ class TheScaleIsNotAPointsTotalTests(unittest.TestCase):
             position_expected_taken=None, positional_cliff=None, position_run_detected=False,
             pick_necessity=0.0, necessity_label="HOLD", near_tie_with_leader=False,
             cliff_protection=False, block_opportunity=False, pure_value=False,
-            context_elevated=False, consensus_rank=None, consensus_tier=None,
+            consensus_rank=None, consensus_tier=None,
             projected_points=None,
         )
         self.assertLess(candidate.team_acquisition_value, 0)
@@ -583,8 +583,17 @@ class TheScaleIsNotAPointsTotalTests(unittest.TestCase):
         # 53 -> 52 (#52, 6.1b): eligibility_bonus retired. A field LEAVING is as much a
         # schema change as one arriving, and this pin is the only thing that makes a reader
         # confirm the card no longer needs a slot for it.
+        #
+        # 52 -> 51 (#25, ruled 2026-09-21): context_elevated retired. THE QUESTION THIS PIN ASKS
+        # IS ANSWERED BY REMOVAL, not by a slot. The note above used to argue for putting it on
+        # the card once the UI passes decided where; there is nothing to place. Measured across
+        # all 36 battery formats it fired on ONE row -- a multi-eligible WR/DB lifted +79.44 by
+        # displacement_adj -- while the quantity it read has a MEAN of -3.46 across 10,887 priced
+        # rows, so "ranked highly because of fit" was reading what is usually a penalty. The
+        # card's other Context Gap direction, pure_value, is untouched and fires on real
+        # populations. evidence/context_elevated/THE_CEILING_IS_MAX_NOT_SUM.md.
         self.assertEqual(
-            len(dataclasses.fields(ps.CandidateSnapshot)), 52,
+            len(dataclasses.fields(ps.CandidateSnapshot)), 51,
             "CandidateSnapshot's field count changed. That is fine and often correct -- but "
             "confirm the new field does not imply a scale the card cannot support, decide "
             "whether the card should render it, then update this number.")

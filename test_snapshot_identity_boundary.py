@@ -49,7 +49,7 @@ def _candidate(player_id="p1", **overrides) -> CandidateSnapshot:
         position_expected_taken=4.4, positional_cliff={"tier": "HIGH", "gap": 12.0, "typical_gap": 2.0},
         position_run_detected=True, pick_necessity=72.0, necessity_label="STRONG ACTION",
         near_tie_with_leader=True, cliff_protection=True, block_opportunity=False,
-        pure_value=False, context_elevated=True, consensus_rank=14, consensus_tier=3,
+        pure_value=False, consensus_rank=14, consensus_tier=3,
         projected_points=210.0,
         rival_premium_take_probability=0.62, waiting_cost=18.0, horizon_floor=150.0,
         horizon_sensitivity=12.0,
@@ -366,7 +366,15 @@ class EvidenceProjectionTests(unittest.TestCase):
             "positional_forfeit", "rival_premium", "denial_team",
             "positional_cliff", "position_run_detected",
             "near_tie_with_leader", "cliff_protection", "block_opportunity", "pure_value",
-            "context_elevated", "projected_points", "waiting_cost",
+            # "context_elevated" WAS HERE and is removed at the #25 ruling (2026-09-21), in the
+            # same commit as the column -- the motion this floor exists to force, and the second
+            # time it has been used (see eligibility_bonus above). The flag is retired from
+            # CandidateSnapshot because it fired on ONE row across all 36 battery formats while
+            # the quantity it read had a mean of -3.46, so no new record can carry it.
+            # EVIDENCE_SCHEMA_VERSION goes 1 -> 2 for the shape change, and stored records
+            # written under 1 keep their number and stay readable -- draft_history is append-only
+            # and never regenerates a record because the engine later changed.
+            "projected_points", "waiting_cost",
         })
         dropped = sorted(recorded_floor - set(draft_history._CANDIDATE_EVIDENCE_FIELDS))
         self.assertEqual(

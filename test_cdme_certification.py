@@ -118,9 +118,11 @@ class InvariantTests(unittest.TestCase):
                 i != tav_leader_idx and c["universal_value"] == best_uv
                 and c["universal_value"] - leader_uv > ps.NEAR_TIE_BAND
             )
-            expected_context_elevated = (c["team_acquisition_value"] - c["universal_value"]) >= dr.NEED_BONUS_MAX
             self.assertEqual(f["pure_value"], expected_pure_value)
-            self.assertEqual(f["context_elevated"], expected_context_elevated)
+            # `context_elevated` was certified here against its own threshold and is RETIRED
+            # (#25, ruled 2026-09-21) -- the flag fired on one row across 36 formats. The key is
+            # asserted ABSENT rather than False so a re-added dead flag fails certification.
+            self.assertNotIn("context_elevated", f)
 
     def test_near_tie_flag_matches_its_own_band_definition(self):
         # near_tie_flags' own docstring: True for every member of a tie GROUP, but only when

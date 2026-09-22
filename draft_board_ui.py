@@ -16,7 +16,7 @@ This module does two things and nothing else:
   serialize_snapshot -- PickSnapshot -> a plain, JSON-able dict. Every field is read
     directly off CandidateSnapshot; nothing here computes, re-derives, or classifies a new
     value. decision_regime and the four decision-path flags (near_tie_with_leader,
-    cliff_protection, block_opportunity, pure_value, context_elevated) already exist on the
+    cliff_protection, block_opportunity, pure_value) already exist on the
     engine's own output -- this only reshapes field NAMES for the JS side, never their
     VALUES.
   render_board_html -- the payload -> a complete, self-contained HTML document (CSS + JS
@@ -86,15 +86,19 @@ def _forces(c: CandidateSnapshot) -> list[str]:
 
 
 def _context_gap(c: CandidateSnapshot) -> Optional[str]:
-    """"elevated" / "suppressed" / None -- the two directions from pick_synthesis's own
-    decision_path_flags, renamed for the UI layer only. context_elevated and pure_value are
-    NOT mutually exclusive by construction (see decision_path_flags' own docstring), but
-    context_elevated is checked first here since it's the simpler, always-computable
-    per-candidate fact; a candidate satisfying both still only shows one glyph (this is a
-    presentation choice -- the pure-value force tick is a separate, additional signal that
-    still renders regardless of which direction wins here)."""
-    if c.context_elevated:
-        return "elevated"
+    """"suppressed" / None -- ONE direction now, renamed for the UI layer only.
+
+    THE "elevated" DIRECTION IS GONE WITH `context_elevated` (#25, ruled 2026-09-21). This read
+    that flag first and returned "elevated", on the reasoning that it was "the simpler,
+    always-computable per-candidate fact". It was computable; it was not a fact about fit. The
+    quantity it read has a MEAN of -3.46 across 10,887 priced rows, and across all 36 battery
+    formats the flag fired on exactly ONE row -- a multi-eligible WR/DB. A glyph that lights for
+    one player in one league was taking presentation PRECEDENCE over `pure_value`, which fires
+    on real populations.
+
+    So the Context Gap is one-directional until something can express the other direction
+    honestly. `pure_value` is unchanged and no longer has to win a coin toss against a dead flag.
+    evidence/context_elevated/THE_CEILING_IS_MAX_NOT_SUM.md."""
     if c.pure_value:
         return "suppressed"
     return None

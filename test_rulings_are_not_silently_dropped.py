@@ -1,9 +1,10 @@
 """Every owner ruling is either IMPLEMENTED or STAGED WITH ITS REASON. Nothing is just forgotten.
 
 `#52` produced seven engine-design decisions that `#56` and `#184` put with the owner. They were
-ruled, recorded in `CDME_CONTRACTS.md`, and are being implemented one at a time -- and two of
-them stopped partway, each because implementing the ruling faithfully turned out to force a
-SECOND derivation the ruling did not cover:
+ruled, recorded in `CDME_CONTRACTS.md`, and are being implemented one at a time. Several stopped
+partway, each because implementing the ruling faithfully turned out to force a SECOND derivation
+the ruling did not cover -- and as of 2026-09-21 the owner has ruled on every one of those second
+questions, so the tables below are the live census rather than a backlog:
 
   * `6.1b` unify -- NOW IMPLEMENTED (see IMPLEMENTED below). It was its own pass, as staged:
     the retirement moved NECESSITY_DENIAL_SATURATION 36.0 -> 24.0, which is the second
@@ -87,10 +88,27 @@ IMPLEMENTED = {
                 "row's denial component scales by exactly 1.5x, worst case +2.87 of 100.",
         "evidence": "evidence/blind_pass/KDST_VALUATION.md",
     },
-    # THESE TWO WERE IMPLEMENTED AND NEVER RECORDED HERE, which is the gap this file exists to
-    # close in the other direction. Both landed with their ruling tag in the source and their
-    # own guard test, and both were still listed as pending work in CDME_CONTRACTS' ruling
-    # table -- so a reader going to the authority saw seven open rulings when two were done.
+    "6.1d.1": {
+        "witness": ("pick_synthesis.py", "is RETIRED (#25, ruled 2026-09-21)"),
+        "landed": "TWO halves, ruled separately. The DERIVATION: CONTEXT_ELEVATED_THRESHOLD "
+                  "became max(TEAM_SPECIFIC_CAPS) rather than their mean, because the two capped "
+                  "terms are MUTUALLY EXCLUSIVE -- 0 co-occurrences in 10,887 priced rows, "
+                  "need_bonus wants an EMPTY slot and depth_exposure wants SURPLUS. Behaviour-free "
+                  "at the time, both being 12.0. The PRODUCT half, ruled 2026-09-21: RETIRE the "
+                  "badge. context_elevated is gone from the flags, CandidateSnapshot, the payload, "
+                  "the UI's Context Gap, the stored evidence projection and the label registries "
+                  "-- and the threshold with it.",
+        "cost": "CandidateSnapshot 52 -> 51 fields, so snapshot_identity hashes change by design. "
+                "draft_history.EVIDENCE_SCHEMA_VERSION 1 -> 2; records written under 1 keep their "
+                "number and stay readable. NECESSITY_DENIAL_SATURATION is now the ONLY shipped "
+                "constant deriving from TEAM_SPECIFIC_CAPS, which makes that tuple easier to "
+                "misread as decorative -- test_probability_bounds asserts it is not.",
+        "evidence": "evidence/context_elevated/THE_CEILING_IS_MAX_NOT_SUM.md",
+    },
+    # J-12 AND J-13 WERE IMPLEMENTED AND NEVER RECORDED HERE, which is the gap this file exists
+    # to close in the other direction. Both landed with their ruling tag in the source and their
+    # own guard test, and both were still listed as pending work in CDME_CONTRACTS' ruling table
+    # -- so a reader going to the authority saw seven open rulings when two were done.
     "J-12": {
         "witness": ("app.py", "draft_history.record_snapshot("),
         "landed": "wired NARROWLY, as ruled: a snapshot is recorded only when a debate actually "
@@ -121,16 +139,15 @@ IMPLEMENTED = {
 #: the census below passed: the census only asked whether a ruling was NAMED in the contracts
 #: file, which every ruling is by construction. `witness` follows STAGED's sense -- true while
 #: the decision is open, false once it lands.
+#:
+#: A WITNESS MUST BE SPECIFIC TO ITS RULING, and `6.1d.1`'s first one was not. It used the bare
+#: string "@unittest.expectedFailure" in test_threshold_reachability.py, on the reasoning that the
+#: badge's deadness was pinned by two expectedFailures there. When the ruling landed and that
+#: class was retired, a THIRD expectedFailure in the same file -- an unrelated rival_premium test
+#: -- kept the witness satisfied, so this table went on claiming the decision was open after it
+#: had been executed. Caught by reading, not by the guard. A witness a NEIGHBOURING test can
+#: satisfy is not a witness: prefer a string only the ruling's own landing can produce.
 AWAITING_RULING = {
-    "6.1d.1": {
-        "witness": ("test_threshold_reachability.py", "@unittest.expectedFailure"),
-        "why": "the DERIVATION half shipped (CONTEXT_ELEVATED_THRESHOLD = max(TEAM_SPECIFIC_CAPS), "
-               "behaviour-free, because the two capped terms are mutually exclusive -- 0 "
-               "co-occurrences in 10,887 priced rows). The PRODUCT half is open: the badge fires "
-               "on ONE row across all 36 battery formats, so it needs a different quantity or "
-               "retirement, and picking a threshold that makes the current one fire is #56.",
-        "evidence": "evidence/context_elevated/THE_CEILING_IS_MAX_NOT_SUM.md",
-    },
     "I-06/J-06": {
         "witness": ("lineup_optimizer.py", "else EXPOSURE_NO_SURPLUS)"),
         "why": "step 1 as written -- add a token for the measured-uncovered case -- takes "

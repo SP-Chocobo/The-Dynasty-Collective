@@ -54,7 +54,7 @@ HISTORY_DIR = Path("data/draft_history")
 # readable and keeps its own number -- a reader can then tell "this field was never captured"
 # from "this field was captured as absent", which §18/#112 named as the distinction the board
 # currently cannot make. Never renumber an existing record.
-EVIDENCE_SCHEMA_VERSION = 1
+EVIDENCE_SCHEMA_VERSION = 2
 
 # The candidate fields retained per row. Chosen to answer "why is this one above that one" --
 # the value layer, the two bonuses that separate universal from team-acquisition value, the
@@ -79,7 +79,11 @@ _CANDIDATE_EVIDENCE_FIELDS = (
     "positional_forfeit", "rival_premium", "denial_team",
     "positional_cliff", "position_run_detected",
     "near_tie_with_leader", "cliff_protection", "block_opportunity", "pure_value",
-    "context_elevated", "projected_points", "waiting_cost",
+    #: `context_elevated` was retired from CandidateSnapshot at #25 (ruled 2026-09-21) -- it
+    #: fired on one row across 36 formats. Dropping it from this projection is a SHAPE change,
+    #: so EVIDENCE_SCHEMA_VERSION goes to 2 and every record written under 1 stays readable and
+    #: keeps its own number, exactly as that constant's contract says.
+    "projected_points", "waiting_cost",
 )
 
 _SAFE_SCOPE = re.compile(r"[^A-Za-z0-9_.-]")

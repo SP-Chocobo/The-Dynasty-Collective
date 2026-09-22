@@ -6,7 +6,7 @@ real-points unit:
     quantity                        p50      max    rule fires
     leader-second TAV margin        0.35    12.69      0.0%   <- "decisive"
     positional_forfeit             54.81   154.94     73.6%   <- cliff_protection
-    TAV - UV (context)              6.12    13.21      7.8%   <- context_elevated
+    TAV - UV (context)              6.12    13.21      7.8%   <- context_elevated (RETIRED #25)
     TAV adjacent gap                0.54    56.85     15.7%   <- near_tie
     bpa gap within a position       2.00    71.00     58.5%   <- CLIFF_MIN_MATERIAL_GAP
 
@@ -47,9 +47,10 @@ moving the divisor alone would have been a 3x DE-WEIGHTING of denial wearing a s
 repair's clothes (478/7046 pairs reorder, 259 of them at a round where nothing clips). The
 ceiling had to move with it. See TheDenialNormalizerSaturatesAtItsOwnBoundTests.
 
-The OTHER reuse -- context_elevated's threshold at NEED_BONUS_MAX -- is untouched and still an
-open product decision; see ContextElevatedBecameReachableTests for why its reachability is an
-accident of the quantity growing rather than a number anyone chose.
+The OTHER reuse -- context_elevated's threshold -- is GONE. That flag was RETIRED at the #25
+ruling (2026-09-21): it fired on ONE row across all 36 battery formats while the quantity it read
+has a mean of -3.46, so the open product decision this file used to record was answered by
+removal rather than by a better number.
 """
 import unittest
 
@@ -327,7 +328,7 @@ class KnownUnreachableThresholdsTests(_RealBoards):
 
 
 class TheTwoCappedTermsAreMutuallyExclusiveTests(_RealBoards):
-    """6.1d.1. The structural fact CONTEXT_ELEVATED_THRESHOLD's derivation rests on.
+    """6.1d.1. The structural fact that OUTLIVED the constant it was derived for.
 
     The threshold was `sum(TEAM_SPECIFIC_CAPS) / len(...)`, described in its own comment as
     "one term's worth of lift on a quantity that can hold three" -- and the comment claimed
@@ -358,153 +359,41 @@ class TheTwoCappedTermsAreMutuallyExclusiveTests(_RealBoards):
         self.assertGreater(either, 0, "no row carries either term; this test observed nothing")
         self.assertEqual(both[:5], [], (
             "need_bonus and depth_exposure now co-occur, so the gap's ceiling is no longer "
-            "max(TEAM_SPECIFIC_CAPS) and CONTEXT_ELEVATED_THRESHOLD's derivation is stale"))
+            "max(TEAM_SPECIFIC_CAPS), which NECESSITY_DENIAL_SATURATION's sibling "
+            "derivation and any future reader of this tuple depend on"))
 
-    def test_the_threshold_is_the_max_cap_not_their_mean(self):
-        # The two agree at today's values, so this asserts the FORM rather than the number --
-        # otherwise the regression it guards against is invisible until a cap moves.
-        self.assertEqual(ps.CONTEXT_ELEVATED_THRESHOLD, max(ps.TEAM_SPECIFIC_CAPS))
-
-    def test_that_distinction_is_not_vacuous_today_only_by_coincidence(self):
-        # NON-VACUITY, and the whole reason the form matters: with equal caps, mean == max, so
-        # the test above passes under the OLD formula too. Pin that they are equal -- if they
-        # ever stop being, the assertion above starts doing real work and this one fails
-        # loudly to say the coincidence has ended rather than letting it pass unnoticed.
-        caps = ps.TEAM_SPECIFIC_CAPS
-        mean = sum(caps) / len(caps)
-        self.assertEqual(mean, max(caps), (
-            "the caps are no longer equal, so mean and max have diverged. "
-            "CONTEXT_ELEVATED_THRESHOLD must follow max(); confirm it did and update this "
-            "test, which existed to catch exactly this moment"))
+    #: Two tests lived here and went with the constant at #25: one asserting the threshold took
+    #: the FORM max(TEAM_SPECIFIC_CAPS) rather than their mean, and its companion pinning that
+    #: the two caps were still EQUAL -- so the day they diverged, the first assertion would start
+    #: doing real work and the second would say so out loud. Both described a constant that no
+    #: longer exists. Their names are not backticked here for the reason test_prose_names gives:
+    #: backticks assert a live identifier, and this line failed that guard when it had them.
+    #:
+    #: The mutual-exclusion measurement they rested on is above and is UNAFFECTED -- it is about
+    #: need_bonus and depth_exposure, not about anything that reads them, and
+    #: NECESSITY_DENIAL_SATURATION still derives from the same tuple.
 
 
-class ContextElevatedBecameReachableTests(_RealBoards):
-    """The one rule that escaped the class above, and NOT because anyone chose a better number.
-
-    NEED_BONUS_MAX was always a cap on ONE term. When context_elevated was written, that term
-    plus eligibility_bonus were the whole of `team_acquisition_value - universal_value`, so a
-    threshold set at the cap of one of them was a threshold at roughly the ceiling of the
-    quantity: measured at 0.0% firing, max gap 8.67, and recorded in CDME_CONTRACTS.md as dead.
-
-    #139 added depth_exposure as a THIRD team-specific term. The gap's ceiling tripled, the
-    constant did not move, and the same literal that was sitting at the top of the old
-    distribution now sits inside the new one. That is the whole of what changed.
-
-    So this is deliberately not filed as "the threshold is now correct". A number that became
-    a discriminator because the quantity underneath it grew is still a bound being read as a
-    threshold (#56), and the open product decision on what SHOULD light this badge is
-    untouched. What HAS changed, and what is worth pinning, is that the two failure modes the
-    module docstring names -- a threshold above its distribution (dead) and a threshold far
-    below it (always on, no information) -- are both currently absent. Both directions are
-    asserted, so drifting into either one fails here."""
-
-    def _gaps(self):
-        gaps = []
-        for _, _, board in self._boards():
-            gaps += [row["final_score"] - row["universal_value"] for row in board
-                     if row.get("final_score") is not None
-                     and row.get("universal_value") is not None]
-        return gaps
-
-    # WITHDRAWN (#52 phase 6). This carried an expectedFailure and a confident account of why,
-    # and the account was WRONG. Both are removed rather than amended, because the mistake is
-    # instructive and the assertions were right the whole time.
-    #
-    # What it said: repairing player identity recovered ten real players, and on that corrected
-    # pool the gap stopped reaching the threshold -- so the reachability had been "a property of
-    # which players happened to be in the pool, not of the design". The decomposition offered in
-    # support was real (no term shrank; what vanished was the CO-OCCURRENCE of need_bonus and
-    # depth_exposure without a negative displacement_adj), and it was a decomposition of the
-    # WRONG CAUSE. I bisected the change to the phase 1 commit and stopped there, which found
-    # the commit and not the defect inside it.
-    #
-    # The actual cause: merge_player's canonical key was (norm_name, position GROUP), and the
-    # group is coarse enough that a QB and an RB of the same name shared one key. The contested-
-    # identity guard reads that key as "these two were priced off ONE vendor record" and
-    # withholds the price from both -- so the eight pool rows behind J Love, J Williams,
-    # K Williams and M Washington went unpriced, and it was their absence that flattened the gap
-    # distribution. Phase 1 recovered those players from the loader and the key then threw four
-    # of them away again, which is why the damage looked like a consequence of the recovery.
-    # Keying on the raw position fixed it and these assertions passed again untouched.
-    #
-    # The lesson worth keeping: "a repair changed the population, so the invariant legitimately
-    # stopped holding" is the same shape as "a repair broke something", and this audit exists
-    # because the two are hard to tell apart. Marking a test expectedFailure resolves that
-    # ambiguity by assertion. It should not have been done on a bisect alone -- what was missing
-    # was a check that the players the repair recovered were still priced afterwards.
-    # EXPECTED FAILURE AGAIN (#52 phase 6, depth_exposure repair) -- and this time with the
-    # measurement that was missing the last time these were marked.
-    #
-    # THE LAST MARK WAS WRONG and is worth keeping in view: it blamed a population change that
-    # had not happened. The tell, visible only in hindsight, was that NO TERM SHRANK -- the
-    # co-occurrence vanished because four players had been withheld from the pool by a defect,
-    # not because any quantity moved. So a bare "the population changed" is not evidence, and
-    # marking a test on it resolves the ambiguity by assertion.
-    #
-    # The discriminating A/B, run in ONE process against these same eight board states with the
-    # single basis rule toggled (lineup_optimizer.depth_exposure is module-level and patchable
-    # for exactly this):
-    #
-    #                              per-position surplus   roster-wide surplus
-    #     rows                            2008                   2008
-    #     depth_exposure max              9.24                   9.24     <- IDENTICAL
-    #     depth_exposure nonzero           588                    898     <- the whole change
-    #     need_bonus max                  8.33                   8.33
-    #     displacement_adj min          -90.00                 -90.00
-    #     gap max                         8.33                  13.21
-    #     share >= 12                    0.00%                  7.72%
-    #
-    # Every number is unchanged. What changed is WHICH ROWS CARRY depth_exposure AS A PRICE:
-    # 310 rows stop, and they are precisely the rows whose position has no backup that could
-    # cover a hole there. EXPOSURE_NO_SURPLUS's own docstring has always said that number "is
-    # NOT depth information"; draft_room has always priced worst_loss only under
-    # EXPOSURE_MEASURED. Neither rule changed. What changed is that the basis stopped being one
-    # roster-wide boolean stamped onto every position alike, so it now says what it claims.
-    #
-    # And that lands exactly where this class's own docstring predicted it would. The badge
-    # became reachable when #139 added depth_exposure as a third term and "the gap's ceiling
-    # tripled, the constant did not move". Pricing that term only where it is evidence puts the
-    # ceiling back, and the badge is dead again at max gap 8.33 -- against the 8.67 the class
-    # records for the pre-#139 state. The warning this class filed against itself, that "a
-    # number that became a discriminator because the quantity underneath it grew is still a
-    # bound being read as a threshold (#56)", is now demonstrated rather than argued.
-    #
-    # NOT repaired here, and the reason is #184: what should light this badge -- and whether a
-    # no-surplus position, which is the MOST exposed a roster can be, ought to be priced for
-    # depth at all -- are valuation decisions for the owner. Both are raised. The assertions
-    # stay as the executable statement of what must become true again once one is made.
-    @unittest.expectedFailure
-    def test_it_fires_and_fires_selectively(self):
-        gaps = self._gaps()
-        self.assertTrue(gaps, "no priced rows measured; this test observed nothing")
-        share = sum(1 for g in gaps if g >= dr.NEED_BONUS_MAX) / len(gaps)
-        # Measured 2026-09-03: 7.8% of 1992 priced rows across the eight sampled board states,
-        # concentrated entirely in rounds 6-8 -- the window where a bench exists for depth to
-        # be a real question about and positional holes are still open. Both bounds below are
-        # wide on purpose: they are there to catch a rule going dead or going always-on, not
-        # to pin a rate nobody has argued for.
-        self.assertGreater(share, 0.0,
-                           "context_elevated is dead again -- the gap no longer reaches "
-                           "NEED_BONUS_MAX on any real board, so the badge can never light")
-        self.assertLess(share, 0.5,
-                        "context_elevated now fires for most candidates -- the same failure "
-                        "cliff_protection has, in the other direction: a flag that is almost "
-                        "always on carries almost no information")
-
-    @unittest.expectedFailure  # same cause: see the A/B above. max gap 13.21 -> 8.33
-    def test_the_cap_no_longer_caps_the_quantity_it_is_compared_against(self):
-        """The structural fact underneath the change, asserted rather than narrated: three
-        additive team-specific terms now feed the gap, so a cap on one of them is no longer an
-        upper bound on their sum. This is what makes the reachability real rather than a data
-        wobble, and it fails if a term is ever removed without revisiting the threshold."""
-        self.assertAlmostEqual(dr.NEED_BONUS_MAX, 3 * dr.NEED_BONUS_PER_DEDICATED_SLOT)
-        self.assertGreater(max(self._gaps()), dr.NEED_BONUS_MAX)
-        # Each capped term is capped at NEED_BONUS_MAX. eligibility_bonus was the third and
-        # is retired (6.1b); its cap went with it.
-        self.assertAlmostEqual(dr.DEPTH_EXPOSURE_MAX, dr.NEED_BONUS_MAX)
-
-
-
+#: A ContextElevatedBecameReachableTests CLASS LIVED HERE AND IS RETIRED (#25, ruled
+#: 2026-09-21). Deliberately NOT backticked: backticks in this repo assert a live
+#: identifier, and test_prose_names failed on this line when it was written with them --
+#: correctly, because the class is gone. A retired name is prose, not a reference.
+#:
+#: It carried the two expectedFailures that recorded the badge's deadness, and its own docstring
+#: had already filed the warning that settled the ruling: "a number that became a discriminator
+#: because the quantity underneath it grew is still a bound being read as a threshold (#56), and
+#: the open product decision on what SHOULD light this badge is untouched."
+#:
+#: The decision came: RETIRE. `context_elevated` fired on ONE row across all 36 battery formats
+#: -- a multi-eligible WR/DB lifted +79.44 by displacement_adj -- while the quantity it read has
+#: a MEAN of -3.46 across 10,887 priced rows. The class is removed rather than left failing,
+#: because an expectedFailure is a statement that something SHOULD become true again, and
+#: nothing here should. The measurement is kept at
+#: evidence/context_elevated/THE_CEILING_IS_MAX_NOT_SUM.md.
+#:
+#: What survives in this file is the fact underneath, one class up: the two capped terms are
+#: mutually exclusive. That is a property of `need_bonus` and `depth_exposure` and outlives the
+#: flag that happened to read them.
 class TheDenialNormalizerSaturatesAtItsOwnBoundTests(_RealBoards):
     """#144, CLOSED -- and the close is the opposite of what the item proposed.
 

@@ -18,7 +18,8 @@ It happened six times in one audit, and not once did anything announce it:
     in which a roster-wide boolean and a per-position one agree.
   * The Python/JS rounding agreement held over every value that never landed on .5.
   * `context_elevated`'s reachability was a property of which rows carried a priced third term,
-    and moved twice while the constant stayed put.
+    and moved twice while the constant stayed put. It moved a third time, to ONE row across 36
+    formats, and the flag was retired at #25 rather than re-thresholded.
   * `TEAM_SPECIFIC_CAPS` bounded three terms; a fourth was added and hand-exempted on a premise
     that was false, and two shipped constants derive from the tuple.
 
@@ -260,7 +261,10 @@ REGISTRY: tuple[Invariant, ...] = (
         population="One entry per team-specific term. A FIFTH term arriving is the event that "
                    "broke this last time: #216 added a fourth, hand-exempted it on a premise "
                    "measured false, and NECESSITY_DENIAL_SATURATION and "
-                   "CONTEXT_ELEVATED_THRESHOLD still derive from the tuple. "
+                   "CONTEXT_ELEVATED_THRESHOLD derived from the tuple -- the latter is GONE "
+                   "at #25 (2026-09-21), retired with its flag, so NECESSITY_DENIAL_SATURATION "
+                   "is now the ONLY shipped constant reading this tuple. That makes a fifth term "
+                   "cheaper to absorb and the tuple easier to misread as decorative; it is not. "
                    "4 -> 3 at the 6.1b ruling (#52), which retired eligibility_bonus. Both "
                    "constants KEPT THEIR VALUES through that removal, and the reason is worth "
                    "recording here rather than rediscovering: TEAM_SPECIFIC_CAPS never held "

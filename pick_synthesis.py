@@ -402,52 +402,18 @@ TEAM_SPECIFIC_CAPS = (dr.NEED_BONUS_MAX, dr.DEPTH_EXPOSURE_MAX)
 
 NECESSITY_DENIAL_SATURATION = sum(TEAM_SPECIFIC_CAPS)
 
-# #160 (A3), ruled by the owner: anchor context_elevated to the SUM's own bound, exactly as
-# #144 did for the denial ramp -- the same defect, in the one place #144 did not reach.
+# `CONTEXT_ELEVATED_THRESHOLD` WAS DERIVED HERE AND IS GONE WITH ITS FLAG (#25, ruled
+# 2026-09-21). Its last form was `max(TEAM_SPECIFIC_CAPS)`, corrected at 6.1d.1 from the mean
+# because the two capped terms are MUTUALLY EXCLUSIVE -- need_bonus wants an EMPTY slot,
+# depth_exposure wants SURPLUS, and 0 of 10,887 priced rows carried both. That derivation was
+# right and it is what made the badge's deadness undeniable: the threshold sat AT the real
+# ceiling while the observed gap topped out at 8.72, so it fired on ONE row across 36 formats.
 #
-# The flag reads `team_acquisition_value - universal_value`, which is the SUM of the three
-# team-specific terms, so its ceiling is their sum (36.0 today). The threshold was
-# NEED_BONUS_MAX -- the cap on ONE of them -- picked back when it was the cap on nearly all of
-# it. #139 added a third term, the quantity's ceiling grew, the constant did not.
-#
-# CORRECTED AT 6.1d.1: THE CEILING IS max(), NOT sum() AND NOT THE MEAN, BECAUSE THE TWO CAPPED
-# TERMS ARE MUTUALLY EXCLUSIVE.
-#
-# This read `sum(...) / len(...)` -- "one term's worth of lift on a quantity that can hold
-# three" -- and claimed that expressing it that way made the relationship "stop being a
-# coincidence and start being maintained". It did not. `sum/len` equals `max` here ONLY because
-# the two surviving caps happen to be equal (12.0, 12.0). Let one of them move and the mean
-# lands somewhere the quantity cannot reach, silently, with nothing to catch it. That is the
-# coincidence the old comment believed it had removed.
-#
-# WHAT IS ACTUALLY TRUE, measured. `need_bonus` is large when a slot at the position is EMPTY;
-# `depth_exposure` requires SURPLUS at that position. Those are opposite roster states, so the
-# two terms never carry value at the same time. Measured across 4 formats x 8 in-draft board
-# states, 10,887 priced rows, of which 9,793 carry a nonzero value on at least one term:
-#
-#     rows where need_bonus AND depth_exposure are both nonzero:   0 of 10,887
-#
-# So the two capped terms contribute at most ONE cap between them, not their sum.
-#
-# AND THE THIRD TERM ONLY SUBTRACTS, over the population that matters. `displacement_adj <= 0`
-# for a SINGLE-POSITION probe -- lineup_optimizer.displacement_level, THE SIGN, proven there
-# over 960 probes with 0 of 120 single-position ones going positive. So for every row of a
-# rulebook whose players are single-position, the gap's ceiling is exactly max(TEAM_SPECIFIC_CAPS).
-#
-# THE POPULATION IS NAMED BECAUSE IT HAS AN EXCEPTION. A MULTI-eligible probe can be LIFTED,
-# and there the caps bound nothing: measured across all 36 battery formats, the gap exceeds this
-# threshold on exactly ONE row in the entire corpus -- a WR/DB carrying displacement_adj +79.44
-# for a gap of 87.82 on the owner's own capture league. See evidence/context_elevated/.
-#
-# STILL BEHAVIOUR-FREE TODAY: max(12.0, 12.0) == 12.0 == the mean it replaces. What changes is
-# that the number now tracks a ceiling that is real instead of one that is arithmetic.
-#
-# IT DOES NOT MAKE THE BADGE LIVE, and 6.1d.1 is NOT closed by this. The threshold sits AT the
-# derived ceiling and ABOVE the observed distribution (max gap 8.72 across those 10,887 rows),
-# so the flag fires 0.00% everywhere except that one multi-eligible row. Deriving the threshold
-# more correctly makes that deadness clearer, not smaller -- which is itself the finding, and
-# the product question it raises is the owner's (#184).
-CONTEXT_ELEVATED_THRESHOLD = max(TEAM_SPECIFIC_CAPS)
+# The constant is removed rather than left unused: `#56`'s companion problem is a bound sitting
+# around with nothing reading it, which the next reader mistakes for a live threshold. The
+# MEASUREMENT survives in evidence/context_elevated/, and the mutual-exclusion fact it rests on
+# is still pinned by test_threshold_reachability, because that fact is about the two terms and
+# outlives the flag that happened to read them.
 
 # THE DIVISOR AND THE WEIGHT ARE ONE SLOPE, NOT TWO KNOBS, and that is the whole of what the
 # measurement found. Below saturation the term is `premium x (WEIGHT / DIVISOR)`, so raising
@@ -1040,29 +1006,25 @@ def decision_path_flags(candidates: list[dict]) -> list[dict]:
         exceeding NEAR_TIE_BAND (beyond measured ordering noise, same band, same scale):
         the board's best raw asset is being outranked by contextual terms -- real, worth
         surfacing explicitly so context never silently buries a materially better player.
-      context_elevated -- this candidate's own (team_acquisition_value - universal_value)
-        meets or exceeds NEED_BONUS_MAX. Unlike pure_value (a cross-candidate comparison -- TAV
-        can never fall below UV for any one candidate, since all three team-specific terms are
-        non-negative by construction, so "his own TAV dipping under his own UV" is structurally
-        impossible), this is a real per-candidate quantity: a large, meaningful share of his
-        rank here is roster fit, not raw talent. The two are the Context Gap signal's two
-        directions -- pure_value is "buried despite excellent talent," context_elevated is
-        "ranked highly substantially because of fit" -- and a UI is expected to surface them as
-        one indicator with two readings, never as competing scores.
+      `context_elevated` WAS THE SECOND HALF OF THE CONTEXT GAP SIGNAL, AND IS RETIRED
+        (#25, ruled 2026-09-21). It read "this candidate's own tav - uv meets or exceeds a cap",
+        and was documented as pure_value's opposite direction -- "ranked highly substantially
+        because of fit". It never measured that:
 
-        THE THRESHOLD IS DERIVED, AND THE PRODUCT DECISION IS NOT CLOSED (6.1d.1). It reads
-        CONTEXT_ELEVATED_THRESHOLD -- max() of the TWO surviving team-specific caps, because the
-        two are MUTUALLY EXCLUSIVE and so contribute at most one cap between them (0 of 10,887
-        priced rows carry both; see the constant's own comment). It used to read NEED_BONUS_MAX,
-        then the MEAN of three caps; #139 added a term, 6.1b retired one, and the arithmetic
-        kept landing on 12.0 by coincidence rather than by derivation.
+          * the gap's MEAN across 10,887 priced rows is **-3.46**, because displacement_adj only
+            subtracts over that population, so the flag read a quantity that is usually a
+            PENALTY;
+          * the two capped terms feeding it are MUTUALLY EXCLUSIVE (0 of 10,887 rows carry
+            both -- need_bonus wants an EMPTY slot, depth_exposure wants SURPLUS), so the gap can
+            only ever hold ONE cap's worth;
+          * across all 36 battery formats it fired on exactly ONE row in the corpus -- a
+            multi-eligible WR/DB lifted +79.44 by displacement_adj. Everywhere else the gap tops
+            out at 8.72.
 
-        THE BADGE IS DEAD, AND SAYING SO IS THE POINT. Across all 36 battery formats it fires on
-        exactly ONE row in the whole corpus -- a WR/DB lifted +79.44 by displacement_adj on the
-        owner's own capture league. Everywhere else the gap tops out at 8.72 against a threshold
-        of 12.0. So in practice this flag does not mean "ranked highly because of fit"; it means
-        "multi-eligible with a cheap second slot". test_threshold_reachability.py carries that
-        as two expected failures, and evidence/context_elevated/ has the measurement.
+        So in practice it meant "multi-eligible with a cheap second slot", not "fit". Retired
+        rather than repointed, the way 6.1b retired eligibility_bonus -- the population was not
+        there. `pure_value` is unaffected and stays: it is a cross-candidate comparison and a
+        different question. evidence/context_elevated/THE_CEILING_IS_MAX_NOT_SUM.md.
 
     Classification over existing numbers, never new scoring: nothing here feeds necessity,
     ranking, or any value -- same rule as near_tie_flags below. Expects each candidate dict
@@ -1105,10 +1067,6 @@ def decision_path_flags(candidates: list[dict]) -> list[dict]:
                 and i != tav_leader_idx
                 and c["universal_value"] == best_uv
                 and c["universal_value"] - leader_uv > NEAR_TIE_BAND
-            ),
-            "context_elevated": (
-                measurable
-                and (c["team_acquisition_value"] - c["universal_value"]) >= CONTEXT_ELEVATED_THRESHOLD
             ),
         })
     return flags
@@ -1524,7 +1482,11 @@ class CandidateSnapshot:
     cliff_protection: bool
     block_opportunity: bool
     pure_value: bool
-    context_elevated: bool
+    #: `context_elevated` WAS HERE and is RETIRED (#25, ruled 2026-09-21). It fired on exactly
+    #: ONE row across all 36 battery formats -- a multi-eligible WR/DB -- while the quantity it
+    #: read had a MEAN of -3.46, so "ranked highly because of fit" was reading what is usually a
+    #: penalty. Retired rather than repointed, the way 6.1b retired eligibility_bonus: the
+    #: population was not there. evidence/context_elevated/THE_CEILING_IS_MAX_NOT_SUM.md.
     consensus_rank: Optional[int]
     consensus_tier: Optional[int]
     projected_points: Optional[float]

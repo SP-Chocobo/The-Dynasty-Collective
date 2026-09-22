@@ -582,26 +582,20 @@ class DecisionPathFlagsTests(unittest.TestCase):
     def test_empty_input(self):
         self.assertEqual(ps.decision_path_flags([]), [])
 
-    def test_context_elevated_at_the_need_bonus_max_boundary(self):
-        import draft_room as dr
-        below = self._cand(70.0, 70.0 + dr.NEED_BONUS_MAX - 0.1)
-        at = self._cand(70.0, 70.0 + dr.NEED_BONUS_MAX)
-        flags = ps.decision_path_flags([below, at])
-        self.assertFalse(flags[0]["context_elevated"])
-        self.assertTrue(flags[1]["context_elevated"])
+    def test_context_elevated_is_retired_and_not_merely_always_false(self):
+        """#25, ruled: RETIRED, not re-thresholded. Two tests lived here -- a boundary test at
+        NEED_BONUS_MAX and one pinning that the two Context Gap directions were independent --
+        and both are gone with the flag.
 
-    def test_context_elevated_and_pure_value_are_independent_directions(self):
-        # The two Context Gap directions are not mutually exclusive by construction (a
-        # contrived case could technically satisfy both), but they answer different
-        # questions and should each be computed on their own terms -- a candidate who is
-        # both the field's best raw talent AND carries a huge roster-fit bonus gets both
-        # flags rather than one silently overriding the other.
-        import draft_room as dr
-        leader = self._cand(80.0, 300.0)  # tav kept comfortably above "both"'s own
-        both = self._cand(200.0, 200.0 + dr.NEED_BONUS_MAX)  # best uv AND huge fit bonus, still not the leader
-        flags = ps.decision_path_flags([leader, both])
-        self.assertTrue(flags[1]["pure_value"])
-        self.assertTrue(flags[1]["context_elevated"])
+        Asserting the KEY IS ABSENT rather than False on purpose: a flag left in the dict
+        reading False forever is the dead-signal shape this programme keeps finding, and it
+        would let a consumer keep a branch for a direction that no longer exists.
+        """
+        cands = [self._cand(70.0, 70.0 + 50.0), self._cand(70.0, 70.0)]
+        for f in ps.decision_path_flags(cands):
+            self.assertNotIn("context_elevated", f)
+        # pure_value -- the direction that DID have a population -- is untouched.
+        self.assertIn("pure_value", ps.decision_path_flags(cands)[0])
 
 
 class DecisionRegimeTests(unittest.TestCase):
@@ -1388,7 +1382,7 @@ class ContextualSignalsCannotReachTheRankingTests(unittest.TestCase):
         "positional_cliff": {"tier": "SEVERE", "gap": 99.0, "typical_gap": 1.0},
         "position_run_detected": True, "pick_necessity": 100.0, "necessity_label": "CRITICAL",
         "near_tie_with_leader": True, "cliff_protection": True, "block_opportunity": True,
-        "pure_value": True, "context_elevated": True, "waiting_cost": 99.0,
+        "pure_value": True, "waiting_cost": 99.0,
         "horizon_floor": 99.0, "horizon_sensitivity": 99.0, "consensus_rank": 1,
         "consensus_tier": 1, "projected_points": 999.0,
     }
@@ -1535,7 +1529,7 @@ class DepthExposureStopsAtTheValueLayerTests(unittest.TestCase):
             position_expected_taken=None, positional_cliff=None, position_run_detected=False,
             pick_necessity=50.0, necessity_label="CLOSE CALL", near_tie_with_leader=None,
             cliff_protection=False, block_opportunity=False, pure_value=False,
-            context_elevated=False, consensus_rank=None, consensus_tier=None,
+            consensus_rank=None, consensus_tier=None,
             projected_points=None, depth_exposure=7.5)
         self.assertEqual(snapshot.depth_exposure, 7.5)
 

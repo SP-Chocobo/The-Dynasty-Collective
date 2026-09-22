@@ -2221,11 +2221,12 @@
     "test_cdme_certification.py": {
       "test_methods": 14,
       "asserts": {
-        "assertEqual": 19,
+        "assertEqual": 18,
         "assertFalse": 1,
         "assertGreater": 2,
         "assertGreaterEqual": 1,
         "assertLess": 1,
+        "assertNotIn": 1,
         "assertRaises": 2,
         "assertTrue": 2
       },
@@ -2255,7 +2256,8 @@
           "assertTrue": 1
         },
         "test_decision_path_flags_match_their_own_documented_formulas": {
-          "assertEqual": 2
+          "assertEqual": 1,
+          "assertNotIn": 1
         },
         "test_drafting_away_an_unrelated_position_only_ripples_other_positions_boundedly": {
           "assertGreater": 1,
@@ -4514,15 +4516,15 @@
       }
     },
     "test_draft_board_ui.py": {
-      "test_methods": 50,
+      "test_methods": 49,
       "asserts": {
-        "assertEqual": 39,
+        "assertEqual": 38,
         "assertFalse": 1,
         "assertGreater": 1,
         "assertGreaterEqual": 1,
         "assertIn": 19,
         "assertIsInstance": 1,
-        "assertIsNone": 4,
+        "assertIsNone": 5,
         "assertIsNotNone": 2,
         "assertLess": 1,
         "assertLessEqual": 1,
@@ -4585,14 +4587,8 @@
         "test_candidate_order_preserved_never_resorted": {
           "assertEqual": 1
         },
-        "test_context_gap_elevated": {
-          "assertEqual": 1
-        },
-        "test_context_gap_none_when_neither": {
+        "test_context_gap_none_when_pure_value_is_not_set": {
           "assertIsNone": 1
-        },
-        "test_context_gap_prefers_elevated_when_both_somehow_true": {
-          "assertEqual": 1
         },
         "test_context_gap_suppressed": {
           "assertEqual": 1
@@ -4672,6 +4668,10 @@
         },
         "test_super_flex_is_not_abbreviated_to_a_team_code": {
           "assertNotEqual": 1
+        },
+        "test_the_elevated_direction_is_gone": {
+          "assertEqual": 1,
+          "assertIsNone": 1
         },
         "test_the_force_glyphs_are_text_not_colour_emoji": {
           "assertEqual": 1,
@@ -8439,22 +8439,22 @@
       }
     },
     "test_pick_synthesis.py": {
-      "test_methods": 116,
+      "test_methods": 115,
       "asserts": {
         "assertAlmostEqual": 17,
         "assertEqual": 76,
-        "assertFalse": 20,
+        "assertFalse": 19,
         "assertGreater": 11,
         "assertGreaterEqual": 7,
-        "assertIn": 16,
+        "assertIn": 17,
         "assertIsInstance": 4,
         "assertIsNone": 11,
         "assertIsNotNone": 8,
         "assertLess": 5,
         "assertLessEqual": 4,
-        "assertNotIn": 11,
+        "assertNotIn": 12,
         "assertRaises": 2,
-        "assertTrue": 20
+        "assertTrue": 17
       },
       "by_method": {
         "test_a_1qb_league_never_gets_consensus_data": {
@@ -8566,12 +8566,9 @@
           "assertIsNotNone": 1,
           "assertNotIn": 3
         },
-        "test_context_elevated_and_pure_value_are_independent_directions": {
-          "assertTrue": 2
-        },
-        "test_context_elevated_at_the_need_bonus_max_boundary": {
-          "assertFalse": 1,
-          "assertTrue": 1
+        "test_context_elevated_is_retired_and_not_merely_always_false": {
+          "assertIn": 1,
+          "assertNotIn": 1
         },
         "test_credible_gate_does_not_touch_rival_premiums_own_value": {
           "assertEqual": 3
@@ -9332,9 +9329,9 @@
     "test_probability_bounds.py": {
       "test_methods": 17,
       "asserts": {
-        "assertAlmostEqual": 3,
+        "assertAlmostEqual": 2,
         "assertEqual": 5,
-        "assertFalse": 1,
+        "assertFalse": 2,
         "assertGreater": 2,
         "assertGreaterEqual": 3,
         "assertIn": 2,
@@ -9374,9 +9371,9 @@
           "assertGreater": 1,
           "assertIn": 2
         },
-        "test_the_derived_constants_still_derive_from_the_tuple": {
-          "assertAlmostEqual": 1,
-          "assertEqual": 1
+        "test_the_derived_constant_still_derives_from_the_tuple": {
+          "assertEqual": 1,
+          "assertFalse": 1
         },
         "test_the_fourth_term_has_no_cap_to_be_bounded_by": {
           "assertEqual": 1
@@ -12752,16 +12749,16 @@
       }
     },
     "test_threshold_reachability.py": {
-      "test_methods": 19,
+      "test_methods": 15,
       "asserts": {
-        "assertAlmostEqual": 4,
-        "assertEqual": 10,
+        "assertAlmostEqual": 2,
+        "assertEqual": 8,
         "assertFalse": 2,
-        "assertGreater": 9,
+        "assertGreater": 7,
         "assertIn": 2,
-        "assertLess": 2,
+        "assertLess": 1,
         "assertNotIn": 2,
-        "assertTrue": 4
+        "assertTrue": 3
       },
       "by_method": {
         "test_a_leader_clear_of_the_band_with_low_survival_is_decisive": {
@@ -12783,11 +12780,6 @@
         "test_exactly_at_the_band_is_a_tie_and_therefore_contested": {
           "assertEqual": 1
         },
-        "test_it_fires_and_fires_selectively": {
-          "assertGreater": 1,
-          "assertLess": 1,
-          "assertTrue": 1
-        },
         "test_need_bonus_and_depth_exposure_never_both_carry_value": {
           "assertEqual": 1,
           "assertGreater": 1
@@ -12798,16 +12790,9 @@
         "test_survival_still_gates_it_independently": {
           "assertEqual": 1
         },
-        "test_that_distinction_is_not_vacuous_today_only_by_coincidence": {
-          "assertEqual": 1
-        },
         "test_the_calibration_gate_overrides_a_decisive_shaped_board": {
           "assertEqual": 1,
           "assertFalse": 1
-        },
-        "test_the_cap_no_longer_caps_the_quantity_it_is_compared_against": {
-          "assertAlmostEqual": 2,
-          "assertGreater": 1
         },
         "test_the_flat_spot_is_gone": {
           "assertEqual": 1
@@ -12823,9 +12808,6 @@
           "assertAlmostEqual": 1,
           "assertGreater": 1,
           "assertTrue": 1
-        },
-        "test_the_threshold_is_the_max_cap_not_their_mean": {
-          "assertEqual": 1
         },
         "test_the_threshold_sits_below_the_leader_survival_floor": {
           "assertIn": 1,

@@ -279,10 +279,18 @@ class TheCapsTupleBoundsWhatItActuallyBounds(unittest.TestCase):
                          f"displacement_adj now has a cap ({capped}) -- if it is bounded, the "
                          "caps tuple and everything derived from it should be revisited")
 
-    def test_the_derived_constants_still_derive_from_the_tuple(self):
-        """Not a value assertion -- a wiring assertion. If someone hard-codes 36.0 or 12.0 to
-        make a badge light again, the derivation that makes the falsity traceable is gone."""
+    def test_the_derived_constant_still_derives_from_the_tuple(self):
+        """Not a value assertion -- a wiring assertion. If someone hard-codes 24.0 to make a
+        number behave, the derivation that makes the falsity traceable is gone.
+
+        ONE CONSTANT NOW, NOT TWO. `CONTEXT_ELEVATED_THRESHOLD` was the second, and it went with
+        its flag at #25 (ruled 2026-09-21) -- retired rather than re-thresholded, because it fired
+        on one row across 36 formats. That leaves NECESSITY_DENIAL_SATURATION as the ONLY shipped
+        constant reading this tuple, which makes the tuple easier to mistake for decorative. It
+        is not, and this is the assertion that says so."""
         import pick_synthesis as ps
         self.assertEqual(sum(ps.TEAM_SPECIFIC_CAPS), ps.NECESSITY_DENIAL_SATURATION)
-        self.assertAlmostEqual(sum(ps.TEAM_SPECIFIC_CAPS) / len(ps.TEAM_SPECIFIC_CAPS),
-                               ps.CONTEXT_ELEVATED_THRESHOLD)
+        self.assertFalse(hasattr(ps, "CONTEXT_ELEVATED_THRESHOLD"),
+                         "CONTEXT_ELEVATED_THRESHOLD is back -- #25 retired it with its flag, "
+                         "and a bound left in place with nothing reading it is the #56 companion "
+                         "problem: the next reader takes it for a live threshold")

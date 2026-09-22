@@ -59,7 +59,7 @@ def _candidate(pid: str, name: str, *, priced: bool) -> ps.CandidateSnapshot:
         positional_cliff=None, position_run_detected=False,
         pick_necessity=50.0, necessity_label="CLOSE CALL", near_tie_with_leader=None,
         cliff_protection=False, block_opportunity=False, pure_value=False,
-        context_elevated=False, consensus_rank=None, consensus_tier=None,
+        consensus_rank=None, consensus_tier=None,
         projected_points=(180.0 if priced else None),
     )
 

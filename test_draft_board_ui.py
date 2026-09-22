@@ -26,8 +26,7 @@ def _candidate(**overrides) -> CandidateSnapshot:
         positional_cliff={"tier": "HIGH", "gap": 22.4, "typical_gap": 6.1},
         position_run_detected=False, pick_necessity=88.0, necessity_label="STRONG ACTION",
         near_tie_with_leader=True, cliff_protection=True, block_opportunity=True,
-        pure_value=False, context_elevated=False,
-        consensus_rank=None, consensus_tier=None, projected_points=250.0,
+        pure_value=False, consensus_rank=None, consensus_tier=None, projected_points=250.0,
     )
     base.update(overrides)
     return CandidateSnapshot(**base)
@@ -81,24 +80,24 @@ class SerializeCandidateTests(unittest.TestCase):
         ))
         self.assertEqual(row["forces"], [])
 
-    def test_context_gap_elevated(self):
-        row = ui.serialize_candidate(_candidate(context_elevated=True, pure_value=False))
-        self.assertEqual(row["contextGap"], "elevated")
-
     def test_context_gap_suppressed(self):
-        row = ui.serialize_candidate(_candidate(context_elevated=False, pure_value=True))
+        row = ui.serialize_candidate(_candidate(pure_value=True))
         self.assertEqual(row["contextGap"], "suppressed")
 
-    def test_context_gap_none_when_neither(self):
-        row = ui.serialize_candidate(_candidate(context_elevated=False, pure_value=False))
+    def test_context_gap_none_when_pure_value_is_not_set(self):
+        row = ui.serialize_candidate(_candidate(pure_value=False))
         self.assertIsNone(row["contextGap"])
 
-    def test_context_gap_prefers_elevated_when_both_somehow_true(self):
-        # Not mutually exclusive by construction (see decision_path_flags' docstring) --
-        # this pins which direction the UI shows when a contrived case satisfies both,
-        # rather than leaving it to incidental dict-ordering.
-        row = ui.serialize_candidate(_candidate(context_elevated=True, pure_value=True))
-        self.assertEqual(row["contextGap"], "elevated")
+    def test_the_elevated_direction_is_gone(self):
+        """#25, ruled. Two tests lived here that this replaces: one for the "elevated" glyph,
+        and one pinning that "elevated" WON when a contrived candidate satisfied both
+        directions. That precedence is the part worth remembering -- a flag firing on one row
+        across 36 formats was taking presentation priority over `pure_value`, which fires on
+        real populations. The Context Gap is one-directional until something can express the
+        other honestly."""
+        self.assertIsNone(ui.serialize_candidate(_candidate(pure_value=False))["contextGap"])
+        self.assertEqual(
+            ui.serialize_candidate(_candidate(pure_value=True))["contextGap"], "suppressed")
 
     def test_necessity_class_mapping_covers_every_real_label(self):
         for label, expected_class in [
@@ -423,7 +422,7 @@ globalThis.document = {
             denial_team=None, rival_premium=None, positional_forfeit=None,
             position_expected_taken=None, positional_cliff=None, near_tie_with_leader=None,
             cliff_protection=True, block_opportunity=True, pure_value=True,
-            context_elevated=True, projected_points=None, need_bonus=None,
+            projected_points=None, need_bonus=None,
             necessity_label="CLOSE CALL",
         )
         zeros = _candidate(
@@ -434,8 +433,7 @@ globalThis.document = {
         )
         negative = _candidate(
             player_id="n", name="Negative Value", universal_value=-16.1,
-            team_acquisition_value=-16.1, near_tie_with_leader=True, context_elevated=True,
-        )
+            team_acquisition_value=-16.1, near_tie_with_leader=True, )
         return priced, unpriced, zeros, negative
 
     def _render(self, candidates):

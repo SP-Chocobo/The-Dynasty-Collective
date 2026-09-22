@@ -42,7 +42,7 @@ def candidate(**over) -> CandidateSnapshot:
         positional_forfeit=None, position_expected_taken=None, positional_cliff=None,
         position_run_detected=False, pick_necessity=75.0, necessity_label="PREFERRED",
         near_tie_with_leader=False, cliff_protection=False, block_opportunity=False,
-        pure_value=False, context_elevated=False, consensus_rank=None, consensus_tier=None,
+        pure_value=False, consensus_rank=None, consensus_tier=None,
         projected_points=None)
     base.update(over)
     return CandidateSnapshot(**base)

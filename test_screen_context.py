@@ -26,8 +26,7 @@ def _candidate(**overrides) -> CandidateSnapshot:
         positional_cliff={"tier": "HIGH", "gap": 22.4, "typical_gap": 6.1},
         position_run_detected=False, pick_necessity=88.0, necessity_label="STRONG ACTION",
         near_tie_with_leader=True, cliff_protection=True, block_opportunity=True,
-        pure_value=False, context_elevated=False,
-        consensus_rank=None, consensus_tier=None, projected_points=250.0,
+        pure_value=False, consensus_rank=None, consensus_tier=None, projected_points=250.0,
     )
     base.update(overrides)
     return CandidateSnapshot(**base)

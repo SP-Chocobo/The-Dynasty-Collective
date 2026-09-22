@@ -13917,3 +13917,60 @@ distribution of an already-wrong behaviour. `#18` is the fix and will likely dis
 taken" -- measuring the format, not the engine, with `n=0` for the population the item is about.
 Caught by the engine-measurement rule on printing `n`. Third instrument error in three days, all
 three caught by that rule.
+
+---
+
+## `#25` EXECUTED — `context_elevated` RETIRED FROM THE BOARD
+
+Ruled 2026-09-21: **retire the badge.** It fired on ONE row across all 36 battery formats -- a
+multi-eligible WR/DB lifted +79.44 by `displacement_adj` -- while the quantity it read has a
+**mean of -3.46** across 10,887 priced rows, so "ranked highly substantially because of fit" was
+reading what is usually a PENALTY. Retired rather than repointed, the way `6.1b` retired
+`eligibility_bonus`: the population was not there.
+
+### What came out
+
+| surface | change |
+|---|---|
+| `pick_synthesis.decision_path_flags` | the `context_elevated` key is GONE from the dict -- absent, not False, because a flag reading False forever is the dead-signal shape this programme keeps finding |
+| `pick_synthesis.CandidateSnapshot` | field removed; **52 -> 51**, so `snapshot_identity` hashes change BY DESIGN (that function's docstring already rules removal the same class as addition) |
+| `CONTEXT_ELEVATED_THRESHOLD` | removed with its flag. A bound left in place with nothing reading it is `#56`'s companion problem -- the next reader takes it for a live threshold |
+| `draft_board_ui._context_gap` | the "elevated" direction is gone; the Context Gap is one-directional. It had PRESENTATION PRECEDENCE over `pure_value`, so a glyph firing on one row in one league was outranking one that fires on real populations |
+| `draft_history._CANDIDATE_EVIDENCE_FIELDS` | column dropped, `EVIDENCE_SCHEMA_VERSION` **1 -> 2**. Records written under 1 keep their number and stay readable; the store is append-only and never regenerates |
+| `invariant_registry` | `NECESSITY_DENIAL_SATURATION` is now the ONLY shipped constant deriving from `TEAM_SPECIFIC_CAPS` |
+
+`pure_value` is untouched. It is a cross-candidate comparison answering a different question, and
+it no longer has to win a coin toss against a dead flag.
+
+### Three guards had to be told, and each records why
+
+- **`test_snapshot_identity_boundary`'s recorded floor** on the stored evidence columns. Its own
+  docstring says a removal must "edit this literal in the same commit as the removal, where a
+  reviewer sees the name go and reads why" -- second use of that mechanism after
+  `eligibility_bonus`, and it worked exactly as designed.
+- **`test_display_contract_boundary`'s field-count pin**, 52 -> 51. The note there used to argue
+  for finding the badge a slot on the card once the UI passes decided where. **The question is
+  answered by removal: there is nothing to place.**
+- **`test_probability_bounds`' wiring assertion**, which pinned that BOTH derived constants still
+  read the tuple. Now one, plus an assertion that `CONTEXT_ELEVATED_THRESHOLD` has NOT come back.
+
+Retired tests are replaced by guards asserting the retirement rather than deleted: `assertNotIn`
+on the flags dict, `assertFalse(hasattr(...))` on the constant, and in `test_draft_board_ui` a
+test that records the *precedence* that used to exist, since that is the part worth remembering.
+
+### TWO GUARDS CAUGHT ME, AND ONE OF THEM WAS MY OWN, WRITTEN YESTERDAY
+
+**`test_prose_names`** failed on `` `ContextElevatedBecameReachableTests` `` in my own retirement
+comment: backticks in this repo assert a LIVE identifier, and I had backticked the class I had
+just deleted. A retired name is prose, not a reference.
+
+**The ruling register did NOT catch what it was built to catch.** `6.1d.1`'s `AWAITING_RULING`
+witness was the bare string `@unittest.expectedFailure` in `test_threshold_reachability.py`. When
+the ruling landed and that class was retired, a THIRD expectedFailure in the same file -- an
+unrelated `rival_premium` test -- kept the witness satisfied, so the register went on claiming the
+decision was open after it had been executed. **Caught by reading, not by the guard.** `6.1d.1` is
+moved to `IMPLEMENTED` with a witness only its own landing can produce, and the lesson is written
+at `AWAITING_RULING`'s definition: *a witness a neighbouring test can satisfy is not a witness.*
+
+That is the second time in two days that a guard I wrote asserted less than I believed. The first
+was the census only checking a ruling was NAMED in the contracts file.
