@@ -1,0 +1,23 @@
+{
+  "_comment": "#24/W1-07: cost of removing necessity's survival term. One process, one toggle, identical inputs captured by spying on compute_pick_necessity during a real draft. See remove_survival_cost.py.",
+  "arm": "12T_ppr_K_DEF",
+  "clamp": 100.0,
+  "component_budget_after": 137.6,
+  "component_budget_before": 157.6,
+  "label_flip_kinds": {
+    "MUST TAKE -> STRONG ACTION": 3,
+    "PREFERRED -> CLOSE CALL": 99,
+    "STRONG ACTION -> PREFERRED": 10
+  },
+  "label_flip_rate": 0.0135,
+  "label_flips": 112,
+  "max_score_move": 9.8,
+  "mean_score_move": 0.42,
+  "must_take_threshold": 98.0,
+  "necessity_rows_scored": 8312,
+  "picks_made": 192,
+  "rounds": 16,
+  "rows_unchanged": 1395,
+  "rows_whose_score_moved": 6917,
+  "teams": 12
+}

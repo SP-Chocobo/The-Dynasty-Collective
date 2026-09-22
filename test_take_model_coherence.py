@@ -137,7 +137,12 @@ def _boards(rivals, target: str, agreeing: int, rank: int = 1) -> dict:
 
     `POOL` is the count of OTHER priced rows on each rival's board. Ranks past the table's last
     key carry the floor, which is what the real deep pool contributes (measured at 476 priced
-    tail rows plus 638 unpriced on the real board -- evidence/take_mass/).
+    tail rows plus 638 unpriced on the real board -- evidence/take_mass/; re-measured on HEAD
+    after #26 narrowed admission at 264e063, the priced rows are unchanged at 481 (so 476 tail
+    rows still) while the unpriced fell 638 -> 489, taking board_take_mass 23.49 -> 20.51 and the
+    unpriced share 0.543 -> 0.477. This fixture's POOL stays fixed at 400 by design, so none of
+    those numbers move it -- they are here so a reader checking the fixture against a real board
+    does not find a board that no longer exists).
 
     That these ranks are what the real boards produce is measured separately and not assumed
     here (evidence/survival_mechanism/rank_agreement.json)."""

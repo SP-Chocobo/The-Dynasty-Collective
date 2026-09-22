@@ -135,7 +135,11 @@ class NoConstantIsQuotedWrongly(unittest.TestCase):
         prose meant. Measured: 92 constants, none conflicting."""
         consts = prose_names.numeric_constants()
         self.assertGreater(len(consts), 80)
-        self.assertIn("NECESSITY_SURVIVAL_WEIGHT", consts)
+        # A LIVE constant, repointed at #24 when NECESSITY_SURVIVAL_WEIGHT was retired. The
+        # probe has to name something the repo still defines or it stops being a non-vacuity
+        # check and starts being a second place that has to be edited when a term retires --
+        # which is how it was found: the retirement broke it, correctly.
+        self.assertIn("NECESSITY_STANDOUT_WEIGHT", consts)
 
     def test_a_wrong_value_is_actually_detected(self):
         """Planted through the real prose walk: move every constant and the quotations must go

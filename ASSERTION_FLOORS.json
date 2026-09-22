@@ -2218,6 +2218,76 @@
         }
       }
     },
+    "test_capture_weekly_lines.py": {
+      "test_methods": 19,
+      "asserts": {
+        "assertEqual": 15,
+        "assertGreater": 1,
+        "assertIn": 4,
+        "assertRaises": 1,
+        "assertTrue": 1
+      },
+      "by_method": {
+        "test_a_line_that_still_carries_a_stats_key_is_unwrapped": {
+          "assertEqual": 1
+        },
+        "test_a_plain_json_capture_is_readable_too": {
+          "assertEqual": 1
+        },
+        "test_a_season_that_returned_nothing_is_refused": {
+          "assertIn": 1,
+          "assertRaises": 1
+        },
+        "test_a_single_missing_week_is_skipped_not_refused": {
+          "assertEqual": 2
+        },
+        "test_a_written_capture_is_found": {
+          "assertEqual": 1
+        },
+        "test_a_written_capture_wins_over_the_legacy_file": {
+          "assertEqual": 1
+        },
+        "test_an_absent_capture_is_empty_rather_than_an_error": {
+          "assertEqual": 1
+        },
+        "test_every_stat_key_is_kept_rather_than_filtered_to_a_scoring_vocabulary": {
+          "assertEqual": 1
+        },
+        "test_it_is_gzipped_rather_than_plain_json": {
+          "assertEqual": 1
+        },
+        "test_nothing_but_the_stat_line_is_stored": {
+          "assertEqual": 1
+        },
+        "test_the_captured_ids_are_joinable_against_players_db": {
+          "assertEqual": 1
+        },
+        "test_the_captured_lines_still_score": {
+          "assertGreater": 1
+        },
+        "test_the_legacy_payload_is_only_consulted_for_stats": {
+          "assertEqual": 1
+        },
+        "test_the_legacy_raw_payload_is_unwrapped_to_the_same_shape": {
+          "assertEqual": 1
+        },
+        "test_the_record_says_it_holds_stats_not_points": {
+          "assertIn": 1
+        },
+        "test_the_record_says_when": {
+          "assertTrue": 1
+        },
+        "test_the_record_says_which_endpoint_and_season_type_it_read": {
+          "assertIn": 2
+        },
+        "test_the_stat_line_survives_intact": {
+          "assertEqual": 1
+        },
+        "test_what_comes_back_is_what_went_in": {
+          "assertEqual": 1
+        }
+      }
+    },
     "test_cdme_certification.py": {
       "test_methods": 14,
       "asserts": {
@@ -2311,6 +2381,7 @@
       "test_methods": 4,
       "asserts": {
         "assertEqual": 5,
+        "assertGreater": 1,
         "assertRaises": 1
       },
       "by_method": {
@@ -2318,7 +2389,8 @@
           "assertEqual": 3
         },
         "test_ablating_a_zero_contribution_component_never_changes_the_score": {
-          "assertEqual": 1
+          "assertEqual": 1,
+          "assertGreater": 1
         },
         "test_no_ablation_reproduces_the_real_function_exactly": {
           "assertEqual": 1
@@ -7386,17 +7458,21 @@
       }
     },
     "test_measure_projection_accuracy.py": {
-      "test_methods": 6,
+      "test_methods": 15,
       "asserts": {
-        "assertEqual": 8,
+        "assertEqual": 13,
         "assertFalse": 1,
-        "assertGreater": 1,
-        "assertIn": 1,
+        "assertGreater": 2,
+        "assertIn": 5,
         "assertIsNone": 1,
         "assertLess": 2,
+        "assertNotIn": 1,
         "assertTrue": 1
       },
       "by_method": {
+        "test_a_player_with_no_result_cannot_be_counted_as_a_tie": {
+          "assertEqual": 1
+        },
         "test_a_player_with_no_result_is_excluded_rather_than_scored_zero": {
           "assertEqual": 2
         },
@@ -7411,13 +7487,39 @@
           "assertEqual": 2,
           "assertTrue": 1
         },
+        "test_a_tie_at_the_replacement_rank_is_counted": {
+          "assertEqual": 1
+        },
         "test_a_zero_projected_gap_yields_None_rather_than_zero": {
           "assertEqual": 1,
           "assertIsNone": 1
         },
+        "test_it_names_what_would_settle_the_lineage": {
+          "assertIn": 1
+        },
+        "test_no_tie_reports_the_replacement_player_alone": {
+          "assertEqual": 1
+        },
+        "test_the_false_identity_claim_is_not_asserted_again": {
+          "assertIn": 1,
+          "assertNotIn": 1
+        },
+        "test_the_measured_comparison_is_in_the_module_and_not_only_in_evidence": {
+          "assertIn": 1
+        },
+        "test_the_negligible_gap_bound_is_one_point_a_game": {
+          "assertEqual": 1,
+          "assertGreater": 1
+        },
         "test_the_ranks_come_from_the_PROJECTION_and_not_the_result": {
           "assertGreater": 1,
           "assertLess": 2
+        },
+        "test_the_reader_is_told_what_the_K_and_DEF_numbers_are_about": {
+          "assertIn": 1
+        },
+        "test_the_row_says_it_rests_on_ONE_pair": {
+          "assertEqual": 1
         }
       }
     },
@@ -8439,12 +8541,12 @@
       }
     },
     "test_pick_synthesis.py": {
-      "test_methods": 115,
+      "test_methods": 114,
       "asserts": {
         "assertAlmostEqual": 17,
         "assertEqual": 76,
         "assertFalse": 19,
-        "assertGreater": 11,
+        "assertGreater": 10,
         "assertGreaterEqual": 7,
         "assertIn": 17,
         "assertIsInstance": 4,
@@ -8763,9 +8865,6 @@
         "test_stale_when_underlying_data_changed": {
           "assertFalse": 1,
           "assertIn": 1
-        },
-        "test_survival_pressure_alone_changes_the_score": {
-          "assertGreater": 1
         },
         "test_takes_the_top_n_by_final_score": {
           "assertEqual": 1
@@ -11561,10 +11660,10 @@
       }
     },
     "test_sleeper_client.py": {
-      "test_methods": 54,
+      "test_methods": 58,
       "asserts": {
         "assertAlmostEqual": 4,
-        "assertEqual": 46,
+        "assertEqual": 50,
         "assertFalse": 3,
         "assertIn": 11,
         "assertIsNone": 9,
@@ -11590,6 +11689,18 @@
         "test_a_fresh_row_does_not_carry_the_warning": {
           "assertEqual": 1,
           "assertNotIn": 1
+        },
+        "test_a_hand_rolled_url_in_real_code_is_still_caught": {
+          "assertEqual": 1
+        },
+        "test_a_hand_rolled_url_inside_a_function_that_HAS_a_docstring_is_still_caught": {
+          "assertEqual": 1
+        },
+        "test_a_url_in_a_COMMENT_was_never_an_offender_and_still_is_not": {
+          "assertEqual": 1
+        },
+        "test_a_url_in_a_module_docstring_is_not_an_offender": {
+          "assertEqual": 1
         },
         "test_a_week_old_cache_is_beyond_the_window": {
           "assertEqual": 1
@@ -13615,6 +13726,35 @@
         "test_upload_targets_are_derived_from_the_rules_not_a_second_copy": {
           "assertIn": 1,
           "assertNotIn": 1
+        }
+      }
+    },
+    "test_which_call_prices_the_board.py": {
+      "test_methods": 6,
+      "asserts": {
+        "assertEqual": 3,
+        "assertGreater": 1,
+        "assertNotEqual": 1,
+        "assertNotIn": 1
+      },
+      "by_method": {
+        "test_K_and_DEF_do_NOT_fall_back_to_the_seeded_csvs_here": {
+          "assertNotIn": 1
+        },
+        "test_and_K_DEF_come_from_the_seeded_csvs": {
+          "assertEqual": 1
+        },
+        "test_every_position_prices_from_the_season_scored_source": {
+          "assertEqual": 1
+        },
+        "test_offence_comes_from_the_vendor_here": {
+          "assertEqual": 1
+        },
+        "test_so_the_two_bands_disagree_on_source_which_is_what_28_saw": {
+          "assertNotEqual": 1
+        },
+        "test_the_bands_are_non_empty": {
+          "assertGreater": 1
         }
       }
     },

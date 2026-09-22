@@ -74,15 +74,22 @@ class ReimplementationFidelityTests(unittest.TestCase):
 
 class AblationMechanicsTests(unittest.TestCase):
     def test_ablating_a_zero_contribution_component_never_changes_the_score(self):
-        # A candidate with no survival data, no cliff, no run, no denial -- dropping any of
-        # those four should be a strict no-op regardless of round.
+        # A candidate with no cliff, no run, no denial -- dropping any of them should be a
+        # strict no-op regardless of round. "survival" was in this list until #24 retired the
+        # term; it is DERIVED from COMPONENTS now rather than re-listed, so the next term to
+        # leave or arrive needs no edit here (#126 -- derive, never hand-list, which is exactly
+        # what the hand-written tuple failed to do when survival left).
         candidate = {
-            "team_acquisition_value": 100.0, "need_bonus": 0.0, "survival_probability": None, "positional_cliff": None,
-            "position_run_detected": False, "rival_premium": 0.0,
+            "team_acquisition_value": 100.0, "need_bonus": 0.0, "survival_probability": None,
+            "positional_cliff": None, "position_run_detected": False, "rival_premium": 0.0,
         }
         baseline = necessity_score(candidate, [90.0], round_num=1, drop=None)
-        for comp in ("survival", "cliff", "run", "denial"):
-            self.assertEqual(necessity_score(candidate, [90.0], round_num=1, drop=comp), baseline)
+        zero_contribution = [c for c in COMPONENTS if c != "standout"]
+        self.assertGreater(len(zero_contribution), 0, "no components left to ablate")
+        for comp in zero_contribution:
+            with self.subTest(component=comp):
+                self.assertEqual(necessity_score(candidate, [90.0], round_num=1, drop=comp),
+                                 baseline)
 
     def test_ablate_trajectory_candidates_and_summarize_end_to_end(self):
         merger = dm.DataMerger()

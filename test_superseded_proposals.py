@@ -63,8 +63,10 @@ class TheSupersededProposalStaysSuperseded(unittest.TestCase):
         """Non-vacuity for the guard above: prove the search is live by pointing it at a name
         this repo really does define. Without this, a broken `python_sources()` returning nothing
         would pass the absence test forever."""
+        # Repointed at #24: NECESSITY_SURVIVAL_WEIGHT was retired, and a non-vacuity probe
+        # aimed at a name the repo no longer defines proves the opposite of what it is for.
         found = [p for p in python_sources()
-                 if re.search(r"\bNECESSITY_SURVIVAL_WEIGHT\b",
+                 if re.search(r"\bNECESSITY_STANDOUT_WEIGHT\b",
                               p.read_text(encoding="utf-8", errors="replace"))]
         self.assertIn(Path("pick_synthesis.py"), found)
 

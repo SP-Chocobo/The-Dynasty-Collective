@@ -13811,7 +13811,7 @@ cite the ruling it executes rather than restating it. **No code changed by this 
 | `#25` `context_elevated` | **Retire the badge.** | Remove from the flags, the payload and the label registries, as `6.1b` retired `eligibility_bonus`. Its quantity's mean is **-3.46**: "ranked highly because of fit" reads what is usually a penalty. `CONTEXT_ELEVATED_THRESHOLD` and its `max()` derivation go with it. |
 | `#26` `W4-01` | **Yes -- a stale `years_exp` gets the stale-vendor treatment.** | One condition: the rookie clause yields to `NOT_CURRENTLY_PLAYING`. Measured: board 1065 -> 969, the 96 removed all `Inactive`, the 145 clause-only rows that remain all `Active`, max age 34. Practice Squad is outside that tuple so taxi-relevant rookies are untouched. **Reverses `#193`'s tested re-entry case for this clause**, so `test_a_rookie_beats_a_stale_not_playing_status` is rewritten with the ruling as its reason. |
 | `#27` `I-06/J-06` | **One token; fix the false label.** | Keep a single unpriced state. Correct the label, which is false today: *"not measured -- you hold no backup here, so there is no surplus to value"* sits on cells carrying a measured 82.00, median 62.00 against the priced state's 42.00. No new vocabulary member, so no unreachable predicate. |
-| `#21` take model | **Derive the floor, then wire the value-share model.** | `_value_take_weight` / `board_contention_scale` exist and are measured. The blocker is the floor: 638 unpriced rows at `RANK_TAKE_PROBABILITY_FLOOR` outweigh the whole priced mass 2.0-3.4x, and `0.02` was derived against a rank table whose leader was 0.55 while the value model's leader weighs 1.0 (`#75` unit drift). The floor arms in `evidence/survival_calibration/` exist to measure that, not to tune it. |
+| `#21` take model | **BLOCKED ON `#50`, and this row's own numbers were stale -- see `evidence/take_model/FLOOR_DERIVATION.md`.** | Re-measured on HEAD: 489 unpriced rows (not 638 -- `#26` narrowed admission at `264e063`), mass 20.51 (not 23.49), share 0.477 (not 0.543). This row read as an instruction to rescale `0.02` by `1/0.55`; measured, that takes the block's share of a pick from 0.650 to **0.772** -- worse. The drift is the TAIL collapsing under exponential decay, not the leader. And the real blocker is that the board makes two incompatible claims about those 489 rows: ORDER LAST says unpriced is WORST (floor ~2e-06, 'unpriced means safe', ruled against), while `ABSENCE_NO_INPUT` says unpriced is UNKNOWN (floor `P/n_p` = 0.010948). `draft_room.py:632-637` already names that as a `#50` valuation question. Deriving the floor now means picking one convention by arithmetic -- choosing, not deriving. |
 | `#17` turn-ending | **Re-measure against the reverted engine first.** | Its evidence cites `_acting_now_order`, deleted at `#22`, and was measured under the v2 ordering. Post-revert every pick uses the tav order, so the *differential* it describes may not exist. Re-run `turn_ending_leak.py` on current HEAD; if the 3x K/DEF clustering survives, the pair-aware mechanism is still live and gets ruled on fresh numbers. |
 
 ### Implementation order, by dependency and blast radius
@@ -14242,3 +14242,122 @@ seasons actually paid.
   guessed, and measured on the wrong object -- a league with no K slot, the wrong replacement arm,
   a document assumed stale, a board with no caller. **The configuration is part of the
   measurement**, and this codebase has configurations that differ silently.
+
+
+---
+
+## #21 IS BLOCKED ON #50, AND ITS OWN BLOCKER NUMBERS WERE STALE
+
+Full study, every figure re-measured on HEAD through the recorded path:
+**`evidence/take_model/FLOOR_DERIVATION.md`**.
+
+Three things, in order of how much they change the item.
+
+**1. The stale figures.** `#26` narrowed pool admission at `264e063` after the take-mass evidence
+was recorded. Priced rows are unchanged at 481; unpriced fell 638 -> 489, mass 23.49 -> 20.51,
+unpriced share 0.543 -> 0.477. Every citation of "638" or "2.0-3.4x" describes a board that no
+longer exists. The live source comment in `draft_room.py` and the prose in `test_absence_kind.py`
+and `test_take_model_coherence.py` now carry BOTH measurements -- the old one is not overwritten,
+because a re-measured number that silently replaces its predecessor makes the older evidence look
+wrong rather than dated.
+
+**2. The row's implied remedy makes the defect worse.** "0.02 was derived against a leader of 0.55
+while the value model's leader weighs 1.0" reads as "rescale by 1/0.55". Measured: block share of
+one pick goes 0.650 -> **0.772**. The drift is not in the leader. It is in the TAIL -- 476 priced
+rows that were flat at 0.02 under the rank model decay exponentially over a 13.1-sigma board under
+the value model and collapse to ~2.13. The block never moved; everything under it shrank.
+
+**3. THE ACTUAL BLOCKER, and it is not arithmetic.** `0.02` was never a level under the rank model;
+it was an EQUALITY -- the same weight 476 of 481 priced rows got, so "unpriced" and "priced but
+undiscriminated" were indistinguishable states getting indistinguishable numbers. Under the value
+model every priced row IS discriminated, and **only 36 of 481 weigh >= 0.02**. Wiring the value
+model unchanged would assert that a row nobody could price is likelier to be taken than the
+37th-best player on the board, 445 times over. So the `#187` breach is CREATED BY THE WIRING, and
+it sits in two lines (`draft_strategy.py:646-647`) where `None` becomes `0.02` with no label
+travelling beside it -- in a module whose `board_contention_scale` answers the same absence thirty
+lines earlier with *"None -- not a substituted default"*.
+
+And the floor cannot be derived, because the board asserts two incompatible things about those 489
+rows: **ORDER LAST** (unpriced is worst -> floor ~2e-06 -> "unpriced means safe", which the owner
+ruled against on 31-of-301 evidence) and **`ABSENCE_NO_INPUT`** (unpriced is unknown-not-bad ->
+indifference -> `P/n_p` = 0.010948, share 0.504). `draft_room.py:632-637` already records this as a
+`#50` valuation question. **Picking one by arithmetic is choosing, not deriving (#56).**
+
+### Register
+
+- **#21 is BLOCKED ON #50.** Not on measurement, and not on a derivation I can supply.
+- The indifference candidate `w = P/n_p` is recorded as the one that survives -- no constant, a
+  per-board runtime statistic in the shape `board_contention_scale` already argues for -- and
+  explicitly NOT recommended yet: it is a maximum-entropy UPPER BOUND (0.504 against 0.112
+  measured), and a bound is not a threshold.
+- Do not wire the value model behind a flag; `test_take_model_seam.py:87` forbids a second take
+  model and the seam's docstring says so (`#126`).
+
+
+---
+
+## #24 / W1-07 EXECUTED: necessity's survival term is retired, and the ruling's premise was wrong
+
+**The premise first, because it is the part that would have caused damage.** The ruling row reads:
+*"The freed 20 of 100 has to be accounted for -- redistribute or shrink the scale -- and that is
+its own derivation."* **There is no 100-point budget.** Measured off the live constants:
+
+| component | max |
+|---|---|
+| `NECESSITY_BASELINE` | 50.0 |
+| standout | 30.0 |
+| survival | 20.0 |
+| cliff | 12.0 |
+| run | 6.0 |
+| denial | 20.0 |
+| forfeit | 10.0 |
+| roster_fit | 9.6 |
+| **sum** | **157.6** |
+
+against `raw_score = max(0.0, min(100.0, raw_score))` -- a **CLAMP, not a partition**. Removing 20
+leaves 137.6, and `MUST TAKE` (98.0) stays reachable with room to spare. So no redistribution
+derivation was owed, and performing one would have been #56's exact prohibition: choosing weights
+for a distribution nobody has argued for. Precedent agrees -- **6.1b** retired `eligibility_bonus`
+without reweighting its survivor, and **#25** deleted `CONTEXT_ELEVATED_THRESHOLD` outright rather
+than repurposing its points.
+
+**The substitute was NOT taken.** The staged patch replaced survival with `intervening_picks`,
+which is a property of the TURN: it takes ONE value across every candidate in a snapshot, so it
+cannot re-rank anything. That is W1-07's own finding, and it is the reason the term is removed
+rather than replaced.
+
+**Cost, re-measured on HEAD** -- one process, one toggle, identical inputs captured by spying on
+`compute_pick_necessity` through a real 12-team 16-round draft (`evidence/w1_07/`):
+
+- 8,312 necessity rows scored; 83.2% of scores moved at all; mean 0.42, max 9.80
+- **112 label flips (1.35%)**: 99 `PREFERRED -> CLOSE CALL`, 10 `STRONG ACTION -> PREFERRED`,
+  3 `MUST TAKE -> STRONG ACTION`
+- no constant moved, no label threshold moved
+
+**THE CONSEQUENCE NOBODY HAD WRITTEN DOWN.** `decision_regime` already returns `"contested"`
+unconditionally while `SURVIVAL_IS_CALIBRATED` is False, and `withheld_fields()` suppresses the
+whole survival family from every surface. With the necessity term gone, **`survival_probability`
+now influences no shipped number and no shipped string at all** -- it is computed, carried on the
+snapshot, and read by nothing in production. That is a #166-shaped condition and it is stated here
+rather than discovered later. The FIELD is deliberately kept: it stays on the snapshot and in the
+withholding contract, and retiring that vocabulary would be a far larger ruling than #24.
+
+**Also corrected while in the file:** `cdme_force_ablation` advertises itself as a faithful mirror
+of the formula and was **two terms out of date** -- it still summed `eligibility_bonus` (retired at
+6.1b) and has never had a `forfeit` component at all. The `eligibility_bonus` drift is fixed here.
+The missing `forfeit` is RECORDED, not fixed: adding a seventh component changes `COMPONENTS`'
+census and every consumer that iterates it. Its fidelity test passes only because the fixture builds
+candidates without `positional_forfeit`, so both sides read `None -> 0.0` and agree on a case that
+cannot distinguish them -- a vacuous fixture.
+
+### Register
+
+- **#24 / W1-07: DONE.** Moved `STAGED` -> `IMPLEMENTED` in
+  `test_rulings_are_not_silently_dropped` with an inverse witness. `STAGED` is now empty.
+- **The "freed 20 of 100" framing is retracted** in `CDME_CONTRACTS.md` and here. It rested on a
+  budget that never existed.
+- **`CDME_CONTRACTS.md`'s authority bound lost its anchor.** `NECESSITY_WAITING_WEIGHT <=
+  NECESSITY_SURVIVAL_WEIGHT (20.0)` names a constant that no longer exists. That weight is pinned
+  NEVER IMPLEMENTED, so nothing is unbounded today, but a future proposal needs a new anchor.
+- **NEW, recorded not fixed:** `cdme_force_ablation` has no `forfeit` component, and its fidelity
+  test cannot see that because its fixture omits the field.

@@ -52,31 +52,35 @@ Five real signals this module adds that didn't exist anywhere in the engine befo
         collapsed to the identical maximum penalty regardless of how far behind each actually
         was. The sole candidate in a single-candidate snapshot gets full credit here (there is,
         literally, no alternative to compare against).
-      - survival_probability: (1 - survival) scaled up -- the core "what do you lose by
-        waiting" signal.
+      - survival_probability: RETIRED FROM THIS SCORE (#24 / W1-07, ruled). It weighed 20.0 as
+        (1 - survival). The field still exists on the snapshot and in the withholding contract;
+        it simply no longer moves necessity. See the note below the bullets.
       - positional_cliff: HIGH/MEDIUM add real points; LOW adds none.
       - position_run_detected: a real, observed signal, not a guess.
       - rival_premium (NOT denial_value): how much more the best-positioned intervening rival's
         own roster makes this player worth to them than his team-agnostic universal_value --
         their need/eligibility/depth premium, normalized against the SUM of draft_room's
         team-specific caps -- that premium's own bound, not one term's (#144). Deliberately the p_take-FREE half of the denial signal: denial_value is
-        (opponent value x take-probability), and that same take-probability already compounds
-        into survival_probability above, so using denial_value here counted the identical
+        (opponent value x take-probability), and that same take-probability used to compound
+        into a survival term in this very score, so using denial_value here counted the identical
         underlying probability twice -- measured at r = +0.82 between the survival and denial
-        components across simulated draft states before this was split. Probability enters
-        necessity exactly once (survival); rival-gain magnitude exactly once (this term). The
+        components across simulated draft states before this was split. AFTER #24 there is no
+        probability term left in necessity at all, so the double count is now impossible rather
+        than merely avoided -- but this term stays p_take-FREE, because the reason was never only
+        the overlap: rival-gain MAGNITUDE and take PROBABILITY are different quantities, and the
+        snapshot's denial_value is still defined as their product for the debate layer. The
         snapshot's denial_value field itself is unchanged -- as an expected-value number for
-        the debate layer it is correctly defined as is. A moderate RESIDUAL correlation
-        between the survival and rival-premium components (~0.6 measured across controlled
-        backtest states) is an ACCEPTED property, not an oversight: the two formulas share no
-        term, but both respond to the same real market fact (a genuinely in-demand player has
-        lower survival AND higher rival value) through independent pathways -- shared cause,
-        not shared measurement. Orthogonalizing further would mean residualizing one real
-        signal against the other, making both less interpretable to remove a correlation that
-        reflects reality.
+        the debate layer it is correctly defined as is. The residual correlation of ~0.6 that used to be recorded here,
+        between the survival and rival-premium components, is kept as history rather than as a
+        live property: one of the two components no longer exists. It was an ACCEPTED property
+        while both did, because the formulas shared no term and both responded to the same real
+        market fact (a genuinely in-demand player has lower survival AND higher rival value)
+        through independent pathways -- shared cause, not shared measurement.
       - positional_forfeit (#48/#71) -- what delaying this POSITION to the next turn costs.
-        The MAGNITUDE half of the pair whose PROBABILITY half is survival_probability above --
-        the same split already made deliberately for denial. Normalized against the
+        It was the MAGNITUDE half of a pair whose PROBABILITY half was survival_probability;
+        after #24 retired that half, this term is the whole of what waiting costs in this score.
+        Its weight did NOT change to absorb the freed 20 -- see the #24 note below for why there
+        was nothing to absorb. Normalized against the
         universal_value scale's own top and weighted like the denial magnitude beside it.
       - need_bonus + eligibility_bonus (this roster's own fit) -- applied directly, the same
         additive-nudge treatment draft_room.py already gives these two terms. Deliberately TWO
@@ -294,7 +298,6 @@ NECESSITY_STANDOUT_WEIGHT = 30.0     # normalized margin over the best OTHER nar
 # leader's standout component to the full 15.0 (half the weight) under a relative anchor, when a
 # genuinely tiny 0.5-point edge should barely move the needle at all.
 NECESSITY_STANDOUT_REFERENCE_GAP = 15.0
-NECESSITY_SURVIVAL_WEIGHT = 20.0     # (1 - survival_probability) scaled up
 NECESSITY_CLIFF_POINTS = {"HIGH": 12.0, "MEDIUM": 6.0, "LOW": 0.0}
 
 # #160 (A2), ruled by the owner: cliff_protection is gated on THE CLIFF MACHINERY IT IS NAMED
@@ -765,9 +768,6 @@ def compute_pick_necessity(raw_candidates: list[dict], round_num: int) -> list[t
             # standout is real signal and keeps rewarding proportionally up to the +1 cap.
             standout_component = max(0.0, min(1.0, normalized_margin)) * NECESSITY_STANDOUT_WEIGHT
 
-        survival = c.get("survival_probability")
-        survival_component = (1 - survival) * NECESSITY_SURVIVAL_WEIGHT if survival is not None else 0.0
-
         cliff = c.get("positional_cliff")
         cliff_component = NECESSITY_CLIFF_POINTS.get(cliff["tier"], 0.0) if cliff else 0.0
 
@@ -869,7 +869,7 @@ def compute_pick_necessity(raw_candidates: list[dict], round_num: int) -> list[t
         roster_fit_component = c.get("need_bonus", 0.0) * NECESSITY_ROSTER_FIT_WEIGHT
 
         raw_score = (
-            NECESSITY_BASELINE + standout_component + survival_component
+            NECESSITY_BASELINE + standout_component
             + cliff_component + run_component + denial_component + roster_fit_component
             + forfeit_component
         )

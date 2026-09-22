@@ -623,8 +623,13 @@ NO_PRICEABLE_INPUT = "no_priceable_input"
 # asserted the strongest of the three about all of them. None of these is a threshold -- each is
 # a statement about which inputs EXIST, so #56 is not engaged.
 #
-# ONLY THE FIRST IS PRODUCED TODAY, and a reader who misses that will misread every board. On a
-# real board of 1,119 rows, 638 are unpriced and ALL 638 are ABSENCE_NO_INPUT. The other two are
+# ONLY THE FIRST IS PRODUCED TODAY, and a reader who misses that will misread every board.
+# Measured on the real Fourth-and-Forever board: 1,119 rows of which 638 were unpriced
+# (2026-09-16), and 970 rows of which 489 are unpriced when re-measured on HEAD after #26
+# narrowed pool admission at 264e063. BOTH counts are kept because the second is the live one and
+# the first is what every evidence file written before #26 was measured against -- a re-measured
+# number that silently replaces its predecessor makes the older evidence look wrong rather than
+# dated. The SHAPE is unchanged and is the part that matters: ALL of them are ABSENCE_NO_INPUT. The other two are
 # named here and assigned by `_derive_points_and_source` to nobody -- see its own comment for
 # why each needs evidence this pool does not carry. They are kept rather than deleted because a
 # vocabulary trimmed to its current population describes the dataset instead of the domain, and

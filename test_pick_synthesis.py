@@ -314,16 +314,25 @@ class ComputePickNecessityTests(unittest.TestCase):
     def test_denial_component_is_take_probability_free(self):
         # The double-count this fixed, measured at r = +0.82 between the survival and denial
         # components before the split: denial_value carried the same p_take that already
-        # compounds into survival_probability. The necessity denial term now reads ONLY the
-        # p_take-free rival_premium -- so two candidates with the identical premium but very
-        # different survival must differ by exactly their survival components and nothing
-        # else, and the premium itself saturates at its own structural bound (#144).
+        # compounded into a survival term in this score. The necessity denial term reads ONLY
+        # the p_take-free rival_premium, and the premium saturates at its own structural
+        # bound (#144).
+        #
+        # THIS ASSERTION IS INVERTED AT #24, not deleted. It used to read "two candidates with
+        # the identical premium but very different survival must differ by EXACTLY their
+        # survival components" -- `assertAlmostEqual(delta, 0.5 * NECESSITY_SURVIVAL_WEIGHT)`.
+        # #24 retired that term, so the same two candidates must now be IDENTICAL, and the
+        # stronger statement is the one that survives: no probability of any kind reaches this
+        # score, so a difference in survival cannot move it at all. Left as the old assertion
+        # with the weight zeroed it would have passed vacuously.
         import draft_room as dr
         same_premium_safe = _raw_candidate(100.0, survival_probability=1.0, rival_premium=6.0)
         same_premium_risky = _raw_candidate(100.0, survival_probability=0.5, rival_premium=6.0)
         results = ps.compute_pick_necessity([same_premium_safe, same_premium_risky], round_num=3)
-        survival_delta = 0.5 * ps.NECESSITY_SURVIVAL_WEIGHT
-        self.assertAlmostEqual(results[1][0] - results[0][0], survival_delta, places=6)
+        self.assertAlmostEqual(
+            results[1][0], results[0][0], places=6,
+            msg="survival moved necessity -- #24 retired that term, so two candidates differing "
+                "only in survival must score identically")
 
         # Premium scales the component linearly up to its own saturation point, then flattens.
         # #144 moved that point from NEED_BONUS_MAX -- the cap on ONE of the three terms
@@ -362,8 +371,10 @@ class ComputePickNecessityTests(unittest.TestCase):
 
 
 class NecessityComponentIsolationTests(unittest.TestCase):
-    """Mutation testing zeroed NECESSITY_SURVIVAL_WEIGHT and NECESSITY_ROSTER_FIT_WEIGHT --
-    deleting two of pick_necessity's terms outright -- and all 963 tests still passed. The
+    """Mutation testing zeroed the survival weight and NECESSITY_ROSTER_FIT_WEIGHT --
+    deleting two of pick_necessity's terms outright -- and all 963 tests still passed. (The
+    survival weight has since been retired outright by #24, which is why it is named here in
+    prose rather than as a live constant.) The
     existing tests all stack several pressures at once and assert the total, so any single
     term can vanish while the totals still order correctly.
 
@@ -372,16 +383,11 @@ class NecessityComponentIsolationTests(unittest.TestCase):
     the only thing that can separate the scores is the term under test.
     """
 
-    def test_survival_pressure_alone_changes_the_score(self):
-        # "Likely to be gone by your next pick" is one of the two things necessity exists to
-        # say. Equal players, one at real risk.
-        at_risk = _raw_candidate(100.0, survival_probability=0.1)
-        safe = _raw_candidate(100.0, survival_probability=0.95)
-        (risk_score, _), (safe_score, _) = ps.compute_pick_necessity([at_risk, safe], round_num=3)
-        self.assertGreater(
-            risk_score, safe_score,
-            "survival probability had no effect on necessity -- the term is not reaching the score",
-        )
+    # `test_survival_pressure_alone_changes_the_score` WAS HERE, deleted at #24 / W1-07.
+    # It pinned that survival_probability moved necessity on its own. The ruling retired that
+    # term, so the property it protected is now the OPPOSITE property, and that one is asserted
+    # in test_denial_component_is_take_probability_free above rather than left implicit -- a
+    # deleted test whose inverse nobody writes is a contract that quietly stops existing.
 
     def test_roster_fit_alone_changes_the_score(self):
         # The other one: an identical player who actually fills a hole on THIS roster is a
@@ -408,7 +414,6 @@ class NecessityComponentIsolationTests(unittest.TestCase):
         # from a completely neutral candidate.
         neutral = dict(_raw_candidate(100.0))
         variants = {
-            "survival": dict(neutral, survival_probability=0.05),
             "cliff": dict(neutral, positional_cliff={"tier": "HIGH", "gap": 20, "typical_gap": 2}),
             "run": dict(neutral, position_run_detected=True),
             "denial": dict(neutral, rival_premium=12.0),

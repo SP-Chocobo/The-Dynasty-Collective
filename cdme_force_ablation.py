@@ -2,7 +2,7 @@
 
 compute_pick_necessity (pick_synthesis.py) is a clean additive formula:
 
-    raw_score = BASELINE + standout + survival + cliff + run + denial + roster_fit
+    raw_score = BASELINE + standout + cliff + run + denial + roster_fit + forfeit
 
 This module answers, for real historical decision states: how often does each named
 component actually move the necessity_label bucket a real candidate lands in, and how large
@@ -25,11 +25,24 @@ from typing import Optional
 import draft_room as dr
 import pick_synthesis as ps
 
-COMPONENTS = ("standout", "survival", "cliff", "run", "denial", "roster_fit")
+#: THE ONE HOME for the necessity-component vocabulary (#126) -- read by this module's own
+#: reporting, by run_dependency_audit's pairwise sweep and by run_denial_ablation_experiment.
+#:
+#: "survival" left at #24, which retired the term from compute_pick_necessity entirely.
+#:
+#: STILL MISSING: `forfeit`. compute_pick_necessity has summed a positional_forfeit term since
+#: #48/#71 and this mirror has never had one, so a `drop=None` run reproduces the real formula
+#: only for candidates that carry no positional_forfeit. The fidelity test does not catch it
+#: because its fixture builds candidates without that field, so both sides read None -> 0.0 and
+#: agree on a case that cannot distinguish them -- a vacuous fixture, the same shape this
+#: repository has been bitten by repeatedly. Recorded here rather than fixed in the #24 commit
+#: because adding a seventh component changes this tuple's census and every consumer that
+#: iterates it, which is its own change with its own blast radius.
+COMPONENTS = ("standout", "cliff", "run", "denial", "roster_fit")
 
 
 def _components(candidate: dict, others_tav: list[float]) -> dict[str, float]:
-    """The six named terms of compute_pick_necessity's own formula, computed identically --
+    """The named terms of compute_pick_necessity's own formula, computed identically --
     see that function's own body for the real definition each of these mirrors."""
     tav = candidate["team_acquisition_value"]
     if not others_tav:
@@ -38,9 +51,6 @@ def _components(candidate: dict, others_tav: list[float]) -> dict[str, float]:
         margin = tav - max(others_tav)
         normalized_margin = margin / ps.NECESSITY_STANDOUT_REFERENCE_GAP
         standout = max(0.0, min(1.0, normalized_margin)) * ps.NECESSITY_STANDOUT_WEIGHT
-
-    survival = candidate.get("survival_probability")
-    survival_c = (1 - survival) * ps.NECESSITY_SURVIVAL_WEIGHT if survival is not None else 0.0
 
     cliff = candidate.get("positional_cliff")
     cliff_c = ps.NECESSITY_CLIFF_POINTS.get(cliff["tier"], 0.0) if cliff else 0.0
@@ -56,10 +66,14 @@ def _components(candidate: dict, others_tav: list[float]) -> dict[str, float]:
         min(rival_premium / ps.NECESSITY_DENIAL_SATURATION, 1.0) * ps.NECESSITY_DENIAL_CEILING
     ) if rival_premium > 0 else 0.0
 
-    roster_fit_c = (candidate.get("need_bonus", 0.0) + candidate.get("eligibility_bonus", 0.0)) * ps.NECESSITY_ROSTER_FIT_WEIGHT
+    # eligibility_bonus was summed in here until 6.1b retired it from the real formula. This
+    # mirror kept adding it afterwards, so it was reproducing a version of the engine that had
+    # not existed since that ruling -- exactly what the #144 comment above warns about, happening
+    # to this file rather than to the one it watches.
+    roster_fit_c = candidate.get("need_bonus", 0.0) * ps.NECESSITY_ROSTER_FIT_WEIGHT
 
     return {
-        "standout": standout, "survival": survival_c, "cliff": cliff_c,
+        "standout": standout, "cliff": cliff_c,
         "run": run_c, "denial": denial_c, "roster_fit": roster_fit_c,
     }
 

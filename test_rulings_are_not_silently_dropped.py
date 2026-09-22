@@ -60,22 +60,35 @@ def _source(module: str) -> str:
 #: is true while the ruling is unimplemented and false once it is -- so this table cannot drift
 #: away from the tree it describes. `patch` is the staged work; `why` must be non-trivial,
 #: because "staged" without a reason is indistinguishable from "abandoned".
-STAGED = {
-    "W1-07": {
-        "witness": ("pick_synthesis.py", "NECESSITY_SURVIVAL_WEIGHT = 20.0"),
-        "patch": "evidence/blind_pass/w1_07_substitute.patch",
-        "why": "implementing it flips 62% of labels against a ruling made on 3.1%, because the "
-               "substitute is a property of the TURN and the quantity it replaces was a "
-               "property of the PLAYER. Forces re-deriving five label thresholds -- a second "
-               "#56 exercise the ruling did not cover, and the owner's call.",
-    },
-}
+STAGED = {}
 
 #: One entry per ruling that IS now in the engine. `witness` here is the INVERSE of STAGED's:
 #: a fact about the source that is true only once the ruling has landed. So this table cannot
 #: drift either -- a revert, a bad merge, or a cherry-pick that drops the work fails the test
 #: below instead of leaving a record claiming something the tree does not do.
 IMPLEMENTED = {
+    "W1-07": {
+        # INVERSE witness: a string only the landing can produce. Not the absence of
+        # NECESSITY_SURVIVAL_WEIGHT -- this file's own comment warns that a witness a
+        # NEIGHBOURING test could satisfy is not a witness, and "a constant is missing" is
+        # satisfied by a typo, a bad merge, or the file failing to parse.
+        "witness": ("pick_synthesis.py", "RETIRED FROM THIS SCORE (#24 / W1-07, ruled)"),
+        "landed": "necessity's survival term is gone: the constant, the (1 - survival) line and "
+                  "its slot in the sum. The SUBSTITUTE the staged patch proposed was NOT taken -- "
+                  "it is per-TURN, so it takes one value across every candidate in a snapshot and "
+                  "cannot re-rank anything. survival_probability itself is untouched on the "
+                  "snapshot and in the withholding contract; only the necessity term retired.",
+        "cost": "112 label flips of 8,312 necessity rows (1.35%) over a real 12-team 16-round "
+                "draft, one process toggling one constant on identical captured inputs: 99 "
+                "PREFERRED -> CLOSE CALL, 10 STRONG ACTION -> PREFERRED, 3 MUST TAKE -> STRONG "
+                "ACTION. 83.2% of scores moved at all, mean 0.42, max 9.80. NO redistribution "
+                "and NO threshold moved, because the ruling's premise that 20 of 100 had to be "
+                "re-homed was arithmetically false: the components sum to 157.6 against a CLAMP "
+                "of 100.0, never a budget, so removal leaves 137.6 and MUST TAKE (98.0) stays "
+                "reachable. Precedent is 6.1b and #25, which both retired a term without "
+                "reweighting a survivor.",
+        "evidence": "evidence/w1_07/REMOVE_SURVIVAL_COST.json",
+    },
     "6.1b": {
         "witness": ("draft_room.py", "TEAM_SPECIFIC_TERMS = (\"need_bonus\", \"depth_exposure\""),
         "landed": "eligibility_bonus retired from the board, the snapshot, the payload and the "

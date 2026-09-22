@@ -10,8 +10,9 @@ names as THREE different situations with three different answers to the ordering
 **Only (3) justifies ORDER LAST on its own merits**, and collapsing all three into one None
 meant the board asserted the strongest of them about every unpriced row.
 
-MEASURED ON A REAL BOARD, AND THE RESULT IS NOT WHAT THE ITEM ASSUMES. Of 1,119 rows, 638 are
-unpriced -- and **every one of them is kind (2)**: no source put a number on him at all. So the
+MEASURED ON A REAL BOARD, AND THE RESULT IS NOT WHAT THE ITEM ASSUMES. Of 1,119 rows, 638 were
+unpriced (2026-09-16); re-measured on HEAD after #26 narrowed admission at 264e063, 489 of 970 --
+and **every one of them is kind (2)**, in both measurements: no source put a number on him at all. So the
 representation gap is real and the population is not. The one kind that is present is the kind
 the register calls *unknown, not bad*, which is what makes the gap worth closing: ORDER LAST is
 currently applied to a population containing NONE of the evidence that would justify it.
@@ -33,8 +34,9 @@ because it is the shape that survives a green suite. It assigned kind (3) on
 TRADE-VALUE FALLBACK -- `position_relative_trade_value_vor`, confidence 35.0 in
 `CONFIDENCE_BY_SOURCE` -- and those rows are priced. The field would have contradicted its own
 contract, and no test could have caught it, because that branch has ZERO rows on every board
-measured (0 of 1,119). A latent breach that only a reading of the branch, not a measurement of
-it, could find. The classification is now derived from the source label itself, so "has a kind"
+measured (0 of 1,119 then, 0 of 970 re-measured on HEAD). A latent breach that only a reading of
+the branch, not a measurement of it, could find -- and re-measuring it changed the denominator
+without changing the zero, which is the whole reason the branch is still unreachable. The classification is now derived from the source label itself, so "has a kind"
 and "has no price" are the same question asked once.
 
 A NEAR-MISS WORTH KEEPING. The first version of the population measurement matched board names

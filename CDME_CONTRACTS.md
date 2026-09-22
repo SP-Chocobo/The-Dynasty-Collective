@@ -479,9 +479,13 @@ necessity "has least to work with" late. `standout` dies at round 6 (the VOR sat
 18**. A new term would be entering a contested field, not a vacuum — except at round 20, where
 only `run` survives and any admitted term would dominate outright.
 
-**Authority bound.** `NECESSITY_WAITING_WEIGHT` must not exceed `NECESSITY_SURVIVAL_WEIGHT`
-(20.0), so the term can at most tie the strongest live pressure and never exceed it in any
-regime where survival is live. Its dominance at round 20 is accepted and stated rather than
+**Authority bound — ITS ANCHOR IS GONE (#24).** This read: "`NECESSITY_WAITING_WEIGHT` must not
+exceed `NECESSITY_SURVIVAL_WEIGHT` (20.0), so the term can at most tie the strongest live pressure
+and never exceed it in any regime where survival is live." #24 retired the survival term, so the
+bound now names a constant that does not exist and a regime that cannot occur. `NECESSITY_WAITING_WEIGHT`
+is itself pinned as NEVER IMPLEMENTED by `test_superseded_proposals`, so nothing is unbounded in the
+tree today — but any future proposal to add it needs a NEW anchor derived from the terms that remain,
+not this one. Its dominance at round 20 is accepted and stated rather than
 engineered away — at the final pick there is genuinely nothing else to differentiate on.
 
 ---
@@ -553,7 +557,7 @@ CONTRIBUTION  (only when admitted)
 CONSTANTS
     WAITING_PRESSURE_REFERENCE = WAITING_STEEP_PER_WEEK * SLEEPER_WEEKLY_TO_SEASON_FACTOR
                                = 3.0 * 17 = 51.0 season points
-    NECESSITY_WAITING_WEIGHT  <= NECESSITY_SURVIVAL_WEIGHT (20.0)     [authority bound]
+    NECESSITY_WAITING_WEIGHT  <= ???                                  [anchor RETIRED at #24]
     LO                         = 0.0  or  -1.0                        [OPEN — see below]
 ```
 
@@ -599,7 +603,7 @@ moved.
 | `6.1b` | the multi-eligible displacement lift | **unify** the two terms into one multi-eligibility price | no value moved by the repair; the reachable-floor clamp binds at 0 of 642 probes |
 | `I-06/J-06` | pricing a `no_surplus` position | **separate basis token with its own scale** | 22 of 48 cells flip, 45.8%; every number unchanged |
 | `6.1d.1` | what lights `context_elevated` | **derive a threshold from the sum's own ceiling** | max gap 8.33 vs 13.21; share >= 12 goes 7.72% -> 0.00% |
-| `W1-07` | `NECESSITY_SURVIVAL_WEIGHT` | **replace with `intervening_picks`** | 12 of 384 labels flip (3.1%), max necessity move 8.50, incl. 2x `MUST TAKE -> STRONG ACTION` |
+| `W1-07` | `NECESSITY_SURVIVAL_WEIGHT` | **REMOVE it; the proposed `intervening_picks` substitute was NOT taken** (it is per-TURN, so it takes one value across every candidate in a snapshot and cannot re-rank) | LANDED at #24. Re-measured on a real 12-team 16-round draft: 112 of 8,312 necessity rows flip label (1.35%) — 99 `PREFERRED -> CLOSE CALL`, 10 `STRONG ACTION -> PREFERRED`, 3 `MUST TAKE -> STRONG ACTION`; 83.2% of scores move at all, mean 0.42, max 9.80. The earlier "12 of 384 (3.1%), max 8.50, 2x `MUST TAKE`" measured the SUBSTITUTE arm on a smaller population and is kept for that reason |
 | `W4-01` | the rookie population | **promote `years_exp`** | 654 players enter, 31 leave; a rookie draft goes 95 -> 718 |
 | `J-12` | `draft_history` wired to nothing | **wire it narrowly** — record a snapshot only when a debate ran on it | 0 non-test importers; `_NEVER_IMPORTED` guards a store nothing writes |
 | `J-13` | `get_players()` returning `{}` | **raise** | 91,956 empty reads of 98,405 under one concurrent writer |
