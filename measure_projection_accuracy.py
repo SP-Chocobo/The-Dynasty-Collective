@@ -33,6 +33,16 @@ NOTHING HERE CHOOSES A CONSTANT. It reports ratios. Turning a ratio into a term 
 a separate decision with its own derivation (#56: a bound is not a threshold, and a measurement
 is not a tuning knob).
 
+AND THE RATIOS IT REPORTS ARE NOT RATES -- read evidence/w18_instrument/INSTRUMENT.md before using
+one. The estimator is a TWO-PLAYER DIFFERENCE, n = 1 pair per position per season, and the first
+real run showed that resolution failing at exactly the two positions the work exists to fix: K
+because integer kicker totals TIE at the replacement rank (three at 133.0 in 2024, so the ratio
+was a coin flip among them), DEF because its projected gap was 6.7 points across eighteen weeks
+and any realised spread divided into 5.26. Both failures are now printed beside the number rather
+than left for a reader to notice. Neither is repaired by more seasons; each season adds one pair.
+The repair is a population estimator over a position's whole pool, which needs the projections
+arm captured offline -- see capture_weekly_lines.py.
+
     python3 measure_projection_accuracy.py --seasons 2023,2024 --out PROJECTION_ACCURACY.json
 
 Runtime is dominated by the API: two calls per week per season, ~18 weeks, so ~72 calls for two
@@ -66,6 +76,13 @@ REQUEST_SPACING_SECONDS = 0.4
 #: that ran short simply returns empty weeks, which are skipped rather than counted as zeros --
 #: a missing week and a week where nobody scored are different facts.
 REGULAR_SEASON_WEEKS = range(1, 19)
+
+#: A projected season gap at or under this is the projection saying the starters are
+#: indistinguishable, so the ratio against it is a division by nearly zero rather than a
+#: reliability measurement. DERIVED, not chosen (#56): it is one point per game over a
+#: seventeen-game season, the smallest per-game difference this scoring can express at all --
+#: below it there is no signal to be a share OF. It gates a WARNING, never a value.
+NEGLIGIBLE_PROJECTED_GAP = 17.0
 
 
 def _season_totals(client: sc.SleeperClient, season: str, scoring: dict,
@@ -126,12 +143,36 @@ def accuracy_by_position(projected: dict[str, float], actual: dict[str, float],
         repl_id, repl_proj = pool[rank - 1]
         projected_gap = round(best_proj - repl_proj, 2)
         realised_gap = round(actual[best_id] - actual[repl_id], 2)
+        # THE TWO NUMBERS THAT SAY WHETHER THE RATIO ABOVE MEANS ANYTHING, and their absence is
+        # why the first real run was over-read (evidence/w18_instrument/INSTRUMENT.md).
+        #
+        # This estimator is a TWO-PLAYER DIFFERENCE: n = 1 pair per position per season. At K that
+        # resolution is coarser than the effect, because kicker season totals are integers -- a
+        # field goal is 3 and an extra point is 1 -- so they TIE. Measured on 2024, three kickers
+        # finished at exactly 133.0 at the replacement rank, and which one the projection happened
+        # to rank 12th decided the whole ratio. `K 2024 = 0.00` read as "no projected kicker
+        # spread materialised"; it was a coin flip among three tied players.
+        #
+        # The other way it fails is a projected gap so small the ratio is a division by nearly
+        # zero: DEF 2024 projected 6.7 points across eighteen weeks, about a third of a point a
+        # week, and any realised spread at all divided into 5.26.
+        #
+        # Neither is repaired by more seasons -- each season adds one more pair. Reporting them
+        # does not repair the estimator either; it stops the ratio being read as a rate. The real
+        # fix is a population estimator over the whole positional pool, which needs the
+        # projections arm offline (capture_weekly_lines.py).
+        realised_ties = sum(1 for pid in actual
+                            if pu.player_position(players_db.get(pid) or {}) == position
+                            and pid in projected
+                            and abs(actual[pid] - actual[repl_id]) < 1e-9)
         out[position] = {
             "measurable": True,
             "replacement_rank": rank,
             "pool": len(pool),
+            "pairs": 1,
             "projected_gap": projected_gap,
             "realised_gap": realised_gap,
+            "realised_ties_at_replacement_rank": realised_ties,
             # None, never 0.0: a projected gap of zero makes the ratio undefined rather than
             # perfect, and a 0.0 here would read as "none of it materialised".
             "realised_share": (round(realised_gap / projected_gap, 3)
@@ -188,9 +229,19 @@ def main(argv=None) -> int:
                 print(f"{position:<5}{season:<9}{'--':>10}{'--':>10}{'--':>9}  {row.get('why','')}")
                 continue
             share = row["realised_share"]
+            ties = row["realised_ties_at_replacement_rank"]
+            # The caveat travels WITH the number, on the same line, because a table of bare
+            # ratios is what got over-read the first time.
+            caveat = ""
+            if ties > 1:
+                caveat = (f"  <- {ties} players tie at the replacement rank; this ratio is a "
+                          f"coin flip among them, not a rate")
+            elif abs(row["projected_gap"]) < NEGLIGIBLE_PROJECTED_GAP:
+                caveat = (f"  <- projected gap is {row['projected_gap']:.1f} over a whole season; "
+                          f"the ratio is a division by nearly zero")
             print(f"{position:<5}{season:<9}{row['projected_gap']:>10.1f}"
                   f"{row['realised_gap']:>10.1f}"
-                  f"{(f'{share:.2f}' if share is not None else 'n/a'):>9}")
+                  f"{(f'{share:.2f}' if share is not None else 'n/a'):>9}{caveat}")
 
     shares = {p: [t[p]["realised_share"] for t in per_season.values()
                   if (t.get(p) or {}).get("measurable") and t[p]["realised_share"] is not None]

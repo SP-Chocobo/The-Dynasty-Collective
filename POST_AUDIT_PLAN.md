@@ -14059,3 +14059,58 @@ The lesson, and it is a new one rather than a repeat: **a test that asserts what
 constructs is not evidence about a system we do not control.** Every guard in this repository
 that checks a URL, a payload shape or a third-party contract has this shape, and none of them
 can see a 404.
+
+---
+
+## #18 MEASURED, AND THE RULING IT WAS BLOCKING IS SUPERSEDED BY THE MEASUREMENT
+
+`measure_projection_accuracy` ran to completion against the live API for the first time, on the
+owner's machine, after the URL repair above. All 36 weeks returned actuals and
+`PROJECTION_ACCURACY.json` was written. Full table, both arms of the objection, and the probe that
+produced the offline half: **`evidence/w18_instrument/INSTRUMENT.md`**.
+
+**The ruling recorded earlier in this plan -- "a per-position forecast-reliability shrink on `bpa`,
+DERIVED from `measure_projection_accuracy` (#18), fixes K/DEF under a plain value sort" -- cannot
+be executed, and must not be executed from these numbers.** DEF's realised share of its projected
+gap came back at **1.81 (2023) and 5.26 (2024)**: above 1.0 in both seasons, the opposite of the
+direction the ruling assumed. A shrink derived from the measurement it named would raise DEF.
+
+The reason is the estimator, not the sport. It is a **two-player difference** -- the player
+projected at rank 1 against the player projected at replacement rank -- so n = 1 pair per position
+per season, and at the two positions this work exists to fix that resolution is coarser than the
+effect:
+
+- **K 2024 = 0.00** because kicker season totals are integers and **three kickers tie at exactly
+  133.0** at the replacement rank. Which of the three the projection ranked 12th decides the whole
+  ratio.
+- **DEF 2024 = 5.26** because the projected DEF gap is **6.7 points across eighteen weeks** -- a
+  third of a point a week. It is a division by approximately zero, printed to two decimals.
+
+More seasons cannot repair this; each season adds one more pair.
+
+### What the season does support, measured offline from the committed actuals
+
+The board believes a defense's rank-1-to-replacement spread is **69%** of a quarterback's
+(`evidence/blind_pass/KDST_VALUATION.md`: QB 43.9, DEF 30.5). The 2024 season paid **23%**. The
+overstatement is **3.1x**, and it is a FLOOR rather than an estimate: hindsight-ranking inflates
+every position, and K and DEF carry `sd/gap` of 0.38 and 0.39 against QB's 0.17, so hindsight
+inflates them more than QB and the true share is below 0.23. The original complaint -- defenses
+taken about five rounds early -- is confirmed as a RELATIVE SPREAD error.
+
+`sd/gap ~ 0.4` is the plainer version: about two fifths of the DEF gap the board is paying for is
+next season's coin flips.
+
+### Register
+
+- **#18 is not closed.** It was blocked on reaching the API; it is now blocked on the estimator.
+  The live path and the URL repair are verified by 36 non-empty weeks.
+- **No constant is derived, and none may be** (#56). A floor on a relative overstatement is not a
+  shrink factor.
+- The population estimator that could produce one needs the PROJECTIONS arm offline.
+  `capture_weekly_lines.py` is that: one command on a networked machine, one committed file, and
+  the instrument repair iterates without a round trip through the owner per hypothesis.
+- **#17 stays parked behind #18.**
+
+The sibling of the lesson banked just above: **a ratio computed over two data points is not a
+rate, however many decimal places it is printed to.** The engine-measurement checklist already
+says to print `n`. Here `n` was 1, and the instrument never printed it.

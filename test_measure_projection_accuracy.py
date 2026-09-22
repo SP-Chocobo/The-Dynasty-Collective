@@ -98,3 +98,61 @@ class WhatTheHarnessMeasuresTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TheRatioReportsItsOwnResolutionTests(unittest.TestCase):
+    """#18: the first real run was over-read, and these are the two numbers that would have
+    stopped it.
+
+    A two-player difference is n = 1 pair. When the replacement rank sits on a TIE, the ratio is
+    decided by which tied player the projection happened to rank there; when the projected gap is
+    a rounding error, the ratio is a division by nearly zero. Both happened on live data, at
+    exactly the two positions the work exists to fix. Neither is a bug in the arithmetic, so
+    neither could be caught by a test of the arithmetic -- they are missing DIAGNOSTICS, and these
+    pin them.
+    """
+
+    def test_the_row_says_it_rests_on_ONE_pair(self):
+        """The engine-measurement rule is to print `n`. Here `n` is 1 and the instrument never
+        said so, which is most of why a table of twelve ratios read as twelve measurements."""
+        row = accuracy_by_position({"a": 30.0, "b": 20.0, "c": 10.0},
+                                   {"a": 30.0, "b": 20.0, "c": 10.0},
+                                   _db(["a", "b", "c"], "K"), 2, {"K": 1.0})["K"]
+        self.assertEqual(row["pairs"], 1)
+
+    def test_a_tie_at_the_replacement_rank_is_counted(self):
+        """Measured on real 2024 data: THREE kickers finished at exactly 133.0 at the replacement
+        rank, because kicker totals are integers -- a field goal is 3, an extra point is 1. The
+        reported ratio was whichever of the three the projection ranked twelfth."""
+        projected = {"a": 30.0, "b": 20.0, "c": 19.0, "d": 18.0}
+        actual = {"a": 30.0, "b": 25.0, "c": 25.0, "d": 25.0}
+        row = accuracy_by_position(projected, actual, _db(["a", "b", "c", "d"], "K"),
+                                   2, {"K": 1.0})["K"]
+        self.assertEqual(row["realised_ties_at_replacement_rank"], 3)
+
+    def test_no_tie_reports_the_replacement_player_alone(self):
+        """Non-vacuity: a counter that always returned 3 would pass the test above."""
+        projected = {"a": 30.0, "b": 20.0, "c": 10.0}
+        actual = {"a": 30.0, "b": 20.0, "c": 5.0}
+        row = accuracy_by_position(projected, actual, _db(["a", "b", "c"], "K"),
+                                   2, {"K": 1.0})["K"]
+        self.assertEqual(row["realised_ties_at_replacement_rank"], 1)
+
+    def test_a_player_with_no_result_cannot_be_counted_as_a_tie(self):
+        """The tie count has to be over the same population the ratio is, or it describes a
+        different set than the number it is attached to."""
+        projected = {"a": 30.0, "b": 20.0, "c": 10.0, "ghost": 25.0}
+        actual = {"a": 30.0, "b": 20.0, "c": 20.0}
+        row = accuracy_by_position(projected, actual, _db(["a", "b", "c", "ghost"], "K"),
+                                   2, {"K": 1.0})["K"]
+        self.assertEqual(row["realised_ties_at_replacement_rank"], 2)
+
+    def test_the_negligible_gap_bound_is_one_point_a_game(self):
+        """DERIVED, not chosen (#56). DEF 2024 projected a 6.7-point gap across a whole season and
+        the instrument divided by it. The bound is the smallest per-game difference this scoring
+        can express -- one point over seventeen games -- and it gates a WARNING, never a value."""
+        from measure_projection_accuracy import NEGLIGIBLE_PROJECTED_GAP
+        self.assertEqual(NEGLIGIBLE_PROJECTED_GAP, 17.0)
+        self.assertGreater(NEGLIGIBLE_PROJECTED_GAP, 6.7,
+                           "the measured DEF 2024 projected gap must fall inside the bound, or "
+                           "the bound would not have caught the case it was derived from")
