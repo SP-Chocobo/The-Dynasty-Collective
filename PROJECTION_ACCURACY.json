@@ -1,0 +1,142 @@
+{
+  "_comment": "Per position: how much of the PROJECTED rank-1-to-replacement gap actually materialised. Ranks are assigned by projection, never by outcome. This is a measurement, not a tuning knob -- turning it into an engine term is a separate decision with its own derivation (#56).",
+  "seasons": [
+    "2023",
+    "2024"
+  ],
+  "scoring_source": "data/fixtures/sleeper_capture.json",
+  "per_season": {
+    "2023": {
+      "QB": {
+        "measurable": true,
+        "replacement_rank": 12,
+        "pool": 112,
+        "projected_gap": 166.93,
+        "realised_gap": 42.7,
+        "realised_share": 0.256,
+        "best": "Patrick Mahomes",
+        "replacement": "Derek Carr"
+      },
+      "RB": {
+        "measurable": true,
+        "replacement_rank": 32,
+        "pool": 191,
+        "projected_gap": 214.07,
+        "realised_gap": 240.86,
+        "realised_share": 1.125,
+        "best": "Christian McCaffrey",
+        "replacement": "Devin Singletary"
+      },
+      "WR": {
+        "measurable": true,
+        "replacement_rank": 32,
+        "pool": 332,
+        "projected_gap": 151.11,
+        "realised_gap": 149.0,
+        "realised_share": 0.986,
+        "best": "Tyreek Hill",
+        "replacement": "Nico Collins"
+      },
+      "TE": {
+        "measurable": true,
+        "replacement_rank": 20,
+        "pool": 185,
+        "projected_gap": 173.51,
+        "realised_gap": 115.9,
+        "realised_share": 0.668,
+        "best": "Travis Kelce",
+        "replacement": "Tyler Higbee"
+      },
+      "K": {
+        "measurable": true,
+        "replacement_rank": 12,
+        "pool": 42,
+        "projected_gap": 19.96,
+        "realised_gap": 6.0,
+        "realised_share": 0.301,
+        "best": "Justin Tucker",
+        "replacement": "Matt Gay"
+      },
+      "DEF": {
+        "measurable": true,
+        "replacement_rank": 12,
+        "pool": 32,
+        "projected_gap": 18.8,
+        "realised_gap": 34.0,
+        "realised_share": 1.809,
+        "best": "San Francisco 49ers",
+        "replacement": "Philadelphia Eagles"
+      }
+    },
+    "2024": {
+      "QB": {
+        "measurable": true,
+        "replacement_rank": 12,
+        "pool": 112,
+        "projected_gap": 86.73,
+        "realised_gap": 169.88,
+        "realised_share": 1.959,
+        "best": "Josh Allen",
+        "replacement": "Brock Purdy"
+      },
+      "RB": {
+        "measurable": true,
+        "replacement_rank": 32,
+        "pool": 191,
+        "projected_gap": 187.42,
+        "realised_gap": 219.6,
+        "realised_share": 1.172,
+        "best": "Bijan Robinson",
+        "replacement": "Jaylen Warren"
+      },
+      "WR": {
+        "measurable": true,
+        "replacement_rank": 32,
+        "pool": 342,
+        "projected_gap": 143.87,
+        "realised_gap": 245.6,
+        "realised_share": 1.707,
+        "best": "Ja'Marr Chase",
+        "replacement": "DeVonta Smith"
+      },
+      "TE": {
+        "measurable": true,
+        "replacement_rank": 20,
+        "pool": 185,
+        "projected_gap": 133.11,
+        "realised_gap": 74.5,
+        "realised_share": 0.56,
+        "best": "Travis Kelce",
+        "replacement": "Tyler Conklin"
+      },
+      "K": {
+        "measurable": true,
+        "replacement_rank": 12,
+        "pool": 50,
+        "projected_gap": 29.84,
+        "realised_gap": 0.0,
+        "realised_share": 0.0,
+        "best": "Justin Tucker",
+        "replacement": "Jason Myers"
+      },
+      "DEF": {
+        "measurable": true,
+        "replacement_rank": 12,
+        "pool": 32,
+        "projected_gap": 6.65,
+        "realised_gap": 35.0,
+        "realised_share": 5.263,
+        "best": "Philadelphia Eagles",
+        "replacement": "Tampa Bay Buccaneers"
+      }
+    }
+  },
+  "median_realised_share": {
+    "QB": 1.107,
+    "RB": 1.148,
+    "WR": 1.347,
+    "TE": 0.614,
+    "K": 0.15,
+    "DEF": 3.536
+  }
+}
