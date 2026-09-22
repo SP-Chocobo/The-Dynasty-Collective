@@ -14449,3 +14449,48 @@ observations against an expectation of 2.50.
 - **Instrument rule earned:** a rulebook needs the SLOTS *and* the SCORING for the positions under
   test. Three vacuity failures in one probe's lifetime -- no slot, then no scoring, plus a sys.path
   break that stopped it running -- each caught only by re-running it for an unrelated reason.
+
+
+---
+
+# PHASE 8: THE REPAIR MANDATE IS DISPOSED OF IN FULL
+
+Certification: **`evidence/PHASE_8_CERTIFICATION.md`**.
+
+Twelve items (`#16`-`#28`): **seven done, four withdrawn, one blocked on `#50`**. `STAGED` in
+`test_rulings_are_not_silently_dropped` is now EMPTY. Every item is disposed of -- nothing
+half-done, nothing silently dropped, and the one blocked item names its blocker.
+
+**What a v2 freeze may claim:** seven ruled repairs landed with measured costs and a full green
+suite each; the forward test's outcome half works for the first time (the stats endpoint had always
+404'd); the measurement re-runs offline from four committed captures; and `bpa` magnitude is not
+what puts defenses in round five -- five independent measurements, the last by MOVING the price 2.2x
+and watching placement not move.
+
+**What it must NOT claim:** that K/DST pricing is fixed. It is not. What is established is that the
+cause is neither `bpa` nor projection reliability, and that every remaining candidate is downstream
+of `bpa`. Also not: any per-position reliability constant (`#56` -- four numbers across two seasons
+at se ~ 0.33 is not a population), and not that `#21` is resolved.
+
+## The instrument record, which is the honest headline
+
+**Eight conclusions were withdrawn or corrected during this mandate**, every one MEASURED rather
+than guessed, and every one measuring the wrong object. Three are the same failure -- a fixture
+describing a league nobody plays -- and two are the same phantom board built with an argument no
+caller passes.
+
+Four rules are now written into the probes themselves rather than into a document nobody reruns:
+
+1. **The configuration is part of the measurement.** A board number is not reportable without the
+   call that produced it (`#166`/`#174` applied to configurations).
+2. **A rulebook needs the SLOTS *and* the SCORING for the positions under test.** The new #17 probe
+   refuses to run without both.
+3. **A test that asserts what our own code constructs is not evidence about a system we do not
+   control** (banked at `29ab259`).
+4. **A ratio over two data points is not a rate.** The instrument now prints `pairs`, the
+   replacement-rank tie count, and a caveat beside any ratio resting on a tie or a near-zero
+   denominator.
+
+The most valuable output of this mandate is not a repair. It is a much shorter list of places the
+K/DST cause can be, plus four instrument rules that would have prevented most of the eight
+withdrawals.
