@@ -266,3 +266,92 @@ could be caught by reasoning; both needed a measurement of the thing itself.
   one number, and nothing establishes that their point scales agree. `bpa_source` already records
   which row came from which. That is the structural candidate for the K/DEF mispricing, and it is
   upstream of every reliability question asked so far.
+
+---
+
+# THIRD PASS: lineage settled on a 2026 capture, and #18's premise does not survive it
+
+`lineage.py`, run against the owner's 2026 projections capture — the CSVs' own vintage, because a
+2026 CSV against 2024 weekly projections reports the gap between two seasons and calls it the gap
+between two sources.
+
+## The CSVs are not the weekly projections, for EITHER position
+
+| joined player by player, 2026 | top-12 r | se | whole-pool r | se | top-12 scale |
+|---|---|---|---|---|---|
+| DEF (joined on team) | **−0.226** | 0.33 | 0.583 | 0.19 | 1.081 ± 0.098 |
+| K (joined on last name, team) | **0.708** | 0.33 | 0.598 | 0.18 | 1.284 ± 0.034 |
+
+**And the second pass had the two positions backwards.** It concluded "DEF is plausibly the same
+artifact for a different season. K plainly is not," reasoning from pool sizes and top-of-pool
+levels. Measured player by player, K is the closer match: inside the starting band its ordering
+agrees at 0.708 and its scale factor is 1.284 with a standard deviation of 0.034, which is a
+rescale of one underlying number. DEF is the looser one, and in the band that matters — the twelve
+**starting** defenses, where a draft does all its discriminating, r is **−0.226**. Their *levels*
+agree (1.081); their *ordering* does not.
+
+At n=12, se ≈ 0.33, so −0.226 is indistinguishable from zero. What it is distinguishable from is
+1.0. Two copies of one artifact cannot do this.
+
+The pool-size argument that produced the backwards call was not wrong about the pool sizes — K's
+CSV really is 37 players against 153. It was wrong to treat a pool-size difference as the thing
+that decides lineage, when the curated 37 are simply the 37 kickers anyone would draft. **A
+difference in what a file CONTAINS is not evidence about where its NUMBERS came from.**
+
+## The question #18 was actually asking, answered
+
+Lineage is a question about our files. The engine question is whether a projection predicts
+**ordering** inside the starting band, which is the only band a draft discriminates in. Spearman,
+projected against realized, on the two seasons that have finished:
+
+| pos | band | 2023 | 2024 | se |
+|---|---|---|---|---|
+| QB | 12 | 0.52 | 0.74 | 0.33 |
+| RB | 32 | 0.68 | 0.87 | 0.19 |
+| WR | 32 | 0.64 | 0.69 | 0.19 |
+| TE | 20 | 0.92 | 0.63 | 0.24 |
+| **K** | 12 | **0.41** | **0.20** | 0.33 |
+| **DEF** | 12 | **0.75** | **0.48** | 0.33 |
+
+**DEF ranks about as well as QB.** K is the weak one, and its 2024 figure sits within one standard
+error of zero.
+
+So **#18's founding premise is not supported**: the position whose projections fail to order the
+starting band is K, not DEF — and DEF, the position the whole investigation was opened for, is
+middling rather than broken. Every earlier pass in this file, mine included, was looking for a DEF
+reliability defect. The measurement does not find one.
+
+Say the limits plainly: a twelve-player band has se ≈ 0.33 and there are two seasons, so this
+separates K's 0.20 from RB's 0.87 and separates nothing else. DEF 0.48 against QB 0.52 is one draw
+each of the same number. **No constant is derivable from this** (#56), and four numbers spanning
+two seasons at se 0.33 is not a population for one.
+
+## What is now established, and what it costs
+
+1. **The ruled `bpa` shrink is dead three times over.** The estimator was n=1; the population slope
+   says five of six positions have nothing to shrink and DEF is *compressed*; and the ordering
+   measurement says DEF is not the unreliable position in the first place.
+2. **Every K and DEF reliability number this instrument has ever produced is about Sleeper's weekly
+   projections, not about the board's input** — for both positions, now measured rather than
+   assumed. The board's actual K/DEF input has **never been validated against a result**, and
+   cannot be from data that exists: validating it needs a CSV of 2023 or 2024 vintage, and none was
+   kept.
+3. **One actionable, cheap possibility**, offered as a candidate and not a conclusion: the weekly
+   projections the app already fetches have *measured* ordering skill for DEF (0.75 / 0.48). The
+   CSV's has never been measured and cannot be. Pricing DEF off the measured source rather than the
+   unmeasurable one is a change with an argument behind it — but it is an engine-design change, so
+   it goes to the owner (#184), and it must not be read as established that it would be better.
+4. **`#28` stands unchanged and is now the strongest remaining candidate**: two vendors,
+   `points_vor_draftsharks` and `points_vor_sleeper_seeded`, compared directly on one `bpa` scale
+   with nothing establishing their point scales agree. Three passes of reliability measurement have
+   found no DEF reliability defect, which makes an unmeasured scale offset the more likely
+   explanation for defenses going five rounds early.
+
+## The lesson this pass earned
+
+The first two passes each reached a confident conclusion from a quantity that was *adjacent* to the
+question: a two-player ratio for a population question, a stale document for a live board, pool
+sizes for a lineage question. Each was checkable and none was checked before being written down.
+The pattern is not carelessness about arithmetic — every number was correct. It is **answering with
+the nearest available measurement instead of the one the question asks for**, and the tell is the
+same every time: the quantity is cheap to get and the question is not.

@@ -14136,11 +14136,48 @@ belief was about a system we do not control, here it is about our own data linea
 Full write-up, both passes and every objection: **`evidence/w18_instrument/INSTRUMENT.md`**, which
 is the authority over this section.
 
+### LINEAGE SETTLED on the 2026 capture, and #18's PREMISE does not survive it
+
+Neither CSV is the weekly projection, and the pass above had the two positions BACKWARDS. Joined
+player by player on 2026: DEF top-12 r = **-0.226** (se 0.33, levels agree at 1.081 while ordering
+does not), K top-12 r = **0.708** at a scale of 1.284 +- 0.034. K is the closer match; DEF is the
+looser one, in exactly the band a draft discriminates in. The backwards call came from treating a
+POOL-SIZE difference as evidence about lineage -- a difference in what a file contains is not
+evidence about where its numbers came from.
+
+And the engine question, asked properly at last -- does a projection predict ORDERING inside the
+starting band, measured against seasons that finished (Spearman, se ~ 0.33 at a 12-player band):
+
+| pos | 2023 | 2024 |
+|---|---|---|
+| QB | 0.52 | 0.74 |
+| RB | 0.68 | 0.87 |
+| WR | 0.64 | 0.69 |
+| TE | 0.92 | 0.63 |
+| **K** | **0.41** | **0.20** |
+| **DEF** | **0.75** | **0.48** |
+
+**DEF ranks about as well as QB. K is the weak one.** #18 was opened to find a DEF reliability
+defect and three passes of measurement do not find one. No constant is derivable (#56): four
+numbers across two seasons at se 0.33 is not a population.
+
 ### Register
 
-- **#18 is not closed.** It was blocked on reaching the API; then on the estimator; it is now
-  blocked on DATA LINEAGE -- whether the board's K/DEF CSVs are the same artifact as Sleeper's
-  weekly projections. A 2026 capture settles that, since the CSVs are dated 2026-08-25.
+- **#18: the ruled shrink is dead three times over** -- the estimator was n=1, the population slope
+  says five of six positions have nothing to shrink and DEF is COMPRESSED, and the ordering
+  measurement says DEF is not the unreliable position at all.
+- **The board's actual K/DEF input has NEVER been validated against a result, and cannot be from
+  data that exists.** That needs a seed CSV of 2023 or 2024 vintage; none was kept.
+- **CANDIDATE, owner's call (#184):** the weekly projections the app already fetches have measured
+  DEF ordering skill (0.75/0.48); the CSV's has never been measured and cannot be. Pricing DEF off
+  the measured source is a change with an argument behind it. NOT established as better.
+- **#28 is now the strongest remaining explanation** for defenses going five rounds early: two
+  vendors on one `bpa` scale with nothing establishing their point scales agree.
+- Three passes, three confident conclusions from a quantity ADJACENT to the question -- a
+  two-player ratio for a population question, a stale document for a live board, pool sizes for a
+  lineage question. Every number was arithmetically right. The failure is **answering with the
+  nearest available measurement instead of the one the question asks for**, and the tell is always
+  that the quantity is cheap and the question is not.
 - **NEW OWNER QUESTION (#184: engine design, not a repair).** The board puts
   `points_vor_draftsharks` (QB/RB/WR/TE) and `points_vor_sleeper_seeded` (K/DEF) on ONE `bpa` scale
   and compares them directly. Two vendors, one number, and nothing establishes their point scales

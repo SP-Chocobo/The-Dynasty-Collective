@@ -37,15 +37,33 @@ whole extent of what was ever checked:
     weekly-sum 2024                32   121.5      6.7    153  159.9   29.8
     board CSV (2026-08-25)         32   111.0     13.0     37  116.0   11.0
 
-DEF is plausibly the same artifact for a different season. K plainly is not: 37 curated players
-against 153, and a top kicker 40 points lower. So for one of the two positions this exists to fix,
-it has been measuring something else -- and a docstring said otherwise, which is why nobody looked.
-Same shape as the URL bug this module already paid for, one level up: there the wrong belief was
-about a system we do not control, here about our own data lineage.
+SETTLED, on a 2026 capture -- the CSVs' own vintage, because a 2026 CSV against 2024 weekly
+projections would report the gap between two seasons and call it the gap between two sources.
+NEITHER is the same artifact, and the first guess at which one matched was BACKWARDS:
 
-SETTLING IT needs a same-season comparison, so a capture of 2026 (the CSVs' own vintage). Until
-then, read every K and DEF number here as a statement about Sleeper's weekly projections and NOT
-about the board's input. See evidence/w18_instrument/INSTRUMENT.md.
+    joined player by player, 2026     top 12 r     whole pool r    top-12 scale
+    DEF (by team)                       -0.226           0.583     1.081 +- 0.098
+    K   (by last name, team)             0.708           0.598     1.284 +- 0.034
+
+K is the closer match: inside the starting band its ordering agrees (0.708) at a scale factor of
+1.284 with a standard deviation of 0.034, which is a rescale. DEF is the looser one, and in exactly
+the band that matters: the twelve STARTING defenses, where a draft does all its discriminating,
+show r = -0.226 -- indistinguishable from zero at se 0.33, and nowhere near the 1.0 two copies of
+one artifact would give. Their LEVELS agree (1.081) while their ORDERING does not.
+
+So read every K and DEF number here as a statement about Sleeper's weekly projections and NOT
+about the board's input, for both positions rather than just one.
+
+AND THE QUESTION #18 WAS REALLY ASKING has a different answer again. Does a projection predict
+ORDERING inside the starting band, measured against seasons that finished (Spearman, se ~ 0.33 at
+a twelve-player band)?
+
+    QB 0.52 / 0.74    RB 0.68 / 0.87    WR 0.64 / 0.69
+    TE 0.92 / 0.63    K  0.41 / 0.20    DEF 0.75 / 0.48
+
+DEF ranks about as well as QB. K is the weak one, and its 2024 figure is within one se of zero.
+#18's premise -- that DEF projections are the unreliable ones -- is not supported.
+See evidence/w18_instrument/INSTRUMENT.md.
 
 NOTHING HERE CHOOSES A CONSTANT. It reports ratios. Turning a ratio into a term in the engine is
 a separate decision with its own derivation (#56: a bound is not a threshold, and a measurement
