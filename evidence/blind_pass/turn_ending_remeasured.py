@@ -10,6 +10,16 @@ about one engine's own behaviour ("where in the draft does it put K/DEF"), not a
 against a field.
 """
 import collections, json, sys, time
+from pathlib import Path
+
+# Running this as `python evidence/blind_pass/turn_ending_remeasured.py` puts THIS directory on
+# sys.path, not the repo root, so every engine import fails while the working directory is
+# correct. The engine-measurement rule is "run from the repo root, never cd first" -- because
+# DataMerger resolves its baselines against the working directory -- and this line lets both be
+# true at once instead of making the caller remember a PYTHONPATH. Added when #17 was unparked
+# and the probe would not start.
+sys.path.insert(0, str(Path.cwd()))
+
 import data_merger as dm, draft_room as dr, draft_battery as db
 import run_draft_battery as rdb, draft_strategy as ds, pick_synthesis as ps
 import player_universe as pu

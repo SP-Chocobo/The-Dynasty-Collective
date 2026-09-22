@@ -14404,3 +14404,48 @@ explained by `#24` -- necessity has no selection authority (`#55`) and this draf
   which is unchanged.
 - **Standing conclusion across five measurements: `bpa` is not the K/DST driver.** Every remaining
   candidate is downstream of it.
+
+
+---
+
+## #17 CLOSED BY WITHDRAWAL, and my "no longer reproduce" claim is CORRECTED
+
+The entry above said `#17`'s figures no longer reproduce. **They reproduce exactly** -- first DEF
+3.09, first K 4.10, K/DEF by round 12: 37, DEF ratio 3.66, every one as recorded. What differed was
+MY probe, and the reason is the finding.
+
+`evidence/blind_pass/turn_ending_remeasured.py` passes
+`merger.base_scoring_settings() if hasattr(...) else None` to `league_matrix`. `DataMerger` has no
+such attribute, so it always passes `None`, and `league_matrix(None)` returns a rulebook whose
+entire scoring is **`{'rec': 1.0}`**. Its `12T_ppr_K_DEF` arm has a K slot and a DEF slot and
+**none of the 22 K/DEF scoring keys**. `#17` measured where the engine puts kickers and defenses in
+a league where kickers and defenses cannot score.
+
+The probe already carried a correction for this class: its FIRST run used `build_mock_league`, with
+no K or DEF slot. That fix supplied the slots and left the scoring vacuous -- half a fix, missing
+the half that prices the positions the item is about.
+
+**Re-measured on the 64-key capture rulebook** (`evidence/w18_instrument/`, and the new probe
+REFUSES to run if the rulebook has no K/DEF scoring keys):
+
+| pos | ratio, real rulebook | ratio under `{'rec': 1.0}` |
+|---|---|---|
+| DEF | **1.60** | 3.66 |
+| K | **1.24** | 0.49 |
+| TE | **1.92** | 1.67 |
+| WR | 0.47 | 0.00 |
+
+DEF's 3.66x becomes 1.60x, K's "vanished" 0.49x reverses to 1.24x, and the highest clustering is
+now TE. **And at 15 turn-ending picks total, no position's |z| exceeds 2** -- DEF's 1.60x is four
+observations against an expectation of 2.50.
+
+### Register
+
+- **#17: CLOSED BY WITHDRAWAL.** The motivating 3.66x was a fixture artifact; corrected it is
+  1.60x, below TE's, and indistinguishable from chance. The mechanism was already withdrawn.
+- **My previous entry's explanation is corrected here** -- the figures were never stale, the
+  rulebook was wrong, and I attributed the difference to drift without checking which league each
+  probe had built. The configuration lesson, applied to me, one commit after I wrote it down.
+- **Instrument rule earned:** a rulebook needs the SLOTS *and* the SCORING for the positions under
+  test. Three vacuity failures in one probe's lifetime -- no slot, then no scoring, plus a sys.path
+  break that stopped it running -- each caught only by re-running it for an unrelated reason.

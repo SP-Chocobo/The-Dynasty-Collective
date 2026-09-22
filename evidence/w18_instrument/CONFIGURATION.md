@@ -203,3 +203,81 @@ That is not explained by `#24`: necessity has no selection authority (`#55`), th
 `team_acquisition_value`, and this draft takes `candidates[0]`. Something between the two runs
 moved it and the item's numbers are stale either way — so `#17` cannot be closed on the figures it
 currently carries, and re-running it is a prerequisite to ruling on it rather than a formality.
+
+---
+
+## CORRECTION: #17's figures DO reproduce — from a probe measuring a league with one scoring key
+
+The section above said `#17`'s numbers "no longer reproduce". **They reproduce exactly.** Re-running
+`evidence/blind_pass/turn_ending_remeasured.py` on HEAD gives `first DEF : pick 33 (3.09)`,
+`first K : pick 46 (4.10)`, `K/DEF by round 12: 37`, `DEF ratio 3.66` — every figure as recorded.
+
+What differed was **my** probe, and finding out why is the finding.
+
+That probe builds its league with
+`db.league_matrix(merger.base_scoring_settings() if hasattr(merger, "base_scoring_settings") else None)`.
+`DataMerger` has **no** `base_scoring_settings`, so the argument is always `None`, and
+`league_matrix(None)` returns a rulebook whose entire scoring is:
+
+```
+{'rec': 1.0}
+```
+
+One key. The `12T_ppr_K_DEF` arm it then selects has a K slot and a DEF slot and **none of the 22
+K/DEF scoring keys** — no `fgm_*`, no `xpm`, no `pts_allow_*`, no `def_td`, no `sack`, no `safe`,
+no `blk_kick`. So `#17` has been measuring where the engine puts kickers and defenses **in a league
+where kickers and defenses cannot score.**
+
+And this probe already carries a recorded correction for exactly this class: its first run used
+`build_mock_league`, which has no K or DEF *slot*, and reported "K and DEF never taken". The fix
+supplied the slots and left the *scoring* vacuous. **Half a fix — and the missing half is the half
+that prices the two positions the item is about.**
+
+### Re-measured under the 64-key capture rulebook
+
+Same arm, same teams, same rounds, same self-play, same turn-ending definition
+(`t17_turn_ending_real_rulebook.py`, which refuses to run at all if the rulebook has no K/DEF
+scoring keys):
+
+| pos | all | turn-ending | expected | ratio | ratio under `{'rec': 1.0}` |
+|---|---|---|---|---|---|
+| WR | 54 | 2 | 4.22 | 0.47 | 0.00 |
+| RB | 33 | 2 | 2.58 | 0.78 | 1.22 |
+| **DEF** | 32 | 4 | 2.50 | **1.60** | **3.66** |
+| **K** | 31 | 3 | 2.42 | **1.24** | **0.49** |
+| QB | 22 | 1 | 1.72 | 0.58 | 0.85 |
+| TE | 20 | 3 | 1.56 | **1.92** | 1.67 |
+
+**DEF's 3.66x becomes 1.60x. K's "vanished" 0.49x becomes 1.24x — it reverses sign. And the
+highest clustering is now TE, not DEF.** Volume moves too: DEF taken 21 -> 32, K 26 -> 31. The
+turn-ending rate itself is unchanged at 15 of 192 (7.8%), so what moved is composition, not the
+denominator.
+
+### And at this sample size none of it is distinguishable from chance
+
+15 turn-ending picks in total. Against a Poisson expectation:
+
+| pos | obs | exp | ratio | sd | z |
+|---|---|---|---|---|---|
+| WR | 2 | 4.22 | 0.47 | 2.05 | −1.08 |
+| RB | 2 | 2.58 | 0.78 | 1.61 | −0.36 |
+| DEF | 4 | 2.50 | 1.60 | 1.58 | +0.95 |
+| K | 3 | 2.42 | 1.24 | 1.56 | +0.37 |
+| QB | 1 | 1.72 | 0.58 | 1.31 | −0.55 |
+| TE | 3 | 1.56 | 1.92 | 1.25 | +1.15 |
+
+**No |z| exceeds 2.** DEF's 1.60x is four observations against an expectation of two and a half.
+
+### #17 is CLOSEABLE, and the direction is withdrawal
+
+- The 3.66x that motivated the item was measured where defenses cannot score.
+- Corrected, it is 1.60x, below TE's, and indistinguishable from chance at n=4.
+- The mechanism was already withdrawn (`positional_forfeits` has no selection authority post-`#22`).
+
+There is no finding left. What the item leaves behind is the instrument rule it kept breaking:
+**a rulebook needs the SLOTS and the SCORING for the positions under test**, and the probe now
+refuses to run without both rather than reporting a number about a different league.
+
+That is three vacuity failures in one probe's lifetime — no K/DEF slot, then no K/DEF scoring, plus
+a sys.path break that stopped it running at all. Each was caught only by re-running it for an
+unrelated reason.
