@@ -14193,3 +14193,52 @@ numbers across two seasons at se 0.33 is not a population.
 The sibling of the lesson banked just above: **a ratio computed over two data points is not a
 rate, however many decimal places it is printed to.** The engine-measurement checklist already
 says to print `n`. Here `n` was 1, and the instrument never printed it.
+
+
+---
+
+## #28 WITHDRAWN, AND MY CORRECTION OF THE 3.1x WAS ITSELF WRONG
+
+Both errors came from ONE bad measurement: a board built with no `sleeper_projections` argument,
+which I then described as "the live board". No caller builds it -- not `app.py` (4927, 5006, 5066,
+5431), not `run_draft_battery` (425). Full write-up: **`evidence/w18_instrument/CONFIGURATION.md`**.
+
+**#28 is withdrawn.** Measured on the starting band of every position, in both configurations that
+exist in practice, every row prices from ONE source, `points_vor_sleeper_season_scored`. The
+two-vendor comparison #28 described happens only on the un-synced fallback. That path is real and
+nothing establishes its two vendors' scales agree -- worth a line in the module, not a ruling.
+
+**KDST_VALUATION.md was never stale.** Rebuilt in the BATTERY configuration its numbers reproduce
+exactly: QB 43.9, K 12.6, DEF 30.5. The QB 55.0 / K 13.0 / DEF 18.0 I replaced them with came from
+the same phantom board. The 3.1x was arithmetically right and is reinstated as such.
+
+**It still must not be used**, for the reason the pass before it gave: it is QB-normalised, and
+QB-normalisation manufactures it. The hindsight-free slope disagrees outright -- DEF 1.80/2.84 over
+the pool, 3.11/6.36 in the band. DEF's projected spread UNDER-states what the season paid.
+
+### AND A FOURTH REASON THE K/DEF DEFECT IS NOT AN ENGINE DEFECT
+
+DEF's price relative to QB swings **2.2x** -- 0.69 against 0.32 -- purely by changing which season
+projections feed the board. Same engine, same league, same code path, same source label. Not a
+coverage difference (priced share is near-identical, QB 31% vs 36%, DEF 100% vs 100%): the numbers
+themselves differ, and QB's band gap moves 43.9 -> 69.7 while DEF's moves 30.5 -> 22.0.
+
+So "defenses are priced 0.69 of a quarterback" is a fact about a SNAPSHOT, not about the engine.
+Under the app-shaped input the same board prices DEF at 0.32 of QB, against the 0.26 and 0.23 the
+seasons actually paid.
+
+### Register
+
+- **#28: WITHDRAWN** (was: owner ruling). Characterised and pinned by
+  `test_which_call_prices_the_board.py` rather than deleted, so the withdrawal rests on WHERE the
+  mixing happens.
+- **The 3.1x is un-corrected**, and separately still unusable. Both statements are needed; the
+  second is not a hedge on the first.
+- **No repair to valuation follows from any of this.** What follows is that a board number is not
+  reportable without the call that produced it -- the #166/#174 rule (a quantity travels with the
+  basis that gives it meaning) applied to configurations.
+- Running tally of withdrawn or corrected conclusions in this thread: the cliff-steepness
+  hypothesis, #23, the 3.1x (corrected then un-corrected), #28. Every one was MEASURED rather than
+  guessed, and measured on the wrong object -- a league with no K slot, the wrong replacement arm,
+  a document assumed stale, a board with no caller. **The configuration is part of the
+  measurement**, and this codebase has configurations that differ silently.
