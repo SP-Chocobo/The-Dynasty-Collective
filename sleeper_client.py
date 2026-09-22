@@ -288,17 +288,39 @@ class SleeperClient:
         except SleeperAPIError:
             return None
 
-    def get_weekly_projections(self, season: str, week: int, season_type: str = "regular") -> dict[str, dict]:
-        """player_id -> {stat_category: projected_value, ...} for one week."""
-        try:
-            # Sleeper's projection API uses season/week as the path and the
-            # game segment as a query parameter.  Putting ``season_type`` in
-            # the path (as its stats endpoint does) silently returned no
-            # records, making otherwise healthy league syncs show no native
-            # projections.
-            data = self._get(f"/projections/nfl/{season}/{week}?season_type={season_type}", base=ROOT_URL)
-        except SleeperAPIError:
-            return {}
+    def _weekly_stat_lines(self, kind: str, season: str, week: int,
+                           season_type: str = "regular") -> dict[str, dict]:
+        """player_id -> {stat_category: value} for one week, from EITHER weekly endpoint.
+
+        BOTH ENDPOINTS TAKE season_type IN THE QUERY STRING. MEASURED, not inferred, and the
+        previous belief was the opposite. `get_weekly_stats` carried a confident docstring --
+        "season_type goes in the PATH here, not the query string ... mirrored from that
+        hard-won note rather than re-derived" -- reasoning from an offhand parenthetical in
+        get_weekly_projections' comment, "(as its stats endpoint does)". Nobody ran it. It was
+        a guess laundered into documentation and then mirrored as fact.
+
+        Measured on a networked machine, 2024 week 5:
+
+            /stats/nfl/regular/2024/5               404, 0 rows      <- what shipped
+            /stats/nfl/2024/5?season_type=regular   200, list, 2074  <- live
+            /stats/nfl/2024/5                       400 bad-request
+
+        So every consumer of actual stats -- `outcome_record`, `get_season_stats`,
+        `measure_projection_accuracy` -- was fetching nothing. It went unnoticed because all of
+        them need `api.sleeper.app`, which the audit sandbox denies, so this path had NEVER ONCE
+        executed against the real API.
+
+        WHAT IS SHARED HERE AND WHAT IS NOT. The URL shape and the normalisation are shared,
+        because they were duplicated verbatim and the duplication is what let one copy go stale.
+        The ERROR POSTURE is deliberately NOT: projections fail soft because a missing projection
+        degrades a board gracefully, and stats RAISE because a missing outcome does not -- an
+        empty result is indistinguishable from "nobody scored". So this helper does not catch,
+        and each caller applies its own contract.
+
+        BOTH RESPONSE SHAPES, because Sleeper serves both: projections as a dict keyed by
+        player_id, stats as a LIST of records each carrying its own.
+        """
+        data = self._get(f"/{kind}/nfl/{season}/{week}?season_type={season_type}", base=ROOT_URL)
         if not data:
             return {}
 
@@ -317,6 +339,16 @@ class SleeperClient:
                 if pid and stats:
                     result[str(pid)] = stats
         return result
+
+    def get_weekly_projections(self, season: str, week: int, season_type: str = "regular") -> dict[str, dict]:
+        """player_id -> {stat_category: projected_value, ...} for one week.
+
+        FAILS SOFT: an unreachable API is an empty week, because a missing projection degrades a
+        board gracefully. Its stats sibling raises instead -- see that method."""
+        try:
+            return self._weekly_stat_lines("projections", season, week, season_type)
+        except SleeperAPIError:
+            return {}
 
     #: Weeks summed for a season projection. 18 is the NFL regular season's WEEK COUNT, not a
     #: games-played assumption: each team byes once, and a bye week simply returns no row for
@@ -453,12 +485,14 @@ class SleeperClient:
         engine so far compares it to itself; this is the only endpoint that supplies an
         external answer.
 
-        NOTE THE URL SHAPE. season_type goes in the PATH here, not the query string --
-        the opposite of get_weekly_projections, whose own comment records that putting it in
-        the path "silently returned no records" and names the stats endpoint as the one that
-        works the other way. Two adjacent endpoints on the same host disagreeing about where a
-        parameter lives is exactly the kind of thing that gets guessed wrong, so it is
-        mirrored from that hard-won note rather than re-derived.
+        THE URL SHAPE WAS WRONG, AND THIS PARAGRAPH IS WHY IT SURVIVED. It read: "season_type
+        goes in the PATH here, not the query string -- the opposite of get_weekly_projections
+        ... mirrored from that hard-won note rather than re-derived." That was inferred from an
+        offhand parenthetical, "(as its stats endpoint does)", in the projections comment. It was
+        never executed. Measured on a networked machine: the path form returns **404 and zero
+        rows**; the query form returns 200 and 2,074. Both endpoints take it in the query string.
+        The URL now comes from _weekly_stat_lines, which both methods share, so there is no
+        second copy to go stale.
 
         RETURNS RAW STATS, NEVER POINTS. Fantasy points are a function of (stats, a league's
         scoring settings), so a capture that stored points would bake in one league's rules
@@ -471,24 +505,9 @@ class SleeperClient:
         indistinguishable from "nobody scored", and a validation record built on that would
         report the engine as catastrophically wrong about a week that simply never downloaded.
         """
-        data = self._get(f"/stats/nfl/{season_type}/{season}/{week}", base=ROOT_URL)
-        if not data:
-            return {}
-
-        result: dict[str, dict] = {}
-        if isinstance(data, dict):
-            for pid, entry in data.items():
-                stats = entry.get("stats", entry) if isinstance(entry, dict) else None
-                if stats:
-                    result[str(pid)] = stats
-        elif isinstance(data, list):
-            for entry in data:
-                if not isinstance(entry, dict):
-                    continue
-                pid, stats = entry.get("player_id"), entry.get("stats")
-                if pid and stats:
-                    result[str(pid)] = stats
-        return result
+        # Not wrapped: SleeperAPIError propagates, which is this method's documented contract
+        # and the difference from its projections sibling.
+        return self._weekly_stat_lines("stats", season, week, season_type)
 
     # -- aggregate sync -------------------------------------------------------
 

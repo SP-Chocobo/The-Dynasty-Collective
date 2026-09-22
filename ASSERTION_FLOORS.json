@@ -7869,7 +7869,7 @@
         "assertEqual": 12,
         "assertFalse": 1,
         "assertGreater": 1,
-        "assertIn": 5,
+        "assertIn": 6,
         "assertNotEqual": 1,
         "assertNotIn": 1,
         "assertRaises": 3
@@ -7914,8 +7914,8 @@
         "test_recapturing_IDENTICAL_stats_adds_no_revision": {
           "assertEqual": 2
         },
-        "test_season_type_goes_in_the_PATH_here": {
-          "assertIn": 1,
+        "test_season_type_goes_in_the_QUERY_STRING_here_too": {
+          "assertIn": 2,
           "assertNotIn": 1
         },
         "test_successive_corrections_accumulate_rather_than_replace": {
@@ -11561,19 +11561,25 @@
       }
     },
     "test_sleeper_client.py": {
-      "test_methods": 47,
+      "test_methods": 54,
       "asserts": {
         "assertAlmostEqual": 4,
-        "assertEqual": 41,
+        "assertEqual": 46,
         "assertFalse": 3,
-        "assertIn": 5,
+        "assertIn": 11,
         "assertIsNone": 9,
         "assertLess": 1,
-        "assertNotIn": 2,
-        "assertRaises": 1,
+        "assertNotIn": 4,
+        "assertRaises": 2,
         "assertTrue": 3
       },
       "by_method": {
+        "test_a_DICT_payload_still_normalises": {
+          "assertEqual": 1
+        },
+        "test_a_LIST_payload_normalises_which_is_what_stats_actually_returns": {
+          "assertEqual": 1
+        },
         "test_a_cache_that_was_never_written_reports_absence_not_a_zero_age": {
           "assertEqual": 1,
           "assertIsNone": 1
@@ -11658,6 +11664,10 @@
         "test_position_filter_is_a_plain_filter_not_a_special_case": {
           "assertEqual": 3
         },
+        "test_projections_keeps_the_same_shape": {
+          "assertIn": 2,
+          "assertNotIn": 1
+        },
         "test_rank_is_dense_and_ordered_by_projection": {
           "assertEqual": 2
         },
@@ -11672,6 +11682,10 @@
         },
         "test_standard_scoring_label": {
           "assertEqual": 2
+        },
+        "test_stats_puts_season_type_in_the_QUERY_STRING_not_the_path": {
+          "assertIn": 2,
+          "assertNotIn": 1
         },
         "test_superflex_detected_from_super_flex_slot": {
           "assertTrue": 1
@@ -11702,11 +11716,22 @@
         "test_the_entry_is_appended_before_the_sort_that_orders_it": {
           "assertLess": 1
         },
+        "test_the_instrument_calls_the_CLIENT_and_never_hand_rolls_the_url": {
+          "assertEqual": 1,
+          "assertIn": 2
+        },
         "test_the_row_is_shaped_like_every_other_manifest_row": {
           "assertEqual": 2
         },
         "test_the_state_is_derived_every_call_never_remembered": {
           "assertEqual": 2
+        },
+        "test_the_two_error_postures_are_NOT_shared_and_that_is_deliberate": {
+          "assertEqual": 1,
+          "assertRaises": 1
+        },
+        "test_the_two_urls_differ_ONLY_by_the_endpoint_name": {
+          "assertEqual": 1
         },
         "test_unknown_player_ids_are_skipped_rather_than_guessed": {
           "assertEqual": 1

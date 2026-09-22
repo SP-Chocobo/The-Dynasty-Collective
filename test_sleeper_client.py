@@ -380,3 +380,110 @@ class TheManifestActuallyAppendsThePlayersRowTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TheTwoWeeklyEndpointsShareOneImplementationTests(unittest.TestCase):
+    """The defect this class exists for: `/stats/nfl/regular/{season}/{week}` 404s.
+
+    `get_weekly_projections` learned years ago that Sleeper wants `season_type` in the QUERY
+    STRING and wrote it in a comment. The stats side never got told -- it lived as a hand-rolled
+    `_get` inside measure_projection_accuracy, and nothing caught it because that instrument
+    needs `api.sleeper.app`, which the sandbox denies, so its actuals path had NEVER ONCE run
+    against the real API. Measured on a networked machine, 2024 week 5:
+
+        /stats/nfl/regular/2024/5               404, 0 rows      <- what shipped
+        /stats/nfl/2024/5?season_type=regular   200, list, 2074  <- live
+        /stats/nfl/2024/5                       400 bad-request
+
+    The network half stays untestable here. The URL SHAPE and the normalisation do not, and they
+    are the half that was wrong.
+    """
+
+    def _client(self):
+        return sc.SleeperClient()
+
+    def test_stats_puts_season_type_in_the_QUERY_STRING_not_the_path(self):
+        client = self._client()
+        with mock.patch.object(client, "_get", return_value=[]) as mock_get:
+            client.get_weekly_stats("2024", 5)
+        url = mock_get.call_args[0][0]
+        self.assertIn("season_type=regular", url)
+        self.assertNotIn("/nfl/regular/", url,
+                         "season_type is back in the path -- that URL returns 404")
+        self.assertIn("/stats/nfl/2024/5", url)
+
+    def test_projections_keeps_the_same_shape(self):
+        client = self._client()
+        with mock.patch.object(client, "_get", return_value=[]) as mock_get:
+            client.get_weekly_projections("2024", 5)
+        url = mock_get.call_args[0][0]
+        self.assertIn("season_type=regular", url)
+        self.assertNotIn("/nfl/regular/", url)
+        self.assertIn("/projections/nfl/2024/5", url)
+
+    def test_the_two_urls_differ_ONLY_by_the_endpoint_name(self):
+        """NON-VACUITY, and the property that makes one home worth having: if these ever stop
+        being the same shape, one of them is being maintained and the other is not -- which is
+        exactly how the stats side got left behind."""
+        client = self._client()
+        urls = {}
+        for kind, call in (("stats", client.get_weekly_stats),
+                           ("projections", client.get_weekly_projections)):
+            with mock.patch.object(client, "_get", return_value=[]) as mock_get:
+                call("2024", 5)
+            urls[kind] = mock_get.call_args[0][0]
+        self.assertEqual(urls["stats"].replace("/stats/", "/X/"),
+                         urls["projections"].replace("/projections/", "/X/"))
+
+    def test_a_LIST_payload_normalises_which_is_what_stats_actually_returns(self):
+        """The live stats endpoint returns a list of records, NOT a dict. measure_projection_
+        accuracy called `.items()` straight on the raw payload, so this would have raised the
+        moment the URL was right -- a second defect hidden behind the first."""
+        client = self._client()
+        payload = [
+            {"player_id": "4034", "stats": {"pts_ppr": 21.5}},
+            {"player_id": "6794", "stats": {"pts_ppr": 8.0}},
+            {"player_id": "9999"},                      # no stats -> dropped
+            "not a record",                             # not a dict -> skipped, not raised
+        ]
+        with mock.patch.object(client, "_get", return_value=payload):
+            out = client.get_weekly_stats("2024", 5)
+        self.assertEqual(out, {"4034": {"pts_ppr": 21.5}, "6794": {"pts_ppr": 8.0}})
+
+    def test_a_DICT_payload_still_normalises(self):
+        client = self._client()
+        with mock.patch.object(client, "_get",
+                               return_value={"4034": {"stats": {"pts_ppr": 21.5}}}):
+            self.assertEqual(client.get_weekly_stats("2024", 5), {"4034": {"pts_ppr": 21.5}})
+
+    def test_the_two_error_postures_are_NOT_shared_and_that_is_deliberate(self):
+        """MY OWN FIRST VERSION OF THIS TEST WAS WRONG, and is corrected rather than deleted.
+
+        It asserted `get_weekly_stats` returns {} on an unreachable API -- the PROJECTIONS
+        contract, applied to the stats method. It is the opposite: stats RAISE, because an empty
+        result is indistinguishable from "nobody scored" and a validation record built on that
+        would report the engine as catastrophically wrong about a week that never downloaded.
+        The shared helper therefore shares the URL and the normalisation and NOT the try/except
+        -- merging those would have destroyed a documented difference while looking tidier."""
+        client = self._client()
+        with mock.patch.object(client, "_get", side_effect=sc.SleeperAPIError("boom")):
+            with self.assertRaises(sc.SleeperAPIError):
+                client.get_weekly_stats("2024", 5)
+            self.assertEqual(client.get_weekly_projections("2024", 5), {})
+
+    def test_the_instrument_calls_the_CLIENT_and_never_hand_rolls_the_url(self):
+        """Scans the CODE, not the text (#200). The bug was a raw `_get` with a literal URL in
+        measure_projection_accuracy; this fails if one comes back."""
+        import ast
+        from pathlib import Path
+        tree = ast.parse((Path(__file__).parent / "measure_projection_accuracy.py").read_text())
+        literals = [n.value for n in ast.walk(tree)
+                    if isinstance(n, ast.Constant) and isinstance(n.value, str)]
+        offenders = [s for s in literals if "/stats/nfl" in s or "/projections/nfl" in s]
+        self.assertEqual(offenders, [],
+                         "the instrument is building a Sleeper URL itself again; call "
+                         "SleeperClient.get_weekly_stats / get_weekly_projections instead")
+        calls = {n.func.attr for n in ast.walk(tree)
+                 if isinstance(n, ast.Call) and isinstance(n.func, ast.Attribute)}
+        self.assertIn("get_weekly_stats", calls)
+        self.assertIn("get_weekly_projections", calls)

@@ -82,7 +82,12 @@ def _season_totals(client: sc.SleeperClient, season: str, scoring: dict,
     for week in REGULAR_SEASON_WEEKS:
         proj = client.get_weekly_projections(season, week) or {}
         time.sleep(REQUEST_SPACING_SECONDS)
-        stats = client._get(f"/stats/nfl/regular/{season}/{week}", base=sc.ROOT_URL) or {}
+        # THE CLIENT'S OWN METHOD, not a hand-rolled URL. This read
+        # `client._get(f"/stats/nfl/regular/{season}/{week}")` -- season_type in the PATH, which
+        # 404s -- while get_weekly_projections three lines up already documented that it belongs
+        # in the QUERY STRING. Measured on a networked machine: the path form returns 404/0 rows,
+        # the query form 200 and a list of 2074. See SleeperClient._weekly_stat_lines.
+        stats = client.get_weekly_stats(season, week) or {}
         time.sleep(REQUEST_SPACING_SECONDS)
         if not proj and not stats:
             continue

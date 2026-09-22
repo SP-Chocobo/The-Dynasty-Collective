@@ -57,15 +57,37 @@ class FetchParsingTests(unittest.TestCase):
     def test_an_empty_payload_is_an_empty_dict_not_a_crash(self):
         self.assertEqual(self._client_returning(None).get_weekly_stats("2026", 1), {})
 
-    def test_season_type_goes_in_the_PATH_here(self):
-        """The opposite of get_weekly_projections, which puts it in the query string. That
-        module's own comment records the asymmetry as a real bug it already paid for, so this
-        pins the shape rather than leaving it to be re-guessed."""
+    def test_season_type_goes_in_the_QUERY_STRING_here_too(self):
+        """REVERSED ON MEASUREMENT, and this test is why the bug survived so long.
+
+        It asserted the PATH form, with the docstring: "the opposite of get_weekly_projections
+        ... that module's own comment records the asymmetry as a real bug it already paid for,
+        so this pins the shape rather than leaving it to be re-guessed." Every clause of that is
+        wrong. The asymmetry was never measured -- it was inferred from an offhand parenthetical,
+        "(as its stats endpoint does)", written up as fact in get_weekly_stats' docstring, and
+        then PINNED HERE. A guess with a test around it reads exactly like a verified fact.
+
+        What the test could never catch: it asserts the string the client builds, and the client
+        builds whatever it was told to. Nothing here contacts Sleeper, and every consumer of this
+        endpoint needs a host the audit sandbox denies -- so the URL was never once exercised.
+
+        Measured on a networked machine, 2024 week 5:
+
+            /stats/nfl/regular/2024/5               404, 0 rows
+            /stats/nfl/2024/5?season_type=regular   200, list, 2074
+            /stats/nfl/2024/5                       400 bad-request
+
+        Both endpoints take it in the query string. The shape now lives in one place,
+        SleeperClient._weekly_stat_lines, shared by both methods, so there is no second copy to
+        drift -- and no second docstring to assert a shape nobody ran.
+        """
         client = self._client_returning({})
         client.get_weekly_stats("2026", 3, season_type="regular")
         path = client._get.call_args[0][0]
-        self.assertIn("/stats/nfl/regular/2026/3", path)
-        self.assertNotIn("?season_type", path)
+        self.assertIn("/stats/nfl/2026/3", path)
+        self.assertIn("season_type=regular", path)
+        self.assertNotIn("/nfl/regular/", path,
+                         "season_type is back in the path -- measured, that URL 404s")
 
     def test_it_RAISES_rather_than_returning_empty_when_the_api_is_unreachable(self):
         """Its projections sibling fails soft, correctly -- a missing projection degrades a

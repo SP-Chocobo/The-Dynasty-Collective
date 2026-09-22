@@ -13974,3 +13974,88 @@ at `AWAITING_RULING`'s definition: *a witness a neighbouring test can satisfy is
 
 That is the second time in two days that a guard I wrote asserted less than I believed. The first
 was the census only checking a ruling was NAMED in the contracts file.
+
+---
+
+## `#18` UNBLOCKED THE WRONG WALL — THE STATS ENDPOINT URL HAS ALWAYS BEEN 404
+
+The owner added `api.sleeper.app` to the egress allowlist and ran
+`measure_projection_accuracy` on a networked machine. It printed **"9421 projected, 0 actual"**
+for all 36 weeks of 2023 and 2024, then refused to write anything. The network was never the
+only wall.
+
+### Measured, on the owner's machine
+
+```
+/stats/nfl/regular/2024/5               404   0 rows      <- what shipped
+/stats/nfl/2024/5?season_type=regular   200   list, 2074  <- live
+/stats/nfl/2024/5                       400   bad-request
+```
+
+**Both weekly endpoints take `season_type` in the QUERY STRING.** The projections side already
+knew and said so in a comment. The stats side had it in the PATH.
+
+### The belief was documented AND tested, which is why it lasted
+
+`SleeperClient.get_weekly_stats` carried this:
+
+> NOTE THE URL SHAPE. season_type goes in the PATH here, not the query string -- the opposite of
+> get_weekly_projections ... **mirrored from that hard-won note rather than re-derived.**
+
+That was inferred from an offhand parenthetical in the projections comment -- *"(as its stats
+endpoint does)"* -- and written up as settled fact. Then
+`test_outcome_record.test_season_type_goes_in_the_PATH_here` **pinned it**, with a docstring
+saying it "pins the shape rather than leaving it to be re-guessed."
+
+A guess with a test around it reads exactly like a verified fact. The test asserted the string
+the client builds, and the client builds whatever it was told to -- nothing in it contacts
+Sleeper, and every consumer of the endpoint needs a host the sandbox denies. **The path had never
+once executed against the real API.**
+
+### Blast radius: wider than `#18`
+
+`get_weekly_stats` already existed with real consumers. All of them have been fetching nothing:
+
+| consumer | what it could not do |
+|---|---|
+| `outcome_record.py` | fetch what actually happened -- the whole OUTCOME half of the forward test. `prediction_record` writes what the engine believed; nothing could write what the world did. |
+| `get_season_stats` (via `_sum_weeks`) | any season-level actuals |
+| `measure_projection_accuracy` | `#18`, which is how it was finally found |
+
+`measure_projection_accuracy` additionally hand-rolled its OWN copy of the bad URL rather than
+calling the client, so there were two wrong copies of the same guess.
+
+### The repair
+
+`SleeperClient._weekly_stat_lines(kind, ...)` is now the one home for the URL shape and the
+response normalisation, shared by `get_weekly_projections` and `get_weekly_stats`.
+
+**The error postures are deliberately NOT shared**, and a first version of this repair got that
+wrong. Projections FAIL SOFT (a missing projection degrades a board gracefully); stats RAISE (an
+empty result is indistinguishable from "nobody scored", and a validation record built on that
+would report the engine as catastrophically wrong about a week that never downloaded). So the
+helper does not catch, and each caller applies its own contract. Merging them would have looked
+tidier and destroyed a documented difference -- caught by a test, not by review.
+
+Both response shapes are handled because Sleeper serves both: projections as a dict keyed by
+player_id, stats as a **LIST** of records. `measure_projection_accuracy` called `.items()` on the
+raw payload, so the list form would have raised the moment the URL was right -- a second defect
+hidden behind the first.
+
+### Guards
+
+`test_sleeper_client.TheTwoWeeklyEndpointsShareOneImplementationTests` -- the query-string shape
+for both, the two URLs differing ONLY by endpoint name, list and dict normalisation, the two
+error postures, and an AST guard that the instrument never hand-rolls a Sleeper URL again.
+`test_outcome_record`'s pinning test is REVERSED rather than deleted, carrying its own
+post-mortem.
+
+### What this does NOT establish
+
+No accuracy ratio yet. The measurement still has to be re-run. What is fixed is the instrument
+that produces it -- and the forward test's outcome half, which nobody had noticed was dead.
+
+The lesson, and it is a new one rather than a repeat: **a test that asserts what our own code
+constructs is not evidence about a system we do not control.** Every guard in this repository
+that checks a URL, a payload shape or a third-party contract has this shape, and none of them
+can see a 404.
