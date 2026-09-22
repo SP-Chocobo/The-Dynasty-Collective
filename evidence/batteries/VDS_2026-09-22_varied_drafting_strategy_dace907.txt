@@ -1,0 +1,2 @@
+VDS battery: 36 arms (6 formats x 6 strategies)
+   12T_ppr_K_DEF__sharp_auto                    findings=0   817.9s

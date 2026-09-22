@@ -32,6 +32,11 @@ data/draft_simulation_trials/**/*.json
 # the same class as the trial output above. Deliberately untracked: a committed report is read
 # as a reference, and this one is only true of the tree and the ranking export it ran against.
 BATTERY_REPORT.json
+# The VDS battery's LIVE report, same rule as BATTERY_REPORT.json above and for the same reason:
+# the runner rewrites it after every arm, so a tracked path would dirty the tree every turn and
+# fill the branch with checkpoint commits. The durable copy is a periodic, validated snapshot
+# under evidence/batteries/ -- see that directory's README, rule 1.
+VDS_REPORT.json
 
 .streamlit/secrets.toml
 
