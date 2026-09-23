@@ -219,8 +219,8 @@ POSITION_VIEW_DEPTH_CAP = 12
 
 
 def _board_order(row: dict, value_key: str = "final_score") -> tuple:
-    """Sort key for a board row: the feasibility backstop first, then highest final_score,
-    UNPRICED rows last, player_id as the tiebreak.
+    """Sort key for a board row: the feasibility backstop first, then the fieldability backstop,
+    then highest final_score, UNPRICED rows last, player_id as the tiebreak.
 
     ONE KEY, TWO KEY NAMES, NOT TWO KEYS (#126). The same quantity is called `final_score` on a
     board row and `team_acquisition_value` on a candidate dict -- `build_snapshot` renames it at
@@ -250,6 +250,12 @@ def _board_order(row: dict, value_key: str = "final_score") -> tuple:
     iteration-order bug."""
     score = row.get(value_key)
     return (not row.get("fills_required_slot", False),
+            # The second backstop, honoured here for the identical reason (#155): this function
+            # re-sorts every board it is handed, so a decision expressed only as draft_room's
+            # row order never survives to the pick. `cannot_be_fielded` is False on essentially
+            # every row -- see draft_room.unfieldable_last for the ceiling it is derived from
+            # and for the measured roster (nine defenses, one receiver) that required it.
+            bool(row.get("cannot_be_fielded", False)),
             score is None, -score if score is not None else 0.0, str(row.get("player_id")))
 
 
@@ -1568,6 +1574,10 @@ class CandidateSnapshot:
     # the same field whose invisibility let an unpriced leader reach an unguarded format.
     # Defaulted False and placed in the tail so every existing construction site still works.
     fills_required_slot: bool = False
+    # The fieldability backstop's companion, carried for the same reason: `_board_order` honours
+    # it, so a candidate at a position this roster can no longer field is placed BELOW every
+    # candidate it can, and the card must be able to say so. See draft_room.unfieldable_last.
+    cannot_be_fielded: bool = False
 
 
 #: The vocabulary of CandidateSnapshot.horizon_basis, re-exported at the snapshot boundary.
@@ -1764,6 +1774,8 @@ def build_snapshot(
             # False, not None: the backstop either binds or it does not, and "did not bind"
             # is a real measured state rather than an absence.
             "fills_required_slot": bool(row.get("fills_required_slot", False)),
+            # Same reading: the backstop either binds or it does not.
+            "cannot_be_fielded": bool(row.get("cannot_be_fielded", False)),
         })
 
     # WHAT ACTING NOW IS WORTH -- COMPUTED, CARRIED, AND DELIBERATELY NOT ORDERED ON (#22).

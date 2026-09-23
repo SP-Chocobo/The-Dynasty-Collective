@@ -328,9 +328,13 @@ REGISTRY: tuple[Invariant, ...] = (
                    "-- a column that no longer exists cannot carry a NaN -- but the census is "
                    "moved deliberately rather than by a --write, because this registry's whole "
                    "subject is populations moving without anyone noticing, and a shrink nobody "
-                   "signed for is the exact case it was built to catch.",
+                   "signed for is the exact case it was built to catch. 29 -> 30 with "
+                   "`cannot_be_fielded`, the fieldability backstop's companion flag "
+                   "(draft_room.unfieldable_last): a bool the board always computes, never "
+                   "absent, so it widens the population without widening the claim -- and it is "
+                   "signed for here rather than absorbed by a --write, for the reason above.",
         members=_board_emitted_columns,
-        census=29,
+        census=30,
         pinned_by=(
             "test_identity_provenance.ItReachesTheBoardInBothModesTests"
             ".test_no_emitted_value_on_the_board_is_a_nan",

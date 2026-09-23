@@ -2415,6 +2415,10 @@ BALANCED_BOARD_COLUMNS = [
     # (the number crossed the boundary, its basis did not).
     "absence_kind",
     "fills_required_slot",
+    # The second backstop's flag, on BOTH serializations for the same reason absence_kind is:
+    # a companion that reaches only one board is the #174 defect (the number crossed the
+    # boundary, its basis did not). See unfieldable_last.
+    "cannot_be_fielded",
 ]
 
 UPSIDE_BOARD_COLUMNS = [
@@ -2425,7 +2429,7 @@ UPSIDE_BOARD_COLUMNS = [
     "confidence", "final_score", "mode", "projected_points",
     "horizon_floor", "horizon_sensitivity", "waiting_cost", "replacement_basis",
     "horizon_basis", "identity_basis", "availability_basis", "absence_kind",
-    "fills_required_slot",
+    "fills_required_slot", "cannot_be_fielded",
 ]
 
 
@@ -3206,6 +3210,102 @@ def feasibility_first(scored, picks, players_db, my_roster_id, roster_positions,
         lambda position: 0 if position in needed_positions else 1).astype(int)
 
 
+def fieldable_ceiling(roster_positions: list[str]) -> dict[str, int]:
+    """Per position, the most a roster can hold and still field every one of them across a season.
+
+    Derived from two league facts and NOTHING else (`#56`):
+
+      - A position that reaches only slots admitting IT ALONE can start exactly `slots(P)` of
+        them in any week. There is no flex chain to absorb a spare.
+      - Every team has exactly ONE bye week, so exactly one backup covers the season.
+
+    Ceiling = `slots(P) + 1`. A position reachable through ANY shared slot is ABSENT from the
+    result rather than given a large number: a spare RB fills a FLEX and frees a WR upward, so
+    its useful depth is a real valuation question and this function has no opinion about it.
+    Absence travels; a caller must read it as "no ceiling derivable", never as zero.
+
+    Asked through `lineup_optimizer.slots_from_roster_positions` -- the same slot list the
+    optimizer solves and `feasibility_first` counts holes against -- so there is one home for
+    which positions have flex reach (`#126`).
+    """
+    dedicated: dict[str, int] = {}
+    flexible: set[str] = set()
+    for slot in lo.slots_from_roster_positions(roster_positions or []):
+        eligible = set(slot.get("eligible") or ())
+        if len(eligible) == 1:
+            position = next(iter(eligible))
+            dedicated[position] = dedicated.get(position, 0) + 1
+        else:
+            flexible |= eligible
+    return {position: count + 1 for position, count in dedicated.items()
+            if position not in flexible}
+
+
+def unfieldable_last(scored, picks, players_db, my_roster_id, roster_positions):
+    """A sort key, the mirror image of `feasibility_first`: 1 for a candidate at a position this
+    roster has already saturated beyond what it can ever field, 0 for everyone else.
+
+    THIS IS ARITHMETIC, NOT A VALUATION, by the identical argument that admits
+    `feasibility_first` under `#56`. It invents no constant and expresses no opinion about how
+    much depth is worth. It says only: this roster already holds `slots(P) + 1` at a position
+    with no flex reach, so one more of them is a roster spot that provably cannot be fielded in
+    any week of the season. A team in that state is not weighing depth against value -- the
+    depth it would be buying does not exist.
+
+    MEASURED NEED FOR IT, and it is not small. Graded on 2024 REALIZED outcomes
+    (`evidence/kdst_streaming/ROOT_CAUSE.md`), the engine finished a 12-team PPR draft with
+    **nine defenses and one receiver** in a league with one DEF slot and two WR slots, losing
+    0 of 12 seats by a mean of 641 realized points. Eight of the nine defenses could never be
+    fielded, and the three starting slots left empty every week are the deficit.
+
+    WHY NO EXISTING TERM STOPS IT. The thirty-two defenses project 109-121 against a replacement
+    level of 107.95, so every one of them carries POSITIVE `bpa` while the real tail of a deep
+    position prices negative. `displacement_adj` deducts only 6.65 there, because a flat
+    position's displacement is as small as its VOR. `need_bonus` is zero once the slot is
+    covered. `feasibility_first` never binds, because every starting slot IS filled. Nothing in
+    the board knew the ninth defense was unplayable. Raising the replacement level to `#30`'s
+    derived streaming baseline moved the hoard from rounds 6-16 to 10-16 and left SEVEN
+    defenses, so it is necessary and not sufficient.
+
+    IT IS A BACKSTOP AND MUST STAY ONE, by `feasibility_first`'s own test -- whether it binds on
+    a roster that was never in danger. It cannot: the ceiling is the largest count that is not
+    PROVABLY wasted, so a roster at or below it is untouched, and one above it is carrying a
+    player it cannot play. A position with flex reach has no ceiling here at all.
+
+    Deliberately NOT a value term, for the same reason tier 3 is not: adding it to
+    `team_acquisition_value` would make a player's worth depend on who is drafting, which is the
+    one thing `universal_value` exists to keep separate. It reorders SELECTION and leaves every
+    price untouched.
+
+    MODULE-LEVEL AND PATCHABLE ON PURPOSE: an in-process A/B (engine-measurement skill) switches
+    it off by replacing it with one that returns zeros, so both arms run the same code.
+    """
+    default = pd.Series(0, index=scored.index, dtype=int)
+    if my_roster_id is None or not roster_positions or scored.empty:
+        return default
+    ceilings = fieldable_ceiling(roster_positions)
+    if not ceilings:
+        return default
+    held: dict[str, int] = {}
+    for pick in picks:
+        if str(pick.get("roster_id")) != str(my_roster_id):
+            continue
+        info = players_db.get(str(pick.get("player_id"))) or {}
+        # #172: eligibility, not the single grouping bucket. A player who reaches a shared slot
+        # is not saturating a dedicated one, so he is counted at no ceilinged position at all.
+        eligible = set(info.get("fantasy_positions")
+                       or ([info["position"]] if info.get("position") else []))
+        if len(eligible) == 1:
+            position = next(iter(eligible))
+            if position in ceilings:
+                held[position] = held.get(position, 0) + 1
+    saturated = {position for position, ceiling in ceilings.items()
+                 if held.get(position, 0) >= ceiling}
+    if not saturated:
+        return default
+    return scored["position"].map(lambda position: 1 if position in saturated else 0).astype(int)
+
+
 def compute_draft_board(
     merger: DataMerger,
     players_db: dict[str, dict],
@@ -3610,8 +3710,14 @@ def compute_draft_board(
         scored["_feasible"] = feasibility_first(scored, picks, players_db, my_roster_id, roster_positions,
                                               draft_rounds=draft_rounds)
         scored["fills_required_slot"] = scored["_feasible"] == 0
-        results = scored.sort_values(["_feasible", "final_score", "player_id"],
-                                     ascending=[True, False, True], kind="stable")
+        # The mirror backstop, BELOW feasibility and ABOVE value. See unfieldable_last: a no-op
+        # until this roster holds more of a dedicated position than it can ever field, at which
+        # point the choice is not between two values -- one of them is a player who cannot play.
+        scored["_unfieldable"] = unfieldable_last(scored, picks, players_db, my_roster_id,
+                                                  roster_positions)
+        scored["cannot_be_fielded"] = scored["_unfieldable"] == 1
+        results = scored.sort_values(["_feasible", "_unfieldable", "final_score", "player_id"],
+                                     ascending=[True, True, False, True], kind="stable")
         return _records_with_normalized_nan(results[BALANCED_BOARD_COLUMNS])
 
     my_filled = _team_starters_filled(picks, players_db, my_roster_id)
@@ -3848,10 +3954,15 @@ def compute_draft_board(
     # board and the chair still took its seventh RB. The flag travels as data so the one
     # authority that decides it stays the one authority, wherever the rows are re-sorted.
     scored["fills_required_slot"] = scored["_feasible"] == 0
+    # EMITTED for the same reason fills_required_slot is: narrow_candidates re-sorts every board
+    # it receives, so a backstop expressed only as row order never reaches a pick (#155).
+    scored["_unfieldable"] = unfieldable_last(scored, picks, players_db, my_roster_id,
+                                              roster_positions)
+    scored["cannot_be_fielded"] = scored["_unfieldable"] == 1
     # player_id tiebreaker + kind="stable" -- see the identical sort in the upside-mode branch
     # above for the full reasoning (input-order-independent tiebreaking among exact ties).
-    results = scored.sort_values(["_feasible", "final_score", "player_id"],
-                                 ascending=[True, False, True], kind="stable")
+    results = scored.sort_values(["_feasible", "_unfieldable", "final_score", "player_id"],
+                                 ascending=[True, True, False, True], kind="stable")
     return _records_with_normalized_nan(results[UPSIDE_BOARD_COLUMNS])
 
 
