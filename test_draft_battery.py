@@ -147,6 +147,77 @@ class TheOtherStructuralAuditsFireTests(unittest.TestCase):
         self.assertEqual([], batt.duplicate_picks(traj))
 
 
+class UnfieldableDepthFiresTests(unittest.TestCase):
+    """The audit that would have caught the nine-defense roster, and the four existing audits
+    that would not. Its ceiling is derived from the slot list and the one bye every team has --
+    a BOUND, not a threshold (#56) -- so these tests pin the derivation, not a number."""
+
+    #: The measured shape: one dedicated DEF slot, one K, and a FLEX that reaches RB/WR/TE.
+    KDST_LEAGUE = {"roster_positions": ["QB", "RB", "WR", "TE", "FLEX", "BN", "BN", "K", "DEF"],
+                   "total_rosters": 1, "settings": {"type": 2}}
+    KDST_PLAYERS = dict(PLAYERS, r2={"position": "RB", "fantasy_positions": ["RB"]},
+                        **{f"d{i}": {"position": "DEF", "fantasy_positions": ["DEF"]}
+                           for i in range(1, 10)})
+
+    #: The measured roster, in fixture form: every starting slot covered -- which is exactly why
+    #: the four older audits reported it clean -- and then eight more defenses.
+    NINE_DEF = ["q1", "r1", "w1", "t1", "r2", "k1"] + [f"d{i}" for i in range(1, 10)]
+
+    def _roster(self, ids):
+        return _trajectory([_record(i, "1", pid) for i, pid in enumerate(ids, 1)])
+
+    def test_nine_defenses_in_a_one_def_league_is_caught(self):
+        traj = self._roster(self.NINE_DEF)
+        findings = batt.unfieldable_depth(traj, self.KDST_LEAGUE, self.KDST_PLAYERS)
+        self.assertEqual(1, len(findings))
+        self.assertEqual("DEF", findings[0]["position"])
+        self.assertEqual(9, findings[0]["held"])
+        self.assertEqual(1, findings[0]["startable_per_week"])
+        # ceiling = 1 dedicated slot + the one bye week. 9 - 2 = 7 provably unplayable.
+        self.assertEqual(2, findings[0]["ceiling"])
+        self.assertEqual(7, findings[0]["unfieldable"])
+
+    def test_the_bye_backup_is_not_a_finding(self):
+        """Exactly one spare is what a bye week costs. Flagging it would make the audit an
+        opinion about roster construction rather than a proof that a spot cannot be fielded."""
+        traj = self._roster(["q1", "r1", "w1", "t1", "r2", "k1", "d1", "d2"])
+        self.assertEqual([], batt.unfieldable_depth(traj, self.KDST_LEAGUE, self.KDST_PLAYERS))
+
+    def test_a_flex_reachable_position_is_exempt_at_any_depth(self):
+        """A spare RB fills a FLEX and frees a WR upward. Six of them is ordinary depth, and an
+        audit that called it a defect would fire on every sane roster in the battery."""
+        players = dict(self.KDST_PLAYERS,
+                       **{f"r{i}": {"position": "RB", "fantasy_positions": ["RB"]}
+                          for i in range(1, 7)})
+        traj = self._roster(["q1", "w1", "t1"] + [f"r{i}" for i in range(1, 7)])
+        self.assertEqual([], batt.unfieldable_depth(traj, self.KDST_LEAGUE, players))
+
+    def test_the_four_older_audits_all_pass_on_the_nine_defense_roster(self):
+        """NON-VACUITY IN THE OTHER DIRECTION, and the reason this audit had to be added. Every
+        starting slot IS filled, every pick IS priced, DEF IS draftable, nothing IS duplicated --
+        so the battery reported that roster as clean."""
+        traj = self._roster(self.NINE_DEF)
+        league, players = self.KDST_LEAGUE, self.KDST_PLAYERS
+        self.assertEqual([], batt.unpriced_picks(traj))
+        self.assertEqual([], batt.undraftable_positions(traj, league, players))
+        self.assertEqual([], batt.duplicate_picks(traj))
+        self.assertEqual([], batt.unfilled_starting_slots(traj, league, players))
+
+    def test_it_is_wired_into_structural_findings(self):
+        """An audit nobody calls is an audit that does not run."""
+        traj = self._roster(self.NINE_DEF)
+        findings = batt.structural_findings(traj, self.KDST_LEAGUE, self.KDST_PLAYERS)
+        self.assertIn("unfieldable_depth", {f["audit"] for f in findings})
+
+    def test_it_still_runs_on_a_short_draft(self):
+        """audit_roster_fill=False exempts the unfilled-slot audit only. Hoarding a position you
+        cannot field is a defect at any draft length."""
+        traj = self._roster(["q1"] + [f"d{i}" for i in range(1, 10)])
+        findings = batt.structural_findings(traj, self.KDST_LEAGUE, self.KDST_PLAYERS,
+                                            audit_roster_fill=False)
+        self.assertIn("unfieldable_depth", {f["audit"] for f in findings})
+
+
 class ReportedDistributionsDescribeRatherThanJudgeTests(unittest.TestCase):
     """These deliberately return no findings -- they are the half of the battery that reports a
     number for a person to read, because judging them needs a threshold nobody has argued for."""

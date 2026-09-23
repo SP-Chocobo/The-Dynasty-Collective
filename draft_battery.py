@@ -391,17 +391,74 @@ def duplicate_picks(trajectory) -> list[dict]:
     return findings
 
 
+def unfieldable_depth(trajectory, league: dict, players_db: dict) -> list[dict]:
+    """A roster carrying more of a position than it can EVER field. The audit that would have
+    caught the nine-defense roster (`evidence/kdst_streaming/ROOT_CAUSE.md`).
+
+    THE FOUR EXISTING AUDITS ALL PASS ON THAT ROSTER. Every starting slot was filled, every pick
+    was priced, DEF is a draftable position, and no player was duplicated. `roster_shape` and
+    `mean_position_count` recorded DEF: 9 in a one-DEF league and returned no verdict, on the
+    stated grounds that a verdict would need a number somebody chose.
+
+    IT DOES NOT, and that is the whole reason this is an audit rather than another distribution.
+    The ceiling is derived from two league facts and nothing else:
+
+      - A position that reaches only slots which admit IT ALONE can start exactly `slots(P)`
+        players in any week. There is no flex chain to absorb a spare, so the surplus is not
+        depth -- it is a roster spot that provably cannot be fielded.
+      - Every team has exactly ONE bye week, so exactly one backup is needed to cover it.
+
+    Ceiling = `slots(P) + 1`. Derived, not calibrated (`#56`), and a BOUND rather than a
+    threshold: it is the largest count that is not provably wasted, so it can only ever be
+    tripped by a roster that is demonstrably carrying an unplayable player.
+
+    FLEX-ELIGIBLE POSITIONS ARE EXEMPT, and must be. A spare RB fills a FLEX and frees a WR
+    upward; a fourth WR in a two-FLEX league is ordinary depth. Asked through the SAME slot
+    eligibility the optimizer solves on (`#126`), never a hand-listed set of "bench positions" --
+    a second reading of which positions have flex reach is exactly how `undraftable_positions`
+    went wrong before it was repaired.
+    """
+    slots = lo.slots_from_roster_positions(league.get("roster_positions") or [])
+    # A position is flex-reachable if ANY slot that admits it admits something else too.
+    dedicated: dict[str, int] = {}
+    flexible: set[str] = set()
+    for slot in slots:
+        eligible = set(slot.get("eligible") or ())
+        if len(eligible) == 1:
+            position = next(iter(eligible))
+            dedicated[position] = dedicated.get(position, 0) + 1
+        else:
+            flexible |= eligible
+
+    findings = []
+    for roster_id, counts in sorted(roster_shape(trajectory, players_db).items()):
+        for position, held in sorted(counts.items()):
+            if position in flexible or position not in dedicated:
+                continue
+            # +1 for the bye week every team has exactly one of. Nothing else is added.
+            ceiling = dedicated[position] + 1
+            if held > ceiling:
+                findings.append({
+                    "audit": "unfieldable_depth", "roster_id": roster_id,
+                    "position": position, "held": held, "startable_per_week": dedicated[position],
+                    "ceiling": ceiling, "unfieldable": held - ceiling,
+                })
+    return findings
+
+
 def structural_findings(trajectory, league: dict, players_db: dict,
                         *, audit_roster_fill: bool = True) -> list[dict]:
     """Every structural audit, in one call. A finding here is a DEFECT, not an observation.
 
     `audit_roster_fill=False` for a format whose draft is SHORTER than its roster. That is not
     an exemption for convenience: a 12-round draft of a 20-slot roster cannot fill 20 slots, so
-    an unfilled-slot finding there would report arithmetic as an engine defect. The other three
-    audits still run -- a short draft can still price nothing, draft an impossible position, or
-    take the same player twice, and those remain defects at any length."""
+    an unfilled-slot finding there would report arithmetic as an engine defect. The other four
+    audits still run -- a short draft can still price nothing, draft an impossible position,
+    hoard a position it cannot field, or take the same player twice, and those remain defects at
+    any length."""
     findings = (unpriced_picks(trajectory)
                 + undraftable_positions(trajectory, league, players_db)
+                + unfieldable_depth(trajectory, league, players_db)
                 + duplicate_picks(trajectory))
     if audit_roster_fill:
         findings = unfilled_starting_slots(trajectory, league, players_db) + findings
