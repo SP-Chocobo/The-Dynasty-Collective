@@ -168,6 +168,53 @@ class ItAsksEligibilityNotThePrimaryBucketTests(unittest.TestCase):
         self.assertEqual([0], list(got))
 
 
+class WhereTheCeilingBINDS_AcrossRealFormatsTests(unittest.TestCase):
+    """Measured against the real league matrix, not a fixture. A backstop whose reach nobody has
+    looked at is a backstop nobody can predict.
+
+        12T_ppr_SF             {}                              <- INERT
+        12T_ppr_K_DEF          QB 2, K 2, DEF 2
+        HEAVY_IDP              QB 2, DL 3, LB 3, DB 3
+        4WR_TE_PREMIUM         QB 2
+        12T_ppr                QB 2
+        12T_ppr_SHORT_DRAFT    QB 2
+
+    SUPERFLEX IS THE ONE THAT MATTERS. `#20`/`#22` was a superflex QB regression: an ordering
+    change passed the format battery and then under-drafted quarterbacks. This backstop cannot
+    repeat it, and not by being careful -- by construction. SUPER_FLEX admits QB alongside other
+    positions, so QB is flex-reachable there, so it has no ceiling, so the whole function is a
+    no-op in that format. Pinned here because "cannot happen by construction" is worth exactly
+    as much as the test that proves the construction still holds.
+    """
+
+    def _ceilings(self, label):
+        import draft_battery as db
+        import run_draft_battery as rdb
+        scoring = rdb.scoring_settings_from_capture()
+        arm = next(a for a in db.league_matrix(scoring) if a["label"] == label)
+        return dr.fieldable_ceiling(arm["league"]["roster_positions"])
+
+    def test_superflex_has_no_ceilings_at_all(self):
+        self.assertEqual({}, self._ceilings("12T_ppr_SF"),
+                         "the backstop has reach in superflex -- that is the #22 regression's "
+                         "own format and it must stay inert there")
+
+    def test_the_kdst_format_ceilings_qb_k_and_def_at_two(self):
+        self.assertEqual({"QB": 2, "K": 2, "DEF": 2}, self._ceilings("12T_ppr_K_DEF"))
+
+    def test_a_two_slot_idp_position_gets_three(self):
+        """Two dedicated slots plus the one bye. The arithmetic half, on a real roster."""
+        self.assertEqual(3, self._ceilings("HEAVY_IDP")["LB"])
+
+    def test_no_flex_reachable_position_is_ceilinged_in_any_format(self):
+        """The exemption, asserted over every format the batteries run rather than one."""
+        for label in ("12T_ppr_SF", "12T_ppr_K_DEF", "HEAVY_IDP", "4WR_TE_PREMIUM",
+                      "12T_ppr", "12T_ppr_SHORT_DRAFT"):
+            ceilings = self._ceilings(label)
+            for position in ("RB", "WR", "TE"):
+                self.assertNotIn(position, ceilings, f"{position} ceilinged in {label}")
+
+
 class ItReachesThePickAndNotOnlyTheBoardTests(unittest.TestCase):
     """#155. `_board_order` re-sorts every board it is handed, so a backstop that lives only in
     draft_room's row order is thrown away before a pick is made. Tier 3 was measured promoting a
