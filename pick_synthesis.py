@@ -1698,6 +1698,11 @@ def build_snapshot(
             merger, players_db, picks, pick_order, current_index=current_index, my_roster_id=my_roster_id,
             league=league, candidate_player_ids=candidate_ids, mode=mode, pool_scope=pool_scope,
             sleeper_projections=sleeper_projections, sleeper_basis=sleeper_basis,
+            # #30. The rival boards must be priced the way MY board is -- #214/F2's rule, and
+            # the streaming floor moves K and DEF by ~38 points, so omitting it here would put
+            # survival, denial and rival_premium on a different set of prices from the
+            # universal_value they are displayed beside, at exactly those positions.
+            weekly_projections=weekly_projections,
         )
         analysis_by_id = {str(a["player_id"]): a for a in analysis}
 

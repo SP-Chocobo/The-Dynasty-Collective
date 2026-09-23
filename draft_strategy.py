@@ -718,6 +718,12 @@ def _build_opponent_boards(
     roster_ids: list, *, mode: str = "auto", pool_scope: str = "all",
     sleeper_projections: Optional[dict[str, dict]] = None,
     sleeper_basis: str = SLEEPER_BASIS_WEEKLY,
+    #: #30. Forwarded to every board this builds, for the reason #214/F2 states above: a rival
+    #: board priced differently from my own makes survival, denial and rival_premium answers
+    #: about a different set of prices than the universal_value they sit beside. The streaming
+    #: floor moves K and DEF by ~38 points, so leaving it out here would reintroduce exactly
+    #: that split at exactly the positions #30 exists for.
+    weekly_projections: Optional[dict] = None,
 ) -> dict:
     """One compute_draft_board call per UNIQUE roster_id, off the actual current pool -- see
     module docstring's PERFORMANCE section for why this replaced per-pick-position,
@@ -732,6 +738,7 @@ def _build_opponent_boards(
             merger, players_db, picks, my_roster_id=roster_id, league=league,
             mode=mode, pool_scope=pool_scope,
             sleeper_projections=sleeper_projections, sleeper_basis=sleeper_basis,
+            weekly_projections=weekly_projections,
         )
         # rank_by_id is a VALUATION ordinal and is built over priced rows only. Both consumers
         # of it -- estimate_survival and expected_positional_forfeit -- read the number through
@@ -1043,6 +1050,12 @@ def pick_analysis(
     pool_scope: str = "all",
     sleeper_projections: Optional[dict[str, dict]] = None,
     sleeper_basis: str = SLEEPER_BASIS_WEEKLY,
+    #: #30. Forwarded to every board this builds, for the reason #214/F2 states above: a rival
+    #: board priced differently from my own makes survival, denial and rival_premium answers
+    #: about a different set of prices than the universal_value they sit beside. The streaming
+    #: floor moves K and DEF by ~38 points, so leaving it out here would reintroduce exactly
+    #: that split at exactly the positions #30 exists for.
+    weekly_projections: Optional[dict] = None,
 ) -> list[dict]:
     """The actual "should I take him now" answer for a shortlist of candidates (typically the
     top few from draft_room.compute_draft_board) -- team_acquisition_value plus the three
@@ -1079,11 +1092,13 @@ def pick_analysis(
         merger, players_db, picks, my_roster_id=my_roster_id, league=league, mode=mode,
         pool_scope=pool_scope,
         sleeper_projections=sleeper_projections, sleeper_basis=sleeper_basis,
+        weekly_projections=weekly_projections,
     )}
     my_next_index = find_next_pick_index(pick_order, my_roster_id, current_index)
     intervening = intervening_roster_ids(pick_order, current_index, my_next_index)
     opponent_boards = _build_opponent_boards(
         merger, players_db, picks, league, intervening, mode=mode, pool_scope=pool_scope,
+        weekly_projections=weekly_projections,
         sleeper_projections=sleeper_projections, sleeper_basis=sleeper_basis,
     )
 
