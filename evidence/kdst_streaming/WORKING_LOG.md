@@ -175,3 +175,57 @@ same advantage.
 | first DEF | round 5.08 | 12–16 |
 | best reachable by valuation alone | round 10.01 (at `bpa` −24.5, beyond any streaming basis) | — |
 | quality vs field | **wins 5 of 6** | meet or beat — MET |
+
+
+---
+
+# UPDATE 2 — THE COST IS REAL AND MEASURED. The gate was the blind spot.
+
+## The headline
+
+**An early K/DST pick costs ~81 real points.** Counterfactual surgery on a 2024 draft, scored on
+2024 realized outcomes: 42 early K/DEF picks, deferring gained a mean of **+81.4** (median +95.8)
+and helped **34 of 42**. K +82.9, DEF +80.1.
+
+The projected ruler's verdict on the same question was **−0.16% / +0.08%** — indifferent.
+
+So the behaviour is not an aesthetic preference. It is money, and the freeze gate could not see it.
+
+## What changed in my understanding
+
+I had been treating "K/DST go too early" as a shape problem to be argued about. It is a **cost**
+problem, and now it has a number. That also reframes the gate: the owner's condition ("no quality
+drop-off") was to be measured on the projected `points` ruler, which is *structurally* incapable of
+detecting a regression of this shape. **The realized ruler must be in the gate.**
+
+## What is still NOT known
+
+- **The size of the fix.** Two bounds run opposite ways and neither can be removed here: the
+  swapped-in player is not taken from whoever really drafted him (upper bound on the gain), and the
+  vacated K/DEF slot stays empty for want of waivers (lower bound). n = 42 picks, ONE draft, ONE
+  season, sd 83.2.
+- **Which lever closes it.** The streaming basis is a real valuation correction but saturates at
+  round 10. The comparator side (bench insurance, derived from measured absence rates) has the
+  leverage but is unbuilt and unmeasured.
+- Whether 8-of-42 going the other way — worst a round-7 Denver at −105.3, the best realized defense
+  of 2024 — means the fix should be *selective* rather than positional. The projection ranked Denver
+  third behind a Philadelphia that returned 153.0, which is `#18`'s DEF ordering skill (0.48)
+  showing up as money.
+
+## Next, in order
+
+1. Full suite with `realized_ruler` — in flight.
+2. Wire the realized ruler into the gate alongside the projected one, so a K/DST change is
+   certifiable at all. **This is the blocker on any fix, not the fix itself.**
+3. Wire `12T_ppr_K_DEF` into the quality grader (its six formats have zero K/DEF slots).
+4. Only then attempt the comparator-side term, pre-registered.
+
+## How far off
+
+| | now | target |
+|---|---|---|
+| first DEF | round 5.08 | 12–16 |
+| measured cost of that | **~81 real points per pick** | ~0 |
+| reachable by valuation alone | round 10.01 | — |
+| quality vs field (projected ruler) | wins 5 of 6 | MET |
+| quality vs field (realized ruler) | **not yet measured** | — |

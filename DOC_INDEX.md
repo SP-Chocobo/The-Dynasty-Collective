@@ -1,20 +1,21 @@
 # Document index — derived, not curated
 
-`python3 doc_index.py` regenerates this. 162 markdown documents.
+`python3 doc_index.py` regenerates this. 165 markdown documents.
 
 Classified by what each file says about ITSELF in its first 12 lines. Nothing here is a judgement about whether a document is *good* — only about whether it tells a cold reader what it is before it starts making claims.
 
 | class | count | meaning |
 |---|---:|---|
-| WITHDRAWN | 25 | a published claim taken back. Kept, unedited, beneath its banner. |
-| SUPERSEDED | 24 | still valid or partly valid, but something later changed what it means. |
+| WITHDRAWN | 26 | a published claim taken back. Kept, unedited, beneath its banner. |
+| SUPERSEDED | 25 | still valid or partly valid, but something later changed what it means. |
 | DECLARED | 18 | says what kind of document it is before making claims. |
-| UNDECLARED | 95 | no status banner in its opening. Not necessarily wrong — most are simply current — but a reader cannot tell without reading it all. |
+| UNDECLARED | 96 | no status banner in its opening. Not necessarily wrong — most are simply current — but a reader cannot tell without reading it all. |
 
 ## WITHDRAWN
 
 - `evidence/PHASE_8_CERTIFICATION.md`
 - `evidence/horizon_dark/README_HORIZON_DARK.md`
+- `evidence/kdst_streaming/PROBLEM.md`
 - `evidence/roster_proof/README.md`
 - `evidence/roster_proof/README_FLEX_CUT.md`
 - `evidence/roster_proof/README_MISSING_CELL.md`
@@ -51,6 +52,7 @@ Classified by what each file says about ITSELF in its first 12 lines. Nothing he
 - `evidence/blind_pass/REPAIR_MANDATE.md`
 - `evidence/blind_pass/SYNTHESIS.md`
 - `evidence/blind_pass/TURN_ENDING_PICKS.md`
+- `evidence/kdst_streaming/WORKING_LOG.md`
 - `evidence/roster_shape/ff_rulebook/CORRECTION_wrong_universe.md`
 - `evidence/roster_shape/ff_rulebook/FINDING_01_the_pool_is_the_shape.md`
 - `evidence/roster_shape/ff_rulebook/FINDING_02_vor_measures_linearity.md`
@@ -124,6 +126,7 @@ Classified by what each file says about ITSELF in its first 12 lines. Nothing he
 - `evidence/context_elevated/THE_CEILING_IS_MAX_NOT_SUM.md`
 - `evidence/flex_feasibility/README.md`
 - `evidence/i06_j06/STEP_ONE_NEEDS_A_BOUNDARY.md`
+- `evidence/kdst_streaming/RESULT.md`
 - `evidence/projection_rank/README.md`
 - `evidence/real_drafts/README.md`
 - `evidence/reference_rosters/OWNER_REDRAFT_2026-09-08.md`
