@@ -130,6 +130,48 @@ class TheBackstopBindsOnlyWhenItIsProvableTests(unittest.TestCase):
         self.assertEqual([0], list(got))
 
 
+class ARookieDraftIsExemptTests(unittest.TestCase):
+    """The backstop's whole claim is about THIS SEASON's lineup -- a surplus body cannot be
+    fielded, and the churn it buys is free on the wire. An annual rookie draft acquires future
+    assets against a roster that already exists, and a team holding two quarterbacks has every
+    reason to take a rookie third. Firing there would be the engine asserting a redraft
+    objective inside the one draft phase that explicitly is not one.
+
+    Scoped on `pool_scope`, not on `is_dynasty`: the question is which DRAFT this is, not which
+    league. A dynasty STARTUP is a full draft and the backstop belongs in it.
+    """
+
+    def test_a_rookie_draft_demotes_nobody(self):
+        got = dr.unfieldable_last(_scored(["DEF"]), _picks(["d1", "d2"]), PLAYERS, "1",
+                                  ROSTER_POSITIONS, pool_scope="rookies_only")
+        self.assertEqual([0], list(got))
+
+    def test_the_same_board_in_a_full_draft_DOES_demote(self):
+        """The control. Without it the exemption could be hiding a backstop that never fires."""
+        got = dr.unfieldable_last(_scored(["DEF"]), _picks(["d1", "d2"]), PLAYERS, "1",
+                                  ROSTER_POSITIONS, pool_scope="all")
+        self.assertEqual([1], list(got))
+
+    def test_a_veterans_only_draft_is_NOT_exempt(self):
+        """Only the rookie phase carries the future-asset argument."""
+        got = dr.unfieldable_last(_scored(["DEF"]), _picks(["d1", "d2"]), PLAYERS, "1",
+                                  ROSTER_POSITIONS, pool_scope="veterans_only")
+        self.assertEqual([1], list(got))
+
+    def test_the_board_hands_its_scope_to_the_backstop(self):
+        """#200: asked of the CODE, so a call site that forgot the argument fails here rather
+        than silently defaulting a rookie draft back into scope."""
+        import ast
+        import inspect
+        tree = ast.parse(inspect.getsource(dr.compute_draft_board))
+        calls = [n for n in ast.walk(tree)
+                 if isinstance(n, ast.Call) and isinstance(n.func, ast.Name)
+                 and n.func.id == "unfieldable_last"]
+        self.assertEqual(2, len(calls), "expected the balanced and upside branches")
+        for call in calls:
+            self.assertIn("pool_scope", [kw.arg for kw in call.keywords])
+
+
 class ItAsksEligibilityNotThePrimaryBucketTests(unittest.TestCase):
     """#172, in the demotion direction. Reading `position` alone sinks a dual-eligible player on
     a label rather than on what he can actually fill."""

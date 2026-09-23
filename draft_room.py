@@ -3370,7 +3370,8 @@ def fieldable_ceiling(roster_positions: list[str]) -> dict[str, int]:
             if position not in flexible}
 
 
-def unfieldable_last(scored, picks, players_db, my_roster_id, roster_positions):
+def unfieldable_last(scored, picks, players_db, my_roster_id, roster_positions,
+                     pool_scope: str = "all"):
     """A sort key, the mirror image of `feasibility_first`: 1 for a candidate at a position this
     roster has already saturated beyond what it can ever field, 0 for everyone else.
 
@@ -3417,6 +3418,17 @@ def unfieldable_last(scored, picks, players_db, my_roster_id, roster_positions):
     """
     default = pd.Series(0, index=scored.index, dtype=int)
     if my_roster_id is None or not roster_positions or scored.empty:
+        return default
+    # A ROOKIE DRAFT IS NOT ABOUT THIS SEASON'S LINEUP, so this has no business in one. The
+    # whole claim above is that the surplus body cannot be fielded and the churn it buys is free
+    # on the wire -- both statements about the CURRENT season. An annual rookie draft acquires
+    # future assets against a roster that already exists, and a team holding two quarterbacks
+    # has every reason to take a rookie third. Blocking that would be the engine asserting a
+    # redraft objective inside the one phase that is explicitly not one.
+    #
+    # Scoped by pool_scope rather than by is_dynasty: the question is which DRAFT this is, not
+    # which league. A dynasty startup is a full draft and the backstop belongs there.
+    if pool_scope == "rookies_only":
         return default
     ceilings = fieldable_ceiling(roster_positions)
     if not ceilings:
@@ -3901,7 +3913,7 @@ def compute_draft_board(
         # until this roster holds more of a dedicated position than it can ever field, at which
         # point the choice is not between two values -- one of them is a player who cannot play.
         scored["_unfieldable"] = unfieldable_last(scored, picks, players_db, my_roster_id,
-                                                  roster_positions)
+                                                  roster_positions, pool_scope=pool_scope)
         scored["cannot_be_fielded"] = scored["_unfieldable"] == 1
         results = scored.sort_values(["_feasible", "_unfieldable", "final_score", "player_id"],
                                      ascending=[True, True, False, True], kind="stable")
@@ -4144,7 +4156,7 @@ def compute_draft_board(
     # EMITTED for the same reason fills_required_slot is: narrow_candidates re-sorts every board
     # it receives, so a backstop expressed only as row order never reaches a pick (#155).
     scored["_unfieldable"] = unfieldable_last(scored, picks, players_db, my_roster_id,
-                                              roster_positions)
+                                              roster_positions, pool_scope=pool_scope)
     scored["cannot_be_fielded"] = scored["_unfieldable"] == 1
     # player_id tiebreaker + kind="stable" -- see the identical sort in the upside-mode branch
     # above for the full reasoning (input-order-independent tiebreaking among exact ties).
