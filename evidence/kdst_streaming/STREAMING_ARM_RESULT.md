@@ -1,4 +1,17 @@
-# `#30`: the derived streaming replacement level is worth **+258.8 realized points a seat**
+# `#30`: the derived streaming replacement level — SUPERSEDED, see below
+
+> **THE +258.8 HEADLINE THIS FILE CARRIED IS SUPERSEDED.** It was measured with the pool
+> period-correct but the BOARD still contaminated — the ghosts accumulate on it and by round 16
+> every remaining candidate was one (`evidence/backtest/ANACHRONISM.md`). On the fully corrected
+> instrument the level is worth **+328 a seat on 2024 and +85 on 2023**, and it is NOT the
+> dominant fix: the fieldability backstop is, at +230 to +347 improving 12 of 12 seats in every
+> arm of both seasons.
+>
+> **Current results:** `RESULT_2024.md` and `HOLDOUT_2023.md`.
+> **What this file is still good for:** the derivation, the floor-only rule, and the record of
+> why two of my earlier conclusions were too pessimistic. The numbers in the table below are not
+> current and must not be quoted.
+
 
 **2024, `12T_ppr_K_DEF`, 12 seats, graded on realized outcomes, under
 `run_backtest_grade.period_correct_pool`.** One process, one code version, one toggle:

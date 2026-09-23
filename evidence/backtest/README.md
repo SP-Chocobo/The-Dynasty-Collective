@@ -42,7 +42,7 @@ derives and prints `distinct_engine_rosters` rather than leaving a reader to not
 ### Where the headroom is
 
 Every seat took its first K or DST in **round 4 or 5**. Counterfactual surgery on the same season
-prices each early K/DST pick at **+81.4 realized points** if deferred (42 picks, helped 34 of 42).
+prices each early K/DST pick at **+81.4 realized points** if deferred (42 picks, helped 34 of 42) — a figure measured BEFORE the anachronism guard existed and SUPERSEDED by the direct A/B (`evidence/kdst_streaming/RESULT_2024.md`, `HOLDOUT_2023.md`).
 At roughly 3.5 such picks a seat that is **~285 points** of headroom against a field mean of
 ~2,555 — an order of magnitude larger than the engine's current margin either way.
 

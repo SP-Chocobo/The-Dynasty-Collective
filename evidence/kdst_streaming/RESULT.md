@@ -115,6 +115,14 @@ then the streaming basis and the insurance term become measurable rather than ar
 early K/DEF pick a counterfactual roster identical except that pick is the best skill player still
 on that exact board. Both scored on **2024 realized weekly stats** via `realized_ruler`.
 
+> **SUPERSEDED.** The +81.4 counterfactual was measured BEFORE the anachronism guard existed,
+> on a board whose late rounds were dominated by players who did not exist in the drafted season
+> (`evidence/backtest/ANACHRONISM.md`). Its direction held; its magnitude was never re-measured,
+> because a far stronger instrument replaced it: the direct A/B on a period-correct pool AND
+> board puts `#30`'s streaming level at **+328 a seat on 2024 and +85 on 2023**, and the
+> fieldability backstop at **+230 to +347, improving 12 of 12 seats in every arm of both
+> seasons** (`evidence/kdst_streaming/RESULT_2024.md`, `HOLDOUT_2023.md`). Quote those.
+
 **42 early K/DEF picks. Deferring gained a mean of +81.4 realized points, median +95.8, and helped
 34 of 42.**
 
