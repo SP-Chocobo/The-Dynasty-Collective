@@ -26,6 +26,14 @@ WHAT IT DOES NOT MODEL, and these are real:
     the opposite direction to the second-order effect above. Both bounds are stated because
     neither can be removed.
 
+  - THE ACTUAL ROSTER STILL CONTAINS LATER ROOKIES. The counterfactual SWAP-IN is period-correct
+    (a player the drafted season never projected is never offered as the alternative), but the
+    engine's own picks are not filtered here the way `run_backtest_grade.period_correct_pool`
+    filters them, because that needs the `demand_picks` split and this script builds its board
+    directly. Those players appear IDENTICALLY in both terms of the delta, so they cancel to
+    first order; the residue is the optimizer's non-linearity around one swapped slot. It is the
+    reason this number is quoted as a bound and not as an estimate.
+
 The draft is on 2024 PROJECTIONS so the decisions are period-correct: the board sees what a
 drafter in 2024 would have seen, and the season then happens to it.
 """
@@ -84,6 +92,10 @@ def main() -> int:
     order = [str(s) for s in ds.generate_pick_order(
         [str(i) for i in range(1, TEAMS + 1)], ROUNDS, "snake")]
 
+    #: The drafted season's non-existent players, by the same test the backtest grader uses.
+    ghosts = {pid for pid in players_db
+              if pu.score_projection(projections.get(pid) or {}, scoring) == 0.0}
+
     picks, alternatives = [], {}
     started = time.time()
     for index in range(TEAMS * ROUNDS):
@@ -95,8 +107,15 @@ def main() -> int:
             break
         chosen = snap.candidates[0]
         # The best SKILL player on this exact board, kept only for picks we may counterfactual.
+        # PERIOD-CORRECT (see run_backtest_grade.period_correct_pool). A player with no
+        # projection in the drafted season is a LATER rookie priced off the 2026 vendor export,
+        # and he sits near the top of the board precisely because of that. Swapping one in would
+        # hand the counterfactual roster a guaranteed 0.0 and make deferring the defense look
+        # worse than it is -- the bias runs AGAINST the finding, but a measurement biased in the
+        # convenient direction is still a broken measurement.
         best_skill = next((c for c in snap.candidates
-                           if pu.player_position(players_db.get(str(c.player_id)) or {}) in SKILL),
+                           if pu.player_position(players_db.get(str(c.player_id)) or {}) in SKILL
+                           and str(c.player_id) not in ghosts),
                           None)
         alternatives[index] = str(best_skill.player_id) if best_skill else None
         picks.append({"player_id": str(chosen.player_id), "roster_id": order[index],

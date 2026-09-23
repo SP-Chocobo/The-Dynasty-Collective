@@ -1,5 +1,10 @@
 # Backtest grade — the engine judged on what actually happened
 
+> **SUPERSEDED IN PART.** Absolute engine-vs-field grades from this instrument were measured on
+> a pool containing players who did not exist in the drafted season (133 in 2023, 101 in
+> 2024), priced from the 2026 vendor export. Guard shipped, re-runs in flight — see
+> `evidence/backtest/ANACHRONISM.md`. Projected-ruler figures quoted here are unaffected.
+
 `run_backtest_grade.py`. Engine seat against a field of sane styles, seat-controlled, drafted on a
 **finished** season's projections and scored on that season's **realized** weekly outcomes via
 `realized_ruler`. The first grade in this repository the engine cannot optimise toward (`#288`

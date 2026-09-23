@@ -36,9 +36,15 @@ import player_universe as pu
 import run_backtest_grade as bg
 import run_draft_battery as rdb
 
-SEASON, ARM = "2024", "12T_ppr_K_DEF"
+import argparse
+
+#: Season to derive the level from AND grade on. The two must MATCH: a live implementation
+#: derives the streaming baseline from the season it is drafting, so deriving on one season and
+#: grading on another would measure transfer of a stale level, not the method.
+SEASON = "2024"
+ARM = "12T_ppr_K_DEF"
 STREAMED = ("K", "DEF")
-OUT = Path("evidence/kdst_streaming/STREAMING_ARM.json")
+OUT_TEMPLATE = "evidence/kdst_streaming/STREAMING_ARM_{season}.json"
 
 
 def streaming_levels(season: str, scoring: dict, players_db: dict,
@@ -75,7 +81,13 @@ def streaming_levels(season: str, scoring: dict, players_db: dict,
     return out
 
 
-def main() -> int:
+def main(argv=None) -> int:
+    global SEASON
+    parser = argparse.ArgumentParser(description=__doc__.split("\n")[0])
+    parser.add_argument("--season", default=SEASON,
+                        help="derive the level from AND grade on this season -- a HOLDOUT is a "
+                             "different season entirely, not a different grading year")
+    SEASON = parser.parse_args(argv).season
     scoring = rdb.scoring_settings_from_capture()
     players_db, _ = rdb.build_players_db_from_capture()
     arm = next(a for a in db.league_matrix(scoring) if a["label"] == ARM)
@@ -131,7 +143,8 @@ def main() -> int:
     report["paired_engine_delta_mean"] = round(statistics.fmean(paired), 2)
     report["paired_engine_delta_median"] = round(statistics.median(paired), 2)
     report["seats_improved"] = sum(1 for d in paired if d > 0)
-    OUT.write_text(json.dumps(report, indent=2, sort_keys=True) + "\n")
+    out = Path(OUT_TEMPLATE.format(season=SEASON))
+    out.write_text(json.dumps(report, indent=2, sort_keys=True) + "\n")
 
     print(f"\n=== STREAMING REPLACEMENT vs BASE, graded on {SEASON} realized ===")
     print(f"{'arm':<11}{'wins':>6}{'mean':>9}{'median':>9}  first K/DST rounds")
@@ -143,7 +156,7 @@ def main() -> int:
     print(f"   mean {report['paired_engine_delta_mean']:+.1f} | "
           f"median {report['paired_engine_delta_median']:+.1f} | "
           f"improved {report['seats_improved']} of {len(paired)}")
-    print(f"\n-> {OUT}")
+    print(f"\n-> {out}")
     return 0
 
 

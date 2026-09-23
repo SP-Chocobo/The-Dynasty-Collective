@@ -1,5 +1,12 @@
 # `#30`: the derived streaming replacement level works — +226.6 realized points a seat
 
+> **SUPERSEDED — EVERY NUMBER BELOW WAS MEASURED ON A CONFOUNDED POOL.**
+> The draft pool contained 101 players (2024) who were not in the league that season and were
+> priced from the 2026 vendor export at the top of the board. See
+> `evidence/backtest/ANACHRONISM.md`. Both arms were contaminated identically, so the DIRECTION
+> of this result is not in doubt, but no magnitude here may be quoted. The re-run under
+> `run_backtest_grade.period_correct_pool` is in flight; this file is rewritten when it lands.
+
 **2024, `12T_ppr_K_DEF`, 12 seats, graded on realized outcomes.** One process, one code version,
 one toggle: `replacement_levels` for K and DEF replaced by the DERIVED streaming baseline.
 

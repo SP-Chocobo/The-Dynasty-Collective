@@ -37,8 +37,12 @@ LIMITS, stated so no one reads more into a total than it carries:
   - The weekly solve is an ORACLE lineup — it starts the best actual scorers, not the ones a
     manager would have guessed on Saturday. Every arm gets the same advantage, so the comparison
     survives it; the absolute totals are ceilings and must not be quoted as expected scores.
-  - The player universe is the capture's, which post-dates the drafted season. Players who did not
-    exist then simply have no lines and are never offered to a lineup.
+  - The player universe is the capture's, which post-dates the drafted season. That is NOT
+    self-correcting, and the first two runs of this instrument were invalid because of it: a
+    later rookie has an all-zero projection row for the backtested season, which sends the board
+    to the 2026 vendor export for his price and puts him at the top of the board. 133 such
+    players in 2023 and 101 in 2024. `period_correct_pool` now removes them before the draft --
+    read its docstring before quoting any absolute number from this instrument.
 """
 
 from __future__ import annotations
@@ -87,6 +91,43 @@ def season_sums(season: str, scoring: dict) -> dict[str, dict]:
     return {pid: dict(v) for pid, v in totals.items()}
 
 
+def period_correct_pool(points: dict, projections: dict, scoring: dict) -> tuple[dict, list]:
+    """Drop players the DRAFTED SEASON never projected -- the backtest's anachronism guard.
+
+    THE CONFOUND THIS CLOSES, and it invalidated the first two runs of this instrument. The
+    player universe comes from a 2026 capture, and so does the vendor rankings export. The
+    drafted season's own weekly projections are what SHOULD price the board, and the board takes
+    them -- but only when they score to something. `draft_room.build_available_pool` sets
+    `sleeper_points = scored if scored != 0 else None` (draft_room.py:1456), and a player who did
+    not exist in the drafted season has a projection row of all zeros, which scores to exactly
+    0.0. `sleeper_points` goes None, `use_season` does not fire, and the board prices him from
+    the **2026 vendor export** instead.
+
+    Measured, in the 12T_ppr_K_DEF pool: 133 such players in 2023 and 101 in 2024, priced as high
+    as 340.0 -- Maye, Daniels, C. Williams, Dart, Nix, Jeanty, Bowers, Hampton. Every one is a
+    rookie from a later season, every one is priced at the top of the board by a ranking formed
+    after the backtested season was played, and every one realizes exactly 0.0 because he has no
+    stat line that year. The engine's 2023 seat-1 roster spent round 2 on Bowers and round 8 on
+    Dart. An absolute grade against a field is worthless while that is true.
+
+    THIS IS NOT HINDSIGHT. A drafter in the backtested season could not have drafted a player
+    nobody projected that season -- he was not in the league. The filter uses only the drafted
+    season's own published projections, never its outcomes, and it applies to every arm and every
+    seat identically.
+
+    Returns (kept, dropped). The dropped list travels into the report so a future reader can see
+    what the guard removed rather than trusting that it fired.
+    """
+    kept, dropped = {}, []
+    for pid, priced in points.items():
+        # Exactly the board's own test, so the guard cannot drift from the fallback it guards.
+        if pu.score_projection(projections.get(pid) or {}, scoring) != 0.0:
+            kept[pid] = priced
+        else:
+            dropped.append(pid)
+    return kept, dropped
+
+
 def main(argv=None) -> int:
     parser = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     parser.add_argument("--season", default="2024")
@@ -119,13 +160,23 @@ def main(argv=None) -> int:
 
         merger = dm.DataMerger()
         merger.set_league_format(db.league_format_hint(league))
-        points = rp.scoreable_pool(merger, players_db, league, projections)
+        priced_pool = rp.scoreable_pool(merger, players_db, league, projections)
+        points, anachronisms = period_correct_pool(priced_pool, projections, scoring)
+        # NON-VACUITY, ASSERTED BEFORE THE RUN, in the other direction from the slot check above:
+        # the guard removing NOTHING on a season whose capture post-dates it would mean it is not
+        # firing, and the run would silently be the confounded one again.
+        if not anachronisms:
+            print(f"REFUSING: the anachronism guard dropped 0 of {len(priced_pool)} for "
+                  f"{args.season}. On a capture that post-dates the drafted season it must drop "
+                  f"the later rookies; dropping none means it is not firing.")
+            return 1
         adp, _ = ss.adp_table(projections)
         seats = [str(i) for i in range(1, teams + 1)]
         order = ds.generate_pick_order(seats, rounds, "snake")
         graded_seats = seats[:args.seats] if args.seats else seats
 
-        print(f"{label}: {len(points)} priced, K/DEF slots {kdst_slots}, "
+        print(f"{label}: {len(points)} draftable ({len(anachronisms)} of {len(priced_pool)} "
+              f"dropped as not projected in {args.season}), K/DEF slots {kdst_slots}, "
               f"grading {len(graded_seats)} seats on {args.season} outcomes", flush=True)
 
         rows = []
@@ -177,6 +228,8 @@ def main(argv=None) -> int:
         results.append({
             "label": label, "season": args.season, "teams": teams, "rounds": rounds,
             "styles": list(BACKTEST_STYLES), "pool": len(points),
+            "pool_before_anachronism_guard": len(priced_pool),
+            "dropped_not_projected_this_season": len(anachronisms),
             "kdst_slots": kdst_slots, "seats_graded": len(rows), "rows": rows,
             "wins": sum(1 for d in deltas if d > 0),
             "mean_delta": round(statistics.fmean(deltas), 2) if deltas else None,
