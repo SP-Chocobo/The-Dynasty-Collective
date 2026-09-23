@@ -108,6 +108,74 @@ class TheFloorIsRaiseOnlyTests(unittest.TestCase):
                                                streaming_floors=None))
 
 
+class TheFloorReachesTheANCHOR_PathTooTests(unittest.TestCase):
+    """The gap this nearly shipped with, and the path where the floor matters MOST.
+
+    `predraft_replacement_anchor` prices a position whose live starter demand is EXHAUSTED --
+    and its own docstring says which positions those are: "Kickers and defenses are drafted
+    last, so they are the last positions still carrying demand." So it is precisely in the late
+    rounds, the ones `#30` exists for, that K and DEF are priced from the anchor rather than the
+    live level. A floor wired only into the live call site would be silently dropped there.
+
+    It was nearly wired that way. The experiment that established `#30` monkey-patched
+    `replacement_levels` GLOBALLY, so it reached both paths; the first production wiring reached
+    one. That is the class of defect where a shipped fix is not the fix that was measured.
+
+    Asked of the CODE (`#200`), not of a run, so it cannot pass by the anchor never being built.
+    """
+
+    def _anchor_call(self):
+        import ast
+        import inspect
+        tree = ast.parse(inspect.getsource(dr.predraft_replacement_anchor))
+        for node in ast.walk(tree):
+            if (isinstance(node, ast.Call) and isinstance(node.func, ast.Name)
+                    and node.func.id == "replacement_levels"):
+                return node
+        return None
+
+    def test_the_anchor_forwards_the_streaming_floor(self):
+        call = self._anchor_call()
+        self.assertIsNotNone(call, "predraft_replacement_anchor no longer calls "
+                                   "replacement_levels -- re-derive where its level comes from")
+        self.assertIn("streaming_floors", [kw.arg for kw in call.keywords],
+                      "the anchor drops the streaming floor, so K and DEF revert to the "
+                      "un-floored level in exactly the rounds #30 exists for")
+
+    def test_the_anchor_cache_key_covers_it(self):
+        """Two boards differing only in the floor would otherwise collide on one cached anchor
+        -- the SUPER_FLEX_QB_SHARE failure that key's own docstring records."""
+        import inspect
+        source = inspect.getsource(dr.anchor_cache_key)
+        self.assertIn("streaming_floors", source)
+
+    def test_the_key_actually_changes_when_the_floor_does(self):
+        """Not just present in the source: it has to move the fingerprint."""
+        import data_merger as dm
+        merger = dm.DataMerger()
+        args = (merger, {}, {"QB", "DEF"}, ["QB", "DEF"], 12, "_points", None, {}, "all", None)
+        bare = dr.anchor_cache_key(*args)
+        floored = dr.anchor_cache_key(*args, streaming_floors={"DEF": 146.05})
+        self.assertNotEqual(bare, floored)
+
+    def test_the_trade_value_branch_does_NOT_get_it(self):
+        """A streaming baseline is a season POINT total; the trade_value branch prices on a
+        vendor composite where a points figure means nothing -- the same reasoning that keeps
+        startable_floors off it."""
+        import ast
+        import inspect
+        tree = ast.parse(inspect.getsource(dr.compute_draft_board))
+        anchors = [n for n in ast.walk(tree)
+                   if isinstance(n, ast.Call) and isinstance(n.func, ast.Name)
+                   and n.func.id == "_anchor"]
+        self.assertTrue(anchors, "_anchor is no longer called -- re-derive this test")
+        for call in anchors:
+            first = call.args[0]
+            if isinstance(first, ast.Constant) and first.value == "trade_value":
+                self.assertLess(len(call.args), 3,
+                                "the trade_value anchor was handed a streaming floor")
+
+
 class TheScopeIsNamedAndArguableTests(unittest.TestCase):
     """`#184`: which positions are streamed is a DECISION with evidence, not a derived set. It
     must stay visible, and the experiment must not carry a second copy of it."""

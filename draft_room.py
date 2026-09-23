@@ -2790,7 +2790,7 @@ def _players_db_fingerprint(players_db: dict[str, dict]) -> str:
 def anchor_cache_key(
     merger, players_db, usable_positions, roster_positions, num_teams, value_col,
     sleeper_projections, scoring_settings, pool_scope, startable_floors,
-    sleeper_basis=SLEEPER_BASIS_WEEKLY,
+    sleeper_basis=SLEEPER_BASIS_WEEKLY, streaming_floors=None,
 ) -> str:
     """Every input predraft_replacement_anchor can read, in one fingerprint.
 
@@ -2810,6 +2810,10 @@ def anchor_cache_key(
         repr(sorted((scoring_settings or {}).items())) if scoring_settings else "none",
         repr(pool_scope),
         repr(sorted((startable_floors or {}).items())) if startable_floors else "none",
+        # #30. In the key because it changes the ANSWER: a raise-only floor moves a position's
+        # level, and two boards differing only in it would otherwise collide on one cached
+        # anchor -- precisely the SUPER_FLEX_QB_SHARE failure this docstring records.
+        repr(sorted((streaming_floors or {}).items())) if streaming_floors else "none",
         repr(sleeper_basis),
     )
 
@@ -2819,6 +2823,7 @@ def predraft_replacement_anchor(
     num_teams: int, value_col: str, *, sleeper_projections=None, scoring_settings=None,
     pool_scope: str = "all", startable_floors: Optional[dict[str, float]] = None,
     sleeper_basis: str = SLEEPER_BASIS_WEEKLY,
+    streaming_floors: Optional[dict[str, float]] = None,
 ) -> dict[str, float]:
     """This league's replacement level per position as it stood with NOBODY drafted.
 
@@ -2855,6 +2860,7 @@ def predraft_replacement_anchor(
     key = anchor_cache_key(
         merger, players_db, usable_positions, roster_positions, num_teams, value_col,
         sleeper_projections, scoring_settings, pool_scope, startable_floors, sleeper_basis,
+        streaming_floors=streaming_floors,
     )
     cached = _ANCHOR_CACHE.get(key)
     if cached is not None:
@@ -2881,9 +2887,17 @@ def predraft_replacement_anchor(
         {str(pid): float(v) for pid, v in zip(priced["player_id"], priced["_points"])},
         players_db, roster_positions, num_teams,
     )
+    # #30. THE FLOOR MUST REACH HERE TOO, and this is the path where it matters most. This
+    # docstring's own measurement says why: "Kickers and defenses are drafted last, so they are
+    # the last positions still carrying demand" -- so it is exactly late in the draft, once K
+    # and DEF demand is exhausted, that their price comes from this anchor rather than the live
+    # level. A floor applied only at the live call site would be silently dropped in the rounds
+    # the fix exists for. (The measurement that established #30 patched replacement_levels
+    # GLOBALLY, so it reached both paths; wiring only one of them would have shipped something
+    # other than what was measured.)
     return _remember_anchor(key, replacement_levels(
         group, value_col, roster_positions, num_teams, None, startable_floors=startable_floors,
-        flex_occupancy=flex_occupancy,
+        flex_occupancy=flex_occupancy, streaming_floors=streaming_floors,
     ))
 
 
@@ -3613,14 +3627,19 @@ def compute_draft_board(
     _anchored: set = set()
     _anchor_cache: dict = {}
 
-    def _anchor(value_col, floors):
+    def _anchor(value_col, floors, streaming=None):
         """Built at most once per board, and only if some position actually needs it -- the
-        pre-draft pool is a second full pool construction, not something to do every build."""
+        pre-draft pool is a second full pool construction, not something to do every build.
+
+        `streaming` is passed by the POINTS caller only, for the same reason `floors` is: the
+        trade_value branch prices on a vendor composite scale where a points figure means
+        nothing (`#30`)."""
         if value_col not in _anchor_cache:
             _anchor_cache[value_col] = predraft_replacement_anchor(
                 merger, players_db, usable_positions, roster_positions, num_teams, value_col,
                 sleeper_projections=sleeper_projections, scoring_settings=scoring_settings,
                 pool_scope=pool_scope, startable_floors=floors, sleeper_basis=sleeper_basis,
+                streaming_floors=streaming,
             )
         return _anchor_cache[value_col]
     pool["_season_proj_pct"] = 50.0
@@ -3664,6 +3683,9 @@ def compute_draft_board(
     # (#216) reads the points levels after the branch, and a board with no projected rows has
     # none -- an empty dict, not an unbound name.
     point_replacement: dict[str, float] = {}
+    # Bound before the branch for the same reason point_replacement is: a board with no
+    # projected rows must reach the code below with a real value, not an unbound name.
+    streaming_floors: Optional[dict[str, float]] = None
     if has_proj.any():
         proj_pool = pool[has_proj].copy()
         # #30. Derived from the drafted season's OWN published weekly projections, so the same
@@ -3682,7 +3704,7 @@ def compute_draft_board(
         )
         _anchored |= _fill_omitted_from_anchor(
             point_replacement, set(proj_pool["position"].unique()), startable_floors,
-            lambda: _anchor("_points", startable_floors),
+            lambda: _anchor("_points", startable_floors, streaming_floors),
         )
         pool.loc[has_proj, "_vor"] = proj_pool.apply(
             lambda r: (r["_points"] - point_replacement[r["position"]])

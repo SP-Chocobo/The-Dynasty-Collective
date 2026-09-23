@@ -101,9 +101,14 @@ class PreDraftAnchorEquivalence(unittest.TestCase):
         # that accepts fewer arguments than the function it replaces turns a caller change into
         # a TypeError in an unrelated test rather than a finding here.
         def spy(pool, value_col, roster_positions, num_teams, remaining_demand=None,
-                startable_floors=None, truncated_out=None):
+                startable_floors=None, truncated_out=None, **kwargs):
+            # **kwargs, not a growing positional list. The comment above is the reason -- a
+            # stand-in narrower than the function it replaces turns a caller change into a
+            # TypeError in an unrelated test instead of a finding here -- and #30 added two
+            # keyword-only inputs (flex_occupancy, streaming_floors) that this spy has no
+            # opinion about and must simply carry through.
             levels = original(pool, value_col, roster_positions, num_teams, remaining_demand,
-                              startable_floors, truncated_out=truncated_out)
+                              startable_floors, truncated_out=truncated_out, **kwargs)
             for position, level in levels.items():
                 seen.setdefault((value_col, position), level)
             return levels
