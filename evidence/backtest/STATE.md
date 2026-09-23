@@ -46,7 +46,27 @@ four structural audits all pass on that roster, and self-play means every chair 
 | `draft_room.fieldable_ceiling` / `unfieldable_last` | the engine backstop: demote a position this roster has saturated beyond `slots(P) + 1` |
 | `evidence/kdst_streaming/fieldability_arm_experiment.py` | its A/B, with `--streaming` so `#30` and the backstop are measured together |
 
-## THE ANSWER (2024, 12 seats, realized outcomes)
+## THE ANSWER (both seasons, 12 seats, realized outcomes)
+
+| | 2024 (derived on) | 2023 (HOLDOUT) |
+|---|---:|---:|
+| base | 0/12, −346.9 | 0/12, −384.7 |
+| **both fixes** | **11/12, +82.9** | **3/12, −18.3** |
+| swing | +429.8 | +366.4 |
+
+**The fixes transfer.** On the holdout season, every one of 12 seats improves under each fix
+independently (+230.0 backstop over base, +214.6 backstop over streaming). **The absolute grade
+does not: 2023 lands roughly EVEN, not ahead.** `evidence/kdst_streaming/HOLDOUT_2023.md`.
+
+Why 2023 is harder is measured: the dynasty premium is worth +102.6 on the same seat
+(`evidence/backtest/HORIZON.md`), and 2023 carries one more year of 2026-vintage three-year
+outlook than 2024.
+
+Roster shape with both fixes: `WR 7, RB 2, QB 2, DEF 2, K 2, TE 1`, first K/DST rounds 9–13.
+
+## The 2024 detail
+
+
 
 `evidence/kdst_streaming/RESULT_2024.md` has the full table and the limits. In one line: with
 both fixes the engine **wins 11 of 12 seats at +82.9 a seat**, first K/DST at rounds 8–12, and
@@ -87,9 +107,8 @@ depth. **Not built. Measure before building.**
 
 1. ~~Seat-1 A/Bs under the corrected grader~~ — DONE.
 2. ~~Full 12-seat runs on 2024~~ — DONE, see above.
-3. The **2023 holdout** — RUNNING (`fieldability_arm_experiment --season 2023` and
-   `--season 2023 --streaming`). This is the out-of-sample test and nothing generalises without
-   it.
+3. ~~The **2023 holdout**~~ — DONE, see above. It passed on transfer and is level on the
+   absolute grade.
 4. The **VDS battery** — RUNNING, fresh from `3a23c94`, writing to the scratchpad. The old
    3-arm checkpoint at `dace907` is UNUSABLE: the battery README forbids `--resume` onto a
    report written by different code, and the engine has changed substantially. This run is the
@@ -98,9 +117,18 @@ depth. **Not built. Measure before building.**
 5. **Full suite** — running; it licenses the next push.
 6. `unfieldable_last` is an ENGINE-DESIGN change (`#184`). It is built and measured, not ruled.
    The owner decides whether it ships. `#30`'s half is already wired to production.
-7. Not addressed: whether QB belongs in `STREAMABLE_POSITIONS`, and whether a uniform
-   fieldability ceiling over flex-reachable positions would help or bind on real depth. Both
-   are measurable; neither is measured.
+7. Not addressed, all measurable and none measured:
+   - whether QB belongs in `STREAMABLE_POSITIONS`;
+   - whether a uniform fieldability ceiling over flex-reachable positions would help or bind;
+   - a 12-seat dynasty-vs-redraft pair (the horizon result is one seat).
+8. Known artifact gaps, numbers preserved in commit messages and scratchpad logs:
+   - the NON-streaming 12-seat reports for both seasons were destroyed by the filename
+     collision described in `HOLDOUT_2023.md`. Re-running them is optional; nothing rests on
+     an artifact that does not exist.
+   - the committed capture has **0 weekly projection weeks**, so a battery certifies the board
+     WITHOUT `#30`'s streaming floor and its report now says so
+     (`streaming_floor_exercised`). Closing it needs a re-capture, which rewrites a versioned
+     fixture and a great many pinned numbers — an owner decision, not a repair.
 
 ## Standing hazards
 
