@@ -43,6 +43,9 @@ VDS_REPORT.json
 # expensive measurement error this project has made.
 SMOKE_SEATS_LIVE.json
 ROSTER_PROOF_LIVE.json
+# The backtest grade's live report. Same rule again (evidence/batteries/README rule 1): the
+# durable copy is a checkpoint under evidence/, named for the commit the run started at.
+BACKTEST_GRADE.json
 
 .streamlit/secrets.toml
 
