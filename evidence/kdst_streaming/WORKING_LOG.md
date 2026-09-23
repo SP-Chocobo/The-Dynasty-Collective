@@ -229,3 +229,53 @@ detecting a regression of this shape. **The realized ruler must be in the gate.*
 | reachable by valuation alone | round 10.01 | — |
 | quality vs field (projected ruler) | wins 5 of 6 | MET |
 | quality vs field (realized ruler) | **not yet measured** | — |
+
+---
+
+## 2026-09-23 — the guard, the root cause, and where the remaining deficit is
+
+**What I was looking for.** Why the 2023 holdout collapsed (engine 0/12 by ~500) when 2024 had
+been "roughly even".
+
+**What I found, in order.**
+
+1. **The backtest pool contained players who did not exist in the drafted season** — 133 in 2023,
+   101 in 2024, priced from the 2026 vendor export at the top of the board, realizing 0.0.
+   Mechanism, guard and tests: `evidence/backtest/ANACHRONISM.md`. My earlier "2024 is clean"
+   was wrong and is withdrawn.
+2. **Under the guard the engine loses 0 of 12 at mean −641.0** on 2024 realized outcomes, where
+   the confounded run had it winning 7 of 12. The ghosts were flattering it.
+3. **The dynasty horizon is NOT the cause.** The `--redraft` arm is *worse* (−772 vs −689 on
+   seat 1), so `time_horizon_adj` is not the engine paying for a season this ruler cannot score.
+4. **The cause is that the engine drafted NINE DEFENSES** in a one-DEF league, and one WR.
+   Full analysis: `evidence/kdst_streaming/ROOT_CAUSE.md`. Flat-position VOR pathology — the 32
+   defenses span 109–121 against a replacement level of 107.95, so every one of them prices
+   positive while the real tail of a deep position prices negative.
+5. **Three starting slots therefore sit empty every week.** Roster `QB RB RB WR WR TE FLEX FLEX`
+   against a roster of RB 2 / WR 1 / TE 1 / QB 2: WR2 and both FLEX spots cannot be filled, and
+   a QB cannot flex. At roughly 15 points a slot over 17 weeks that is ~765 points — the whole
+   deficit, and it is caused by the hoarding rather than being a separate defect.
+
+**What I did about it.** Shipped `period_correct_pool` (the guard), `roster_diff.py` (reads the
+deficit out of a saved report without re-drafting), and `draft_battery.unfieldable_depth` — a
+fifth structural audit whose ceiling is `slots(P) + 1`, derived from the slot list and the one
+bye every team has. That audit fires on this roster; the four that existed all pass on it.
+
+**Where the mark still is, and by how much.** The streaming arm recovers a large part but not
+all of it. First three 2024 seats, streaming minus base: **+329.7, +126.0, +95.8**, leaving the
+engine at −322 to −467 against the field. So:
+
+- `#30`'s correction is **necessary and large** and is confirmed on a clean pool.
+- It is **not sufficient**. Something beyond K/DST placement costs the engine roughly 300–450
+  points a seat, and the next probe is a `roster_diff` of the STREAMING seat — running now — to
+  see whether it still hoards, and if so at what position.
+
+**Plan.** (a) roster_diff the streaming seat; (b) finish the 2024 streaming arm and the 2023
+holdout under the guard; (c) only then rewrite `STREAMING_ARM_RESULT.md` with guarded numbers;
+(d) VDS battery is deliberately NOT running — a strategy sweep on an engine with a known
+roster-construction defect would measure the defect six ways.
+
+**Honest note on the pre-registration.** It predicted the deficit was "the round-4 K/DEF pick"
+and that the streaming arm would recover 400–600. The cause was bigger than predicted (quantity,
+not just placement) and the recovery so far is smaller (96–330). Both halves recorded rather
+than quietly restated.

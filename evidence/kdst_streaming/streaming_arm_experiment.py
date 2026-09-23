@@ -87,7 +87,11 @@ def main(argv=None) -> int:
     parser.add_argument("--season", default=SEASON,
                         help="derive the level from AND grade on this season -- a HOLDOUT is a "
                              "different season entirely, not a different grading year")
-    SEASON = parser.parse_args(argv).season
+    parser.add_argument("--seats", type=int, default=0,
+                        help="grade only the first N seats -- a diagnostic that yields a ROSTER "
+                             "in a tenth of the time, never an answer")
+    parsed = parser.parse_args(argv)
+    SEASON, seats = parsed.season, parsed.seats
     scoring = rdb.scoring_settings_from_capture()
     players_db, _ = rdb.build_players_db_from_capture()
     arm = next(a for a in db.league_matrix(scoring) if a["label"] == ARM)
@@ -117,9 +121,12 @@ def main(argv=None) -> int:
             dr.replacement_levels = streaming_replacement
         try:
             print(f"\n=== arm: {name} ===", flush=True)
-            code = bg.main(["--season", SEASON, "--out",
+            code = bg.main(["--season", SEASON]
+                           + (["--seats", str(seats)] if seats else [])
+                           + ["--out",
                             f"/tmp/claude-0/-home-user-The-Dynasty-Collective/"
-                            f"90289f87-1d2a-5009-8163-038c3cedfc5f/scratchpad/bt_{name}.json"])
+                              f"90289f87-1d2a-5009-8163-038c3cedfc5f/scratchpad/"
+                              f"bt_{name}{'_s' + str(seats) if seats else ''}.json"])
             if code != 0:
                 print(f"arm {name} failed", file=sys.stderr)
                 return code
@@ -127,7 +134,7 @@ def main(argv=None) -> int:
             dr.replacement_levels = real
         loaded = json.loads(Path(f"/tmp/claude-0/-home-user-The-Dynasty-Collective/"
                                  f"90289f87-1d2a-5009-8163-038c3cedfc5f/scratchpad/"
-                                 f"bt_{name}.json").read_text())
+                                 f"bt_{name}{'_s' + str(seats) if seats else ''}.json").read_text())
         block = loaded["results"][0]
         report["arms"][name] = {
             "wins": block["wins"], "seats": block["seats_graded"],
@@ -143,7 +150,10 @@ def main(argv=None) -> int:
     report["paired_engine_delta_mean"] = round(statistics.fmean(paired), 2)
     report["paired_engine_delta_median"] = round(statistics.median(paired), 2)
     report["seats_improved"] = sum(1 for d in paired if d > 0)
-    out = Path(OUT_TEMPLATE.format(season=SEASON))
+    out = Path(OUT_TEMPLATE.format(season=SEASON)
+               if not seats else
+               f"/tmp/claude-0/-home-user-The-Dynasty-Collective/"
+               f"90289f87-1d2a-5009-8163-038c3cedfc5f/scratchpad/STREAMING_ARM_{SEASON}_s{seats}.json")
     out.write_text(json.dumps(report, indent=2, sort_keys=True) + "\n")
 
     print(f"\n=== STREAMING REPLACEMENT vs BASE, graded on {SEASON} realized ===")
