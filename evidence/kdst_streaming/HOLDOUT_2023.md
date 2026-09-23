@@ -26,8 +26,13 @@ test, and it is the one that decides whether any of this generalises.
 |---|---:|---:|---:|---|---|
 | base | 0 / 12 | −384.7 | −436.7 | 5, 6 | DEF 5, WR 3, RB 2, TE 2, K 2, QB 2 |
 | + fieldability backstop | 1 / 12 | −152.1 | −167.9 | 5, 6 | WR 7, RB 2, K 2, DEF 2, QB 2, TE 1 |
-| + `#30` streaming level | 1 / 12 | −218.9 | −246.6 | 11, 12, 13 | QB 5, WR 4, K 3, RB 2, TE 1, DEF 1 |
-| **both** | **3 / 12** | **−18.3** | **−22.9** | 9, 10, 13 | **WR 7, RB 2, QB 2, K 2, DEF 2, TE 1** |
+| + `#30` streaming level | **0 / 12** | **−299.6** | **−329.4** | 8 | *(re-run, correct level)* |
+| **both** | *re-running* | | | | |
+
+~~`+ #30 streaming` 1/12, −218.9~~ and ~~`both` 3/12, −18.3~~ were the INFLATED-level figures.
+The corrected streaming-only arm is **0/12 at −299.6**, against base's −384.7 — a paired gain of
+roughly **+85**, where the inflated level bought ~166. The correctly derived level suppresses
+defenses less, so they come off the board at round 8 instead of rounds 11–13.
 
 Paired, per seat, **improved 12 of 12 under each**:
 
@@ -35,7 +40,7 @@ Paired, per seat, **improved 12 of 12 under each**:
 - backstop over streaming: **+214.6** mean, +246.7 median
 
 Derived streaming levels for 2023, from that season's own published weekly projections:
-**K 169.66, DEF 172.91.**
+**K 155.76, DEF 158.00.**
 
 ## Both seasons, side by side
 
