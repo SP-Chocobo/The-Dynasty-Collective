@@ -450,6 +450,20 @@ def structural_findings(trajectory, league: dict, players_db: dict,
                         *, audit_roster_fill: bool = True) -> list[dict]:
     """Every structural audit, in one call. A finding here is a DEFECT, not an observation.
 
+    ONE QUALIFICATION ON THAT CONTRACT, and it is about ATTRIBUTION rather than truth. Under
+    `opponent_noise` (`#263b`) the non-sharp seats do not take their board's top candidate --
+    they choose uniformly from their own top_k. A finding on such a seat is still a true
+    statement about the roster: it really cannot field what it holds. It is NOT evidence about
+    the engine's ORDERING, because the ordering was deliberately overridden before the pick.
+    Measured on the first VDS run to reach the noisy arms: five arms of `12T_ppr_K_DEF` returned
+    zero findings (three sharp, `crossing`, `noisy_k3`) and `noisy_k8` -- the widest random draw
+    -- returned one, a seat holding three kickers against a ceiling of two.
+
+    So read a finding on a noisy arm through `STRATEGY_SPECIFIC_FINDINGS`, which exists to say
+    "this appeared under one strategy and not the control". A finding that appears on the CONTROL
+    arm is about the engine; one that appears only as the rivals get more random is about the
+    noise axis.
+
     `audit_roster_fill=False` for a format whose draft is SHORTER than its roster. That is not
     an exemption for convenience: a 12-round draft of a 20-slot roster cannot fill 20 slots, so
     an unfilled-slot finding there would report arithmetic as an engine defect. The other four
