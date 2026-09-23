@@ -752,6 +752,22 @@ only. The items below feed observables and the debate layer, so they degrade wha
       *"an unpriced leader crashes the Draft Room"*, a repaired defect cited by `#173` —
       the same two-namespaces-one-number defect `#160` exists to void.
 
+## GATE 0 — BLOCKS v2 OUTRIGHT (owner ruling 2026-09-23)
+
+- [ ] **`#30` — the math behind STREAMING PICK PLACEMENT for K and DST.** See
+      `evidence/kdst_streaming/PROBLEM.md`. The engine takes its first DEF in round **5.08** and
+      its first K in round **7.00** against an owner target of rounds **12-16 of 16**. The fix
+      promised for this (a reliability shrink on `bpa` from the historical pull) **cannot exist** --
+      `#18` found no reliability defect, and `KDST_VALUATION` had already shown that zeroing K/DEF
+      `bpa` entirely leaves them ahead from round 8. The live lead is that `replacement_levels`
+      prices a STREAMED position against a season-long DEF12, when the real alternative is the best
+      defense on the wire each week.
+      **GATE:** no production/draft quality drop-off of the kind `#16` caused (-6.09 on the
+      independent `points` ruler, seat wins 11/12 -> 2/12), measured on `run_smoke_seats`.
+      **The gate is not usable yet:** all six grader formats have ZERO K/DEF roster slots, so
+      `12T_ppr_K_DEF` must be wired in first.
+      **`v2-freeze` was cut and WITHDRAWN on this ruling** -- never pushed, local tag deleted.
+
 ## GATE 6 — Blocked external: accept at freeze, or the freeze waits
 
 None are engine defects. Each needs something this machine cannot reach.

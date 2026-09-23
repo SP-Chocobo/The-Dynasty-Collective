@@ -14494,3 +14494,62 @@ Four rules are now written into the probes themselves rather than into a documen
 The most valuable output of this mandate is not a repair. It is a much shorter list of places the
 K/DST cause can be, plus four instrument rules that would have prevented most of the eight
 withdrawals.
+
+
+---
+
+# `#30` — K/DST STREAMING PICK PLACEMENT: **BLOCKING ON THE v2 FREEZE** (owner ruling 2026-09-23)
+
+Full statement: **`evidence/kdst_streaming/PROBLEM.md`**.
+
+**The `v2-freeze` tag is WITHDRAWN.** It was cut locally earlier today and never pushed (the git
+proxy refused tag refs), so nothing external referenced it; the local tag is deleted. v2 does not
+freeze until this item lands behind its gate.
+
+## Why this is open, stated once so it is not rediscovered a third time
+
+The promised fix -- a per-position forecast-reliability shrink on `bpa`, derived from the
+historical K/DST pull -- **cannot exist**. `#18` measured it and found no DEF reliability defect
+(DEF's ordering skill 0.75/0.48 is about QB's; the hindsight-free slope says its spread is
+COMPRESSED). And `KDST_VALUATION.md` had already disproved it arithmetically before the data was
+requested: **"Zeroing K/DEF `bpa` entirely still leaves them at +4.00, ahead of everything from
+round 8 onward."** A shrink scales `bpa`; scaling to zero does not fix placement.
+
+## The lead
+
+`replacement_levels` prices DEF against `live_starter_demand` = DEF12, which encodes "if I skip
+this defense I own the 12th-best one ALL SEASON". Nobody plays that way. K and DST are STREAMED:
+the real alternative is the best defense on the wire EACH WEEK -- a weekly maximum over the
+unrostered pool, far higher across a season than one mediocre team's year.
+
+**A replacement-BASIS error, not a valuation error**, which is exactly why four projection-side
+levers and a reliability measurement all came back clean: each was correcting a number whose
+DENOMINATOR was the wrong question.
+
+Derivable from committed data (2023 + 2024, 18 weeks of projections and 18 of realized each):
+per week, the best realized defense outside the top `teams x slots`, summed. Every input is a
+league fact or a measured outcome. **No constant is selected** -- the bar `#56` sets and the bar
+the `acting_now` repair failed.
+
+## THE GATE (owner's condition)
+
+No production/draft quality drop-off of the kind the brute-force caused. `#16` is the
+counter-example and the bar: it bought the shape and paid **-6.09** on the independent `points`
+ruler, seat wins 11/12 -> 2/12. A candidate must be at worst comparable to HEAD on
+`run_smoke_seats`.
+
+**The gate has a hole that must be closed first:** all six grader formats carry ZERO K and ZERO DEF
+roster slots, so the instrument that would certify a K/DST fix cannot see K or DST.
+`12T_ppr_K_DEF` must be wired in before the gate means anything. ADP cannot be the human baseline
+either -- 32 defenses share ONE value (16983.0) and 35 kickers three (17983-17999) against an
+undrafted sentinel of 18000.0. `need_first` and `points_need` price K/DST properly and are the
+real field.
+
+## The independent ruler that now exists
+
+`#288` concluded no ruler independent of the engine's own objective existed. The historical pull
+changed that: draft on 2024 projections, score on 2024 REALIZED outcomes. First ruler the engine
+cannot optimise toward, and the honest way to settle whether a round-5 defense costs real points.
+
+**STATUS: OPEN, BLOCKING. Nothing implemented.** The lead is a hypothesis with a derivation path,
+to be pre-registered before it is run.

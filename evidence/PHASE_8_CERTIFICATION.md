@@ -83,3 +83,21 @@ be cut on that basis.
 What it cannot be cut on is a claim that the engine now drafts K and DST correctly. It does not,
 the cause is unidentified, and the most valuable output of this mandate is a much shorter list of
 places it can be — plus four instrument rules that would have saved most of the eight withdrawals.
+
+
+---
+
+# SUPERSEDED IN PART: v2 DOES NOT FREEZE (owner ruling, 2026-09-23)
+
+The "Freeze readiness" section above concluded a v2 freeze could be cut on the basis that every
+repair-mandate item is disposed of. **That remains true and is no longer sufficient.**
+
+The owner has ruled **`#30` -- the math behind streaming pick placement for K and DST -- a BLOCKING
+item on v2**, conditioned on a gate: no production/draft quality drop-off of the kind the
+brute-forced `#16` caused. The `v2-freeze` tag cut earlier was never pushed and has been deleted.
+
+This certification's own words already pointed here -- *"What it cannot be cut on is a claim that
+the engine now drafts K and DST correctly. It does not, the cause is unidentified"* -- and the
+ruling makes that a blocker rather than a documented limitation.
+
+See `evidence/kdst_streaming/PROBLEM.md` and the `#30` entry in `POST_AUDIT_PLAN.md`.
