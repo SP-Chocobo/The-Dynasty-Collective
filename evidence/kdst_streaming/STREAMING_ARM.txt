@@ -1,0 +1,52 @@
+derived streaming levels (2024): {'K': 164.5, 'DEF': 146.05}
+
+=== arm: base ===
+12T_ppr_K_DEF: 674 priced, K/DEF slots ['K', 'DEF'], grading 12 seats on 2024 outcomes
+   seat  1: engine   2600.7 vs field   2552.3  delta    +48.4  first K/DST rd 5
+   seat  2: engine   2439.6 vs field   2563.8  delta   -124.3  first K/DST rd 4
+   seat  3: engine   2439.6 vs field   2563.8  delta   -124.3  first K/DST rd 4
+   seat  4: engine   2374.3 vs field   2565.1  delta   -190.8  first K/DST rd 5
+   seat  5: engine   2507.7 vs field   2574.6  delta    -66.8  first K/DST rd 5
+   seat  6: engine   2611.2 vs field   2566.0  delta    +45.2  first K/DST rd 5
+   seat  7: engine   2868.6 vs field   2543.7  delta   +324.8  first K/DST rd 5
+   seat  8: engine   2782.6 vs field   2552.3  delta   +230.3  first K/DST rd 5
+   seat  9: engine   2711.6 vs field   2557.6  delta   +153.9  first K/DST rd 5
+   seat 10: engine   2553.3 vs field   2539.2  delta    +14.1  first K/DST rd 5
+   seat 11: engine   2538.3 vs field   2530.8  delta     +7.5  first K/DST rd 5
+   seat 12: engine   2092.6 vs field   2595.9  delta   -503.3  first K/DST rd 5
+
+=== BACKTEST GRADE, 2024 realized outcomes ===
+12T_ppr_K_DEF: engine wins 7 of 12 seats | mean -15.4 | median +10.8
+   11 DISTINCT rosters (seats 2, 3 collapse -- not independent samples): wins 7 of 11 | mean -5.5 | median +14.1
+
+-> /tmp/claude-0/-home-user-The-Dynasty-Collective/90289f87-1d2a-5009-8163-038c3cedfc5f/scratchpad/bt_base.json
+
+=== arm: streaming ===
+12T_ppr_K_DEF: 674 priced, K/DEF slots ['K', 'DEF'], grading 12 seats on 2024 outcomes
+   seat  1: engine   2793.2 vs field   2569.5  delta   +223.8  first K/DST rd 9
+   seat  2: engine   2946.1 vs field   2551.3  delta   +394.8  first K/DST rd 8
+   seat  3: engine   2767.6 vs field   2582.8  delta   +184.8  first K/DST rd 8
+   seat  4: engine   2676.9 vs field   2593.2  delta    +83.7  first K/DST rd 13
+   seat  5: engine   2684.4 vs field   2593.8  delta    +90.7  first K/DST rd 13
+   seat  6: engine   2657.9 vs field   2599.1  delta    +58.8  first K/DST rd 13
+   seat  7: engine   2781.2 vs field   2587.9  delta   +193.3  first K/DST rd 13
+   seat  8: engine   2820.8 vs field   2584.1  delta   +236.8  first K/DST rd 13
+   seat  9: engine   2762.8 vs field   2562.7  delta   +200.1  first K/DST rd 8
+   seat 10: engine   2982.1 vs field   2558.1  delta   +424.1  first K/DST rd 13
+   seat 11: engine   2817.8 vs field   2578.3  delta   +239.6  first K/DST rd 8
+   seat 12: engine   2547.3 vs field   2581.2  delta    -33.8  first K/DST rd 8
+
+=== BACKTEST GRADE, 2024 realized outcomes ===
+12T_ppr_K_DEF: engine wins 11 of 12 seats | mean +191.4 | median +196.7
+
+-> /tmp/claude-0/-home-user-The-Dynasty-Collective/90289f87-1d2a-5009-8163-038c3cedfc5f/scratchpad/bt_streaming.json
+
+=== STREAMING REPLACEMENT vs BASE, graded on 2024 realized ===
+arm          wins     mean   median  first K/DST rounds
+base         7/12    -15.4     10.8  [4, 5]
+streaming   11/12    191.4    196.7  [8, 9, 13]
+
+PAIRED engine total, streaming minus base, per seat:
+   mean +226.6 | median +236.1 | improved 11 of 12
+
+-> evidence/kdst_streaming/STREAMING_ARM.json
