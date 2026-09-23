@@ -1,15 +1,15 @@
 # Document index — derived, not curated
 
-`python3 doc_index.py` regenerates this. 165 markdown documents.
+`python3 doc_index.py` regenerates this. 171 markdown documents.
 
 Classified by what each file says about ITSELF in its first 12 lines. Nothing here is a judgement about whether a document is *good* — only about whether it tells a cold reader what it is before it starts making claims.
 
 | class | count | meaning |
 |---|---:|---|
 | WITHDRAWN | 26 | a published claim taken back. Kept, unedited, beneath its banner. |
-| SUPERSEDED | 25 | still valid or partly valid, but something later changed what it means. |
-| DECLARED | 18 | says what kind of document it is before making claims. |
-| UNDECLARED | 96 | no status banner in its opening. Not necessarily wrong — most are simply current — but a reader cannot tell without reading it all. |
+| SUPERSEDED | 27 | still valid or partly valid, but something later changed what it means. |
+| DECLARED | 21 | says what kind of document it is before making claims. |
+| UNDECLARED | 97 | no status banner in its opening. Not necessarily wrong — most are simply current — but a reader cannot tell without reading it all. |
 
 ## WITHDRAWN
 
@@ -49,9 +49,11 @@ Classified by what each file says about ITSELF in its first 12 lines. Nothing he
 - `ENGINE_WIRING_PASS.md`
 - `FREEZE_CHECKLIST.md`
 - `evidence/CERTIFICATION_DESIGN.md`
+- `evidence/backtest/README.md`
 - `evidence/blind_pass/REPAIR_MANDATE.md`
 - `evidence/blind_pass/SYNTHESIS.md`
 - `evidence/blind_pass/TURN_ENDING_PICKS.md`
+- `evidence/kdst_streaming/STREAMING_ARM_RESULT.md`
 - `evidence/kdst_streaming/WORKING_LOG.md`
 - `evidence/roster_shape/ff_rulebook/CORRECTION_wrong_universe.md`
 - `evidence/roster_shape/ff_rulebook/FINDING_01_the_pool_is_the_shape.md`
@@ -73,9 +75,12 @@ Classified by what each file says about ITSELF in its first 12 lines. Nothing he
 - `.claude/skills/engine-measurement/SKILL.md`
 - `POST_AUDIT_PLAN.md`
 - `ROADMAP.md`
+- `evidence/backtest/ANACHRONISM.md`
+- `evidence/backtest/PREREGISTRATION_GUARDED_2024.md`
 - `evidence/batteries/VDS_PREREGISTRATION.md`
 - `evidence/blind_pass/MANDATE.md`
 - `evidence/blind_pass/wave4/MY_VERIFICATION.md`
+- `evidence/kdst_streaming/ROOT_CAUSE.md`
 - `evidence/roster_proof/PRE_REGISTRATION_205.md`
 - `evidence/roster_shape/FIX_216_fable.md`
 - `evidence/roster_shape/ff_rulebook/BRIEF_NEXT_SESSION.md`
@@ -100,6 +105,7 @@ Classified by what each file says about ITSELF in its first 12 lines. Nothing he
 - `data/baseline/external/fantasypros/ATTRIBUTION.md`
 - `data/baseline/external/keeptradecut/ATTRIBUTION.md`
 - `data/league_captures/README.md`
+- `evidence/backtest/STATE.md`
 - `evidence/batteries/README.md`
 - `evidence/blind_pass/FINDINGS_LOG.md`
 - `evidence/blind_pass/KDST_VALUATION.md`

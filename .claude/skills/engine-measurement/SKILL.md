@@ -413,6 +413,28 @@ Note that RESIDUAL3's docstring named the hazard ("0.0 is a CONSTRUCTION, not a 
 which is exactly why its RATE is the quantity") and then walked into it. Naming a hazard is not
 checking for it.
 
+## Contamination that ACCUMULATES must be measured on a DRAINED board
+
+A pool defect that removes itself as the draft runs and one that does not look identical on the
+opening board and behave completely differently by round 16.
+
+Measured, 2026-09-23. The backtest's player universe post-dates the season it drafts, so 101
+players carried a 2026 price and no 2024 existence. The pool filter stopped anyone DRAFTING
+them. It did not stop them sitting on the board -- and because nobody could draft them, nobody
+removed them. On the opening board they were **5 of 72 narrowed candidates, first non-ghost at
+rank 0**, and that reading was used to conclude the contamination was small. On a drained
+round-16 board, **all 26 remaining candidates were ghosts**. The engine walked past every one
+and took whatever survived the narrow. Every number measured in between was wrong by ~540
+points a seat -- the base arm read -688.7 contaminated and -150.7 clean.
+
+So: when a defect's population does not shrink as picks are made, the opening board is the ONE
+board where it is guaranteed to look harmless. Rebuild the state at the LAST round and count
+again before concluding anything about its size.
+
+The same reading applies to the fix. Removing 101 phantoms from a 1181-row board moved 435
+survivors' `bpa`, because they had been setting replacement levels. A filter applied at the
+wrong layer does not merely fail to help -- it leaves the prices it should have corrected.
+
 ## Before you report a number
 
 - Is the population non-vacuous? Print `n`. A rate over an empty set is not a rate.
