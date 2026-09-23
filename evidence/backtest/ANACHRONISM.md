@@ -79,3 +79,23 @@ the residue it cannot remove.
   superseded until those land.
 - `run_smoke_seats` is untouched by this: it drafts and grades on the SAME 2026 capture, so
   "a player the season did not project" is not a category that exists there.
+
+## The residual the guard does NOT remove, measured
+
+`period_correct_pool` filters `points` — the field's pool and ranking, and the legality filter
+`run_smoke_seats.draft` applies to the engine's candidates. It does **not** filter the engine's
+BOARD. `pick_synthesis.build_snapshot` builds the board from the full universe, so the ghosts are
+still present in it, still priced off the 2026 export, and still enter `replacement_levels`'
+VOR denominator and the cliff/run/denial context.
+
+**Measured on the opening 2024 board: 5 of 72 narrowed candidates are ghosts (7%), and the first
+non-ghost sits at rank 0** — the top of the board is clean, and the engine's own
+`if str(c.player_id) in points` filter walks past the rest. So the asymmetry is real but small,
+and it is **not** the explanation for the engine's deficit. Stated rather than assumed, because a
+7% contamination that happened to sit at the top would have been the whole answer.
+
+Removing it properly needs `demand_picks` threaded through `build_snapshot` to all three of its
+picks-consumers (`compute_draft_board`, the `num_teams` derivation, and `replacement_ranks`).
+That is production plumbing for a measurement, so it goes to the owner as a decision (`#184`)
+rather than into a repair commit. Until then this is a stated limit on the absolute grade, and
+it applies IDENTICALLY to every arm, so no paired comparison is affected.
