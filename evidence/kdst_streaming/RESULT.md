@@ -106,3 +106,50 @@ realized stats for 2023 and 2024). Without it, a K/DST fix cannot be shown to he
 **Recommendation, not yet executed:** do not ship a valuation-only streaming fix to chase the
 shape. It buys two rounds and the gate cannot confirm it. Build the realized-outcome ruler first,
 then the streaming basis and the insurance term become measurable rather than arguable.
+
+---
+
+# 7. THE COST IS REAL, AND THE PROJECTED RULER COULD NOT SEE IT
+
+`counterfactual_cost.py`, 2024, `12T_ppr_K_DEF`. One draft on 2024 projections, then for each
+early K/DEF pick a counterfactual roster identical except that pick is the best skill player still
+on that exact board. Both scored on **2024 realized weekly stats** via `realized_ruler`.
+
+**42 early K/DEF picks. Deferring gained a mean of +81.4 realized points, median +95.8, and helped
+34 of 42.**
+
+| position | n | mean | median | helped |
+|---|---:|---:|---:|---:|
+| K | 20 | **+82.9** | +112.8 | 15 / 20 |
+| DEF | 22 | **+80.1** | +93.3 | 19 / 22 |
+
+Against the projected ruler's verdict on the same question: **−0.16% / +0.08% — indifferent.**
+
+That is the whole argument in one comparison. The early K/DST pick costs roughly 80–95 real points,
+and the instrument the freeze gate uses cannot detect it, because it solves one lineup over season
+totals with no absences and therefore cannot price a bench.
+
+## The eight that went the other way, because they matter
+
+Deferring HURT in 8 of 42, worst at **−105.3**: seat 12's round-7 Denver Broncos. Denver was the
+best realized defense of 2024 at 190.0 points. So drafting a defense early does pay **when you
+pick the right one** — and the projection ranked Denver third, behind a Philadelphia that returned
+153.0. That is `#18`'s ordering-skill finding (DEF 0.48 in 2024) showing up as money.
+
+## What this licenses and what it does not
+
+**Licensed:** the early-K/DST behaviour has a measured cost in real points. It is no longer a
+convention or an aesthetic preference — it is ~80 points a pick.
+
+**Licensed:** the gate must change. The owner's condition was "no quality drop-off of the kind
+`#16` caused", measured on the projected `points` ruler. That ruler is *indifferent* to K/DST
+timing, so it can neither catch a regression of this shape nor confirm a fix. **The realized ruler
+must be part of the gate, or the gate is blind to the thing being repaired.**
+
+**NOT licensed:** a size for the fix. Two bounds run in opposite directions and neither can be
+removed here — the swapped-in player is not taken away from whoever actually drafted him (an
+upper bound on the gain), while the vacated K/DEF slot stays empty because there are no waivers
+(a lower bound). n = 42 picks from ONE draft of ONE season, sd 83.2.
+
+**NOT licensed:** that the streaming basis is the fix. It saturates at round 10 (§2), and this
+measurement says nothing about which lever should close the gap.
