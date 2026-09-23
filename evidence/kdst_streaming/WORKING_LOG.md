@@ -120,3 +120,58 @@ So a real implementation needs one of:
   the wrong object. Three were the same fixture class (a league with no K/DEF slot, then no K/DEF
   scoring, then a grader with no K/DEF slots). Pre-register, print `n`, and state which
   configuration produced every number.
+
+
+---
+
+# UPDATE — the grade is in, the shape is not reachable by valuation, and the ruler is built
+
+## Settled
+
+- **The engine drafts competitively.** `run_smoke_seats` at `a761d1c`: wins 5 of 6 formats on the
+  independent `points` ruler (+2.131 / +0.505 / +1.927 / −0.883 / +5.151 / +2.565), reproducing
+  recorded v1 to three decimals on three of them. The `#22` regression is fully unwound.
+- **The streaming math is right and insufficient.** DEF1's realized edge over a streamer is ~0
+  against a board price of 22–30 — a real valuation error. Correcting it moves first DEF from
+  round 5.09 to 7.02; driving `bpa` to −24.5 reaches 10.01. Round 12 needs DEF12 **+59**; no
+  streaming construction exceeds +40, and the board's own vintage gives **+16**.
+- **The binding constraint is the COMPARATOR, not DEF's price.** The best remaining skill row falls
+  +32 → −30 between rounds 5 and 14 because deep pools are priced against a starter-band level with
+  zero bench value. DEF-side leverage is ~1/5 of a round per point and is exhausted by round 10.
+- **The gate could not validate a fix.** The projected ruler solves one lineup with no absences and
+  no waivers; across three drafts spanning DEF at rounds 5–10 the league total moved −0.16%/+0.08%.
+  It is indifferent to K/DST timing.
+
+## Built, in response
+
+`realized_ruler.py` — scores a roster on WHAT HAPPENED, as the sum of each week's best legal
+lineup over realized stats. Rewards depth by construction: a player with no line that week is not
+offered to the solve (absent ≠ zero, `#187`), so the bench fills real absences. Measured absence
+rates on the starting band make this material: RB 0.14/0.12, WR 0.11/0.14, TE 0.15/0.16 against
+0.06 for K and DEF, which is the bye alone.
+
+Smoke-tested: a 17-player roster scores 3900.0 over 18 weeks against 2768.6 for a 9-player one.
+(That gap overstates depth — 9 players cannot fill 10 slots — but the mechanism works.)
+
+Limits, stated: no waivers or trades, so it is a LOWER bound on a streaming strategy; the weekly
+solve is an ORACLE lineup, so absolute totals are ceilings. Both arms of any comparison get the
+same advantage.
+
+## Next, in order
+
+1. **Counterfactual roster surgery** (cheap, decisive): take a drafted roster, swap its early DEF
+   for the best skill player available at that pick, score both on 2024 realized. Measures the
+   direct cost of a round-5 defense without redrafting. Second-order effects (the displaced
+   player) are unmodelled and will be stated.
+2. Tests for `realized_ruler`, full suite.
+3. If the cost is real and material: the insurance term on the comparator side, derived from
+   measured absence rates.
+4. VDS battery on K/DEF-bearing formats.
+
+## How far off
+
+| | now | target |
+|---|---|---|
+| first DEF | round 5.08 | 12–16 |
+| best reachable by valuation alone | round 10.01 (at `bpa` −24.5, beyond any streaming basis) | — |
+| quality vs field | **wins 5 of 6** | meet or beat — MET |
