@@ -1,0 +1,81 @@
+{
+  "_comment": "The fieldability backstop (draft_room.unfieldable_last) against a control that switches it off, graded on realized outcomes. `streaming` says whether #30's derived level was also applied.",
+  "arm": "12T_ppr_K_DEF",
+  "arms": {
+    "backstop": {
+      "engine_totals": [
+        2734.18,
+        2694.92,
+        2733.38,
+        2743.78,
+        2939.18,
+        2808.98,
+        2614.88,
+        2628.98,
+        2734.36,
+        2655.86,
+        2707.38,
+        2635.88
+      ],
+      "first_kdst_rounds": [
+        9,
+        10,
+        13
+      ],
+      "mean_delta": -18.3,
+      "median_delta": -22.95,
+      "roster_shape": {
+        "DEF": 2,
+        "K": 2,
+        "QB": 2,
+        "RB": 2,
+        "TE": 1,
+        "WR": 7
+      },
+      "seats": 12,
+      "wins": 3
+    },
+    "control": {
+      "engine_totals": [
+        2465.32,
+        2422.76,
+        2482.1,
+        2668.78,
+        2795.42,
+        2565.92,
+        2384.12,
+        2557.32,
+        2380.8,
+        2392.5,
+        2457.1,
+        2485.0
+      ],
+      "first_kdst_rounds": [
+        11,
+        12,
+        13
+      ],
+      "mean_delta": -218.95,
+      "median_delta": -246.6,
+      "roster_shape": {
+        "DEF": 1,
+        "K": 3,
+        "QB": 5,
+        "RB": 2,
+        "TE": 1,
+        "WR": 4
+      },
+      "seats": 12,
+      "wins": 1
+    }
+  },
+  "paired_engine_delta_mean": 214.55,
+  "paired_engine_delta_median": 246.67,
+  "season": "2023",
+  "seats_improved": 12,
+  "streaming": true,
+  "streaming_levels": {
+    "DEF": 172.91,
+    "K": 169.66
+  }
+}

@@ -1,6 +1,6 @@
 # Document index — derived, not curated
 
-`python3 doc_index.py` regenerates this. 172 markdown documents.
+`python3 doc_index.py` regenerates this. 174 markdown documents.
 
 Classified by what each file says about ITSELF in its first 12 lines. Nothing here is a judgement about whether a document is *good* — only about whether it tells a cold reader what it is before it starts making claims.
 
@@ -9,7 +9,7 @@ Classified by what each file says about ITSELF in its first 12 lines. Nothing he
 | WITHDRAWN | 27 | a published claim taken back. Kept, unedited, beneath its banner. |
 | SUPERSEDED | 27 | still valid or partly valid, but something later changed what it means. |
 | DECLARED | 21 | says what kind of document it is before making claims. |
-| UNDECLARED | 97 | no status banner in its opening. Not necessarily wrong — most are simply current — but a reader cannot tell without reading it all. |
+| UNDECLARED | 99 | no status banner in its opening. Not necessarily wrong — most are simply current — but a reader cannot tell without reading it all. |
 
 ## WITHDRAWN
 
@@ -106,6 +106,7 @@ Classified by what each file says about ITSELF in its first 12 lines. Nothing he
 - `data/baseline/external/fantasypros/ATTRIBUTION.md`
 - `data/baseline/external/keeptradecut/ATTRIBUTION.md`
 - `data/league_captures/README.md`
+- `evidence/backtest/HORIZON.md`
 - `evidence/backtest/STATE.md`
 - `evidence/batteries/README.md`
 - `evidence/blind_pass/FINDINGS_LOG.md`
@@ -133,6 +134,7 @@ Classified by what each file says about ITSELF in its first 12 lines. Nothing he
 - `evidence/context_elevated/THE_CEILING_IS_MAX_NOT_SUM.md`
 - `evidence/flex_feasibility/README.md`
 - `evidence/i06_j06/STEP_ONE_NEEDS_A_BOUNDARY.md`
+- `evidence/kdst_streaming/HOLDOUT_2023.md`
 - `evidence/kdst_streaming/RESULT.md`
 - `evidence/projection_rank/README.md`
 - `evidence/real_drafts/README.md`

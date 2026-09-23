@@ -43,7 +43,14 @@ import streaming_arm_experiment as sae  # noqa: E402  (same directory, run from 
 
 SCRATCH = ("/tmp/claude-0/-home-user-The-Dynasty-Collective/"
            "90289f87-1d2a-5009-8163-038c3cedfc5f/scratchpad")
-OUT_TEMPLATE = "evidence/kdst_streaming/FIELDABILITY_ARM_{season}.json"
+#: WHERE A LIVE RUN WRITES. The scratchpad, never a tracked path -- the battery README's rule 1,
+#: which this script broke once: two concurrent 12-seat runs of the same season differing only
+#: in --streaming both wrote `FIELDABILITY_ARM_2023.json` and the second overwrote the first.
+#: Nothing published was wrong (the surviving file was the one quoted, and both runs' console
+#: output is in the logs), but one arm's artifact was destroyed by the other. The ARM is in the
+#: name now, so the two cannot collide even by accident, and a finished report is COPIED into
+#: evidence deliberately rather than written there live.
+OUT_TEMPLATE = SCRATCH + "/FIELDABILITY_ARM_{season}_{arm}.json"
 
 
 def main(argv=None) -> int:
@@ -116,8 +123,9 @@ def main(argv=None) -> int:
     report["paired_engine_delta_median"] = round(statistics.median(paired), 2)
     report["seats_improved"] = sum(1 for d in paired if d > 0)
 
-    out = Path(OUT_TEMPLATE.format(season=args.season) if not args.seats
-               else f"{SCRATCH}/FIELDABILITY_ARM_{args.season}{suffix}.json")
+    out = Path(OUT_TEMPLATE.format(
+        season=args.season,
+        arm=("stream" if args.streaming else "base") + (f"_s{args.seats}" if args.seats else "")))
     out.write_text(json.dumps(report, indent=2, sort_keys=True) + "\n")
 
     print(f"\n=== FIELDABILITY BACKSTOP vs CONTROL, {args.season} realized"
