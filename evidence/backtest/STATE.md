@@ -135,3 +135,24 @@ depth. **Not built. Measure before building.**
 - Container reclaim kills background runs; CPU does not count as activity. Checkpoint often.
 - Never point a live run's `--out` at a tracked path.
 - The full suite licenses a push, never a subset. (Violated once today and corrected.)
+
+## Considered and DECLINED: adding a K/DEF format to `run_smoke_seats`
+
+All six `run_roster_proof.PROOF_FORMATS` come from `draft_room.build_mock_league`, whose
+`roster_positions` are `QB RB RB WR WR TE FLEX FLEX (SUPER_FLEX) BN...` — **no K and no DEF
+slot anywhere.** So the projected-ruler grader structurally cannot see the positions this whole
+investigation is about.
+
+Not fixed, deliberately:
+
+- **It could not certify the fix even if it saw them.** The projected ruler solves ONE lineup
+  over season totals with no absences and was measured INDIFFERENT to K/DST timing by
+  −0.16%/+0.08% across drafts whose first DEF ranged from round 5 to round 10. A grader that
+  cannot detect an 81-point effect is not the gate for this.
+- **The structural coverage already exists elsewhere.** `12T_ppr_K_DEF` is the first format in
+  the VDS battery, and it runs all five structural audits including `unfieldable_depth`. That
+  is where "does the engine build a legal, fieldable roster with K and DEF slots" is answered.
+- **It would churn a great many pinned numbers** for coverage that is duplicative.
+
+Recorded rather than left as a silent gap: if someone later asks why the projected grader has no
+K/DEF format, the answer is that it was looked at and judged the wrong instrument, not missed.
