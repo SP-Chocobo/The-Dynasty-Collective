@@ -91,5 +91,34 @@ class TheGuardMatchesTheFallbackItGuardsTests(unittest.TestCase):
         self.assertIn("!= 0.0", source)
 
 
+class TheRedraftArmTests(unittest.TestCase):
+    """The horizon arm. It is only a measurement if it actually changes what the board scores."""
+
+    def test_it_clears_the_dynasty_flag_without_touching_the_caller(self):
+        league = {"settings": {"type": bg.DYNASTY_TYPE}, "roster_positions": ["QB"]}
+        out = bg.redraft_league(league)
+        self.assertNotEqual(out["settings"]["type"], bg.DYNASTY_TYPE)
+        self.assertEqual(league["settings"]["type"], bg.DYNASTY_TYPE,
+                         "redraft_league mutated its argument -- the dynasty arm would inherit it")
+
+    def test_it_keeps_everything_else(self):
+        league = {"settings": {"type": bg.DYNASTY_TYPE, "num_teams": 12},
+                  "roster_positions": ["QB", "K", "DEF"], "draft_rounds": 16}
+        out = bg.redraft_league(league)
+        self.assertEqual(out["roster_positions"], ["QB", "K", "DEF"])
+        self.assertEqual(out["draft_rounds"], 16)
+        self.assertEqual(out["settings"]["num_teams"], 12)
+
+    def test_the_engine_still_gates_the_multi_year_term_on_that_flag(self):
+        """NON-VACUITY, pinned to the engine. If `draft_room` stopped reading `type == 2`, the
+        redraft arm would be an identical rerun reported as a horizon comparison."""
+        import inspect
+        import draft_room as dr
+        source = inspect.getsource(dr.compute_draft_board)
+        self.assertIn('("settings") or {}).get("type") == 2', source)
+        self.assertIn("is_dynasty and row.get(\"_has_3yr\"", source,
+                      "time_horizon_adj is no longer dynasty-gated -- the redraft arm is vacuous")
+
+
 if __name__ == "__main__":
     unittest.main()

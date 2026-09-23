@@ -91,6 +91,42 @@ def season_sums(season: str, scoring: dict) -> dict[str, dict]:
     return {pid: dict(v) for pid, v in totals.items()}
 
 
+#: Sleeper's own league-type code for a dynasty league, read from `draft_room`'s single test
+#: rather than restated, so this instrument cannot disagree with the engine about what dynasty
+#: means (#126).
+DYNASTY_TYPE = 2
+
+
+def redraft_league(league: dict) -> dict:
+    """The same league with its DYNASTY flag cleared. A copy -- the caller's league is untouched.
+
+    WHY AN ARM FOR THIS. The backtest's arms are all `settings.type == 2`, and `draft_room`
+    gates `time_horizon_adj` on exactly that: in a dynasty league every priced row carries an
+    adjustment built from the gap between its THREE-YEAR outlook and its season projection.
+    Measured on the 2024 board, 258 of 1181 rows change, and the top ten changes composition.
+
+    That is the engine doing its job. It is also a horizon mismatch with this ruler, which scores
+    ONE season. Grading a deliberately multi-year objective on a single-season outcome charges
+    the engine for value it bought on purpose and will collect in a year this instrument does not
+    score. Worse, the three-year outlook is the 2026 vendor's, so in a 2024 draft it is a
+    forward-looking ranking formed after the season was played -- the milder cousin of the
+    anachronism `period_correct_pool` removes.
+
+    So this arm is not a fix and not a preference. It is the second half of a pair: the dynasty
+    arm answers "how does the shipped configuration do on a season we can score", and this one
+    answers "how does the same machinery do when its horizon matches the ruler's". Quoting either
+    alone would be quoting half a measurement.
+    """
+    out = dict(league)
+    settings = dict(out.get("settings") or {})
+    # Anything that is not the dynasty code is redraft, by draft_room's own one-line test. 0 is
+    # Sleeper's redraft value; the assertion below is what actually guarantees the arm differs.
+    settings["type"] = 0
+    out["settings"] = settings
+    assert settings["type"] != DYNASTY_TYPE, "the redraft arm must clear the dynasty flag"
+    return out
+
+
 def period_correct_pool(points: dict, projections: dict, scoring: dict) -> tuple[dict, list]:
     """Drop players the DRAFTED SEASON never projected -- the backtest's anachronism guard.
 
@@ -134,6 +170,9 @@ def main(argv=None) -> int:
     parser.add_argument("--out", default=str(REPORT_PATH))
     parser.add_argument("--seats", type=int, default=0,
                         help="grade only the first N seats (a smoke run, never an answer)")
+    parser.add_argument("--redraft", action="store_true",
+                        help="grade the engine on a REDRAFT league, so its objective matches "
+                             "this ruler's horizon -- see redraft_league()")
     args = parser.parse_args(argv)
 
     scoring = rdb.scoring_settings_from_capture()
@@ -149,6 +188,8 @@ def main(argv=None) -> int:
     for label in BACKTEST_FORMATS:
         arm = next(a for a in db.league_matrix(scoring) if a["label"] == label)
         league, teams, rounds = arm["league"], arm["teams"], arm["rounds"]
+        if args.redraft:
+            league = redraft_league(league)
         slots = rr.slots_for(league)
         kdst_slots = [s for s in (league.get("roster_positions") or []) if s in ("K", "DEF")]
         # NON-VACUITY, ASSERTED BEFORE THE RUN. A backtest of K/DST placement in a league with no
@@ -175,7 +216,7 @@ def main(argv=None) -> int:
         order = ds.generate_pick_order(seats, rounds, "snake")
         graded_seats = seats[:args.seats] if args.seats else seats
 
-        print(f"{label}: {len(points)} draftable ({len(anachronisms)} of {len(priced_pool)} "
+        print(f"{label} [{'redraft' if args.redraft else 'dynasty'}]: {len(points)} draftable ({len(anachronisms)} of {len(priced_pool)} "
               f"dropped as not projected in {args.season}), K/DEF slots {kdst_slots}, "
               f"grading {len(graded_seats)} seats on {args.season} outcomes", flush=True)
 
@@ -228,6 +269,7 @@ def main(argv=None) -> int:
         results.append({
             "label": label, "season": args.season, "teams": teams, "rounds": rounds,
             "styles": list(BACKTEST_STYLES), "pool": len(points),
+            "horizon": "redraft" if args.redraft else "dynasty",
             "pool_before_anachronism_guard": len(priced_pool),
             "dropped_not_projected_this_season": len(anachronisms),
             "kdst_slots": kdst_slots, "seats_graded": len(rows), "rows": rows,
