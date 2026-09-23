@@ -198,7 +198,7 @@ def style_by_seat(seats, engine_seat, admitted=None) -> dict:
 
 
 def draft(merger, players_db, league, pick_order, points, adp, season, rounds, slots,
-          assigned, engine_seat):
+          assigned, engine_seat, weekly_projections=None):
     """One draft. `engine_seat` may be None, which is how the admission gate runs a field with
     no engine in it at all."""
     picks, taken, mine = [], set(), {}
@@ -211,7 +211,11 @@ def draft(merger, players_db, league, pick_order, points, adp, season, rounds, s
             snap = pick_synthesis.build_snapshot(
                 merger, players_db, picks, pick_order, idx, seat, league,
                 pick_label=f"{round_no}.{(idx % num_teams) + 1:02d}",
-                sleeper_projections=season, sleeper_basis=dr.SLEEPER_BASIS_SEASON_SUM)
+                sleeper_projections=season, sleeper_basis=dr.SLEEPER_BASIS_SEASON_SUM,
+                # #30. None for every caller that does not have them, which is the previous
+                # behaviour exactly. The backtest passes the drafted season's own weekly lines,
+                # so what it grades is the SHIPPED path rather than a monkey-patch.
+                weekly_projections=weekly_projections)
             chosen = next((c.player_id for c in snap.candidates
                            if str(c.player_id) in points and str(c.player_id) not in taken), None)
             who = "cdme"

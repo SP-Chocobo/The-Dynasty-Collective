@@ -1648,6 +1648,10 @@ def build_snapshot(
     #: default. Nothing here interprets it -- a second reading of the mode rule in this module
     #: would be the #126 failure (one home for a vocabulary) in the file that consumes it.
     upside_rule: str = dr.UPSIDE_RULE_ROUND,
+    #: #30. Forwarded untouched to compute_draft_board, which owns what it means, exactly as
+    #: `upside_rule` above is. Nothing in this module interprets it. None (the default) is the
+    #: previous behaviour exactly: no streaming floor is derived and no replacement level moves.
+    weekly_projections: Optional[dict] = None,
 ) -> PickSnapshot:
     """Build one frozen PickSnapshot: compute the real board, narrow to the live candidates,
     layer on survival/opportunity-cost/denial (draft_strategy.pick_analysis) and positional
@@ -1664,6 +1668,7 @@ def build_snapshot(
         merger, players_db, picks, my_roster_id=my_roster_id, league=league, mode=mode,
         pool_scope=pool_scope, sleeper_projections=sleeper_projections,
         sleeper_basis=sleeper_basis, upside_rule=upside_rule,
+        weekly_projections=weekly_projections,
     )
     # Real per-league positional depth for narrow_candidates' position_depth -- the same
     # remaining-demand rank replacement_levels itself uses for VOR (num_teams matches

@@ -170,6 +170,10 @@ def main(argv=None) -> int:
     parser.add_argument("--out", default=str(REPORT_PATH))
     parser.add_argument("--seats", type=int, default=0,
                         help="grade only the first N seats (a smoke run, never an answer)")
+    parser.add_argument("--streaming", action="store_true",
+                        help="pass the drafted season's WEEKLY projections to the board, which "
+                             "is what a live sync now does -- so the grade is of the shipped "
+                             "#30 path rather than of an experiment that patches a function")
     parser.add_argument("--redraft", action="store_true",
                         help="grade the engine on a REDRAFT league, so its objective matches "
                              "this ruler's horizon -- see redraft_league()")
@@ -178,6 +182,10 @@ def main(argv=None) -> int:
     scoring = rdb.scoring_settings_from_capture()
     players_db, _ = rdb.build_players_db_from_capture()
     projections = season_sums(args.season, scoring)
+    # THE SAME WEEKS THAT PRODUCED THE SUM, which is exactly the pairing a live sync files in
+    # its snapshot (sleeper_client fills weekly_out on its way to the season total). Loaded
+    # only when asked, so the default arm is byte-identical to before this existed.
+    weekly = cwl.load_season(args.season, "projections") if args.streaming else None
     realized = rr.weekly_points(cwl.load_season(args.season, "stats"), scoring)
     if not projections or not realized:
         print(f"no captures for {args.season}; need both projections and stats")
@@ -236,7 +244,8 @@ def main(argv=None) -> int:
         order = ds.generate_pick_order(seats, rounds, "snake")
         graded_seats = seats[:args.seats] if args.seats else seats
 
-        print(f"{label} [{'redraft' if args.redraft else 'dynasty'}]: {len(points)} draftable ({len(anachronisms)} of {len(priced_pool)} "
+        print(f"{label} [{'redraft' if args.redraft else 'dynasty'}"
+              f"{', streaming' if args.streaming else ''}]: {len(points)} draftable ({len(anachronisms)} of {len(priced_pool)} "
               f"dropped as not projected in {args.season}), K/DEF slots {kdst_slots}, "
               f"grading {len(graded_seats)} seats on {args.season} outcomes", flush=True)
 
@@ -247,7 +256,8 @@ def main(argv=None) -> int:
             # because who was eligible at which slot is a fact about the player, not about the
             # season being drafted.
             picks = ss.draft(merger, draftable_db, league, order, points, adp,
-                             projections, rounds, slots, assigned, seat)
+                             projections, rounds, slots, assigned, seat,
+                             weekly_projections=weekly)
             by_seat = collections.defaultdict(list)
             for pick in picks:
                 by_seat[pick["roster_id"]].append(pick["player_id"])
@@ -312,6 +322,7 @@ def main(argv=None) -> int:
             "label": label, "season": args.season, "teams": teams, "rounds": rounds,
             "styles": list(BACKTEST_STYLES), "pool": len(points),
             "horizon": "redraft" if args.redraft else "dynasty",
+            "streaming_floor": bool(args.streaming),
             "pool_before_anachronism_guard": len(priced_pool),
             "dropped_not_projected_this_season": len(anachronisms),
             "draftable_universe": len(draftable_db),
