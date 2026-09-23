@@ -51,12 +51,20 @@ four structural audits all pass on that roster, and self-play means every chair 
 | | 2024 (derived on) | 2023 (HOLDOUT) |
 |---|---:|---:|
 | base | 0/12, −346.9 | 0/12, −384.7 |
-| **both fixes** | **11/12, +82.9** | **3/12, −18.3** |
-| swing | +429.8 | +366.4 |
+| **both fixes** | **11/12, +82.9** | **4/12, −49.9** |
+| swing | +429.8 | +334.8 |
 
 **The fixes transfer.** On the holdout season, every one of 12 seats improves under each fix
-independently (+230.0 backstop over base, +214.6 backstop over streaming). **The absolute grade
+independently (+230.0 backstop over base, +255.1 backstop over streaming). **The absolute grade
 does not: 2023 lands roughly EVEN, not ahead.** `evidence/kdst_streaming/HOLDOUT_2023.md`.
+
+**THE TWO FIXES ARE NOT EQUAL PARTNERS, and the holdout is what showed it.** The backstop is a
+COUNT bound with no magnitude to get wrong, and it improved 12 of 12 seats in every arm of both
+seasons (+230 to +347). `#30`'s streaming level is real but season-dependent: ~+328 a seat on
+2024, ~+85 on 2023.
+
+**The streaming-only arm hoards KICKERS** (seat 1: K 5, DEF 1) — the same flat-position
+pathology relocated, which is why pricing alone is not enough and counting alone is not either.
 
 Why 2023 is harder is measured: the dynasty premium is worth +102.6 on the same seat
 (`evidence/backtest/HORIZON.md`), and 2023 carries one more year of 2026-vintage three-year
