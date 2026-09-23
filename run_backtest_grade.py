@@ -203,6 +203,26 @@ def main(argv=None) -> int:
         merger.set_league_format(db.league_format_hint(league))
         priced_pool = rp.scoreable_pool(merger, players_db, league, projections)
         points, anachronisms = period_correct_pool(priced_pool, projections, scoring)
+        # THE BOARD MUST BE PERIOD-CORRECT TOO, and filtering `points` alone is not enough --
+        # this was measured, wrongly dismissed, and then measured again on a DRAINED board.
+        #
+        # `points` is the field's pool and the legality filter run_smoke_seats.draft applies to
+        # the engine's candidates. The engine's BOARD is built from `players_db`, so without
+        # this line the ghosts stay on it. On the OPENING board that looked harmless: 5 of 72
+        # narrowed candidates, first non-ghost at rank 0. It is not harmless late. Nobody can
+        # draft a ghost -- both arms filter them -- so they are never removed from the board,
+        # they ACCUMULATE, and by round 16 the measured candidate window was 26 rows of which
+        # ALL 26 were ghosts: McMillan, Egbuka, Jeanty, Hampton, Loveland, Judkins. The engine
+        # then walked past every one of them and took whatever non-ghost survived the narrow,
+        # which is how a roster that had already been stopped at its DEF ceiling still finished
+        # with a defense in round 16.
+        #
+        # Trimming the db is the whole fix and needs no production plumbing. Measured: it
+        # removes exactly the 101 ghosts from the 1181-row 2024 board and loses ZERO legitimate
+        # rows. 435 survivors' `bpa` moves, which is the point rather than a side effect -- a
+        # replacement level should never have been set by players who did not exist that year.
+        draftable_db = {pid: info for pid, info in players_db.items()
+                        if pid not in set(anachronisms)}
         # NON-VACUITY, ASSERTED BEFORE THE RUN, in the other direction from the slot check above:
         # the guard removing NOTHING on a season whose capture post-dates it would mean it is not
         # firing, and the run would silently be the confounded one again.
@@ -223,7 +243,10 @@ def main(argv=None) -> int:
         rows = []
         for seat in graded_seats:
             assigned = ss.style_by_seat(seats, seat, admitted=list(BACKTEST_STYLES))
-            picks = ss.draft(merger, players_db, league, order, points, adp,
+            # The DRAFT sees the period-correct universe; the RULER below keeps the full one,
+            # because who was eligible at which slot is a fact about the player, not about the
+            # season being drafted.
+            picks = ss.draft(merger, draftable_db, league, order, points, adp,
                              projections, rounds, slots, assigned, seat)
             by_seat = collections.defaultdict(list)
             for pick in picks:
@@ -291,6 +314,8 @@ def main(argv=None) -> int:
             "horizon": "redraft" if args.redraft else "dynasty",
             "pool_before_anachronism_guard": len(priced_pool),
             "dropped_not_projected_this_season": len(anachronisms),
+            "draftable_universe": len(draftable_db),
+            "universe_before_guard": len(players_db),
             "kdst_slots": kdst_slots, "seats_graded": len(rows), "rows": rows,
             "wins": sum(1 for d in deltas if d > 0),
             "mean_delta": round(statistics.fmean(deltas), 2) if deltas else None,

@@ -120,5 +120,59 @@ class TheRedraftArmTests(unittest.TestCase):
                       "time_horizon_adj is no longer dynasty-gated -- the redraft arm is vacuous")
 
 
+class TheBoardIsTrimmedAndNotOnlyThePoolTests(unittest.TestCase):
+    """The half of the guard that was missed the first time, and why it needed a second look.
+
+    Filtering `points` stops a ghost from being DRAFTED. It does not stop him from sitting on
+    the engine's board, and because nobody can draft him he is never removed from it -- he
+    ACCUMULATES. Measured on the opening 2024 board that looked harmless (5 of 72 narrowed
+    candidates, first non-ghost at rank 0). Measured on a DRAINED round-16 board, all 26
+    remaining candidates were ghosts.
+
+    Asked of the CODE (`#200`), not of a substring: an AST walk for the call, so a rename or a
+    reordering of the arguments fails this test instead of passing it silently.
+    """
+
+    def _draft_call(self):
+        import ast
+        import inspect
+        tree = ast.parse(inspect.getsource(bg))
+        for node in ast.walk(tree):
+            if (isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute)
+                    and node.func.attr == "draft"
+                    and isinstance(node.func.value, ast.Name) and node.func.value.id == "ss"):
+                return node
+        return None
+
+    def test_the_grader_drafts_from_the_trimmed_universe(self):
+        call = self._draft_call()
+        self.assertIsNotNone(call, "run_backtest_grade no longer calls ss.draft -- re-derive "
+                                   "which universe the board is built from before trusting a "
+                                   "number out of this instrument")
+        names = [a.id for a in call.args if isinstance(a, ast.Name)]
+        self.assertIn("draftable_db", names,
+                      "the draft is built from the full players_db again; the ghosts are back "
+                      "on the board even though the pool excludes them")
+        self.assertNotIn("players_db", names)
+
+    def test_the_ruler_still_scores_from_the_full_universe(self):
+        """Eligibility is a fact about the PLAYER, not about the season being drafted, so the
+        ruler must keep the whole db. Trimming both would make the guard a claim about who
+        could be started rather than about who could be drafted."""
+        import ast
+        import inspect
+        tree = ast.parse(inspect.getsource(bg))
+        scored = [n for n in ast.walk(tree)
+                  if isinstance(n, ast.Call) and isinstance(n.func, ast.Attribute)
+                  and n.func.attr == "score_roster_realized"]
+        self.assertTrue(scored, "the realized ruler is no longer called here")
+        for call in scored:
+            names = [a.id for a in call.args if isinstance(a, ast.Name)]
+            self.assertIn("players_db", names)
+
+
+import ast  # noqa: E402  (used by the AST walks above, imported beside them on purpose)
+
+
 if __name__ == "__main__":
     unittest.main()

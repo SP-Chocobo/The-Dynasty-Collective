@@ -80,6 +80,36 @@ the residue it cannot remove.
 - `run_smoke_seats` is untouched by this: it drafts and grades on the SAME 2026 capture, so
   "a player the season did not project" is not a category that exists there.
 
+## The residual — WITHDRAWN, it was the second half of the defect
+
+> Everything in this section as first written was a correct measurement used to answer the
+> wrong question, and the conclusion drawn from it was wrong. It is kept in full below the
+> correction, because the mistake is more instructive than the fix.
+
+I measured the ghosts on the **opening** board (5 of 72 narrowed candidates, first non-ghost at
+rank 0) and concluded the board-side contamination was small. It is not small, and the opening
+board is the one place it is guaranteed to look harmless.
+
+**Nobody can draft a ghost** — both arms filter on `points` — so a ghost is never removed from
+the board. They ACCUMULATE. Measured on a drained round-16 board: **all 26 remaining candidates
+were ghosts** (McMillan, Egbuka, Burden, Tate, Concepcion, Jeanty, Hampton, Loveland, Love,
+Warren, Skattebo, Judkins). The engine walked past every one and took whatever non-ghost
+survived the narrow — which is how a roster already stopped at its DEF ceiling still finished
+with a defense in round 16.
+
+**The fix needs no production plumbing.** The grader now builds the board from a period-correct
+`players_db`. Measured: that removes exactly the 101 ghosts from the 1181-row 2024 board and
+loses **zero** legitimate rows. 435 survivors' `bpa` moves, which is the point and not a side
+effect — a replacement level should never have been set by players who did not exist that year.
+The realized ruler keeps the FULL db, because eligibility is a fact about the player rather
+than about the season being drafted. Two AST tests pin both halves.
+
+**Every guarded number measured before this landed is superseded**, including the base −641.0,
+the streaming +258.8, and the fieldability +423.9 / +237.2. They were all measured on an engine
+whose late-round candidate window was full of undraftable phantoms.
+
+### The original section, kept
+
 ## The residual the guard does NOT remove, measured
 
 `period_correct_pool` filters `points` — the field's pool and ranking, and the legality filter

@@ -3245,12 +3245,18 @@ def unfieldable_last(scored, picks, players_db, my_roster_id, roster_positions):
     """A sort key, the mirror image of `feasibility_first`: 1 for a candidate at a position this
     roster has already saturated beyond what it can ever field, 0 for everyone else.
 
-    THIS IS ARITHMETIC, NOT A VALUATION, by the identical argument that admits
-    `feasibility_first` under `#56`. It invents no constant and expresses no opinion about how
-    much depth is worth. It says only: this roster already holds `slots(P) + 1` at a position
-    with no flex reach, so one more of them is a roster spot that provably cannot be fielded in
-    any week of the season. A team in that state is not weighing depth against value -- the
-    depth it would be buying does not exist.
+    WHAT IT ACTUALLY CLAIMS, stated narrowly because the first draft of this docstring claimed
+    more than is true. The arithmetic half is exact: at most `slots(P)` of them can start in any
+    given week, and one spare covers the one bye, so beyond `slots(P) + 1` every further body is
+    surplus IN EVERY WEEK OF THE SEASON. What that surplus still buys is week-to-week matchup
+    churn -- start whichever of them draws the best opponent. That is real, and it is NOT zero.
+
+    The claim is that the churn is worth less than the roster spot, and it rests on one measured
+    fact rather than on a constant: for a position with no flex reach and a projection band this
+    flat, the same churn is available FREE on the waiver wire, which is precisely what `#30`'s
+    derived streaming baseline prices. So this is not pure arithmetic the way `feasibility_first`
+    is, and it should not be defended as if it were. It is the roster-count half of the same
+    claim `#30` makes about the price, and it stands or falls with the measurement below.
 
     MEASURED NEED FOR IT, and it is not small. Graded on 2024 REALIZED outcomes
     (`evidence/kdst_streaming/ROOT_CAUSE.md`), the engine finished a 12-team PPR draft with

@@ -36,9 +36,20 @@ rd 15 DEF  San Francisco 49ers    proj 109.3   real  96.0
 rd 16 DEF  Chicago Bears          proj 109.1   real 137.0
 ```
 
-Eight of those nine defenses can never be fielded. The deficit decomposes as **WR −1331 and
-K −192** against a meaningless **DEF +994** — nine defenses' worth of realized points, of which
-one defense's worth can ever reach a lineup.
+Eight of those nine defenses cannot be fielded **in any given week** — the roster has one DEF
+slot. The deficit decomposes as **WR −1331 and K −192** against **DEF +994**, which is nine
+defenses' worth of realized points of which at most one defense's worth reaches a lineup in any
+week.
+
+**A correction to how I first wrote this.** I said the eight "can never be fielded". That is too
+strong, and the ruler is the reason: `realized_ruler` solves an ORACLE lineup, so a roster
+holding nine defenses starts the best of the nine *each week*. Hoarding is therefore not purely
+wasted under this ruler — it is rewarded, by roughly the max-of-nine over max-of-one spread. The
+true statement is narrower and still sufficient: at most `slots(P)` of them start in any week,
+so the surplus buys only week-to-week matchup churn — which is exactly what the waiver wire
+gives away for free, and exactly what `#30`'s streaming baseline measures the price of. The
+deficit is not that the defenses scored nothing; it is that the roster spots did not go to
+receivers.
 
 ## Why VOR does this, and why it is a flat-position pathology
 
