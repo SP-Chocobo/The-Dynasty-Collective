@@ -1003,7 +1003,12 @@ def prefix_arms(sequences: dict[str, list]) -> list[dict]:
 def run_battery(merger, players_db: dict, matrix: Optional[list[dict]] = None,
                 *, mode: str = "auto",
                 sleeper_projections: Optional[dict[str, dict]] = None,
-                sleeper_basis: str = dr.SLEEPER_BASIS_WEEKLY) -> list[dict]:
+                sleeper_basis: str = dr.SLEEPER_BASIS_WEEKLY,
+                #: #30. Same capture, same #204 argument as sleeper_projections: without it the
+                #: battery certifies a board that has no streaming floor while production ships
+                #: one that does. {} or None from a capture that predates weekly lines, in which
+                #: case no floor is derived and the run is exactly what it was.
+                weekly_projections: Optional[dict] = None) -> list[dict]:
     """Draft every format in the matrix and audit each one.
 
     pick_order is generated per format rather than reused, since team count varies -- and it is
@@ -1048,7 +1053,8 @@ def run_battery(merger, players_db: dict, matrix: Optional[list[dict]] = None,
             mode=entry.get("mode", mode), config_label=entry["label"],
             upside_rule=entry.get("upside_rule", dr.UPSIDE_RULE_ROUND),
             opponent_noise=entry.get("opponent_noise"),
-            sleeper_projections=sleeper_projections, sleeper_basis=sleeper_basis)
+            sleeper_projections=sleeper_projections, sleeper_basis=sleeper_basis,
+            weekly_projections=weekly_projections)
         values = reference_values(merger, players_db, entry["league"],
                                   sleeper_projections=sleeper_projections,
                                   sleeper_basis=sleeper_basis)

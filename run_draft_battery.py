@@ -91,6 +91,29 @@ def build_players_db(merger: dm.DataMerger, positions=BATTERY_POSITIONS, *,
     return out
 
 
+def weekly_projections_from_capture(path: Path = CAPTURE_PATH) -> dict[str, dict]:
+    """The per-week projection lines behind the capture's season sums (`#30`), or {} if the
+    capture predates them.
+
+    WHY {} AND NOT A RAISE, unlike its season-sum sibling. A capture without weekly lines is
+    OLD, not broken: `sleeper_import_report --fixture` only began storing them once the board
+    had a use for them. Passing {} down means no streaming floor is derived and every
+    replacement level is exactly what it was, which is the honest behaviour for a fixture that
+    cannot answer the question -- and it is a different failure from `season_projections`
+    missing, where the board would silently price nothing under the league's own scoring.
+
+    THE CONSEQUENCE, stated so nobody reads more into a battery run than it carries: while the
+    committed capture has no weekly lines, a battery certifies the board WITHOUT #30's streaming
+    floor. That is #204's defect one layer up, and the evidence for the floor is the backtest
+    (`evidence/kdst_streaming/`), not the battery. Re-capture closes it.
+    """
+    if not path.exists():
+        raise FileNotFoundError(
+            f"{path} is missing -- same contract as season_projections_from_capture")
+    import json
+    return json.loads(path.read_text()).get("weekly_projections") or {}
+
+
 def scoring_settings_from_capture(path: Path = CAPTURE_PATH) -> dict:
     """The REAL league's scoring_settings, from the captured league shape.
 

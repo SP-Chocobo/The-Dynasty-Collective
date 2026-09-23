@@ -124,6 +124,10 @@ def main(argv: list[str] | None = None) -> int:
     scoring = rdb.scoring_settings_from_capture()
     players_db, provenance = rdb.build_players_db_from_capture()
     season_projections = rdb.season_projections_from_capture()
+    # #30. {} while the committed capture predates weekly lines, in which case no streaming
+    # floor is derived and this battery certifies the board WITHOUT it -- recorded in the report
+    # below rather than left for a reader to infer. See weekly_projections_from_capture.
+    weekly_projections = rdb.weekly_projections_from_capture()
     merger = dm.DataMerger()
 
     matrix = vds_battery.vds_matrix(scoring)
@@ -145,6 +149,10 @@ def main(argv: list[str] | None = None) -> int:
         "season_projections_supplied": len(season_projections),
         "priced_from": "vendor+sleeper" if season_projections else "vendor_only",
         "sleeper_basis": dr.SLEEPER_BASIS_SEASON_SUM if season_projections else None,
+        # #30, stated in the report itself: a run with no weekly lines certifies a board with no
+        # streaming floor, which is a different claim from one that certifies a board with it.
+        "weekly_projection_weeks": len(weekly_projections),
+        "streaming_floor_exercised": bool(weekly_projections),
     }
 
     carried = {r["label"]: r for r in (
@@ -166,6 +174,7 @@ def main(argv: list[str] | None = None) -> int:
         audited = draft_battery.run_battery(
             merger, players_db, [entry],
             sleeper_projections=season_projections or None,
+            weekly_projections=weekly_projections or None,
             sleeper_basis=dr.SLEEPER_BASIS_SEASON_SUM)[0]
         audited["seconds"] = round(time.time() - t0, 1)
         audited["format"] = entry["format"]

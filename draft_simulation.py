@@ -109,6 +109,12 @@ def simulate_full_draft(
     #: build_snapshot and interpreted only by compute_draft_board. Defaulted to the shipped
     #: rule so every existing caller drafts exactly as before.
     upside_rule: str = dr.UPSIDE_RULE_ROUND,
+    #: #30. The per-week projection lines behind `sleeper_projections`, from the same capture.
+    #: Forwarded to build_snapshot and interpreted only by compute_draft_board, exactly as
+    #: `upside_rule` is. Same #204 reasoning as `sleeper_projections` itself: production passes
+    #: it, so a simulated draft that omits it is not drafting from the production pricing path
+    #: -- K and DEF come back without their streaming floor and the whole of #30 is inert.
+    weekly_projections: Optional[dict] = None,
     #: #263b. HOW WELL THE RIVALS DRAFT. None (default) = every seat takes its own top
     #: candidate, which is the MAXIMALLY EFFICIENT drain and therefore a LOWER BOUND on when
     #: any board-exhaustion signal can fire. A dict {"top_k": int, "seed": int,
@@ -159,7 +165,7 @@ def simulate_full_draft(
         snap = pick_synthesis.build_snapshot(
             merger, players_db, picks, pick_order, idx, roster_id, league,
             pick_label=pick_label, mode=mode, pool_scope=pool_scope,
-            upside_rule=upside_rule,
+            upside_rule=upside_rule, weekly_projections=weekly_projections,
             # #204: production (app.py's Draft Room) passes BOTH of these, so a simulated
             # draft that omits them is not drafting from the production pricing path -- every
             # row comes back with sleeper_points/sleeper_basis/availability_basis all None,

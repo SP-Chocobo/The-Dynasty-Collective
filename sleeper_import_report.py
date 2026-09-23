@@ -682,7 +682,14 @@ def write_fixture(client, league_id: Optional[str], path: str,
     state = client.get_nfl_state() or {}
     season = str(state.get("season") or "")
     db = client.get_players()
-    totals, coverage = client.get_season_projections(season) if season else ({}, {})
+    # #30. The per-week lines behind the sum, captured on the way past. A board derives the
+    # STREAMING replacement level for K and DEF from these, and a fixture without them certifies
+    # a board that has no such floor while production ships one that does -- which is exactly
+    # #204's defect ("the battery omitted them entirely, which meant the final gate certified a
+    # vendor-only board while production shipped a vendor-plus-Sleeper one") one layer up.
+    weekly_lines: dict[str, dict] = {}
+    totals, coverage = (client.get_season_projections(season, weekly_out=weekly_lines)
+                        if season else ({}, {}))
 
     # PRIOR SEASON PRODUCTION -- the realized half. Defaults to the year before the projection
     # season, and is stored under ITS OWN season label rather than the fixture's: a projection
@@ -726,6 +733,24 @@ def write_fixture(client, league_id: Optional[str], path: str,
         if prior_trimmed:
             prior_production[pid] = prior_trimmed
 
+    # Trimmed the same way the season sums are, and for the same reason: a zero is Sleeper's
+    # empty cell, not a measured zero, and carrying ~90 of them per player per week would make
+    # this the largest thing in the file by an order of magnitude. Only players the fixture
+    # KEPT, so the two halves describe one universe.
+    weekly_projections: dict[str, dict] = {}
+    for week, rows in (weekly_lines or {}).items():
+        week_out = {}
+        for pid, stats in (rows or {}).items():
+            pid = str(pid)
+            if pid not in players:
+                continue
+            trimmed = {k: v for k, v in (stats or {}).items()
+                       if isinstance(v, (int, float)) and v}
+            if trimmed:
+                week_out[pid] = trimmed
+        if week_out:
+            weekly_projections[str(week)] = week_out
+
     league = {}
     if league_id:
         lg = client.get_league(league_id) or {}
@@ -755,6 +780,11 @@ def write_fixture(client, league_id: Optional[str], path: str,
         "league_shape": league,
         "players": players,
         "season_projections": projections,
+        # #30. THE SAME WEEKS THAT PRODUCED THE SUM ABOVE, per week. Both shapes are needed and
+        # must come from one fetch: the sum answers "what is this player worth all year", the
+        # per-week lines answer "what is the best player on the WIRE worth this week", which is
+        # the only honest replacement level for a position you stream.
+        "weekly_projections": weekly_projections,
         # Keyed by its OWN year, beside the projections rather than mixed into them.
         "prior_season_production": {
             "season": prior,
