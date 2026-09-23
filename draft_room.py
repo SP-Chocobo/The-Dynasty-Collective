@@ -3309,7 +3309,35 @@ def unfieldable_last(scored, picks, players_db, my_roster_id, roster_positions):
                  if held.get(position, 0) >= ceiling}
     if not saturated:
         return default
-    return scored["position"].map(lambda position: 1 if position in saturated else 0).astype(int)
+
+    def demoted(player_id) -> int:
+        """ASKED OF ELIGIBILITY, NOT OF THE PRIMARY BUCKET (`#172`).
+
+        Reading `scored["position"]` would demote a WR/RB dual on his primary label alone. In a
+        league whose RB and WR slots are both dedicated, a roster holding two running backs
+        would then sink a player who could still fill an empty WR slot -- the exact defect
+        `undraftable_positions` carried until it was repaired to ask the question the pool
+        admits on. He is demoted only when EVERY position he reaches is saturated, which for a
+        single-position candidate is the same test as before.
+
+        A row whose eligibility cannot be read at all is NOT demoted. Absence is not evidence
+        of surplus.
+        """
+        info = players_db.get(str(player_id)) or {}
+        eligible = set(info.get("fantasy_positions")
+                       or ([info["position"]] if info.get("position") else []))
+        if not eligible:
+            return 0
+        # A flex-reachable position never enters `saturated` (it has no ceiling), so a subset
+        # test also guarantees he reaches no position this backstop has no opinion about.
+        return 1 if eligible <= saturated else 0
+
+    if "player_id" not in scored.columns:
+        # Fall back to the primary bucket rather than returning a wrong answer silently -- and
+        # say so, because a board without player_id would be a shape nothing else here expects.
+        return scored["position"].map(
+            lambda position: 1 if position in saturated else 0).astype(int)
+    return scored["player_id"].map(demoted).astype(int)
 
 
 def compute_draft_board(

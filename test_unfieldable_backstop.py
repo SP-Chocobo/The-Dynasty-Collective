@@ -45,9 +45,18 @@ def _picks(ids, roster_id="1"):
             for n, pid in enumerate(ids)]
 
 
-def _scored(positions):
-    return pd.DataFrame({"position": list(positions)},
-                        index=range(len(list(positions))))
+def _scored(positions, ids=None):
+    """A board frame with the two columns the backstop reads. `ids` defaults to a player at each
+    position taken from PLAYERS, so the eligibility lookup the backstop does has something real
+    to find -- a frame with fabricated ids would make every demotion vacuously zero."""
+    positions = list(positions)
+    if ids is None:
+        first_at = {}
+        for pid, info in PLAYERS.items():
+            first_at.setdefault(info["position"], pid)
+        ids = [first_at.get(p, f"unknown-{p}") for p in positions]
+    return pd.DataFrame({"position": positions, "player_id": list(ids)},
+                        index=range(len(positions)))
 
 
 class TheCeilingIsDerivedTests(unittest.TestCase):
@@ -118,6 +127,44 @@ class TheBackstopBindsOnlyWhenItIsProvableTests(unittest.TestCase):
     def test_no_roster_id_is_a_no_op(self):
         got = dr.unfieldable_last(_scored(["DEF"]), _picks(["d1", "d2"]),
                                   PLAYERS, None, ROSTER_POSITIONS)
+        self.assertEqual([0], list(got))
+
+
+class ItAsksEligibilityNotThePrimaryBucketTests(unittest.TestCase):
+    """#172, in the demotion direction. Reading `position` alone sinks a dual-eligible player on
+    a label rather than on what he can actually fill."""
+
+    #: Both RB and WR dedicated, no flex anywhere -- so BOTH carry a ceiling and the subset test
+    #: is the only thing separating a demotion from a mistake.
+    NO_FLEX = ["QB", "RB", "RB", "WR", "WR", "DEF"]
+
+    def test_a_dual_eligible_player_survives_while_one_of_his_positions_is_open(self):
+        players = dict(PLAYERS, rbwr={"position": "RB", "fantasy_positions": ["RB", "WR"]})
+        # Three RBs held: RB is saturated (2 slots + bye = 3 -> held 3 >= 3). WR is not.
+        got = dr.unfieldable_last(_scored(["RB"], ids=["rbwr"]),
+                                  _picks(["r1", "r2", "r3"]), players, "1", self.NO_FLEX)
+        self.assertEqual([0], list(got),
+                         "a WR-eligible player was demoted for being labelled RB")
+
+    def test_a_single_position_player_at_the_same_position_IS_demoted(self):
+        """The control for the test above: same board, same roster, one eligibility."""
+        got = dr.unfieldable_last(_scored(["RB"], ids=["r4"]),
+                                  _picks(["r1", "r2", "r3"]), PLAYERS, "1", self.NO_FLEX)
+        self.assertEqual([1], list(got))
+
+    def test_a_dual_eligible_player_is_demoted_once_BOTH_are_saturated(self):
+        players = dict(PLAYERS, rbwr={"position": "RB", "fantasy_positions": ["RB", "WR"]},
+                       w2={"position": "WR", "fantasy_positions": ["WR"]},
+                       w3={"position": "WR", "fantasy_positions": ["WR"]})
+        got = dr.unfieldable_last(_scored(["RB"], ids=["rbwr"]),
+                                  _picks(["r1", "r2", "r3", "w1", "w2", "w3"]),
+                                  players, "1", self.NO_FLEX)
+        self.assertEqual([1], list(got))
+
+    def test_a_row_whose_eligibility_cannot_be_read_is_not_demoted(self):
+        """Absence is not evidence of surplus (#187's shape, in the selection layer)."""
+        got = dr.unfieldable_last(_scored(["RB"], ids=["nobody-knows-him"]),
+                                  _picks(["r1", "r2", "r3"]), PLAYERS, "1", self.NO_FLEX)
         self.assertEqual([0], list(got))
 
 
