@@ -69,6 +69,11 @@ ALTERNATES = {
     "pool_scope": "rookies",
     "startable_floors": {"QB": 250.0},
     "sleeper_basis": dr.SLEEPER_BASIS_SEASON_SUM,
+    # #30. A raise-only floor MOVES a position's replacement level, so two anchors differing
+    # only in it are two different answers -- and without this entry they would have collided
+    # on one cache slot, which is the SUPER_FLEX_QB_SHARE failure anchor_cache_key's own
+    # docstring records.
+    "streaming_floors": {"DEF": 146.05},
 }
 
 

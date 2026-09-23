@@ -91,6 +91,10 @@ ALTERNATES = {
     "sleeper_projections": {"100": {"rec": 5.0}},
     "sleeper_basis": dr.SLEEPER_BASIS_SEASON_SUM,
     "upside_rule": dr.UPSIDE_RULE_CROSSING,
+    # #30. The per-week lines the board derives K/DEF's streaming floor from. A snapshot built
+    # with them is priced differently from one built without, so the key has to see them --
+    # otherwise the two share a cache slot and the second caller gets the first one's board.
+    "weekly_projections": {"1": {"100": {"rec": 2.0}}},
 }
 
 
