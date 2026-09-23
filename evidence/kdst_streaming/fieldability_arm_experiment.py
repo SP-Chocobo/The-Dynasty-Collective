@@ -94,7 +94,14 @@ def main(argv=None) -> int:
               "season": args.season, "arm": sae.ARM, "streaming": bool(args.streaming),
               "streaming_levels": levels, "arms": {}}
 
-    suffix = ("_stream" if args.streaming else "") + (f"_s{args.seats}" if args.seats else "")
+    # THE SEASON IS IN THE PATH, and it is here because leaving it out collided twice. The
+    # per-arm backtest file is WRITTEN and then READ BACK to build the summary, so two
+    # concurrent runs differing only in --season shared one path and each could serve the
+    # other's numbers. Same class as the FIELDABILITY_ARM_<season>.json collision this script
+    # already had: a scratch path that does not name every axis of the run is a path two runs
+    # can occupy.
+    suffix = (f"_{args.season}" + ("_stream" if args.streaming else "")
+              + (f"_s{args.seats}" if args.seats else ""))
     try:
         for name, on in (("control", False), ("backstop", True)):
             dr.unfieldable_last = real_unfieldable if on else no_backstop
