@@ -1,0 +1,20 @@
+commit a761d1c | universe 6595 players | adp ranked 840 | adp sentinel excluded 4506
+12T_ppr          gate: admitted ['adp', 'need_first', 'points_need'] | excluded ['run_follower']
+  12T_ppr          cdme    (TAUTOLOGY   ) wins 12/12 | engine 281.54 vs field 202.09 | gap 79.45 | 39.555% over 12
+  12T_ppr          points  (strong claim) wins 11/12 | engine 2229.35 vs field 2182.9 | gap 46.46 | 2.131% over 12
+12T_ppr_SF       gate: admitted ['adp', 'need_first', 'points_need'] | excluded ['run_follower']
+  12T_ppr_SF       cdme    (TAUTOLOGY   ) wins 2/12 | engine 474.52 vs field 517.2 | gap -42.68 | -7.986% over 12
+  12T_ppr_SF       points  (strong claim) wins 6/12 | engine 2469.86 vs field 2457.51 | gap 12.35 | 0.505% over 12
+10T_ppr          gate: admitted ['adp', 'need_first', 'points_need'] | excluded ['run_follower']
+  10T_ppr          cdme    (TAUTOLOGY   ) wins 10/10 | engine 303.17 vs field 206.57 | gap 96.6 | 47.179% over 10
+  10T_ppr          points  (strong claim) wins 10/10 | engine 2310.45 vs field 2266.8 | gap 43.65 | 1.927% over 10
+10T_ppr_SF       gate: admitted ['adp', 'need_first', 'points_need'] | excluded ['run_follower']
+  10T_ppr_SF       cdme    (TAUTOLOGY   ) wins 1/10 | engine 466.83 vs field 585.25 | gap -118.42 | -20.014% over 10
+  10T_ppr_SF       points  (strong claim) wins 5/10 | engine 2536.31 vs field 2558.95 | gap -22.64 | -0.883% over 10
+12T_standard     gate: admitted ['adp', 'need_first', 'points_need'] | excluded ['run_follower']
+  12T_standard     cdme    (TAUTOLOGY   ) wins 12/12 | engine 275.99 vs field 106.72 | gap 169.27 | 159.328% over 12
+  12T_standard     points  (strong claim) wins 12/12 | engine 1783.17 vs field 1695.83 | gap 87.34 | 5.151% over 12
+12T_ppr_TEP      gate: admitted ['adp', 'need_first', 'points_need'] | excluded ['run_follower']
+  12T_ppr_TEP      cdme    (TAUTOLOGY   ) wins 12/12 | engine 319.53 vs field 215.44 | gap 104.09 | 48.468% over 12
+  12T_ppr_TEP      points  (strong claim) wins 12/12 | engine 2287.96 vs field 2230.78 | gap 57.18 | 2.565% over 12
+6 formats -> SMOKE_SEATS_LIVE.json
