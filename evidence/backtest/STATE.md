@@ -46,7 +46,24 @@ four structural audits all pass on that roster, and self-play means every chair 
 | `draft_room.fieldable_ceiling` / `unfieldable_last` | the engine backstop: demote a position this roster has saturated beyond `slots(P) + 1` |
 | `evidence/kdst_streaming/fieldability_arm_experiment.py` | its A/B, with `--streaming` so `#30` and the backstop are measured together |
 
-## Numbers — ALL SUPERSEDED, re-runs in flight
+## THE ANSWER (2024, 12 seats, realized outcomes)
+
+`evidence/kdst_streaming/RESULT_2024.md` has the full table and the limits. In one line: with
+both fixes the engine **wins 11 of 12 seats at +82.9 a seat**, first K/DST at rounds 8–12, and
+a roster shape of RB 6 / WR 3 / QB 2 / DEF 2 / K 2 / TE 1 — two of every dedicated position and
+depth in the flex-reachable ones. Base is 0 of 12 at −346.9 with six defenses and one receiver.
+
+Each fix alone improves **12 of 12 seats** and neither is sufficient: the backstop caps the
+hoard without repricing (still opens K/DST in round 4), `#30` reprices without capping (still
+finishes with four defenses and four quarterbacks).
+
+`#30` is now WIRED TO PRODUCTION: `sleeper_client` keeps the per-week lines it already fetched,
+the snapshot carries them, `compute_draft_board` takes `weekly_projections`, and
+`replacement_levels` takes a raise-only `streaming_floors`. `app.py` passes it at all four board
+call sites. `STREAMABLE_POSITIONS = ("K", "DEF")` is a named scope decision with the RB/WR
+falsification recorded beside it and QB deliberately left out.
+
+## Superseded numbers, kept for their direction
 
 Recorded so the direction is not lost. Guarded-pool-only (board still contaminated), 2024,
 `12T_ppr_K_DEF`:
@@ -68,14 +85,22 @@ depth. **Not built. Measure before building.**
 
 ## Plan, in order
 
-1. Re-run the seat-1 A/Bs under the corrected grader — **in flight**.
-2. Full 12-seat runs of base / streaming / backstop / both on 2024.
-3. The **2023 holdout** (killed mid-run when the board defect was found; must restart).
-4. Only then rewrite `STREAMING_ARM_RESULT.md` and rule on `#30`.
-5. The VDS battery is deliberately NOT running. A strategy sweep on an engine with a known
-   roster-construction defect measures the defect six ways.
+1. ~~Seat-1 A/Bs under the corrected grader~~ — DONE.
+2. ~~Full 12-seat runs on 2024~~ — DONE, see above.
+3. The **2023 holdout** — RUNNING (`fieldability_arm_experiment --season 2023` and
+   `--season 2023 --streaming`). This is the out-of-sample test and nothing generalises without
+   it.
+4. The **VDS battery** — RUNNING, fresh from `3a23c94`, writing to the scratchpad. The old
+   3-arm checkpoint at `dace907` is UNUSABLE: the battery README forbids `--resume` onto a
+   report written by different code, and the engine has changed substantially. This run is the
+   "ensure nothing breaks" check across six formats and six strategies, and it exercises the
+   backstop in every one of them.
+5. **Full suite** — running; it licenses the next push.
 6. `unfieldable_last` is an ENGINE-DESIGN change (`#184`). It is built and measured, not ruled.
-   The owner decides whether it ships.
+   The owner decides whether it ships. `#30`'s half is already wired to production.
+7. Not addressed: whether QB belongs in `STREAMABLE_POSITIONS`, and whether a uniform
+   fieldability ceiling over flex-reachable positions would help or bind on real depth. Both
+   are measurable; neither is measured.
 
 ## Standing hazards
 
