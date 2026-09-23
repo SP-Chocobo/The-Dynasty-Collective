@@ -1,5 +1,23 @@
 # The 2023 holdout: both fixes transfer, 12 of 12 seats under each
 
+> **THE TWO `--streaming` ROWS BELOW ARE WITHDRAWN AND BEING RE-RUN.** They were measured on an
+> INFLATED streaming level — K 169.66 / DEF 172.91, where the correct 2023 derivation is
+> **K 155.76 / DEF 158.00**. Cause: `streaming_levels` read a module-level `ROSTER_POSITIONS`
+> that only `main()` filled, and `fieldability_arm_experiment` calls it without going through
+> `main()`, so it read `[]`. An empty slot list makes starter counts zero, `demand` falls to its
+> `max(1, ...)` floor, and the "wire" becomes everyone outside the top ONE instead of the top
+> twelve. Fixed (the argument is required now) and pinned by test.
+>
+> **UNAFFECTED and standing:** the `base` and `+ fieldability backstop` rows, which never derive
+> a level, and their paired **+230.0 / 12 of 12**. The 2024 figures are also unaffected — that
+> run predates the refactor that introduced the global, and its levels (K 164.50 / DEF 146.05)
+> are the correct ones.
+>
+> **What is NOT yet known:** whether the shipped level reaches the same −18.3. A single-seat
+> production-path run on 2023 with the CORRECT level returned **−84.9**, against the inflated
+> arm's −10.4 on the same seat — so the re-run may well land worse. That is stated here before
+> it is measured.
+
 **2023, `12T_ppr_K_DEF`, 12 seats, graded on REALIZED outcomes.** 2023 was never used to derive
 anything — not the streaming level, not the ceiling, not a constant. It is the out-of-sample
 test, and it is the one that decides whether any of this generalises.

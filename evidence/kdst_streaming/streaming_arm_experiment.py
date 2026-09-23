@@ -47,29 +47,34 @@ ARM = "12T_ppr_K_DEF"
 #: cannot disagree with the engine about which positions are streamed (#126).
 STREAMED = dr.STREAMABLE_POSITIONS
 
-#: Filled from the arm's own league in main(); a module default would be a second source of
-#: truth about the format this experiment drafts.
-ROSTER_POSITIONS: list = []
 OUT_TEMPLATE = "evidence/kdst_streaming/STREAMING_ARM_{season}.json"
 
 
-def streaming_levels(season: str, scoring: dict, players_db: dict,
-                     teams: int, starters: dict) -> dict[str, float]:
+def streaming_levels(season: str, scoring: dict, players_db: dict, teams: int,
+                     roster_positions: list) -> dict[str, float]:
     """Per streamed position, the season total a WIRE-STREAMER would have been projected to get.
 
-    NOW A THIN WRAPPER OVER THE SHIPPED FUNCTION (`#126`). This module derived the level itself
-    while it was an experiment and the engine had no such concept. `draft_room` has one now --
-    `streaming_replacement_levels`, wired into `compute_draft_board` behind `weekly_projections`
-    -- and a second copy here would be a second home for the derivation, which is exactly the
-    arrangement where the copy nobody is watching drifts. Verified identical before the swap:
-    both produce K 164.50 / DEF 146.05 on 2024.
+    A THIN WRAPPER OVER THE SHIPPED FUNCTION (`#126`). This module derived the level itself while
+    it was an experiment and the engine had no such concept; `draft_room` owns it now, and a
+    second copy here would be the arrangement where the copy nobody is watching drifts.
 
-    `starters` is accepted and unused, kept so every existing call site still reads correctly;
-    the shipped function derives slot counts from `roster_positions` itself.
+    `roster_positions` IS A REQUIRED ARGUMENT, and it is required because of what happened when
+    it was not. The first version of this wrapper read a module-level `ROSTER_POSITIONS` that
+    `main()` filled -- and `fieldability_arm_experiment` calls this function WITHOUT going
+    through `main()`, so it read `[]`. An empty slot list makes `starter_slot_counts` return
+    zeros, `demand` falls to its `max(1, ...)` floor, and the "wire" becomes everyone outside
+    the top ONE instead of the top twelve. The level then comes out inflated:
+
+        2023   correct  K 155.76  DEF 158.00        empty  K 169.66  DEF 172.91
+        2024   correct  K 164.50  DEF 146.05        empty  K 165.96  DEF 154.31
+
+    The 2023 holdout's streaming arms were measured on the inflated numbers and had to be
+    re-run. Passed explicitly now, so a caller that does not have a slot list cannot silently
+    get a plausible one.
     """
     return dr.streaming_replacement_levels(
         cwl.load_season(season, "projections"), scoring, players_db,
-        STREAMED, ROSTER_POSITIONS, teams,
+        STREAMED, roster_positions, teams,
     )
 
 
@@ -87,10 +92,8 @@ def main(argv=None) -> int:
     scoring = rdb.scoring_settings_from_capture()
     players_db, _ = rdb.build_players_db_from_capture()
     arm = next(a for a in db.league_matrix(scoring) if a["label"] == ARM)
-    global ROSTER_POSITIONS
-    ROSTER_POSITIONS = arm["league"]["roster_positions"]
-    starters = dr.starter_slot_counts(ROSTER_POSITIONS, None, arm["teams"])
-    levels = streaming_levels(SEASON, scoring, players_db, arm["teams"], starters)
+    levels = streaming_levels(SEASON, scoring, players_db, arm["teams"],
+                              arm["league"]["roster_positions"])
     print(f"derived streaming levels ({SEASON}): {levels}", flush=True)
 
     real = dr.replacement_levels

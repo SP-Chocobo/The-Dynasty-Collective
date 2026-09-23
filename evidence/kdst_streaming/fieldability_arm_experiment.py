@@ -70,8 +70,8 @@ def main(argv=None) -> int:
     real_levels = dr.replacement_levels
     levels = {}
     if args.streaming:
-        starters = dr.starter_slot_counts(arm["league"]["roster_positions"], None, arm["teams"])
-        levels = sae.streaming_levels(args.season, scoring, players_db, arm["teams"], starters)
+        levels = sae.streaming_levels(args.season, scoring, players_db, arm["teams"],
+                                      arm["league"]["roster_positions"])
         print(f"derived streaming levels ({args.season}): {levels}", flush=True)
 
         def streaming_replacement(*a, **k):

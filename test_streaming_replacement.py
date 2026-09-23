@@ -176,6 +176,52 @@ class TheFloorReachesTheANCHOR_PathTooTests(unittest.TestCase):
                                 "the trade_value anchor was handed a streaming floor")
 
 
+class AnEmptySlotListMustNotProduceAPlausibleLevelTests(unittest.TestCase):
+    """The bug that invalidated the first 2023 holdout, pinned so it cannot recur silently.
+
+    `demand` is `max(1, round(teams * starters[position]))`. With no slot list, starter counts
+    are all zero, demand falls to the floor of 1, and the "wire" becomes everyone outside the
+    top ONE rather than outside the top (teams x slots). The level then comes out INFLATED and
+    entirely plausible -- 2023 read DEF 172.91 instead of 158.00 -- which is why this needs a
+    test rather than a comment.
+
+    The `max(1, ...)` floor is right for a position with a fractional slot share and must stay.
+    What must not happen is a caller reaching it by passing nothing.
+    """
+
+    def test_an_empty_slot_list_gives_a_DIFFERENT_and_higher_level(self):
+        with_slots = dr.streaming_replacement_levels(WEEKLY, SCORING, PLAYERS, ("DEF",),
+                                                     ROSTER_POSITIONS, 2)
+        without = dr.streaming_replacement_levels(WEEKLY, SCORING, PLAYERS, ("DEF",), [], 2)
+        self.assertNotEqual(with_slots, without)
+        self.assertGreater(without["DEF"], with_slots["DEF"],
+                           "an empty slot list no longer inflates the level -- if the demand "
+                           "floor changed, re-derive this test rather than deleting it")
+
+    def test_the_experiment_wrapper_requires_the_slot_list(self):
+        """No default, so a caller that has no slot list cannot silently get a plausible level.
+        Asked of the SIGNATURE (#200), not of a run."""
+        import inspect
+        import sys
+        from pathlib import Path
+        sys.path.insert(0, str(Path("evidence/kdst_streaming").resolve()))
+        import streaming_arm_experiment as sae
+        params = inspect.signature(sae.streaming_levels).parameters
+        self.assertIn("roster_positions", params)
+        self.assertIs(inspect.Parameter.empty, params["roster_positions"].default,
+                      "roster_positions has a default again -- that is how the holdout came to "
+                      "be measured on an inflated level")
+
+    def test_the_experiment_module_carries_no_slot_list_global(self):
+        """The mechanism was a module global that only main() filled, read by a caller that
+        never goes through main()."""
+        import sys
+        from pathlib import Path
+        sys.path.insert(0, str(Path("evidence/kdst_streaming").resolve()))
+        import streaming_arm_experiment as sae
+        self.assertFalse(hasattr(sae, "ROSTER_POSITIONS"))
+
+
 class TheScopeIsNamedAndArguableTests(unittest.TestCase):
     """`#184`: which positions are streamed is a DECISION with evidence, not a derived set. It
     must stay visible, and the experiment must not carry a second copy of it."""
