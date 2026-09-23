@@ -48,6 +48,40 @@ roster and is evidence about the noise axis, not about the engine's board. See
 
 **A finding on a CONTROL arm would be the one that means something.** None so far.
 
+## The second finding, traced: superflex prices NO quarterback from round 15
+
+`12T_ppr_SF__noisy_k8` took two `tav=None` backup QBs at 15.08 and 15.10. Replaying that arm's
+own pick sequence to the round-15 board:
+
+```
+QB rows remaining: 102      unpriced: 102      replacement_basis: {None: 102}
+top 12 of the board:        WR/RB, every one priced from predraft_anchor
+unpriced rows in the top 12: 0
+```
+
+**Every remaining quarterback is unpriced, and that is BY DESIGN.** In a superflex league
+`compute_draft_board` passes `startable_floors={"QB": ...}`, and `_fill_omitted_from_anchor`
+deliberately fills positions omitted for EXHAUSTED DEMAND while never filling those the
+startable-floor branch DECLINED — "no remaining player clears the startability threshold" is a
+different fact from "this position's demand is used up", and the anchor is only the answer to
+the second.
+
+So the board is behaving as specified, and `_board_order` sorts unpriced rows last, which is why
+all five other superflex arms are clean: the engine never takes one. Under `noisy_k8` the seat
+does not take the board's leader — it draws uniformly from its own narrowed top_k, and the
+narrowed list carries some QBs for positional depth. The unpriced row is reachable by a random
+draw and by nothing else.
+
+**Not caused by anything in this session, and that is checkable rather than asserted:**
+`fieldable_ceiling('12T_ppr_SF')` is `{}`, so `unfieldable_last` returns all-zero,
+`cannot_be_fielded` is constant `False`, and `_board_order` is element-for-element what it was.
+The streaming floor is not exercised at all (`weekly_projection_weeks = 0`).
+
+**What is worth the owner's attention anyway:** from round 15 a superflex board prices no
+quarterback at all — 102 rows with `final_score=None`. The engine handles it. Any consumer that
+reads the board without honouring `final_score is None` would not, and the noisy arm is a live
+demonstration of what that looks like.
+
 ## What this run does NOT certify
 
 `universe.weekly_projection_weeks = 0`, `universe.streaming_floor_exercised = false`. The
