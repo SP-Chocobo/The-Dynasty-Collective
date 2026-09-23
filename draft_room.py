@@ -1688,6 +1688,12 @@ def replacement_levels(
     #: only the DEFAULT (nobody-drafted) demand below; a caller supplying remaining_demand has
     #: already applied it there, and applying it twice would be two sources of one truth.
     flex_occupancy: Optional[dict[str, dict[str, int]]] = None,
+    #: #30. Per position, the season total a WIRE-STREAMER would have been projected to get --
+    #: see streaming_replacement_levels, which derives it. Applied RAISE-ONLY, after the rank
+    #: math, because it answers a different question from `startable_floors`: that one changes
+    #: WHICH PLAYER is replacement, this one says the free weekly alternative is worth more than
+    #: any rostered player at this position and therefore sets the floor under the level itself.
+    streaming_floors: Optional[dict[str, float]] = None,
 ) -> dict[str, float]:
     """Per position, this pool's value_col at the player sitting at replacement rank within
     the REMAINING pool. The rank target is remaining_starter_demand -- how many starting slots
@@ -1818,7 +1824,116 @@ def replacement_levels(
         if rank - 1 > len(at_pos) - 1 and truncated_out is not None:
             truncated_out.add(position)
         levels[position] = float(at_pos.iloc[idx][value_col])
+
+    # #30, LAST and RAISE-ONLY. The streaming baseline is what a manager gets for free every
+    # week without spending a pick, so it can only ever be a FLOOR under a replacement level --
+    # never a reason to price a position as scarcer than the draft already says it is. A
+    # position absent from `levels` stays absent: "no starter-demand replacement exists here"
+    # is a different fact from "the wire is worth this much", and filling one with the other
+    # would be inventing a domain this function just declined.
+    for position, floor in (streaming_floors or {}).items():
+        if position in levels and floor is not None and floor > levels[position]:
+            levels[position] = float(floor)
     return levels
+
+
+#: WHICH POSITIONS GET A STREAMING FLOOR. This is a SCOPE DECISION with measured evidence, not
+#: a derived set and not a tuned one -- it is named here rather than buried in a call site so it
+#: can be argued with (`#184`).
+#:
+#: K and DEF are in it because the streaming alternative is one a manager can actually EXECUTE:
+#: you start exactly one, the wire is never exhausted (12 teams against 32 defenses and 52
+#: kickers), and dropping last week's for this week's costs you nothing you were going to field.
+#: Measured on 2024 realized outcomes, correcting their levels moved the first K/DST pick from
+#: round 4 to round 12 and took the engine's seat from losing to winning.
+#:
+#: RB and WR are OUT, and that was measured rather than assumed. The naive form of this
+#: hypothesis -- "apply the streaming baseline everywhere" -- was FALSIFIED: the weekly-max
+#: premium came out larger for RB (+98) than for DEF (+31), which would push K/DST EARLIER, the
+#: opposite of the defect. The reason is the winner's curse: a maximum over 160 noisy weekly
+#: projections is mostly noise, and it is not realizable anyway, because the best wire receiver
+#: is a different player every week and no manager churns the position that hard.
+#:
+#: QB IS AN OPEN QUESTION, deliberately left out. Streaming a quarterback is a real strategy in
+#: a 1QB league, but nothing here has measured it, and adding a position to this set on the
+#: strength of the argument rather than the measurement is exactly how the first K/DST repair
+#: was brute-forced into shape and had to be unwound.
+STREAMABLE_POSITIONS = ("K", "DEF")
+
+#: The regular-season week numbers a streaming baseline is summed over. Derived from the
+#: schedule, not chosen: a week with no published projection simply contributes nothing, which
+#: is what `streaming_replacement_levels` relies on rather than assuming 18 answered.
+STREAMING_WEEKS = range(1, 19)
+
+
+def streaming_replacement_levels(
+    weekly_projections: dict, scoring: dict, players_db: dict, positions,
+    roster_positions: list[str], num_teams: int,
+) -> dict[str, float]:
+    """Per position, the season total a WIRE-STREAMER would have been PROJECTED to get (`#30`).
+
+    THE QUESTION THIS ANSWERS, and why the ordinary replacement level answers a different one.
+    `replacement_levels` prices a position against the (teams x slots)-th best player HELD ALL
+    SEASON, which is the right alternative for a position you must roster to start. It is the
+    wrong alternative for a position you can pick up off waivers every Tuesday: there the real
+    alternative is the best free player THAT WEEK, and the season's worth of that is strictly
+    larger than any single held player's, because it takes a maximum eighteen times instead of
+    once.
+
+    THE CONSTRUCTION. Wire = everyone outside the top (teams x slots) by season-sum projection,
+    which is exactly what a draft removes. Each week, credit the streamer with the highest
+    projection among the wire THAT WEEK, and sum. Every input is a league fact
+    (`roster_positions`, `num_teams`) or a published projection. **No constant is selected**
+    (`#56`).
+
+    NO HINDSIGHT. Weekly projections are published before the games; nothing here reads an
+    outcome. That is what makes the same derivation legitimate in a live draft and in a
+    backtest -- the live board computes it from the season it is actually drafting.
+
+    MEASURED WORTH, 2024 `12T_ppr_K_DEF` on realized outcomes: K 121.78 -> 164.50 and
+    DEF 107.95 -> 146.05, which moved the first K/DST pick from round 4 to round 12 and took
+    the engine's seat from losing to winning. See `evidence/kdst_streaming/`.
+
+    A position with no wire left, or no week that answered, is OMITTED rather than given a
+    number -- absence travels (`#187`).
+    """
+    if not weekly_projections:
+        return {}
+    weekly_points = {}
+    for week in STREAMING_WEEKS:
+        lines = weekly_projections.get(str(week)) or weekly_projections.get(week)
+        if not lines:
+            continue
+        weekly_points[str(week)] = {pid: pu.score_projection(stats, scoring)
+                                    for pid, stats in lines.items()}
+    if not weekly_points:
+        return {}
+
+    season_total: dict[str, float] = {}
+    for points in weekly_points.values():
+        for pid, value in points.items():
+            season_total[pid] = season_total.get(pid, 0.0) + value
+
+    starters = starter_slot_counts(roster_positions, None, num_teams)
+    out: dict[str, float] = {}
+    for position in positions:
+        demand = max(1, int(round(num_teams * starters.get(position, 0.0))))
+        at_pos = sorted((pid for pid in season_total
+                         if pu.player_position(players_db.get(pid) or {}) == position),
+                        key=lambda p: -season_total[p])
+        wire = set(at_pos[demand:])
+        if not wire:
+            continue
+        total, weeks_seen = 0.0, 0
+        for points in weekly_points.values():
+            offers = [points[pid] for pid in wire if pid in points]
+            if offers:
+                total += max(offers)
+                weeks_seen += 1
+        if not weeks_seen:
+            continue
+        out[position] = round(total, 2)
+    return out
 
 
 # How far below a whole starting slot a demand may sit and still count as one whole slot.
@@ -3354,6 +3469,12 @@ def compute_draft_board(
     pool_scope: str = "all",
     demand_picks: Optional[list[dict]] = None,
     sleeper_basis: str = SLEEPER_BASIS_WEEKLY,
+    #: #30. {week: {player_id: {stat: projection}}} for the season being drafted, as
+    #: SleeperClient already fetches on its way to a season sum. Used for exactly one thing:
+    #: deriving the streaming replacement floor for STREAMABLE_POSITIONS. None (the default)
+    #: keeps the previous behaviour EXACTLY -- no floor is computed and no level moves -- so
+    #: every existing caller and every test is untouched until it passes this.
+    weekly_projections: Optional[dict] = None,
 ) -> list[dict]:
     """The live recommendation board: every undrafted, Draft-Sharks-valued player, ranked
     best pick first, with every scoring layer broken out separately -- universal_value
@@ -3545,9 +3666,19 @@ def compute_draft_board(
     point_replacement: dict[str, float] = {}
     if has_proj.any():
         proj_pool = pool[has_proj].copy()
+        # #30. Derived from the drafted season's OWN published weekly projections, so the same
+        # construction is legitimate live and in a backtest. ONLY on the points branch: a
+        # streaming baseline is a season point total, and the trade_value branch below prices
+        # on a vendor composite scale where a points figure means nothing -- exactly the
+        # reasoning that keeps startable_floors off that branch too.
+        streaming_floors = streaming_replacement_levels(
+            weekly_projections, scoring_settings or {}, players_db,
+            STREAMABLE_POSITIONS, roster_positions, num_teams,
+        ) if weekly_projections else None
         point_replacement = replacement_levels(
             proj_pool, "_points", roster_positions, num_teams, starter_demand,
             startable_floors=startable_floors, truncated_out=_pool_truncated,
+            streaming_floors=streaming_floors,
         )
         _anchored |= _fill_omitted_from_anchor(
             point_replacement, set(proj_pool["position"].unique()), startable_floors,

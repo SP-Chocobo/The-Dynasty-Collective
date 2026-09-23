@@ -1,0 +1,135 @@
+"""`#30` in production: the streaming replacement level, and the floor it puts under a position.
+
+The experiment that established this is `evidence/kdst_streaming/`. What these tests pin is the
+SHIPPED path — that the derivation is the one that was measured, that it reaches the board only
+when a caller supplies weekly projections, that it can only ever raise a level, and that with no
+weekly projections nothing moves at all.
+
+Synthetic and fast. Two weeks, four defenses, hand-arithmetic totals.
+"""
+
+from __future__ import annotations
+
+import unittest
+
+import pandas as pd
+
+import draft_room as dr
+
+SCORING = {"pts_allow_0": 10.0, "sack": 1.0}
+
+#: Four defenses. d1/d2 are the two the league's demand removes; d3/d4 are the wire.
+PLAYERS = {f"d{i}": {"position": "DEF", "fantasy_positions": ["DEF"]} for i in range(1, 5)}
+
+#: Week 1 the better wire defense is d3 (2 sacks); week 2 it is d4 (5 sacks). A streamer takes
+#: the max EACH week, so his season is 2 + 5 = 7 -- strictly more than either one held all year
+#: (d3: 2 + 1 = 3, d4: 1 + 5 = 6). That gap is the whole of #30.
+WEEKLY = {
+    "1": {"d1": {"sack": 9.0}, "d2": {"sack": 8.0}, "d3": {"sack": 2.0}, "d4": {"sack": 1.0}},
+    "2": {"d1": {"sack": 9.0}, "d2": {"sack": 8.0}, "d3": {"sack": 1.0}, "d4": {"sack": 5.0}},
+}
+
+#: One DEF slot, two teams -> demand 2, so d1 and d2 are drafted and d3/d4 are the wire.
+ROSTER_POSITIONS = ["QB", "DEF"]
+
+
+class TheDerivationTests(unittest.TestCase):
+
+    def test_the_streamer_takes_each_week_s_best_wire_player(self):
+        got = dr.streaming_replacement_levels(WEEKLY, SCORING, PLAYERS, ("DEF",),
+                                              ROSTER_POSITIONS, 2)
+        self.assertEqual({"DEF": 7.0}, got)
+
+    def test_that_beats_holding_either_wire_player_all_season(self):
+        """NON-VACUITY. If the weekly max equalled the best season total, this whole idea would
+        be measuring nothing, and the test above would pass on an accident of the fixture."""
+        got = dr.streaming_replacement_levels(WEEKLY, SCORING, PLAYERS, ("DEF",),
+                                              ROSTER_POSITIONS, 2)
+        held_best = max(
+            sum(dr.pu.score_projection(w.get(pid) or {}, SCORING) for w in WEEKLY.values())
+            for pid in ("d3", "d4"))
+        self.assertEqual(6.0, held_best)
+        self.assertGreater(got["DEF"], held_best)
+
+    def test_no_weekly_projections_means_no_opinion(self):
+        self.assertEqual({}, dr.streaming_replacement_levels({}, SCORING, PLAYERS, ("DEF",),
+                                                             ROSTER_POSITIONS, 2))
+
+    def test_a_position_with_no_wire_left_is_omitted_not_zeroed(self):
+        """Absence travels (#187). Two teams, two defenses -- demand consumes the whole pool."""
+        two = {k: v for k, v in PLAYERS.items() if k in ("d1", "d2")}
+        weekly = {w: {k: v for k, v in lines.items() if k in two}
+                  for w, lines in WEEKLY.items()}
+        got = dr.streaming_replacement_levels(weekly, SCORING, two, ("DEF",),
+                                              ROSTER_POSITIONS, 2)
+        self.assertNotIn("DEF", got)
+
+    def test_a_week_that_did_not_answer_contributes_nothing_rather_than_zero(self):
+        """A missing week must not drag the level down -- that would understate the wire by
+        exactly that week, the same defect _sum_weeks refuses for a season total."""
+        got = dr.streaming_replacement_levels({"1": WEEKLY["1"]}, SCORING, PLAYERS, ("DEF",),
+                                              ROSTER_POSITIONS, 2)
+        self.assertEqual({"DEF": 2.0}, got)
+
+
+class TheFloorIsRaiseOnlyTests(unittest.TestCase):
+
+    def _pool(self):
+        return pd.DataFrame([
+            {"player_id": "d1", "position": "DEF", "_points": 100.0},
+            {"player_id": "d2", "position": "DEF", "_points": 80.0},
+            {"player_id": "d3", "position": "DEF", "_points": 60.0},
+        ])
+
+    def test_a_higher_streaming_level_replaces_the_rank_based_one(self):
+        base = dr.replacement_levels(self._pool(), "_points", ROSTER_POSITIONS, 2)
+        raised = dr.replacement_levels(self._pool(), "_points", ROSTER_POSITIONS, 2,
+                                       streaming_floors={"DEF": 95.0})
+        self.assertLess(base["DEF"], 95.0)
+        self.assertEqual(95.0, raised["DEF"])
+
+    def test_a_lower_streaming_level_changes_nothing(self):
+        """It can never make a position look SCARCER than the draft already says it is."""
+        base = dr.replacement_levels(self._pool(), "_points", ROSTER_POSITIONS, 2)
+        lowered = dr.replacement_levels(self._pool(), "_points", ROSTER_POSITIONS, 2,
+                                        streaming_floors={"DEF": 1.0})
+        self.assertEqual(base, lowered)
+
+    def test_a_position_the_rank_math_DECLINED_stays_declined(self):
+        """"No starter-demand replacement exists here" is a different fact from "the wire is
+        worth this much". Filling one with the other would invent a domain just refused."""
+        got = dr.replacement_levels(self._pool(), "_points", ROSTER_POSITIONS, 2,
+                                    streaming_floors={"K": 500.0})
+        self.assertNotIn("K", got)
+
+    def test_none_is_the_previous_behaviour_exactly(self):
+        self.assertEqual(dr.replacement_levels(self._pool(), "_points", ROSTER_POSITIONS, 2),
+                         dr.replacement_levels(self._pool(), "_points", ROSTER_POSITIONS, 2,
+                                               streaming_floors=None))
+
+
+class TheScopeIsNamedAndArguableTests(unittest.TestCase):
+    """`#184`: which positions are streamed is a DECISION with evidence, not a derived set. It
+    must stay visible, and the experiment must not carry a second copy of it."""
+
+    def test_k_and_def_are_the_scope(self):
+        self.assertEqual(("K", "DEF"), dr.STREAMABLE_POSITIONS)
+
+    def test_rb_and_wr_are_deliberately_out(self):
+        """Measured, not assumed: the weekly-max premium came out LARGER for RB (+98) than for
+        DEF (+31), which would push K/DST earlier -- the opposite of the defect."""
+        for position in ("RB", "WR", "TE", "QB"):
+            self.assertNotIn(position, dr.STREAMABLE_POSITIONS)
+
+    def test_the_scope_and_the_falsification_are_both_written_down(self):
+        import inspect
+        source = inspect.getsource(dr)
+        marker = source[source.index("STREAMABLE_POSITIONS = ") - 2000:
+                        source.index("STREAMABLE_POSITIONS = ")]
+        self.assertIn("FALSIFIED", marker,
+                      "the measurement that keeps RB/WR out of the scope is no longer recorded "
+                      "beside the scope -- restore it before anyone widens this set")
+
+
+if __name__ == "__main__":
+    unittest.main()

@@ -43,7 +43,13 @@ import argparse
 #: grading on another would measure transfer of a stale level, not the method.
 SEASON = "2024"
 ARM = "12T_ppr_K_DEF"
-STREAMED = ("K", "DEF")
+#: Read from draft_room's own scope decision rather than restated, so this experiment
+#: cannot disagree with the engine about which positions are streamed (#126).
+STREAMED = dr.STREAMABLE_POSITIONS
+
+#: Filled from the arm's own league in main(); a module default would be a second source of
+#: truth about the format this experiment drafts.
+ROSTER_POSITIONS: list = []
 OUT_TEMPLATE = "evidence/kdst_streaming/STREAMING_ARM_{season}.json"
 
 
@@ -51,34 +57,20 @@ def streaming_levels(season: str, scoring: dict, players_db: dict,
                      teams: int, starters: dict) -> dict[str, float]:
     """Per streamed position, the season total a WIRE-STREAMER would have been projected to get.
 
-    Wire = everyone outside the top (teams x slots) by season-sum projection, which is what a
-    draft removes. Each week, credit the wire player with the highest projection THAT WEEK. All
-    inputs are a league fact or a published projection; no constant is selected (#56).
-    """
-    weekly_proj = {week: {pid: pu.score_projection(stats, scoring)
-                          for pid, stats in lines.items()}
-                   for week, lines in cwl.load_season(season, "projections").items()}
-    season_proj: dict[str, float] = collections.defaultdict(float)
-    for points in weekly_proj.values():
-        for pid, value in points.items():
-            season_proj[pid] += value
+    NOW A THIN WRAPPER OVER THE SHIPPED FUNCTION (`#126`). This module derived the level itself
+    while it was an experiment and the engine had no such concept. `draft_room` has one now --
+    `streaming_replacement_levels`, wired into `compute_draft_board` behind `weekly_projections`
+    -- and a second copy here would be a second home for the derivation, which is exactly the
+    arrangement where the copy nobody is watching drifts. Verified identical before the swap:
+    both produce K 164.50 / DEF 146.05 on 2024.
 
-    out = {}
-    for position in STREAMED:
-        demand = max(1, int(round(teams * starters.get(position, 0.0))))
-        pool = sorted((pid for pid in season_proj
-                       if pu.player_position(players_db.get(pid) or {}) == position),
-                      key=lambda p: -season_proj[p])
-        wire = set(pool[demand:])
-        if not wire:
-            continue
-        total = 0.0
-        for points in weekly_proj.values():
-            offers = [points[pid] for pid in wire if pid in points]
-            if offers:
-                total += max(offers)
-        out[position] = round(total, 2)
-    return out
+    `starters` is accepted and unused, kept so every existing call site still reads correctly;
+    the shipped function derives slot counts from `roster_positions` itself.
+    """
+    return dr.streaming_replacement_levels(
+        cwl.load_season(season, "projections"), scoring, players_db,
+        STREAMED, ROSTER_POSITIONS, teams,
+    )
 
 
 def main(argv=None) -> int:
@@ -95,7 +87,9 @@ def main(argv=None) -> int:
     scoring = rdb.scoring_settings_from_capture()
     players_db, _ = rdb.build_players_db_from_capture()
     arm = next(a for a in db.league_matrix(scoring) if a["label"] == ARM)
-    starters = dr.starter_slot_counts(arm["league"]["roster_positions"], None, arm["teams"])
+    global ROSTER_POSITIONS
+    ROSTER_POSITIONS = arm["league"]["roster_positions"]
+    starters = dr.starter_slot_counts(ROSTER_POSITIONS, None, arm["teams"])
     levels = streaming_levels(SEASON, scoring, players_db, arm["teams"], starters)
     print(f"derived streaming levels ({SEASON}): {levels}", flush=True)
 

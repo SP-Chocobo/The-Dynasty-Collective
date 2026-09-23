@@ -4926,6 +4926,10 @@ elif main_view == DRAFT_VIEW:
                         # dict is valid against the mock's own scoring_settings unchanged.
                         sleeper_projections=(snapshot.get("season_projections") or None),
                         sleeper_basis=draft_room.SLEEPER_BASIS_SEASON_SUM,
+                        # #30. The per-week lines behind that sum, from the same fetch. The
+                        # board derives K/DEF's streaming replacement floor from them; absent,
+                        # it computes no floor and every level is exactly what it was.
+                        weekly_projections=(snapshot.get("weekly_projections") or None),
                     )
 
             if md["picks"]:
@@ -5005,6 +5009,10 @@ elif main_view == DRAFT_VIEW:
                         # ranking than the pick it is revisiting.
                         sleeper_projections=(snapshot.get("season_projections") or None),
                         sleeper_basis=draft_room.SLEEPER_BASIS_SEASON_SUM,
+                        # #30. The per-week lines behind that sum, from the same fetch. The
+                        # board derives K/DEF's streaming replacement floor from them; absent,
+                        # it computes no floor and every level is exactly what it was.
+                        weekly_projections=(snapshot.get("weekly_projections") or None),
                     )
                 except Exception as exc:  # noqa: BLE001 -- surface, never crash the whole dashboard
                     edit_snap = None
@@ -5065,6 +5073,8 @@ elif main_view == DRAFT_VIEW:
                             # draft-horizon layer went dark from round 10 of 15 as a result.
                             sleeper_projections=(snapshot.get("season_projections") or None),
                             sleeper_basis=draft_room.SLEEPER_BASIS_SEASON_SUM,
+                            # #30, same fetch as the season sum above.
+                            weekly_projections=(snapshot.get("weekly_projections") or None),
                         )
                     except Exception as exc:  # noqa: BLE001 -- surface, never crash the whole dashboard
                         mock_snap = None
@@ -5430,6 +5440,8 @@ elif main_view == DRAFT_VIEW:
                                 pool_scope=st.session_state.draft_room_pool_scope,
                                 sleeper_projections=(snapshot.get("season_projections") or None),
                                 sleeper_basis=draft_room.SLEEPER_BASIS_SEASON_SUM,
+                                # #30, same fetch as the season sum above.
+                                weekly_projections=(snapshot.get("weekly_projections") or None),
                             )
                             # draft_id is NOT a build_snapshot input -- two drafts of one league
                             # standing at the same pick really would produce the same board --

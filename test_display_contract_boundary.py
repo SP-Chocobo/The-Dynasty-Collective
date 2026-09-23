@@ -592,8 +592,13 @@ class TheScaleIsNotAPointsTotalTests(unittest.TestCase):
         # rows, so "ranked highly because of fit" was reading what is usually a penalty. The
         # card's other Context Gap direction, pure_value, is untouched and fires on real
         # populations. evidence/context_elevated/THE_CEILING_IS_MAX_NOT_SUM.md.
+        # 51 -> 52 with `cannot_be_fielded` (#30). CONFIRMED AGAINST THE QUESTION THIS TEST
+        # ASKS: it is a bool, not a scale, so it implies no units the card cannot support, and
+        # it is a companion to a SELECTION decision rather than a price -- the same shape as
+        # `fills_required_slot`, which the card already carries. Whether the card should show
+        # "this roster cannot field another one" is a UI decision and is not made here.
         self.assertEqual(
-            len(dataclasses.fields(ps.CandidateSnapshot)), 51,
+            len(dataclasses.fields(ps.CandidateSnapshot)), 52,
             "CandidateSnapshot's field count changed. That is fine and often correct -- but "
             "confirm the new field does not imply a scale the card cannot support, decide "
             "whether the card should render it, then update this number.")

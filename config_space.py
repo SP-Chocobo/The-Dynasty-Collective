@@ -73,6 +73,19 @@ INVARIANT_DOMAINS = {
     "duplicate_picks":
         "Every supported configuration, and the only one that does not consult the league at "
         "all. Two chairs cannot own the same player.",
+    "unfieldable_depth":
+        "Every supported configuration, restricted to the positions the league gives a DEDICATED "
+        "slot and no flex reach. That restriction is the domain and it is read from the league's "
+        "own slot list, never from a list of 'bench positions': a position reachable through any "
+        "shared slot is exempt, because a spare RB fills a FLEX and frees a WR upward and its "
+        "useful depth is a valuation question this audit has no opinion about. Within the "
+        "restriction the assertion is configuration-free -- at most `slots(P)` of them start in "
+        "any week and one spare covers the one bye every team has, so a roster beyond "
+        "`slots(P) + 1` is carrying a body that is surplus in EVERY week of the season. What "
+        "that surplus still buys is matchup churn; that it is worth less than the roster spot "
+        "is `#30`'s measurement, not an assertion of this audit's, and the audit reports the "
+        "count rather than a price. Measured need: nine defenses in a one-DEF league, on which "
+        "all four older invariants returned clean (`evidence/kdst_streaming/ROOT_CAUSE.md`).",
 }
 
 #: Why each reported quantity is EXPECTED to move with the settings. A number here is evidence

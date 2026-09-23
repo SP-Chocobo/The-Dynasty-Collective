@@ -357,6 +357,7 @@ class SleeperClient:
 
     def get_season_projections(
         self, season: str, season_type: str = "regular", weeks: Optional[int] = None,
+        weekly_out: Optional[dict] = None,
     ) -> tuple[dict[str, dict], dict]:
         """player_id -> {stat_category: SEASON TOTAL}, summed from every week, plus a coverage
         record describing how that total was assembled.
@@ -383,10 +384,16 @@ class SleeperClient:
         A week that errors is recorded as a failed week and does NOT abort the sum -- one bad
         response should not cost the other seventeen -- but it is never silently treated as a
         week of zeros, which would understate every player in the league by exactly that week.
-        """
-        return self._sum_weeks(self.get_weekly_projections, season, season_type, weeks)
 
-    def _sum_weeks(self, fetch, season: str, season_type: str, weeks: Optional[int]):
+        weekly_out: a dict this fills with {week: {player_id: stats}} as it goes, for a caller
+        that needs the per-week lines and not only their sum -- `#30`'s streaming replacement
+        level is the one. Omitted, nothing changes and nothing extra is kept.
+        """
+        return self._sum_weeks(self.get_weekly_projections, season, season_type, weeks,
+                               weekly_out=weekly_out)
+
+    def _sum_weeks(self, fetch, season: str, season_type: str, weeks: Optional[int],
+                   weekly_out: Optional[dict] = None):
         """The week-summing construction, shared by the projected and the realized season.
 
         ONE HOME FOR THIS, not two (`#126`). `get_season_projections` and `get_season_stats` ask
@@ -413,6 +420,14 @@ class SleeperClient:
                 failed.append(week)
                 continue
             answered.append(week)
+            if weekly_out is not None:
+                # #30. The per-week lines, kept only when a caller asks for them. AN
+                # OUT-PARAMETER rather than a changed return type, so every existing caller is
+                # untouched -- the same idiom `replacement_levels.truncated_out` uses. The sum
+                # below is unchanged and still the primary answer; this is the half of the data
+                # the engine needed and was throwing away, and re-fetching it would cost
+                # eighteen more requests for rows already in hand.
+                weekly_out[str(week)] = rows
             for pid, stats in rows.items():
                 bucket = totals.setdefault(pid, {})
                 counted = False
@@ -576,12 +591,17 @@ class SleeperClient:
         # it -- and this adds the season sum alongside rather than replacing it, so a failure
         # here degrades to the previous behaviour instead of emptying the board.
         season_projections: dict[str, dict] = {}
+        # #30. The per-week lines behind the sum, captured on the way past rather than
+        # re-fetched. The board derives the streaming replacement level for K and DEF from
+        # these; with them absent it computes no floor and behaves exactly as before.
+        weekly_projections: dict[str, dict] = {}
         season_projection_coverage: dict = {"weeks_answered": [], "weeks_failed": [],
                                             "players": 0, "error": None}
         if season:
             try:
                 season_projections, season_projection_coverage = self.get_season_projections(
-                    str(season), str(projection_request.get("season_type") or season_type))
+                    str(season), str(projection_request.get("season_type") or season_type),
+                    weekly_out=weekly_projections)
             except Exception as exc:                    # noqa: BLE001 -- degrade, never abort
                 season_projection_coverage = {
                     "weeks_answered": [], "weeks_failed": [], "players": 0,
@@ -605,6 +625,13 @@ class SleeperClient:
             # 18, and nothing downstream can recover that from the number alone.
             "season_projections": season_projections,
             "season_projection_coverage": season_projection_coverage,
+            # #30. The SAME weeks that produced the sum above, kept per week. The board needs
+            # both shapes and they must come from one fetch: a season sum answers "what is this
+            # player worth all year", and the per-week lines answer "what is the best player on
+            # the WIRE worth this week", which is the only honest replacement level for a
+            # position you stream. Two fetches would be two seasons' worth of drift risk for
+            # one claim (#79).
+            "weekly_projections": weekly_projections,
             "projections": projections,
             "matchups": matchups,
         }

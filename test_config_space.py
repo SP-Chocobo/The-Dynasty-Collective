@@ -26,8 +26,8 @@ class TheSplitIsDerivedAndComplete(unittest.TestCase):
         """Not a list I wrote. `structural_findings`' contract is "a finding here is a DEFECT,
         not an observation", so whatever it calls IS the invariant set."""
         self.assertEqual(cs.invariant_audits(),
-                         ["duplicate_picks", "undraftable_positions", "unfilled_starting_slots",
-                          "unpriced_picks"])
+                         ["duplicate_picks", "undraftable_positions", "unfieldable_depth",
+                          "unfilled_starting_slots", "unpriced_picks"])
 
     def test_every_invariant_states_the_domain_it_is_asserted_over(self):
         """An invariant with a precondition is still an invariant. An invariant with an UNSTATED

@@ -1,4 +1,5 @@
-"""The backtest's anachronism guard: a later rookie must not be draftable in an earlier season.
+"""`#30`: the backtest's anachronism guard -- a later rookie must not be draftable in an earlier
+season.
 
 WHY THIS FILE EXISTS. The confound it guards was invisible for two full runs of
 `run_backtest_grade`, and it did not announce itself as a crash -- it announced itself as the

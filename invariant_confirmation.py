@@ -91,9 +91,20 @@ MUTATIONS = [
     # CONSTANT column keeps three keys and three directions, changes nothing but whether
     # feasibility participates in the ordering, and leaves final_score's own direction alone.
     ("board order ignores feasibility", "draft_room.py",
-     'results = scored.sort_values(["_feasible", "final_score", "player_id"],',
-     'results = scored.assign(_nofeas=1).sort_values(["_nofeas", "final_score", "player_id"],',
+     'results = scored.sort_values(["_feasible", "_unfieldable", "final_score", "player_id"],',
+     'results = scored.assign(_nofeas=1).sort_values('
+     '["_nofeas", "_unfieldable", "final_score", "player_id"],',
      "feasibility becomes advisory -- the #154 backstop stops reaching the pick"),
+    # The SECOND backstop, mutated the same arity-preserving way and for the same reason: a
+    # constant column keeps four keys against four directions, so the mutant runs and the only
+    # thing that changes is whether fieldability participates in the ordering. 0, not 1, so the
+    # substituted column reads as "nothing is demoted" rather than "everything is".
+    ("board order ignores fieldability", "draft_room.py",
+     'results = scored.sort_values(["_feasible", "_unfieldable", "final_score", "player_id"],',
+     'results = scored.assign(_nofield=0).sort_values('
+     '["_feasible", "_nofield", "final_score", "player_id"],',
+     "the #30 fieldability backstop becomes advisory -- a roster resumes hoarding a position "
+     "it cannot field, which is the nine-defense roster"),
 ]
 
 
