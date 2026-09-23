@@ -37,6 +37,12 @@ BATTERY_REPORT.json
 # fill the branch with checkpoint commits. The durable copy is a periodic, validated snapshot
 # under evidence/batteries/ -- see that directory's README, rule 1.
 VDS_REPORT.json
+# The smoke-seat field grader's LIVE report, same rule again (evidence/batteries/README rule 1).
+# Its durable copy is a validated checkpoint under evidence/smoke_seats/, named for the commit
+# the run STARTED at -- a grade compared against a report from different code is the single most
+# expensive measurement error this project has made.
+SMOKE_SEATS_LIVE.json
+ROSTER_PROOF_LIVE.json
 
 .streamlit/secrets.toml
 
