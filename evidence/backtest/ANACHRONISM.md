@@ -129,3 +129,25 @@ picks-consumers (`compute_draft_board`, the `num_teams` derivation, and `replace
 That is production plumbing for a measurement, so it goes to the owner as a decision (`#184`)
 rather than into a repair commit. Until then this is a stated limit on the absolute grade, and
 it applies IDENTICALLY to every arm, so no paired comparison is affected.
+
+## A THIRD anachronism the guard does not touch, named before anyone quotes a 2023 number
+
+`period_correct_pool` removes players the drafted season never projected. For the players it
+KEEPS, one input is still 2026-vintage: `time_horizon_adj` is built from the vendor's THREE-YEAR
+outlook, and a player priced through the `trade_value` fallback carries a 2026 composite. So in
+a 2023 draft the engine's multi-year opinion is a ranking formed after the season was played.
+
+`bpa` is not affected — it is VOR in the drafted season's own projected points, which is why the
+top of the board is period-correct and why the fix above was worth ~540 a seat.
+
+Two things follow, and both are stated rather than assumed:
+
+- **The further back the backtest, the larger this residual.** 2023 is two more years of
+  hindsight than 2024, which is a candidate explanation for 2023 grading harder — and only a
+  candidate, because it has not been measured on the corrected board.
+- **`run_backtest_grade --redraft` neutralises it**, since `time_horizon_adj` is gated on
+  `settings.type == 2`. That arm was run once on the CONTAMINATED board and came out worse; it
+  has not been re-run since, so no conclusion from it stands.
+
+The residual is identical across arms, so every PAIRED figure survives it. It is the absolute
+grades that carry it.
