@@ -236,8 +236,27 @@ def main(argv=None) -> int:
                            if p["roster_id"] == seat
                            and pu.player_position(players_db.get(p["player_id"]) or {})
                            in ("K", "DEF")]
+            # THE ROSTER TRAVELS WITH THE GRADE. A delta with no roster behind it cannot be
+            # audited, and the anachronism confound was found only by printing one. Engine seat
+            # and the best field seat, so a deficit can be read position by position without
+            # paying for another 300s draft.
+            best_other = max(((other, ids) for other, ids in by_seat.items() if other != seat),
+                             key=lambda kv: rr.score_roster_realized(
+                                 kv[1], players_db, realized, slots)["total"], default=None)
+
+            def describe(ids):
+                return [{"round": n + 1,
+                         "player": pu.player_name(players_db.get(pid) or {}, pid),
+                         "position": pu.player_position(players_db.get(pid) or {}),
+                         "projected": round(points.get(pid), 1) if pid in points else None,
+                         "realized": round(sum(w.get(pid, 0.0) for w in realized.values()), 1)}
+                        for n, pid in enumerate(ids)]
+
             rows.append({
                 "seat": seat,
+                "engine_roster": describe(by_seat[seat]),
+                "best_field_seat": best_other[0] if best_other else None,
+                "best_field_roster": describe(best_other[1]) if best_other else None,
                 "engine_realized": engine["total"],
                 "field_mean_realized": round(field_mean, 2) if field_mean is not None else None,
                 "delta": round(engine["total"] - field_mean, 2) if field_mean is not None else None,
