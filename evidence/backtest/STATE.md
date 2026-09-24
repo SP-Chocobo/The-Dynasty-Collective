@@ -1,5 +1,11 @@
 # Where this investigation stands — resume here
 
+> **STOP POINT, 2026-09-24.** Production code is frozen as it stands. **The brain is not frozen
+> as complete.** `#35` (`evidence/DESIGN_35_BENCH_VALUE.md`) is a blocking design problem with a
+> reproducible pathological example, and further optimisation against the current ruler risks
+> measuring the wrong thing. The VDS battery was stopped at 13 of 36 arms for that reason, not
+> because it failed — 13 arms, 3 findings, none on a control arm.
+
 Written for a cold start. Everything below is measured unless marked as a plan.
 
 ## The question
