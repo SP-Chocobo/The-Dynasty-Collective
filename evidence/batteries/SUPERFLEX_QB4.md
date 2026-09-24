@@ -1,3 +1,15 @@
+# SUPERSEDED — this document's conclusion was wrong
+
+Its central comparison was RAW PROJECTED POINTS, which is the category error VOR exists to
+correct. On the board's own value the margins are +0.40 to +5.55, not +60 to +73, and the
+"valuation system working, not junk accumulating" conclusion does not hold — a live instance of
+the same pathology is sitting at tight end.
+
+**Read `SURPLUS_DEPTH_PRICING.md` instead.** This file is kept only so the mistake is on the
+record.
+
+---
+
 # Why three superflex chairs took a fourth quarterback — and why the flex-inclusive ceiling would be a mistake
 
 Read out of the VDS battery's own `12T_ppr_SF__sharp_auto` arm. **No drafting, no new arm** — the
