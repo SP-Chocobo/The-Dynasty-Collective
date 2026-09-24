@@ -3371,7 +3371,7 @@ def fieldable_ceiling(roster_positions: list[str]) -> dict[str, int]:
 
 
 def unfieldable_last(scored, picks, players_db, my_roster_id, roster_positions,
-                     pool_scope: str = "all", my_points_players=None, value_col: str = "_points"):
+                     pool_scope: str = "all"):
     """A sort key, the mirror image of `feasibility_first`: 1 for a candidate at a position this
     roster has already saturated beyond what it can ever field, 0 for everyone else.
 
@@ -3408,31 +3408,39 @@ def unfieldable_last(scored, picks, players_db, my_roster_id, roster_positions,
     PROVABLY wasted, so a roster at or below it is untouched, and one above it is carrying a
     player it cannot play. A position with flex reach has no ceiling here at all.
 
-    IT DEMOTES A SURPLUS BODY, NOT AN UPGRADE, and that distinction is the whole difference
-    between a derived bound and a forced hold. A candidate at a saturated position is demoted
-    only when he would NOT improve on the worst player this roster already holds there. If he is
-    better than one of them, taking him is an upgrade and the surplus body is the one he
-    displaces -- so he is left alone and the board prices him normally.
-
-    That is still arithmetic: it compares his projected points against my own rostered players'
-    projected points, both already computed on the same basis (`roster_points_lookup`, `#216`).
-    No constant enters.
-
-    IT DOES NOT REOPEN THE HOLE IT WAS BUILT FOR. The nine defenses were monotonically
-    decreasing -- 121.5, 120.4, 119.9, 112.3, 112.2, 112.1, 111.3, 109.3, 109.1 -- so every one
-    after the second was worse than what the roster already held, and every one is still
-    demoted. What passes is the case the exemption exists for: a genuinely valuable third
-    quarterback in a deep league, who is takeable precisely when he is good enough to crack the
-    two you would otherwise keep.
-
-    WITHOUT the roster's own prices (`my_points_players=None`, which is every caller that does
-    not have them) it falls back to demoting on the count alone -- the stricter reading, because
-    "I cannot tell whether he is an upgrade" must not silently become "he is one".
-
     Deliberately NOT a value term, for the same reason tier 3 is not: adding it to
     `team_acquisition_value` would make a player's worth depend on who is drafting, which is the
     one thing `universal_value` exists to keep separate. It reorders SELECTION and leaves every
     price untouched.
+
+    THE BOUNDARY THIS DELIBERATELY DOES NOT CROSS, and it is a design commitment rather than a
+    limitation:
+
+        The engine does not independently value surplus roster slots for dynasty-specific
+        purposes such as insurance, trade liquidity, or developmental stashes unless those
+        preferences are explicitly modelled.
+
+    A one-season projected-points ruler contains no information about what a stashed third
+    quarterback is worth, so the engine must not pretend to derive it. This is a STRUCTURAL
+    constraint -- "the modelled roster depth at this position is full" -- and nothing more. If a
+    user wants to carry depth for insurance or liquidity, that belongs in an explicit
+    roster-preference layer above the core, set by them, not in a constant chosen here.
+
+    WHY NOT A SOFTER RULE: THE EXPERIMENT AND WHAT IT SETTLED. An "upgrade exemption" was built
+    and measured -- demote a surplus body only when he would NOT improve on the worst already
+    held, comparing projected points the board already has, no constant invented. It is
+    arithmetically clean and SEMANTICALLY WRONG, and one roster showed why. 2023 seat 1 took
+    Carr 272.4, then Stafford 264.6, and then the exemption admitted Geno Smith at 267.0 -- an
+    "upgrade" of 2.4 points on a quarterback it would never start. Cost: 76 realized points on
+    that seat. Nobody designing a dynasty engine means "take a third quarterback whenever he is
+    2.4 points better than your second"; that is exploiting the arithmetic definition of
+    upgrade, not expressing an intent.
+
+    Making it express the intent needs a notion of MEANINGFULLY better, which is a chosen
+    magnitude, which is `#56`. So the exemption was reverted rather than tuned. The full record,
+    including the code, is `evidence/kdst_streaming/UPGRADE_EXEMPTION.md` -- kept because the
+    machinery to tell "merely another body" from "actually displaces someone" is worth having
+    when an explicit roster-preference layer is built.
 
     MODULE-LEVEL AND PATCHABLE ON PURPOSE: an in-process A/B (engine-measurement skill) switches
     it off by replacing it with one that returns zeros, so both arms run the same code.
@@ -3472,18 +3480,6 @@ def unfieldable_last(scored, picks, players_db, my_roster_id, roster_positions,
     if not saturated:
         return default
 
-    # The weakest thing I already hold at each saturated position, in projected points. A
-    # candidate who beats it is an UPGRADE, not surplus -- see this function's docstring.
-    weakest_held: dict[str, float] = {}
-    for row in (my_points_players or []):
-        value = row.get("value")
-        if value is None:
-            continue
-        for position in (row.get("eligible") or ()):
-            if position in saturated:
-                weakest_held[position] = (value if position not in weakest_held
-                                          else min(weakest_held[position], value))
-
     def demoted(player_id) -> int:
         """ASKED OF ELIGIBILITY, NOT OF THE PRIMARY BUCKET (`#172`).
 
@@ -3504,23 +3500,8 @@ def unfieldable_last(scored, picks, players_db, my_roster_id, roster_positions,
             return 0
         # A flex-reachable position never enters `saturated` (it has no ceiling), so a subset
         # test also guarantees he reaches no position this backstop has no opinion about.
-        if not eligible <= saturated:
-            return 0
-        mine = values.get(str(player_id))
-        if mine is None:
-            return 1          # unpriced: fall back to the count alone, the stricter reading
-        for position in eligible:
-            floor = weakest_held.get(position)
-            # Strictly greater: equal to my worst is not an upgrade, it is a second copy.
-            if floor is not None and mine > floor:
-                return 0      # an UPGRADE at a position he can reach -- not surplus
-        return 1
+        return 1 if eligible <= saturated else 0
 
-    col = value_col if value_col in scored.columns else (
-        "projected_points" if "projected_points" in scored.columns else None)
-    values = ({str(pid): (None if v is None or pd.isna(v) else float(v))
-               for pid, v in zip(scored["player_id"], scored[col])}
-              if col is not None and "player_id" in scored.columns else {})
     if "player_id" not in scored.columns:
         # Fall back to the primary bucket rather than returning a wrong answer silently -- and
         # say so, because a board without player_id would be a shape nothing else here expects.
@@ -4204,8 +4185,7 @@ def compute_draft_board(
     # EMITTED for the same reason fills_required_slot is: narrow_candidates re-sorts every board
     # it receives, so a backstop expressed only as row order never reaches a pick (#155).
     scored["_unfieldable"] = unfieldable_last(scored, picks, players_db, my_roster_id,
-                                              roster_positions, pool_scope=pool_scope,
-                                              my_points_players=_my_points_players)
+                                              roster_positions, pool_scope=pool_scope)
     scored["cannot_be_fielded"] = scored["_unfieldable"] == 1
     # player_id tiebreaker + kind="stable" -- see the identical sort in the upside-mode branch
     # above for the full reasoning (input-order-independent tiebreaking among exact ties).
