@@ -1,6 +1,6 @@
 # Document index — derived, not curated
 
-`python3 doc_index.py` regenerates this. 186 markdown documents.
+`python3 doc_index.py` regenerates this. 187 markdown documents.
 
 Classified by what each file says about ITSELF in its first 12 lines. Nothing here is a judgement about whether a document is *good* — only about whether it tells a cold reader what it is before it starts making claims.
 
@@ -9,7 +9,7 @@ Classified by what each file says about ITSELF in its first 12 lines. Nothing he
 | WITHDRAWN | 28 | a published claim taken back. Kept, unedited, beneath its banner. |
 | SUPERSEDED | 32 | still valid or partly valid, but something later changed what it means. |
 | DECLARED | 21 | says what kind of document it is before making claims. |
-| UNDECLARED | 105 | no status banner in its opening. Not necessarily wrong — most are simply current — but a reader cannot tell without reading it all. |
+| UNDECLARED | 106 | no status banner in its opening. Not necessarily wrong — most are simply current — but a reader cannot tell without reading it all. |
 
 ## WITHDRAWN
 
@@ -115,6 +115,7 @@ Classified by what each file says about ITSELF in its first 12 lines. Nothing he
 - `evidence/DESIGN_35_BENCH_VALUE.md`
 - `evidence/DESIGN_35_CAPS_REDERIVATION.md`
 - `evidence/DESIGN_35_FABLE_CONTEMPLATION.md`
+- `evidence/absence_kind/IFF_BREACH_ON_A_DRAINED_BOARD.md`
 - `evidence/backtest/HORIZON.md`
 - `evidence/backtest/STATE.md`
 - `evidence/batteries/README.md`

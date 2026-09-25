@@ -19,29 +19,50 @@ about C so far is an argument; nothing about it is a measurement.
 | C (cap the slot phantom) | **OPEN.** Coherent, and it inverts a registered invariant |
 | E (raw projection as bench value) | **rejected** — the owner's own correction |
 
-## Three things are running concurrently
+## Status as of the last update to this file
 
-1. **Fable — the caps re-derivation.** Deliverable `evidence/DESIGN_35_CAPS_REDERIVATION.md`.
-   The question: if slot alternatives are capped, `displacement_adj` can go POSITIVE for a
-   single-position candidate, which inverts `lineup_optimizer.displacement_level`'s derived
-   non-positivity ("THE SIGN") and reaches `pick_synthesis.TEAM_SPECIFIC_CAPS`, which
-   hand-exempts that term from a bound two shipped constants derive from, citing exactly the
-   premise C destroys. Either a new two-sided bound exists or C costs a CHOSEN constant, which
-   `#56` forbids. **This is the GATE on C**, and it is a gate about admissibility, not outcome.
-2. **Fable — `#34`.** Deliverable `evidence/DESIGN_34_UNPRICED_SUPERFLEX_QB.md`. In superflex
-   from round 15 all 102 remaining QB rows carry `final_score is None` and
-   `replacement_basis is None`. `_board_order` sorts them last so a sharp chair never takes one;
-   the question is whether declining is right, how wide it is, and what a consumer that does not
-   honour `is None` would do with 102 of them.
-3. **Opus — does C actually draft better.** `phantom_cap_experiment.py` in this directory.
+**Both Fable passes handed back and are committed.**
+
+* `evidence/DESIGN_35_CAPS_REDERIVATION.md` — verdict (b): the registered non-positivity invariant
+  does not survive C and has an exact derived replacement; the caps' exemption is REFUTED and no
+  constant can be derived for it; **and the same prices are available in the right column** by
+  capping `bpa`'s anchor instead, which leaves the invariant and the caps intact. See
+  `SYNTHESIS.md` §1.
+* `evidence/DESIGN_34_UNPRICED_SUPERFLEX_QB.md` — `#34` closes as a duplicate of `#168`. Declining
+  moves NO pick (measured counterfactual, top 12 byte-identical). Three consumer gaps; one was a
+  reachable crash and is fixed, one is a false registered invariant, one cannot be fixed the obvious
+  way. See `SYNTHESIS.md` §3.
+* **My own finding, which neither pass could make:** C's cap binds on `#30`'s streaming floors from
+  the opening board. `SYNTHESIS.md` §2.
+
+**Running now** (from the repo root, launched at `6cd3be0`):
+
+| what | state |
+|---|---|
+| `c4_2024` — four arms, 12 seats | control arm in progress |
+| `c4_2023` — four arms, 12 seats | control arm in progress |
+| full test suite, after the `draft_counterfactual` fix | ~25% at last check; it LICENSES the push of `8f8ca9e` and everything stacked on it |
+
+Four arms each: `control`, `capped`, `capped_floor_exempt`, `capped_floor_exempt_no_backstop`. What
+each pairing answers is in `PREREGISTRATION_C.md`'s amendment. **Read that before the numbers.**
+
+`RESUME.md` says how to restart after a reclaim, and `checkpoint.sh` copies every completed arm
+report into `evidence/design_35/runs/` so a reclaim costs at most the arm in flight.
+
+## Not applied, deliberately
+
+The one-line `absence_kind` repair from `evidence/absence_kind/IFF_BREACH_ON_A_DRAINED_BOARD.md`. It
+touches `draft_room.py`, and the suite currently running licenses a DIFFERENT change; a second edit
+mid-suite would invalidate it. Apply after that suite is green and `8f8ca9e` is pushed, then run the
+suite again.
 
 ## The experiment in this directory
 
 `phantom_cap_experiment.py` — an in-process A/B with **no engine edit**. It wraps
 `dr.build_available_pool` to remember the board's own remaining pool (the cap needs a pool and
 `board_slot_alternatives(levels, roster_positions)` never receives one — that is the first thing
-recorded about C), then toggles `dr.board_slot_alternatives` between the shipped function and the
-capped one and grades both arms with `run_backtest_grade` on realized weekly outcomes.
+recorded about C), wraps `dr.streaming_replacement_levels` so a floor can be told from a pool
+reading, and toggles `dr.board_slot_alternatives` (and, for the fourth arm, `dr.unfieldable_last`).
 
 Verified before any arm was read:
 
@@ -49,28 +70,22 @@ Verified before any arm was read:
   a reduction of 43.25, which is the number that motivated C;
 * the cap can only LOWER a slot and never changes WHICH slots are priced (so the arm differs in
   one thing, not two);
+* the `#30` floor exemption is exact and NARROW — it restores K and DEF to their floors and moves
+  nothing else;
 * with no pool recorded it falls back to the shipped construction **and says so** in
   `cap_stats.pool_missing`, rather than treating absence as a number (`#187`);
-* the working directory is asserted to be the repo root before anything is imported, because
-  this file sits two directories down and `sys.path[0]` would otherwise not be the root.
+* the control arm reproduced 2024 seat 1 at **+168.4**, exactly the shipped figure from when `#30`
+  closed;
+* the cap is not vacuous: 1050 of 2420 priced slots capped on the smoke, `pool_missing` 0;
+* the working directory is asserted to be the repo root before anything is imported, because this
+  file sits two directories down and `sys.path[0]` would otherwise not be the root.
 
 ### What a result would and would not settle
 
-It settles **whether C is worth its cost**, and nothing about whether C is admissible — that is
-Fable's gate. A null or negative result retires C on outcome grounds without anyone having to
-re-derive `TEAM_SPECIFIC_CAPS`. A positive result makes the re-derivation a bill worth paying.
-
-### Runs
-
-| season | arm | state | result |
-|---|---|---|---|
-| 2024 | control / capped, 1 seat (smoke) | launched | — |
-| 2024 | control / capped, 12 seats | not launched | — |
-| 2023 | control / capped, 12 seats (holdout) | not launched | — |
-
-The 12-seat pair is the answer; the smoke exists only to prove the cap fires on a real board and
-that the two arms are not byte-identical. `cap_stats` in every summary says how often the cap bit
-and by how much — if it reports zero the arm is vacuous and the numbers mean nothing.
+It settles **whether C is worth its cost**, and nothing about whether C is admissible — the
+derivation already answered that: **not as specified.** A null or negative result retires C on
+outcome grounds. A positive result makes the anchor-capped reformulation the thing to put to the
+owner, since it prices identically in balanced mode without inverting anything.
 
 ## Standing constraints that apply here
 
