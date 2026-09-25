@@ -90,3 +90,69 @@ pathological example, which is exactly the state you want before a core change, 
 state in which further optimisation against the current ruler measures the wrong thing.
 
 The VDS battery was stopped at 13 of 36 arms for the same reason.
+
+---
+
+# Addendum — Formulation C's blast radius, and why it is not a v2 repair
+
+Fable's contemplation (`DESIGN_35_FABLE_CONTEMPLATION.md`) located the dominant term: the 74-point
+VOR swing is **64.81 level gap, 9.22 projection**, because WR's starter demand is exhausted and
+`_fill_omitted_from_anchor` substitutes the PRE-DRAFT level — 216.25, against a best remaining WR
+of 173.00. Independently verified on the seat-5 board at pick 164:
+
+```
+WR   level 216.25   basis predraft_anchor       +43.25 ABOVE the best WR left   disp  0.00
+TE   level 151.44   basis live_starter_demand   -28.02 below the best TE left   disp -38.83
+RB   level 165.82   basis live_starter_demand   -11.16 below the best RB left   disp -50.43
+DEF  level 107.95   basis predraft_anchor        +8.72 above the best DEF left  disp -19.12
+```
+
+That corrects this document's original framing: the driver is **anchor staleness**, not position
+locality. The phantom is a genuine falsehood — the board asserts a free WR worth 216.25 is coming
+when the pool's best is 173.00 — and removing it is a real repair.
+
+**It is nonetheless not a v2 repair, for three reasons established by measurement and by reading
+the code, not by preference.**
+
+**1. It is not one seam.** `shared_slot_alternatives(levels, roster_positions)` never receives the
+pool, so "the best remaining player eligible for that slot" is out of scope where Fable placed the
+cap. It would have to be threaded through `displacement_adjustments` as well.
+
+**2. It inverts a REGISTERED invariant, and the invariant is DERIVED rather than asserted.**
+Measured on the shipped board: 888 single-position rows, **zero** with positive `displacement_adj`.
+`lineup_optimizer.displacement_level`'s own "THE SIGN" section derives that from the cap's premise:
+
+> That function prices a slot at `max(level)` over the positions the slot ADMITS. So every slot a
+> SINGLE-position probe can reach admits that position, every such alternative is therefore at or
+> above his own level.
+
+Capping at the best remaining player destroys exactly that premise. A slot could then be priced
+BELOW the probe's own level, making `displacement_adj` positive — a roster-context **lift**, which
+the current design forbids with a stated argument ("lifting him again for my own weak starter would
+be paying twice for one fact"). For Shaheed the arithmetic is `216.25 − 197.80 = +18.45`.
+
+**3. Its blast radius reaches two shipped constants.** The same section records that
+`pick_synthesis.TEAM_SPECIFIC_CAPS` "hand-exempts this term from the bound two shipped constants
+derive from, **citing exactly that premise**."
+
+And this repository has already made this mistake once, in this precise place. From the same
+docstring:
+
+> It is false as stated, and it became false when `slot_alternatives` arrived. Not through a bug in
+> that change: the change EXPANDED THE POPULATION this function ranges over, and **an invariant
+> proven over the old one was never re-checked against the new one.**
+
+Shipping C without re-deriving `TEAM_SPECIFIC_CAPS` and the two constants that cite the premise
+would be that same failure a second time, in the same function, at a freeze.
+
+## The ruling this implies
+
+- **v2 freezes on what is measured and green.** The `#30` streaming level and the fieldability
+  ceiling were both confirmed on realized outcomes across two seasons, on a period-correct pool and
+  board, and the suite is green. Neither depends on C.
+- **`#35` stays open and is now well specified**, which is the useful outcome of the contemplation.
+  The work order is: bound the phantom (C) → re-derive `TEAM_SPECIFIC_CAPS` and the two constants
+  against the new population → only then evaluate the season objective (B), which Fable establishes
+  says nothing until the phantom is bounded.
+- **Nothing about C is discarded.** It is admissible under `#56` and it removes a real falsehood.
+  It is a next-cycle change with a dependency chain, not a patch.
