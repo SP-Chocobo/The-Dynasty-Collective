@@ -1,15 +1,15 @@
 # Document index — derived, not curated
 
-`python3 doc_index.py` regenerates this. 182 markdown documents.
+`python3 doc_index.py` regenerates this. 185 markdown documents.
 
 Classified by what each file says about ITSELF in its first 12 lines. Nothing here is a judgement about whether a document is *good* — only about whether it tells a cold reader what it is before it starts making claims.
 
 | class | count | meaning |
 |---|---:|---|
 | WITHDRAWN | 28 | a published claim taken back. Kept, unedited, beneath its banner. |
-| SUPERSEDED | 30 | still valid or partly valid, but something later changed what it means. |
+| SUPERSEDED | 32 | still valid or partly valid, but something later changed what it means. |
 | DECLARED | 21 | says what kind of document it is before making claims. |
-| UNDECLARED | 103 | no status banner in its opening. Not necessarily wrong — most are simply current — but a reader cannot tell without reading it all. |
+| UNDECLARED | 104 | no status banner in its opening. Not necessarily wrong — most are simply current — but a reader cannot tell without reading it all. |
 
 ## WITHDRAWN
 
@@ -51,6 +51,7 @@ Classified by what each file says about ITSELF in its first 12 lines. Nothing he
 - `ENGINE_WIRING_PASS.md`
 - `FREEZE_CHECKLIST.md`
 - `evidence/CERTIFICATION_DESIGN.md`
+- `evidence/DESIGN_34_UNPRICED_SUPERFLEX_QB.md`
 - `evidence/backtest/README.md`
 - `evidence/batteries/SUPERFLEX_QB4.md`
 - `evidence/blind_pass/REPAIR_MANDATE.md`
@@ -58,6 +59,7 @@ Classified by what each file says about ITSELF in its first 12 lines. Nothing he
 - `evidence/blind_pass/TURN_ENDING_PICKS.md`
 - `evidence/design_35/PREREGISTRATION_C.md`
 - `evidence/design_35/STATE.md`
+- `evidence/design_35/SYNTHESIS.md`
 - `evidence/kdst_streaming/STREAMING_ARM_RESULT.md`
 - `evidence/kdst_streaming/WORKING_LOG.md`
 - `evidence/roster_shape/ff_rulebook/CORRECTION_wrong_universe.md`
@@ -111,6 +113,7 @@ Classified by what each file says about ITSELF in its first 12 lines. Nothing he
 - `data/baseline/external/keeptradecut/ATTRIBUTION.md`
 - `data/league_captures/README.md`
 - `evidence/DESIGN_35_BENCH_VALUE.md`
+- `evidence/DESIGN_35_CAPS_REDERIVATION.md`
 - `evidence/DESIGN_35_FABLE_CONTEMPLATION.md`
 - `evidence/backtest/HORIZON.md`
 - `evidence/backtest/STATE.md`

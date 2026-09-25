@@ -101,7 +101,11 @@ _CAP_STATS: dict = {"slots_priced": 0, "slots_capped": 0, "reduction_sum": 0.0,
                     "max_reduction": 0.0, "no_reach": 0, "pool_missing": 0,
                     #: NON-VACUITY FOR THE THIRD ARM, in the same spirit. A no-backstop arm that
                     #: never reached the stand-in would be the shipped arm wearing another name.
-                    "backstop_suppressed_calls": 0}
+                    "backstop_suppressed_calls": 0,
+                    #: How often the #30 floor exemption saved a slot, and WHICH slots the cap
+                    #: actually bit -- a cap that only ever bit K and DEF would be a #30 revert
+                    #: wearing C's name, and a count that cannot tell them apart says nothing.
+                    "slots_floor_exempt": 0, "capped_by_position": {}}
 
 
 def install_pool_recorder():
@@ -116,6 +120,34 @@ def install_pool_recorder():
 
     dr.build_available_pool = recorder
     return real
+
+
+#: THE #30 FLOORS THE BOARD ACTUALLY USED, remembered the same way the pool is. A streaming floor
+#: is NOT a reading of the remaining pool, and `replacement_levels` applies it by ASSIGNMENT
+#: (`levels[position] = float(floor)`) and raise-only -- so `level == floor` identifies a
+#: floor-set level exactly, with no second model of the engine's own precedence.
+_FLOORS: list = [None]
+
+
+def install_floor_recorder():
+    """Wrap `dr.streaming_replacement_levels` so the cap can tell a floor from a pool reading."""
+    real = dr.streaming_replacement_levels
+
+    def recorder(*args, **kwargs):
+        floors = real(*args, **kwargs)
+        if floors:
+            _FLOORS[0] = dict(floors)
+        return floors
+
+    dr.streaming_replacement_levels = recorder
+    return real
+
+
+def floor_set_positions(levels) -> set:
+    """Positions whose level IS a #30 streaming floor rather than a reading of the pool."""
+    floors = _FLOORS[0] or {}
+    return {p for p, f in floors.items()
+            if p in levels and levels[p] is not None and float(levels[p]) == float(f)}
 
 
 def best_remaining_by_position() -> "dict[str, float] | None":
@@ -135,13 +167,32 @@ def best_remaining_by_position() -> "dict[str, float] | None":
             priced.groupby("position")["_points"].max().items()}
 
 
-def capped_slot_alternatives(levels, roster_positions):
-    """Formulation C: the shipped construction, capped at what the slot can actually still get."""
+def capped_slot_alternatives(levels, roster_positions, exempt_floors: bool = False):
+    """Formulation C: the shipped construction, capped at what the slot can actually still get.
+
+    `exempt_floors` is the CORRECTED form, and the correction is derived rather than chosen.
+    C's whole rationale is that the pool only drains, so no free player can be worth more than
+    the best one undrafted now. A `#30` streaming floor is not a claim about a player at all: it
+    is the season sum of each week's best WIRE option, and it is larger than any single player's
+    season projection on purpose, because a manager streams. So C's premise is false exactly
+    where the level is a floor, by `#30`'s own derivation -- and capping there does not correct a
+    stale anchor, it reverts `#30`.
+
+    Measured, 2024, `12T_ppr_K_DEF`, on the OPENING board before a single pick: DEF floor 146.05
+    against a best remaining defense of 121.49, K floor 164.50 against 159.88. Both capped, from
+    pick one to the last. `#30` was worth +328 on 2024 and +85 on 2023, so an uncorrected C arm
+    measures C and a partial `#30` revert together and cannot attribute either.
+
+    NOT EXTENDED TO `startable_floors` (superflex QB), and deliberately: that branch selects a
+    RANK rather than assigning the floor's value, so `level == floor` does not identify it and a
+    second model of the engine's precedence would be needed to. This format carries no
+    SUPER_FLEX slot, so the case is not exercised here; it is `#34`'s ground."""
     import lineup_optimizer as lo
     priced = {p: float(v) for p, v in levels.items() if v is not None and not pd.isna(v)}
     best = best_remaining_by_position()
     if best is None:
         _CAP_STATS["pool_missing"] += 1
+    floored = floor_set_positions(priced) if exempt_floors else set()
     out: dict[str, float] = {}
     for slot in lo.slots_from_roster_positions(roster_positions):
         candidates = [priced[p] for p in slot["eligible"] if p in priced]
@@ -149,6 +200,12 @@ def capped_slot_alternatives(levels, roster_positions):
             continue
         level_max = max(candidates)
         _CAP_STATS["slots_priced"] += 1
+        # A slot whose level comes from a floor is left alone ENTIRELY rather than capped at the
+        # next position down: the floor is what that slot's alternative IS.
+        if floored and any(priced.get(p) == level_max for p in slot["eligible"] if p in floored):
+            _CAP_STATS["slots_floor_exempt"] += 1
+            out[slot["slot_id"]] = level_max
+            continue
         reach = [best[p] for p in slot["eligible"] if p in best] if best else []
         if not reach:
             _CAP_STATS["no_reach"] += 1
@@ -159,8 +216,14 @@ def capped_slot_alternatives(levels, roster_positions):
             _CAP_STATS["slots_capped"] += 1
             _CAP_STATS["reduction_sum"] += level_max - capped
             _CAP_STATS["max_reduction"] = max(_CAP_STATS["max_reduction"], level_max - capped)
+            _CAP_STATS["capped_by_position"][",".join(sorted(slot["eligible"]))] = (
+                _CAP_STATS["capped_by_position"].get(",".join(sorted(slot["eligible"])), 0) + 1)
         out[slot["slot_id"]] = capped
     return out
+
+
+def floor_exempt_slot_alternatives(levels, roster_positions):
+    return capped_slot_alternatives(levels, roster_positions, exempt_floors=True)
 
 
 #: THE ARMS, and why the third one exists. `A` (the fieldability backstop, `unfieldable_last`) is
@@ -175,11 +238,16 @@ def capped_slot_alternatives(levels, roster_positions):
 #: to reproduce a number rather than to learn one. Anyone who wants the full 2x2 in one process
 #: can name it; the table admits it.
 ARMS = {
-    "control":            {"cap": False, "backstop": True},
-    "capped":             {"cap": True,  "backstop": True},
-    "capped_no_backstop": {"cap": True,  "backstop": False},
-    "control_no_backstop": {"cap": False, "backstop": False},
+    "control":             {"cap": None,           "backstop": True},
+    "capped":              {"cap": "as_specified", "backstop": True},
+    "capped_floor_exempt": {"cap": "floor_exempt", "backstop": True},
+    "capped_no_backstop":  {"cap": "as_specified", "backstop": False},
+    "capped_floor_exempt_no_backstop": {"cap": "floor_exempt", "backstop": False},
+    "control_no_backstop": {"cap": None,           "backstop": False},
 }
+
+CAP_FUNCTIONS = {"as_specified": capped_slot_alternatives,
+                 "floor_exempt": floor_exempt_slot_alternatives}
 
 #: `unfieldable_last` returns a SORT KEY, one row per candidate, 1 meaning "demote". All-zero is
 #: the no-op, and it is built the same way `feasibility_first` is switched off in the skill's own
@@ -211,6 +279,7 @@ def main(argv=None) -> int:
     shipped = dr.board_slot_alternatives
     shipped_backstop = dr.unfieldable_last
     install_pool_recorder()
+    install_floor_recorder()
 
     common = ["--season", args.season]
     if args.streaming:
@@ -222,10 +291,10 @@ def main(argv=None) -> int:
     for name in args.arms:
         # ONE PROCESS, ONE CODE VERSION, ONE THING TOGGLED PER ARM.
         config = ARMS[name]
-        dr.board_slot_alternatives = (capped_slot_alternatives if config["cap"] else shipped)
+        dr.board_slot_alternatives = CAP_FUNCTIONS.get(config["cap"], shipped)
         dr.unfieldable_last = (shipped_backstop if config["backstop"] else _no_backstop)
-        for key in _CAP_STATS:
-            _CAP_STATS[key] = 0 if isinstance(_CAP_STATS[key], int) else 0.0
+        for key, value in list(_CAP_STATS.items()):
+            _CAP_STATS[key] = {} if isinstance(value, dict) else type(value)(0)
         _LIVE_POOL[0] = None
         report = out_dir / f"{name}_{args.season}.json"
         started = time.time()
