@@ -135,21 +135,75 @@ anchor fill would carry `bpa` ≈ −44 to −80 — the same band as the round-
 Declining is a defensible **stated limit**, not a defect. But it does refuse a comparison the data
 could support, in the one format where QB is scarcest, and that is `#50`'s question.
 
-### Three consumer-boundary gaps, one of which is a reachable crash
+### It was also measured that declining MOVES NO PICK
 
-1. **`draft_counterfactual.regret_vs_bpa` is unguarded.** `round(engine_tav − bpa_tav, 3)` with
-   both fields typed non-Optional `float`. An unpriced engine pick makes `engine_tav` absent and
-   the subtraction raises `TypeError`. **This is reachable by the exact trajectory `#34` came
-   from** — the noise arm that took Haener at 15.08 and Bennett at 15.10.
-2. **`absence_kind` is never stamped `ABSENCE_NO_REPLACEMENT`.** The token and its label exist;
-   only `no_input` is ever written. So a floor-declined QB reaches `pick_debate` carrying no *why*.
-   `#112`'s iff-invariant test passes only because its population is an OPENING board.
-3. **`roster_diagnostics.replacement_level_surplus` prices superflex QB off demand rank with no
-   floor** — a second home for a level the board prices off the cliff (`#126`).
+The strongest new fact, from a one-process counterfactual (`_fill_omitted_from_anchor` patched in
+memory to also fill floor-declined positions, anchor caches reset between arms), on the
+`10T_ppr_SF` final board:
 
-`#187` itself is honoured on every value path: NaN → None → JSON null, with no `0.0` coalescing.
+| | priced rows | QB priced | top 12 |
+|---|---:|---:|---|
+| DECLINE (shipped) | 321 / 820 | 0 | WR/RB, `predraft_anchor`, −67 to −93 |
+| ANCHOR-FILL | 331 / 820 | 10, at −173 to −294 | **byte-identical** |
 
----
+The filled QBs land at `rank_among_remaining` 108 to 331. **The only thing that changes anywhere is
+the narrowed candidate set going from one unpriced row to zero.** So the decline is a stated limit
+and not a mis-ordering — and that is now measured rather than argued, which is more than my
+provisional reading had.
+
+### And the breadth is narrower than I implied
+
+Measured at every round of two completed sharp arms, plus an opening sweep of all 36 matrix arms:
+
+* `8T_ppr_SF` (120 picks) **never reaches the state** in 15 rounds — 31 QBs drafted, one still
+  clears the floor at round 15, 11 QBs priced.
+* `10T_ppr_SF` (150 picks) reaches it **exactly at the final board** — 13 priced at round 14, 0 at
+  round 15.
+* The real 12×30 superflex draft on the register: round 12 of 30.
+* No other position is ever all-unpriced, in any arm, at any round.
+
+So the decision surface sees this state only in **12–14 team rooms or 26–30 round drafts**. And in
+both sharp arms: **zero picks with `tav is None`, and zero picks whose narrowed set carried an
+unpriced candidate.** The one live effect is that `narrow_candidates` always includes the best
+remaining QB, so from the cliff onward the candidate set carries exactly one unpriced row — which
+is what an `opponent_noise` rival draws, and is why `unpriced_picks` fired at all.
+
+### The three consumer-boundary gaps
+
+**Gap 1 — a reachable crash. FIXED.** `draft_counterfactual.regret_vs_bpa` was
+`round(engine_tav - bpa_tav, 3)` with both fields annotated non-Optional `float`. Reproduced before
+fixing: `TypeError: unsupported operand type(s) for -: 'NoneType' and 'float'` at
+`draft_counterfactual.py:206`. `engine_tav` comes off the trajectory's own snapshot, where
+`team_acquisition_value` is Optional. Both fields are now Optional and the regret is `None` when
+there is no engine price — absence, not a substitute, because a 0.0 there reads as "the engine gave
+up nothing", a verdict in the engine's own favour invented from a missing number. Every aggregating
+consumer is guarded too, and each now reports its measurable and unmeasurable node counts beside
+its mean. Four new tests including a non-vacuity one.
+
+**Gap 2 — a REGISTERED INVARIANT is false, and its test cannot see it.** Confirmed twice
+independently: 10 unpriced QB rows carrying `absence_kind = None` on a drained `10T_ppr_SF` board
+(Fable), and 8 on a drained `12T_ppr_SF` board built from the capture's own universe (mine, with the
+top 40 QBs by league-scored season projection drafted). `test_absence_kind` asserts
+
+    self.assertEqual(row.get("absence_kind") is not None, row.get("bpa") is None)
+
+over every row — and its fixture is an **opening** board in a **non-superflex** league, where
+`startable_floors` is never even produced. The violating population is structurally unreachable
+there. `pick_debate` prints "NOT PRICED" with no *why* for exactly those rows. Full write-up and the
+one-line repair: `evidence/absence_kind/IFF_BREACH_ON_A_DRAINED_BOARD.md`. It is disclosure, not
+valuation — `absence_kind` enters no score, no ordering and no pick, and the vocabulary's own
+docstring draws that line.
+
+**Gap 3 — real, but the proposed fix is the category error the engine already refuses.**
+`roster_diagnostics.replacement_level_surplus` calls
+`dr.replacement_levels(scored_pool, "universal_value", roster_positions, num_teams)` — no floors. So
+"QB's replacement level in this league" does have two values in superflex, which is a `#126`
+concern. But it cannot be closed by passing the floor: the startable floor is a threshold in **raw
+season points** (0.5 × QB12 = 163.5), while `universal_value` is built on `bpa`, and `bpa` **is**
+VOR — points *above* replacement, which goes negative. Applying a raw-points threshold to that
+column is exactly what `compute_draft_board` already refuses on its trade-value branch, for the
+same stated reason. **So this is a limit to state, not a defect to fix**, and stating it in shipped
+prose is the owner's call, not mine while two measurements are in flight. Recorded here.
 
 ## 4. Where this leaves v2
 
@@ -159,8 +213,13 @@ could support, in the one format where QB is scarcest, and that is `#50`'s quest
 | `#35` — is C ADMISSIBLE as specified | **no.** It inverts a registered invariant, refutes the caps' exemption, and needs a constant that cannot be derived |
 | `#35` — is there an admissible shape | **yes, one:** cap `bpa`'s anchor, identical prices in balanced mode, invariant and caps intact, with a real cost in `universal_value` and upside mode |
 | `#35` — C reverts `#30` | **measured, from pick one.** The exemption is derived and verified |
-| `#34` | **closes as a duplicate of `#168`**, plus one new scale mismatch and three consumer gaps |
-| `#34` gap 1 | a reachable `TypeError` on a trajectory that has already been produced |
+| `#34` | **closes as a duplicate of `#168`.** Declining moves no pick — measured, top 12 byte-identical |
+| `#34` gap 1 | **FIXED** — a reachable `TypeError`, reproduced before repair, four tests |
+| `#34` gap 2 | a **registered invariant is false** on a drained superflex board; repair identified, one line |
+| `#34` gap 3 | a real `#126` fork that CANNOT be closed by passing the floor — a limit to state |
+| `#34` new defect | the QB startable floor is derived on the vendor column and cashed against the league-scored board. Untouched; `#50`'s |
 
-Nothing here is implemented. Every one of these is a valuation or contract ruling for the owner
-(`#184`) except gap 1, which is an absence-handling bug of the `#187` class.
+Nothing about `#35` is implemented, and every `#35` item is a valuation ruling for the owner
+(`#184`). The two `#34` items that are implemented or implementable are both absence-handling of the
+`#187` class and neither moves a value: gap 1 is fixed, and gap 2 stamps a label that already exists
+onto rows a registered invariant already claims must carry one.
