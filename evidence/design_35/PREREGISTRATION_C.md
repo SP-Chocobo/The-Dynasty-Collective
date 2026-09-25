@@ -3,7 +3,9 @@
 Written and committed BEFORE the 12-seat arms were launched, and the reading below is fixed here
 so it cannot be chosen after the numbers land.
 
-**Commit the runs start at: `d580c91`.** Instrument:
+**Commit the runs start at: `343cad1`** — this file's own commit, which adds only this document,
+so the instrument is byte-identical to `d580c91`. Corrected forward rather than amended: the
+line was written as `d580c91` before the launch command ran. Instrument:
 `evidence/design_35/phantom_cap_experiment.py`. Ruler: `realized_ruler` — the sum of each week's
 best legal lineup over that season's actual stats. Format `12T_ppr_K_DEF` (the only backtest
 format with K and DEF slots and the 64-key rulebook that prices them). Field: `need_first` and
